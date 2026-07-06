@@ -5,8 +5,8 @@
 All options under `services.coredns`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.coredns.config` | | |
-| `services.coredns.enable` | | |
-| `services.coredns.extraArgs` | | |
-| `services.coredns.package` | | |
+| --- | --- | --- |
+| `services.coredns.config` | `strings concatenated with "\n"` | Verbatim Corefile to use. See <https://coredns.io/manual/toc/#configuration> for details. |
+| `services.coredns.enable` | `boolean` | Whether to enable Coredns dns server. |
+| `services.coredns.extraArgs` | `list of string` | Extra arguments to pass to coredns. |
+| `services.coredns.package` | `package` | The coredns package to use. |

@@ -5,15 +5,15 @@
 All options under `services.pinchflat`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.pinchflat.enable` | | |
-| `services.pinchflat.extraConfig` | | |
-| `services.pinchflat.group` | | |
-| `services.pinchflat.logLevel` | | |
-| `services.pinchflat.mediaDir` | | |
-| `services.pinchflat.openFirewall` | | |
-| `services.pinchflat.package` | | |
-| `services.pinchflat.port` | | |
-| `services.pinchflat.secretsFile` | | |
-| `services.pinchflat.selfhosted` | | |
-| `services.pinchflat.user` | | |
+| --- | --- | --- |
+| `services.pinchflat.enable` | `boolean` | Whether to enable pinchflat. |
+| `services.pinchflat.extraConfig` | `attribute set of (null or boolean or signed integer or string)` | The configuration of Pinchflat is handled through environment variables. The available configuration options can be found in [the Pinchflat README](https://github.com/kieraneglin/pinchflat/README.md#environment-variables). |
+| `services.pinchflat.group` | `string` | Group under which Pinchflat runs. |
+| `services.pinchflat.logLevel` | `one of "debug", "info", "warning", "error"` | Log level for Pinchflat. |
+| `services.pinchflat.mediaDir` | `absolute path` | The directory into which Pinchflat downloads videos. |
+| `services.pinchflat.openFirewall` | `boolean` | Open ports in the firewall for the Pinchflat web interface |
+| `services.pinchflat.package` | `package` | The pinchflat package to use. |
+| `services.pinchflat.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which the Pinchflat web interface is available. |
+| `services.pinchflat.secretsFile` | `null or absolute path` | Secrets like {env}`SECRET_KEY_BASE` and {env}`BASIC_AUTH_PASSWORD` should be passed to the service without adding them to the world-readable Nix store. Note that either this file needs to be available on the host on which `pinchflat` is running, or the option `selfhosted` must be `true`. Further, {env}`SECRET_KEY_BASE` has a minimum length requirement of 64 bytes. One way to generate such a secret is to use `openssl rand -hex 64`. As an example, the contents of the file might look like this: `SECRET_KEY_BASE=...copy-paste a secret token here... BASIC_AUTH_USERNAME=...basic auth username... BASIC_AUTH_PASSWORD=...basic auth password...` |
+| `services.pinchflat.selfhosted` | `boolean` | Use a weak secret. If true, you are not required to provide a {env}`SECRET_KEY_BASE` through the `secretsFile` option. Do not use this option in production! |
+| `services.pinchflat.user` | `string` | User account under which Pinchflat runs. |

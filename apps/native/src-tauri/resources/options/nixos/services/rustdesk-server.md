@@ -5,15 +5,12 @@
 All options under `services.rustdesk-server`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.rustdesk-server.enable` | | |
-| `services.rustdesk-server.extraRelayArgs` | | |
-| `services.rustdesk-server.extraSignalArgs` | | |
-| `services.rustdesk-server.openFirewall` | | |
-| `services.rustdesk-server.package` | | |
-| `services.rustdesk-server.relay.enable` | | |
-| `services.rustdesk-server.relay.extraArgs` | | |
-| `services.rustdesk-server.relayIP` | | |
-| `services.rustdesk-server.signal.enable` | | |
-| `services.rustdesk-server.signal.extraArgs` | | |
-| `services.rustdesk-server.signal.relayHosts` | | |
+| --- | --- | --- |
+| `services.rustdesk-server.enable` | `boolean` | Whether to enable RustDesk, a remote access and remote control software, allowing maintenance of computers and other devices. |
+| `services.rustdesk-server.openFirewall` | `boolean` | Open the connection ports. TCP (21115, 21116, 21117, 21118, 21119) UDP (21116) |
+| `services.rustdesk-server.package` | `package` | The rustdesk-server package to use. |
+| `services.rustdesk-server.relay.enable` | `boolean` | Whether to enable the RustDesk relay server. |
+| `services.rustdesk-server.relay.extraArgs` | `list of string` | A list of extra command line arguments to pass to the `hbbr` process. |
+| `services.rustdesk-server.signal.enable` | `boolean` | Whether to enable the RustDesk signal server. |
+| `services.rustdesk-server.signal.extraArgs` | `list of string` | A list of extra command line arguments to pass to the `hbbs` process. |
+| `services.rustdesk-server.signal.relayHosts` | `list of string` | The relay server IP addresses or DNS names of the RustDesk relay. |

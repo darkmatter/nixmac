@@ -5,29 +5,115 @@
 All options under `services.movim`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.movim.dataDir` | | |
-| `services.movim.database.createLocally` | | |
-| `services.movim.database.name` | | |
-| `services.movim.database.type` | | |
-| `services.movim.database.user` | | |
-| `services.movim.debug` | | |
-| `services.movim.domain` | | |
-| `services.movim.enable` | | |
-| `services.movim.group` | | |
-| `services.movim.h2o` | | |
-| `services.movim.logDir` | | |
-| `services.movim.minifyStaticFiles` | | |
-| `services.movim.nginx` | | |
-| `services.movim.package` | | |
-| `services.movim.phpCfg` | | |
-| `services.movim.phpPackage` | | |
-| `services.movim.podConfig` | | |
-| `services.movim.poolConfig` | | |
-| `services.movim.port` | | |
-| `services.movim.precompressStaticFiles` | | |
-| `services.movim.runtimeDir` | | |
-| `services.movim.secretFile` | | |
-| `services.movim.settings` | | |
-| `services.movim.user` | | |
-| `services.movim.verbose` | | |
+| --- | --- | --- |
+| `services.movim.dataDir` | `absolute path` | State directory of the `movim` user which holds the application’s state & data. |
+| `services.movim.database.createLocally` | `boolean` | local database using UNIX socket authentication |
+| `services.movim.database.name` | `non-empty string` | Database name. |
+| `services.movim.database.type` | `one of "mariadb", "postgresql"` | Database engine to use. |
+| `services.movim.database.user` | `non-empty string` | Database username. |
+| `services.movim.debug` | `boolean` | Debugging logs. |
+| `services.movim.domain` | `non-empty string` | Fully-qualified domain name (FQDN) for the Movim instance. |
+| `services.movim.enable` | `boolean` | Whether to enable a Movim instance. |
+| `services.movim.group` | `non-empty string` | Group running Movim service |
+| `services.movim.h2o` | `null or (submodule)` | With this option, you can customize an H2O virtual host which already has sensible defaults for Movim. Set to `{ }` if you do not need any customization to the virtual host. If enabled, then by default, the {option}`serverName` is `${domain}`, If this is set to `null` (the default), no H2O `hosts` will be configured. |
+| `services.movim.h2o.acme` | `null or (submodule)` | ACME options for virtual host. |
+| `services.movim.h2o.acme.enable` | `boolean` | Whether to ask Let’s Encrypt to sign a certificate for this virtual host. Alternatively, an existing host can be used thru {option}`acme.useHost`. |
+| `services.movim.h2o.acme.root` | `null or absolute path` | Directory for the ACME challenge, which is **public**. Don’t put certs or keys in here. Set to `null` to inherit from config.security.acme. |
+| `services.movim.h2o.acme.useHost` | `null or non-empty string` | An existing Let’s Encrypt certificate to use for this virtual host. This is useful if you have many subdomains and want to avoid hitting the [rate limit](https://letsencrypt.org/docs/rate-limits). Alternately, you can generate a certificate through {option}`acme.enable`. Note that this option neither creates any certificates nor does it add subdomains to existing ones — you will need to create them manually using [](#opt-security.acme.certs). |
+| `services.movim.h2o.host` | `null or non-empty string` | Set the host address for this virtual host. If unset, the default is to listen on all network interfaces. |
+| `services.movim.h2o.http` | `null or (submodule)` | HTTP options for virtual host |
+| `services.movim.h2o.http.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Override the default HTTP port for this virtual host. |
+| `services.movim.h2o.serverAliases` | `list of non-empty string` | Additional names of virtual hosts served by this virtual host configuration. |
+| `services.movim.h2o.serverName` | `null or non-empty string` | Server name to be used for this virtual host. Defaults to attribute name in hosts. |
+| `services.movim.h2o.settings` | `attribute set` | Attrset to be transformed into YAML for host config. Note that the HTTP / TLS configurations will override these config values. See <https://h2o.examp1e.net/configure/base_directives.html#hosts>. |
+| `services.movim.h2o.tls` | `null or (submodule)` | TLS options for virtual host |
+| `services.movim.h2o.tls.extraSettings` | `attribute set` | Additional TLS/SSL-related configuration options. See <https://h2o.examp1e.net/configure/base_directives.html#listen-ssl>. |
+| `services.movim.h2o.tls.identity` | `list of (submodule)` | Key / certificate pairs for the virtual host. |
+| `services.movim.h2o.tls.identity.*.certificate-file` | `absolute path` | Path to certificate file. See <https://h2o.examp1e.net/configure/base_directives.html#certificate-file>. |
+| `services.movim.h2o.tls.identity.*.key-file` | `absolute path` | Path to key file. See <https://h2o.examp1e.net/configure/base_directives.html#key-file>. |
+| `services.movim.h2o.tls.policy` | `one of "add", "only", "force"` | `add` will additionally listen for TLS connections. `only` will disable TLS connections. `force` will redirect non-TLS traffic to the TLS connection. |
+| `services.movim.h2o.tls.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Override the default TLS port for this virtual host. |
+| `services.movim.h2o.tls.quic` | `null or (attribute set)` | Enables HTTP/3 over QUIC on the UDP port for TLS. The attrset provides fine-turning for QUIC behavior, but can be empty. See <https://h2o.examp1e.net/configure/http3_directives.html#quic-attributes>. |
+| `services.movim.h2o.tls.recommendations` | `null or one of "modern", "intermediate"` | By default, H2O, without prejudice, will use as many TLS versions & cipher suites as it & the TLS library (OpenSSL) can support. The user is expected to hone settings for the security of their server. Setting some constraints is recommended, & if unsure about what TLS settings to use, this option gives curated TLS settings recommendations from Mozilla’s ‘SSL Configuration Generator’ project (see <https://ssl-config.mozilla.org>) or read more at Mozilla’s Wiki (see <https://wiki.mozilla.org/Security/Server_Side_TLS>). modern : Services with clients that support TLS 1.3 & don’t need backward compatibility intermediate : General-purpose servers with a variety of clients, recommended for almost all systems The default for all virtual hosts can be set with services.h2o.defaultTLSRecommendations, but this value can be overridden on a per-host basis using services.h2o.hosts.<name>.tls.recommmendations. The settings will also be overidden by manual values set with services.settings.h2o.hosts.<name>.tls.extraSettings. NOTE: older/weaker ciphers might require overriding the OpenSSL version of H2O (such as `openssl_legacy`). This can be done with sevices.settings.h2o.package. |
+| `services.movim.h2o.tls.redirectCode` | `integer between 300 and 399 (both inclusive)` | HTTP status used by `globalRedirect` & `forceSSL`. Possible usecases include temporary (302, 307) redirects, keeping the request method & body (307, 308), or explicitly resetting the method to GET (303). See <https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections>. |
+| `services.movim.logDir` | `absolute path` | Log directory of the `movim` user which holds the application’s logs. |
+| `services.movim.minifyStaticFiles` | `boolean or (submodule)` | Do minification on public static files which reduces the size of assets — saving data for the server & users as well as offering a performance improvement. This adds typing for the `minifyStaticFiles` attribute for the Movim package which *will* override any existing override value. The default `true` will enable minification for all supported asset types with sane defaults. |
+| `services.movim.nginx` | `null or (submodule)` | With this option, you can customize an Nginx virtual host which already has sensible defaults for Movim. Set to `{ }` if you do not need any customization to the virtual host. If enabled, then by default, the {option}`serverName` is `${domain}`, If this is set to `null` (the default), no Nginx `virtualHost` will be configured. |
+| `services.movim.nginx.acmeFallbackHost` | `null or string` | Host which to proxy requests to if ACME challenge is not found. Useful if you want multiple hosts to be able to verify the same domain name. With this option, you could request certificates for the present domain with an ACME client that is running on another host, which you would specify here. |
+| `services.movim.nginx.acmeRoot` | `null or string` | Directory for the ACME challenge, which is **public**. Don't put certs or keys in here. Set to null to inherit from config.security.acme. |
+| `services.movim.nginx.addSSL` | `boolean` | Whether to enable HTTPS in addition to plain HTTP. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443). |
+| `services.movim.nginx.basicAuth` | `attribute set of string` | Basic Auth protection for a vhost. WARNING: This is implemented to store the password in plain text in the Nix store. |
+| `services.movim.nginx.basicAuthFile` | `null or absolute path` | Basic Auth password file for a vhost. Can be created by running {command}`nix-shell --packages apacheHttpd --run 'htpasswd -B -c FILENAME USERNAME'`. |
+| `services.movim.nginx.default` | `boolean` | Makes this vhost the default. |
+| `services.movim.nginx.enableACME` | `boolean` | Whether to ask Let's Encrypt to sign a certificate for this vhost. Alternately, you can use an existing certificate through {option}`useACMEHost`. |
+| `services.movim.nginx.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the vhost verbatim. |
+| `services.movim.nginx.forceSSL` | `boolean` | Whether to add a separate nginx server block that redirects (defaults to 301, configurable with `redirectCode`) all plain HTTP traffic to HTTPS. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443), where the non-SSL listens are used for the redirect vhosts. |
+| `services.movim.nginx.globalRedirect` | `null or string` | If set, all requests for this host are redirected (defaults to 301, configurable with `redirectCode`) to the given hostname. |
+| `services.movim.nginx.http2` | `boolean` | Whether to enable the HTTP/2 protocol. Note that (as of writing) due to nginx's implementation, to disable HTTP/2 you have to disable it on all vhosts that use a given IP address / port. If there is one server block configured to enable http2, then it is enabled for all server blocks on this IP. See <https://stackoverflow.com/a/39466948/263061>. |
+| `services.movim.nginx.http3` | `boolean` | Whether to enable the HTTP/3 protocol. This requires activating the QUIC transport protocol `services.nginx.virtualHosts.<name>.quic = true;`. Note that HTTP/3 support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> HTTP/3 availability must be manually advertised, preferably in each location block. |
+| `services.movim.nginx.http3_hq` | `boolean` | Whether to enable the HTTP/0.9 protocol negotiation used in QUIC interoperability tests. This requires activating the QUIC transport protocol `services.nginx.virtualHosts.<name>.quic = true;`. Note that special application protocol support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> |
+| `services.movim.nginx.kTLS` | `boolean` | Whether to enable kTLS support. Implementing TLS in the kernel (kTLS) improves performance by significantly reducing the need for copying operations between user space and the kernel. Required Nginx version 1.21.4 or later. |
+| `services.movim.nginx.listen` | `list of (submodule)` | Listen addresses and ports for this virtual host. IPv6 addresses must be enclosed in square brackets. Note: this option overrides `addSSL` and `onlySSL`. If you only want to set the addresses manually and not the ports, take a look at `listenAddresses`. |
+| `services.movim.nginx.listen.*.addr` | `string` | Listen address. |
+| `services.movim.nginx.listen.*.extraParameters` | `list of string` | Extra parameters of this listen directive. |
+| `services.movim.nginx.listen.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number to listen on. If unset and the listen address is not a socket then nginx defaults to 80. |
+| `services.movim.nginx.listen.*.proxyProtocol` | `boolean` | Enable PROXY protocol. |
+| `services.movim.nginx.listen.*.ssl` | `boolean` | Enable SSL. |
+| `services.movim.nginx.listenAddresses` | `list of string` | Listen addresses for this virtual host. Compared to `listen` this only sets the addresses and the ports are chosen automatically. Note: This option overrides `networking.enableIPv6` |
+| `services.movim.nginx.locations` | `attribute set of (submodule)` | Declarative location config |
+| `services.movim.nginx.locations.<name>.alias` | `null or absolute path` | Alias directory for requests. |
+| `services.movim.nginx.locations.<name>.basicAuth` | `attribute set of string` | Basic Auth protection for a vhost. WARNING: This is implemented to store the password in plain text in the Nix store. |
+| `services.movim.nginx.locations.<name>.basicAuthFile` | `null or absolute path` | Basic Auth password file for a vhost. Can be created by running {command}`nix-shell --packages apacheHttpd --run 'htpasswd -B -c FILENAME USERNAME'`. |
+| `services.movim.nginx.locations.<name>.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the location verbatim. |
+| `services.movim.nginx.locations.<name>.fastcgiParams` | `attribute set of (string or absolute path)` | FastCGI parameters to override. Unlike in the Nginx configuration file, overriding only some default parameters won't unset the default values for other parameters. |
+| `services.movim.nginx.locations.<name>.index` | `null or string` | Adds index directive. |
+| `services.movim.nginx.locations.<name>.priority` | `signed integer` | Order of this location block in relation to the others in the vhost. The semantics are the same as with `lib.mkOrder`. Smaller values have a greater priority. |
+| `services.movim.nginx.locations.<name>.proxyPass` | `null or string` | Adds proxy_pass directive and sets recommended proxy headers if recommendedProxySettings is enabled. |
+| `services.movim.nginx.locations.<name>.proxyWebsockets` | `boolean` | Whether to support proxying websocket connections with HTTP/1.1. |
+| `services.movim.nginx.locations.<name>.recommendedProxySettings` | `boolean` | Enable recommended proxy settings. |
+| `services.movim.nginx.locations.<name>.recommendedUwsgiSettings` | `boolean` | Enable recommended uwsgi settings. |
+| `services.movim.nginx.locations.<name>.return` | `null or string or signed integer` | Adds a return directive, for e.g. redirections. |
+| `services.movim.nginx.locations.<name>.root` | `null or absolute path` | Root directory for requests. |
+| `services.movim.nginx.locations.<name>.tryFiles` | `null or string` | Adds try_files directive. |
+| `services.movim.nginx.locations.<name>.uwsgiPass` | `null or string` | Adds uwsgi_pass directive and sets recommended proxy headers if recommendedUwsgiSettings is enabled. |
+| `services.movim.nginx.onlySSL` | `boolean` | Whether to enable HTTPS and reject plain HTTP connections. This will set defaults for `listen` to listen on all interfaces on port 443. |
+| `services.movim.nginx.quic` | `boolean` | Whether to enable the QUIC transport protocol. Note that QUIC support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> |
+| `services.movim.nginx.redirectCode` | `integer between 300 and 399 (both inclusive)` | HTTP status used by `globalRedirect` and `forceSSL`. Possible usecases include temporary (302, 307) redirects, keeping the request method and body (307, 308), or explicitly resetting the method to GET (303). See <https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections>. |
+| `services.movim.nginx.rejectSSL` | `boolean` | Whether to listen for and reject all HTTPS connections to this vhost. Useful in [default](#opt-services.nginx.virtualHosts._name_.default) server blocks to avoid serving the certificate for another vhost. Uses the `ssl_reject_handshake` directive available in nginx versions 1.19.4 and above. |
+| `services.movim.nginx.reuseport` | `boolean` | Create an individual listening socket . It is required to specify only once on one of the hosts. |
+| `services.movim.nginx.root` | `null or absolute path` | The path of the web root directory. |
+| `services.movim.nginx.serverAliases` | `list of string` | Additional names of virtual hosts served by this virtual host configuration. |
+| `services.movim.nginx.serverName` | `null or string` | Name of this virtual host. Defaults to attribute name in virtualHosts. |
+| `services.movim.nginx.sslCertificate` | `absolute path` | Path to server SSL certificate. |
+| `services.movim.nginx.sslCertificateKey` | `absolute path` | Path to server SSL certificate key. |
+| `services.movim.nginx.sslTrustedCertificate` | `null or absolute path` | Path to root SSL certificate for stapling and client certificates. |
+| `services.movim.nginx.useACMEHost` | `null or string` | A host of an existing Let's Encrypt certificate to use. This is useful if you have many subdomains and want to avoid hitting the [rate limit](https://letsencrypt.org/docs/rate-limits). Alternately, you can generate a certificate through {option}`enableACME`. *Note that this option does not create any certificates, nor it does add subdomains to existing ones – you will need to create them manually using [](#opt-security.acme.certs).* |
+| `services.movim.package` | `package` | The movim package to use. |
+| `services.movim.phpCfg` | `attribute set of (signed integer or string or boolean)` | Extra PHP INI options such as `memory_limit`, `max_execution_time`, etc. |
+| `services.movim.phpPackage` | `package` | The php package to use. |
+| `services.movim.podConfig` | `submodule` | Pod configuration (values from `php daemon.php config --help`). Note that these values will now be disabled in the admin panel. |
+| `services.movim.podConfig.chatonly` | `null or boolean` | Disable all the social feature (Communities, Blog…) and keep only the chat ones |
+| `services.movim.podConfig.description` | `null or non-empty string` | General description of the instance |
+| `services.movim.podConfig.disableregistration` | `null or boolean` | Remove the XMPP registration flow and buttons from the interface |
+| `services.movim.podConfig.info` | `null or non-empty string` | Content of the info box on the login page |
+| `services.movim.podConfig.locale` | `null or non-empty string` | The server main locale |
+| `services.movim.podConfig.loglevel` | `null or integer between 0 and 3 (both inclusive)` | The server loglevel |
+| `services.movim.podConfig.restrictsuggestions` | `null or boolean` | Only suggest chatrooms, Communities and other contents that are available on the user XMPP server and related services |
+| `services.movim.podConfig.timezone` | `null or non-empty string` | The server timezone |
+| `services.movim.podConfig.xmppdescription` | `null or non-empty string` | The default XMPP server description |
+| `services.movim.podConfig.xmppdomain` | `null or non-empty string` | The default XMPP server domain |
+| `services.movim.podConfig.xmppwhitelist` | `null or non-empty string` | The allowlisted XMPP servers |
+| `services.movim.poolConfig` | `attribute set of (signed integer or string or boolean)` | Options for Movim’s PHP-FPM pool. |
+| `services.movim.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Movim daemon port. |
+| `services.movim.precompressStaticFiles` | `submodule` | Aggressively precompress static files |
+| `services.movim.precompressStaticFiles.brotli.compressionLevel` | `integer between 0 and 11 (both inclusive)` | Brotli compression level |
+| `services.movim.precompressStaticFiles.brotli.enable` | `boolean` | Whether to enable Brotli precompression. |
+| `services.movim.precompressStaticFiles.brotli.package` | `package` | The brotli package to use. |
+| `services.movim.precompressStaticFiles.gzip.compressionLevel` | `integer between 1 and 9 (both inclusive)` | Gzip compression level |
+| `services.movim.precompressStaticFiles.gzip.enable` | `boolean` | Whether to enable Gzip precompression. |
+| `services.movim.precompressStaticFiles.gzip.package` | `package` | The gzip package to use. |
+| `services.movim.runtimeDir` | `absolute path` | Runtime directory of the `movim` user which holds the application’s caches & temporary files. |
+| `services.movim.secretFile` | `null or absolute path` | The secret file to be sourced for the .env settings. |
+| `services.movim.settings` | `attribute set of (null or signed integer or string or boolean)` | .env settings for Movim. Secrets should use `secretFile` option instead. `null`s will be culled. |
+| `services.movim.user` | `non-empty string` | User running Movim service |
+| `services.movim.verbose` | `boolean` | Verbose logs. |

@@ -5,6 +5,6 @@
 All options under `services.logkeys`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.logkeys.device` | | |
-| `services.logkeys.enable` | | |
+| --- | --- | --- |
+| `services.logkeys.device` | `null or string` | Use the given device as keyboard input event device instead of /dev/input/eventX default. |
+| `services.logkeys.enable` | `boolean` | Whether to enable logkeys, a keylogger service. |

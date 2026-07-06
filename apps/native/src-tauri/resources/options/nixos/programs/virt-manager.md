@@ -5,6 +5,6 @@
 All options under `programs.virt-manager`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `programs.virt-manager.enable` | | |
-| `programs.virt-manager.package` | | |
+| --- | --- | --- |
+| `programs.virt-manager.enable` | `boolean` | Whether to enable virt-manager, an UI for managing virtual machines in libvirt. |
+| `programs.virt-manager.package` | `package` | The virt-manager package to use. |

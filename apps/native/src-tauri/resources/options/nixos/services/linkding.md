@@ -5,21 +5,21 @@
 All options under `services.linkding`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `services.linkding.address` | | |
-| `services.linkding.contextPath` | | |
-| `services.linkding.dataDir` | | |
-| `services.linkding.database.createLocally` | | |
-| `services.linkding.database.host` | | |
-| `services.linkding.database.name` | | |
-| `services.linkding.database.port` | | |
-| `services.linkding.database.type` | | |
-| `services.linkding.database.user` | | |
-| `services.linkding.enable` | | |
-| `services.linkding.environmentFile` | | |
-| `services.linkding.group` | | |
-| `services.linkding.openFirewall` | | |
-| `services.linkding.package` | | |
-| `services.linkding.port` | | |
-| `services.linkding.settings` | | |
-| `services.linkding.user` | | |
+| --- | --- | --- |
+| `services.linkding.address` | `string` | Address on which linkding listens. |
+| `services.linkding.contextPath` | `string` | Configures a URL context path under which linkding is accessible. When set, linkding is available at `http://host:<port>/<contextPath>`. Must end with a `/` when non-empty. |
+| `services.linkding.dataDir` | `absolute path` | Directory used for all mutable state: SQLite database, secret key, favicons, previews, and assets. |
+| `services.linkding.database.createLocally` | `boolean` | Whether to automatically create a local PostgreSQL database and user. |
+| `services.linkding.database.host` | `string` | PostgreSQL server host. |
+| `services.linkding.database.name` | `string` | PostgreSQL database name. |
+| `services.linkding.database.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | PostgreSQL server port. |
+| `services.linkding.database.type` | `one of "sqlite", "postgres"` | Database engine to use. Defaults to SQLite. |
+| `services.linkding.database.user` | `string` | PostgreSQL user name. |
+| `services.linkding.enable` | `boolean` | Whether to enable linkding, a self-hosted bookmark manager. |
+| `services.linkding.environmentFile` | `null or absolute path` | Path to an environment file loaded by all linkding services. Useful for injecting secrets that should not appear in the Nix store, such as `LD_DB_PASSWORD` or `LD_SUPERUSER_PASSWORD`. |
+| `services.linkding.group` | `string` | Group under which linkding runs. ::: {.note} If left as the default value this group will automatically be created on system activation, otherwise you are responsible for ensuring the group exists before the linkding service starts. ::: |
+| `services.linkding.openFirewall` | `boolean` | Open the linkding port in the firewall. |
+| `services.linkding.package` | `package` | The linkding package to use. |
+| `services.linkding.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which linkding listens. |
+| `services.linkding.settings` | `attribute set of string` | Additional environment variables passed to linkding. Refer to the [linkding documentation](https://linkding.link/options/) for the full list of supported `LD_*` options. |
+| `services.linkding.user` | `string` | User account under which linkding runs. ::: {.note} If left as the default value this user will automatically be created on system activation, otherwise you are responsible for ensuring the user exists before the linkding service starts. ::: |

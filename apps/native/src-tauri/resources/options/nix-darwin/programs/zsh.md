@@ -5,7 +5,7 @@
 All options under `programs.zsh`.
 
 | Option | Type | Description |
-| ------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.zsh.enable` | `boolean` | Whether to configure zsh as an interactive shell. |
 | `programs.zsh.enableAutosuggestions` | `boolean` | Enable zsh-autosuggestions. |
 | `programs.zsh.enableBashCompletion` | `boolean` | Enable bash completion for all interactive zsh shells. |
@@ -14,12 +14,12 @@ All options under `programs.zsh`.
 | `programs.zsh.enableFzfCompletion` | `boolean` | Enable fzf completion. |
 | `programs.zsh.enableFzfGit` | `boolean` | Enable fzf keybindings for C-g git browsing. |
 | `programs.zsh.enableFzfHistory` | `boolean` | Enable fzf keybinding for Ctrl-r history search. |
-| `programs.zsh.enableGlobalCompInit` | `boolean` | Enable execution of compinit call for all interactive zsh shells. |
+| `programs.zsh.enableGlobalCompInit` | `boolean` | Enable execution of compinit call for all interactive zsh shells. This option can be disabled if the user wants to extend its `fpath` and a custom `compinit` call in the local config is required. |
 | `programs.zsh.enableSyntaxHighlighting` | `boolean` | Enable zsh-syntax-highlighting. |
 | `programs.zsh.histFile` | `string` | Change history file. |
 | `programs.zsh.histSize` | `signed integer` | Change history size. |
-| `programs.zsh.interactiveShellInit` | `strings concatenated with “\n”` | Shell script code called during interactive zsh shell initialisation. |
-| `programs.zsh.loginShellInit` | `strings concatenated with “\n”` | Shell script code called during zsh login shell initialisation. |
-| `programs.zsh.promptInit` | `strings concatenated with “\n”` | Shell script code used to initialise the zsh prompt. |
-| `programs.zsh.shellInit` | `strings concatenated with “\n”` | Shell script code called during zsh shell initialisation. |
+| `programs.zsh.interactiveShellInit` | `strings concatenated with "\n"` | Shell script code called during interactive zsh shell initialisation. |
+| `programs.zsh.loginShellInit` | `strings concatenated with "\n"` | Shell script code called during zsh login shell initialisation. |
+| `programs.zsh.promptInit` | `strings concatenated with "\n"` | Shell script code used to initialise the zsh prompt. |
+| `programs.zsh.shellInit` | `strings concatenated with "\n"` | Shell script code called during zsh shell initialisation. |
 | `programs.zsh.variables` | `attribute set of (string or list of string)` | A set of environment variables used in the global environment. These variables will be set on shell initialisation. The value of each variable can be either a string or a list of strings. The latter is concatenated, interspersed with colon characters. |

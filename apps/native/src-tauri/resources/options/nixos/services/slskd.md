@@ -5,13 +5,87 @@
 All options under `services.slskd`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.slskd.domain` | | |
-| `services.slskd.enable` | | |
-| `services.slskd.environmentFile` | | |
-| `services.slskd.group` | | |
-| `services.slskd.nginx` | | |
-| `services.slskd.openFirewall` | | |
-| `services.slskd.package` | | |
-| `services.slskd.settings` | | |
-| `services.slskd.user` | | |
+| --- | --- | --- |
+| `services.slskd.domain` | `null or string` | If non-null, enables an nginx reverse proxy virtual host at this FQDN, at the path configurated with `services.slskd.web.url_base`. |
+| `services.slskd.enable` | `boolean` | Whether to enable slskd. |
+| `services.slskd.environmentFile` | `absolute path` | Path to the environment file sourced on startup. It must at least contain the variables `SLSKD_SLSK_USERNAME` and `SLSKD_SLSK_PASSWORD`. Web interface credentials should also be set here in `SLSKD_USERNAME` and `SLSKD_PASSWORD`. Other, optional credentials like SOCKS5 with `SLSKD_SLSK_PROXY_USERNAME` and `SLSKD_SLSK_PROXY_PASSWORD` should all reside here instead of in the world-readable nix store. Variables are documented at <https://github.com/slskd/slskd/blob/master/docs/config.md> |
+| `services.slskd.group` | `string` | Group under which slskd runs. |
+| `services.slskd.nginx` | `submodule` | This option customizes the nginx virtual host set up for slskd. |
+| `services.slskd.nginx.acmeFallbackHost` | `null or string` | Host which to proxy requests to if ACME challenge is not found. Useful if you want multiple hosts to be able to verify the same domain name. With this option, you could request certificates for the present domain with an ACME client that is running on another host, which you would specify here. |
+| `services.slskd.nginx.acmeRoot` | `null or string` | Directory for the ACME challenge, which is **public**. Don't put certs or keys in here. Set to null to inherit from config.security.acme. |
+| `services.slskd.nginx.addSSL` | `boolean` | Whether to enable HTTPS in addition to plain HTTP. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443). |
+| `services.slskd.nginx.basicAuth` | `attribute set of string` | Basic Auth protection for a vhost. WARNING: This is implemented to store the password in plain text in the Nix store. |
+| `services.slskd.nginx.basicAuthFile` | `null or absolute path` | Basic Auth password file for a vhost. Can be created by running {command}`nix-shell --packages apacheHttpd --run 'htpasswd -B -c FILENAME USERNAME'`. |
+| `services.slskd.nginx.default` | `boolean` | Makes this vhost the default. |
+| `services.slskd.nginx.enableACME` | `boolean` | Whether to ask Let's Encrypt to sign a certificate for this vhost. Alternately, you can use an existing certificate through {option}`useACMEHost`. |
+| `services.slskd.nginx.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the vhost verbatim. |
+| `services.slskd.nginx.forceSSL` | `boolean` | Whether to add a separate nginx server block that redirects (defaults to 301, configurable with `redirectCode`) all plain HTTP traffic to HTTPS. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443), where the non-SSL listens are used for the redirect vhosts. |
+| `services.slskd.nginx.globalRedirect` | `null or string` | If set, all requests for this host are redirected (defaults to 301, configurable with `redirectCode`) to the given hostname. |
+| `services.slskd.nginx.http2` | `boolean` | Whether to enable the HTTP/2 protocol. Note that (as of writing) due to nginx's implementation, to disable HTTP/2 you have to disable it on all vhosts that use a given IP address / port. If there is one server block configured to enable http2, then it is enabled for all server blocks on this IP. See <https://stackoverflow.com/a/39466948/263061>. |
+| `services.slskd.nginx.http3` | `boolean` | Whether to enable the HTTP/3 protocol. This requires activating the QUIC transport protocol `services.nginx.virtualHosts.<name>.quic = true;`. Note that HTTP/3 support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> HTTP/3 availability must be manually advertised, preferably in each location block. |
+| `services.slskd.nginx.http3_hq` | `boolean` | Whether to enable the HTTP/0.9 protocol negotiation used in QUIC interoperability tests. This requires activating the QUIC transport protocol `services.nginx.virtualHosts.<name>.quic = true;`. Note that special application protocol support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> |
+| `services.slskd.nginx.kTLS` | `boolean` | Whether to enable kTLS support. Implementing TLS in the kernel (kTLS) improves performance by significantly reducing the need for copying operations between user space and the kernel. Required Nginx version 1.21.4 or later. |
+| `services.slskd.nginx.listen` | `list of (submodule)` | Listen addresses and ports for this virtual host. IPv6 addresses must be enclosed in square brackets. Note: this option overrides `addSSL` and `onlySSL`. If you only want to set the addresses manually and not the ports, take a look at `listenAddresses`. |
+| `services.slskd.nginx.listen.*.addr` | `string` | Listen address. |
+| `services.slskd.nginx.listen.*.extraParameters` | `list of string` | Extra parameters of this listen directive. |
+| `services.slskd.nginx.listen.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number to listen on. If unset and the listen address is not a socket then nginx defaults to 80. |
+| `services.slskd.nginx.listen.*.proxyProtocol` | `boolean` | Enable PROXY protocol. |
+| `services.slskd.nginx.listen.*.ssl` | `boolean` | Enable SSL. |
+| `services.slskd.nginx.listenAddresses` | `list of string` | Listen addresses for this virtual host. Compared to `listen` this only sets the addresses and the ports are chosen automatically. Note: This option overrides `networking.enableIPv6` |
+| `services.slskd.nginx.locations` | `attribute set of (submodule)` | Declarative location config |
+| `services.slskd.nginx.locations.<name>.alias` | `null or absolute path` | Alias directory for requests. |
+| `services.slskd.nginx.locations.<name>.basicAuth` | `attribute set of string` | Basic Auth protection for a vhost. WARNING: This is implemented to store the password in plain text in the Nix store. |
+| `services.slskd.nginx.locations.<name>.basicAuthFile` | `null or absolute path` | Basic Auth password file for a vhost. Can be created by running {command}`nix-shell --packages apacheHttpd --run 'htpasswd -B -c FILENAME USERNAME'`. |
+| `services.slskd.nginx.locations.<name>.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the location verbatim. |
+| `services.slskd.nginx.locations.<name>.fastcgiParams` | `attribute set of (string or absolute path)` | FastCGI parameters to override. Unlike in the Nginx configuration file, overriding only some default parameters won't unset the default values for other parameters. |
+| `services.slskd.nginx.locations.<name>.index` | `null or string` | Adds index directive. |
+| `services.slskd.nginx.locations.<name>.priority` | `signed integer` | Order of this location block in relation to the others in the vhost. The semantics are the same as with `lib.mkOrder`. Smaller values have a greater priority. |
+| `services.slskd.nginx.locations.<name>.proxyPass` | `null or string` | Adds proxy_pass directive and sets recommended proxy headers if recommendedProxySettings is enabled. |
+| `services.slskd.nginx.locations.<name>.proxyWebsockets` | `boolean` | Whether to support proxying websocket connections with HTTP/1.1. |
+| `services.slskd.nginx.locations.<name>.recommendedProxySettings` | `boolean` | Enable recommended proxy settings. |
+| `services.slskd.nginx.locations.<name>.recommendedUwsgiSettings` | `boolean` | Enable recommended uwsgi settings. |
+| `services.slskd.nginx.locations.<name>.return` | `null or string or signed integer` | Adds a return directive, for e.g. redirections. |
+| `services.slskd.nginx.locations.<name>.root` | `null or absolute path` | Root directory for requests. |
+| `services.slskd.nginx.locations.<name>.tryFiles` | `null or string` | Adds try_files directive. |
+| `services.slskd.nginx.locations.<name>.uwsgiPass` | `null or string` | Adds uwsgi_pass directive and sets recommended proxy headers if recommendedUwsgiSettings is enabled. |
+| `services.slskd.nginx.onlySSL` | `boolean` | Whether to enable HTTPS and reject plain HTTP connections. This will set defaults for `listen` to listen on all interfaces on port 443. |
+| `services.slskd.nginx.quic` | `boolean` | Whether to enable the QUIC transport protocol. Note that QUIC support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> |
+| `services.slskd.nginx.redirectCode` | `integer between 300 and 399 (both inclusive)` | HTTP status used by `globalRedirect` and `forceSSL`. Possible usecases include temporary (302, 307) redirects, keeping the request method and body (307, 308), or explicitly resetting the method to GET (303). See <https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections>. |
+| `services.slskd.nginx.rejectSSL` | `boolean` | Whether to listen for and reject all HTTPS connections to this vhost. Useful in [default](#opt-services.nginx.virtualHosts._name_.default) server blocks to avoid serving the certificate for another vhost. Uses the `ssl_reject_handshake` directive available in nginx versions 1.19.4 and above. |
+| `services.slskd.nginx.reuseport` | `boolean` | Create an individual listening socket . It is required to specify only once on one of the hosts. |
+| `services.slskd.nginx.root` | `null or absolute path` | The path of the web root directory. |
+| `services.slskd.nginx.serverAliases` | `list of string` | Additional names of virtual hosts served by this virtual host configuration. |
+| `services.slskd.nginx.serverName` | `null or string` | Name of this virtual host. Defaults to attribute name in virtualHosts. |
+| `services.slskd.nginx.sslCertificate` | `absolute path` | Path to server SSL certificate. |
+| `services.slskd.nginx.sslCertificateKey` | `absolute path` | Path to server SSL certificate key. |
+| `services.slskd.nginx.sslTrustedCertificate` | `null or absolute path` | Path to root SSL certificate for stapling and client certificates. |
+| `services.slskd.nginx.useACMEHost` | `null or string` | A host of an existing Let's Encrypt certificate to use. This is useful if you have many subdomains and want to avoid hitting the [rate limit](https://letsencrypt.org/docs/rate-limits). Alternately, you can generate a certificate through {option}`enableACME`. *Note that this option does not create any certificates, nor it does add subdomains to existing ones – you will need to create them manually using [](#opt-security.acme.certs).* |
+| `services.slskd.openFirewall` | `boolean` | Whether to open the firewall for the soulseek network listen port (not the web interface port). |
+| `services.slskd.package` | `package` | The slskd package to use. |
+| `services.slskd.settings` | `open submodule of (YAML 1.1 value)` | Application configuration for slskd. See [documentation](https://github.com/slskd/slskd/blob/master/docs/config.md). |
+| `services.slskd.settings.directories.downloads` | `null or absolute path` | Directory where downloaded files are stored. |
+| `services.slskd.settings.directories.incomplete` | `null or absolute path` | Directory where incomplete downloading files are stored. |
+| `services.slskd.settings.filters.search.request` | `list of string` | Incoming search requests which match this filter are ignored. |
+| `services.slskd.settings.flags.force_share_scan` | `boolean` | Force a rescan of shares on every startup. |
+| `services.slskd.settings.global.download.slots` | `unsigned integer, meaning >=0` | Limit of the number of concurrent download slots. |
+| `services.slskd.settings.global.download.speed_limit` | `unsigned integer, meaning >=0` | Total upload download limit |
+| `services.slskd.settings.global.upload.slots` | `unsigned integer, meaning >=0` | Limit of the number of concurrent upload slots. |
+| `services.slskd.settings.global.upload.speed_limit` | `unsigned integer, meaning >=0` | Total upload speed limit. |
+| `services.slskd.settings.remote_file_management` | `boolean` | Whether to enable modification of share contents through the web ui. |
+| `services.slskd.settings.retention.files.complete` | `unsigned integer, meaning >=0` | Lifespan of completely downloaded files in minutes. |
+| `services.slskd.settings.retention.files.incomplete` | `unsigned integer, meaning >=0` | Lifespan of incomplete downloading files in minutes. |
+| `services.slskd.settings.retention.transfers.download.cancelled` | `unsigned integer, meaning >=0` | Lifespan of cancelled download tasks. |
+| `services.slskd.settings.retention.transfers.download.errored` | `unsigned integer, meaning >=0` | Lifespan of errored download tasks. |
+| `services.slskd.settings.retention.transfers.download.succeeded` | `unsigned integer, meaning >=0` | Lifespan of succeeded download tasks. |
+| `services.slskd.settings.retention.transfers.upload.cancelled` | `unsigned integer, meaning >=0` | Lifespan of cancelled upload tasks. |
+| `services.slskd.settings.retention.transfers.upload.errored` | `unsigned integer, meaning >=0` | Lifespan of errored upload tasks. |
+| `services.slskd.settings.retention.transfers.upload.succeeded` | `unsigned integer, meaning >=0` | Lifespan of succeeded upload tasks. |
+| `services.slskd.settings.rooms` | `list of string` | Chat rooms to join on startup. |
+| `services.slskd.settings.shares.directories` | `list of string` | Paths to shared directories. See [documentation](https://github.com/slskd/slskd/blob/master/docs/config.md#directories) for advanced usage. |
+| `services.slskd.settings.shares.filters` | `list of string` | Regular expressions of files to exclude from sharing. |
+| `services.slskd.settings.soulseek.description` | `string` | The user description for the Soulseek network. |
+| `services.slskd.settings.soulseek.listen_port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port on which to listen for incoming connections. |
+| `services.slskd.settings.web.https.disabled` | `boolean` | Disable the built-in HTTPS server |
+| `services.slskd.settings.web.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The HTTP listen port. |
+| `services.slskd.settings.web.url_base` | `absolute path` | The base path in the url for web requests. |
+| `services.slskd.user` | `string` | User account under which slskd runs. |

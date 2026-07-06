@@ -5,7 +5,7 @@
 All options under `programs.clock-rs`.
 
 | Option | Type | Description |
-| ---------------------------- | ----------------- | ---------------------------------------------- |
+| --- | --- | --- |
 | `programs.clock-rs.enable` | `boolean` | Whether to enable clock-rs. |
 | `programs.clock-rs.package` | `null or package` | The clock-rs package to use. |
 | `programs.clock-rs.settings` | `TOML value` | The configuration file to be used for clock-rs |

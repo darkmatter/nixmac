@@ -5,8 +5,8 @@
 All options under `services.readeck`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.readeck.enable` | | |
-| `services.readeck.environmentFile` | | |
-| `services.readeck.package` | | |
-| `services.readeck.settings` | | |
+| --- | --- | --- |
+| `services.readeck.enable` | `boolean` | Whether to enable Readeck. |
+| `services.readeck.environmentFile` | `null or absolute path` | File containing environment variables to be passed to Readeck. May be used to provide the Readeck secret key by setting the READECK_SECRET_KEY variable. |
+| `services.readeck.package` | `package` | The readeck package to use. |
+| `services.readeck.settings` | `TOML value` | Additional configuration for Readeck, see <https://readeck.org/en/docs/configuration> for supported values. |

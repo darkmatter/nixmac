@@ -5,11 +5,18 @@
 All options under `services.thinkfan`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.thinkfan.enable` | | |
-| `services.thinkfan.extraArgs` | | |
-| `services.thinkfan.fans` | | |
-| `services.thinkfan.levels` | | |
-| `services.thinkfan.sensors` | | |
-| `services.thinkfan.settings` | | |
-| `services.thinkfan.smartSupport` | | |
+| --- | --- | --- |
+| `services.thinkfan.enable` | `boolean` | Whether to enable thinkfan, a fan control program. ::: {.note} This module targets IBM/Lenovo thinkpads by default, for other hardware you will have configure it more carefully. ::: |
+| `services.thinkfan.extraArgs` | `list of string` | A list of extra command line arguments to pass to thinkfan. Check the {manpage}`thinkfan(1)` manpage for available arguments. |
+| `services.thinkfan.fans` | `list of (open submodule of attribute set of (YAML 1.1 value))` | List of fans thinkfan will control. ::: {.note} This section slightly departs from the thinkfan.conf syntax. The type and path must be specified like this: `  type = "tpacpi";   query = "/proc/acpi/ibm/fan";` instead of a single declaration like: `  - tpacpi: /proc/acpi/ibm/fan` ::: |
+| `services.thinkfan.fans.*.indices` | `null or (list of (unsigned integer, meaning >=0))` | A list of fans to pick in case multiple fans match the query. ::: {.note} Indices start from 0. ::: |
+| `services.thinkfan.fans.*.query` | `string` | The query string used to match one or more fans: can be a fullpath to the temperature file (single fan) or a fullpath to a driver directory (multiple fans). ::: {.note} When multiple fans match, the query can be restricted using the {option}`name` or {option}`indices` options. ::: |
+| `services.thinkfan.fans.*.type` | `one of "hwmon", "atasmart", "tpacpi", "nvml"` | The fan type, can be `hwmon` for standard fans, `atasmart` to read the temperature via S.M.A.R.T (requires smartSupport to be enabled), `tpacpi` for the legacy thinkpac_acpi driver, or `nvml` for the (proprietary) nVidia driver. |
+| `services.thinkfan.levels` | `list of (tuple of (unsigned integer, meaning >=0, or one of "level auto", "level full-speed", "level disengaged") (unsigned integer, meaning >=0) (unsigned integer, meaning >=0))` | [LEVEL LOW HIGH] LEVEL is the fan level to use: it can be an integer (0-7 with thinkpad_acpi), "level auto" (to keep the default firmware behavior), "level full-speed" or "level disengaged" (to run the fan as fast as possible). LOW is the temperature at which to step down to the previous level. HIGH is the temperature at which to step up to the next level. All numbers are integers. |
+| `services.thinkfan.sensors` | `list of (open submodule of attribute set of (YAML 1.1 value))` | List of temperature sensors thinkfan will monitor. ::: {.note} This section slightly departs from the thinkfan.conf syntax. The type and path must be specified like this: `  type = "tpacpi";   query = "/proc/acpi/ibm/thermal";` instead of a single declaration like: `  - tpacpi: /proc/acpi/ibm/thermal` ::: |
+| `services.thinkfan.sensors.*.correction` | `null or (list of signed integer)` | A list of values to be added to the temperature of each sensor, can be used to equalize small discrepancies in temperature ratings. |
+| `services.thinkfan.sensors.*.indices` | `null or (list of (unsigned integer, meaning >=0))` | A list of sensors to pick in case multiple sensors match the query. ::: {.note} Indices start from 0. ::: |
+| `services.thinkfan.sensors.*.query` | `string` | The query string used to match one or more sensors: can be a fullpath to the temperature file (single sensor) or a fullpath to a driver directory (multiple sensors). ::: {.note} When multiple sensors match, the query can be restricted using the {option}`name` or {option}`indices` options. ::: |
+| `services.thinkfan.sensors.*.type` | `one of "hwmon", "atasmart", "tpacpi", "nvml"` | The sensor type, can be `hwmon` for standard sensors, `atasmart` to read the temperature via S.M.A.R.T (requires smartSupport to be enabled), `tpacpi` for the legacy thinkpac_acpi driver, or `nvml` for the (proprietary) nVidia driver. |
+| `services.thinkfan.settings` | `attribute set of (YAML 1.1 value)` | Thinkfan settings. Use this option to configure thinkfan settings not exposed in a NixOS option or to bypass one. Before changing this, read the {manpage}`thinkfan.conf(5)` manpage and take a look at the example config file at <https://github.com/vmatare/thinkfan/blob/master/examples/thinkfan.yaml> |
+| `services.thinkfan.smartSupport` | `boolean` | Whether to build thinkfan with S.M.A.R.T. support to read temperatures directly from hard disks. |

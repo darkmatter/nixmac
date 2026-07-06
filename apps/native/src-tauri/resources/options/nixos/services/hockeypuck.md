@@ -5,7 +5,7 @@
 All options under `services.hockeypuck`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.hockeypuck.enable` | | |
-| `services.hockeypuck.port` | | |
-| `services.hockeypuck.settings` | | |
+| --- | --- | --- |
+| `services.hockeypuck.enable` | `boolean` | Whether to enable Hockeypuck OpenPGP Key Server. |
+| `services.hockeypuck.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | HKP port to listen on. |
+| `services.hockeypuck.settings` | `TOML value` | Configuration file for hockeypuck, here you can override certain settings (`loglevel` and `openpgp.db.dsn`) by just setting those values. For other settings you need to use lib.mkForce to override them. This service doesn't provision or enable postgres on your system, it rather assumes that you enable postgres and create the database yourself. Example: `  services.postgresql = {     enable = true;     ensureDatabases = [ "hockeypuck" ];     ensureUsers = [{       name = "hockeypuck";       ensureDBOwnership = true;     }];   };` |

@@ -5,9 +5,11 @@
 All options under `programs.tealdeer`.
 
 | Option | Type | Description |
-| -------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.tealdeer.enable` | `boolean` | Whether to enable Tealdeer. |
 | `programs.tealdeer.enableAutoUpdates` | `boolean` | Whether to enable Auto updates. |
 | `programs.tealdeer.package` | `package` | The tealdeer package to use. |
-| `programs.tealdeer.settings` | `null or (open submodule of (TOML value))` | Configuration written to $XDG_CONFIG_HOME/tealdeer/config.toml on Linux or $HOME/Library/Application Support/tealdeer/config.toml on Darwin. See https://tealdeer-rs.github.io/tealdeer/config.html for more information. |
-| `programs.tealdeer.updateOnActivation` | | |
+| `programs.tealdeer.settings` | `null or (open submodule of (TOML value))` | Configuration written to {file}`$XDG_CONFIG_HOME/tealdeer/config.toml` on Linux or {file}`$HOME/Library/Application Support/tealdeer/config.toml` on Darwin. See <https://tealdeer-rs.github.io/tealdeer/config.html> for more information. |
+| `programs.tealdeer.settings.updates` | `open submodule of (TOML value)` | Tealdeer can refresh the cache automatically when it is outdated. This behavior can be configured in the updates section. |
+| `programs.tealdeer.settings.updates.auto_update` | `boolean` | Whether to enable auto-update. |
+| `programs.tealdeer.settings.updates.auto_update_interval_hours` | `positive integer, meaning >0` | Duration, since the last cache update, after which the cache will be refreshed. This parameter is ignored if {var}`auto_update` is set to `false`. |

@@ -5,35 +5,49 @@
 All options under `services.k3s`.
 
 | Option | Type | Description |
-| ------------------------------------------------------------------- | ---- | ----------- |
-| `services.k3s.agentToken` | | |
-| `services.k3s.agentTokenFile` | | |
-| `services.k3s.autoDeployCharts` | | |
-| `services.k3s.charts` | | |
-| `services.k3s.clusterInit` | | |
-| `services.k3s.configPath` | | |
-| `services.k3s.containerdConfigTemplate` | | |
-| `services.k3s.disable` | | |
-| `services.k3s.disableAgent` | | |
-| `services.k3s.docker` | | |
-| `services.k3s.enable` | | |
-| `services.k3s.environmentFile` | | |
-| `services.k3s.extraFlags` | | |
-| `services.k3s.extraKubeProxyConfig` | | |
-| `services.k3s.extraKubeletConfig` | | |
-| `services.k3s.gracefulNodeShutdown.enable` | | |
-| `services.k3s.gracefulNodeShutdown.shutdownGracePeriod` | | |
-| `services.k3s.gracefulNodeShutdown.shutdownGracePeriodCriticalPods` | | |
-| `services.k3s.images` | | |
-| `services.k3s.manifests` | | |
-| `services.k3s.nodeExternalIP` | | |
-| `services.k3s.nodeIP` | | |
-| `services.k3s.nodeLabel` | | |
-| `services.k3s.nodeName` | | |
-| `services.k3s.nodeTaint` | | |
-| `services.k3s.package` | | |
-| `services.k3s.role` | | |
-| `services.k3s.selinux` | | |
-| `services.k3s.serverAddr` | | |
-| `services.k3s.token` | | |
-| `services.k3s.tokenFile` | | |
+| --- | --- | --- |
+| `services.k3s.agentToken` | `string` | The k3s token agents can use to connect to the server. This option only makes sense on server nodes (`role = server`). **WARNING**: This option will expose your token unencrypted in the world-readable nix store. If this is undesired use the tokenFile option instead. |
+| `services.k3s.agentTokenFile` | `null or absolute path` | File path containing the k3s token agents can use to connect to the server. This option only makes sense on server nodes (`role = server`). |
+| `services.k3s.autoDeployCharts` | `attribute set of (submodule)` | Auto deploying Helm charts that are installed by the k3s Helm controller. Avoid using attribute names that are also used in the [](#opt-services.k3s.manifests) and [](#opt-services.k3s.charts) options. Manifests with the same name will override auto deploying charts with the same name. This option only makes sense on server nodes (`role = server`). See the [k3s Helm documentation](https://docs.k3s.io/helm) for further information. **WARNING**: If you have multiple server nodes, and set this option on more than one server, it is your responsibility to ensure that files stay in sync across those nodes. AddOn content is not synced between nodes, and k3s cannot guarantee correct behavior if different servers attempt to deploy conflicting manifests. |
+| `services.k3s.autoDeployCharts.<name>.createNamespace` | `boolean` | Whether to create the target namespace if not present. |
+| `services.k3s.autoDeployCharts.<name>.enable` | `boolean` | Whether to enable the installation of this Helm chart. Note that setting this option to `false` will not uninstall the chart from the cluster, if it was previously installed. Please use the the `--disable` flag or `.skip` files to delete/disable Helm charts, as mentioned in the [docs](https://docs.k3s.io/installation/packaged-components#disabling-manifests). |
+| `services.k3s.autoDeployCharts.<name>.extraDeploy` | `list of (absolute path or (attribute set))` | List of extra Kubernetes manifests to deploy with this Helm chart. |
+| `services.k3s.autoDeployCharts.<name>.extraFieldDefinitions` | `YAML 1.1 value` | Extra HelmChart field definitions that are merged with the rest of the HelmChart custom resource. This can be used to set advanced fields or to overwrite generated fields. See <https://docs.k3s.io/helm#helmchart-field-definitions> for possible fields. |
+| `services.k3s.autoDeployCharts.<name>.hash` | `string` | The hash of the packaged Helm chart. Only has an effect if `package` is not set. The Helm chart is fetched during build time and placed as a `.tgz` archive on the filesystem. |
+| `services.k3s.autoDeployCharts.<name>.name` | `non-empty string` | The name of the Helm chart. Only has an effect if `package` is not set. The Helm chart is fetched during build time and placed as a `.tgz` archive on the filesystem. |
+| `services.k3s.autoDeployCharts.<name>.package` | `absolute path or package` | The packaged Helm chart. Overwrites the options `repo`, `name`, `version` and `hash` in case of conflicts. |
+| `services.k3s.autoDeployCharts.<name>.repo` | `non-empty string` | The repo of the Helm chart. Only has an effect if `package` is not set. The Helm chart is fetched during build time and placed as a `.tgz` archive on the filesystem. |
+| `services.k3s.autoDeployCharts.<name>.targetNamespace` | `non-empty string` | The namespace in which the Helm chart gets installed. |
+| `services.k3s.autoDeployCharts.<name>.values` | `absolute path or (attribute set)` | Override default chart values via Nix expressions. This is equivalent to setting values in a `values.yaml` file. **WARNING**: The values (including secrets!) specified here are exposed unencrypted in the world-readable nix store. |
+| `services.k3s.autoDeployCharts.<name>.version` | `non-empty string` | The version of the Helm chart. Only has an effect if `package` is not set. The Helm chart is fetched during build time and placed as a `.tgz` archive on the filesystem. |
+| `services.k3s.charts` | `attribute set of (absolute path or package)` | Packaged Helm charts that are linked to {file}`/var/lib/rancher/k3s/server/static/charts` before k3s starts. The attribute name will be used as the link target (relative to {file}`/var/lib/rancher/k3s/server/static/charts`). The specified charts will only be placed on the file system and made available via the Kubernetes APIServer from within the cluster. See the [](#opt-services.k3s.autoDeployCharts) option and the [k3s Helm controller docs](https://docs.k3s.io/helm#using-the-helm-controller) to deploy Helm charts. This option only makes sense on server nodes (`role = server`). |
+| `services.k3s.clusterInit` | `boolean` | Initialize HA cluster using an embedded etcd datastore. If this option is `false` and `role` is `server` On a server that was using the default embedded sqlite backend, enabling this option will migrate to an embedded etcd DB. If an HA cluster using the embedded etcd datastore was already initialized, this option has no effect. This option only makes sense in a server that is not connecting to another server. If you are configuring an HA cluster with an embedded etcd, the 1st server must have `clusterInit = true` and other servers must connect to it using `serverAddr`. |
+| `services.k3s.configPath` | `null or absolute path` | File path containing the k3s YAML config. This is useful when the config is generated (for example on boot). |
+| `services.k3s.containerdConfigTemplate` | `null or string` | Config template for containerd, to be placed at `/var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl`. See the docs on [configuring containerd](https://docs.k3s.io/advanced#configuring-containerd). |
+| `services.k3s.disable` | `list of string` | Disable default components, see the [K3s documentation](https://docs.k3s.io/installation/packaged-components#using-the---disable-flag). |
+| `services.k3s.disableAgent` | `boolean` | Only run the server. This option only makes sense for a server. |
+| `services.k3s.enable` | `boolean` | Whether to enable k3s. |
+| `services.k3s.environmentFile` | `null or absolute path` | File path containing environment variables for configuring the k3s service in the format of an EnvironmentFile. See {manpage}`systemd.exec(5)`. |
+| `services.k3s.extraFlags` | `string or list of string` | Extra flags to pass to the k3s command. |
+| `services.k3s.extraKubeProxyConfig` | `attribute set of anything` | Extra configuration to add to the kube-proxy's configuration file. The subset of the kube-proxy's configuration that can be configured via a file is defined by the [KubeProxyConfiguration](https://kubernetes.io/docs/reference/config-api/kube-proxy-config.v1alpha1/) struct. Note that the kubeconfig param will be overriden by `clientConnection.kubeconfig`, so you must set the `clientConnection.kubeconfig` option if you want to use `extraKubeProxyConfig`. |
+| `services.k3s.extraKubeletConfig` | `attribute set of anything` | Extra configuration to add to the kubelet's configuration file. The subset of the kubelet's configuration that can be configured via a file is defined by the [KubeletConfiguration](https://kubernetes.io/docs/reference/config-api/kubelet-config.v1beta1/) struct. See the [documentation](https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/) for further information. |
+| `services.k3s.gracefulNodeShutdown.enable` | `boolean` | Whether to enable graceful node shutdowns where the kubelet attempts to detect node system shutdown and terminates pods running on the node. See the [documentation](https://kubernetes.io/docs/concepts/cluster-administration/node-shutdown/#graceful-node-shutdown) for further information. . |
+| `services.k3s.gracefulNodeShutdown.shutdownGracePeriod` | `non-empty string` | Specifies the total duration that the node should delay the shutdown by. This is the total grace period for pod termination for both regular and critical pods. |
+| `services.k3s.gracefulNodeShutdown.shutdownGracePeriodCriticalPods` | `non-empty string` | Specifies the duration used to terminate critical pods during a node shutdown. This should be less than `shutdownGracePeriod`. |
+| `services.k3s.images` | `list of package` | List of derivations that provide container images. All images are linked to {file}`/var/lib/rancher/k3s/agent/images` before k3s starts and are consequently imported by the k3s agent. Consider importing the k3s airgap images archive of the k3s package in use, if you want to pre-provision this node with all k3s container images. This option only makes sense on nodes with an enabled agent. |
+| `services.k3s.manifests` | `attribute set of (submodule)` | Auto-deploying manifests that are linked to {file}`/var/lib/rancher/k3s/server/manifests` before k3s starts. Note that deleting manifest files will not remove or otherwise modify the resources it created. Please use the the `--disable` flag or `.skip` files to delete/disable AddOns, as mentioned in the [docs](https://docs.k3s.io/installation/packaged-components#disabling-manifests). This option only makes sense on server nodes (`role = server`). Read the [auto-deploying manifests docs](https://docs.k3s.io/installation/packaged-components#auto-deploying-manifests-addons) for further information. **WARNING**: If you have multiple server nodes, and set this option on more than one server, it is your responsibility to ensure that files stay in sync across those nodes. AddOn content is not synced between nodes, and k3s cannot guarantee correct behavior if different servers attempt to deploy conflicting manifests. |
+| `services.k3s.manifests.<name>.content` | `null or (attribute set) or list of (attribute set)` | Content of the manifest file. A single attribute set will generate a single document YAML file. A list of attribute sets will generate multiple documents separated by `---` in a single YAML file. |
+| `services.k3s.manifests.<name>.enable` | `boolean` | Whether this manifest file should be generated. |
+| `services.k3s.manifests.<name>.source` | `absolute path` | Path of the source `.yaml` file. |
+| `services.k3s.manifests.<name>.target` | `non-empty string` | Name of the symlink (relative to {file}`/var/lib/rancher/k3s/server/manifests`). Defaults to the attribute name. |
+| `services.k3s.nodeExternalIP` | `null or string` | IPv4/IPv6 external addresses to advertise for node. |
+| `services.k3s.nodeIP` | `null or string` | IPv4/IPv6 addresses to advertise for node. |
+| `services.k3s.nodeLabel` | `list of string` | Registering and starting kubelet with set of labels. |
+| `services.k3s.nodeName` | `null or string` | Node name. |
+| `services.k3s.nodeTaint` | `list of string` | Registering kubelet with set of taints. |
+| `services.k3s.package` | `package` | The k3s package to use. |
+| `services.k3s.role` | `one of "server", "agent"` | Whether k3s should run as a server or agent. If it's a server: - By default it also runs workloads as an agent. - Starts by default as a standalone server using an embedded sqlite datastore. - Configure `clusterInit = true` to switch over to embedded etcd datastore and enable HA mode. - Configure `serverAddr` to join an already-initialized HA cluster. If it's an agent: - `serverAddr` is required. |
+| `services.k3s.selinux` | `boolean` | Enable SELinux in containerd. |
+| `services.k3s.serverAddr` | `string` | The k3s server to connect to. Servers and agents need to communicate each other. Read [the networking docs](https://rancher.com/docs/k3s/latest/en/installation/installation-requirements/#networking) to know how to configure the firewall. |
+| `services.k3s.token` | `string` | The k3s token to use when connecting to a server. **WARNING**: This option will expose your token unencrypted in the world-readable nix store. If this is undesired use the tokenFile option instead. |
+| `services.k3s.tokenFile` | `null or absolute path` | File path containing the k3s token to use when connecting to a server. |

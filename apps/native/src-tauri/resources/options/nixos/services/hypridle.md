@@ -5,6 +5,6 @@
 All options under `services.hypridle`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.hypridle.enable` | | |
-| `services.hypridle.package` | | |
+| --- | --- | --- |
+| `services.hypridle.enable` | `boolean` | Whether to enable hypridle, Hyprland's idle daemon. |
+| `services.hypridle.package` | `package` | The hypridle package to use. |

@@ -5,11 +5,11 @@
 All options under `services.gvpe`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.gvpe.configFile` | | |
-| `services.gvpe.configText` | | |
-| `services.gvpe.customIFSetup` | | |
-| `services.gvpe.enable` | | |
-| `services.gvpe.ipAddress` | | |
-| `services.gvpe.nodename` | | |
-| `services.gvpe.subnet` | | |
+| --- | --- | --- |
+| `services.gvpe.configFile` | `null or absolute path` | GVPE config file, if already present |
+| `services.gvpe.configText` | `null or strings concatenated with "\n"` | GVPE config contents |
+| `services.gvpe.customIFSetup` | `strings concatenated with "\n"` | Additional commands to apply in ifup script |
+| `services.gvpe.enable` | `boolean` | Whether to enable gvpe. |
+| `services.gvpe.ipAddress` | `null or string` | IP address to assign to GVPE interface |
+| `services.gvpe.nodename` | `null or string` | GVPE node name |
+| `services.gvpe.subnet` | `null or string` | IP subnet assigned to GVPE network |

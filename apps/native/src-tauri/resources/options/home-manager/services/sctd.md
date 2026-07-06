@@ -5,7 +5,7 @@
 All options under `services.sctd`.
 
 | Option | Type | Description |
-| ------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| `services.sctd.baseTemperature` | `integer between 2500 and 9000 (both inclusive)` | The base color temperature used by sctd, which should be between 2500 and 9000. See sctd (1) for more details. |
+| --- | --- | --- |
+| `services.sctd.baseTemperature` | `integer between 2500 and 9000 (both inclusive)` | The base color temperature used by sctd, which should be between 2500 and 9000. See {manpage}`sctd(1)` for more details. |
 | `services.sctd.enable` | `boolean` | Whether to enable sctd. |
 | `services.sctd.package` | `package` | The sct package to use. |

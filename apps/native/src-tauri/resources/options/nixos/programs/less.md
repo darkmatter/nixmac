@@ -5,13 +5,13 @@
 All options under `programs.less`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `programs.less.clearDefaultCommands` | | |
-| `programs.less.commands` | | |
-| `programs.less.configFile` | | |
-| `programs.less.enable` | | |
-| `programs.less.envVariables` | | |
-| `programs.less.lessclose` | | |
-| `programs.less.lessopen` | | |
-| `programs.less.lineEditingKeys` | | |
-| `programs.less.package` | | |
+| --- | --- | --- |
+| `programs.less.clearDefaultCommands` | `boolean` | Clear all default commands. You should remember to set the quit key. Otherwise you will not be able to leave less without killing it. |
+| `programs.less.commands` | `attribute set of string` | Defines new command keys. |
+| `programs.less.configFile` | `null or absolute path` | Path to lesskey configuration file. {option}`configFile` takes precedence over {option}`commands`, {option}`clearDefaultCommands`, {option}`lineEditingKeys`, and {option}`envVariables`. |
+| `programs.less.enable` | `boolean` | Whether to enable less, a file pager. |
+| `programs.less.envVariables` | `attribute set of string` | Defines environment variables. |
+| `programs.less.lessclose` | `null or string` | When less closes a file opened in such a way, it will call another program, called the input postprocessor, which may perform any desired clean-up action (such as deleting the replacement file created by LESSOPEN). |
+| `programs.less.lessopen` | `null or string` | Before less opens a file, it first gives your input preprocessor a chance to modify the way the contents of the file are displayed. |
+| `programs.less.lineEditingKeys` | `attribute set of string` | Defines new line-editing keys. |
+| `programs.less.package` | `package` | The less package to use. |

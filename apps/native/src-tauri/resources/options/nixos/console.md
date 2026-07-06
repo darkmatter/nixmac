@@ -5,12 +5,11 @@
 All options under `console`.
 
 | Option | Type | Description |
-| ---------------------- | ---- | ----------- |
-| `console.colors` | | |
-| `console.earlySetup` | | |
-| `console.enable` | | |
-| `console.extraTTYs` | | |
-| `console.font` | | |
-| `console.keyMap` | | |
-| `console.packages` | | |
-| `console.useXkbConfig` | | |
+| --- | --- | --- |
+| `console.colors` | `list of string matching the pattern [[:xdigit:]]{6}` | The 16 colors palette used by the virtual consoles. Leave empty to use the default colors. Colors must be in hexadecimal format and listed in order from color 0 to color 15. |
+| `console.earlySetup` | `boolean` | Enable setting virtual console options as early as possible (in initrd). |
+| `console.enable` | `boolean` | Whether to enable virtual console. |
+| `console.font` | `null or string or absolute path` | The font used for the virtual consoles. Can be `null`, a font name, or a path to a PSF font file. Use `null` to let the kernel choose a built-in font. The default is 8x16, and, as of Linux 5.3, Terminus 32 bold for display resolutions of 2560x1080 and higher. These fonts cover the [IBM437][] character set. \[IBM437\]: https://en.wikipedia.org/wiki/Code_page_437 |
+| `console.keyMap` | `string or absolute path` | The keyboard mapping table for the virtual consoles. |
+| `console.packages` | `list of package` | List of additional packages that provide console fonts, keymaps and other resources for virtual consoles use. |
+| `console.useXkbConfig` | `boolean` | If set, configure the virtual console keymap from the xserver keyboard settings. |

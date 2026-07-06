@@ -5,9 +5,9 @@
 All options under `programs.television`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---- | ----------- |
-| `programs.television.enable` | | |
-| `programs.television.enableBashIntegration` | | |
-| `programs.television.enableFishIntegration` | | |
-| `programs.television.enableZshIntegration` | | |
-| `programs.television.package` | | |
+| --- | --- | --- |
+| `programs.television.enable` | `boolean` | Whether to enable Blazingly fast general purpose fuzzy finder TUI. |
+| `programs.television.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
+| `programs.television.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
+| `programs.television.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
+| `programs.television.package` | `package` | The television package to use. |

@@ -5,7 +5,7 @@
 All options under `services.blueman-applet`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---------------- | ----------------------------------------------------------------------------- |
-| `services.blueman-applet.enable` | `boolean` | Whether to enable the Blueman applet. |
+| --- | --- | --- |
+| `services.blueman-applet.enable` | `boolean` | Whether to enable the Blueman applet. Note that for the applet to work, the `blueman` service should be enabled system-wide. You can enable it in the system configuration using `nix services.blueman.enable = true; ` |
 | `services.blueman-applet.package` | `package` | The blueman package to use. |
-| `services.blueman-applet.systemdTargets` | `list of string` | The systemd targets that will automatically start the blueman applet service. |
+| `services.blueman-applet.systemdTargets` | `list of string` | The systemd targets that will automatically start the blueman applet service. When setting this value to `["sway-session.target"]`, make sure to also enable {option}`wayland.windowManager.sway.systemd.enable`, otherwise the service may never be started. |

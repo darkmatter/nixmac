@@ -5,5 +5,5 @@
 All options under `services.uptimed`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.uptimed.enable` | | |
+| --- | --- | --- |
+| `services.uptimed.enable` | `boolean` | Enable `uptimed`, allowing you to track your highest uptimes. |

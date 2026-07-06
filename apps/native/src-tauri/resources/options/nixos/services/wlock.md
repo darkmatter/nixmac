@@ -5,6 +5,6 @@
 All options under `services.wlock`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `services.wlock.enable` | | |
-| `services.wlock.package` | | |
+| --- | --- | --- |
+| `services.wlock.enable` | `boolean` | Whether to enable wlock, a Wayland sessionlocker using the ext-session-lock-v1 protocol. |
+| `services.wlock.package` | `package` | The wlock package to use. |

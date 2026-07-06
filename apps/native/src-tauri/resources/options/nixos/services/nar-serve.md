@@ -5,9 +5,9 @@
 All options under `services.nar-serve`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.nar-serve.cacheURL` | | |
-| `services.nar-serve.domain` | | |
-| `services.nar-serve.enable` | | |
-| `services.nar-serve.package` | | |
-| `services.nar-serve.port` | | |
+| --- | --- | --- |
+| `services.nar-serve.cacheURL` | `string` | Binary cache URL to connect to. The URL format is compatible with the nix remote url style, such as: - http://, https:// for binary caches via HTTP or HTTPS - s3:// for binary caches stored in Amazon S3 - gs:// for binary caches stored in Google Cloud Storage |
+| `services.nar-serve.domain` | `string` | When set, enables the feature of serving <nar-hash>.<domain> on top of <domain>/nix/store/<nar-hash>-<pname>. Useful to preview static websites where paths are absolute. |
+| `services.nar-serve.enable` | `boolean` | Whether to enable serving NAR file contents via HTTP. |
+| `services.nar-serve.package` | `package` | The nar-serve package to use. |
+| `services.nar-serve.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number where nar-serve will listen on. |

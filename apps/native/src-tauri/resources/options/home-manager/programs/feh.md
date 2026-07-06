@@ -5,9 +5,9 @@
 All options under `programs.feh`.
 
 | Option | Type | Description |
-| -------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `programs.feh.buttons` | `attribute set of (null or string or signed integer or list of (string or signed integer))` | Override feh’s default mouse button mapping. If you want to disable an action, set its value to null. If you want to bind multiple buttons to an action, set its value to a list. See https://man.finalrewind.org/1/feh/#BUTTONS_CONFIG_SYNTAX for default bindings and available commands. |
+| --- | --- | --- |
+| `programs.feh.buttons` | `attribute set of (null or string or signed integer or list of (string or signed integer))` | Override feh's default mouse button mapping. If you want to disable an action, set its value to null. If you want to bind multiple buttons to an action, set its value to a list. See <https://man.finalrewind.org/1/feh/#BUTTONS_CONFIG_SYNTAX> for default bindings and available commands. |
 | `programs.feh.enable` | `boolean` | Whether to enable feh - a fast and light image viewer. |
-| `programs.feh.keybindings` | `attribute set of (null or string or list of string)` | Override feh’s default keybindings. If you want to disable a keybinding set its value to null. If you want to bind multiple keys to an action, set its value to a list. See https://man.finalrewind.org/1/feh/#KEYS_CONFIG_SYNTAX for default bindings and available commands. |
+| `programs.feh.keybindings` | `attribute set of (null or string or list of string)` | Override feh's default keybindings. If you want to disable a keybinding set its value to null. If you want to bind multiple keys to an action, set its value to a list. See <https://man.finalrewind.org/1/feh/#KEYS_CONFIG_SYNTAX> for default bindings and available commands. |
 | `programs.feh.package` | `null or package` | The feh package to use. |
-| `programs.feh.themes` | `attribute set of list of string` | Define themes for feh. See https://man.finalrewind.org/1/feh/#THEMES_CONFIG_SYNTAX for important guidelines and limitations related to theme configuration. |
+| `programs.feh.themes` | `attribute set of list of string` | Define themes for feh. See <https://man.finalrewind.org/1/feh/#THEMES_CONFIG_SYNTAX> for important guidelines and limitations related to theme configuration. |

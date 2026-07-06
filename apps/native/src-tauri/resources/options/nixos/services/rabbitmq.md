@@ -5,17 +5,16 @@
 All options under `services.rabbitmq`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---- | ----------- |
-| `services.rabbitmq.config` | | |
-| `services.rabbitmq.configItems` | | |
-| `services.rabbitmq.cookie` | | |
-| `services.rabbitmq.dataDir` | | |
-| `services.rabbitmq.enable` | | |
-| `services.rabbitmq.listenAddress` | | |
-| `services.rabbitmq.managementPlugin.enable` | | |
-| `services.rabbitmq.managementPlugin.port` | | |
-| `services.rabbitmq.package` | | |
-| `services.rabbitmq.pluginDirs` | | |
-| `services.rabbitmq.plugins` | | |
-| `services.rabbitmq.port` | | |
-| `services.rabbitmq.unsafeCookie` | | |
+| --- | --- | --- |
+| `services.rabbitmq.config` | `string` | Verbatim advanced configuration file contents using the Erlang syntax. This is also known as the {file}`advanced.config` file or the old config format. `configItems` is preferred whenever possible. However, nested data structures can only be expressed properly using the `config` option. The contents of this option will be merged into the `configItems` by RabbitMQ at runtime to form the final configuration. See the second table on <https://www.rabbitmq.com/configure.html#config-items> For the distinct formats, see <https://www.rabbitmq.com/configure.html#config-file-formats> |
+| `services.rabbitmq.configItems` | `attribute set of string` | Configuration options in RabbitMQ's new config file format, which is a simple key-value format that can not express nested data structures. This is known as the {file}`rabbitmq.conf` file, although outside NixOS that filename may have Erlang syntax, particularly prior to RabbitMQ 3.7.0. If you do need to express nested data structures, you can use `config` option. Configuration from `config` will be merged into these options by RabbitMQ at runtime to form the final configuration. See <https://www.rabbitmq.com/configure.html#config-items> For the distinct formats, see <https://www.rabbitmq.com/configure.html#config-file-formats> |
+| `services.rabbitmq.dataDir` | `absolute path` | Data directory for rabbitmq. |
+| `services.rabbitmq.enable` | `boolean` | Whether to enable the RabbitMQ server, an Advanced Message Queuing Protocol (AMQP) broker. |
+| `services.rabbitmq.listenAddress` | `string` | IP address on which RabbitMQ will listen for AMQP connections. Set to the empty string to listen on all interfaces. Note that RabbitMQ creates a user named `guest` with password `guest` by default, so you should delete this user if you intend to allow external access. Together with 'port' setting it's mostly an alias for configItems."listeners.tcp.1" and it's left for backwards compatibility with previous version of this module. |
+| `services.rabbitmq.managementPlugin.enable` | `boolean` | Whether to enable the management plugin. |
+| `services.rabbitmq.managementPlugin.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | On which port to run the management plugin |
+| `services.rabbitmq.package` | `package` | The rabbitmq-server package to use. |
+| `services.rabbitmq.pluginDirs` | `list of absolute path` | The list of directories containing external plugins |
+| `services.rabbitmq.plugins` | `list of string` | The names of plugins to enable |
+| `services.rabbitmq.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which RabbitMQ will listen for AMQP connections. |
+| `services.rabbitmq.unsafeCookie` | `string` | Erlang cookie is a string of arbitrary length which must be the same for several nodes to be allowed to communicate. Leave empty to generate automatically. Setting the cookie via this option exposes the cookie to the store, which is not recommended for security reasons. Only use this option in an isolated non-production environment such as NixOS VM tests. |

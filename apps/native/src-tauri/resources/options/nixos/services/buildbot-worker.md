@@ -5,19 +5,19 @@
 All options under `services.buildbot-worker`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.buildbot-worker.adminMessage` | | |
-| `services.buildbot-worker.buildbotDir` | | |
-| `services.buildbot-worker.enable` | | |
-| `services.buildbot-worker.extraGroups` | | |
-| `services.buildbot-worker.group` | | |
-| `services.buildbot-worker.home` | | |
-| `services.buildbot-worker.hostMessage` | | |
-| `services.buildbot-worker.keepalive` | | |
-| `services.buildbot-worker.masterUrl` | | |
-| `services.buildbot-worker.package` | | |
-| `services.buildbot-worker.packages` | | |
-| `services.buildbot-worker.user` | | |
-| `services.buildbot-worker.workerPass` | | |
-| `services.buildbot-worker.workerPassFile` | | |
-| `services.buildbot-worker.workerUser` | | |
+| --- | --- | --- |
+| `services.buildbot-worker.adminMessage` | `null or string` | Name of the administrator of this worker |
+| `services.buildbot-worker.buildbotDir` | `absolute path` | Specifies the Buildbot directory. |
+| `services.buildbot-worker.enable` | `boolean` | Whether to enable the Buildbot Worker. |
+| `services.buildbot-worker.extraGroups` | `list of string` | List of extra groups that the Buildbot Worker user should be a part of. |
+| `services.buildbot-worker.group` | `string` | Primary group of buildbot Worker user. |
+| `services.buildbot-worker.home` | `absolute path` | Buildbot home directory. |
+| `services.buildbot-worker.hostMessage` | `null or string` | Description of this worker |
+| `services.buildbot-worker.keepalive` | `signed integer` | This is a number that indicates how frequently keepalive messages should be sent from the worker to the buildmaster, expressed in seconds. |
+| `services.buildbot-worker.masterUrl` | `string` | Specifies the Buildbot Worker connection string. |
+| `services.buildbot-worker.package` | `package` | The buildbot-worker package to use. |
+| `services.buildbot-worker.packages` | `list of package` | Packages to add to PATH for the buildbot process. |
+| `services.buildbot-worker.user` | `string` | User the buildbot Worker should execute under. |
+| `services.buildbot-worker.workerPass` | `string` | Specifies the Buildbot Worker password. |
+| `services.buildbot-worker.workerPassFile` | `absolute path` | File used to store the Buildbot Worker password |
+| `services.buildbot-worker.workerUser` | `string` | Specifies the Buildbot Worker user. |

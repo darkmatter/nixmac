@@ -5,8 +5,13 @@
 All options under `services.ocsinventory-agent`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.ocsinventory-agent.enable` | | |
-| `services.ocsinventory-agent.interval` | | |
-| `services.ocsinventory-agent.package` | | |
-| `services.ocsinventory-agent.settings` | | |
+| --- | --- | --- |
+| `services.ocsinventory-agent.enable` | `boolean` | Whether to enable OCS Inventory Agent. |
+| `services.ocsinventory-agent.interval` | `string` | How often we run the ocsinventory-agent service. Runs by default every daily. The format is described in {manpage}`systemd.time(7)`. |
+| `services.ocsinventory-agent.package` | `package` | The ocsinventory-agent package to use. |
+| `services.ocsinventory-agent.settings` | `open submodule of (atom (null, bool, int, float or string))` | Configuration for /etc/ocsinventory-agent/ocsinventory-agent.cfg. Refer to {manpage}`ocsinventory-agent(1)` for available options. |
+| `services.ocsinventory-agent.settings.ca` | `absolute path` | Path to CA certificates file in PEM format, for server SSL certificate validation. |
+| `services.ocsinventory-agent.settings.debug` | `boolean` | Whether to enable debug mode. |
+| `services.ocsinventory-agent.settings.local` | `null or absolute path` | If specified, the OCS Inventory Agent will run in offline mode and the resulting inventory file will be stored in the specified path. |
+| `services.ocsinventory-agent.settings.server` | `null or string` | The URI of the OCS Inventory server where to send the inventory file. This option is ignored if {option}`services.ocsinventory-agent.settings.local` is set. |
+| `services.ocsinventory-agent.settings.tag` | `null or string` | Tag for the generated inventory. |

@@ -5,9 +5,9 @@
 All options under `programs.astroid`.
 
 | Option | Type | Description |
-| --------------------------------- | ----------------- | ----------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.astroid.enable` | `boolean` | Whether to enable Astroid. |
-| `programs.astroid.externalEditor` | `null or string` | You can use the following variables: |
+| `programs.astroid.externalEditor` | `null or string` | You can use the following variables: `%1` : file name `%2` : server name `%3` : socket ID See [Customizing editor](https://github.com/astroidmail/astroid/wiki/Customizing-editor) on the Astroid wiki. |
 | `programs.astroid.extraConfig` | `JSON value` | JSON config that will override the default Astroid configuration. |
 | `programs.astroid.package` | `null or package` | The astroid package to use. |
 | `programs.astroid.pollScript` | `string` | Script to run to fetch/update mails. |

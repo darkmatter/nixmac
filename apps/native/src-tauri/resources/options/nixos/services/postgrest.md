@@ -5,8 +5,14 @@
 All options under `services.postgrest`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.postgrest.enable` | | |
-| `services.postgrest.jwtSecretFile` | | |
-| `services.postgrest.pgpassFile` | | |
-| `services.postgrest.settings` | | |
+| --- | --- | --- |
+| `services.postgrest.enable` | `boolean` | Whether to enable PostgREST. |
+| `services.postgrest.jwtSecretFile` | `null or absolute path not in the Nix store` | The secret or JSON Web Key (JWK) (or set) used to decode JWT tokens clients provide for authentication. For security the key must be at least 32 characters long. If this parameter is not specified then PostgREST refuses authentication requests. <https://docs.postgrest.org/en/stable/references/configuration.html#jwt-secret> |
+| `services.postgrest.pgpassFile` | `null or absolute path not in the Nix store` | The password to authenticate to PostgreSQL with. Not needed for peer or trust based authentication. The file must be a valid `.pgpass` file as described in: <https://www.postgresql.org/docs/current/libpq-pgpass.html> In most cases, the following will be enough: `*:*:*:*:<password>` |
+| `services.postgrest.settings` | `open submodule of attribute set of (boolean or (unsigned integer, meaning >=0) or string)` | PostgREST configuration as documented in: <https://docs.postgrest.org/en/stable/references/configuration.html#list-of-parameters> `db-uri` is represented as an attribute set, see [`settings.db-uri`](#opt-services.postgrest.settings.db-uri) ::: {.note} The `settings.jwt-secret` option is blocked. Use [`jwtSecretFile`](#opt-services.postgrest.jwtSecretFile) instead. ::: |
+| `services.postgrest.settings.admin-server-port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Specifies the port for the admin server, which can be used for healthchecks. <https://docs.postgrest.org/en/stable/references/admin_server.html#admin-server> |
+| `services.postgrest.settings.db-config` | `boolean` | Enables the in-database configuration. <https://docs.postgrest.org/en/stable/references/configuration.html#in-database-configuration> ::: {.note} This is enabled by default upstream, but disabled by default in this module. ::: |
+| `services.postgrest.settings.db-uri` | `open submodule of attribute set of string` | libpq connection parameters as documented in: <https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-PARAMKEYWORDS> ::: {.note} The `settings.db-uri.password` and `settings.db-uri.passfile` options are blocked. Use [`pgpassFile`](#opt-services.postgrest.pgpassFile) instead. ::: |
+| `services.postgrest.settings.server-host` | `null or string` | Where to bind the PostgREST web server. ::: {.note} The admin server will also bind here, but potentially exposes sensitive information. Make sure you turn off the admin server, when opening this to the public. <https://github.com/PostgREST/postgrest/issues/3956> ::: |
+| `services.postgrest.settings.server-port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The TCP port to bind the web server. |
+| `services.postgrest.settings.server-unix-socket` | `null or absolute path` | Unix domain socket where to bind the PostgREST web server. |

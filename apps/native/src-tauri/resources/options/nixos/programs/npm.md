@@ -5,7 +5,7 @@
 All options under `programs.npm`.
 
 | Option | Type | Description |
-| ---------------------- | ---- | ----------- |
-| `programs.npm.enable` | | |
-| `programs.npm.npmrc` | | |
-| `programs.npm.package` | | |
+| --- | --- | --- |
+| `programs.npm.enable` | `boolean` | Whether to enable {command}`npm` global config. |
+| `programs.npm.npmrc` | `strings concatenated with "\n"` | The system-wide npm configuration. See <https://docs.npmjs.com/misc/config>. |
+| `programs.npm.package` | `package` | The nodejs package to use. |

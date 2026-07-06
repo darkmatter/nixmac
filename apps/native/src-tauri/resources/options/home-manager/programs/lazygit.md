@@ -5,12 +5,12 @@
 All options under `programs.lazygit`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.lazygit.enable` | `boolean` | Whether to enable lazygit, a simple terminal UI for git commands. |
 | `programs.lazygit.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.lazygit.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
 | `programs.lazygit.enableNushellIntegration` | `boolean` | Whether to enable Nushell integration. |
 | `programs.lazygit.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
 | `programs.lazygit.package` | `null or package` | The lazygit package to use. |
-| `programs.lazygit.settings` | `YAML 1.1 value` | Configuration written to $XDG_CONFIG_HOME/lazygit/config.yml on Linux or on Darwin if xdg.enable is set, otherwise ~/Library/Application Support/lazygit/config.yml . See https://github.com/jesseduffield/lazygit/blob/master/docs/Config.md for supported values. |
+| `programs.lazygit.settings` | `YAML 1.1 value` | Configuration written to {file}`$XDG_CONFIG_HOME/lazygit/config.yml` on Linux or on Darwin if [](#opt-xdg.enable) is set, otherwise {file}`~/Library/Application Support/lazygit/config.yml`. See <https://github.com/jesseduffield/lazygit/blob/master/docs/Config.md> for supported values. |
 | `programs.lazygit.shellWrapperName` | `string` | Name of the shell wrapper to be called. |

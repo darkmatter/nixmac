@@ -5,5 +5,5 @@
 All options under `services.novacomd`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.novacomd.enable` | | |
+| --- | --- | --- |
+| `services.novacomd.enable` | `boolean` | Whether to enable Novacom service for connecting to WebOS devices. |

@@ -5,7 +5,7 @@
 All options under `services.shorewall`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.shorewall.configs` | | |
-| `services.shorewall.enable` | | |
-| `services.shorewall.package` | | |
+| --- | --- | --- |
+| `services.shorewall.configs` | `attribute set of strings concatenated with "\n"` | This option defines the Shorewall configs. The attribute name defines the name of the config, and the attribute value defines the content of the config. |
+| `services.shorewall.enable` | `boolean` | Whether to enable Shorewall IPv4 Firewall. ::: {.warning} Enabling this service WILL disable the existing NixOS firewall! Default firewall rules provided by packages are not considered at the moment. ::: |
+| `services.shorewall.package` | `package` | The shorewall package to use. |

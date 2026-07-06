@@ -5,12 +5,16 @@
 All options under `services.sonarr`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.sonarr.dataDir` | | |
-| `services.sonarr.enable` | | |
-| `services.sonarr.environmentFiles` | | |
-| `services.sonarr.group` | | |
-| `services.sonarr.openFirewall` | | |
-| `services.sonarr.package` | | |
-| `services.sonarr.settings` | | |
-| `services.sonarr.user` | | |
+| --- | --- | --- |
+| `services.sonarr.dataDir` | `string` | The Sonarr home directory used to store all data. If left as the default value this directory will automatically be created before the Sonarr server starts, otherwise you are responsible for ensuring the directory exists with appropriate ownership and permissions. |
+| `services.sonarr.enable` | `boolean` | Whether to enable Sonarr. |
+| `services.sonarr.environmentFiles` | `list of absolute path` | Environment file to pass secret configuration values. Each line must follow the `SONARR__SECTION__KEY=value` pattern. Please consult the documentation at the [wiki](https://wiki.servarr.com/useful-tools#using-environment-variables-for-config). |
+| `services.sonarr.group` | `string` | Group account under which Sonarr runs. ::: {.note} If left as the default value this group will automatically be created on system activation, otherwise you are responsible for ensuring the group exists before the Sonarr service starts. ::: |
+| `services.sonarr.openFirewall` | `boolean` | Open ports in the firewall for the Sonarr web interface |
+| `services.sonarr.package` | `package` | The sonarr package to use. |
+| `services.sonarr.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Attribute set of arbitrary config options. Please consult the documentation at the [wiki](https://wiki.servarr.com/useful-tools#using-environment-variables-for-config). WARNING: this configuration is stored in the world-readable Nix store! For secrets use [](#opt-services.sonarr.environmentFiles). |
+| `services.sonarr.settings.log.analyticsEnabled` | `boolean` | Send Anonymous Usage Data |
+| `services.sonarr.settings.server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port Number |
+| `services.sonarr.settings.update.automatically` | `boolean` | Automatically download and install updates. |
+| `services.sonarr.settings.update.mechanism` | `null or one of "external", "builtIn", "script"` | which update mechanism to use |
+| `services.sonarr.user` | `string` | User account under which Sonarr runs."; ::: {.note} If left as the default value this user will automatically be created on system activation, otherwise you are responsible for ensuring the user exists before the Sonarr service starts. ::: |

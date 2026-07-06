@@ -5,10 +5,10 @@
 All options under `services.ntp`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.ntp.enable` | | |
-| `services.ntp.extraConfig` | | |
-| `services.ntp.extraFlags` | | |
-| `services.ntp.restrictDefault` | | |
-| `services.ntp.restrictSource` | | |
-| `services.ntp.servers` | | |
+| --- | --- | --- |
+| `services.ntp.enable` | `boolean` | Whether to synchronise your machine's time using ntpd, as a peer in the NTP network. Disables `systemd.timesyncd` if enabled. |
+| `services.ntp.extraConfig` | `strings concatenated with "\n"` | Additional text appended to {file}`ntp.conf`. |
+| `services.ntp.extraFlags` | `list of string` | Extra flags passed to the ntpd command. |
+| `services.ntp.restrictDefault` | `list of string` | The restriction flags to be set by default. The default flags prevent external hosts from using ntpd as a DDoS reflector, setting system time, and querying OS/ntpd version. As recommended in section 6.5.1.1.3, answer "No" of https://support.ntp.org/Support/AccessRestrictions |
+| `services.ntp.restrictSource` | `list of string` | The restriction flags to be set on source. The default flags allow peers to be added by ntpd from configured pool(s), but not by other means. |
+| `services.ntp.servers` | `list of string` | The set of NTP servers from which to synchronise. |

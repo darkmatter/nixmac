@@ -5,24 +5,24 @@
 All options under `services.photoview`.
 
 | Option | Type | Description |
-| ---------------------------------------------------- | ---- | ----------- |
-| `services.photoview.dataDir` | | |
-| `services.photoview.database.host` | | |
-| `services.photoview.database.name` | | |
-| `services.photoview.database.passwordFile` | | |
-| `services.photoview.database.port` | | |
-| `services.photoview.database.type` | | |
-| `services.photoview.database.user` | | |
-| `services.photoview.enable` | | |
-| `services.photoview.group` | | |
-| `services.photoview.host` | | |
-| `services.photoview.mediaPath` | | |
-| `services.photoview.package` | | |
-| `services.photoview.port` | | |
-| `services.photoview.secretsFile` | | |
-| `services.photoview.settings.disableFaceRecognition` | | |
-| `services.photoview.settings.disableRawProcessing` | | |
-| `services.photoview.settings.disableVideoEncoding` | | |
-| `services.photoview.settings.mapboxToken` | | |
-| `services.photoview.settings.videoEncoder` | | |
-| `services.photoview.user` | | |
+| --- | --- | --- |
+| `services.photoview.dataDir` | `absolute path` | Directory for photoview state, cache, and database. |
+| `services.photoview.database.host` | `string` | Database host address. |
+| `services.photoview.database.name` | `string` | Database name. |
+| `services.photoview.database.passwordFile` | `null or absolute path` | Path to a file containing the database password. Required when using MySQL or PostgreSQL. |
+| `services.photoview.database.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Database port. |
+| `services.photoview.database.type` | `one of "sqlite", "mysql", "postgres"` | Database engine to use. |
+| `services.photoview.database.user` | `string` | Database user. |
+| `services.photoview.enable` | `boolean` | Whether to enable Photoview, a photo gallery for self-hosted personal servers. |
+| `services.photoview.group` | `string` | Group under which photoview runs. |
+| `services.photoview.host` | `string` | Address to listen on. |
+| `services.photoview.mediaPath` | `absolute path` | Path to the directory containing photos to be served. This directory must be readable by the photoview user. |
+| `services.photoview.package` | `package` | The photoview package to use. |
+| `services.photoview.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.photoview.secretsFile` | `null or absolute path` | Path to an environment file containing secrets. Can be used for MAPBOX_TOKEN or other sensitive settings. |
+| `services.photoview.settings.disableFaceRecognition` | `boolean` | Disable face recognition feature. |
+| `services.photoview.settings.disableRawProcessing` | `boolean` | Disable RAW photo processing. |
+| `services.photoview.settings.disableVideoEncoding` | `boolean` | Disable video encoding with FFmpeg. |
+| `services.photoview.settings.mapboxToken` | `null or string` | Mapbox API token for map features. |
+| `services.photoview.settings.videoEncoder` | `null or one of "h264_qsv", "h264_vaapi", "h264_nvenc"` | Hardware video encoder to use. |
+| `services.photoview.user` | `string` | User account under which photoview runs. |

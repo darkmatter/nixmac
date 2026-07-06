@@ -5,8 +5,8 @@
 All options under `services.leaps`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `services.leaps.address` | | |
-| `services.leaps.enable` | | |
-| `services.leaps.path` | | |
-| `services.leaps.port` | | |
+| --- | --- | --- |
+| `services.leaps.address` | `string` | Hostname or IP-address to listen to. By default it will listen on all interfaces. |
+| `services.leaps.enable` | `boolean` | Whether to enable leaps, a pair programming service. |
+| `services.leaps.path` | `absolute path` | Subdirectory used for reverse proxy setups |
+| `services.leaps.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | A port where leaps listens for incoming http requests |

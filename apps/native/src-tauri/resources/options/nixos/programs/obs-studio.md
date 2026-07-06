@@ -5,9 +5,8 @@
 All options under `programs.obs-studio`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `programs.obs-studio.enable` | | |
-| `programs.obs-studio.enableVirtualCamera` | | |
-| `programs.obs-studio.finalPackage` | | |
-| `programs.obs-studio.package` | | |
-| `programs.obs-studio.plugins` | | |
+| --- | --- | --- |
+| `programs.obs-studio.enable` | `boolean` | Whether to enable Free and open source software for video recording and live streaming. |
+| `programs.obs-studio.enableVirtualCamera` | `boolean` | Installs and sets up the v4l2loopback kernel module, necessary for OBS to start a virtual camera. |
+| `programs.obs-studio.package` | `null or package` | The obs-studio package to use. |
+| `programs.obs-studio.plugins` | `list of package` | Optional OBS plugins. |

@@ -5,6 +5,6 @@
 All options under `programs.lesspipe`.
 
 | Option | Type | Description |
-| --------------------------- | --------- | ------------------------------------------------- |
+| --- | --- | --- |
 | `programs.lesspipe.enable` | `boolean` | Whether to enable lesspipe preprocessor for less. |
 | `programs.lesspipe.package` | `package` | The lesspipe package to use. |

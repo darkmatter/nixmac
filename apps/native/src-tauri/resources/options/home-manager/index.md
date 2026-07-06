@@ -5,42 +5,34 @@
 Top-level option categories for `home-manager`.
 
 | Key | Type | Description |
-| ----------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`_module`](_module.md) | category | 4 options |
-| [`accounts`](accounts.md) | category | 3 subcategories, 7 options |
-| `assertions` | option | |
+| --- | --- | --- |
+| [`accounts`](accounts.md) | category | 286 options |
 | [`dbus`](dbus.md) | category | 1 option |
-| [`dconf`](dconf.md) | category | 3 options |
+| [`dconf`](dconf.md) | category | 2 options |
 | [`editorconfig`](editorconfig.md) | category | 2 options |
-| [`fonts`](fonts.md) | category | 1 subcategory, 10 options |
-| [`gtk`](gtk.md) | category | 3 subcategories, 31 options |
-| [`home`](home.md) | category | 2 subcategories, 43 options |
-| `home-files` | option | |
-| [`i18n`](i18n.md) | category | 1 subcategory, 18 options |
-| [`launchd`](launchd.md) | category | 2 options |
-| `lib` | `attribute set of (attribute set)` | This option allows modules to define helper functions, constants, etc. |
-| [`manual`](manual.md) | category | 3 subcategories, 3 options |
-| [`meta`](meta.md) | category | 4 options |
-| [`mozilla`](mozilla.md) | category | 3 options |
-| [`news`](news.md) | category | 1 subcategory, 3 options |
-| [`nix`](nix.md) | category | 1 subcategory, 20 options |
-| `nixGL` | option | |
-| [`nixpkgs`](nixpkgs.md) | category | 3 options |
-| [`pam`](pam.md) | category | 1 subcategory, 3 options |
-| [`programs`](programs/index.md) | category | 404 subcategories, 2420 options |
-| [`qt`](qt.md) | category | 3 subcategories, 11 options |
-| [`services`](services/index.md) | category | 174 subcategories, 912 options |
-| `specialisation` | `attribute set of (submodule)` | A set of named specialized configurations. These can be used to extend your base configuration with additional settings. For example, you can have specialisations named “light” and “dark” that apply light and dark color theme configurations. |
-| `specialization` | option | |
-| [`sshAuthSock`](sshAuthSock.md) | category | 1 option |
-| [`submoduleSupport`](submoduleSupport.md) | category | 2 options |
-| [`systemd`](systemd.md) | category | 1 subcategory, 16 options |
-| [`targets`](targets.md) | category | 2 subcategories, 27 options |
-| `uninstall` | `boolean` | Whether to set up a minimal configuration that will remove all managed files and packages. |
-| [`vdirsyncer`](vdirsyncer.md) | category | 19 options |
-| `warnings` | option | |
-| [`wayland`](wayland.md) | category | 2 subcategories, 68 options |
-| [`xdg`](xdg.md) | category | 7 subcategories, 48 options |
-| [`xfconf`](xfconf.md) | category | 2 options |
+| [`fonts`](fonts.md) | category | 16 options |
+| [`gtk`](gtk.md) | category | 71 options |
+| [`home`](home.md) | category | 67 options |
+| [`i18n`](i18n.md) | category | 21 options |
+| [`launchd`](launchd.md) | category | 81 options |
+| [`lib`](lib.md) | category | 1 option |
+| [`manual`](manual.md) | category | 3 options |
+| [`meta`](meta.md) | category | 2 options |
+| [`news`](news.md) | category | 1 option |
+| [`nix`](nix.md) | category | 30 options |
+| [`nixpkgs`](nixpkgs.md) | category | 2 options |
+| [`pam`](pam.md) | category | 3 options |
+| [`programs`](programs/index.md) | category | 3131 options |
+| [`qt`](qt.md) | category | 13 options |
+| [`services`](services/index.md) | category | 1107 options |
+| [`specialisation`](specialisation.md) | category | 2 options |
+| [`sshAuthSock`](sshAuthSock.md) | category | 6 options |
+| [`systemd`](systemd.md) | category | 39 options |
+| [`targets`](targets.md) | category | 71 options |
+| [`uninstall`](uninstall.md) | category | 1 option |
+| [`vdirsyncer`](vdirsyncer.md) | category | 21 options |
+| [`wayland`](wayland.md) | category | 164 options |
+| [`xdg`](xdg.md) | category | 100 options |
+| [`xfconf`](xfconf.md) | category | 1 option |
 | [`xresources`](xresources.md) | category | 3 options |
-| [`xsession`](xsession.md) | category | 3 subcategories, 67 options |
+| [`xsession`](xsession.md) | category | 163 options |

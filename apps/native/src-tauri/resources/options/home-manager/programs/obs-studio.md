@@ -5,8 +5,7 @@
 All options under `programs.obs-studio`.
 
 | Option | Type | Description |
-| ---------------------------------- | ----------------- | ------------------------------ |
+| --- | --- | --- |
 | `programs.obs-studio.enable` | `boolean` | Whether to enable obs-studio. |
-| `programs.obs-studio.finalPackage` | | |
 | `programs.obs-studio.package` | `package` | The obs-studio package to use. |
 | `programs.obs-studio.plugins` | `list of package` | Optional OBS plugins. |

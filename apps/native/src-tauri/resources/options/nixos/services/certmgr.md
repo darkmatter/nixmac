@@ -5,13 +5,13 @@
 All options under `services.certmgr`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.certmgr.defaultRemote` | | |
-| `services.certmgr.enable` | | |
-| `services.certmgr.metricsAddress` | | |
-| `services.certmgr.metricsPort` | | |
-| `services.certmgr.package` | | |
-| `services.certmgr.renewInterval` | | |
-| `services.certmgr.specs` | | |
-| `services.certmgr.svcManager` | | |
-| `services.certmgr.validMin` | | |
+| --- | --- | --- |
+| `services.certmgr.defaultRemote` | `string` | The default CA host:port to use. |
+| `services.certmgr.enable` | `boolean` | Whether to enable certmgr. |
+| `services.certmgr.metricsAddress` | `string` | The address for the Prometheus HTTP endpoint. |
+| `services.certmgr.metricsPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port for the Prometheus HTTP endpoint. |
+| `services.certmgr.package` | `package` | The certmgr package to use. |
+| `services.certmgr.renewInterval` | `string` | How often to check certificate expirations and how often to update the cert_next_expires metric. |
+| `services.certmgr.specs` | `attribute set of (absolute path or (submodule))` | Certificate specs as described by: <https://github.com/cloudflare/certmgr#certificate-specs> These will be added to the Nix store, so they will be world readable. |
+| `services.certmgr.svcManager` | `one of "circus", "command", "dummy", "openrc", "systemd", "sysv"` | This specifies the service manager to use for restarting or reloading services. See: <https://github.com/cloudflare/certmgr#certmgryaml>. For how to use the "command" service manager in particular, see: <https://github.com/cloudflare/certmgr#command-svcmgr-and-how-to-use-it>. |
+| `services.certmgr.validMin` | `string` | The interval before a certificate expires to start attempting to renew it. |

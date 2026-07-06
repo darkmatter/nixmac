@@ -5,9 +5,9 @@
 All options under `programs.gtklock`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `programs.gtklock.config` | | |
-| `programs.gtklock.enable` | | |
-| `programs.gtklock.modules` | | |
-| `programs.gtklock.package` | | |
-| `programs.gtklock.style` | | |
+| --- | --- | --- |
+| `programs.gtklock.config` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string) or a non-empty list of them)` | Configuration for gtklock. See [`gtklock(1)`](https://github.com/jovanlanik/gtklock/blob/master/man/gtklock.1.scd) man page for details. |
+| `programs.gtklock.enable` | `boolean` | Whether to enable gtklock, a GTK-based lockscreen for Wayland. |
+| `programs.gtklock.modules` | `list of package` | gtklock modules to load. |
+| `programs.gtklock.package` | `package` | The gtklock package to use. |
+| `programs.gtklock.style` | `null or strings concatenated with "\n"` | CSS Stylesheet for gtklock. See [gtklock's wiki](https://github.com/jovanlanik/gtklock/wiki#Styling) for details. |

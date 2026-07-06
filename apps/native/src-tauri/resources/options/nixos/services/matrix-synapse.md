@@ -5,79 +5,74 @@
 All options under `services.matrix-synapse`.
 
 | Option | Type | Description |
-| ------------------------------------------------------------------------ | ---- | ----------- |
-| `services.matrix-synapse.account_threepid_delegates.email` | | |
-| `services.matrix-synapse.account_threepid_delegates.msisdn` | | |
-| `services.matrix-synapse.allow_guest_access` | | |
-| `services.matrix-synapse.app_service_config_files` | | |
-| `services.matrix-synapse.bcrypt_rounds` | | |
-| `services.matrix-synapse.bind_host` | | |
-| `services.matrix-synapse.bind_port` | | |
-| `services.matrix-synapse.configFile` | | |
-| `services.matrix-synapse.configureRedisLocally` | | |
-| `services.matrix-synapse.create_local_database` | | |
-| `services.matrix-synapse.dataDir` | | |
-| `services.matrix-synapse.database_args` | | |
-| `services.matrix-synapse.database_name` | | |
-| `services.matrix-synapse.database_type` | | |
-| `services.matrix-synapse.database_user` | | |
-| `services.matrix-synapse.dynamic_thumbnails` | | |
-| `services.matrix-synapse.enable` | | |
-| `services.matrix-synapse.enableRegistrationScript` | | |
-| `services.matrix-synapse.enable_metrics` | | |
-| `services.matrix-synapse.enable_registration` | | |
-| `services.matrix-synapse.enable_registration_captcha` | | |
-| `services.matrix-synapse.event_cache_size` | | |
-| `services.matrix-synapse.expire_access_tokens` | | |
-| `services.matrix-synapse.extraArgs` | | |
-| `services.matrix-synapse.extraConfig` | | |
-| `services.matrix-synapse.extraConfigFiles` | | |
-| `services.matrix-synapse.extras` | | |
-| `services.matrix-synapse.federation_rc_concurrent` | | |
-| `services.matrix-synapse.federation_rc_reject_limit` | | |
-| `services.matrix-synapse.federation_rc_sleep_delay` | | |
-| `services.matrix-synapse.federation_rc_sleep_limit` | | |
-| `services.matrix-synapse.federation_rc_window_size` | | |
-| `services.matrix-synapse.key_refresh_interval` | | |
-| `services.matrix-synapse.listeners` | | |
-| `services.matrix-synapse.log` | | |
-| `services.matrix-synapse.logConfig` | | |
-| `services.matrix-synapse.macaroon_secret_key` | | |
-| `services.matrix-synapse.max_image_pixels` | | |
-| `services.matrix-synapse.max_upload_size` | | |
-| `services.matrix-synapse.no_tls` | | |
-| `services.matrix-synapse.package` | | |
-| `services.matrix-synapse.plugins` | | |
-| `services.matrix-synapse.presence.enabled` | | |
-| `services.matrix-synapse.public_baseurl` | | |
-| `services.matrix-synapse.rc_messages_burst_count` | | |
-| `services.matrix-synapse.rc_messages_per_second` | | |
-| `services.matrix-synapse.recaptcha_private_key` | | |
-| `services.matrix-synapse.recaptcha_public_key` | | |
-| `services.matrix-synapse.redaction_retention_period` | | |
-| `services.matrix-synapse.registration_shared_secret` | | |
-| `services.matrix-synapse.report_stats` | | |
-| `services.matrix-synapse.room_invite_state_types` | | |
-| `services.matrix-synapse.room_prejoin_state.additional_event_types` | | |
-| `services.matrix-synapse.room_prejoin_state.disable_default_event_types` | | |
-| `services.matrix-synapse.server_name` | | |
-| `services.matrix-synapse.servers` | | |
-| `services.matrix-synapse.serviceUnit` | | |
-| `services.matrix-synapse.settings` | | |
-| `services.matrix-synapse.tls_certificate_path` | | |
-| `services.matrix-synapse.tls_dh_param_path` | | |
-| `services.matrix-synapse.tls_private_key_path` | | |
-| `services.matrix-synapse.trusted_third_party_id_servers` | | |
-| `services.matrix-synapse.turn_shared_secret` | | |
-| `services.matrix-synapse.turn_uris` | | |
-| `services.matrix-synapse.turn_user_lifetime` | | |
-| `services.matrix-synapse.unsecure_port` | | |
-| `services.matrix-synapse.url_preview_enabled` | | |
-| `services.matrix-synapse.url_preview_ip_range_blacklist` | | |
-| `services.matrix-synapse.url_preview_ip_range_whitelist` | | |
-| `services.matrix-synapse.url_preview_url_blacklist` | | |
-| `services.matrix-synapse.user_creation_max_duration` | | |
-| `services.matrix-synapse.verbose` | | |
-| `services.matrix-synapse.web_client` | | |
-| `services.matrix-synapse.withJemalloc` | | |
-| `services.matrix-synapse.workers` | | |
+| --- | --- | --- |
+| `services.matrix-synapse.configFile` | `absolute path` | Path to the configuration file on the target system. Useful to configure e.g. workers that also need this. |
+| `services.matrix-synapse.configureRedisLocally` | `boolean` | Whether to automatically configure a local redis server for matrix-synapse. |
+| `services.matrix-synapse.dataDir` | `string` | The directory where matrix-synapse stores its stateful data such as certificates, media and uploads. |
+| `services.matrix-synapse.enable` | `boolean` | Whether to enable matrix.org synapse, the reference homeserver. |
+| `services.matrix-synapse.enableRegistrationScript` | `boolean` | Whether to install the `register_new_matrix_user` script, that allows account creation on the terminal. ::: {.note} This script does not work when the client listener uses UNIX domain sockets ::: |
+| `services.matrix-synapse.extraArgs` | `list of string` | Extra command lines argument that are passed to synapse and workers. |
+| `services.matrix-synapse.extraConfigFiles` | `list of absolute path` | Extra config files to include. The configuration files will be included based on the command line argument --config-path. This allows to configure secrets without having to go through the Nix store, e.g. based on deployment keys if NixOps is in use. |
+| `services.matrix-synapse.extras` | `list of (one of "cache-memory", "jwt", "oidc", "postgres", "redis", "saml2", "sentry", "systemd", "url-preview")` | Explicitly install extras provided by matrix-synapse. Most will require some additional configuration. Extras will automatically be enabled, when the relevant configuration sections are present. Please note that this option is additive: i.e. when adding a new item to this list, the defaults are still kept. To override the defaults as well, use `lib.mkForce`. |
+| `services.matrix-synapse.log` | `attribute set of (YAML 1.1 value)` | Default configuration for the loggers used by `matrix-synapse` and its workers. The defaults are added with the default priority which means that these will be merged with additional declarations. These additional declarations also take precedence over the defaults when declared with at least normal priority. For instance the log-level for synapse and its workers can be changed like this: `nix { lib, ... }: {   services.matrix-synapse.log.root.level = "WARNING"; } ` And another field can be added like this: `nix {   services.matrix-synapse.log = {     loggers."synapse.http.matrixfederationclient".level = "DEBUG";   }; } ` Additionally, the field `handlers.journal.SYSLOG_IDENTIFIER` will be added to each log config, i.e. * `synapse` for `matrix-synapse.service` * `synapse-<worker name>` for `matrix-synapse-worker-<worker name>.service` This is only done if this option has a `handlers.journal` field declared. To discard all settings declared by this option for each worker and synapse, `lib.mkForce` can be used. To discard all settings declared by this option for a single worker or synapse only, [](#opt-services.matrix-synapse.workers._name_.worker_log_config) or [](#opt-services.matrix-synapse.settings.log_config) can be used. |
+| `services.matrix-synapse.package` | `package` | Reference to the `matrix-synapse` wrapper with all extras (e.g. for `oidc` or `saml2`) added to the `PYTHONPATH` of all executables. This option is useful to reference the "final" `matrix-synapse` package that's actually used by `matrix-synapse.service`. For instance, when using workers, it's possible to run `${config.services.matrix-synapse.package}/bin/synapse_worker` and no additional PYTHONPATH needs to be specified for extras or plugins configured via `services.matrix-synapse`. However, this means that this option is supposed to be only declared by the `services.matrix-synapse` module itself and is thus read-only. In order to modify `matrix-synapse` itself, use an overlay to override `pkgs.matrix-synapse-unwrapped`. |
+| `services.matrix-synapse.plugins` | `list of package` | List of additional Matrix plugins to make available. |
+| `services.matrix-synapse.serviceUnit` | `string` | The systemd unit (a service or a target) for other services to depend on if they need to be started after matrix-synapse. This option is useful as the actual parent unit for all matrix-synapse processes changes when configuring workers. |
+| `services.matrix-synapse.settings` | `open submodule of (YAML 1.1 value)` | The primary synapse configuration. See the [sample configuration](https://github.com/element-hq/synapse/blob/v1.154.0/docs/sample_config.yaml) for possible values. Secrets should be passed in by using the `extraConfigFiles` option. |
+| `services.matrix-synapse.settings.app_service_config_files` | `list of absolute path` | A list of application service config file to use |
+| `services.matrix-synapse.settings.database.args.database` | `string` | Name of the database when using the psycopg2 backend, path to the database location when using sqlite3. |
+| `services.matrix-synapse.settings.database.args.user` | `null or string` | Username to connect with psycopg2, set to null when using sqlite3. |
+| `services.matrix-synapse.settings.database.name` | `one of "sqlite3", "psycopg2"` | The database engine name. Can be sqlite3 or psycopg2. |
+| `services.matrix-synapse.settings.dynamic_thumbnails` | `boolean` | Whether to generate new thumbnails on the fly to precisely match the resolution requested by the client. If true then whenever a new resolution is requested by the client the server will generate a new thumbnail. If false the server will pick a thumbnail from a precalculated list. |
+| `services.matrix-synapse.settings.enable_metrics` | `boolean` | Enable collection and rendering of performance metrics |
+| `services.matrix-synapse.settings.enable_registration` | `boolean` | Enable registration for new users. |
+| `services.matrix-synapse.settings.listeners` | `list of (submodule)` | List of ports that Synapse should listen on, their purpose and their configuration. By default, synapse will be configured for client and federation traffic on port 8008, and use a UNIX domain socket for worker replication. See [`services.matrix-synapse.workers`](#opt-services.matrix-synapse.workers) for more details. |
+| `services.matrix-synapse.settings.listeners.*.bind_addresses` | `null or (list of string)` | IP addresses to bind the listener to. |
+| `services.matrix-synapse.settings.listeners.*.mode` | `null or string matching the pattern ^[0,2-7]{3,4}$` | File permissions on the UNIX domain socket. |
+| `services.matrix-synapse.settings.listeners.*.path` | `null or absolute path` | Unix domain socket path to bind this listener to. ::: {.note} This option is incompatible with {option}`bind_addresses`, {option}`port`, {option}`tls` and also does not support the `metrics` and `manhole` listener {option}`type`. ::: |
+| `services.matrix-synapse.settings.listeners.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to listen for HTTP(S) requests on. |
+| `services.matrix-synapse.settings.listeners.*.resources` | `list of (submodule)` | List of HTTP resources to serve on this listener. |
+| `services.matrix-synapse.settings.listeners.*.resources.*.compress` | `boolean` | Whether synapse should compress HTTP responses to clients that support it. This should be disabled if running synapse behind a load balancer that can do automatic compression. |
+| `services.matrix-synapse.settings.listeners.*.resources.*.names` | `list of (one of "client", "consent", "federation", "health", "keys", "media", "metrics", "openid", "replication", "static")` | List of resources to host on this listener. |
+| `services.matrix-synapse.settings.listeners.*.tls` | `null or boolean` | Whether to enable TLS on the listener socket. ::: {.note} This option will be ignored for UNIX domain sockets. ::: |
+| `services.matrix-synapse.settings.listeners.*.type` | `one of "http", "manhole", "metrics", "replication"` | The type of the listener, usually http. |
+| `services.matrix-synapse.settings.listeners.*.x_forwarded` | `boolean` | Use the X-Forwarded-For (XFF) header as the client IP and not the actual client IP. |
+| `services.matrix-synapse.settings.log_config` | `absolute path` | The file that holds the logging configuration. |
+| `services.matrix-synapse.settings.macaroon_secret_key` | `null or string` | Secret key for authentication tokens. If none is specified, the registration_shared_secret is used, if one is given; otherwise, a secret key is derived from the signing key. Secrets should be passed in via `extraConfigFiles`! |
+| `services.matrix-synapse.settings.max_image_pixels` | `string` | Maximum number of pixels that will be thumbnailed |
+| `services.matrix-synapse.settings.max_upload_size` | `string` | The largest allowed upload size in bytes |
+| `services.matrix-synapse.settings.media_store_path` | `absolute path` | Directory where uploaded images and attachments are stored. |
+| `services.matrix-synapse.settings.pid_file` | `absolute path` | The file to store the PID in. |
+| `services.matrix-synapse.settings.presence.enabled` | `boolean` | Whether to enable presence tracking. Presence tracking allows users to see the state (e.g online/offline) of other local and remote users. |
+| `services.matrix-synapse.settings.public_baseurl` | `null or string` | The public-facing base URL for the client API (not including \_matrix/...) |
+| `services.matrix-synapse.settings.redis` | `open submodule of (YAML 1.1 value)` | Redis configuration for synapse. See the [upstream documentation](https://github.com/element-hq/synapse/blob/v1.154.0/docs/usage/configuration/config_documentation.md#redis) for available options. |
+| `services.matrix-synapse.settings.redis.enabled` | `boolean` | Whether to use redis support |
+| `services.matrix-synapse.settings.registration_shared_secret` | `null or string` | If set, allows registration by anyone who also has the shared secret, even if registration is otherwise disabled. Secrets should be passed in via `extraConfigFiles`! |
+| `services.matrix-synapse.settings.report_stats` | `boolean` | Whether or not to report anonymized homeserver usage statistics. |
+| `services.matrix-synapse.settings.server_name` | `string` | The domain name of the server, with optional explicit port. This is used by remote servers to look up the server address. This is also the last part of your UserID. The server_name cannot be changed later so it is important to configure this correctly before you start Synapse. |
+| `services.matrix-synapse.settings.signing_key_path` | `absolute path` | Path to the signing key to sign messages with. |
+| `services.matrix-synapse.settings.tls_certificate_path` | `null or string` | PEM encoded X509 certificate for TLS. You can replace the self-signed certificate that synapse autogenerates on launch with your own SSL certificate + key pair if you like. Any required intermediary certificates can be appended after the primary certificate in hierarchical order. |
+| `services.matrix-synapse.settings.tls_private_key_path` | `null or string` | PEM encoded private key for TLS. Specify null if synapse is not speaking TLS directly. |
+| `services.matrix-synapse.settings.trusted_key_servers` | `list of (open submodule of (YAML 1.1 value))` | The trusted servers to download signing keys from. |
+| `services.matrix-synapse.settings.trusted_key_servers.*.server_name` | `string` | Hostname of the trusted server. |
+| `services.matrix-synapse.settings.turn_shared_secret` | `string` | The shared secret used to compute passwords for the TURN server. Secrets should be passed in via `extraConfigFiles`! |
+| `services.matrix-synapse.settings.turn_uris` | `list of string` | The public URIs of the TURN server to give to clients |
+| `services.matrix-synapse.settings.url_preview_enabled` | `boolean` | Is the preview URL API enabled? If enabled, you *must* specify an explicit url_preview_ip_range_blacklist of IPs that the spider is denied from accessing. |
+| `services.matrix-synapse.settings.url_preview_ip_range_blacklist` | `list of string` | List of IP address CIDR ranges that the URL preview spider is denied from accessing. |
+| `services.matrix-synapse.settings.url_preview_ip_range_whitelist` | `list of string` | List of IP address CIDR ranges that the URL preview spider is allowed to access even if they are specified in url_preview_ip_range_blacklist. |
+| `services.matrix-synapse.settings.url_preview_url_blacklist` | `list of ((attribute set of string) or string convertible to it)` | Optional list of URL matches that the URL preview spider is denied from accessing. |
+| `services.matrix-synapse.withJemalloc` | `boolean` | Whether to preload jemalloc to reduce memory fragmentation and overall usage. |
+| `services.matrix-synapse.workers` | `attribute set of (open submodule of (YAML 1.1 value))` | Options for configuring workers. Worker support will be enabled if at least one worker is configured here. See the [worker documention](https://element-hq.github.io/synapse/latest/workers.html#worker-configuration) for possible options for each worker. Worker-specific options overriding the shared homeserver configuration can be specified here for each worker. ::: {.note} Worker support will add a replication listener on port 9093 to the main synapse process using the default value of [`services.matrix-synapse.settings.listeners`](#opt-services.matrix-synapse.settings.listeners) and configure that listener as `services.matrix-synapse.settings.instance_map.main`. If you set either of those options, make sure to configure a replication listener yourself. A redis server is required for running workers. A local one can be enabled using [`services.matrix-synapse.configureRedisLocally`](#opt-services.matrix-synapse.configureRedisLocally). Workers also require a proper reverse proxy setup to direct incoming requests to the appropriate process. See the [reverse proxy documentation](https://element-hq.github.io/synapse/latest/reverse_proxy.html) for a general reverse proxying setup and the [worker documentation](https://element-hq.github.io/synapse/latest/workers.html#available-worker-applications) for the available endpoints per worker application. ::: |
+| `services.matrix-synapse.workers.<name>.worker_app` | `one of "synapse.app.generic_worker", "synapse.app.media_repository"` | Type of this worker |
+| `services.matrix-synapse.workers.<name>.worker_listeners` | `list of (submodule)` | List of ports that this worker should listen on, their purpose and their configuration. |
+| `services.matrix-synapse.workers.<name>.worker_listeners.*.bind_addresses` | `null or (list of string)` | IP addresses to bind the listener to. |
+| `services.matrix-synapse.workers.<name>.worker_listeners.*.mode` | `null or string matching the pattern ^[0,2-7]{3,4}$` | File permissions on the UNIX domain socket. |
+| `services.matrix-synapse.workers.<name>.worker_listeners.*.path` | `null or absolute path` | Unix domain socket path to bind this listener to. ::: {.note} This option is incompatible with {option}`bind_addresses`, {option}`port`, {option}`tls` and also does not support the `metrics` and `manhole` listener {option}`type`. ::: |
+| `services.matrix-synapse.workers.<name>.worker_listeners.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to listen for HTTP(S) requests on. |
+| `services.matrix-synapse.workers.<name>.worker_listeners.*.resources` | `list of (submodule)` | List of HTTP resources to serve on this listener. |
+| `services.matrix-synapse.workers.<name>.worker_listeners.*.resources.*.compress` | `boolean` | Whether synapse should compress HTTP responses to clients that support it. This should be disabled if running synapse behind a load balancer that can do automatic compression. |
+| `services.matrix-synapse.workers.<name>.worker_listeners.*.resources.*.names` | `list of (one of "client", "consent", "federation", "health", "keys", "media", "metrics", "openid", "replication", "static")` | List of resources to host on this listener. |
+| `services.matrix-synapse.workers.<name>.worker_listeners.*.tls` | `null or boolean` | Whether to enable TLS on the listener socket. ::: {.note} This option will be ignored for UNIX domain sockets. ::: |
+| `services.matrix-synapse.workers.<name>.worker_listeners.*.type` | `one of "http", "manhole", "metrics", "replication"` | The type of the listener, usually http. |
+| `services.matrix-synapse.workers.<name>.worker_listeners.*.x_forwarded` | `boolean` | Use the X-Forwarded-For (XFF) header as the client IP and not the actual client IP. |
+| `services.matrix-synapse.workers.<name>.worker_log_config` | `absolute path` | The file for log configuration. See the [python documentation](https://docs.python.org/3/library/logging.config.html#configuration-dictionary-schema) for the schema and the [upstream repository](https://github.com/element-hq/synapse/blob/v1.154.0/docs/sample_log_config.yaml) for an example. |

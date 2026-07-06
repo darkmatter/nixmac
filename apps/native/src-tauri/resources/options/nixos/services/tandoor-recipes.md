@@ -5,12 +5,12 @@
 All options under `services.tandoor-recipes`.
 
 | Option | Type | Description |
-| ------------------------------------------------- | ---- | ----------- |
-| `services.tandoor-recipes.address` | | |
-| `services.tandoor-recipes.database.createLocally` | | |
-| `services.tandoor-recipes.enable` | | |
-| `services.tandoor-recipes.extraConfig` | | |
-| `services.tandoor-recipes.group` | | |
-| `services.tandoor-recipes.package` | | |
-| `services.tandoor-recipes.port` | | |
-| `services.tandoor-recipes.user` | | |
+| --- | --- | --- |
+| `services.tandoor-recipes.address` | `string` | Web interface address. |
+| `services.tandoor-recipes.database.createLocally` | `boolean` | Configure local PostgreSQL database server for Tandoor Recipes. |
+| `services.tandoor-recipes.enable` | `boolean` | Enable Tandoor Recipes. When started, the Tandoor Recipes database is automatically created if it doesn't exist and updated if the package has changed. Both tasks are achieved by running a Django migration. A script to manage the instance (by wrapping Django's manage.py) is linked to `/var/lib/tandoor-recipes/tandoor-recipes-manage`. |
+| `services.tandoor-recipes.extraConfig` | `attribute set` | Extra tandoor recipes config options. See [the example dot-env file](https://raw.githubusercontent.com/vabene1111/recipes/master/.env.template) for available options. |
+| `services.tandoor-recipes.group` | `string` | Group under which Tandoor runs. |
+| `services.tandoor-recipes.package` | `package` | The tandoor-recipes package to use. |
+| `services.tandoor-recipes.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Web interface port. |
+| `services.tandoor-recipes.user` | `string` | User account under which Tandoor runs. |

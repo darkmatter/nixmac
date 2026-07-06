@@ -5,6 +5,6 @@
 All options under `programs.dmrconfig`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `programs.dmrconfig.enable` | | |
-| `programs.dmrconfig.package` | | |
+| --- | --- | --- |
+| `programs.dmrconfig.enable` | `boolean` | Whether to configure system to enable use of dmrconfig. This enables the required udev rules and installs the program. |
+| `programs.dmrconfig.package` | `package` | The dmrconfig package to use. |

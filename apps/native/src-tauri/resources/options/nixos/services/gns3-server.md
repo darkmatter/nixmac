@@ -5,21 +5,21 @@
 All options under `services.gns3-server`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.gns3-server.auth.enable` | | |
-| `services.gns3-server.auth.passwordFile` | | |
-| `services.gns3-server.auth.user` | | |
-| `services.gns3-server.dynamips.enable` | | |
-| `services.gns3-server.dynamips.package` | | |
-| `services.gns3-server.enable` | | |
-| `services.gns3-server.log.debug` | | |
-| `services.gns3-server.log.file` | | |
-| `services.gns3-server.package` | | |
-| `services.gns3-server.settings` | | |
-| `services.gns3-server.ssl.certFile` | | |
-| `services.gns3-server.ssl.enable` | | |
-| `services.gns3-server.ssl.keyFile` | | |
-| `services.gns3-server.ubridge.enable` | | |
-| `services.gns3-server.ubridge.package` | | |
-| `services.gns3-server.vpcs.enable` | | |
-| `services.gns3-server.vpcs.package` | | |
+| --- | --- | --- |
+| `services.gns3-server.auth.enable` | `boolean` | Whether to enable password based HTTP authentication to access the GNS3 Server. |
+| `services.gns3-server.auth.passwordFile` | `null or absolute path` | A file containing the password to access the GNS3 Server. ::: {.warning} This should be a string, not a nix path, since nix paths are copied into the world-readable nix store. ::: |
+| `services.gns3-server.auth.user` | `null or string` | Username used to access the GNS3 Server. |
+| `services.gns3-server.dynamips.enable` | `boolean` | Whether to enable Dynamips support. |
+| `services.gns3-server.dynamips.package` | `package` | The dynamips package to use. |
+| `services.gns3-server.enable` | `boolean` | Whether to enable GNS3 Server daemon. |
+| `services.gns3-server.log.debug` | `boolean` | Whether to enable debug logging. |
+| `services.gns3-server.log.file` | `null or absolute path` | Path of the file GNS3 Server should log to. |
+| `services.gns3-server.package` | `package` | The gns3-server package to use. |
+| `services.gns3-server.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | The global options in `config` file in ini format. Refer to <https://docs.gns3.com/docs/using-gns3/administration/gns3-server-configuration-file/> for all available options. |
+| `services.gns3-server.ssl.certFile` | `null or absolute path` | Path to the SSL certificate file. This certificate will be offered to, and may be verified by, clients. |
+| `services.gns3-server.ssl.enable` | `boolean` | Whether to enable SSL encryption. |
+| `services.gns3-server.ssl.keyFile` | `null or absolute path` | Private key file for the certificate. |
+| `services.gns3-server.ubridge.enable` | `boolean` | Whether to enable uBridge support. |
+| `services.gns3-server.ubridge.package` | `package` | The ubridge package to use. |
+| `services.gns3-server.vpcs.enable` | `boolean` | Whether to enable VPCS support. |
+| `services.gns3-server.vpcs.package` | `package` | The vpcs package to use. |

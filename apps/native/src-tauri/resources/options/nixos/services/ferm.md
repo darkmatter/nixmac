@@ -5,7 +5,7 @@
 All options under `services.ferm`.
 
 | Option | Type | Description |
-| ----------------------- | ---- | ----------- |
-| `services.ferm.config` | | |
-| `services.ferm.enable` | | |
-| `services.ferm.package` | | |
+| --- | --- | --- |
+| `services.ferm.config` | `strings concatenated with "\n"` | Verbatim ferm.conf configuration. |
+| `services.ferm.enable` | `boolean` | Whether to enable Ferm Firewall. *Warning*: Enabling this service WILL disable the existing NixOS firewall! Default firewall rules provided by packages are not considered at the moment. |
+| `services.ferm.package` | `package` | The ferm package to use. |

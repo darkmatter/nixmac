@@ -5,9 +5,9 @@
 All options under `services.cachix-agent`.
 
 | Option | Type | Description |
-| --------------------------------------- | ----------------------- | ----------------------------------------------- |
-| `services.cachix-agent.credentialsFile` | `absolute path` | Required file that needs to contain: |
-| `services.cachix-agent.enable` | `boolean` | Enable to run Cachix Agent as a system service. |
+| --- | --- | --- |
+| `services.cachix-agent.credentialsFile` | `absolute path` | Required file that needs to contain: export CACHIX_AGENT_TOKEN=... |
+| `services.cachix-agent.enable` | `boolean` | Enable to run Cachix Agent as a system service. Read [Cachix Deploy](https://docs.cachix.org/deploy/) documentation for more information. |
 | `services.cachix-agent.logFile` | `null or absolute path` | Absolute path to log all stderr and stdout |
 | `services.cachix-agent.name` | `string` | Agent name, usually the same as the hostname. |
 | `services.cachix-agent.package` | `package` | Package containing cachix executable. |

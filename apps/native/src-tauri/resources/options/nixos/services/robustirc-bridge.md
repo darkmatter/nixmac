@@ -5,6 +5,6 @@
 All options under `services.robustirc-bridge`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.robustirc-bridge.enable` | | |
-| `services.robustirc-bridge.extraFlags` | | |
+| --- | --- | --- |
+| `services.robustirc-bridge.enable` | `boolean` | Whether to enable RobustIRC bridge. |
+| `services.robustirc-bridge.extraFlags` | `list of string` | Extra flags passed to the {command}`robustirc-bridge` command. See [RobustIRC Documentation](https://robustirc.net/docs/adminguide.html#_bridge) or {manpage}`robustirc-bridge(1)` for details. |

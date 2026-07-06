@@ -5,9 +5,9 @@
 All options under `services.pdnsd`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.pdnsd.cacheDir` | | |
-| `services.pdnsd.enable` | | |
-| `services.pdnsd.extraConfig` | | |
-| `services.pdnsd.globalConfig` | | |
-| `services.pdnsd.serverConfig` | | |
+| --- | --- | --- |
+| `services.pdnsd.cacheDir` | `string` | Directory holding the pdnsd cache |
+| `services.pdnsd.enable` | `boolean` | Whether to enable pdnsd. |
+| `services.pdnsd.extraConfig` | `strings concatenated with "\n"` | Extra configuration directives that should be added to {file}`pdnsd.conf`. |
+| `services.pdnsd.globalConfig` | `strings concatenated with "\n"` | Global configuration that should be added to the global directory of {file}`pdnsd.conf`. |
+| `services.pdnsd.serverConfig` | `strings concatenated with "\n"` | Server configuration that should be added to the server directory of {file}`pdnsd.conf`. |

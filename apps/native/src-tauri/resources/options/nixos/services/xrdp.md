@@ -5,15 +5,14 @@
 All options under `services.xrdp`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.xrdp.audio.enable` | | |
-| `services.xrdp.audio.package` | | |
-| `services.xrdp.confDir` | | |
-| `services.xrdp.defaultWindowManager` | | |
-| `services.xrdp.enable` | | |
-| `services.xrdp.extraConfDirCommands` | | |
-| `services.xrdp.openFirewall` | | |
-| `services.xrdp.package` | | |
-| `services.xrdp.port` | | |
-| `services.xrdp.sslCert` | | |
-| `services.xrdp.sslKey` | | |
+| --- | --- | --- |
+| `services.xrdp.audio.enable` | `boolean` | Whether to enable audio support for xrdp sessions. So far it only works with PulseAudio sessions on the server side. No PipeWire support yet. |
+| `services.xrdp.audio.package` | `package` | The pulseaudio-module-xrdp package to use. |
+| `services.xrdp.defaultWindowManager` | `string` | The script to run when user log in, usually a window manager, e.g. "icewm", "xfce4-session" This is per-user overridable, if file ~/startwm.sh exists it will be used instead. |
+| `services.xrdp.enable` | `boolean` | Whether to enable xrdp, the Remote Desktop Protocol server. |
+| `services.xrdp.extraConfDirCommands` | `string` | Extra commands to run on the default confDir derivation. |
+| `services.xrdp.openFirewall` | `boolean` | Whether to open the firewall for the specified RDP port. |
+| `services.xrdp.package` | `package` | The xrdp package to use. |
+| `services.xrdp.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Specifies on which port the xrdp daemon listens. |
+| `services.xrdp.sslCert` | `string` | ssl certificate path A self-signed certificate will be generated if file not exists. |
+| `services.xrdp.sslKey` | `string` | ssl private key path A self-signed certificate will be generated if file not exists. |

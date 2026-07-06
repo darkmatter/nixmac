@@ -5,10 +5,10 @@
 All options under `services.disnix`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.disnix.enable` | | |
-| `services.disnix.enableMultiUser` | | |
-| `services.disnix.enableProfilePath` | | |
-| `services.disnix.package` | | |
-| `services.disnix.profiles` | | |
-| `services.disnix.useWebServiceInterface` | | |
+| --- | --- | --- |
+| `services.disnix.enable` | `boolean` | Whether to enable Disnix. |
+| `services.disnix.enableMultiUser` | `boolean` | Whether to support multi-user mode by enabling the Disnix D-Bus service |
+| `services.disnix.enableProfilePath` | `boolean` | Whether to enable exposing the Disnix profiles in the system's PATH. |
+| `services.disnix.package` | `package` | The disnix package to use. |
+| `services.disnix.profiles` | `list of string` | Names of the Disnix profiles to expose in the system's PATH |
+| `services.disnix.useWebServiceInterface` | `boolean` | Whether to enable the DisnixWebService interface running on Apache Tomcat. |

@@ -5,6 +5,6 @@
 All options under `programs.qdmr`.
 
 | Option | Type | Description |
-| ----------------------- | ---- | ----------- |
-| `programs.qdmr.enable` | | |
-| `programs.qdmr.package` | | |
+| --- | --- | --- |
+| `programs.qdmr.enable` | `boolean` | Whether to enable QDMR - a GUI application and command line tool for programming DMR radios. |
+| `programs.qdmr.package` | `package` | The qdmr package to use. |

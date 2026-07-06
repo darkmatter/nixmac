@@ -5,7 +5,7 @@
 All options under `programs.kubeswitch`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `programs.kubeswitch.commandName` | | |
-| `programs.kubeswitch.enable` | | |
-| `programs.kubeswitch.package` | | |
+| --- | --- | --- |
+| `programs.kubeswitch.commandName` | `string` | The name of the command to use |
+| `programs.kubeswitch.enable` | `boolean` | Whether to enable kubeswitch. |
+| `programs.kubeswitch.package` | `package` | The kubeswitch package to use. |

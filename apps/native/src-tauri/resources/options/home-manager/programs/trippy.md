@@ -5,8 +5,8 @@
 All options under `programs.trippy`.
 
 | Option | Type | Description |
-| --------------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.trippy.enable` | `boolean` | Whether to enable trippy. |
-| `programs.trippy.forceUserConfig` | `boolean` | Whatever to force trippy to use user’s config through the -c flag. This will prevent certain commands such as ‘sudo’ ignoring the configured settings. This will only work if you have ‘programs.<shell>.enable’ (bash, zsh, fish, …), depending on your shell. |
+| `programs.trippy.forceUserConfig` | `boolean` | Whatever to force trippy to use user's config through the -c flag. This will prevent certain commands such as 'sudo' ignoring the configured settings. This will only work if you have 'programs.<shell>.enable' (bash, zsh, fish, ...), depending on your shell. |
 | `programs.trippy.package` | `null or package` | The trippy package to use. |
-| `programs.trippy.settings` | `TOML value` | Configuration settings for trippy. All the available options can be found here: https://trippy.rs/reference/configuration/ |
+| `programs.trippy.settings` | `TOML value` | Configuration settings for trippy. All the available options can be found here: <https://trippy.rs/reference/configuration/> |

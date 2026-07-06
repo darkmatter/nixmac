@@ -5,7 +5,7 @@
 All options under `programs.onedrive`.
 
 | Option | Type | Description |
-| ---------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.onedrive.enable` | `boolean` | Whether to enable onedrive. |
 | `programs.onedrive.package` | `null or package` | The onedrive package to use. |
-| `programs.onedrive.settings` | `attribute set of string` | Configuration settings for Onedrive. All available options can be found at https://github.com/abraunegg/onedrive/blob/master/config . |
+| `programs.onedrive.settings` | `attribute set of string` | Configuration settings for Onedrive. All available options can be found at <https://github.com/abraunegg/onedrive/blob/master/config>. |

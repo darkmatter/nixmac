@@ -5,9 +5,9 @@
 All options under `services.roon-server`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.roon-server.enable` | | |
-| `services.roon-server.group` | | |
-| `services.roon-server.openFirewall` | | |
-| `services.roon-server.package` | | |
-| `services.roon-server.user` | | |
+| --- | --- | --- |
+| `services.roon-server.enable` | `boolean` | Whether to enable Roon Server. |
+| `services.roon-server.group` | `string` | Group to run the Roon Server as. |
+| `services.roon-server.openFirewall` | `boolean` | Open ports in the firewall for the server. |
+| `services.roon-server.package` | `package` | The roon-server package to use. |
+| `services.roon-server.user` | `string` | User to run the Roon Server as. |

@@ -5,8 +5,8 @@
 All options under `programs.weylus`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `programs.weylus.enable` | | |
-| `programs.weylus.openFirewall` | | |
-| `programs.weylus.package` | | |
-| `programs.weylus.users` | | |
+| --- | --- | --- |
+| `programs.weylus.enable` | `boolean` | Whether to enable weylus, which turns your smart phone into a graphic tablet/touch screen for your computer. |
+| `programs.weylus.openFirewall` | `boolean` | Open ports needed for the functionality of the program. |
+| `programs.weylus.package` | `package` | The weylus package to use. |
+| `programs.weylus.users` | `list of string` | To enable stylus and multi-touch support, the user you're going to use must be added to this list. These users can synthesize input events system-wide, even when another user is logged in - untrusted users should not be added. |

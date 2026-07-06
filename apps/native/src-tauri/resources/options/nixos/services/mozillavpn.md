@@ -5,5 +5,5 @@
 All options under `services.mozillavpn`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.mozillavpn.enable` | | |
+| --- | --- | --- |
+| `services.mozillavpn.enable` | `boolean` | Whether to enable Mozilla VPN daemon. |

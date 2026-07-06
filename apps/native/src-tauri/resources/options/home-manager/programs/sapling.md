@@ -5,11 +5,10 @@
 All options under `programs.sapling`.
 
 | Option | Type | Description |
-| ------------------------------ | --------------------------- | -------------------------------- |
+| --- | --- | --- |
 | `programs.sapling.aliases` | `attribute set of string` | Sapling aliases to define. |
 | `programs.sapling.enable` | `boolean` | Whether to enable Sapling. |
 | `programs.sapling.extraConfig` | `attribute set of anything` | Additional configuration to add. |
-| `programs.sapling.iniContent` | | |
 | `programs.sapling.package` | `null or package` | The sapling package to use. |
 | `programs.sapling.userEmail` | `string` | Default user email to use. |
 | `programs.sapling.userName` | `string` | Default user name to use. |

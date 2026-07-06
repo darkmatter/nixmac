@@ -5,6 +5,11 @@
 All options under `programs.ssh`.
 
 | Option | Type | Description |
-| -------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `programs.ssh.extraConfig` | `strings concatenated with “\n”` | Extra configuration text loaded in ssh_config . See ssh_config (5) for help. |
-| `programs.ssh.knownHosts` | `attribute set of (submodule)` | The set of system-wide known SSH hosts. To make simple setups more convenient the name of an attribute in this set is used as a host name for the entry. This behaviour can be disabled by setting hostNames explicitly. You can use extraHostNames to add additional host names without disabling this default. |
+| --- | --- | --- |
+| `programs.ssh.extraConfig` | `strings concatenated with "\n"` | Extra configuration text loaded in {file}`ssh_config`. See {manpage}`ssh_config(5)` for help. |
+| `programs.ssh.knownHosts` | `attribute set of (submodule)` | The set of system-wide known SSH hosts. To make simple setups more convenient the name of an attribute in this set is used as a host name for the entry. This behaviour can be disabled by setting `hostNames` explicitly. You can use `extraHostNames` to add additional host names without disabling this default. |
+| `programs.ssh.knownHosts.<name>.certAuthority` | `boolean` | This public key is an SSH certificate authority, rather than an individual host's key. |
+| `programs.ssh.knownHosts.<name>.extraHostNames` | `list of string` | A list of additional host names and/or IP numbers used for accessing the host's ssh service. This list is ignored if `hostNames` is set explicitly. |
+| `programs.ssh.knownHosts.<name>.hostNames` | `list of string` | The set of system-wide known SSH hosts. To make simple setups more convenient the name of an attribute in this set is used as a host name for the entry. This behaviour can be disabled by setting `hostNames` explicitly. You can use `extraHostNames` to add additional host names without disabling this default. |
+| `programs.ssh.knownHosts.<name>.publicKey` | `null or string` | The public key data for the host. You can fetch a public key from a running SSH server with the {command}`ssh-keyscan` command. The public key should not include any host names, only the key type and the key itself. |
+| `programs.ssh.knownHosts.<name>.publicKeyFile` | `null or absolute path` | The path to the public key file for the host. The public key file is read at build time and saved in the Nix store. You can fetch a public key file from a running SSH server with the {command}`ssh-keyscan` command. The content of the file should follow the same format as described for the `publicKey` option. |

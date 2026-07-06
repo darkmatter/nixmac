@@ -5,7 +5,7 @@
 All options under `programs.pgcli`.
 
 | Option | Type | Description |
-| ------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.pgcli.enable` | `boolean` | Whether to enable pgcli. |
 | `programs.pgcli.package` | `null or package` | The pgcli package to use. |
-| `programs.pgcli.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to $XDG_CONFIG_HOME/pgcli/config . See https://www.pgcli.com/config for more information. |
+| `programs.pgcli.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to {file}`$XDG_CONFIG_HOME/pgcli/config`. See <https://www.pgcli.com/config> for more information. |

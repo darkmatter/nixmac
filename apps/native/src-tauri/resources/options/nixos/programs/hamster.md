@@ -5,5 +5,5 @@
 All options under `programs.hamster`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `programs.hamster.enable` | | |
+| --- | --- | --- |
+| `programs.hamster.enable` | `boolean` | Whether to enable hamster, a time tracking program. |

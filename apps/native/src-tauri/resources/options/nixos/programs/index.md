@@ -5,22 +5,21 @@
 Subcategories of `programs`.
 
 | Key | Type | Description |
-| ------------------------------------------------------------- | -------- | --------------------------- |
-| [`_1password`](_1password.md) | category | 3 options |
-| [`_1password-gui`](_1password-gui.md) | category | 4 options |
-| `adb` | option | |
+| --- | --- | --- |
+| [`_1password`](_1password.md) | category | 2 options |
+| [`_1password-gui`](_1password-gui.md) | category | 3 options |
 | [`alvr`](alvr.md) | category | 3 options |
 | [`amnezia-vpn`](amnezia-vpn.md) | category | 2 options |
 | [`appgate-sdp`](appgate-sdp.md) | category | 1 option |
 | [`appimage`](appimage.md) | category | 3 options |
 | [`arp-scan`](arp-scan.md) | category | 1 option |
-| [`atop`](atop.md) | category | 6 subcategories, 10 options |
-| [`atuin`](atuin.md) | category | 1 subcategory, 10 options |
+| [`atop`](atop.md) | category | 10 options |
+| [`atuin`](atuin.md) | category | 10 options |
 | [`ausweisapp`](ausweisapp.md) | category | 2 options |
 | [`autoenv`](autoenv.md) | category | 2 options |
 | [`autojump`](autojump.md) | category | 1 option |
 | [`bandwhich`](bandwhich.md) | category | 1 option |
-| [`bash`](bash.md) | category | 3 subcategories, 18 options |
+| [`bash`](bash.md) | category | 16 options |
 | [`bash-my-aws`](bash-my-aws.md) | category | 1 option |
 | [`bat`](bat.md) | category | 4 options |
 | [`bazecor`](bazecor.md) | category | 2 options |
@@ -29,7 +28,6 @@ Subcategories of `programs`.
 | [`browserpass`](browserpass.md) | category | 1 option |
 | [`calls`](calls.md) | category | 1 option |
 | [`captive-browser`](captive-browser.md) | category | 7 options |
-| `cardboard` | option | |
 | [`ccache`](ccache.md) | category | 6 options |
 | [`cdemu`](cdemu.md) | category | 4 options |
 | [`cfs-zen-tweaks`](cfs-zen-tweaks.md) | category | 1 option |
@@ -38,21 +36,20 @@ Subcategories of `programs`.
 | [`clash-verge`](clash-verge.md) | category | 6 options |
 | [`cnping`](cnping.md) | category | 1 option |
 | [`command-not-found`](command-not-found.md) | category | 2 options |
-| [`coolercontrol`](coolercontrol.md) | category | 2 options |
-| [`corectrl`](corectrl.md) | category | 1 subcategory, 4 options |
+| [`coolercontrol`](coolercontrol.md) | category | 1 option |
+| [`corectrl`](corectrl.md) | category | 2 options |
 | [`corefreq`](corefreq.md) | category | 2 options |
 | [`cpu-energy-meter`](cpu-energy-meter.md) | category | 2 options |
 | [`criu`](criu.md) | category | 1 option |
 | [`dconf`](dconf.md) | category | 3 options |
 | [`digitalbitbox`](digitalbitbox.md) | category | 2 options |
-| [`direnv`](direnv.md) | category | 2 subcategories, 15 options |
+| [`direnv`](direnv.md) | category | 14 options |
 | [`dmrconfig`](dmrconfig.md) | category | 2 options |
-| [`dms-shell`](dms-shell.md) | category | 2 subcategories, 17 options |
+| [`dms-shell`](dms-shell.md) | category | 15 options |
 | [`droidcam`](droidcam.md) | category | 1 option |
-| [`dsearch`](dsearch.md) | category | 1 subcategory, 4 options |
+| [`dsearch`](dsearch.md) | category | 4 options |
 | [`dublin-traceroute`](dublin-traceroute.md) | category | 2 options |
 | [`dwl`](dwl.md) | category | 3 options |
-| `ecryptfs` | option | |
 | [`ente-auth`](ente-auth.md) | category | 2 options |
 | [`envision`](envision.md) | category | 3 options |
 | [`evince`](evince.md) | category | 2 options |
@@ -60,14 +57,13 @@ Subcategories of `programs`.
 | [`extra-container`](extra-container.md) | category | 1 option |
 | [`fcast-receiver`](fcast-receiver.md) | category | 3 options |
 | [`feedbackd`](feedbackd.md) | category | 3 options |
-| `file-roller` | option | |
-| [`firefox`](firefox.md) | category | 1 subcategory, 21 options |
+| [`firefox`](firefox.md) | category | 10 options |
 | [`firejail`](firejail.md) | category | 2 options |
-| [`fish`](fish.md) | category | 1 subcategory, 14 options |
+| [`fish`](fish.md) | category | 14 options |
 | [`flashprog`](flashprog.md) | category | 2 options |
 | [`flashrom`](flashrom.md) | category | 2 options |
 | [`flexoptix-app`](flexoptix-app.md) | category | 2 options |
-| [`foot`](foot.md) | category | 1 subcategory, 8 options |
+| [`foot`](foot.md) | category | 8 options |
 | [`fuse`](fuse.md) | category | 3 options |
 | [`fzf`](fzf.md) | category | 2 options |
 | [`gamemode`](gamemode.md) | category | 4 options |
@@ -75,13 +71,11 @@ Subcategories of `programs`.
 | [`gdk-pixbuf`](gdk-pixbuf.md) | category | 1 option |
 | [`geary`](geary.md) | category | 1 option |
 | [`ghidra`](ghidra.md) | category | 3 options |
-| [`git`](git.md) | category | 2 subcategories, 8 options |
+| [`git`](git.md) | category | 8 options |
 | [`git-worktree-switcher`](git-worktree-switcher.md) | category | 2 options |
 | [`gnome-disks`](gnome-disks.md) | category | 1 option |
-| `gnome-documents` | option | |
 | [`gnome-terminal`](gnome-terminal.md) | category | 1 option |
-| [`gnupg`](gnupg.md) | category | 2 subcategories, 9 options |
-| `goldwarden` | option | |
+| [`gnupg`](gnupg.md) | category | 8 options |
 | [`gpaste`](gpaste.md) | category | 1 option |
 | [`gphoto2`](gphoto2.md) | category | 1 option |
 | [`gpu-screen-recorder`](gpu-screen-recorder.md) | category | 2 options |
@@ -89,18 +83,16 @@ Subcategories of `programs`.
 | [`haguichi`](haguichi.md) | category | 1 option |
 | [`hamster`](hamster.md) | category | 1 option |
 | [`htop`](htop.md) | category | 3 options |
-| [`hyprland`](hyprland.md) | category | 2 subcategories, 9 options |
+| [`hyprland`](hyprland.md) | category | 6 options |
 | [`hyprlock`](hyprlock.md) | category | 2 options |
 | [`i3lock`](i3lock.md) | category | 3 options |
 | [`iay`](iay.md) | category | 3 options |
-| [`ibus`](ibus.md) | category | 1 option |
 | [`idescriptor`](idescriptor.md) | category | 3 options |
 | [`iftop`](iftop.md) | category | 1 option |
 | [`iio-hyprland`](iio-hyprland.md) | category | 2 options |
 | [`immersed`](immersed.md) | category | 2 options |
-| `immersed-vr` | option | |
-| [`info`](info.md) | category | 1 option |
-| [`iotop`](iotop.md) | category | 2 options |
+| [`iotop`](iotop.md) | category | 3 options |
+| [`jai-jail`](jai-jail.md) | category | 2 options |
 | [`java`](java.md) | category | 3 options |
 | [`joycond-cemuhook`](joycond-cemuhook.md) | category | 1 option |
 | [`k3b`](k3b.md) | category | 1 option |
@@ -116,12 +108,10 @@ Subcategories of `programs`.
 | [`less`](less.md) | category | 9 options |
 | [`liboping`](liboping.md) | category | 1 option |
 | [`librepods`](librepods.md) | category | 1 option |
-| `light` | option | |
 | [`localsend`](localsend.md) | category | 3 options |
-| [`man`](man.md) | category | 1 option |
 | [`mangowc`](mangowc.md) | category | 2 options |
 | [`mdevctl`](mdevctl.md) | category | 1 option |
-| [`mepo`](mepo.md) | category | 1 subcategory, 3 options |
+| [`mepo`](mepo.md) | category | 3 options |
 | [`mininet`](mininet.md) | category | 1 option |
 | [`minipro`](minipro.md) | category | 2 options |
 | [`miriway`](miriway.md) | category | 2 options |
@@ -132,15 +122,14 @@ Subcategories of `programs`.
 | [`nano`](nano.md) | category | 4 options |
 | [`nautilus-open-any-terminal`](nautilus-open-any-terminal.md) | category | 2 options |
 | [`nbd`](nbd.md) | category | 1 option |
-| `nekoray` | option | |
-| [`neovim`](neovim.md) | category | 11 options |
+| [`neovim`](neovim.md) | category | 14 options |
 | [`nethoscope`](nethoscope.md) | category | 1 option |
 | [`nexttrace`](nexttrace.md) | category | 2 options |
-| [`nh`](nh.md) | category | 1 subcategory, 6 options |
+| [`nh`](nh.md) | category | 6 options |
 | [`niri`](niri.md) | category | 3 options |
 | [`nix-index`](nix-index.md) | category | 5 options |
 | [`nix-ld`](nix-ld.md) | category | 3 options |
-| [`nix-required-mounts`](nix-required-mounts.md) | category | 1 subcategory, 6 options |
+| [`nix-required-mounts`](nix-required-mounts.md) | category | 9 options |
 | [`nixbit`](nixbit.md) | category | 4 options |
 | [`nm-applet`](nm-applet.md) | category | 3 options |
 | [`nncp`](nncp.md) | category | 5 options |
@@ -148,98 +137,86 @@ Subcategories of `programs`.
 | [`npm`](npm.md) | category | 3 options |
 | [`ns-usbloader`](ns-usbloader.md) | category | 1 option |
 | [`nxdumpclient`](nxdumpclient.md) | category | 1 option |
-| `oblogout` | option | |
-| [`obs-studio`](obs-studio.md) | category | 5 options |
+| [`obs-studio`](obs-studio.md) | category | 4 options |
 | [`oddjobd`](oddjobd.md) | category | 2 options |
-| [`opengamepadui`](opengamepadui.md) | category | 2 subcategories, 8 options |
-| [`openvpn3`](openvpn3.md) | category | 4 options |
-| `pantheon-tweaks` | option | |
+| [`opengamepadui`](opengamepadui.md) | category | 11 options |
+| [`openvpn3`](openvpn3.md) | category | 11 options |
 | [`partition-manager`](partition-manager.md) | category | 2 options |
 | [`pay-respects`](pay-respects.md) | category | 5 options |
 | [`plotinus`](plotinus.md) | category | 1 option |
 | [`pmount`](pmount.md) | category | 2 options |
-| `pqos-wrapper` | option | |
 | [`projecteur`](projecteur.md) | category | 2 options |
-| [`proxychains`](proxychains.md) | category | 1 subcategory, 11 options |
+| [`proxychains`](proxychains.md) | category | 15 options |
 | [`pulseview`](pulseview.md) | category | 1 option |
 | [`qdmr`](qdmr.md) | category | 2 options |
 | [`qgroundcontrol`](qgroundcontrol.md) | category | 3 options |
-| [`qt5ct`](qt5ct.md) | category | 1 option |
 | [`quark-goldleaf`](quark-goldleaf.md) | category | 1 option |
-| [`regreet`](regreet.md) | category | 4 subcategories, 14 options |
-| [`river`](river.md) | category | 1 subcategory, 4 options |
-| [`river-classic`](river-classic.md) | category | 1 subcategory, 4 options |
+| [`regreet`](regreet.md) | category | 14 options |
+| [`river-classic`](river-classic.md) | category | 4 options |
 | [`rog-control-center`](rog-control-center.md) | category | 2 options |
 | [`rush`](rush.md) | category | 6 options |
 | [`rust-motd`](rust-motd.md) | category | 5 options |
 | [`ryzen-monitor-ng`](ryzen-monitor-ng.md) | category | 2 options |
-| [`schroot`](schroot.md) | category | 4 options |
+| [`schroot`](schroot.md) | category | 7 options |
 | [`screen`](screen.md) | category | 3 options |
 | [`seahorse`](seahorse.md) | category | 1 option |
 | [`sedutil`](sedutil.md) | category | 1 option |
 | [`sharing`](sharing.md) | category | 1 option |
 | [`singularity`](singularity.md) | category | 7 options |
-| [`skim`](skim.md) | category | 4 options |
+| [`skim`](skim.md) | category | 3 options |
 | [`slock`](slock.md) | category | 2 options |
 | [`sniffnet`](sniffnet.md) | category | 1 option |
 | [`soundmodem`](soundmodem.md) | category | 2 options |
-| `spacefm` | option | |
-| [`ssh`](ssh.md) | category | 1 subcategory, 17 options |
-| [`starship`](starship.md) | category | 1 subcategory, 8 options |
-| [`steam`](steam.md) | category | 5 subcategories, 12 options |
+| [`ssh`](ssh.md) | category | 22 options |
+| [`starship`](starship.md) | category | 8 options |
+| [`steam`](steam.md) | category | 16 options |
 | [`streamcontroller`](streamcontroller.md) | category | 2 options |
 | [`streamdeck-ui`](streamdeck-ui.md) | category | 3 options |
-| [`sway`](sway.md) | category | 2 subcategories, 8 options |
+| [`sway`](sway.md) | category | 8 options |
 | [`sysdig`](sysdig.md) | category | 1 option |
 | [`system-config-printer`](system-config-printer.md) | category | 1 option |
 | [`systemtap`](systemtap.md) | category | 1 option |
 | [`tcpdump`](tcpdump.md) | category | 1 option |
 | [`television`](television.md) | category | 5 options |
-| `thefuck` | option | |
-| [`throne`](throne.md) | category | 1 subcategory, 4 options |
+| [`throne`](throne.md) | category | 4 options |
 | [`thunar`](thunar.md) | category | 2 options |
 | [`thunderbird`](thunderbird.md) | category | 5 options |
-| `tilp2` | option | |
-| [`tmux`](tmux.md) | category | 20 options |
+| [`tmux`](tmux.md) | category | 19 options |
 | [`traceroute`](traceroute.md) | category | 1 option |
 | [`trippy`](trippy.md) | category | 1 option |
-| [`tsmClient`](tsmClient.md) | category | 6 options |
+| [`tsmClient`](tsmClient.md) | category | 13 options |
 | [`turbovnc`](turbovnc.md) | category | 1 option |
-| [`tuxclocker`](tuxclocker.md) | category | 4 options |
+| [`tuxclocker`](tuxclocker.md) | category | 3 options |
 | [`udevil`](udevil.md) | category | 1 option |
-| [`unity3d`](unity3d.md) | category | 1 option |
 | [`usbtop`](usbtop.md) | category | 1 option |
-| [`uwsm`](uwsm.md) | category | 3 options |
+| [`uwsm`](uwsm.md) | category | 7 options |
 | [`vim`](vim.md) | category | 3 options |
 | [`virt-manager`](virt-manager.md) | category | 2 options |
 | [`vivid`](vivid.md) | category | 3 options |
-| [`vscode`](vscode.md) | category | 5 options |
+| [`vscode`](vscode.md) | category | 4 options |
 | [`wavemon`](wavemon.md) | category | 1 option |
-| `way-cooler` | option | |
-| [`waybar`](waybar.md) | category | 1 subcategory, 3 options |
-| [`wayfire`](wayfire.md) | category | 1 subcategory, 4 options |
-| [`wayland`](wayland.md) | category | 1 subcategory, 1 option |
+| [`waybar`](waybar.md) | category | 3 options |
+| [`wayfire`](wayfire.md) | category | 4 options |
+| [`wayland`](wayland.md) | category | 1 option |
 | [`wayvnc`](wayvnc.md) | category | 2 options |
 | [`weylus`](weylus.md) | category | 4 options |
-| [`whois`](whois.md) | category | 3 options |
+| [`whois`](whois.md) | category | 5 options |
 | [`winbox`](winbox.md) | category | 3 options |
-| [`wireshark`](wireshark.md) | category | 2 subcategories, 4 options |
+| [`wireshark`](wireshark.md) | category | 4 options |
 | [`wshowkeys`](wshowkeys.md) | category | 2 options |
-| `x2goserver` | option | |
 | [`xastir`](xastir.md) | category | 1 option |
 | [`xfconf`](xfconf.md) | category | 1 option |
-| [`xfs_quota`](xfs_quota.md) | category | 1 option |
-| [`xonsh`](xonsh.md) | category | 1 subcategory, 6 options |
+| [`xfs_quota`](xfs_quota.md) | category | 6 options |
+| [`xonsh`](xonsh.md) | category | 6 options |
 | [`xppen`](xppen.md) | category | 2 options |
-| [`xscreensaver`](xscreensaver.md) | category | 1 subcategory, 3 options |
+| [`xscreensaver`](xscreensaver.md) | category | 3 options |
 | [`xss-lock`](xss-lock.md) | category | 3 options |
 | [`xwayland`](xwayland.md) | category | 3 options |
-| `yabar` | option | |
-| [`yazi`](yazi.md) | category | 6 options |
+| [`yazi`](yazi.md) | category | 10 options |
 | [`ydotool`](ydotool.md) | category | 2 options |
 | [`yubikey-manager`](yubikey-manager.md) | category | 2 options |
 | [`yubikey-touch-detector`](yubikey-touch-detector.md) | category | 4 options |
 | [`zmap`](zmap.md) | category | 1 option |
 | [`zoom-us`](zoom-us.md) | category | 2 options |
 | [`zoxide`](zoxide.md) | category | 7 options |
-| [`zsh`](zsh.md) | category | 6 subcategories, 42 options |
+| [`zsh`](zsh.md) | category | 33 options |

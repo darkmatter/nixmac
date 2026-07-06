@@ -5,5 +5,5 @@
 All options under `programs.nethoscope`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `programs.nethoscope.enable` | | |
+| --- | --- | --- |
+| `programs.nethoscope.enable` | `boolean` | Whether to add nethoscope to the global environment and configure a setcap wrapper for it. |

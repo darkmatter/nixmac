@@ -5,15 +5,9 @@
 All options under `services.clipse`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---------------------------------- | -------------------------------------------------------------------- |
-| `services.clipse.allowDuplicates` | `boolean` | Allow duplicates |
+| --- | --- | --- |
 | `services.clipse.enable` | `boolean` | Whether to enable Enable clipse clipboard manager. |
-| `services.clipse.historySize` | `signed integer` | Number of history lines to keep. |
-| `services.clipse.imageDisplay.heightCut` | `signed integer` | Height cut |
-| `services.clipse.imageDisplay.scaleX` | `signed integer` | Image scaling factor X |
-| `services.clipse.imageDisplay.scaleY` | `signed integer` | Image scaling factor Y |
-| `services.clipse.imageDisplay.type` | `one of “basic”, “kitty”, “sixel”` | Preview image method |
-| `services.clipse.keyBindings` | `JSON value` | Custom key bindings |
 | `services.clipse.package` | `null or package` | The clipse package to use. |
-| `services.clipse.systemdTarget` | `string` | The systemd target that will automatically start the clipse service. |
-| `services.clipse.theme` | `JSON value` | Configuration written to $XDG_CONFIG_HOME/clipse/custom_theme.json . |
+| `services.clipse.settings` | `JSON value` | Configuration written to {file}`$XDG_CONFIG_HOME/clipse/config.json` Please refer to <https://github.com/savedra1/clipse#configuration> for more information. |
+| `services.clipse.systemdTarget` | `string` | The systemd target that will automatically start the clipse service. When setting this value to `"sway-session.target"`, make sure to also enable {option}`wayland.windowManager.sway.systemd.enable`, otherwise the service may never be started. |
+| `services.clipse.theme` | `JSON value or absolute path` | Configuration written to {file}`$XDG_CONFIG_HOME/clipse/custom_theme.json`. |

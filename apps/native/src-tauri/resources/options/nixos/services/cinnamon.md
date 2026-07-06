@@ -5,5 +5,5 @@
 All options under `services.cinnamon`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.cinnamon.apps.enable` | | |
+| --- | --- | --- |
+| `services.cinnamon.apps.enable` | `boolean` | Whether to enable Cinnamon default applications. |

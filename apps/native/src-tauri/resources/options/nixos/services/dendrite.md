@@ -5,13 +5,31 @@
 All options under `services.dendrite`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.dendrite.enable` | | |
-| `services.dendrite.environmentFile` | | |
-| `services.dendrite.httpPort` | | |
-| `services.dendrite.httpsPort` | | |
-| `services.dendrite.loadCredential` | | |
-| `services.dendrite.openRegistration` | | |
-| `services.dendrite.settings` | | |
-| `services.dendrite.tlsCert` | | |
-| `services.dendrite.tlsKey` | | |
+| --- | --- | --- |
+| `services.dendrite.enable` | `boolean` | Whether to enable matrix.org dendrite. |
+| `services.dendrite.environmentFile` | `null or absolute path` | Environment file as defined in {manpage}`systemd.exec(5)`. Secrets may be passed to the service without adding them to the world-readable Nix store, by specifying placeholder variables as the option value in Nix and setting these variables accordingly in the environment file. Currently only used for the registration secret to allow secure registration when client_api.registration_disabled is true. `  # snippet of dendrite-related config   services.dendrite.settings.client_api.registration_shared_secret = "$REGISTRATION_SHARED_SECRET";` `  # content of the environment file   REGISTRATION_SHARED_SECRET=verysecretpassword` Note that this file needs to be available on the host on which `dendrite` is running. |
+| `services.dendrite.httpPort` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to listen for HTTP requests on. |
+| `services.dendrite.httpsPort` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to listen for HTTPS requests on. |
+| `services.dendrite.loadCredential` | `list of string` | This can be used to pass secrets to the systemd service without adding them to the nix store. To use the example setting, see the example of {option}`services.dendrite.settings.global.private_key`. See the LoadCredential section of systemd.exec manual for more information. |
+| `services.dendrite.openRegistration` | `boolean` | Allow open registration without secondary verification (reCAPTCHA). |
+| `services.dendrite.settings` | `open submodule of (YAML 1.1 value)` | Configuration for dendrite, see: <https://github.com/matrix-org/dendrite/blob/main/dendrite-sample.yaml> for available options with which to populate settings. |
+| `services.dendrite.settings.app_service_api.database.connection_string` | `string` | Database for the Appservice API. |
+| `services.dendrite.settings.client_api.registration_disabled` | `boolean` | Whether to disable user registration to the server without the shared secret. |
+| `services.dendrite.settings.federation_api.database.connection_string` | `string` | Database for the Federation API. |
+| `services.dendrite.settings.global.private_key` | `absolute path or string matching the pattern ^\$CREDENTIALS_DIRECTORY/.+` | The path to the signing private key file, used to sign requests and events. `  nix-shell -p dendrite --command "generate-keys --private-key matrix_key.pem"` |
+| `services.dendrite.settings.global.server_name` | `string` | The domain name of the server, with optional explicit port. This is used by remote servers to connect to this server. This is also the last part of your UserID. |
+| `services.dendrite.settings.global.trusted_third_party_id_servers` | `list of string` | Lists of domains that the server will trust as identity servers to verify third party identifiers such as phone numbers and email addresses |
+| `services.dendrite.settings.key_server.database.connection_string` | `string` | Database for the Key Server (for end-to-end encryption). |
+| `services.dendrite.settings.media_api.base_path` | `string` | Storage path for uploaded media. |
+| `services.dendrite.settings.media_api.database.connection_string` | `string` | Database for the Media API. |
+| `services.dendrite.settings.mscs.database.connection_string` | `string` | Database for exerimental MSC's. |
+| `services.dendrite.settings.relay_api.database.connection_string` | `string` | Database for the Relay Server. |
+| `services.dendrite.settings.room_server.database.connection_string` | `string` | Database for the Room Server. |
+| `services.dendrite.settings.sync_api.database.connection_string` | `string` | Database for the Sync API. |
+| `services.dendrite.settings.sync_api.search.enabled` | `boolean` | Whether to enable Dendrite's full-text search engine. |
+| `services.dendrite.settings.sync_api.search.index_path` | `string` | The path the search index will be created in. |
+| `services.dendrite.settings.sync_api.search.language` | `string` | The language most likely to be used on the server - used when indexing, to ensure the returned results match expectations. A full list of possible languages can be found at <https://github.com/blevesearch/bleve/tree/master/analysis/lang> |
+| `services.dendrite.settings.user_api.account_database.connection_string` | `string` | Database for the User API, accounts. |
+| `services.dendrite.settings.user_api.device_database.connection_string` | `string` | Database for the User API, devices. |
+| `services.dendrite.tlsCert` | `null or absolute path` | The path to the TLS certificate. `  nix-shell -p dendrite --command "generate-keys --tls-cert server.crt --tls-key server.key"` |
+| `services.dendrite.tlsKey` | `null or absolute path` | The path to the TLS key. `  nix-shell -p dendrite --command "generate-keys --tls-cert server.crt --tls-key server.key"` |

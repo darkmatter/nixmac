@@ -5,22 +5,22 @@
 All options under `services.flannel`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.flannel.backend` | | |
-| `services.flannel.enable` | | |
-| `services.flannel.etcd.caFile` | | |
-| `services.flannel.etcd.certFile` | | |
-| `services.flannel.etcd.endpoints` | | |
-| `services.flannel.etcd.keyFile` | | |
-| `services.flannel.etcd.prefix` | | |
-| `services.flannel.extraNetworkConfig` | | |
-| `services.flannel.iface` | | |
-| `services.flannel.kubeconfig` | | |
-| `services.flannel.network` | | |
-| `services.flannel.nodeName` | | |
-| `services.flannel.package` | | |
-| `services.flannel.publicIp` | | |
-| `services.flannel.storageBackend` | | |
-| `services.flannel.subnetLen` | | |
-| `services.flannel.subnetMax` | | |
-| `services.flannel.subnetMin` | | |
+| --- | --- | --- |
+| `services.flannel.backend` | `attribute set` | Type of backend to use and specific configurations for that backend. |
+| `services.flannel.enable` | `boolean` | Whether to enable flannel. |
+| `services.flannel.etcd.caFile` | `null or absolute path` | Etcd certificate authority file |
+| `services.flannel.etcd.certFile` | `null or absolute path` | Etcd cert file |
+| `services.flannel.etcd.endpoints` | `list of string` | Etcd endpoints |
+| `services.flannel.etcd.keyFile` | `null or absolute path` | Etcd key file |
+| `services.flannel.etcd.prefix` | `string` | Etcd key prefix |
+| `services.flannel.extraNetworkConfig` | `JSON value` | Extra configuration to be added to the net-conf.json/etcd-backed network configuration. |
+| `services.flannel.iface` | `null or string` | Interface to use (IP or name) for inter-host communication. Defaults to the interface for the default route on the machine. |
+| `services.flannel.kubeconfig` | `null or absolute path` | Path to kubeconfig to use for storing flannel config using the Kubernetes API |
+| `services.flannel.network` | `string` | IPv4 network in CIDR format to use for the entire flannel network |
+| `services.flannel.nodeName` | `null or string` | Needed when running with Kubernetes as backend as this cannot be auto-detected"; |
+| `services.flannel.package` | `package` | The flannel package to use. |
+| `services.flannel.publicIp` | `null or string` | IP accessible by other nodes for inter-host communication. Defaults to the IP of the interface being used for communication. |
+| `services.flannel.storageBackend` | `one of "etcd", "kubernetes"` | Determines where flannel stores its configuration at runtime |
+| `services.flannel.subnetLen` | `signed integer` | The size of the subnet allocated to each host. Defaults to 24 (i.e. /24) unless the Network was configured to be smaller than a /24 in which case it is one less than the network. |
+| `services.flannel.subnetMax` | `null or string` | The end of IP range which the subnet allocation should start with. Defaults to the last subnet of Network. |
+| `services.flannel.subnetMin` | `null or string` | The beginning of IP range which the subnet allocation should start with. Defaults to the first subnet of Network. |

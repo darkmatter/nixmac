@@ -5,9 +5,9 @@
 All options under `services.ntpd-rs`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---- | ----------- |
-| `services.ntpd-rs.enable` | | |
-| `services.ntpd-rs.metrics.enable` | | |
-| `services.ntpd-rs.package` | | |
-| `services.ntpd-rs.settings` | | |
-| `services.ntpd-rs.useNetworkingTimeServers` | | |
+| --- | --- | --- |
+| `services.ntpd-rs.enable` | `boolean` | Whether to enable Network Time Service (ntpd-rs). |
+| `services.ntpd-rs.metrics.enable` | `boolean` | Whether to enable ntpd-rs Prometheus Metrics Exporter. |
+| `services.ntpd-rs.package` | `package` | The ntpd-rs package to use. |
+| `services.ntpd-rs.settings` | `open submodule of (TOML value)` | Settings to write to {file}`ntp.toml` See <https://docs.ntpd-rs.pendulum-project.org/man/ntp.toml.5> for more information about available options. |
+| `services.ntpd-rs.useNetworkingTimeServers` | `boolean` | Use source time servers from {var}`networking.timeServers` in config. |

@@ -5,35 +5,35 @@
 All options under `services.slurm`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `services.slurm.client.enable` | | |
-| `services.slurm.clusterName` | | |
-| `services.slurm.controlAddr` | | |
-| `services.slurm.controlMachine` | | |
-| `services.slurm.dbdserver.configFile` | | |
-| `services.slurm.dbdserver.dbdHost` | | |
-| `services.slurm.dbdserver.enable` | | |
-| `services.slurm.dbdserver.extraConfig` | | |
-| `services.slurm.dbdserver.storagePass` | | |
-| `services.slurm.dbdserver.storagePassFile` | | |
-| `services.slurm.dbdserver.storageUser` | | |
-| `services.slurm.enableSrunX11` | | |
-| `services.slurm.enableStools` | | |
-| `services.slurm.etcSlurm` | | |
-| `services.slurm.extraCgroupConfig` | | |
-| `services.slurm.extraConfig` | | |
-| `services.slurm.extraConfigPaths` | | |
-| `services.slurm.extraPlugstackConfig` | | |
-| `services.slurm.mpi.PmixCliTmpDirBase` | | |
-| `services.slurm.mpi.extraMpiConfig` | | |
-| `services.slurm.nodeName` | | |
-| `services.slurm.package` | | |
-| `services.slurm.partitionName` | | |
-| `services.slurm.procTrackType` | | |
-| `services.slurm.rest.enable` | | |
-| `services.slurm.rest.environment` | | |
-| `services.slurm.rest.options` | | |
-| `services.slurm.server.enable` | | |
-| `services.slurm.server.flags` | | |
-| `services.slurm.stateSaveLocation` | | |
-| `services.slurm.user` | | |
+| --- | --- | --- |
+| `services.slurm.client.enable` | `boolean` | Whether to enable slurm client daemon. |
+| `services.slurm.clusterName` | `string` | Necessary to distinguish accounting records in a multi-cluster environment. |
+| `services.slurm.controlAddr` | `null or string` | Name that ControlMachine should be referred to in establishing a communications path. |
+| `services.slurm.controlMachine` | `null or string` | The short hostname of the machine where SLURM control functions are executed (i.e. the name returned by the command "hostname -s", use "tux001" rather than "tux001.my.com"). |
+| `services.slurm.dbdserver.dbdHost` | `string` | Hostname of the machine where `slurmdbd` is running (i.e. name returned by `hostname -s`). |
+| `services.slurm.dbdserver.enable` | `boolean` | Whether to enable SlurmDBD service. |
+| `services.slurm.dbdserver.extraConfig` | `strings concatenated with "\n"` | Extra configuration for {file}`slurmdbd.conf` See also: {manpage}`slurmdbd.conf(8)`. |
+| `services.slurm.dbdserver.storagePassFile` | `null or string` | Path to file with database password. The content of this will be used to create the password for the `StoragePass` option. |
+| `services.slurm.dbdserver.storageUser` | `string` | Database user name. |
+| `services.slurm.enableSrunX11` | `boolean` | If enabled srun will accept the option "--x11" to allow for X11 forwarding from within an interactive session or a batch job. This activates the slurm-spank-x11 module. Note that this option also enables {option}`services.openssh.forwardX11` on the client. This option requires slurm to be compiled without native X11 support. The default behavior is to re-compile the slurm package with native X11 support disabled if this option is set to true. To use the native X11 support add `PrologFlags=X11` in {option}`extraConfig`. Note that this method will only work RSA SSH host keys. |
+| `services.slurm.enableStools` | `boolean` | Whether to provide a {file}`slurm.conf` file. Enable this option if you do not run a slurm daemon on this host (i.e. `server.enable` and `client.enable` are `false`) but you still want to run slurm commands from this host. |
+| `services.slurm.extraCgroupConfig` | `strings concatenated with "\n"` | Extra configuration for {file}`cgroup.conf`. This file is used when `procTrackType=proctrack/cgroup`. |
+| `services.slurm.extraConfig` | `strings concatenated with "\n"` | Extra configuration options that will be added verbatim at the end of the slurm configuration file. |
+| `services.slurm.extraConfigPaths` | `list of absolute path` | Slurm expects config files for plugins in the same path as {file}`slurm.conf`. Add extra nix store paths that should be merged into same directory as {file}`slurm.conf`. |
+| `services.slurm.extraPlugstackConfig` | `strings concatenated with "\n"` | Extra configuration that will be added to the end of {file}`plugstack.conf`. |
+| `services.slurm.mpi.PmixCliTmpDirBase` | `string` | Base path for PMIx temporary files. |
+| `services.slurm.mpi.extraMpiConfig` | `strings concatenated with "\n"` | Extra configuration for that will be added to {file}`mpi.conf`. |
+| `services.slurm.nodeName` | `list of string` | Name that SLURM uses to refer to a node (or base partition for BlueGene systems). Typically this would be the string that "/bin/hostname -s" returns. Note that now you have to write node's parameters after the name. |
+| `services.slurm.package` | `package` | The slurm package to use. |
+| `services.slurm.partitionName` | `list of string` | Name by which the partition may be referenced. Note that now you have to write the partition's parameters after the name. |
+| `services.slurm.procTrackType` | `string` | Plugin to be used for process tracking on a job step basis. The slurmd daemon uses this mechanism to identify all processes which are children of processes it spawns for a user job step. |
+| `services.slurm.rest.enable` | `boolean` | Whether to enable slurm REST daemon. |
+| `services.slurm.rest.environment` | `open submodule of attribute set of string` | Environment variables to set for the slurmrestd daemon, see slurmrestd(8). |
+| `services.slurm.rest.environment.SLURMRESTD_DEBUG` | `string` | Set debug level explicitly. Valid values are 0-9, or the same string values as the debug options such as SlurmctldDebug in slurm.conf(5). |
+| `services.slurm.rest.environment.SLURMRESTD_LISTEN` | `string` | Comma-delimited list of host:port pairs or unix sockets to listen on. |
+| `services.slurm.rest.environment.SLURM_JWT` | `string` | This variable must be set to use JWT token authentication. |
+| `services.slurm.rest.options` | `string` | Extra command-line options to pass to slurmrestd. |
+| `services.slurm.server.enable` | `boolean` | Whether to enable the slurm control daemon. Note that the standard authentication method is "munge". The "munge" service needs to be provided with a password file in order for slurm to work properly (see `services.munge.password`). |
+| `services.slurm.server.flags` | `attribute set of (string or boolean or floating point number or signed integer)` | Flags passed to `slurmctld` daemon, see {manpage}`slurmctld(8)`. Special characters are properly escaped. |
+| `services.slurm.stateSaveLocation` | `string` | Directory into which the Slurm controller, slurmctld, saves its state. |
+| `services.slurm.user` | `string` | Set this option when you want to run the slurmctld daemon as something else than the default slurm user "slurm". Note that the UID of this user needs to be the same on all nodes. |

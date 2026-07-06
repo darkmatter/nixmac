@@ -5,6 +5,6 @@
 All options under `programs.flashrom`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `programs.flashrom.enable` | | |
-| `programs.flashrom.package` | | |
+| --- | --- | --- |
+| `programs.flashrom.enable` | `boolean` | Installs flashrom and configures udev rules for programmers used by flashrom. Grants access to users in the "flashrom" group. |
+| `programs.flashrom.package` | `package` | The flashrom package to use. |

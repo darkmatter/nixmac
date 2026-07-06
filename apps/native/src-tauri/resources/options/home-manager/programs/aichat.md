@@ -5,8 +5,8 @@
 All options under `programs.aichat`.
 
 | Option | Type | Description |
-| -------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `programs.aichat.agents` | `attribute set of (YAML 1.1 value)` | Agent-specific configurations. See https://github.com/sigoden/aichat/wiki/Configuration-Guide#agent-specific for supported values. |
+| --- | --- | --- |
+| `programs.aichat.agents` | `attribute set of (YAML 1.1 value)` | Agent-specific configurations. See <https://github.com/sigoden/aichat/wiki/Configuration-Guide#agent-specific> for supported values. |
 | `programs.aichat.enable` | `boolean` | Whether to enable aichat, an All-in-one LLM CLI tool. |
 | `programs.aichat.package` | `null or package` | The aichat package to use. |
-| `programs.aichat.settings` | `YAML 1.1 value` | Configuration written to $XDG_CONFIG_HOME/aichat/config.yaml on Linux or on Darwin if xdg.enable is set, otherwise ~/Library/Application Support/aichat/config.yaml . See https://github.com/sigoden/aichat/blob/main/config.example.yaml for supported values. |
+| `programs.aichat.settings` | `YAML 1.1 value` | Configuration written to {file}`$XDG_CONFIG_HOME/aichat/config.yaml` on Linux or on Darwin if [](#opt-xdg.enable) is set, otherwise {file}`~/Library/Application Support/aichat/config.yaml`. See <https://github.com/sigoden/aichat/blob/main/config.example.yaml> for supported values. |

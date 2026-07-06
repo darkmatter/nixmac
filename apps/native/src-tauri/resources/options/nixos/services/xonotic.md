@@ -5,11 +5,18 @@
 All options under `services.xonotic`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.xonotic.appendConfig` | | |
-| `services.xonotic.dataDir` | | |
-| `services.xonotic.enable` | | |
-| `services.xonotic.openFirewall` | | |
-| `services.xonotic.package` | | |
-| `services.xonotic.prependConfig` | | |
-| `services.xonotic.settings` | | |
+| --- | --- | --- |
+| `services.xonotic.appendConfig` | `null or strings concatenated with "\n"` | Literal text to insert at the end of `server.cfg`. |
+| `services.xonotic.dataDir` | `absolute path` | Data directory. |
+| `services.xonotic.enable` | `boolean` | Whether to enable Xonotic dedicated server. |
+| `services.xonotic.openFirewall` | `boolean` | Open the firewall for TCP and UDP on the specified port. |
+| `services.xonotic.package` | `package` | The xonotic-dedicated package to use. |
+| `services.xonotic.prependConfig` | `null or strings concatenated with "\n"` | Literal text to insert at the start of `server.cfg`. |
+| `services.xonotic.settings` | `open submodule of attribute set of ((optionally newline-terminated) single-line string or signed integer or floating point number or non-empty (list of ((optionally newline-terminated) single-line string or signed integer or floating point number)))` | Generates the `server.cfg` file. Refer to [upstream's example][0] for details. \[0\]: https://gitlab.com/xonotic/xonotic/-/blob/master/server/server.cfg |
+| `services.xonotic.settings.hostname` | `(optionally newline-terminated) single-line string` | The name that will appear in the server list. `$g_xonoticversion` gets replaced with the current version. |
+| `services.xonotic.settings.maxplayers` | `signed integer` | Number of player slots on the server, including spectators. |
+| `services.xonotic.settings.net_address` | `(optionally newline-terminated) single-line string` | The address Xonotic will listen on. |
+| `services.xonotic.settings.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port Xonotic will listen on. |
+| `services.xonotic.settings.sv_motd` | `(optionally newline-terminated) single-line string` | Text displayed when players join the server. |
+| `services.xonotic.settings.sv_public` | `signed integer` | Controls whether the server will be publicly listed. |
+| `services.xonotic.settings.sv_termsofservice_url` | `(optionally newline-terminated) single-line string` | URL for the Terms of Service for playing on your server. |

@@ -5,7 +5,7 @@
 All options under `services.xmrig`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.xmrig.enable` | | |
-| `services.xmrig.package` | | |
-| `services.xmrig.settings` | | |
+| --- | --- | --- |
+| `services.xmrig.enable` | `boolean` | Whether to enable XMRig Mining Software. |
+| `services.xmrig.package` | `package` | The xmrig package to use. |
+| `services.xmrig.settings` | `JSON value` | XMRig configuration. Refer to <https://xmrig.com/docs/miner/config> for details on supported values. |

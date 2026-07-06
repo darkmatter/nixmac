@@ -5,7 +5,11 @@
 All options under `services.botamusique`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.botamusique.enable` | | |
-| `services.botamusique.package` | | |
-| `services.botamusique.settings` | | |
+| --- | --- | --- |
+| `services.botamusique.enable` | `boolean` | Whether to enable botamusique, a bot to play audio streams on mumble. |
+| `services.botamusique.package` | `package` | The botamusique package to use. |
+| `services.botamusique.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Your {file}`configuration.ini` as a Nix attribute set. Look up possible options in the [configuration.example.ini](https://github.com/azlux/botamusique/blob/master/configuration.example.ini). |
+| `services.botamusique.settings.bot.comment` | `string` | Comment displayed for the bot. |
+| `services.botamusique.settings.bot.username` | `string` | Name the bot should appear with. |
+| `services.botamusique.settings.server.host` | `string` | Hostname of the mumble server to connect to. |
+| `services.botamusique.settings.server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port of the mumble server to connect to. |

@@ -5,6 +5,6 @@
 All options under `services.eg25-manager`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.eg25-manager.enable` | | |
-| `services.eg25-manager.package` | | |
+| --- | --- | --- |
+| `services.eg25-manager.enable` | `boolean` | Whether to enable Quectel EG25 modem manager service. |
+| `services.eg25-manager.package` | `package` | The eg25-manager package to use. |

@@ -5,20 +5,20 @@
 All options under `services.cockroachdb`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.cockroachdb.cache` | | |
-| `services.cockroachdb.certsDir` | | |
-| `services.cockroachdb.enable` | | |
-| `services.cockroachdb.extraArgs` | | |
-| `services.cockroachdb.group` | | |
-| `services.cockroachdb.http.address` | | |
-| `services.cockroachdb.http.port` | | |
-| `services.cockroachdb.insecure` | | |
-| `services.cockroachdb.join` | | |
-| `services.cockroachdb.listen.address` | | |
-| `services.cockroachdb.listen.port` | | |
-| `services.cockroachdb.locality` | | |
-| `services.cockroachdb.maxSqlMemory` | | |
-| `services.cockroachdb.openPorts` | | |
-| `services.cockroachdb.package` | | |
-| `services.cockroachdb.user` | | |
+| --- | --- | --- |
+| `services.cockroachdb.cache` | `string` | The total size for caches. This can be a percentage, expressed with a fraction sign or as a decimal-point number, or any bytes-based unit. For example, `"25%"`, `"0.25"` both represent 25% of the available system memory. The values `"1000000000"` and `"1GB"` both represent 1 gigabyte of memory. |
+| `services.cockroachdb.certsDir` | `null or absolute path` | The path to the certificate directory. |
+| `services.cockroachdb.enable` | `boolean` | Whether to enable CockroachDB Server. |
+| `services.cockroachdb.extraArgs` | `list of string` | Extra CLI arguments passed to {command}`cockroach start`. For the full list of supported arguments, check <https://www.cockroachlabs.com/docs/stable/cockroach-start.html#flags> |
+| `services.cockroachdb.group` | `string` | User account under which CockroachDB runs |
+| `services.cockroachdb.http.address` | `string` | Address to bind to for http-based Admin UI |
+| `services.cockroachdb.http.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to bind to for http-based Admin UI |
+| `services.cockroachdb.insecure` | `boolean` | Run in insecure mode. |
+| `services.cockroachdb.join` | `null or string` | The addresses for connecting the node to a cluster. |
+| `services.cockroachdb.listen.address` | `string` | Address to bind to for intra-cluster communication |
+| `services.cockroachdb.listen.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to bind to for intra-cluster communication |
+| `services.cockroachdb.locality` | `null or string` | An ordered, comma-separated list of key-value pairs that describe the topography of the machine. Topography might include country, datacenter or rack designations. Data is automatically replicated to maximize diversities of each tier. The order of tiers is used to determine the priority of the diversity, so the more inclusive localities like country should come before less inclusive localities like datacenter. The tiers and order must be the same on all nodes. Including more tiers is better than including fewer. For example: `    country=us,region=us-west,datacenter=us-west-1b,rack=12     country=ca,region=ca-east,datacenter=ca-east-2,rack=4      planet=earth,province=manitoba,colo=secondary,power=3` |
+| `services.cockroachdb.maxSqlMemory` | `string` | The maximum in-memory storage capacity available to store temporary data for SQL queries. This can be a percentage, expressed with a fraction sign or as a decimal-point number, or any bytes-based unit. For example, `"25%"`, `"0.25"` both represent 25% of the available system memory. The values `"1000000000"` and `"1GB"` both represent 1 gigabyte of memory. |
+| `services.cockroachdb.openPorts` | `boolean` | Open firewall ports for cluster communication by default |
+| `services.cockroachdb.package` | `package` | The cockroachdb package to use. This would primarily be useful to enable Enterprise Edition features in your own custom CockroachDB build (Nixpkgs CockroachDB binaries only contain open source features and open source code). |
+| `services.cockroachdb.user` | `string` | User account under which CockroachDB runs |

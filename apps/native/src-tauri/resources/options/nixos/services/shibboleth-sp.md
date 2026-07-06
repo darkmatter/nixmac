@@ -5,9 +5,9 @@
 All options under `services.shibboleth-sp`.
 
 | Option | Type | Description |
-| --------------------------------------------------- | ---- | ----------- |
-| `services.shibboleth-sp.configFile` | | |
-| `services.shibboleth-sp.enable` | | |
-| `services.shibboleth-sp.fastcgi.enable` | | |
-| `services.shibboleth-sp.fastcgi.shibAuthorizerPort` | | |
-| `services.shibboleth-sp.fastcgi.shibResponderPort` | | |
+| --- | --- | --- |
+| `services.shibboleth-sp.configFile` | `absolute path` | Path to shibboleth config file |
+| `services.shibboleth-sp.enable` | `boolean` | Whether to enable the shibboleth service |
+| `services.shibboleth-sp.fastcgi.enable` | `boolean` | Whether to include the shibauthorizer and shibresponder FastCGI processes |
+| `services.shibboleth-sp.fastcgi.shibAuthorizerPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port for shibauthorizer FastCGI process to bind to |
+| `services.shibboleth-sp.fastcgi.shibResponderPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port for shibauthorizer FastCGI process to bind to |

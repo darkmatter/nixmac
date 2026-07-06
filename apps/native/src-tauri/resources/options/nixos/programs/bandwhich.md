@@ -5,5 +5,5 @@
 All options under `programs.bandwhich`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `programs.bandwhich.enable` | | |
+| --- | --- | --- |
+| `programs.bandwhich.enable` | `boolean` | Whether to add bandwhich to the global environment and configure a setcap wrapper for it. |

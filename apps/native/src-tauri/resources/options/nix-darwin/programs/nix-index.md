@@ -5,6 +5,6 @@
 All options under `programs.nix-index`.
 
 | Option | Type | Description |
-| ---------------------------- | --------- | ------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.nix-index.enable` | `boolean` | Whether to enable nix-index and its command-not-found helper. |
 | `programs.nix-index.package` | `package` | This option specifies the nix-index package to use. |

@@ -5,11 +5,10 @@
 All options under `services.influxdb`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.influxdb.dataDir` | | |
-| `services.influxdb.enable` | | |
-| `services.influxdb.extraConfig` | | |
-| `services.influxdb.group` | | |
-| `services.influxdb.package` | | |
-| `services.influxdb.settings` | | |
-| `services.influxdb.user` | | |
+| --- | --- | --- |
+| `services.influxdb.dataDir` | `absolute path` | Data directory for influxd data files. |
+| `services.influxdb.enable` | `boolean` | Whether to enable the influxdb server. |
+| `services.influxdb.group` | `string` | Group under which influxdb runs |
+| `services.influxdb.package` | `package` | The influxdb package to use. |
+| `services.influxdb.settings` | `open submodule of (TOML value)` | Extra configuration options for influxdb |
+| `services.influxdb.user` | `string` | User account under which influxdb runs |

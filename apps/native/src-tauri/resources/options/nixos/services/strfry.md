@@ -5,7 +5,7 @@
 All options under `services.strfry`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.strfry.enable` | | |
-| `services.strfry.package` | | |
-| `services.strfry.settings` | | |
+| --- | --- | --- |
+| `services.strfry.enable` | `boolean` | Whether to enable strfry. |
+| `services.strfry.package` | `package` | The strfry package to use. |
+| `services.strfry.settings` | `JSON value` | Configuration options to set for the Strfry service. See <https://github.com/hoytech/strfry> for documentation. |

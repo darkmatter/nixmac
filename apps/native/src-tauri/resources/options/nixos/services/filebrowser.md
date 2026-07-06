@@ -5,10 +5,15 @@
 All options under `services.filebrowser`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.filebrowser.enable` | | |
-| `services.filebrowser.group` | | |
-| `services.filebrowser.openFirewall` | | |
-| `services.filebrowser.package` | | |
-| `services.filebrowser.settings` | | |
-| `services.filebrowser.user` | | |
+| --- | --- | --- |
+| `services.filebrowser.enable` | `boolean` | Whether to enable FileBrowser. |
+| `services.filebrowser.group` | `string` | Group under which FileBrowser runs. |
+| `services.filebrowser.openFirewall` | `boolean` | Whether to enable opening firewall ports for FileBrowser. |
+| `services.filebrowser.package` | `package` | The filebrowser package to use. |
+| `services.filebrowser.settings` | `open submodule of (JSON value)` | Settings for FileBrowser. Refer to <https://filebrowser.org/cli/filebrowser#options> for all supported values. |
+| `services.filebrowser.settings.address` | `string` | The address to listen on. |
+| `services.filebrowser.settings.cache-dir` | `absolute path` | The directory where FileBrowser stores its cache. |
+| `services.filebrowser.settings.database` | `absolute path` | The path to FileBrowser's Bolt database. |
+| `services.filebrowser.settings.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to listen on. |
+| `services.filebrowser.settings.root` | `absolute path` | The directory where FileBrowser stores files. |
+| `services.filebrowser.user` | `string` | User account under which FileBrowser runs. |

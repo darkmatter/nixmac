@@ -5,7 +5,7 @@
 All options under `programs.grep`.
 
 | Option | Type | Description |
-| ----------------------- | ------------------------- | ------------------------ |
-| `programs.grep.colors` | `attribute set of string` | Settings for GREP_COLORS |
-| `programs.grep.enable` | `boolean` | Whether to enable grep … |
+| --- | --- | --- |
+| `programs.grep.colors` | `attribute set of string` | Settings for {env}`GREP_COLORS` |
+| `programs.grep.enable` | `boolean` | Whether to enable {command}`grep`.. |
 | `programs.grep.package` | `null or package` | The grep package to use. |

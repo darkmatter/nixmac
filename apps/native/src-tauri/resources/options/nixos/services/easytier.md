@@ -5,8 +5,23 @@
 All options under `services.easytier`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.easytier.allowSystemForward` | | |
-| `services.easytier.enable` | | |
-| `services.easytier.instances` | | |
-| `services.easytier.package` | | |
+| --- | --- | --- |
+| `services.easytier.allowSystemForward` | `boolean` | Whether to enable Allow the system to forward packets from easytier. Useful when `proxy_forward_by_system` enabled. . |
+| `services.easytier.enable` | `boolean` | Whether to enable EasyTier daemon. |
+| `services.easytier.instances` | `attribute set of (submodule)` | EasyTier instances. |
+| `services.easytier.instances.<name>.configFile` | `null or absolute path` | Path to easytier config file. Setting this option will override `settings` and `extraSettings` of this instance. |
+| `services.easytier.instances.<name>.configServer` | `null or string` | Configure the instance from config server. When this option set, any other settings for configuring the instance manually except `hostname` will be ignored. Valid formats are: - full uri for custom server: `udp://example.com:22020/<token>` - username only for official server: `<token>` |
+| `services.easytier.instances.<name>.enable` | `boolean` | Enable the instance. |
+| `services.easytier.instances.<name>.environmentFiles` | `list of absolute path` | Environment files for this instance. All command-line args have corresponding environment variables. |
+| `services.easytier.instances.<name>.extraArgs` | `list of string` | Extra args append to the easytier command-line. |
+| `services.easytier.instances.<name>.extraSettings` | `TOML value` | Extra settings to add to {file}`easytier-‹name›.toml`. |
+| `services.easytier.instances.<name>.settings` | `submodule` | Settings to generate {file}`easytier-‹name›.toml` |
+| `services.easytier.instances.<name>.settings.dhcp` | `boolean` | Automatically determine the IPv4 address of this peer based on existing peers on network. |
+| `services.easytier.instances.<name>.settings.hostname` | `null or string` | Hostname shown in peer list and web console. |
+| `services.easytier.instances.<name>.settings.instance_name` | `string` | Identify different instances on same host |
+| `services.easytier.instances.<name>.settings.ipv4` | `null or string` | IPv4 cidr address of this peer in the virtual network. If empty, this peer will only forward packets and no TUN device will be created. |
+| `services.easytier.instances.<name>.settings.listeners` | `list of string` | Listener addresses to accept connections from other peers. Valid format is: `<proto>://<addr>:<port>`, where the protocol can be `tcp`, `udp`, `ring`, `wg`, `ws`, `wss`. |
+| `services.easytier.instances.<name>.settings.network_name` | `null or string` | EasyTier network name. |
+| `services.easytier.instances.<name>.settings.network_secret` | `null or string` | EasyTier network credential used for verification and encryption. It can also be set in environmentFile. |
+| `services.easytier.instances.<name>.settings.peers` | `list of string` | Peers to connect initially. Valid format is: `<proto>://<addr>:<port>`. |
+| `services.easytier.package` | `package` | The easytier package to use. |

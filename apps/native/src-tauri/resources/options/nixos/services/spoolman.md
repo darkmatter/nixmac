@@ -5,9 +5,9 @@
 All options under `services.spoolman`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.spoolman.enable` | | |
-| `services.spoolman.environment` | | |
-| `services.spoolman.listen` | | |
-| `services.spoolman.openFirewall` | | |
-| `services.spoolman.port` | | |
+| --- | --- | --- |
+| `services.spoolman.enable` | `boolean` | Whether to enable Spoolman, a filament spool inventory management system.. |
+| `services.spoolman.environment` | `attribute set` | Environment variables to be passed to the spoolman service. Refer to https://github.com/Donkie/Spoolman/blob/master/.env.example for details on supported variables. |
+| `services.spoolman.listen` | `string` | The IP address to bind the spoolman server to. |
+| `services.spoolman.openFirewall` | `boolean` | Open the appropriate ports in the firewall for spoolman. |
+| `services.spoolman.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | TCP port where spoolman web-gui listens. |

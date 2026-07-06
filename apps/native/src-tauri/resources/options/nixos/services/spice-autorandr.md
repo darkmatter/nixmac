@@ -5,6 +5,6 @@
 All options under `services.spice-autorandr`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.spice-autorandr.enable` | | |
-| `services.spice-autorandr.package` | | |
+| --- | --- | --- |
+| `services.spice-autorandr.enable` | `boolean` | Whether to enable spice-autorandr service that will automatically resize display to match SPICE client window size. |
+| `services.spice-autorandr.package` | `package` | The spice-autorandr package to use. |

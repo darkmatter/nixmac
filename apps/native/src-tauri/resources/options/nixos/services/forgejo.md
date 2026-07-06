@@ -5,47 +5,42 @@
 All options under `services.forgejo`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `services.forgejo.appName` | | |
-| `services.forgejo.cookieSecure` | | |
-| `services.forgejo.customDir` | | |
-| `services.forgejo.database.createDatabase` | | |
-| `services.forgejo.database.host` | | |
-| `services.forgejo.database.name` | | |
-| `services.forgejo.database.password` | | |
-| `services.forgejo.database.passwordFile` | | |
-| `services.forgejo.database.path` | | |
-| `services.forgejo.database.port` | | |
-| `services.forgejo.database.socket` | | |
-| `services.forgejo.database.type` | | |
-| `services.forgejo.database.user` | | |
-| `services.forgejo.disableRegistration` | | |
-| `services.forgejo.domain` | | |
-| `services.forgejo.dump.age` | | |
-| `services.forgejo.dump.backupDir` | | |
-| `services.forgejo.dump.enable` | | |
-| `services.forgejo.dump.file` | | |
-| `services.forgejo.dump.interval` | | |
-| `services.forgejo.dump.type` | | |
-| `services.forgejo.enable` | | |
-| `services.forgejo.enableUnixSocket` | | |
-| `services.forgejo.extraConfig` | | |
-| `services.forgejo.group` | | |
-| `services.forgejo.httpAddress` | | |
-| `services.forgejo.httpPort` | | |
-| `services.forgejo.lfs.contentDir` | | |
-| `services.forgejo.lfs.enable` | | |
-| `services.forgejo.log.level` | | |
-| `services.forgejo.log.rootPath` | | |
-| `services.forgejo.mailerPasswordFile` | | |
-| `services.forgejo.package` | | |
-| `services.forgejo.repositoryRoot` | | |
-| `services.forgejo.rootUrl` | | |
-| `services.forgejo.secrets` | | |
-| `services.forgejo.settings` | | |
-| `services.forgejo.ssh.clonePort` | | |
-| `services.forgejo.ssh.enable` | | |
-| `services.forgejo.stateDir` | | |
-| `services.forgejo.staticRootPath` | | |
-| `services.forgejo.useWizard` | | |
-| `services.forgejo.user` | | |
+| --- | --- | --- |
+| `services.forgejo.customDir` | `string` | Base directory for custom templates and other options. If {option}`services.forgejo.useWizard` is disabled (default), this directory will also hold secrets and the resulting {file}`app.ini` config at runtime. |
+| `services.forgejo.database.createDatabase` | `boolean` | Whether to create a local database automatically. |
+| `services.forgejo.database.host` | `string` | Database host address. |
+| `services.forgejo.database.name` | `string` | Database name. |
+| `services.forgejo.database.passwordFile` | `null or absolute path` | A file containing the password corresponding to {option}`services.forgejo.database.user`. |
+| `services.forgejo.database.path` | `string` | Path to the sqlite3 database file. |
+| `services.forgejo.database.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Database host port. |
+| `services.forgejo.database.socket` | `null or absolute path` | Path to the unix socket file to use for authentication. |
+| `services.forgejo.database.type` | `one of "sqlite3", "mysql", "postgres"` | Database engine to use. |
+| `services.forgejo.database.user` | `string` | Database user. |
+| `services.forgejo.dump.age` | `string` | Age of backup used to decide what files to delete when cleaning. If a file or directory is older than the current time minus the age field, it is deleted. The format is described in {manpage}`tmpfiles.d(5)`. |
+| `services.forgejo.dump.backupDir` | `string` | Path to the directory where the dump archives will be stored. |
+| `services.forgejo.dump.enable` | `boolean` | Whether to enable periodic dumps via the [built-in {command}`dump` command](https://forgejo.org/docs/latest/admin/command-line/#dump). |
+| `services.forgejo.dump.file` | `null or string` | Filename to be used for the dump. If `null` a default name is chosen by forgejo. |
+| `services.forgejo.dump.interval` | `string` | Run a Forgejo dump at this interval. Runs by default at 04:31 every day. The format is described in {manpage}`systemd.time(7)`. |
+| `services.forgejo.dump.type` | `one of "zip", "tar", "tar.sz", "tar.gz", "tar.xz", "tar.bz2", "tar.br", "tar.lz4", "tar.zst"` | Archive format used to store the dump file. |
+| `services.forgejo.enable` | `boolean` | Whether to enable Forgejo, a software forge. |
+| `services.forgejo.group` | `string` | Group under which Forgejo runs. |
+| `services.forgejo.lfs.contentDir` | `string` | Where to store LFS files. |
+| `services.forgejo.lfs.enable` | `boolean` | Enables git-lfs support. |
+| `services.forgejo.package` | `package` | The forgejo-lts package to use. |
+| `services.forgejo.repositoryRoot` | `string` | Path to the git repositories. |
+| `services.forgejo.secrets` | `open submodule of attribute set of attribute set of absolute path` | This is a small wrapper over systemd's `LoadCredential`. It takes the same sections and keys as {option}`services.forgejo.settings`, but the value of each key is a path instead of a string or bool. The path is then loaded as credential, exported as environment variable and then feed through <https://codeberg.org/forgejo/forgejo/src/branch/forgejo/contrib/environment-to-ini/environment-to-ini.go>. It does the required environment variable escaping for you. ::: {.note} Keys specified here take priority over the ones in {option}`services.forgejo.settings`! ::: |
+| `services.forgejo.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Free-form settings written directly to the `app.ini` configfile file. Refer to <https://forgejo.org/docs/latest/admin/config-cheat-sheet/> for supported values. |
+| `services.forgejo.settings.log.LEVEL` | `one of "Trace", "Debug", "Info", "Warn", "Error", "Critical"` | General log level. |
+| `services.forgejo.settings.log.ROOT_PATH` | `string` | Root path for log files. |
+| `services.forgejo.settings.server.DISABLE_SSH` | `boolean` | Disable external SSH feature. |
+| `services.forgejo.settings.server.DOMAIN` | `string` | Domain name of your server. |
+| `services.forgejo.settings.server.HTTP_ADDR` | `string or absolute path` | Listen address. Must be a path when using a unix socket. |
+| `services.forgejo.settings.server.HTTP_PORT` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listen port. Ignored when using a unix socket. |
+| `services.forgejo.settings.server.PROTOCOL` | `one of "http", "https", "fcgi", "http+unix", "fcgi+unix"` | Listen protocol. `+unix` means "over unix", not "in addition to." |
+| `services.forgejo.settings.server.ROOT_URL` | `string` | Full public URL of Forgejo server. |
+| `services.forgejo.settings.server.SSH_PORT` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | SSH port displayed in clone URL. The option is required to configure a service when the external visible port differs from the local listening port i.e. if port forwarding is used. |
+| `services.forgejo.settings.server.STATIC_ROOT_PATH` | `string or absolute path` | Upper level of template and static files path. |
+| `services.forgejo.settings.session.COOKIE_SECURE` | `boolean` | Marks session cookies as "secure" as a hint for browsers to only send them via HTTPS. This option is recommend, if Forgejo is being served over HTTPS. |
+| `services.forgejo.stateDir` | `string` | Forgejo data directory. |
+| `services.forgejo.useWizard` | `boolean` | Whether to use the built-in installation wizard instead of declaratively managing the {file}`app.ini` config file in nix. |
+| `services.forgejo.user` | `string` | User account under which Forgejo runs. |

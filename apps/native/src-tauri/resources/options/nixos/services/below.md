@@ -5,14 +5,14 @@
 All options under `services.below`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.below.cgroupFilterOut` | | |
-| `services.below.collect.diskStats` | | |
-| `services.below.collect.exitStats` | | |
-| `services.below.collect.ioStats` | | |
-| `services.below.compression.enable` | | |
-| `services.below.dirs.log` | | |
-| `services.below.dirs.store` | | |
-| `services.below.enable` | | |
-| `services.below.retention.size` | | |
-| `services.below.retention.time` | | |
+| --- | --- | --- |
+| `services.below.cgroupFilterOut` | `null or string` | A regexp matching the full paths of cgroups whose data shouldn't be collected |
+| `services.below.collect.diskStats` | `boolean` | Whether to enable dist_stat collection. |
+| `services.below.collect.exitStats` | `boolean` | Whether to enable eBPF-based exitstats. |
+| `services.below.collect.ioStats` | `boolean` | Whether to enable io.stat collection for cgroups. |
+| `services.below.compression.enable` | `boolean` | Whether to enable data compression. |
+| `services.below.dirs.log` | `null or absolute path` | Where to store below's logs |
+| `services.below.dirs.store` | `null or absolute path` | Where to store below's data |
+| `services.below.enable` | `boolean` | Whether to enable 'below' resource monitor. |
+| `services.below.retention.size` | `null or signed integer` | Size limit for below's data, in bytes. Data is deleted oldest-first, in 24h 'shards'. ::: {.note} The size limit may be exceeded by at most the size of the active shard, as: - the active shard cannot be deleted; - the size limit is only enforced when a new shard is created. ::: |
+| `services.below.retention.time` | `null or signed integer` | Retention time, in seconds. ::: {.note} As data is stored in 24 hour shards which are discarded as a whole, only data expired by 24h (or more) is guaranteed to be discarded. ::: ::: {.note} If `retention.size` is set, data may be discarded earlier than the specified time. ::: |

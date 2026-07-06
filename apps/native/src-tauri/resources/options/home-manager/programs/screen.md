@@ -5,7 +5,7 @@
 All options under `programs.screen`.
 
 | Option | Type | Description |
-| -------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.screen.enable` | `boolean` | Whether to enable screen. |
 | `programs.screen.package` | `null or package` | The screen package to use. |
-| `programs.screen.screenrc` | `null or absolute path or strings concatenated with “\n”` | Config file for GNU Screen. All the details can be found here: https://www.gnu.org/software/screen/manual/screen.html . |
+| `programs.screen.screenrc` | `null or absolute path or strings concatenated with "\n"` | Config file for GNU Screen. All the details can be found here: <https://www.gnu.org/software/screen/manual/screen.html>. |

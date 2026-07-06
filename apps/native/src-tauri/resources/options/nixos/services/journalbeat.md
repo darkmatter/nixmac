@@ -5,10 +5,10 @@
 All options under `services.journalbeat`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.journalbeat.enable` | | |
-| `services.journalbeat.extraConfig` | | |
-| `services.journalbeat.name` | | |
-| `services.journalbeat.package` | | |
-| `services.journalbeat.stateDir` | | |
-| `services.journalbeat.tags` | | |
+| --- | --- | --- |
+| `services.journalbeat.enable` | `boolean` | Whether to enable journalbeat. |
+| `services.journalbeat.extraConfig` | `strings concatenated with "\n"` | Any other configuration options you want to add |
+| `services.journalbeat.name` | `string` | Name of the beat |
+| `services.journalbeat.package` | `package` | The journalbeat package to use. |
+| `services.journalbeat.stateDir` | `string` | Directory below `/var/lib/` to store journalbeat's own logs and other data. This directory will be created automatically using systemd's StateDirectory mechanism. |
+| `services.journalbeat.tags` | `list of string` | Tags to place on the shipped log messages |

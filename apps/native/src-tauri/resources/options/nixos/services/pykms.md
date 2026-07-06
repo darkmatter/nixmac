@@ -5,13 +5,12 @@
 All options under `services.pykms`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.pykms.enable` | | |
-| `services.pykms.extraArgs` | | |
-| `services.pykms.listenAddress` | | |
-| `services.pykms.logLevel` | | |
-| `services.pykms.memoryLimit` | | |
-| `services.pykms.openFirewallPort` | | |
-| `services.pykms.package` | | |
-| `services.pykms.port` | | |
-| `services.pykms.verbose` | | |
+| --- | --- | --- |
+| `services.pykms.enable` | `boolean` | Whether to enable the PyKMS service. |
+| `services.pykms.extraArgs` | `list of string` | Additional arguments |
+| `services.pykms.listenAddress` | `string` | The IP address on which to listen. |
+| `services.pykms.logLevel` | `one of "CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "MININFO"` | How much to log |
+| `services.pykms.memoryLimit` | `string` | How much memory to use at most. |
+| `services.pykms.openFirewallPort` | `boolean` | Whether the listening port should be opened automatically. |
+| `services.pykms.package` | `package` | The pykms package to use. |
+| `services.pykms.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port on which to listen. |

@@ -5,24 +5,100 @@
 All options under `services.akkoma`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.akkoma.config` | | |
-| `services.akkoma.dist.address` | | |
-| `services.akkoma.dist.cookie` | | |
-| `services.akkoma.dist.epmdPort` | | |
-| `services.akkoma.dist.extraFlags` | | |
-| `services.akkoma.dist.portMax` | | |
-| `services.akkoma.dist.portMin` | | |
-| `services.akkoma.enable` | | |
-| `services.akkoma.extraPackages` | | |
-| `services.akkoma.extraStatic` | | |
-| `services.akkoma.frontends` | | |
-| `services.akkoma.group` | | |
-| `services.akkoma.initDb.enable` | | |
-| `services.akkoma.initDb.password` | | |
-| `services.akkoma.initDb.username` | | |
-| `services.akkoma.initSecrets` | | |
-| `services.akkoma.installWrapper` | | |
-| `services.akkoma.nginx` | | |
-| `services.akkoma.package` | | |
-| `services.akkoma.user` | | |
+| --- | --- | --- |
+| `services.akkoma.config` | `open submodule of attribute set of attribute set of (Elixir value)` | Configuration for Akkoma. The attributes are serialised to Elixir DSL. Refer to <https://docs.akkoma.dev/stable/configuration/cheatsheet/> for configuration options. Settings containing secret data should be set to an attribute set containing the attribute `_secret` - a string pointing to a file containing the value the option should be set to. |
+| `services.akkoma.config.":joken".":default_signer"` | `secret value` | JWT signing secret. The attribute `_secret` should point to a file containing the secret. This secret can be generated as follows: `ShellSession $ tr -dc 'A-Za-z0-9-._~' </dev/urandom \| head -c 64 ` |
+| `services.akkoma.config.":logger".":ex_syslogger".level` | `non-empty string` | Log level. Refer to <https://hexdocs.pm/logger/Logger.html#module-levels> for options. |
+| `services.akkoma.config.":pleroma".":frontends"` | `Elixir value` | Frontend configuration. Users should rely on the default value and prefer to configure frontends through [{option}`config.services.akkoma.frontends`](#opt-services.akkoma.frontends). |
+| `services.akkoma.config.":pleroma".":instance".description` | `non-empty string` | Instance description. |
+| `services.akkoma.config.":pleroma".":instance".email` | `non-empty string` | Instance administrator email. |
+| `services.akkoma.config.":pleroma".":instance".name` | `non-empty string` | Instance name. |
+| `services.akkoma.config.":pleroma".":instance".static_dir` | `absolute path` | Directory of static files. This directory can be built using a derivation, or it can be managed as mutable state by setting the option to an absolute path. |
+| `services.akkoma.config.":pleroma".":instance".upload_dir` | `absolute path` | Directory where Akkoma will put uploaded files. |
+| `services.akkoma.config.":pleroma".":media_proxy".base_url` | `null or non-empty string` | Base path for the media proxy. Whilst this can just be set to a subdirectory of the main domain, it is now recommended to use a different subdomain. |
+| `services.akkoma.config.":pleroma".":media_proxy".enabled` | `boolean` | Whether to enable proxying of remote media through the instance's proxy. |
+| `services.akkoma.config.":pleroma"."Pleroma.Repo"` | `Elixir value` | Database configuration. Refer to <https://hexdocs.pm/ecto_sql/Ecto.Adapters.Postgres.html#module-connection-options> for options. |
+| `services.akkoma.config.":pleroma"."Pleroma.Upload".base_url` | `non-empty string` | Base path which uploads will be stored at. Whilst this can just be set to a subdirectory of the main domain, it is now recommended to use a different subdomain. |
+| `services.akkoma.config.":pleroma"."Pleroma.Web.Endpoint".http.ip` | `absolute path or IPv4 or IPv6 address` | Listener IP address or Unix socket path. The value is automatically converted to Elixir’s internal address representation during serialisation. |
+| `services.akkoma.config.":pleroma"."Pleroma.Web.Endpoint".http.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listener port number. Must be 0 if using a Unix socket. |
+| `services.akkoma.config.":pleroma"."Pleroma.Web.Endpoint".live_view.signing_salt` | `secret value` | LiveView signing salt. The attribute `_secret` should point to a file containing the secret. This salt can be generated as follows: `ShellSession $ tr -dc 'A-Za-z0-9-._~' </dev/urandom \| head -c 8 ` |
+| `services.akkoma.config.":pleroma"."Pleroma.Web.Endpoint".secret_key_base` | `secret value` | Secret key used as a base to generate further secrets for encrypting and signing data. The attribute `_secret` should point to a file containing the secret. This key can generated can be generated as follows: `ShellSession $ tr -dc 'A-Za-z-._~' </dev/urandom \| head -c 64 ` |
+| `services.akkoma.config.":pleroma"."Pleroma.Web.Endpoint".signing_salt` | `secret value` | Signing salt. The attribute `_secret` should point to a file containing the secret. This salt can be generated as follows: `ShellSession $ tr -dc 'A-Za-z0-9-._~' </dev/urandom \| head -c 8 ` |
+| `services.akkoma.config.":pleroma"."Pleroma.Web.Endpoint".url.host` | `non-empty string` | Domain name of the instance. |
+| `services.akkoma.config.":pleroma"."Pleroma.Web.Endpoint".url.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | External port number. |
+| `services.akkoma.config.":pleroma"."Pleroma.Web.Endpoint".url.scheme` | `non-empty string` | URL scheme. |
+| `services.akkoma.config.":web_push_encryption"` | `open submodule of (Elixir value)` | Web Push Notifications configuration. The necessary key pair can be generated as follows: `ShellSession $ nix-shell -p nodejs --run 'npx web-push generate-vapid-keys' ` |
+| `services.akkoma.config.":web_push_encryption".":vapid_details".private_key` | `secret value` | base64-encoded private ECDH key. The attribute `_secret` should point to a file containing the secret. |
+| `services.akkoma.config.":web_push_encryption".":vapid_details".public_key` | `non-empty string or secret value` | base64-encoded public ECDH key. |
+| `services.akkoma.config.":web_push_encryption".":vapid_details".subject` | `non-empty string` | mailto URI for administrative contact. |
+| `services.akkoma.dist.address` | `IPv4 or IPv6 address` | Listen address for Erlang distribution protocol and Port Mapper Daemon (epmd). |
+| `services.akkoma.dist.cookie` | `null or secret value` | Erlang release cookie. If set to `null`, a temporary random cookie will be generated. |
+| `services.akkoma.dist.epmdPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | TCP port to bind Erlang Port Mapper Daemon to. |
+| `services.akkoma.dist.extraFlags` | `list of string` | Extra flags to pass to Erlang |
+| `services.akkoma.dist.portMax` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Upper bound for Erlang distribution protocol TCP port. |
+| `services.akkoma.dist.portMin` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Lower bound for Erlang distribution protocol TCP port. |
+| `services.akkoma.enable` | `boolean` | Whether to enable Akkoma. |
+| `services.akkoma.extraPackages` | `list of package` | List of extra packages to include in the executable search path of the service unit. These are needed by various configurable components such as: - ExifTool for the `Pleroma.Upload.Filter.Exiftool` upload filter, - ImageMagick for still image previews in the media proxy as well as for the `Pleroma.Upload.Filters.Mogrify` upload filter, and - ffmpeg for video previews in the media proxy. |
+| `services.akkoma.extraStatic` | `null or (attribute set of path in the Nix store)` | Attribute set of extra paths to add to the static files directory. Do not add frontends here. These should be configured through [{option}`services.akkoma.frontends`](#opt-services.akkoma.frontends). |
+| `services.akkoma.frontends` | `attribute set of (submodule)` | Akkoma frontends. |
+| `services.akkoma.frontends.<name>.name` | `non-empty string` | Akkoma frontend name. |
+| `services.akkoma.frontends.<name>.package` | `package` | Akkoma frontend package. |
+| `services.akkoma.frontends.<name>.ref` | `non-empty string` | Akkoma frontend reference. |
+| `services.akkoma.group` | `non-empty string` | Group account under which Akkoma runs. |
+| `services.akkoma.initDb.enable` | `boolean` | Whether to automatically initialise the database on startup. This will create a database role and database if they do not already exist, and (re)set the role password and the ownership of the database. This setting can be used safely even if the database already exists and contains data. The database settings are configured through [{option}`config.services.akkoma.config.":pleroma"."Pleroma.Repo"`](#opt-services.akkoma.config.__pleroma_._Pleroma.Repo_). If disabled, the database has to be set up manually: `SQL CREATE ROLE akkoma LOGIN;  CREATE DATABASE akkoma   OWNER akkoma   TEMPLATE template0   ENCODING 'utf8'   LOCALE 'C';  \connect akkoma CREATE EXTENSION IF NOT EXISTS citext; CREATE EXTENSION IF NOT EXISTS pg_trgm; CREATE EXTENSION IF NOT EXISTS "uuid-ossp"; ` |
+| `services.akkoma.initDb.password` | `null or secret value` | Password of the database user to initialise the database with. If set to `null`, no password will be used. The attribute `_secret` should point to a file containing the secret. |
+| `services.akkoma.initDb.username` | `non-empty string` | Name of the database user to initialise the database with. This user is required to have the `CREATEROLE` and `CREATEDB` capabilities. |
+| `services.akkoma.initSecrets` | `boolean` | Whether to initialise non‐existent secrets with random values. If enabled, appropriate secrets for the following options will be created automatically if the files referenced in the `_secrets` attribute do not exist during startup. - {option}`config.":pleroma"."Pleroma.Web.Endpoint".secret_key_base` - {option}`config.":pleroma"."Pleroma.Web.Endpoint".signing_salt` - {option}`config.":pleroma"."Pleroma.Web.Endpoint".live_view.signing_salt` - {option}`config.":web_push_encryption".":vapid_details".private_key` - {option}`config.":web_push_encryption".":vapid_details".public_key` - {option}`config.":joken".":default_signer"` |
+| `services.akkoma.installWrapper` | `boolean` | Whether to install a wrapper around `pleroma_ctl` to simplify administration of the Akkoma instance. |
+| `services.akkoma.nginx` | `null or (submodule)` | Extra configuration for the nginx virtual host of Akkoma. If set to `null`, no virtual host will be added to the nginx configuration. |
+| `services.akkoma.nginx.acmeFallbackHost` | `null or string` | Host which to proxy requests to if ACME challenge is not found. Useful if you want multiple hosts to be able to verify the same domain name. With this option, you could request certificates for the present domain with an ACME client that is running on another host, which you would specify here. |
+| `services.akkoma.nginx.acmeRoot` | `null or string` | Directory for the ACME challenge, which is **public**. Don't put certs or keys in here. Set to null to inherit from config.security.acme. |
+| `services.akkoma.nginx.addSSL` | `boolean` | Whether to enable HTTPS in addition to plain HTTP. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443). |
+| `services.akkoma.nginx.basicAuth` | `attribute set of string` | Basic Auth protection for a vhost. WARNING: This is implemented to store the password in plain text in the Nix store. |
+| `services.akkoma.nginx.basicAuthFile` | `null or absolute path` | Basic Auth password file for a vhost. Can be created by running {command}`nix-shell --packages apacheHttpd --run 'htpasswd -B -c FILENAME USERNAME'`. |
+| `services.akkoma.nginx.default` | `boolean` | Makes this vhost the default. |
+| `services.akkoma.nginx.enableACME` | `boolean` | Whether to ask Let's Encrypt to sign a certificate for this vhost. Alternately, you can use an existing certificate through {option}`useACMEHost`. |
+| `services.akkoma.nginx.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the vhost verbatim. |
+| `services.akkoma.nginx.forceSSL` | `boolean` | Whether to add a separate nginx server block that redirects (defaults to 301, configurable with `redirectCode`) all plain HTTP traffic to HTTPS. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443), where the non-SSL listens are used for the redirect vhosts. |
+| `services.akkoma.nginx.globalRedirect` | `null or string` | If set, all requests for this host are redirected (defaults to 301, configurable with `redirectCode`) to the given hostname. |
+| `services.akkoma.nginx.http2` | `boolean` | Whether to enable the HTTP/2 protocol. Note that (as of writing) due to nginx's implementation, to disable HTTP/2 you have to disable it on all vhosts that use a given IP address / port. If there is one server block configured to enable http2, then it is enabled for all server blocks on this IP. See <https://stackoverflow.com/a/39466948/263061>. |
+| `services.akkoma.nginx.http3` | `boolean` | Whether to enable the HTTP/3 protocol. This requires activating the QUIC transport protocol `services.nginx.virtualHosts.<name>.quic = true;`. Note that HTTP/3 support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> HTTP/3 availability must be manually advertised, preferably in each location block. |
+| `services.akkoma.nginx.http3_hq` | `boolean` | Whether to enable the HTTP/0.9 protocol negotiation used in QUIC interoperability tests. This requires activating the QUIC transport protocol `services.nginx.virtualHosts.<name>.quic = true;`. Note that special application protocol support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> |
+| `services.akkoma.nginx.kTLS` | `boolean` | Whether to enable kTLS support. Implementing TLS in the kernel (kTLS) improves performance by significantly reducing the need for copying operations between user space and the kernel. Required Nginx version 1.21.4 or later. |
+| `services.akkoma.nginx.listen` | `list of (submodule)` | Listen addresses and ports for this virtual host. IPv6 addresses must be enclosed in square brackets. Note: this option overrides `addSSL` and `onlySSL`. If you only want to set the addresses manually and not the ports, take a look at `listenAddresses`. |
+| `services.akkoma.nginx.listen.*.addr` | `string` | Listen address. |
+| `services.akkoma.nginx.listen.*.extraParameters` | `list of string` | Extra parameters of this listen directive. |
+| `services.akkoma.nginx.listen.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number to listen on. If unset and the listen address is not a socket then nginx defaults to 80. |
+| `services.akkoma.nginx.listen.*.proxyProtocol` | `boolean` | Enable PROXY protocol. |
+| `services.akkoma.nginx.listen.*.ssl` | `boolean` | Enable SSL. |
+| `services.akkoma.nginx.listenAddresses` | `list of string` | Listen addresses for this virtual host. Compared to `listen` this only sets the addresses and the ports are chosen automatically. Note: This option overrides `networking.enableIPv6` |
+| `services.akkoma.nginx.locations` | `attribute set of (submodule)` | Declarative location config |
+| `services.akkoma.nginx.locations.<name>.alias` | `null or absolute path` | Alias directory for requests. |
+| `services.akkoma.nginx.locations.<name>.basicAuth` | `attribute set of string` | Basic Auth protection for a vhost. WARNING: This is implemented to store the password in plain text in the Nix store. |
+| `services.akkoma.nginx.locations.<name>.basicAuthFile` | `null or absolute path` | Basic Auth password file for a vhost. Can be created by running {command}`nix-shell --packages apacheHttpd --run 'htpasswd -B -c FILENAME USERNAME'`. |
+| `services.akkoma.nginx.locations.<name>.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the location verbatim. |
+| `services.akkoma.nginx.locations.<name>.fastcgiParams` | `attribute set of (string or absolute path)` | FastCGI parameters to override. Unlike in the Nginx configuration file, overriding only some default parameters won't unset the default values for other parameters. |
+| `services.akkoma.nginx.locations.<name>.index` | `null or string` | Adds index directive. |
+| `services.akkoma.nginx.locations.<name>.priority` | `signed integer` | Order of this location block in relation to the others in the vhost. The semantics are the same as with `lib.mkOrder`. Smaller values have a greater priority. |
+| `services.akkoma.nginx.locations.<name>.proxyPass` | `null or string` | Adds proxy_pass directive and sets recommended proxy headers if recommendedProxySettings is enabled. |
+| `services.akkoma.nginx.locations.<name>.proxyWebsockets` | `boolean` | Whether to support proxying websocket connections with HTTP/1.1. |
+| `services.akkoma.nginx.locations.<name>.recommendedProxySettings` | `boolean` | Enable recommended proxy settings. |
+| `services.akkoma.nginx.locations.<name>.recommendedUwsgiSettings` | `boolean` | Enable recommended uwsgi settings. |
+| `services.akkoma.nginx.locations.<name>.return` | `null or string or signed integer` | Adds a return directive, for e.g. redirections. |
+| `services.akkoma.nginx.locations.<name>.root` | `null or absolute path` | Root directory for requests. |
+| `services.akkoma.nginx.locations.<name>.tryFiles` | `null or string` | Adds try_files directive. |
+| `services.akkoma.nginx.locations.<name>.uwsgiPass` | `null or string` | Adds uwsgi_pass directive and sets recommended proxy headers if recommendedUwsgiSettings is enabled. |
+| `services.akkoma.nginx.onlySSL` | `boolean` | Whether to enable HTTPS and reject plain HTTP connections. This will set defaults for `listen` to listen on all interfaces on port 443. |
+| `services.akkoma.nginx.quic` | `boolean` | Whether to enable the QUIC transport protocol. Note that QUIC support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> |
+| `services.akkoma.nginx.redirectCode` | `integer between 300 and 399 (both inclusive)` | HTTP status used by `globalRedirect` and `forceSSL`. Possible usecases include temporary (302, 307) redirects, keeping the request method and body (307, 308), or explicitly resetting the method to GET (303). See <https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections>. |
+| `services.akkoma.nginx.rejectSSL` | `boolean` | Whether to listen for and reject all HTTPS connections to this vhost. Useful in [default](#opt-services.nginx.virtualHosts._name_.default) server blocks to avoid serving the certificate for another vhost. Uses the `ssl_reject_handshake` directive available in nginx versions 1.19.4 and above. |
+| `services.akkoma.nginx.reuseport` | `boolean` | Create an individual listening socket . It is required to specify only once on one of the hosts. |
+| `services.akkoma.nginx.root` | `null or absolute path` | The path of the web root directory. |
+| `services.akkoma.nginx.serverAliases` | `list of string` | Additional names of virtual hosts served by this virtual host configuration. |
+| `services.akkoma.nginx.serverName` | `null or string` | Name of this virtual host. Defaults to attribute name in virtualHosts. |
+| `services.akkoma.nginx.sslCertificate` | `absolute path` | Path to server SSL certificate. |
+| `services.akkoma.nginx.sslCertificateKey` | `absolute path` | Path to server SSL certificate key. |
+| `services.akkoma.nginx.sslTrustedCertificate` | `null or absolute path` | Path to root SSL certificate for stapling and client certificates. |
+| `services.akkoma.nginx.useACMEHost` | `null or string` | A host of an existing Let's Encrypt certificate to use. This is useful if you have many subdomains and want to avoid hitting the [rate limit](https://letsencrypt.org/docs/rate-limits). Alternately, you can generate a certificate through {option}`enableACME`. *Note that this option does not create any certificates, nor it does add subdomains to existing ones – you will need to create them manually using [](#opt-security.acme.certs).* |
+| `services.akkoma.package` | `package` | The akkoma package to use. |
+| `services.akkoma.user` | `non-empty string` | User account under which Akkoma runs. |

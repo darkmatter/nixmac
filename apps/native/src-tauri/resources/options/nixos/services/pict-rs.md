@@ -5,11 +5,11 @@
 All options under `services.pict-rs`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.pict-rs.address` | | |
-| `services.pict-rs.dataDir` | | |
-| `services.pict-rs.enable` | | |
-| `services.pict-rs.package` | | |
-| `services.pict-rs.port` | | |
-| `services.pict-rs.repoPath` | | |
-| `services.pict-rs.storePath` | | |
+| --- | --- | --- |
+| `services.pict-rs.address` | `string` | The IPv4 address to deploy the service to. |
+| `services.pict-rs.dataDir` | `absolute path` | The directory where to store the uploaded images & database. |
+| `services.pict-rs.enable` | `boolean` | Whether to enable pict-rs server. |
+| `services.pict-rs.package` | `package` | The pict-rs package to use. |
+| `services.pict-rs.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port which to bind the service to. |
+| `services.pict-rs.repoPath` | `null or absolute path` | The directory where to store the database. This option takes precedence over dataDir. |
+| `services.pict-rs.storePath` | `null or absolute path` | The directory where to store the uploaded images. This option takes precedence over dataDir. |

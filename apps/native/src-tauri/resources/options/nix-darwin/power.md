@@ -5,10 +5,10 @@
 All options under `power`.
 
 | Option | Type | Description |
-| ------------------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| --- | --- | --- |
 | `power.restartAfterFreeze` | `null or boolean` | Whether to restart the computer after a system freeze. |
-| `power.restartAfterPowerFailure` | `null or boolean` | Whether to restart the computer after a power failure. |
+| `power.restartAfterPowerFailure` | `null or boolean` | Whether to restart the computer after a power failure. Option is not supported on all devices. |
 | `power.sleep.allowSleepByPowerButton` | `null or boolean` | Whether the power button can sleep the computer. |
-| `power.sleep.computer` | `null or positive integer, meaning >0, or value “never” (singular enum)` | Amount of idle time (in minutes) until the computer sleeps. |
-| `power.sleep.display` | `null or positive integer, meaning >0, or value “never” (singular enum)` | Amount of idle time (in minutes) until displays sleep. |
-| `power.sleep.harddisk` | `null or positive integer, meaning >0, or value “never” (singular enum)` | Amount of idle time (in minutes) until hard disks sleep. |
+| `power.sleep.computer` | `null or positive integer, meaning >0, or value "never" (singular enum)` | Amount of idle time (in minutes) until the computer sleeps. `"never"` disables computer sleeping. The system might not be considered idle before connected displays sleep, as per the `power.sleep.display` option. |
+| `power.sleep.display` | `null or positive integer, meaning >0, or value "never" (singular enum)` | Amount of idle time (in minutes) until displays sleep. `"never"` disables display sleeping. |
+| `power.sleep.harddisk` | `null or positive integer, meaning >0, or value "never" (singular enum)` | Amount of idle time (in minutes) until hard disks sleep. `"never"` disables hard disk sleeping. |

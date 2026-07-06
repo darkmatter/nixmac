@@ -5,5 +5,5 @@
 All options under `dbus`.
 
 | Option | Type | Description |
-| --------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dbus.packages` | `list of package` | Packages whose D-Bus configuration files should be included in the configuration of the D-Bus session-wide message bus. Specifically, files in «pkg»/share/dbus-1/services will be included in the user’s $XDG_DATA_HOME/dbus-1/services directory. |
+| --- | --- | --- |
+| `dbus.packages` | `list of package` | Packages whose D-Bus configuration files should be included in the configuration of the D-Bus session-wide message bus. Specifically, files in «pkg»/share/dbus-1/services will be included in the user's $XDG_DATA_HOME/dbus-1/services directory. |

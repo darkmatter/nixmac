@@ -5,6 +5,6 @@
 All options under `services.nullidentdmod`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.nullidentdmod.enable` | | |
-| `services.nullidentdmod.userid` | | |
+| --- | --- | --- |
+| `services.nullidentdmod.enable` | `boolean` | Whether to enable the nullidentdmod identd daemon. |
+| `services.nullidentdmod.userid` | `null or string` | User ID to return. Set to null to return a random string each time. |

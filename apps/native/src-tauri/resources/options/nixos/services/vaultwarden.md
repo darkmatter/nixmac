@@ -5,14 +5,14 @@
 All options under `services.vaultwarden`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.vaultwarden.backupDir` | | |
-| `services.vaultwarden.config` | | |
-| `services.vaultwarden.configureNginx` | | |
-| `services.vaultwarden.configurePostgres` | | |
-| `services.vaultwarden.dbBackend` | | |
-| `services.vaultwarden.domain` | | |
-| `services.vaultwarden.enable` | | |
-| `services.vaultwarden.environmentFile` | | |
-| `services.vaultwarden.package` | | |
-| `services.vaultwarden.webVaultPackage` | | |
+| --- | --- | --- |
+| `services.vaultwarden.backupDir` | `null or string` | The directory under which vaultwarden will backup its persistent data. |
+| `services.vaultwarden.config` | `attribute set of (null or boolean or signed integer or string)` | The configuration of vaultwarden is done through environment variables, therefore it is recommended to use upper snake case (e.g. {env}`DISABLE_2FA_REMEMBER`). However, camel case (e.g. `disable2FARemember`) is also supported: The NixOS module will convert it automatically to upper case snake case (e.g. {env}`DISABLE_2FA_REMEMBER`). In this conversion digits (0-9) are handled just like upper case characters, so `foo2` would be converted to {env}`FOO_2`. Names already in this format remain unchanged, so `FOO2` remains `FOO2` if passed as such, even though `foo2` would have been converted to {env}`FOO_2`. This allows working around any potential future conflicting naming conventions. Based on the attributes passed to this config option an environment file will be generated that is passed to vaultwarden's systemd service. The available configuration options can be found in [the environment template file](https://github.com/dani-garcia/vaultwarden/blob/1.36.0/.env.template). See [](#opt-services.vaultwarden.environmentFile) for how to set up access to the Admin UI to invite initial users. |
+| `services.vaultwarden.configureNginx` | `boolean` | Whether to configure nginx to serve VaultWarden. |
+| `services.vaultwarden.configurePostgres` | `boolean` | Whether to configure a local PostgreSQL server. |
+| `services.vaultwarden.dbBackend` | `one of "sqlite", "mysql", "postgresql"` | Which database backend vaultwarden will be using. |
+| `services.vaultwarden.domain` | `null or string` | The domain under which VaultWarden will be reachable. |
+| `services.vaultwarden.enable` | `boolean` | Whether to enable vaultwarden. |
+| `services.vaultwarden.environmentFile` | `(list of absolute path) or absolute path convertible to it` | Additional environment file or files as defined in {manpage}`systemd.exec(5)`. Secrets like {env}`ADMIN_TOKEN` and {env}`SMTP_PASSWORD` should be passed to the service without adding them to the world-readable Nix store. Note that this file needs to be available on the host on which `vaultwarden` is running. As a concrete example, to make the Admin UI available (from which new users can be invited initially), the secret {env}`ADMIN_TOKEN` needs to be defined as described [here](https://github.com/dani-garcia/vaultwarden/wiki/Enabling-admin-page): `# Admin secret token, see # https://github.com/dani-garcia/vaultwarden/wiki/Enabling-admin-page ADMIN_TOKEN=...copy-paste a unique generated secret token here...` |
+| `services.vaultwarden.package` | `package` | The vaultwarden package to use. |
+| `services.vaultwarden.webVaultPackage` | `package` | The webvault package to use. |

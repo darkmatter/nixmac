@@ -5,7 +5,7 @@
 All options under `programs.nix-ld`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `programs.nix-ld.enable` | | |
-| `programs.nix-ld.libraries` | | |
-| `programs.nix-ld.package` | | |
+| --- | --- | --- |
+| `programs.nix-ld.enable` | `boolean` | Whether to enable nix-ld, Documentation: <https://github.com/nix-community/nix-ld>. |
+| `programs.nix-ld.libraries` | `list of package` | Libraries that automatically become available to all programs. The default set includes common libraries. |
+| `programs.nix-ld.package` | `package` | The nix-ld package to use. |

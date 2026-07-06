@@ -5,6 +5,6 @@
 All options under `services.ihaskell`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.ihaskell.enable` | | |
-| `services.ihaskell.extraPackages` | | |
+| --- | --- | --- |
+| `services.ihaskell.enable` | `boolean` | Autostart an IHaskell notebook service. |
+| `services.ihaskell.extraPackages` | `function that evaluates to a(n) list of package` | Extra packages available to ghc when running ihaskell. The value must be a function which receives the attrset defined in {var}`haskellPackages` as the sole argument. |

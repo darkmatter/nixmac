@@ -5,10 +5,10 @@
 All options under `programs.taskwarrior`.
 
 | Option | Type | Description |
-| ----------------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.taskwarrior.colorTheme` | `null or string or absolute path` | Either one of the default provided theme as string, or a path to a theme configuration file. |
-| `programs.taskwarrior.config` | `attribute set of anything` | Key-value configuration written to $XDG_CONFIG_HOME/task/taskrc . |
-| `programs.taskwarrior.dataLocation` | `string` | Location where Task Warrior will store its data. |
+| `programs.taskwarrior.config` | `attribute set of anything` | Key-value configuration written to {file}`$XDG_CONFIG_HOME/task/taskrc`. |
+| `programs.taskwarrior.dataLocation` | `string` | Location where Task Warrior will store its data. Home Manager will attempt to create this directory. |
 | `programs.taskwarrior.enable` | `boolean` | Whether to enable Task Warrior. |
-| `programs.taskwarrior.extraConfig` | `strings concatenated with “\n”` | Additional content written at the end of $XDG_CONFIG_HOME/task/taskrc . |
+| `programs.taskwarrior.extraConfig` | `strings concatenated with "\n"` | Additional content written at the end of {file}`$XDG_CONFIG_HOME/task/taskrc`. |
 | `programs.taskwarrior.package` | `null or package` | The taskwarrior2 package to use. |

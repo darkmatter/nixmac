@@ -5,54 +5,190 @@
 All options under `services.tor`.
 
 | Option | Type | Description |
-| ------------------------------------------------------- | ---- | ----------- |
-| `services.tor.client.dns.automapHostsSuffixes` | | |
-| `services.tor.client.dns.enable` | | |
-| `services.tor.client.dns.isolationOptions` | | |
-| `services.tor.client.dns.listenAddress` | | |
-| `services.tor.client.enable` | | |
-| `services.tor.client.onionServices` | | |
-| `services.tor.client.privoxy.enable` | | |
-| `services.tor.client.socksIsolationOptions` | | |
-| `services.tor.client.socksListenAddress` | | |
-| `services.tor.client.socksListenAddressFaster` | | |
-| `services.tor.client.socksPolicy` | | |
-| `services.tor.client.transparentProxy.enable` | | |
-| `services.tor.client.transparentProxy.isolationOptions` | | |
-| `services.tor.client.transparentProxy.listenAddress` | | |
-| `services.tor.controlPort` | | |
-| `services.tor.controlSocket.enable` | | |
-| `services.tor.enable` | | |
-| `services.tor.enableGeoIP` | | |
-| `services.tor.extraConfig` | | |
-| `services.tor.hiddenServices` | | |
-| `services.tor.obfs4Package` | | |
-| `services.tor.openFirewall` | | |
-| `services.tor.package` | | |
-| `services.tor.relay.accountingMax` | | |
-| `services.tor.relay.accountingStart` | | |
-| `services.tor.relay.address` | | |
-| `services.tor.relay.bandwidthBurst` | | |
-| `services.tor.relay.bandwidthRate` | | |
-| `services.tor.relay.bridgeTransports` | | |
-| `services.tor.relay.contactInfo` | | |
-| `services.tor.relay.enable` | | |
-| `services.tor.relay.exitPolicy` | | |
-| `services.tor.relay.isBridge` | | |
-| `services.tor.relay.isExit` | | |
-| `services.tor.relay.nickname` | | |
-| `services.tor.relay.onionServices` | | |
-| `services.tor.relay.port` | | |
-| `services.tor.relay.portSpec` | | |
-| `services.tor.relay.role` | | |
-| `services.tor.settings` | | |
-| `services.tor.torsocks.allowInbound` | | |
-| `services.tor.torsocks.enable` | | |
-| `services.tor.torsocks.fasterServer` | | |
-| `services.tor.torsocks.onionAddrRange` | | |
-| `services.tor.torsocks.server` | | |
-| `services.tor.torsocks.socks5Password` | | |
-| `services.tor.torsocks.socks5Username` | | |
-| `services.tor.tsocks.config` | | |
-| `services.tor.tsocks.enable` | | |
-| `services.tor.tsocks.server` | | |
+| --- | --- | --- |
+| `services.tor.client.dns.enable` | `boolean` | Whether to enable DNS resolver. |
+| `services.tor.client.enable` | `boolean` | Whether to enable the routing of application connections. You might want to disable this if you plan running a dedicated Tor relay. |
+| `services.tor.client.onionServices` | `attribute set of (submodule)` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#HiddenServiceDir). |
+| `services.tor.client.onionServices.<name>.clientAuthorizations` | `list of absolute path` | Clients' authorizations for a v3 onion service, as a list of files containing each one private key, in the format: `descriptor:x25519:<base32-private-key>` See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#_client_authorization). |
+| `services.tor.client.socksListenAddress` | `16 bit unsigned integer; between 0 and 65535 (both inclusive) or (submodule)` | Bind to this address to listen for connections from Socks-speaking applications. |
+| `services.tor.client.transparentProxy.enable` | `boolean` | Whether to enable transparent proxy. |
+| `services.tor.controlSocket.enable` | `boolean` | Whether to enable control socket, created in `/run/tor/control`. |
+| `services.tor.enable` | `boolean` | Whether to enable Tor daemon. By default, the daemon is run without relay, exit, bridge or client connectivity. |
+| `services.tor.enableGeoIP` | `boolean` | Whether to enable use of GeoIP databases. Disabling this will disable by-country statistics for bridges and relays and some client and third-party software functionality. |
+| `services.tor.obfs4Package` | `package` | The obfs4 package to use. |
+| `services.tor.openFirewall` | `boolean` | Whether to enable opening of the relay port(s) in the firewall. |
+| `services.tor.package` | `package` | The tor package to use. |
+| `services.tor.relay.enable` | `boolean` | Whether to enable relaying of Tor traffic for others. See <https://www.torproject.org/docs/tor-doc-relay> for details. Setting this to true requires setting {option}`services.tor.relay.role` and {option}`services.tor.settings.ORPort` options. |
+| `services.tor.relay.onionServices` | `attribute set of (submodule)` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#HiddenServiceDir). :::{.warning} Because `tor.service` runs in its own `RootDirectory=`, when using a onion service to reverse-proxy to a Unix socket, you need to make that Unix socket available within the mount namespace of `tor.service`. When you can configure your service to create its socket in `/tmp`, this can be done with: `` nix systemd.services.${your-service} = {   unitConfig.JoinsNamespaceOf = [ "tor.service" ];`   serviceConfig.PrivateTmp = true; };  `` Otherwise, you can use: `nix systemd.services.tor.serviceConfig.BindPaths = [ "/path/to/your-service/socket/directory" ]; ` but you have to be sure that `/path/to/socket/directory` exists before `tor.service` is started and is not deleted and recreated between restarts of `your-service`, or you'll need to restart `tor.service` to refresh the `BindPaths=`. ::: |
+| `services.tor.relay.onionServices.<name>.authorizeClient` | `null or (submodule)` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#HiddenServiceAuthorizeClient). |
+| `services.tor.relay.onionServices.<name>.authorizeClient.authType` | `one of "basic", "stealth"` | Either `"basic"` for a general-purpose authorization protocol or `"stealth"` for a less scalable protocol that also hides service activity from unauthorized clients. |
+| `services.tor.relay.onionServices.<name>.authorizeClient.clientNames` | `non-empty (list of string matching the pattern [A-Za-z0-9+-_]+)` | Only clients that are listed here are authorized to access the hidden service. Generated authorization data can be found in {file}`/var/lib/tor/onion/$name/hostname`. Clients need to put this authorization data in their configuration file using [](#opt-services.tor.settings.HidServAuth). |
+| `services.tor.relay.onionServices.<name>.authorizedClients` | `list of string` | Authorized clients for a v3 onion service, as a list of public key, in the format: `descriptor:x25519:<base32-public-key>` See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#_client_authorization). |
+| `services.tor.relay.onionServices.<name>.map` | `list of (16 bit unsigned integer; between 0 and 65535 (both inclusive) or (submodule))` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#HiddenServicePort). |
+| `services.tor.relay.onionServices.<name>.path` | `absolute path` | Path where to store the data files of the hidden service. If the {option}`secretKey` is null this defaults to `/var/lib/tor/onion/$onion`, otherwise to `/run/tor/onion/$onion`. |
+| `services.tor.relay.onionServices.<name>.secretKey` | `null or absolute path` | Secret key of the onion service. If null, Tor reuses any preexisting secret key (in {option}`path`) or generates a new one. The associated public key and hostname are deterministically regenerated from this file if they do not exist. |
+| `services.tor.relay.onionServices.<name>.settings` | `open submodule of settings option` | Settings of the onion service. See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#_hidden_service_options). |
+| `services.tor.relay.onionServices.<name>.settings.HiddenServiceAllowUnknownPorts` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#HiddenServiceAllowUnknownPorts). |
+| `services.tor.relay.onionServices.<name>.settings.HiddenServiceDirGroupReadable` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#HiddenServiceDirGroupReadable). |
+| `services.tor.relay.onionServices.<name>.settings.HiddenServiceExportCircuitID` | `null or value "haproxy" (singular enum)` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#HiddenServiceExportCircuitID). |
+| `services.tor.relay.onionServices.<name>.settings.HiddenServiceMaxStreams` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#HiddenServiceMaxStreams). |
+| `services.tor.relay.onionServices.<name>.settings.HiddenServiceMaxStreamsCloseCircuit` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#HiddenServiceMaxStreamsCloseCircuit). |
+| `services.tor.relay.onionServices.<name>.settings.HiddenServiceNumIntroductionPoints` | `null or integer between 0 and 20 (both inclusive)` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#HiddenServiceNumIntroductionPoints). |
+| `services.tor.relay.onionServices.<name>.settings.HiddenServiceSingleHopMode` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#HiddenServiceSingleHopMode). |
+| `services.tor.relay.onionServices.<name>.settings.RendPostPeriod` | `null or string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#RendPostPeriod). |
+| `services.tor.relay.onionServices.<name>.version` | `null or one of 2, 3` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#HiddenServiceVersion). |
+| `services.tor.relay.role` | `one of "exit", "relay", "bridge", "private-bridge"` | Your role in Tor network. There're several options: - `exit`: An exit relay. This allows Tor users to access regular Internet services through your public IP. You can specify which services Tor users may access via your exit relay using {option}`settings.ExitPolicy` option. - `relay`: Regular relay. This allows Tor users to relay onion traffic to other Tor nodes, but not to public Internet. See <https://www.torproject.org/docs/tor-doc-relay.html.en> for more info. - `bridge`: Regular bridge. Works like a regular relay, but doesn't list you in the public relay directory and hides your Tor node behind obfs4proxy. Using this option will make Tor advertise your bridge to users through various mechanisms like <https://bridges.torproject.org/>, though. See <https://www.torproject.org/docs/bridges.html.en> for more info. - `private-bridge`: Private bridge. Works like regular bridge, but does not advertise your node in any way. Using this role means that you won't contribute to Tor network in any way unless you advertise your node yourself in some way. Use this if you want to run a private bridge, for example because you'll give out your bridge addr manually to your friends. Switching to this role after measurable time in "bridge" role is pretty useless as some Tor users would have learned about your node already. In the latter case you can still change {option}`port` option. See <https://www.torproject.org/docs/bridges.html.en> for more info. ::: {.important} Running an exit relay may expose you to abuse complaints. See <https://www.torproject.org/faq.html.en#ExitPolicies> for more info. ::: ::: {.important} Note that some misconfigured and/or disrespectful towards privacy sites will block you even if your relay is not an exit relay. That is, just being listed in a public relay directory can have unwanted consequences. Which means you might not want to use this role if you browse public Internet from the same network as your relay, unless you want to write e-mails to those sites (you should!). ::: ::: {.important} WARNING: THE FOLLOWING PARAGRAPH IS NOT LEGAL ADVICE. Consult with your lawyer when in doubt. The `bridge` role should be safe to use in most situations (unless the act of forwarding traffic for others is a punishable offence under your local laws, which would be pretty insane as it would make ISP illegal). ::: |
+| `services.tor.settings` | `open submodule of settings option` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en) for documentation. |
+| `services.tor.settings.AccountingMax` | `null or signed integer or string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#AccountingMax). |
+| `services.tor.settings.AccountingStart` | `null or string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#AccountingStart). |
+| `services.tor.settings.Address` | `null or string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#Address). |
+| `services.tor.settings.AssumeReachable` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#AssumeReachable). |
+| `services.tor.settings.AuthDirHasIPv6Connectivity` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#AuthDirHasIPv6Connectivity). |
+| `services.tor.settings.AuthDirListBadExits` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#AuthDirListBadExits). |
+| `services.tor.settings.AuthDirPinKeys` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#AuthDirPinKeys). |
+| `services.tor.settings.AuthDirSharedRandomness` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#AuthDirSharedRandomness). |
+| `services.tor.settings.AuthDirTestEd25519LinkKeys` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#AuthDirTestEd25519LinkKeys). |
+| `services.tor.settings.AuthoritativeDirectory` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#AuthoritativeDirectory). |
+| `services.tor.settings.AutomapHostsOnResolve` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#AutomapHostsOnResolve). |
+| `services.tor.settings.AutomapHostsSuffixes` | `list of string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#AutomapHostsSuffixes). |
+| `services.tor.settings.BandwidthBurst` | `null or signed integer or string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#BandwidthBurst). |
+| `services.tor.settings.BandwidthRate` | `null or signed integer or string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#BandwidthRate). |
+| `services.tor.settings.BridgeAuthoritativeDir` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#BridgeAuthoritativeDir). |
+| `services.tor.settings.BridgeRecordUsageByCountry` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#BridgeRecordUsageByCountry). |
+| `services.tor.settings.BridgeRelay` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#BridgeRelay). |
+| `services.tor.settings.CacheDirectory` | `null or absolute path` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#CacheDirectory). |
+| `services.tor.settings.CacheDirectoryGroupReadable` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#CacheDirectoryGroupReadable). |
+| `services.tor.settings.CellStatistics` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#CellStatistics). |
+| `services.tor.settings.ClientAutoIPv6ORPort` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ClientAutoIPv6ORPort). |
+| `services.tor.settings.ClientDNSRejectInternalAddresses` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ClientDNSRejectInternalAddresses). |
+| `services.tor.settings.ClientOnionAuthDir` | `null or absolute path` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ClientOnionAuthDir). |
+| `services.tor.settings.ClientPreferIPv6DirPort` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ClientPreferIPv6DirPort). |
+| `services.tor.settings.ClientPreferIPv6ORPort` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ClientPreferIPv6ORPort). |
+| `services.tor.settings.ClientRejectInternalAddresses` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ClientRejectInternalAddresses). |
+| `services.tor.settings.ClientUseIPv4` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ClientUseIPv4). |
+| `services.tor.settings.ClientUseIPv6` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ClientUseIPv6). |
+| `services.tor.settings.ConnDirectionStatistics` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ConnDirectionStatistics). |
+| `services.tor.settings.ConstrainedSockets` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ConstrainedSockets). |
+| `services.tor.settings.ContactInfo` | `null or string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ContactInfo). |
+| `services.tor.settings.ControlPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive) or value "auto" (singular enum) or list of (16 bit unsigned integer; between 0 and 65535 (both inclusive) or value "auto" (singular enum) or (submodule))` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ControlPort). |
+| `services.tor.settings.ControlPortFileGroupReadable` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ControlPortFileGroupReadable). |
+| `services.tor.settings.ControlPortWriteToFile` | `null or absolute path` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ControlPortWriteToFile). |
+| `services.tor.settings.ControlSocket` | `null or absolute path` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ControlSocket). |
+| `services.tor.settings.ControlSocketsGroupWritable` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ControlSocketsGroupWritable). |
+| `services.tor.settings.CookieAuthFile` | `null or absolute path` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#CookieAuthFile). |
+| `services.tor.settings.CookieAuthFileGroupReadable` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#CookieAuthFileGroupReadable). |
+| `services.tor.settings.CookieAuthentication` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#CookieAuthentication). |
+| `services.tor.settings.DNSPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive) or value "auto" (singular enum) or (submodule) or list of (16 bit unsigned integer; between 0 and 65535 (both inclusive) or value "auto" (singular enum) or (submodule))` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#DNSPort). |
+| `services.tor.settings.DataDirectory` | `null or absolute path` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#DataDirectory). |
+| `services.tor.settings.DataDirectoryGroupReadable` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#DataDirectoryGroupReadable). |
+| `services.tor.settings.DirAllowPrivateAddresses` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#DirAllowPrivateAddresses). |
+| `services.tor.settings.DirCache` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#DirCache). |
+| `services.tor.settings.DirPolicy` | `list of string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#DirPolicy). |
+| `services.tor.settings.DirPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive) or value "auto" (singular enum) or list of (16 bit unsigned integer; between 0 and 65535 (both inclusive) or value "auto" (singular enum) or (submodule))` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#DirPort). |
+| `services.tor.settings.DirPortFrontPage` | `null or absolute path` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#DirPortFrontPage). |
+| `services.tor.settings.DirReqStatistics` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#DirReqStatistics). |
+| `services.tor.settings.DisableAllSwap` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#DisableAllSwap). |
+| `services.tor.settings.DisableDebuggerAttachment` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#DisableDebuggerAttachment). |
+| `services.tor.settings.DisableNetwork` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#DisableNetwork). |
+| `services.tor.settings.DisableOOSCheck` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#DisableOOSCheck). |
+| `services.tor.settings.DoSCircuitCreationEnabled` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#DoSCircuitCreationEnabled). |
+| `services.tor.settings.DoSConnectionEnabled` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#DoSConnectionEnabled). |
+| `services.tor.settings.DoSRefuseSingleHopClientRendezvous` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#DoSRefuseSingleHopClientRendezvous). |
+| `services.tor.settings.DormantCanceledByStartup` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#DormantCanceledByStartup). |
+| `services.tor.settings.DormantOnFirstStartup` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#DormantOnFirstStartup). |
+| `services.tor.settings.DormantTimeoutDisabledByIdleStreams` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#DormantTimeoutDisabledByIdleStreams). |
+| `services.tor.settings.DownloadExtraInfo` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#DownloadExtraInfo). |
+| `services.tor.settings.EnforceDistinctSubnets` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#EnforceDistinctSubnets). |
+| `services.tor.settings.EntryStatistics` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#EntryStatistics). |
+| `services.tor.settings.ExitPolicy` | `list of string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ExitPolicy). |
+| `services.tor.settings.ExitPolicyRejectLocalInterfaces` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ExitPolicyRejectLocalInterfaces). |
+| `services.tor.settings.ExitPolicyRejectPrivate` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ExitPolicyRejectPrivate). |
+| `services.tor.settings.ExitPortStatistics` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ExitPortStatistics). |
+| `services.tor.settings.ExitRelay` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ExitRelay). |
+| `services.tor.settings.ExtORPort` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive) or value "auto" (singular enum) or (submodule)` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ExtORPort). |
+| `services.tor.settings.ExtORPortCookieAuthFile` | `null or absolute path` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ExtORPortCookieAuthFile). |
+| `services.tor.settings.ExtORPortCookieAuthFileGroupReadable` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ExtORPortCookieAuthFileGroupReadable). |
+| `services.tor.settings.ExtendAllowPrivateAddresses` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ExtendAllowPrivateAddresses). |
+| `services.tor.settings.ExtraInfoStatistics` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ExtraInfoStatistics). |
+| `services.tor.settings.FascistFirewall` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#FascistFirewall). |
+| `services.tor.settings.FetchDirInfoEarly` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#FetchDirInfoEarly). |
+| `services.tor.settings.FetchDirInfoExtraEarly` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#FetchDirInfoExtraEarly). |
+| `services.tor.settings.FetchHidServDescriptors` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#FetchHidServDescriptors). |
+| `services.tor.settings.FetchServerDescriptors` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#FetchServerDescriptors). |
+| `services.tor.settings.FetchUselessDescriptors` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#FetchUselessDescriptors). |
+| `services.tor.settings.GeoIPFile` | `null or absolute path` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#GeoIPFile). |
+| `services.tor.settings.GeoIPv6File` | `null or absolute path` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#GeoIPv6File). |
+| `services.tor.settings.GuardfractionFile` | `null or absolute path` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#GuardfractionFile). |
+| `services.tor.settings.HSLayer2Nodes` | `list of string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#HSLayer2Nodes). |
+| `services.tor.settings.HSLayer3Nodes` | `list of string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#HSLayer3Nodes). |
+| `services.tor.settings.HTTPTunnelPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive) or value "auto" (singular enum) or (submodule) or list of (16 bit unsigned integer; between 0 and 65535 (both inclusive) or value "auto" (singular enum) or (submodule))` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#HTTPTunnelPort). |
+| `services.tor.settings.HidServAuth` | `list of (submodule)` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#HidServAuth). |
+| `services.tor.settings.HidServAuth.*.auth` | `string matching the pattern [A-Za-z0-9+/]{22}` | Authentication cookie. |
+| `services.tor.settings.HidServAuth.*.onion` | `string matching the pattern [a-z2-7]{16}\.onion` | Onion address. |
+| `services.tor.settings.HiddenServiceNonAnonymousMode` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#HiddenServiceNonAnonymousMode). |
+| `services.tor.settings.HiddenServiceStatistics` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#HiddenServiceStatistics). |
+| `services.tor.settings.IPv6Exit` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#IPv6Exit). |
+| `services.tor.settings.KeyDirectory` | `null or absolute path` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#KeyDirectory). |
+| `services.tor.settings.KeyDirectoryGroupReadable` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#KeyDirectoryGroupReadable). |
+| `services.tor.settings.LogMessageDomains` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#LogMessageDomains). |
+| `services.tor.settings.LongLivedPorts` | `list of 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#LongLivedPorts). |
+| `services.tor.settings.MainloopStats` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#MainloopStats). |
+| `services.tor.settings.MaxAdvertisedBandwidth` | `null or signed integer or string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#MaxAdvertisedBandwidth). |
+| `services.tor.settings.MaxCircuitDirtiness` | `null or signed integer` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#MaxCircuitDirtiness). |
+| `services.tor.settings.MaxClientCircuitsPending` | `null or signed integer` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#MaxClientCircuitsPending). |
+| `services.tor.settings.NATDPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive) or value "auto" (singular enum) or (submodule) or list of (16 bit unsigned integer; between 0 and 65535 (both inclusive) or value "auto" (singular enum) or (submodule))` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#NATDPort). |
+| `services.tor.settings.NewCircuitPeriod` | `null or signed integer` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#NewCircuitPeriod). |
+| `services.tor.settings.Nickname` | `null or string matching the pattern ^[a-zA-Z0-9]{1,19}$` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#Nickname). |
+| `services.tor.settings.ORPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive) or value "auto" (singular enum) or list of (16 bit unsigned integer; between 0 and 65535 (both inclusive) or value "auto" (singular enum) or (submodule))` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ORPort). |
+| `services.tor.settings.OfflineMasterKey` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#OfflineMasterKey). |
+| `services.tor.settings.OptimisticData` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#OptimisticData). |
+| `services.tor.settings.PaddingStatistics` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#PaddingStatistics). |
+| `services.tor.settings.PerConnBWBurst` | `null or signed integer or string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#PerConnBWBurst). |
+| `services.tor.settings.PerConnBWRate` | `null or signed integer or string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#PerConnBWRate). |
+| `services.tor.settings.PidFile` | `null or absolute path` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#PidFile). |
+| `services.tor.settings.ProtocolWarnings` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ProtocolWarnings). |
+| `services.tor.settings.PublishHidServDescriptors` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#PublishHidServDescriptors). |
+| `services.tor.settings.PublishServerDescriptor` | `null or one of false, true, 0, 1, "0", "1", "v3", "bridge"` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#PublishServerDescriptor). |
+| `services.tor.settings.ReachableAddresses` | `list of string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ReachableAddresses). |
+| `services.tor.settings.ReachableDirAddresses` | `list of string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ReachableDirAddresses). |
+| `services.tor.settings.ReachableORAddresses` | `list of string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ReachableORAddresses). |
+| `services.tor.settings.ReducedExitPolicy` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ReducedExitPolicy). |
+| `services.tor.settings.RefuseUnknownExits` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#RefuseUnknownExits). |
+| `services.tor.settings.RejectPlaintextPorts` | `list of 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#RejectPlaintextPorts). |
+| `services.tor.settings.RelayBandwidthBurst` | `null or signed integer or string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#RelayBandwidthBurst). |
+| `services.tor.settings.RelayBandwidthRate` | `null or signed integer or string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#RelayBandwidthRate). |
+| `services.tor.settings.SOCKSPort` | `list of (16 bit unsigned integer; between 0 and 65535 (both inclusive) or (submodule))` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#SOCKSPort). |
+| `services.tor.settings.Sandbox` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#Sandbox). |
+| `services.tor.settings.ServerDNSAllowBrokenConfig` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ServerDNSAllowBrokenConfig). |
+| `services.tor.settings.ServerDNSAllowNonRFC953Hostnames` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ServerDNSAllowNonRFC953Hostnames). |
+| `services.tor.settings.ServerDNSDetectHijacking` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ServerDNSDetectHijacking). |
+| `services.tor.settings.ServerDNSRandomizeCase` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ServerDNSRandomizeCase). |
+| `services.tor.settings.ServerDNSResolvConfFile` | `null or absolute path` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ServerDNSResolvConfFile). |
+| `services.tor.settings.ServerDNSSearchDomains` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ServerDNSSearchDomains). |
+| `services.tor.settings.ServerTransportPlugin` | `null or (submodule)` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ServerTransportPlugin). |
+| `services.tor.settings.ServerTransportPlugin.exec` | `string` | Command of pluggable transport. |
+| `services.tor.settings.ServerTransportPlugin.transports` | `list of string` | List of pluggable transports. |
+| `services.tor.settings.ShutdownWaitLength` | `signed integer` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#ShutdownWaitLength). |
+| `services.tor.settings.SocksPolicy` | `list of string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#SocksPolicy). |
+| `services.tor.settings.TestingTorNetwork` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#TestingTorNetwork). |
+| `services.tor.settings.TransPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive) or value "auto" (singular enum) or (submodule) or list of (16 bit unsigned integer; between 0 and 65535 (both inclusive) or value "auto" (singular enum) or (submodule))` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#TransPort). |
+| `services.tor.settings.TransProxyType` | `null or one of "default", "TPROXY", "ipfw", "pf-divert"` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#TransProxyType). |
+| `services.tor.settings.UnixSocksGroupWritable` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#UnixSocksGroupWritable). |
+| `services.tor.settings.UseDefaultFallbackDirs` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#UseDefaultFallbackDirs). |
+| `services.tor.settings.UseMicrodescriptors` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#UseMicrodescriptors). |
+| `services.tor.settings.V3AuthUseLegacyKey` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#V3AuthUseLegacyKey). |
+| `services.tor.settings.V3AuthoritativeDirectory` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#V3AuthoritativeDirectory). |
+| `services.tor.settings.VersioningAuthoritativeDirectory` | `null or boolean` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#VersioningAuthoritativeDirectory). |
+| `services.tor.settings.VirtualAddrNetworkIPv4` | `null or string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#VirtualAddrNetworkIPv4). |
+| `services.tor.settings.VirtualAddrNetworkIPv6` | `null or string` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#VirtualAddrNetworkIPv6). |
+| `services.tor.settings.WarnPlaintextPorts` | `list of 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | See [torrc manual](https://2019.www.torproject.org/docs/tor-manual.html.en#WarnPlaintextPorts). |
+| `services.tor.torsocks.allowInbound` | `boolean` | Set Torsocks to accept inbound connections. If set to `true`, listen() and accept() will be allowed to be used with non localhost address. |
+| `services.tor.torsocks.enable` | `boolean` | Whether to build `/etc/tor/torsocks.conf` containing the specified global torsocks configuration. |
+| `services.tor.torsocks.fasterServer` | `string` | IP/Port of the Tor SOCKS server for torsocks-faster wrapper suitable for HTTP. Currently, hostnames are NOT supported by torsocks. |
+| `services.tor.torsocks.onionAddrRange` | `string` | Tor hidden sites do not have real IP addresses. This specifies what range of IP addresses will be handed to the application as "cookies" for .onion names. Of course, you should pick a block of addresses which you aren't going to ever need to actually connect to. This is similar to the MapAddress feature of the main tor daemon. |
+| `services.tor.torsocks.server` | `string` | IP/Port of the Tor SOCKS server. Currently, hostnames are NOT supported by torsocks. |
+| `services.tor.torsocks.socks5Password` | `null or string` | SOCKS5 password. The `TORSOCKS_PASSWORD` environment variable overrides this option if it is set. |
+| `services.tor.torsocks.socks5Username` | `null or string` | SOCKS5 username. The `TORSOCKS_USERNAME` environment variable overrides this option if it is set. |
+| `services.tor.tsocks.config` | `strings concatenated with "\n"` | Extra configuration. Contents will be added verbatim to TSocks configuration file. |
+| `services.tor.tsocks.enable` | `boolean` | Whether to build tsocks wrapper script to relay application traffic via Tor. ::: {.important} You shouldn't use this unless you know what you're doing because your installation of Tor already comes with its own superior (doesn't leak DNS queries) `torsocks` wrapper which does pretty much exactly the same thing as this. ::: |
+| `services.tor.tsocks.server` | `string` | IP address of TOR client to use. |

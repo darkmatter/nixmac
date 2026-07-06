@@ -5,13 +5,10 @@
 All options under `programs.hyprland`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `programs.hyprland.enable` | | |
-| `programs.hyprland.enableNvidiaPatches` | | |
-| `programs.hyprland.nvidiaPatches` | | |
-| `programs.hyprland.package` | | |
-| `programs.hyprland.portalPackage` | | |
-| `programs.hyprland.systemd.setPath.enable` | | |
-| `programs.hyprland.withUWSM` | | |
-| `programs.hyprland.xwayland.enable` | | |
-| `programs.hyprland.xwayland.hidpi` | | |
+| --- | --- | --- |
+| `programs.hyprland.enable` | `boolean` | Whether to enable Hyprland, the dynamic tiling Wayland compositor that doesn't sacrifice on its looks. You can manually launch Hyprland by executing {command}`start-hyprland` on a TTY. A configuration file will be generated in {file}`~/.config/hypr/hyprland.conf`. See <https://wiki.hyprland.org> for more information. |
+| `programs.hyprland.package` | `package` | The hyprland package to use. If the package is not overridable with `enableXWayland`, then the module option {option}`xwayland` will have no effect. |
+| `programs.hyprland.portalPackage` | `package` | The xdg-desktop-portal-hyprland package to use. If the package is not overridable with `hyprland`, then the Hyprland package used by the portal may differ from the one set in the module option {option}`package`. |
+| `programs.hyprland.systemd.setPath.enable` | `boolean` | Set environment path of systemd to include the current system's bin directory. This is needed in Hyprland setups, where opening links in applications do not work. Enabled by default for Hyprland versions older than 0.41.2. |
+| `programs.hyprland.withUWSM` | `boolean` | Launch Hyprland with the UWSM (Universal Wayland Session Manager) session manager. This has improved systemd support and is recommended for most users. This automatically starts appropriate targets like `graphical-session.target`, and `wayland-session@Hyprland.target`. ::: {.note} Some changes may need to be made to Hyprland configs depending on your setup, see [Hyprland wiki](https://wiki.hyprland.org/Useful-Utilities/Systemd-start/#uwsm). ::: |
+| `programs.hyprland.xwayland.enable` | `boolean` | Whether to enable XWayland. |

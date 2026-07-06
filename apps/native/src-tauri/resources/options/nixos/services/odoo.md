@@ -5,11 +5,13 @@
 All options under `services.odoo`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.odoo.addons` | | |
-| `services.odoo.autoInit` | | |
-| `services.odoo.autoInitExtraFlags` | | |
-| `services.odoo.domain` | | |
-| `services.odoo.enable` | | |
-| `services.odoo.package` | | |
-| `services.odoo.settings` | | |
+| --- | --- | --- |
+| `services.odoo.addons` | `list of package` | Odoo addons. |
+| `services.odoo.autoInit` | `boolean` | Whether to enable automatically initialize the DB. |
+| `services.odoo.autoInitExtraFlags` | `list of string` | Extra flags passed to odoo when run for the first time by autoInit |
+| `services.odoo.domain` | `null or string` | Domain to host Odoo with nginx |
+| `services.odoo.enable` | `boolean` | Whether to enable odoo, an open source ERP and CRM system. |
+| `services.odoo.package` | `package` | Which package to use for the Odoo instance. |
+| `services.odoo.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Odoo configuration settings. For more details see <https://www.odoo.com/documentation/15.0/administration/install/deploy.html> |
+| `services.odoo.settings.options.proxy_mode` | `boolean` | Enables the use of X-Forwarded-\* headers through Werkzeug’s proxy support. Must be enabled if reverse proxy is used. |
+| `services.odoo.settings.options.workers` | `unsigned integer, meaning >=0` | Values above 0 will enable the multi-processing HTTP server, this should be set for production setups. This needs to be set to >0 for real-time connections in the discuss app. For configuration recommendations see <https://www.odoo.com/documentation/19.0/administration/on_premise/deploy.html#builtin-server> |

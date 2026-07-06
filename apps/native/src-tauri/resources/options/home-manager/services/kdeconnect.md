@@ -5,7 +5,7 @@
 All options under `services.kdeconnect`.
 
 | Option | Type | Description |
-| ------------------------------- | --------- | ----------------------------------------------- |
+| --- | --- | --- |
 | `services.kdeconnect.enable` | `boolean` | Whether to enable KDE connect. |
 | `services.kdeconnect.indicator` | `boolean` | Whether to enable kdeconnect-indicator service. |
 | `services.kdeconnect.package` | `package` | The kdeconnect-kde package to use. |

@@ -5,6 +5,6 @@
 All options under `services.irqbalance`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.irqbalance.enable` | | |
-| `services.irqbalance.package` | | |
+| --- | --- | --- |
+| `services.irqbalance.enable` | `boolean` | Whether to enable irqbalance daemon. |
+| `services.irqbalance.package` | `package` | The irqbalance package to use. |

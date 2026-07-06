@@ -5,8 +5,8 @@
 All options under `services.input-remapper`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.input-remapper.enable` | | |
-| `services.input-remapper.enableUdevRules` | | |
-| `services.input-remapper.package` | | |
-| `services.input-remapper.serviceWantedBy` | | |
+| --- | --- | --- |
+| `services.input-remapper.enable` | `boolean` | Whether to enable input-remapper, an easy to use tool to change the mapping of your input device buttons. |
+| `services.input-remapper.enableUdevRules` | `boolean` | Whether to enable udev rules added by input-remapper to handle hotplugged devices. Currently disabled by default due to <https://github.com/sezanzeb/input-remapper/issues/140>. |
+| `services.input-remapper.package` | `package` | The input-remapper package to use. |
+| `services.input-remapper.serviceWantedBy` | `list of string` | Specifies the WantedBy setting for the input-remapper service. |

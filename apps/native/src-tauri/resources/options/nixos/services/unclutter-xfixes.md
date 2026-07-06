@@ -5,9 +5,9 @@
 All options under `services.unclutter-xfixes`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.unclutter-xfixes.enable` | | |
-| `services.unclutter-xfixes.extraOptions` | | |
-| `services.unclutter-xfixes.package` | | |
-| `services.unclutter-xfixes.threshold` | | |
-| `services.unclutter-xfixes.timeout` | | |
+| --- | --- | --- |
+| `services.unclutter-xfixes.enable` | `boolean` | Enable unclutter-xfixes to hide your mouse cursor when inactive. |
+| `services.unclutter-xfixes.extraOptions` | `list of string` | More arguments to pass to the unclutter-xfixes command. |
+| `services.unclutter-xfixes.package` | `package` | The unclutter-xfixes package to use. |
+| `services.unclutter-xfixes.threshold` | `signed integer` | Minimum number of pixels considered cursor movement. |
+| `services.unclutter-xfixes.timeout` | `signed integer` | Number of seconds before the cursor is marked inactive. |

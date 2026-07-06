@@ -5,10 +5,12 @@
 All options under `services.c2fmzq-server`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.c2fmzq-server.bindIP` | | |
-| `services.c2fmzq-server.enable` | | |
-| `services.c2fmzq-server.package` | | |
-| `services.c2fmzq-server.passphraseFile` | | |
-| `services.c2fmzq-server.port` | | |
-| `services.c2fmzq-server.settings` | | |
+| --- | --- | --- |
+| `services.c2fmzq-server.bindIP` | `string` | The local address to use. |
+| `services.c2fmzq-server.enable` | `boolean` | Whether to enable c2fmzq-server. |
+| `services.c2fmzq-server.package` | `package` | The c2fmzq package to use. |
+| `services.c2fmzq-server.passphraseFile` | `string` | Path to file containing the database passphrase |
+| `services.c2fmzq-server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The local port to use. |
+| `services.c2fmzq-server.settings` | `open submodule of attribute set of (null or boolean or signed integer or string)` | Configuration for c2FmZQ-server passed as CLI arguments. Run {command}`c2FmZQ-server help` for supported values. |
+| `services.c2fmzq-server.settings.database` | `string` | Path of the database |
+| `services.c2fmzq-server.settings.verbose` | `integer between 1 and 3 (both inclusive)` | The level of logging verbosity: 1:Error 2:Info 3:Debug |

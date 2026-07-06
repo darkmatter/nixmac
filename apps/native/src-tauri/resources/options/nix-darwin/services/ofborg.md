@@ -5,8 +5,8 @@
 All options under `services.ofborg`.
 
 | Option | Type | Description |
-| ---------------------------- | --------------- | ---------------------------------------------------- |
-| `services.ofborg.configFile` | `absolute path` | Configuration file to use for ofborg. |
+| --- | --- | --- |
+| `services.ofborg.configFile` | `absolute path` | Configuration file to use for ofborg. WARNING Don't use a path literal or derivation for this, that would expose credentials in the store making them world readable. |
 | `services.ofborg.enable` | `boolean` | Whether to enable the ofborg builder service. |
 | `services.ofborg.logFile` | `absolute path` | The logfile to use for the ofborg service. |
-| `services.ofborg.package` | `package` | This option specifies the ofborg package to use. eg. |
+| `services.ofborg.package` | `package` | This option specifies the ofborg package to use. eg. (import \<ofborg> {}).ofborg.rs $ nix-channel --add https://github.com/NixOS/ofborg/archive/released.tar.gz ofborg $ nix-channel --update |

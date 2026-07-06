@@ -5,6 +5,6 @@
 All options under `services.monit`.
 
 | Option | Type | Description |
-| ----------------------- | ---- | ----------- |
-| `services.monit.config` | | |
-| `services.monit.enable` | | |
+| --- | --- | --- |
+| `services.monit.config` | `strings concatenated with "\n"` | monitrc content |
+| `services.monit.enable` | `boolean` | Whether to enable Monit. |

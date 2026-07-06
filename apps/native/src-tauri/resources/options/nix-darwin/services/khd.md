@@ -5,8 +5,8 @@
 All options under `services.khd`.
 
 | Option | Type | Description |
-| ---------------------------- | -------------------------------- | -------------------------------------------------- |
+| --- | --- | --- |
 | `services.khd.enable` | `boolean` | Whether to enable the khd hotkey daemon. |
 | `services.khd.i3Keybindings` | `boolean` | Whether to configure i3 style keybindings for kwm. |
-| `services.khd.khdConfig` | `strings concatenated with “\n”` | Config to use for khdrc . |
+| `services.khd.khdConfig` | `strings concatenated with "\n"` | Config to use for {file}`khdrc`. |
 | `services.khd.package` | `package` | This option specifies the khd package to use. |

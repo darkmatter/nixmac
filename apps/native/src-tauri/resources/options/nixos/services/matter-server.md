@@ -5,10 +5,10 @@
 All options under `services.matter-server`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.matter-server.enable` | | |
-| `services.matter-server.extraArgs` | | |
-| `services.matter-server.logLevel` | | |
-| `services.matter-server.openFirewall` | | |
-| `services.matter-server.package` | | |
-| `services.matter-server.port` | | |
+| --- | --- | --- |
+| `services.matter-server.enable` | `boolean` | Whether to enable Matter-server. |
+| `services.matter-server.extraArgs` | `attribute set` | Attribute set of extra arguments to pass to the matter-server executable. See <https://github.com/home-assistant-libs/python-matter-server?tab=readme-ov-file#running-the-development-server> for options. |
+| `services.matter-server.logLevel` | `one of "critical", "error", "warning", "info", "debug"` | Verbosity of logs from the matter-server |
+| `services.matter-server.openFirewall` | `boolean` | Whether to open the port in the firewall. |
+| `services.matter-server.package` | `package` | The python-matter-server package to use. |
+| `services.matter-server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to expose the matter-server service on. |

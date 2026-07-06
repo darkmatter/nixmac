@@ -5,7 +5,8 @@
 All options under `programs.khard`.
 
 | Option | Type | Description |
-| ------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.khard.enable` | `boolean` | Whether to enable Khard: an address book for the Unix console. |
 | `programs.khard.package` | `package` | The khard package to use. |
-| `programs.khard.settings` | `open submodule of attribute set of attribute set of (boolean or string or list of string)` | Khard settings. See https://khard.readthedocs.io/en/latest/#configuration for more information. |
+| `programs.khard.settings` | `open submodule of attribute set of attribute set of (boolean or string or list of string)` | Khard settings. See <https://khard.readthedocs.io/en/latest/#configuration> for more information. |
+| `programs.khard.settings.general.default_action` | `string` | The default action to execute. |

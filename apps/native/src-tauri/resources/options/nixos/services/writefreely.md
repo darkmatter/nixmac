@@ -5,26 +5,28 @@
 All options under `services.writefreely`.
 
 | Option | Type | Description |
-| ------------------------------------------------ | ---- | ----------- |
-| `services.writefreely.acme.enable` | | |
-| `services.writefreely.admin.initialPasswordFile` | | |
-| `services.writefreely.admin.name` | | |
-| `services.writefreely.database.createLocally` | | |
-| `services.writefreely.database.host` | | |
-| `services.writefreely.database.migrate` | | |
-| `services.writefreely.database.name` | | |
-| `services.writefreely.database.passwordFile` | | |
-| `services.writefreely.database.port` | | |
-| `services.writefreely.database.tls` | | |
-| `services.writefreely.database.type` | | |
-| `services.writefreely.database.user` | | |
-| `services.writefreely.email.smtpPasswordFile` | | |
-| `services.writefreely.enable` | | |
-| `services.writefreely.group` | | |
-| `services.writefreely.host` | | |
-| `services.writefreely.nginx.enable` | | |
-| `services.writefreely.nginx.forceSSL` | | |
-| `services.writefreely.package` | | |
-| `services.writefreely.settings` | | |
-| `services.writefreely.stateDir` | | |
-| `services.writefreely.user` | | |
+| --- | --- | --- |
+| `services.writefreely.acme.enable` | `boolean` | Whether or not to automatically fetch and configure SSL certs. |
+| `services.writefreely.admin.initialPasswordFile` | `absolute path` | Path to a file containing the initial password for the admin user. If not provided, the default password will be set to `nixos`. |
+| `services.writefreely.admin.name` | `null or string` | The name of the first admin user. |
+| `services.writefreely.database.createLocally` | `boolean` | When {option}`services.writefreely.database.type` is set to `"mysql"`, this option will enable the MySQL service locally. |
+| `services.writefreely.database.host` | `string` | The database host to connect to. |
+| `services.writefreely.database.migrate` | `boolean` | Whether or not to automatically run migrations on startup. |
+| `services.writefreely.database.name` | `string` | The name of the database to store data in. |
+| `services.writefreely.database.passwordFile` | `null or absolute path` | The file to load the database password from. |
+| `services.writefreely.database.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port used when connecting to the database host. |
+| `services.writefreely.database.tls` | `boolean` | Whether or not TLS should be used for the database connection. |
+| `services.writefreely.database.type` | `one of "sqlite3", "mysql"` | The database provider to use. |
+| `services.writefreely.database.user` | `null or string` | The database user to connect as. |
+| `services.writefreely.email.smtpPasswordFile` | `null or absolute path` | The file to load the password for the smtp email server. |
+| `services.writefreely.enable` | `boolean` | Whether to enable Writefreely, build a digital writing community. |
+| `services.writefreely.group` | `string` | Group under which Writefreely is ran. |
+| `services.writefreely.host` | `string` | The public host name to serve. |
+| `services.writefreely.nginx.enable` | `boolean` | Whether or not to enable and configure nginx as a proxy for WriteFreely. |
+| `services.writefreely.nginx.forceSSL` | `boolean` | Whether or not to force the use of SSL. |
+| `services.writefreely.package` | `package` | The writefreely package to use. |
+| `services.writefreely.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Writefreely configuration ({file}`config.ini`). Refer to <https://writefreely.org/docs/latest/admin/config> for details. |
+| `services.writefreely.settings.app.theme` | `string` | The theme to apply. |
+| `services.writefreely.settings.server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port WriteFreely should listen on. |
+| `services.writefreely.stateDir` | `absolute path` | The state directory where keys and data are stored. |
+| `services.writefreely.user` | `string` | User under which Writefreely is ran. |

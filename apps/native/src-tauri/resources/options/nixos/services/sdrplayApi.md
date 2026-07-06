@@ -5,5 +5,5 @@
 All options under `services.sdrplayApi`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.sdrplayApi.enable` | | |
+| --- | --- | --- |
+| `services.sdrplayApi.enable` | `boolean` | Whether to enable the SDRplay API service and udev rules. ::: {.note} To enable integration with SoapySDR and GUI applications like gqrx create an overlay containing `soapysdr-with-plugins = super.soapysdr.override { extraPackages = [ super.soapysdrplay ]; };` ::: |

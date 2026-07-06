@@ -5,69 +5,74 @@
 All options under `services.firezone`.
 
 | Option | Type | Description |
-| --------------------------------------------------- | ---- | ----------- |
-| `services.firezone.gateway.apiUrl` | | |
-| `services.firezone.gateway.enable` | | |
-| `services.firezone.gateway.enableTelemetry` | | |
-| `services.firezone.gateway.logLevel` | | |
-| `services.firezone.gateway.name` | | |
-| `services.firezone.gateway.package` | | |
-| `services.firezone.gateway.tokenFile` | | |
-| `services.firezone.gui-client.allowedUsers` | | |
-| `services.firezone.gui-client.enable` | | |
-| `services.firezone.gui-client.logLevel` | | |
-| `services.firezone.gui-client.name` | | |
-| `services.firezone.gui-client.package` | | |
-| `services.firezone.headless-client.apiUrl` | | |
-| `services.firezone.headless-client.enable` | | |
-| `services.firezone.headless-client.enableTelemetry` | | |
-| `services.firezone.headless-client.logLevel` | | |
-| `services.firezone.headless-client.name` | | |
-| `services.firezone.headless-client.package` | | |
-| `services.firezone.headless-client.tokenFile` | | |
-| `services.firezone.relay.apiUrl` | | |
-| `services.firezone.relay.enable` | | |
-| `services.firezone.relay.enableTelemetry` | | |
-| `services.firezone.relay.highestPort` | | |
-| `services.firezone.relay.logLevel` | | |
-| `services.firezone.relay.lowestPort` | | |
-| `services.firezone.relay.name` | | |
-| `services.firezone.relay.openFirewall` | | |
-| `services.firezone.relay.package` | | |
-| `services.firezone.relay.port` | | |
-| `services.firezone.relay.publicIpv4` | | |
-| `services.firezone.relay.publicIpv6` | | |
-| `services.firezone.relay.tokenFile` | | |
-| `services.firezone.server.api.address` | | |
-| `services.firezone.server.api.enable` | | |
-| `services.firezone.server.api.externalUrl` | | |
-| `services.firezone.server.api.package` | | |
-| `services.firezone.server.api.port` | | |
-| `services.firezone.server.api.settings` | | |
-| `services.firezone.server.api.trustedProxies` | | |
-| `services.firezone.server.clusterHosts` | | |
-| `services.firezone.server.domain.enable` | | |
-| `services.firezone.server.domain.package` | | |
-| `services.firezone.server.domain.settings` | | |
-| `services.firezone.server.enable` | | |
-| `services.firezone.server.enableLocalDB` | | |
-| `services.firezone.server.nginx.enable` | | |
-| `services.firezone.server.openClusterFirewall` | | |
-| `services.firezone.server.provision.accounts` | | |
-| `services.firezone.server.provision.enable` | | |
-| `services.firezone.server.settings` | | |
-| `services.firezone.server.settingsSecret` | | |
-| `services.firezone.server.smtp.configureManually` | | |
-| `services.firezone.server.smtp.from` | | |
-| `services.firezone.server.smtp.host` | | |
-| `services.firezone.server.smtp.implicitTls` | | |
-| `services.firezone.server.smtp.passwordFile` | | |
-| `services.firezone.server.smtp.port` | | |
-| `services.firezone.server.smtp.username` | | |
-| `services.firezone.server.web.address` | | |
-| `services.firezone.server.web.enable` | | |
-| `services.firezone.server.web.externalUrl` | | |
-| `services.firezone.server.web.package` | | |
-| `services.firezone.server.web.port` | | |
-| `services.firezone.server.web.settings` | | |
-| `services.firezone.server.web.trustedProxies` | | |
+| --- | --- | --- |
+| `services.firezone.gateway.apiUrl` | `string matching the pattern ^wss://.+/$` | The URL of your firezone server's API. This should be the same as your server's setting for {option}`services.firezone.server.settings.api.externalUrl`, but with `wss://` instead of `https://`. |
+| `services.firezone.gateway.enable` | `boolean` | Whether to enable the firezone gateway. You have to manually masquerade and forward traffic from the tun-firezone interface to your resource! Refer to the [upstream setup script](https://github.com/firezone/firezone/blob/8c7c0a9e8e33ae790aeb75fdb5a15432c2870b79/scripts/gateway-systemd-install.sh#L154-L168) for a list of iptable commands. See the firezone nixos test in this repository for an nftables based example. |
+| `services.firezone.gateway.enableTelemetry` | `boolean` | Whether to enable telemetry. |
+| `services.firezone.gateway.logLevel` | `string` | The log level for the firezone application. See [RUST_LOG](https://docs.rs/env_logger/latest/env_logger/#enabling-logging) for the format. |
+| `services.firezone.gateway.name` | `string` | The name of this gateway as shown in firezone |
+| `services.firezone.gateway.package` | `package` | The firezone-gateway package to use. |
+| `services.firezone.gateway.tokenFile` | `absolute path` | A file containing the firezone gateway token. Do not use a nix-store path here as it will make the token publicly readable! This file will be passed via systemd credentials, it should only be accessible by the root user. |
+| `services.firezone.gui-client.allowedUsers` | `list of string` | All listed users will become part of the `firezone-client` group so they can control the tunnel service. This is a convenience option. |
+| `services.firezone.gui-client.enable` | `boolean` | Whether to enable the firezone gui client. |
+| `services.firezone.gui-client.logLevel` | `string` | The log level for the firezone application. See [RUST_LOG](https://docs.rs/env_logger/latest/env_logger/#enabling-logging) for the format. |
+| `services.firezone.gui-client.name` | `string` | The name of this client as shown in firezone |
+| `services.firezone.gui-client.package` | `package` | The firezone-gui-client package to use. |
+| `services.firezone.headless-client.apiUrl` | `string matching the pattern ^wss://.+/$` | The URL of your firezone server's API. This should be the same as your server's setting for {option}`services.firezone.server.settings.api.externalUrl`, but with `wss://` instead of `https://`. |
+| `services.firezone.headless-client.enable` | `boolean` | Whether to enable the firezone headless client. |
+| `services.firezone.headless-client.enableTelemetry` | `boolean` | Whether to enable telemetry. |
+| `services.firezone.headless-client.logLevel` | `string` | The log level for the firezone application. See [RUST_LOG](https://docs.rs/env_logger/latest/env_logger/#enabling-logging) for the format. |
+| `services.firezone.headless-client.name` | `string` | The name of this client as shown in firezone |
+| `services.firezone.headless-client.package` | `package` | The firezone-headless-client package to use. |
+| `services.firezone.headless-client.tokenFile` | `absolute path` | A file containing the firezone client token. Do not use a nix-store path here as it will make the token publicly readable! This file will be passed via systemd credentials, it should only be accessible by the root user. |
+| `services.firezone.relay.apiUrl` | `string matching the pattern ^wss://.+/$` | The URL of your firezone server's API. This should be the same as your server's setting for {option}`services.firezone.server.settings.api.externalUrl`, but with `wss://` instead of `https://`. |
+| `services.firezone.relay.enable` | `boolean` | Whether to enable the firezone relay server. |
+| `services.firezone.relay.enableTelemetry` | `boolean` | Whether to enable telemetry. |
+| `services.firezone.relay.highestPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The highest port to use in TURN allocation |
+| `services.firezone.relay.logLevel` | `string` | The log level for the firezone application. See [RUST_LOG](https://docs.rs/env_logger/latest/env_logger/#enabling-logging) for the format. |
+| `services.firezone.relay.lowestPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The lowest port to use in TURN allocation |
+| `services.firezone.relay.name` | `string` | The name of this gateway as shown in firezone |
+| `services.firezone.relay.openFirewall` | `boolean` | Opens up the main STUN port and the TURN allocation range. |
+| `services.firezone.relay.package` | `package` | The firezone-relay package to use. |
+| `services.firezone.relay.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to listen on for STUN messages |
+| `services.firezone.relay.publicIpv4` | `null or string` | The public ipv4 address of this relay |
+| `services.firezone.relay.publicIpv6` | `null or string` | The public ipv6 address of this relay |
+| `services.firezone.relay.tokenFile` | `absolute path` | A file containing the firezone relay token. Do not use a nix-store path here as it will make the token publicly readable! This file will be passed via systemd credentials, it should only be accessible by the root user. |
+| `services.firezone.server.api.address` | `string` | The address to listen on |
+| `services.firezone.server.api.enable` | `boolean` | Whether to enable the Firezone api server. |
+| `services.firezone.server.api.externalUrl` | `string matching the pattern ^https://.+/$` | The external URL under which you will serve the api. You need to setup a reverse proxy for TLS termination, either with {option}`services.firezone.server.nginx.enable` or manually. |
+| `services.firezone.server.api.package` | `package` | The firezone-server-api package to use. |
+| `services.firezone.server.api.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port under which the api will be served locally |
+| `services.firezone.server.api.settings` | `open submodule of attribute set of (boolean or floating point number or signed integer or string or absolute path or package)` | Environment variables for this component of the Firezone server. For a list of available variables, please refer to the [upstream definitions](https://github.com/firezone/firezone/blob/main/elixir/apps/domain/lib/domain/config/definitions.ex). Some variables like `OUTBOUND_EMAIL_ADAPTER_OPTS` require json values for which you can use `VAR = builtins.toJSON { /* ... */ }`. This component will automatically inherit all variables defined via {option}`services.firezone.server.settings` and {option}`services.firezone.server.settingsSecret`, but which can be overwritten by this option. |
+| `services.firezone.server.api.trustedProxies` | `list of string` | A list of trusted proxies |
+| `services.firezone.server.clusterHosts` | `list of string` | A list of components and their hosts that are part of this cluster. For a single-machine setup, the default value will be sufficient. This value will automatically set `ERLANG_CLUSTER_ADAPTER_CONFIG`. The format is `<COMPONENT_NAME>@<HOSTNAME>`. |
+| `services.firezone.server.domain.enable` | `boolean` | Whether to enable the Firezone domain server. |
+| `services.firezone.server.domain.package` | `package` | The firezone-server-domain package to use. |
+| `services.firezone.server.domain.settings` | `open submodule of attribute set of (boolean or floating point number or signed integer or string or absolute path or package)` | Environment variables for this component of the Firezone server. For a list of available variables, please refer to the [upstream definitions](https://github.com/firezone/firezone/blob/main/elixir/apps/domain/lib/domain/config/definitions.ex). Some variables like `OUTBOUND_EMAIL_ADAPTER_OPTS` require json values for which you can use `VAR = builtins.toJSON { /* ... */ }`. This component will automatically inherit all variables defined via {option}`services.firezone.server.settings` and {option}`services.firezone.server.settingsSecret`, but which can be overwritten by this option. |
+| `services.firezone.server.enable` | `boolean` | Whether to enable all Firezone components. |
+| `services.firezone.server.enableLocalDB` | `boolean` | Whether to enable a local postgresql database for Firezone. |
+| `services.firezone.server.nginx.enable` | `boolean` | Whether to enable nginx virtualhost definition. |
+| `services.firezone.server.openClusterFirewall` | `boolean` | Opens up the erlang distribution port of all enabled components to allow reaching the server cluster from the internet. You only need to set this if you are actually distributing your cluster across multiple machines. |
+| `services.firezone.server.settings` | `open submodule of attribute set of (boolean or floating point number or signed integer or string or absolute path or package)` | Environment variables for the Firezone server. For a list of available variables, please refer to the [upstream definitions](https://github.com/firezone/firezone/blob/main/elixir/apps/domain/lib/domain/config/definitions.ex). Some variables like `OUTBOUND_EMAIL_ADAPTER_OPTS` require json values for which you can use `VAR = builtins.toJSON { /* ... */ }`. Each component has an additional `settings` option which allows you to override specific variables passed to that component. |
+| `services.firezone.server.settingsSecret` | `open submodule of attribute set of absolute path` | This is a convenience option which allows you to set secret values for environment variables by specifying a file which will contain the value at runtime. Before starting the server, the content of each file will be loaded into the respective environment variable. Otherwise, this option is equivalent to {option}`services.firezone.server.settings`. Refer to the settings option for more information regarding the actual variables and how filtering rules are applied for each component. |
+| `services.firezone.server.settingsSecret.COOKIE_ENCRYPTION_SALT` | `null or absolute path` | A file containing a unique base64 encoded secret for the `COOKIE_ENCRYPTION_SALT`. All Firezone components in your cluster must use the same value. If this is `null`, a shared value will automatically be generated on startup and used for all components on this machine. You do not need to set this except when you spread your cluster over multiple hosts. |
+| `services.firezone.server.settingsSecret.COOKIE_SIGNING_SALT` | `null or absolute path` | A file containing a unique base64 encoded secret for the `COOKIE_SIGNING_SALT`. All Firezone components in your cluster must use the same value. If this is `null`, a shared value will automatically be generated on startup and used for all components on this machine. You do not need to set this except when you spread your cluster over multiple hosts. |
+| `services.firezone.server.settingsSecret.LIVE_VIEW_SIGNING_SALT` | `null or absolute path` | A file containing a unique base64 encoded secret for the `LIVE_VIEW_SIGNING_SALT`. All Firezone components in your cluster must use the same value. If this is `null`, a shared value will automatically be generated on startup and used for all components on this machine. You do not need to set this except when you spread your cluster over multiple hosts. |
+| `services.firezone.server.settingsSecret.RELEASE_COOKIE` | `null or absolute path` | A file containing a unique secret identifier for the Erlang cluster. All Firezone components in your cluster must use the same value. If this is `null`, a shared value will automatically be generated on startup and used for all components on this machine. You do not need to set this except when you spread your cluster over multiple hosts. |
+| `services.firezone.server.settingsSecret.SECRET_KEY_BASE` | `null or absolute path` | A file containing a unique base64 encoded secret for the `SECRET_KEY_BASE`. All Firezone components in your cluster must use the same value. If this is `null`, a shared value will automatically be generated on startup and used for all components on this machine. You do not need to set this except when you spread your cluster over multiple hosts. |
+| `services.firezone.server.settingsSecret.TOKENS_KEY_BASE` | `null or absolute path` | A file containing a unique base64 encoded secret for the `TOKENS_KEY_BASE`. All Firezone components in your cluster must use the same value. If this is `null`, a shared value will automatically be generated on startup and used for all components on this machine. You do not need to set this except when you spread your cluster over multiple hosts. |
+| `services.firezone.server.settingsSecret.TOKENS_SALT` | `null or absolute path` | A file containing a unique base64 encoded secret for the `TOKENS_SALT`. All Firezone components in your cluster must use the same value. If this is `null`, a shared value will automatically be generated on startup and used for all components on this machine. You do not need to set this except when you spread your cluster over multiple hosts. |
+| `services.firezone.server.smtp.configureManually` | `boolean` | Outbound email configuration is mandatory for Firezone and supports many different delivery adapters. Yet, most users will only need an SMTP relay to send emails, so this configuration enforced by default. If you want to utilize an alternative way to send emails (e.g. via a supportd API-based service), enable this option and define `OUTBOUND_EMAIL_FROM`, `OUTBOUND_EMAIL_ADAPTER` and `OUTBOUND_EMAIL_ADAPTER_OPTS` manually via {option}`services.firezone.server.settings` and/or {option}`services.firezone.server.settingsSecret`. The Firezone documentation holds [a list of supported Swoosh adapters](https://github.com/firezone/firezone/blob/main/website/src/app/docs/reference/env-vars/readme.mdx#outbound-emails). |
+| `services.firezone.server.smtp.from` | `string` | Outbound SMTP FROM address |
+| `services.firezone.server.smtp.host` | `string` | Outbound SMTP host |
+| `services.firezone.server.smtp.implicitTls` | `boolean` | Whether to use implicit TLS instead of STARTTLS (usually port 465) |
+| `services.firezone.server.smtp.passwordFile` | `absolute path` | File containing the password for the given username. Beware that a file in the nix store will be world readable. |
+| `services.firezone.server.smtp.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Outbound SMTP port |
+| `services.firezone.server.smtp.username` | `string` | Username to authenticate against the SMTP relay |
+| `services.firezone.server.web.address` | `string` | The address to listen on |
+| `services.firezone.server.web.enable` | `boolean` | Whether to enable the Firezone web server. |
+| `services.firezone.server.web.externalUrl` | `string matching the pattern ^https://.+/$` | The external URL under which you will serve the web interface. You need to setup a reverse proxy for TLS termination, either with {option}`services.firezone.server.nginx.enable` or manually. |
+| `services.firezone.server.web.package` | `package` | The firezone-server-web package to use. |
+| `services.firezone.server.web.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port under which the web interface will be served locally |
+| `services.firezone.server.web.settings` | `open submodule of attribute set of (boolean or floating point number or signed integer or string or absolute path or package)` | Environment variables for this component of the Firezone server. For a list of available variables, please refer to the [upstream definitions](https://github.com/firezone/firezone/blob/main/elixir/apps/domain/lib/domain/config/definitions.ex). Some variables like `OUTBOUND_EMAIL_ADAPTER_OPTS` require json values for which you can use `VAR = builtins.toJSON { /* ... */ }`. This component will automatically inherit all variables defined via {option}`services.firezone.server.settings` and {option}`services.firezone.server.settingsSecret`, but which can be overwritten by this option. |
+| `services.firezone.server.web.trustedProxies` | `list of string` | A list of trusted proxies |

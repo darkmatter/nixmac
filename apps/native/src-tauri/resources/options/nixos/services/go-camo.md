@@ -5,11 +5,11 @@
 All options under `services.go-camo`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.go-camo.enable` | | |
-| `services.go-camo.extraOptions` | | |
-| `services.go-camo.keyFile` | | |
-| `services.go-camo.listen` | | |
-| `services.go-camo.sslCert` | | |
-| `services.go-camo.sslKey` | | |
-| `services.go-camo.sslListen` | | |
+| --- | --- | --- |
+| `services.go-camo.enable` | `boolean` | Whether to enable go-camo service. |
+| `services.go-camo.extraOptions` | `list of string` | Extra options passed to the go-camo command. |
+| `services.go-camo.keyFile` | `absolute path` | A file containing the HMAC key to use for signing URLs. The file can contain any string. Can be generated using "openssl rand -base64 18 > the_file". |
+| `services.go-camo.listen` | `null or string` | Address:Port to bind to for HTTP (default: 0.0.0.0:8080). |
+| `services.go-camo.sslCert` | `null or absolute path` | Path to TLS certificate. |
+| `services.go-camo.sslKey` | `null or absolute path` | Path to TLS private key. |
+| `services.go-camo.sslListen` | `null or string` | Address:Port to bind to for HTTPS. |

@@ -5,14 +5,14 @@
 All options under `programs.atuin`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `programs.atuin.daemon.enable` | | |
-| `programs.atuin.daemon.logLevel` | | |
-| `programs.atuin.enable` | | |
-| `programs.atuin.enableBashIntegration` | | |
-| `programs.atuin.enableFishIntegration` | | |
-| `programs.atuin.enableZshIntegration` | | |
-| `programs.atuin.flags` | | |
-| `programs.atuin.package` | | |
-| `programs.atuin.settings` | | |
-| `programs.atuin.themes` | | |
+| --- | --- | --- |
+| `programs.atuin.daemon.enable` | `boolean` | Whether to enable the Atuin daemon. |
+| `programs.atuin.daemon.logLevel` | `one of "trace", "debug", "info", "warn", "error"` | Log level for the Atuin daemon. |
+| `programs.atuin.enable` | `boolean` | Whether to enable atuin. |
+| `programs.atuin.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
+| `programs.atuin.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
+| `programs.atuin.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
+| `programs.atuin.flags` | `list of string` | Flags to append to the shell hook. |
+| `programs.atuin.package` | `package` | The atuin package to use. |
+| `programs.atuin.settings` | `TOML value` | Configuration written to {file}`/etc/atuin/config.toml`. See <https://docs.atuin.sh/configuration/config/> for the full list of options. |
+| `programs.atuin.themes` | `attribute set of (TOML value or absolute path or strings concatenated with "\n")` | Each theme is written to {file}`/etc/atuin/themes/theme-name.toml` where the name of each attribute is the theme-name See <https://docs.atuin.sh/guide/theming/> for the full list of options. |

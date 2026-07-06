@@ -5,7 +5,7 @@
 All options under `services.ecs-agent`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.ecs-agent.enable` | | |
-| `services.ecs-agent.extra-environment` | | |
-| `services.ecs-agent.package` | | |
+| --- | --- | --- |
+| `services.ecs-agent.enable` | `boolean` | Whether to enable Amazon ECS agent. |
+| `services.ecs-agent.extra-environment` | `attribute set of string` | The environment the ECS agent should run with. See the ECS agent documentation for keys that work here. |
+| `services.ecs-agent.package` | `package` | The ecs-agent package to use. |

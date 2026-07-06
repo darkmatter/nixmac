@@ -5,19 +5,22 @@
 All options under `security`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `security.accessibilityPrograms` | | |
-| `security.enableAccessibilityAccess` | | |
-| `security.pam.enableSudoTouchIdAuth` | | |
-| `security.pam.services.sudo_local.enable` | `boolean` | Whether to enable managing /etc/pam.d/sudo_local with nix-darwin. |
-| `security.pam.services.sudo_local.reattach` | `boolean` | Whether to enable reattaching a program to the user’s bootstrap session. |
-| `security.pam.services.sudo_local.text` | `strings concatenated with “\n”` | Contents of /etc/pam.d/sudo_local |
-| `security.pam.services.sudo_local.touchIdAuth` | `boolean` | Whether to enable Touch ID with sudo. |
-| `security.pam.services.sudo_local.watchIdAuth` | `boolean` | Use Apple Watch for sudo authentication, for devices without Touch ID or laptops with lids closed, consider using this. |
-| `security.pki.caCertificateBlacklist` | `list of string` | A list of blacklisted CA certificate names that won’t be imported from the Mozilla Trust Store into /etc/ssl/certs/ca-certificates.crt . Use the names from that file. |
-| `security.pki.certificateFiles` | `list of absolute path` | A list of files containing trusted root certificates in PEM format. These are concatenated to form /etc/ssl/certs/ca-certificates.crt , which is used by many programs that use OpenSSL, such as curl and git . |
+| --- | --- | --- |
+| `security.pam.services.sudo_local.enable` | `boolean` | Whether to enable managing {file}`/etc/pam.d/sudo_local` with nix-darwin. |
+| `security.pam.services.sudo_local.reattach` | `boolean` | Whether to enable reattaching a program to the user's bootstrap session. This fixes Touch ID for sudo not working inside tmux and screen. This allows programs like tmux and screen that run in the background to survive across user sessions to work with PAM services that are tied to the bootstrap session. |
+| `security.pam.services.sudo_local.text` | `strings concatenated with "\n"` | Contents of {file}`/etc/pam.d/sudo_local` |
+| `security.pam.services.sudo_local.touchIdAuth` | `boolean` | Whether to enable Touch ID with sudo. This will also allow your Apple Watch to be used for sudo. If this doesn't work, you can go into `System Settings > Touch ID & Password` and toggle the switch for your Apple Watch. |
+| `security.pam.services.sudo_local.watchIdAuth` | `boolean` | Use Apple Watch for sudo authentication, for devices without Touch ID or laptops with lids closed, consider using this. When enabled, you can use your Apple Watch to authenticate sudo commands. If this doesn't work, you can go into `System Settings > Touch ID & Password` and toggle the switch for your Apple Watch. |
+| `security.pki.caCertificateBlacklist` | `list of string` | A list of blacklisted CA certificate names that won't be imported from the Mozilla Trust Store into {file}`/etc/ssl/certs/ca-certificates.crt`. Use the names from that file. |
+| `security.pki.certificateFiles` | `list of absolute path` | A list of files containing trusted root certificates in PEM format. These are concatenated to form {file}`/etc/ssl/certs/ca-certificates.crt`, which is used by many programs that use OpenSSL, such as {command}`curl` and {command}`git`. |
 | `security.pki.certificates` | `list of string` | A list of trusted root certificates in PEM format. |
 | `security.pki.installCACerts` | `boolean` | Whether to enable certificate management with nix-darwin. |
 | `security.sandbox.profiles` | `attribute set of (submodule)` | Definition of sandbox profiles. |
-| `security.sudo.extraConfig` | `null or strings concatenated with “\n”` | Extra configuration text appended to sudoers . |
-| `security.sudo.keepTerminfo` | `boolean` | Whether to preserve the TERMINFO and TERMINFO_DIRS environment variables, for root and the admin group. |
+| `security.sandbox.profiles.<name>.allowLocalNetworking` | `boolean` | Whether to allow localhost network access inside the sandbox. |
+| `security.sandbox.profiles.<name>.allowNetworking` | `boolean` | Whether to allow network access inside the sandbox. |
+| `security.sandbox.profiles.<name>.allowSystemPaths` | `boolean` | Whether to allow read access to FHS paths like /etc and /var. |
+| `security.sandbox.profiles.<name>.closure` | `list of package` | List of store paths to make accessible. |
+| `security.sandbox.profiles.<name>.readablePaths` | `list of absolute path` | List of paths that should be read-only inside the sandbox. |
+| `security.sandbox.profiles.<name>.writablePaths` | `list of absolute path` | List of paths that should be read/write inside the sandbox. |
+| `security.sudo.extraConfig` | `null or strings concatenated with "\n"` | Extra configuration text appended to {file}`sudoers`. |
+| `security.sudo.keepTerminfo` | `boolean` | Whether to preserve the `TERMINFO` and `TERMINFO_DIRS` environment variables, for `root` and the `admin` group. |

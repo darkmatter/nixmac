@@ -5,10 +5,9 @@
 All options under `programs.delta`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| --- | --- | --- |
 | `programs.delta.enable` | `boolean` | Whether to enable delta, a syntax highlighter for git diffs. |
-| `programs.delta.enableGitIntegration` | `boolean` | Whether to enable git integration for delta. |
-| `programs.delta.enableJujutsuIntegration` | `boolean` | Whether to enable jujutsu integration for delta. |
-| `programs.delta.finalPackage` | | |
+| `programs.delta.enableGitIntegration` | `boolean` | Whether to enable git integration for delta. When enabled, delta will be configured as git's pager for {command}`blame`, {command}`diff`, {command}`log`, and {command}`show`, and as git's diff filter for interactive staging. |
+| `programs.delta.enableJujutsuIntegration` | `boolean` | Whether to enable jujutsu integration for delta. When enabled, delta will be configured as jujutsus's pager, diff filter, and merge tool. |
 | `programs.delta.options` | `attribute set of (string or boolean or signed integer or attribute set of (string or boolean or signed integer))` | Options to configure delta. |
 | `programs.delta.package` | `package` | The delta package to use. |

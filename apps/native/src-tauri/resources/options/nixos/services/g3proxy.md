@@ -5,7 +5,7 @@
 All options under `services.g3proxy`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.g3proxy.enable` | | |
-| `services.g3proxy.package` | | |
-| `services.g3proxy.settings` | | |
+| --- | --- | --- |
+| `services.g3proxy.enable` | `boolean` | Whether to enable g3proxy, a generic purpose forward proxy. |
+| `services.g3proxy.package` | `package` | The g3proxy package to use. |
+| `services.g3proxy.settings` | `YAML 1.1 value` | Settings of g3proxy. |

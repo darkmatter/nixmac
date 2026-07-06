@@ -5,9 +5,9 @@
 All options under `services.aerospike`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.aerospike.enable` | | |
-| `services.aerospike.extraConfig` | | |
-| `services.aerospike.networkConfig` | | |
-| `services.aerospike.package` | | |
-| `services.aerospike.workDir` | | |
+| --- | --- | --- |
+| `services.aerospike.enable` | `boolean` | Whether to enable Aerospike server. |
+| `services.aerospike.extraConfig` | `strings concatenated with "\n"` | Extra configuration |
+| `services.aerospike.networkConfig` | `strings concatenated with "\n"` | network section of configuration file |
+| `services.aerospike.package` | `package` | The aerospike package to use. |
+| `services.aerospike.workDir` | `string` | Location where Aerospike stores its files |

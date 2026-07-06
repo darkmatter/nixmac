@@ -5,9 +5,11 @@
 All options under `services.snips-sh`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.snips-sh.enable` | | |
-| `services.snips-sh.environmentFile` | | |
-| `services.snips-sh.package` | | |
-| `services.snips-sh.settings` | | |
-| `services.snips-sh.stateDir` | | |
+| --- | --- | --- |
+| `services.snips-sh.enable` | `boolean` | Whether to enable snips.sh. |
+| `services.snips-sh.environmentFile` | `null or absolute path` | Additional environment file as defined in {manpage}`systemd.exec(5)`. Sensitive secrets such as {env}`SNIPS_SSH_HOSTKEYPATH` and {env}`SNIPS_METRICS_STATSD` may be passed to the service while avoiding potentially making them world-readable in the nix store or to convert an existing non-nix installation with minimum hassle. Note that this file needs to be available on the host on which `snips-sh` is running. |
+| `services.snips-sh.package` | `package` | The snips-sh package to use. |
+| `services.snips-sh.settings` | `open submodule of attribute set of (null or string or signed integer or boolean)` | The configuration of snips-sh is done through environment variables, therefore you must use upper snake case (e.g. {env}`SNIPS_HTTP_INTERNAL`). Based on the attributes passed to this config option an environment file will be generated that is passed to snips-sh's systemd service. The available configuration options can be found in [self-hosting guide](https://github.com/robherley/snips.sh/blob/main/docs/self-hosting.md#configuration) to find about the environment variables you can use. |
+| `services.snips-sh.settings.SNIPS_HTTP_INTERNAL` | `string` | The internal HTTP address of the service |
+| `services.snips-sh.settings.SNIPS_SSH_INTERNAL` | `string` | The internal SSH address of the service |
+| `services.snips-sh.stateDir` | `absolute path` | The state directory of the service. |

@@ -5,8 +5,7 @@
 All options under `services.gitweb`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.gitweb.extraConfig` | | |
-| `services.gitweb.gitwebConfigFile` | | |
-| `services.gitweb.gitwebTheme` | | |
-| `services.gitweb.projectroot` | | |
+| --- | --- | --- |
+| `services.gitweb.extraConfig` | `strings concatenated with "\n"` | Verbatim configuration text appended to the generated gitweb.conf file. |
+| `services.gitweb.gitwebTheme` | `boolean` | Use an alternative theme for gitweb, strongly inspired by GitHub. |
+| `services.gitweb.projectroot` | `absolute path` | Path to git projects (bare repositories) that should be served by gitweb. Must not end with a slash. |

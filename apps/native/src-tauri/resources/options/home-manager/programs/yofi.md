@@ -5,8 +5,8 @@
 All options under `programs.yofi`.
 
 | Option | Type | Description |
-| ------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.yofi.blacklist` | `list of string` | List of .desktop files yofi should ignore. |
 | `programs.yofi.enable` | `boolean` | Whether to enable yofi. |
 | `programs.yofi.package` | `null or package` | The yofi package to use. |
-| `programs.yofi.settings` | `TOML value` | Configuration settings for yofi. For all the available options see: https://github.com/l4l/yofi/wiki/Configuration#main-configuration |
+| `programs.yofi.settings` | `TOML value` | Configuration settings for yofi. For all the available options see: <https://github.com/l4l/yofi/wiki/Configuration#main-configuration> |

@@ -5,8 +5,9 @@
 All options under `programs.sioyek`.
 
 | Option | Type | Description |
-| -------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `programs.sioyek.bindings` | `attribute set of (string or list of string)` | Input configuration written to $XDG_CONFIG_HOME/sioyek/keys_user.config . See https://github.com/ahrm/sioyek/blob/main/pdf_viewer/keys.config . |
-| `programs.sioyek.config` | `open submodule of attribute set of string` | Input configuration written to $XDG_CONFIG_HOME/sioyek/prefs_user.config . See https://github.com/ahrm/sioyek/blob/main/pdf_viewer/prefs.config . |
+| --- | --- | --- |
+| `programs.sioyek.bindings` | `attribute set of (string or list of string)` | Input configuration written to {file}`$XDG_CONFIG_HOME/sioyek/keys_user.config`. See <https://github.com/ahrm/sioyek/blob/main/pdf_viewer/keys.config>. Each attribute could also accept a list of strings to set multiple bindings of the same command. |
+| `programs.sioyek.config` | `open submodule of attribute set of string` | Input configuration written to {file}`$XDG_CONFIG_HOME/sioyek/prefs_user.config`. See <https://github.com/ahrm/sioyek/blob/main/pdf_viewer/prefs.config>. |
+| `programs.sioyek.config.startup_commands` | `string or list of string` | Commands to be run upon startup. Will be written to {file}`$XDG_CONFIG_HOME/sioyek/prefs_user.config`. See <https://github.com/ahrm/sioyek/blob/a4ce95fd968804fbf6ff3befcbe0d9b972bd754c/pdf_viewer/prefs.config#L116>. |
 | `programs.sioyek.enable` | `boolean` | Whether to enable Sioyek, a PDF viewer designed for reading research papers and technical books. |
 | `programs.sioyek.package` | `package` | The sioyek package to use. |

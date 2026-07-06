@@ -5,13 +5,16 @@
 All options under `services.rsshub`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.rsshub.enable` | | |
-| `services.rsshub.openFirewall` | | |
-| `services.rsshub.package` | | |
-| `services.rsshub.redis.createLocally` | | |
-| `services.rsshub.redis.enable` | | |
-| `services.rsshub.redis.host` | | |
-| `services.rsshub.redis.port` | | |
-| `services.rsshub.secretFiles` | | |
-| `services.rsshub.settings` | | |
+| --- | --- | --- |
+| `services.rsshub.enable` | `boolean` | Whether to enable RSSHub service. |
+| `services.rsshub.openFirewall` | `boolean` | Whether to open the firewall for the specified port. |
+| `services.rsshub.package` | `package` | The rsshub package to use. |
+| `services.rsshub.redis.createLocally` | `boolean` | Create and use a local Redis instance. Sets `services.redis.servers.rsshub`. |
+| `services.rsshub.redis.enable` | `boolean` | Whether to enable Redis for RSSHub. |
+| `services.rsshub.redis.host` | `string` | The Redis host. |
+| `services.rsshub.redis.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The Redis port. |
+| `services.rsshub.secretFiles` | `list of absolute path` | Environment variables stored in files for secrets. See <https://docs.rsshub.app/deploy/config> for available options. |
+| `services.rsshub.settings` | `open submodule of attribute set of string` | Environment variables for RSSHub. See <https://docs.rsshub.app/deploy/config> for available options. |
+| `services.rsshub.settings.LISTEN_INADDR_ANY` | `boolean` | Listen to any address |
+| `services.rsshub.settings.NO_LOGFILES` | `boolean` | Print logs into stderr. |
+| `services.rsshub.settings.PORT` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listen on port. |

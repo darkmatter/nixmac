@@ -5,6 +5,6 @@
 All options under `services.dante`.
 
 | Option | Type | Description |
-| ----------------------- | ---- | ----------- |
-| `services.dante.config` | | |
-| `services.dante.enable` | | |
+| --- | --- | --- |
+| `services.dante.config` | `strings concatenated with "\n"` | Contents of Dante's configuration file. NOTE: user.privileged, user.unprivileged and logoutput are set by the service. |
+| `services.dante.enable` | `boolean` | Whether to enable Dante SOCKS proxy. |

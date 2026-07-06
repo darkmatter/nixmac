@@ -5,6 +5,6 @@
 All options under `programs.corefreq`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `programs.corefreq.enable` | | |
-| `programs.corefreq.package` | | |
+| --- | --- | --- |
+| `programs.corefreq.enable` | `boolean` | Whether to enable Whether to enable the corefreq daemon and kernel module. |
+| `programs.corefreq.package` | `package` | The corefreq package to use. |

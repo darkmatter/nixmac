@@ -5,5 +5,5 @@
 All options under `programs.sharing`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `programs.sharing.enable` | | |
+| --- | --- | --- |
+| `programs.sharing.enable` | `boolean` | Whether to enable sharing, a CLI tool for sharing files. Note that it will opens the 7478 port for TCP in the firewall, which is needed for it to function properly . |

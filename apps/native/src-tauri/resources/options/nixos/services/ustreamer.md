@@ -5,10 +5,10 @@
 All options under `services.ustreamer`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.ustreamer.autoStart` | | |
-| `services.ustreamer.device` | | |
-| `services.ustreamer.enable` | | |
-| `services.ustreamer.extraArgs` | | |
-| `services.ustreamer.listenAddress` | | |
-| `services.ustreamer.package` | | |
+| --- | --- | --- |
+| `services.ustreamer.autoStart` | `boolean` | Wether to start µStreamer on boot. Disabling this will use socket activation. The service will stop gracefully after some inactivity. Disabling this will set `--exit-on-no-clients=300` |
+| `services.ustreamer.device` | `absolute path` | The v4l2 device to stream. |
+| `services.ustreamer.enable` | `boolean` | Whether to enable µStreamer, a lightweight MJPEG-HTTP streamer. |
+| `services.ustreamer.extraArgs` | `list of string` | Extra arguments to pass to `ustreamer`. See {manpage}`ustreamer(1)` |
+| `services.ustreamer.listenAddress` | `string` | Address to expose the HTTP server. This accepts values for ListenStream= defined in {manpage}`systemd.socket(5)` |
+| `services.ustreamer.package` | `package` | The ustreamer package to use. |

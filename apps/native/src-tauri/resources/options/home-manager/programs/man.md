@@ -5,11 +5,10 @@
 All options under `programs.man`.
 
 | Option | Type | Description |
-| --------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `programs.man.enable` | `boolean` | Whether to enable manual pages and the man command. This also includes “man” outputs of all home.packages . |
-| `programs.man.extraConfig` | `strings concatenated with “\n”` | Additional fields to be added to the end of the user manpath config file. |
-| `programs.man.generateCaches` | `boolean` | Whether to generate the manual page index caches using mandb (8) . This allows searching for a page or keyword using utilities like apropos (1) . |
-| `programs.man.man-db.enable` | | |
-| `programs.man.man-db.extraConfig` | | |
-| `programs.man.mandoc.enable` | | |
-| `programs.man.package` | `null or package` | The man package to use. |
+| --- | --- | --- |
+| `programs.man.enable` | `boolean` | Whether to enable manual pages and the {command}`man` command. This also includes "man" outputs of all `home.packages`. |
+| `programs.man.generateCaches` | `boolean` | Whether to generate the manual page index caches using {manpage}`mandb(8)`. This allows searching for a page or keyword using utilities like {manpage}`apropos(1)`. This feature is disabled by default because it slows down building. If you don't mind waiting a few more seconds when Home Manager builds a new generation, you may safely enable this option. |
+| `programs.man.man-db.enable` | `boolean` | Whether to enable man-db as the man page viewer. |
+| `programs.man.man-db.extraConfig` | `strings concatenated with "\n"` | Additional fields to be added to the end of the user manpath config file. |
+| `programs.man.mandoc.enable` | `boolean` | Whether to enable mandoc as the man page viewer. |
+| `programs.man.package` | `null or package` | The {command}`man` package to use. |

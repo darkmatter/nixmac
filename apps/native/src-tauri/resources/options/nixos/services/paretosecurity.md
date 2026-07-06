@@ -5,8 +5,9 @@
 All options under `services.paretosecurity`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.paretosecurity.enable` | | |
-| `services.paretosecurity.package` | | |
-| `services.paretosecurity.trayIcon` | | |
-| `services.paretosecurity.users` | | |
+| --- | --- | --- |
+| `services.paretosecurity.enable` | `boolean` | Whether to enable [ParetoSecurity](https://paretosecurity.com) [agent](https://github.com/ParetoSecurity/agent) and its root helper. |
+| `services.paretosecurity.package` | `package` | The paretosecurity package to use. |
+| `services.paretosecurity.trayIcon` | `boolean` | Set to false to disable the tray icon and run as a CLI tool only. |
+| `services.paretosecurity.users` | `attribute set of (submodule)` | Per-user Pareto Security configuration. |
+| `services.paretosecurity.users.<name>.inviteId` | `string` | A unique ID that links the agent to Pareto Cloud. Get it from the Join Team page on `https://cloud.paretosecurity.com/team/join/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`. In Step 2, under Linux tab, enter your email then copy it from the generated command. |

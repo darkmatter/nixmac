@@ -5,10 +5,10 @@
 All options under `services.asterisk`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.asterisk.confFiles` | | |
-| `services.asterisk.enable` | | |
-| `services.asterisk.extraArguments` | | |
-| `services.asterisk.extraConfig` | | |
-| `services.asterisk.package` | | |
-| `services.asterisk.useTheseDefaultConfFiles` | | |
+| --- | --- | --- |
+| `services.asterisk.confFiles` | `attribute set of string` | Sets the content of config files (typically ending with `.conf`) in the Asterisk configuration directory. Note that if you want to change {file}`asterisk.conf`, it is preferable to use the {option}`services.asterisk.extraConfig` option over this option. If `"asterisk.conf"` is specified with the {option}`confFiles` option (not recommended), you must be prepared to set your own `astetcdir` path. See <https://www.asterisk.org/community/documentation/> for more examples of what is possible here. |
+| `services.asterisk.enable` | `boolean` | Whether to enable the Asterisk PBX server. |
+| `services.asterisk.extraArguments` | `list of string` | Additional command line arguments to pass to Asterisk. |
+| `services.asterisk.extraConfig` | `strings concatenated with "\n"` | Extra configuration options appended to the default {file}`asterisk.conf` file. |
+| `services.asterisk.package` | `package` | The asterisk package to use. |
+| `services.asterisk.useTheseDefaultConfFiles` | `list of string` | Sets these config files to the default content. The default value for this option contains all necesscary files to avoid errors at startup. This does not override settings via {option}`services.asterisk.confFiles`. |

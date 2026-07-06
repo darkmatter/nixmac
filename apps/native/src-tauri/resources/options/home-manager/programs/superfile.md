@@ -5,13 +5,15 @@
 All options under `programs.superfile`.
 
 | Option | Type | Description |
-| ------------------------------------ | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.superfile.enable` | `boolean` | Whether to enable superfile - Pretty fancy and modern terminal file manager. |
 | `programs.superfile.firstUseCheck` | `boolean` | Enables the first time use popup. |
-| `programs.superfile.hotkeys` | `TOML value` | Hotkey configuration written to $XDG_CONFIG_HOME/superfile/hotkeys.toml (linux) or Library/Application Support/superfile/hotkeys.toml (darwin), See https://superfile.netlify.app/configure/custom-hotkeys/ for supported values. |
+| `programs.superfile.hotkeys` | `TOML value` | Hotkey configuration written to {file}`$XDG_CONFIG_HOME/superfile/hotkeys.toml` (linux) or {file}`Library/Application Support/superfile/hotkeys.toml` (darwin), See <https://superfile.netlify.app/configure/custom-hotkeys/> for supported values. |
 | `programs.superfile.metadataPackage` | `null or package` | The exiftool package to use. |
 | `programs.superfile.package` | `null or package` | The superfile package to use. |
 | `programs.superfile.pinnedFolders` | `list of (open submodule of (JSON value))` | Entries that get added to the pinned panel. |
-| `programs.superfile.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/superfile/config.toml (linux) or Library/Application Support/superfile/config.toml (darwin), See https://superfile.netlify.app/configure/superfile-config/ for supported values. |
-| `programs.superfile.themes` | `attribute set of (TOML value or absolute path)` | Theme files written to $XDG_CONFIG_HOME/superfile/theme/ (linux) or Library/Application Support/superfile/theme/ (darwin), See https://superfile.netlify.app/configure/custom-theme/ for supported values. |
+| `programs.superfile.pinnedFolders.*.location` | `absolute path` | Location of the pinned entry. |
+| `programs.superfile.pinnedFolders.*.name` | `null or string` | Name that will be shown. |
+| `programs.superfile.settings` | `TOML value` | Configuration written to {file}`$XDG_CONFIG_HOME/superfile/config.toml` (linux) or {file}`Library/Application Support/superfile/config.toml` (darwin), See <https://superfile.netlify.app/configure/superfile-config/> for supported values. |
+| `programs.superfile.themes` | `attribute set of (TOML value or absolute path)` | Theme files written to {file}`$XDG_CONFIG_HOME/superfile/theme/` (linux) or {file}`Library/Application Support/superfile/theme/` (darwin), See <https://superfile.netlify.app/configure/custom-theme/> for supported values. |
 | `programs.superfile.zoxidePackage` | `null or package` | The zoxide package to use. |

@@ -5,6 +5,6 @@
 All options under `programs.labwc`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `programs.labwc.enable` | | |
-| `programs.labwc.package` | | |
+| --- | --- | --- |
+| `programs.labwc.enable` | `boolean` | Whether to enable labwc. |
+| `programs.labwc.package` | `package` | The labwc package to use. |

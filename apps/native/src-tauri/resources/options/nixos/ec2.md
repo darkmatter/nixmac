@@ -5,8 +5,7 @@
 All options under `ec2`.
 
 | Option | Type | Description |
-| ------------------ | ---- | ----------- |
-| `ec2.efi` | | |
-| `ec2.hvm` | | |
-| `ec2.zfs.datasets` | | |
-| `ec2.zfs.enable` | | |
+| --- | --- | --- |
+| `ec2.zfs.datasets` | `attribute set of (submodule)` | Datasets to create under the `tank` and `boot` zpools. **NOTE:** This option is used only at image creation time, and does not attempt to declaratively create or manage datasets on an existing system. |
+| `ec2.zfs.datasets.<name>.mount` | `null or string` | Where to mount this dataset. |
+| `ec2.zfs.datasets.<name>.properties` | `attribute set of string` | Properties to set on this dataset. |

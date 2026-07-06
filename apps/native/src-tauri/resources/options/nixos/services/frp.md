@@ -5,9 +5,10 @@
 All options under `services.frp`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `services.frp.enable` | | |
-| `services.frp.instances` | | |
-| `services.frp.package` | | |
-| `services.frp.role` | | |
-| `services.frp.settings` | | |
+| --- | --- | --- |
+| `services.frp.instances` | `attribute set of (submodule)` | Frp instances. |
+| `services.frp.instances.<name>.enable` | `boolean` | Whether to enable frp. |
+| `services.frp.instances.<name>.environmentFiles` | `list of absolute path` | List of paths files that follows systemd environmentfile structure. Can be used to pass secrets to settings attribute. Example content of a file: SECRET_TOKEN=1234 |
+| `services.frp.instances.<name>.role` | `one of "server", "client"` | The frp consists of `client` and `server`. The server is usually deployed on the machine with a public IP address, and the client is usually deployed on the machine where the Intranet service to be penetrated resides. |
+| `services.frp.instances.<name>.settings` | `TOML value` | Frp configuration, for configuration options see the example of [client](https://github.com/fatedier/frp/blob/dev/conf/frpc_full_example.toml) or [server](https://github.com/fatedier/frp/blob/dev/conf/frps_full_example.toml) on github. |
+| `services.frp.package` | `package` | The frp package to use. |

@@ -5,10 +5,10 @@
 All options under `services.psd`.
 
 | Option | Type | Description |
-| -------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.psd.backupLimit` | `unsigned integer, meaning >=0` | Maximum number of crash recovery snapshots to keep (the oldest ones are deleted first). |
-| `services.psd.browsers` | `list of string` | A list of browsers to sync. An empty list will enable all browsers to be managed by profile-sync-daemon. |
+| `services.psd.browsers` | `list of string` | A list of browsers to sync. An empty list will enable all browsers to be managed by profile-sync-daemon. Available choices are: chromium chromium-dev conkeror.mozdev.org epiphany falkon firefox firefox-trunk google-chrome google-chrome-beta google-chrome-unstable heftig-aurora icecat inox luakit midori opera opera-beta opera-developer opera-legacy otter-browser qupzilla qutebrowser palemoon rekonq seamonkey surf vivaldi vivaldi-snapshot |
 | `services.psd.enable` | `boolean` | Whether to enable Profile-sync-daemon service. |
 | `services.psd.package` | `package` | The profile-sync-daemon package to use. |
-| `services.psd.resyncTimer` | `string` | The amount of time to wait before syncing browser profiles back to the disk. |
+| `services.psd.resyncTimer` | `string` | The amount of time to wait before syncing browser profiles back to the disk. Takes a systemd time span, see {manpage}`systemd.time(7)`. The time unit defaults to seconds if omitted. |
 | `services.psd.useBackup` | `boolean` | Whether to completely enable or disable the crash recovery feature. |

@@ -5,11 +5,11 @@
 All options under `services.bazarr`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.bazarr.dataDir` | | |
-| `services.bazarr.enable` | | |
-| `services.bazarr.group` | | |
-| `services.bazarr.listenPort` | | |
-| `services.bazarr.openFirewall` | | |
-| `services.bazarr.package` | | |
-| `services.bazarr.user` | | |
+| --- | --- | --- |
+| `services.bazarr.dataDir` | `string` | The directory where Bazarr stores its data files. |
+| `services.bazarr.enable` | `boolean` | Whether to enable bazarr, a subtitle manager for Sonarr and Radarr. |
+| `services.bazarr.group` | `string` | Group under which bazarr runs. |
+| `services.bazarr.listenPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which the bazarr web interface should listen |
+| `services.bazarr.openFirewall` | `boolean` | Open ports in the firewall for the bazarr web interface. |
+| `services.bazarr.package` | `package` | The bazarr package to use. |
+| `services.bazarr.user` | `string` | User account under which bazarr runs. |

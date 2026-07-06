@@ -5,9 +5,9 @@
 All options under `services.haproxy`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.haproxy.config` | | |
-| `services.haproxy.enable` | | |
-| `services.haproxy.group` | | |
-| `services.haproxy.package` | | |
-| `services.haproxy.user` | | |
+| --- | --- | --- |
+| `services.haproxy.config` | `null or strings concatenated with "\n"` | Contents of the HAProxy configuration file, {file}`haproxy.conf`. |
+| `services.haproxy.enable` | `boolean` | Whether to enable HAProxy, the reliable, high performance TCP/HTTP load balancer. |
+| `services.haproxy.group` | `string` | Group account under which haproxy runs. |
+| `services.haproxy.package` | `package` | The haproxy package to use. |
+| `services.haproxy.user` | `string` | User account under which haproxy runs. |

@@ -5,10 +5,10 @@
 All options under `services.heartbeat`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.heartbeat.enable` | | |
-| `services.heartbeat.extraConfig` | | |
-| `services.heartbeat.name` | | |
-| `services.heartbeat.package` | | |
-| `services.heartbeat.stateDir` | | |
-| `services.heartbeat.tags` | | |
+| --- | --- | --- |
+| `services.heartbeat.enable` | `boolean` | Whether to enable heartbeat, uptime monitoring. |
+| `services.heartbeat.extraConfig` | `strings concatenated with "\n"` | Any other configuration options you want to add |
+| `services.heartbeat.name` | `string` | Name of the beat |
+| `services.heartbeat.package` | `package` | The heartbeat package to use. |
+| `services.heartbeat.stateDir` | `string` | The state directory. heartbeat's own logs and other data are stored here. |
+| `services.heartbeat.tags` | `list of string` | Tags to place on the shipped log messages |

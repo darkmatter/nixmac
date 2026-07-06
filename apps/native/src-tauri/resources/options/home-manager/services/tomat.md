@@ -5,7 +5,7 @@
 All options under `services.tomat`.
 
 | Option | Type | Description |
-| ------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.tomat.enable` | `boolean` | Whether to enable Tomat Pomodoro server. |
 | `services.tomat.package` | `package` | The tomat package to use. |
-| `services.tomat.settings` | `open submodule of (TOML value)` | Tomat configuration. See https://github.com/jolars/tomat/blob/main/docs/configuration.md for supported values. |
+| `services.tomat.settings` | `open submodule of (TOML value)` | Tomat configuration. See <https://github.com/jolars/tomat/blob/main/docs/configuration.md> for supported values. |

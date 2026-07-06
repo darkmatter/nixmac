@@ -5,7 +5,7 @@
 All options under `programs.vivid`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `programs.vivid.enable` | | |
-| `programs.vivid.package` | | |
-| `programs.vivid.theme` | | |
+| --- | --- | --- |
+| `programs.vivid.enable` | `boolean` | Whether to configure LS_COLORS with vivid. |
+| `programs.vivid.package` | `package` | The vivid package to use. |
+| `programs.vivid.theme` | `string` | Theme to be used (see `vivid themes`) |

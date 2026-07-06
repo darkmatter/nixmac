@@ -5,15 +5,15 @@
 All options under `services.cadvisor`.
 
 | Option | Type | Description |
-| --------------------------------------------- | ---- | ----------- |
-| `services.cadvisor.enable` | | |
-| `services.cadvisor.extraOptions` | | |
-| `services.cadvisor.listenAddress` | | |
-| `services.cadvisor.port` | | |
-| `services.cadvisor.storageDriver` | | |
-| `services.cadvisor.storageDriverDb` | | |
-| `services.cadvisor.storageDriverHost` | | |
-| `services.cadvisor.storageDriverPassword` | | |
-| `services.cadvisor.storageDriverPasswordFile` | | |
-| `services.cadvisor.storageDriverSecure` | | |
-| `services.cadvisor.storageDriverUser` | | |
+| --- | --- | --- |
+| `services.cadvisor.enable` | `boolean` | Whether to enable Cadvisor service. |
+| `services.cadvisor.extraOptions` | `list of string` | Additional cadvisor options. See <https://github.com/google/cadvisor/blob/master/docs/runtime_options.md> for available options. |
+| `services.cadvisor.listenAddress` | `string` | Cadvisor listening host |
+| `services.cadvisor.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Cadvisor listening port |
+| `services.cadvisor.storageDriver` | `null or string` | Cadvisor storage driver. |
+| `services.cadvisor.storageDriverDb` | `string` | Cadvisord storage driver database name. |
+| `services.cadvisor.storageDriverHost` | `string` | Cadvisor storage driver host. |
+| `services.cadvisor.storageDriverPassword` | `string` | Cadvisor storage driver password. Warning: this password is stored in the world-readable Nix store. It's recommended to use the {option}`storageDriverPasswordFile` option since that gives you control over the security of the password. {option}`storageDriverPasswordFile` also takes precedence over {option}`storageDriverPassword`. |
+| `services.cadvisor.storageDriverPasswordFile` | `string` | File that contains the cadvisor storage driver password. {option}`storageDriverPasswordFile` takes precedence over {option}`storageDriverPassword` Warning: when {option}`storageDriverPassword` is non-empty this defaults to a file in the world-readable Nix store that contains the value of {option}`storageDriverPassword`. It's recommended to override this with a path not in the Nix store. Tip: use [nixops key management](https://nixos.org/nixops/manual/#idm140737318306400) |
+| `services.cadvisor.storageDriverSecure` | `boolean` | Cadvisor storage driver, enable secure communication. |
+| `services.cadvisor.storageDriverUser` | `string` | Cadvisor storage driver username. |

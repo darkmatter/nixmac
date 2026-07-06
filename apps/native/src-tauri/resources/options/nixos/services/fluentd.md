@@ -5,8 +5,8 @@
 All options under `services.fluentd`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.fluentd.config` | | |
-| `services.fluentd.enable` | | |
-| `services.fluentd.package` | | |
-| `services.fluentd.plugins` | | |
+| --- | --- | --- |
+| `services.fluentd.config` | `strings concatenated with "\n"` | Fluentd config. |
+| `services.fluentd.enable` | `boolean` | Whether to enable fluentd, a data/log collector. |
+| `services.fluentd.package` | `package` | The fluentd package to use. |
+| `services.fluentd.plugins` | `list of absolute path` | A list of plugin paths to pass into fluentd. It will make plugins defined in ruby files there available in your config. |

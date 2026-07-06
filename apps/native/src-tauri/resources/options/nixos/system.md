@@ -5,100 +5,71 @@
 All options under `system`.
 
 | Option | Type | Description |
-| --------------------------------------------------- | ---- | ----------- |
-| `system.activatable` | | |
-| `system.activatableSystemBuilderCommands` | | |
-| `system.activationScripts` | | |
-| `system.autoUpgrade.allowReboot` | | |
-| `system.autoUpgrade.channel` | | |
-| `system.autoUpgrade.dates` | | |
-| `system.autoUpgrade.enable` | | |
-| `system.autoUpgrade.fixedRandomDelay` | | |
-| `system.autoUpgrade.flags` | | |
-| `system.autoUpgrade.flake` | | |
-| `system.autoUpgrade.operation` | | |
-| `system.autoUpgrade.persistent` | | |
-| `system.autoUpgrade.randomizedDelaySec` | | |
-| `system.autoUpgrade.rebootWindow` | | |
-| `system.autoUpgrade.runGarbageCollection` | | |
-| `system.autoUpgrade.upgrade` | | |
-| `system.boot.loader.id` | | |
-| `system.boot.loader.initrdFile` | | |
-| `system.boot.loader.kernelFile` | | |
-| `system.boot.loader.ukiFile` | | |
-| `system.build` | | |
-| `system.checks` | | |
-| `system.configurationRevision` | | |
-| `system.copySystemConfiguration` | | |
-| `system.defaultChannel` | | |
-| `system.disableInstallerTools` | | |
-| `system.dryActivationScript` | | |
-| `system.etc.overlay.enable` | | |
-| `system.etc.overlay.mutable` | | |
-| `system.extraDependencies` | | |
-| `system.extraSystemBuilderCmds` | | |
-| `system.forbiddenDependenciesRegex` | | |
-| `system.forbiddenDependenciesRegexes` | | |
-| `system.fsPackages` | | |
-| `system.image.id` | | |
-| `system.image.version` | | |
-| `system.includeBuildDependencies` | | |
-| `system.modulesTree` | | |
-| `system.name` | | |
-| `system.nixos-generate-config.configuration` | | |
-| `system.nixos-generate-config.desktopConfiguration` | | |
-| `system.nixos-generate-config.flake` | | |
-| `system.nixos-init.enable` | | |
-| `system.nixos-init.package` | | |
-| `system.nixos.codeName` | | |
-| `system.nixos.distroId` | | |
-| `system.nixos.distroName` | | |
-| `system.nixos.extraLSBReleaseArgs` | | |
-| `system.nixos.extraOSReleaseArgs` | | |
-| `system.nixos.label` | | |
-| `system.nixos.release` | | |
-| `system.nixos.revision` | | |
-| `system.nixos.tags` | | |
-| `system.nixos.variantName` | | |
-| `system.nixos.variant_id` | | |
-| `system.nixos.vendorId` | | |
-| `system.nixos.vendorName` | | |
-| `system.nixos.version` | | |
-| `system.nixos.versionSuffix` | | |
-| `system.nixosLabel` | | |
-| `system.nixosRevision` | | |
-| `system.nixosVersion` | | |
-| `system.nixosVersionSuffix` | | |
-| `system.nssDatabases.group` | | |
-| `system.nssDatabases.hosts` | | |
-| `system.nssDatabases.passwd` | | |
-| `system.nssDatabases.services` | | |
-| `system.nssDatabases.shadow` | | |
-| `system.nssDatabases.subgid` | | |
-| `system.nssDatabases.subuid` | | |
-| `system.nssDatabases.sudoers` | | |
-| `system.nssHosts` | | |
-| `system.nssModules` | | |
-| `system.path` | | |
-| `system.preSwitchChecks` | | |
-| `system.preSwitchChecksScript` | | |
-| `system.rebuild.enableNg` | | |
-| `system.replaceDependencies.cutoffPackages` | | |
-| `system.replaceDependencies.replacements` | | |
-| `system.replaceRuntimeDependencies` | | |
-| `system.requiredKernelConfig` | | |
-| `system.services` | | |
-| `system.stateVersion` | | |
-| `system.switch.enable` | | |
-| `system.switch.enableNg` | | |
-| `system.switch.inhibitors` | | |
-| `system.systemBuilderArgs` | | |
-| `system.systemBuilderCommands` | | |
-| `system.tools.nixos-build-vms.enable` | | |
-| `system.tools.nixos-enter.enable` | | |
-| `system.tools.nixos-generate-config.enable` | | |
-| `system.tools.nixos-install.enable` | | |
-| `system.tools.nixos-option.enable` | | |
-| `system.tools.nixos-rebuild.enable` | | |
-| `system.tools.nixos-version.enable` | | |
-| `system.userActivationScripts` | | |
+| --- | --- | --- |
+| `system.activatable` | `boolean` | Whether to add the activation script to the system profile. The default, to have the script available all the time, is what we normally do, but for image based systems, this may not be needed or not be desirable. |
+| `system.activationScripts` | `attribute set of (string or (submodule))` | A set of shell script fragments that are executed when a NixOS system configuration is activated. Examples are updating /etc, creating accounts, and so on. Since these are executed every time you boot the system or run {command}`nixos-rebuild`, it's important that they are idempotent and fast. |
+| `system.autoUpgrade.allowReboot` | `boolean` | Reboot the system into the new generation instead of a switch if the new generation uses a different kernel, kernel modules or initrd than the booted system. See {option}`rebootWindow` for configuring the times at which a reboot is allowed. |
+| `system.autoUpgrade.channel` | `null or string` | The URI of the NixOS channel to use for automatic upgrades. By default, this is the channel set using {command}`nix-channel` (run `nix-channel --list` to see the current value). |
+| `system.autoUpgrade.dates` | `string` | How often or when upgrade occurs. For most desktop and server systems a sufficient upgrade frequency is once a day. The format is described in {manpage}`systemd.time(7)`. |
+| `system.autoUpgrade.enable` | `boolean` | Whether to periodically upgrade NixOS to the latest version. If enabled, a systemd timer will run `nixos-rebuild switch --upgrade` once a day. |
+| `system.autoUpgrade.fixedRandomDelay` | `boolean` | Make the randomized delay consistent between runs. This reduces the jitter between automatic upgrades. See {option}`randomizedDelaySec` for configuring the randomized delay. |
+| `system.autoUpgrade.flags` | `list of string` | Any additional flags passed to {command}`nixos-rebuild`. If you are using flakes and use a local repo you can add {command}`[ "--update-input" "nixpkgs" "--commit-lock-file" ]` to update nixpkgs. |
+| `system.autoUpgrade.flake` | `null or string` | The Flake URI of the NixOS configuration to build. Disables the option {option}`system.autoUpgrade.channel`. |
+| `system.autoUpgrade.operation` | `one of "switch", "boot"` | Whether to run `nixos-rebuild switch --upgrade` or run `nixos-rebuild boot --upgrade` |
+| `system.autoUpgrade.persistent` | `boolean` | Takes a boolean argument. If true, the time when the service unit was last triggered is stored on disk. When the timer is activated, the service unit is triggered immediately if it would have been triggered at least once during the time when the timer was inactive. Such triggering is nonetheless subject to the delay imposed by RandomizedDelaySec=. This is useful to catch up on missed runs of the service when the system was powered down. |
+| `system.autoUpgrade.randomizedDelaySec` | `string` | Add a randomized delay before each automatic upgrade. The delay will be chosen between zero and this value. This value must be a time span in the format specified by {manpage}`systemd.time(7)` |
+| `system.autoUpgrade.rebootWindow` | `null or (submodule)` | Define a lower and upper time value (in HH:MM format) which constitute a time window during which reboots are allowed after an upgrade. This option only has an effect when {option}`allowReboot` is enabled. The default value of `null` means that reboots are allowed at any time. |
+| `system.autoUpgrade.rebootWindow.lower` | `string matching the pattern [[:digit:]]{2}:[[:digit:]]{2}` | Lower limit of the reboot window |
+| `system.autoUpgrade.rebootWindow.upper` | `string matching the pattern [[:digit:]]{2}:[[:digit:]]{2}` | Upper limit of the reboot window |
+| `system.autoUpgrade.runGarbageCollection` | `boolean` | Whether to automatically run `nix-gc.service` after a successful system upgrade. |
+| `system.autoUpgrade.upgrade` | `boolean` | Disable adding the `--upgrade` parameter when `channel` is not set, such as when upgrading to the latest version of a flake honouring its lockfile. |
+| `system.build` | `open submodule of lazy attribute set of unspecified value` | Attribute set of derivations used to set up the system. |
+| `system.build.images` | `lazy attribute set of raw value` | Different target images generated for this NixOS configuration. |
+| `system.build.noFacter` | `unspecified value` | A version of the system closure with facter disabled |
+| `system.build.separateActivationScript` | `package` | A separate activation script package that's not part of the system profile. This is useful for configurations where `system.activatable` is `false`. Otherwise, you can just use `system.build.toplevel`. |
+| `system.build.toplevel` | `package` | This option contains the store path that typically represents a NixOS system. You can read this path in a custom deployment tool for example. |
+| `system.checks` | `list of package` | Packages that are added as dependencies of the system's build, usually for the purpose of validating some part of the configuration. Unlike `system.extraDependencies`, these store paths do not become part of the built system configuration. |
+| `system.configurationRevision` | `null or string` | The Git revision of the top-level flake from which this configuration was built. |
+| `system.copySystemConfiguration` | `boolean` | If enabled, copies the NixOS configuration file (usually {file}`/etc/nixos/configuration.nix`) and symlinks it from the resulting system (getting to {file}`/run/current-system/configuration.nix`). Note that only this single file is copied, even if it imports others. Warning: This feature cannot be used when the system is configured by a flake |
+| `system.etc.overlay.enable` | `boolean` | Mount `/etc` as an overlayfs instead of generating it via a perl script. Note: This is currently experimental. Only enable this option if you're confident that you can recover your system if it breaks. |
+| `system.etc.overlay.mutable` | `boolean` | Whether to mount `/etc` mutably (i.e. read-write) or immutably (i.e. read-only). If this is false, only the immutable lowerdir is mounted. If it is true, a writable upperdir is mounted on top. |
+| `system.extraDependencies` | `list of path in the Nix store` | A list of paths that should be included in the system closure but generally not visible to users. This option has also been used for build-time checks, but the `system.checks` option is more appropriate for that purpose as checks should not leave a trace in the built system configuration. |
+| `system.forbiddenDependenciesRegexes` | `list of string` | POSIX Extended Regular Expressions that match store paths that should not appear in the system closure, with the exception of {option}`system.extraDependencies`, which is not checked. |
+| `system.image.id` | `null or string` | Image identifier. This corresponds to the `IMAGE_ID` field in {manpage}`os-release(5)`. See the upstream docs for more details on valid characters for this field: <https://www.freedesktop.org/software/systemd/man/latest/os-release.html#IMAGE_ID=> You would only want to set this option if you're build NixOS appliance images. |
+| `system.image.version` | `null or string` | Image version. This corresponds to the `IMAGE_VERSION` field in {manpage}`os-release(5)`. See the upstream docs for more details on valid characters for this field: <https://www.freedesktop.org/software/systemd/man/latest/os-release.html#IMAGE_VERSION=> You would only want to set this option if you're build NixOS appliance images. |
+| `system.includeBuildDependencies` | `boolean` | Whether to include the build closure of the whole system in its runtime closure. This can be useful for making changes fully offline, as it includes all sources, patches, and intermediate outputs required to build all the derivations that the system depends on. Note that this includes _all_ the derivations, down from the included applications to their sources, the compilers used to build them, and even the bootstrap compiler used to compile the compilers. This increases the size of the system and the time needed to download its dependencies drastically: a minimal configuration with no extra services enabled grows from ~670MiB in size to 13.5GiB, and takes proportionally longer to download. |
+| `system.name` | `string` | The name of the system used in the {option}`system.build.toplevel` derivation. That derivation has the following name: `"nixos-system-${config.system.name}-${config.system.nixos.label}"` |
+| `system.nixos-init.enable` | `boolean` | Whether to enable nixos-init, a system for bashless initialization. This doesn't use any `activationScripts`. Anything set in these options is a no-op here. . |
+| `system.nixos-init.package` | `package` | The nixos-init package to use. |
+| `system.nixos.codeName` | `string` | The NixOS release code name (e.g. `Emu`). |
+| `system.nixos.label` | `string matching the pattern [a-zA-Z0-9:_\.-]*` | NixOS version name to be used in the names of generated outputs and boot labels. If you ever wanted to influence the labels in your GRUB menu, this is the option for you. It can only contain letters, numbers and the following symbols: `:`, `_`, `.` and `-`. The default is {option}`system.nixos.tags` separated by "-" + "-" + {env}`NIXOS_LABEL_VERSION` environment variable (defaults to the value of {option}`system.nixos.version`). Can be overridden by setting {env}`NIXOS_LABEL`. Useful for not loosing track of configurations built from different nixos branches/revisions, e.g.: `` #!/bin/sh today=`date +%Y%m%d` branch=`(cd nixpkgs ; git branch 2>/dev/null \| sed -n '/^\* / { s\|^\* \|\|; p; }')` revision=`(cd nixpkgs ; git rev-parse HEAD)` export NIXOS_LABEL_VERSION="$today.$branch-${revision:0:7}" nixos-rebuild switch `` |
+| `system.nixos.release` | `string` | The NixOS release (e.g. `16.03`). |
+| `system.nixos.tags` | `list of string` | Strings to prefix to the default {option}`system.nixos.label`. Useful for not losing track of configurations built with different options, e.g.: `{   system.nixos.tags = [ "with-xen" ];   virtualisation.xen.enable = true; }` |
+| `system.nixos.variantName` | `null or string` | A string identifying a specific variant or edition of the operating system suitable for presentation to the user |
+| `system.nixos.variant_id` | `null or string matching the pattern ^[a-z0-9._-]+$` | A lower-case string identifying a specific variant or edition of the operating system |
+| `system.nssDatabases.group` | `list of string` | List of group entries to configure in {file}`/etc/nsswitch.conf`. Note that "files" is always prepended while "systemd" is appended if nscd is enabled. This option only takes effect if nscd is enabled. |
+| `system.nssDatabases.hosts` | `list of string` | List of hosts entries to configure in {file}`/etc/nsswitch.conf`. Note that "files" is always prepended, and "dns" and "myhostname" are always appended. This option only takes effect if nscd is enabled. |
+| `system.nssDatabases.passwd` | `list of string` | List of passwd entries to configure in {file}`/etc/nsswitch.conf`. Note that "files" is always prepended while "systemd" is appended if nscd is enabled. This option only takes effect if nscd is enabled. |
+| `system.nssDatabases.services` | `list of string` | List of services entries to configure in {file}`/etc/nsswitch.conf`. Note that "files" is always prepended. This option only takes effect if nscd is enabled. |
+| `system.nssDatabases.shadow` | `list of string` | List of shadow entries to configure in {file}`/etc/nsswitch.conf`. Note that "files" is always prepended. This option only takes effect if nscd is enabled. |
+| `system.nssDatabases.subgid` | `list of string` | List of subgid entries to configure in {file}`/etc/nsswitch.conf`. Note that "files" is always prepended. This option only takes effect if nscd is enabled. |
+| `system.nssDatabases.subuid` | `list of string` | List of subuid entries to configure in {file}`/etc/nsswitch.conf`. Note that "files" is always prepended. This option only takes effect if nscd is enabled. |
+| `system.nssDatabases.sudoers` | `list of string` | List of sudoers entries to configure in {file}`/etc/nsswitch.conf`. Note that "files" is always prepended. This option only takes effect if nscd is enabled. |
+| `system.preSwitchChecks` | `attribute set of string` | A set of shell script fragments that are executed before the switch to a new NixOS system configuration. A failure in any of these fragments will cause the switch to fail and exit early. The scripts receive the new configuration path and the action verb passed to switch-to-configuration, as the first and second positional arguments (meaning that you can access them using `$1` and `$2`, respectively). |
+| `system.replaceDependencies.cutoffPackages` | `list of package` | Packages to which no replacements should be applied. The initrd is matched by default, because its structure renders the replacement process ineffective and prone to breakage. |
+| `system.replaceDependencies.replacements` | `list of (submodule)` | List of packages to override without doing a full rebuild. The original derivation and replacement derivation must have the same name length, and ideally should have close-to-identical directory layout. |
+| `system.replaceDependencies.replacements.*.newDependency` | `package` | The replacement package. |
+| `system.replaceDependencies.replacements.*.oldDependency` | `package` | The original package to override. |
+| `system.services` | `attribute set of (submodule)` | A collection of NixOS [modular services](https://nixos.org/manual/nixos/unstable/#modular-services) that are configured as systemd services. |
+| `system.stateVersion` | `string` | This option defines the first version of NixOS you have installed on this particular machine, and is used to maintain compatibility with application data (e.g. databases) created on older NixOS versions. For example, if NixOS version XX.YY ships with AwesomeDB version N by default, and is then upgraded to version XX.YY+1, which ships AwesomeDB version N+1, the existing databases may no longer be compatible, causing applications to fail, or even leading to data loss. The `stateVersion` mechanism avoids this situation by making the default version of such packages conditional on the first version of NixOS you've installed (encoded in `stateVersion`), instead of simply always using the latest one. Note that this generally only affects applications that can't upgrade their data automatically - applications and services supporting automatic migrations will remain on latest versions when you upgrade. Most users should **never** change this value after the initial install, for any reason, even if you've upgraded your system to a new NixOS release. This value does **not** affect the Nixpkgs version your packages and OS are pulled from, so changing it will **not** upgrade your system. This value being lower than the current NixOS release does **not** mean your system is out of date, out of support, or vulnerable. Do **not** change this value unless you have manually inspected all the changes it would make to your configuration, and migrated your data accordingly. |
+| `system.switch.enable` | `boolean` | Whether to include the capability to switch configurations. Disabling this makes the system unable to be reconfigured via `nixos-rebuild`. This is good for image based appliances where updates are handled outside the image. Reducing features makes the image lighter and slightly more secure. |
+| `system.switch.inhibitors` | `attribute set of string` | Attribute set of strings that will prevent switching into a configuration when they change. The switch can be manually forced on the command line if required. |
+| `system.tools.nixos-build-vms.enable` | `boolean` | Whether to enable nixos-build-vms script. |
+| `system.tools.nixos-enter.enable` | `boolean` | Whether to enable nixos-enter script. |
+| `system.tools.nixos-generate-config.enable` | `boolean` | Whether to enable nixos-generate-config script. |
+| `system.tools.nixos-install.enable` | `boolean` | Whether to enable nixos-install script. |
+| `system.tools.nixos-option.enable` | `boolean` | Whether to enable nixos-option script. |
+| `system.tools.nixos-rebuild.enable` | `boolean` | Whether to enable nixos-rebuild script. |
+| `system.tools.nixos-rebuild.enableRun0Elevation` | `boolean` | Whether to enable support for being targeted by `nixos-rebuild --elevate=run0 --ask-elevate-password`. This enables polkit and adds {command}`polkit-stdin-agent` to {option}`environment.systemPackages` so that a deploying host can find a target-architecture agent at {file}`<toplevel>/sw/bin/polkit-stdin-agent` after copying the closure (which is required for cross-architecture deploys and mismatched nixpkgs revisions to work). . |
+| `system.tools.nixos-version.enable` | `boolean` | Whether to enable nixos-version script. |
+| `system.userActivationScripts` | `attribute set of (string or (submodule))` | A set of shell script fragments that are executed by a systemd user service when a NixOS system configuration is activated. Examples are rebuilding the .desktop file cache for showing applications in the menu. Since these are executed every time you run {command}`nixos-rebuild`, it's important that they are idempotent and fast. |

@@ -5,7 +5,7 @@
 All options under `services.bcachefs`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.bcachefs.autoScrub.enable` | | |
-| `services.bcachefs.autoScrub.fileSystems` | | |
-| `services.bcachefs.autoScrub.interval` | | |
+| --- | --- | --- |
+| `services.bcachefs.autoScrub.enable` | `boolean` | Whether to enable regular bcachefs scrub. |
+| `services.bcachefs.autoScrub.fileSystems` | `list of absolute path` | List of paths to bcachefs filesystems to regularly call {command}`bcachefs scrub` on. Defaults to all mount points with bcachefs filesystems. |
+| `services.bcachefs.autoScrub.interval` | `string` | Systemd calendar expression for when to scrub bcachefs filesystems. The recommended period is a month but could be less. See {manpage}`systemd.time(7)` for more information on the syntax. |

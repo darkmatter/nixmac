@@ -5,18 +5,18 @@
 All options under `services.castopod`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `services.castopod.configureNginx` | | |
-| `services.castopod.dataDir` | | |
-| `services.castopod.database.createLocally` | | |
-| `services.castopod.database.hostname` | | |
-| `services.castopod.database.name` | | |
-| `services.castopod.database.passwordFile` | | |
-| `services.castopod.database.user` | | |
-| `services.castopod.enable` | | |
-| `services.castopod.environmentFile` | | |
-| `services.castopod.localDomain` | | |
-| `services.castopod.maxUploadSize` | | |
-| `services.castopod.package` | | |
-| `services.castopod.poolSettings` | | |
-| `services.castopod.settings` | | |
+| --- | --- | --- |
+| `services.castopod.configureNginx` | `boolean` | Configure nginx as a reverse proxy for CastoPod. |
+| `services.castopod.dataDir` | `absolute path` | The path where castopod stores all data. This path must be in sync with the castopod package (where it is hardcoded during the build in accordance with its own `dataDir` argument). |
+| `services.castopod.database.createLocally` | `boolean` | Create the database and database user locally. |
+| `services.castopod.database.hostname` | `string` | Database hostname. |
+| `services.castopod.database.name` | `string` | Database name. |
+| `services.castopod.database.passwordFile` | `null or absolute path` | A file containing the password corresponding to [](#opt-services.castopod.database.user). This file is loaded using systemd LoadCredentials. |
+| `services.castopod.database.user` | `string` | Database user. |
+| `services.castopod.enable` | `boolean` | Whether to enable Castopod, a hosting platform for podcasters. |
+| `services.castopod.environmentFile` | `null or absolute path` | Environment file to inject e.g. secrets into the configuration. See [](https://code.castopod.org/adaures/castopod/-/blob/main/.env.example) for available environment variables. This file is loaded using systemd LoadCredentials. |
+| `services.castopod.localDomain` | `string` | The domain serving your CastoPod instance. |
+| `services.castopod.maxUploadSize` | `string` | Maximum supported size for a file upload in. Maximum HTTP body size is set to this value for nginx and PHP (because castopod doesn't support chunked uploads yet: https://code.castopod.org/adaures/castopod/-/issues/330). Note, that practical upload size limit is smaller. For example, with 512 MiB setting - around 500 MiB is possible. |
+| `services.castopod.package` | `package` | The castopod package to use. |
+| `services.castopod.poolSettings` | `attribute set of (string or signed integer or boolean)` | Options for Castopod's PHP pool. See the documentation on `php-fpm.conf` for details on configuration directives. |
+| `services.castopod.settings` | `attribute set of (string or signed integer or boolean)` | Environment variables used for Castopod. See [](https://code.castopod.org/adaures/castopod/-/blob/main/.env.example) for available environment variables. |

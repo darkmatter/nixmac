@@ -5,7 +5,7 @@
 All options under `programs.ec`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `programs.ec.enable` | | |
-| `programs.ec.enableGitIntegration` | | |
-| `programs.ec.package` | | |
+| --- | --- | --- |
+| `programs.ec.enable` | `boolean` | Whether to enable ec, 3-way terminal native Git merge conflict resolver. |
+| `programs.ec.enableGitIntegration` | `boolean` | Whether to enable git integration for ec. When enabled, ec will be configured as git's merge tool. |
+| `programs.ec.package` | `package` | The ec package to use. |

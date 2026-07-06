@@ -5,741 +5,679 @@
 Subcategories of `services`.
 
 | Key | Type | Description |
-| --------------------------------------------------------------------------- | -------- | ----------------------------- |
+| --- | --- | --- |
 | [`SystemdJournal2Gelf`](SystemdJournal2Gelf.md) | category | 4 options |
-| [`_3proxy`](_3proxy.md) | category | 8 options |
+| [`_3proxy`](_3proxy.md) | category | 25 options |
 | [`a2boot`](a2boot.md) | category | 1 option |
 | [`accounts-daemon`](accounts-daemon.md) | category | 1 option |
-| [`acme-dns`](acme-dns.md) | category | 3 options |
-| [`acpid`](acpid.md) | category | 6 options |
+| [`acme-dns`](acme-dns.md) | category | 16 options |
+| [`acpid`](acpid.md) | category | 8 options |
 | [`activemq`](activemq.md) | category | 6 options |
-| [`actkbd`](actkbd.md) | category | 3 options |
-| [`actual`](actual.md) | category | 6 options |
-| [`adguardhome`](adguardhome.md) | category | 9 options |
+| [`actkbd`](actkbd.md) | category | 7 options |
+| [`actual`](actual.md) | category | 11 options |
+| [`adguardhome`](adguardhome.md) | category | 10 options |
 | [`aerospike`](aerospike.md) | category | 5 options |
-| [`aesmd`](aesmd.md) | category | 6 options |
+| [`aesmd`](aesmd.md) | category | 9 options |
 | [`agate`](agate.md) | category | 9 options |
-| [`agorakit`](agorakit.md) | category | 2 subcategories, 26 options |
+| [`agorakit`](agorakit.md) | category | 75 options |
 | [`airsonic`](airsonic.md) | category | 12 options |
-| [`akkoma`](akkoma.md) | category | 2 subcategories, 20 options |
+| [`akkoma`](akkoma.md) | category | 96 options |
 | [`alerta`](alerta.md) | category | 10 options |
 | [`alice-lg`](alice-lg.md) | category | 3 options |
 | [`alloy`](alloy.md) | category | 5 options |
-| [`alps`](alps.md) | category | 2 subcategories, 10 options |
+| [`alps`](alps.md) | category | 8 options |
 | [`amazon-cloudwatch-agent`](amazon-cloudwatch-agent.md) | category | 8 options |
 | [`amazon-ssm-agent`](amazon-ssm-agent.md) | category | 2 options |
-| [`amule`](amule.md) | category | 13 options |
+| [`amule`](amule.md) | category | 22 options |
 | [`ananicy`](ananicy.md) | category | 7 options |
-| `anbox` | option | |
-| [`angrr`](angrr.md) | category | 1 subcategory, 12 options |
-| [`anki-sync-server`](anki-sync-server.md) | category | 7 options |
-| `ankisyncd` | option | |
-| `antennas` | option | |
-| [`anubis`](anubis.md) | category | 3 options |
-| [`anuko-time-tracker`](anuko-time-tracker.md) | category | 2 subcategories, 29 options |
-| [`apache-kafka`](apache-kafka.md) | category | 1 subcategory, 18 options |
+| [`angrr`](angrr.md) | category | 28 options |
+| [`anki-sync-server`](anki-sync-server.md) | category | 10 options |
+| [`anubis`](anubis.md) | category | 38 options |
+| [`anuko-time-tracker`](anuko-time-tracker.md) | category | 78 options |
+| [`apache-kafka`](apache-kafka.md) | category | 14 options |
 | [`apcupsd`](apcupsd.md) | category | 3 options |
 | [`arbtt`](arbtt.md) | category | 4 options |
-| [`archisteamfarm`](archisteamfarm.md) | category | 8 options |
-| [`aria2`](aria2.md) | category | 11 options |
-| [`armagetronad`](armagetronad.md) | category | 1 option |
+| [`archisteamfarm`](archisteamfarm.md) | category | 14 options |
+| [`aria2`](aria2.md) | category | 12 options |
+| [`armagetronad`](armagetronad.md) | category | 10 options |
 | [`arsenik`](arsenik.md) | category | 15 options |
-| [`artalk`](artalk.md) | category | 8 options |
+| [`artalk`](artalk.md) | category | 10 options |
 | [`asterisk`](asterisk.md) | category | 6 options |
-| [`asusd`](asusd.md) | category | 10 options |
-| [`atalkd`](atalkd.md) | category | 3 options |
+| [`asusd`](asusd.md) | category | 20 options |
+| [`atalkd`](atalkd.md) | category | 4 options |
 | [`atd`](atd.md) | category | 2 options |
 | [`atftpd`](atftpd.md) | category | 3 options |
-| [`athens`](athens.md) | category | 3 subcategories, 92 options |
+| [`athens`](athens.md) | category | 91 options |
 | [`atticd`](atticd.md) | category | 7 options |
-| [`atuin`](atuin.md) | category | 1 subcategory, 11 options |
+| [`atuin`](atuin.md) | category | 11 options |
 | [`audiobookshelf`](audiobookshelf.md) | category | 8 options |
-| [`authelia`](authelia.md) | category | 1 option |
+| [`authelia`](authelia.md) | category | 25 options |
 | [`auto-cpufreq`](auto-cpufreq.md) | category | 2 options |
-| [`auto-epp`](auto-epp.md) | category | 3 options |
-| [`autobrr`](autobrr.md) | category | 5 options |
+| [`auto-epp`](auto-epp.md) | category | 5 options |
+| [`autobrr`](autobrr.md) | category | 8 options |
 | [`autofs`](autofs.md) | category | 4 options |
 | [`automatic-timezoned`](automatic-timezoned.md) | category | 2 options |
 | [`automx2`](automx2.md) | category | 5 options |
-| [`automysqlbackup`](automysqlbackup.md) | category | 4 options |
-| [`autorandr`](autorandr.md) | category | 6 options |
-| [`autossh`](autossh.md) | category | 1 option |
-| [`autossh-ng`](autossh-ng.md) | category | 1 option |
-| [`autosuspend`](autosuspend.md) | category | 5 options |
+| [`automysqlbackup`](automysqlbackup.md) | category | 3 options |
+| [`autorandr`](autorandr.md) | category | 29 options |
+| [`autossh`](autossh.md) | category | 5 options |
+| [`autossh-ng`](autossh-ng.md) | category | 6 options |
+| [`autosuspend`](autosuspend.md) | category | 11 options |
 | [`autotierfs`](autotierfs.md) | category | 3 options |
-| [`avahi`](avahi.md) | category | 1 subcategory, 27 options |
-| [`awstats`](awstats.md) | category | 1 subcategory, 7 options |
-| [`ax25`](ax25.md) | category | 1 subcategory, 4 options |
+| [`avahi`](avahi.md) | category | 25 options |
+| [`awstats`](awstats.md) | category | 13 options |
+| [`ax25`](ax25.md) | category | 13 options |
 | [`ayatana-indicators`](ayatana-indicators.md) | category | 2 options |
 | [`babeld`](babeld.md) | category | 4 options |
-| [`bacula-dir`](bacula-dir.md) | category | 8 options |
-| [`bacula-fd`](bacula-fd.md) | category | 7 options |
-| [`bacula-sd`](bacula-sd.md) | category | 9 options |
-| [`baget`](baget.md) | category | 1 option |
+| [`bacula-dir`](bacula-dir.md) | category | 15 options |
+| [`bacula-fd`](bacula-fd.md) | category | 24 options |
+| [`bacula-sd`](bacula-sd.md) | category | 33 options |
 | [`baikal`](baikal.md) | category | 7 options |
 | [`bamf`](bamf.md) | category | 1 option |
 | [`bazarr`](bazarr.md) | category | 7 options |
-| [`bcachefs`](bcachefs.md) | category | 1 subcategory, 3 options |
-| [`bcg`](bcg.md) | category | 1 subcategory, 21 options |
-| [`beanstalkd`](beanstalkd.md) | category | 1 subcategory, 4 options |
+| [`bcachefs`](bcachefs.md) | category | 3 options |
+| [`bcg`](bcg.md) | category | 21 options |
+| [`beanstalkd`](beanstalkd.md) | category | 4 options |
 | [`bee`](bee.md) | category | 6 options |
-| `beegfs` | option | |
-| `beegfsEnable` | option | |
-| [`beesd`](beesd.md) | category | 1 option |
-| [`below`](below.md) | category | 4 subcategories, 10 options |
-| [`bentopdf`](bentopdf.md) | category | 2 subcategories, 7 options |
-| [`bepasty`](bepasty.md) | category | 2 options |
-| [`beszel`](beszel.md) | category | 2 subcategories, 16 options |
-| [`biboumi`](biboumi.md) | category | 5 options |
-| [`bind`](bind.md) | category | 18 options |
+| [`beesd`](beesd.md) | category | 6 options |
+| [`below`](below.md) | category | 10 options |
+| [`bentopdf`](bentopdf.md) | category | 62 options |
+| [`bepasty`](bepasty.md) | category | 9 options |
+| [`beszel`](beszel.md) | category | 17 options |
+| [`biboumi`](biboumi.md) | category | 18 options |
+| [`bind`](bind.md) | category | 25 options |
 | [`bird`](bird.md) | category | 6 options |
-| [`bird-lg`](bird-lg.md) | category | 2 subcategories, 31 options |
-| `bird2` | option | |
-| `bird6` | option | |
+| [`bird-lg`](bird-lg.md) | category | 29 options |
 | [`birdwatcher`](birdwatcher.md) | category | 4 options |
 | [`bitbox-bridge`](bitbox-bridge.md) | category | 4 options |
-| `bitcoind` | option | |
+| [`bitcoind`](bitcoind.md) | category | 18 options |
 | [`bitlbee`](bitlbee.md) | category | 12 options |
-| [`bitmagnet`](bitmagnet.md) | category | 7 options |
-| [`bitwarden-directory-connector-cli`](bitwarden-directory-connector-cli.md) | category | 1 subcategory, 10 options |
-| `bitwarden_rs` | option | |
-| [`blackfire-agent`](blackfire-agent.md) | category | 2 options |
-| [`blendfarm`](blendfarm.md) | category | 8 options |
-| `blockbook-frontend` | option | |
+| [`bitmagnet`](bitmagnet.md) | category | 18 options |
+| [`bitwarden-directory-connector-cli`](bitwarden-directory-connector-cli.md) | category | 36 options |
+| [`blackfire-agent`](blackfire-agent.md) | category | 4 options |
+| [`blendfarm`](blendfarm.md) | category | 11 options |
+| [`blockbook-frontend`](blockbook-frontend.md) | category | 23 options |
 | [`blocky`](blocky.md) | category | 4 options |
 | [`bloop`](bloop.md) | category | 2 options |
 | [`blueman`](blueman.md) | category | 1 option |
-| [`bluemap`](bluemap.md) | category | 16 options |
-| [`bluesky-pds`](bluesky-pds.md) | category | 2 subcategories, 6 options |
+| [`bluemap`](bluemap.md) | category | 19 options |
+| [`bluesky-pds`](bluesky-pds.md) | category | 20 options |
 | [`boinc`](boinc.md) | category | 5 options |
-| [`bonsaid`](bonsaid.md) | category | 5 options |
-| [`bookstack`](bookstack.md) | category | 2 subcategories, 30 options |
-| [`borgbackup`](borgbackup.md) | category | 3 options |
-| [`borgmatic`](borgmatic.md) | category | 4 options |
+| [`bonsaid`](bonsaid.md) | category | 10 options |
+| [`bookstack`](bookstack.md) | category | 64 options |
+| [`borgbackup`](borgbackup.md) | category | 47 options |
+| [`borgmatic`](borgmatic.md) | category | 12 options |
 | [`bosun`](bosun.md) | category | 11 options |
-| [`botamusique`](botamusique.md) | category | 3 options |
+| [`botamusique`](botamusique.md) | category | 7 options |
 | [`bpftune`](bpftune.md) | category | 2 options |
 | [`brltty`](brltty.md) | category | 1 option |
-| [`broadcast-box`](broadcast-box.md) | category | 1 subcategory, 7 options |
-| [`btrbk`](btrbk.md) | category | 5 options |
-| [`btrfs`](btrfs.md) | category | 1 subcategory, 4 options |
-| [`buffyboard`](buffyboard.md) | category | 5 options |
-| [`buildbot-master`](buildbot-master.md) | category | 28 options |
+| [`broadcast-box`](broadcast-box.md) | category | 7 options |
+| [`btrbk`](btrbk.md) | category | 12 options |
+| [`btrfs`](btrfs.md) | category | 4 options |
+| [`buffyboard`](buffyboard.md) | category | 12 options |
+| [`buildbot-master`](buildbot-master.md) | category | 26 options |
 | [`buildbot-worker`](buildbot-worker.md) | category | 15 options |
-| `buildkite-agents` | option | |
+| [`buildkite-agents`](buildkite-agents.md) | category | 14 options |
 | [`byedpi`](byedpi.md) | category | 3 options |
-| [`c2fmzq-server`](c2fmzq-server.md) | category | 6 options |
+| [`c2fmzq-server`](c2fmzq-server.md) | category | 8 options |
 | [`cachefilesd`](cachefilesd.md) | category | 3 options |
 | [`cachix-agent`](cachix-agent.md) | category | 7 options |
 | [`cachix-watch-store`](cachix-watch-store.md) | category | 9 options |
-| [`caddy`](caddy.md) | category | 24 options |
+| [`caddy`](caddy.md) | category | 27 options |
 | [`cadvisor`](cadvisor.md) | category | 11 options |
 | [`cage`](cage.md) | category | 6 options |
-| [`calibre-server`](calibre-server.md) | category | 1 subcategory, 13 options |
-| [`calibre-web`](calibre-web.md) | category | 2 subcategories, 15 options |
-| [`canaille`](canaille.md) | category | 7 options |
+| [`calibre-server`](calibre-server.md) | category | 12 options |
+| [`calibre-web`](calibre-web.md) | category | 15 options |
+| [`canaille`](canaille.md) | category | 18 options |
 | [`canto-daemon`](canto-daemon.md) | category | 1 option |
-| [`cassandra`](cassandra.md) | category | 27 options |
-| [`castopod`](castopod.md) | category | 1 subcategory, 14 options |
+| [`cassandra`](cassandra.md) | category | 29 options |
+| [`castopod`](castopod.md) | category | 14 options |
 | [`cato-client`](cato-client.md) | category | 2 options |
 | [`centrifugo`](centrifugo.md) | category | 6 options |
-| [`ceph`](ceph.md) | category | 7 subcategories, 35 options |
+| [`ceph`](ceph.md) | category | 35 options |
 | [`certmgr`](certmgr.md) | category | 9 options |
 | [`certspotter`](certspotter.md) | category | 8 options |
-| [`cfdyndns`](cfdyndns.md) | category | 6 options |
+| [`cfdyndns`](cfdyndns.md) | category | 5 options |
 | [`cfssl`](cfssl.md) | category | 24 options |
-| `cgit` | option | |
-| [`cgmanager`](cgmanager.md) | category | 1 option |
+| [`cgit`](cgit.md) | category | 13 options |
 | [`cgminer`](cgminer.md) | category | 6 options |
 | [`changedetection-io`](changedetection-io.md) | category | 13 options |
-| `charybdis` | option | |
-| `chatgpt-retrieval-plugin` | option | |
-| [`chhoto-url`](chhoto-url.md) | category | 4 options |
+| [`chhoto-url`](chhoto-url.md) | category | 18 options |
 | [`chisel-server`](chisel-server.md) | category | 8 options |
-| [`chromadb`](chromadb.md) | category | 7 options |
-| `chronos` | option | |
-| [`chrony`](chrony.md) | category | 2 subcategories, 17 options |
-| [`cinnamon`](cinnamon.md) | category | 1 subcategory, 1 option |
-| [`cjdns`](cjdns.md) | category | 3 subcategories, 11 options |
-| [`clamav`](clamav.md) | category | 5 subcategories, 17 options |
-| `clamsmtp` | option | |
+| [`chromadb`](chromadb.md) | category | 6 options |
+| [`chrony`](chrony.md) | category | 17 options |
+| [`cinnamon`](cinnamon.md) | category | 1 option |
+| [`cjdns`](cjdns.md) | category | 21 options |
+| [`clamav`](clamav.md) | category | 14 options |
 | [`clatd`](clatd.md) | category | 4 options |
 | [`clickhouse`](clickhouse.md) | category | 6 options |
-| [`clight`](clight.md) | category | 1 subcategory, 4 options |
+| [`clight`](clight.md) | category | 4 options |
 | [`clipcat`](clipcat.md) | category | 2 options |
 | [`clipmenu`](clipmenu.md) | category | 2 options |
-| [`cloud-init`](cloud-init.md) | category | 4 subcategories, 8 options |
-| [`cloudflare-ddns`](cloudflare-ddns.md) | category | 1 subcategory, 24 options |
+| [`cloud-init`](cloud-init.md) | category | 8 options |
+| [`cloudflare-ddns`](cloudflare-ddns.md) | category | 24 options |
 | [`cloudflare-dyndns`](cloudflare-dyndns.md) | category | 9 options |
 | [`cloudflare-warp`](cloudflare-warp.md) | category | 5 options |
-| [`cloudflared`](cloudflared.md) | category | 6 options |
-| [`cloudlog`](cloudlog.md) | category | 9 subcategories, 28 options |
+| [`cloudflared`](cloudflared.md) | category | 24 options |
+| [`cloudlog`](cloudlog.md) | category | 28 options |
 | [`cntlm`](cntlm.md) | category | 10 options |
 | [`cockpit`](cockpit.md) | category | 8 options |
-| [`cockroachdb`](cockroachdb.md) | category | 2 subcategories, 16 options |
-| [`cocoon`](cocoon.md) | category | 4 options |
+| [`cockroachdb`](cockroachdb.md) | category | 16 options |
+| [`cocoon`](cocoon.md) | category | 15 options |
 | [`code-server`](code-server.md) | category | 22 options |
-| [`coder`](coder.md) | category | 2 subcategories, 18 options |
-| `codimd` | option | |
-| [`collabora-online`](collabora-online.md) | category | 6 options |
+| [`coder`](coder.md) | category | 18 options |
+| [`collabora-online`](collabora-online.md) | category | 8 options |
 | [`collectd`](collectd.md) | category | 11 options |
 | [`colord`](colord.md) | category | 1 option |
 | [`commafeed`](commafeed.md) | category | 7 options |
-| `compton` | option | |
-| `conduwuit` | option | |
+| [`compton`](compton.md) | category | 1 option |
 | [`confd`](confd.md) | category | 9 options |
-| `confluence` | option | |
 | [`conman`](conman.md) | category | 4 options |
-| [`connman`](connman.md) | category | 1 subcategory, 7 options |
-| [`consul`](consul.md) | category | 2 subcategories, 17 options |
-| [`consul-template`](consul-template.md) | category | 1 option |
+| [`connman`](connman.md) | category | 7 options |
+| [`consul`](consul.md) | category | 17 options |
+| [`consul-template`](consul-template.md) | category | 7 options |
 | [`convos`](convos.md) | category | 4 options |
 | [`cook-cli`](cook-cli.md) | category | 6 options |
 | [`coredns`](coredns.md) | category | 4 options |
 | [`corerad`](corerad.md) | category | 4 options |
-| [`corosync`](corosync.md) | category | 5 options |
-| [`corteza`](corteza.md) | category | 8 options |
+| [`corosync`](corosync.md) | category | 8 options |
+| [`corteza`](corteza.md) | category | 9 options |
 | [`coturn`](coturn.md) | category | 30 options |
 | [`couchdb`](couchdb.md) | category | 16 options |
-| `couchpotato` | option | |
 | [`cpuminer-cryptonight`](cpuminer-cryptonight.md) | category | 5 options |
 | [`cpupower-gui`](cpupower-gui.md) | category | 1 option |
-| [`crab-hole`](crab-hole.md) | category | 5 options |
-| `crabfit` | option | |
+| [`crab-hole`](crab-hole.md) | category | 8 options |
 | [`create_ap`](create_ap.md) | category | 2 options |
 | [`croc`](croc.md) | category | 5 options |
 | [`cron`](cron.md) | category | 4 options |
-| [`cross-seed`](cross-seed.md) | category | 8 options |
+| [`cross-seed`](cross-seed.md) | category | 13 options |
 | [`crossfire-server`](crossfire-server.md) | category | 6 options |
 | [`crossmacro`](crossmacro.md) | category | 4 options |
-| `crowd` | option | |
-| [`crowdsec`](crowdsec.md) | category | 10 options |
-| [`crowdsec-firewall-bouncer`](crowdsec-firewall-bouncer.md) | category | 2 subcategories, 7 options |
-| [`cryptpad`](cryptpad.md) | category | 4 options |
-| [`cyrus-imap`](cyrus-imap.md) | category | 13 options |
-| [`dae`](dae.md) | category | 8 options |
+| [`crowdsec`](crowdsec.md) | category | 38 options |
+| [`crowdsec-firewall-bouncer`](crowdsec-firewall-bouncer.md) | category | 10 options |
+| [`cryptpad`](cryptpad.md) | category | 15 options |
+| [`cyrus-imap`](cyrus-imap.md) | category | 18 options |
+| [`dae`](dae.md) | category | 10 options |
 | [`dante`](dante.md) | category | 2 options |
 | [`darkhttpd`](darkhttpd.md) | category | 6 options |
 | [`das_watchdog`](das_watchdog.md) | category | 1 option |
-| [`dashy`](dashy.md) | category | 1 subcategory, 6 options |
+| [`dashy`](dashy.md) | category | 6 options |
 | [`datadog-agent`](datadog-agent.md) | category | 16 options |
-| [`davfs2`](davfs2.md) | category | 5 options |
-| [`davis`](davis.md) | category | 2 subcategories, 19 options |
+| [`davfs2`](davfs2.md) | category | 4 options |
+| [`davis`](davis.md) | category | 68 options |
 | [`davmail`](davmail.md) | category | 3 options |
-| [`dawarich`](dawarich.md) | category | 3 subcategories, 27 options |
-| [`db-rest`](db-rest.md) | category | 1 subcategory, 13 options |
-| [`dbus`](dbus.md) | category | 6 options |
-| `dd-agent` | option | |
+| [`dawarich`](dawarich.md) | category | 29 options |
+| [`db-rest`](db-rest.md) | category | 13 options |
+| [`dbus`](dbus.md) | category | 5 options |
 | [`ddccontrol`](ddccontrol.md) | category | 2 options |
-| [`ddclient`](ddclient.md) | category | 23 options |
+| [`ddclient`](ddclient.md) | category | 19 options |
 | [`ddns-updater`](ddns-updater.md) | category | 3 options |
 | [`deconz`](deconz.md) | category | 11 options |
-| `deepin` | option | |
-| [`deluge`](deluge.md) | category | 1 subcategory, 14 options |
-| [`dendrite`](dendrite.md) | category | 9 options |
-| [`dependency-track`](dependency-track.md) | category | 5 subcategories, 26 options |
-| [`desktopManager`](desktopManager.md) | category | 6 subcategories, 29 options |
+| [`deluge`](deluge.md) | category | 14 options |
+| [`dendrite`](dendrite.md) | category | 27 options |
+| [`dependency-track`](dependency-track.md) | category | 40 options |
+| [`desktopManager`](desktopManager.md) | category | 31 options |
 | [`devmon`](devmon.md) | category | 1 option |
 | [`devpi-server`](devpi-server.md) | category | 9 options |
 | [`dex`](dex.md) | category | 4 options |
 | [`deye-dummycloud`](deye-dummycloud.md) | category | 4 options |
-| [`dgraph`](dgraph.md) | category | 2 subcategories, 7 options |
-| `dhcpd4` | option | |
-| `dhcpd6` | option | |
+| [`dgraph`](dgraph.md) | category | 7 options |
 | [`dictd`](dictd.md) | category | 2 options |
 | [`diod`](diod.md) | category | 13 options |
-| [`discourse`](discourse.md) | category | 5 subcategories, 44 options |
+| [`discourse`](discourse.md) | category | 44 options |
 | [`disnix`](disnix.md) | category | 6 options |
-| [`displayManager`](displayManager.md) | category | 8 subcategories, 63 options |
-| [`distccd`](distccd.md) | category | 1 subcategory, 12 options |
+| [`displayManager`](displayManager.md) | category | 54 options |
+| [`distccd`](distccd.md) | category | 12 options |
 | [`dkimproxy-out`](dkimproxy-out.md) | category | 6 options |
 | [`dleyna`](dleyna.md) | category | 1 option |
-| `dleyna-renderer` | option | |
-| `dleyna-server` | option | |
 | [`dnscache`](dnscache.md) | category | 5 options |
 | [`dnscrypt-proxy`](dnscrypt-proxy.md) | category | 5 options |
-| `dnscrypt-proxy2` | option | |
-| `dnscrypt-wrapper` | option | |
-| [`dnsdist`](dnsdist.md) | category | 1 subcategory, 10 options |
-| [`dnsmasq`](dnsmasq.md) | category | 8 options |
+| [`dnsdist`](dnsdist.md) | category | 10 options |
+| [`dnsmasq`](dnsmasq.md) | category | 7 options |
 | [`dnsproxy`](dnsproxy.md) | category | 4 options |
 | [`do-agent`](do-agent.md) | category | 1 option |
 | [`dockerRegistry`](dockerRegistry.md) | category | 14 options |
 | [`docling-serve`](docling-serve.md) | category | 8 options |
 | [`documize`](documize.md) | category | 12 options |
-| [`docuseal`](docuseal.md) | category | 1 subcategory, 11 options |
+| [`docuseal`](docuseal.md) | category | 11 options |
 | [`docuum`](docuum.md) | category | 5 options |
 | [`doh-proxy-rust`](doh-proxy-rust.md) | category | 2 options |
-| [`doh-server`](doh-server.md) | category | 5 options |
-| [`dokuwiki`](dokuwiki.md) | category | 2 options |
-| [`dolibarr`](dolibarr.md) | category | 1 subcategory, 17 options |
+| [`doh-server`](doh-server.md) | category | 14 options |
+| [`dokuwiki`](dokuwiki.md) | category | 19 options |
+| [`dolibarr`](dolibarr.md) | category | 86 options |
 | [`domoticz`](domoticz.md) | category | 3 options |
-| [`dovecot2`](dovecot2.md) | category | 2 subcategories, 34 options |
+| [`dovecot2`](dovecot2.md) | category | 48 options |
 | [`dragonflydb`](dragonflydb.md) | category | 10 options |
-| [`drasl`](drasl.md) | category | 4 options |
-| [`draupnir`](draupnir.md) | category | 1 subcategory, 11 options |
+| [`drasl`](drasl.md) | category | 6 options |
+| [`draupnir`](draupnir.md) | category | 10 options |
 | [`drbd`](drbd.md) | category | 2 options |
-| [`druid`](druid.md) | category | 6 subcategories, 49 options |
-| [`drupal`](drupal.md) | category | 4 options |
-| [`dsnet`](dsnet.md) | category | 3 options |
+| [`druid`](druid.md) | category | 46 options |
+| [`drupal`](drupal.md) | category | 58 options |
+| [`dsnet`](dsnet.md) | category | 11 options |
 | [`dspam`](dspam.md) | category | 7 options |
 | [`duckdns`](duckdns.md) | category | 4 options |
 | [`duckling`](duckling.md) | category | 2 options |
 | [`dump1090-fa`](dump1090-fa.md) | category | 3 options |
 | [`dunst`](dunst.md) | category | 5 options |
 | [`duplicati`](duplicati.md) | category | 8 options |
-| [`duplicity`](duplicity.md) | category | 1 subcategory, 14 options |
-| [`dwm-status`](dwm-status.md) | category | 5 options |
+| [`duplicity`](duplicity.md) | category | 14 options |
+| [`dwm-status`](dwm-status.md) | category | 4 options |
 | [`dysnomia`](dysnomia.md) | category | 10 options |
 | [`e-imzo`](e-imzo.md) | category | 2 options |
-| [`earlyoom`](earlyoom.md) | category | 14 options |
-| [`easytier`](easytier.md) | category | 4 options |
-| [`ebusd`](ebusd.md) | category | 2 subcategories, 22 options |
+| [`earlyoom`](earlyoom.md) | category | 11 options |
+| [`easytier`](easytier.md) | category | 19 options |
+| [`ebusd`](ebusd.md) | category | 22 options |
 | [`echoip`](echoip.md) | category | 8 options |
 | [`ecs-agent`](ecs-agent.md) | category | 3 options |
 | [`eg25-manager`](eg25-manager.md) | category | 2 options |
-| `eintopf` | option | |
 | [`ejabberd`](ejabberd.md) | category | 10 options |
 | [`elasticsearch`](elasticsearch.md) | category | 14 options |
 | [`elasticsearch-curator`](elasticsearch-curator.md) | category | 5 options |
 | [`elephant`](elephant.md) | category | 2 options |
 | [`emacs`](emacs.md) | category | 5 options |
 | [`endlessh`](endlessh.md) | category | 4 options |
-| [`endlessh-go`](endlessh-go.md) | category | 1 subcategory, 9 options |
-| [`engelsystem`](engelsystem.md) | category | 6 options |
-| [`ente`](ente.md) | category | 2 subcategories, 15 options |
+| [`endlessh-go`](endlessh-go.md) | category | 9 options |
+| [`engelsystem`](engelsystem.md) | category | 5 options |
+| [`ente`](ente.md) | category | 22 options |
 | [`envfs`](envfs.md) | category | 3 options |
 | [`envoy`](envoy.md) | category | 4 options |
-| [`epgstation`](epgstation.md) | category | 1 subcategory, 12 options |
+| [`epgstation`](epgstation.md) | category | 15 options |
 | [`epmd`](epmd.md) | category | 3 options |
-| [`ergo`](ergo.md) | category | 2 subcategories, 11 options |
+| [`ergo`](ergo.md) | category | 11 options |
 | [`ergochat`](ergochat.md) | category | 4 options |
 | [`erigon`](erigon.md) | category | 5 options |
-| [`errbot`](errbot.md) | category | 1 option |
+| [`errbot`](errbot.md) | category | 8 options |
 | [`ersatztv`](ersatztv.md) | category | 7 options |
-| [`esdm`](esdm.md) | category | 7 options |
-| [`espanso`](espanso.md) | category | 2 options |
+| [`esdm`](esdm.md) | category | 3 options |
+| [`espanso`](espanso.md) | category | 3 options |
 | [`esphome`](esphome.md) | category | 10 options |
 | [`etcd`](etcd.md) | category | 22 options |
-| [`etebase-server`](etebase-server.md) | category | 12 options |
+| [`etebase-server`](etebase-server.md) | category | 15 options |
 | [`eternal-terminal`](eternal-terminal.md) | category | 5 options |
 | [`etesync-dav`](etesync-dav.md) | category | 7 options |
-| `ethercalc` | option | |
 | [`evcc`](evcc.md) | category | 5 options |
 | [`evdevremapkeys`](evdevremapkeys.md) | category | 2 options |
-| [`evremap`](evremap.md) | category | 2 options |
-| `exhibitor` | option | |
+| [`evremap`](evremap.md) | category | 11 options |
 | [`exim`](exim.md) | category | 7 options |
 | [`expressvpn`](expressvpn.md) | category | 1 option |
 | [`factorio`](factorio.md) | category | 27 options |
-| [`fail2ban`](fail2ban.md) | category | 1 subcategory, 20 options |
+| [`fail2ban`](fail2ban.md) | category | 18 options |
 | [`fakeroute`](fakeroute.md) | category | 2 options |
 | [`fanout`](fanout.md) | category | 3 options |
-| [`fastnetmon-advanced`](fastnetmon-advanced.md) | category | 1 subcategory, 6 options |
-| [`fcgiwrap`](fcgiwrap.md) | category | 7 options |
+| [`fastnetmon-advanced`](fastnetmon-advanced.md) | category | 6 options |
+| [`fcgiwrap`](fcgiwrap.md) | category | 9 options |
 | [`fcron`](fcron.md) | category | 6 options |
-| `fedimintd` | option | |
-| [`fediwall`](fediwall.md) | category | 5 options |
+| [`fedimintd`](fedimintd.md) | category | 78 options |
+| [`fediwall`](fediwall.md) | category | 65 options |
 | [`felix`](felix.md) | category | 4 options |
 | [`ferm`](ferm.md) | category | 3 options |
-| [`ferretdb`](ferretdb.md) | category | 3 options |
-| [`fider`](fider.md) | category | 1 subcategory, 6 options |
-| [`filebeat`](filebeat.md) | category | 5 options |
-| [`filebrowser`](filebrowser.md) | category | 6 options |
-| `filesender` | option | |
+| [`ferretdb`](ferretdb.md) | category | 7 options |
+| [`fider`](fider.md) | category | 6 options |
+| [`filebeat`](filebeat.md) | category | 8 options |
+| [`filebrowser`](filebrowser.md) | category | 11 options |
 | [`firebird`](firebird.md) | category | 5 options |
-| [`firefly-iii`](firefly-iii.md) | category | 9 options |
+| [`firefly-iii`](firefly-iii.md) | category | 15 options |
 | [`firefly-iii-data-importer`](firefly-iii-data-importer.md) | category | 9 options |
-| [`firefox`](firefox.md) | category | 1 option |
-| [`firefox-syncserver`](firefox-syncserver.md) | category | 2 subcategories, 15 options |
+| [`firefox-syncserver`](firefox-syncserver.md) | category | 17 options |
 | [`fireqos`](fireqos.md) | category | 2 options |
-| [`firewalld`](firewalld.md) | category | 7 options |
-| [`firezone`](firezone.md) | category | 5 subcategories, 65 options |
-| [`flannel`](flannel.md) | category | 1 subcategory, 18 options |
+| [`firewalld`](firewalld.md) | category | 65 options |
+| [`firezone`](firezone.md) | category | 70 options |
+| [`flannel`](flannel.md) | category | 18 options |
+| [`flap-alerted`](flap-alerted.md) | category | 8 options |
 | [`flaresolverr`](flaresolverr.md) | category | 4 options |
 | [`flarum`](flarum.md) | category | 13 options |
-| `flashpolicyd` | option | |
-| [`flatpak`](flatpak.md) | category | 3 options |
+| [`flatpak`](flatpak.md) | category | 2 options |
 | [`flexget`](flexget.md) | category | 7 options |
 | [`flood`](flood.md) | category | 6 options |
 | [`fluent-bit`](fluent-bit.md) | category | 5 options |
 | [`fluentd`](fluentd.md) | category | 4 options |
-| [`fluidd`](fluidd.md) | category | 4 options |
-| `foldingAtHome` | option | |
-| [`foldingathome`](foldingathome.md) | category | 8 options |
-| [`forgejo`](forgejo.md) | category | 5 subcategories, 43 options |
-| [`foundationdb`](foundationdb.md) | category | 23 options |
-| `fourStore` | option | |
-| `fourStoreEndpoint` | option | |
-| [`fprintd`](fprintd.md) | category | 1 subcategory, 4 options |
-| `fprot` | option | |
-| `frab` | option | |
+| [`fluidd`](fluidd.md) | category | 53 options |
+| [`foldingathome`](foldingathome.md) | category | 6 options |
+| [`forgejo`](forgejo.md) | category | 38 options |
+| [`foundationdb`](foundationdb.md) | category | 30 options |
+| [`fprintd`](fprintd.md) | category | 4 options |
 | [`fractalart`](fractalart.md) | category | 3 options |
-| [`freeciv`](freeciv.md) | category | 3 options |
+| [`framework-control`](framework-control.md) | category | 2 options |
+| [`freeciv`](freeciv.md) | category | 14 options |
 | [`freefall`](freefall.md) | category | 3 options |
 | [`freenet`](freenet.md) | category | 2 options |
 | [`freeradius`](freeradius.md) | category | 4 options |
 | [`freeswitch`](freeswitch.md) | category | 5 options |
-| [`freshrss`](freshrss.md) | category | 2 subcategories, 21 options |
-| [`frigate`](frigate.md) | category | 7 options |
-| [`froide-govplan`](froide-govplan.md) | category | 6 options |
-| [`frp`](frp.md) | category | 5 options |
-| [`frr`](frr.md) | category | 38 subcategories, 170 options |
+| [`freshrss`](freshrss.md) | category | 21 options |
+| [`frigate`](frigate.md) | category | 15 options |
+| [`froide-govplan`](froide-govplan.md) | category | 7 options |
+| [`frp`](frp.md) | category | 6 options |
+| [`frr`](frr.md) | category | 63 options |
 | [`fstrim`](fstrim.md) | category | 2 options |
 | [`fusionInventory`](fusionInventory.md) | category | 3 options |
-| [`fwupd`](fwupd.md) | category | 11 options |
+| [`fwupd`](fwupd.md) | category | 9 options |
 | [`g3proxy`](g3proxy.md) | category | 3 options |
 | [`g810-led`](g810-led.md) | category | 4 options |
 | [`galene`](galene.md) | category | 15 options |
-| [`gammu-smsd`](gammu-smsd.md) | category | 4 subcategories, 22 options |
-| [`gancio`](gancio.md) | category | 7 options |
-| [`garage`](garage.md) | category | 6 options |
-| `gateone` | option | |
-| [`gatus`](gatus.md) | category | 6 options |
+| [`gammu-smsd`](gammu-smsd.md) | category | 22 options |
+| [`gancio`](gancio.md) | category | 65 options |
+| [`garage`](garage.md) | category | 8 options |
+| [`gatus`](gatus.md) | category | 7 options |
 | [`gdomap`](gdomap.md) | category | 1 option |
-| [`gemstash`](gemstash.md) | category | 4 options |
-| [`geoclue2`](geoclue2.md) | category | 19 options |
-| `geoip-updater` | option | |
-| [`geoipupdate`](geoipupdate.md) | category | 3 options |
+| [`gemstash`](gemstash.md) | category | 8 options |
+| [`geoclue2`](geoclue2.md) | category | 23 options |
+| [`geoipupdate`](geoipupdate.md) | category | 7 options |
 | [`geph`](geph.md) | category | 3 options |
 | [`gerbil`](gerbil.md) | category | 2 options |
 | [`gerrit`](gerrit.md) | category | 11 options |
-| `geth` | option | |
-| [`getty`](getty.md) | category | 8 options |
-| [`ghostunnel`](ghostunnel.md) | category | 3 options |
+| [`geth`](geth.md) | category | 25 options |
+| [`getty`](getty.md) | category | 7 options |
+| [`ghostunnel`](ghostunnel.md) | category | 17 options |
 | [`gitDaemon`](gitDaemon.md) | category | 10 options |
-| [`gitea`](gitea.md) | category | 6 subcategories, 52 options |
-| [`gitea-actions-runner`](gitea-actions-runner.md) | category | 2 options |
-| `github-runner` | option | |
-| `github-runners` | option | |
-| [`gitlab`](gitlab.md) | category | 10 subcategories, 78 options |
-| [`gitlab-runner`](gitlab-runner.md) | category | 2 subcategories, 22 options |
+| [`gitea`](gitea.md) | category | 54 options |
+| [`gitea-actions-runner`](gitea-actions-runner.md) | category | 10 options |
+| [`github-runners`](github-runners.md) | category | 19 options |
+| [`gitlab`](gitlab.md) | category | 81 options |
+| [`gitlab-runner`](gitlab-runner.md) | category | 41 options |
 | [`gitolite`](gitolite.md) | category | 9 options |
-| `gitwatch` | option | |
-| [`gitweb`](gitweb.md) | category | 4 options |
-| [`glance`](glance.md) | category | 5 options |
+| [`gitwatch`](gitwatch.md) | category | 7 options |
+| [`gitweb`](gitweb.md) | category | 3 options |
+| [`glance`](glance.md) | category | 8 options |
 | [`glances`](glances.md) | category | 5 options |
-| [`glitchtip`](glitchtip.md) | category | 5 subcategories, 15 options |
-| `globalprotect` | option | |
+| [`glitchtip`](glitchtip.md) | category | 17 options |
 | [`glpiAgent`](glpiAgent.md) | category | 4 options |
-| [`glusterfs`](glusterfs.md) | category | 8 options |
+| [`glusterfs`](glusterfs.md) | category | 11 options |
 | [`gmediarender`](gmediarender.md) | category | 8 options |
-| [`gnome`](gnome.md) | category | 24 subcategories, 29 options |
-| [`gns3-server`](gns3-server.md) | category | 6 subcategories, 17 options |
-| [`gnunet`](gnunet.md) | category | 4 subcategories, 9 options |
+| [`gnome`](gnome.md) | category | 24 options |
+| [`gns3-server`](gns3-server.md) | category | 17 options |
+| [`gnunet`](gnunet.md) | category | 9 options |
 | [`go-autoconfig`](go-autoconfig.md) | category | 2 options |
 | [`go-camo`](go-camo.md) | category | 7 options |
-| [`go-csp-collector`](go-csp-collector.md) | category | 3 options |
-| [`go-httpbin`](go-httpbin.md) | category | 3 options |
+| [`go-csp-collector`](go-csp-collector.md) | category | 5 options |
+| [`go-httpbin`](go-httpbin.md) | category | 5 options |
 | [`go-neb`](go-neb.md) | category | 5 options |
-| [`go-shadowsocks2`](go-shadowsocks2.md) | category | 1 subcategory, 2 options |
-| [`go2rtc`](go2rtc.md) | category | 3 options |
+| [`go-shadowsocks2`](go-shadowsocks2.md) | category | 2 options |
+| [`go2rtc`](go2rtc.md) | category | 6 options |
 | [`goatcounter`](goatcounter.md) | category | 6 options |
 | [`gobgpd`](gobgpd.md) | category | 2 options |
 | [`gocd-agent`](gocd-agent.md) | category | 13 options |
 | [`gocd-server`](gocd-server.md) | category | 14 options |
 | [`godns`](godns.md) | category | 4 options |
 | [`goeland`](goeland.md) | category | 4 options |
-| `gogoclient` | option | |
-| [`gokapi`](gokapi.md) | category | 6 options |
-| [`gollum`](gollum.md) | category | 17 options |
+| [`gokapi`](gokapi.md) | category | 10 options |
+| [`gollum`](gollum.md) | category | 15 options |
 | [`gonic`](gonic.md) | category | 3 options |
 | [`goss`](goss.md) | category | 4 options |
-| [`gotenberg`](gotenberg.md) | category | 4 subcategories, 31 options |
-| [`gotify`](gotify.md) | category | 6 options |
+| [`gotenberg`](gotenberg.md) | category | 31 options |
+| [`gotify`](gotify.md) | category | 5 options |
 | [`gotosocial`](gotosocial.md) | category | 6 options |
-| [`goupile`](goupile.md) | category | 6 options |
+| [`goupile`](goupile.md) | category | 8 options |
 | [`govee2mqtt`](govee2mqtt.md) | category | 5 options |
-| [`goxlr-utility`](goxlr-utility.md) | category | 1 subcategory, 3 options |
+| [`goxlr-utility`](goxlr-utility.md) | category | 3 options |
 | [`gpm`](gpm.md) | category | 2 options |
-| [`gpsd`](gpsd.md) | category | 9 options |
-| [`grafana`](grafana.md) | category | 8 subcategories, 69 options |
-| `grafana-agent` | option | |
+| [`gpsd`](gpsd.md) | category | 8 options |
+| [`grafana`](grafana.md) | category | 163 options |
 | [`grafana-image-renderer`](grafana-image-renderer.md) | category | 5 options |
-| [`grafana-to-ntfy`](grafana-to-ntfy.md) | category | 1 subcategory, 10 options |
-| [`grafana_reporter`](grafana_reporter.md) | category | 1 subcategory, 7 options |
-| [`graphical-desktop`](graphical-desktop.md) | category | 1 option |
-| [`graphite`](graphite.md) | category | 3 subcategories, 25 options |
+| [`grafana-to-ntfy`](grafana-to-ntfy.md) | category | 10 options |
+| [`grafana_reporter`](grafana_reporter.md) | category | 7 options |
+| [`graphite`](graphite.md) | category | 22 options |
 | [`grav`](grav.md) | category | 8 options |
 | [`graylog`](graylog.md) | category | 14 options |
 | [`greenclip`](greenclip.md) | category | 2 options |
-| [`greetd`](greetd.md) | category | 7 options |
-| [`grocy`](grocy.md) | category | 3 subcategories, 12 options |
-| `gsignond` | option | |
+| [`greetd`](greetd.md) | category | 5 options |
+| [`grocy`](grocy.md) | category | 12 options |
+| [`gs1200-exporter`](gs1200-exporter.md) | category | 7 options |
 | [`guacamole-client`](guacamole-client.md) | category | 6 options |
-| [`guacamole-server`](guacamole-server.md) | category | 7 options |
-| [`guix`](guix.md) | category | 3 subcategories, 17 options |
+| [`guacamole-server`](guacamole-server.md) | category | 5 options |
+| [`guix`](guix.md) | category | 17 options |
 | [`gvfs`](gvfs.md) | category | 2 options |
 | [`gvpe`](gvpe.md) | category | 7 options |
-| [`h2o`](h2o.md) | category | 9 options |
-| [`hadoop`](hadoop.md) | category | 4 subcategories, 93 options |
-| `haka` | option | |
-| [`handheld-daemon`](handheld-daemon.md) | category | 2 subcategories, 8 options |
-| [`hans`](hans.md) | category | 1 subcategory, 6 options |
+| [`h2o`](h2o.md) | category | 29 options |
+| [`hadoop`](hadoop.md) | category | 91 options |
+| [`handheld-daemon`](handheld-daemon.md) | category | 7 options |
+| [`hans`](hans.md) | category | 9 options |
 | [`haproxy`](haproxy.md) | category | 5 options |
-| [`hardware`](hardware.md) | category | 7 subcategories, 28 options |
-| [`harmonia`](harmonia.md) | category | 2 subcategories, 14 options |
+| [`hardware`](hardware.md) | category | 28 options |
+| [`harmonia`](harmonia.md) | category | 10 options |
 | [`haste-server`](haste-server.md) | category | 3 options |
-| [`hatsu`](hatsu.md) | category | 3 options |
+| [`hatsu`](hatsu.md) | category | 8 options |
 | [`haveged`](haveged.md) | category | 2 options |
 | [`haven`](haven.md) | category | 6 options |
-| `hbase` | option | |
 | [`hbase-standalone`](hbase-standalone.md) | category | 7 options |
 | [`hdapsd`](hdapsd.md) | category | 1 option |
-| [`hddfancontrol`](hddfancontrol.md) | category | 8 options |
+| [`hddfancontrol`](hddfancontrol.md) | category | 7 options |
 | [`headphones`](headphones.md) | category | 7 options |
-| [`headplane`](headplane.md) | category | 1 subcategory, 5 options |
-| [`headscale`](headscale.md) | category | 3 subcategories, 25 options |
-| [`healthchecks`](healthchecks.md) | category | 9 options |
+| [`headplane`](headplane.md) | category | 50 options |
+| [`headscale`](headscale.md) | category | 55 options |
+| [`healthchecks`](healthchecks.md) | category | 15 options |
 | [`heapster`](heapster.md) | category | 5 options |
 | [`heartbeat`](heartbeat.md) | category | 6 options |
-| [`hebbot`](hebbot.md) | category | 1 subcategory, 7 options |
-| [`hedgedoc`](hedgedoc.md) | category | 8 options |
-| [`heisenbridge`](heisenbridge.md) | category | 1 subcategory, 12 options |
-| [`hercules-ci-agent`](hercules-ci-agent.md) | category | 9 options |
-| [`hickory-dns`](hickory-dns.md) | category | 6 options |
-| [`hitch`](hitch.md) | category | 1 subcategory, 9 options |
-| [`hledger-web`](hledger-web.md) | category | 10 options |
+| [`hebbot`](hebbot.md) | category | 7 options |
+| [`hedgedoc`](hedgedoc.md) | category | 16 options |
+| [`heisenbridge`](heisenbridge.md) | category | 12 options |
+| [`hercules-ci-agent`](hercules-ci-agent.md) | category | 12 options |
+| [`hickory-dns`](hickory-dns.md) | category | 14 options |
+| [`hitch`](hitch.md) | category | 9 options |
+| [`hledger-web`](hledger-web.md) | category | 9 options |
 | [`hockeypuck`](hockeypuck.md) | category | 3 options |
 | [`hologram-agent`](hologram-agent.md) | category | 3 options |
 | [`hologram-server`](hologram-server.md) | category | 15 options |
-| [`home-assistant`](home-assistant.md) | category | 1 subcategory, 24 options |
-| [`home-assistant-matter-hub`](home-assistant-matter-hub.md) | category | 5 options |
-| `homeassistant-satellite` | option | |
-| [`homebox`](homebox.md) | category | 1 subcategory, 6 options |
-| [`homebridge`](homebridge.md) | category | 9 options |
-| [`homed`](homed.md) | category | 1 subcategory, 3 options |
-| [`homepage-dashboard`](homepage-dashboard.md) | category | 16 options |
-| [`homer`](homer.md) | category | 1 subcategory, 6 options |
+| [`home-assistant`](home-assistant.md) | category | 30 options |
+| [`home-assistant-matter-hub`](home-assistant-matter-hub.md) | category | 7 options |
+| [`homebox`](homebox.md) | category | 6 options |
+| [`homebridge`](homebridge.md) | category | 24 options |
+| [`homed`](homed.md) | category | 3 options |
+| [`homepage-dashboard`](homepage-dashboard.md) | category | 15 options |
+| [`homer`](homer.md) | category | 6 options |
 | [`honk`](honk.md) | category | 9 options |
 | [`hoogle`](hoogle.md) | category | 7 options |
-| [`hostapd`](hostapd.md) | category | 15 options |
-| [`hound`](hound.md) | category | 9 options |
+| [`hostapd`](hostapd.md) | category | 58 options |
+| [`hound`](hound.md) | category | 7 options |
 | [`howdy`](howdy.md) | category | 4 options |
-| [`hqplayerd`](hqplayerd.md) | category | 1 subcategory, 6 options |
+| [`hqplayerd`](hqplayerd.md) | category | 6 options |
 | [`htpdate`](htpdate.md) | category | 4 options |
-| [`httpd`](httpd.md) | category | 40 options |
-| [`https-dns-proxy`](https-dns-proxy.md) | category | 1 subcategory, 8 options |
+| [`httpd`](httpd.md) | category | 56 options |
+| [`https-dns-proxy`](https-dns-proxy.md) | category | 8 options |
 | [`hydra`](hydra.md) | category | 21 options |
-| `hydron` | option | |
-| [`hylafax`](hylafax.md) | category | 2 subcategories, 25 options |
+| [`hylafax`](hylafax.md) | category | 28 options |
 | [`hypridle`](hypridle.md) | category | 2 options |
 | [`hyprwhspr-rs`](hyprwhspr-rs.md) | category | 3 options |
 | [`i2p`](i2p.md) | category | 1 option |
-| [`i2pd`](i2pd.md) | category | 12 subcategories, 113 options |
-| [`icecast`](icecast.md) | category | 2 subcategories, 11 options |
-| [`icecream`](icecream.md) | category | 2 subcategories, 21 options |
-| [`icingaweb2`](icingaweb2.md) | category | 1 subcategory, 23 options |
+| [`i2pd`](i2pd.md) | category | 138 options |
+| [`icecast`](icecast.md) | category | 7 options |
+| [`icecream`](icecream.md) | category | 21 options |
+| [`icingaweb2`](icingaweb2.md) | category | 33 options |
 | [`ifm`](ifm.md) | category | 5 options |
 | [`ihaskell`](ihaskell.md) | category | 2 options |
-| `ihatemoney` | option | |
 | [`iio-niri`](iio-niri.md) | category | 4 options |
 | [`illum`](illum.md) | category | 1 option |
-| [`imaginary`](imaginary.md) | category | 4 options |
-| [`immich`](immich.md) | category | 3 subcategories, 26 options |
-| [`immich-kiosk`](immich-kiosk.md) | category | 4 options |
+| [`imaginary`](imaginary.md) | category | 5 options |
+| [`immich`](immich.md) | category | 25 options |
+| [`immich-kiosk`](immich-kiosk.md) | category | 6 options |
 | [`immich-public-proxy`](immich-public-proxy.md) | category | 6 options |
-| [`immichframe`](immichframe.md) | category | 4 options |
-| [`inadyn`](inadyn.md) | category | 7 options |
+| [`immichframe`](immichframe.md) | category | 8 options |
+| [`inadyn`](inadyn.md) | category | 23 options |
 | [`incron`](incron.md) | category | 5 options |
 | [`infinoted`](infinoted.md) | category | 13 options |
-| [`influxdb`](influxdb.md) | category | 7 options |
-| [`influxdb2`](influxdb2.md) | category | 1 subcategory, 12 options |
+| [`influxdb`](influxdb.md) | category | 6 options |
+| [`influxdb2`](influxdb2.md) | category | 31 options |
 | [`infnoise`](infnoise.md) | category | 2 options |
 | [`input-remapper`](input-remapper.md) | category | 4 options |
 | [`inputplumber`](inputplumber.md) | category | 2 options |
 | [`inspircd`](inspircd.md) | category | 3 options |
 | [`interception-tools`](interception-tools.md) | category | 3 options |
 | [`intune`](intune.md) | category | 1 option |
-| [`invidious`](invidious.md) | category | 4 subcategories, 19 options |
-| [`invidious-router`](invidious-router.md) | category | 1 subcategory, 8 options |
-| `invoiceplane` | option | |
-| [`iodine`](iodine.md) | category | 1 subcategory, 6 options |
-| [`iodined`](iodined.md) | category | 5 options |
+| [`inventree`](inventree.md) | category | 16 options |
+| [`invidious`](invidious.md) | category | 19 options |
+| [`invidious-router`](invidious-router.md) | category | 8 options |
+| [`invoiceplane`](invoiceplane.md) | category | 17 options |
+| [`iodine`](iodine.md) | category | 10 options |
 | [`iperf3`](iperf3.md) | category | 12 options |
-| [`ipfs`](ipfs.md) | category | 20 options |
 | [`ipfs-cluster`](ipfs-cluster.md) | category | 6 options |
 | [`ipp-usb`](ipp-usb.md) | category | 1 option |
-| [`iptsd`](iptsd.md) | category | 2 options |
+| [`iptsd`](iptsd.md) | category | 5 options |
 | [`ircdHybrid`](ircdHybrid.md) | category | 9 options |
 | [`irkerd`](irkerd.md) | category | 4 options |
 | [`irqbalance`](irqbalance.md) | category | 2 options |
 | [`isso`](isso.md) | category | 2 options |
 | [`ivpn`](ivpn.md) | category | 1 option |
-| [`jack`](jack.md) | category | 3 subcategories, 11 options |
+| [`jack`](jack.md) | category | 10 options |
 | [`jackett`](jackett.md) | category | 7 options |
 | [`jboss`](jboss.md) | category | 8 options |
-| [`jellyfin`](jellyfin.md) | category | 2 subcategories, 26 options |
-| `jellyseerr` | option | |
-| [`jenkins`](jenkins.md) | category | 1 subcategory, 23 options |
+| [`jellyfin`](jellyfin.md) | category | 38 options |
+| [`jenkins`](jenkins.md) | category | 23 options |
 | [`jenkinsSlave`](jenkinsSlave.md) | category | 5 options |
-| [`jibri`](jibri.md) | category | 5 options |
+| [`jibri`](jibri.md) | category | 19 options |
 | [`jicofo`](jicofo.md) | category | 9 options |
 | [`jigasi`](jigasi.md) | category | 11 options |
-| `jira` | option | |
-| [`jirafeau`](jirafeau.md) | category | 10 options |
-| [`jitsi-meet`](jitsi-meet.md) | category | 9 subcategories, 19 options |
-| [`jitsi-videobridge`](jitsi-videobridge.md) | category | 1 subcategory, 10 options |
+| [`jirafeau`](jirafeau.md) | category | 59 options |
+| [`jitsi-meet`](jitsi-meet.md) | category | 19 options |
+| [`jitsi-videobridge`](jitsi-videobridge.md) | category | 16 options |
 | [`jitterentropy-rngd`](jitterentropy-rngd.md) | category | 7 options |
 | [`jmusicbot`](jmusicbot.md) | category | 3 options |
 | [`jotta-cli`](jotta-cli.md) | category | 3 options |
 | [`journalbeat`](journalbeat.md) | category | 6 options |
-| [`journald`](journald.md) | category | 3 subcategories, 23 options |
+| [`journald`](journald.md) | category | 32 options |
 | [`journaldriver`](journaldriver.md) | category | 6 options |
-| [`journalwatch`](journalwatch.md) | category | 10 options |
+| [`journalwatch`](journalwatch.md) | category | 12 options |
 | [`joycond`](joycond.md) | category | 2 options |
-| [`jupyter`](jupyter.md) | category | 13 options |
-| [`jupyterhub`](jupyterhub.md) | category | 10 options |
-| [`k3s`](k3s.md) | category | 1 subcategory, 31 options |
-| [`kanata`](kanata.md) | category | 3 options |
-| [`kanboard`](kanboard.md) | category | 1 subcategory, 9 options |
-| [`kanidm`](kanidm.md) | category | 4 subcategories, 24 options |
-| [`kapacitor`](kapacitor.md) | category | 2 subcategories, 18 options |
-| [`karakeep`](karakeep.md) | category | 2 subcategories, 9 options |
-| [`karma`](karma.md) | category | 7 options |
-| [`kasmweb`](kasmweb.md) | category | 1 subcategory, 15 options |
+| [`jupyter`](jupyter.md) | category | 20 options |
+| [`jupyterhub`](jupyterhub.md) | category | 17 options |
+| [`k3s`](k3s.md) | category | 45 options |
+| [`kanata`](kanata.md) | category | 9 options |
+| [`kanboard`](kanboard.md) | category | 58 options |
+| [`kanidm`](kanidm.md) | category | 58 options |
+| [`kapacitor`](kapacitor.md) | category | 18 options |
+| [`karakeep`](karakeep.md) | category | 9 options |
+| [`karma`](karma.md) | category | 9 options |
+| [`kasmweb`](kasmweb.md) | category | 15 options |
 | [`kavita`](kavita.md) | category | 8 options |
 | [`kbfs`](kbfs.md) | category | 4 options |
-| [`kea`](kea.md) | category | 5 options |
-| [`keepalived`](keepalived.md) | category | 1 subcategory, 17 options |
-| [`kerberos_server`](kerberos_server.md) | category | 4 options |
-| [`keter`](keter.md) | category | 1 subcategory, 11 options |
+| [`kea`](kea.md) | category | 21 options |
+| [`keepalived`](keepalived.md) | category | 45 options |
+| [`kerberos_server`](kerberos_server.md) | category | 11 options |
+| [`keter`](keter.md) | category | 14 options |
 | [`keybase`](keybase.md) | category | 1 option |
-| [`keycloak`](keycloak.md) | category | 1 subcategory, 24 options |
-| [`keyd`](keyd.md) | category | 5 options |
-| [`kimai`](kimai.md) | category | 2 options |
-| `kippo` | option | |
-| [`kismet`](kismet.md) | category | 1 subcategory, 13 options |
+| [`keycloak`](keycloak.md) | category | 24 options |
+| [`keyd`](keyd.md) | category | 6 options |
+| [`kimai`](kimai.md) | category | 15 options |
+| [`kismet`](kismet.md) | category | 13 options |
 | [`kiwix-serve`](kiwix-serve.md) | category | 8 options |
-| [`klipper`](klipper.md) | category | 15 options |
-| [`kmonad`](kmonad.md) | category | 4 options |
-| [`kmscon`](kmscon.md) | category | 10 options |
-| [`knot`](knot.md) | category | 9 options |
-| [`knot-resolver`](knot-resolver.md) | category | 3 options |
+| [`klipper`](klipper.md) | category | 22 options |
+| [`kmonad`](kmonad.md) | category | 14 options |
+| [`kmscon`](kmscon.md) | category | 7 options |
+| [`knot`](knot.md) | category | 8 options |
+| [`knot-resolver`](knot-resolver.md) | category | 5 options |
 | [`komga`](komga.md) | category | 7 options |
-| [`komodo-periphery`](komodo-periphery.md) | category | 2 subcategories, 26 options |
-| [`kresd`](kresd.md) | category | 9 options |
-| [`kthxbye`](kthxbye.md) | category | 1 subcategory, 14 options |
-| [`kubernetes`](kubernetes.md) | category | 11 subcategories, 161 options |
-| [`kubo`](kubo.md) | category | 21 options |
-| [`labgrid`](labgrid.md) | category | 1 subcategory, 6 options |
+| [`komodo-periphery`](komodo-periphery.md) | category | 26 options |
+| [`kresd`](kresd.md) | category | 7 options |
+| [`kthxbye`](kthxbye.md) | category | 14 options |
+| [`kubernetes`](kubernetes.md) | category | 144 options |
+| [`kubo`](kubo.md) | category | 22 options |
+| [`labgrid`](labgrid.md) | category | 6 options |
 | [`lact`](lact.md) | category | 3 options |
 | [`lambdabot`](lambdabot.md) | category | 3 options |
 | [`languagetool`](languagetool.md) | category | 8 options |
-| [`lanraragi`](lanraragi.md) | category | 1 subcategory, 7 options |
-| [`lasuite-docs`](lasuite-docs.md) | category | 5 subcategories, 17 options |
-| [`lasuite-drive`](lasuite-drive.md) | category | 4 subcategories, 13 options |
-| [`lasuite-meet`](lasuite-meet.md) | category | 5 subcategories, 19 options |
+| [`lanraragi`](lanraragi.md) | category | 7 options |
+| [`lasuite-docs`](lasuite-docs.md) | category | 28 options |
+| [`lasuite-drive`](lasuite-drive.md) | category | 21 options |
+| [`lasuite-meet`](lasuite-meet.md) | category | 26 options |
 | [`lauti`](lauti.md) | category | 4 options |
-| [`lavalink`](lavalink.md) | category | 14 options |
+| [`lavalink`](lavalink.md) | category | 19 options |
 | [`leaps`](leaps.md) | category | 4 options |
-| [`legit`](legit.md) | category | 5 options |
-| [`lemmy`](lemmy.md) | category | 5 subcategories, 14 options |
-| [`libeufin`](libeufin.md) | category | 2 subcategories, 14 options |
-| [`libinput`](libinput.md) | category | 2 subcategories, 51 options |
-| [`librechat`](librechat.md) | category | 12 options |
-| `libreddit` | option | |
-| [`librenms`](librenms.md) | category | 2 subcategories, 33 options |
-| [`librespeed`](librespeed.md) | category | 1 subcategory, 15 options |
+| [`legit`](legit.md) | category | 16 options |
+| [`lemmy`](lemmy.md) | category | 17 options |
+| [`libeufin`](libeufin.md) | category | 31 options |
+| [`libinput`](libinput.md) | category | 51 options |
+| [`librechat`](librechat.md) | category | 15 options |
+| [`librenms`](librenms.md) | category | 82 options |
+| [`librespeed`](librespeed.md) | category | 21 options |
 | [`libreswan`](libreswan.md) | category | 5 options |
 | [`libretranslate`](libretranslate.md) | category | 14 options |
-| [`libvirtd`](libvirtd.md) | category | 1 subcategory, 6 options |
-| [`lidarr`](lidarr.md) | category | 8 options |
-| [`lifecycled`](lifecycled.md) | category | 1 subcategory, 13 options |
-| [`lighthouse`](lighthouse.md) | category | 5 options |
-| [`lighttpd`](lighttpd.md) | category | 3 subcategories, 16 options |
-| [`limesurvey`](limesurvey.md) | category | 3 subcategories, 21 options |
-| [`linkding`](linkding.md) | category | 1 subcategory, 17 options |
-| [`linkwarden`](linkwarden.md) | category | 1 subcategory, 18 options |
+| [`libvirtd`](libvirtd.md) | category | 6 options |
+| [`lidarr`](lidarr.md) | category | 12 options |
+| [`lifecycled`](lifecycled.md) | category | 13 options |
+| [`lighthouse`](lighthouse.md) | category | 28 options |
+| [`lighttpd`](lighttpd.md) | category | 16 options |
+| [`limesurvey`](limesurvey.md) | category | 99 options |
+| [`linkding`](linkding.md) | category | 17 options |
+| [`linkwarden`](linkwarden.md) | category | 18 options |
 | [`linux-enable-ir-emitter`](linux-enable-ir-emitter.md) | category | 3 options |
 | [`linyaps`](linyaps.md) | category | 4 options |
 | [`liquidsoap`](liquidsoap.md) | category | 1 option |
 | [`lirc`](lirc.md) | category | 4 options |
-| [`listmonk`](listmonk.md) | category | 1 subcategory, 7 options |
-| [`litellm`](litellm.md) | category | 9 options |
+| [`listmonk`](listmonk.md) | category | 18 options |
+| [`litellm`](litellm.md) | category | 14 options |
 | [`litestream`](litestream.md) | category | 4 options |
 | [`livebook`](livebook.md) | category | 5 options |
-| [`livekit`](livekit.md) | category | 2 subcategories, 15 options |
+| [`livekit`](livekit.md) | category | 26 options |
 | [`lk-jwt-service`](lk-jwt-service.md) | category | 5 options |
-| [`llama-cpp`](llama-cpp.md) | category | 9 options |
-| [`llama-swap`](llama-swap.md) | category | 1 subcategory, 9 options |
-| [`lldap`](lldap.md) | category | 1 subcategory, 8 options |
+| [`llama-cpp`](llama-cpp.md) | category | 6 options |
+| [`llama-swap`](llama-swap.md) | category | 9 options |
+| [`lldap`](lldap.md) | category | 21 options |
 | [`lldpd`](lldpd.md) | category | 2 options |
 | [`local-content-share`](local-content-share.md) | category | 5 options |
-| `localtime` | option | |
 | [`localtimed`](localtimed.md) | category | 3 options |
-| [`locate`](locate.md) | category | 13 options |
-| [`logcheck`](logcheck.md) | category | 11 options |
-| [`logind`](logind.md) | category | 1 subcategory, 15 options |
+| [`locate`](locate.md) | category | 9 options |
+| [`logcheck`](logcheck.md) | category | 16 options |
+| [`logind`](logind.md) | category | 3 options |
 | [`logiops`](logiops.md) | category | 3 options |
 | [`logkeys`](logkeys.md) | category | 2 options |
 | [`logmein-hamachi`](logmein-hamachi.md) | category | 1 option |
-| [`logrotate`](logrotate.md) | category | 9 options |
-| [`logstash`](logstash.md) | category | 15 options |
+| [`logrotate`](logrotate.md) | category | 11 options |
+| [`logstash`](logstash.md) | category | 13 options |
 | [`loki`](loki.md) | category | 8 options |
-| [`lokinet`](lokinet.md) | category | 4 options |
+| [`lokinet`](lokinet.md) | category | 9 options |
 | [`longview`](longview.md) | category | 8 options |
 | [`lorri`](lorri.md) | category | 2 options |
-| `lshd` | option | |
 | [`lubelogger`](lubelogger.md) | category | 9 options |
-| [`lvm`](lvm.md) | category | 3 subcategories, 6 options |
-| [`lxd-image-server`](lxd-image-server.md) | category | 1 subcategory, 5 options |
-| [`mackerel-agent`](mackerel-agent.md) | category | 5 options |
-| [`maddy`](maddy.md) | category | 1 subcategory, 15 options |
+| [`lvm`](lvm.md) | category | 5 options |
+| [`lxd-image-server`](lxd-image-server.md) | category | 5 options |
+| [`mackerel-agent`](mackerel-agent.md) | category | 8 options |
+| [`maddy`](maddy.md) | category | 18 options |
 | [`magic-wormhole-mailbox-server`](magic-wormhole-mailbox-server.md) | category | 1 option |
-| [`magnetico`](magnetico.md) | category | 2 subcategories, 11 options |
-| [`mail`](mail.md) | category | 1 option |
-| [`mailcatcher`](mailcatcher.md) | category | 2 subcategories, 6 options |
-| [`mailhog`](mailhog.md) | category | 8 options |
-| [`mailman`](mailman.md) | category | 3 subcategories, 32 options |
-| `mailpile` | option | |
-| [`mailpit`](mailpit.md) | category | 1 option |
-| [`mainsail`](mainsail.md) | category | 4 options |
+| [`magnetico`](magnetico.md) | category | 11 options |
+| [`mail`](mail.md) | category | 9 options |
+| [`mailcatcher`](mailcatcher.md) | category | 6 options |
+| [`mailhog`](mailhog.md) | category | 7 options |
+| [`mailman`](mailman.md) | category | 28 options |
+| [`mailpit`](mailpit.md) | category | 5 options |
+| [`mainsail`](mainsail.md) | category | 53 options |
 | [`malcontent`](malcontent.md) | category | 1 option |
 | [`mame`](mame.md) | category | 4 options |
 | [`manticore`](manticore.md) | category | 2 options |
-| `marathon` | option | |
 | [`marytts`](marytts.md) | category | 8 options |
-| [`mastodon`](mastodon.md) | category | 5 subcategories, 53 options |
-| `mathics` | option | |
-| [`matomo`](matomo.md) | category | 8 options |
-| [`matrix-alertmanager`](matrix-alertmanager.md) | category | 9 options |
+| [`mastodon`](mastodon.md) | category | 53 options |
+| [`matomo`](matomo.md) | category | 55 options |
+| [`matrix-alertmanager`](matrix-alertmanager.md) | category | 11 options |
 | [`matrix-appservice-discord`](matrix-appservice-discord.md) | category | 8 options |
-| [`matrix-appservice-irc`](matrix-appservice-irc.md) | category | 7 options |
-| [`matrix-conduit`](matrix-conduit.md) | category | 5 options |
-| [`matrix-continuwuity`](matrix-continuwuity.md) | category | 1 subcategory, 7 options |
-| [`matrix-hookshot`](matrix-hookshot.md) | category | 5 options |
-| `matrix-sliding-sync` | option | |
-| [`matrix-synapse`](matrix-synapse.md) | category | 3 subcategories, 75 options |
-| [`matrix-tuwunel`](matrix-tuwunel.md) | category | 7 options |
+| [`matrix-appservice-irc`](matrix-appservice-irc.md) | category | 20 options |
+| [`matrix-conduit`](matrix-conduit.md) | category | 16 options |
+| [`matrix-continuwuity`](matrix-continuwuity.md) | category | 19 options |
+| [`matrix-hookshot`](matrix-hookshot.md) | category | 6 options |
+| [`matrix-synapse`](matrix-synapse.md) | category | 70 options |
+| [`matrix-tuwunel`](matrix-tuwunel.md) | category | 17 options |
 | [`matter-server`](matter-server.md) | category | 6 options |
 | [`matterbridge`](matterbridge.md) | category | 6 options |
 | [`matterjs-server`](matterjs-server.md) | category | 7 options |
-| [`mattermost`](mattermost.md) | category | 4 subcategories, 44 options |
-| [`maubot`](maubot.md) | category | 8 options |
-| [`mautrix-discord`](mautrix-discord.md) | category | 9 options |
-| [`mautrix-meta`](mautrix-meta.md) | category | 2 options |
+| [`mattermost`](mattermost.md) | category | 36 options |
+| [`maubot`](maubot.md) | category | 32 options |
+| [`mautrix-discord`](mautrix-discord.md) | category | 6 options |
+| [`mautrix-meta`](mautrix-meta.md) | category | 11 options |
 | [`mautrix-signal`](mautrix-signal.md) | category | 6 options |
 | [`mautrix-telegram`](mautrix-telegram.md) | category | 6 options |
 | [`mautrix-whatsapp`](mautrix-whatsapp.md) | category | 6 options |
-| [`mbpfan`](mbpfan.md) | category | 11 options |
-| [`mchprs`](mchprs.md) | category | 1 subcategory, 10 options |
-| [`mealie`](mealie.md) | category | 1 subcategory, 8 options |
-| [`mediagoblin`](mediagoblin.md) | category | 1 subcategory, 8 options |
+| [`mbpfan`](mbpfan.md) | category | 9 options |
+| [`mchprs`](mchprs.md) | category | 20 options |
+| [`mealie`](mealie.md) | category | 8 options |
+| [`mediagoblin`](mediagoblin.md) | category | 13 options |
 | [`mediamtx`](mediamtx.md) | category | 5 options |
-| [`mediatomb`](mediatomb.md) | category | 17 options |
-| [`mediawiki`](mediawiki.md) | category | 3 subcategories, 28 options |
-| `meguca` | option | |
-| [`meilisearch`](meilisearch.md) | category | 13 options |
-| [`memcached`](memcached.md) | category | 9 options |
+| [`mediatomb`](mediatomb.md) | category | 20 options |
+| [`mediawiki`](mediawiki.md) | category | 59 options |
+| [`meilisearch`](meilisearch.md) | category | 6 options |
+| [`memcached`](memcached.md) | category | 8 options |
 | [`meme-bingo-web`](meme-bingo-web.md) | category | 6 options |
 | [`memos`](memos.md) | category | 8 options |
 | [`merecat`](merecat.md) | category | 2 options |
 | [`meshcentral`](meshcentral.md) | category | 3 options |
 | [`meshtasticd`](meshtasticd.md) | category | 7 options |
-| `mesos` | option | |
-| [`metabase`](metabase.md) | category | 2 subcategories, 8 options |
-| [`metricbeat`](metricbeat.md) | category | 4 options |
+| [`metabase`](metabase.md) | category | 8 options |
+| [`metricbeat`](metricbeat.md) | category | 7 options |
 | [`microbin`](microbin.md) | category | 5 options |
 | [`microsocks`](microsocks.md) | category | 12 options |
 | [`mighttpd2`](mighttpd2.md) | category | 4 options |
@@ -747,455 +685,411 @@ Subcategories of `services`.
 | [`mimir`](mimir.md) | category | 5 options |
 | [`minecraft-server`](minecraft-server.md) | category | 9 options |
 | [`minetest-server`](minetest-server.md) | category | 8 options |
-| `mingetty` | option | |
-| [`minidlna`](minidlna.md) | category | 4 options |
-| [`miniflux`](miniflux.md) | category | 5 options |
+| [`minidlna`](minidlna.md) | category | 15 options |
+| [`miniflux`](miniflux.md) | category | 10 options |
 | [`minio`](minio.md) | category | 12 options |
 | [`miniupnpd`](miniupnpd.md) | category | 6 options |
 | [`mirakurun`](mirakurun.md) | category | 8 options |
 | [`miredo`](miredo.md) | category | 6 options |
-| [`misc`](misc.md) | category | 1 subcategory, 3 options |
-| [`misskey`](misskey.md) | category | 4 subcategories, 13 options |
-| [`mjolnir`](mjolnir.md) | category | 8 options |
+| [`misskey`](misskey.md) | category | 102 options |
+| [`mjolnir`](mjolnir.md) | category | 19 options |
 | [`mjpg-streamer`](mjpg-streamer.md) | category | 5 options |
 | [`mlmmj`](mlmmj.md) | category | 6 options |
 | [`mmsd`](mmsd.md) | category | 2 options |
-| [`mobilizon`](mobilizon.md) | category | 1 subcategory, 4 options |
-| `moinmoin` | option | |
+| [`mobilizon`](mobilizon.md) | category | 15 options |
 | [`molly-brown`](molly-brown.md) | category | 7 options |
-| [`mollysocket`](mollysocket.md) | category | 4 options |
+| [`mollysocket`](mollysocket.md) | category | 8 options |
 | [`monado`](monado.md) | category | 5 options |
-| [`monero`](monero.md) | category | 3 subcategories, 21 options |
+| [`monero`](monero.md) | category | 21 options |
 | [`monetdb`](monetdb.md) | category | 7 options |
-| [`mongodb`](mongodb.md) | category | 14 options |
-| [`monica`](monica.md) | category | 2 subcategories, 26 options |
+| [`mongodb`](mongodb.md) | category | 13 options |
+| [`monica`](monica.md) | category | 75 options |
 | [`monit`](monit.md) | category | 2 options |
-| [`moodle`](moodle.md) | category | 1 subcategory, 14 options |
-| [`moonraker`](moonraker.md) | category | 1 subcategory, 12 options |
-| [`moosefs`](moosefs.md) | category | 5 subcategories, 17 options |
-| [`mopidy`](mopidy.md) | category | 6 options |
-| `morty` | option | |
-| [`mosquitto`](mosquitto.md) | category | 10 options |
-| [`motioneye`](motioneye.md) | category | 1 subcategory, 7 options |
-| [`movim`](movim.md) | category | 1 subcategory, 25 options |
+| [`moodle`](moodle.md) | category | 46 options |
+| [`moonraker`](moonraker.md) | category | 12 options |
+| [`moosefs`](moosefs.md) | category | 23 options |
+| [`mopidy`](mopidy.md) | category | 5 options |
+| [`mosquitto`](mosquitto.md) | category | 30 options |
+| [`motioneye`](motioneye.md) | category | 7 options |
+| [`movim`](movim.md) | category | 111 options |
 | [`mozillavpn`](mozillavpn.md) | category | 1 option |
-| [`mpd`](mpd.md) | category | 1 subcategory, 15 options |
-| [`mpdscribble`](mpdscribble.md) | category | 8 options |
+| [`mpd`](mpd.md) | category | 16 options |
+| [`mpdscribble`](mpdscribble.md) | category | 11 options |
 | [`mptcpd`](mptcpd.md) | category | 2 options |
-| [`mqtt2influxdb`](mqtt2influxdb.md) | category | 2 subcategories, 18 options |
+| [`mqtt2influxdb`](mqtt2influxdb.md) | category | 24 options |
 | [`mstpd`](mstpd.md) | category | 1 option |
 | [`mtprotoproxy`](mtprotoproxy.md) | category | 6 options |
-| [`mtr-exporter`](mtr-exporter.md) | category | 9 options |
+| [`mtr-exporter`](mtr-exporter.md) | category | 11 options |
 | [`mullvad-vpn`](mullvad-vpn.md) | category | 4 options |
-| [`multipath`](multipath.md) | category | 10 options |
+| [`multipath`](multipath.md) | category | 55 options |
 | [`munge`](munge.md) | category | 2 options |
 | [`munin-cron`](munin-cron.md) | category | 4 options |
 | [`munin-node`](munin-node.md) | category | 6 options |
-| [`murmur`](murmur.md) | category | 1 subcategory, 38 options |
+| [`murmur`](murmur.md) | category | 34 options |
 | [`music-assistant`](music-assistant.md) | category | 5 options |
-| `mwlib` | option | |
-| `mx-puppet-discord` | option | |
-| `mxisd` | option | |
 | [`mycelium`](mycelium.md) | category | 7 options |
-| [`mympd`](mympd.md) | category | 5 options |
-| [`mysql`](mysql.md) | category | 2 subcategories, 32 options |
+| [`mympd`](mympd.md) | category | 7 options |
+| [`mysql`](mysql.md) | category | 31 options |
 | [`mysqlBackup`](mysqlBackup.md) | category | 9 options |
-| [`n8n`](n8n.md) | category | 1 subcategory, 11 options |
-| [`nagios`](nagios.md) | category | 10 options |
-| [`namecoind`](namecoind.md) | category | 1 subcategory, 12 options |
+| [`n8n`](n8n.md) | category | 24 options |
+| [`nagios`](nagios.md) | category | 41 options |
+| [`namecoind`](namecoind.md) | category | 12 options |
 | [`nar-serve`](nar-serve.md) | category | 5 options |
 | [`nats`](nats.md) | category | 9 options |
-| [`navidrome`](navidrome.md) | category | 9 options |
-| [`nbd`](nbd.md) | category | 1 subcategory, 5 options |
-| [`ncdns`](ncdns.md) | category | 2 subcategories, 12 options |
-| [`ncps`](ncps.md) | category | 6 subcategories, 48 options |
-| [`ndppd`](ndppd.md) | category | 6 options |
-| [`neard`](neard.md) | category | 2 options |
-| [`nebula`](nebula.md) | category | 1 option |
+| [`navidrome`](navidrome.md) | category | 14 options |
+| [`nbd`](nbd.md) | category | 8 options |
+| [`ncdns`](ncdns.md) | category | 12 options |
+| [`ncps`](ncps.md) | category | 56 options |
+| [`ndppd`](ndppd.md) | category | 14 options |
+| [`neard`](neard.md) | category | 5 options |
+| [`nebula`](nebula.md) | category | 22 options |
 | [`nebula-lighthouse-service`](nebula-lighthouse-service.md) | category | 3 options |
-| [`neo4j`](neo4j.md) | category | 7 subcategories, 37 options |
-| [`netatalk`](netatalk.md) | category | 7 options |
-| [`netbird`](netbird.md) | category | 2 subcategories, 48 options |
-| [`netbox`](netbox.md) | category | 15 options |
+| [`neo4j`](neo4j.md) | category | 36 options |
+| [`netatalk`](netatalk.md) | category | 4 options |
+| [`netbird`](netbird.md) | category | 96 options |
+| [`netbox`](netbox.md) | category | 16 options |
 | [`netclient`](netclient.md) | category | 2 options |
-| [`netdata`](netdata.md) | category | 1 subcategory, 15 options |
-| [`netfoil`](netfoil.md) | category | 2 subcategories, 19 options |
+| [`netdata`](netdata.md) | category | 15 options |
+| [`netfoil`](netfoil.md) | category | 19 options |
 | [`networkaudiod`](networkaudiod.md) | category | 1 option |
-| [`networkd-dispatcher`](networkd-dispatcher.md) | category | 3 options |
-| [`networking`](networking.md) | category | 1 subcategory, 4 options |
-| [`newt`](newt.md) | category | 8 options |
-| [`nextcloud`](nextcloud.md) | category | 9 subcategories, 80 options |
-| [`nextcloud-spreed-signaling`](nextcloud-spreed-signaling.md) | category | 9 options |
+| [`networkd-dispatcher`](networkd-dispatcher.md) | category | 5 options |
+| [`networking`](networking.md) | category | 4 options |
+| [`newt`](newt.md) | category | 5 options |
+| [`nextcloud`](nextcloud.md) | category | 88 options |
+| [`nextcloud-spreed-signaling`](nextcloud-spreed-signaling.md) | category | 32 options |
 | [`nextcloud-whiteboard-server`](nextcloud-whiteboard-server.md) | category | 3 options |
 | [`nextdns`](nextdns.md) | category | 2 options |
 | [`nextjs-ollama-llm-ui`](nextjs-ollama-llm-ui.md) | category | 5 options |
 | [`nexus`](nexus.md) | category | 9 options |
-| [`nezha-agent`](nezha-agent.md) | category | 19 options |
-| [`nfs`](nfs.md) | category | 2 subcategories, 14 options |
-| [`nghttpx`](nghttpx.md) | category | 11 options |
-| [`nginx`](nginx.md) | category | 4 subcategories, 72 options |
+| [`nezha-agent`](nezha-agent.md) | category | 18 options |
+| [`nfs`](nfs.md) | category | 12 options |
+| [`nghttpx`](nghttpx.md) | category | 31 options |
+| [`nginx`](nginx.md) | category | 131 options |
 | [`ngircd`](ngircd.md) | category | 3 options |
 | [`nifi`](nifi.md) | category | 13 options |
-| [`nipap`](nipap.md) | category | 2 subcategories, 15 options |
-| [`nitter`](nitter.md) | category | 4 subcategories, 44 options |
+| [`nipap`](nipap.md) | category | 23 options |
+| [`nitter`](nitter.md) | category | 42 options |
 | [`nix-serve`](nix-serve.md) | category | 7 options |
-| `nix-store-gcs-proxy` | option | |
+| [`nix-store-gcs-proxy`](nix-store-gcs-proxy.md) | category | 4 options |
 | [`nixops-dns`](nixops-dns.md) | category | 4 options |
-| [`nixosManual`](nixosManual.md) | category | 1 option |
-| `nixseparatedebuginfod` | option | |
-| [`nixseparatedebuginfod2`](nixseparatedebuginfod2.md) | category | 6 options |
-| [`nmtrust`](nmtrust.md) | category | 8 options |
-| [`nncp`](nncp.md) | category | 2 subcategories, 6 options |
-| [`nntp-proxy`](nntp-proxy.md) | category | 13 options |
+| [`nixseparatedebuginfod2`](nixseparatedebuginfod2.md) | category | 5 options |
+| [`nmtrust`](nmtrust.md) | category | 10 options |
+| [`nncp`](nncp.md) | category | 6 options |
+| [`nntp-proxy`](nntp-proxy.md) | category | 16 options |
 | [`node-red`](node-red.md) | category | 11 options |
 | [`nohang`](nohang.md) | category | 3 options |
 | [`nomad`](nomad.md) | category | 9 options |
-| [`nominatim`](nominatim.md) | category | 2 subcategories, 14 options |
+| [`nominatim`](nominatim.md) | category | 14 options |
 | [`nostr-rs-relay`](nostr-rs-relay.md) | category | 5 options |
 | [`novacomd`](novacomd.md) | category | 1 option |
 | [`nscd`](nscd.md) | category | 6 options |
-| [`nsd`](nsd.md) | category | 2 subcategories, 45 options |
-| [`ntfy-sh`](ntfy-sh.md) | category | 6 options |
-| [`ntopng`](ntopng.md) | category | 1 subcategory, 8 options |
+| [`nsd`](nsd.md) | category | 77 options |
+| [`ntfy-sh`](ntfy-sh.md) | category | 7 options |
+| [`ntopng`](ntopng.md) | category | 7 options |
 | [`ntp`](ntp.md) | category | 6 options |
-| [`ntpd-rs`](ntpd-rs.md) | category | 1 subcategory, 5 options |
+| [`ntpd-rs`](ntpd-rs.md) | category | 5 options |
 | [`nullidentdmod`](nullidentdmod.md) | category | 2 options |
-| [`nullmailer`](nullmailer.md) | category | 1 subcategory, 17 options |
-| [`nvme-rs`](nvme-rs.md) | category | 3 options |
-| `nylon` | option | |
+| [`nullmailer`](nullmailer.md) | category | 17 options |
+| [`nvme-rs`](nvme-rs.md) | category | 19 options |
+| [`nylon`](nylon.md) | category | 10 options |
 | [`nzbget`](nzbget.md) | category | 5 options |
 | [`nzbhydra2`](nzbhydra2.md) | category | 4 options |
-| [`oauth2-proxy`](oauth2-proxy.md) | category | 8 subcategories, 56 options |
-| `oauth2_proxy` | option | |
+| [`oauth2-proxy`](oauth2-proxy.md) | category | 57 options |
 | [`ocis`](ocis.md) | category | 11 options |
 | [`ocserv`](ocserv.md) | category | 2 options |
-| [`ocsinventory-agent`](ocsinventory-agent.md) | category | 4 options |
+| [`ocsinventory-agent`](ocsinventory-agent.md) | category | 9 options |
 | [`octoprint`](octoprint.md) | category | 10 options |
-| [`odoo`](odoo.md) | category | 7 options |
+| [`odoo`](odoo.md) | category | 9 options |
 | [`offlineimap`](offlineimap.md) | category | 6 options |
 | [`ofono`](ofono.md) | category | 2 options |
 | [`oidentd`](oidentd.md) | category | 1 option |
-| [`oink`](oink.md) | category | 1 subcategory, 9 options |
-| [`olivetin`](olivetin.md) | category | 7 options |
-| [`ollama`](ollama.md) | category | 17 options |
+| [`oink`](oink.md) | category | 7 options |
+| [`olivetin`](olivetin.md) | category | 8 options |
+| [`ollama`](ollama.md) | category | 13 options |
 | [`ombi`](ombi.md) | category | 7 options |
-| [`omnom`](omnom.md) | category | 9 options |
-| [`oncall`](oncall.md) | category | 1 subcategory, 5 options |
+| [`omnom`](omnom.md) | category | 26 options |
+| [`oncall`](oncall.md) | category | 11 options |
 | [`onedrive`](onedrive.md) | category | 2 options |
 | [`onlyoffice`](onlyoffice.md) | category | 17 options |
-| [`open-web-calendar`](open-web-calendar.md) | category | 5 options |
+| [`open-web-calendar`](open-web-calendar.md) | category | 6 options |
 | [`open-webui`](open-webui.md) | category | 8 options |
-| [`openafsClient`](openafsClient.md) | category | 2 subcategories, 18 options |
-| [`openafsServer`](openafsServer.md) | category | 1 subcategory, 21 options |
+| [`openafsClient`](openafsClient.md) | category | 20 options |
+| [`openafsServer`](openafsServer.md) | category | 25 options |
 | [`openarena`](openarena.md) | category | 4 options |
-| [`openbao`](openbao.md) | category | 4 options |
+| [`openbao`](openbao.md) | category | 8 options |
 | [`opencloud`](opencloud.md) | category | 13 options |
-| [`opendkim`](opendkim.md) | category | 10 options |
-| `openfire` | option | |
-| `opengfw` | option | |
+| [`opendkim`](opendkim.md) | category | 9 options |
 | [`openiscsi`](openiscsi.md) | category | 7 options |
-| [`openldap`](openldap.md) | category | 9 options |
+| [`openldap`](openldap.md) | category | 12 options |
 | [`openntpd`](openntpd.md) | category | 4 options |
-| [`opensearch`](opensearch.md) | category | 10 options |
-| [`opensmtpd`](opensmtpd.md) | category | 7 options |
-| [`opensnitch`](opensnitch.md) | category | 6 options |
-| [`openssh`](openssh.md) | category | 32 options |
+| [`opensearch`](opensearch.md) | category | 16 options |
+| [`opensmtpd`](opensmtpd.md) | category | 6 options |
+| [`opensnitch`](opensnitch.md) | category | 11 options |
+| [`openssh`](openssh.md) | category | 47 options |
 | [`opentelemetry-collector`](opentelemetry-collector.md) | category | 5 options |
-| [`openthread-border-router`](openthread-border-router.md) | category | 3 subcategories, 18 options |
+| [`openthread-border-router`](openthread-border-router.md) | category | 18 options |
 | [`opentracker`](opentracker.md) | category | 3 options |
 | [`opentsdb`](opentsdb.md) | category | 6 options |
-| [`openvpn`](openvpn.md) | category | 4 options |
+| [`openvpn`](openvpn.md) | category | 9 options |
 | [`openvscode-server`](openvscode-server.md) | category | 18 options |
 | [`openwebrx`](openwebrx.md) | category | 2 options |
-| [`opkssh`](opkssh.md) | category | 6 options |
-| [`orangefs`](orangefs.md) | category | 2 subcategories, 12 options |
+| [`opkssh`](opkssh.md) | category | 12 options |
+| [`orangefs`](orangefs.md) | category | 21 options |
 | [`orca`](orca.md) | category | 2 options |
 | [`orthanc`](orthanc.md) | category | 7 options |
-| [`osquery`](osquery.md) | category | 4 options |
+| [`osquery`](osquery.md) | category | 7 options |
 | [`osrm`](osrm.md) | category | 7 options |
-| [`ostinato`](ostinato.md) | category | 2 subcategories, 6 options |
-| [`outline`](outline.md) | category | 1 subcategory, 35 options |
+| [`ostinato`](ostinato.md) | category | 6 options |
+| [`outline`](outline.md) | category | 75 options |
 | [`overseerr`](overseerr.md) | category | 4 options |
 | [`owamp`](owamp.md) | category | 1 option |
 | [`owncast`](owncast.md) | category | 8 options |
 | [`oxidized`](oxidized.md) | category | 7 options |
 | [`pacemaker`](pacemaker.md) | category | 2 options |
-| [`packagekit`](packagekit.md) | category | 4 options |
+| [`packagekit`](packagekit.md) | category | 3 options |
 | [`pairdrop`](pairdrop.md) | category | 5 options |
-| [`paisa`](paisa.md) | category | 7 options |
+| [`paisa`](paisa.md) | category | 10 options |
 | [`pangolin`](pangolin.md) | category | 10 options |
-| [`pantalaimon-headless`](pantalaimon-headless.md) | category | 1 option |
-| [`pantheon`](pantheon.md) | category | 3 subcategories, 4 options |
-| [`paperless`](paperless.md) | category | 2 subcategories, 23 options |
-| `paperless-ng` | option | |
+| [`pantalaimon-headless`](pantalaimon-headless.md) | category | 8 options |
+| [`pantheon`](pantheon.md) | category | 3 options |
+| [`paperless`](paperless.md) | category | 22 options |
 | [`papra`](papra.md) | category | 6 options |
-| [`paretosecurity`](paretosecurity.md) | category | 4 options |
-| [`parsedmarc`](parsedmarc.md) | category | 1 subcategory, 9 options |
-| `parsoid` | option | |
-| [`part-db`](part-db.md) | category | 8 options |
+| [`paretosecurity`](paretosecurity.md) | category | 5 options |
+| [`parsedmarc`](parsedmarc.md) | category | 30 options |
+| [`part-db`](part-db.md) | category | 9 options |
 | [`passSecretService`](passSecretService.md) | category | 2 options |
-| [`patroni`](patroni.md) | category | 18 options |
-| [`pcscd`](pcscd.md) | category | 7 options |
-| [`pdfding`](pdfding.md) | category | 4 subcategories, 25 options |
-| [`pdns-recursor`](pdns-recursor.md) | category | 2 subcategories, 18 options |
+| [`patroni`](patroni.md) | category | 16 options |
+| [`pcscd`](pcscd.md) | category | 6 options |
+| [`pdfding`](pdfding.md) | category | 24 options |
+| [`pdns-recursor`](pdns-recursor.md) | category | 15 options |
 | [`pdnsd`](pdnsd.md) | category | 5 options |
-| [`pds`](pds.md) | category | 5 options |
 | [`pdudaemon`](pdudaemon.md) | category | 8 options |
 | [`peerflix`](peerflix.md) | category | 3 options |
-| [`peering-manager`](peering-manager.md) | category | 14 options |
-| [`peertube`](peertube.md) | category | 4 subcategories, 26 options |
-| [`peertube-runner`](peertube-runner.md) | category | 7 options |
+| [`peering-manager`](peering-manager.md) | category | 13 options |
+| [`peertube`](peertube.md) | category | 28 options |
+| [`peertube-runner`](peertube-runner.md) | category | 11 options |
 | [`perses`](perses.md) | category | 6 options |
 | [`persistent-evdev`](persistent-evdev.md) | category | 2 options |
 | [`pfix-srsd`](pfix-srsd.md) | category | 4 options |
-| [`pgadmin`](pgadmin.md) | category | 1 subcategory, 16 options |
-| [`pgbackrest`](pgbackrest.md) | category | 1 subcategory, 24 options |
-| [`pgbouncer`](pgbouncer.md) | category | 2 subcategories, 41 options |
+| [`pgadmin`](pgadmin.md) | category | 16 options |
+| [`pgbackrest`](pgbackrest.md) | category | 33 options |
+| [`pgbouncer`](pgbouncer.md) | category | 19 options |
 | [`pghero`](pghero.md) | category | 8 options |
-| [`pgmanage`](pgmanage.md) | category | 12 options |
+| [`pgmanage`](pgmanage.md) | category | 14 options |
 | [`pgpkeyserver-lite`](pgpkeyserver-lite.md) | category | 5 options |
 | [`pgscv`](pgscv.md) | category | 4 options |
 | [`photonvision`](photonvision.md) | category | 3 options |
 | [`photoprism`](photoprism.md) | category | 12 options |
-| [`photoview`](photoview.md) | category | 2 subcategories, 20 options |
-| [`phpfpm`](phpfpm.md) | category | 7 options |
+| [`photoview`](photoview.md) | category | 20 options |
+| [`phpfpm`](phpfpm.md) | category | 14 options |
 | [`phylactery`](phylactery.md) | category | 5 options |
-| [`physlock`](physlock.md) | category | 1 subcategory, 8 options |
-| [`picom`](picom.md) | category | 20 options |
+| [`physlock`](physlock.md) | category | 8 options |
+| [`picom`](picom.md) | category | 18 options |
 | [`picosnitch`](picosnitch.md) | category | 1 option |
 | [`pict-rs`](pict-rs.md) | category | 7 options |
 | [`pid-fan-controller`](pid-fan-controller.md) | category | 3 options |
-| [`pihole-ftl`](pihole-ftl.md) | category | 1 subcategory, 21 options |
+| [`pihole-ftl`](pihole-ftl.md) | category | 22 options |
 | [`pihole-web`](pihole-web.md) | category | 4 options |
 | [`pinchflat`](pinchflat.md) | category | 11 options |
-| `pingvin-share` | option | |
-| [`pinnwand`](pinnwand.md) | category | 3 options |
-| [`pipewire`](pipewire.md) | category | 6 subcategories, 27 options |
-| [`piwik`](piwik.md) | category | 4 options |
-| [`pixelfed`](pixelfed.md) | category | 2 subcategories, 19 options |
+| [`pinnwand`](pinnwand.md) | category | 7 options |
+| [`pipewire`](pipewire.md) | category | 24 options |
+| [`pixelfed`](pixelfed.md) | category | 68 options |
 | [`pixiecore`](pixiecore.md) | category | 14 options |
-| [`plantuml-server`](plantuml-server.md) | category | 1 subcategory, 14 options |
-| [`plausible`](plausible.md) | category | 4 subcategories, 24 options |
+| [`plantuml-server`](plantuml-server.md) | category | 13 options |
+| [`plausible`](plausible.md) | category | 19 options |
 | [`playerctld`](playerctld.md) | category | 2 options |
 | [`pleroma`](pleroma.md) | category | 7 options |
-| [`plex`](plex.md) | category | 10 options |
-| `plexpy` | option | |
+| [`plex`](plex.md) | category | 9 options |
 | [`plikd`](plikd.md) | category | 3 options |
-| [`pocket-id`](pocket-id.md) | category | 8 options |
+| [`pocket-id`](pocket-id.md) | category | 11 options |
 | [`podgrab`](podgrab.md) | category | 6 options |
 | [`polaris`](polaris.md) | category | 8 options |
-| `polipo` | option | |
 | [`pomerium`](pomerium.md) | category | 5 options |
 | [`porn-vault`](porn-vault.md) | category | 6 options |
-| [`portunus`](portunus.md) | category | 2 subcategories, 18 options |
-| [`porxie`](porxie.md) | category | 4 options |
-| [`postfix`](postfix.md) | category | 1 subcategory, 50 options |
-| [`postfix-tlspol`](postfix-tlspol.md) | category | 4 options |
-| `postfixadmin` | option | |
-| [`postgres-websockets`](postgres-websockets.md) | category | 4 options |
-| [`postgresql`](postgresql.md) | category | 22 options |
-| [`postgresqlBackup`](postgresqlBackup.md) | category | 10 options |
-| [`postgresqlWalReceiver`](postgresqlWalReceiver.md) | category | 1 option |
-| [`postgrest`](postgrest.md) | category | 4 options |
-| [`postgrey`](postgrey.md) | category | 17 options |
-| [`postsrsd`](postsrsd.md) | category | 15 options |
+| [`portunus`](portunus.md) | category | 20 options |
+| [`porxie`](porxie.md) | category | 20 options |
+| [`postfix`](postfix.md) | category | 54 options |
+| [`postfix-tlspol`](postfix-tlspol.md) | category | 10 options |
+| [`postgres-websockets`](postgres-websockets.md) | category | 6 options |
+| [`postgresql`](postgresql.md) | category | 24 options |
+| [`postgresqlBackup`](postgresqlBackup.md) | category | 9 options |
+| [`postgresqlWalReceiver`](postgresqlWalReceiver.md) | category | 10 options |
+| [`postgrest`](postgrest.md) | category | 10 options |
+| [`postgrey`](postgrey.md) | category | 15 options |
+| [`postsrsd`](postsrsd.md) | category | 14 options |
 | [`power-profiles-daemon`](power-profiles-daemon.md) | category | 2 options |
 | [`powerdns`](powerdns.md) | category | 3 options |
 | [`powerdns-admin`](powerdns-admin.md) | category | 5 options |
 | [`powerstation`](powerstation.md) | category | 2 options |
-| [`pppd`](pppd.md) | category | 3 options |
+| [`pppd`](pppd.md) | category | 7 options |
 | [`pptpd`](pptpd.md) | category | 6 options |
-| `prayer` | option | |
-| [`prefect`](prefect.md) | category | 13 options |
-| `preload` | option | |
-| [`pretalx`](pretalx.md) | category | 4 subcategories, 14 options |
-| [`pretix`](pretix.md) | category | 4 subcategories, 12 options |
-| `prey` | option | |
-| [`printing`](printing.md) | category | 2 subcategories, 26 options |
-| `private-gpt` | option | |
+| [`prefect`](prefect.md) | category | 14 options |
+| [`pretalx`](pretalx.md) | category | 27 options |
+| [`pretix`](pretix.md) | category | 32 options |
+| [`printing`](printing.md) | category | 31 options |
 | [`privatebin`](privatebin.md) | category | 9 options |
-| [`privoxy`](privoxy.md) | category | 12 options |
-| [`prometheus`](prometheus.md) | category | 8 subcategories, 92 options |
-| `prometheus2` | option | |
-| `promtail` | option | |
-| [`prosody`](prosody.md) | category | 1 subcategory, 64 options |
+| [`privoxy`](privoxy.md) | category | 11 options |
+| [`prometheus`](prometheus.md) | category | 1967 options |
+| [`prosody`](prosody.md) | category | 99 options |
 | [`prosody-filer`](prosody-filer.md) | category | 2 options |
 | [`protonmail-bridge`](protonmail-bridge.md) | category | 4 options |
-| [`prowlarr`](prowlarr.md) | category | 6 options |
+| [`prowlarr`](prowlarr.md) | category | 10 options |
 | [`psd`](psd.md) | category | 2 options |
-| [`public-inbox`](public-inbox.md) | category | 5 subcategories, 24 options |
+| [`public-inbox`](public-inbox.md) | category | 44 options |
 | [`pufferpanel`](pufferpanel.md) | category | 6 options |
-| [`pulseaudio`](pulseaudio.md) | category | 3 subcategories, 17 options |
-| [`pykms`](pykms.md) | category | 9 options |
-| `pyload` | option | |
-| [`pyroscope`](pyroscope.md) | category | 6 options |
+| [`pulseaudio`](pulseaudio.md) | category | 17 options |
+| [`pykms`](pykms.md) | category | 8 options |
+| [`pyroscope`](pyroscope.md) | category | 8 options |
 | [`qbittorrent`](qbittorrent.md) | category | 10 options |
 | [`qdrant`](qdrant.md) | category | 4 options |
 | [`qemuGuest`](qemuGuest.md) | category | 2 options |
-| `quagga` | option | |
 | [`quake3-server`](quake3-server.md) | category | 6 options |
 | [`quassel`](quassel.md) | category | 8 options |
-| [`qui`](qui.md) | category | 7 options |
-| `quicktun` | option | |
-| [`quickwit`](quickwit.md) | category | 8 options |
-| `quorum` | option | |
+| [`qui`](qui.md) | category | 9 options |
+| [`quicktun`](quicktun.md) | category | 13 options |
+| [`quickwit`](quickwit.md) | category | 13 options |
 | [`r53-ddns`](r53-ddns.md) | category | 7 options |
-| [`rabbitmq`](rabbitmq.md) | category | 1 subcategory, 13 options |
-| `racoon` | option | |
-| [`radarr`](radarr.md) | category | 8 options |
+| [`rabbitmq`](rabbitmq.md) | category | 12 options |
+| [`radarr`](radarr.md) | category | 12 options |
 | [`radicale`](radicale.md) | category | 8 options |
-| [`radicle`](radicle.md) | category | 3 subcategories, 27 options |
+| [`radicle`](radicle.md) | category | 91 options |
 | [`radvd`](radvd.md) | category | 4 options |
-| `railcar` | option | |
 | [`ratbagd`](ratbagd.md) | category | 2 options |
 | [`rathole`](rathole.md) | category | 5 options |
-| [`rauc`](rauc.md) | category | 2 subcategories, 10 options |
+| [`rauc`](rauc.md) | category | 14 options |
 | [`rdnssd`](rdnssd.md) | category | 1 option |
-| [`reaction`](reaction.md) | category | 8 options |
-| [`readarr`](readarr.md) | category | 8 options |
+| [`reaction`](reaction.md) | category | 14 options |
+| [`readarr`](readarr.md) | category | 12 options |
 | [`readeck`](readeck.md) | category | 4 options |
 | [`realm`](realm.md) | category | 3 options |
 | [`realmd`](realmd.md) | category | 2 options |
 | [`rebuilderd`](rebuilderd.md) | category | 3 options |
 | [`recyclarr`](recyclarr.md) | category | 7 options |
-| [`redis`](redis.md) | category | 30 options |
+| [`redis`](redis.md) | category | 37 options |
 | [`redlib`](redlib.md) | category | 6 options |
-| [`redmine`](redmine.md) | category | 2 subcategories, 29 options |
-| [`redshift`](redshift.md) | category | 2 subcategories, 11 options |
-| [`redsocks`](redsocks.md) | category | 6 options |
+| [`redmine`](redmine.md) | category | 27 options |
+| [`redshift`](redshift.md) | category | 8 options |
+| [`redsocks`](redsocks.md) | category | 16 options |
 | [`reframe`](reframe.md) | category | 3 options |
 | [`remark42`](remark42.md) | category | 10 options |
 | [`renovate`](renovate.md) | category | 8 options |
-| `replay-sorcery` | option | |
-| [`reposilite`](reposilite.md) | category | 12 options |
+| [`reposilite`](reposilite.md) | category | 37 options |
 | [`resilio`](resilio.md) | category | 18 options |
-| [`resolved`](resolved.md) | category | 1 subcategory, 9 options |
-| [`restic`](restic.md) | category | 1 subcategory, 10 options |
-| `restya-board` | option | |
+| [`resolved`](resolved.md) | category | 8 options |
+| [`restic`](restic.md) | category | 35 options |
 | [`rethinkdb`](rethinkdb.md) | category | 5 options |
-| `riak` | option | |
 | [`riemann`](riemann.md) | category | 6 options |
 | [`riemann-dash`](riemann-dash.md) | category | 3 options |
 | [`riemann-tools`](riemann-tools.md) | category | 3 options |
-| [`rimgo`](rimgo.md) | category | 3 options |
-| [`ringboard`](ringboard.md) | category | 2 subcategories, 4 options |
-| `rippleDataApi` | option | |
-| `rippled` | option | |
-| [`rke2`](rke2.md) | category | 1 subcategory, 30 options |
-| [`rkvm`](rkvm.md) | category | 2 subcategories, 6 options |
+| [`rimgo`](rimgo.md) | category | 5 options |
+| [`ringboard`](ringboard.md) | category | 4 options |
+| [`rke2`](rke2.md) | category | 45 options |
+| [`rkvm`](rkvm.md) | category | 14 options |
 | [`rmfakecloud`](rmfakecloud.md) | category | 7 options |
-| `rmilter` | option | |
 | [`robustirc-bridge`](robustirc-bridge.md) | category | 2 options |
 | [`roon-bridge`](roon-bridge.md) | category | 4 options |
 | [`roon-server`](roon-server.md) | category | 5 options |
-| [`rosenpass`](rosenpass.md) | category | 4 options |
-| [`roundcube`](roundcube.md) | category | 1 subcategory, 13 options |
+| [`rosenpass`](rosenpass.md) | category | 13 options |
+| [`roundcube`](roundcube.md) | category | 13 options |
 | [`routedns`](routedns.md) | category | 4 options |
-| [`routinator`](routinator.md) | category | 5 options |
+| [`routinator`](routinator.md) | category | 14 options |
 | [`rpcbind`](rpcbind.md) | category | 1 option |
 | [`rqbit`](rqbit.md) | category | 9 options |
 | [`rshim`](rshim.md) | category | 7 options |
 | [`rsnapshot`](rsnapshot.md) | category | 4 options |
-| [`rspamd`](rspamd.md) | category | 1 subcategory, 16 options |
+| [`rspamd`](rspamd.md) | category | 26 options |
 | [`rspamd-trainer`](rspamd-trainer.md) | category | 3 options |
-| [`rss-bridge`](rss-bridge.md) | category | 10 options |
-| [`rss2email`](rss2email.md) | category | 5 options |
-| [`rsshub`](rsshub.md) | category | 1 subcategory, 9 options |
+| [`rss-bridge`](rss-bridge.md) | category | 11 options |
+| [`rss2email`](rss2email.md) | category | 7 options |
+| [`rsshub`](rsshub.md) | category | 12 options |
 | [`rstudio-server`](rstudio-server.md) | category | 6 options |
-| [`rsync`](rsync.md) | category | 3 options |
-| [`rsyncd`](rsyncd.md) | category | 9 options |
+| [`rsync`](rsync.md) | category | 10 options |
+| [`rsyncd`](rsyncd.md) | category | 6 options |
 | [`rsyslogd`](rsyslogd.md) | category | 4 options |
 | [`rtorrent`](rtorrent.md) | category | 11 options |
-| `rtsp-simple-server` | option | |
 | [`rumno`](rumno.md) | category | 3 options |
-| [`rustdesk-server`](rustdesk-server.md) | category | 2 subcategories, 11 options |
-| [`rustical`](rustical.md) | category | 4 options |
-| [`rustus`](rustus.md) | category | 12 options |
-| [`rutorrent`](rutorrent.md) | category | 1 subcategory, 10 options |
-| [`sabnzbd`](sabnzbd.md) | category | 10 options |
+| [`rustdesk-server`](rustdesk-server.md) | category | 8 options |
+| [`rustical`](rustical.md) | category | 9 options |
+| [`rustus`](rustus.md) | category | 23 options |
+| [`rutorrent`](rutorrent.md) | category | 10 options |
+| [`sabnzbd`](sabnzbd.md) | category | 42 options |
 | [`safeeyes`](safeeyes.md) | category | 1 option |
-| [`salt`](salt.md) | category | 2 subcategories, 4 options |
-| [`samba`](samba.md) | category | 4 subcategories, 22 options |
+| [`salt`](salt.md) | category | 4 options |
+| [`samba`](samba.md) | category | 16 options |
 | [`samba-wsdd`](samba-wsdd.md) | category | 10 options |
 | [`saned`](saned.md) | category | 2 options |
-| [`sanoid`](sanoid.md) | category | 7 options |
+| [`sanoid`](sanoid.md) | category | 36 options |
 | [`saslauthd`](saslauthd.md) | category | 4 options |
-| [`saunafs`](saunafs.md) | category | 4 subcategories, 13 options |
-| [`scanservjs`](scanservjs.md) | category | 7 options |
-| [`schleuder`](schleuder.md) | category | 6 options |
-| [`scion`](scion.md) | category | 5 subcategories, 15 options |
+| [`saunafs`](saunafs.md) | category | 16 options |
+| [`scanservjs`](scanservjs.md) | category | 9 options |
+| [`schleuder`](schleuder.md) | category | 7 options |
+| [`scion`](scion.md) | category | 15 options |
 | [`scollector`](scollector.md) | category | 8 options |
 | [`screego`](screego.md) | category | 4 options |
-| [`scrutiny`](scrutiny.md) | category | 2 subcategories, 9 options |
+| [`scrutiny`](scrutiny.md) | category | 23 options |
 | [`scx`](scx.md) | category | 4 options |
+| [`scx-loader`](scx-loader.md) | category | 5 options |
 | [`sdrplayApi`](sdrplayApi.md) | category | 1 option |
-| [`searx`](searx.md) | category | 15 options |
+| [`searx`](searx.md) | category | 13 options |
 | [`seatd`](seatd.md) | category | 4 options |
-| `seeks` | option | |
 | [`seerr`](seerr.md) | category | 5 options |
 | [`self-deploy`](self-deploy.md) | category | 9 options |
-| [`selfoss`](selfoss.md) | category | 1 subcategory, 10 options |
-| [`send`](send.md) | category | 1 subcategory, 14 options |
+| [`selfoss`](selfoss.md) | category | 10 options |
+| [`send`](send.md) | category | 14 options |
 | [`serviio`](serviio.md) | category | 3 options |
-| [`sftpgo`](sftpgo.md) | category | 9 options |
+| [`sftpgo`](sftpgo.md) | category | 30 options |
 | [`shadowsocks`](shadowsocks.md) | category | 12 options |
 | [`shairport-sync`](shairport-sync.md) | category | 7 options |
-| [`sharkey`](sharkey.md) | category | 8 options |
-| [`shelfmark`](shelfmark.md) | category | 4 options |
+| [`sharkey`](sharkey.md) | category | 15 options |
+| [`shelfmark`](shelfmark.md) | category | 8 options |
 | [`shellhub-agent`](shellhub-agent.md) | category | 7 options |
-| `shellinabox` | option | |
-| [`shibboleth-sp`](shibboleth-sp.md) | category | 1 subcategory, 5 options |
+| [`shibboleth-sp`](shibboleth-sp.md) | category | 5 options |
 | [`shiori`](shiori.md) | category | 7 options |
 | [`shoko`](shoko.md) | category | 5 options |
 | [`shorewall`](shorewall.md) | category | 3 options |
 | [`shorewall6`](shorewall6.md) | category | 3 options |
-| `shout` | option | |
 | [`sickbeard`](sickbeard.md) | category | 7 options |
-| `signald` | option | |
 | [`sillytavern`](sillytavern.md) | category | 10 options |
 | [`silverbullet`](silverbullet.md) | category | 10 options |
-| `simplesamlphp` | option | |
 | [`sing-box`](sing-box.md) | category | 3 options |
-| `siproxd` | option | |
-| [`sitespeed-io`](sitespeed-io.md) | category | 6 options |
+| [`sitespeed-io`](sitespeed-io.md) | category | 9 options |
 | [`sks`](sks.md) | category | 7 options |
-| [`skydns`](skydns.md) | category | 1 subcategory, 10 options |
+| [`skydns`](skydns.md) | category | 10 options |
 | [`slimserver`](slimserver.md) | category | 3 options |
-| [`slskd`](slskd.md) | category | 9 options |
-| [`slurm`](slurm.md) | category | 5 subcategories, 31 options |
-| [`smartd`](smartd.md) | category | 2 subcategories, 15 options |
+| [`slskd`](slskd.md) | category | 83 options |
+| [`slurm`](slurm.md) | category | 31 options |
+| [`smartd`](smartd.md) | category | 17 options |
 | [`smartdns`](smartdns.md) | category | 3 options |
-| [`smokeping`](smokeping.md) | category | 23 options |
-| [`snapper`](snapper.md) | category | 6 options |
-| [`snapraid`](snapraid.md) | category | 2 subcategories, 11 options |
-| [`snapserver`](snapserver.md) | category | 2 subcategories, 20 options |
-| [`snipe-it`](snipe-it.md) | category | 2 subcategories, 28 options |
-| [`sniproxy`](sniproxy.md) | category | 5 options |
-| [`snips-sh`](snips-sh.md) | category | 5 options |
+| [`smokeping`](smokeping.md) | category | 22 options |
+| [`snapper`](snapper.md) | category | 18 options |
+| [`snapraid`](snapraid.md) | category | 11 options |
+| [`snapserver`](snapserver.md) | category | 15 options |
+| [`snipe-it`](snipe-it.md) | category | 77 options |
+| [`sniproxy`](sniproxy.md) | category | 4 options |
+| [`snips-sh`](snips-sh.md) | category | 7 options |
 | [`snmpd`](snmpd.md) | category | 7 options |
 | [`snowflake-proxy`](snowflake-proxy.md) | category | 6 options |
 | [`soft-serve`](soft-serve.md) | category | 3 options |
-| [`softether`](softether.md) | category | 3 subcategories, 8 options |
+| [`softether`](softether.md) | category | 8 options |
 | [`sogo`](sogo.md) | category | 7 options |
-| [`soju`](soju.md) | category | 1 subcategory, 12 options |
+| [`soju`](soju.md) | category | 12 options |
 | [`solanum`](solanum.md) | category | 4 options |
-| [`sonarr`](sonarr.md) | category | 8 options |
+| [`sonarr`](sonarr.md) | category | 12 options |
 | [`sonic-server`](sonic-server.md) | category | 3 options |
-| `sourcehut` | option | |
-| [`spacecookie`](spacecookie.md) | category | 8 options |
+| [`spacecookie`](spacecookie.md) | category | 12 options |
 | [`spamassassin`](spamassassin.md) | category | 4 options |
-| [`spark`](spark.md) | category | 2 subcategories, 12 options |
+| [`spark`](spark.md) | category | 12 options |
 | [`speechd`](speechd.md) | category | 5 options |
 | [`speedify`](speedify.md) | category | 2 options |
-| [`speedtest-tracker`](speedtest-tracker.md) | category | 9 options |
+| [`speedtest-tracker`](speedtest-tracker.md) | category | 15 options |
 | [`spice-autorandr`](spice-autorandr.md) | category | 2 options |
 | [`spice-vdagentd`](spice-vdagentd.md) | category | 1 option |
 | [`spice-webdavd`](spice-webdavd.md) | category | 2 options |
-| [`spiped`](spiped.md) | category | 2 options |
-| [`spire`](spire.md) | category | 2 subcategories, 11 options |
+| [`spiped`](spiped.md) | category | 14 options |
+| [`spire`](spire.md) | category | 38 options |
 | [`spoolman`](spoolman.md) | category | 5 options |
 | [`spotifyd`](spotifyd.md) | category | 4 options |
-| [`squeezelite`](squeezelite.md) | category | 1 subcategory, 9 options |
+| [`squeezelite`](squeezelite.md) | category | 7 options |
 | [`squid`](squid.md) | category | 7 options |
 | [`ssh-agent-switcher`](ssh-agent-switcher.md) | category | 2 options |
 | [`sshd`](sshd.md) | category | 1 option |
@@ -1203,101 +1097,96 @@ Subcategories of `services`.
 | [`sshwifty`](sshwifty.md) | category | 5 options |
 | [`sslh`](sslh.md) | category | 10 options |
 | [`sslmate-agent`](sslmate-agent.md) | category | 1 option |
-| [`ssm-agent`](ssm-agent.md) | category | 2 options |
-| `ssmtp` | option | |
 | [`sssd`](sssd.md) | category | 7 options |
 | [`stalwart`](stalwart.md) | category | 9 options |
-| `stalwart-mail` | option | |
-| [`stargazer`](stargazer.md) | category | 17 options |
-| [`stash`](stash.md) | category | 16 options |
+| [`stargazer`](stargazer.md) | category | 18 options |
+| [`stash`](stash.md) | category | 54 options |
 | [`static-web-server`](static-web-server.md) | category | 4 options |
-| `statsd` | option | |
 | [`step-ca`](step-ca.md) | category | 7 options |
 | [`stirling-pdf`](stirling-pdf.md) | category | 4 options |
 | [`stratis`](stratis.md) | category | 1 option |
 | [`strfry`](strfry.md) | category | 3 options |
-| [`strichliste`](strichliste.md) | category | 2 subcategories, 9 options |
+| [`strichliste`](strichliste.md) | category | 85 options |
 | [`strongswan`](strongswan.md) | category | 7 options |
-| [`strongswan-swanctl`](strongswan-swanctl.md) | category | 2 subcategories, 18 options |
-| [`stubby`](stubby.md) | category | 11 options |
+| [`strongswan-swanctl`](strongswan-swanctl.md) | category | 171 options |
+| [`stubby`](stubby.md) | category | 3 options |
 | [`stunnel`](stunnel.md) | category | 8 options |
 | [`subsonic`](subsonic.md) | category | 11 options |
 | [`sundtek`](sundtek.md) | category | 1 option |
-| [`sunshine`](sunshine.md) | category | 7 options |
+| [`sunshine`](sunshine.md) | category | 10 options |
 | [`supergfxd`](supergfxd.md) | category | 2 options |
 | [`supybot`](supybot.md) | category | 5 options |
-| [`suricata`](suricata.md) | category | 6 options |
+| [`suricata`](suricata.md) | category | 75 options |
 | [`surrealdb`](surrealdb.md) | category | 6 options |
-| [`suwayomi-server`](suwayomi-server.md) | category | 7 options |
+| [`suwayomi-server`](suwayomi-server.md) | category | 16 options |
 | [`svnserve`](svnserve.md) | category | 2 options |
-| [`swapspace`](swapspace.md) | category | 5 options |
+| [`swapspace`](swapspace.md) | category | 14 options |
 | [`switcherooControl`](switcherooControl.md) | category | 2 options |
-| [`sympa`](sympa.md) | category | 3 subcategories, 19 options |
-| [`synapse-auto-compressor`](synapse-auto-compressor.md) | category | 1 subcategory, 7 options |
-| [`syncoid`](syncoid.md) | category | 11 options |
-| [`syncplay`](syncplay.md) | category | 26 options |
-| [`syncthing`](syncthing.md) | category | 2 subcategories, 40 options |
-| [`synergy`](synergy.md) | category | 2 subcategories, 11 options |
-| [`syslog-ng`](syslog-ng.md) | category | 7 options |
+| [`sympa`](sympa.md) | category | 25 options |
+| [`synapse-auto-compressor`](synapse-auto-compressor.md) | category | 7 options |
+| [`syncoid`](syncoid.md) | category | 22 options |
+| [`syncplay`](syncplay.md) | category | 24 options |
+| [`syncthing`](syncthing.md) | category | 50 options |
+| [`synergy`](synergy.md) | category | 11 options |
+| [`syslog-ng`](syslog-ng.md) | category | 5 options |
 | [`syslogd`](syslogd.md) | category | 6 options |
 | [`sysprof`](sysprof.md) | category | 1 option |
 | [`sysstat`](sysstat.md) | category | 3 options |
 | [`system-config-printer`](system-config-printer.md) | category | 1 option |
-| [`system76-scheduler`](system76-scheduler.md) | category | 1 subcategory, 39 options |
+| [`system76-scheduler`](system76-scheduler.md) | category | 45 options |
 | [`systembus-notify`](systembus-notify.md) | category | 1 option |
 | [`systemd-lock-handler`](systemd-lock-handler.md) | category | 2 options |
-| [`szurubooru`](szurubooru.md) | category | 3 subcategories, 16 options |
-| [`tabby`](tabby.md) | category | 8 options |
-| [`tabbyapi`](tabbyapi.md) | category | 4 options |
-| [`tahoe`](tahoe.md) | category | 2 options |
-| [`tailscale`](tailscale.md) | category | 2 subcategories, 25 options |
+| [`szurubooru`](szurubooru.md) | category | 28 options |
+| [`tabby`](tabby.md) | category | 7 options |
+| [`tabbyapi`](tabbyapi.md) | category | 16 options |
+| [`tahoe`](tahoe.md) | category | 25 options |
+| [`tailscale`](tailscale.md) | category | 30 options |
 | [`tailscaleAuth`](tailscaleAuth.md) | category | 5 options |
-| [`taler`](taler.md) | category | 2 subcategories, 15 options |
-| [`tandoor-recipes`](tandoor-recipes.md) | category | 1 subcategory, 8 options |
+| [`taler`](taler.md) | category | 27 options |
+| [`tandoor-recipes`](tandoor-recipes.md) | category | 8 options |
 | [`tang`](tang.md) | category | 4 options |
 | [`target`](target.md) | category | 2 options |
-| [`tarsnap`](tarsnap.md) | category | 5 options |
-| [`taskchampion-sync-server`](taskchampion-sync-server.md) | category | 1 subcategory, 12 options |
-| [`taskserver`](taskserver.md) | category | 1 subcategory, 30 options |
+| [`tarsnap`](tarsnap.md) | category | 22 options |
+| [`taskchampion-sync-server`](taskchampion-sync-server.md) | category | 12 options |
+| [`taskserver`](taskserver.md) | category | 31 options |
 | [`tautulli`](tautulli.md) | category | 8 options |
-| [`tayga`](tayga.md) | category | 9 options |
+| [`tayga`](tayga.md) | category | 19 options |
 | [`tcsd`](tcsd.md) | category | 9 options |
-| [`tdarr`](tdarr.md) | category | 1 subcategory, 18 options |
+| [`tdarr`](tdarr.md) | category | 37 options |
 | [`teamspeak3`](teamspeak3.md) | category | 13 options |
 | [`teamviewer`](teamviewer.md) | category | 2 options |
 | [`technitium-dns-server`](technitium-dns-server.md) | category | 5 options |
-| `tedicross` | option | |
 | [`tee-supplicant`](tee-supplicant.md) | category | 5 options |
-| [`teeworlds`](teeworlds.md) | category | 2 subcategories, 35 options |
+| [`teeworlds`](teeworlds.md) | category | 35 options |
 | [`telegraf`](telegraf.md) | category | 4 options |
 | [`telepathy`](telepathy.md) | category | 1 option |
-| [`teleport`](teleport.md) | category | 2 subcategories, 7 options |
+| [`teleport`](teleport.md) | category | 7 options |
 | [`tempo`](tempo.md) | category | 4 options |
 | [`temporal`](temporal.md) | category | 7 options |
 | [`terraria`](terraria.md) | category | 13 options |
 | [`tetrd`](tetrd.md) | category | 1 option |
 | [`tftpd`](tftpd.md) | category | 2 options |
-| [`thanos`](thanos.md) | category | 8 subcategories, 160 options |
-| [`thelounge`](thelounge.md) | category | 7 options |
+| [`thanos`](thanos.md) | category | 160 options |
+| [`thelounge`](thelounge.md) | category | 6 options |
 | [`thermald`](thermald.md) | category | 5 options |
-| [`thinkfan`](thinkfan.md) | category | 7 options |
+| [`thinkfan`](thinkfan.md) | category | 14 options |
 | [`throttled`](throttled.md) | category | 2 options |
 | [`tiddlywiki`](tiddlywiki.md) | category | 2 options |
 | [`tigerbeetle`](tigerbeetle.md) | category | 7 options |
 | [`tika`](tika.md) | category | 7 options |
 | [`timekpr`](timekpr.md) | category | 3 options |
 | [`timesyncd`](timesyncd.md) | category | 4 options |
-| [`tinc`](tinc.md) | category | 1 option |
-| [`tinyauth`](tinyauth.md) | category | 7 options |
+| [`tinc`](tinc.md) | category | 23 options |
+| [`tinyauth`](tinyauth.md) | category | 15 options |
 | [`tinydns`](tinydns.md) | category | 3 options |
-| [`tinyproxy`](tinyproxy.md) | category | 3 options |
-| [`tlp`](tlp.md) | category | 1 subcategory, 6 options |
-| [`tlsrpt`](tlsrpt.md) | category | 3 subcategories, 8 options |
+| [`tinyproxy`](tinyproxy.md) | category | 7 options |
+| [`tlp`](tlp.md) | category | 6 options |
+| [`tlsrpt`](tlsrpt.md) | category | 22 options |
 | [`tmate-ssh-server`](tmate-ssh-server.md) | category | 7 options |
 | [`todesk`](todesk.md) | category | 2 options |
-| [`tomcat`](tomcat.md) | category | 1 subcategory, 22 options |
-| [`tor`](tor.md) | category | 5 subcategories, 50 options |
-| [`torque`](torque.md) | category | 2 subcategories, 3 options |
+| [`tomcat`](tomcat.md) | category | 25 options |
+| [`tor`](tor.md) | category | 186 options |
+| [`torque`](torque.md) | category | 3 options |
 | [`torrentstream`](torrentstream.md) | category | 5 options |
 | [`touchegg`](touchegg.md) | category | 2 options |
 | [`tox-node`](tox-node.md) | category | 9 options |
@@ -1306,169 +1195,156 @@ Subcategories of `services`.
 | [`tp-auto-kbbl`](tp-auto-kbbl.md) | category | 4 options |
 | [`traccar`](traccar.md) | category | 4 options |
 | [`traefik`](traefik.md) | category | 9 options |
-| [`trafficserver`](trafficserver.md) | category | 15 options |
-| [`tranquil-pds`](tranquil-pds.md) | category | 1 subcategory, 8 options |
+| [`trafficserver`](trafficserver.md) | category | 17 options |
+| [`tranquil-pds`](tranquil-pds.md) | category | 16 options |
 | [`transfer-sh`](transfer-sh.md) | category | 5 options |
-| [`transmission`](transmission.md) | category | 15 options |
+| [`transmission`](transmission.md) | category | 31 options |
 | [`tremor-rs`](tremor-rs.md) | category | 6 options |
-| [`trezord`](trezord.md) | category | 1 subcategory, 3 options |
-| [`trickster`](trickster.md) | category | 11 options |
-| [`triggerhappy`](triggerhappy.md) | category | 4 options |
-| [`trilium-server`](trilium-server.md) | category | 10 options |
-| [`trust-dns`](trust-dns.md) | category | 5 options |
-| [`tsidp`](tsidp.md) | category | 1 subcategory, 12 options |
+| [`trezord`](trezord.md) | category | 3 options |
+| [`trickster`](trickster.md) | category | 10 options |
+| [`triggerhappy`](triggerhappy.md) | category | 7 options |
+| [`trilium-server`](trilium-server.md) | category | 12 options |
+| [`tsidp`](tsidp.md) | category | 12 options |
 | [`tsmBackup`](tsmBackup.md) | category | 4 options |
-| [`tt-rss`](tt-rss.md) | category | 7 subcategories, 44 options |
-| [`tts`](tts.md) | category | 1 option |
+| [`tt-rss`](tt-rss.md) | category | 43 options |
+| [`tts`](tts.md) | category | 6 options |
 | [`ttyd`](ttyd.md) | category | 21 options |
 | [`tuliprox`](tuliprox.md) | category | 7 options |
-| [`tumbler`](tumbler.md) | category | 2 options |
-| [`tuned`](tuned.md) | category | 7 options |
-| [`tuptime`](tuptime.md) | category | 1 subcategory, 3 options |
+| [`tumbler`](tumbler.md) | category | 1 option |
+| [`tuned`](tuned.md) | category | 22 options |
+| [`tuptime`](tuptime.md) | category | 3 options |
 | [`turborepo-remote-cache`](turborepo-remote-cache.md) | category | 5 options |
 | [`turn-rs`](turn-rs.md) | category | 4 options |
 | [`tusd`](tusd.md) | category | 12 options |
-| `tvheadend` | option | |
 | [`twingate`](twingate.md) | category | 2 options |
-| [`typesense`](typesense.md) | category | 4 options |
-| [`tzupdate`](tzupdate.md) | category | 1 subcategory, 4 options |
+| [`typesense`](typesense.md) | category | 7 options |
+| [`tzupdate`](tzupdate.md) | category | 4 options |
 | [`u9fs`](u9fs.md) | category | 4 options |
-| [`udev`](udev.md) | category | 6 options |
+| [`udev`](udev.md) | category | 5 options |
 | [`udisks2`](udisks2.md) | category | 4 options |
-| [`udp-over-tcp`](udp-over-tcp.md) | category | 3 options |
-| `uhub` | option | |
+| [`udp-over-tcp`](udp-over-tcp.md) | category | 19 options |
+| [`uhub`](uhub.md) | category | 7 options |
 | [`ulogd`](ulogd.md) | category | 3 options |
-| [`umami`](umami.md) | category | 4 options |
-| [`umurmur`](umurmur.md) | category | 5 options |
-| [`unbound`](unbound.md) | category | 14 options |
-| [`unclutter`](unclutter.md) | category | 8 options |
+| [`umami`](umami.md) | category | 14 options |
+| [`umurmur`](umurmur.md) | category | 18 options |
+| [`unbound`](unbound.md) | category | 10 options |
+| [`unclutter`](unclutter.md) | category | 7 options |
 | [`unclutter-xfixes`](unclutter-xfixes.md) | category | 5 options |
-| [`undervolt`](undervolt.md) | category | 2 subcategories, 16 options |
-| [`unifi`](unifi.md) | category | 10 options |
-| `unifi-poller` | option | |
-| `unifi-video` | option | |
+| [`undervolt`](undervolt.md) | category | 16 options |
+| [`unifi`](unifi.md) | category | 8 options |
 | [`unit`](unit.md) | category | 7 options |
-| [`unpoller`](unpoller.md) | category | 5 subcategories, 35 options |
+| [`unpoller`](unpoller.md) | category | 47 options |
 | [`upower`](upower.md) | category | 14 options |
 | [`uptermd`](uptermd.md) | category | 6 options |
-| `uptime` | option | |
 | [`uptime-kuma`](uptime-kuma.md) | category | 4 options |
 | [`uptimed`](uptimed.md) | category | 1 option |
 | [`urserver`](urserver.md) | category | 1 option |
 | [`urxvtd`](urxvtd.md) | category | 2 options |
-| [`usbguard`](usbguard.md) | category | 1 subcategory, 16 options |
+| [`usbguard`](usbguard.md) | category | 13 options |
 | [`usbmuxd`](usbmuxd.md) | category | 4 options |
 | [`usbrelayd`](usbrelayd.md) | category | 3 options |
 | [`userborn`](userborn.md) | category | 4 options |
-| [`userdbd`](userdbd.md) | category | 3 options |
+| [`userdbd`](userdbd.md) | category | 2 options |
 | [`ustreamer`](ustreamer.md) | category | 6 options |
-| [`uvcvideo`](uvcvideo.md) | category | 1 subcategory, 2 options |
-| [`uwsgi`](uwsgi.md) | category | 8 options |
+| [`uvcvideo`](uvcvideo.md) | category | 2 options |
+| [`uwsgi`](uwsgi.md) | category | 7 options |
 | [`v2ray`](v2ray.md) | category | 4 options |
 | [`v2raya`](v2raya.md) | category | 3 options |
-| [`v4l2-relayd`](v4l2-relayd.md) | category | 1 option |
-| [`varnish`](varnish.md) | category | 9 options |
+| [`v4l2-relayd`](v4l2-relayd.md) | category | 11 options |
+| [`varnish`](varnish.md) | category | 15 options |
 | [`vault`](vault.md) | category | 14 options |
-| [`vault-agent`](vault-agent.md) | category | 1 option |
+| [`vault-agent`](vault-agent.md) | category | 7 options |
 | [`vaultwarden`](vaultwarden.md) | category | 10 options |
-| [`vdirsyncer`](vdirsyncer.md) | category | 3 options |
+| [`vdirsyncer`](vdirsyncer.md) | category | 14 options |
 | [`vdr`](vdr.md) | category | 7 options |
 | [`vector`](vector.md) | category | 6 options |
-| [`veilid`](veilid.md) | category | 3 options |
-| `venus` | option | |
+| [`veilid`](veilid.md) | category | 22 options |
 | [`victorialogs`](victorialogs.md) | category | 7 options |
 | [`victoriametrics`](victoriametrics.md) | category | 10 options |
 | [`victoriatraces`](victoriatraces.md) | category | 8 options |
-| [`vikunja`](vikunja.md) | category | 1 subcategory, 14 options |
-| [`vinyl-cache`](vinyl-cache.md) | category | 8 options |
-| `virtuoso` | option | |
-| [`vlagent`](vlagent.md) | category | 1 subcategory, 8 options |
-| [`vmagent`](vmagent.md) | category | 1 subcategory, 13 options |
-| [`vmalert`](vmalert.md) | category | 5 options |
-| `vmwareGuest` | option | |
+| [`vikunja`](vikunja.md) | category | 13 options |
+| [`vinyl-cache`](vinyl-cache.md) | category | 15 options |
+| [`vlagent`](vlagent.md) | category | 8 options |
+| [`vmagent`](vmagent.md) | category | 9 options |
+| [`vmalert`](vmalert.md) | category | 8 options |
 | [`vnstat`](vnstat.md) | category | 2 options |
 | [`vsftpd`](vsftpd.md) | category | 28 options |
 | [`vsmartcard-vpcd`](vsmartcard-vpcd.md) | category | 3 options |
-| [`vwifi`](vwifi.md) | category | 3 subcategories, 17 options |
-| [`waagent`](waagent.md) | category | 4 options |
-| [`wakapi`](wakapi.md) | category | 1 subcategory, 13 options |
-| `wakeonlan` | option | |
-| [`warpgate`](warpgate.md) | category | 4 options |
-| [`wasabibackend`](wasabibackend.md) | category | 2 subcategories, 13 options |
-| [`wastebin`](wastebin.md) | category | 5 options |
-| [`watchdogd`](watchdogd.md) | category | 3 options |
+| [`vwifi`](vwifi.md) | category | 17 options |
+| [`waagent`](waagent.md) | category | 18 options |
+| [`wakapi`](wakapi.md) | category | 9 options |
+| [`warpgate`](warpgate.md) | category | 57 options |
+| [`wasabibackend`](wasabibackend.md) | category | 13 options |
+| [`wastebin`](wastebin.md) | category | 13 options |
+| [`watchdogd`](watchdogd.md) | category | 21 options |
 | [`webdav`](webdav.md) | category | 7 options |
 | [`webdav-server-rs`](webdav-server-rs.md) | category | 6 options |
-| [`webhook`](webhook.md) | category | 14 options |
-| [`weblate`](weblate.md) | category | 1 subcategory, 12 options |
-| [`websurfx`](websurfx.md) | category | 4 options |
+| [`webhook`](webhook.md) | category | 16 options |
+| [`weblate`](weblate.md) | category | 12 options |
+| [`websurfx`](websurfx.md) | category | 6 options |
 | [`weechat`](weechat.md) | category | 6 options |
-| [`wg-access-server`](wg-access-server.md) | category | 4 options |
+| [`wg-access-server`](wg-access-server.md) | category | 6 options |
 | [`wg-netmanager`](wg-netmanager.md) | category | 1 option |
-| [`wgautomesh`](wgautomesh.md) | category | 7 options |
-| [`whisparr`](whisparr.md) | category | 8 options |
+| [`wgautomesh`](wgautomesh.md) | category | 15 options |
+| [`whisparr`](whisparr.md) | category | 12 options |
 | [`whitebophir`](whitebophir.md) | category | 4 options |
 | [`whoami`](whoami.md) | category | 4 options |
 | [`whoogle-search`](whoogle-search.md) | category | 4 options |
-| [`wiki-js`](wiki-js.md) | category | 4 options |
-| [`windmill`](windmill.md) | category | 1 subcategory, 11 options |
-| `winstone` | option | |
-| [`wivrn`](wivrn.md) | category | 2 subcategories, 13 options |
+| [`wiki-js`](wiki-js.md) | category | 11 options |
+| [`windmill`](windmill.md) | category | 11 options |
+| [`wivrn`](wivrn.md) | category | 12 options |
 | [`wlock`](wlock.md) | category | 2 options |
-| [`woodpecker-agents`](woodpecker-agents.md) | category | 1 option |
+| [`woodpecker-agents`](woodpecker-agents.md) | category | 7 options |
 | [`woodpecker-server`](woodpecker-server.md) | category | 4 options |
-| [`wordpress`](wordpress.md) | category | 2 options |
+| [`wordpress`](wordpress.md) | category | 54 options |
 | [`workout-tracker`](workout-tracker.md) | category | 6 options |
-| [`writefreely`](writefreely.md) | category | 5 subcategories, 22 options |
-| [`wstunnel`](wstunnel.md) | category | 3 options |
-| [`wymoing`](wymoing.md) | category | 1 subcategory, 1 option |
-| [`wyoming`](wyoming.md) | category | 4 subcategories, 27 options |
-| [`x2goserver`](x2goserver.md) | category | 1 subcategory, 5 options |
-| [`xandikos`](xandikos.md) | category | 7 options |
+| [`writefreely`](writefreely.md) | category | 24 options |
+| [`wstunnel`](wstunnel.md) | category | 24 options |
+| [`wyoming`](wyoming.md) | category | 49 options |
+| [`x2goserver`](x2goserver.md) | category | 5 options |
+| [`xandikos`](xandikos.md) | category | 9 options |
 | [`xbanish`](xbanish.md) | category | 2 options |
 | [`xe-guest-utilities`](xe-guest-utilities.md) | category | 1 option |
 | [`xfs`](xfs.md) | category | 1 option |
-| [`xinetd`](xinetd.md) | category | 3 options |
+| [`xinetd`](xinetd.md) | category | 12 options |
 | [`xl2tpd`](xl2tpd.md) | category | 5 options |
-| `xmr-stak` | option | |
 | [`xmrig`](xmrig.md) | category | 3 options |
-| [`xonotic`](xonotic.md) | category | 7 options |
+| [`xonotic`](xonotic.md) | category | 14 options |
 | [`xray`](xray.md) | category | 4 options |
-| [`xrdp`](xrdp.md) | category | 1 subcategory, 11 options |
+| [`xrdp`](xrdp.md) | category | 10 options |
 | [`xscreensaver`](xscreensaver.md) | category | 3 options |
-| [`xserver`](xserver.md) | category | 10 subcategories, 383 options |
-| `xtreemfs` | option | |
+| [`xserver`](xserver.md) | category | 280 options |
 | [`yandex-disk`](yandex-disk.md) | category | 6 options |
 | [`yarr`](yarr.md) | category | 7 options |
-| [`yggdrasil`](yggdrasil.md) | category | 9 options |
+| [`yggdrasil`](yggdrasil.md) | category | 12 options |
 | [`yggdrasil-jumper`](yggdrasil-jumper.md) | category | 9 options |
-| [`ympd`](ympd.md) | category | 1 subcategory, 4 options |
-| [`your_spotify`](your_spotify.md) | category | 7 options |
-| [`youtrack`](youtrack.md) | category | 14 options |
-| [`ytdl-sub`](ytdl-sub.md) | category | 4 options |
+| [`ympd`](ympd.md) | category | 4 options |
+| [`your_spotify`](your_spotify.md) | category | 12 options |
+| [`youtrack`](youtrack.md) | category | 10 options |
+| [`ytdl-sub`](ytdl-sub.md) | category | 9 options |
 | [`yubikey-agent`](yubikey-agent.md) | category | 2 options |
-| [`zabbixAgent`](zabbixAgent.md) | category | 1 subcategory, 10 options |
-| [`zabbixProxy`](zabbixProxy.md) | category | 2 subcategories, 18 options |
-| [`zabbixServer`](zabbixServer.md) | category | 2 subcategories, 19 options |
-| [`zabbixWeb`](zabbixWeb.md) | category | 4 subcategories, 18 options |
-| [`zammad`](zammad.md) | category | 3 subcategories, 23 options |
+| [`zabbixAgent`](zabbixAgent.md) | category | 9 options |
+| [`zabbixProxy`](zabbixProxy.md) | category | 17 options |
+| [`zabbixServer`](zabbixServer.md) | category | 16 options |
+| [`zabbixWeb`](zabbixWeb.md) | category | 98 options |
+| [`zammad`](zammad.md) | category | 22 options |
 | [`zapret`](zapret.md) | category | 11 options |
 | [`zeitgeist`](zeitgeist.md) | category | 1 option |
 | [`zenohd`](zenohd.md) | category | 8 options |
 | [`zerobin`](zerobin.md) | category | 7 options |
-| [`zeronet`](zeronet.md) | category | 9 options |
-| [`zeronsd`](zeronsd.md) | category | 1 option |
+| [`zeronet`](zeronet.md) | category | 7 options |
+| [`zeronsd`](zeronsd.md) | category | 7 options |
 | [`zerotierone`](zerotierone.md) | category | 5 options |
 | [`zeyple`](zeyple.md) | category | 6 options |
-| [`zfs`](zfs.md) | category | 5 subcategories, 26 options |
-| [`zigbee2mqtt`](zigbee2mqtt.md) | category | 5 options |
-| [`zipline`](zipline.md) | category | 1 subcategory, 5 options |
-| [`zitadel`](zitadel.md) | category | 11 options |
-| [`znapzend`](znapzend.md) | category | 1 subcategory, 15 options |
-| [`znc`](znc.md) | category | 1 subcategory, 22 options |
-| [`zoneminder`](zoneminder.md) | category | 1 subcategory, 13 options |
+| [`zfs`](zfs.md) | category | 26 options |
+| [`zigbee2mqtt`](zigbee2mqtt.md) | category | 4 options |
+| [`zipline`](zipline.md) | category | 7 options |
+| [`zitadel`](zitadel.md) | category | 16 options |
+| [`znapzend`](znapzend.md) | category | 33 options |
+| [`znc`](znc.md) | category | 29 options |
+| [`zoneminder`](zoneminder.md) | category | 13 options |
 | [`zookeeper`](zookeeper.md) | category | 12 options |
 | [`zram-generator`](zram-generator.md) | category | 3 options |
 | [`zrepl`](zrepl.md) | category | 3 options |
-| [`zwave-js`](zwave-js.md) | category | 7 options |
+| [`zwave-js`](zwave-js.md) | category | 8 options |
 | [`zwave-js-ui`](zwave-js-ui.md) | category | 4 options |

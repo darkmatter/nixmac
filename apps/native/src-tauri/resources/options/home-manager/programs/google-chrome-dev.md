@@ -5,11 +5,5 @@
 All options under `programs.google-chrome-dev`.
 
 | Option | Type | Description |
-| ------------------------------------------------- | ---- | ----------- |
-| `programs.google-chrome-dev.commandLineArgs` | | |
-| `programs.google-chrome-dev.dictionaries` | | |
-| `programs.google-chrome-dev.enable` | | |
-| `programs.google-chrome-dev.extensions` | | |
-| `programs.google-chrome-dev.finalPackage` | | |
-| `programs.google-chrome-dev.nativeMessagingHosts` | | |
-| `programs.google-chrome-dev.package` | | |
+| --- | --- | --- |
+| `programs.google-chrome-dev.nativeMessagingHosts` | `list of package` | List of Google Chrome Dev native messaging hosts to install. |

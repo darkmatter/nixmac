@@ -5,6 +5,6 @@
 All options under `services.lldpd`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.lldpd.enable` | | |
-| `services.lldpd.extraArgs` | | |
+| --- | --- | --- |
+| `services.lldpd.enable` | `boolean` | Whether to enable Link Layer Discovery Protocol Daemon. |
+| `services.lldpd.extraArgs` | `list of string` | List of command line parameters for lldpd |

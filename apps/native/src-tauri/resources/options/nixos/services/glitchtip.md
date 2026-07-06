@@ -5,19 +5,21 @@
 All options under `services.glitchtip`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---- | ----------- |
-| `services.glitchtip.celery.extraArgs` | | |
-| `services.glitchtip.database.createLocally` | | |
-| `services.glitchtip.enable` | | |
-| `services.glitchtip.environmentFiles` | | |
-| `services.glitchtip.group` | | |
-| `services.glitchtip.gunicorn.extraArgs` | | |
-| `services.glitchtip.listenAddress` | | |
-| `services.glitchtip.nginx.createLocally` | | |
-| `services.glitchtip.nginx.domain` | | |
-| `services.glitchtip.package` | | |
-| `services.glitchtip.port` | | |
-| `services.glitchtip.redis.createLocally` | | |
-| `services.glitchtip.settings` | | |
-| `services.glitchtip.stateDir` | | |
-| `services.glitchtip.user` | | |
+| --- | --- | --- |
+| `services.glitchtip.database.createLocally` | `boolean` | Whether to enable and configure a local PostgreSQL database server. |
+| `services.glitchtip.enable` | `boolean` | Whether to enable GlitchTip. |
+| `services.glitchtip.environmentFiles` | `list of absolute path` | Files to load environment variables from in addition to [](#opt-services.glitchtip.settings). This is useful to avoid putting secrets into the nix store. See <https://glitchtip.com/documentation/install#configuration> for more information. |
+| `services.glitchtip.group` | `string` | The group under which GlitchTip runs. |
+| `services.glitchtip.nginx.createLocally` | `boolean` | Whether to enable and configure a local Nginx server. |
+| `services.glitchtip.nginx.domain` | `string` | Domain under which GlitchTip will be reachable. In contrast to `settings.GLITCHTIP_DOMAIN` this option has no protocol. It will also set `settings.GLITCHTIP_DOMAIN` with the `https://` protocol. |
+| `services.glitchtip.package` | `package` | The glitchtip package to use. |
+| `services.glitchtip.redis.createLocally` | `boolean` | Whether to enable and configure a local Redis instance. |
+| `services.glitchtip.settings` | `open submodule of attribute set of (string or signed integer or boolean)` | Configuration of GlitchTip. See <https://glitchtip.com/documentation/install#configuration> for more information and required settings. |
+| `services.glitchtip.settings.ENABLE_OBSERVABILITY_API` | `boolean` | Whether to enable the Prometheus metrics endpoint. |
+| `services.glitchtip.settings.ENABLE_ORGANIZATION_CREATION` | `boolean` | When false, only superusers will be able to create new organizations after the first. When true, any user can create a new organization. |
+| `services.glitchtip.settings.ENABLE_USER_REGISTRATION` | `boolean` | When true, any user will be able to register. When false, user self-signup is disabled after the first user is registered. Subsequent users must be created by a superuser on the backend and organization invitations may only be sent to existing users. |
+| `services.glitchtip.settings.GLITCHTIP_DOMAIN` | `null or string` | The URL under which GlitchTip is externally reachable. |
+| `services.glitchtip.settings.GLITCHTIP_ENABLE_MCP` | `boolean` | Whether to enable the MCP api. |
+| `services.glitchtip.settings.GRANIAN_WORKERS` | `positive integer, meaning >0` | Number of granian workers to start |
+| `services.glitchtip.stateDir` | `absolute path` | State directory of glitchtip. |
+| `services.glitchtip.user` | `string` | The user account under which GlitchTip runs. |

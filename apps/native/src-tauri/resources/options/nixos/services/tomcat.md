@@ -5,26 +5,29 @@
 All options under `services.tomcat`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.tomcat.axis2.enable` | | |
-| `services.tomcat.axis2.services` | | |
-| `services.tomcat.baseDir` | | |
-| `services.tomcat.catalinaOpts` | | |
-| `services.tomcat.commonLibs` | | |
-| `services.tomcat.enable` | | |
-| `services.tomcat.extraConfigFiles` | | |
-| `services.tomcat.extraEnvironment` | | |
-| `services.tomcat.extraGroups` | | |
-| `services.tomcat.group` | | |
-| `services.tomcat.javaOpts` | | |
-| `services.tomcat.jdk` | | |
-| `services.tomcat.logDirs` | | |
-| `services.tomcat.logPerVirtualHost` | | |
-| `services.tomcat.package` | | |
-| `services.tomcat.port` | | |
-| `services.tomcat.purifyOnStart` | | |
-| `services.tomcat.serverXml` | | |
-| `services.tomcat.sharedLibs` | | |
-| `services.tomcat.user` | | |
-| `services.tomcat.virtualHosts` | | |
-| `services.tomcat.webapps` | | |
+| --- | --- | --- |
+| `services.tomcat.axis2.enable` | `boolean` | Whether to enable Apache Axis2 container. |
+| `services.tomcat.axis2.services` | `list of string` | List containing AAR files or directories with AAR files which are web services to be deployed on Axis2 |
+| `services.tomcat.baseDir` | `absolute path` | Location where Tomcat stores configuration files, web applications and logfiles. Note that it is partially cleared on each service startup if `purifyOnStart` is enabled. |
+| `services.tomcat.catalinaOpts` | `(list of string) or string` | Parameters to pass to the Java Virtual Machine which spawns the Catalina servlet container |
+| `services.tomcat.commonLibs` | `list of string` | List containing JAR files or directories with JAR files which are libraries shared by the web applications and the servlet container |
+| `services.tomcat.enable` | `boolean` | Whether to enable Apache Tomcat. |
+| `services.tomcat.extraConfigFiles` | `list of absolute path` | Extra configuration files to pull into the tomcat conf directory |
+| `services.tomcat.extraEnvironment` | `list of string` | Environment Variables to pass to the tomcat service |
+| `services.tomcat.extraGroups` | `list of string` | Defines extra groups to which the tomcat user belongs. |
+| `services.tomcat.group` | `string` | Group account under which Apache Tomcat runs. |
+| `services.tomcat.javaOpts` | `(list of string) or string` | Parameters to pass to the Java Virtual Machine which spawns Apache Tomcat |
+| `services.tomcat.jdk` | `package` | The jdk package to use. |
+| `services.tomcat.logDirs` | `list of absolute path` | Directories to create in baseDir/logs/ |
+| `services.tomcat.logPerVirtualHost` | `boolean` | Whether to enable logging per virtual host. |
+| `services.tomcat.package` | `package` | The tomcat9 package to use. |
+| `services.tomcat.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The TCP port Tomcat should listen on. |
+| `services.tomcat.purifyOnStart` | `boolean` | On startup, the `baseDir` directory is populated with various files, subdirectories and symlinks. If this option is enabled, these items (except for the `logs` and `work` subdirectories) are first removed. This prevents interference from remainders of an old configuration (libraries, webapps, etc.), so it's recommended to enable this option. |
+| `services.tomcat.serverXml` | `strings concatenated with "\n"` | Verbatim server.xml configuration. This is mutually exclusive with the virtualHosts options. |
+| `services.tomcat.sharedLibs` | `list of string` | List containing JAR files or directories with JAR files which are libraries shared by the web applications |
+| `services.tomcat.user` | `string` | User account under which Apache Tomcat runs. |
+| `services.tomcat.virtualHosts` | `list of (submodule)` | List consisting of a virtual host name and a list of web applications to deploy on each virtual host |
+| `services.tomcat.virtualHosts.*.aliases` | `list of string` | aliases of the virtualhost |
+| `services.tomcat.virtualHosts.*.name` | `string` | name of the virtualhost |
+| `services.tomcat.virtualHosts.*.webapps` | `list of absolute path` | List containing web application WAR files and/or directories containing web applications and configuration files for the virtual host. |
+| `services.tomcat.webapps` | `list of absolute path` | List containing WAR files or directories with WAR files which are web applications to be deployed on Tomcat |

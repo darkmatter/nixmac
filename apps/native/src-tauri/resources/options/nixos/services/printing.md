@@ -5,30 +5,35 @@
 All options under `services.printing`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.printing.allowFrom` | | |
-| `services.printing.bindirCmds` | | |
-| `services.printing.browsed.enable` | | |
-| `services.printing.browsed.package` | | |
-| `services.printing.browsedConf` | | |
-| `services.printing.browsing` | | |
-| `services.printing.clientConf` | | |
-| `services.printing.cups-pdf.enable` | | |
-| `services.printing.cups-pdf.instances` | | |
-| `services.printing.cupsFilesConf` | | |
-| `services.printing.cupsdConf` | | |
-| `services.printing.defaultShared` | | |
-| `services.printing.drivers` | | |
-| `services.printing.enable` | | |
-| `services.printing.extraConf` | | |
-| `services.printing.extraFilesConf` | | |
-| `services.printing.gutenprint` | | |
-| `services.printing.listenAddresses` | | |
-| `services.printing.logLevel` | | |
-| `services.printing.openFirewall` | | |
-| `services.printing.package` | | |
-| `services.printing.snmpConf` | | |
-| `services.printing.startWhenNeeded` | | |
-| `services.printing.stateless` | | |
-| `services.printing.tempDir` | | |
-| `services.printing.webInterface` | | |
+| --- | --- | --- |
+| `services.printing.allowFrom` | `list of string` | From which hosts to allow unconditional access. |
+| `services.printing.browsed.enable` | `boolean` | Whether to enable the CUPS Remote Printer Discovery (browsed) daemon. |
+| `services.printing.browsed.package` | `package` | The cups-browsed package to use. |
+| `services.printing.browsedConf` | `strings concatenated with "\n"` | The contents of the configuration. file of the CUPS Browsed daemon ({file}`cups-browsed.conf`) |
+| `services.printing.browsing` | `boolean` | Specifies whether shared printers are advertised. |
+| `services.printing.clientConf` | `strings concatenated with "\n"` | The contents of the client configuration. ({file}`client.conf`) |
+| `services.printing.cups-pdf.enable` | `boolean` | Whether to enable the cups-pdf virtual pdf printer backend. By default, this will install a single printer `pdf`. but this can be changed/extended with {option}`services.printing.cups-pdf.instances` . |
+| `services.printing.cups-pdf.instances` | `attribute set of (submodule)` | Permits to raise one or more cups-pdf instances. Each instance is named by an attribute name, and the attribute's values control the instance' configuration. |
+| `services.printing.cups-pdf.instances.<name>.confFileText` | `strings concatenated with "\n"` | This will contain the contents of {file}`cups-pdf.conf` for this instance, derived from {option}`settings`. You can use this option to append text to the file. |
+| `services.printing.cups-pdf.instances.<name>.enable` | `boolean` | Whether to enable this cups-pdf instance. |
+| `services.printing.cups-pdf.instances.<name>.installPrinter` | `boolean` | Whether to enable a CUPS printer queue for this instance. The queue will be named after the instance and will use the {file}`CUPS-PDF_opt.ppd` ppd file. If this is disabled, you need to add the queue yourself to use the instance . |
+| `services.printing.cups-pdf.instances.<name>.settings` | `open submodule of attribute set of (null or signed integer or string or absolute path or package)` | Settings for a cups-pdf instance, see the descriptions in the template config file in the cups-pdf package. The key value pairs declared here will be translated into proper key value pairs for {file}`cups-pdf.conf`. Setting a value to `null` disables the option and removes it from the file. |
+| `services.printing.cups-pdf.instances.<name>.settings.AnonDirName` | `null or (optionally newline-terminated) single-line string` | path for anonymously created PDF files |
+| `services.printing.cups-pdf.instances.<name>.settings.Anonuser` | `(optionally newline-terminated) single-line string` | User for anonymous PDF creation. An empty string disables this feature. |
+| `services.printing.cups-pdf.instances.<name>.settings.GhostScript` | `null or absolute path` | location of GhostScript binary |
+| `services.printing.cups-pdf.instances.<name>.settings.Out` | `null or (optionally newline-terminated) single-line string` | output directory; `${HOME}` will be expanded to the user's home directory, `${USER}` will be expanded to the user name. |
+| `services.printing.cups-pdf.instances.<name>.settings.Spool` | `null or (optionally newline-terminated) single-line string` | spool directory |
+| `services.printing.defaultShared` | `boolean` | Specifies whether local printers are shared by default. |
+| `services.printing.drivers` | `list of absolute path` | CUPS drivers to use. Drivers provided by CUPS, cups-filters, Ghostscript and Samba are added unconditionally. If this list contains Gutenprint (i.e. a derivation with `meta.isGutenprint = true`) the PPD files in {file}`/var/lib/cups/ppd` will be updated automatically to avoid errors due to incompatible versions. |
+| `services.printing.enable` | `boolean` | Whether to enable printing support through the CUPS daemon. |
+| `services.printing.extraConf` | `strings concatenated with "\n"` | Extra contents of the configuration file of the CUPS daemon ({file}`cupsd.conf`). |
+| `services.printing.extraFilesConf` | `strings concatenated with "\n"` | Extra contents of the configuration file of the CUPS daemon ({file}`cups-files.conf`). |
+| `services.printing.listenAddresses` | `list of string` | A list of addresses and ports on which to listen. |
+| `services.printing.logLevel` | `string` | Specifies the cupsd logging verbosity. |
+| `services.printing.openFirewall` | `boolean` | Whether to open the firewall for TCP ports specified in listenAddresses option. |
+| `services.printing.package` | `package` | The cups package to use. |
+| `services.printing.snmpConf` | `strings concatenated with "\n"` | The contents of {file}`/etc/cups/snmp.conf`. See "man cups-snmp.conf" for a complete description. |
+| `services.printing.startWhenNeeded` | `boolean` | If set, CUPS is socket-activated; that is, instead of having it permanently running as a daemon, systemd will start it on the first incoming connection. |
+| `services.printing.stateless` | `boolean` | If set, all state directories relating to CUPS will be removed on startup of the service. |
+| `services.printing.tempDir` | `absolute path` | CUPSd temporary directory. |
+| `services.printing.webInterface` | `boolean` | Specifies whether the web interface is enabled. |

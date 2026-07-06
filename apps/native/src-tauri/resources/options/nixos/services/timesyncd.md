@@ -5,8 +5,8 @@
 All options under `services.timesyncd`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.timesyncd.enable` | | |
-| `services.timesyncd.extraConfig` | | |
-| `services.timesyncd.fallbackServers` | | |
-| `services.timesyncd.servers` | | |
+| --- | --- | --- |
+| `services.timesyncd.enable` | `boolean` | Enables the systemd NTP client daemon. |
+| `services.timesyncd.fallbackServers` | `null or (list of string)` | The set of fallback NTP servers from which to synchronise. Setting this option to an empty list will write `FallbackNTP=` to the {file}`timesyncd.conf` file as opposed to setting this option to null which will remove `FallbackNTP=` entirely. See {manpage}`timesyncd.conf(5)` for details. |
+| `services.timesyncd.servers` | `null or (list of string)` | The set of NTP servers from which to synchronise. Setting this option to an empty list will write `NTP=` to the {file}`timesyncd.conf` file as opposed to setting this option to null which will remove `NTP=` entirely. See {manpage}`timesyncd.conf(5)` for details. |
+| `services.timesyncd.settings.Time` | `open submodule of attribute set of (systemd option)` | Settings for systemd-timesyncd. See {manpage}`timesyncd.conf(5)` for available options. |

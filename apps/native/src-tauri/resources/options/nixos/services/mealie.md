@@ -5,12 +5,12 @@
 All options under `services.mealie`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.mealie.credentialsFile` | | |
-| `services.mealie.database.createLocally` | | |
-| `services.mealie.enable` | | |
-| `services.mealie.extraOptions` | | |
-| `services.mealie.listenAddress` | | |
-| `services.mealie.package` | | |
-| `services.mealie.port` | | |
-| `services.mealie.settings` | | |
+| --- | --- | --- |
+| `services.mealie.credentialsFile` | `null or absolute path` | File containing credentials used in mealie such as {env}`POSTGRES_PASSWORD` or sensitive LDAP options. Expects the format of an `EnvironmentFile=`, as described by {manpage}`systemd.exec(5)`. |
+| `services.mealie.database.createLocally` | `boolean` | Configure local PostgreSQL database server for Mealie. |
+| `services.mealie.enable` | `boolean` | Whether to enable Mealie, a recipe manager and meal planner. |
+| `services.mealie.extraOptions` | `list of string` | Specifies extra command line arguments to pass to mealie (Gunicorn). |
+| `services.mealie.listenAddress` | `string` | Address on which the service should listen. |
+| `services.mealie.package` | `package` | The mealie package to use. |
+| `services.mealie.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which to serve the Mealie service. |
+| `services.mealie.settings` | `attribute set of anything` | Configuration of the Mealie service. See [the mealie documentation](https://nightly.mealie.io/documentation/getting-started/installation/backend-config/) for available options and default values. |

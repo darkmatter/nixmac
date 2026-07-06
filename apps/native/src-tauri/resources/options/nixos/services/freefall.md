@@ -5,7 +5,7 @@
 All options under `services.freefall`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.freefall.devices` | | |
-| `services.freefall.enable` | | |
-| `services.freefall.package` | | |
+| --- | --- | --- |
+| `services.freefall.devices` | `list of string` | Device paths to all internal spinning hard drives. |
+| `services.freefall.enable` | `boolean` | Whether to protect HP/Dell laptop hard drives (not SSDs) in free fall. |
+| `services.freefall.package` | `package` | The freefall package to use. |

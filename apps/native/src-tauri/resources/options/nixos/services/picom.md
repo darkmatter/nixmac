@@ -5,24 +5,22 @@
 All options under `services.picom`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.picom.activeOpacity` | | |
-| `services.picom.backend` | | |
-| `services.picom.enable` | | |
-| `services.picom.experimentalBackends` | | |
-| `services.picom.fade` | | |
-| `services.picom.fadeDelta` | | |
-| `services.picom.fadeExclude` | | |
-| `services.picom.fadeSteps` | | |
-| `services.picom.inactiveOpacity` | | |
-| `services.picom.menuOpacity` | | |
-| `services.picom.opacityRules` | | |
-| `services.picom.package` | | |
-| `services.picom.refreshRate` | | |
-| `services.picom.settings` | | |
-| `services.picom.shadow` | | |
-| `services.picom.shadowExclude` | | |
-| `services.picom.shadowOffsets` | | |
-| `services.picom.shadowOpacity` | | |
-| `services.picom.vSync` | | |
-| `services.picom.wintypes` | | |
+| --- | --- | --- |
+| `services.picom.activeOpacity` | `integer or floating point number between 0 and 1 (both inclusive)` | Opacity of active windows. |
+| `services.picom.backend` | `one of "egl", "glx", "xrender", "xr_glx_hybrid"` | Backend to use: `egl`, `glx`, `xrender` or `xr_glx_hybrid`. |
+| `services.picom.enable` | `boolean` | Whether or not to enable Picom as the X.org composite manager. |
+| `services.picom.fade` | `boolean` | Fade windows in and out. |
+| `services.picom.fadeDelta` | `positive integer, meaning >0` | Time between fade animation step (in ms). |
+| `services.picom.fadeExclude` | `list of string` | List of conditions of windows that should not be faded. See {manpage}`picom(1)` man page for more examples. |
+| `services.picom.fadeSteps` | `pair of integer or floating point number between 0.01 and 1 (both inclusive)` | Opacity change between fade steps (in and out). |
+| `services.picom.inactiveOpacity` | `integer or floating point number between 0.1 and 1 (both inclusive)` | Opacity of inactive windows. |
+| `services.picom.menuOpacity` | `integer or floating point number between 0 and 1 (both inclusive)` | Opacity of dropdown and popup menu. |
+| `services.picom.opacityRules` | `list of string` | Rules that control the opacity of windows, in format PERCENT:PATTERN. |
+| `services.picom.package` | `package` | The picom package to use. |
+| `services.picom.settings` | `libconfig configuration. The format consists of an attributes set (called a group) of settings. Each setting can be a scalar type (boolean, integer, floating point number or string), a list of scalars or a group itself ` | Picom settings. Use this option to configure Picom settings not exposed in a NixOS option or to bypass one. For the available options see the CONFIGURATION FILES section at {manpage}`picom(1)`. |
+| `services.picom.shadow` | `boolean` | Draw window shadows. |
+| `services.picom.shadowExclude` | `list of string` | List of conditions of windows that should have no shadow. See {manpage}`picom(1)` man page for more examples. |
+| `services.picom.shadowOffsets` | `pair of signed integer` | Left and right offset for shadows (in pixels). |
+| `services.picom.shadowOpacity` | `integer or floating point number between 0 and 1 (both inclusive)` | Window shadows opacity. |
+| `services.picom.vSync` | `boolean or one of "none", "drm", "opengl", "opengl-oml", "opengl-swc", "opengl-mswc"` | Enable vertical synchronization. Chooses the best method (drm, opengl, opengl-oml, opengl-swc, opengl-mswc) automatically. The bool value should be used, the others are just for backwards compatibility. |
+| `services.picom.wintypes` | `attribute set` | Rules for specific window types. |

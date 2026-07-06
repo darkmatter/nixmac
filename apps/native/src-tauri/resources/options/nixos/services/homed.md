@@ -5,7 +5,7 @@
 All options under `services.homed`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.homed.enable` | | |
-| `services.homed.promptOnFirstBoot` | | |
-| `services.homed.settings.Home` | | |
+| --- | --- | --- |
+| `services.homed.enable` | `boolean` | Whether to enable systemd home area/user account manager. |
+| `services.homed.promptOnFirstBoot` | `boolean` | Whether to enable interactively prompting for user creation on first boot . |
+| `services.homed.settings.Home` | `open submodule of attribute set of (systemd option)` | Options for systemd-homed. See {manpage}`homed.conf(5)` man page for available options. |

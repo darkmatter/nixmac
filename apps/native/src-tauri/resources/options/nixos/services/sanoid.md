@@ -5,11 +5,40 @@
 All options under `services.sanoid`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.sanoid.datasets` | | |
-| `services.sanoid.enable` | | |
-| `services.sanoid.extraArgs` | | |
-| `services.sanoid.interval` | | |
-| `services.sanoid.package` | | |
-| `services.sanoid.settings` | | |
-| `services.sanoid.templates` | | |
+| --- | --- | --- |
+| `services.sanoid.datasets` | `attribute set of (open submodule of dataset/template options)` | Datasets to snapshot. |
+| `services.sanoid.datasets.<name>.autoprune` | `null or boolean` | Whether to automatically prune old snapshots. |
+| `services.sanoid.datasets.<name>.autosnap` | `null or boolean` | Whether to automatically take snapshots. |
+| `services.sanoid.datasets.<name>.daily` | `null or (unsigned integer, meaning >=0)` | Number of daily snapshots. |
+| `services.sanoid.datasets.<name>.force_post_snapshot_script` | `null or boolean` | Whether to run the post script if the pre script fails |
+| `services.sanoid.datasets.<name>.hourly` | `null or (unsigned integer, meaning >=0)` | Number of hourly snapshots. |
+| `services.sanoid.datasets.<name>.monthly` | `null or (unsigned integer, meaning >=0)` | Number of monthly snapshots. |
+| `services.sanoid.datasets.<name>.no_inconsistent_snapshot` | `null or boolean` | Whether to take a snapshot if the pre script fails |
+| `services.sanoid.datasets.<name>.post_snapshot_script` | `null or string` | Script to run after taking snapshot. |
+| `services.sanoid.datasets.<name>.pre_snapshot_script` | `null or string` | Script to run before taking snapshot. |
+| `services.sanoid.datasets.<name>.processChildrenOnly` | `boolean` | Whether to only snapshot child datasets if recursing. |
+| `services.sanoid.datasets.<name>.process_children_only` | `boolean` | Whether to only snapshot child datasets if recursing. |
+| `services.sanoid.datasets.<name>.pruning_script` | `null or string` | Script to run after pruning snapshot. |
+| `services.sanoid.datasets.<name>.recursive` | `boolean or value "zfs" (singular enum)` | Whether to recursively snapshot dataset children. You can also set this to `"zfs"` to handle datasets recursively in an atomic way without the possibility to override settings for child datasets. |
+| `services.sanoid.datasets.<name>.script_timeout` | `null or signed integer` | Time limit for pre/post/pruning script execution time (\<=0 for infinite). |
+| `services.sanoid.datasets.<name>.useTemplate` | `list of configured template name` | Names of the templates to use for this dataset. |
+| `services.sanoid.datasets.<name>.use_template` | `list of configured template name` | Names of the templates to use for this dataset. |
+| `services.sanoid.datasets.<name>.yearly` | `null or (unsigned integer, meaning >=0)` | Number of yearly snapshots. |
+| `services.sanoid.enable` | `boolean` | Whether to enable Sanoid ZFS snapshotting service. |
+| `services.sanoid.extraArgs` | `list of string` | Extra arguments to pass to sanoid. See <https://github.com/jimsalterjrs/sanoid/#sanoid-command-line-options> for allowed options. |
+| `services.sanoid.interval` | `string` | Run sanoid at this interval. The default is to run hourly. The format is described in {manpage}`systemd.time(7)`. |
+| `services.sanoid.package` | `package` | The sanoid package to use. |
+| `services.sanoid.settings` | `attribute set of dataset/template options` | Free-form settings written directly to the config file. See <https://github.com/jimsalterjrs/sanoid/blob/master/sanoid.defaults.conf> for allowed values. |
+| `services.sanoid.templates` | `attribute set of (open submodule of dataset/template options)` | Templates for datasets. |
+| `services.sanoid.templates.<name>.autoprune` | `null or boolean` | Whether to automatically prune old snapshots. |
+| `services.sanoid.templates.<name>.autosnap` | `null or boolean` | Whether to automatically take snapshots. |
+| `services.sanoid.templates.<name>.daily` | `null or (unsigned integer, meaning >=0)` | Number of daily snapshots. |
+| `services.sanoid.templates.<name>.force_post_snapshot_script` | `null or boolean` | Whether to run the post script if the pre script fails |
+| `services.sanoid.templates.<name>.hourly` | `null or (unsigned integer, meaning >=0)` | Number of hourly snapshots. |
+| `services.sanoid.templates.<name>.monthly` | `null or (unsigned integer, meaning >=0)` | Number of monthly snapshots. |
+| `services.sanoid.templates.<name>.no_inconsistent_snapshot` | `null or boolean` | Whether to take a snapshot if the pre script fails |
+| `services.sanoid.templates.<name>.post_snapshot_script` | `null or string` | Script to run after taking snapshot. |
+| `services.sanoid.templates.<name>.pre_snapshot_script` | `null or string` | Script to run before taking snapshot. |
+| `services.sanoid.templates.<name>.pruning_script` | `null or string` | Script to run after pruning snapshot. |
+| `services.sanoid.templates.<name>.script_timeout` | `null or signed integer` | Time limit for pre/post/pruning script execution time (\<=0 for infinite). |
+| `services.sanoid.templates.<name>.yearly` | `null or (unsigned integer, meaning >=0)` | Number of yearly snapshots. |

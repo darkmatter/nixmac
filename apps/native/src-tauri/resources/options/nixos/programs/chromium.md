@@ -5,14 +5,14 @@
 All options under `programs.chromium`.
 
 | Option | Type | Description |
-| --------------------------------------------------- | ---- | ----------- |
-| `programs.chromium.defaultSearchProviderEnabled` | | |
-| `programs.chromium.defaultSearchProviderSearchURL` | | |
-| `programs.chromium.defaultSearchProviderSuggestURL` | | |
-| `programs.chromium.enable` | | |
-| `programs.chromium.enablePlasmaBrowserIntegration` | | |
-| `programs.chromium.extensions` | | |
-| `programs.chromium.extraOpts` | | |
-| `programs.chromium.homepageLocation` | | |
-| `programs.chromium.initialPrefs` | | |
-| `programs.chromium.plasmaBrowserIntegrationPackage` | | |
+| --- | --- | --- |
+| `programs.chromium.defaultSearchProviderEnabled` | `null or boolean` | Enable the default search provider. |
+| `programs.chromium.defaultSearchProviderSearchURL` | `null or string` | Chromium default search provider url. |
+| `programs.chromium.defaultSearchProviderSuggestURL` | `null or string` | Chromium default search provider url for suggestions. |
+| `programs.chromium.enable` | `boolean` | Whether to enable policies for chromium based browsers like Chromium, Google Chrome or Brave. |
+| `programs.chromium.enablePlasmaBrowserIntegration` | `boolean` | Whether to enable Native Messaging Host for Plasma Browser Integration. |
+| `programs.chromium.extensions` | `null or (list of string)` | List of chromium extensions to install. For list of plugins ids see id in url of extensions on [chrome web store](https://chrome.google.com/webstore/category/extensions) page. To install a chromium extension not included in the chrome web store, append to the extension id a semicolon ";" followed by a URL pointing to an Update Manifest XML file. See [ExtensionInstallForcelist](https://cloud.google.com/docs/chrome-enterprise/policies/?policy=ExtensionInstallForcelist) for additional details. |
+| `programs.chromium.extraOpts` | `attribute set` | Extra chromium policy options. A list of available policies can be found in the Chrome Enterprise documentation: <https://cloud.google.com/docs/chrome-enterprise/policies/> Make sure the selected policy is supported on Linux and your browser version. |
+| `programs.chromium.homepageLocation` | `null or string` | Chromium default homepage |
+| `programs.chromium.initialPrefs` | `attribute set` | Initial preferences are used to configure the browser for the first run. Unlike {option}`programs.chromium.extraOpts`, initialPrefs can be changed by users in the browser settings. More information can be found in the Chromium documentation: <https://www.chromium.org/administrators/configuring-other-preferences/> |
+| `programs.chromium.plasmaBrowserIntegrationPackage` | `package` | The plasma-browser-integration package to use. |

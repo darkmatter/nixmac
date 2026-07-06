@@ -5,14 +5,59 @@
 All options under `services.multipath`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.multipath.blacklist` | | |
-| `services.multipath.blacklist_exceptions` | | |
-| `services.multipath.defaults` | | |
-| `services.multipath.devices` | | |
-| `services.multipath.enable` | | |
-| `services.multipath.extraConfig` | | |
-| `services.multipath.extraConfigFile` | | |
-| `services.multipath.overrides` | | |
-| `services.multipath.package` | | |
-| `services.multipath.pathGroups` | | |
+| --- | --- | --- |
+| `services.multipath.blacklist` | `null or string` | This section defines which devices should be excluded from the multipath topology discovery. |
+| `services.multipath.blacklist_exceptions` | `null or string` | This section defines which devices should be included in the multipath topology discovery, despite being listed in the blacklist section. |
+| `services.multipath.defaults` | `null or string` | This section defines default values for attributes which are used whenever no values are given in the appropriate device or multipath sections. |
+| `services.multipath.devices` | `list of (submodule)` | This option allows you to define arrays for use in multipath groups. |
+| `services.multipath.devices.*.alias_prefix` | `null or string` | The user_friendly_names prefix to use for this device type, instead of the default mpath |
+| `services.multipath.devices.*.all_tg_pt` | `null or string` | Set the 'all targets ports' flag when registering keys with mpathpersist |
+| `services.multipath.devices.*.deferred_remove` | `null or one of "yes", "no"` | If set to "yes", multipathd will do a deferred remove instead of a regular remove when the last path device has been deleted. This means that if the multipath device is still in use, it will be freed when the last user closes it. If path is added to the multipath device before the last user closes it, the deferred remove will be canceled. |
+| `services.multipath.devices.*.delay_wait_checks` | `null or string` | This option is deprecated, and mapped to san_path_err_recovery_time |
+| `services.multipath.devices.*.delay_watch_checks` | `null or string` | This option is deprecated, and mapped to san_path_err_forget_rate |
+| `services.multipath.devices.*.detect_checker` | `null or one of "yes", "no"` | If set to "yes", multipath will try to detect if the device supports SCSI-3 ALUA. If so, the device will automatically use the tur checker. If set to "no", the checker will be selected as usual. |
+| `services.multipath.devices.*.detect_prio` | `null or one of "yes", "no"` | If set to "yes", multipath will try to detect if the device supports SCSI-3 ALUA. If so, the device will automatically use the sysfs prioritizer if the required sysf attributes access_state and preferred_path are supported, or the alua prioritizer if not. If set to "no", the prioritizer will be selected as usual. |
+| `services.multipath.devices.*.dev_loss_tmo` | `null or string` | Specify the number of seconds the SCSI layer will wait after a problem has been detected on a FC remote port before removing it from the system. This can be set to "infinity" which sets it to the max value of 2147483647 seconds, or 68 years. It will be automatically adjusted to the overall retry interval no_path_retry * polling_interval if a number of retries is given with no_path_retry and the overall retry interval is longer than the specified dev_loss_tmo value. The Linux kernel will cap this value to 600 if fast_io_fail_tmo is not set. |
+| `services.multipath.devices.*.failback` | `null or string` | Tell multipathd how to manage path group failback. Quote integers as strings |
+| `services.multipath.devices.*.fast_io_fail_tmo` | `null or string` | Specify the number of seconds the SCSI layer will wait after a problem has been detected on a FC remote port before failing I/O to devices on that remote port. This should be smaller than dev_loss_tmo. Setting this to "off" will disable the timeout. Quote integers as strings. |
+| `services.multipath.devices.*.features` | `null or string` | Specify any device-mapper features to be used |
+| `services.multipath.devices.*.flush_on_last_del` | `null or one of "yes", "no"` | If set to "yes" multipathd will disable queueing when the last path to a device has been deleted. |
+| `services.multipath.devices.*.getuid_callout` | `null or string` | (Superseded by uid_attribute) The default program and args to callout to obtain a unique path identifier. Should be specified with an absolute path. |
+| `services.multipath.devices.*.ghost_delay` | `null or signed integer` | Sets the number of seconds that multipath will wait after creating a device with only ghost paths before marking it ready for use in systemd |
+| `services.multipath.devices.*.hardware_handler` | `null or one of "emc", "rdac", "hp_sw", "alua", "ana"` | The hardware handler to use for this device type |
+| `services.multipath.devices.*.marginal_path_double_failed_time` | `null or string` | One of the four parameters of supporting path check based on accounting IO error such as intermittent error |
+| `services.multipath.devices.*.marginal_path_err_rate_threshold` | `null or signed integer` | The error rate threshold as a permillage (1/1000) |
+| `services.multipath.devices.*.marginal_path_err_recheck_gap_time` | `null or string` | One of the four parameters of supporting path check based on accounting IO error such as intermittent error |
+| `services.multipath.devices.*.marginal_path_err_sample_time` | `null or signed integer` | One of the four parameters of supporting path check based on accounting IO error such as intermittent error |
+| `services.multipath.devices.*.max_sectors_kb` | `null or signed integer` | Sets the max_sectors_kb device parameter on all path devices and the multipath device to the specified value |
+| `services.multipath.devices.*.no_path_retry` | `null or string` | Specify what to do when all paths are down. Quote integers as strings |
+| `services.multipath.devices.*.path_checker` | `one of "readsector0", "tur", "emc_clariion", "hp_sw", "rdac", "directio", "cciss_tur", "none"` | The default method used to determine the paths state |
+| `services.multipath.devices.*.path_grouping_policy` | `null or one of "failover", "multibus", "group_by_serial", "group_by_prio", "group_by_node_name"` | The default path grouping policy to apply to unspecified multipaths |
+| `services.multipath.devices.*.path_selector` | `null or one of ""round-robin 0"", ""queue-length 0"", ""service-time 0"", ""historical-service-time 0""` | The default path selector algorithm to use; they are offered by the kernel multipath target |
+| `services.multipath.devices.*.prio` | `null or one of "none", "const", "sysfs", "emc", "alua", "ontap", "rdac", "hp_sw", "hds", "random", "weightedpath", "path_latency", "ana", "datacore", "iet"` | The name of the path priority routine |
+| `services.multipath.devices.*.prio_args` | `null or string` | Arguments to pass to to the prio function |
+| `services.multipath.devices.*.product` | `string` | Regular expression to match the product name |
+| `services.multipath.devices.*.product_blacklist` | `null or string` | Products with the given vendor matching this string are blacklisted |
+| `services.multipath.devices.*.revision` | `null or string` | Regular expression to match the product revision |
+| `services.multipath.devices.*.rr_min_io` | `null or signed integer` | Number of I/O requests to route to a path before switching to the next in the same path group. This is only for Block I/O (BIO) based multipath and only apply to round-robin path_selector. |
+| `services.multipath.devices.*.rr_min_io_rq` | `null or signed integer` | Number of I/O requests to route to a path before switching to the next in the same path group. This is only for Request based multipath and only apply to round-robin path_selector. |
+| `services.multipath.devices.*.rr_weight` | `null or one of "priorities", "uniform"` | If set to priorities the multipath configurator will assign path weights as "path prio * rr_min_io". |
+| `services.multipath.devices.*.san_path_err_forget_rate` | `null or string` | If set to a value greater than 0, multipathd will check whether the path failures has exceeded the san_path_err_threshold within this many checks i.e san_path_err_forget_rate. If so we will not reinstante the path till san_path_err_recovery_time. |
+| `services.multipath.devices.*.san_path_err_recovery_time` | `null or string` | If set to a value greater than 0, multipathd will make sure that when path failures has exceeded the san_path_err_threshold within san_path_err_forget_rate then the path will be placed in failed state for san_path_err_recovery_time duration. Once san_path_err_recovery_time has timeout we will reinstante the failed path. san_path_err_recovery_time value should be in secs. |
+| `services.multipath.devices.*.san_path_err_threshold` | `null or string` | If set to a value greater than 0, multipathd will watch paths and check how many times a path has been failed due to errors.If the number of failures on a particular path is greater then the san_path_err_threshold, then the path will not reinstate till san_path_err_recovery_time. These path failures should occur within a san_path_err_forget_rate checks, if not we will consider the path is good enough to reinstantate. |
+| `services.multipath.devices.*.skip_kpartx` | `null or one of "yes", "no"` | If set to yes, kpartx will not automatically create partitions on the device |
+| `services.multipath.devices.*.uid_attribute` | `null or string` | The udev attribute providing a unique path identifier (WWID) |
+| `services.multipath.devices.*.user_friendly_names` | `null or one of "yes", "no"` | If set to "yes", using the bindings file /etc/multipath/bindings to assign a persistent and unique alias to the multipath, in the form of mpath. If set to "no" use the WWID as the alias. In either case this be will be overridden by any specific aliases in the multipaths section. |
+| `services.multipath.devices.*.vendor` | `string` | Regular expression to match the vendor name |
+| `services.multipath.devices.*.vpd_vendor` | `null or string` | The vendor specific vpd page information, using the vpd page abbreviation |
+| `services.multipath.enable` | `boolean` | Whether to enable the device mapper multipath (DM-MP) daemon. |
+| `services.multipath.extraConfig` | `null or string` | Lines to append to default multipath.conf |
+| `services.multipath.extraConfigFile` | `null or string` | Append an additional file's contents to /etc/multipath.conf |
+| `services.multipath.overrides` | `null or string` | This section defines values for attributes that should override the device-specific settings for all devices. |
+| `services.multipath.package` | `package` | The multipath-tools package to use. |
+| `services.multipath.pathGroups` | `list of (submodule)` | This option allows you to define multipath groups as described in http://christophe.varoqui.free.fr/usage.html. |
+| `services.multipath.pathGroups.*.alias` | `signed integer` | The name of the multipath device |
+| `services.multipath.pathGroups.*.array` | `string` | The DNS name of the storage array |
+| `services.multipath.pathGroups.*.fsType` | `null or string` | Type of the filesystem |
+| `services.multipath.pathGroups.*.options` | `null or string` | Options used to mount the file system |
+| `services.multipath.pathGroups.*.wwid` | `string (with check: hexadecimal string)` | The identifier for the multipath device |

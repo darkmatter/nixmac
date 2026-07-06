@@ -5,7 +5,7 @@
 All options under `services.envfs`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `services.envfs.enable` | | |
-| `services.envfs.extraFallbackPathCommands` | | |
-| `services.envfs.package` | | |
+| --- | --- | --- |
+| `services.envfs.enable` | `boolean` | Fuse filesystem that returns symlinks to executables based on the PATH of the requesting process. This is useful to execute shebangs on NixOS that assume hard coded locations in locations like /bin or /usr/bin etc. |
+| `services.envfs.extraFallbackPathCommands` | `strings concatenated with "\n"` | Extra commands to run in the package that contains fallback executables in case not other executable is found |
+| `services.envfs.package` | `package` | Which package to use for the envfs. |

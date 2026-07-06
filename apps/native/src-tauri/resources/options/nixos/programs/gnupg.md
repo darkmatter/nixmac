@@ -5,13 +5,12 @@
 All options under `programs.gnupg`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `programs.gnupg.agent.enable` | | |
-| `programs.gnupg.agent.enableBrowserSocket` | | |
-| `programs.gnupg.agent.enableExtraSocket` | | |
-| `programs.gnupg.agent.enableSSHSupport` | | |
-| `programs.gnupg.agent.pinentryFlavor` | | |
-| `programs.gnupg.agent.pinentryPackage` | | |
-| `programs.gnupg.agent.settings` | | |
-| `programs.gnupg.dirmngr.enable` | | |
-| `programs.gnupg.package` | | |
+| --- | --- | --- |
+| `programs.gnupg.agent.enable` | `boolean` | Enables GnuPG agent with socket-activation for every user session. |
+| `programs.gnupg.agent.enableBrowserSocket` | `boolean` | Enable browser socket for GnuPG agent. |
+| `programs.gnupg.agent.enableExtraSocket` | `boolean` | Enable extra socket for GnuPG agent. |
+| `programs.gnupg.agent.enableSSHSupport` | `boolean` | Enable SSH agent support in GnuPG agent. Also sets SSH_AUTH_SOCK environment variable correctly. This will disable socket-activation and thus always start a GnuPG agent per user session. |
+| `programs.gnupg.agent.pinentryPackage` | `null or package` | Which pinentry package to use. The path to the mainProgram as defined in the package's meta attributes will be set in /etc/gnupg/gpg-agent.conf. If not set by the user, it'll pick an appropriate flavor depending on the system configuration (qt flavor for lxqt and plasma, gtk2 for xfce, gnome3 on all other systems with X enabled, curses otherwise). |
+| `programs.gnupg.agent.settings` | `attribute set of (atom (null, bool, int, float or string))` | Configuration for /etc/gnupg/gpg-agent.conf. See {manpage}`gpg-agent(1)` for supported options. |
+| `programs.gnupg.dirmngr.enable` | `boolean` | Enables GnuPG network certificate management daemon with socket-activation for every user session. |
+| `programs.gnupg.package` | `package` | The gnupg package to use. |

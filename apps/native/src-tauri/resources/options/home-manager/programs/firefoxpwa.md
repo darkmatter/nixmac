@@ -5,8 +5,18 @@
 All options under `programs.firefoxpwa`.
 
 | Option | Type | Description |
-| ------------------------------ | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.firefoxpwa.enable` | `boolean` | Whether to enable Progressive Web Apps for Firefox. |
 | `programs.firefoxpwa.package` | `null or package` | The firefoxpwa package to use. |
-| `programs.firefoxpwa.profiles` | `attribute set of (submodule)` | Attribute set of profile options. The keys of that attribute set consist of ULIDs. A ULID is made of 26 characters, each of which is one of ‘0123456789ABCDEFGHJKMNPQRSTVWXYZ’ (Excluding I, L, O and U). See https://github.com/ulid/spec?tab=readme-ov-file#canonical-string-representation . |
-| `programs.firefoxpwa.settings` | `JSON value` | Settings to be written to the configuration file. See https://github.com/filips123/PWAsForFirefox/blob/cb4fc76873cc51129d9290754768e6a340c521b2/native/src/storage.rs#L61-L77 for a list of available options. |
+| `programs.firefoxpwa.profiles` | `attribute set of (submodule)` | Attribute set of profile options. The keys of that attribute set consist of ULIDs. A ULID is made of 26 characters, each of which is one of '0123456789ABCDEFGHJKMNPQRSTVWXYZ' (Excluding I, L, O and U). See <https://github.com/ulid/spec?tab=readme-ov-file#canonical-string-representation>. |
+| `programs.firefoxpwa.profiles.<name>.name` | `string` | Name of the profile. |
+| `programs.firefoxpwa.profiles.<name>.settings` | `JSON value` | Settings for this profile. See <https://github.com/filips123/PWAsForFirefox/blob/cb4fc76873cc51129d9290754768e6a340c521b2/native/src/components/profile.rs#L13-L34> for a list of available options. |
+| `programs.firefoxpwa.profiles.<name>.sites` | `attribute set of (submodule)` | Attribute set of site options for this profile. The keys of that attribute set consist of ULIDs. A ULID is made of 26 characters, each of which is one of '0123456789ABCDEFGHJKMNPQRSTVWXYZ' (Excluding I, L, O and U). See <https://github.com/ulid/spec?tab=readme-ov-file#canonical-string-representation>. Site ULIDs must be unique across profiles. |
+| `programs.firefoxpwa.profiles.<name>.sites.<name>.desktopEntry.categories` | `null or (list of string)` | Categories in which the entry should be shown in a menu. |
+| `programs.firefoxpwa.profiles.<name>.sites.<name>.desktopEntry.enable` | `boolean` | Whether to enable the desktop entry for this site. |
+| `programs.firefoxpwa.profiles.<name>.sites.<name>.desktopEntry.icon` | `null or string or absolute path` | Icon to display in file manager, menus, etc. |
+| `programs.firefoxpwa.profiles.<name>.sites.<name>.manifestUrl` | `string` | URL of the site's web app manifest. |
+| `programs.firefoxpwa.profiles.<name>.sites.<name>.name` | `string` | Name of the site. |
+| `programs.firefoxpwa.profiles.<name>.sites.<name>.settings` | `JSON value` | Settings for this site. See <https://github.com/filips123/PWAsForFirefox/blob/cb4fc76873cc51129d9290754768e6a340c521b2/native/src/components/site.rs#L98-L115> for a list of available options. |
+| `programs.firefoxpwa.profiles.<name>.sites.<name>.url` | `string` | Start URL of the site. |
+| `programs.firefoxpwa.settings` | `JSON value` | Settings to be written to the configuration file. See <https://github.com/filips123/PWAsForFirefox/blob/cb4fc76873cc51129d9290754768e6a340c521b2/native/src/storage.rs#L61-L77> for a list of available options. |

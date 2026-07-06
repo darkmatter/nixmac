@@ -5,8 +5,16 @@
 All options under `services.borgmatic`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.borgmatic.configurations` | | |
-| `services.borgmatic.enable` | | |
-| `services.borgmatic.enableConfigCheck` | | |
-| `services.borgmatic.settings` | | |
+| --- | --- | --- |
+| `services.borgmatic.configurations` | `attribute set of (open submodule of (YAML 1.1 value))` | Set of borgmatic configurations, see <https://torsion.org/borgmatic/docs/reference/configuration/> |
+| `services.borgmatic.configurations.<name>.repositories` | `list of (submodule)` | A required list of local or remote repositories with paths and optional labels (which can be used with the --repository flag to select a repository). Tildes are expanded. Multiple repositories are backed up to in sequence. Borg placeholders can be used. See the output of "borg help placeholders" for details. See ssh_command for SSH options like identity file or port. If systemd service is used, then add local repository paths in the systemd service file to the ReadWritePaths list. |
+| `services.borgmatic.configurations.<name>.repositories.*.label` | `string` | Label to the repository |
+| `services.borgmatic.configurations.<name>.repositories.*.path` | `string` | Path to the repository |
+| `services.borgmatic.configurations.<name>.source_directories` | `list of string` | List of source directories and files to backup. Globs and tildes are expanded. Do not backslash spaces in path names. |
+| `services.borgmatic.enable` | `boolean` | Whether to enable borgmatic. |
+| `services.borgmatic.enableConfigCheck` | `boolean` | Whether to enable checking all configurations during build time. |
+| `services.borgmatic.settings` | `null or (open submodule of (YAML 1.1 value))` | See <https://torsion.org/borgmatic/docs/reference/configuration/> |
+| `services.borgmatic.settings.repositories` | `list of (submodule)` | A required list of local or remote repositories with paths and optional labels (which can be used with the --repository flag to select a repository). Tildes are expanded. Multiple repositories are backed up to in sequence. Borg placeholders can be used. See the output of "borg help placeholders" for details. See ssh_command for SSH options like identity file or port. If systemd service is used, then add local repository paths in the systemd service file to the ReadWritePaths list. |
+| `services.borgmatic.settings.repositories.*.label` | `string` | Label to the repository |
+| `services.borgmatic.settings.repositories.*.path` | `string` | Path to the repository |
+| `services.borgmatic.settings.source_directories` | `list of string` | List of source directories and files to backup. Globs and tildes are expanded. Do not backslash spaces in path names. |

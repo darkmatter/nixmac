@@ -5,6 +5,6 @@
 All options under `services.tiddlywiki`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.tiddlywiki.enable` | | |
-| `services.tiddlywiki.listenOptions` | | |
+| --- | --- | --- |
+| `services.tiddlywiki.enable` | `boolean` | Whether to enable TiddlyWiki nodejs server. |
+| `services.tiddlywiki.listenOptions` | `attribute set` | Parameters passed to `--listen` command. Refer to <https://tiddlywiki.com/#WebServer> for details on supported values. |

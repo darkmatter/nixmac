@@ -5,5 +5,5 @@
 All options under `services.logmein-hamachi`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.logmein-hamachi.enable` | | |
+| --- | --- | --- |
+| `services.logmein-hamachi.enable` | `boolean` | Whether to enable LogMeIn Hamachi, a proprietary (closed source) commercial VPN software. |

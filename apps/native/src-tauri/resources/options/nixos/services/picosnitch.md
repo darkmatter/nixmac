@@ -5,5 +5,5 @@
 All options under `services.picosnitch`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.picosnitch.enable` | | |
+| --- | --- | --- |
+| `services.picosnitch.enable` | `boolean` | Whether to enable picosnitch daemon. |

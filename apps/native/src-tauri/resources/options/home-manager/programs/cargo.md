@@ -5,7 +5,7 @@
 All options under `programs.cargo`.
 
 | Option | Type | Description |
-| -------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.cargo.cargoHome` | `null or string` | Directory to store cargo configuration & state. Setting this also sets $CARGO_HOME. |
 | `programs.cargo.enable` | `boolean` | Whether to enable management of cargo config. |
 | `programs.cargo.package` | `null or package` | The cargo package to use. |

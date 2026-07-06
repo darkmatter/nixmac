@@ -5,48 +5,46 @@
 All options under `services.nitter`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.nitter.cache.listMinutes` | | |
-| `services.nitter.cache.redisConnections` | | |
-| `services.nitter.cache.redisHost` | | |
-| `services.nitter.cache.redisMaxConnections` | | |
-| `services.nitter.cache.redisPort` | | |
-| `services.nitter.cache.rssMinutes` | | |
-| `services.nitter.config.base64Media` | | |
-| `services.nitter.config.enableDebug` | | |
-| `services.nitter.config.enableRSS` | | |
-| `services.nitter.config.proxy` | | |
-| `services.nitter.config.proxyAuth` | | |
-| `services.nitter.config.tokenCount` | | |
-| `services.nitter.enable` | | |
-| `services.nitter.guestAccounts` | | |
-| `services.nitter.openFirewall` | | |
-| `services.nitter.package` | | |
-| `services.nitter.preferences.autoplayGifs` | | |
-| `services.nitter.preferences.bidiSupport` | | |
-| `services.nitter.preferences.hideBanner` | | |
-| `services.nitter.preferences.hidePins` | | |
-| `services.nitter.preferences.hideReplies` | | |
-| `services.nitter.preferences.hideTweetStats` | | |
-| `services.nitter.preferences.hlsPlayback` | | |
-| `services.nitter.preferences.infiniteScroll` | | |
-| `services.nitter.preferences.mp4Playback` | | |
-| `services.nitter.preferences.muteVideos` | | |
-| `services.nitter.preferences.proxyVideos` | | |
-| `services.nitter.preferences.replaceReddit` | | |
-| `services.nitter.preferences.replaceTwitter` | | |
-| `services.nitter.preferences.replaceYouTube` | | |
-| `services.nitter.preferences.squareAvatars` | | |
-| `services.nitter.preferences.stickyProfile` | | |
-| `services.nitter.preferences.theme` | | |
-| `services.nitter.redisCreateLocally` | | |
-| `services.nitter.replaceInstagram` | | |
-| `services.nitter.server.address` | | |
-| `services.nitter.server.hostname` | | |
-| `services.nitter.server.httpMaxConnections` | | |
-| `services.nitter.server.https` | | |
-| `services.nitter.server.port` | | |
-| `services.nitter.server.staticDir` | | |
-| `services.nitter.server.title` | | |
-| `services.nitter.sessionsFile` | | |
-| `services.nitter.settings` | | |
+| --- | --- | --- |
+| `services.nitter.cache.listMinutes` | `signed integer` | How long to cache list info (not the tweets, so keep it high). |
+| `services.nitter.cache.redisConnections` | `signed integer` | Redis connection pool size. |
+| `services.nitter.cache.redisHost` | `string` | Redis host. |
+| `services.nitter.cache.redisMaxConnections` | `signed integer` | Maximum number of connections to Redis. New connections are opened when none are available, but if the pool size goes above this, they are closed when released, do not worry about this unless you receive tons of requests per second. |
+| `services.nitter.cache.redisPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Redis port. |
+| `services.nitter.cache.rssMinutes` | `signed integer` | How long to cache RSS queries. |
+| `services.nitter.config.base64Media` | `boolean` | Use base64 encoding for proxied media URLs. |
+| `services.nitter.config.enableDebug` | `boolean` | Whether to enable request logs and debug endpoints. |
+| `services.nitter.config.enableRSS` | `boolean` | Whether to enable RSS feeds. |
+| `services.nitter.config.proxy` | `string` | URL to a HTTP/HTTPS proxy. |
+| `services.nitter.config.proxyAuth` | `string` | Credentials for proxy. |
+| `services.nitter.config.tokenCount` | `signed integer` | Minimum amount of usable tokens. Tokens are used to authorize API requests, but they expire after ~1 hour, and have a limit of 187 requests. The limit gets reset every 15 minutes, and the pool is filled up so there is always at least tokenCount usable tokens. Only increase this if you receive major bursts all the time. |
+| `services.nitter.enable` | `boolean` | Whether to enable Nitter, an alternative Twitter front-end. |
+| `services.nitter.openFirewall` | `boolean` | Open ports in the firewall for Nitter web interface. |
+| `services.nitter.package` | `package` | The nitter package to use. |
+| `services.nitter.preferences.autoplayGifs` | `boolean` | Autoplay GIFs. |
+| `services.nitter.preferences.bidiSupport` | `boolean` | Support bidirectional text (makes clicking on tweets harder). |
+| `services.nitter.preferences.hideBanner` | `boolean` | Hide profile banner. |
+| `services.nitter.preferences.hidePins` | `boolean` | Hide pinned tweets. |
+| `services.nitter.preferences.hideReplies` | `boolean` | Hide tweet replies. |
+| `services.nitter.preferences.hideTweetStats` | `boolean` | Hide tweet stats (replies, retweets, likes). |
+| `services.nitter.preferences.hlsPlayback` | `boolean` | Enable HLS video streaming (requires JavaScript). |
+| `services.nitter.preferences.infiniteScroll` | `boolean` | Infinite scrolling (requires JavaScript, experimental!). |
+| `services.nitter.preferences.mp4Playback` | `boolean` | Enable MP4 video playback. |
+| `services.nitter.preferences.muteVideos` | `boolean` | Mute videos by default. |
+| `services.nitter.preferences.proxyVideos` | `boolean` | Proxy video streaming through the server (might be slow). |
+| `services.nitter.preferences.replaceReddit` | `string` | Replace Reddit links with links to this instance (blank to disable). |
+| `services.nitter.preferences.replaceTwitter` | `string` | Replace Twitter links with links to this instance (blank to disable). |
+| `services.nitter.preferences.replaceYouTube` | `string` | Replace YouTube links with links to this instance (blank to disable). |
+| `services.nitter.preferences.squareAvatars` | `boolean` | Square profile pictures. |
+| `services.nitter.preferences.stickyProfile` | `boolean` | Make profile sidebar stick to top. |
+| `services.nitter.preferences.theme` | `string` | Instance theme. |
+| `services.nitter.redisCreateLocally` | `boolean` | Configure local Redis server for Nitter. |
+| `services.nitter.server.address` | `string` | The address to listen on. |
+| `services.nitter.server.hostname` | `string` | Hostname of the instance. |
+| `services.nitter.server.httpMaxConnections` | `signed integer` | Maximum number of HTTP connections. |
+| `services.nitter.server.https` | `boolean` | Set secure attribute on cookies. Keep it disabled to enable cookies when not using HTTPS. |
+| `services.nitter.server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to listen on. |
+| `services.nitter.server.staticDir` | `absolute path` | Path to the static files directory. |
+| `services.nitter.server.title` | `string` | Title of the instance. |
+| `services.nitter.sessionsFile` | `absolute path` | Path to the session tokens file. This file contains a list of session tokens that can be used to access the instance without logging in. The file is in JSONL format, where each line is a JSON object with the following fields: {"oauth_token":"some_token","oauth_token_secret":"some_secret_key"} See <https://github.com/zedeus/nitter/wiki/Creating-session-tokens> for more information on session tokens and how to generate them. |
+| `services.nitter.settings` | `attribute set` | Add settings here to override NixOS module generated settings. Check the official repository for the available settings: <https://github.com/zedeus/nitter/blob/master/nitter.example.conf> |

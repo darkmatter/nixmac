@@ -5,11 +5,10 @@
 All options under `services.pcscd`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.pcscd.enable` | | |
-| `services.pcscd.extendReaderNames` | | |
-| `services.pcscd.extraArgs` | | |
-| `services.pcscd.ignoreReaderNames` | | |
-| `services.pcscd.plugins` | | |
-| `services.pcscd.readerConfig` | | |
-| `services.pcscd.readerConfigs` | | |
+| --- | --- | --- |
+| `services.pcscd.enable` | `boolean` | Whether to enable PCSC-Lite daemon, to access smart cards using SCard API (PC/SC). |
+| `services.pcscd.extendReaderNames` | `null or string` | String to append to every reader name. The special variable `$HOSTNAME` will be expanded to the current host name. |
+| `services.pcscd.extraArgs` | `list of string` | Extra command line arguments to be passed to the PCSC daemon. |
+| `services.pcscd.ignoreReaderNames` | `list of string matching the pattern [^:]+` | List of reader name patterns for the PCSC daemon to ignore. For more precise control, readers can be ignored through udev rules (cf. {option}`services.udev.extraRules`) by setting the `PCSCLITE_IGNORE` property, for example: `ACTION!="remove\|unbind", SUBSYSTEM=="usb", ATTR{idVendor}=="20a0", ENV{PCSCLITE_IGNORE}="1"` |
+| `services.pcscd.plugins` | `list of package` | Plugin packages to be used for PCSC-Lite. |
+| `services.pcscd.readerConfigs` | `list of strings concatenated with "\n"` | Configuration for devices that aren't hotpluggable. See {manpage}`reader.conf(5)` for valid options. |

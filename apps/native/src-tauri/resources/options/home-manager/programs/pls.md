@@ -5,9 +5,8 @@
 All options under `programs.pls`.
 
 | Option | Type | Description |
-| ------------------------------------ | --------- | ---------------------------------------------------- |
-| `programs.pls.enable` | `boolean` | Whether to enable pls, a modern replacement for ls . |
-| `programs.pls.enableAliases` | | |
+| --- | --- | --- |
+| `programs.pls.enable` | `boolean` | Whether to enable pls, a modern replacement for {command}`ls`. |
 | `programs.pls.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.pls.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
 | `programs.pls.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |

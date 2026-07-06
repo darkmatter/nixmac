@@ -5,5 +5,5 @@
 All options under `programs.bash-my-aws`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `programs.bash-my-aws.enable` | | |
+| --- | --- | --- |
+| `programs.bash-my-aws.enable` | `boolean` | Whether to enable bash-my-aws. |

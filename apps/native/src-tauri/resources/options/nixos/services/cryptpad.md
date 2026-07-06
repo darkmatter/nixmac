@@ -5,8 +5,19 @@
 All options under `services.cryptpad`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.cryptpad.configureNginx` | | |
-| `services.cryptpad.enable` | | |
-| `services.cryptpad.package` | | |
-| `services.cryptpad.settings` | | |
+| --- | --- | --- |
+| `services.cryptpad.configureNginx` | `boolean` | Configure Nginx as a reverse proxy for Cryptpad. Note that this makes some assumptions on your setup, and sets settings that will affect other virtualHosts running on your Nginx instance, if any. Alternatively you can configure a reverse-proxy of your choice. |
+| `services.cryptpad.enable` | `boolean` | Whether to enable cryptpad. |
+| `services.cryptpad.package` | `package` | The cryptpad package to use. |
+| `services.cryptpad.settings` | `open submodule of (JSON value)` | Cryptpad configuration settings. See <https://github.com/cryptpad/cryptpad/blob/main/config/config.example.js> for a more extensive reference documentation. Test your deployed instance through `https://<domain>/checkup/`. |
+| `services.cryptpad.settings.adminKeys` | `list of string` | List of public signing keys of users that can access the admin panel |
+| `services.cryptpad.settings.blockDailyCheck` | `boolean` | Disable telemetry. This setting is only effective if the 'Disable server telemetry' setting in the admin menu has been untouched, and will be ignored by cryptpad once that option is set either way. Note that due to the service confinement, just enabling the option in the admin menu will not be able to resolve DNS and fail; this setting must be set as well. |
+| `services.cryptpad.settings.httpAddress` | `string` | Address on which the Node.js server should listen |
+| `services.cryptpad.settings.httpPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which the Node.js server should listen |
+| `services.cryptpad.settings.httpSafeOrigin` | `null or string` | Cryptpad sandbox URL |
+| `services.cryptpad.settings.httpUnsafeOrigin` | `string` | This is the URL that users will enter to load your instance |
+| `services.cryptpad.settings.installMethod` | `string` | Install method is listed in telemetry if you agree to it through the consentToContact setting in the admin panel. |
+| `services.cryptpad.settings.logLevel` | `string` | Controls log level |
+| `services.cryptpad.settings.logToStdout` | `boolean` | Controls whether log output should go to stdout of the systemd service |
+| `services.cryptpad.settings.maxWorkers` | `null or signed integer` | Number of child processes, defaults to number of cores available |
+| `services.cryptpad.settings.websocketPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port for the websocket that needs to be separate |

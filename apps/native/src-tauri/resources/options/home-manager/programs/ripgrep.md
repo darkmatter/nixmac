@@ -5,7 +5,7 @@
 All options under `programs.ripgrep`.
 
 | Option | Type | Description |
-| ---------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------- |
-| `programs.ripgrep.arguments` | `list of string` | List of arguments to pass to ripgrep. Each item is given to ripgrep as a single command line argument verbatim. |
+| --- | --- | --- |
+| `programs.ripgrep.arguments` | `list of string` | List of arguments to pass to ripgrep. Each item is given to ripgrep as a single command line argument verbatim. See <https://github.com/BurntSushi/ripgrep/blob/master/GUIDE.md#configuration-file> for an example configuration. |
 | `programs.ripgrep.enable` | `boolean` | Whether to enable Ripgrep. |
 | `programs.ripgrep.package` | `null or package` | The ripgrep package to use. |

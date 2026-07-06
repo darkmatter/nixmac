@@ -5,11 +5,8 @@
 All options under `programs.jujutsu`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------ |
+| --- | --- | --- |
 | `programs.jujutsu.ediff` | `boolean` | Enable ediff as a merge tool |
 | `programs.jujutsu.enable` | `boolean` | Whether to enable a Git-compatible DVCS that is both simple and powerful. |
-| `programs.jujutsu.enableBashIntegration` | | |
-| `programs.jujutsu.enableFishIntegration` | | |
-| `programs.jujutsu.enableZshIntegration` | | |
 | `programs.jujutsu.package` | `null or package` | The jujutsu package to use. |
-| `programs.jujutsu.settings` | `TOML value` | Options to add to the config.toml file. See https://github.com/martinvonz/jj/blob/main/docs/config.md for options. |
+| `programs.jujutsu.settings` | `TOML value` | Options to add to the {file}`config.toml` file. See <https://github.com/martinvonz/jj/blob/main/docs/config.md> for options. |

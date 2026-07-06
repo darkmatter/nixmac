@@ -5,55 +5,55 @@
 All options under `services.libinput`.
 
 | Option | Type | Description |
-| ------------------------------------------------- | ---- | ----------- |
-| `services.libinput.enable` | | |
-| `services.libinput.mouse.accelPointsFallback` | | |
-| `services.libinput.mouse.accelPointsMotion` | | |
-| `services.libinput.mouse.accelPointsScroll` | | |
-| `services.libinput.mouse.accelProfile` | | |
-| `services.libinput.mouse.accelSpeed` | | |
-| `services.libinput.mouse.accelStepFallback` | | |
-| `services.libinput.mouse.accelStepMotion` | | |
-| `services.libinput.mouse.accelStepScroll` | | |
-| `services.libinput.mouse.additionalOptions` | | |
-| `services.libinput.mouse.buttonMapping` | | |
-| `services.libinput.mouse.calibrationMatrix` | | |
-| `services.libinput.mouse.clickMethod` | | |
-| `services.libinput.mouse.dev` | | |
-| `services.libinput.mouse.disableWhileTyping` | | |
-| `services.libinput.mouse.horizontalScrolling` | | |
-| `services.libinput.mouse.leftHanded` | | |
-| `services.libinput.mouse.middleEmulation` | | |
-| `services.libinput.mouse.naturalScrolling` | | |
-| `services.libinput.mouse.scrollButton` | | |
-| `services.libinput.mouse.scrollMethod` | | |
-| `services.libinput.mouse.sendEventsMode` | | |
-| `services.libinput.mouse.tapping` | | |
-| `services.libinput.mouse.tappingButtonMap` | | |
-| `services.libinput.mouse.tappingDragLock` | | |
-| `services.libinput.mouse.transformationMatrix` | | |
-| `services.libinput.touchpad.accelPointsFallback` | | |
-| `services.libinput.touchpad.accelPointsMotion` | | |
-| `services.libinput.touchpad.accelPointsScroll` | | |
-| `services.libinput.touchpad.accelProfile` | | |
-| `services.libinput.touchpad.accelSpeed` | | |
-| `services.libinput.touchpad.accelStepFallback` | | |
-| `services.libinput.touchpad.accelStepMotion` | | |
-| `services.libinput.touchpad.accelStepScroll` | | |
-| `services.libinput.touchpad.additionalOptions` | | |
-| `services.libinput.touchpad.buttonMapping` | | |
-| `services.libinput.touchpad.calibrationMatrix` | | |
-| `services.libinput.touchpad.clickMethod` | | |
-| `services.libinput.touchpad.dev` | | |
-| `services.libinput.touchpad.disableWhileTyping` | | |
-| `services.libinput.touchpad.horizontalScrolling` | | |
-| `services.libinput.touchpad.leftHanded` | | |
-| `services.libinput.touchpad.middleEmulation` | | |
-| `services.libinput.touchpad.naturalScrolling` | | |
-| `services.libinput.touchpad.scrollButton` | | |
-| `services.libinput.touchpad.scrollMethod` | | |
-| `services.libinput.touchpad.sendEventsMode` | | |
-| `services.libinput.touchpad.tapping` | | |
-| `services.libinput.touchpad.tappingButtonMap` | | |
-| `services.libinput.touchpad.tappingDragLock` | | |
-| `services.libinput.touchpad.transformationMatrix` | | |
+| --- | --- | --- |
+| `services.libinput.enable` | `boolean` | Whether to enable libinput. |
+| `services.libinput.mouse.accelPointsFallback` | `null or (list of (signed integer or floating point number))` | Sets the points of the fallback acceleration function. The value must be a list of floating point non-negative numbers. This only applies to the custom profile. |
+| `services.libinput.mouse.accelPointsMotion` | `null or (list of (signed integer or floating point number))` | Sets the points of the (pointer) motion acceleration function. The value must be a list of floating point non-negative numbers. This only applies to the custom profile. |
+| `services.libinput.mouse.accelPointsScroll` | `null or (list of (signed integer or floating point number))` | Sets the points of the scroll acceleration function. The value must be a list of floating point non-negative numbers. This only applies to the custom profile. |
+| `services.libinput.mouse.accelProfile` | `one of "flat", "adaptive", "custom"` | Sets the pointer acceleration profile to the given profile. Permitted values are `adaptive`, `flat`, `custom`. Not all devices support this option or all profiles. If a profile is unsupported, the default profile for this is used. `flat`: Pointer motion is accelerated by a constant (device-specific) factor, depending on the current speed. `adaptive`: Pointer acceleration depends on the input speed. This is the default profile for most devices. `custom`: Allows the user to define a custom acceleration function. To define custom functions use the accelPoints\<Fallback/Motion/Scroll> and accelStep\<Fallback/Motion/Scroll> options. |
+| `services.libinput.mouse.accelSpeed` | `null or string` | Cursor acceleration (how fast speed increases from minSpeed to maxSpeed). This only applies to the flat or adaptive profile. |
+| `services.libinput.mouse.accelStepFallback` | `null or signed integer or floating point number` | Sets the step between the points of the fallback acceleration function. When a step of 0.0 is provided, libinput's Fallback acceleration function is used. This only applies to the custom profile. |
+| `services.libinput.mouse.accelStepMotion` | `null or signed integer or floating point number` | Sets the step between the points of the (pointer) motion acceleration function. When a step of 0.0 is provided, libinput's Fallback acceleration function is used. This only applies to the custom profile. |
+| `services.libinput.mouse.accelStepScroll` | `null or signed integer or floating point number` | Sets the step between the points of the scroll acceleration function. When a step of 0.0 is provided, libinput's Fallback acceleration function is used. This only applies to the custom profile. |
+| `services.libinput.mouse.additionalOptions` | `strings concatenated with "\n"` | Additional options for libinput mouse driver. See {manpage}`libinput(4)` for available options."; |
+| `services.libinput.mouse.buttonMapping` | `null or string` | Sets the logical button mapping for this device, see {manpage}`XSetPointerMapping(3)`. The string must be a space-separated list of button mappings in the order of the logical buttons on the device, starting with button 1. The default mapping is "1 2 3 ... 32". A mapping of 0 deac‐ tivates the button. Multiple buttons can have the same mapping. Invalid mapping strings are discarded and the default mapping is used for all buttons. Buttons not specified in the user's mapping use the default mapping. See section BUTTON MAPPING for more details. |
+| `services.libinput.mouse.calibrationMatrix` | `null or string` | A string of 9 space-separated floating point numbers. Sets the calibration matrix to the 3x3 matrix where the first row is (abc), the second row is (def) and the third row is (ghi). |
+| `services.libinput.mouse.clickMethod` | `null or one of "none", "buttonareas", "clickfinger"` | Enables a click method. Permitted values are `none`, `buttonareas`, `clickfinger`. Not all devices support all methods, if an option is unsupported, the default click method for this device is used. |
+| `services.libinput.mouse.dev` | `null or string` | Path for mouse device. Set to `null` to apply to any auto-detected mouse. |
+| `services.libinput.mouse.disableWhileTyping` | `boolean` | Disable input method while typing. |
+| `services.libinput.mouse.horizontalScrolling` | `boolean` | Enables or disables horizontal scrolling. When disabled, this driver will discard any horizontal scroll events from libinput. This does not disable horizontal scroll events from libinput; it merely discards the horizontal axis from any scroll events. |
+| `services.libinput.mouse.leftHanded` | `boolean` | Enables left-handed button orientation, i.e. swapping left and right buttons. |
+| `services.libinput.mouse.middleEmulation` | `boolean` | Enables middle button emulation. When enabled, pressing the left and right buttons simultaneously produces a middle mouse button click. |
+| `services.libinput.mouse.naturalScrolling` | `boolean` | Enables or disables natural scrolling behavior. |
+| `services.libinput.mouse.scrollButton` | `null or signed integer` | Designates a button as scroll button. If the ScrollMethod is button and the button is logically held down, x/y axis movement is converted into scroll events. |
+| `services.libinput.mouse.scrollMethod` | `one of "twofinger", "edge", "button", "none"` | Specify the scrolling method: `twofinger`, `edge`, `button`, or `none` |
+| `services.libinput.mouse.sendEventsMode` | `one of "disabled", "enabled", "disabled-on-external-mouse"` | Sets the send events mode to `disabled`, `enabled`, or `disabled-on-external-mouse` |
+| `services.libinput.mouse.tapping` | `boolean` | Enables or disables tap-to-click behavior. |
+| `services.libinput.mouse.tappingButtonMap` | `null or one of "lrm", "lmr"` | Set the button mapping for 1/2/3-finger taps to left/right/middle or left/middle/right, respectively. |
+| `services.libinput.mouse.tappingDragLock` | `boolean` | Enables or disables drag lock during tapping behavior. When enabled, a finger up during tap- and-drag will not immediately release the button. If the finger is set down again within the timeout, the dragging process continues. |
+| `services.libinput.mouse.transformationMatrix` | `null or string` | A string of 9 space-separated floating point numbers. Sets the transformation matrix to the 3x3 matrix where the first row is (abc), the second row is (def) and the third row is (ghi). |
+| `services.libinput.touchpad.accelPointsFallback` | `null or (list of (signed integer or floating point number))` | Sets the points of the fallback acceleration function. The value must be a list of floating point non-negative numbers. This only applies to the custom profile. |
+| `services.libinput.touchpad.accelPointsMotion` | `null or (list of (signed integer or floating point number))` | Sets the points of the (pointer) motion acceleration function. The value must be a list of floating point non-negative numbers. This only applies to the custom profile. |
+| `services.libinput.touchpad.accelPointsScroll` | `null or (list of (signed integer or floating point number))` | Sets the points of the scroll acceleration function. The value must be a list of floating point non-negative numbers. This only applies to the custom profile. |
+| `services.libinput.touchpad.accelProfile` | `one of "flat", "adaptive", "custom"` | Sets the pointer acceleration profile to the given profile. Permitted values are `adaptive`, `flat`, `custom`. Not all devices support this option or all profiles. If a profile is unsupported, the default profile for this is used. `flat`: Pointer motion is accelerated by a constant (device-specific) factor, depending on the current speed. `adaptive`: Pointer acceleration depends on the input speed. This is the default profile for most devices. `custom`: Allows the user to define a custom acceleration function. To define custom functions use the accelPoints\<Fallback/Motion/Scroll> and accelStep\<Fallback/Motion/Scroll> options. |
+| `services.libinput.touchpad.accelSpeed` | `null or string` | Cursor acceleration (how fast speed increases from minSpeed to maxSpeed). This only applies to the flat or adaptive profile. |
+| `services.libinput.touchpad.accelStepFallback` | `null or signed integer or floating point number` | Sets the step between the points of the fallback acceleration function. When a step of 0.0 is provided, libinput's Fallback acceleration function is used. This only applies to the custom profile. |
+| `services.libinput.touchpad.accelStepMotion` | `null or signed integer or floating point number` | Sets the step between the points of the (pointer) motion acceleration function. When a step of 0.0 is provided, libinput's Fallback acceleration function is used. This only applies to the custom profile. |
+| `services.libinput.touchpad.accelStepScroll` | `null or signed integer or floating point number` | Sets the step between the points of the scroll acceleration function. When a step of 0.0 is provided, libinput's Fallback acceleration function is used. This only applies to the custom profile. |
+| `services.libinput.touchpad.additionalOptions` | `strings concatenated with "\n"` | Additional options for libinput touchpad driver. See {manpage}`libinput(4)` for available options."; |
+| `services.libinput.touchpad.buttonMapping` | `null or string` | Sets the logical button mapping for this device, see {manpage}`XSetPointerMapping(3)`. The string must be a space-separated list of button mappings in the order of the logical buttons on the device, starting with button 1. The default mapping is "1 2 3 ... 32". A mapping of 0 deac‐ tivates the button. Multiple buttons can have the same mapping. Invalid mapping strings are discarded and the default mapping is used for all buttons. Buttons not specified in the user's mapping use the default mapping. See section BUTTON MAPPING for more details. |
+| `services.libinput.touchpad.calibrationMatrix` | `null or string` | A string of 9 space-separated floating point numbers. Sets the calibration matrix to the 3x3 matrix where the first row is (abc), the second row is (def) and the third row is (ghi). |
+| `services.libinput.touchpad.clickMethod` | `null or one of "none", "buttonareas", "clickfinger"` | Enables a click method. Permitted values are `none`, `buttonareas`, `clickfinger`. Not all devices support all methods, if an option is unsupported, the default click method for this device is used. |
+| `services.libinput.touchpad.dev` | `null or string` | Path for touchpad device. Set to `null` to apply to any auto-detected touchpad. |
+| `services.libinput.touchpad.disableWhileTyping` | `boolean` | Disable input method while typing. |
+| `services.libinput.touchpad.horizontalScrolling` | `boolean` | Enables or disables horizontal scrolling. When disabled, this driver will discard any horizontal scroll events from libinput. This does not disable horizontal scroll events from libinput; it merely discards the horizontal axis from any scroll events. |
+| `services.libinput.touchpad.leftHanded` | `boolean` | Enables left-handed button orientation, i.e. swapping left and right buttons. |
+| `services.libinput.touchpad.middleEmulation` | `boolean` | Enables middle button emulation. When enabled, pressing the left and right buttons simultaneously produces a middle mouse button click. |
+| `services.libinput.touchpad.naturalScrolling` | `boolean` | Enables or disables natural scrolling behavior. |
+| `services.libinput.touchpad.scrollButton` | `null or signed integer` | Designates a button as scroll button. If the ScrollMethod is button and the button is logically held down, x/y axis movement is converted into scroll events. |
+| `services.libinput.touchpad.scrollMethod` | `one of "twofinger", "edge", "button", "none"` | Specify the scrolling method: `twofinger`, `edge`, `button`, or `none` |
+| `services.libinput.touchpad.sendEventsMode` | `one of "disabled", "enabled", "disabled-on-external-mouse"` | Sets the send events mode to `disabled`, `enabled`, or `disabled-on-external-mouse` |
+| `services.libinput.touchpad.tapping` | `boolean` | Enables or disables tap-to-click behavior. |
+| `services.libinput.touchpad.tappingButtonMap` | `null or one of "lrm", "lmr"` | Set the button mapping for 1/2/3-finger taps to left/right/middle or left/middle/right, respectively. |
+| `services.libinput.touchpad.tappingDragLock` | `boolean` | Enables or disables drag lock during tapping behavior. When enabled, a finger up during tap- and-drag will not immediately release the button. If the finger is set down again within the timeout, the dragging process continues. |
+| `services.libinput.touchpad.transformationMatrix` | `null or string` | A string of 9 space-separated floating point numbers. Sets the transformation matrix to the 3x3 matrix where the first row is (abc), the second row is (def) and the third row is (ghi). |

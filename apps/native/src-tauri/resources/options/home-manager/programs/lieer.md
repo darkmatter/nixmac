@@ -5,6 +5,6 @@
 All options under `programs.lieer`.
 
 | Option | Type | Description |
-| ------------------------ | --------- | ---------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.lieer.enable` | `boolean` | Whether to enable lieer Gmail synchronization for notmuch. |
 | `programs.lieer.package` | `package` | The lieer package to use. |

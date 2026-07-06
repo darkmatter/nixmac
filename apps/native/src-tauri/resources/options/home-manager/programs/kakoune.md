@@ -5,12 +5,59 @@
 All options under `programs.kakoune`.
 
 | Option | Type | Description |
-| ------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `programs.kakoune.colorSchemePackage` | `null or package` | A kakoune color schemes to add to your colors folder. This works because kakoune recursively checks $XDG_CONFIG_HOME/kak/colors/ . To apply the color scheme use programs.kakoune.config.colorScheme = "theme" . |
+| --- | --- | --- |
+| `programs.kakoune.colorSchemePackage` | `null or package` | A kakoune color schemes to add to your colors folder. This works because kakoune recursively checks {file}`$XDG_CONFIG_HOME/kak/colors/`. To apply the color scheme use `programs.kakoune.config.colorScheme = "theme"`. |
 | `programs.kakoune.config` | `null or (submodule)` | kakoune configuration options. |
-| `programs.kakoune.defaultEditor` | `boolean` | Whether to configure kak as the default editor using the EDITOR and VISUAL environment variables. |
+| `programs.kakoune.config.alignWithTabs` | `boolean` | Use tabs for the align command. |
+| `programs.kakoune.config.autoComplete` | `null or (list of (one of "insert", "prompt"))` | Modes in which to display possible completions. The kakoune default is `[ "insert" "prompt" ]`. |
+| `programs.kakoune.config.autoInfo` | `null or (list of (one of "command", "onkey", "normal"))` | Contexts in which to display automatic information box. The kakoune default is `[ "command" "onkey" ]`. |
+| `programs.kakoune.config.autoReload` | `null or one of "yes", "no", "ask"` | Reload buffers when an external modification is detected. The kakoune default is `"ask"`. |
+| `programs.kakoune.config.colorScheme` | `null or string` | Set the color scheme. To see available schemes, enter {command}`colorscheme` at the kakoune prompt. |
+| `programs.kakoune.config.hooks` | `list of (submodule)` | Global hooks. For documentation, see <https://github.com/mawww/kakoune/blob/master/doc/pages/hooks.asciidoc>. |
+| `programs.kakoune.config.hooks.*.commands` | `strings concatenated with "\n"` | Commands to run when the hook is activated. |
+| `programs.kakoune.config.hooks.*.group` | `null or string` | Add the hook to the named group. |
+| `programs.kakoune.config.hooks.*.name` | `one of "NormalIdle", "NormalKey", "InsertIdle", "InsertKey", "InsertChar", "InsertDelete", "InsertMove", "WinCreate", "WinClose", "WinResize", "WinDisplay", "WinSetOption", "BufSetOption", "BufNewFile", "BufOpenFile", "BufCreate", "BufWritePre", "BufWritePost", "BufReload", "BufClose", "BufOpenFifo", "BufReadFifo", "BufCloseFifo", "RuntimeError", "ModeChange", "PromptIdle", "GlobalSetOption", "KakBegin", "KakEnd", "FocusIn", "FocusOut", "RawKey", "InsertCompletionShow", "InsertCompletionHide", "ModuleLoaded", "ClientCreate", "ClientClose", "RegisterModified", "User"` | The name of the hook. For a description, see <https://github.com/mawww/kakoune/blob/master/doc/pages/hooks.asciidoc#default-hooks>. |
+| `programs.kakoune.config.hooks.*.once` | `boolean` | Remove the hook after running it once. |
+| `programs.kakoune.config.hooks.*.option` | `null or string` | Additional option to pass to the hook. |
+| `programs.kakoune.config.incrementalSearch` | `boolean` | Execute a search as it is being typed. |
+| `programs.kakoune.config.indentWidth` | `null or (unsigned integer, meaning >=0)` | The width of an indentation in spaces. The kakoune default is `4`. If `0`, a tab will be used instead. |
+| `programs.kakoune.config.keyMappings` | `list of (submodule)` | User-defined key mappings. For documentation, see <https://github.com/mawww/kakoune/blob/master/doc/pages/mapping.asciidoc>. |
+| `programs.kakoune.config.keyMappings.*.docstring` | `null or string` | Optional documentation text to display in info boxes. |
+| `programs.kakoune.config.keyMappings.*.effect` | `string` | The sequence of keys to be mapped. |
+| `programs.kakoune.config.keyMappings.*.key` | `string` | The key to be mapped. See <https://github.com/mawww/kakoune/blob/master/doc/pages/mapping.asciidoc#mappable-keys> for possible values. |
+| `programs.kakoune.config.keyMappings.*.mode` | `string` | The mode in which the mapping takes effect. |
+| `programs.kakoune.config.numberLines` | `null or (submodule)` | Settings for the number lines highlighter. |
+| `programs.kakoune.config.numberLines.enable` | `boolean` | Whether to enable the number lines highlighter. |
+| `programs.kakoune.config.numberLines.highlightCursor` | `boolean` | Highlight the cursor line with a separate face. |
+| `programs.kakoune.config.numberLines.relative` | `boolean` | Show line numbers relative to the main cursor line. |
+| `programs.kakoune.config.numberLines.separator` | `null or string` | String that separates the line number column from the buffer contents. The kakoune default is `"\|"`. |
+| `programs.kakoune.config.scrollOff` | `null or (submodule)` | How many lines and columns to keep visible around the cursor. |
+| `programs.kakoune.config.scrollOff.columns` | `unsigned integer, meaning >=0` | The number of columns to keep visible around the cursor. |
+| `programs.kakoune.config.scrollOff.lines` | `unsigned integer, meaning >=0` | The number of lines to keep visible around the cursor. |
+| `programs.kakoune.config.showMatching` | `boolean` | Highlight the matching char of the character under the selections' cursor using the `MatchingChar` face. |
+| `programs.kakoune.config.showWhitespace` | `null or (submodule)` | Settings for the show whitespaces highlighter. |
+| `programs.kakoune.config.showWhitespace.enable` | `boolean` | Whether to enable the show whitespace highlighter. |
+| `programs.kakoune.config.showWhitespace.lineFeed` | `null or string` | The character to display for line feeds. The kakoune default is `"¬"`. |
+| `programs.kakoune.config.showWhitespace.nonBreakingSpace` | `null or string` | The character to display for non-breaking spaces. The kakoune default is `"⍽"`. |
+| `programs.kakoune.config.showWhitespace.space` | `null or string` | The character to display for spaces. The kakoune default is `"·"`. |
+| `programs.kakoune.config.showWhitespace.tab` | `null or string` | The character to display for tabs. The kakoune default is `"→"`. |
+| `programs.kakoune.config.showWhitespace.tabStop` | `null or string` | The character to append to tabs to reach the width of a tabstop. The kakoune default is `" "`. |
+| `programs.kakoune.config.tabStop` | `null or (unsigned integer, meaning >=0)` | The width of a tab in spaces. The kakoune default is `6`. |
+| `programs.kakoune.config.ui` | `null or (submodule)` | Settings for the ncurses interface. |
+| `programs.kakoune.config.ui.assistant` | `one of "clippy", "cat", "dilbert", "none"` | The assistant displayed in info boxes. |
+| `programs.kakoune.config.ui.enableMouse` | `boolean` | Whether to enable mouse support. |
+| `programs.kakoune.config.ui.setTitle` | `boolean` | Change the title of the terminal emulator. |
+| `programs.kakoune.config.ui.shiftFunctionKeys` | `null or (unsigned integer, meaning >=0)` | Amount by which shifted function keys are offset. That is, if the terminal sends F13 for Shift-F1, this should be `12`. |
+| `programs.kakoune.config.ui.statusLine` | `one of "top", "bottom"` | Where to display the status line. |
+| `programs.kakoune.config.wrapLines` | `null or (submodule)` | Settings for the wrap lines highlighter. |
+| `programs.kakoune.config.wrapLines.enable` | `boolean` | Whether to enable the wrap lines highlighter. |
+| `programs.kakoune.config.wrapLines.indent` | `boolean` | Preserve line indentation when wrapping. |
+| `programs.kakoune.config.wrapLines.marker` | `null or string` | Prefix wrapped lines with marker text. If not `null`, the marker text will be displayed in the indentation if possible. |
+| `programs.kakoune.config.wrapLines.maxWidth` | `null or (unsigned integer, meaning >=0)` | Wrap text at maxWidth, even if the window is wider. |
+| `programs.kakoune.config.wrapLines.word` | `boolean` | Wrap at word boundaries instead of codepoint boundaries. |
+| `programs.kakoune.defaultEditor` | `boolean` | Whether to configure {command}`kak` as the default editor using the {env}`EDITOR` and {env}`VISUAL` environment variables. |
 | `programs.kakoune.enable` | `boolean` | Whether to enable the kakoune text editor. |
-| `programs.kakoune.extraConfig` | `strings concatenated with “\n”` | Extra configuration lines to add to $XDG_CONFIG_HOME/kak/kakrc . |
-| `programs.kakoune.finalPackage` | `null or package (read only)` | Resulting customized kakoune package. |
+| `programs.kakoune.extraConfig` | `strings concatenated with "\n"` | Extra configuration lines to add to {file}`$XDG_CONFIG_HOME/kak/kakrc`. |
+| `programs.kakoune.finalPackage` | `null or package` | Resulting customized kakoune package. |
 | `programs.kakoune.package` | `null or package` | The kakoune-unwrapped package to use. |
-| `programs.kakoune.plugins` | `list of package` | List of kakoune plugins to install. To get a list of supported plugins run: nix-env -f '<nixpkgs>' -qaP -A kakounePlugins . |
+| `programs.kakoune.plugins` | `list of package` | List of kakoune plugins to install. To get a list of supported plugins run: {command}`nix-env -f '<nixpkgs>' -qaP -A kakounePlugins`. Requires `package` to not be set to have effect. |

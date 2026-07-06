@@ -5,12 +5,14 @@
 All options under `services.dae`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.dae.assets` | | |
-| `services.dae.assetsPath` | | |
-| `services.dae.config` | | |
-| `services.dae.configFile` | | |
-| `services.dae.disableTxChecksumIpGeneric` | | |
-| `services.dae.enable` | | |
-| `services.dae.openFirewall` | | |
-| `services.dae.package` | | |
+| --- | --- | --- |
+| `services.dae.assets` | `list of absolute path` | Assets required to run dae. |
+| `services.dae.assetsPath` | `string` | The path which contains geolocation database. This option will override `assets`. |
+| `services.dae.config` | `null or string` | WARNING: This option will expose store your config unencrypted world-readable in the nix store. Config text for dae. See <https://github.com/daeuniverse/dae/blob/main/example.dae>. |
+| `services.dae.configFile` | `null or absolute path` | The path of dae config file, end with `.dae`. |
+| `services.dae.disableTxChecksumIpGeneric` | `boolean` | See <https://github.com/daeuniverse/dae/issues/43> |
+| `services.dae.enable` | `boolean` | Whether to enable dae, a Linux high-performance transparent proxy solution based on eBPF. |
+| `services.dae.openFirewall` | `submodule` | Open the firewall port. |
+| `services.dae.openFirewall.enable` | `boolean` | Whether to enable opening {option}`port` in the firewall. |
+| `services.dae.openFirewall.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to be opened. Consist with field `tproxy_port` in config file. |
+| `services.dae.package` | `package` | The dae package to use. |

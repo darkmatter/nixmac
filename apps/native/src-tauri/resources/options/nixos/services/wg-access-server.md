@@ -5,8 +5,10 @@
 All options under `services.wg-access-server`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.wg-access-server.enable` | | |
-| `services.wg-access-server.package` | | |
-| `services.wg-access-server.secretsFile` | | |
-| `services.wg-access-server.settings` | | |
+| --- | --- | --- |
+| `services.wg-access-server.enable` | `boolean` | Whether to enable wg-access-server. |
+| `services.wg-access-server.package` | `package` | The wg-access-server package to use. |
+| `services.wg-access-server.secretsFile` | `absolute path` | yaml file containing all secrets. this needs to be in the same structure as the configuration. This must to contain the admin password and wireguard private key. As well as the secrets for your auth backend. Example: `yaml adminPassword: <admin password> wireguard:   privateKey: <wireguard private key> auth:   oidc:     clientSecret: <client secret> ` |
+| `services.wg-access-server.settings` | `open submodule of (YAML 1.1 value)` | See <https://www.freie-netze.org/wg-access-server/2-configuration/> for possible options |
+| `services.wg-access-server.settings.dns.enabled` | `boolean` | Enable/disable the embedded DNS proxy server. This is enabled by default and allows VPN clients to avoid DNS leaks by sending all DNS requests to wg-access-server itself. |
+| `services.wg-access-server.settings.storage` | `string` | A storage backend connection string. See [storage docs](https://www.freie-netze.org/wg-access-server/3-storage/) |

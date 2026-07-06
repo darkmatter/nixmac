@@ -5,8 +5,8 @@
 All options under `programs.numbat`.
 
 | Option | Type | Description |
-| -------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| --- | --- | --- |
 | `programs.numbat.enable` | `boolean` | Whether to enable Numbat. |
-| `programs.numbat.initFile` | `null or strings concatenated with “\n” or absolute path` | User initialization file ( init.nbt ) contents. May be specified inline or as a path to a source file. |
+| `programs.numbat.initFile` | `null or strings concatenated with "\n" or absolute path` | User initialization file ({file}`init.nbt`) contents. May be specified inline or as a path to a source file. |
 | `programs.numbat.package` | `null or package` | The numbat package to use. |
-| `programs.numbat.settings` | `TOML value` | Options to add to config.toml . See https://numbat.dev/doc/cli-customization.html#configuration for options. |
+| `programs.numbat.settings` | `TOML value` | Options to add to {file}`config.toml`. See <https://numbat.dev/doc/cli-customization.html#configuration> for options. |

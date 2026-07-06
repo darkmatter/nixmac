@@ -5,19 +5,17 @@
 All options under `services.searx`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.searx.configFile` | | |
-| `services.searx.configureNginx` | | |
-| `services.searx.configureUwsgi` | | |
-| `services.searx.domain` | | |
-| `services.searx.enable` | | |
-| `services.searx.environmentFile` | | |
-| `services.searx.faviconsSettings` | | |
-| `services.searx.limiterSettings` | | |
-| `services.searx.openFirewall` | | |
-| `services.searx.package` | | |
-| `services.searx.redisCreateLocally` | | |
-| `services.searx.runInUwsgi` | | |
-| `services.searx.settings` | | |
-| `services.searx.settingsFile` | | |
-| `services.searx.uwsgiConfig` | | |
+| --- | --- | --- |
+| `services.searx.configureNginx` | `boolean` | Whether to configure nginx as an frontend to uwsgi. |
+| `services.searx.configureUwsgi` | `boolean` | Whether to run searx in uWSGI as a "vassal", instead of using its built-in HTTP server. This is the recommended mode for public or large instances, but is unnecessary for LAN or local-only use. ::: {.warning} The built-in HTTP server logs all queries by default. ::: |
+| `services.searx.domain` | `string` | The domain under which searxng will be served. Right now this is only used with the configureNginx option. |
+| `services.searx.enable` | `boolean` | Whether to enable Searx, the meta search engine. |
+| `services.searx.environmentFile` | `null or absolute path` | Environment file (see {manpage}`systemd.exec(5)` "EnvironmentFile=" section for the syntax) to define variables for Searx. This option can be used to safely include secret keys into the Searx configuration. |
+| `services.searx.faviconsSettings` | `attribute set of (JSON value)` | Favicons settings for SearXNG. ::: {.note} For available settings, see the SearXNG [schema file](https://github.com/searxng/searxng/blob/master/searx/favicons/favicons.toml). ::: |
+| `services.searx.limiterSettings` | `attribute set of (JSON value)` | Limiter settings for SearXNG. ::: {.note} For available settings, see the SearXNG [schema file](https://github.com/searxng/searxng/blob/master/searx/limiter.toml). ::: |
+| `services.searx.openFirewall` | `boolean` | Whether to open the port in the firewall. Enabling this option adds the port specified in {option}`services.settings.server.port` to {option}`networking.firewall.allowedTCPPorts`. ::: {.note} When this option is set to true, {option}`services.settings.server.port` must be set as well or an error will be thrown. ::: |
+| `services.searx.package` | `package` | The searxng package to use. |
+| `services.searx.redisCreateLocally` | `boolean` | Configure a local Redis server for SearXNG. This is required if you want to enable the rate limiter and bot protection of SearXNG. |
+| `services.searx.settings` | `open submodule of (JSON value)` | Searx settings. These will be merged with (taking precedence over) the default configuration. It's also possible to refer to environment variables (defined in [](#opt-services.searx.environmentFile)) using the syntax `$VARIABLE_NAME`. ::: {.note} For available settings, see the Searx [docs](https://docs.searxng.org/admin/settings/index.html). ::: |
+| `services.searx.settingsFile` | `absolute path` | The path of the Searx server settings.yml file. If no file is specified, a default file is used (default config file has debug mode enabled). ::: {.note} Setting this options overrides [](#opt-services.searx.settings). ::: ::: {.warning} This file, along with any secret key it contains, will be copied into the world-readable Nix store. ::: |
+| `services.searx.uwsgiConfig` | `Json value or lambda` | Additional configuration of the uWSGI vassal running searx. It should notably specify on which interfaces and ports the vassal should listen. |

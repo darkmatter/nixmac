@@ -5,5 +5,26 @@
 All options under `services.nebula`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.nebula.networks` | | |
+| --- | --- | --- |
+| `services.nebula.networks` | `attribute set of (submodule)` | Nebula network definitions. |
+| `services.nebula.networks.<name>.ca` | `absolute path` | Path to the certificate authority certificate. |
+| `services.nebula.networks.<name>.cert` | `absolute path` | Path to the host certificate. |
+| `services.nebula.networks.<name>.enable` | `boolean` | Enable or disable this network. |
+| `services.nebula.networks.<name>.enableReload` | `boolean` | Enable automatic config reload on config change. This setting is not enabled by default as nix cannot determine if the config change is reloadable. Please refer to the [config reference](https://nebula.defined.net/docs/config/) for documentation on reloadable changes. |
+| `services.nebula.networks.<name>.firewall.inbound` | `list of (attribute set)` | Firewall rules for inbound traffic. |
+| `services.nebula.networks.<name>.firewall.outbound` | `list of (attribute set)` | Firewall rules for outbound traffic. |
+| `services.nebula.networks.<name>.isLighthouse` | `boolean` | Whether this node is a lighthouse. |
+| `services.nebula.networks.<name>.isRelay` | `boolean` | Whether this node is a relay. |
+| `services.nebula.networks.<name>.key` | `non-empty string or absolute path` | Path or reference to the host key. |
+| `services.nebula.networks.<name>.lighthouse.dns.enable` | `boolean` | Whether this lighthouse node should serve DNS. |
+| `services.nebula.networks.<name>.lighthouse.dns.host` | `string` | IP address on which nebula lighthouse should serve DNS. 'localhost' is a good default to ensure the service does not listen on public interfaces; use a Nebula address like 10.0.0.5 to make DNS resolution available to nebula hosts only. |
+| `services.nebula.networks.<name>.lighthouse.dns.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | UDP port number for lighthouse DNS server. |
+| `services.nebula.networks.<name>.lighthouses` | `list of string` | List of IPs of lighthouse hosts this node should report to and query from. This should be empty on lighthouse nodes. The IPs should be the lighthouse's Nebula IPs, not their external IPs. |
+| `services.nebula.networks.<name>.listen.host` | `string` | IP address to listen on. |
+| `services.nebula.networks.<name>.listen.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number to listen on. |
+| `services.nebula.networks.<name>.package` | `package` | The nebula package to use. |
+| `services.nebula.networks.<name>.relays` | `list of string` | List of IPs of relays that this node should allow traffic from. |
+| `services.nebula.networks.<name>.settings` | `YAML 1.1 value` | Nebula configuration. Refer to <https://github.com/slackhq/nebula/blob/master/examples/config.yml> for details on supported values. |
+| `services.nebula.networks.<name>.staticHostMap` | `attribute set of list of string` | The static host map defines a set of hosts with fixed IP addresses on the internet (or any network). A host can have multiple fixed IP addresses defined here, and nebula will try each when establishing a tunnel. |
+| `services.nebula.networks.<name>.tun.device` | `null or string` | Name of the tun device. Defaults to nebula.${networkName}. |
+| `services.nebula.networks.<name>.tun.disable` | `boolean` | When tun is disabled, a lighthouse can be started without a local tun interface (and therefore without root). |

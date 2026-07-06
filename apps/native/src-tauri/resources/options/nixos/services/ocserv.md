@@ -5,6 +5,6 @@
 All options under `services.ocserv`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `services.ocserv.config` | | |
-| `services.ocserv.enable` | | |
+| --- | --- | --- |
+| `services.ocserv.config` | `strings concatenated with "\n"` | Configuration content to start an OCServ server. For a full configuration reference,please refer to the online documentation (https://ocserv.gitlab.io/www/manual.html), the openconnect recipes (https://github.com/openconnect/recipes) or `man ocserv`. |
+| `services.ocserv.enable` | `boolean` | Whether to enable ocserv. |

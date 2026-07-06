@@ -5,6 +5,6 @@
 All options under `services.passSecretService`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.passSecretService.enable` | | |
-| `services.passSecretService.package` | | |
+| --- | --- | --- |
+| `services.passSecretService.enable` | `boolean` | Whether to enable pass secret service. |
+| `services.passSecretService.package` | `package` | The pass-secret-service package to use. |

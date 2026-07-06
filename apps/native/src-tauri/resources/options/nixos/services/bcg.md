@@ -5,25 +5,25 @@
 All options under `services.bcg`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `services.bcg.automaticRemoveKitFromNames` | | |
-| `services.bcg.automaticRenameGenericNodes` | | |
-| `services.bcg.automaticRenameKitNodes` | | |
-| `services.bcg.automaticRenameNodes` | | |
-| `services.bcg.baseTopicPrefix` | | |
-| `services.bcg.device` | | |
-| `services.bcg.enable` | | |
-| `services.bcg.environmentFiles` | | |
-| `services.bcg.mqtt.cafile` | | |
-| `services.bcg.mqtt.certfile` | | |
-| `services.bcg.mqtt.host` | | |
-| `services.bcg.mqtt.keyfile` | | |
-| `services.bcg.mqtt.password` | | |
-| `services.bcg.mqtt.port` | | |
-| `services.bcg.mqtt.username` | | |
-| `services.bcg.name` | | |
-| `services.bcg.package` | | |
-| `services.bcg.qosNodeMessages` | | |
-| `services.bcg.rename` | | |
-| `services.bcg.retainNodeMessages` | | |
-| `services.bcg.verbose` | | |
+| --- | --- | --- |
+| `services.bcg.automaticRemoveKitFromNames` | `boolean` | Automatically remove kits. |
+| `services.bcg.automaticRenameGenericNodes` | `boolean` | Automatically rename generic nodes. |
+| `services.bcg.automaticRenameKitNodes` | `boolean` | Automatically rename kit's nodes. |
+| `services.bcg.automaticRenameNodes` | `boolean` | Automatically rename all nodes. |
+| `services.bcg.baseTopicPrefix` | `string` | Topic prefix added to all MQTT messages. |
+| `services.bcg.device` | `string` | Device name to configure gateway to use. |
+| `services.bcg.enable` | `boolean` | Whether to enable BigClown gateway. |
+| `services.bcg.environmentFiles` | `list of absolute path` | File to load as environment file. Environment variables from this file will be interpolated into the config file using envsubst with this syntax: `$ENVIRONMENT` or `${VARIABLE}`. This is useful to avoid putting secrets into the nix store. |
+| `services.bcg.mqtt.cafile` | `null or string` | Certificate Authority file for MQTT server access. |
+| `services.bcg.mqtt.certfile` | `null or string` | Certificate file for MQTT server access. |
+| `services.bcg.mqtt.host` | `string` | Host where MQTT server is running. |
+| `services.bcg.mqtt.keyfile` | `null or string` | Key file for MQTT server access. |
+| `services.bcg.mqtt.password` | `null or string` | MQTT server access password. |
+| `services.bcg.mqtt.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port of MQTT server. |
+| `services.bcg.mqtt.username` | `null or string` | MQTT server access username. |
+| `services.bcg.name` | `null or string` | Name for the device. Supported variables: * `{ip}` IP address * `{id}` The ID of the connected usb-dongle or core-module `null` can be used for automatic detection from gateway firmware. |
+| `services.bcg.package` | `package` | The bcg package to use. |
+| `services.bcg.qosNodeMessages` | `signed integer` | Set the guarantee of MQTT message delivery. |
+| `services.bcg.rename` | `attribute set of string` | Rename nodes to different name. |
+| `services.bcg.retainNodeMessages` | `boolean` | Specify that node messages should be retaied in MQTT broker. |
+| `services.bcg.verbose` | `one of "CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"` | Verbosity level. |

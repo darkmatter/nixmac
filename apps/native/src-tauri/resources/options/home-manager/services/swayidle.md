@@ -5,11 +5,17 @@
 All options under `services.swayidle`.
 
 | Option | Type | Description |
-| ---------------------------------- | ------------------------------------------------------------ | ------------------------------------------- |
+| --- | --- | --- |
 | `services.swayidle.enable` | `boolean` | Whether to enable idle manager for Wayland. |
 | `services.swayidle.events` | `(submodule) or (list of (attribute set)) convertible to it` | Run command on occurrence of a event. |
+| `services.swayidle.events.after-resume` | `null or string` | Command to run after resuming. |
+| `services.swayidle.events.before-sleep` | `null or string` | Command to run before suspending. |
+| `services.swayidle.events.lock` | `null or string` | Command to run when the logind session is locked. |
+| `services.swayidle.events.unlock` | `null or string` | Command to run when the logind session is unlocked. |
 | `services.swayidle.extraArgs` | `list of string` | Extra arguments to pass to swayidle. |
 | `services.swayidle.package` | `package` | The swayidle package to use. |
-| `services.swayidle.systemdTarget` | | |
 | `services.swayidle.systemdTargets` | `list of string` | Systemd targets to bind to. |
 | `services.swayidle.timeouts` | `list of (submodule)` | List of commands to run after idle timeout. |
+| `services.swayidle.timeouts.*.command` | `string` | Command to run after timeout seconds of inactivity. |
+| `services.swayidle.timeouts.*.resumeCommand` | `null or string` | Command to run when there is activity again. |
+| `services.swayidle.timeouts.*.timeout` | `positive integer, meaning >0` | Timeout in seconds. |

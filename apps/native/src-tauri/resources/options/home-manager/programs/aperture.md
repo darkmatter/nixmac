@@ -5,7 +5,7 @@
 All options under `programs.aperture`.
 
 | Option | Type | Description |
-| ---------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.aperture.enable` | `boolean` | Whether to enable aperture. |
 | `programs.aperture.package` | `null or package` | The aperture package to use. |
-| `programs.aperture.settings` | `YAML 1.1 value` | Configuration settings for aperture. All the available options can be found here: https://github.com/lightninglabs/aperture/blob/master/sample-conf.yaml |
+| `programs.aperture.settings` | `YAML 1.1 value` | Configuration settings for aperture. All the available options can be found here: <https://github.com/lightninglabs/aperture/blob/master/sample-conf.yaml> |

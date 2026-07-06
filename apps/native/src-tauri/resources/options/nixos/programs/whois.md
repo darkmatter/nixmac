@@ -5,7 +5,9 @@
 All options under `programs.whois`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `programs.whois.enable` | | |
-| `programs.whois.package` | | |
-| `programs.whois.settings` | | |
+| --- | --- | --- |
+| `programs.whois.enable` | `boolean` | Whether to enable whois, an intelligent WHOIS client. |
+| `programs.whois.package` | `package` | The whois package to use. |
+| `programs.whois.settings` | `list of (submodule)` | WHOIS configuration entries written to {file}`/etc/whois.conf`. Entries are written in the declared order, which matters when multiple patterns may match the same query. |
+| `programs.whois.settings.*.pattern` | `string` | Case-insensitive extended regular expression used to match the WHOIS object identifier. |
+| `programs.whois.settings.*.server` | `string` | WHOIS server to use when {option}`pattern` matches. |

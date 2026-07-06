@@ -5,8 +5,8 @@
 All options under `services.woodpecker-server`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.woodpecker-server.enable` | | |
-| `services.woodpecker-server.environment` | | |
-| `services.woodpecker-server.environmentFile` | | |
-| `services.woodpecker-server.package` | | |
+| --- | --- | --- |
+| `services.woodpecker-server.enable` | `boolean` | Whether to enable the Woodpecker-Server, a CI/CD application for automatic builds, deployments and tests. |
+| `services.woodpecker-server.environment` | `attribute set of string` | woodpecker-server config environment variables, for other options read the [documentation](https://woodpecker-ci.org/docs/administration/configuration/server) |
+| `services.woodpecker-server.environmentFile` | `(list of absolute path) or absolute path convertible to it` | File to load environment variables from. This is helpful for specifying secrets. Example content of environmentFile: `WOODPECKER_AGENT_SECRET=your-shared-secret-goes-here WOODPECKER_GITEA_SECRET=gto_**************************************` |
+| `services.woodpecker-server.package` | `package` | The woodpecker-server package to use. |

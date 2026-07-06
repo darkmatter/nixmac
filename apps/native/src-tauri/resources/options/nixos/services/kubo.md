@@ -5,25 +5,26 @@
 All options under `services.kubo`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.kubo.apiAddress` | | |
-| `services.kubo.autoMigrate` | | |
-| `services.kubo.autoMount` | | |
-| `services.kubo.dataDir` | | |
-| `services.kubo.defaultMode` | | |
-| `services.kubo.emptyRepo` | | |
-| `services.kubo.enable` | | |
-| `services.kubo.enableGC` | | |
-| `services.kubo.extraConfig` | | |
-| `services.kubo.extraFlags` | | |
-| `services.kubo.gatewayAddress` | | |
-| `services.kubo.group` | | |
-| `services.kubo.ipfsMountDir` | | |
-| `services.kubo.ipnsMountDir` | | |
-| `services.kubo.localDiscovery` | | |
-| `services.kubo.package` | | |
-| `services.kubo.serviceFdlimit` | | |
-| `services.kubo.settings` | | |
-| `services.kubo.startWhenNeeded` | | |
-| `services.kubo.swarmAddress` | | |
-| `services.kubo.user` | | |
+| --- | --- | --- |
+| `services.kubo.autoMigrate` | `boolean` | Whether Kubo should try to migrate its filesystem repository automatically. |
+| `services.kubo.autoMount` | `boolean` | Whether Kubo should try to mount /ipfs, /ipns and /mfs at startup. |
+| `services.kubo.dataDir` | `string` | The data dir for Kubo |
+| `services.kubo.defaultMode` | `one of "online", "offline", "norouting"` | systemd service that is enabled by default |
+| `services.kubo.emptyRepo` | `boolean` | If set to false, the repo will be initialized with help files |
+| `services.kubo.enable` | `boolean` | Whether to enable the Interplanetary File System (WARNING: may cause severe network degradation). NOTE: after enabling this option and rebuilding your system, you need to log out and back in for the `IPFS_PATH` environment variable to be present in your shell. Until you do that, the CLI tools won't be able to talk to the daemon by default . |
+| `services.kubo.enableGC` | `boolean` | Whether to enable automatic garbage collection |
+| `services.kubo.extraFlags` | `list of string` | Extra flags passed to the Kubo daemon |
+| `services.kubo.group` | `string` | Group under which the Kubo daemon runs |
+| `services.kubo.localDiscovery` | `boolean` | Whether to enable local discovery for the Kubo daemon. This will allow Kubo to scan ports on your local network. Some hosting services will ban you if you do this. |
+| `services.kubo.package` | `package` | The kubo package to use. |
+| `services.kubo.serviceFdlimit` | `null or signed integer` | The fdlimit for the Kubo systemd unit or `null` to have the daemon attempt to manage it |
+| `services.kubo.settings` | `open submodule of (JSON value)` | Attrset of daemon configuration. See [https://github.com/ipfs/kubo/blob/master/docs/config.md](https://github.com/ipfs/kubo/blob/master/docs/config.md) for reference. You can't set `Identity` or `Pinning`. |
+| `services.kubo.settings.Addresses.API` | `string or list of string` | Multiaddr or array of multiaddrs describing the address to serve the local HTTP API on. In addition to the multiaddrs listed here, the daemon will also listen on a Unix domain socket. To allow the ipfs CLI tools to communicate with the daemon over that socket, add your user to the correct group, e.g. `users.users.alice.extraGroups = [ config.services.kubo.group ];` |
+| `services.kubo.settings.Addresses.Gateway` | `string or list of string` | Where the IPFS Gateway can be reached |
+| `services.kubo.settings.Addresses.Swarm` | `list of string` | Where Kubo listens for incoming p2p connections |
+| `services.kubo.settings.Mounts.FuseAllowOther` | `boolean` | Allow all users to access the FUSE mount points |
+| `services.kubo.settings.Mounts.IPFS` | `string` | Where to mount the IPFS namespace to |
+| `services.kubo.settings.Mounts.IPNS` | `string` | Where to mount the IPNS namespace to |
+| `services.kubo.settings.Mounts.MFS` | `string` | Where to mount the MFS namespace to |
+| `services.kubo.startWhenNeeded` | `boolean` | Whether to use socket activation to start Kubo when needed. |
+| `services.kubo.user` | `string` | User under which the Kubo daemon runs |

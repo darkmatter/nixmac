@@ -5,18 +5,18 @@
 All options under `services.kthxbye`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.kthxbye.alertmanager.timeout` | | |
-| `services.kthxbye.alertmanager.uri` | | |
-| `services.kthxbye.enable` | | |
-| `services.kthxbye.extendBy` | | |
-| `services.kthxbye.extendIfExpiringIn` | | |
-| `services.kthxbye.extendWithPrefix` | | |
-| `services.kthxbye.extraOptions` | | |
-| `services.kthxbye.interval` | | |
-| `services.kthxbye.listenAddress` | | |
-| `services.kthxbye.logJSON` | | |
-| `services.kthxbye.maxDuration` | | |
-| `services.kthxbye.openFirewall` | | |
-| `services.kthxbye.package` | | |
-| `services.kthxbye.port` | | |
+| --- | --- | --- |
+| `services.kthxbye.alertmanager.timeout` | `string` | Alertmanager request timeout duration in the [time.Duration](https://pkg.go.dev/time#ParseDuration) format. |
+| `services.kthxbye.alertmanager.uri` | `string` | Alertmanager URI to use. |
+| `services.kthxbye.enable` | `boolean` | Whether to enable kthxbye alert acknowledgement management daemon. |
+| `services.kthxbye.extendBy` | `string` | Extend silences by adding DURATION seconds. DURATION should be provided in the [time.Duration](https://pkg.go.dev/time#ParseDuration) format. |
+| `services.kthxbye.extendIfExpiringIn` | `string` | Extend silences that are about to expire in the next DURATION seconds. DURATION should be provided in the [time.Duration](https://pkg.go.dev/time#ParseDuration) format. |
+| `services.kthxbye.extendWithPrefix` | `string` | Extend silences with comment starting with PREFIX string. |
+| `services.kthxbye.extraOptions` | `list of string` | Extra command line options. Documentation can be found [here](https://github.com/prymitive/kthxbye/blob/main/README.md). |
+| `services.kthxbye.interval` | `string` | Silence check interval duration in the [time.Duration](https://pkg.go.dev/time#ParseDuration) format. |
+| `services.kthxbye.listenAddress` | `string` | The address to listen on for HTTP requests. |
+| `services.kthxbye.logJSON` | `boolean` | Format logged messages as JSON. |
+| `services.kthxbye.maxDuration` | `null or string` | Maximum duration of a silence, it won't be extended anymore after reaching it. Duration should be provided in the [time.Duration](https://pkg.go.dev/time#ParseDuration) format. |
+| `services.kthxbye.openFirewall` | `boolean` | Whether to open ports in the firewall needed for the daemon to function. |
+| `services.kthxbye.package` | `package` | The kthxbye package to use. |
+| `services.kthxbye.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to listen on for HTTP requests. |

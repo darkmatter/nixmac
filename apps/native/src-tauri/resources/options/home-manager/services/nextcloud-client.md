@@ -5,7 +5,7 @@
 All options under `services.nextcloud-client`.
 
 | Option | Type | Description |
-| --------------------------------------------- | --------- | -------------------------------------------------------- |
+| --- | --- | --- |
 | `services.nextcloud-client.enable` | `boolean` | Whether to enable Nextcloud Client. |
 | `services.nextcloud-client.package` | `package` | The nextcloud-client package to use. |
 | `services.nextcloud-client.startInBackground` | `boolean` | Whether to start the Nextcloud client in the background. |

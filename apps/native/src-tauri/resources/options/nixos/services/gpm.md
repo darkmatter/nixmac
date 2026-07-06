@@ -5,6 +5,6 @@
 All options under `services.gpm`.
 
 | Option | Type | Description |
-| ----------------------- | ---- | ----------- |
-| `services.gpm.enable` | | |
-| `services.gpm.protocol` | | |
+| --- | --- | --- |
+| `services.gpm.enable` | `boolean` | Whether to enable GPM, the General Purpose Mouse daemon, which enables mouse support in virtual consoles. |
+| `services.gpm.protocol` | `string` | Mouse protocol to use. |

@@ -5,6 +5,6 @@
 All options under `services.mmsd`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.mmsd.enable` | | |
-| `services.mmsd.extraArgs` | | |
+| --- | --- | --- |
+| `services.mmsd.enable` | `boolean` | Whether to enable Multimedia Messaging Service Daemon. |
+| `services.mmsd.extraArgs` | `list of string` | Extra arguments passed to `mmsd-tng` |

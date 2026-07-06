@@ -5,7 +5,7 @@
 All options under `programs.inori`.
 
 | Option | Type | Description |
-| ------------------------- | ----------------- | ------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.inori.enable` | `boolean` | Whether to enable inori. |
 | `programs.inori.package` | `null or package` | The inori package to use. |
-| `programs.inori.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/inori/config.toml . |
+| `programs.inori.settings` | `TOML value` | Configuration written to {file}`$XDG_CONFIG_HOME/inori/config.toml`. See <https://github.com/eshrh/inori/blob/master/CONFIGURATION.md> for available options. |

@@ -5,6 +5,6 @@
 All options under `services.evdevremapkeys`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.evdevremapkeys.enable` | | |
-| `services.evdevremapkeys.settings` | | |
+| --- | --- | --- |
+| `services.evdevremapkeys.enable` | `boolean` | Whether to enable evdevremapkeys, a daemon to remap events on linux input devices. |
+| `services.evdevremapkeys.settings` | `YAML 1.1 value` | config.yaml for evdevremapkeys |

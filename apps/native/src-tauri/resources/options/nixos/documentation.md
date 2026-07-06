@@ -5,31 +5,36 @@
 All options under `documentation`.
 
 | Option | Type | Description |
-| ----------------------------------------------- | ---- | ----------- |
-| `documentation.dev.enable` | | |
-| `documentation.doc.enable` | | |
-| `documentation.enable` | | |
-| `documentation.info.enable` | | |
-| `documentation.man.cache.enable` | | |
-| `documentation.man.cache.generateAtRuntime` | | |
-| `documentation.man.enable` | | |
-| `documentation.man.generateCaches` | | |
-| `documentation.man.man-db.enable` | | |
-| `documentation.man.man-db.manualPages` | | |
-| `documentation.man.man-db.package` | | |
-| `documentation.man.man-db.skipPackages` | | |
-| `documentation.man.mandoc.cachePath` | | |
-| `documentation.man.mandoc.enable` | | |
-| `documentation.man.mandoc.extraConfig` | | |
-| `documentation.man.mandoc.manPath` | | |
-| `documentation.man.mandoc.package` | | |
-| `documentation.man.mandoc.settings` | | |
-| `documentation.man.manualPages` | | |
-| `documentation.nixos.checkRedirects` | | |
-| `documentation.nixos.enable` | | |
-| `documentation.nixos.extraModuleSources` | | |
-| `documentation.nixos.extraModules` | | |
-| `documentation.nixos.includeAllModules` | | |
-| `documentation.nixos.options.allowDocBook` | | |
-| `documentation.nixos.options.splitBuild` | | |
-| `documentation.nixos.options.warningsAreErrors` | | |
+| --- | --- | --- |
+| `documentation.dev.enable` | `boolean` | Whether to install documentation targeted at developers. * This includes man pages targeted at developers if {option}`documentation.man.enable` is set (this also includes "devman" outputs). * This includes info pages targeted at developers if {option}`documentation.info.enable` is set (this also includes "devinfo" outputs). * This includes other pages targeted at developers if {option}`documentation.doc.enable` is set (this also includes "devdoc" outputs). |
+| `documentation.doc.enable` | `boolean` | Whether to install documentation distributed in packages' `/share/doc`. Usually plain text and/or HTML. This also includes "doc" outputs. |
+| `documentation.enable` | `boolean` | Whether to install documentation of packages from {option}`environment.systemPackages` into the generated system path. See "Multiple-output packages" chapter in the nixpkgs manual for more info. |
+| `documentation.info.enable` | `boolean` | Whether to install info pages and the {command}`info` command. This also includes "info" outputs. |
+| `documentation.man.cache.enable` | `boolean` | Whether to generate the manual page index caches. This allows searching for a page or keyword using utilities like {manpage}`apropos(1)` and the `-k` option of {manpage}`man(1)`. |
+| `documentation.man.cache.generateAtRuntime` | `boolean` | Whether to generate the manual page index caches at runtime using a systemd service. ::: {.note} This is currently only supported by the man-db module. ::: |
+| `documentation.man.enable` | `boolean` | Whether to install manual pages. This also includes `man` outputs. |
+| `documentation.man.man-db.enable` | `boolean` | Whether to enable man-db as the default man page viewer. |
+| `documentation.man.man-db.manualPages` | `absolute path` | The manual pages to generate caches for if {option}`documentation.man.cache.enable` is enabled. Must be a path to a directory with man pages under `/share/man`; see the source for an example. Advanced users can make this a content-addressed derivation to save a few rebuilds. |
+| `documentation.man.man-db.package` | `package` | The `man-db` derivation to use. Useful to override configuration options used for the package. |
+| `documentation.man.mandoc.cachePath` | `list of string` | Change the paths where mandoc {manpage}`makewhatis(8)`generates the manual page index caches. {option}`documentation.man.cache.enable` should be enabled to allow cache generation. This list should only include the paths to manpages installed in the system configuration, i. e. /run/current-system/sw/share/man. {manpage}`makewhatis(8)` creates a database in each directory using the files `mansection/[arch/]title.section` and `catsection/[arch/]title.0` in it. If a directory contains no manual pages, no database is created in that directory. This option only needs to be set manually if extra paths should be indexed or {option}`documentation.man.manPath` contains paths that can't be indexed. |
+| `documentation.man.mandoc.enable` | `boolean` | Whether to enable mandoc as the default man page viewer. |
+| `documentation.man.mandoc.extraConfig` | `strings concatenated with "\n"` | Extra configuration to write to {manpage}`man.conf(5)`. |
+| `documentation.man.mandoc.manPath` | `list of string` | Change the paths included in the MANPATH environment variable, i. e. the directories where {manpage}`man(1)` looks for section-specific directories of man pages. You only need to change this setting if you want extra man pages (e. g. in non-english languages). All values must be strings that are a valid path from the target prefix (without including it). The first value given takes priority. Note that this will not add manpath directives to {manpage}`man.conf(5)`. |
+| `documentation.man.mandoc.package` | `package` | The `mandoc` derivation to use. Useful to override configuration options used for the package. |
+| `documentation.man.mandoc.settings` | `submodule` | Configuration for {manpage}`man.conf(5)` |
+| `documentation.man.mandoc.settings.manpath` | `list of string` | Override the default search path for {manpage}`man(1)`, {manpage}`apropos(1)`, and {manpage}`makewhatis(8)`. It can be used multiple times to specify multiple paths, with the order determining the manual page search order. This is not recommended in favor of {option}`documentation.man.mandoc.manPath`, but if it's needed to specify the manpath in this way, set {option}`documentation.man.mandoc.manPath` to an empty list (`[]`). |
+| `documentation.man.mandoc.settings.output.fragment` | `boolean` | Whether to omit the <!DOCTYPE> declaration and the <html>, <head>, and <body> elements and only emit the subtree below the <body> element in HTML output of {manpage}`mandoc(1)`. The style argument will be ignored. This is useful when embedding manual content within existing documents. |
+| `documentation.man.mandoc.settings.output.includes` | `null or string` | A string of relative path used as a template for the output path of linked header files (usually via the In macro) in HTML output. Instances of `%I` are replaced with the include filename. The default is not to present a hyperlink. |
+| `documentation.man.mandoc.settings.output.indent` | `null or signed integer` | Number of blank characters at the left margin for normal text, default of `5` for {manpage}`mdoc(7)` and `7` for {manpage}`man(7)`. Increasing this is not recommended; it may result in degraded formatting, for example overfull lines or ugly line breaks. When output is to a pager on a terminal that is less than 66 columns wide, the default is reduced to three columns. |
+| `documentation.man.mandoc.settings.output.man` | `null or string` | A template for linked manuals (usually via the Xr macro) in HTML output. Instances of ‘%N’ and ‘%S’ are replaced with the linked manual's name and section, respectively. If no section is included, section 1 is assumed. The default is not to present a hyperlink. If two formats are given and a file %N.%S exists in the current directory, the first format is used; otherwise, the second format is used. |
+| `documentation.man.mandoc.settings.output.paper` | `null or string` | This option is for generating PostScript and PDF output. The paper size name may be one of `a3`, `a4`, `a5`, `legal`, or `letter`. You may also manually specify dimensions as `NNxNN`, width by height in millimetres. If an unknown value is encountered, letter is used. Output pages default to letter sized and are rendered in the Times font family, 11-point. Margins are calculated as 1/9 the page length and width. Line-height is 1.4m. |
+| `documentation.man.mandoc.settings.output.style` | `null or absolute path` | Path to the file used for an external style-sheet. This must be a valid absolute or relative URI. |
+| `documentation.man.mandoc.settings.output.toc` | `boolean` | Whether to enable printing a table of contents near the beginning of the HTML output of {manpage}`mandoc(1)` if an input file contains at least two non-standard sections . |
+| `documentation.man.mandoc.settings.output.width` | `null or signed integer` | The ASCII and UTF-8 output width, default is `78`. When output is a pager on a terminal that is less than 79 columns wide, the default is reduced to one less than the terminal width. In any case, lines that are output in literal mode are never wrapped and may exceed the output width. |
+| `documentation.nixos.checkRedirects` | `boolean` | Check redirects for manualHTML. |
+| `documentation.nixos.enable` | `boolean` | Whether to install NixOS's own documentation. - This includes man pages like {manpage}`configuration.nix(5)` if {option}`documentation.man.enable` is set. - This includes the HTML manual and the {command}`nixos-help` command if {option}`documentation.doc.enable` is set. |
+| `documentation.nixos.extraModuleSources` | `list of (absolute path or string)` | Which extra NixOS module paths the generated NixOS's documentation should strip from options. |
+| `documentation.nixos.extraModules` | `list of raw value` | Modules for which to show options even when not imported. |
+| `documentation.nixos.includeAllModules` | `boolean` | Whether the generated NixOS's documentation should include documentation for all the options from all the NixOS modules included in the current `configuration.nix`. Disabling this will make the manual generator to ignore options defined outside of `baseModules`. |
+| `documentation.nixos.options.splitBuild` | `boolean` | Whether to split the option docs build into a cacheable and an uncacheable part. Splitting the build can substantially decrease the amount of time needed to build the manual, but some user modules may be incompatible with this splitting. |
+| `documentation.nixos.options.warningsAreErrors` | `boolean` | Treat warning emitted during the option documentation build (eg for missing option descriptions) as errors. |

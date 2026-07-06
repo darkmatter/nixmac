@@ -5,18 +5,18 @@
 Subcategories of `programs`.
 
 | Key | Type | Description |
-| ------------------------------------- | -------- | ------------------------- |
+| --- | --- | --- |
 | [`_1password`](_1password.md) | category | 2 options |
 | [`_1password-gui`](_1password-gui.md) | category | 2 options |
 | [`arqbackup`](arqbackup.md) | category | 2 options |
-| [`bash`](bash.md) | category | 1 subcategory, 5 options |
-| [`direnv`](direnv.md) | category | 1 subcategory, 12 options |
-| [`fish`](fish.md) | category | 1 subcategory, 13 options |
-| [`gnupg`](gnupg.md) | category | 1 subcategory, 3 options |
+| [`bash`](bash.md) | category | 4 options |
+| [`direnv`](direnv.md) | category | 12 options |
+| [`fish`](fish.md) | category | 13 options |
+| [`gnupg`](gnupg.md) | category | 3 options |
 | [`info`](info.md) | category | 1 option |
 | [`man`](man.md) | category | 1 option |
 | [`nix-index`](nix-index.md) | category | 2 options |
-| [`ssh`](ssh.md) | category | 2 options |
-| [`tmux`](tmux.md) | category | 11 options |
-| [`vim`](vim.md) | category | 7 options |
+| [`ssh`](ssh.md) | category | 7 options |
+| [`tmux`](tmux.md) | category | 12 options |
+| [`vim`](vim.md) | category | 9 options |
 | [`zsh`](zsh.md) | category | 17 options |

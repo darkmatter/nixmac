@@ -5,12 +5,12 @@
 All options under `services.radicale`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.radicale.config` | | |
-| `services.radicale.enable` | | |
-| `services.radicale.extraArgs` | | |
-| `services.radicale.group` | | |
-| `services.radicale.package` | | |
-| `services.radicale.rights` | | |
-| `services.radicale.settings` | | |
-| `services.radicale.user` | | |
+| --- | --- | --- |
+| `services.radicale.config` | `string` | Radicale configuration, this will set the service configuration file. This option is mutually exclusive with {option}`settings`. This option is deprecated. Use {option}`settings` instead. |
+| `services.radicale.enable` | `boolean` | Whether to enable Radicale CalDAV and CardDAV server. |
+| `services.radicale.extraArgs` | `list of string` | Extra arguments passed to the Radicale daemon. |
+| `services.radicale.group` | `string` | Group under which Radicale runs. |
+| `services.radicale.package` | `package` | Radicale package to use. |
+| `services.radicale.rights` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string) or a non-empty list of them)` | Configuration for Radicale's rights file. See <https://radicale.org/v3.html#authentication-and-rights>. This option only works in conjunction with {option}`settings`. Setting this will also set {option}`settings.rights.type` and {option}`settings.rights.file` to appropriate values. |
+| `services.radicale.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string) or a non-empty list of them)` | Configuration for Radicale. See <https://radicale.org/v3.html#configuration>. This option is mutually exclusive with {option}`config`. |
+| `services.radicale.user` | `string` | User account under which Radicale runs. |

@@ -5,11 +5,11 @@
 All options under `services.monetdb`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.monetdb.dataDir` | | |
-| `services.monetdb.enable` | | |
-| `services.monetdb.group` | | |
-| `services.monetdb.listenAddress` | | |
-| `services.monetdb.package` | | |
-| `services.monetdb.port` | | |
-| `services.monetdb.user` | | |
+| --- | --- | --- |
+| `services.monetdb.dataDir` | `absolute path` | Data directory for the dbfarm. |
+| `services.monetdb.enable` | `boolean` | Whether to enable the MonetDB database server. |
+| `services.monetdb.group` | `string` | Group under which MonetDB runs. |
+| `services.monetdb.listenAddress` | `string` | Address to listen on. |
+| `services.monetdb.package` | `package` | The monetdb package to use. |
+| `services.monetdb.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.monetdb.user` | `string` | User account under which MonetDB runs. |

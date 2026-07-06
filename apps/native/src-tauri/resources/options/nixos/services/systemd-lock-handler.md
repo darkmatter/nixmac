@@ -5,6 +5,6 @@
 All options under `services.systemd-lock-handler`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.systemd-lock-handler.enable` | | |
-| `services.systemd-lock-handler.package` | | |
+| --- | --- | --- |
+| `services.systemd-lock-handler.enable` | `boolean` | Whether to enable systemd-lock-handler. |
+| `services.systemd-lock-handler.package` | `package` | The systemd-lock-handler package to use. |

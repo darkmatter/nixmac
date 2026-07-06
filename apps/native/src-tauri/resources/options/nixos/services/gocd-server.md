@@ -5,18 +5,18 @@
 All options under `services.gocd-server`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `services.gocd-server.enable` | | |
-| `services.gocd-server.environment` | | |
-| `services.gocd-server.extraGroups` | | |
-| `services.gocd-server.extraOptions` | | |
-| `services.gocd-server.group` | | |
-| `services.gocd-server.initialJavaHeapSize` | | |
-| `services.gocd-server.listenAddress` | | |
-| `services.gocd-server.maxJavaHeapMemory` | | |
-| `services.gocd-server.packages` | | |
-| `services.gocd-server.port` | | |
-| `services.gocd-server.sslPort` | | |
-| `services.gocd-server.startupOptions` | | |
-| `services.gocd-server.user` | | |
-| `services.gocd-server.workDir` | | |
+| --- | --- | --- |
+| `services.gocd-server.enable` | `boolean` | Whether to enable gocd-server. |
+| `services.gocd-server.environment` | `attribute set of string` | Additional environment variables to be passed to the gocd-server process. As a base environment, gocd-server receives NIX_PATH from {option}`environment.sessionVariables`, NIX_REMOTE is set to "daemon". |
+| `services.gocd-server.extraGroups` | `list of string` | List of extra groups that the "gocd-server" user should be a part of. |
+| `services.gocd-server.extraOptions` | `list of string` | Specifies additional command line arguments to pass to Go.CD server's java process. Example contains debug and gcLog arguments. |
+| `services.gocd-server.group` | `string` | If the default user "gocd-server" is configured then this is the primary group of that user. |
+| `services.gocd-server.initialJavaHeapSize` | `string` | Specifies the initial java heap memory size for the Go.CD server's java process. |
+| `services.gocd-server.listenAddress` | `string` | Specifies the bind address on which the Go.CD server HTTP interface listens. |
+| `services.gocd-server.maxJavaHeapMemory` | `string` | Specifies the java maximum heap memory size for the Go.CD server's java process. |
+| `services.gocd-server.packages` | `list of package` | Packages to add to PATH for the Go.CD server's process. |
+| `services.gocd-server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Specifies port number on which the Go.CD server HTTP interface listens. |
+| `services.gocd-server.sslPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Specifies port number on which the Go.CD server HTTPS interface listens. |
+| `services.gocd-server.startupOptions` | `list of string` | Specifies startup command line arguments to pass to Go.CD server java process. |
+| `services.gocd-server.user` | `string` | User the Go.CD server should execute under. |
+| `services.gocd-server.workDir` | `string` | Specifies the working directory in which the Go.CD server java archive resides. |

@@ -5,16 +5,27 @@
 All options under `services.rustus`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.rustus.cors` | | |
-| `services.rustus.disable_health_access_logs` | | |
-| `services.rustus.enable` | | |
-| `services.rustus.host` | | |
-| `services.rustus.info_storage` | | |
-| `services.rustus.log_level` | | |
-| `services.rustus.max_body_size` | | |
-| `services.rustus.port` | | |
-| `services.rustus.remove_parts` | | |
-| `services.rustus.storage` | | |
-| `services.rustus.tus_extensions` | | |
-| `services.rustus.url` | | |
+| --- | --- | --- |
+| `services.rustus.cors` | `list of string` | list of origins allowed to upload |
+| `services.rustus.disable_health_access_logs` | `boolean` | disable access log for /health endpoint |
+| `services.rustus.enable` | `boolean` | Whether to enable TUS protocol implementation in Rust. |
+| `services.rustus.host` | `string` | The host that rustus will connect to. |
+| `services.rustus.info_storage` | `submodule` | Info storages are used to store information about file uploads. These storages must be persistent, because every time chunk is uploaded rustus updates information about upload. And when someone wants to download file, information about it requested from storage to get actual path of an upload. |
+| `services.rustus.info_storage.dir` | `string` | directory to store info about uploads |
+| `services.rustus.info_storage.type` | `value "file-info-storage" (singular enum)` | Type of info storage to use |
+| `services.rustus.log_level` | `one of "DEBUG", "INFO", "ERROR"` | Desired log level |
+| `services.rustus.max_body_size` | `string` | Maximum body size in bytes |
+| `services.rustus.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port that rustus will connect to. |
+| `services.rustus.remove_parts` | `boolean` | remove parts files after successful concatenation |
+| `services.rustus.storage` | `submodule` | Storages are used to actually store your files. You can configure where you want to store files. |
+| `services.rustus.storage.data_dir` | `string` | path to the local directory where all files are stored |
+| `services.rustus.storage.dir_structure` | `string` | pattern of a directory structure locally and on s3 |
+| `services.rustus.storage.force_sync` | `boolean` | calls fsync system call after every write to disk in local storage |
+| `services.rustus.storage.s3_access_key_file` | `string` | File path that contains the S3 access key. |
+| `services.rustus.storage.s3_bucket` | `string` | S3 bucket. |
+| `services.rustus.storage.s3_region` | `string` | S3 region name. |
+| `services.rustus.storage.s3_secret_key_file` | `absolute path` | File path that contains the S3 secret key. |
+| `services.rustus.storage.s3_url` | `string` | S3 url. |
+| `services.rustus.storage.type` | `one of "file-storage", "hybrid-s3"` | Type of storage to use |
+| `services.rustus.tus_extensions` | `list of (one of "getting", "creation", "termination", "creation-with-upload", "creation-defer-length", "concatenation", "checksum")` | Since TUS protocol offers extensibility you can turn off some protocol extensions. |
+| `services.rustus.url` | `string` | url path for uploads |

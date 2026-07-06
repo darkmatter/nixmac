@@ -5,32 +5,30 @@
 All options under `services.buildbot-master`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.buildbot-master.bpPort` | | |
-| `services.buildbot-master.buildbotDir` | | |
-| `services.buildbot-master.buildbotUrl` | | |
-| `services.buildbot-master.builders` | | |
-| `services.buildbot-master.changeSource` | | |
-| `services.buildbot-master.configurators` | | |
-| `services.buildbot-master.dbUrl` | | |
-| `services.buildbot-master.enable` | | |
-| `services.buildbot-master.extraConfig` | | |
-| `services.buildbot-master.extraGroups` | | |
-| `services.buildbot-master.extraImports` | | |
-| `services.buildbot-master.factorySteps` | | |
-| `services.buildbot-master.group` | | |
-| `services.buildbot-master.home` | | |
-| `services.buildbot-master.listenAddress` | | |
-| `services.buildbot-master.masterCfg` | | |
-| `services.buildbot-master.package` | | |
-| `services.buildbot-master.packages` | | |
-| `services.buildbot-master.pbPort` | | |
-| `services.buildbot-master.port` | | |
-| `services.buildbot-master.pythonPackages` | | |
-| `services.buildbot-master.reporters` | | |
-| `services.buildbot-master.schedulers` | | |
-| `services.buildbot-master.status` | | |
-| `services.buildbot-master.title` | | |
-| `services.buildbot-master.titleUrl` | | |
-| `services.buildbot-master.user` | | |
-| `services.buildbot-master.workers` | | |
+| --- | --- | --- |
+| `services.buildbot-master.buildbotDir` | `absolute path` | Specifies the Buildbot directory. |
+| `services.buildbot-master.buildbotUrl` | `string` | Specifies the Buildbot URL. |
+| `services.buildbot-master.builders` | `list of string` | List of Builders. |
+| `services.buildbot-master.changeSource` | `list of string` | List of Change Sources. |
+| `services.buildbot-master.configurators` | `list of string` | Configurator Steps, see <https://docs.buildbot.net/latest/manual/configuration/configurators.html> |
+| `services.buildbot-master.dbUrl` | `string` | Specifies the database connection string. |
+| `services.buildbot-master.enable` | `boolean` | Whether to enable the Buildbot continuous integration server. |
+| `services.buildbot-master.extraConfig` | `strings concatenated with "\n"` | Extra configuration to append to master.cfg |
+| `services.buildbot-master.extraGroups` | `list of string` | List of extra groups that the buildbot user should be a part of. |
+| `services.buildbot-master.extraImports` | `strings concatenated with "\n"` | Extra python imports to prepend to master.cfg |
+| `services.buildbot-master.factorySteps` | `list of string` | Factory Steps |
+| `services.buildbot-master.group` | `string` | Primary group of buildbot user. |
+| `services.buildbot-master.home` | `absolute path` | Buildbot home directory. |
+| `services.buildbot-master.listenAddress` | `string` | Specifies the bind address on which the buildbot HTTP interface listens. |
+| `services.buildbot-master.masterCfg` | `absolute path` | Optionally pass master.cfg path. Other options in this configuration will be ignored. |
+| `services.buildbot-master.package` | `package` | The buildbot-full package to use. |
+| `services.buildbot-master.packages` | `list of package` | Packages to add to PATH for the buildbot process. |
+| `services.buildbot-master.pbPort` | `string or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The buildmaster will listen on a TCP port of your choosing for connections from workers. It can also use this port for connections from remote Change Sources, status clients, and debug tools. This port should be visible to the outside world, and you’ll need to tell your worker admins about your choice. If put in (single) quotes, this can also be used as a connection string, as defined in the [ConnectionStrings guide](https://twistedmatrix.com/documents/current/core/howto/endpoints.html). |
+| `services.buildbot-master.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Specifies port number on which the buildbot HTTP interface listens. |
+| `services.buildbot-master.pythonPackages` | `function that evaluates to a(n) list of package` | Packages to add the to the PYTHONPATH of the buildbot process. |
+| `services.buildbot-master.reporters` | `list of string` | List of reporter objects used to present build status to various users. |
+| `services.buildbot-master.schedulers` | `list of string` | List of Schedulers. |
+| `services.buildbot-master.title` | `string` | Specifies the Buildbot Title. |
+| `services.buildbot-master.titleUrl` | `string` | Specifies the Buildbot TitleURL. |
+| `services.buildbot-master.user` | `string` | User the buildbot server should execute under. |
+| `services.buildbot-master.workers` | `list of string` | List of Workers. |

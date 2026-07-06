@@ -5,11 +5,20 @@
 All options under `services.suwayomi-server`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.suwayomi-server.dataDir` | | |
-| `services.suwayomi-server.enable` | | |
-| `services.suwayomi-server.group` | | |
-| `services.suwayomi-server.openFirewall` | | |
-| `services.suwayomi-server.package` | | |
-| `services.suwayomi-server.settings` | | |
-| `services.suwayomi-server.user` | | |
+| --- | --- | --- |
+| `services.suwayomi-server.dataDir` | `absolute path` | The path to the data directory in which Suwayomi-Server will download scans. |
+| `services.suwayomi-server.enable` | `boolean` | Whether to enable Suwayomi, a free and open source manga reader server that runs extensions built for Tachiyomi. |
+| `services.suwayomi-server.group` | `string` | Group under which Suwayomi-Server runs. |
+| `services.suwayomi-server.openFirewall` | `boolean` | Whether to open the firewall for the port in {option}`services.suwayomi-server.settings.server.port`. |
+| `services.suwayomi-server.package` | `package` | The suwayomi-server package to use. |
+| `services.suwayomi-server.settings` | `open submodule of (HOCON value)` | Configuration to write to {file}`server.conf`. See <https://github.com/Suwayomi/Suwayomi-Server/wiki/Configuring-Suwayomi-Server> for more information. |
+| `services.suwayomi-server.settings.server.basicAuthEnabled` | `boolean` | Whether to enable basic access authentication for Suwayomi-Server. Enabling this option is useful when hosting on a public network/the Internet . |
+| `services.suwayomi-server.settings.server.basicAuthPasswordFile` | `null or absolute path` | The password file containing the value that you have to provide when authenticating. |
+| `services.suwayomi-server.settings.server.basicAuthUsername` | `null or string` | The username value that you have to provide when authenticating. |
+| `services.suwayomi-server.settings.server.downloadAsCbz` | `boolean` | Download chapters as `.cbz` files. |
+| `services.suwayomi-server.settings.server.extensionRepos` | `list of string` | URL of repositories from which the extensions can be installed. |
+| `services.suwayomi-server.settings.server.ip` | `string` | The ip that Suwayomi will bind to. |
+| `services.suwayomi-server.settings.server.localSourcePath` | `absolute path` | Path to the local source folder. |
+| `services.suwayomi-server.settings.server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port that Suwayomi will listen to. |
+| `services.suwayomi-server.settings.server.systemTrayEnabled` | `boolean` | Whether to enable a system tray icon, if possible. |
+| `services.suwayomi-server.user` | `string` | User account under which Suwayomi-Server runs. |

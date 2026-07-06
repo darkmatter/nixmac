@@ -5,21 +5,90 @@
 All options under `services.dolibarr`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `services.dolibarr.database.createLocally` | | |
-| `services.dolibarr.database.host` | | |
-| `services.dolibarr.database.name` | | |
-| `services.dolibarr.database.passwordFile` | | |
-| `services.dolibarr.database.port` | | |
-| `services.dolibarr.database.type` | | |
-| `services.dolibarr.database.user` | | |
-| `services.dolibarr.domain` | | |
-| `services.dolibarr.enable` | | |
-| `services.dolibarr.group` | | |
-| `services.dolibarr.h2o` | | |
-| `services.dolibarr.nginx` | | |
-| `services.dolibarr.package` | | |
-| `services.dolibarr.poolConfig` | | |
-| `services.dolibarr.settings` | | |
-| `services.dolibarr.stateDir` | | |
-| `services.dolibarr.user` | | |
+| --- | --- | --- |
+| `services.dolibarr.database.createLocally` | `boolean` | Create the database and database user locally. |
+| `services.dolibarr.database.host` | `string` | Database host address. |
+| `services.dolibarr.database.name` | `string` | Database name. |
+| `services.dolibarr.database.passwordFile` | `null or absolute path` | Database password file. |
+| `services.dolibarr.database.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Database host port. |
+| `services.dolibarr.database.type` | `one of "mysql", "postgresql"` | Database engine to use. |
+| `services.dolibarr.database.user` | `string` | Database username. |
+| `services.dolibarr.domain` | `string` | Domain name of your server. |
+| `services.dolibarr.enable` | `boolean` | Whether to enable dolibarr. |
+| `services.dolibarr.group` | `string` | Group account under which dolibarr runs. ::: {.note} If left as the default value this group will automatically be created on system activation, otherwise you are responsible for ensuring the group exists before the dolibarr application starts. ::: |
+| `services.dolibarr.h2o` | `null or (submodule)` | With this option, you can customize an H2O virtual host which already has sensible defaults for Dolibarr. Set to `{ }` if you do not need any customization to the virtual host. If enabled, then by default, the {option}`serverName` is `${domain}`, If this is set to `null` (the default), no H2O `hosts` will be configured. |
+| `services.dolibarr.h2o.acme` | `null or (submodule)` | ACME options for virtual host. |
+| `services.dolibarr.h2o.acme.enable` | `boolean` | Whether to ask Let’s Encrypt to sign a certificate for this virtual host. Alternatively, an existing host can be used thru {option}`acme.useHost`. |
+| `services.dolibarr.h2o.acme.root` | `null or absolute path` | Directory for the ACME challenge, which is **public**. Don’t put certs or keys in here. Set to `null` to inherit from config.security.acme. |
+| `services.dolibarr.h2o.acme.useHost` | `null or non-empty string` | An existing Let’s Encrypt certificate to use for this virtual host. This is useful if you have many subdomains and want to avoid hitting the [rate limit](https://letsencrypt.org/docs/rate-limits). Alternately, you can generate a certificate through {option}`acme.enable`. Note that this option neither creates any certificates nor does it add subdomains to existing ones — you will need to create them manually using [](#opt-security.acme.certs). |
+| `services.dolibarr.h2o.host` | `null or non-empty string` | Set the host address for this virtual host. If unset, the default is to listen on all network interfaces. |
+| `services.dolibarr.h2o.http` | `null or (submodule)` | HTTP options for virtual host |
+| `services.dolibarr.h2o.http.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Override the default HTTP port for this virtual host. |
+| `services.dolibarr.h2o.serverAliases` | `list of non-empty string` | Additional names of virtual hosts served by this virtual host configuration. |
+| `services.dolibarr.h2o.serverName` | `null or non-empty string` | Server name to be used for this virtual host. Defaults to attribute name in hosts. |
+| `services.dolibarr.h2o.settings` | `attribute set` | Attrset to be transformed into YAML for host config. Note that the HTTP / TLS configurations will override these config values. See <https://h2o.examp1e.net/configure/base_directives.html#hosts>. |
+| `services.dolibarr.h2o.tls` | `null or (submodule)` | TLS options for virtual host |
+| `services.dolibarr.h2o.tls.extraSettings` | `attribute set` | Additional TLS/SSL-related configuration options. See <https://h2o.examp1e.net/configure/base_directives.html#listen-ssl>. |
+| `services.dolibarr.h2o.tls.identity` | `list of (submodule)` | Key / certificate pairs for the virtual host. |
+| `services.dolibarr.h2o.tls.identity.*.certificate-file` | `absolute path` | Path to certificate file. See <https://h2o.examp1e.net/configure/base_directives.html#certificate-file>. |
+| `services.dolibarr.h2o.tls.identity.*.key-file` | `absolute path` | Path to key file. See <https://h2o.examp1e.net/configure/base_directives.html#key-file>. |
+| `services.dolibarr.h2o.tls.policy` | `one of "add", "only", "force"` | `add` will additionally listen for TLS connections. `only` will disable TLS connections. `force` will redirect non-TLS traffic to the TLS connection. |
+| `services.dolibarr.h2o.tls.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Override the default TLS port for this virtual host. |
+| `services.dolibarr.h2o.tls.quic` | `null or (attribute set)` | Enables HTTP/3 over QUIC on the UDP port for TLS. The attrset provides fine-turning for QUIC behavior, but can be empty. See <https://h2o.examp1e.net/configure/http3_directives.html#quic-attributes>. |
+| `services.dolibarr.h2o.tls.recommendations` | `null or one of "modern", "intermediate"` | By default, H2O, without prejudice, will use as many TLS versions & cipher suites as it & the TLS library (OpenSSL) can support. The user is expected to hone settings for the security of their server. Setting some constraints is recommended, & if unsure about what TLS settings to use, this option gives curated TLS settings recommendations from Mozilla’s ‘SSL Configuration Generator’ project (see <https://ssl-config.mozilla.org>) or read more at Mozilla’s Wiki (see <https://wiki.mozilla.org/Security/Server_Side_TLS>). modern : Services with clients that support TLS 1.3 & don’t need backward compatibility intermediate : General-purpose servers with a variety of clients, recommended for almost all systems The default for all virtual hosts can be set with services.h2o.defaultTLSRecommendations, but this value can be overridden on a per-host basis using services.h2o.hosts.<name>.tls.recommmendations. The settings will also be overidden by manual values set with services.settings.h2o.hosts.<name>.tls.extraSettings. NOTE: older/weaker ciphers might require overriding the OpenSSL version of H2O (such as `openssl_legacy`). This can be done with sevices.settings.h2o.package. |
+| `services.dolibarr.h2o.tls.redirectCode` | `integer between 300 and 399 (both inclusive)` | HTTP status used by `globalRedirect` & `forceSSL`. Possible usecases include temporary (302, 307) redirects, keeping the request method & body (307, 308), or explicitly resetting the method to GET (303). See <https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections>. |
+| `services.dolibarr.nginx` | `null or (submodule)` | With this option, you can customize an nginx virtual host which already has sensible defaults for Dolibarr. Set to {} if you do not need any customization to the virtual host. If enabled, then by default, the {option}`serverName` is `${domain}`, SSL is active, and certificates are acquired via ACME. If this is set to null (the default), no nginx virtualHost will be configured. |
+| `services.dolibarr.nginx.acmeFallbackHost` | `null or string` | Host which to proxy requests to if ACME challenge is not found. Useful if you want multiple hosts to be able to verify the same domain name. With this option, you could request certificates for the present domain with an ACME client that is running on another host, which you would specify here. |
+| `services.dolibarr.nginx.acmeRoot` | `null or string` | Directory for the ACME challenge, which is **public**. Don't put certs or keys in here. Set to null to inherit from config.security.acme. |
+| `services.dolibarr.nginx.addSSL` | `boolean` | Whether to enable HTTPS in addition to plain HTTP. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443). |
+| `services.dolibarr.nginx.basicAuth` | `attribute set of string` | Basic Auth protection for a vhost. WARNING: This is implemented to store the password in plain text in the Nix store. |
+| `services.dolibarr.nginx.basicAuthFile` | `null or absolute path` | Basic Auth password file for a vhost. Can be created by running {command}`nix-shell --packages apacheHttpd --run 'htpasswd -B -c FILENAME USERNAME'`. |
+| `services.dolibarr.nginx.default` | `boolean` | Makes this vhost the default. |
+| `services.dolibarr.nginx.enableACME` | `boolean` | Whether to ask Let's Encrypt to sign a certificate for this vhost. Alternately, you can use an existing certificate through {option}`useACMEHost`. |
+| `services.dolibarr.nginx.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the vhost verbatim. |
+| `services.dolibarr.nginx.forceSSL` | `boolean` | Whether to add a separate nginx server block that redirects (defaults to 301, configurable with `redirectCode`) all plain HTTP traffic to HTTPS. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443), where the non-SSL listens are used for the redirect vhosts. |
+| `services.dolibarr.nginx.globalRedirect` | `null or string` | If set, all requests for this host are redirected (defaults to 301, configurable with `redirectCode`) to the given hostname. |
+| `services.dolibarr.nginx.http2` | `boolean` | Whether to enable the HTTP/2 protocol. Note that (as of writing) due to nginx's implementation, to disable HTTP/2 you have to disable it on all vhosts that use a given IP address / port. If there is one server block configured to enable http2, then it is enabled for all server blocks on this IP. See <https://stackoverflow.com/a/39466948/263061>. |
+| `services.dolibarr.nginx.http3` | `boolean` | Whether to enable the HTTP/3 protocol. This requires activating the QUIC transport protocol `services.nginx.virtualHosts.<name>.quic = true;`. Note that HTTP/3 support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> HTTP/3 availability must be manually advertised, preferably in each location block. |
+| `services.dolibarr.nginx.http3_hq` | `boolean` | Whether to enable the HTTP/0.9 protocol negotiation used in QUIC interoperability tests. This requires activating the QUIC transport protocol `services.nginx.virtualHosts.<name>.quic = true;`. Note that special application protocol support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> |
+| `services.dolibarr.nginx.kTLS` | `boolean` | Whether to enable kTLS support. Implementing TLS in the kernel (kTLS) improves performance by significantly reducing the need for copying operations between user space and the kernel. Required Nginx version 1.21.4 or later. |
+| `services.dolibarr.nginx.listen` | `list of (submodule)` | Listen addresses and ports for this virtual host. IPv6 addresses must be enclosed in square brackets. Note: this option overrides `addSSL` and `onlySSL`. If you only want to set the addresses manually and not the ports, take a look at `listenAddresses`. |
+| `services.dolibarr.nginx.listen.*.addr` | `string` | Listen address. |
+| `services.dolibarr.nginx.listen.*.extraParameters` | `list of string` | Extra parameters of this listen directive. |
+| `services.dolibarr.nginx.listen.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number to listen on. If unset and the listen address is not a socket then nginx defaults to 80. |
+| `services.dolibarr.nginx.listen.*.proxyProtocol` | `boolean` | Enable PROXY protocol. |
+| `services.dolibarr.nginx.listen.*.ssl` | `boolean` | Enable SSL. |
+| `services.dolibarr.nginx.listenAddresses` | `list of string` | Listen addresses for this virtual host. Compared to `listen` this only sets the addresses and the ports are chosen automatically. Note: This option overrides `networking.enableIPv6` |
+| `services.dolibarr.nginx.locations` | `attribute set of (submodule)` | Declarative location config |
+| `services.dolibarr.nginx.locations.<name>.alias` | `null or absolute path` | Alias directory for requests. |
+| `services.dolibarr.nginx.locations.<name>.basicAuth` | `attribute set of string` | Basic Auth protection for a vhost. WARNING: This is implemented to store the password in plain text in the Nix store. |
+| `services.dolibarr.nginx.locations.<name>.basicAuthFile` | `null or absolute path` | Basic Auth password file for a vhost. Can be created by running {command}`nix-shell --packages apacheHttpd --run 'htpasswd -B -c FILENAME USERNAME'`. |
+| `services.dolibarr.nginx.locations.<name>.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the location verbatim. |
+| `services.dolibarr.nginx.locations.<name>.fastcgiParams` | `attribute set of (string or absolute path)` | FastCGI parameters to override. Unlike in the Nginx configuration file, overriding only some default parameters won't unset the default values for other parameters. |
+| `services.dolibarr.nginx.locations.<name>.index` | `null or string` | Adds index directive. |
+| `services.dolibarr.nginx.locations.<name>.priority` | `signed integer` | Order of this location block in relation to the others in the vhost. The semantics are the same as with `lib.mkOrder`. Smaller values have a greater priority. |
+| `services.dolibarr.nginx.locations.<name>.proxyPass` | `null or string` | Adds proxy_pass directive and sets recommended proxy headers if recommendedProxySettings is enabled. |
+| `services.dolibarr.nginx.locations.<name>.proxyWebsockets` | `boolean` | Whether to support proxying websocket connections with HTTP/1.1. |
+| `services.dolibarr.nginx.locations.<name>.recommendedProxySettings` | `boolean` | Enable recommended proxy settings. |
+| `services.dolibarr.nginx.locations.<name>.recommendedUwsgiSettings` | `boolean` | Enable recommended uwsgi settings. |
+| `services.dolibarr.nginx.locations.<name>.return` | `null or string or signed integer` | Adds a return directive, for e.g. redirections. |
+| `services.dolibarr.nginx.locations.<name>.root` | `null or absolute path` | Root directory for requests. |
+| `services.dolibarr.nginx.locations.<name>.tryFiles` | `null or string` | Adds try_files directive. |
+| `services.dolibarr.nginx.locations.<name>.uwsgiPass` | `null or string` | Adds uwsgi_pass directive and sets recommended proxy headers if recommendedUwsgiSettings is enabled. |
+| `services.dolibarr.nginx.onlySSL` | `boolean` | Whether to enable HTTPS and reject plain HTTP connections. This will set defaults for `listen` to listen on all interfaces on port 443. |
+| `services.dolibarr.nginx.quic` | `boolean` | Whether to enable the QUIC transport protocol. Note that QUIC support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> |
+| `services.dolibarr.nginx.redirectCode` | `integer between 300 and 399 (both inclusive)` | HTTP status used by `globalRedirect` and `forceSSL`. Possible usecases include temporary (302, 307) redirects, keeping the request method and body (307, 308), or explicitly resetting the method to GET (303). See <https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections>. |
+| `services.dolibarr.nginx.rejectSSL` | `boolean` | Whether to listen for and reject all HTTPS connections to this vhost. Useful in [default](#opt-services.nginx.virtualHosts._name_.default) server blocks to avoid serving the certificate for another vhost. Uses the `ssl_reject_handshake` directive available in nginx versions 1.19.4 and above. |
+| `services.dolibarr.nginx.reuseport` | `boolean` | Create an individual listening socket . It is required to specify only once on one of the hosts. |
+| `services.dolibarr.nginx.root` | `null or absolute path` | The path of the web root directory. |
+| `services.dolibarr.nginx.serverAliases` | `list of string` | Additional names of virtual hosts served by this virtual host configuration. |
+| `services.dolibarr.nginx.serverName` | `null or string` | Name of this virtual host. Defaults to attribute name in virtualHosts. |
+| `services.dolibarr.nginx.sslCertificate` | `absolute path` | Path to server SSL certificate. |
+| `services.dolibarr.nginx.sslCertificateKey` | `absolute path` | Path to server SSL certificate key. |
+| `services.dolibarr.nginx.sslTrustedCertificate` | `null or absolute path` | Path to root SSL certificate for stapling and client certificates. |
+| `services.dolibarr.nginx.useACMEHost` | `null or string` | A host of an existing Let's Encrypt certificate to use. This is useful if you have many subdomains and want to avoid hitting the [rate limit](https://letsencrypt.org/docs/rate-limits). Alternately, you can generate a certificate through {option}`enableACME`. *Note that this option does not create any certificates, nor it does add subdomains to existing ones – you will need to create them manually using [](#opt-security.acme.certs).* |
+| `services.dolibarr.package` | `package` | The dolibarr package to use. |
+| `services.dolibarr.poolConfig` | `attribute set of (string or signed integer or boolean)` | Options for the Dolibarr PHP pool. See the documentation on [`php-fpm.conf`](https://www.php.net/manual/en/install.fpm.configuration.php) for details on configuration directives. |
+| `services.dolibarr.settings` | `attribute set of (boolean or signed integer or string)` | Dolibarr settings, see <https://github.com/Dolibarr/dolibarr/blob/develop/htdocs/conf/conf.php.example> for details. |
+| `services.dolibarr.stateDir` | `string` | State and configuration directory dolibarr will use. |
+| `services.dolibarr.user` | `string` | User account under which dolibarr runs. ::: {.note} If left as the default value this user will automatically be created on system activation, otherwise you are responsible for ensuring the user exists before the dolibarr application starts. ::: |

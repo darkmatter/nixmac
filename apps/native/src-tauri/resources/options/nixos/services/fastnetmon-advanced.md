@@ -5,10 +5,10 @@
 All options under `services.fastnetmon-advanced`.
 
 | Option | Type | Description |
-| --------------------------------------------------------------- | ---- | ----------- |
-| `services.fastnetmon-advanced.bgpPeers` | | |
-| `services.fastnetmon-advanced.enable` | | |
-| `services.fastnetmon-advanced.enableAdvancedTrafficPersistence` | | |
-| `services.fastnetmon-advanced.hostgroups` | | |
-| `services.fastnetmon-advanced.settings` | | |
-| `services.fastnetmon-advanced.traffic_db.settings` | | |
+| --- | --- | --- |
+| `services.fastnetmon-advanced.bgpPeers` | `attribute set of (YAML 1.1 value)` | BGP Peers to declaratively load into FastNetMon Advanced |
+| `services.fastnetmon-advanced.enable` | `boolean` | Whether to enable the fastnetmon-advanced DDoS Protection daemon. |
+| `services.fastnetmon-advanced.enableAdvancedTrafficPersistence` | `boolean` | Store historical flow data in clickhouse |
+| `services.fastnetmon-advanced.hostgroups` | `attribute set of (YAML 1.1 value)` | Hostgroups to declaratively load into FastNetMon Advanced |
+| `services.fastnetmon-advanced.settings` | `YAML 1.1 value` | Extra configuration options to declaratively load into FastNetMon Advanced. See the [FastNetMon Advanced Configuration options reference](https://fastnetmon.com/docs-fnm-advanced/fastnetmon-advanced-configuration-options/) for more details. |
+| `services.fastnetmon-advanced.traffic_db.settings` | `YAML 1.1 value` | Additional settings for /etc/fastnetmon/traffic_db.conf |

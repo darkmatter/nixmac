@@ -5,48 +5,48 @@
 All options under `services.discourse`.
 
 | Option | Type | Description |
-| ------------------------------------------------------ | ---- | ----------- |
-| `services.discourse.admin.email` | | |
-| `services.discourse.admin.fullName` | | |
-| `services.discourse.admin.passwordFile` | | |
-| `services.discourse.admin.skipCreate` | | |
-| `services.discourse.admin.username` | | |
-| `services.discourse.backendSettings` | | |
-| `services.discourse.database.createLocally` | | |
-| `services.discourse.database.host` | | |
-| `services.discourse.database.ignorePostgresqlVersion` | | |
-| `services.discourse.database.name` | | |
-| `services.discourse.database.passwordFile` | | |
-| `services.discourse.database.pool` | | |
-| `services.discourse.database.username` | | |
-| `services.discourse.enable` | | |
-| `services.discourse.enableACME` | | |
-| `services.discourse.hostname` | | |
-| `services.discourse.mail.contactEmailAddress` | | |
-| `services.discourse.mail.incoming.apiKeyFile` | | |
-| `services.discourse.mail.incoming.enable` | | |
-| `services.discourse.mail.incoming.mailReceiverPackage` | | |
-| `services.discourse.mail.incoming.replyEmailAddress` | | |
-| `services.discourse.mail.notificationEmailAddress` | | |
-| `services.discourse.mail.outgoing.authentication` | | |
-| `services.discourse.mail.outgoing.domain` | | |
-| `services.discourse.mail.outgoing.enableStartTLSAuto` | | |
-| `services.discourse.mail.outgoing.forceTLS` | | |
-| `services.discourse.mail.outgoing.opensslVerifyMode` | | |
-| `services.discourse.mail.outgoing.passwordFile` | | |
-| `services.discourse.mail.outgoing.port` | | |
-| `services.discourse.mail.outgoing.serverAddress` | | |
-| `services.discourse.mail.outgoing.username` | | |
-| `services.discourse.nginx.enable` | | |
-| `services.discourse.package` | | |
-| `services.discourse.plugins` | | |
-| `services.discourse.redis.dbNumber` | | |
-| `services.discourse.redis.host` | | |
-| `services.discourse.redis.passwordFile` | | |
-| `services.discourse.redis.useSSL` | | |
-| `services.discourse.secretKeyBaseFile` | | |
-| `services.discourse.sidekiqProcesses` | | |
-| `services.discourse.siteSettings` | | |
-| `services.discourse.sslCertificate` | | |
-| `services.discourse.sslCertificateKey` | | |
-| `services.discourse.unicornTimeout` | | |
+| --- | --- | --- |
+| `services.discourse.admin.email` | `string` | The admin user email address. |
+| `services.discourse.admin.fullName` | `string` | The admin user's full name. |
+| `services.discourse.admin.passwordFile` | `absolute path` | A path to a file containing the admin user's password. This should be a string, not a nix path, since nix paths are copied into the world-readable nix store. |
+| `services.discourse.admin.skipCreate` | `boolean` | Do not create the admin account, instead rely on other existing admin accounts. |
+| `services.discourse.admin.username` | `string` | The admin user username. |
+| `services.discourse.backendSettings` | `attribute set of (null or string or signed integer or boolean or floating point number)` | Additional settings to put in the {file}`discourse.conf` file. Look in the [discourse_defaults.conf](https://github.com/discourse/discourse/blob/master/config/discourse_defaults.conf) file in the upstream distribution to find available options. Setting an option to `null` means “define variable, but leave right-hand side empty”. |
+| `services.discourse.database.createLocally` | `boolean` | Whether a database should be automatically created on the local host. Set this to `false` if you plan on provisioning a local database yourself. This has no effect if {option}`services.discourse.database.host` is customized. |
+| `services.discourse.database.host` | `null or string` | Discourse database hostname. `null` means “prefer local unix socket connection”. |
+| `services.discourse.database.ignorePostgresqlVersion` | `boolean` | Whether to allow other versions of PostgreSQL than the recommended one. Only effective when {option}`services.discourse.database.createLocally` is enabled. |
+| `services.discourse.database.name` | `string` | Discourse database name. |
+| `services.discourse.database.passwordFile` | `null or absolute path` | File containing the Discourse database user password. This should be a string, not a nix path, since nix paths are copied into the world-readable nix store. |
+| `services.discourse.database.pool` | `signed integer` | Database connection pool size. |
+| `services.discourse.database.username` | `string` | Discourse database user. |
+| `services.discourse.enable` | `boolean` | Whether to enable Discourse, an open source discussion platform. |
+| `services.discourse.enableACME` | `boolean` | Whether an ACME certificate should be used to secure connections to the server. |
+| `services.discourse.hostname` | `string` | The hostname to serve Discourse on. |
+| `services.discourse.mail.contactEmailAddress` | `string` | Email address of key contact responsible for this site. Used for critical notifications, as well as on the `/about` contact form for urgent matters. |
+| `services.discourse.mail.incoming.apiKeyFile` | `null or absolute path` | A file containing the Discourse API key used to add posts and messages from mail. If left at its default value `null`, one will be automatically generated. This should be a string, not a nix path, since nix paths are copied into the world-readable nix store. |
+| `services.discourse.mail.incoming.enable` | `boolean` | Whether to set up Postfix to receive incoming mail. |
+| `services.discourse.mail.incoming.mailReceiverPackage` | `package` | The discourse-mail-receiver package to use. |
+| `services.discourse.mail.incoming.replyEmailAddress` | `string` | Template for reply by email incoming email address, for example: %{reply_key}@reply.example.com or replies+%{reply_key}@example.com |
+| `services.discourse.mail.notificationEmailAddress` | `string` | The `from:` email address used when sending all essential system emails. The domain specified here must have SPF, DKIM and reverse PTR records set correctly for email to arrive. |
+| `services.discourse.mail.outgoing.authentication` | `null or one of "plain", "login", "cram_md5"` | Authentication type to use, see <https://api.rubyonrails.org/classes/ActionMailer/Base.html> |
+| `services.discourse.mail.outgoing.domain` | `string` | HELO domain to use for outgoing mail. |
+| `services.discourse.mail.outgoing.enableStartTLSAuto` | `boolean` | Whether to try to use StartTLS. |
+| `services.discourse.mail.outgoing.forceTLS` | `boolean` | Force implicit TLS as per RFC 8314 3.3. |
+| `services.discourse.mail.outgoing.opensslVerifyMode` | `string` | How OpenSSL checks the certificate, see <https://api.rubyonrails.org/classes/ActionMailer/Base.html> |
+| `services.discourse.mail.outgoing.passwordFile` | `null or absolute path` | A file containing the password of the SMTP server account. This should be a string, not a nix path, since nix paths are copied into the world-readable nix store. |
+| `services.discourse.mail.outgoing.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port of the SMTP server Discourse should use to send email. |
+| `services.discourse.mail.outgoing.serverAddress` | `string` | The address of the SMTP server Discourse should use to send email. |
+| `services.discourse.mail.outgoing.username` | `null or string` | The username of the SMTP server. |
+| `services.discourse.nginx.enable` | `boolean` | Whether an `nginx` virtual host should be set up to serve Discourse. Only disable if you're planning to use a different web server, which is not recommended. |
+| `services.discourse.package` | `package` | The discourse package to use. |
+| `services.discourse.plugins` | `list of package` | Plugins to install as part of Discourse, expressed as a list of derivations. |
+| `services.discourse.redis.dbNumber` | `signed integer` | Redis database number. |
+| `services.discourse.redis.host` | `string` | Redis server hostname. |
+| `services.discourse.redis.passwordFile` | `null or absolute path` | File containing the Redis password. This should be a string, not a nix path, since nix paths are copied into the world-readable nix store. |
+| `services.discourse.redis.useSSL` | `boolean` | Connect to Redis with SSL. |
+| `services.discourse.secretKeyBaseFile` | `null or absolute path` | The path to a file containing the `secret_key_base` secret. Discourse uses `secret_key_base` to encrypt the cookie store, which contains session data, and to digest user auth tokens. Needs to be a 64 byte long string of hexadecimal characters. You can generate one by running `openssl rand -hex 64 >/path/to/secret_key_base_file` This should be a string, not a nix path, since nix paths are copied into the world-readable nix store. |
+| `services.discourse.sidekiqProcesses` | `signed integer` | How many Sidekiq processes should be spawned. |
+| `services.discourse.siteSettings` | `JSON value` | Discourse site settings. These are the settings that can be changed from the UI. This only defines their default values: they can still be overridden from the UI. Available settings can be found by looking in the [site_settings.yml](https://github.com/discourse/discourse/blob/master/config/site_settings.yml) file of the upstream distribution. To find a setting's path, you only need to care about the first two levels; i.e. its category and name. See the example. Settings containing secret data should be set to an attribute set containing the attribute `_secret` - a string pointing to a file containing the value the option should be set to. See the example to get a better picture of this: in the resulting {file}`config/nixos_site_settings.json` file, the `login.github_client_secret` key will be set to the contents of the {file}`/run/keys/discourse_github_client_secret` file. |
+| `services.discourse.sslCertificate` | `null or absolute path` | The path to the server SSL certificate. Set this to enable SSL. |
+| `services.discourse.sslCertificateKey` | `null or absolute path` | The path to the server SSL certificate key. Set this to enable SSL. |
+| `services.discourse.unicornTimeout` | `signed integer` | Time in seconds before a request to Unicorn times out. This can be raised if the system Discourse is running on is too slow to handle many requests within 30 seconds. |

@@ -5,9 +5,9 @@
 All options under `services.livebook`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.livebook.enableUserService` | | |
-| `services.livebook.environment` | | |
-| `services.livebook.environmentFile` | | |
-| `services.livebook.extraPackages` | | |
-| `services.livebook.package` | | |
+| --- | --- | --- |
+| `services.livebook.enableUserService` | `boolean` | Whether to enable a user service for Livebook. |
+| `services.livebook.environment` | `attribute set of (null or boolean or signed integer or string)` | Environment variables to set. Livebook is configured through the use of environment variables. The available configuration options can be found in the [Livebook documentation](https://hexdocs.pm/livebook/readme.html#environment-variables). Note that all environment variables set through this configuration parameter will be readable by anyone with access to the host machine. Therefore, sensitive information like {env}`LIVEBOOK_PASSWORD` or {env}`LIVEBOOK_COOKIE` should never be set using this configuration option, but should instead use [](#opt-services.livebook.environmentFile). See the documentation for that option for more information. Any environment variables specified in the [](#opt-services.livebook.environmentFile) will supersede environment variables specified in this option. |
+| `services.livebook.environmentFile` | `null or absolute path` | Additional environment file as defined in {manpage}`systemd.exec(5)`. Secrets like {env}`LIVEBOOK_PASSWORD` (which is used to specify the password needed to access the livebook site) or {env}`LIVEBOOK_COOKIE` (which is used to specify the [cookie](https://www.erlang.org/doc/reference_manual/distributed.html#security) used to connect to the running Elixir system) may be passed to the service without making them readable to everyone with access to systemctl by using this configuration parameter. Note that this file needs to be available on the host on which `livebook` is running. For security purposes, this file should contain at least {env}`LIVEBOOK_PASSWORD` or {env}`LIVEBOOK_TOKEN_ENABLED=false`. See the [Livebook documentation](https://hexdocs.pm/livebook/readme.html#environment-variables) and the [](#opt-services.livebook.environment) configuration parameter for further options. |
+| `services.livebook.extraPackages` | `list of package` | Extra packages to make available to the Livebook service. |
+| `services.livebook.package` | `package` | The livebook package to use. |

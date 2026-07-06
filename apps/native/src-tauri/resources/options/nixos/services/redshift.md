@@ -5,15 +5,12 @@
 All options under `services.redshift`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.redshift.brightness.day` | | |
-| `services.redshift.brightness.night` | | |
-| `services.redshift.enable` | | |
-| `services.redshift.executable` | | |
-| `services.redshift.extraOptions` | | |
-| `services.redshift.latitude` | | |
-| `services.redshift.longitude` | | |
-| `services.redshift.package` | | |
-| `services.redshift.provider` | | |
-| `services.redshift.temperature.day` | | |
-| `services.redshift.temperature.night` | | |
+| --- | --- | --- |
+| `services.redshift.brightness.day` | `string` | Screen brightness to apply during the day, between `0.1` and `1.0`. |
+| `services.redshift.brightness.night` | `string` | Screen brightness to apply during the night, between `0.1` and `1.0`. |
+| `services.redshift.enable` | `boolean` | Enable Redshift to change your screen's colour temperature depending on the time of day. |
+| `services.redshift.executable` | `string` | Redshift executable to use within the package. |
+| `services.redshift.extraOptions` | `list of string` | Additional command-line arguments to pass to {command}`redshift`. |
+| `services.redshift.package` | `package` | The redshift package to use. |
+| `services.redshift.temperature.day` | `integer between 1000 and 25000 (both inclusive)` | Colour temperature to use during the day, between `1000` and `25000` K. |
+| `services.redshift.temperature.night` | `integer between 1000 and 25000 (both inclusive)` | Colour temperature to use at night, between `1000` and `25000` K. |

@@ -5,7 +5,7 @@
 All options under `services.rspamd-trainer`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.rspamd-trainer.enable` | | |
-| `services.rspamd-trainer.secrets` | | |
-| `services.rspamd-trainer.settings` | | |
+| --- | --- | --- |
+| `services.rspamd-trainer.enable` | `boolean` | Whether to enable Spam/ham trainer for rspamd. |
+| `services.rspamd-trainer.secrets` | `list of absolute path` | A list of files containing the various secrets. Should be in the format expected by systemd's `EnvironmentFile` directory. For the IMAP account password use `PASSWORD = mypassword`. |
+| `services.rspamd-trainer.settings` | `open submodule of (TOML value)` | IMAP authentication configuration for rspamd-trainer. For supplying the IMAP password, use the `secrets` option. |

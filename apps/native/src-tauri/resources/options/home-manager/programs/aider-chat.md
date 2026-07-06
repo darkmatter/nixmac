@@ -5,7 +5,7 @@
 All options under `programs.aider-chat`.
 
 | Option | Type | Description |
-| ------------------------------ | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| --- | --- | --- |
 | `programs.aider-chat.enable` | `boolean` | Whether to enable aider-chat. |
 | `programs.aider-chat.package` | `null or package` | The aider-chat package to use. |
-| `programs.aider-chat.settings` | `YAML 1.1 value` | Configuration settings for aider-chat. All the available options can be found here: https://aider.chat/docs/config/aider_conf.html#sample-yaml-config-file . |
+| `programs.aider-chat.settings` | `YAML 1.1 value` | Configuration settings for aider-chat. All the available options can be found here: <https://aider.chat/docs/config/aider_conf.html#sample-yaml-config-file>. |

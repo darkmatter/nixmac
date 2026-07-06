@@ -5,7 +5,7 @@
 All options under `services.zrepl`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.zrepl.enable` | | |
-| `services.zrepl.package` | | |
-| `services.zrepl.settings` | | |
+| --- | --- | --- |
+| `services.zrepl.enable` | `boolean` | Whether to enable zrepl. |
+| `services.zrepl.package` | `package` | The zrepl package to use. |
+| `services.zrepl.settings` | `open submodule of (YAML 1.1 value)` | Configuration for zrepl. See <https://zrepl.github.io/configuration.html> for more information. |

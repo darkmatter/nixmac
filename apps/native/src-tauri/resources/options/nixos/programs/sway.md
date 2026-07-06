@@ -5,12 +5,12 @@
 All options under `programs.sway`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `programs.sway.enable` | | |
-| `programs.sway.extraOptions` | | |
-| `programs.sway.extraPackages` | | |
-| `programs.sway.extraSessionCommands` | | |
-| `programs.sway.package` | | |
-| `programs.sway.wrapperFeatures.base` | | |
-| `programs.sway.wrapperFeatures.gtk` | | |
-| `programs.sway.xwayland.enable` | | |
+| --- | --- | --- |
+| `programs.sway.enable` | `boolean` | Whether to enable Sway, the i3-compatible tiling Wayland compositor. You can manually launch Sway by executing "exec sway" on a TTY. Copy /etc/sway/config to ~/.config/sway/config to modify the default configuration. See <https://github.com/swaywm/sway/wiki> and "man 5 sway" for more information. |
+| `programs.sway.extraOptions` | `list of string` | Command line arguments passed to launch Sway. Please DO NOT report issues if you use an unsupported GPU (proprietary drivers). |
+| `programs.sway.extraPackages` | `list of package` | Extra packages to be installed system wide. See <https://github.com/swaywm/sway/wiki/Useful-add-ons-for-sway> and <https://github.com/swaywm/sway/wiki/i3-Migration-Guide#common-x11-apps-used-on-i3-with-wayland-alternatives> for a list of useful software. |
+| `programs.sway.extraSessionCommands` | `strings concatenated with "\n"` | Shell commands executed just before Sway is started. See <https://github.com/swaywm/sway/wiki/Running-programs-natively-under-wayland> and <https://github.com/swaywm/wlroots/blob/master/docs/env_vars.md> for some useful environment variables. |
+| `programs.sway.package` | `null or package` | The sway package to use. If the package is not overridable with `extraSessionCommands`, `extraOptions`, `withBaseWrapper`, `withGtkWrapper`, `enableXWayland` and `isNixOS`, then the module options {option}`wrapperFeatures`, {option}`extraSessionCommands`, {option}`extraOptions` and {option}`xwayland` will have no effect. Set to `null` to not add any Sway package to your path. This should be done if you want to use the Home Manager Sway module to install Sway. |
+| `programs.sway.wrapperFeatures.base` | `boolean` | Whether to enable the base wrapper to execute extra session commands and prepend a dbus-run-session to the sway command. |
+| `programs.sway.wrapperFeatures.gtk` | `boolean` | Whether to enable the wrapGAppsHook wrapper to execute sway with required environment variables for GTK applications. |
+| `programs.sway.xwayland.enable` | `boolean` | Whether to enable XWayland. |

@@ -5,6 +5,6 @@
 All options under `services.network-manager-applet`.
 
 | Option | Type | Description |
-| ----------------------------------------- | --------- | --------------------------------------------------------- |
+| --- | --- | --- |
 | `services.network-manager-applet.enable` | `boolean` | Whether to enable the Network Manager applet (nm-applet). |
 | `services.network-manager-applet.package` | `package` | The networkmanagerapplet package to use. |

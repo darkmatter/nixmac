@@ -5,5 +5,5 @@
 All options under `programs.xfconf`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `programs.xfconf.enable` | | |
+| --- | --- | --- |
+| `programs.xfconf.enable` | `boolean` | Whether to enable Xfconf, the Xfce configuration storage system. |

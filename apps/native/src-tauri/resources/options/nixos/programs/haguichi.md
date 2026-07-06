@@ -5,5 +5,5 @@
 All options under `programs.haguichi`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `programs.haguichi.enable` | | |
+| --- | --- | --- |
+| `programs.haguichi.enable` | `boolean` | Whether to enable Haguichi, a Linux GUI frontend to the proprietary LogMeIn Hamachi. |

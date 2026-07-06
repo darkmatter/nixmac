@@ -5,252 +5,415 @@
 All options under `security`.
 
 | Option | Type | Description |
-| ----------------------------------------------- | ---- | ----------- |
-| `security.acme.acceptTerms` | | |
-| `security.acme.activationDelay` | | |
-| `security.acme.certs` | | |
-| `security.acme.defaults` | | |
-| `security.acme.directory` | | |
-| `security.acme.email` | | |
-| `security.acme.enableDebugLogs` | | |
-| `security.acme.maxConcurrentRenewals` | | |
-| `security.acme.preDelay` | | |
-| `security.acme.preliminarySelfsigned` | | |
-| `security.acme.production` | | |
-| `security.acme.renewInterval` | | |
-| `security.acme.server` | | |
-| `security.acme.useRoot` | | |
-| `security.acme.validMin` | | |
-| `security.acme.validMinDays` | | |
-| `security.agnos.enable` | | |
-| `security.agnos.generateKeys.enable` | | |
-| `security.agnos.generateKeys.keySize` | | |
-| `security.agnos.group` | | |
-| `security.agnos.persistent` | | |
-| `security.agnos.server` | | |
-| `security.agnos.serverCa` | | |
-| `security.agnos.settings` | | |
-| `security.agnos.startAt` | | |
-| `security.agnos.temporarilyOpenFirewall` | | |
-| `security.agnos.user` | | |
-| `security.allowSimultaneousMultithreading` | | |
-| `security.allowUserNamespaces` | | |
-| `security.apparmor.confineSUIDApplications` | | |
-| `security.apparmor.enable` | | |
-| `security.apparmor.enableCache` | | |
-| `security.apparmor.includes` | | |
-| `security.apparmor.killUnconfinedConfinables` | | |
-| `security.apparmor.packages` | | |
-| `security.apparmor.policies` | | |
-| `security.apparmor.profiles` | | |
-| `security.audit.backlogLimit` | | |
-| `security.audit.enable` | | |
-| `security.audit.failureMode` | | |
-| `security.audit.package` | | |
-| `security.audit.rateLimit` | | |
-| `security.audit.rules` | | |
-| `security.auditd.enable` | | |
-| `security.auditd.package` | | |
-| `security.auditd.plugins` | | |
-| `security.auditd.settings` | | |
-| `security.chromiumSuidSandbox.enable` | | |
-| `security.dhparams` | | |
-| `security.doas.enable` | | |
-| `security.doas.extraConfig` | | |
-| `security.doas.extraRules` | | |
-| `security.doas.package` | | |
-| `security.doas.wheelNeedsPassword` | | |
-| `security.duosec.acceptEnvFactor` | | |
-| `security.duosec.allowTcpForwarding` | | |
-| `security.duosec.autopush` | | |
-| `security.duosec.failmode` | | |
-| `security.duosec.fallbackLocalIP` | | |
-| `security.duosec.group` | | |
-| `security.duosec.groups` | | |
-| `security.duosec.host` | | |
-| `security.duosec.ikey` | | |
-| `security.duosec.integrationKey` | | |
-| `security.duosec.motd` | | |
-| `security.duosec.pam.enable` | | |
-| `security.duosec.prompts` | | |
-| `security.duosec.pushinfo` | | |
-| `security.duosec.secretKeyFile` | | |
-| `security.duosec.skey` | | |
-| `security.duosec.ssh.enable` | | |
-| `security.enableWrappers` | | |
-| `security.forcePageTableIsolation` | | |
-| `security.googleOsLogin.enable` | | |
-| `security.hideProcessInformation` | | |
-| `security.initialRootPassword` | | |
-| `security.ipa.basedn` | | |
-| `security.ipa.cacheCredentials` | | |
-| `security.ipa.certificate` | | |
-| `security.ipa.chromiumSupport` | | |
-| `security.ipa.domain` | | |
-| `security.ipa.dyndns.enable` | | |
-| `security.ipa.dyndns.interface` | | |
-| `security.ipa.enable` | | |
-| `security.ipa.ifpAllowedUids` | | |
-| `security.ipa.ipaHostname` | | |
-| `security.ipa.offlinePasswords` | | |
-| `security.ipa.realm` | | |
-| `security.ipa.server` | | |
-| `security.ipa.shells` | | |
-| `security.ipa.useAsTimeserver` | | |
-| `security.isolate.boxRoot` | | |
-| `security.isolate.cgRoot` | | |
-| `security.isolate.enable` | | |
-| `security.isolate.extraConfig` | | |
-| `security.isolate.firstGid` | | |
-| `security.isolate.firstUid` | | |
-| `security.isolate.lockRoot` | | |
-| `security.isolate.numBoxes` | | |
-| `security.isolate.package` | | |
-| `security.isolate.restrictedInit` | | |
-| `security.klogd.enable` | | |
-| `security.krb5.enable` | | |
-| `security.krb5.package` | | |
-| `security.krb5.settings` | | |
-| `security.lockKernelModules` | | |
-| `security.loginDefs.chfnRestrict` | | |
-| `security.loginDefs.package` | | |
-| `security.loginDefs.settings` | | |
-| `security.lsm` | | |
-| `security.pam.dp9ik.authserver` | | |
-| `security.pam.dp9ik.control` | | |
-| `security.pam.dp9ik.enable` | | |
-| `security.pam.enableEcryptfs` | | |
-| `security.pam.enableFscrypt` | | |
-| `security.pam.enableOTPW` | | |
-| `security.pam.enableSSHAgentAuth` | | |
-| `security.pam.enableU2F` | | |
-| `security.pam.enableUMask` | | |
-| `security.pam.howdy.control` | | |
-| `security.pam.howdy.enable` | | |
-| `security.pam.krb5.enable` | | |
-| `security.pam.loginLimits` | | |
-| `security.pam.makeHomeDir.skelDirectory` | | |
-| `security.pam.makeHomeDir.umask` | | |
-| `security.pam.mount.additionalSearchPaths` | | |
-| `security.pam.mount.createMountPoints` | | |
-| `security.pam.mount.cryptMountOptions` | | |
-| `security.pam.mount.debugLevel` | | |
-| `security.pam.mount.enable` | | |
-| `security.pam.mount.extraVolumes` | | |
-| `security.pam.mount.fuseMountOptions` | | |
-| `security.pam.mount.logoutHup` | | |
-| `security.pam.mount.logoutKill` | | |
-| `security.pam.mount.logoutTerm` | | |
-| `security.pam.mount.logoutWait` | | |
-| `security.pam.mount.removeCreatedMountPoints` | | |
-| `security.pam.oath.digits` | | |
-| `security.pam.oath.enable` | | |
-| `security.pam.oath.usersFile` | | |
-| `security.pam.oath.window` | | |
-| `security.pam.p11.control` | | |
-| `security.pam.p11.enable` | | |
-| `security.pam.package` | | |
-| `security.pam.rssh.enable` | | |
-| `security.pam.rssh.settings` | | |
-| `security.pam.services` | | |
-| `security.pam.sshAgentAuth.authorizedKeysFiles` | | |
-| `security.pam.sshAgentAuth.enable` | | |
-| `security.pam.u2f.appId` | | |
-| `security.pam.u2f.authFile` | | |
-| `security.pam.u2f.control` | | |
-| `security.pam.u2f.cue` | | |
-| `security.pam.u2f.debug` | | |
-| `security.pam.u2f.enable` | | |
-| `security.pam.u2f.interactive` | | |
-| `security.pam.u2f.origin` | | |
-| `security.pam.u2f.settings` | | |
-| `security.pam.ussh.authorizedPrincipals` | | |
-| `security.pam.ussh.authorizedPrincipalsFile` | | |
-| `security.pam.ussh.caFile` | | |
-| `security.pam.ussh.control` | | |
-| `security.pam.ussh.enable` | | |
-| `security.pam.ussh.group` | | |
-| `security.pam.yubico.challengeResponsePath` | | |
-| `security.pam.yubico.control` | | |
-| `security.pam.yubico.debug` | | |
-| `security.pam.yubico.enable` | | |
-| `security.pam.yubico.id` | | |
-| `security.pam.yubico.mode` | | |
-| `security.pam.zfs.enable` | | |
-| `security.pam.zfs.homes` | | |
-| `security.pam.zfs.mountRecursively` | | |
-| `security.pam.zfs.noUnmount` | | |
-| `security.pki.caBundle` | | |
-| `security.pki.caCertificateBlacklist` | | |
-| `security.pki.certificateFiles` | | |
-| `security.pki.certificates` | | |
-| `security.pki.installCACerts` | | |
-| `security.pki.useCompatibleBundle` | | |
-| `security.please.enable` | | |
-| `security.please.package` | | |
-| `security.please.settings` | | |
-| `security.please.wheelNeedsPassword` | | |
-| `security.polkit.adminIdentities` | | |
-| `security.polkit.debug` | | |
-| `security.polkit.enable` | | |
-| `security.polkit.extraConfig` | | |
-| `security.polkit.package` | | |
-| `security.protectKernelImage` | | |
-| `security.rngd` | | |
-| `security.rtkit.args` | | |
-| `security.rtkit.enable` | | |
-| `security.rtkit.package` | | |
-| `security.run0.enableSudoAlias` | | |
-| `security.run0.wheelNeedsPassword` | | |
-| `security.setuidOwners` | | |
-| `security.setuidPrograms` | | |
-| `security.shadow.enable` | | |
-| `security.shadow.su.package` | | |
-| `security.soteria.enable` | | |
-| `security.soteria.package` | | |
-| `security.sudo-rs.configFile` | | |
-| `security.sudo-rs.defaultOptions` | | |
-| `security.sudo-rs.enable` | | |
-| `security.sudo-rs.execWheelOnly` | | |
-| `security.sudo-rs.extraConfig` | | |
-| `security.sudo-rs.extraRules` | | |
-| `security.sudo-rs.package` | | |
-| `security.sudo-rs.wheelNeedsPassword` | | |
-| `security.sudo.configFile` | | |
-| `security.sudo.defaultOptions` | | |
-| `security.sudo.enable` | | |
-| `security.sudo.execWheelOnly` | | |
-| `security.sudo.extraConfig` | | |
-| `security.sudo.extraRules` | | |
-| `security.sudo.keepTerminfo` | | |
-| `security.sudo.package` | | |
-| `security.sudo.wheelNeedsPassword` | | |
-| `security.tpm2.abrmd.enable` | | |
-| `security.tpm2.abrmd.package` | | |
-| `security.tpm2.applyUdevRules` | | |
-| `security.tpm2.enable` | | |
-| `security.tpm2.fapi.ekCertLess` | | |
-| `security.tpm2.fapi.ekFingerprint` | | |
-| `security.tpm2.fapi.firmwareLogFile` | | |
-| `security.tpm2.fapi.imaLogFile` | | |
-| `security.tpm2.fapi.logDir` | | |
-| `security.tpm2.fapi.profileDir` | | |
-| `security.tpm2.fapi.profileName` | | |
-| `security.tpm2.fapi.systemDir` | | |
-| `security.tpm2.fapi.systemPcrs` | | |
-| `security.tpm2.fapi.tcti` | | |
-| `security.tpm2.fapi.userDir` | | |
-| `security.tpm2.pkcs11.enable` | | |
-| `security.tpm2.pkcs11.package` | | |
-| `security.tpm2.tctiEnvironment.deviceConf` | | |
-| `security.tpm2.tctiEnvironment.enable` | | |
-| `security.tpm2.tctiEnvironment.interface` | | |
-| `security.tpm2.tctiEnvironment.tabrmdConf` | | |
-| `security.tpm2.tssGroup` | | |
-| `security.tpm2.tssUser` | | |
-| `security.unprivilegedUsernsClone` | | |
-| `security.virtualisation.flushL1DataCache` | | |
-| `security.virtualization.flushL1DataCache` | | |
-| `security.wrapperDir` | | |
-| `security.wrapperDirSize` | | |
-| `security.wrappers` | | |
+| --- | --- | --- |
+| `security.acme.acceptTerms` | `boolean` | Accept the CA's terms of service. The default provider is Let's Encrypt, you can find their ToS at <https://letsencrypt.org/repository/>. |
+| `security.acme.certs` | `attribute set of (submodule)` | Attribute set of certificates to get signed and renewed. Creates `acme-${cert}.{service,timer}` systemd units for each certificate defined here. Other services can add dependencies to those units if they rely on the certificates being present, or trigger restarts of the service if certificates get renewed. |
+| `security.acme.certs.<name>.credentialFiles` | `attribute set of absolute path` | Environment variables suffixed by "\_FILE" to set for the cert's service for your selected dnsProvider. To find out what values you need to set, consult the documentation at <https://go-acme.github.io/lego/dns/> for the corresponding dnsProvider. This allows to securely pass credential files to lego by leveraging systemd credentials. |
+| `security.acme.certs.<name>.csr` | `null or string` | Path to a certificate signing request to apply when fetching the certificate. |
+| `security.acme.certs.<name>.csrKey` | `null or string` | Path to the private key to the matching certificate signing request. |
+| `security.acme.certs.<name>.directory` | `string` | Directory where certificate and other state is stored. |
+| `security.acme.certs.<name>.dnsPropagationCheck` | `boolean` | Toggles lego DNS propagation check, which is used alongside DNS-01 challenge to ensure the DNS entries required are available. |
+| `security.acme.certs.<name>.dnsProvider` | `null or string` | DNS Challenge provider. For a list of supported providers, see the "code" field of the DNS providers listed at <https://go-acme.github.io/lego/dns/>. |
+| `security.acme.certs.<name>.dnsResolver` | `null or string` | Set the resolver to use for performing recursive DNS queries. Supported: host:port. The default is to use the system resolvers, or Google's DNS resolvers if the system's cannot be determined. |
+| `security.acme.certs.<name>.domain` | `string` | Domain to fetch certificate for (defaults to the entry name). |
+| `security.acme.certs.<name>.email` | `null or string` | Email address for account creation and correspondence from the CA. It is recommended to use the same email for all certs to avoid account creation limits. |
+| `security.acme.certs.<name>.enableDebugLogs` | `boolean` | Whether to enable debug logging for this certificate. |
+| `security.acme.certs.<name>.environmentFile` | `null or absolute path` | Path to an EnvironmentFile for the cert's service containing any required and optional environment variables for your selected dnsProvider. To find out what values you need to set, consult the documentation at <https://go-acme.github.io/lego/dns/> for the corresponding dnsProvider. |
+| `security.acme.certs.<name>.extraDomainNames` | `list of string` | A list of extra domain names, which are included in the one certificate to be issued. |
+| `security.acme.certs.<name>.extraLegoFlags` | `list of string` | Additional global flags to pass to all lego commands. |
+| `security.acme.certs.<name>.extraLegoRenewFlags` | `list of string` | Additional flags to pass to lego renew. |
+| `security.acme.certs.<name>.extraLegoRunFlags` | `list of string` | Additional flags to pass to lego run. |
+| `security.acme.certs.<name>.group` | `string` | Group running the ACME client. |
+| `security.acme.certs.<name>.inheritDefaults` | `boolean` | Whether to inherit values set in `security.acme.defaults` or not. |
+| `security.acme.certs.<name>.keyType` | `string` | Key type to use for private keys. For an up to date list of supported values check the --key-type option at <https://go-acme.github.io/lego/usage/cli/options/>. |
+| `security.acme.certs.<name>.listenHTTP` | `null or string` | Interface and port to listen on to solve HTTP challenges in the form `[INTERFACE]:PORT`. If you use a port other than 80, you must proxy port 80 to this port. |
+| `security.acme.certs.<name>.ocspMustStaple` | `boolean` | Turns on the OCSP Must-Staple TLS extension. Make sure you know what you're doing! See: - <https://blog.apnic.net/2019/01/15/is-the-web-ready-for-ocsp-must-staple/> - <https://blog.hboeck.de/archives/886-The-Problem-with-OCSP-Stapling-and-Must-Staple-and-why-Certificate-Revocation-is-still-broken.html> |
+| `security.acme.certs.<name>.postRun` | `strings concatenated with "\n"` | Commands to run after new certificates go live. Note that these commands run as the root user. Executed in the same directory with the new certificate. |
+| `security.acme.certs.<name>.profile` | `null or string` | The certificate profile to choose if the CA offers multiple profiles. |
+| `security.acme.certs.<name>.reloadServices` | `list of string` | The list of systemd services to call `systemctl try-reload-or-restart` on. |
+| `security.acme.certs.<name>.renewInterval` | `string` | Systemd calendar expression when to check for renewal. See {manpage}`systemd.time(7)`. If you reduce this from daily you might also want to adapt {option}`security.acme.defaults.renewJitter`. |
+| `security.acme.certs.<name>.renewJitter` | `string` | Maximum jitter applied to a timer to stretch its execution intervals to prevent multiple timers from firing simultaneously. See `RandomizedDelaySecs=` in {manpage}`systemd.timer(5)`. |
+| `security.acme.certs.<name>.s3Bucket` | `null or string` | S3 bucket name to use for HTTP-01 based challenges. Challenges will be written to the S3 bucket. |
+| `security.acme.certs.<name>.server` | `null or string` | ACME Directory Resource URI. Defaults to Let's Encrypt's production endpoint. For testing Let's Encrypt's [staging endpoint](https://letsencrypt.org/docs/staging-environment/) should be used to avoid the rather tight rate limit on the production endpoint. |
+| `security.acme.certs.<name>.validMinDays` | `null or signed integer` | Minimum remaining validity before renewal in days. If unset, the renewal time is calculated dynamically: - for regular certificates, renewal occurs when less than one-third of the lifetime remains - for short-lived certificates, renewal occurs when less than half of the lifetime remains |
+| `security.acme.certs.<name>.webroot` | `null or string` | Where the webroot of the HTTP vhost is located. {file}`.well-known/acme-challenge/` directory will be created below the webroot if it doesn't exist. `http://example.org/.well-known/acme-challenge/` must also be available (notice unencrypted HTTP). |
+| `security.acme.defaults` | `submodule` | Default values inheritable by all configured certs. You can use this to define options shared by all your certs. These defaults can also be ignored on a per-cert basis using the {option}`security.acme.certs.${cert}.inheritDefaults` option. |
+| `security.acme.defaults.credentialFiles` | `attribute set of absolute path` | Environment variables suffixed by "\_FILE" to set for the cert's service for your selected dnsProvider. To find out what values you need to set, consult the documentation at <https://go-acme.github.io/lego/dns/> for the corresponding dnsProvider. This allows to securely pass credential files to lego by leveraging systemd credentials. |
+| `security.acme.defaults.dnsPropagationCheck` | `boolean` | Toggles lego DNS propagation check, which is used alongside DNS-01 challenge to ensure the DNS entries required are available. |
+| `security.acme.defaults.dnsProvider` | `null or string` | DNS Challenge provider. For a list of supported providers, see the "code" field of the DNS providers listed at <https://go-acme.github.io/lego/dns/>. |
+| `security.acme.defaults.dnsResolver` | `null or string` | Set the resolver to use for performing recursive DNS queries. Supported: host:port. The default is to use the system resolvers, or Google's DNS resolvers if the system's cannot be determined. |
+| `security.acme.defaults.email` | `null or string` | Email address for account creation and correspondence from the CA. It is recommended to use the same email for all certs to avoid account creation limits. |
+| `security.acme.defaults.enableDebugLogs` | `boolean` | Whether to enable debug logging for this certificate. |
+| `security.acme.defaults.environmentFile` | `null or absolute path` | Path to an EnvironmentFile for the cert's service containing any required and optional environment variables for your selected dnsProvider. To find out what values you need to set, consult the documentation at <https://go-acme.github.io/lego/dns/> for the corresponding dnsProvider. |
+| `security.acme.defaults.extraLegoFlags` | `list of string` | Additional global flags to pass to all lego commands. |
+| `security.acme.defaults.extraLegoRenewFlags` | `list of string` | Additional flags to pass to lego renew. |
+| `security.acme.defaults.extraLegoRunFlags` | `list of string` | Additional flags to pass to lego run. |
+| `security.acme.defaults.group` | `string` | Group running the ACME client. |
+| `security.acme.defaults.keyType` | `string` | Key type to use for private keys. For an up to date list of supported values check the --key-type option at <https://go-acme.github.io/lego/usage/cli/options/>. |
+| `security.acme.defaults.listenHTTP` | `null or string` | Interface and port to listen on to solve HTTP challenges in the form `[INTERFACE]:PORT`. If you use a port other than 80, you must proxy port 80 to this port. |
+| `security.acme.defaults.ocspMustStaple` | `boolean` | Turns on the OCSP Must-Staple TLS extension. Make sure you know what you're doing! See: - <https://blog.apnic.net/2019/01/15/is-the-web-ready-for-ocsp-must-staple/> - <https://blog.hboeck.de/archives/886-The-Problem-with-OCSP-Stapling-and-Must-Staple-and-why-Certificate-Revocation-is-still-broken.html> |
+| `security.acme.defaults.postRun` | `strings concatenated with "\n"` | Commands to run after new certificates go live. Note that these commands run as the root user. Executed in the same directory with the new certificate. |
+| `security.acme.defaults.profile` | `null or string` | The certificate profile to choose if the CA offers multiple profiles. |
+| `security.acme.defaults.reloadServices` | `list of string` | The list of systemd services to call `systemctl try-reload-or-restart` on. |
+| `security.acme.defaults.renewInterval` | `string` | Systemd calendar expression when to check for renewal. See {manpage}`systemd.time(7)`. If you reduce this from daily you might also want to adapt {option}`security.acme.defaults.renewJitter`. |
+| `security.acme.defaults.renewJitter` | `string` | Maximum jitter applied to a timer to stretch its execution intervals to prevent multiple timers from firing simultaneously. See `RandomizedDelaySecs=` in {manpage}`systemd.timer(5)`. |
+| `security.acme.defaults.server` | `null or string` | ACME Directory Resource URI. Defaults to Let's Encrypt's production endpoint. For testing Let's Encrypt's [staging endpoint](https://letsencrypt.org/docs/staging-environment/) should be used to avoid the rather tight rate limit on the production endpoint. |
+| `security.acme.defaults.validMinDays` | `null or signed integer` | Minimum remaining validity before renewal in days. If unset, the renewal time is calculated dynamically: - for regular certificates, renewal occurs when less than one-third of the lifetime remains - for short-lived certificates, renewal occurs when less than half of the lifetime remains |
+| `security.acme.defaults.webroot` | `null or string` | Where the webroot of the HTTP vhost is located. {file}`.well-known/acme-challenge/` directory will be created below the webroot if it doesn't exist. `http://example.org/.well-known/acme-challenge/` must also be available (notice unencrypted HTTP). |
+| `security.acme.maxConcurrentRenewals` | `signed integer` | Maximum number of concurrent certificate generation or renewal jobs. All other jobs will queue and wait running jobs to finish. Reduces the system load of certificate generation. Set to `0` to allow unlimited number of concurrent job runs." |
+| `security.acme.useRoot` | `boolean` | Whether to use the root user when generating certs. This is not recommended for security + compatibility reasons. If a service requires root owned certificates consider following the guide on "Using ACME with services demanding root owned certificates" in the NixOS manual, and only using this as a fallback or for testing. |
+| `security.agnos.enable` | `boolean` | Whether to enable agnos. |
+| `security.agnos.generateKeys.enable` | `boolean` | Enable automatic generation of account keys. When this is `true`, a key will be generated for each account where the file referred to by the `private_key` path does not exist yet. Currently, only RSA keys can be generated. |
+| `security.agnos.generateKeys.keySize` | `signed integer` | Key size in bits to use when generating new keys. |
+| `security.agnos.group` | `string` | Group to run Agnos as. The acquired certificates will be owned by this group. |
+| `security.agnos.persistent` | `boolean` | When `true`, use a persistent systemd timer. |
+| `security.agnos.server` | `null or string` | ACME Directory Resource URI. Defaults to Let's Encrypt's production endpoint, `https://acme-v02.api.letsencrypt.org/directory`, if unset. |
+| `security.agnos.serverCa` | `null or absolute path` | The root certificate (in PEM format) of the ACME server's HTTPS interface. |
+| `security.agnos.settings` | `open submodule of attribute set of (TOML value)` | Settings |
+| `security.agnos.settings.accounts` | `list of (open submodule of attribute set of (TOML value))` | A list of ACME accounts. Each account is associated with an email address and can be used to obtain an arbitrary amount of certificate (subject to provider's rate limits, see e.g. [Let's Encrypt Rate Limits](https://letsencrypt.org/docs/rate-limits/)). |
+| `security.agnos.settings.accounts.*.certificates` | `list of (open submodule of attribute set of (TOML value))` | Certificates for agnos to issue or renew. |
+| `security.agnos.settings.accounts.*.certificates.*.domains` | `list of string` | Domains the certificate represents |
+| `security.agnos.settings.accounts.*.certificates.*.fullchain_output_file` | `string` | Output path for the full chain including the acquired certificate. If a relative path is specified, the file will be created in `/var/lib/agnos`. |
+| `security.agnos.settings.accounts.*.certificates.*.key_output_file` | `string` | Output path for the certificate private key. If a relative path is specified, the file will be created in `/var/lib/agnos`. |
+| `security.agnos.settings.accounts.*.email` | `string` | Email associated with this account. |
+| `security.agnos.settings.accounts.*.private_key_path` | `string` | Path of the PEM-encoded private key for this account. Currently, only RSA keys are supported. If this path does not exist, then the behavior depends on `generateKeys.enable`. When this option is `true`, the key will be automatically generated and saved to this path. When it is `false`, agnos will fail. If a relative path is specified, the key will be looked up (or generated and saved to) under `/var/lib/agnos`. |
+| `security.agnos.settings.dns_listen_addr` | `string` | Address for agnos to listen on. Note that this needs to be reachable by the outside world, and 53 is required in most situations since `NS` records do not allow specifying the port. |
+| `security.agnos.startAt` | `string or list of string` | How often or when to run agnos. The format is described in {manpage}`systemd.time(7)`. |
+| `security.agnos.temporarilyOpenFirewall` | `boolean` | When `true`, will open the port specified in `settings.dns_listen_addr` before running the agnos service, and close it when agnos finishes running. |
+| `security.agnos.user` | `string` | User to run Agnos as. The acquired certificates will be owned by this user. |
+| `security.allowSimultaneousMultithreading` | `boolean` | Whether to allow SMT/hyperthreading. Disabling SMT means that only physical CPU cores will be usable at runtime, potentially at significant performance cost. The primary motivation for disabling SMT is to mitigate the risk of leaking data between threads running on the same CPU core (due to e.g., shared caches). This attack vector is unproven. Disabling SMT is a supplement to the L1 data cache flushing mitigation (see [](#opt-security.virtualisation.flushL1DataCache)) versus malicious VM guests (SMT could "bring back" previously flushed data). |
+| `security.allowUserNamespaces` | `boolean` | Whether to allow creation of user namespaces. The motivation for disabling user namespaces is the potential presence of code paths where the kernel's permission checking logic fails to account for namespacing, instead permitting a namespaced process to act outside the namespace with the same privileges as it would have inside it. This is particularly damaging in the common case of running as root within the namespace. When user namespace creation is disallowed, attempting to create a user namespace fails with "no space left on device" (ENOSPC). root may re-enable user namespace creation at runtime. |
+| `security.apparmor.enable` | `boolean` | Whether to enable the AppArmor Mandatory Access Control system. If you're enabling this module on a running system, note that a reboot will be required to activate AppArmor in the kernel. Also, beware that enabling this module privileges stability over security by not trying to kill unconfined but newly confinable running processes by default, though it would be needed because AppArmor can only confine new or already confined processes of an executable. This killing would for instance be necessary when upgrading to a NixOS revision introducing for the first time an AppArmor profile for the executable of a running process. Enable [](#opt-security.apparmor.killUnconfinedConfinables) if you want this service to do such killing by sending a `SIGTERM` to those running processes. |
+| `security.apparmor.enableCache` | `boolean` | Whether to enable caching of AppArmor policies in `/var/cache/apparmor/`. Beware that AppArmor policies almost always contain Nix store paths, and thus produce at each change of these paths a new cached version accumulating in the cache. |
+| `security.apparmor.includes` | `attribute set of strings concatenated with "\n"` | List of paths to be added to AppArmor's searched paths when resolving `include` directives. |
+| `security.apparmor.killUnconfinedConfinables` | `boolean` | Whether to enable killing of processes which have an AppArmor profile enabled (in [](#opt-security.apparmor.policies)) but are not confined (because AppArmor can only confine new processes). This is only sending a gracious `SIGTERM` signal to the processes, not a `SIGKILL`. Beware that due to a current limitation of AppArmor, only profiles with exact paths (and no name) can enable such kills. |
+| `security.apparmor.packages` | `list of package` | List of packages to be added to AppArmor's include path |
+| `security.apparmor.policies` | `attribute set of (submodule)` | AppArmor policies. |
+| `security.apparmor.policies.<name>.path` | `null or absolute path` | A path of a profile file to include. Incompatible with profile. |
+| `security.apparmor.policies.<name>.profile` | `strings concatenated with "\n"` | The profile file contents. Incompatible with path. |
+| `security.apparmor.policies.<name>.state` | `one of "disable", "complain", "enforce"` | How strictly this policy should be enforced |
+| `security.audit.backlogLimit` | `signed integer` | The maximum number of outstanding audit buffers allowed; exceeding this is considered a failure and handled in a manner specified by failureMode. |
+| `security.audit.enable` | `one of false, true, "lock"` | Whether to enable the Linux audit system. The special `lock` value can be used to enable auditing and prevent disabling it until a restart. Be careful about locking this, as it will prevent you from changing your audit configuration until you restart. If possible, test your configuration using build-vm beforehand. |
+| `security.audit.failureMode` | `one of "silent", "printk", "panic"` | How to handle critical errors in the auditing system |
+| `security.audit.package` | `package` | The audit package to use. |
+| `security.audit.rateLimit` | `signed integer` | The maximum messages per second permitted before triggering a failure as specified by failureMode. Setting it to zero disables the limit. |
+| `security.audit.rules` | `list of string` | The ordered audit rules, with each string appearing as one line of the audit.rules file. |
+| `security.auditd.enable` | `boolean` | Whether to enable the Linux Audit daemon. |
+| `security.auditd.package` | `package` | The auditd package to use. |
+| `security.auditd.plugins` | `attribute set of (submodule)` | Plugin definitions to register with auditd |
+| `security.auditd.plugins.<name>.active` | `boolean` | Whether to enable Whether to enable this plugin. |
+| `security.auditd.plugins.<name>.args` | `null or (list of non-empty string)` | This allows you to pass arguments to the child program. Generally plugins do not take arguments and have their own config file that instructs them how they should be configured. |
+| `security.auditd.plugins.<name>.direction` | `one of "in", "out"` | The option is dictated by the plugin. In or out are the only choices. You cannot make a plugin operate in a way it wasn't designed just by changing this option. This option is to give a clue to the event dispatcher about which direction events flow. ::: {.note} Inbound events are not supported yet. ::: |
+| `security.auditd.plugins.<name>.format` | `one of "binary", "string"` | Binary passes the data exactly as the audit event dispatcher gets it from the audit daemon. The string option tells the dispatcher to completely change the event into a string suitable for parsing with the audit parsing library. |
+| `security.auditd.plugins.<name>.path` | `absolute path` | This is the absolute path to the plugin executable. |
+| `security.auditd.plugins.<name>.settings` | `null or (open submodule of attribute set of (null or boolean or non-empty string or absolute path or signed integer))` | Plugin-specific config file to link to /etc/audit/<plugin>.conf |
+| `security.auditd.plugins.<name>.type` | `value "always" (singular enum)` | This tells the dispatcher how the plugin wants to be run. There is only one valid option, `always`, which means the plugin is external and should always be run. The default is `always` since there are no more builtin plugins. |
+| `security.auditd.settings` | `open submodule of attribute set of (null or boolean or non-empty string or absolute path or signed integer)` | auditd configuration file contents. See {auditd.conf} for supported values. |
+| `security.auditd.settings.admin_space_left` | `signed integer or string matching the pattern [0-9]+%` | This is a numeric value in mebibytes (MiB) that tells the audit daemon when to perform a configurable action because the system is running low on disk space. This should be considered the last chance to do something before running out of disk space. The numeric value for this parameter should be lower than the number for {option}`space_left`. You may also append a percent sign (e.g. 1%) to the number to have the audit daemon calculate the number based on the disk partition size. |
+| `security.auditd.settings.space_left` | `signed integer or string matching the pattern [0-9]+%` | If the free space in the filesystem containing log_file drops below this value, the audit daemon takes the action specified by {option}`space_left_action`. If the value of {option}`space_left` is specified as a whole number, it is interpreted as an absolute size in mebibytes (MiB). If the value is specified as a number between 1 and 99 followed by a percentage sign (e.g., 5%), the audit daemon calculates the absolute size in megabytes based on the size of the filesystem containing {option}`log_file`. (E.g., if the filesystem containing {option}`log_file` is 2 gibibytes in size, and {option}`space_left` is set to 25%, then the audit daemon sets {option}`space_left` to approximately 500 mebibytes. ::: {.note} This calculation is performed when the audit daemon starts, so if you resize the filesystem containing {option}`log_file` while the audit daemon is running, you should send the audit daemon SIGHUP to re-read the configuration file and recalculate the correct per‐ centage. ::: |
+| `security.chromiumSuidSandbox.enable` | `boolean` | Whether to install the Chromium SUID sandbox which is an executable that Chromium may use in order to achieve sandboxing. If you get the error "The SUID sandbox helper binary was found, but is not configured correctly.", turning this on might help. Also, if the URL chrome://sandbox tells you that "You are not adequately sandboxed!", turning this on might resolve the issue. |
+| `security.doas.enable` | `boolean` | Whether to enable the {command}`doas` command, which allows non-root users to execute commands as root. |
+| `security.doas.extraConfig` | `strings concatenated with "\n"` | Extra configuration text appended to {file}`doas.conf`. Be aware that this option cannot be used to override the behaviour allowing passwordless operation for root. |
+| `security.doas.extraRules` | `list of (submodule)` | Define specific rules to be set in the {file}`/etc/doas.conf` file. More specific rules should come after more general ones in order to yield the expected behavior. You can use `mkBefore` and/or `mkAfter` to ensure this is the case when configuration options are merged. Be aware that this option cannot be used to override the behaviour allowing passwordless operation for root. |
+| `security.doas.extraRules.*.args` | `null or (list of string)` | Arguments that must be provided to the command. When set to `[]`, the command must be run without any arguments. |
+| `security.doas.extraRules.*.cmd` | `null or string` | The command the user is allowed to run. When set to `null` (the default), all commands are allowed. NOTE: It is best practice to specify absolute paths. If a relative path is specified, only a restricted PATH will be searched. |
+| `security.doas.extraRules.*.groups` | `list of (string or signed integer)` | The groups / GIDs this rule should apply for. |
+| `security.doas.extraRules.*.keepEnv` | `boolean` | If `true`, environment variables other than those listed in {manpage}`doas(1)` are kept when creating the environment for the new process. |
+| `security.doas.extraRules.*.noLog` | `boolean` | If `true`, successful executions will not be logged to {manpage}`syslogd(8)`. |
+| `security.doas.extraRules.*.noPass` | `boolean` | If `true`, the user is not required to enter a password. |
+| `security.doas.extraRules.*.persist` | `boolean` | If `true`, do not ask for a password again for some time after the user successfully authenticates. |
+| `security.doas.extraRules.*.runAs` | `null or string` | Which user or group the specified command is allowed to run as. When set to `null` (the default), all users are allowed. A user can be specified using just the username: `"foo"`. It is also possible to only allow running as a specific group with `":bar"`. |
+| `security.doas.extraRules.*.setEnv` | `list of string` | Keep or set the specified variables. Variables may also be removed with a leading '-' or set using `variable=value`. If the first character of `value` is a '$', the value to be set is taken from the existing environment variable of the indicated name. This option is processed after the default environment has been created. NOTE: All rules have `setenv { SSH_AUTH_SOCK }` by default. To prevent `SSH_AUTH_SOCK` from being inherited, add `"-SSH_AUTH_SOCK"` anywhere in this list. |
+| `security.doas.extraRules.*.users` | `list of (string or signed integer)` | The usernames / UIDs this rule should apply for. |
+| `security.doas.package` | `package` | The doas package to use. |
+| `security.doas.wheelNeedsPassword` | `boolean` | Whether users of the `wheel` group must provide a password to run commands as super user via {command}`doas`. |
+| `security.duosec.acceptEnvFactor` | `boolean` | Look for factor selection or passcode in the `$DUO_PASSCODE` environment variable before prompting the user for input. When $DUO_PASSCODE is non-empty, it will override autopush. The SSH client will need SendEnv DUO_PASSCODE in its configuration, and the SSH server will similarly need AcceptEnv DUO_PASSCODE. |
+| `security.duosec.allowTcpForwarding` | `boolean` | By default, when SSH forwarding, enabling Duo Security will disable TCP forwarding. By enabling this, you potentially undermine some of the SSH based login security. Note this is not needed if you use PAM. |
+| `security.duosec.autopush` | `boolean` | If `true`, Duo Unix will automatically send a push login request to the user’s phone, falling back on a phone call if push is unavailable. If `false`, the user will be prompted to choose an authentication method. When configured with `autopush = yes`, we recommend setting `prompts = 1`. |
+| `security.duosec.failmode` | `one of "safe", "secure"` | On service or configuration errors that prevent Duo authentication, fail "safe" (allow access) or "secure" (deny access). The default is "safe". |
+| `security.duosec.fallbackLocalIP` | `boolean` | Duo Unix reports the IP address of the authorizing user, for the purposes of authorization and whitelisting. If Duo Unix cannot detect the IP address of the client, setting `fallbackLocalIP = yes` will cause Duo Unix to send the IP address of the server it is running on. If you are using IP whitelisting, enabling this option could cause unauthorized logins if the local IP is listed in the whitelist. |
+| `security.duosec.groups` | `string` | If specified, Duo authentication is required only for users whose primary group or supplementary group list matches one of the space-separated pattern lists. Refer to <https://duo.com/docs/duounix> for details. |
+| `security.duosec.host` | `string` | Duo API hostname. |
+| `security.duosec.integrationKey` | `string` | Integration key. |
+| `security.duosec.motd` | `boolean` | Print the contents of `/etc/motd` to screen after a successful login. |
+| `security.duosec.pam.enable` | `boolean` | If enabled, protect logins with Duo Security using PAM support. |
+| `security.duosec.prompts` | `one of 1, 2, 3` | If a user fails to authenticate with a second factor, Duo Unix will prompt the user to authenticate again. This option sets the maximum number of prompts that Duo Unix will display before denying access. Must be 1, 2, or 3. Default is 3. For example, when `prompts = 1`, the user will have to successfully authenticate on the first prompt, whereas if `prompts = 2`, if the user enters incorrect information at the initial prompt, he/she will be prompted to authenticate again. When configured with `autopush = true`, we recommend setting `prompts = 1`. |
+| `security.duosec.pushinfo` | `boolean` | Include information such as the command to be executed in the Duo Push message. |
+| `security.duosec.secretKeyFile` | `null or absolute path` | A file containing your secret key. The security of your Duo application is tied to the security of your secret key. |
+| `security.duosec.ssh.enable` | `boolean` | If enabled, protect SSH logins with Duo Security. |
+| `security.enableWrappers` | `boolean` | Whether to enable SUID/SGID wrappers. ::: {.warning} ONLY DISABLE THIS OPTION IF YOU KNOW WHAT YOU'RE DOING. ::: A normal interactive NixOS system requires SUID/SGID wrappers (e.g. for PAM and sudo). Disabling them, thus will lock you out from your system. Disabling the SUID/SGID binaries is useful for non-interactive systems (like a firewall appliance) to minimize the attack surface. In the future, this might become available for interactive systems as well (e.g. with systemd's [run0](https://www.freedesktop.org/software/systemd/man/latest/run0)). |
+| `security.forcePageTableIsolation` | `boolean` | Whether to force-enable the Page Table Isolation (PTI) Linux kernel feature even on CPU models that claim to be safe from Meltdown. This hardening feature is most beneficial to systems that run untrusted workloads that rely on address space isolation for security. |
+| `security.googleOsLogin.enable` | `boolean` | Whether to enable Google OS Login. The OS Login package enables the following components: AuthorizedKeysCommand to query valid SSH keys from the user's OS Login profile during ssh authentication phase. NSS Module to provide user and group information PAM Module for the sshd service, providing authorization and authentication support, allowing the system to use data stored in Google Cloud IAM permissions to control both, the ability to log into an instance, and to perform operations as root (sudo). |
+| `security.ipa.basedn` | `string` | Base DN to use when performing LDAP operations. |
+| `security.ipa.cacheCredentials` | `boolean` | Whether to cache credentials. |
+| `security.ipa.certificate` | `package` | IPA server CA certificate. Use `nix-prefetch-url http://$server/ipa/config/ca.crt` to obtain the file and the hash. |
+| `security.ipa.chromiumSupport` | `boolean` | Whether to whitelist the FreeIPA domain in Chromium. |
+| `security.ipa.domain` | `string` | Domain of the IPA server. |
+| `security.ipa.dyndns.enable` | `boolean` | Whether to enable FreeIPA automatic hostname updates. |
+| `security.ipa.dyndns.interface` | `string` | Network interface to perform hostname updates through. |
+| `security.ipa.enable` | `boolean` | Whether to enable FreeIPA domain integration. |
+| `security.ipa.ifpAllowedUids` | `list of string` | A list of users allowed to access the ifp dbus interface. |
+| `security.ipa.ipaHostname` | `string` | Fully-qualified hostname used to identify this host in the IPA domain. |
+| `security.ipa.offlinePasswords` | `boolean` | Whether to store offline passwords when the server is down. |
+| `security.ipa.realm` | `string` | Kerberos realm. |
+| `security.ipa.server` | `string` | IPA Server hostname. |
+| `security.ipa.shells` | `list of package` | List of shells which binaries should be installed to /bin/<name>. FreeIPA typicly configures somesthing like /bin/bash into the users shell attribute. |
+| `security.ipa.useAsTimeserver` | `boolean` | Whether to add the IPA server to the timeserver. |
+| `security.isolate.boxRoot` | `absolute path` | All sandboxes are created under this directory. To avoid symlink attacks, this directory and all its ancestors must be writeable only by root. |
+| `security.isolate.cgRoot` | `string` | Control group which subgroups are placed under. Either an explicit path to a subdirectory in cgroupfs, or "auto:file" to read the path from "file", where it is put by `isolate-cg-helper`. |
+| `security.isolate.enable` | `boolean` | Whether to enable Sandbox for securely executing untrusted programs . |
+| `security.isolate.extraConfig` | `string` | Extra configuration to append to the configuration file. |
+| `security.isolate.firstGid` | `integer or floating point number between 1000 and 65533 (both inclusive)` | Start of block of GIDs reserved for sandboxes. |
+| `security.isolate.firstUid` | `integer or floating point number between 1000 and 65533 (both inclusive)` | Start of block of UIDs reserved for sandboxes. |
+| `security.isolate.lockRoot` | `absolute path` | Directory where lock files are created. |
+| `security.isolate.numBoxes` | `integer or floating point number between 1000 and 65533 (both inclusive)` | Number of UIDs and GIDs to reserve, starting from {option}`firstUid` and {option}`firstGid`. |
+| `security.isolate.package` | `package` | The isolate-unwrapped package to use. |
+| `security.isolate.restrictedInit` | `boolean` | If true, only root can create sandboxes. |
+| `security.krb5.enable` | `boolean` | Enable and configure Kerberos utilities |
+| `security.krb5.package` | `package` | The krb5 package to use. |
+| `security.krb5.settings` | `open submodule of attribute set of attribute set of ((list of attribute set of ((list of (signed integer or string or boolean)) or signed integer or string or boolean)) or attribute set of ((list of (signed integer or string or boolean)) or signed integer or string or boolean) or (list of (signed integer or string or boolean)) or signed integer or string or boolean)` | Structured contents of the {file}`krb5.conf` file. See {manpage}`krb5.conf(5)` for details about configuration. |
+| `security.krb5.settings.include` | `(list of absolute path) or absolute path convertible to it` | Files to include in the Kerberos configuration. |
+| `security.krb5.settings.includedir` | `(list of absolute path) or absolute path convertible to it` | Directories containing files to include in the Kerberos configuration. |
+| `security.krb5.settings.module` | `(list of absolute path) or absolute path convertible to it` | Modules to obtain Kerberos configuration from. |
+| `security.lockKernelModules` | `boolean` | Disable kernel module loading once the system is fully initialised. Module loading is disabled until the next reboot. Problems caused by delayed module loading can be fixed by adding the module(s) in question to {option}`boot.kernelModules`. |
+| `security.loginDefs.chfnRestrict` | `null or string` | Use chfn SUID to allow non-root users to change their account GECOS information. |
+| `security.loginDefs.package` | `package` | The shadow package to use. |
+| `security.loginDefs.settings` | `open submodule of attribute set of (atom (null, bool, int, float or string))` | Config options for the /etc/login.defs file, that defines the site-specific configuration for the shadow password suite. See {manpage}`login.defs(5)` man page for available options. |
+| `security.loginDefs.settings.DEFAULT_HOME` | `one of "yes", "no"` | Indicate if login is allowed if we can't cd to the home directory. |
+| `security.loginDefs.settings.ENCRYPT_METHOD` | `one of "YESCRYPT", "SHA512", "SHA256", "MD5", "DES"` | This defines the system default encryption algorithm for encrypting passwords. |
+| `security.loginDefs.settings.GID_MAX` | `32 bit unsigned integer; between 0 and 4294967295 (both inclusive)` | Range of group IDs used for the creation of regular groups by useradd, groupadd, or newusers. |
+| `security.loginDefs.settings.GID_MIN` | `32 bit unsigned integer; between 0 and 4294967295 (both inclusive)` | Range of group IDs used for the creation of regular groups by useradd, groupadd, or newusers. |
+| `security.loginDefs.settings.SYS_GID_MAX` | `32 bit unsigned integer; between 0 and 4294967295 (both inclusive)` | Range of group IDs used for the creation of system groups by useradd, groupadd, or newusers |
+| `security.loginDefs.settings.SYS_GID_MIN` | `32 bit unsigned integer; between 0 and 4294967295 (both inclusive)` | Range of group IDs used for the creation of system groups by useradd, groupadd, or newusers |
+| `security.loginDefs.settings.SYS_UID_MAX` | `32 bit unsigned integer; between 0 and 4294967295 (both inclusive)` | Range of user IDs used for the creation of system users by useradd or newusers. |
+| `security.loginDefs.settings.SYS_UID_MIN` | `32 bit unsigned integer; between 0 and 4294967295 (both inclusive)` | Range of user IDs used for the creation of system users by useradd or newusers. |
+| `security.loginDefs.settings.TTYGROUP` | `string` | The terminal permissions: the login tty will be owned by the TTYGROUP group, and the permissions will be set to TTYPERM |
+| `security.loginDefs.settings.TTYPERM` | `string` | The terminal permissions: the login tty will be owned by the TTYGROUP group, and the permissions will be set to TTYPERM |
+| `security.loginDefs.settings.UID_MAX` | `32 bit unsigned integer; between 0 and 4294967295 (both inclusive)` | Range of user IDs used for the creation of regular users by useradd or newusers. |
+| `security.loginDefs.settings.UID_MIN` | `32 bit unsigned integer; between 0 and 4294967295 (both inclusive)` | Range of user IDs used for the creation of regular users by useradd or newusers. |
+| `security.loginDefs.settings.UMASK` | `string` | The file mode creation mask is initialized to this value. |
+| `security.lsm` | `list of string` | A list of the LSMs to initialize in order. |
+| `security.pam.dp9ik.authserver` | `null or string` | This controls the hostname for the 9front authentication server that users will be authenticated against. |
+| `security.pam.dp9ik.control` | `string` | This option sets the pam "control" used for this module. |
+| `security.pam.dp9ik.enable` | `boolean` | Whether to enable the dp9ik pam module provided by tlsclient. If set, users can be authenticated against the 9front authentication server given in {option}`security.pam.dp9ik.authserver` . |
+| `security.pam.enableFscrypt` | `boolean` | Whether to enable fscrypt, to automatically unlock directories with the user's login password. This also enables a service at security.pam.services.fscrypt which is used by fscrypt to verify the user's password when setting up a new protector. If you use something other than pam_unix to verify user passwords, please remember to adjust this PAM service . |
+| `security.pam.enableOTPW` | `boolean` | Whether to enable the OTPW (one-time password) PAM module. |
+| `security.pam.enableUMask` | `boolean` | Whether to enable the umask PAM module. |
+| `security.pam.howdy.control` | `string` | This option sets the PAM "control" used for this module. |
+| `security.pam.howdy.enable` | `boolean` | Whether to enable the Howdy PAM module. If set, users can be authenticated using Howdy, the Windows Hello™-style facial authentication service. |
+| `security.pam.krb5.enable` | `boolean` | Enables Kerberos PAM modules (`pam-krb5`, `pam-ccreds`). If set, users can authenticate with their Kerberos password. This requires a valid Kerberos configuration (`security.krb5.enable` should be set to `true`). Note that the Kerberos PAM modules are not necessary when using SSS to handle Kerberos authentication. |
+| `security.pam.loginLimits` | `list of (submodule)` | Define resource limits that should apply to users or groups. Each item in the list should be an attribute set with a {var}`domain`, {var}`type`, {var}`item`, and {var}`value` attribute. The syntax and semantics of these attributes must be that described in {manpage}`limits.conf(5)`. Note that these limits do not apply to systemd services, whose limits can be changed via {option}`systemd.settings.Manager` instead. |
+| `security.pam.loginLimits.*.domain` | `string` | Username, groupname, or wildcard this limit applies to |
+| `security.pam.loginLimits.*.item` | `one of "core", "data", "fsize", "memlock", "nofile", "rss", "stack", "cpu", "nproc", "as", "maxlogins", "maxsyslogins", "priority", "locks", "sigpending", "msgqueue", "nice", "rtprio"` | Item this limit applies to |
+| `security.pam.loginLimits.*.type` | `one of "-", "hard", "soft"` | Type of this limit |
+| `security.pam.loginLimits.*.value` | `string or signed integer` | Value of this limit |
+| `security.pam.makeHomeDir.skelDirectory` | `string` | Path to skeleton directory whose contents are copied to home directories newly created by `pam_mkhomedir`. |
+| `security.pam.makeHomeDir.umask` | `string` | The user file mode creation mask to use on home directories newly created by `pam_mkhomedir`. |
+| `security.pam.mount.additionalSearchPaths` | `list of package` | Additional programs to include in the search path of pam_mount. Useful for example if you want to use some FUSE filesystems like bindfs. |
+| `security.pam.mount.createMountPoints` | `boolean` | Create mountpoints for volumes if they do not exist. |
+| `security.pam.mount.cryptMountOptions` | `list of string` | Global mount options that apply to every crypt volume. You can define volume-specific options in the volume definitions. |
+| `security.pam.mount.debugLevel` | `signed integer` | Sets the Debug-Level. 0 disables debugging, 1 enables pam_mount tracing, and 2 additionally enables tracing in mount.crypt. The default is 0. For more information, visit <https://pam-mount.sourceforge.net/pam_mount.conf.5.html>. |
+| `security.pam.mount.enable` | `boolean` | Enable PAM mount system to mount filesystems on user login. |
+| `security.pam.mount.extraVolumes` | `list of string` | List of volume definitions for pam_mount. For more information, visit <https://pam-mount.sourceforge.net/pam_mount.conf.5.html>. |
+| `security.pam.mount.fuseMountOptions` | `list of string` | Global mount options that apply to every FUSE volume. You can define volume-specific options in the volume definitions. |
+| `security.pam.mount.logoutHup` | `boolean` | Kill remaining processes after logout by sending a SIGHUP. |
+| `security.pam.mount.logoutKill` | `boolean` | Kill remaining processes after logout by sending a SIGKILL. |
+| `security.pam.mount.logoutTerm` | `boolean` | Kill remaining processes after logout by sending a SIGTERM. |
+| `security.pam.mount.logoutWait` | `signed integer` | Amount of microseconds to wait until killing remaining processes after final logout. For more information, visit <https://pam-mount.sourceforge.net/pam_mount.conf.5.html>. |
+| `security.pam.mount.removeCreatedMountPoints` | `boolean` | Remove mountpoints created by pam_mount after logout. This only affects mountpoints that have been created by pam_mount in the same session. |
+| `security.pam.oath.digits` | `one of 6, 7, 8` | Specify the lib.length of the one-time password in number of digits. |
+| `security.pam.oath.enable` | `boolean` | Enable the OATH (one-time password) PAM module. |
+| `security.pam.oath.usersFile` | `absolute path` | Set the path to file where the user's credentials are stored. This file must not be world readable! |
+| `security.pam.oath.window` | `signed integer` | Specify the number of one-time passwords to check in order to accommodate for situations where the system and the client are slightly out of sync (iteration for HOTP or time steps for TOTP). |
+| `security.pam.p11.control` | `one of "required", "requisite", "sufficient", "optional"` | This option sets pam "control". If you want to have multi factor authentication, use "required". If you want to use the PKCS#11 device instead of the regular password, use "sufficient". Read {manpage}`pam.conf(5)` for better understanding of this option. |
+| `security.pam.p11.enable` | `boolean` | Enables P11 PAM (`pam_p11`) module. If set, users can log in with SSH keys and PKCS#11 tokens. More information can be found [here](https://github.com/OpenSC/pam_p11). |
+| `security.pam.package` | `package` | The pam package to use. |
+| `security.pam.rssh.enable` | `boolean` | Whether to enable authenticating using a signature performed by the ssh-agent. |
+| `security.pam.rssh.settings` | `open submodule of attribute set of (null or boolean or string or signed integer or path in the Nix store)` | Options to pass to the pam_rssh module. Refer to <https://github.com/z4yx/pam_rssh/blob/main/README.md#optional-arguments> for supported values. Boolean values render just the key if true, and nothing if false. Null values are ignored. All other values are rendered as key-value pairs. |
+| `security.pam.rssh.settings.auth_key_file` | `null or non-empty string` | Path to file with trusted public keys in OpenSSH's `authorized_keys` format. The following variables are expanded to the respective PAM items: - `service`: `PAM_SERVICE`, the service name, - `user`: `PAM_USER`, the username of the entity under whose identity service will be given, - `tty`: `PAM_TTY`, the terminal name, - `rhost`: `PAM_RHOST`, the requesting hostname, and - `ruser`: `PAM_RUSER`, the requesting entity. These PAM items are explained in {manpage}`pam_get_item(3)`. Variables may be specified as `$var`, `${var}` or `${var:defaultValue}`. ::: {.note} Specifying user-writeable files here results in an insecure configuration: a malicious process can then edit such an `authorized_keys` file and bypass the ssh-agent-based authentication. This option is ignored if {option}`security.pam.rssh.settings.authorized_keys_command` is set. If both this option and {option}`security.pam.rssh.settings.authorized_keys_command` are unset, the keys will be read from `${HOME}/.ssh/authorized_keys`, which should be considered insecure. |
+| `security.pam.services` | `attribute set of (submodule)` | This option defines the PAM services. A service typically corresponds to a program that uses PAM, e.g. {command}`login` or {command}`passwd`. Each attribute of this set defines a PAM service, with the attribute name defining the name of the service. |
+| `security.pam.services.<name>.allowNullPassword` | `boolean` | Whether to allow logging into accounts that have no password set (i.e., have an empty password field in {file}`/etc/passwd` or {file}`/etc/group`). This does not enable logging into disabled accounts (i.e., that have the password field set to `!`). Note that regardless of what the pam_unix documentation says, accounts with hashed empty passwords are always allowed to log in. |
+| `security.pam.services.<name>.duoSecurity.enable` | `boolean` | If set, use the Duo Security pam module `pam_duo` for authentication. Requires configuration of {option}`security.duosec` options. |
+| `security.pam.services.<name>.enable` | `boolean` | Whether to enable this PAM service. |
+| `security.pam.services.<name>.enableAppArmor` | `boolean` | Enable support for attaching AppArmor profiles at the user/group level, e.g., as part of a role based access control scheme. |
+| `security.pam.services.<name>.enableGnomeKeyring` | `boolean` | If enabled, pam_gnome_keyring will attempt to automatically unlock the user's default Gnome keyring upon login. If the user login password does not match their keyring password, Gnome Keyring will prompt separately after login. |
+| `security.pam.services.<name>.enableUMask` | `boolean` | If enabled, the pam_umask module will be loaded. |
+| `security.pam.services.<name>.failDelay.delay` | `signed integer` | The delay time (in microseconds) on failure. |
+| `security.pam.services.<name>.failDelay.enable` | `boolean` | If enabled, this will replace the `FAIL_DELAY` setting from `login.defs`. Change the delay on failure per-application. |
+| `security.pam.services.<name>.forwardXAuth` | `boolean` | Whether X authentication keys should be passed from the calling user to the target user (e.g. for {command}`su`) |
+| `security.pam.services.<name>.fprintAuth` | `boolean` | If set, fingerprint reader will be used (if exists and your fingerprints are enrolled). |
+| `security.pam.services.<name>.gnupg.enable` | `boolean` | If enabled, pam_gnupg will attempt to automatically unlock the user's GPG keys with the login password via {command}`gpg-agent`. The keygrips of all keys to be unlocked should be written to {file}`~/.pam-gnupg`, and can be queried with {command}`gpg -K --with-keygrip`. Presetting passphrases must be enabled by adding `allow-preset-passphrase` in {file}`~/.gnupg/gpg-agent.conf`. |
+| `security.pam.services.<name>.gnupg.noAutostart` | `boolean` | Don't start {command}`gpg-agent` if it is not running. Useful in conjunction with starting {command}`gpg-agent` as a systemd user service. |
+| `security.pam.services.<name>.gnupg.storeOnly` | `boolean` | Don't send the password immediately after login, but store for PAM `session`. |
+| `security.pam.services.<name>.googleAuthenticator.allowNullOTP` | `boolean` | Whether to allow login for accounts that have no OTP set (i.e., accounts with no OTP configured or no existing {file}`~/.google_authenticator`). |
+| `security.pam.services.<name>.googleAuthenticator.enable` | `boolean` | If set, users with enabled Google Authenticator (created {file}`~/.google_authenticator`) will be required to provide Google Authenticator token to log in. |
+| `security.pam.services.<name>.googleAuthenticator.forwardPass` | `boolean` | The authentication provides a single field requiring the user's password followed by the one-time password (OTP). |
+| `security.pam.services.<name>.googleOsLoginAccountVerification` | `boolean` | If set, will use the Google OS Login PAM modules (`pam_oslogin_login`, `pam_oslogin_admin`) to verify possible OS Login users and set sudoers configuration accordingly. This only makes sense to enable for the `sshd` PAM service. |
+| `security.pam.services.<name>.googleOsLoginAuthentication` | `boolean` | If set, will use the `pam_oslogin_login`'s user authentication methods to authenticate users using 2FA. This only makes sense to enable for the `sshd` PAM service. |
+| `security.pam.services.<name>.howdy.control` | `string` | This option sets the PAM "control" used for this module. |
+| `security.pam.services.<name>.howdy.enable` | `boolean` | Whether to enable the Howdy PAM module. If set, users can be authenticated using Howdy, the Windows Hello™-style facial authentication service. |
+| `security.pam.services.<name>.kwallet.enable` | `boolean` | If enabled, pam_wallet will attempt to automatically unlock the user's default KDE wallet upon login. If the user has no wallet named "kdewallet", or the login password does not match their wallet password, KDE will prompt separately after login. |
+| `security.pam.services.<name>.kwallet.forceRun` | `boolean` | The `force_run` option is used to tell the PAM module for KWallet to forcefully run even if no graphical session (such as a GUI display manager) is detected. This is useful for when you are starting an X Session or a Wayland Session from a TTY. If you intend to log-in from a TTY, it is recommended that you enable this option **and** ensure that `plasma-kwallet-pam.service` is started by `graphical-session.target`. |
+| `security.pam.services.<name>.kwallet.package` | `package` | The kwallet-pam package to use. |
+| `security.pam.services.<name>.lastlog.enable` | `boolean` | Whether to update {file}`/var/log/wtmp`. |
+| `security.pam.services.<name>.lastlog.silent` | `boolean` | Whether to suppress the message showing the last login date. |
+| `security.pam.services.<name>.limits` | `list of (submodule)` | Attribute set describing resource limits. Defaults to the value of {option}`security.pam.loginLimits`. The meaning of the values is explained in {manpage}`limits.conf(5)`. |
+| `security.pam.services.<name>.limits.*.domain` | `string` | Username, groupname, or wildcard this limit applies to |
+| `security.pam.services.<name>.limits.*.item` | `one of "core", "data", "fsize", "memlock", "nofile", "rss", "stack", "cpu", "nproc", "as", "maxlogins", "maxsyslogins", "priority", "locks", "sigpending", "msgqueue", "nice", "rtprio"` | Item this limit applies to |
+| `security.pam.services.<name>.limits.*.type` | `one of "-", "hard", "soft"` | Type of this limit |
+| `security.pam.services.<name>.limits.*.value` | `string or signed integer` | Value of this limit |
+| `security.pam.services.<name>.logFailures` | `boolean` | Whether to log authentication failures in {file}`/var/log/faillog`. |
+| `security.pam.services.<name>.makeHomeDir` | `boolean` | Whether to try to create home directories for users with `$HOME`s pointing to nonexistent locations on session login. |
+| `security.pam.services.<name>.mysqlAuth` | `boolean` | If set, the `pam_mysql` module will be used to authenticate users against a MySQL/MariaDB database. |
+| `security.pam.services.<name>.name` | `string` | Name of the PAM service. |
+| `security.pam.services.<name>.nodelay` | `boolean` | Whether the delay after typing a wrong password should be disabled. |
+| `security.pam.services.<name>.oathAuth` | `boolean` | If set, the OATH Toolkit will be used. |
+| `security.pam.services.<name>.otpwAuth` | `boolean` | If set, the OTPW system will be used (if {file}`~/.otpw` exists). |
+| `security.pam.services.<name>.p11Auth` | `boolean` | If set, keys listed in {file}`~/.ssh/authorized_keys` and {file}`~/.eid/authorized_certificates` can be used to log in with the associated PKCS#11 tokens. |
+| `security.pam.services.<name>.pamMount` | `boolean` | Enable PAM mount (pam_mount) system to mount filesystems on user login. |
+| `security.pam.services.<name>.requireWheel` | `boolean` | Whether to permit root access only to members of group wheel. |
+| `security.pam.services.<name>.rootOK` | `boolean` | If set, root doesn't need to authenticate (e.g. for the {command}`useradd` service). |
+| `security.pam.services.<name>.rssh` | `boolean` | If set, the calling user's SSH agent is used to authenticate against the configured keys. This module works in a manner similar to pam_ssh_agent_auth, but supports a wider range of SSH key types, including those protected by security keys (FIDO2). |
+| `security.pam.services.<name>.setEnvironment` | `boolean` | Whether the service should set the environment variables listed in {option}`environment.sessionVariables` using `pam_env.so`. |
+| `security.pam.services.<name>.setLoginUid` | `boolean` | Set the login uid of the process ({file}`/proc/self/loginuid`) for auditing purposes. The login uid is only set by ‘entry points’ like {command}`login` and {command}`sshd`, not by commands like {command}`sudo`. |
+| `security.pam.services.<name>.showMotd` | `boolean` | Whether to show the message of the day. |
+| `security.pam.services.<name>.slurm.adopt.enable` | `boolean` | If set, it prevents users from logging into nodes if they have no jobs in the node. It also tracks any other spawned processes for accounting and ensures complete job cleanup when a job is completed for any successful connection. Spawned processes get "adopted" as external steps into the current job. As such, those steps get integrated with Slurm accounting and control group facilities. |
+| `security.pam.services.<name>.slurm.adopt.settings` | `open submodule of attribute set of (null or boolean or string or signed integer or path in the Nix store)` | Slurm Adopt Settings. More information is available at: - https://slurm.schedmd.com/pam_slurm_adopt.html |
+| `security.pam.services.<name>.slurm.adopt.settings.action_adopt_failure` | `one of "allow", "deny"` | What to do if the process is unable to be adopted into a job. `allow` matches the upstream default which is only really suitable for testing; production systems will want `deny` as a default. |
+| `security.pam.services.<name>.slurm.adopt.settings.action_generic_failure` | `one of "ignore", "allow", "deny"` | Catch all for failures related to kernel issues or slurmd access. Ignore falls through to the next PAM module, allowing the connection to go through without adoption. |
+| `security.pam.services.<name>.slurm.adopt.settings.action_no_jobs` | `one of "ignore", "deny"` | What to do if no jobs from the user are found, deny or ignore (pass along to next PAM module). |
+| `security.pam.services.<name>.slurm.adopt.settings.action_unknown` | `one of "newest", "allow", "deny"` | If the user has jobs, attach them to the newest job. Allow the connection through without adoption. |
+| `security.pam.services.<name>.slurm.adopt.settings.disable_x11` | `one of "0", "1"` | Disable or enable x11 sessions. '0' means the adopted connection has Slurm X11 forwarding with DISPLAY overwritten using X11 tunnel endpoint details. |
+| `security.pam.services.<name>.slurm.adopt.settings.join_container` | `one of "true", "false"` | Attach to a container created by job_container/tmpfs |
+| `security.pam.services.<name>.slurm.adopt.settings.nodename` | `null or non-empty string` | Set this only when the Slurm `NodeName` for this machine differs from `hostname -s`. If unset, `pam_slurm_adopt` uses the host short name. |
+| `security.pam.services.<name>.slurm.enable` | `boolean` | If set, ONLY prevents users from logging into nodes if they have no jobs in the node. This module is a legacy implementation with functionality limited to login restrictions. |
+| `security.pam.services.<name>.sshAgentAuth` | `boolean` | If set, the calling user's SSH agent is used to authenticate against the keys in the calling user's {file}`~/.ssh/authorized_keys`. This is useful for {command}`sudo` on password-less remote systems. |
+| `security.pam.services.<name>.sssdStrictAccess` | `boolean` | enforce sssd access control |
+| `security.pam.services.<name>.startSession` | `boolean` | If set, the service will register a new session with systemd's login manager. For local sessions, this will give the user access to audio devices, CD-ROM drives. In the default PolicyKit configuration, it also allows the user to reboot the system. |
+| `security.pam.services.<name>.text` | `null or strings concatenated with "\n"` | Contents of the PAM service file. |
+| `security.pam.services.<name>.ttyAudit.disablePattern` | `null or string` | For each user matching one of comma-separated glob patterns, disable TTY auditing |
+| `security.pam.services.<name>.ttyAudit.enable` | `boolean` | Enable or disable TTY auditing for specified users |
+| `security.pam.services.<name>.ttyAudit.enablePattern` | `null or string` | For each user matching one of comma-separated glob patterns, enable TTY auditing |
+| `security.pam.services.<name>.ttyAudit.openOnly` | `boolean` | Set the TTY audit flag when opening the session, but do not restore it when closing the session. Using this option is necessary for some services that don't fork() to run the authenticated session, such as sudo. |
+| `security.pam.services.<name>.u2f.control` | `one of "required", "requisite", "sufficient", "optional"` | This option sets pam "control". If you want to have multi factor authentication, use "required". If you want to use U2F device instead of regular password, use "sufficient". Read {manpage}`pam.conf(5)` for better understanding of this option. |
+| `security.pam.services.<name>.u2f.enable` | `boolean` | If set, users listed in {file}`$XDG_CONFIG_HOME/Yubico/u2f_keys` (or {file}`$HOME/.config/Yubico/u2f_keys` if XDG variable is not set) are able to log in with the associated U2F key. Path can be changed using {option}`security.pam.u2f.authFile` option. |
+| `security.pam.services.<name>.unixAuth` | `boolean` | Whether users can log in with passwords defined in {file}`/etc/shadow`. |
+| `security.pam.services.<name>.usshAuth` | `boolean` | If set, users with an SSH certificate containing an authorized principal in their SSH agent are able to log in. Specific options are controlled using the {option}`security.pam.ussh` options. Note that the {option}`security.pam.ussh.enable` must also be set for this option to take effect. |
+| `security.pam.services.<name>.yubicoAuth` | `boolean` | If set, users listed in {file}`~/.yubico/authorized_yubikeys` are able to log in with the associated Yubikey tokens. |
+| `security.pam.services.<name>.zfs` | `boolean` | Enable unlocking and mounting of encrypted ZFS home dataset at login. |
+| `security.pam.sshAgentAuth.authorizedKeysFiles` | `list of string` | A list of paths to files in OpenSSH's `authorized_keys` format, containing the keys that will be trusted by the `pam_ssh_agent_auth` module. The following patterns are expanded when interpreting the path: - `%f` and `%H` respectively expand to the fully-qualified and short hostname ; - `%u` expands to the username ; - `~` or `%h` expands to the user's home directory. ::: {.note} Specifying user-writeable files here result in an insecure configuration: a malicious process can then edit such an authorized_keys file and bypass the ssh-agent-based authentication. See [issue #31611](https://github.com/NixOS/nixpkgs/issues/31611) ::: |
+| `security.pam.sshAgentAuth.enable` | `boolean` | Whether to enable authenticating using a signature performed by the ssh-agent. This allows using SSH keys exclusively, instead of passwords, for instance on remote machines . |
+| `security.pam.u2f.control` | `one of "required", "requisite", "sufficient", "optional"` | This option sets pam "control". If you want to have multi factor authentication, use "required". If you want to use U2F device instead of regular password, use "sufficient". Read {manpage}`pam.conf(5)` for better understanding of this option. |
+| `security.pam.u2f.enable` | `boolean` | Enables U2F PAM (`pam-u2f`) module. If set, users listed in {file}`$XDG_CONFIG_HOME/Yubico/u2f_keys` (or {file}`$HOME/.config/Yubico/u2f_keys` if XDG variable is not set) are able to log in with the associated U2F key. The path can be changed using {option}`security.pam.u2f.authFile` option. File format is: `<username1>:<KeyHandle1>,<UserKey1>,<CoseType1>,<Options1>:<KeyHandle2>,<UserKey2>,<CoseType2>,<Options2>:... <username2>:<KeyHandle1>,<UserKey1>,<CoseType1>,<Options1>:<KeyHandle2>,<UserKey2>,<CoseType2>,<Options2>:...` This file can be generated using {command}`pamu2fcfg` command. More information can be found [here](https://developers.yubico.com/pam-u2f/). |
+| `security.pam.u2f.settings` | `open submodule of attribute set of (null or boolean or string or signed integer or path in the Nix store)` | Options to pass to the PAM module. Boolean values render just the key if true, and nothing if false. Null values are ignored. All other values are rendered as key-value pairs. |
+| `security.pam.u2f.settings.appid` | `null or string` | By default `pam-u2f` module sets the application ID to `pam://$HOSTNAME`. When using {command}`pamu2fcfg`, you can specify your application ID with the `-i` flag. More information can be found [here](https://developers.yubico.com/pam-u2f/Manuals/pam_u2f.8.html) |
+| `security.pam.u2f.settings.authfile` | `null or absolute path` | By default `pam-u2f` module reads the keys from {file}`$XDG_CONFIG_HOME/Yubico/u2f_keys` (or {file}`$HOME/.config/Yubico/u2f_keys` if XDG variable is not set). If you want to change auth file locations or centralize database (for example use {file}`/etc/u2f-mappings`) you can set this option. File format is: `username:first_keyHandle,first_public_key: second_keyHandle,second_public_key` This file can be generated using {command}`pamu2fcfg` command. More information can be found [here](https://developers.yubico.com/pam-u2f/). |
+| `security.pam.u2f.settings.cue` | `boolean` | By default `pam-u2f` module does not inform user that he needs to use the u2f device, it just waits without a prompt. If you set this option to `true`, `cue` option is added to `pam-u2f` module and reminder message will be displayed. |
+| `security.pam.u2f.settings.debug` | `boolean` | Debug output to stderr. |
+| `security.pam.u2f.settings.interactive` | `boolean` | Set to prompt a message and wait before testing the presence of a U2F device. Recommended if your device doesn’t have a tactile trigger. |
+| `security.pam.u2f.settings.origin` | `null or string` | By default `pam-u2f` module sets the origin to `pam://$HOSTNAME`. Setting origin to an host independent value will allow you to reuse credentials across machines When using {command}`pamu2fcfg`, you can specify your application ID with the `-o` flag. More information can be found [here](https://developers.yubico.com/pam-u2f/Manuals/pam_u2f.8.html) |
+| `security.pam.ussh.authorizedPrincipals` | `null or strings concatenated with ","` | Comma-separated list of authorized principals to permit; if the user presents a certificate with one of these principals, then they will be authorized. Note that `pam-ussh` also requires that the certificate contain a principal matching the user's username. The principals from this list are in addition to those principals. Mutually exclusive with `authorizedPrincipalsFile`. |
+| `security.pam.ussh.authorizedPrincipalsFile` | `null or absolute path` | Path to a list of principals; if the user presents a certificate with one of these principals, then they will be authorized. Note that `pam-ussh` also requires that the certificate contain a principal matching the user's username. The principals from this file are in addition to those principals. Mutually exclusive with `authorizedPrincipals`. |
+| `security.pam.ussh.caFile` | `null or absolute path` | By default `pam-ussh` reads the trusted user CA keys from {file}`/etc/ssh/trusted_user_ca`. This should be set the same as your `TrustedUserCAKeys` option for sshd. |
+| `security.pam.ussh.control` | `one of "required", "requisite", "sufficient", "optional"` | This option sets pam "control". If you want to have multi factor authentication, use "required". If you want to use the SSH certificate instead of the regular password, use "sufficient". Read {manpage}`pam.conf(5)` for better understanding of this option. |
+| `security.pam.ussh.enable` | `boolean` | Enables Uber's USSH PAM (`pam-ussh`) module. This is similar to `pam-ssh-agent`, except that the presence of a CA-signed SSH key with a valid principal is checked instead. Note that this module must both be enabled using this option and on a per-PAM-service level as well (using `usshAuth`). More information can be found [here](https://github.com/uber/pam-ussh). |
+| `security.pam.ussh.group` | `null or string` | If set, then the authenticating user must be a member of this group to use this module. |
+| `security.pam.yubico.challengeResponsePath` | `null or absolute path` | If not null, set the path used by yubico pam module where the challenge expected response is stored. More information can be found [here](https://developers.yubico.com/yubico-pam/Authentication_Using_Challenge-Response.html). |
+| `security.pam.yubico.control` | `one of "required", "requisite", "sufficient", "optional"` | This option sets pam "control". If you want to have multi factor authentication, use "required". If you want to use Yubikey instead of regular password, use "sufficient". Read {manpage}`pam.conf(5)` for better understanding of this option. |
+| `security.pam.yubico.debug` | `boolean` | Debug output to stderr. |
+| `security.pam.yubico.enable` | `boolean` | Enables Yubico PAM (`yubico-pam`) module. If set, users listed in {file}`~/.yubico/authorized_yubikeys` are able to log in with the associated Yubikey tokens. The file must have only one line: `username:yubikey_token_id1:yubikey_token_id2` More information can be found [here](https://developers.yubico.com/yubico-pam/). |
+| `security.pam.yubico.id` | `string` | client id |
+| `security.pam.yubico.mode` | `one of "client", "challenge-response"` | Mode of operation. Use "client" for online validation with a YubiKey validation service such as the YubiCloud. Use "challenge-response" for offline validation using YubiKeys with HMAC-SHA-1 Challenge-Response configurations. See the man-page {manpage}`ykpamcfg(1)` for further details on how to configure offline Challenge-Response validation. More information can be found [here](https://developers.yubico.com/yubico-pam/Authentication_Using_Challenge-Response.html). |
+| `security.pam.zfs.enable` | `boolean` | Enable unlocking and mounting of encrypted ZFS home dataset at login. |
+| `security.pam.zfs.homes` | `string` | Prefix of home datasets. This value will be concatenated with `"/" + <username>` in order to determine the home dataset to unlock. |
+| `security.pam.zfs.mountRecursively` | `boolean` | Mount child datasets of home dataset. |
+| `security.pam.zfs.noUnmount` | `boolean` | Do not unmount home dataset on logout. |
+| `security.pki.caBundle` | `absolute path` | (Read-only) the path to the final bundle of certificate authorities as a single file. |
+| `security.pki.caCertificateBlacklist` | `list of string` | A list of blacklisted CA certificate names that won't be imported from the Mozilla Trust Store into {file}`/etc/ssl/certs/ca-certificates.crt`. Use the names from that file. |
+| `security.pki.certificateFiles` | `list of absolute path` | A list of files containing trusted root certificates in PEM format. These are concatenated to form {file}`/etc/ssl/certs/ca-certificates.crt`, which is used by many programs that use OpenSSL, such as {command}`curl` and {command}`git`. |
+| `security.pki.certificates` | `list of string` | A list of trusted root certificates in PEM format. |
+| `security.pki.useCompatibleBundle` | `boolean` | Whether to enable usage of a compatibility bundle. Such a bundle consists exclusively of `BEGIN CERTIFICATE` and no `BEGIN TRUSTED CERTIFICATE`, which is an OpenSSL specific PEM format. It is known to be incompatible with certain software stacks. Nevertheless, enabling this will strip all additional trust rules provided by the certificates themselves. This can have security consequences depending on your usecases . |
+| `security.please.enable` | `boolean` | Whether to enable please, a Sudo clone which allows a users to execute a command or edit a file as another user . |
+| `security.please.package` | `package` | The please package to use. |
+| `security.please.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Please configuration. Refer to <https://github.com/edneville/please/blob/master/please.ini.md> for details. |
+| `security.please.wheelNeedsPassword` | `boolean` | Whether users of the `wheel` group must provide a password to run commands or edit files with {command}`please` and {command}`pleaseedit` respectively. |
+| `security.polkit.adminIdentities` | `list of string` | Specifies which users are considered “administrators”, for those actions that require the user to authenticate as an administrator (i.e. have an `auth_admin` value). By default, this is all users in the `wheel` group. |
+| `security.polkit.enable` | `boolean` | Whether to enable polkit. |
+| `security.polkit.enablePkexecWrapper` | `boolean` | Whether to enable the setuid pkexec wrapper. |
+| `security.polkit.extraArgs` | `list of string` | List of arguments to pass to the polkitd executable. ::: {.note} To see debug logs you need to negate the default `--no-debug` setting. ::: |
+| `security.polkit.extraConfig` | `strings concatenated with "\n"` | Any polkit rules to be added to config (in JavaScript ;-). See: <https://www.freedesktop.org/software/polkit/docs/latest/polkit.8.html#polkit-rules> |
+| `security.polkit.package` | `package` | The polkit package to use. |
+| `security.protectKernelImage` | `boolean` | Whether to prevent replacing the running kernel image. |
+| `security.rtkit.args` | `list of string` | Command-line options for `rtkit-daemon`. |
+| `security.rtkit.enable` | `boolean` | Whether to enable the RealtimeKit system service, which hands out realtime scheduling priority to user processes on demand. For example, PulseAudio and PipeWire use this to acquire realtime priority. |
+| `security.rtkit.package` | `package` | The rtkit package to use. |
+| `security.run0.enable` | `boolean` | Whether to enable support for run0. |
+| `security.run0.enableSudoAlias` | `boolean` | Whether to enable make {command}`sudo` an alias to {command}`run0`.. |
+| `security.run0.wheelNeedsPassword` | `boolean` | Whether users of the `wheel` group must provide a password to run commands as super user via {command}`run0`. |
+| `security.shadow.enable` | `boolean` | Enable the shadow authentication suite, which provides critical programs such as su, login, passwd. Note: This is currently experimental. Only disable this if you're confident that you can recover your system if it breaks. |
+| `security.shadow.su.package` | `package` | The su package to use. This can be overridden by other modules (e.g. sudo-rs) to provide an alternative `su` implementation. |
+| `security.soteria.enable` | `boolean` | Whether to enable Soteria, a Polkit authentication agent for any desktop environment. ::: {.note} You should only enable this if you are on a Desktop Environment that does not provide a graphical polkit authentication agent, or you are on a standalone window manager or Wayland compositor. ::: |
+| `security.soteria.package` | `package` | The soteria package to use. |
+| `security.sudo-rs.configFile` | `strings concatenated with "\n"` | This string contains the contents of the {file}`sudoers` file. |
+| `security.sudo-rs.defaultOptions` | `list of string` | Options used for the default rules, granting `root` and the `wheel` group permission to run any command as any user. |
+| `security.sudo-rs.enable` | `boolean` | Whether to enable a memory-safe implementation of the {command}`sudo` command, which allows non-root users to execute commands as root . |
+| `security.sudo-rs.execWheelOnly` | `boolean` | Only allow members of the `wheel` group to execute sudo by setting the executable's permissions accordingly. This prevents users that are not members of `wheel` from exploiting vulnerabilities in sudo such as CVE-2021-3156. |
+| `security.sudo-rs.extraConfig` | `strings concatenated with "\n"` | Extra configuration text appended to {file}`sudoers`. |
+| `security.sudo-rs.extraRules` | `list of (submodule)` | Define specific rules to be in the {file}`sudoers` file. More specific rules should come after more general ones in order to yield the expected behavior. You can use `lib.mkBefore`/`lib.mkAfter` to ensure this is the case when configuration options are merged. |
+| `security.sudo-rs.extraRules.*.commands` | `list of (string or (submodule))` | The commands for which the rule should apply. |
+| `security.sudo-rs.extraRules.*.groups` | `list of (string or signed integer)` | The groups / GIDs this rule should apply for. |
+| `security.sudo-rs.extraRules.*.host` | `string` | For what host this rule should apply. |
+| `security.sudo-rs.extraRules.*.runAs` | `string` | Under which user/group the specified command is allowed to run. A user can be specified using just the username: `"foo"`. It is also possible to specify a user/group combination using `"foo:bar"` or to only allow running as a specific group with `":bar"`. |
+| `security.sudo-rs.extraRules.*.users` | `list of (string or signed integer)` | The usernames / UIDs this rule should apply for. |
+| `security.sudo-rs.package` | `package` | The sudo-rs package to use. |
+| `security.sudo-rs.wheelNeedsPassword` | `boolean` | Whether users of the `wheel` group must provide a password to run commands as super user via {command}`sudo`. |
+| `security.sudo.configFile` | `strings concatenated with "\n"` | This string contains the contents of the {file}`sudoers` file. |
+| `security.sudo.defaultOptions` | `list of string` | Options used for the default rules, granting `root` and the `wheel` group permission to run any command as any user. |
+| `security.sudo.enable` | `boolean` | Whether to enable the {command}`sudo` command, which allows non-root users to execute commands as root. |
+| `security.sudo.execWheelOnly` | `boolean` | Only allow members of the `wheel` group to execute sudo by setting the executable's permissions accordingly. This prevents users that are not members of `wheel` from exploiting vulnerabilities in sudo such as CVE-2021-3156. |
+| `security.sudo.extraConfig` | `strings concatenated with "\n"` | Extra configuration text appended to {file}`sudoers`. |
+| `security.sudo.extraRules` | `list of (submodule)` | Define specific rules to be in the {file}`sudoers` file. More specific rules should come after more general ones in order to yield the expected behavior. You can use mkBefore/mkAfter to ensure this is the case when configuration options are merged. |
+| `security.sudo.extraRules.*.commands` | `list of (string or (submodule))` | The commands for which the rule should apply. |
+| `security.sudo.extraRules.*.groups` | `list of (string or signed integer)` | The groups / GIDs this rule should apply for. |
+| `security.sudo.extraRules.*.host` | `string` | For what host this rule should apply. |
+| `security.sudo.extraRules.*.runAs` | `string` | Under which user/group the specified command is allowed to run. A user can be specified using just the username: `"foo"`. It is also possible to specify a user/group combination using `"foo:bar"` or to only allow running as a specific group with `":bar"`. |
+| `security.sudo.extraRules.*.users` | `list of (string or signed integer)` | The usernames / UIDs this rule should apply for. |
+| `security.sudo.keepTerminfo` | `boolean` | Whether to preserve the `TERMINFO` and `TERMINFO_DIRS` environment variables, for `root` and the `wheel` group. |
+| `security.sudo.package` | `package` | The sudo package to use. |
+| `security.sudo.wheelNeedsPassword` | `boolean` | Whether users of the `wheel` group must provide a password to run commands as super user via {command}`sudo`. |
+| `security.tpm2.abrmd.enable` | `boolean` | Whether to enable Trusted Platform 2 userspace resource manager daemon . |
+| `security.tpm2.abrmd.package` | `package` | The tpm2-abrmd package to use. |
+| `security.tpm2.applyUdevRules` | `boolean` | Whether to make the /dev/tpm[0-9] devices accessible by the tssUser, or the /dev/tpmrm[0-9] by tssGroup respectively |
+| `security.tpm2.enable` | `boolean` | Whether to enable Trusted Platform Module 2 support. |
+| `security.tpm2.fapi.ekCertLess` | `null or boolean` | A switch to disable Endorsement Key (EK) certificate verification. A value of null indicates that the generated fapi config file does not contain a ek_cert_less key. The effect of not having that key at all is the same as setting its value to false. A value of false means that the tss2 cli will not work if there is no EK Cert installed, or if the installed EK Cert can't be validated. A value of true means that the tss2 cli will work even if there's no EK cert installed. |
+| `security.tpm2.fapi.ekFingerprint` | `null or string` | The fingerprint of the endorsement key. A value of null means that you have chosen not to specify the expected fingerprint of the EK. You can still have an endorsement key, it just won't get checked to see if it's fingerprint matches a particular value before being used. |
+| `security.tpm2.fapi.firmwareLogFile` | `string` | The binary bios measurements. |
+| `security.tpm2.fapi.imaLogFile` | `string` | The binary IMA measurements (Integrity Measurement Architecture). |
+| `security.tpm2.fapi.logDir` | `string` | The directory for the event log. |
+| `security.tpm2.fapi.profileDir` | `string` | Directory that contains all cryptographic profiles known to FAPI. |
+| `security.tpm2.fapi.profileName` | `string` | Name of the default cryptographic profile chosen from the profile_dir directory. |
+| `security.tpm2.fapi.systemDir` | `string` | The directory where system objects, policies, and imported objects are stored. |
+| `security.tpm2.fapi.systemPcrs` | `list of signed integer` | The PCR registers which are used by the system. |
+| `security.tpm2.fapi.tcti` | `string` | The TCTI which will be used. An empty string indicates no TCTI is specified by the FAPI config. If not specified in the FAPI config it can be specified by environment variable (TPM2TOOLS_TCTI, TPM2_PKCS11_TCTI, etc) or a TCTI will be chosen by the FAPI library by searching for tabrmd, device, and mssim TCTIs in that order. |
+| `security.tpm2.fapi.userDir` | `string` | The directory where user objects are stored. |
+| `security.tpm2.pkcs11.enable` | `boolean` | Whether to enable TPM2 PKCS#11 tool and shared library in system path (`/run/current-system/sw/lib/libtpm2_pkcs11.so`) . |
+| `security.tpm2.pkcs11.package` | `package` | tpm2-pkcs11 package to use |
+| `security.tpm2.tctiEnvironment.deviceConf` | `string` | Configuration part of the device TCTI, e.g. the path to the TPM device. Applies if interface is set to "device". The format is specified in the [ tpm2-tools repository](https://github.com/tpm2-software/tpm2-tools/blob/master/man/common/tcti.md#tcti-options). |
+| `security.tpm2.tctiEnvironment.enable` | `boolean` | Set common TCTI environment variables to the specified value. The variables are - `TPM2TOOLS_TCTI` - `TPM2_PKCS11_TCTI` |
+| `security.tpm2.tctiEnvironment.interface` | `one of "tabrmd", "device"` | The name of the TPM command transmission interface (TCTI) library to use. |
+| `security.tpm2.tctiEnvironment.tabrmdConf` | `string` | Configuration part of the tabrmd TCTI, like the D-Bus bus name. Applies if interface is set to "tabrmd". The format is specified in the [ tpm2-tools repository](https://github.com/tpm2-software/tpm2-tools/blob/master/man/common/tcti.md#tcti-options). |
+| `security.tpm2.tssGroup` | `null or string` | Group of the tpm kernel resource manager (tpmrm) device-group, set if applyUdevRules is set. |
+| `security.tpm2.tssUser` | `null or string` | Name of the tpm device-owner and service user, set if applyUdevRules is set. |
+| `security.unprivilegedUsernsClone` | `boolean` | When disabled, unprivileged users will not be able to create new namespaces. By default unprivileged user namespaces are disabled. This option only works in a hardened profile. |
+| `security.virtualisation.flushL1DataCache` | `null or one of "never", "cond", "always"` | Whether the hypervisor should flush the L1 data cache before entering guests. See also [](#opt-security.allowSimultaneousMultithreading). - `null`: uses the kernel default - `"never"`: disables L1 data cache flushing entirely. May be appropriate if all guests are trusted. - `"cond"`: flushes L1 data cache only for pre-determined code paths. May leak information about the host address space layout. - `"always"`: flushes L1 data cache every time the hypervisor enters the guest. May incur significant performance cost. |
+| `security.wrapperDirSize` | `string` | Size limit for the /run/wrappers tmpfs. Look at {manpage}`mount(8)`, tmpfs size option, for the accepted syntax. WARNING: don't set to less than 64MB. |
+| `security.wrappers` | `attribute set of (submodule)` | This option effectively allows adding setuid/setgid bits, capabilities, changing file ownership and permissions of a program without directly modifying it. This works by creating a wrapper program in a directory (not configurable), which is then added to the shell `PATH`. |
+| `security.wrappers.<name>.capabilities` | `strings concatenated with ","` | A comma-separated list of capability clauses to be given to the wrapper program. The format for capability clauses is described in the “TEXTUAL REPRESENTATION” section of the {manpage}`cap_from_text(3)` manual page. For a list of capabilities supported by the system, check the {manpage}`capabilities(7)` manual page. ::: {.note} `cap_setpcap`, which is required for the wrapper program to be able to raise caps into the Ambient set is NOT raised to the Ambient set so that the real program cannot modify its own capabilities!! This may be too restrictive for cases in which the real program needs cap_setpcap but it at least leans on the side security paranoid vs. too relaxed. ::: |
+| `security.wrappers.<name>.enable` | `boolean` | Whether to enable the wrapper. |
+| `security.wrappers.<name>.group` | `string` | The group of the wrapper program. |
+| `security.wrappers.<name>.owner` | `string` | The owner of the wrapper program. |
+| `security.wrappers.<name>.permissions` | `file mode string` | The permissions of the wrapper program. The format is that of a symbolic or numeric file mode understood by {command}`chmod`. |
+| `security.wrappers.<name>.program` | `null or string` | The name of the wrapper program. Defaults to the attribute name. |
+| `security.wrappers.<name>.setgid` | `boolean` | Whether to add the setgid bit the wrapper program. |
+| `security.wrappers.<name>.setuid` | `boolean` | Whether to add the setuid bit the wrapper program. |
+| `security.wrappers.<name>.source` | `absolute path` | The absolute path to the program to be wrapped. |

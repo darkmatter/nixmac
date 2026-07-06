@@ -5,6 +5,6 @@
 All options under `programs.firejail`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `programs.firejail.enable` | | |
-| `programs.firejail.wrappedBinaries` | | |
+| --- | --- | --- |
+| `programs.firejail.enable` | `boolean` | Whether to enable firejail, a sandboxing tool for Linux. |
+| `programs.firejail.wrappedBinaries` | `attribute set of (absolute path or (submodule))` | Wrap the binaries in firejail and place them in the global path. |

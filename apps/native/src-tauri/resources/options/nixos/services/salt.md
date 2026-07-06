@@ -5,8 +5,8 @@
 All options under `services.salt`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.salt.master.configuration` | | |
-| `services.salt.master.enable` | | |
-| `services.salt.minion.configuration` | | |
-| `services.salt.minion.enable` | | |
+| --- | --- | --- |
+| `services.salt.master.configuration` | `attribute set` | Salt master configuration as Nix attribute set. |
+| `services.salt.master.enable` | `boolean` | Whether to enable Salt configuration management system master service. |
+| `services.salt.minion.configuration` | `attribute set` | Salt minion configuration as Nix attribute set. See <https://docs.saltstack.com/en/latest/ref/configuration/minion.html> for details. |
+| `services.salt.minion.enable` | `boolean` | Whether to enable Salt configuration management system minion service. |

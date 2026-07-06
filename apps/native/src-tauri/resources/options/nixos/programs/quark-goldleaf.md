@@ -5,5 +5,5 @@
 All options under `programs.quark-goldleaf`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `programs.quark-goldleaf.enable` | | |
+| --- | --- | --- |
+| `programs.quark-goldleaf.enable` | `boolean` | Whether to enable quark-goldleaf with udev rules applied. |

@@ -5,8 +5,8 @@
 All options under `programs.nixbit`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `programs.nixbit.enable` | | |
-| `programs.nixbit.forceAutostart` | | |
-| `programs.nixbit.package` | | |
-| `programs.nixbit.repository` | | |
+| --- | --- | --- |
+| `programs.nixbit.enable` | `boolean` | Whether to enable Nixbit configuration. |
+| `programs.nixbit.forceAutostart` | `boolean` | Force creation of autostart desktop entry when application starts |
+| `programs.nixbit.package` | `package` | The nixbit package to use. |
+| `programs.nixbit.repository` | `string` | Git repository URL for Nixbit |

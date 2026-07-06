@@ -5,9 +5,9 @@
 All options under `services.thermald`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.thermald.configFile` | | |
-| `services.thermald.debug` | | |
-| `services.thermald.enable` | | |
-| `services.thermald.ignoreCpuidCheck` | | |
-| `services.thermald.package` | | |
+| --- | --- | --- |
+| `services.thermald.configFile` | `null or absolute path` | The thermald manual configuration file. Leave unspecified to run with the `--adaptive` flag instead which will have thermald use your computer's DPTF adaptive tables. See `man thermald` for more information. |
+| `services.thermald.debug` | `boolean` | Whether to enable debug logging. |
+| `services.thermald.enable` | `boolean` | Whether to enable thermald, the temperature management daemon. |
+| `services.thermald.ignoreCpuidCheck` | `boolean` | Whether to ignore the cpuid check to allow running on unsupported platforms |
+| `services.thermald.package` | `package` | The thermald package to use. |

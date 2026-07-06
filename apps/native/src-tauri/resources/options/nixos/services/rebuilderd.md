@@ -5,7 +5,7 @@
 All options under `services.rebuilderd`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.rebuilderd.enable` | | |
-| `services.rebuilderd.package` | | |
-| `services.rebuilderd.settings` | | |
+| --- | --- | --- |
+| `services.rebuilderd.enable` | `boolean` | Whether to enable rebuilderd service for independent verification of binary packages. |
+| `services.rebuilderd.package` | `package` | The rebuilderd package to use. |
+| `services.rebuilderd.settings` | `open submodule of (TOML value)` | Configuration for rebuilderd (rebuilderd.conf) |

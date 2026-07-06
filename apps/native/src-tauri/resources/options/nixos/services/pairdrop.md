@@ -5,9 +5,9 @@
 All options under `services.pairdrop`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.pairdrop.enable` | | |
-| `services.pairdrop.environment` | | |
-| `services.pairdrop.package` | | |
-| `services.pairdrop.port` | | |
-| `services.pairdrop.rtcConfig` | | |
+| --- | --- | --- |
+| `services.pairdrop.enable` | `boolean` | Whether to enable pairdrop. |
+| `services.pairdrop.environment` | `open submodule of attribute set of (boolean or signed integer or string)` | Additional configuration (environment variables) for PairDrop, see <https://github.com/schlagmichdoch/PairDrop/blob/master/docs/host-your-own.md#environment-variables> for supported values. |
+| `services.pairdrop.package` | `package` | The pairdrop package to use. |
+| `services.pairdrop.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to listen on. |
+| `services.pairdrop.rtcConfig` | `JSON value` | Configuration for STUN/TURN servers. This is converted to JSON and written into a file automatically. If you want to provide a file path instead, set `RTC_CONFIG` in {option}`services.pairdrop.environment`. |

@@ -5,7 +5,6 @@
 All options under `programs._1password`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `programs._1password.enable` | | |
-| `programs._1password.gid` | | |
-| `programs._1password.package` | | |
+| --- | --- | --- |
+| `programs._1password.enable` | `boolean` | Whether to enable the 1Password CLI tool. |
+| `programs._1password.package` | `package` | The 1Password CLI package to use. |

@@ -5,7 +5,7 @@
 All options under `programs.qgroundcontrol`.
 
 | Option | Type | Description |
-| --------------------------------------------------------- | ---- | ----------- |
-| `programs.qgroundcontrol.blacklistModemManagerFromTTYUSB` | | |
-| `programs.qgroundcontrol.enable` | | |
-| `programs.qgroundcontrol.package` | | |
+| --- | --- | --- |
+| `programs.qgroundcontrol.blacklistModemManagerFromTTYUSB` | `boolean` | Disallow ModemManager from interfering with serial connections that QGroundControl might use. Note that if you use a modem that's connected via USB, you might want to disable this option. |
+| `programs.qgroundcontrol.enable` | `boolean` | Whether to enable qgroundcontrol. |
+| `programs.qgroundcontrol.package` | `package` | The qgroundcontrol package to use. |

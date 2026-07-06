@@ -5,10 +5,10 @@
 All options under `programs.clash-verge`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `programs.clash-verge.autoStart` | | |
-| `programs.clash-verge.enable` | | |
-| `programs.clash-verge.group` | | |
-| `programs.clash-verge.package` | | |
-| `programs.clash-verge.serviceMode` | | |
-| `programs.clash-verge.tunMode` | | |
+| --- | --- | --- |
+| `programs.clash-verge.autoStart` | `boolean` | Whether to enable Clash Verge auto launch. |
+| `programs.clash-verge.enable` | `boolean` | Whether to enable Clash Verge. |
+| `programs.clash-verge.group` | `string` | The group to grant access to clash-verge-rev's service socket. For better security, you should set a group that only contains users who need to access clash-verge-rev's service socket. |
+| `programs.clash-verge.package` | `package` | The clash-verge package to use. Available options are clash-verge-rev and clash-nyanpasu, both are forks of the original clash-verge project. |
+| `programs.clash-verge.serviceMode` | `boolean` | Whether to enable Service Mode. |
+| `programs.clash-verge.tunMode` | `boolean` | Whether to enable Setcap for TUN Mode. DNS settings won't work on this way. |

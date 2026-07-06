@@ -5,28 +5,28 @@
 All options under `services.cfssl`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.cfssl.address` | | |
-| `services.cfssl.ca` | | |
-| `services.cfssl.caBundle` | | |
-| `services.cfssl.caKey` | | |
-| `services.cfssl.configFile` | | |
-| `services.cfssl.dataDir` | | |
-| `services.cfssl.dbConfig` | | |
-| `services.cfssl.disable` | | |
-| `services.cfssl.enable` | | |
-| `services.cfssl.intBundle` | | |
-| `services.cfssl.intDir` | | |
-| `services.cfssl.logLevel` | | |
-| `services.cfssl.metadata` | | |
-| `services.cfssl.mutualTlsCa` | | |
-| `services.cfssl.mutualTlsClientCert` | | |
-| `services.cfssl.mutualTlsClientKey` | | |
-| `services.cfssl.mutualTlsCn` | | |
-| `services.cfssl.port` | | |
-| `services.cfssl.remote` | | |
-| `services.cfssl.responder` | | |
-| `services.cfssl.responderKey` | | |
-| `services.cfssl.tlsCert` | | |
-| `services.cfssl.tlsKey` | | |
-| `services.cfssl.tlsRemoteCa` | | |
+| --- | --- | --- |
+| `services.cfssl.address` | `string` | Address to bind. |
+| `services.cfssl.ca` | `string` | CA used to sign the new certificate -- accepts '[file:]fname' or 'env:varname'. |
+| `services.cfssl.caBundle` | `null or absolute path` | Path to root certificate store. |
+| `services.cfssl.caKey` | `string` | CA private key -- accepts '[file:]fname' or 'env:varname'. |
+| `services.cfssl.configFile` | `null or string` | Path to configuration file. Do not put this in nix-store as it might contain secrets. |
+| `services.cfssl.dataDir` | `absolute path` | The work directory for CFSSL. ::: {.note} If left as the default value this directory will automatically be created before the CFSSL server starts, otherwise you are responsible for ensuring the directory exists with appropriate ownership and permissions. ::: |
+| `services.cfssl.dbConfig` | `null or absolute path` | Certificate db configuration file. Path must be writeable. |
+| `services.cfssl.disable` | `null or strings concatenated with ","` | Endpoints to disable (comma-separated list) |
+| `services.cfssl.enable` | `boolean` | Whether to enable the CFSSL CA api-server. |
+| `services.cfssl.intBundle` | `null or absolute path` | Path to intermediate certificate store. |
+| `services.cfssl.intDir` | `null or absolute path` | Intermediates directory. |
+| `services.cfssl.logLevel` | `integer between 0 and 5 (both inclusive)` | Log level (0 = DEBUG, 5 = FATAL). |
+| `services.cfssl.metadata` | `null or absolute path` | Metadata file for root certificate presence. The content of the file is a json dictionary (k,v): each key k is a SHA-1 digest of a root certificate while value v is a list of key store filenames. |
+| `services.cfssl.mutualTlsCa` | `null or absolute path` | Mutual TLS - require clients be signed by this CA. |
+| `services.cfssl.mutualTlsClientCert` | `null or absolute path` | Mutual TLS - client certificate to call remote instance requiring client certs. |
+| `services.cfssl.mutualTlsClientKey` | `null or absolute path` | Mutual TLS - client key to call remote instance requiring client certs. Do not put this in nix-store. |
+| `services.cfssl.mutualTlsCn` | `null or string` | Mutual TLS - regex for whitelist of allowed client CNs. |
+| `services.cfssl.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to bind. |
+| `services.cfssl.remote` | `null or string` | Remote CFSSL server. |
+| `services.cfssl.responder` | `null or absolute path` | Certificate for OCSP responder. |
+| `services.cfssl.responderKey` | `null or string` | Private key for OCSP responder certificate. Do not put this in nix-store. |
+| `services.cfssl.tlsCert` | `null or absolute path` | Other endpoint's CA to set up TLS protocol. |
+| `services.cfssl.tlsKey` | `null or string` | Other endpoint's CA private key. Do not put this in nix-store. |
+| `services.cfssl.tlsRemoteCa` | `null or absolute path` | CAs to trust for remote TLS requests. |

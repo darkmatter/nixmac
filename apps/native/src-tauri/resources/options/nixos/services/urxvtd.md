@@ -5,6 +5,6 @@
 All options under `services.urxvtd`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.urxvtd.enable` | | |
-| `services.urxvtd.package` | | |
+| --- | --- | --- |
+| `services.urxvtd.enable` | `boolean` | Enable urxvtd, the urxvt terminal daemon. To use urxvtd, run "urxvtc". |
+| `services.urxvtd.package` | `package` | The rxvt-unicode package to use. |

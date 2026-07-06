@@ -5,16 +5,16 @@
 All options under `services.zookeeper`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.zookeeper.dataDir` | | |
-| `services.zookeeper.enable` | | |
-| `services.zookeeper.extraCmdLineOptions` | | |
-| `services.zookeeper.extraConf` | | |
-| `services.zookeeper.id` | | |
-| `services.zookeeper.jre` | | |
-| `services.zookeeper.logging` | | |
-| `services.zookeeper.package` | | |
-| `services.zookeeper.port` | | |
-| `services.zookeeper.preferIPv4` | | |
-| `services.zookeeper.purgeInterval` | | |
-| `services.zookeeper.servers` | | |
+| --- | --- | --- |
+| `services.zookeeper.dataDir` | `absolute path` | Data directory for Zookeeper |
+| `services.zookeeper.enable` | `boolean` | Whether to enable Zookeeper. |
+| `services.zookeeper.extraCmdLineOptions` | `list of string` | Extra command line options for the Zookeeper launcher. |
+| `services.zookeeper.extraConf` | `strings concatenated with "\n"` | Extra configuration for Zookeeper. |
+| `services.zookeeper.id` | `signed integer` | Zookeeper ID. |
+| `services.zookeeper.jre` | `package` | The JRE with which to run Zookeeper |
+| `services.zookeeper.logging` | `strings concatenated with "\n"` | Zookeeper logging configuration, logback.xml. |
+| `services.zookeeper.package` | `package` | The zookeeper package to use. |
+| `services.zookeeper.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Zookeeper Client port. |
+| `services.zookeeper.preferIPv4` | `boolean` | Add the -Djava.net.preferIPv4Stack=true flag to the Zookeeper server. |
+| `services.zookeeper.purgeInterval` | `signed integer` | The time interval in hours for which the purge task has to be triggered. Set to a positive integer (1 and above) to enable the auto purging. |
+| `services.zookeeper.servers` | `strings concatenated with "\n"` | All Zookeeper Servers. |

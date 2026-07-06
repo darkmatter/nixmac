@@ -5,6 +5,6 @@
 All options under `programs.mtr`.
 
 | Option | Type | Description |
-| ---------------------- | ---- | ----------- |
-| `programs.mtr.enable` | | |
-| `programs.mtr.package` | | |
+| --- | --- | --- |
+| `programs.mtr.enable` | `boolean` | Whether to add mtr to the global environment and configure a setcap wrapper for it. |
+| `programs.mtr.package` | `package` | The mtr package to use. |

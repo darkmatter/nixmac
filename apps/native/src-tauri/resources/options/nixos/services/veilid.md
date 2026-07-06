@@ -5,7 +5,26 @@
 All options under `services.veilid`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.veilid.enable` | | |
-| `services.veilid.openFirewall` | | |
-| `services.veilid.settings` | | |
+| --- | --- | --- |
+| `services.veilid.enable` | `boolean` | Whether to enable Veilid Headless Node. |
+| `services.veilid.openFirewall` | `boolean` | Whether to open firewall on ports 5150/tcp, 5150/udp |
+| `services.veilid.settings` | `open submodule of (YAML 1.1 value)` | Build veilid-server.conf with nix expression. Check <link xlink:href="https://veilid.gitlab.io/developer-book/admin/config.html#configuration-keys">Configuration Keys</link>. |
+| `services.veilid.settings.client_api.ipc_directory` | `string` | IPC directory where file sockets are stored. |
+| `services.veilid.settings.client_api.ipc_enabled` | `boolean` | veilid-server will respond to Python and other JSON client requests. |
+| `services.veilid.settings.core.block_store.directory` | `null or string` | The filesystem directory to store blocks for the block store. |
+| `services.veilid.settings.core.capabilities.disable` | `list of string` | A list of capabilities to disable (for example, DHTV to say you cannot store DHT information). |
+| `services.veilid.settings.core.network.detect_address_changes` | `boolean` | Should veilid-core detect and notify on network address changes? |
+| `services.veilid.settings.core.network.dht.min_peer_count` | `null or signed integer or floating point number` | Minimum number of nodes to keep in the peer table. |
+| `services.veilid.settings.core.network.routing_table.bootstrap` | `null or (list of string)` | Host name of existing well-known Veilid bootstrap servers for the network to connect to. |
+| `services.veilid.settings.core.network.routing_table.public_keys` | `null or string` | Base64-encoded public key for the node, used as the node's ID. |
+| `services.veilid.settings.core.network.upnp` | `boolean` | Should the app try to improve its incoming network connectivity using UPnP? |
+| `services.veilid.settings.core.protected_store.allow_insecure_fallback` | `null or boolean` | If we can't use system-provided secure storage, should we proceed anyway? |
+| `services.veilid.settings.core.protected_store.always_use_insecure_storage` | `null or boolean` | Should we bypass any attempt to use system-provided secure storage? |
+| `services.veilid.settings.core.protected_store.directory` | `string` | The filesystem directory to store your protected store in. |
+| `services.veilid.settings.core.table_store.directory` | `string` | The filesystem directory to store your table store within. |
+| `services.veilid.settings.logging.api.enabled` | `boolean` | Events of type 'api' will be logged. |
+| `services.veilid.settings.logging.api.level` | `string` | The minimum priority of api events to be logged. |
+| `services.veilid.settings.logging.system.enabled` | `boolean` | Events of type 'system' will be logged. |
+| `services.veilid.settings.logging.system.level` | `string` | The minimum priority of system events to be logged. |
+| `services.veilid.settings.logging.terminal.enabled` | `boolean` | Events of type 'terminal' will be logged. |
+| `services.veilid.settings.logging.terminal.level` | `string` | The minimum priority of terminal events to be logged. |

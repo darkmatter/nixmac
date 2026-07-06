@@ -5,11 +5,11 @@
 All options under `programs.nix-your-shell`.
 
 | Option | Type | Description |
-| ---------------------------------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `programs.nix-your-shell.enable` | `boolean` | Whether to enable nix-your-shell , a wrapper for nix develop or nix-shell to retain the same shell inside the new environment. |
+| --- | --- | --- |
+| `programs.nix-your-shell.enable` | `boolean` | Whether to enable {command}`nix-your-shell`, a wrapper for `nix develop` or `nix-shell` to retain the same shell inside the new environment. |
 | `programs.nix-your-shell.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
 | `programs.nix-your-shell.enableNushellIntegration` | `boolean` | Whether to enable Nushell integration. |
 | `programs.nix-your-shell.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
-| `programs.nix-your-shell.nix-output-monitor.enable` | `boolean` | Whether to enable nix-output-monitor . Pipe your nix-build output through the nix-output-monitor a.k.a nom to get additional information while building . |
+| `programs.nix-your-shell.nix-output-monitor.enable` | `boolean` | Whether to enable [nix-output-monitor](https://github.com/maralorn/nix-output-monitor). Pipe your nix-build output through the nix-output-monitor a.k.a nom to get additional information while building . |
 | `programs.nix-your-shell.nix-output-monitor.package` | `package` | The nix-output-monitor package to use. |
 | `programs.nix-your-shell.package` | `package` | The nix-your-shell package to use. |

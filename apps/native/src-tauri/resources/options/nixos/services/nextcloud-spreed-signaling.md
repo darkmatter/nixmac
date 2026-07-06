@@ -5,13 +5,36 @@
 All options under `services.nextcloud-spreed-signaling`.
 
 | Option | Type | Description |
-| ---------------------------------------------------- | ---- | ----------- |
-| `services.nextcloud-spreed-signaling.backends` | | |
-| `services.nextcloud-spreed-signaling.configureNginx` | | |
-| `services.nextcloud-spreed-signaling.enable` | | |
-| `services.nextcloud-spreed-signaling.group` | | |
-| `services.nextcloud-spreed-signaling.hostName` | | |
-| `services.nextcloud-spreed-signaling.package` | | |
-| `services.nextcloud-spreed-signaling.settings` | | |
-| `services.nextcloud-spreed-signaling.stateDir` | | |
-| `services.nextcloud-spreed-signaling.user` | | |
+| --- | --- | --- |
+| `services.nextcloud-spreed-signaling.backends` | `attribute set of (submodule)` | A list of backends from which clients are allowed to connect from. The name of the attribute will be used as the backend id. Each backend will have isolated rooms, i.e. clients connecting to room "abc12345" on backend 1 will be in a different room than clients connected to a room with the same name on backend 2. Also sessions connected from different backends will not be able to communicate with each other. |
+| `services.nextcloud-spreed-signaling.backends.<name>.secretFile` | `absolute path` | The path to the file containing the value for `backends.<name>.secret`. Shared secret for requests from and to the backend servers. This must be the same value as configured in the Nextloud Talk admin UI. |
+| `services.nextcloud-spreed-signaling.backends.<name>.urls` | `list of string` | List of URLs of the Nextcloud instance |
+| `services.nextcloud-spreed-signaling.configureNginx` | `boolean` | Whether to set up and configure an nginx virtual host according to upstream's recommendations. The virtualHost domain must be specified under `config.services.nextcloud-spreed-signaling.hostName` if this is enabled. |
+| `services.nextcloud-spreed-signaling.enable` | `boolean` | Whether to enable Spreed standalone signaling server. |
+| `services.nextcloud-spreed-signaling.group` | `string` | Group under which to run the Spreed signaling server. |
+| `services.nextcloud-spreed-signaling.hostName` | `null or string` | The host name to bind the nginx virtual host to, if `config.services.nextcloud-spreed-signaling.configureNginx` is set to `true`. |
+| `services.nextcloud-spreed-signaling.package` | `package` | The nextcloud-spreed-signaling package to use. |
+| `services.nextcloud-spreed-signaling.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Declarative configuration. Refer to <https://github.com/strukturag/nextcloud-spreed-signaling/blob/master/server.conf.in> for a list of available options. |
+| `services.nextcloud-spreed-signaling.settings.app.debug` | `boolean` | Set to "true" to install pprof debug handlers. Access will only be possible from IPs allowed through IPs declared in `config.services.nextcloud-spreed-signaling.settings.stats.allowed_ips`. See "https://golang.org/pkg/net/http/pprof/" for further information. |
+| `services.nextcloud-spreed-signaling.settings.backend.allowall` | `boolean` | Allow any hostname as backend endpoint. This is insecure and not advised. |
+| `services.nextcloud-spreed-signaling.settings.backend.backendtype` | `one of "static", "etcd"` | Type of backend configuration. Defaults to "static". Possible values: - static: A comma-separated list of backends is given in the "backends" option (derived from `config.services.nextcloud-spreed-signaling.backends`) - etcd: Backends are retrieved from an etcd cluster. |
+| `services.nextcloud-spreed-signaling.settings.backend.connectionsperhost` | `positive integer, meaning >0` | Maximum number of concurrent backend connections per host |
+| `services.nextcloud-spreed-signaling.settings.backend.timeout` | `positive integer, meaning >0` | Timeout in seconds for requests to the backend |
+| `services.nextcloud-spreed-signaling.settings.clients.internalsecretFile` | `absolute path` | The path to the file containing the value for `clients.internalsecret`. Shared secret for connections from internal clients. This must be the same value as configured in the respective internal services. |
+| `services.nextcloud-spreed-signaling.settings.etcd.endpoints` | `list of string` | List of static etcd endpoints to connect to. |
+| `services.nextcloud-spreed-signaling.settings.grpc.listen` | `null or string` | IP and port to listen on for GRPC requests. Leave `null` to disable the listener. |
+| `services.nextcloud-spreed-signaling.settings.grpc.targets` | `list of string` | For target type `static`: List of GRPC targets to connect to for clustering mode. |
+| `services.nextcloud-spreed-signaling.settings.http.listen` | `null or string` | IP and port to listen on for HTTP requests, in the format of `ip:port`. If set to `null`, will not spawn a HTTP listener at all. |
+| `services.nextcloud-spreed-signaling.settings.https.certificate` | `null or absolute path` | Path to the certificate used for the HTTPS listener. Must be set if `config.services.nextcloud-spreed-signaling.settings.https.listen` is not `null`. |
+| `services.nextcloud-spreed-signaling.settings.https.key` | `null or absolute path` | Path to the private key used for the HTTPS listener. Must be set if `config.services.nextcloud-spreed-signaling.settings.https.listen` is not `null`. |
+| `services.nextcloud-spreed-signaling.settings.https.listen` | `null or string` | IP and port to listen on for HTTPS requests, in the format of `ip:port`. If set, must also specify `config.services.nextcloud-spreed-signaling.settings.https.certificate` and `config.services.nextcloud-spreed-signaling.settings.https.key`. If set to `null`, will not spawn a HTTPS listener at all. |
+| `services.nextcloud-spreed-signaling.settings.mcu.type` | `null or one of "janus", "proxy"` | The type of MCU to use. Leave empty to disable MCU functionality. |
+| `services.nextcloud-spreed-signaling.settings.nats.url` | `list of string` | URL of one or more NATS backends to use. This can be set to `nats://loopback` to process NATS messages internally instead. |
+| `services.nextcloud-spreed-signaling.settings.sessions.blockkeyFile` | `absolute path` | The path to the file containing the value for `sessions.blockkey`. Key for encrypting data in the sessions. Must be either 16, 24, or 32 bytes. Generate one using `openssl rand -hex 16` |
+| `services.nextcloud-spreed-signaling.settings.sessions.hashkeyFile` | `absolute path` | The path to the file containing the value for `sessions.hashkey`. Secret value used to generate the checksums of sessions. This should be a random string of 32 or 64 bytes. Generate one using `openssl rand -hex 32` |
+| `services.nextcloud-spreed-signaling.settings.stats.allowed_ips` | `null or (list of string)` | List of IP addresses that are allowed to access the debug, stats and metrics endpoints. Leave empty or `null` to only allow access from localhost. |
+| `services.nextcloud-spreed-signaling.settings.turn.apikeyFile` | `null or absolute path` | The path to the file containing the value for `turn.apikey`. API key that the MCU will need to send when requesting TURN credentials. |
+| `services.nextcloud-spreed-signaling.settings.turn.secretFile` | `null or absolute path` | The path to the file containing the value for `turn.secret`. The shared secret to use for generating TURN credentials. This must be the same as on the TURN server. |
+| `services.nextcloud-spreed-signaling.settings.turn.servers` | `list of string` | A list of TURN servers to use. Leave empty to disable the TURN REST API. |
+| `services.nextcloud-spreed-signaling.stateDir` | `absolute path` | Directory used for state & config files. |
+| `services.nextcloud-spreed-signaling.user` | `string` | User account under which to run the Spreed signaling server. |

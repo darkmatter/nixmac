@@ -5,9 +5,7 @@
 All options under `programs.msmtp`.
 
 | Option | Type | Description |
-| ------------------------------ | -------------------------------- | ------------------------------------------------------------------------------------ |
-| `programs.msmtp.configContent` | `strings concatenated with “\n”` | Content added to msmtp config. See https://marlam.de/msmtp/msmtprc.txt for examples. |
+| --- | --- | --- |
+| `programs.msmtp.configContent` | `strings concatenated with "\n"` | Content added to msmtp config. See <https://marlam.de/msmtp/msmtprc.txt> for examples. Note, if running msmtp fails with the error message "account default was already defined" then you probably have an account command here. Account commands should be placed in [](#opt-accounts.email.accounts._name_.msmtp.extraConfig). |
 | `programs.msmtp.enable` | `boolean` | Whether to enable msmtp. |
-| `programs.msmtp.extraAccounts` | | |
-| `programs.msmtp.extraConfig` | | |
 | `programs.msmtp.package` | `package` | The msmtp package to use. |

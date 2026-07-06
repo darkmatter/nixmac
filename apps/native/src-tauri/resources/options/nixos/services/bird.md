@@ -5,10 +5,10 @@
 All options under `services.bird`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.bird.autoReload` | | |
-| `services.bird.checkConfig` | | |
-| `services.bird.config` | | |
-| `services.bird.enable` | | |
-| `services.bird.package` | | |
-| `services.bird.preCheckConfig` | | |
+| --- | --- | --- |
+| `services.bird.autoReload` | `boolean` | Whether bird should be automatically reloaded when the configuration changes. |
+| `services.bird.checkConfig` | `boolean` | Whether the config should be checked at build time. When the config can't be checked during build time, for example when it includes other files, either disable this option or use `preCheckConfig` to create the included files before checking. |
+| `services.bird.config` | `strings concatenated with "\n"` | BIRD Internet Routing Daemon configuration file. <http://bird.network.cz/> |
+| `services.bird.enable` | `boolean` | Whether to enable BIRD Internet Routing Daemon. |
+| `services.bird.package` | `package` | The bird3 package to use. |
+| `services.bird.preCheckConfig` | `strings concatenated with "\n"` | Commands to execute before the config file check. The file to be checked will be available as {file}`bird.conf` in the current directory. Files created with this option will not be available at service runtime, only during build time checking. |

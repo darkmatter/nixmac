@@ -5,6 +5,6 @@
 All options under `programs.gpu-screen-recorder`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `programs.gpu-screen-recorder.enable` | | |
-| `programs.gpu-screen-recorder.package` | | |
+| --- | --- | --- |
+| `programs.gpu-screen-recorder.enable` | `boolean` | Whether to install gpu-screen-recorder and generate setcap wrappers for promptless recording. |
+| `programs.gpu-screen-recorder.package` | `package` | The gpu-screen-recorder package to use. |

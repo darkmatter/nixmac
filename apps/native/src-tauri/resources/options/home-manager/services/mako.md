@@ -5,36 +5,8 @@
 All options under `services.mako`.
 
 | Option | Type | Description |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `services.mako.actions` | | |
-| `services.mako.anchor` | | |
-| `services.mako.backgroundColor` | | |
-| `services.mako.borderColor` | | |
-| `services.mako.borderRadius` | | |
-| `services.mako.borderSize` | | |
-| `services.mako.criteria` | | |
-| `services.mako.criterias` | | |
-| `services.mako.defaultTimeout` | | |
+| --- | --- | --- |
 | `services.mako.enable` | `boolean` | Whether to enable mako. |
-| `services.mako.extraConfig` | `strings concatenated with “\n”` | Additional configuration lines to inject directly into the generated config file. |
-| `services.mako.font` | | |
-| `services.mako.format` | | |
-| `services.mako.groupBy` | | |
-| `services.mako.height` | | |
-| `services.mako.iconPath` | | |
-| `services.mako.icons` | | |
-| `services.mako.ignoreTimeout` | | |
-| `services.mako.layer` | | |
-| `services.mako.margin` | | |
-| `services.mako.markup` | | |
-| `services.mako.maxHistory` | | |
-| `services.mako.maxIconSize` | | |
-| `services.mako.maxVisible` | | |
-| `services.mako.output` | | |
-| `services.mako.package` | `package` | The mako package to use. |
-| `services.mako.padding` | | |
-| `services.mako.progressColor` | | |
-| `services.mako.settings` | `attribute set of (INI atom (null, bool, int, float or string) or attribute set of (INI atom (null, bool, int, float or string)))` | Configuration settings for mako. Can include both global settings and sections. All available options can be found here: https://github.com/emersion/mako/blob/master/doc/mako.5.scd . |
-| `services.mako.sort` | | |
-| `services.mako.textColor` | | |
-| `services.mako.width` | | |
+| `services.mako.extraConfig` | `strings concatenated with "\n"` | Additional configuration lines to inject directly into the generated config file. |
+| `services.mako.package` | `null or package` | The mako package to use. |
+| `services.mako.settings` | `attribute set of (INI atom (null, bool, int, float or string) or attribute set of (INI atom (null, bool, int, float or string)))` | Configuration settings for mako. Can include both global settings and sections. All available options can be found here: <https://github.com/emersion/mako/blob/master/doc/mako.5.scd>. |

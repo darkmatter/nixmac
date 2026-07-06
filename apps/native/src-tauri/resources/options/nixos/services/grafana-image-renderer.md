@@ -5,9 +5,9 @@
 All options under `services.grafana-image-renderer`.
 
 | Option | Type | Description |
-| -------------------------------------------------- | ---- | ----------- |
-| `services.grafana-image-renderer.chromium` | | |
-| `services.grafana-image-renderer.enable` | | |
-| `services.grafana-image-renderer.provisionGrafana` | | |
-| `services.grafana-image-renderer.settings` | | |
-| `services.grafana-image-renderer.verbose` | | |
+| --- | --- | --- |
+| `services.grafana-image-renderer.enable` | `boolean` | Whether to enable grafana-image-renderer. |
+| `services.grafana-image-renderer.provisionGrafana` | `boolean` | Whether to enable Grafana configuration for grafana-image-renderer. |
+| `services.grafana-image-renderer.settings` | `open submodule of attribute set of attribute set of (string or signed integer or boolean or list of (string or signed integer))` | Configuration attributes for `grafana-image-renderer`. |
+| `services.grafana-image-renderer.settings.browser.path` | `absolute path` | Path to the executable of the chromium to use. |
+| `services.grafana-image-renderer.settings.server.addr` | `string` | Listen address of the service. |

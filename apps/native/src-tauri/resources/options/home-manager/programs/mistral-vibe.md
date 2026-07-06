@@ -5,7 +5,7 @@
 All options under `programs.mistral-vibe`.
 
 | Option | Type | Description |
-| -------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------- |
-| `programs.mistral-vibe.enable` | `boolean` | Whether to enable Mistral Vibe, Mistral’s open-source CLI coding assistant. |
+| --- | --- | --- |
+| `programs.mistral-vibe.enable` | `boolean` | Whether to enable Mistral Vibe, Mistral's open-source CLI coding assistant. |
 | `programs.mistral-vibe.package` | `null or package` | The mistral-vibe package to use. |
-| `programs.mistral-vibe.settings` | `TOML value` | Mistral Vibe configuration. For available settings see https://github.com/mistralai/mistral-vibe . |
+| `programs.mistral-vibe.settings` | `TOML value` | Mistral Vibe configuration. For available settings see <https://github.com/mistralai/mistral-vibe>. |

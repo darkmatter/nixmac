@@ -5,8 +5,8 @@
 All options under `services.seatd`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.seatd.enable` | | |
-| `services.seatd.group` | | |
-| `services.seatd.logLevel` | | |
-| `services.seatd.user` | | |
+| --- | --- | --- |
+| `services.seatd.enable` | `boolean` | Whether to enable seatd. |
+| `services.seatd.group` | `string` | Group to own the seatd socket |
+| `services.seatd.logLevel` | `one of "debug", "info", "error", "silent"` | Logging verbosity |
+| `services.seatd.user` | `string` | User to own the seatd socket |

@@ -5,14 +5,20 @@
 All options under `services.bitwarden-directory-connector-cli`.
 
 | Option | Type | Description |
-| --------------------------------------------------------------------------------- | ---- | ----------- |
-| `services.bitwarden-directory-connector-cli.domain` | | |
-| `services.bitwarden-directory-connector-cli.enable` | | |
-| `services.bitwarden-directory-connector-cli.interval` | | |
-| `services.bitwarden-directory-connector-cli.ldap` | | |
-| `services.bitwarden-directory-connector-cli.package` | | |
-| `services.bitwarden-directory-connector-cli.secrets.bitwarden.client_path_id` | | |
-| `services.bitwarden-directory-connector-cli.secrets.bitwarden.client_path_secret` | | |
-| `services.bitwarden-directory-connector-cli.secrets.ldap` | | |
-| `services.bitwarden-directory-connector-cli.sync` | | |
-| `services.bitwarden-directory-connector-cli.user` | | |
+| --- | --- | --- |
+| `services.bitwarden-directory-connector-cli.domain` | `string` | The domain the Bitwarden/Vaultwarden is accessible on. |
+| `services.bitwarden-directory-connector-cli.enable` | `boolean` | Whether to enable Bitwarden Directory Connector. |
+| `services.bitwarden-directory-connector-cli.interval` | `string` | The interval when to run the connector. This uses systemd's OnCalendar syntax. |
+| `services.bitwarden-directory-connector-cli.ldap` | `open submodule of attribute set of (JSON value)` | Options to configure the LDAP connection. If you used the desktop application to test the configuration you can find the settings by searching for `ldap` in `~/.config/Bitwarden\ Directory\ Connector/data.json`. |
+| `services.bitwarden-directory-connector-cli.ldap.ad` | `boolean` | Whether the LDAP Server is an Active Directory. |
+| `services.bitwarden-directory-connector-cli.ldap.hostname` | `string` | The host the LDAP is accessible on. |
+| `services.bitwarden-directory-connector-cli.ldap.pagedSearch` | `boolean` | Whether the LDAP server paginates search results. |
+| `services.bitwarden-directory-connector-cli.ldap.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port LDAP is accessible on. |
+| `services.bitwarden-directory-connector-cli.ldap.rootPath` | `string` | Root path for LDAP. |
+| `services.bitwarden-directory-connector-cli.ldap.ssl` | `boolean` | Whether to use TLS. |
+| `services.bitwarden-directory-connector-cli.ldap.startTls` | `boolean` | Whether to use STARTTLS. |
+| `services.bitwarden-directory-connector-cli.ldap.username` | `string` | The user to authenticate as. |
+| `services.bitwarden-directory-connector-cli.package` | `package` | The bitwarden-directory-connector-cli package to use. |
+| `services.bitwarden-directory-connector-cli.secrets.bitwarden.client_path_id` | `string` | Path to file that contains Client ID. |
+| `services.bitwarden-directory-connector-cli.secrets.bitwarden.client_path_secret` | `string` | Path to file that contains Client Secret. |
+| `services.bitwarden-directory-connector-cli.secrets.ldap` | `string` | Path to file that contains LDAP password for user in {option}`ldap.username | | `services.bitwarden-directory-connector-cli.sync`|`open submodule of attribute set of (JSON value)`| Options to configure what gets synced. If you used the desktop application to test the configuration you can find the settings by searching for`sync`in`~/.config/Bitwarden\\ Directory\\ Connector/data.json`. | | `services.bitwarden-directory-connector-cli.sync.creationDateAttribute`|`string`| Attribute that lists a user's creation date. | |`services.bitwarden-directory-connector-cli.sync.emailPrefixAttribute`|`string`| The attribute that contains the users username. | |`services.bitwarden-directory-connector-cli.sync.emailSuffix`|`string`| Suffix for the email, normally @example.com. | |`services.bitwarden-directory-connector-cli.sync.groupFilter`|`string`| LDAP filter for groups. | |`services.bitwarden-directory-connector-cli.sync.groupNameAttribute`|`string`| Attribute for a name of group. | |`services.bitwarden-directory-connector-cli.sync.groupObjectClass`|`string`| A class that groups will have. | |`services.bitwarden-directory-connector-cli.sync.groupPath`|`string`| Group directory, relative to root. | |`services.bitwarden-directory-connector-cli.sync.groups`|`boolean`| Whether to sync ldap groups into BitWarden. | |`services.bitwarden-directory-connector-cli.sync.largeImport`|`boolean`| Enable if you are syncing more than 2000 users/groups. | |`services.bitwarden-directory-connector-cli.sync.memberAttribute`|`string`| Attribute that lists members in a LDAP group. | |`services.bitwarden-directory-connector-cli.sync.overwriteExisting`|`boolean`| Remove and re-add users/groups, See <https://bitwarden.com/help/user-group-filters/#overwriting-syncs> for more details. | |`services.bitwarden-directory-connector-cli.sync.removeDisabled`|`boolean`| Remove users from bitwarden groups if no longer in the ldap group. | |`services.bitwarden-directory-connector-cli.sync.useEmailPrefixSuffix`|`boolean`| If a user has no email address, combine a username prefix with a suffix value to form an email. | |`services.bitwarden-directory-connector-cli.sync.userEmailAttribute`|`string`| Attribute for a users email. | |`services.bitwarden-directory-connector-cli.sync.userFilter`|`string`| LDAP filter for users. | |`services.bitwarden-directory-connector-cli.sync.userObjectClass`|`string`| Class that users must have. | |`services.bitwarden-directory-connector-cli.sync.userPath`|`string`| User directory, relative to root. | |`services.bitwarden-directory-connector-cli.sync.users`|`boolean`| Sync users. | |`services.bitwarden-directory-connector-cli.user`|`string\` | User to run the program. |

@@ -5,7 +5,7 @@
 All options under `services.pass-secret-service`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.pass-secret-service.enable` | `boolean` | Whether to enable Pass libsecret service. |
 | `services.pass-secret-service.package` | `package` | The pass-secret-service package to use. |
-| `services.pass-secret-service.storePath` | `null or string` | Absolute path to the password store. If the programs.password-store module is enabled, the programs.password-store.settings.PASSWORD_STORE_DIR option will be checked, if found it will be inherited as the default. |
+| `services.pass-secret-service.storePath` | `null or string` | Absolute path to the password store. If the {option}`programs.password-store` module is enabled, the {option}`programs.password-store.settings.PASSWORD_STORE_DIR` option will be checked, if found it will be inherited as the default. |

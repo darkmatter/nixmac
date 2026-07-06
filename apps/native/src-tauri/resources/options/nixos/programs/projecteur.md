@@ -5,6 +5,6 @@
 All options under `programs.projecteur`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `programs.projecteur.enable` | | |
-| `programs.projecteur.package` | | |
+| --- | --- | --- |
+| `programs.projecteur.enable` | `boolean` | Whether to enable projecteur, an application for the Logitech Spotlight device (and similar). |
+| `programs.projecteur.package` | `package` | The projecteur package to use. |

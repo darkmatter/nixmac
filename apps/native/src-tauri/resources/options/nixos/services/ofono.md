@@ -5,6 +5,6 @@
 All options under `services.ofono`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `services.ofono.enable` | | |
-| `services.ofono.plugins` | | |
+| --- | --- | --- |
+| `services.ofono.enable` | `boolean` | Whether to enable Ofono. |
+| `services.ofono.plugins` | `list of package` | The list of plugins to install. |

@@ -5,9 +5,9 @@
 All options under `services.x2goserver`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---- | ----------- |
-| `services.x2goserver.enable` | | |
-| `services.x2goserver.nxagentDefaultOptions` | | |
-| `services.x2goserver.package` | | |
-| `services.x2goserver.settings` | | |
-| `services.x2goserver.superenicer.enable` | | |
+| --- | --- | --- |
+| `services.x2goserver.enable` | `boolean` | Enables the x2goserver module. NOTE: This will create a good amount of symlinks in `/usr/local/bin` |
+| `services.x2goserver.nxagentDefaultOptions` | `list of string` | List of default nx agent options. |
+| `services.x2goserver.package` | `package` | The x2goserver package to use. |
+| `services.x2goserver.settings` | `attribute set of (attribute set)` | x2goserver.conf ini configuration as nix attributes. See `x2goserver.conf(5)` for details |
+| `services.x2goserver.superenicer.enable` | `boolean` | Enables the SupeReNicer code in x2gocleansessions, this will renice suspended sessions to nice level 19 and renice them to level 0 if the session becomes marked as running again |

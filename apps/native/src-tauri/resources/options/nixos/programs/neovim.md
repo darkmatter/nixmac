@@ -5,15 +5,18 @@
 All options under `programs.neovim`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `programs.neovim.configure` | | |
-| `programs.neovim.defaultEditor` | | |
-| `programs.neovim.enable` | | |
-| `programs.neovim.finalPackage` | | |
-| `programs.neovim.package` | | |
-| `programs.neovim.runtime` | | |
-| `programs.neovim.viAlias` | | |
-| `programs.neovim.vimAlias` | | |
-| `programs.neovim.withNodeJs` | | |
-| `programs.neovim.withPython3` | | |
-| `programs.neovim.withRuby` | | |
+| --- | --- | --- |
+| `programs.neovim.configure` | `attribute set` | Generate your init file from your list of plugins and custom commands. Neovim will then be wrapped to load {command}`nvim -u /nix/store/«hash»-vimrc` |
+| `programs.neovim.defaultEditor` | `boolean` | When enabled, installs neovim and configures neovim to be the default editor using the EDITOR environment variable. |
+| `programs.neovim.enable` | `boolean` | Whether to enable Neovim. When enabled through this option, Neovim is wrapped to use a configuration managed by this module. The configuration file in the user's home directory at {file}`~/.config/nvim/init.vim` is no longer loaded by default. |
+| `programs.neovim.package` | `package` | The neovim-unwrapped package to use. |
+| `programs.neovim.runtime` | `attribute set of (submodule)` | Set of files that have to be linked in {file}`runtime`. |
+| `programs.neovim.runtime.<name>.enable` | `boolean` | Whether this runtime directory should be generated. This option allows specific runtime files to be disabled. |
+| `programs.neovim.runtime.<name>.source` | `null or absolute path` | Path of the source file. |
+| `programs.neovim.runtime.<name>.target` | `string` | Name of symlink. Defaults to the attribute name. |
+| `programs.neovim.runtime.<name>.text` | `null or strings concatenated with "\n"` | Text of the file. |
+| `programs.neovim.viAlias` | `boolean` | Symlink {command}`vi` to {command}`nvim` binary. |
+| `programs.neovim.vimAlias` | `boolean` | Symlink {command}`vim` to {command}`nvim` binary. |
+| `programs.neovim.withNodeJs` | `boolean` | Enable Node provider. |
+| `programs.neovim.withPython3` | `boolean` | Enable Python 3 provider. |
+| `programs.neovim.withRuby` | `boolean` | Enable Ruby provider. |

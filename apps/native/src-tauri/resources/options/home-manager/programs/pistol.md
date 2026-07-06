@@ -5,8 +5,10 @@
 All options under `programs.pistol`.
 
 | Option | Type | Description |
-| ------------------------------ | --------------------- | ----------------------------------------------------------------------------------------- |
-| `programs.pistol.associations` | `list of (submodule)` | Associations written to the Pistol configuration at $XDG_CONFIG_HOME/pistol/pistol.conf . |
-| `programs.pistol.config` | | |
+| --- | --- | --- |
+| `programs.pistol.associations` | `list of (submodule)` | Associations written to the Pistol configuration at {file}`$XDG_CONFIG_HOME/pistol/pistol.conf`. |
+| `programs.pistol.associations.*.command` | `string` | Preview command for files matched by this association. |
+| `programs.pistol.associations.*.fpath` | `string` | File path regex that this association should match. |
+| `programs.pistol.associations.*.mime` | `string` | Mime type regex that this association should match. |
 | `programs.pistol.enable` | `boolean` | Whether to enable file previewer for terminal file managers. |
 | `programs.pistol.package` | `null or package` | The pistol package to use. |

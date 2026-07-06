@@ -5,8 +5,24 @@
 All options under `services.porxie`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.porxie.enable` | | |
-| `services.porxie.environmentFiles` | | |
-| `services.porxie.package` | | |
-| `services.porxie.settings` | | |
+| --- | --- | --- |
+| `services.porxie.enable` | `boolean` | Whether to enable Porxie, an ATProto blob proxy for secure content delivery. |
+| `services.porxie.environmentFiles` | `list of absolute path` | Files to load environment variables from. Use for secrets such as {env}`PORXIE_SERVER_ADMIN_PASSWORD` and {env}`PORXIE_POLICY_REQUEST_HEADERS`. |
+| `services.porxie.package` | `package` | The porxie package to use. |
+| `services.porxie.settings` | `open submodule of attribute set of (null or string or boolean or signed integer)` | Configuration for Porxie as environment variables. See the [README](https://codeberg.org/Blooym/porxie/src/branch/main/README.md) for detailed information about application configuration. Secrets such as {option}`settings.PORXIE_SERVER_ADMIN_PASSWORD` should be set via {option}`environmentFiles` rather than here, as values set here will be readable in the Nix store. |
+| `services.porxie.settings.PORXIE_BLOB_ALLOWED_MIMETYPES` | `null or (list of string)` | Blob mimetypes that can be served. Wildcards are supported "*/*", "image/\*", etc. Validation is done loosely via content sniffing. Further validation can be done by a layer above this proxy, such as an image transformation service. When inference fails, the blob's type falls back to `application/octet-stream`. When that type is allowed, blobs failing inference can still be served. |
+| `services.porxie.settings.PORXIE_BLOB_CACHE_HEADER` | `null or string` | The Cache-Control header value to send alongside blob responses. This does not affect internal cache lifetimes, only how downstream clients such as CDNs and browsers are instructed to cache responses. |
+| `services.porxie.settings.PORXIE_BLOB_HTTP_TIMEOUT` | `null or string` | Maximum duration before blob fetch requests are timed out. |
+| `services.porxie.settings.PORXIE_BLOB_MAX_SIZE` | `null or string` | Maximum blob size that can be served. This value cannot be set higher than the system's total memory. |
+| `services.porxie.settings.PORXIE_BLOB_PROCESSING_TIMEOUT` | `null or string` | Maximum duration a blob can be processed by this server before aborting. |
+| `services.porxie.settings.PORXIE_CACHE_ALLOCATION` | `null or string` | Total memory allocation for the internal cache. Blobs are cached using an LFU policy. The most frequently requested blobs are kept longest when the cache reaches maximum size. For production deployments, a CDN or caching layer in front of this server is recommended for lower latency and better global availability. The minimum value is 8mb and the maximum is the system's total memory. |
+| `services.porxie.settings.PORXIE_CACHE_BLOB_TTI` | `null or string` | How long blobs can be idle in the cache before expiring. |
+| `services.porxie.settings.PORXIE_CACHE_IDENTITY_TTL` | `null or string` | How long identity lookups (DID resolution, etc.) can be cached before expiring. |
+| `services.porxie.settings.PORXIE_CACHE_OWNERSHIP_TTL` | `null or string` | How long blob ownership can be cached before expiring. |
+| `services.porxie.settings.PORXIE_CACHE_POLICY_TTL` | `null or string` | How long policy decisions can be cached before expiring. |
+| `services.porxie.settings.PORXIE_IDENTITY_PLC_URL` | `null or string` | URL of the PLC instance used for `did:plc` lookups. |
+| `services.porxie.settings.PORXIE_POLICY_FAIL_OPEN` | `null or boolean` | Allow requests to proceed even if the policy service is unavailable. Warning: enabling this means restricted blobs may be served when the policy service is unavailable. |
+| `services.porxie.settings.PORXIE_POLICY_REQUEST_HEADERS` | `null or (list of string)` | Headers sent alongside requests to the policy service. Each header must be in the format `Name: value`. As pipes are used as a delimiter, they cannot be contained in headers. Should be set via {option}`environmentFiles` for sensitive values such as API keys. |
+| `services.porxie.settings.PORXIE_POLICY_URL` | `null or string` | Policy service URL that DID+CID pairs will be checked against. Requests are sent via XRPC to `<url>/xrpc/dev.blooym.porxie.getBlobPolicy`. |
+| `services.porxie.settings.PORXIE_SERVER_ADDRESS` | `string` | Address to bind the server to. Use the `ip:` prefix for an IP address (e.g. `ip:127.0.0.1:6314`), or on UNIX systems, the `unix:` prefix for a UNIX socket path (e.g. `unix:/run/porxie/porxie.sock`). |
+| `services.porxie.settings.PORXIE_SERVER_ADMIN_PASSWORD` | `null or string` | Admin password for authenticating privileged requests. Authenticated requests always expect the username `admin` as per specification. When not set, authenticated endpoints will be unavailable. Should be set via {option}`environmentFiles` rather than directly. |

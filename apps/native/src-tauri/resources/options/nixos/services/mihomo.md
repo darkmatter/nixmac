@@ -5,11 +5,11 @@
 All options under `services.mihomo`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.mihomo.configFile` | | |
-| `services.mihomo.enable` | | |
-| `services.mihomo.extraOpts` | | |
-| `services.mihomo.package` | | |
-| `services.mihomo.processesInfo` | | |
-| `services.mihomo.tunMode` | | |
-| `services.mihomo.webui` | | |
+| --- | --- | --- |
+| `services.mihomo.configFile` | `absolute path` | Configuration file to use. |
+| `services.mihomo.enable` | `boolean` | Whether to enable Mihomo, A rule-based proxy in Go. |
+| `services.mihomo.extraOpts` | `null or string` | Extra command line options to use. |
+| `services.mihomo.package` | `package` | The mihomo package to use. |
+| `services.mihomo.processesInfo` | `boolean` | Whether to enable necessary capabilities for rules about process information such as `process-name` . |
+| `services.mihomo.tunMode` | `boolean` | Whether to enable necessary capabilities for Mihomo's systemd service for TUN mode to function properly. Keep in mind, that you still need to enable TUN mode manually in Mihomo's configuration . |
+| `services.mihomo.webui` | `null or absolute path` | Local web interface to use. You can also use the following website: - metacubexd: - <https://d.metacubex.one> - <https://metacubex.github.io/metacubexd> - <https://metacubexd.pages.dev> - yacd: - <https://yacd.haishan.me> - clash-dashboard: - <https://clash.razord.top> |

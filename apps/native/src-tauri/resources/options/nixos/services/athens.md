@@ -5,96 +5,95 @@
 All options under `services.athens`.
 
 | Option | Type | Description |
-| ------------------------------------------------------------------ | ---- | ----------- |
-| `services.athens.basicAuthPass` | | |
-| `services.athens.basicAuthUser` | | |
-| `services.athens.cloudRuntime` | | |
-| `services.athens.downloadMode` | | |
-| `services.athens.downloadURL` | | |
-| `services.athens.enable` | | |
-| `services.athens.enablePprof` | | |
-| `services.athens.extraConfig` | | |
-| `services.athens.filterFile` | | |
-| `services.athens.forceSSL` | | |
-| `services.athens.githubToken` | | |
-| `services.athens.globalEndpoint` | | |
-| `services.athens.goBinary` | | |
-| `services.athens.goBinaryEnvVars` | | |
-| `services.athens.goEnv` | | |
-| `services.athens.goGetDir` | | |
-| `services.athens.goGetWorkers` | | |
-| `services.athens.hgrcPath` | | |
-| `services.athens.index.mysql.database` | | |
-| `services.athens.index.mysql.host` | | |
-| `services.athens.index.mysql.params.parseTime` | | |
-| `services.athens.index.mysql.params.timeout` | | |
-| `services.athens.index.mysql.password` | | |
-| `services.athens.index.mysql.port` | | |
-| `services.athens.index.mysql.protocol` | | |
-| `services.athens.index.mysql.user` | | |
-| `services.athens.index.postgres.database` | | |
-| `services.athens.index.postgres.host` | | |
-| `services.athens.index.postgres.params.connect_timeout` | | |
-| `services.athens.index.postgres.params.sslmode` | | |
-| `services.athens.index.postgres.password` | | |
-| `services.athens.index.postgres.port` | | |
-| `services.athens.index.postgres.user` | | |
-| `services.athens.indexType` | | |
-| `services.athens.logLevel` | | |
-| `services.athens.netrcPath` | | |
-| `services.athens.networkMode` | | |
-| `services.athens.noSumPatterns` | | |
-| `services.athens.package` | | |
-| `services.athens.pathPrefix` | | |
-| `services.athens.port` | | |
-| `services.athens.pprofPort` | | |
-| `services.athens.protocolWorkers` | | |
-| `services.athens.robotsFile` | | |
-| `services.athens.shutdownTimeout` | | |
-| `services.athens.singleFlight.etcd.endpoints` | | |
-| `services.athens.singleFlight.redis.endpoint` | | |
-| `services.athens.singleFlight.redis.lockConfig.maxRetries` | | |
-| `services.athens.singleFlight.redis.lockConfig.timeout` | | |
-| `services.athens.singleFlight.redis.lockConfig.ttl` | | |
-| `services.athens.singleFlight.redis.password` | | |
-| `services.athens.singleFlight.redisSentinel.endpoints` | | |
-| `services.athens.singleFlight.redisSentinel.lockConfig.maxRetries` | | |
-| `services.athens.singleFlight.redisSentinel.lockConfig.timeout` | | |
-| `services.athens.singleFlight.redisSentinel.lockConfig.ttl` | | |
-| `services.athens.singleFlight.redisSentinel.masterName` | | |
-| `services.athens.singleFlight.redisSentinel.sentinelPassword` | | |
-| `services.athens.singleFlightType` | | |
-| `services.athens.statsExporter` | | |
-| `services.athens.storage.azureblob.accountKey` | | |
-| `services.athens.storage.azureblob.accountName` | | |
-| `services.athens.storage.azureblob.containerName` | | |
-| `services.athens.storage.cdn.endpoint` | | |
-| `services.athens.storage.disk.rootPath` | | |
-| `services.athens.storage.external.url` | | |
-| `services.athens.storage.gcp.bucket` | | |
-| `services.athens.storage.gcp.jsonKey` | | |
-| `services.athens.storage.gcp.projectID` | | |
-| `services.athens.storage.minio` | | |
-| `services.athens.storage.mongo.certPath` | | |
-| `services.athens.storage.mongo.defaultDBName` | | |
-| `services.athens.storage.mongo.insecure` | | |
-| `services.athens.storage.mongo.url` | | |
-| `services.athens.storage.s3.awsContainerCredentialsRelativeURI` | | |
-| `services.athens.storage.s3.bucket` | | |
-| `services.athens.storage.s3.credentialsEndpoint` | | |
-| `services.athens.storage.s3.endpoint` | | |
-| `services.athens.storage.s3.forcePathStyle` | | |
-| `services.athens.storage.s3.key` | | |
-| `services.athens.storage.s3.region` | | |
-| `services.athens.storage.s3.secret` | | |
-| `services.athens.storage.s3.token` | | |
-| `services.athens.storage.s3.useDefaultConfiguration` | | |
-| `services.athens.storageType` | | |
-| `services.athens.sumDBs` | | |
-| `services.athens.timeout` | | |
-| `services.athens.tlsCertFile` | | |
-| `services.athens.tlsKeyFile` | | |
-| `services.athens.traceExporter` | | |
-| `services.athens.traceExporterURL` | | |
-| `services.athens.unixSocket` | | |
-| `services.athens.validatorHook` | | |
+| --- | --- | --- |
+| `services.athens.basicAuthPass` | `null or string` | Password for basic auth. Warning: this is stored in plain text in the config file. |
+| `services.athens.basicAuthUser` | `null or string` | Username for basic auth. |
+| `services.athens.cloudRuntime` | `one of "GCP", "none"` | Specifies the Cloud Provider on which the Proxy/registry is running. |
+| `services.athens.downloadMode` | `one of "sync", "async", "redirect", "async_redirect", "none" or string matching the pattern ^file:.*$\|^custom:.*$` | Defines how Athens behaves when a module@version is not found in storage. There are 7 options: 1. "sync": download the module synchronously and return the results to the client. 2. "async": return 404, but asynchronously store the module in the storage backend. 3. "redirect": return a 301 redirect status to the client with the base URL as the DownloadRedirectURL from below. 4. "async_redirect": same as option number 3 but it will asynchronously store the module to the backend. 5. "none": return 404 if a module is not found and do nothing. 6. "file:<path>": will point to an HCL file that specifies any of the 5 options above based on different import paths. 7. "custom:<base64-encoded-hcl>" is the same as option 6 but the file is fully encoded in the option. This is useful for using an environment variable in serverless deployments. |
+| `services.athens.downloadURL` | `string` | URL used if DownloadMode is set to redirect. |
+| `services.athens.enable` | `boolean` | Whether to enable Go module datastore and proxy. |
+| `services.athens.enablePprof` | `boolean` | Enable pprof endpoints. |
+| `services.athens.extraConfig` | `attribute set` | Extra configuration options for the athens config file. |
+| `services.athens.filterFile` | `null or absolute path` | Filename for the include exclude filter. |
+| `services.athens.forceSSL` | `boolean` | Force SSL redirects for incoming requests. |
+| `services.athens.githubToken` | `null or string` | Creates .netrc file with the given token to be used for GitHub. Warning: this is stored in plain text in the config file. |
+| `services.athens.globalEndpoint` | `string` | Endpoint for a package registry in case of a proxy cache miss. |
+| `services.athens.goBinary` | `package` | The Go package used by Athens at runtime. Athens primarily runs two Go commands: 1. `go mod download -json <module>@<version>` 2. `go list -m -json <module>@latest` |
+| `services.athens.goBinaryEnvVars` | `attribute set` | Environment variables to pass to the Go binary. |
+| `services.athens.goEnv` | `one of "development", "production"` | Specifies the type of environment to run. One of 'development' or 'production'. |
+| `services.athens.goGetDir` | `null or absolute path` | Temporary directory that Athens will use to fetch modules from VCS prior to persisting them to a storage backend. If the value is empty, Athens will use the default OS temp directory. |
+| `services.athens.goGetWorkers` | `signed integer` | Number of workers concurrently downloading modules. |
+| `services.athens.hgrcPath` | `null or absolute path` | Path to the .hgrc file. |
+| `services.athens.index.mysql.database` | `string` | Database name for the MySQL database. |
+| `services.athens.index.mysql.host` | `string` | Host for the MySQL database. |
+| `services.athens.index.mysql.params.parseTime` | `null or string` | Parse time for the MySQL database. |
+| `services.athens.index.mysql.params.timeout` | `null or string` | Timeout for the MySQL database. |
+| `services.athens.index.mysql.password` | `null or string` | Password for the MySQL database. Warning: this is stored in plain text in the config file. |
+| `services.athens.index.mysql.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port for the MySQL database. |
+| `services.athens.index.mysql.protocol` | `string` | Protocol for the MySQL database. |
+| `services.athens.index.mysql.user` | `string` | User for the MySQL database. |
+| `services.athens.index.postgres.database` | `string` | Database name for the Postgres database. |
+| `services.athens.index.postgres.host` | `string` | Host for the Postgres database. |
+| `services.athens.index.postgres.params.connect_timeout` | `null or string` | Connect timeout for the Postgres database. |
+| `services.athens.index.postgres.params.sslmode` | `null or string` | SSL mode for the Postgres database. |
+| `services.athens.index.postgres.password` | `null or string` | Password for the Postgres database. Warning: this is stored in plain text in the config file. |
+| `services.athens.index.postgres.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port for the Postgres database. |
+| `services.athens.index.postgres.user` | `string` | User for the Postgres database. |
+| `services.athens.indexType` | `one of "none", "memory", "mysql", "postgres"` | Type of index backend Athens will use. |
+| `services.athens.logLevel` | `null or one of "panic", "fatal", "error", "warning", "info", "debug", "trace"` | Log level for Athens. Supports all logrus log levels (https://github.com/Sirupsen/logrus#level-logging)". |
+| `services.athens.netrcPath` | `null or absolute path` | Path to the .netrc file. |
+| `services.athens.networkMode` | `one of "strict", "offline", "fallback"` | Configures how Athens will return the results of the /list endpoint as it can be assembled from both its own storage and the upstream VCS. Note, that for better error messaging, this would also affect how other endpoints behave. Modes: 1. strict: merge VCS versions with storage versions, but fail if either of them fails. 2. offline: only get storage versions, never reach out to VCS. 3. fallback: only return storage versions, if VCS fails. Note this means that you may see inconsistent results since fallback mode does a best effort of giving you what's available at the time of requesting versions. |
+| `services.athens.noSumPatterns` | `list of string` | List of patterns that Athens sum db proxy will return a 403 for. |
+| `services.athens.package` | `package` | Which athens derivation to use |
+| `services.athens.pathPrefix` | `null or string` | Sets basepath for all routes. |
+| `services.athens.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number Athens listens on. |
+| `services.athens.pprofPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number for pprof endpoints. |
+| `services.athens.protocolWorkers` | `signed integer` | Number of workers concurrently serving protocol paths. |
+| `services.athens.robotsFile` | `null or absolute path` | Provides /robots.txt for net crawlers. |
+| `services.athens.shutdownTimeout` | `signed integer` | Number of seconds to wait for the server to shutdown gracefully. |
+| `services.athens.singleFlight.etcd.endpoints` | `list of string` | URLs that determine all distributed etcd servers. |
+| `services.athens.singleFlight.redis.endpoint` | `string` | URL of the redis server. |
+| `services.athens.singleFlight.redis.lockConfig.maxRetries` | `signed integer` | Maximum number of retries for the lock. |
+| `services.athens.singleFlight.redis.lockConfig.timeout` | `signed integer` | Timeout for the lock in seconds. |
+| `services.athens.singleFlight.redis.lockConfig.ttl` | `signed integer` | TTL for the lock in seconds. |
+| `services.athens.singleFlight.redis.password` | `string` | Password for the redis server. Warning: this is stored in plain text in the config file. |
+| `services.athens.singleFlight.redisSentinel.endpoints` | `list of string` | URLs that determine all distributed redis servers. |
+| `services.athens.singleFlight.redisSentinel.lockConfig.maxRetries` | `signed integer` | Maximum number of retries for the lock. |
+| `services.athens.singleFlight.redisSentinel.lockConfig.timeout` | `signed integer` | Timeout for the lock in seconds. |
+| `services.athens.singleFlight.redisSentinel.lockConfig.ttl` | `signed integer` | TTL for the lock in seconds. |
+| `services.athens.singleFlight.redisSentinel.masterName` | `string` | Name of the sentinel master server. |
+| `services.athens.singleFlight.redisSentinel.sentinelPassword` | `string` | Password for the sentinel server. Warning: this is stored in plain text in the config file. |
+| `services.athens.singleFlightType` | `one of "memory", "etcd", "redis", "redis-sentinel", "gcp", "azureblob"` | Determines what mechanism Athens uses to manage concurrency flowing into the Athens backend. |
+| `services.athens.statsExporter` | `null or value "prometheus" (singular enum)` | Stats exporter to use. |
+| `services.athens.storage.azureblob.accountKey` | `null or string` | Account key for the Azure Blob storage backend. Warning: this is stored in plain text in the config file. |
+| `services.athens.storage.azureblob.accountName` | `null or string` | Account name for the Azure Blob storage backend. |
+| `services.athens.storage.azureblob.containerName` | `null or string` | Container name for the Azure Blob storage backend. |
+| `services.athens.storage.cdn.endpoint` | `null or string` | hostname of the CDN server. |
+| `services.athens.storage.disk.rootPath` | `null or absolute path` | Athens disk root folder. |
+| `services.athens.storage.external.url` | `null or string` | URL of the backend storage layer. |
+| `services.athens.storage.gcp.bucket` | `null or string` | GCP backend storage bucket. |
+| `services.athens.storage.gcp.jsonKey` | `null or string` | Base64 encoded GCP service account key. Warning: this is stored in plain text in the config file. |
+| `services.athens.storage.gcp.projectID` | `null or string` | GCP project ID. |
+| `services.athens.storage.mongo.certPath` | `null or absolute path` | Path to the certificate file for the mongo database. |
+| `services.athens.storage.mongo.defaultDBName` | `null or string` | Name of the mongo database. |
+| `services.athens.storage.mongo.insecure` | `boolean` | Allow insecure connections to the mongo database. |
+| `services.athens.storage.mongo.url` | `null or string` | URL of the mongo database. |
+| `services.athens.storage.s3.awsContainerCredentialsRelativeURI` | `null or string` | Container relative url (used by fargate). |
+| `services.athens.storage.s3.bucket` | `null or string` | Bucket name for the S3 storage backend. |
+| `services.athens.storage.s3.credentialsEndpoint` | `string` | Credentials endpoint for the S3 storage backend. |
+| `services.athens.storage.s3.endpoint` | `null or string` | Endpoint for the S3 storage backend. |
+| `services.athens.storage.s3.forcePathStyle` | `boolean` | Force path style for the S3 storage backend. |
+| `services.athens.storage.s3.key` | `null or string` | Access key id for the S3 storage backend. |
+| `services.athens.storage.s3.region` | `null or string` | Region of the S3 storage backend. |
+| `services.athens.storage.s3.secret` | `string` | Secret key for the S3 storage backend. Warning: this is stored in plain text in the config file. |
+| `services.athens.storage.s3.token` | `null or string` | Token for the S3 storage backend. Warning: this is stored in plain text in the config file. |
+| `services.athens.storage.s3.useDefaultConfiguration` | `boolean` | Use default configuration for the S3 storage backend. |
+| `services.athens.storageType` | `one of "memory", "disk", "mongo", "gcp", "s3", "azureblob", "external"` | Specifies the type of storage backend to use. |
+| `services.athens.sumDBs` | `list of string` | List of fully qualified URLs that Athens will proxy that the go command can use a checksum verifier. |
+| `services.athens.timeout` | `signed integer` | Timeout for external network calls in seconds. |
+| `services.athens.tlsCertFile` | `null or absolute path` | Path to the TLS certificate file. |
+| `services.athens.tlsKeyFile` | `null or absolute path` | Path to the TLS key file. |
+| `services.athens.traceExporter` | `null or one of "jaeger", "datadog"` | Trace exporter to use. |
+| `services.athens.traceExporterURL` | `null or string` | URL endpoint that traces will be sent to. |
+| `services.athens.unixSocket` | `null or absolute path` | Path to the unix socket file. If set, Athens will listen on the unix socket instead of TCP socket. |
+| `services.athens.validatorHook` | `null or string` | Endpoint to validate modules against. Not used if empty. |

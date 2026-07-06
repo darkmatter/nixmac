@@ -5,10 +5,10 @@
 All options under `programs.offlineimap`.
 
 | Option | Type | Description |
-| ------------------------------------------ | -------------------------------------------------------- | ---------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.offlineimap.enable` | `boolean` | Whether to enable OfflineIMAP. |
-| `programs.offlineimap.extraConfig.default` | `attribute set of (string or signed integer or boolean)` | Extra configuration options added to the DEFAULT section. |
-| `programs.offlineimap.extraConfig.general` | `attribute set of (string or signed integer or boolean)` | Extra configuration options added to the general section. |
-| `programs.offlineimap.extraConfig.mbnames` | `attribute set of (string or signed integer or boolean)` | Extra configuration options added to the mbnames section. |
+| `programs.offlineimap.extraConfig.default` | `attribute set of (string or signed integer or boolean)` | Extra configuration options added to the {option}`DEFAULT` section. |
+| `programs.offlineimap.extraConfig.general` | `attribute set of (string or signed integer or boolean)` | Extra configuration options added to the {option}`general` section. |
+| `programs.offlineimap.extraConfig.mbnames` | `attribute set of (string or signed integer or boolean)` | Extra configuration options added to the `mbnames` section. |
 | `programs.offlineimap.package` | `package` | The offlineimap package to use. Can be used to specify extensions. |
-| `programs.offlineimap.pythonFile` | `strings concatenated with “\n”` | Python code that can then be used in other parts of the configuration. |
+| `programs.offlineimap.pythonFile` | `strings concatenated with "\n"` | Python code that can then be used in other parts of the configuration. |

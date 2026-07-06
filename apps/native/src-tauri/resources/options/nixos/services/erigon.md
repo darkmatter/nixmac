@@ -5,9 +5,9 @@
 All options under `services.erigon`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.erigon.enable` | | |
-| `services.erigon.extraArgs` | | |
-| `services.erigon.package` | | |
-| `services.erigon.secretJwtPath` | | |
-| `services.erigon.settings` | | |
+| --- | --- | --- |
+| `services.erigon.enable` | `boolean` | Whether to enable Ethereum implementation on the efficiency frontier. |
+| `services.erigon.extraArgs` | `list of string` | Additional arguments passed to Erigon |
+| `services.erigon.package` | `package` | The erigon package to use. |
+| `services.erigon.secretJwtPath` | `absolute path` | Path to the secret jwt used for the http api authentication. |
+| `services.erigon.settings` | `TOML value` | Configuration for Erigon Refer to <https://github.com/ledgerwatch/erigon#usage> for details on supported values. |

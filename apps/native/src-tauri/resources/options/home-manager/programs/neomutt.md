@@ -5,18 +5,28 @@
 All options under `programs.neomutt`.
 
 | Option | Type | Description |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.neomutt.binds` | `list of (submodule)` | List of keybindings. |
+| `programs.neomutt.binds.*.action` | `string` | Specify the action to take. |
+| `programs.neomutt.binds.*.key` | `string` | The key to bind. If you want to bind '\\Cp' for example, which would be Ctrl + 'p', you need to escape twice: '\\Cp'! |
+| `programs.neomutt.binds.*.map` | `one of "alias", "attach", "browser", "compose", "editor", "generic", "index", "mix", "pager", "pgp", "postpone", "query", "smime" or list of (one of "alias", "attach", "browser", "compose", "editor", "generic", "index", "mix", "pager", "pgp", "postpone", "query", "smime")` | Select the menu to bind the command to. |
 | `programs.neomutt.changeFolderWhenSourcingAccount` | `boolean` | Whether to enable changing the folder when sourcing an account. |
 | `programs.neomutt.checkStatsInterval` | `null or signed integer` | Enable and set the interval of automatic mail check. |
 | `programs.neomutt.editor` | `string` | Select the editor used for writing mail. |
 | `programs.neomutt.enable` | `boolean` | Whether to enable the NeoMutt mail client. |
-| `programs.neomutt.extraConfig` | `strings concatenated with “\n”` | Extra configuration appended to the end. |
+| `programs.neomutt.extraConfig` | `strings concatenated with "\n"` | Extra configuration appended to the end. |
 | `programs.neomutt.macros` | `list of (submodule)` | List of macros. |
+| `programs.neomutt.macros.*.action` | `string` | Specify the action to take. |
+| `programs.neomutt.macros.*.key` | `string` | The key to bind. If you want to bind '\\Cp' for example, which would be Ctrl + 'p', you need to escape twice: '\\Cp'! |
+| `programs.neomutt.macros.*.map` | `one of "alias", "attach", "browser", "compose", "editor", "generic", "index", "mix", "pager", "pgp", "postpone", "query", "smime" or list of (one of "alias", "attach", "browser", "compose", "editor", "generic", "index", "mix", "pager", "pgp", "postpone", "query", "smime")` | Select the menu to bind the command to. |
 | `programs.neomutt.package` | `package` | The neomutt package to use. |
 | `programs.neomutt.settings` | `attribute set of string` | Extra configuration appended to the end. |
 | `programs.neomutt.sidebar` | `submodule` | Options related to the sidebar. |
-| `programs.neomutt.sort` | `one of “date”, “date-received”, “from”, “mailbox-order”, “score”, “size”, “spam”, “subject”, “threads”, “to”, “reverse-date”, “reverse-date-received”, “reverse-from”, “reverse-mailbox-order”, “reverse-score”, “reverse-size”, “reverse-spam”, “reverse-subject”, “reverse-threads”, “reverse-to”, “last-date”, “last-date-received”, “last-from”, “last-mailbox-order”, “last-score”, “last-size”, “last-spam”, “last-subject”, “last-threads”, “last-to”, “reverse-last-date”, “reverse-last-date-received”, “reverse-last-from”, “reverse-last-mailbox-order”, “reverse-last-score”, “reverse-last-size”, “reverse-last-spam”, “reverse-last-subject”, “reverse-last-threads”, “reverse-last-to”` | Sorting method on messages. |
+| `programs.neomutt.sidebar.enable` | `boolean` | Whether to enable sidebar support. |
+| `programs.neomutt.sidebar.format` | `string` | Sidebar format. Check neomutt documentation for details. |
+| `programs.neomutt.sidebar.shortPath` | `boolean` | By default sidebar shows the full path of the mailbox, but with this enabled only the relative name is shown. |
+| `programs.neomutt.sidebar.width` | `signed integer` | Width of the sidebar |
+| `programs.neomutt.sort` | `one of "date", "date-received", "from", "mailbox-order", "score", "size", "spam", "subject", "threads", "to", "reverse-date", "reverse-date-received", "reverse-from", "reverse-mailbox-order", "reverse-score", "reverse-size", "reverse-spam", "reverse-subject", "reverse-threads", "reverse-to", "last-date", "last-date-received", "last-from", "last-mailbox-order", "last-score", "last-size", "last-spam", "last-subject", "last-threads", "last-to", "reverse-last-date", "reverse-last-date-received", "reverse-last-from", "reverse-last-mailbox-order", "reverse-last-score", "reverse-last-size", "reverse-last-spam", "reverse-last-subject", "reverse-last-threads", "reverse-last-to"` | Sorting method on messages. |
 | `programs.neomutt.sourcePrimaryAccount` | `boolean` | Whether to enable source the primary account by default. |
-| `programs.neomutt.unmailboxes` | `boolean` | Set unmailboxes * at the start of account configurations. It removes previous sidebar mailboxes when sourcing an account configuration. |
+| `programs.neomutt.unmailboxes` | `boolean` | Set `unmailboxes *` at the start of account configurations. It removes previous sidebar mailboxes when sourcing an account configuration. See <http://www.mutt.org/doc/manual/#mailboxes> for more information. |
 | `programs.neomutt.vimKeys` | `boolean` | Enable vim-like bindings. |

@@ -5,30 +5,44 @@
 All options under `services.dependency-track`.
 
 | Option | Type | Description |
-| ---------------------------------------------------- | ---- | ----------- |
-| `services.dependency-track.database.createLocally` | | |
-| `services.dependency-track.database.databaseName` | | |
-| `services.dependency-track.database.passwordFile` | | |
-| `services.dependency-track.database.type` | | |
-| `services.dependency-track.database.username` | | |
-| `services.dependency-track.enable` | | |
-| `services.dependency-track.frontend.baseUrl` | | |
-| `services.dependency-track.javaArgs` | | |
-| `services.dependency-track.ldap.bindPasswordFile` | | |
-| `services.dependency-track.logLevel` | | |
-| `services.dependency-track.nginx.domain` | | |
-| `services.dependency-track.nginx.enable` | | |
-| `services.dependency-track.oidc.clientId` | | |
-| `services.dependency-track.oidc.enable` | | |
-| `services.dependency-track.oidc.flow` | | |
-| `services.dependency-track.oidc.issuer` | | |
-| `services.dependency-track.oidc.loginButtonText` | | |
-| `services.dependency-track.oidc.scope` | | |
-| `services.dependency-track.oidc.teamSynchronization` | | |
-| `services.dependency-track.oidc.teams.claim` | | |
-| `services.dependency-track.oidc.teams.default` | | |
-| `services.dependency-track.oidc.userProvisioning` | | |
-| `services.dependency-track.oidc.usernameClaim` | | |
-| `services.dependency-track.package` | | |
-| `services.dependency-track.port` | | |
-| `services.dependency-track.settings` | | |
+| --- | --- | --- |
+| `services.dependency-track.database.createLocally` | `boolean` | Whether a database should be automatically created on the local host. Set this to false if you plan on provisioning a local database yourself. |
+| `services.dependency-track.database.databaseName` | `string` | Database name to use when connecting to an external or manually provisioned database; has no effect when a local database is automatically provisioned. To use this with a local database, set {option}`services.dependency-track.database.createLocally` to `false` and create the database and user. |
+| `services.dependency-track.database.passwordFile` | `absolute path` | The path to a file containing the database password. |
+| `services.dependency-track.database.type` | `one of "h2", "postgresql", "manual"` | `h2` database is not recommended for a production setup. `postgresql` this settings it recommended for production setups. `manual` the module doesn't handle database settings. |
+| `services.dependency-track.database.username` | `string` | Username to use when connecting to an external or manually provisioned database; has no effect when a local database is automatically provisioned. To use this with a local database, set {option}`services.dependency-track.database.createLocally` to `false` and create the database and user. |
+| `services.dependency-track.enable` | `boolean` | Whether to enable dependency-track. |
+| `services.dependency-track.frontend.baseUrl` | `string` | The base URL of the API server. NOTE: * This URL must be reachable by the browsers of your users. * The frontend container itself does NOT communicate with the API server directly, it just serves static files. * When deploying to dedicated servers, please use the external IP or domain of the API server. |
+| `services.dependency-track.javaArgs` | `list of string` | Java options passed to JVM. Configuring this is usually not necessary, but for small systems it can be useful to tweak the JVM heap size. |
+| `services.dependency-track.ldap.bindPasswordFile` | `absolute path` | The path to a file containing the LDAP bind password. |
+| `services.dependency-track.logLevel` | `one of "INFO", "WARN", "ERROR", "DEBUG", "TRACE"` | Log level for dependency-track |
+| `services.dependency-track.nginx.domain` | `string` | The domain name under which to set up the virtual host. |
+| `services.dependency-track.nginx.enable` | `boolean` | Whether to set up an nginx virtual host. |
+| `services.dependency-track.oidc.clientId` | `string` | Defines the client ID for OpenID Connect. |
+| `services.dependency-track.oidc.enable` | `boolean` | Whether to enable oidc support. |
+| `services.dependency-track.oidc.flow` | `one of "code", "implicit"` | Specifies the OpenID Connect flow to use. Values other than "implicit" will result in the Code+PKCE flow to be used. Usage of the implicit flow is strongly discouraged, but may be necessary when the IdP of choice does not support the Code+PKCE flow. See also: - <https://oauth.net/2/grant-types/implicit/> - <https://oauth.net/2/pkce/> |
+| `services.dependency-track.oidc.issuer` | `string` | Defines the issuer URL to be used for OpenID Connect. See alpine.oidc.issuer property of the API server. |
+| `services.dependency-track.oidc.loginButtonText` | `string` | Defines the scopes to request for OpenID Connect. See also: <https://openid.net/specs/openid-connect-basic-1_0.html#Scopes> |
+| `services.dependency-track.oidc.scope` | `string` | Defines the scopes to request for OpenID Connect. See also: <https://openid.net/specs/openid-connect-basic-1_0.html#Scopes> |
+| `services.dependency-track.oidc.teamSynchronization` | `boolean` | This option will ensure that team memberships for OpenID Connect users are dynamic and synchronized with membership of OpenID Connect groups or assigned roles. When a team is mapped to an OpenID Connect group, all local OpenID Connect users will automatically be assigned to the team if they are a member of the group the team is mapped to. If the user is later removed from the OpenID Connect group, they will also be removed from the team. This option provides the ability to dynamically control user permissions via the identity provider. Note that team synchronization is only performed during user provisioning and after successful authentication. |
+| `services.dependency-track.oidc.teams.claim` | `string` | Defines the name of the claim that contains group memberships or role assignments in the provider's userinfo endpoint. The claim must be an array of strings. Most public identity providers do not support group or role management. When using a customizable / on-demand hosted identity provider, name, content, and inclusion in the userinfo endpoint will most likely need to be configured. |
+| `services.dependency-track.oidc.teams.default` | `null or strings concatenated with ","` | Defines one or more team names that auto-provisioned OIDC users shall be added to. Multiple team names may be provided as comma-separated list. Has no effect when {option}`services.dependency-track.oidc.userProvisioning`=false, or {option}`services.dependency-track.oidc.teamSynchronization`=true. |
+| `services.dependency-track.oidc.userProvisioning` | `boolean` | Specifies if mapped OpenID Connect accounts are automatically created upon successful authentication. When a user logs in with a valid access token but an account has not been previously provisioned, an authentication failure will be returned. This allows admins to control specifically which OpenID Connect users can access the system and which users cannot. When this value is set to true, a local OpenID Connect user will be created and mapped to the OpenID Connect account automatically. This automatic provisioning only affects authentication, not authorization. |
+| `services.dependency-track.oidc.usernameClaim` | `string` | Defines the name of the claim that contains the username in the provider's userinfo endpoint. Common claims are "name", "username", "preferred_username" or "nickname". See also: <https://openid.net/specs/openid-connect-core-1_0.html#UserInfoResponse> |
+| `services.dependency-track.package` | `package` | The dependency-track package to use. |
+| `services.dependency-track.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | On which port dependency-track should listen for new HTTP connections. |
+| `services.dependency-track.settings` | `open submodule of attribute set of (string, package, bool, int or float)` | See <https://docs.dependencytrack.org/getting-started/configuration/#default-configuration> for possible options |
+| `services.dependency-track.settings."alpine.data.directory"` | `absolute path` | Defines the path to the data directory. This directory will hold logs, keys, and any database or index files along with application-specific files or directories. |
+| `services.dependency-track.settings."alpine.database.driver"` | `one of "org.h2.Driver", "org.postgresql.Driver", "com.microsoft.sqlserver.jdbc.SQLServerDriver", "com.mysql.cj.jdbc.Driver"` | Specifies the JDBC driver class to use. |
+| `services.dependency-track.settings."alpine.database.mode"` | `one of "server", "embedded", "external"` | Defines the database mode of operation. Valid choices are: 'server', 'embedded', and 'external'. In server mode, the database will listen for connections from remote hosts. In embedded mode, the system will be more secure and slightly faster. External mode should be used when utilizing an external database server (i.e. mysql, postgresql, etc). |
+| `services.dependency-track.settings."alpine.database.url"` | `string` | Specifies the JDBC URL to use when connecting to the database. |
+| `services.dependency-track.settings."alpine.database.username"` | `string` | Specifies the username to use when authenticating to the database. |
+| `services.dependency-track.settings."alpine.ldap.enabled"` | `boolean` | Defines if LDAP will be used for user authentication. If enabled, alpine.ldap.\* properties should be set accordingly. |
+| `services.dependency-track.settings."alpine.oidc.client.id"` | `string` | Defines the client ID to be used for OpenID Connect. The client ID should be the same as the one configured for the frontend, and will only be used to validate ID tokens. |
+| `services.dependency-track.settings."alpine.oidc.enabled"` | `boolean` | Defines if OpenID Connect will be used for user authentication. If enabled, alpine.oidc.\* properties should be set accordingly. |
+| `services.dependency-track.settings."alpine.oidc.issuer"` | `string` | Defines the issuer URL to be used for OpenID Connect. This issuer MUST support provider configuration via the /.well-known/openid-configuration endpoint. See also: - <https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata> - <https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfig> |
+| `services.dependency-track.settings."alpine.oidc.team.synchronization"` | `boolean` | This option will ensure that team memberships for OpenID Connect users are dynamic and synchronized with membership of OpenID Connect groups or assigned roles. When a team is mapped to an OpenID Connect group, all local OpenID Connect users will automatically be assigned to the team if they are a member of the group the team is mapped to. If the user is later removed from the OpenID Connect group, they will also be removed from the team. This option provides the ability to dynamically control user permissions via the identity provider. Note that team synchronization is only performed during user provisioning and after successful authentication. |
+| `services.dependency-track.settings."alpine.oidc.teams.claim"` | `string` | Defines the name of the claim that contains group memberships or role assignments in the provider's userinfo endpoint. The claim must be an array of strings. Most public identity providers do not support group or role management. When using a customizable / on-demand hosted identity provider, name, content, and inclusion in the userinfo endpoint will most likely need to be configured. |
+| `services.dependency-track.settings."alpine.oidc.teams.default"` | `null or strings concatenated with ","` | Defines one or more team names that auto-provisioned OIDC users shall be added to. Multiple team names may be provided as comma-separated list. Has no effect when {option}`services.dependency-track.oidc.userProvisioning`=false, or {option}`services.dependency-track.oidc.teamSynchronization`=true. |
+| `services.dependency-track.settings."alpine.oidc.user.provisioning"` | `boolean` | Specifies if mapped OpenID Connect accounts are automatically created upon successful authentication. When a user logs in with a valid access token but an account has not been previously provisioned, an authentication failure will be returned. This allows admins to control specifically which OpenID Connect users can access the system and which users cannot. When this value is set to true, a local OpenID Connect user will be created and mapped to the OpenID Connect account automatically. This automatic provisioning only affects authentication, not authorization. |
+| `services.dependency-track.settings."alpine.oidc.username.claim"` | `string` | Defines the name of the claim that contains the username in the provider's userinfo endpoint. Common claims are "name", "username", "preferred_username" or "nickname". See also: <https://openid.net/specs/openid-connect-core-1_0.html#UserInfoResponse> |

@@ -5,8 +5,8 @@
 All options under `services.felix`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `services.felix.bundles` | | |
-| `services.felix.enable` | | |
-| `services.felix.group` | | |
-| `services.felix.user` | | |
+| --- | --- | --- |
+| `services.felix.bundles` | `list of package` | List of bundles that should be activated on startup |
+| `services.felix.enable` | `boolean` | Whether to enable the Apache Felix OSGi service. |
+| `services.felix.group` | `string` | Group account under which Apache Felix runs. |
+| `services.felix.user` | `string` | User account under which Apache Felix runs. |

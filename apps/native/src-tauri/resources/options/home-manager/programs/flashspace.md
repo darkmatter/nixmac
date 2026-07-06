@@ -5,8 +5,8 @@
 All options under `programs.flashspace`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `programs.flashspace.enable` | | |
-| `programs.flashspace.package` | | |
-| `programs.flashspace.profiles` | | |
-| `programs.flashspace.settings` | | |
+| --- | --- | --- |
+| `programs.flashspace.enable` | `boolean` | Whether to enable FlashSpace workspace manager for macOS. |
+| `programs.flashspace.package` | `null or package` | The flashspace package to use. |
+| `programs.flashspace.profiles` | `JSON value` | Profiles, workspaces, and app assignments written to {file}`$XDG_CONFIG_HOME/flashspace/profiles.json`. The root attribute must be {var}`profiles`, containing a list of profile objects. Each profile holds a list of {var}`workspaces`, and each workspace holds a list of {var}`apps` identified by their {var}`bundleIdentifier`. See <https://github.com/wojciech-zurek/FlashSpace> for the full schema. |
+| `programs.flashspace.settings` | `TOML value` | General app settings written to {file}`$XDG_CONFIG_HOME/flashspace/settings.toml`. Covers hotkeys, display mode, transition effects, focus navigation, gestures, integrations, and advanced options. See <https://github.com/wojciech-zurek/FlashSpace> for available keys. |

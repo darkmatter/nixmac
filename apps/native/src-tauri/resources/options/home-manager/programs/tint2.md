@@ -5,7 +5,7 @@
 All options under `programs.tint2`.
 
 | Option | Type | Description |
-| ---------------------------- | -------------------------------- | ------------------------------------------------------------------------ |
+| --- | --- | --- |
 | `programs.tint2.enable` | `boolean` | Whether to enable tint2, a simple, unobtrusive and light panel for Xorg. |
-| `programs.tint2.extraConfig` | `strings concatenated with “\n”` | Commands for tint2 that will be add to the tint2rc file. |
+| `programs.tint2.extraConfig` | `strings concatenated with "\n"` | Commands for tint2 that will be add to the {file}`tint2rc` file. |
 | `programs.tint2.package` | `package` | The tint2 package to use. |

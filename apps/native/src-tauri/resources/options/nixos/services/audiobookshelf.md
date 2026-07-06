@@ -5,12 +5,12 @@
 All options under `services.audiobookshelf`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.audiobookshelf.dataDir` | | |
-| `services.audiobookshelf.enable` | | |
-| `services.audiobookshelf.group` | | |
-| `services.audiobookshelf.host` | | |
-| `services.audiobookshelf.openFirewall` | | |
-| `services.audiobookshelf.package` | | |
-| `services.audiobookshelf.port` | | |
-| `services.audiobookshelf.user` | | |
+| --- | --- | --- |
+| `services.audiobookshelf.dataDir` | `string` | Path to Audiobookshelf config and metadata inside of /var/lib. |
+| `services.audiobookshelf.enable` | `boolean` | Whether to enable Audiobookshelf, self-hosted audiobook and podcast server. |
+| `services.audiobookshelf.group` | `string` | Group under which Audiobookshelf runs. |
+| `services.audiobookshelf.host` | `string` | The host Audiobookshelf binds to. |
+| `services.audiobookshelf.openFirewall` | `boolean` | Open ports in the firewall for the Audiobookshelf web interface. |
+| `services.audiobookshelf.package` | `package` | The audiobookshelf package to use. |
+| `services.audiobookshelf.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The TCP port Audiobookshelf will listen on. |
+| `services.audiobookshelf.user` | `string` | User account under which Audiobookshelf runs. |

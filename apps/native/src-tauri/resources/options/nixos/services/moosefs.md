@@ -5,21 +5,27 @@
 All options under `services.moosefs`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---- | ----------- |
-| `services.moosefs.cgiserver.enable` | | |
-| `services.moosefs.cgiserver.openFirewall` | | |
-| `services.moosefs.cgiserver.settings` | | |
-| `services.moosefs.chunkserver.enable` | | |
-| `services.moosefs.chunkserver.hdds` | | |
-| `services.moosefs.chunkserver.openFirewall` | | |
-| `services.moosefs.chunkserver.settings` | | |
-| `services.moosefs.client.enable` | | |
-| `services.moosefs.master.autoInit` | | |
-| `services.moosefs.master.enable` | | |
-| `services.moosefs.master.exports` | | |
-| `services.moosefs.master.openFirewall` | | |
-| `services.moosefs.master.settings` | | |
-| `services.moosefs.masterHost` | | |
-| `services.moosefs.metalogger.enable` | | |
-| `services.moosefs.metalogger.settings` | | |
-| `services.moosefs.runAsUser` | | |
+| --- | --- | --- |
+| `services.moosefs.cgiserver.enable` | `boolean` | Whether to enable MooseFS GUI server (mfsgui) for web interface. Warning: The GUI server interface should be properly secured from unauthorized access, as it provides full control over your MooseFS installation. . |
+| `services.moosefs.cgiserver.openFirewall` | `boolean` | Whether to automatically open the web interface port. |
+| `services.moosefs.cgiserver.settings` | `open submodule of attribute set of (Flat key-value file)` | GUI server configuration options. |
+| `services.moosefs.cgiserver.settings.DATA_PATH` | `string` | Directory for lock files. |
+| `services.moosefs.cgiserver.settings.GUISERV_LISTEN_HOST` | `string` | IP address to bind GUI server to (\* means any). |
+| `services.moosefs.cgiserver.settings.GUISERV_LISTEN_PORT` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port for GUI server to listen on. |
+| `services.moosefs.chunkserver.enable` | `boolean` | Whether to enable MooseFS chunkserver daemon that stores file data. |
+| `services.moosefs.chunkserver.hdds` | `list of string` | Mount points used by chunkserver for data storage (see mfshdd.cfg). |
+| `services.moosefs.chunkserver.openFirewall` | `boolean` | Whether to automatically open required firewall ports for chunkserver service. |
+| `services.moosefs.chunkserver.settings` | `open submodule of attribute set of (Flat key-value file)` | Chunkserver configuration options (mfschunkserver.cfg). |
+| `services.moosefs.chunkserver.settings.DATA_PATH` | `string` | Directory for lock files and other runtime data. |
+| `services.moosefs.client.enable` | `boolean` | Whether to enable MooseFS client. |
+| `services.moosefs.master.autoInit` | `boolean` | Whether to automatically initialize the master's metadata directory on first run. Use with caution. |
+| `services.moosefs.master.enable` | `boolean` | Enable MooseFS master daemon. The master server coordinates all MooseFS operations and stores metadata. |
+| `services.moosefs.master.exports` | `list of string` | Export definitions for MooseFS (see mfsexports.cfg). |
+| `services.moosefs.master.openFirewall` | `boolean` | Whether to automatically open required firewall ports for master service. |
+| `services.moosefs.master.settings` | `open submodule of attribute set of (Flat key-value file)` | Master configuration options (mfsmaster.cfg). |
+| `services.moosefs.master.settings.DATA_PATH` | `string` | Directory for storing master metadata. |
+| `services.moosefs.masterHost` | `string` | IP or DNS name of the MooseFS master server. |
+| `services.moosefs.metalogger.enable` | `boolean` | Whether to enable MooseFS metalogger daemon that maintains a backup copy of the master's metadata. |
+| `services.moosefs.metalogger.settings` | `open submodule of attribute set of (Flat key-value file)` | Metalogger configuration options (mfsmetalogger.cfg). |
+| `services.moosefs.metalogger.settings.DATA_PATH` | `string` | Directory for storing metalogger data. |
+| `services.moosefs.runAsUser` | `boolean` | Run daemons as moosefs user instead of root for better security. |

@@ -5,7 +5,7 @@
 All options under `programs.vifm`.
 
 | Option | Type | Description |
-| --------------------------- | -------------------------------- | ----------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.vifm.enable` | `boolean` | Whether to enable vifm, a Vim-like file manager. |
-| `programs.vifm.extraConfig` | `strings concatenated with “\n”` | Extra lines added to the $XDG_CONFIG_HOME/vifm/vifmrc file. |
+| `programs.vifm.extraConfig` | `strings concatenated with "\n"` | Extra lines added to the {file}`$XDG_CONFIG_HOME/vifm/vifmrc` file. |
 | `programs.vifm.package` | `null or package` | The vifm package to use. |

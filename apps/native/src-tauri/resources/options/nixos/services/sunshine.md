@@ -5,11 +5,14 @@
 All options under `services.sunshine`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.sunshine.applications` | | |
-| `services.sunshine.autoStart` | | |
-| `services.sunshine.capSysAdmin` | | |
-| `services.sunshine.enable` | | |
-| `services.sunshine.openFirewall` | | |
-| `services.sunshine.package` | | |
-| `services.sunshine.settings` | | |
+| --- | --- | --- |
+| `services.sunshine.applications` | `submodule` | Configuration for applications to be exposed to Moonlight. If this is set, no configuration is possible from the web UI, and must be by the `settings` option. |
+| `services.sunshine.applications.apps` | `list of (attribute set)` | Applications to be exposed to Moonlight. |
+| `services.sunshine.applications.env` | `attribute set of string` | Environment variables to be set for the applications. |
+| `services.sunshine.autoStart` | `boolean` | Whether sunshine should be started automatically. |
+| `services.sunshine.capSysAdmin` | `boolean` | Whether to give the Sunshine binary CAP_SYS_ADMIN, required for DRM/KMS screen capture. |
+| `services.sunshine.enable` | `boolean` | Whether to enable Sunshine, a self-hosted game stream host for Moonlight. |
+| `services.sunshine.openFirewall` | `boolean` | Whether to automatically open ports in the firewall. |
+| `services.sunshine.package` | `package` | The sunshine package to use. |
+| `services.sunshine.settings` | `open submodule of attribute set of (atom (null, bool, int, float or string))` | Settings to be rendered into the configuration file. If this is set, no configuration is possible from the web UI. See <https://docs.lizardbyte.dev/projects/sunshine/latest/md_docs_2configuration.html> for syntax. |
+| `services.sunshine.settings.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Base port -- others used are offset from this one, see <https://docs.lizardbyte.dev/projects/sunshine/latest/md_docs_2configuration.html#port> for details. |

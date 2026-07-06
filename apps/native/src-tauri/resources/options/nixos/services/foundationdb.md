@@ -5,27 +5,34 @@
 All options under `services.foundationdb`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---- | ----------- |
-| `services.foundationdb.backupProcesses` | | |
-| `services.foundationdb.class` | | |
-| `services.foundationdb.dataDir` | | |
-| `services.foundationdb.enable` | | |
-| `services.foundationdb.extraReadWritePaths` | | |
-| `services.foundationdb.group` | | |
-| `services.foundationdb.listenAddress` | | |
-| `services.foundationdb.listenPortStart` | | |
-| `services.foundationdb.locality` | | |
-| `services.foundationdb.logDir` | | |
-| `services.foundationdb.logSize` | | |
-| `services.foundationdb.maxLogSize` | | |
-| `services.foundationdb.memory` | | |
-| `services.foundationdb.openFirewall` | | |
-| `services.foundationdb.package` | | |
-| `services.foundationdb.pidfile` | | |
-| `services.foundationdb.publicAddress` | | |
-| `services.foundationdb.restartDelay` | | |
-| `services.foundationdb.serverProcesses` | | |
-| `services.foundationdb.storageMemory` | | |
-| `services.foundationdb.tls` | | |
-| `services.foundationdb.traceFormat` | | |
-| `services.foundationdb.user` | | |
+| --- | --- | --- |
+| `services.foundationdb.backupProcesses` | `signed integer` | Number of backup_agent processes to run for snapshots. |
+| `services.foundationdb.class` | `null or one of "storage", "transaction", "stateless"` | Process class |
+| `services.foundationdb.dataDir` | `absolute path` | Data directory. All cluster data will be put under here. |
+| `services.foundationdb.enable` | `boolean` | Whether to enable FoundationDB Server. |
+| `services.foundationdb.extraReadWritePaths` | `list of absolute path` | An extra set of filesystem paths that FoundationDB can read to and write from. By default, FoundationDB runs under a heavily namespaced systemd environment without write access to most of the filesystem outside of its data and log directories. By adding paths to this list, the set of writeable paths will be expanded. This is useful for allowing e.g. backups to local files, which must be performed on behalf of the foundationdb service. |
+| `services.foundationdb.group` | `string` | Group account under which FoundationDB runs. |
+| `services.foundationdb.listenAddress` | `string` | Publicly visible IP address of the process. Port is determined by process ID |
+| `services.foundationdb.listenPortStart` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Starting port number for database listening sockets. Every FDB process binds to a subsequent port, to this number reflects the start of the overall range. e.g. having 8 server processes will use all ports between 4500 and 4507. |
+| `services.foundationdb.locality` | `submodule` | FoundationDB locality settings. |
+| `services.foundationdb.locality.dataHall` | `null or string` | Data hall identifier key. All processes physically located in a data hall should share the id. If you are depending on data hall based replication this must be set on all processes. |
+| `services.foundationdb.locality.datacenterId` | `null or string` | Data center identifier key. All processes physically located in a data center should share the id. If you are depending on data center based replication this must be set on all processes. |
+| `services.foundationdb.locality.machineId` | `null or string` | Machine identifier key. All processes on a machine should share a unique id. By default, processes on a machine determine a unique id to share. This does not generally need to be set. |
+| `services.foundationdb.locality.zoneId` | `null or string` | Zone identifier key. Processes that share a zone id are considered non-unique for the purposes of data replication. If unset, defaults to machine id. |
+| `services.foundationdb.logDir` | `absolute path` | Log directory. |
+| `services.foundationdb.logSize` | `string` | Roll over to a new log file after the current log file reaches the specified size. |
+| `services.foundationdb.maxLogSize` | `string` | Delete the oldest log file when the total size of all log files exceeds the specified size. If set to 0, old log files will not be deleted. |
+| `services.foundationdb.memory` | `string` | Maximum memory used by the process. The default value is `8GiB`. When specified without a unit, `MiB` is assumed. This parameter does not change the memory allocation of the program. Rather, it sets a hard limit beyond which the process will kill itself and be restarted. The default value of `8GiB` is double the intended memory usage in the default configuration (providing an emergency buffer to deal with memory leaks or similar problems). It is not recommended to decrease the value of this parameter below its default value. It may be increased if you wish to allocate a very large amount of storage engine memory or cache. In particular, when the `storageMemory` parameter is increased, the `memory` parameter should be increased by an equal amount. |
+| `services.foundationdb.openFirewall` | `boolean` | Open the firewall ports corresponding to FoundationDB processes and coordinators using {option}`config.networking.firewall.*`. |
+| `services.foundationdb.package` | `package` | The FoundationDB package to use for this server. This must be specified by the user in order to ensure migrations and upgrades are controlled appropriately. |
+| `services.foundationdb.pidfile` | `absolute path` | Path to pidfile for fdbmonitor. |
+| `services.foundationdb.publicAddress` | `string` | Publicly visible IP address of the process. Port is determined by process ID |
+| `services.foundationdb.restartDelay` | `signed integer` | Number of seconds to wait before restarting servers. |
+| `services.foundationdb.serverProcesses` | `signed integer` | Number of fdbserver processes to run. |
+| `services.foundationdb.storageMemory` | `string` | Maximum memory used for data storage. The default value is `1GiB`. When specified without a unit, `MB` is assumed. Clusters using the memory storage engine will be restricted to using this amount of memory per process for purposes of data storage. Memory overhead associated with storing the data is counted against this total. If you increase the `storageMemory`, you should also increase the `memory` parameter by the same amount. |
+| `services.foundationdb.tls` | `null or (submodule)` | FoundationDB Transport Security Layer (TLS) settings. |
+| `services.foundationdb.tls.allowedPeers` | `string` | "Peer verification string". This may be used to adjust which TLS client certificates a server will accept, as a form of user authorization; for example, it may only accept TLS clients who offer a certificate abiding by some locality or organization name. For more information, please see the FoundationDB documentation. |
+| `services.foundationdb.tls.certificate` | `string` | Path to the TLS certificate file. This certificate will be offered to, and may be verified by, clients. |
+| `services.foundationdb.tls.key` | `string` | Private key file for the certificate. |
+| `services.foundationdb.traceFormat` | `one of "xml", "json"` | Trace logging format. |
+| `services.foundationdb.user` | `string` | User account under which FoundationDB runs. |

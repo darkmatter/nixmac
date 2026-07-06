@@ -5,8 +5,12 @@
 All options under `services.openbao`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.openbao.enable` | | |
-| `services.openbao.extraArgs` | | |
-| `services.openbao.package` | | |
-| `services.openbao.settings` | | |
+| --- | --- | --- |
+| `services.openbao.enable` | `boolean` | Whether to enable OpenBao daemon. |
+| `services.openbao.extraArgs` | `list of string` | Additional arguments given to OpenBao. |
+| `services.openbao.package` | `package` | The openbao package to use. |
+| `services.openbao.settings` | `open submodule of (JSON value)` | Settings of OpenBao. See [documentation](https://openbao.org/docs/configuration) for more details. |
+| `services.openbao.settings.listener` | `attribute set of (open submodule of (JSON value))` | Configure a listener for responding to requests. |
+| `services.openbao.settings.listener.<name>.address` | `string` | The TCP address or UNIX socket path to listen on. |
+| `services.openbao.settings.listener.<name>.type` | `one of "tcp", "unix"` | The listener type to enable. |
+| `services.openbao.settings.ui` | `boolean` | Whether to enable the OpenBao web UI. |

@@ -5,9 +5,9 @@
 All options under `services.turborepo-remote-cache`.
 
 | Option | Type | Description |
-| ------------------------------------------------- | ---- | ----------- |
-| `services.turborepo-remote-cache.enable` | | |
-| `services.turborepo-remote-cache.environment` | | |
-| `services.turborepo-remote-cache.environmentFile` | | |
-| `services.turborepo-remote-cache.openFirewall` | | |
-| `services.turborepo-remote-cache.package` | | |
+| --- | --- | --- |
+| `services.turborepo-remote-cache.enable` | `boolean` | Enables the daemon for `turborepo-remote-cache`, an open source implementation of the Turborepo custom remote cache server. |
+| `services.turborepo-remote-cache.environment` | `attribute set of (null or boolean or signed integer or string)` | Environment variables to set. Turborepo-remote-cache is configured through the use of environment variables. The available configuration options can be found in the [documentation][envvars]. \[envvars\]: https://ducktors.github.io/turborepo-remote-cache/environment-variables.html Note that all environment variables set through this configuration parameter will be readable by anyone with access to the host machine. Therefore, sensitive information like {env}`TURBO_TOKEN` should never be set using this configuration option, but should instead use [](#opt-services.turborepo-remote-cache.environmentFile). See the documentation for that option for more information. Any environment variables specified in the [](#opt-services.turborepo-remote-cache.environmentFile) will supersede environment variables specified in this option. |
+| `services.turborepo-remote-cache.environmentFile` | `null or absolute path` | Additional environment file as defined in {manpage}`systemd.exec(5)`. Secrets like {env}`TURBO_TOKEN` may be passed to the service without making them readable to everyone with access to systemctl by using this configuration parameter. Note that this file needs to be available on the host on which `turborepo-remote-cache` is running. See the [documentation][envvars] and the [](#opt-services.turborepo-remote-cache.environment) configuration parameter for further options. \[envvars\]: https://ducktors.github.io/turborepo-remote-cache/environment-variables.html |
+| `services.turborepo-remote-cache.openFirewall` | `boolean` | Open ports in the firewall for turborepo-remote-cache daemon. |
+| `services.turborepo-remote-cache.package` | `package` | The turborepo-remote-cache package to use. |

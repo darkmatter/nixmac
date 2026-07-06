@@ -5,11 +5,11 @@
 All options under `services.flexget`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.flexget.config` | | |
-| `services.flexget.enable` | | |
-| `services.flexget.homeDir` | | |
-| `services.flexget.interval` | | |
-| `services.flexget.package` | | |
-| `services.flexget.systemScheduler` | | |
-| `services.flexget.user` | | |
+| --- | --- | --- |
+| `services.flexget.config` | `strings concatenated with "\n"` | The YAML configuration for FlexGet. |
+| `services.flexget.enable` | `boolean` | Whether to enable FlexGet daemon. |
+| `services.flexget.homeDir` | `absolute path` | Where files live. |
+| `services.flexget.interval` | `string` | When to perform a {command}`flexget` run. See {command}`man 7 systemd.time` for the format. |
+| `services.flexget.package` | `package` | The flexget package to use. |
+| `services.flexget.systemScheduler` | `boolean` | When true, execute the runs via the flexget-runner.timer. If false, you have to specify the settings yourself in the YML file. |
+| `services.flexget.user` | `string` | The user under which to run flexget. |

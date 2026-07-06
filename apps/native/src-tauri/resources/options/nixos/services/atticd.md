@@ -5,11 +5,11 @@
 All options under `services.atticd`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.atticd.enable` | | |
-| `services.atticd.environmentFile` | | |
-| `services.atticd.group` | | |
-| `services.atticd.mode` | | |
-| `services.atticd.package` | | |
-| `services.atticd.settings` | | |
-| `services.atticd.user` | | |
+| --- | --- | --- |
+| `services.atticd.enable` | `boolean` | Whether to enable the atticd, the Nix Binary Cache server. |
+| `services.atticd.environmentFile` | `null or absolute path` | Path to an EnvironmentFile containing required environment variables: - ATTIC_SERVER_TOKEN_RS256_SECRET_BASE64: The base64-encoded RSA PEM PKCS1 of the RS256 JWT secret. Generate it with `openssl genrsa -traditional 4096 \| base64 -w0`. |
+| `services.atticd.group` | `string` | The group under which attic runs. |
+| `services.atticd.mode` | `one of "monolithic", "api-server", "garbage-collector"` | Mode in which to run the server. 'monolithic' runs all components, and is suitable for single-node deployments. 'api-server' runs only the API server, and is suitable for clustering. 'garbage-collector' only runs the garbage collector periodically. A simple NixOS-based Attic deployment will typically have one 'monolithic' and any number of 'api-server' nodes. There are several other supported modes that perform one-off operations, but these are the only ones that make sense to run via the NixOS module. |
+| `services.atticd.package` | `package` | The attic-server package to use. |
+| `services.atticd.settings` | `TOML value` | Structured configurations of atticd. See <https://github.com/zhaofengli/attic/blob/main/server/src/config-template.toml> |
+| `services.atticd.user` | `string` | The user under which attic runs. |

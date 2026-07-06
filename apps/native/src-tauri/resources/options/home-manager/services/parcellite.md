@@ -5,7 +5,7 @@
 All options under `services.parcellite`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---------------- | -------------------------------------------- |
+| --- | --- | --- |
 | `services.parcellite.enable` | `boolean` | Whether to enable Parcellite. |
 | `services.parcellite.extraOptions` | `list of string` | Command line arguments passed to Parcellite. |
 | `services.parcellite.package` | `package` | The parcellite package to use. |

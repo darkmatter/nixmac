@@ -5,20 +5,20 @@
 All options under `services.datadog-agent`.
 
 | Option | Type | Description |
-| ---------------------------------------------------- | ---- | ----------- |
-| `services.datadog-agent.apiKeyFile` | | |
-| `services.datadog-agent.checks` | | |
-| `services.datadog-agent.ddUrl` | | |
-| `services.datadog-agent.diskCheck` | | |
-| `services.datadog-agent.enable` | | |
-| `services.datadog-agent.enableLiveProcessCollection` | | |
-| `services.datadog-agent.enableTraceAgent` | | |
-| `services.datadog-agent.extraConfig` | | |
-| `services.datadog-agent.extraIntegrations` | | |
-| `services.datadog-agent.hostname` | | |
-| `services.datadog-agent.logLevel` | | |
-| `services.datadog-agent.networkCheck` | | |
-| `services.datadog-agent.package` | | |
-| `services.datadog-agent.processAgentPackage` | | |
-| `services.datadog-agent.site` | | |
-| `services.datadog-agent.tags` | | |
+| --- | --- | --- |
+| `services.datadog-agent.apiKeyFile` | `absolute path` | Path to a file containing the Datadog API key to associate the agent with your account. |
+| `services.datadog-agent.checks` | `attribute set of (attribute set)` | Configuration for all Datadog checks. Keys of this attribute set will be used as the name of the check to create the appropriate configuration in `conf.d/$check.d/conf.yaml`. The configuration is converted into JSON from the plain Nix language configuration, meaning that you should write configuration adhering to Datadog's documentation - but in Nix language. Refer to the implementation of this module (specifically the definition of `defaultChecks`) for an example. Note: The 'disk' and 'network' check are configured in separate options because they exist by default. Attempting to override their configuration here will have no effect. |
+| `services.datadog-agent.ddUrl` | `null or string` | Custom dd_url to configure the agent with. Useful if traffic to datadog needs to go through a proxy. Don't use this to point to another datadog site (EU) - use site instead. |
+| `services.datadog-agent.diskCheck` | `attribute set` | Disk check config |
+| `services.datadog-agent.enable` | `boolean` | Whether to enable Datadog-agent v7 monitoring service. |
+| `services.datadog-agent.enableLiveProcessCollection` | `boolean` | Whether to enable the live process collection agent. |
+| `services.datadog-agent.enableTraceAgent` | `boolean` | Whether to enable the trace agent. |
+| `services.datadog-agent.extraConfig` | `attribute set` | Extra configuration options that will be merged into the main config file {file}`datadog.yaml`. |
+| `services.datadog-agent.extraIntegrations` | `attribute set` | Extra integrations from the Datadog core-integrations repository that should be built and included. By default the included integrations are disk, mongo, network, nginx and postgres. To include additional integrations the name of the derivation and a function to filter its dependencies from the Python package set must be provided. |
+| `services.datadog-agent.hostname` | `null or string` | The hostname to show in the Datadog dashboard (optional) |
+| `services.datadog-agent.logLevel` | `null or one of "DEBUG", "INFO", "WARN", "ERROR"` | Logging verbosity. |
+| `services.datadog-agent.networkCheck` | `attribute set` | Network check config |
+| `services.datadog-agent.package` | `package` | The datadog-agent package to use. ::: {.note} The provided package is expected to have an overridable `pythonPackages`-attribute which configures the Python environment with the Datadog checks. ::: |
+| `services.datadog-agent.processAgentPackage` | `package` | Which DataDog v7 agent package to use. Note that the provided package is expected to have an overridable `pythonPackages`-attribute which configures the Python environment with the Datadog checks. |
+| `services.datadog-agent.site` | `null or string` | The datadog site to point the agent towards. Set to datadoghq.eu to point it to their EU site. |
+| `services.datadog-agent.tags` | `null or (list of string)` | The tags to mark this Datadog agent |

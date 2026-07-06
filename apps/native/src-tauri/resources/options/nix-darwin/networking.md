@@ -5,23 +5,39 @@
 All options under `networking`.
 
 | Option | Type | Description |
-| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `networking.applicationFirewall.allowSigned` | `null or boolean` | Whether to allow built-in software to receive incoming connections. |
 | `networking.applicationFirewall.allowSignedApp` | `null or boolean` | Whether to allow downloaded signed software to receive incoming connections. |
 | `networking.applicationFirewall.blockAllIncoming` | `null or boolean` | Whether to block all incoming connections. |
 | `networking.applicationFirewall.enable` | `null or boolean` | Whether to enable application firewall. |
 | `networking.applicationFirewall.enableStealthMode` | `null or boolean` | Whether to enable stealth mode. |
-| `networking.computerName` | `null or string` | The user-friendly name for the system, set in System Preferences > Sharing > Computer Name. |
-| `networking.dhcpClientId` | `null or string` | The DHCP client identifier to use when requesting an IP address from a DHCP server. |
+| `networking.computerName` | `null or string` | The user-friendly name for the system, set in System Preferences > Sharing > Computer Name. Setting this option is equivalent to running `scutil --set ComputerName`. This name can contain spaces and Unicode characters. |
+| `networking.dhcpClientId` | `null or string` | The DHCP client identifier to use when requesting an IP address from a DHCP server. If this option is set, it will be used by the system when requesting an IP address. If not set, no changes will be made. Set to the string "empty" to clear any previously configured client ID and restore the system default behavior. |
 | `networking.dns` | `list of string` | The list of dns servers used when resolving domain names. |
 | `networking.domain` | `null or string` | The domain. It can be left empty if it is auto-detected through DHCP. |
-| `networking.fqdn` | `string` | The fully qualified domain name (FQDN) of this host. By default, it is the result of combining networking.hostName and networking.domain. |
-| `networking.fqdnOrHostName` | `string (read only)` | Either the fully qualified domain name (FQDN), or just the host name if it does not exists. |
-| `networking.hostName` | `null or string matching the pattern ^(([a-zA-Z0-9]\|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]\|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$` | The hostname of your system, as visible from the command line and used by local and remote networks when connecting through SSH and Remote Login. |
-| `networking.knownNetworkServices` | `list of string` | List of networkservices that should be configured. |
-| `networking.localHostName` | `null or string matching the pattern ^(([a-zA-Z0-9]\|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]\|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$` | The local hostname, or local network name, is displayed beneath the computer’s name at the top of the Sharing preferences pane. It identifies your Mac to Bonjour-compatible services. |
-| `networking.networkservices` | | |
+| `networking.fqdn` | `string` | The fully qualified domain name (FQDN) of this host. By default, it is the result of combining `networking.hostName` and `networking.domain.` Using this option will result in an evaluation error if the hostname is empty or no domain is specified. Modules that accept a mere `networking.hostName` but prefer a fully qualified domain name may use `networking.fqdnOrHostName` instead. |
+| `networking.fqdnOrHostName` | `string` | Either the fully qualified domain name (FQDN), or just the host name if it does not exists. This is a convenience option for modules to read instead of `fqdn` when a mere `hostName` is also an acceptable value; this option does not throw an error when `domain` is unset. |
+| `networking.hostName` | `null or string matching the pattern ^(([a-zA-Z0-9]\|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]\|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$` | The hostname of your system, as visible from the command line and used by local and remote networks when connecting through SSH and Remote Login. Setting this option is equivalent to running the command `scutil --set HostName`. (Note that networking.localHostName defaults to the value of this option.) |
+| `networking.knownNetworkServices` | `list of string` | List of networkservices that should be configured. To display a list of all the network services on the server's hardware ports, use {command}`networksetup -listallnetworkservices`. |
+| `networking.localHostName` | `null or string matching the pattern ^(([a-zA-Z0-9]\|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]\|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$` | The local hostname, or local network name, is displayed beneath the computer's name at the top of the Sharing preferences pane. It identifies your Mac to Bonjour-compatible services. Setting this option is equivalent to running the command `scutil --set LocalHostName`, where running, e.g., `scutil --set LocalHostName 'Johns-MacBook-Pro'`, would set the systems local hostname to "Johns-MacBook-Pro.local". The value of this option defaults to the value of the networking.hostName option. By default on macOS the local hostname is your computer's name with ".local" appended, with any spaces replaced with hyphens, and invalid characters omitted. |
 | `networking.search` | `list of string` | The list of search paths used when resolving domain names. |
-| `networking.wakeOnLan.enable` | `null or boolean` | Enable Wake-on-LAN for the device. |
+| `networking.wakeOnLan.enable` | `null or boolean` | Enable Wake-on-LAN for the device. Battery powered devices may require being connected to power. |
 | `networking.wg-quick.interfaces` | `attribute set of (submodule)` | Set of wg-quick interfaces. |
+| `networking.wg-quick.interfaces.<name>.address` | `null or (list of string)` | List of IP addresses for this interface. |
+| `networking.wg-quick.interfaces.<name>.autostart` | `boolean` | Whether to bring up this interface automatically during boot. |
+| `networking.wg-quick.interfaces.<name>.dns` | `list of string` | List of DNS servers for this interface. |
+| `networking.wg-quick.interfaces.<name>.listenPort` | `null or signed integer` | Port to listen on, randomly selected if not specified. |
+| `networking.wg-quick.interfaces.<name>.mtu` | `null or signed integer` | MTU to set for this interface, automatically set if not specified |
+| `networking.wg-quick.interfaces.<name>.peers` | `list of (submodule)` | List of peers associated with this interface. |
+| `networking.wg-quick.interfaces.<name>.peers.*.allowedIPs` | `list of string` | List of IP addresses associated with this peer. |
+| `networking.wg-quick.interfaces.<name>.peers.*.endpoint` | `null or string` | IP and port to connect to this peer at. |
+| `networking.wg-quick.interfaces.<name>.peers.*.persistentKeepalive` | `null or signed integer` | Interval in seconds to send keepalive packets |
+| `networking.wg-quick.interfaces.<name>.peers.*.presharedKeyFile` | `null or string` | Optional, path to file containing the pre-shared key for this peer. |
+| `networking.wg-quick.interfaces.<name>.peers.*.publicKey` | `string` | The public key for this peer. |
+| `networking.wg-quick.interfaces.<name>.postDown` | `strings concatenated with "\n" or (list of string) convertible to it` | List of commands to run after interface shutdown |
+| `networking.wg-quick.interfaces.<name>.postUp` | `strings concatenated with "\n" or (list of string) convertible to it` | List of commands to run after interface setup. |
+| `networking.wg-quick.interfaces.<name>.preDown` | `strings concatenated with "\n" or (list of string) convertible to it` | List of commands to run before interface shutdown. |
+| `networking.wg-quick.interfaces.<name>.preUp` | `strings concatenated with "\n" or (list of string) convertible to it` | List of commands to run before interface setup. |
+| `networking.wg-quick.interfaces.<name>.privateKeyFile` | `string` | Path to file containing this interface's private key. |
+| `networking.wg-quick.interfaces.<name>.table` | `null or string` | Controls the routing table to which routes are added. There are two special values: `off` disables the creation of routes altogether, and `auto` (the default) adds routes to the default table and enables special handling of default routes. |
 | `networking.wg-quick.logDir` | `string` | Directory to save wg-quick logs to. |

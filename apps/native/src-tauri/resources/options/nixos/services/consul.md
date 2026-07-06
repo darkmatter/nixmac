@@ -5,21 +5,21 @@
 All options under `services.consul`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.consul.alerts.consulAddr` | | |
-| `services.consul.alerts.enable` | | |
-| `services.consul.alerts.listenAddr` | | |
-| `services.consul.alerts.package` | | |
-| `services.consul.alerts.watchChecks` | | |
-| `services.consul.alerts.watchEvents` | | |
-| `services.consul.dropPrivileges` | | |
-| `services.consul.enable` | | |
-| `services.consul.extraConfig` | | |
-| `services.consul.extraConfigFiles` | | |
-| `services.consul.forceAddrFamily` | | |
-| `services.consul.forceIpv4` | | |
-| `services.consul.interface.advertise` | | |
-| `services.consul.interface.bind` | | |
-| `services.consul.leaveOnStop` | | |
-| `services.consul.package` | | |
-| `services.consul.webUi` | | |
+| --- | --- | --- |
+| `services.consul.alerts.consulAddr` | `string` | Consul api listening address |
+| `services.consul.alerts.enable` | `boolean` | Whether to enable consul-alerts. |
+| `services.consul.alerts.listenAddr` | `string` | Api listening address. |
+| `services.consul.alerts.package` | `package` | The consul-alerts package to use. |
+| `services.consul.alerts.watchChecks` | `boolean` | Whether to enable check watcher. |
+| `services.consul.alerts.watchEvents` | `boolean` | Whether to enable event watcher. |
+| `services.consul.dropPrivileges` | `boolean` | Whether the consul agent should be run as a non-root consul user. |
+| `services.consul.enable` | `boolean` | Enables the consul daemon. |
+| `services.consul.extraConfig` | `attribute set of anything` | Extra configuration options which are serialized to json and added to the config.json file. |
+| `services.consul.extraConfigFiles` | `list of string` | Additional configuration files to pass to consul NOTE: These will not trigger the service to be restarted when altered. |
+| `services.consul.forceAddrFamily` | `one of "any", "ipv4", "ipv6"` | Whether to bind ipv4/ipv6 or both kind of addresses. |
+| `services.consul.forceIpv4` | `null or boolean` | Deprecated: Use consul.forceAddrFamily instead. Whether we should force the interfaces to only pull ipv4 addresses. |
+| `services.consul.interface.advertise` | `null or string` | The name of the interface to pull the advertise_addr from. |
+| `services.consul.interface.bind` | `null or string` | The name of the interface to pull the bind_addr from. |
+| `services.consul.leaveOnStop` | `boolean` | If enabled, causes a leave action to be sent when closing consul. This allows a clean termination of the node, but permanently removes it from the cluster. You probably don't want this option unless you are running a node which going offline in a permanent / semi-permanent fashion. |
+| `services.consul.package` | `package` | The consul package to use. |
+| `services.consul.webUi` | `boolean` | Enables the web interface on the consul http port. |

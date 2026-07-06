@@ -5,10 +5,16 @@
 All options under `services.opkssh`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.opkssh.authorizations` | | |
-| `services.opkssh.enable` | | |
-| `services.opkssh.group` | | |
-| `services.opkssh.package` | | |
-| `services.opkssh.providers` | | |
-| `services.opkssh.user` | | |
+| --- | --- | --- |
+| `services.opkssh.authorizations` | `list of (submodule)` | User authorization mappings |
+| `services.opkssh.authorizations.*.issuer` | `string` | Issuer URI |
+| `services.opkssh.authorizations.*.principal` | `string` | Principal identifier (email, repo, etc.) |
+| `services.opkssh.authorizations.*.user` | `string` | Linux user to authorize |
+| `services.opkssh.enable` | `boolean` | Whether to enable OpenID Connect SSH authentication. |
+| `services.opkssh.group` | `string` | System group for opkssh |
+| `services.opkssh.package` | `package` | The opkssh package to use. |
+| `services.opkssh.providers` | `attribute set of (submodule)` | OpenID Connect providers configuration |
+| `services.opkssh.providers.<name>.clientId` | `string` | OAuth client ID |
+| `services.opkssh.providers.<name>.issuer` | `string` | Issuer URI |
+| `services.opkssh.providers.<name>.lifetime` | `one of "12h", "24h", "48h", "1week", "oidc", "oidc-refreshed"` | Token lifetime |
+| `services.opkssh.user` | `string` | System user for running opkssh |

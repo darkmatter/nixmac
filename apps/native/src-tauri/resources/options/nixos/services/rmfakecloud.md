@@ -5,11 +5,11 @@
 All options under `services.rmfakecloud`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.rmfakecloud.enable` | | |
-| `services.rmfakecloud.environmentFile` | | |
-| `services.rmfakecloud.extraSettings` | | |
-| `services.rmfakecloud.logLevel` | | |
-| `services.rmfakecloud.package` | | |
-| `services.rmfakecloud.port` | | |
-| `services.rmfakecloud.storageUrl` | | |
+| --- | --- | --- |
+| `services.rmfakecloud.enable` | `boolean` | Whether to enable rmfakecloud remarkable self-hosted cloud. |
+| `services.rmfakecloud.environmentFile` | `null or absolute path` | Path to an environment file loaded for the rmfakecloud service. This can be used to securely store tokens and secrets outside of the world-readable Nix store. Since this file is read by systemd, it may have permission 0400 and be owned by root. |
+| `services.rmfakecloud.extraSettings` | `attribute set of string` | Extra settings in the form of a set of key-value pairs. For tokens and secrets, use `environmentFile` instead. Available settings are listed on https://ddvk.github.io/rmfakecloud/install/configuration/. |
+| `services.rmfakecloud.logLevel` | `one of "info", "debug", "warn", "error"` | Logging level. |
+| `services.rmfakecloud.package` | `package` | The rmfakecloud package to use. |
+| `services.rmfakecloud.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listening port number. |
+| `services.rmfakecloud.storageUrl` | `string` | URL used by the tablet to access the rmfakecloud service. |

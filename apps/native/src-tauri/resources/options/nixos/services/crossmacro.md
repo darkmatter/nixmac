@@ -5,8 +5,8 @@
 All options under `services.crossmacro`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.crossmacro.daemonPackage` | | |
-| `services.crossmacro.enable` | | |
-| `services.crossmacro.package` | | |
-| `services.crossmacro.users` | | |
+| --- | --- | --- |
+| `services.crossmacro.daemonPackage` | `package` | The crossmacro-daemon package to use. |
+| `services.crossmacro.enable` | `boolean` | Whether to enable CrossMacro, a cross-platform mouse and keyboard macro application. |
+| `services.crossmacro.package` | `package` | The crossmacro package to use. |
+| `services.crossmacro.users` | `list of string` | List of users granted permission to use CrossMacro. |

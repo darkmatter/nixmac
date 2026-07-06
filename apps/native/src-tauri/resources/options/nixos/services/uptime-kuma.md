@@ -5,8 +5,8 @@
 All options under `services.uptime-kuma`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.uptime-kuma.appriseSupport` | | |
-| `services.uptime-kuma.enable` | | |
-| `services.uptime-kuma.package` | | |
-| `services.uptime-kuma.settings` | | |
+| --- | --- | --- |
+| `services.uptime-kuma.appriseSupport` | `boolean` | Whether to enable apprise support for notifications. |
+| `services.uptime-kuma.enable` | `boolean` | Whether to enable Uptime Kuma, this assumes a reverse proxy to be set. |
+| `services.uptime-kuma.package` | `package` | The uptime-kuma package to use. |
+| `services.uptime-kuma.settings` | `open submodule of attribute set of string` | Additional configuration for Uptime Kuma, see <https://github.com/louislam/uptime-kuma/wiki/Environment-Variables> for supported values. |

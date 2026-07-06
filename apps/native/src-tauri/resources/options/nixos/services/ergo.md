@@ -5,15 +5,15 @@
 All options under `services.ergo`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.ergo.api.keyHash` | | |
-| `services.ergo.api.listen.ip` | | |
-| `services.ergo.api.listen.port` | | |
-| `services.ergo.dataDir` | | |
-| `services.ergo.enable` | | |
-| `services.ergo.group` | | |
-| `services.ergo.listen.ip` | | |
-| `services.ergo.listen.port` | | |
-| `services.ergo.openFirewall` | | |
-| `services.ergo.testnet` | | |
-| `services.ergo.user` | | |
+| --- | --- | --- |
+| `services.ergo.api.keyHash` | `null or string` | Hex-encoded Blake2b256 hash of an API key as a 64-chars long Base16 string. |
+| `services.ergo.api.listen.ip` | `string` | IP address that the Ergo node API should listen on if {option}`api.keyHash` is defined. |
+| `services.ergo.api.listen.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listen port for the API endpoint if {option}`api.keyHash` is defined. |
+| `services.ergo.dataDir` | `absolute path` | The data directory for the Ergo node. |
+| `services.ergo.enable` | `boolean` | Whether to enable Ergo service. |
+| `services.ergo.group` | `string` | The group as which to run the Ergo node. |
+| `services.ergo.listen.ip` | `string` | IP address on which the Ergo node should listen. |
+| `services.ergo.listen.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listen port for the Ergo node. |
+| `services.ergo.openFirewall` | `boolean` | Open ports in the firewall for the Ergo node as well as the API. |
+| `services.ergo.testnet` | `boolean` | Connect to testnet network instead of the default mainnet. |
+| `services.ergo.user` | `string` | The user as which to run the Ergo node. |

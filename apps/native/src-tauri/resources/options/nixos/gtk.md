@@ -5,5 +5,5 @@
 All options under `gtk`.
 
 | Option | Type | Description |
-| ---------------------- | ---- | ----------- |
-| `gtk.iconCache.enable` | | |
+| --- | --- | --- |
+| `gtk.iconCache.enable` | `boolean` | Whether to build icon theme caches for GTK applications. |

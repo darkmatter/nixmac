@@ -5,7 +5,7 @@
 All options under `services.lambdabot`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.lambdabot.enable` | | |
-| `services.lambdabot.package` | | |
-| `services.lambdabot.script` | | |
+| --- | --- | --- |
+| `services.lambdabot.enable` | `boolean` | Enable the Lambdabot IRC bot |
+| `services.lambdabot.package` | `package` | The lambdabot package to use. |
+| `services.lambdabot.script` | `string` | Lambdabot script |

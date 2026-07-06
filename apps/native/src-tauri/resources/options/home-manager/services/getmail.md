@@ -5,7 +5,7 @@
 All options under `services.getmail`.
 
 | Option | Type | Description |
-| ---------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.getmail.enable` | `boolean` | Whether to enable the getmail systemd service to automatically retrieve mail. |
-| `services.getmail.frequency` | `string` | The refresh frequency. Check man systemd.time for more information on the syntax. If you use a gpg-agent in combination with the passwordCommand, keep the poll frequency below the cache-ttl value (as set by the default ) to avoid pinentry asking permanently for a password. |
+| `services.getmail.frequency` | `string` | The refresh frequency. Check `man systemd.time` for more information on the syntax. If you use a gpg-agent in combination with the passwordCommand, keep the poll frequency below the cache-ttl value (as set by the `default`) to avoid pinentry asking permanently for a password. |
 | `services.getmail.package` | `package` | The getmail package to use. |

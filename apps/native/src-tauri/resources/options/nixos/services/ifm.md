@@ -5,9 +5,9 @@
 All options under `services.ifm`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.ifm.dataDir` | | |
-| `services.ifm.enable` | | |
-| `services.ifm.listenAddress` | | |
-| `services.ifm.port` | | |
-| `services.ifm.settings` | | |
+| --- | --- | --- |
+| `services.ifm.dataDir` | `string` | Directory to serve throught the file managing service |
+| `services.ifm.enable` | `boolean` | Whether to enable Improved file manager, a single-file web-based filemanager Lightweight and minimal, served using PHP's built-in server . |
+| `services.ifm.listenAddress` | `string` | Address on which the service is listening |
+| `services.ifm.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which to serve the IFM service |
+| `services.ifm.settings` | `attribute set of anything` | Configuration of the IFM service. See [the documentation](https://github.com/misterunknown/ifm/wiki/Configuration) for available options and default values. |

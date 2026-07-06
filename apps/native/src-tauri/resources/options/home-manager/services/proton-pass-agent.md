@@ -5,12 +5,8 @@
 All options under `services.proton-pass-agent`.
 
 | Option | Type | Description |
-| ----------------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.proton-pass-agent.enable` | `boolean` | Whether to enable Proton Pass as a SSH agent. |
-| `services.proton-pass-agent.enableBashIntegration` | | |
-| `services.proton-pass-agent.enableFishIntegration` | | |
-| `services.proton-pass-agent.enableNushellIntegration` | | |
-| `services.proton-pass-agent.enableZshIntegration` | | |
-| `services.proton-pass-agent.extraArgs` | `list of string` | Options given to pass-cli ssh-agent shart when the service is run. |
+| `services.proton-pass-agent.extraArgs` | `list of string` | Options given to `pass-cli ssh-agent shart` when the service is run. See <https://protonpass.github.io/pass-cli/commands/ssh-agent/#passphrase-protected-ssh-keys> for more information. |
 | `services.proton-pass-agent.package` | `package` | The proton-pass-cli package to use. |
-| `services.proton-pass-agent.socket` | `string` | The agent’s socket; interpreted as a suffix to $XDG_RUNTIME_DIR on Linux and $(getconf DARWIN_USER_TEMP_DIR) on macOS. This option adds the --socket-path argument to the command. |
+| `services.proton-pass-agent.socket` | `string` | The agent's socket; interpreted as a suffix to {env}`$XDG_RUNTIME_DIR` on Linux and `$(getconf DARWIN_USER_TEMP_DIR)` on macOS. This option adds the `--socket-path` argument to the command. |

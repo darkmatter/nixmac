@@ -5,5 +5,5 @@
 All options under `programs.autojump`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `programs.autojump.enable` | | |
+| --- | --- | --- |
+| `programs.autojump.enable` | `boolean` | Whether to enable autojump. |

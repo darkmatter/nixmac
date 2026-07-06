@@ -5,7 +5,11 @@
 All options under `services.git-sync`.
 
 | Option | Type | Description |
-| -------------------------------- | ------------------------------ | --------------------------------------------- |
+| --- | --- | --- |
 | `services.git-sync.enable` | `boolean` | Whether to enable git-sync services. |
 | `services.git-sync.package` | `package` | The git-sync package to use. |
 | `services.git-sync.repositories` | `attribute set of (submodule)` | The repositories that should be synchronized. |
+| `services.git-sync.repositories.<name>.extraPackages` | `list of package` | Extra packages available to git-sync. |
+| `services.git-sync.repositories.<name>.interval` | `signed integer` | The interval, specified in seconds, at which the synchronization will be triggered even without filesystem changes. |
+| `services.git-sync.repositories.<name>.path` | `absolute path` | The path at which to sync the repository |
+| `services.git-sync.repositories.<name>.uri` | `string` | The URI of the remote to be synchronized. This is only used in the event that the directory does not already exist. See <https://git-scm.com/docs/git-clone#_git_urls> for the supported URIs. This option is not supported on Darwin. |

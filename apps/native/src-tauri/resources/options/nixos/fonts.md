@@ -5,44 +5,31 @@
 All options under `fonts`.
 
 | Option | Type | Description |
-| ------------------------------------------------- | ---- | ----------- |
-| `fonts.enableCoreFonts` | | |
-| `fonts.enableDefaultFonts` | | |
-| `fonts.enableDefaultPackages` | | |
-| `fonts.enableFontDir` | | |
-| `fonts.enableGhostscriptFonts` | | |
-| `fonts.fontDir.decompressFonts` | | |
-| `fonts.fontDir.enable` | | |
-| `fonts.fontconfig.allowBitmaps` | | |
-| `fonts.fontconfig.allowType1` | | |
-| `fonts.fontconfig.antialias` | | |
-| `fonts.fontconfig.cache32Bit` | | |
-| `fonts.fontconfig.confPackages` | | |
-| `fonts.fontconfig.defaultFonts.emoji` | | |
-| `fonts.fontconfig.defaultFonts.monospace` | | |
-| `fonts.fontconfig.defaultFonts.sansSerif` | | |
-| `fonts.fontconfig.defaultFonts.serif` | | |
-| `fonts.fontconfig.dpi` | | |
-| `fonts.fontconfig.enable` | | |
-| `fonts.fontconfig.forceAutohint` | | |
-| `fonts.fontconfig.hinting.autohint` | | |
-| `fonts.fontconfig.hinting.enable` | | |
-| `fonts.fontconfig.hinting.style` | | |
-| `fonts.fontconfig.includeUserConf` | | |
-| `fonts.fontconfig.localConf` | | |
-| `fonts.fontconfig.penultimate` | | |
-| `fonts.fontconfig.renderMonoTTFAsBitmap` | | |
-| `fonts.fontconfig.subpixel.lcdfilter` | | |
-| `fonts.fontconfig.subpixel.rgba` | | |
-| `fonts.fontconfig.ultimate.allowBitmaps` | | |
-| `fonts.fontconfig.ultimate.allowType1` | | |
-| `fonts.fontconfig.ultimate.enable` | | |
-| `fonts.fontconfig.ultimate.forceAutohint` | | |
-| `fonts.fontconfig.ultimate.preset` | | |
-| `fonts.fontconfig.ultimate.renderMonoTTFAsBitmap` | | |
-| `fonts.fontconfig.ultimate.substitutions` | | |
-| `fonts.fontconfig.ultimate.useEmbeddedBitmaps` | | |
-| `fonts.fontconfig.useEmbeddedBitmaps` | | |
-| `fonts.fonts` | | |
-| `fonts.optimizeForVeryHighDPI` | | |
-| `fonts.packages` | | |
+| --- | --- | --- |
+| `fonts.enableDefaultPackages` | `boolean` | Enable a basic set of fonts providing several styles and families and reasonable coverage of Unicode. |
+| `fonts.enableGhostscriptFonts` | `boolean` | Whether to add the fonts provided by Ghostscript (such as various URW fonts and the “Base-14” Postscript fonts) to the list of system fonts, making them available to X11 applications. |
+| `fonts.fontDir.decompressFonts` | `boolean` | Whether to decompress fonts in {file}`/run/current-system/sw/share/X11/fonts`. |
+| `fonts.fontDir.enable` | `boolean` | Whether to create a directory with links to all fonts in {file}`/run/current-system/sw/share/X11/fonts`. |
+| `fonts.fontconfig.aliases` | `attribute set of (submodule)` | Font aliases that can substitute preferential fonts, or specify custom fallback fonts. |
+| `fonts.fontconfig.aliases.<name>.accept` | `list of string` | Fonts that are chosen if none of the preferred fonts, nor the alias family could provide the desired glyph. |
+| `fonts.fontconfig.aliases.<name>.binding` | `one of "same", "weak", "strong"` | Binding precedence for this font family. See fontconfig "Font Matching" section for details. |
+| `fonts.fontconfig.aliases.<name>.default` | `list of string` | Last chance fallback fonts which are chosen by default if none of the other options could provide the desired glyph. |
+| `fonts.fontconfig.aliases.<name>.prefer` | `list of string` | Fonts whose glyphs are chosen preferentially prior to fonts which match the alias family. |
+| `fonts.fontconfig.allowBitmaps` | `boolean` | Allow bitmap fonts. Set to `false` to ban all bitmap fonts. |
+| `fonts.fontconfig.allowType1` | `boolean` | Allow Type-1 fonts. Default is `false` because of poor rendering. |
+| `fonts.fontconfig.antialias` | `boolean` | Enable font antialiasing. At high resolution (> 200 DPI), antialiasing has no visible effect; users of such displays may want to disable this option. |
+| `fonts.fontconfig.cache32Bit` | `boolean` | Generate system fonts cache for 32-bit applications. |
+| `fonts.fontconfig.defaultFonts.emoji` | `list of string` | System-wide default emoji font(s). Multiple fonts may be listed in case a font does not support all emoji. Note that fontconfig matches color emoji fonts preferentially, so if you want to use a black and white font while having a color font installed (eg. Noto Color Emoji installed alongside Noto Emoji), fontconfig will still choose the color font even when it is later in the list. |
+| `fonts.fontconfig.defaultFonts.monospace` | `list of string` | System-wide default monospace font(s). Multiple fonts may be listed in case multiple languages must be supported. |
+| `fonts.fontconfig.defaultFonts.sansSerif` | `list of string` | System-wide default sans serif font(s). Multiple fonts may be listed in case multiple languages must be supported. |
+| `fonts.fontconfig.defaultFonts.serif` | `list of string` | System-wide default serif font(s). Multiple fonts may be listed in case multiple languages must be supported. |
+| `fonts.fontconfig.enable` | `boolean` | If enabled, a Fontconfig configuration file will be built pointing to a set of default fonts. If you don't care about running X11 applications or any other program that uses Fontconfig, you can turn this option off and prevent a dependency on all those fonts. |
+| `fonts.fontconfig.hinting.autohint` | `boolean` | Enable the autohinter in place of the default interpreter. The results are usually lower quality than correctly-hinted fonts, but better than unhinted fonts. |
+| `fonts.fontconfig.hinting.enable` | `boolean` | Enable font hinting. Hinting aligns glyphs to pixel boundaries to improve rendering sharpness at low resolution. At high resolution (> 200 dpi) hinting will do nothing (at best); users of such displays may want to disable this option. |
+| `fonts.fontconfig.hinting.style` | `one of "none", "slight", "medium", "full"` | Hintstyle is the amount of font reshaping done to line up to the grid. slight will make the font more fuzzy to line up to the grid but will be better in retaining font shape, while full will be a crisp font that aligns well to the pixel grid but will lose a greater amount of font shape. |
+| `fonts.fontconfig.includeUserConf` | `boolean` | Include the user configuration from {file}`~/.config/fontconfig/fonts.conf` or {file}`~/.config/fontconfig/conf.d`. |
+| `fonts.fontconfig.localConf` | `strings concatenated with "\n"` | System-wide customization file contents, has higher priority than `defaultFonts` settings. |
+| `fonts.fontconfig.subpixel.lcdfilter` | `one of "none", "default", "light", "legacy"` | FreeType LCD filter. At high resolution (> 200 DPI), LCD filtering has no visible effect; users of such displays may want to select `none`. |
+| `fonts.fontconfig.subpixel.rgba` | `one of "rgb", "bgr", "vrgb", "vbgr", "none"` | Subpixel order. The overwhelming majority of displays are `rgb` in their normal orientation. Select `vrgb` for mounting such a display 90 degrees clockwise from its normal orientation or `vbgr` for mounting 90 degrees counter-clockwise. Select `bgr` in the unlikely event of mounting 180 degrees from the normal orientation. Reverse these directions in the improbable event that the display's native subpixel order is `bgr`. |
+| `fonts.fontconfig.useEmbeddedBitmaps` | `boolean` | Use embedded bitmaps in fonts like Calibri. |
+| `fonts.packages` | `list of absolute path` | List of primary font packages. |

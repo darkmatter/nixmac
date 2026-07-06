@@ -5,10 +5,24 @@
 All options under `services.bluesky-pds`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.bluesky-pds.enable` | | |
-| `services.bluesky-pds.environmentFiles` | | |
-| `services.bluesky-pds.goat.enable` | | |
-| `services.bluesky-pds.package` | | |
-| `services.bluesky-pds.pdsadmin.enable` | | |
-| `services.bluesky-pds.settings` | | |
+| --- | --- | --- |
+| `services.bluesky-pds.enable` | `boolean` | Whether to enable pds. |
+| `services.bluesky-pds.environmentFiles` | `list of absolute path` | File to load environment variables from. Loaded variables override values set in {option}`environment`. Use it to set values of `PDS_JWT_SECRET`, `PDS_ADMIN_PASSWORD`, and `PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX` secrets. `PDS_JWT_SECRET` and `PDS_ADMIN_PASSWORD` can be generated with `openssl rand --hex 16` `PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX` can be generated with `openssl ecparam --name secp256k1 --genkey --noout --outform DER \| tail --bytes=+8 \| head --bytes=32 \| xxd --plain --cols 32` |
+| `services.bluesky-pds.goat.enable` | `boolean` | Add goat to PATH |
+| `services.bluesky-pds.package` | `package` | The bluesky-pds package to use. |
+| `services.bluesky-pds.pdsadmin.enable` | `boolean` | Add pdsadmin script to PATH |
+| `services.bluesky-pds.settings` | `open submodule of attribute set of (null or string or 16 bit unsigned integer; between 0 and 65535 (both inclusive))` | Environment variables to set for the service. Secrets should be specified using {option}`environmentFile`. Refer to <https://github.com/bluesky-social/atproto/blob/main/packages/pds/src/config/env.ts> for available environment variables. |
+| `services.bluesky-pds.settings.LOG_ENABLED` | `null or string` | Enable logging |
+| `services.bluesky-pds.settings.PDS_BLOBSTORE_DISK_LOCATION` | `null or string` | Store blobs at this location, set to null to use e.g. S3 |
+| `services.bluesky-pds.settings.PDS_BLOB_UPLOAD_LIMIT` | `string` | Size limit of uploaded blobs in bytes |
+| `services.bluesky-pds.settings.PDS_BSKY_APP_VIEW_DID` | `string` | DID of bsky frontend |
+| `services.bluesky-pds.settings.PDS_BSKY_APP_VIEW_URL` | `string` | URL of bsky frontend |
+| `services.bluesky-pds.settings.PDS_CRAWLERS` | `string` | URL of crawlers |
+| `services.bluesky-pds.settings.PDS_DATA_DIRECTORY` | `string` | Directory to store state |
+| `services.bluesky-pds.settings.PDS_DID_PLC_URL` | `string` | URL of DID PLC directory |
+| `services.bluesky-pds.settings.PDS_HOSTNAME` | `string` | Instance hostname (base domain name) |
+| `services.bluesky-pds.settings.PDS_INVITE_REQUIRED` | `null or string` | Require invite code for registration |
+| `services.bluesky-pds.settings.PDS_PORT` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on |
+| `services.bluesky-pds.settings.PDS_RATE_LIMITS_ENABLED` | `null or string` | Enable rate limiting |
+| `services.bluesky-pds.settings.PDS_REPORT_SERVICE_DID` | `string` | DID of mod service |
+| `services.bluesky-pds.settings.PDS_REPORT_SERVICE_URL` | `string` | URL of mod service |

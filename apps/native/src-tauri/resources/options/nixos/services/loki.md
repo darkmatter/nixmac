@@ -5,12 +5,12 @@
 All options under `services.loki`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.loki.configFile` | | |
-| `services.loki.configuration` | | |
-| `services.loki.dataDir` | | |
-| `services.loki.enable` | | |
-| `services.loki.extraFlags` | | |
-| `services.loki.group` | | |
-| `services.loki.package` | | |
-| `services.loki.user` | | |
+| --- | --- | --- |
+| `services.loki.configFile` | `null or absolute path` | Specify a configuration file that Loki should use. Cannot be specified together with {option}`services.loki.configuration`. |
+| `services.loki.configuration` | `JSON value` | Specify the configuration for Loki in Nix. See [documentation of Grafana Loki](https://grafana.com/docs/loki/latest/configure/) for all available options. Cannot be specified together with {option}`services.loki.configFile`. |
+| `services.loki.dataDir` | `absolute path` | Specify the data directory for Loki. |
+| `services.loki.enable` | `boolean` | Whether to enable Grafana Loki. |
+| `services.loki.extraFlags` | `list of string` | Specify a list of additional command line flags, which get escaped and are then passed to Loki. |
+| `services.loki.group` | `string` | Group under which the Loki service runs. |
+| `services.loki.package` | `package` | The grafana-loki package to use. |
+| `services.loki.user` | `string` | User under which the Loki service runs. |

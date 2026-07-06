@@ -5,6 +5,6 @@
 All options under `services.vnstat`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.vnstat.enable` | | |
-| `services.vnstat.package` | | |
+| --- | --- | --- |
+| `services.vnstat.enable` | `boolean` | Whether to enable update of network usage statistics via vnstatd. |
+| `services.vnstat.package` | `package` | The vnstat package to use. |

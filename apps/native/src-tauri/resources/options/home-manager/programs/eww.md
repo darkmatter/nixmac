@@ -5,14 +5,10 @@
 All options under `programs.eww`.
 
 | Option | Type | Description |
-| ------------------------------------ | ----------------------- | ----------------------------------------------------------- |
-| `programs.eww.configDir` | `null or absolute path` | The directory that gets symlinked to $XDG_CONFIG_HOME/eww . |
+| --- | --- | --- |
 | `programs.eww.enable` | `boolean` | Whether to enable eww. |
-| `programs.eww.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
-| `programs.eww.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
-| `programs.eww.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
 | `programs.eww.package` | `package` | The eww package to use. |
-| `programs.eww.scssConfig` | | |
-| `programs.eww.systemd.enable` | | |
-| `programs.eww.systemd.target` | | |
-| `programs.eww.yuckConfig` | | |
+| `programs.eww.scssConfig` | `null or strings concatenated with "\n"` | The directory that gets symlinked to {file}`$XDG_CONFIG_HOME/eww/eww.scss`. |
+| `programs.eww.systemd.enable` | `boolean` | Whether to enable Launches Eww Daemon. |
+| `programs.eww.systemd.target` | `string` | Systemd target to bind to. |
+| `programs.eww.yuckConfig` | `null or strings concatenated with "\n"` | The content that gets symlinked to {file}`$XDG_CONFIG_HOME/eww/eww.yuck`. |

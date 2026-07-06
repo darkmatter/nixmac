@@ -5,9 +5,9 @@
 All options under `services.pomerium`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.pomerium.configFile` | | |
-| `services.pomerium.enable` | | |
-| `services.pomerium.secretsFile` | | |
-| `services.pomerium.settings` | | |
-| `services.pomerium.useACMEHost` | | |
+| --- | --- | --- |
+| `services.pomerium.configFile` | `null or absolute path` | Path to Pomerium config YAML. If set, overrides services.pomerium.settings. |
+| `services.pomerium.enable` | `boolean` | Whether to enable the Pomerium authenticating reverse proxy. |
+| `services.pomerium.secretsFile` | `null or absolute path` | Path to file containing secrets for Pomerium, in systemd EnvironmentFile format. See the {manpage}`systemd.exec(5)` man page. |
+| `services.pomerium.settings` | `YAML 1.1 value` | The contents of Pomerium's config.yaml, in Nix expressions. Specifying configFile will override this in its entirety. See [the Pomerium configuration reference](https://pomerium.io/reference/) for more information about what to put here. |
+| `services.pomerium.useACMEHost` | `null or string` | If set, use a NixOS-generated ACME certificate with the specified name. Note that this will require you to use a non-HTTP-based challenge, or disable Pomerium's in-built HTTP redirect server by setting http_redirect_addr to null and use a different HTTP server for serving the challenge response. If you're using an HTTP-based challenge, you should use the Pomerium-native autocert option instead. |

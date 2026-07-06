@@ -5,17 +5,106 @@
 All options under `services.misskey`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.misskey.database.createLocally` | | |
-| `services.misskey.database.passwordFile` | | |
-| `services.misskey.enable` | | |
-| `services.misskey.meilisearch.createLocally` | | |
-| `services.misskey.meilisearch.keyFile` | | |
-| `services.misskey.package` | | |
-| `services.misskey.redis.createLocally` | | |
-| `services.misskey.redis.passwordFile` | | |
-| `services.misskey.reverseProxy.enable` | | |
-| `services.misskey.reverseProxy.host` | | |
-| `services.misskey.reverseProxy.ssl` | | |
-| `services.misskey.reverseProxy.webserver` | | |
-| `services.misskey.settings` | | |
+| --- | --- | --- |
+| `services.misskey.database.createLocally` | `boolean` | Create the PostgreSQL database locally. Sets `services.misskey.settings.db.{db,host,port,user,pass}`. |
+| `services.misskey.database.passwordFile` | `null or absolute path` | The path to a file containing the database password. Sets `services.misskey.settings.db.pass`. |
+| `services.misskey.enable` | `boolean` | Whether to enable misskey. |
+| `services.misskey.meilisearch.createLocally` | `boolean` | Create and use a local Meilisearch instance. Sets `services.misskey.settings.meilisearch.{host,port,ssl}`. |
+| `services.misskey.meilisearch.keyFile` | `null or absolute path` | The path to a file containing the Meilisearch API key. Sets `services.misskey.settings.meilisearch.apiKey`. |
+| `services.misskey.package` | `package` | The misskey package to use. |
+| `services.misskey.redis.createLocally` | `boolean` | Create and use a local Redis instance. Sets `services.misskey.settings.redis.host`. |
+| `services.misskey.redis.passwordFile` | `null or absolute path` | The path to a file containing the Redis password. Sets `services.misskey.settings.redis.pass`. |
+| `services.misskey.reverseProxy.enable` | `boolean` | Whether to enable a HTTP reverse proxy for Misskey. |
+| `services.misskey.reverseProxy.host` | `null or string` | The fully qualified domain name to bind to. Sets `services.misskey.settings.url`. This is required when using `services.misskey.reverseProxy.enable = true`. |
+| `services.misskey.reverseProxy.ssl` | `null or boolean` | Whether to enable SSL for the reverse proxy. Sets `services.misskey.settings.url`. This is required when using `services.misskey.reverseProxy.enable = true`. |
+| `services.misskey.reverseProxy.webserver` | `attribute-tagged union with choices: caddy, nginx` | The webserver to use as the reverse proxy. |
+| `services.misskey.reverseProxy.webserver.caddy` | `submodule` | Extra configuration for the caddy virtual host of Misskey. Set to `{ }` to use the default configuration. |
+| `services.misskey.reverseProxy.webserver.caddy.extraConfig` | `strings concatenated with "\n"` | Additional lines of configuration appended to this virtual host in the automatically generated `Caddyfile`. |
+| `services.misskey.reverseProxy.webserver.caddy.hostName` | `string` | Canonical hostname for the server. |
+| `services.misskey.reverseProxy.webserver.caddy.listenAddresses` | `list of string` | A list of host interfaces to bind to for this virtual host. |
+| `services.misskey.reverseProxy.webserver.caddy.logFormat` | `null or strings concatenated with "\n"` | Configuration for HTTP request logging (also known as access logs). See <https://caddyserver.com/docs/caddyfile/directives/log#log> for details. |
+| `services.misskey.reverseProxy.webserver.caddy.serverAliases` | `list of string` | Additional names of virtual hosts served by this virtual host configuration. |
+| `services.misskey.reverseProxy.webserver.caddy.useACMEHost` | `null or string` | A host of an existing Let's Encrypt certificate to use. This is mostly useful if you use DNS challenges but Caddy does not currently support your provider. *Note that this option does not create any certificates, nor does it add subdomains to existing ones – you will need to create them manually using [](#opt-security.acme.certs).* |
+| `services.misskey.reverseProxy.webserver.nginx` | `submodule` | Extra configuration for the nginx virtual host of Misskey. Set to `{ }` to use the default configuration. |
+| `services.misskey.reverseProxy.webserver.nginx.acmeFallbackHost` | `null or string` | Host which to proxy requests to if ACME challenge is not found. Useful if you want multiple hosts to be able to verify the same domain name. With this option, you could request certificates for the present domain with an ACME client that is running on another host, which you would specify here. |
+| `services.misskey.reverseProxy.webserver.nginx.acmeRoot` | `null or string` | Directory for the ACME challenge, which is **public**. Don't put certs or keys in here. Set to null to inherit from config.security.acme. |
+| `services.misskey.reverseProxy.webserver.nginx.addSSL` | `boolean` | Whether to enable HTTPS in addition to plain HTTP. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443). |
+| `services.misskey.reverseProxy.webserver.nginx.basicAuth` | `attribute set of string` | Basic Auth protection for a vhost. WARNING: This is implemented to store the password in plain text in the Nix store. |
+| `services.misskey.reverseProxy.webserver.nginx.basicAuthFile` | `null or absolute path` | Basic Auth password file for a vhost. Can be created by running {command}`nix-shell --packages apacheHttpd --run 'htpasswd -B -c FILENAME USERNAME'`. |
+| `services.misskey.reverseProxy.webserver.nginx.default` | `boolean` | Makes this vhost the default. |
+| `services.misskey.reverseProxy.webserver.nginx.enableACME` | `boolean` | Whether to ask Let's Encrypt to sign a certificate for this vhost. Alternately, you can use an existing certificate through {option}`useACMEHost`. |
+| `services.misskey.reverseProxy.webserver.nginx.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the vhost verbatim. |
+| `services.misskey.reverseProxy.webserver.nginx.forceSSL` | `boolean` | Whether to add a separate nginx server block that redirects (defaults to 301, configurable with `redirectCode`) all plain HTTP traffic to HTTPS. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443), where the non-SSL listens are used for the redirect vhosts. |
+| `services.misskey.reverseProxy.webserver.nginx.globalRedirect` | `null or string` | If set, all requests for this host are redirected (defaults to 301, configurable with `redirectCode`) to the given hostname. |
+| `services.misskey.reverseProxy.webserver.nginx.http2` | `boolean` | Whether to enable the HTTP/2 protocol. Note that (as of writing) due to nginx's implementation, to disable HTTP/2 you have to disable it on all vhosts that use a given IP address / port. If there is one server block configured to enable http2, then it is enabled for all server blocks on this IP. See <https://stackoverflow.com/a/39466948/263061>. |
+| `services.misskey.reverseProxy.webserver.nginx.http3` | `boolean` | Whether to enable the HTTP/3 protocol. This requires activating the QUIC transport protocol `services.nginx.virtualHosts.<name>.quic = true;`. Note that HTTP/3 support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> HTTP/3 availability must be manually advertised, preferably in each location block. |
+| `services.misskey.reverseProxy.webserver.nginx.http3_hq` | `boolean` | Whether to enable the HTTP/0.9 protocol negotiation used in QUIC interoperability tests. This requires activating the QUIC transport protocol `services.nginx.virtualHosts.<name>.quic = true;`. Note that special application protocol support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> |
+| `services.misskey.reverseProxy.webserver.nginx.kTLS` | `boolean` | Whether to enable kTLS support. Implementing TLS in the kernel (kTLS) improves performance by significantly reducing the need for copying operations between user space and the kernel. Required Nginx version 1.21.4 or later. |
+| `services.misskey.reverseProxy.webserver.nginx.listen` | `list of (submodule)` | Listen addresses and ports for this virtual host. IPv6 addresses must be enclosed in square brackets. Note: this option overrides `addSSL` and `onlySSL`. If you only want to set the addresses manually and not the ports, take a look at `listenAddresses`. |
+| `services.misskey.reverseProxy.webserver.nginx.listen.*.addr` | `string` | Listen address. |
+| `services.misskey.reverseProxy.webserver.nginx.listen.*.extraParameters` | `list of string` | Extra parameters of this listen directive. |
+| `services.misskey.reverseProxy.webserver.nginx.listen.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number to listen on. If unset and the listen address is not a socket then nginx defaults to 80. |
+| `services.misskey.reverseProxy.webserver.nginx.listen.*.proxyProtocol` | `boolean` | Enable PROXY protocol. |
+| `services.misskey.reverseProxy.webserver.nginx.listen.*.ssl` | `boolean` | Enable SSL. |
+| `services.misskey.reverseProxy.webserver.nginx.listenAddresses` | `list of string` | Listen addresses for this virtual host. Compared to `listen` this only sets the addresses and the ports are chosen automatically. Note: This option overrides `networking.enableIPv6` |
+| `services.misskey.reverseProxy.webserver.nginx.locations` | `attribute set of (submodule)` | Declarative location config |
+| `services.misskey.reverseProxy.webserver.nginx.locations.<name>.alias` | `null or absolute path` | Alias directory for requests. |
+| `services.misskey.reverseProxy.webserver.nginx.locations.<name>.basicAuth` | `attribute set of string` | Basic Auth protection for a vhost. WARNING: This is implemented to store the password in plain text in the Nix store. |
+| `services.misskey.reverseProxy.webserver.nginx.locations.<name>.basicAuthFile` | `null or absolute path` | Basic Auth password file for a vhost. Can be created by running {command}`nix-shell --packages apacheHttpd --run 'htpasswd -B -c FILENAME USERNAME'`. |
+| `services.misskey.reverseProxy.webserver.nginx.locations.<name>.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the location verbatim. |
+| `services.misskey.reverseProxy.webserver.nginx.locations.<name>.fastcgiParams` | `attribute set of (string or absolute path)` | FastCGI parameters to override. Unlike in the Nginx configuration file, overriding only some default parameters won't unset the default values for other parameters. |
+| `services.misskey.reverseProxy.webserver.nginx.locations.<name>.index` | `null or string` | Adds index directive. |
+| `services.misskey.reverseProxy.webserver.nginx.locations.<name>.priority` | `signed integer` | Order of this location block in relation to the others in the vhost. The semantics are the same as with `lib.mkOrder`. Smaller values have a greater priority. |
+| `services.misskey.reverseProxy.webserver.nginx.locations.<name>.proxyPass` | `null or string` | Adds proxy_pass directive and sets recommended proxy headers if recommendedProxySettings is enabled. |
+| `services.misskey.reverseProxy.webserver.nginx.locations.<name>.proxyWebsockets` | `boolean` | Whether to support proxying websocket connections with HTTP/1.1. |
+| `services.misskey.reverseProxy.webserver.nginx.locations.<name>.recommendedProxySettings` | `boolean` | Enable recommended proxy settings. |
+| `services.misskey.reverseProxy.webserver.nginx.locations.<name>.recommendedUwsgiSettings` | `boolean` | Enable recommended uwsgi settings. |
+| `services.misskey.reverseProxy.webserver.nginx.locations.<name>.return` | `null or string or signed integer` | Adds a return directive, for e.g. redirections. |
+| `services.misskey.reverseProxy.webserver.nginx.locations.<name>.root` | `null or absolute path` | Root directory for requests. |
+| `services.misskey.reverseProxy.webserver.nginx.locations.<name>.tryFiles` | `null or string` | Adds try_files directive. |
+| `services.misskey.reverseProxy.webserver.nginx.locations.<name>.uwsgiPass` | `null or string` | Adds uwsgi_pass directive and sets recommended proxy headers if recommendedUwsgiSettings is enabled. |
+| `services.misskey.reverseProxy.webserver.nginx.onlySSL` | `boolean` | Whether to enable HTTPS and reject plain HTTP connections. This will set defaults for `listen` to listen on all interfaces on port 443. |
+| `services.misskey.reverseProxy.webserver.nginx.quic` | `boolean` | Whether to enable the QUIC transport protocol. Note that QUIC support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> |
+| `services.misskey.reverseProxy.webserver.nginx.redirectCode` | `integer between 300 and 399 (both inclusive)` | HTTP status used by `globalRedirect` and `forceSSL`. Possible usecases include temporary (302, 307) redirects, keeping the request method and body (307, 308), or explicitly resetting the method to GET (303). See <https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections>. |
+| `services.misskey.reverseProxy.webserver.nginx.rejectSSL` | `boolean` | Whether to listen for and reject all HTTPS connections to this vhost. Useful in [default](#opt-services.nginx.virtualHosts._name_.default) server blocks to avoid serving the certificate for another vhost. Uses the `ssl_reject_handshake` directive available in nginx versions 1.19.4 and above. |
+| `services.misskey.reverseProxy.webserver.nginx.reuseport` | `boolean` | Create an individual listening socket . It is required to specify only once on one of the hosts. |
+| `services.misskey.reverseProxy.webserver.nginx.root` | `null or absolute path` | The path of the web root directory. |
+| `services.misskey.reverseProxy.webserver.nginx.serverAliases` | `list of string` | Additional names of virtual hosts served by this virtual host configuration. |
+| `services.misskey.reverseProxy.webserver.nginx.serverName` | `null or string` | Name of this virtual host. Defaults to attribute name in virtualHosts. |
+| `services.misskey.reverseProxy.webserver.nginx.sslCertificate` | `absolute path` | Path to server SSL certificate. |
+| `services.misskey.reverseProxy.webserver.nginx.sslCertificateKey` | `absolute path` | Path to server SSL certificate key. |
+| `services.misskey.reverseProxy.webserver.nginx.sslTrustedCertificate` | `null or absolute path` | Path to root SSL certificate for stapling and client certificates. |
+| `services.misskey.reverseProxy.webserver.nginx.useACMEHost` | `null or string` | A host of an existing Let's Encrypt certificate to use. This is useful if you have many subdomains and want to avoid hitting the [rate limit](https://letsencrypt.org/docs/rate-limits). Alternately, you can generate a certificate through {option}`enableACME`. *Note that this option does not create any certificates, nor it does add subdomains to existing ones – you will need to create them manually using [](#opt-security.acme.certs).* |
+| `services.misskey.settings` | `open submodule of attribute set of (YAML 1.1 value)` | Configuration for Misskey, see [`example.yml`](https://github.com/misskey-dev/misskey/blob/develop/.config/example.yml) for all supported options. |
+| `services.misskey.settings.chmodSocket` | `null or string` | The file access mode of the UNIX socket. |
+| `services.misskey.settings.db` | `submodule` | Database settings. |
+| `services.misskey.settings.db.db` | `string` | The database name. |
+| `services.misskey.settings.db.disableCache` | `boolean` | Whether to disable caching queries. |
+| `services.misskey.settings.db.extra` | `null or (attribute set of (YAML 1.1 value))` | Extra connection options. |
+| `services.misskey.settings.db.host` | `string` | The PostgreSQL host. |
+| `services.misskey.settings.db.pass` | `null or string` | The password used for database authentication. |
+| `services.misskey.settings.db.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The PostgreSQL port. |
+| `services.misskey.settings.db.user` | `string` | The user used for database authentication. |
+| `services.misskey.settings.id` | `one of "aid", "aidx", "meid", "ulid", "objectid"` | The ID generation method to use. Do not change after starting Misskey for the first time. |
+| `services.misskey.settings.meilisearch` | `null or (submodule)` | Meilisearch connection options. |
+| `services.misskey.settings.meilisearch.apiKey` | `null or string` | The Meilisearch API key. |
+| `services.misskey.settings.meilisearch.host` | `string` | The Meilisearch host. |
+| `services.misskey.settings.meilisearch.index` | `null or string` | Meilisearch index to use. |
+| `services.misskey.settings.meilisearch.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The Meilisearch port. |
+| `services.misskey.settings.meilisearch.scope` | `one of "local", "global"` | The search scope. |
+| `services.misskey.settings.meilisearch.ssl` | `boolean` | Whether to connect via SSL. |
+| `services.misskey.settings.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port your Misskey server should listen on. |
+| `services.misskey.settings.redis` | `open submodule of attribute set of (YAML 1.1 value)` | `ioredis` options. See [`README`](https://github.com/redis/ioredis?tab=readme-ov-file#connect-to-redis) for reference. |
+| `services.misskey.settings.redis.host` | `string` | The Redis host. |
+| `services.misskey.settings.redis.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The Redis port. |
+| `services.misskey.settings.redisForJobQueue` | `null or (open submodule of attribute set of (YAML 1.1 value))` | `ioredis` options for the job queue. See [`README`](https://github.com/redis/ioredis?tab=readme-ov-file#connect-to-redis) for reference. |
+| `services.misskey.settings.redisForJobQueue.host` | `string` | The Redis host. |
+| `services.misskey.settings.redisForJobQueue.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The Redis port. |
+| `services.misskey.settings.redisForPubsub` | `null or (open submodule of attribute set of (YAML 1.1 value))` | `ioredis` options for pubsub. See [`README`](https://github.com/redis/ioredis?tab=readme-ov-file#connect-to-redis) for reference. |
+| `services.misskey.settings.redisForPubsub.host` | `string` | The Redis host. |
+| `services.misskey.settings.redisForPubsub.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The Redis port. |
+| `services.misskey.settings.redisForTimelines` | `null or (open submodule of attribute set of (YAML 1.1 value))` | `ioredis` options for timelines. See [`README`](https://github.com/redis/ioredis?tab=readme-ov-file#connect-to-redis) for reference. |
+| `services.misskey.settings.redisForTimelines.host` | `string` | The Redis host. |
+| `services.misskey.settings.redisForTimelines.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The Redis port. |
+| `services.misskey.settings.socket` | `null or absolute path` | The UNIX socket your Misskey server should listen on. |
+| `services.misskey.settings.url` | `string` | The final user-facing URL. Do not change after running Misskey for the first time. This needs to match up with the configured reverse proxy and is automatically configured when using `services.misskey.reverseProxy`. |

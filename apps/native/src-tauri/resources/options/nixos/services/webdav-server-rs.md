@@ -5,10 +5,10 @@
 All options under `services.webdav-server-rs`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.webdav-server-rs.configFile` | | |
-| `services.webdav-server-rs.debug` | | |
-| `services.webdav-server-rs.enable` | | |
-| `services.webdav-server-rs.group` | | |
-| `services.webdav-server-rs.settings` | | |
-| `services.webdav-server-rs.user` | | |
+| --- | --- | --- |
+| `services.webdav-server-rs.configFile` | `absolute path` | Path to config file. If this option is set, it will override any configuration done in services.webdav-server-rs.settings. |
+| `services.webdav-server-rs.debug` | `boolean` | Enable debug mode. |
+| `services.webdav-server-rs.enable` | `boolean` | Whether to enable WebDAV server. |
+| `services.webdav-server-rs.group` | `string` | Group to run under when setuid is not enabled. |
+| `services.webdav-server-rs.settings` | `TOML value` | Attrset that is converted and passed as config file. Available options can be found at [here](https://github.com/miquels/webdav-server-rs/blob/master/webdav-server.toml). |
+| `services.webdav-server-rs.user` | `string` | User to run under when setuid is not enabled. |

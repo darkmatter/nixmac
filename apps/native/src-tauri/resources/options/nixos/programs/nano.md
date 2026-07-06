@@ -5,8 +5,8 @@
 All options under `programs.nano`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `programs.nano.enable` | | |
-| `programs.nano.nanorc` | | |
-| `programs.nano.package` | | |
-| `programs.nano.syntaxHighlight` | | |
+| --- | --- | --- |
+| `programs.nano.enable` | `boolean` | Whether to enable nano, a small user-friendly console text editor. |
+| `programs.nano.nanorc` | `strings concatenated with "\n"` | The system-wide nano configuration. See {manpage}`nanorc(5)`. |
+| `programs.nano.package` | `package` | The nano package to use. |
+| `programs.nano.syntaxHighlight` | `boolean` | Whether to enable syntax highlight for various languages. |

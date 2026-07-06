@@ -5,5 +5,5 @@
 All options under `programs.arp-scan`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `programs.arp-scan.enable` | | |
+| --- | --- | --- |
+| `programs.arp-scan.enable` | `boolean` | Whether to configure a setcap wrapper for arp-scan. |

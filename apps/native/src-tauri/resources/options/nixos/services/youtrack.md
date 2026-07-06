@@ -5,18 +5,14 @@
 All options under `services.youtrack`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---- | ----------- |
-| `services.youtrack.address` | | |
-| `services.youtrack.autoUpgrade` | | |
-| `services.youtrack.baseUrl` | | |
-| `services.youtrack.enable` | | |
-| `services.youtrack.environmentalParameters` | | |
-| `services.youtrack.extraParams` | | |
-| `services.youtrack.generalParameters` | | |
-| `services.youtrack.jvmOpts` | | |
-| `services.youtrack.maxMemory` | | |
-| `services.youtrack.maxMetaspaceSize` | | |
-| `services.youtrack.package` | | |
-| `services.youtrack.port` | | |
-| `services.youtrack.statePath` | | |
-| `services.youtrack.virtualHost` | | |
+| --- | --- | --- |
+| `services.youtrack.address` | `string` | The interface youtrack will listen on. |
+| `services.youtrack.autoUpgrade` | `boolean` | Whether YouTrack should auto upgrade it without showing the upgrade dialog. |
+| `services.youtrack.enable` | `boolean` | Whether to enable YouTrack service. |
+| `services.youtrack.environmentalParameters` | `open submodule of attribute set of (signed integer or string or 16 bit unsigned integer; between 0 and 65535 (both inclusive))` | Environmental configuration parameters, set imperatively. The values doesn't get removed, when removed in Nix. See <https://www.jetbrains.com/help/youtrack/server/2023.3/youtrack-java-start-parameters.html#environmental-parameters> for more information. |
+| `services.youtrack.environmentalParameters.listen-address` | `string` | The interface YouTrack will listen on. |
+| `services.youtrack.environmentalParameters.listen-port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port YouTrack will listen on. |
+| `services.youtrack.generalParameters` | `list of string` | General configuration parameters and other JVM options. See <https://www.jetbrains.com/help/youtrack/server/2023.3/youtrack-java-start-parameters.html#general-parameters> for more information. |
+| `services.youtrack.package` | `package` | The youtrack package to use. |
+| `services.youtrack.statePath` | `absolute path` | Path were the YouTrack state is stored. To this path the base version (e.g. 2023_1) of the used package will be appended. |
+| `services.youtrack.virtualHost` | `null or string` | Name of the nginx virtual host to use and setup. If null, do not setup anything. |

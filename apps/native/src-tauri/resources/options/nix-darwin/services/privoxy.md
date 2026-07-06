@@ -5,9 +5,9 @@
 All options under `services.privoxy`.
 
 | Option | Type | Description |
-| -------------------------------- | -------------------------------- | -------------------------------------------------------- |
+| --- | --- | --- |
 | `services.privoxy.confdir` | `null or absolute path` | Directory for privoxy files such as .action and .filter. |
-| `services.privoxy.config` | `strings concatenated with “\n”` | Config to use for privoxy |
+| `services.privoxy.config` | `strings concatenated with "\n"` | Config to use for privoxy |
 | `services.privoxy.enable` | `boolean` | Whether to enable the privoxy proxy service. |
 | `services.privoxy.listenAddress` | `string` | The address and TCP port on which privoxy will listen. |
 | `services.privoxy.package` | `package` | This option specifies the privoxy package to use. |

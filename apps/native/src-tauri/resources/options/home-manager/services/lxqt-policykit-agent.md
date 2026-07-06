@@ -5,6 +5,6 @@
 All options under `services.lxqt-policykit-agent`.
 
 | Option | Type | Description |
-| --------------------------------------- | --------- | --------------------------------------- |
+| --- | --- | --- |
 | `services.lxqt-policykit-agent.enable` | `boolean` | Whether to enable LXQT Policykit Agent. |
 | `services.lxqt-policykit-agent.package` | `package` | The lxqt-policykit package to use. |

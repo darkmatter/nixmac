@@ -5,5 +5,5 @@
 All options under `services.expressvpn`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.expressvpn.enable` | | |
+| --- | --- | --- |
+| `services.expressvpn.enable` | `boolean` | Enable the ExpressVPN daemon. |

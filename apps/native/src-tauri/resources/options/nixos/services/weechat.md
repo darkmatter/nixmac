@@ -5,10 +5,10 @@
 All options under `services.weechat`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.weechat.binary` | | |
-| `services.weechat.enable` | | |
-| `services.weechat.headless` | | |
-| `services.weechat.package` | | |
-| `services.weechat.root` | | |
-| `services.weechat.sessionName` | | |
+| --- | --- | --- |
+| `services.weechat.binary` | `absolute path` | Binary to execute. |
+| `services.weechat.enable` | `boolean` | Whether to enable weechat. |
+| `services.weechat.headless` | `boolean` | Allows specifying if weechat should run in TUI or headless mode. |
+| `services.weechat.package` | `package` | The weechat package to use. |
+| `services.weechat.root` | `absolute path` | Weechat state directory. |
+| `services.weechat.sessionName` | `string` | Name of the `screen` session for weechat. |

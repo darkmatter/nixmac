@@ -5,7 +5,7 @@
 All options under `programs.dconf`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `programs.dconf.enable` | | |
-| `programs.dconf.packages` | | |
-| `programs.dconf.profiles` | | |
+| --- | --- | --- |
+| `programs.dconf.enable` | `boolean` | Whether to enable dconf. |
+| `programs.dconf.packages` | `list of package` | A list of packages which provide dconf profiles and databases in {file}`/etc/dconf`. |
+| `programs.dconf.profiles` | `attribute set of (absolute path or package or (submodule))` | Attrset of dconf profiles. By default the `user` profile is used which ends up in `/etc/dconf/profile/user`. |

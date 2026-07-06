@@ -5,17 +5,23 @@
 All options under `programs.nushell`.
 
 | Option | Type | Description |
-| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `programs.nushell.configDir` | `string or absolute path` | Location of the nushell config directory. This directory contains the config.nu , env.nu , and login.nu files, as well as history and plugin files. |
-| `programs.nushell.configFile` | `null or (submodule)` | The configuration file to be used for nushell. |
+| --- | --- | --- |
+| `programs.nushell.configDir` | `string or absolute path` | Location of the nushell config directory. This directory contains the {file}`config.nu`, {file}`env.nu`, and {file}`login.nu` files, as well as history and plugin files. |
+| `programs.nushell.configFile` | `null or (submodule)` | The configuration file to be used for nushell. See <https://www.nushell.sh/book/configuration.html#configuration> for more information. |
+| `programs.nushell.configFile.source` | `null or absolute path` | Path of the nushell {file}`config.nu` file to use. If the text option is set, it will be preferred. |
+| `programs.nushell.configFile.text` | `strings concatenated with "\n"` | Text of the nushell {file}`config.nu` file. If unset then the source option will be preferred. |
 | `programs.nushell.enable` | `boolean` | Whether to enable nushell. |
-| `programs.nushell.envFile` | `null or (submodule)` | The environment variables file to be used for nushell. |
-| `programs.nushell.environmentVariables` | `attribute set of (null or (Nushell inline value) or boolean or signed integer or floating point number or string or absolute path or (attribute set of Nushell values) or (list of Nushell values))` | Environment variables to be set. |
-| `programs.nushell.extraConfig` | `strings concatenated with “\n”` | Additional configuration to add to the nushell configuration file. |
-| `programs.nushell.extraEnv` | `strings concatenated with “\n”` | Additional configuration to add to the nushell environment variables file. |
-| `programs.nushell.extraLogin` | `strings concatenated with “\n”` | Additional configuration to add to the nushell login file. |
-| `programs.nushell.loginFile` | `null or (submodule)` | The login file to be used for nushell upon logging in. |
+| `programs.nushell.envFile` | `null or (submodule)` | The environment variables file to be used for nushell. See <https://www.nushell.sh/book/configuration.html#configuration> for more information. |
+| `programs.nushell.envFile.source` | `null or absolute path` | Path of the nushell {file}`env.nu` file to use. If the text option is set, it will be preferred. |
+| `programs.nushell.envFile.text` | `strings concatenated with "\n"` | Text of the nushell {file}`env.nu` file. If unset then the source option will be preferred. |
+| `programs.nushell.environmentVariables` | `attribute set of (null or (Nushell inline value) or boolean or signed integer or floating point number or string or absolute path or (attribute set of Nushell values) or (list of Nushell values))` | Environment variables to be set. Inline values can be set with `lib.hm.nushell.mkNushellInline`. |
+| `programs.nushell.extraConfig` | `strings concatenated with "\n"` | Additional configuration to add to the nushell configuration file. |
+| `programs.nushell.extraEnv` | `strings concatenated with "\n"` | Additional configuration to add to the nushell environment variables file. |
+| `programs.nushell.extraLogin` | `strings concatenated with "\n"` | Additional configuration to add to the nushell login file. |
+| `programs.nushell.loginFile` | `null or (submodule)` | The login file to be used for nushell upon logging in. See <https://www.nushell.sh/book/configuration.html#configuring-nu-as-a-login-shell> for more information. |
+| `programs.nushell.loginFile.source` | `null or absolute path` | Path of the nushell {file}`login.nu` file to use. If the text option is set, it will be preferred. |
+| `programs.nushell.loginFile.text` | `strings concatenated with "\n"` | Text of the nushell {file}`login.nu` file. If unset then the source option will be preferred. |
 | `programs.nushell.package` | `null or package` | The nushell package to use. |
 | `programs.nushell.plugins` | `list of package` | A list of nushell plugins to write to the plugin registry file. |
-| `programs.nushell.settings` | `attribute set of (null or (Nushell inline value) or boolean or signed integer or floating point number or string or absolute path or (attribute set of Nushell values) or (list of Nushell values))` | Nushell settings. These will be flattened and assigned one by one to $env.config to avoid overwriting the default or existing options. |
+| `programs.nushell.settings` | `attribute set of (null or (Nushell inline value) or boolean or signed integer or floating point number or string or absolute path or (attribute set of Nushell values) or (list of Nushell values))` | Nushell settings. These will be flattened and assigned one by one to `$env.config` to avoid overwriting the default or existing options. For example: `nix {   show_banner = false;   completions.external = {     enable = true;     max_results = 200;   }; } ` becomes: `nushell $env.config.completions.external.enable = true $env.config.completions.external.max_results = 200 $env.config.show_banner = false ` |
 | `programs.nushell.shellAliases` | `attribute set of string` | An attribute set that maps aliases (the top level attribute names in this option) to command strings or directly to build outputs. |

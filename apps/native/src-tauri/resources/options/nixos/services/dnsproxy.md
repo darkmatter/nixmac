@@ -5,8 +5,8 @@
 All options under `services.dnsproxy`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.dnsproxy.enable` | | |
-| `services.dnsproxy.flags` | | |
-| `services.dnsproxy.package` | | |
-| `services.dnsproxy.settings` | | |
+| --- | --- | --- |
+| `services.dnsproxy.enable` | `boolean` | Whether to enable dnsproxy. |
+| `services.dnsproxy.flags` | `list of string` | A list of extra command-line flags to pass to dnsproxy. For details on the available options, see <https://github.com/AdguardTeam/dnsproxy#usage>. Keep in mind that options passed through command-line flags override config options. |
+| `services.dnsproxy.package` | `package` | The dnsproxy package to use. |
+| `services.dnsproxy.settings` | `YAML 1.1 value` | Contents of the {file}`config.yaml` config file. The `--config-path` argument will only be passed if this set is not empty. See <https://github.com/AdguardTeam/dnsproxy/blob/master/config.yaml.dist>. |

@@ -5,5 +5,5 @@
 All options under `services.safeeyes`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.safeeyes.enable` | | |
+| --- | --- | --- |
+| `services.safeeyes.enable` | `boolean` | Whether to enable the safeeyes OSGi service. |

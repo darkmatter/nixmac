@@ -5,9 +5,9 @@
 All options under `services.phylactery`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.phylactery.enable` | | |
-| `services.phylactery.host` | | |
-| `services.phylactery.library` | | |
-| `services.phylactery.package` | | |
-| `services.phylactery.port` | | |
+| --- | --- | --- |
+| `services.phylactery.enable` | `boolean` | Whether to enable Phylactery server. |
+| `services.phylactery.host` | `string` | Listen host for Phylactery |
+| `services.phylactery.library` | `absolute path` | Path to CBZ library |
+| `services.phylactery.package` | `package` | The phylactery package to use. |
+| `services.phylactery.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listen port for Phylactery |

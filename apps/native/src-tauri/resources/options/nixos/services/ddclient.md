@@ -5,27 +5,23 @@
 All options under `services.ddclient`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.ddclient.configFile` | | |
-| `services.ddclient.domain` | | |
-| `services.ddclient.domains` | | |
-| `services.ddclient.enable` | | |
-| `services.ddclient.extraConfig` | | |
-| `services.ddclient.homeDir` | | |
-| `services.ddclient.interval` | | |
-| `services.ddclient.ipv6` | | |
-| `services.ddclient.package` | | |
-| `services.ddclient.password` | | |
-| `services.ddclient.passwordFile` | | |
-| `services.ddclient.protocol` | | |
-| `services.ddclient.quiet` | | |
-| `services.ddclient.script` | | |
-| `services.ddclient.secretsFile` | | |
-| `services.ddclient.server` | | |
-| `services.ddclient.ssl` | | |
-| `services.ddclient.use` | | |
-| `services.ddclient.username` | | |
-| `services.ddclient.usev4` | | |
-| `services.ddclient.usev6` | | |
-| `services.ddclient.verbose` | | |
-| `services.ddclient.zone` | | |
+| --- | --- | --- |
+| `services.ddclient.configFile` | `null or absolute path` | Path to configuration file. When set this overrides the generated configuration from module options. |
+| `services.ddclient.domains` | `list of string` | Domain name(s) to synchronize. |
+| `services.ddclient.enable` | `boolean` | Whether to synchronise your machine's IP address with a dynamic DNS provider (e.g. dyndns.org). |
+| `services.ddclient.extraConfig` | `strings concatenated with "\n"` | Extra configuration. Contents will be added verbatim to the configuration file. ::: {.note} `daemon` should not be added here because it does not work great with the systemd-timer approach the service uses. ::: |
+| `services.ddclient.interval` | `string` | The interval at which to run the check and update. See {command}`man 7 systemd.time` for the format. |
+| `services.ddclient.package` | `package` | The ddclient executable package run by the service. |
+| `services.ddclient.passwordFile` | `null or string` | A file containing the password or a TSIG key in named format when using the nsupdate protocol. |
+| `services.ddclient.protocol` | `string` | Protocol to use with dynamic DNS provider (see <https://ddclient.net/protocols.html> ). |
+| `services.ddclient.quiet` | `boolean` | Print no messages for unnecessary updates. |
+| `services.ddclient.script` | `string` | script as required by some providers. |
+| `services.ddclient.secretsFile` | `null or string` | A file containing the secrets for the dynamic DNS provider. This file should contain lines of valid secrets in the format specified by the ddclient documentation. If this option is set, it overrides the `passwordFile` option. |
+| `services.ddclient.server` | `string` | Server address. |
+| `services.ddclient.ssl` | `boolean` | Whether to use SSL/TLS to connect to dynamic DNS provider. |
+| `services.ddclient.use` | `string` | Method to determine the IP address to send to the dynamic DNS provider. |
+| `services.ddclient.username` | `string` | User name. |
+| `services.ddclient.usev4` | `string` | Method to determine the IPv4 address to send to the dynamic DNS provider. Only used if `use` is not set. |
+| `services.ddclient.usev6` | `string` | Method to determine the IPv6 address to send to the dynamic DNS provider. Only used if `use` is not set. |
+| `services.ddclient.verbose` | `boolean` | Print verbose information. |
+| `services.ddclient.zone` | `string` | zone as required by some providers. |

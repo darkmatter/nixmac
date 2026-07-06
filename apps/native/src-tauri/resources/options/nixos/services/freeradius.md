@@ -5,8 +5,8 @@
 All options under `services.freeradius`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.freeradius.configDir` | | |
-| `services.freeradius.debug` | | |
-| `services.freeradius.enable` | | |
-| `services.freeradius.package` | | |
+| --- | --- | --- |
+| `services.freeradius.configDir` | `absolute path` | The path of the freeradius server configuration directory. |
+| `services.freeradius.debug` | `boolean` | Whether to enable debug logging for freeradius (-xx option). This should not be left on, since it includes sensitive data such as passwords in the logs. |
+| `services.freeradius.enable` | `boolean` | Whether to enable the freeradius server. |
+| `services.freeradius.package` | `package` | The freeradius package to use. |

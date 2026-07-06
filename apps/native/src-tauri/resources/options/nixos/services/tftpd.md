@@ -5,6 +5,6 @@
 All options under `services.tftpd`.
 
 | Option | Type | Description |
-| ----------------------- | ---- | ----------- |
-| `services.tftpd.enable` | | |
-| `services.tftpd.path` | | |
+| --- | --- | --- |
+| `services.tftpd.enable` | `boolean` | Whether to enable tftpd, a Trivial File Transfer Protocol server. The server will be run as an xinetd service. |
+| `services.tftpd.path` | `absolute path` | Where the tftp server files are stored. |

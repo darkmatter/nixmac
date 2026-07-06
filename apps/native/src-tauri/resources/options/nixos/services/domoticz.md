@@ -5,7 +5,7 @@
 All options under `services.domoticz`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.domoticz.bind` | | |
-| `services.domoticz.enable` | | |
-| `services.domoticz.port` | | |
+| --- | --- | --- |
+| `services.domoticz.bind` | `string` | IP address to bind to. |
+| `services.domoticz.enable` | `boolean` | Whether to enable Domoticz home automation. |
+| `services.domoticz.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to bind to for HTTP, set to 0 to disable HTTP. |

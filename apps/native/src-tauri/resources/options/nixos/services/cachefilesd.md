@@ -5,7 +5,7 @@
 All options under `services.cachefilesd`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.cachefilesd.cacheDir` | | |
-| `services.cachefilesd.enable` | | |
-| `services.cachefilesd.extraConfig` | | |
+| --- | --- | --- |
+| `services.cachefilesd.cacheDir` | `string` | Directory to contain filesystem cache. |
+| `services.cachefilesd.enable` | `boolean` | Whether to enable cachefilesd network filesystems caching daemon. |
+| `services.cachefilesd.extraConfig` | `strings concatenated with "\n"` | Additional configuration file entries. See {manpage}`cachefilesd.conf(5)` for more information. |

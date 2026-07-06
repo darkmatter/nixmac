@@ -5,6 +5,6 @@
 All options under `services.haveged`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.haveged.enable` | | |
-| `services.haveged.refill_threshold` | | |
+| --- | --- | --- |
+| `services.haveged.enable` | `boolean` | Whether to enable haveged entropy daemon, which refills /dev/random when low. NOTE: does nothing on kernels newer than 5.6 . |
+| `services.haveged.refill_threshold` | `signed integer` | The number of bits of available entropy beneath which haveged should refill the entropy pool. |

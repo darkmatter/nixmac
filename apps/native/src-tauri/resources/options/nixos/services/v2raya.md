@@ -5,7 +5,7 @@
 All options under `services.v2raya`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.v2raya.cliPackage` | | |
-| `services.v2raya.enable` | | |
-| `services.v2raya.package` | | |
+| --- | --- | --- |
+| `services.v2raya.cliPackage` | `package` | The v2ray package to use. This is the package used for overriding the value of the `v2ray` attribute in the package set by `services.v2raya.package`. |
+| `services.v2raya.enable` | `boolean` | Whether to enable the v2rayA service. |
+| `services.v2raya.package` | `package` | The v2raya package to use. |

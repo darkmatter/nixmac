@@ -5,9 +5,9 @@
 All options under `services.lxd-image-server`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.lxd-image-server.enable` | | |
-| `services.lxd-image-server.group` | | |
-| `services.lxd-image-server.nginx.domain` | | |
-| `services.lxd-image-server.nginx.enable` | | |
-| `services.lxd-image-server.settings` | | |
+| --- | --- | --- |
+| `services.lxd-image-server.enable` | `boolean` | Whether to enable lxd-image-server. |
+| `services.lxd-image-server.group` | `string` | Group assigned to the user and the webroot directory. |
+| `services.lxd-image-server.nginx.domain` | `string` | Domain to use for nginx virtual host. |
+| `services.lxd-image-server.nginx.enable` | `boolean` | Whether to enable nginx. |
+| `services.lxd-image-server.settings` | `TOML value` | Configuration for lxd-image-server. Example see <https://github.com/Avature/lxd-image-server/blob/master/config.toml>. |

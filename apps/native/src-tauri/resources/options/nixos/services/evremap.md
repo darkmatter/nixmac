@@ -5,6 +5,15 @@
 All options under `services.evremap`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.evremap.enable` | | |
-| `services.evremap.settings` | | |
+| --- | --- | --- |
+| `services.evremap.enable` | `boolean` | Whether to enable evremap, a keyboard input remapper for Linux/Wayland systems. |
+| `services.evremap.settings` | `open submodule of (TOML value)` | Settings for evremap. See the [upstream documentation](https://github.com/wez/evremap/blob/master/README.md#configuration) for how to configure evremap. |
+| `services.evremap.settings.device_name` | `string` | The name of the device that should be remapped. You can get a list of devices by running `evremap list-devices` with elevated permissions. |
+| `services.evremap.settings.dual_role` | `list of (submodule)` | List of dual-role remappings that output different key sequences based on whether the input key is held or tapped. |
+| `services.evremap.settings.dual_role.*.hold` | `list of key ID prefixed with BTN_ or KEY_` | The key sequence that should be output when the input key is held. You can get a list of keys by running `evremap list-keys`. |
+| `services.evremap.settings.dual_role.*.input` | `key ID prefixed with BTN_ or KEY_` | The key that should be remapped. You can get a list of keys by running `evremap list-keys`. |
+| `services.evremap.settings.dual_role.*.tap` | `list of key ID prefixed with BTN_ or KEY_` | The key sequence that should be output when the input key is tapped. You can get a list of keys by running `evremap list-keys`. |
+| `services.evremap.settings.phys` | `null or string` | The physical device name to listen on. This attribute may be specified to disambiguate multiple devices with the same device name. The physical device names of each device can be obtained by running `evremap list-devices` with elevated permissions. |
+| `services.evremap.settings.remap` | `list of (submodule)` | List of remappings. |
+| `services.evremap.settings.remap.*.input` | `list of key ID prefixed with BTN_ or KEY_` | The key sequence that should be remapped. You can get a list of keys by running `evremap list-keys`. |
+| `services.evremap.settings.remap.*.output` | `list of key ID prefixed with BTN_ or KEY_` | The key sequence that should be output when the input sequence is entered. You can get a list of keys by running `evremap list-keys`. |

@@ -5,8 +5,16 @@
 All options under `services.pizauth`.
 
 | Option | Type | Description |
-| ------------------------------ | ------------------------------ | ----------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.pizauth.accounts` | `attribute set of (submodule)` | Pizauth accounts that should be configured |
+| `services.pizauth.accounts.<name>.authUri` | `string` | The OAuth2 server's authentication URI. |
+| `services.pizauth.accounts.<name>.clientId` | `string` | The OAuth2 client ID. |
+| `services.pizauth.accounts.<name>.clientSecret` | `null or string` | The OAuth2 client secret. |
+| `services.pizauth.accounts.<name>.extraConfig` | `null or string` | Additional configuration that will be added to the account configuration. See pizauth.conf(5) for available options. |
+| `services.pizauth.accounts.<name>.loginHint` | `null or string` | An optional login hint for the account provider. |
+| `services.pizauth.accounts.<name>.name` | `string` | Unique identifier of the account. This is set to the attribute name of the account configuration. |
+| `services.pizauth.accounts.<name>.scopes` | `null or (list of string)` | The scopes which the OAuth2 token will give access to. Optional. Note that Office365 requires the non-standard "offline_access" scope to be specified in order for pizauth to be able to operate successfully. |
+| `services.pizauth.accounts.<name>.tokenUri` | `string` | The OAuth2 server's token URI. |
 | `services.pizauth.enable` | `boolean` | Whether to enable Pizauth, a commandline OAuth2 authentication daemon . |
 | `services.pizauth.extraConfig` | `null or string` | Additional global configuration. See pizauth.conf(5) for a available options. |
 | `services.pizauth.package` | `package` | The pizauth package to use. |

@@ -5,8 +5,8 @@
 All options under `services.blocky`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.blocky.enable` | | |
-| `services.blocky.enableConfigCheck` | | |
-| `services.blocky.package` | | |
-| `services.blocky.settings` | | |
+| --- | --- | --- |
+| `services.blocky.enable` | `boolean` | Whether to enable blocky, a fast and lightweight DNS proxy as ad-blocker for local network with many features. |
+| `services.blocky.enableConfigCheck` | `boolean` | Whether to enable checking the config during build time. |
+| `services.blocky.package` | `package` | The blocky package to use. |
+| `services.blocky.settings` | `YAML 1.1 value` | Blocky configuration. Refer to <https://0xerr0r.github.io/blocky/configuration/> for details on supported values. |

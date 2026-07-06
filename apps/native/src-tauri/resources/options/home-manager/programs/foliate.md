@@ -5,8 +5,8 @@
 All options under `programs.foliate`.
 
 | Option | Type | Description |
-| --------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.foliate.enable` | `boolean` | Whether to enable Foliate. |
 | `programs.foliate.package` | `null or package` | The foliate package to use. |
-| `programs.foliate.settings` | `attribute set of ((GVariant value) or attribute set of (GVariant value))` | Added to config.dconf.settings under com/github/johnfactotum/Foliate , the scheme is defined at https://github.com/johnfactotum/foliate/blob/gtk4/data/com.github.johnfactotum.Foliate.gschema.xml |
-| `programs.foliate.themes` | `attribute set of (JSON value or string or absolute path)` | Each theme is written to $XDG_CONFIG_HOME/com.github.johnfactotum.Foliate/themes/NAME.json . See https://github.com/johnfactotum/foliate/blob/gtk4/src/themes.js for implementation of themes in Foliate. |
+| `programs.foliate.settings` | `attribute set of ((GVariant value) or attribute set of (GVariant value))` | Added to `config.dconf.settings` under `com/github/johnfactotum/Foliate`, the scheme is defined at <https://github.com/johnfactotum/foliate/blob/gtk4/data/com.github.johnfactotum.Foliate.gschema.xml> |
+| `programs.foliate.themes` | `attribute set of (JSON value or string or absolute path)` | Each theme is written to {file}`$XDG_CONFIG_HOME/com.github.johnfactotum.Foliate/themes/NAME.json`. See <https://github.com/johnfactotum/foliate/blob/gtk4/src/themes.js> for implementation of themes in Foliate. |

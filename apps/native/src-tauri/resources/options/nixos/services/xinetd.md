@@ -5,7 +5,16 @@
 All options under `services.xinetd`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.xinetd.enable` | | |
-| `services.xinetd.extraDefaults` | | |
-| `services.xinetd.services` | | |
+| --- | --- | --- |
+| `services.xinetd.enable` | `boolean` | Whether to enable the xinetd super-server daemon. |
+| `services.xinetd.extraDefaults` | `strings concatenated with "\n"` | Additional configuration lines added to the default section of xinetd's configuration. |
+| `services.xinetd.services` | `list of (submodule)` | A list of services provided by xinetd. |
+| `services.xinetd.services.*.extraConfig` | `strings concatenated with "\n"` | Extra configuration-lines added to the section of the service. |
+| `services.xinetd.services.*.flags` | `string` | |
+| `services.xinetd.services.*.name` | `string` | Name of the service. |
+| `services.xinetd.services.*.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number of the service. |
+| `services.xinetd.services.*.protocol` | `string` | Protocol of the service. Usually `tcp` or `udp`. |
+| `services.xinetd.services.*.server` | `string` | Path of the program that implements the service. |
+| `services.xinetd.services.*.serverArgs` | `strings concatenated with " "` | Command-line arguments for the server program. |
+| `services.xinetd.services.*.unlisted` | `boolean` | Whether this server is listed in {file}`/etc/services`. If so, the port number can be omitted. |
+| `services.xinetd.services.*.user` | `string` | User account for the service |

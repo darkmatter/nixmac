@@ -5,53 +5,50 @@
 All options under `services.druid`.
 
 | Option | Type | Description |
-| ----------------------------------------------- | ---- | ----------- |
-| `services.druid.broker.config` | | |
-| `services.druid.broker.enable` | | |
-| `services.druid.broker.internalConfig` | | |
-| `services.druid.broker.jdk` | | |
-| `services.druid.broker.jvmArgs` | | |
-| `services.druid.broker.openFirewall` | | |
-| `services.druid.broker.restartIfChanged` | | |
-| `services.druid.commonConfig` | | |
-| `services.druid.commonTmpDirs` | | |
-| `services.druid.coordinator.config` | | |
-| `services.druid.coordinator.enable` | | |
-| `services.druid.coordinator.internalConfig` | | |
-| `services.druid.coordinator.jdk` | | |
-| `services.druid.coordinator.jvmArgs` | | |
-| `services.druid.coordinator.openFirewall` | | |
-| `services.druid.coordinator.restartIfChanged` | | |
-| `services.druid.extraClassPaths` | | |
-| `services.druid.extraConfDirs` | | |
-| `services.druid.historical.config` | | |
-| `services.druid.historical.enable` | | |
-| `services.druid.historical.internalConfig` | | |
-| `services.druid.historical.jdk` | | |
-| `services.druid.historical.jvmArgs` | | |
-| `services.druid.historical.openFirewall` | | |
-| `services.druid.historical.restartIfChanged` | | |
-| `services.druid.historical.segmentLocations` | | |
-| `services.druid.log4j` | | |
-| `services.druid.middleManager.config` | | |
-| `services.druid.middleManager.enable` | | |
-| `services.druid.middleManager.internalConfig` | | |
-| `services.druid.middleManager.jdk` | | |
-| `services.druid.middleManager.jvmArgs` | | |
-| `services.druid.middleManager.openFirewall` | | |
-| `services.druid.middleManager.restartIfChanged` | | |
-| `services.druid.overlord.config` | | |
-| `services.druid.overlord.enable` | | |
-| `services.druid.overlord.internalConfig` | | |
-| `services.druid.overlord.jdk` | | |
-| `services.druid.overlord.jvmArgs` | | |
-| `services.druid.overlord.openFirewall` | | |
-| `services.druid.overlord.restartIfChanged` | | |
-| `services.druid.package` | | |
-| `services.druid.router.config` | | |
-| `services.druid.router.enable` | | |
-| `services.druid.router.internalConfig` | | |
-| `services.druid.router.jdk` | | |
-| `services.druid.router.jvmArgs` | | |
-| `services.druid.router.openFirewall` | | |
-| `services.druid.router.restartIfChanged` | | |
+| --- | --- | --- |
+| `services.druid.broker.config` | `attribute set of anything` | (key=value) Configuration to be written to runtime.properties of the druid Druid Broker <https://druid.apache.org/docs/latest/configuration/index.html> |
+| `services.druid.broker.enable` | `boolean` | Whether to enable Druid Broker. |
+| `services.druid.broker.jdk` | `package` | The JDK package to use. |
+| `services.druid.broker.jvmArgs` | `string` | Arguments to pass to the JVM |
+| `services.druid.broker.openFirewall` | `boolean` | Open firewall ports for Druid Broker. |
+| `services.druid.broker.restartIfChanged` | `boolean` | Automatically restart the service on config change. This can be set to false to defer restarts on clusters running critical applications. Please consider the security implications of inadvertently running an older version, and the possibility of unexpected behavior caused by inconsistent versions across a cluster when disabling this option. |
+| `services.druid.commonConfig` | `attribute set of anything` | (key=value) Configuration to be written to common.runtime.properties |
+| `services.druid.commonTmpDirs` | `list of string` | Common List of directories used by druid processes |
+| `services.druid.coordinator.config` | `attribute set of anything` | (key=value) Configuration to be written to runtime.properties of the druid Druid Coordinator <https://druid.apache.org/docs/latest/configuration/index.html> |
+| `services.druid.coordinator.enable` | `boolean` | Whether to enable Druid Coordinator. |
+| `services.druid.coordinator.jdk` | `package` | The JDK package to use. |
+| `services.druid.coordinator.jvmArgs` | `string` | Arguments to pass to the JVM |
+| `services.druid.coordinator.openFirewall` | `boolean` | Open firewall ports for Druid Coordinator. |
+| `services.druid.coordinator.restartIfChanged` | `boolean` | Automatically restart the service on config change. This can be set to false to defer restarts on clusters running critical applications. Please consider the security implications of inadvertently running an older version, and the possibility of unexpected behavior caused by inconsistent versions across a cluster when disabling this option. |
+| `services.druid.extraClassPaths` | `list of string` | Extra classpath to include in the jvm |
+| `services.druid.extraConfDirs` | `list of absolute path` | Extra Conf Dirs to include in the jvm |
+| `services.druid.historical.config` | `attribute set of anything` | (key=value) Configuration to be written to runtime.properties of the druid Druid Historical <https://druid.apache.org/docs/latest/configuration/index.html> |
+| `services.druid.historical.enable` | `boolean` | Whether to enable Druid Historical. |
+| `services.druid.historical.jdk` | `package` | The JDK package to use. |
+| `services.druid.historical.jvmArgs` | `string` | Arguments to pass to the JVM |
+| `services.druid.historical.openFirewall` | `boolean` | Open firewall ports for Druid Historical. |
+| `services.druid.historical.restartIfChanged` | `boolean` | Automatically restart the service on config change. This can be set to false to defer restarts on clusters running critical applications. Please consider the security implications of inadvertently running an older version, and the possibility of unexpected behavior caused by inconsistent versions across a cluster when disabling this option. |
+| `services.druid.historical.segmentLocations` | `null or (list of (submodule))` | Locations where the historical will store its data. |
+| `services.druid.historical.segmentLocations.*.freeSpacePercent` | `floating point number` | Druid Historical will fail to write if it exceeds this value |
+| `services.druid.historical.segmentLocations.*.maxSize` | `string` | Max size the druid historical can occupy |
+| `services.druid.historical.segmentLocations.*.path` | `absolute path` | the path to store the segments |
+| `services.druid.log4j` | `absolute path` | Log4j Configuration for the druid process |
+| `services.druid.middleManager.config` | `attribute set of anything` | (key=value) Configuration to be written to runtime.properties of the druid Druid middleManager <https://druid.apache.org/docs/latest/configuration/index.html> |
+| `services.druid.middleManager.enable` | `boolean` | Whether to enable Druid middleManager. |
+| `services.druid.middleManager.jdk` | `package` | The JDK package to use. |
+| `services.druid.middleManager.jvmArgs` | `string` | Arguments to pass to the JVM |
+| `services.druid.middleManager.openFirewall` | `boolean` | Open firewall ports for Druid middleManager. |
+| `services.druid.middleManager.restartIfChanged` | `boolean` | Automatically restart the service on config change. This can be set to false to defer restarts on clusters running critical applications. Please consider the security implications of inadvertently running an older version, and the possibility of unexpected behavior caused by inconsistent versions across a cluster when disabling this option. |
+| `services.druid.overlord.config` | `attribute set of anything` | (key=value) Configuration to be written to runtime.properties of the druid Druid Overlord <https://druid.apache.org/docs/latest/configuration/index.html> |
+| `services.druid.overlord.enable` | `boolean` | Whether to enable Druid Overlord. |
+| `services.druid.overlord.jdk` | `package` | The JDK package to use. |
+| `services.druid.overlord.jvmArgs` | `string` | Arguments to pass to the JVM |
+| `services.druid.overlord.openFirewall` | `boolean` | Open firewall ports for Druid Overlord. |
+| `services.druid.overlord.restartIfChanged` | `boolean` | Automatically restart the service on config change. This can be set to false to defer restarts on clusters running critical applications. Please consider the security implications of inadvertently running an older version, and the possibility of unexpected behavior caused by inconsistent versions across a cluster when disabling this option. |
+| `services.druid.package` | `package` | The apache-druid package to use. |
+| `services.druid.router.config` | `attribute set of anything` | (key=value) Configuration to be written to runtime.properties of the druid Druid Router <https://druid.apache.org/docs/latest/configuration/index.html> |
+| `services.druid.router.enable` | `boolean` | Whether to enable Druid Router. |
+| `services.druid.router.jdk` | `package` | The JDK package to use. |
+| `services.druid.router.jvmArgs` | `string` | Arguments to pass to the JVM |
+| `services.druid.router.openFirewall` | `boolean` | Open firewall ports for Druid Router. |
+| `services.druid.router.restartIfChanged` | `boolean` | Automatically restart the service on config change. This can be set to false to defer restarts on clusters running critical applications. Please consider the security implications of inadvertently running an older version, and the possibility of unexpected behavior caused by inconsistent versions across a cluster when disabling this option. |

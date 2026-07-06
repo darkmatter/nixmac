@@ -5,8 +5,13 @@
 All options under `services.rustical`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.rustical.enable` | | |
-| `services.rustical.environmentFiles` | | |
-| `services.rustical.package` | | |
-| `services.rustical.settings` | | |
+| --- | --- | --- |
+| `services.rustical.enable` | `boolean` | Whether to enable RustiCali CalDAV/CardDAV server. |
+| `services.rustical.environmentFiles` | `list of absolute path` | Environment files to load into the runtime environment. Check the documentation for how to construct [environment variables]. :::{.tip} Environment variables can substitute any config value and are useful for hiding secrets. ::: \[environment variables\]: https://lennart-k.github.io/rustical/installation/configuration/#environment-variables |
+| `services.rustical.package` | `package` | The rustical package to use. |
+| `services.rustical.settings` | `open submodule of (TOML value)` | Your {file}`/etc/rustical/config.toml` as a Nix attribute set. Possible options can be found in the [Config struct]. A default configuration can be viewed by running `rustical gen-config`. \[Config struct\]: https://lennart-k.github.io/rustical/\_crate/rustical/config/struct.Config.html |
+| `services.rustical.settings.data_store.sqlite.db_url` | `absolute path` | Path where the sqlite database is stored. |
+| `services.rustical.settings.dav_push.enabled` | `boolean` | Whether to enable [WebDav Push] support. This allows the server to notify clients about changed data. \[WebDav Push\]: https://github.com/bitfireAT/webdav-push/ |
+| `services.rustical.settings.frontend.enabled` | `boolean` | Whether to enable the HTTP frontend. |
+| `services.rustical.settings.http.bind` | `string` | Address and port or UNIX socket path to bind the HTTP service to. :::{.note} Rustical expects to be hosted behind a reverse proxy that provides HTTPS. Without HTTPS, the web frontend and some clients (e.g. Apple Calendar) may not work. ::: |
+| `services.rustical.settings.nextcloud_login.enabled` | `boolean` | Whether to emulate the Nextcloud login flow. This is supported in [DAVx5] and enables automatic app token generation. \[DAVx5\]: https://www.davx5.com/ |

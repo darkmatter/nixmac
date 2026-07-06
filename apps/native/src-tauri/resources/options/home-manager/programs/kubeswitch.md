@@ -5,11 +5,11 @@
 All options under `programs.kubeswitch`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---------------- | ----------------------------------------------------- |
+| --- | --- | --- |
 | `programs.kubeswitch.commandName` | `string` | The name of the command to use |
 | `programs.kubeswitch.enable` | `boolean` | Whether to enable the kubectx for operators. |
 | `programs.kubeswitch.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.kubeswitch.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
 | `programs.kubeswitch.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
 | `programs.kubeswitch.package` | `package` | The kubeswitch package to use. |
-| `programs.kubeswitch.settings` | `YAML 1.1 value` | Configuration written to ~/.kube/switch-config.yaml . |
+| `programs.kubeswitch.settings` | `YAML 1.1 value` | Configuration written to {file}`~/.kube/switch-config.yaml`. |

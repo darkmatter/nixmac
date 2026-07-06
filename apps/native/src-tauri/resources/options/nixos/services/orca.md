@@ -5,6 +5,6 @@
 All options under `services.orca`.
 
 | Option | Type | Description |
-| ----------------------- | ---- | ----------- |
-| `services.orca.enable` | | |
-| `services.orca.package` | | |
+| --- | --- | --- |
+| `services.orca.enable` | `boolean` | Whether to enable Orca screen reader. |
+| `services.orca.package` | `package` | The orca package to use. |

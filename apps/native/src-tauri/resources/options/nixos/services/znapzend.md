@@ -5,19 +5,37 @@
 All options under `services.znapzend`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---- | ----------- |
-| `services.znapzend.autoCreation` | | |
-| `services.znapzend.enable` | | |
-| `services.znapzend.features.compressed` | | |
-| `services.znapzend.features.lowmemRecurse` | | |
-| `services.znapzend.features.oracleMode` | | |
-| `services.znapzend.features.recvu` | | |
-| `services.znapzend.features.sendRaw` | | |
-| `services.znapzend.features.skipIntermediates` | | |
-| `services.znapzend.features.zfsGetType` | | |
-| `services.znapzend.logLevel` | | |
-| `services.znapzend.logTo` | | |
-| `services.znapzend.mailErrorSummaryTo` | | |
-| `services.znapzend.noDestroy` | | |
-| `services.znapzend.pure` | | |
-| `services.znapzend.zetup` | | |
+| --- | --- | --- |
+| `services.znapzend.autoCreation` | `boolean` | Automatically create the destination dataset if it does not exist. |
+| `services.znapzend.enable` | `boolean` | Whether to enable ZnapZend ZFS backup daemon. |
+| `services.znapzend.features.compressed` | `boolean` | Whether to enable compressed feature which adds the options `-Lce` to the {command}`zfs send` command. When this is enabled, make sure that both the sending and receiving pool have the same relevant features enabled. Using `-c` will skip unnecessary decompress-compress stages, `-L` is for large block support and -e is for embedded data support. see {manpage}`znapzend(1)` and {manpage}`zfs(8)` for more info . |
+| `services.znapzend.features.lowmemRecurse` | `boolean` | Whether to enable use lowmemRecurse on systems where you have too many datasets, so a recursive listing of attributes to find backup plans exhausts the memory available to {command}`znapzend`: instead, go the slower way to first list all impacted dataset names, and then query their configs one by one . |
+| `services.znapzend.features.oracleMode` | `boolean` | Whether to enable destroying snapshots one by one instead of using one long argument list. If source and destination are out of sync for a long time, you may have so many snapshots to destroy that the argument gets is too long and the command fails . |
+| `services.znapzend.features.recvu` | `boolean` | Whether to enable recvu feature which uses `-u` on the receiving end to keep the destination filesystem unmounted . |
+| `services.znapzend.features.sendRaw` | `boolean` | Whether to enable sendRaw feature which adds the options `-w` to the {command}`zfs send` command. For encrypted source datasets this instructs zfs not to decrypt before sending which results in a remote backup that can't be read without the encryption key/passphrase, useful when the remote isn't fully trusted or not physically secure. This option must be used consistently, raw incrementals cannot be based on non-raw snapshots and vice versa . |
+| `services.znapzend.features.skipIntermediates` | `boolean` | Whether to enable the skipIntermediates feature to send a single increment between latest common snapshot and the newly made one. It may skip several source snaps if the destination was offline for some time, and it should skip snapshots not managed by znapzend. Normally for online destinations, the new snapshot is sent as soon as it is created on the source, so there are no automatic increments to skip . |
+| `services.znapzend.features.zfsGetType` | `boolean` | Whether to enable using zfsGetType if your {command}`zfs get` supports a `-t` argument for filtering by dataset type at all AND lists properties for snapshots by default when recursing, so that there is too much data to process while searching for backup plans. If these two conditions apply to your system, the time needed for a `--recursive` search for backup plans can literally differ by hundreds of times (depending on the amount of snapshots in that dataset tree... and a decent backup plan will ensure you have a lot of those), so you would benefit from requesting this feature . |
+| `services.znapzend.logLevel` | `one of "debug", "info", "warning", "err", "alert"` | The log level when logging to file. Any of debug, info, warning, err, alert. Default in daemonized form is debug. |
+| `services.znapzend.logTo` | `string` | Where to log to (syslog::\<facility> or \<filepath>). |
+| `services.znapzend.mailErrorSummaryTo` | `(optionally newline-terminated) single-line string` | Email address to send a summary to if "send task(s) failed". |
+| `services.znapzend.noDestroy` | `boolean` | Does all changes to the filesystem except destroy. |
+| `services.znapzend.pure` | `boolean` | Do not persist any stateful znapzend setups. If this option is enabled, your previously set znapzend setups will be cleared and only the ones defined with this module will be applied. |
+| `services.znapzend.zetup` | `attribute set of (submodule)` | Znapzend configuration. |
+| `services.znapzend.zetup.<name>.dataset` | `string` | The dataset to use for this source. |
+| `services.znapzend.zetup.<name>.destinations` | `attribute set of (submodule)` | Additional destinations. |
+| `services.znapzend.zetup.<name>.destinations.<name>.dataset` | `string` | Dataset name to send snapshots to. |
+| `services.znapzend.zetup.<name>.destinations.<name>.host` | `null or string` | Host to use for the destination dataset. Can be prefixed with `user@` to specify the ssh user. |
+| `services.znapzend.zetup.<name>.destinations.<name>.label` | `string` | Label for this destination. Defaults to the attribute name. |
+| `services.znapzend.zetup.<name>.destinations.<name>.plan` | `string` | The znapzend backup plan to use for the source. The plan specifies how often to backup and for how long to keep the backups. It consists of a series of retention periods to interval associations: `  retA=>intA,retB=>intB,...` Both intervals and retention periods are expressed in standard units of time or multiples of them. You can use both the full name or a shortcut according to the following listing: `  second\|sec\|s, minute\|min, hour\|h, day\|d, week\|w, month\|mon\|m, year\|y` See {manpage}`znapzendzetup(1)` for more info. |
+| `services.znapzend.zetup.<name>.destinations.<name>.postsend` | `null or string` | Command to run after sending the snapshot to the destination. Intended to run a remote script via {command}`ssh` on the destination, e.g. to bring up a backup disk or server or to put a zpool online/offline. See also {option}`presend`. |
+| `services.znapzend.zetup.<name>.destinations.<name>.presend` | `null or string` | Command to run before sending the snapshot to the destination. Intended to run a remote script via {command}`ssh` on the destination, e.g. to bring up a backup disk or server or to put a zpool online/offline. See also {option}`postsend`. |
+| `services.znapzend.zetup.<name>.enable` | `boolean` | Whether to enable this source. |
+| `services.znapzend.zetup.<name>.mbuffer.enable` | `boolean` | Whether to use {command}`mbuffer`. |
+| `services.znapzend.zetup.<name>.mbuffer.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to use for {command}`mbuffer`. If this is null, it will run {command}`mbuffer` through ssh. If this is not null, it will run {command}`mbuffer` directly through TCP, which is not encrypted but faster. In that case the given port needs to be open on the destination host. |
+| `services.znapzend.zetup.<name>.mbuffer.size` | `string of the form number{b\|k\|M\|G}` | The size for {command}`mbuffer`. Supports the units b, k, M, G. |
+| `services.znapzend.zetup.<name>.plan` | `string` | The znapzend backup plan to use for the source. The plan specifies how often to backup and for how long to keep the backups. It consists of a series of retention periods to interval associations: `  retA=>intA,retB=>intB,...` Both intervals and retention periods are expressed in standard units of time or multiples of them. You can use both the full name or a shortcut according to the following listing: `  second\|sec\|s, minute\|min, hour\|h, day\|d, week\|w, month\|mon\|m, year\|y` See {manpage}`znapzendzetup(1)` for more info. |
+| `services.znapzend.zetup.<name>.postsnap` | `null or string` | Command to run after snapshots are taken on the source dataset, e.g. for database unlocking. See also {option}`presnap`. |
+| `services.znapzend.zetup.<name>.presnap` | `null or string` | Command to run before snapshots are taken on the source dataset, e.g. for database locking/flushing. See also {option}`postsnap`. |
+| `services.znapzend.zetup.<name>.recursive` | `boolean` | Whether to do recursive snapshots. |
+| `services.znapzend.zetup.<name>.sendDelay` | `signed integer` | Specify delay (in seconds) before sending snaps to the destination. May be useful if you want to control sending time. |
+| `services.znapzend.zetup.<name>.timestampFormat` | `string containing all of the characters %Y, %m, %d, %H, %M, %S` | The timestamp format to use for constructing snapshot names. The syntax is `strftime`-like. The string must consist of the mandatory `%Y %m %d %H %M %S`. Optionally `- _ . :` characters as well as any alphanumeric character are allowed. If suffixed by a `Z`, times will be in UTC. |

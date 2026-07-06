@@ -5,6 +5,6 @@
 All options under `services.mptcpd`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.mptcpd.enable` | | |
-| `services.mptcpd.package` | | |
+| --- | --- | --- |
+| `services.mptcpd.enable` | `boolean` | Whether to enable the Multipath TCP path management daemon. |
+| `services.mptcpd.package` | `package` | The mptcpd package to use. |

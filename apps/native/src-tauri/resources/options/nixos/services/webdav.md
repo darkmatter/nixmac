@@ -5,11 +5,11 @@
 All options under `services.webdav`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.webdav.configFile` | | |
-| `services.webdav.enable` | | |
-| `services.webdav.environmentFile` | | |
-| `services.webdav.group` | | |
-| `services.webdav.package` | | |
-| `services.webdav.settings` | | |
-| `services.webdav.user` | | |
+| --- | --- | --- |
+| `services.webdav.configFile` | `absolute path` | Path to config file. If this option is set, it will override any configuration done in options.services.webdav.settings. |
+| `services.webdav.enable` | `boolean` | Whether to enable WebDAV server. |
+| `services.webdav.environmentFile` | `null or absolute path` | Environment file as defined in {manpage}`systemd.exec(5)`. |
+| `services.webdav.group` | `string` | Group under which WebDAV runs. |
+| `services.webdav.package` | `package` | The webdav package to use. |
+| `services.webdav.settings` | `YAML 1.1 value` | Attrset that is converted and passed as config file. Available options can be found at [here](https://github.com/hacdias/webdav). This program supports reading username and password configuration from environment variables, so it's strongly recommended to store username and password in a separate [EnvironmentFile](https://www.freedesktop.org/software/systemd/man/systemd.exec.html#EnvironmentFile=). This prevents adding secrets to the world-readable Nix store. |
+| `services.webdav.user` | `string` | User account under which WebDAV runs. |

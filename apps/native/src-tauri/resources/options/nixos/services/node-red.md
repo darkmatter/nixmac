@@ -5,15 +5,15 @@
 All options under `services.node-red`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.node-red.configFile` | | |
-| `services.node-red.define` | | |
-| `services.node-red.enable` | | |
-| `services.node-red.group` | | |
-| `services.node-red.openFirewall` | | |
-| `services.node-red.package` | | |
-| `services.node-red.port` | | |
-| `services.node-red.safe` | | |
-| `services.node-red.user` | | |
-| `services.node-red.userDir` | | |
-| `services.node-red.withNpmAndGcc` | | |
+| --- | --- | --- |
+| `services.node-red.configFile` | `absolute path` | Path to the JavaScript configuration file. See <https://github.com/node-red/node-red/blob/master/packages/node_modules/node-red/settings.js> for a configuration example. |
+| `services.node-red.define` | `attribute set` | List of settings.js overrides to pass via -D to Node-RED. |
+| `services.node-red.enable` | `boolean` | Whether to enable the Node-RED service. |
+| `services.node-red.group` | `string` | Group under which Node-RED runs.If left as the default value this group will automatically be created on system activation, otherwise the sysadmin is responsible for ensuring the group exists. |
+| `services.node-red.openFirewall` | `boolean` | Open ports in the firewall for the server. |
+| `services.node-red.package` | `package` | The node-red package to use. |
+| `services.node-red.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listening port. |
+| `services.node-red.safe` | `boolean` | Whether to launch Node-RED in --safe mode. |
+| `services.node-red.user` | `string` | User under which Node-RED runs.If left as the default value this user will automatically be created on system activation, otherwise the sysadmin is responsible for ensuring the user exists. |
+| `services.node-red.userDir` | `absolute path` | The directory to store all user data, such as flow and credential files and all library data. If left as the default value this directory will automatically be created before the node-red service starts, otherwise the sysadmin is responsible for ensuring the directory exists with appropriate ownership and permissions. |
+| `services.node-red.withNpmAndGcc` | `boolean` | Give Node-RED access to npm and GCC at runtime, so 'Nodes' can be downloaded and managed imperatively via the 'Palette Manager'. |

@@ -5,10 +5,9 @@
 All options under `services.lvm`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.lvm.boot.thin.enable` | | |
-| `services.lvm.boot.vdo.enable` | | |
-| `services.lvm.dmeventd.enable` | | |
-| `services.lvm.enable` | | |
-| `services.lvm.package` | | |
-| `services.lvm.resizeHelper.enable` | | |
+| --- | --- | --- |
+| `services.lvm.boot.thin.enable` | `boolean` | Whether to enable support for booting from ThinLVs. |
+| `services.lvm.boot.vdo.enable` | `boolean` | Whether to enable support for booting from VDOLVs. |
+| `services.lvm.dmeventd.enable` | `boolean` | Whether to enable the LVM dmevent daemon. |
+| `services.lvm.enable` | `boolean` | Whether to enable lvm2. :::{.note} The lvm2 package contains device-mapper udev rules and without those tools like cryptsetup do not fully function! ::: |
+| `services.lvm.resizeHelper.enable` | `boolean` | Whether to enable lvresize_fs_helper. |

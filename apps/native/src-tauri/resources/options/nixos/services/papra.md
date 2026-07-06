@@ -5,10 +5,10 @@
 All options under `services.papra`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.papra.enable` | | |
-| `services.papra.environment` | | |
-| `services.papra.environmentFile` | | |
-| `services.papra.group` | | |
-| `services.papra.package` | | |
-| `services.papra.user` | | |
+| --- | --- | --- |
+| `services.papra.enable` | `boolean` | Whether to enable Papra. |
+| `services.papra.environment` | `attribute set of (string or signed integer or floating point number or boolean or absolute path or package)` | Environment variables to set for the service. |
+| `services.papra.environmentFile` | `null or absolute path` | Environment file, usefult to provide secrets to the service |
+| `services.papra.group` | `string` | If the default user "papra" is configured then this is the primary group of that user. |
+| `services.papra.package` | `package` | The papra package to use. |
+| `services.papra.user` | `string` | User under which Papra runs. |

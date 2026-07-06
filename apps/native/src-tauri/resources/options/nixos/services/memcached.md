@@ -5,13 +5,12 @@
 All options under `services.memcached`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.memcached.enable` | | |
-| `services.memcached.enableUnixSocket` | | |
-| `services.memcached.extraOptions` | | |
-| `services.memcached.listen` | | |
-| `services.memcached.maxConnections` | | |
-| `services.memcached.maxMemory` | | |
-| `services.memcached.port` | | |
-| `services.memcached.socket` | | |
-| `services.memcached.user` | | |
+| --- | --- | --- |
+| `services.memcached.enable` | `boolean` | Whether to enable Memcached. |
+| `services.memcached.enableUnixSocket` | `boolean` | Whether to enable Unix Domain Socket at /run/memcached/memcached.sock instead of listening on an IP address and port. The `listen` and `port` options are ignored. |
+| `services.memcached.extraOptions` | `list of string` | A list of extra options that will be added as a suffix when running memcached. |
+| `services.memcached.listen` | `string` | The IP address to bind to. |
+| `services.memcached.maxConnections` | `unsigned integer, meaning >=0` | The maximum number of simultaneous connections. |
+| `services.memcached.maxMemory` | `unsigned integer, meaning >=0` | The maximum amount of memory to use for storage, in MiB (1024×1024 bytes). |
+| `services.memcached.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to bind to. |
+| `services.memcached.user` | `string` | The user to run Memcached as |

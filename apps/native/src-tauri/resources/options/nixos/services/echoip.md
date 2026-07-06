@@ -5,12 +5,12 @@
 All options under `services.echoip`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---- | ----------- |
-| `services.echoip.enable` | | |
-| `services.echoip.enablePortLookup` | | |
-| `services.echoip.enableReverseHostnameLookups` | | |
-| `services.echoip.extraArgs` | | |
-| `services.echoip.listenAddress` | | |
-| `services.echoip.package` | | |
-| `services.echoip.remoteIpHeader` | | |
-| `services.echoip.virtualHost` | | |
+| --- | --- | --- |
+| `services.echoip.enable` | `boolean` | Whether to enable echoip. |
+| `services.echoip.enablePortLookup` | `boolean` | Whether to enable port lookup. |
+| `services.echoip.enableReverseHostnameLookups` | `boolean` | Whether to enable reverse hostname lookups. |
+| `services.echoip.extraArgs` | `list of string` | Extra command line arguments to pass to echoip. See <https://github.com/mpolden/echoip> for details. |
+| `services.echoip.listenAddress` | `string` | The address echoip should listen on |
+| `services.echoip.package` | `package` | The echoip package to use. |
+| `services.echoip.remoteIpHeader` | `null or string` | Header to trust for remote IP, if present |
+| `services.echoip.virtualHost` | `null or string` | Name of the nginx virtual host to use and setup. If null, do not setup anything. |

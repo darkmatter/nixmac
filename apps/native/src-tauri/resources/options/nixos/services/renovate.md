@@ -5,12 +5,12 @@
 All options under `services.renovate`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.renovate.credentials` | | |
-| `services.renovate.enable` | | |
-| `services.renovate.environment` | | |
-| `services.renovate.package` | | |
-| `services.renovate.runtimePackages` | | |
-| `services.renovate.schedule` | | |
-| `services.renovate.settings` | | |
-| `services.renovate.validateSettings` | | |
+| --- | --- | --- |
+| `services.renovate.credentials` | `attribute set of absolute path` | Allows configuring environment variable credentials for renovate, read from files. This should always be used for passing confidential data to renovate. |
+| `services.renovate.enable` | `boolean` | Whether to enable renovate. |
+| `services.renovate.environment` | `attribute set of (null or string or absolute path or package)` | Extra environment variables to export to the Renovate process from the systemd unit configuration. See <https://docs.renovatebot.com/config-overview> for available environment variables. |
+| `services.renovate.package` | `package` | The renovate package to use. |
+| `services.renovate.runtimePackages` | `list of package` | Packages available to renovate. |
+| `services.renovate.schedule` | `null or string` | How often to run renovate. See {manpage}`systemd.time(7)` for the format. |
+| `services.renovate.settings` | `JSON value` | Renovate's global configuration. If you want to pass secrets to renovate, please use {option}`services.renovate.credentials` for that. See <https://docs.renovatebot.com/config-overview> for available settings. |
+| `services.renovate.validateSettings` | `boolean` | Whether to run renovate's config validator on the built configuration. |

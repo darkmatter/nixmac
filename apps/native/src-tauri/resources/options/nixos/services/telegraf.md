@@ -5,8 +5,8 @@
 All options under `services.telegraf`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.telegraf.enable` | | |
-| `services.telegraf.environmentFiles` | | |
-| `services.telegraf.extraConfig` | | |
-| `services.telegraf.package` | | |
+| --- | --- | --- |
+| `services.telegraf.enable` | `boolean` | Whether to enable telegraf server. |
+| `services.telegraf.environmentFiles` | `list of absolute path` | File to load as environment file. Environment variables from this file will be interpolated into the config file using envsubst with this syntax: `$ENVIRONMENT` or `${VARIABLE}`. This is useful to avoid putting secrets into the nix store. |
+| `services.telegraf.extraConfig` | `TOML value` | Extra configuration options for telegraf |
+| `services.telegraf.package` | `package` | The telegraf package to use. |

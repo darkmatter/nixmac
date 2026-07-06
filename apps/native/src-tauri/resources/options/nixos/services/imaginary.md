@@ -5,8 +5,9 @@
 All options under `services.imaginary`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.imaginary.address` | | |
-| `services.imaginary.enable` | | |
-| `services.imaginary.port` | | |
-| `services.imaginary.settings` | | |
+| --- | --- | --- |
+| `services.imaginary.address` | `string` | Bind address. Corresponds to the `-a` flag. Set to `""` to bind to all addresses. |
+| `services.imaginary.enable` | `boolean` | Whether to enable imaginary image processing microservice. |
+| `services.imaginary.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Bind port. Corresponds to the `-p` flag. |
+| `services.imaginary.settings` | `open submodule of attribute set of (boolean or signed integer or non-empty (list of string) or string)` | Command line arguments passed to the imaginary executable, stripped of the prefix `-`. See upstream's [README](https://github.com/h2non/imaginary#command-line-usage) for all options. |
+| `services.imaginary.settings.return-size` | `boolean` | Return the image size in the HTTP headers. |

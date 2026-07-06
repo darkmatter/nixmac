@@ -5,195 +5,229 @@
 All options under `virtualisation`.
 
 | Option | Type | Description |
-| ----------------------------------------------------- | ---- | ----------- |
-| `virtualisation.appvm.enable` | | |
-| `virtualisation.appvm.user` | | |
-| `virtualisation.containerd.args` | | |
-| `virtualisation.containerd.configFile` | | |
-| `virtualisation.containerd.enable` | | |
-| `virtualisation.containerd.settings` | | |
-| `virtualisation.containers.cdi.dynamic.nvidia.enable` | | |
-| `virtualisation.containers.containersConf.cniPlugins` | | |
-| `virtualisation.containers.containersConf.settings` | | |
-| `virtualisation.containers.enable` | | |
-| `virtualisation.containers.ociSeccompBpfHook.enable` | | |
-| `virtualisation.containers.policy` | | |
-| `virtualisation.containers.registries.block` | | |
-| `virtualisation.containers.registries.insecure` | | |
-| `virtualisation.containers.registries.search` | | |
-| `virtualisation.containers.storage.settings` | | |
-| `virtualisation.cri-o.enable` | | |
-| `virtualisation.cri-o.extraPackages` | | |
-| `virtualisation.cri-o.logLevel` | | |
-| `virtualisation.cri-o.networkDir` | | |
-| `virtualisation.cri-o.package` | | |
-| `virtualisation.cri-o.pauseCommand` | | |
-| `virtualisation.cri-o.pauseImage` | | |
-| `virtualisation.cri-o.runtime` | | |
-| `virtualisation.cri-o.settings` | | |
-| `virtualisation.cri-o.storageDriver` | | |
-| `virtualisation.diskSize` | | |
-| `virtualisation.diskSizeAutoSupported` | | |
-| `virtualisation.docker.autoPrune.allVolumes.enable` | | |
-| `virtualisation.docker.autoPrune.allVolumes.flags` | | |
-| `virtualisation.docker.autoPrune.dates` | | |
-| `virtualisation.docker.autoPrune.enable` | | |
-| `virtualisation.docker.autoPrune.flags` | | |
-| `virtualisation.docker.autoPrune.persistent` | | |
-| `virtualisation.docker.autoPrune.randomizedDelaySec` | | |
-| `virtualisation.docker.daemon.settings` | | |
-| `virtualisation.docker.enable` | | |
-| `virtualisation.docker.enableNvidia` | | |
-| `virtualisation.docker.enableOnBoot` | | |
-| `virtualisation.docker.extraOptions` | | |
-| `virtualisation.docker.extraPackages` | | |
-| `virtualisation.docker.listenOptions` | | |
-| `virtualisation.docker.liveRestore` | | |
-| `virtualisation.docker.logDriver` | | |
-| `virtualisation.docker.package` | | |
-| `virtualisation.docker.rootless.daemon.settings` | | |
-| `virtualisation.docker.rootless.enable` | | |
-| `virtualisation.docker.rootless.extraPackages` | | |
-| `virtualisation.docker.rootless.package` | | |
-| `virtualisation.docker.rootless.setSocketVariable` | | |
-| `virtualisation.docker.socketActivation` | | |
-| `virtualisation.docker.storageDriver` | | |
-| `virtualisation.growPartition` | | |
-| `virtualisation.hypervGuest.enable` | | |
-| `virtualisation.hypervGuest.videoMode` | | |
-| `virtualisation.incus.agent.enable` | | |
-| `virtualisation.incus.bucketSupport` | | |
-| `virtualisation.incus.clientPackage` | | |
-| `virtualisation.incus.enable` | | |
-| `virtualisation.incus.lxcPackage` | | |
-| `virtualisation.incus.package` | | |
-| `virtualisation.incus.preseed` | | |
-| `virtualisation.incus.socketActivation` | | |
-| `virtualisation.incus.softDaemonRestart` | | |
-| `virtualisation.incus.startTimeout` | | |
-| `virtualisation.incus.ui.enable` | | |
-| `virtualisation.incus.ui.package` | | |
-| `virtualisation.incus.useACMEHost` | | |
-| `virtualisation.kvmgt.device` | | |
-| `virtualisation.kvmgt.enable` | | |
-| `virtualisation.kvmgt.vgpus` | | |
-| `virtualisation.libvirtd.allowedBridges` | | |
-| `virtualisation.libvirtd.dbus.enable` | | |
-| `virtualisation.libvirtd.dbus.package` | | |
-| `virtualisation.libvirtd.enable` | | |
-| `virtualisation.libvirtd.enableKVM` | | |
-| `virtualisation.libvirtd.extraConfig` | | |
-| `virtualisation.libvirtd.extraOptions` | | |
-| `virtualisation.libvirtd.firewallBackend` | | |
-| `virtualisation.libvirtd.hooks` | | |
-| `virtualisation.libvirtd.nss` | | |
-| `virtualisation.libvirtd.onBoot` | | |
-| `virtualisation.libvirtd.onShutdown` | | |
-| `virtualisation.libvirtd.package` | | |
-| `virtualisation.libvirtd.parallelShutdown` | | |
-| `virtualisation.libvirtd.qemu` | | |
-| `virtualisation.libvirtd.qemuOvmf` | | |
-| `virtualisation.libvirtd.qemuOvmfPackage` | | |
-| `virtualisation.libvirtd.qemuPackage` | | |
-| `virtualisation.libvirtd.qemuRunAsRoot` | | |
-| `virtualisation.libvirtd.qemuSwtpm` | | |
-| `virtualisation.libvirtd.qemuVerbatimConfig` | | |
-| `virtualisation.libvirtd.shutdownTimeout` | | |
-| `virtualisation.libvirtd.sshProxy` | | |
-| `virtualisation.libvirtd.startDelay` | | |
-| `virtualisation.lxc.bridgeConfig` | | |
-| `virtualisation.lxc.defaultConfig` | | |
-| `virtualisation.lxc.enable` | | |
-| `virtualisation.lxc.lxcfs.enable` | | |
-| `virtualisation.lxc.package` | | |
-| `virtualisation.lxc.systemConfig` | | |
-| `virtualisation.lxc.unprivilegedContainers` | | |
-| `virtualisation.lxc.usernetConfig` | | |
-| `virtualisation.lxd` | | |
-| `virtualisation.multipass` | | |
-| `virtualisation.oci-containers.backend` | | |
-| `virtualisation.oci-containers.containers` | | |
-| `virtualisation.podman.autoPrune.dates` | | |
-| `virtualisation.podman.autoPrune.enable` | | |
-| `virtualisation.podman.autoPrune.flags` | | |
-| `virtualisation.podman.defaultNetwork.dnsname` | | |
-| `virtualisation.podman.defaultNetwork.extraPlugins` | | |
-| `virtualisation.podman.defaultNetwork.settings` | | |
-| `virtualisation.podman.dockerCompat` | | |
-| `virtualisation.podman.dockerSocket.enable` | | |
-| `virtualisation.podman.enable` | | |
-| `virtualisation.podman.enableNvidia` | | |
-| `virtualisation.podman.extraPackages` | | |
-| `virtualisation.podman.extraRuntimes` | | |
-| `virtualisation.podman.networkSocket.enable` | | |
-| `virtualisation.podman.networkSocket.listenAddress` | | |
-| `virtualisation.podman.networkSocket.openFirewall` | | |
-| `virtualisation.podman.networkSocket.port` | | |
-| `virtualisation.podman.networkSocket.server` | | |
-| `virtualisation.podman.networkSocket.tls.cacert` | | |
-| `virtualisation.podman.networkSocket.tls.cert` | | |
-| `virtualisation.podman.networkSocket.tls.key` | | |
-| `virtualisation.podman.package` | | |
-| `virtualisation.rkt` | | |
-| `virtualisation.rosetta.enable` | | |
-| `virtualisation.rosetta.mountPoint` | | |
-| `virtualisation.rosetta.mountTag` | | |
-| `virtualisation.spiceUSBRedirection.enable` | | |
-| `virtualisation.virtualbox.guest.clipboard` | | |
-| `virtualisation.virtualbox.guest.dragAndDrop` | | |
-| `virtualisation.virtualbox.guest.draganddrop` | | |
-| `virtualisation.virtualbox.guest.enable` | | |
-| `virtualisation.virtualbox.guest.seamless` | | |
-| `virtualisation.virtualbox.guest.use3rdPartyModules` | | |
-| `virtualisation.virtualbox.guest.vboxsf` | | |
-| `virtualisation.virtualbox.guest.verbose` | | |
-| `virtualisation.virtualbox.host.addNetworkInterface` | | |
-| `virtualisation.virtualbox.host.enable` | | |
-| `virtualisation.virtualbox.host.enableExtensionPack` | | |
-| `virtualisation.virtualbox.host.enableHardening` | | |
-| `virtualisation.virtualbox.host.enableKvm` | | |
-| `virtualisation.virtualbox.host.enableWebService` | | |
-| `virtualisation.virtualbox.host.headless` | | |
-| `virtualisation.virtualbox.host.package` | | |
-| `virtualisation.vmVariant` | | |
-| `virtualisation.vmVariantWithBootLoader` | | |
-| `virtualisation.vmware.guest.enable` | | |
-| `virtualisation.vmware.guest.headless` | | |
-| `virtualisation.vmware.guest.package` | | |
-| `virtualisation.vmware.host.enable` | | |
-| `virtualisation.vmware.host.extraConfig` | | |
-| `virtualisation.vmware.host.extraPackages` | | |
-| `virtualisation.vmware.host.package` | | |
-| `virtualisation.vswitch.enable` | | |
-| `virtualisation.vswitch.ipsec` | | |
-| `virtualisation.vswitch.package` | | |
-| `virtualisation.vswitch.resetOnStart` | | |
-| `virtualisation.waydroid.enable` | | |
-| `virtualisation.waydroid.package` | | |
-| `virtualisation.xen.boot.bios.path` | | |
-| `virtualisation.xen.boot.builderVerbosity` | | |
-| `virtualisation.xen.boot.efi.path` | | |
-| `virtualisation.xen.boot.params` | | |
-| `virtualisation.xen.bootParams` | | |
-| `virtualisation.xen.bridge.address` | | |
-| `virtualisation.xen.bridge.forwardDns` | | |
-| `virtualisation.xen.bridge.name` | | |
-| `virtualisation.xen.bridge.prefixLength` | | |
-| `virtualisation.xen.debug` | | |
-| `virtualisation.xen.dom0Resources.maxMemory` | | |
-| `virtualisation.xen.dom0Resources.maxVCPUs` | | |
-| `virtualisation.xen.dom0Resources.memory` | | |
-| `virtualisation.xen.domains.extraConfig` | | |
-| `virtualisation.xen.efi.bootBuilderVerbosity` | | |
-| `virtualisation.xen.efi.path` | | |
-| `virtualisation.xen.enable` | | |
-| `virtualisation.xen.package` | | |
-| `virtualisation.xen.package-qemu` | | |
-| `virtualisation.xen.qemu-package` | | |
-| `virtualisation.xen.qemu.package` | | |
-| `virtualisation.xen.qemu.pidFile` | | |
-| `virtualisation.xen.store.path` | | |
-| `virtualisation.xen.store.settings` | | |
-| `virtualisation.xen.store.type` | | |
-| `virtualisation.xen.stored` | | |
-| `virtualisation.xen.trace` | | |
+| --- | --- | --- |
+| `virtualisation.appvm.enable` | `boolean` | This enables AppVMs and related virtualisation settings. |
+| `virtualisation.appvm.user` | `string` | AppVM user login. Currently only AppVMs are supported for a single user only. |
+| `virtualisation.containerd.args` | `attribute set of string` | extra args to append to the containerd cmdline |
+| `virtualisation.containerd.configFile` | `null or absolute path` | Path to containerd config file. Setting this option will override any configuration applied by the settings option. |
+| `virtualisation.containerd.enable` | `boolean` | Whether to enable containerd container runtime. |
+| `virtualisation.containerd.settings` | `TOML value` | Verbatim lines to add to containerd.toml |
+| `virtualisation.containers.containersConf.cniPlugins` | `list of package` | CNI plugins to install on the system. |
+| `virtualisation.containers.containersConf.settings` | `TOML value` | containers.conf configuration |
+| `virtualisation.containers.enable` | `boolean` | This option enables the common /etc/containers configuration module. |
+| `virtualisation.containers.ociSeccompBpfHook.enable` | `boolean` | Enable the OCI seccomp BPF hook |
+| `virtualisation.containers.policy` | `attribute set` | Signature verification policy file. If this option is empty the default policy file from `skopeo` will be used. |
+| `virtualisation.containers.registries.block` | `list of string` | List of blocked repositories. |
+| `virtualisation.containers.registries.insecure` | `list of string` | List of insecure repositories. |
+| `virtualisation.containers.registries.search` | `list of string` | List of repositories to search. |
+| `virtualisation.containers.storage.settings` | `TOML value` | storage.conf configuration |
+| `virtualisation.cri-o.enable` | `boolean` | Whether to enable Container Runtime Interface for OCI (CRI-O). |
+| `virtualisation.cri-o.extraPackages` | `list of package` | Extra packages to be installed in the CRI-O wrapper. |
+| `virtualisation.cri-o.logLevel` | `one of "trace", "debug", "info", "warn", "error", "fatal"` | Log level to be used |
+| `virtualisation.cri-o.pauseCommand` | `null or string` | Override the default pause command |
+| `virtualisation.cri-o.pauseImage` | `null or string` | Override the default pause image for pod sandboxes |
+| `virtualisation.cri-o.runtime` | `null or string` | Override the default runtime |
+| `virtualisation.cri-o.settings` | `TOML value` | Configuration for cri-o, see <https://github.com/cri-o/cri-o/blob/master/docs/crio.conf.5.md>. |
+| `virtualisation.cri-o.storageDriver` | `one of "aufs", "btrfs", "devmapper", "overlay", "vfs", "zfs"` | Storage driver to be used |
+| `virtualisation.diskSize` | `value "auto" (singular enum) or (positive integer, meaning >0)` | The disk size in MiB (1024×1024 bytes) of the virtual machine. |
+| `virtualisation.docker.autoPrune.allVolumes.enable` | `boolean` | Whether to periodically prune all Docker volumes when auto pruning other docker resources by running {command}`docker volume prune --force --all` To prune only anonymous volumes, instead pass `--volumes` to `autoPrune.flags` |
+| `virtualisation.docker.autoPrune.allVolumes.flags` | `list of string` | Any additional flags passed to {command}`docker volume prune --force --all`. |
+| `virtualisation.docker.autoPrune.dates` | `string` | Specification (in the format described by {manpage}`systemd.time(7)`) of the time at which the prune will occur. |
+| `virtualisation.docker.autoPrune.enable` | `boolean` | Whether to periodically prune Docker resources. If enabled, a systemd timer will run `docker system prune -f` as specified by the `dates` option. NOTE: by default this does not prune volumes. Anonymous volumes can be pruned by passing "--volumes" to [autoPrune.flags](#opt-virtualisation.docker.autoPrune.flags). To prune all volumes (not just anonymous ones) [`autoPrune.allVolumes.enable`](#opt-virtualisation.docker.autoPrune.allVolumes.enable) must be used. See [upstream documentation](https://docs.docker.com/reference/cli/docker/system/prune/#description) for further information. |
+| `virtualisation.docker.autoPrune.flags` | `list of string` | Any additional flags passed to {command}`docker system prune`. |
+| `virtualisation.docker.autoPrune.persistent` | `boolean` | Takes a boolean argument. If true, the time when the service unit was last triggered is stored on disk. When the timer is activated, the service unit is triggered immediately if it would have been triggered at least once during the time when the timer was inactive. Such triggering is nonetheless subject to the delay imposed by RandomizedDelaySec=. This is useful to catch up on missed runs of the service when the system was powered down. |
+| `virtualisation.docker.autoPrune.randomizedDelaySec` | `(optionally newline-terminated) single-line string` | Add a randomized delay before each auto prune. The delay will be chosen between zero and this value. This value must be a time span in the format specified by {manpage}`systemd.time(7)` |
+| `virtualisation.docker.daemon.settings` | `open submodule of (JSON value)` | Configuration for docker daemon. The attributes are serialized to JSON used as daemon.conf. See <https://docs.docker.com/engine/reference/commandline/dockerd/#daemon-configuration-file> |
+| `virtualisation.docker.daemon.settings.live-restore` | `boolean` | Allow dockerd to be restarted without affecting running container. This option is incompatible with docker swarm. |
+| `virtualisation.docker.enable` | `boolean` | This option enables docker, a daemon that manages linux containers. Users in the "docker" group can interact with the daemon (e.g. to start or stop containers) using the {command}`docker` command line tool. |
+| `virtualisation.docker.enableNvidia` | `boolean` | **Deprecated**, please use {option}`hardware.nvidia-container-toolkit.enable` instead. Enable Nvidia GPU support inside docker containers. |
+| `virtualisation.docker.enableOnBoot` | `boolean` | When enabled dockerd is started on boot. This is required for containers which are created with the `--restart=always` flag to work. If this option is disabled, docker might be started on demand by socket activation. |
+| `virtualisation.docker.extraOptions` | `strings concatenated with " "` | The extra command-line options to pass to {command}`docker` daemon. |
+| `virtualisation.docker.extraPackages` | `list of package` | Extra packages to add to PATH for the docker daemon process. |
+| `virtualisation.docker.listenOptions` | `list of string` | A list of unix and tcp docker should listen to. The format follows ListenStream as described in {manpage}`systemd.socket(5)`. |
+| `virtualisation.docker.liveRestore` | `submodule` | Alias of {option}`virtualisation.docker.daemon.settings.live-restore`. |
+| `virtualisation.docker.logDriver` | `one of "none", "json-file", "syslog", "journald", "gelf", "fluentd", "awslogs", "splunk", "etwlogs", "gcplogs", "local"` | This option determines which Docker log driver to use. |
+| `virtualisation.docker.package` | `package` | The docker package to use. |
+| `virtualisation.docker.rootless.daemon.settings` | `JSON value` | Configuration for docker daemon. The attributes are serialized to JSON used as daemon.conf. See <https://docs.docker.com/engine/reference/commandline/dockerd/#daemon-configuration-file> |
+| `virtualisation.docker.rootless.enable` | `boolean` | This option enables docker in a rootless mode, a daemon that manages linux containers. To interact with the daemon, one needs to set {command}`DOCKER_HOST=unix://$XDG_RUNTIME_DIR/docker.sock`. |
+| `virtualisation.docker.rootless.extraPackages` | `list of package` | Extra packages to add to PATH for the docker daemon process. |
+| `virtualisation.docker.rootless.package` | `package` | The docker package to use. |
+| `virtualisation.docker.rootless.setSocketVariable` | `boolean` | Point {command}`DOCKER_HOST` to rootless Docker instance for normal users by default. |
+| `virtualisation.docker.storageDriver` | `null or one of "aufs", "btrfs", "devicemapper", "overlay", "overlay2", "zfs"` | This option determines which Docker [storage driver](https://docs.docker.com/storage/storagedriver/select-storage-driver/) to use. By default it lets docker automatically choose the preferred storage driver. However, it is recommended to specify a storage driver explicitly, as docker's default varies over versions. ::: {.warning} Changing the storage driver will cause any existing containers and images to become inaccessible. ::: |
+| `virtualisation.hypervGuest.enable` | `boolean` | Whether to enable Hyper-V Guest Support. |
+| `virtualisation.incus.agent.enable` | `boolean` | Whether to enable Incus agent. |
+| `virtualisation.incus.clientPackage` | `package` | The incus client package to use. This package is added to PATH. |
+| `virtualisation.incus.enable` | `boolean` | Whether to enable incusd, a daemon that manages containers and virtual machines. Users in the "incus-admin" group can interact with the daemon (e.g. to start or stop containers) using the {command}`incus` command line tool, among others. Users in the "incus" group can also interact with the daemon, but with lower permissions (i.e. administrative operations are forbidden). . |
+| `virtualisation.incus.lxcPackage` | `package` | The lxc package to use. |
+| `virtualisation.incus.package` | `package` | The incus-lts package to use. |
+| `virtualisation.incus.preseed` | `null or (open submodule of (YAML 1.1 value))` | Configuration for Incus preseed, see <https://linuxcontainers.org/incus/docs/main/howto/initialize/#non-interactive-configuration> for supported values. Changes to this will be re-applied to Incus which will overwrite existing entities or create missing ones, but entities will *not* be removed by preseed. |
+| `virtualisation.incus.socketActivation` | `boolean` | Whether to enable socket-activation for starting incus.service. Enabling this option will stop incus.service from starting automatically on boot. . |
+| `virtualisation.incus.softDaemonRestart` | `boolean` | Allow for incus.service to be stopped without affecting running instances. |
+| `virtualisation.incus.startTimeout` | `unsigned integer, meaning >=0` | Time to wait (in seconds) for incusd to become ready to process requests. If incusd does not reply within the configured time, `incus.service` will be considered failed and systemd will attempt to restart it. |
+| `virtualisation.incus.ui.enable` | `boolean` | Whether to enable Incus Web UI. |
+| `virtualisation.incus.ui.package` | `package` | The incus-ui-canonical package to use. |
+| `virtualisation.incus.useACMEHost` | `null or string` | Host of an existing Let's Encrypt certificate to use for TLS. *Note that this option does not create any certificates and it doesn't add subdomains to existing ones – you will need to create them manually using {option}`security.acme.certs`.* |
+| `virtualisation.kvmgt.device` | `string` | PCI ID of graphics card. You can figure it with {command}`ls /sys/class/mdev_bus`. |
+| `virtualisation.kvmgt.enable` | `boolean` | Whether to enable KVMGT (iGVT-g) VGPU support. When enabled on a host, allows Qemu/KVM guests to share host's Intel integrated graphics card. Currently only one graphical device can be shared. To allow host users to access the device without root add them to the kvm group: `users.extraUsers.<yourusername>.extraGroups = [ "kvm" ];` . |
+| `virtualisation.kvmgt.vgpus` | `attribute set of (submodule)` | Virtual GPUs of the host to be used in Qemu. You can find devices via {command}`ls /sys/bus/pci/devices/*/mdev_supported_types` and find info about device via {command}`cat /sys/bus/pci/devices/*/mdev_supported_types/i915-GVTg_V5_4/description` |
+| `virtualisation.kvmgt.vgpus.<name>.uuid` | `list of string` | UUID(s) of VGPU device. You can generate one with `libossp_uuid`. |
+| `virtualisation.libvirtd.allowedBridges` | `list of string` | List of bridge devices that can be used by qemu:///session |
+| `virtualisation.libvirtd.dbus.enable` | `boolean` | Whether to enable exposing libvirtd APIs over D-Bus. |
+| `virtualisation.libvirtd.dbus.package` | `package` | The libvirt-dbus package to use. |
+| `virtualisation.libvirtd.enable` | `boolean` | This option enables libvirtd, a daemon that manages virtual machines. Users in the "libvirtd" group can interact with the daemon (e.g. to start or stop VMs) using the {command}`virsh` command line tool, among others. |
+| `virtualisation.libvirtd.extraConfig` | `strings concatenated with "\n"` | Extra contents appended to the libvirtd configuration file, libvirtd.conf. |
+| `virtualisation.libvirtd.extraOptions` | `list of string` | Extra command line arguments passed to libvirtd on startup. |
+| `virtualisation.libvirtd.firewallBackend` | `one of "iptables", "nftables"` | The backend used to setup virtual network firewall rules. |
+| `virtualisation.libvirtd.hooks` | `submodule` | Hooks related options. |
+| `virtualisation.libvirtd.hooks.daemon` | `attribute set of absolute path` | Hooks that will be placed under /var/lib/libvirt/hooks/daemon.d/ and called for daemon start/shutdown/SIGHUP events. Please see <https://libvirt.org/hooks.html> for documentation. |
+| `virtualisation.libvirtd.hooks.libxl` | `attribute set of absolute path` | Hooks that will be placed under /var/lib/libvirt/hooks/libxl.d/ and called for libxl-handled xen domains begin/end events. Please see <https://libvirt.org/hooks.html> for documentation. |
+| `virtualisation.libvirtd.hooks.lxc` | `attribute set of absolute path` | Hooks that will be placed under /var/lib/libvirt/hooks/lxc.d/ and called for lxc domains begin/end events. Please see <https://libvirt.org/hooks.html> for documentation. |
+| `virtualisation.libvirtd.hooks.network` | `attribute set of absolute path` | Hooks that will be placed under /var/lib/libvirt/hooks/network.d/ and called for networks begin/end events. Please see <https://libvirt.org/hooks.html> for documentation. |
+| `virtualisation.libvirtd.hooks.qemu` | `attribute set of absolute path` | Hooks that will be placed under /var/lib/libvirt/hooks/qemu.d/ and called for qemu domains begin/end/migrate events. Please see <https://libvirt.org/hooks.html> for documentation. |
+| `virtualisation.libvirtd.nss` | `submodule` | libvirt NSS module options. |
+| `virtualisation.libvirtd.nss.enable` | `boolean` | This option enables the older libvirt NSS module. This method uses DHCP server records, therefore is dependent on the hostname provided by the guest. Please see <https://libvirt.org/nss.html> for more information. |
+| `virtualisation.libvirtd.nss.enableGuest` | `boolean` | This option enables the newer libvirt_guest NSS module. This module uses the libvirt guest name instead of the hostname of the guest. Please see <https://libvirt.org/nss.html> for more information. |
+| `virtualisation.libvirtd.onBoot` | `one of "start", "ignore"` | Specifies the action to be done to / on the guests when the host boots. The "start" option starts all guests that were running prior to shutdown regardless of their autostart settings. The "ignore" option will not start the formerly running guest on boot. However, any guest marked as autostart will still be automatically started by libvirtd. |
+| `virtualisation.libvirtd.onShutdown` | `one of "shutdown", "suspend"` | When shutting down / restarting the host what method should be used to gracefully halt the guests. Setting to "shutdown" will cause an ACPI shutdown of each guest. "suspend" will attempt to save the state of the guests ready to restore on boot. |
+| `virtualisation.libvirtd.package` | `package` | The libvirt package to use. |
+| `virtualisation.libvirtd.parallelShutdown` | `unsigned integer, meaning >=0` | Number of guests that will be shutdown concurrently, taking effect when onShutdown is set to "shutdown". If set to 0, guests will be shutdown one after another. Number of guests on shutdown at any time will not exceed number set in this variable. |
+| `virtualisation.libvirtd.qemu` | `submodule` | QEMU related options. |
+| `virtualisation.libvirtd.qemu.package` | `package` | The qemu package to use. `pkgs.qemu` can emulate alien architectures (e.g. aarch64 on x86) `pkgs.qemu_kvm` saves disk space allowing to emulate only host architectures. |
+| `virtualisation.libvirtd.qemu.runAsRoot` | `boolean` | If true, libvirtd runs qemu as root. If false, libvirtd runs qemu as unprivileged user qemu-libvirtd. Changing this option to false may cause file permission issues for existing guests. To fix these, manually change ownership of affected files in /var/lib/libvirt/qemu to qemu-libvirtd. |
+| `virtualisation.libvirtd.qemu.swtpm` | `submodule` | QEMU's swtpm options. |
+| `virtualisation.libvirtd.qemu.swtpm.enable` | `boolean` | Allows libvirtd to use swtpm to create an emulated TPM. |
+| `virtualisation.libvirtd.qemu.swtpm.package` | `package` | The swtpm package to use. |
+| `virtualisation.libvirtd.qemu.verbatimConfig` | `strings concatenated with "\n"` | Contents written to the qemu configuration file, qemu.conf. Make sure to include a proper namespace configuration when supplying custom configuration. |
+| `virtualisation.libvirtd.qemu.vhostUserPackages` | `list of package` | Packages containing out-of-tree vhost-user drivers. |
+| `virtualisation.libvirtd.shutdownTimeout` | `unsigned integer, meaning >=0` | Number of seconds we're willing to wait for a guest to shut down. If parallel shutdown is enabled, this timeout applies as a timeout for shutting down all guests on a single URI defined in the variable URIS. If this is 0, then there is no time out (use with caution, as guests might not respond to a shutdown request). |
+| `virtualisation.libvirtd.sshProxy` | `boolean` | Whether to configure OpenSSH to use the [SSH Proxy](https://libvirt.org/ssh-proxy.html). |
+| `virtualisation.libvirtd.startDelay` | `unsigned integer, meaning >=0` | Number of seconds to wait between each guest start. If set to 0, all guests will start up in parallel. |
+| `virtualisation.lxc.bridgeConfig` | `strings concatenated with "\n"` | This is the config file for override lxc-net bridge default settings. |
+| `virtualisation.lxc.defaultConfig` | `strings concatenated with "\n"` | Default config (default.conf) for new containers, i.e. for network config. See {manpage}`lxc.container.conf(5)`. |
+| `virtualisation.lxc.enable` | `boolean` | This enables Linux Containers (LXC), which provides tools for creating and managing system or application containers on Linux. |
+| `virtualisation.lxc.lxcfs.enable` | `boolean` | This enables LXCFS, a FUSE filesystem for LXC. To use lxcfs in include the following configuration in your container configuration: `virtualisation.lxc.defaultConfig = "lxc.include = ${pkgs.lxcfs}/share/lxc/config/common.conf.d/00-lxcfs.conf";` |
+| `virtualisation.lxc.package` | `package` | The lxc package to use. |
+| `virtualisation.lxc.systemConfig` | `strings concatenated with "\n"` | This is the system-wide LXC config. See {manpage}`lxc.system.conf(5)`. |
+| `virtualisation.lxc.unprivilegedContainers` | `boolean` | Whether to enable support for unprivileged users to launch containers. |
+| `virtualisation.lxc.usernetConfig` | `strings concatenated with "\n"` | This is the config file for managing unprivileged user network administration access in LXC. See {manpage}`lxc-usernet(5)`. |
+| `virtualisation.oci-containers.backend` | `one of "podman", "docker"` | The underlying Docker implementation to use. |
+| `virtualisation.oci-containers.containers` | `attribute set of (submodule)` | OCI (Docker) containers to run as systemd services. |
+| `virtualisation.oci-containers.containers.<name>.autoRemoveOnStop` | `boolean` | Automatically remove the container when it is stopped or killed |
+| `virtualisation.oci-containers.containers.<name>.autoStart` | `boolean` | When enabled, the container is automatically started on boot. If this option is set to false, the container has to be started on-demand via its service. |
+| `virtualisation.oci-containers.containers.<name>.capabilities` | `lazy attribute set of (null or boolean)` | Capabilities to configure for the container. When set to true, capability is added to the container. When set to false, capability is dropped from the container. When null, default runtime settings apply. |
+| `virtualisation.oci-containers.containers.<name>.cmd` | `list of string` | Commandline arguments to pass to the image's entrypoint. |
+| `virtualisation.oci-containers.containers.<name>.dependsOn` | `list of string` | Define which other containers this one depends on. They will be added to both After and Requires for the unit. Use the same name as the attribute under `virtualisation.oci-containers.containers`. |
+| `virtualisation.oci-containers.containers.<name>.devices` | `list of string` | List of devices to attach to this container. |
+| `virtualisation.oci-containers.containers.<name>.entrypoint` | `null or string` | Override the default entrypoint of the image. |
+| `virtualisation.oci-containers.containers.<name>.environment` | `attribute set of string` | Environment variables to set for this container. |
+| `virtualisation.oci-containers.containers.<name>.environmentFiles` | `list of absolute path` | Environment files for this container. |
+| `virtualisation.oci-containers.containers.<name>.extraOptions` | `list of string` | Extra options for {command}`podman run`. |
+| `virtualisation.oci-containers.containers.<name>.hostname` | `null or string` | The hostname of the container. |
+| `virtualisation.oci-containers.containers.<name>.image` | `string` | OCI image to run. |
+| `virtualisation.oci-containers.containers.<name>.imageFile` | `null or path in the Nix store` | Path to an image file to load before running the image. This can be used to bypass pulling the image from the registry. The `image` attribute must match the name and tag of the image contained in this file, as they will be used to run the container with that image. If they do not match, the image will be pulled from the registry as usual. |
+| `virtualisation.oci-containers.containers.<name>.imageStream` | `null or package` | Path to a script that streams the desired image on standard output. This option is mainly intended for use with `pkgs.dockerTools.streamLayeredImage` so that the intermediate image archive does not need to be stored in the Nix store. For larger images this optimization can significantly reduce Nix store churn compared to using the `imageFile` option, because you don't have to store a new copy of the image archive in the Nix store every time you change the image. Instead, if you stream the image then you only need to build and store the layers that differ from the previous image. |
+| `virtualisation.oci-containers.containers.<name>.labels` | `attribute set of string` | Labels to attach to the container at runtime. |
+| `virtualisation.oci-containers.containers.<name>.log-driver` | `string` | Logging driver for the container. The default of `"journald"` means that the container's logs will be handled as part of the systemd unit. For more details and a full list of logging drivers, refer to respective backends documentation. For Docker: [Docker engine documentation](https://docs.docker.com/engine/logging/configure/) For Podman: Refer to the {manpage}`docker-run(1)` man page. |
+| `virtualisation.oci-containers.containers.<name>.login.passwordFile` | `null or string` | Path to file containing password. |
+| `virtualisation.oci-containers.containers.<name>.login.registry` | `null or string` | Registry where to login to. |
+| `virtualisation.oci-containers.containers.<name>.login.username` | `null or string` | Username for login. |
+| `virtualisation.oci-containers.containers.<name>.networks` | `list of string` | Networks to attach the container to |
+| `virtualisation.oci-containers.containers.<name>.podman` | `null or (submodule)` | Podman-specific settings in OCI containers. These must be null when using the `docker` backend. |
+| `virtualisation.oci-containers.containers.<name>.podman.sdnotify` | `one of "conmon", "healthy", "container"` | Determines how `podman` should notify systemd that the unit is ready. There are [three options](https://docs.podman.io/en/latest/markdown/podman-run.1.html#sdnotify-container-conmon-healthy-ignore): * `conmon`: marks the unit as ready when the container has started. * `healthy`: marks the unit as ready when the [container's healthcheck](https://docs.podman.io/en/stable/markdown/podman-healthcheck-run.1.html) passes. * `container`: `NOTIFY_SOCKET` is passed into the container and the process inside the container needs to indicate on its own that it's ready. |
+| `virtualisation.oci-containers.containers.<name>.podman.user` | `string` | The user under which the container should run. |
+| `virtualisation.oci-containers.containers.<name>.ports` | `list of string` | Network ports to publish from the container to the outer host. Valid formats: - `<ip>:<hostPort>:<containerPort>` - `<ip>::<containerPort>` - `<hostPort>:<containerPort>` - `<containerPort>` Both `hostPort` and `containerPort` can be specified as a range of ports. When specifying ranges for both, the number of container ports in the range must match the number of host ports in the range. Example: `1234-1236:1234-1236/tcp` When specifying a range for `hostPort` only, the `containerPort` must *not* be a range. In this case, the container port is published somewhere within the specified `hostPort` range. Example: `1234-1236:1234/tcp` Publishing a port bypasses the NixOS firewall. If the port is not supposed to be shared on the network, make sure to publish the port to localhost. Example: `127.0.0.1:1234:1234` Refer to the [Docker engine documentation](https://docs.docker.com/engine/network/#published-ports) for full details. |
+| `virtualisation.oci-containers.containers.<name>.preRunExtraOptions` | `list of string` | Extra options for {command}`podman` that go before the `run` argument. |
+| `virtualisation.oci-containers.containers.<name>.privileged` | `boolean` | Give extended privileges to the container |
+| `virtualisation.oci-containers.containers.<name>.pull` | `one of "always", "missing", "never", "newer"` | Image pull policy for the container. Must be one of: always, missing, never, newer |
+| `virtualisation.oci-containers.containers.<name>.serviceName` | `string` | Systemd service name that manages the container |
+| `virtualisation.oci-containers.containers.<name>.user` | `null or string` | Override the username or UID (and optionally groupname or GID) used in the container. |
+| `virtualisation.oci-containers.containers.<name>.volumes` | `list of string` | List of volumes to attach to this container. Note that this is a list of `"src:dst"` strings to allow for `src` to refer to `/nix/store` paths, which would be difficult with an attribute set. There are also a variety of mount options available as a third field; please refer to the [docker engine documentation](https://docs.docker.com/engine/storage/volumes/) for details. |
+| `virtualisation.oci-containers.containers.<name>.workdir` | `null or string` | Override the default working directory for the container. |
+| `virtualisation.podman.autoPrune.dates` | `string` | Specification (in the format described by {manpage}`systemd.time(7)`) of the time at which the prune will occur. |
+| `virtualisation.podman.autoPrune.enable` | `boolean` | Whether to periodically prune Podman resources. If enabled, a systemd timer will run `podman system prune -f` as specified by the `dates` option. |
+| `virtualisation.podman.autoPrune.flags` | `list of string` | Any additional flags passed to {command}`podman system prune`. |
+| `virtualisation.podman.defaultNetwork.settings` | `JSON value` | Settings for podman's default network. |
+| `virtualisation.podman.dockerCompat` | `boolean` | Create an alias mapping {command}`docker` to {command}`podman`. |
+| `virtualisation.podman.dockerSocket.enable` | `boolean` | Make the Podman socket available in place of the Docker socket, so Docker tools can find the Podman socket. Podman implements the Docker API. Users must be in the `podman` group in order to connect. As with Docker, members of this group can gain root access. |
+| `virtualisation.podman.enable` | `boolean` | This option enables Podman, a daemonless container engine for developing, managing, and running OCI Containers on your Linux System. It is a drop-in replacement for the {command}`docker` command. |
+| `virtualisation.podman.enableNvidia` | `boolean` | **Deprecated**, please use {option}`hardware.nvidia-container-toolkit.enable` instead. Enable use of Nvidia GPUs from within podman containers. |
+| `virtualisation.podman.extraPackages` | `list of package` | Extra dependencies for podman to be placed on $PATH in the wrapper. |
+| `virtualisation.podman.extraRuntimes` | `list of package` | Extra runtime packages to be installed in the Podman wrapper. Those are then placed in libexec/podman, i.e. are seen as podman internal commands. |
+| `virtualisation.podman.networkSocket.enable` | `boolean` | Make the Podman and Docker compatibility API available over the network with TLS client certificate authentication. This allows Docker clients to connect with the equivalents of the Docker CLI `-H` and `--tls*` family of options. For certificate setup, see <https://docs.docker.com/engine/security/protect-access/> This option is independent of [](#opt-virtualisation.podman.dockerSocket.enable). |
+| `virtualisation.podman.networkSocket.listenAddress` | `string` | Interface address for receiving TLS connections. |
+| `virtualisation.podman.networkSocket.openFirewall` | `boolean` | Whether to open the port in the firewall. |
+| `virtualisation.podman.networkSocket.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | TCP port number for receiving TLS connections. |
+| `virtualisation.podman.networkSocket.server` | `value "ghostunnel" (singular enum)` | Choice of TLS proxy server. |
+| `virtualisation.podman.networkSocket.tls.cacert` | `absolute path` | Path to CA certificate to use for client authentication. |
+| `virtualisation.podman.networkSocket.tls.cert` | `absolute path` | Path to certificate describing the server. |
+| `virtualisation.podman.networkSocket.tls.key` | `absolute path` | Path to the private key corresponding to the server certificate. Use a string for this setting. Otherwise it will be copied to the Nix store first, where it is readable by any system process. |
+| `virtualisation.podman.package` | `package` | The podman package to use. This package will automatically include extra packages and runtimes. |
+| `virtualisation.rosetta.enable` | `boolean` | Whether to enable [Rosetta](https://developer.apple.com/documentation/apple-silicon/about-the-rosetta-translation-environment) support. This feature requires the system to be a virtualised guest on an Apple silicon host. The default settings are suitable for the [UTM](https://docs.getutm.app/) virtualisation [package](https://search.nixos.org/packages?channel=unstable&show=utm&from=0&size=1&sort=relevance&type=packages&query=utm). Make sure to select 'Apple Virtualization' as the virtualisation engine and then tick the 'Enable Rosetta' option. |
+| `virtualisation.rosetta.mountTag` | `string` | The VirtioFS mount tag for the Rosetta runtime, exposed by the host's virtualisation software. If supported, your virtualisation software should provide instructions on how register the Rosetta runtime inside Linux guests. These instructions should mention the name of the mount tag used for the VirtioFS directory share that contains the Rosetta runtime. |
+| `virtualisation.spiceUSBRedirection.enable` | `boolean` | Install the SPICE USB redirection helper with setuid privileges. This allows unprivileged users to pass USB devices connected to this machine to libvirt VMs, both local and remote. Note that this allows users arbitrary access to USB devices. |
+| `virtualisation.virtualbox.guest.clipboard` | `boolean` | Whether to enable clipboard support. |
+| `virtualisation.virtualbox.guest.dragAndDrop` | `boolean` | Whether to enable drag and drop support. |
+| `virtualisation.virtualbox.guest.enable` | `boolean` | Whether to enable the VirtualBox service and other guest additions. |
+| `virtualisation.virtualbox.guest.seamless` | `boolean` | Whether to enable seamless mode. When activated windows from the guest appear next to the windows of the host. |
+| `virtualisation.virtualbox.guest.use3rdPartyModules` | `boolean` | Whether to use the kernel modules provided by VirtualBox instead of the ones from the upstream kernel. |
+| `virtualisation.virtualbox.guest.vboxsf` | `boolean` | Whether to load vboxsf |
+| `virtualisation.virtualbox.guest.verbose` | `boolean` | Whether to verbose logging for guest services. |
+| `virtualisation.virtualbox.host.addNetworkInterface` | `boolean` | Automatically set up a vboxnet0 host-only network interface. |
+| `virtualisation.virtualbox.host.enable` | `boolean` | Whether to enable VirtualBox. ::: {.note} In order to pass USB devices from the host to the guests, the user needs to be in the `vboxusers` group. ::: |
+| `virtualisation.virtualbox.host.enableExtensionPack` | `boolean` | Whether to install the Oracle Extension Pack for VirtualBox. ::: {.important} You must set `nixpkgs.config.allowUnfree = true` in order to use this. This requires you accept the VirtualBox PUEL. ::: |
+| `virtualisation.virtualbox.host.enableHardening` | `boolean` | Enable hardened VirtualBox, which ensures that only the binaries in the system path get access to the devices exposed by the kernel modules instead of all users in the vboxusers group. ::: {.important} Disabling this can put your system's security at risk, as local users in the vboxusers group can tamper with the VirtualBox device files. ::: |
+| `virtualisation.virtualbox.host.enableKvm` | `boolean` | Enable KVM support for VirtualBox. This increases compatibility with Linux kernel versions, because the VirtualBox kernel modules are not required. This option is incompatible with `addNetworkInterface`. Note: This is experimental. Please check <https://github.com/cyberus-technology/virtualbox-kvm/issues>. |
+| `virtualisation.virtualbox.host.enableWebService` | `boolean` | Build VirtualBox web service tool (vboxwebsrv) to allow managing VMs via other webpage frontend tools. Useful for headless servers. |
+| `virtualisation.virtualbox.host.headless` | `boolean` | Use VirtualBox installation without GUI and Qt dependency. Useful to enable on servers and when virtual machines are controlled only via SSH. |
+| `virtualisation.virtualbox.host.package` | `package` | The virtualbox package to use. |
+| `virtualisation.vmVariant` | `submodule` | Machine configuration to be added for the vm script produced by `nixos-rebuild build-vm`. |
+| `virtualisation.vmVariantWithBootLoader` | `submodule` | Machine configuration to be added for the vm script produced by `nixos-rebuild build-vm-with-bootloader`. |
+| `virtualisation.vmware.guest.enable` | `boolean` | Whether to enable VMWare Guest Support. |
+| `virtualisation.vmware.guest.headless` | `boolean` | Whether to disable X11-related features. |
+| `virtualisation.vmware.guest.package` | `package` | Package providing open-vm-tools. |
+| `virtualisation.vmware.host.enable` | `boolean` | This enables VMware host virtualisation for running VMs. ::: {.important} `vmware-vmx` will cause kcompactd0 due to `Transparent Hugepages` feature in kernel. Apply `[ "transparent_hugepage=never" ]` in option {option}`boot.kernelParams` to disable them. ::: ::: {.note} If that didn't work disable `TRANSPARENT_HUGEPAGE`, `COMPACTION` configs and recompile kernel. ::: |
+| `virtualisation.vmware.host.extraConfig` | `strings concatenated with "\n"` | Add extra config to /etc/vmware/config |
+| `virtualisation.vmware.host.extraPackages` | `list of package` | Extra packages to be used with VMware host. |
+| `virtualisation.vmware.host.package` | `package` | The vmware-workstation package to use. |
+| `virtualisation.vswitch.enable` | `boolean` | Whether to enable Open vSwitch. A configuration daemon (ovs-server) will be started. |
+| `virtualisation.vswitch.package` | `package` | The openvswitch package to use. |
+| `virtualisation.vswitch.resetOnStart` | `boolean` | Whether to reset the Open vSwitch configuration database to a default configuration on every start of the systemd `ovsdb.service`. |
+| `virtualisation.waydroid.enable` | `boolean` | Whether to enable Waydroid. |
+| `virtualisation.waydroid.package` | `package` | The waydroid package to use. |
+| `virtualisation.xen.boot.bios.path` | `absolute path` | Path to the Xen `multiboot` binary used for BIOS booting. Unless you're building your own Xen derivation, you should leave this option as the default value. |
+| `virtualisation.xen.boot.builderVerbosity` | `one of "default", "info", "debug", "quiet"` | The boot entry builder script should be called with exactly one of the following arguments in order to specify its verbosity: - `quiet` supresses all messages. - `default` adds a simple "Installing Xen Project Hypervisor boot entries...done." message to the script. - `info` is the same as `default`, but it also prints a diff with information on which generations were altered. - This option adds two extra dependencies to the script: `diffutils` and `bat`. - `debug` prints information messages for every single step of the script. This option does not alter the actual functionality of the script, just the number of messages printed when rebuilding the system. |
+| `virtualisation.xen.boot.efi.path` | `absolute path` | Path to xen.efi. `pkgs.xen` is patched to install the xen.efi file on `$boot/boot/xen.efi`, but an unpatched Xen build may install it somewhere else, such as `$out/boot/efi/efi/nixos/xen.efi`. Unless you're building your own Xen derivation, you should leave this option as the default value. |
+| `virtualisation.xen.boot.params` | `list of string` | Xen Command Line parameters passed to Domain 0 at boot time. ::: {.note} Note: these are different from {option}`boot.kernelParams`. See the [Xen documentation](https://xenbits.xenproject.org/docs/unstable/misc/xen-command-line.html) for more information. ::: |
+| `virtualisation.xen.debug` | `boolean` | Whether to enable Xen debug features for Domain 0. This option enables some hidden debugging tests and features, and should not be used in production. |
+| `virtualisation.xen.dom0Resources.maxMemory` | `unsigned integer, meaning >=0` | Maximum amount of memory (in MiB) that Domain 0 can dynamically allocate to itself. Does nothing if set to the same amount as virtualisation.xen.memory, or if that option is set to 0. |
+| `virtualisation.xen.dom0Resources.maxVCPUs` | `unsigned integer, meaning >=0` | Amount of virtual CPU cores allocated to Domain 0 on boot. If set to 0, all cores are assigned to Domain 0, and unprivileged domains will compete with Domain 0 for CPU time. |
+| `virtualisation.xen.dom0Resources.memory` | `unsigned integer, meaning >=0` | Amount of memory (in MiB) allocated to Domain 0 on boot. If set to 0, all memory is assigned to Domain 0, and unprivileged domains will compete with Domain 0 for free RAM. |
+| `virtualisation.xen.domains.extraConfig` | `strings concatenated with "\n"` | Options defined here will override the defaults for xendomains. The default options can be seen in the file included from /etc/default/xendomains. |
+| `virtualisation.xen.enable` | `boolean` | Whether to enable the Xen Project Hypervisor, a virtualisation technology defined as a *type-1 hypervisor*, which allows multiple virtual machines, known as *domains*, to run concurrently on the physical machine. NixOS runs as the privileged *Domain 0*. This option requires a reboot into a Xen kernel to take effect. |
+| `virtualisation.xen.package` | `package` | The Xen Hypervisor package to use. |
+| `virtualisation.xen.qemu.package` | `package` | The QEMU (with Xen Hypervisor support) package to use. |
+| `virtualisation.xen.qemu.pidFile` | `absolute path` | Path to the QEMU PID file. |
+| `virtualisation.xen.store.path` | `absolute path` | Path to the Xen Store Daemon. This option is useful to switch between the legacy C-based Xen Store Daemon, and the newer OCaml-based Xen Store Daemon, `oxenstored`. |
+| `virtualisation.xen.store.settings` | `submodule` | The OCaml-based Xen Store Daemon configuration. This option does nothing with the C-based `xenstored`. |
+| `virtualisation.xen.store.settings.conflict.burstLimit` | `nonnegative floating point number, meaning >=0` | Limits applied to domains whose writes cause other domains' transaction commits to fail. Must include decimal point. The burst limit is the number of conflicts a domain can cause to fail in a short period; this value is used for both the initial and the maximum value of each domain's conflict-credit, which falls by one point for each conflict caused, and when it reaches zero the domain's requests are ignored. |
+| `virtualisation.xen.store.settings.conflict.maxHistorySeconds` | `nonnegative floating point number, meaning >=0` | Limits applied to domains whose writes cause other domains' transaction commits to fail. Must include decimal point. The conflict-credit is replenished over time: one point is issued after each conflict.maxHistorySeconds, so this is the minimum pause-time during which a domain will be ignored. |
+| `virtualisation.xen.store.settings.conflict.rateLimitIsAggregate` | `boolean` | If the conflict.rateLimitIsAggregate option is `true`, then after each tick one point of conflict-credit is given to just one domain: the one at the front of the queue. If `false`, then after each tick each domain gets a point of conflict-credit. In environments where it is known that every transaction will involve a set of nodes that is writable by at most one other domain, then it is safe to set this aggregate limit flag to `false` for better performance. (This can be determined by considering the layout of the xenstore tree and permissions, together with the content of the transactions that require protection.) A transaction which involves a set of nodes which can be modified by multiple other domains can suffer conflicts caused by any of those domains, so the flag must be set to `true`. |
+| `virtualisation.xen.store.settings.enableMerge` | `boolean` | Whether to enable transaction merge support. |
+| `virtualisation.xen.store.settings.perms.enable` | `boolean` | Whether to enable the node permission system. |
+| `virtualisation.xen.store.settings.perms.enableWatch` | `boolean` | Whether to enable the watch permission system. When this is set to `true`, unprivileged guests can only get watch events for xenstore entries that they would've been able to read. When this is set to `false`, unprivileged guests may get watch events for xenstore entries that they cannot read. The watch event contains only the entry name, not the value. This restores behaviour prior to [XSA-115](https://xenbits.xenproject.org/xsa/advisory-115.html). |
+| `virtualisation.xen.store.settings.persistent` | `boolean` | Whether to activate the filed base backend. |
+| `virtualisation.xen.store.settings.pidFile` | `absolute path` | Path to the Xen Store Daemon PID file. |
+| `virtualisation.xen.store.settings.quota.enable` | `boolean` | Whether to enable the quota system. |
+| `virtualisation.xen.store.settings.quota.maxEntity` | `positive integer, meaning >0` | Entity limit for transactions. |
+| `virtualisation.xen.store.settings.quota.maxOutstanding` | `positive integer, meaning >0` | Maximum outstanding requests, i.e. in-flight requests / domain. |
+| `virtualisation.xen.store.settings.quota.maxPath` | `positive integer, meaning >0` | Path limit for the quota system. |
+| `virtualisation.xen.store.settings.quota.maxRequests` | `positive integer, meaning >0` | Maximum number of requests per transaction. |
+| `virtualisation.xen.store.settings.quota.maxSize` | `positive integer, meaning >0` | Size limit for transactions. |
+| `virtualisation.xen.store.settings.quota.maxWatch` | `positive integer, meaning >0` | Maximum number of watches by the Xenstore Watchdog. |
+| `virtualisation.xen.store.settings.quota.maxWatchEvents` | `positive integer, meaning >0` | Maximum number of outstanding watch events per watch. |
+| `virtualisation.xen.store.settings.quota.transaction` | `positive integer, meaning >0` | Maximum number of transactions. |
+| `virtualisation.xen.store.settings.ringScanInterval` | `nonzero signed integer, meaning !=0` | Perodic scanning for all the rings as a safenet for lazy clients. Define the interval in seconds; set to a negative integer to disable. |
+| `virtualisation.xen.store.settings.xenstored.accessLog.file` | `absolute path` | Path to the Xen Store access log file. |
+| `virtualisation.xen.store.settings.xenstored.log.file` | `absolute path` | Path to the Xen Store log file. |
+| `virtualisation.xen.store.settings.xenstored.log.level` | `null or one of "debug", "info", "warn", "error"` | Logging level for the Xen Store. |
+| `virtualisation.xen.trace` | `boolean` | Whether to enable Xen debug tracing and logging for Domain 0. |

@@ -5,14 +5,45 @@
 All options under `services.nagios`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.nagios.cgiConfigFile` | | |
-| `services.nagios.enable` | | |
-| `services.nagios.enableWebInterface` | | |
-| `services.nagios.extraConfig` | | |
-| `services.nagios.mainConfigFile` | | |
-| `services.nagios.objectDefs` | | |
-| `services.nagios.plugins` | | |
-| `services.nagios.urlPath` | | |
-| `services.nagios.validateConfig` | | |
-| `services.nagios.virtualHost` | | |
+| --- | --- | --- |
+| `services.nagios.cgiConfigFile` | `package` | Derivation for the configuration file of Nagios CGI scripts that can be used in web servers for running the Nagios web interface. |
+| `services.nagios.enable` | `boolean` | Whether to enable [Nagios](https://www.nagios.org/) to monitor your system or network. |
+| `services.nagios.enableWebInterface` | `boolean` | Whether to enable the Nagios web interface. You should also enable Apache ({option}`services.httpd.enable`). |
+| `services.nagios.extraConfig` | `attribute set of string` | Configuration to add to /etc/nagios.cfg |
+| `services.nagios.mainConfigFile` | `null or package` | If non-null, overrides the main configuration file of Nagios. |
+| `services.nagios.objectDefs` | `list of absolute path` | A list of Nagios object configuration files that must define the hosts, host groups, services and contacts for the network that you want Nagios to monitor. |
+| `services.nagios.plugins` | `list of package` | Packages to be added to the Nagios {env}`PATH`. Typically used to add plugins, but can be anything. |
+| `services.nagios.validateConfig` | `boolean` | if true, the syntax of the nagios configuration file is checked at build time |
+| `services.nagios.virtualHost` | `submodule` | Apache configuration can be done by adapting {option}`services.httpd.virtualHosts`. See [](#opt-services.httpd.virtualHosts) for further information. |
+| `services.nagios.virtualHost.acmeRoot` | `null or string` | Directory for the acme challenge which is PUBLIC, don't put certs or keys in here. Set to null to inherit from config.security.acme. |
+| `services.nagios.virtualHost.addSSL` | `boolean` | Whether to enable HTTPS in addition to plain HTTP. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443). |
+| `services.nagios.virtualHost.adminAddr` | `null or string` | E-mail address of the server administrator. |
+| `services.nagios.virtualHost.documentRoot` | `null or absolute path` | The path of Apache's document root directory. If left undefined, an empty directory in the Nix store will be used as root. |
+| `services.nagios.virtualHost.enableACME` | `boolean` | Whether to ask Let's Encrypt to sign a certificate for this vhost. Alternately, you can use an existing certificate through {option}`useACMEHost`. |
+| `services.nagios.virtualHost.enableUserDir` | `boolean` | Whether to enable serving {file}`~/public_html` as `/~«username»`. |
+| `services.nagios.virtualHost.extraConfig` | `strings concatenated with "\n"` | These lines go to httpd.conf verbatim. They will go after directories and directory aliases defined by default. |
+| `services.nagios.virtualHost.forceSSL` | `boolean` | Whether to add a separate nginx server block that permanently redirects (301) all plain HTTP traffic to HTTPS. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443), where the non-SSL listens are used for the redirect vhosts. |
+| `services.nagios.virtualHost.globalRedirect` | `null or string` | If set, all requests for this host are redirected permanently to the given URL. |
+| `services.nagios.virtualHost.hostName` | `string` | Canonical hostname for the server. |
+| `services.nagios.virtualHost.http2` | `boolean` | Whether to enable HTTP 2. HTTP/2 is supported in all multi-processing modules that come with httpd. *However, if you use the prefork mpm, there will be severe restrictions.* Refer to <https://httpd.apache.org/docs/2.4/howto/http2.html#mpm-config> for details. |
+| `services.nagios.virtualHost.listen` | `list of (submodule)` | Listen addresses and ports for this virtual host. ::: {.note} This option overrides `addSSL`, `forceSSL` and `onlySSL`. If you only want to set the addresses manually and not the ports, take a look at `listenAddresses`. ::: |
+| `services.nagios.virtualHost.listen.*.ip` | `string` | IP to listen on. 0.0.0.0 for IPv4 only, * for all. |
+| `services.nagios.virtualHost.listen.*.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on |
+| `services.nagios.virtualHost.listen.*.ssl` | `boolean` | Whether to enable SSL (https) support. |
+| `services.nagios.virtualHost.listenAddresses` | `non-empty (list of string)` | Listen addresses for this virtual host. Compared to `listen` this only sets the addresses and the ports are chosen automatically. |
+| `services.nagios.virtualHost.locations` | `attribute set of (submodule)` | Declarative location config. See <https://httpd.apache.org/docs/2.4/mod/core.html#location> for details. |
+| `services.nagios.virtualHost.locations.<name>.alias` | `null or absolute path` | Alias directory for requests. See <https://httpd.apache.org/docs/2.4/mod/mod_alias.html#alias>. |
+| `services.nagios.virtualHost.locations.<name>.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the location verbatim. |
+| `services.nagios.virtualHost.locations.<name>.index` | `null or string` | Adds DirectoryIndex directive. See <https://httpd.apache.org/docs/2.4/mod/mod_dir.html#directoryindex>. |
+| `services.nagios.virtualHost.locations.<name>.priority` | `signed integer` | Order of this location block in relation to the others in the vhost. The semantics are the same as with `lib.mkOrder`. Smaller values have a greater priority. |
+| `services.nagios.virtualHost.locations.<name>.proxyPass` | `null or string` | Sets up a simple reverse proxy as described by <https://httpd.apache.org/docs/2.4/howto/reverse_proxy.html#simple>. |
+| `services.nagios.virtualHost.logFormat` | `string` | Log format for Apache's log files. Possible values are: combined, common, referer, agent. |
+| `services.nagios.virtualHost.onlySSL` | `boolean` | Whether to enable HTTPS and reject plain HTTP connections. This will set defaults for `listen` to listen on all interfaces on port 443. |
+| `services.nagios.virtualHost.robotsEntries` | `strings concatenated with "\n"` | Specification of pages to be ignored by web crawlers. See <http://www.robotstxt.org/> for details. |
+| `services.nagios.virtualHost.servedDirs` | `list of (attribute set)` | This option provides a simple way to serve static directories. |
+| `services.nagios.virtualHost.servedFiles` | `list of (attribute set)` | This option provides a simple way to serve individual, static files. ::: {.note} This option has been deprecated and will be removed in a future version of NixOS. You can achieve the same result by making use of the `locations.<name>.alias` option. ::: |
+| `services.nagios.virtualHost.serverAliases` | `list of string` | Additional names of virtual hosts served by this virtual host configuration. |
+| `services.nagios.virtualHost.sslServerCert` | `absolute path` | Path to server SSL certificate. |
+| `services.nagios.virtualHost.sslServerChain` | `null or absolute path` | Path to server SSL chain file. |
+| `services.nagios.virtualHost.sslServerKey` | `absolute path` | Path to server SSL certificate key. |
+| `services.nagios.virtualHost.useACMEHost` | `null or string` | A host of an existing Let's Encrypt certificate to use. This is useful if you have many subdomains and want to avoid hitting the [rate limit](https://letsencrypt.org/docs/rate-limits). Alternately, you can generate a certificate through {option}`enableACME`. *Note that this option does not create any certificates, nor it does add subdomains to existing ones – you will need to create them manually using [](#opt-security.acme.certs).* |

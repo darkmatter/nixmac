@@ -5,10 +5,10 @@
 All options under `programs.jjui`.
 
 | Option | Type | Description |
-| ------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.jjui.configDir` | `string` | The directory to contain jjui configuration files. |
-| `programs.jjui.configLua` | | |
+| `programs.jjui.configLua` | `null or absolute path or strings concatenated with "\n"` | The content of the {file}`(config.programs.jjui.configDir)/config.lua` file, set either by specifying a path to a Lua file or by providing a multi-line Lua string. See <https://idursun.github.io/jjui/customization/config-lua/> for documentation on Lua support. Use the option {option}`plugins` to configure Lua plugins imported here. |
 | `programs.jjui.enable` | `boolean` | Whether to enable jjui - A terminal user interface for jujutsu. |
 | `programs.jjui.package` | `null or package` | The jjui package to use. |
-| `programs.jjui.plugins` | | |
-| `programs.jjui.settings` | `TOML value` | Options to add to the config.toml file. See https://github.com/idursun/jjui/wiki/Configuration for options. |
+| `programs.jjui.plugins` | `attribute set of (absolute path or strings concatenated with "\n")` | Lua plugins, one per attribute. The <name> attribute will become the plugin name, and the <value> attribute is a path to a Lua file or a multi-line Lua string. Each attribute will be linked to {file}`(config.programs.jjui.configDir)/plugins/<name>.lua` with <value> content. See <https://idursun.github.io/jjui/customization/config-lua/> for documentation on Lua support. Remember to import the defined plugins in the {option}`configLua` option. |
+| `programs.jjui.settings` | `TOML value` | Options to add to the {file}`(config.programs.jjui.configDir)/config.toml` file. See <https://idursun.github.io/jjui/customization/config-toml/> for options. |

@@ -5,6 +5,6 @@
 All options under `services.joycond`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.joycond.enable` | | |
-| `services.joycond.package` | | |
+| --- | --- | --- |
+| `services.joycond.enable` | `boolean` | Whether to enable support for Nintendo Pro Controllers and Joycons. |
+| `services.joycond.package` | `package` | The joycond package to use. |

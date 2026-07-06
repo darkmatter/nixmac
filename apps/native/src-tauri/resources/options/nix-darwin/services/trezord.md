@@ -5,7 +5,7 @@
 All options under `services.trezord`.
 
 | Option | Type | Description |
-| ---------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------ |
+| --- | --- | --- |
 | `services.trezord.emulator.enable` | `boolean` | Enable Trezor emulator support. |
 | `services.trezord.emulator.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listening port for the Trezor emulator. |
 | `services.trezord.enable` | `boolean` | Enable Trezor bridge daemon, for use with Trezor hardware wallets. |

@@ -5,6 +5,5 @@
 All options under `services.tumbler`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.tumbler.enable` | | |
-| `services.tumbler.package` | | |
+| --- | --- | --- |
+| `services.tumbler.enable` | `boolean` | Whether to enable Tumbler, A D-Bus thumbnailer service. |

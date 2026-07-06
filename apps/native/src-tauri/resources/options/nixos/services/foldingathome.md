@@ -5,12 +5,10 @@
 All options under `services.foldingathome`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.foldingathome.config` | | |
-| `services.foldingathome.daemonNiceLevel` | | |
-| `services.foldingathome.enable` | | |
-| `services.foldingathome.extraArgs` | | |
-| `services.foldingathome.nickname` | | |
-| `services.foldingathome.package` | | |
-| `services.foldingathome.team` | | |
-| `services.foldingathome.user` | | |
+| --- | --- | --- |
+| `services.foldingathome.daemonNiceLevel` | `integer between -20 and 19 (both inclusive)` | Daemon process priority for FAHClient. 0 is the default Unix process priority, 19 is the lowest. |
+| `services.foldingathome.enable` | `boolean` | Whether to enable Folding@home client. |
+| `services.foldingathome.extraArgs` | `list of string` | Extra startup options for the FAHClient. Run `fah-client --help` to find all the available options. |
+| `services.foldingathome.package` | `package` | The fahclient package to use. |
+| `services.foldingathome.team` | `signed integer` | The team ID associated with the reported computation results. This will be used in the ranking statistics. By default, use the NixOS folding@home team ID is being used. |
+| `services.foldingathome.user` | `null or string` | The user associated with the reported computation results. This will be used in the ranking statistics. |

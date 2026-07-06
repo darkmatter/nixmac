@@ -5,53 +5,126 @@
 All options under `programs.zsh`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.zsh.antidote.enable` | `boolean` | Whether to enable antidote - a zsh plugin manager. |
 | `programs.zsh.antidote.package` | `null or package` | The antidote package to use. |
 | `programs.zsh.antidote.plugins` | `list of string` | List of antidote plugins. |
 | `programs.zsh.antidote.useFriendlyNames` | `boolean` | Whether to enable friendly names. |
 | `programs.zsh.autocd` | `null or boolean` | Automatically enter into a directory if typed directly into shell. |
 | `programs.zsh.autosuggestion.enable` | `boolean` | Enable zsh autosuggestions |
-| `programs.zsh.autosuggestion.highlight` | `null or string` | Custom styles for autosuggestion highlighting. See zshzle (1) for syntax. |
-| `programs.zsh.autosuggestion.strategy` | `list of (one of “history”, “completion”, “match_prev_cmd”)` | ZSH_AUTOSUGGEST_STRATEGY is an array that specifies how suggestions should be generated. The strategies in the array are tried successively until a suggestion is found. There are currently three built-in strategies to choose from: |
-| `programs.zsh.cdpath` | `list of string` | List of paths to autocomplete calls to cd . |
-| `programs.zsh.completionInit` | `strings concatenated with “\n”` | Initialization commands to run when completion is enabled. |
-| `programs.zsh.defaultKeymap` | `null or one of “emacs”, “vicmd”, “viins”` | The default base keymap to use. |
+| `programs.zsh.autosuggestion.highlight` | `null or string` | Custom styles for autosuggestion highlighting. See {manpage}`zshzle(1)` for syntax. |
+| `programs.zsh.autosuggestion.strategy` | `list of (one of "history", "completion", "match_prev_cmd")` | `ZSH_AUTOSUGGEST_STRATEGY` is an array that specifies how suggestions should be generated. The strategies in the array are tried successively until a suggestion is found. There are currently three built-in strategies to choose from: - `history`: Chooses the most recent match from history. - `completion`: Chooses a suggestion based on what tab-completion would suggest. (requires `zpty` module) - `match_prev_cmd`: Like `history`, but chooses the most recent match whose preceding history item matches the most recently executed command. Note that this strategy won't work as expected with ZSH options that don't preserve the history order such as `HIST_IGNORE_ALL_DUPS` or `HIST_EXPIRE_DUPS_FIRST`. Setting the option to an empty list `[]` will make ZSH_AUTOSUGGESTION_STRATEGY not be set automatically, allowing the variable to be declared in {option}`programs.zsh.localVariables` or {option}`programs.zsh.sessionVariables` |
+| `programs.zsh.cdpath` | `list of string` | List of paths to autocomplete calls to {command}`cd`. |
+| `programs.zsh.completionInit` | `strings concatenated with "\n"` | Initialization commands to run when completion is enabled. |
+| `programs.zsh.defaultKeymap` | `null or one of "emacs", "vicmd", "viins"` | The default base keymap to use. |
 | `programs.zsh.dirHashes` | `attribute set of string` | An attribute set that adds to named directory hash table. |
 | `programs.zsh.dotDir` | `null or string` | Directory where the zsh configuration and more should be located, relative to the users home directory. The default is the home directory. |
 | `programs.zsh.enable` | `boolean` | Whether to enable Z shell (Zsh). |
-| `programs.zsh.enableAutosuggestions` | | |
-| `programs.zsh.enableCompletion` | `boolean` | Enable zsh completion. Don’t forget to add |
-| `programs.zsh.enableSyntaxHighlighting` | | |
+| `programs.zsh.enableCompletion` | `boolean` | Enable zsh completion. Don't forget to add `nix   environment.pathsToLink = [ "/share/zsh" ]; ` to your system configuration to get completion for system packages (e.g. systemd). |
 | `programs.zsh.enableVteIntegration` | `boolean` | Whether to enable integration with terminals using the VTE library. This will let the terminal track the current working directory. |
-| `programs.zsh.envExtra` | `strings concatenated with “\n”` | Extra commands that should be added to .zshenv . |
+| `programs.zsh.envExtra` | `strings concatenated with "\n"` | Extra commands that should be added to {file}`.zshenv`. |
+| `programs.zsh.fastSyntaxHighlighting` | `submodule` | Options related to zsh-fast-syntax-highlighting. |
+| `programs.zsh.fastSyntaxHighlighting.enable` | `boolean` | Whether to enable zsh fast syntax highlighting. |
+| `programs.zsh.fastSyntaxHighlighting.package` | `package` | The zsh-fast-syntax-highlighting package to use. |
+| `programs.zsh.fastSyntaxHighlighting.settings` | `attribute set of string` | Custom values to add to `FAST_HIGHLIGHT`, like custom chroma configuration (see [upstream's documentation](https://github.com/zdharma-continuum/fast-syntax-highlighting/blob/master/CHROMA_GUIDE.adoc) and its [built-in chromas](https://github.com/zdharma-continuum/fast-syntax-highlighting/tree/master/%E2%86%92chroma)). |
+| `programs.zsh.fastSyntaxHighlighting.theme` | `null or string` | If non-null, Home Manager will run {command}`fast-theme -q` with this value to select the theme. `fast-theme` persists the selected theme in fast-syntax-highlighting's work directory, so setting this option back to `null` stops Home Manager from invoking {command}`fast-theme` but does not reset an already persisted theme. Run {command}`fast-theme -r` manually to clear upstream state. See [upstream's documentation](https://github.com/zdharma-continuum/fast-syntax-highlighting/blob/master/THEME_GUIDE.md) |
 | `programs.zsh.history` | `submodule` | Options related to commands history configuration. |
+| `programs.zsh.history.append` | `boolean` | If set, zsh sessions will append their history list to the history file, rather than replace it. Thus, multiple parallel zsh sessions will all have the new entries from their history lists added to the history file, in the order that they exit. This file will still be periodically re-written to trim it when the number of lines grows 20% beyond the value specified by `programs.zsh.history.save`. |
+| `programs.zsh.history.expireDuplicatesFirst` | `boolean` | Expire duplicates first. |
+| `programs.zsh.history.extended` | `boolean` | Save timestamp into the history file. |
+| `programs.zsh.history.findNoDups` | `boolean` | Do not display a line previously found in the history file. |
+| `programs.zsh.history.ignoreAllDups` | `boolean` | If a new command line being added to the history list duplicates an older one, the older command is removed from the list (even if it is not the previous event). |
+| `programs.zsh.history.ignoreDups` | `boolean` | Do not enter command lines into the history list if they are duplicates of the previous event. |
+| `programs.zsh.history.ignorePatterns` | `list of string` | Do not enter command lines into the history list if they match any one of the given shell patterns. |
+| `programs.zsh.history.ignoreSpace` | `boolean` | Do not enter command lines into the history list if the first character is a space. |
+| `programs.zsh.history.path` | `string` | History file location |
+| `programs.zsh.history.save` | `signed integer` | Number of history lines to save. |
+| `programs.zsh.history.saveNoDups` | `boolean` | Do not write duplicate entries into the history file. |
+| `programs.zsh.history.share` | `boolean` | Share command history between zsh sessions. |
+| `programs.zsh.history.size` | `signed integer` | Number of history lines to keep. |
 | `programs.zsh.historySubstringSearch` | `submodule` | Options related to zsh-history-substring-search. |
-| `programs.zsh.initContent` | `strings concatenated with “\n”` | Content to be added to .zshrc . |
-| `programs.zsh.initExtra` | | |
-| `programs.zsh.initExtraBeforeCompInit` | | |
-| `programs.zsh.initExtraFirst` | | |
-| `programs.zsh.localVariables` | `attribute set` | Extra local variables defined at the top of .zshrc . |
-| `programs.zsh.loginExtra` | `strings concatenated with “\n”` | Extra commands that should be added to .zlogin . |
-| `programs.zsh.logoutExtra` | `strings concatenated with “\n”` | Extra commands that should be added to .zlogout . |
+| `programs.zsh.historySubstringSearch.enable` | `boolean` | Whether to enable history substring search. |
+| `programs.zsh.historySubstringSearch.searchDownKey` | `(list of string) or string` | The key codes to be used when searching down. The default of `^[[B` may correspond to the DOWN key -- if not, try `$terminfo[kcud1]`. |
+| `programs.zsh.historySubstringSearch.searchUpKey` | `(list of string) or string` | The key codes to be used when searching up. The default of `^[[A` may correspond to the UP key -- if not, try `$terminfo[kcuu1]`. |
+| `programs.zsh.initContent` | `strings concatenated with "\n"` | Content to be added to {file}`.zshrc`. To specify the order, use `lib.mkOrder`. Common order values: - 500 (mkBefore): Early initialization (replaces initExtraFirst) - 550: Before completion initialization (replaces initExtraBeforeCompInit) - 1000 (default): General configuration (replaces initExtra) - 1500 (mkAfter): Last to run configuration To specify both content in Early initialization and General configuration, use `lib.mkMerge`. e.g. initContent = let zshConfigEarlyInit = lib.mkOrder 500 "do something"; zshConfig = lib.mkOrder 1000 "do something"; in lib.mkMerge [ zshConfigEarlyInit zshConfig ]; |
+| `programs.zsh.localVariables` | `attribute set` | Extra local variables defined at the top of {file}`.zshrc`. |
+| `programs.zsh.loginExtra` | `strings concatenated with "\n"` | Extra commands that should be added to {file}`.zlogin`. |
+| `programs.zsh.logoutExtra` | `strings concatenated with "\n"` | Extra commands that should be added to {file}`.zlogout`. |
 | `programs.zsh.oh-my-zsh` | `submodule` | Options to configure oh-my-zsh. |
+| `programs.zsh.oh-my-zsh.custom` | `string` | Path to a custom oh-my-zsh package to override config of oh-my-zsh. See <https://github.com/robbyrussell/oh-my-zsh/wiki/Customization> for more information. |
+| `programs.zsh.oh-my-zsh.enable` | `boolean` | Whether to enable oh-my-zsh. |
+| `programs.zsh.oh-my-zsh.extraConfig` | `strings concatenated with "\n"` | Extra settings for plugins. |
+| `programs.zsh.oh-my-zsh.package` | `package` | The oh-my-zsh package to use. |
+| `programs.zsh.oh-my-zsh.plugins` | `list of string` | List of oh-my-zsh plugins |
+| `programs.zsh.oh-my-zsh.theme` | `string` | Name of the theme to be used by oh-my-zsh. |
 | `programs.zsh.package` | `package` | The zsh package to use. |
-| `programs.zsh.plugins` | `list of (submodule)` | Plugins to source in .zshrc . |
+| `programs.zsh.plugins` | `list of (submodule)` | Plugins to source in {file}`.zshrc`. |
+| `programs.zsh.plugins.*.file` | `string` | The plugin script to source. Required if the script name does not match {file}`name.plugin.zsh` using the plugin {option}`name` from the plugin {option}`src`. |
+| `programs.zsh.plugins.*.functions` | `list of string` | Paths of additional functions to add to {env}`fpath`. |
+| `programs.zsh.plugins.*.name` | `string` | The name of the plugin. |
+| `programs.zsh.plugins.*.src` | `absolute path` | Path to the plugin folder. Will be added to {env}`fpath` and {env}`PATH`. |
 | `programs.zsh.prezto` | `submodule` | Options to configure prezto. |
-| `programs.zsh.profileExtra` | `strings concatenated with “\n”` | Extra commands that should be added to .zprofile . |
-| `programs.zsh.sessionVariables` | `attribute set` | Environment variables that will be set for zsh session. |
-| `programs.zsh.setOptions` | `list of string` | Configure zsh options. See zshoptions (1) . |
+| `programs.zsh.prezto.autosuggestions.color` | `null or string` | Set the query found color. |
+| `programs.zsh.prezto.caseSensitive` | `null or boolean` | Set case-sensitivity for completion, history lookup, etc. |
+| `programs.zsh.prezto.color` | `null or boolean` | Color output (automatically set to `false` on dumb terminals). |
+| `programs.zsh.prezto.completions.ignoredHosts` | `list of string` | Set the entries to ignore in static {file}`/etc/hosts` for host completion. |
+| `programs.zsh.prezto.editor.dotExpansion` | `null or boolean` | Automatically convert `....` to `../..` |
+| `programs.zsh.prezto.editor.keymap` | `null or one of "emacs", "vi"` | Set the key mapping style to `emacs` or `vi`. |
+| `programs.zsh.prezto.editor.promptContext` | `null or boolean` | Allow the Zsh prompt context to be shown. |
+| `programs.zsh.prezto.enable` | `boolean` | Whether to enable prezto. |
+| `programs.zsh.prezto.extraConfig` | `strings concatenated with "\n"` | Additional configuration to add to {file}`.zpreztorc`. |
+| `programs.zsh.prezto.extraFunctions` | `list of string` | Set the Zsh functions to load ({manpage}`zshcontrib(1)`). |
+| `programs.zsh.prezto.extraModules` | `list of string` | Set the Zsh modules to load ({manpage}`zshmodules(1)`). |
+| `programs.zsh.prezto.git.submoduleIgnore` | `null or one of "dirty", "untracked", "all", "none"` | Ignore submodules when they are `dirty`, `untracked`, `all`, or `none`. |
+| `programs.zsh.prezto.gnuUtility.prefix` | `null or string` | Set the command prefix on non-GNU systems. |
+| `programs.zsh.prezto.historySubstring.foundColor` | `null or string` | Set the query found color. |
+| `programs.zsh.prezto.historySubstring.globbingFlags` | `null or string` | Set the search globbing flags. |
+| `programs.zsh.prezto.historySubstring.notFoundColor` | `null or string` | Set the query not found color. |
+| `programs.zsh.prezto.macOS.dashKeyword` | `null or string` | Set the keyword used by {command}`mand` to open man pages in Dash.app. |
+| `programs.zsh.prezto.package` | `package` | The prezto package to use. |
+| `programs.zsh.prezto.pmoduleDirs` | `list of absolute path` | Add additional directories to load prezto modules from. |
+| `programs.zsh.prezto.pmodules` | `list of string` | Set the Prezto modules to load (browse modules). The order matters. |
+| `programs.zsh.prezto.prompt.pwdLength` | `null or one of "short", "long", "full"` | Set the working directory prompt display length. By default, it is set to `short`. Set it to `long` (without `~` expansion) for longer or `full` (with `~` expansion) for even longer prompt display. |
+| `programs.zsh.prezto.prompt.showReturnVal` | `null or boolean` | Set the prompt to display the return code along with an indicator for non-zero return codes. This is not supported by all prompts. |
+| `programs.zsh.prezto.prompt.theme` | `null or string` | Set the prompt theme to load. Setting it to `random` loads a random theme. Automatically set to `off` on dumb terminals. |
+| `programs.zsh.prezto.python.virtualenvAutoSwitch` | `null or boolean` | Auto switch to Python virtualenv on directory change. |
+| `programs.zsh.prezto.python.virtualenvInitialize` | `null or boolean` | Automatically initialize virtualenvwrapper if pre-requisites are met. |
+| `programs.zsh.prezto.ruby.chrubyAutoSwitch` | `null or boolean` | Auto switch the Ruby version on directory change. |
+| `programs.zsh.prezto.screen.autoStartLocal` | `null or boolean` | Auto start a session when Zsh is launched in a local terminal. |
+| `programs.zsh.prezto.screen.autoStartRemote` | `null or boolean` | Auto start a session when Zsh is launched in a SSH connection. |
+| `programs.zsh.prezto.ssh.identities` | `list of string` | Set the SSH identities to load into the agent. |
+| `programs.zsh.prezto.syntaxHighlighting.highlighters` | `list of string` | Set syntax highlighters. By default, only the main highlighter is enabled. |
+| `programs.zsh.prezto.syntaxHighlighting.pattern` | `attribute set of string` | Set syntax pattern styles. |
+| `programs.zsh.prezto.syntaxHighlighting.styles` | `attribute set of string` | Set syntax highlighting styles. |
+| `programs.zsh.prezto.terminal.autoTitle` | `null or boolean` | Auto set the tab and window titles. |
+| `programs.zsh.prezto.terminal.multiplexerTitleFormat` | `null or string` | Set the multiplexer title format. |
+| `programs.zsh.prezto.terminal.tabTitleFormat` | `null or string` | Set the tab title format. |
+| `programs.zsh.prezto.terminal.windowTitleFormat` | `null or string` | Set the window title format. |
+| `programs.zsh.prezto.tmux.autoStartLocal` | `null or boolean` | Auto start a session when Zsh is launched in a local terminal. |
+| `programs.zsh.prezto.tmux.autoStartRemote` | `null or boolean` | Auto start a session when Zsh is launched in a SSH connection. |
+| `programs.zsh.prezto.tmux.defaultSessionName` | `null or string` | Set the default session name. |
+| `programs.zsh.prezto.tmux.itermIntegration` | `null or boolean` | Integrate with iTerm2. |
+| `programs.zsh.prezto.utility.safeOps` | `null or boolean` | Enabled safe options. This aliases {command}`cp`, {command}`ln`, {command}`mv` and {command}`rm` so that they prompt before deleting or overwriting files. Set to `no` to disable this safer behavior. |
+| `programs.zsh.profileExtra` | `strings concatenated with "\n"` | Extra commands that should be added to {file}`.zprofile`. |
+| `programs.zsh.sessionVariables` | `lazy attribute set of (null or string or absolute path or signed integer or floating point number or boolean)` | Environment variables that will be set for zsh session. Setting a value to `null` will skip setting the variable at all, which may be useful when overriding. |
+| `programs.zsh.setOptions` | `list of string` | Configure zsh options. See {manpage}`zshoptions(1)`. To unset an option, prefix it with "NO\_". |
 | `programs.zsh.shellAliases` | `attribute set of string` | An attribute set that maps aliases (the top level attribute names in this option) to command strings or directly to build outputs. |
-| `programs.zsh.shellGlobalAliases` | `attribute set of string` | Similar to programs.zsh.shellAliases , but are substituted anywhere on a line. |
-| `programs.zsh.siteFunctions` | `attribute set of strings concatenated with “\n”` | Functions that are added to the Zsh environment and are subject to autoload ing. The key is the name and the value is the body of the function to be autoloaded. |
+| `programs.zsh.shellGlobalAliases` | `attribute set of string` | Similar to [](#opt-programs.zsh.shellAliases), but are substituted anywhere on a line. |
+| `programs.zsh.siteFunctions` | `attribute set of strings concatenated with "\n"` | Functions that are added to the Zsh environment and are subject to {command}`autoload`ing. The key is the name and the value is the body of the function to be autoloaded. They are also already marked for autoloading through `autoload -Uz`. |
 | `programs.zsh.syntaxHighlighting` | `submodule` | Options related to zsh-syntax-highlighting. |
+| `programs.zsh.syntaxHighlighting.enable` | `boolean` | Whether to enable zsh syntax highlighting. |
+| `programs.zsh.syntaxHighlighting.highlighters` | `list of string` | Highlighters to enable See the list of highlighters: <https://github.com/zsh-users/zsh-syntax-highlighting/blob/master/docs/highlighters.md> Note: The "main" highlighter is always included automatically. If you'd like to exclude it, please configure with a higher priority using `mkForce`. |
+| `programs.zsh.syntaxHighlighting.package` | `package` | The zsh-syntax-highlighting package to use. |
+| `programs.zsh.syntaxHighlighting.patterns` | `attribute set of string` | Custom syntax highlighting for user-defined patterns. Reference: <https://github.com/zsh-users/zsh-syntax-highlighting/blob/master/docs/highlighters/pattern.md> |
+| `programs.zsh.syntaxHighlighting.styles` | `attribute set of string` | Custom styles for syntax highlighting. See each highlighter style option: <https://github.com/zsh-users/zsh-syntax-highlighting/blob/master/docs/highlighters/main.md> |
 | `programs.zsh.zplug.enable` | `boolean` | Whether to enable zplug - a zsh plugin manager. |
 | `programs.zsh.zplug.package` | `package` | The zplug package to use. |
 | `programs.zsh.zplug.plugins` | `list of (submodule)` | List of zplug plugins. |
+| `programs.zsh.zplug.plugins.*.name` | `string` | The name of the plugin. |
+| `programs.zsh.zplug.plugins.*.tags` | `list of string` | The plugin tags. |
 | `programs.zsh.zplug.zplugHome` | `absolute path` | Path to zplug home directory. |
 | `programs.zsh.zprof.enable` | `boolean` | Enable zprof in your zshrc. |
-| `programs.zsh.zproof` | | |
 | `programs.zsh.zsh-abbr.abbreviations` | `attribute set of string` | An attribute set that maps aliases (the top level attribute names in this option) to abbreviations. Abbreviations are expanded with the longer phrase after they are entered. |
 | `programs.zsh.zsh-abbr.enable` | `boolean` | Whether to enable zsh-abbr - zsh manager for auto-expanding abbreviations. |
-| `programs.zsh.zsh-abbr.globalAbbreviations` | `attribute set of string` | Similar to programs.zsh.zsh-abbr.abbreviations , but are expanded anywhere on a line. |
+| `programs.zsh.zsh-abbr.globalAbbreviations` | `attribute set of string` | Similar to [](#opt-programs.zsh.zsh-abbr.abbreviations), but are expanded anywhere on a line. |
 | `programs.zsh.zsh-abbr.package` | `package` | The zsh-abbr package to use. |

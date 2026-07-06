@@ -5,10 +5,10 @@
 All options under `services.zeyple`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.zeyple.enable` | | |
-| `services.zeyple.group` | | |
-| `services.zeyple.keys` | | |
-| `services.zeyple.rotateLogs` | | |
-| `services.zeyple.settings` | | |
-| `services.zeyple.user` | | |
+| --- | --- | --- |
+| `services.zeyple.enable` | `boolean` | Whether to enable Zeyple, an utility program to automatically encrypt outgoing emails with GPG. |
+| `services.zeyple.group` | `string` | Group to use to run Zeyple. ::: {.note} If left as the default value this group will automatically be created on system activation, otherwise the sysadmin is responsible for ensuring the user exists. ::: |
+| `services.zeyple.keys` | `list of absolute path` | List of public key files that will be imported by gpg. |
+| `services.zeyple.rotateLogs` | `boolean` | Whether to enable rotation of log files. |
+| `services.zeyple.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Zeyple configuration. refer to <https://github.com/infertux/zeyple/blob/master/zeyple/zeyple.conf.example> for details on supported values. |
+| `services.zeyple.user` | `string` | User to run Zeyple as. ::: {.note} If left as the default value this user will automatically be created on system activation, otherwise the sysadmin is responsible for ensuring the user exists. ::: |

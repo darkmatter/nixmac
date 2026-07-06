@@ -5,12 +5,12 @@
 All options under `services.softether`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.softether.dataDir` | | |
-| `services.softether.enable` | | |
-| `services.softether.package` | | |
-| `services.softether.vpnbridge.enable` | | |
-| `services.softether.vpnclient.down` | | |
-| `services.softether.vpnclient.enable` | | |
-| `services.softether.vpnclient.up` | | |
-| `services.softether.vpnserver.enable` | | |
+| --- | --- | --- |
+| `services.softether.dataDir` | `absolute path` | Data directory for SoftEther VPN. |
+| `services.softether.enable` | `boolean` | Whether to enable SoftEther VPN services. |
+| `services.softether.package` | `package` | The softether package to use. |
+| `services.softether.vpnbridge.enable` | `boolean` | Whether to enable SoftEther VPN Bridge. |
+| `services.softether.vpnclient.down` | `strings concatenated with "\n"` | Shell commands executed when the Virtual Network Adapter(s) is/are shutting down. |
+| `services.softether.vpnclient.enable` | `boolean` | Whether to enable SoftEther VPN Client. |
+| `services.softether.vpnclient.up` | `strings concatenated with "\n"` | Shell commands executed when the Virtual Network Adapter(s) is/are starting. |
+| `services.softether.vpnserver.enable` | `boolean` | Whether to enable SoftEther VPN Server. |

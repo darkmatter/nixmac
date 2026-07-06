@@ -5,9 +5,9 @@
 All options under `services.tailscaleAuth`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.tailscaleAuth.enable` | | |
-| `services.tailscaleAuth.group` | | |
-| `services.tailscaleAuth.package` | | |
-| `services.tailscaleAuth.socketPath` | | |
-| `services.tailscaleAuth.user` | | |
+| --- | --- | --- |
+| `services.tailscaleAuth.enable` | `boolean` | Whether to enable tailscale.nginx-auth, to authenticate users via tailscale. |
+| `services.tailscaleAuth.group` | `string` | Group which runs tailscale-nginx-auth |
+| `services.tailscaleAuth.package` | `package` | The tailscale-nginx-auth package to use. |
+| `services.tailscaleAuth.socketPath` | `absolute path` | Path of the socket listening to authorization requests. |
+| `services.tailscaleAuth.user` | `string` | User which runs tailscale-nginx-auth |

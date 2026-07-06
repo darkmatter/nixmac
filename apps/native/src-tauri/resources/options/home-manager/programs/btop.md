@@ -5,9 +5,9 @@
 All options under `programs.btop`.
 
 | Option | Type | Description |
-| --------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.btop.enable` | `boolean` | Whether to enable btop. |
-| `programs.btop.extraConfig` | `strings concatenated with “\n”` | Extra lines added to the btop.conf file. |
+| `programs.btop.extraConfig` | `strings concatenated with "\n"` | Extra lines added to the {file}`btop.conf` file. |
 | `programs.btop.package` | `null or package` | The btop package to use. |
-| `programs.btop.settings` | `attribute set of (boolean or floating point number or signed integer or string)` | Options to add to btop.conf file. See https://github.com/aristocratos/btop#configurability for options. |
-| `programs.btop.themes` | `lazy attribute set of (absolute path or strings concatenated with “\n”)` | Themes to be written to $XDG_CONFIG_HOME/btop/themes/${name}.theme |
+| `programs.btop.settings` | `attribute set of (boolean or floating point number or signed integer or string)` | Options to add to {file}`btop.conf` file. See <https://github.com/aristocratos/btop#configurability> for options. |
+| `programs.btop.themes` | `lazy attribute set of (absolute path or strings concatenated with "\n")` | Themes to be written to {file}`$XDG_CONFIG_HOME/btop/themes/${name}.theme` |

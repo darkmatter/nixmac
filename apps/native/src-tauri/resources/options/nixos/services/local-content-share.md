@@ -5,9 +5,9 @@
 All options under `services.local-content-share`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.local-content-share.enable` | | |
-| `services.local-content-share.listenAddress` | | |
-| `services.local-content-share.openFirewall` | | |
-| `services.local-content-share.package` | | |
-| `services.local-content-share.port` | | |
+| --- | --- | --- |
+| `services.local-content-share.enable` | `boolean` | Whether to enable Local-Content-Share. |
+| `services.local-content-share.listenAddress` | `string` | Address on which the service will be available. The service will listen on all interfaces if set to an empty string. |
+| `services.local-content-share.openFirewall` | `boolean` | Whether to automatically open the specified port in the firewall |
+| `services.local-content-share.package` | `package` | The local-content-share package to use. |
+| `services.local-content-share.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which the service will be available |

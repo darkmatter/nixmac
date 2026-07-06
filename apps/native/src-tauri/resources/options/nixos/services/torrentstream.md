@@ -5,9 +5,9 @@
 All options under `services.torrentstream`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.torrentstream.address` | | |
-| `services.torrentstream.enable` | | |
-| `services.torrentstream.openFirewall` | | |
-| `services.torrentstream.package` | | |
-| `services.torrentstream.port` | | |
+| --- | --- | --- |
+| `services.torrentstream.address` | `string` | Address to listen on. |
+| `services.torrentstream.enable` | `boolean` | Whether to enable TorrentStream daemon. |
+| `services.torrentstream.openFirewall` | `boolean` | Open ports in the firewall for TorrentStream daemon. |
+| `services.torrentstream.package` | `package` | The torrentstream package to use. |
+| `services.torrentstream.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | TorrentStream port. |

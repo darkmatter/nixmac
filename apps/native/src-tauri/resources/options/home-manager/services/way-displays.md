@@ -5,8 +5,8 @@
 All options under `services.way-displays`.
 
 | Option | Type | Description |
-| ------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.way-displays.enable` | `boolean` | Whether to enable way-displays. |
 | `services.way-displays.package` | `package` | The way-displays package to use. |
-| `services.way-displays.settings` | `null or YAML 1.1 value` | The way-displays configuration written to $XDG_CONFIG_HOME/way-displays/cfg.yml . See https://github.com/alex-courtis/way-displays/wiki/Configuration for a description of available options. |
+| `services.way-displays.settings` | `null or YAML 1.1 value` | The way-displays configuration written to {file}`$XDG_CONFIG_HOME/way-displays/cfg.yml`. See <https://github.com/alex-courtis/way-displays/wiki/Configuration> for a description of available options. When `null` a configuration file is not generated, which allows way-displays to write its own configuration. |
 | `services.way-displays.systemdTarget` | `string` | Systemd target to bind to. |

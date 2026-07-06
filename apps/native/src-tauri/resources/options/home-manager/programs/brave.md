@@ -5,11 +5,5 @@
 All options under `programs.brave`.
 
 | Option | Type | Description |
-| ------------------------------------- | ----------------- | -------------------------------------------------------- |
-| `programs.brave.commandLineArgs` | | |
-| `programs.brave.dictionaries` | | |
-| `programs.brave.enable` | | |
-| `programs.brave.extensions` | | |
-| `programs.brave.finalPackage` | | |
+| --- | --- | --- |
 | `programs.brave.nativeMessagingHosts` | `list of package` | List of Brave Browser native messaging hosts to install. |
-| `programs.brave.package` | | |

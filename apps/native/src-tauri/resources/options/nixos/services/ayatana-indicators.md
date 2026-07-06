@@ -5,6 +5,6 @@
 All options under `services.ayatana-indicators`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.ayatana-indicators.enable` | | |
-| `services.ayatana-indicators.packages` | | |
+| --- | --- | --- |
+| `services.ayatana-indicators.enable` | `boolean` | Whether to enable Ayatana Indicators, a continuation of Canonical's Application Indicators . |
+| `services.ayatana-indicators.packages` | `list of package` | List of packages containing Ayatana Indicator services that should be brought up by a SystemD "ayatana-indicators" user target. Packages specified here must have passthru.ayatana-indicators set correctly. If, how, and where these indicators are displayed will depend on your DE. Which target they will be brought up by depends on the packages' passthru.ayatana-indicators. |

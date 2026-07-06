@@ -5,12 +5,11 @@
 All options under `services.unclutter`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.unclutter.enable` | | |
-| `services.unclutter.excluded` | | |
-| `services.unclutter.extraOptions` | | |
-| `services.unclutter.keystroke` | | |
-| `services.unclutter.package` | | |
-| `services.unclutter.threeshold` | | |
-| `services.unclutter.threshold` | | |
-| `services.unclutter.timeout` | | |
+| --- | --- | --- |
+| `services.unclutter.enable` | `boolean` | Enable unclutter to hide your mouse cursor when inactive |
+| `services.unclutter.excluded` | `list of string` | Names of windows where unclutter should not apply |
+| `services.unclutter.extraOptions` | `list of string` | More arguments to pass to the unclutter command |
+| `services.unclutter.keystroke` | `boolean` | Wait for a keystroke before hiding the cursor |
+| `services.unclutter.package` | `package` | The unclutter package to use. |
+| `services.unclutter.threshold` | `signed integer` | Minimum number of pixels considered cursor movement |
+| `services.unclutter.timeout` | `signed integer` | Number of seconds before the cursor is marked inactive |

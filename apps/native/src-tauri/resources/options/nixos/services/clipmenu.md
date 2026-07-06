@@ -5,6 +5,6 @@
 All options under `services.clipmenu`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.clipmenu.enable` | | |
-| `services.clipmenu.package` | | |
+| --- | --- | --- |
+| `services.clipmenu.enable` | `boolean` | Whether to enable clipmenu, the clipboard management daemon. |
+| `services.clipmenu.package` | `package` | The clipmenu package to use. |

@@ -5,10 +5,10 @@
 All options under `services.guacamole-client`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---- | ----------- |
-| `services.guacamole-client.enable` | | |
-| `services.guacamole-client.enableWebserver` | | |
-| `services.guacamole-client.logbackXml` | | |
-| `services.guacamole-client.package` | | |
-| `services.guacamole-client.settings` | | |
-| `services.guacamole-client.userMappingXml` | | |
+| --- | --- | --- |
+| `services.guacamole-client.enable` | `boolean` | Whether to enable Apache Guacamole Client (Tomcat). |
+| `services.guacamole-client.enableWebserver` | `boolean` | Enable the Guacamole web application in a Tomcat webserver. |
+| `services.guacamole-client.logbackXml` | `null or absolute path` | Configuration file that correspond to `logback.xml`. |
+| `services.guacamole-client.package` | `package` | The guacamole-client package to use. |
+| `services.guacamole-client.settings` | `open submodule of attribute set of (string, package, bool, int or float)` | Configuration written to `guacamole.properties`. ::: {.note} The Guacamole web application uses one main configuration file called `guacamole.properties`. This file is the common location for all configuration properties read by Guacamole or any extension of Guacamole, including authentication providers. ::: |
+| `services.guacamole-client.userMappingXml` | `null or absolute path` | Configuration file that correspond to `user-mapping.xml`. |

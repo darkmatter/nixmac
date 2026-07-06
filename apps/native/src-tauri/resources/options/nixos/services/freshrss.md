@@ -5,25 +5,25 @@
 All options under `services.freshrss`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.freshrss.api.enable` | | |
-| `services.freshrss.authType` | | |
-| `services.freshrss.baseUrl` | | |
-| `services.freshrss.dataDir` | | |
-| `services.freshrss.database.host` | | |
-| `services.freshrss.database.name` | | |
-| `services.freshrss.database.passFile` | | |
-| `services.freshrss.database.port` | | |
-| `services.freshrss.database.tableprefix` | | |
-| `services.freshrss.database.type` | | |
-| `services.freshrss.database.user` | | |
-| `services.freshrss.defaultUser` | | |
-| `services.freshrss.enable` | | |
-| `services.freshrss.extensions` | | |
-| `services.freshrss.language` | | |
-| `services.freshrss.package` | | |
-| `services.freshrss.passwordFile` | | |
-| `services.freshrss.pool` | | |
-| `services.freshrss.user` | | |
-| `services.freshrss.virtualHost` | | |
-| `services.freshrss.webserver` | | |
+| --- | --- | --- |
+| `services.freshrss.api.enable` | `boolean` | Whether to enable API access for mobile apps and third-party clients (Google Reader API and Fever API). Users must set individual API passwords in their profile settings. |
+| `services.freshrss.authType` | `one of "form", "http_auth", "none"` | Authentication type for FreshRSS. |
+| `services.freshrss.baseUrl` | `string` | Default URL for FreshRSS. |
+| `services.freshrss.dataDir` | `string` | Default data folder for FreshRSS. |
+| `services.freshrss.database.host` | `null or string` | Database host for FreshRSS. |
+| `services.freshrss.database.name` | `null or string` | Database name for FreshRSS. |
+| `services.freshrss.database.passFile` | `null or absolute path` | Database password file for FreshRSS. |
+| `services.freshrss.database.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Database port for FreshRSS. |
+| `services.freshrss.database.tableprefix` | `null or string` | Database table prefix for FreshRSS. |
+| `services.freshrss.database.type` | `one of "sqlite", "pgsql", "mysql"` | Database type. |
+| `services.freshrss.database.user` | `null or string` | Database user for FreshRSS. |
+| `services.freshrss.defaultUser` | `string` | Default username for FreshRSS. |
+| `services.freshrss.enable` | `boolean` | Whether to enable FreshRSS RSS aggregator and reader with php-fpm backend. |
+| `services.freshrss.extensions` | `list of package` | Additional extensions to be used. |
+| `services.freshrss.language` | `string` | Default language for FreshRSS. |
+| `services.freshrss.package` | `package` | The freshrss package to use. |
+| `services.freshrss.passwordFile` | `null or absolute path` | Password for the defaultUser for FreshRSS. |
+| `services.freshrss.pool` | `null or string` | Name of the php-fpm pool to use and setup. If not specified, a pool will be created with default values. |
+| `services.freshrss.user` | `string` | User under which FreshRSS runs. |
+| `services.freshrss.virtualHost` | `string` | Name of the caddy/nginx virtualhost to use and setup. |
+| `services.freshrss.webserver` | `one of "nginx", "caddy"` | Whether to use nginx or caddy for virtual host management. Further nginx configuration can be done by adapting `services.nginx.virtualHosts.<name>`. See [](#opt-services.nginx.virtualHosts) for further information. Further caddy configuration can be done by adapting `services.caddy.virtualHosts.<name>`. See [](#opt-services.caddy.virtualHosts) for further information. |

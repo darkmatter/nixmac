@@ -5,16 +5,16 @@
 All options under `services.shadowsocks`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.shadowsocks.enable` | | |
-| `services.shadowsocks.encryptionMethod` | | |
-| `services.shadowsocks.extraConfig` | | |
-| `services.shadowsocks.fastOpen` | | |
-| `services.shadowsocks.localAddress` | | |
-| `services.shadowsocks.mode` | | |
-| `services.shadowsocks.package` | | |
-| `services.shadowsocks.password` | | |
-| `services.shadowsocks.passwordFile` | | |
-| `services.shadowsocks.plugin` | | |
-| `services.shadowsocks.pluginOpts` | | |
-| `services.shadowsocks.port` | | |
+| --- | --- | --- |
+| `services.shadowsocks.enable` | `boolean` | Whether to run shadowsocks-libev shadowsocks server. |
+| `services.shadowsocks.encryptionMethod` | `string` | Encryption method. See <https://github.com/shadowsocks/shadowsocks-org/wiki/AEAD-Ciphers>. |
+| `services.shadowsocks.extraConfig` | `attribute set` | Additional configuration for shadowsocks that is not covered by the provided options. The provided attrset will be serialized to JSON and has to contain valid shadowsocks options. Unfortunately most additional options are undocumented but it's easy to find out what is available by looking into the source code of <https://github.com/shadowsocks/shadowsocks-libev/blob/master/src/jconf.c> |
+| `services.shadowsocks.fastOpen` | `boolean` | use TCP fast-open |
+| `services.shadowsocks.localAddress` | `string or list of string` | Local addresses to which the server binds. Note: shadowsocks-rust accepts only string parameter. |
+| `services.shadowsocks.mode` | `one of "tcp_only", "tcp_and_udp", "udp_only"` | Relay protocols. |
+| `services.shadowsocks.package` | `package` | The Shadowsocks package to use. |
+| `services.shadowsocks.password` | `null or string` | Password for connecting clients. |
+| `services.shadowsocks.passwordFile` | `null or absolute path` | Password file with a password for connecting clients. |
+| `services.shadowsocks.plugin` | `null or string` | SIP003 plugin for shadowsocks |
+| `services.shadowsocks.pluginOpts` | `string` | Options to pass to the plugin if one was specified |
+| `services.shadowsocks.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port which the server uses. |

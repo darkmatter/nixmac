@@ -5,7 +5,7 @@
 All options under `services.geph`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.geph.configFile` | | |
-| `services.geph.enable` | | |
-| `services.geph.package` | | |
+| --- | --- | --- |
+| `services.geph.configFile` | `absolute path not in the Nix store` | Path to the geph config file. This file contain sensitive credentials, so it must not live in the Nix store. |
+| `services.geph.enable` | `boolean` | Whether to enable geph client daemon. |
+| `services.geph.package` | `package` | The geph package to use. |

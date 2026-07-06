@@ -5,17 +5,17 @@
 All options under `services.infinoted`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.infinoted.certificateChain` | | |
-| `services.infinoted.certificateFile` | | |
-| `services.infinoted.enable` | | |
-| `services.infinoted.extraConfig` | | |
-| `services.infinoted.group` | | |
-| `services.infinoted.keyFile` | | |
-| `services.infinoted.package` | | |
-| `services.infinoted.passwordFile` | | |
-| `services.infinoted.plugins` | | |
-| `services.infinoted.port` | | |
-| `services.infinoted.rootDirectory` | | |
-| `services.infinoted.securityPolicy` | | |
-| `services.infinoted.user` | | |
+| --- | --- | --- |
+| `services.infinoted.certificateChain` | `null or absolute path` | Chain of CA-certificates to which our `certificateFile` is relative. Optional for TLS. |
+| `services.infinoted.certificateFile` | `null or absolute path` | Server certificate to use for TLS |
+| `services.infinoted.enable` | `boolean` | Whether to enable infinoted. |
+| `services.infinoted.extraConfig` | `strings concatenated with "\n"` | Additional configuration to append to infinoted.conf |
+| `services.infinoted.group` | `string` | What to call the primary group of the dedicated user under which infinoted is run |
+| `services.infinoted.keyFile` | `null or absolute path` | Private key to use for TLS |
+| `services.infinoted.package` | `package` | The libinfinity package to use. |
+| `services.infinoted.passwordFile` | `null or absolute path` | File to read server-wide password from |
+| `services.infinoted.plugins` | `list of string` | Plugins to enable |
+| `services.infinoted.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on |
+| `services.infinoted.rootDirectory` | `absolute path` | Root of the directory structure to serve |
+| `services.infinoted.securityPolicy` | `one of "no-tls", "allow-tls", "require-tls"` | How strictly to enforce clients connection with TLS. |
+| `services.infinoted.user` | `string` | What to call the dedicated user under which infinoted is run |

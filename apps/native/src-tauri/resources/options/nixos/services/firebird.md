@@ -5,9 +5,9 @@
 All options under `services.firebird`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.firebird.baseDir` | | |
-| `services.firebird.enable` | | |
-| `services.firebird.package` | | |
-| `services.firebird.port` | | |
-| `services.firebird.user` | | |
+| --- | --- | --- |
+| `services.firebird.baseDir` | `string` | Location containing data/ and system/ directories. data/ stores the databases, system/ stores the password database security2.fdb. |
+| `services.firebird.enable` | `boolean` | Whether to enable the Firebird super server. |
+| `services.firebird.package` | `package` | The firebird package to use. For SuperServer use override: `pkgs.firebird_3.override { superServer = true; };` |
+| `services.firebird.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port Firebird uses. |
+| `services.firebird.user` | `string` | User account under which firebird runs. |

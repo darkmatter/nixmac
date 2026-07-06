@@ -5,15 +5,15 @@
 All options under `services.jigasi`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.jigasi.bridgeMuc` | | |
-| `services.jigasi.componentPasswordFile` | | |
-| `services.jigasi.config` | | |
-| `services.jigasi.defaultJvbRoomName` | | |
-| `services.jigasi.enable` | | |
-| `services.jigasi.environmentFile` | | |
-| `services.jigasi.userDomain` | | |
-| `services.jigasi.userName` | | |
-| `services.jigasi.userPasswordFile` | | |
-| `services.jigasi.xmppDomain` | | |
-| `services.jigasi.xmppHost` | | |
+| --- | --- | --- |
+| `services.jigasi.bridgeMuc` | `string` | JID of the internal MUC used to communicate with Videobridges. |
+| `services.jigasi.componentPasswordFile` | `string` | Path to file containing component secret. |
+| `services.jigasi.config` | `attribute set of string` | Contents of the <filename>sip-communicator.properties</filename> configuration file for jigasi. |
+| `services.jigasi.defaultJvbRoomName` | `string` | Name of the default JVB room that will be joined if no special header is included in SIP invite. |
+| `services.jigasi.enable` | `boolean` | Whether to enable Jitsi Gateway to SIP - component of Jitsi Meet. |
+| `services.jigasi.environmentFile` | `null or absolute path` | File containing environment variables to be passed to the jigasi service, in which secret tokens can be specified securely by defining values for <literal>JIGASI_SIPUSER</literal>, <literal>JIGASI_SIPPWD</literal>, <literal>JIGASI_SIPSERVER</literal> and <literal>JIGASI_SIPPORT</literal>. |
+| `services.jigasi.userDomain` | `string` | Domain part of the JID for XMPP user connection. |
+| `services.jigasi.userName` | `string` | User part of the JID for XMPP user connection. |
+| `services.jigasi.userPasswordFile` | `string` | Path to file containing password for XMPP user connection. |
+| `services.jigasi.xmppDomain` | `null or string` | Domain name of the XMMP server to which to connect as a component. If null, <option>xmppHost</option> is used. |
+| `services.jigasi.xmppHost` | `string` | Hostname of the XMPP server to connect to. |

@@ -5,10 +5,10 @@
 All options under `services.vector`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---- | ----------- |
-| `services.vector.enable` | | |
-| `services.vector.gracefulShutdownLimitSecs` | | |
-| `services.vector.journaldAccess` | | |
-| `services.vector.package` | | |
-| `services.vector.settings` | | |
-| `services.vector.validateConfig` | | |
+| --- | --- | --- |
+| `services.vector.enable` | `boolean` | Whether to enable Vector, a high-performance observability data pipeline. |
+| `services.vector.gracefulShutdownLimitSecs` | `positive integer, meaning >0` | Set the duration in seconds to wait for graceful shutdown after SIGINT or SIGTERM are received. After the duration has passed, Vector will force shutdown. |
+| `services.vector.journaldAccess` | `boolean` | Enable Vector to access journald. |
+| `services.vector.package` | `package` | The vector package to use. |
+| `services.vector.settings` | `JSON value` | Specify the configuration for Vector in Nix. |
+| `services.vector.validateConfig` | `boolean` | Enable the checking of the vector config during build time. This should be disabled when interpolating environment variables. |

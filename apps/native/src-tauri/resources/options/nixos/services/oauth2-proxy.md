@@ -5,60 +5,61 @@
 All options under `services.oauth2-proxy`.
 
 | Option | Type | Description |
-| ------------------------------------------------- | ---- | ----------- |
-| `services.oauth2-proxy.approvalPrompt` | | |
-| `services.oauth2-proxy.azure.resource` | | |
-| `services.oauth2-proxy.azure.tenant` | | |
-| `services.oauth2-proxy.basicAuthPassword` | | |
-| `services.oauth2-proxy.clientID` | | |
-| `services.oauth2-proxy.clientSecret` | | |
-| `services.oauth2-proxy.clientSecretFile` | | |
-| `services.oauth2-proxy.cookie.domain` | | |
-| `services.oauth2-proxy.cookie.expire` | | |
-| `services.oauth2-proxy.cookie.httpOnly` | | |
-| `services.oauth2-proxy.cookie.name` | | |
-| `services.oauth2-proxy.cookie.refresh` | | |
-| `services.oauth2-proxy.cookie.secret` | | |
-| `services.oauth2-proxy.cookie.secretFile` | | |
-| `services.oauth2-proxy.cookie.secure` | | |
-| `services.oauth2-proxy.customTemplatesDir` | | |
-| `services.oauth2-proxy.email.addresses` | | |
-| `services.oauth2-proxy.email.domains` | | |
-| `services.oauth2-proxy.enable` | | |
-| `services.oauth2-proxy.extraConfig` | | |
-| `services.oauth2-proxy.github.org` | | |
-| `services.oauth2-proxy.github.team` | | |
-| `services.oauth2-proxy.google.adminEmail` | | |
-| `services.oauth2-proxy.google.groups` | | |
-| `services.oauth2-proxy.google.serviceAccountJSON` | | |
-| `services.oauth2-proxy.htpasswd.displayForm` | | |
-| `services.oauth2-proxy.htpasswd.file` | | |
-| `services.oauth2-proxy.httpAddress` | | |
-| `services.oauth2-proxy.keyFile` | | |
-| `services.oauth2-proxy.loginURL` | | |
-| `services.oauth2-proxy.nginx.domain` | | |
-| `services.oauth2-proxy.nginx.proxy` | | |
-| `services.oauth2-proxy.nginx.virtualHosts` | | |
-| `services.oauth2-proxy.oidcIssuerUrl` | | |
-| `services.oauth2-proxy.package` | | |
-| `services.oauth2-proxy.passAccessToken` | | |
-| `services.oauth2-proxy.passBasicAuth` | | |
-| `services.oauth2-proxy.passHostHeader` | | |
-| `services.oauth2-proxy.profileURL` | | |
-| `services.oauth2-proxy.provider` | | |
-| `services.oauth2-proxy.proxyPrefix` | | |
-| `services.oauth2-proxy.redeemURL` | | |
-| `services.oauth2-proxy.redirectURL` | | |
-| `services.oauth2-proxy.requestLogging` | | |
-| `services.oauth2-proxy.reverseProxy` | | |
-| `services.oauth2-proxy.scope` | | |
-| `services.oauth2-proxy.setXauthrequest` | | |
-| `services.oauth2-proxy.signatureKey` | | |
-| `services.oauth2-proxy.skipAuthRegexes` | | |
-| `services.oauth2-proxy.tls.certificate` | | |
-| `services.oauth2-proxy.tls.enable` | | |
-| `services.oauth2-proxy.tls.httpsAddress` | | |
-| `services.oauth2-proxy.tls.key` | | |
-| `services.oauth2-proxy.trustedProxyIP` | | |
-| `services.oauth2-proxy.upstream` | | |
-| `services.oauth2-proxy.validateURL` | | |
+| --- | --- | --- |
+| `services.oauth2-proxy.approvalPrompt` | `one of "force", "auto"` | OAuth approval_prompt. |
+| `services.oauth2-proxy.azure.resource` | `string` | The resource that is protected. |
+| `services.oauth2-proxy.azure.tenant` | `string` | Go to a tenant-specific or common (tenant-independent) endpoint. |
+| `services.oauth2-proxy.basicAuthPassword` | `null or string` | The password to set when passing the HTTP Basic Auth header. |
+| `services.oauth2-proxy.clientID` | `null or string` | The OAuth Client ID. |
+| `services.oauth2-proxy.clientSecretFile` | `null or absolute path` | The path to a file containing the OAuth Client Secret. |
+| `services.oauth2-proxy.cookie.domain` | `null or string` | Optional cookie domains to force cookies to (ie: `.yourcompany.com`). The longest domain matching the request's host will be used (or the shortest cookie domain if there is no match). |
+| `services.oauth2-proxy.cookie.expire` | `string` | Expire timeframe for cookie. |
+| `services.oauth2-proxy.cookie.httpOnly` | `boolean` | Set HttpOnly cookie flag. |
+| `services.oauth2-proxy.cookie.name` | `string` | The name of the cookie that the oauth_proxy creates. |
+| `services.oauth2-proxy.cookie.refresh` | `null or string` | Refresh the cookie after this duration; 0 to disable. |
+| `services.oauth2-proxy.cookie.secretFile` | `null or absolute path` | The path to a file containing the seed string for secure cookies. |
+| `services.oauth2-proxy.cookie.secure` | `boolean` | Set secure (HTTPS) cookie flag. |
+| `services.oauth2-proxy.customTemplatesDir` | `null or absolute path` | Path to custom HTML templates. |
+| `services.oauth2-proxy.email.addresses` | `null or strings concatenated with "\n"` | Line-separated email addresses that are allowed to authenticate. |
+| `services.oauth2-proxy.email.domains` | `list of string` | Authenticate emails with the specified domains. Use `*` to authenticate any email. |
+| `services.oauth2-proxy.enable` | `boolean` | Whether to enable oauth2-proxy. |
+| `services.oauth2-proxy.extraConfig` | `attribute set of anything` | Extra config to pass to oauth2-proxy. |
+| `services.oauth2-proxy.github.org` | `null or string` | Restrict logins to members of this organisation. |
+| `services.oauth2-proxy.github.team` | `null or string` | Restrict logins to members of this team. |
+| `services.oauth2-proxy.google.adminEmail` | `string` | The Google Admin to impersonate for API calls. Only users with access to the Admin APIs can access the Admin SDK Directory API, thus the service account needs to impersonate one of those users to access the Admin SDK Directory API. See <https://developers.google.com/admin-sdk/directory/v1/guides/delegation#delegate_domain-wide_authority_to_your_service_account>. |
+| `services.oauth2-proxy.google.groups` | `list of string` | Restrict logins to members of these Google groups. |
+| `services.oauth2-proxy.google.serviceAccountJSON` | `absolute path` | The path to the service account JSON credentials. |
+| `services.oauth2-proxy.htpasswd.displayForm` | `boolean` | Display username / password login form if an htpasswd file is provided. |
+| `services.oauth2-proxy.htpasswd.file` | `null or absolute path` | Additionally authenticate against a htpasswd file. Entries must be created with `htpasswd -s` for SHA encryption. |
+| `services.oauth2-proxy.httpAddress` | `string` | HTTPS listening address. This module does not expose the port by default. If you want this URL to be accessible to other machines, please add the port to `networking.firewall.allowedTCPPorts`. |
+| `services.oauth2-proxy.keyFile` | `null or absolute path` | oauth2-proxy allows passing sensitive configuration via environment variables. Make a file that contains lines like OAUTH2_PROXY_CLIENT_SECRET=asdfasdfasdf.apps.googleuserscontent.com and specify the path here. |
+| `services.oauth2-proxy.loginURL` | `null or string` | Authentication endpoint. You only need to set this if you are using a self-hosted provider (e.g. Github Enterprise). If you're using a publicly hosted provider (e.g github.com), then the default works. |
+| `services.oauth2-proxy.nginx.domain` | `string` | The domain under which the oauth2-proxy will be accesible and the path of cookies are set to. This setting must be set to ensure back-redirects are working properly if oauth2-proxy is configured with {option}`services.oauth2-proxy.cookie.domain` or multiple {option}`services.oauth2-proxy.nginx.virtualHosts` that are not on the same domain. |
+| `services.oauth2-proxy.nginx.proxy` | `string` | The address of the reverse proxy endpoint for oauth2-proxy |
+| `services.oauth2-proxy.nginx.virtualHosts` | `(attribute set of (submodule)) or (list of string) convertible to it` | Nginx virtual hosts to put behind the oauth2 proxy. You can exclude specific locations by setting `auth_request off;` in the locations extraConfig setting. |
+| `services.oauth2-proxy.nginx.virtualHosts.<name>.allowed_email_domains` | `null or (list of string)` | List of email domains to allow access to this vhost, or null to allow all. |
+| `services.oauth2-proxy.nginx.virtualHosts.<name>.allowed_emails` | `null or (list of string)` | List of emails to allow access to this vhost, or null to allow all. |
+| `services.oauth2-proxy.nginx.virtualHosts.<name>.allowed_groups` | `null or (list of string)` | List of groups to allow access to this vhost, or null to allow all. |
+| `services.oauth2-proxy.oidcIssuerUrl` | `null or string` | The OAuth issuer URL. |
+| `services.oauth2-proxy.package` | `package` | The oauth2-proxy package to use. |
+| `services.oauth2-proxy.passAccessToken` | `boolean` | Pass OAuth access_token to upstream via X-Forwarded-Access-Token header. |
+| `services.oauth2-proxy.passBasicAuth` | `boolean` | Pass HTTP Basic Auth, X-Forwarded-User and X-Forwarded-Email information to upstream. |
+| `services.oauth2-proxy.passHostHeader` | `boolean` | Pass the request Host Header to upstream. |
+| `services.oauth2-proxy.profileURL` | `null or string` | Profile access endpoint. |
+| `services.oauth2-proxy.provider` | `one of "adfs", "azure", "bitbucket", "digitalocean", "facebook", "github", "gitlab", "google", "keycloak", "keycloak-oidc", "linkedin", "login.gov", "nextcloud", "oidc"` | OAuth provider. |
+| `services.oauth2-proxy.proxyPrefix` | `string` | The url root path that this proxy should be nested under. |
+| `services.oauth2-proxy.redeemURL` | `null or string` | Token redemption endpoint. You only need to set this if you are using a self-hosted provider (e.g. Github Enterprise). If you're using a publicly hosted provider (e.g github.com), then the default works. |
+| `services.oauth2-proxy.redirectURL` | `null or string` | The OAuth2 redirect URL. |
+| `services.oauth2-proxy.requestLogging` | `boolean` | Log requests to stdout. |
+| `services.oauth2-proxy.reverseProxy` | `boolean` | In case when running behind a reverse proxy, controls whether headers like `X-Real-Ip` are accepted. Usage behind a reverse proxy will require this flag to be set to avoid logging the reverse proxy IP address. |
+| `services.oauth2-proxy.scope` | `null or string` | OAuth scope specification. |
+| `services.oauth2-proxy.setXauthrequest` | `null or boolean` | Set X-Auth-Request-User and X-Auth-Request-Email response headers (useful in Nginx auth_request mode). Setting this to 'null' means using the upstream default (false). |
+| `services.oauth2-proxy.signatureKey` | `null or string` | GAP-Signature request signature key. |
+| `services.oauth2-proxy.skipAuthRegexes` | `list of string` | Skip authentication for requests matching any of these regular expressions. |
+| `services.oauth2-proxy.tls.certificate` | `absolute path` | Path to certificate file. |
+| `services.oauth2-proxy.tls.enable` | `boolean` | Whether to serve over TLS. |
+| `services.oauth2-proxy.tls.httpsAddress` | `string` | `addr:port` to listen on for HTTPS clients. Remember to add `port` to `allowedTCPPorts` if you want other machines to be able to connect to it. |
+| `services.oauth2-proxy.tls.key` | `absolute path` | Path to private key file. |
+| `services.oauth2-proxy.trustedProxyIP` | `list of string` | List of IPs or CIDR ranges allowed to supply X-Forwarded-\* headers when reverseProxy is enabled. If not set, OAuth2 Proxy preserves backwards compatibility by trusting all source IPs (0.0.0.0/0, ::/0) and logs a warning at startup. Configure this to your reverse proxy addresses to prevent forwarded header spoofing. |
+| `services.oauth2-proxy.upstream` | `(list of string) or string convertible to it` | The http url(s) of the upstream endpoint or `file://` paths for static files. Routing is based on the path. |
+| `services.oauth2-proxy.validateURL` | `null or string` | Access token validation endpoint. You only need to set this if you are using a self-hosted provider (e.g. Github Enterprise). If you're using a publicly hosted provider (e.g github.com), then the default works. |

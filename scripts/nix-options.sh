@@ -1,14 +1,11 @@
-#! /usr/bin/env bash
+#!/usr/bin/env bash
 
-# This script is used to generate a list of all the options for the Nix package manager.
-# It is used to generate the documentation for the Nix package manager.
+# Generate structured Nix option metadata and browsable markdown docs.
 #
-# In addition to the flat JSON option trees, it materializes browsable markdown
-# docs under options/<tool>/. Each top-level category becomes a single markdown
-# file (e.g. options/nix-darwin/environment.md) containing a flat table of every
-# option below it, keyed by its dotted path. The "programs" and "services"
-# categories are huge, so they get one extra level of nesting
-# (options/<tool>/programs/<subcategory>.md). A per-tool index.md links them all.
+# The JSON files are produced with pkgs.nixosOptionsDoc, which keeps option
+# paths, descriptions, types, defaults, examples, locations, and declarations in
+# a structured format. The smaller *-docs.json files are derived compatibility
+# indexes for the native app's search_docs tool.
 
 set -euo pipefail
 
@@ -19,200 +16,128 @@ NIXOS_OPTIONS_FILE="$NIX_OPTIONS_DIR/nixos-options.json"
 NIX_DARWIN_OPTIONS_FILE="$NIX_OPTIONS_DIR/nix-darwin-options.json"
 HOME_MANAGER_OPTIONS_FILE="$NIX_OPTIONS_DIR/home-manager-options.json"
 
-# Optional per-option documentation (summaries / types) used to enrich indexes.
 NIX_DARWIN_DOCS_FILE="$NIX_OPTIONS_DIR/nix-darwin-docs.json"
 HOME_MANAGER_DOCS_FILE="$NIX_OPTIONS_DIR/home-manager-docs.json"
-
-# Root directory for the generated browsable docs.
 OPTIONS_TREE_DIR="$NIX_OPTIONS_DIR/options"
 
 # Top-level categories that are large enough to warrant one extra level of
 # nesting (one file per second-level subcategory) instead of a single file.
-SPLIT_KEYS="programs services"
+SPLIT_KEYS=(programs services)
 
-QUERY_NIXOS_OPTIONS=$(cat <<'EOF'
-  let pkgs = import <nixpkgs> {}; in (pkgs.nixos {}).options
+generate_options_json() {
+  local tool="$1"
+  local out_file="$2"
+  local eval_expr
+
+  case "$tool" in
+    nixos)
+      eval_expr='
+        eval = pkgs.nixos {
+          _module.check = pkgs.lib.mkForce false;
+          system.stateVersion = "23.11";
+        };
+      '
+      ;;
+
+    nix-darwin)
+      eval_expr='
+        flake = builtins.getFlake "github:nix-darwin/nix-darwin";
+        eval = flake.lib.darwinSystem {
+          inherit pkgs;
+          modules = [{
+            _module.check = false;
+            networking.hostName = "dummy";
+            networking.domain = "local";
+          }];
+        };
+      '
+      ;;
+
+    home-manager)
+      eval_expr='
+        hm = builtins.getFlake "github:nix-community/home-manager";
+        eval = hm.lib.homeManagerConfiguration {
+          inherit pkgs;
+          modules = [{
+            _module.check = pkgs.lib.mkForce false;
+            home.stateVersion = "23.11";
+            home.username = "user";
+            home.homeDirectory = "/home/user";
+          }];
+        };
+      '
+      ;;
+
+    *)
+      echo "ERROR: unknown tool: $tool" >&2
+      return 1
+      ;;
+  esac
+
+  local expr
+  expr=$(cat <<EOF
+let
+  pkgs = import <nixpkgs> {};
+
+  ${eval_expr}
+
+  optionsDoc = pkgs.nixosOptionsDoc {
+    options = builtins.removeAttrs eval.options [ "_module" ];
+  };
+in
+  optionsDoc.optionsJSON
 EOF
 )
 
-QUERY_NIX_DARWIN_OPTIONS=$(cat <<'EOF'
-  let pkgs = import <nixpkgs> {}; flake = builtins.getFlake "github:nix-darwin/nix-darwin"; in (flake.lib.darwinSystem { inherit pkgs; modules = []; }).options
-EOF
-)
+  local out
+  out=$(nix build --impure --no-link --print-out-paths --expr "$expr")
 
-QUERY_HOME_MANAGER_OPTIONS=$(cat <<'EOF'
-  let hm = builtins.getFlake "github:nix-community/home-manager"; pkgs = import <nixpkgs> {}; modules = [{ home.stateVersion = "23.11"; home.username = "user"; home.homeDirectory = "/home/user"; }]; in (hm.lib.homeManagerConfiguration { inherit pkgs modules; }).options
-EOF
-)
+  local json_file
+  json_file=$(find "$out" -type f -name 'options.json' | head -n 1)
 
-nix eval --impure --json --expr "$QUERY_NIXOS_OPTIONS" > "$NIXOS_OPTIONS_FILE"
-nix eval --impure --json --expr "$QUERY_NIX_DARWIN_OPTIONS" > "$NIX_DARWIN_OPTIONS_FILE"
-nix eval --impure --json --expr "$QUERY_HOME_MANAGER_OPTIONS" > "$HOME_MANAGER_OPTIONS_FILE"
+  if [[ -z "${json_file:-}" ]]; then
+    echo "ERROR: could not find options.json under $out" >&2
+    find "$out" -maxdepth 5 -type f >&2
+    return 1
+  fi
 
-echo "Generated options files:"
-echo "  $NIXOS_OPTIONS_FILE"
-echo "  $NIX_DARWIN_OPTIONS_FILE"
-echo "  $HOME_MANAGER_OPTIONS_FILE"
-
-# ---------------------------------------------------------------------------
-# Build the browsable markdown docs from the JSON option trees.
-# ---------------------------------------------------------------------------
-
-build_tree() {
-  local name="$1"        # tree name (used as the top-level directory + title)
-  local options_file="$2" # path to the *-options.json file
-  local docs_file="${3:-}" # optional path to the *-docs.json file
-
-  python3 - "$name" "$options_file" "$OPTIONS_TREE_DIR/$name" "$SPLIT_KEYS" "$docs_file" <<'PYEOF'
-import json
-import os
-import shutil
-import sys
-
-name = sys.argv[1]
-options_file = sys.argv[2]
-out_dir = sys.argv[3]
-split_keys = set(sys.argv[4].split())
-docs_file = sys.argv[5] if len(sys.argv) > 5 else ""
-
-with open(options_file, "r", encoding="utf-8") as f:
-    tree = json.load(f)
-
-# Map option_path -> {summary, option_type} from the docs file, if present.
-docs = {}
-if docs_file and os.path.exists(docs_file):
-    with open(docs_file, "r", encoding="utf-8") as f:
-        for entry in json.load(f):
-            path = entry.get("option_path")
-            if path:
-                docs[path] = entry
-
-
-def sanitize(key):
-    # Keys are namespace segments; keep them filesystem-safe.
-    return key.replace("/", "_")
-
-
-def md_cell(text):
-    if not text:
-        return ""
-    return text.replace("\n", " ").replace("|", "\\|").strip()
-
-
-def option_info(option_path):
-    """Return (type, summary) for a leaf option from the docs file."""
-    entry = docs.get(option_path) or {}
-    return entry.get("option_type") or "", entry.get("summary") or ""
-
-
-def collect_leaves(node):
-    """Flatten a subtree to a sorted list of leaf option dotted paths."""
-    leaves = []
-    for value in node.values():
-        if isinstance(value, dict):
-            leaves.extend(collect_leaves(value))
-        else:
-            leaves.append(value)
-    return sorted(leaves)
-
-
-def describe_category(node):
-    leaves = collect_leaves(node)
-    subcats = sum(1 for v in node.values() if isinstance(v, dict))
-    total = len(leaves)
-    opts = f"{total} option{'' if total == 1 else 's'}"
-    if subcats:
-        return f"{subcats} subcategor{'y' if subcats == 1 else 'ies'}, {opts}"
-    return opts
-
-
-def write_options_file(node, dotted_path, file_path):
-    """Write a flat table of every option under `node`, keyed by dotted path."""
-    lines = [
-        f"# {dotted_path}",
-        "",
-        "<!-- AUTO-GENERATED by scripts/nix-options.sh. Do not edit by hand. -->",
-        "",
-        f"All options under `{dotted_path}`.",
-        "",
-        "| Option | Type | Description |",
-        "| --- | --- | --- |",
-    ]
-    for path in collect_leaves(node):
-        opt_type, summary = option_info(path)
-        type_cell = f"`{opt_type}`" if opt_type else ""
-        lines.append(f"| `{path}` | {md_cell(type_cell)} | {md_cell(summary)} |")
-    lines.append("")
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
-
-
-def index_row(key, value, link=None):
-    """Build a row for an index table (category link or single option)."""
-    if isinstance(value, dict):
-        key_cell = f"[`{key}`]({link})" if link else f"`{key}`"
-        return f"| {key_cell} | category | {md_cell(describe_category(value))} |"
-    opt_type, summary = option_info(value)
-    type_cell = f"`{opt_type}`" if opt_type else "option"
-    return f"| `{key}` | {md_cell(type_cell)} | {md_cell(summary)} |"
-
-
-def write_index(title, intro, rows, file_path):
-    lines = [
-        f"# {title}",
-        "",
-        "<!-- AUTO-GENERATED by scripts/nix-options.sh. Do not edit by hand. -->",
-        "",
-        intro,
-        "",
-        "| Key | Type | Description |",
-        "| --- | --- | --- |",
-    ]
-    lines.extend(rows)
-    lines.append("")
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
-
-
-def write_split_category(node, key, sub_dir):
-    """For huge categories: one file per second-level subcategory + an index."""
-    os.makedirs(sub_dir, exist_ok=True)
-    rows = []
-    for subkey in sorted(node.keys()):
-        value = node[subkey]
-        if isinstance(value, dict):
-            safe = sanitize(subkey)
-            write_options_file(value, f"{key}.{subkey}", os.path.join(sub_dir, f"{safe}.md"))
-            rows.append(index_row(subkey, value, link=f"{safe}.md"))
-        else:
-            rows.append(index_row(subkey, value))
-    write_index(key, f"Subcategories of `{key}`.", rows, os.path.join(sub_dir, "index.md"))
-
-
-if os.path.exists(out_dir):
-    shutil.rmtree(out_dir)
-os.makedirs(out_dir, exist_ok=True)
-
-index_rows = []
-for key in sorted(tree.keys()):
-    value = tree[key]
-    safe = sanitize(key)
-    if not isinstance(value, dict):
-        index_rows.append(index_row(key, value))
-    elif key in split_keys:
-        write_split_category(value, key, os.path.join(out_dir, safe))
-        index_rows.append(index_row(key, value, link=f"{safe}/index.md"))
-    else:
-        write_options_file(value, key, os.path.join(out_dir, f"{safe}.md"))
-        index_rows.append(index_row(key, value, link=f"{safe}.md"))
-
-write_index(name, f"Top-level option categories for `{name}`.", index_rows,
-            os.path.join(out_dir, "index.md"))
-print(f"  {out_dir}")
-PYEOF
+  mkdir -p "$(dirname "$out_file")"
+  cp "$json_file" "$out_file"
 }
 
-echo "Generating options docs under $OPTIONS_TREE_DIR (split: $SPLIT_KEYS):"
+generate_docs_index() {
+  local options_file="$1"
+  local docs_file="$2"
+
+  python3 "$SCRIPT_DIR/generate-docs-index.py" "$options_file" "$docs_file"
+}
+
+build_tree() {
+  local name="$1"
+  local options_file="$2"
+
+  python3 "$SCRIPT_DIR/build-options-tree.py" \
+    "$name" \
+    "$options_file" \
+    "$OPTIONS_TREE_DIR/$name" \
+    "${SPLIT_KEYS[@]}"
+}
+
+echo "Generating structured options JSON:"
+generate_options_json "nixos" "$NIXOS_OPTIONS_FILE"
+echo "  $NIXOS_OPTIONS_FILE"
+generate_options_json "nix-darwin" "$NIX_DARWIN_OPTIONS_FILE"
+echo "  $NIX_DARWIN_OPTIONS_FILE"
+generate_options_json "home-manager" "$HOME_MANAGER_OPTIONS_FILE"
+echo "  $HOME_MANAGER_OPTIONS_FILE"
+
+echo "Generating app docs indexes:"
+generate_docs_index "$NIX_DARWIN_OPTIONS_FILE" "$NIX_DARWIN_DOCS_FILE"
+echo "  $NIX_DARWIN_DOCS_FILE"
+generate_docs_index "$HOME_MANAGER_OPTIONS_FILE" "$HOME_MANAGER_DOCS_FILE"
+echo "  $HOME_MANAGER_DOCS_FILE"
+
+echo "Generating options docs under $OPTIONS_TREE_DIR (split: ${SPLIT_KEYS[*]}):"
 build_tree "nixos" "$NIXOS_OPTIONS_FILE"
-build_tree "nix-darwin" "$NIX_DARWIN_OPTIONS_FILE" "$NIX_DARWIN_DOCS_FILE"
-build_tree "home-manager" "$HOME_MANAGER_OPTIONS_FILE" "$HOME_MANAGER_DOCS_FILE"
+build_tree "nix-darwin" "$NIX_DARWIN_OPTIONS_FILE"
+build_tree "home-manager" "$HOME_MANAGER_OPTIONS_FILE"

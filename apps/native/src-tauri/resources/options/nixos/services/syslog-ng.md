@@ -5,11 +5,9 @@
 All options under `services.syslog-ng`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.syslog-ng.configHeader` | | |
-| `services.syslog-ng.enable` | | |
-| `services.syslog-ng.extraConfig` | | |
-| `services.syslog-ng.extraModulePaths` | | |
-| `services.syslog-ng.listenToJournal` | | |
-| `services.syslog-ng.package` | | |
-| `services.syslog-ng.serviceName` | | |
+| --- | --- | --- |
+| `services.syslog-ng.configHeader` | `strings concatenated with "\n"` | The very first lines of the configuration file. Should usually contain the syslog-ng version header. |
+| `services.syslog-ng.enable` | `boolean` | Whether to enable the syslog-ng daemon. |
+| `services.syslog-ng.extraConfig` | `strings concatenated with "\n"` | Configuration added to the end of `syslog-ng.conf`. |
+| `services.syslog-ng.extraModulePaths` | `list of string` | A list of paths that should be included in syslog-ng's `--module-path` option. They should usually end in `/lib/syslog-ng` |
+| `services.syslog-ng.package` | `package` | The syslogng package to use. |

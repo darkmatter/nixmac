@@ -5,10 +5,9 @@
 All options under `services.nixseparatedebuginfod2`.
 
 | Option | Type | Description |
-| ------------------------------------------------------ | ---- | ----------- |
-| `services.nixseparatedebuginfod2.cacheExpirationDelay` | | |
-| `services.nixseparatedebuginfod2.enable` | | |
-| `services.nixseparatedebuginfod2.package` | | |
-| `services.nixseparatedebuginfod2.port` | | |
-| `services.nixseparatedebuginfod2.substituter` | | |
-| `services.nixseparatedebuginfod2.substituters` | | |
+| --- | --- | --- |
+| `services.nixseparatedebuginfod2.cacheExpirationDelay` | `string` | keep unused cache entries for this long. A number followed by a unit |
+| `services.nixseparatedebuginfod2.enable` | `boolean` | Whether to enable nixseparatedebuginfod2, a debuginfod server providing source and debuginfo for nix packages. |
+| `services.nixseparatedebuginfod2.package` | `package` | The nixseparatedebuginfod2 package to use. |
+| `services.nixseparatedebuginfod2.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | port to listen |
+| `services.nixseparatedebuginfod2.substituters` | `list of string` | nix substituter to fetch debuginfo from. Either http/https/file substituters, or `local:` to use debuginfo present in the local store. |

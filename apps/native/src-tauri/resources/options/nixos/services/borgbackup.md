@@ -5,7 +5,51 @@
 All options under `services.borgbackup`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.borgbackup.jobs` | | |
-| `services.borgbackup.package` | | |
-| `services.borgbackup.repos` | | |
+| --- | --- | --- |
+| `services.borgbackup.jobs` | `attribute set of (submodule)` | Deduplicating backups using BorgBackup. Adding a job will cause a borg-job-NAME wrapper to be added to your system path, so that you can perform maintenance easily. See also the chapter about BorgBackup in the NixOS manual. |
+| `services.borgbackup.jobs.<name>.appendFailedSuffix` | `boolean` | Append a `.failed` suffix to the archive name, which is only removed if {command}`borg create` has a zero exit status. |
+| `services.borgbackup.jobs.<name>.archiveBaseName` | `null or string matching the pattern [^/{}]+` | How to name the created archives. A timestamp, whose format is determined by {option}`dateFormat`, will be appended. The full name can be modified at runtime (`$archiveName`). Placeholders like `{hostname}` must not be used. Use `null` for no base name. |
+| `services.borgbackup.jobs.<name>.compression` | `string matching the pattern none\|(auto,)?(lz4\|zstd\|zlib\|lzma)(,[[:digit:]]{1,2})?` | Compression method to use. Refer to {command}`borg help compression` for all available options. |
+| `services.borgbackup.jobs.<name>.createCommand` | `one of "create", "import-tar"` | Borg command to use for archive creation. The default (`create`) creates a regular Borg archive. Use `import-tar` to instead read a tar archive stream from {option}`dumpCommand` output and import its contents into the repository. `import-tar` can not be used together with {option}`exclude` or {option}`patterns`. |
+| `services.borgbackup.jobs.<name>.dateFormat` | `string` | Arguments passed to {command}`date` to create a timestamp suffix for the archive name. |
+| `services.borgbackup.jobs.<name>.doInit` | `boolean` | Run {command}`borg init` if the specified {option}`repo` does not exist. You should set this to `false` if the repository is located on an external drive that might not always be mounted. |
+| `services.borgbackup.jobs.<name>.dumpCommand` | `null or absolute path` | Backup the stdout of this program instead of filesystem paths. Mutually exclusive with {option}`paths`. |
+| `services.borgbackup.jobs.<name>.encryption.mode` | `one of "repokey", "keyfile", "repokey-blake2", "keyfile-blake2", "authenticated", "authenticated-blake2", "none"` | Encryption mode to use. Setting a mode other than `"none"` requires you to specify a {option}`passCommand` or a {option}`passphrase`. |
+| `services.borgbackup.jobs.<name>.encryption.passCommand` | `null or string` | A command which prints the passphrase to stdout. Mutually exclusive with {option}`passphrase`. |
+| `services.borgbackup.jobs.<name>.encryption.passphrase` | `null or string` | The passphrase the backups are encrypted with. Mutually exclusive with {option}`passCommand`. If you do not want the passphrase to be stored in the world-readable Nix store, use {option}`passCommand`. |
+| `services.borgbackup.jobs.<name>.environment` | `attribute set of string` | Environment variables passed to the backup script. You can for example specify which SSH key to use. |
+| `services.borgbackup.jobs.<name>.exclude` | `list of string` | Exclude paths matching any of the given patterns. See {command}`borg help patterns` for pattern syntax. Can not be set when {option}`createCommand` is set to `import-tar`. |
+| `services.borgbackup.jobs.<name>.extraArgs` | `string or (list of string) convertible to it` | Additional arguments for all {command}`borg` calls the service has. Handle with care. These extra arguments also get included in the wrapper script for this job. |
+| `services.borgbackup.jobs.<name>.extraCompactArgs` | `string or (list of string) convertible to it` | Additional arguments for {command}`borg compact`. Can also be set at runtime using `$extraCompactArgs`. |
+| `services.borgbackup.jobs.<name>.extraCreateArgs` | `string or (list of string) convertible to it` | Additional arguments for {command}`borg create`. Can also be set at runtime using `$extraCreateArgs`. |
+| `services.borgbackup.jobs.<name>.extraInitArgs` | `string or (list of string) convertible to it` | Additional arguments for {command}`borg init`. Can also be set at runtime using `$extraInitArgs`. |
+| `services.borgbackup.jobs.<name>.extraPruneArgs` | `string or (list of string) convertible to it` | Additional arguments for {command}`borg prune`. Can also be set at runtime using `$extraPruneArgs`. |
+| `services.borgbackup.jobs.<name>.failOnWarnings` | `boolean` | Fail the whole backup job if any borg command returns a warning (exit code 1), for example because a file changed during backup. |
+| `services.borgbackup.jobs.<name>.group` | `string` | The group borg is run as. User or group needs read permission for the specified {option}`paths`. |
+| `services.borgbackup.jobs.<name>.inhibitsSleep` | `boolean` | Prevents the system from sleeping while backing up. |
+| `services.borgbackup.jobs.<name>.paths` | `null or ((list of string) or string convertible to it)` | Path(s) to back up. Mutually exclusive with {option}`dumpCommand`. |
+| `services.borgbackup.jobs.<name>.patterns` | `list of string` | Include/exclude paths matching the given patterns. The first matching patterns is used, so if an include pattern (prefix `+`) matches before an exclude pattern (prefix `-`), the file is backed up. See [{command}`borg help patterns`](https://borgbackup.readthedocs.io/en/stable/usage/help.html#borg-patterns) for pattern syntax. Can not be set when {option}`createCommand` is set to `import-tar`. |
+| `services.borgbackup.jobs.<name>.persistentTimer` | `boolean` | Set the `Persistent` option for the {manpage}`systemd.timer(5)` which triggers the backup immediately if the last trigger was missed (e.g. if the system was powered down). |
+| `services.borgbackup.jobs.<name>.postCreate` | `strings concatenated with "\n"` | Shell commands to run after {command}`borg create`. The name of the created archive is stored in `$archiveName`. |
+| `services.borgbackup.jobs.<name>.postHook` | `strings concatenated with "\n"` | Shell commands to run just before exit. They are executed even if a previous command exits with a non-zero exit code. The latter is available as `$exitStatus`. |
+| `services.borgbackup.jobs.<name>.postInit` | `strings concatenated with "\n"` | Shell commands to run after {command}`borg init`. |
+| `services.borgbackup.jobs.<name>.postPrune` | `strings concatenated with "\n"` | Shell commands to run after {command}`borg prune`. |
+| `services.borgbackup.jobs.<name>.preHook` | `strings concatenated with "\n"` | Shell commands to run before the backup. This can for example be used to mount file systems. |
+| `services.borgbackup.jobs.<name>.privateTmp` | `boolean` | Set the `PrivateTmp` option for the systemd-service. Set to false if you need sockets or other files from global /tmp. |
+| `services.borgbackup.jobs.<name>.prune.keep` | `attribute set of (signed integer or string matching the pattern [[:digit:]]+[Hdwmy])` | Prune a repository by deleting all archives not matching any of the specified retention options. See {command}`borg help prune` for the available options. |
+| `services.borgbackup.jobs.<name>.prune.prefix` | `null or string` | Only consider archive names starting with this prefix for pruning. By default, only archives created by this job are considered. Use `""` or `null` to consider all archives. |
+| `services.borgbackup.jobs.<name>.readWritePaths` | `list of absolute path` | By default, borg cannot write anywhere on the system but `$HOME/.config/borg` and `$HOME/.cache/borg`. If, for example, your preHook script needs to dump files somewhere, put those directories here. |
+| `services.borgbackup.jobs.<name>.removableDevice` | `boolean` | Whether the repo (which must be local) is a removable device. |
+| `services.borgbackup.jobs.<name>.repo` | `string` | Remote or local repository to back up to. |
+| `services.borgbackup.jobs.<name>.startAt` | `string or list of string` | When or how often the backup should run. Must be in the format described in {manpage}`systemd.time(7)`. If you do not want the backup to start automatically, use `[ ]`. It will generate a systemd service borgbackup-job-NAME. You may trigger it manually via systemctl restart borgbackup-job-NAME. |
+| `services.borgbackup.jobs.<name>.user` | `string` | The user {command}`borg` is run as. User or group need read permission for the specified {option}`paths`. |
+| `services.borgbackup.jobs.<name>.wrapper` | `null or string` | Name of the wrapper that is installed into {env}`PATH`. Set to `null` or `""` to disable it altogether. |
+| `services.borgbackup.package` | `package` | The borgbackup package to use. |
+| `services.borgbackup.repos` | `attribute set of (submodule)` | Serve BorgBackup repositories to given public SSH keys, restricting their access to the repository only. See also the chapter about BorgBackup in the NixOS manual. Also, clients do not need to specify the absolute path when accessing the repository, i.e. `user@machine:.` is enough. (Note colon and dot.) |
+| `services.borgbackup.repos.<name>.allowSubRepos` | `boolean` | Allow clients to create repositories in subdirectories of the specified {option}`path`. These can be accessed using `user@machine:path/to/subrepo`. Note that a {option}`quota` applies to repositories independently. Therefore, if this is enabled, clients can create multiple repositories and upload an arbitrary amount of data. |
+| `services.borgbackup.repos.<name>.authorizedKeys` | `list of string` | Public SSH keys that are given full write access to this repository. You should use a different SSH key for each repository you write to, because the specified keys are restricted to running {command}`borg serve` and can only access this single repository. |
+| `services.borgbackup.repos.<name>.authorizedKeysAppendOnly` | `list of string` | Public SSH keys that can only be used to append new data (archives) to the repository. Note that archives can still be marked as deleted and are subsequently removed from disk upon accessing the repo with full write access, e.g. when pruning. |
+| `services.borgbackup.repos.<name>.group` | `string` | The group {command}`borg serve` is run as. User or group needs write permission for the specified {option}`path`. |
+| `services.borgbackup.repos.<name>.path` | `absolute path` | Where to store the backups. Note that the directory is created automatically, with correct permissions. |
+| `services.borgbackup.repos.<name>.quota` | `null or string matching the pattern [[:digit:].]+[KMGTP]?` | Storage quota for the repository. This quota is ensured for all sub-repositories if {option}`allowSubRepos` is enabled but not for the overall storage space used. |
+| `services.borgbackup.repos.<name>.user` | `string` | The user {command}`borg serve` is run as. User or group needs write permission for the specified {option}`path`. |

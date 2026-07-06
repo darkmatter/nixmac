@@ -5,8 +5,8 @@
 All options under `services.sketchybar`.
 
 | Option | Type | Description |
-| ----------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `services.sketchybar.config` | `strings concatenated with “\n”` | Contents of sketchybar’s configuration file. If empty (the default), the configuration file won’t be managed. |
+| --- | --- | --- |
+| `services.sketchybar.config` | `strings concatenated with "\n"` | Contents of sketchybar's configuration file. If empty (the default), the configuration file won't be managed. See [documentation](https://felixkratz.github.io/SketchyBar/) and [example](https://github.com/FelixKratz/SketchyBar/blob/master/sketchybarrc). |
 | `services.sketchybar.enable` | `boolean` | Whether to enable sketchybar. |
 | `services.sketchybar.extraPackages` | `list of package` | Extra packages to add to PATH. |
 | `services.sketchybar.package` | `package` | The sketchybar package to use. |

@@ -5,7 +5,7 @@
 All options under `programs.ahoviewer`.
 
 | Option | Type | Description |
-| ---------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.ahoviewer.config` | `string or absolute path` | Configuration settings for ahoviewer. All the available options can be found editing the preferences in the GUI and looking at $XDG_CONFIG_HOME/ahoviewer/ahoviewer.cfg |
 | `programs.ahoviewer.enable` | `boolean` | Whether to enable ahoviewer. |
 | `programs.ahoviewer.package` | `null or package` | The ahoviewer package to use. |

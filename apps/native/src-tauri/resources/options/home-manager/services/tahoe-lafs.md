@@ -5,6 +5,6 @@
 All options under `services.tahoe-lafs`.
 
 | Option | Type | Description |
-| ----------------------------- | --------- | ------------------------------ |
+| --- | --- | --- |
 | `services.tahoe-lafs.enable` | `boolean` | Whether to enable Tahoe-LAFS. |
 | `services.tahoe-lafs.package` | `package` | The tahoe-lafs package to use. |

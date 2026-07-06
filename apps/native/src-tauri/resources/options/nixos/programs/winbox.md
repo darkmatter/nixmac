@@ -5,7 +5,7 @@
 All options under `programs.winbox`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `programs.winbox.enable` | | |
-| `programs.winbox.openFirewall` | | |
-| `programs.winbox.package` | | |
+| --- | --- | --- |
+| `programs.winbox.enable` | `boolean` | Whether to enable MikroTik Winbox. |
+| `programs.winbox.openFirewall` | `boolean` | Whether to open ports for the MikroTik Neighbor Discovery protocol. Required for Winbox neighbor discovery. |
+| `programs.winbox.package` | `package` | The winbox package to use. |

@@ -5,7 +5,7 @@
 All options under `programs.onlyoffice`.
 
 | Option | Type | Description |
-| ------------------------------ | ------------------------------------------------------------ | --------------------------------------------- |
+| --- | --- | --- |
 | `programs.onlyoffice.enable` | `boolean` | Whether to enable onlyoffice. |
 | `programs.onlyoffice.package` | `null or package` | The onlyoffice-desktopeditors package to use. |
-| `programs.onlyoffice.settings` | `attribute set of (atom (null, bool, int, float or string))` | Configuration settings for Onlyoffice. |
+| `programs.onlyoffice.settings` | `attribute set of (atom (null, bool, int, float or string))` | Configuration settings for Onlyoffice. All configurable options can be deduced by enabling them through the GUI and observing the changes in ~/.config/onlyoffice/DesktopEditors.conf. |

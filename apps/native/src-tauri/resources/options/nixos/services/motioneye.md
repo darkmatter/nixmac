@@ -5,11 +5,11 @@
 All options under `services.motioneye`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.motioneye.enable` | | |
-| `services.motioneye.group` | | |
-| `services.motioneye.packages.ffmpeg` | | |
-| `services.motioneye.packages.motion` | | |
-| `services.motioneye.packages.motioneye` | | |
-| `services.motioneye.settings` | | |
-| `services.motioneye.user` | | |
+| --- | --- | --- |
+| `services.motioneye.enable` | `boolean` | Whether to enable motionEye. |
+| `services.motioneye.group` | `string` | Group to run motionEye under. |
+| `services.motioneye.packages.ffmpeg` | `package` | The ffmpeg-headless package to use. |
+| `services.motioneye.packages.motion` | `package` | The motion package to use. |
+| `services.motioneye.packages.motioneye` | `package` | The motioneye package to use. |
+| `services.motioneye.settings` | `attribute set of string` | Configuration to put in motioneye.conf. See <https://github.com/motioneye-project/motioneye/wiki/Configuration-File> for more details. |
+| `services.motioneye.user` | `string` | User to run motionEye under. |

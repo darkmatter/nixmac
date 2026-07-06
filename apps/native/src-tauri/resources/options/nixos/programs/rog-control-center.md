@@ -5,6 +5,6 @@
 All options under `programs.rog-control-center`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `programs.rog-control-center.autoStart` | | |
-| `programs.rog-control-center.enable` | | |
+| --- | --- | --- |
+| `programs.rog-control-center.autoStart` | `boolean` | Whether rog-control-center should be started automatically. |
+| `programs.rog-control-center.enable` | `boolean` | Whether to enable the rog-control-center application. |

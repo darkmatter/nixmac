@@ -5,8 +5,8 @@
 All options under `services.skhd`.
 
 | Option | Type | Description |
-| ---------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `services.skhd.config` | `null or absolute path or strings concatenated with “\n”` | Contents of skhd’s configuration file. If empty (the default), the configuration file won’t be managed. |
+| --- | --- | --- |
+| `services.skhd.config` | `null or absolute path or strings concatenated with "\n"` | Contents of skhd's configuration file. If empty (the default), the configuration file won't be managed. See [documentation](https://github.com/koekeishiya/skhd) and [example](https://github.com/koekeishiya/skhd/blob/master/examples/skhdrc). |
 | `services.skhd.enable` | `boolean` | Whether to enable skhd. |
 | `services.skhd.errorLogFile` | `null or absolute path or string` | Absolute path to log all stderr output. |
 | `services.skhd.outLogFile` | `null or absolute path or string` | Absolute path to log all stdout output. |

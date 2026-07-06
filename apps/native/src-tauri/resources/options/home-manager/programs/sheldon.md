@@ -5,7 +5,7 @@
 All options under `programs.sheldon`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ------------ | ----------------------------------- |
+| --- | --- | --- |
 | `programs.sheldon.enable` | `boolean` | Whether to enable sheldon. |
 | `programs.sheldon.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.sheldon.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |

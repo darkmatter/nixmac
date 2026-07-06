@@ -5,6 +5,6 @@
 All options under `services.ddccontrol`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.ddccontrol.enable` | | |
-| `services.ddccontrol.package` | | |
+| --- | --- | --- |
+| `services.ddccontrol.enable` | `boolean` | Whether to enable ddccontrol for controlling displays. This [enables `hardware.i2c`](#opt-hardware.i2c.enable), so note to add yourself to [`hardware.i2c.group`](#opt-hardware.i2c.group). . |
+| `services.ddccontrol.package` | `package` | The package with which to control brightness; added also to [services.dbus.packages](#opt-services.dbus.packages). package to use. |

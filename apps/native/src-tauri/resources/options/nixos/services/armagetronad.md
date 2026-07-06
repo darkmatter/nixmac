@@ -5,5 +5,14 @@
 All options under `services.armagetronad`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.armagetronad.servers` | | |
+| --- | --- | --- |
+| `services.armagetronad.servers` | `attribute set of (submodule)` | Armagetron server definitions. |
+| `services.armagetronad.servers.<name>.dns` | `null or string` | DNS address to use for this server. Optional. |
+| `services.armagetronad.servers.<name>.enable` | `boolean` | Whether to enable armagetronad. |
+| `services.armagetronad.servers.<name>.host` | `string` | Host to listen on. Used for SERVER_IP. |
+| `services.armagetronad.servers.<name>.name` | `string` | The name of this server. |
+| `services.armagetronad.servers.<name>.openFirewall` | `boolean` | Set to true to open the configured UDP port for Armagetron Advanced. |
+| `services.armagetronad.servers.<name>.package` | `package` | The armagetronad-dedicated package to use. Ensure that you use a derivation which contains the path `bin/armagetronad-dedicated`. |
+| `services.armagetronad.servers.<name>.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. Used for SERVER_PORT. |
+| `services.armagetronad.servers.<name>.roundSettings` | `attribute set of (atom (null, bool, int, float or string) or a list of them for duplicate keys)` | Armagetron Advanced server per-round configuration. Refer to: <https://wiki.armagetronad.org/index.php?title=Console_Commands> or `armagetronad-dedicated --doc` for a list. This attrset is used to populate `everytime.cfg`; see: <https://wiki.armagetronad.org/index.php/Configuration_Files> |
+| `services.armagetronad.servers.<name>.settings` | `attribute set of (atom (null, bool, int, float or string) or a list of them for duplicate keys)` | Armagetron Advanced server rules configuration. Refer to: <https://wiki.armagetronad.org/index.php?title=Console_Commands> or `armagetronad-dedicated --doc` for a list. This attrset is used to populate `settings_custom.cfg`; see: <https://wiki.armagetronad.org/index.php/Configuration_Files> |

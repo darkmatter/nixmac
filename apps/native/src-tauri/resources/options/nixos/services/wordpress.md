@@ -5,6 +5,58 @@
 All options under `services.wordpress`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.wordpress.sites` | | |
-| `services.wordpress.webserver` | | |
+| --- | --- | --- |
+| `services.wordpress.sites` | `attribute set of (submodule)` | Specification of one or more WordPress sites to serve |
+| `services.wordpress.sites.<name>.database.createLocally` | `boolean` | Create the database and database user locally. |
+| `services.wordpress.sites.<name>.database.host` | `string` | Database host address. |
+| `services.wordpress.sites.<name>.database.name` | `string` | Database name. |
+| `services.wordpress.sites.<name>.database.passwordFile` | `null or absolute path` | A file containing the password corresponding to {option}`database.user`. |
+| `services.wordpress.sites.<name>.database.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Database host port. |
+| `services.wordpress.sites.<name>.database.socket` | `null or absolute path` | Path to the unix socket file to use for authentication. |
+| `services.wordpress.sites.<name>.database.tablePrefix` | `string` | The $table_prefix is the value placed in the front of your database tables. Change the value if you want to use something other than wp\_ for your database prefix. Typically this is changed if you are installing multiple WordPress blogs in the same database. See <https://codex.wordpress.org/Editing_wp-config.php#table_prefix>. |
+| `services.wordpress.sites.<name>.database.user` | `string` | Database user. |
+| `services.wordpress.sites.<name>.extraConfig` | `strings concatenated with "\n"` | Any additional text to be appended to the wp-config.php configuration file. This is a PHP script. For configuration settings, see <https://codex.wordpress.org/Editing_wp-config.php>. **Note**: Please pass structured settings via `services.wordpress.sites.‹name›.settings` instead. |
+| `services.wordpress.sites.<name>.finalPackage` | `package` | WordPress package with bundled configuration, plugins and themes. |
+| `services.wordpress.sites.<name>.fontsDir` | `absolute path` | This directory is used to download fonts from a remote location, e.g. to host google fonts locally. |
+| `services.wordpress.sites.<name>.languages` | `list of absolute path` | List of path(s) to respective language(s) which are copied from the 'languages' directory. |
+| `services.wordpress.sites.<name>.mergedConfig` | `unspecified value` | Read only representation of the final configuration. |
+| `services.wordpress.sites.<name>.package` | `package` | The wordpress package to use. |
+| `services.wordpress.sites.<name>.plugins` | `(attribute set of absolute path) or (list of absolute path) convertible to it` | Path(s) to respective plugin(s) which are copied from the 'plugins' directory. ::: {.note} These plugins need to be packaged before use, see example. ::: |
+| `services.wordpress.sites.<name>.poolConfig` | `attribute set of (string or signed integer or boolean)` | Options for the WordPress PHP pool. See the documentation on `php-fpm.conf` for details on configuration directives. |
+| `services.wordpress.sites.<name>.settings` | `attribute set of anything` | Structural Wordpress configuration. Refer to <https://developer.wordpress.org/apis/wp-config-php> for details and supported values. |
+| `services.wordpress.sites.<name>.themes` | `(attribute set of absolute path) or (list of absolute path) convertible to it` | Path(s) to respective theme(s) which are copied from the 'theme' directory. ::: {.note} These themes need to be packaged before use, see example. ::: |
+| `services.wordpress.sites.<name>.uploadsDir` | `absolute path` | This directory is used for uploads of pictures. The directory passed here is automatically created and permissions adjusted as required. |
+| `services.wordpress.sites.<name>.virtualHost` | `submodule` | Apache configuration can be done by adapting {option}`services.httpd.virtualHosts`. |
+| `services.wordpress.sites.<name>.virtualHost.acmeRoot` | `null or string` | Directory for the acme challenge which is PUBLIC, don't put certs or keys in here. Set to null to inherit from config.security.acme. |
+| `services.wordpress.sites.<name>.virtualHost.addSSL` | `boolean` | Whether to enable HTTPS in addition to plain HTTP. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443). |
+| `services.wordpress.sites.<name>.virtualHost.adminAddr` | `null or string` | E-mail address of the server administrator. |
+| `services.wordpress.sites.<name>.virtualHost.documentRoot` | `null or absolute path` | The path of Apache's document root directory. If left undefined, an empty directory in the Nix store will be used as root. |
+| `services.wordpress.sites.<name>.virtualHost.enableACME` | `boolean` | Whether to ask Let's Encrypt to sign a certificate for this vhost. Alternately, you can use an existing certificate through {option}`useACMEHost`. |
+| `services.wordpress.sites.<name>.virtualHost.enableUserDir` | `boolean` | Whether to enable serving {file}`~/public_html` as `/~«username»`. |
+| `services.wordpress.sites.<name>.virtualHost.extraConfig` | `strings concatenated with "\n"` | These lines go to httpd.conf verbatim. They will go after directories and directory aliases defined by default. |
+| `services.wordpress.sites.<name>.virtualHost.forceSSL` | `boolean` | Whether to add a separate nginx server block that permanently redirects (301) all plain HTTP traffic to HTTPS. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443), where the non-SSL listens are used for the redirect vhosts. |
+| `services.wordpress.sites.<name>.virtualHost.globalRedirect` | `null or string` | If set, all requests for this host are redirected permanently to the given URL. |
+| `services.wordpress.sites.<name>.virtualHost.hostName` | `string` | Canonical hostname for the server. |
+| `services.wordpress.sites.<name>.virtualHost.http2` | `boolean` | Whether to enable HTTP 2. HTTP/2 is supported in all multi-processing modules that come with httpd. *However, if you use the prefork mpm, there will be severe restrictions.* Refer to <https://httpd.apache.org/docs/2.4/howto/http2.html#mpm-config> for details. |
+| `services.wordpress.sites.<name>.virtualHost.listen` | `list of (submodule)` | Listen addresses and ports for this virtual host. ::: {.note} This option overrides `addSSL`, `forceSSL` and `onlySSL`. If you only want to set the addresses manually and not the ports, take a look at `listenAddresses`. ::: |
+| `services.wordpress.sites.<name>.virtualHost.listen.*.ip` | `string` | IP to listen on. 0.0.0.0 for IPv4 only, * for all. |
+| `services.wordpress.sites.<name>.virtualHost.listen.*.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on |
+| `services.wordpress.sites.<name>.virtualHost.listen.*.ssl` | `boolean` | Whether to enable SSL (https) support. |
+| `services.wordpress.sites.<name>.virtualHost.listenAddresses` | `non-empty (list of string)` | Listen addresses for this virtual host. Compared to `listen` this only sets the addresses and the ports are chosen automatically. |
+| `services.wordpress.sites.<name>.virtualHost.locations` | `attribute set of (submodule)` | Declarative location config. See <https://httpd.apache.org/docs/2.4/mod/core.html#location> for details. |
+| `services.wordpress.sites.<name>.virtualHost.locations.<name>.alias` | `null or absolute path` | Alias directory for requests. See <https://httpd.apache.org/docs/2.4/mod/mod_alias.html#alias>. |
+| `services.wordpress.sites.<name>.virtualHost.locations.<name>.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the location verbatim. |
+| `services.wordpress.sites.<name>.virtualHost.locations.<name>.index` | `null or string` | Adds DirectoryIndex directive. See <https://httpd.apache.org/docs/2.4/mod/mod_dir.html#directoryindex>. |
+| `services.wordpress.sites.<name>.virtualHost.locations.<name>.priority` | `signed integer` | Order of this location block in relation to the others in the vhost. The semantics are the same as with `lib.mkOrder`. Smaller values have a greater priority. |
+| `services.wordpress.sites.<name>.virtualHost.locations.<name>.proxyPass` | `null or string` | Sets up a simple reverse proxy as described by <https://httpd.apache.org/docs/2.4/howto/reverse_proxy.html#simple>. |
+| `services.wordpress.sites.<name>.virtualHost.logFormat` | `string` | Log format for Apache's log files. Possible values are: combined, common, referer, agent. |
+| `services.wordpress.sites.<name>.virtualHost.onlySSL` | `boolean` | Whether to enable HTTPS and reject plain HTTP connections. This will set defaults for `listen` to listen on all interfaces on port 443. |
+| `services.wordpress.sites.<name>.virtualHost.robotsEntries` | `strings concatenated with "\n"` | Specification of pages to be ignored by web crawlers. See <http://www.robotstxt.org/> for details. |
+| `services.wordpress.sites.<name>.virtualHost.servedDirs` | `list of (attribute set)` | This option provides a simple way to serve static directories. |
+| `services.wordpress.sites.<name>.virtualHost.servedFiles` | `list of (attribute set)` | This option provides a simple way to serve individual, static files. ::: {.note} This option has been deprecated and will be removed in a future version of NixOS. You can achieve the same result by making use of the `locations.<name>.alias` option. ::: |
+| `services.wordpress.sites.<name>.virtualHost.serverAliases` | `list of string` | Additional names of virtual hosts served by this virtual host configuration. |
+| `services.wordpress.sites.<name>.virtualHost.sslServerCert` | `absolute path` | Path to server SSL certificate. |
+| `services.wordpress.sites.<name>.virtualHost.sslServerChain` | `null or absolute path` | Path to server SSL chain file. |
+| `services.wordpress.sites.<name>.virtualHost.sslServerKey` | `absolute path` | Path to server SSL certificate key. |
+| `services.wordpress.sites.<name>.virtualHost.useACMEHost` | `null or string` | A host of an existing Let's Encrypt certificate to use. This is useful if you have many subdomains and want to avoid hitting the [rate limit](https://letsencrypt.org/docs/rate-limits). Alternately, you can generate a certificate through {option}`enableACME`. *Note that this option does not create any certificates, nor it does add subdomains to existing ones – you will need to create them manually using [](#opt-security.acme.certs).* |
+| `services.wordpress.webserver` | `one of "httpd", "nginx", "caddy"` | Whether to use apache2 or nginx for virtual host management. Further nginx configuration can be done by adapting `services.nginx.virtualHosts.<name>`. See [](#opt-services.nginx.virtualHosts) for further information. Further apache2 configuration can be done by adapting `services.httpd.virtualHosts.<name>`. See [](#opt-services.httpd.virtualHosts) for further information. |

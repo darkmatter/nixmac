@@ -5,10 +5,10 @@
 All options under `services.tremor-rs`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.tremor-rs.enable` | | |
-| `services.tremor-rs.host` | | |
-| `services.tremor-rs.loggerSettings` | | |
-| `services.tremor-rs.port` | | |
-| `services.tremor-rs.tremorLibDir` | | |
-| `services.tremor-rs.troyFileList` | | |
+| --- | --- | --- |
+| `services.tremor-rs.enable` | `boolean` | Whether to enable Tremor event- or stream-processing system. |
+| `services.tremor-rs.host` | `string` | The host tremor should be listening on |
+| `services.tremor-rs.loggerSettings` | `YAML 1.1 value` | Tremor logger configuration |
+| `services.tremor-rs.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | the port tremor should be listening on |
+| `services.tremor-rs.tremorLibDir` | `absolute path` | Directory where to find /lib containing tremor script files |
+| `services.tremor-rs.troyFileList` | `list of absolute path` | List of troy files to load. |

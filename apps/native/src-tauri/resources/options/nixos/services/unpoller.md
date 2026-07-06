@@ -5,39 +5,51 @@
 All options under `services.unpoller`.
 
 | Option | Type | Description |
-| ------------------------------------------------- | ---- | ----------- |
-| `services.unpoller.enable` | | |
-| `services.unpoller.influxdb.db` | | |
-| `services.unpoller.influxdb.disable` | | |
-| `services.unpoller.influxdb.interval` | | |
-| `services.unpoller.influxdb.pass` | | |
-| `services.unpoller.influxdb.url` | | |
-| `services.unpoller.influxdb.user` | | |
-| `services.unpoller.influxdb.verify_ssl` | | |
-| `services.unpoller.loki.interval` | | |
-| `services.unpoller.loki.pass` | | |
-| `services.unpoller.loki.tenant_id` | | |
-| `services.unpoller.loki.timeout` | | |
-| `services.unpoller.loki.url` | | |
-| `services.unpoller.loki.user` | | |
-| `services.unpoller.loki.verify_ssl` | | |
-| `services.unpoller.poller.debug` | | |
-| `services.unpoller.poller.plugins` | | |
-| `services.unpoller.poller.quiet` | | |
-| `services.unpoller.prometheus.disable` | | |
-| `services.unpoller.prometheus.http_listen` | | |
-| `services.unpoller.prometheus.report_errors` | | |
-| `services.unpoller.unifi.controllers` | | |
-| `services.unpoller.unifi.defaults.hash_pii` | | |
-| `services.unpoller.unifi.defaults.pass` | | |
-| `services.unpoller.unifi.defaults.save_alarms` | | |
-| `services.unpoller.unifi.defaults.save_anomalies` | | |
-| `services.unpoller.unifi.defaults.save_dpi` | | |
-| `services.unpoller.unifi.defaults.save_events` | | |
-| `services.unpoller.unifi.defaults.save_ids` | | |
-| `services.unpoller.unifi.defaults.save_sites` | | |
-| `services.unpoller.unifi.defaults.sites` | | |
-| `services.unpoller.unifi.defaults.url` | | |
-| `services.unpoller.unifi.defaults.user` | | |
-| `services.unpoller.unifi.defaults.verify_ssl` | | |
-| `services.unpoller.unifi.dynamic` | | |
+| --- | --- | --- |
+| `services.unpoller.enable` | `boolean` | Whether to enable unpoller. |
+| `services.unpoller.influxdb.db` | `string` | Database name. Database should exist. |
+| `services.unpoller.influxdb.disable` | `boolean` | Whether to disable the influxdb output plugin. |
+| `services.unpoller.influxdb.interval` | `string` | Setting this lower than the Unifi controller's refresh interval may lead to zeroes in your database. |
+| `services.unpoller.influxdb.pass` | `absolute path` | Path of a file containing the password for influxdb. This file needs to be readable by the unifi-poller user. |
+| `services.unpoller.influxdb.url` | `string` | URL of the influxdb host. |
+| `services.unpoller.influxdb.user` | `string` | Username for the influxdb. |
+| `services.unpoller.influxdb.verify_ssl` | `boolean` | Verify the influxdb's certificate. |
+| `services.unpoller.loki.interval` | `string` | How often the events are polled and pushed to Loki. |
+| `services.unpoller.loki.pass` | `absolute path` | Path of a file containing the password for Loki. This file needs to be readable by the unifi-poller user. |
+| `services.unpoller.loki.tenant_id` | `string` | Tenant ID to use in Loki. |
+| `services.unpoller.loki.timeout` | `string` | Should be increased in case of timeout errors. |
+| `services.unpoller.loki.url` | `string` | URL of the Loki host. |
+| `services.unpoller.loki.user` | `string` | Username for Loki. |
+| `services.unpoller.loki.verify_ssl` | `boolean` | Verify Loki's certificate. |
+| `services.unpoller.poller.debug` | `boolean` | Turns on line numbers, microsecond logging, and a per-device log. This may be noisy if you have a lot of devices. It adds one line per device. |
+| `services.unpoller.poller.plugins` | `list of string` | Load additional plugins. |
+| `services.unpoller.poller.quiet` | `boolean` | Turns off per-interval logs. Only startup and error logs will be emitted. |
+| `services.unpoller.prometheus.disable` | `boolean` | Whether to disable the prometheus output plugin. |
+| `services.unpoller.prometheus.http_listen` | `string` | Bind the prometheus exporter to this IP or hostname. |
+| `services.unpoller.prometheus.report_errors` | `boolean` | Whether to report errors. |
+| `services.unpoller.unifi.controllers` | `list of (submodule)` | List of Unifi controllers to poll. Use defaults if empty. |
+| `services.unpoller.unifi.controllers.*.hash_pii` | `boolean` | Hash, with md5, client names and MAC addresses. This attempts to protect personally identifiable information. |
+| `services.unpoller.unifi.controllers.*.pass` | `absolute path` | Path of a file containing the password for the unifi service user. This file needs to be readable by the unifi-poller user. |
+| `services.unpoller.unifi.controllers.*.save_alarms` | `boolean` | Collect and save data from UniFi alarms to influxdb and Loki. |
+| `services.unpoller.unifi.controllers.*.save_anomalies` | `boolean` | Collect and save data from UniFi anomalies to influxdb and Loki. |
+| `services.unpoller.unifi.controllers.*.save_dpi` | `boolean` | Collect and save data from deep packet inspection. Adds around 150 data points and impacts performance. |
+| `services.unpoller.unifi.controllers.*.save_events` | `boolean` | Collect and save data from UniFi events to influxdb and Loki. |
+| `services.unpoller.unifi.controllers.*.save_ids` | `boolean` | Collect and save data from the intrusion detection system to influxdb and Loki. |
+| `services.unpoller.unifi.controllers.*.save_sites` | `boolean` | Collect and save site data. |
+| `services.unpoller.unifi.controllers.*.sites` | `one of "default", "all" or list of string` | List of site names for which statistics should be exported. Or the string "default" for the default site or the string "all" for all sites. |
+| `services.unpoller.unifi.controllers.*.url` | `string` | URL of the Unifi controller. |
+| `services.unpoller.unifi.controllers.*.user` | `string` | Unifi service user name. |
+| `services.unpoller.unifi.controllers.*.verify_ssl` | `boolean` | Verify the Unifi controller's certificate. |
+| `services.unpoller.unifi.defaults.hash_pii` | `boolean` | Hash, with md5, client names and MAC addresses. This attempts to protect personally identifiable information. |
+| `services.unpoller.unifi.defaults.pass` | `absolute path` | Path of a file containing the password for the unifi service user. This file needs to be readable by the unifi-poller user. |
+| `services.unpoller.unifi.defaults.save_alarms` | `boolean` | Collect and save data from UniFi alarms to influxdb and Loki. |
+| `services.unpoller.unifi.defaults.save_anomalies` | `boolean` | Collect and save data from UniFi anomalies to influxdb and Loki. |
+| `services.unpoller.unifi.defaults.save_dpi` | `boolean` | Collect and save data from deep packet inspection. Adds around 150 data points and impacts performance. |
+| `services.unpoller.unifi.defaults.save_events` | `boolean` | Collect and save data from UniFi events to influxdb and Loki. |
+| `services.unpoller.unifi.defaults.save_ids` | `boolean` | Collect and save data from the intrusion detection system to influxdb and Loki. |
+| `services.unpoller.unifi.defaults.save_sites` | `boolean` | Collect and save site data. |
+| `services.unpoller.unifi.defaults.sites` | `one of "default", "all" or list of string` | List of site names for which statistics should be exported. Or the string "default" for the default site or the string "all" for all sites. |
+| `services.unpoller.unifi.defaults.url` | `string` | URL of the Unifi controller. |
+| `services.unpoller.unifi.defaults.user` | `string` | Unifi service user name. |
+| `services.unpoller.unifi.defaults.verify_ssl` | `boolean` | Verify the Unifi controller's certificate. |
+| `services.unpoller.unifi.dynamic` | `boolean` | Let prometheus select which controller to poll when scraping. Use with default credentials. See unifi-poller wiki for more. |

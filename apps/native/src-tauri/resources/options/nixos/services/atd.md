@@ -5,6 +5,6 @@
 All options under `services.atd`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.atd.allowEveryone` | | |
-| `services.atd.enable` | | |
+| --- | --- | --- |
+| `services.atd.allowEveryone` | `boolean` | Whether to make {file}`/var/spool/at{jobs,spool}` writeable by everyone (and sticky). This is normally not needed since the {command}`at` commands are setuid/setgid `atd`. |
+| `services.atd.enable` | `boolean` | Whether to enable the {command}`at` daemon, a command scheduler. |

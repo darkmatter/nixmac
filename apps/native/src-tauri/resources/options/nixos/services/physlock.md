@@ -5,12 +5,12 @@
 All options under `services.physlock`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.physlock.allowAnyUser` | | |
-| `services.physlock.disableSysRq` | | |
-| `services.physlock.enable` | | |
-| `services.physlock.lockMessage` | | |
-| `services.physlock.lockOn.extraTargets` | | |
-| `services.physlock.lockOn.hibernate` | | |
-| `services.physlock.lockOn.suspend` | | |
-| `services.physlock.muteKernelMessages` | | |
+| --- | --- | --- |
+| `services.physlock.allowAnyUser` | `boolean` | Whether to allow any user to lock the screen. This will install a setuid wrapper to allow any user to start physlock as root, which is a minor security risk. Call the physlock binary to use this instead of using the systemd service. |
+| `services.physlock.disableSysRq` | `boolean` | Whether to disable SysRq when locked with physlock. |
+| `services.physlock.enable` | `boolean` | Whether to enable the {command}`physlock` screen locking mechanism. Enable this and then run {command}`systemctl start physlock` to securely lock the screen. This will switch to a new virtual terminal, turn off console switching and disable SysRq mechanism (when {option}`services.physlock.disableSysRq` is set) until the root or user password is given. |
+| `services.physlock.lockMessage` | `string` | Message to show on physlock login terminal. |
+| `services.physlock.lockOn.extraTargets` | `list of string` | Other targets to lock the screen just before. Useful if you want to e.g. both autologin to X11 so that your {file}`~/.xsession` gets executed and still to have the screen locked so that the system can be booted relatively unattended. |
+| `services.physlock.lockOn.hibernate` | `boolean` | Whether to lock screen with physlock just before hibernate. |
+| `services.physlock.lockOn.suspend` | `boolean` | Whether to lock screen with physlock just before suspend. |
+| `services.physlock.muteKernelMessages` | `boolean` | Disable kernel messages on console while physlock is running. |

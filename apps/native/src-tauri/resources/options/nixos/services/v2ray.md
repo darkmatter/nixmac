@@ -5,8 +5,8 @@
 All options under `services.v2ray`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.v2ray.config` | | |
-| `services.v2ray.configFile` | | |
-| `services.v2ray.enable` | | |
-| `services.v2ray.package` | | |
+| --- | --- | --- |
+| `services.v2ray.config` | `null or JSON value` | The configuration object. Either `configFile` or `config` must be specified. See <https://www.v2fly.org/en_US/v5/config/overview.html>. |
+| `services.v2ray.configFile` | `null or string` | The absolute path to the configuration file. Either `configFile` or `config` must be specified. See <https://www.v2fly.org/en_US/v5/config/overview.html>. |
+| `services.v2ray.enable` | `boolean` | Whether to run v2ray server. Either `configFile` or `config` must be specified. |
+| `services.v2ray.package` | `package` | The v2ray package to use. |

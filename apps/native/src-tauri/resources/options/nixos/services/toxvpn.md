@@ -5,8 +5,8 @@
 All options under `services.toxvpn`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.toxvpn.auto_add_peers` | | |
-| `services.toxvpn.enable` | | |
-| `services.toxvpn.localip` | | |
-| `services.toxvpn.port` | | |
+| --- | --- | --- |
+| `services.toxvpn.auto_add_peers` | `list of string` | peers to automatically connect to on startup |
+| `services.toxvpn.enable` | `boolean` | Whether to enable toxvpn running on startup. |
+| `services.toxvpn.localip` | `string` | your ip on the vpn |
+| `services.toxvpn.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | udp port for toxcore, port-forward to help with connectivity if you run many nodes behind one NAT |

@@ -5,11 +5,11 @@
 All options under `services.ananicy`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.ananicy.enable` | | |
-| `services.ananicy.extraCgroups` | | |
-| `services.ananicy.extraRules` | | |
-| `services.ananicy.extraTypes` | | |
-| `services.ananicy.package` | | |
-| `services.ananicy.rulesProvider` | | |
-| `services.ananicy.settings` | | |
+| --- | --- | --- |
+| `services.ananicy.enable` | `boolean` | Whether to enable Ananicy, an auto nice daemon. |
+| `services.ananicy.extraCgroups` | `list of (attribute set)` | Cgroups to write in 'nixCgroups.cgroups'. See: <https://gitlab.com/ananicy-cpp/ananicy-cpp/#cgroups> |
+| `services.ananicy.extraRules` | `list of (attribute set)` | Rules to write in 'nixRules.rules'. See: <https://github.com/Nefelim4ag/Ananicy#configuration> <https://gitlab.com/ananicy-cpp/ananicy-cpp/#global-configuration> |
+| `services.ananicy.extraTypes` | `list of (attribute set)` | Types to write in 'nixTypes.types'. See: <https://gitlab.com/ananicy-cpp/ananicy-cpp/#types> |
+| `services.ananicy.package` | `package` | The ananicy package to use. |
+| `services.ananicy.rulesProvider` | `package` | Which package to copy default rules,types,cgroups from. |
+| `services.ananicy.settings` | `attribute set of (signed integer or boolean or string)` | See <https://github.com/Nefelim4ag/Ananicy/blob/master/ananicy.d/ananicy.conf> |

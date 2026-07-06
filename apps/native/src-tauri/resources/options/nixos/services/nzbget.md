@@ -5,9 +5,9 @@
 All options under `services.nzbget`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.nzbget.enable` | | |
-| `services.nzbget.group` | | |
-| `services.nzbget.package` | | |
-| `services.nzbget.settings` | | |
-| `services.nzbget.user` | | |
+| --- | --- | --- |
+| `services.nzbget.enable` | `boolean` | Whether to enable NZBGet, for downloading files from news servers. |
+| `services.nzbget.group` | `string` | Group under which NZBGet runs |
+| `services.nzbget.package` | `package` | The nzbget package to use. |
+| `services.nzbget.settings` | `attribute set of (boolean or signed integer or string)` | NZBGet configuration, passed via command line using switch -o. Refer to <https://github.com/nzbgetcom/nzbget/blob/develop/nzbget.conf> for details on supported values. |
+| `services.nzbget.user` | `string` | User account under which NZBGet runs |

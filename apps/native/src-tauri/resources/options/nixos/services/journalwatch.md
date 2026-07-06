@@ -5,14 +5,16 @@
 All options under `services.journalwatch`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.journalwatch.accuracy` | | |
-| `services.journalwatch.enable` | | |
-| `services.journalwatch.extraConfig` | | |
-| `services.journalwatch.filterBlocks` | | |
-| `services.journalwatch.interval` | | |
-| `services.journalwatch.mailBinary` | | |
-| `services.journalwatch.mailFrom` | | |
-| `services.journalwatch.mailTo` | | |
-| `services.journalwatch.package` | | |
-| `services.journalwatch.priority` | | |
+| --- | --- | --- |
+| `services.journalwatch.accuracy` | `string` | The time window around the interval in which the journalwatch run will be scheduled. The format is described in {manpage}`systemd.time(7)`. |
+| `services.journalwatch.enable` | `boolean` | If enabled, periodically check the journal with journalwatch and report the results by mail. |
+| `services.journalwatch.extraConfig` | `string` | Extra lines to be added verbatim to the journalwatch/config configuration file. You can add any commandline argument to the config, without the '--'. See `journalwatch --help` for all arguments and their description. |
+| `services.journalwatch.filterBlocks` | `list of (submodule)` | filterBlocks can be defined to blacklist journal messages which are not errors. Each block matches on a log entry field, and the filters in that block then are matched against all messages with a matching log entry field. All messages whose PRIORITY is at least 6 (INFO) are processed by journalwatch. If you don't specify any filterBlocks, PRIORITY is reduced to 5 (NOTICE) by default. All regular expressions are extended Python regular expressions, for details see: http://doc.pyschools.com/html/regex.html |
+| `services.journalwatch.filterBlocks.*.filters` | `string` | The filters to apply on all messages which satisfy {option}`match`. Any of those messages that match any specified filter will be removed from journalwatch's output. Each filter is an extended Python regular expression. You can specify multiple filters and separate them by newlines. Lines starting with '#' are comments. Inline-comments are not permitted. |
+| `services.journalwatch.filterBlocks.*.match` | `string` | Syntax: `field = value` Specifies the log entry `field` this block should apply to. If the `field` of a message matches this `value`, this patternBlock's {option}`filters` are applied. If `value` starts and ends with a slash, it is interpreted as an extended python regular expression, if not, it's an exact match. The journal fields are explained in {manpage}`systemd.journal-fields(7)`. |
+| `services.journalwatch.interval` | `string` | How often to run journalwatch. The format is described in {manpage}`systemd.time(7)`. |
+| `services.journalwatch.mailBinary` | `absolute path` | Sendmail-compatible binary to be used to send the messages. |
+| `services.journalwatch.mailFrom` | `string` | Mail address to send journalwatch reports from. |
+| `services.journalwatch.mailTo` | `null or string` | Mail address to send journalwatch reports to. |
+| `services.journalwatch.package` | `package` | The journalwatch package to use. |
+| `services.journalwatch.priority` | `integer between 0 and 7 (both inclusive)` | Lowest priority of message to be considered. A value between 7 ("debug"), and 0 ("emerg"). Defaults to 6 ("info"). If you don't care about anything with "info" priority, you can reduce this to e.g. 5 ("notice") to considerably reduce the amount of messages without needing many {option}`filterBlocks`. |

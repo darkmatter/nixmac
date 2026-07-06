@@ -5,5 +5,5 @@
 All options under `programs.droidcam`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `programs.droidcam.enable` | | |
+| --- | --- | --- |
+| `programs.droidcam.enable` | `boolean` | Whether to enable DroidCam client. |

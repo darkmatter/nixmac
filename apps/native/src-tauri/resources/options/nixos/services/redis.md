@@ -5,34 +5,41 @@
 All options under `services.redis`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.redis.appendFsync` | | |
-| `services.redis.appendOnly` | | |
-| `services.redis.appendOnlyFilename` | | |
-| `services.redis.bind` | | |
-| `services.redis.databases` | | |
-| `services.redis.dbFilename` | | |
-| `services.redis.dbpath` | | |
-| `services.redis.enable` | | |
-| `services.redis.extraConfig` | | |
-| `services.redis.logLevel` | | |
-| `services.redis.logfile` | | |
-| `services.redis.masterAuth` | | |
-| `services.redis.maxclients` | | |
-| `services.redis.openFirewall` | | |
-| `services.redis.package` | | |
-| `services.redis.pidFile` | | |
-| `services.redis.port` | | |
-| `services.redis.requirePass` | | |
-| `services.redis.requirePassFile` | | |
-| `services.redis.save` | | |
-| `services.redis.servers` | | |
-| `services.redis.settings` | | |
-| `services.redis.slaveOf` | | |
-| `services.redis.slowLogLogSlowerThan` | | |
-| `services.redis.slowLogMaxLen` | | |
-| `services.redis.syslog` | | |
-| `services.redis.unixSocket` | | |
-| `services.redis.unixSocketPerm` | | |
-| `services.redis.user` | | |
-| `services.redis.vmOverCommit` | | |
+| --- | --- | --- |
+| `services.redis.package` | `package` | The redis package to use. |
+| `services.redis.servers` | `attribute set of (submodule)` | Configuration of multiple `redis-server` instances. |
+| `services.redis.servers.<name>.appendFsync` | `string` | How often to fsync the append-only log, options: no, always, everysec. |
+| `services.redis.servers.<name>.appendOnly` | `boolean` | By default data is only periodically persisted to disk, enable this option to use an append-only file for improved persistence. |
+| `services.redis.servers.<name>.bind` | `null or string` | The IP interface to bind to. `null` means "all interfaces". |
+| `services.redis.servers.<name>.databases` | `signed integer` | Set the number of databases. |
+| `services.redis.servers.<name>.enable` | `boolean` | Whether to enable Redis server. |
+| `services.redis.servers.<name>.extraParams` | `list of string` | Extra parameters to append to redis-server invocation |
+| `services.redis.servers.<name>.group` | `string` | Group account under which this instance of redis-server runs. ::: {.note} If left as the default value this group will automatically be created on system activation, otherwise you are responsible for ensuring the group exists before the redis service starts. |
+| `services.redis.servers.<name>.logLevel` | `string` | Specify the server verbosity level, options: debug, verbose, notice, warning. |
+| `services.redis.servers.<name>.logfile` | `string` | Specify the log file name. Also 'stdout' can be used to force Redis to log on the standard output. |
+| `services.redis.servers.<name>.masterAuth` | `null or string` | If the master is password protected (using the requirePass configuration) it is possible to tell the slave to authenticate before starting the replication synchronization process, otherwise the master will refuse the slave request. (STORED PLAIN TEXT, WORLD-READABLE IN NIX STORE) |
+| `services.redis.servers.<name>.masterAuthFile` | `null or absolute path` | File with password for the master user. |
+| `services.redis.servers.<name>.masterUser` | `null or string` | If the master is password protected via ACLs this option can be used to specify the Redis user that is used by replicas. |
+| `services.redis.servers.<name>.maxclients` | `signed integer` | Set the max number of connected clients at the same time. |
+| `services.redis.servers.<name>.openFirewall` | `boolean` | Whether to open ports in the firewall for the server. |
+| `services.redis.servers.<name>.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The TCP port to accept connections. If port 0 is specified Redis will not listen on a TCP socket. |
+| `services.redis.servers.<name>.requirePass` | `null or string` | Password for database (STORED PLAIN TEXT, WORLD-READABLE IN NIX STORE). Use requirePassFile to store it outside of the nix store in a dedicated file. |
+| `services.redis.servers.<name>.requirePassFile` | `null or absolute path` | File with password for the database. |
+| `services.redis.servers.<name>.save` | `list of list of signed integer` | The schedule in which data is persisted to disk, represented as a list of lists where the first element represent the amount of seconds and the second the number of changes. If set to the empty list (`[]`) then RDB persistence will be disabled (useful if you are using AOF or don't want any persistence). |
+| `services.redis.servers.<name>.sentinelAuthPassFile` | `null or absolute path` | File with password for connecting to other Sentinel instances. |
+| `services.redis.servers.<name>.sentinelAuthUser` | `null or string` | The username to use to monitor a master from Sentinel. |
+| `services.redis.servers.<name>.sentinelMasterHost` | `null or string` | The IP address (recommended) or hostname of the Redis master that Sentinel will monitor. |
+| `services.redis.servers.<name>.sentinelMasterName` | `null or string` | The master name of the Redis master that Sentinel will monitor. |
+| `services.redis.servers.<name>.sentinelMasterPort` | `null or signed integer` | The TCP port of the Redis master that Sentinel will monitor. |
+| `services.redis.servers.<name>.sentinelMasterQuorum` | `null or signed integer` | The Sentinel quorum (minimum number of Sentinel nodes online for failover) |
+| `services.redis.servers.<name>.settings` | `attribute set of (boolean or signed integer or string or list of string)` | Redis configuration. Refer to <https://redis.io/topics/config> for details on supported values. |
+| `services.redis.servers.<name>.slaveOf` | `null or (submodule)` | IP and port to which this redis instance acts as a slave. |
+| `services.redis.servers.<name>.slaveOf.ip` | `string` | IP of the Redis master |
+| `services.redis.servers.<name>.slaveOf.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | port of the Redis master |
+| `services.redis.servers.<name>.slowLogLogSlowerThan` | `signed integer` | Log queries whose execution take longer than X in milliseconds. |
+| `services.redis.servers.<name>.slowLogMaxLen` | `signed integer` | Maximum number of items to keep in slow log. |
+| `services.redis.servers.<name>.syslog` | `boolean` | Enable logging to the system logger. |
+| `services.redis.servers.<name>.unixSocket` | `null or absolute path` | The path to the socket to bind to. |
+| `services.redis.servers.<name>.unixSocketPerm` | `signed integer` | Change permissions for the socket |
+| `services.redis.servers.<name>.user` | `string` | User account under which this instance of redis-server runs. ::: {.note} If left as the default value this user will automatically be created on system activation, otherwise you are responsible for ensuring the user exists before the redis service starts. |
+| `services.redis.vmOverCommit` | `boolean` | Whether to enable set `vm.overcommit_memory` sysctl to 1 (Suggested for Background Saving: <https://redis.io/docs/get-started/faq/>) . |

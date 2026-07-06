@@ -5,7 +5,7 @@
 All options under `services.spotifyd`.
 
 | Option | Type | Description |
-| ---------------------------- | ------------ | --------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.spotifyd.enable` | `boolean` | Whether to enable SpotifyD connect. |
 | `services.spotifyd.package` | `package` | The spotifyd package to use. Can be used to specify extensions. |
 | `services.spotifyd.settings` | `TOML value` | Configuration for spotifyd |

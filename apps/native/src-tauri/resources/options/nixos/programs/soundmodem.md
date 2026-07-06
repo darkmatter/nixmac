@@ -5,6 +5,6 @@
 All options under `programs.soundmodem`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `programs.soundmodem.enable` | | |
-| `programs.soundmodem.package` | | |
+| --- | --- | --- |
+| `programs.soundmodem.enable` | `boolean` | Whether to add Soundmodem to the global environment and configure a wrapper for 'soundmodemconfig' for users in the 'soundmodem' group. |
+| `programs.soundmodem.package` | `package` | The soundmodem package to use. |

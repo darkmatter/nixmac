@@ -5,16 +5,16 @@
 All options under `services.moonraker`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.moonraker.address` | | |
-| `services.moonraker.allowSystemControl` | | |
-| `services.moonraker.analysis.enable` | | |
-| `services.moonraker.configDir` | | |
-| `services.moonraker.enable` | | |
-| `services.moonraker.group` | | |
-| `services.moonraker.klipperSocket` | | |
-| `services.moonraker.package` | | |
-| `services.moonraker.port` | | |
-| `services.moonraker.settings` | | |
-| `services.moonraker.stateDir` | | |
-| `services.moonraker.user` | | |
+| --- | --- | --- |
+| `services.moonraker.address` | `string` | The IP or host to listen on. |
+| `services.moonraker.allowSystemControl` | `boolean` | Whether to allow Moonraker to perform system-level operations. Moonraker exposes APIs to perform system-level operations, such as reboot, shutdown, and management of systemd units. See the [documentation](https://moonraker.readthedocs.io/en/latest/web_api/#machine-commands) for details on what clients are able to do. |
+| `services.moonraker.analysis.enable` | `boolean` | Whether to enable Runtime analysis with klipper-estimator. |
+| `services.moonraker.configDir` | `null or absolute path` | Deprecated directory containing client-writable configuration files. Clients will be able to edit files in this directory via the API. This directory must be writable. |
+| `services.moonraker.enable` | `boolean` | Whether to enable Moonraker, an API web server for Klipper. |
+| `services.moonraker.group` | `string` | Group account under which Moonraker runs. |
+| `services.moonraker.klipperSocket` | `absolute path` | Path to Klipper's API socket. |
+| `services.moonraker.package` | `null or package` | The moonraker package to use. |
+| `services.moonraker.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to listen on. |
+| `services.moonraker.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string) or a non-empty list of them)` | Configuration for Moonraker. See the [documentation](https://moonraker.readthedocs.io/en/latest/configuration/) for supported values. |
+| `services.moonraker.stateDir` | `absolute path` | The directory containing the Moonraker databases. |
+| `services.moonraker.user` | `string` | User account under which Moonraker runs. |

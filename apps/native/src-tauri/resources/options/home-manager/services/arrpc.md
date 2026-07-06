@@ -5,7 +5,7 @@
 All options under `services.arrpc`.
 
 | Option | Type | Description |
-| ------------------------------ | --------- | -------------------------- |
+| --- | --- | --- |
 | `services.arrpc.enable` | `boolean` | Whether to enable arrpc. |
 | `services.arrpc.package` | `package` | The arrpc package to use. |
 | `services.arrpc.systemdTarget` | `string` | Systemd target to bind to. |

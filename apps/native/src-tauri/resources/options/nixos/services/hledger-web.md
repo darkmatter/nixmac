@@ -5,14 +5,13 @@
 All options under `services.hledger-web`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.hledger-web.allow` | | |
-| `services.hledger-web.baseUrl` | | |
-| `services.hledger-web.capabilities` | | |
-| `services.hledger-web.enable` | | |
-| `services.hledger-web.extraOptions` | | |
-| `services.hledger-web.host` | | |
-| `services.hledger-web.journalFiles` | | |
-| `services.hledger-web.port` | | |
-| `services.hledger-web.serveApi` | | |
-| `services.hledger-web.stateDir` | | |
+| --- | --- | --- |
+| `services.hledger-web.allow` | `one of "view", "add", "edit", "sandstorm"` | User's access level for changing data. * view: view only permission. * add: view and add permissions. * edit: view, add, and edit permissions. * sandstorm: permissions from the `X-Sandstorm-Permissions` request header. |
+| `services.hledger-web.baseUrl` | `null or string` | Base URL, when sharing over a network. |
+| `services.hledger-web.enable` | `boolean` | Whether to enable hledger-web service. |
+| `services.hledger-web.extraOptions` | `list of string` | Extra command line arguments to pass to hledger-web. |
+| `services.hledger-web.host` | `string` | Address to listen on. |
+| `services.hledger-web.journalFiles` | `list of string` | Paths to journal files relative to {option}`services.hledger-web.stateDir`. |
+| `services.hledger-web.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.hledger-web.serveApi` | `boolean` | Whether to enable serving only the JSON web API, without the web UI. |
+| `services.hledger-web.stateDir` | `absolute path` | Path the service has access to. If left as the default value this directory will automatically be created before the hledger-web server starts, otherwise the sysadmin is responsible for ensuring the directory exists with appropriate ownership and permissions. |

@@ -5,5 +5,5 @@
 All options under `programs.bcc`.
 
 | Option | Type | Description |
-| --------------------- | ---- | ----------- |
-| `programs.bcc.enable` | | |
+| --- | --- | --- |
+| `programs.bcc.enable` | `boolean` | Whether to enable bcc, tools for BPF-based Linux IO analysis, networking, monitoring, and more. |

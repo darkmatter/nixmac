@@ -5,16 +5,16 @@
 All options under `powerManagement`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `powerManagement.bootCommands` | | |
-| `powerManagement.cpuFreqGovernor` | | |
-| `powerManagement.cpufreq.max` | | |
-| `powerManagement.cpufreq.min` | | |
-| `powerManagement.enable` | | |
-| `powerManagement.powerDownCommands` | | |
-| `powerManagement.powerUpCommands` | | |
-| `powerManagement.powertop.enable` | | |
-| `powerManagement.powertop.postStart` | | |
-| `powerManagement.powertop.preStart` | | |
-| `powerManagement.resumeCommands` | | |
-| `powerManagement.scsiLinkPolicy` | | |
+| --- | --- | --- |
+| `powerManagement.bootCommands` | `strings concatenated with "\n"` | Commands executed only once after initial boot. These commands are executed before `powerUpCommands`. |
+| `powerManagement.cpuFreqGovernor` | `null or string` | Configure the governor used to regulate the frequency of the available CPUs. By default, the kernel configures the performance governor, although this may be overwritten in your hardware-configuration.nix file. Often used values: "ondemand", "powersave", "performance" |
+| `powerManagement.cpufreq.max` | `null or (unsigned integer, meaning >=0)` | The maximum frequency the CPU will use. Defaults to the maximum possible. |
+| `powerManagement.cpufreq.min` | `null or (unsigned integer, meaning >=0)` | The minimum frequency the CPU will use. |
+| `powerManagement.enable` | `boolean` | Whether to enable power management. This includes support for suspend-to-RAM and powersave features on laptops. |
+| `powerManagement.powerDownCommands` | `strings concatenated with "\n"` | Commands executed when the machine powers down. That is, they're executed both when the system shuts down and when it goes to suspend or hibernation. |
+| `powerManagement.powerUpCommands` | `strings concatenated with "\n"` | Commands executed when the machine powers up. That is, they're executed both when the system first boots and when it resumes from suspend or hibernation. |
+| `powerManagement.powertop.enable` | `boolean` | Whether to enable powertop auto tuning on startup. |
+| `powerManagement.powertop.postStart` | `strings concatenated with "\n"` | Shell commands executed after `powertop` is started. This can be used to workaround problematic configurations. For example, you can retrigger an `udev` rule to disable power saving on unsupported USB devices: `services.udev.extraRules = '''   # disable USB auto suspend for Logitech, Inc. G PRO Gaming Mouse   ACTION=="bind", SUBSYSTEM=="usb", ATTR{idVendor}=="046d", ATTR{idProduct}=="c08c", TEST=="power/control", ATTR{power/control}="on" ''';` |
+| `powerManagement.powertop.preStart` | `strings concatenated with "\n"` | Shell commands executed before `powertop` is started. |
+| `powerManagement.resumeCommands` | `strings concatenated with "\n"` | Commands executed after the system resumes from suspend-to-RAM. |
+| `powerManagement.scsiLinkPolicy` | `null or one of "min_power", "max_performance", "medium_power", "med_power_with_dipm"` | SCSI link power management policy. The kernel default is "max_performance". "med_power_with_dipm" is supported by kernel versions 4.15 and newer. |

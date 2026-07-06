@@ -5,17 +5,17 @@
 All options under `services.terraria`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.terraria.autoCreatedWorldSize` | | |
-| `services.terraria.banListPath` | | |
-| `services.terraria.dataDir` | | |
-| `services.terraria.enable` | | |
-| `services.terraria.maxPlayers` | | |
-| `services.terraria.messageOfTheDay` | | |
-| `services.terraria.noUPnP` | | |
-| `services.terraria.openFirewall` | | |
-| `services.terraria.package` | | |
-| `services.terraria.password` | | |
-| `services.terraria.port` | | |
-| `services.terraria.secure` | | |
-| `services.terraria.worldPath` | | |
+| --- | --- | --- |
+| `services.terraria.autoCreatedWorldSize` | `one of "small", "medium", "large"` | Specifies the size of the auto-created world if `worldPath` does not point to an existing world. |
+| `services.terraria.banListPath` | `null or absolute path` | The path to the ban list. |
+| `services.terraria.dataDir` | `string` | Path to variable state data directory for terraria. |
+| `services.terraria.enable` | `boolean` | If enabled, starts a Terraria server. The server can be connected to via `tmux -S ${config.services.terraria.dataDir}/terraria.sock attach` for administration by users who are a part of the `terraria` group (use `C-b d` shortcut to detach again). |
+| `services.terraria.maxPlayers` | `8 bit unsigned integer; between 0 and 255 (both inclusive)` | Sets the max number of players (between 1 and 255). |
+| `services.terraria.messageOfTheDay` | `null or string` | Set the server message of the day text. |
+| `services.terraria.noUPnP` | `boolean` | Disables automatic Universal Plug and Play. |
+| `services.terraria.openFirewall` | `boolean` | Whether to open ports in the firewall |
+| `services.terraria.package` | `package` | The terraria package to use. |
+| `services.terraria.password` | `null or string` | Sets the server password. Leave `null` for no password. |
+| `services.terraria.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Specifies the port to listen on. |
+| `services.terraria.secure` | `boolean` | Adds additional cheat protection to the server. |
+| `services.terraria.worldPath` | `null or absolute path` | The path to the world file (`.wld`) which should be loaded. If no world exists at this path, one will be created with the size specified by `autoCreatedWorldSize`. |

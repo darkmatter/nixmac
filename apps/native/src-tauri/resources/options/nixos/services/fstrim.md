@@ -5,6 +5,6 @@
 All options under `services.fstrim`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.fstrim.enable` | | |
-| `services.fstrim.interval` | | |
+| --- | --- | --- |
+| `services.fstrim.enable` | `boolean` | Whether to enable periodic SSD TRIM of mounted partitions in background. |
+| `services.fstrim.interval` | `string` | How often we run fstrim. For most desktop and server systems a sufficient trimming frequency is once a week. The format is described in {manpage}`systemd.time(7)`. |

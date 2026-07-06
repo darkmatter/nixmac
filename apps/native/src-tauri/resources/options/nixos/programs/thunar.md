@@ -5,6 +5,6 @@
 All options under `programs.thunar`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `programs.thunar.enable` | | |
-| `programs.thunar.plugins` | | |
+| --- | --- | --- |
+| `programs.thunar.enable` | `boolean` | Whether to enable Thunar, the Xfce file manager. |
+| `programs.thunar.plugins` | `list of package` | List of thunar plugins to install. |

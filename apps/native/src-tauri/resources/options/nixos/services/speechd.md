@@ -5,9 +5,9 @@
 All options under `services.speechd`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.speechd.clients` | | |
-| `services.speechd.config` | | |
-| `services.speechd.enable` | | |
-| `services.speechd.modules` | | |
-| `services.speechd.package` | | |
+| --- | --- | --- |
+| `services.speechd.clients` | `open submodule of attribute set of strings concatenated with "\n"` | Client specific configuration. |
+| `services.speechd.config` | `null or strings concatenated with "\n"` | System wide configuration file for Speech Dispatcher. This will be used if no user configuration file is found. |
+| `services.speechd.enable` | `boolean` | Whether to enable speech-dispatcher speech synthesizer daemon. |
+| `services.speechd.modules` | `open submodule of attribute set of strings concatenated with "\n"` | Configuration files of output modules. |
+| `services.speechd.package` | `package` | The speechd package to use. |

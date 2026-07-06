@@ -5,7 +5,7 @@
 All options under `programs.tex-fmt`.
 
 | Option | Type | Description |
-| --------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.tex-fmt.enable` | `boolean` | Whether to enable tex-fmt. |
 | `programs.tex-fmt.package` | `null or package` | The tex-fmt package to use. |
-| `programs.tex-fmt.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/tex-fmt/tex-fmt.toml on Linux or $HOME/Library/Application Support/tex-fmt/tex-fmt.toml on Darwin. See https://github.com/WGUNDERWOOD/tex-fmt and https://github.com/WGUNDERWOOD/tex-fmt/blob/master/tex-fmt.toml for more information. |
+| `programs.tex-fmt.settings` | `TOML value` | Configuration written to {file}`$XDG_CONFIG_HOME/tex-fmt/tex-fmt.toml` on Linux or {file}`$HOME/Library/Application Support/tex-fmt/tex-fmt.toml` on Darwin. See <https://github.com/WGUNDERWOOD/tex-fmt> and <https://github.com/WGUNDERWOOD/tex-fmt/blob/master/tex-fmt.toml> for more information. |

@@ -5,5 +5,5 @@
 All options under `services.telepathy`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.telepathy.enable` | | |
+| --- | --- | --- |
+| `services.telepathy.enable` | `boolean` | Whether to enable Telepathy service, a communications framework that enables real-time communication via pluggable protocol backends. |

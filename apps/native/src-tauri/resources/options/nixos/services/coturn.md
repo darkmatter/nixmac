@@ -5,34 +5,34 @@
 All options under `services.coturn`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.coturn.alt-listening-port` | | |
-| `services.coturn.alt-tls-listening-port` | | |
-| `services.coturn.cert` | | |
-| `services.coturn.cli-ip` | | |
-| `services.coturn.cli-password` | | |
-| `services.coturn.cli-port` | | |
-| `services.coturn.dh-file` | | |
-| `services.coturn.enable` | | |
-| `services.coturn.extraConfig` | | |
-| `services.coturn.listening-ips` | | |
-| `services.coturn.listening-port` | | |
-| `services.coturn.lt-cred-mech` | | |
-| `services.coturn.max-port` | | |
-| `services.coturn.min-port` | | |
-| `services.coturn.no-auth` | | |
-| `services.coturn.no-cli` | | |
-| `services.coturn.no-dtls` | | |
-| `services.coturn.no-tcp` | | |
-| `services.coturn.no-tcp-relay` | | |
-| `services.coturn.no-tls` | | |
-| `services.coturn.no-udp` | | |
-| `services.coturn.no-udp-relay` | | |
-| `services.coturn.pkey` | | |
-| `services.coturn.realm` | | |
-| `services.coturn.relay-ips` | | |
-| `services.coturn.secure-stun` | | |
-| `services.coturn.static-auth-secret` | | |
-| `services.coturn.static-auth-secret-file` | | |
-| `services.coturn.tls-listening-port` | | |
-| `services.coturn.use-auth-secret` | | |
+| --- | --- | --- |
+| `services.coturn.alt-listening-port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Alternative listening port for UDP and TCP listeners; default (or zero) value means "listening port plus one". This is needed for RFC 5780 support (STUN extension specs, NAT behavior discovery). The TURN Server supports RFC 5780 only if it is started with more than one listening IP address of the same family (IPv4 or IPv6). RFC 5780 is supported only by UDP protocol, other protocols are listening to that endpoint only for "symmetry". |
+| `services.coturn.alt-tls-listening-port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Alternative listening port for TLS and DTLS protocols. |
+| `services.coturn.cert` | `null or string` | Certificate file in PEM format. |
+| `services.coturn.cli-ip` | `string` | Local system IP address to be used for CLI server endpoint. |
+| `services.coturn.cli-password` | `null or string` | CLI access password. For the security reasons, it is recommended to use the encrypted for of the password (see the -P command in the turnadmin utility). |
+| `services.coturn.cli-port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | CLI server port. |
+| `services.coturn.dh-file` | `null or string` | Use custom DH TLS key, stored in PEM format in the file. |
+| `services.coturn.enable` | `boolean` | Whether to enable coturn TURN server. |
+| `services.coturn.extraConfig` | `strings concatenated with "\n"` | Additional configuration options |
+| `services.coturn.listening-ips` | `list of string` | Listener IP addresses of relay server. If no IP(s) specified in the config file or in the command line options, then all IPv4 and IPv6 system IPs will be used for listening. |
+| `services.coturn.listening-port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | TURN listener port for UDP and TCP. Note: actually, TLS and DTLS sessions can connect to the "plain" TCP and UDP port(s), too - if allowed by configuration. |
+| `services.coturn.lt-cred-mech` | `boolean` | Use long-term credential mechanism. |
+| `services.coturn.max-port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Upper bound of UDP relay endpoints |
+| `services.coturn.min-port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Lower bound of UDP relay endpoints |
+| `services.coturn.no-auth` | `boolean` | This option is opposite to lt-cred-mech. (TURN Server with no-auth option allows anonymous access). If neither option is defined, and no users are defined, then no-auth is default. If at least one user is defined, in this file or in command line or in usersdb file, then lt-cred-mech is default. |
+| `services.coturn.no-cli` | `boolean` | Turn OFF the CLI support. |
+| `services.coturn.no-dtls` | `boolean` | Disable DTLS client listener |
+| `services.coturn.no-tcp` | `boolean` | Disable TCP client listener |
+| `services.coturn.no-tcp-relay` | `boolean` | Disable TCP relay endpoints |
+| `services.coturn.no-tls` | `boolean` | Disable TLS client listener |
+| `services.coturn.no-udp` | `boolean` | Disable UDP client listener |
+| `services.coturn.no-udp-relay` | `boolean` | Disable UDP relay endpoints |
+| `services.coturn.pkey` | `null or string` | Private key file in PEM format. |
+| `services.coturn.realm` | `string` | The default realm to be used for the users when no explicit origin/realm relationship was found in the database, or if the TURN server is not using any database (just the commands-line settings and the userdb file). Must be used with long-term credentials mechanism or with TURN REST API. |
+| `services.coturn.relay-ips` | `list of string` | Relay address (the local IP address that will be used to relay the packets to the peer). Multiple relay addresses may be used. The same IP(s) can be used as both listening IP(s) and relay IP(s). If no relay IP(s) specified, then the turnserver will apply the default policy: it will decide itself which relay addresses to be used, and it will always be using the client socket IP address as the relay IP address of the TURN session (if the requested relay address family is the same as the family of the client socket). |
+| `services.coturn.secure-stun` | `boolean` | Require authentication of the STUN Binding request. By default, the clients are allowed anonymous access to the STUN Binding functionality. |
+| `services.coturn.static-auth-secret` | `null or string` | 'Static' authentication secret value (a string) for TURN REST API only. If not set, then the turn server will try to use the 'dynamic' value in turn_secret table in user database (if present). The database-stored value can be changed on-the-fly by a separate program, so this is why that other mode is 'dynamic'. |
+| `services.coturn.static-auth-secret-file` | `null or string` | Path to the file containing the static authentication secret. |
+| `services.coturn.tls-listening-port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | TURN listener port for TLS. Note: actually, "plain" TCP and UDP sessions can connect to the TLS and DTLS port(s), too - if allowed by configuration. The TURN server "automatically" recognizes the type of traffic. Actually, two listening endpoints (the "plain" one and the "tls" one) are equivalent in terms of functionality; but we keep both endpoints to satisfy the RFC 5766 specs. For secure TCP connections, we currently support SSL version 3 and TLS version 1.0, 1.1 and 1.2. For secure UDP connections, we support DTLS version 1. |
+| `services.coturn.use-auth-secret` | `boolean` | TURN REST API flag. Flag that sets a special authorization option that is based upon authentication secret. This feature can be used with the long-term authentication mechanism, only. This feature purpose is to support "TURN Server REST API", see "TURN REST API" link in the project's page <https://github.com/coturn/coturn/> This option is used with timestamp: usercombo -> "timestamp:userid" turn user -> usercombo turn password -> base64(hmac(secret key, usercombo)) This allows TURN credentials to be accounted for a specific user id. If you don't have a suitable id, the timestamp alone can be used. This option is just turning on secret-based authentication. The actual value of the secret is defined either by option static-auth-secret, or can be found in the turn_secret table in the database. |

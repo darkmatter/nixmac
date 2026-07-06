@@ -5,42 +5,38 @@
 All options under `services.murmur`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.murmur.allowHtml` | | |
-| `services.murmur.autobanAttempts` | | |
-| `services.murmur.autobanTime` | | |
-| `services.murmur.autobanTimeframe` | | |
-| `services.murmur.bandwidth` | | |
-| `services.murmur.bonjour` | | |
-| `services.murmur.clientCertRequired` | | |
-| `services.murmur.dbus` | | |
-| `services.murmur.enable` | | |
-| `services.murmur.environmentFile` | | |
-| `services.murmur.extraConfig` | | |
-| `services.murmur.group` | | |
-| `services.murmur.hostName` | | |
-| `services.murmur.imgMsgLength` | | |
-| `services.murmur.logDays` | | |
-| `services.murmur.logFile` | | |
-| `services.murmur.logToFile` | | |
-| `services.murmur.openFirewall` | | |
-| `services.murmur.package` | | |
-| `services.murmur.password` | | |
-| `services.murmur.port` | | |
-| `services.murmur.registerHostname` | | |
-| `services.murmur.registerName` | | |
-| `services.murmur.registerPassword` | | |
-| `services.murmur.registerUrl` | | |
-| `services.murmur.sendVersion` | | |
-| `services.murmur.sslCa` | | |
-| `services.murmur.sslCert` | | |
-| `services.murmur.sslKey` | | |
-| `services.murmur.stateDir` | | |
-| `services.murmur.textMsgLength` | | |
-| `services.murmur.tls.caPath` | | |
-| `services.murmur.tls.certPath` | | |
-| `services.murmur.tls.keyPath` | | |
-| `services.murmur.tls.useACMEHost` | | |
-| `services.murmur.user` | | |
-| `services.murmur.users` | | |
-| `services.murmur.welcometext` | | |
+| --- | --- | --- |
+| `services.murmur.allowHtml` | `boolean` | Allow HTML in client messages, comments, and channel descriptions. |
+| `services.murmur.autobanAttempts` | `signed integer` | Number of attempts a client is allowed to make in `autobanTimeframe` seconds, before being banned for `autobanTime`. |
+| `services.murmur.autobanTime` | `signed integer` | The amount of time an IP ban lasts (in seconds). |
+| `services.murmur.autobanTimeframe` | `signed integer` | Timeframe in which a client can connect without being banned for repeated attempts (in seconds). |
+| `services.murmur.bandwidth` | `signed integer` | Maximum bandwidth (in bits per second) that clients may send speech at. |
+| `services.murmur.bonjour` | `boolean` | Whether to enable Bonjour auto-discovery, which allows clients over your LAN to automatically discover Mumble servers. |
+| `services.murmur.clientCertRequired` | `boolean` | Whether to enable requiring clients to authenticate via certificates. |
+| `services.murmur.dbus` | `one of <null>, "session", "system"` | Enable D-Bus remote control. Set to the bus you want Murmur to connect to. |
+| `services.murmur.enable` | `boolean` | Whether to enable Mumble server. |
+| `services.murmur.environmentFile` | `null or absolute path` | Environment file as defined in {manpage}`systemd.exec(5)`. Secrets may be passed to the service without adding them to the world-readable Nix store, by specifying placeholder variables as the option value in Nix and setting these variables accordingly in the environment file. `  # snippet of murmur-related config   services.murmur.password = "$MURMURD_PASSWORD";` `  # content of the environment file   MURMURD_PASSWORD=verysecretpassword` Note that this file needs to be available on the host on which `murmur` is running. |
+| `services.murmur.extraConfig` | `strings concatenated with "\n"` | Extra configuration to put into murmur.ini. |
+| `services.murmur.group` | `string` | The name of an existing group to use to run the service. If not specified, the default group will be created. |
+| `services.murmur.hostName` | `string` | Host to bind to. Defaults binding on all addresses. |
+| `services.murmur.imgMsgLength` | `signed integer` | Max length of image messages. Set 0 for no limit. |
+| `services.murmur.logDays` | `signed integer` | How long to store RPC logs for in the database. Set 0 to keep logs forever, or -1 to disable DB logging. |
+| `services.murmur.logToFile` | `boolean` | Whether to enable logging to a file instead of journald, which is stored in /var/log/murmur. |
+| `services.murmur.openFirewall` | `boolean` | Whether to enable opening ports in the firewall for the Mumble server. |
+| `services.murmur.package` | `package` | The murmur package to use. |
+| `services.murmur.password` | `string` | Required password to join server, if specified. |
+| `services.murmur.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Ports to bind to (UDP and TCP). |
+| `services.murmur.registerHostname` | `string` | DNS hostname where your server can be reached. This is only needed if you want your server to be accessed by its hostname and not IP - but the name *must* resolve on the internet properly. |
+| `services.murmur.registerName` | `string` | Public server registration name, and also the name of the Root channel. Even if you don't publicly register your server, you probably still want to set this. |
+| `services.murmur.registerPassword` | `string` | Public server registry password, used authenticate your server to the registry to prevent impersonation; required for subsequent registry updates. |
+| `services.murmur.registerUrl` | `string` | URL website for your server. |
+| `services.murmur.sendVersion` | `boolean` | Send Murmur version in UDP response. |
+| `services.murmur.stateDir` | `absolute path` | Directory to store data for the server. |
+| `services.murmur.textMsgLength` | `signed integer` | Max length of text messages. Set 0 for no limit. |
+| `services.murmur.tls.caPath` | `null or absolute path` | Path to your TLS CA certificate. |
+| `services.murmur.tls.certPath` | `null or absolute path` | Path to your TLS certificate. |
+| `services.murmur.tls.keyPath` | `null or absolute path` | Path to your TLS key. |
+| `services.murmur.tls.useACMEHost` | `null or string` | Host of an existing Let's Encrypt certificate to use for TLS. Make sure that the certificate directory is readable by the `murmur` user or group. *Note that this option does not create any certificates and it doesn't add subdomains to existing ones – you will need to create them manually using {option}`security.acme.certs`.* |
+| `services.murmur.user` | `string` | The name of an existing user to use to run the service. If not specified, the default user will be created. |
+| `services.murmur.users` | `signed integer` | Maximum number of concurrent clients allowed. |
+| `services.murmur.welcometext` | `string` | Welcome message for connected clients. |

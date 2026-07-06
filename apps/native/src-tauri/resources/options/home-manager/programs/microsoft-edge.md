@@ -5,11 +5,5 @@
 All options under `programs.microsoft-edge`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---- | ----------- |
-| `programs.microsoft-edge.commandLineArgs` | | |
-| `programs.microsoft-edge.dictionaries` | | |
-| `programs.microsoft-edge.enable` | | |
-| `programs.microsoft-edge.extensions` | | |
-| `programs.microsoft-edge.finalPackage` | | |
-| `programs.microsoft-edge.nativeMessagingHosts` | | |
-| `programs.microsoft-edge.package` | | |
+| --- | --- | --- |
+| `programs.microsoft-edge.nativeMessagingHosts` | `list of package` | List of Microsoft Edge native messaging hosts to install. |

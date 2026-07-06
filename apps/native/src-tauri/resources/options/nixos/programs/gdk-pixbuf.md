@@ -5,5 +5,5 @@
 All options under `programs.gdk-pixbuf`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `programs.gdk-pixbuf.modulePackages` | | |
+| --- | --- | --- |
+| `programs.gdk-pixbuf.modulePackages` | `list of package` | Packages providing GDK-Pixbuf modules, for cache generation. |

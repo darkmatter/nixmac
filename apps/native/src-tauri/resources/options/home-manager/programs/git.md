@@ -5,53 +5,25 @@
 All options under `programs.git`.
 
 | Option | Type | Description |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `programs.git.aliases` | | |
+| --- | --- | --- |
 | `programs.git.attributes` | `list of string` | List of defining attributes set globally. |
-| `programs.git.delta.enable` | | |
-| `programs.git.delta.options` | | |
-| `programs.git.delta.package` | | |
-| `programs.git.diff-highlight.enable` | | |
-| `programs.git.diff-highlight.pagerOpts` | | |
-| `programs.git.diff-so-fancy.changeHunkIndicators` | | |
-| `programs.git.diff-so-fancy.enable` | | |
-| `programs.git.diff-so-fancy.markEmptyLines` | | |
-| `programs.git.diff-so-fancy.pagerOpts` | | |
-| `programs.git.diff-so-fancy.rulerWidth` | | |
-| `programs.git.diff-so-fancy.stripLeadingSymbols` | | |
-| `programs.git.diff-so-fancy.useUnicodeRuler` | | |
-| `programs.git.difftastic.background` | | |
-| `programs.git.difftastic.color` | | |
-| `programs.git.difftastic.context` | | |
-| `programs.git.difftastic.display` | | |
-| `programs.git.difftastic.enable` | | |
-| `programs.git.difftastic.enableAsDifftool` | | |
-| `programs.git.difftastic.extraArgs` | | |
-| `programs.git.difftastic.options` | | |
-| `programs.git.difftastic.package` | | |
 | `programs.git.enable` | `boolean` | Whether to enable Git. |
-| `programs.git.extraConfig` | | |
-| `programs.git.hooks` | `attribute set of absolute path` | Configuration helper for Git hooks. See https://git-scm.com/docs/githooks for reference. |
+| `programs.git.hooks` | `attribute set of absolute path` | Configuration helper for Git hooks. See <https://git-scm.com/docs/githooks> for reference. |
 | `programs.git.ignores` | `list of string` | List of paths that should be globally ignored. |
 | `programs.git.includes` | `list of (submodule)` | List of configuration files to include. |
-| `programs.git.iniContent` | | |
+| `programs.git.includes.*.condition` | `null or string` | Include this configuration only when {var}`condition` matches. Allowed conditions are described in {manpage}`git-config(1)`. |
+| `programs.git.includes.*.contentSuffix` | `string` | Nix store name for the git configuration text file, when generating the configuration text from nix options. |
+| `programs.git.includes.*.contents` | `attribute set of anything` | Configuration to include. If empty then a path must be given. This follows the configuration structure as described in {manpage}`git-config(1)`. |
+| `programs.git.includes.*.path` | `string or absolute path` | Path of the configuration file to include. |
 | `programs.git.lfs.enable` | `boolean` | Whether to enable Git Large File Storage. |
 | `programs.git.lfs.package` | `null or package` | The git-lfs package to use. |
-| `programs.git.lfs.skipSmudge` | `boolean` | Skip automatic downloading of objects on clone or pull. This requires a manual git lfs pull every time a new commit is checked out on your repository. |
-| `programs.git.maintenance.enable` | `boolean` | Enable the automatic git maintenance . |
-| `programs.git.maintenance.repositories` | `list of string` | Repositories on which git maintenance should run. |
-| `programs.git.maintenance.timers` | `attribute set of string` | Systemd timers to create for scheduled git maintenance . |
-| `programs.git.package` | `null or package` | The git package to use. Use pkgs.gitFull to gain access to git send-email for instance. |
-| `programs.git.patdiff.enable` | | |
-| `programs.git.patdiff.package` | | |
-| `programs.git.riff.commandLineOptions` | | |
-| `programs.git.riff.enable` | | |
-| `programs.git.riff.package` | | |
-| `programs.git.settings` | `attribute set of attribute set of (string or boolean or signed integer or list of (string or boolean or signed integer) or attribute set of (string or boolean or signed integer or list of (string or boolean or signed integer)))` | Configuration written to $XDG_CONFIG_HOME/git/config . See git-config (1) for details. |
-| `programs.git.signing.format` | `null or one of “openpgp”, “ssh”, “x509”` | The signing method to use when signing commits and tags. Valid values are openpgp (OpenPGP/GnuPG), ssh (SSH), and x509 (X.509 certificates). |
-| `programs.git.signing.gpgPath` | | |
-| `programs.git.signing.key` | `null or string` | The default signing key fingerprint. |
+| `programs.git.lfs.skipSmudge` | `boolean` | Skip automatic downloading of objects on clone or pull. This requires a manual {command}`git lfs pull` every time a new commit is checked out on your repository. |
+| `programs.git.maintenance.enable` | `boolean` | Enable the automatic {command}`git maintenance`. If you have SSH remotes, set {option}`programs.git.package` to a git version with SSH support (eg: `pkgs.gitFull`). See <https://git-scm.com/docs/git-maintenance>. |
+| `programs.git.maintenance.repositories` | `list of string` | Repositories on which {command}`git maintenance` should run. Should be a list of absolute paths. |
+| `programs.git.maintenance.timers` | `attribute set of string` | Systemd timers to create for scheduled {command}`git maintenance`. Key is passed to `--schedule` argument in {command}`git maintenance run` and value is passed to `Timer.OnCalendar` in `systemd.user.timers`. |
+| `programs.git.package` | `null or package` | The git package to use. Use {var}`pkgs.gitFull` to gain access to {command}`git send-email` for instance. |
+| `programs.git.settings` | `(attribute set of attribute set of (string or boolean or signed integer or list of (string or boolean or signed integer) or attribute set of (string or boolean or signed integer or list of (string or boolean or signed integer)))) or list of attribute set of attribute set of (string or boolean or signed integer or list of (string or boolean or signed integer) or attribute set of (string or boolean or signed integer or list of (string or boolean or signed integer)))` | Configuration written to {file}`$XDG_CONFIG_HOME/git/config`. This may be either a single attrset of Git settings or an ordered list of attrset fragments when repeated sections or explicit ordering matter. See {manpage}`git-config(1)` for details. |
+| `programs.git.signing.format` | `null or one of "openpgp", "ssh", "x509"` | The signing method to use when signing commits and tags. Valid values are `openpgp` (OpenPGP/GnuPG), `ssh` (SSH), and `x509` (X.509 certificates). |
+| `programs.git.signing.key` | `null or string` | The default signing key fingerprint. Set to `null` to let the signer decide what signing key to use depending on commit’s author. |
 | `programs.git.signing.signByDefault` | `null or boolean` | Whether commits and tags should be signed by default. |
 | `programs.git.signing.signer` | `null or string` | Path to signer binary to use. |
-| `programs.git.userEmail` | | |
-| `programs.git.userName` | | |

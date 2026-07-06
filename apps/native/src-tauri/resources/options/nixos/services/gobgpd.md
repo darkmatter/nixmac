@@ -5,6 +5,6 @@
 All options under `services.gobgpd`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.gobgpd.enable` | | |
-| `services.gobgpd.settings` | | |
+| --- | --- | --- |
+| `services.gobgpd.enable` | `boolean` | Whether to enable GoBGP Routing Daemon. |
+| `services.gobgpd.settings` | `TOML value` | GoBGP configuration. Refer to <https://github.com/osrg/gobgp#documentation> for details on supported values. |

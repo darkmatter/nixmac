@@ -5,5 +5,5 @@
 All options under `programs.tcpdump`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `programs.tcpdump.enable` | | |
+| --- | --- | --- |
+| `programs.tcpdump.enable` | `boolean` | Whether to configure a setcap wrapper for tcpdump. To use it, add your user to the `pcap` group. |

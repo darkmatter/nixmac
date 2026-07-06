@@ -5,8 +5,8 @@
 All options under `programs.wleave`.
 
 | Option | Type | Description |
-| -------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.wleave.enable` | `boolean` | Whether to enable wleave. |
 | `programs.wleave.package` | `null or package` | The wleave package to use. |
-| `programs.wleave.settings` | `JSON value` | Configuration for wleave. See https://github.com/AMNatty/wleave#configuration for supported values. |
-| `programs.wleave.style` | `null or absolute path or strings concatenated with “\n”` | CSS style of wleave. |
+| `programs.wleave.settings` | `JSON value` | Configuration for wleave. See <https://github.com/AMNatty/wleave#configuration> for supported values. |
+| `programs.wleave.style` | `null or absolute path or strings concatenated with "\n"` | CSS style of wleave. See <https://github.com/AMNatty/wleave#styling> for the documentation. If the value is set to a path literal, then the path will be used as the css file. |

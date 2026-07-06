@@ -5,5 +5,12 @@
 All options under `services.errbot`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.errbot.instances` | | |
+| --- | --- | --- |
+| `services.errbot.instances` | `attribute set of (submodule)` | Errbot instance configs |
+| `services.errbot.instances.<name>.admins` | `list of string` | List of identifiers of errbot admins. |
+| `services.errbot.instances.<name>.backend` | `string` | Errbot backend name. |
+| `services.errbot.instances.<name>.dataDir` | `null or absolute path` | Data directory for errbot instance. |
+| `services.errbot.instances.<name>.extraConfig` | `strings concatenated with "\n"` | String to be appended to the config verbatim |
+| `services.errbot.instances.<name>.identity` | `attribute set` | Errbot identity configuration |
+| `services.errbot.instances.<name>.logLevel` | `string` | Errbot log level |
+| `services.errbot.instances.<name>.plugins` | `list of package` | List of errbot plugin derivations. |

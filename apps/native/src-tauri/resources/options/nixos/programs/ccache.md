@@ -5,10 +5,10 @@
 All options under `programs.ccache`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `programs.ccache.cacheDir` | | |
-| `programs.ccache.enable` | | |
-| `programs.ccache.group` | | |
-| `programs.ccache.owner` | | |
-| `programs.ccache.packageNames` | | |
-| `programs.ccache.trace` | | |
+| --- | --- | --- |
+| `programs.ccache.cacheDir` | `absolute path` | CCache directory |
+| `programs.ccache.enable` | `boolean` | Whether to enable CCache, a compiler cache for fast recompilation of C/C++ code. |
+| `programs.ccache.group` | `string` | Group owner of CCache directory |
+| `programs.ccache.owner` | `string` | Owner of CCache directory |
+| `programs.ccache.packageNames` | `list of string` | Nix top-level packages to be compiled using CCache |
+| `programs.ccache.trace` | `boolean` | Trace ccache usage to see which derivations use ccache |

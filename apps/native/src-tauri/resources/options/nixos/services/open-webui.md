@@ -5,12 +5,12 @@
 All options under `services.open-webui`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.open-webui.enable` | | |
-| `services.open-webui.environment` | | |
-| `services.open-webui.environmentFile` | | |
-| `services.open-webui.host` | | |
-| `services.open-webui.openFirewall` | | |
-| `services.open-webui.package` | | |
-| `services.open-webui.port` | | |
-| `services.open-webui.stateDir` | | |
+| --- | --- | --- |
+| `services.open-webui.enable` | `boolean` | Whether to enable Open-WebUI server. |
+| `services.open-webui.environment` | `attribute set of string` | Extra environment variables for Open-WebUI. For more details see <https://docs.openwebui.com/reference/env-configuration> |
+| `services.open-webui.environmentFile` | `null or absolute path` | Environment file to be passed to the systemd service. Useful for passing secrets to the service to prevent them from being world-readable in the Nix store. |
+| `services.open-webui.host` | `string` | The host address which the Open-WebUI server HTTP interface listens to. |
+| `services.open-webui.openFirewall` | `boolean` | Whether to open the firewall for Open-WebUI. This adds `services.open-webui.port` to `networking.firewall.allowedTCPPorts`. |
+| `services.open-webui.package` | `package` | The open-webui package to use. |
+| `services.open-webui.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Which port the Open-WebUI server listens to. |
+| `services.open-webui.stateDir` | `absolute path` | State directory of Open-WebUI. |

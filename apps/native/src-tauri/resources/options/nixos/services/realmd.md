@@ -5,6 +5,6 @@
 All options under `services.realmd`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.realmd.enable` | | |
-| `services.realmd.package` | | |
+| --- | --- | --- |
+| `services.realmd.enable` | `boolean` | Whether to enable realmd service for managing system enrollment in Active Directory domains. |
+| `services.realmd.package` | `package` | The realmd package to use. |

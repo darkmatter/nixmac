@@ -5,10 +5,10 @@
 All options under `services.haven`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.haven.blastrRelays` | | |
-| `services.haven.enable` | | |
-| `services.haven.environmentFile` | | |
-| `services.haven.importRelays` | | |
-| `services.haven.package` | | |
-| `services.haven.settings` | | |
+| --- | --- | --- |
+| `services.haven.blastrRelays` | `list of string` | List of relay configurations for blastr |
+| `services.haven.enable` | `boolean` | Whether to enable haven. |
+| `services.haven.environmentFile` | `null or absolute path` | Path to a file containing sensitive environment variables. See <https://github.com/bitvora/haven> for documentation. The file should contain environment-variable assignments like: S3_SECRET_KEY=mysecretkey S3_ACCESS_KEY_ID=myaccesskey |
+| `services.haven.importRelays` | `list of string` | List of relay configurations for importing historical events |
+| `services.haven.package` | `package` | The haven package to use. |
+| `services.haven.settings` | `unspecified value` | See <https://github.com/bitvora/haven> for documentation. |

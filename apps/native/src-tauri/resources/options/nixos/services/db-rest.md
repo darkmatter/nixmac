@@ -5,17 +5,17 @@
 All options under `services.db-rest`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.db-rest.enable` | | |
-| `services.db-rest.group` | | |
-| `services.db-rest.host` | | |
-| `services.db-rest.package` | | |
-| `services.db-rest.port` | | |
-| `services.db-rest.redis.createLocally` | | |
-| `services.db-rest.redis.enable` | | |
-| `services.db-rest.redis.host` | | |
-| `services.db-rest.redis.passwordFile` | | |
-| `services.db-rest.redis.port` | | |
-| `services.db-rest.redis.useSSL` | | |
-| `services.db-rest.redis.user` | | |
-| `services.db-rest.user` | | |
+| --- | --- | --- |
+| `services.db-rest.enable` | `boolean` | Whether to enable db-rest service. |
+| `services.db-rest.group` | `string` | Group under which db-rest runs. |
+| `services.db-rest.host` | `string` | The host address the db-rest server should listen on. |
+| `services.db-rest.package` | `package` | The db-rest package to use. |
+| `services.db-rest.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port the db-rest server should listen on. |
+| `services.db-rest.redis.createLocally` | `boolean` | Configure a local redis server for db-rest. |
+| `services.db-rest.redis.enable` | `boolean` | Enable caching with redis for db-rest. |
+| `services.db-rest.redis.host` | `null or string` | Redis host. |
+| `services.db-rest.redis.passwordFile` | `null or absolute path` | Path to a file containing the redis password. |
+| `services.db-rest.redis.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Redis port. |
+| `services.db-rest.redis.useSSL` | `boolean` | Use SSL if using a redis network connection. |
+| `services.db-rest.redis.user` | `null or string` | Optional username used for authentication with redis. |
+| `services.db-rest.user` | `string` | User account under which db-rest runs. |

@@ -5,5 +5,5 @@
 All options under `programs.traceroute`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `programs.traceroute.enable` | | |
+| --- | --- | --- |
+| `programs.traceroute.enable` | `boolean` | Whether to configure a setcap wrapper for traceroute. |

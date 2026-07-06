@@ -5,14 +5,21 @@
 All options under `services.jupyterhub`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.jupyterhub.authentication` | | |
-| `services.jupyterhub.enable` | | |
-| `services.jupyterhub.extraConfig` | | |
-| `services.jupyterhub.host` | | |
-| `services.jupyterhub.jupyterhubEnv` | | |
-| `services.jupyterhub.jupyterlabEnv` | | |
-| `services.jupyterhub.kernels` | | |
-| `services.jupyterhub.port` | | |
-| `services.jupyterhub.spawner` | | |
-| `services.jupyterhub.stateDirectory` | | |
+| --- | --- | --- |
+| `services.jupyterhub.authentication` | `string` | Jupyterhub authentication to use There are many authenticators available including: oauth, pam, ldap, kerberos, etc. |
+| `services.jupyterhub.enable` | `boolean` | Whether to enable Jupyterhub development server. |
+| `services.jupyterhub.extraConfig` | `strings concatenated with "\n"` | Extra contents appended to the jupyterhub configuration Jupyterhub configuration is a normal python file using Traitlets. <https://jupyterhub.readthedocs.io/en/stable/getting-started/config-basics.html>. The base configuration of this module was designed to have sane defaults for configuration but you can override anything since this is a python file. |
+| `services.jupyterhub.host` | `string` | Bind IP JupyterHub will be listening on |
+| `services.jupyterhub.jupyterhubEnv` | `package` | Python environment to run jupyterhub Customizing will affect the packages available in the hub and proxy. This will allow packages to be available for the extraConfig that you may need. This will not normally need to be changed. |
+| `services.jupyterhub.jupyterlabEnv` | `package` | Python environment to run jupyterlab Customizing will affect the packages available in the jupyterlab server and the default kernel provided. This is the way to customize the jupyterlab extensions and jupyter notebook extensions. This will not normally need to be changed. |
+| `services.jupyterhub.kernels` | `null or (attribute set of (open submodule of (JSON value)))` | Declarative kernel config Kernels can be declared in any language that supports and has the required dependencies to communicate with a jupyter server. In python's case, it means that ipykernel package must always be included in the list of packages of the targeted environment. |
+| `services.jupyterhub.kernels.<name>.argv` | `list of string` | Command and arguments to start the kernel. |
+| `services.jupyterhub.kernels.<name>.displayName` | `string` | Name that will be shown to the user. |
+| `services.jupyterhub.kernels.<name>.env` | `attribute set of string` | Environment variables to set for the kernel. |
+| `services.jupyterhub.kernels.<name>.extraPaths` | `attribute set of absolute path` | Extra paths to link in kernel directory |
+| `services.jupyterhub.kernels.<name>.language` | `string` | Language of the environment. Typically the name of the binary. |
+| `services.jupyterhub.kernels.<name>.logo32` | `null or absolute path` | Path to 32x32 logo png. |
+| `services.jupyterhub.kernels.<name>.logo64` | `null or absolute path` | Path to 64x64 logo png. |
+| `services.jupyterhub.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number Jupyterhub will be listening on |
+| `services.jupyterhub.spawner` | `string` | Jupyterhub spawner to use There are many spawners available including: local process, systemd, docker, kubernetes, yarn, batch, etc. |
+| `services.jupyterhub.stateDirectory` | `string` | Directory for jupyterhub state (token + database) |

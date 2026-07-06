@@ -5,10 +5,18 @@
 All options under `services.hickory-dns`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.hickory-dns.configFile` | | |
-| `services.hickory-dns.debug` | | |
-| `services.hickory-dns.enable` | | |
-| `services.hickory-dns.package` | | |
-| `services.hickory-dns.quiet` | | |
-| `services.hickory-dns.settings` | | |
+| --- | --- | --- |
+| `services.hickory-dns.configFile` | `absolute path` | Path to an existing toml file to configure hickory-dns with. This can usually be left unspecified, in which case it will be generated from the values in `settings`. If manually specified, then the options in `settings` are ignored. |
+| `services.hickory-dns.debug` | `boolean` | Log DEBUG, INFO, WARN and ERROR messages. This option is mutually exclusive with the `debug` option. If neither `quiet` nor `debug` are enabled, logging defaults to the INFO level. |
+| `services.hickory-dns.enable` | `boolean` | Whether to enable hickory-dns. |
+| `services.hickory-dns.package` | `package` | The hickory-dns package to use. ::: {.note} The package must provide `meta.mainProgram` which names the server binary; any other utilities (client, resolver) are not needed. ::: |
+| `services.hickory-dns.quiet` | `boolean` | Log ERROR level messages only. This option is mutually exclusive with the `debug` option. If neither `quiet` nor `debug` are enabled, logging defaults to the INFO level. |
+| `services.hickory-dns.settings` | `open submodule of (TOML value)` | Settings for hickory-dns. The options enumerated here are not exhaustive. Refer to upstream documentation for all available options: - [Example settings](https://github.com/hickory-dns/hickory-dns/blob/main/tests/test-data/test_configs/example.toml) |
+| `services.hickory-dns.settings.directory` | `string` | The directory in which hickory-dns should look for .zone files, whenever zones aren't specified by absolute path. |
+| `services.hickory-dns.settings.listen_addrs_ipv4` | `list of string` | List of ipv4 addresses on which to listen for DNS queries. |
+| `services.hickory-dns.settings.listen_addrs_ipv6` | `list of string` | List of ipv6 addresses on which to listen for DNS queries. |
+| `services.hickory-dns.settings.listen_port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on (applies to all listen addresses). |
+| `services.hickory-dns.settings.zones` | `list of ((open submodule of (TOML value)) or string convertible to it)` | List of zones to serve. |
+| `services.hickory-dns.settings.zones.*.file` | `null or absolute path or string` | Path to the .zone file. If not fully-qualified, this path will be interpreted relative to the `directory` option. If omitted, defaults to the value of the `zone` option suffixed with ".zone" when `zone_type` isn't External; otherwise, defaults to `null`. |
+| `services.hickory-dns.settings.zones.*.zone` | `string` | Zone name, like "example.com", "localhost", or "0.0.127.in-addr.arpa". |
+| `services.hickory-dns.settings.zones.*.zone_type` | `one of "Primary", "Secondary", "External"` | One of: - "Primary" (the master, authority for the zone). - "Secondary" (the slave, replicated from the primary). - "External" (a cached zone that queries other nameservers). For more details about these zone types, consult the documentation for BIND, though note that hickory-dns supports only a subset of BIND's zone types: <https://bind9.readthedocs.io/en/v9_18_4/reference.html#type> |

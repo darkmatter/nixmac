@@ -5,16 +5,19 @@
 All options under `services.etebase-server`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.etebase-server.customIni` | | |
-| `services.etebase-server.dataDir` | | |
-| `services.etebase-server.database` | | |
-| `services.etebase-server.enable` | | |
-| `services.etebase-server.host` | | |
-| `services.etebase-server.openFirewall` | | |
-| `services.etebase-server.package` | | |
-| `services.etebase-server.port` | | |
-| `services.etebase-server.secretFile` | | |
-| `services.etebase-server.settings` | | |
-| `services.etebase-server.unixSocket` | | |
-| `services.etebase-server.user` | | |
+| --- | --- | --- |
+| `services.etebase-server.dataDir` | `string` | Directory to store the Etebase server data. |
+| `services.etebase-server.enable` | `boolean` | Whether to enable the Etebase server. Once enabled you need to create an admin user by invoking the shell command `etebase-server createsuperuser` with the user specified by the `user` option or a superuser. Then you can login and create accounts on your-etebase-server.com/admin |
+| `services.etebase-server.openFirewall` | `boolean` | Whether to open ports in the firewall for the server. |
+| `services.etebase-server.package` | `package` | The etebase-server package to use. |
+| `services.etebase-server.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.etebase-server.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration for `etebase-server`. Refer to <https://github.com/etesync/server/blob/master/etebase-server.ini.example> and <https://github.com/etesync/server/wiki> for details on supported values. |
+| `services.etebase-server.settings.allowed_hosts.allowed_host1` | `string` | The main host that is allowed access. |
+| `services.etebase-server.settings.database.engine` | `one of "django.db.backends.sqlite3", "django.db.backends.postgresql"` | The database engine to use. |
+| `services.etebase-server.settings.database.name` | `string` | The database name. |
+| `services.etebase-server.settings.global.debug` | `boolean` | Whether to set django's DEBUG flag. |
+| `services.etebase-server.settings.global.media_root` | `string` | The media directory. |
+| `services.etebase-server.settings.global.secret_file` | `null or string` | The path to a file containing the secret used as django's SECRET_KEY. |
+| `services.etebase-server.settings.global.static_root` | `string` | The directory for static files. |
+| `services.etebase-server.unixSocket` | `null or string` | The path to the socket to bind to. |
+| `services.etebase-server.user` | `string` | User under which Etebase server runs. |

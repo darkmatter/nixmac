@@ -5,7 +5,7 @@
 All options under `programs.formiko`.
 
 | Option | Type | Description |
-| --------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.formiko.enable` | `boolean` | Whether to enable formiko. |
 | `programs.formiko.package` | `null or package` | The formiko package to use. |
 | `programs.formiko.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration settings for formiko. All the available options can be found by looking at ~/.config/formiko.ini. |

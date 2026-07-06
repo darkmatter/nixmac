@@ -5,14 +5,14 @@
 All options under `services.qbittorrent`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.qbittorrent.enable` | | |
-| `services.qbittorrent.extraArgs` | | |
-| `services.qbittorrent.group` | | |
-| `services.qbittorrent.openFirewall` | | |
-| `services.qbittorrent.package` | | |
-| `services.qbittorrent.profileDir` | | |
-| `services.qbittorrent.serverConfig` | | |
-| `services.qbittorrent.torrentingPort` | | |
-| `services.qbittorrent.user` | | |
-| `services.qbittorrent.webuiPort` | | |
+| --- | --- | --- |
+| `services.qbittorrent.enable` | `boolean` | Whether to enable qbittorrent, BitTorrent client. |
+| `services.qbittorrent.extraArgs` | `list of string` | Extra arguments passed to qbittorrent. See `qbittorrent -h`, or the [source code](https://github.com/qbittorrent/qBittorrent/blob/master/src/app/cmdoptions.cpp), for the available arguments. |
+| `services.qbittorrent.group` | `string` | Group under which qbittorrent runs. |
+| `services.qbittorrent.openFirewall` | `boolean` | Whether to enable opening both the webuiPort and torrentPort over TCP in the firewall. |
+| `services.qbittorrent.package` | `package` | The qbittorrent-nox package to use. |
+| `services.qbittorrent.profileDir` | `absolute path` | the path passed to qbittorrent via --profile. |
+| `services.qbittorrent.serverConfig` | `open submodule of attribute set of attribute set of anything` | Free-form settings mapped to the {file}`qBittorrent.conf` file in the profile. Refer to [Explanation-of-Options-in-qBittorrent](https://github.com/qbittorrent/qBittorrent/wiki/Explanation-of-Options-in-qBittorrent). The Password_PBKDF2 format is oddly unique, you will likely want to use [this tool](https://codeberg.org/feathecutie/qbittorrent_password) to generate the format. Alternatively you can run qBittorrent independently first and use its webUI to generate the format. Optionally an alternative webUI can be easily set. VueTorrent for example: `nix {   Preferences = {     WebUI = {       AlternativeUIEnabled = true;       RootFolder = "${pkgs.vuetorrent}/share/vuetorrent";     };   }; } ]; ` |
+| `services.qbittorrent.torrentingPort` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | the port passed to qbittorrent via `--torrenting-port` |
+| `services.qbittorrent.user` | `string` | User account under which qbittorrent runs. |
+| `services.qbittorrent.webuiPort` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | the port passed to qbittorrent via `--webui-port` |

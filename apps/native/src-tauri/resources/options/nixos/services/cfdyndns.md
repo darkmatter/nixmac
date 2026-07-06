@@ -5,10 +5,9 @@
 All options under `services.cfdyndns`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.cfdyndns.apiTokenFile` | | |
-| `services.cfdyndns.apikey` | | |
-| `services.cfdyndns.apikeyFile` | | |
-| `services.cfdyndns.email` | | |
-| `services.cfdyndns.enable` | | |
-| `services.cfdyndns.records` | | |
+| --- | --- | --- |
+| `services.cfdyndns.apiTokenFile` | `null or string` | The path to a file containing the API Token used to authenticate with CloudFlare. |
+| `services.cfdyndns.apikeyFile` | `null or string` | The path to a file containing the API Key used to authenticate with CloudFlare. |
+| `services.cfdyndns.email` | `string` | The email address to use to authenticate to CloudFlare. |
+| `services.cfdyndns.enable` | `boolean` | Whether to enable Cloudflare Dynamic DNS Client. |
+| `services.cfdyndns.records` | `list of string` | The records to update in CloudFlare. |

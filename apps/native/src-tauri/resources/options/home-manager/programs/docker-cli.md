@@ -5,8 +5,9 @@
 All options under `programs.docker-cli`.
 
 | Option | Type | Description |
-| ------------------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.docker-cli.configDir` | `string` | Directory to store configuration and state. This also sets $DOCKER_CONFIG. |
 | `programs.docker-cli.contexts` | `attribute set of (open submodule of (JSON value))` | Attribute set of Docker context configurations. Each attribute name becomes the context Name; overriding requires lib.mkForce. See: \<https://docs.docker.com/engine/manage-resources/contexts/ |
+| `programs.docker-cli.contexts.<name>.Name` | `string` | Name of the Docker context. Defaults to the attribute name (the <name> in programs.docker-cli.contexts.<name>). Overriding requires lib.mkForce. |
 | `programs.docker-cli.enable` | `boolean` | Whether to enable management of docker client config. |
 | `programs.docker-cli.settings` | `JSON value` | Available configuration options for the Docker CLI see: \<https://docs.docker.com/reference/cli/docker/#docker-cli-configuration-file-configjson-properties |

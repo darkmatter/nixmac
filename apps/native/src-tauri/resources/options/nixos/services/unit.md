@@ -5,11 +5,11 @@
 All options under `services.unit`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `services.unit.config` | | |
-| `services.unit.enable` | | |
-| `services.unit.group` | | |
-| `services.unit.logDir` | | |
-| `services.unit.package` | | |
-| `services.unit.stateDir` | | |
-| `services.unit.user` | | |
+| --- | --- | --- |
+| `services.unit.config` | `string` | Unit configuration in JSON format. More details here <https://unit.nginx.org/configuration> |
+| `services.unit.enable` | `boolean` | Whether to enable Unit App Server. |
+| `services.unit.group` | `string` | Group account under which unit runs. |
+| `services.unit.logDir` | `absolute path` | Unit log directory. |
+| `services.unit.package` | `package` | The unit package to use. |
+| `services.unit.stateDir` | `absolute path` | Unit data directory. |
+| `services.unit.user` | `string` | User account under which unit runs. |

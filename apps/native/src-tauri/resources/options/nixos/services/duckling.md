@@ -5,6 +5,6 @@
 All options under `services.duckling`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.duckling.enable` | | |
-| `services.duckling.port` | | |
+| --- | --- | --- |
+| `services.duckling.enable` | `boolean` | Whether to enable duckling. |
+| `services.duckling.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which duckling will run. |

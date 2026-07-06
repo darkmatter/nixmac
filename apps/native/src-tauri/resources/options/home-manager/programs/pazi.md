@@ -5,7 +5,7 @@
 All options under `programs.pazi`.
 
 | Option | Type | Description |
-| ------------------------------------- | --------- | ----------------------------------- |
+| --- | --- | --- |
 | `programs.pazi.enable` | `boolean` | Whether to enable pazi. |
 | `programs.pazi.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.pazi.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |

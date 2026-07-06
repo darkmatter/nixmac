@@ -5,8 +5,8 @@
 All options under `services.openarena`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.openarena.enable` | | |
-| `services.openarena.extraFlags` | | |
-| `services.openarena.openPorts` | | |
-| `services.openarena.package` | | |
+| --- | --- | --- |
+| `services.openarena.enable` | `boolean` | Whether to enable OpenArena game server. |
+| `services.openarena.extraFlags` | `list of string` | Extra flags to pass to {command}`oa_ded` |
+| `services.openarena.openPorts` | `boolean` | Whether to open firewall ports for OpenArena |
+| `services.openarena.package` | `package` | The openarena package to use. |

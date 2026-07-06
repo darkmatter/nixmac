@@ -5,8 +5,8 @@
 All options under `programs.mergiraf`.
 
 | Option | Type | Description |
-| -------------------------------------------- | --------- | --------------------------------------------------- |
+| --- | --- | --- |
 | `programs.mergiraf.enable` | `boolean` | Whether to enable mergiraf. |
-| `programs.mergiraf.enableGitIntegration` | `boolean` | Whether to enable git integration for mergiraf. |
-| `programs.mergiraf.enableJujutsuIntegration` | `boolean` | Whether to enable jujutsu integration for mergiraf. |
+| `programs.mergiraf.enableGitIntegration` | `boolean` | Whether to enable git integration for mergiraf. When enabled, mergiraf will be configured as git's merge driver. |
+| `programs.mergiraf.enableJujutsuIntegration` | `boolean` | Whether to enable jujutsu integration for mergiraf. When enabled, mergiraf will be configured as jujutsus's merge tool. |
 | `programs.mergiraf.package` | `package` | The mergiraf package to use. |

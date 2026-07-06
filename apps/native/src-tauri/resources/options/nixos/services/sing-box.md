@@ -5,7 +5,7 @@
 All options under `services.sing-box`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.sing-box.enable` | | |
-| `services.sing-box.package` | | |
-| `services.sing-box.settings` | | |
+| --- | --- | --- |
+| `services.sing-box.enable` | `boolean` | Whether to enable sing-box universal proxy platform. |
+| `services.sing-box.package` | `package` | The sing-box package to use. |
+| `services.sing-box.settings` | `open submodule of (JSON value)` | The sing-box configuration, see <https://sing-box.sagernet.org/configuration/> for documentation. Options containing secret data should be set to an attribute set containing the attribute `_secret` - a string pointing to a file containing the value the option should be set to. |

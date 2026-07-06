@@ -5,9 +5,9 @@
 All options under `services.microbin`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.microbin.dataDir` | | |
-| `services.microbin.enable` | | |
-| `services.microbin.package` | | |
-| `services.microbin.passwordFile` | | |
-| `services.microbin.settings` | | |
+| --- | --- | --- |
+| `services.microbin.dataDir` | `string` | Default data folder for MicroBin. |
+| `services.microbin.enable` | `boolean` | Whether to enable MicroBin is a super tiny, feature rich, configurable paste bin web application. |
+| `services.microbin.package` | `package` | The microbin package to use. |
+| `services.microbin.passwordFile` | `null or absolute path` | Path to file containing environment variables. Useful for passing down secrets. Variables that can be considered secrets are: - MICROBIN_BASIC_AUTH_USERNAME - MICROBIN_BASIC_AUTH_PASSWORD - MICROBIN_ADMIN_USERNAME - MICROBIN_ADMIN_PASSWORD - MICROBIN_UPLOADER_PASSWORD |
+| `services.microbin.settings` | `open submodule of attribute set of (boolean or signed integer or string)` | Additional configuration for MicroBin, see <https://microbin.eu/docs/installation-and-configuration/configuration/> for supported values. For secrets use passwordFile option instead. |

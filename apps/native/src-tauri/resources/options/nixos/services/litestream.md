@@ -5,8 +5,8 @@
 All options under `services.litestream`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.litestream.enable` | | |
-| `services.litestream.environmentFile` | | |
-| `services.litestream.package` | | |
-| `services.litestream.settings` | | |
+| --- | --- | --- |
+| `services.litestream.enable` | `boolean` | Whether to enable litestream. |
+| `services.litestream.environmentFile` | `null or absolute path` | Environment file as defined in {manpage}`systemd.exec(5)`. Secrets may be passed to the service without adding them to the world-readable Nix store, by specifying placeholder variables as the option value in Nix and setting these variables accordingly in the environment file. By default, Litestream will perform environment variable expansion within the config file before reading it. Any references to $VAR or ${VAR} formatted variables will be replaced with their environment variable values. If no value is set then it will be replaced with an empty string. `  # Content of the environment file   LITESTREAM_ACCESS_KEY_ID=AKIAxxxxxxxxxxxxxxxx   LITESTREAM_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/xxxxxxxxx` Note that this file needs to be available on the host on which this exporter is running. |
+| `services.litestream.package` | `package` | The litestream package to use. |
+| `services.litestream.settings` | `YAML 1.1 value` | See the [documentation](https://litestream.io/reference/config/). |

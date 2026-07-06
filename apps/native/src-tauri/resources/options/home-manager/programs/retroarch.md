@@ -5,9 +5,11 @@
 All options under `programs.retroarch`.
 
 | Option | Type | Description |
-| --------------------------------- | ------------------------------ | ---------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.retroarch.cores` | `attribute set of (submodule)` | RetroArch cores to enable. You can provide custom core packages. |
+| `programs.retroarch.cores.<name>.enable` | `boolean` | Whether to enable RetroArch core. |
+| `programs.retroarch.cores.<name>.package` | `package` | The ‹name› package to use. |
 | `programs.retroarch.enable` | `boolean` | Whether to enable RetroArch. |
-| `programs.retroarch.finalPackage` | `package (read only)` | Resulting RetroArch package. |
+| `programs.retroarch.finalPackage` | `package` | Resulting RetroArch package. |
 | `programs.retroarch.package` | `package` | The retroarch package to use. |
-| `programs.retroarch.settings` | `attribute set of string` | RetroArch configuration settings. |
+| `programs.retroarch.settings` | `attribute set of string` | RetroArch configuration settings. See <https://github.com/libretro/RetroArch/blob/master/retroarch.cfg> for available configuration options. |

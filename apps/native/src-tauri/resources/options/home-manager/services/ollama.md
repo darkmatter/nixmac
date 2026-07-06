@@ -5,10 +5,10 @@
 All options under `services.ollama`.
 
 | Option | Type | Description |
-| -------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `services.ollama.acceleration` | `null or one of false, “rocm”, “cuda”` | What interface to use for hardware acceleration. |
+| --- | --- | --- |
+| `services.ollama.acceleration` | `null or one of false, "rocm", "cuda"` | What interface to use for hardware acceleration. - `null`: default behavior - if `nixpkgs.config.rocmSupport` is enabled, uses `"rocm"` - if `nixpkgs.config.cudaSupport` is enabled, uses `"cuda"` - otherwise defaults to `false` - `false`: disable GPU, only use CPU - `"rocm"`: supported by most modern AMD GPUs - may require overriding gpu type with `services.ollama.rocmOverrideGfx` if rocm doesn't detect your AMD gpu - `"cuda"`: supported by most modern NVIDIA GPUs |
 | `services.ollama.enable` | `boolean` | Whether to enable ollama server for local large language models. |
-| `services.ollama.environmentVariables` | `attribute set of string` | Set arbitrary environment variables for the ollama service. |
+| `services.ollama.environmentVariables` | `attribute set of string` | Set arbitrary environment variables for the ollama service. Be aware that these are only seen by the ollama server (systemd service), not normal invocations like `ollama run`. Since `ollama run` is mostly a shell around the ollama server, this is usually sufficient. |
 | `services.ollama.host` | `string` | The host address which the ollama server HTTP interface listens to. |
 | `services.ollama.package` | `package` | The ollama package to use. |
 | `services.ollama.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Which port the ollama server listens to. |

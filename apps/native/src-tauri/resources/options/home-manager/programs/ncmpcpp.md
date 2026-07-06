@@ -5,9 +5,11 @@
 All options under `programs.ncmpcpp`.
 
 | Option | Type | Description |
-| ------------------------------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.ncmpcpp.bindings` | `list of (submodule)` | List of keybindings. |
+| `programs.ncmpcpp.bindings.*.command` | `string or list of string` | Command or sequence of commands to be executed. |
+| `programs.ncmpcpp.bindings.*.key` | `string` | Key to bind. |
 | `programs.ncmpcpp.enable` | `boolean` | Whether to enable ncmpcpp - an ncurses Music Player Daemon (MPD) client. |
-| `programs.ncmpcpp.mpdMusicDir` | `null or (string or absolute path convertible to it)` | Value of the mpd_music_dir setting. On Linux platforms the value of services.mpd.musicDirectory is used as the default if services.mpd.enable is true . |
+| `programs.ncmpcpp.mpdMusicDir` | `null or (string or absolute path convertible to it)` | Value of the `mpd_music_dir` setting. On Linux platforms the value of {var}`services.mpd.musicDirectory` is used as the default if {var}`services.mpd.enable` is `true`. |
 | `programs.ncmpcpp.package` | `package` | The ncmpcpp package to use. |
-| `programs.ncmpcpp.settings` | `attribute set of (boolean or signed integer or string)` | Attribute set from name of a setting to its value. For available options see ncmpcpp (1) . |
+| `programs.ncmpcpp.settings` | `attribute set of (boolean or signed integer or string)` | Attribute set from name of a setting to its value. For available options see {manpage}`ncmpcpp(1)`. |

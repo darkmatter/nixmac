@@ -5,15 +5,15 @@
 All options under `services.collectd`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.collectd.autoLoadPlugin` | | |
-| `services.collectd.buildMinimalPackage` | | |
-| `services.collectd.dataDir` | | |
-| `services.collectd.enable` | | |
-| `services.collectd.extraConfig` | | |
-| `services.collectd.finalPackage` | | |
-| `services.collectd.include` | | |
-| `services.collectd.package` | | |
-| `services.collectd.plugins` | | |
-| `services.collectd.user` | | |
-| `services.collectd.validateConfig` | | |
+| --- | --- | --- |
+| `services.collectd.autoLoadPlugin` | `boolean` | Enable plugin autoloading. |
+| `services.collectd.buildMinimalPackage` | `boolean` | Build a minimal collectd package with only the configured `services.collectd.plugins` |
+| `services.collectd.dataDir` | `absolute path` | Data directory for collectd agent. |
+| `services.collectd.enable` | `boolean` | Whether to enable collectd agent. |
+| `services.collectd.extraConfig` | `strings concatenated with "\n"` | Extra configuration for collectd. Use mkBefore to add lines before the default config, and mkAfter to add them below. |
+| `services.collectd.finalPackage` | `unspecified value` | The final package being used after applying plugins and minimalPackage. |
+| `services.collectd.include` | `list of string` | Additional paths to load config from. |
+| `services.collectd.package` | `package` | The collectd package to use. |
+| `services.collectd.plugins` | `attribute set of strings concatenated with "\n"` | Attribute set of plugin names to plugin config segments |
+| `services.collectd.user` | `null or string` | User under which to run collectd. |
+| `services.collectd.validateConfig` | `boolean` | Validate the syntax of collectd configuration file at build time. Disable this if you use the Include directive on files unavailable in the build sandbox, or when cross-compiling. |

@@ -5,9 +5,10 @@
 All options under `services.open-web-calendar`.
 
 | Option | Type | Description |
-| --------------------------------------------- | ---- | ----------- |
-| `services.open-web-calendar.calendarSettings` | | |
-| `services.open-web-calendar.domain` | | |
-| `services.open-web-calendar.enable` | | |
-| `services.open-web-calendar.package` | | |
-| `services.open-web-calendar.settings` | | |
+| --- | --- | --- |
+| `services.open-web-calendar.calendarSettings` | `open submodule of (JSON value)` | Configure the default calendar. See the documentation options in <https://open-web-calendar.quelltext.eu/host/configure/#configuring-the-default-calendar> and <https://github.com/niccokunzmann/open-web-calendar/blob/master/open_web_calendar/default_specification.yml>. Individual calendar instances can be further configured outside this module, by specifying the `specification_url` parameter. |
+| `services.open-web-calendar.domain` | `string` | The domain under which open-web-calendar is made available |
+| `services.open-web-calendar.enable` | `boolean` | Whether to enable OpenWebCalendar service. |
+| `services.open-web-calendar.package` | `package` | The open-web-calendar package to use. |
+| `services.open-web-calendar.settings` | `open submodule of attribute set of (atom (null, bool, int, float or string))` | Configuration for the server. These are set as environment variables to the gunicorn/flask service. See the documentation options in <https://open-web-calendar.quelltext.eu/host/configure/#configuring-the-server>. |
+| `services.open-web-calendar.settings.ALLOWED_HOSTS` | `string` | The hosts that the Open Web Calendar permits. This is required to mitigate the Host Header Injection vulnerability. We always set this to the empty list, as Nginx already checks the Host header. |

@@ -5,5 +5,5 @@
 All options under `services.a2boot`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `services.a2boot.enable` | | |
+| --- | --- | --- |
+| `services.a2boot.enable` | `boolean` | Whether to enable the a2boot daemon. |

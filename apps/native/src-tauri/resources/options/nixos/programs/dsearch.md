@@ -5,8 +5,8 @@
 All options under `programs.dsearch`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `programs.dsearch.enable` | | |
-| `programs.dsearch.package` | | |
-| `programs.dsearch.systemd.enable` | | |
-| `programs.dsearch.systemd.target` | | |
+| --- | --- | --- |
+| `programs.dsearch.enable` | `boolean` | Whether to enable dsearch, a fast filesystem search service with fuzzy matching. |
+| `programs.dsearch.package` | `package` | The dsearch package to use. |
+| `programs.dsearch.systemd.enable` | `boolean` | Whether to enable systemd user service for dsearch. |
+| `programs.dsearch.systemd.target` | `string` | The systemd target that will automatically start the dsearch service. By default, dsearch starts with the user session (`default.target`). You can change this to `graphical-session.target` if you only want it to run in graphical sessions. |

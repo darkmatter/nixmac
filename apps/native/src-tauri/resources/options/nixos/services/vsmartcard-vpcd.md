@@ -5,7 +5,7 @@
 All options under `services.vsmartcard-vpcd`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.vsmartcard-vpcd.enable` | | |
-| `services.vsmartcard-vpcd.hostname` | | |
-| `services.vsmartcard-vpcd.port` | | |
+| --- | --- | --- |
+| `services.vsmartcard-vpcd.enable` | `boolean` | Whether to enable Virtual smart card driver.. |
+| `services.vsmartcard-vpcd.hostname` | `string` | Hostname of a waiting vpicc server vpcd will be connecting to. Use /dev/null for listening mode. |
+| `services.vsmartcard-vpcd.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number vpcd will be listening on. |

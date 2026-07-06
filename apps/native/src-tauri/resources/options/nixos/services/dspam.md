@@ -5,11 +5,11 @@
 All options under `services.dspam`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.dspam.domainSocket` | | |
-| `services.dspam.enable` | | |
-| `services.dspam.extraConfig` | | |
-| `services.dspam.group` | | |
-| `services.dspam.maintenanceInterval` | | |
-| `services.dspam.storageDriver` | | |
-| `services.dspam.user` | | |
+| --- | --- | --- |
+| `services.dspam.domainSocket` | `null or absolute path` | Path to local domain socket which is used for communication with the daemon. Set to null to disable UNIX socket. |
+| `services.dspam.enable` | `boolean` | Whether to enable the dspam spam filter. |
+| `services.dspam.extraConfig` | `strings concatenated with "\n"` | Additional dspam configuration. |
+| `services.dspam.group` | `string` | Group for the dspam daemon. |
+| `services.dspam.maintenanceInterval` | `null or string` | If set, maintenance script will be run at specified (in systemd.timer format) interval |
+| `services.dspam.storageDriver` | `string` | Storage driver backend to use for dspam. |
+| `services.dspam.user` | `string` | User for the dspam daemon. |

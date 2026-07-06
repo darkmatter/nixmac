@@ -5,12 +5,19 @@
 All options under `services.bacula-dir`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.bacula-dir.enable` | | |
-| `services.bacula-dir.extraConfig` | | |
-| `services.bacula-dir.extraDirectorConfig` | | |
-| `services.bacula-dir.extraMessagesConfig` | | |
-| `services.bacula-dir.name` | | |
-| `services.bacula-dir.password` | | |
-| `services.bacula-dir.port` | | |
-| `services.bacula-dir.tls` | | |
+| --- | --- | --- |
+| `services.bacula-dir.enable` | `boolean` | Whether to enable Bacula Director Daemon. |
+| `services.bacula-dir.extraConfig` | `strings concatenated with "\n"` | Extra configuration for Bacula Director Daemon. |
+| `services.bacula-dir.extraDirectorConfig` | `strings concatenated with "\n"` | Extra configuration to be passed in Director directive. |
+| `services.bacula-dir.extraMessagesConfig` | `strings concatenated with "\n"` | Extra configuration to be passed in Messages directive. |
+| `services.bacula-dir.name` | `string` | The director name used by the system administrator. This directive is required. |
+| `services.bacula-dir.password` | `string` | Specifies the password that must be supplied for a Director. |
+| `services.bacula-dir.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Specify the port (a positive integer) on which the Director daemon will listen for Bacula Console connections. This same port number must be specified in the Director resource of the Console configuration file. The default is 9101, so normally this directive need not be specified. This directive should not be used if you specify DirAddresses (N.B plural) directive. |
+| `services.bacula-dir.tls` | `submodule` | TLS Options for the Director. Important notice: The backup won't be encrypted. |
+| `services.bacula-dir.tls.allowedCN` | `list of string` | Common name attribute of allowed peer certificates. This directive is valid for a server and in a client context. If this directive is specified, the peer certificate will be verified against this list. In the case this directive is configured on a server side, the allowed CN list will not be checked if [services.bacula-dir.tls.verifyPeer](#opt-services.bacula-dir.tls.verifyPeer) is false. |
+| `services.bacula-dir.tls.caCertificateFile` | `null or absolute path` | The path specifying a PEM encoded TLS CA certificate(s). Multiple certificates are permitted in the file. One of TLS CA Certificate File or TLS CA Certificate Dir are required in a server context, unless [services.bacula-dir.tls.verifyPeer](#opt-services.bacula-dir.tls.verifyPeer) is false, and are always required in a client context. |
+| `services.bacula-dir.tls.certificate` | `null or absolute path` | The full path to the PEM encoded TLS certificate. It will be used as either a client or server certificate, depending on the connection direction. This directive is required in a server context, but it may not be specified in a client context if [services.bacula-dir.tls.verifyPeer](#opt-services.bacula-dir.tls.verifyPeer) is `false` in the corresponding server context. |
+| `services.bacula-dir.tls.enable` | `boolean` | Specifies if TLS should be enabled. If this set to `false` TLS will be completely disabled, even if [services.bacula-dir.tls.require](#opt-services.bacula-dir.tls.require) is true. |
+| `services.bacula-dir.tls.key` | `absolute path` | The path of a PEM encoded TLS private key. It must correspond to the TLS certificate. |
+| `services.bacula-dir.tls.require` | `null or boolean` | Require TLS or TLS-PSK encryption. This directive is ignored unless one of [services.bacula-dir.tls.enable](#opt-services.bacula-dir.tls.enable) is true or TLS PSK Enable is set to `yes`. If TLS is not required while TLS or TLS-PSK are enabled, then the Bacula component will connect with other components either with or without TLS or TLS-PSK If [services.bacula-dir.tls.enable](#opt-services.bacula-dir.tls.enable) or TLS-PSK is enabled and TLS is required, then the Bacula component will refuse any connection request that does not use TLS. |
+| `services.bacula-dir.tls.verifyPeer` | `null or boolean` | Verify peer certificate. Instructs server to request and verify the client's X.509 certificate. Any client certificate signed by a known-CA will be accepted. Additionally, the client's X509 certificate Common Name must meet the value of the Address directive. If [services.bacula-dir.tls.allowedCN](#opt-services.bacula-dir.tls.allowedCN) is used, the client's x509 certificate Common Name must also correspond to one of the CN specified in the [services.bacula-dir.tls.allowedCN](#opt-services.bacula-dir.tls.allowedCN) directive. This directive is valid only for a server and not in client context. Standard from Bacula is `true`. |

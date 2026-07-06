@@ -5,6 +5,13 @@
 All options under `services.bepasty`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.bepasty.enable` | | |
-| `services.bepasty.servers` | | |
+| --- | --- | --- |
+| `services.bepasty.enable` | `boolean` | Whether to enable bepasty, a binary pastebin server. |
+| `services.bepasty.servers` | `attribute set of (submodule)` | configure a number of bepasty servers which will be started with gunicorn. |
+| `services.bepasty.servers.<name>.bind` | `string` | Bind address to be used for this server. |
+| `services.bepasty.servers.<name>.dataDir` | `string` | Path to the directory where the pastes will be saved to |
+| `services.bepasty.servers.<name>.defaultPermissions` | `string` | default permissions for all unauthenticated accesses. |
+| `services.bepasty.servers.<name>.extraConfig` | `strings concatenated with "\n"` | Extra configuration for bepasty server to be appended on the configuration. see <https://bepasty-server.readthedocs.org/en/latest/quickstart.html#configuring-bepasty> for all options. |
+| `services.bepasty.servers.<name>.secretKey` | `string` | server secret for safe session cookies, must be set. Warning: this secret is stored in the WORLD-READABLE Nix store! It's recommended to use {option}`secretKeyFile` which takes precedence over {option}`secretKey`. |
+| `services.bepasty.servers.<name>.secretKeyFile` | `null or string` | A file that contains the server secret for safe session cookies, must be set. {option}`secretKeyFile` takes precedence over {option}`secretKey`. Warning: when {option}`secretKey` is non-empty {option}`secretKeyFile` defaults to a file in the WORLD-READABLE Nix store containing that secret. |
+| `services.bepasty.servers.<name>.workDir` | `string` | Path to the working directory (used for config and pidfile). Defaults to the users home directory. |

@@ -5,8 +5,8 @@
 All options under `services.irkerd`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.irkerd.enable` | | |
-| `services.irkerd.listenAddress` | | |
-| `services.irkerd.nick` | | |
-| `services.irkerd.openPorts` | | |
+| --- | --- | --- |
+| `services.irkerd.enable` | `boolean` | Whether to enable irker, an IRC notification daemon. |
+| `services.irkerd.listenAddress` | `string` | Specifies the bind address on which the irker daemon listens. The default is localhost. Irker authors strongly warn about the risks of running this on a publicly accessible interface, so change this with caution. |
+| `services.irkerd.nick` | `string` | Nick to use for irker |
+| `services.irkerd.openPorts` | `boolean` | Open ports in the firewall for irkerd |

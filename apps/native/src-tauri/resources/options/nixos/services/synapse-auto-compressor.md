@@ -5,11 +5,11 @@
 All options under `services.synapse-auto-compressor`.
 
 | Option | Type | Description |
-| -------------------------------------------------------------- | ---- | ----------- |
-| `services.synapse-auto-compressor.enable` | | |
-| `services.synapse-auto-compressor.package` | | |
-| `services.synapse-auto-compressor.postgresUrl` | | |
-| `services.synapse-auto-compressor.settings.chunk_size` | | |
-| `services.synapse-auto-compressor.settings.chunks_to_compress` | | |
-| `services.synapse-auto-compressor.settings.levels` | | |
-| `services.synapse-auto-compressor.startAt` | | |
+| --- | --- | --- |
+| `services.synapse-auto-compressor.enable` | `boolean` | Whether to enable synapse-auto-compressor. |
+| `services.synapse-auto-compressor.package` | `package` | The rust-synapse-compress-state package to use. |
+| `services.synapse-auto-compressor.postgresUrl` | `string` | Connection string to postgresql in the [rust `postgres` crate config format](https://docs.rs/postgres/latest/postgres/config/struct.Config.html). The module will attempt to build a URL-style connection string out of the `services.matrix-synapse.settings.database.args` if a local synapse is enabled. |
+| `services.synapse-auto-compressor.settings.chunk_size` | `signed integer` | The number of state groups to work on at once. All of the entries from `state_groups_state` are requested from the database for state groups that are worked on. Therefore small chunk sizes may be needed on machines with low memory. Note: if the compressor fails to find space savings on the chunk as a whole (which may well happen in rooms with lots of backfill in) then the entire chunk is skipped. |
+| `services.synapse-auto-compressor.settings.chunks_to_compress` | `signed integer` | `chunks_to_compress` chunks of size `chunk_size` will be compressed. The higher this number is set to, the longer the compressor will run for. |
+| `services.synapse-auto-compressor.settings.levels` | `list of signed integer` | Sizes of each new level in the compression algorithm, as a comma-separated list. The first entry in the list is for the lowest, most granular level, with each subsequent entry being for the next highest level. The number of entries in the list determines the number of levels that will be used. The sum of the sizes of the levels affects the performance of fetching the state from the database, as the sum of the sizes is the upper bound on the number of iterations needed to fetch a given set of state. |
+| `services.synapse-auto-compressor.startAt` | `string or list of string` | How often to run this service in systemd calendar syntax (see {manpage}`systemd.time(7)`) |

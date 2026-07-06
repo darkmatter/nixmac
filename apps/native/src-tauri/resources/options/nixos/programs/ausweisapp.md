@@ -5,6 +5,6 @@
 All options under `programs.ausweisapp`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `programs.ausweisapp.enable` | | |
-| `programs.ausweisapp.openFirewall` | | |
+| --- | --- | --- |
+| `programs.ausweisapp.enable` | `boolean` | Whether to enable AusweisApp. |
+| `programs.ausweisapp.openFirewall` | `boolean` | Whether to open the required firewall ports for the Smartphone as Card Reader (SaC) functionality of AusweisApp. |

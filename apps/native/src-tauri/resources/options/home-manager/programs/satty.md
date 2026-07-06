@@ -5,7 +5,7 @@
 All options under `programs.satty`.
 
 | Option | Type | Description |
-| ------------------------- | ----------------- | ----------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.satty.enable` | `boolean` | Whether to enable Satty - Modern Screenshot Annotation. |
 | `programs.satty.package` | `null or package` | The satty package to use. |
-| `programs.satty.settings` | `TOML value` | Configuration for Satty written to $XDG_CONFIG_HOME/satty/config.toml . |
+| `programs.satty.settings` | `TOML value` | Configuration for Satty written to {file}`$XDG_CONFIG_HOME/satty/config.toml`. See the [Satty documentation](https://github.com/gabm/Satty#configuration-file) for available options. |

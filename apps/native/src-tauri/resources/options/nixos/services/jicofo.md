@@ -5,13 +5,13 @@
 All options under `services.jicofo`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.jicofo.bridgeMuc` | | |
-| `services.jicofo.componentPasswordFile` | | |
-| `services.jicofo.config` | | |
-| `services.jicofo.enable` | | |
-| `services.jicofo.userDomain` | | |
-| `services.jicofo.userName` | | |
-| `services.jicofo.userPasswordFile` | | |
-| `services.jicofo.xmppDomain` | | |
-| `services.jicofo.xmppHost` | | |
+| --- | --- | --- |
+| `services.jicofo.bridgeMuc` | `string` | JID of the internal MUC used to communicate with Videobridges. |
+| `services.jicofo.componentPasswordFile` | `string` | Path to file containing component secret. |
+| `services.jicofo.config` | `HOCON value` | Contents of the {file}`jicofo.conf` configuration file. |
+| `services.jicofo.enable` | `boolean` | Whether to enable Jitsi Conference Focus - component of Jitsi Meet. |
+| `services.jicofo.userDomain` | `string` | Domain part of the JID for XMPP user connection. |
+| `services.jicofo.userName` | `string` | User part of the JID for XMPP user connection. |
+| `services.jicofo.userPasswordFile` | `string` | Path to file containing password for XMPP user connection. |
+| `services.jicofo.xmppDomain` | `null or string` | Domain name of the XMMP server to which to connect as a component. If null, {option}`xmppHost` is used. |
+| `services.jicofo.xmppHost` | `string` | Hostname of the XMPP server to connect to. |

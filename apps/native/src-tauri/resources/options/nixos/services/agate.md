@@ -5,13 +5,13 @@
 All options under `services.agate`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.agate.addresses` | | |
-| `services.agate.certificatesDir` | | |
-| `services.agate.contentDir` | | |
-| `services.agate.enable` | | |
-| `services.agate.extraArgs` | | |
-| `services.agate.hostnames` | | |
-| `services.agate.language` | | |
-| `services.agate.onlyTls_1_3` | | |
-| `services.agate.package` | | |
+| --- | --- | --- |
+| `services.agate.addresses` | `list of string` | Addresses to listen on, IP:PORT, if you haven't disabled forwarding only set IPv4. |
+| `services.agate.certificatesDir` | `absolute path` | Root of the certificate directory. |
+| `services.agate.contentDir` | `absolute path` | Root of the content directory. |
+| `services.agate.enable` | `boolean` | Whether to enable Agate Server. |
+| `services.agate.extraArgs` | `list of string` | Extra arguments to use running agate. |
+| `services.agate.hostnames` | `list of string` | Domain name of this Gemini server, enables checking hostname and port in requests. (multiple occurrences means basic vhosts) |
+| `services.agate.language` | `null or string` | RFC 4646 Language code for text/gemini documents. |
+| `services.agate.onlyTls_1_3` | `boolean` | Only use TLSv1.3 (default also allows TLSv1.2). |
+| `services.agate.package` | `package` | The agate package to use. |

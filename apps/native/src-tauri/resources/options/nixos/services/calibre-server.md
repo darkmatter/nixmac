@@ -5,17 +5,16 @@
 All options under `services.calibre-server`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.calibre-server.auth.enable` | | |
-| `services.calibre-server.auth.mode` | | |
-| `services.calibre-server.auth.userDb` | | |
-| `services.calibre-server.enable` | | |
-| `services.calibre-server.extraFlags` | | |
-| `services.calibre-server.group` | | |
-| `services.calibre-server.host` | | |
-| `services.calibre-server.libraries` | | |
-| `services.calibre-server.libraryDir` | | |
-| `services.calibre-server.openFirewall` | | |
-| `services.calibre-server.package` | | |
-| `services.calibre-server.port` | | |
-| `services.calibre-server.user` | | |
+| --- | --- | --- |
+| `services.calibre-server.auth.enable` | `boolean` | Password based authentication to access the server. See the [calibre-server documentation](https://manual.calibre-ebook.com/generated/en/calibre-server.html#cmdoption-calibre-server-enable-auth) for details. |
+| `services.calibre-server.auth.mode` | `one of "auto", "basic", "digest"` | Choose the type of authentication used. Set the HTTP authentication mode used by the server. See the [calibre-server documentation](https://manual.calibre-ebook.com/generated/en/calibre-server.html#cmdoption-calibre-server-auth-mode) for details. |
+| `services.calibre-server.auth.userDb` | `null or absolute path` | Choose users database file to use for authentication. Make sure users database file is initialized before service startup. See the [calibre-server documentation](https://manual.calibre-ebook.com/server.html#managing-user-accounts-from-the-command-line-only) for details. |
+| `services.calibre-server.enable` | `boolean` | Whether to enable calibre-server (e-book software). |
+| `services.calibre-server.extraFlags` | `list of string` | Extra flags to pass to the calibre-server command. See the [calibre-server documentation](https://manual.calibre-ebook.com/generated/en/calibre-server.html) for details. |
+| `services.calibre-server.group` | `string` | The group under which calibre-server runs. |
+| `services.calibre-server.host` | `string` | The interface on which to listen for connections. See the [calibre-server documentation](https://manual.calibre-ebook.com/generated/en/calibre-server.html#cmdoption-calibre-server-listen-on) for details. |
+| `services.calibre-server.libraries` | `list of absolute path` | Make sure each library path is initialized before service startup. The directories of the libraries to serve. They must be readable for the user under which the server runs. See the [calibredb documentation](https://manual.calibre-ebook.com/generated/en/calibredb.html#add) for details. |
+| `services.calibre-server.openFirewall` | `boolean` | Open ports in the firewall for the Calibre Server web interface. |
+| `services.calibre-server.package` | `package` | The calibre package to use. |
+| `services.calibre-server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port on which to listen for connections. See the [calibre-server documentation](https://manual.calibre-ebook.com/generated/en/calibre-server.html#cmdoption-calibre-server-port) for details. |
+| `services.calibre-server.user` | `string` | The user under which calibre-server runs. |

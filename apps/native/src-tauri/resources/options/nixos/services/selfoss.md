@@ -5,14 +5,14 @@
 All options under `services.selfoss`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.selfoss.database.host` | | |
-| `services.selfoss.database.name` | | |
-| `services.selfoss.database.password` | | |
-| `services.selfoss.database.port` | | |
-| `services.selfoss.database.type` | | |
-| `services.selfoss.database.user` | | |
-| `services.selfoss.enable` | | |
-| `services.selfoss.extraConfig` | | |
-| `services.selfoss.pool` | | |
-| `services.selfoss.user` | | |
+| --- | --- | --- |
+| `services.selfoss.database.host` | `string` | Host of the database (has no effect if type is "sqlite"). |
+| `services.selfoss.database.name` | `string` | Name of the existing database (has no effect if type is "sqlite"). |
+| `services.selfoss.database.password` | `null or string` | The database user's password (has no effect if type is "sqlite"). |
+| `services.selfoss.database.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The database's port. If not set, the default ports will be provided (5432 and 3306 for pgsql and mysql respectively) (has no effect if type is "sqlite"). |
+| `services.selfoss.database.type` | `one of "pgsql", "mysql", "sqlite"` | Database to store feeds. Supported are sqlite, pgsql and mysql. |
+| `services.selfoss.database.user` | `string` | The database user. The user must exist and has access to the specified database (has no effect if type is "sqlite"). |
+| `services.selfoss.enable` | `boolean` | Whether to enable selfoss. |
+| `services.selfoss.extraConfig` | `strings concatenated with "\n"` | Extra configuration added to config.ini |
+| `services.selfoss.pool` | `string` | Name of existing phpfpm pool that is used to run web-application. If not specified a pool will be created automatically with default values. |
+| `services.selfoss.user` | `string` | User account under which both the service and the web-application run. |

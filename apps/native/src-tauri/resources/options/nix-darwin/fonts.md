@@ -5,8 +5,5 @@
 All options under `fonts`.
 
 | Option | Type | Description |
-| ---------------------- | ----------------------- | -------------------------------------------------------- |
-| `fonts.enableFontDir` | | |
-| `fonts.fontDir.enable` | | |
-| `fonts.fonts` | | |
-| `fonts.packages` | `list of absolute path` | List of fonts to install into /Library/Fonts/Nix Fonts . |
+| --- | --- | --- |
+| `fonts.packages` | `list of absolute path` | List of fonts to install into {file}`/Library/Fonts/Nix Fonts`. |

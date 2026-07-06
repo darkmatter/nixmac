@@ -5,14 +5,15 @@
 All options under `services.rss-bridge`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.rss-bridge.config` | | |
-| `services.rss-bridge.dataDir` | | |
-| `services.rss-bridge.enable` | | |
-| `services.rss-bridge.group` | | |
-| `services.rss-bridge.package` | | |
-| `services.rss-bridge.pool` | | |
-| `services.rss-bridge.user` | | |
-| `services.rss-bridge.virtualHost` | | |
-| `services.rss-bridge.webserver` | | |
-| `services.rss-bridge.whitelist` | | |
+| --- | --- | --- |
+| `services.rss-bridge.config` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Attribute set of arbitrary config options. Please consult the documentation at the [wiki](https://rss-bridge.github.io/rss-bridge/For_Hosts/Custom_Configuration.html) and [sample config](https://github.com/RSS-Bridge/rss-bridge/blob/master/config.default.ini.php) to see a list of available options. |
+| `services.rss-bridge.config.FileCache.path` | `string` | Directory where to store cache files (if cache.type = "file"). |
+| `services.rss-bridge.config.system.enabled_bridges` | `null or string or list of string` | Only enabled bridges are available for feed production |
+| `services.rss-bridge.dataDir` | `string` | Location in which cache directory will be created. You can put `config.ini.php` in here. |
+| `services.rss-bridge.enable` | `boolean` | Whether to enable rss-bridge. |
+| `services.rss-bridge.group` | `string` | The group under which the web application runs. |
+| `services.rss-bridge.package` | `package` | The rss-bridge package to use. |
+| `services.rss-bridge.pool` | `null or string` | Name of phpfpm pool that is used to run web-application. If `null` specified none will be created, otherwise automatically created with default values. |
+| `services.rss-bridge.user` | `string` | The user account under which both the service and the web application run. |
+| `services.rss-bridge.virtualHost` | `null or string` | Name of the nginx or caddy virtualhost to use and setup. If null, do not setup any virtualhost. |
+| `services.rss-bridge.webserver` | `null or one of "nginx", "caddy"` | Type of virtualhost to use and setup. If null, do not setup any virtualhost. |

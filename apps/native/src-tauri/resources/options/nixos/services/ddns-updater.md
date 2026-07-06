@@ -5,7 +5,7 @@
 All options under `services.ddns-updater`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.ddns-updater.enable` | | |
-| `services.ddns-updater.environment` | | |
-| `services.ddns-updater.package` | | |
+| --- | --- | --- |
+| `services.ddns-updater.enable` | `boolean` | Whether to enable Container to update DNS records periodically with WebUI for many DNS providers. |
+| `services.ddns-updater.environment` | `attribute set of string` | Environment variables to be set for the ddns-updater service. DATADIR is ignored to enable using systemd DynamicUser. For full list see <https://github.com/qdm12/ddns-updater> |
+| `services.ddns-updater.package` | `package` | The ddns-updater package to use. |

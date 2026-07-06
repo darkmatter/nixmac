@@ -5,8 +5,10 @@
 All options under `services.websurfx`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.websurfx.enable` | | |
-| `services.websurfx.openFirewall` | | |
-| `services.websurfx.package` | | |
-| `services.websurfx.settings` | | |
+| --- | --- | --- |
+| `services.websurfx.enable` | `boolean` | Whether to enable Websurfx, a metasearch engine. |
+| `services.websurfx.openFirewall` | `boolean` | Whether to enable Whether to open the used port in the firewall. |
+| `services.websurfx.package` | `package` | The websurfx package to use. |
+| `services.websurfx.settings` | `open submodule of attribute set of lua value` | Configuration options for Websurfx, see [websurfx/config.lua](https://github.com/neon-mmd/websurfx/blob/rolling/websurfx/config.lua) for supported values. |
+| `services.websurfx.settings.binding_ip` | `string` | IP address on which the server should be launched |
+| `services.websurfx.settings.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which the server should be launched |

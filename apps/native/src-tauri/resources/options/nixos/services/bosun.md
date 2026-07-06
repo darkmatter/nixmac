@@ -5,15 +5,15 @@
 All options under `services.bosun`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.bosun.checkFrequency` | | |
-| `services.bosun.enable` | | |
-| `services.bosun.extraConfig` | | |
-| `services.bosun.group` | | |
-| `services.bosun.influxHost` | | |
-| `services.bosun.ledisDir` | | |
-| `services.bosun.listenAddress` | | |
-| `services.bosun.opentsdbHost` | | |
-| `services.bosun.package` | | |
-| `services.bosun.stateFile` | | |
-| `services.bosun.user` | | |
+| --- | --- | --- |
+| `services.bosun.checkFrequency` | `string` | Bosun's check frequency |
+| `services.bosun.enable` | `boolean` | Whether to enable bosun. |
+| `services.bosun.extraConfig` | `strings concatenated with "\n"` | Extra configuration options for Bosun. You should describe your desired templates, alerts, macros, etc through this configuration option. A detailed description of the supported syntax can be found at-spi2-atk <https://bosun.org/configuration.html> |
+| `services.bosun.group` | `string` | Group account under which bosun runs. |
+| `services.bosun.influxHost` | `null or string` | Host and port of the influxdb database. |
+| `services.bosun.ledisDir` | `absolute path` | Path to bosun's ledis data dir |
+| `services.bosun.listenAddress` | `string` | The host address and port that bosun's web interface will listen on. |
+| `services.bosun.opentsdbHost` | `null or string` | Host and port of the OpenTSDB database that stores bosun data. To disable opentsdb you can pass null as parameter. |
+| `services.bosun.package` | `package` | The bosun package to use. |
+| `services.bosun.stateFile` | `absolute path` | Path to bosun's state file. |
+| `services.bosun.user` | `string` | User account under which bosun runs. |

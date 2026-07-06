@@ -5,10 +5,10 @@
 All options under `services.syslogd`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.syslogd.defaultConfig` | | |
-| `services.syslogd.enable` | | |
-| `services.syslogd.enableNetworkInput` | | |
-| `services.syslogd.extraConfig` | | |
-| `services.syslogd.extraParams` | | |
-| `services.syslogd.tty` | | |
+| --- | --- | --- |
+| `services.syslogd.defaultConfig` | `strings concatenated with "\n"` | The default {file}`syslog.conf` file configures a fairly standard setup of log files, which can be extended by means of {var}`extraConfig`. |
+| `services.syslogd.enable` | `boolean` | Whether to enable syslogd. Note that systemd also logs syslog messages, so you normally don't need to run syslogd. |
+| `services.syslogd.enableNetworkInput` | `boolean` | Accept logging through UDP. Option -r of {manpage}`syslogd(8)`. |
+| `services.syslogd.extraConfig` | `strings concatenated with "\n"` | Additional text appended to {file}`syslog.conf`, i.e. the contents of {var}`defaultConfig`. |
+| `services.syslogd.extraParams` | `list of string` | Additional parameters passed to {command}`syslogd`. |
+| `services.syslogd.tty` | `string` | The tty device on which syslogd will print important log messages. Leave this option blank to disable tty logging. |

@@ -5,7 +5,7 @@
 All options under `programs.sqls`.
 
 | Option | Type | Description |
-| ------------------------ | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.sqls.enable` | `boolean` | Whether to enable sqls, a SQL language server written in Go. |
 | `programs.sqls.package` | `null or package` | The sqls package to use. |
-| `programs.sqls.settings` | `YAML 1.1 value` | Configuration written to $XDG_CONFIG_HOME/sqls/config.yml . See https://github.com/lighttiger2505/sqls#db-configuration for supported values. |
+| `programs.sqls.settings` | `YAML 1.1 value` | Configuration written to {file}`$XDG_CONFIG_HOME/sqls/config.yml`. See <https://github.com/lighttiger2505/sqls#db-configuration> for supported values. |

@@ -5,6 +5,6 @@
 All options under `services.gvfs`.
 
 | Option | Type | Description |
-| ----------------------- | ---- | ----------- |
-| `services.gvfs.enable` | | |
-| `services.gvfs.package` | | |
+| --- | --- | --- |
+| `services.gvfs.enable` | `boolean` | Whether to enable GVfs, a userspace virtual filesystem. |
+| `services.gvfs.package` | `package` | The gvfs package to use. |

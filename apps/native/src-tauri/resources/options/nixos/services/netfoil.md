@@ -5,23 +5,23 @@
 All options under `services.netfoil`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---- | ----------- |
-| `services.netfoil.config` | | |
-| `services.netfoil.doHIPs` | | |
-| `services.netfoil.doHUrl` | | |
-| `services.netfoil.enable` | | |
-| `services.netfoil.listen.ipAddress` | | |
-| `services.netfoil.listen.port` | | |
-| `services.netfoil.logAllowed` | | |
-| `services.netfoil.logDenied` | | |
-| `services.netfoil.rules.allow.exact` | | |
-| `services.netfoil.rules.allow.ipv4` | | |
-| `services.netfoil.rules.allow.ipv6` | | |
-| `services.netfoil.rules.allow.tld` | | |
-| `services.netfoil.rules.deny.exact` | | |
-| `services.netfoil.rules.deny.ipv4` | | |
-| `services.netfoil.rules.deny.ipv6` | | |
-| `services.netfoil.rules.deny.tld` | | |
-| `services.netfoil.rules.known.knownTlds` | | |
-| `services.netfoil.rules.pin.a` | | |
-| `services.netfoil.rules.pin.responseDomain` | | |
+| --- | --- | --- |
+| `services.netfoil.config` | `attribute set of string` | Additional configuration options for Netfoil |
+| `services.netfoil.doHIPs` | `string` | The DoH IPs to use for upstream DNS queries |
+| `services.netfoil.doHUrl` | `string` | The DoH URL to use for upstream DNS queries |
+| `services.netfoil.enable` | `boolean` | Enable Netfoil, a minimal, filtering, DNS proxy |
+| `services.netfoil.listen.ipAddress` | `string` | IP address on which Netfoil listens for incoming connections |
+| `services.netfoil.listen.port` | `signed integer` | Port on which Netfoil listens for incoming connections |
+| `services.netfoil.logAllowed` | `boolean` | Log allowed DNS queries |
+| `services.netfoil.logDenied` | `boolean` | Log denied DNS queries |
+| `services.netfoil.rules.allow.exact` | `list of string` | List of exact domain names to allow |
+| `services.netfoil.rules.allow.ipv4` | `list of string` | List of ipv4 CIDR ranges to allow |
+| `services.netfoil.rules.allow.ipv6` | `list of string` | List of ipv6 CIDR ranges to allow |
+| `services.netfoil.rules.allow.tld` | `list of string` | List of TLDs to allow |
+| `services.netfoil.rules.deny.exact` | `list of string` | List of exact domain names to deny |
+| `services.netfoil.rules.deny.ipv4` | `list of string` | List of ipv4 CIDR ranges to deny |
+| `services.netfoil.rules.deny.ipv6` | `list of string` | List of ipv6 CIDR ranges to deny |
+| `services.netfoil.rules.deny.tld` | `list of string` | List of TLDs to deny |
+| `services.netfoil.rules.known.knownTlds` | `list of string` | List of known TLDs |
+| `services.netfoil.rules.pin.a` | `list of string` | List of A records to pin <domain:ipv4> |
+| `services.netfoil.rules.pin.responseDomain` | `list of string` | List of domains to pin <domain:domain> |

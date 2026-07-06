@@ -5,10 +5,12 @@
 All options under `services.pyroscope`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.pyroscope.configFile` | | |
-| `services.pyroscope.enable` | | |
-| `services.pyroscope.extraFlags` | | |
-| `services.pyroscope.openFirewall` | | |
-| `services.pyroscope.package` | | |
-| `services.pyroscope.settings` | | |
+| --- | --- | --- |
+| `services.pyroscope.configFile` | `null or absolute path` | Specify a path to a configuration file that Pyroscope should use. |
+| `services.pyroscope.enable` | `boolean` | Whether to enable Pyroscope. |
+| `services.pyroscope.extraFlags` | `list of string` | Additional arguments to pass to pyroscope |
+| `services.pyroscope.openFirewall` | `boolean` | Whether or not to open the firewall for this service |
+| `services.pyroscope.package` | `package` | The pyroscope package to use. |
+| `services.pyroscope.settings` | `open submodule of (YAML 1.1 value)` | Specify the configuration for Pyroscope in Nix. See <https://grafana.com/docs/pyroscope/latest/configure-server/reference-configuration-parameters/> for available options. |
+| `services.pyroscope.settings.server.http_listen_address` | `string` | The server listen address |
+| `services.pyroscope.settings.server.http_listen_port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port that Pyroscope should run on |

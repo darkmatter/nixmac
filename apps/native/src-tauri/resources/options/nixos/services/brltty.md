@@ -5,5 +5,5 @@
 All options under `services.brltty`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `services.brltty.enable` | | |
+| --- | --- | --- |
+| `services.brltty.enable` | `boolean` | Whether to enable the BRLTTY daemon. |

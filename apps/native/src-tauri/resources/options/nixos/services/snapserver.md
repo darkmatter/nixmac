@@ -5,24 +5,19 @@
 All options under `services.snapserver`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.snapserver.buffer` | | |
-| `services.snapserver.codec` | | |
-| `services.snapserver.controlPort` | | |
-| `services.snapserver.enable` | | |
-| `services.snapserver.http.docRoot` | | |
-| `services.snapserver.http.enable` | | |
-| `services.snapserver.http.listenAddress` | | |
-| `services.snapserver.http.port` | | |
-| `services.snapserver.listenAddress` | | |
-| `services.snapserver.openFirewall` | | |
-| `services.snapserver.package` | | |
-| `services.snapserver.port` | | |
-| `services.snapserver.sampleFormat` | | |
-| `services.snapserver.send` | | |
-| `services.snapserver.settings` | | |
-| `services.snapserver.streamBuffer` | | |
-| `services.snapserver.streams` | | |
-| `services.snapserver.tcp.enable` | | |
-| `services.snapserver.tcp.listenAddress` | | |
-| `services.snapserver.tcp.port` | | |
+| --- | --- | --- |
+| `services.snapserver.enable` | `boolean` | Whether to enable snapserver. |
+| `services.snapserver.openFirewall` | `boolean` | Whether to automatically open the specified ports in the firewall. |
+| `services.snapserver.package` | `package` | The snapcast package to use. |
+| `services.snapserver.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string) or a list of them for duplicate keys)` | Snapserver configuration. Refer to the [example configuration](https://github.com/badaix/snapcast/blob/develop/server/etc/snapserver.conf) for possible options. |
+| `services.snapserver.settings.http.bind_to_address` | `unspecified value` | Address to listen on for snapclient connections. |
+| `services.snapserver.settings.http.doc_root` | `null or absolute path` | Path to serve from the HTTP servers root. |
+| `services.snapserver.settings.http.enabled` | `boolean` | Whether to enable the HTTP JSON-RPC. |
+| `services.snapserver.settings.http.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on for snapclient connections. |
+| `services.snapserver.settings.stream.source` | `string or list of string` | One or multiple URIs to PCM input streams. |
+| `services.snapserver.settings.tcp-control.bind_to_address` | `unspecified value` | Address to listen on for snapclient connections. |
+| `services.snapserver.settings.tcp-control.enabled` | `boolean` | Whether to enable the TCP JSON-RPC. |
+| `services.snapserver.settings.tcp-control.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on for snapclient connections. |
+| `services.snapserver.settings.tcp-streaming.bind_to_address` | `unspecified value` | Address to listen on for snapclient connections. |
+| `services.snapserver.settings.tcp-streaming.enabled` | `boolean` | Whether to enable streaming via TCP. |
+| `services.snapserver.settings.tcp-streaming.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on for snapclient connections. |
