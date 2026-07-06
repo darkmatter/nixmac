@@ -41,7 +41,7 @@ export function SetupStep() {
   const [fixingFlakeDir, setFixingFlakeDir] = useState(false);
   const [fixError, setFixError] = useState<string | null>(null);
   const flakeExists = useFlakeExists(configDir);
-  const thisHostname = useThisHostname() || "this-mac";
+  const thisHostname = useThisHostname();
 
   // Recovery for a config dir with no flake at its root (e.g. imported before
   // nested-flake support): nested candidates become one-click fixes.
@@ -54,7 +54,10 @@ export function SetupStep() {
   const nestedFlakeDirs = (nestedFlakesQuery.data ?? []).filter((dir) => dir !== "");
 
   const hasHosts = hosts.length > 0;
-  const effectiveHost = selectedHost || savedHost;
+  // Pre-select the host matching this machine so the chooser never starts empty
+  // when the flake already has an entry for it.
+  const hostMatchingThisMac = hosts.includes(thisHostname) ? thisHostname : "";
+  const effectiveHost = selectedHost || savedHost || hostMatchingThisMac;
   const needsInitialCommit =
     flakeExists === true && (gitStatus === null || gitStatus.headCommitHash === "");
   const checkingFlake = flakeExists === null;
@@ -224,41 +227,47 @@ export function SetupStep() {
             </Button>
           </div>
         ) : hasHosts ? (
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-            <div className="relative flex-1">
-              <label htmlFor="host-select" className="sr-only">
-                Select a host
-              </label>
-              <select
-                id="host-select"
-                value={effectiveHost}
-                onChange={(e) => setSelectedHost(e.target.value)}
-                className="w-full appearance-none rounded-lg border border-input bg-background px-3 py-2 pr-9 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="" disabled>
-                  Select a host…
-                </option>
-                {hosts.map((host) => (
-                  <option key={host} value={host}>
-                    darwinConfigurations.{host}
+          <div className="mt-4">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="relative flex-1">
+                <label htmlFor="host-select" className="sr-only">
+                  Select a host
+                </label>
+                <select
+                  id="host-select"
+                  value={effectiveHost}
+                  onChange={(e) => setSelectedHost(e.target.value)}
+                  className="w-full appearance-none rounded-lg border border-input bg-background px-3 py-2 pr-9 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="" disabled>
+                    Select a host…
                   </option>
-                ))}
-              </select>
-              <ChevronDown
-                className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden="true"
-              />
+                  {hosts.map((host) => (
+                    <option key={host} value={host}>
+                      {host}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden="true"
+                />
+              </div>
+              <Button onClick={() => void confirmHost()} disabled={!effectiveHost || savingHost}>
+                {savingHost ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                    Saving…
+                  </>
+                ) : (
+                  "Use this host"
+                )}
+              </Button>
             </div>
-            <Button onClick={() => void confirmHost()} disabled={!effectiveHost || savingHost}>
-              {savingHost ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                  Saving…
-                </>
-              ) : (
-                "Use this host"
-              )}
-            </Button>
+            <p className="mt-2 text-muted-foreground text-xs">
+              These are the <code className="font-mono">darwinConfigurations</code> entries in your
+              flake.
+            </p>
           </div>
         ) : (
           <div className="mt-4 rounded-lg border border-dashed border-border bg-background p-4 text-center">
@@ -269,7 +278,7 @@ export function SetupStep() {
             <Button
               className="mt-3"
               variant="secondary"
-              onClick={() => bootstrap(thisHostname)}
+              onClick={() => bootstrap(thisHostname || "this-mac")}
               disabled={isBootstrapping}
             >
               {isBootstrapping ? (
