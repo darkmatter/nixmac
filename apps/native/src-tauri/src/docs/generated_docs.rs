@@ -401,6 +401,71 @@ mod tests {
     }
 
     #[test]
+    fn read_or_generate_docs_json_returns_cached_file_without_nix() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let docs_dir = temp.path();
+        let cached = r#"[
+          {"option_path":"programs.git.enable","anchor_id":"opt-programs.git.enable","summary":"Enable Git.","option_type":"boolean"}
+        ]"#;
+        std::fs::write(docs_dir.join(NIX_DARWIN_DOCS_JSON_BASE), cached)?;
+
+        let result = read_or_generate_docs_json(OptionsTool::NixDarwin, docs_dir)?;
+        assert_eq!(result, cached, "should return the cached file verbatim");
+        Ok(())
+    }
+
+    #[test]
+    fn load_cached_tags_entries_by_source() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let docs_dir = temp.path();
+
+        let nix_darwin_docs = r#"[
+          {"option_path":"homebrew.enable","anchor_id":"opt-homebrew.enable","summary":"Enable Homebrew.","option_type":"boolean"}
+        ]"#;
+        let home_manager_docs = r#"[
+          {"option_path":"programs.git.enable","anchor_id":"opt-programs.git.enable","summary":"Enable Git.","option_type":"boolean"}
+        ]"#;
+        std::fs::write(docs_dir.join(NIX_DARWIN_DOCS_JSON_BASE), nix_darwin_docs)?;
+        std::fs::write(
+            docs_dir.join(HOME_MANAGER_DOCS_JSON_BASE),
+            home_manager_docs,
+        )?;
+
+        let loader = GeneratedDocsIndexLoader::new(docs_dir.to_path_buf());
+        let index = loader.load_cached()?;
+
+        assert_eq!(index.entries.len(), 2, "both sources loaded");
+        let darwin = index
+            .entries
+            .iter()
+            .find(|e| e.option_path == "homebrew.enable");
+        let hm = index
+            .entries
+            .iter()
+            .find(|e| e.option_path == "programs.git.enable");
+        assert_eq!(darwin.map(|e| e.source), Some(DocsSource::NixDarwin));
+        assert_eq!(hm.map(|e| e.source), Some(DocsSource::HomeManager));
+        Ok(())
+    }
+
+    #[test]
+    fn has_cached_docs_false_when_one_source_missing() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let docs_dir = temp.path();
+        std::fs::write(
+            docs_dir.join(NIX_DARWIN_DOCS_JSON_BASE),
+            r#"[{"option_path":"homebrew.enable"}]"#,
+        )?;
+
+        let loader = GeneratedDocsIndexLoader::new(docs_dir.to_path_buf());
+        assert!(
+            !loader.has_cached_docs(),
+            "partial cache should not be ready"
+        );
+        Ok(())
+    }
+
+    #[test]
     #[ignore = "Runs Nix against the user's current system for integration testing"]
     fn test_generate_docs() -> Result<()> {
         let stamp = SystemTime::now()
