@@ -1,5 +1,6 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use serde::Deserialize;
+use serde_json::Value;
 use std::fmt;
 
 use crate::commands::debug::TimerGuard;
@@ -110,6 +111,40 @@ pub(crate) fn parse_entries(json: &str, source: DocsSource) -> Vec<DocsOptionEnt
     }
 }
 
+/// Validate the compact docs JSON shape shared by static and generated docs.
+/// Runtime-generated caches use this to reject corrupt app-data files before
+/// they can produce an empty index. Note we also validate the static JSON
+/// even though we hopefully didn't bundle a broken file...
+pub(crate) fn validate_docs_json(json: &str, label: &str) -> Result<()> {
+    let docs: Vec<Value> =
+        serde_json::from_str(json).with_context(|| format!("{label} is not valid JSON"))?;
+
+    if docs.is_empty() {
+        anyhow::bail!("{label} contains no docs entries");
+    }
+
+    for (idx, item) in docs.iter().enumerate() {
+        let obj = item
+            .as_object()
+            .with_context(|| format!("{label}[{idx}] is not an object"))?;
+        let option_path = obj.get("option_path").and_then(Value::as_str).unwrap_or("");
+        if option_path.is_empty() {
+            anyhow::bail!("{label}[{idx}] has an empty option_path");
+        }
+        if obj.get("summary").is_some_and(|value| !value.is_string()) {
+            anyhow::bail!("{label}[{idx}].summary is not a string");
+        }
+        if obj
+            .get("option_type")
+            .is_some_and(|value| !value.is_string() && !value.is_null())
+        {
+            anyhow::bail!("{label}[{idx}].option_type is not a string or null");
+        }
+    }
+
+    Ok(())
+}
+
 /// Build a single index from the nix-darwin and Home Manager compact docs JSON.
 ///
 /// This is shared by both loaders so static resources and generated app-data
@@ -119,6 +154,9 @@ pub fn initialize_docs_index_from_strs(
     home_manager_json: &str,
 ) -> Result<DocsIndex> {
     let _timer = TimerGuard::new("initialize_docs_index_from_strs");
+
+    validate_docs_json(nix_darwin_json, "nix-darwin docs JSON")?;
+    validate_docs_json(home_manager_json, "home-manager docs JSON")?;
 
     let mut entries = parse_entries(nix_darwin_json, DocsSource::NixDarwin);
     let darwin_count = entries.len();
@@ -196,5 +234,51 @@ mod tests {
                 e.option_path
             );
         }
+    }
+
+    #[test]
+    fn validate_docs_json_accepts_compact_docs_shape() {
+        validate_docs_json(
+            r#"[
+              {
+                "option_path": "programs.git.enable",
+                "anchor_id": "opt-programs.git.enable",
+                "summary": "Enable Git.",
+                "option_type": "boolean"
+              }
+            ]"#,
+            "test-docs.json",
+        )
+        .expect("valid compact docs should pass validation");
+    }
+
+    #[test]
+    fn validate_docs_json_rejects_corrupt_cache_shapes() {
+        assert!(validate_docs_json("not-json", "test-docs.json").is_err());
+        assert!(validate_docs_json("[]", "test-docs.json").is_err());
+        assert!(validate_docs_json(r#"[{"summary":"missing path"}]"#, "test-docs.json").is_err());
+        assert!(
+            validate_docs_json(
+                r#"[{"option_path":"programs.git.enable","summary":123}]"#,
+                "test-docs.json",
+            )
+            .is_err()
+        );
+        assert!(
+            validate_docs_json(
+                r#"[{"option_path":"programs.git.enable","option_type":123}]"#,
+                "test-docs.json",
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn initialize_docs_index_from_strs_validates_both_sources() {
+        let valid = r#"[{"option_path":"programs.git.enable","summary":"Enable Git."}]"#;
+        let invalid = r#"[{"summary":"missing option path"}]"#;
+
+        assert!(initialize_docs_index_from_strs(valid, invalid).is_err());
+        assert!(initialize_docs_index_from_strs(invalid, valid).is_err());
     }
 }

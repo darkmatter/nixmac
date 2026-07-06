@@ -4,30 +4,29 @@
 
 use anyhow::{Context, Result};
 use serde_json::{Value, json};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, Runtime};
 use walkdir::WalkDir;
 
 use crate::commands::debug::TimerGuard;
-use crate::docs::docs_system::{DocsIndex, DocsIndexLoader, initialize_docs_index_from_strs};
+use crate::docs::docs_system::{
+    DocsIndex, DocsIndexLoader, initialize_docs_index_from_strs, validate_docs_json,
+};
 use crate::system::nix::nix_command;
 
 const NIX_DARWIN_DOCS_JSON_BASE: &str = "nix-darwin-docs.json";
 const HOME_MANAGER_DOCS_JSON_BASE: &str = "home-manager-docs.json";
 
 /// Loader for runtime-generated option docs stored in the app data directory.
-///
-/// The app only persists the compact `*-docs.json` files used by `search_docs`.
-/// Raw `options.json` is read from the Nix build output as an intermediate and
-/// is not copied into app data.
+/// The app persists the compact `*-docs.json` files in the format used by `search_docs`.
+
 pub struct GeneratedDocsIndexLoader {
     docs_dir: PathBuf,
 }
 
-/// Which upstream option set we are generating.
-///
-/// Each variant owns the Nix expression fragment needed to ask
-/// `pkgs.nixosOptionsDoc` for structured option metadata.
+/// Which option set we are generating.
+/// Each variant has its own Nix expression but the output gets normalized into the same compact docs JSON format.
 #[derive(Debug, Clone, Copy)]
 enum OptionsTool {
     NixDarwin,
@@ -84,19 +83,11 @@ impl OptionsTool {
 
 impl GeneratedDocsIndexLoader {
     /// Build a loader rooted at a specific cache directory.
-    ///
-    /// Tests can pass a temporary directory, while production uses
-    /// [`GeneratedDocsIndexLoader::for_app`] so the cache lives beside
-    /// `nixmac.db`.
     pub fn new(docs_dir: PathBuf) -> Self {
         Self { docs_dir }
     }
 
     /// Resolve the app-data directory and create a loader for generated docs.
-    ///
-    /// This intentionally uses Tauri's `app_data_dir`, the same family of
-    /// locations used for `nixmac.db`, so generated docs survive app restarts
-    /// without being bundled into the application resources.
     pub fn for_app<R: Runtime>(app: &AppHandle<R>) -> Result<Self> {
         let docs_dir = app.path().app_data_dir()?;
         std::fs::create_dir_all(&docs_dir)?;
@@ -104,7 +95,6 @@ impl GeneratedDocsIndexLoader {
     }
 
     /// Return true only when both generated docs files are present.
-    ///
     /// `search_docs` uses this as a fast readiness check. Partial caches are
     /// treated as missing so we never mix generated docs from one source with
     /// static docs from the other.
@@ -114,10 +104,11 @@ impl GeneratedDocsIndexLoader {
     }
 
     /// Load generated docs from app data without starting Nix generation.
-    ///
     /// This is the foreground startup path: if the cache is complete, the app
     /// can immediately use generated docs. If not, the caller can fall back to
     /// static docs and decide whether to generate in the background.
+    /// TODO: Detect when we ought to regenerate the cache, e.g. when the nixpkgs flake input has changed
+    /// in a significant way.
     pub fn load_cached(&self) -> Result<DocsIndex> {
         if !self.has_cached_docs() {
             anyhow::bail!(
@@ -129,11 +120,49 @@ impl GeneratedDocsIndexLoader {
         let nix_darwin_json =
             std::fs::read_to_string(self.docs_dir.join(NIX_DARWIN_DOCS_JSON_BASE))
                 .with_context(|| format!("failed to read {}", NIX_DARWIN_DOCS_JSON_BASE))?;
+        validate_docs_json(&nix_darwin_json, NIX_DARWIN_DOCS_JSON_BASE)?;
+
         let home_manager_json =
             std::fs::read_to_string(self.docs_dir.join(HOME_MANAGER_DOCS_JSON_BASE))
                 .with_context(|| format!("failed to read {}", HOME_MANAGER_DOCS_JSON_BASE))?;
+        validate_docs_json(&home_manager_json, HOME_MANAGER_DOCS_JSON_BASE)?;
+
         initialize_docs_index_from_strs(&nix_darwin_json, &home_manager_json)
     }
+}
+
+/// Write a cache file with a same-directory temp file and rename.
+/// Helps avoid partial writes and ensures the file is stable on disk before returning.
+fn write_file_atomically(path: &Path, contents: &str) -> Result<()> {
+    let parent = path
+        .parent()
+        .with_context(|| format!("{} has no parent directory", path.display()))?;
+    std::fs::create_dir_all(parent)?;
+
+    let mut temp_file = tempfile::NamedTempFile::new_in(parent)
+        .with_context(|| format!("failed to create temp cache file in {}", parent.display()))?;
+    temp_file
+        .write_all(contents.as_bytes())
+        .with_context(|| format!("failed to write temp cache file for {}", path.display()))?;
+    temp_file
+        .as_file()
+        .sync_all()
+        .with_context(|| format!("failed to sync temp cache file for {}", path.display()))?;
+    temp_file
+        .persist(path)
+        .map_err(|err| err.error)
+        .with_context(|| {
+            format!(
+                "failed to move temp cache file into place at {}",
+                path.display()
+            )
+        })?;
+
+    if let Ok(parent_dir) = std::fs::File::open(parent) {
+        let _ = parent_dir.sync_all();
+    }
+
+    Ok(())
 }
 
 /// Build the Nix expression used by `nix build --expr`.
@@ -231,8 +260,13 @@ fn docs_index_json_from_options_json(options_json: &str) -> Result<String> {
         .as_object()
         .context("generated options JSON root was not an object")?;
 
-    let mut docs = Vec::with_capacity(options.len());
-    for (path, entry) in options {
+    // Sort the option paths so the generated docs index is deterministic and
+    // stable across runs.
+    let mut items: Vec<(&String, &Value)> = options.iter().collect();
+    items.sort_by(|a, b| a.0.cmp(b.0));
+    let mut docs = Vec::with_capacity(items.len());
+
+    for (path, entry) in items {
         let Some(entry) = entry.as_object() else {
             continue;
         };
@@ -256,13 +290,21 @@ fn docs_index_json_from_options_json(options_json: &str) -> Result<String> {
 fn read_or_generate_docs_json(tool: OptionsTool, docs_dir: &Path) -> Result<String> {
     let docs_path = docs_dir.join(tool.docs_file_name());
     if docs_path.exists() {
-        return std::fs::read_to_string(&docs_path)
-            .with_context(|| format!("failed to read {}", docs_path.display()));
+        let cached_json = std::fs::read_to_string(&docs_path)
+            .with_context(|| format!("failed to read {}", docs_path.display()))?;
+        match validate_docs_json(&cached_json, tool.docs_file_name()) {
+            Ok(()) => return Ok(cached_json),
+            Err(err) => log::warn!(
+                "[generated_docs] ignoring invalid generated docs cache {}: {err:#}",
+                docs_path.display()
+            ),
+        }
     }
 
     let options_json = generate_options_json(tool, docs_dir)?;
     let docs_json = docs_index_json_from_options_json(&options_json)?;
-    std::fs::write(&docs_path, &docs_json)
+    validate_docs_json(&docs_json, tool.docs_file_name())?;
+    write_file_atomically(&docs_path, &docs_json)
         .with_context(|| format!("failed to write {}", docs_path.display()))?;
     Ok(docs_json)
 }
@@ -288,7 +330,14 @@ impl DocsIndexLoader for GeneratedDocsIndexLoader {
         std::fs::create_dir_all(&self.docs_dir)?;
 
         if self.has_cached_docs() {
-            return self.load_cached();
+            match self.load_cached() {
+                Ok(index) => return Ok(index),
+                Err(err) => {
+                    log::warn!(
+                        "[generated_docs] generated docs cache is invalid; regenerating: {err:#}"
+                    );
+                }
+            }
         }
 
         // Otherwise, generate in the same way as we do with the nix-options.sh script
@@ -324,6 +373,31 @@ mod tests {
         assert_eq!(docs[0]["anchor_id"], "opt-programs.git.enable");
         assert_eq!(docs[0]["summary"], "Enable Git.");
         assert_eq!(docs[0]["option_type"], "boolean");
+    }
+
+    #[test]
+    fn write_file_atomically_writes_final_file_and_cleans_temp_path() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let path = temp.path().join("docs.json");
+
+        write_file_atomically(&path, r#"[{"option_path":"programs.git.enable"}]"#)?;
+
+        assert_eq!(
+            std::fs::read_to_string(&path)?,
+            r#"[{"option_path":"programs.git.enable"}]"#
+        );
+        let leftover_temp_files = std::fs::read_dir(temp.path())?
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with(".docs.json.")
+            })
+            .count();
+        assert_eq!(leftover_temp_files, 0);
+
+        Ok(())
     }
 
     #[test]
