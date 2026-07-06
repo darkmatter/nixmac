@@ -5,7 +5,7 @@
 All options under `services.photonvision`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.photonvision.enable` | | |
-| `services.photonvision.openFirewall` | | |
-| `services.photonvision.package` | | |
+| --- | --- | --- |
+| `services.photonvision.enable` | `boolean` | Whether to enable PhotonVision. |
+| `services.photonvision.openFirewall` | `boolean` | Whether to open the required ports in the firewall. |
+| `services.photonvision.package` | `package` | The photonvision package to use. |

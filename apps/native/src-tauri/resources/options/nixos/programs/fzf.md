@@ -5,6 +5,6 @@
 All options under `programs.fzf`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `programs.fzf.fuzzyCompletion` | | |
-| `programs.fzf.keybindings` | | |
+| --- | --- | --- |
+| `programs.fzf.fuzzyCompletion` | `boolean` | Whether to enable fuzzy completion with fzf. |
+| `programs.fzf.keybindings` | `boolean` | Whether to enable fzf keybindings. |

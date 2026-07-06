@@ -5,5 +5,5 @@
 All options under `programs.ladybird`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `programs.ladybird.enable` | | |
+| --- | --- | --- |
+| `programs.ladybird.enable` | `boolean` | Whether to enable the Ladybird web browser. |

@@ -5,9 +5,8 @@
 All options under `services.dwm-status`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.dwm-status.enable` | | |
-| `services.dwm-status.extraConfig` | | |
-| `services.dwm-status.order` | | |
-| `services.dwm-status.package` | | |
-| `services.dwm-status.settings` | | |
+| --- | --- | --- |
+| `services.dwm-status.enable` | `boolean` | Whether to enable dwm-status user service. |
+| `services.dwm-status.package` | `package` | The dwm-status package to use. |
+| `services.dwm-status.settings` | `open submodule of (TOML value)` | Config options for dwm-status, see <https://github.com/Gerschtli/dwm-status#configuration> for available options. |
+| `services.dwm-status.settings.order` | `list of (one of "audio", "backlight", "battery", "cpu_load", "network", "time")` | List of enabled features in order. |

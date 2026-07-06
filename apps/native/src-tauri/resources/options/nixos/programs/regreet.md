@@ -5,18 +5,18 @@
 All options under `programs.regreet`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `programs.regreet.cageArgs` | | |
-| `programs.regreet.cursorTheme.name` | | |
-| `programs.regreet.cursorTheme.package` | | |
-| `programs.regreet.enable` | | |
-| `programs.regreet.extraCss` | | |
-| `programs.regreet.font.name` | | |
-| `programs.regreet.font.package` | | |
-| `programs.regreet.font.size` | | |
-| `programs.regreet.iconTheme.name` | | |
-| `programs.regreet.iconTheme.package` | | |
-| `programs.regreet.package` | | |
-| `programs.regreet.settings` | | |
-| `programs.regreet.theme.name` | | |
-| `programs.regreet.theme.package` | | |
+| --- | --- | --- |
+| `programs.regreet.cageArgs` | `list of string` | Additional arguments to be passed to [cage](https://github.com/cage-kiosk/cage). |
+| `programs.regreet.cursorTheme.name` | `string` | Name of the cursor theme to use for regreet. |
+| `programs.regreet.cursorTheme.package` | `package` | The package that provides the cursor theme given in the name option. |
+| `programs.regreet.enable` | `boolean` | Enable ReGreet, a clean and customizable greeter for greetd. To use ReGreet, {option}`services.greetd` has to be enabled and {option}`services.greetd.settings.default_session` should contain the appropriate configuration to launch {option}`config.programs.regreet.package`. For examples, see the [ReGreet Readme](https://github.com/rharish101/ReGreet#set-as-default-session). A minimal configuration that launches ReGreet in {command}`cage` is enabled by this module by default. |
+| `programs.regreet.extraCss` | `absolute path or strings concatenated with "\n"` | Extra CSS rules to apply on top of the GTK theme. Refer to [GTK CSS Properties](https://docs.gtk.org/gtk4/css-properties.html) for modifiable properties. |
+| `programs.regreet.font.name` | `string` | Name of the font to use for regreet. |
+| `programs.regreet.font.package` | `package` | The package that provides the font given in the name option. |
+| `programs.regreet.font.size` | `positive integer, meaning >0` | Size of the font to use for regreet. |
+| `programs.regreet.iconTheme.name` | `string` | Name of the icon theme to use for regreet. |
+| `programs.regreet.iconTheme.package` | `package` | The package that provides the icon theme given in the name option. |
+| `programs.regreet.package` | `package` | The regreet package to use. |
+| `programs.regreet.settings` | `TOML value` | ReGreet configuration file. Refer <https://github.com/rharish101/ReGreet/blob/main/regreet.sample.toml> for options. |
+| `programs.regreet.theme.name` | `string` | Name of the theme to use for regreet. |
+| `programs.regreet.theme.package` | `package` | The package that provides the theme given in the name option. |

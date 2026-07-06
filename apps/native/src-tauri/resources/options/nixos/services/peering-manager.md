@@ -5,18 +5,17 @@
 All options under `services.peering-manager`.
 
 | Option | Type | Description |
-| ----------------------------------------------- | ---- | ----------- |
-| `services.peering-manager.enable` | | |
-| `services.peering-manager.enableLdap` | | |
-| `services.peering-manager.enableOidc` | | |
-| `services.peering-manager.enableScheduledTasks` | | |
-| `services.peering-manager.environmentFile` | | |
-| `services.peering-manager.extraConfig` | | |
-| `services.peering-manager.ldapConfigPath` | | |
-| `services.peering-manager.listenAddress` | | |
-| `services.peering-manager.oidcConfigPath` | | |
-| `services.peering-manager.peeringdbApiKeyFile` | | |
-| `services.peering-manager.plugins` | | |
-| `services.peering-manager.port` | | |
-| `services.peering-manager.secretKeyFile` | | |
-| `services.peering-manager.settings` | | |
+| --- | --- | --- |
+| `services.peering-manager.enable` | `boolean` | Enable Peering Manager. This module requires a reverse proxy that serves `/static` separately. See this [example](https://github.com/peering-manager/contrib/blob/main/nginx.conf) on how to configure this. |
+| `services.peering-manager.enableLdap` | `boolean` | Enable LDAP-Authentication for Peering Manager. This requires a configuration file being pass through `ldapConfigPath`. |
+| `services.peering-manager.enableScheduledTasks` | `boolean` | Set up [scheduled tasks](https://peering-manager.readthedocs.io/en/stable/setup/8-scheduled-tasks/) |
+| `services.peering-manager.environmentFile` | `null or absolute path` | Environment file as defined in {manpage}`systemd.exec(5)`. Secrets may be passed to the service without adding them to the world-readable Nix store, by specifying placeholder variables as the option value in Nix and setting these variables accordingly in the environment file. `  # snippet of peering-manager-related config   services.peering-manager.settings.SOCIAL_AUTH_OIDC_SECRET = "$PM_OIDC_SECRET";` `  # content of the environment file   PM_OIDC_SECRET=topsecret` Note that this file needs to be available on the host on which `peering-manager` is running. |
+| `services.peering-manager.extraConfig` | `strings concatenated with "\n"` | Additional lines of configuration appended to the `configuration.py`. See the [documentation](https://peering-manager.readthedocs.io/en/stable/configuration/optional-settings/) for more possible options. |
+| `services.peering-manager.ldapConfigPath` | `absolute path` | Path to the Configuration-File for LDAP-Authentication, will be loaded as `ldap_config.py`. See the [documentation](https://peering-manager.readthedocs.io/en/stable/setup/6-ldap/#configuration) for possible options. |
+| `services.peering-manager.listenAddress` | `string` | Address the server will listen on. |
+| `services.peering-manager.peeringdbApiKeyFile` | `null or absolute path` | Path to a file containing the PeeringDB API key. |
+| `services.peering-manager.plugins` | `function that evaluates to a(n) list of package` | List of plugin packages to install. |
+| `services.peering-manager.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port the server will listen on. |
+| `services.peering-manager.secretKeyFile` | `absolute path` | Path to a file containing the secret key. |
+| `services.peering-manager.settings` | `open submodule of attribute set of (Python value)` | Configuration options to set in `configuration.py`. See the [documentation](https://peering-manager.readthedocs.io/en/stable/configuration/optional-settings/) for more possible options. |
+| `services.peering-manager.settings.ALLOWED_HOSTS` | `list of string` | A list of valid fully-qualified domain names (FQDNs) and/or IP addresses that can be used to reach the peering manager service. |

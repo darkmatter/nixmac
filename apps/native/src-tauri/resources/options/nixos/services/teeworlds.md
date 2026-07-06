@@ -5,39 +5,39 @@
 All options under `services.teeworlds`.
 
 | Option | Type | Description |
-| -------------------------------------------------- | ---- | ----------- |
-| `services.teeworlds.enable` | | |
-| `services.teeworlds.environmentFile` | | |
-| `services.teeworlds.extraOptions` | | |
-| `services.teeworlds.game.enablePowerups` | | |
-| `services.teeworlds.game.enableReadyMode` | | |
-| `services.teeworlds.game.enableTeamDamage` | | |
-| `services.teeworlds.game.enableVoteKick` | | |
-| `services.teeworlds.game.gameType` | | |
-| `services.teeworlds.game.map` | | |
-| `services.teeworlds.game.playerSlots` | | |
-| `services.teeworlds.game.restrictSpectators` | | |
-| `services.teeworlds.game.scoreLimit` | | |
-| `services.teeworlds.game.swapTeams` | | |
-| `services.teeworlds.game.timeLimit` | | |
-| `services.teeworlds.game.tournamentMode` | | |
-| `services.teeworlds.game.voteKickBanTime` | | |
-| `services.teeworlds.game.voteKickMinimumPlayers` | | |
-| `services.teeworlds.motd` | | |
-| `services.teeworlds.name` | | |
-| `services.teeworlds.openPorts` | | |
-| `services.teeworlds.package` | | |
-| `services.teeworlds.password` | | |
-| `services.teeworlds.port` | | |
-| `services.teeworlds.rconPassword` | | |
-| `services.teeworlds.register` | | |
-| `services.teeworlds.server.bindAddr` | | |
-| `services.teeworlds.server.enableHighBandwidth` | | |
-| `services.teeworlds.server.enableSpamProtection` | | |
-| `services.teeworlds.server.hostName` | | |
-| `services.teeworlds.server.inactivePenalty` | | |
-| `services.teeworlds.server.inactiveTime` | | |
-| `services.teeworlds.server.kickInactiveSpectators` | | |
-| `services.teeworlds.server.maxClients` | | |
-| `services.teeworlds.server.maxClientsPerIP` | | |
-| `services.teeworlds.server.skillLevel` | | |
+| --- | --- | --- |
+| `services.teeworlds.enable` | `boolean` | Whether to enable Teeworlds Server. |
+| `services.teeworlds.environmentFile` | `null or absolute path` | Environment file as defined in {manpage}`systemd.exec(5)`. Secrets may be passed to the service without adding them to the world-readable Nix store, by specifying placeholder variables as the option value in Nix and setting these variables accordingly in the environment file. `  # snippet of teeworlds-related config   services.teeworlds.password = "$TEEWORLDS_PASSWORD";` `  # content of the environment file   TEEWORLDS_PASSWORD=verysecretpassword` Note that this file needs to be available on the host on which `teeworlds` is running. |
+| `services.teeworlds.extraOptions` | `list of string` | Extra configuration lines for the {file}`teeworlds.cfg`. See [Teeworlds Documentation](https://www.teeworlds.com/?page=docs&wiki=server_settings). |
+| `services.teeworlds.game.enablePowerups` | `boolean` | Whether to allow powerups such as the ninja. |
+| `services.teeworlds.game.enableReadyMode` | `boolean` | Whether to enable "ready mode"; where players can pause/unpause the game and start the game in warmup, using their ready state. |
+| `services.teeworlds.game.enableTeamDamage` | `boolean` | Whether to enable team damage; whether to allow team mates to inflict damage on one another. |
+| `services.teeworlds.game.enableVoteKick` | `boolean` | Whether to enable voting to kick players. |
+| `services.teeworlds.game.gameType` | `string` | The game type to use on the server. The default gametypes are `dm`, `tdm`, `ctf`, `lms`, and `lts`. |
+| `services.teeworlds.game.map` | `string` | The map to use on the server. |
+| `services.teeworlds.game.playerSlots` | `unsigned integer, meaning >=0` | The amount of slots to reserve for players (as opposed to spectators). |
+| `services.teeworlds.game.restrictSpectators` | `boolean` | Whether to restrict access to information such as health, ammo and armour in spectator mode. |
+| `services.teeworlds.game.scoreLimit` | `unsigned integer, meaning >=0` | The score limit needed to win a round. |
+| `services.teeworlds.game.swapTeams` | `boolean` | Whether to swap teams each round. |
+| `services.teeworlds.game.timeLimit` | `unsigned integer, meaning >=0` | Time limit of the game. In cases of equal points, there will be sudden death. Setting this to 0 disables a time limit. |
+| `services.teeworlds.game.tournamentMode` | `one of "disable", "enable", "restrictSpectators"` | Whether to enable tournament mode. In tournament mode, players join as spectators. If this is set to `restrictSpectators`, tournament mode is enabled but spectator chat is restricted. |
+| `services.teeworlds.game.voteKickBanTime` | `unsigned integer, meaning >=0` | The amount of minutes that a player is banned for if they get kicked by a vote. |
+| `services.teeworlds.game.voteKickMinimumPlayers` | `unsigned integer, meaning >=0` | The minimum amount of players required to start a kick vote. |
+| `services.teeworlds.motd` | `null or string` | The server's message of the day text. |
+| `services.teeworlds.name` | `string` | Name of the server. |
+| `services.teeworlds.openPorts` | `boolean` | Whether to open firewall ports for Teeworlds. |
+| `services.teeworlds.package` | `package` | The teeworlds-server package to use. |
+| `services.teeworlds.password` | `null or string` | Password to connect to the server. |
+| `services.teeworlds.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port the server will listen on. |
+| `services.teeworlds.rconPassword` | `null or string` | Password to access the remote console. If not set, a randomly generated one is displayed in the server log. |
+| `services.teeworlds.register` | `boolean` | Whether the server registers as a public server in the global server list. This is disabled by default for privacy reasons. |
+| `services.teeworlds.server.bindAddr` | `null or string` | The address the server will bind to. |
+| `services.teeworlds.server.enableHighBandwidth` | `boolean` | Whether to enable high bandwidth mode on LAN servers. This will double the amount of bandwidth required for running the server. |
+| `services.teeworlds.server.enableSpamProtection` | `boolean` | Whether to enable chat spam protection. |
+| `services.teeworlds.server.hostName` | `null or string` | Hostname for the server. |
+| `services.teeworlds.server.inactivePenalty` | `one of "spectator", "spectator/kick", "kick"` | Specify what to do when a client goes inactive (see [](#opt-services.teeworlds.server.inactiveTime)). - `spectator`: send the client into spectator mode - `spectator/kick`: send the client into a free spectator slot, otherwise kick the client - `kick`: kick the client |
+| `services.teeworlds.server.inactiveTime` | `unsigned integer, meaning >=0` | The amount of minutes a client has to idle before it is considered inactive. |
+| `services.teeworlds.server.kickInactiveSpectators` | `boolean` | Whether to kick inactive spectators. |
+| `services.teeworlds.server.maxClients` | `unsigned integer, meaning >=0` | The maximum amount of clients that can be connected to the server at the same time. |
+| `services.teeworlds.server.maxClientsPerIP` | `unsigned integer, meaning >=0` | The maximum amount of clients with the same IP address that can be connected to the server at the same time. |
+| `services.teeworlds.server.skillLevel` | `one of "casual", "normal", "competitive"` | The skill level shown in the server browser. |

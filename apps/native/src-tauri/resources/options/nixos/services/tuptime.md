@@ -5,7 +5,7 @@
 All options under `services.tuptime`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.tuptime.enable` | | |
-| `services.tuptime.timer.enable` | | |
-| `services.tuptime.timer.period` | | |
+| --- | --- | --- |
+| `services.tuptime.enable` | `boolean` | Whether to enable the total uptime service. |
+| `services.tuptime.timer.enable` | `boolean` | Whether to regularly log uptime to detect bad shutdowns. |
+| `services.tuptime.timer.period` | `string` | systemd calendar event |

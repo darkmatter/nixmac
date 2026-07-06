@@ -5,6 +5,6 @@
 All options under `programs.digitalbitbox`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `programs.digitalbitbox.enable` | | |
-| `programs.digitalbitbox.package` | | |
+| --- | --- | --- |
+| `programs.digitalbitbox.enable` | `boolean` | Installs the Digital Bitbox application and enables the complementary hardware module. |
+| `programs.digitalbitbox.package` | `package` | The digitalbitbox package to use. This can be used to install a package with udev rules that differ from the defaults. |

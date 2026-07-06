@@ -5,15 +5,14 @@
 All options under `services.trickster`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.trickster.configFile` | | |
-| `services.trickster.enable` | | |
-| `services.trickster.instance-id` | | |
-| `services.trickster.log-level` | | |
-| `services.trickster.metrics-port` | | |
-| `services.trickster.origin` | | |
-| `services.trickster.origin-type` | | |
-| `services.trickster.origin-url` | | |
-| `services.trickster.package` | | |
-| `services.trickster.profiler-port` | | |
-| `services.trickster.proxy-port` | | |
+| --- | --- | --- |
+| `services.trickster.configFile` | `null or absolute path` | Path to configuration file. |
+| `services.trickster.enable` | `boolean` | Enable Trickster. |
+| `services.trickster.instance-id` | `null or signed integer` | Instance ID for when running multiple processes (default null). |
+| `services.trickster.log-level` | `string` | Level of Logging to use (debug, info, warn, error) (default "info"). |
+| `services.trickster.metrics-port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port that the /metrics endpoint will listen on. |
+| `services.trickster.origin-type` | `one of "prometheus", "influxdb"` | Type of origin (prometheus, influxdb) |
+| `services.trickster.origin-url` | `string` | URL to the Origin. Enter it like you would in grafana, e.g., http://prometheus:9090 (default http://prometheus:9090). |
+| `services.trickster.package` | `package` | The trickster package to use. |
+| `services.trickster.profiler-port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port that the /debug/pprof endpoint will listen on. |
+| `services.trickster.proxy-port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port that the Proxy server will listen on. |

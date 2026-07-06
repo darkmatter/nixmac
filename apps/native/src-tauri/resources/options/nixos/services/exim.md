@@ -5,11 +5,11 @@
 All options under `services.exim`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.exim.config` | | |
-| `services.exim.enable` | | |
-| `services.exim.group` | | |
-| `services.exim.package` | | |
-| `services.exim.queueRunnerInterval` | | |
-| `services.exim.spoolDir` | | |
-| `services.exim.user` | | |
+| --- | --- | --- |
+| `services.exim.config` | `strings concatenated with "\n"` | Verbatim Exim configuration. This should not contain exim_user, exim_group, exim_path, or spool_directory. |
+| `services.exim.enable` | `boolean` | Whether to enable the Exim mail transfer agent. |
+| `services.exim.group` | `string` | Group to use when no root privileges are required. |
+| `services.exim.package` | `package` | The exim package to use. This can be used to enable features such as LDAP or PAM support. |
+| `services.exim.queueRunnerInterval` | `string` | How often to spawn a new queue runner. |
+| `services.exim.spoolDir` | `absolute path` | Location of the spool directory of exim. |
+| `services.exim.user` | `string` | User to use when no root privileges are required. In particular, this applies when receiving messages and when doing remote deliveries. (Local deliveries run as various non-root users, typically as the owner of a local mailbox.) Specifying this value as root is not supported. |

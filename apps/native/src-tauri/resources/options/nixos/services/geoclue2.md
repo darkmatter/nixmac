@@ -5,23 +5,27 @@
 All options under `services.geoclue2`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.geoclue2.appConfig` | | |
-| `services.geoclue2.enable` | | |
-| `services.geoclue2.enable3G` | | |
-| `services.geoclue2.enableCDMA` | | |
-| `services.geoclue2.enableDemoAgent` | | |
-| `services.geoclue2.enableModemGPS` | | |
-| `services.geoclue2.enableNmea` | | |
-| `services.geoclue2.enableStatic` | | |
-| `services.geoclue2.enableWifi` | | |
-| `services.geoclue2.geoProviderUrl` | | |
-| `services.geoclue2.package` | | |
-| `services.geoclue2.staticAccuracy` | | |
-| `services.geoclue2.staticAltitude` | | |
-| `services.geoclue2.staticLatitude` | | |
-| `services.geoclue2.staticLongitude` | | |
-| `services.geoclue2.submissionNick` | | |
-| `services.geoclue2.submissionUrl` | | |
-| `services.geoclue2.submitData` | | |
-| `services.geoclue2.whitelistedAgents` | | |
+| --- | --- | --- |
+| `services.geoclue2.appConfig` | `attribute set of (submodule)` | Specify extra settings per application. |
+| `services.geoclue2.appConfig.<name>.desktopID` | `string` | Desktop ID of the application. |
+| `services.geoclue2.appConfig.<name>.isAllowed` | `boolean` | Whether the application will be allowed access to location information. |
+| `services.geoclue2.appConfig.<name>.isSystem` | `boolean` | Whether the application is a system component or not. |
+| `services.geoclue2.appConfig.<name>.users` | `list of string` | List of UIDs of all users for which this application is allowed location info access, Defaults to an empty string to allow it for all users. |
+| `services.geoclue2.enable` | `boolean` | Whether to enable GeoClue 2 daemon, a DBus service that provides location information for accessing. |
+| `services.geoclue2.enable3G` | `boolean` | Whether to enable 3G source. |
+| `services.geoclue2.enableCDMA` | `boolean` | Whether to enable CDMA source. |
+| `services.geoclue2.enableDemoAgent` | `boolean` | Whether to use the GeoClue demo agent. This should be overridden by desktop environments that provide their own agent. |
+| `services.geoclue2.enableModemGPS` | `boolean` | Whether to enable Modem-GPS source. |
+| `services.geoclue2.enableNmea` | `boolean` | Whether to fetch location from NMEA sources on local network. |
+| `services.geoclue2.enableStatic` | `boolean` | Whether to enable the static source. This source defines a fixed location using the `staticLatitude`, `staticLongitude`, `staticAltitude`, and `staticAccuracy` options. Setting `enableStatic` to true will disable all other sources, to prevent conflicts. Use `lib.mkForce true` when enabling other sources if for some reason you want to override this. |
+| `services.geoclue2.enableWifi` | `boolean` | Whether to enable WiFi source. |
+| `services.geoclue2.geoProviderUrl` | `string` | The url to the wifi GeoLocation Service. |
+| `services.geoclue2.package` | `package` | The geoclue2 package to use |
+| `services.geoclue2.staticAccuracy` | `positive integer or floating point number, meaning >0` | Accuracy radius in meters to use for the static source. |
+| `services.geoclue2.staticAltitude` | `signed integer or floating point number` | Altitude in meters to use for the static source. |
+| `services.geoclue2.staticLatitude` | `integer or floating point number between -90 and 90 (both inclusive)` | Latitude to use for the static source. Defaults to `location.latitude`. |
+| `services.geoclue2.staticLongitude` | `integer or floating point number between -180 and 180 (both inclusive)` | Longitude to use for the static source. Defaults to `location.longitude`. |
+| `services.geoclue2.submissionNick` | `string` | A nickname to submit network data with. Must be 2-32 characters long. |
+| `services.geoclue2.submissionUrl` | `string` | The url to submit data to a GeoLocation Service. |
+| `services.geoclue2.submitData` | `boolean` | Whether to submit data to a GeoLocation Service. |
+| `services.geoclue2.whitelistedAgents` | `list of string` | Desktop IDs (without the .desktop extension) of whitelisted agents. |

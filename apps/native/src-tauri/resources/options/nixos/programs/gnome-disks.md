@@ -5,5 +5,5 @@
 All options under `programs.gnome-disks`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `programs.gnome-disks.enable` | | |
+| --- | --- | --- |
+| `programs.gnome-disks.enable` | `boolean` | Whether to enable GNOME Disks daemon, a program designed to be a UDisks2 graphical front-end. |

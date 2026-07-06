@@ -5,8 +5,10 @@
 All options under `programs.streamlink`.
 
 | Option | Type | Description |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| --- | --- | --- |
 | `programs.streamlink.enable` | `boolean` | Whether to enable streamlink. |
 | `programs.streamlink.package` | `null or package` | The streamlink package to use. |
-| `programs.streamlink.plugins` | `attribute set of (submodule)` | Streamlink plugins. |
-| `programs.streamlink.settings` | `attribute set of (boolean or signed integer or floating point number or string or list of (signed integer or floating point number or string))` | Global configuration options for streamlink. It will be written to $XDG_CONFIG_HOME/streamlink/config (linux) or Library/Application Support/streamlink/config (darwin). |
+| `programs.streamlink.plugins` | `attribute set of (submodule)` | Streamlink plugins. If a source is set, the custom plugin will be linked to the data directory. Additional configuration specific to the plugin, if defined, will be written to the config directory, and override global settings. |
+| `programs.streamlink.plugins.<name>.settings` | `attribute set of (boolean or signed integer or floating point number or string or list of (signed integer or floating point number or string))` | Configuration for the specific plugin, written to {file}`$XDG_CONFIG_HOME/streamlink/config.<name>` (linux) or {file}`Library/Application Support/streamlink/config.<name>` (darwin). |
+| `programs.streamlink.plugins.<name>.src` | `null or absolute path or strings concatenated with "\n"` | Source of the custom plugin. The value should be a path to the plugin file, or the text of the plugin code. Will be linked to {file}`$XDG_DATA_HOME/streamlink/plugins/<name>.py` (linux) or {file}`Library/Application Support/streamlink/plugins/<name>.py` (darwin). |
+| `programs.streamlink.settings` | `attribute set of (boolean or signed integer or floating point number or string or list of (signed integer or floating point number or string))` | Global configuration options for streamlink. It will be written to {file}`$XDG_CONFIG_HOME/streamlink/config` (linux) or {file}`Library/Application Support/streamlink/config` (darwin). |

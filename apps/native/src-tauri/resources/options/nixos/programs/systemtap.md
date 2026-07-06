@@ -5,5 +5,5 @@
 All options under `programs.systemtap`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `programs.systemtap.enable` | | |
+| --- | --- | --- |
+| `programs.systemtap.enable` | `boolean` | Install {command}`systemtap` along with necessary kernel options. |

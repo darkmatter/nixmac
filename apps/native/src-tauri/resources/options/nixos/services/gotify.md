@@ -5,10 +5,9 @@
 All options under `services.gotify`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.gotify.enable` | | |
-| `services.gotify.environment` | | |
-| `services.gotify.environmentFiles` | | |
-| `services.gotify.package` | | |
-| `services.gotify.port` | | |
-| `services.gotify.stateDirectoryName` | | |
+| --- | --- | --- |
+| `services.gotify.enable` | `boolean` | Whether to enable Gotify webserver. |
+| `services.gotify.environment` | `attribute set of (string or signed integer)` | Config environment variables for the gotify-server. See <https://gotify.net/docs/config> for more details. |
+| `services.gotify.environmentFiles` | `list of absolute path` | Files containing additional config environment variables for gotify-server. Secrets should be set in environmentFiles instead of environment. |
+| `services.gotify.package` | `package` | The gotify-server package to use. |
+| `services.gotify.stateDirectoryName` | `string` | The name of the directory below {file}`/var/lib` where gotify stores its runtime data. |

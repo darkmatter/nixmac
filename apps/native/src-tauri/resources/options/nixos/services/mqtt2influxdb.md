@@ -5,22 +5,28 @@
 All options under `services.mqtt2influxdb`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.mqtt2influxdb.enable` | | |
-| `services.mqtt2influxdb.environmentFiles` | | |
-| `services.mqtt2influxdb.influxdb.database` | | |
-| `services.mqtt2influxdb.influxdb.host` | | |
-| `services.mqtt2influxdb.influxdb.password` | | |
-| `services.mqtt2influxdb.influxdb.port` | | |
-| `services.mqtt2influxdb.influxdb.ssl` | | |
-| `services.mqtt2influxdb.influxdb.username` | | |
-| `services.mqtt2influxdb.influxdb.verify_ssl` | | |
-| `services.mqtt2influxdb.mqtt.cafile` | | |
-| `services.mqtt2influxdb.mqtt.certfile` | | |
-| `services.mqtt2influxdb.mqtt.host` | | |
-| `services.mqtt2influxdb.mqtt.keyfile` | | |
-| `services.mqtt2influxdb.mqtt.password` | | |
-| `services.mqtt2influxdb.mqtt.port` | | |
-| `services.mqtt2influxdb.mqtt.username` | | |
-| `services.mqtt2influxdb.package` | | |
-| `services.mqtt2influxdb.points` | | |
+| --- | --- | --- |
+| `services.mqtt2influxdb.enable` | `boolean` | Whether to enable BigClown MQTT to InfluxDB bridge. |
+| `services.mqtt2influxdb.environmentFiles` | `list of absolute path` | File to load as environment file. Environment variables from this file will be interpolated into the config file using envsubst with this syntax: `$ENVIRONMENT` or `${VARIABLE}`. This is useful to avoid putting secrets into the nix store. |
+| `services.mqtt2influxdb.influxdb.database` | `string` | Name of the InfluxDB database. |
+| `services.mqtt2influxdb.influxdb.host` | `string` | Host where InfluxDB server is running. |
+| `services.mqtt2influxdb.influxdb.password` | `null or string` | Password for InfluxDB login. It is highly suggested to use here replacement through environmentFiles as otherwise the password is put world readable to the store. |
+| `services.mqtt2influxdb.influxdb.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | InfluxDB server port |
+| `services.mqtt2influxdb.influxdb.ssl` | `boolean` | Use SSL to connect to the InfluxDB server. |
+| `services.mqtt2influxdb.influxdb.username` | `null or string` | Username for InfluxDB login. |
+| `services.mqtt2influxdb.influxdb.verify_ssl` | `boolean` | Verify SSL certificate when connecting to the InfluxDB server. |
+| `services.mqtt2influxdb.mqtt.cafile` | `null or absolute path` | Certification Authority file for MQTT |
+| `services.mqtt2influxdb.mqtt.certfile` | `null or absolute path` | Certificate file for MQTT |
+| `services.mqtt2influxdb.mqtt.host` | `string` | Host where MQTT server is running. |
+| `services.mqtt2influxdb.mqtt.keyfile` | `null or absolute path` | Key file for MQTT |
+| `services.mqtt2influxdb.mqtt.password` | `null or string` | MQTT password. It is highly suggested to use here replacement through environmentFiles as otherwise the password is put world readable to the store. |
+| `services.mqtt2influxdb.mqtt.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | MQTT server port. |
+| `services.mqtt2influxdb.mqtt.username` | `null or string` | Username used to connect to the MQTT server. |
+| `services.mqtt2influxdb.package` | `package` | The mqtt2influxdb package to use. |
+| `services.mqtt2influxdb.points` | `list of (submodule)` | Points to bridge from MQTT to InfluxDB. |
+| `services.mqtt2influxdb.points.*.fields` | `submodule` | Field selector. |
+| `services.mqtt2influxdb.points.*.fields.type` | `null or string` | Type to be picked up |
+| `services.mqtt2influxdb.points.*.fields.value` | `string` | Value to be picked up |
+| `services.mqtt2influxdb.points.*.measurement` | `string` | Name of the measurement |
+| `services.mqtt2influxdb.points.*.tags` | `attribute set of string` | Tags applied |
+| `services.mqtt2influxdb.points.*.topic` | `string` | MQTT topic to subscribe to. |

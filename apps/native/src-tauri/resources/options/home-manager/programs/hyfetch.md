@@ -5,7 +5,7 @@
 All options under `programs.hyfetch`.
 
 | Option | Type | Description |
-| --------------------------- | ------------ | --------------------------- |
+| --- | --- | --- |
 | `programs.hyfetch.enable` | `boolean` | Whether to enable hyfetch. |
 | `programs.hyfetch.package` | `package` | The hyfetch package to use. |
 | `programs.hyfetch.settings` | `JSON value` | JSON config for HyFetch |

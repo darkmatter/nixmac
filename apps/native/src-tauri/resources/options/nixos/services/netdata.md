@@ -5,19 +5,19 @@
 All options under `services.netdata`.
 
 | Option | Type | Description |
-| --------------------------------------------------- | ---- | ----------- |
-| `services.netdata.claimTokenFile` | | |
-| `services.netdata.config` | | |
-| `services.netdata.configDir` | | |
-| `services.netdata.configText` | | |
-| `services.netdata.deadlineBeforeStopSec` | | |
-| `services.netdata.enable` | | |
-| `services.netdata.enableAnalyticsReporting` | | |
-| `services.netdata.extraNdsudoPackages` | | |
-| `services.netdata.extraPluginPaths` | | |
-| `services.netdata.group` | | |
-| `services.netdata.package` | | |
-| `services.netdata.python.enable` | | |
-| `services.netdata.python.extraPackages` | | |
-| `services.netdata.python.recommendedPythonPackages` | | |
-| `services.netdata.user` | | |
+| --- | --- | --- |
+| `services.netdata.claimTokenFile` | `null or absolute path` | If set, automatically registers the agent using the given claim token file. |
+| `services.netdata.config` | `attribute set of (attribute set)` | netdata.conf configuration as nix attributes. cannot be combined with configText. |
+| `services.netdata.configDir` | `attribute set of absolute path` | Complete netdata config directory except netdata.conf. The default configuration is merged with changes defined in this option. Each top-level attribute denotes a path in the configuration directory as in environment.etc. Its value is the absolute path and must be readable by netdata. Cannot be combined with configText. |
+| `services.netdata.configText` | `null or strings concatenated with "\n"` | Verbatim netdata.conf, cannot be combined with config. |
+| `services.netdata.deadlineBeforeStopSec` | `signed integer` | In order to detect when netdata is misbehaving, we run a concurrent task pinging netdata (wait-for-netdata-up) in the systemd unit. If after a while, this task does not succeed, we stop the unit and mark it as failed. You can control this deadline in seconds with this option, it's useful to bump it if you have (1) a lot of data (2) doing upgrades (3) have low IOPS/throughput. |
+| `services.netdata.enable` | `boolean` | Whether to enable netdata. |
+| `services.netdata.enableAnalyticsReporting` | `boolean` | Enable reporting of anonymous usage statistics to Netdata Inc. via either Google Analytics (in versions prior to 1.29.4), or Netdata Inc.'s self-hosted PostHog (in versions 1.29.4 and later). See: <https://learn.netdata.cloud/docs/agent/anonymous-statistics> |
+| `services.netdata.extraNdsudoPackages` | `list of package` | Extra packages to add to `PATH` to make available to `ndsudo`. ::: {.warning} `ndsudo` has SUID privileges, be careful what packages you list here. ::: ::: {.note} `cfg.package` must be built with `withNdsudo = true` ::: |
+| `services.netdata.extraPluginPaths` | `list of absolute path` | Extra paths to add to the netdata global "plugins directory" option. Useful for when you want to include your own collection scripts. Details about writing a custom netdata plugin are available at: <https://docs.netdata.cloud/collectors/plugins.d/> Cannot be combined with configText. |
+| `services.netdata.group` | `string` | Group under which netdata runs. |
+| `services.netdata.package` | `package` | The netdata package to use. |
+| `services.netdata.python.enable` | `boolean` | Whether to enable python-based plugins |
+| `services.netdata.python.extraPackages` | `function that evaluates to a(n) list of package` | Extra python packages available at runtime to enable additional python plugins. |
+| `services.netdata.python.recommendedPythonPackages` | `boolean` | Whether to enable a set of recommended Python plugins by installing extra Python packages. |
+| `services.netdata.user` | `string` | User account under which netdata runs. |

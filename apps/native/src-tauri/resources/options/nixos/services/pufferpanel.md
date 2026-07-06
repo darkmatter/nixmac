@@ -5,10 +5,10 @@
 All options under `services.pufferpanel`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.pufferpanel.enable` | | |
-| `services.pufferpanel.environment` | | |
-| `services.pufferpanel.environmentFile` | | |
-| `services.pufferpanel.extraGroups` | | |
-| `services.pufferpanel.extraPackages` | | |
-| `services.pufferpanel.package` | | |
+| --- | --- | --- |
+| `services.pufferpanel.enable` | `boolean` | Whether to enable PufferPanel game management server. Note that [PufferPanel templates] and binaries downloaded by PufferPanel expect [FHS environment]. It is possible to set {option}`package` option to use PufferPanel wrapper with FHS environment. For example, to use `Download Game from Steam` and `Download Java` template operations: `Nix { lib, pkgs, ... }: {   services.pufferpanel = {     enable = true;     extraPackages = with pkgs; [ bash curl gawk gnutar gzip ];     package = pkgs.buildFHSEnv {       name = "pufferpanel-fhs";       runScript = lib.getExe pkgs.pufferpanel;       targetPkgs = pkgs': with pkgs'; [ icu openssl zlib ];     };   }; } ` \[PufferPanel templates\]: https://github.com/PufferPanel/templates \[FHS environment\]: https://wikipedia.org/wiki/Filesystem_Hierarchy_Standard |
+| `services.pufferpanel.environment` | `attribute set of string` | Environment variables to set for the service. Secrets should be specified using {option}`environmentFile`. Refer to the [PufferPanel source code][] for the list of available configuration options. Variable name is an upper-cased configuration entry name with underscores instead of dots, prefixed with `PUFFER_`. For example, `panel.settings.companyName` entry can be set using {env}`PUFFER_PANEL_SETTINGS_COMPANYNAME`. When running with panel enabled (configured with `PUFFER_PANEL_ENABLE` environment variable), it is recommended disable registration using `PUFFER_PANEL_REGISTRATIONENABLED` environment variable (registration is enabled by default). To create the initial administrator user, run {command}`pufferpanel --workDir /var/lib/pufferpanel user add --admin`. Some options override corresponding settings set via web interface (e.g. `PUFFER_PANEL_REGISTRATIONENABLED`). Those options can be temporarily toggled or set in settings but do not persist between restarts. \[PufferPanel source code\]: https://github.com/PufferPanel/PufferPanel/blob/master/config/entries.go |
+| `services.pufferpanel.environmentFile` | `null or absolute path` | File to load environment variables from. Loaded variables override values set in {option}`environment`. |
+| `services.pufferpanel.extraGroups` | `list of string` | Additional groups for the systemd service. |
+| `services.pufferpanel.extraPackages` | `list of package` | Packages to add to the PATH environment variable. Both the {file}`bin` and {file}`sbin` subdirectories of each package are added. |
+| `services.pufferpanel.package` | `package` | The pufferpanel package to use. |

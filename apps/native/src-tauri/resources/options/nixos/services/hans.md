@@ -5,10 +5,13 @@
 All options under `services.hans`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---- | ----------- |
-| `services.hans.clients` | | |
-| `services.hans.server.enable` | | |
-| `services.hans.server.extraConfig` | | |
-| `services.hans.server.ip` | | |
-| `services.hans.server.passwordFile` | | |
-| `services.hans.server.respondToSystemPings` | | |
+| --- | --- | --- |
+| `services.hans.clients` | `attribute set of (submodule)` | Each attribute of this option defines a systemd service that runs hans. Many or none may be defined. The name of each service is `hans-«name»` where «name» is the name of the corresponding attribute name. |
+| `services.hans.clients.<name>.extraConfig` | `string` | Additional command line parameters |
+| `services.hans.clients.<name>.passwordFile` | `string` | File that contains password |
+| `services.hans.clients.<name>.server` | `string` | IP address of server running hans |
+| `services.hans.server.enable` | `boolean` | enable hans server |
+| `services.hans.server.extraConfig` | `string` | Additional command line parameters |
+| `services.hans.server.ip` | `string` | The assigned ip range |
+| `services.hans.server.passwordFile` | `string` | File that contains password |
+| `services.hans.server.respondToSystemPings` | `boolean` | Force hans respond to ordinary pings |

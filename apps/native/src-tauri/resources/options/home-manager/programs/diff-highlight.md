@@ -5,7 +5,7 @@
 All options under `programs.diff-highlight`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `programs.diff-highlight.enable` | `boolean` | Enable the contrib diff-highlight syntax highlighter. See https://github.com/git/git/blob/master/contrib/diff-highlight/README , |
-| `programs.diff-highlight.enableGitIntegration` | `boolean` | Whether to enable git integration for diff-highlight. |
-| `programs.diff-highlight.pagerOpts` | `list of string` | Arguments to be passed to less . |
+| --- | --- | --- |
+| `programs.diff-highlight.enable` | `boolean` | Enable the contrib {command}`diff-highlight` syntax highlighter. See <https://github.com/git/git/blob/master/contrib/diff-highlight/README>, |
+| `programs.diff-highlight.enableGitIntegration` | `boolean` | Whether to enable git integration for diff-highlight. When enabled, diff-highlight will be configured as git's pager for {command}`diff`, {command}`log`, and {command}`show`, and as git's diff filter for interactive staging. |
+| `programs.diff-highlight.pagerOpts` | `list of string` | Arguments to be passed to {command}`less`. |

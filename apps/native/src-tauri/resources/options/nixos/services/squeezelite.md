@@ -5,13 +5,11 @@
 All options under `services.squeezelite`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.squeezelite.enable` | | |
-| `services.squeezelite.extraArgs` | | |
-| `services.squeezelite.extraArguments` | | |
-| `services.squeezelite.mutableName` | | |
-| `services.squeezelite.name` | | |
-| `services.squeezelite.package` | | |
-| `services.squeezelite.pulseAudio` | | |
-| `services.squeezelite.pulseaudio.enable` | | |
-| `services.squeezelite.pulseaudio.group` | | |
+| --- | --- | --- |
+| `services.squeezelite.enable` | `boolean` | Whether to enable Squeezelite, a software Squeezebox emulator. |
+| `services.squeezelite.extraArgs` | `string` | Additional command line arguments to pass to Squeezelite. |
+| `services.squeezelite.mutableName` | `boolean` | store name in file, controllable by server |
+| `services.squeezelite.name` | `null or string` | name to report to server |
+| `services.squeezelite.package` | `package` | The squeezelite package to use. |
+| `services.squeezelite.pulseaudio.enable` | `boolean` | Whether to enable pulseaudio support. |
+| `services.squeezelite.pulseaudio.group` | `string` | group for accessing to pulseaudio socket |

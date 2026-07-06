@@ -5,18 +5,31 @@
 All options under `services.pretalx`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.pretalx.celery.enable` | | |
-| `services.pretalx.celery.extraArgs` | | |
-| `services.pretalx.database.createLocally` | | |
-| `services.pretalx.enable` | | |
-| `services.pretalx.environmentFiles` | | |
-| `services.pretalx.finalPackage` | | |
-| `services.pretalx.group` | | |
-| `services.pretalx.gunicorn.extraArgs` | | |
-| `services.pretalx.nginx.domain` | | |
-| `services.pretalx.nginx.enable` | | |
-| `services.pretalx.package` | | |
-| `services.pretalx.plugins` | | |
-| `services.pretalx.settings` | | |
-| `services.pretalx.user` | | |
+| --- | --- | --- |
+| `services.pretalx.celery.enable` | `boolean` | Whether to set up celery as an asynchronous task runner. |
+| `services.pretalx.celery.extraArgs` | `list of string` | Extra arguments to pass to celery. See <https://docs.celeryq.dev/en/stable/reference/cli.html#celery-worker> for more info. |
+| `services.pretalx.database.createLocally` | `boolean` | Whether to automatically set up the database on the local DBMS instance. Currently only supported for PostgreSQL. Not required for sqlite. |
+| `services.pretalx.enable` | `boolean` | Whether to enable pretalx. |
+| `services.pretalx.environmentFiles` | `list of absolute path` | Environment files that allow passing secret configuration values. Each line must follow the `PRETALX_SECTION_KEY=value` pattern. |
+| `services.pretalx.finalPackage` | `package` | The effective pretalx package used. This is the base package with the selected plugins applied. |
+| `services.pretalx.group` | `string` | Group under which pretalx should run. |
+| `services.pretalx.gunicorn.extraArgs` | `list of string` | Extra arguments to pass to gunicorn. See <https://docs.pretalx.org/administrator/installation.html#step-6-starting-pretalx-as-a-service> for details. |
+| `services.pretalx.nginx.domain` | `string` | The domain name under which to set up the virtual host. |
+| `services.pretalx.nginx.enable` | `boolean` | Whether to set up an nginx virtual host. |
+| `services.pretalx.package` | `package` | The pretalx package to use. |
+| `services.pretalx.plugins` | `list of package` | Pretalx plugins to install into the Python environment. |
+| `services.pretalx.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | pretalx configuration as a Nix attribute set. All settings can also be passed from the environment. See <https://docs.pretalx.org/administrator/configure.html> for possible options. |
+| `services.pretalx.settings.celery.backend` | `null or string` | URI to the celery backend used for the asynchronous job queue. |
+| `services.pretalx.settings.celery.broker` | `null or string` | URI to the celery broker used for the asynchronous job queue. |
+| `services.pretalx.settings.database.backend` | `value "postgresql" (singular enum)` | Database backend to use. Currently only PostgreSQL gets tested, and as such we don't support any other DBMS. |
+| `services.pretalx.settings.database.host` | `null or absolute path` | Database host or socket path. |
+| `services.pretalx.settings.database.name` | `string` | Database name. |
+| `services.pretalx.settings.database.user` | `string` | Database username. |
+| `services.pretalx.settings.files.upload_limit` | `positive integer, meaning >0` | Maximum file upload size in MiB. |
+| `services.pretalx.settings.filesystem.data` | `absolute path` | Base path for all other storage paths. |
+| `services.pretalx.settings.filesystem.logs` | `absolute path` | Path to the log directory, that pretalx logs message to. |
+| `services.pretalx.settings.filesystem.static` | `absolute path` | Path to the directory that contains static files. |
+| `services.pretalx.settings.redis.location` | `null or string` | URI to the redis server, used to speed up locking, caching and session storage. |
+| `services.pretalx.settings.redis.session` | `boolean` | Whether to use redis as the session storage. |
+| `services.pretalx.settings.site.url` | `string` | The base URI below which your pretalx instance will be reachable. |
+| `services.pretalx.user` | `string` | User under which pretalx should run. |

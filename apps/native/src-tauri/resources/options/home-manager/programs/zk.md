@@ -5,7 +5,7 @@
 All options under `programs.zk`.
 
 | Option | Type | Description |
-| ---------------------- | ----------------- | ---------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.zk.enable` | `boolean` | Whether to enable zk. |
 | `programs.zk.package` | `null or package` | The zk package to use. |
-| `programs.zk.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/zk/config.toml . |
+| `programs.zk.settings` | `TOML value` | Configuration written to {file}`$XDG_CONFIG_HOME/zk/config.toml`. See <https://github.com/mickael-menu/zk/blob/main/docs/config.md> for available options and documentation. |

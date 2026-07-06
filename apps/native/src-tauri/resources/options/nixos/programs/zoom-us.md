@@ -5,6 +5,6 @@
 All options under `programs.zoom-us`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `programs.zoom-us.enable` | | |
-| `programs.zoom-us.package` | | |
+| --- | --- | --- |
+| `programs.zoom-us.enable` | `boolean` | Whether to enable zoom.us video conferencing application. |
+| `programs.zoom-us.package` | `package` | The zoom-us package to use. |

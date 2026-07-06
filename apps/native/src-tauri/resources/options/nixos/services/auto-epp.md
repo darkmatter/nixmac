@@ -5,7 +5,9 @@
 All options under `services.auto-epp`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.auto-epp.enable` | | |
-| `services.auto-epp.package` | | |
-| `services.auto-epp.settings` | | |
+| --- | --- | --- |
+| `services.auto-epp.enable` | `boolean` | Whether to enable auto-epp for amd active pstate. |
+| `services.auto-epp.package` | `package` | The auto-epp package to use. |
+| `services.auto-epp.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Settings for the auto-epp application. See upstream example: <https://github.com/jothi-prasath/auto-epp/blob/master/sample-auto-epp.conf> |
+| `services.auto-epp.settings.Settings.epp_state_for_AC` | `string` | energy_performance_preference when on plugged in ::: {.note} See available epp states by running: {command}`cat /sys/devices/system/cpu/cpu0/cpufreq/energy_performance_available_preferences` ::: |
+| `services.auto-epp.settings.Settings.epp_state_for_BAT` | `string` | `energy_performance_preference` when on battery ::: {.note} See available epp states by running: {command}`cat /sys/devices/system/cpu/cpu0/cpufreq/energy_performance_available_preferences` ::: |

@@ -5,6 +5,6 @@
 All options under `services.clipcat`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.clipcat.enable` | | |
-| `services.clipcat.package` | | |
+| --- | --- | --- |
+| `services.clipcat.enable` | `boolean` | Whether to enable Clipcat clipboard daemon. |
+| `services.clipcat.package` | `package` | The clipcat package to use. |

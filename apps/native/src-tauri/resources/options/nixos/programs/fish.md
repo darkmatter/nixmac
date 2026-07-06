@@ -5,18 +5,18 @@
 All options under `programs.fish`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `programs.fish.enable` | | |
-| `programs.fish.extraCompletionPackages` | | |
-| `programs.fish.generateCompletions` | | |
-| `programs.fish.interactiveShellInit` | | |
-| `programs.fish.loginShellInit` | | |
-| `programs.fish.package` | | |
-| `programs.fish.promptInit` | | |
-| `programs.fish.shellAbbrs` | | |
-| `programs.fish.shellAliases` | | |
-| `programs.fish.shellInit` | | |
-| `programs.fish.useBabelfish` | | |
-| `programs.fish.vendor.completions.enable` | | |
-| `programs.fish.vendor.config.enable` | | |
-| `programs.fish.vendor.functions.enable` | | |
+| --- | --- | --- |
+| `programs.fish.enable` | `boolean` | Whether to configure fish as an interactive shell. |
+| `programs.fish.extraCompletionPackages` | `list of package` | Additional packages to generate completions from, if {option}`programs.fish.generateCompletions` is enabled. |
+| `programs.fish.generateCompletions` | `boolean` | Whether to enable generating completion files from man pages. |
+| `programs.fish.interactiveShellInit` | `strings concatenated with "\n"` | Shell script code called during interactive fish shell initialisation. |
+| `programs.fish.loginShellInit` | `strings concatenated with "\n"` | Shell script code called during fish login shell initialisation. |
+| `programs.fish.package` | `package` | The fish package to use. |
+| `programs.fish.promptInit` | `strings concatenated with "\n"` | Shell script code used to initialise fish prompt. |
+| `programs.fish.shellAbbrs` | `attribute set of string` | Set of fish abbreviations. |
+| `programs.fish.shellAliases` | `attribute set of (null or string or absolute path)` | Set of aliases for fish shell, which overrides {option}`environment.shellAliases`. See {option}`environment.shellAliases` for an option format description. |
+| `programs.fish.shellInit` | `strings concatenated with "\n"` | Shell script code called during fish shell initialisation. |
+| `programs.fish.useBabelfish` | `boolean` | If enabled, the configured environment will be translated to native fish using [babelfish](https://github.com/bouk/babelfish). Otherwise, [foreign-env](https://github.com/oh-my-fish/plugin-foreign-env) will be used. |
+| `programs.fish.vendor.completions.enable` | `boolean` | Whether fish should use completion files provided by other packages. |
+| `programs.fish.vendor.config.enable` | `boolean` | Whether fish should source configuration snippets provided by other packages. |
+| `programs.fish.vendor.functions.enable` | `boolean` | Whether fish should autoload fish functions provided by other packages. |

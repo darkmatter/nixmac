@@ -5,7 +5,20 @@
 All options under `services.acme-dns`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.acme-dns.enable` | | |
-| `services.acme-dns.package` | | |
-| `services.acme-dns.settings` | | |
+| --- | --- | --- |
+| `services.acme-dns.enable` | `boolean` | Whether to enable acme-dns. |
+| `services.acme-dns.package` | `package` | The acme-dns package to use. |
+| `services.acme-dns.settings` | `open submodule of (TOML value)` | Free-form settings written directly to the `acme-dns.cfg` file. Refer to <https://github.com/joohoi/acme-dns/blob/master/README.md#configuration> for supported values. |
+| `services.acme-dns.settings.api.disable_registration` | `boolean` | Whether to disable the HTTP registration endpoint. |
+| `services.acme-dns.settings.api.ip` | `string` | IP to bind the HTTP API on. |
+| `services.acme-dns.settings.api.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listen port for the HTTP API. |
+| `services.acme-dns.settings.api.tls` | `one of "letsencrypt", "letsencryptstaging", "cert", "none"` | TLS backend to use. |
+| `services.acme-dns.settings.database.connection` | `string` | Database connection string. |
+| `services.acme-dns.settings.database.engine` | `one of "sqlite", "postgres"` | Database engine to use. |
+| `services.acme-dns.settings.general.domain` | `string` | Domain name to serve the requests off of. |
+| `services.acme-dns.settings.general.listen` | `string` | IP+port combination to bind and serve the DNS server on. |
+| `services.acme-dns.settings.general.nsadmin` | `string` | Zone admin email address for `SOA`. |
+| `services.acme-dns.settings.general.nsname` | `string` | Zone name server. |
+| `services.acme-dns.settings.general.protocol` | `one of "both", "both4", "both6", "udp", "udp4", "udp6", "tcp", "tcp4", "tcp6"` | Protocols to serve DNS responses on. |
+| `services.acme-dns.settings.general.records` | `list of string` | Predefined DNS records served in addition to the `_acme-challenge` TXT records. |
+| `services.acme-dns.settings.logconfig.loglevel` | `one of "error", "warning", "info", "debug"` | Level to log on. |

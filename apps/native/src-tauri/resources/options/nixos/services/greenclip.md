@@ -5,6 +5,6 @@
 All options under `services.greenclip`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.greenclip.enable` | | |
-| `services.greenclip.package` | | |
+| --- | --- | --- |
+| `services.greenclip.enable` | `boolean` | Whether to enable Greenclip, a clipboard manager. |
+| `services.greenclip.package` | `package` | The greenclip package to use. |

@@ -5,6 +5,6 @@
 All options under `services.supergfxd`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.supergfxd.enable` | | |
-| `services.supergfxd.settings` | | |
+| --- | --- | --- |
+| `services.supergfxd.enable` | `boolean` | Whether to enable the supergfxd service. |
+| `services.supergfxd.settings` | `null or JSON value` | The content of /etc/supergfxd.conf. See <https://gitlab.com/asus-linux/supergfxctl/#config-options-etcsupergfxdconf>. |

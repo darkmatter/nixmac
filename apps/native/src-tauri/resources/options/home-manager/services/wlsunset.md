@@ -5,15 +5,15 @@
 All options under `services.wlsunset`.
 
 | Option | Type | Description |
-| ------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| --- | --- | --- |
 | `services.wlsunset.enable` | `boolean` | Whether to enable wlsunset. |
 | `services.wlsunset.gamma` | `string or floating point number or signed integer` | Gamma value to use. |
-| `services.wlsunset.latitude` | `null or string or floating point number or signed integer` | Your current latitude, between -90.0 and 90.0 . |
-| `services.wlsunset.longitude` | `null or string or floating point number or signed integer` | Your current longitude, between -180.0 and 180.0 . |
+| `services.wlsunset.latitude` | `null or string or floating point number or signed integer` | Your current latitude, between `-90.0` and `90.0`. |
+| `services.wlsunset.longitude` | `null or string or floating point number or signed integer` | Your current longitude, between `-180.0` and `180.0`. |
 | `services.wlsunset.output` | `null or string` | Name of output to use, by default all outputs are used. |
 | `services.wlsunset.package` | `package` | The wlsunset package to use. |
 | `services.wlsunset.sunrise` | `null or string` | The time when the sun rises (in 24 hour format). |
 | `services.wlsunset.sunset` | `null or string` | The time when the sun sets (in 24 hour format). |
 | `services.wlsunset.systemdTarget` | `string` | Systemd target to bind to. |
-| `services.wlsunset.temperature.day` | `signed integer` | Colour temperature to use during the day, in Kelvin (K). This value must be greater than temperature.night . |
-| `services.wlsunset.temperature.night` | `signed integer` | Colour temperature to use during the night, in Kelvin (K). This value must be smaller than temperature.day . |
+| `services.wlsunset.temperature.day` | `signed integer` | Colour temperature to use during the day, in Kelvin (K). This value must be greater than `temperature.night`. |
+| `services.wlsunset.temperature.night` | `signed integer` | Colour temperature to use during the night, in Kelvin (K). This value must be smaller than `temperature.day`. |

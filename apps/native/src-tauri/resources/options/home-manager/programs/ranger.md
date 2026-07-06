@@ -5,14 +5,17 @@
 All options under `programs.ranger`.
 
 | Option | Type | Description |
-| ------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `programs.ranger.aliases` | `attribute set of string` | Aliases written to $XDG_CONFIG_HOME/ranger/rc.conf . |
+| --- | --- | --- |
+| `programs.ranger.aliases` | `attribute set of string` | Aliases written to {file}`$XDG_CONFIG_HOME/ranger/rc.conf`. |
 | `programs.ranger.enable` | `boolean` | Whether to enable ranger file manager. |
-| `programs.ranger.extraConfig` | `strings concatenated with “\n”` | Extra configuration lines to add to $XDG_CONFIG_HOME/ranger/rc.conf . |
+| `programs.ranger.extraConfig` | `strings concatenated with "\n"` | Extra configuration lines to add to {file}`$XDG_CONFIG_HOME/ranger/rc.conf`. |
 | `programs.ranger.extraPackages` | `list of package` | Extra packages added to ranger. |
-| `programs.ranger.finalPackage` | | |
-| `programs.ranger.mappings` | `attribute set of string` | Mappings written to $XDG_CONFIG_HOME/ranger/rc.conf . |
+| `programs.ranger.mappings` | `attribute set of string` | Mappings written to {file}`$XDG_CONFIG_HOME/ranger/rc.conf`. |
 | `programs.ranger.package` | `null or package` | The ranger package to use. |
-| `programs.ranger.plugins` | `list of (submodule)` | List of files to be added to $XDG_CONFIG_HOME/ranger/plugins/ . |
-| `programs.ranger.rifle` | `list of (submodule)` | Settings written to $XDG_CONFIG_HOME/ranger/rifle.conf . |
-| `programs.ranger.settings` | `attribute set of (boolean or floating point number or signed integer or string)` | Settings written to $XDG_CONFIG_HOME/ranger/rc.conf . |
+| `programs.ranger.plugins` | `list of (submodule)` | List of files to be added to {file}`$XDG_CONFIG_HOME/ranger/plugins/`. |
+| `programs.ranger.plugins.*.name` | `string` | Name of the plugin linked to {file}`$XDG_CONFIG_HOME/ranger/plugins/`. In the case of a single-file plugin, it must also have `.py` suffix. |
+| `programs.ranger.plugins.*.src` | `absolute path` | The plugin file or directory. |
+| `programs.ranger.rifle` | `list of (submodule)` | Settings written to {file}`$XDG_CONFIG_HOME/ranger/rifle.conf`. |
+| `programs.ranger.rifle.*.command` | `string` | A command to run for the matching file. |
+| `programs.ranger.rifle.*.condition` | `string` | A condition to match a file. |
+| `programs.ranger.settings` | `attribute set of (boolean or floating point number or signed integer or string)` | Settings written to {file}`$XDG_CONFIG_HOME/ranger/rc.conf`. |

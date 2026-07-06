@@ -5,7 +5,7 @@
 All options under `services.fanout`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.fanout.bufferSize` | | |
-| `services.fanout.enable` | | |
-| `services.fanout.fanoutDevices` | | |
+| --- | --- | --- |
+| `services.fanout.bufferSize` | `signed integer` | Size of /dev/fanout buffer in bytes |
+| `services.fanout.enable` | `boolean` | Whether to enable fanout. |
+| `services.fanout.fanoutDevices` | `signed integer` | Number of /dev/fanout devices |

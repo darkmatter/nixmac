@@ -5,6 +5,6 @@
 All options under `services.fakeroute`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.fakeroute.enable` | | |
-| `services.fakeroute.route` | | |
+| --- | --- | --- |
+| `services.fakeroute.enable` | `boolean` | Whether to enable the fakeroute service. |
+| `services.fakeroute.route` | `list of string` | Fake route that will appear after the real one to any host running a traceroute. |

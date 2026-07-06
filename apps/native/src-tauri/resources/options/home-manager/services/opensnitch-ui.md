@@ -5,6 +5,6 @@
 All options under `services.opensnitch-ui`.
 
 | Option | Type | Description |
-| -------------------------------- | --------- | ------------------------------------ |
+| --- | --- | --- |
 | `services.opensnitch-ui.enable` | `boolean` | Whether to enable Opensnitch client. |
 | `services.opensnitch-ui.package` | `package` | The opensnitch-ui package to use. |

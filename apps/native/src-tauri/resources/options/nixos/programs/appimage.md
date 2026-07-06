@@ -5,7 +5,7 @@
 All options under `programs.appimage`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `programs.appimage.binfmt` | | |
-| `programs.appimage.enable` | | |
-| `programs.appimage.package` | | |
+| --- | --- | --- |
+| `programs.appimage.binfmt` | `boolean` | Whether to enable binfmt registration to run appimages via appimage-run seamlessly. |
+| `programs.appimage.enable` | `boolean` | Whether to enable appimage-run wrapper script for executing appimages on NixOS. |
+| `programs.appimage.package` | `package` | The appimage-run package to use. |

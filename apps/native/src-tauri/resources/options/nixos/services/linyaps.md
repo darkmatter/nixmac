@@ -5,8 +5,8 @@
 All options under `services.linyaps`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---- | ----------- |
-| `services.linyaps.boxPackage` | | |
-| `services.linyaps.enable` | | |
-| `services.linyaps.package` | | |
-| `services.linyaps.webStoreInstallerPackage` | | |
+| --- | --- | --- |
+| `services.linyaps.boxPackage` | `package` | The linyaps-box package to use. |
+| `services.linyaps.enable` | `boolean` | Whether to enable linyaps, a cross-distribution package manager with sandboxed apps and shared runtime. |
+| `services.linyaps.package` | `package` | The linyaps package to use. |
+| `services.linyaps.webStoreInstallerPackage` | `package` | The linyaps-web-store-installer package to use. |

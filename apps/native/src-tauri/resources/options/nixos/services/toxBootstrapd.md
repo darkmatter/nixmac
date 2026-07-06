@@ -5,8 +5,8 @@
 All options under `services.toxBootstrapd`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.toxBootstrapd.enable` | | |
-| `services.toxBootstrapd.extraConfig` | | |
-| `services.toxBootstrapd.keysFile` | | |
-| `services.toxBootstrapd.port` | | |
+| --- | --- | --- |
+| `services.toxBootstrapd.enable` | `boolean` | Whether to enable the Tox DHT bootstrap daemon. |
+| `services.toxBootstrapd.extraConfig` | `strings concatenated with "\n"` | Configuration for bootstrap daemon. See <https://github.com/irungentoo/toxcore/blob/master/other/bootstrap_daemon/tox-bootstrapd.conf> and <https://wiki.tox.chat/users/nodes>. |
+| `services.toxBootstrapd.keysFile` | `string` | Node key file. |
+| `services.toxBootstrapd.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listening port (UDP). |

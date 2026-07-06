@@ -5,9 +5,9 @@
 All options under `services.fnott`.
 
 | Option | Type | Description |
-| --------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| `services.fnott.configFile` | `string or absolute path` | Path to the configuration file read by fnott. |
+| --- | --- | --- |
+| `services.fnott.configFile` | `string or absolute path` | Path to the configuration file read by fnott. Note that environment variables in the path won't be properly expanded. The configuration specified under {option}`services.fnott.settings` will be generated and written to {file}`$XDG_CONFIG_HOME/fnott/fnott.ini` regardless of this option. This allows using a mutable configuration file generated from the immutable one, useful in scenarios where live reloading is desired. |
 | `services.fnott.enable` | `boolean` | Whether to enable fnott, a lightweight Wayland notification daemon for wlroots-based compositors . |
 | `services.fnott.extraFlags` | `list of string` | Extra arguments to use for executing fnott. |
 | `services.fnott.package` | `package` | The fnott package to use. |
-| `services.fnott.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to $XDG_CONFIG_HOME/fnott/fnott.ini . |
+| `services.fnott.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to {file}`$XDG_CONFIG_HOME/fnott/fnott.ini`. See {manpage}`fnott.ini(5)` for a list of available options and <https://codeberg.org/dnkl/fnott/src/branch/master/fnott.ini> for an example configuration. |

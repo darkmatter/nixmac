@@ -5,9 +5,9 @@
 All options under `services.monado`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.monado.defaultRuntime` | | |
-| `services.monado.enable` | | |
-| `services.monado.forceDefaultRuntime` | | |
-| `services.monado.highPriority` | | |
-| `services.monado.package` | | |
+| --- | --- | --- |
+| `services.monado.defaultRuntime` | `boolean` | Whether to enable Monado as the default OpenXR runtime on the system. Note that applications can bypass this option by setting an active runtime in a writable XDG_CONFIG_DIRS location like `~/.config`. |
+| `services.monado.enable` | `boolean` | Whether to enable Monado user service. |
+| `services.monado.forceDefaultRuntime` | `boolean` | Whether to ensure that Monado is the active runtime set for the current user. This replaces the file `XDG_CONFIG_HOME/openxr/1/active_runtime.json` when starting the service. |
+| `services.monado.highPriority` | `boolean` | Whether to enable high priority capability for monado-service. |
+| `services.monado.package` | `package` | The monado package to use. |

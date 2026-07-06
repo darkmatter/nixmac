@@ -5,11 +5,11 @@
 All options under `services.clipcat`.
 
 | Option | Type | Description |
-| --------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `services.clipcat.ctlSettings` | `TOML value` | Configuration settings for clipcatctl. All available options can be found here: https://github.com/xrelkd/clipcat?tab=readme-ov-file#configuration . |
-| `services.clipcat.daemonSettings` | `TOML value` | Configuration settings for clipcatd. All available options can be found here: https://github.com/xrelkd/clipcat?tab=readme-ov-file#configuration . |
+| --- | --- | --- |
+| `services.clipcat.ctlSettings` | `TOML value` | Configuration settings for clipcatctl. All available options can be found here: <https://github.com/xrelkd/clipcat?tab=readme-ov-file#configuration>. |
+| `services.clipcat.daemonSettings` | `TOML value` | Configuration settings for clipcatd. All available options can be found here: <https://github.com/xrelkd/clipcat?tab=readme-ov-file#configuration>. |
 | `services.clipcat.enable` | `boolean` | Whether to enable clipcat. |
-| `services.clipcat.enableSystemdUnit` | `boolean` | Enable clipcat’s Systemd Unit. |
+| `services.clipcat.enableSystemdUnit` | `boolean` | Enable clipcat's Systemd Unit. |
 | `services.clipcat.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
-| `services.clipcat.menuSettings` | `TOML value` | Configuration settings for clipcat-menu. All available options can be found here: https://github.com/xrelkd/clipcat?tab=readme-ov-file#configuration . |
+| `services.clipcat.menuSettings` | `TOML value` | Configuration settings for clipcat-menu. All available options can be found here: <https://github.com/xrelkd/clipcat?tab=readme-ov-file#configuration>. |
 | `services.clipcat.package` | `package` | The clipcat package to use. |

@@ -5,11 +5,11 @@
 All options under `services.matterjs-server`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---- | ----------- |
-| `services.matterjs-server.bluetoothSupport` | | |
-| `services.matterjs-server.enable` | | |
-| `services.matterjs-server.extraArgs` | | |
-| `services.matterjs-server.listenAddress` | | |
-| `services.matterjs-server.openFirewall` | | |
-| `services.matterjs-server.package` | | |
-| `services.matterjs-server.port` | | |
+| --- | --- | --- |
+| `services.matterjs-server.bluetoothSupport` | `boolean` | Whether to enable BLE (Bluetooth Low Energy) commissioning support. Select an adapter with `--bluetooth-adapter=<id>` in {option}`services.matterjs-server.extraArgs` . |
+| `services.matterjs-server.enable` | `boolean` | Whether to enable matterjs-server, a Matter Controller WebSocket server based on Matter.js. |
+| `services.matterjs-server.extraArgs` | `list of string` | Additional command-line arguments passed to `matterjs-server`. See `matterjs-server --help` for the full list of options. |
+| `services.matterjs-server.listenAddress` | `string` | IP address the WebSocket API binds to. |
+| `services.matterjs-server.openFirewall` | `boolean` | Whether to open the WebSocket API port in the firewall. |
+| `services.matterjs-server.package` | `package` | The matterjs-server package to use. |
+| `services.matterjs-server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | TCP port the WebSocket API listens on. |

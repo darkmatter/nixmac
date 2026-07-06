@@ -5,11 +5,11 @@
 All options under `programs.zoxide`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `programs.zoxide.enable` | | |
-| `programs.zoxide.enableBashIntegration` | | |
-| `programs.zoxide.enableFishIntegration` | | |
-| `programs.zoxide.enableXonshIntegration` | | |
-| `programs.zoxide.enableZshIntegration` | | |
-| `programs.zoxide.flags` | | |
-| `programs.zoxide.package` | | |
+| --- | --- | --- |
+| `programs.zoxide.enable` | `boolean` | Whether to enable zoxide, a smarter cd command that learns your habits. |
+| `programs.zoxide.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
+| `programs.zoxide.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
+| `programs.zoxide.enableXonshIntegration` | `boolean` | Whether to enable Xonsh integration. |
+| `programs.zoxide.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
+| `programs.zoxide.flags` | `list of string` | List of flags for zoxide init |
+| `programs.zoxide.package` | `package` | The zoxide package to use. |

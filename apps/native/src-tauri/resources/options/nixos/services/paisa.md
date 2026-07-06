@@ -5,11 +5,14 @@
 All options under `services.paisa`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.paisa.enable` | | |
-| `services.paisa.host` | | |
-| `services.paisa.mutableSettings` | | |
-| `services.paisa.openFirewall` | | |
-| `services.paisa.package` | | |
-| `services.paisa.port` | | |
-| `services.paisa.settings` | | |
+| --- | --- | --- |
+| `services.paisa.enable` | `boolean` | Whether to enable Paisa personal finance manager. |
+| `services.paisa.host` | `string` | Host bind IP address. |
+| `services.paisa.mutableSettings` | `boolean` | Allow changes made on the web interface to persist between service restarts. |
+| `services.paisa.openFirewall` | `boolean` | Open ports in the firewall for the Paisa web server. |
+| `services.paisa.package` | `package` | The paisa package to use. |
+| `services.paisa.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to serve Paisa on. |
+| `services.paisa.settings` | `null or (open submodule of (YAML 1.1 value))` | Paisa configuration. Please refer to <https://paisa.fyi/reference/config/> for details. On start and if `mutableSettings` is `true`, these options are merged into the configuration file on start, taking precedence over configuration changes made on the web interface. |
+| `services.paisa.settings.dataDir` | `string` | Path to paisa data directory. |
+| `services.paisa.settings.dbFile` | `string` | Filename of the Paisa database. |
+| `services.paisa.settings.journalFile` | `string` | Filename of the main journal / ledger file. |

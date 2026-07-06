@@ -5,11 +5,11 @@
 All options under `services.connman`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.connman.enable` | | |
-| `services.connman.enableVPN` | | |
-| `services.connman.extraConfig` | | |
-| `services.connman.extraFlags` | | |
-| `services.connman.networkInterfaceBlacklist` | | |
-| `services.connman.package` | | |
-| `services.connman.wifi.backend` | | |
+| --- | --- | --- |
+| `services.connman.enable` | `boolean` | Whether to use ConnMan for managing your network connections. |
+| `services.connman.enableVPN` | `boolean` | Whether to enable ConnMan VPN service. |
+| `services.connman.extraConfig` | `strings concatenated with "\n"` | Configuration lines appended to the generated connman configuration file. |
+| `services.connman.extraFlags` | `list of string` | Extra flags to pass to connmand |
+| `services.connman.networkInterfaceBlacklist` | `list of string` | Default blacklisted interfaces, this includes NixOS containers interfaces (ve). |
+| `services.connman.package` | `package` | The connman package / build flavor |
+| `services.connman.wifi.backend` | `one of "wpa_supplicant", "iwd"` | Specify the Wi-Fi backend used. Currently supported are {option}`wpa_supplicant` or {option}`iwd`. |

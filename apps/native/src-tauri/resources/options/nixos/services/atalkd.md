@@ -5,7 +5,8 @@
 All options under `services.atalkd`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.atalkd.configFile` | | |
-| `services.atalkd.enable` | | |
-| `services.atalkd.interfaces` | | |
+| --- | --- | --- |
+| `services.atalkd.configFile` | `null or absolute path` | Optional path to a custom {file}`atalkd.conf` file. When set, this overrides the generated configuration from `services.atalkd.interfaces`. |
+| `services.atalkd.enable` | `boolean` | Whether to enable the AppleTalk daemon. |
+| `services.atalkd.interfaces` | `attribute set of (submodule)` | Per-interface configuration for atalkd. |
+| `services.atalkd.interfaces.<name>.config` | `null or string` | Optional configuration string for this interface. |

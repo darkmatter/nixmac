@@ -14,6 +14,7 @@ mod bootstrap;
 mod cli;
 mod commands;
 mod db;
+mod docs;
 mod e2e_runtime;
 mod editor;
 mod env;
@@ -704,9 +705,10 @@ fn run_gui_mode(
             });
 
             // Background initialize the nix-darwin docs index once at startup for fast option-shape lookup.
-             tauri::async_runtime::spawn_blocking(|| {
-                 evolve::search_docs::initialize_docs_index();
-             });
+            let docs_handle = handle.clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                evolve::search_docs::initialize_docs_index_for_app(docs_handle);
+            });
 
             let send_diagnostics = crate::state::ui_prefs::send_diagnostics(handle);
             if send_diagnostics {

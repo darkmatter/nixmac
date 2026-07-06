@@ -5,10 +5,10 @@
 All options under `services.bee`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.bee.daemonNiceLevel` | | |
-| `services.bee.enable` | | |
-| `services.bee.group` | | |
-| `services.bee.package` | | |
-| `services.bee.settings` | | |
-| `services.bee.user` | | |
+| --- | --- | --- |
+| `services.bee.daemonNiceLevel` | `signed integer` | Daemon process priority for bee. 0 is the default Unix process priority, 19 is the lowest. |
+| `services.bee.enable` | `boolean` | Whether to enable Ethereum Swarm Bee. |
+| `services.bee.group` | `string` | Group the bee binary should execute under. |
+| `services.bee.package` | `package` | The bee package to use. |
+| `services.bee.settings` | `YAML 1.1 value` | Ethereum Swarm Bee configuration. Refer to <https://gateway.ethswarm.org/bzz/docs.swarm.eth/docs/installation/configuration/> for details on supported values. |
+| `services.bee.user` | `string` | User the bee binary should execute under. |

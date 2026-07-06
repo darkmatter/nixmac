@@ -5,5 +5,5 @@
 All options under `programs.sysdig`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `programs.sysdig.enable` | | |
+| --- | --- | --- |
+| `programs.sysdig.enable` | `boolean` | Whether to enable sysdig, a tracing tool. |

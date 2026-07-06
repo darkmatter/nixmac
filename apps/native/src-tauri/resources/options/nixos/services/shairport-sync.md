@@ -5,11 +5,11 @@
 All options under `services.shairport-sync`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.shairport-sync.arguments` | | |
-| `services.shairport-sync.enable` | | |
-| `services.shairport-sync.group` | | |
-| `services.shairport-sync.openFirewall` | | |
-| `services.shairport-sync.package` | | |
-| `services.shairport-sync.settings` | | |
-| `services.shairport-sync.user` | | |
+| --- | --- | --- |
+| `services.shairport-sync.arguments` | `string` | Arguments to pass to the daemon. Defaults to a local pulseaudio server. |
+| `services.shairport-sync.enable` | `boolean` | Enable the shairport-sync daemon. Running with a local system-wide or remote pulseaudio server is recommended. |
+| `services.shairport-sync.group` | `string` | Group account name under which to run shairport-sync. The account will be created. |
+| `services.shairport-sync.openFirewall` | `boolean` | Whether to automatically open ports in the firewall. |
+| `services.shairport-sync.package` | `package` | The shairport-sync package to use. |
+| `services.shairport-sync.settings` | `attribute set of (libconfig value)` | Configuration options for Shairport-Sync. See the example [shairport-sync.conf][example-file] for possible options. \[example-file\]: https://github.com/mikebrady/shairport-sync/blob/master/scripts/shairport-sync.conf |
+| `services.shairport-sync.user` | `string` | User account name under which to run shairport-sync. The account will be created. |

@@ -5,9 +5,9 @@
 All options under `services.cloudflare-warp`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.cloudflare-warp.enable` | | |
-| `services.cloudflare-warp.openFirewall` | | |
-| `services.cloudflare-warp.package` | | |
-| `services.cloudflare-warp.rootDir` | | |
-| `services.cloudflare-warp.udpPort` | | |
+| --- | --- | --- |
+| `services.cloudflare-warp.enable` | `boolean` | Whether to enable Cloudflare Zero Trust client daemon. |
+| `services.cloudflare-warp.openFirewall` | `boolean` | Whether to enable opening UDP ports in the firewall. |
+| `services.cloudflare-warp.package` | `package` | The cloudflare-warp package to use. |
+| `services.cloudflare-warp.rootDir` | `string` | Working directory for the warp-svc daemon. |
+| `services.cloudflare-warp.udpPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The UDP port to open in the firewall. Warp uses port 2408 by default, but fallback ports can be used if that conflicts with another service. See the [firewall documentation](https://developers.cloudflare.com/cloudflare-one/connections/connect-devices/warp/deployment/firewall#warp-udp-ports) for the pre-configured available fallback ports. |

@@ -5,22 +5,19 @@
 All options under `services.pdns-recursor`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.pdns-recursor.api.address` | | |
-| `services.pdns-recursor.api.allowFrom` | | |
-| `services.pdns-recursor.api.port` | | |
-| `services.pdns-recursor.dns.address` | | |
-| `services.pdns-recursor.dns.allowFrom` | | |
-| `services.pdns-recursor.dns.port` | | |
-| `services.pdns-recursor.dnssecValidation` | | |
-| `services.pdns-recursor.enable` | | |
-| `services.pdns-recursor.exportHosts` | | |
-| `services.pdns-recursor.extraConfig` | | |
-| `services.pdns-recursor.forwardZones` | | |
-| `services.pdns-recursor.forwardZonesRecurse` | | |
-| `services.pdns-recursor.luaConfig` | | |
-| `services.pdns-recursor.old-settings` | | |
-| `services.pdns-recursor.resolveNamecoin` | | |
-| `services.pdns-recursor.serveRFC1918` | | |
-| `services.pdns-recursor.settings` | | |
-| `services.pdns-recursor.yaml-settings` | | |
+| --- | --- | --- |
+| `services.pdns-recursor.api.address` | `string` | IP address Recursor REST API server will bind to. |
+| `services.pdns-recursor.api.allowFrom` | `list of string` | IP address ranges of clients allowed to make API requests. |
+| `services.pdns-recursor.api.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number Recursor REST API server will bind to. |
+| `services.pdns-recursor.dns.address` | `string or list of string` | IP addresses Recursor DNS server will bind to. |
+| `services.pdns-recursor.dns.allowFrom` | `list of string` | IP address ranges of clients allowed to make DNS queries. |
+| `services.pdns-recursor.dns.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number Recursor DNS server will bind to. |
+| `services.pdns-recursor.dnssecValidation` | `one of "off", "process-no-validate", "process", "log-fail", "validate"` | Controls the level of DNSSEC processing done by the PowerDNS Recursor. See <https://doc.powerdns.com/md/recursor/dnssec/> for a detailed explanation. |
+| `services.pdns-recursor.enable` | `boolean` | Whether to enable PowerDNS Recursor, a recursive DNS server. |
+| `services.pdns-recursor.exportHosts` | `boolean` | Whether to export names and IP addresses defined in /etc/hosts. |
+| `services.pdns-recursor.forwardZones` | `attribute set` | DNS zones to be forwarded to other authoritative servers. |
+| `services.pdns-recursor.forwardZonesRecurse` | `attribute set` | DNS zones to be forwarded to other recursive servers. |
+| `services.pdns-recursor.luaConfig` | `strings concatenated with "\n"` | The content Lua configuration file for PowerDNS Recursor. See <https://doc.powerdns.com/recursor/lua-config/index.html>. |
+| `services.pdns-recursor.resolveNamecoin` | `boolean` | Resolve `.bit` top-level domains using ncdns and namecoin. |
+| `services.pdns-recursor.serveRFC1918` | `boolean` | Whether to directly resolve the RFC1918 reverse-mapping domains: `10.in-addr.arpa`, `168.192.in-addr.arpa`, `16-31.172.in-addr.arpa` This saves load on the AS112 servers. |
+| `services.pdns-recursor.settings` | `YAML 1.1 value` | PowerDNS Recursor settings. Use this option to configure Recursor settings not exposed in a NixOS option or to bypass one. See the full documentation at <https://doc.powerdns.com/recursor/yamlsettings.html> for the available options. |

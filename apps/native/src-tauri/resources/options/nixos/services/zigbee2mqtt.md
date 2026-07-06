@@ -5,9 +5,8 @@
 All options under `services.zigbee2mqtt`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.zigbee2mqtt.config` | | |
-| `services.zigbee2mqtt.dataDir` | | |
-| `services.zigbee2mqtt.enable` | | |
-| `services.zigbee2mqtt.package` | | |
-| `services.zigbee2mqtt.settings` | | |
+| --- | --- | --- |
+| `services.zigbee2mqtt.dataDir` | `absolute path` | Zigbee2mqtt data directory |
+| `services.zigbee2mqtt.enable` | `boolean` | Whether to enable zigbee2mqtt service. |
+| `services.zigbee2mqtt.package` | `package` | The zigbee2mqtt package to use. |
+| `services.zigbee2mqtt.settings` | `YAML 1.1 value` | Your {file}`configuration.yaml` as a Nix attribute set. Check the [documentation](https://www.zigbee2mqtt.io/information/configuration.html) for possible options. |

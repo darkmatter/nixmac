@@ -5,15 +5,14 @@
 All options under `programs.gh`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ------------------------------------ | ---------------------------------------------------------------------- |
-| `programs.gh.aliases` | | |
-| `programs.gh.editor` | | |
+| --- | --- | --- |
 | `programs.gh.enable` | `boolean` | Whether to enable GitHub CLI tool. |
-| `programs.gh.enableGitCredentialHelper` | | |
-| `programs.gh.extensions` | `list of package` | gh extensions, see https://cli.github.com/manual/gh_extension . |
+| `programs.gh.extensions` | `list of package` | gh extensions, see <https://cli.github.com/manual/gh_extension>. |
 | `programs.gh.gitCredentialHelper.enable` | `boolean` | Whether to enable the gh git credential helper. |
 | `programs.gh.gitCredentialHelper.hosts` | `list of string` | GitHub hosts to enable the gh git credential helper for |
-| `programs.gh.gitProtocol` | | |
-| `programs.gh.hosts` | `YAML 1.1 value` | Host-specific configuration written to $XDG_CONFIG_HOME/gh/hosts.yml . |
+| `programs.gh.hosts` | `YAML 1.1 value` | Host-specific configuration written to {file}`$XDG_CONFIG_HOME/gh/hosts.yml`. |
 | `programs.gh.package` | `package` | The gh package to use. |
-| `programs.gh.settings` | `open submodule of (YAML 1.1 value)` | Configuration written to $XDG_CONFIG_HOME/gh/config.yml . |
+| `programs.gh.settings` | `open submodule of (YAML 1.1 value)` | Configuration written to {file}`$XDG_CONFIG_HOME/gh/config.yml`. |
+| `programs.gh.settings.aliases` | `attribute set of string` | Aliases that allow you to create nicknames for gh commands. |
+| `programs.gh.settings.editor` | `string` | The editor that gh should run when creating issues, pull requests, etc. If blank, will refer to environment. |
+| `programs.gh.settings.git_protocol` | `string` | The protocol to use when performing Git operations. |

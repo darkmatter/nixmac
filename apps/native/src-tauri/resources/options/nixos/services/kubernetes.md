@@ -5,165 +5,148 @@
 All options under `services.kubernetes`.
 
 | Option | Type | Description |
-| ------------------------------------------------------------- | ---- | ----------- |
-| `services.kubernetes.addonManager.addons` | | |
-| `services.kubernetes.addonManager.bootstrapAddons` | | |
-| `services.kubernetes.addonManager.enable` | | |
-| `services.kubernetes.addons.dashboard` | | |
-| `services.kubernetes.addons.dns.clusterDomain` | | |
-| `services.kubernetes.addons.dns.clusterIp` | | |
-| `services.kubernetes.addons.dns.coredns` | | |
-| `services.kubernetes.addons.dns.corednsImage` | | |
-| `services.kubernetes.addons.dns.corefile` | | |
-| `services.kubernetes.addons.dns.enable` | | |
-| `services.kubernetes.addons.dns.reconcileMode` | | |
-| `services.kubernetes.addons.dns.replicas` | | |
-| `services.kubernetes.apiserver.address` | | |
-| `services.kubernetes.apiserver.admissionControl` | | |
-| `services.kubernetes.apiserver.advertiseAddress` | | |
-| `services.kubernetes.apiserver.allowPrivileged` | | |
-| `services.kubernetes.apiserver.apiAudiences` | | |
-| `services.kubernetes.apiserver.authorizationMode` | | |
-| `services.kubernetes.apiserver.authorizationPolicy` | | |
-| `services.kubernetes.apiserver.basicAuthFile` | | |
-| `services.kubernetes.apiserver.bindAddress` | | |
-| `services.kubernetes.apiserver.clientCaFile` | | |
-| `services.kubernetes.apiserver.disableAdmissionPlugins` | | |
-| `services.kubernetes.apiserver.enable` | | |
-| `services.kubernetes.apiserver.enableAdmissionPlugins` | | |
-| `services.kubernetes.apiserver.etcd.caFile` | | |
-| `services.kubernetes.apiserver.etcd.certFile` | | |
-| `services.kubernetes.apiserver.etcd.keyFile` | | |
-| `services.kubernetes.apiserver.etcd.servers` | | |
-| `services.kubernetes.apiserver.extraOpts` | | |
-| `services.kubernetes.apiserver.extraSANs` | | |
-| `services.kubernetes.apiserver.featureGates` | | |
-| `services.kubernetes.apiserver.insecureBindAddress` | | |
-| `services.kubernetes.apiserver.insecurePort` | | |
-| `services.kubernetes.apiserver.kubeletClientCaFile` | | |
-| `services.kubernetes.apiserver.kubeletClientCertFile` | | |
-| `services.kubernetes.apiserver.kubeletClientKeyFile` | | |
-| `services.kubernetes.apiserver.preferredAddressTypes` | | |
-| `services.kubernetes.apiserver.proxyClientCertFile` | | |
-| `services.kubernetes.apiserver.proxyClientKeyFile` | | |
-| `services.kubernetes.apiserver.publicAddress` | | |
-| `services.kubernetes.apiserver.runtimeConfig` | | |
-| `services.kubernetes.apiserver.securePort` | | |
-| `services.kubernetes.apiserver.serviceAccountIssuer` | | |
-| `services.kubernetes.apiserver.serviceAccountKeyFile` | | |
-| `services.kubernetes.apiserver.serviceAccountSigningKeyFile` | | |
-| `services.kubernetes.apiserver.serviceClusterIpRange` | | |
-| `services.kubernetes.apiserver.storageBackend` | | |
-| `services.kubernetes.apiserver.tlsCertFile` | | |
-| `services.kubernetes.apiserver.tlsKeyFile` | | |
-| `services.kubernetes.apiserver.tokenAuthFile` | | |
-| `services.kubernetes.apiserver.verbosity` | | |
-| `services.kubernetes.apiserver.webhookConfig` | | |
-| `services.kubernetes.apiserverAddress` | | |
-| `services.kubernetes.caFile` | | |
-| `services.kubernetes.clusterCidr` | | |
-| `services.kubernetes.controllerManager.address` | | |
-| `services.kubernetes.controllerManager.allocateNodeCIDRs` | | |
-| `services.kubernetes.controllerManager.bindAddress` | | |
-| `services.kubernetes.controllerManager.clusterCidr` | | |
-| `services.kubernetes.controllerManager.enable` | | |
-| `services.kubernetes.controllerManager.extraOpts` | | |
-| `services.kubernetes.controllerManager.featureGates` | | |
-| `services.kubernetes.controllerManager.insecurePort` | | |
-| `services.kubernetes.controllerManager.kubeconfig.caFile` | | |
-| `services.kubernetes.controllerManager.kubeconfig.certFile` | | |
-| `services.kubernetes.controllerManager.kubeconfig.keyFile` | | |
-| `services.kubernetes.controllerManager.kubeconfig.server` | | |
-| `services.kubernetes.controllerManager.leaderElect` | | |
-| `services.kubernetes.controllerManager.rootCaFile` | | |
-| `services.kubernetes.controllerManager.securePort` | | |
-| `services.kubernetes.controllerManager.serviceAccountKeyFile` | | |
-| `services.kubernetes.controllerManager.tlsCertFile` | | |
-| `services.kubernetes.controllerManager.tlsKeyFile` | | |
-| `services.kubernetes.controllerManager.verbosity` | | |
-| `services.kubernetes.dataDir` | | |
-| `services.kubernetes.easyCerts` | | |
-| `services.kubernetes.etcd.caFile` | | |
-| `services.kubernetes.etcd.certFile` | | |
-| `services.kubernetes.etcd.keyFile` | | |
-| `services.kubernetes.etcd.servers` | | |
-| `services.kubernetes.featureGates` | | |
-| `services.kubernetes.flannel.enable` | | |
-| `services.kubernetes.flannel.openFirewallPorts` | | |
-| `services.kubernetes.kubeconfig.caFile` | | |
-| `services.kubernetes.kubeconfig.certFile` | | |
-| `services.kubernetes.kubeconfig.keyFile` | | |
-| `services.kubernetes.kubeconfig.server` | | |
-| `services.kubernetes.kubelet.address` | | |
-| `services.kubernetes.kubelet.allowPrivileged` | | |
-| `services.kubernetes.kubelet.applyManifests` | | |
-| `services.kubernetes.kubelet.cadvisorPort` | | |
-| `services.kubernetes.kubelet.clientCaFile` | | |
-| `services.kubernetes.kubelet.clusterDns` | | |
-| `services.kubernetes.kubelet.clusterDomain` | | |
-| `services.kubernetes.kubelet.cni.config` | | |
-| `services.kubernetes.kubelet.cni.configDir` | | |
-| `services.kubernetes.kubelet.cni.packages` | | |
-| `services.kubernetes.kubelet.containerRuntime` | | |
-| `services.kubernetes.kubelet.containerRuntimeEndpoint` | | |
-| `services.kubernetes.kubelet.enable` | | |
-| `services.kubernetes.kubelet.extraConfig` | | |
-| `services.kubernetes.kubelet.extraOpts` | | |
-| `services.kubernetes.kubelet.featureGates` | | |
-| `services.kubernetes.kubelet.healthz.bind` | | |
-| `services.kubernetes.kubelet.healthz.port` | | |
-| `services.kubernetes.kubelet.hostname` | | |
-| `services.kubernetes.kubelet.kubeconfig.caFile` | | |
-| `services.kubernetes.kubelet.kubeconfig.certFile` | | |
-| `services.kubernetes.kubelet.kubeconfig.keyFile` | | |
-| `services.kubernetes.kubelet.kubeconfig.server` | | |
-| `services.kubernetes.kubelet.manifests` | | |
-| `services.kubernetes.kubelet.networkPlugin` | | |
-| `services.kubernetes.kubelet.nodeIp` | | |
-| `services.kubernetes.kubelet.port` | | |
-| `services.kubernetes.kubelet.registerNode` | | |
-| `services.kubernetes.kubelet.seedDockerImages` | | |
-| `services.kubernetes.kubelet.taints` | | |
-| `services.kubernetes.kubelet.tlsCertFile` | | |
-| `services.kubernetes.kubelet.tlsKeyFile` | | |
-| `services.kubernetes.kubelet.unschedulable` | | |
-| `services.kubernetes.kubelet.verbosity` | | |
-| `services.kubernetes.lib` | | |
-| `services.kubernetes.masterAddress` | | |
-| `services.kubernetes.package` | | |
-| `services.kubernetes.path` | | |
-| `services.kubernetes.pki.caCertPathPrefix` | | |
-| `services.kubernetes.pki.caSpec` | | |
-| `services.kubernetes.pki.certs` | | |
-| `services.kubernetes.pki.cfsslAPIExtraSANs` | | |
-| `services.kubernetes.pki.enable` | | |
-| `services.kubernetes.pki.etcClusterAdminKubeconfig` | | |
-| `services.kubernetes.pki.genCfsslAPICerts` | | |
-| `services.kubernetes.pki.genCfsslAPIToken` | | |
-| `services.kubernetes.pki.genCfsslCACert` | | |
-| `services.kubernetes.pki.pkiTrustOnBootstrap` | | |
-| `services.kubernetes.proxy.address` | | |
-| `services.kubernetes.proxy.bindAddress` | | |
-| `services.kubernetes.proxy.enable` | | |
-| `services.kubernetes.proxy.extraOpts` | | |
-| `services.kubernetes.proxy.featureGates` | | |
-| `services.kubernetes.proxy.hostname` | | |
-| `services.kubernetes.proxy.kubeconfig.caFile` | | |
-| `services.kubernetes.proxy.kubeconfig.certFile` | | |
-| `services.kubernetes.proxy.kubeconfig.keyFile` | | |
-| `services.kubernetes.proxy.kubeconfig.server` | | |
-| `services.kubernetes.proxy.verbosity` | | |
-| `services.kubernetes.roles` | | |
-| `services.kubernetes.scheduler.address` | | |
-| `services.kubernetes.scheduler.enable` | | |
-| `services.kubernetes.scheduler.extraOpts` | | |
-| `services.kubernetes.scheduler.featureGates` | | |
-| `services.kubernetes.scheduler.kubeconfig.caFile` | | |
-| `services.kubernetes.scheduler.kubeconfig.certFile` | | |
-| `services.kubernetes.scheduler.kubeconfig.keyFile` | | |
-| `services.kubernetes.scheduler.kubeconfig.server` | | |
-| `services.kubernetes.scheduler.leaderElect` | | |
-| `services.kubernetes.scheduler.port` | | |
-| `services.kubernetes.scheduler.verbosity` | | |
-| `services.kubernetes.secretsPath` | | |
-| `services.kubernetes.verbose` | | |
+| --- | --- | --- |
+| `services.kubernetes.addonManager.addons` | `attribute set of ((attribute set) or list of (attribute set))` | Kubernetes addons (any kind of Kubernetes resource can be an addon). |
+| `services.kubernetes.addonManager.bootstrapAddons` | `attribute set of (attribute set)` | Bootstrap addons are like regular addons, but they are applied with cluster-admin rights. They are applied at addon-manager startup only. |
+| `services.kubernetes.addonManager.enable` | `boolean` | Whether to enable Kubernetes addon manager. |
+| `services.kubernetes.addons.dns.clusterDomain` | `string` | Dns cluster domain |
+| `services.kubernetes.addons.dns.clusterIp` | `string` | Dns addon clusterIP |
+| `services.kubernetes.addons.dns.corednsImage` | `package` | Docker image to seed for the CoreDNS container. |
+| `services.kubernetes.addons.dns.corefile` | `string` | Custom coredns corefile configuration. See: <https://coredns.io/manual/toc/#configuration>. |
+| `services.kubernetes.addons.dns.enable` | `boolean` | Whether to enable kubernetes dns addon. |
+| `services.kubernetes.addons.dns.reconcileMode` | `one of "Reconcile", "EnsureExists"` | Controls the addon manager reconciliation mode for the DNS addon. Setting reconcile mode to EnsureExists makes it possible to tailor DNS behavior by editing the coredns ConfigMap. See: <https://github.com/kubernetes/kubernetes/blob/master/cluster/addons/addon-manager/README.md>. |
+| `services.kubernetes.addons.dns.replicas` | `signed integer` | Number of DNS pod replicas to deploy in the cluster. |
+| `services.kubernetes.apiserver.advertiseAddress` | `null or string` | Kubernetes apiserver IP address on which to advertise the apiserver to members of the cluster. This address must be reachable by the rest of the cluster. |
+| `services.kubernetes.apiserver.allowPrivileged` | `boolean` | Whether to allow privileged containers on Kubernetes. |
+| `services.kubernetes.apiserver.apiAudiences` | `string` | Kubernetes apiserver ServiceAccount issuer. |
+| `services.kubernetes.apiserver.authorizationMode` | `list of (one of "AlwaysAllow", "AlwaysDeny", "ABAC", "Webhook", "RBAC", "Node")` | Kubernetes apiserver authorization mode (AlwaysAllow/AlwaysDeny/ABAC/Webhook/RBAC/Node). See <https://kubernetes.io/docs/reference/access-authn-authz/authorization/> |
+| `services.kubernetes.apiserver.authorizationPolicy` | `list of (attribute set)` | Kubernetes apiserver authorization policy file. See <https://kubernetes.io/docs/reference/access-authn-authz/authorization/> |
+| `services.kubernetes.apiserver.basicAuthFile` | `null or absolute path` | Kubernetes apiserver basic authentication file. See <https://kubernetes.io/docs/reference/access-authn-authz/authentication> |
+| `services.kubernetes.apiserver.bindAddress` | `string` | The IP address on which to listen for the --secure-port port. The associated interface(s) must be reachable by the rest of the cluster, and by CLI/web clients. |
+| `services.kubernetes.apiserver.clientCaFile` | `null or absolute path` | Kubernetes apiserver CA file for client auth. |
+| `services.kubernetes.apiserver.disableAdmissionPlugins` | `list of string` | Kubernetes admission control plugins to disable. See <https://kubernetes.io/docs/admin/admission-controllers/> |
+| `services.kubernetes.apiserver.enable` | `boolean` | Whether to enable Kubernetes apiserver. |
+| `services.kubernetes.apiserver.enableAdmissionPlugins` | `list of string` | Kubernetes admission control plugins to enable. See <https://kubernetes.io/docs/admin/admission-controllers/> |
+| `services.kubernetes.apiserver.etcd.caFile` | `null or absolute path` | Etcd ca file. |
+| `services.kubernetes.apiserver.etcd.certFile` | `null or absolute path` | Etcd cert file. |
+| `services.kubernetes.apiserver.etcd.keyFile` | `null or absolute path` | Etcd key file. |
+| `services.kubernetes.apiserver.etcd.servers` | `list of string` | List of etcd servers. |
+| `services.kubernetes.apiserver.extraOpts` | `strings concatenated with " "` | Kubernetes apiserver extra command line options. |
+| `services.kubernetes.apiserver.extraSANs` | `list of string` | Extra x509 Subject Alternative Names to be added to the kubernetes apiserver tls cert. |
+| `services.kubernetes.apiserver.featureGates` | `attribute set of boolean` | Attribute set of feature gates. |
+| `services.kubernetes.apiserver.kubeletClientCaFile` | `null or absolute path` | Path to a cert file for connecting to kubelet. |
+| `services.kubernetes.apiserver.kubeletClientCertFile` | `null or absolute path` | Client certificate to use for connections to kubelet. |
+| `services.kubernetes.apiserver.kubeletClientKeyFile` | `null or absolute path` | Key to use for connections to kubelet. |
+| `services.kubernetes.apiserver.preferredAddressTypes` | `null or string` | List of the preferred NodeAddressTypes to use for kubelet connections. |
+| `services.kubernetes.apiserver.proxyClientCertFile` | `null or absolute path` | Client certificate to use for connections to proxy. |
+| `services.kubernetes.apiserver.proxyClientKeyFile` | `null or absolute path` | Key to use for connections to proxy. |
+| `services.kubernetes.apiserver.runtimeConfig` | `string` | Api runtime configuration. See <https://kubernetes.io/docs/tasks/administer-cluster/cluster-management/> |
+| `services.kubernetes.apiserver.securePort` | `signed integer` | Kubernetes apiserver secure port. |
+| `services.kubernetes.apiserver.serviceAccountIssuer` | `string` | Kubernetes apiserver ServiceAccount issuer. |
+| `services.kubernetes.apiserver.serviceAccountKeyFile` | `absolute path` | File containing PEM-encoded x509 RSA or ECDSA private or public keys, used to verify ServiceAccount tokens. The specified file can contain multiple keys, and the flag can be specified multiple times with different files. If unspecified, --tls-private-key-file is used. Must be specified when --service-account-signing-key is provided |
+| `services.kubernetes.apiserver.serviceAccountSigningKeyFile` | `absolute path` | Path to the file that contains the current private key of the service account token issuer. The issuer will sign issued ID tokens with this private key. |
+| `services.kubernetes.apiserver.serviceClusterIpRange` | `string` | A CIDR notation IP range from which to assign service cluster IPs. This must not overlap with any IP ranges assigned to nodes for pods. |
+| `services.kubernetes.apiserver.storageBackend` | `one of "etcd2", "etcd3"` | Kubernetes apiserver storage backend. |
+| `services.kubernetes.apiserver.tlsCertFile` | `null or absolute path` | Kubernetes apiserver certificate file. |
+| `services.kubernetes.apiserver.tlsKeyFile` | `null or absolute path` | Kubernetes apiserver private key file. |
+| `services.kubernetes.apiserver.tokenAuthFile` | `null or absolute path` | Kubernetes apiserver token authentication file. See <https://kubernetes.io/docs/reference/access-authn-authz/authentication> |
+| `services.kubernetes.apiserver.verbosity` | `null or signed integer` | Optional glog verbosity level for logging statements. See <https://github.com/kubernetes/community/blob/master/contributors/devel/logging.md> |
+| `services.kubernetes.apiserver.webhookConfig` | `null or absolute path` | Kubernetes apiserver Webhook config file. It uses the kubeconfig file format. See <https://kubernetes.io/docs/reference/access-authn-authz/webhook/> |
+| `services.kubernetes.apiserverAddress` | `string` | Clusterwide accessible address for the kubernetes apiserver, including protocol and optional port. |
+| `services.kubernetes.caFile` | `null or absolute path` | Default kubernetes certificate authority |
+| `services.kubernetes.clusterCidr` | `null or string` | Kubernetes controller manager and proxy CIDR Range for Pods in cluster. |
+| `services.kubernetes.controllerManager.allocateNodeCIDRs` | `boolean` | Whether to automatically allocate CIDR ranges for cluster nodes. |
+| `services.kubernetes.controllerManager.bindAddress` | `string` | Kubernetes controller manager listening address. |
+| `services.kubernetes.controllerManager.clusterCidr` | `string` | Kubernetes CIDR Range for Pods in cluster. |
+| `services.kubernetes.controllerManager.enable` | `boolean` | Whether to enable Kubernetes controller manager. |
+| `services.kubernetes.controllerManager.extraOpts` | `strings concatenated with " "` | Kubernetes controller manager extra command line options. |
+| `services.kubernetes.controllerManager.featureGates` | `attribute set of boolean` | Attribute set of feature gates. |
+| `services.kubernetes.controllerManager.kubeconfig.caFile` | `null or absolute path` | Kubernetes controller manager certificate authority file used to connect to kube-apiserver. |
+| `services.kubernetes.controllerManager.kubeconfig.certFile` | `null or absolute path` | Kubernetes controller manager client certificate file used to connect to kube-apiserver. |
+| `services.kubernetes.controllerManager.kubeconfig.keyFile` | `null or absolute path` | Kubernetes controller manager client key file used to connect to kube-apiserver. |
+| `services.kubernetes.controllerManager.kubeconfig.server` | `string` | Kubernetes controller manager kube-apiserver server address. |
+| `services.kubernetes.controllerManager.leaderElect` | `boolean` | Whether to start leader election before executing main loop. |
+| `services.kubernetes.controllerManager.rootCaFile` | `null or absolute path` | Kubernetes controller manager certificate authority file included in service account's token secret. |
+| `services.kubernetes.controllerManager.securePort` | `signed integer` | Kubernetes controller manager secure listening port. |
+| `services.kubernetes.controllerManager.serviceAccountKeyFile` | `null or absolute path` | Kubernetes controller manager PEM-encoded private RSA key file used to sign service account tokens |
+| `services.kubernetes.controllerManager.tlsCertFile` | `null or absolute path` | Kubernetes controller-manager certificate file. |
+| `services.kubernetes.controllerManager.tlsKeyFile` | `null or absolute path` | Kubernetes controller-manager private key file. |
+| `services.kubernetes.controllerManager.verbosity` | `null or signed integer` | Optional glog verbosity level for logging statements. See <https://github.com/kubernetes/community/blob/master/contributors/devel/logging.md> |
+| `services.kubernetes.dataDir` | `absolute path` | Kubernetes root directory for managing kubelet files. |
+| `services.kubernetes.easyCerts` | `boolean` | Automatically setup x509 certificates and keys for the entire cluster. |
+| `services.kubernetes.featureGates` | `attribute set of boolean` | List set of feature gates. |
+| `services.kubernetes.flannel.enable` | `boolean` | Whether to enable flannel networking. |
+| `services.kubernetes.flannel.openFirewallPorts` | `boolean` | Whether to open the Flannel UDP ports in the firewall on all interfaces. |
+| `services.kubernetes.kubeconfig.caFile` | `null or absolute path` | Default kubeconfig certificate authority file used to connect to kube-apiserver. |
+| `services.kubernetes.kubeconfig.certFile` | `null or absolute path` | Default kubeconfig client certificate file used to connect to kube-apiserver. |
+| `services.kubernetes.kubeconfig.keyFile` | `null or absolute path` | Default kubeconfig client key file used to connect to kube-apiserver. |
+| `services.kubernetes.kubeconfig.server` | `string` | Default kubeconfig kube-apiserver server address. |
+| `services.kubernetes.kubelet.address` | `string` | Kubernetes kubelet info server listening address. |
+| `services.kubernetes.kubelet.clientCaFile` | `null or absolute path` | Kubernetes apiserver CA file for client authentication. |
+| `services.kubernetes.kubelet.clusterDns` | `list of string` | Use alternative DNS. |
+| `services.kubernetes.kubelet.clusterDomain` | `string` | Use alternative domain. |
+| `services.kubernetes.kubelet.cni.config` | `list of (attribute set)` | Kubernetes CNI configuration. |
+| `services.kubernetes.kubelet.cni.configDir` | `null or absolute path` | Path to Kubernetes CNI configuration directory. |
+| `services.kubernetes.kubelet.cni.packages` | `list of package` | List of network plugin packages to install. |
+| `services.kubernetes.kubelet.containerRuntimeEndpoint` | `string` | Endpoint at which to find the container runtime api interface/socket |
+| `services.kubernetes.kubelet.enable` | `boolean` | Whether to enable Kubernetes kubelet. |
+| `services.kubernetes.kubelet.extraConfig` | `attribute set of (JSON value)` | Kubernetes kubelet extra configuration file entries. See also [Set Kubelet Parameters Via A Configuration File](https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/) and [Kubelet Configuration](https://kubernetes.io/docs/reference/config-api/kubelet-config.v1beta1/). |
+| `services.kubernetes.kubelet.extraOpts` | `strings concatenated with " "` | Kubernetes kubelet extra command line options. |
+| `services.kubernetes.kubelet.featureGates` | `attribute set of boolean` | Attribute set of feature gate |
+| `services.kubernetes.kubelet.healthz.bind` | `string` | Kubernetes kubelet healthz listening address. |
+| `services.kubernetes.kubelet.healthz.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Kubernetes kubelet healthz port. |
+| `services.kubernetes.kubelet.hostname` | `string` | Kubernetes kubelet hostname override. |
+| `services.kubernetes.kubelet.kubeconfig.caFile` | `null or absolute path` | Kubelet certificate authority file used to connect to kube-apiserver. |
+| `services.kubernetes.kubelet.kubeconfig.certFile` | `null or absolute path` | Kubelet client certificate file used to connect to kube-apiserver. |
+| `services.kubernetes.kubelet.kubeconfig.keyFile` | `null or absolute path` | Kubelet client key file used to connect to kube-apiserver. |
+| `services.kubernetes.kubelet.kubeconfig.server` | `string` | Kubelet kube-apiserver server address. |
+| `services.kubernetes.kubelet.manifests` | `attribute set of (attribute set)` | List of manifests to bootstrap with kubelet (only pods can be created as manifest entry) |
+| `services.kubernetes.kubelet.nodeIp` | `null or string` | IP address of the node. If set, kubelet will use this IP address for the node. |
+| `services.kubernetes.kubelet.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Kubernetes kubelet info server listening port. |
+| `services.kubernetes.kubelet.registerNode` | `boolean` | Whether to auto register kubelet with API server. |
+| `services.kubernetes.kubelet.seedDockerImages` | `list of package` | List of docker images to preload on system |
+| `services.kubernetes.kubelet.taints` | `attribute set of (submodule)` | Node taints (https://kubernetes.io/docs/concepts/configuration/assign-pod-node/). |
+| `services.kubernetes.kubelet.taints.<name>.effect` | `one of "NoSchedule", "PreferNoSchedule", "NoExecute"` | Effect of taint. |
+| `services.kubernetes.kubelet.taints.<name>.key` | `string` | Key of taint. |
+| `services.kubernetes.kubelet.taints.<name>.value` | `string` | Value of taint. |
+| `services.kubernetes.kubelet.tlsCertFile` | `null or absolute path` | File containing x509 Certificate for HTTPS. |
+| `services.kubernetes.kubelet.tlsKeyFile` | `null or absolute path` | File containing x509 private key matching tlsCertFile. |
+| `services.kubernetes.kubelet.unschedulable` | `boolean` | Whether to set node taint to unschedulable=true as it is the case of node that has only master role. |
+| `services.kubernetes.kubelet.verbosity` | `null or signed integer` | Optional glog verbosity level for logging statements. See <https://github.com/kubernetes/community/blob/master/contributors/devel/logging.md> |
+| `services.kubernetes.lib` | `attribute set` | Common functions for the kubernetes modules. |
+| `services.kubernetes.masterAddress` | `string` | Clusterwide available network address or hostname for the kubernetes master server. |
+| `services.kubernetes.package` | `package` | The kubernetes package to use. |
+| `services.kubernetes.path` | `list of package` | Packages added to the services' PATH environment variable. Both the bin and sbin subdirectories of each package are added. |
+| `services.kubernetes.pki.caCertPathPrefix` | `string` | Path-prefrix for the CA-certificate to be used for cfssl signing. Suffixes ".pem" and "-key.pem" will be automatically appended for the public and private keys respectively. |
+| `services.kubernetes.pki.caSpec` | `attribute set` | Certificate specification for the auto-generated CAcert. |
+| `services.kubernetes.pki.certs` | `attribute set` | List of certificate specs to feed to cert generator. |
+| `services.kubernetes.pki.cfsslAPIExtraSANs` | `list of string` | Extra x509 Subject Alternative Names to be added to the cfssl API webserver TLS cert. |
+| `services.kubernetes.pki.enable` | `boolean` | Whether to enable easyCert issuer service. |
+| `services.kubernetes.pki.etcClusterAdminKubeconfig` | `null or string` | Symlink a kubeconfig with cluster-admin privileges to environment path (/etc/\<path>). |
+| `services.kubernetes.pki.genCfsslAPICerts` | `boolean` | Whether to automatically generate cfssl API webserver TLS cert and key, if they don't exist. |
+| `services.kubernetes.pki.genCfsslAPIToken` | `boolean` | Whether to automatically generate cfssl API-token secret, if they doesn't exist. |
+| `services.kubernetes.pki.genCfsslCACert` | `boolean` | Whether to automatically generate cfssl CA certificate and key, if they don't exist. |
+| `services.kubernetes.pki.pkiTrustOnBootstrap` | `boolean` | Whether to always trust remote cfssl server upon initial PKI bootstrap. |
+| `services.kubernetes.proxy.bindAddress` | `string` | Kubernetes proxy listening address. |
+| `services.kubernetes.proxy.enable` | `boolean` | Whether to enable Kubernetes proxy. |
+| `services.kubernetes.proxy.extraOpts` | `strings concatenated with " "` | Kubernetes proxy extra command line options. |
+| `services.kubernetes.proxy.featureGates` | `attribute set of boolean` | Attribute set of feature gates. |
+| `services.kubernetes.proxy.hostname` | `string` | Kubernetes proxy hostname override. |
+| `services.kubernetes.proxy.kubeconfig.caFile` | `null or absolute path` | Kubernetes proxy certificate authority file used to connect to kube-apiserver. |
+| `services.kubernetes.proxy.kubeconfig.certFile` | `null or absolute path` | Kubernetes proxy client certificate file used to connect to kube-apiserver. |
+| `services.kubernetes.proxy.kubeconfig.keyFile` | `null or absolute path` | Kubernetes proxy client key file used to connect to kube-apiserver. |
+| `services.kubernetes.proxy.kubeconfig.server` | `string` | Kubernetes proxy kube-apiserver server address. |
+| `services.kubernetes.proxy.verbosity` | `null or signed integer` | Optional glog verbosity level for logging statements. See <https://github.com/kubernetes/community/blob/master/contributors/devel/logging.md> |
+| `services.kubernetes.roles` | `list of (one of "master", "node")` | Kubernetes role that this machine should take. Master role will enable etcd, apiserver, scheduler, controller manager addon manager, flannel and proxy services. Node role will enable flannel, docker, kubelet and proxy services. |
+| `services.kubernetes.scheduler.address` | `string` | Kubernetes scheduler listening address. |
+| `services.kubernetes.scheduler.enable` | `boolean` | Whether to enable Kubernetes scheduler. |
+| `services.kubernetes.scheduler.extraOpts` | `strings concatenated with " "` | Kubernetes scheduler extra command line options. |
+| `services.kubernetes.scheduler.featureGates` | `attribute set of boolean` | Attribute set of feature gates. |
+| `services.kubernetes.scheduler.kubeconfig.caFile` | `null or absolute path` | Kubernetes scheduler certificate authority file used to connect to kube-apiserver. |
+| `services.kubernetes.scheduler.kubeconfig.certFile` | `null or absolute path` | Kubernetes scheduler client certificate file used to connect to kube-apiserver. |
+| `services.kubernetes.scheduler.kubeconfig.keyFile` | `null or absolute path` | Kubernetes scheduler client key file used to connect to kube-apiserver. |
+| `services.kubernetes.scheduler.kubeconfig.server` | `string` | Kubernetes scheduler kube-apiserver server address. |
+| `services.kubernetes.scheduler.leaderElect` | `boolean` | Whether to start leader election before executing main loop. |
+| `services.kubernetes.scheduler.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Kubernetes scheduler listening port. |
+| `services.kubernetes.scheduler.verbosity` | `null or signed integer` | Optional glog verbosity level for logging statements. See <https://github.com/kubernetes/community/blob/master/contributors/devel/logging.md> |
+| `services.kubernetes.secretsPath` | `absolute path` | Default location for kubernetes secrets. Not a store location. |

@@ -5,6 +5,6 @@
 All options under `programs.bazecor`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `programs.bazecor.enable` | | |
-| `programs.bazecor.package` | | |
+| --- | --- | --- |
+| `programs.bazecor.enable` | `boolean` | Whether to enable Bazecor, the graphical configurator for Dygma Products. |
+| `programs.bazecor.package` | `package` | The bazecor package to use. |

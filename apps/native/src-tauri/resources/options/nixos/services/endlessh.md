@@ -5,8 +5,8 @@
 All options under `services.endlessh`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.endlessh.enable` | | |
-| `services.endlessh.extraOptions` | | |
-| `services.endlessh.openFirewall` | | |
-| `services.endlessh.port` | | |
+| --- | --- | --- |
+| `services.endlessh.enable` | `boolean` | Whether to enable endlessh service. |
+| `services.endlessh.extraOptions` | `list of string` | Additional command line options to pass to the endlessh daemon. |
+| `services.endlessh.openFirewall` | `boolean` | Whether to open a firewall port for the SSH listener. |
+| `services.endlessh.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Specifies on which port the endlessh daemon listens for SSH connections. Setting this to `22` may conflict with {option}`services.openssh`. |

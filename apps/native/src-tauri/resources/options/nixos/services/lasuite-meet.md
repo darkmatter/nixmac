@@ -5,23 +5,30 @@
 All options under `services.lasuite-meet`.
 
 | Option | Type | Description |
-| ------------------------------------------------ | ---- | ----------- |
-| `services.lasuite-meet.addons` | | |
-| `services.lasuite-meet.backendPackage` | | |
-| `services.lasuite-meet.bind` | | |
-| `services.lasuite-meet.celery.extraArgs` | | |
-| `services.lasuite-meet.domain` | | |
-| `services.lasuite-meet.enable` | | |
-| `services.lasuite-meet.enableNginx` | | |
-| `services.lasuite-meet.environmentFile` | | |
-| `services.lasuite-meet.frontendPackage` | | |
-| `services.lasuite-meet.gunicorn.extraArgs` | | |
-| `services.lasuite-meet.livekit.enable` | | |
-| `services.lasuite-meet.livekit.keyFile` | | |
-| `services.lasuite-meet.livekit.openFirewall` | | |
-| `services.lasuite-meet.livekit.settings` | | |
-| `services.lasuite-meet.package` | | |
-| `services.lasuite-meet.postgresql.createLocally` | | |
-| `services.lasuite-meet.redis.createLocally` | | |
-| `services.lasuite-meet.secretKeyPath` | | |
-| `services.lasuite-meet.settings` | | |
+| --- | --- | --- |
+| `services.lasuite-meet.addons` | `list of value "outlook" (singular enum)` | Addons to use and configure |
+| `services.lasuite-meet.bind` | `string` | The path, host/port or file descriptior to bind the gunicorn socket to. See <https://docs.gunicorn.org/en/stable/settings.html#bind> for possible options. |
+| `services.lasuite-meet.celery.extraArgs` | `list of string` | Extra arguments to pass to the celery process. |
+| `services.lasuite-meet.domain` | `string` | Domain name of the meet instance. |
+| `services.lasuite-meet.enable` | `boolean` | Whether to enable SuiteNumérique Meet. |
+| `services.lasuite-meet.enableNginx` | `boolean` | Whether to enable enable and configure Nginx for reverse proxying. |
+| `services.lasuite-meet.environmentFile` | `null or absolute path` | Path to environment file. This can be useful to pass secrets to meet via tools like `agenix` or `sops`. |
+| `services.lasuite-meet.gunicorn.extraArgs` | `list of string` | Extra arguments to pass to the gunicorn process. |
+| `services.lasuite-meet.livekit.enable` | `boolean` | Whether to enable Configure local livekit server. |
+| `services.lasuite-meet.livekit.keyFile` | `absolute path` | LiveKit key file holding one or multiple application secrets. Use `livekit-server generate-keys` to generate a random key name and secret. The file should have the YAML format `<keyname>: <secret>`. Example: `lasuite-meet: f6lQGaHtM5HfgZjIcec3cOCRfiDqIine4CpZZnqdT5cE` Individual key/secret pairs need to be passed to clients to connect to this instance. |
+| `services.lasuite-meet.livekit.openFirewall` | `boolean` | Whether to enable Open firewall ports for livekit. |
+| `services.lasuite-meet.livekit.settings` | `attribute set` | Settings to pass to the livekit server. See `services.livekit.settings` for more details. |
+| `services.lasuite-meet.package` | `package` | The lasuite-meet package to use. |
+| `services.lasuite-meet.postgresql.createLocally` | `boolean` | Whether to enable Configure local PostgreSQL database server for meet. |
+| `services.lasuite-meet.redis.createLocally` | `boolean` | Whether to enable Configure local Redis cache server for meet. |
+| `services.lasuite-meet.secretKeyPath` | `null or absolute path` | Path to the Django secret key. The key can be generated using: `python3 -c 'import secrets; print(secrets.token_hex())'` If not set, the secret key will be automatically generated. |
+| `services.lasuite-meet.settings` | `open submodule of lazy attribute set of (null or string or boolean or absolute path or signed integer)` | Configuration options of meet. See https://github.com/suitenumerique/meet/blob/v1.17.0/docs/env.md `REDIS_URL` and `CELERY_BROKER_URL` are set if `services.lasuite-meet.redis.createLocally` is true. `DB_NAME` `DB_USER` and `DB_HOST` are set if `services.lasuite-meet.postgresql.createLocally` is true. |
+| `services.lasuite-meet.settings.CELERY_BROKER_URL` | `null or string` | URL of the redis backend for celery |
+| `services.lasuite-meet.settings.DB_HOST` | `null or string` | Host of the database |
+| `services.lasuite-meet.settings.DB_NAME` | `string` | Name of the database |
+| `services.lasuite-meet.settings.DB_USER` | `string` | User of the database |
+| `services.lasuite-meet.settings.DJANGO_ALLOWED_HOSTS` | `string` | Comma-separated list of hosts that are able to connect to the server |
+| `services.lasuite-meet.settings.DJANGO_DATA_DIR` | `absolute path` | Path to the data directory |
+| `services.lasuite-meet.settings.DJANGO_SECRET_KEY_FILE` | `absolute path` | The path to the file containing Django's secret key |
+| `services.lasuite-meet.settings.LIVEKIT_API_URL` | `null or string` | URL to the livekit server |
+| `services.lasuite-meet.settings.REDIS_URL` | `null or string` | URL of the redis backend |

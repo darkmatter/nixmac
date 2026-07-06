@@ -5,10 +5,43 @@
 All options under `services.kanshi`.
 
 | Option | Type | Description |
-| ------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.kanshi.enable` | `boolean` | Whether to enable kanshi, a Wayland daemon that automatically configures outputs. |
-| `services.kanshi.extraConfig` | `strings concatenated with “\n”` | Extra configuration lines to append to the kanshi configuration file. |
+| `services.kanshi.extraConfig` | `strings concatenated with "\n"` | Extra configuration lines to append to the kanshi configuration file. |
 | `services.kanshi.package` | `package` | The kanshi package to use. |
 | `services.kanshi.profiles` | `attribute set of (submodule)` | Attribute set of profiles. |
+| `services.kanshi.profiles.<name>.exec` | `(list of string) or string convertible to it` | Commands executed after the profile is successfully applied. Note that if you provide multiple commands, they will be executed asynchronously with no guaranteed ordering. |
+| `services.kanshi.profiles.<name>.name` | `string` | Profile name |
+| `services.kanshi.profiles.<name>.outputs` | `list of (submodule)` | Outputs configuration. |
+| `services.kanshi.profiles.<name>.outputs.*.adaptiveSync` | `null or boolean` | Enables or disables adaptive synchronization (aka. Variable Refresh Rate). |
+| `services.kanshi.profiles.<name>.outputs.*.alias` | `null or string` | Defines an alias for the output |
+| `services.kanshi.profiles.<name>.outputs.*.criteria` | `string` | The criteria can either be an output name, an output description or "*". The latter can be used to match any output. On {manpage}`sway(1)`, output names and descriptions can be obtained via `swaymsg -t get_outputs`. |
+| `services.kanshi.profiles.<name>.outputs.*.mode` | `null or string` | \<width>x\<height>\[@\<rate>[Hz]\] Configures the specified output to use the specified mode. Modes are a combination of width and height (in pixels) and a refresh rate (in Hz) that your display can be configured to use. |
+| `services.kanshi.profiles.<name>.outputs.*.position` | `null or string` | \<x>,\<y> Places the output at the specified position in the global coordinates space. |
+| `services.kanshi.profiles.<name>.outputs.*.scale` | `null or floating point number` | Scales the output by the specified scale factor. |
+| `services.kanshi.profiles.<name>.outputs.*.status` | `null or one of "enable", "disable"` | Enables or disables the specified output. |
+| `services.kanshi.profiles.<name>.outputs.*.transform` | `null or one of "normal", "90", "180", "270", "flipped", "flipped-90", "flipped-180", "flipped-270"` | Sets the output transform. |
 | `services.kanshi.settings` | `list of attribute-tagged union with choices: include, output, profile` | Ordered list of directives. See kanshi(5) for information. |
+| `services.kanshi.settings.*.include` | `string` | Include as another file from _path_. Expands shell syntax (see *wordexp*(3) for details). |
+| `services.kanshi.settings.*.output` | `submodule` | output attribute set. |
+| `services.kanshi.settings.*.output.adaptiveSync` | `null or boolean` | Enables or disables adaptive synchronization (aka. Variable Refresh Rate). |
+| `services.kanshi.settings.*.output.alias` | `null or string` | Defines an alias for the output |
+| `services.kanshi.settings.*.output.criteria` | `string` | The criteria can either be an output name, an output description or "*". The latter can be used to match any output. On {manpage}`sway(1)`, output names and descriptions can be obtained via `swaymsg -t get_outputs`. |
+| `services.kanshi.settings.*.output.mode` | `null or string` | \<width>x\<height>\[@\<rate>[Hz]\] Configures the specified output to use the specified mode. Modes are a combination of width and height (in pixels) and a refresh rate (in Hz) that your display can be configured to use. |
+| `services.kanshi.settings.*.output.position` | `null or string` | \<x>,\<y> Places the output at the specified position in the global coordinates space. |
+| `services.kanshi.settings.*.output.scale` | `null or floating point number` | Scales the output by the specified scale factor. |
+| `services.kanshi.settings.*.output.status` | `null or one of "enable", "disable"` | Enables or disables the specified output. |
+| `services.kanshi.settings.*.output.transform` | `null or one of "normal", "90", "180", "270", "flipped", "flipped-90", "flipped-180", "flipped-270"` | Sets the output transform. |
+| `services.kanshi.settings.*.profile` | `submodule` | profile attribute set. |
+| `services.kanshi.settings.*.profile.exec` | `(list of string) or string convertible to it` | Commands executed after the profile is successfully applied. Note that if you provide multiple commands, they will be executed asynchronously with no guaranteed ordering. |
+| `services.kanshi.settings.*.profile.name` | `string` | Profile name |
+| `services.kanshi.settings.*.profile.outputs` | `list of (submodule)` | Outputs configuration. |
+| `services.kanshi.settings.*.profile.outputs.*.adaptiveSync` | `null or boolean` | Enables or disables adaptive synchronization (aka. Variable Refresh Rate). |
+| `services.kanshi.settings.*.profile.outputs.*.alias` | `null or string` | Defines an alias for the output |
+| `services.kanshi.settings.*.profile.outputs.*.criteria` | `string` | The criteria can either be an output name, an output description or "\*". The latter can be used to match any output. On {manpage}`sway(1)`, output names and descriptions can be obtained via `swaymsg -t get_outputs`. |
+| `services.kanshi.settings.*.profile.outputs.*.mode` | `null or string` | \<width>x\<height>\[@\<rate>[Hz]\] Configures the specified output to use the specified mode. Modes are a combination of width and height (in pixels) and a refresh rate (in Hz) that your display can be configured to use. |
+| `services.kanshi.settings.*.profile.outputs.*.position` | `null or string` | \<x>,\<y> Places the output at the specified position in the global coordinates space. |
+| `services.kanshi.settings.*.profile.outputs.*.scale` | `null or floating point number` | Scales the output by the specified scale factor. |
+| `services.kanshi.settings.*.profile.outputs.*.status` | `null or one of "enable", "disable"` | Enables or disables the specified output. |
+| `services.kanshi.settings.*.profile.outputs.*.transform` | `null or one of "normal", "90", "180", "270", "flipped", "flipped-90", "flipped-180", "flipped-270"` | Sets the output transform. |
 | `services.kanshi.systemdTarget` | `string` | Systemd target to bind to. |

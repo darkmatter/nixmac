@@ -5,76 +5,135 @@
 All options under `services.nginx`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---- | ----------- |
-| `services.nginx.additionalModules` | | |
-| `services.nginx.appendConfig` | | |
-| `services.nginx.appendHttpConfig` | | |
-| `services.nginx.clientMaxBodySize` | | |
-| `services.nginx.commonHttpConfig` | | |
-| `services.nginx.config` | | |
-| `services.nginx.defaultHTTPListenPort` | | |
-| `services.nginx.defaultListen` | | |
-| `services.nginx.defaultListenAddresses` | | |
-| `services.nginx.defaultMimeTypes` | | |
-| `services.nginx.defaultSSLListenPort` | | |
-| `services.nginx.enable` | | |
-| `services.nginx.enableQuicBPF` | | |
-| `services.nginx.enableReload` | | |
-| `services.nginx.eventsConfig` | | |
-| `services.nginx.experimentalZstdSettings` | | |
-| `services.nginx.gitweb.enable` | | |
-| `services.nginx.gitweb.group` | | |
-| `services.nginx.gitweb.location` | | |
-| `services.nginx.gitweb.user` | | |
-| `services.nginx.gitweb.virtualHost` | | |
-| `services.nginx.group` | | |
-| `services.nginx.httpConfig` | | |
-| `services.nginx.logError` | | |
-| `services.nginx.mapHashBucketSize` | | |
-| `services.nginx.mapHashMaxSize` | | |
-| `services.nginx.package` | | |
-| `services.nginx.preStart` | | |
-| `services.nginx.prependConfig` | | |
-| `services.nginx.proxyCache.enable` | | |
-| `services.nginx.proxyCache.inactive` | | |
-| `services.nginx.proxyCache.keysZoneName` | | |
-| `services.nginx.proxyCache.keysZoneSize` | | |
-| `services.nginx.proxyCache.levels` | | |
-| `services.nginx.proxyCache.useTempPath` | | |
-| `services.nginx.proxyCachePath` | | |
-| `services.nginx.proxyResolveWhileRunning` | | |
-| `services.nginx.proxyTimeout` | | |
-| `services.nginx.recommendedBrotliSettings` | | |
-| `services.nginx.recommendedGzipSettings` | | |
-| `services.nginx.recommendedOptimisation` | | |
-| `services.nginx.recommendedProxySettings` | | |
-| `services.nginx.recommendedTlsSettings` | | |
-| `services.nginx.recommendedUwsgiSettings` | | |
-| `services.nginx.recommendedZstdSettings` | | |
-| `services.nginx.resolver` | | |
-| `services.nginx.serverNamesHashBucketSize` | | |
-| `services.nginx.serverNamesHashMaxSize` | | |
-| `services.nginx.serverTokens` | | |
-| `services.nginx.sslCiphers` | | |
-| `services.nginx.sslDhparam` | | |
-| `services.nginx.sslProtocols` | | |
-| `services.nginx.sso.configuration` | | |
-| `services.nginx.sso.enable` | | |
-| `services.nginx.sso.package` | | |
-| `services.nginx.stateDir` | | |
-| `services.nginx.statusPage` | | |
-| `services.nginx.streamConfig` | | |
-| `services.nginx.tailscaleAuth.enable` | | |
-| `services.nginx.tailscaleAuth.expectedTailnet` | | |
-| `services.nginx.tailscaleAuth.group` | | |
-| `services.nginx.tailscaleAuth.package` | | |
-| `services.nginx.tailscaleAuth.socketPath` | | |
-| `services.nginx.tailscaleAuth.user` | | |
-| `services.nginx.tailscaleAuth.virtualHosts` | | |
-| `services.nginx.typesHashMaxSize` | | |
-| `services.nginx.upstreams` | | |
-| `services.nginx.user` | | |
-| `services.nginx.uwsgiResolveWhileRunning` | | |
-| `services.nginx.uwsgiTimeout` | | |
-| `services.nginx.validateConfigFile` | | |
-| `services.nginx.virtualHosts` | | |
+| --- | --- | --- |
+| `services.nginx.additionalModules` | `list of attribute set of anything` | Additional [third-party nginx modules](https://www.nginx.com/resources/wiki/modules/) to install. Packaged modules are available in `pkgs.nginxModules`. |
+| `services.nginx.appendConfig` | `strings concatenated with "\n"` | Configuration lines appended to the generated Nginx configuration file. Commonly used by different modules providing http snippets. {option}`appendConfig` can be specified more than once and its value will be concatenated (contrary to {option}`config` which can be set only once). |
+| `services.nginx.appendHttpConfig` | `strings concatenated with "\n"` | Configuration lines to be appended to the generated http block. This is mutually exclusive with using config and httpConfig for specifying the whole http block verbatim. |
+| `services.nginx.clientMaxBodySize` | `string` | Set nginx global client_max_body_size. |
+| `services.nginx.commonHttpConfig` | `strings concatenated with "\n"` | With nginx you must provide common http context definitions before they are used, e.g. log_format, resolver, etc. inside of server or location contexts. Use this attribute to set these definitions at the appropriate location. |
+| `services.nginx.config` | `string` | Verbatim {file}`nginx.conf` configuration. This is mutually exclusive to any other config option for {file}`nginx.conf` except for - [](#opt-services.nginx.appendConfig) - [](#opt-services.nginx.httpConfig) - [](#opt-services.nginx.logError) If additional verbatim config in addition to other options is needed, [](#opt-services.nginx.appendConfig) should be used instead. |
+| `services.nginx.defaultHTTPListenPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | If vhosts do not specify listen.port, use these ports for HTTP by default. |
+| `services.nginx.defaultListen` | `list of (submodule)` | If vhosts do not specify listen, use these addresses by default. This option takes precedence over {option}`defaultListenAddresses` and other listen-related defaults options. |
+| `services.nginx.defaultListen.*.addr` | `string` | IP address. |
+| `services.nginx.defaultListen.*.extraParameters` | `list of string` | Extra parameters of this listen directive. |
+| `services.nginx.defaultListen.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number. |
+| `services.nginx.defaultListen.*.proxyProtocol` | `boolean` | Enable PROXY protocol. |
+| `services.nginx.defaultListen.*.ssl` | `null or boolean` | Enable SSL. |
+| `services.nginx.defaultListenAddresses` | `list of string` | If vhosts do not specify listenAddresses, use these addresses by default. This is akin to writing `defaultListen = [ { addr = "0.0.0.0" } ]`. |
+| `services.nginx.defaultMimeTypes` | `absolute path` | Default MIME types for NGINX, as MIME types definitions from NGINX are very incomplete, we use by default the ones bundled in the mailcap package, used by most of the other Linux distributions. |
+| `services.nginx.defaultSSLListenPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | If vhosts do not specify listen.port, use these ports for SSL by default. |
+| `services.nginx.enable` | `boolean` | Whether to enable Nginx Web Server. |
+| `services.nginx.enableQuicBPF` | `boolean` | Enables routing of QUIC packets using eBPF. When enabled, this allows to support QUIC connection migration. The directive is only supported on Linux 5.7+. Note that enabling this option will make nginx run with extended capabilities that are usually limited to processes running as root namely `CAP_SYS_ADMIN` and `CAP_NET_ADMIN`. |
+| `services.nginx.enableReload` | `boolean` | Reload nginx when configuration file changes (instead of restart). The configuration file is exposed at {file}`/etc/nginx/nginx.conf`. See also `systemd.services.*.restartIfChanged`. |
+| `services.nginx.eventsConfig` | `strings concatenated with "\n"` | Configuration lines to be set inside the events block. |
+| `services.nginx.experimentalZstdSettings` | `boolean` | Enable alpha quality zstd module with recommended settings. Learn more about compression in Zstd format [here](https://github.com/tokers/zstd-nginx-module). This adds `pkgs.nginxModules.zstd` to `services.nginx.additionalModules`. |
+| `services.nginx.gitweb.enable` | `boolean` | If true, enable gitweb in nginx. |
+| `services.nginx.gitweb.group` | `string` | Group that the CGI process will belong to. (Set to `config.services.gitolite.group` if you are using gitolite.) |
+| `services.nginx.gitweb.location` | `string` | Location to serve gitweb on. |
+| `services.nginx.gitweb.user` | `string` | Existing user that the CGI process will belong to. (Default almost surely will do.) |
+| `services.nginx.gitweb.virtualHost` | `string` | VirtualHost to serve gitweb on. Default is catch-all. |
+| `services.nginx.group` | `string` | Group account under which nginx runs. |
+| `services.nginx.httpConfig` | `strings concatenated with "\n"` | Configuration lines to be set inside the http block. This is mutually exclusive with the structured configuration via virtualHosts and the recommendedXyzSettings configuration options. See appendHttpConfig for appending to the generated http block. |
+| `services.nginx.logError` | `string` | Configures logging. The first parameter defines a file that will store the log. The special value stderr selects the standard error file. Logging to syslog can be configured by specifying the “syslog:” prefix. The second parameter determines the level of logging, and can be one of the following: debug, info, notice, warn, error, crit, alert, or emerg. Log levels above are listed in the order of increasing severity. Setting a certain log level will cause all messages of the specified and more severe log levels to be logged. If this parameter is omitted then error is used. |
+| `services.nginx.mapHashBucketSize` | `null or (positive integer, meaning >0)` | Sets the bucket size for the map variables hash tables. Default value depends on the processor’s cache line size. Refer to [the nginx docs on hashes](https://nginx.org/en/docs/hash.html) for more information. |
+| `services.nginx.mapHashMaxSize` | `null or (positive integer, meaning >0)` | Sets the maximum size of the map variables hash tables. |
+| `services.nginx.package` | `package` | Nginx package to use. This defaults to the stable version. Note that the nginx team recommends to use the mainline version which available in nixpkgs as `nginxMainline`. Supported Nginx forks include `angie`, `openresty` and `tengine`. |
+| `services.nginx.preStart` | `strings concatenated with "\n"` | Shell commands executed before the service's nginx is started. |
+| `services.nginx.prependConfig` | `strings concatenated with "\n"` | Configuration lines prepended to the generated Nginx configuration file. Can for example be used to load modules. {option}`prependConfig` can be specified more than once and its value will be concatenated (contrary to {option}`config` which can be set only once). |
+| `services.nginx.proxyCachePath` | `attribute set of (submodule)` | Configure a proxy cache path entry. See <https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_cache_path> for documentation. |
+| `services.nginx.proxyCachePath.<name>.enable` | `boolean` | Whether to enable this proxy cache path entry. |
+| `services.nginx.proxyCachePath.<name>.inactive` | `string` | Cached data that has not been accessed for the time specified by the inactive parameter is removed from the cache, regardless of its freshness. |
+| `services.nginx.proxyCachePath.<name>.keysZoneName` | `string` | Set name to shared memory zone. |
+| `services.nginx.proxyCachePath.<name>.keysZoneSize` | `string` | Set size to shared memory zone. |
+| `services.nginx.proxyCachePath.<name>.levels` | `string` | The levels parameter defines structure of subdirectories in cache: from 1 to 3, each level accepts values 1 or 2. Can be used any combination of 1 and 2 in these formats: x, x:x and x:x:x. |
+| `services.nginx.proxyCachePath.<name>.maxSize` | `string` | Set maximum cache size |
+| `services.nginx.proxyCachePath.<name>.useTempPath` | `boolean` | Nginx first writes files that are destined for the cache to a temporary storage area, and the use_temp_path=off directive instructs Nginx to write them to the same directories where they will be cached. Recommended that you set this parameter to off to avoid unnecessary copying of data between file systems. |
+| `services.nginx.proxyResolveWhileRunning` | `boolean` | Resolves domains of proxyPass targets at runtime and not only at startup. This can be used as a workaround if nginx fails to start because of not-yet-working DNS. :::{.warn} `services.nginx.resolver` must be set for this option to work. ::: |
+| `services.nginx.proxyTimeout` | `string` | Change the proxy related timeouts in recommendedProxySettings. |
+| `services.nginx.recommendedBrotliSettings` | `boolean` | Enable recommended brotli settings. Learn more about compression in Brotli format [here](https://github.com/google/ngx_brotli/). This adds `pkgs.nginxModules.brotli` to `services.nginx.additionalModules`. |
+| `services.nginx.recommendedGzipSettings` | `boolean` | Enable recommended gzip settings. Learn more about compression in Gzip format [here](https://docs.nginx.com/nginx/admin-guide/web-server/compression/). |
+| `services.nginx.recommendedOptimisation` | `boolean` | Enable recommended optimisation settings. |
+| `services.nginx.recommendedProxySettings` | `boolean` | Whether to enable recommended proxy settings if a vhost does not specify the option manually. |
+| `services.nginx.recommendedTlsSettings` | `boolean` | Enable recommended TLS settings. |
+| `services.nginx.recommendedUwsgiSettings` | `boolean` | Whether to enable recommended uwsgi settings if a vhost does not specify the option manually. |
+| `services.nginx.resolver` | `submodule` | Configures name servers used to resolve names of upstream servers into addresses |
+| `services.nginx.resolver.addresses` | `list of string` | List of resolvers to use |
+| `services.nginx.resolver.ipv4` | `boolean` | By default, nginx will look up both IPv4 and IPv6 addresses while resolving. If looking up of IPv4 addresses is not desired, the ipv4=off parameter can be specified. |
+| `services.nginx.resolver.ipv6` | `boolean` | By default, nginx will look up both IPv4 and IPv6 addresses while resolving. If looking up of IPv6 addresses is not desired, the ipv6=off parameter can be specified. |
+| `services.nginx.resolver.valid` | `string` | By default, nginx caches answers using the TTL value of a response. An optional valid parameter allows overriding it |
+| `services.nginx.serverNamesHashBucketSize` | `null or (positive integer, meaning >0)` | Sets the bucket size for the server names hash tables. Default value depends on the processor’s cache line size. |
+| `services.nginx.serverNamesHashMaxSize` | `null or (positive integer, meaning >0)` | Sets the maximum size of the server names hash tables. |
+| `services.nginx.serverTokens` | `boolean` | Show nginx version in headers and error pages. |
+| `services.nginx.sslCiphers` | `null or string or list of string` | List of available cipher suites to choose from when negotiating TLS sessions. :::{.warn} This option only handles cipher suites up to TLSv1.2. Use `ssl_conf_command CipherSuites` to configure TLSv1.3 cipher suites. ::: |
+| `services.nginx.sslProtocols` | `string` | Allowed TLS protocol versions. |
+| `services.nginx.sso.configuration` | `YAML 1.1 value` | nginx-sso configuration ([documentation](https://github.com/Luzifer/nginx-sso/wiki/Main-Configuration)) as a Nix attribute set. Options containing secret data should be set to an attribute set with the singleton attribute `_secret` - a string value set to the path to the file containing the secret value which should be used in the configuration. |
+| `services.nginx.sso.enable` | `boolean` | Whether to enable nginx-sso service. |
+| `services.nginx.sso.package` | `package` | The nginx-sso package to use. |
+| `services.nginx.statusPage` | `boolean` | Enable status page reachable from localhost on http://127.0.0.1/nginx_status. |
+| `services.nginx.streamConfig` | `strings concatenated with "\n"` | Configuration lines to be set inside the stream block. |
+| `services.nginx.tailscaleAuth.enable` | `boolean` | Whether to enable tailscale.nginx-auth, to authenticate nginx users via tailscale. |
+| `services.nginx.tailscaleAuth.expectedTailnet` | `null or string` | If you want to prevent node sharing from allowing users to access services across tailnets, declare your expected tailnets domain here. |
+| `services.nginx.tailscaleAuth.group` | `string` | Alias of {option}`services.tailscaleAuth.group`. |
+| `services.nginx.tailscaleAuth.package` | `package` | Alias of {option}`services.tailscaleAuth.package`. |
+| `services.nginx.tailscaleAuth.socketPath` | `absolute path` | Alias of {option}`services.tailscaleAuth.socketPath`. |
+| `services.nginx.tailscaleAuth.user` | `string` | Alias of {option}`services.tailscaleAuth.user`. |
+| `services.nginx.tailscaleAuth.virtualHosts` | `list of string` | A list of nginx virtual hosts to put behind tailscale.nginx-auth |
+| `services.nginx.typesHashMaxSize` | `positive integer, meaning >0` | Sets the maximum size of the types hash tables (`types_hash_max_size`). It is recommended that the minimum size possible size is used. If {option}`recommendedOptimisation` is disabled, nginx would otherwise fail to start since the mailmap `mime.types` database has more entries than the nginx default value 1024. |
+| `services.nginx.upstreams` | `attribute set of (submodule)` | Defines a group of servers to use as proxy target. |
+| `services.nginx.upstreams.<name>.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the upstream verbatim. |
+| `services.nginx.upstreams.<name>.servers` | `attribute set of (open submodule of attribute set of (boolean or signed integer or string))` | Defines the address and other parameters of the upstream servers. See [the documentation](https://nginx.org/en/docs/http/ngx_http_upstream_module.html#server) for the available parameters. |
+| `services.nginx.upstreams.<name>.servers.<name>.backup` | `boolean` | Marks the server as a backup server. It will be passed requests when the primary servers are unavailable. |
+| `services.nginx.user` | `string` | User account under which nginx runs. |
+| `services.nginx.uwsgiResolveWhileRunning` | `boolean` | Resolves domains of uwsgi targets at runtime and not only at start, you have to set services.nginx.resolver, too. |
+| `services.nginx.uwsgiTimeout` | `string` | Change the uwsgi related timeouts in recommendedUwsgiSettings. |
+| `services.nginx.validateConfigFile` | `boolean` | Whether to enable validating configuration with pkgs.writeNginxConfig. |
+| `services.nginx.virtualHosts` | `attribute set of (submodule)` | Declarative vhost config |
+| `services.nginx.virtualHosts.<name>.acmeFallbackHost` | `null or string` | Host which to proxy requests to if ACME challenge is not found. Useful if you want multiple hosts to be able to verify the same domain name. With this option, you could request certificates for the present domain with an ACME client that is running on another host, which you would specify here. |
+| `services.nginx.virtualHosts.<name>.acmeRoot` | `null or string` | Directory for the ACME challenge, which is **public**. Don't put certs or keys in here. Set to null to inherit from config.security.acme. |
+| `services.nginx.virtualHosts.<name>.addSSL` | `boolean` | Whether to enable HTTPS in addition to plain HTTP. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443). |
+| `services.nginx.virtualHosts.<name>.basicAuth` | `attribute set of string` | Basic Auth protection for a vhost. WARNING: This is implemented to store the password in plain text in the Nix store. |
+| `services.nginx.virtualHosts.<name>.basicAuthFile` | `null or absolute path` | Basic Auth password file for a vhost. Can be created by running {command}`nix-shell --packages apacheHttpd --run 'htpasswd -B -c FILENAME USERNAME'`. |
+| `services.nginx.virtualHosts.<name>.default` | `boolean` | Makes this vhost the default. |
+| `services.nginx.virtualHosts.<name>.enableACME` | `boolean` | Whether to ask Let's Encrypt to sign a certificate for this vhost. Alternately, you can use an existing certificate through {option}`useACMEHost`. |
+| `services.nginx.virtualHosts.<name>.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the vhost verbatim. |
+| `services.nginx.virtualHosts.<name>.forceSSL` | `boolean` | Whether to add a separate nginx server block that redirects (defaults to 301, configurable with `redirectCode`) all plain HTTP traffic to HTTPS. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443), where the non-SSL listens are used for the redirect vhosts. |
+| `services.nginx.virtualHosts.<name>.globalRedirect` | `null or string` | If set, all requests for this host are redirected (defaults to 301, configurable with `redirectCode`) to the given hostname. |
+| `services.nginx.virtualHosts.<name>.http2` | `boolean` | Whether to enable the HTTP/2 protocol. Note that (as of writing) due to nginx's implementation, to disable HTTP/2 you have to disable it on all vhosts that use a given IP address / port. If there is one server block configured to enable http2, then it is enabled for all server blocks on this IP. See <https://stackoverflow.com/a/39466948/263061>. |
+| `services.nginx.virtualHosts.<name>.http3` | `boolean` | Whether to enable the HTTP/3 protocol. This requires activating the QUIC transport protocol `services.nginx.virtualHosts.<name>.quic = true;`. Note that HTTP/3 support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> HTTP/3 availability must be manually advertised, preferably in each location block. |
+| `services.nginx.virtualHosts.<name>.http3_hq` | `boolean` | Whether to enable the HTTP/0.9 protocol negotiation used in QUIC interoperability tests. This requires activating the QUIC transport protocol `services.nginx.virtualHosts.<name>.quic = true;`. Note that special application protocol support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> |
+| `services.nginx.virtualHosts.<name>.kTLS` | `boolean` | Whether to enable kTLS support. Implementing TLS in the kernel (kTLS) improves performance by significantly reducing the need for copying operations between user space and the kernel. Required Nginx version 1.21.4 or later. |
+| `services.nginx.virtualHosts.<name>.listen` | `list of (submodule)` | Listen addresses and ports for this virtual host. IPv6 addresses must be enclosed in square brackets. Note: this option overrides `addSSL` and `onlySSL`. If you only want to set the addresses manually and not the ports, take a look at `listenAddresses`. |
+| `services.nginx.virtualHosts.<name>.listen.*.addr` | `string` | Listen address. |
+| `services.nginx.virtualHosts.<name>.listen.*.extraParameters` | `list of string` | Extra parameters of this listen directive. |
+| `services.nginx.virtualHosts.<name>.listen.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number to listen on. If unset and the listen address is not a socket then nginx defaults to 80. |
+| `services.nginx.virtualHosts.<name>.listen.*.proxyProtocol` | `boolean` | Enable PROXY protocol. |
+| `services.nginx.virtualHosts.<name>.listen.*.ssl` | `boolean` | Enable SSL. |
+| `services.nginx.virtualHosts.<name>.listenAddresses` | `list of string` | Listen addresses for this virtual host. Compared to `listen` this only sets the addresses and the ports are chosen automatically. Note: This option overrides `networking.enableIPv6` |
+| `services.nginx.virtualHosts.<name>.locations` | `attribute set of (submodule)` | Declarative location config |
+| `services.nginx.virtualHosts.<name>.locations.<name>.alias` | `null or absolute path` | Alias directory for requests. |
+| `services.nginx.virtualHosts.<name>.locations.<name>.basicAuth` | `attribute set of string` | Basic Auth protection for a vhost. WARNING: This is implemented to store the password in plain text in the Nix store. |
+| `services.nginx.virtualHosts.<name>.locations.<name>.basicAuthFile` | `null or absolute path` | Basic Auth password file for a vhost. Can be created by running {command}`nix-shell --packages apacheHttpd --run 'htpasswd -B -c FILENAME USERNAME'`. |
+| `services.nginx.virtualHosts.<name>.locations.<name>.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the location verbatim. |
+| `services.nginx.virtualHosts.<name>.locations.<name>.fastcgiParams` | `attribute set of (string or absolute path)` | FastCGI parameters to override. Unlike in the Nginx configuration file, overriding only some default parameters won't unset the default values for other parameters. |
+| `services.nginx.virtualHosts.<name>.locations.<name>.index` | `null or string` | Adds index directive. |
+| `services.nginx.virtualHosts.<name>.locations.<name>.priority` | `signed integer` | Order of this location block in relation to the others in the vhost. The semantics are the same as with `lib.mkOrder`. Smaller values have a greater priority. |
+| `services.nginx.virtualHosts.<name>.locations.<name>.proxyPass` | `null or string` | Adds proxy_pass directive and sets recommended proxy headers if recommendedProxySettings is enabled. |
+| `services.nginx.virtualHosts.<name>.locations.<name>.proxyWebsockets` | `boolean` | Whether to support proxying websocket connections with HTTP/1.1. |
+| `services.nginx.virtualHosts.<name>.locations.<name>.recommendedProxySettings` | `boolean` | Enable recommended proxy settings. |
+| `services.nginx.virtualHosts.<name>.locations.<name>.recommendedUwsgiSettings` | `boolean` | Enable recommended uwsgi settings. |
+| `services.nginx.virtualHosts.<name>.locations.<name>.return` | `null or string or signed integer` | Adds a return directive, for e.g. redirections. |
+| `services.nginx.virtualHosts.<name>.locations.<name>.root` | `null or absolute path` | Root directory for requests. |
+| `services.nginx.virtualHosts.<name>.locations.<name>.tryFiles` | `null or string` | Adds try_files directive. |
+| `services.nginx.virtualHosts.<name>.locations.<name>.uwsgiPass` | `null or string` | Adds uwsgi_pass directive and sets recommended proxy headers if recommendedUwsgiSettings is enabled. |
+| `services.nginx.virtualHosts.<name>.onlySSL` | `boolean` | Whether to enable HTTPS and reject plain HTTP connections. This will set defaults for `listen` to listen on all interfaces on port 443. |
+| `services.nginx.virtualHosts.<name>.quic` | `boolean` | Whether to enable the QUIC transport protocol. Note that QUIC support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> |
+| `services.nginx.virtualHosts.<name>.redirectCode` | `integer between 300 and 399 (both inclusive)` | HTTP status used by `globalRedirect` and `forceSSL`. Possible usecases include temporary (302, 307) redirects, keeping the request method and body (307, 308), or explicitly resetting the method to GET (303). See <https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections>. |
+| `services.nginx.virtualHosts.<name>.rejectSSL` | `boolean` | Whether to listen for and reject all HTTPS connections to this vhost. Useful in [default](#opt-services.nginx.virtualHosts._name_.default) server blocks to avoid serving the certificate for another vhost. Uses the `ssl_reject_handshake` directive available in nginx versions 1.19.4 and above. |
+| `services.nginx.virtualHosts.<name>.reuseport` | `boolean` | Create an individual listening socket . It is required to specify only once on one of the hosts. |
+| `services.nginx.virtualHosts.<name>.root` | `null or absolute path` | The path of the web root directory. |
+| `services.nginx.virtualHosts.<name>.serverAliases` | `list of string` | Additional names of virtual hosts served by this virtual host configuration. |
+| `services.nginx.virtualHosts.<name>.serverName` | `null or string` | Name of this virtual host. Defaults to attribute name in virtualHosts. |
+| `services.nginx.virtualHosts.<name>.sslCertificate` | `absolute path` | Path to server SSL certificate. |
+| `services.nginx.virtualHosts.<name>.sslCertificateKey` | `absolute path` | Path to server SSL certificate key. |
+| `services.nginx.virtualHosts.<name>.sslTrustedCertificate` | `null or absolute path` | Path to root SSL certificate for stapling and client certificates. |
+| `services.nginx.virtualHosts.<name>.useACMEHost` | `null or string` | A host of an existing Let's Encrypt certificate to use. This is useful if you have many subdomains and want to avoid hitting the [rate limit](https://letsencrypt.org/docs/rate-limits). Alternately, you can generate a certificate through {option}`enableACME`. *Note that this option does not create any certificates, nor it does add subdomains to existing ones – you will need to create them manually using [](#opt-security.acme.certs).* |

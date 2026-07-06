@@ -5,17 +5,17 @@
 All options under `services.flarum`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.flarum.adminEmail` | | |
-| `services.flarum.adminUser` | | |
-| `services.flarum.baseUrl` | | |
-| `services.flarum.createDatabaseLocally` | | |
-| `services.flarum.database` | | |
-| `services.flarum.domain` | | |
-| `services.flarum.enable` | | |
-| `services.flarum.forumTitle` | | |
-| `services.flarum.group` | | |
-| `services.flarum.initialAdminPassword` | | |
-| `services.flarum.package` | | |
-| `services.flarum.stateDir` | | |
-| `services.flarum.user` | | |
+| --- | --- | --- |
+| `services.flarum.adminEmail` | `string` | Email for first web application administrator |
+| `services.flarum.adminUser` | `string` | Username for first web application administrator |
+| `services.flarum.baseUrl` | `string` | Change `domain` instead. |
+| `services.flarum.createDatabaseLocally` | `boolean` | Create the database and database user locally, and run installation. WARNING: Due to <https://github.com/flarum/framework/issues/4018>, this option is set to false by default. The 'flarum install' command may delete existing database tables. Only set this to true if you are certain you are working with a fresh, empty database. |
+| `services.flarum.database` | `attribute set of (string or boolean or signed integer)` | MySQL database parameters |
+| `services.flarum.domain` | `string` | Domain to serve on. |
+| `services.flarum.enable` | `boolean` | Whether to enable Flarum discussion platform. |
+| `services.flarum.forumTitle` | `string` | Title of the forum. |
+| `services.flarum.group` | `string` | System group to run Flarum |
+| `services.flarum.initialAdminPassword` | `string` | Initial password for the adminUser |
+| `services.flarum.package` | `package` | The flarum package to use. |
+| `services.flarum.stateDir` | `absolute path` | Home directory for writable storage |
+| `services.flarum.user` | `string` | System user to run Flarum |

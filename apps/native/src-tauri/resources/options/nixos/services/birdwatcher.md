@@ -5,8 +5,8 @@
 All options under `services.birdwatcher`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.birdwatcher.enable` | | |
-| `services.birdwatcher.flags` | | |
-| `services.birdwatcher.package` | | |
-| `services.birdwatcher.settings` | | |
+| --- | --- | --- |
+| `services.birdwatcher.enable` | `boolean` | Whether to enable Birdwatcher. |
+| `services.birdwatcher.flags` | `list of string` | Flags to append to the program call |
+| `services.birdwatcher.package` | `package` | The birdwatcher package to use. |
+| `services.birdwatcher.settings` | `strings concatenated with "\n"` | birdwatcher configuration, for configuration options see the example on [github](https://github.com/alice-lg/birdwatcher/blob/master/etc/birdwatcher/birdwatcher.conf) |

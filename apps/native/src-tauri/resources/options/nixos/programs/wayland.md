@@ -5,5 +5,5 @@
 All options under `programs.wayland`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `programs.wayland.miracle-wm.enable` | | |
+| --- | --- | --- |
+| `programs.wayland.miracle-wm.enable` | `boolean` | Whether to enable miracle-wm, a tiling Mir based Wayland compositor. You can manually launch miracle-wm by executing "exec miracle-wm" on a TTY, or launch it from a display manager. Consult the USERGUIDE.md at <https://github.com/mattkae/miracle-wm> for information on how to use & configure it . |

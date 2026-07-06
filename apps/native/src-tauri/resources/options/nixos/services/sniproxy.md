@@ -5,9 +5,8 @@
 All options under `services.sniproxy`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.sniproxy.config` | | |
-| `services.sniproxy.enable` | | |
-| `services.sniproxy.group` | | |
-| `services.sniproxy.logDir` | | |
-| `services.sniproxy.user` | | |
+| --- | --- | --- |
+| `services.sniproxy.config` | `strings concatenated with "\n"` | sniproxy.conf configuration excluding the daemon username and pid file. |
+| `services.sniproxy.enable` | `boolean` | Whether to enable sniproxy server. |
+| `services.sniproxy.group` | `string` | Group under which sniproxy runs. |
+| `services.sniproxy.user` | `string` | User account under which sniproxy runs. |

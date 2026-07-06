@@ -5,9 +5,9 @@
 All options under `services.go-neb`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.go-neb.baseUrl` | | |
-| `services.go-neb.bindAddress` | | |
-| `services.go-neb.config` | | |
-| `services.go-neb.enable` | | |
-| `services.go-neb.secretFile` | | |
+| --- | --- | --- |
+| `services.go-neb.baseUrl` | `string` | Public-facing endpoint that can receive webhooks. |
+| `services.go-neb.bindAddress` | `string` | Port (and optionally address) to listen on. |
+| `services.go-neb.config` | `YAML 1.1 value` | Your {file}`config.yaml` as a Nix attribute set. See [config.sample.yaml](https://github.com/matrix-org/go-neb/blob/master/config.sample.yaml) for possible options. |
+| `services.go-neb.enable` | `boolean` | Whether to enable an extensible matrix bot written in Go. |
+| `services.go-neb.secretFile` | `null or absolute path` | Environment variables from this file will be interpolated into the final config file using envsubst with this syntax: `$ENVIRONMENT` or `${VARIABLE}`. The file should contain lines formatted as `SECRET_VAR=SECRET_VALUE`. This is useful to avoid putting secrets into the nix store. |

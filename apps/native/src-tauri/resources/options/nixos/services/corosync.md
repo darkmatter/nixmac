@@ -5,9 +5,12 @@
 All options under `services.corosync`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.corosync.clusterName` | | |
-| `services.corosync.enable` | | |
-| `services.corosync.extraOptions` | | |
-| `services.corosync.nodelist` | | |
-| `services.corosync.package` | | |
+| --- | --- | --- |
+| `services.corosync.clusterName` | `string` | Name of the corosync cluster. |
+| `services.corosync.enable` | `boolean` | Whether to enable corosync. |
+| `services.corosync.extraOptions` | `list of string` | Additional options with which to start corosync. |
+| `services.corosync.nodelist` | `list of (submodule)` | Corosync nodelist: all cluster members. |
+| `services.corosync.nodelist.*.name` | `string` | Node name |
+| `services.corosync.nodelist.*.nodeid` | `signed integer` | Node ID number |
+| `services.corosync.nodelist.*.ring_addrs` | `list of string` | List of addresses, one for each ring. |
+| `services.corosync.package` | `package` | The corosync package to use. |

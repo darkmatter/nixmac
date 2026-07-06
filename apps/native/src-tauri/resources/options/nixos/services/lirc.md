@@ -5,8 +5,8 @@
 All options under `services.lirc`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.lirc.configs` | | |
-| `services.lirc.enable` | | |
-| `services.lirc.extraArguments` | | |
-| `services.lirc.options` | | |
+| --- | --- | --- |
+| `services.lirc.configs` | `list of strings concatenated with "\n"` | Configurations for lircd to load, see man:lircd.conf(5) for details ({file}`lircd.conf`) |
+| `services.lirc.enable` | `boolean` | Whether to enable the LIRC daemon, to receive and send infrared signals. |
+| `services.lirc.extraArguments` | `list of string` | Extra arguments to lircd. |
+| `services.lirc.options` | `strings concatenated with "\n"` | LIRC default options described in man:lircd(8) ({file}`lirc_options.conf`) |

@@ -5,7 +5,7 @@
 All options under `programs.pay-respects`.
 
 | Option | Type | Description |
-| ------------------------------------------------ | ------------------------------- | ------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.pay-respects.enable` | `boolean` | Whether to enable pay-respects. |
 | `programs.pay-respects.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.pay-respects.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
@@ -13,4 +13,4 @@ All options under `programs.pay-respects`.
 | `programs.pay-respects.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
 | `programs.pay-respects.options` | `list of string` | List of options to pass to pay-respects <shell>. |
 | `programs.pay-respects.package` | `package` | The pay-respects package to use. |
-| `programs.pay-respects.rules` | `attribute set of (TOML value)` | Runtime rule files written to $XDG_CONFIG_HOME/pay-respects/rules/<name>.toml . |
+| `programs.pay-respects.rules` | `attribute set of (TOML value)` | Runtime rule files written to {file}`$XDG_CONFIG_HOME/pay-respects/rules/<name>.toml`. Attribute names map to filenames. For example, setting `rules.cargo = { ... };` creates {file}`$XDG_CONFIG_HOME/pay-respects/rules/cargo.toml`. The filename must match the command name, except for `_PR_GENERAL`. See <https://github.com/iffse/pay-respects/blob/main/rules.md> for runtime rule syntax and behavior. Note that these rules are only applied when the runtime-rules module is available to `pay-respects`. |

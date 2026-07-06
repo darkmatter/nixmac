@@ -5,5 +5,5 @@
 All options under `services.liquidsoap`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.liquidsoap.streams` | | |
+| --- | --- | --- |
+| `services.liquidsoap.streams` | `attribute set of (absolute path or string)` | Set of Liquidsoap streams to start, one systemd service per stream. |

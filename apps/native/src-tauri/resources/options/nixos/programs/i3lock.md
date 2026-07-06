@@ -5,7 +5,7 @@
 All options under `programs.i3lock`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `programs.i3lock.enable` | | |
-| `programs.i3lock.package` | | |
-| `programs.i3lock.u2fSupport` | | |
+| --- | --- | --- |
+| `programs.i3lock.enable` | `boolean` | Whether to enable i3lock. |
+| `programs.i3lock.package` | `package` | The i3lock package to use. ::: {.note} The i3lock package must include a i3lock file or link in its out directory in order for the u2fSupport option to work correctly. ::: |
+| `programs.i3lock.u2fSupport` | `boolean` | Whether to enable U2F support in the i3lock program. U2F enables authentication using a hardware device, such as a security key. When U2F support is enabled, the i3lock program will set the setuid bit on the i3lock binary and enable the pam u2f service, |

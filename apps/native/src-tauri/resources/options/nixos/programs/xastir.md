@@ -5,5 +5,5 @@
 All options under `programs.xastir`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `programs.xastir.enable` | | |
+| --- | --- | --- |
+| `programs.xastir.enable` | `boolean` | Whether to enable Xastir Graphical APRS client. |

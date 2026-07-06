@@ -5,21 +5,19 @@
 All options under `services.postgrey`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.postgrey.IPv4CIDR` | | |
-| `services.postgrey.IPv6CIDR` | | |
-| `services.postgrey.autoWhitelist` | | |
-| `services.postgrey.delay` | | |
-| `services.postgrey.enable` | | |
-| `services.postgrey.greylistAction` | | |
-| `services.postgrey.greylistHeader` | | |
-| `services.postgrey.greylistText` | | |
-| `services.postgrey.inetAddr` | | |
-| `services.postgrey.inetPort` | | |
-| `services.postgrey.lookupBySubnet` | | |
-| `services.postgrey.maxAge` | | |
-| `services.postgrey.privacy` | | |
-| `services.postgrey.retryWindow` | | |
-| `services.postgrey.socket` | | |
-| `services.postgrey.whitelistClients` | | |
-| `services.postgrey.whitelistRecipients` | | |
+| --- | --- | --- |
+| `services.postgrey.IPv4CIDR` | `unsigned integer, meaning >=0` | Strip N bits from IPv4 addresses if lookupBySubnet is true |
+| `services.postgrey.IPv6CIDR` | `unsigned integer, meaning >=0` | Strip N bits from IPv6 addresses if lookupBySubnet is true |
+| `services.postgrey.autoWhitelist` | `null or (positive integer, meaning >0)` | Whitelist clients after successful delivery of N messages |
+| `services.postgrey.delay` | `unsigned integer, meaning >=0` | Greylist for N seconds |
+| `services.postgrey.enable` | `boolean` | Whether to run the Postgrey daemon |
+| `services.postgrey.greylistAction` | `string` | Response status for greylisted messages (see {manpage}`access(5)`) |
+| `services.postgrey.greylistHeader` | `string` | Prepend header to greylisted mails; use %%t for seconds delayed due to greylisting, %%v for the version of postgrey, %%d for the date, and %%h for the host |
+| `services.postgrey.greylistText` | `string` | Response status text for greylisted messages; use %%s for seconds left until greylisting is over and %%r for mail domain of recipient |
+| `services.postgrey.lookupBySubnet` | `boolean` | Strip the last N bits from IP addresses, determined by IPv4CIDR and IPv6CIDR |
+| `services.postgrey.maxAge` | `unsigned integer, meaning >=0` | Delete entries from whitelist if they haven't been seen for N days |
+| `services.postgrey.privacy` | `boolean` | Store data using one-way hash functions (SHA1) |
+| `services.postgrey.retryWindow` | `string or (unsigned integer, meaning >=0)` | Allow N days for the first retry. Use string with appended 'h' to specify time in hours |
+| `services.postgrey.socket` | `(submodule) or (submodule)` | Socket to bind to |
+| `services.postgrey.whitelistClients` | `list of absolute path` | Client address whitelist files (see {manpage}`postgrey(8)`) |
+| `services.postgrey.whitelistRecipients` | `list of absolute path` | Recipient address whitelist files (see {manpage}`postgrey(8)`) |

@@ -5,6 +5,6 @@
 All options under `services.psd`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.psd.enable` | | |
-| `services.psd.resyncTimer` | | |
+| --- | --- | --- |
+| `services.psd.enable` | `boolean` | Whether to enable the Profile Sync daemon. |
+| `services.psd.resyncTimer` | `string` | The amount of time to wait before syncing browser profiles back to the disk. Takes a systemd.unit time span. The time unit defaults to seconds if omitted. |

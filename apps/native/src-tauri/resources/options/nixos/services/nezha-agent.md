@@ -5,23 +5,22 @@
 All options under `services.nezha-agent`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.nezha-agent.clientSecretFile` | | |
-| `services.nezha-agent.debug` | | |
-| `services.nezha-agent.disableCommandExecute` | | |
-| `services.nezha-agent.disableNat` | | |
-| `services.nezha-agent.disableSendQuery` | | |
-| `services.nezha-agent.enable` | | |
-| `services.nezha-agent.extraFlags` | | |
-| `services.nezha-agent.genUuid` | | |
-| `services.nezha-agent.gpu` | | |
-| `services.nezha-agent.package` | | |
-| `services.nezha-agent.passwordFile` | | |
-| `services.nezha-agent.reportDelay` | | |
-| `services.nezha-agent.server` | | |
-| `services.nezha-agent.settings` | | |
-| `services.nezha-agent.skipConnection` | | |
-| `services.nezha-agent.skipProcess` | | |
-| `services.nezha-agent.temperature` | | |
-| `services.nezha-agent.tls` | | |
-| `services.nezha-agent.useIPv6CountryCode` | | |
+| --- | --- | --- |
+| `services.nezha-agent.clientSecretFile` | `null or absolute path` | Path to the file contained the client_secret of the dashboard. |
+| `services.nezha-agent.debug` | `boolean` | Whether to enable verbose log. |
+| `services.nezha-agent.enable` | `boolean` | Whether to enable Agent of Nezha Monitoring. |
+| `services.nezha-agent.genUuid` | `boolean` | Whether to generate uuid from fqdn automatically. Please note that changes in hostname/domain will result in different uuid. |
+| `services.nezha-agent.package` | `package` | The nezha-agent package to use. |
+| `services.nezha-agent.settings` | `open submodule of (JSON value)` | Generate to {file}`config.json` as a Nix attribute set. Check the [guide](https://nezha.wiki/en_US/guide/agent.html) for possible options. |
+| `services.nezha-agent.settings.disable_command_execute` | `boolean` | Disable executing the command from dashboard. |
+| `services.nezha-agent.settings.disable_nat` | `boolean` | Disable NAT penetration. |
+| `services.nezha-agent.settings.disable_send_query` | `boolean` | Disable sending TCP/ICMP/HTTP requests. |
+| `services.nezha-agent.settings.gpu` | `boolean` | Enable GPU monitoring. |
+| `services.nezha-agent.settings.report_delay` | `integer between 1 and 4 (both inclusive)` | The interval between system status reportings. The value must be an integer from 1 to 4. |
+| `services.nezha-agent.settings.server` | `string` | Address to the dashboard. |
+| `services.nezha-agent.settings.skip_connection_count` | `boolean` | Do not monitor the number of connections. |
+| `services.nezha-agent.settings.skip_procs_count` | `boolean` | Do not monitor the number of processes. |
+| `services.nezha-agent.settings.temperature` | `boolean` | Enable temperature monitoring. |
+| `services.nezha-agent.settings.tls` | `boolean` | Enable SSL/TLS encryption. |
+| `services.nezha-agent.settings.use_ipv6_country_code` | `boolean` | Use ipv6 countrycode to report location. |
+| `services.nezha-agent.settings.uuid` | `null or string` | Must be set to a unique identifier, preferably a UUID according to RFC 4122. UUIDs can be generated with `uuidgen` command, found in the `util-linux` package. Set {option}`services.nezha-agent.genUuid` to true to generate uuid from {option}`networking.fqdn` automatically. |

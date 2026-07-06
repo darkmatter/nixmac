@@ -5,7 +5,7 @@
 All options under `services.jotta-cli`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.jotta-cli.enable` | | |
-| `services.jotta-cli.options` | | |
-| `services.jotta-cli.package` | | |
+| --- | --- | --- |
+| `services.jotta-cli.enable` | `boolean` | Whether to enable Jottacloud Command-line Tool. |
+| `services.jotta-cli.options` | `list of string` | Command-line options passed to jottad. |
+| `services.jotta-cli.package` | `package` | The jotta-cli package to use. |

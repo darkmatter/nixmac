@@ -5,6 +5,6 @@
 All options under `services.create_ap`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.create_ap.enable` | | |
-| `services.create_ap.settings` | | |
+| --- | --- | --- |
+| `services.create_ap.enable` | `boolean` | Whether to enable setting up wifi hotspots using create_ap. |
+| `services.create_ap.settings` | `attribute set of (signed integer or boolean or string)` | Configuration for `create_ap`. See [upstream example configuration](https://raw.githubusercontent.com/lakinduakash/linux-wifi-hotspot/master/src/scripts/create_ap.conf) for supported values. |

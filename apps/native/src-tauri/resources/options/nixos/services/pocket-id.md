@@ -5,12 +5,15 @@
 All options under `services.pocket-id`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.pocket-id.credentials` | | |
-| `services.pocket-id.dataDir` | | |
-| `services.pocket-id.enable` | | |
-| `services.pocket-id.environmentFile` | | |
-| `services.pocket-id.group` | | |
-| `services.pocket-id.package` | | |
-| `services.pocket-id.settings` | | |
-| `services.pocket-id.user` | | |
+| --- | --- | --- |
+| `services.pocket-id.credentials` | `attribute set of absolute path` | Environment variables which are loaded from the contents of the specified file paths. This can be used to securely store tokens and secrets outside of the world-readable Nix store. See [PocketID environment variables](https://pocket-id.org/docs/configuration/environment-variables). Alternatively you can use `services.pocket-id.environmentFile` to define all the variables in a single file. |
+| `services.pocket-id.dataDir` | `absolute path` | The directory where Pocket ID will store its data, such as the database when using SQLite. |
+| `services.pocket-id.enable` | `boolean` | Whether to enable Pocket ID server. |
+| `services.pocket-id.environmentFile` | `absolute path` | Path to an environment file to be loaded. This can be used to securely store tokens and secrets outside of the world-readable Nix store. See [PocketID environment variables](https://pocket-id.org/docs/configuration/environment-variables). Example contents of the file: MAXMIND_LICENSE_KEY=your-license-key Alternatively you can use `services.pocket-id.credentials` to define each variable in separate files. |
+| `services.pocket-id.group` | `string` | Group account under which Pocket ID runs. |
+| `services.pocket-id.package` | `package` | The pocket-id package to use. |
+| `services.pocket-id.settings` | `open submodule of attribute set of (atom (null, bool, int, float or string))` | Environment variables to be passed. See [PocketID environment variables](https://pocket-id.org/docs/configuration/environment-variables). |
+| `services.pocket-id.settings.ANALYTICS_DISABLED` | `boolean` | Whether to disable analytics. See the [analytics documentation](https://pocket-id.org/docs/configuration/analytics/). |
+| `services.pocket-id.settings.APP_URL` | `string` | The URL where you will access the app. |
+| `services.pocket-id.settings.TRUST_PROXY` | `boolean` | Whether the app is behind a reverse proxy. |
+| `services.pocket-id.user` | `string` | User account under which Pocket ID runs. |

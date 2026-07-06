@@ -5,6 +5,6 @@
 All options under `services.netclient`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.netclient.enable` | | |
-| `services.netclient.package` | | |
+| --- | --- | --- |
+| `services.netclient.enable` | `boolean` | Whether to enable Netclient Daemon. |
+| `services.netclient.package` | `package` | The netclient package to use. |

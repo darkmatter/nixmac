@@ -5,31 +5,33 @@
 All options under `services.cassandra`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---- | ----------- |
-| `services.cassandra.allowClients` | | |
-| `services.cassandra.clusterName` | | |
-| `services.cassandra.enable` | | |
-| `services.cassandra.extraConfig` | | |
-| `services.cassandra.extraEnvSh` | | |
-| `services.cassandra.fullRepairInterval` | | |
-| `services.cassandra.fullRepairOptions` | | |
-| `services.cassandra.group` | | |
-| `services.cassandra.heapNewSize` | | |
-| `services.cassandra.homeDir` | | |
-| `services.cassandra.incrementalRepairInterval` | | |
-| `services.cassandra.incrementalRepairOptions` | | |
-| `services.cassandra.jmxPort` | | |
-| `services.cassandra.jmxRoles` | | |
-| `services.cassandra.jmxRolesFile` | | |
-| `services.cassandra.jvmOpts` | | |
-| `services.cassandra.listenAddress` | | |
-| `services.cassandra.listenInterface` | | |
-| `services.cassandra.logbackConfig` | | |
-| `services.cassandra.mallocArenaMax` | | |
-| `services.cassandra.maxHeapSize` | | |
-| `services.cassandra.package` | | |
-| `services.cassandra.remoteJmx` | | |
-| `services.cassandra.rpcAddress` | | |
-| `services.cassandra.rpcInterface` | | |
-| `services.cassandra.seedAddresses` | | |
-| `services.cassandra.user` | | |
+| --- | --- | --- |
+| `services.cassandra.allowClients` | `boolean` | Enables or disables the native transport server (CQL binary protocol). This server uses the same address as the {option}`rpcAddress`, but the port it uses is not `rpc_port` but `native_transport_port`. See the official Cassandra docs for more information on these variables and set them using {option}`extraConfig`. |
+| `services.cassandra.clusterName` | `string` | The name of the cluster. This setting prevents nodes in one logical cluster from joining another. All nodes in a cluster must have the same value. |
+| `services.cassandra.enable` | `boolean` | Whether to enable Apache Cassandra – Scalable and highly available database . |
+| `services.cassandra.extraConfig` | `attribute set` | Extra options to be merged into {file}`cassandra.yaml` as nix attribute set. |
+| `services.cassandra.extraEnvSh` | `strings concatenated with "\n"` | Extra shell lines to be appended onto {file}`cassandra-env.sh`. |
+| `services.cassandra.fullRepairInterval` | `null or string` | Set the interval how often full repairs are run, i.e. {command}`nodetool repair --full` is executed. See <https://cassandra.apache.org/doc/latest/operating/repair.html> for more information. Set to `null` to disable full repairs. |
+| `services.cassandra.fullRepairOptions` | `list of string` | Options passed through to the full repair command. |
+| `services.cassandra.group` | `string` | Run Apache Cassandra under this group. |
+| `services.cassandra.heapNewSize` | `null or string` | Must be left blank or set together with {option}`heapNewSize`. If left blank a sensible value for the available amount of RAM and CPU cores is calculated. Override to set the amount of memory to allocate to the JVM at start-up. For production use you may wish to adjust this for your environment. `HEAP_NEWSIZE` refers to the size of the young generation. The main trade-off for the young generation is that the larger it is, the longer GC pause times will be. The shorter it is, the more expensive GC will be (usually). The example `HEAP_NEWSIZE` assumes a modern 8-core+ machine for decent pause times. If in doubt, and if you do not particularly want to tweak, go with 100 MB per physical CPU core. |
+| `services.cassandra.homeDir` | `absolute path` | Home directory for Apache Cassandra. |
+| `services.cassandra.incrementalRepairInterval` | `null or string` | Set the interval how often incremental repairs are run, i.e. {command}`nodetool repair` is executed. See <https://cassandra.apache.org/doc/latest/operating/repair.html> for more information. Set to `null` to disable incremental repairs. |
+| `services.cassandra.incrementalRepairOptions` | `list of string` | Options passed through to the incremental repair command. |
+| `services.cassandra.jmxPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Specifies the default port over which Cassandra will be available for JMX connections. For security reasons, you should not expose this port to the internet. Firewall it if needed. |
+| `services.cassandra.jmxRoles` | `list of (submodule)` | Roles that are allowed to access the JMX (e.g. {command}`nodetool`) BEWARE: The passwords will be stored world readable in the nix store. It's recommended to use your own protected file using {option}`jmxRolesFile` Doesn't work in versions older than 3.11 because they don't like that it's world readable. |
+| `services.cassandra.jmxRoles.*.password` | `string` | Password for JMX |
+| `services.cassandra.jmxRoles.*.username` | `string` | Username for JMX |
+| `services.cassandra.jmxRolesFile` | `null or absolute path` | Specify your own jmx roles file. |
+| `services.cassandra.jvmOpts` | `list of string` | Populate the `JVM_OPT` environment variable. |
+| `services.cassandra.listenAddress` | `null or string` | Address or interface to bind to and tell other Cassandra nodes to connect to. You _must_ change this if you want multiple nodes to be able to communicate! Set {option}`listenAddress` OR {option}`listenInterface`, not both. Leaving it blank leaves it up to `InetAddress.getLocalHost()`. This will always do the "Right Thing" _if_ the node is properly configured (hostname, name resolution, etc), and the Right Thing is to use the address associated with the hostname (it might not be). Setting {option}`listenAddress` to `0.0.0.0` is always wrong. |
+| `services.cassandra.listenInterface` | `null or string` | Set `listenAddress` OR `listenInterface`, not both. Interfaces must correspond to a single address, IP aliasing is not supported. |
+| `services.cassandra.logbackConfig` | `strings concatenated with "\n"` | XML logback configuration for cassandra |
+| `services.cassandra.mallocArenaMax` | `null or signed integer` | Set this to control the amount of arenas per-thread in glibc. |
+| `services.cassandra.maxHeapSize` | `null or string` | Must be left blank or set together with {option}`heapNewSize`. If left blank a sensible value for the available amount of RAM and CPU cores is calculated. Override to set the amount of memory to allocate to the JVM at start-up. For production use you may wish to adjust this for your environment. `MAX_HEAP_SIZE` is the total amount of memory dedicated to the Java heap. `HEAP_NEWSIZE` refers to the size of the young generation. The main trade-off for the young generation is that the larger it is, the longer GC pause times will be. The shorter it is, the more expensive GC will be (usually). |
+| `services.cassandra.package` | `package` | The cassandra package to use. |
+| `services.cassandra.remoteJmx` | `boolean` | Cassandra ships with JMX accessible *only* from localhost. To enable remote JMX connections set to true. Be sure to also enable authentication and/or TLS. See: <https://wiki.apache.org/cassandra/JmxSecurity> |
+| `services.cassandra.rpcAddress` | `null or string` | The address or interface to bind the native transport server to. Set {option}`rpcAddress` OR {option}`rpcInterface`, not both. Leaving {option}`rpcAddress` blank has the same effect as on {option}`listenAddress` (i.e. it will be based on the configured hostname of the node). Note that unlike {option}`listenAddress`, you can specify `"0.0.0.0"`, but you must also set `extraConfig.broadcast_rpc_address` to a value other than `"0.0.0.0"`. For security reasons, you should not expose this port to the internet. Firewall it if needed. |
+| `services.cassandra.rpcInterface` | `null or string` | Set {option}`rpcAddress` OR {option}`rpcInterface`, not both. Interfaces must correspond to a single address, IP aliasing is not supported. |
+| `services.cassandra.seedAddresses` | `list of string` | The addresses of hosts designated as contact points in the cluster. A joining node contacts one of the nodes in the seeds list to learn the topology of the ring. Set to `[ "127.0.0.1" ]` for a single node cluster. |
+| `services.cassandra.user` | `string` | Run Apache Cassandra under this user. |

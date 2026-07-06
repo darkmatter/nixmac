@@ -5,13 +5,14 @@
 All options under `programs.vicinae`.
 
 | Option | Type | Description |
-| ------------------------------------ | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| --- | --- | --- |
 | `programs.vicinae.enable` | `boolean` | Whether to enable vicinae launcher daemon. |
-| `programs.vicinae.extensions` | `list of package` | List of Vicinae extensions to install. |
+| `programs.vicinae.enableFirefoxIntegration` | `unspecified value` | Whether to install the messaging host so that the firefox extension <https://addons.mozilla.org/en-US/firefox/addon/vicinae/> works. |
+| `programs.vicinae.extensions` | `list of package` | List of Vicinae extensions to install. You can use the `config.lib.vicinae.mkExtension` and `config.lib.vicinae.mkRayCastExtension` functions to create them, like: `nix  [   (config.lib.vicinae.mkExtension {     name = "test-extension";     npmDepsHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";     src =       pkgs.fetchFromGitHub {         owner = "schromp";         repo = "vicinae-extensions";         rev = "f8be5c89393a336f773d679d22faf82d59631991";         sha256 = "sha256-zk7WIJ19ITzRFnqGSMtX35SgPGq0Z+M+f7hJRbyQugw=";       }       + "/test-extension";   })   (config.lib.vicinae.mkRayCastExtension {     name = "gif-search";     sha256 = "sha256-G7il8T1L+P/2mXWJsb68n4BCbVKcrrtK8GnBNxzt73Q=";     rev = "4d417c2dfd86a5b2bea202d4a7b48d8eb3dbaeb1";     npmDepsHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";   })   (config.lib.vicinae.mkRayCastExtension {     name = "my-local-raycast-extension";     src = ./extensions/my-local-raycast-extension;   })  ],   ` Set `npmDepsHash` when `src` is produced by a fetcher such as `pkgs.fetchFromGitHub` or `pkgs.fetchgit`; otherwise dependency import reads `package-lock.json` from the fetched source during evaluation. |
 | `programs.vicinae.package` | `null or package` | The vicinae package to use. |
-| `programs.vicinae.settings` | `JSON value` | Settings written as JSON to ~/.config/vicinae/settings.json . See vicinae config default . |
+| `programs.vicinae.settings` | `JSON value` | Settings written as JSON to {file}`~/.config/vicinae/settings.json`. See {command}`vicinae config default`. |
 | `programs.vicinae.systemd.autoStart` | `boolean` | If the vicinae daemon should be started automatically |
 | `programs.vicinae.systemd.enable` | `boolean` | Whether to enable vicinae systemd integration. |
 | `programs.vicinae.systemd.target` | `string` | The systemd target that will automatically start the vicinae service. |
-| `programs.vicinae.themes` | `TOML value` | Theme settings to add to the themes folder in ~/.config/vicinae/themes . See https://docs.vicinae.com/theming/getting-started for supported values. |
+| `programs.vicinae.themes` | `TOML value` | Theme settings to add to the themes folder in `~/.config/vicinae/themes`. See <https://docs.vicinae.com/theming/getting-started> for supported values. The attribute name of the theme will be the name of theme file, e.g. `base16-default-dark` will be `base16-default-dark.toml` (or `.json` if vicinae version is < 0.15.0). |
 | `programs.vicinae.useLayerShell` | `boolean` | Whether vicinae should use the layer shell. If you are using version 0.17 or newer, you should use {option}.programs.vicinae.settings.launcher_window.layer_shell.enabled = false instead. |

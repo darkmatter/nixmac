@@ -5,14 +5,14 @@
 All options under `services.esphome`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.esphome.address` | | |
-| `services.esphome.allowedDevices` | | |
-| `services.esphome.enable` | | |
-| `services.esphome.enableUnixSocket` | | |
-| `services.esphome.environment` | | |
-| `services.esphome.environmentFile` | | |
-| `services.esphome.openFirewall` | | |
-| `services.esphome.package` | | |
-| `services.esphome.port` | | |
-| `services.esphome.usePing` | | |
+| --- | --- | --- |
+| `services.esphome.address` | `string` | esphome address |
+| `services.esphome.allowedDevices` | `list of string` | A list of device nodes to which {command}`esphome` has access to. Refer to DeviceAllow in {manpage}`systemd.resource-control(5)` for more information. Beware that if a device is referred to by an absolute path instead of a device category, it will only allow devices that already are plugged in when the service is started. |
+| `services.esphome.enable` | `boolean` | Whether to enable esphome, for making custom firmwares for ESP32/ESP8266. |
+| `services.esphome.enableUnixSocket` | `boolean` | Listen on a unix socket `/run/esphome/esphome.sock` instead of the TCP port. |
+| `services.esphome.environment` | `attribute set of string` | Extra environment variables to pass to ESPHome. Secrets should be passed using the {option}`services.esphome.environmentFile` option. |
+| `services.esphome.environmentFile` | `null or absolute path` | Path to an environment file. Use this option for setting the dashboard password. |
+| `services.esphome.openFirewall` | `boolean` | Whether to open the firewall for the specified port. |
+| `services.esphome.package` | `package` | The esphome package to use. |
+| `services.esphome.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | esphome port |
+| `services.esphome.usePing` | `boolean` | Use ping to check online status of devices instead of mDNS |

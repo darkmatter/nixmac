@@ -5,15 +5,28 @@
 All options under `services.n8n`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `services.n8n.customNodes` | | |
-| `services.n8n.enable` | | |
-| `services.n8n.environment` | | |
-| `services.n8n.openFirewall` | | |
-| `services.n8n.package` | | |
-| `services.n8n.settings` | | |
-| `services.n8n.taskRunners.enable` | | |
-| `services.n8n.taskRunners.environment` | | |
-| `services.n8n.taskRunners.launcherPackage` | | |
-| `services.n8n.taskRunners.runners` | | |
-| `services.n8n.webhookUrl` | | |
+| --- | --- | --- |
+| `services.n8n.customNodes` | `list of package` | List of custom n8n community node packages to load. Each package is expected to be an npm package with an `n8n.nodes` entry in its `package.json`. The packages are made available to n8n via the `N8N_CUSTOM_EXTENSIONS` environment variable. |
+| `services.n8n.enable` | `boolean` | Whether to enable n8n server. |
+| `services.n8n.environment` | `open submodule of attribute set of (string or (string or signed integer convertible to it) or (string or boolean convertible to it))` | Environment variables to pass to the n8n service. See <https://docs.n8n.io/hosting/configuration/environment-variables/> for available options. Environment variables ending with `_FILE` are automatically handled as secrets: they are loaded via systemd credentials for secure access with `DynamicUser=true`. This can be useful to pass secrets via tools like `agenix` or `sops-nix`. |
+| `services.n8n.environment.GENERIC_TIMEZONE` | `null or string` | The n8n instance timezone. Important for schedule nodes (such as Cron). |
+| `services.n8n.environment.N8N_DIAGNOSTICS_ENABLED` | `string or boolean convertible to it` | Whether to share selected, anonymous telemetry with n8n. Note that if you set this to false, you can't enable Ask AI in the Code node. |
+| `services.n8n.environment.N8N_PORT` | `string or 16 bit unsigned integer; between 0 and 65535 (both inclusive) convertible to it` | The HTTP port n8n runs on. |
+| `services.n8n.environment.N8N_RUNNERS_AUTH_TOKEN_FILE` | `null or absolute path` | Path to a file containing the shared authentication token used between the n8n server (task broker) and the task runners. This option is required when {option}`services.n8n.taskRunners.enable` is true. The file should be readable by the service and not stored in the Nix store. Use tools like `agenix` or `sops-nix` to manage this secret. |
+| `services.n8n.environment.N8N_RUNNERS_BROKER_LISTEN_ADDRESS` | `string` | Address the task broker listens on. |
+| `services.n8n.environment.N8N_RUNNERS_BROKER_PORT` | `string or 16 bit unsigned integer; between 0 and 65535 (both inclusive) convertible to it` | Port the task broker listens on for task runner connections. |
+| `services.n8n.environment.N8N_USER_FOLDER` | `absolute path` | Provide the path where n8n will create the .n8n folder. This directory stores user-specific data, such as database file and encryption key. |
+| `services.n8n.environment.N8N_VERSION_NOTIFICATIONS_ENABLED` | `string or boolean convertible to it` | When enabled, n8n sends notifications of new versions and security updates. |
+| `services.n8n.openFirewall` | `boolean` | Open ports in the firewall for the n8n web interface. |
+| `services.n8n.package` | `package` | The n8n package to use. |
+| `services.n8n.taskRunners.enable` | `boolean` | Whether to enable n8n task runners for sandboxed Code node execution. |
+| `services.n8n.taskRunners.environment` | `open submodule of attribute set of (string or (string or signed integer convertible to it) or (string or boolean convertible to it))` | Environment variables for the task runner launcher and runners. These are common to all runners and passed via `allowed-env` in the launcher config. See <https://docs.n8n.io/hosting/configuration/environment-variables/task-runners/> for available options. Environment variables ending with `_FILE` are automatically handled as secrets: they are loaded via systemd credentials for secure access with `DynamicUser=true`. Note: The authentication token should be set via {option}`services.n8n.environment.N8N_RUNNERS_AUTH_TOKEN_FILE`. |
+| `services.n8n.taskRunners.environment.N8N_RUNNERS_AUTH_TOKEN_FILE` | `null or absolute path` | Path to the authentication token file for the task runner. |
+| `services.n8n.taskRunners.environment.N8N_RUNNERS_TASK_BROKER_URI` | `string` | URI of the n8n task broker that the runner connects to. |
+| `services.n8n.taskRunners.launcherPackage` | `package` | The n8n-task-runner-launcher package to use. |
+| `services.n8n.taskRunners.runners` | `attribute set of (submodule)` | Configuration for individual task runners. |
+| `services.n8n.taskRunners.runners.<name>.args` | `list of string` | Additional command-line arguments to pass to the task runner. |
+| `services.n8n.taskRunners.runners.<name>.command` | `string` | Command to execute for this runner. |
+| `services.n8n.taskRunners.runners.<name>.enable` | `boolean` | Whether to enable the ‹name› task runner. Only takes effect when {option}`services.n8n.taskRunners.enable` is true. |
+| `services.n8n.taskRunners.runners.<name>.environment` | `attribute set of string` | Environment variables specific to this task runner. |
+| `services.n8n.taskRunners.runners.<name>.healthCheckPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port for the runner's health check server. |

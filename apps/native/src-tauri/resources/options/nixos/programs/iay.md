@@ -5,7 +5,7 @@
 All options under `programs.iay`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `programs.iay.enable` | | |
-| `programs.iay.minimalPrompt` | | |
-| `programs.iay.package` | | |
+| --- | --- | --- |
+| `programs.iay.enable` | `boolean` | Whether to enable iay, a minimalistic shell prompt. |
+| `programs.iay.minimalPrompt` | `boolean` | Use minimal one-liner prompt. |
+| `programs.iay.package` | `package` | The iay package to use. |

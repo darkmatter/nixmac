@@ -5,13 +5,13 @@
 All options under `services.confd`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.confd.backend` | | |
-| `services.confd.confDir` | | |
-| `services.confd.enable` | | |
-| `services.confd.interval` | | |
-| `services.confd.logLevel` | | |
-| `services.confd.nodes` | | |
-| `services.confd.package` | | |
-| `services.confd.prefix` | | |
-| `services.confd.watch` | | |
+| --- | --- | --- |
+| `services.confd.backend` | `one of "etcd", "consul", "redis", "zookeeper"` | Confd config storage backend to use. |
+| `services.confd.confDir` | `absolute path` | The path to the confd configs. |
+| `services.confd.enable` | `boolean` | Whether to enable confd, a service to manage local application configuration files using templates and data from etcd/consul/redis/zookeeper. |
+| `services.confd.interval` | `signed integer` | Confd check interval. |
+| `services.confd.logLevel` | `one of "info", "debug"` | Confd log level. |
+| `services.confd.nodes` | `list of string` | Confd list of nodes to connect to. |
+| `services.confd.package` | `package` | The confd package to use. |
+| `services.confd.prefix` | `absolute path` | The string to prefix to keys. |
+| `services.confd.watch` | `boolean` | Confd, whether to watch etcd config for changes. |

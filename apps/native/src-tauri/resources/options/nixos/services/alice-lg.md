@@ -5,7 +5,7 @@
 All options under `services.alice-lg`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.alice-lg.enable` | | |
-| `services.alice-lg.package` | | |
-| `services.alice-lg.settings` | | |
+| --- | --- | --- |
+| `services.alice-lg.enable` | `boolean` | Whether to enable Alice Looking Glass. |
+| `services.alice-lg.package` | `package` | The alice-lg package to use. |
+| `services.alice-lg.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | alice-lg configuration, for configuration options see the example on [github](https://github.com/alice-lg/alice-lg/blob/main/etc/alice-lg/alice.example.conf) |

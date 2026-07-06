@@ -5,6 +5,6 @@
 All options under `services.notify-osd`.
 
 | Option | Type | Description |
-| ----------------------------- | --------- | ------------------------------ |
+| --- | --- | --- |
 | `services.notify-osd.enable` | `boolean` | Whether to enable notify-osd. |
 | `services.notify-osd.package` | `package` | The notify-osd package to use. |

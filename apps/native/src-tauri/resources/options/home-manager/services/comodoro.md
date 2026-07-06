@@ -5,7 +5,7 @@
 All options under `services.comodoro`.
 
 | Option | Type | Description |
-| ------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.comodoro.enable` | `boolean` | Whether to enable Comodoro server. |
 | `services.comodoro.environment` | `attribute set of string` | Extra environment variables to be exported in the service. |
 | `services.comodoro.package` | `package` | The comodoro package to use. |

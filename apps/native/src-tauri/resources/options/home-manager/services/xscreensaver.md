@@ -5,7 +5,7 @@
 All options under `services.xscreensaver`.
 
 | Option | Type | Description |
-| -------------------------------- | -------------------------------------------------------- | ------------------------------------- |
+| --- | --- | --- |
 | `services.xscreensaver.enable` | `boolean` | Whether to enable XScreenSaver. |
 | `services.xscreensaver.package` | `package` | The xscreensaver package to use. |
 | `services.xscreensaver.settings` | `attribute set of (boolean or signed integer or string)` | The settings to use for XScreenSaver. |

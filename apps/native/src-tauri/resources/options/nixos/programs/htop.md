@@ -5,7 +5,7 @@
 All options under `programs.htop`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `programs.htop.enable` | | |
-| `programs.htop.package` | | |
-| `programs.htop.settings` | | |
+| --- | --- | --- |
+| `programs.htop.enable` | `boolean` | Whether to enable htop process monitor. |
+| `programs.htop.package` | `package` | The htop package to use. |
+| `programs.htop.settings` | `attribute set of (string or signed integer or boolean or list of (string or signed integer or boolean))` | Extra global default configuration for htop which is read on first startup only. Htop subsequently uses ~/.config/htop/htoprc as configuration source. |

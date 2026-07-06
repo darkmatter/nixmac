@@ -5,11 +5,11 @@
 All options under `services.sogo`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.sogo.configReplaces` | | |
-| `services.sogo.ealarmsCredFile` | | |
-| `services.sogo.enable` | | |
-| `services.sogo.extraConfig` | | |
-| `services.sogo.language` | | |
-| `services.sogo.timezone` | | |
-| `services.sogo.vhostName` | | |
+| --- | --- | --- |
+| `services.sogo.configReplaces` | `attribute set of string` | Replacement-filepath mapping for sogo.conf. Every key is replaced with the contents of the file specified as value. In the example, every occurrence of LDAP_BINDPW will be replaced with the text of the specified file. |
+| `services.sogo.ealarmsCredFile` | `null or string` | Optional path to a credentials file for email alarms |
+| `services.sogo.enable` | `boolean` | Whether to enable SOGo groupware. |
+| `services.sogo.extraConfig` | `strings concatenated with "\n"` | Extra sogo.conf configuration lines |
+| `services.sogo.language` | `string` | Language of SOGo |
+| `services.sogo.timezone` | `string` | Timezone of your SOGo instance |
+| `services.sogo.vhostName` | `string` | Name of the nginx vhost |

@@ -5,9 +5,9 @@
 All options under `services.rathole`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.rathole.credentialsFile` | | |
-| `services.rathole.enable` | | |
-| `services.rathole.package` | | |
-| `services.rathole.role` | | |
-| `services.rathole.settings` | | |
+| --- | --- | --- |
+| `services.rathole.credentialsFile` | `absolute path` | Path to a TOML file to be merged with the settings. Useful to set secret config parameters like tokens, which should not appear in the Nix Store. |
+| `services.rathole.enable` | `boolean` | Whether to enable Rathole. |
+| `services.rathole.package` | `package` | The rathole package to use. |
+| `services.rathole.role` | `one of "server", "client"` | Select whether rathole needs to be run as a `client` or a `server`. Server is a machine with a public IP and client is a device behind NAT, but running some services that need to be exposed to the Internet. |
+| `services.rathole.settings` | `TOML value` | Rathole configuration, for options reference see the [example](https://github.com/rapiz1/rathole?tab=readme-ov-file#configuration) on GitHub. Both server and client configurations can be specified at the same time, regardless of the selected role. |

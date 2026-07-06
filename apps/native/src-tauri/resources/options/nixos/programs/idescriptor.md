@@ -5,7 +5,7 @@
 All options under `programs.idescriptor`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `programs.idescriptor.enable` | | |
-| `programs.idescriptor.package` | | |
-| `programs.idescriptor.users` | | |
+| --- | --- | --- |
+| `programs.idescriptor.enable` | `boolean` | Whether to enable iDescriptor, a cross-platform iDevice management tool. |
+| `programs.idescriptor.package` | `package` | The idescriptor package to use. |
+| `programs.idescriptor.users` | `list of string` | Users to be added to the idevice group. |

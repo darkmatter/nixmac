@@ -5,26 +5,26 @@
 All options under `services.code-server`.
 
 | Option | Type | Description |
-| ---------------------------------------------------- | ---- | ----------- |
-| `services.code-server.auth` | | |
-| `services.code-server.disableFileDownloads` | | |
-| `services.code-server.disableGettingStartedOverride` | | |
-| `services.code-server.disableTelemetry` | | |
-| `services.code-server.disableUpdateCheck` | | |
-| `services.code-server.disableWorkspaceTrust` | | |
-| `services.code-server.enable` | | |
-| `services.code-server.extensionsDir` | | |
-| `services.code-server.extraArguments` | | |
-| `services.code-server.extraEnvironment` | | |
-| `services.code-server.extraGroups` | | |
-| `services.code-server.extraPackages` | | |
-| `services.code-server.group` | | |
-| `services.code-server.hashedPassword` | | |
-| `services.code-server.host` | | |
-| `services.code-server.package` | | |
-| `services.code-server.port` | | |
-| `services.code-server.proxyDomain` | | |
-| `services.code-server.socket` | | |
-| `services.code-server.socketMode` | | |
-| `services.code-server.user` | | |
-| `services.code-server.userDataDir` | | |
+| --- | --- | --- |
+| `services.code-server.auth` | `one of "none", "password"` | The type of authentication to use. |
+| `services.code-server.disableFileDownloads` | `boolean` | Disable file downloads from Code. |
+| `services.code-server.disableGettingStartedOverride` | `boolean` | Disable the coder/coder override in the Help: Getting Started page. |
+| `services.code-server.disableTelemetry` | `boolean` | Disable telemetry. |
+| `services.code-server.disableUpdateCheck` | `boolean` | Disable update check. Without this flag, code-server checks every 6 hours against the latest github release and then notifies you once every week that a new release is available. |
+| `services.code-server.disableWorkspaceTrust` | `boolean` | Disable Workspace Trust feature. |
+| `services.code-server.enable` | `boolean` | Whether to enable code-server. |
+| `services.code-server.extensionsDir` | `null or string` | Path to the extensions directory. |
+| `services.code-server.extraArguments` | `list of string` | Additional arguments to pass to code-server. |
+| `services.code-server.extraEnvironment` | `attribute set of string` | Additional environment variables to pass to code-server. |
+| `services.code-server.extraGroups` | `list of string` | An array of additional groups for the `code-server` user. |
+| `services.code-server.extraPackages` | `list of package` | Additional packages to add to the code-server {env}`PATH`. |
+| `services.code-server.group` | `string` | The group to run code-server under. By default, a group named `code-server` will be created. |
+| `services.code-server.hashedPassword` | `string` | Create the password with: {command}`echo -n 'thisismypassword' \| nix run nixpkgs#libargon2 -- "$(head -c 20 /dev/random \| base64)" -e` |
+| `services.code-server.host` | `string` | The host name or IP address the server should listen to. |
+| `services.code-server.package` | `package` | The code-server package to use. |
+| `services.code-server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port the server should listen to. |
+| `services.code-server.proxyDomain` | `null or string` | Domain used for proxying ports. |
+| `services.code-server.socket` | `null or string` | Path to a socket (bind-addr will be ignored). |
+| `services.code-server.socketMode` | `null or string` | File mode of the socket. |
+| `services.code-server.user` | `string` | The user to run code-server as. By default, a user named `code-server` will be created. |
+| `services.code-server.userDataDir` | `null or string` | Path to the user data directory. |

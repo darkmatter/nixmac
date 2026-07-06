@@ -5,8 +5,8 @@
 All options under `services.solanum`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.solanum.config` | | |
-| `services.solanum.enable` | | |
-| `services.solanum.motd` | | |
-| `services.solanum.openFilesLimit` | | |
+| --- | --- | --- |
+| `services.solanum.config` | `string` | Solanum IRC daemon configuration file. check <https://github.com/solanum-ircd/solanum/blob/main/doc/reference.conf> for all options. |
+| `services.solanum.enable` | `boolean` | Whether to enable Solanum IRC daemon. |
+| `services.solanum.motd` | `null or strings concatenated with "\n"` | Solanum MOTD text. Solanum will read its MOTD from `/etc/solanum/ircd.motd`. If set, the value of this option will be written to this path. |
+| `services.solanum.openFilesLimit` | `signed integer` | Maximum number of open files. Limits the clients and server connections. |

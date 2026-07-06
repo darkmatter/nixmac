@@ -5,10 +5,13 @@
 All options under `services.aesmd`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.aesmd.debug` | | |
-| `services.aesmd.enable` | | |
-| `services.aesmd.environment` | | |
-| `services.aesmd.package` | | |
-| `services.aesmd.quoteProviderLibrary` | | |
-| `services.aesmd.settings` | | |
+| --- | --- | --- |
+| `services.aesmd.enable` | `boolean` | Whether to enable Intel's Architectural Enclave Service Manager (AESM) for Intel SGX. |
+| `services.aesmd.environment` | `attribute set of string` | Additional environment variables to pass to the AESM service. |
+| `services.aesmd.package` | `package` | The sgx-psw package to use. |
+| `services.aesmd.quoteProviderLibrary` | `null or absolute path` | Custom quote provider library to use. |
+| `services.aesmd.settings` | `submodule` | AESM configuration |
+| `services.aesmd.settings.defaultQuotingType` | `null or one of "ecdsa_256", "epid_linkable", "epid_unlinkable"` | Attestation quote type. |
+| `services.aesmd.settings.proxy` | `null or string` | HTTP network proxy. |
+| `services.aesmd.settings.proxyType` | `null or one of "default", "direct", "manual"` | Type of proxy to use. The `default` uses the system's default proxy. If `direct` is given, uses no proxy. A value of `manual` uses the proxy from {option}`services.aesmd.settings.proxy`. |
+| `services.aesmd.settings.whitelistUrl` | `null or string` | URL to retrieve authorized Intel SGX enclave signers. |

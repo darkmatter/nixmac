@@ -5,19 +5,22 @@
 All options under `services.maddy`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.maddy.config` | | |
-| `services.maddy.enable` | | |
-| `services.maddy.ensureAccounts` | | |
-| `services.maddy.ensureCredentials` | | |
-| `services.maddy.group` | | |
-| `services.maddy.hostname` | | |
-| `services.maddy.localDomains` | | |
-| `services.maddy.openFirewall` | | |
-| `services.maddy.package` | | |
-| `services.maddy.primaryDomain` | | |
-| `services.maddy.secrets` | | |
-| `services.maddy.tls.certificates` | | |
-| `services.maddy.tls.extraConfig` | | |
-| `services.maddy.tls.loader` | | |
-| `services.maddy.user` | | |
+| --- | --- | --- |
+| `services.maddy.config` | `null or strings concatenated with "\n"` | Server configuration, see [https://maddy.email](https://maddy.email) for more information. The default configuration of this module will setup minimal Maddy instance for mail transfer without TLS encryption. ::: {.note} This should not be used in a production environment. ::: |
+| `services.maddy.enable` | `boolean` | Whether to enable Maddy, a free an open source mail server. |
+| `services.maddy.ensureAccounts` | `list of string` | List of IMAP accounts which get automatically created. Note that for a complete setup, user credentials for these accounts are required and can be created using the `ensureCredentials` option. This option does not delete accounts which are not (anymore) listed. |
+| `services.maddy.ensureCredentials` | `attribute set of (submodule)` | List of user accounts which get automatically created if they don't exist yet. Note that for a complete setup, corresponding mail boxes have to get created using the `ensureAccounts` option. This option does not delete accounts which are not (anymore) listed. |
+| `services.maddy.ensureCredentials.<name>.passwordFile` | `absolute path` | Specifies the path to a file containing the clear text password for the user. |
+| `services.maddy.group` | `string` | Group account under which maddy runs. ::: {.note} If left as the default value this group will automatically be created on system activation, otherwise the sysadmin is responsible for ensuring the group exists before the maddy service starts. ::: |
+| `services.maddy.hostname` | `string` | Hostname to use. It should be FQDN. |
+| `services.maddy.localDomains` | `list of string` | Define list of allowed domains. |
+| `services.maddy.openFirewall` | `boolean` | Open the configured incoming and outgoing mail server ports. |
+| `services.maddy.package` | `package` | The maddy package to use. |
+| `services.maddy.primaryDomain` | `string` | Primary MX domain to use. It should be FQDN. |
+| `services.maddy.secrets` | `list of absolute path` | A list of files containing the various secrets. Should be in the format expected by systemd's `EnvironmentFile` directory. Secrets can be referenced in the format `{env:VAR}`. |
+| `services.maddy.tls.certificates` | `list of (submodule)` | A list of attribute sets containing paths to TLS certificates and keys. Maddy will use SNI if multiple pairs are selected. |
+| `services.maddy.tls.certificates.*.certPath` | `absolute path` | Path to the certificate used for TLS. |
+| `services.maddy.tls.certificates.*.keyPath` | `absolute path` | Path to the private key used for TLS. |
+| `services.maddy.tls.extraConfig` | `null or strings concatenated with "\n"` | Arguments for the specified certificate loader. In case the `tls` loader is set, the defaults are considered secure and there is no need to change anything in most cases. For available options see [upstream manual](https://maddy.email/reference/tls/). For ACME configuration, see [following page](https://maddy.email/reference/tls-acme). |
+| `services.maddy.tls.loader` | `null or one of "off", "file", "acme"` | TLS certificates are obtained by modules called "certificate loaders". The `file` loader module reads certificates from files specified by the `certificates` option. Alternatively the `acme` module can be used to automatically obtain certificates using the ACME protocol. Module configuration is done via the `tls.extraConfig` option. Secrets such as API keys or passwords should not be supplied in plaintext. Instead the `secrets` option can be used to read secrets at runtime as environment variables. Secrets can be referenced with `{env:VAR}`. |
+| `services.maddy.user` | `string` | User account under which maddy runs. ::: {.note} If left as the default value this user will automatically be created on system activation, otherwise the sysadmin is responsible for ensuring the user exists before the maddy service starts. ::: |

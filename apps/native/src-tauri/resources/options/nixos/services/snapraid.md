@@ -5,15 +5,15 @@
 All options under `services.snapraid`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.snapraid.contentFiles` | | |
-| `services.snapraid.dataDisks` | | |
-| `services.snapraid.enable` | | |
-| `services.snapraid.exclude` | | |
-| `services.snapraid.extraConfig` | | |
-| `services.snapraid.parityFiles` | | |
-| `services.snapraid.scrub.interval` | | |
-| `services.snapraid.scrub.olderThan` | | |
-| `services.snapraid.scrub.plan` | | |
-| `services.snapraid.sync.interval` | | |
-| `services.snapraid.touchBeforeSync` | | |
+| --- | --- | --- |
+| `services.snapraid.contentFiles` | `list of string` | SnapRAID content list files. |
+| `services.snapraid.dataDisks` | `attribute set of string` | SnapRAID data disks. |
+| `services.snapraid.enable` | `boolean` | Whether to enable SnapRAID. |
+| `services.snapraid.exclude` | `list of string` | SnapRAID exclude directives. |
+| `services.snapraid.extraConfig` | `strings concatenated with "\n"` | Extra config options for SnapRAID. |
+| `services.snapraid.parityFiles` | `list of string` | SnapRAID parity files. |
+| `services.snapraid.scrub.interval` | `string` | How often to run {command}`snapraid scrub`. |
+| `services.snapraid.scrub.olderThan` | `signed integer` | Number of days since data was last scrubbed before it can be scrubbed again. |
+| `services.snapraid.scrub.plan` | `signed integer` | Percent of the array that should be checked by {command}`snapraid scrub`. |
+| `services.snapraid.sync.interval` | `string` | How often to run {command}`snapraid sync`. |
+| `services.snapraid.touchBeforeSync` | `boolean` | Whether {command}`snapraid touch` should be run before {command}`snapraid sync`. |

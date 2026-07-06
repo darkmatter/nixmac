@@ -5,13 +5,9 @@
 All options under `services.ssh-agent`.
 
 | Option | Type | Description |
-| --------------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.ssh-agent.defaultMaximumIdentityLifetime` | `null or (positive integer, meaning >0)` | Set a default value for the maximum lifetime in seconds of identities added to the agent. |
 | `services.ssh-agent.enable` | `boolean` | Whether to enable OpenSSH private key agent. |
-| `services.ssh-agent.enableBashIntegration` | | |
-| `services.ssh-agent.enableFishIntegration` | | |
-| `services.ssh-agent.enableNushellIntegration` | | |
-| `services.ssh-agent.enableZshIntegration` | | |
 | `services.ssh-agent.package` | `package` | The openssh package to use. |
-| `services.ssh-agent.pkcs11Whitelist` | `list of string` | Specify a list of approved path patterns for PKCS#11 and FIDO authenticator middleware libraries. When using the -s or -S options with ssh-add (1) , only libraries matching these patterns will be accepted. |
-| `services.ssh-agent.socket` | `string` | The agent’s socket; interpreted as a suffix to $XDG_RUNTIME_DIR on Linux and $(getconf DARWIN_USER_TEMP_DIR) on macOS. |
+| `services.ssh-agent.pkcs11Whitelist` | `list of string` | Specify a list of approved path patterns for PKCS#11 and FIDO authenticator middleware libraries. When using the -s or -S options with {manpage}`ssh-add(1)`, only libraries matching these patterns will be accepted. See {manpage}`ssh-agent(1)`. |
+| `services.ssh-agent.socket` | `string` | The agent's socket; interpreted as a suffix to {env}`$XDG_RUNTIME_DIR` on Linux and `$(getconf DARWIN_USER_TEMP_DIR)` on macOS. |

@@ -5,21 +5,21 @@
 All options under `services.guix`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---- | ----------- |
-| `services.guix.enable` | | |
-| `services.guix.extraArgs` | | |
-| `services.guix.gc.dates` | | |
-| `services.guix.gc.enable` | | |
-| `services.guix.gc.extraArgs` | | |
-| `services.guix.group` | | |
-| `services.guix.nrBuildUsers` | | |
-| `services.guix.package` | | |
-| `services.guix.publish.enable` | | |
-| `services.guix.publish.extraArgs` | | |
-| `services.guix.publish.generateKeyPair` | | |
-| `services.guix.publish.port` | | |
-| `services.guix.publish.user` | | |
-| `services.guix.stateDir` | | |
-| `services.guix.storeDir` | | |
-| `services.guix.substituters.authorizedKeys` | | |
-| `services.guix.substituters.urls` | | |
+| --- | --- | --- |
+| `services.guix.enable` | `boolean` | Whether to enable Guix build daemon service. |
+| `services.guix.extraArgs` | `list of string` | Extra flags to pass to the Guix daemon service. |
+| `services.guix.gc.dates` | `string` | How often the garbage collection occurs. This takes the time format from {manpage}`systemd.time(7)`. |
+| `services.guix.gc.enable` | `boolean` | Whether to enable automatic garbage collection service for Guix. |
+| `services.guix.gc.extraArgs` | `list of string` | List of arguments to be passed to {command}`guix gc`. When given no option, it will try to collect all garbage which is often inconvenient so it is recommended to set [some options](https://guix.gnu.org/en/manual/en/html_node/Invoking-guix-gc.html). |
+| `services.guix.group` | `string` | The group of the Guix build user pool. |
+| `services.guix.nrBuildUsers` | `unsigned integer, meaning >=0` | Number of Guix build users to be used in the build pool. |
+| `services.guix.package` | `package` | The guix package to use. It should contain {command}`guix-daemon` and {command}`guix` executable. |
+| `services.guix.publish.enable` | `boolean` | Whether to enable substitute server for your Guix store directory. |
+| `services.guix.publish.extraArgs` | `list of string` | Extra flags to pass to the substitute server. |
+| `services.guix.publish.generateKeyPair` | `boolean` | Whether to generate signing keys in {file}`/etc/guix` which are required to initialize a substitute server. Otherwise, `--public-key=$FILE` and `--private-key=$FILE` can be passed in {option}`services.guix.publish.extraArgs`. |
+| `services.guix.publish.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port of the substitute server to listen on. |
+| `services.guix.publish.user` | `string` | Name of the user to change once the server is up. |
+| `services.guix.stateDir` | `absolute path` | The state directory where Guix service will store its data such as its user-specific profiles, cache, and state files. ::: {.warning} Changing it to something other than the default will rebuild the package. ::: |
+| `services.guix.storeDir` | `absolute path` | The store directory where the Guix service will serve to/from. Take note Guix cannot take advantage of substitutes if you set it something other than {file}`/gnu/store` since most of the cached builds are assumed to be in there. ::: {.warning} This will also recompile all packages because the normal cache no longer applies. ::: |
+| `services.guix.substituters.authorizedKeys` | `list of absolute path` | A list of signing keys for each substitute server to be authorized as a source of substitutes. Without this, the listed substitute servers from {option}`services.guix.substituters.urls` would be ignored [with some exceptions](https://guix.gnu.org/manual/en/html_node/Substitute-Authentication.html). |
+| `services.guix.substituters.urls` | `list of string` | A list of substitute servers' URLs for the Guix daemon to download substitutes from. |

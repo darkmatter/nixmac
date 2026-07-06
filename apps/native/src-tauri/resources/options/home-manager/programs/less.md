@@ -5,9 +5,8 @@
 All options under `programs.less`.
 
 | Option | Type | Description |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `programs.less.config` | `strings concatenated with “\n”` | Configuration for less , written to $XDG_CONFIG_HOME/lesskey . |
+| --- | --- | --- |
+| `programs.less.config` | `strings concatenated with "\n"` | Configuration for {command}`less`, written to {file}`$XDG_CONFIG_HOME/lesskey`. |
 | `programs.less.enable` | `boolean` | Whether to enable less, opposite of more. |
-| `programs.less.keys` | | |
-| `programs.less.options` | `(list of string) or (attribute set of (boolean or signed integer or string or list of (boolean or signed integer or string))) convertible to it` | Options to be set via $LESS . |
+| `programs.less.options` | `(list of string) or (attribute set of (boolean or signed integer or string or list of (boolean or signed integer or string))) convertible to it` | Options to be set via {env}`$LESS`. |
 | `programs.less.package` | `null or package` | The less package to use. |

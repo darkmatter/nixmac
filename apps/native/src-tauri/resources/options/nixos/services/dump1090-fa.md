@@ -5,7 +5,7 @@
 All options under `services.dump1090-fa`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.dump1090-fa.enable` | | |
-| `services.dump1090-fa.extraArgs` | | |
-| `services.dump1090-fa.package` | | |
+| --- | --- | --- |
+| `services.dump1090-fa.enable` | `boolean` | Whether to enable dump1090-fa. |
+| `services.dump1090-fa.extraArgs` | `list of string` | Additional passed arguments |
+| `services.dump1090-fa.package` | `package` | The dump1090-fa package to use. |

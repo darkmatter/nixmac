@@ -5,5 +5,5 @@
 All options under `services.keybase`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.keybase.enable` | | |
+| --- | --- | --- |
+| `services.keybase.enable` | `boolean` | Whether to start the Keybase service. |

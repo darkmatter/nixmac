@@ -5,12 +5,16 @@
 All options under `services.radarr`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.radarr.dataDir` | | |
-| `services.radarr.enable` | | |
-| `services.radarr.environmentFiles` | | |
-| `services.radarr.group` | | |
-| `services.radarr.openFirewall` | | |
-| `services.radarr.package` | | |
-| `services.radarr.settings` | | |
-| `services.radarr.user` | | |
+| --- | --- | --- |
+| `services.radarr.dataDir` | `string` | The directory where Radarr stores its data files. |
+| `services.radarr.enable` | `boolean` | Whether to enable Radarr, a UsetNet/BitTorrent movie downloader. |
+| `services.radarr.environmentFiles` | `list of absolute path` | Environment file to pass secret configuration values. Each line must follow the `RADARR__SECTION__KEY=value` pattern. Please consult the documentation at the [wiki](https://wiki.servarr.com/useful-tools#using-environment-variables-for-config). |
+| `services.radarr.group` | `string` | Group under which Radarr runs. |
+| `services.radarr.openFirewall` | `boolean` | Open ports in the firewall for the Radarr web interface. |
+| `services.radarr.package` | `package` | The radarr package to use. |
+| `services.radarr.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Attribute set of arbitrary config options. Please consult the documentation at the [wiki](https://wiki.servarr.com/useful-tools#using-environment-variables-for-config). WARNING: this configuration is stored in the world-readable Nix store! For secrets use [](#opt-services.radarr.environmentFiles). |
+| `services.radarr.settings.log.analyticsEnabled` | `boolean` | Send Anonymous Usage Data |
+| `services.radarr.settings.server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port Number |
+| `services.radarr.settings.update.automatically` | `boolean` | Automatically download and install updates. |
+| `services.radarr.settings.update.mechanism` | `null or one of "external", "builtIn", "script"` | which update mechanism to use |
+| `services.radarr.user` | `string` | User account under which Radarr runs. |

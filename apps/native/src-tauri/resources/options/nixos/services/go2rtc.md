@@ -5,7 +5,10 @@
 All options under `services.go2rtc`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.go2rtc.enable` | | |
-| `services.go2rtc.package` | | |
-| `services.go2rtc.settings` | | |
+| --- | --- | --- |
+| `services.go2rtc.enable` | `boolean` | Whether to enable go2rtc streaming server. |
+| `services.go2rtc.package` | `package` | The go2rtc package to use. |
+| `services.go2rtc.settings` | `open submodule of (YAML 1.1 value)` | go2rtc configuration as a Nix attribute set. See the [wiki](https://github.com/AlexxIT/go2rtc/wiki/Configuration) for possible configuration options. |
+| `services.go2rtc.settings.api.listen` | `string` | API listen address, conforming to a Go address string. |
+| `services.go2rtc.settings.ffmpeg.bin` | `absolute path` | The ffmpeg package to use for transcoding. |
+| `services.go2rtc.settings.streams` | `attribute set of (string or list of string)` | Stream source configuration. Multiple source types are supported. Check the [configuration reference](https://github.com/AlexxIT/go2rtc/blob/v1.9.14/README.md#module-streams) for possible options. |

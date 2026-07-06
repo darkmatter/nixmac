@@ -5,10 +5,10 @@
 All options under `services.riemann`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.riemann.config` | | |
-| `services.riemann.configFile` | | |
-| `services.riemann.configFiles` | | |
-| `services.riemann.enable` | | |
-| `services.riemann.extraClasspathEntries` | | |
-| `services.riemann.extraJavaOpts` | | |
+| --- | --- | --- |
+| `services.riemann.config` | `strings concatenated with "\n"` | Contents of the Riemann configuration file. For more complicated config you should use configFile. |
+| `services.riemann.configFile` | `string` | A Riemann config file. Any files in the same directory as this file will be added to the classpath by Riemann. |
+| `services.riemann.configFiles` | `list of absolute path` | Extra files containing Riemann configuration. These files will be loaded at runtime by Riemann (with Clojure's `load-file` function) at the end of the configuration if you use the config option, this is ignored if you use configFile. |
+| `services.riemann.enable` | `boolean` | Whether to enable Riemann network monitoring daemon. |
+| `services.riemann.extraClasspathEntries` | `list of string` | Extra entries added to the Java classpath when running Riemann. |
+| `services.riemann.extraJavaOpts` | `list of string` | Extra Java options used when launching Riemann. |

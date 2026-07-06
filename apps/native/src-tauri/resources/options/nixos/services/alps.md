@@ -5,14 +5,12 @@
 All options under `services.alps`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.alps.args` | | |
-| `services.alps.bindIP` | | |
-| `services.alps.enable` | | |
-| `services.alps.imaps.host` | | |
-| `services.alps.imaps.port` | | |
-| `services.alps.package` | | |
-| `services.alps.port` | | |
-| `services.alps.smtps.host` | | |
-| `services.alps.smtps.port` | | |
-| `services.alps.theme` | | |
+| --- | --- | --- |
+| `services.alps.bindIP` | `string` | The IP the service should listen on. |
+| `services.alps.enable` | `boolean` | Whether to enable alps. |
+| `services.alps.imaps.host` | `string` | The IMAPS server address. |
+| `services.alps.imaps.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The IMAPS server port. |
+| `services.alps.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | TCP port the service should listen on. |
+| `services.alps.smtps.host` | `string` | The SMTPS server address. |
+| `services.alps.smtps.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The SMTPS server port. |
+| `services.alps.theme` | `one of "alps", "sourcehut"` | The frontend's theme to use. |

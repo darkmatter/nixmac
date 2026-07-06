@@ -5,7 +5,7 @@
 All options under `services.slimserver`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.slimserver.dataDir` | | |
-| `services.slimserver.enable` | | |
-| `services.slimserver.package` | | |
+| --- | --- | --- |
+| `services.slimserver.dataDir` | `absolute path` | The directory where slimserver stores its state, tag cache, playlists etc. |
+| `services.slimserver.enable` | `boolean` | Whether to enable slimserver. |
+| `services.slimserver.package` | `package` | The slimserver package to use. |

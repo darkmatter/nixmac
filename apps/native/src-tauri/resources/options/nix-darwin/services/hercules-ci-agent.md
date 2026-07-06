@@ -5,13 +5,17 @@
 All options under `services.hercules-ci-agent`.
 
 | Option | Type | Description |
-| -------------------------------------------- | -------------------------------- | -------------------------------------------------------- |
-| `services.hercules-ci-agent.baseDirectory` | | |
-| `services.hercules-ci-agent.concurrentTasks` | | |
-| `services.hercules-ci-agent.enable` | `boolean` | Enable to run Hercules CI Agent as a system service. |
-| `services.hercules-ci-agent.extraOptions` | | |
+| --- | --- | --- |
+| `services.hercules-ci-agent.enable` | `boolean` | Enable to run Hercules CI Agent as a system service. [Hercules CI](https://hercules-ci.com) is a continuous integation service that is centered around Nix. Support is available at [help@hercules-ci.com](mailto:help@hercules-ci.com). |
 | `services.hercules-ci-agent.logFile` | `absolute path` | Stdout and sterr of hercules-ci-agent process. |
 | `services.hercules-ci-agent.package` | `package` | Package containing the bin/hercules-ci-agent executable. |
-| `services.hercules-ci-agent.patchNix` | | |
-| `services.hercules-ci-agent.settings` | `open submodule of (TOML value)` | These settings are written to the agent.toml file. |
-| `services.hercules-ci-agent.tomlFile` | | |
+| `services.hercules-ci-agent.settings` | `open submodule of (TOML value)` | These settings are written to the `agent.toml` file. Not all settings are listed as options, can be set nonetheless. For the exhaustive list of settings, see <https://docs.hercules-ci.com/hercules-ci/reference/agent-config/>. |
+| `services.hercules-ci-agent.settings.apiBaseUrl` | `string` | API base URL that the agent will connect to. When using Hercules CI Enterprise, set this to the URL where your Hercules CI server is reachable. |
+| `services.hercules-ci-agent.settings.baseDirectory` | `absolute path` | State directory (secrets, work directory, etc) for agent |
+| `services.hercules-ci-agent.settings.binaryCachesPath` | `absolute path` | Path to a JSON file containing binary cache secret keys. As these values are confidential, they should not be in the store, but copied over using other means, such as agenix, NixOps `deployment.keys`, or manual installation. The format is described on <https://docs.hercules-ci.com/hercules-ci-agent/binary-caches-json/>. |
+| `services.hercules-ci-agent.settings.clusterJoinTokenPath` | `absolute path` | Location of the cluster-join-token.key file. You can retrieve the contents of the file when creating a new agent via <https://hercules-ci.com/dashboard>. As this value is confidential, it should not be in the store, but installed using other means, such as agenix, NixOps `deployment.keys`, or manual installation. The contents of the file are used for authentication between the agent and the API. |
+| `services.hercules-ci-agent.settings.concurrentTasks` | `positive integer, meaning >0, or value "auto" (singular enum)` | Number of tasks to perform simultaneously. A task is a single derivation build, an evaluation or an effect run. At minimum, you need 2 concurrent tasks for `x86_64-linux` in your cluster, to allow for import from derivation. `concurrentTasks` can be around the CPU core count or lower if memory is the bottleneck. The optimal value depends on the resource consumption characteristics of your workload, including memory usage and in-task parallelism. This is typically determined empirically. When scaling, it is generally better to have a double-size machine than two machines, because each split of resources causes inefficiencies; particularly with regards to build latency because of extra downloads. |
+| `services.hercules-ci-agent.settings.labels` | `TOML value` | A key-value map of user data. This data will be available to organization members in the dashboard and API. The values can be of any TOML type that corresponds to a JSON type, but arrays can not contain tables/objects due to limitations of the TOML library. Values involving arrays of non-primitive types may not be representable currently. |
+| `services.hercules-ci-agent.settings.secretsJsonPath` | `absolute path` | Path to a JSON file containing secrets for effects. As these values are confidential, they should not be in the store, but copied over using other means, such as agenix, NixOps `deployment.keys`, or manual installation. The format is described on <https://docs.hercules-ci.com/hercules-ci-agent/secrets-json/>. |
+| `services.hercules-ci-agent.settings.staticSecretsDirectory` | `absolute path` | This is the default directory to look for statically configured secrets like `cluster-join-token.key`. See also `clusterJoinTokenPath` and `binaryCachesPath` for fine-grained configuration. |
+| `services.hercules-ci-agent.settings.workDirectory` | `absolute path` | The directory in which temporary subdirectories are created for task state. This includes sources for Nix evaluation. |

@@ -5,10 +5,10 @@
 All options under `programs.swayr`.
 
 | Option | Type | Description |
-| ------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.swayr.enable` | `boolean` | Whether to enable the swayr service. |
-| `programs.swayr.extraConfig` | `strings concatenated with “\n”` | Extra configuration lines to append to the swayr configuration file. |
+| `programs.swayr.extraConfig` | `strings concatenated with "\n"` | Extra configuration lines to append to the swayr configuration file. |
 | `programs.swayr.package` | `package` | The swayr package to use. |
-| `programs.swayr.settings` | `null or TOML value` | Configuration included in config.toml . For available options see https://git.sr.ht/~tsdh/swayr#swayr-configuration |
+| `programs.swayr.settings` | `null or TOML value` | Configuration included in `config.toml`. For available options see <https://git.sr.ht/~tsdh/swayr#swayr-configuration> |
 | `programs.swayr.systemd.enable` | `boolean` | Whether to enable swayr systemd integration. |
 | `programs.swayr.systemd.target` | `string` | Systemd target to bind to. |

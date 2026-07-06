@@ -5,10 +5,10 @@
 All options under `services.fcron`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.fcron.allow` | | |
-| `services.fcron.deny` | | |
-| `services.fcron.enable` | | |
-| `services.fcron.maxSerialJobs` | | |
-| `services.fcron.queuelen` | | |
-| `services.fcron.systab` | | |
+| --- | --- | --- |
+| `services.fcron.allow` | `list of string` | Users allowed to use fcrontab and fcrondyn (one name per line, `all` for everyone). |
+| `services.fcron.deny` | `list of string` | Users forbidden from using fcron. |
+| `services.fcron.enable` | `boolean` | Whether to enable the {command}`fcron` daemon. |
+| `services.fcron.maxSerialJobs` | `signed integer` | Maximum number of serial jobs which can run simultaneously. |
+| `services.fcron.queuelen` | `null or signed integer` | Number of jobs the serial queue and the lavg queue can contain. |
+| `services.fcron.systab` | `strings concatenated with "\n"` | The "system" crontab contents. |

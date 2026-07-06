@@ -5,52 +5,104 @@
 All options under `xdg`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `xdg.autostart.enable` | `boolean` | Whether to enable creation of XDG autostart entries. |
-| `xdg.autostart.entries` | `list of absolute path` | Paths to desktop files that should be linked to XDG_CONFIG_HOME/autostart |
-| `xdg.autostart.readOnly` | `boolean` | Make XDG_CONFIG_HOME/autostart a symlink to a readonly directory so that programs cannot install arbitrary autostart services. |
-| `xdg.binHome` | | |
-| `xdg.cacheFile` | `attribute set of (submodule)` | Attribute set of files to link into the user’s XDG cache home. |
-| `xdg.cacheHome` | `absolute path` | Absolute path to directory holding application caches. |
-| `xdg.configFile` | `attribute set of (submodule)` | Attribute set of files to link into the user’s XDG configuration home. |
-| `xdg.configHome` | `absolute path` | Absolute path to directory holding application configurations. |
-| `xdg.dataFile` | `attribute set of (submodule)` | Attribute set of files to link into the user’s XDG data home. |
-| `xdg.dataHome` | `absolute path` | Absolute path to directory holding application data. |
-| `xdg.desktopEntries` | `attribute set of (submodule)` | Desktop Entries allow applications to be shown in your desktop environment’s app launcher. |
+| `xdg.autostart.entries` | `list of absolute path` | Paths to desktop files that should be linked to `XDG_CONFIG_HOME/autostart` |
+| `xdg.autostart.readOnly` | `boolean` | Make `XDG_CONFIG_HOME/autostart` a symlink to a readonly directory so that programs cannot install arbitrary autostart services. |
+| `xdg.binHome` | `absolute path` | Absolute path to directory holding user-specific executables. Sets `XDG_BIN_HOME` for the user if `xdg.enable` is set `true`. |
+| `xdg.cacheFile` | `attribute set of (submodule)` | Attribute set of files to link into the user's XDG cache home. |
+| `xdg.cacheFile.<name>.enable` | `boolean` | Whether this file should be generated. This option allows specific files to be disabled. |
+| `xdg.cacheFile.<name>.executable` | `null or boolean` | Set the execute bit. If `null`, defaults to the mode of the {var}`source` file or to `false` for files created through the {var}`text` option. |
+| `xdg.cacheFile.<name>.force` | `boolean` | Whether the target path should be unconditionally replaced by the managed file source. Warning, this will silently delete the target regardless of whether it is a file or link. |
+| `xdg.cacheFile.<name>.ignorelinks` | `boolean` | When `recursive` is enabled, adds the `-ignorelinks` flag to lndir. It causes lndir to not treat symbolic links in the source directory specially. The link created in the target directory will point back to the corresponding symbolic link in the source directory. If that link points to a directory, the resulting target will be a link to the source tree's symlink rather than a recursively linked directory tree. |
+| `xdg.cacheFile.<name>.onChange` | `strings concatenated with "\n"` | Shell commands to run when file has changed between generations. The script will be run *after* the new files have been linked into place. Note, this code is always run when `recursive` is enabled. |
+| `xdg.cacheFile.<name>.recursive` | `boolean` | If the file source is a directory, then this option determines whether the directory should be recursively linked to the target location. This option has no effect if the source is a file. If `false` (the default) then the target will be a symbolic link to the source directory. If `true` then the target will be a directory structure matching the source's but whose leaves are symbolic links to the files of the source directory. |
+| `xdg.cacheFile.<name>.source` | `absolute path` | Path of the source file or directory. If [](#opt-xdg.cacheFile._name_.text) is non-null then this option will automatically point to a file containing that text. |
+| `xdg.cacheFile.<name>.target` | `non-empty string` | Path to target file relative to {var}`xdg.cacheHome`. |
+| `xdg.cacheFile.<name>.text` | `null or strings concatenated with "\n"` | Text of the file. If this option is null then [](#opt-xdg.cacheFile._name_.source) must be set. |
+| `xdg.cacheHome` | `absolute path` | Absolute path to directory holding application caches. Sets `XDG_CACHE_HOME` for the user if `xdg.enable` is set `true`. |
+| `xdg.configFile` | `attribute set of (submodule)` | Attribute set of files to link into the user's XDG configuration home. |
+| `xdg.configFile.<name>.enable` | `boolean` | Whether this file should be generated. This option allows specific files to be disabled. |
+| `xdg.configFile.<name>.executable` | `null or boolean` | Set the execute bit. If `null`, defaults to the mode of the {var}`source` file or to `false` for files created through the {var}`text` option. |
+| `xdg.configFile.<name>.force` | `boolean` | Whether the target path should be unconditionally replaced by the managed file source. Warning, this will silently delete the target regardless of whether it is a file or link. |
+| `xdg.configFile.<name>.ignorelinks` | `boolean` | When `recursive` is enabled, adds the `-ignorelinks` flag to lndir. It causes lndir to not treat symbolic links in the source directory specially. The link created in the target directory will point back to the corresponding symbolic link in the source directory. If that link points to a directory, the resulting target will be a link to the source tree's symlink rather than a recursively linked directory tree. |
+| `xdg.configFile.<name>.onChange` | `strings concatenated with "\n"` | Shell commands to run when file has changed between generations. The script will be run *after* the new files have been linked into place. Note, this code is always run when `recursive` is enabled. |
+| `xdg.configFile.<name>.recursive` | `boolean` | If the file source is a directory, then this option determines whether the directory should be recursively linked to the target location. This option has no effect if the source is a file. If `false` (the default) then the target will be a symbolic link to the source directory. If `true` then the target will be a directory structure matching the source's but whose leaves are symbolic links to the files of the source directory. |
+| `xdg.configFile.<name>.source` | `absolute path` | Path of the source file or directory. If [](#opt-xdg.configFile._name_.text) is non-null then this option will automatically point to a file containing that text. |
+| `xdg.configFile.<name>.target` | `non-empty string` | Path to target file relative to {var}`xdg.configHome`. |
+| `xdg.configFile.<name>.text` | `null or strings concatenated with "\n"` | Text of the file. If this option is null then [](#opt-xdg.configFile._name_.source) must be set. |
+| `xdg.configHome` | `absolute path` | Absolute path to directory holding application configurations. Sets `XDG_CONFIG_HOME` for the user if `xdg.enable` is set `true`. |
+| `xdg.dataFile` | `attribute set of (submodule)` | Attribute set of files to link into the user's XDG data home. |
+| `xdg.dataFile.<name>.enable` | `boolean` | Whether this file should be generated. This option allows specific files to be disabled. |
+| `xdg.dataFile.<name>.executable` | `null or boolean` | Set the execute bit. If `null`, defaults to the mode of the {var}`source` file or to `false` for files created through the {var}`text` option. |
+| `xdg.dataFile.<name>.force` | `boolean` | Whether the target path should be unconditionally replaced by the managed file source. Warning, this will silently delete the target regardless of whether it is a file or link. |
+| `xdg.dataFile.<name>.ignorelinks` | `boolean` | When `recursive` is enabled, adds the `-ignorelinks` flag to lndir. It causes lndir to not treat symbolic links in the source directory specially. The link created in the target directory will point back to the corresponding symbolic link in the source directory. If that link points to a directory, the resulting target will be a link to the source tree's symlink rather than a recursively linked directory tree. |
+| `xdg.dataFile.<name>.onChange` | `strings concatenated with "\n"` | Shell commands to run when file has changed between generations. The script will be run *after* the new files have been linked into place. Note, this code is always run when `recursive` is enabled. |
+| `xdg.dataFile.<name>.recursive` | `boolean` | If the file source is a directory, then this option determines whether the directory should be recursively linked to the target location. This option has no effect if the source is a file. If `false` (the default) then the target will be a symbolic link to the source directory. If `true` then the target will be a directory structure matching the source's but whose leaves are symbolic links to the files of the source directory. |
+| `xdg.dataFile.<name>.source` | `absolute path` | Path of the source file or directory. If [](#opt-xdg.dataFile._name_.text) is non-null then this option will automatically point to a file containing that text. |
+| `xdg.dataFile.<name>.target` | `non-empty string` | Path to target file relative to <varname>xdg.dataHome</varname>. |
+| `xdg.dataFile.<name>.text` | `null or strings concatenated with "\n"` | Text of the file. If this option is null then [](#opt-xdg.dataFile._name_.source) must be set. |
+| `xdg.dataHome` | `absolute path` | Absolute path to directory holding application data. Sets `XDG_DATA_HOME` for the user if `xdg.enable` is set `true`. |
+| `xdg.desktopEntries` | `attribute set of (submodule)` | Desktop Entries allow applications to be shown in your desktop environment's app launcher. You can define entries for programs without entries or override existing entries. See <https://specifications.freedesktop.org/desktop-entry-spec/latest/recognized-keys.html> for more information on options. |
+| `xdg.desktopEntries.<name>.actions` | `attribute set of (submodule)` | The set of actions made available to application launchers. |
+| `xdg.desktopEntries.<name>.actions.<name>.exec` | `null or string` | Program to execute, possibly with arguments. |
+| `xdg.desktopEntries.<name>.actions.<name>.icon` | `null or string or absolute path` | Icon to display in file manager, menus, etc. |
+| `xdg.desktopEntries.<name>.actions.<name>.name` | `string` | Name of the action. |
+| `xdg.desktopEntries.<name>.categories` | `null or (list of string)` | Categories in which the entry should be shown in a menu. |
+| `xdg.desktopEntries.<name>.comment` | `null or string` | Tooltip for the entry. |
+| `xdg.desktopEntries.<name>.exec` | `null or string` | Program to execute, possibly with arguments. |
+| `xdg.desktopEntries.<name>.genericName` | `null or string` | Generic name of the application. |
+| `xdg.desktopEntries.<name>.icon` | `null or string or absolute path` | Icon to display in file manager, menus, etc. |
+| `xdg.desktopEntries.<name>.mimeType` | `null or (list of string)` | The MIME type(s) supported by this application. |
+| `xdg.desktopEntries.<name>.name` | `string` | Specific name of the application. |
+| `xdg.desktopEntries.<name>.noDisplay` | `null or boolean` | Means "this application exists, but don't display it in the menus". This can be useful to e.g. associate this application with MIME types. |
+| `xdg.desktopEntries.<name>.prefersNonDefaultGPU` | `null or boolean` | If true, the application prefers to be run on a more powerful discrete GPU if available. |
+| `xdg.desktopEntries.<name>.settings` | `attribute set of string` | Extra key-value pairs to add to the `[Desktop Entry]` section. This may override other values. |
+| `xdg.desktopEntries.<name>.startupNotify` | `null or boolean` | If true, it is KNOWN that the application will send a "remove" message when started with the `DESKTOP_STARTUP_ID` environment variable set. If false, it is KNOWN that the application does not work with startup notification at all. |
+| `xdg.desktopEntries.<name>.terminal` | `null or boolean` | Whether the program runs in a terminal window. |
+| `xdg.desktopEntries.<name>.type` | `one of "Application", "Link", "Directory"` | The type of the desktop entry. |
 | `xdg.enable` | `boolean` | Whether to enable management of XDG base directories. |
-| `xdg.localBinInPath` | | |
+| `xdg.localBinInPath` | `boolean` | Whether to add {option}`xdg.binHome` to {env}`PATH` when {option}`xdg.enable` is enabled. |
 | `xdg.mime.desktopFileUtilsPackage` | `package` | The desktop-file-utils package to use. Used when running update-desktop-database. |
-| `xdg.mime.enable` | `boolean` | Whether to install programs and files to support the XDG Shared MIME-info specification and XDG MIME Applications specification at https://specifications.freedesktop.org/shared-mime-info-spec/shared-mime-info-spec-latest.html and https://specifications.freedesktop.org/mime-apps-spec/mime-apps-spec-latest.html , respectively. |
+| `xdg.mime.enable` | `boolean` | Whether to install programs and files to support the XDG Shared MIME-info specification and XDG MIME Applications specification at <https://specifications.freedesktop.org/shared-mime-info-spec/shared-mime-info-spec-latest.html> and <https://specifications.freedesktop.org/mime-apps-spec/mime-apps-spec-latest.html>, respectively. |
 | `xdg.mime.sharedMimeInfoPackage` | `package` | The shared-mime-info package to use. Used when running update-mime-database. |
 | `xdg.mimeApps.associations.added` | `attribute set of ((list of string) or ((list of string) or string) convertible to it)` | Defines additional associations of applications with mimetypes, as if the .desktop file was listing this mimetype in the first place. |
-| `xdg.mimeApps.associations.removed` | `attribute set of ((list of string) or ((list of string) or string) convertible to it)` | Removes associations of applications with mimetypes, as if the .desktop file was not listing this mimetype in the first place. |
-| `xdg.mimeApps.defaultApplicationPackages` | `list of package` | Packages whose .desktop files will be used to establish default mimetype associations. |
+| `xdg.mimeApps.associations.removed` | `attribute set of ((list of string) or ((list of string) or string) convertible to it)` | Removes associations of applications with mimetypes, as if the .desktop file was *not* listing this mimetype in the first place. |
+| `xdg.mimeApps.defaultApplicationPackages` | `list of package` | Packages whose `.desktop` files will be used to establish default mimetype associations. These associations are appended to the associations in [](#opt-xdg.mimeApps.defaultApplications). If multiple packages associate with the same mime type, then the priority among them is determined by their order in the list. ::: {.note} Passing a large number of packages (for example, the system package set or all of {option}`home.packages`) will significantly slow down builds. Prefer listing only the specific packages whose MIME associations you want to set as defaults. ::: |
 | `xdg.mimeApps.defaultApplications` | `attribute set of ((list of string) or ((list of string) or string) convertible to it)` | The default application to be used for a given mimetype. This is, for instance, the one that will be started when double-clicking on a file in a file manager. If the application is no longer installed, the next application in the list is attempted, and so on. |
-| `xdg.mimeApps.enable` | `boolean` | Whether to manage $XDG_CONFIG_HOME/mimeapps.list . |
-| `xdg.portal.config` | `attribute set of attribute set of (string or ((list of string) or string) convertible to it)` | Sets which portal backend should be used to provide the implementation for the requested interface. For details check portals.conf (5) . |
-| `xdg.portal.configPackages` | `list of package` | List of packages that provide XDG desktop portal configuration, usually in the form of share/xdg-desktop-portal/$desktop-portals.conf . |
-| `xdg.portal.enable` | `boolean` | Whether to enable XDG desktop integration . |
-| `xdg.portal.extraPortals` | `list of package` | List of additional portals that should be added to the environment. |
-| `xdg.portal.xdgOpenUsePortal` | `boolean` | Sets environment variable NIXOS_XDG_OPEN_USE_PORTAL to 1 This will make xdg-open use the portal to open programs, which resolves bugs involving programs opening inside FHS envs or with unexpected env vars set from wrappers. See #160923 for more info. |
-| `xdg.stateFile` | `attribute set of (submodule)` | Attribute set of files to link into the user’s XDG state home. |
-| `xdg.stateHome` | `absolute path` | Absolute path to directory holding application states. |
-| `xdg.systemDirs.config` | `list of string` | Directory names to add to XDG_CONFIG_DIRS in the user session. |
-| `xdg.systemDirs.data` | `list of string` | Directory names to add to XDG_DATA_DIRS in the user session. |
-| `xdg.terminal-exec.enable` | `boolean` | Whether to enable xdg-terminal-exec, the proposed Default Terminal Execution Specification. |
+| `xdg.mimeApps.enable` | `boolean` | Whether to manage {file}`$XDG_CONFIG_HOME/mimeapps.list`. The generated file is read-only. |
+| `xdg.portal.config` | `attribute set of attribute set of (string or ((list of string) or string) convertible to it)` | Sets which portal backend should be used to provide the implementation for the requested interface. For details check {manpage}`portals.conf(5)`. These will be written with the name `$desktop-portals.conf` for `xdg.portal.config.$desktop` and `portals.conf` for `xdg.portal.config.common` as an exception. These, together with `xdg.portal.configPackages`, will be joined into a directory and passed to `xdg-desktop-portal.service` through a `NIXOS_XDG_DESKTOP_PORTAL_CONFIG_DIR` variable. |
+| `xdg.portal.configPackages` | `list of package` | List of packages that provide XDG desktop portal configuration, usually in the form of `share/xdg-desktop-portal/$desktop-portals.conf`. Note that configs in `xdg.portal.config` will be preferred if set. |
+| `xdg.portal.enable` | `boolean` | Whether to enable [XDG desktop integration](https://github.com/flatpak/xdg-desktop-portal). Note, if you installed Home Manager via its NixOS module and 'home-manager.useUserPackages' is enabled, make sure to add `nix environment.pathsToLink = [ "/share/xdg-desktop-portal" "/share/applications" ];` to your NixOS configuration so that the portal definitions and DE provided configurations get linked. |
+| `xdg.portal.extraPortals` | `list of package` | List of additional portals that should be added to the environment. The directory where the portal definitions have been merged together (likely `~/.nix-profile/share/xdg-desktop-portal/portals`) will get passed to `xdg-desktop-portal.service` via the `NIX_XDG_DESKTOP_PORTAL_DIR` environment variable. Portals allow interaction with system, like choosing files or taking screenshots. At minimum, a desktop portal implementation should be listed. |
+| `xdg.portal.xdgOpenUsePortal` | `boolean` | Sets environment variable `NIXOS_XDG_OPEN_USE_PORTAL` to `1` This will make `xdg-open` use the portal to open programs, which resolves bugs involving programs opening inside FHS envs or with unexpected env vars set from wrappers. See [#160923](https://github.com/NixOS/nixpkgs/issues/160923) for more info. |
+| `xdg.stateFile` | `attribute set of (submodule)` | Attribute set of files to link into the user's XDG state home. |
+| `xdg.stateFile.<name>.enable` | `boolean` | Whether this file should be generated. This option allows specific files to be disabled. |
+| `xdg.stateFile.<name>.executable` | `null or boolean` | Set the execute bit. If `null`, defaults to the mode of the {var}`source` file or to `false` for files created through the {var}`text` option. |
+| `xdg.stateFile.<name>.force` | `boolean` | Whether the target path should be unconditionally replaced by the managed file source. Warning, this will silently delete the target regardless of whether it is a file or link. |
+| `xdg.stateFile.<name>.ignorelinks` | `boolean` | When `recursive` is enabled, adds the `-ignorelinks` flag to lndir. It causes lndir to not treat symbolic links in the source directory specially. The link created in the target directory will point back to the corresponding symbolic link in the source directory. If that link points to a directory, the resulting target will be a link to the source tree's symlink rather than a recursively linked directory tree. |
+| `xdg.stateFile.<name>.onChange` | `strings concatenated with "\n"` | Shell commands to run when file has changed between generations. The script will be run *after* the new files have been linked into place. Note, this code is always run when `recursive` is enabled. |
+| `xdg.stateFile.<name>.recursive` | `boolean` | If the file source is a directory, then this option determines whether the directory should be recursively linked to the target location. This option has no effect if the source is a file. If `false` (the default) then the target will be a symbolic link to the source directory. If `true` then the target will be a directory structure matching the source's but whose leaves are symbolic links to the files of the source directory. |
+| `xdg.stateFile.<name>.source` | `absolute path` | Path of the source file or directory. If [](#opt-xdg.stateFile._name_.text) is non-null then this option will automatically point to a file containing that text. |
+| `xdg.stateFile.<name>.target` | `non-empty string` | Path to target file relative to <varname>xdg.stateHome</varname>. |
+| `xdg.stateFile.<name>.text` | `null or strings concatenated with "\n"` | Text of the file. If this option is null then [](#opt-xdg.stateFile._name_.source) must be set. |
+| `xdg.stateHome` | `absolute path` | Absolute path to directory holding application states. Sets `XDG_STATE_HOME` for the user if `xdg.enable` is set `true`. |
+| `xdg.systemDirs.config` | `list of string` | Directory names to add to {env}`XDG_CONFIG_DIRS` in the user session. |
+| `xdg.systemDirs.data` | `list of string` | Directory names to add to {env}`XDG_DATA_DIRS` in the user session. |
+| `xdg.terminal-exec.enable` | `boolean` | Whether to enable xdg-terminal-exec, the [proposed](https://gitlab.freedesktop.org/xdg/xdg-specs/-/merge_requests/46) Default Terminal Execution Specification. |
 | `xdg.terminal-exec.package` | `null or package` | The xdg-terminal-exec package to use. |
-| `xdg.terminal-exec.settings` | `attribute set of list of string` | Configuration options for the Default Terminal Execution Specification. |
+| `xdg.terminal-exec.settings` | `attribute set of list of string` | Configuration options for the Default Terminal Execution Specification. The keys are the desktop environments that are matched (case-insensitively) against {env}`XDG_CURRENT_DESKTOP`, or `default` which is used when the current desktop environment is not found in the configuration. The values are a list of terminals' [desktop file IDs](https://specifications.freedesktop.org/desktop-entry-spec/latest/ar01s02.html#desktop-file-id) to try in order of decreasing priority. |
 | `xdg.userDirs.createDirectories` | `boolean` | Whether to enable automatic creation of the XDG user directories. |
 | `xdg.userDirs.desktop` | `null or (string or absolute path convertible to it)` | The Desktop directory. |
 | `xdg.userDirs.documents` | `null or (string or absolute path convertible to it)` | The Documents directory. |
 | `xdg.userDirs.download` | `null or (string or absolute path convertible to it)` | The Downloads directory. |
-| `xdg.userDirs.enable` | `boolean` | Whether to manage $XDG_CONFIG_HOME/user-dirs.dirs . |
-| `xdg.userDirs.extraConfig` | `attribute set of (string or absolute path convertible to it)` | Other user directories. |
+| `xdg.userDirs.enable` | `boolean` | Whether to manage {file}`$XDG_CONFIG_HOME/user-dirs.dirs`. The generated file is read-only. |
+| `xdg.userDirs.extraConfig` | `attribute set of (string or absolute path convertible to it)` | Other user directories. The key ‘MISC’ corresponds to the user-dirs entry ‘XDG_MISC_DIR’. |
 | `xdg.userDirs.music` | `null or (string or absolute path convertible to it)` | The Music directory. |
 | `xdg.userDirs.package` | `null or package` | The xdg-user-dirs package to use. |
 | `xdg.userDirs.pictures` | `null or (string or absolute path convertible to it)` | The Pictures directory. |
-| `xdg.userDirs.projects` | | |
+| `xdg.userDirs.projects` | `null or (string or absolute path convertible to it)` | The Projects directory. |
 | `xdg.userDirs.publicShare` | `null or (string or absolute path convertible to it)` | The Public share directory. |
-| `xdg.userDirs.publishShare` | | |
-| `xdg.userDirs.setSessionVariables` | `boolean` | Whether to set the XDG user dir environment variables, like XDG_DESKTOP_DIR . |
+| `xdg.userDirs.setSessionVariables` | `boolean` | Whether to set the XDG user dir environment variables, like `XDG_DESKTOP_DIR`. ::: {.note} The recommended way to get these values is via the `xdg-user-dir` command or by processing `$XDG_CONFIG_HOME/user-dirs.dirs` directly in your application. ::: This defaults to `true` for state version \< 26.05 and `false` otherwise. |
 | `xdg.userDirs.templates` | `null or (string or absolute path convertible to it)` | The Templates directory. |
 | `xdg.userDirs.videos` | `null or (string or absolute path convertible to it)` | The Videos directory. |

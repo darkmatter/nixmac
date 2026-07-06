@@ -5,11 +5,11 @@
 All options under `services.mpd-mpris`.
 
 | Option | Type | Description |
-| --------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| --- | --- | --- |
 | `services.mpd-mpris.enable` | `boolean` | Whether to enable mpd-mpris: An implementation of the MPRIS protocol for MPD. |
 | `services.mpd-mpris.mpd.host` | `null or string` | The address where MPD is listening for connections. |
-| `services.mpd-mpris.mpd.network` | `null or string` | The network used to dial to the MPD server. Check https://golang.org/pkg/net/#Dial for available values (most common are “tcp” and “unix”) |
+| `services.mpd-mpris.mpd.network` | `null or string` | The network used to dial to the MPD server. Check <https://golang.org/pkg/net/#Dial> for available values (most common are "tcp" and "unix") |
 | `services.mpd-mpris.mpd.password` | `null or string` | The password to connect to MPD. |
 | `services.mpd-mpris.mpd.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port number where MPD is listening for connections. |
-| `services.mpd-mpris.mpd.useLocal` | `boolean` | Whether to configure for the local MPD daemon. If true the network , host , and port settings are ignored. |
+| `services.mpd-mpris.mpd.useLocal` | `boolean` | Whether to configure for the local MPD daemon. If `true` the `network`, `host`, and `port` settings are ignored. |
 | `services.mpd-mpris.package` | `package` | The mpd-mpris package to use. |

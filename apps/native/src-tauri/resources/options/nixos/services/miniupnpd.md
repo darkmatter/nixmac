@@ -5,10 +5,10 @@
 All options under `services.miniupnpd`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.miniupnpd.appendConfig` | | |
-| `services.miniupnpd.enable` | | |
-| `services.miniupnpd.externalInterface` | | |
-| `services.miniupnpd.internalIPs` | | |
-| `services.miniupnpd.natpmp` | | |
-| `services.miniupnpd.upnp` | | |
+| --- | --- | --- |
+| `services.miniupnpd.appendConfig` | `strings concatenated with "\n"` | Configuration lines appended to the MiniUPnP config. |
+| `services.miniupnpd.enable` | `boolean` | Whether to enable MiniUPnP daemon. |
+| `services.miniupnpd.externalInterface` | `string` | Name of the external interface. |
+| `services.miniupnpd.internalIPs` | `list of string` | The IP address ranges to listen on. |
+| `services.miniupnpd.natpmp` | `boolean` | Whether to enable NAT-PMP support. |
+| `services.miniupnpd.upnp` | `boolean` | Whether to enable UPNP support. |

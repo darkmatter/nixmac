@@ -5,5 +5,5 @@
 All options under `services.gdomap`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `services.gdomap.enable` | | |
+| --- | --- | --- |
+| `services.gdomap.enable` | `boolean` | Whether to enable GNUstep Distributed Objects name server. |

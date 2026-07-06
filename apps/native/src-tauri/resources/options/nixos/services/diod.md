@@ -5,17 +5,17 @@
 All options under `services.diod`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.diod.allsquash` | | |
-| `services.diod.authRequired` | | |
-| `services.diod.enable` | | |
-| `services.diod.exportall` | | |
-| `services.diod.exportopts` | | |
-| `services.diod.exports` | | |
-| `services.diod.extraConfig` | | |
-| `services.diod.listen` | | |
-| `services.diod.logdest` | | |
-| `services.diod.nwthreads` | | |
-| `services.diod.squashuser` | | |
-| `services.diod.statfsPassthru` | | |
-| `services.diod.userdb` | | |
+| --- | --- | --- |
+| `services.diod.allsquash` | `boolean` | Remap all users to "nobody". The attaching user need not be present in the password file. |
+| `services.diod.authRequired` | `boolean` | Allow clients to connect without authentication, i.e. without a valid MUNGE credential. |
+| `services.diod.enable` | `boolean` | Whether to enable the diod 9P file server. |
+| `services.diod.exportall` | `boolean` | Export all file systems listed in /proc/mounts. If new file systems are mounted after diod has started, they will become immediately mountable. If there is a duplicate entry for a file system in the exports list, any options listed in the exports entry will apply. |
+| `services.diod.exportopts` | `list of string` | Establish a default set of export options. These are overridden, not appended to, by opts attributes in an "exports" entry. |
+| `services.diod.exports` | `list of string` | List the file systems that clients will be allowed to mount. All paths should be fully qualified. The exports table can include two types of element: a string element (as above), or an alternate table element form { path="/path", opts="ro" }. In the alternate form, the (optional) opts attribute is a comma-separated list of export options. The two table element forms can be mixed in the exports table. Note that although diod will not traverse file system boundaries for a given mount due to inode uniqueness constraints, subdirectories of a file system can be separately exported. |
+| `services.diod.extraConfig` | `strings concatenated with "\n"` | Extra configuration options for diod.conf. |
+| `services.diod.listen` | `list of string` | \[ "IP:PORT" [,"IP:PORT",...] \] List the interfaces and ports that diod should listen on. |
+| `services.diod.logdest` | `string` | Set the destination for logging. The value has the form of "syslog:facility:level" or "filename". |
+| `services.diod.nwthreads` | `signed integer` | Sets the (fixed) number of worker threads created to handle 9P requests for a unique aname. |
+| `services.diod.squashuser` | `string` | Change the squash user. The squash user must be present in the password file. |
+| `services.diod.statfsPassthru` | `boolean` | This option configures statfs to return the host file system's type rather than V9FS_MAGIC. |
+| `services.diod.userdb` | `boolean` | This option disables password/group lookups. It allows any uid to attach and assumes gid=uid, and supplementary groups contain only the primary gid. |

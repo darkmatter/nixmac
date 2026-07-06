@@ -5,21 +5,49 @@
 All options under `services.keepalived`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---- | ----------- |
-| `services.keepalived.enable` | | |
-| `services.keepalived.enableScriptSecurity` | | |
-| `services.keepalived.extraConfig` | | |
-| `services.keepalived.extraGlobalDefs` | | |
-| `services.keepalived.openFirewall` | | |
-| `services.keepalived.package` | | |
-| `services.keepalived.secretFile` | | |
-| `services.keepalived.snmp.enable` | | |
-| `services.keepalived.snmp.enableChecker` | | |
-| `services.keepalived.snmp.enableKeepalived` | | |
-| `services.keepalived.snmp.enableRfc` | | |
-| `services.keepalived.snmp.enableRfcV2` | | |
-| `services.keepalived.snmp.enableRfcV3` | | |
-| `services.keepalived.snmp.enableTraps` | | |
-| `services.keepalived.snmp.socket` | | |
-| `services.keepalived.vrrpInstances` | | |
-| `services.keepalived.vrrpScripts` | | |
+| --- | --- | --- |
+| `services.keepalived.enable` | `boolean` | Whether to enable Keepalived. |
+| `services.keepalived.enableScriptSecurity` | `boolean` | Don't run scripts configured to be run as root if any part of the path is writable by a non-root user. |
+| `services.keepalived.extraConfig` | `strings concatenated with "\n"` | Extra lines to be added verbatim to the configuration file. |
+| `services.keepalived.extraGlobalDefs` | `strings concatenated with "\n"` | Extra lines to be added verbatim to the 'global_defs' block of the configuration file |
+| `services.keepalived.openFirewall` | `boolean` | Whether to automatically allow VRRP and AH packets in the firewall. |
+| `services.keepalived.package` | `package` | The keepalived package to use. |
+| `services.keepalived.secretFile` | `null or absolute path` | Environment variables from this file will be interpolated into the final config file using envsubst with this syntax: `$ENVIRONMENT` or `${VARIABLE}`. The file should contain lines formatted as `SECRET_VAR=SECRET_VALUE`. This is useful to avoid putting secrets into the nix store. |
+| `services.keepalived.snmp.enable` | `boolean` | Whether to enable the builtin AgentX subagent. |
+| `services.keepalived.snmp.enableChecker` | `boolean` | Enable SNMP handling of checker element of KEEPALIVED MIB. |
+| `services.keepalived.snmp.enableKeepalived` | `boolean` | Enable SNMP handling of vrrp element of KEEPALIVED MIB. |
+| `services.keepalived.snmp.enableRfc` | `boolean` | Enable SNMP handling of RFC2787 and RFC6527 VRRP MIBs. |
+| `services.keepalived.snmp.enableRfcV2` | `boolean` | Enable SNMP handling of RFC2787 VRRP MIB. |
+| `services.keepalived.snmp.enableRfcV3` | `boolean` | Enable SNMP handling of RFC6527 VRRP MIB. |
+| `services.keepalived.snmp.enableTraps` | `boolean` | Enable SNMP traps. |
+| `services.keepalived.snmp.socket` | `null or string` | Socket to use for connecting to SNMP master agent. If this value is set to null, keepalived's default will be used, which is unix:/var/agentx/master, unless using a network namespace, when the default is udp:localhost:705. |
+| `services.keepalived.vrrpInstances` | `attribute set of (submodule)` | Declarative vhost config |
+| `services.keepalived.vrrpInstances.<name>.extraConfig` | `strings concatenated with "\n"` | Extra lines to be added verbatim to the vrrp_instance section. |
+| `services.keepalived.vrrpInstances.<name>.interface` | `string` | Interface for inside_network, bound by vrrp. |
+| `services.keepalived.vrrpInstances.<name>.noPreempt` | `boolean` | VRRP will normally preempt a lower priority machine when a higher priority machine comes online. "nopreempt" allows the lower priority machine to maintain the master role, even when a higher priority machine comes back online. NOTE: For this to work, the initial state of this entry must be BACKUP. |
+| `services.keepalived.vrrpInstances.<name>.priority` | `signed integer` | For electing MASTER, highest priority wins. To be MASTER, make 50 more than other machines. |
+| `services.keepalived.vrrpInstances.<name>.state` | `one of "MASTER", "BACKUP"` | Initial state. As soon as the other machine(s) come up, an election will be held and the machine with the highest "priority" will become MASTER. So the entry here doesn't matter a whole lot. |
+| `services.keepalived.vrrpInstances.<name>.trackInterfaces` | `list of string` | List of network interfaces to monitor for health tracking. |
+| `services.keepalived.vrrpInstances.<name>.trackScripts` | `list of string` | List of script names to invoke for health tracking. |
+| `services.keepalived.vrrpInstances.<name>.unicastPeers` | `list of string` | Do not send VRRP adverts over VRRP multicast group. Instead it sends adverts to the following list of ip addresses using unicast design fashion. It can be cool to use VRRP FSM and features in a networking environment where multicast is not supported! IP Addresses specified can IPv4 as well as IPv6. |
+| `services.keepalived.vrrpInstances.<name>.unicastSrcIp` | `null or string` | Default IP for binding vrrpd is the primary IP on interface. If you want to hide location of vrrpd, use this IP as src_addr for unicast vrrp packets. |
+| `services.keepalived.vrrpInstances.<name>.useVmac` | `boolean` | Use VRRP Virtual MAC. |
+| `services.keepalived.vrrpInstances.<name>.virtualIps` | `list of (submodule)` | Declarative vhost config |
+| `services.keepalived.vrrpInstances.<name>.virtualIps.*.addr` | `string` | IP address, optionally with a netmask: IPADDR[/MASK] |
+| `services.keepalived.vrrpInstances.<name>.virtualIps.*.brd` | `null or string` | The broadcast address on the interface. |
+| `services.keepalived.vrrpInstances.<name>.virtualIps.*.dev` | `null or string` | The name of the device to add the address to. |
+| `services.keepalived.vrrpInstances.<name>.virtualIps.*.label` | `null or string` | Each address may be tagged with a label string. In order to preserve compatibility with Linux-2.0 net aliases, this string must coincide with the name of the device or must be prefixed with the device name followed by colon. |
+| `services.keepalived.vrrpInstances.<name>.virtualIps.*.scope` | `null or string` | The scope of the area where this address is valid. |
+| `services.keepalived.vrrpInstances.<name>.virtualRouterId` | `integer between 1 and 255 (both inclusive)` | Arbitrary unique number 1..255. Used to differentiate multiple instances of vrrpd running on the same NIC (and hence same socket). |
+| `services.keepalived.vrrpInstances.<name>.vmacInterface` | `null or string` | Name of the vmac interface to use. keepalived will come up with a name if you don't specify one. |
+| `services.keepalived.vrrpInstances.<name>.vmacXmitBase` | `boolean` | Send/Recv VRRP messages from base interface instead of VMAC interface. |
+| `services.keepalived.vrrpScripts` | `attribute set of (submodule)` | Declarative vrrp script config |
+| `services.keepalived.vrrpScripts.<name>.extraConfig` | `strings concatenated with "\n"` | Extra lines to be added verbatim to the vrrp_script section. |
+| `services.keepalived.vrrpScripts.<name>.fall` | `signed integer` | Required number of failures for KO transition. |
+| `services.keepalived.vrrpScripts.<name>.group` | `null or string` | Name of group to run the script under. Defaults to user group. |
+| `services.keepalived.vrrpScripts.<name>.interval` | `signed integer` | Seconds between script invocations. |
+| `services.keepalived.vrrpScripts.<name>.rise` | `signed integer` | Required number of successes for OK transition. |
+| `services.keepalived.vrrpScripts.<name>.script` | `string` | (Path of) Script command to execute followed by args, i.e. cmd [args]... |
+| `services.keepalived.vrrpScripts.<name>.timeout` | `signed integer` | Seconds after which script is considered to have failed. |
+| `services.keepalived.vrrpScripts.<name>.user` | `string` | Name of user to run the script under. |
+| `services.keepalived.vrrpScripts.<name>.weight` | `signed integer` | Following a failure, adjust the priority by this weight. |

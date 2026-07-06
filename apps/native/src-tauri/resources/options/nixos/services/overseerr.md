@@ -5,8 +5,8 @@
 All options under `services.overseerr`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.overseerr.enable` | | |
-| `services.overseerr.openFirewall` | | |
-| `services.overseerr.package` | | |
-| `services.overseerr.port` | | |
+| --- | --- | --- |
+| `services.overseerr.enable` | `boolean` | Whether to enable Overseerr, a request management and media discovery tool for the Plex ecosystem. |
+| `services.overseerr.openFirewall` | `boolean` | Open a port in the firewall for the Overseerr web interface. |
+| `services.overseerr.package` | `package` | The overseerr package to use. |
+| `services.overseerr.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port which the Overseerr web UI should listen on. |

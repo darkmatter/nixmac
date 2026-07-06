@@ -5,10 +5,10 @@
 All options under `services.podgrab`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.podgrab.dataDirectory` | | |
-| `services.podgrab.enable` | | |
-| `services.podgrab.group` | | |
-| `services.podgrab.passwordFile` | | |
-| `services.podgrab.port` | | |
-| `services.podgrab.user` | | |
+| --- | --- | --- |
+| `services.podgrab.dataDirectory` | `absolute path` | Directory to store downloads. |
+| `services.podgrab.enable` | `boolean` | Whether to enable Podgrab, a self-hosted podcast manager. |
+| `services.podgrab.group` | `string` | Group under which Podgrab runs, and which owns the download directory. |
+| `services.podgrab.passwordFile` | `null or string` | The path to a file containing the PASSWORD environment variable definition for Podgrab's authentication. |
+| `services.podgrab.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port on which Podgrab will listen for incoming HTTP traffic. |
+| `services.podgrab.user` | `string` | User under which Podgrab runs, and which owns the download directory. |

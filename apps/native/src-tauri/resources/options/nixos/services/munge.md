@@ -5,6 +5,6 @@
 All options under `services.munge`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.munge.enable` | | |
-| `services.munge.password` | | |
+| --- | --- | --- |
+| `services.munge.enable` | `boolean` | Whether to enable munge service. |
+| `services.munge.password` | `absolute path` | The path to a daemon's secret key. |

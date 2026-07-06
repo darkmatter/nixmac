@@ -5,25 +5,26 @@
 All options under `services.pihole-ftl`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---- | ----------- |
-| `services.pihole-ftl.configDirectory` | | |
-| `services.pihole-ftl.enable` | | |
-| `services.pihole-ftl.group` | | |
-| `services.pihole-ftl.lists` | | |
-| `services.pihole-ftl.logDirectory` | | |
-| `services.pihole-ftl.macvendorURL` | | |
-| `services.pihole-ftl.openFirewallDHCP` | | |
-| `services.pihole-ftl.openFirewallDNS` | | |
-| `services.pihole-ftl.openFirewallWebserver` | | |
-| `services.pihole-ftl.package` | | |
-| `services.pihole-ftl.pihole` | | |
-| `services.pihole-ftl.piholePackage` | | |
-| `services.pihole-ftl.privacyLevel` | | |
-| `services.pihole-ftl.queryLogDeleter.age` | | |
-| `services.pihole-ftl.queryLogDeleter.enable` | | |
-| `services.pihole-ftl.queryLogDeleter.interval` | | |
-| `services.pihole-ftl.settings` | | |
-| `services.pihole-ftl.stateDirectory` | | |
-| `services.pihole-ftl.useDnsmasqConfig` | | |
-| `services.pihole-ftl.user` | | |
-| `services.pihole-ftl.webserverEnabled` | | |
+| --- | --- | --- |
+| `services.pihole-ftl.enable` | `boolean` | Whether to enable Pi-hole FTL. |
+| `services.pihole-ftl.group` | `string` | Group to run the service as. |
+| `services.pihole-ftl.lists` | `list of (submodule)` | Deny (or allow) domain lists to use |
+| `services.pihole-ftl.lists.*.description` | `string` | Description of the list |
+| `services.pihole-ftl.lists.*.enabled` | `boolean` | Whether this list is enabled |
+| `services.pihole-ftl.lists.*.type` | `one of "allow", "block"` | Whether domains on this list should be explicitly allowed, or blocked |
+| `services.pihole-ftl.lists.*.url` | `string` | URL of the domain list |
+| `services.pihole-ftl.logDirectory` | `absolute path` | Path for Pi-hole log files |
+| `services.pihole-ftl.macvendorURL` | `string` | URL from which to download the macvendor.db file. |
+| `services.pihole-ftl.openFirewallDHCP` | `boolean` | Open ports in the firewall for pihole-FTL's DHCP server. |
+| `services.pihole-ftl.openFirewallDNS` | `boolean` | Open ports in the firewall for pihole-FTL's DNS server. |
+| `services.pihole-ftl.openFirewallWebserver` | `boolean` | Open ports in the firewall for pihole-FTL's webserver, as configured in `settings.webserver.port`. |
+| `services.pihole-ftl.package` | `package` | The pihole-ftl package to use. |
+| `services.pihole-ftl.piholePackage` | `package` | The pihole package to use. |
+| `services.pihole-ftl.privacyLevel` | `integer or floating point number between 0 and 3 (both inclusive)` | Level of detail in generated statistics. 0 enables full statistics, 3 shows only anonymous statistics. See [the documentation](https://docs.pi-hole.net/ftldns/privacylevels). Also see services.dnsmasq.settings.log-queries to completely disable query logging. |
+| `services.pihole-ftl.queryLogDeleter.age` | `signed integer` | Delete DNS query logs older than this many days, if [](#opt-services.pihole-ftl.queryLogDeleter.enable) is on. |
+| `services.pihole-ftl.queryLogDeleter.enable` | `boolean` | Whether to enable Pi-hole FTL DNS query log deleter. |
+| `services.pihole-ftl.queryLogDeleter.interval` | `string` | How often the query log deleter is run. See systemd.time(7) for more information about the format. |
+| `services.pihole-ftl.settings` | `TOML value` | Configuration options for pihole.toml. See the upstream [documentation](https://docs.pi-hole.net/ftldns/configfile). |
+| `services.pihole-ftl.stateDirectory` | `absolute path` | Path for pihole state files. |
+| `services.pihole-ftl.useDnsmasqConfig` | `boolean` | Import options defined in [](#opt-services.dnsmasq.settings) via misc.dnsmasq_lines in Pi-hole's config. |
+| `services.pihole-ftl.user` | `string` | User to run the service as. |

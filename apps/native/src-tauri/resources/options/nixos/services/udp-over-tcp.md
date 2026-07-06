@@ -5,7 +5,23 @@
 All options under `services.udp-over-tcp`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.udp-over-tcp.package` | | |
-| `services.udp-over-tcp.tcp2udp` | | |
-| `services.udp-over-tcp.udp2tcp` | | |
+| --- | --- | --- |
+| `services.udp-over-tcp.package` | `package` | The udp-over-tcp package to use. |
+| `services.udp-over-tcp.tcp2udp` | `attribute set of (submodule)` | Mapping of TCP listening ports to UDP forwarding ports or configurations. |
+| `services.udp-over-tcp.tcp2udp.<name>.bind` | `null or string` | Which local IP to bind the UDP socket to. |
+| `services.udp-over-tcp.tcp2udp.<name>.forward` | `string` | The IP and port to forward all traffic to. |
+| `services.udp-over-tcp.tcp2udp.<name>.fwmark` | `null or 32 bit unsigned integer; between 0 and 4294967295 (both inclusive)` | If given, sets the SO_MARK option on the TCP socket. |
+| `services.udp-over-tcp.tcp2udp.<name>.nodelay` | `boolean` | Enables TCP_NODELAY on the TCP socket. |
+| `services.udp-over-tcp.tcp2udp.<name>.openFirewall` | `boolean` | Open the appropriate ports in the firewall. |
+| `services.udp-over-tcp.tcp2udp.<name>.recvBufferSize` | `null or (positive integer, meaning >0)` | If given, sets the SO_RCVBUF option on the TCP socket to the given number of bytes. Changes the size of the operating system's receive buffer associated with the socket. |
+| `services.udp-over-tcp.tcp2udp.<name>.recvTimeout` | `null or (positive integer, meaning >0)` | An application timeout on receiving data from the TCP socket. |
+| `services.udp-over-tcp.tcp2udp.<name>.sendBufferSize` | `null or (positive integer, meaning >0)` | If given, sets the SO_SNDBUF option on the TCP socket to the given number of bytes. Changes the size of the operating system's send buffer associated with the socket. |
+| `services.udp-over-tcp.tcp2udp.<name>.threads` | `null or (positive integer, meaning >0)` | Sets the number of worker threads to use. The default value is the number of cores available to the system. |
+| `services.udp-over-tcp.udp2tcp` | `attribute set of (submodule)` | Mapping of UDP listening ports to TCP forwarding ports or configurations. |
+| `services.udp-over-tcp.udp2tcp.<name>.forward` | `string` | The IP and port to forward all traffic to. |
+| `services.udp-over-tcp.udp2tcp.<name>.fwmark` | `null or 32 bit unsigned integer; between 0 and 4294967295 (both inclusive)` | If given, sets the SO_MARK option on the TCP socket. |
+| `services.udp-over-tcp.udp2tcp.<name>.nodelay` | `boolean` | Enables TCP_NODELAY on the TCP socket. |
+| `services.udp-over-tcp.udp2tcp.<name>.openFirewall` | `boolean` | Open the appropriate ports in the firewall. |
+| `services.udp-over-tcp.udp2tcp.<name>.recvBufferSize` | `null or (positive integer, meaning >0)` | If given, sets the SO_RCVBUF option on the TCP socket to the given number of bytes. Changes the size of the operating system's receive buffer associated with the socket. |
+| `services.udp-over-tcp.udp2tcp.<name>.recvTimeout` | `null or (positive integer, meaning >0)` | An application timeout on receiving data from the TCP socket. |
+| `services.udp-over-tcp.udp2tcp.<name>.sendBufferSize` | `null or (positive integer, meaning >0)` | If given, sets the SO_SNDBUF option on the TCP socket to the given number of bytes. Changes the size of the operating system's send buffer associated with the socket. |

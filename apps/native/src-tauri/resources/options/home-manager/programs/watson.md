@@ -5,10 +5,10 @@
 All options under `programs.watson`.
 
 | Option | Type | Description |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| --- | --- | --- |
 | `programs.watson.enable` | `boolean` | Whether to enable watson, a wonderful CLI to track your time. |
 | `programs.watson.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.watson.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
 | `programs.watson.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
 | `programs.watson.package` | `package` | The watson package to use. |
-| `programs.watson.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to $XDG_CONFIG_HOME/watson/config on Linux or $HOME/Library/Application Support/watson/config on Darwin. |
+| `programs.watson.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to {file}`$XDG_CONFIG_HOME/watson/config` on Linux or {file}`$HOME/Library/Application Support/watson/config` on Darwin. See <https://github.com/TailorDev/Watson/blob/master/docs/user-guide/configuration.md> for an example configuration. |

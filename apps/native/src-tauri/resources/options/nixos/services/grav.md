@@ -5,12 +5,12 @@
 All options under `services.grav`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.grav.enable` | | |
-| `services.grav.maxUploadSize` | | |
-| `services.grav.package` | | |
-| `services.grav.phpPackage` | | |
-| `services.grav.pool` | | |
-| `services.grav.root` | | |
-| `services.grav.systemSettings` | | |
-| `services.grav.virtualHost` | | |
+| --- | --- | --- |
+| `services.grav.enable` | `boolean` | Whether to enable grav. |
+| `services.grav.maxUploadSize` | `string` | The upload limit for files. This changes the relevant options in {file}`php.ini` and nginx if enabled. |
+| `services.grav.package` | `package` | The grav package to use. |
+| `services.grav.phpPackage` | `package` | The php83 package to use. |
+| `services.grav.pool` | `string` | Name of existing phpfpm pool that is used to run web-application. If not specified a pool will be created automatically with default values. |
+| `services.grav.root` | `absolute path` | Root of the application. |
+| `services.grav.systemSettings` | `YAML 1.1 value` | Settings written to {file}`user/config/system.yaml`. |
+| `services.grav.virtualHost` | `null or string` | Name of the nginx virtualhost to use and setup. If null, do not setup any virtualhost. |

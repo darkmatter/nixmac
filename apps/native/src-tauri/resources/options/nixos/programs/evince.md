@@ -5,6 +5,6 @@
 All options under `programs.evince`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `programs.evince.enable` | | |
-| `programs.evince.package` | | |
+| --- | --- | --- |
+| `programs.evince.enable` | `boolean` | Whether to enable Evince, the GNOME document viewer. |
+| `programs.evince.package` | `package` | The evince package to use. |

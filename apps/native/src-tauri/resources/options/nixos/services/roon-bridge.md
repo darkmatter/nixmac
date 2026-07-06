@@ -5,8 +5,8 @@
 All options under `services.roon-bridge`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.roon-bridge.enable` | | |
-| `services.roon-bridge.group` | | |
-| `services.roon-bridge.openFirewall` | | |
-| `services.roon-bridge.user` | | |
+| --- | --- | --- |
+| `services.roon-bridge.enable` | `boolean` | Whether to enable Roon Bridge. |
+| `services.roon-bridge.group` | `string` | Group to run the Roon Bridge as. |
+| `services.roon-bridge.openFirewall` | `boolean` | Open ports in the firewall for the bridge. |
+| `services.roon-bridge.user` | `string` | User to run the Roon bridge as. |

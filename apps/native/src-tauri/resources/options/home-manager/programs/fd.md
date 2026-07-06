@@ -5,9 +5,9 @@
 All options under `programs.fd`.
 
 | Option | Type | Description |
-| -------------------------- | ----------------- | ---------------------------------------------------------------------------- |
-| `programs.fd.enable` | `boolean` | Whether to enable fd, a simple, fast and user-friendly alternative to find . |
+| --- | --- | --- |
+| `programs.fd.enable` | `boolean` | Whether to enable fd, a simple, fast and user-friendly alternative to {command}`find`. |
 | `programs.fd.extraOptions` | `list of string` | Extra command line options passed to fd. |
-| `programs.fd.hidden` | `boolean` | Search hidden files and directories ( --hidden argument). |
+| `programs.fd.hidden` | `boolean` | Search hidden files and directories ({option}`--hidden` argument). |
 | `programs.fd.ignores` | `list of string` | List of paths that should be globally ignored. |
 | `programs.fd.package` | `null or package` | The fd package to use. |

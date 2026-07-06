@@ -5,21 +5,19 @@
 All options under `services.gollum`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.gollum.address` | | |
-| `services.gollum.allowUploads` | | |
-| `services.gollum.branch` | | |
-| `services.gollum.emoji` | | |
-| `services.gollum.enable` | | |
-| `services.gollum.extraConfig` | | |
-| `services.gollum.group` | | |
-| `services.gollum.h1-title` | | |
-| `services.gollum.local-time` | | |
-| `services.gollum.math` | | |
-| `services.gollum.mathjax` | | |
-| `services.gollum.no-edit` | | |
-| `services.gollum.package` | | |
-| `services.gollum.port` | | |
-| `services.gollum.stateDir` | | |
-| `services.gollum.user` | | |
-| `services.gollum.user-icons` | | |
+| --- | --- | --- |
+| `services.gollum.address` | `string` | IP address on which the web server will listen. |
+| `services.gollum.allowUploads` | `null or one of "dir", "page"` | Enable uploads of external files |
+| `services.gollum.branch` | `string` | Git branch to serve |
+| `services.gollum.emoji` | `boolean` | Parse and interpret emoji tags |
+| `services.gollum.enable` | `boolean` | Whether to enable Gollum, a git-powered wiki service. |
+| `services.gollum.extraConfig` | `strings concatenated with "\n"` | Content of the configuration file |
+| `services.gollum.group` | `string` | Specifies the owner group of the wiki directory |
+| `services.gollum.h1-title` | `boolean` | Use the first h1 as page title |
+| `services.gollum.math` | `boolean` | Enable support for math rendering using KaTeX |
+| `services.gollum.no-edit` | `boolean` | Disable editing pages |
+| `services.gollum.package` | `package` | The gollum package to use. |
+| `services.gollum.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which the web server will run. |
+| `services.gollum.stateDir` | `absolute path` | Specifies the path of the repository directory. If it does not exist, Gollum will create it on startup. |
+| `services.gollum.user` | `string` | Specifies the owner of the wiki directory |
+| `services.gollum.user-icons` | `null or one of "gravatar", "identicon"` | Enable specific user icons for history view |

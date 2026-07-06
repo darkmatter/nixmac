@@ -5,5 +5,5 @@
 All options under `appstream`.
 
 | Option | Type | Description |
-| ------------------ | ---- | ----------- |
-| `appstream.enable` | | |
+| --- | --- | --- |
+| `appstream.enable` | `boolean` | Whether to install files to support the [AppStream metadata specification](https://www.freedesktop.org/software/appstream/docs/index.html). |

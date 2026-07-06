@@ -5,9 +5,22 @@
 All options under `services.umurmur`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.umurmur.configFile` | | |
-| `services.umurmur.enable` | | |
-| `services.umurmur.openFirewall` | | |
-| `services.umurmur.package` | | |
-| `services.umurmur.settings` | | |
+| --- | --- | --- |
+| `services.umurmur.configFile` | `absolute path` | Configuration file, default is generated from config.service.umurmur.settings |
+| `services.umurmur.enable` | `boolean` | Whether to enable uMurmur Mumble server. |
+| `services.umurmur.openFirewall` | `boolean` | Open ports in the firewall for the uMurmur Mumble server. |
+| `services.umurmur.package` | `package` | The umurmur package to use. |
+| `services.umurmur.settings` | `open submodule of uMurmur config value` | Settings of uMurmur. For reference see <https://github.com/umurmur/umurmur/blob/master/umurmur.conf.example> |
+| `services.umurmur.settings.bindaddr` | `string` | IPv4 address to bind to. Defaults binding on all addresses. |
+| `services.umurmur.settings.bindaddr6` | `string` | IPv6 address to bind to. Defaults binding on all addresses. |
+| `services.umurmur.settings.bindport` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to bind to (UDP and TCP). |
+| `services.umurmur.settings.ca_path` | `null or string` | Path to your SSL CA certificate. |
+| `services.umurmur.settings.certificate` | `string` | Path to your SSL certificate. Generates self-signed automatically if not exists. |
+| `services.umurmur.settings.channel_links` | `list of (attribute set)` | Channel tree definitions. |
+| `services.umurmur.settings.channels` | `list of (attribute set)` | Channel tree definitions. |
+| `services.umurmur.settings.default_channel` | `string` | The channel in which users will appear in when connecting. |
+| `services.umurmur.settings.max_bandwidth` | `signed integer` | Maximum bandwidth (in bits per second) that clients may send speech at. |
+| `services.umurmur.settings.max_users` | `signed integer` | Maximum number of concurrent clients allowed. |
+| `services.umurmur.settings.password` | `null or string` | Required password to join server, if specified. |
+| `services.umurmur.settings.private_key` | `string` | Path to your SSL key. Generates self-signed automatically if not exists. |
+| `services.umurmur.settings.welcometext` | `null or string` | Welcome message for connected clients. |

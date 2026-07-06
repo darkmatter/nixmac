@@ -5,8 +5,8 @@
 All options under `programs.keepassxc`.
 
 | Option | Type | Description |
-| ------------------------------ | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.keepassxc.autostart` | `boolean` | Whether to start KeePassXC automatically on login through the XDG autostart mechanism. |
-| `programs.keepassxc.enable` | `boolean` | Whether to enable KeePassXC. |
+| `programs.keepassxc.enable` | `boolean` | Whether to enable KeePassXC. ::: {.note} When this flag is set, KeePassXC' builtin native messaging manifest for communication with its browser extension is automatically installed. This conflicts with KeePassXC' builtin installation mechanism. To prevent error messages, either set {option}`programs.keepassxc.settings.Browser.UpdateBinaryPath` to `false`, or untick the checkbox Application Settings/ Browser Integration/ Advanced/ Update native messaging manifest files at startup in the GUI. ::: |
 | `programs.keepassxc.package` | `null or package` | The keepassxc package to use. |
-| `programs.keepassxc.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to $XDG_CONFIG_HOME/keepassxc/keepassxc.ini . |
+| `programs.keepassxc.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to {file}`$XDG_CONFIG_HOME/keepassxc/keepassxc.ini`. See <https://github.com/keepassxreboot/keepassxc/blob/develop/src/core/Config.cpp> for the full list of options. ::: {.note} When the settings are non-empty, the configuration file will be linked into the Nix store and KeePassXC will report an access error for its configuration file. This is expected and can not be fixed in a way that aligns with Home Manager's principles. See [#8257](https://github.com/nix-community/home-manager/issues/8257) for more details. ::: |

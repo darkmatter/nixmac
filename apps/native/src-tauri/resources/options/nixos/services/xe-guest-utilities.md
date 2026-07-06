@@ -5,5 +5,5 @@
 All options under `services.xe-guest-utilities`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.xe-guest-utilities.enable` | | |
+| --- | --- | --- |
+| `services.xe-guest-utilities.enable` | `boolean` | Whether to enable the XenServer guest utilities daemon. |

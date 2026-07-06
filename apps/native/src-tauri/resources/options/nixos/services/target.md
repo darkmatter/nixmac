@@ -5,6 +5,6 @@
 All options under `services.target`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `services.target.config` | | |
-| `services.target.enable` | | |
+| --- | --- | --- |
+| `services.target.config` | `attribute set` | Content of /etc/target/saveconfig.json This file is normally read and written by targetcli |
+| `services.target.enable` | `boolean` | Whether to enable the kernel's LIO iscsi target. |

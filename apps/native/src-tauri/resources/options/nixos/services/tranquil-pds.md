@@ -5,12 +5,20 @@
 All options under `services.tranquil-pds`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---- | ----------- |
-| `services.tranquil-pds.dataDir` | | |
-| `services.tranquil-pds.database.createLocally` | | |
-| `services.tranquil-pds.enable` | | |
-| `services.tranquil-pds.environmentFiles` | | |
-| `services.tranquil-pds.group` | | |
-| `services.tranquil-pds.package` | | |
-| `services.tranquil-pds.settings` | | |
-| `services.tranquil-pds.user` | | |
+| --- | --- | --- |
+| `services.tranquil-pds.dataDir` | `string` | Working directory for tranquil-pds. Also expected to be used for data (blobs) |
+| `services.tranquil-pds.database.createLocally` | `boolean` | Create the postgres database and user on the local host. |
+| `services.tranquil-pds.enable` | `boolean` | Whether to enable tranquil-pds AT Protocol personal data server. |
+| `services.tranquil-pds.environmentFiles` | `list of absolute path` | File to load environment variables from. Loaded variables override values set in {option}`environment`. Use it to set values of `JWT_SECRET`, `DPOP_SECRET` and `MASTER_KEY`. Generate these with: `openssl rand -base64 48` |
+| `services.tranquil-pds.group` | `string` | Group under which tranquil-pds runs |
+| `services.tranquil-pds.package` | `package` | The tranquil-pds package to use. |
+| `services.tranquil-pds.settings` | `open submodule of (TOML value)` | Configuration options to set for the service. Secrets should be specified using {option}`environmentFile`. Refer to <https://tangled.org/tranquil.farm/tranquil-pds/blob/main/example.toml> for available configuration options. |
+| `services.tranquil-pds.settings.frontend.dir` | `package` | The tranquil-pds-frontend package to use. |
+| `services.tranquil-pds.settings.frontend.enabled` | `boolean` | Whether to enable serving the frontend from the backend. Disable to serve the frontend manually. |
+| `services.tranquil-pds.settings.server.host` | `string` | Host for tranquil-pds to listen on |
+| `services.tranquil-pds.settings.server.hostname` | `string` | The public-facing hostname of the PDS |
+| `services.tranquil-pds.settings.server.max_blob_size` | `signed integer` | Maximum allowed blob size in bytes. |
+| `services.tranquil-pds.settings.server.port` | `signed integer` | Port for tranquil-pds to listen on |
+| `services.tranquil-pds.settings.storage.path` | `absolute path` | Directory for storing blobs |
+| `services.tranquil-pds.settings.tranquil_store.data_dir` | `absolute path` | Directory for tranquil-store files |
+| `services.tranquil-pds.user` | `string` | User under which tranquil-pds runs |

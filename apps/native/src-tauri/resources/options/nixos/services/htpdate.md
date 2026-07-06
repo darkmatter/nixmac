@@ -5,8 +5,8 @@
 All options under `services.htpdate`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.htpdate.enable` | | |
-| `services.htpdate.extraOptions` | | |
-| `services.htpdate.proxy` | | |
-| `services.htpdate.servers` | | |
+| --- | --- | --- |
+| `services.htpdate.enable` | `boolean` | Enable htpdate daemon. |
+| `services.htpdate.extraOptions` | `string` | Additional command line arguments to pass to htpdate. |
+| `services.htpdate.proxy` | `string` | HTTP proxy used for requests. |
+| `services.htpdate.servers` | `list of string` | HTTP servers to use for time synchronization. |

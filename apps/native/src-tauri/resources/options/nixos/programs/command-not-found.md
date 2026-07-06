@@ -5,6 +5,6 @@
 All options under `programs.command-not-found`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `programs.command-not-found.dbPath` | | |
-| `programs.command-not-found.enable` | | |
+| --- | --- | --- |
+| `programs.command-not-found.dbPath` | `absolute path` | Absolute path to `programs.sqlite`, which contains mappings from binary names to package names. If a nixpkgs tarball from https://channels.nixos.org is used as the source of nixpkgs, this file will be provided and this option be set by default. To use the stateful `programs.sqlite` database, set this option to `/nix/var/nix/profiles/per-user/root/channels/nixos/programs.sqlite`. If you do so, you can update it with `sudo nix-channels --update`. |
+| `programs.command-not-found.enable` | `boolean` | Whether interactive shells should show which Nix package (if any) provides a missing command. See also nix-index and nix-index-database as an alternative for flakes-based systems. Additionally, having the env var NIX_AUTO_RUN set will automatically run the matching package, and with NIX_AUTO_RUN_INTERACTIVE it will confirm the package before running. |

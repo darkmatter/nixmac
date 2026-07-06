@@ -5,6 +5,6 @@
 All options under `services.openwebrx`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.openwebrx.enable` | | |
-| `services.openwebrx.package` | | |
+| --- | --- | --- |
+| `services.openwebrx.enable` | `boolean` | Whether to enable OpenWebRX Web interface for Software-Defined Radios on http://localhost:8073. |
+| `services.openwebrx.package` | `package` | The openwebrx package to use. |

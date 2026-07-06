@@ -5,7 +5,7 @@
 All options under `programs.feedbackd`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `programs.feedbackd.enable` | | |
-| `programs.feedbackd.package` | | |
-| `programs.feedbackd.theme-package` | | |
+| --- | --- | --- |
+| `programs.feedbackd.enable` | `boolean` | Whether to enable the feedbackd D-BUS service and udev rules. Your user needs to be in the `feedbackd` group to trigger effects . |
+| `programs.feedbackd.package` | `package` | The feedbackd package to use. |
+| `programs.feedbackd.theme-package` | `null or package` | The feedbackd-device-themes package to use. |

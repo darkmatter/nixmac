@@ -5,8 +5,8 @@
 All options under `services.usbmuxd`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.usbmuxd.enable` | | |
-| `services.usbmuxd.group` | | |
-| `services.usbmuxd.package` | | |
-| `services.usbmuxd.user` | | |
+| --- | --- | --- |
+| `services.usbmuxd.enable` | `boolean` | Enable the usbmuxd ("USB multiplexing daemon") service. This daemon is in charge of multiplexing connections over USB to an iOS device. This is needed for transferring data from and to iOS devices (see ifuse). Also this may enable plug-n-play tethering for iPhones. |
+| `services.usbmuxd.group` | `string` | The group usbmuxd should use to run after startup. |
+| `services.usbmuxd.package` | `package` | Which package to use for the usbmuxd daemon. |
+| `services.usbmuxd.user` | `string` | The user usbmuxd should use to run after startup. |

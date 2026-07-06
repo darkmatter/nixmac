@@ -5,7 +5,7 @@
 All options under `programs.k40-whisperer`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `programs.k40-whisperer.enable` | | |
-| `programs.k40-whisperer.group` | | |
-| `programs.k40-whisperer.package` | | |
+| --- | --- | --- |
+| `programs.k40-whisperer.enable` | `boolean` | Whether to enable K40-Whisperer. |
+| `programs.k40-whisperer.group` | `string` | Group assigned to the device when connected. |
+| `programs.k40-whisperer.package` | `package` | The k40-whisperer package to use. |

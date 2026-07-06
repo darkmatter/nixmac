@@ -5,13 +5,13 @@
 All options under `services.privatebin`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.privatebin.dataDir` | | |
-| `services.privatebin.enable` | | |
-| `services.privatebin.enableNginx` | | |
-| `services.privatebin.group` | | |
-| `services.privatebin.package` | | |
-| `services.privatebin.poolConfig` | | |
-| `services.privatebin.settings` | | |
-| `services.privatebin.user` | | |
-| `services.privatebin.virtualHost` | | |
+| --- | --- | --- |
+| `services.privatebin.dataDir` | `absolute path` | The place where privatebin stores its state. |
+| `services.privatebin.enable` | `boolean` | Whether to enable Privatebin: A minimalist, open source online pastebin where the server has zero knowledge of pasted data.. |
+| `services.privatebin.enableNginx` | `boolean` | Whether to enable nginx or not. If enabled, an nginx virtual host will be created for access to privatebin. If not enabled, then you may use `${config.services.privatebin.package}` as your document root in whichever webserver you wish to setup. |
+| `services.privatebin.group` | `string` | Group under which privatebin runs. It is best to set this to the group of whatever webserver is being used as the frontend. |
+| `services.privatebin.package` | `package` | The privatebin package to use. |
+| `services.privatebin.poolConfig` | `attribute set of (string or signed integer or boolean)` | Options for the PrivateBin PHP pool. See the documentation on <literal>php-fpm.conf</literal> for details on configuration directives. |
+| `services.privatebin.settings` | `open submodule of attribute set of anything` | Options for privatebin configuration. Refer to <https://github.com/PrivateBin/PrivateBin/wiki/Configuration> for details on supported values. |
+| `services.privatebin.user` | `string` | User account under which privatebin runs. |
+| `services.privatebin.virtualHost` | `string` | The hostname at which you wish privatebin to be served. If you have enabled nginx using `services.privatebin.enableNginx` then this will be used. |

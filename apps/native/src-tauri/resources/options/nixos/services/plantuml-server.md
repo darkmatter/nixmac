@@ -5,18 +5,17 @@
 All options under `services.plantuml-server`.
 
 | Option | Type | Description |
-| ----------------------------------------------- | ---- | ----------- |
-| `services.plantuml-server.allowPlantumlInclude` | | |
-| `services.plantuml-server.enable` | | |
-| `services.plantuml-server.graphvizPackage` | | |
-| `services.plantuml-server.group` | | |
-| `services.plantuml-server.home` | | |
-| `services.plantuml-server.httpAuthorization` | | |
-| `services.plantuml-server.listenHost` | | |
-| `services.plantuml-server.listenPort` | | |
-| `services.plantuml-server.package` | | |
-| `services.plantuml-server.packages.jdk` | | |
-| `services.plantuml-server.packages.jetty` | | |
-| `services.plantuml-server.plantumlLimitSize` | | |
-| `services.plantuml-server.plantumlStats` | | |
-| `services.plantuml-server.user` | | |
+| --- | --- | --- |
+| `services.plantuml-server.enable` | `boolean` | Whether to enable PlantUML server. |
+| `services.plantuml-server.graphvizPackage` | `package` | The graphviz package to use. |
+| `services.plantuml-server.group` | `string` | Group which runs PlantUML server. |
+| `services.plantuml-server.home` | `absolute path` | Home directory of the PlantUML server instance. |
+| `services.plantuml-server.httpAuthorization` | `null or string` | When calling the proxy endpoint, the value of HTTP_AUTHORIZATION will be used to set the HTTP Authorization header. |
+| `services.plantuml-server.listenHost` | `string` | Host to listen on. |
+| `services.plantuml-server.listenPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.plantuml-server.package` | `package` | The plantuml-server package to use. |
+| `services.plantuml-server.packages.jdk` | `package` | The jdk package to use. |
+| `services.plantuml-server.packages.jetty` | `package` | The jetty package to use. At the time of writing (v1.2023.12), PlantUML Server does not support Jetty versions higher than 12.x. Jetty 12.x has introduced major breaking changes, see <https://github.com/jetty/jetty.project/releases/tag/jetty-12.0.0> and <https://eclipse.dev/jetty/documentation/jetty-12/programming-guide/index.html#pg-migration-11-to-12> |
+| `services.plantuml-server.plantumlLimitSize` | `signed integer` | Limits image width and height. |
+| `services.plantuml-server.plantumlStats` | `boolean` | Set it to on to enable statistics report (https://plantuml.com/statistics-report). |
+| `services.plantuml-server.user` | `string` | User which runs PlantUML server. |

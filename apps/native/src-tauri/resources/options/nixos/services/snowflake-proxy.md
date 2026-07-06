@@ -5,10 +5,10 @@
 All options under `services.snowflake-proxy`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.snowflake-proxy.broker` | | |
-| `services.snowflake-proxy.capacity` | | |
-| `services.snowflake-proxy.enable` | | |
-| `services.snowflake-proxy.extraFlags` | | |
-| `services.snowflake-proxy.relay` | | |
-| `services.snowflake-proxy.stun` | | |
+| --- | --- | --- |
+| `services.snowflake-proxy.broker` | `null or string` | Broker URL (default "https://snowflake-broker.torproject.net/") |
+| `services.snowflake-proxy.capacity` | `null or signed integer` | Limits the amount of maximum concurrent clients allowed. |
+| `services.snowflake-proxy.enable` | `boolean` | Whether to enable snowflake-proxy, a system to defeat internet censorship. |
+| `services.snowflake-proxy.extraFlags` | `list of string` | Extra flags to pass to snowflake-proxy |
+| `services.snowflake-proxy.relay` | `null or string` | websocket relay URL (default "wss://snowflake.bamsoftware.com/") |
+| `services.snowflake-proxy.stun` | `null or string` | STUN broker URL (default "stun:stun.stunprotocol.org:3478") |

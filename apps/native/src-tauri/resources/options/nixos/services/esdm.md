@@ -5,11 +5,7 @@
 All options under `services.esdm`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.esdm.cuseRandomEnable` | | |
-| `services.esdm.cuseUrandomEnable` | | |
-| `services.esdm.enable` | | |
-| `services.esdm.enableLinuxCompatServices` | | |
-| `services.esdm.package` | | |
-| `services.esdm.procEnable` | | |
-| `services.esdm.verbose` | | |
+| --- | --- | --- |
+| `services.esdm.enable` | `boolean` | Whether to enable ESDM service configuration. |
+| `services.esdm.enableLinuxCompatServices` | `boolean` | Enable /dev/random, /dev/urandom and /proc/sys/kernel/random/\* userspace wrapper. |
+| `services.esdm.package` | `package` | The esdm package to use. |

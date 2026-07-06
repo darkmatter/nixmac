@@ -5,7 +5,7 @@
 All options under `programs.feedr`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `programs.feedr.enable` | | |
-| `programs.feedr.package` | | |
-| `programs.feedr.settings` | | |
+| --- | --- | --- |
+| `programs.feedr.enable` | `boolean` | Whether to enable Feedr, a feature-rich terminal-based RSS/Atom feed reader written in Rust. |
+| `programs.feedr.package` | `null or package` | The feedr package to use. |
+| `programs.feedr.settings` | `TOML value` | Settings for feedr. Configuration written to {file}`$XDG_CONFIG_HOME/feedr/config.toml`. Options are listed on the github: <https://github.com/bahdotsh/feedr>. |

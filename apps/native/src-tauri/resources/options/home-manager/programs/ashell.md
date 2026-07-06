@@ -5,9 +5,9 @@
 All options under `programs.ashell`.
 
 | Option | Type | Description |
-| -------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.ashell.enable` | `boolean` | Whether to enable ashell, a ready to go wayland status bar for hyprland. |
 | `programs.ashell.package` | `null or package` | The ashell package to use. |
-| `programs.ashell.settings` | `null or TOML value` | Ashell configuration written to $XDG_CONFIG_HOME/ashell/config.toml (0.5.0+) or $XDG_CONFIG_HOME/ashell/config.yaml (\<0.5.0). For available settings see https://github.com/MalpenZibo/ashell?tab=readme-ov-file#configuration . |
+| `programs.ashell.settings` | `null or TOML value` | Ashell configuration written to {file}`$XDG_CONFIG_HOME/ashell/config.toml` (0.5.0+) or {file}`$XDG_CONFIG_HOME/ashell/config.yaml` (\<0.5.0). For available settings see <https://github.com/MalpenZibo/ashell?tab=readme-ov-file#configuration>. |
 | `programs.ashell.systemd.enable` | `boolean` | Whether to enable ashell systemd service. |
-| `programs.ashell.systemd.target` | `string` | The systemd target that will automatically start ashell. |
+| `programs.ashell.systemd.target` | `string` | The systemd target that will automatically start ashell. If you set this to a WM-specific target, make sure that systemd integration for that WM is enabled (for example, [](#opt-wayland.windowManager.hyprland.systemd.enable)). This is typically true by default. |

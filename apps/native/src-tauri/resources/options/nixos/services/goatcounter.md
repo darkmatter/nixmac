@@ -5,10 +5,10 @@
 All options under `services.goatcounter`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.goatcounter.address` | | |
-| `services.goatcounter.enable` | | |
-| `services.goatcounter.extraArgs` | | |
-| `services.goatcounter.package` | | |
-| `services.goatcounter.port` | | |
-| `services.goatcounter.proxy` | | |
+| --- | --- | --- |
+| `services.goatcounter.address` | `string` | Web interface address. |
+| `services.goatcounter.enable` | `boolean` | Whether to enable goatcounter. |
+| `services.goatcounter.extraArgs` | `list of string` | List of extra arguments to be passed to goatcounter cli. See {command}`goatcounter help serve` for more information. |
+| `services.goatcounter.package` | `package` | The goatcounter package to use. |
+| `services.goatcounter.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Web interface port. |
+| `services.goatcounter.proxy` | `boolean` | Whether Goatcounter service is running behind a reverse proxy. Will listen for HTTPS if `false`. Refer to [documentation](https://github.com/arp242/goatcounter?tab=readme-ov-file#running) for more details. |

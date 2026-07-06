@@ -5,10 +5,10 @@
 All options under `programs.msmtp`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `programs.msmtp.accounts` | | |
-| `programs.msmtp.defaults` | | |
-| `programs.msmtp.enable` | | |
-| `programs.msmtp.extraConfig` | | |
-| `programs.msmtp.package` | | |
-| `programs.msmtp.setSendmail` | | |
+| --- | --- | --- |
+| `programs.msmtp.accounts` | `attribute set of (attribute set)` | Named accounts and their respective configurations. The special name "default" allows a default account to be defined. See {manpage}`msmtp(1)` for the available options. Use `programs.msmtp.extraConfig` instead of this attribute set-based option if ordered account inheritance is needed. It is advised to use the `passwordeval` setting to read the password from a secret file to avoid having it written in the world-readable nix store. The password file must end with a newline (`\n`). |
+| `programs.msmtp.defaults` | `attribute set` | Default values applied to all accounts. See {manpage}`msmtp(1)` for the available options. |
+| `programs.msmtp.enable` | `boolean` | Whether to enable msmtp - an SMTP client. |
+| `programs.msmtp.extraConfig` | `strings concatenated with "\n"` | Extra lines to add to the msmtp configuration verbatim. See {manpage}`msmtp(1)` for the syntax and available options. |
+| `programs.msmtp.package` | `package` | The msmtp package to use. |
+| `programs.msmtp.setSendmail` | `boolean` | Whether to set the system sendmail to msmtp's. |

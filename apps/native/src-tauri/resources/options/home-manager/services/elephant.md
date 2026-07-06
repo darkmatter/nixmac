@@ -5,7 +5,7 @@
 All options under `services.elephant`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.elephant.enable` | | |
-| `services.elephant.package` | | |
-| `services.elephant.settings` | | |
+| --- | --- | --- |
+| `services.elephant.enable` | `boolean` | Whether to enable elephant. |
+| `services.elephant.package` | `package` | The elephant package to use. |
+| `services.elephant.settings` | `TOML value` | Configuration settings for Elephant. |

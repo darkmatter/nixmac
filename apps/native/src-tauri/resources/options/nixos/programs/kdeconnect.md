@@ -5,6 +5,6 @@
 All options under `programs.kdeconnect`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `programs.kdeconnect.enable` | | |
-| `programs.kdeconnect.package` | | |
+| --- | --- | --- |
+| `programs.kdeconnect.enable` | `boolean` | Whether to enable kdeconnect. Note that it will open the TCP and UDP port from 1714 to 1764 as they are needed for it to function properly. You can use the {option}`package` to use `gnomeExtensions.gsconnect` as an alternative implementation if you use Gnome . |
+| `programs.kdeconnect.package` | `null or package` | The kdeconnect-kde package to use. |

@@ -5,17 +5,17 @@
 All options under `services.lifecycled`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.lifecycled.awsRegion` | | |
-| `services.lifecycled.cloudwatchGroup` | | |
-| `services.lifecycled.cloudwatchStream` | | |
-| `services.lifecycled.debug` | | |
-| `services.lifecycled.enable` | | |
-| `services.lifecycled.handler` | | |
-| `services.lifecycled.instanceId` | | |
-| `services.lifecycled.json` | | |
-| `services.lifecycled.noSpot` | | |
-| `services.lifecycled.queueCleaner.enable` | | |
-| `services.lifecycled.queueCleaner.frequency` | | |
-| `services.lifecycled.queueCleaner.parallel` | | |
-| `services.lifecycled.snsTopic` | | |
+| --- | --- | --- |
+| `services.lifecycled.awsRegion` | `null or string` | The region used for accessing AWS services. |
+| `services.lifecycled.cloudwatchGroup` | `null or string` | Write logs to a specific Cloudwatch Logs group. |
+| `services.lifecycled.cloudwatchStream` | `null or string` | Write logs to a specific Cloudwatch Logs stream. Defaults to the instance ID. |
+| `services.lifecycled.debug` | `boolean` | Enable debugging information. |
+| `services.lifecycled.enable` | `boolean` | Whether to enable lifecycled, a daemon for responding to AWS AutoScaling Lifecycle Hooks. |
+| `services.lifecycled.handler` | `absolute path` | The script to invoke to handle events. |
+| `services.lifecycled.instanceId` | `null or string` | The instance ID to listen for events for. |
+| `services.lifecycled.json` | `boolean` | Enable JSON logging. |
+| `services.lifecycled.noSpot` | `boolean` | Disable the spot termination listener. |
+| `services.lifecycled.queueCleaner.enable` | `boolean` | Whether to enable lifecycled-queue-cleaner. |
+| `services.lifecycled.queueCleaner.frequency` | `string` | How often to trigger the queue cleaner. NOTE: This string should be a valid value for a systemd timer's `OnCalendar` configuration. See {manpage}`systemd.timer(5)` for more information. |
+| `services.lifecycled.queueCleaner.parallel` | `unsigned integer, meaning >=0` | The number of parallel deletes to run. |
+| `services.lifecycled.snsTopic` | `null or string` | The SNS topic that receives events. |

@@ -5,9 +5,9 @@
 All options under `services.recoll`.
 
 | Option | Type | Description |
-| --------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `services.recoll.configDir` | `string` | The directory to contain Recoll configuration files. This will be set as RECOLL_CONFDIR . |
+| --- | --- | --- |
+| `services.recoll.configDir` | `string` | The directory to contain Recoll configuration files. This will be set as {env}`RECOLL_CONFDIR`. |
 | `services.recoll.enable` | `boolean` | Whether to enable Recoll file index service. |
 | `services.recoll.package` | `package` | The recoll package to use. |
-| `services.recoll.settings` | `attribute set of (Recoll config value)` | The configuration to be written at $RECOLL_CONFDIR/recoll.conf . |
-| `services.recoll.startAt` | `string` | When or how often the periodic update should run. Must be the format described from systemd.time (7) . |
+| `services.recoll.settings` | `attribute set of (Recoll config value)` | The configuration to be written at {file}`$RECOLL_CONFDIR/recoll.conf`. See {manpage}`recoll.conf(5)` for more details about the configuration. |
+| `services.recoll.startAt` | `string` | When or how often the periodic update should run. Must be the format described from {manpage}`systemd.time(7)`. |

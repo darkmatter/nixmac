@@ -5,82 +5,85 @@
 All options under `services.gitlab`.
 
 | Option | Type | Description |
-| ---------------------------------------------------------- | ---- | ----------- |
-| `services.gitlab.backup.keepTime` | | |
-| `services.gitlab.backup.path` | | |
-| `services.gitlab.backup.skip` | | |
-| `services.gitlab.backup.startAt` | | |
-| `services.gitlab.backup.uploadOptions` | | |
-| `services.gitlab.backupPath` | | |
-| `services.gitlab.databaseCreateLocally` | | |
-| `services.gitlab.databaseHost` | | |
-| `services.gitlab.databaseName` | | |
-| `services.gitlab.databasePasswordFile` | | |
-| `services.gitlab.databasePool` | | |
-| `services.gitlab.databaseUsername` | | |
-| `services.gitlab.enable` | | |
-| `services.gitlab.extraConfig` | | |
-| `services.gitlab.extraDatabaseConfig` | | |
-| `services.gitlab.extraEnv` | | |
-| `services.gitlab.extraGitlabRb` | | |
-| `services.gitlab.extraShellConfig` | | |
-| `services.gitlab.group` | | |
-| `services.gitlab.host` | | |
-| `services.gitlab.https` | | |
-| `services.gitlab.initialRootEmail` | | |
-| `services.gitlab.initialRootPasswordFile` | | |
-| `services.gitlab.logrotate.enable` | | |
-| `services.gitlab.logrotate.extraConfig` | | |
-| `services.gitlab.logrotate.frequency` | | |
-| `services.gitlab.logrotate.keep` | | |
-| `services.gitlab.packages.gitaly` | | |
-| `services.gitlab.packages.gitlab` | | |
-| `services.gitlab.packages.gitlab-shell` | | |
-| `services.gitlab.packages.gitlab-workhorse` | | |
-| `services.gitlab.packages.pages` | | |
-| `services.gitlab.pages.enable` | | |
-| `services.gitlab.pages.settings` | | |
-| `services.gitlab.pagesExtraArgs` | | |
-| `services.gitlab.port` | | |
-| `services.gitlab.puma.threadsMax` | | |
-| `services.gitlab.puma.threadsMin` | | |
-| `services.gitlab.puma.workers` | | |
-| `services.gitlab.redisUrl` | | |
-| `services.gitlab.registry.certFile` | | |
-| `services.gitlab.registry.defaultForProjects` | | |
-| `services.gitlab.registry.enable` | | |
-| `services.gitlab.registry.externalAddress` | | |
-| `services.gitlab.registry.externalPort` | | |
-| `services.gitlab.registry.host` | | |
-| `services.gitlab.registry.issuer` | | |
-| `services.gitlab.registry.keyFile` | | |
-| `services.gitlab.registry.package` | | |
-| `services.gitlab.registry.port` | | |
-| `services.gitlab.registry.serviceName` | | |
-| `services.gitlab.satelliteDir` | | |
-| `services.gitlab.secrets.activeRecordDeterministicKeyFile` | | |
-| `services.gitlab.secrets.activeRecordPrimaryKeyFile` | | |
-| `services.gitlab.secrets.activeRecordSaltFile` | | |
-| `services.gitlab.secrets.dbFile` | | |
-| `services.gitlab.secrets.jwsFile` | | |
-| `services.gitlab.secrets.otpFile` | | |
-| `services.gitlab.secrets.secretFile` | | |
-| `services.gitlab.sidekiq.concurrency` | | |
-| `services.gitlab.sidekiq.memoryKiller.enable` | | |
-| `services.gitlab.sidekiq.memoryKiller.graceTime` | | |
-| `services.gitlab.sidekiq.memoryKiller.maxMemory` | | |
-| `services.gitlab.sidekiq.memoryKiller.shutdownWait` | | |
-| `services.gitlab.smtp.address` | | |
-| `services.gitlab.smtp.authentication` | | |
-| `services.gitlab.smtp.domain` | | |
-| `services.gitlab.smtp.enable` | | |
-| `services.gitlab.smtp.enableStartTLSAuto` | | |
-| `services.gitlab.smtp.opensslVerifyMode` | | |
-| `services.gitlab.smtp.passwordFile` | | |
-| `services.gitlab.smtp.port` | | |
-| `services.gitlab.smtp.tls` | | |
-| `services.gitlab.smtp.username` | | |
-| `services.gitlab.stateDir` | | |
-| `services.gitlab.statePath` | | |
-| `services.gitlab.user` | | |
-| `services.gitlab.workhorse.config` | | |
+| --- | --- | --- |
+| `services.gitlab.backup.keepTime` | `signed integer` | How long to keep the backups around, in hours. `0` means “keep forever”. |
+| `services.gitlab.backup.path` | `string` | GitLab path for backups. |
+| `services.gitlab.backup.skip` | `one of "db", "uploads", "builds", "artifacts", "lfs", "registry", "pages", "repositories", "tar" or list of (one of "db", "uploads", "builds", "artifacts", "lfs", "registry", "pages", "repositories", "tar")` | Directories to exclude from the backup. The example excludes CI artifacts and LFS objects from the backups. The `tar` option skips the creation of a tar file. Refer to <https://docs.gitlab.com/ee/raketasks/backup_restore.html#excluding-specific-directories-from-the-backup> for more information. |
+| `services.gitlab.backup.startAt` | `string or list of string` | The time(s) to run automatic backup of GitLab state. Specified in systemd's time format; see {manpage}`systemd.time(7)`. |
+| `services.gitlab.backup.uploadOptions` | `attribute set` | GitLab automatic upload specification. Tells GitLab to upload the backup to a remote location when done. Attributes specified here are added under `production -> backup -> upload` in {file}`config/gitlab.yml`. |
+| `services.gitlab.databaseCreateLocally` | `boolean` | Whether a database should be automatically created on the local host. Set this to `false` if you plan on provisioning a local database yourself. This has no effect if {option}`services.gitlab.databaseHost` is customized. |
+| `services.gitlab.databaseHost` | `string` | GitLab database hostname. An empty string means “use local unix socket connection”. |
+| `services.gitlab.databaseName` | `string` | GitLab database name. |
+| `services.gitlab.databasePasswordFile` | `null or absolute path` | File containing the GitLab database user password. This should be a string, not a nix path, since nix paths are copied into the world-readable nix store. |
+| `services.gitlab.databasePool` | `signed integer` | Database connection pool size. |
+| `services.gitlab.databaseUsername` | `string` | GitLab database user. |
+| `services.gitlab.enable` | `boolean` | Enable the gitlab service. |
+| `services.gitlab.extraConfig` | `YAML 1.1 value` | Extra options to be added under `production` in {file}`config/gitlab.yml`, as a nix attribute set. Options containing secret data should be set to an attribute set containing the attribute `_secret` - a string pointing to a file containing the value the option should be set to. See the example to get a better picture of this: in the resulting {file}`config/gitlab.yml` file, the `production.omniauth.providers[0].args.client_options.secret` key will be set to the contents of the {file}`/var/keys/gitlab_oidc_secret` file. |
+| `services.gitlab.extraDatabaseConfig` | `attribute set` | Extra configuration in config/database.yml. |
+| `services.gitlab.extraEnv` | `attribute set of string` | Additional environment variables for the GitLab environment. |
+| `services.gitlab.extraGitlabRb` | `string` | Extra configuration to be placed in config/extra-gitlab.rb. This can be used to add configuration not otherwise exposed through this module's options. |
+| `services.gitlab.extraShellConfig` | `attribute set` | Extra configuration to merge into shell-config.yml |
+| `services.gitlab.group` | `string` | Group to run gitlab and all related services. |
+| `services.gitlab.host` | `string` | GitLab host name. Used e.g. for copy-paste URLs. |
+| `services.gitlab.https` | `boolean` | Whether gitlab prints URLs with https as scheme. |
+| `services.gitlab.initialRootEmail` | `string` | Initial email address of the root account if this is a new install. |
+| `services.gitlab.initialRootPasswordFile` | `null or absolute path` | File containing the initial password of the root account if this is a new install. This should be a string, not a nix path, since nix paths are copied into the world-readable nix store. |
+| `services.gitlab.logrotate.enable` | `boolean` | Enable rotation of log files. |
+| `services.gitlab.logrotate.frequency` | `string` | How often to rotate the logs. |
+| `services.gitlab.logrotate.keep` | `signed integer` | How many rotations to keep. |
+| `services.gitlab.packages.gitaly` | `package` | The gitaly package to use. |
+| `services.gitlab.packages.gitlab` | `package` | The gitlab package to use. |
+| `services.gitlab.packages.gitlab-shell` | `package` | The gitlab-shell package to use. |
+| `services.gitlab.packages.gitlab-workhorse` | `package` | The gitlab-workhorse package to use. |
+| `services.gitlab.packages.pages` | `package` | The gitlab-pages package to use. |
+| `services.gitlab.pages.enable` | `boolean` | Whether to enable the GitLab Pages service. |
+| `services.gitlab.pages.settings` | `open submodule of attribute set of (null or string or signed integer or boolean or (attribute set))` | Configuration options to set in the GitLab Pages config file. Options containing secret data should be set to an attribute set containing the attribute `_secret` - a string pointing to a file containing the value the option should be set to. See the example to get a better picture of this: in the resulting configuration file, the `auth-client-secret` and `auth-secret` keys will be set to the contents of the {file}`/var/keys/auth-client-secret` and {file}`/var/keys/auth-secret` files respectively. |
+| `services.gitlab.pages.settings.artifacts-server` | `null or string` | API URL to proxy artifact requests to. |
+| `services.gitlab.pages.settings.gitlab-server` | `null or string` | Public GitLab server URL. |
+| `services.gitlab.pages.settings.internal-gitlab-server` | `null or string` | Internal GitLab server used for API requests, useful if you want to send that traffic over an internal load balancer. By default, the value of `services.gitlab.pages.settings.gitlab-server` is used. |
+| `services.gitlab.pages.settings.listen-http` | `list of string` | The address(es) to listen on for HTTP requests. |
+| `services.gitlab.pages.settings.listen-https` | `list of string` | The address(es) to listen on for HTTPS requests. |
+| `services.gitlab.pages.settings.listen-proxy` | `list of string` | The address(es) to listen on for proxy requests. |
+| `services.gitlab.pages.settings.pages-domain` | `null or string` | The domain to serve static pages on. |
+| `services.gitlab.pages.settings.pages-root` | `string` | The directory where pages are stored. |
+| `services.gitlab.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | GitLab server port for copy-paste URLs, e.g. 80 or 443 if you're service over https. |
+| `services.gitlab.puma.threadsMax` | `signed integer` | The maximum number of threads Puma should use per worker. This limits how many threads Puma will automatically spawn in response to requests. In contrast to workers, threads will never be able to run Ruby code in parallel, but give higher IO parallelism. ::: {.note} Each thread consumes memory and contributes to Global VM Lock contention, so be careful when increasing this. ::: |
+| `services.gitlab.puma.threadsMin` | `signed integer` | The minimum number of threads Puma should use per worker. ::: {.note} Each thread consumes memory and contributes to Global VM Lock contention, so be careful when increasing this. ::: |
+| `services.gitlab.puma.workers` | `signed integer` | The number of worker processes Puma should spawn. This controls the amount of parallel Ruby code can be executed. GitLab recommends `Number of CPU cores - 1`, but at least two. ::: {.note} Each worker consumes quite a bit of memory, so be careful when increasing this. ::: |
+| `services.gitlab.redisUrl` | `string` | Redis URL for all GitLab services. |
+| `services.gitlab.registry.certFile` | `absolute path` | Path to GitLab container registry certificate. |
+| `services.gitlab.registry.defaultForProjects` | `boolean` | If GitLab container registry should be enabled by default for projects. |
+| `services.gitlab.registry.enable` | `boolean` | Enable GitLab container registry. |
+| `services.gitlab.registry.externalAddress` | `string` | External address used to access registry from the internet |
+| `services.gitlab.registry.externalPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | External port used to access registry from the internet |
+| `services.gitlab.registry.host` | `string` | GitLab container registry host name. |
+| `services.gitlab.registry.issuer` | `string` | GitLab container registry issuer. |
+| `services.gitlab.registry.keyFile` | `absolute path` | Path to GitLab container registry certificate-key. |
+| `services.gitlab.registry.package` | `package` | Container registry package to use. External container registries such as `pkgs.distribution` are not supported anymore since GitLab 16.0.0. |
+| `services.gitlab.registry.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | GitLab container registry port. |
+| `services.gitlab.registry.serviceName` | `string` | GitLab container registry service name. |
+| `services.gitlab.secrets.activeRecordDeterministicKeyFile` | `null or absolute path` | A file containing the secret used to encrypt some rails data in a deterministic way in the DB. This should not be the same as `services.gitlab.secrets.activeRecordPrimaryKeyFile`! Make sure the secret is at ideally 32 characters and all random, no regular words or you'll be exposed to dictionary attacks. This should be a string, not a nix path, since nix paths are copied into the world-readable nix store. |
+| `services.gitlab.secrets.activeRecordPrimaryKeyFile` | `null or absolute path` | A file containing the secret used to encrypt some rails data in the DB. This should not be the same as `services.gitlab.secrets.activeRecordDeterministicKeyFile`! Make sure the secret is at ideally 32 characters and all random, no regular words or you'll be exposed to dictionary attacks. This should be a string, not a nix path, since nix paths are copied into the world-readable nix store. |
+| `services.gitlab.secrets.activeRecordSaltFile` | `null or absolute path` | A file containing the salt for active record encryption in the DB. Make sure the secret is at ideally 32 characters and all random, no regular words or you'll be exposed to dictionary attacks. This should be a string, not a nix path, since nix paths are copied into the world-readable nix store. |
+| `services.gitlab.secrets.dbFile` | `null or absolute path` | A file containing the secret used to encrypt variables in the DB. If you change or lose this key you will be unable to access variables stored in database. Make sure the secret is at least 32 characters and all random, no regular words or you'll be exposed to dictionary attacks. This should be a string, not a nix path, since nix paths are copied into the world-readable nix store. |
+| `services.gitlab.secrets.jwsFile` | `null or absolute path` | A file containing the secret used to encrypt session keys. If you change or lose this key, users will be disconnected. Make sure the secret is an RSA private key in PEM format. You can generate one with openssl genrsa 2048 This should be a string, not a nix path, since nix paths are copied into the world-readable nix store. |
+| `services.gitlab.secrets.otpFile` | `null or absolute path` | A file containing the secret used to encrypt secrets for OTP tokens. If you change or lose this key, users which have 2FA enabled for login won't be able to login anymore. Make sure the secret is at least 32 characters and all random, no regular words or you'll be exposed to dictionary attacks. This should be a string, not a nix path, since nix paths are copied into the world-readable nix store. |
+| `services.gitlab.secrets.secretFile` | `null or absolute path` | A file containing the secret used to encrypt variables in the DB. If you change or lose this key you will be unable to access variables stored in database. Make sure the secret is at least 32 characters and all random, no regular words or you'll be exposed to dictionary attacks. This should be a string, not a nix path, since nix paths are copied into the world-readable nix store. |
+| `services.gitlab.sidekiq.concurrency` | `null or signed integer` | How many processor threads to use for processing sidekiq background job queues. When null, the GitLab default is used. See <https://docs.gitlab.com/ee/administration/sidekiq/extra_sidekiq_processes.html#manage-thread-counts-explicitly> for details. |
+| `services.gitlab.sidekiq.memoryKiller.enable` | `boolean` | Whether the Sidekiq MemoryKiller should be turned on. MemoryKiller kills Sidekiq when its memory consumption exceeds a certain limit. See <https://docs.gitlab.com/ee/administration/operations/sidekiq_memory_killer.html> for details. |
+| `services.gitlab.sidekiq.memoryKiller.graceTime` | `signed integer` | The time MemoryKiller waits after noticing excessive memory consumption before killing Sidekiq. |
+| `services.gitlab.sidekiq.memoryKiller.maxMemory` | `signed integer` | The maximum amount of memory, in MiB, a Sidekiq worker is allowed to consume before being killed. |
+| `services.gitlab.sidekiq.memoryKiller.shutdownWait` | `signed integer` | The time allowed for all jobs to finish before Sidekiq is killed forcefully. |
+| `services.gitlab.smtp.address` | `string` | Address of the SMTP server for GitLab. |
+| `services.gitlab.smtp.authentication` | `null or string` | Authentication type to use, see <http://api.rubyonrails.org/classes/ActionMailer/Base.html> |
+| `services.gitlab.smtp.domain` | `string` | HELO domain to use for outgoing mail. |
+| `services.gitlab.smtp.enable` | `boolean` | Enable gitlab mail delivery over SMTP. |
+| `services.gitlab.smtp.enableStartTLSAuto` | `boolean` | Whether to try to use StartTLS. |
+| `services.gitlab.smtp.opensslVerifyMode` | `string` | How OpenSSL checks the certificate, see <http://api.rubyonrails.org/classes/ActionMailer/Base.html> |
+| `services.gitlab.smtp.passwordFile` | `null or absolute path` | File containing the password of the SMTP server for GitLab. This should be a string, not a nix path, since nix paths are copied into the world-readable nix store. |
+| `services.gitlab.smtp.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port of the SMTP server for GitLab. |
+| `services.gitlab.smtp.tls` | `boolean` | Whether to use TLS wrapper-mode. |
+| `services.gitlab.smtp.username` | `null or string` | Username of the SMTP server for GitLab. |
+| `services.gitlab.statePath` | `string` | GitLab state directory. Configuration, repositories and logs, among other things, are stored here. The directory will be created automatically if it doesn't exist already. Its parent directories must be owned by either `root` or the user set in {option}`services.gitlab.user`. |
+| `services.gitlab.user` | `string` | User to run gitlab and all related services. |
+| `services.gitlab.workhorse.config` | `TOML value` | Configuration options to add to Workhorse's configuration file. See <https://gitlab.com/gitlab-org/gitlab/-/blob/master/workhorse/config.toml.example> and <https://docs.gitlab.com/ee/development/workhorse/configuration.html> for examples and option documentation. Options containing secret data should be set to an attribute set containing the attribute `_secret` - a string pointing to a file containing the value the option should be set to. See the example to get a better picture of this: in the resulting configuration file, the `object_storage.s3.aws_secret_access_key` key will be set to the contents of the {file}`/var/keys/aws_secret_access_key` file. |

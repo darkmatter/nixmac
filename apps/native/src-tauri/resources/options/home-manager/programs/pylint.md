@@ -5,7 +5,7 @@
 All options under `programs.pylint`.
 
 | Option | Type | Description |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| --- | --- | --- |
 | `programs.pylint.enable` | `boolean` | Whether to enable the pylint Python linter. |
 | `programs.pylint.package` | `package` | The pylint package to use. |
 | `programs.pylint.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string) or a non-empty list of them)` | The pylint configuration. |

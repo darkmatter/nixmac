@@ -5,11 +5,11 @@
 All options under `services.tmate-ssh-server`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `services.tmate-ssh-server.advertisedPort` | | |
-| `services.tmate-ssh-server.enable` | | |
-| `services.tmate-ssh-server.host` | | |
-| `services.tmate-ssh-server.keysDir` | | |
-| `services.tmate-ssh-server.openFirewall` | | |
-| `services.tmate-ssh-server.package` | | |
-| `services.tmate-ssh-server.port` | | |
+| --- | --- | --- |
+| `services.tmate-ssh-server.advertisedPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | External port advertised to clients |
+| `services.tmate-ssh-server.enable` | `boolean` | Whether to enable tmate ssh server. |
+| `services.tmate-ssh-server.host` | `string` | External host name |
+| `services.tmate-ssh-server.keysDir` | `null or string` | Directory containing ssh keys, defaulting to auto-generation |
+| `services.tmate-ssh-server.openFirewall` | `boolean` | Whether to automatically open the specified ports in the firewall. |
+| `services.tmate-ssh-server.package` | `package` | The tmate-ssh-server package to use. |
+| `services.tmate-ssh-server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listen port for the ssh server |

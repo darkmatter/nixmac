@@ -5,8 +5,8 @@
 All options under `services.corerad`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.corerad.configFile` | | |
-| `services.corerad.enable` | | |
-| `services.corerad.package` | | |
-| `services.corerad.settings` | | |
+| --- | --- | --- |
+| `services.corerad.configFile` | `absolute path` | Path to CoreRAD TOML configuration file. |
+| `services.corerad.enable` | `boolean` | Whether to enable CoreRAD IPv6 NDP RA daemon. |
+| `services.corerad.package` | `package` | The corerad package to use. |
+| `services.corerad.settings` | `TOML value` | Configuration for CoreRAD, see <https://github.com/mdlayher/corerad/blob/main/internal/config/reference.toml> for supported values. Ignored if configFile is set. |

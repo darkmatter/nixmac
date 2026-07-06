@@ -5,15 +5,16 @@
 All options under `programs.zellij`.
 
 | Option | Type | Description |
-| --------------------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `programs.zellij.attachExistingSession` | `boolean` | Whether to attach to the default session after being autostarted if a Zellij session already exists. |
+| --- | --- | --- |
+| `programs.zellij.attachExistingSession` | `boolean` | Whether to attach to the default session after being autostarted if a Zellij session already exists. Variable is checked in `auto-start` script. Requires shell integration to be enabled to have effect. |
 | `programs.zellij.enable` | `boolean` | Whether to enable Zellij. |
 | `programs.zellij.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.zellij.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
 | `programs.zellij.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
-| `programs.zellij.exitShellOnExit` | `boolean` | Whether to exit the shell when Zellij exits after being autostarted. |
-| `programs.zellij.extraConfig` | `strings concatenated with “\n”` | Extra configuration lines to add to $XDG_CONFIG_HOME/zellij/config.kdl . |
-| `programs.zellij.layouts` | `attribute set of (YAML 1.1 value or absolute path or strings concatenated with “\n”)` | Configuration written to $XDG_CONFIG_HOME/zellij/layouts/<layout>.kdl . |
+| `programs.zellij.exitShellOnExit` | `boolean` | Whether to exit the shell when Zellij exits after being autostarted. Variable is checked in `auto-start` script. Requires shell integration to be enabled to have effect. |
+| `programs.zellij.extraConfig` | `strings concatenated with "\n"` | Extra configuration lines to add to `$XDG_CONFIG_HOME/zellij/config.kdl`. This does not support zellij.yaml and it's mostly a workaround for https://github.com/nix-community/home-manager/issues/4659. |
+| `programs.zellij.layouts` | `attribute set of (YAML 1.1 value or absolute path or strings concatenated with "\n")` | Configuration written to {file}`$XDG_CONFIG_HOME/zellij/layouts/<layout>.kdl`. See <https://zellij.dev/documentation> for the full list of options. |
 | `programs.zellij.package` | `package` | The zellij package to use. |
-| `programs.zellij.settings` | `YAML 1.1 value` | Configuration written to $XDG_CONFIG_HOME/zellij/config.kdl . |
-| `programs.zellij.themes` | `attribute set of (YAML 1.1 value or absolute path or strings concatenated with “\n”)` | Each them is written to $XDG_CONFIG_HOME/zellij/themes/NAME.kdl . See https://zellij.dev/documentation/themes.html for more information. |
+| `programs.zellij.plugins` | `list of package` | List of Zellij plugins |
+| `programs.zellij.settings` | `YAML 1.1 value` | Configuration written to {file}`$XDG_CONFIG_HOME/zellij/config.kdl`. If `programs.zellij.package.version` is older than 0.32.0, then the configuration is written to {file}`$XDG_CONFIG_HOME/zellij/config.yaml`. See <https://zellij.dev/documentation> for the full list of options. |
+| `programs.zellij.themes` | `attribute set of (YAML 1.1 value or absolute path or strings concatenated with "\n")` | Each them is written to {file}`$XDG_CONFIG_HOME/zellij/themes/NAME.kdl`. See <https://zellij.dev/documentation/themes.html> for more information. |

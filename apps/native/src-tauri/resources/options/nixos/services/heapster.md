@@ -5,9 +5,9 @@
 All options under `services.heapster`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.heapster.enable` | | |
-| `services.heapster.extraOpts` | | |
-| `services.heapster.package` | | |
-| `services.heapster.sink` | | |
-| `services.heapster.source` | | |
+| --- | --- | --- |
+| `services.heapster.enable` | `boolean` | Whether to enable Heapster monitoring. |
+| `services.heapster.extraOpts` | `strings concatenated with " "` | Heapster extra options |
+| `services.heapster.package` | `package` | The heapster package to use. |
+| `services.heapster.sink` | `string` | Heapster metic sink |
+| `services.heapster.source` | `string` | Heapster metric source |

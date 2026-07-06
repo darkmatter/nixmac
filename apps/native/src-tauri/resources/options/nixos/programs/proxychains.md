@@ -5,15 +5,19 @@
 All options under `programs.proxychains`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `programs.proxychains.chain.length` | | |
-| `programs.proxychains.chain.type` | | |
-| `programs.proxychains.enable` | | |
-| `programs.proxychains.localnet` | | |
-| `programs.proxychains.package` | | |
-| `programs.proxychains.proxies` | | |
-| `programs.proxychains.proxyDNS` | | |
-| `programs.proxychains.quietMode` | | |
-| `programs.proxychains.remoteDNSSubnet` | | |
-| `programs.proxychains.tcpConnectTimeOut` | | |
-| `programs.proxychains.tcpReadTimeOut` | | |
+| --- | --- | --- |
+| `programs.proxychains.chain.length` | `null or signed integer` | Chain length for random chain. |
+| `programs.proxychains.chain.type` | `one of "dynamic", "strict", "random"` | `dynamic` - Each connection will be done via chained proxies all proxies chained in the order as they appear in the list at least one proxy must be online to play in chain (dead proxies are skipped) otherwise `EINTR` is returned to the app. `strict` - Each connection will be done via chained proxies all proxies chained in the order as they appear in the list all proxies must be online to play in chain otherwise `EINTR` is returned to the app. `random` - Each connection will be done via random proxy (or proxy chain, see {option}`programs.proxychains.chain.length`) from the list. |
+| `programs.proxychains.enable` | `boolean` | Whether to enable proxychains configuration. |
+| `programs.proxychains.localnet` | `string` | By default enable localnet for loopback address ranges. |
+| `programs.proxychains.package` | `package` | The proxychains package to use. |
+| `programs.proxychains.proxies` | `attribute set of (submodule)` | Proxies to be used by proxychains. |
+| `programs.proxychains.proxies.<name>.enable` | `boolean` | Whether to enable this proxy. |
+| `programs.proxychains.proxies.<name>.host` | `string` | Proxy host or IP address. |
+| `programs.proxychains.proxies.<name>.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Proxy port |
+| `programs.proxychains.proxies.<name>.type` | `one of "http", "socks4", "socks5"` | Proxy type. |
+| `programs.proxychains.proxyDNS` | `boolean` | Proxy DNS requests - no leak for DNS data. |
+| `programs.proxychains.quietMode` | `boolean` | Whether to enable Quiet mode (no output from the library). |
+| `programs.proxychains.remoteDNSSubnet` | `one of 10, 127, 224` | Set the class A subnet number to use for the internal remote DNS mapping, uses the reserved 224.x.x.x range by default. |
+| `programs.proxychains.tcpConnectTimeOut` | `signed integer` | Connection time-out in milliseconds. |
+| `programs.proxychains.tcpReadTimeOut` | `signed integer` | Connection read time-out in milliseconds. |

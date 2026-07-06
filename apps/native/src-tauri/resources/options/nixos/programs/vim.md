@@ -5,7 +5,7 @@
 All options under `programs.vim`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `programs.vim.defaultEditor` | | |
-| `programs.vim.enable` | | |
-| `programs.vim.package` | | |
+| --- | --- | --- |
+| `programs.vim.defaultEditor` | `boolean` | Whether to enable vim as the default editor. |
+| `programs.vim.enable` | `boolean` | Whether to enable Vi IMproved, an advanced text editor. |
+| `programs.vim.package` | `package` | The vim package to use. |

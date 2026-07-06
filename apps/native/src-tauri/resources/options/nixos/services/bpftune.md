@@ -5,6 +5,6 @@
 All options under `services.bpftune`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.bpftune.enable` | | |
-| `services.bpftune.package` | | |
+| --- | --- | --- |
+| `services.bpftune.enable` | `boolean` | Whether to enable bpftune BPF driven auto-tuning. |
+| `services.bpftune.package` | `package` | The bpftune package to use. |

@@ -5,23 +5,22 @@
 All options under `programs.vscode`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `programs.vscode.argvSettings` | `absolute path or JSON value` | Configuration written to Visual Studio Code’s argv.json . This can be a JSON object or a path to a custom JSON file. |
+| --- | --- | --- |
+| `programs.vscode.argvSettings` | `absolute path or JSON value` | Configuration written to Visual Studio Code's {file}`argv.json`. This can be a JSON object or a path to a custom JSON file. |
 | `programs.vscode.enable` | `boolean` | Whether to enable Visual Studio Code. |
-| `programs.vscode.enableExtensionUpdateCheck` | | |
-| `programs.vscode.enableUpdateCheck` | | |
-| `programs.vscode.extensions` | | |
-| `programs.vscode.globalSnippets` | | |
 | `programs.vscode.haskell.enable` | `boolean` | Whether to enable Haskell integration for Visual Studio Code. |
 | `programs.vscode.haskell.hie.enable` | `boolean` | Whether to enable Haskell IDE engine integration. |
-| `programs.vscode.haskell.hie.executablePath` | `absolute path` | The path to the Haskell IDE Engine executable. |
-| `programs.vscode.immutableExtensionsDir` | | |
-| `programs.vscode.keybindings` | | |
-| `programs.vscode.languageSnippets` | | |
+| `programs.vscode.haskell.hie.executablePath` | `absolute path` | The path to the Haskell IDE Engine executable. Because hie-nix is not packaged in Nixpkgs, you need to add it as an overlay or set this option. Example overlay configuration: `nix nixpkgs.overlays = [   (self: super: { hie-nix = import ~/src/hie-nix {}; }) ]  ` |
 | `programs.vscode.mutableExtensionsDir` | `boolean` | Whether extensions can be installed or updated manually or by Visual Studio Code. Mutually exclusive to programs.vscode.profiles. |
 | `programs.vscode.package` | `null or package` | The vscode package to use. Version of Visual Studio Code to install. |
-| `programs.vscode.pname` | `null or string` | The package name (pname) of the VS Code variant being used. Required when programs.vscode.package is set to null , so that programs.vscode.nameShort and programs.vscode.dataFolderName can be derived from known products. Has no effect when programs.vscode.package is set. |
-| `programs.vscode.profiles` | `attribute set of (submodule)` | A list of all VSCode profiles. Mutually exclusive to programs.vscode.mutableExtensionsDir |
-| `programs.vscode.userMcp` | | |
-| `programs.vscode.userSettings` | | |
-| `programs.vscode.userTasks` | | |
+| `programs.vscode.profiles` | `attribute set of (submodule)` | A list of all Visual Studio Code profiles. Mutually exclusive to programs.vscode.mutableExtensionsDir |
+| `programs.vscode.profiles.<name>.enableExtensionUpdateCheck` | `null or boolean` | Whether to enable update notifications for extensions. Can only be set for the default profile, but it applies to all profiles. |
+| `programs.vscode.profiles.<name>.enableMcpIntegration` | `boolean` | Whether to integrate the MCP servers config from {option}`programs.mcp.servers` into {option}`programs.vscode.profiles.<name>.userMcp`. Note: Settings defined in {option}`programs.mcp.servers` are merged with {option}`programs.vscode.profiles.<name>.userMcp`, with Visual Studio Code settings taking precedence. |
+| `programs.vscode.profiles.<name>.enableUpdateCheck` | `null or boolean` | Whether to enable update checks/notifications. Can only be set for the default profile, but it applies to all profiles. |
+| `programs.vscode.profiles.<name>.extensions` | `list of package` | The extensions Visual Studio Code should be started with. |
+| `programs.vscode.profiles.<name>.globalSnippets` | `JSON value` | Defines global user snippets. |
+| `programs.vscode.profiles.<name>.keybindings` | `absolute path or list of (open submodule of (JSON value))` | Keybindings written to Visual Studio Code's {file}`keybindings.json`. This can be a JSON object or a path to a custom JSON file. |
+| `programs.vscode.profiles.<name>.languageSnippets` | `JSON value` | Defines user snippets for different languages. |
+| `programs.vscode.profiles.<name>.userMcp` | `absolute path or JSON value` | Configuration written to Visual Studio Code's {file}`mcp.json`. This can be a JSON object or a path to a custom JSON file. |
+| `programs.vscode.profiles.<name>.userSettings` | `absolute path or JSON value` | Configuration written to Visual Studio Code's {file}`settings.json`. This can be a JSON object or a path to a custom JSON file. |
+| `programs.vscode.profiles.<name>.userTasks` | `absolute path or JSON value` | Configuration written to Visual Studio Code's {file}`tasks.json`. This can be a JSON object or a path to a custom JSON file. |

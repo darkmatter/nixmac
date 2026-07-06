@@ -5,29 +5,28 @@
 All options under `services.pdfding`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.pdfding.allowedHosts` | | |
-| `services.pdfding.backup.enable` | | |
-| `services.pdfding.backup.endpoint` | | |
-| `services.pdfding.backup.schedule` | | |
-| `services.pdfding.consume.enable` | | |
-| `services.pdfding.consume.schedule` | | |
-| `services.pdfding.database.createLocally` | | |
-| `services.pdfding.database.host` | | |
-| `services.pdfding.database.name` | | |
-| `services.pdfding.database.passwordFile` | | |
-| `services.pdfding.database.port` | | |
-| `services.pdfding.database.type` | | |
-| `services.pdfding.database.user` | | |
-| `services.pdfding.enable` | | |
-| `services.pdfding.envFiles` | | |
-| `services.pdfding.extraEnvironment` | | |
-| `services.pdfding.group` | | |
-| `services.pdfding.gunicorn.extraArgs` | | |
-| `services.pdfding.hostName` | | |
-| `services.pdfding.installTestHelpers` | | |
-| `services.pdfding.openFirewall` | | |
-| `services.pdfding.package` | | |
-| `services.pdfding.port` | | |
-| `services.pdfding.secretKeyFile` | | |
-| `services.pdfding.user` | | |
+| --- | --- | --- |
+| `services.pdfding.allowedHosts` | `list of string` | Domains where PdfDing is allowed to run |
+| `services.pdfding.backup.enable` | `boolean` | Automatic backup of important data to a AWS S3 (or compatible) instance. When enabled and properly configured via environment variables, important data is periodically uploaded to the specified s3 instance via cronjob. |
+| `services.pdfding.backup.endpoint` | `null or string` | The s3 endpoint for backups |
+| `services.pdfding.backup.schedule` | `string` | The cron schedule for the consume task to trigger. The format is "minute hour day month day_of_week" Read - https://github.com/mrmn2/PdfDing/blob/d0f21ec2f9fbee4b1a2f6b7e0e6c7ea7784ab1bc/pdfding/base/task_helpers.py#L5 - https://huey.readthedocs.io/en/latest/api.html#crontab |
+| `services.pdfding.consume.enable` | `boolean` | Bulk PDF import from consume directory. When enabled, administrators can create per-user directories like /var/lib/pdfding/consume/\<user_id> with permissions allowing the pdfding user to read and write. PDFs placed in these directories are automatically imported into user accounts. PDFs are imported periodically via cronjob and successfully imported files are automatically deleted from the consume directory. |
+| `services.pdfding.consume.schedule` | `string` | The cron schedule for the consume task to trigger. The format is "minute hour day month day_of_week" Read - https://github.com/mrmn2/PdfDing/blob/d0f21ec2f9fbee4b1a2f6b7e0e6c7ea7784ab1bc/pdfding/base/task_helpers.py#L5 - https://huey.readthedocs.io/en/latest/api.html#crontab |
+| `services.pdfding.database.createLocally` | `boolean` | Whether to create a local PostgreSQL database automatically |
+| `services.pdfding.database.host` | `string` | PostgreSQL host |
+| `services.pdfding.database.name` | `string` | PostgreSQL database name |
+| `services.pdfding.database.passwordFile` | `null or absolute path` | File containing POSTGRES_PASSWORD. Consider using a secret managing scheme such as `agenix` or `sops-nix` to generate this file. |
+| `services.pdfding.database.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | PostgreSQL port |
+| `services.pdfding.database.type` | `one of "sqlite", "postgres"` | Database type to use |
+| `services.pdfding.database.user` | `string` | PostgreSQL user |
+| `services.pdfding.enable` | `boolean` | Whether to enable PdfDing service. To use the pdfding-manage CLI, add your user to the pdfding group: users.users.<youruser>.extraGroups = [ "pdfding" ]; |
+| `services.pdfding.envFiles` | `list of absolute path` | Environment variable files |
+| `services.pdfding.extraEnvironment` | `attribute set of string` | Additional environment variables |
+| `services.pdfding.group` | `string` | Group under which PdfDing runs |
+| `services.pdfding.gunicorn.extraArgs` | `list of string` | Command line arguments passed to Gunicorn server. |
+| `services.pdfding.hostName` | `string` | Listen address for PdfDing |
+| `services.pdfding.openFirewall` | `boolean` | Open ports in the firewall for the PdfDing web interface. |
+| `services.pdfding.package` | `package` | The pdfding package to use. |
+| `services.pdfding.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which PdfDing listens |
+| `services.pdfding.secretKeyFile` | `absolute path` | File containing the Django SECRET_KEY. Consider using a secret managing scheme such as `agenix` or `sops-nix` to generate this file. |
+| `services.pdfding.user` | `string` | User account under which PdfDing runs |

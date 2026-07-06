@@ -5,8 +5,8 @@
 All options under `services.amberol`.
 
 | Option | Type | Description |
-| ----------------------------------- | -------------------------------- | --------------------------------------------------- |
-| `services.amberol.enable` | `boolean` | Whether to enable Amberol music player as a daemon. |
+| --- | --- | --- |
+| `services.amberol.enable` | `boolean` | Whether to enable Amberol music player as a daemon. Note, it is necessary to add `nix programs.dconf.enable = true; ` to your system configuration for the daemon to work correctly. |
 | `services.amberol.enableRecoloring` | `boolean` | UI recoloring using the album art. |
 | `services.amberol.package` | `package` | The amberol package to use. |
-| `services.amberol.replaygain` | `one of “album”, “track”, “off”` | ReplayGain mode. |
+| `services.amberol.replaygain` | `one of "album", "track", "off"` | ReplayGain mode. |

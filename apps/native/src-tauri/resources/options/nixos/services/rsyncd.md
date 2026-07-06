@@ -5,13 +5,10 @@
 All options under `services.rsyncd`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.rsyncd.address` | | |
-| `services.rsyncd.enable` | | |
-| `services.rsyncd.extraConfig` | | |
-| `services.rsyncd.group` | | |
-| `services.rsyncd.motd` | | |
-| `services.rsyncd.port` | | |
-| `services.rsyncd.settings` | | |
-| `services.rsyncd.socketActivated` | | |
-| `services.rsyncd.user` | | |
+| --- | --- | --- |
+| `services.rsyncd.enable` | `boolean` | Whether to enable the rsync daemon. |
+| `services.rsyncd.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | TCP port the daemon will listen on. |
+| `services.rsyncd.settings` | `submodule` | Configuration for rsyncd. See {manpage}`rsyncd.conf(5)`. |
+| `services.rsyncd.settings.globalSection` | `section of an INI file (attrs of INI atom (null, bool, int, float or string))` | global section of an INI file (attrs of INI atom (null, bool, int, float or string)) |
+| `services.rsyncd.settings.sections` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string)) |
+| `services.rsyncd.socketActivated` | `boolean` | If enabled Rsync will be socket-activated rather than run persistently. |

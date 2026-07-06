@@ -5,18 +5,35 @@
 All options under `services.libeufin`.
 
 | Option | Type | Description |
-| --------------------------------------------- | ---- | ----------- |
-| `services.libeufin.bank.createLocalDatabase` | | |
-| `services.libeufin.bank.debug` | | |
-| `services.libeufin.bank.enable` | | |
-| `services.libeufin.bank.initialAccounts` | | |
-| `services.libeufin.bank.openFirewall` | | |
-| `services.libeufin.bank.package` | | |
-| `services.libeufin.bank.settings` | | |
-| `services.libeufin.nexus.createLocalDatabase` | | |
-| `services.libeufin.nexus.debug` | | |
-| `services.libeufin.nexus.enable` | | |
-| `services.libeufin.nexus.openFirewall` | | |
-| `services.libeufin.nexus.package` | | |
-| `services.libeufin.nexus.settings` | | |
-| `services.libeufin.settings` | | |
+| --- | --- | --- |
+| `services.libeufin.bank.createLocalDatabase` | `boolean` | Whether to enable automatic creation of a local postgres database. |
+| `services.libeufin.bank.debug` | `boolean` | Whether to enable debug logging. |
+| `services.libeufin.bank.enable` | `boolean` | Whether to enable libeufin core banking system and web interface. |
+| `services.libeufin.bank.initialAccounts` | `list of (attribute set)` | Accounts to enable before the bank service starts. This is mainly needed for the nexus currency conversion since the exchange's bank account is expected to be already registered. Don't forget to change the account passwords afterwards. |
+| `services.libeufin.bank.openFirewall` | `boolean` | Whether to open ports in the firewall |
+| `services.libeufin.bank.package` | `package` | The libeufin package to use. |
+| `services.libeufin.bank.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration options for the libeufin bank system config file. For a list of all possible options, please see the man page [`libeufin-bank.conf(5)`](https://docs.taler.net/manpages/libeufin-bank.conf.5.html) |
+| `services.libeufin.bank.settings.libeufin-bank.CURRENCY` | `string` | The currency under which the libeufin-bank should operate. This defaults to the GNU taler module's currency for convenience but if you run libeufin-bank separately from taler, you must set this yourself. |
+| `services.libeufin.bank.settings.libeufin-bank.PORT` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port on which libeufin-bank should listen. |
+| `services.libeufin.bank.settings.libeufin-bank.SUGGESTED_WITHDRAWAL_EXCHANGE` | `string` | Exchange that is suggested to wallets when withdrawing. Note that, in order for withdrawals to work, your libeufin-bank must be able to communicate with and send money etc. to the bank at which the exchange used for withdrawals has its bank account. If you also have your own bank and taler exchange network, you probably want to set one of your exchange's url here instead of the demo exchange. This setting must always be set in order for the Android app to not crash during the withdrawal process but the exchange to be used can always be changed in the app. |
+| `services.libeufin.bank.settings.libeufin-bankdb-postgres.CONFIG` | `string` | The database connection string for the libeufin-bank database. |
+| `services.libeufin.nexus.createLocalDatabase` | `boolean` | Whether to enable automatic creation of a local postgres database. |
+| `services.libeufin.nexus.debug` | `boolean` | Whether to enable debug logging. |
+| `services.libeufin.nexus.enable` | `boolean` | Whether to enable libeufin core banking system and web interface. |
+| `services.libeufin.nexus.openFirewall` | `boolean` | Whether to open ports in the firewall |
+| `services.libeufin.nexus.package` | `package` | The libeufin package to use. |
+| `services.libeufin.nexus.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration options for the libeufin nexus config file. For a list of all possible options, please see the man page [`libeufin-nexus.conf(5)`](https://docs.taler.net/manpages/libeufin-nexus.conf.5.html) |
+| `services.libeufin.nexus.settings.libeufin-nexusdb-postgres.CONFIG` | `string` | The database connection string for the libeufin-nexus database. |
+| `services.libeufin.nexus.settings.nexus-ebics.BANK_DIALECT` | `one of "postfinance", "gls"` | Name of the following combination: EBICS version and ISO20022 recommendations that Nexus would honor in the communication with the bank. Currently only the "postfinance" or "gls" value is supported. |
+| `services.libeufin.nexus.settings.nexus-ebics.BANK_PUBLIC_KEYS_FILE` | `absolute path` | Filesystem location where Nexus should store the bank public keys. |
+| `services.libeufin.nexus.settings.nexus-ebics.BIC` | `non-empty string` | BIC of the bank account that is associated with the EBICS subscriber. |
+| `services.libeufin.nexus.settings.nexus-ebics.CLIENT_PRIVATE_KEYS_FILE` | `absolute path` | Filesystem location where Nexus should store the subscriber private keys. |
+| `services.libeufin.nexus.settings.nexus-ebics.CURRENCY` | `non-empty string` | Name of the fiat currency. |
+| `services.libeufin.nexus.settings.nexus-ebics.HOST_BASE_URL` | `non-empty string` | URL of the EBICS server. |
+| `services.libeufin.nexus.settings.nexus-ebics.HOST_ID` | `non-empty string` | Name of the EBICS host. |
+| `services.libeufin.nexus.settings.nexus-ebics.IBAN` | `non-empty string` | IBAN of the bank account that is associated with the EBICS subscriber. |
+| `services.libeufin.nexus.settings.nexus-ebics.NAME` | `non-empty string` | Legal entity that is associated with the EBICS subscriber. |
+| `services.libeufin.nexus.settings.nexus-ebics.PARTNER_ID` | `non-empty string` | Partner ID of the EBICS subscriber. This value must be assigned by the bank after having activated a new EBICS subscriber. |
+| `services.libeufin.nexus.settings.nexus-ebics.USER_ID` | `non-empty string` | User ID of the EBICS subscriber. This value must be assigned by the bank after having activated a new EBICS subscriber. |
+| `services.libeufin.nexus.settings.nexus-httpd.PORT` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port on which libeufin-bank should listen. |
+| `services.libeufin.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Global configuration options for the libeufin bank system config file. |

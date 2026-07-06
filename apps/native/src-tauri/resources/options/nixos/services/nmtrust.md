@@ -5,12 +5,14 @@
 All options under `services.nmtrust`.
 
 | Option | Type | Description |
-| --------------------------------------------- | ---- | ----------- |
-| `services.nmtrust.enable` | | |
-| `services.nmtrust.evalFailurePolicy` | | |
-| `services.nmtrust.excludedConnectionPatterns` | | |
-| `services.nmtrust.mixedPolicy` | | |
-| `services.nmtrust.systemUnits` | | |
-| `services.nmtrust.trustedConnections` | | |
-| `services.nmtrust.trustedUUIDsExtra` | | |
-| `services.nmtrust.userUnits` | | |
+| --- | --- | --- |
+| `services.nmtrust.enable` | `boolean` | Whether to enable network trust management. |
+| `services.nmtrust.evalFailurePolicy` | `one of "untrusted", "offline"` | How to handle trust evaluation failures (D-Bus errors, NM unavailable). `"untrusted"` (default) is fail-closed: trusted-only units stop. `"offline"` allows units with {option}`allowOffline` to run. |
+| `services.nmtrust.excludedConnectionPatterns` | `list of string` | Glob patterns matched against connection names at runtime using fnmatch(3) with FNM_NOESCAPE. Connection names are treated as literal strings (no backslash interpretation). Matching connections are ignored when computing trust state. |
+| `services.nmtrust.mixedPolicy` | `one of "trusted", "untrusted"` | How to treat mixed trust state (some connections trusted, some untrusted). |
+| `services.nmtrust.systemUnits` | `attribute set of (submodule)` | System units to bind to the trusted network target. Keys are systemd unit names. |
+| `services.nmtrust.systemUnits.<name>.allowOffline` | `boolean` | Whether this unit should also run when offline. |
+| `services.nmtrust.trustedConnections` | `list of string` | List of NetworkManager profile names from {option}`networking.networkmanager.ensureProfiles`. UUIDs are resolved at evaluation time. |
+| `services.nmtrust.trustedUUIDsExtra` | `list of string matching the pattern [0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}` | Additional trusted connection UUIDs not managed via {option}`networking.networkmanager.ensureProfiles`. Must be valid UUID format. |
+| `services.nmtrust.userUnits` | `attribute set of attribute set of (submodule)` | Per-user units to bind to the trusted network target. Outer keys are usernames, inner keys are systemd unit names. Users must have linger enabled ({option}`users.users.<name>.linger`). |
+| `services.nmtrust.userUnits.<name>.<name>.allowOffline` | `boolean` | Whether this unit should also run when offline. |

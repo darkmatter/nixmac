@@ -5,8 +5,8 @@
 All options under `services.iio-niri`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.iio-niri.enable` | | |
-| `services.iio-niri.extraArgs` | | |
-| `services.iio-niri.niriUnit` | | |
-| `services.iio-niri.package` | | |
+| --- | --- | --- |
+| `services.iio-niri.enable` | `boolean` | Whether to enable IIO-Niri. |
+| `services.iio-niri.extraArgs` | `list of string` | Extra arguments to pass to `iio-niri listen`. |
+| `services.iio-niri.niriUnit` | `non-empty string` | The Niri **user** service unit to bind IIO-Niri's **user** service unit to. |
+| `services.iio-niri.package` | `package` | The iio-niri package to use. |

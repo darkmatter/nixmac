@@ -5,8 +5,8 @@
 All options under `services.munin-cron`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.munin-cron.enable` | | |
-| `services.munin-cron.extraCSS` | | |
-| `services.munin-cron.extraGlobalConfig` | | |
-| `services.munin-cron.hosts` | | |
+| --- | --- | --- |
+| `services.munin-cron.enable` | `boolean` | Enable munin-cron. Takes care of all heavy lifting to collect data from nodes and draws graphs to html. Runs munin-update, munin-limits, munin-graphs and munin-html in that order. HTML output is in {file}`/var/www/munin/`, configure your favourite webserver to serve static files. |
+| `services.munin-cron.extraCSS` | `strings concatenated with "\n"` | Custom styling for the HTML that munin-cron generates. This will be appended to the CSS files used by munin-cron and will thus take precedence over the builtin styles. |
+| `services.munin-cron.extraGlobalConfig` | `strings concatenated with "\n"` | {file}`munin.conf` extra global configuration. See <https://guide.munin-monitoring.org/en/latest/reference/munin.conf.html>. Useful to setup notifications, see <https://guide.munin-monitoring.org/en/latest/tutorial/alert.html> |
+| `services.munin-cron.hosts` | `strings concatenated with "\n"` | Definitions of hosts of nodes to collect data from. Needs at least one host for cron to succeed. See <https://guide.munin-monitoring.org/en/latest/reference/munin.conf.html> |

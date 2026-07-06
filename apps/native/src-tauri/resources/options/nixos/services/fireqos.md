@@ -5,6 +5,6 @@
 All options under `services.fireqos`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.fireqos.config` | | |
-| `services.fireqos.enable` | | |
+| --- | --- | --- |
+| `services.fireqos.config` | `strings concatenated with "\n"` | The FireQOS configuration. |
+| `services.fireqos.enable` | `boolean` | Whether to enable FireQOS. |

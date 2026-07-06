@@ -5,14 +5,14 @@
 All options under `services.remark42`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.remark42.dataDir` | | |
-| `services.remark42.enable` | | |
-| `services.remark42.environmentFile` | | |
-| `services.remark42.listenAddress` | | |
-| `services.remark42.openFirewall` | | |
-| `services.remark42.package` | | |
-| `services.remark42.port` | | |
-| `services.remark42.remarkUrl` | | |
-| `services.remark42.settings` | | |
-| `services.remark42.sites` | | |
+| --- | --- | --- |
+| `services.remark42.dataDir` | `absolute path` | Working directory for Remark42. Data files are stored here and automatic backups will be created in this directory by default. |
+| `services.remark42.enable` | `boolean` | Whether to enable Remark42 commenting server. |
+| `services.remark42.environmentFile` | `null or absolute path` | Optional environment file in systemd `EnvironmentFile=` format. Use this for secrets to avoid storing them in the Nix store. |
+| `services.remark42.listenAddress` | `string` | Bind address (`REMARK_ADDRESS`). |
+| `services.remark42.openFirewall` | `boolean` | Whether to open the firewall for `port`. |
+| `services.remark42.package` | `package` | The remark42 package to use. |
+| `services.remark42.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listen port (`REMARK_PORT`). |
+| `services.remark42.remarkUrl` | `string` | Public URL of this Remark42 instance. This is passed to the backend as `REMARK_URL` and should match the frontend embed config `host`. |
+| `services.remark42.settings` | `attribute set of string` | Extra environment variables passed to Remark42. |
+| `services.remark42.sites` | `list of string` | Site IDs served by this instance (passed as `SITE`, comma-separated). The frontend embed config `site_id` must match one of these values. |

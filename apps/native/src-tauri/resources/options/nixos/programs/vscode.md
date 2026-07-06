@@ -5,9 +5,8 @@
 All options under `programs.vscode`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `programs.vscode.defaultEditor` | | |
-| `programs.vscode.enable` | | |
-| `programs.vscode.extensions` | | |
-| `programs.vscode.finalPackage` | | |
-| `programs.vscode.package` | | |
+| --- | --- | --- |
+| `programs.vscode.defaultEditor` | `boolean` | When enabled, configures VSCode to be the default editor using the EDITOR environment variable. |
+| `programs.vscode.enable` | `boolean` | Whether to enable VSCode editor. |
+| `programs.vscode.extensions` | `list of package` | List of extensions to install. |
+| `programs.vscode.package` | `package` | The vscode package to use. The final package will be customized with extensions from {option}`programs.vscode.extensions` |

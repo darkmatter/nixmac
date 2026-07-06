@@ -5,9 +5,9 @@
 All options under `services.hypridle`.
 
 | Option | Type | Description |
-| ------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `services.hypridle.enable` | `boolean` | Whether to enable Hypridle, Hyprland’s idle daemon. |
+| --- | --- | --- |
+| `services.hypridle.enable` | `boolean` | Whether to enable Hypridle, Hyprland's idle daemon. |
 | `services.hypridle.importantPrefixes` | `list of string` | List of prefix of attributes to source at the top of the config. |
 | `services.hypridle.package` | `null or package` | The hypridle package to use. |
-| `services.hypridle.settings` | `Hypridle configuration value` | Hypridle configuration written in Nix. Entries with the same key should be written as lists. Variables’ and colors’ names should be quoted. See https://wiki.hypr.land/Hypr-Ecosystem/hypridle/ for more examples. |
+| `services.hypridle.settings` | `Hypridle configuration value` | Hypridle configuration written in Nix. Entries with the same key should be written as lists. Variables' and colors' names should be quoted. See <https://wiki.hypr.land/Hypr-Ecosystem/hypridle/> for more examples. |
 | `services.hypridle.systemdTarget` | `string` | Systemd target to bind to. |

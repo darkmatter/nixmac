@@ -5,8 +5,10 @@
 All options under `services.postgres-websockets`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.postgres-websockets.enable` | | |
-| `services.postgres-websockets.environment` | | |
-| `services.postgres-websockets.jwtSecretFile` | | |
-| `services.postgres-websockets.pgpassFile` | | |
+| --- | --- | --- |
+| `services.postgres-websockets.enable` | `boolean` | Whether to enable postgres-websockets. |
+| `services.postgres-websockets.environment` | `open submodule of attribute set of string` | postgres-websockets configuration as defined in: <https://github.com/diogob/postgres-websockets/blob/master/src/PostgresWebsockets/Config.hs#L71-L87> `PGWS_DB_URI` is represented as an attribute set, see [`environment.PGWS_DB_URI`](#opt-services.postgres-websockets.environment.PGWS_DB_URI) ::: {.note} The `environment.PGWS_JWT_SECRET` option is blocked. Use [`jwtSecretFile`](#opt-services.postgres-websockets.jwtSecretFile) instead. ::: |
+| `services.postgres-websockets.environment.PGWS_DB_URI` | `open submodule of attribute set of string` | libpq connection parameters as documented in: <https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-PARAMKEYWORDS> ::: {.note} The `environment.PGWS_DB_URI.password` and `environment.PGWS_DB_URI.passfile` options are blocked. Use [`pgpassFile`](#opt-services.postgres-websockets.pgpassFile) instead. ::: |
+| `services.postgres-websockets.environment.PGWS_HOST` | `null or string` | Address the server will listen for websocket connections. |
+| `services.postgres-websockets.jwtSecretFile` | `null or absolute path not in the Nix store` | Secret used to sign JWT tokens used to open communications channels. |
+| `services.postgres-websockets.pgpassFile` | `null or absolute path not in the Nix store` | The password to authenticate to PostgreSQL with. Not needed for peer or trust based authentication. The file must be a valid `.pgpass` file as described in: <https://www.postgresql.org/docs/current/libpq-pgpass.html> In most cases, the following will be enough: `*:*:*:*:<password>` |

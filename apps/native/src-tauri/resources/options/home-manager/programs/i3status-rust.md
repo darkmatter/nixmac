@@ -5,7 +5,11 @@
 All options under `programs.i3status-rust`.
 
 | Option | Type | Description |
-| -------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `programs.i3status-rust.bars` | `attribute set of (submodule)` | Attribute set of i3status-rust bars, each with their own configuration. Each bar name generates a config file suffixed with the bar’s name from the attribute set, like so: config-${name}.toml . |
+| --- | --- | --- |
+| `programs.i3status-rust.bars` | `attribute set of (submodule)` | Attribute set of i3status-rust bars, each with their own configuration. Each bar {var}`name` generates a config file suffixed with the bar's {var}`name` from the attribute set, like so: {file}`config-${name}.toml`. This way, multiple config files can be generated, such as for having a top and a bottom bar. See {manpage}`i3status-rust(1)` for options. |
+| `programs.i3status-rust.bars.<name>.blocks` | `TOML value` | Configuration blocks to add to i3status-rust {file}`config`. See <https://github.com/greshake/i3status-rust/blob/master/blocks.md> for block options. |
+| `programs.i3status-rust.bars.<name>.icons` | `string` | The icons set to use. See <https://github.com/greshake/i3status-rust/blob/master/doc/themes.md> for a list of available icon sets. |
+| `programs.i3status-rust.bars.<name>.settings` | `TOML value` | Any extra options to add to i3status-rust {file}`config`. |
+| `programs.i3status-rust.bars.<name>.theme` | `string` | The theme to use. See <https://github.com/greshake/i3status-rust/blob/master/doc/themes.md> for a list of available themes. |
 | `programs.i3status-rust.enable` | `boolean` | Whether to enable a replacement for i3-status written in Rust. |
 | `programs.i3status-rust.package` | `package` | The i3status-rust package to use. |

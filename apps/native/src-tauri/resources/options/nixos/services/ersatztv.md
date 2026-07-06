@@ -5,11 +5,11 @@
 All options under `services.ersatztv`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.ersatztv.baseUrl` | | |
-| `services.ersatztv.enable` | | |
-| `services.ersatztv.environment` | | |
-| `services.ersatztv.group` | | |
-| `services.ersatztv.openFirewall` | | |
-| `services.ersatztv.package` | | |
-| `services.ersatztv.user` | | |
+| --- | --- | --- |
+| `services.ersatztv.baseUrl` | `string` | Base URL to support reverse proxies that use paths (e.g. `/ersatztv`) |
+| `services.ersatztv.enable` | `boolean` | Whether to enable ErsatzTV. |
+| `services.ersatztv.environment` | `attribute set of (string or signed integer or floating point number or boolean or absolute path or package)` | Environment variables to set for the ErsatzTV service. |
+| `services.ersatztv.group` | `string` | Group under which ErsatzTV runs. |
+| `services.ersatztv.openFirewall` | `boolean` | Open the default ports in the firewall for the server. |
+| `services.ersatztv.package` | `package` | The ersatztv package to use. |
+| `services.ersatztv.user` | `string` | User account under which ErsatzTV runs. |

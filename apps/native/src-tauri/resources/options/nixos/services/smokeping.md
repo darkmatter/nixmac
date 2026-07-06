@@ -5,27 +5,26 @@
 All options under `services.smokeping`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.smokeping.alertConfig` | | |
-| `services.smokeping.cgiUrl` | | |
-| `services.smokeping.config` | | |
-| `services.smokeping.databaseConfig` | | |
-| `services.smokeping.enable` | | |
-| `services.smokeping.extraConfig` | | |
-| `services.smokeping.host` | | |
-| `services.smokeping.hostName` | | |
-| `services.smokeping.imgUrl` | | |
-| `services.smokeping.linkStyle` | | |
-| `services.smokeping.mailHost` | | |
-| `services.smokeping.owner` | | |
-| `services.smokeping.ownerEmail` | | |
-| `services.smokeping.package` | | |
-| `services.smokeping.port` | | |
-| `services.smokeping.presentationConfig` | | |
-| `services.smokeping.presentationTemplate` | | |
-| `services.smokeping.probeConfig` | | |
-| `services.smokeping.sendmail` | | |
-| `services.smokeping.smokeMailTemplate` | | |
-| `services.smokeping.targetConfig` | | |
-| `services.smokeping.user` | | |
-| `services.smokeping.webService` | | |
+| --- | --- | --- |
+| `services.smokeping.alertConfig` | `strings concatenated with "\n"` | Configuration for alerts. |
+| `services.smokeping.cgiUrl` | `string` | URL to the smokeping cgi. |
+| `services.smokeping.config` | `null or strings concatenated with "\n"` | Full smokeping config supplied by the user. Overrides and replaces any other configuration supplied. |
+| `services.smokeping.databaseConfig` | `strings concatenated with "\n"` | Configure the ping frequency and retention of the rrd files. Once set, changing the interval will require deletion or migration of all the collected data. |
+| `services.smokeping.enable` | `boolean` | Whether to enable smokeping service. |
+| `services.smokeping.extraConfig` | `strings concatenated with "\n"` | Any additional customization not already included. |
+| `services.smokeping.host` | `null or string` | Host/IP to bind to for the web server. Setting it to `null` skips passing the -h option to thttpd, which makes it bind to all interfaces. |
+| `services.smokeping.hostName` | `string` | DNS name for the urls generated in the cgi. |
+| `services.smokeping.imgUrl` | `string` | Base url for images generated in the cgi. The default is a relative URL to ensure it works also when e.g. forwarding the GUI port via SSH. |
+| `services.smokeping.linkStyle` | `one of "original", "absolute", "relative"` | DNS name for the urls generated in the cgi. |
+| `services.smokeping.mailHost` | `string` | Use this SMTP server to send alerts |
+| `services.smokeping.owner` | `string` | Real name of the owner of the instance |
+| `services.smokeping.ownerEmail` | `string` | Email contact for owner |
+| `services.smokeping.package` | `package` | The smokeping package to use. |
+| `services.smokeping.presentationConfig` | `strings concatenated with "\n"` | presentation graph style |
+| `services.smokeping.presentationTemplate` | `string` | Default page layout for the web UI. |
+| `services.smokeping.probeConfig` | `strings concatenated with "\n"` | Probe configuration |
+| `services.smokeping.sendmail` | `null or absolute path` | Use this sendmail compatible script to deliver alerts |
+| `services.smokeping.smokeMailTemplate` | `string` | Specify the smokemail template for alerts. |
+| `services.smokeping.targetConfig` | `strings concatenated with "\n"` | Target configuration |
+| `services.smokeping.user` | `string` | User that runs smokeping and (optionally) thttpd. A group of the same name will be created as well. |
+| `services.smokeping.webService` | `boolean` | Enable a smokeping web interface |

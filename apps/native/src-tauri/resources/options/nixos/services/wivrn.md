@@ -5,17 +5,16 @@
 All options under `services.wivrn`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.wivrn.autoStart` | | |
-| `services.wivrn.config.enable` | | |
-| `services.wivrn.config.json` | | |
-| `services.wivrn.defaultRuntime` | | |
-| `services.wivrn.enable` | | |
-| `services.wivrn.extraServerFlags` | | |
-| `services.wivrn.highPriority` | | |
-| `services.wivrn.monadoEnvironment` | | |
-| `services.wivrn.openFirewall` | | |
-| `services.wivrn.package` | | |
-| `services.wivrn.steam.enable` | | |
-| `services.wivrn.steam.importOXRRuntimes` | | |
-| `services.wivrn.steam.package` | | |
+| --- | --- | --- |
+| `services.wivrn.autoStart` | `boolean` | Whether to enable starting the service by default. |
+| `services.wivrn.config.enable` | `boolean` | Whether to enable configuration for WiVRn. |
+| `services.wivrn.config.json` | `JSON value` | Configuration for WiVRn. The attributes are serialized to JSON in config.json. The server will fallback to default values for any missing attributes. Like upstream, the application option is a list including the application and it's flags. In the case of the NixOS module however, the first element of the list must be a package. The module will assert otherwise. The application can be set to a single package because it gets passed to lib.toList, though this will not allow for flags to be passed. WiVRn has good default configurations and most options can be configured at runtime so it is recommended to leave this empty and try the defaults before attempting manual configuration. See <https://github.com/WiVRn/WiVRn/blob/master/docs/configuration.md> |
+| `services.wivrn.enable` | `boolean` | Whether to enable WiVRn, an OpenXR streaming application. |
+| `services.wivrn.extraServerFlags` | `list of string` | Flags to add to the wivrn service. |
+| `services.wivrn.highPriority` | `boolean` | Whether to enable high priority capability for asynchronous reprojection. |
+| `services.wivrn.monadoEnvironment` | `attribute set` | Environment variables to be passed to the Monado environment. |
+| `services.wivrn.openFirewall` | `boolean` | Whether to enable the default ports in the firewall for the WiVRn server. |
+| `services.wivrn.package` | `package` | The wivrn package to use. |
+| `services.wivrn.steam.enable` | `boolean` | Whether to enable Steam support. |
+| `services.wivrn.steam.importOXRRuntimes` | `boolean` | Whether to enable Sets `PRESSURE_VESSEL_IMPORT_OPENXR_1_RUNTIMES` system-wide to allow Steam to automatically discover the WiVRn server. Note that you may have to logout for this variable to be visible . |
+| `services.wivrn.steam.package` | `package` | The steam package to use. |

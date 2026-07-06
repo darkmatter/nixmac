@@ -5,6 +5,6 @@
 All options under `programs.nautilus-open-any-terminal`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---- | ----------- |
-| `programs.nautilus-open-any-terminal.enable` | | |
-| `programs.nautilus-open-any-terminal.terminal` | | |
+| --- | --- | --- |
+| `programs.nautilus-open-any-terminal.enable` | `boolean` | Whether to enable nautilus-open-any-terminal. |
+| `programs.nautilus-open-any-terminal.terminal` | `null or string` | The terminal emulator to add to context-entry of nautilus. Supported terminal emulators are listed in <https://github.com/Stunkymonkey/nautilus-open-any-terminal#supported-terminal-emulators>. |

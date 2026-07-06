@@ -5,11 +5,15 @@
 All options under `services.peertube-runner`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---- | ----------- |
-| `services.peertube-runner.enable` | | |
-| `services.peertube-runner.enabledJobTypes` | | |
-| `services.peertube-runner.group` | | |
-| `services.peertube-runner.instancesToRegister` | | |
-| `services.peertube-runner.package` | | |
-| `services.peertube-runner.settings` | | |
-| `services.peertube-runner.user` | | |
+| --- | --- | --- |
+| `services.peertube-runner.enable` | `boolean` | Whether to enable peertube-runner. |
+| `services.peertube-runner.enabledJobTypes` | `non-empty (list of string)` | Job types that this runner will execute. |
+| `services.peertube-runner.group` | `string` | Group under which peertube-runner runs. |
+| `services.peertube-runner.instancesToRegister` | `attribute set of (submodule)` | PeerTube instances to register this runner with. |
+| `services.peertube-runner.instancesToRegister.<name>.registrationTokenFile` | `absolute path` | Path to a file containing a registration token for the PeerTube instance. See how to generate registration tokens at <https://docs.joinpeertube.org/admin/remote-runners#manage-remote-runners>. |
+| `services.peertube-runner.instancesToRegister.<name>.runnerDescription` | `null or string` | Runner description declared to the PeerTube instance. |
+| `services.peertube-runner.instancesToRegister.<name>.runnerName` | `string` | Runner name declared to the PeerTube instance. |
+| `services.peertube-runner.instancesToRegister.<name>.url` | `string` | URL of the PeerTube instance. |
+| `services.peertube-runner.package` | `package` | The runner package to use. |
+| `services.peertube-runner.settings` | `TOML value` | Configuration for peertube-runner. See available configuration options at <https://docs.joinpeertube.org/maintain/tools#configuration>. |
+| `services.peertube-runner.user` | `string` | User account under which peertube-runner runs. |

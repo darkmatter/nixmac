@@ -5,7 +5,7 @@
 All options under `programs.vim-vint`.
 
 | Option | Type | Description |
-| ---------------------------- | ----------------- | ------------------------------------------------------ |
+| --- | --- | --- |
 | `programs.vim-vint.enable` | `boolean` | Whether to enable the Vint linter for Vimscript. |
 | `programs.vim-vint.package` | `null or package` | The vim-vint package to use. |
-| `programs.vim-vint.settings` | `YAML 1.1 value` | Configuration written to $XDG_CONFIG_HOME/.vintrc.yaml |
+| `programs.vim-vint.settings` | `YAML 1.1 value` | Configuration written to {file}`$XDG_CONFIG_HOME/.vintrc.yaml` |

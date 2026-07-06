@@ -5,12 +5,12 @@
 All options under `services.zenohd`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.zenohd.backends` | | |
-| `services.zenohd.enable` | | |
-| `services.zenohd.env` | | |
-| `services.zenohd.extraOptions` | | |
-| `services.zenohd.home` | | |
-| `services.zenohd.package` | | |
-| `services.zenohd.plugins` | | |
-| `services.zenohd.settings` | | |
+| --- | --- | --- |
+| `services.zenohd.backends` | `list of package` | Storage backend packages to add to zenohd search paths. |
+| `services.zenohd.enable` | `boolean` | Whether to enable Zenoh daemon.. |
+| `services.zenohd.env` | `attribute set of string` | Set environment variables consumed by zenohd and its plugins. |
+| `services.zenohd.extraOptions` | `list of string` | Extra command line options for zenohd. |
+| `services.zenohd.home` | `string` | Base directory for zenohd related files defined via ZENOH_HOME. |
+| `services.zenohd.package` | `package` | The zenoh package to use. |
+| `services.zenohd.plugins` | `list of package` | Plugin packages to add to zenohd search paths. |
+| `services.zenohd.settings` | `open submodule of (JSON value)` | Config options for `zenoh.json5` configuration file. See <https://github.com/eclipse-zenoh/zenoh/blob/main/DEFAULT_CONFIG.json5> for more information. |

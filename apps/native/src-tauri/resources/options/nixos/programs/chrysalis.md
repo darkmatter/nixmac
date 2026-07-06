@@ -5,6 +5,6 @@
 All options under `programs.chrysalis`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `programs.chrysalis.enable` | | |
-| `programs.chrysalis.package` | | |
+| --- | --- | --- |
+| `programs.chrysalis.enable` | `boolean` | Whether to enable Chrysalis. |
+| `programs.chrysalis.package` | `package` | The Chrysalis package to use. |

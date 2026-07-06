@@ -5,5 +5,5 @@
 All options under `programs.sniffnet`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `programs.sniffnet.enable` | | |
+| --- | --- | --- |
+| `programs.sniffnet.enable` | `boolean` | Whether to enable sniffnet, a network traffic monitor application. |

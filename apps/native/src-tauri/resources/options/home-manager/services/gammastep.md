@@ -5,19 +5,16 @@
 All options under `services.gammastep`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `services.gammastep.brightness.day` | | |
-| `services.gammastep.brightness.night` | | |
+| --- | --- | --- |
 | `services.gammastep.dawnTime` | `null or string` | Set the time interval of dawn manually. The times must be specified as HH:MM in 24-hour format. |
 | `services.gammastep.duskTime` | `null or string` | Set the time interval of dusk manually. The times must be specified as HH:MM in 24-hour format. |
 | `services.gammastep.enable` | `boolean` | Whether to enable Gammastep. |
 | `services.gammastep.enableVerboseLogging` | `boolean` | Whether to enable verbose service logging. |
-| `services.gammastep.extraOptions` | | |
-| `services.gammastep.latitude` | `null or string or floating point number` | Your current latitude, between -90.0 and 90.0 . Must be provided along with longitude. |
-| `services.gammastep.longitude` | `null or string or floating point number` | Your current longitude, between -180.0 and 180.0 . Must be provided along with latitude. |
+| `services.gammastep.latitude` | `null or string or floating point number` | Your current latitude, between `-90.0` and `90.0`. Must be provided along with longitude. |
+| `services.gammastep.longitude` | `null or string or floating point number` | Your current longitude, between `-180.0` and `180.0`. Must be provided along with latitude. |
 | `services.gammastep.package` | `package` | Gammastep derivation to use. |
-| `services.gammastep.provider` | `one of “manual”, “geoclue2”` | The location provider to use for determining your location. If set to manual you must also provide latitude/longitude. If set to geoclue2 , you must also enable the global geoclue2 service. |
-| `services.gammastep.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | The configuration to pass to Gammastep. Available options for Gammastep described in gammastep (1) . |
-| `services.gammastep.temperature.day` | `signed integer` | Colour temperature to use during the day, between 1000 and 25000 K. |
-| `services.gammastep.temperature.night` | `signed integer` | Colour temperature to use at night, between 1000 and 25000 K. |
+| `services.gammastep.provider` | `one of "manual", "geoclue2"` | The location provider to use for determining your location. If set to `manual` you must also provide latitude/longitude. If set to `geoclue2`, you must also enable the global geoclue2 service. |
+| `services.gammastep.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | The configuration to pass to Gammastep. Available options for Gammastep described in {manpage}`gammastep(1)`. |
+| `services.gammastep.temperature.day` | `signed integer` | Colour temperature to use during the day, between `1000` and `25000` K. |
+| `services.gammastep.temperature.night` | `signed integer` | Colour temperature to use at night, between `1000` and `25000` K. |
 | `services.gammastep.tray` | `boolean` | Start the gammastep-indicator tray applet. |

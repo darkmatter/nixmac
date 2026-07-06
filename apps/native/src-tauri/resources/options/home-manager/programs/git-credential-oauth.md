@@ -5,7 +5,7 @@
 All options under `programs.git-credential-oauth`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---------------- | ------------------------------------------------------------ |
+| --- | --- | --- |
 | `programs.git-credential-oauth.enable` | `boolean` | Whether to enable Git authentication handler for OAuth. |
-| `programs.git-credential-oauth.extraFlags` | `list of string` | Extra command-line arguments passed to git-credential-oauth. |
+| `programs.git-credential-oauth.extraFlags` | `list of string` | Extra command-line arguments passed to git-credential-oauth. For valid arguments, see {manpage}`git-credential-oauth(1)`. |
 | `programs.git-credential-oauth.package` | `package` | The git-credential-oauth package to use. |

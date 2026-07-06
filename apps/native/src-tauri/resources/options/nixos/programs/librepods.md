@@ -5,5 +5,5 @@
 All options under `programs.librepods`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `programs.librepods.enable` | | |
+| --- | --- | --- |
+| `programs.librepods.enable` | `boolean` | Whether to configure system to enable librepods. To grant access to a user, it must be part of librepods group: `users.users.alice.extraGroups = ["librepods"];` |

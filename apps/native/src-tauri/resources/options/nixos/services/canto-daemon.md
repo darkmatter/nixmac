@@ -5,5 +5,5 @@
 All options under `services.canto-daemon`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.canto-daemon.enable` | | |
+| --- | --- | --- |
+| `services.canto-daemon.enable` | `boolean` | Whether to enable the canto RSS daemon. |

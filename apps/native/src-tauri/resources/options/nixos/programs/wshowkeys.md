@@ -5,6 +5,6 @@
 All options under `programs.wshowkeys`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `programs.wshowkeys.enable` | | |
-| `programs.wshowkeys.package` | | |
+| --- | --- | --- |
+| `programs.wshowkeys.enable` | `boolean` | Whether to enable wshowkeys (displays keypresses on screen on supported Wayland compositors). It requires root permissions to read input events, but these permissions are dropped after startup. |
+| `programs.wshowkeys.package` | `package` | The wshowkeys package to use. |

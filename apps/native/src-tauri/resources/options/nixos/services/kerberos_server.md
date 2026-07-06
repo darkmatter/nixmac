@@ -5,8 +5,15 @@
 All options under `services.kerberos_server`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.kerberos_server.enable` | | |
-| `services.kerberos_server.extraKDCArgs` | | |
-| `services.kerberos_server.realms` | | |
-| `services.kerberos_server.settings` | | |
+| --- | --- | --- |
+| `services.kerberos_server.enable` | `boolean` | Whether to enable the kerberos authentication server. |
+| `services.kerberos_server.extraKDCArgs` | `list of string` | Extra arguments to pass to the KDC process. See {manpage}`kdc(8)`. |
+| `services.kerberos_server.settings` | `open submodule of attribute set of attribute set of ((list of attribute set of ((list of (signed integer or string or boolean)) or signed integer or string or boolean)) or attribute set of ((list of (signed integer or string or boolean)) or signed integer or string or boolean) or (list of (signed integer or string or boolean)) or signed integer or string or boolean)` | Settings for the kerberos server of choice. See the following documentation: - Heimdal: {manpage}`kdc.conf(5)` - MIT Kerberos: <https://web.mit.edu/kerberos/krb5-1.21/doc/admin/conf_files/kdc_conf.html> |
+| `services.kerberos_server.settings.include` | `(list of absolute path) or absolute path convertible to it` | Files to include in the Kerberos configuration. |
+| `services.kerberos_server.settings.includedir` | `(list of absolute path) or absolute path convertible to it` | Directories containing files to include in the Kerberos configuration. |
+| `services.kerberos_server.settings.module` | `(list of absolute path) or absolute path convertible to it` | Modules to obtain Kerberos configuration from. |
+| `services.kerberos_server.settings.realms` | `attribute set of (open submodule of attribute set of ((list of attribute set of ((list of (signed integer or string or boolean)) or signed integer or string or boolean)) or attribute set of ((list of (signed integer or string or boolean)) or signed integer or string or boolean) or (list of (signed integer or string or boolean)) or signed integer or string or boolean))` | The realm(s) to serve keys for. |
+| `services.kerberos_server.settings.realms.<name>.acl` | `list of (submodule)` | The privileges granted to a user. |
+| `services.kerberos_server.settings.realms.<name>.acl.*.access` | `(list of (one of "all", "add", "cpw", "delete", "get-keys", "get", "list", "modify")) or string convertible to it` | The changes the principal is allowed to make. :::{.important} The "all" permission does not imply the "get-keys" permission. This is consistent with the behavior of both MIT Kerberos and Heimdal. ::: :::{.warning} Value "all" is allowed as a list member only if it appears alone or accompanied by "get-keys". Any other combination involving "all" will raise an exception. ::: |
+| `services.kerberos_server.settings.realms.<name>.acl.*.principal` | `string` | Which principal the rule applies to |
+| `services.kerberos_server.settings.realms.<name>.acl.*.target` | `string` | The principals that 'access' applies to. |

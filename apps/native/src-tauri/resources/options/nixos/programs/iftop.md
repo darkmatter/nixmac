@@ -5,5 +5,5 @@
 All options under `programs.iftop`.
 
 | Option | Type | Description |
-| ----------------------- | ---- | ----------- |
-| `programs.iftop.enable` | | |
+| --- | --- | --- |
+| `programs.iftop.enable` | `boolean` | Whether to enable iftop and setcap wrapper for it. |

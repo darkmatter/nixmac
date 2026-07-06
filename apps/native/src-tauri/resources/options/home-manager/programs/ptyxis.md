@@ -5,7 +5,7 @@
 All options under `programs.ptyxis`.
 
 | Option | Type | Description |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.ptyxis.enable` | `boolean` | Whether to enable ptyxis. |
 | `programs.ptyxis.package` | `null or package` | The ptyxis package to use. |
-| `programs.ptyxis.palettes` | `attribute set of ((attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))) or absolute path or string)` | Written to $XDG_CONFIG_HOME/org.gnome.Prompt/palettes/NAME.palette . See https://gitlab.gnome.org/chergert/ptyxis/-/tree/main/data/palettes for more information. |
+| `programs.ptyxis.palettes` | `attribute set of ((attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))) or absolute path or string)` | Written to {file}`$XDG_CONFIG_HOME/org.gnome.Prompt/palettes/NAME.palette`. See <https://gitlab.gnome.org/chergert/ptyxis/-/tree/main/data/palettes> for more information. |

@@ -5,16 +5,25 @@
 All options under `services.orangefs`.
 
 | Option | Type | Description |
-| ----------------------------------------------- | ---- | ----------- |
-| `services.orangefs.client.enable` | | |
-| `services.orangefs.client.extraOptions` | | |
-| `services.orangefs.client.fileSystems` | | |
-| `services.orangefs.server.BMIModules` | | |
-| `services.orangefs.server.dataStorageSpace` | | |
-| `services.orangefs.server.enable` | | |
-| `services.orangefs.server.extraConfig` | | |
-| `services.orangefs.server.extraDefaults` | | |
-| `services.orangefs.server.fileSystems` | | |
-| `services.orangefs.server.logType` | | |
-| `services.orangefs.server.metadataStorageSpace` | | |
-| `services.orangefs.server.servers` | | |
+| --- | --- | --- |
+| `services.orangefs.client.enable` | `boolean` | Whether to enable OrangeFS client daemon. |
+| `services.orangefs.client.extraOptions` | `list of string` | Extra command line options for pvfs2-client. |
+| `services.orangefs.client.fileSystems` | `list of (submodule)` | The orangefs file systems to be mounted. This option is preferred over using {option}`fileSystems` directly since the pvfs client service needs to be running for it to be mounted. |
+| `services.orangefs.client.fileSystems.*.mountPoint` | `string` | Mount point. |
+| `services.orangefs.client.fileSystems.*.options` | `list of string` | Mount options |
+| `services.orangefs.client.fileSystems.*.target` | `string` | Target URL |
+| `services.orangefs.server.BMIModules` | `list of string` | List of BMI modules to load. |
+| `services.orangefs.server.dataStorageSpace` | `null or string` | Directory for data storage. |
+| `services.orangefs.server.enable` | `boolean` | Whether to enable OrangeFS server. |
+| `services.orangefs.server.extraConfig` | `strings concatenated with "\n"` | Extra config for the global section. |
+| `services.orangefs.server.extraDefaults` | `strings concatenated with "\n"` | Extra config for `<Defaults>` section. |
+| `services.orangefs.server.fileSystems` | `attribute set of (submodule)` | These options will create the `<FileSystem>` sections of config file. |
+| `services.orangefs.server.fileSystems.<name>.extraConfig` | `strings concatenated with "\n"` | Extra config for `<FileSystem>` section. |
+| `services.orangefs.server.fileSystems.<name>.extraStorageHints` | `strings concatenated with "\n"` | Extra config for `<StorageHints>` section. |
+| `services.orangefs.server.fileSystems.<name>.id` | `signed integer` | File system ID (must be unique within configuration). |
+| `services.orangefs.server.fileSystems.<name>.rootHandle` | `signed integer` | File system root ID. |
+| `services.orangefs.server.fileSystems.<name>.troveSyncData` | `boolean` | Sync data. |
+| `services.orangefs.server.fileSystems.<name>.troveSyncMeta` | `boolean` | Sync meta data. |
+| `services.orangefs.server.logType` | `one of "file", "syslog"` | Destination for log messages. |
+| `services.orangefs.server.metadataStorageSpace` | `null or string` | Directory for meta data storage. |
+| `services.orangefs.server.servers` | `attribute set of string` | URLs for storage server including port. The attribute names define the server alias. |

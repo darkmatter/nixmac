@@ -5,11 +5,22 @@
 All options under `services.canaille`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.canaille.enable` | | |
-| `services.canaille.jwtPrivateKeyFile` | | |
-| `services.canaille.ldapBindPasswordFile` | | |
-| `services.canaille.package` | | |
-| `services.canaille.secretKeyFile` | | |
-| `services.canaille.settings` | | |
-| `services.canaille.smtpPasswordFile` | | |
+| --- | --- | --- |
+| `services.canaille.enable` | `boolean` | Whether to enable Canaille. |
+| `services.canaille.jwtPrivateKeyFile` | `null or absolute path` | File containing the JWT private key. Make sure it has appropriate permissions. You can generate one using `openssl genrsa -out private.pem 4096 openssl rsa -in private.pem -pubout -outform PEM -out public.pem` |
+| `services.canaille.ldapBindPasswordFile` | `null or absolute path` | File containing the LDAP bind password. |
+| `services.canaille.package` | `package` | The canaille package to use. |
+| `services.canaille.secretKeyFile` | `absolute path` | File containing the Flask secret key. Its content is going to be provided to Canaille as `SECRET_KEY`. Make sure it has appropriate permissions. For example, copy the output of this to the specified file: `python3 -c 'import secrets; print(secrets.token_hex())'` |
+| `services.canaille.settings` | `open submodule of (TOML value)` | Settings for Canaille. See [the documentation](https://canaille.readthedocs.io/en/latest/references/configuration.html) for details. |
+| `services.canaille.settings.CANAILLE.ACL` | `null or (open submodule of (TOML value))` | Access Control Lists. See also [the documentation](https://canaille.readthedocs.io/en/latest/references/configuration.html#canaille.core.configuration.ACLSettings). |
+| `services.canaille.settings.CANAILLE.SMTP` | `null or (open submodule of (TOML value))` | SMTP configuration. By default, sending emails is not enabled. Set to an empty attrs to send emails from localhost without authentication. See also [the documentation](https://canaille.readthedocs.io/en/latest/references/configuration.html#canaille.core.configuration.SMTPSettings). |
+| `services.canaille.settings.CANAILLE.SMTP.PASSWORD` | `null or string` | SMTP Password. Can't be set and has to be provided using `services.canaille.smtpPasswordFile`. |
+| `services.canaille.settings.CANAILLE_LDAP` | `null or (open submodule of (TOML value))` | Configuration for the LDAP backend. This storage backend is not yet supported by the module, so use at your own risk! |
+| `services.canaille.settings.CANAILLE_LDAP.BIND_PW` | `null or string` | The LDAP bind password. Can't be set and has to be provided using `services.canaille.ldapBindPasswordFile`. |
+| `services.canaille.settings.CANAILLE_OIDC` | `null or (open submodule of (TOML value))` | OpenID Connect settings. See [the documentation](https://canaille.readthedocs.io/en/latest/references/configuration.html#canaille.oidc.configuration.OIDCSettings). |
+| `services.canaille.settings.CANAILLE_OIDC.JWT.PRIVATE_KEY` | `null or string` | JWT private key. Can't be set and has to be provided using `services.canaille.jwtPrivateKeyFile`. |
+| `services.canaille.settings.CANAILLE_SQL.DATABASE_URI` | `string` | The SQL server URI. Will configure a local PostgreSQL db if left to default. Please note that the NixOS module only really supports PostgreSQL for now. Change at your own risk! |
+| `services.canaille.settings.PREFERRED_URL_SCHEME` | `one of "http", "https"` | The url scheme by which canaille will be served. |
+| `services.canaille.settings.SECRET_KEY` | `null or string` | Flask Secret Key. Can't be set and must be provided through `services.canaille.settings.secretKeyFile`. |
+| `services.canaille.settings.SERVER_NAME` | `string` | The domain name on which canaille will be served. |
+| `services.canaille.smtpPasswordFile` | `null or absolute path` | File containing the SMTP password. Make sure it has appropriate permissions. |

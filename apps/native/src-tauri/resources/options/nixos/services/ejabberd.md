@@ -5,14 +5,14 @@
 All options under `services.ejabberd`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.ejabberd.configFile` | | |
-| `services.ejabberd.ctlConfig` | | |
-| `services.ejabberd.enable` | | |
-| `services.ejabberd.group` | | |
-| `services.ejabberd.imagemagick` | | |
-| `services.ejabberd.loadDumps` | | |
-| `services.ejabberd.logsDir` | | |
-| `services.ejabberd.package` | | |
-| `services.ejabberd.spoolDir` | | |
-| `services.ejabberd.user` | | |
+| --- | --- | --- |
+| `services.ejabberd.configFile` | `null or absolute path` | Configuration file for ejabberd in YAML format |
+| `services.ejabberd.ctlConfig` | `strings concatenated with "\n"` | Configuration of ejabberdctl |
+| `services.ejabberd.enable` | `boolean` | Whether to enable ejabberd server |
+| `services.ejabberd.group` | `string` | Group under which ejabberd is ran |
+| `services.ejabberd.imagemagick` | `boolean` | Add ImageMagick to server's path; allows for image thumbnailing |
+| `services.ejabberd.loadDumps` | `list of absolute path` | Configuration dumps that should be loaded on the first startup |
+| `services.ejabberd.logsDir` | `absolute path` | Location of the logfile directory of ejabberd |
+| `services.ejabberd.package` | `package` | The ejabberd package to use. |
+| `services.ejabberd.spoolDir` | `absolute path` | Location of the spooldir of ejabberd |
+| `services.ejabberd.user` | `string` | User under which ejabberd is ran |

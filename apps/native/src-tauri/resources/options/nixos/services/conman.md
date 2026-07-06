@@ -5,8 +5,8 @@
 All options under `services.conman`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.conman.config` | | |
-| `services.conman.configFile` | | |
-| `services.conman.enable` | | |
-| `services.conman.package` | | |
+| --- | --- | --- |
+| `services.conman.config` | `null or strings concatenated with "\n"` | The configuration object. Either `configFile` or `config` must be specified. See <https://github.com/dun/conman/wiki/Man-5-conman.conf#files>. |
+| `services.conman.configFile` | `null or absolute path` | The absolute path to the configuration file. Either `configFile` or `config` must be specified. See <https://github.com/dun/conman/wiki/Man-5-conman.conf#files>. |
+| `services.conman.enable` | `boolean` | Whether to enable Enable the conman Console manager. Either `configFile` or `config` must be specified. . |
+| `services.conman.package` | `package` | The conman package to use. |

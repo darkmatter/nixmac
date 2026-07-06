@@ -5,10 +5,10 @@
 All options under `services.uptermd`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.uptermd.enable` | | |
-| `services.uptermd.extraFlags` | | |
-| `services.uptermd.hostKey` | | |
-| `services.uptermd.listenAddress` | | |
-| `services.uptermd.openFirewall` | | |
-| `services.uptermd.port` | | |
+| --- | --- | --- |
+| `services.uptermd.enable` | `boolean` | Whether to enable uptermd. |
+| `services.uptermd.extraFlags` | `list of string` | Extra flags passed to the uptermd command. |
+| `services.uptermd.hostKey` | `null or absolute path` | Path to SSH host key. If not defined, an ed25519 keypair is generated automatically. |
+| `services.uptermd.listenAddress` | `string` | Address the server will listen on. |
+| `services.uptermd.openFirewall` | `boolean` | Whether to open the firewall for the port in {option}`services.uptermd.port`. |
+| `services.uptermd.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port the server will listen on. |

@@ -5,5 +5,5 @@
 All options under `services.sysprof`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.sysprof.enable` | | |
+| --- | --- | --- |
+| `services.sysprof.enable` | `boolean` | Whether to enable sysprof profiling daemon. |

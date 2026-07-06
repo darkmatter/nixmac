@@ -5,5 +5,5 @@
 All options under `services.intune`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `services.intune.enable` | | |
+| --- | --- | --- |
+| `services.intune.enable` | `boolean` | Whether to enable Microsoft Intune. |

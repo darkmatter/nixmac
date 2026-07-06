@@ -5,44 +5,54 @@
 All options under `services.syncthing`.
 
 | Option | Type | Description |
-| ------------------------------------------------ | ---- | ----------- |
-| `services.syncthing.all_proxy` | | |
-| `services.syncthing.cert` | | |
-| `services.syncthing.configDir` | | |
-| `services.syncthing.dataDir` | | |
-| `services.syncthing.databaseDir` | | |
-| `services.syncthing.declarative.cert` | | |
-| `services.syncthing.declarative.devices` | | |
-| `services.syncthing.declarative.extraOptions` | | |
-| `services.syncthing.declarative.folders` | | |
-| `services.syncthing.declarative.key` | | |
-| `services.syncthing.declarative.overrideDevices` | | |
-| `services.syncthing.declarative.overrideFolders` | | |
-| `services.syncthing.devices` | | |
-| `services.syncthing.enable` | | |
-| `services.syncthing.extraFlags` | | |
-| `services.syncthing.extraOptions` | | |
-| `services.syncthing.folders` | | |
-| `services.syncthing.group` | | |
-| `services.syncthing.guiAddress` | | |
-| `services.syncthing.guiPasswordFile` | | |
-| `services.syncthing.key` | | |
-| `services.syncthing.openDefaultPorts` | | |
-| `services.syncthing.options` | | |
-| `services.syncthing.overrideDevices` | | |
-| `services.syncthing.overrideFolders` | | |
-| `services.syncthing.package` | | |
-| `services.syncthing.relay.enable` | | |
-| `services.syncthing.relay.extraOptions` | | |
-| `services.syncthing.relay.globalRateBps` | | |
-| `services.syncthing.relay.listenAddress` | | |
-| `services.syncthing.relay.perSessionRateBps` | | |
-| `services.syncthing.relay.pools` | | |
-| `services.syncthing.relay.port` | | |
-| `services.syncthing.relay.providedBy` | | |
-| `services.syncthing.relay.statusListenAddress` | | |
-| `services.syncthing.relay.statusPort` | | |
-| `services.syncthing.settings` | | |
-| `services.syncthing.systemService` | | |
-| `services.syncthing.useInotify` | | |
-| `services.syncthing.user` | | |
+| --- | --- | --- |
+| `services.syncthing.all_proxy` | `null or string` | Overwrites the all_proxy environment variable for the Syncthing process to the given value. This is normally used to let Syncthing connect through a SOCKS5 proxy server. See <https://docs.syncthing.net/users/proxying.html>. |
+| `services.syncthing.cert` | `null or string` | Path to the `cert.pem` file, which will be copied into Syncthing's [configDir](#opt-services.syncthing.configDir). |
+| `services.syncthing.configDir` | `absolute path` | The path where the settings and keys will exist. |
+| `services.syncthing.dataDir` | `absolute path` | The path where synchronised directories will exist. |
+| `services.syncthing.databaseDir` | `absolute path` | The directory containing the database and logs. |
+| `services.syncthing.enable` | `boolean` | Whether to enable Syncthing, a self-hosted open-source alternative to Dropbox and Bittorrent Sync. |
+| `services.syncthing.extraFlags` | `list of string` | Extra flags passed to the syncthing command in the service definition. |
+| `services.syncthing.group` | `string` | The group to run Syncthing under. By default, a group named `syncthing` will be created. |
+| `services.syncthing.guiAddress` | `string` | The address to serve the web interface at. |
+| `services.syncthing.guiPasswordFile` | `null or string` | Path to file containing the plaintext password for Syncthing's GUI. |
+| `services.syncthing.key` | `null or string` | Path to the `key.pem` file, which will be copied into Syncthing's [configDir](#opt-services.syncthing.configDir). |
+| `services.syncthing.openDefaultPorts` | `boolean` | Whether to open the default ports in the firewall: TCP/UDP 22000 for transfers and UDP 21027 for discovery. If multiple users are running Syncthing on this machine, you will need to manually open a set of ports for each instance and leave this disabled. Alternatively, if you are running only a single instance on this machine using the default ports, enable this. |
+| `services.syncthing.overrideDevices` | `boolean` | Whether to delete the devices which are not configured via the [devices](#opt-services.syncthing.settings.devices) option. If set to `false`, devices added via the web interface will persist and will have to be deleted manually. |
+| `services.syncthing.overrideFolders` | `boolean` | Whether to delete the folders which are not configured via the [folders](#opt-services.syncthing.settings.folders) option. If set to `false`, folders added via the web interface will persist and will have to be deleted manually. |
+| `services.syncthing.package` | `package` | The syncthing package to use. |
+| `services.syncthing.relay.enable` | `boolean` | Whether to enable Syncthing relay service. |
+| `services.syncthing.relay.extraOptions` | `list of string` | Extra command line arguments to pass to strelaysrv. |
+| `services.syncthing.relay.globalRateBps` | `null or (positive integer, meaning >0)` | Global bandwidth rate limit in bytes per second. |
+| `services.syncthing.relay.listenAddress` | `string` | Address to listen on for relay traffic. |
+| `services.syncthing.relay.perSessionRateBps` | `null or (positive integer, meaning >0)` | Per session bandwidth rate limit in bytes per second. |
+| `services.syncthing.relay.pools` | `null or (list of string)` | Relay pools to join. If null, uses the default global pool. |
+| `services.syncthing.relay.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on for relay traffic. This port should be added to `networking.firewall.allowedTCPPorts`. |
+| `services.syncthing.relay.providedBy` | `string` | Human-readable description of the provider of the relay (you). |
+| `services.syncthing.relay.statusListenAddress` | `string` | Address to listen on for serving the relay status API. |
+| `services.syncthing.relay.statusPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on for serving the relay status API. This port should be added to `networking.firewall.allowedTCPPorts`. |
+| `services.syncthing.settings` | `open submodule of (JSON value)` | Extra configuration options for Syncthing. See <https://docs.syncthing.net/users/config.html>. Note that this attribute set does not exactly match the documented xml format. Instead, this is the format of the json rest api. There are slight differences. For example, this xml: `xml <options>   <listenAddress>default</listenAddress>   <minHomeDiskFree unit="%">1</minHomeDiskFree> </options> ` corresponds to the json: `json {   options: {     listenAddresses = [       "default"     ];     minHomeDiskFree = {       unit = "%";       value = 1;     };   }; } ` |
+| `services.syncthing.settings.devices` | `attribute set of (open submodule of (JSON value))` | Peers/devices which Syncthing should communicate with. Note that you can still add devices manually, but those changes will be reverted on restart if [overrideDevices](#opt-services.syncthing.overrideDevices) is enabled. |
+| `services.syncthing.settings.devices.<name>.autoAcceptFolders` | `boolean` | Automatically create or share folders that this device advertises at the default path. See <https://docs.syncthing.net/users/config.html?highlight=autoaccept#config-file-format>. |
+| `services.syncthing.settings.devices.<name>.id` | `string` | The device ID. See <https://docs.syncthing.net/dev/device-ids.html>. |
+| `services.syncthing.settings.devices.<name>.name` | `string` | The name of the device. |
+| `services.syncthing.settings.folders` | `attribute set of (open submodule of (JSON value))` | Folders which should be shared by Syncthing. Note that you can still add folders manually, but those changes will be reverted on restart if [overrideFolders](#opt-services.syncthing.overrideFolders) is enabled. |
+| `services.syncthing.settings.folders.<name>.copyOwnershipFromParent` | `boolean` | On Unix systems, tries to copy file/folder ownership from the parent directory (the directory it’s located in). Requires running Syncthing as a privileged user, or granting it additional capabilities (e.g. CAP_CHOWN on Linux). |
+| `services.syncthing.settings.folders.<name>.devices` | `list of (string or (open submodule of (JSON value)))` | The devices this folder should be shared with. Each device must be defined in the [devices](#opt-services.syncthing.settings.devices) option. A list of either strings or attribute sets, where values are device names or device configurations. |
+| `services.syncthing.settings.folders.<name>.enable` | `boolean` | Whether to share this folder. This option is useful when you want to define all folders in one place, but not every machine should share all folders. |
+| `services.syncthing.settings.folders.<name>.id` | `string` | The ID of the folder. Must be the same on all devices. |
+| `services.syncthing.settings.folders.<name>.ignorePatterns` | `null or (list of string)` | Syncthing can be configured to ignore certain files in a folder using ignore patterns. Enter them as a list of strings, one string per line. See the Syncthing documentation for syntax: <https://docs.syncthing.net/users/ignoring.html> Patterns set using the WebUI will be overridden if you define this option. If you want to override the ignore patterns to be empty, use `ignorePatterns = []`. Deleting the `ignorePatterns` option will not remove the patterns from Syncthing automatically because patterns are only handled by the module if this option is defined. Either use `ignorePatterns = []` before deleting the option or remove the patterns afterwards using the WebUI. |
+| `services.syncthing.settings.folders.<name>.label` | `string` | The label of the folder. |
+| `services.syncthing.settings.folders.<name>.path` | `string starting with / or ~/` | The path to the folder which should be shared. Only absolute paths (starting with `/`) and paths relative to the [user](#opt-services.syncthing.user)'s home directory (starting with `~/`) are allowed. |
+| `services.syncthing.settings.folders.<name>.type` | `one of "sendreceive", "sendonly", "receiveonly", "receiveencrypted"` | Controls how the folder is handled by Syncthing. See <https://docs.syncthing.net/users/config.html#config-option-folder.type>. |
+| `services.syncthing.settings.folders.<name>.versioning` | `null or (open submodule of (JSON value))` | How to keep changed/deleted files with Syncthing. There are 4 different types of versioning with different parameters. See <https://docs.syncthing.net/users/versioning.html>. |
+| `services.syncthing.settings.folders.<name>.versioning.type` | `one of "external", "simple", "staggered", "trashcan"` | The type of versioning. See <https://docs.syncthing.net/users/versioning.html>. |
+| `services.syncthing.settings.options` | `open submodule of (JSON value)` | The options element contains all other global configuration options |
+| `services.syncthing.settings.options.limitBandwidthInLan` | `null or boolean` | Whether to apply bandwidth limits to devices in the same broadcast domain as the local device. |
+| `services.syncthing.settings.options.localAnnounceEnabled` | `null or boolean` | Whether to send announcements to the local LAN, also use such announcements to find other devices. |
+| `services.syncthing.settings.options.localAnnouncePort` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port on which to listen and send IPv4 broadcast announcements to. |
+| `services.syncthing.settings.options.maxFolderConcurrency` | `null or signed integer` | This option controls how many folders may concurrently be in I/O-intensive operations such as syncing or scanning. The mechanism is described in detail in a [separate chapter](https://docs.syncthing.net/advanced/option-max-concurrency.html). |
+| `services.syncthing.settings.options.relaysEnabled` | `null or boolean` | When true, relays will be connected to and potentially used for device to device connections. |
+| `services.syncthing.settings.options.urAccepted` | `null or signed integer` | Whether the user has accepted to submit anonymous usage data. The default, 0, mean the user has not made a choice, and Syncthing will ask at some point in the future. "-1" means no, a number above zero means that that version of usage reporting has been accepted. |
+| `services.syncthing.systemService` | `boolean` | Whether to auto-launch Syncthing as a system service. |
+| `services.syncthing.user` | `string` | The user to run Syncthing as. By default, a user named `syncthing` will be created whose home directory is [dataDir](#opt-services.syncthing.dataDir). |

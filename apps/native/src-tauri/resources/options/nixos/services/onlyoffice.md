@@ -5,21 +5,21 @@
 All options under `services.onlyoffice`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---- | ----------- |
-| `services.onlyoffice.allowLocalConnections` | | |
-| `services.onlyoffice.enable` | | |
-| `services.onlyoffice.enableExampleServer` | | |
-| `services.onlyoffice.examplePort` | | |
-| `services.onlyoffice.hostname` | | |
-| `services.onlyoffice.jwtSecretFile` | | |
-| `services.onlyoffice.loglevel` | | |
-| `services.onlyoffice.package` | | |
-| `services.onlyoffice.port` | | |
-| `services.onlyoffice.postgresHost` | | |
-| `services.onlyoffice.postgresName` | | |
-| `services.onlyoffice.postgresPasswordFile` | | |
-| `services.onlyoffice.postgresUser` | | |
-| `services.onlyoffice.rabbitmqUrl` | | |
-| `services.onlyoffice.securityNonceFile` | | |
-| `services.onlyoffice.wopi` | | |
-| `services.onlyoffice.x2t` | | |
+| --- | --- | --- |
+| `services.onlyoffice.allowLocalConnections` | `boolean` | Whether to allow the document server to download files from private IP addresses. |
+| `services.onlyoffice.enable` | `boolean` | Whether to enable OnlyOffice DocumentServer. |
+| `services.onlyoffice.enableExampleServer` | `boolean` | Whether to enable OnlyOffice example server. |
+| `services.onlyoffice.examplePort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port the OnlyOffice example server should listen on. |
+| `services.onlyoffice.hostname` | `string` | FQDN for the OnlyOffice instance. |
+| `services.onlyoffice.jwtSecretFile` | `null or string` | Path to a file that contains the secret to sign web requests using JSON Web Tokens. If left at the default value null signing is disabled. |
+| `services.onlyoffice.loglevel` | `string` | Default loglevel to use for documentserver and converter |
+| `services.onlyoffice.package` | `package` | The onlyoffice-documentserver package to use. |
+| `services.onlyoffice.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port the OnlyOffice document server should listen on. |
+| `services.onlyoffice.postgresHost` | `string` | The Postgresql hostname or socket path OnlyOffice should connect to. |
+| `services.onlyoffice.postgresName` | `string` | The name of database OnlyOffice should use. |
+| `services.onlyoffice.postgresPasswordFile` | `null or string` | Path to a file that contains the password OnlyOffice should use to connect to Postgresql. Unused when using socket authentication. |
+| `services.onlyoffice.postgresUser` | `string` | The username OnlyOffice should use to connect to Postgresql. Unused when using socket authentication. |
+| `services.onlyoffice.rabbitmqUrl` | `string` | The Rabbitmq in amqp URI style OnlyOffice should connect to. |
+| `services.onlyoffice.securityNonceFile` | `string` | File holding nginx configuration that sets the nonce used to create secret links. Example: `set $secure_link_secret "changeme";` This file must be readable both by nginx and by the onlyoffice documentserver. Since nginx is added to the onlyoffice group, you may want to make the file readable to the onlyoffice group. NOTE: The file must be a valid nginx configuration file. The secret must not contain `$` characters, as they will be interpreted as variables by nginx. |
+| `services.onlyoffice.wopi` | `boolean` | Whether to enable Enable WOPI support. |
+| `services.onlyoffice.x2t` | `package` | The onlyoffice-documentserver.passthru.x2t package to use. |

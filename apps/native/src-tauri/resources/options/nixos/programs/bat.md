@@ -5,8 +5,8 @@
 All options under `programs.bat`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `programs.bat.enable` | | |
-| `programs.bat.extraPackages` | | |
-| `programs.bat.package` | | |
-| `programs.bat.settings` | | |
+| --- | --- | --- |
+| `programs.bat.enable` | `boolean` | Whether to enable `bat`, a {manpage}`cat(1)` clone with wings. |
+| `programs.bat.extraPackages` | `list of package` | Extra `bat` scripts to be added to the system configuration. |
+| `programs.bat.package` | `package` | The bat package to use. |
+| `programs.bat.settings` | `attribute set of (atom (null, bool, int, float or string) or a list of them for duplicate keys)` | Parameters to be written to the system-wide `bat` configuration file. |

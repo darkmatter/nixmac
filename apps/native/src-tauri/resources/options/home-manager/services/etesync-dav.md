@@ -5,7 +5,7 @@
 All options under `services.etesync-dav`.
 
 | Option | Type | Description |
-| -------------------------------- | --------------------------------------------- | ---------------------------------------------------------- |
+| --- | --- | --- |
 | `services.etesync-dav.enable` | `boolean` | Whether to enable etesync-dav. |
 | `services.etesync-dav.package` | `package` | The etesync-dav package to use. |
 | `services.etesync-dav.serverUrl` | `string` | The URL to the etesync server. |

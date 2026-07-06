@@ -5,7 +5,7 @@
 All options under `services.flameshot`.
 
 | Option | Type | Description |
-| ----------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.flameshot.enable` | `boolean` | Whether to enable Flameshot. |
 | `services.flameshot.package` | `package` | The flameshot package to use. |
-| `services.flameshot.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration to use for Flameshot. See https://github.com/flameshot-org/flameshot/blob/master/flameshot.example.ini for available options. |
+| `services.flameshot.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration to use for Flameshot. See <https://github.com/flameshot-org/flameshot/blob/master/flameshot.example.ini> for available options. |

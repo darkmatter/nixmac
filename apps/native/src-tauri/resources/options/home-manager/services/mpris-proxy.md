@@ -5,6 +5,6 @@
 All options under `services.mpris-proxy`.
 
 | Option | Type | Description |
-| ------------------------------ | --------- | ------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.mpris-proxy.enable` | `boolean` | Whether to enable a proxy forwarding Bluetooth MIDI controls via MPRIS2 to control media players. |
 | `services.mpris-proxy.package` | `package` | The bluez package to use. |

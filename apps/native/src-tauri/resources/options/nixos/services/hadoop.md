@@ -5,97 +5,95 @@
 All options under `services.hadoop`.
 
 | Option | Type | Description |
-| ------------------------------------------------------------------- | ---- | ----------- |
-| `services.hadoop.containerExecutorCfg` | | |
-| `services.hadoop.coreSite` | | |
-| `services.hadoop.coreSiteInternal` | | |
-| `services.hadoop.extraConfDirs` | | |
-| `services.hadoop.gatewayRole.enable` | | |
-| `services.hadoop.gatewayRole.enableHbaseCli` | | |
-| `services.hadoop.hbase.master.enable` | | |
-| `services.hadoop.hbase.master.environment` | | |
-| `services.hadoop.hbase.master.extraFlags` | | |
-| `services.hadoop.hbase.master.initHDFS` | | |
-| `services.hadoop.hbase.master.openFirewall` | | |
-| `services.hadoop.hbase.master.restartIfChanged` | | |
-| `services.hadoop.hbase.package` | | |
-| `services.hadoop.hbase.regionServer.enable` | | |
-| `services.hadoop.hbase.regionServer.environment` | | |
-| `services.hadoop.hbase.regionServer.extraFlags` | | |
-| `services.hadoop.hbase.regionServer.openFirewall` | | |
-| `services.hadoop.hbase.regionServer.overrideHosts` | | |
-| `services.hadoop.hbase.regionServer.restartIfChanged` | | |
-| `services.hadoop.hbase.rest.enable` | | |
-| `services.hadoop.hbase.rest.environment` | | |
-| `services.hadoop.hbase.rest.extraFlags` | | |
-| `services.hadoop.hbase.rest.infoPort` | | |
-| `services.hadoop.hbase.rest.openFirewall` | | |
-| `services.hadoop.hbase.rest.port` | | |
-| `services.hadoop.hbase.rest.restartIfChanged` | | |
-| `services.hadoop.hbase.rootdir` | | |
-| `services.hadoop.hbase.thrift.enable` | | |
-| `services.hadoop.hbase.thrift.environment` | | |
-| `services.hadoop.hbase.thrift.extraFlags` | | |
-| `services.hadoop.hbase.thrift.infoPort` | | |
-| `services.hadoop.hbase.thrift.openFirewall` | | |
-| `services.hadoop.hbase.thrift.port` | | |
-| `services.hadoop.hbase.thrift.restartIfChanged` | | |
-| `services.hadoop.hbase.zookeeperQuorum` | | |
-| `services.hadoop.hbaseSite` | | |
-| `services.hadoop.hbaseSiteDefault` | | |
-| `services.hadoop.hbaseSiteInternal` | | |
-| `services.hadoop.hdfs.datanode.dataDirs` | | |
-| `services.hadoop.hdfs.datanode.enable` | | |
-| `services.hadoop.hdfs.datanode.extraEnv` | | |
-| `services.hadoop.hdfs.datanode.extraFlags` | | |
-| `services.hadoop.hdfs.datanode.openFirewall` | | |
-| `services.hadoop.hdfs.datanode.restartIfChanged` | | |
-| `services.hadoop.hdfs.httpfs.enable` | | |
-| `services.hadoop.hdfs.httpfs.extraEnv` | | |
-| `services.hadoop.hdfs.httpfs.extraFlags` | | |
-| `services.hadoop.hdfs.httpfs.openFirewall` | | |
-| `services.hadoop.hdfs.httpfs.restartIfChanged` | | |
-| `services.hadoop.hdfs.httpfs.tempPath` | | |
-| `services.hadoop.hdfs.journalnode.enable` | | |
-| `services.hadoop.hdfs.journalnode.extraEnv` | | |
-| `services.hadoop.hdfs.journalnode.extraFlags` | | |
-| `services.hadoop.hdfs.journalnode.openFirewall` | | |
-| `services.hadoop.hdfs.journalnode.restartIfChanged` | | |
-| `services.hadoop.hdfs.namenode.enable` | | |
-| `services.hadoop.hdfs.namenode.extraEnv` | | |
-| `services.hadoop.hdfs.namenode.extraFlags` | | |
-| `services.hadoop.hdfs.namenode.formatOnInit` | | |
-| `services.hadoop.hdfs.namenode.openFirewall` | | |
-| `services.hadoop.hdfs.namenode.restartIfChanged` | | |
-| `services.hadoop.hdfs.zkfc.enable` | | |
-| `services.hadoop.hdfs.zkfc.extraEnv` | | |
-| `services.hadoop.hdfs.zkfc.extraFlags` | | |
-| `services.hadoop.hdfs.zkfc.restartIfChanged` | | |
-| `services.hadoop.hdfsSite` | | |
-| `services.hadoop.hdfsSiteDefault` | | |
-| `services.hadoop.hdfsSiteInternal` | | |
-| `services.hadoop.httpfsSite` | | |
-| `services.hadoop.log4jProperties` | | |
-| `services.hadoop.mapredSite` | | |
-| `services.hadoop.mapredSiteDefault` | | |
-| `services.hadoop.package` | | |
-| `services.hadoop.yarn.nodemanager.addBinBash` | | |
-| `services.hadoop.yarn.nodemanager.enable` | | |
-| `services.hadoop.yarn.nodemanager.extraEnv` | | |
-| `services.hadoop.yarn.nodemanager.extraFlags` | | |
-| `services.hadoop.yarn.nodemanager.localDir` | | |
-| `services.hadoop.yarn.nodemanager.openFirewall` | | |
-| `services.hadoop.yarn.nodemanager.resource.cpuVCores` | | |
-| `services.hadoop.yarn.nodemanager.resource.maximumAllocationMB` | | |
-| `services.hadoop.yarn.nodemanager.resource.maximumAllocationVCores` | | |
-| `services.hadoop.yarn.nodemanager.resource.memoryMB` | | |
-| `services.hadoop.yarn.nodemanager.restartIfChanged` | | |
-| `services.hadoop.yarn.nodemanager.useCGroups` | | |
-| `services.hadoop.yarn.resourcemanager.enable` | | |
-| `services.hadoop.yarn.resourcemanager.extraEnv` | | |
-| `services.hadoop.yarn.resourcemanager.extraFlags` | | |
-| `services.hadoop.yarn.resourcemanager.openFirewall` | | |
-| `services.hadoop.yarn.resourcemanager.restartIfChanged` | | |
-| `services.hadoop.yarnSite` | | |
-| `services.hadoop.yarnSiteDefault` | | |
-| `services.hadoop.yarnSiteInternal` | | |
+| --- | --- | --- |
+| `services.hadoop.containerExecutorCfg` | `attribute set of anything` | Yarn container-executor.cfg definition <https://hadoop.apache.org/docs/r2.7.2/hadoop-yarn/hadoop-yarn-site/SecureContainer.html> |
+| `services.hadoop.coreSite` | `attribute set of anything` | Hadoop core-site.xml definition <https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/core-default.xml> |
+| `services.hadoop.extraConfDirs` | `list of absolute path` | Directories containing additional config files to be added to HADOOP_CONF_DIR |
+| `services.hadoop.gatewayRole.enable` | `boolean` | Whether to enable gateway role for deploying hadoop configs. |
+| `services.hadoop.gatewayRole.enableHbaseCli` | `boolean` | Whether to enable HBase CLI tools. |
+| `services.hadoop.hbase.master.enable` | `boolean` | Whether to enable HBase master. |
+| `services.hadoop.hbase.master.environment` | `attribute set of string` | Environment variables passed to master. |
+| `services.hadoop.hbase.master.extraFlags` | `list of string` | Extra flags for the master service. |
+| `services.hadoop.hbase.master.initHDFS` | `boolean` | Whether to enable initialization of the hbase directory on HDFS. |
+| `services.hadoop.hbase.master.openFirewall` | `boolean` | Open firewall ports for HBase master. |
+| `services.hadoop.hbase.master.restartIfChanged` | `boolean` | Restart master con config change. |
+| `services.hadoop.hbase.package` | `package` | The hbase package to use. |
+| `services.hadoop.hbase.regionServer.enable` | `boolean` | Whether to enable HBase regionServer. |
+| `services.hadoop.hbase.regionServer.environment` | `attribute set of string` | Environment variables passed to regionServer. |
+| `services.hadoop.hbase.regionServer.extraFlags` | `list of string` | Extra flags for the regionServer service. |
+| `services.hadoop.hbase.regionServer.openFirewall` | `boolean` | Open firewall ports for HBase regionServer. |
+| `services.hadoop.hbase.regionServer.overrideHosts` | `boolean` | Remove /etc/hosts entries for "127.0.0.2" and "::1" defined in nixos/modules/config/networking.nix Regionservers must be able to resolve their hostnames to their IP addresses, through PTR records or /etc/hosts entries. |
+| `services.hadoop.hbase.regionServer.restartIfChanged` | `boolean` | Restart regionServer con config change. |
+| `services.hadoop.hbase.rest.enable` | `boolean` | Whether to enable HBase rest. |
+| `services.hadoop.hbase.rest.environment` | `attribute set of string` | Environment variables passed to rest. |
+| `services.hadoop.hbase.rest.extraFlags` | `list of string` | Extra flags for the rest service. |
+| `services.hadoop.hbase.rest.infoPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | web UI port |
+| `services.hadoop.hbase.rest.openFirewall` | `boolean` | Open firewall ports for HBase rest. |
+| `services.hadoop.hbase.rest.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | RPC port |
+| `services.hadoop.hbase.rest.restartIfChanged` | `boolean` | Restart rest con config change. |
+| `services.hadoop.hbase.rootdir` | `string` | This option will set "hbase.rootdir" in hbase-site.xml and determine the directory shared by region servers and into which HBase persists. The URL should be 'fully-qualified' to include the filesystem scheme. If a core-site.xml is provided, the FS scheme defaults to the value of "fs.defaultFS". Filesystems other than HDFS (like S3, QFS, Swift) are also supported. |
+| `services.hadoop.hbase.thrift.enable` | `boolean` | Whether to enable HBase thrift. |
+| `services.hadoop.hbase.thrift.environment` | `attribute set of string` | Environment variables passed to thrift. |
+| `services.hadoop.hbase.thrift.extraFlags` | `list of string` | Extra flags for the thrift service. |
+| `services.hadoop.hbase.thrift.infoPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | web UI port |
+| `services.hadoop.hbase.thrift.openFirewall` | `boolean` | Open firewall ports for HBase thrift. |
+| `services.hadoop.hbase.thrift.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | RPC port |
+| `services.hadoop.hbase.thrift.restartIfChanged` | `boolean` | Restart thrift con config change. |
+| `services.hadoop.hbase.zookeeperQuorum` | `null or strings concatenated with ","` | This option will set "hbase.zookeeper.quorum" in hbase-site.xml. Comma separated list of servers in the ZooKeeper ensemble. |
+| `services.hadoop.hbaseSite` | `attribute set of anything` | Additional options and overrides for hbase-site.xml <https://github.com/apache/hbase/blob/rel/2.4.11/hbase-common/src/main/resources/hbase-default.xml> |
+| `services.hadoop.hbaseSiteDefault` | `attribute set of anything` | Default options for hbase-site.xml |
+| `services.hadoop.hdfs.datanode.dataDirs` | `null or (list of (submodule))` | Tier and path definitions for datanode storage. |
+| `services.hadoop.hdfs.datanode.dataDirs.*.path` | `absolute path` | Determines where on the local filesystem a data node should store its blocks. |
+| `services.hadoop.hdfs.datanode.dataDirs.*.type` | `one of "SSD", "DISK", "ARCHIVE", "RAM_DISK"` | Storage types ([SSD]/[DISK]/[ARCHIVE]/[RAM_DISK]) for HDFS storage policies. |
+| `services.hadoop.hdfs.datanode.enable` | `boolean` | Whether to enable HDFS DataNode. |
+| `services.hadoop.hdfs.datanode.extraEnv` | `attribute set of string` | Extra environment variables for HDFS DataNode |
+| `services.hadoop.hdfs.datanode.extraFlags` | `list of string` | Extra command line flags to pass to HDFS DataNode |
+| `services.hadoop.hdfs.datanode.openFirewall` | `boolean` | Open firewall ports for HDFS DataNode. |
+| `services.hadoop.hdfs.datanode.restartIfChanged` | `boolean` | Automatically restart the service on config change. This can be set to false to defer restarts on clusters running critical applications. Please consider the security implications of inadvertently running an older version, and the possibility of unexpected behavior caused by inconsistent versions across a cluster when disabling this option. |
+| `services.hadoop.hdfs.httpfs.enable` | `boolean` | Whether to enable HDFS JournalNode. |
+| `services.hadoop.hdfs.httpfs.extraEnv` | `attribute set of string` | Extra environment variables for HDFS JournalNode |
+| `services.hadoop.hdfs.httpfs.extraFlags` | `list of string` | Extra command line flags to pass to HDFS JournalNode |
+| `services.hadoop.hdfs.httpfs.openFirewall` | `boolean` | Open firewall ports for HDFS JournalNode. |
+| `services.hadoop.hdfs.httpfs.restartIfChanged` | `boolean` | Automatically restart the service on config change. This can be set to false to defer restarts on clusters running critical applications. Please consider the security implications of inadvertently running an older version, and the possibility of unexpected behavior caused by inconsistent versions across a cluster when disabling this option. |
+| `services.hadoop.hdfs.httpfs.tempPath` | `absolute path` | HTTPFS_TEMP path used by HTTPFS |
+| `services.hadoop.hdfs.journalnode.enable` | `boolean` | Whether to enable HDFS JournalNode. |
+| `services.hadoop.hdfs.journalnode.extraEnv` | `attribute set of string` | Extra environment variables for HDFS JournalNode |
+| `services.hadoop.hdfs.journalnode.extraFlags` | `list of string` | Extra command line flags to pass to HDFS JournalNode |
+| `services.hadoop.hdfs.journalnode.openFirewall` | `boolean` | Open firewall ports for HDFS JournalNode. |
+| `services.hadoop.hdfs.journalnode.restartIfChanged` | `boolean` | Automatically restart the service on config change. This can be set to false to defer restarts on clusters running critical applications. Please consider the security implications of inadvertently running an older version, and the possibility of unexpected behavior caused by inconsistent versions across a cluster when disabling this option. |
+| `services.hadoop.hdfs.namenode.enable` | `boolean` | Whether to enable HDFS NameNode. |
+| `services.hadoop.hdfs.namenode.extraEnv` | `attribute set of string` | Extra environment variables for HDFS NameNode |
+| `services.hadoop.hdfs.namenode.extraFlags` | `list of string` | Extra command line flags to pass to HDFS NameNode |
+| `services.hadoop.hdfs.namenode.formatOnInit` | `boolean` | Format HDFS namenode on first start. This is useful for quickly spinning up ephemeral HDFS clusters with a single namenode. For HA clusters, initialization involves multiple steps across multiple nodes. Follow this guide to initialize an HA cluster manually: <https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-hdfs/HDFSHighAvailabilityWithQJM.html> |
+| `services.hadoop.hdfs.namenode.openFirewall` | `boolean` | Open firewall ports for HDFS NameNode. |
+| `services.hadoop.hdfs.namenode.restartIfChanged` | `boolean` | Automatically restart the service on config change. This can be set to false to defer restarts on clusters running critical applications. Please consider the security implications of inadvertently running an older version, and the possibility of unexpected behavior caused by inconsistent versions across a cluster when disabling this option. |
+| `services.hadoop.hdfs.zkfc.enable` | `boolean` | Whether to enable HDFS ZooKeeper failover controller. |
+| `services.hadoop.hdfs.zkfc.extraEnv` | `attribute set of string` | Extra environment variables for HDFS ZooKeeper failover controller |
+| `services.hadoop.hdfs.zkfc.extraFlags` | `list of string` | Extra command line flags to pass to HDFS ZooKeeper failover controller |
+| `services.hadoop.hdfs.zkfc.restartIfChanged` | `boolean` | Automatically restart the service on config change. This can be set to false to defer restarts on clusters running critical applications. Please consider the security implications of inadvertently running an older version, and the possibility of unexpected behavior caused by inconsistent versions across a cluster when disabling this option. |
+| `services.hadoop.hdfsSite` | `attribute set of anything` | Additional options and overrides for hdfs-site.xml <https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-hdfs/hdfs-default.xml> |
+| `services.hadoop.hdfsSiteDefault` | `attribute set of anything` | Default options for hdfs-site.xml |
+| `services.hadoop.httpfsSite` | `attribute set of anything` | Hadoop httpfs-site.xml definition <https://hadoop.apache.org/docs/current/hadoop-hdfs-httpfs/httpfs-default.html> |
+| `services.hadoop.log4jProperties` | `absolute path` | log4j.properties file added to HADOOP_CONF_DIR |
+| `services.hadoop.mapredSite` | `attribute set of anything` | Additional options and overrides for mapred-site.xml <https://hadoop.apache.org/docs/current/hadoop-mapreduce-client/hadoop-mapreduce-client-core/mapred-default.xml> |
+| `services.hadoop.mapredSiteDefault` | `attribute set of anything` | Default options for mapred-site.xml |
+| `services.hadoop.package` | `package` | The hadoop package to use. |
+| `services.hadoop.yarn.nodemanager.addBinBash` | `boolean` | Add /bin/bash. This is needed by the linux container executor's launch script. |
+| `services.hadoop.yarn.nodemanager.enable` | `boolean` | Whether to enable Hadoop YARN NodeManager. |
+| `services.hadoop.yarn.nodemanager.extraEnv` | `attribute set of string` | Extra environment variables |
+| `services.hadoop.yarn.nodemanager.extraFlags` | `list of string` | Extra command line flags to pass to the service |
+| `services.hadoop.yarn.nodemanager.localDir` | `null or (list of absolute path)` | List of directories to store localized files in. |
+| `services.hadoop.yarn.nodemanager.openFirewall` | `boolean` | Open firewall ports for nodemanager. Because containers can listen on any ephemeral port, TCP ports 1024–65535 will be opened. |
+| `services.hadoop.yarn.nodemanager.resource.cpuVCores` | `null or (positive integer, meaning >0)` | Number of vcores that can be allocated for containers. |
+| `services.hadoop.yarn.nodemanager.resource.maximumAllocationMB` | `null or (positive integer, meaning >0)` | The maximum physical memory any container can be allocated. |
+| `services.hadoop.yarn.nodemanager.resource.maximumAllocationVCores` | `null or (positive integer, meaning >0)` | The maximum virtual CPU cores any container can be allocated. |
+| `services.hadoop.yarn.nodemanager.resource.memoryMB` | `null or (positive integer, meaning >0)` | Amount of physical memory, in MB, that can be allocated for containers. |
+| `services.hadoop.yarn.nodemanager.restartIfChanged` | `boolean` | Automatically restart the service on config change. This can be set to false to defer restarts on clusters running critical applications. Please consider the security implications of inadvertently running an older version, and the possibility of unexpected behavior caused by inconsistent versions across a cluster when disabling this option. |
+| `services.hadoop.yarn.nodemanager.useCGroups` | `boolean` | Use cgroups to enforce resource limits on containers |
+| `services.hadoop.yarn.resourcemanager.enable` | `boolean` | Whether to enable Hadoop YARN ResourceManager. |
+| `services.hadoop.yarn.resourcemanager.extraEnv` | `attribute set of string` | Extra environment variables |
+| `services.hadoop.yarn.resourcemanager.extraFlags` | `list of string` | Extra command line flags to pass to the service |
+| `services.hadoop.yarn.resourcemanager.openFirewall` | `boolean` | Open firewall ports for resourcemanager |
+| `services.hadoop.yarn.resourcemanager.restartIfChanged` | `boolean` | Automatically restart the service on config change. This can be set to false to defer restarts on clusters running critical applications. Please consider the security implications of inadvertently running an older version, and the possibility of unexpected behavior caused by inconsistent versions across a cluster when disabling this option. |
+| `services.hadoop.yarnSite` | `attribute set of anything` | Additional options and overrides for yarn-site.xml <https://hadoop.apache.org/docs/current/hadoop-yarn/hadoop-yarn-common/yarn-default.xml> |
+| `services.hadoop.yarnSiteDefault` | `attribute set of anything` | Default options for yarn-site.xml |

@@ -5,7 +5,7 @@
 All options under `programs.xwayland`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `programs.xwayland.defaultFontPath` | | |
-| `programs.xwayland.enable` | | |
-| `programs.xwayland.package` | | |
+| --- | --- | --- |
+| `programs.xwayland.defaultFontPath` | `string` | Default font path. Setting this option causes Xwayland to be rebuilt. |
+| `programs.xwayland.enable` | `boolean` | Whether to enable Xwayland (an X server for interfacing X11 apps with the Wayland protocol). |
+| `programs.xwayland.package` | `absolute path` | The Xwayland package to use. |

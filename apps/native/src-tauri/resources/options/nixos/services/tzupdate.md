@@ -5,8 +5,8 @@
 All options under `services.tzupdate`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.tzupdate.enable` | | |
-| `services.tzupdate.package` | | |
-| `services.tzupdate.timer.enable` | | |
-| `services.tzupdate.timer.interval` | | |
+| --- | --- | --- |
+| `services.tzupdate.enable` | `boolean` | Enable the tzupdate timezone updating service. This provides a one-shot service which can be activated with systemctl to update the timezone. |
+| `services.tzupdate.package` | `package` | The tzupdate package to use. |
+| `services.tzupdate.timer.enable` | `boolean` | Enable the tzupdate timer to update the timezone automatically. |
+| `services.tzupdate.timer.interval` | `string` | The interval at which the tzupdate timer should run. See {manpage}`systemd.time(7)` to understand the format. |

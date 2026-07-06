@@ -5,8 +5,8 @@
 All options under `documentation`.
 
 | Option | Type | Description |
-| --------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `documentation.doc.enable` | `boolean` | Whether to install documentation distributed in packages’ /share/doc . Usually plain text and/or HTML. This also includes “doc” outputs. |
-| `documentation.enable` | `boolean` | Whether to install documentation of packages from environment.systemPackages into the generated system path. |
-| `documentation.info.enable` | `boolean` | Whether to install info pages and the info command. This also includes “info” outputs. |
-| `documentation.man.enable` | `boolean` | Whether to install manual pages and the man command. This also includes “man” outputs. |
+| --- | --- | --- |
+| `documentation.doc.enable` | `boolean` | Whether to install documentation distributed in packages' `/share/doc`. Usually plain text and/or HTML. This also includes "doc" outputs. |
+| `documentation.enable` | `boolean` | Whether to install documentation of packages from {option}`environment.systemPackages` into the generated system path. See "Multiple-output packages" chapter in the nixpkgs manual for more info. |
+| `documentation.info.enable` | `boolean` | Whether to install info pages and the {command}`info` command. This also includes "info" outputs. |
+| `documentation.man.enable` | `boolean` | Whether to install manual pages and the {command}`man` command. This also includes "man" outputs. |

@@ -5,7 +5,7 @@
 All options under `services.unclutter`.
 
 | Option | Type | Description |
-| --------------------------------- | ---------------- | ------------------------------------------------------- |
+| --- | --- | --- |
 | `services.unclutter.enable` | `boolean` | Whether to enable unclutter. |
 | `services.unclutter.extraOptions` | `list of string` | More arguments to pass to the unclutter command. |
 | `services.unclutter.package` | `package` | The unclutter-xfixes package to use. |

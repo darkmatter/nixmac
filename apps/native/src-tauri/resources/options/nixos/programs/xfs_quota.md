@@ -5,5 +5,10 @@
 All options under `programs.xfs_quota`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `programs.xfs_quota.projects` | | |
+| --- | --- | --- |
+| `programs.xfs_quota.projects` | `attribute set of (submodule)` | Setup of xfs_quota projects. Make sure the filesystem is mounted with the pquota option. |
+| `programs.xfs_quota.projects.<name>.fileSystem` | `string` | XFS filesystem hosting the xfs_quota project. |
+| `programs.xfs_quota.projects.<name>.id` | `signed integer` | Project ID. |
+| `programs.xfs_quota.projects.<name>.path` | `string` | Project directory. |
+| `programs.xfs_quota.projects.<name>.sizeHardLimit` | `null or string` | Hard limit of the project size. |
+| `programs.xfs_quota.projects.<name>.sizeSoftLimit` | `null or string` | Soft limit of the project size |

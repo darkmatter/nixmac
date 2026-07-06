@@ -5,13 +5,13 @@
 All options under `services.devpi-server`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.devpi-server.enable` | | |
-| `services.devpi-server.extraPackages` | | |
-| `services.devpi-server.host` | | |
-| `services.devpi-server.openFirewall` | | |
-| `services.devpi-server.package` | | |
-| `services.devpi-server.port` | | |
-| `services.devpi-server.primaryUrl` | | |
-| `services.devpi-server.replica` | | |
-| `services.devpi-server.secretFile` | | |
+| --- | --- | --- |
+| `services.devpi-server.enable` | `boolean` | Whether to enable Devpi Server. |
+| `services.devpi-server.extraPackages` | `(function that evaluates to a(n) list of package) or (list of package) convertible to it` | Plugins and extra Python packages to be available to devpi-server. |
+| `services.devpi-server.host` | `string` | domain/ip address to listen on |
+| `services.devpi-server.openFirewall` | `boolean` | Whether to enable opening the default ports in the firewall for Devpi Server. |
+| `services.devpi-server.package` | `package` | The devpi-server package to use. |
+| `services.devpi-server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port on which Devpi Server will listen. |
+| `services.devpi-server.primaryUrl` | `string` | Url for the primary node. Required option for replica nodes. |
+| `services.devpi-server.replica` | `boolean` | Run node as a replica. Requires the secretFile option and the primaryUrl to be enabled. |
+| `services.devpi-server.secretFile` | `null or absolute path` | Path to a shared secret file used for synchronization, Required for all nodes in a replica/primary setup. |

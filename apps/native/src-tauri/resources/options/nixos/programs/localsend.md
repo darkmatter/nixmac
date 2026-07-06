@@ -5,7 +5,7 @@
 All options under `programs.localsend`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `programs.localsend.enable` | | |
-| `programs.localsend.openFirewall` | | |
-| `programs.localsend.package` | | |
+| --- | --- | --- |
+| `programs.localsend.enable` | `boolean` | Whether to enable localsend, an open source cross-platform alternative to AirDrop. |
+| `programs.localsend.openFirewall` | `boolean` | Whether to enable opening the firewall port 53317 for receiving files. |
+| `programs.localsend.package` | `package` | The localsend package to use. |

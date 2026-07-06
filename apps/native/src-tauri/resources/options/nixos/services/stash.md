@@ -5,20 +5,58 @@
 All options under `services.stash`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.stash.dataDir` | | |
-| `services.stash.enable` | | |
-| `services.stash.group` | | |
-| `services.stash.jwtSecretKeyFile` | | |
-| `services.stash.mutablePlugins` | | |
-| `services.stash.mutableScrapers` | | |
-| `services.stash.mutableSettings` | | |
-| `services.stash.openFirewall` | | |
-| `services.stash.package` | | |
-| `services.stash.passwordFile` | | |
-| `services.stash.plugins` | | |
-| `services.stash.scrapers` | | |
-| `services.stash.sessionStoreKeyFile` | | |
-| `services.stash.settings` | | |
-| `services.stash.user` | | |
-| `services.stash.username` | | |
+| --- | --- | --- |
+| `services.stash.dataDir` | `absolute path` | The directory where Stash stores its files. |
+| `services.stash.enable` | `boolean` | Whether to enable stash. |
+| `services.stash.group` | `string` | Group under which Stash runs. |
+| `services.stash.jwtSecretKeyFile` | `absolute path` | Path to file containing a secret used to sign JWT tokens. |
+| `services.stash.mutablePlugins` | `boolean` | Whether to enable Whether plugins/themes can be installed, updated, uninstalled manually.. |
+| `services.stash.mutableScrapers` | `boolean` | Whether to enable Whether scrapers can be installed, updated, uninstalled manually.. |
+| `services.stash.mutableSettings` | `boolean` | Whether the Stash config.yml is writeable by Stash. If `false`, Any config changes done from within Stash UI will be temporary and reset to those defined in {option}`services.stash.settings` upon `Stash.service` restart. If `true`, the {option}`services.stash.settings` will only be used to initialize the Stash configuration if it does not exist, and are subsequently ignored. |
+| `services.stash.openFirewall` | `boolean` | Open ports in the firewall for the Stash web interface. |
+| `services.stash.package` | `package` | The stash package to use. |
+| `services.stash.passwordFile` | `null or absolute path` | Path to file containing password for login. ::: {.warning} This option takes precedence over {option}`services.stash.settings.password` :: |
+| `services.stash.plugins` | `list of package` | The plugins Stash should be started with. |
+| `services.stash.scrapers` | `list of package` | The scrapers Stash should be started with. |
+| `services.stash.sessionStoreKeyFile` | `absolute path` | Path to file containing a secret for session store. |
+| `services.stash.settings` | `open submodule of (YAML 1.1 value)` | Stash configuration |
+| `services.stash.settings.blobs_path` | `absolute path` | Path to blobs |
+| `services.stash.settings.blobs_storage` | `one of "FILESYSTEM", "DATABASE"` | Where to store blobs |
+| `services.stash.settings.cache` | `absolute path` | Path to cache |
+| `services.stash.settings.calculate_md5` | `boolean` | Whether to calculate MD5 checksums for scene video files |
+| `services.stash.settings.create_image_clip_from_videos` | `boolean` | Create Image Clips from Video extensions when Videos are disabled in Library |
+| `services.stash.settings.dangerous_allow_public_without_auth` | `boolean` | Learn more at <https://docs.stashapp.cc/networking/authentication-required-when-accessing-stash-from-the-internet/> |
+| `services.stash.settings.database` | `absolute path` | Path to the SQLite database |
+| `services.stash.settings.gallery_cover_regex` | `string` | Regex used to identify images as gallery covers |
+| `services.stash.settings.generated` | `absolute path` | Path to generated files |
+| `services.stash.settings.host` | `string` | The ip address that Stash should bind to. |
+| `services.stash.settings.no_proxy` | `string` | A list of domains for which the proxy must not be used |
+| `services.stash.settings.nobrowser` | `boolean` | If we should not auto-open a browser window on startup |
+| `services.stash.settings.notifications_enabled` | `boolean` | If we should send notifications to the desktop |
+| `services.stash.settings.parallel_tasks` | `signed integer` | Number of parallel tasks to start during scan/generate |
+| `services.stash.settings.plugins_path` | `absolute path` | Path to scrapers |
+| `services.stash.settings.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port that Stash should listen on. |
+| `services.stash.settings.preview_audio` | `boolean` | Include audio stream in previews |
+| `services.stash.settings.preview_exclude_end` | `signed integer` | Duration of start of video to exclude when generating previews |
+| `services.stash.settings.preview_exclude_start` | `signed integer` | Duration of end of video to exclude when generating previews |
+| `services.stash.settings.preview_segment_duration` | `floating point number` | Preview segment duration, in seconds |
+| `services.stash.settings.preview_segments` | `signed integer` | Number of segments in a preview file |
+| `services.stash.settings.scrapers_path` | `absolute path` | Path to scrapers |
+| `services.stash.settings.security_tripwire_accessed_from_public_internet` | `null or string` | Learn more at <https://docs.stashapp.cc/networking/authentication-required-when-accessing-stash-from-the-internet/> |
+| `services.stash.settings.sequential_scanning` | `boolean` | Modifies behaviour of the scanning functionality to generate support files (previews/sprites/phash) at the same time as fingerprinting/screenshotting |
+| `services.stash.settings.show_one_time_moved_notification` | `boolean` | Whether a small notification to inform the user that Stash will no longer show a terminal window, and instead will be available in the tray |
+| `services.stash.settings.sound_on_preview` | `boolean` | Enable sound on mouseover previews |
+| `services.stash.settings.stash` | `list of (submodule)` | Add directories containing your adult videos and images. Stash will use these directories to find videos and/or images during scanning. |
+| `services.stash.settings.stash.*.excludeimage` | `boolean` | Whether to exclude image files from being scanned into Stash |
+| `services.stash.settings.stash.*.excludevideo` | `boolean` | Whether to exclude video files from being scanned into Stash |
+| `services.stash.settings.stash.*.path` | `absolute path` | location of your media files |
+| `services.stash.settings.stash_boxes` | `list of (submodule)` | Stash-box facilitates automated tagging of scenes and performers based on fingerprints and filenames |
+| `services.stash.settings.stash_boxes.*.apikey` | `string` | Stash Box API key |
+| `services.stash.settings.stash_boxes.*.endpoint` | `string` | URL to the Stash Box graphql api |
+| `services.stash.settings.stash_boxes.*.name` | `string` | The name of the Stash Box |
+| `services.stash.settings.theme_color` | `string` | Sets the `theme-color` property in the UI |
+| `services.stash.settings.ui.frontPageContent` | `(list of (attribute set)) or function that evaluates to a(n) list of (attribute set)` | Search filters to display on the front page. |
+| `services.stash.settings.video_file_naming_algorithm` | `one of "OSHASH", "MD5"` | Hash algorithm to use for generated file naming |
+| `services.stash.settings.write_image_thumbnails` | `boolean` | Write image thumbnails to disk when generating on the fly |
+| `services.stash.user` | `string` | User under which Stash runs. |
+| `services.stash.username` | `null or non-empty string` | Username for login. ::: {.warning} This option takes precedence over {option}`services.stash.settings.username` :: |

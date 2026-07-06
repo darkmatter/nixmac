@@ -5,15 +5,15 @@
 All options under `services.home-manager`.
 
 | Option | Type | Description |
-| ----------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.home-manager.autoExpire.enable` | `boolean` | Whether to enable the Home Manager expire service that periodically expire your old Home Manager generations. |
-| `services.home-manager.autoExpire.frequency` | `string` | The interval at which the Home Manager auto expire is run. |
-| `services.home-manager.autoExpire.store.cleanup` | `boolean` | Whether to enable to cleanup Nix store when the Home Manager expire service runs. |
-| `services.home-manager.autoExpire.store.options` | `string` | Options given to nix-collect-garbage when the service runs. |
-| `services.home-manager.autoExpire.timestamp` | `string` | Remove generations older than TIMESTAMP where TIMESTAMP is interpreted as in the -d argument of the date tool. |
-| `services.home-manager.autoUpgrade.enable` | `boolean` | Whether to enable the Home Manager upgrade service that periodically updates your Nix channels before running home-manager switch . |
-| `services.home-manager.autoUpgrade.flags` | | |
-| `services.home-manager.autoUpgrade.flakeDir` | `string` | The directory of the flake to update. |
-| `services.home-manager.autoUpgrade.frequency` | `string` | The interval at which the Home Manager auto upgrade is run. This value is passed to the systemd timer configuration as the OnCalendar option. The format is described in systemd.time (7) . |
-| `services.home-manager.autoUpgrade.preSwitchCommands` | | |
-| `services.home-manager.autoUpgrade.useFlake` | `boolean` | Whether to use ‘nix flake update’ instead of ‘nix-channel --update’. |
+| `services.home-manager.autoExpire.frequency` | `string` | The interval at which the Home Manager auto expire is run. This value is passed to the systemd timer configuration as the `OnCalendar` option. The format is described in {manpage}`systemd.time(7)`. On Darwin, it must be one of: hourly, daily, weekly, monthly, semiannually, annually, which are implemented as defined in {manpage}`systemd.time(7)`. |
+| `services.home-manager.autoExpire.store.cleanup` | `boolean` | Whether to enable to cleanup Nix store when the Home Manager expire service runs. It will use `nix-collect-garbage` to cleanup the store, removing all unreachable store objects from the current user (i.e.: not only the expired Home Manager generations). This may not be what you want, this is why this option is disabled by default. |
+| `services.home-manager.autoExpire.store.options` | `string` | Options given to `nix-collect-garbage` when the service runs. |
+| `services.home-manager.autoExpire.timestamp` | `string` | Remove generations older than `TIMESTAMP` where `TIMESTAMP` is interpreted as in the -d argument of the date tool. |
+| `services.home-manager.autoUpgrade.enable` | `boolean` | Whether to enable the Home Manager upgrade service that periodically updates your Nix configuration by running `home-manager switch` . |
+| `services.home-manager.autoUpgrade.flags` | `list of string` | Extra arguments passed to `home-manager switch`. |
+| `services.home-manager.autoUpgrade.flakeDir` | `string` | Directory containing flake.nix. Also check `services.home-manager.autoUpgrade.useFlake` option. |
+| `services.home-manager.autoUpgrade.frequency` | `string` | The interval at which the Home Manager auto upgrade is run. This value is passed to the systemd timer configuration as the `OnCalendar` option. The format is described in {manpage}`systemd.time(7)`. |
+| `services.home-manager.autoUpgrade.preSwitchCommands` | `list of string` | Shell commands executed before `home-manager switch`. |
+| `services.home-manager.autoUpgrade.useFlake` | `boolean` | Whether to use flake-based Home Manager configuration. Flake URI uses FQDN, long, and short hostnames, and you must configure the corresponding user@host key in `homeConfigurations`. For example: user@hostname or user@host.example.com. Also check `services.home-manager.autoUpgrade.flakeDir` option. |

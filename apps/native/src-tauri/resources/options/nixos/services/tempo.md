@@ -5,8 +5,8 @@
 All options under `services.tempo`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.tempo.configFile` | | |
-| `services.tempo.enable` | | |
-| `services.tempo.extraFlags` | | |
-| `services.tempo.settings` | | |
+| --- | --- | --- |
+| `services.tempo.configFile` | `null or absolute path` | Specify a path to a configuration file that Tempo should use. |
+| `services.tempo.enable` | `boolean` | Whether to enable Grafana Tempo. |
+| `services.tempo.extraFlags` | `list of string` | Additional flags to pass to the `ExecStart=` in `tempo.service`. |
+| `services.tempo.settings` | `YAML 1.1 value` | Specify the configuration for Tempo in Nix. See <https://grafana.com/docs/tempo/latest/configuration/> for available options. |

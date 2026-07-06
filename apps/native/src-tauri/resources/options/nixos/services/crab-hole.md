@@ -5,9 +5,12 @@
 All options under `services.crab-hole`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.crab-hole.configFile` | | |
-| `services.crab-hole.enable` | | |
-| `services.crab-hole.package` | | |
-| `services.crab-hole.settings` | | |
-| `services.crab-hole.supplementaryGroups` | | |
+| --- | --- | --- |
+| `services.crab-hole.configFile` | `absolute path` | The config file of crab-hole. If files are added via url, make sure the service has access to them. Setting this option will override any configuration applied by the settings option. |
+| `services.crab-hole.enable` | `boolean` | Whether to enable Crab-hole Service. |
+| `services.crab-hole.package` | `package` | The crab-hole package to use. |
+| `services.crab-hole.settings` | `open submodule of (TOML value)` | Crab-holes config. See big example <https://github.com/LuckyTurtleDev/crab-hole/blob/main/example-config.toml> |
+| `services.crab-hole.settings.blocklist.allow_list` | `list of (string or absolute path)` | List of allowlists. If files are added via url, make sure the service has access to them! |
+| `services.crab-hole.settings.blocklist.include_subdomains` | `boolean` | Whether to enable Include subdomains. |
+| `services.crab-hole.settings.blocklist.lists` | `list of (string or absolute path)` | List of blocklists. If files are added via url, make sure the service has access to them! |
+| `services.crab-hole.supplementaryGroups` | `list of string` | Adds additional groups to the crab-hole service. Can be useful to prevent permission issues. |

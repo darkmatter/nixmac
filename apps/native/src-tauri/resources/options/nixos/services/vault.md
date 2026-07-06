@@ -5,18 +5,18 @@
 All options under `services.vault`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.vault.address` | | |
-| `services.vault.dev` | | |
-| `services.vault.devRootTokenID` | | |
-| `services.vault.enable` | | |
-| `services.vault.extraConfig` | | |
-| `services.vault.extraSettingsPaths` | | |
-| `services.vault.listenerExtraConfig` | | |
-| `services.vault.package` | | |
-| `services.vault.storageBackend` | | |
-| `services.vault.storageConfig` | | |
-| `services.vault.storagePath` | | |
-| `services.vault.telemetryConfig` | | |
-| `services.vault.tlsCertFile` | | |
-| `services.vault.tlsKeyFile` | | |
+| --- | --- | --- |
+| `services.vault.address` | `string` | The name of the ip interface to listen to |
+| `services.vault.dev` | `boolean` | In this mode, Vault runs in-memory and starts unsealed. This option is not meant production but for development and testing i.e. for nixos tests. |
+| `services.vault.devRootTokenID` | `null or string` | Initial root token. This only applies when {option}`services.vault.dev` is true |
+| `services.vault.enable` | `boolean` | Whether to enable Vault daemon. |
+| `services.vault.extraConfig` | `strings concatenated with "\n"` | Extra text appended to {file}`vault.hcl`. |
+| `services.vault.extraSettingsPaths` | `list of absolute path` | Configuration files to load besides the immutable one defined by the NixOS module. This can be used to avoid putting credentials in the Nix store, which can be read by any user. Each path can point to a JSON- or HCL-formatted file, or a directory to be scanned for files with `.hcl` or `.json` extensions. To upload the confidential file with NixOps, use for example: `# https://releases.nixos.org/nixops/latest/manual/manual.html#opt-deployment.keys deployment.keys."vault.hcl" = let db = import ./db-credentials.nix; in {   text = ''     storage "postgresql" {       connection_url = "postgres://${db.username}:${db.password}@host.example.com/exampledb?sslmode=verify-ca"     }   '';   user = "vault"; }; services.vault.extraSettingsPaths = ["/run/keys/vault.hcl"]; services.vault.storageBackend = "postgresql"; users.users.vault.extraGroups = ["keys"];` |
+| `services.vault.listenerExtraConfig` | `strings concatenated with "\n"` | Extra text appended to the listener section. |
+| `services.vault.package` | `package` | The vault package to use. |
+| `services.vault.storageBackend` | `one of "inmem", "file", "consul", "zookeeper", "s3", "azure", "dynamodb", "etcd", "mssql", "mysql", "postgresql", "swift", "gcs", "raft"` | The name of the type of storage backend |
+| `services.vault.storageConfig` | `null or strings concatenated with "\n"` | HCL configuration to insert in the storageBackend section. Confidential values should not be specified here because this option's value is written to the Nix store, which is publicly readable. Provide credentials and such in a separate file using [](#opt-services.vault.extraSettingsPaths). |
+| `services.vault.storagePath` | `null or absolute path` | Data directory for file backend |
+| `services.vault.telemetryConfig` | `strings concatenated with "\n"` | Telemetry configuration |
+| `services.vault.tlsCertFile` | `null or string` | TLS certificate file. TLS will be disabled unless this option is set |
+| `services.vault.tlsKeyFile` | `null or string` | TLS private key file. TLS will be disabled unless this option is set |

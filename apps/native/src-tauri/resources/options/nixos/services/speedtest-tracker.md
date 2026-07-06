@@ -5,13 +5,19 @@
 All options under `services.speedtest-tracker`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.speedtest-tracker.dataDir` | | |
-| `services.speedtest-tracker.enable` | | |
-| `services.speedtest-tracker.enableNginx` | | |
-| `services.speedtest-tracker.group` | | |
-| `services.speedtest-tracker.package` | | |
-| `services.speedtest-tracker.poolConfig` | | |
-| `services.speedtest-tracker.settings` | | |
-| `services.speedtest-tracker.user` | | |
-| `services.speedtest-tracker.virtualHost` | | |
+| --- | --- | --- |
+| `services.speedtest-tracker.dataDir` | `absolute path` | The place where Speedtest Tracker stores its state. |
+| `services.speedtest-tracker.enable` | `boolean` | Whether to enable Speedtest Tracker: A self-hosted internet performance tracking application. |
+| `services.speedtest-tracker.enableNginx` | `boolean` | Whether to enable nginx or not. If enabled, an nginx virtual host will be created for access to Speedtest Tracker. If not enabled, then you may use `${config.services.speedtest-tracker.package}` as your document root in whichever webserver you wish to setup. |
+| `services.speedtest-tracker.group` | `string` | Group under which Speedtest Tracker runs. It is best to set this to the group of whatever webserver is being used as the frontend. |
+| `services.speedtest-tracker.package` | `package` | The speedtest-tracker package to use. |
+| `services.speedtest-tracker.poolConfig` | `attribute set of (string or signed integer or boolean)` | Options for the Speedtest Tracker PHP pool. See the documentation on `php-fpm.conf` for details on configuration directives. |
+| `services.speedtest-tracker.settings` | `open submodule of attribute set of (string or signed integer or boolean)` | Options for Speedtest Tracker configuration. Refer to <https://github.com/alexjustesen/speedtest-tracker> for details on supported values. All `_FILE` values are supported: append `_FILE` to the setting name to provide a path to a file containing the secret value. |
+| `services.speedtest-tracker.settings.APP_KEY_FILE` | `absolute path` | The path to your appkey. The file should contain a 32 character random app key. This may be set using `echo "base64:$(head -c 32 /dev/urandom \| base64)" > /path/to/key-file`. |
+| `services.speedtest-tracker.settings.APP_URL` | `string` | The APP_URL used by Speedtest Tracker internally. Please make sure this URL matches the external URL of your installation. It is used to validate specific requests and to generate URLs in notifications. |
+| `services.speedtest-tracker.settings.DB_CONNECTION` | `one of "sqlite", "mysql", "mariadb", "pgsql"` | The type of database you wish to use. Can be one of "sqlite", "mysql", "mariadb" or "pgsql". |
+| `services.speedtest-tracker.settings.DB_DATABASE` | `string` | The name of the database, or path to the sqlite file. |
+| `services.speedtest-tracker.settings.DB_HOST` | `string` | The IP or hostname which hosts your database. |
+| `services.speedtest-tracker.settings.DB_PORT` | `null or signed integer` | The port your database is listening at. sqlite does not require this value to be filled. |
+| `services.speedtest-tracker.user` | `string` | User account under which Speedtest Tracker runs. |
+| `services.speedtest-tracker.virtualHost` | `string` | The hostname at which you wish Speedtest Tracker to be served. If you have enabled nginx using `services.speedtest-tracker.enableNginx` then this will be used. |

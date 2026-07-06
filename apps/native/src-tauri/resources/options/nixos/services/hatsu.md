@@ -5,7 +5,12 @@
 All options under `services.hatsu`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.hatsu.enable` | | |
-| `services.hatsu.package` | | |
-| `services.hatsu.settings` | | |
+| --- | --- | --- |
+| `services.hatsu.enable` | `boolean` | Whether to enable Self-hosted and fully-automated ActivityPub bridge for static sites. |
+| `services.hatsu.package` | `package` | The hatsu package to use. |
+| `services.hatsu.settings` | `open submodule of attribute set of (null or boolean or signed integer or 16 bit unsigned integer; between 0 and 65535 (both inclusive) or string)` | Configuration for Hatsu, see <link xlink:href="https://hatsu.cli.rs/admins/environments.html"/> for supported values. |
+| `services.hatsu.settings.HATSU_DATABASE_URL` | `string` | Database URL. |
+| `services.hatsu.settings.HATSU_DOMAIN` | `string` | The domain name of your instance (eg 'hatsu.local'). |
+| `services.hatsu.settings.HATSU_LISTEN_HOST` | `string` | Host where hatsu should listen for incoming requests. |
+| `services.hatsu.settings.HATSU_LISTEN_PORT` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port where hatsu should listen for incoming requests. |
+| `services.hatsu.settings.HATSU_PRIMARY_ACCOUNT` | `string` | The primary account of your instance (eg 'example.com'). |

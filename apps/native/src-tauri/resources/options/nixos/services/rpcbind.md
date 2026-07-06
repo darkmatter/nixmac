@@ -5,5 +5,5 @@
 All options under `services.rpcbind`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.rpcbind.enable` | | |
+| --- | --- | --- |
+| `services.rpcbind.enable` | `boolean` | Whether to enable `rpcbind`, an ONC RPC directory service notably used by NFS and NIS, and which can be queried using the {manpage}`rpcinfo(1)` command. `rpcbind` is a replacement for `portmap`. |

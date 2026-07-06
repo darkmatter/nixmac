@@ -5,14 +5,18 @@
 All options under `services.rauc`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.rauc.bootloader` | | |
-| `services.rauc.bundleFormats` | | |
-| `services.rauc.client.enable` | | |
-| `services.rauc.compatible` | | |
-| `services.rauc.dataDir` | | |
-| `services.rauc.enable` | | |
-| `services.rauc.mark-good.enable` | | |
-| `services.rauc.package` | | |
-| `services.rauc.settings` | | |
-| `services.rauc.slots` | | |
+| --- | --- | --- |
+| `services.rauc.bootloader` | `one of "barebox", "grub", "uboot", "efi", "custom", "noop"` | The bootloader backend for RAUC. |
+| `services.rauc.bundleFormats` | `list of string` | Allowable formats for the RAUC bundle. |
+| `services.rauc.client.enable` | `boolean` | Whether to enable RAUC client in the system environment. |
+| `services.rauc.compatible` | `string` | The compatibility string for this system. Can be any format so long as you are consistent. |
+| `services.rauc.dataDir` | `absolute path` | The state directory for RAUC. |
+| `services.rauc.enable` | `boolean` | Whether to enable RAUC A/B update service. |
+| `services.rauc.mark-good.enable` | `boolean` | Whether to enable RAUC Good-marking service. |
+| `services.rauc.package` | `package` | The rauc package to use. |
+| `services.rauc.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Rauc configuration that will be converted to INI. Refer to: <https://rauc.readthedocs.io/en/latest/reference.html#sec-ref-slot-config> for details on supported values. All module-specific options override these. |
+| `services.rauc.slots` | `attribute set of list of (submodule)` | RAUC slot definitions. Every key is a slot class and every value is a list of slot indexes. |
+| `services.rauc.slots.<name>.*.device` | `string` | The device to update. |
+| `services.rauc.slots.<name>.*.enable` | `boolean` | Whether to enable this RAUC slot. |
+| `services.rauc.slots.<name>.*.settings` | `attribute set` | Settings for this slot. |
+| `services.rauc.slots.<name>.*.type` | `one of "raw", "nand", "nor", "ubivol", "ubifs", "ext4", "vfat"` | The type of the device. |

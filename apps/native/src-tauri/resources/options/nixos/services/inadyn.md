@@ -5,11 +5,27 @@
 All options under `services.inadyn`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.inadyn.configFile` | | |
-| `services.inadyn.enable` | | |
-| `services.inadyn.group` | | |
-| `services.inadyn.interval` | | |
-| `services.inadyn.logLevel` | | |
-| `services.inadyn.settings` | | |
-| `services.inadyn.user` | | |
+| --- | --- | --- |
+| `services.inadyn.configFile` | `null or absolute path` | Configuration file for inadyn. Setting this will override all other configuration options. Passed to the inadyn service using LoadCredential. |
+| `services.inadyn.enable` | `boolean` | Whether to enable synchronise your machine's IP address with a dynamic DNS provider using inadyn . |
+| `services.inadyn.group` | `string` | Group account under which inadyn runs. ::: {.note} If left as the default value this user will automatically be created on system activation, otherwise you are responsible for ensuring the user exists before the inadyn service starts. ::: |
+| `services.inadyn.interval` | `string` | How often to check the current IP. Uses the format described in {manpage}`systemd.time(7)`"; |
+| `services.inadyn.logLevel` | `one of "none", "err", "warning", "info", "notice", "debug"` | Set inadyn's log level. |
+| `services.inadyn.settings` | `open submodule of (attribute set)` | See `inadyn.conf (5)` |
+| `services.inadyn.settings.allow-ipv6` | `boolean` | Whether to get IPv6 addresses from interfaces. |
+| `services.inadyn.settings.custom` | `attribute set of (open submodule of (attribute set))` | Settings for custom DNS providers. |
+| `services.inadyn.settings.custom.<name>.ddns-path` | `string` | DDNS server path. See `inadnyn.conf (5)` for a list for format specifiers that can be used. |
+| `services.inadyn.settings.custom.<name>.ddns-server` | `string` | DDNS server name. |
+| `services.inadyn.settings.custom.<name>.hostname` | `string or list of string` | Hostname alias(es). |
+| `services.inadyn.settings.custom.<name>.include` | `null or absolute path` | File to include additional settings for this provider from. |
+| `services.inadyn.settings.custom.<name>.password` | `null or string` | Password for this DDNS provider. WARNING: This will be world-readable in the nix store. To store credentials securely, use the `include` or `configFile` options. |
+| `services.inadyn.settings.custom.<name>.ssl` | `boolean` | Whether to use HTTPS for this DDNS provider. |
+| `services.inadyn.settings.custom.<name>.username` | `null or string` | Username for this DDNS provider. |
+| `services.inadyn.settings.forced-update` | `positive integer, meaning >0` | Duration (in seconds) after which an update is forced. |
+| `services.inadyn.settings.provider` | `attribute set of (open submodule of (attribute set))` | Settings for DDNS providers built-in to inadyn. For a list of built-in providers, see `inadyn.conf (5)`. |
+| `services.inadyn.settings.provider.<name>.hostname` | `string or list of string` | Hostname alias(es). |
+| `services.inadyn.settings.provider.<name>.include` | `null or absolute path` | File to include additional settings for this provider from. |
+| `services.inadyn.settings.provider.<name>.password` | `null or string` | Password for this DDNS provider. WARNING: This will be world-readable in the nix store. To store credentials securely, use the `include` or `configFile` options. |
+| `services.inadyn.settings.provider.<name>.ssl` | `boolean` | Whether to use HTTPS for this DDNS provider. |
+| `services.inadyn.settings.provider.<name>.username` | `null or string` | Username for this DDNS provider. |
+| `services.inadyn.user` | `string` | User account under which inadyn runs. ::: {.note} If left as the default value this user will automatically be created on system activation, otherwise you are responsible for ensuring the user exists before the inadyn service starts. ::: |

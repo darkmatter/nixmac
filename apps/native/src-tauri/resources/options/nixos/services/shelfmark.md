@@ -5,8 +5,12 @@
 All options under `services.shelfmark`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.shelfmark.enable` | | |
-| `services.shelfmark.environment` | | |
-| `services.shelfmark.openFirewall` | | |
-| `services.shelfmark.package` | | |
+| --- | --- | --- |
+| `services.shelfmark.enable` | `boolean` | Whether to enable Shelfmark, a self-hosted book and audiobook search and download interface. |
+| `services.shelfmark.environment` | `open submodule of attribute set of string` | Environment variables to pass to the Shelfmark service. See <https://github.com/calibrain/shelfmark/blob/main/docs/environment-variables.md> for available options. |
+| `services.shelfmark.environment.CONFIG_DIR` | `absolute path` | Directory for Shelfmark configuration, database, and artwork cache. |
+| `services.shelfmark.environment.ENABLE_LOGGING` | `boolean` | Whether to enable file logging. Disabled by default since systemd captures console output via journald. |
+| `services.shelfmark.environment.FLASK_HOST` | `string` | The IP address to bind the Shelfmark server to. |
+| `services.shelfmark.environment.FLASK_PORT` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | TCP port for the Shelfmark web interface. |
+| `services.shelfmark.openFirewall` | `boolean` | Open the appropriate ports in the firewall for Shelfmark. |
+| `services.shelfmark.package` | `package` | The shelfmark package to use. |

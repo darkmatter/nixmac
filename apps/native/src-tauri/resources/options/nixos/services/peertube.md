@@ -5,30 +5,32 @@
 All options under `services.peertube`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `services.peertube.configureNginx` | | |
-| `services.peertube.dataDirs` | | |
-| `services.peertube.database.createLocally` | | |
-| `services.peertube.database.host` | | |
-| `services.peertube.database.name` | | |
-| `services.peertube.database.passwordFile` | | |
-| `services.peertube.database.port` | | |
-| `services.peertube.database.user` | | |
-| `services.peertube.enable` | | |
-| `services.peertube.enableWebHttps` | | |
-| `services.peertube.group` | | |
-| `services.peertube.listenHttp` | | |
-| `services.peertube.listenWeb` | | |
-| `services.peertube.localDomain` | | |
-| `services.peertube.package` | | |
-| `services.peertube.redis.createLocally` | | |
-| `services.peertube.redis.enableUnixSocket` | | |
-| `services.peertube.redis.host` | | |
-| `services.peertube.redis.passwordFile` | | |
-| `services.peertube.redis.port` | | |
-| `services.peertube.secrets.secretsFile` | | |
-| `services.peertube.serviceEnvironmentFile` | | |
-| `services.peertube.settings` | | |
-| `services.peertube.smtp.createLocally` | | |
-| `services.peertube.smtp.passwordFile` | | |
-| `services.peertube.user` | | |
+| --- | --- | --- |
+| `services.peertube.configureNginx` | `boolean` | Configure nginx as a reverse proxy for peertube. |
+| `services.peertube.dataDirs` | `list of absolute path` | Allow access to custom data locations. |
+| `services.peertube.database.createLocally` | `boolean` | Configure local PostgreSQL database server for PeerTube. |
+| `services.peertube.database.host` | `string` | Database host address or unix socket. |
+| `services.peertube.database.name` | `string` | Database name. |
+| `services.peertube.database.passwordFile` | `null or absolute path` | Password for PostgreSQL database. |
+| `services.peertube.database.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Database host port. |
+| `services.peertube.database.user` | `string` | Database user. |
+| `services.peertube.enable` | `boolean` | Whether to enable Peertube. |
+| `services.peertube.enableWebHttps` | `boolean` | Whether clients will access your PeerTube instance with HTTPS. Does NOT configure the PeerTube webserver itself to listen for incoming HTTPS connections. |
+| `services.peertube.group` | `string` | Group under which Peertube runs. |
+| `services.peertube.listenHttp` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port that the local PeerTube web server will listen on. |
+| `services.peertube.listenWeb` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The public-facing port that PeerTube will be accessible at (likely 80 or 443 if running behind a reverse proxy). Clients will try to access PeerTube at this port. |
+| `services.peertube.localDomain` | `string` | The domain serving your PeerTube instance. |
+| `services.peertube.package` | `package` | The peertube package to use. |
+| `services.peertube.redis.createLocally` | `boolean` | Configure local Redis server for PeerTube. |
+| `services.peertube.redis.enableUnixSocket` | `boolean` | Use Unix socket. |
+| `services.peertube.redis.host` | `null or string` | Redis host. |
+| `services.peertube.redis.passwordFile` | `null or absolute path` | Password for redis database. |
+| `services.peertube.redis.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Redis port. |
+| `services.peertube.secrets.secretsFile` | `null or absolute path` | Secrets to run PeerTube. Generate one using `openssl rand -hex 32` |
+| `services.peertube.serviceEnvironmentFile` | `null or absolute path` | Set environment variables for the service. Mainly useful for setting the initial root password. For example write to file: PT_INITIAL_ROOT_PASSWORD=changeme |
+| `services.peertube.settings` | `open submodule of (JSON value)` | Configuration for peertube. |
+| `services.peertube.settings.video_transcription.enabled` | `boolean` | Enable automatic transcription of videos. |
+| `services.peertube.settings.video_transcription.engine_path` | `absolute path or string` | Custom engine path for local transcription. |
+| `services.peertube.smtp.createLocally` | `boolean` | Configure local Postfix SMTP server for PeerTube. |
+| `services.peertube.smtp.passwordFile` | `null or absolute path` | Password for smtp server. |
+| `services.peertube.user` | `string` | User account under which Peertube runs. |

@@ -5,20 +5,20 @@
 All options under `programs.zed-editor`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `programs.zed-editor.defaultEditor` | | |
+| --- | --- | --- |
+| `programs.zed-editor.defaultEditor` | `boolean` | Whether to set {command}`zeditor -w` as the default editor using the {env}`EDITOR` and {env}`VISUAL` environment variables. |
 | `programs.zed-editor.enable` | `boolean` | Whether to enable Zed, the high performance, multiplayer code editor from the creators of Atom and Tree-sitter. |
-| `programs.zed-editor.enableMcpIntegration` | `boolean` | Whether to integrate the MCP server config from programs.mcp.servers into programs.zed-editor.userSettings.context_servers . |
-| `programs.zed-editor.extensions` | `list of string` | A list of the extensions Zed should install on startup. Use the name of a repository in the extension list . |
+| `programs.zed-editor.enableMcpIntegration` | `boolean` | Whether to integrate the MCP server config from {option}`programs.mcp.servers` into {option}`programs.zed-editor.userSettings.context_servers`. Note: Settings defined in {option}`programs.zed-editor.userSettings.context_servers` will take precedence over the generated MCP configuration. |
+| `programs.zed-editor.extensions` | `list of string` | A list of the extensions Zed should install on startup. Use the name of a repository in the [extension list](https://github.com/zed-industries/extensions/tree/main/extensions). |
 | `programs.zed-editor.extraPackages` | `list of package` | Extra packages available to Zed. |
-| `programs.zed-editor.installRemoteServer` | `boolean` | Whether to symlink the Zed’s remote server binary to the expected location. This allows remotely connecting to this system from a distant Zed client. |
+| `programs.zed-editor.installRemoteServer` | `boolean` | Whether to symlink the Zed's remote server binary to the expected location. This allows remotely connecting to this system from a distant Zed client. For more information, consult the ["Remote Server" section](https://wiki.nixos.org/wiki/Zed#Remote_Server) in the wiki. |
 | `programs.zed-editor.mutableUserDebug` | `boolean` | Whether user debug configurations (debug.json) can be updated by zed. |
 | `programs.zed-editor.mutableUserKeymaps` | `boolean` | Whether user keymaps (keymap.json) can be updated by zed. |
 | `programs.zed-editor.mutableUserSettings` | `boolean` | Whether user settings (settings.json) can be updated by zed. |
 | `programs.zed-editor.mutableUserTasks` | `boolean` | Whether user tasks (tasks.json) can be updated by zed. |
 | `programs.zed-editor.package` | `null or package` | The zed-editor package to use. |
-| `programs.zed-editor.themes` | `attribute set of (JSON value or absolute path or strings concatenated with “\n”)` | Each theme is written to $XDG_CONFIG_HOME/zed/themes/theme-name.json where the name of each attribute is the theme-name |
-| `programs.zed-editor.userDebug` | `JSON value` | Configuration written to Zed’s debug.json . |
-| `programs.zed-editor.userKeymaps` | `JSON value` | Configuration written to Zed’s keymap.json . |
-| `programs.zed-editor.userSettings` | `JSON value` | Configuration written to Zed’s settings.json . |
-| `programs.zed-editor.userTasks` | `JSON value` | Configuration written to Zed’s tasks.json . |
+| `programs.zed-editor.themes` | `attribute set of (JSON value or absolute path or strings concatenated with "\n")` | Each theme is written to {file}`$XDG_CONFIG_HOME/zed/themes/theme-name.json` where the name of each attribute is the theme-name See <https://zed.dev/docs/extensions/themes> for the structure of a Zed theme |
+| `programs.zed-editor.userDebug` | `JSON value` | Configuration written to Zed's {file}`debug.json`. Global debug configurations for Zed's [Debugger](https://zed.dev/docs/debugger). |
+| `programs.zed-editor.userKeymaps` | `JSON value` | Configuration written to Zed's {file}`keymap.json`. |
+| `programs.zed-editor.userSettings` | `JSON value` | Configuration written to Zed's {file}`settings.json`. |
+| `programs.zed-editor.userTasks` | `JSON value` | Configuration written to Zed's {file}`tasks.json`. [List of tasks](https://zed.dev/docs/tasks) that can be run from the command palette. |

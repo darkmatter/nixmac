@@ -5,22 +5,22 @@
 All options under `services.linkwarden`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.linkwarden.cacheLocation` | | |
-| `services.linkwarden.database.createLocally` | | |
-| `services.linkwarden.database.host` | | |
-| `services.linkwarden.database.name` | | |
-| `services.linkwarden.database.port` | | |
-| `services.linkwarden.database.user` | | |
-| `services.linkwarden.enable` | | |
-| `services.linkwarden.enableRegistration` | | |
-| `services.linkwarden.environment` | | |
-| `services.linkwarden.environmentFile` | | |
-| `services.linkwarden.group` | | |
-| `services.linkwarden.host` | | |
-| `services.linkwarden.openFirewall` | | |
-| `services.linkwarden.package` | | |
-| `services.linkwarden.port` | | |
-| `services.linkwarden.secretFiles` | | |
-| `services.linkwarden.storageLocation` | | |
-| `services.linkwarden.user` | | |
+| --- | --- | --- |
+| `services.linkwarden.cacheLocation` | `absolute path` | Directory used as cache. If it is not the default, the directory has to be created manually such that the linkwarden user is able to read and write to it. |
+| `services.linkwarden.database.createLocally` | `boolean` | Whether to enable the automatic creation of the database for Linkwarden.. |
+| `services.linkwarden.database.host` | `string` | Hostname or address of the postgresql server. If an absolute path is given here, it will be interpreted as a unix socket path. |
+| `services.linkwarden.database.name` | `string` | The name of the Linkwarden database. |
+| `services.linkwarden.database.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port of the postgresql server. |
+| `services.linkwarden.database.user` | `string` | The database user for Linkwarden. |
+| `services.linkwarden.enable` | `boolean` | Whether to enable Linkwarden. |
+| `services.linkwarden.enableRegistration` | `boolean` | Whether to enable registration for new users. |
+| `services.linkwarden.environment` | `attribute set of string` | Extra configuration environment variables. Refer to the [documentation](https://docs.linkwarden.app/self-hosting/environment-variables) for options. |
+| `services.linkwarden.environmentFile` | `null or string` | Path of a file with extra environment variables to be loaded from disk. This file is not added to the nix store, so it can be used to pass secrets to linkwarden. Refer to the [documentation](https://docs.linkwarden.app/self-hosting/environment-variables) for options. Linkwarden needs at least a nextauth secret. To set a database password use POSTGRES_PASSWORD: `NEXTAUTH_SECRET=<secret> POSTGRES_PASSWORD=<pass>` |
+| `services.linkwarden.group` | `string` | The group Linkwarden should run as. |
+| `services.linkwarden.host` | `string` | The host that Linkwarden will listen on. |
+| `services.linkwarden.openFirewall` | `boolean` | Whether to open the Linkwarden port in the firewall |
+| `services.linkwarden.package` | `package` | The linkwarden package to use. |
+| `services.linkwarden.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port that Linkwarden will listen on. |
+| `services.linkwarden.secretFiles` | `attribute set of (null or string)` | Attribute set containing paths to files to add to the environment of linkwarden. The files are not added to the nix store, so they can be used to pass secrets to linkwarden. Refer to the [documentation](https://docs.linkwarden.app/self-hosting/environment-variables) for options. Linkwarden needs at least a nextauth secret. To set a database password use POSTGRES_PASSWORD: `NEXTAUTH_SECRET=<secret> POSTGRES_PASSWORD=<pass>` |
+| `services.linkwarden.storageLocation` | `absolute path` | Directory used to store media files. If it is not the default, the directory has to be created manually such that the linkwarden user is able to read and write to it. |
+| `services.linkwarden.user` | `string` | The user Linkwarden should run as. |

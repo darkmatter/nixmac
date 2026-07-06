@@ -5,9 +5,9 @@
 All options under `services.nostr-rs-relay`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.nostr-rs-relay.dataDir` | | |
-| `services.nostr-rs-relay.enable` | | |
-| `services.nostr-rs-relay.package` | | |
-| `services.nostr-rs-relay.port` | | |
-| `services.nostr-rs-relay.settings` | | |
+| --- | --- | --- |
+| `services.nostr-rs-relay.dataDir` | `absolute path` | Directory for SQLite files. |
+| `services.nostr-rs-relay.enable` | `boolean` | Whether to enable nostr-rs-relay. |
+| `services.nostr-rs-relay.package` | `package` | The nostr-rs-relay package to use. |
+| `services.nostr-rs-relay.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listen on this port. |
+| `services.nostr-rs-relay.settings` | `TOML value` | See <https://git.sr.ht/~gheartsfield/nostr-rs-relay/#configuration> for documentation. |

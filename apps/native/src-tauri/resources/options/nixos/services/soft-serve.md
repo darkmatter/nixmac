@@ -5,7 +5,7 @@
 All options under `services.soft-serve`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.soft-serve.enable` | | |
-| `services.soft-serve.package` | | |
-| `services.soft-serve.settings` | | |
+| --- | --- | --- |
+| `services.soft-serve.enable` | `boolean` | Whether to enable soft-serve. |
+| `services.soft-serve.package` | `package` | The soft-serve package to use. |
+| `services.soft-serve.settings` | `YAML 1.1 value` | The contents of the configuration file for soft-serve. See <https://charm.sh/blog/self-hosted-soft-serve/>. |

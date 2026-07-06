@@ -5,10 +5,10 @@
 All options under `services.surrealdb`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.surrealdb.dbPath` | | |
-| `services.surrealdb.enable` | | |
-| `services.surrealdb.extraFlags` | | |
-| `services.surrealdb.host` | | |
-| `services.surrealdb.package` | | |
-| `services.surrealdb.port` | | |
+| --- | --- | --- |
+| `services.surrealdb.dbPath` | `string` | The path that surrealdb will write data to. Use null for in-memory. Can be one of "memory", "rocksdb://:path", "surrealkv://:path", "tikv://:addr", "fdb://:addr". |
+| `services.surrealdb.enable` | `boolean` | Whether to enable SurrealDB, a scalable, distributed, collaborative, document-graph database, for the realtime web. |
+| `services.surrealdb.extraFlags` | `list of string` | Specify a list of additional command line flags. |
+| `services.surrealdb.host` | `string` | The host that surrealdb will connect to. |
+| `services.surrealdb.package` | `package` | The surrealdb package to use. |
+| `services.surrealdb.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port that surrealdb will connect to. |

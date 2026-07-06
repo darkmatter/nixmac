@@ -5,9 +5,8 @@
 All options under `programs.bash`.
 
 | Option | Type | Description |
-| ------------------------------------ | -------------------------------- | ---------------------------------------------------------------------- |
-| `programs.bash.completion.enable` | `boolean` | Enable bash completion for all interactive bash shells. |
+| --- | --- | --- |
+| `programs.bash.completion.enable` | `boolean` | Enable bash completion for all interactive bash shells. NOTE: This doesn't work with bash 3.2, which is installed by default on macOS by Apple. |
 | `programs.bash.completion.package` | `package` | The bash-completion package to use. |
 | `programs.bash.enable` | `boolean` | Whether to configure bash as an interactive shell. |
-| `programs.bash.enableCompletion` | | |
-| `programs.bash.interactiveShellInit` | `strings concatenated with “\n”` | Shell script code called during interactive bash shell initialisation. |
+| `programs.bash.interactiveShellInit` | `strings concatenated with "\n"` | Shell script code called during interactive bash shell initialisation. |

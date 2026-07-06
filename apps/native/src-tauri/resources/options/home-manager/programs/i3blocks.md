@@ -5,7 +5,7 @@
 All options under `programs.i3blocks`.
 
 | Option | Type | Description |
-| --------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.i3blocks.bars` | `attribute set of (DAG of attribute set of (INI atom (null, int, bool, string, or float)))` | Configuration written to i3blocks config |
 | `programs.i3blocks.enable` | `boolean` | Whether to enable i3blocks i3 status command scheduler. |
 | `programs.i3blocks.package` | `package` | The i3blocks package to use. |

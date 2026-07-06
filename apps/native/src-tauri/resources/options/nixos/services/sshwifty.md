@@ -5,9 +5,9 @@
 All options under `services.sshwifty`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.sshwifty.enable` | | |
-| `services.sshwifty.package` | | |
-| `services.sshwifty.settings` | | |
-| `services.sshwifty.sharedKeyFile` | | |
-| `services.sshwifty.socks5PasswordFile` | | |
+| --- | --- | --- |
+| `services.sshwifty.enable` | `boolean` | Whether to enable Sshwifty. |
+| `services.sshwifty.package` | `package` | The sshwifty package to use. |
+| `services.sshwifty.settings` | `JSON value` | Configuration for Sshwifty. See [the Sshwifty documentation](https://github.com/nirui/sshwifty/tree/master?tab=readme-ov-file#configuration) for possible options. |
+| `services.sshwifty.sharedKeyFile` | `null or absolute path` | Path to a file containing the shared key. |
+| `services.sshwifty.socks5PasswordFile` | `null or absolute path` | Path to a file containing the SOCKS5 password. |

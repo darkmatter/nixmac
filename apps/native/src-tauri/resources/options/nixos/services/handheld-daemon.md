@@ -5,12 +5,11 @@
 All options under `services.handheld-daemon`.
 
 | Option | Type | Description |
-| ------------------------------------------------------ | ---- | ----------- |
-| `services.handheld-daemon.adjustor.enable` | | |
-| `services.handheld-daemon.adjustor.loadAcpiCallModule` | | |
-| `services.handheld-daemon.adjustor.package` | | |
-| `services.handheld-daemon.enable` | | |
-| `services.handheld-daemon.package` | | |
-| `services.handheld-daemon.ui.enable` | | |
-| `services.handheld-daemon.ui.package` | | |
-| `services.handheld-daemon.user` | | |
+| --- | --- | --- |
+| `services.handheld-daemon.adjustor.enable` | `boolean` | Whether to enable Handheld Daemon TDP control plugin. |
+| `services.handheld-daemon.adjustor.loadAcpiCallModule` | `boolean` | Whether to load the acpi_call kernel module. Required for TDP control by adjustor on most devices. |
+| `services.handheld-daemon.enable` | `boolean` | Whether to enable Handheld Daemon. |
+| `services.handheld-daemon.package` | `package` | The handheld-daemon package to use. |
+| `services.handheld-daemon.ui.enable` | `boolean` | Whether to enable Handheld Daemon UI. |
+| `services.handheld-daemon.ui.package` | `package` | The handheld-daemon-ui package to use. |
+| `services.handheld-daemon.user` | `string` | The user to run Handheld Daemon with. |

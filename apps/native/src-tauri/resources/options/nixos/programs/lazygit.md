@@ -5,7 +5,7 @@
 All options under `programs.lazygit`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `programs.lazygit.enable` | | |
-| `programs.lazygit.package` | | |
-| `programs.lazygit.settings` | | |
+| --- | --- | --- |
+| `programs.lazygit.enable` | `boolean` | Whether to enable lazygit, a simple terminal UI for git commands. |
+| `programs.lazygit.package` | `package` | The lazygit package to use. |
+| `programs.lazygit.settings` | `YAML 1.1 value` | Lazygit configuration. See <https://github.com/jesseduffield/lazygit/blob/master/docs/Config.md> for documentation. |

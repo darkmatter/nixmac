@@ -5,12 +5,15 @@
 All options under `services.mpdscribble`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.mpdscribble.enable` | | |
-| `services.mpdscribble.endpoints` | | |
-| `services.mpdscribble.host` | | |
-| `services.mpdscribble.journalInterval` | | |
-| `services.mpdscribble.passwordFile` | | |
-| `services.mpdscribble.port` | | |
-| `services.mpdscribble.proxy` | | |
-| `services.mpdscribble.verbose` | | |
+| --- | --- | --- |
+| `services.mpdscribble.enable` | `boolean` | Whether to enable mpdscribble, an MPD client which submits info about tracks being played to Last.fm (formerly AudioScrobbler). |
+| `services.mpdscribble.endpoints` | `attribute set of (submodule)` | Endpoints to scrobble to. If the endpoint is one of "jamendo", "last.fm", "libre.fm", "listenbrainz" the url is set automatically. |
+| `services.mpdscribble.endpoints.<name>.passwordFile` | `null or string` | File containing the password, either as MD5SUM or cleartext. |
+| `services.mpdscribble.endpoints.<name>.url` | `string` | The url endpoint where the scrobble API is listening. |
+| `services.mpdscribble.endpoints.<name>.username` | `string` | Username for the scrobble service. |
+| `services.mpdscribble.host` | `string` | Host for the mpdscribble daemon to search for a mpd daemon on. |
+| `services.mpdscribble.journalInterval` | `signed integer` | How often should mpdscribble save the journal file? [seconds] |
+| `services.mpdscribble.passwordFile` | `null or string` | File containing the password for the mpd daemon. If there is a local mpd configured using {option}`services.mpd.credentials` the default is automatically set to a matching passwordFile of the local mpd. |
+| `services.mpdscribble.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port for the mpdscribble daemon to search for a mpd daemon on. |
+| `services.mpdscribble.proxy` | `null or string` | HTTP proxy URL. |
+| `services.mpdscribble.verbose` | `signed integer` | Log level for the mpdscribble daemon. |

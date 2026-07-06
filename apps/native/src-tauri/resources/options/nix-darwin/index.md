@@ -5,25 +5,20 @@
 Top-level option categories for `nix-darwin`.
 
 | Key | Type | Description |
-| ----------------------------------- | -------- | ----------------------------- |
-| [`_module`](_module.md) | category | 4 options |
-| `assertions` | option | |
-| [`documentation`](documentation.md) | category | 3 subcategories, 4 options |
-| [`environment`](environment.md) | category | 22 options |
-| [`fonts`](fonts.md) | category | 1 subcategory, 4 options |
-| [`homebrew`](homebrew.md) | category | 23 options |
-| [`ids`](ids.md) | category | 2 options |
-| [`launchd`](launchd.md) | category | 1 subcategory, 6 options |
-| `lib` | option | |
-| [`meta`](meta.md) | category | 1 option |
-| [`networking`](networking.md) | category | 3 subcategories, 19 options |
-| [`nix`](nix.md) | category | 4 subcategories, 58 options |
-| [`nixpkgs`](nixpkgs.md) | category | 1 subcategory, 11 options |
-| [`power`](power.md) | category | 1 subcategory, 6 options |
-| [`programs`](programs/index.md) | category | 14 subcategories, 80 options |
-| [`security`](security.md) | category | 4 subcategories, 15 options |
-| [`services`](services/index.md) | category | 39 subcategories, 218 options |
-| [`system`](system.md) | category | 6 subcategories, 248 options |
+| --- | --- | --- |
+| [`documentation`](documentation.md) | category | 4 options |
+| [`environment`](environment.md) | category | 36 options |
+| [`fonts`](fonts.md) | category | 1 option |
+| [`homebrew`](homebrew.md) | category | 61 options |
+| [`launchd`](launchd.md) | category | 249 options |
+| [`lib`](lib.md) | category | 1 option |
+| [`networking`](networking.md) | category | 35 options |
+| [`nix`](nix.md) | category | 55 options |
+| [`nixpkgs`](nixpkgs.md) | category | 10 options |
+| [`power`](power.md) | category | 6 options |
+| [`programs`](programs/index.md) | category | 87 options |
+| [`security`](security.md) | category | 18 options |
+| [`services`](services/index.md) | category | 305 options |
+| [`system`](system.md) | category | 238 options |
 | [`time`](time.md) | category | 1 option |
-| [`users`](users.md) | category | 1 subcategory, 9 options |
-| `warnings` | option | |
+| [`users`](users.md) | category | 20 options |

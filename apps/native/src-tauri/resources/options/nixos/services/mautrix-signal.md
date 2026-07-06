@@ -5,10 +5,10 @@
 All options under `services.mautrix-signal`.
 
 | Option | Type | Description |
-| --------------------------------------------- | ---- | ----------- |
-| `services.mautrix-signal.enable` | | |
-| `services.mautrix-signal.environmentFile` | | |
-| `services.mautrix-signal.package` | | |
-| `services.mautrix-signal.registerToSynapse` | | |
-| `services.mautrix-signal.serviceDependencies` | | |
-| `services.mautrix-signal.settings` | | |
+| --- | --- | --- |
+| `services.mautrix-signal.enable` | `boolean` | Whether to enable mautrix-signal, a Matrix-Signal puppeting bridge. |
+| `services.mautrix-signal.environmentFile` | `null or absolute path` | File containing environment variables to be passed to the mautrix-signal service. If an environment variable `MAUTRIX_SIGNAL_BRIDGE_LOGIN_SHARED_SECRET` is set, then its value will be used in the configuration file for the option `double_puppet.secrets` without leaking it to the store, using the configured `homeserver.domain` as key. |
+| `services.mautrix-signal.package` | `package` | The mautrix-signal package to use. |
+| `services.mautrix-signal.registerToSynapse` | `boolean` | Whether to add the bridge's app service registration file to `services.matrix-synapse.settings.app_service_config_files`. |
+| `services.mautrix-signal.serviceDependencies` | `list of string` | List of systemd units to require and wait for when starting the application service. |
+| `services.mautrix-signal.settings` | `JSON value` | {file}`config.yaml` configuration as a Nix attribute set. Configuration options should match those described in the example configuration. Get an example configuration by executing `mautrix-signal -c example.yaml --generate-example-config` Secret tokens should be specified using {option}`environmentFile` instead of this world-readable attribute set. |

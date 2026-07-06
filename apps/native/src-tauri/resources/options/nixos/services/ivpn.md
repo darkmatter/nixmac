@@ -5,5 +5,5 @@
 All options under `services.ivpn`.
 
 | Option | Type | Description |
-| ---------------------- | ---- | ----------- |
-| `services.ivpn.enable` | | |
+| --- | --- | --- |
+| `services.ivpn.enable` | `boolean` | This option enables iVPN daemon. This sets {option}`networking.firewall.checkReversePath` to "loose", which might be undesirable for security. |

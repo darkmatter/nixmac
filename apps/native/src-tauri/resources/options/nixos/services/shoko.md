@@ -5,9 +5,9 @@
 All options under `services.shoko`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.shoko.enable` | | |
-| `services.shoko.openFirewall` | | |
-| `services.shoko.package` | | |
-| `services.shoko.plugins` | | |
-| `services.shoko.webui` | | |
+| --- | --- | --- |
+| `services.shoko.enable` | `boolean` | Whether to enable Shoko. |
+| `services.shoko.openFirewall` | `boolean` | Open ports in the firewall for the ShokoAnime api and web interface. |
+| `services.shoko.package` | `package` | The shoko package to use. |
+| `services.shoko.plugins` | `list of package` | The plugins to install. Note that if there are plugins installed imperatively when this option is used, they will be deleted. |
+| `services.shoko.webui` | `null or package` | The shoko-webui package to use. |

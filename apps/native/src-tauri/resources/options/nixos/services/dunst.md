@@ -5,9 +5,9 @@
 All options under `services.dunst`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.dunst.enable` | | |
-| `services.dunst.enableWayland` | | |
-| `services.dunst.enableX11` | | |
-| `services.dunst.package` | | |
-| `services.dunst.settings` | | |
+| --- | --- | --- |
+| `services.dunst.enable` | `boolean` | Whether to enable Dunst notification daemon. |
+| `services.dunst.enableWayland` | `boolean` | Whether to enable Wayland support. |
+| `services.dunst.enableX11` | `boolean` | Whether to enable X11 support. |
+| `services.dunst.package` | `package` | The dunst package to use. |
+| `services.dunst.settings` | `attribute set of attribute set of (INI atom (null, bool, int, float or string) or attribute set of (INI atom (null, bool, int, float or string)))` | Dunst configuration, see dunst(5) |

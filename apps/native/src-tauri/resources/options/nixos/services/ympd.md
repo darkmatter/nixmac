@@ -5,8 +5,8 @@
 All options under `services.ympd`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `services.ympd.enable` | | |
-| `services.ympd.mpd.host` | | |
-| `services.ympd.mpd.port` | | |
-| `services.ympd.webPort` | | |
+| --- | --- | --- |
+| `services.ympd.enable` | `boolean` | Whether to enable ympd, the MPD Web GUI. |
+| `services.ympd.mpd.host` | `string` | The host where MPD is listening. |
+| `services.ympd.mpd.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port where MPD is listening. |
+| `services.ympd.webPort` | `string or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port where ympd's web interface will be available. |

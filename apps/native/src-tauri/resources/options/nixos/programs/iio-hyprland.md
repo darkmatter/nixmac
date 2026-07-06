@@ -5,6 +5,6 @@
 All options under `programs.iio-hyprland`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `programs.iio-hyprland.enable` | | |
-| `programs.iio-hyprland.package` | | |
+| --- | --- | --- |
+| `programs.iio-hyprland.enable` | `boolean` | Whether to enable iio-hyprland and iio-sensor-proxy. |
+| `programs.iio-hyprland.package` | `package` | The iio-hyprland package to use. |

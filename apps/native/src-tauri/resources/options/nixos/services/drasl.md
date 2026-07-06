@@ -5,8 +5,10 @@
 All options under `services.drasl`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.drasl.enable` | | |
-| `services.drasl.enableDebug` | | |
-| `services.drasl.package` | | |
-| `services.drasl.settings` | | |
+| --- | --- | --- |
+| `services.drasl.enable` | `boolean` | Whether to enable Drasl. |
+| `services.drasl.enableDebug` | `boolean` | Whether to enable debugging. |
+| `services.drasl.package` | `package` | The drasl package to use. |
+| `services.drasl.settings` | `open submodule of (TOML value)` | Configuration for Drasl. See the [Drasl documentation](https://github.com/unmojang/drasl/blob/master/doc/configuration.md) for possible options. |
+| `services.drasl.settings.RegistrationOIDC` | `list of (open submodule of (TOML value))` | List of OpenID connect providers. |
+| `services.drasl.settings.RegistrationOIDC.*.ClientSecretFile` | `null or absolute path` | Path to a file containing the OIDC client secret. ::: {.note} The NixOS module will automatically load this file using systemd's LoadCredential. Make sure this file is only readable by the root user. ::: |

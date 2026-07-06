@@ -5,8 +5,8 @@
 All options under `services.copyq`.
 
 | Option | Type | Description |
-| ------------------------------ | --------- | -------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.copyq.enable` | `boolean` | Whether to enable CopyQ, a clipboard manager with advanced features. |
 | `services.copyq.forceXWayland` | `boolean` | Force the CopyQ to use the X backend on wayland |
 | `services.copyq.package` | `package` | The copyq package to use. |
-| `services.copyq.systemdTarget` | `string` | The systemd target that will automatically start the CopyQ service. |
+| `services.copyq.systemdTarget` | `string` | The systemd target that will automatically start the CopyQ service. When setting this value to `"sway-session.target"`, make sure to also enable {option}`wayland.windowManager.sway.systemd.enable`, otherwise the service may never be started. |

@@ -5,11 +5,11 @@
 All options under `services.shellhub-agent`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---- | ----------- |
-| `services.shellhub-agent.enable` | | |
-| `services.shellhub-agent.keepAliveInterval` | | |
-| `services.shellhub-agent.package` | | |
-| `services.shellhub-agent.preferredHostname` | | |
-| `services.shellhub-agent.privateKey` | | |
-| `services.shellhub-agent.server` | | |
-| `services.shellhub-agent.tenantId` | | |
+| --- | --- | --- |
+| `services.shellhub-agent.enable` | `boolean` | Whether to enable ShellHub Agent daemon. |
+| `services.shellhub-agent.keepAliveInterval` | `signed integer` | Determine the interval to send the keep alive message to the server. This has a direct impact of the bandwidth used by the device. |
+| `services.shellhub-agent.package` | `package` | The shellhub-agent package to use. |
+| `services.shellhub-agent.preferredHostname` | `string` | Set the device preferred hostname. This provides a hint to the server to use this as hostname if it is available. |
+| `services.shellhub-agent.privateKey` | `absolute path` | Location where to store the ShellHub Agent private key. |
+| `services.shellhub-agent.server` | `string` | Server address of ShellHub Gateway to connect. |
+| `services.shellhub-agent.tenantId` | `string` | The tenant ID to use when connecting to the ShellHub Gateway. |

@@ -5,9 +5,9 @@
 All options under `programs.fresh-editor`.
 
 | Option | Type | Description |
-| ------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `programs.fresh-editor.defaultEditor` | | |
+| --- | --- | --- |
+| `programs.fresh-editor.defaultEditor` | `boolean` | Whether to configure {command}`fresh` as the default editor using the {env}`EDITOR` and {env}`VISUAL` environment variables. |
 | `programs.fresh-editor.enable` | `boolean` | Whether to enable fresh-editor. |
-| `programs.fresh-editor.extraPackages` | | |
+| `programs.fresh-editor.extraPackages` | `list of package` | Extra package to add to fresh |
 | `programs.fresh-editor.package` | `null or package` | The fresh-editor package to use. |
-| `programs.fresh-editor.settings` | `JSON value` | Configuration settings for fresh-editor. Find more configuration options in the user guide at: https://github.com/sinelaw/fresh/blob/master/docs/USER_GUIDE.md |
+| `programs.fresh-editor.settings` | `JSON value` | Configuration settings for fresh-editor. Find more configuration options in the user guide at: <https://github.com/sinelaw/fresh/blob/master/docs/USER_GUIDE.md> |

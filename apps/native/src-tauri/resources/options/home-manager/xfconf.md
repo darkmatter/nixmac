@@ -5,6 +5,5 @@
 All options under `xfconf`.
 
 | Option | Type | Description |
-| ----------------- | ----------------- | ----------------------------------------------------- |
-| `xfconf.enable` | | |
+| --- | --- | --- |
 | `xfconf.settings` | `xfconf settings` | Settings to write to the Xfconf configuration system. |

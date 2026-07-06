@@ -5,8 +5,6 @@
 All options under `programs.corectrl`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---- | ----------- |
-| `programs.corectrl.enable` | | |
-| `programs.corectrl.gpuOverclock.enable` | | |
-| `programs.corectrl.gpuOverclock.ppfeaturemask` | | |
-| `programs.corectrl.package` | | |
+| --- | --- | --- |
+| `programs.corectrl.enable` | `boolean` | Whether to enable CoreCtrl, a tool to overclock amd graphics cards and processors. Add your user to the corectrl group to run corectrl without needing to enter your password . |
+| `programs.corectrl.package` | `package` | The corectrl package to use. Useful for overriding the configuration options used for the package. |

@@ -5,7 +5,7 @@
 All options under `programs.screen`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `programs.screen.enable` | | |
-| `programs.screen.package` | | |
-| `programs.screen.screenrc` | | |
+| --- | --- | --- |
+| `programs.screen.enable` | `boolean` | Whether to enable screen, a basic terminal multiplexer. |
+| `programs.screen.package` | `package` | The screen package to use. |
+| `programs.screen.screenrc` | `strings concatenated with "\n"` | The contents of {file}`/etc/screenrc` file |

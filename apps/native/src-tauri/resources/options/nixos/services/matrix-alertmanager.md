@@ -5,13 +5,15 @@
 All options under `services.matrix-alertmanager`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.matrix-alertmanager.enable` | | |
-| `services.matrix-alertmanager.homeserverUrl` | | |
-| `services.matrix-alertmanager.matrixRooms` | | |
-| `services.matrix-alertmanager.matrixUser` | | |
-| `services.matrix-alertmanager.mention` | | |
-| `services.matrix-alertmanager.package` | | |
-| `services.matrix-alertmanager.port` | | |
-| `services.matrix-alertmanager.secretFile` | | |
-| `services.matrix-alertmanager.tokenFile` | | |
+| --- | --- | --- |
+| `services.matrix-alertmanager.enable` | `boolean` | Whether to enable matrix-alertmanager. |
+| `services.matrix-alertmanager.homeserverUrl` | `string` | URL of the Matrix homeserver to use. |
+| `services.matrix-alertmanager.matrixRooms` | `list of (submodule)` | Combination of Alertmanager receiver(s) and rooms for the bot to join. Each Alertmanager receiver can be mapped to post to a matrix room. Note, you must use a room ID and not a room alias/name. Room IDs start with a "!". |
+| `services.matrix-alertmanager.matrixRooms.*.receivers` | `list of string` | List of receivers for this room |
+| `services.matrix-alertmanager.matrixRooms.*.roomId` | `string` | Matrix room ID |
+| `services.matrix-alertmanager.matrixUser` | `string` | Matrix user to use for the bot. |
+| `services.matrix-alertmanager.mention` | `boolean` | Makes the bot mention @room when posting an alert |
+| `services.matrix-alertmanager.package` | `package` | The matrix-alertmanager package to use. |
+| `services.matrix-alertmanager.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port that matrix-alertmanager listens on. |
+| `services.matrix-alertmanager.secretFile` | `absolute path not in the Nix store` | File that contains a secret for the Alertmanager webhook. |
+| `services.matrix-alertmanager.tokenFile` | `absolute path not in the Nix store` | File that contains a valid Matrix token for the Matrix user. |

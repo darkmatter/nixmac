@@ -5,7 +5,7 @@
 All options under `programs.hwatch`.
 
 | Option | Type | Description |
-| --------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `programs.hwatch.enable` | `boolean` | Whether to enable hwatch, a modern alternative to the watch command . |
-| `programs.hwatch.extraArgs` | `list of string` | Extra command-line arguments to pass to hwatch . These will be used to populate the HWATCH environment variable. |
+| --- | --- | --- |
+| `programs.hwatch.enable` | `boolean` | Whether to enable hwatch, a modern alternative to the {command}`watch` command . |
+| `programs.hwatch.extraArgs` | `list of string` | Extra command-line arguments to pass to {command}`hwatch`. These will be used to populate the {env}`HWATCH` environment variable. |
 | `programs.hwatch.package` | `null or package` | The hwatch package to use. |

@@ -5,7 +5,7 @@
 All options under `programs.matplotlib`.
 
 | Option | Type | Description |
-| --------------------------------- | -------------------------------- | ------------------------------------------------------------------------------- |
-| `programs.matplotlib.config` | `attribute set of anything` | Add terms to the matplotlibrc file to control the default matplotlib behavior. |
+| --- | --- | --- |
+| `programs.matplotlib.config` | `attribute set of anything` | Add terms to the {file}`matplotlibrc` file to control the default matplotlib behavior. |
 | `programs.matplotlib.enable` | `boolean` | Whether to enable matplotlib, a plotting library for python. |
-| `programs.matplotlib.extraConfig` | `strings concatenated with “\n”` | Additional commands for matplotlib that will be added to the matplotlibrc file. |
+| `programs.matplotlib.extraConfig` | `strings concatenated with "\n"` | Additional commands for matplotlib that will be added to the {file}`matplotlibrc` file. |

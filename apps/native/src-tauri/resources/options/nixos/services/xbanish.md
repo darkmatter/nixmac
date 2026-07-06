@@ -5,6 +5,6 @@
 All options under `services.xbanish`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.xbanish.arguments` | | |
-| `services.xbanish.enable` | | |
+| --- | --- | --- |
+| `services.xbanish.arguments` | `string` | Arguments to pass to xbanish command |
+| `services.xbanish.enable` | `boolean` | Whether to enable xbanish. |

@@ -5,8 +5,8 @@
 All options under `services.arbtt`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.arbtt.enable` | | |
-| `services.arbtt.logFile` | | |
-| `services.arbtt.package` | | |
-| `services.arbtt.sampleRate` | | |
+| --- | --- | --- |
+| `services.arbtt.enable` | `boolean` | Whether to enable Arbtt statistics capture service. |
+| `services.arbtt.logFile` | `string` | The log file for captured samples. |
+| `services.arbtt.package` | `package` | The arbtt package to use. |
+| `services.arbtt.sampleRate` | `signed integer` | The sampling interval in seconds. |

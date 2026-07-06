@@ -5,9 +5,9 @@
 All options under `programs.atool`.
 
 | Option | Type | Description |
-| ------------------------------ | --------------------------------------------- | ------------------------------------------------------ |
-| `programs.atool.enable` | `boolean` | Whether to enable atool a commandline archive manager… |
+| --- | --- | --- |
+| `programs.atool.enable` | `boolean` | Whether to enable atool a commandline archive manager.. |
 | `programs.atool.extraPackages` | `list of package` | Extra packages for atool. |
-| `programs.atool.finalPackage` | `package (read only)` | Final atool package bundled with extraPackages. |
+| `programs.atool.finalPackage` | `package` | Final atool package bundled with extraPackages. |
 | `programs.atool.package` | `null or package` | The atool package to use. |
-| `programs.atool.settings` | `attribute set of (string or signed integer)` | atool settings to generate ~/.atoolrc . |
+| `programs.atool.settings` | `attribute set of (string or signed integer)` | atool settings to generate {file}`~/.atoolrc`. |

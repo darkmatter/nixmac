@@ -5,67 +5,58 @@
 All options under `services.displayManager`.
 
 | Option | Type | Description |
-| ------------------------------------------------------------- | ---- | ----------- |
-| `services.displayManager.autoLogin` | | |
-| `services.displayManager.cosmic-greeter.enable` | | |
-| `services.displayManager.cosmic-greeter.package` | | |
-| `services.displayManager.defaultSession` | | |
-| `services.displayManager.dms-greeter.compositor.customConfig` | | |
-| `services.displayManager.dms-greeter.compositor.name` | | |
-| `services.displayManager.dms-greeter.configFiles` | | |
-| `services.displayManager.dms-greeter.configHome` | | |
-| `services.displayManager.dms-greeter.enable` | | |
-| `services.displayManager.dms-greeter.logs.path` | | |
-| `services.displayManager.dms-greeter.logs.save` | | |
-| `services.displayManager.dms-greeter.package` | | |
-| `services.displayManager.dms-greeter.quickshell.package` | | |
-| `services.displayManager.enable` | | |
-| `services.displayManager.environment` | | |
-| `services.displayManager.execCmd` | | |
-| `services.displayManager.gdm.autoLogin.delay` | | |
-| `services.displayManager.gdm.autoSuspend` | | |
-| `services.displayManager.gdm.banner` | | |
-| `services.displayManager.gdm.debug` | | |
-| `services.displayManager.gdm.enable` | | |
-| `services.displayManager.gdm.extraPackages` | | |
-| `services.displayManager.gdm.settings` | | |
-| `services.displayManager.gdm.wayland` | | |
-| `services.displayManager.generic.enable` | | |
-| `services.displayManager.generic.environment` | | |
-| `services.displayManager.generic.execCmd` | | |
-| `services.displayManager.generic.preStart` | | |
-| `services.displayManager.hiddenUsers` | | |
-| `services.displayManager.lemurs.enable` | | |
-| `services.displayManager.lemurs.package` | | |
-| `services.displayManager.lemurs.settings` | | |
-| `services.displayManager.lemurs.vt` | | |
-| `services.displayManager.logToFile` | | |
-| `services.displayManager.logToJournal` | | |
-| `services.displayManager.ly.enable` | | |
-| `services.displayManager.ly.package` | | |
-| `services.displayManager.ly.settings` | | |
-| `services.displayManager.ly.x11Support` | | |
-| `services.displayManager.plasma-login-manager.enable` | | |
-| `services.displayManager.plasma-login-manager.package` | | |
-| `services.displayManager.plasma-login-manager.settings` | | |
-| `services.displayManager.preStart` | | |
-| `services.displayManager.sddm.autoLogin.enable` | | |
-| `services.displayManager.sddm.autoLogin.minimumUid` | | |
-| `services.displayManager.sddm.autoLogin.relogin` | | |
-| `services.displayManager.sddm.autoLogin.user` | | |
-| `services.displayManager.sddm.autoNumlock` | | |
-| `services.displayManager.sddm.enable` | | |
-| `services.displayManager.sddm.enableHidpi` | | |
-| `services.displayManager.sddm.extraConfig` | | |
-| `services.displayManager.sddm.extraPackages` | | |
-| `services.displayManager.sddm.package` | | |
-| `services.displayManager.sddm.settings` | | |
-| `services.displayManager.sddm.setupScript` | | |
-| `services.displayManager.sddm.stopScript` | | |
-| `services.displayManager.sddm.theme` | | |
-| `services.displayManager.sddm.themes` | | |
-| `services.displayManager.sddm.wayland.compositor` | | |
-| `services.displayManager.sddm.wayland.compositorCommand` | | |
-| `services.displayManager.sddm.wayland.enable` | | |
-| `services.displayManager.sessionData` | | |
-| `services.displayManager.sessionPackages` | | |
+| --- | --- | --- |
+| `services.displayManager.autoLogin` | `submodule` | Auto login configuration attrset. |
+| `services.displayManager.autoLogin.enable` | `boolean` | Automatically log in as {option}`services.displayManager.autoLogin.user`. |
+| `services.displayManager.autoLogin.user` | `null or string` | User to be used for the automatic login. |
+| `services.displayManager.cosmic-greeter.enable` | `boolean` | Whether to enable COSMIC greeter. |
+| `services.displayManager.cosmic-greeter.package` | `package` | The cosmic-greeter package to use. |
+| `services.displayManager.defaultSession` | `null or session name` | Graphical session to pre-select in the session chooser (only effective for GDM, LightDM and SDDM). On GDM, LightDM and SDDM, it will also be used as a session for auto-login. Set this option to empty string to get an error with a list of currently available sessions. |
+| `services.displayManager.dms-greeter.compositor.customConfig` | `strings concatenated with "\n"` | Custom compositor configuration to use for the greeter session. This configuration is written to a file and passed to the compositor when launching the greeter. The format and available options depend on the selected compositor. Leave empty to use the system's default compositor configuration. |
+| `services.displayManager.dms-greeter.compositor.name` | `one of "niri", "hyprland", "sway"` | The Wayland compositor to run the greeter in. The specified compositor must be enabled via its corresponding `programs.<compositor>.enable` option. Supported compositors: - niri: A scrollable-tiling Wayland compositor - hyprland: A dynamic tiling Wayland compositor - sway: An i3-compatible Wayland compositor |
+| `services.displayManager.dms-greeter.configFiles` | `list of absolute path` | List of DankMaterialShell configuration files to copy into the greeter data directory at `/var/lib/dms-greeter`. This is useful for preserving user preferences like wallpapers, themes, and other settings in the greeter screen. ::: {.tip} Use {option}`configHome` instead if your configuration files are in standard XDG locations. ::: |
+| `services.displayManager.dms-greeter.configHome` | `null or string` | Path to a user's home directory from which to copy DankMaterialShell configuration files. When set, the following files will be automatically copied to the greeter: - `~/.config/DankMaterialShell/settings.json` - `~/.local/state/DankMaterialShell/session.json` - `~/.cache/DankMaterialShell/dms-colors.json` If your configuration files are in non-standard locations, use the {option}`configFiles` option instead. |
+| `services.displayManager.dms-greeter.enable` | `boolean` | Whether to enable DankMaterialShell greeter. |
+| `services.displayManager.dms-greeter.logs.path` | `absolute path` | File path where DMS greeter logs will be saved. This is useful for debugging greeter issues. Logs will include output from both the greeter and the compositor. |
+| `services.displayManager.dms-greeter.logs.save` | `boolean` | Whether to enable saving logs from the DMS greeter to a file. |
+| `services.displayManager.dms-greeter.package` | `package` | The DankMaterialShell package to use for the greeter. Defaults to the package from `programs.dms-shell` if it is enabled, otherwise defaults to `pkgs.dms-shell`. |
+| `services.displayManager.dms-greeter.quickshell.package` | `package` | The Quickshell package to use for the greeter. Defaults to the quickshell package from `programs.dms-shell` if it is enabled, otherwise defaults to `pkgs.quickshell`. |
+| `services.displayManager.enable` | `boolean` | Whether to enable shared display manager integration. |
+| `services.displayManager.gdm.autoLogin.delay` | `signed integer` | Seconds of inactivity after which the autologin will be performed. |
+| `services.displayManager.gdm.autoSuspend` | `boolean` | On the GNOME Display Manager login screen, suspend the machine after inactivity. (Does not affect automatic suspend while logged in, or at lock screen.) |
+| `services.displayManager.gdm.banner` | `null or strings concatenated with "\n"` | Optional message to display on the login screen. |
+| `services.displayManager.gdm.debug` | `boolean` | Whether to enable debugging messages in GDM. |
+| `services.displayManager.gdm.enable` | `boolean` | Whether to enable GDM, the GNOME Display Manager. |
+| `services.displayManager.gdm.extraPackages` | `list of package` | Additional packages to add to XDG_DATA_DIRS for GDM. The `/share` directory of each package will be added to the data path. |
+| `services.displayManager.gdm.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Options passed to the gdm daemon. See [here](https://help.gnome.org/admin/gdm/stable/configuration.html.en#daemonconfig) for supported options. |
+| `services.displayManager.generic.enable` | `boolean` | Whether to enable generic display manager integration - deprecated. |
+| `services.displayManager.generic.environment` | `attribute set of unspecified value` | Additional environment variables needed by the display manager. |
+| `services.displayManager.generic.execCmd` | `null or string` | Command to start the display manager. |
+| `services.displayManager.generic.preStart` | `strings concatenated with "\n"` | Script executed before the display manager is started. |
+| `services.displayManager.hiddenUsers` | `list of string` | A list of users which will not be shown in the display manager. |
+| `services.displayManager.lemurs.enable` | `boolean` | Whether to enable lemurs, a customizable TUI display/login manager. ::: {.note} For Wayland compositors, your user must be in the "seat" group. ::: |
+| `services.displayManager.lemurs.package` | `package` | The lemurs package to use. |
+| `services.displayManager.lemurs.settings` | `TOML value` | Configuration for lemurs, provided as a Nix attribute set and automatically serialized to TOML. See [lemurs configuration documentation](https://github.com/coastalwhite/lemurs/blob/main/extra/config.toml) for available options. |
+| `services.displayManager.logToFile` | `boolean` | Whether the display manager redirects the output of the session script to {file}`~/.xsession-errors`. |
+| `services.displayManager.logToJournal` | `boolean` | Whether the display manager redirects the output of the session script to the systemd journal. |
+| `services.displayManager.ly.enable` | `boolean` | Whether to enable ly as the display manager. |
+| `services.displayManager.ly.package` | `package` | The ly package to use. |
+| `services.displayManager.ly.settings` | `attribute set of (INI atom (null, bool, int, float or string))` | Extra settings merged in and overwriting defaults in config.ini. |
+| `services.displayManager.ly.x11Support` | `boolean` | Whether to enable support for X11 |
+| `services.displayManager.plasma-login-manager.enable` | `boolean` | Whether to enable Plasma Login Manager. |
+| `services.displayManager.plasma-login-manager.package` | `package` | The plasma-login-manager package to use. |
+| `services.displayManager.plasma-login-manager.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Additional settings for Plasma Login Manager (see `man plasmalogin.conf`) |
+| `services.displayManager.sddm.autoLogin.minimumUid` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Minimum user ID for auto-login user. |
+| `services.displayManager.sddm.autoLogin.relogin` | `boolean` | If true automatic login will kick in again on session exit (logout), otherwise it will only log in automatically when the display-manager is started. |
+| `services.displayManager.sddm.autoNumlock` | `boolean` | Enable numlock at login. |
+| `services.displayManager.sddm.enable` | `boolean` | Whether to enable sddm as the display manager. |
+| `services.displayManager.sddm.enableHidpi` | `boolean` | Whether to enable automatic HiDPI mode. |
+| `services.displayManager.sddm.extraPackages` | `list of package` | Extra Qt plugins / QML libraries to add to the environment. |
+| `services.displayManager.sddm.package` | `package` | The sddm package to use. |
+| `services.displayManager.sddm.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Extra settings merged in and overwriting defaults in sddm.conf. |
+| `services.displayManager.sddm.setupScript` | `string` | A script to execute when starting the display server. DEPRECATED, please use {option}`services.xserver.displayManager.setupCommands`. |
+| `services.displayManager.sddm.stopScript` | `string` | A script to execute when stopping the display server. |
+| `services.displayManager.sddm.theme` | `string` | Greeter theme to use. |
+| `services.displayManager.sddm.wayland.compositor` | `one of "kwin", "weston"` | The compositor to use: kwin, weston |
+| `services.displayManager.sddm.wayland.enable` | `boolean` | Whether to enable experimental Wayland support. |
+| `services.displayManager.sessionPackages` | `list of package with provided sessions` | A list of packages containing x11 or wayland session files to be passed to the display manager. |

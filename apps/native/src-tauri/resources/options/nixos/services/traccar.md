@@ -5,8 +5,8 @@
 All options under `services.traccar`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.traccar.enable` | | |
-| `services.traccar.environmentFile` | | |
-| `services.traccar.settings` | | |
-| `services.traccar.settingsFile` | | |
+| --- | --- | --- |
+| `services.traccar.enable` | `boolean` | Whether to enable Traccar, an open source GPS tracking system. |
+| `services.traccar.environmentFile` | `null or absolute path` | File containing environment variables to substitute in the configuration before starting Traccar. Can be used for storing the secrets without making them available in the world-readable Nix store. For example, you can set {option}`services.traccar.settings.database.password = "$TRACCAR_DB_PASSWORD"` and then specify `TRACCAR_DB_PASSWORD="<secret>"` in the environment file. This value will get substituted in the configuration file. |
+| `services.traccar.settings` | `unspecified value` | {file}`config.xml` configuration as a Nix attribute set. This option is ignored if `settingsFile` is set. Nested attributes get translated to a properties entry in the traccar configuration. For instance: `mail.smtp.port = "25"` results in the following entry: `<entry key='mail.smtp.port'>25</entry>` Secrets should be specified using {option}`environmentFile` instead of this world-readable attribute set. [Traccar - Configuration File](https://www.traccar.org/configuration-file/). |
+| `services.traccar.settingsFile` | `null or absolute path` | File used as configuration for traccar. When specified, {option}`settings` is ignored. |

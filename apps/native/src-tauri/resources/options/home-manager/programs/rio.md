@@ -5,8 +5,8 @@
 All options under `programs.rio`.
 
 | Option | Type | Description |
-| ----------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| --- | --- | --- |
 | `programs.rio.enable` | `boolean` | Enable Rio, a terminal built to run everywhere, as a native desktop applications by Rust/WebGPU or even in the browsers powered by WebAssembly/WebGPU. |
 | `programs.rio.package` | `null or package` | The rio package to use. |
-| `programs.rio.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/rio/config.toml . See https://raphamorim.io/rio/docs/#configuration-file for options. |
-| `programs.rio.themes` | `attribute set of (TOML value or absolute path)` | Theme files written to $XDG_CONFIG_HOME/rio/themes/ . See https://rioterm.com/docs/config#building-your-own-theme for supported values. |
+| `programs.rio.settings` | `TOML value` | Configuration written to {file}`$XDG_CONFIG_HOME/rio/config.toml`. See <https://raphamorim.io/rio/docs/#configuration-file> for options. |
+| `programs.rio.themes` | `attribute set of (TOML value or absolute path)` | Theme files written to {file}`$XDG_CONFIG_HOME/rio/themes/`. See <https://rioterm.com/docs/config#building-your-own-theme> for supported values. |

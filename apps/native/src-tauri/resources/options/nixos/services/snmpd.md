@@ -5,11 +5,11 @@
 All options under `services.snmpd`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.snmpd.configFile` | | |
-| `services.snmpd.configText` | | |
-| `services.snmpd.enable` | | |
-| `services.snmpd.listenAddress` | | |
-| `services.snmpd.openFirewall` | | |
-| `services.snmpd.package` | | |
-| `services.snmpd.port` | | |
+| --- | --- | --- |
+| `services.snmpd.configFile` | `absolute path` | Path to the snmpd.conf file. By default, if {option}`configText` is set, a config file will be automatically generated. |
+| `services.snmpd.configText` | `strings concatenated with "\n"` | The contents of the snmpd.conf. If the {option}`configFile` option is set, this value will be ignored. Note that the contents of this option will be added to the Nix store as world-readable plain text, {option}`configFile` can be used in addition to a secret management tool to protect sensitive data. |
+| `services.snmpd.enable` | `boolean` | Whether to enable snmpd. |
+| `services.snmpd.listenAddress` | `string` | The address to listen on for SNMP and AgentX messages. |
+| `services.snmpd.openFirewall` | `boolean` | Open port in firewall for snmpd. |
+| `services.snmpd.package` | `package` | The net-snmp package to use. |
+| `services.snmpd.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to listen on for SNMP and AgentX messages. |

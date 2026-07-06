@@ -5,7 +5,7 @@
 All options under `programs.airlift`.
 
 | Option | Type | Description |
-| --------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.airlift.enable` | `boolean` | Whether to enable airlift. |
 | `programs.airlift.package` | `null or package` | The airlift package to use. |
-| `programs.airlift.settings` | `YAML 1.1 value` | Configuration settings for airlift. All the available options can be found here: https://artifacthub.io/packages/helm/apache-airflow/airflow?modal=values . |
+| `programs.airlift.settings` | `YAML 1.1 value` | Configuration settings for airlift. All the available options can be found here: <https://artifacthub.io/packages/helm/apache-airflow/airflow?modal=values>. |

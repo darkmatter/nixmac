@@ -5,11 +5,11 @@
 All options under `services.jitterentropy-rngd`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.jitterentropy-rngd.enable` | | |
-| `services.jitterentropy-rngd.flags` | | |
-| `services.jitterentropy-rngd.forceSP800-90B` | | |
-| `services.jitterentropy-rngd.memlockLimit` | | |
-| `services.jitterentropy-rngd.osr` | | |
-| `services.jitterentropy-rngd.package` | | |
-| `services.jitterentropy-rngd.verbose` | | |
+| --- | --- | --- |
+| `services.jitterentropy-rngd.enable` | `boolean` | Whether to enable jitterentropy-rngd service configuration. |
+| `services.jitterentropy-rngd.flags` | `signed integer` | Additional flags to pass to jitterentropy |
+| `services.jitterentropy-rngd.forceSP800-90B` | `boolean` | Force SP800-90B mode for entropy reading |
+| `services.jitterentropy-rngd.memlockLimit` | `string` | Set limit for lockable memory with mlock |
+| `services.jitterentropy-rngd.osr` | `integer between 3 and 20 (both inclusive)` | Oversampling rate for jitterentropy (3 to 20) |
+| `services.jitterentropy-rngd.package` | `package` | The jitterentropy-rngd package to use. |
+| `services.jitterentropy-rngd.verbose` | `boolean` | Enable verbose log messages |

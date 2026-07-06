@@ -5,7 +5,7 @@
 All options under `qt`.
 
 | Option | Type | Description |
-| ------------------ | ---- | ----------- |
-| `qt.enable` | | |
-| `qt.platformTheme` | | |
-| `qt.style` | | |
+| --- | --- | --- |
+| `qt.enable` | `boolean` | Whether to enable Qt configuration, including theming. Enabling this option is necessary for Qt plugins to work in the installed profiles (e.g.: `nix-env -i` or `environment.systemPackages`). |
+| `qt.platformTheme` | `null or one of "gnome", "gtk2", "kde", "lxqt", "qt5ct"` | Selects the platform theme to use for Qt applications. The options are - `gnome`: Use GNOME theme with [qgnomeplatform](https://github.com/FedoraQt/QGnomePlatform) - `gtk2`: Use GTK theme with [qtstyleplugins](https://github.com/qt/qtstyleplugins) - `kde`: Use Qt settings from Plasma. - `lxqt`: Use LXQt style set using the [lxqt-config-appearance](https://github.com/lxqt/lxqt-config) application. - `qt5ct`: Use Qt style set using the [qt5ct](https://sourceforge.net/projects/qt5ct/) and [qt6ct](https://github.com/trialuser02/qt6ct) applications. |
+| `qt.style` | `null or one of "adwaita", "adwaita-dark", "adwaita-highcontrast", "adwaita-highcontrastinverse", "bb10bright", "bb10dark", "breeze", "cde", "cleanlooks", "gtk2", "kvantum", "motif", "plastique"` | Selects the style to use for Qt applications. The options are - `adwaita`, `adwaita-dark`, `adwaita-highcontrast`, `adawaita-highcontrastinverse`: Use Adwaita Qt style with [adwaita](https://github.com/FedoraQt/adwaita-qt) - `breeze`: Use the Breeze style from [breeze](https://github.com/KDE/breeze) - `bb10bright`, `bb10dark`, `cleanlooks`, `gtk2`, `motif`, `plastique`: Use styles from [qtstyleplugins](https://github.com/qt/qtstyleplugins) - `kvantum`: Use styles from [kvantum](https://github.com/tsujan/Kvantum) |

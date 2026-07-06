@@ -5,8 +5,8 @@
 All options under `services.whoogle-search`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.whoogle-search.enable` | | |
-| `services.whoogle-search.extraEnv` | | |
-| `services.whoogle-search.listenAddress` | | |
-| `services.whoogle-search.port` | | |
+| --- | --- | --- |
+| `services.whoogle-search.enable` | `boolean` | Whether to enable Whoogle, a metasearch engine. |
+| `services.whoogle-search.extraEnv` | `attribute set of string` | Extra environment variables to pass to Whoogle, see https://github.com/benbusby/whoogle-search?tab=readme-ov-file#environment-variables |
+| `services.whoogle-search.listenAddress` | `string` | Address to listen on for the web interface. |
+| `services.whoogle-search.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |

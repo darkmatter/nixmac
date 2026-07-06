@@ -5,6 +5,6 @@
 All options under `services.spice-webdavd`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.spice-webdavd.enable` | | |
-| `services.spice-webdavd.package` | | |
+| --- | --- | --- |
+| `services.spice-webdavd.enable` | `boolean` | Whether to enable the spice guest webdav proxy daemon. |
+| `services.spice-webdavd.package` | `package` | The phodav package to use. |

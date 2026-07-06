@@ -5,9 +5,9 @@
 All options under `services.eternal-terminal`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.eternal-terminal.enable` | | |
-| `services.eternal-terminal.logSize` | | |
-| `services.eternal-terminal.port` | | |
-| `services.eternal-terminal.silent` | | |
-| `services.eternal-terminal.verbosity` | | |
+| --- | --- | --- |
+| `services.eternal-terminal.enable` | `boolean` | Whether to enable Eternal Terminal server. |
+| `services.eternal-terminal.logSize` | `signed integer` | The maximum log size. |
+| `services.eternal-terminal.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port the server should listen on. Will use the server's default (2022) if not specified. Make sure to open this port in the firewall if necessary. |
+| `services.eternal-terminal.silent` | `boolean` | If enabled, disables all logging. |
+| `services.eternal-terminal.verbosity` | `one of 0, 1, 2, 3, 4, 5, 6, 7, 8, 9` | The verbosity level (0-9). |

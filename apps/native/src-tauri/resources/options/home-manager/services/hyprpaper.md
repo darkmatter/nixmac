@@ -5,8 +5,9 @@
 All options under `services.hyprpaper`.
 
 | Option | Type | Description |
-| -------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `services.hyprpaper.enable` | `boolean` | Whether to enable Hyprpaper, Hyprland’s wallpaper daemon. |
+| --- | --- | --- |
+| `services.hyprpaper.enable` | `boolean` | Whether to enable Hyprpaper, Hyprland's wallpaper daemon. |
 | `services.hyprpaper.importantPrefixes` | `list of string` | List of prefix of attributes to source at the top of the config. |
 | `services.hyprpaper.package` | `null or package` | The hyprpaper package to use. |
-| `services.hyprpaper.settings` | `Hyprpaper configuration value` | hyprpaper configuration written in Nix. Entries with the same key should be written as lists. Variables’ and colors’ names should be quoted. See https://wiki.hypr.land/Hypr-Ecosystem/hyprpaper/ for more examples. |
+| `services.hyprpaper.settings` | `Hyprpaper configuration value` | hyprpaper configuration written in Nix. Entries with the same key should be written as lists. Variables' and colors' names should be quoted. See <https://wiki.hypr.land/Hypr-Ecosystem/hyprpaper/> for more examples. |
+| `services.hyprpaper.systemdTarget` | `string` | Systemd target to bind to. |

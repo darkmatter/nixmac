@@ -5,6 +5,6 @@
 All options under `services.inputplumber`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.inputplumber.enable` | | |
-| `services.inputplumber.package` | | |
+| --- | --- | --- |
+| `services.inputplumber.enable` | `boolean` | Whether to enable InputPlumber. |
+| `services.inputplumber.package` | `package` | The inputplumber package to use. |

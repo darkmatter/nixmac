@@ -5,6 +5,6 @@
 All options under `programs.immersed`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `programs.immersed.enable` | | |
-| `programs.immersed.package` | | |
+| --- | --- | --- |
+| `programs.immersed.enable` | `boolean` | Whether to enable immersed. |
+| `programs.immersed.package` | `package` | The immersed package to use. |

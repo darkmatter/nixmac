@@ -5,9 +5,9 @@
 All options under `services.mimir`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.mimir.configFile` | | |
-| `services.mimir.configuration` | | |
-| `services.mimir.enable` | | |
-| `services.mimir.extraFlags` | | |
-| `services.mimir.package` | | |
+| --- | --- | --- |
+| `services.mimir.configFile` | `null or absolute path` | Specify a configuration file that Mimir should use. |
+| `services.mimir.configuration` | `JSON value` | Specify the configuration for Mimir in Nix. |
+| `services.mimir.enable` | `boolean` | Whether to enable mimir. |
+| `services.mimir.extraFlags` | `list of string` | Specify a list of additional command line flags, which get escaped and are then passed to Mimir. |
+| `services.mimir.package` | `package` | The mimir package to use. |

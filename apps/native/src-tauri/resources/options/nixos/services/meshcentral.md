@@ -5,7 +5,7 @@
 All options under `services.meshcentral`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.meshcentral.enable` | | |
-| `services.meshcentral.package` | | |
-| `services.meshcentral.settings` | | |
+| --- | --- | --- |
+| `services.meshcentral.enable` | `boolean` | Whether to enable MeshCentral computer management server. |
+| `services.meshcentral.package` | `package` | The meshcentral package to use. |
+| `services.meshcentral.settings` | `open submodule of attribute set of (JSON value)` | Settings for MeshCentral. Refer to upstream documentation for details: - [JSON Schema definition](https://github.com/Ylianst/MeshCentral/blob/master/meshcentral-config-schema.json) - [simple sample configuration](https://github.com/Ylianst/MeshCentral/blob/master/sample-config.json) - [complex sample configuration](https://github.com/Ylianst/MeshCentral/blob/master/sample-config-advanced.json) - [Old homepage with documentation link](https://www.meshcommander.com/meshcentral2) |

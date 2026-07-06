@@ -5,14 +5,34 @@
 All options under `services.mosquitto`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.mosquitto.bridges` | | |
-| `services.mosquitto.dataDir` | | |
-| `services.mosquitto.enable` | | |
-| `services.mosquitto.includeDirs` | | |
-| `services.mosquitto.listeners` | | |
-| `services.mosquitto.logDest` | | |
-| `services.mosquitto.logType` | | |
-| `services.mosquitto.package` | | |
-| `services.mosquitto.persistence` | | |
-| `services.mosquitto.settings` | | |
+| --- | --- | --- |
+| `services.mosquitto.bridges` | `attribute set of (submodule)` | Bridges to build to other MQTT brokers. |
+| `services.mosquitto.bridges.<name>.addresses` | `list of (submodule)` | Remote endpoints for the bridge. |
+| `services.mosquitto.bridges.<name>.addresses.*.address` | `single-line string` | Address of the remote MQTT broker. |
+| `services.mosquitto.bridges.<name>.addresses.*.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port of the remote MQTT broker. |
+| `services.mosquitto.bridges.<name>.settings` | `open submodule of attribute set of (string, path, bool, or integer)` | Additional settings for this bridge. |
+| `services.mosquitto.bridges.<name>.topics` | `list of single-line string` | Topic patterns to be shared between the two brokers. Refer to the [ mosquitto.conf documentation](https://mosquitto.org/man/mosquitto-conf-5.html) for details on the format. |
+| `services.mosquitto.dataDir` | `absolute path` | The data directory. |
+| `services.mosquitto.enable` | `boolean` | Whether to enable the MQTT Mosquitto broker. |
+| `services.mosquitto.includeDirs` | `list of absolute path` | Directories to be scanned for further config files to include. Directories will processed in the order given, `*.conf` files in the directory will be read in case-sensitive alphabetical order. |
+| `services.mosquitto.listeners` | `list of (submodule)` | Listeners to configure on this broker. |
+| `services.mosquitto.listeners.*.acl` | `list of single-line string` | Additional ACL items to prepend to the generated ACL file. |
+| `services.mosquitto.listeners.*.address` | `null or single-line string` | Address to listen on. Listen on `0.0.0.0`/`::` when unset. |
+| `services.mosquitto.listeners.*.authPlugins` | `list of (submodule)` | Authentication plugin to attach to this listener. Refer to the [mosquitto.conf documentation](https://mosquitto.org/man/mosquitto-conf-5.html) for details on authentication plugins. |
+| `services.mosquitto.listeners.*.authPlugins.*.denySpecialChars` | `boolean` | Automatically disallow all clients using `#` or `+` in their name/id. |
+| `services.mosquitto.listeners.*.authPlugins.*.options` | `attribute set of (string, path, bool, or integer)` | Options for the plugin. Each key turns into a `plugin_opt_*` line in the config. |
+| `services.mosquitto.listeners.*.authPlugins.*.plugin` | `absolute path` | Plugin path to load, should be a `.so` file. |
+| `services.mosquitto.listeners.*.omitPasswordAuth` | `boolean` | Omits password checking, allowing anyone to log in with any user name unless other mandatory authentication methods (eg TLS client certificates) are configured. |
+| `services.mosquitto.listeners.*.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. Must be set to 0 to listen on a unix domain socket. |
+| `services.mosquitto.listeners.*.settings` | `open submodule of attribute set of (string, path, bool, or integer)` | Additional settings for this listener. |
+| `services.mosquitto.listeners.*.users` | `attribute set of (submodule)` | A set of users and their passwords and ACLs. |
+| `services.mosquitto.listeners.*.users.<name>.acl` | `list of single-line string` | Control client access to topics on the broker. |
+| `services.mosquitto.listeners.*.users.<name>.hashedPassword` | `null or single-line string` | Specifies the hashed password for the MQTT User. To generate hashed password install the `mosquitto` package and use `mosquitto_passwd`, then extract the second field (after the `:`) from the generated file. |
+| `services.mosquitto.listeners.*.users.<name>.hashedPasswordFile` | `null or absolute path` | Specifies the path to a file containing the hashed password for the MQTT user. To generate hashed password install the `mosquitto` package and use `mosquitto_passwd`, then remove the `username:` prefix from the generated file. The file is securely passed to mosquitto by leveraging systemd credentials. No special permissions need to be set on this file. |
+| `services.mosquitto.listeners.*.users.<name>.password` | `null or single-line string` | Specifies the (clear text) password for the MQTT User. |
+| `services.mosquitto.listeners.*.users.<name>.passwordFile` | `null or absolute path` | Specifies the path to a file containing the clear text password for the MQTT user. The file is securely passed to mosquitto by leveraging systemd credentials. No special permissions need to be set on this file. |
+| `services.mosquitto.logDest` | `list of (absolute path or one of "stdout", "stderr", "syslog", "topic", "dlt")` | Destinations to send log messages to. |
+| `services.mosquitto.logType` | `list of (one of "debug", "error", "warning", "notice", "information", "subscribe", "unsubscribe", "websockets", "none", "all")` | Types of messages to log. |
+| `services.mosquitto.package` | `package` | The mosquitto package to use. |
+| `services.mosquitto.persistence` | `boolean` | Enable persistent storage of subscriptions and messages. |
+| `services.mosquitto.settings` | `open submodule of attribute set of (string, path, bool, or integer)` | Global configuration options for the mosquitto broker. |

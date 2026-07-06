@@ -5,13 +5,89 @@
 All options under `services.strichliste`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.strichliste.domain` | | |
-| `services.strichliste.enable` | | |
-| `services.strichliste.environment` | | |
-| `services.strichliste.environmentFiles` | | |
-| `services.strichliste.nginx.enable` | | |
-| `services.strichliste.nginx.virtualHost` | | |
-| `services.strichliste.packages.backend` | | |
-| `services.strichliste.packages.frontend` | | |
-| `services.strichliste.settings` | | |
+| --- | --- | --- |
+| `services.strichliste.domain` | `string` | Domain name used to configure the webserver virtual host. |
+| `services.strichliste.enable` | `boolean` | Whether to enable strichliste, a web based tally sheet.. |
+| `services.strichliste.environment` | `open submodule of (attribute set)` | Environment variables consumed by Symfony. See <https://github.com/strichliste/strichliste-backend/blob/v2.1.0/.env.dist> for possible options. |
+| `services.strichliste.environment.APP_CACHE_DIR` | `absolute path` | Directory used for caching. |
+| `services.strichliste.environment.APP_ENV` | `string` | The active environment. |
+| `services.strichliste.environment.APP_LOG_DIR` | `absolute path` | Directory to write logs. |
+| `services.strichliste.environment.CORS_ALLOW_ORIGIN` | `string` | Regular expression defining the allowed CORS origins. |
+| `services.strichliste.environment.DATABASE_URL` | `string` | See <https://www.doctrine-project.org/projects/doctrine-dbal/en/3.9/reference/configuration.html#connecting-using-a-url> for more URL examples. |
+| `services.strichliste.environmentFiles` | `list of absolute path` | Environment files to configure Symfony. See <https://github.com/strichliste/strichliste-backend/blob/v2.1.0/.env.dist> for possible options. ::: {.important} You should configure `APP_SECRET` here. ::: |
+| `services.strichliste.nginx.enable` | `boolean` | Whether to enable and configure an nginx vhost to serve strichliste. |
+| `services.strichliste.nginx.virtualHost` | `submodule` | Nginx virtual settings to allow direct customization of its settings. |
+| `services.strichliste.nginx.virtualHost.acmeFallbackHost` | `null or string` | Host which to proxy requests to if ACME challenge is not found. Useful if you want multiple hosts to be able to verify the same domain name. With this option, you could request certificates for the present domain with an ACME client that is running on another host, which you would specify here. |
+| `services.strichliste.nginx.virtualHost.acmeRoot` | `null or string` | Directory for the ACME challenge, which is **public**. Don't put certs or keys in here. Set to null to inherit from config.security.acme. |
+| `services.strichliste.nginx.virtualHost.addSSL` | `boolean` | Whether to enable HTTPS in addition to plain HTTP. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443). |
+| `services.strichliste.nginx.virtualHost.basicAuth` | `attribute set of string` | Basic Auth protection for a vhost. WARNING: This is implemented to store the password in plain text in the Nix store. |
+| `services.strichliste.nginx.virtualHost.basicAuthFile` | `null or absolute path` | Basic Auth password file for a vhost. Can be created by running {command}`nix-shell --packages apacheHttpd --run 'htpasswd -B -c FILENAME USERNAME'`. |
+| `services.strichliste.nginx.virtualHost.default` | `boolean` | Makes this vhost the default. |
+| `services.strichliste.nginx.virtualHost.enableACME` | `boolean` | Whether to ask Let's Encrypt to sign a certificate for this vhost. Alternately, you can use an existing certificate through {option}`useACMEHost`. |
+| `services.strichliste.nginx.virtualHost.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the vhost verbatim. |
+| `services.strichliste.nginx.virtualHost.forceSSL` | `boolean` | Whether to add a separate nginx server block that redirects (defaults to 301, configurable with `redirectCode`) all plain HTTP traffic to HTTPS. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443), where the non-SSL listens are used for the redirect vhosts. |
+| `services.strichliste.nginx.virtualHost.globalRedirect` | `null or string` | If set, all requests for this host are redirected (defaults to 301, configurable with `redirectCode`) to the given hostname. |
+| `services.strichliste.nginx.virtualHost.http2` | `boolean` | Whether to enable the HTTP/2 protocol. Note that (as of writing) due to nginx's implementation, to disable HTTP/2 you have to disable it on all vhosts that use a given IP address / port. If there is one server block configured to enable http2, then it is enabled for all server blocks on this IP. See <https://stackoverflow.com/a/39466948/263061>. |
+| `services.strichliste.nginx.virtualHost.http3` | `boolean` | Whether to enable the HTTP/3 protocol. This requires activating the QUIC transport protocol `services.nginx.virtualHosts.<name>.quic = true;`. Note that HTTP/3 support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> HTTP/3 availability must be manually advertised, preferably in each location block. |
+| `services.strichliste.nginx.virtualHost.http3_hq` | `boolean` | Whether to enable the HTTP/0.9 protocol negotiation used in QUIC interoperability tests. This requires activating the QUIC transport protocol `services.nginx.virtualHosts.<name>.quic = true;`. Note that special application protocol support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> |
+| `services.strichliste.nginx.virtualHost.kTLS` | `boolean` | Whether to enable kTLS support. Implementing TLS in the kernel (kTLS) improves performance by significantly reducing the need for copying operations between user space and the kernel. Required Nginx version 1.21.4 or later. |
+| `services.strichliste.nginx.virtualHost.listen` | `list of (submodule)` | Listen addresses and ports for this virtual host. IPv6 addresses must be enclosed in square brackets. Note: this option overrides `addSSL` and `onlySSL`. If you only want to set the addresses manually and not the ports, take a look at `listenAddresses`. |
+| `services.strichliste.nginx.virtualHost.listen.*.addr` | `string` | Listen address. |
+| `services.strichliste.nginx.virtualHost.listen.*.extraParameters` | `list of string` | Extra parameters of this listen directive. |
+| `services.strichliste.nginx.virtualHost.listen.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number to listen on. If unset and the listen address is not a socket then nginx defaults to 80. |
+| `services.strichliste.nginx.virtualHost.listen.*.proxyProtocol` | `boolean` | Enable PROXY protocol. |
+| `services.strichliste.nginx.virtualHost.listen.*.ssl` | `boolean` | Enable SSL. |
+| `services.strichliste.nginx.virtualHost.listenAddresses` | `list of string` | Listen addresses for this virtual host. Compared to `listen` this only sets the addresses and the ports are chosen automatically. Note: This option overrides `networking.enableIPv6` |
+| `services.strichliste.nginx.virtualHost.locations` | `attribute set of (submodule)` | Declarative location config |
+| `services.strichliste.nginx.virtualHost.locations.<name>.alias` | `null or absolute path` | Alias directory for requests. |
+| `services.strichliste.nginx.virtualHost.locations.<name>.basicAuth` | `attribute set of string` | Basic Auth protection for a vhost. WARNING: This is implemented to store the password in plain text in the Nix store. |
+| `services.strichliste.nginx.virtualHost.locations.<name>.basicAuthFile` | `null or absolute path` | Basic Auth password file for a vhost. Can be created by running {command}`nix-shell --packages apacheHttpd --run 'htpasswd -B -c FILENAME USERNAME'`. |
+| `services.strichliste.nginx.virtualHost.locations.<name>.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the location verbatim. |
+| `services.strichliste.nginx.virtualHost.locations.<name>.fastcgiParams` | `attribute set of (string or absolute path)` | FastCGI parameters to override. Unlike in the Nginx configuration file, overriding only some default parameters won't unset the default values for other parameters. |
+| `services.strichliste.nginx.virtualHost.locations.<name>.index` | `null or string` | Adds index directive. |
+| `services.strichliste.nginx.virtualHost.locations.<name>.priority` | `signed integer` | Order of this location block in relation to the others in the vhost. The semantics are the same as with `lib.mkOrder`. Smaller values have a greater priority. |
+| `services.strichliste.nginx.virtualHost.locations.<name>.proxyPass` | `null or string` | Adds proxy_pass directive and sets recommended proxy headers if recommendedProxySettings is enabled. |
+| `services.strichliste.nginx.virtualHost.locations.<name>.proxyWebsockets` | `boolean` | Whether to support proxying websocket connections with HTTP/1.1. |
+| `services.strichliste.nginx.virtualHost.locations.<name>.recommendedProxySettings` | `boolean` | Enable recommended proxy settings. |
+| `services.strichliste.nginx.virtualHost.locations.<name>.recommendedUwsgiSettings` | `boolean` | Enable recommended uwsgi settings. |
+| `services.strichliste.nginx.virtualHost.locations.<name>.return` | `null or string or signed integer` | Adds a return directive, for e.g. redirections. |
+| `services.strichliste.nginx.virtualHost.locations.<name>.root` | `null or absolute path` | Root directory for requests. |
+| `services.strichliste.nginx.virtualHost.locations.<name>.tryFiles` | `null or string` | Adds try_files directive. |
+| `services.strichliste.nginx.virtualHost.locations.<name>.uwsgiPass` | `null or string` | Adds uwsgi_pass directive and sets recommended proxy headers if recommendedUwsgiSettings is enabled. |
+| `services.strichliste.nginx.virtualHost.onlySSL` | `boolean` | Whether to enable HTTPS and reject plain HTTP connections. This will set defaults for `listen` to listen on all interfaces on port 443. |
+| `services.strichliste.nginx.virtualHost.quic` | `boolean` | Whether to enable the QUIC transport protocol. Note that QUIC support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> |
+| `services.strichliste.nginx.virtualHost.redirectCode` | `integer between 300 and 399 (both inclusive)` | HTTP status used by `globalRedirect` and `forceSSL`. Possible usecases include temporary (302, 307) redirects, keeping the request method and body (307, 308), or explicitly resetting the method to GET (303). See <https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections>. |
+| `services.strichliste.nginx.virtualHost.rejectSSL` | `boolean` | Whether to listen for and reject all HTTPS connections to this vhost. Useful in [default](#opt-services.nginx.virtualHosts._name_.default) server blocks to avoid serving the certificate for another vhost. Uses the `ssl_reject_handshake` directive available in nginx versions 1.19.4 and above. |
+| `services.strichliste.nginx.virtualHost.reuseport` | `boolean` | Create an individual listening socket . It is required to specify only once on one of the hosts. |
+| `services.strichliste.nginx.virtualHost.root` | `null or absolute path` | The path of the web root directory. |
+| `services.strichliste.nginx.virtualHost.serverAliases` | `list of string` | Additional names of virtual hosts served by this virtual host configuration. |
+| `services.strichliste.nginx.virtualHost.serverName` | `null or string` | Name of this virtual host. Defaults to attribute name in virtualHosts. |
+| `services.strichliste.nginx.virtualHost.sslCertificate` | `absolute path` | Path to server SSL certificate. |
+| `services.strichliste.nginx.virtualHost.sslCertificateKey` | `absolute path` | Path to server SSL certificate key. |
+| `services.strichliste.nginx.virtualHost.sslTrustedCertificate` | `null or absolute path` | Path to root SSL certificate for stapling and client certificates. |
+| `services.strichliste.nginx.virtualHost.useACMEHost` | `null or string` | A host of an existing Let's Encrypt certificate to use. This is useful if you have many subdomains and want to avoid hitting the [rate limit](https://letsencrypt.org/docs/rate-limits). Alternately, you can generate a certificate through {option}`enableACME`. *Note that this option does not create any certificates, nor it does add subdomains to existing ones – you will need to create them manually using [](#opt-security.acme.certs).* |
+| `services.strichliste.packages.backend` | `package` | The strichliste package to use. |
+| `services.strichliste.packages.frontend` | `package` | The strichliste-frontend package to use. |
+| `services.strichliste.settings` | `open submodule of (YAML 1.1 value)` | The {file}`strichliste.yaml` configuration as a Nix attribute set. See the [configuration reference](https://github.com/strichliste/strichliste-backend/blob/v2.1.0/docs/Config.md) for possible options. |
+| `services.strichliste.settings.account.lower` | `signed integer` | The credit limit for user accounts. |
+| `services.strichliste.settings.account.upper` | `positive integer, meaning >0` | The maximum balance on a user account. |
+| `services.strichliste.settings.common.idleTimeout` | `signed integer` | Time until the app returns to the start page. |
+| `services.strichliste.settings.i18n.currency.alpha3` | `string` | [ISO 4217] alpha code representing the currency. \[ISO 4217\]: https://en.wikipedia.org/wiki/ISO_4217#List_of_ISO_4217_currency_codes |
+| `services.strichliste.settings.i18n.currency.name` | `string` | Name of the currency. |
+| `services.strichliste.settings.i18n.currency.symbol` | `string` | Symbol for the currency. |
+| `services.strichliste.settings.i18n.language` | `string` | Language used throughout the app. |
+| `services.strichliste.settings.i18n.timezone` | `string` | Timezone used throughout the app, e.g. in the transaction log. |
+| `services.strichliste.settings.payment.boundary.lower` | `signed integer` | The lowest amount that can be used for payments. |
+| `services.strichliste.settings.payment.boundary.upper` | `positive integer, meaning >0` | The highest amount that can be used for payment. |
+| `services.strichliste.settings.payment.deposit.custom` | `boolean` | Whether to allow custom amounts for deposits. |
+| `services.strichliste.settings.payment.deposit.enabled` | `boolean` | Whether to allow money deposits. |
+| `services.strichliste.settings.payment.deposit.steps` | `list of (signed integer or floating point number)` | List of selectable deposit amounts. This should match your most common coins and banknotes. |
+| `services.strichliste.settings.payment.dispense.custom` | `boolean` | Whether to allow custom spending amounts. |
+| `services.strichliste.settings.payment.dispense.enabled` | `boolean` | Whether to allow spending money. |
+| `services.strichliste.settings.payment.dispense.steps` | `list of (signed integer or floating point number)` | List of selectable spending amounts. This should match your most common products. |
+| `services.strichliste.settings.payment.splitInvoice.enabled` | `boolean` | Whether to allow splitting invoices. |
+| `services.strichliste.settings.payment.transaction.enabled` | `boolean` | Whether to allow transactions between user accounts. |
+| `services.strichliste.settings.payment.undo.delete` | `boolean` | Whether to allow deleting within the {option}`services.strichliste.settings.payment.undo.timeout` period. |
+| `services.strichliste.settings.payment.undo.enabled` | `boolean` | Whether to allow undoing transactions withing the {option}`services.strichliste.settings.payment.undo.timeout` period. |
+| `services.strichliste.settings.payment.undo.timeout` | `string` | The time period after creating a transaction in which undoing/deleting remains possible. The format used is documented in <https://www.php.net/manual/en/dateinterval.createfromdatestring.php>. |
+| `services.strichliste.settings.user.stalePeriod` | `string` | Duration after which users are listed as inactive. The format used is documented in <https://www.php.net/manual/en/dateinterval.createfromdatestring.php>. ::: {.tip} This helps unclutter the user listing by prioritizing active users. ::: |

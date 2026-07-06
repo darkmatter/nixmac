@@ -5,7 +5,7 @@
 All options under `programs.eclipse`.
 
 | Option | Type | Description |
-| ------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.eclipse.enable` | `boolean` | Whether to enable Eclipse. |
 | `programs.eclipse.enableLombok` | `boolean` | Whether to enable the Lombok Java Agent in Eclipse. This is necessary to use the Lombok class annotations. |
 | `programs.eclipse.jvmArgs` | `list of string` | JVM arguments to use for the Eclipse process. |

@@ -5,7 +5,7 @@
 All options under `services.wpaperd`.
 
 | Option | Type | Description |
-| --------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| --- | --- | --- |
 | `services.wpaperd.enable` | `boolean` | Whether to enable wpaperd. |
 | `services.wpaperd.package` | `null or package` | The wpaperd package to use. |
-| `services.wpaperd.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/wpaperd/wallpaper.toml . See https://github.com/danyspin97/wpaperd#wallpaper-configuration for the full list of options. |
+| `services.wpaperd.settings` | `TOML value` | Configuration written to {file}`$XDG_CONFIG_HOME/wpaperd/wallpaper.toml`. See <https://github.com/danyspin97/wpaperd#wallpaper-configuration> for the full list of options. |

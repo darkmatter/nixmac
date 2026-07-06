@@ -5,18 +5,18 @@
 All options under `services.graylog`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.graylog.dataDir` | | |
-| `services.graylog.elasticsearchHosts` | | |
-| `services.graylog.enable` | | |
-| `services.graylog.extraConfig` | | |
-| `services.graylog.isMaster` | | |
-| `services.graylog.messageJournalDir` | | |
-| `services.graylog.mongodbUri` | | |
-| `services.graylog.nodeIdFile` | | |
-| `services.graylog.package` | | |
-| `services.graylog.passwordSecret` | | |
-| `services.graylog.plugins` | | |
-| `services.graylog.rootPasswordSha2` | | |
-| `services.graylog.rootUsername` | | |
-| `services.graylog.user` | | |
+| --- | --- | --- |
+| `services.graylog.dataDir` | `string` | Directory used to store Graylog server state. |
+| `services.graylog.elasticsearchHosts` | `list of string` | List of valid URIs of the http ports of your elastic nodes. If one or more of your elasticsearch hosts require authentication, include the credentials in each node URI that requires authentication |
+| `services.graylog.enable` | `boolean` | Whether to enable Graylog, a log management solution. |
+| `services.graylog.extraConfig` | `strings concatenated with "\n"` | Any other configuration options you might want to add |
+| `services.graylog.isMaster` | `boolean` | Whether this is the master instance of your Graylog cluster |
+| `services.graylog.messageJournalDir` | `string` | The directory which will be used to store the message journal. The directory must be exclusively used by Graylog and must not contain any other files than the ones created by Graylog itself |
+| `services.graylog.mongodbUri` | `string` | MongoDB connection string. See http://docs.mongodb.org/manual/reference/connection-string/ for details |
+| `services.graylog.nodeIdFile` | `string` | Path of the file containing the graylog node-id |
+| `services.graylog.package` | `package` | The graylog package to use. |
+| `services.graylog.passwordSecret` | `string` | You MUST set a secret to secure/pepper the stored user passwords here. Use at least 64 characters. Generate one by using for example: pwgen -N 1 -s 96 |
+| `services.graylog.plugins` | `list of package` | Extra graylog plugins |
+| `services.graylog.rootPasswordSha2` | `string` | You MUST specify a hash password for the root user (which you only need to initially set up the system and in case you lose connectivity to your authentication backend) This password cannot be changed using the API or via the web interface. If you need to change it, modify it here. Create one by using for example: echo -n yourpassword | shasum -a 256 and use the resulting hash value as string for the option |
+| `services.graylog.rootUsername` | `string` | Name of the default administrator user |
+| `services.graylog.user` | `string` | User account under which graylog runs |

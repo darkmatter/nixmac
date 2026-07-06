@@ -5,35 +5,75 @@
 All options under `gtk`.
 
 | Option | Type | Description |
-| ------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `gtk.colorScheme` | `null or one of “dark”, “light”` | Default color scheme for all GTK versions |
+| --- | --- | --- |
+| `gtk.colorScheme` | `null or one of "dark", "light"` | Default color scheme for all GTK versions |
 | `gtk.cursorTheme` | `null or (submodule)` | Default cursor theme for all GTK versions. |
+| `gtk.cursorTheme.name` | `string` | The name of the cursor theme within the package. |
+| `gtk.cursorTheme.package` | `null or package` | Package providing the cursor theme. This package will be installed to your profile. If `null` then the cursor theme is assumed to already be available in your profile. |
+| `gtk.cursorTheme.size` | `null or signed integer` | The size of the cursor. |
 | `gtk.enable` | `boolean` | Whether to enable GTK theming and configuration. |
 | `gtk.font` | `null or (submodule)` | Default font for all GTK versions. |
+| `gtk.font.name` | `string` | The family name of the font within the package. |
+| `gtk.font.package` | `null or package` | Package providing the font. This package will be installed to your profile. If `null` then the font is assumed to already be available in your profile. |
+| `gtk.font.size` | `null or signed integer or floating point number` | The size of the font. |
 | `gtk.gtk2.configLocation` | `absolute path` | The location of the GTK 2 configuration file. |
 | `gtk.gtk2.cursorTheme` | `null or (submodule)` | Cursor theme for GTK 2 applications. |
+| `gtk.gtk2.cursorTheme.name` | `string` | The name of the cursor theme within the package. |
+| `gtk.gtk2.cursorTheme.package` | `null or package` | Package providing the cursor theme. This package will be installed to your profile. If `null` then the cursor theme is assumed to already be available in your profile. |
+| `gtk.gtk2.cursorTheme.size` | `null or signed integer` | The size of the cursor. |
 | `gtk.gtk2.enable` | `boolean` | Whether to enable GTK 2 configuration. |
-| `gtk.gtk2.extraConfig` | `strings concatenated with “\n”` | Extra lines to add to ~/.gtkrc-2.0 . |
+| `gtk.gtk2.extraConfig` | `strings concatenated with "\n"` | Extra lines to add to {file}`~/.gtkrc-2.0`. |
 | `gtk.gtk2.font` | `null or (submodule)` | Font for GTK 2 applications. |
+| `gtk.gtk2.font.name` | `string` | The family name of the font within the package. |
+| `gtk.gtk2.font.package` | `null or package` | Package providing the font. This package will be installed to your profile. If `null` then the font is assumed to already be available in your profile. |
+| `gtk.gtk2.font.size` | `null or signed integer or floating point number` | The size of the font. |
 | `gtk.gtk2.force` | `boolean` | Whether to enable GTK 2 config force overwrite without creating a backup. |
 | `gtk.gtk2.iconTheme` | `null or (submodule)` | Icon theme for GTK 2 applications. |
+| `gtk.gtk2.iconTheme.name` | `string` | The name of the icon theme within the package. |
+| `gtk.gtk2.iconTheme.package` | `null or package` | Package providing the icon theme. This package will be installed to your profile. If `null` then the icon theme is assumed to already be available in your profile. |
 | `gtk.gtk2.theme` | `null or (submodule)` | Theme for GTK 2 applications. |
+| `gtk.gtk2.theme.name` | `string` | The name of the theme within the package. |
+| `gtk.gtk2.theme.package` | `null or package` | Package providing the theme. This package will be installed to your profile. If `null` then the theme is assumed to already be available in your profile. For the theme to apply to GTK 4, this option is mandatory. |
 | `gtk.gtk3.bookmarks` | `list of string` | File browser bookmarks. |
-| `gtk.gtk3.colorScheme` | `null or one of “dark”, “light”` | Color scheme for GTK 3 applications. |
+| `gtk.gtk3.colorScheme` | `null or one of "dark", "light"` | Color scheme for GTK 3 applications. |
 | `gtk.gtk3.cursorTheme` | `null or (submodule)` | Cursor theme for GTK 3 applications. |
+| `gtk.gtk3.cursorTheme.name` | `string` | The name of the cursor theme within the package. |
+| `gtk.gtk3.cursorTheme.package` | `null or package` | Package providing the cursor theme. This package will be installed to your profile. If `null` then the cursor theme is assumed to already be available in your profile. |
+| `gtk.gtk3.cursorTheme.size` | `null or signed integer` | The size of the cursor. |
 | `gtk.gtk3.enable` | `boolean` | Whether to enable GTK 3 configuration. |
-| `gtk.gtk3.extraConfig` | `attribute set of (boolean or signed integer or string)` | Extra settings for $XDG_CONFIG_HOME/gtk-3.0/settings.ini . |
-| `gtk.gtk3.extraCss` | `strings concatenated with “\n”` | Extra CSS for $XDG_CONFIG_HOME/gtk-3.0/gtk.css . |
+| `gtk.gtk3.extraConfig` | `attribute set of (boolean or signed integer or string)` | Extra settings for {file}`$XDG_CONFIG_HOME/gtk-3.0/settings.ini`. |
+| `gtk.gtk3.extraCss` | `strings concatenated with "\n"` | Extra CSS for {file}`$XDG_CONFIG_HOME/gtk-3.0/gtk.css`. |
 | `gtk.gtk3.font` | `null or (submodule)` | Font for GTK 3 applications. |
+| `gtk.gtk3.font.name` | `string` | The family name of the font within the package. |
+| `gtk.gtk3.font.package` | `null or package` | Package providing the font. This package will be installed to your profile. If `null` then the font is assumed to already be available in your profile. |
+| `gtk.gtk3.font.size` | `null or signed integer or floating point number` | The size of the font. |
 | `gtk.gtk3.iconTheme` | `null or (submodule)` | Icon theme for GTK 3 applications. |
+| `gtk.gtk3.iconTheme.name` | `string` | The name of the icon theme within the package. |
+| `gtk.gtk3.iconTheme.package` | `null or package` | Package providing the icon theme. This package will be installed to your profile. If `null` then the icon theme is assumed to already be available in your profile. |
 | `gtk.gtk3.theme` | `null or (submodule)` | Theme for GTK 3 applications. |
-| `gtk.gtk4.colorScheme` | `null or one of “dark”, “light”` | Color scheme for GTK 4 applications. |
+| `gtk.gtk3.theme.name` | `string` | The name of the theme within the package. |
+| `gtk.gtk3.theme.package` | `null or package` | Package providing the theme. This package will be installed to your profile. If `null` then the theme is assumed to already be available in your profile. For the theme to apply to GTK 4, this option is mandatory. |
+| `gtk.gtk4.colorScheme` | `null or one of "dark", "light"` | Color scheme for GTK 4 applications. |
 | `gtk.gtk4.cursorTheme` | `null or (submodule)` | Cursor theme for GTK 4 applications. |
+| `gtk.gtk4.cursorTheme.name` | `string` | The name of the cursor theme within the package. |
+| `gtk.gtk4.cursorTheme.package` | `null or package` | Package providing the cursor theme. This package will be installed to your profile. If `null` then the cursor theme is assumed to already be available in your profile. |
+| `gtk.gtk4.cursorTheme.size` | `null or signed integer` | The size of the cursor. |
 | `gtk.gtk4.enable` | `boolean` | Whether to enable GTK 4 configuration. |
-| `gtk.gtk4.extraConfig` | `attribute set of (boolean or signed integer or string)` | Extra settings for $XDG_CONFIG_HOME/gtk-4.0/settings.ini . |
-| `gtk.gtk4.extraCss` | `strings concatenated with “\n”` | Extra CSS for $XDG_CONFIG_HOME/gtk-4.0/gtk.css . |
+| `gtk.gtk4.extraConfig` | `attribute set of (boolean or signed integer or string)` | Extra settings for {file}`$XDG_CONFIG_HOME/gtk-4.0/settings.ini`. |
+| `gtk.gtk4.extraCss` | `strings concatenated with "\n"` | Extra CSS for {file}`$XDG_CONFIG_HOME/gtk-4.0/gtk.css`. |
 | `gtk.gtk4.font` | `null or (submodule)` | Font for GTK 4 applications. |
+| `gtk.gtk4.font.name` | `string` | The family name of the font within the package. |
+| `gtk.gtk4.font.package` | `null or package` | Package providing the font. This package will be installed to your profile. If `null` then the font is assumed to already be available in your profile. |
+| `gtk.gtk4.font.size` | `null or signed integer or floating point number` | The size of the font. |
 | `gtk.gtk4.iconTheme` | `null or (submodule)` | Icon theme for GTK 4 applications. |
-| `gtk.gtk4.theme` | `null or (submodule)` | Theme for GTK 4 applications. |
+| `gtk.gtk4.iconTheme.name` | `string` | The name of the icon theme within the package. |
+| `gtk.gtk4.iconTheme.package` | `null or package` | Package providing the icon theme. This package will be installed to your profile. If `null` then the icon theme is assumed to already be available in your profile. |
+| `gtk.gtk4.theme` | `null or (submodule)` | Theme for GTK 4 applications. Warning: This is not officially supported and applied using a workaround. It may cause issues with some apps. For context, see [Please don’t theme our apps](https://stopthemingmy.app/) and [Restyling apps at scale](https://blogs.gnome.org/tbernard/2018/10/15/restyling-apps-at-scale/). |
+| `gtk.gtk4.theme.name` | `string` | The name of the theme within the package. |
+| `gtk.gtk4.theme.package` | `null or package` | Package providing the theme. This package will be installed to your profile. If `null` then the theme is assumed to already be available in your profile. For the theme to apply to GTK 4, this option is mandatory. |
 | `gtk.iconTheme` | `null or (submodule)` | Default icon theme for all GTK versions. |
+| `gtk.iconTheme.name` | `string` | The name of the icon theme within the package. |
+| `gtk.iconTheme.package` | `null or package` | Package providing the icon theme. This package will be installed to your profile. If `null` then the icon theme is assumed to already be available in your profile. |
 | `gtk.theme` | `null or (submodule)` | Default theme for GTK 2/3. |
+| `gtk.theme.name` | `string` | The name of the theme within the package. |
+| `gtk.theme.package` | `null or package` | Package providing the theme. This package will be installed to your profile. If `null` then the theme is assumed to already be available in your profile. For the theme to apply to GTK 4, this option is mandatory. |

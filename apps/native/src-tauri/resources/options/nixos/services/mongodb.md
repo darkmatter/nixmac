@@ -5,18 +5,17 @@
 All options under `services.mongodb`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `services.mongodb.bind_ip` | | |
-| `services.mongodb.dbpath` | | |
-| `services.mongodb.enable` | | |
-| `services.mongodb.enableAuth` | | |
-| `services.mongodb.extraConfig` | | |
-| `services.mongodb.initialRootPassword` | | |
-| `services.mongodb.initialRootPasswordFile` | | |
-| `services.mongodb.initialScript` | | |
-| `services.mongodb.mongoshPackage` | | |
-| `services.mongodb.package` | | |
-| `services.mongodb.pidFile` | | |
-| `services.mongodb.quiet` | | |
-| `services.mongodb.replSetName` | | |
-| `services.mongodb.user` | | |
+| --- | --- | --- |
+| `services.mongodb.bind_ip` | `string` | IP to bind to |
+| `services.mongodb.dbpath` | `string` | Location where MongoDB stores its files |
+| `services.mongodb.enable` | `boolean` | Whether to enable the MongoDB server. |
+| `services.mongodb.enableAuth` | `boolean` | Enable client authentication. Creates a default superuser with username root! |
+| `services.mongodb.extraConfig` | `strings concatenated with "\n"` | MongoDB extra configuration in YAML format |
+| `services.mongodb.initialRootPasswordFile` | `null or absolute path` | Path to the file containing the password for the root user if auth is enabled. |
+| `services.mongodb.initialScript` | `null or absolute path` | A file containing MongoDB statements to execute on first startup. |
+| `services.mongodb.mongoshPackage` | `package` | The mongosh package to use. |
+| `services.mongodb.package` | `package` | The mongodb package to use. |
+| `services.mongodb.pidFile` | `string` | Location of MongoDB pid file |
+| `services.mongodb.quiet` | `boolean` | quieter output |
+| `services.mongodb.replSetName` | `string` | If this instance is part of a replica set, set its name here. Otherwise, leave empty to run as single node. |
+| `services.mongodb.user` | `string` | User account under which MongoDB runs |

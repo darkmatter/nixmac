@@ -5,11 +5,11 @@
 All options under `services.yarr`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.yarr.address` | | |
-| `services.yarr.authFilePath` | | |
-| `services.yarr.baseUrl` | | |
-| `services.yarr.enable` | | |
-| `services.yarr.environmentFile` | | |
-| `services.yarr.package` | | |
-| `services.yarr.port` | | |
+| --- | --- | --- |
+| `services.yarr.address` | `string` | Address to run server on. |
+| `services.yarr.authFilePath` | `null or absolute path` | Path to a file containing username:password. `null` means no authentication required to use the service. |
+| `services.yarr.baseUrl` | `null or string` | Base path of the service url. |
+| `services.yarr.enable` | `boolean` | Whether to enable Yet another rss reader. |
+| `services.yarr.environmentFile` | `null or absolute path` | Environment file for specifying additional settings such as secrets. See `yarr -help` for all available options. |
+| `services.yarr.package` | `package` | The yarr package to use. |
+| `services.yarr.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to run server on. |

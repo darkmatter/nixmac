@@ -5,6 +5,6 @@
 All options under `services.uvcvideo`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.uvcvideo.dynctrl.enable` | | |
-| `services.uvcvideo.dynctrl.packages` | | |
+| --- | --- | --- |
+| `services.uvcvideo.dynctrl.enable` | `boolean` | Whether to enable {command}`uvcvideo` dynamic controls. Note that enabling this brings the {command}`uvcdynctrl` tool into your environment and register all dynamic controls from specified {command}`packages` to the {command}`uvcvideo` driver. |
+| `services.uvcvideo.dynctrl.packages` | `list of absolute path` | List of packages containing {command}`uvcvideo` dynamic controls rules. All files found in {file}`«pkg»/share/uvcdynctrl/data` will be included. Note that these will serve as input to the {command}`libwebcam` package which through its own {command}`udev` rule will register the dynamic controls from specified packages to the {command}`uvcvideo` driver. |

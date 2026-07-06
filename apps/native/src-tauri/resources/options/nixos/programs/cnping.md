@@ -5,5 +5,5 @@
 All options under `programs.cnping`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `programs.cnping.enable` | | |
+| --- | --- | --- |
+| `programs.cnping.enable` | `boolean` | Whether to enable a setcap wrapper for cnping. |

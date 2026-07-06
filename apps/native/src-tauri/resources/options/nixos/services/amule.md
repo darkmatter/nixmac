@@ -5,17 +5,26 @@
 All options under `services.amule`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.amule.ExternalConnectPasswordFile` | | |
-| `services.amule.WebServerPasswordFile` | | |
-| `services.amule.amuleWebPackage` | | |
-| `services.amule.dataDir` | | |
-| `services.amule.enable` | | |
-| `services.amule.extraArgs` | | |
-| `services.amule.group` | | |
-| `services.amule.openExternalConnectPort` | | |
-| `services.amule.openPeerPorts` | | |
-| `services.amule.openWebServerPort` | | |
-| `services.amule.package` | | |
-| `services.amule.settings` | | |
-| `services.amule.user` | | |
+| --- | --- | --- |
+| `services.amule.ExternalConnectPasswordFile` | `null or absolute path` | File containing the password for connecting with amule-gui, set this only if you didn't set `settings.ExternalConnect.ECPassword` |
+| `services.amule.WebServerPasswordFile` | `null or absolute path` | File containing the password for connecting to the web server, set this only if you didn't set `settings.ExternalConnect.ECPassword` |
+| `services.amule.amuleWebPackage` | `package` | The amule-web package to use. |
+| `services.amule.dataDir` | `absolute path` | Directory holding configuration and by default also incoming and temporary files |
+| `services.amule.enable` | `boolean` | Whether to enable aMule daemon. |
+| `services.amule.extraArgs` | `list of string` | Additional passed arguments |
+| `services.amule.group` | `string` | Group under which amule runs |
+| `services.amule.openExternalConnectPort` | `boolean` | Whether to enable open the external connect port. |
+| `services.amule.openPeerPorts` | `boolean` | Whether to enable open the peer port(s) in the firewall. |
+| `services.amule.openWebServerPort` | `boolean` | Whether to enable open the web server port. |
+| `services.amule.package` | `package` | The amule-daemon package to use. |
+| `services.amule.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Free form attribute set for aMule settings. The final configuration file is generated merging the default settings with these options. |
+| `services.amule.settings.ExternalConnect.ECPassword` | `string` | MD5 hash of the password, obtainaible with `echo "<password>" \| md5sum \| cut -d ' ' -f 1` |
+| `services.amule.settings.ExternalConnect.ECPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | TCP port for external connections, like remote control via amule-gui |
+| `services.amule.settings.WebServer.Enabled` | `one of 0, 1` | Set to 1 to enable the web server |
+| `services.amule.settings.WebServer.Password` | `string` | MD5 hash of the password, obtainaible with `echo "<password>" \| md5sum \| cut -d ' ' -f 1` |
+| `services.amule.settings.WebServer.Port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Web server port |
+| `services.amule.settings.eMule.IncomingDir` | `absolute path` | Directory where aMule moves completed downloads. Files in this directory are automatically shared. Ensure the aMule service has write permissions |
+| `services.amule.settings.eMule.Port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | TCP port for eD2k connections. Required for connecting to servers and achieving a High ID. |
+| `services.amule.settings.eMule.TempDir` | `absolute path` | Directory where aMule stores incomplete downloads (.part/.part.met files). |
+| `services.amule.settings.eMule.UDPPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | UDP port for eD2k traffic (searches, source exchange) and all Kad network communication. Essential for a High ID on both networks and proper Kad functioning. |
+| `services.amule.user` | `string` | The user the aMule daemon should run as |

@@ -5,19 +5,19 @@
 All options under `services.calibre-web`.
 
 | Option | Type | Description |
-| ------------------------------------------------------ | ---- | ----------- |
-| `services.calibre-web.calibrePackage` | | |
-| `services.calibre-web.dataDir` | | |
-| `services.calibre-web.enable` | | |
-| `services.calibre-web.group` | | |
-| `services.calibre-web.listen.ip` | | |
-| `services.calibre-web.listen.port` | | |
-| `services.calibre-web.openFirewall` | | |
-| `services.calibre-web.options.calibreLibrary` | | |
-| `services.calibre-web.options.enableBookConversion` | | |
-| `services.calibre-web.options.enableBookUploading` | | |
-| `services.calibre-web.options.enableKepubify` | | |
-| `services.calibre-web.options.reverseProxyAuth.enable` | | |
-| `services.calibre-web.options.reverseProxyAuth.header` | | |
-| `services.calibre-web.package` | | |
-| `services.calibre-web.user` | | |
+| --- | --- | --- |
+| `services.calibre-web.calibrePackage` | `package` | The calibre package to use. |
+| `services.calibre-web.dataDir` | `string` | Where Calibre-Web stores its data. Either an absolute path, or the directory name below {file}`/var/lib`. |
+| `services.calibre-web.enable` | `boolean` | Whether to enable Calibre-Web. |
+| `services.calibre-web.group` | `string` | Group account under which Calibre-Web runs. |
+| `services.calibre-web.listen.ip` | `string` | IP address that Calibre-Web should listen on. |
+| `services.calibre-web.listen.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listen port for Calibre-Web. |
+| `services.calibre-web.openFirewall` | `boolean` | Open ports in the firewall for the server. |
+| `services.calibre-web.options.calibreLibrary` | `null or absolute path` | Path to Calibre library. |
+| `services.calibre-web.options.enableBookConversion` | `boolean` | Configure path to the Calibre's ebook-convert in the DB. |
+| `services.calibre-web.options.enableBookUploading` | `boolean` | Allow books to be uploaded via Calibre-Web UI. |
+| `services.calibre-web.options.enableKepubify` | `boolean` | Whether to enable kepub conversion support. |
+| `services.calibre-web.options.reverseProxyAuth.enable` | `boolean` | Enable authorization using auth proxy. |
+| `services.calibre-web.options.reverseProxyAuth.header` | `string` | Auth proxy header name. |
+| `services.calibre-web.package` | `package` | The calibre-web package to use. |
+| `services.calibre-web.user` | `string` | User account under which Calibre-Web runs. |

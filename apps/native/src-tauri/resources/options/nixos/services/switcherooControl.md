@@ -5,6 +5,6 @@
 All options under `services.switcherooControl`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.switcherooControl.enable` | | |
-| `services.switcherooControl.package` | | |
+| --- | --- | --- |
+| `services.switcherooControl.enable` | `boolean` | Whether to enable switcheroo-control, a D-Bus service to check the availability of dual-GPU. |
+| `services.switcherooControl.package` | `package` | The switcheroo-control package to use. |

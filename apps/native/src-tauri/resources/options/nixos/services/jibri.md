@@ -5,9 +5,23 @@
 All options under `services.jibri`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.jibri.config` | | |
-| `services.jibri.enable` | | |
-| `services.jibri.finalizeScript` | | |
-| `services.jibri.ignoreCert` | | |
-| `services.jibri.xmppEnvironments` | | |
+| --- | --- | --- |
+| `services.jibri.config` | `HOCON value` | Jibri configuration. See <https://github.com/jitsi/jibri/blob/master/src/main/resources/reference.conf> for default configuration with comments. |
+| `services.jibri.enable` | `boolean` | Whether to enable Jitsi BRoadcasting Infrastructure. Currently Jibri must be run on a host that is also running {option}`services.jitsi-meet.enable`, so for most use cases it will be simpler to run {option}`services.jitsi-meet.jibri.enable`. |
+| `services.jibri.finalizeScript` | `absolute path` | This script runs when jibri finishes recording a video of a conference. |
+| `services.jibri.ignoreCert` | `boolean` | Whether to enable the flag "--ignore-certificate-errors" for the Chromium browser opened by Jibri. Intended for use in automated tests or anywhere else where using a verified cert for Jitsi-Meet is not possible. |
+| `services.jibri.xmppEnvironments` | `attribute set of (submodule)` | XMPP servers to connect to. |
+| `services.jibri.xmppEnvironments.<name>.call.login.domain` | `string` | The domain part of the JID for the recorder. |
+| `services.jibri.xmppEnvironments.<name>.call.login.passwordFile` | `string` | File containing the password for the user. |
+| `services.jibri.xmppEnvironments.<name>.call.login.username` | `string` | User part of the JID for the recorder. |
+| `services.jibri.xmppEnvironments.<name>.control.login.domain` | `string` | The domain part of the JID for this Jibri instance. |
+| `services.jibri.xmppEnvironments.<name>.control.login.passwordFile` | `string` | File containing the password for the user. |
+| `services.jibri.xmppEnvironments.<name>.control.login.username` | `string` | User part of the JID. |
+| `services.jibri.xmppEnvironments.<name>.control.muc.domain` | `string` | The domain part of the MUC to connect to for control. |
+| `services.jibri.xmppEnvironments.<name>.control.muc.nickname` | `string` | The nickname for this Jibri instance in the MUC. |
+| `services.jibri.xmppEnvironments.<name>.control.muc.roomName` | `string` | The room name of the MUC to connect to for control. |
+| `services.jibri.xmppEnvironments.<name>.disableCertificateVerification` | `boolean` | Whether to skip validation of the server's certificate. |
+| `services.jibri.xmppEnvironments.<name>.stripFromRoomDomain` | `string` | The prefix to strip from the room's JID domain to derive the call URL. |
+| `services.jibri.xmppEnvironments.<name>.usageTimeout` | `string` | The duration that the Jibri session can be. A value of zero means indefinitely. |
+| `services.jibri.xmppEnvironments.<name>.xmppDomain` | `string` | The base XMPP domain. |
+| `services.jibri.xmppEnvironments.<name>.xmppServerHosts` | `list of string` | Hostnames of the XMPP servers to connect to. |

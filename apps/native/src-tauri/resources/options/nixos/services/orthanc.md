@@ -5,11 +5,11 @@
 All options under `services.orthanc`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.orthanc.enable` | | |
-| `services.orthanc.environment` | | |
-| `services.orthanc.environmentFile` | | |
-| `services.orthanc.openFirewall` | | |
-| `services.orthanc.package` | | |
-| `services.orthanc.settings` | | |
-| `services.orthanc.stateDir` | | |
+| --- | --- | --- |
+| `services.orthanc.enable` | `boolean` | Whether to enable Orthanc server. |
+| `services.orthanc.environment` | `attribute set of string` | Extra environment variables For more details see <https://orthanc.uclouvain.be/book/users/configuration.html> |
+| `services.orthanc.environmentFile` | `null or absolute path` | Environment file to be passed to the systemd service. Useful for passing secrets to the service to prevent them from being world-readable in the Nix store. |
+| `services.orthanc.openFirewall` | `boolean` | Whether to open the firewall for Orthanc. This adds `services.orthanc.settings.HttpPort` to `networking.firewall.allowedTCPPorts`. |
+| `services.orthanc.package` | `package` | The orthanc package to use. |
+| `services.orthanc.settings` | `open submodule of (JSON value)` | Configuration written to a json file that is read by orthanc. See <https://orthanc.uclouvain.be/book/index.html> for more. |
+| `services.orthanc.stateDir` | `absolute path` | State directory of Orthanc. |

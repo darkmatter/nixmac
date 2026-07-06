@@ -5,46 +5,37 @@
 All options under `programs.zsh`.
 
 | Option | Type | Description |
-| ----------------------------------------------- | ---- | ----------- |
-| `programs.zsh.autosuggestions.async` | | |
-| `programs.zsh.autosuggestions.enable` | | |
-| `programs.zsh.autosuggestions.extraConfig` | | |
-| `programs.zsh.autosuggestions.highlightStyle` | | |
-| `programs.zsh.autosuggestions.strategy` | | |
-| `programs.zsh.enable` | | |
-| `programs.zsh.enableAutosuggestions` | | |
-| `programs.zsh.enableBashCompletion` | | |
-| `programs.zsh.enableCompletion` | | |
-| `programs.zsh.enableGlobalCompInit` | | |
-| `programs.zsh.enableLsColors` | | |
-| `programs.zsh.enableSyntaxHighlighting` | | |
-| `programs.zsh.histFile` | | |
-| `programs.zsh.histSize` | | |
-| `programs.zsh.interactiveShellInit` | | |
-| `programs.zsh.loginShellInit` | | |
-| `programs.zsh.oh-my-zsh.custom` | | |
-| `programs.zsh.oh-my-zsh.enable` | | |
-| `programs.zsh.oh-my-zsh.plugins` | | |
-| `programs.zsh.oh-my-zsh.theme` | | |
-| `programs.zsh.ohMyZsh.cacheDir` | | |
-| `programs.zsh.ohMyZsh.custom` | | |
-| `programs.zsh.ohMyZsh.customPkgs` | | |
-| `programs.zsh.ohMyZsh.enable` | | |
-| `programs.zsh.ohMyZsh.package` | | |
-| `programs.zsh.ohMyZsh.plugins` | | |
-| `programs.zsh.ohMyZsh.preLoaded` | | |
-| `programs.zsh.ohMyZsh.theme` | | |
-| `programs.zsh.promptInit` | | |
-| `programs.zsh.setOptions` | | |
-| `programs.zsh.shellAliases` | | |
-| `programs.zsh.shellInit` | | |
-| `programs.zsh.syntax-highlighting.enable` | | |
-| `programs.zsh.syntax-highlighting.highlighters` | | |
-| `programs.zsh.syntax-highlighting.patterns` | | |
-| `programs.zsh.syntaxHighlighting.enable` | | |
-| `programs.zsh.syntaxHighlighting.highlighters` | | |
-| `programs.zsh.syntaxHighlighting.patterns` | | |
-| `programs.zsh.syntaxHighlighting.styles` | | |
-| `programs.zsh.vteIntegration` | | |
-| `programs.zsh.zsh-autoenv.enable` | | |
-| `programs.zsh.zsh-autoenv.package` | | |
+| --- | --- | --- |
+| `programs.zsh.autosuggestions.async` | `boolean` | Whether to fetch suggestions asynchronously |
+| `programs.zsh.autosuggestions.enable` | `boolean` | Whether to enable zsh-autosuggestions. |
+| `programs.zsh.autosuggestions.extraConfig` | `attribute set of string` | Attribute set with additional configuration values |
+| `programs.zsh.autosuggestions.highlightStyle` | `string` | Highlight style for suggestions ({fore,back}ground color) |
+| `programs.zsh.autosuggestions.strategy` | `list of (one of "history", "completion", "match_prev_cmd")` | `ZSH_AUTOSUGGEST_STRATEGY` is an array that specifies how suggestions should be generated. The strategies in the array are tried successively until a suggestion is found. There are currently three built-in strategies to choose from: - `history`: Chooses the most recent match from history. - `completion`: Chooses a suggestion based on what tab-completion would suggest. (requires `zpty` module) - `match_prev_cmd`: Like `history`, but chooses the most recent match whose preceding history item matches the most recently executed command. Note that this strategy won't work as expected with ZSH options that don't preserve the history order such as `HIST_IGNORE_ALL_DUPS` or `HIST_EXPIRE_DUPS_FIRST`. |
+| `programs.zsh.enable` | `boolean` | Whether to configure zsh as an interactive shell. To enable zsh for a particular user, use the {option}`users.users.<name?>.shell` option for that user. To enable zsh system-wide use the {option}`users.defaultUserShell` option. |
+| `programs.zsh.enableBashCompletion` | `boolean` | Enable compatibility with bash's programmable completion system. |
+| `programs.zsh.enableCompletion` | `boolean` | Enable zsh completion for all interactive zsh shells. |
+| `programs.zsh.enableGlobalCompInit` | `boolean` | Enable execution of compinit call for all interactive zsh shells. This option can be disabled if the user wants to extend its `fpath` and a custom `compinit` call in the local config is required. |
+| `programs.zsh.enableLsColors` | `boolean` | Enable extra colors in directory listings (used by `ls` and `tree`). |
+| `programs.zsh.histFile` | `string` | Change history file. |
+| `programs.zsh.histSize` | `signed integer` | Change history size. |
+| `programs.zsh.interactiveShellInit` | `strings concatenated with "\n"` | Shell script code called during interactive zsh shell initialisation. |
+| `programs.zsh.loginShellInit` | `strings concatenated with "\n"` | Shell script code called during zsh login shell initialisation. |
+| `programs.zsh.ohMyZsh.cacheDir` | `string` | Cache directory to be used by `oh-my-zsh`. Without this option it would default to the read-only nix store. |
+| `programs.zsh.ohMyZsh.custom` | `null or string` | Path to a custom oh-my-zsh package to override config of oh-my-zsh. (Can't be used along with `customPkgs`). |
+| `programs.zsh.ohMyZsh.customPkgs` | `list of package` | List of custom packages that should be loaded into `oh-my-zsh`. |
+| `programs.zsh.ohMyZsh.enable` | `boolean` | Enable oh-my-zsh. |
+| `programs.zsh.ohMyZsh.package` | `package` | The oh-my-zsh package to use. |
+| `programs.zsh.ohMyZsh.plugins` | `list of string` | List of oh-my-zsh plugins |
+| `programs.zsh.ohMyZsh.preLoaded` | `strings concatenated with "\n"` | Shell commands executed before the `oh-my-zsh` is loaded. For example, to disable async git prompt write `zstyle ':omz:alpha:lib:git' async-prompt no` (more information <https://github.com/ohmyzsh/ohmyzsh?tab=readme-ov-file#async-git-prompt>) |
+| `programs.zsh.ohMyZsh.theme` | `string` | Name of the theme to be used by oh-my-zsh. |
+| `programs.zsh.promptInit` | `strings concatenated with "\n"` | Shell script code used to initialise the zsh prompt. |
+| `programs.zsh.setOptions` | `list of string` | Configure zsh options. See {manpage}`zshoptions(1)`. |
+| `programs.zsh.shellAliases` | `attribute set of (null or string or absolute path)` | Set of aliases for zsh shell, which overrides {option}`environment.shellAliases`. See {option}`environment.shellAliases` for an option format description. |
+| `programs.zsh.shellInit` | `strings concatenated with "\n"` | Shell script code called during zsh shell initialisation. |
+| `programs.zsh.syntaxHighlighting.enable` | `boolean` | Whether to enable zsh-syntax-highlighting. |
+| `programs.zsh.syntaxHighlighting.highlighters` | `list of (one of "main", "brackets", "pattern", "cursor", "regexp", "root", "line")` | Specifies the highlighters to be used by zsh-syntax-highlighting. The following defined options can be found here: https://github.com/zsh-users/zsh-syntax-highlighting/blob/master/docs/highlighters.md |
+| `programs.zsh.syntaxHighlighting.patterns` | `attribute set of string` | Specifies custom patterns to be highlighted by zsh-syntax-highlighting. Please refer to the docs for more information about the usage: https://github.com/zsh-users/zsh-syntax-highlighting/blob/master/docs/highlighters/pattern.md |
+| `programs.zsh.syntaxHighlighting.styles` | `attribute set of string` | Specifies custom styles to be highlighted by zsh-syntax-highlighting. Please refer to the docs for more information about the usage: https://github.com/zsh-users/zsh-syntax-highlighting/blob/master/docs/highlighters/main.md |
+| `programs.zsh.vteIntegration` | `boolean` | Whether to enable Zsh integration for VTE terminals. This allows it to preserve the current directory of the shell across terminals. |
+| `programs.zsh.zsh-autoenv.enable` | `boolean` | Whether to enable zsh-autoenv. |
+| `programs.zsh.zsh-autoenv.package` | `package` | The zsh-autoenv package to use. |

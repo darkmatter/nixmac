@@ -5,8 +5,8 @@
 All options under `programs.riff`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---------------- | -------------------------------------------------------------------------------------------------------------- |
-| `programs.riff.commandLineOptions` | `list of string` | Command line arguments to include in the <command>RIFF</command> environment variable. |
-| `programs.riff.enable` | `boolean` | Enable the <command>riff</command> diff highlighter. See <link xlink:href=“https://github.com/walles/riff” />. |
-| `programs.riff.enableGitIntegration` | `boolean` | Whether to enable git integration for riff. |
+| --- | --- | --- |
+| `programs.riff.commandLineOptions` | `list of string` | Command line arguments to include in the <command>RIFF</command> environment variable. Run <command>riff --help</command> for a full list of options |
+| `programs.riff.enable` | `boolean` | Enable the <command>riff</command> diff highlighter. See <link xlink:href="https://github.com/walles/riff" />. |
+| `programs.riff.enableGitIntegration` | `boolean` | Whether to enable git integration for riff. When enabled, riff will be configured as git's pager for diff, log, and show commands. |
 | `programs.riff.package` | `package` | The riffdiff package to use. |

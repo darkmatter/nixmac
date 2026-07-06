@@ -5,9 +5,9 @@
 All options under `services.mjpg-streamer`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.mjpg-streamer.enable` | | |
-| `services.mjpg-streamer.group` | | |
-| `services.mjpg-streamer.inputPlugin` | | |
-| `services.mjpg-streamer.outputPlugin` | | |
-| `services.mjpg-streamer.user` | | |
+| --- | --- | --- |
+| `services.mjpg-streamer.enable` | `boolean` | Whether to enable mjpg-streamer webcam streamer. |
+| `services.mjpg-streamer.group` | `string` | mjpg-streamer group name. |
+| `services.mjpg-streamer.inputPlugin` | `string` | Input plugin. See plugins documentation for more information. |
+| `services.mjpg-streamer.outputPlugin` | `string` | Output plugin. `@www@` is substituted for default mjpg-streamer www directory. See plugins documentation for more information. |
+| `services.mjpg-streamer.user` | `string` | mjpg-streamer user name. |

@@ -5,5 +5,5 @@
 All options under `services.do-agent`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.do-agent.enable` | | |
+| --- | --- | --- |
+| `services.do-agent.enable` | `boolean` | Whether to enable do-agent, the DigitalOcean droplet metrics agent. |

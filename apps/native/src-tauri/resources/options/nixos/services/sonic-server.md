@@ -5,7 +5,7 @@
 All options under `services.sonic-server`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.sonic-server.enable` | | |
-| `services.sonic-server.package` | | |
-| `services.sonic-server.settings` | | |
+| --- | --- | --- |
+| `services.sonic-server.enable` | `boolean` | Whether to enable Sonic Search Index. |
+| `services.sonic-server.package` | `package` | The sonic-server package to use. |
+| `services.sonic-server.settings` | `open submodule of (TOML value)` | Sonic Server configuration options. Refer to <https://github.com/valeriansaliou/sonic/blob/master/CONFIGURATION.md> for a full list of available options. |

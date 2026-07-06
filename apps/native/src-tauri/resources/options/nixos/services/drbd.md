@@ -5,6 +5,6 @@
 All options under `services.drbd`.
 
 | Option | Type | Description |
-| ---------------------- | ---- | ----------- |
-| `services.drbd.config` | | |
-| `services.drbd.enable` | | |
+| --- | --- | --- |
+| `services.drbd.config` | `strings concatenated with "\n"` | Contents of the {file}`drbd.conf` configuration file. |
+| `services.drbd.enable` | `boolean` | Whether to enable support for DRBD, the Distributed Replicated Block Device. |

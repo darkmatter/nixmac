@@ -5,16 +5,16 @@
 All options under `services.distccd`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.distccd.allowedClients` | | |
-| `services.distccd.enable` | | |
-| `services.distccd.jobTimeout` | | |
-| `services.distccd.logLevel` | | |
-| `services.distccd.maxJobs` | | |
-| `services.distccd.nice` | | |
-| `services.distccd.openFirewall` | | |
-| `services.distccd.package` | | |
-| `services.distccd.port` | | |
-| `services.distccd.stats.enable` | | |
-| `services.distccd.stats.port` | | |
-| `services.distccd.zeroconf` | | |
+| --- | --- | --- |
+| `services.distccd.allowedClients` | `list of string` | Client IPs which are allowed to connect to distccd in CIDR notation. Anyone who can connect to the distccd server can run arbitrary commands on that system as the distcc user, therefore you should use this judiciously. |
+| `services.distccd.enable` | `boolean` | Whether to enable distccd, a distributed C/C++ compiler. |
+| `services.distccd.jobTimeout` | `null or signed integer` | Maximum duration, in seconds, of a single compilation request. |
+| `services.distccd.logLevel` | `null or one of "critical", "error", "warning", "notice", "info", "debug"` | Set the minimum severity of error that will be included in the log file. Useful if you only want to see error messages rather than an entry for each connection. |
+| `services.distccd.maxJobs` | `null or signed integer` | Maximum number of tasks distccd should execute at lib.any time. |
+| `services.distccd.nice` | `null or integer between -20 and 19 (both inclusive)` | Niceness of the compilation tasks. |
+| `services.distccd.openFirewall` | `boolean` | Opens the specified TCP port for distcc. |
+| `services.distccd.package` | `package` | The distcc package to use. |
+| `services.distccd.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The TCP port which distccd will listen on. |
+| `services.distccd.stats.enable` | `boolean` | Whether to enable statistics reporting via HTTP server. |
+| `services.distccd.stats.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The TCP port which the distccd statistics HTTP server will listen on. |
+| `services.distccd.zeroconf` | `boolean` | Whether to register via mDNS/DNS-SD |

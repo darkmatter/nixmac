@@ -5,5 +5,5 @@
 All options under `services.lieer`.
 
 | Option | Type | Description |
-| ----------------------- | --------- | ------------------------------------------------------ |
+| --- | --- | --- |
 | `services.lieer.enable` | `boolean` | Whether to enable lieer Gmail synchronization service. |

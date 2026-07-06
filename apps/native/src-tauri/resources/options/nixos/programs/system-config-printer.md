@@ -5,5 +5,5 @@
 All options under `programs.system-config-printer`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `programs.system-config-printer.enable` | | |
+| --- | --- | --- |
+| `programs.system-config-printer.enable` | `boolean` | Whether to enable system-config-printer, a Graphical user interface for CUPS administration. |

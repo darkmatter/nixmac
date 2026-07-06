@@ -5,7 +5,7 @@
 All options under `services.reframe`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.reframe.configs` | | |
-| `services.reframe.enable` | | |
-| `services.reframe.package` | | |
+| --- | --- | --- |
+| `services.reframe.configs` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configurations for ReFrame |
+| `services.reframe.enable` | `boolean` | Whether to enable DRM/KMS based remote desktop for Linux that supports Wayland/NVIDIA/headless/login…. |
+| `services.reframe.package` | `package` | The reframe package to use. |

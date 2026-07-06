@@ -5,31 +5,35 @@
 All options under `services.twmn`.
 
 | Option | Type | Description |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.twmn.duration` | `unsigned integer, meaning >=0` | The time each notification remains visible, in milliseconds. |
 | `services.twmn.enable` | `boolean` | Whether to enable twmn, a tiling window manager notification daemon. |
-| `services.twmn.extraConfig` | `attribute set` | Extra configuration options to add to the twmnd config file. See https://github.com/sboli/twmn/blob/master/README.md for details. |
+| `services.twmn.extraConfig` | `attribute set` | Extra configuration options to add to the twmnd config file. See <https://github.com/sboli/twmn/blob/master/README.md> for details. |
 | `services.twmn.host` | `string` | Host address to listen on for notifications. |
-| `services.twmn.icons.critical` | `null or absolute path` | Path to the critical notifications’ icon. |
-| `services.twmn.icons.info` | `null or absolute path` | Path to the informative notifications’ icon. |
-| `services.twmn.icons.warning` | `null or absolute path` | Path to the warning notifications’ icon. |
+| `services.twmn.icons.critical` | `null or absolute path` | Path to the critical notifications' icon. |
+| `services.twmn.icons.info` | `null or absolute path` | Path to the informative notifications' icon. |
+| `services.twmn.icons.warning` | `null or absolute path` | Path to the warning notifications' icon. |
 | `services.twmn.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | UDP port to listen on for notifications. |
 | `services.twmn.screen` | `null or signed integer` | Screen number to display notifications on when using a multi-head desktop. |
-| `services.twmn.soundCommand` | `string` | Command to execute to play a notification’s sound. |
-| `services.twmn.text.color` | `string` | Notification’s text color. RGB hex and keywords (e.g. lightgray ) are supported. |
-| `services.twmn.text.font.family` | `string` | Notification text’s font family. |
-| `services.twmn.text.font.package` | `null or package` | The font package to use. Package providing the font to use for the notification text. This package is only used if font.package is not null. |
-| `services.twmn.text.font.size` | `unsigned integer, meaning >=0` | Notification text’s font size. |
-| `services.twmn.text.font.variant` | `one of “oblique”, “italic”, “ultra-light”, “light”, “medium”, “semi-bold”, “bold”, “ultra-bold”, “heavy”, “ultra-condensed”, “extra-condensed”, “condensed”, “semi-condensed”, “semi-expanded”, “expanded”, “extra-expanded”, “ultra-expanded”` | Notification text’s font variant. |
-| `services.twmn.text.maxLength` | `null or (unsigned integer, meaning >=0)` | Maximum length of the text before it is cut and suffixed with “…”. Never cuts if null . |
+| `services.twmn.soundCommand` | `string` | Command to execute to play a notification's sound. |
+| `services.twmn.text.color` | `string` | Notification's text color. RGB hex and keywords (e.g. `lightgray`) are supported. |
+| `services.twmn.text.font.family` | `string` | Notification text's font family. |
+| `services.twmn.text.font.package` | `null or package` | The font package to use. Package providing the font to use for the notification text. This package is only used if `font.package` is not null. |
+| `services.twmn.text.font.size` | `unsigned integer, meaning >=0` | Notification text's font size. |
+| `services.twmn.text.font.variant` | `one of "oblique", "italic", "ultra-light", "light", "medium", "semi-bold", "bold", "ultra-bold", "heavy", "ultra-condensed", "extra-condensed", "condensed", "semi-condensed", "semi-expanded", "expanded", "extra-expanded", "ultra-expanded"` | Notification text's font variant. |
+| `services.twmn.text.maxLength` | `null or (unsigned integer, meaning >=0)` | Maximum length of the text before it is cut and suffixed with "...". Never cuts if `null`. |
 | `services.twmn.window.alwaysOnTop` | `boolean` | Whether to enable forcing the notification window to always be on top. |
 | `services.twmn.window.animation.bounce.duration` | `unsigned integer, meaning >=0` | The bounce animation duration in milliseconds. |
 | `services.twmn.window.animation.bounce.enable` | `boolean` | Whether to enable notification bounce when displaying next notification directly. |
-| `services.twmn.window.animation.easeIn` | `submodule` | Options for the notification appearance’s animation. |
-| `services.twmn.window.animation.easeOut` | `submodule` | Options for the notification disappearance’s animation. |
-| `services.twmn.window.color` | `string` | Notification’s background color. RGB hex and keywords (e.g. lightgray ) are supported. |
-| `services.twmn.window.height` | `unsigned integer, meaning >=0` | Height of the slide bar. Useful to match your tiling window manager’s bar. |
-| `services.twmn.window.offset.x` | `signed integer` | Offset of the notification’s slide starting point in pixels on the horizontal axis (positive is rightward). |
-| `services.twmn.window.offset.y` | `signed integer` | Offset of the notification’s slide starting point in pixels on the vertical axis (positive is upward). |
-| `services.twmn.window.opacity` | `integer between 0 and 100 (both inclusive)` | The notification window’s opacity. |
-| `services.twmn.window.position` | `one of “tr”, “top_right”, “tl”, “top_left”, “br”, “bottom_right”, “bl”, “bottom_left”, “tc”, “top_center”, “bc”, “bottom_center”, “c”, “center”` | Position of the notification slide. The notification will slide in vertically from the border if placed in top_center or bottom_center , horizontally otherwise. |
+| `services.twmn.window.animation.easeIn` | `submodule` | Options for the notification appearance's animation. |
+| `services.twmn.window.animation.easeIn.curve` | `integer between 0 and 40 (both inclusive)` | The qt easing-curve animation to use for the animation. See [ QEasingCurve documentation](https://doc.qt.io/qt-5/qeasingcurve.html#Type-enum). |
+| `services.twmn.window.animation.easeIn.duration` | `unsigned integer, meaning >=0` | The animation duration in milliseconds. |
+| `services.twmn.window.animation.easeOut` | `submodule` | Options for the notification disappearance's animation. |
+| `services.twmn.window.animation.easeOut.curve` | `integer between 0 and 40 (both inclusive)` | The qt easing-curve animation to use for the animation. See [ QEasingCurve documentation](https://doc.qt.io/qt-5/qeasingcurve.html#Type-enum). |
+| `services.twmn.window.animation.easeOut.duration` | `unsigned integer, meaning >=0` | The animation duration in milliseconds. |
+| `services.twmn.window.color` | `string` | Notification's background color. RGB hex and keywords (e.g. `lightgray`) are supported. |
+| `services.twmn.window.height` | `unsigned integer, meaning >=0` | Height of the slide bar. Useful to match your tiling window manager's bar. |
+| `services.twmn.window.offset.x` | `signed integer` | Offset of the notification's slide starting point in pixels on the horizontal axis (positive is rightward). |
+| `services.twmn.window.offset.y` | `signed integer` | Offset of the notification's slide starting point in pixels on the vertical axis (positive is upward). |
+| `services.twmn.window.opacity` | `integer between 0 and 100 (both inclusive)` | The notification window's opacity. |
+| `services.twmn.window.position` | `one of "tr", "top_right", "tl", "top_left", "br", "bottom_right", "bl", "bottom_left", "tc", "top_center", "bc", "bottom_center", "c", "center"` | Position of the notification slide. The notification will slide in vertically from the border if placed in `top_center` or `bottom_center`, horizontally otherwise. |

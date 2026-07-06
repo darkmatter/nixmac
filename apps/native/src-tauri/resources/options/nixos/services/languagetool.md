@@ -5,12 +5,12 @@
 All options under `services.languagetool`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.languagetool.allowOrigin` | | |
-| `services.languagetool.enable` | | |
-| `services.languagetool.jrePackage` | | |
-| `services.languagetool.jvmOptions` | | |
-| `services.languagetool.package` | | |
-| `services.languagetool.port` | | |
-| `services.languagetool.public` | | |
-| `services.languagetool.settings` | | |
+| --- | --- | --- |
+| `services.languagetool.allowOrigin` | `null or string` | Set the Access-Control-Allow-Origin header in the HTTP response, used for direct (non-proxy) JavaScript-based access from browsers. `"*"` to allow access from all sites. |
+| `services.languagetool.enable` | `boolean` | Whether to enable the LanguageTool server, a multilingual spelling, style, and grammar checker that helps correct or paraphrase texts. |
+| `services.languagetool.jvmOptions` | `list of string` | Extra command line options for the JVM running languagetool. More information can be found here: <https://docs.oracle.com/en/java/javase/19/docs/specs/man/java.html#standard-options-for-java> |
+| `services.languagetool.package` | `package` | The languagetool package to use. |
+| `services.languagetool.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which LanguageTool listens. |
+| `services.languagetool.public` | `boolean` | Whether to enable access from anywhere (rather than just localhost). |
+| `services.languagetool.settings` | `open submodule of attribute set of (string, package, bool, int or float)` | Configuration file options for LanguageTool, see 'languagetool-http-server --help' for supported settings. |
+| `services.languagetool.settings.cacheSize` | `unsigned integer, meaning >=0` | Number of sentences cached. |

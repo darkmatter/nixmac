@@ -5,19 +5,17 @@
 All options under `programs.direnv`.
 
 | Option | Type | Description |
-| -------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------ |
-| `programs.direnv.config` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/direnv/direnv.toml . |
+| --- | --- | --- |
+| `programs.direnv.config` | `TOML value` | Configuration written to {file}`$XDG_CONFIG_HOME/direnv/direnv.toml`. See {manpage}`direnv.toml(1)`. for the full list of options. |
 | `programs.direnv.enable` | `boolean` | Whether to enable direnv, the environment switcher. |
 | `programs.direnv.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.direnv.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
-| `programs.direnv.enableNixDirenvIntegration` | | |
 | `programs.direnv.enableNushellIntegration` | `boolean` | Whether to enable Nushell integration. |
 | `programs.direnv.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
-| `programs.direnv.mise.enable` | `boolean` | Whether to enable mise , integration of use_mise for direnv. |
+| `programs.direnv.mise.enable` | `boolean` | Whether to enable [mise](https://mise.jdx.dev/direnv.html), integration of use_mise for direnv. |
 | `programs.direnv.mise.package` | `package` | The mise package to use. |
-| `programs.direnv.nix-direnv.enable` | `boolean` | Whether to enable nix-direnv , a fast, persistent use_nix implementation for direnv. |
-| `programs.direnv.nix-direnv.enableFlakes` | | |
+| `programs.direnv.nix-direnv.enable` | `boolean` | Whether to enable [nix-direnv](https://github.com/nix-community/nix-direnv), a fast, persistent use_nix implementation for direnv. |
 | `programs.direnv.nix-direnv.package` | `package` | The nix-direnv package to use. |
 | `programs.direnv.package` | `package` | The direnv package to use. |
 | `programs.direnv.silent` | `boolean` | Whether to enable silent mode, that is, disabling direnv logging. |
-| `programs.direnv.stdlib` | `strings concatenated with “\n”` | Custom stdlib written to $XDG_CONFIG_HOME/direnv/direnvrc . |
+| `programs.direnv.stdlib` | `strings concatenated with "\n"` | Custom stdlib written to {file}`$XDG_CONFIG_HOME/direnv/direnvrc`. |

@@ -5,18 +5,15 @@
 All options under `services.earlyoom`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.earlyoom.enable` | | |
-| `services.earlyoom.enableDebugInfo` | | |
-| `services.earlyoom.enableNotifications` | | |
-| `services.earlyoom.extraArgs` | | |
-| `services.earlyoom.freeMemKillThreshold` | | |
-| `services.earlyoom.freeMemThreshold` | | |
-| `services.earlyoom.freeSwapKillThreshold` | | |
-| `services.earlyoom.freeSwapThreshold` | | |
-| `services.earlyoom.ignoreOOMScoreAdjust` | | |
-| `services.earlyoom.killHook` | | |
-| `services.earlyoom.notificationsCommand` | | |
-| `services.earlyoom.package` | | |
-| `services.earlyoom.reportInterval` | | |
-| `services.earlyoom.useKernelOOMKiller` | | |
+| --- | --- | --- |
+| `services.earlyoom.enable` | `boolean` | Whether to enable early out of memory killing. |
+| `services.earlyoom.enableDebugInfo` | `boolean` | Enable debugging messages. |
+| `services.earlyoom.enableNotifications` | `boolean` | Send notifications about killed processes via the system d-bus. WARNING: enabling this option (while convenient) should *not* be done on a machine where you do not trust the other users as it allows any other local user to DoS your session by spamming notifications. To actually see the notifications in your GUI session, you need to have `systembus-notify` running as your user, which this option handles by enabling {option}`services.systembus-notify`. See [README](https://github.com/rfjakob/earlyoom#notifications) for details. |
+| `services.earlyoom.extraArgs` | `list of string` | Extra command-line arguments to be passed to earlyoom. Each element in the value list will be escaped as an argument without further word-breaking. |
+| `services.earlyoom.freeMemKillThreshold` | `null or integer between 1 and 100 (both inclusive)` | Minimum available memory (in percent) before sending SIGKILL. If unset, this defaults to half of {option}`freeMemThreshold`. See the description of [](#opt-services.earlyoom.freeMemThreshold). |
+| `services.earlyoom.freeMemThreshold` | `integer between 1 and 100 (both inclusive)` | Minimum available memory (in percent). If the available memory falls below this threshold (and the analog is true for {option}`freeSwapThreshold`) the killing begins. SIGTERM is sent first to the process that uses the most memory; then, if the available memory falls below {option}`freeMemKillThreshold` (and the analog is true for {option}`freeSwapKillThreshold`), SIGKILL is sent. See [README](https://github.com/rfjakob/earlyoom#command-line-options) for details. |
+| `services.earlyoom.freeSwapKillThreshold` | `null or integer between 1 and 100 (both inclusive)` | Minimum free swap space (in percent) before sending SIGKILL. If unset, this defaults to half of {option}`freeSwapThreshold`. See the description of [](#opt-services.earlyoom.freeMemThreshold). |
+| `services.earlyoom.freeSwapThreshold` | `integer between 1 and 100 (both inclusive)` | Minimum free swap space (in percent) before sending SIGTERM. See the description of [](#opt-services.earlyoom.freeMemThreshold). |
+| `services.earlyoom.killHook` | `null or absolute path` | An absolute path to an executable to be run for each process killed. Some environment variables are available, see [README](https://github.com/rfjakob/earlyoom#notifications) and [the man page](https://github.com/rfjakob/earlyoom/blob/master/MANPAGE.md#-n-pathtoscript) for details. WARNING: earlyoom is running in a sandbox with ProtectSystem="strict" by default, so filesystem write is also prohibited for the hook. If you want to change these protection rules, override the systemd service via `systemd.services.earlyoom.serviceConfig.ProtectSystem`. |
+| `services.earlyoom.package` | `package` | The earlyoom package to use. |
+| `services.earlyoom.reportInterval` | `signed integer` | Interval (in seconds) at which a memory report is printed (set to 0 to disable). |

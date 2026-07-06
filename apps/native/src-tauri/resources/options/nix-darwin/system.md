@@ -5,61 +5,58 @@
 All options under `system`.
 
 | Option | Type | Description |
-| --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `system.activationScripts` | `boolean` | Whether this file should be generated. This option allows specific files to be disabled. |
-| `system.build` | | |
-| `system.checks.text` | | |
+| --- | --- | --- |
+| `system.activationScripts.<name>.enable` | `boolean` | Whether this file should be generated. This option allows specific files to be disabled. |
+| `system.activationScripts.<name>.source` | `absolute path` | Path of the source file. |
+| `system.activationScripts.<name>.target` | `string` | Name of symlink. Defaults to the attribute name. |
+| `system.activationScripts.<name>.text` | `strings concatenated with "\n"` | Text of the file. |
 | `system.checks.verifyBuildUsers` | `boolean` | Whether to run the Nix build users validation checks. |
 | `system.checks.verifyMacOSVersion` | `boolean` | Whether to run the macOS version check. |
-| `system.checks.verifyNixChannels` | | |
 | `system.checks.verifyNixPath` | `boolean` | Whether to run the NIX_PATH validation checks. |
 | `system.configurationRevision` | `null or string` | The Git revision of the top-level flake from which this configuration was built. |
 | `system.darwinLabel` | `string` | Label to be used in the names of generated outputs. |
-| `system.darwinRelease` | `string (read only)` | The nix-darwin release (e.g. 24.11 ). |
-| `system.darwinRevision` | | |
-| `system.darwinVersion` | | |
-| `system.darwinVersionSuffix` | | |
-| `system.defaults.".GlobalPreferences"."com.apple.mouse.scaling"` | | |
-| `system.defaults.".GlobalPreferences"."com.apple.sound.beep.sound"` | | |
-| `system.defaults.ActivityMonitor.IconType` | `null or signed integer` | Change the icon in the dock when running. |
+| `system.darwinRelease` | `string` | The nix-darwin release (e.g. `24.11`). |
+| `system.defaults.".GlobalPreferences"."com.apple.mouse.scaling"` | `null or floating point number` | Sets the mouse tracking speed. Found in the "Mouse" section of "System Preferences". Set to -1.0 to disable mouse acceleration. |
+| `system.defaults.".GlobalPreferences"."com.apple.sound.beep.sound"` | `null or absolute path` | Sets the system-wide alert sound. Found under "Sound Effects" in the "Sound" section of "System Preferences". Look in "/System/Library/Sounds" for possible candidates. |
+| `system.defaults.ActivityMonitor.IconType` | `null or signed integer` | Change the icon in the dock when running. * 0: Application Icon * 2: Network Usage * 3: Disk Activity * 5: CPU Usage * 6: CPU History Default is null. |
 | `system.defaults.ActivityMonitor.OpenMainWindow` | `null or boolean` | Open the main window when opening Activity Monitor. Default is true. |
-| `system.defaults.ActivityMonitor.ShowCategory` | `null or one of 100, 101, 102, 103, 104, 105, 106, 107` | Change which processes to show. |
-| `system.defaults.ActivityMonitor.SortColumn` | `null or string` | Which column to sort the main activity page (such as “CPUUsage”). Default is null. |
+| `system.defaults.ActivityMonitor.ShowCategory` | `null or one of 100, 101, 102, 103, 104, 105, 106, 107` | Change which processes to show. * 100: All Processes * 101: All Processes, Hierarchally * 102: My Processes * 103: System Processes * 104: Other User Processes * 105: Active Processes * 106: Inactive Processes * 107: Windowed Processes Default is 100. |
+| `system.defaults.ActivityMonitor.SortColumn` | `null or string` | Which column to sort the main activity page (such as "CPUUsage"). Default is null. |
 | `system.defaults.ActivityMonitor.SortDirection` | `null or signed integer` | The sort direction of the sort column (0 is decending). Default is null. |
 | `system.defaults.CustomSystemPreferences` | `open submodule of (plist value)` | Sets custom system preferences |
 | `system.defaults.CustomUserPreferences` | `open submodule of (plist value)` | Sets custom user preferences |
 | `system.defaults.LaunchServices.LSQuarantine` | `null or boolean` | Whether to enable quarantine for downloaded applications. The default is true. |
-| `system.defaults.NSGlobalDomain."com.apple.keyboard.fnState"` | | |
-| `system.defaults.NSGlobalDomain."com.apple.mouse.tapBehavior"` | | |
-| `system.defaults.NSGlobalDomain."com.apple.sound.beep.feedback"` | | |
-| `system.defaults.NSGlobalDomain."com.apple.sound.beep.volume"` | | |
-| `system.defaults.NSGlobalDomain."com.apple.springing.delay"` | | |
-| `system.defaults.NSGlobalDomain."com.apple.springing.enabled"` | | |
-| `system.defaults.NSGlobalDomain."com.apple.swipescrolldirection"` | | |
-| `system.defaults.NSGlobalDomain."com.apple.trackpad.enableSecondaryClick"` | | |
-| `system.defaults.NSGlobalDomain."com.apple.trackpad.forceClick"` | | |
-| `system.defaults.NSGlobalDomain."com.apple.trackpad.scaling"` | | |
-| `system.defaults.NSGlobalDomain."com.apple.trackpad.trackpadCornerClickBehavior"` | | |
+| `system.defaults.NSGlobalDomain."com.apple.keyboard.fnState"` | `null or boolean` | Use F1, F2, etc. keys as standard function keys. |
+| `system.defaults.NSGlobalDomain."com.apple.mouse.tapBehavior"` | `null or value 1 (singular enum)` | Configures the trackpad tap behavior. Mode 1 enables tap to click. |
+| `system.defaults.NSGlobalDomain."com.apple.sound.beep.feedback"` | `null or signed integer` | Apple menu > System Preferences > Sound Make a feedback sound when the system volume changed. This setting accepts the integers 0 or 1. Defaults to 1. |
+| `system.defaults.NSGlobalDomain."com.apple.sound.beep.volume"` | `null or floating point number` | Apple menu > System Preferences > Sound Sets the beep/alert volume level from 0.000 (muted) to 1.000 (100% volume). 75% = 0.7788008 50% = 0.6065307 25% = 0.4723665 |
+| `system.defaults.NSGlobalDomain."com.apple.springing.delay"` | `null or floating point number` | Set the spring loading delay for directories. The default is given in the example. |
+| `system.defaults.NSGlobalDomain."com.apple.springing.enabled"` | `null or boolean` | Whether to enable spring loading (expose) for directories. |
+| `system.defaults.NSGlobalDomain."com.apple.swipescrolldirection"` | `null or boolean` | Whether to enable "Natural" scrolling direction. The default is true. |
+| `system.defaults.NSGlobalDomain."com.apple.trackpad.enableSecondaryClick"` | `null or boolean` | Whether to enable trackpad secondary click. The default is true. |
+| `system.defaults.NSGlobalDomain."com.apple.trackpad.forceClick"` | `null or boolean` | Whether to enable trackpad force click. |
+| `system.defaults.NSGlobalDomain."com.apple.trackpad.scaling"` | `null or floating point number` | Configures the trackpad tracking speed (0 to 3). The default is "1". |
+| `system.defaults.NSGlobalDomain."com.apple.trackpad.trackpadCornerClickBehavior"` | `null or value 1 (singular enum)` | Configures the trackpad corner click behavior. Mode 1 enables right click. |
 | `system.defaults.NSGlobalDomain.AppleEnableMouseSwipeNavigateWithScrolls` | `null or boolean` | Enables swiping left or right with two fingers to navigate backward or forward. The default is true. |
 | `system.defaults.NSGlobalDomain.AppleEnableSwipeNavigateWithScrolls` | `null or boolean` | Enables swiping left or right with two fingers to navigate backward or forward. The default is true. |
 | `system.defaults.NSGlobalDomain.AppleFontSmoothing` | `null or one of 0, 1, 2` | Sets the level of font smoothing (sub-pixel font rendering). |
 | `system.defaults.NSGlobalDomain.AppleICUForce24HourTime` | `null or boolean` | Whether to use 24-hour or 12-hour time. The default is based on region settings. |
-| `system.defaults.NSGlobalDomain.AppleIconAppearanceTheme` | `null or one of “RegularDark”, “RegularAutomatic”, “ClearLight”, “ClearDark”, “ClearAutomatic”, “TintedLight”, “TintedDark”, “TintedAutomatic”` | Set icon and widget style |
-| `system.defaults.NSGlobalDomain.AppleInterfaceStyle` | `null or value “Dark” (singular enum)` | Set to ‘Dark’ to enable dark mode. |
+| `system.defaults.NSGlobalDomain.AppleIconAppearanceTheme` | `null or one of "RegularDark", "RegularAutomatic", "ClearLight", "ClearDark", "ClearAutomatic", "TintedLight", "TintedDark", "TintedAutomatic"` | Set icon and widget style To set to default mode, set this to `null` and you'll need to manually run {command}`defaults delete -g AppleIconAppearanceTheme`. This option requires logging out and logging back in to apply. |
+| `system.defaults.NSGlobalDomain.AppleInterfaceStyle` | `null or value "Dark" (singular enum)` | Set to 'Dark' to enable dark mode. To set to light mode, set this to `null` and you'll need to manually run {command}`defaults delete -g AppleInterfaceStyle`. This option requires logging out and logging back in to apply. |
 | `system.defaults.NSGlobalDomain.AppleInterfaceStyleSwitchesAutomatically` | `null or boolean` | Whether to automatically switch between light and dark mode. The default is false. |
-| `system.defaults.NSGlobalDomain.AppleKeyboardUIMode` | `null or one of 0, 2, 3` | Configures the keyboard control behavior. The default is 0. |
-| `system.defaults.NSGlobalDomain.AppleMeasurementUnits` | `null or one of “Centimeters”, “Inches”` | Whether to use centimeters (metric) or inches (US, UK) as the measurement unit. The default is based on region settings. |
+| `system.defaults.NSGlobalDomain.AppleKeyboardUIMode` | `null or one of 0, 2, 3` | Configures the keyboard control behavior. The default is 0. 0 = Disabled 2 = Enabled on Sonoma or later 3 = Enabled on older macOS versions |
+| `system.defaults.NSGlobalDomain.AppleMeasurementUnits` | `null or one of "Centimeters", "Inches"` | Whether to use centimeters (metric) or inches (US, UK) as the measurement unit. The default is based on region settings. |
 | `system.defaults.NSGlobalDomain.AppleMetricUnits` | `null or one of 0, 1` | Whether to use the metric system. The default is based on region settings. |
 | `system.defaults.NSGlobalDomain.ApplePressAndHoldEnabled` | `null or boolean` | Whether to enable the press-and-hold feature. The default is true. |
-| `system.defaults.NSGlobalDomain.AppleScrollerPagingBehavior` | `null or boolean` | Jump to the spot that’s clicked on the scroll bar. The default is false. |
+| `system.defaults.NSGlobalDomain.AppleScrollerPagingBehavior` | `null or boolean` | Jump to the spot that's clicked on the scroll bar. The default is false. |
 | `system.defaults.NSGlobalDomain.AppleShowAllExtensions` | `null or boolean` | Whether to show all file extensions in Finder. The default is false. |
 | `system.defaults.NSGlobalDomain.AppleShowAllFiles` | `null or boolean` | Whether to always show hidden files. The default is false. |
-| `system.defaults.NSGlobalDomain.AppleShowScrollBars` | `null or one of “WhenScrolling”, “Automatic”, “Always”` | When to show the scrollbars. Options are ‘WhenScrolling’, ‘Automatic’ and ‘Always’. |
+| `system.defaults.NSGlobalDomain.AppleShowScrollBars` | `null or one of "WhenScrolling", "Automatic", "Always"` | When to show the scrollbars. Options are 'WhenScrolling', 'Automatic' and 'Always'. |
 | `system.defaults.NSGlobalDomain.AppleSpacesSwitchOnActivate` | `null or boolean` | Whether or not to switch to a workspace that has a window of the application open, that is switched to. The default is true. |
-| `system.defaults.NSGlobalDomain.AppleTemperatureUnit` | `null or one of “Celsius”, “Fahrenheit”` | Whether to use Celsius or Fahrenheit. The default is based on region settings. |
-| `system.defaults.NSGlobalDomain.AppleWindowTabbingMode` | `null or one of “manual”, “always”, “fullscreen”` | Sets the window tabbing when opening a new document: ‘manual’, ‘always’, or ‘fullscreen’. The default is ‘fullscreen’. |
-| `system.defaults.NSGlobalDomain.InitialKeyRepeat` | `null or signed integer` | Apple menu > System Preferences > Keyboard |
-| `system.defaults.NSGlobalDomain.KeyRepeat` | `null or signed integer` | Apple menu > System Preferences > Keyboard |
+| `system.defaults.NSGlobalDomain.AppleTemperatureUnit` | `null or one of "Celsius", "Fahrenheit"` | Whether to use Celsius or Fahrenheit. The default is based on region settings. |
+| `system.defaults.NSGlobalDomain.AppleWindowTabbingMode` | `null or one of "manual", "always", "fullscreen"` | Sets the window tabbing when opening a new document: 'manual', 'always', or 'fullscreen'. The default is 'fullscreen'. |
+| `system.defaults.NSGlobalDomain.InitialKeyRepeat` | `null or signed integer` | Apple menu > System Preferences > Keyboard If you press and hold certain keyboard keys when in a text area, the key’s character begins to repeat. For example, the Delete key continues to remove text for as long as you hold it down. This sets how long you must hold down the key before it starts repeating. |
+| `system.defaults.NSGlobalDomain.KeyRepeat` | `null or signed integer` | Apple menu > System Preferences > Keyboard If you press and hold certain keyboard keys when in a text area, the key’s character begins to repeat. For example, the Delete key continues to remove text for as long as you hold it down. This sets how fast it repeats once it starts. |
 | `system.defaults.NSGlobalDomain.NSAutomaticCapitalizationEnabled` | `null or boolean` | Whether to enable automatic capitalization. The default is true. |
 | `system.defaults.NSGlobalDomain.NSAutomaticDashSubstitutionEnabled` | `null or boolean` | Whether to enable smart dash substitution. The default is true. |
 | `system.defaults.NSGlobalDomain.NSAutomaticInlinePredictionEnabled` | `null or boolean` | Whether to enable inline predictive text. The default is true. |
@@ -83,9 +80,9 @@ All options under `system`.
 | `system.defaults.NSGlobalDomain.PMPrintingExpandedStateForPrint2` | `null or boolean` | Whether to use the expanded print panel by default. The default is false. |
 | `system.defaults.NSGlobalDomain._HIHideMenuBar` | `null or boolean` | Whether to autohide the menu bar. The default is false. |
 | `system.defaults.SoftwareUpdate.AutomaticallyInstallMacOSUpdates` | `null or boolean` | Automatically install Mac OS software updates. Defaults to false. |
-| `system.defaults.WindowManager.AppWindowGroupingBehavior` | `null or boolean` | Grouping strategy when showing windows from an application. false means “One at a time” true means “All at once” |
+| `system.defaults.WindowManager.AppWindowGroupingBehavior` | `null or boolean` | Grouping strategy when showing windows from an application. false means "One at a time" true means "All at once" |
 | `system.defaults.WindowManager.AutoHide` | `null or boolean` | Auto hide stage strip showing recent apps. Default is false. |
-| `system.defaults.WindowManager.EnableStandardClickToShowDesktop` | `null or boolean` | Click wallpaper to reveal desktop Clicking your wallpaper will move all windows out of the way to allow access to your desktop items and widgets. Default is true. false means “Only in Stage Manager” true means “Always” |
+| `system.defaults.WindowManager.EnableStandardClickToShowDesktop` | `null or boolean` | Click wallpaper to reveal desktop Clicking your wallpaper will move all windows out of the way to allow access to your desktop items and widgets. Default is true. false means "Only in Stage Manager" true means "Always" |
 | `system.defaults.WindowManager.EnableTiledWindowMargins` | `null or boolean` | Enable window margins when tiling windows. The default is true. |
 | `system.defaults.WindowManager.EnableTilingByEdgeDrag` | `null or boolean` | Enable dragging windows to screen edges to tile them. The default is true. |
 | `system.defaults.WindowManager.EnableTilingOptionAccelerator` | `null or boolean` | Enable holding alt to tile windows. The default is true. |
@@ -95,18 +92,13 @@ All options under `system`.
 | `system.defaults.WindowManager.StageManagerHideWidgets` | `null or boolean` | Hide widgets in Stage Manager. |
 | `system.defaults.WindowManager.StandardHideDesktopIcons` | `null or boolean` | Hide items on desktop. |
 | `system.defaults.WindowManager.StandardHideWidgets` | `null or boolean` | Hide widgets on desktop. |
-| `system.defaults.alf.allowdownloadsignedenabled` | | |
-| `system.defaults.alf.allowsignedenabled` | | |
-| `system.defaults.alf.globalstate` | | |
-| `system.defaults.alf.loggingenabled` | | |
-| `system.defaults.alf.stealthenabled` | | |
-| `system.defaults.controlcenter.AirDrop` | `null or boolean` | Apple menu > System Preferences > Control Center > AirDrop |
-| `system.defaults.controlcenter.BatteryShowPercentage` | `null or boolean` | Apple menu > System Preferences > Control Center > Battery |
-| `system.defaults.controlcenter.Bluetooth` | `null or boolean` | Apple menu > System Preferences > Control Center > Bluetooth |
-| `system.defaults.controlcenter.Display` | `null or boolean` | Apple menu > System Preferences > Control Center > Display |
-| `system.defaults.controlcenter.FocusModes` | `null or boolean` | Apple menu > System Preferences > Control Center > Focus |
-| `system.defaults.controlcenter.NowPlaying` | `null or boolean` | Apple menu > System Preferences > Control Center > Now Playing |
-| `system.defaults.controlcenter.Sound` | `null or boolean` | Apple menu > System Preferences > Control Center > Sound |
+| `system.defaults.controlcenter.AirDrop` | `null or boolean` | Apple menu > System Preferences > Control Center > AirDrop Show a AirDrop control in menu bar. Default is null. 18 = Display icon in menu bar 24 = Hide icon in menu bar |
+| `system.defaults.controlcenter.BatteryShowPercentage` | `null or boolean` | Apple menu > System Preferences > Control Center > Battery Show a battery percentage in menu bar. Default is null. |
+| `system.defaults.controlcenter.Bluetooth` | `null or boolean` | Apple menu > System Preferences > Control Center > Bluetooth Show a bluetooth control in menu bar. Default is null. 18 = Display icon in menu bar 24 = Hide icon in menu bar |
+| `system.defaults.controlcenter.Display` | `null or boolean` | Apple menu > System Preferences > Control Center > Display Show a Screen Brightness control in menu bar. Default is null. 18 = Display icon in menu bar 24 = Hide icon in menu bar |
+| `system.defaults.controlcenter.FocusModes` | `null or boolean` | Apple menu > System Preferences > Control Center > Focus Show a Focus control in menu bar. Default is null. 18 = Display icon in menu bar 24 = Hide icon in menu bar |
+| `system.defaults.controlcenter.NowPlaying` | `null or boolean` | Apple menu > System Preferences > Control Center > Now Playing Show a Now Playing control in menu bar. Default is null. 18 = Display icon in menu bar 24 = Hide icon in menu bar |
+| `system.defaults.controlcenter.Sound` | `null or boolean` | Apple menu > System Preferences > Control Center > Sound Show a sound control in menu bar . Default is null. 18 = Display icon in menu bar 24 = Hide icon in menu bar |
 | `system.defaults.dock.appswitcher-all-displays` | `null or boolean` | Whether to display the appswitcher on all displays or only the main one. The default is false. |
 | `system.defaults.dock.autohide` | `null or boolean` | Whether to automatically hide and show the dock. The default is false. |
 | `system.defaults.dock.autohide-delay` | `null or floating point number` | Sets the speed of the autohide delay. The default is given in the example. |
@@ -114,42 +106,52 @@ All options under `system`.
 | `system.defaults.dock.dashboard-in-overlay` | `null or boolean` | Whether to hide Dashboard as a Space. The default is false. |
 | `system.defaults.dock.enable-spring-load-actions-on-all-items` | `null or boolean` | Enable spring loading for all Dock items. The default is false. |
 | `system.defaults.dock.expose-animation-duration` | `null or floating point number` | Sets the speed of the Mission Control animations. The default is given in the example. |
-| `system.defaults.dock.expose-group-apps` | `null or boolean` | Whether to group windows by application in Mission Control’s Exposé. The default is false. |
-| `system.defaults.dock.expose-group-by-app` | | |
+| `system.defaults.dock.expose-group-apps` | `null or boolean` | Whether to group windows by application in Mission Control's Exposé. The default is false. |
 | `system.defaults.dock.largesize` | `null or integer between 16 and 128 (both inclusive)` | Magnified icon size on hover. The default is 16. |
 | `system.defaults.dock.launchanim` | `null or boolean` | Animate opening applications from the Dock. The default is true. |
 | `system.defaults.dock.magnification` | `null or boolean` | Magnify icon on hover. The default is false. |
-| `system.defaults.dock.mineffect` | `null or one of “genie”, “suck”, “scale”` | Set the minimize/maximize window effect. The default is genie. |
+| `system.defaults.dock.mineffect` | `null or one of "genie", "suck", "scale"` | Set the minimize/maximize window effect. The default is genie. |
 | `system.defaults.dock.minimize-to-application` | `null or boolean` | Whether to minimize windows into their application icon. The default is false. |
 | `system.defaults.dock.mouse-over-hilite-stack` | `null or boolean` | Enable highlight hover effect for the grid view of a stack in the Dock. |
 | `system.defaults.dock.mru-spaces` | `null or boolean` | Whether to automatically rearrange spaces based on most recent use. The default is true. |
-| `system.defaults.dock.orientation` | `null or one of “bottom”, “left”, “right”` | Position of the dock on screen. The default is “bottom”. |
+| `system.defaults.dock.orientation` | `null or one of "bottom", "left", "right"` | Position of the dock on screen. The default is "bottom". |
 | `system.defaults.dock.persistent-apps` | `null or (list of (attribute-tagged union with choices: app, file, folder, spacer or (string or absolute path) convertible to it))` | Persistent applications, spacers, files, and folders in the dock. |
+| `system.defaults.dock.persistent-apps.*.app` | `string` | An application to be added to the dock. |
+| `system.defaults.dock.persistent-apps.*.file` | `string` | A file to be added to the dock. |
+| `system.defaults.dock.persistent-apps.*.folder` | `string` | A folder to be added to the dock. |
+| `system.defaults.dock.persistent-apps.*.spacer` | `submodule` | A spacer to be added to the dock. Can be small or regular size. |
+| `system.defaults.dock.persistent-apps.*.spacer.small` | `boolean` | Whether the spacer is small. |
 | `system.defaults.dock.persistent-others` | `null or (list of (attribute-tagged union with choices: file, folder or (string or absolute path) convertible to it))` | Persistent files, and folders in the dock. |
-| `system.defaults.dock.scroll-to-open` | `null or boolean` | Scroll up on a Dock icon to show all Space’s opened windows for an app, or open stack. The default is false. |
+| `system.defaults.dock.persistent-others.*.file` | `string` | A file to be added to the dock. |
+| `system.defaults.dock.persistent-others.*.folder` | `(submodule) or string convertible to it` | A folder to be added to the dock. |
+| `system.defaults.dock.persistent-others.*.folder.arrangement` | `one of "name", "date-added", "date-modified", "date-created", "kind"` | Sort order for files in folder when clicked. |
+| `system.defaults.dock.persistent-others.*.folder.displayas` | `one of "stack", "folder"` | How to display the folder before clicked. stack: Stack of file previews. folder: A folder icon |
+| `system.defaults.dock.persistent-others.*.folder.path` | `string` | Path to a folder to be added to the dock. |
+| `system.defaults.dock.persistent-others.*.folder.showas` | `one of "automatic", "fan", "grid", "list"` | Effect to show files when clicked. fan: fan-out effect, grid: box, list: list |
+| `system.defaults.dock.scroll-to-open` | `null or boolean` | Scroll up on a Dock icon to show all Space's opened windows for an app, or open stack. The default is false. |
 | `system.defaults.dock.show-process-indicators` | `null or boolean` | Show indicator lights for open applications in the Dock. The default is true. |
 | `system.defaults.dock.show-recents` | `null or boolean` | Show recent applications in the dock. The default is true. |
-| `system.defaults.dock.showAppExposeGestureEnabled` | `null or boolean` | Whether to enable trackpad gestures (three- or four-finger vertical swipe) to show App Exposé. The default is false. This feature interacts with system.defaults.trackpad.TrackpadFourFingerVertSwipeGesture and system.defaults.trackpad.TrackpadThreeFingerVertSwipeGesture to determine which gesture triggers App Exposé. |
+| `system.defaults.dock.showAppExposeGestureEnabled` | `null or boolean` | Whether to enable trackpad gestures (three- or four-finger vertical swipe) to show App Exposé. The default is false. This feature interacts with `system.defaults.trackpad.TrackpadFourFingerVertSwipeGesture` and `system.defaults.trackpad.TrackpadThreeFingerVertSwipeGesture` to determine which gesture triggers App Exposé. |
 | `system.defaults.dock.showDesktopGestureEnabled` | `null or boolean` | Whether to enable four-finger spread gesture to show the Desktop. The default is false. |
 | `system.defaults.dock.showLaunchpadGestureEnabled` | `null or boolean` | Whether to enable four-finger pinch gesture to show the Launchpad. The default is false. |
-| `system.defaults.dock.showMissionControlGestureEnabled` | `null or boolean` | Whether to enable trackpad gestures (three- or four-finger vertical swipe) to show Mission Control. The default is false. This feature interacts with system.defaults.trackpad.TrackpadFourFingerVertSwipeGesture and system.defaults.trackpad.TrackpadThreeFingerVertSwipeGesture to determine which gesture triggers Mission Control. |
+| `system.defaults.dock.showMissionControlGestureEnabled` | `null or boolean` | Whether to enable trackpad gestures (three- or four-finger vertical swipe) to show Mission Control. The default is false. This feature interacts with `system.defaults.trackpad.TrackpadFourFingerVertSwipeGesture` and `system.defaults.trackpad.TrackpadThreeFingerVertSwipeGesture` to determine which gesture triggers Mission Control. |
 | `system.defaults.dock.showhidden` | `null or boolean` | Whether to make icons of hidden applications tranclucent. The default is false. |
 | `system.defaults.dock.slow-motion-allowed` | `null or boolean` | Allow for slow-motion minimize effect while holding Shift key. The default is false. |
 | `system.defaults.dock.static-only` | `null or boolean` | Show only open applications in the Dock. The default is false. |
 | `system.defaults.dock.tilesize` | `null or signed integer` | Size of the icons in the dock. The default is 64. |
-| `system.defaults.dock.wvous-bl-corner` | `null or (positive integer, meaning >0)` | Hot corner action for bottom left corner. Valid values include: |
-| `system.defaults.dock.wvous-br-corner` | `null or (positive integer, meaning >0)` | Hot corner action for bottom right corner. Valid values include: |
-| `system.defaults.dock.wvous-tl-corner` | `null or (positive integer, meaning >0)` | Hot corner action for top left corner. Valid values include: |
-| `system.defaults.dock.wvous-tr-corner` | `null or (positive integer, meaning >0)` | Hot corner action for top right corner. Valid values include: |
+| `system.defaults.dock.wvous-bl-corner` | `null or (positive integer, meaning >0)` | Hot corner action for bottom left corner. Valid values include: * `1`: Disabled * `2`: Mission Control * `3`: Application Windows * `4`: Desktop * `5`: Start Screen Saver * `6`: Disable Screen Saver * `7`: Dashboard * `10`: Put Display to Sleep * `11`: Launchpad * `12`: Notification Center * `13`: Lock Screen * `14`: Quick Note |
+| `system.defaults.dock.wvous-br-corner` | `null or (positive integer, meaning >0)` | Hot corner action for bottom right corner. Valid values include: * `1`: Disabled * `2`: Mission Control * `3`: Application Windows * `4`: Desktop * `5`: Start Screen Saver * `6`: Disable Screen Saver * `7`: Dashboard * `10`: Put Display to Sleep * `11`: Launchpad * `12`: Notification Center * `13`: Lock Screen * `14`: Quick Note |
+| `system.defaults.dock.wvous-tl-corner` | `null or (positive integer, meaning >0)` | Hot corner action for top left corner. Valid values include: * `1`: Disabled * `2`: Mission Control * `3`: Application Windows * `4`: Desktop * `5`: Start Screen Saver * `6`: Disable Screen Saver * `7`: Dashboard * `10`: Put Display to Sleep * `11`: Launchpad * `12`: Notification Center * `13`: Lock Screen * `14`: Quick Note |
+| `system.defaults.dock.wvous-tr-corner` | `null or (positive integer, meaning >0)` | Hot corner action for top right corner. Valid values include: * `1`: Disabled * `2`: Mission Control * `3`: Application Windows * `4`: Desktop * `5`: Start Screen Saver * `6`: Disable Screen Saver * `7`: Dashboard * `10`: Put Display to Sleep * `11`: Launchpad * `12`: Notification Center * `13`: Lock Screen * `14`: Quick Note |
 | `system.defaults.finder.AppleShowAllExtensions` | `null or boolean` | Whether to always show file extensions. The default is false. |
 | `system.defaults.finder.AppleShowAllFiles` | `null or boolean` | Whether to always show hidden files. The default is false. |
 | `system.defaults.finder.CreateDesktop` | `null or boolean` | Whether to show icons on the desktop or not. The default is true. |
-| `system.defaults.finder.FXDefaultSearchScope` | `null or string` | Change the default search scope. Use “SCcf” to default to current folder. The default is unset (“This Mac”). |
+| `system.defaults.finder.FXDefaultSearchScope` | `null or string` | Change the default search scope. Use "SCcf" to default to current folder. The default is unset ("This Mac"). |
 | `system.defaults.finder.FXEnableExtensionChangeWarning` | `null or boolean` | Whether to show warnings when change the file extension of files. The default is true. |
-| `system.defaults.finder.FXPreferredViewStyle` | `null or string` | Change the default finder view. “icnv” = Icon view, “Nlsv” = List view, “clmv” = Column View, “Flwv” = Gallery View The default is icnv. |
+| `system.defaults.finder.FXPreferredViewStyle` | `null or string` | Change the default finder view. "icnv" = Icon view, "Nlsv" = List view, "clmv" = Column View, "Flwv" = Gallery View The default is icnv. |
 | `system.defaults.finder.FXRemoveOldTrashItems` | `null or boolean` | Remove items in the trash after 30 days. The default is false. |
-| `system.defaults.finder.NewWindowTarget` | `null or one of “Computer”, “OS volume”, “Home”, “Desktop”, “Documents”, “Recents”, “iCloud Drive”, “Other”` | Change the default folder shown in Finder windows. “Other” corresponds to the value of NewWindowTargetPath. The default is unset (“Recents”). |
-| `system.defaults.finder.NewWindowTargetPath` | `null or string` | Sets the URI to open when NewWindowTarget is “Other”. Spaces and similar characters must be escaped. If the value is invalid, Finder will open your home directory. Example: “file:///Users/foo/long%20cat%20pics”. The default is unset. |
+| `system.defaults.finder.NewWindowTarget` | `null or one of "Computer", "OS volume", "Home", "Desktop", "Documents", "Recents", "iCloud Drive", "Other"` | Change the default folder shown in Finder windows. "Other" corresponds to the value of NewWindowTargetPath. The default is unset ("Recents"). |
+| `system.defaults.finder.NewWindowTargetPath` | `null or string` | Sets the URI to open when NewWindowTarget is "Other". Spaces and similar characters must be escaped. If the value is invalid, Finder will open your home directory. Example: "file:///Users/foo/long%20cat%20pics". The default is unset. |
 | `system.defaults.finder.QuitMenuItem` | `null or boolean` | Whether to allow quitting of the Finder. The default is false. |
 | `system.defaults.finder.ShowExternalHardDrivesOnDesktop` | `null or boolean` | Whether to show external disks on desktop. The default is true. |
 | `system.defaults.finder.ShowHardDrivesOnDesktop` | `null or boolean` | Whether to show hard disks on desktop. The default is false. |
@@ -161,42 +163,42 @@ All options under `system`.
 | `system.defaults.finder._FXShowPosixPathInTitle` | `null or boolean` | Whether to show the full POSIX filepath in the window title. The default is false. |
 | `system.defaults.finder._FXSortFoldersFirst` | `null or boolean` | Keep folders on top when sorting by name. The default is false. |
 | `system.defaults.finder._FXSortFoldersFirstOnDesktop` | `null or boolean` | Keep folders on top when sorting by name on the desktop. The default is false. |
-| `system.defaults.hitoolbox.AppleFnUsageType` | `null or one of “Do Nothing”, “Change Input Source”, “Show Emoji & Symbols”, “Start Dictation”` | Chooses what happens when you press the Fn key on the keyboard. A restart is required for this setting to take effect. |
-| `system.defaults.iCal."TimeZone support enabled"` | | |
-| `system.defaults.iCal."first day of week"` | | |
-| `system.defaults.iCal.CalendarSidebarShown` | `null or boolean` | Show calendar list. The default is false. |
+| `system.defaults.hitoolbox.AppleFnUsageType` | `null or one of "Do Nothing", "Change Input Source", "Show Emoji & Symbols", "Start Dictation"` | Chooses what happens when you press the Fn key on the keyboard. A restart is required for this setting to take effect. The default is unset ("Show Emoji & Symbols"). |
+| `system.defaults.iCal."TimeZone support enabled"` | `null or boolean` | Turn on time zone support. The default is false. |
+| `system.defaults.iCal."first day of week"` | `null or one of "System Setting", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"` | Set the day to start week on in the Calendar. The default is "System Setting". System Setting means inherit the value from Language & Region. |
+| `system.defaults.iCal.CalendarSidebarShown` | `null or boolean` | Show calendar list. The default is false. This requires restarting `Calendar.app` to show. |
 | `system.defaults.loginwindow.DisableConsoleAccess` | `null or boolean` | Disables the ability for a user to access the console by typing “>console” for a username at the login window. Default is false. |
-| `system.defaults.loginwindow.GuestEnabled` | `null or boolean` | Apple menu > System Preferences > Users and Groups > Login Options |
-| `system.defaults.loginwindow.LoginwindowText` | `null or string` | Text to be shown on the login window. Default is “\\U03bb”. |
-| `system.defaults.loginwindow.PowerOffDisabledWhileLoggedIn` | `null or boolean` | Apple menu > System Preferences > Users and Groups > Login Options |
-| `system.defaults.loginwindow.RestartDisabled` | `null or boolean` | Apple menu > System Preferences > Users and Groups > Login Options |
-| `system.defaults.loginwindow.RestartDisabledWhileLoggedIn` | `null or boolean` | Apple menu > System Preferences > Users and Groups > Login Options |
-| `system.defaults.loginwindow.SHOWFULLNAME` | `null or boolean` | Apple menu > System Preferences > Users and Groups > Login Options |
-| `system.defaults.loginwindow.ShutDownDisabled` | `null or boolean` | Apple menu > System Preferences > Users and Groups > Login Options |
-| `system.defaults.loginwindow.ShutDownDisabledWhileLoggedIn` | `null or boolean` | Apple menu > System Preferences > Users and Groups > Login Options |
-| `system.defaults.loginwindow.SleepDisabled` | `null or boolean` | Apple menu > System Preferences > Users and Groups > Login Options |
-| `system.defaults.loginwindow.autoLoginUser` | `null or string` | Apple menu > System Preferences > Users and Groups > Login Options |
-| `system.defaults.magicmouse.MouseButtonMode` | `null or one of “OneButton”, “TwoButton”` | “OneButton”: any tap is a left click. “TwoButton”: allow left- and right-clicking. |
+| `system.defaults.loginwindow.GuestEnabled` | `null or boolean` | Apple menu > System Preferences > Users and Groups > Login Options Allow users to login to the machine as guests using the Guest account. Default is true. |
+| `system.defaults.loginwindow.LoginwindowText` | `null or string` | Text to be shown on the login window. Default is "\\\\U03bb". |
+| `system.defaults.loginwindow.PowerOffDisabledWhileLoggedIn` | `null or boolean` | Apple menu > System Preferences > Users and Groups > Login Options If set to true, the Power Off menu item will be disabled when the user is logged in. Default is false. |
+| `system.defaults.loginwindow.RestartDisabled` | `null or boolean` | Apple menu > System Preferences > Users and Groups > Login Options Hides the Restart button on the login screen. Default is false. |
+| `system.defaults.loginwindow.RestartDisabledWhileLoggedIn` | `null or boolean` | Apple menu > System Preferences > Users and Groups > Login Options Disables the “Restart” option when users are logged in. Default is false. |
+| `system.defaults.loginwindow.SHOWFULLNAME` | `null or boolean` | Apple menu > System Preferences > Users and Groups > Login Options Displays login window as a name and password field instead of a list of users. Default is false. |
+| `system.defaults.loginwindow.ShutDownDisabled` | `null or boolean` | Apple menu > System Preferences > Users and Groups > Login Options Hides the Shut Down button on the login screen. Default is false. |
+| `system.defaults.loginwindow.ShutDownDisabledWhileLoggedIn` | `null or boolean` | Apple menu > System Preferences > Users and Groups > Login Options Disables the "Shutdown" option when users are logged in. Default is false. |
+| `system.defaults.loginwindow.SleepDisabled` | `null or boolean` | Apple menu > System Preferences > Users and Groups > Login Options Hides the Sleep button on the login screen. Default is false. |
+| `system.defaults.loginwindow.autoLoginUser` | `null or string` | Apple menu > System Preferences > Users and Groups > Login Options Auto login the supplied user on boot. Default is Off. |
+| `system.defaults.magicmouse.MouseButtonMode` | `null or one of "OneButton", "TwoButton"` | "OneButton": any tap is a left click. "TwoButton": allow left- and right-clicking. |
 | `system.defaults.menuExtraClock.FlashDateSeparators` | `null or boolean` | When enabled, the clock indicator (which by default is the colon) will flash on and off each second. Default is null. |
 | `system.defaults.menuExtraClock.IsAnalog` | `null or boolean` | Show an analog clock instead of a digital one. Default is null. |
 | `system.defaults.menuExtraClock.Show24Hour` | `null or boolean` | Show a 24-hour clock, instead of a 12-hour clock. Default is null. |
 | `system.defaults.menuExtraClock.ShowAMPM` | `null or boolean` | Show the AM/PM label. Useful if Show24Hour is false. Default is null. |
-| `system.defaults.menuExtraClock.ShowDate` | `null or one of 0, 1, 2` | Show the full date. Default is null. |
+| `system.defaults.menuExtraClock.ShowDate` | `null or one of 0, 1, 2` | Show the full date. Default is null. 0 = When space allows 1 = Always 2 = Never |
 | `system.defaults.menuExtraClock.ShowDayOfMonth` | `null or boolean` | Show the day of the month. Default is null. |
 | `system.defaults.menuExtraClock.ShowDayOfWeek` | `null or boolean` | Show the day of the week. Default is null. |
 | `system.defaults.menuExtraClock.ShowSeconds` | `null or boolean` | Show the clock with second precision, instead of minutes. Default is null. |
 | `system.defaults.screencapture.disable-shadow` | `null or boolean` | Disable drop shadow border around screencaptures. The default is false. |
-| `system.defaults.screencapture.include-date` | `null or boolean` | Include date and time in screenshot filenames. The default is true. Screenshot 2024-01-09 at 13.27.20.png would be an example for true. |
+| `system.defaults.screencapture.include-date` | `null or boolean` | Include date and time in screenshot filenames. The default is true. Screenshot 2024-01-09 at 13.27.20.png would be an example for true. Screenshot.png Screenshot 1.png would be an example for false. |
 | `system.defaults.screencapture.location` | `null or string` | The filesystem path to which screencaptures should be written. |
 | `system.defaults.screencapture.save-selections` | `null or boolean` | Remember the selection window of the last screencapture. The default is true. |
 | `system.defaults.screencapture.show-thumbnail` | `null or boolean` | Show thumbnail after screencapture before writing to file. The default is true. |
-| `system.defaults.screencapture.target` | `null or one of “file”, “clipboard”, “preview”, “mail”, “messages”` | Target to which screencapture should save screenshot to. The default is “file”. Valid values include: |
-| `system.defaults.screencapture.type` | `null or string` | The image format to use, such as “jpg”. |
+| `system.defaults.screencapture.target` | `null or one of "file", "clipboard", "preview", "mail", "messages"` | Target to which screencapture should save screenshot to. The default is "file". Valid values include: * `file`: Saves as a file in location specified by `system.defaults.screencapture.location` * `clipboard`: Saves screenshot to clipboard * `preview`: Opens screenshot in Preview app * `mail` * `messages` |
+| `system.defaults.screencapture.type` | `null or string` | The image format to use, such as "jpg". |
 | `system.defaults.screensaver.askForPassword` | `null or boolean` | If true, the user is prompted for a password when the screen saver is unlocked or stopped. The default is false. |
 | `system.defaults.screensaver.askForPasswordDelay` | `null or signed integer` | The number of seconds to delay before the password will be required to unlock or stop the screen saver (the grace period). |
 | `system.defaults.smb.NetBIOSName` | `null or string` | Hostname to use for NetBIOS. |
 | `system.defaults.smb.ServerDescription` | `null or string` | Hostname to use for sharing services. |
-| `system.defaults.spaces.spans-displays` | `null or boolean` | Apple menu > System Preferences > Mission Control |
+| `system.defaults.spaces.spans-displays` | `null or boolean` | Apple menu > System Preferences > Mission Control Displays have separate Spaces (note a logout is required before this setting will take effect). false = each physical display has a separate space (Mac default) true = one space spans across all physical displays |
 | `system.defaults.trackpad.ActuateDetents` | `null or boolean` | Whether to enable haptic feedback. The default is true. |
 | `system.defaults.trackpad.ActuationStrength` | `null or one of 0, 1` | 0 to enable Silent Clicking, 1 to disable. The default is 1. |
 | `system.defaults.trackpad.Clicking` | `null or boolean` | Whether to enable tap to click. The default is false. |
@@ -207,8 +209,8 @@ All options under `system`.
 | `system.defaults.trackpad.SecondClickThreshold` | `null or one of 0, 1, 2` | For force touch: 0 for light clicking, 1 for medium, 2 for firm. The default is 1. |
 | `system.defaults.trackpad.TrackpadCornerSecondaryClick` | `null or one of 0, 1, 2` | Whether to enable secondary click: 0 to disable, 1 to set bottom-left corner, 2 to set bottom-right corner. The default is 0. |
 | `system.defaults.trackpad.TrackpadFourFingerHorizSwipeGesture` | `null or one of 0, 2` | Whether to enable four-finger horizontal swipe gesture: 0 to disable, 2 to swipe between full-screen applications. The default is 0. |
-| `system.defaults.trackpad.TrackpadFourFingerPinchGesture` | `null or one of 0, 2` | Whether to enable four-finger pinch gesture (spread shows the Desktop, pinch shows the Launchpad): 0 to disable, 2 to enable. The default is 0. This setting interacts with system.defaults.dock.showDesktopGestureEnabled and system.defaults.dock.showLaunchpadGestureEnabled to determine whether gestures are enabled for the Desktop, Launchpad, or both. |
-| `system.defaults.trackpad.TrackpadFourFingerVertSwipeGesture` | `null or one of 0, 2` | 0 to disable four finger vertical swipe gestures, 2 to enable (down for Mission Control, up for App Exposé). The default is 2. When both three- and four-finger vertical swipe gestures are enabled, the three-finger variant takes precedence. This setting interacts with system.defaults.dock.showAppExposeGestureEnabled and system.defaults.dock.showMissionControlGestureEnabled to determine whether vertical swipe gestures are enabled for App Exposé, Mission Control, or both. |
+| `system.defaults.trackpad.TrackpadFourFingerPinchGesture` | `null or one of 0, 2` | Whether to enable four-finger pinch gesture (spread shows the Desktop, pinch shows the Launchpad): 0 to disable, 2 to enable. The default is 0. This setting interacts with `system.defaults.dock.showDesktopGestureEnabled` and `system.defaults.dock.showLaunchpadGestureEnabled` to determine whether gestures are enabled for the Desktop, Launchpad, or both. |
+| `system.defaults.trackpad.TrackpadFourFingerVertSwipeGesture` | `null or one of 0, 2` | 0 to disable four finger vertical swipe gestures, 2 to enable (down for Mission Control, up for App Exposé). The default is 2. When both three- and four-finger vertical swipe gestures are enabled, the three-finger variant takes precedence. This setting interacts with `system.defaults.dock.showAppExposeGestureEnabled` and `system.defaults.dock.showMissionControlGestureEnabled` to determine whether vertical swipe gestures are enabled for App Exposé, Mission Control, or both. |
 | `system.defaults.trackpad.TrackpadMomentumScroll` | `null or boolean` | Whether to use inertia when scrolling. The default is true. |
 | `system.defaults.trackpad.TrackpadPinch` | `null or boolean` | Whether to enable two-finger pinch gesture for zooming in and out. The default is false. |
 | `system.defaults.trackpad.TrackpadRightClick` | `null or boolean` | Whether to enable trackpad right click (two-finger tap/click). The default is false. |
@@ -216,41 +218,29 @@ All options under `system`.
 | `system.defaults.trackpad.TrackpadThreeFingerDrag` | `null or boolean` | Whether to enable three-finger drag. The default is false. |
 | `system.defaults.trackpad.TrackpadThreeFingerHorizSwipeGesture` | `null or one of 0, 1, 2` | Whether to enable three-finger horizontal swipe gesture: 0 to disable, 1 to swipe between pages, 2 to swipe between full-screen applications. The default is 2. |
 | `system.defaults.trackpad.TrackpadThreeFingerTapGesture` | `null or one of 0, 2` | Whether to enable three-finger tap gesture: 0 to disable, 2 to trigger Look up & data detectors. The default is 2. |
-| `system.defaults.trackpad.TrackpadThreeFingerVertSwipeGesture` | `null or one of 0, 2` | Whether to enable three-finger vertical swipe gesture (down for Mission Control, up for App Exposé): 0 to disable, 2 to enable. The default is 2. This setting interacts with system.defaults.dock.showAppExposeGestureEnabled and system.defaults.dock.showMissionControlGestureEnabled to determine whether vertical swipe gestures are enabled for App Exposé, Mission Control, or both. |
+| `system.defaults.trackpad.TrackpadThreeFingerVertSwipeGesture` | `null or one of 0, 2` | Whether to enable three-finger vertical swipe gesture (down for Mission Control, up for App Exposé): 0 to disable, 2 to enable. The default is 2. This setting interacts with `system.defaults.dock.showAppExposeGestureEnabled` and `system.defaults.dock.showMissionControlGestureEnabled` to determine whether vertical swipe gestures are enabled for App Exposé, Mission Control, or both. |
 | `system.defaults.trackpad.TrackpadTwoFingerDoubleTapGesture` | `null or boolean` | Whether to enable smart zoom when double-tapping with two fingers. The default is false. |
 | `system.defaults.trackpad.TrackpadTwoFingerFromRightEdgeSwipeGesture` | `null or one of 0, 3` | Whether to enable two-finger swipe-from-right-edge gesture: 0 to disable, 3 to open Notification Center. The default is 0. |
 | `system.defaults.universalaccess.closeViewScrollWheelToggle` | `null or boolean` | Use scroll gesture with the Ctrl (^) modifier key to zoom. The default is false. |
-| `system.defaults.universalaccess.closeViewZoomFollowsFocus` | `null or boolean` | Follow the keyboard focus while zoomed in. Without setting closeViewScrollWheelToggle this has no effect. The default is false. |
+| `system.defaults.universalaccess.closeViewZoomFollowsFocus` | `null or boolean` | Follow the keyboard focus while zoomed in. Without setting `closeViewScrollWheelToggle` this has no effect. The default is false. |
 | `system.defaults.universalaccess.mouseDriverCursorSize` | `null or floating point number` | Set the size of cursor. 1 for normal, 4 for maximum. The default is 1. |
 | `system.defaults.universalaccess.reduceMotion` | `null or boolean` | Disable animation when switching screens or opening apps |
 | `system.defaults.universalaccess.reduceTransparency` | `null or boolean` | Disable transparency in the menu bar and elsewhere. The default is false. |
-| `system.disableInstallerTools` | | |
-| `system.includeUninstaller` | | |
 | `system.keyboard.enableKeyMapping` | `boolean` | Whether to enable keyboard mappings. |
 | `system.keyboard.nonUS.remapTilde` | `boolean` | Whether to remap the Tilde key on non-us keyboards. |
 | `system.keyboard.remapCapsLockToControl` | `boolean` | Whether to remap the Caps Lock key to Control. |
 | `system.keyboard.remapCapsLockToEscape` | `boolean` | Whether to remap the Caps Lock key to Escape. |
+| `system.keyboard.swapCapsLockAndEscape` | `boolean` | Whether to swap the Caps Lock key and Escape key. |
 | `system.keyboard.swapLeftCommandAndLeftAlt` | `boolean` | Whether to swap the left Command key and left Alt key. |
 | `system.keyboard.swapLeftCtrlAndFn` | `boolean` | Whether to swap the left Control key and Fn (Globe) key. |
-| `system.keyboard.userKeyMapping` | | |
-| `system.maxStateVersion` | | |
-| `system.nixpkgsRelease` | `string (read only)` | The nixpkgs release (e.g. 24.11 ). |
-| `system.nixpkgsRevision` | | |
-| `system.nixpkgsVersion` | | |
-| `system.nixpkgsVersionSuffix` | | |
-| `system.nvram.variables` | | |
-| `system.patches` | `list of absolute path` | Set of patches to apply to / . |
-| `system.path` | | |
-| `system.primaryUser` | `null or string` | The user used for options that previously applied to the user running darwin-rebuild . |
-| `system.primaryUserHome` | | |
+| `system.keyboard.swapRightCommandAndRightOption` | `boolean` | Whether to swap the right Command key and right Option key. |
+| `system.nixpkgsRelease` | `string` | The nixpkgs release (e.g. `24.11`). |
+| `system.patches` | `list of absolute path` | Set of patches to apply to {file}`/`. ::: {.warning} This can modify everything so use with caution. ::: Useful for safely changing system files. Unlike the etc module this won't remove or modify files with unexpected content. |
+| `system.primaryUser` | `null or string` | The user used for options that previously applied to the user running `darwin-rebuild`. This is a transition mechanism as nix-darwin reorganizes its options and will eventually be unnecessary and removed. |
 | `system.profile` | `absolute path` | Profile to use for the system. |
-| `system.requiresPrimaryUser` | | |
-| `system.startup.chime` | `null or boolean` | Whether to enable the startup chime. |
+| `system.startup.chime` | `null or boolean` | Whether to enable the startup chime. By default, this option does not affect your system configuration in any way. However, this means that after it has been set once, unsetting it will not return to the old behavior. It will allow the setting to be controlled in System Settings, though. |
 | `system.stateVersion` | `integer between 1 and 7 (both inclusive)` | Every once in a while, a new nix-darwin release may change configuration defaults in a way incompatible with stateful data. For instance, if the default version of PostgreSQL changes, the new version will probably be unable to read your existing databases. To prevent such breakage, you can set the value of this option to the nix-darwin release with which you want to be compatible. The effect is that nix-darwin will option defaults corresponding to the specified release (such as using an older version of PostgreSQL). |
-| `system.systemBuilderArgs` | | |
-| `system.systemBuilderCommands` | | |
 | `system.tools.darwin-option.enable` | `boolean` | Whether to enable darwin-option script. |
 | `system.tools.darwin-rebuild.enable` | `boolean` | Whether to enable darwin-rebuild script. |
 | `system.tools.darwin-uninstaller.enable` | `boolean` | Whether to enable darwin-uninstaller script. |
 | `system.tools.darwin-version.enable` | `boolean` | Whether to enable darwin-version script. |
-| `system.tools.enable` | | |

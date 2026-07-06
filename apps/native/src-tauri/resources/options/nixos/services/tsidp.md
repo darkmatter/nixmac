@@ -5,16 +5,16 @@
 All options under `services.tsidp`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.tsidp.enable` | | |
-| `services.tsidp.environmentFile` | | |
-| `services.tsidp.package` | | |
-| `services.tsidp.settings.debugAllRequests` | | |
-| `services.tsidp.settings.debugTsnet` | | |
-| `services.tsidp.settings.enableFunnel` | | |
-| `services.tsidp.settings.enableSts` | | |
-| `services.tsidp.settings.hostName` | | |
-| `services.tsidp.settings.localPort` | | |
-| `services.tsidp.settings.logLevel` | | |
-| `services.tsidp.settings.port` | | |
-| `services.tsidp.settings.useLocalTailscaled` | | |
+| --- | --- | --- |
+| `services.tsidp.enable` | `boolean` | Whether to enable tsidp server. |
+| `services.tsidp.environmentFile` | `null or absolute path` | Path to an environment file loaded for the tsidp service. This can be used to securely store tokens and secrets outside of the world-readable Nix store. Example contents of the file: `TS_AUTH_KEY=YOUR_TAILSCALE_AUTHKEY` |
+| `services.tsidp.package` | `package` | The tsidp package to use. |
+| `services.tsidp.settings.debugAllRequests` | `boolean` | For development. Prints all requests and responses. |
+| `services.tsidp.settings.debugTsnet` | `boolean` | For development. Enables debug level logging with tsnet connection. |
+| `services.tsidp.settings.enableFunnel` | `boolean` | Use Tailscale Funnel to make tsidp available on the public internet so it works with SaaS products. |
+| `services.tsidp.settings.enableSts` | `boolean` | Enable OAuth token exchange using RFC 8693. |
+| `services.tsidp.settings.hostName` | `string` | The hostname to use for the tsnet node. |
+| `services.tsidp.settings.localPort` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listen on localhost:<port>. |
+| `services.tsidp.settings.logLevel` | `one of "debug", "info", "warn", "error"` | Set logging level: debug, info, warn, error. |
+| `services.tsidp.settings.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on (default: 443). |
+| `services.tsidp.settings.useLocalTailscaled` | `boolean` | Use local tailscaled instead of tsnet. |

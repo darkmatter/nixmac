@@ -5,14 +5,14 @@
 All options under `services.victoriametrics`.
 
 | Option | Type | Description |
-| ------------------------------------------------ | ---- | ----------- |
-| `services.victoriametrics.basicAuthPasswordFile` | | |
-| `services.victoriametrics.basicAuthUsername` | | |
-| `services.victoriametrics.checkConfig` | | |
-| `services.victoriametrics.enable` | | |
-| `services.victoriametrics.extraOptions` | | |
-| `services.victoriametrics.listenAddress` | | |
-| `services.victoriametrics.package` | | |
-| `services.victoriametrics.prometheusConfig` | | |
-| `services.victoriametrics.retentionPeriod` | | |
-| `services.victoriametrics.stateDir` | | |
+| --- | --- | --- |
+| `services.victoriametrics.basicAuthPasswordFile` | `null or absolute path` | File that contains the Basic Auth password used to protect VictoriaMetrics instance by authorization |
+| `services.victoriametrics.basicAuthUsername` | `null or string` | Basic Auth username used to protect VictoriaMetrics instance by authorization |
+| `services.victoriametrics.checkConfig` | `boolean` | Check configuration. If you use credentials stored in external files (`environmentFile`, etc), they will not be visible and it will report errors, despite a correct configuration. |
+| `services.victoriametrics.enable` | `boolean` | Whether to enable VictoriaMetrics in single-node mode. VictoriaMetrics is a fast, cost-effective and scalable monitoring solution and time series database. |
+| `services.victoriametrics.extraOptions` | `list of string` | Extra options to pass to VictoriaMetrics. See the docs: <https://docs.victoriametrics.com/single-server-victoriametrics/#list-of-command-line-flags> or {command}`victoriametrics -help` for more information. |
+| `services.victoriametrics.listenAddress` | `string` | TCP address to listen for incoming http requests. |
+| `services.victoriametrics.package` | `package` | The victoriametrics package to use. |
+| `services.victoriametrics.prometheusConfig` | `open submodule of (YAML 1.1 value)` | Config for prometheus style metrics. See the docs: <https://docs.victoriametrics.com/vmagent/#how-to-collect-metrics-in-prometheus-format> for more information. |
+| `services.victoriametrics.retentionPeriod` | `null or string` | How long to retain samples in storage. The minimum retentionPeriod is 24h or 1d. See also -retentionFilter The following optional suffixes are supported: s (second), h (hour), d (day), w (week), y (year). If suffix isn't set, then the duration is counted in months (default 1) |
+| `services.victoriametrics.stateDir` | `string` | Directory below `/var/lib` to store VictoriaMetrics metrics data. This directory will be created automatically using systemd's StateDirectory mechanism. |

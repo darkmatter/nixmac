@@ -5,5 +5,5 @@
 All options under `services.sshd`.
 
 | Option | Type | Description |
-| ---------------------- | ---- | ----------- |
-| `services.sshd.enable` | | |
+| --- | --- | --- |
+| `services.sshd.enable` | `boolean` | Alias of {option}`services.openssh.enable`. |

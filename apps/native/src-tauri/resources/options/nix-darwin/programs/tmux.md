@@ -5,15 +5,16 @@
 All options under `programs.tmux`.
 
 | Option | Type | Description |
-| ------------------------------------ | -------------------------------- | ---------------------------------------------------------------------------------------- |
-| `programs.tmux.defaultCommand` | | |
+| --- | --- | --- |
 | `programs.tmux.enable` | `boolean` | Whether to configure tmux. |
 | `programs.tmux.enableFzf` | `boolean` | Enable fzf keybindings for selecting tmux sessions and panes. |
 | `programs.tmux.enableMouse` | `boolean` | Enable mouse support for tmux. |
 | `programs.tmux.enableSensible` | `boolean` | Enable sensible configuration options for tmux. |
 | `programs.tmux.enableVim` | `boolean` | Enable vim style keybindings for copy mode, and navigation of tmux panes. |
-| `programs.tmux.extraConfig` | `strings concatenated with “\n”` | Extra configuration to add to tmux.conf . |
+| `programs.tmux.extraConfig` | `strings concatenated with "\n"` | Extra configuration to add to {file}`tmux.conf`. |
 | `programs.tmux.iTerm2` | `boolean` | Cater to iTerm2 and its tmux integration, as appropriate. |
-| `programs.tmux.reverseSplitBindings` | `boolean` | Whether to reverse the % and " split-window key bindings emitted by the tmux module. |
-| `programs.tmux.tmuxConfig` | | |
-| `programs.tmux.tmuxOptions` | `boolean` | Whether this file should be generated. This option allows specific files to be disabled. |
+| `programs.tmux.reverseSplitBindings` | `boolean` | Whether to reverse the `%` and `"` split-window key bindings emitted by the tmux module. |
+| `programs.tmux.tmuxOptions.<name>.enable` | `boolean` | Whether this file should be generated. This option allows specific files to be disabled. |
+| `programs.tmux.tmuxOptions.<name>.source` | `absolute path` | Path of the source file. |
+| `programs.tmux.tmuxOptions.<name>.target` | `string` | Name of symlink. Defaults to the attribute name. |
+| `programs.tmux.tmuxOptions.<name>.text` | `strings concatenated with "\n"` | Text of the file. |

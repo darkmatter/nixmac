@@ -5,7 +5,7 @@
 All options under `programs.nix-index`.
 
 | Option | Type | Description |
-| --------------------------------------------- | --------- | --------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.nix-index.enable` | `boolean` | Whether to enable nix-index, a file database for nixpkgs. |
 | `programs.nix-index.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.nix-index.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |

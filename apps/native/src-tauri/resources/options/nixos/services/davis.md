@@ -5,23 +5,72 @@
 All options under `services.davis`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.davis.adminLogin` | | |
-| `services.davis.adminPasswordFile` | | |
-| `services.davis.appSecretFile` | | |
-| `services.davis.config` | | |
-| `services.davis.dataDir` | | |
-| `services.davis.database.createLocally` | | |
-| `services.davis.database.driver` | | |
-| `services.davis.database.name` | | |
-| `services.davis.database.urlFile` | | |
-| `services.davis.enable` | | |
-| `services.davis.group` | | |
-| `services.davis.hostname` | | |
-| `services.davis.mail.dsn` | | |
-| `services.davis.mail.dsnFile` | | |
-| `services.davis.mail.inviteFromAddress` | | |
-| `services.davis.nginx` | | |
-| `services.davis.package` | | |
-| `services.davis.poolConfig` | | |
-| `services.davis.user` | | |
+| --- | --- | --- |
+| `services.davis.adminLogin` | `string` | Username for the admin account. |
+| `services.davis.adminPasswordFile` | `absolute path` | The full path to a file that contains the admin's password. Must be readable by the user. |
+| `services.davis.appSecretFile` | `absolute path` | A file containing the Symfony APP_SECRET - Its value should be a series of characters, numbers and symbols chosen randomly and the recommended length is around 32 characters. Can be generated with <code>cat /dev/urandom | tr -dc a-zA-Z0-9 | fold -w 48 | head -n 1</code>. |
+| `services.davis.config` | `attribute set of (null or boolean or signed integer or 16 bit unsigned integer; between 0 and 65535 (both inclusive) or absolute path or string or (submodule))` | |
+| `services.davis.dataDir` | `absolute path` | Davis data directory. |
+| `services.davis.database.createLocally` | `boolean` | Create the database and database user locally. |
+| `services.davis.database.driver` | `one of "sqlite", "postgresql", "mysql"` | Database type, required in all circumstances. |
+| `services.davis.database.name` | `null or string` | Database name, only used when the databse is created locally. |
+| `services.davis.database.urlFile` | `null or absolute path` | A file containing the database connection url. If set then it overrides all other database settings (except driver). This is mandatory if you want to use an external database, that is when `services.davis.database.createLocally` is `false`. |
+| `services.davis.enable` | `boolean` | Whether to enable Davis is a caldav and carddav server. |
+| `services.davis.group` | `string` | Group davis runs as. |
+| `services.davis.hostname` | `string` | Domain of the host to serve davis under. You may want to change it if you run Davis on a different URL than davis.yourdomain. |
+| `services.davis.mail.dsn` | `null or string` | Mail DSN for sending emails. Mutually exclusive with `services.davis.mail.dsnFile`. |
+| `services.davis.mail.dsnFile` | `null or string` | A file containing the mail DSN for sending emails. Mutually exclusive with `servies.davis.mail.dsn`. |
+| `services.davis.mail.inviteFromAddress` | `null or string` | Email address to send invitations from. |
+| `services.davis.nginx` | `null or (submodule)` | Use this option to customize an nginx virtual host. To disable the nginx set this to null. |
+| `services.davis.nginx.acmeFallbackHost` | `null or string` | Host which to proxy requests to if ACME challenge is not found. Useful if you want multiple hosts to be able to verify the same domain name. With this option, you could request certificates for the present domain with an ACME client that is running on another host, which you would specify here. |
+| `services.davis.nginx.acmeRoot` | `null or string` | Directory for the ACME challenge, which is **public**. Don't put certs or keys in here. Set to null to inherit from config.security.acme. |
+| `services.davis.nginx.addSSL` | `boolean` | Whether to enable HTTPS in addition to plain HTTP. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443). |
+| `services.davis.nginx.basicAuth` | `attribute set of string` | Basic Auth protection for a vhost. WARNING: This is implemented to store the password in plain text in the Nix store. |
+| `services.davis.nginx.basicAuthFile` | `null or absolute path` | Basic Auth password file for a vhost. Can be created by running {command}`nix-shell --packages apacheHttpd --run 'htpasswd -B -c FILENAME USERNAME'`. |
+| `services.davis.nginx.default` | `boolean` | Makes this vhost the default. |
+| `services.davis.nginx.enableACME` | `boolean` | Whether to ask Let's Encrypt to sign a certificate for this vhost. Alternately, you can use an existing certificate through {option}`useACMEHost`. |
+| `services.davis.nginx.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the vhost verbatim. |
+| `services.davis.nginx.forceSSL` | `boolean` | Whether to add a separate nginx server block that redirects (defaults to 301, configurable with `redirectCode`) all plain HTTP traffic to HTTPS. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443), where the non-SSL listens are used for the redirect vhosts. |
+| `services.davis.nginx.globalRedirect` | `null or string` | If set, all requests for this host are redirected (defaults to 301, configurable with `redirectCode`) to the given hostname. |
+| `services.davis.nginx.http2` | `boolean` | Whether to enable the HTTP/2 protocol. Note that (as of writing) due to nginx's implementation, to disable HTTP/2 you have to disable it on all vhosts that use a given IP address / port. If there is one server block configured to enable http2, then it is enabled for all server blocks on this IP. See <https://stackoverflow.com/a/39466948/263061>. |
+| `services.davis.nginx.http3` | `boolean` | Whether to enable the HTTP/3 protocol. This requires activating the QUIC transport protocol `services.nginx.virtualHosts.<name>.quic = true;`. Note that HTTP/3 support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> HTTP/3 availability must be manually advertised, preferably in each location block. |
+| `services.davis.nginx.http3_hq` | `boolean` | Whether to enable the HTTP/0.9 protocol negotiation used in QUIC interoperability tests. This requires activating the QUIC transport protocol `services.nginx.virtualHosts.<name>.quic = true;`. Note that special application protocol support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> |
+| `services.davis.nginx.kTLS` | `boolean` | Whether to enable kTLS support. Implementing TLS in the kernel (kTLS) improves performance by significantly reducing the need for copying operations between user space and the kernel. Required Nginx version 1.21.4 or later. |
+| `services.davis.nginx.listen` | `list of (submodule)` | Listen addresses and ports for this virtual host. IPv6 addresses must be enclosed in square brackets. Note: this option overrides `addSSL` and `onlySSL`. If you only want to set the addresses manually and not the ports, take a look at `listenAddresses`. |
+| `services.davis.nginx.listen.*.addr` | `string` | Listen address. |
+| `services.davis.nginx.listen.*.extraParameters` | `list of string` | Extra parameters of this listen directive. |
+| `services.davis.nginx.listen.*.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port number to listen on. If unset and the listen address is not a socket then nginx defaults to 80. |
+| `services.davis.nginx.listen.*.proxyProtocol` | `boolean` | Enable PROXY protocol. |
+| `services.davis.nginx.listen.*.ssl` | `boolean` | Enable SSL. |
+| `services.davis.nginx.listenAddresses` | `list of string` | Listen addresses for this virtual host. Compared to `listen` this only sets the addresses and the ports are chosen automatically. Note: This option overrides `networking.enableIPv6` |
+| `services.davis.nginx.locations` | `attribute set of (submodule)` | Declarative location config |
+| `services.davis.nginx.locations.<name>.alias` | `null or absolute path` | Alias directory for requests. |
+| `services.davis.nginx.locations.<name>.basicAuth` | `attribute set of string` | Basic Auth protection for a vhost. WARNING: This is implemented to store the password in plain text in the Nix store. |
+| `services.davis.nginx.locations.<name>.basicAuthFile` | `null or absolute path` | Basic Auth password file for a vhost. Can be created by running {command}`nix-shell --packages apacheHttpd --run 'htpasswd -B -c FILENAME USERNAME'`. |
+| `services.davis.nginx.locations.<name>.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the location verbatim. |
+| `services.davis.nginx.locations.<name>.fastcgiParams` | `attribute set of (string or absolute path)` | FastCGI parameters to override. Unlike in the Nginx configuration file, overriding only some default parameters won't unset the default values for other parameters. |
+| `services.davis.nginx.locations.<name>.index` | `null or string` | Adds index directive. |
+| `services.davis.nginx.locations.<name>.priority` | `signed integer` | Order of this location block in relation to the others in the vhost. The semantics are the same as with `lib.mkOrder`. Smaller values have a greater priority. |
+| `services.davis.nginx.locations.<name>.proxyPass` | `null or string` | Adds proxy_pass directive and sets recommended proxy headers if recommendedProxySettings is enabled. |
+| `services.davis.nginx.locations.<name>.proxyWebsockets` | `boolean` | Whether to support proxying websocket connections with HTTP/1.1. |
+| `services.davis.nginx.locations.<name>.recommendedProxySettings` | `boolean` | Enable recommended proxy settings. |
+| `services.davis.nginx.locations.<name>.recommendedUwsgiSettings` | `boolean` | Enable recommended uwsgi settings. |
+| `services.davis.nginx.locations.<name>.return` | `null or string or signed integer` | Adds a return directive, for e.g. redirections. |
+| `services.davis.nginx.locations.<name>.root` | `null or absolute path` | Root directory for requests. |
+| `services.davis.nginx.locations.<name>.tryFiles` | `null or string` | Adds try_files directive. |
+| `services.davis.nginx.locations.<name>.uwsgiPass` | `null or string` | Adds uwsgi_pass directive and sets recommended proxy headers if recommendedUwsgiSettings is enabled. |
+| `services.davis.nginx.onlySSL` | `boolean` | Whether to enable HTTPS and reject plain HTTP connections. This will set defaults for `listen` to listen on all interfaces on port 443. |
+| `services.davis.nginx.quic` | `boolean` | Whether to enable the QUIC transport protocol. Note that QUIC support is experimental and *not* yet recommended for production. Read more at <https://quic.nginx.org/> |
+| `services.davis.nginx.redirectCode` | `integer between 300 and 399 (both inclusive)` | HTTP status used by `globalRedirect` and `forceSSL`. Possible usecases include temporary (302, 307) redirects, keeping the request method and body (307, 308), or explicitly resetting the method to GET (303). See <https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections>. |
+| `services.davis.nginx.rejectSSL` | `boolean` | Whether to listen for and reject all HTTPS connections to this vhost. Useful in [default](#opt-services.nginx.virtualHosts._name_.default) server blocks to avoid serving the certificate for another vhost. Uses the `ssl_reject_handshake` directive available in nginx versions 1.19.4 and above. |
+| `services.davis.nginx.reuseport` | `boolean` | Create an individual listening socket . It is required to specify only once on one of the hosts. |
+| `services.davis.nginx.root` | `null or absolute path` | The path of the web root directory. |
+| `services.davis.nginx.serverAliases` | `list of string` | Additional names of virtual hosts served by this virtual host configuration. |
+| `services.davis.nginx.serverName` | `null or string` | Name of this virtual host. Defaults to attribute name in virtualHosts. |
+| `services.davis.nginx.sslCertificate` | `absolute path` | Path to server SSL certificate. |
+| `services.davis.nginx.sslCertificateKey` | `absolute path` | Path to server SSL certificate key. |
+| `services.davis.nginx.sslTrustedCertificate` | `null or absolute path` | Path to root SSL certificate for stapling and client certificates. |
+| `services.davis.nginx.useACMEHost` | `null or string` | A host of an existing Let's Encrypt certificate to use. This is useful if you have many subdomains and want to avoid hitting the [rate limit](https://letsencrypt.org/docs/rate-limits). Alternately, you can generate a certificate through {option}`enableACME`. *Note that this option does not create any certificates, nor it does add subdomains to existing ones – you will need to create them manually using [](#opt-security.acme.certs).* |
+| `services.davis.package` | `package` | The davis package to use. |
+| `services.davis.poolConfig` | `attribute set of (string or signed integer or boolean)` | Options for the davis PHP pool. See the documentation on <literal>php-fpm.conf</literal> for details on configuration directives. |
+| `services.davis.user` | `string` | User davis runs as. |

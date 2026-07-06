@@ -5,9 +5,12 @@
 All options under `programs.i3status`.
 
 | Option | Type | Description |
-| --------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.i3status.enable` | `boolean` | Whether to enable i3status. |
 | `programs.i3status.enableDefault` | `boolean` | Whether or not to enable the default configuration. |
-| `programs.i3status.general` | `attribute set of (boolean or signed integer or string)` | Configuration to add to i3status config general section. See i3status (1) for options. |
-| `programs.i3status.modules` | `attribute set of (submodule)` | Modules to add to i3status config file. See i3status (1) for options. |
+| `programs.i3status.general` | `attribute set of (boolean or signed integer or string)` | Configuration to add to i3status {file}`config` `general` section. See {manpage}`i3status(1)` for options. |
+| `programs.i3status.modules` | `attribute set of (submodule)` | Modules to add to i3status {file}`config` file. See {manpage}`i3status(1)` for options. |
+| `programs.i3status.modules.<name>.enable` | `boolean` | Whether or not to enable this module. |
+| `programs.i3status.modules.<name>.position` | `signed integer or floating point number` | Position of this module in i3status `order`. |
+| `programs.i3status.modules.<name>.settings` | `attribute set of (boolean or signed integer or string)` | Configuration to add to this i3status module. See {manpage}`i3status(1)` for options. |
 | `programs.i3status.package` | `null or package` | The i3status package to use. |

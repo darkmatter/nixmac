@@ -5,8 +5,8 @@
 All options under `services.whoami`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.whoami.enable` | | |
-| `services.whoami.extraArgs` | | |
-| `services.whoami.package` | | |
-| `services.whoami.port` | | |
+| --- | --- | --- |
+| `services.whoami.enable` | `boolean` | Whether to enable whoami. |
+| `services.whoami.extraArgs` | `list of string` | Extra command line arguments to pass to whoami. See <https://github.com/traefik/whoami#flags> for details. |
+| `services.whoami.package` | `package` | The whoami package to use. |
+| `services.whoami.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port whoami should listen on. |

@@ -5,7 +5,7 @@
 All options under `programs.himalaya`.
 
 | Option | Type | Description |
-| ---------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.himalaya.enable` | `boolean` | Whether to enable the email client Himalaya CLI. |
 | `programs.himalaya.package` | `null or package` | The himalaya package to use. |
-| `programs.himalaya.settings` | `open submodule of (TOML value)` | Himalaya CLI global configuration. See https://github.com/pimalaya/himalaya/blob/master/config.sample.toml for supported values. |
+| `programs.himalaya.settings` | `open submodule of (TOML value)` | Himalaya CLI global configuration. See <https://github.com/pimalaya/himalaya/blob/master/config.sample.toml> for supported values. |

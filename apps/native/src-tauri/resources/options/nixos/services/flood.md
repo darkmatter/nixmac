@@ -5,10 +5,10 @@
 All options under `services.flood`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.flood.enable` | | |
-| `services.flood.extraArgs` | | |
-| `services.flood.host` | | |
-| `services.flood.openFirewall` | | |
-| `services.flood.package` | | |
-| `services.flood.port` | | |
+| --- | --- | --- |
+| `services.flood.enable` | `boolean` | Whether to enable flood. |
+| `services.flood.extraArgs` | `list of string` | Extra arguments passed to `flood`. |
+| `services.flood.host` | `string` | Host to bind webserver. |
+| `services.flood.openFirewall` | `boolean` | Whether to open the firewall for the port in {option}`services.flood.port`. |
+| `services.flood.package` | `package` | The flood package to use. |
+| `services.flood.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to bind webserver. |

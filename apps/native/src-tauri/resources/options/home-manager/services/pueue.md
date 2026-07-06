@@ -5,7 +5,7 @@
 All options under `services.pueue`.
 
 | Option | Type | Description |
-| ------------------------- | ----------------- | ----------------------------------------------------------- |
+| --- | --- | --- |
 | `services.pueue.enable` | `boolean` | Whether to enable Pueue, CLI process scheduler and manager. |
 | `services.pueue.package` | `null or package` | The pueue package to use. |
-| `services.pueue.settings` | `YAML 1.1 value` | Configuration written to $XDG_CONFIG_HOME/pueue/pueue.yml . |
+| `services.pueue.settings` | `YAML 1.1 value` | Configuration written to {file}`$XDG_CONFIG_HOME/pueue/pueue.yml`. |

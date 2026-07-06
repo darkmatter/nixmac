@@ -5,25 +5,25 @@
 All options under `services.icecream`.
 
 | Option | Type | Description |
-| -------------------------------------------------------- | ---- | ----------- |
-| `services.icecream.daemon.cacheLimit` | | |
-| `services.icecream.daemon.enable` | | |
-| `services.icecream.daemon.extraArgs` | | |
-| `services.icecream.daemon.hostname` | | |
-| `services.icecream.daemon.maxProcesses` | | |
-| `services.icecream.daemon.netName` | | |
-| `services.icecream.daemon.nice` | | |
-| `services.icecream.daemon.noRemote` | | |
-| `services.icecream.daemon.openBroadcast` | | |
-| `services.icecream.daemon.openFirewall` | | |
-| `services.icecream.daemon.package` | | |
-| `services.icecream.daemon.schedulerHost` | | |
-| `services.icecream.daemon.user` | | |
-| `services.icecream.scheduler.enable` | | |
-| `services.icecream.scheduler.extraArgs` | | |
-| `services.icecream.scheduler.netName` | | |
-| `services.icecream.scheduler.openFirewall` | | |
-| `services.icecream.scheduler.openTelnet` | | |
-| `services.icecream.scheduler.package` | | |
-| `services.icecream.scheduler.persistentClientConnection` | | |
-| `services.icecream.scheduler.port` | | |
+| --- | --- | --- |
+| `services.icecream.daemon.cacheLimit` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Maximum size in Megabytes of cache used to store compile environments of compile clients. |
+| `services.icecream.daemon.enable` | `boolean` | Whether to enable Icecream Daemon. |
+| `services.icecream.daemon.extraArgs` | `list of string` | Additional command line parameters. |
+| `services.icecream.daemon.hostname` | `null or string` | Hostname of the daemon in the icecream infrastructure. Uses the hostname retrieved via uname if set to null. |
+| `services.icecream.daemon.maxProcesses` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Maximum number of compile jobs started in parallel for this daemon. Uses the number of CPUs if set to null. |
+| `services.icecream.daemon.netName` | `string` | Network name to connect to. A scheduler with the same name needs to be running. |
+| `services.icecream.daemon.nice` | `integer between -20 and 19 (both inclusive)` | The level of niceness to use. |
+| `services.icecream.daemon.noRemote` | `boolean` | Prevent jobs from other nodes being scheduled on this daemon. |
+| `services.icecream.daemon.openBroadcast` | `boolean` | Whether to automatically open the firewall for scheduler discovery. |
+| `services.icecream.daemon.openFirewall` | `boolean` | Whether to automatically open receive port in the firewall. |
+| `services.icecream.daemon.package` | `package` | The icecream package to use. |
+| `services.icecream.daemon.schedulerHost` | `null or string` | Explicit scheduler hostname, useful in firewalled environments. Uses scheduler autodiscovery via broadcast if set to null. |
+| `services.icecream.daemon.user` | `string` | User to run the icecream daemon as. Set to root to enable receive of remote compile environments. |
+| `services.icecream.scheduler.enable` | `boolean` | Whether to enable Icecream Scheduler. |
+| `services.icecream.scheduler.extraArgs` | `list of string` | Additional command line parameters |
+| `services.icecream.scheduler.netName` | `null or string` | Network name for the icecream scheduler. Uses the default ICECREAM if null. |
+| `services.icecream.scheduler.openFirewall` | `boolean` | Whether to automatically open the daemon port in the firewall. |
+| `services.icecream.scheduler.openTelnet` | `boolean` | Whether to open the telnet TCP port on 8766. |
+| `services.icecream.scheduler.package` | `package` | The icecream package to use. |
+| `services.icecream.scheduler.persistentClientConnection` | `boolean` | Whether to prevent clients from connecting to a better scheduler. |
+| `services.icecream.scheduler.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Server port to listen for icecream daemon requests. |

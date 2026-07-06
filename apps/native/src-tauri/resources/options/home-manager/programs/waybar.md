@@ -5,13 +5,12 @@
 All options under `programs.waybar`.
 
 | Option | Type | Description |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.waybar.enable` | `boolean` | Whether to enable Waybar. |
 | `programs.waybar.package` | `package` | The waybar package to use. |
-| `programs.waybar.settings` | `(list of (open submodule of (JSON value))) or attribute set of (open submodule of (JSON value))` | Configuration for Waybar, see https://github.com/Alexays/Waybar/wiki/Configuration for supported values. |
-| `programs.waybar.style` | `null or absolute path or strings concatenated with “\n”` | CSS style of the bar. |
+| `programs.waybar.settings` | `(list of (open submodule of (JSON value))) or attribute set of (open submodule of (JSON value))` | Configuration for Waybar, see <https://github.com/Alexays/Waybar/wiki/Configuration> for supported values. |
+| `programs.waybar.style` | `null or absolute path or strings concatenated with "\n"` | CSS style of the bar. See <https://github.com/Alexays/Waybar/wiki/Configuration> for the documentation. If the value is set to a path literal, then the path will be used as the css file. |
 | `programs.waybar.systemd.enable` | `boolean` | Whether to enable Waybar systemd integration. |
 | `programs.waybar.systemd.enableDebug` | `boolean` | Whether to enable debug logging. |
-| `programs.waybar.systemd.enableInspect` | `boolean` | Inspect objects and find their CSS classes, experiment with live CSS styles, and lookup the current value of CSS properties. |
-| `programs.waybar.systemd.target` | | |
-| `programs.waybar.systemd.targets` | `list of string` | The systemd targets that will automatically start the Waybar service. |
+| `programs.waybar.systemd.enableInspect` | `boolean` | Inspect objects and find their CSS classes, experiment with live CSS styles, and lookup the current value of CSS properties. See <https://developer.gnome.org/documentation/tools/inspector.html> |
+| `programs.waybar.systemd.targets` | `list of string` | The systemd targets that will automatically start the Waybar service. When setting this value to `[ "sway-session.target" ]`, make sure to also enable {option}`wayland.windowManager.sway.systemd.enable`, otherwise the service may never be started. |

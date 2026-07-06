@@ -5,7 +5,7 @@
 All options under `programs.tray-tui`.
 
 | Option | Type | Description |
-| ---------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.tray-tui.enable` | `boolean` | Whether to enable tray-tui. |
 | `programs.tray-tui.package` | `null or package` | The tray-tui package to use. |
-| `programs.tray-tui.settings` | `TOML value` | Configuration settings for tray-tui. All the available options can be found here: https://github.com/Levizor/tray-tui/blob/main/config_example.toml |
+| `programs.tray-tui.settings` | `TOML value` | Configuration settings for tray-tui. All the available options can be found here: <https://github.com/Levizor/tray-tui/blob/main/config_example.toml> |

@@ -5,11 +5,13 @@
 All options under `services.karma`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.karma.configFile` | | |
-| `services.karma.enable` | | |
-| `services.karma.environment` | | |
-| `services.karma.extraOptions` | | |
-| `services.karma.openFirewall` | | |
-| `services.karma.package` | | |
-| `services.karma.settings` | | |
+| --- | --- | --- |
+| `services.karma.configFile` | `absolute path` | A YAML config file which can be used to configure karma instead of the nix-generated file. |
+| `services.karma.enable` | `boolean` | Whether to enable the Karma dashboard service. |
+| `services.karma.environment` | `attribute set of string` | Additional environment variables to provide to karma. |
+| `services.karma.extraOptions` | `list of string` | Extra command line options. |
+| `services.karma.openFirewall` | `boolean` | Whether to open ports in the firewall needed for karma to function. |
+| `services.karma.package` | `package` | The karma package to use. |
+| `services.karma.settings` | `open submodule of (YAML 1.1 value)` | Karma dashboard configuration as nix attributes. Reference: <https://github.com/prymitive/karma/blob/main/docs/CONFIGURATION.md> |
+| `services.karma.settings.listen.address` | `string` | Hostname or IP to listen on. |
+| `services.karma.settings.listen.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | HTTP port to listen on. |

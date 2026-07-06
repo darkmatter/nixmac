@@ -5,8 +5,8 @@
 All options under `programs.git-credential-keepassxc`.
 
 | Option | Type | Description |
-| ------------------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `programs.git-credential-keepassxc.enable` | `boolean` | Whether to enable git-credential-keepassxc … |
-| `programs.git-credential-keepassxc.groups` | `null or (list of string)` | The KeePassXC groups used for storing and fetching of credentials. By default, the groups created by git-credential-keepassxc configure \[--group <GROUP>\] are used. |
-| `programs.git-credential-keepassxc.hosts` | `list of string` | Hosts for which git-credential-keepassxc is enabled. |
+| --- | --- | --- |
+| `programs.git-credential-keepassxc.enable` | `boolean` | Whether to enable {command}`git-credential-keepassxc`.. |
+| `programs.git-credential-keepassxc.groups` | `null or (list of string)` | The KeePassXC groups used for storing and fetching of credentials. By default, the groups created by {command}`git-credential-keepassxc configure [--group <GROUP>]` are used. |
+| `programs.git-credential-keepassxc.hosts` | `list of string` | Hosts for which {command}`git-credential-keepassxc` is enabled. |
 | `programs.git-credential-keepassxc.package` | `package` | The git-credential-keepassxc package to use. |

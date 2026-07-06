@@ -5,6 +5,6 @@
 All options under `services.karabiner-elements`.
 
 | Option | Type | Description |
-| ------------------------------------- | --------- | -------------------------------------- |
+| --- | --- | --- |
 | `services.karabiner-elements.enable` | `boolean` | Whether to enable Karabiner-Elements. |
 | `services.karabiner-elements.package` | `package` | The karabiner-elements package to use. |

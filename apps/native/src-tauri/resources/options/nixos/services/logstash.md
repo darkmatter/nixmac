@@ -5,19 +5,17 @@
 All options under `services.logstash`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.logstash.address` | | |
-| `services.logstash.dataDir` | | |
-| `services.logstash.enable` | | |
-| `services.logstash.enableWeb` | | |
-| `services.logstash.extraJvmOptions` | | |
-| `services.logstash.extraSettings` | | |
-| `services.logstash.filterConfig` | | |
-| `services.logstash.filterWorkers` | | |
-| `services.logstash.inputConfig` | | |
-| `services.logstash.listenAddress` | | |
-| `services.logstash.logLevel` | | |
-| `services.logstash.outputConfig` | | |
-| `services.logstash.package` | | |
-| `services.logstash.plugins` | | |
-| `services.logstash.port` | | |
+| --- | --- | --- |
+| `services.logstash.dataDir` | `string` | A path to directory writable by logstash that it uses to store data. Plugins will also have access to this path. |
+| `services.logstash.enable` | `boolean` | Enable logstash. |
+| `services.logstash.extraJvmOptions` | `strings concatenated with "\n"` | Extra JVM options, one per line (jvm.options format). |
+| `services.logstash.extraSettings` | `strings concatenated with "\n"` | Extra Logstash settings in YAML format. |
+| `services.logstash.filterConfig` | `strings concatenated with "\n"` | logstash filter configuration. |
+| `services.logstash.filterWorkers` | `signed integer` | The quantity of filter workers to run. |
+| `services.logstash.inputConfig` | `strings concatenated with "\n"` | Logstash input configuration. |
+| `services.logstash.listenAddress` | `string` | Address on which to start webserver. |
+| `services.logstash.logLevel` | `one of "debug", "info", "warn", "error", "fatal"` | Logging verbosity level. |
+| `services.logstash.outputConfig` | `strings concatenated with "\n"` | Logstash output configuration. |
+| `services.logstash.package` | `package` | The logstash package to use. |
+| `services.logstash.plugins` | `list of absolute path` | The paths to find other logstash plugins in. |
+| `services.logstash.port` | `string` | Port on which to start webserver. |

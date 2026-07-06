@@ -5,7 +5,7 @@
 All options under `services.opentracker`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.opentracker.enable` | | |
-| `services.opentracker.extraOptions` | | |
-| `services.opentracker.package` | | |
+| --- | --- | --- |
+| `services.opentracker.enable` | `boolean` | Whether to enable opentracker. |
+| `services.opentracker.extraOptions` | `strings concatenated with " "` | Configuration Arguments for opentracker See <https://erdgeist.org/arts/software/opentracker/> for all params |
+| `services.opentracker.package` | `package` | The opentracker package to use. |

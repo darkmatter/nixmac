@@ -5,8 +5,8 @@
 All options under `services.mullvad-vpn`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---- | ----------- |
-| `services.mullvad-vpn.enable` | | |
-| `services.mullvad-vpn.enableEarlyBootBlocking` | | |
-| `services.mullvad-vpn.enableExcludeWrapper` | | |
-| `services.mullvad-vpn.package` | | |
+| --- | --- | --- |
+| `services.mullvad-vpn.enable` | `boolean` | This option enables Mullvad VPN daemon. |
+| `services.mullvad-vpn.enableEarlyBootBlocking` | `boolean` | This option activates an additional oneshot systemd service to ensure that the mullvad daemon will start and block traffic before any network configuration will be applied. This matches what upstream Mullvad distributes for their supported distros, but is disabled by default in NixOS as it may conflict with non-Mullvad network configuration. |
+| `services.mullvad-vpn.enableExcludeWrapper` | `boolean` | This option activates the wrapper that allows the use of mullvad-exclude. Might have minor security impact, so consider disabling if you do not use the feature. |
+| `services.mullvad-vpn.package` | `package` | The mullvad package to use. `pkgs.mullvad` only provides the CLI tool, `pkgs.mullvad-vpn` provides both the CLI and the GUI. |

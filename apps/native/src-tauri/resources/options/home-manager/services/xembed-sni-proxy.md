@@ -5,6 +5,6 @@
 All options under `services.xembed-sni-proxy`.
 
 | Option | Type | Description |
-| ----------------------------------- | --------- | ------------------------------------ |
+| --- | --- | --- |
 | `services.xembed-sni-proxy.enable` | `boolean` | Whether to enable XEmbed SNI Proxy. |
 | `services.xembed-sni-proxy.package` | `package` | The plasma-workspace package to use. |

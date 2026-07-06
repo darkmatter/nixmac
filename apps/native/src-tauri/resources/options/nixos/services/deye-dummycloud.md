@@ -5,8 +5,8 @@
 All options under `services.deye-dummycloud`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.deye-dummycloud.enable` | | |
-| `services.deye-dummycloud.mqttBrokerUrl` | | |
-| `services.deye-dummycloud.mqttPassword` | | |
-| `services.deye-dummycloud.mqttUsername` | | |
+| --- | --- | --- |
+| `services.deye-dummycloud.enable` | `boolean` | Whether to enable the deye-dummycloud service. |
+| `services.deye-dummycloud.mqttBrokerUrl` | `string` | MQTT broker URL |
+| `services.deye-dummycloud.mqttPassword` | `string` | MQTT password |
+| `services.deye-dummycloud.mqttUsername` | `string` | MQTT username |

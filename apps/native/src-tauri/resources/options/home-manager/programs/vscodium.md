@@ -5,9 +5,19 @@
 All options under `programs.vscodium`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `programs.vscodium.argvSettings` | | |
-| `programs.vscodium.enable` | | |
-| `programs.vscodium.mutableExtensionsDir` | | |
-| `programs.vscodium.package` | | |
-| `programs.vscodium.profiles` | | |
+| --- | --- | --- |
+| `programs.vscodium.argvSettings` | `absolute path or JSON value` | Configuration written to VSCodium's {file}`argv.json`. This can be a JSON object or a path to a custom JSON file. |
+| `programs.vscodium.enable` | `boolean` | Whether to enable VSCodium. |
+| `programs.vscodium.mutableExtensionsDir` | `boolean` | Whether extensions can be installed or updated manually or by VSCodium. Mutually exclusive to programs.vscodium.profiles. |
+| `programs.vscodium.package` | `null or package` | The vscodium package to use. Version of VSCodium to install. |
+| `programs.vscodium.profiles` | `attribute set of (submodule)` | A list of all VSCodium profiles. Mutually exclusive to programs.vscodium.mutableExtensionsDir |
+| `programs.vscodium.profiles.<name>.enableExtensionUpdateCheck` | `null or boolean` | Whether to enable update notifications for extensions. Can only be set for the default profile, but it applies to all profiles. |
+| `programs.vscodium.profiles.<name>.enableMcpIntegration` | `boolean` | Whether to integrate the MCP servers config from {option}`programs.mcp.servers` into {option}`programs.vscodium.profiles.<name>.userMcp`. Note: Settings defined in {option}`programs.mcp.servers` are merged with {option}`programs.vscodium.profiles.<name>.userMcp`, with VSCodium settings taking precedence. |
+| `programs.vscodium.profiles.<name>.enableUpdateCheck` | `null or boolean` | Whether to enable update checks/notifications. Can only be set for the default profile, but it applies to all profiles. |
+| `programs.vscodium.profiles.<name>.extensions` | `list of package` | The extensions VSCodium should be started with. |
+| `programs.vscodium.profiles.<name>.globalSnippets` | `JSON value` | Defines global user snippets. |
+| `programs.vscodium.profiles.<name>.keybindings` | `absolute path or list of (open submodule of (JSON value))` | Keybindings written to VSCodium's {file}`keybindings.json`. This can be a JSON object or a path to a custom JSON file. |
+| `programs.vscodium.profiles.<name>.languageSnippets` | `JSON value` | Defines user snippets for different languages. |
+| `programs.vscodium.profiles.<name>.userMcp` | `absolute path or JSON value` | Configuration written to VSCodium's {file}`mcp.json`. This can be a JSON object or a path to a custom JSON file. |
+| `programs.vscodium.profiles.<name>.userSettings` | `absolute path or JSON value` | Configuration written to VSCodium's {file}`settings.json`. This can be a JSON object or a path to a custom JSON file. |
+| `programs.vscodium.profiles.<name>.userTasks` | `absolute path or JSON value` | Configuration written to VSCodium's {file}`tasks.json`. This can be a JSON object or a path to a custom JSON file. |

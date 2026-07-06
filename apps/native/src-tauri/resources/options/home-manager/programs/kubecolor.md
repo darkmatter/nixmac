@@ -5,9 +5,9 @@
 All options under `programs.kubecolor`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| --- | --- | --- |
 | `programs.kubecolor.enable` | `boolean` | Whether to enable kubecolor - Colorize your kubectl output. |
 | `programs.kubecolor.enableAlias` | `boolean` | When set to true, it will create an alias for kubectl pointing to kubecolor, thus making kubecolor the default kubectl client. |
 | `programs.kubecolor.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
 | `programs.kubecolor.package` | `package` | The kubecolor package to use. |
-| `programs.kubecolor.settings` | `YAML 1.1 value` | Configuration written to ~/.kube/color.yaml (Linux) or Library/Application Support/kube/color.yaml (Darwin). See https://kubecolor.github.io/reference/config/ for supported values. |
+| `programs.kubecolor.settings` | `YAML 1.1 value` | Configuration written to {file}`~/.kube/color.yaml` (Linux) or {file}`Library/Application Support/kube/color.yaml` (Darwin). See <https://kubecolor.github.io/reference/config/> for supported values. |

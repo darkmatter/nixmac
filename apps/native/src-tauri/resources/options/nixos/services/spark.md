@@ -5,16 +5,16 @@
 All options under `services.spark`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.spark.confDir` | | |
-| `services.spark.logDir` | | |
-| `services.spark.master.bind` | | |
-| `services.spark.master.enable` | | |
-| `services.spark.master.extraEnvironment` | | |
-| `services.spark.master.restartIfChanged` | | |
-| `services.spark.package` | | |
-| `services.spark.worker.enable` | | |
-| `services.spark.worker.extraEnvironment` | | |
-| `services.spark.worker.master` | | |
-| `services.spark.worker.restartIfChanged` | | |
-| `services.spark.worker.workDir` | | |
+| --- | --- | --- |
+| `services.spark.confDir` | `absolute path` | Spark configuration directory. Spark will use the configuration files (spark-defaults.conf, spark-env.sh, log4j.properties, etc) from this directory. |
+| `services.spark.logDir` | `absolute path` | Spark log directory. |
+| `services.spark.master.bind` | `string` | Address the spark master binds to. |
+| `services.spark.master.enable` | `boolean` | Whether to enable Spark master service. |
+| `services.spark.master.extraEnvironment` | `attribute set of string` | Extra environment variables to pass to spark master. See spark-standalone documentation. |
+| `services.spark.master.restartIfChanged` | `boolean` | Automatically restart master service on config change. This can be set to false to defer restarts on clusters running critical applications. Please consider the security implications of inadvertently running an older version, and the possibility of unexpected behavior caused by inconsistent versions across a cluster when disabling this option. |
+| `services.spark.package` | `package` | The spark package to use. |
+| `services.spark.worker.enable` | `boolean` | Whether to enable Spark worker service. |
+| `services.spark.worker.extraEnvironment` | `attribute set of string` | Extra environment variables to pass to spark worker. |
+| `services.spark.worker.master` | `string` | Address of the spark master. |
+| `services.spark.worker.restartIfChanged` | `boolean` | Automatically restart worker service on config change. This can be set to false to defer restarts on clusters running critical applications. Please consider the security implications of inadvertently running an older version, and the possibility of unexpected behavior caused by inconsistent versions across a cluster when disabling this option. |
+| `services.spark.worker.workDir` | `absolute path` | Spark worker work dir. |

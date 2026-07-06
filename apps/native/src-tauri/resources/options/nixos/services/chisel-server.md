@@ -5,12 +5,12 @@
 All options under `services.chisel-server`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.chisel-server.authfile` | | |
-| `services.chisel-server.backend` | | |
-| `services.chisel-server.enable` | | |
-| `services.chisel-server.host` | | |
-| `services.chisel-server.keepalive` | | |
-| `services.chisel-server.port` | | |
-| `services.chisel-server.reverse` | | |
-| `services.chisel-server.socks5` | | |
+| --- | --- | --- |
+| `services.chisel-server.authfile` | `null or absolute path` | Path to auth.json file |
+| `services.chisel-server.backend` | `null or string` | HTTP server to proxy normal requests to |
+| `services.chisel-server.enable` | `boolean` | Whether to enable Chisel Tunnel Server. |
+| `services.chisel-server.host` | `null or string` | Address to listen on, falls back to 0.0.0.0 |
+| `services.chisel-server.keepalive` | `null or string` | Keepalive interval, falls back to 25s |
+| `services.chisel-server.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on, falls back to 8080 |
+| `services.chisel-server.reverse` | `boolean` | Allow clients reverse port forwarding |
+| `services.chisel-server.socks5` | `boolean` | Allow clients access to internal SOCKS5 proxy |

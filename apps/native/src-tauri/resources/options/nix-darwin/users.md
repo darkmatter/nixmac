@@ -5,13 +5,24 @@
 All options under `users`.
 
 | Option | Type | Description |
-| ------------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `users.forceRecreate` | | |
-| `users.gids` | | |
+| --- | --- | --- |
 | `users.groups` | `attribute set of (submodule)` | Configuration for groups. |
-| `users.knownGroups` | `list of string` | List of groups owned and managed by nix-darwin. Used to indicate what users are safe to create/delete based on the configuration. Don’t add system groups to this. |
-| `users.knownUsers` | `list of string` | List of users owned and managed by nix-darwin. Used to indicate what users are safe to create/delete based on the configuration. Don’t add the admin user or other system users to this. |
-| `users.nix.configureBuildUsers` | | |
-| `users.nix.nrBuildUsers` | | |
-| `users.uids` | | |
+| `users.groups.<name>.description` | `string` | The group's description. |
+| `users.groups.<name>.gid` | `signed integer` | The group's GID. |
+| `users.groups.<name>.members` | `list of string` | The group's members. |
+| `users.groups.<name>.name` | `string` | The group's name. If undefined, the name of the attribute set will be used. |
+| `users.knownGroups` | `list of string` | List of groups owned and managed by nix-darwin. Used to indicate what users are safe to create/delete based on the configuration. Don't add system groups to this. |
+| `users.knownUsers` | `list of string` | List of users owned and managed by nix-darwin. Used to indicate what users are safe to create/delete based on the configuration. Don't add the admin user or other system users to this. |
 | `users.users` | `attribute set of (submodule)` | Configuration for users. |
+| `users.users.<name>.createHome` | `boolean` | Create the home directory when creating the user. |
+| `users.users.<name>.description` | `null or non-empty string` | A short description of the user account, typically the user's full name. This defaults to `null` which means, on creation, `sysadminctl` will pick the description which is usually always {option}`name`. Using an empty name is not supported and breaks macOS like making the user not appear in Directory Utility. |
+| `users.users.<name>.gid` | `signed integer` | The user's primary group. |
+| `users.users.<name>.home` | `null or absolute path` | The user's home directory. This defaults to `null`. When this is set to `null`, if the user has not been created yet, they will be created with the home directory `/var/empty` to match the old default. |
+| `users.users.<name>.ignoreShellProgramCheck` | `boolean` | By default, nix-darwin will check that programs.SHELL.enable is set to true if the user has a custom shell specified. If that behavior isn't required and there are custom overrides in place to make sure that the shell is functional, set this to true. |
+| `users.users.<name>.isHidden` | `boolean` | Whether to make the user account hidden. |
+| `users.users.<name>.name` | `non-empty string` | The name of the user account. If undefined, the name of the attribute set will be used. |
+| `users.users.<name>.openssh.authorizedKeys.keyFiles` | `list of absolute path` | A list of files each containing one OpenSSH public key that should be added to the user's authorized keys. The contents of the files are read at build time and added to a file that the SSH daemon reads in addition to the the user's authorized_keys file. You can combine the `keyFiles` and `keys` options. |
+| `users.users.<name>.openssh.authorizedKeys.keys` | `list of string` | A list of verbatim OpenSSH public keys that should be added to the user's authorized keys. The keys are added to a file that the SSH daemon reads in addition to the the user's authorized_keys file. You can combine the `keys` and `keyFiles` options. Warning: If you are using `NixOps` then don't use this option since it will replace the key required for deployment via ssh. |
+| `users.users.<name>.packages` | `list of package` | The set of packages that should be made availabe to the user. This is in contrast to {option}`environment.systemPackages`, which adds packages to all users. |
+| `users.users.<name>.shell` | `null or package or absolute path` | The user's shell. This defaults to `null`. When this is set to `null`, if the user has not been created yet, they will be created with the shell `/usr/bin/false` to prevent interactive login. If the user already exists, the value is considered managed by macOS and `nix-darwin` will not change it. |
+| `users.users.<name>.uid` | `signed integer` | The user's UID. |

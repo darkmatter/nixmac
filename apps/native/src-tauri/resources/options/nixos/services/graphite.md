@@ -5,29 +5,26 @@
 All options under `services.graphite`.
 
 | Option | Type | Description |
-| --------------------------------------------- | ---- | ----------- |
-| `services.graphite.api` | | |
-| `services.graphite.beacon` | | |
-| `services.graphite.carbon.aggregationRules` | | |
-| `services.graphite.carbon.blacklist` | | |
-| `services.graphite.carbon.config` | | |
-| `services.graphite.carbon.enableAggregator` | | |
-| `services.graphite.carbon.enableCache` | | |
-| `services.graphite.carbon.enableRelay` | | |
-| `services.graphite.carbon.relayRules` | | |
-| `services.graphite.carbon.rewriteRules` | | |
-| `services.graphite.carbon.storageAggregation` | | |
-| `services.graphite.carbon.storageSchemas` | | |
-| `services.graphite.carbon.whitelist` | | |
-| `services.graphite.dataDir` | | |
-| `services.graphite.pager` | | |
-| `services.graphite.seyren.enable` | | |
-| `services.graphite.seyren.extraConfig` | | |
-| `services.graphite.seyren.graphiteUrl` | | |
-| `services.graphite.seyren.mongoUrl` | | |
-| `services.graphite.seyren.port` | | |
-| `services.graphite.seyren.seyrenUrl` | | |
-| `services.graphite.web.enable` | | |
-| `services.graphite.web.extraConfig` | | |
-| `services.graphite.web.listenAddress` | | |
-| `services.graphite.web.port` | | |
+| --- | --- | --- |
+| `services.graphite.carbon.aggregationRules` | `null or string` | Defines if and how received metrics will be aggregated. |
+| `services.graphite.carbon.blacklist` | `null or string` | Any metrics received which match one of the expressions will be dropped. |
+| `services.graphite.carbon.config` | `string` | Content of carbon configuration file. |
+| `services.graphite.carbon.enableAggregator` | `boolean` | Whether to enable carbon aggregator, the carbon buffering service. |
+| `services.graphite.carbon.enableCache` | `boolean` | Whether to enable carbon cache, the graphite storage daemon. |
+| `services.graphite.carbon.enableRelay` | `boolean` | Whether to enable carbon relay, the carbon replication and sharding service. |
+| `services.graphite.carbon.relayRules` | `null or string` | Relay rules are used to send certain metrics to a certain backend. |
+| `services.graphite.carbon.rewriteRules` | `null or string` | Regular expression patterns that can be used to rewrite metric names in a search and replace fashion. |
+| `services.graphite.carbon.storageAggregation` | `null or string` | Defines how to aggregate data to lower-precision retentions. |
+| `services.graphite.carbon.storageSchemas` | `null or string` | Defines retention rates for storing metrics. |
+| `services.graphite.carbon.whitelist` | `null or string` | Only metrics received which match one of the expressions will be persisted. |
+| `services.graphite.dataDir` | `absolute path` | Data directory for graphite. |
+| `services.graphite.seyren.enable` | `boolean` | Whether to enable seyren service. |
+| `services.graphite.seyren.extraConfig` | `attribute set of string` | Extra seyren configuration. See <https://github.com/scobal/seyren#config> |
+| `services.graphite.seyren.graphiteUrl` | `string` | Host where graphite service runs. |
+| `services.graphite.seyren.mongoUrl` | `string` | Mongodb connection string. |
+| `services.graphite.seyren.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Seyren listening port. |
+| `services.graphite.seyren.seyrenUrl` | `string` | Host where seyren is accessible. |
+| `services.graphite.web.enable` | `boolean` | Whether to enable graphite web frontend. |
+| `services.graphite.web.extraConfig` | `string` | Graphite webapp settings. See: <https://graphite.readthedocs.io/en/latest/config-local-settings.html> |
+| `services.graphite.web.listenAddress` | `string` | Graphite web frontend listen address. |
+| `services.graphite.web.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Graphite web frontend port. |

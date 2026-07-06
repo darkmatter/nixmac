@@ -5,11 +5,11 @@
 All options under `services.komga`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.komga.enable` | | |
-| `services.komga.group` | | |
-| `services.komga.openFirewall` | | |
-| `services.komga.port` | | |
-| `services.komga.settings` | | |
-| `services.komga.stateDir` | | |
-| `services.komga.user` | | |
+| --- | --- | --- |
+| `services.komga.enable` | `boolean` | Whether to enable Komga, a free and open source comics/mangas media server. |
+| `services.komga.group` | `string` | Group under which Komga runs. |
+| `services.komga.openFirewall` | `boolean` | Whether to open the firewall for the port in {option}`services.komga.settings.server.port`. |
+| `services.komga.settings` | `open submodule of (YAML 1.1 value)` | Komga configuration. See [documentation](https://komga.org/docs/installation/configuration). |
+| `services.komga.settings.server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port that Komga will listen on. |
+| `services.komga.stateDir` | `string` | State and configuration directory Komga will use. |
+| `services.komga.user` | `string` | User account under which Komga runs. |

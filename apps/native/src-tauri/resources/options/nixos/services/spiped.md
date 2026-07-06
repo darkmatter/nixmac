@@ -5,6 +5,18 @@
 All options under `services.spiped`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `services.spiped.config` | | |
-| `services.spiped.enable` | | |
+| --- | --- | --- |
+| `services.spiped.config` | `attribute set of (submodule)` | Configuration for a secure pipe daemon. The daemon can be started, stopped, or examined using `systemctl`, under the name `spiped@foo`. |
+| `services.spiped.config.<name>.decrypt` | `boolean` | Take encrypted connections from the `source` socket and send unencrypted connections to the `target` socket. |
+| `services.spiped.config.<name>.disableKeepalives` | `boolean` | Disable transport layer keep-alives. |
+| `services.spiped.config.<name>.disableReresolution` | `boolean` | Disable target address re-resolution. |
+| `services.spiped.config.<name>.encrypt` | `boolean` | Take unencrypted connections from the `source` socket and send encrypted connections to the `target` socket. |
+| `services.spiped.config.<name>.keyfile` | `absolute path` | Name of a file containing the spiped key. As the daemon runs as the `spiped` user, the key file must be readable by that user. To securely manage the file within your configuration consider a tool such as agenix or sops-nix. |
+| `services.spiped.config.<name>.maxConns` | `signed integer` | Limit on the number of simultaneous connections allowed. |
+| `services.spiped.config.<name>.resolveRefresh` | `signed integer` | Resolution refresh time for the target socket, in seconds. |
+| `services.spiped.config.<name>.source` | `string` | Address on which spiped should listen for incoming connections. Must be in one of the following formats: `/absolute/path/to/unix/socket`, `host.name:port`, `[ip.v4.ad.dr]:port` or `[ipv6::addr]:port` - note that hostnames are resolved when spiped is launched and are not re-resolved later; thus if DNS entries change spiped will continue to connect to the expired address. |
+| `services.spiped.config.<name>.target` | `string` | Address to which spiped should connect. |
+| `services.spiped.config.<name>.timeout` | `signed integer` | Timeout, in seconds, after which an attempt to connect to the target or a protocol handshake will be aborted (and the connection dropped) if not completed |
+| `services.spiped.config.<name>.waitForDNS` | `boolean` | Wait for DNS. Normally when `spiped` is launched it resolves addresses and binds to its source socket before the parent process returns; with this option it will daemonize first and retry failed DNS lookups until they succeed. This allows `spiped` to launch even if DNS isn't set up yet, but at the expense of losing the guarantee that once `spiped` has finished launching it will be ready to create pipes. |
+| `services.spiped.config.<name>.weakHandshake` | `boolean` | Use fast/weak handshaking: This reduces the CPU time spent in the initial connection setup, at the expense of losing perfect forward secrecy. |
+| `services.spiped.enable` | `boolean` | Enable the spiped service module. |

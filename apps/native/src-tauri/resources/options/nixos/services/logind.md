@@ -5,19 +5,7 @@
 All options under `services.logind`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.logind.enable` | | |
-| `services.logind.extraConfig` | | |
-| `services.logind.hibernateKey` | | |
-| `services.logind.hibernateKeyLongPress` | | |
-| `services.logind.killUserProcesses` | | |
-| `services.logind.lidSwitch` | | |
-| `services.logind.lidSwitchDocked` | | |
-| `services.logind.lidSwitchExternalPower` | | |
-| `services.logind.powerKey` | | |
-| `services.logind.powerKeyLongPress` | | |
-| `services.logind.rebootKey` | | |
-| `services.logind.rebootKeyLongPress` | | |
-| `services.logind.settings.Login` | | |
-| `services.logind.suspendKey` | | |
-| `services.logind.suspendKeyLongPress` | | |
+| --- | --- | --- |
+| `services.logind.enable` | `boolean` | Whether to enable the `systemd-logind` login service. |
+| `services.logind.settings.Login` | `open submodule of attribute set of (systemd option)` | Settings option for systemd-logind. See {manpage}`logind.conf(5)` for available options. |
+| `services.logind.settings.Login.KillUserProcesses` | `boolean` | Specifies whether the processes of a user should be killed when the user logs out. If true, the scope unit corresponding to the session and all processes inside that scope will be terminated. If false, the scope is "abandoned" (see {manpage}`systemd.scope(5)`), and processes are not killed. See {manpage}`logind.conf(5)` for more details. Defaulted to false in nixpkgs because many tools that rely on persistent user processes—like `tmux`, `screen`, `mosh`, `VNC`, `nohup`, and more — would break by the systemd-default behavior. |

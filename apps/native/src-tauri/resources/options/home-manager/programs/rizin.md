@@ -5,8 +5,8 @@
 All options under `programs.rizin`.
 
 | Option | Type | Description |
-| ---------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.rizin.enable` | `boolean` | Whether to enable Rizin. |
-| `programs.rizin.extraConfig` | `strings concatenated with “\n”` | Extra run configuration written to rizinrc . See https://book.rizin.re/src/configuration/initial_scripts.html for more information. |
+| `programs.rizin.extraConfig` | `strings concatenated with "\n"` | Extra run configuration written to {file}`rizinrc`. See <https://book.rizin.re/src/configuration/initial_scripts.html> for more information. |
 | `programs.rizin.package` | `null or package` | The rizin package to use. |
-| `programs.rizin.settings` | `attribute set of (string or signed integer or boolean or floating point number)` | Set of runtime configuration values written to the initial runcommands file. See https://book.rizin.re/src/configuration/initial_scripts.html for more information and use programs.rizin.extraConfig to manually add commands. |
+| `programs.rizin.settings` | `attribute set of (string or signed integer or boolean or floating point number)` | Set of runtime configuration values written to the initial runcommands file. See <https://book.rizin.re/src/configuration/initial_scripts.html> for more information and use [](#opt-programs.rizin.extraConfig) to manually add commands. |

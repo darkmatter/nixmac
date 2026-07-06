@@ -5,5 +5,5 @@
 All options under `services.system-config-printer`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.system-config-printer.enable` | | |
+| --- | --- | --- |
+| `services.system-config-printer.enable` | `boolean` | Whether to enable system-config-printer, a service for CUPS administration used by printing interfaces. |

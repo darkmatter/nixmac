@@ -5,44 +5,60 @@
 All options under `services.httpd`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.httpd.adminAddr` | | |
-| `services.httpd.configFile` | | |
-| `services.httpd.customLogFormat` | | |
-| `services.httpd.documentRoot` | | |
-| `services.httpd.enable` | | |
-| `services.httpd.enableMellon` | | |
-| `services.httpd.enablePHP` | | |
-| `services.httpd.enablePerl` | | |
-| `services.httpd.enableSSL` | | |
-| `services.httpd.enableUserDir` | | |
-| `services.httpd.extraConfig` | | |
-| `services.httpd.extraModules` | | |
-| `services.httpd.extraSubservices` | | |
-| `services.httpd.globalRedirect` | | |
-| `services.httpd.group` | | |
-| `services.httpd.hostName` | | |
-| `services.httpd.listen` | | |
-| `services.httpd.logDir` | | |
-| `services.httpd.logFormat` | | |
-| `services.httpd.logLevel` | | |
-| `services.httpd.logPerVirtualHost` | | |
-| `services.httpd.maxClients` | | |
-| `services.httpd.maxRequestsPerChild` | | |
-| `services.httpd.mpm` | | |
-| `services.httpd.multiProcessingModule` | | |
-| `services.httpd.package` | | |
-| `services.httpd.phpOptions` | | |
-| `services.httpd.phpPackage` | | |
-| `services.httpd.robotsEntries` | | |
-| `services.httpd.servedDirs` | | |
-| `services.httpd.servedFiles` | | |
-| `services.httpd.serverAliases` | | |
-| `services.httpd.sslCiphers` | | |
-| `services.httpd.sslProtocols` | | |
-| `services.httpd.sslServerCert` | | |
-| `services.httpd.sslServerChain` | | |
-| `services.httpd.sslServerKey` | | |
-| `services.httpd.stateDir` | | |
-| `services.httpd.user` | | |
-| `services.httpd.virtualHosts` | | |
+| --- | --- | --- |
+| `services.httpd.adminAddr` | `null or string` | E-mail address of the server administrator. |
+| `services.httpd.configFile` | `absolute path` | Override the configuration file used by Apache. By default, NixOS generates one automatically. |
+| `services.httpd.customLogFormat` | `string` | Defines a custom Apache HTTPD access log format string. This option is only consulted when `logFormat` is set to `custom`. The value must be a valid Apache `LogFormat` specification and will be registered under the symbolic name `custom`. See <https://httpd.apache.org/docs/2.4/logs.html#formats> for the formal definition of log format directives. |
+| `services.httpd.enable` | `boolean` | Whether to enable the Apache HTTP Server. |
+| `services.httpd.enableMellon` | `boolean` | Whether to enable the mod_auth_mellon module. |
+| `services.httpd.enablePHP` | `boolean` | Whether to enable the PHP module. |
+| `services.httpd.enablePerl` | `boolean` | Whether to enable the Perl module (mod_perl). |
+| `services.httpd.extraConfig` | `strings concatenated with "\n"` | Configuration lines appended to the generated Apache configuration file. Note that this mechanism will not work when {option}`configFile` is overridden. |
+| `services.httpd.extraModules` | `list of unspecified value` | Additional Apache modules to be used. These can be specified as a string in the case of modules distributed with Apache, or as an attribute set specifying the {var}`name` and {var}`path` of the module. |
+| `services.httpd.group` | `string` | Group under which httpd children processes run. |
+| `services.httpd.logDir` | `absolute path` | Directory for Apache's log files. It is created automatically. |
+| `services.httpd.logFormat` | `one of "combined", "common", "referer", "agent", "custom", "none"` | Selects the access log format written to log files. The values `combined`, `common`, `referer`, and `agent` correspond to predefined Apache HTTPD log formats. Setting the value to `custom` enables the use of a user-defined format string specified via `customLogFormat`. The value `none` disables access logging entirely. Further details on Apache log formats are available at <https://httpd.apache.org/docs/2.4/logs.html>. |
+| `services.httpd.logLevel` | `null or one of "emerg", "alert", "crit", "error", "warn", "notice", "info", "debug", "trace1", "trace2", "trace3", "trace4", "trace5", "trace6", "trace7", "trace8"` | Controls the verbosity of the ErrorLog. See <https://httpd.apache.org/docs/2.4/mod/core.html#loglevel> for more details. |
+| `services.httpd.logPerVirtualHost` | `boolean` | If enabled, each virtual host gets its own {file}`access.log` and {file}`error.log`, namely suffixed by the {option}`hostName` of the virtual host. |
+| `services.httpd.maxClients` | `positive integer, meaning >0` | Maximum number of httpd processes (prefork) |
+| `services.httpd.maxRequestsPerChild` | `unsigned integer, meaning >=0` | Maximum number of httpd requests answered per httpd child (prefork), 0 means unlimited. |
+| `services.httpd.mpm` | `one of "event", "prefork", "worker"` | Multi-processing module to be used by Apache. Available modules are `prefork` (handles each request in a separate child process), `worker` (hybrid approach that starts a number of child processes each running a number of threads) and `event` (the default; a recent variant of `worker` that handles persistent connections more efficiently). |
+| `services.httpd.package` | `package` | The apacheHttpd package to use. |
+| `services.httpd.phpOptions` | `strings concatenated with "\n"` | Options appended to the PHP configuration file {file}`php.ini`. |
+| `services.httpd.phpPackage` | `package` | The php package to use. |
+| `services.httpd.sslCiphers` | `string` | Cipher Suite available for negotiation in SSL proxy handshake. |
+| `services.httpd.sslProtocols` | `string` | Allowed SSL/TLS protocol versions. |
+| `services.httpd.user` | `string` | User account under which httpd children processes run. If you require the main httpd process to run as `root` add the following configuration: `systemd.services.httpd.serviceConfig.User = lib.mkForce "root";` |
+| `services.httpd.virtualHosts` | `attribute set of (submodule)` | Specification of the virtual hosts served by Apache. Each element should be an attribute set specifying the configuration of the virtual host. |
+| `services.httpd.virtualHosts.<name>.acmeRoot` | `null or string` | Directory for the acme challenge which is PUBLIC, don't put certs or keys in here. Set to null to inherit from config.security.acme. |
+| `services.httpd.virtualHosts.<name>.addSSL` | `boolean` | Whether to enable HTTPS in addition to plain HTTP. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443). |
+| `services.httpd.virtualHosts.<name>.adminAddr` | `null or string` | E-mail address of the server administrator. |
+| `services.httpd.virtualHosts.<name>.documentRoot` | `null or absolute path` | The path of Apache's document root directory. If left undefined, an empty directory in the Nix store will be used as root. |
+| `services.httpd.virtualHosts.<name>.enableACME` | `boolean` | Whether to ask Let's Encrypt to sign a certificate for this vhost. Alternately, you can use an existing certificate through {option}`useACMEHost`. |
+| `services.httpd.virtualHosts.<name>.enableUserDir` | `boolean` | Whether to enable serving {file}`~/public_html` as `/~«username»`. |
+| `services.httpd.virtualHosts.<name>.extraConfig` | `strings concatenated with "\n"` | These lines go to httpd.conf verbatim. They will go after directories and directory aliases defined by default. |
+| `services.httpd.virtualHosts.<name>.forceSSL` | `boolean` | Whether to add a separate nginx server block that permanently redirects (301) all plain HTTP traffic to HTTPS. This will set defaults for `listen` to listen on all interfaces on the respective default ports (80, 443), where the non-SSL listens are used for the redirect vhosts. |
+| `services.httpd.virtualHosts.<name>.globalRedirect` | `null or string` | If set, all requests for this host are redirected permanently to the given URL. |
+| `services.httpd.virtualHosts.<name>.hostName` | `string` | Canonical hostname for the server. |
+| `services.httpd.virtualHosts.<name>.http2` | `boolean` | Whether to enable HTTP 2. HTTP/2 is supported in all multi-processing modules that come with httpd. *However, if you use the prefork mpm, there will be severe restrictions.* Refer to <https://httpd.apache.org/docs/2.4/howto/http2.html#mpm-config> for details. |
+| `services.httpd.virtualHosts.<name>.listen` | `list of (submodule)` | Listen addresses and ports for this virtual host. ::: {.note} This option overrides `addSSL`, `forceSSL` and `onlySSL`. If you only want to set the addresses manually and not the ports, take a look at `listenAddresses`. ::: |
+| `services.httpd.virtualHosts.<name>.listen.*.ip` | `string` | IP to listen on. 0.0.0.0 for IPv4 only, * for all. |
+| `services.httpd.virtualHosts.<name>.listen.*.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on |
+| `services.httpd.virtualHosts.<name>.listen.*.ssl` | `boolean` | Whether to enable SSL (https) support. |
+| `services.httpd.virtualHosts.<name>.listenAddresses` | `non-empty (list of string)` | Listen addresses for this virtual host. Compared to `listen` this only sets the addresses and the ports are chosen automatically. |
+| `services.httpd.virtualHosts.<name>.locations` | `attribute set of (submodule)` | Declarative location config. See <https://httpd.apache.org/docs/2.4/mod/core.html#location> for details. |
+| `services.httpd.virtualHosts.<name>.locations.<name>.alias` | `null or absolute path` | Alias directory for requests. See <https://httpd.apache.org/docs/2.4/mod/mod_alias.html#alias>. |
+| `services.httpd.virtualHosts.<name>.locations.<name>.extraConfig` | `strings concatenated with "\n"` | These lines go to the end of the location verbatim. |
+| `services.httpd.virtualHosts.<name>.locations.<name>.index` | `null or string` | Adds DirectoryIndex directive. See <https://httpd.apache.org/docs/2.4/mod/mod_dir.html#directoryindex>. |
+| `services.httpd.virtualHosts.<name>.locations.<name>.priority` | `signed integer` | Order of this location block in relation to the others in the vhost. The semantics are the same as with `lib.mkOrder`. Smaller values have a greater priority. |
+| `services.httpd.virtualHosts.<name>.locations.<name>.proxyPass` | `null or string` | Sets up a simple reverse proxy as described by <https://httpd.apache.org/docs/2.4/howto/reverse_proxy.html#simple>. |
+| `services.httpd.virtualHosts.<name>.logFormat` | `string` | Log format for Apache's log files. Possible values are: combined, common, referer, agent. |
+| `services.httpd.virtualHosts.<name>.onlySSL` | `boolean` | Whether to enable HTTPS and reject plain HTTP connections. This will set defaults for `listen` to listen on all interfaces on port 443. |
+| `services.httpd.virtualHosts.<name>.robotsEntries` | `strings concatenated with "\n"` | Specification of pages to be ignored by web crawlers. See <http://www.robotstxt.org/> for details. |
+| `services.httpd.virtualHosts.<name>.servedDirs` | `list of (attribute set)` | This option provides a simple way to serve static directories. |
+| `services.httpd.virtualHosts.<name>.servedFiles` | `list of (attribute set)` | This option provides a simple way to serve individual, static files. ::: {.note} This option has been deprecated and will be removed in a future version of NixOS. You can achieve the same result by making use of the `locations.<name>.alias` option. ::: |
+| `services.httpd.virtualHosts.<name>.serverAliases` | `list of string` | Additional names of virtual hosts served by this virtual host configuration. |
+| `services.httpd.virtualHosts.<name>.sslServerCert` | `absolute path` | Path to server SSL certificate. |
+| `services.httpd.virtualHosts.<name>.sslServerChain` | `null or absolute path` | Path to server SSL chain file. |
+| `services.httpd.virtualHosts.<name>.sslServerKey` | `absolute path` | Path to server SSL certificate key. |
+| `services.httpd.virtualHosts.<name>.useACMEHost` | `null or string` | A host of an existing Let's Encrypt certificate to use. This is useful if you have many subdomains and want to avoid hitting the [rate limit](https://letsencrypt.org/docs/rate-limits). Alternately, you can generate a certificate through {option}`enableACME`. *Note that this option does not create any certificates, nor it does add subdomains to existing ones – you will need to create them manually using [](#opt-security.acme.certs).* |

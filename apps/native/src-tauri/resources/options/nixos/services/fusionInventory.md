@@ -5,7 +5,7 @@
 All options under `services.fusionInventory`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.fusionInventory.enable` | | |
-| `services.fusionInventory.extraConfig` | | |
-| `services.fusionInventory.servers` | | |
+| --- | --- | --- |
+| `services.fusionInventory.enable` | `boolean` | Whether to enable Fusion Inventory Agent. |
+| `services.fusionInventory.extraConfig` | `strings concatenated with "\n"` | Configuration that is injected verbatim into the configuration file. |
+| `services.fusionInventory.servers` | `list of string` | The urls of the OCS/GLPI servers to connect to. |

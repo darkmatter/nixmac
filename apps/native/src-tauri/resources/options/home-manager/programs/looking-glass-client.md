@@ -5,7 +5,7 @@
 All options under `programs.looking-glass-client`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------- |
+| --- | --- | --- |
 | `programs.looking-glass-client.enable` | `boolean` | Whether to enable looking-glass-client. |
 | `programs.looking-glass-client.package` | `null or package` | The looking-glass-client package to use. |
 | `programs.looking-glass-client.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | looking-glass-client settings. |

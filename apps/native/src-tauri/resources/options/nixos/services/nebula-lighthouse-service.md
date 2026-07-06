@@ -5,7 +5,7 @@
 All options under `services.nebula-lighthouse-service`.
 
 | Option | Type | Description |
-| --------------------------------------------- | ---- | ----------- |
-| `services.nebula-lighthouse-service.enable` | | |
-| `services.nebula-lighthouse-service.settings` | | |
-| `services.nebula-lighthouse-service.user` | | |
+| --- | --- | --- |
+| `services.nebula-lighthouse-service.enable` | `boolean` | Whether to enable nebula-lighthouse-service. |
+| `services.nebula-lighthouse-service.settings` | `YAML 1.1 value` | Configuration for nebula-lighthouse-service. |
+| `services.nebula-lighthouse-service.user` | `string` | The user and group to run nebula-lighthouse-service as. |

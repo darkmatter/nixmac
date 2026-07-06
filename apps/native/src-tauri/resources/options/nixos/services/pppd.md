@@ -5,7 +5,11 @@
 All options under `services.pppd`.
 
 | Option | Type | Description |
-| ----------------------- | ---- | ----------- |
-| `services.pppd.enable` | | |
-| `services.pppd.package` | | |
-| `services.pppd.peers` | | |
+| --- | --- | --- |
+| `services.pppd.enable` | `boolean` | Whether to enable pppd. |
+| `services.pppd.package` | `package` | The ppp package to use. |
+| `services.pppd.peers` | `attribute set of (submodule)` | pppd peers. |
+| `services.pppd.peers.<name>.autostart` | `boolean` | Whether the PPP session is automatically started at boot time. |
+| `services.pppd.peers.<name>.config` | `strings concatenated with "\n"` | pppd configuration for this peer, see the {manpage}`pppd(8)` man page. |
+| `services.pppd.peers.<name>.enable` | `boolean` | Whether to enable this PPP peer. |
+| `services.pppd.peers.<name>.name` | `string` | Name of the PPP peer. |

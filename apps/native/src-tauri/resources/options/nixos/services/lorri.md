@@ -5,6 +5,6 @@
 All options under `services.lorri`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `services.lorri.enable` | | |
-| `services.lorri.package` | | |
+| --- | --- | --- |
+| `services.lorri.enable` | `boolean` | Enables the daemon for `lorri`, a nix-shell replacement for project development. The socket-activated daemon starts on the first request issued by the `lorri` command. |
+| `services.lorri.package` | `package` | The lorri package to use. |

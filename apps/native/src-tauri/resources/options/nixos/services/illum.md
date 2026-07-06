@@ -5,5 +5,5 @@
 All options under `services.illum`.
 
 | Option | Type | Description |
-| ----------------------- | ---- | ----------- |
-| `services.illum.enable` | | |
+| --- | --- | --- |
+| `services.illum.enable` | `boolean` | Enable illum, a daemon for controlling screen brightness with brightness buttons. |

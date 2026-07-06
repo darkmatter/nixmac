@@ -5,7 +5,7 @@
 All options under `services.tldr-update`.
 
 | Option | Type | Description |
-| ------------------------------ | --------- | ------------------------------------------------------------ |
+| --- | --- | --- |
 | `services.tldr-update.enable` | `boolean` | Whether to enable Automatic updates for the tldr CLI . |
 | `services.tldr-update.package` | `package` | The tldr package to use. |
-| `services.tldr-update.period` | `string` | Systemd timer period to create for scheduled tldr --update . |
+| `services.tldr-update.period` | `string` | Systemd timer period to create for scheduled {command}`tldr --update`. On Linux this is a string as defined by {manpage}`systemd.time(7)`. On Darwin, it must be one of: hourly, daily, weekly, monthly, semiannually, annually, which are implemented as defined in {manpage}`systemd.time(7)`. |

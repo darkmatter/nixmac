@@ -5,8 +5,18 @@
 All options under `programs.khal`.
 
 | Option | Type | Description |
-| ------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.khal.enable` | `boolean` | Whether to enable khal, a CLI calendar application. |
 | `programs.khal.locale` | `submodule` | khal locale settings. |
+| `programs.khal.locale.dateformat` | `string` | khal will display and understand all dates in this format. Format strings are for Python `strftime`, similarly to {manpage}`strftime(3)`. |
+| `programs.khal.locale.datetimeformat` | `string` | khal will display and understand all datetimes in this format. Format strings are for Python `strftime`, similarly to {manpage}`strftime(3)`. |
+| `programs.khal.locale.default_timezone` | `null or string` | Default for new events or if khal does not understand the timezone in an ical file. If `null`, the timezone of your computer will be used. |
+| `programs.khal.locale.firstweekday` | `integer between 0 and 6 (both inclusive)` | The first day of the week, where Monday is 0 and Sunday is 6. |
+| `programs.khal.locale.local_timezone` | `null or string` | khal will show all times in this timezone. If `null`, the timezone of your computer will be used. |
+| `programs.khal.locale.longdateformat` | `string` | khal will display and understand all dates in this format. It should contain a year (e.g. `%Y`). Format strings are for Python `strftime`, similarly to {manpage}`strftime(3)`. |
+| `programs.khal.locale.longdatetimeformat` | `string` | khal will display and understand all datetimes in this format. It should contain a year (e.g. `%Y`). Format strings are for Python `strftime`, similarly to {manpage}`strftime(3)`. |
+| `programs.khal.locale.timeformat` | `string` | khal will display and understand all times in this format. Format strings are for Python `strftime`, similarly to {manpage}`strftime(3)`. |
+| `programs.khal.locale.unicode_symbols` | `boolean` | By default khal uses some Unicode symbols (as in "non-ASCII") as indicators for things like repeating events. If your font, encoding etc. does not support those symbols, set this to false (this will enable ASCII-based replacements). |
+| `programs.khal.locale.weeknumbers` | `one of "off", "left", "right"` | Enable week numbers in calendar and interactive (ikhal) mode. As those are ISO week numbers, they only work properly if {option}`firstweekday` is set to 0. |
 | `programs.khal.package` | `null or package` | The khal package to use. |
 | `programs.khal.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration options to add to the various sections in the configuration file. |

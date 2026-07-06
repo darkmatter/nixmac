@@ -5,7 +5,7 @@
 All options under `programs.script-directory`.
 
 | Option | Type | Description |
-| ------------------------------------ | ------------------------- | --------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.script-directory.enable` | `boolean` | Whether to enable script-directory. |
 | `programs.script-directory.package` | `package` | The script-directory package to use. |
-| `programs.script-directory.settings` | `attribute set of string` | script-directory config, for options take a look at the documentation |
+| `programs.script-directory.settings` | `attribute set of string` | script-directory config, for options take a look at the [documentation](https://github.com/ianthehenry/sd#options) |

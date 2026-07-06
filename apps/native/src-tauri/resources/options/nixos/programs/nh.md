@@ -5,10 +5,10 @@
 All options under `programs.nh`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `programs.nh.clean.dates` | | |
-| `programs.nh.clean.enable` | | |
-| `programs.nh.clean.extraArgs` | | |
-| `programs.nh.enable` | | |
-| `programs.nh.flake` | | |
-| `programs.nh.package` | | |
+| --- | --- | --- |
+| `programs.nh.clean.dates` | `(optionally newline-terminated) single-line string` | How often cleanup is performed. Passed to systemd.time The format is described in {manpage}`systemd.time(7)`. |
+| `programs.nh.clean.enable` | `boolean` | Whether to enable periodic garbage collection with nh clean all. |
+| `programs.nh.clean.extraArgs` | `(optionally newline-terminated) single-line string` | Options given to nh clean when the service is run automatically. See `nh clean all --help` for more information. |
+| `programs.nh.enable` | `boolean` | Whether to enable nh, yet another Nix CLI helper. |
+| `programs.nh.flake` | `null or string` | The string that will be used for the `NH_FLAKE` environment variable. `NH_FLAKE` is used by nh as the default flake for performing actions, such as `nh os switch`. This behaviour can be overriden per-command with environment variables that will take priority. - `NH_OS_FLAKE`: will take priority for `nh os` commands. - `NH_HOME_FLAKE`: will take priority for `nh home` commands. - `NH_DARWIN_FLAKE`: will take priority for `nh darwin` commands. The formerly valid `FLAKE` is now deprecated by nh, and will cause hard errors in future releases if `NH_FLAKE` is not set. |
+| `programs.nh.package` | `package` | The nh package to use. |

@@ -5,11 +5,11 @@
 All options under `services.r53-ddns`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.r53-ddns.domain` | | |
-| `services.r53-ddns.enable` | | |
-| `services.r53-ddns.environmentFile` | | |
-| `services.r53-ddns.hostname` | | |
-| `services.r53-ddns.interval` | | |
-| `services.r53-ddns.ttl` | | |
-| `services.r53-ddns.zoneID` | | |
+| --- | --- | --- |
+| `services.r53-ddns.domain` | `string` | The name of your domain in Route53 |
+| `services.r53-ddns.enable` | `boolean` | Whether to enable r53-ddyns. |
+| `services.r53-ddns.environmentFile` | `string` | File containing the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in the format of an EnvironmentFile as described by {manpage}`systemd.exec(5)` |
+| `services.r53-ddns.hostname` | `string` | Manually specify the hostname. Otherwise the tool will try to use the name returned by the OS (Call to gethostname) |
+| `services.r53-ddns.interval` | `string` | How often to update the entry |
+| `services.r53-ddns.ttl` | `signed integer` | The TTL for the generated record |
+| `services.r53-ddns.zoneID` | `string` | The ID of your zone in Route53 |

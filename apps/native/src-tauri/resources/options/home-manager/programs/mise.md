@@ -5,12 +5,11 @@
 All options under `programs.mise`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ----------------- | ----------------------------------------------------- |
+| --- | --- | --- |
 | `programs.mise.enable` | `boolean` | Whether to enable mise. |
 | `programs.mise.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.mise.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
 | `programs.mise.enableNushellIntegration` | `boolean` | Whether to enable Nushell integration. |
 | `programs.mise.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
-| `programs.mise.globalConfig` | `TOML value` | Config written to $XDG_CONFIG_HOME/mise/config.toml . |
+| `programs.mise.globalConfig` | `TOML value` | Config written to {file}`$XDG_CONFIG_HOME/mise/config.toml`. See <https://mise.jdx.dev/configuration.html> and <https://mise.jdx.dev/configuration/settings.html> for details on supported values. |
 | `programs.mise.package` | `null or package` | The mise package to use. |
-| `programs.mise.settings` | | |

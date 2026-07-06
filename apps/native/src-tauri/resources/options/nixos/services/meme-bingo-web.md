@@ -5,10 +5,10 @@
 All options under `services.meme-bingo-web`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.meme-bingo-web.address` | | |
-| `services.meme-bingo-web.baseUrl` | | |
-| `services.meme-bingo-web.enable` | | |
-| `services.meme-bingo-web.openFirewall` | | |
-| `services.meme-bingo-web.package` | | |
-| `services.meme-bingo-web.port` | | |
+| --- | --- | --- |
+| `services.meme-bingo-web.address` | `string` | The address the webserver will bind to. |
+| `services.meme-bingo-web.baseUrl` | `string` | URL to be used for the HTML \<base> element on all HTML routes. |
+| `services.meme-bingo-web.enable` | `boolean` | Whether to enable a web app for the meme bingo, rendered entirely on the web server and made interactive with forms. Note: The application's author suppose to run meme-bingo-web behind a reverse proxy for SSL and HTTP/3 . |
+| `services.meme-bingo-web.openFirewall` | `boolean` | Whether to enable Opens the specified port in the firewall. . |
+| `services.meme-bingo-web.package` | `package` | The meme-bingo-web package to use. |
+| `services.meme-bingo-web.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to be used for the web server. |

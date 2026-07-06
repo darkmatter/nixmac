@@ -5,9 +5,9 @@
 All options under `services.automx2`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.automx2.domain` | | |
-| `services.automx2.enable` | | |
-| `services.automx2.package` | | |
-| `services.automx2.port` | | |
-| `services.automx2.settings` | | |
+| --- | --- | --- |
+| `services.automx2.domain` | `string` | E-Mail-Domain for which mail client autoconfig/autoconfigure should be set up. The `autoconfig` and `autodiscover` subdomains are automatically prepended and set up with ACME. The names of those domains are hardcoded in the mail clients and are not configurable. |
+| `services.automx2.enable` | `boolean` | Whether to enable automx2. |
+| `services.automx2.package` | `package` | The automx2 package to use. |
+| `services.automx2.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port used by automx2. |
+| `services.automx2.settings` | `JSON value` | Bootstrap json to populate database. See [docs](https://rseichter.github.io/automx2/#_sqlite) for details. |

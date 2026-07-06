@@ -5,10 +5,10 @@
 All options under `services.libvirtd`.
 
 | Option | Type | Description |
-| --------------------------------------------- | ---- | ----------- |
-| `services.libvirtd.autoSnapshot.calendar` | | |
-| `services.libvirtd.autoSnapshot.enable` | | |
-| `services.libvirtd.autoSnapshot.keep` | | |
-| `services.libvirtd.autoSnapshot.prefix` | | |
-| `services.libvirtd.autoSnapshot.snapshotType` | | |
-| `services.libvirtd.autoSnapshot.vms` | | |
+| --- | --- | --- |
+| `services.libvirtd.autoSnapshot.calendar` | `string` | When to create snapshots (systemd calendar format). Default is 4:15 AM. |
+| `services.libvirtd.autoSnapshot.enable` | `boolean` | Whether to enable LibVirt VM snapshots. |
+| `services.libvirtd.autoSnapshot.keep` | `signed integer` | Default number of snapshots to keep for VMs that don't specify a keep value. |
+| `services.libvirtd.autoSnapshot.prefix` | `string` | Prefix for automatic snapshot names. This is used to identify and manage automatic snapshots separately from manual ones. |
+| `services.libvirtd.autoSnapshot.snapshotType` | `one of "internal", "external"` | Type of snapshot to create (internal or external). |
+| `services.libvirtd.autoSnapshot.vms` | `null or (list of (string or (submodule)))` | If specified only the list of VMs will be snapshotted else all existing one. Each entry can be either: - A string (VM name, uses default settings) - An attribute set with VM configuration |

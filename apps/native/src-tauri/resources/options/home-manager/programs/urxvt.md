@@ -5,7 +5,7 @@
 All options under `programs.urxvt`.
 
 | Option | Type | Description |
-| ----------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.urxvt.enable` | `boolean` | Whether to enable rxvt-unicode terminal emulator. |
 | `programs.urxvt.extraConfig` | `attribute set of anything` | Additional configuration to add. |
 | `programs.urxvt.fonts` | `list of string` | List of fonts to be used. |
@@ -13,6 +13,11 @@ All options under `programs.urxvt`.
 | `programs.urxvt.keybindings` | `attribute set of string` | Mapping of keybindings to actions |
 | `programs.urxvt.package` | `package` | The rxvt-unicode package to use. |
 | `programs.urxvt.scroll.bar` | `submodule` | Scrollbar settings. |
+| `programs.urxvt.scroll.bar.align` | `one of "top", "bottom", "center"` | Scrollbar alignment. |
+| `programs.urxvt.scroll.bar.enable` | `boolean` | Whether to enable the scrollbar |
+| `programs.urxvt.scroll.bar.floating` | `boolean` | Whether to display an rxvt scrollbar without a trough. |
+| `programs.urxvt.scroll.bar.position` | `one of "left", "right"` | Scrollbar position. |
+| `programs.urxvt.scroll.bar.style` | `one of "rxvt", "plain", "next", "xterm"` | Scrollbar style. |
 | `programs.urxvt.scroll.keepPosition` | `boolean` | Whether to keep a scroll position when TTY receives new lines. |
 | `programs.urxvt.scroll.lines` | `unsigned integer, meaning >=0` | Number of lines to save in the scrollback buffer. |
 | `programs.urxvt.scroll.scrollOnKeystroke` | `boolean` | Whether to scroll to bottom on keyboard input. |

@@ -5,10 +5,10 @@
 All options under `services.cgminer`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.cgminer.config` | | |
-| `services.cgminer.enable` | | |
-| `services.cgminer.hardware` | | |
-| `services.cgminer.package` | | |
-| `services.cgminer.pools` | | |
-| `services.cgminer.user` | | |
+| --- | --- | --- |
+| `services.cgminer.config` | `attribute set of (boolean or signed integer)` | Additional config |
+| `services.cgminer.enable` | `boolean` | Whether to enable cgminer, an ASIC/FPGA/GPU miner for bitcoin and litecoin. |
+| `services.cgminer.hardware` | `list of attribute set of (string or signed integer)` | List of config options for every GPU |
+| `services.cgminer.package` | `package` | The cgminer package to use. |
+| `services.cgminer.pools` | `list of attribute set of string` | List of pools where to mine |
+| `services.cgminer.user` | `string` | User account under which cgminer runs |

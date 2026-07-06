@@ -5,6 +5,6 @@
 All options under `programs.noisetorch`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `programs.noisetorch.enable` | | |
-| `programs.noisetorch.package` | | |
+| --- | --- | --- |
+| `programs.noisetorch.enable` | `boolean` | Whether to enable noisetorch (+ setcap wrapper), a virtual microphone device with noise suppression. |
+| `programs.noisetorch.package` | `package` | The noisetorch package to use. |

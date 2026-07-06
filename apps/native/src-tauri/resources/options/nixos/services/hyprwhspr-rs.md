@@ -5,7 +5,7 @@
 All options under `services.hyprwhspr-rs`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.hyprwhspr-rs.enable` | | |
-| `services.hyprwhspr-rs.environmentFile` | | |
-| `services.hyprwhspr-rs.package` | | |
+| --- | --- | --- |
+| `services.hyprwhspr-rs.enable` | `boolean` | Whether to enable hyprwhspr-rs. |
+| `services.hyprwhspr-rs.environmentFile` | `null or string` | File containing API keys (GROQ_API_KEY, GEMINI_API_KEY) for remote transcription. |
+| `services.hyprwhspr-rs.package` | `package` | The hyprwhspr-rs package to use. |

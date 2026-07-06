@@ -5,13 +5,13 @@
 All options under `services.tox-node`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.tox-node.enable` | | |
-| `services.tox-node.keysFile` | | |
-| `services.tox-node.lanDiscovery` | | |
-| `services.tox-node.logType` | | |
-| `services.tox-node.motd` | | |
-| `services.tox-node.tcpAddresses` | | |
-| `services.tox-node.tcpConnectionLimit` | | |
-| `services.tox-node.threads` | | |
-| `services.tox-node.udpAddress` | | |
+| --- | --- | --- |
+| `services.tox-node.enable` | `boolean` | Whether to enable Tox Node service. |
+| `services.tox-node.keysFile` | `string` | Path to the file where DHT keys are stored. |
+| `services.tox-node.lanDiscovery` | `boolean` | Enable local network discovery. |
+| `services.tox-node.logType` | `one of "Stderr", "Stdout", "Syslog", "None"` | Logging implementation. |
+| `services.tox-node.motd` | `string` | Message of the day |
+| `services.tox-node.tcpAddresses` | `list of string` | TCP addresses to run TCP relay. |
+| `services.tox-node.tcpConnectionLimit` | `signed integer` | Maximum number of active TCP connections relay can hold |
+| `services.tox-node.threads` | `signed integer` | Number of threads for execution |
+| `services.tox-node.udpAddress` | `string` | UDP address to run DHT node. |

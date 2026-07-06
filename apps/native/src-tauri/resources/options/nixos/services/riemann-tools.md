@@ -5,7 +5,7 @@
 All options under `services.riemann-tools`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.riemann-tools.enableHealth` | | |
-| `services.riemann-tools.extraArgs` | | |
-| `services.riemann-tools.riemannHost` | | |
+| --- | --- | --- |
+| `services.riemann-tools.enableHealth` | `boolean` | Enable the riemann-health daemon. |
+| `services.riemann-tools.extraArgs` | `list of string` | A list of commandline-switches forwarded to a riemann-tool. See for example `riemann-health --help` for available options. |
+| `services.riemann-tools.riemannHost` | `string` | Address of the host riemann node. Defaults to localhost. |

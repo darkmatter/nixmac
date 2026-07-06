@@ -5,7 +5,11 @@
 All options under `programs.gnome-shell`.
 
 | Option | Type | Description |
-| --------------------------------- | --------------------- | -------------------------------------------- |
+| --- | --- | --- |
 | `programs.gnome-shell.enable` | `boolean` | Whether to enable GNOME Shell customization. |
 | `programs.gnome-shell.extensions` | `list of (submodule)` | List of GNOME Shell extensions. |
+| `programs.gnome-shell.extensions.*.id` | `string` | ID of the GNOME Shell extension. If not provided, it will be obtained from `package.extensionUuid`. |
+| `programs.gnome-shell.extensions.*.package` | `package` | Package providing a GNOME Shell extension in `$out/share/gnome-shell/extensions/${id}`. |
 | `programs.gnome-shell.theme` | `null or (submodule)` | Theme to use for GNOME Shell. |
+| `programs.gnome-shell.theme.name` | `string` | Name of the GNOME Shell theme. |
+| `programs.gnome-shell.theme.package` | `null or package` | Package providing a GNOME Shell theme in `$out/share/themes/${name}/gnome-shell`. |

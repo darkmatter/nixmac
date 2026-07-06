@@ -5,6 +5,15 @@
 All options under `services.mautrix-meta`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.mautrix-meta.instances` | | |
-| `services.mautrix-meta.package` | | |
+| --- | --- | --- |
+| `services.mautrix-meta.instances` | `attribute set of (submodule)` | Configuration of multiple `mautrix-meta` instances. `services.mautrix-meta.instances.facebook` and `services.mautrix-meta.instances.instagram` come preconfigured with network.mode, appservice.id, bot username, display name and avatar. |
+| `services.mautrix-meta.instances.<name>.dataDir` | `string` | Path to the directory with database, registration, and other data for the bridge service. This path is relative to `/var/lib`, it cannot start with `../` (it cannot be outside of `/var/lib`). |
+| `services.mautrix-meta.instances.<name>.enable` | `boolean` | Whether to enable Mautrix-Meta, a Matrix \<-> Facebook and Matrix \<-> Instagram hybrid puppeting/relaybot bridge. |
+| `services.mautrix-meta.instances.<name>.environmentFile` | `null or absolute path` | File containing environment variables to substitute when copying the configuration out of Nix store to the `services.mautrix-meta.dataDir`. Can be used for storing the secrets without making them available in the Nix store. For example, you can set `services.mautrix-meta.settings.appservice.as_token = "$MAUTRIX_META_APPSERVICE_AS_TOKEN"` and then specify `MAUTRIX_META_APPSERVICE_AS_TOKEN="{token}"` in the environment file. This value will get substituted into the configuration file as as token. |
+| `services.mautrix-meta.instances.<name>.registerToSynapse` | `boolean` | Whether to add registration file to `services.matrix-synapse.settings.app_service_config_files` and make Synapse wait for registration service. |
+| `services.mautrix-meta.instances.<name>.registrationFile` | `absolute path` | Path to the yaml registration file of the appservice. |
+| `services.mautrix-meta.instances.<name>.registrationServiceUnit` | `string` | The registration service that generates the registration file. Systemd unit (a service or a target) for other services to depend on if they need to be started after mautrix-meta registration service. This option is useful as the actual parent unit for all matrix-synapse processes changes when configuring workers. |
+| `services.mautrix-meta.instances.<name>.serviceDependencies` | `list of string` | List of Systemd services to require and wait for when starting the application service. |
+| `services.mautrix-meta.instances.<name>.serviceUnit` | `string` | The systemd unit (a service or a target) for other services to depend on if they need to be started after matrix-synapse. This option is useful as the actual parent unit for all matrix-synapse processes changes when configuring workers. |
+| `services.mautrix-meta.instances.<name>.settings` | `YAML 1.1 value` | {file}`config.yaml` configuration as a Nix attribute set. Configuration options should match those described in [example-config.yaml](https://github.com/mautrix/meta/blob/main/example-config.yaml). Secret tokens should be specified using {option}`environmentFile` instead |
+| `services.mautrix-meta.package` | `package` | The mautrix-meta package to use. |

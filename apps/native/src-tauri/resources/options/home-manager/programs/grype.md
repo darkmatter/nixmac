@@ -5,7 +5,7 @@
 All options under `programs.grype`.
 
 | Option | Type | Description |
-| ------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.grype.enable` | `boolean` | Whether to enable Grype. |
 | `programs.grype.package` | `null or package` | The grype package to use. |
-| `programs.grype.settings` | `YAML 1.1 value` | Configuration written to $XDG_CONFIG_HOME/grype/config.yaml . See https://oss.anchore.com/docs/reference/grype/configuration/ for supported values. |
+| `programs.grype.settings` | `YAML 1.1 value` | Configuration written to {file}`$XDG_CONFIG_HOME/grype/config.yaml`. See <https://oss.anchore.com/docs/reference/grype/configuration/> for supported values. |

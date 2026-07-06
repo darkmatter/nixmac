@@ -5,5 +5,5 @@
 All options under `programs.usbtop`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `programs.usbtop.enable` | | |
+| --- | --- | --- |
+| `programs.usbtop.enable` | `boolean` | Whether to enable usbtop and required kernel module, to show estimated USB bandwidth. |

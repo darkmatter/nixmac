@@ -5,9 +5,19 @@
 All options under `programs.windsurf`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `programs.windsurf.argvSettings` | | |
-| `programs.windsurf.enable` | | |
-| `programs.windsurf.mutableExtensionsDir` | | |
-| `programs.windsurf.package` | | |
-| `programs.windsurf.profiles` | | |
+| --- | --- | --- |
+| `programs.windsurf.argvSettings` | `absolute path or JSON value` | Configuration written to Windsurf's {file}`argv.json`. This can be a JSON object or a path to a custom JSON file. |
+| `programs.windsurf.enable` | `boolean` | Whether to enable Windsurf. |
+| `programs.windsurf.mutableExtensionsDir` | `boolean` | Whether extensions can be installed or updated manually or by Windsurf. Mutually exclusive to programs.windsurf.profiles. |
+| `programs.windsurf.package` | `null or package` | The windsurf package to use. Version of Windsurf to install. |
+| `programs.windsurf.profiles` | `attribute set of (submodule)` | A list of all Windsurf profiles. Mutually exclusive to programs.windsurf.mutableExtensionsDir |
+| `programs.windsurf.profiles.<name>.enableExtensionUpdateCheck` | `null or boolean` | Whether to enable update notifications for extensions. Can only be set for the default profile, but it applies to all profiles. |
+| `programs.windsurf.profiles.<name>.enableMcpIntegration` | `boolean` | Whether to integrate the MCP servers config from {option}`programs.mcp.servers` into {option}`programs.windsurf.profiles.<name>.userMcp`. Note: Settings defined in {option}`programs.mcp.servers` are merged with {option}`programs.windsurf.profiles.<name>.userMcp`, with Windsurf settings taking precedence. |
+| `programs.windsurf.profiles.<name>.enableUpdateCheck` | `null or boolean` | Whether to enable update checks/notifications. Can only be set for the default profile, but it applies to all profiles. |
+| `programs.windsurf.profiles.<name>.extensions` | `list of package` | The extensions Windsurf should be started with. |
+| `programs.windsurf.profiles.<name>.globalSnippets` | `JSON value` | Defines global user snippets. |
+| `programs.windsurf.profiles.<name>.keybindings` | `absolute path or list of (open submodule of (JSON value))` | Keybindings written to Windsurf's {file}`keybindings.json`. This can be a JSON object or a path to a custom JSON file. |
+| `programs.windsurf.profiles.<name>.languageSnippets` | `JSON value` | Defines user snippets for different languages. |
+| `programs.windsurf.profiles.<name>.userMcp` | `absolute path or JSON value` | Configuration written to Windsurf's {file}`mcp.json`. This can be a JSON object or a path to a custom JSON file. |
+| `programs.windsurf.profiles.<name>.userSettings` | `absolute path or JSON value` | Configuration written to Windsurf's {file}`settings.json`. This can be a JSON object or a path to a custom JSON file. |
+| `programs.windsurf.profiles.<name>.userTasks` | `absolute path or JSON value` | Configuration written to Windsurf's {file}`tasks.json`. This can be a JSON object or a path to a custom JSON file. |

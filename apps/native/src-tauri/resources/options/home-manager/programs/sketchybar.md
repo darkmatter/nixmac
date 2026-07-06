@@ -5,15 +5,14 @@
 All options under `programs.sketchybar`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `programs.sketchybar.config` | `null or strings concatenated with “\n” or (submodule)` | The sketchybar configuration. Can be specified as: |
-| `programs.sketchybar.configType` | `one of “bash”, “lua”` | The type of configuration to generate. |
+| --- | --- | --- |
+| `programs.sketchybar.config` | `null or strings concatenated with "\n" or (submodule)` | The sketchybar configuration. Can be specified as: 1. A string containing the configuration content directly 2. An attribute set with 'source' pointing to a directory containing the full configuration, and optionally 'recursive = true' to recursively copy all files 3. An attribute set with 'text' containing inline configuration When using a string or 'text', the appropriate shebang will be automatically added based on configType (bash or lua). When using a directory source, it should contain a file named "sketchybarrc" which serves as the main entry point. |
+| `programs.sketchybar.configType` | `one of "bash", "lua"` | The type of configuration to generate. Set to "bash" to use the standard bash configuration. Set to "lua" to use the Lua configuration via SbarLua. |
 | `programs.sketchybar.enable` | `boolean` | Whether to enable sketchybar. |
 | `programs.sketchybar.extraLuaPackages` | `function that evaluates to a(n) list of package` | The extra Lua packages required for your plugins to work. This option accepts a function that takes a Lua package set as an argument, and selects the required Lua packages from this package set. See the example for more info. |
 | `programs.sketchybar.extraPackages` | `list of package` | Extra packages to add to PATH for the sketchybar service. |
-| `programs.sketchybar.finalPackage` | | |
-| `programs.sketchybar.includeSystemPath` | `boolean` | Whether to include common system PATH in the wrapper. This allows sketchybar to access system binaries. |
-| `programs.sketchybar.luaPackage` | `null or package` | Lua interpreter to use when configType is lua. |
+| `programs.sketchybar.includeSystemPath` | `boolean` | Whether to include common system `PATH` in the wrapper. This allows sketchybar to access system binaries. |
+| `programs.sketchybar.luaPackage` | `null or package` | Lua interpreter to use when configType is lua. By default this is inferred from `sbarLuaPackage.passthru.luaModule` when available. |
 | `programs.sketchybar.package` | `package` | The sketchybar package to use. |
 | `programs.sketchybar.sbarLuaPackage` | `null or package` | The sbarlua package to use. Required when using a lua configuration. |
 | `programs.sketchybar.service.enable` | `boolean` | Whether to enable sketchybar service. |

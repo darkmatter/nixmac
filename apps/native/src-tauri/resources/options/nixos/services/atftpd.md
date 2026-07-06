@@ -5,7 +5,7 @@
 All options under `services.atftpd`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.atftpd.enable` | | |
-| `services.atftpd.extraOptions` | | |
-| `services.atftpd.root` | | |
+| --- | --- | --- |
+| `services.atftpd.enable` | `boolean` | Whether to enable the atftpd TFTP server. By default, the server binds to address 0.0.0.0. |
+| `services.atftpd.extraOptions` | `list of string` | Extra command line arguments to pass to atftp. |
+| `services.atftpd.root` | `absolute path` | Document root directory for the atftpd. |

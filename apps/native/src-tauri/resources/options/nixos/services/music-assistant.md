@@ -5,9 +5,9 @@
 All options under `services.music-assistant`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.music-assistant.enable` | | |
-| `services.music-assistant.extraOptions` | | |
-| `services.music-assistant.openFirewall` | | |
-| `services.music-assistant.package` | | |
-| `services.music-assistant.providers` | | |
+| --- | --- | --- |
+| `services.music-assistant.enable` | `boolean` | Whether to enable Music Assistant. |
+| `services.music-assistant.extraOptions` | `list of string` | List of extra options to pass to the music-assistant executable. |
+| `services.music-assistant.openFirewall` | `boolean` | Whether to open required ports for the configured providers. Currently airplay and sendspin need port to be opened to function. |
+| `services.music-assistant.package` | `package` | The music-assistant package to use. |
+| `services.music-assistant.providers` | `list of (one of "airplay", "airplay_receiver", "alexa", "apple_music", "ard_audiothek", "ariacast_receiver", "audible", "audiobookshelf", "bandcamp", "bbc_sounds", "bluesound", "builtin", "chromecast", "coverartarchive", "dashie_kiosk", "deezer", "digitally_incorporated", "dlna", "emby", "fanarttv", "filesystem_local", "filesystem_nfs", "filesystem_smb", "fully_kiosk", "genius_lyrics", "gpodder", "hass", "hass_players", "heos", "ibroadcast", "internet_archive", "itunes_podcasts", "jellyfin", "kion_music", "lastfm_scrobble", "listenbrainz_scrobble", "lrclib", "musicbrainz", "musiccast", "nicovideo", "nugs", "opensubsonic", "orf_radiothek", "pandora", "party", "phishin", "plex", "plex_connect", "podcast_index", "podcastfeed", "qobuz", "radiobrowser", "radioparadise", "roku_media_assistant", "sendspin", "siriusxm", "snapcast", "somafm", "sonos", "sonos_s1", "soundcloud", "spotify", "spotify_connect", "squeezelite", "subsonic_scrobble", "sync_group", "test", "theaudiodb", "tidal", "tunein", "universal_group", "universal_player", "vban_receiver", "yandex_music", "yousee", "ytmusic", "zvuk_music")` | List of provider names for which dependencies will be installed. |

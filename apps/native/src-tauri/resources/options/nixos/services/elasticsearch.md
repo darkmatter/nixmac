@@ -5,18 +5,18 @@
 All options under `services.elasticsearch`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.elasticsearch.cluster_name` | | |
-| `services.elasticsearch.dataDir` | | |
-| `services.elasticsearch.enable` | | |
-| `services.elasticsearch.extraCmdLineOptions` | | |
-| `services.elasticsearch.extraConf` | | |
-| `services.elasticsearch.extraJavaOptions` | | |
-| `services.elasticsearch.listenAddress` | | |
-| `services.elasticsearch.logging` | | |
-| `services.elasticsearch.package` | | |
-| `services.elasticsearch.plugins` | | |
-| `services.elasticsearch.port` | | |
-| `services.elasticsearch.restartIfChanged` | | |
-| `services.elasticsearch.single_node` | | |
-| `services.elasticsearch.tcp_port` | | |
+| --- | --- | --- |
+| `services.elasticsearch.cluster_name` | `string` | Elasticsearch name that identifies your cluster for auto-discovery. |
+| `services.elasticsearch.dataDir` | `absolute path` | Data directory for elasticsearch. |
+| `services.elasticsearch.enable` | `boolean` | Whether to enable elasticsearch. |
+| `services.elasticsearch.extraCmdLineOptions` | `list of string` | Extra command line options for the elasticsearch launcher. |
+| `services.elasticsearch.extraConf` | `string` | Extra configuration for elasticsearch. |
+| `services.elasticsearch.extraJavaOptions` | `list of string` | Extra command line options for Java. |
+| `services.elasticsearch.listenAddress` | `string` | Elasticsearch listen address. |
+| `services.elasticsearch.logging` | `string` | Elasticsearch logging configuration. |
+| `services.elasticsearch.package` | `package` | The elasticsearch package to use. |
+| `services.elasticsearch.plugins` | `list of package` | Extra elasticsearch plugins |
+| `services.elasticsearch.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Elasticsearch port to listen for HTTP traffic. |
+| `services.elasticsearch.restartIfChanged` | `boolean` | Automatically restart the service on config change. This can be set to false to defer restarts on a server or cluster. Please consider the security implications of inadvertently running an older version, and the possibility of unexpected behavior caused by inconsistent versions across a cluster when disabling this option. |
+| `services.elasticsearch.single_node` | `boolean` | Start a single-node cluster |
+| `services.elasticsearch.tcp_port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Elasticsearch port for the node to node communication. |

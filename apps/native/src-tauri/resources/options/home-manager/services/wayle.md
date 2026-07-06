@@ -5,8 +5,8 @@
 All options under `services.wayle`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.wayle.autoInstallDependencies` | | |
-| `services.wayle.enable` | | |
-| `services.wayle.package` | | |
-| `services.wayle.settings` | | |
+| --- | --- | --- |
+| `services.wayle.autoInstallDependencies` | `boolean` | Whether to automatically install soft dependencies used by wayle that will be required based on your config. |
+| `services.wayle.enable` | `boolean` | Whether to enable wayle shell. |
+| `services.wayle.package` | `package` | The wayle package to use. |
+| `services.wayle.settings` | `TOML value` | Standard configuration options for wayle. |

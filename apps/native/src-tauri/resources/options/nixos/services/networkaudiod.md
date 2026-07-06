@@ -5,5 +5,5 @@
 All options under `services.networkaudiod`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.networkaudiod.enable` | | |
+| --- | --- | --- |
+| `services.networkaudiod.enable` | `boolean` | Whether to enable Networkaudiod (NAA). |

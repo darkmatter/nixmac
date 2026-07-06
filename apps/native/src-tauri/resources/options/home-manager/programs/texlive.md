@@ -5,8 +5,8 @@
 All options under `programs.texlive`.
 
 | Option | Type | Description |
-| -------------------------------- | --------------------- | -------------------------------------- |
+| --- | --- | --- |
 | `programs.texlive.enable` | `boolean` | Whether to enable TeX Live. |
 | `programs.texlive.extraPackages` | `unspecified value` | Extra packages available to TeX Live. |
-| `programs.texlive.package` | `package (read only)` | Resulting customized TeX Live package. |
+| `programs.texlive.package` | `package` | Resulting customized TeX Live package. |
 | `programs.texlive.packageSet` | `unspecified value` | TeX Live package set to use. |

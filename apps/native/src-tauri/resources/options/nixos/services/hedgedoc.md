@@ -5,12 +5,20 @@
 All options under `services.hedgedoc`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.hedgedoc.configuration` | | |
-| `services.hedgedoc.configureNginx` | | |
-| `services.hedgedoc.enable` | | |
-| `services.hedgedoc.environmentFile` | | |
-| `services.hedgedoc.groups` | | |
-| `services.hedgedoc.package` | | |
-| `services.hedgedoc.settings` | | |
-| `services.hedgedoc.workDir` | | |
+| --- | --- | --- |
+| `services.hedgedoc.configureNginx` | `boolean` | Whether to configure nginx as a reverse proxy. |
+| `services.hedgedoc.enable` | `boolean` | Whether to enable the HedgeDoc Markdown Editor. |
+| `services.hedgedoc.environmentFile` | `null or absolute path` | Environment file as defined in {manpage}`systemd.exec(5)`. Secrets may be passed to the service without adding them to the world-readable Nix store, by specifying placeholder variables as the option value in Nix and setting these variables accordingly in the environment file. Snippet of HedgeDoc config containing a secret: `services.hedgedoc.settings.dbURL = "postgres://hedgedoc:\${DB_PASSWORD}@db-host:5432/hedgedocdb";` and the content of this environment file: \`\`\`\` DB_PASSWORD=verysecretdbpassword \`\`\` |
+| `services.hedgedoc.package` | `package` | The hedgedoc package to use. |
+| `services.hedgedoc.settings` | `open submodule of (JSON value)` | HedgeDoc configuration, see <https://docs.hedgedoc.org/configuration/> for documentation. |
+| `services.hedgedoc.settings.allowGravatar` | `boolean` | Whether to enable [Libravatar](https://wiki.libravatar.org/) as profile picture source on your instance. Despite the naming of the setting, Hedgedoc replaced Gravatar with Libravatar in [CodiMD 1.4.0](https://hedgedoc.org/releases/1.4.0/) |
+| `services.hedgedoc.settings.allowOrigin` | `list of string` | List of domains to whitelist. |
+| `services.hedgedoc.settings.db` | `attribute set` | Specify the configuration for sequelize. HedgeDoc supports `mysql`, `postgres`, `sqlite` and `mssql`. See <https://sequelize.readthedocs.io/en/v3/> for more information. ::: {.note} The relevant parts will be overriden if you set {option}`dbURL`. ::: |
+| `services.hedgedoc.settings.domain` | `null or string` | Domain to use for website. This is useful if you are trying to run hedgedoc behind a reverse proxy. |
+| `services.hedgedoc.settings.host` | `null or string` | Address to listen on. |
+| `services.hedgedoc.settings.path` | `null or absolute path` | Path to UNIX domain socket to listen on ::: {.note} If specified, {option}`host` and {option}`port` will be ignored. ::: |
+| `services.hedgedoc.settings.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to listen on. |
+| `services.hedgedoc.settings.protocolUseSSL` | `boolean` | Use `https://` for all links. This is useful if you are trying to run hedgedoc behind a reverse proxy. ::: {.note} Only applied if {option}`domain` is set. ::: |
+| `services.hedgedoc.settings.uploadsPath` | `absolute path` | Directory for storing uploaded images. |
+| `services.hedgedoc.settings.urlPath` | `null or string` | URL path for the website. This is useful if you are hosting hedgedoc on a path like `www.example.com/hedgedoc` |
+| `services.hedgedoc.settings.useSSL` | `boolean` | Enable to use SSL server. ::: {.note} This will also enable {option}`protocolUseSSL`. It will also require you to set the following: - {option}`sslKeyPath` - {option}`sslCertPath` - {option}`sslCAPath` - {option}`dhParamPath` ::: |

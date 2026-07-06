@@ -5,7 +5,7 @@
 All options under `services.inspircd`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.inspircd.config` | | |
-| `services.inspircd.enable` | | |
-| `services.inspircd.package` | | |
+| --- | --- | --- |
+| `services.inspircd.config` | `strings concatenated with "\n"` | Verbatim {file}`inspircd.conf` file. For a list of options, consult the [InspIRCd documentation](https://docs.inspircd.org/3/configuration/), the [Module documentation](https://docs.inspircd.org/3/modules/) and the example configuration files distributed with `pkgs.inspircd.doc` |
+| `services.inspircd.enable` | `boolean` | Whether to enable InspIRCd. |
+| `services.inspircd.package` | `package` | The InspIRCd package to use. This is mainly useful to specify an overridden version of the `pkgs.inspircd` dervivation, for example if you want to use a more minimal InspIRCd distribution with less modules enabled or with modules enabled which can't be distributed in binary form due to licensing issues. |

@@ -5,12 +5,12 @@
 All options under `services.docling-serve`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.docling-serve.enable` | | |
-| `services.docling-serve.environment` | | |
-| `services.docling-serve.environmentFile` | | |
-| `services.docling-serve.host` | | |
-| `services.docling-serve.openFirewall` | | |
-| `services.docling-serve.package` | | |
-| `services.docling-serve.port` | | |
-| `services.docling-serve.stateDir` | | |
+| --- | --- | --- |
+| `services.docling-serve.enable` | `boolean` | Whether to enable Docling Serve server. |
+| `services.docling-serve.environment` | `attribute set of string` | Extra environment variables for Docling Serve. For more details see <https://github.com/docling-project/docling-serve/blob/main/docs/configuration.md> |
+| `services.docling-serve.environmentFile` | `null or absolute path` | Environment file to be passed to the systemd service. Useful for passing secrets to the service to prevent them from being world-readable in the Nix store. |
+| `services.docling-serve.host` | `string` | The host address which the Docling Serve server HTTP interface listens to. |
+| `services.docling-serve.openFirewall` | `boolean` | Whether to open the firewall for Docling Serve. This adds `services.Docling Serve.port` to `networking.firewall.allowedTCPPorts`. |
+| `services.docling-serve.package` | `package` | The docling-serve package to use. |
+| `services.docling-serve.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Which port the Docling Serve server listens to. |
+| `services.docling-serve.stateDir` | `absolute path` | State directory of Docling Serve. |

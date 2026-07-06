@@ -5,8 +5,15 @@
 All options under `programs.openvpn3`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `programs.openvpn3.enable` | | |
-| `programs.openvpn3.log-service` | | |
-| `programs.openvpn3.netcfg` | | |
-| `programs.openvpn3.package` | | |
+| --- | --- | --- |
+| `programs.openvpn3.enable` | `boolean` | Whether to enable the openvpn3 client. |
+| `programs.openvpn3.log-service` | `submodule` | Log service configuration |
+| `programs.openvpn3.log-service.settings` | `open submodule of attribute set of (JSON value)` | Options stored in {file}`/etc/openvpn3/log-service.json` configuration file |
+| `programs.openvpn3.log-service.settings.journald` | `boolean` | Use systemd-journald |
+| `programs.openvpn3.log-service.settings.log_dbus_details` | `boolean` | Add D-Bus details in log file/syslog |
+| `programs.openvpn3.log-service.settings.log_level` | `integer between 0 and 7 (both inclusive)` | How verbose should the logging be |
+| `programs.openvpn3.log-service.settings.timestamp` | `boolean` | Add timestamp log file |
+| `programs.openvpn3.netcfg` | `submodule` | Network configuration |
+| `programs.openvpn3.netcfg.settings` | `open submodule of attribute set of (JSON value)` | Options stored in {file}`/etc/openvpn3/netcfg.json` configuration file |
+| `programs.openvpn3.netcfg.settings.systemd_resolved` | `boolean` | Whether to use systemd-resolved integration |
+| `programs.openvpn3.package` | `package` | The openvpn3 package to use. |

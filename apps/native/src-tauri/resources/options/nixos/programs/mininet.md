@@ -5,5 +5,5 @@
 All options under `programs.mininet`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `programs.mininet.enable` | | |
+| --- | --- | --- |
+| `programs.mininet.enable` | `boolean` | Whether to enable Mininet, an emulator for rapid prototyping of Software Defined Networks. |

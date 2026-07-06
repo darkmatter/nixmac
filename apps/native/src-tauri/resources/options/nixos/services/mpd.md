@@ -5,19 +5,20 @@
 All options under `services.mpd`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.mpd.credentials` | | |
-| `services.mpd.dataDir` | | |
-| `services.mpd.dbFile` | | |
-| `services.mpd.enable` | | |
-| `services.mpd.extraConfig` | | |
-| `services.mpd.fluidsynth` | | |
-| `services.mpd.group` | | |
-| `services.mpd.musicDirectory` | | |
-| `services.mpd.network.listenAddress` | | |
-| `services.mpd.network.port` | | |
-| `services.mpd.openFirewall` | | |
-| `services.mpd.playlistDirectory` | | |
-| `services.mpd.settings` | | |
-| `services.mpd.startWhenNeeded` | | |
-| `services.mpd.user` | | |
+| --- | --- | --- |
+| `services.mpd.credentials` | `list of (submodule)` | Credentials and permissions for accessing the mpd server. |
+| `services.mpd.credentials.*.passwordFile` | `absolute path` | Path to file containing the password. |
+| `services.mpd.credentials.*.permissions` | `list of (one of "read", "add", "player", "control", "admin")` | List of permissions that are granted with this password. Permissions can be "read", "add", "player", "control", "admin". |
+| `services.mpd.dataDir` | `absolute path` | The directory where MPD stores its state, tag cache, playlists etc. If left as the default value this directory will automatically be created before the MPD server starts, otherwise the sysadmin is responsible for ensuring the directory exists with appropriate ownership and permissions. |
+| `services.mpd.enable` | `boolean` | Whether to enable MPD, the music player daemon. |
+| `services.mpd.fluidsynth` | `boolean` | If set, add fluidsynth soundfont `decoder` block. |
+| `services.mpd.group` | `string` | Group account under which MPD runs. |
+| `services.mpd.openFirewall` | `null or boolean` | Open ports in the firewall for mpd. If `null` (default), you might get a warning asking you to set it explicitly to `true` or `false`, depending upon the value of `services.mpd.settings.bind_to_address`. |
+| `services.mpd.settings` | `open submodule of attribute set of (string or signed integer or boolean or absolute path or list of attribute set of (string or signed integer or boolean or absolute path))` | Configuration for MPD. MPD supports key-value like blocks for settings like `audio_output` and `neighbor`. Some of these blocks can be specified multiple times, so the following configuration: `txt audio_output {     device "iec958:CARD=Intel,DEV=0"     mixer_control "PCM"     name "My specific ALSA output"     type "alsa" } audio_output {     mixer_type "null"     name "ALSA Null"     type "alsa" } audio_output {     name "The Pulse"     type "pulse" } ` Can be inserted with: `nix audio_output = [   {     type = "alsa";     name = "My specific ALSA output";     device = "iec958:CARD=Intel,DEV=0";     mixer_control = "PCM";   }   {     type = "alsa";     name = "ALSA Null";     mixer_type = "null";   }   {     type = "pulse";     name = "The Pulse";   } ]; ` |
+| `services.mpd.settings.bind_to_address` | `string` | The address for the daemon to listen on. Use `any` to listen on all addresses. |
+| `services.mpd.settings.db_file` | `null or absolute path` | The path to MPD's database. |
+| `services.mpd.settings.music_directory` | `absolute path or string matching the pattern ([a-z]+)://.+` | The directory or URI where MPD reads music from. If left as the default value this directory will automatically be created before the MPD server starts, otherwise the sysadmin is responsible for ensuring the directory exists with appropriate ownership and permissions. |
+| `services.mpd.settings.playlist_directory` | `absolute path` | The directory where MPD stores playlists. If left as the default value this directory will automatically be created before the MPD server starts, otherwise the sysadmin is responsible for ensuring the directory exists with appropriate ownership and permissions. |
+| `services.mpd.settings.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | This setting is the TCP port that is desired for the daemon to get assigned to. |
+| `services.mpd.startWhenNeeded` | `boolean` | If set, {command}`mpd` is socket-activated; that is, instead of having it permanently running as a daemon, systemd will start it on the first incoming connection. |
+| `services.mpd.user` | `string` | User account under which MPD runs. |

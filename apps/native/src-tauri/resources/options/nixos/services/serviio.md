@@ -5,7 +5,7 @@
 All options under `services.serviio`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.serviio.dataDir` | | |
-| `services.serviio.enable` | | |
-| `services.serviio.openFirewall` | | |
+| --- | --- | --- |
+| `services.serviio.dataDir` | `absolute path` | The directory where serviio stores its state, data, etc. |
+| `services.serviio.enable` | `boolean` | Whether to enable the Serviio Media Server. |
+| `services.serviio.openFirewall` | `boolean` | Open ports in the firewall for the Serviio Media Server. |

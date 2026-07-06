@@ -5,11 +5,11 @@
 All options under `services.headphones`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.headphones.configFile` | | |
-| `services.headphones.dataDir` | | |
-| `services.headphones.enable` | | |
-| `services.headphones.group` | | |
-| `services.headphones.host` | | |
-| `services.headphones.port` | | |
-| `services.headphones.user` | | |
+| --- | --- | --- |
+| `services.headphones.configFile` | `absolute path` | Path to config file. |
+| `services.headphones.dataDir` | `absolute path` | Path where to store data files. |
+| `services.headphones.enable` | `boolean` | Whether to enable the headphones server. |
+| `services.headphones.group` | `string` | Group to run the service as |
+| `services.headphones.host` | `string` | Host to listen on. |
+| `services.headphones.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port to bind to. |
+| `services.headphones.user` | `string` | User to run the service as |

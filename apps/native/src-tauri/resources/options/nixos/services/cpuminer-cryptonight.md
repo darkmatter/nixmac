@@ -5,9 +5,9 @@
 All options under `services.cpuminer-cryptonight`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.cpuminer-cryptonight.enable` | | |
-| `services.cpuminer-cryptonight.pass` | | |
-| `services.cpuminer-cryptonight.threads` | | |
-| `services.cpuminer-cryptonight.url` | | |
-| `services.cpuminer-cryptonight.user` | | |
+| --- | --- | --- |
+| `services.cpuminer-cryptonight.enable` | `boolean` | Whether to enable the cpuminer cryptonight miner. |
+| `services.cpuminer-cryptonight.pass` | `string` | Password for mining server |
+| `services.cpuminer-cryptonight.threads` | `unsigned integer, meaning >=0` | Number of miner threads, defaults to available processors |
+| `services.cpuminer-cryptonight.url` | `string` | URL of mining server |
+| `services.cpuminer-cryptonight.user` | `string` | Username for mining server |

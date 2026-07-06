@@ -5,19 +5,19 @@
 All options under `services.arsenik`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.arsenik.anglemod` | | |
-| `services.arsenik.enable` | | |
-| `services.arsenik.hold_timeout` | | |
-| `services.arsenik.hrm` | | |
-| `services.arsenik.lafayette` | | |
-| `services.arsenik.layout` | | |
-| `services.arsenik.long_hold_timeout` | | |
-| `services.arsenik.lt` | | |
-| `services.arsenik.mac` | | |
-| `services.arsenik.num` | | |
-| `services.arsenik.package` | | |
-| `services.arsenik.run` | | |
-| `services.arsenik.tap_timeout` | | |
-| `services.arsenik.vim` | | |
-| `services.arsenik.wide` | | |
+| --- | --- | --- |
+| `services.arsenik.anglemod` | `boolean` | Choose here if you want to add an angle mod: ZXCVB are shifted to the left. See https://colemakmods.github.io/ergonomic-mods/angle.html for more details. |
+| `services.arsenik.enable` | `boolean` | Whether to enable A 33-key layout that works with all keyboards.. |
+| `services.arsenik.hold_timeout` | `signed integer` | The key must be held XX ms to become a layer shift. |
+| `services.arsenik.hrm` | `boolean` | Enable homerow. |
+| `services.arsenik.lafayette` | `boolean` | Add AltGr programmation layer like Ergo‑L |
+| `services.arsenik.layout` | `string` | Your keyboard layout. Possible values are: ergol qwerty-lafayette qwerty azerty qwertz bepo optimot |
+| `services.arsenik.long_hold_timeout` | `signed integer` | Slightly higher value for typing keys, to prevent unexpected hold effect. |
+| `services.arsenik.lt` | `boolean` | Enable layer-taps. |
+| `services.arsenik.mac` | `boolean` | Original key arrangement on your keyboard: Mac or PC. |
+| `services.arsenik.num` | `boolean` | Add NumRow layer |
+| `services.arsenik.package` | `package` | The arsenik package to use. |
+| `services.arsenik.run` | `string` | The keyboard shortcut of your application launcher. |
+| `services.arsenik.tap_timeout` | `signed integer` | The key must be pressed twice in XX ms to enable repetitions. |
+| `services.arsenik.vim` | `boolean` | Navigation layer: ESDF or HJKL? |
+| `services.arsenik.wide` | `boolean` | The right hand is moved one key to the right. |

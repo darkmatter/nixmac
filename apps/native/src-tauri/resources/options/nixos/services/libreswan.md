@@ -5,9 +5,9 @@
 All options under `services.libreswan`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.libreswan.configSetup` | | |
-| `services.libreswan.connections` | | |
-| `services.libreswan.disableRedirects` | | |
-| `services.libreswan.enable` | | |
-| `services.libreswan.policies` | | |
+| --- | --- | --- |
+| `services.libreswan.configSetup` | `strings concatenated with "\n"` | Options to go in the 'config setup' section of the Libreswan IPsec configuration |
+| `services.libreswan.connections` | `attribute set of strings concatenated with "\n"` | A set of connections to define for the Libreswan IPsec service |
+| `services.libreswan.disableRedirects` | `boolean` | Whether to disable send and accept redirects for all network interfaces. See the Libreswan [ FAQ](https://libreswan.org/wiki/FAQ#Why_is_it_recommended_to_disable_send_redirects_in_.2Fproc.2Fsys.2Fnet_.3F) page for why this is recommended. |
+| `services.libreswan.enable` | `boolean` | Whether to enable Libreswan IPsec service. |
+| `services.libreswan.policies` | `attribute set of strings concatenated with "\n"` | A set of policies to apply to the IPsec connections. ::: {.note} The policy name must match the one of connection it needs to apply to. ::: |

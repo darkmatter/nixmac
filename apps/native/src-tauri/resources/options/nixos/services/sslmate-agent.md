@@ -5,5 +5,5 @@
 All options under `services.sslmate-agent`.
 
 | Option | Type | Description |
-| ------------------------------- | ---- | ----------- |
-| `services.sslmate-agent.enable` | | |
+| --- | --- | --- |
+| `services.sslmate-agent.enable` | `boolean` | Whether to enable sslmate-agent, a daemon for managing SSL/TLS certificates on a server. |

@@ -5,28 +5,48 @@
 All options under `services.public-inbox`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.public-inbox.enable` | | |
-| `services.public-inbox.http.args` | | |
-| `services.public-inbox.http.enable` | | |
-| `services.public-inbox.http.mounts` | | |
-| `services.public-inbox.http.port` | | |
-| `services.public-inbox.imap.args` | | |
-| `services.public-inbox.imap.cert` | | |
-| `services.public-inbox.imap.enable` | | |
-| `services.public-inbox.imap.key` | | |
-| `services.public-inbox.imap.port` | | |
-| `services.public-inbox.inboxes` | | |
-| `services.public-inbox.mda.args` | | |
-| `services.public-inbox.mda.enable` | | |
-| `services.public-inbox.nntp.args` | | |
-| `services.public-inbox.nntp.cert` | | |
-| `services.public-inbox.nntp.enable` | | |
-| `services.public-inbox.nntp.key` | | |
-| `services.public-inbox.nntp.port` | | |
-| `services.public-inbox.openFirewall` | | |
-| `services.public-inbox.package` | | |
-| `services.public-inbox.path` | | |
-| `services.public-inbox.postfix.enable` | | |
-| `services.public-inbox.settings` | | |
-| `services.public-inbox.spamAssassinRules` | | |
+| --- | --- | --- |
+| `services.public-inbox.enable` | `boolean` | Whether to enable the public-inbox mail archiver. |
+| `services.public-inbox.http.args` | `list of string` | Command-line arguments to pass to {manpage}`public-inbox-httpd(1)`. |
+| `services.public-inbox.http.enable` | `boolean` | Whether to enable the public-inbox HTTP server. |
+| `services.public-inbox.http.mounts` | `list of string` | Root paths or URLs that public-inbox will be served on. If domain parts are present, only requests to those domains will be accepted. |
+| `services.public-inbox.http.port` | `null or string or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listening port or systemd's ListenStream= entry to be used as a reverse proxy, eg. in nginx: `locations."/inbox".proxyPass = "http://unix:${config.services.public-inbox.http.port}:/inbox";` Set to null and use `systemd.sockets.public-inbox-httpd.listenStreams` if you need a more advanced listening. |
+| `services.public-inbox.imap.args` | `list of string` | Command-line arguments to pass to {manpage}`public-inbox-imapd(1)`. |
+| `services.public-inbox.imap.cert` | `null or string` | Path to TLS certificate to use for connections to {manpage}`public-inbox-imapd(1)`. |
+| `services.public-inbox.imap.enable` | `boolean` | Whether to enable the public-inbox IMAP server. |
+| `services.public-inbox.imap.key` | `null or string` | Path to TLS key to use for connections to {manpage}`public-inbox-imapd(1)`. |
+| `services.public-inbox.imap.port` | `null or string or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listening port. Beware that public-inbox uses well-known ports number to decide whether to enable TLS or not. Set to null and use `systemd.sockets.public-inbox-imapd.listenStreams` if you need a more advanced listening. |
+| `services.public-inbox.inboxes` | `attribute set of (open submodule of attribute set of (INI atom (null, bool, int, float or string) or a list of them for duplicate keys))` | Inboxes to configure, where attribute names are inbox names. |
+| `services.public-inbox.inboxes.<name>.address` | `list of string` | The email addresses of the public-inbox. |
+| `services.public-inbox.inboxes.<name>.coderepo` | `list of coderepo names` | Nicknames of a 'coderepo' section associated with the inbox. |
+| `services.public-inbox.inboxes.<name>.description` | `string` | User-visible description for the repository. |
+| `services.public-inbox.inboxes.<name>.inboxdir` | `string` | The absolute path to the directory which hosts the public-inbox. |
+| `services.public-inbox.inboxes.<name>.newsgroup` | `null or string` | NNTP group name for the inbox. |
+| `services.public-inbox.inboxes.<name>.url` | `non-empty string` | URL where this inbox can be accessed over HTTP. |
+| `services.public-inbox.inboxes.<name>.watch` | `list of string` | Paths for {manpage}`public-inbox-watch(1)` to monitor for new mail. |
+| `services.public-inbox.inboxes.<name>.watchheader` | `null or string` | If specified, {manpage}`public-inbox-watch(1)` will only process mail containing a matching header. |
+| `services.public-inbox.mda.args` | `list of string` | Command-line arguments to pass to {manpage}`public-inbox-mda(1)`. |
+| `services.public-inbox.mda.enable` | `boolean` | Whether to enable the public-inbox Mail Delivery Agent. |
+| `services.public-inbox.nntp.args` | `list of string` | Command-line arguments to pass to {manpage}`public-inbox-nntpd(1)`. |
+| `services.public-inbox.nntp.cert` | `null or string` | Path to TLS certificate to use for connections to {manpage}`public-inbox-nntpd(1)`. |
+| `services.public-inbox.nntp.enable` | `boolean` | Whether to enable the public-inbox NNTP server. |
+| `services.public-inbox.nntp.key` | `null or string` | Path to TLS key to use for connections to {manpage}`public-inbox-nntpd(1)`. |
+| `services.public-inbox.nntp.port` | `null or string or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listening port. Beware that public-inbox uses well-known ports number to decide whether to enable TLS or not. Set to null and use `systemd.sockets.public-inbox-nntpd.listenStreams` if you need a more advanced listening. |
+| `services.public-inbox.openFirewall` | `boolean` | Whether to enable opening the firewall when using a port option. |
+| `services.public-inbox.package` | `package` | The public-inbox package to use. |
+| `services.public-inbox.path` | `list of package` | Additional packages to place in the path of public-inbox-mda, public-inbox-watch, etc. |
+| `services.public-inbox.postfix.enable` | `boolean` | Whether to enable the integration into Postfix. |
+| `services.public-inbox.settings` | `open submodule of attribute set of attribute set of (INI atom (null, bool, int, float or string) or a list of them for duplicate keys or attribute set of (INI atom (null, bool, int, float or string) or a list of them for duplicate keys))` | Settings for the [public-inbox config file](https://public-inbox.org/public-inbox-config.html). |
+| `services.public-inbox.settings.coderepo` | `attribute set of (open submodule of attribute set of (INI atom (null, bool, int, float or string) or a list of them for duplicate keys))` | code repositories |
+| `services.public-inbox.settings.coderepo.<name>.cgitUrl` | `string` | URL of a cgit instance |
+| `services.public-inbox.settings.coderepo.<name>.dir` | `string` | Path to a git repository |
+| `services.public-inbox.settings.publicinbox` | `open submodule of attribute set of (INI atom (null, bool, int, float or string) or a list of them for duplicate keys or attribute set of (INI atom (null, bool, int, float or string) or a list of them for duplicate keys))` | public inboxes |
+| `services.public-inbox.settings.publicinbox.css` | `list of string` | The local path name of a CSS file for the PSGI web interface. |
+| `services.public-inbox.settings.publicinbox.imapserver` | `list of string` | IMAP URLs to this public-inbox instance |
+| `services.public-inbox.settings.publicinbox.nntpserver` | `list of string` | NNTP URLs to this public-inbox instance |
+| `services.public-inbox.settings.publicinbox.pop3server` | `list of string` | POP3 URLs to this public-inbox instance |
+| `services.public-inbox.settings.publicinbox.wwwlisting` | `one of "all", "404", "match=domain"` | Controls which lists (if any) are listed for when the root public-inbox URL is accessed over HTTP. |
+| `services.public-inbox.settings.publicinboxmda.spamcheck` | `one of "spamc", "none"` | If set to spamc, {manpage}`public-inbox-watch(1)` will filter spam using SpamAssassin. |
+| `services.public-inbox.settings.publicinboxwatch.spamcheck` | `one of "spamc", "none"` | If set to spamc, {manpage}`public-inbox-watch(1)` will filter spam using SpamAssassin. |
+| `services.public-inbox.settings.publicinboxwatch.watchspam` | `null or string` | If set, mail in this maildir will be trained as spam and deleted from all watched inboxes |
+| `services.public-inbox.spamAssassinRules` | `null or absolute path` | SpamAssassin configuration specific to public-inbox. |

@@ -5,9 +5,54 @@
 All options under `services.headplane`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.headplane.agent.package` | | |
-| `services.headplane.debug` | | |
-| `services.headplane.enable` | | |
-| `services.headplane.package` | | |
-| `services.headplane.settings` | | |
+| --- | --- | --- |
+| `services.headplane.agent.package` | `package` | The headplane-agent package to use. |
+| `services.headplane.debug` | `boolean` | Whether to enable debug logging. |
+| `services.headplane.enable` | `boolean` | Whether to enable Headplane. |
+| `services.headplane.package` | `package` | The headplane package to use. |
+| `services.headplane.settings` | `submodule` | Headplane configuration options. Generates a YAML config file. See: https://github.com/tale/headplane/blob/main/config.example.yaml |
+| `services.headplane.settings.headscale` | `submodule` | Headscale specific settings for Headplane integration. |
+| `services.headplane.settings.headscale.config_path` | `null or absolute path` | Path to the Headscale configuration file. This is optional, but HIGHLY recommended for the best experience. If this is read only, Headplane will show your configuration settings in the Web UI, but they cannot be changed. |
+| `services.headplane.settings.headscale.config_strict` | `boolean` | Whether to enable Headplane internally validates the Headscale configuration to ensure that it changes the configuration in a safe way. Disabled by default because it clashes with how the Headplane works in NixOS. . |
+| `services.headplane.settings.headscale.dns_records_path` | `null or absolute path` | If you are using `dns.extra_records_path` in your Headscale configuration, you need to set this to the path for Headplane to be able to read the DNS records. Ensure that the file is both readable and writable by the Headplane process. When using this, Headplane will no longer need to automatically restart Headscale for DNS record changes. |
+| `services.headplane.settings.headscale.public_url` | `null or string` | Public URL if different. This affects certain parts of the web UI. |
+| `services.headplane.settings.headscale.tls_cert_path` | `null or absolute path` | Path to a file containing the TLS certificate. |
+| `services.headplane.settings.headscale.url` | `string` | The URL to your Headscale instance. All API requests are routed through this URL. THIS IS NOT the gRPC endpoint, but the HTTP endpoint. IMPORTANT: If you are using TLS this MUST be set to `https://`. |
+| `services.headplane.settings.integration` | `submodule` | Integration configurations for Headplane to interact with Headscale. |
+| `services.headplane.settings.integration.agent` | `null or (submodule)` | Agent configuration for the Headplane agent. |
+| `services.headplane.settings.integration.agent.cache_path` | `absolute path` | The path to store the agent's cache. |
+| `services.headplane.settings.integration.agent.cache_ttl` | `null or signed integer` | Deprecated cache TTL for the agent. This option is accepted by Headplane 0.6.2 but has no effect. |
+| `services.headplane.settings.integration.agent.enabled` | `boolean` | The Headplane agent allows retrieving information about nodes. This allows the UI to display version, OS, and connectivity data. You will see the Headplane agent in your Tailnet as a node when it connects. |
+| `services.headplane.settings.integration.agent.executable_path` | `absolute path` | Path to the headplane agent binary. |
+| `services.headplane.settings.integration.agent.host_name` | `string` | Optionally change the name of the agent in the Tailnet. |
+| `services.headplane.settings.integration.agent.pre_authkey_path` | `null or absolute path` | Path to a file containing a Headscale pre-auth key for the agent. |
+| `services.headplane.settings.integration.agent.work_dir` | `absolute path` | Do not change this unless you are running a custom deployment. The work_dir represents where the agent will store its data to be able to automatically reauthenticate with your Tailnet. It needs to be writable by the user running the Headplane process. |
+| `services.headplane.settings.integration.proc` | `submodule` | Native process integration settings. |
+| `services.headplane.settings.integration.proc.enabled` | `boolean` | Enable "Native" integration that works when Headscale and Headplane are running outside of a container. There is no additional configuration, but you need to ensure that the Headplane process can terminate the Headscale process. |
+| `services.headplane.settings.oidc` | `null or (submodule)` | OIDC Configuration for authentication. |
+| `services.headplane.settings.oidc.authorization_endpoint` | `null or string` | Custom authorization endpoint URL. |
+| `services.headplane.settings.oidc.client_id` | `string` | The client ID for the OIDC client. |
+| `services.headplane.settings.oidc.client_secret_path` | `null or absolute path` | Path to a file containing the OIDC client secret. |
+| `services.headplane.settings.oidc.disable_api_key_login` | `boolean` | Whether to disable API key login. |
+| `services.headplane.settings.oidc.enabled` | `boolean` | Explicitly control OIDC availability. Set to false to define OIDC config without enabling it. |
+| `services.headplane.settings.oidc.extra_params` | `null or (attribute set of string)` | Extra parameters to send to the OIDC provider. |
+| `services.headplane.settings.oidc.headscale_api_key_path` | `null or absolute path` | Path to a file containing the Headscale API key. Required for OIDC authentication. |
+| `services.headplane.settings.oidc.issuer` | `string` | URL to OpenID issuer. |
+| `services.headplane.settings.oidc.profile_picture_source` | `one of "oidc", "gravatar"` | Source for user profile pictures. |
+| `services.headplane.settings.oidc.redirect_uri` | `null or string` | Deprecated OIDC redirect URI. Use services.headplane.settings.server.base_url instead; Headplane derives the callback URL from it. |
+| `services.headplane.settings.oidc.scope` | `string` | OIDC scope to request. |
+| `services.headplane.settings.oidc.strict_validation` | `null or boolean` | Deprecated OIDC validation setting. This option is accepted by Headplane 0.6.2 but has no effect. |
+| `services.headplane.settings.oidc.token_endpoint` | `null or string` | Custom token endpoint URL. |
+| `services.headplane.settings.oidc.token_endpoint_auth_method` | `null or one of "client_secret_post", "client_secret_basic", "client_secret_jwt"` | The token endpoint authentication method. If not set, Headplane will auto-detect the best method and fall back to client_secret_basic. |
+| `services.headplane.settings.oidc.use_pkce` | `boolean` | Whether to use PKCE when authenticating users. Your OIDC provider must support PKCE and it must be enabled on the client. |
+| `services.headplane.settings.oidc.user_storage_file` | `null or absolute path` | Deprecated path to the pre-0.6.2 JSON user database. Headplane uses this once to migrate users into its internal database. |
+| `services.headplane.settings.oidc.userinfo_endpoint` | `null or string` | Custom userinfo endpoint URL. |
+| `services.headplane.settings.server` | `submodule` | Server configuration for Headplane web application. |
+| `services.headplane.settings.server.base_url` | `null or string` | The base URL for Headplane. Used for OIDC redirect callback URL detection. Should not include the dashboard prefix (/admin). |
+| `services.headplane.settings.server.cookie_domain` | `null or string` | Restrict the cookie to a specific domain. This may not work as expected if not using a reverse proxy. |
+| `services.headplane.settings.server.cookie_max_age` | `positive integer, meaning >0` | The maximum age of the session cookie in seconds. |
+| `services.headplane.settings.server.cookie_secret_path` | `null or absolute path` | Path to a file containing the cookie secret. The secret must be exactly 32 characters long. |
+| `services.headplane.settings.server.cookie_secure` | `boolean` | Should the cookies only work over HTTPS? Set to false if running via HTTP without a proxy. Recommended to be true in production. |
+| `services.headplane.settings.server.data_path` | `absolute path` | The path to persist Headplane specific data. All data going forward is stored in this directory, including the internal database and any cache related files. |
+| `services.headplane.settings.server.host` | `string` | The host address to bind to. |
+| `services.headplane.settings.server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to listen on. |

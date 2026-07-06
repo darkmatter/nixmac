@@ -5,6 +5,6 @@
 All options under `services.manticore`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.manticore.enable` | | |
-| `services.manticore.settings` | | |
+| --- | --- | --- |
+| `services.manticore.enable` | `boolean` | Whether to enable Manticoresearch. |
+| `services.manticore.settings` | `open submodule of (JSON value)` | Configuration for Manticoresearch. See <https://manual.manticoresearch.com/Server%20settings> for more information. |

@@ -5,9 +5,10 @@
 All options under `programs.prismlauncher`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.prismlauncher.enable` | `boolean` | Whether to enable Prism Launcher. |
-| `programs.prismlauncher.extraPackages` | `list of package` | Additional theme packages to install to the user environment. |
-| `programs.prismlauncher.icons` | `list of absolute path` | List of paths to instance icons. |
+| `programs.prismlauncher.extraPackages` | `list of package` | Additional theme packages to install to the user environment. Themes can be sourced from <https://github.com/PrismLauncher/Themes> and should install to `$out/share/PrismLauncher/{themes,iconthemes,catpacks}`. |
+| `programs.prismlauncher.icons` | `list of absolute path` | List of paths to instance icons. These will be linked in {file}`$XDG_DATA_HOME/PrismLauncher/icons` on Linux and {file}`~/Library/Application Support/PrismLauncher/icons` on macOS. |
 | `programs.prismlauncher.package` | `null or package` | The prismlauncher package to use. |
-| `programs.prismlauncher.settings` | `attribute set of (INI atom (null, bool, int, float or string))` | Configuration written to prismlauncher.cfg . |
+| `programs.prismlauncher.settings` | `attribute set of (INI atom (null, bool, int, float or string))` | Configuration written to {file}`prismlauncher.cfg`. |
+| `programs.prismlauncher.themes` | `attribute set of (absolute path or (submodule))` | Prism Launcher widget themes. Attribute names are used as theme directory names. A theme can either be a path to a complete theme directory, or an attribute set used to generate {file}`theme.json` and optionally {file}`themeStyle.css`. These will be linked in {file}`$XDG_DATA_HOME/PrismLauncher/themes` on Linux and {file}`~/Library/Application Support/PrismLauncher/themes` on macOS. |

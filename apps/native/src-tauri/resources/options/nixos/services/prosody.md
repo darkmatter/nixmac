@@ -5,68 +5,103 @@
 All options under `services.prosody`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---- | ----------- |
-| `services.prosody.admins` | | |
-| `services.prosody.allowRegistration` | | |
-| `services.prosody.authentication` | | |
-| `services.prosody.c2sRequireEncryption` | | |
-| `services.prosody.checkConfig` | | |
-| `services.prosody.dataDir` | | |
-| `services.prosody.disco_items` | | |
-| `services.prosody.enable` | | |
-| `services.prosody.extraConfig` | | |
-| `services.prosody.extraModules` | | |
-| `services.prosody.extraPluginPaths` | | |
-| `services.prosody.group` | | |
-| `services.prosody.httpFileShare` | | |
-| `services.prosody.httpInterfaces` | | |
-| `services.prosody.httpPorts` | | |
-| `services.prosody.httpsInterfaces` | | |
-| `services.prosody.httpsPorts` | | |
-| `services.prosody.log` | | |
-| `services.prosody.modules.admin_adhoc` | | |
-| `services.prosody.modules.admin_telnet` | | |
-| `services.prosody.modules.announce` | | |
-| `services.prosody.modules.blocklist` | | |
-| `services.prosody.modules.bookmarks` | | |
-| `services.prosody.modules.bosh` | | |
-| `services.prosody.modules.carbons` | | |
-| `services.prosody.modules.cloud_notify` | | |
-| `services.prosody.modules.csi` | | |
-| `services.prosody.modules.dialback` | | |
-| `services.prosody.modules.disco` | | |
-| `services.prosody.modules.groups` | | |
-| `services.prosody.modules.http_files` | | |
-| `services.prosody.modules.legacyauth` | | |
-| `services.prosody.modules.limits` | | |
-| `services.prosody.modules.mam` | | |
-| `services.prosody.modules.motd` | | |
-| `services.prosody.modules.pep` | | |
-| `services.prosody.modules.ping` | | |
-| `services.prosody.modules.private` | | |
-| `services.prosody.modules.proxy65` | | |
-| `services.prosody.modules.register` | | |
-| `services.prosody.modules.roster` | | |
-| `services.prosody.modules.saslauth` | | |
-| `services.prosody.modules.server_contact_info` | | |
-| `services.prosody.modules.smacks` | | |
-| `services.prosody.modules.time` | | |
-| `services.prosody.modules.tls` | | |
-| `services.prosody.modules.uptime` | | |
-| `services.prosody.modules.vcard` | | |
-| `services.prosody.modules.vcard_legacy` | | |
-| `services.prosody.modules.version` | | |
-| `services.prosody.modules.watchregistrations` | | |
-| `services.prosody.modules.websocket` | | |
-| `services.prosody.modules.welcome` | | |
-| `services.prosody.muc` | | |
-| `services.prosody.package` | | |
-| `services.prosody.s2sInsecureDomains` | | |
-| `services.prosody.s2sRequireEncryption` | | |
-| `services.prosody.s2sSecureAuth` | | |
-| `services.prosody.s2sSecureDomains` | | |
-| `services.prosody.ssl` | | |
-| `services.prosody.uploadHttp` | | |
-| `services.prosody.user` | | |
-| `services.prosody.virtualHosts` | | |
-| `services.prosody.xmppComplianceSuite` | | |
+| --- | --- | --- |
+| `services.prosody.admins` | `list of string` | List of administrators of the current host |
+| `services.prosody.allowRegistration` | `boolean` | Allow account creation |
+| `services.prosody.authentication` | `one of "internal_plain", "internal_hashed", "cyrus", "anonymous", "ldap"` | Authentication mechanism used for logins. |
+| `services.prosody.c2sRequireEncryption` | `boolean` | Force clients to use encrypted connections? This option will prevent clients from authenticating unless they are using encryption. |
+| `services.prosody.checkConfig` | `boolean` | Check the configuration file with `prosodyctl check config` |
+| `services.prosody.dataDir` | `absolute path` | The prosody home directory used to store all data. If left as the default value this directory will automatically be created before the prosody server starts, otherwise you are responsible for ensuring the directory exists with appropriate ownership and permissions. |
+| `services.prosody.disco_items` | `list of (submodule)` | List of discoverable items you want to advertise. |
+| `services.prosody.disco_items.*.description` | `string` | A short description of the endpoint you want to advertise |
+| `services.prosody.disco_items.*.url` | `string` | URL of the endpoint you want to make discoverable |
+| `services.prosody.enable` | `boolean` | Whether to enable the prosody server |
+| `services.prosody.extraConfig` | `strings concatenated with "\n"` | Additional prosody configuration The generated file is processed by `envsubst` to allow secrets to be passed securely via environment variables. |
+| `services.prosody.extraModules` | `list of string` | Enable custom modules |
+| `services.prosody.extraPluginPaths` | `list of absolute path` | Additional path in which to look find plugins/modules |
+| `services.prosody.group` | `string` | Group account under which prosody runs. ::: {.note} If left as the default value this group will automatically be created on system activation, otherwise you are responsible for ensuring the group exists before the prosody service starts. ::: |
+| `services.prosody.httpFileShare` | `null or (open submodule of int, bool, string or list of them)` | Configures the http_file_share module to handle user uploads. See <https://prosody.im/doc/modules/mod_http_file_share> for a full list of options. |
+| `services.prosody.httpFileShare.daily_quota` | `null or signed integer` | Maximum size of daily uploaded files per user, in bytes. |
+| `services.prosody.httpFileShare.domain` | `null or string` | Domain name for a http_file_share service. |
+| `services.prosody.httpFileShare.expires_after` | `string` | Max age of a file before it gets deleted. |
+| `services.prosody.httpFileShare.http_external_url` | `null or string` | External URL in case Prosody sits behind a reverse proxy. |
+| `services.prosody.httpFileShare.http_host` | `null or string` | To avoid an additional DNS record and certificate, you may set this option to your primary domain (e.g. "example.com") or use a reverse proxy to handle the HTTP for that domain. |
+| `services.prosody.httpFileShare.size_limit` | `signed integer` | Maximum file size, in bytes. |
+| `services.prosody.httpInterfaces` | `list of string` | Interfaces on which the HTTP server will listen on. |
+| `services.prosody.httpPorts` | `list of 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listening HTTP ports list for this service. |
+| `services.prosody.httpsInterfaces` | `list of string` | Interfaces on which the HTTPS server will listen on. |
+| `services.prosody.httpsPorts` | `list of 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Listening HTTPS ports list for this service. |
+| `services.prosody.log` | `strings concatenated with "\n"` | Logging configuration. See [](https://prosody.im/doc/logging) for more details |
+| `services.prosody.modules.admin_adhoc` | `boolean` | Allows administration via an XMPP client that supports ad-hoc commands |
+| `services.prosody.modules.admin_telnet` | `boolean` | Opens telnet console interface on localhost port 5582 |
+| `services.prosody.modules.announce` | `boolean` | Send announcement to all online users |
+| `services.prosody.modules.blocklist` | `boolean` | Allow users to block communications with other users |
+| `services.prosody.modules.bookmarks` | `boolean` | Allows interop between older clients that use XEP-0048: Bookmarks in its 1.0 version and recent clients which use it in PEP |
+| `services.prosody.modules.bosh` | `boolean` | Enable BOSH clients, aka 'Jabber over HTTP' |
+| `services.prosody.modules.carbons` | `boolean` | Keep multiple clients in sync |
+| `services.prosody.modules.cloud_notify` | `boolean` | Push notifications to inform users of new messages or other pertinent information even when they have no XMPP clients online |
+| `services.prosody.modules.csi` | `boolean` | Implements the CSI protocol that allows clients to report their active/inactive state to the server |
+| `services.prosody.modules.dialback` | `boolean` | s2s dialback support |
+| `services.prosody.modules.disco` | `boolean` | Service discovery |
+| `services.prosody.modules.groups` | `boolean` | Shared roster support |
+| `services.prosody.modules.http_files` | `boolean` | Serve static files from a directory over HTTP |
+| `services.prosody.modules.legacyauth` | `boolean` | Legacy authentication. Only used by some old clients and bots |
+| `services.prosody.modules.limits` | `boolean` | Enable bandwidth limiting for XMPP connections |
+| `services.prosody.modules.mam` | `boolean` | Store messages in an archive and allow users to access it |
+| `services.prosody.modules.motd` | `boolean` | Send a message to users when they log in |
+| `services.prosody.modules.pep` | `boolean` | Enables users to publish their mood, activity, playing music and more |
+| `services.prosody.modules.ping` | `boolean` | Replies to XMPP pings with pongs |
+| `services.prosody.modules.private` | `boolean` | Private XML storage (for room bookmarks, etc.) |
+| `services.prosody.modules.proxy65` | `boolean` | Enables a file transfer proxy service which clients behind NAT can use |
+| `services.prosody.modules.register` | `boolean` | Allow users to register on this server using a client and change passwords |
+| `services.prosody.modules.roster` | `boolean` | Allow users to have a roster |
+| `services.prosody.modules.saslauth` | `boolean` | Authentication for clients and servers. Recommended if you want to log in. |
+| `services.prosody.modules.server_contact_info` | `boolean` | Publish contact information for this service |
+| `services.prosody.modules.smacks` | `boolean` | Allow a client to resume a disconnected session, and prevent message loss |
+| `services.prosody.modules.time` | `boolean` | Let others know the time here on this server |
+| `services.prosody.modules.tls` | `boolean` | Add support for secure TLS on c2s/s2s connections |
+| `services.prosody.modules.uptime` | `boolean` | Report how long server has been running |
+| `services.prosody.modules.vcard` | `boolean` | Allow users to set vCards |
+| `services.prosody.modules.vcard_legacy` | `boolean` | Converts users profiles and Avatars between old and new formats |
+| `services.prosody.modules.version` | `boolean` | Replies to server version requests |
+| `services.prosody.modules.watchregistrations` | `boolean` | Alert admins of registrations |
+| `services.prosody.modules.websocket` | `boolean` | Enable WebSocket support |
+| `services.prosody.modules.welcome` | `boolean` | Welcome users who register accounts |
+| `services.prosody.muc` | `list of (submodule)` | Multi User Chat (MUC) configuration |
+| `services.prosody.muc.*.allowners_muc` | `boolean` | Add module allowners, any user in chat is able to kick other. Useful in jitsi-meet to kick ghosts. |
+| `services.prosody.muc.*.domain` | `string` | Domain name of the MUC |
+| `services.prosody.muc.*.extraConfig` | `strings concatenated with "\n"` | Additional MUC specific configuration |
+| `services.prosody.muc.*.maxHistoryMessages` | `signed integer` | Specifies a limit on what each room can be configured to keep |
+| `services.prosody.muc.*.moderation` | `boolean` | Allow rooms to be moderated |
+| `services.prosody.muc.*.name` | `string` | The name to return in service discovery responses for the MUC service itself |
+| `services.prosody.muc.*.restrictRoomCreation` | `one of true, false, "admin", "local"` | Restrict room creation to server admins |
+| `services.prosody.muc.*.roomDefaultChangeSubject` | `boolean` | If set, the rooms will display the public JIDs by default. |
+| `services.prosody.muc.*.roomDefaultHistoryLength` | `signed integer` | Number of history message sent to participants by default. |
+| `services.prosody.muc.*.roomDefaultLanguage` | `string` | Default room language. |
+| `services.prosody.muc.*.roomDefaultMembersOnly` | `boolean` | If set, the MUC rooms will only be accessible to the members by default. |
+| `services.prosody.muc.*.roomDefaultModerated` | `boolean` | If set, the MUC rooms will be moderated by default. |
+| `services.prosody.muc.*.roomDefaultPublic` | `boolean` | If set, the MUC rooms will be public by default. |
+| `services.prosody.muc.*.roomDefaultPublicJids` | `boolean` | If set, the MUC rooms will display the public JIDs by default. |
+| `services.prosody.muc.*.roomLockTimeout` | `signed integer` | Timeout after which the room is destroyed or unlocked if not configured, in seconds |
+| `services.prosody.muc.*.roomLocking` | `boolean` | Enables room locking, which means that a room must be configured before it can be used. Locked rooms are invisible and cannot be entered by anyone but the creator |
+| `services.prosody.muc.*.tombstoneExpiry` | `signed integer` | This settings controls how long a tombstone is considered valid. It defaults to 31 days. After this time, the room in question can be created again. |
+| `services.prosody.muc.*.tombstones` | `boolean` | When a room is destroyed, it leaves behind a tombstone which prevents the room being entered or recreated. It also allows anyone who was not in the room at the time it was destroyed to learn about it, and to update their bookmarks. Tombstones prevents the case where someone could recreate a previously semi-anonymous room in order to learn the real JIDs of those who often join there. |
+| `services.prosody.package` | `package` | The prosody package to use. |
+| `services.prosody.s2sInsecureDomains` | `list of string` | Some servers have invalid or self-signed certificates. You can list remote domains here that will not be required to authenticate using certificates. They will be authenticated using DNS instead, even when s2s_secure_auth is enabled. |
+| `services.prosody.s2sRequireEncryption` | `boolean` | Force servers to use encrypted connections? This option will prevent servers from authenticating unless they are using encryption. Note that this is different from authentication. |
+| `services.prosody.s2sSecureAuth` | `boolean` | Force certificate authentication for server-to-server connections? This provides ideal security, but requires servers you communicate with to support encryption AND present valid, trusted certificates. For more information see <https://prosody.im/doc/s2s#security> |
+| `services.prosody.s2sSecureDomains` | `list of string` | Even if you leave s2s_secure_auth disabled, you can still require valid certificates for some domains by specifying a list here. |
+| `services.prosody.ssl` | `null or (submodule)` | Paths to SSL files |
+| `services.prosody.ssl.cert` | `absolute path` | Path to the certificate file. |
+| `services.prosody.ssl.extraOptions` | `attribute set` | Extra SSL configuration options. |
+| `services.prosody.ssl.key` | `absolute path` | Path to the key file. |
+| `services.prosody.user` | `string` | User account under which prosody runs. ::: {.note} If left as the default value this user will automatically be created on system activation, otherwise you are responsible for ensuring the user exists before the prosody service starts. ::: |
+| `services.prosody.virtualHosts` | `attribute set of (submodule)` | Define the virtual hosts |
+| `services.prosody.virtualHosts.<name>.domain` | `string` | Domain name |
+| `services.prosody.virtualHosts.<name>.enabled` | `boolean` | Whether to enable the virtual host |
+| `services.prosody.virtualHosts.<name>.extraConfig` | `strings concatenated with "\n"` | Additional virtual host specific configuration |
+| `services.prosody.virtualHosts.<name>.ssl` | `null or (submodule)` | Paths to SSL files |
+| `services.prosody.virtualHosts.<name>.ssl.cert` | `absolute path` | Path to the certificate file. |
+| `services.prosody.virtualHosts.<name>.ssl.extraOptions` | `attribute set` | Extra SSL configuration options. |
+| `services.prosody.virtualHosts.<name>.ssl.key` | `absolute path` | Path to the key file. |
+| `services.prosody.xmppComplianceSuite` | `boolean` | The XEP-0423 defines a set of recommended XEPs to implement for a server. It's generally a good idea to implement this set of extensions if you want to provide your users with a good XMPP experience. This NixOS module aims to provide a "advanced server" experience as per defined in the XEP-0423[1] specification. Setting this option to true will prevent you from building a NixOS configuration which won't comply with this standard. You can explicitly decide to ignore this standard if you know what you are doing by setting this option to false. [1] https://xmpp.org/extensions/xep-0423.html |

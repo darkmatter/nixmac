@@ -5,9 +5,16 @@
 All options under `services.buffyboard`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `services.buffyboard.configFile` | | |
-| `services.buffyboard.enable` | | |
-| `services.buffyboard.extraFlags` | | |
-| `services.buffyboard.package` | | |
-| `services.buffyboard.settings` | | |
+| --- | --- | --- |
+| `services.buffyboard.configFile` | `absolute path` | Path to an INI format configuration file to provide Buffyboard. By default, this is generated from whatever you've set in `settings`. If specified manually, then `settings` is ignored. For an example config file see [here](https://gitlab.postmarketos.org/postmarketOS/buffybox/-/blob/master/buffyboard/buffyboard.conf) |
+| `services.buffyboard.enable` | `boolean` | Whether to enable buffyboard framebuffer keyboard (on-screen keyboard). |
+| `services.buffyboard.extraFlags` | `list of string` | Extra CLI arguments to pass to buffyboard. |
+| `services.buffyboard.package` | `package` | The buffybox package to use. |
+| `services.buffyboard.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Settings to include in /etc/buffyboard.conf. Every option here is strictly optional: Buffyboard will use its own baked-in defaults for those options left unset. |
+| `services.buffyboard.settings.input.pointer` | `null or boolean` | Enable or disable the use of a hardware mouse or other pointing device. |
+| `services.buffyboard.settings.input.touchscreen` | `null or boolean` | Enable or disable the use of the touchscreen. |
+| `services.buffyboard.settings.keyboard.haptic_feedback` | `null or boolean` | Enable or disable vibrations when pressing keys. |
+| `services.buffyboard.settings.keyboard.sticky_shift` | `null or boolean` | Changes shift key behavior. When true, the keyboard remains in uppercase mode until the shift key is pressed again (sticky). When false, the keyboard switches back to lowercase mode and the shift key deactivates after a non-modifier key is pressed. |
+| `services.buffyboard.settings.quirks.fbdev_force_refresh` | `null or boolean` | If true and using the framebuffer backend, this triggers a display refresh after every draw operation. This has a negative performance impact. |
+| `services.buffyboard.settings.quirks.ignore_unused_terminals` | `null or boolean` | If true, buffyboard won't automatically update the layout of a new terminal and draw the keyboard, if the terminal is not opened by any process. In this case SIGUSR1 should be sent to buffyboard to update the layout. This quirk was introduced to resolve a race between buffyboard and systemd-logind according to the following scenario: - A user switches to a new virtual terminal - Buffyboard opens the terminal and changes the number of rows - systemd-logind sees that the terminal is opened by some other process and don't start getty@.service The race is resolved by enabling this option and installing a drop-in file for getty@.service that sends SIGUSR1 to buffyboard. |
+| `services.buffyboard.settings.theme.default` | `string or one of <null>, "adwaita-dark", "breezy-dark", "breezy-light", "nord-dark", "nord-light", "pmos-dark", "pmos-light"` | Selects the default theme on boot. Can be changed at runtime to the alternative theme. |

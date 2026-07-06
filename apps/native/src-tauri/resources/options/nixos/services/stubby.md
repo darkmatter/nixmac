@@ -5,15 +5,7 @@
 All options under `services.stubby`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.stubby.authenticationMode` | | |
-| `services.stubby.enable` | | |
-| `services.stubby.fallbackProtocols` | | |
-| `services.stubby.idleTimeout` | | |
-| `services.stubby.listenAddresses` | | |
-| `services.stubby.logLevel` | | |
-| `services.stubby.queryPaddingBlocksize` | | |
-| `services.stubby.roundRobinUpstreams` | | |
-| `services.stubby.settings` | | |
-| `services.stubby.subnetPrivate` | | |
-| `services.stubby.upstreamServers` | | |
+| --- | --- | --- |
+| `services.stubby.enable` | `boolean` | Whether to enable Stubby DNS resolver. |
+| `services.stubby.logLevel` | `null or one of "alert", "crit", "debug", "emerg", "error", "info", "notice", "warning", 1, 2, 7, 0, 3, 6, 5, 4` | Log verbosity (syslog keyword or level). |
+| `services.stubby.settings` | `attribute set of (YAML 1.1 value)` | Content of the Stubby configuration file. All Stubby settings may be set or queried here. The default settings are available at `pkgs.stubby.passthru.settingsExample`. See <https://dnsprivacy.org/wiki/display/DP/Configuring+Stubby>. A list of the public recursive servers can be found here: <https://dnsprivacy.org/wiki/display/DP/DNS+Privacy+Test+Servers>. |

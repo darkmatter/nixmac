@@ -5,7 +5,5 @@
 All options under `news`.
 
 | Option | Type | Description |
-| ------------------ | ----------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `news.display` | `one of “silent”, “notify”, “show”` | How unread and relevant news should be presented when running home-manager build and home-manager switch . |
-| `news.entries` | | |
-| `news.json.output` | | |
+| --- | --- | --- |
+| `news.display` | `one of "silent", "notify", "show"` | How unread and relevant news should be presented when running {command}`home-manager build` and {command}`home-manager switch`. The options are `silent` : Do not print anything during build or switch. The {command}`home-manager news` command still works for viewing the entries. `notify` : The number of unread and relevant news entries will be printed to standard output. The {command}`home-manager   news` command can later be used to view the entries. `show` : A pager showing unread news entries is opened. |

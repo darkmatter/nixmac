@@ -5,5 +5,5 @@
 All options under `services.i2p`.
 
 | Option | Type | Description |
-| --------------------- | ---- | ----------- |
-| `services.i2p.enable` | | |
+| --- | --- | --- |
+| `services.i2p.enable` | `boolean` | Whether to enable I2P router. |

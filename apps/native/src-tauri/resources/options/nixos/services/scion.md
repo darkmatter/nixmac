@@ -5,19 +5,19 @@
 All options under `services.scion`.
 
 | Option | Type | Description |
-| ----------------------------------------------- | ---- | ----------- |
-| `services.scion.bypassBootstrapWarning` | | |
-| `services.scion.enable` | | |
-| `services.scion.package` | | |
-| `services.scion.scion-control.enable` | | |
-| `services.scion.scion-control.settings` | | |
-| `services.scion.scion-daemon.enable` | | |
-| `services.scion.scion-daemon.settings` | | |
-| `services.scion.scion-dispatcher.enable` | | |
-| `services.scion.scion-dispatcher.settings` | | |
-| `services.scion.scion-ip-gateway.config` | | |
-| `services.scion.scion-ip-gateway.enable` | | |
-| `services.scion.scion-ip-gateway.trafficConfig` | | |
-| `services.scion.scion-router.enable` | | |
-| `services.scion.scion-router.settings` | | |
-| `services.scion.stateless` | | |
+| --- | --- | --- |
+| `services.scion.bypassBootstrapWarning` | `boolean` | bypass Nix warning about SCION PKI bootstrapping |
+| `services.scion.enable` | `boolean` | Whether to enable all of the scion components and services. |
+| `services.scion.package` | `package` | The scion package to use. |
+| `services.scion.scion-control.enable` | `boolean` | Whether to enable the scion-control service. |
+| `services.scion.scion-control.settings` | `TOML value` | scion-control configuration. Refer to <https://docs.scion.org/en/latest/manuals/common.html> for details on supported values. |
+| `services.scion.scion-daemon.enable` | `boolean` | Whether to enable the scion-daemon service. |
+| `services.scion.scion-daemon.settings` | `TOML value` | scion-daemon configuration. Refer to <https://docs.scion.org/en/latest/manuals/common.html> for details on supported values. |
+| `services.scion.scion-dispatcher.enable` | `boolean` | Whether to enable the scion-dispatcher service. |
+| `services.scion.scion-dispatcher.settings` | `TOML value` | scion-dispatcher configuration. Refer to <https://docs.scion.org/en/latest/manuals/common.html> for details on supported values. |
+| `services.scion.scion-ip-gateway.config` | `TOML value` | scion-ip-gateway daemon configuration |
+| `services.scion.scion-ip-gateway.enable` | `boolean` | Whether to enable the scion-ip-gateway service. |
+| `services.scion.scion-ip-gateway.trafficConfig` | `JSON value` | scion-ip-gateway traffic configuration |
+| `services.scion.scion-router.enable` | `boolean` | Whether to enable the scion-router service. |
+| `services.scion.scion-router.settings` | `TOML value` | scion-router configuration. Refer to <https://docs.scion.org/en/latest/manuals/common.html> for details on supported values. |
+| `services.scion.stateless` | `boolean` | Setting this value to false (stateful) can lead to improved caching and performance. This option decides whether to persist the SCION path sqlite databases on disk or not. Persisting this data can lead to database corruption in extreme cases such as power outage, meaning SCION fails to work on the next boot. This is being investigated. If true, /run/scion-\* is used for data If false, use /var/lib/scion-\* is used for data |

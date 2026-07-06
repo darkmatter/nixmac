@@ -5,16 +5,20 @@
 All options under `programs.steam`.
 
 | Option | Type | Description |
-| ------------------------------------------------------- | ---- | ----------- |
-| `programs.steam.dedicatedServer.openFirewall` | | |
-| `programs.steam.enable` | | |
-| `programs.steam.extest.enable` | | |
-| `programs.steam.extraCompatPackages` | | |
-| `programs.steam.extraPackages` | | |
-| `programs.steam.fontPackages` | | |
-| `programs.steam.gamescopeSession` | | |
-| `programs.steam.localNetworkGameTransfers.openFirewall` | | |
-| `programs.steam.package` | | |
-| `programs.steam.protontricks.enable` | | |
-| `programs.steam.protontricks.package` | | |
-| `programs.steam.remotePlay.openFirewall` | | |
+| --- | --- | --- |
+| `programs.steam.dedicatedServer.openFirewall` | `boolean` | Open ports in the firewall for Source Dedicated Server. |
+| `programs.steam.enable` | `boolean` | Whether to enable steam. |
+| `programs.steam.extest.enable` | `boolean` | Whether to enable Load the extest library into Steam, to translate X11 input events to uinput events (e.g. for using Steam Input on Wayland) . |
+| `programs.steam.extraCompatPackages` | `list of package` | Extra packages to be used as compatibility tools for Steam on Linux. Packages will be included in the `STEAM_EXTRA_COMPAT_TOOLS_PATHS` environmental variable. For more information see https://github.com/ValveSoftware/steam-for-linux/issues/6310. These packages must be Steam compatibility tools that have a `steamcompattool` output. |
+| `programs.steam.extraPackages` | `list of package` | Additional packages to add to the Steam environment. |
+| `programs.steam.fontPackages` | `list of package` | Font packages to use in Steam. Defaults to system fonts, but could be overridden to use other fonts — useful for users who would like to customize CJK fonts used in Steam. According to the [upstream issue](https://github.com/ValveSoftware/steam-for-linux/issues/10422#issuecomment-1944396010), Steam only follows the per-user fontconfig configuration. |
+| `programs.steam.gamescopeSession` | `submodule` | Run a GameScope driven Steam session from your display-manager |
+| `programs.steam.gamescopeSession.args` | `list of string` | Arguments to be passed to GameScope for the session. |
+| `programs.steam.gamescopeSession.enable` | `boolean` | Whether to enable GameScope Session. |
+| `programs.steam.gamescopeSession.env` | `attribute set of string` | Environmental variables to be passed to GameScope for the session. |
+| `programs.steam.gamescopeSession.steamArgs` | `list of string` | Arguments to be passed to Steam for the session. |
+| `programs.steam.localNetworkGameTransfers.openFirewall` | `boolean` | Open ports in the firewall for Steam Local Network Game Transfers. |
+| `programs.steam.package` | `package` | The Steam package to use. Additional libraries are added from the system configuration to ensure graphics work properly. Use this option to customise the Steam package rather than adding your custom Steam to {option}`environment.systemPackages` yourself. |
+| `programs.steam.protontricks.enable` | `boolean` | Whether to enable protontricks, a simple wrapper for running Winetricks commands for Proton-enabled games. |
+| `programs.steam.protontricks.package` | `package` | The protontricks package to use. |
+| `programs.steam.remotePlay.openFirewall` | `boolean` | Open ports in the firewall for Steam Remote Play. |

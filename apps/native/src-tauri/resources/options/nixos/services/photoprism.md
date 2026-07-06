@@ -5,16 +5,16 @@
 All options under `services.photoprism`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `services.photoprism.address` | | |
-| `services.photoprism.databasePasswordFile` | | |
-| `services.photoprism.enable` | | |
-| `services.photoprism.group` | | |
-| `services.photoprism.importPath` | | |
-| `services.photoprism.originalsPath` | | |
-| `services.photoprism.package` | | |
-| `services.photoprism.passwordFile` | | |
-| `services.photoprism.port` | | |
-| `services.photoprism.settings` | | |
-| `services.photoprism.storagePath` | | |
-| `services.photoprism.user` | | |
+| --- | --- | --- |
+| `services.photoprism.address` | `string` | Web interface address. |
+| `services.photoprism.databasePasswordFile` | `null or absolute path not in the Nix store` | Database password file. |
+| `services.photoprism.enable` | `boolean` | Whether to enable Photoprism web server. |
+| `services.photoprism.group` | `string` | Group under which photoprism runs. |
+| `services.photoprism.importPath` | `string` | Relative or absolute to the `originalsPath` from where the files should be imported. |
+| `services.photoprism.originalsPath` | `absolute path` | Storage path of your original media files (photos and videos). |
+| `services.photoprism.package` | `package` | The photoprism package to use. |
+| `services.photoprism.passwordFile` | `null or absolute path not in the Nix store` | Admin password file. |
+| `services.photoprism.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Web interface port. |
+| `services.photoprism.settings` | `attribute set of string` | See [the getting-started guide](https://docs.photoprism.app/getting-started/config-options/) for available options. |
+| `services.photoprism.storagePath` | `absolute path` | Location for sidecar, cache, and database files. |
+| `services.photoprism.user` | `string` | User under which photoprism runs. |

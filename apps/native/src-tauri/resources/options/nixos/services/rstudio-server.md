@@ -5,10 +5,10 @@
 All options under `services.rstudio-server`.
 
 | Option | Type | Description |
-| --------------------------------------------- | ---- | ----------- |
-| `services.rstudio-server.enable` | | |
-| `services.rstudio-server.listenAddr` | | |
-| `services.rstudio-server.package` | | |
-| `services.rstudio-server.rserverExtraConfig` | | |
-| `services.rstudio-server.rsessionExtraConfig` | | |
-| `services.rstudio-server.serverWorkingDir` | | |
+| --- | --- | --- |
+| `services.rstudio-server.enable` | `boolean` | Whether to enable RStudio server. |
+| `services.rstudio-server.listenAddr` | `string` | Address to listen on (www-address in rserver.conf). |
+| `services.rstudio-server.package` | `package` | The rstudio-server package to use. |
+| `services.rstudio-server.rserverExtraConfig` | `string` | Extra contents for rserver.conf. |
+| `services.rstudio-server.rsessionExtraConfig` | `string` | Extra contents for resssion.conf. |
+| `services.rstudio-server.serverWorkingDir` | `string` | Default working directory for server (server-working-dir in rserver.conf). |

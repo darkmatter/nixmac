@@ -5,12 +5,12 @@
 All options under `services.gmediarender`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.gmediarender.audioDevice` | | |
-| `services.gmediarender.audioSink` | | |
-| `services.gmediarender.enable` | | |
-| `services.gmediarender.friendlyName` | | |
-| `services.gmediarender.initialVolume` | | |
-| `services.gmediarender.package` | | |
-| `services.gmediarender.port` | | |
-| `services.gmediarender.uuid` | | |
+| --- | --- | --- |
+| `services.gmediarender.audioDevice` | `null or string` | The audio device to use. |
+| `services.gmediarender.audioSink` | `null or string` | The audio sink to use. |
+| `services.gmediarender.enable` | `boolean` | Whether to enable the gmediarender DLNA renderer. |
+| `services.gmediarender.friendlyName` | `null or string` | A "friendly name" for identifying the endpoint. |
+| `services.gmediarender.initialVolume` | `null or signed integer` | A default volume attenuation (in dB) for the endpoint. |
+| `services.gmediarender.package` | `package` | The gmediarender package to use. |
+| `services.gmediarender.port` | `null or 16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port that will be used to accept client connections. |
+| `services.gmediarender.uuid` | `null or string` | A UUID for uniquely identifying the endpoint. If you have multiple renderers on your network, you MUST set this. |

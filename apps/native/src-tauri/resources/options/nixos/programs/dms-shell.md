@@ -5,21 +5,19 @@
 All options under `programs.dms-shell`.
 
 | Option | Type | Description |
-| --------------------------------------------- | ---- | ----------- |
-| `programs.dms-shell.enable` | | |
-| `programs.dms-shell.enableAudioWavelength` | | |
-| `programs.dms-shell.enableBrightnessControl` | | |
-| `programs.dms-shell.enableCalendarEvents` | | |
-| `programs.dms-shell.enableClipboard` | | |
-| `programs.dms-shell.enableClipboardPaste` | | |
-| `programs.dms-shell.enableColorPicker` | | |
-| `programs.dms-shell.enableDynamicTheming` | | |
-| `programs.dms-shell.enableSystemMonitoring` | | |
-| `programs.dms-shell.enableSystemSound` | | |
-| `programs.dms-shell.enableVPN` | | |
-| `programs.dms-shell.package` | | |
-| `programs.dms-shell.plugins` | | |
-| `programs.dms-shell.quickshell.package` | | |
-| `programs.dms-shell.systemd.enable` | | |
-| `programs.dms-shell.systemd.restartIfChanged` | | |
-| `programs.dms-shell.systemd.target` | | |
+| --- | --- | --- |
+| `programs.dms-shell.enable` | `boolean` | Whether to enable DankMaterialShell, a complete desktop shell for Wayland compositors. |
+| `programs.dms-shell.enableAudioWavelength` | `boolean` | Whether to install dependencies required for audio wavelength visualization. This enables audio spectrum and waveform visualizer widgets. Requires: cava |
+| `programs.dms-shell.enableCalendarEvents` | `boolean` | Whether to install dependencies required for calendar events support. This enables calendar widgets that display events and reminders via khal. Requires: khal |
+| `programs.dms-shell.enableClipboardPaste` | `boolean` | Whether to install dependencies required for pasting directly from the clipboard history support. This enables pressing Shift+Return for pasting entries from the clipboard history. Requires: wtype |
+| `programs.dms-shell.enableDynamicTheming` | `boolean` | Whether to install dependencies required for dynamic theming support. This enables automatic theme generation based on wallpapers and other sources. Requires: matugen |
+| `programs.dms-shell.enableSystemMonitoring` | `boolean` | Whether to install dependencies required for system monitoring widgets. This includes process list viewers and system resource monitors. Requires: dgop |
+| `programs.dms-shell.enableVPN` | `boolean` | Whether to install dependencies required for VPN widgets. This enables VPN status monitoring and management through NetworkManager. Requires: glib, networkmanager |
+| `programs.dms-shell.package` | `package` | The dms-shell package to use. |
+| `programs.dms-shell.plugins` | `attribute set of (submodule)` | DMS Plugins to install and enable |
+| `programs.dms-shell.plugins.<name>.enable` | `boolean` | Whether to enable this plugin |
+| `programs.dms-shell.plugins.<name>.src` | `package or absolute path` | Source of the plugin package or path |
+| `programs.dms-shell.quickshell.package` | `package` | The quickshell package to use. |
+| `programs.dms-shell.systemd.enable` | `boolean` | Whether to enable DankMaterialShell systemd startup service. |
+| `programs.dms-shell.systemd.restartIfChanged` | `boolean` | Whether to restart the dms.service when the DankMaterialShell package or configuration changes. This ensures the latest version is always running after a system rebuild. |
+| `programs.dms-shell.systemd.target` | `string` | The systemd target that will automatically start the DankMaterialShell service. Common targets include: - `graphical-session.target` for most desktop environments - `wayland-session.target` for Wayland-specific sessions |

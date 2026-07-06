@@ -5,9 +5,12 @@
 All options under `services.filebeat`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.filebeat.enable` | | |
-| `services.filebeat.inputs` | | |
-| `services.filebeat.modules` | | |
-| `services.filebeat.package` | | |
-| `services.filebeat.settings` | | |
+| --- | --- | --- |
+| `services.filebeat.enable` | `boolean` | Whether to enable filebeat. |
+| `services.filebeat.inputs` | `attribute set of (open submodule of (JSON value))` | Inputs specify how Filebeat locates and processes input data. This is like `services.filebeat.settings.filebeat.inputs`, but structured as an attribute set. This has the benefit that multiple NixOS modules can contribute settings to a single filebeat input. An input type can be specified multiple times by choosing a different `<name>` for each, but setting [](#opt-services.filebeat.inputs._name_.type) to the same value. See <https://www.elastic.co/guide/en/beats/filebeat/current/configuration-filebeat-options.html>. |
+| `services.filebeat.inputs.<name>.type` | `string` | The input type. Look for the value after `type:` on the individual input pages linked from <https://www.elastic.co/guide/en/beats/filebeat/current/configuration-filebeat-options.html>. |
+| `services.filebeat.modules` | `attribute set of (open submodule of (JSON value))` | Filebeat modules provide a quick way to get started processing common log formats. They contain default configurations, Elasticsearch ingest pipeline definitions, and Kibana dashboards to help you implement and deploy a log monitoring solution. This is like `services.filebeat.settings.filebeat.modules`, but structured as an attribute set. This has the benefit that multiple NixOS modules can contribute settings to a single filebeat module. A module can be specified multiple times by choosing a different `<name>` for each, but setting [](#opt-services.filebeat.modules._name_.module) to the same value. See <https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-modules.html>. |
+| `services.filebeat.modules.<name>.module` | `string` | The name of the module. Look for the value after `module:` on the individual input pages linked from <https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-modules.html>. |
+| `services.filebeat.package` | `package` | The filebeat package to use. |
+| `services.filebeat.settings` | `open submodule of (JSON value)` | Configuration for filebeat. See <https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-reference-yml.html> for supported values. Options containing secret data should be set to an attribute set containing the attribute `_secret` - a string pointing to a file containing the value the option should be set to. See the example to get a better picture of this: in the resulting {file}`filebeat.yml` file, the `output.elasticsearch.password` key will be set to the contents of the {file}`/var/keys/elasticsearch_password` file. |
+| `services.filebeat.settings.output.elasticsearch.hosts` | `list of string` | The list of Elasticsearch nodes to connect to. The events are distributed to these nodes in round robin order. If one node becomes unreachable, the event is automatically sent to another node. Each Elasticsearch node can be defined as a URL or IP:PORT. For example: `http://192.15.3.2`, `https://es.found.io:9230` or `192.24.3.2:9300`. If no port is specified, `9200` is used. |

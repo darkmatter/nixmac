@@ -5,7 +5,23 @@
 All options under `programs.smug`.
 
 | Option | Type | Description |
-| ------------------------ | ------------------------------ | ------------------------------------------ |
+| --- | --- | --- |
 | `programs.smug.enable` | `boolean` | Whether to enable Smug session manager. |
 | `programs.smug.package` | `null or package` | The smug package to use. |
 | `programs.smug.projects` | `attribute set of (submodule)` | Attribute set with project configurations. |
+| `programs.smug.projects.<name>.beforeStart` | `null or (list of string)` | Commands to execute before the tmux-session starts. |
+| `programs.smug.projects.<name>.env` | `null or (attribute set of string)` | Environment Variables to set in session. |
+| `programs.smug.projects.<name>.root` | `null or string` | Root path in filesystem of the smug project. This is where tmux changes its directory to. Application defaults to `$HOME`. |
+| `programs.smug.projects.<name>.session` | `string` | Session name for the smug project. |
+| `programs.smug.projects.<name>.stop` | `null or (list of string)` | Commands to execute after the tmux-session is destroyed. |
+| `programs.smug.projects.<name>.windows` | `list of (submodule)` | Windows to create in the project session |
+| `programs.smug.projects.<name>.windows.*.commands` | `null or (list of string)` | Commands to execute when window starts. |
+| `programs.smug.projects.<name>.windows.*.layout` | `one of "main-horizontal", "main-vertical", "even-vertical", "even-horizontal", "tiled"` | Layout of window when opening panes. |
+| `programs.smug.projects.<name>.windows.*.manual` | `null or boolean` | Start window only manually, using the -w arg |
+| `programs.smug.projects.<name>.windows.*.name` | `string` | Name of the tmux window; |
+| `programs.smug.projects.<name>.windows.*.panes` | `null or (list of (submodule))` | Panes to open in a window. |
+| `programs.smug.projects.<name>.windows.*.panes.*.commands` | `null or (list of string)` | Commands to execute when pane starts. |
+| `programs.smug.projects.<name>.windows.*.panes.*.root` | `null or string` | Root path of pane. This is relative to the path of the smug project. |
+| `programs.smug.projects.<name>.windows.*.panes.*.type` | `one of "horizontal", "vertical"` | Type of pane. |
+| `programs.smug.projects.<name>.windows.*.root` | `null or string` | Root path of window. This is relative to the path of the smug project. |
+| `programs.smug.projects.<name>.windows.*.selected` | `null or boolean` | Whether this window should be selected by default at session start. |

@@ -5,8 +5,8 @@
 All options under `services.nixops-dns`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.nixops-dns.dnsmasq` | | |
-| `services.nixops-dns.domain` | | |
-| `services.nixops-dns.enable` | | |
-| `services.nixops-dns.user` | | |
+| --- | --- | --- |
+| `services.nixops-dns.dnsmasq` | `boolean` | Enable dnsmasq forwarding to nixops-dns. This allows to use nixops-dns for `services.nixops-dns.domain` resolution while forwarding the rest of the queries to original resolvers. |
+| `services.nixops-dns.domain` | `string` | Fake domain name to resolve to NixOps virtual machines. For example "ops" will resolve "vm.ops". |
+| `services.nixops-dns.enable` | `boolean` | Whether to enable the nixops-dns resolution of NixOps virtual machines via dnsmasq and fake domain name. |
+| `services.nixops-dns.user` | `string` | The user the nixops-dns daemon should run as. This should be the user, which is also used for nixops and have the .nixops directory in its home. |

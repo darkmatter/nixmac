@@ -5,6 +5,6 @@
 All options under `programs.flexoptix-app`.
 
 | Option | Type | Description |
-| -------------------------------- | ---- | ----------- |
-| `programs.flexoptix-app.enable` | | |
-| `programs.flexoptix-app.package` | | |
+| --- | --- | --- |
+| `programs.flexoptix-app.enable` | `boolean` | Whether to enable FLEXOPTIX app + udev rules. |
+| `programs.flexoptix-app.package` | `package` | The flexoptix-app package to use. |

@@ -5,9 +5,36 @@
 All options under `programs.gnome-terminal`.
 
 | Option | Type | Description |
-| -------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.gnome-terminal.enable` | `boolean` | Whether to enable Gnome Terminal. |
 | `programs.gnome-terminal.package` | `null or package` | The gnome-terminal package to use. |
-| `programs.gnome-terminal.profile` | `attribute set of (submodule)` | A set of Gnome Terminal profiles. Note, the name of a profile must be a UUID. You can generate one, for example, using uuidgen (from util-linux ). |
+| `programs.gnome-terminal.profile` | `attribute set of (submodule)` | A set of Gnome Terminal profiles. Note, the name of a profile must be a UUID. You can generate one, for example, using {command}`uuidgen` (from `util-linux`). |
+| `programs.gnome-terminal.profile.<name>.allowBold` | `null or boolean` | If `true`, allow applications in the terminal to make text boldface. |
+| `programs.gnome-terminal.profile.<name>.audibleBell` | `boolean` | Turn on/off the terminal's bell. |
+| `programs.gnome-terminal.profile.<name>.backspaceBinding` | `one of "auto", "ascii-backspace", "ascii-delete", "delete-sequence", "tty"` | Which string the terminal should send to an application when the user presses the *Backspace* key. `auto` : Attempt to determine the right value from the terminal's IO settings. `ascii-backspace` : Send an ASCII backspace character (`0x08`). `ascii-delete` : Send an ASCII delete character (`0x7F`). `delete-sequence` : Send the `@7` control sequence. `tty` : Send terminal's "erase" setting. |
+| `programs.gnome-terminal.profile.<name>.boldIsBright` | `null or boolean` | Whether bold text is shown in bright colors. |
+| `programs.gnome-terminal.profile.<name>.colors` | `null or (submodule)` | The terminal colors, null to use system default. |
+| `programs.gnome-terminal.profile.<name>.colors.backgroundColor` | `string` | The background color. |
+| `programs.gnome-terminal.profile.<name>.colors.boldColor` | `null or string` | The bold color, null to use same as foreground. |
+| `programs.gnome-terminal.profile.<name>.colors.cursor` | `null or (submodule)` | The color for the terminal cursor. |
+| `programs.gnome-terminal.profile.<name>.colors.cursor.background` | `string` | The background color. |
+| `programs.gnome-terminal.profile.<name>.colors.cursor.foreground` | `string` | The foreground color. |
+| `programs.gnome-terminal.profile.<name>.colors.foregroundColor` | `string` | The foreground color. |
+| `programs.gnome-terminal.profile.<name>.colors.highlight` | `null or (submodule)` | The colors for the terminal’s highlighted area. |
+| `programs.gnome-terminal.profile.<name>.colors.highlight.background` | `string` | The background color. |
+| `programs.gnome-terminal.profile.<name>.colors.highlight.foreground` | `string` | The foreground color. |
+| `programs.gnome-terminal.profile.<name>.colors.palette` | `list of string` | The terminal palette. |
+| `programs.gnome-terminal.profile.<name>.cursorBlinkMode` | `one of "system", "on", "off"` | The cursor blink mode. |
+| `programs.gnome-terminal.profile.<name>.cursorShape` | `one of "block", "ibeam", "underline"` | The cursor shape. |
+| `programs.gnome-terminal.profile.<name>.customCommand` | `null or string` | The command to use to start the shell, or null for default shell. |
+| `programs.gnome-terminal.profile.<name>.default` | `boolean` | Whether this should be the default profile. |
+| `programs.gnome-terminal.profile.<name>.deleteBinding` | `one of "auto", "ascii-backspace", "ascii-delete", "delete-sequence", "tty"` | Which string the terminal should send to an application when the user presses the *Delete* key. `auto` : Send the `@7` control sequence. `ascii-backspace` : Send an ASCII backspace character (`0x08`). `ascii-delete` : Send an ASCII delete character (`0x7F`). `delete-sequence` : Send the `@7` control sequence. `tty` : Send terminal's "erase" setting. |
+| `programs.gnome-terminal.profile.<name>.font` | `null or string` | The font name, null to use system default. |
+| `programs.gnome-terminal.profile.<name>.loginShell` | `boolean` | Run command as a login shell. |
+| `programs.gnome-terminal.profile.<name>.scrollOnOutput` | `boolean` | Whether to scroll when output is written. |
+| `programs.gnome-terminal.profile.<name>.scrollbackLines` | `null or signed integer` | The number of scrollback lines to keep, null for infinite. |
+| `programs.gnome-terminal.profile.<name>.showScrollbar` | `boolean` | Whether the scroll bar should be visible. |
+| `programs.gnome-terminal.profile.<name>.transparencyPercent` | `null or integer between 0 and 100 (both inclusive)` | Background transparency in percent. |
+| `programs.gnome-terminal.profile.<name>.visibleName` | `string` | The profile name. |
 | `programs.gnome-terminal.showMenubar` | `boolean` | Whether to show the menubar by default |
-| `programs.gnome-terminal.themeVariant` | `one of “default”, “light”, “dark”, “system”` | The theme variation to request |
+| `programs.gnome-terminal.themeVariant` | `one of "default", "light", "dark", "system"` | The theme variation to request |

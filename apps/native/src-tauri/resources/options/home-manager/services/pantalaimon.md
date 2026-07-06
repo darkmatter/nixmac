@@ -5,7 +5,7 @@
 All options under `services.pantalaimon`.
 
 | Option | Type | Description |
-| ------------------------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.pantalaimon.enable` | `boolean` | Whether to enable Pantalaimon, an E2EE aware proxy daemon for matrix clients. |
 | `services.pantalaimon.package` | `package` | The pantalaimon package to use. |
-| `services.pantalaimon.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to $XDG_CONFIG_HOME/pantalaimon/pantalaimon.conf . |
+| `services.pantalaimon.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to {file}`$XDG_CONFIG_HOME/pantalaimon/pantalaimon.conf`. See <https://github.com/matrix-org/pantalaimon/blob/master/docs/manpantalaimon.5.md> or {manpage}`pantalaimon(5)` for options. |

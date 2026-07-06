@@ -5,6 +5,7 @@
 All options under `services.espanso`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `services.espanso.enable` | | |
-| `services.espanso.package` | | |
+| --- | --- | --- |
+| `services.espanso.enable` | `boolean` | Whether to enable Espanso. |
+| `services.espanso.extraPackages` | `list of package` | Extra packages to be added to Espanso service path. |
+| `services.espanso.package` | `package` | The espanso package to use. |

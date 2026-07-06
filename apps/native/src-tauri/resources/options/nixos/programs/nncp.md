@@ -5,9 +5,9 @@
 All options under `programs.nncp`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `programs.nncp.enable` | | |
-| `programs.nncp.group` | | |
-| `programs.nncp.package` | | |
-| `programs.nncp.secrets` | | |
-| `programs.nncp.settings` | | |
+| --- | --- | --- |
+| `programs.nncp.enable` | `boolean` | Whether to enable NNCP (Node to Node copy) utilities and configuration. |
+| `programs.nncp.group` | `string` | The group under which NNCP files shall be owned. Any member of this group may access the secret keys of this NNCP node. |
+| `programs.nncp.package` | `package` | The nncp package to use. |
+| `programs.nncp.secrets` | `list of string` | A list of paths to NNCP configuration files that should not be in the Nix store. These files are layered on top of the values at [](#opt-programs.nncp.settings). |
+| `programs.nncp.settings` | `JSON value` | NNCP configuration, see <http://www.nncpgo.org/Configuration.html>. At runtime these settings will be overlayed by the contents of [](#opt-programs.nncp.secrets) into the file `/run/nncp.hjson`. Node keypairs go in `secrets`, do not specify them in `settings` as they will be leaked into `/nix/store`! |

@@ -5,7 +5,6 @@
 All options under `dconf`.
 
 | Option | Type | Description |
-| ----------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `dconf.databases` | `attribute set of attribute set of attribute set of (GVariant value)` | Settings to write to specific dconf user databases. See dconf.settings for details. |
-| `dconf.enable` | | |
-| `dconf.settings` | `attribute set of attribute set of (GVariant value)` | Settings to write to the dconf configuration system. |
+| --- | --- | --- |
+| `dconf.databases` | `attribute set of attribute set of attribute set of (GVariant value)` | Settings to write to specific dconf user databases. See [](#opt-dconf.settings) for details. |
+| `dconf.settings` | `attribute set of attribute set of (GVariant value)` | Settings to write to the dconf configuration system. Note that the database is strongly-typed so you need to use the same types as described in the GSettings schema. For example, if an option is of type `uint32` (`u`), you need to wrap the number using the `lib.hm.gvariant.mkUint32` constructor. Otherwise, since Nix integers are implicitly coerced to `int32` (`i`), it would get stored in the database as such, and GSettings might be confused when loading the setting. You might want to use [dconf2nix](https://github.com/gvolpe/dconf2nix) to convert dconf database dumps into compatible Nix expression. |

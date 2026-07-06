@@ -5,32 +5,32 @@
 All options under `services.hardware`.
 
 | Option | Type | Description |
-| ---------------------------------------------------- | ---- | ----------- |
-| `services.hardware.argonone.enable` | | |
-| `services.hardware.argonone.package` | | |
-| `services.hardware.bolt.enable` | | |
-| `services.hardware.bolt.package` | | |
-| `services.hardware.deepcool-digital-linux.enable` | | |
-| `services.hardware.deepcool-digital-linux.extraArgs` | | |
-| `services.hardware.deepcool-digital-linux.package` | | |
-| `services.hardware.dell-bios-fan-control.enable` | | |
-| `services.hardware.dell-bios-fan-control.package` | | |
-| `services.hardware.lcd.client.enable` | | |
-| `services.hardware.lcd.client.extraConfig` | | |
-| `services.hardware.lcd.client.restartForever` | | |
-| `services.hardware.lcd.server.enable` | | |
-| `services.hardware.lcd.server.extraConfig` | | |
-| `services.hardware.lcd.server.openPorts` | | |
-| `services.hardware.lcd.server.usbGroup` | | |
-| `services.hardware.lcd.server.usbPermissions` | | |
-| `services.hardware.lcd.server.usbPid` | | |
-| `services.hardware.lcd.server.usbVid` | | |
-| `services.hardware.lcd.serverHost` | | |
-| `services.hardware.lcd.serverPort` | | |
-| `services.hardware.openrgb.enable` | | |
-| `services.hardware.openrgb.motherboard` | | |
-| `services.hardware.openrgb.package` | | |
-| `services.hardware.openrgb.server.port` | | |
-| `services.hardware.openrgb.startupProfile` | | |
-| `services.hardware.pommed.configFile` | | |
-| `services.hardware.pommed.enable` | | |
+| --- | --- | --- |
+| `services.hardware.argonone.enable` | `boolean` | Whether to enable the driver for Argon One Raspberry Pi case fan and power button. |
+| `services.hardware.argonone.package` | `package` | The argononed package to use. |
+| `services.hardware.bolt.enable` | `boolean` | Whether to enable Bolt, a userspace daemon to enable security levels for Thunderbolt 3 on GNU/Linux. Bolt is used by GNOME 3 to handle Thunderbolt settings. |
+| `services.hardware.bolt.package` | `package` | The bolt package to use. |
+| `services.hardware.deepcool-digital-linux.enable` | `boolean` | Whether to enable DeepCool Digital monitoring daemon. |
+| `services.hardware.deepcool-digital-linux.extraArgs` | `list of string` | Extra command line arguments to be passed to the deepcool-digital-linux daemon. |
+| `services.hardware.deepcool-digital-linux.package` | `package` | The deepcool-digital-linux package to use. |
+| `services.hardware.dell-bios-fan-control.enable` | `boolean` | Whether to enable One-shot service to disable dell bios fan control on startup. |
+| `services.hardware.dell-bios-fan-control.package` | `package` | The dell-bios-fan-control package to use. |
+| `services.hardware.lcd.client.enable` | `boolean` | Enable the LCD panel client (LCDproc) |
+| `services.hardware.lcd.client.extraConfig` | `strings concatenated with "\n"` | Additional configuration added verbatim to the client config. |
+| `services.hardware.lcd.client.restartForever` | `boolean` | Try restarting the client forever. |
+| `services.hardware.lcd.server.enable` | `boolean` | Enable the LCD panel server (LCDd) |
+| `services.hardware.lcd.server.extraConfig` | `strings concatenated with "\n"` | Additional configuration added verbatim to the server config. |
+| `services.hardware.lcd.server.openPorts` | `boolean` | Open the ports in the firewall |
+| `services.hardware.lcd.server.usbGroup` | `string` | The group to use for settings permissions. This group must exist or you will have to create it. |
+| `services.hardware.lcd.server.usbPermissions` | `boolean` | Set group-write permissions on a USB device. A USB connected LCD panel will most likely require having its permissions modified for lcdd to write to it. Enabling this option sets group-write permissions on the device identified by {option}`services.hardware.lcd.usbVid` and {option}`services.hardware.lcd.usbPid`. In order to find the values, you can run the {command}`lsusb` command. Example output: `Bus 005 Device 002: ID 0403:c630 Future Technology Devices International, Ltd lcd2usb interface` In this case the vendor id is 0403 and the product id is c630. |
+| `services.hardware.lcd.server.usbPid` | `string` | The product ID of the USB device to claim. |
+| `services.hardware.lcd.server.usbVid` | `string` | The vendor ID of the USB device to claim. |
+| `services.hardware.lcd.serverHost` | `string` | Host on which LCDd is listening. |
+| `services.hardware.lcd.serverPort` | `signed integer` | Port on which LCDd is listening. |
+| `services.hardware.openrgb.enable` | `boolean` | Whether to enable OpenRGB server, for RGB lighting control. |
+| `services.hardware.openrgb.motherboard` | `null or one of "amd", "intel"` | CPU family of motherboard. Allows for addition motherboard i2c support. |
+| `services.hardware.openrgb.package` | `package` | The openrgb package to use. |
+| `services.hardware.openrgb.server.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Set server port of openrgb. |
+| `services.hardware.openrgb.startupProfile` | `null or string` | The profile file to load from "/var/lib/OpenRGB" at startup. |
+| `services.hardware.pommed.configFile` | `null or absolute path` | The path to the {file}`pommed.conf` file. Leave to null to use the default config file ({file}`/etc/pommed.conf.mactel`). See the files {file}`/etc/pommed.conf.mactel` and {file}`/etc/pommed.conf.pmac` for examples to build on. |
+| `services.hardware.pommed.enable` | `boolean` | Whether to use the pommed tool to handle Apple laptop keyboard hotkeys. |

@@ -5,8 +5,7 @@
 All options under `programs._1password-gui`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `programs._1password-gui.enable` | | |
-| `programs._1password-gui.gid` | | |
-| `programs._1password-gui.package` | | |
-| `programs._1password-gui.polkitPolicyOwners` | | |
+| --- | --- | --- |
+| `programs._1password-gui.enable` | `boolean` | Whether to enable the 1Password GUI application. |
+| `programs._1password-gui.package` | `package` | The 1Password GUI package to use. |
+| `programs._1password-gui.polkitPolicyOwners` | `list of string` | A list of users who should be able to integrate 1Password with polkit-based authentication mechanisms. |

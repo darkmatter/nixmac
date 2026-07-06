@@ -5,10 +5,10 @@
 All options under `programs.spotify-player`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------- |
-| `programs.spotify-player.actions` | `list of (TOML value)` | Configuration written to the actions field of $XDG_CONFIG_HOME/spotify-player/keymap.toml . |
+| --- | --- | --- |
+| `programs.spotify-player.actions` | `list of (TOML value)` | Configuration written to the `actions` field of {file}`$XDG_CONFIG_HOME/spotify-player/keymap.toml`. See <https://github.com/aome510/spotify-player/blob/master/docs/config.md#actions> for the full list of options. |
 | `programs.spotify-player.enable` | `boolean` | Whether to enable spotify-player. |
-| `programs.spotify-player.keymaps` | `list of (TOML value)` | Configuration written to the keymaps field of $XDG_CONFIG_HOME/spotify-player/keymap.toml . |
+| `programs.spotify-player.keymaps` | `list of (TOML value)` | Configuration written to the `keymaps` field of {file}`$XDG_CONFIG_HOME/spotify-player/keymap.toml`. See <https://github.com/aome510/spotify-player/blob/master/docs/config.md#keymaps> for the full list of options. |
 | `programs.spotify-player.package` | `null or package` | The spotify-player package to use. |
-| `programs.spotify-player.settings` | `TOML value` | Configuration written to $XDG_CONFIG_HOME/spotify-player/app.toml . |
-| `programs.spotify-player.themes` | `list of (TOML value)` | Configuration written to the themes field of $XDG_CONFIG_HOME/spotify-player/theme.toml . |
+| `programs.spotify-player.settings` | `TOML value` | Configuration written to {file}`$XDG_CONFIG_HOME/spotify-player/app.toml`. See <https://github.com/aome510/spotify-player/blob/master/docs/config.md#general> for the full list of options. |
+| `programs.spotify-player.themes` | `list of (TOML value)` | Configuration written to the `themes` field of {file}`$XDG_CONFIG_HOME/spotify-player/theme.toml`. See <https://github.com/aome510/spotify-player/blob/master/docs/config.md#themes> for the full list of options. |

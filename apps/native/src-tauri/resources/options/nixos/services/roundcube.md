@@ -5,17 +5,17 @@
 All options under `services.roundcube`.
 
 | Option | Type | Description |
-| ------------------------------------------ | ---- | ----------- |
-| `services.roundcube.configureNginx` | | |
-| `services.roundcube.database.dbname` | | |
-| `services.roundcube.database.host` | | |
-| `services.roundcube.database.password` | | |
-| `services.roundcube.database.passwordFile` | | |
-| `services.roundcube.database.username` | | |
-| `services.roundcube.dicts` | | |
-| `services.roundcube.enable` | | |
-| `services.roundcube.extraConfig` | | |
-| `services.roundcube.hostName` | | |
-| `services.roundcube.maxAttachmentSize` | | |
-| `services.roundcube.package` | | |
-| `services.roundcube.plugins` | | |
+| --- | --- | --- |
+| `services.roundcube.configureNginx` | `boolean` | Configure nginx as a reverse proxy for roundcube. |
+| `services.roundcube.database.dbname` | `string` | Name of the postgresql database |
+| `services.roundcube.database.host` | `string` | Host of the postgresql server. If this is not set to `localhost`, you have to create the postgresql user and database yourself, with appropriate permissions. |
+| `services.roundcube.database.password` | `string` | Password for the postgresql connection. Do not use: the password will be stored world readable in the store; use `passwordFile` instead. |
+| `services.roundcube.database.passwordFile` | `absolute path` | Password file for the postgresql connection. Must be formatted according to PostgreSQL .pgpass standard (see <https://www.postgresql.org/docs/current/libpq-pgpass.html>) but only one line, no comments and readable by user `nginx`. Ignored if `database.host` is set to `localhost`, as peer authentication will be used. |
+| `services.roundcube.database.username` | `string` | Username for the postgresql connection. If `database.host` is set to `localhost`, a unix user and group of the same name will be created as well. |
+| `services.roundcube.dicts` | `list of package` | List of aspell dictionaries for spell checking. If empty, spell checking is disabled. |
+| `services.roundcube.enable` | `boolean` | Whether to enable roundcube. Also enables nginx virtual host management. Further nginx configuration can be done by adapting `services.nginx.virtualHosts.<name>`. See [](#opt-services.nginx.virtualHosts) for further information. |
+| `services.roundcube.extraConfig` | `strings concatenated with "\n"` | Extra configuration for roundcube webmail instance |
+| `services.roundcube.hostName` | `string` | Hostname to use for the nginx vhost |
+| `services.roundcube.maxAttachmentSize` | `signed integer` | The maximum attachment size in MB. \[upstream issue comment\]: https://github.com/roundcube/roundcubemail/issues/7979#issuecomment-808879209 ::: {.note} Since there is some overhead in base64 encoding applied to attachments, + 37% will be added to the value set in this option in order to offset the overhead. For example, setting `maxAttachmentSize` to `100` would result in `137M` being the real value in the configuration. See [upstream issue comment] for more details on the motivations behind this. ::: |
+| `services.roundcube.package` | `package` | The roundcube package to use. |
+| `services.roundcube.plugins` | `list of string` | List of roundcube plugins to enable. Currently, only those directly shipped with Roundcube are supported. |

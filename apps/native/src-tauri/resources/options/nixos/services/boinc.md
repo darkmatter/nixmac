@@ -5,9 +5,9 @@
 All options under `services.boinc`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.boinc.allowRemoteGuiRpc` | | |
-| `services.boinc.dataDir` | | |
-| `services.boinc.enable` | | |
-| `services.boinc.extraEnvPackages` | | |
-| `services.boinc.package` | | |
+| --- | --- | --- |
+| `services.boinc.allowRemoteGuiRpc` | `boolean` | If set to true, any remote host can connect to and control this BOINC client (subject to password authentication). If instead set to false, only the hosts listed in {var}`dataDir`/remote_hosts.cfg will be allowed to connect. See also: <https://github.com/BOINC/boinc/wiki/Controlling_BOINC_remotely#remote-access> |
+| `services.boinc.dataDir` | `absolute path` | The directory in which to store BOINC's configuration and data files. |
+| `services.boinc.enable` | `boolean` | Whether to enable the BOINC distributed computing client. If this option is set to true, the boinc_client daemon will be run as a background service. The boinccmd command can be used to control the daemon. |
+| `services.boinc.extraEnvPackages` | `list of package` | Additional packages to make available in the environment in which BOINC will run. Common choices are: - {var}`pkgs.virtualbox`: The VirtualBox virtual machine framework. Required by some BOINC projects, such as ATLAS@home. - {var}`pkgs.ocl-icd`: OpenCL infrastructure library. Required by BOINC projects that use OpenCL, in addition to a device-specific OpenCL driver. - {var}`pkgs.linuxPackages.nvidia_x11`: Provides CUDA libraries. Required by BOINC projects that use CUDA. Note that this requires an NVIDIA graphics device to be present on the system. Also provides OpenCL drivers for NVIDIA GPUs; {var}`pkgs.ocl-icd` is also needed in this case. |
+| `services.boinc.package` | `package` | The boinc package to use. |

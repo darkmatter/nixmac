@@ -5,7 +5,7 @@
 All options under `services.goxlr-utility`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.goxlr-utility.autoStart.xdg` | | |
-| `services.goxlr-utility.enable` | | |
-| `services.goxlr-utility.package` | | |
+| --- | --- | --- |
+| `services.goxlr-utility.autoStart.xdg` | `boolean` | Start the daemon automatically using XDG autostart. Sets `xdg.autostart.enable = true` if not already enabled. |
+| `services.goxlr-utility.enable` | `boolean` | Whether to enable goxlr-utility for controlling your TC-Helicon GoXLR or GoXLR Mini |
+| `services.goxlr-utility.package` | `package` | The goxlr-utility package to use. |

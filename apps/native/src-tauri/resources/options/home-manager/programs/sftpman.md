@@ -5,8 +5,17 @@
 All options under `programs.sftpman`.
 
 | Option | Type | Description |
-| -------------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.sftpman.defaultSshKey` | `null or string` | Path to the SSH key to be used by default. Can be overridden per host. |
 | `programs.sftpman.enable` | `boolean` | Whether to enable sftpman, an application that handles sshfs/sftp file systems mounting. |
-| `programs.sftpman.mounts` | `attribute set of (submodule)` | The sshfs mount configurations written to $XDG_CONFIG_HOME/sftpman/mounts/ . |
+| `programs.sftpman.mounts` | `attribute set of (submodule)` | The sshfs mount configurations written to {file}`$XDG_CONFIG_HOME/sftpman/mounts/`. |
+| `programs.sftpman.mounts.<name>.authType` | `one of "password", "publickey", "hostbased", "keyboard-interactive", "gssapi-with-mic", "authentication-agent"` | The authentication method to use. |
+| `programs.sftpman.mounts.<name>.beforeMount` | `string` | Command to run before mounting. |
+| `programs.sftpman.mounts.<name>.host` | `string` | The host to connect to. |
+| `programs.sftpman.mounts.<name>.mountDestPath` | `null or string` | The path on the current machine where the remote path would be mounted. |
+| `programs.sftpman.mounts.<name>.mountOptions` | `list of string` | Options to pass to sshfs. |
+| `programs.sftpman.mounts.<name>.mountPoint` | `string` | The remote path to mount. |
+| `programs.sftpman.mounts.<name>.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to connect to. |
+| `programs.sftpman.mounts.<name>.sshKey` | `null or string` | Path to the SSH key to use for authentication. Only applies if authMethod is `publickey`. |
+| `programs.sftpman.mounts.<name>.user` | `string` | The username to authenticate with. |
 | `programs.sftpman.package` | `null or package` | The sftpman package to use. |

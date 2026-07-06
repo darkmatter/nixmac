@@ -5,8 +5,8 @@
 All options under `services.envoy`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.envoy.enable` | | |
-| `services.envoy.package` | | |
-| `services.envoy.requireValidConfig` | | |
-| `services.envoy.settings` | | |
+| --- | --- | --- |
+| `services.envoy.enable` | `boolean` | Whether to enable Envoy reverse proxy. |
+| `services.envoy.package` | `package` | The envoy package to use. |
+| `services.envoy.requireValidConfig` | `boolean` | Whether a failure during config validation at build time is fatal. When the config can't be checked during build time, for example when it includes other files, disable this option. |
+| `services.envoy.settings` | `JSON value` | Specify the configuration for Envoy in Nix. |

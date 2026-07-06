@@ -5,13 +5,13 @@
 All options under `services.karakeep`.
 
 | Option | Type | Description |
-| ------------------------------------------------------------- | ---- | ----------- |
-| `services.karakeep.browser.enable` | | |
-| `services.karakeep.browser.exe` | | |
-| `services.karakeep.browser.port` | | |
-| `services.karakeep.enable` | | |
-| `services.karakeep.environmentFile` | | |
-| `services.karakeep.extraEnvironment` | | |
-| `services.karakeep.meilisearch.enable` | | |
-| `services.karakeep.meilisearch.experimental_dumpless_upgrade` | | |
-| `services.karakeep.package` | | |
+| --- | --- | --- |
+| `services.karakeep.browser.enable` | `boolean` | Enable the karakeep-browser service that runs a chromium instance in the background with debugging ports exposed. This is necessary for certain features like screenshots. |
+| `services.karakeep.browser.exe` | `string` | The browser executable (must be Chrome-like). |
+| `services.karakeep.browser.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port the browser should run on. |
+| `services.karakeep.enable` | `boolean` | Whether to enable Enable the Karakeep service. |
+| `services.karakeep.environmentFile` | `null or absolute path` | An optional path to an environment file that will be used in the web and workers services. This is useful for loading private keys. |
+| `services.karakeep.extraEnvironment` | `attribute set of string` | Environment variables to pass to Karakaeep. This is how most settings can be configured. Changing DATA_DIR is possible but not supported. See <https://docs.karakeep.app/configuration/environment-variables> |
+| `services.karakeep.meilisearch.enable` | `boolean` | Enable Meilisearch and configure Karakeep to use it. Meilisearch is required for text search. |
+| `services.karakeep.meilisearch.experimental_dumpless_upgrade` | `boolean` | Whether to enable (experimental) dumpless upgrade of the search index. Allows upgrading Meilisearch without manually dumping and importing the database. {option}`services.meilisearch.settings.experimental_dumpless_upgrade` overrides this option if set explicitly. More information at <https://www.meilisearch.com/docs/learn/update_and_migration/updating#dumpless-upgrade>. |
+| `services.karakeep.package` | `package` | The karakeep package to use. |

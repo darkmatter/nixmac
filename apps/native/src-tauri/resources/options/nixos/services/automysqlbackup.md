@@ -5,8 +5,7 @@
 All options under `services.automysqlbackup`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.automysqlbackup.calendar` | | |
-| `services.automysqlbackup.config` | | |
-| `services.automysqlbackup.enable` | | |
-| `services.automysqlbackup.settings` | | |
+| --- | --- | --- |
+| `services.automysqlbackup.calendar` | `string` | Configured when to run the backup service systemd unit (DayOfWeek Year-Month-Day Hour:Minute:Second). |
+| `services.automysqlbackup.enable` | `boolean` | Whether to enable AutoMySQLBackup. |
+| `services.automysqlbackup.settings` | `attribute set of (string or signed integer or boolean or list of string)` | automysqlbackup configuration. Refer to {file}`${pkgs.automysqlbackup}/etc/automysqlbackup.conf` for details on supported values. |

@@ -5,13 +5,10 @@
 All options under `services.llama-cpp`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.llama-cpp.enable` | | |
-| `services.llama-cpp.extraFlags` | | |
-| `services.llama-cpp.host` | | |
-| `services.llama-cpp.model` | | |
-| `services.llama-cpp.modelsDir` | | |
-| `services.llama-cpp.modelsPreset` | | |
-| `services.llama-cpp.openFirewall` | | |
-| `services.llama-cpp.package` | | |
-| `services.llama-cpp.port` | | |
+| --- | --- | --- |
+| `services.llama-cpp.enable` | `boolean` | Whether to enable llama.cpp HTTP server. |
+| `services.llama-cpp.openFirewall` | `boolean` | Open ports in the firewall for the server. |
+| `services.llama-cpp.package` | `package` | The llama-cpp package to use. |
+| `services.llama-cpp.settings` | `open submodule of (attribute set)` | Command-line arguments for `llama-server`. See <https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md> for the full list of options. |
+| `services.llama-cpp.settings.host` | `string` | IP address on which the server should listen on. |
+| `services.llama-cpp.settings.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which the server should listen on. |

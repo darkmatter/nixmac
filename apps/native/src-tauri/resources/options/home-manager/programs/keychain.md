@@ -5,15 +5,15 @@
 All options under `programs.keychain`.
 
 | Option | Type | Description |
-| --------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------ |
+| --- | --- | --- |
 | `programs.keychain.agents` | `list of string` | Agents to add. |
 | `programs.keychain.enable` | `boolean` | Whether to enable keychain. |
 | `programs.keychain.enableBashIntegration` | `boolean` | Whether to enable Bash integration. |
 | `programs.keychain.enableFishIntegration` | `boolean` | Whether to enable Fish integration. |
 | `programs.keychain.enableNushellIntegration` | `boolean` | Whether to enable Nushell integration. |
-| `programs.keychain.enableXsessionIntegration` | `boolean` | Whether to run keychain from your ~/.xsession . |
+| `programs.keychain.enableXsessionIntegration` | `boolean` | Whether to run keychain from your {file}`~/.xsession`. |
 | `programs.keychain.enableZshIntegration` | `boolean` | Whether to enable Zsh integration. |
 | `programs.keychain.extraFlags` | `list of string` | Extra flags to pass to keychain. |
-| `programs.keychain.inheritType` | `null or one of “local”, “any”, “local-once”, “any-once”` | Inherit type to attempt from agent variables from the environment. |
+| `programs.keychain.inheritType` | `null or one of "local", "any", "local-once", "any-once"` | Inherit type to attempt from agent variables from the environment. |
 | `programs.keychain.keys` | `list of string` | Keys to add to keychain. |
 | `programs.keychain.package` | `package` | The keychain package to use. |

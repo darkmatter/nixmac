@@ -5,15 +5,13 @@
 All options under `services.fwupd`.
 
 | Option | Type | Description |
-| ------------------------------------ | ---- | ----------- |
-| `services.fwupd.blacklistDevices` | | |
-| `services.fwupd.blacklistPlugins` | | |
-| `services.fwupd.daemonSettings` | | |
-| `services.fwupd.disabledDevices` | | |
-| `services.fwupd.disabledPlugins` | | |
-| `services.fwupd.enable` | | |
-| `services.fwupd.enableTestRemote` | | |
-| `services.fwupd.extraRemotes` | | |
-| `services.fwupd.extraTrustedKeys` | | |
-| `services.fwupd.package` | | |
-| `services.fwupd.uefiCapsuleSettings` | | |
+| --- | --- | --- |
+| `services.fwupd.daemonSettings` | `open submodule of section of an INI file (attrs of INI atom (null, bool, int, float or string) or a non-empty list of them)` | Configurations for the fwupd daemon. |
+| `services.fwupd.daemonSettings.DisabledDevices` | `list of string` | List of device GUIDs to be disabled. |
+| `services.fwupd.daemonSettings.DisabledPlugins` | `list of string` | List of plugins to be disabled. |
+| `services.fwupd.daemonSettings.EspLocation` | `absolute path` | The EFI system partition (ESP) path used if UDisks is not available or if this partition is not mounted at /boot/efi, /boot, or /efi |
+| `services.fwupd.enable` | `boolean` | Whether to enable fwupd, a DBus service that allows applications to update firmware. |
+| `services.fwupd.extraRemotes` | `list of string` | Enables extra remotes in fwupd. See `/etc/fwupd/remotes.d`. |
+| `services.fwupd.extraTrustedKeys` | `list of absolute path` | Installing a public key allows firmware signed with a matching private key to be recognized as trusted, which may require less authentication to install than for untrusted files. By default trusted firmware can be upgraded (but not downgraded) without the user or administrator password. Only very few keys are installed by default. |
+| `services.fwupd.package` | `package` | The fwupd package to use. |
+| `services.fwupd.uefiCapsuleSettings` | `open submodule of section of an INI file (attrs of INI atom (null, bool, int, float or string) or a non-empty list of them)` | UEFI capsule configurations for the fwupd daemon. |

@@ -5,9 +5,9 @@
 All options under `services.zerotierone`.
 
 | Option | Type | Description |
-| ----------------------------------- | ---- | ----------- |
-| `services.zerotierone.enable` | | |
-| `services.zerotierone.joinNetworks` | | |
-| `services.zerotierone.localConf` | | |
-| `services.zerotierone.package` | | |
-| `services.zerotierone.port` | | |
+| --- | --- | --- |
+| `services.zerotierone.enable` | `boolean` | Whether to enable ZeroTierOne. |
+| `services.zerotierone.joinNetworks` | `list of string` | List of ZeroTier Network IDs to join on startup. Note that networks are only ever joined, but not automatically left after removing them from the list. To remove networks, use the ZeroTier CLI: `zerotier-cli leave <network-id>` |
+| `services.zerotierone.localConf` | `JSON value` | Optional configuration to be written to the Zerotier JSON-based local.conf. If set, the configuration will be symlinked to `/var/lib/zerotier-one/local.conf` at build time. To understand the configuration format, refer to <https://docs.zerotier.com/config/#local-configuration-options>. |
+| `services.zerotierone.package` | `package` | The zerotierone package to use. |
+| `services.zerotierone.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Network port used by ZeroTier. |

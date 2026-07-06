@@ -5,11 +5,11 @@
 All options under `services.etesync-dav`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ---- | ----------- |
-| `services.etesync-dav.apiUrl` | | |
-| `services.etesync-dav.enable` | | |
-| `services.etesync-dav.host` | | |
-| `services.etesync-dav.openFirewall` | | |
-| `services.etesync-dav.port` | | |
-| `services.etesync-dav.sslCertificate` | | |
-| `services.etesync-dav.sslCertificateKey` | | |
+| --- | --- | --- |
+| `services.etesync-dav.apiUrl` | `string` | The url to the etesync API. |
+| `services.etesync-dav.enable` | `boolean` | Whether to enable etesync-dav, end-to-end encrypted sync for contacts, calendars and tasks. |
+| `services.etesync-dav.host` | `string` | The server host address. |
+| `services.etesync-dav.openFirewall` | `boolean` | Whether to open the firewall for the specified port. |
+| `services.etesync-dav.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The server host port. |
+| `services.etesync-dav.sslCertificate` | `null or absolute path` | Path to server SSL certificate. It will be copied into etesync-dav's data directory. |
+| `services.etesync-dav.sslCertificateKey` | `null or absolute path` | Path to server SSL certificate key. It will be copied into etesync-dav's data directory. |

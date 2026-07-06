@@ -5,8 +5,8 @@
 All options under `services.routedns`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.routedns.configFile` | | |
-| `services.routedns.enable` | | |
-| `services.routedns.package` | | |
-| `services.routedns.settings` | | |
+| --- | --- | --- |
+| `services.routedns.configFile` | `absolute path` | Path to RouteDNS TOML configuration file. |
+| `services.routedns.enable` | `boolean` | Whether to enable RouteDNS - DNS stub resolver, proxy and router. |
+| `services.routedns.package` | `package` | The routedns package to use. |
+| `services.routedns.settings` | `TOML value` | Configuration for RouteDNS, see <https://github.com/folbricht/routedns/blob/master/doc/configuration.md> for more information. |

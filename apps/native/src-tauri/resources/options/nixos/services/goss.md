@@ -5,8 +5,8 @@
 All options under `services.goss`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.goss.enable` | | |
-| `services.goss.environment` | | |
-| `services.goss.package` | | |
-| `services.goss.settings` | | |
+| --- | --- | --- |
+| `services.goss.enable` | `boolean` | Whether to enable Goss daemon. |
+| `services.goss.environment` | `attribute set of string` | Environment variables to set for the goss service. See <https://github.com/goss-org/goss/blob/master/docs/manual.md> |
+| `services.goss.package` | `package` | The goss package to use. |
+| `services.goss.settings` | `open submodule of (YAML 1.1 value)` | The global options in `config` file in yaml format. Refer to <https://github.com/goss-org/goss/blob/master/docs/goss-json-schema.yaml> for schema. |

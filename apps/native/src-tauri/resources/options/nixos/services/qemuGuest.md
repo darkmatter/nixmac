@@ -5,6 +5,6 @@
 All options under `services.qemuGuest`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.qemuGuest.enable` | | |
-| `services.qemuGuest.package` | | |
+| --- | --- | --- |
+| `services.qemuGuest.enable` | `boolean` | Whether to enable the qemu guest agent. |
+| `services.qemuGuest.package` | `package` | The ga package to use. |

@@ -5,6 +5,6 @@
 All options under `services.lorri`.
 
 | Option | Type | Description |
-| ------------------------ | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.lorri.enable` | `boolean` | Whether to enable the lorri service. |
-| `services.lorri.logFile` | `null or absolute path` | The logfile to use for the lorri service. Alternatively sudo launchctl debug system/org.nixos.lorri --stderr can be used to stream the logs to a shell after restarting the service with sudo launchctl kickstart -k system/org.nixos.lorri . |
+| `services.lorri.logFile` | `null or absolute path` | The logfile to use for the lorri service. Alternatively {command}`sudo launchctl debug system/org.nixos.lorri --stderr` can be used to stream the logs to a shell after restarting the service with {command}`sudo launchctl kickstart -k system/org.nixos.lorri`. |

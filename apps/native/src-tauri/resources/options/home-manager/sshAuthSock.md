@@ -5,5 +5,10 @@
 All options under `sshAuthSock`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `sshAuthSock.initialization` | | |
+| --- | --- | --- |
+| `sshAuthSock.enable` | `boolean` | Whether to set {env}`SSH_AUTH_SOCK` in shells, systemd, and the D-BUS daemon unless it was already defined through SSH agent forwarding. Typically, this module will be implicitly enabled and configured by SSH agent modules. |
+| `sshAuthSock.initialization.bash` | `string` | Code that initializes {env}`SSH_AUTH_SOCK` in bash. |
+| `sshAuthSock.initialization.fish` | `string` | Code that initializes {env}`SSH_AUTH_SOCK` in fish. |
+| `sshAuthSock.initialization.nushell` | `string` | Code that initializes {env}`SSH_AUTH_SOCK` in nushell. |
+| `sshAuthSock.initialization.zsh` | `string` | Code that initializes {env}`SSH_AUTH_SOCK` in zsh. |
+| `sshAuthSock.systemd.socketProviderUnit` | `string` | The name of the systemd unit responsible for providing the {env}`SSH_AUTH_SOCK`. Services that rely on an active SSH authentication agent can reference this option to declare a dependency onto this unit, ensuring that the socket is available and being served before they start. |

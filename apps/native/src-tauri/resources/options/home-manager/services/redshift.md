@@ -5,19 +5,16 @@
 All options under `services.redshift`.
 
 | Option | Type | Description |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `services.redshift.brightness.day` | | |
-| `services.redshift.brightness.night` | | |
+| --- | --- | --- |
 | `services.redshift.dawnTime` | `null or string` | Set the time interval of dawn manually. The times must be specified as HH:MM in 24-hour format. |
 | `services.redshift.duskTime` | `null or string` | Set the time interval of dusk manually. The times must be specified as HH:MM in 24-hour format. |
 | `services.redshift.enable` | `boolean` | Whether to enable Redshift. |
 | `services.redshift.enableVerboseLogging` | `boolean` | Whether to enable verbose service logging. |
-| `services.redshift.extraOptions` | | |
-| `services.redshift.latitude` | `null or string or floating point number` | Your current latitude, between -90.0 and 90.0 . Must be provided along with longitude. |
-| `services.redshift.longitude` | `null or string or floating point number` | Your current longitude, between -180.0 and 180.0 . Must be provided along with latitude. |
+| `services.redshift.latitude` | `null or string or floating point number` | Your current latitude, between `-90.0` and `90.0`. Must be provided along with longitude. |
+| `services.redshift.longitude` | `null or string or floating point number` | Your current longitude, between `-180.0` and `180.0`. Must be provided along with latitude. |
 | `services.redshift.package` | `package` | Redshift derivation to use. |
-| `services.redshift.provider` | `one of “manual”, “geoclue2”` | The location provider to use for determining your location. If set to manual you must also provide latitude/longitude. If set to geoclue2 , you must also enable the global geoclue2 service. |
-| `services.redshift.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | The configuration to pass to Redshift. Available options for Redshift described in redshift (1) . |
-| `services.redshift.temperature.day` | `signed integer` | Colour temperature to use during the day, between 1000 and 25000 K. |
-| `services.redshift.temperature.night` | `signed integer` | Colour temperature to use at night, between 1000 and 25000 K. |
+| `services.redshift.provider` | `one of "manual", "geoclue2"` | The location provider to use for determining your location. If set to `manual` you must also provide latitude/longitude. If set to `geoclue2`, you must also enable the global geoclue2 service. |
+| `services.redshift.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | The configuration to pass to Redshift. Available options for Redshift described in {manpage}`redshift(1)`. |
+| `services.redshift.temperature.day` | `signed integer` | Colour temperature to use during the day, between `1000` and `25000` K. |
+| `services.redshift.temperature.night` | `signed integer` | Colour temperature to use at night, between `1000` and `25000` K. |
 | `services.redshift.tray` | `boolean` | Start the redshift-gtk tray applet. |

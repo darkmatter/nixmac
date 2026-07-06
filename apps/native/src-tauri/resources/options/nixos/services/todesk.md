@@ -5,6 +5,6 @@
 All options under `services.todesk`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.todesk.enable` | | |
-| `services.todesk.package` | | |
+| --- | --- | --- |
+| `services.todesk.enable` | `boolean` | Whether to enable ToDesk daemon. |
+| `services.todesk.package` | `package` | The todesk package to use. |

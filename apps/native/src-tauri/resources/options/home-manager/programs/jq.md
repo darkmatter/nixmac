@@ -5,7 +5,7 @@
 All options under `programs.jq`.
 
 | Option | Type | Description |
-| --------------------- | --------------------- | -------------------------------------------------------------------- |
-| `programs.jq.colors` | `null or (submodule)` | The colors used in colored JSON output, or null to use the defaults. |
+| --- | --- | --- |
+| `programs.jq.colors` | `null or (submodule)` | The colors used in colored JSON output, or null to use the defaults. See the [Colors section](https://jqlang.github.io/jq/manual/#Colors) of the jq manual. |
 | `programs.jq.enable` | `boolean` | Whether to enable the jq command-line JSON processor. |
 | `programs.jq.package` | `null or package` | The jq package to use. |

@@ -5,10 +5,10 @@
 All options under `services.matterbridge`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.matterbridge.configFile` | | |
-| `services.matterbridge.configPath` | | |
-| `services.matterbridge.enable` | | |
-| `services.matterbridge.group` | | |
-| `services.matterbridge.package` | | |
-| `services.matterbridge.user` | | |
+| --- | --- | --- |
+| `services.matterbridge.configFile` | `string` | WARNING: THIS IS INSECURE, as your password will end up in {file}`/nix/store`, thus publicly readable. Use `services.matterbridge.configPath` instead. The matterbridge configuration file in the TOML file format. |
+| `services.matterbridge.configPath` | `null or string` | The path to the matterbridge configuration file. |
+| `services.matterbridge.enable` | `boolean` | Whether to enable Matterbridge chat platform bridge. |
+| `services.matterbridge.group` | `string` | Group which runs the matterbridge service. |
+| `services.matterbridge.package` | `package` | The matterbridge package to use. |
+| `services.matterbridge.user` | `string` | User which runs the matterbridge service. |

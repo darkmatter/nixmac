@@ -5,5 +5,5 @@
 All options under `programs.pulseview`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `programs.pulseview.enable` | | |
+| --- | --- | --- |
+| `programs.pulseview.enable` | `boolean` | Whether to enable pulseview, a sigrok GUI. |

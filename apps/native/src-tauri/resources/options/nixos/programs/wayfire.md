@@ -5,8 +5,8 @@
 All options under `programs.wayfire`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `programs.wayfire.enable` | | |
-| `programs.wayfire.package` | | |
-| `programs.wayfire.plugins` | | |
-| `programs.wayfire.xwayland.enable` | | |
+| --- | --- | --- |
+| `programs.wayfire.enable` | `boolean` | Whether to enable Wayfire, a wayland compositor based on wlroots. |
+| `programs.wayfire.package` | `package` | The wayfire package to use. |
+| `programs.wayfire.plugins` | `list of package` | Additional plugins to use with the wayfire window manager. |
+| `programs.wayfire.xwayland.enable` | `boolean` | Whether to enable XWayland. |

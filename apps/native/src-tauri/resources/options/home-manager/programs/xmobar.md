@@ -5,7 +5,7 @@
 All options under `programs.xmobar`.
 
 | Option | Type | Description |
-| ----------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.xmobar.enable` | `boolean` | Whether to enable Xmobar, a minimalistic status bar. |
-| `programs.xmobar.extraConfig` | `strings concatenated with “\n”` | Extra configuration lines to add to $XDG_CONFIG_HOME/xmobar/.xmobarrc . See https://xmobar.org/#configuration for options. |
+| `programs.xmobar.extraConfig` | `strings concatenated with "\n"` | Extra configuration lines to add to {file}`$XDG_CONFIG_HOME/xmobar/.xmobarrc`. See <https://xmobar.org/#configuration> for options. |
 | `programs.xmobar.package` | `package` | The xmobar package to use. |

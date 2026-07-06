@@ -5,6 +5,6 @@
 All options under `programs.evolution`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `programs.evolution.enable` | | |
-| `programs.evolution.plugins` | | |
+| --- | --- | --- |
+| `programs.evolution.enable` | `boolean` | Whether to enable Evolution, a Personal information management application that provides integrated mail, calendaring and address book functionality. |
+| `programs.evolution.plugins` | `list of package` | Plugins for Evolution. |

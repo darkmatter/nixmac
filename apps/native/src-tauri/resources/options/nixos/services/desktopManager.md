@@ -5,33 +5,35 @@
 All options under `services.desktopManager`.
 
 | Option | Type | Description |
-| ----------------------------------------------------------------- | ---- | ----------- |
-| `services.desktopManager.budgie.enable` | | |
-| `services.desktopManager.budgie.extraGSettingsOverridePackages` | | |
-| `services.desktopManager.budgie.extraGSettingsOverrides` | | |
-| `services.desktopManager.budgie.extraPlugins` | | |
-| `services.desktopManager.budgie.sessionPath` | | |
-| `services.desktopManager.cosmic.enable` | | |
-| `services.desktopManager.cosmic.showExcludedPkgsWarning` | | |
-| `services.desktopManager.cosmic.xwayland.enable` | | |
-| `services.desktopManager.gnome.debug` | | |
-| `services.desktopManager.gnome.enable` | | |
-| `services.desktopManager.gnome.extraGSettingsOverridePackages` | | |
-| `services.desktopManager.gnome.extraGSettingsOverrides` | | |
-| `services.desktopManager.gnome.favoriteAppsOverride` | | |
-| `services.desktopManager.gnome.flashback.customSessions` | | |
-| `services.desktopManager.gnome.flashback.enableMetacity` | | |
-| `services.desktopManager.gnome.flashback.panelModulePackages` | | |
-| `services.desktopManager.gnome.sessionPath` | | |
-| `services.desktopManager.lomiri.basics` | | |
-| `services.desktopManager.lomiri.enable` | | |
-| `services.desktopManager.pantheon.debug` | | |
-| `services.desktopManager.pantheon.enable` | | |
-| `services.desktopManager.pantheon.extraGSettingsOverridePackages` | | |
-| `services.desktopManager.pantheon.extraGSettingsOverrides` | | |
-| `services.desktopManager.pantheon.extraSwitchboardPlugs` | | |
-| `services.desktopManager.pantheon.extraWingpanelIndicators` | | |
-| `services.desktopManager.pantheon.sessionPath` | | |
-| `services.desktopManager.plasma6.enable` | | |
-| `services.desktopManager.plasma6.enableQt5Integration` | | |
-| `services.desktopManager.plasma6.notoPackage` | | |
+| --- | --- | --- |
+| `services.desktopManager.budgie.enable` | `boolean` | Whether to enable the Budgie desktop. |
+| `services.desktopManager.budgie.extraGSettingsOverridePackages` | `list of absolute path` | List of packages for which GSettings are overridden. |
+| `services.desktopManager.budgie.extraGSettingsOverrides` | `strings concatenated with "\n"` | Additional GSettings overrides. |
+| `services.desktopManager.budgie.extraPlugins` | `list of package` | Extra plugins for the Budgie desktop |
+| `services.desktopManager.budgie.sessionPath` | `list of package` | Additional list of packages to be added to the session search path. Useful for GSettings-conditional autostart. Note that this should be a last resort; patching the package is preferred (see GPaste). |
+| `services.desktopManager.cosmic.enable` | `boolean` | Whether to enable COSMIC desktop environment. |
+| `services.desktopManager.cosmic.showExcludedPkgsWarning` | `boolean` | Whether to enable the warning for excluding core packages. |
+| `services.desktopManager.cosmic.xwayland.enable` | `boolean` | Whether to enable Xwayland support for the COSMIC compositor. |
+| `services.desktopManager.gnome.debug` | `boolean` | Whether to enable pkgs.gnome-session debug messages. |
+| `services.desktopManager.gnome.enable` | `boolean` | Enable GNOME desktop manager. |
+| `services.desktopManager.gnome.extraGSettingsOverridePackages` | `list of absolute path` | List of packages for which gsettings are overridden. |
+| `services.desktopManager.gnome.extraGSettingsOverrides` | `strings concatenated with "\n"` | Additional gsettings overrides. |
+| `services.desktopManager.gnome.flashback.customSessions` | `list of (submodule)` | Other GNOME Flashback sessions to enable. |
+| `services.desktopManager.gnome.flashback.customSessions.*.enableGnomePanel` | `boolean` | Whether to enable the GNOME panel in this session. |
+| `services.desktopManager.gnome.flashback.customSessions.*.wmCommand` | `string` | The executable of the window manager to use. |
+| `services.desktopManager.gnome.flashback.customSessions.*.wmLabel` | `string` | The name of the window manager to show in the session chooser. |
+| `services.desktopManager.gnome.flashback.customSessions.*.wmName` | `string matching the pattern [a-zA-Z0-9_-]+` | A unique identifier for the window manager. |
+| `services.desktopManager.gnome.flashback.enableMetacity` | `boolean` | Whether to enable the standard GNOME Flashback session with Metacity. |
+| `services.desktopManager.gnome.flashback.panelModulePackages` | `list of package` | Packages containing modules that should be made available to `pkgs.gnome-panel` (usually for applets). If you're packaging something to use here, please install the modules in `$out/lib/gnome-panel/modules`. |
+| `services.desktopManager.gnome.sessionPath` | `list of package` | Additional list of packages to be added to the session search path. Useful for GNOME Shell extensions or GSettings-conditional autostart. Note that this should be a last resort; patching the package is preferred (see GPaste). |
+| `services.desktopManager.lomiri.enable` | `boolean` | Whether to enable the Lomiri graphical shell (formerly known as Unity8) . |
+| `services.desktopManager.pantheon.debug` | `boolean` | Whether to enable gnome-session debug messages. |
+| `services.desktopManager.pantheon.enable` | `boolean` | Enable the pantheon desktop manager |
+| `services.desktopManager.pantheon.extraGSettingsOverridePackages` | `list of absolute path` | List of packages for which gsettings are overridden. |
+| `services.desktopManager.pantheon.extraGSettingsOverrides` | `strings concatenated with "\n"` | Additional gsettings overrides. |
+| `services.desktopManager.pantheon.extraSwitchboardPlugs` | `null or (list of package)` | Plugs to add to Switchboard. |
+| `services.desktopManager.pantheon.extraWingpanelIndicators` | `null or (list of package)` | Indicators to add to Wingpanel. |
+| `services.desktopManager.pantheon.sessionPath` | `list of package` | Additional list of packages to be added to the session search path. Useful for GSettings-conditional autostart. Note that this should be a last resort; patching the package is preferred (see GPaste). |
+| `services.desktopManager.plasma6.enable` | `boolean` | Enable the Plasma 6 (KDE 6) desktop environment. |
+| `services.desktopManager.plasma6.enableQt5Integration` | `boolean` | Enable Qt 5 integration (theming, etc). Disable for a pure Qt 6 system. |
+| `services.desktopManager.plasma6.notoPackage` | `package` | The Noto fonts - used for UI by default package to use. |

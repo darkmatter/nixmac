@@ -5,8 +5,15 @@
 All options under `services.wiki-js`.
 
 | Option | Type | Description |
-| ------------------------------------- | ---- | ----------- |
-| `services.wiki-js.enable` | | |
-| `services.wiki-js.environmentFile` | | |
-| `services.wiki-js.settings` | | |
-| `services.wiki-js.stateDirectoryName` | | |
+| --- | --- | --- |
+| `services.wiki-js.enable` | `boolean` | Whether to enable wiki-js. |
+| `services.wiki-js.environmentFile` | `null or absolute path` | Environment file to inject e.g. secrets into the configuration. |
+| `services.wiki-js.settings` | `open submodule of (JSON value)` | Settings to configure `wiki-js`. This directly corresponds to [the upstream configuration options](https://docs.requarks.io/install/config). Secrets can be injected via the environment by - specifying [](#opt-services.wiki-js.environmentFile) to contain secrets - and setting sensitive values to `$(ENVIRONMENT_VAR)` with this value defined in the environment-file. |
+| `services.wiki-js.settings.bindIP` | `string` | IPs the service should listen to. |
+| `services.wiki-js.settings.db.db` | `string` | Name of the database to use. |
+| `services.wiki-js.settings.db.host` | `string` | Hostname or socket-path to connect to. |
+| `services.wiki-js.settings.db.type` | `one of "postgres", "mysql", "mariadb", "mssql"` | Database driver to use for persistence. Please note that `sqlite` is currently not supported as the build process for it is currently not implemented in `pkgs.wiki-js` and it's not recommended by upstream for production use. |
+| `services.wiki-js.settings.logLevel` | `one of "error", "warn", "info", "verbose", "debug", "silly"` | Define how much detail is supposed to be logged at runtime. |
+| `services.wiki-js.settings.offline` | `boolean` | Disable latest file updates and enable [sideloading](https://docs.requarks.io/install/sideload). |
+| `services.wiki-js.settings.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | TCP port the process should listen to. |
+| `services.wiki-js.stateDirectoryName` | `string` | Name of the directory in {file}`/var/lib`. |

@@ -5,8 +5,8 @@
 All options under `services.nzbhydra2`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.nzbhydra2.dataDir` | | |
-| `services.nzbhydra2.enable` | | |
-| `services.nzbhydra2.openFirewall` | | |
-| `services.nzbhydra2.package` | | |
+| --- | --- | --- |
+| `services.nzbhydra2.dataDir` | `string` | The directory where NZBHydra2 stores its data files. |
+| `services.nzbhydra2.enable` | `boolean` | Whether to enable NZBHydra2, Usenet meta search. |
+| `services.nzbhydra2.openFirewall` | `boolean` | Open ports in the firewall for the NZBHydra2 web interface. |
+| `services.nzbhydra2.package` | `package` | The nzbhydra2 package to use. |

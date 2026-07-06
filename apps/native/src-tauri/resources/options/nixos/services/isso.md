@@ -5,6 +5,6 @@
 All options under `services.isso`.
 
 | Option | Type | Description |
-| ------------------------ | ---- | ----------- |
-| `services.isso.enable` | | |
-| `services.isso.settings` | | |
+| --- | --- | --- |
+| `services.isso.enable` | `boolean` | Whether to enable isso, a commenting server similar to Disqus. Note: The application's author suppose to run isso behind a reverse proxy. The embedded solution offered by NixOS is also only suitable for small installations below 20 requests per second . |
+| `services.isso.settings` | `open submodule of attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration for `isso`. See [Isso Server Configuration](https://posativ.org/isso/docs/configuration/server/) for supported values. |

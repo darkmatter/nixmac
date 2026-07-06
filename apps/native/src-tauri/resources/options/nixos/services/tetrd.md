@@ -5,5 +5,5 @@
 All options under `services.tetrd`.
 
 | Option | Type | Description |
-| ----------------------- | ---- | ----------- |
-| `services.tetrd.enable` | | |
+| --- | --- | --- |
+| `services.tetrd.enable` | `boolean` | Whether to enable tetrd. |

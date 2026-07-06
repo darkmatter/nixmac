@@ -5,17 +5,13 @@
 All options under `services.vmagent`.
 
 | Option | Type | Description |
-| ---------------------------------------------------- | ---- | ----------- |
-| `services.vmagent.checkConfig` | | |
-| `services.vmagent.dataDir` | | |
-| `services.vmagent.enable` | | |
-| `services.vmagent.extraArgs` | | |
-| `services.vmagent.group` | | |
-| `services.vmagent.openFirewall` | | |
-| `services.vmagent.package` | | |
-| `services.vmagent.prometheusConfig` | | |
-| `services.vmagent.remoteWrite.basicAuthPasswordFile` | | |
-| `services.vmagent.remoteWrite.basicAuthUsername` | | |
-| `services.vmagent.remoteWrite.url` | | |
-| `services.vmagent.remoteWriteUrl` | | |
-| `services.vmagent.user` | | |
+| --- | --- | --- |
+| `services.vmagent.checkConfig` | `boolean` | Check configuration. If you use credentials stored in external files (`environmentFile`, etc), they will not be visible and it will report errors, despite a correct configuration. |
+| `services.vmagent.enable` | `boolean` | Whether to enable VictoriaMetrics's `vmagent`. `vmagent` efficiently scrape metrics from Prometheus-compatible exporters |
+| `services.vmagent.extraArgs` | `list of string` | Extra args to pass to `vmagent`. See the docs: <https://docs.victoriametrics.com/vmagent.html#advanced-usage> or {command}`vmagent -help` for more information. |
+| `services.vmagent.openFirewall` | `boolean` | Whether to open the firewall for the default ports. |
+| `services.vmagent.package` | `package` | The vmagent package to use. |
+| `services.vmagent.prometheusConfig` | `open submodule of (YAML 1.1 value)` | Config for prometheus style metrics |
+| `services.vmagent.remoteWrite.basicAuthPasswordFile` | `null or string` | File that contains the Basic Auth password used to connect to remote_write endpoint |
+| `services.vmagent.remoteWrite.basicAuthUsername` | `null or string` | Basic Auth username used to connect to remote_write endpoint |
+| `services.vmagent.remoteWrite.url` | `null or string` | Endpoint for prometheus compatible remote_write |

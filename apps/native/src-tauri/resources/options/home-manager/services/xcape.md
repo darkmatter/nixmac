@@ -5,8 +5,8 @@
 All options under `services.xcape`.
 
 | Option | Type | Description |
-| ------------------------------ | ------------------------- | --------------------------------------------------------------------------------------------------- | ----------- |
+| --- | --- | --- |
 | `services.xcape.enable` | `boolean` | Whether to enable xcape. |
-| `services.xcape.mapExpression` | `attribute set of string` | The value has the grammar Key[ | OtherKey] . |
+| `services.xcape.mapExpression` | `attribute set of string` | The value has the grammar `Key[\|OtherKey]`. The list of key names is found in the header file {file}`X11/keysymdef.h` (remove the `XK_` prefix). Note that due to limitations of X11 shifted keys must be specified as a shift key followed by the key to be pressed rather than the actual name of the character. For example to generate "{" the expression `Shift_L\|bracketleft` could be used (assuming that you have a key with "{" above "\["). You can also specify keys in decimal (prefix #), octal (#0), or hexadecimal (#0x). They will be interpreted as keycodes unless no corresponding key name is found. |
 | `services.xcape.package` | `package` | The xcape package to use. |
 | `services.xcape.timeout` | `null or signed integer` | If you hold a key longer than this timeout, xcape will not generate a key event. Default is 500 ms. |

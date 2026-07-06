@@ -5,8 +5,19 @@
 All options under `services.cocoon`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.cocoon.enable` | | |
-| `services.cocoon.environmentFiles` | | |
-| `services.cocoon.package` | | |
-| `services.cocoon.settings` | | |
+| --- | --- | --- |
+| `services.cocoon.enable` | `boolean` | Whether to enable cocoon. |
+| `services.cocoon.environmentFiles` | `list of absolute path` | File to load environment variables from. Loaded variables override values set in {option}`environment`. Use it to set values of `COCOON_ADMIN_PASSWORD` and `COCOON_SESSION_SECRE`. Generate `COCOON_ADMIN_PASSWORD` with `openssl rand -hex 16` Generate `COCOON_SESSION_SECRET` with `openssl rand -hex 32` |
+| `services.cocoon.package` | `package` | The cocoon package to use. |
+| `services.cocoon.settings` | `open submodule of attribute set of (null or string or absolute path)` | Environment variables to set for the service. Secrets should be specified using {option}`environmentFile`. Refer to <https://github.com/haileyok/cocoon/blob/main/.env.example> and <https://github.com/haileyok/cocoon/blob/main/README.md> for available environment variables. |
+| `services.cocoon.settings.COCOON_ADDR` | `string` | Address to bind the Cocoon instance to |
+| `services.cocoon.settings.COCOON_CONTACT_EMAIL` | `string` | Contact email for the Cocoon instance |
+| `services.cocoon.settings.COCOON_DATABASE_URL` | `null or string` | Database connection URL |
+| `services.cocoon.settings.COCOON_DB_NAME` | `string` | Name of the SQLite database file (if using sqlite) |
+| `services.cocoon.settings.COCOON_DB_TYPE` | `string` | Type of database to use (sqlite or postgres) |
+| `services.cocoon.settings.COCOON_DID` | `null or string` | DID web address for the Cocoon instance |
+| `services.cocoon.settings.COCOON_HOSTNAME` | `null or string` | Hostname for the Cocoon instance |
+| `services.cocoon.settings.COCOON_JWK_PATH` | `absolute path or string` | Path to the JWK key file Generate it with: `cocoon create-private-jwk --out /var/lib/cocoon/jwk.key` |
+| `services.cocoon.settings.COCOON_RELAYS` | `string` | Comma-separated list of Nostr relays to connect to |
+| `services.cocoon.settings.COCOON_ROTATION_KEY_PATH` | `absolute path or string` | Path to the rotation key file. Generate it with: `cocoon create-rotation-key --out /var/lib/cocoon/rotation.key` |
+| `services.cocoon.settings.COCOON_SESSION_COOKIE_KEY` | `string` | Name of the session cookie |

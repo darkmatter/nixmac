@@ -5,8 +5,8 @@
 All options under `services.mighttpd2`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.mighttpd2.config` | | |
-| `services.mighttpd2.cores` | | |
-| `services.mighttpd2.enable` | | |
-| `services.mighttpd2.routing` | | |
+| --- | --- | --- |
+| `services.mighttpd2.config` | `strings concatenated with "\n"` | Verbatim config file to use (see <https://kazu-yamamoto.github.io/mighttpd2/config.html>) |
+| `services.mighttpd2.cores` | `null or signed integer` | How many cores to use. If null it will be determined automatically |
+| `services.mighttpd2.enable` | `boolean` | Whether to enable Mighttpd2 web server. |
+| `services.mighttpd2.routing` | `strings concatenated with "\n"` | Verbatim routing file to use (see <https://kazu-yamamoto.github.io/mighttpd2/config.html>) |

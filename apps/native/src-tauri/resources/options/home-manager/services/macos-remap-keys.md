@@ -5,7 +5,7 @@
 All options under `services.macos-remap-keys`.
 
 | Option | Type | Description |
-| ------------------------------------ | ------------------------- | ---------------------------------------------- |
+| --- | --- | --- |
 | `services.macos-remap-keys.enable` | `boolean` | Whether to enable macOS key remapping service. |
 | `services.macos-remap-keys.keyboard` | `attribute set of string` | Mapping of keyboard keys to remap |
 | `services.macos-remap-keys.keypad` | `attribute set of string` | Mapping of keypad keys to remap |

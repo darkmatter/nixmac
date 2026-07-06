@@ -5,18 +5,14 @@
 All options under `services.unbound`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.unbound.allowedAccess` | | |
-| `services.unbound.checkconf` | | |
-| `services.unbound.enable` | | |
-| `services.unbound.enableRootTrustAnchor` | | |
-| `services.unbound.extraConfig` | | |
-| `services.unbound.forwardAddresses` | | |
-| `services.unbound.group` | | |
-| `services.unbound.interfaces` | | |
-| `services.unbound.localControlSocketPath` | | |
-| `services.unbound.package` | | |
-| `services.unbound.resolveLocalQueries` | | |
-| `services.unbound.settings` | | |
-| `services.unbound.stateDir` | | |
-| `services.unbound.user` | | |
+| --- | --- | --- |
+| `services.unbound.checkconf` | `boolean` | Whether to check the resulting config file with unbound checkconf for syntax errors. If settings.include is used, this options is disabled, as the import can likely not be accessed at build time. If settings.remote-control is used, this option is disabled, too as the control-key-file, server-cert-file and server-key-file cannot be accessed at build time. |
+| `services.unbound.enable` | `boolean` | Whether to enable Unbound domain name server. |
+| `services.unbound.enableRootTrustAnchor` | `boolean` | Use and update root trust anchor for DNSSEC validation. |
+| `services.unbound.group` | `string` | Group under which unbound runs. |
+| `services.unbound.localControlSocketPath` | `null or string` | When not set to `null` this option defines the path at which the unbound remote control socket should be created at. The socket will be owned by the unbound user (`unbound`) and group will be `nogroup`. Users that should be permitted to access the socket must be in the `config.services.unbound.group` group. If this option is `null` remote control will not be enabled. Unbounds default values apply. |
+| `services.unbound.package` | `package` | The unbound-with-systemd package to use. |
+| `services.unbound.resolveLocalQueries` | `boolean` | Whether unbound should resolve local queries (i.e. add 127.0.0.1 to /etc/resolv.conf). |
+| `services.unbound.settings` | `open submodule of unbound.conf configuration type. The format consist of an attribute set of settings. Each settings can be either one value, a list of values or an attribute set. The allowed values are integers, strings, booleans or floats. ` | Declarative Unbound configuration See the {manpage}`unbound.conf(5)` manpage for a list of available options. |
+| `services.unbound.stateDir` | `absolute path` | Directory holding all state for unbound to run. |
+| `services.unbound.user` | `string` | User account under which unbound runs. |

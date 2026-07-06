@@ -5,174 +5,67 @@
 All options under `services.frr`.
 
 | Option | Type | Description |
-| -------------------------------------- | ---- | ----------- |
-| `services.frr.babel.config` | | |
-| `services.frr.babel.configFile` | | |
-| `services.frr.babel.enable` | | |
-| `services.frr.babel.extraOptions` | | |
-| `services.frr.babel.vtyListenAddress` | | |
-| `services.frr.babel.vtyListenPort` | | |
-| `services.frr.babeld.enable` | | |
-| `services.frr.babeld.extraOptions` | | |
-| `services.frr.babeld.options` | | |
-| `services.frr.bfd.config` | | |
-| `services.frr.bfd.configFile` | | |
-| `services.frr.bfd.enable` | | |
-| `services.frr.bfd.extraOptions` | | |
-| `services.frr.bfd.vtyListenAddress` | | |
-| `services.frr.bfd.vtyListenPort` | | |
-| `services.frr.bfdd.enable` | | |
-| `services.frr.bfdd.extraOptions` | | |
-| `services.frr.bfdd.options` | | |
-| `services.frr.bgp.config` | | |
-| `services.frr.bgp.configFile` | | |
-| `services.frr.bgp.enable` | | |
-| `services.frr.bgp.extraOptions` | | |
-| `services.frr.bgp.vtyListenAddress` | | |
-| `services.frr.bgp.vtyListenPort` | | |
-| `services.frr.bgpd.enable` | | |
-| `services.frr.bgpd.extraOptions` | | |
-| `services.frr.bgpd.options` | | |
-| `services.frr.config` | | |
-| `services.frr.configFile` | | |
-| `services.frr.eigrp.config` | | |
-| `services.frr.eigrp.configFile` | | |
-| `services.frr.eigrp.enable` | | |
-| `services.frr.eigrp.extraOptions` | | |
-| `services.frr.eigrp.vtyListenAddress` | | |
-| `services.frr.eigrp.vtyListenPort` | | |
-| `services.frr.eigrpd.enable` | | |
-| `services.frr.eigrpd.extraOptions` | | |
-| `services.frr.eigrpd.options` | | |
-| `services.frr.fabric.config` | | |
-| `services.frr.fabric.configFile` | | |
-| `services.frr.fabric.enable` | | |
-| `services.frr.fabric.extraOptions` | | |
-| `services.frr.fabric.vtyListenAddress` | | |
-| `services.frr.fabric.vtyListenPort` | | |
-| `services.frr.fabricd.enable` | | |
-| `services.frr.fabricd.extraOptions` | | |
-| `services.frr.fabricd.options` | | |
-| `services.frr.isis.config` | | |
-| `services.frr.isis.configFile` | | |
-| `services.frr.isis.enable` | | |
-| `services.frr.isis.extraOptions` | | |
-| `services.frr.isis.vtyListenAddress` | | |
-| `services.frr.isis.vtyListenPort` | | |
-| `services.frr.isisd.enable` | | |
-| `services.frr.isisd.extraOptions` | | |
-| `services.frr.isisd.options` | | |
-| `services.frr.ldp.config` | | |
-| `services.frr.ldp.configFile` | | |
-| `services.frr.ldp.enable` | | |
-| `services.frr.ldp.extraOptions` | | |
-| `services.frr.ldp.vtyListenAddress` | | |
-| `services.frr.ldp.vtyListenPort` | | |
-| `services.frr.ldpd.enable` | | |
-| `services.frr.ldpd.extraOptions` | | |
-| `services.frr.ldpd.options` | | |
-| `services.frr.mgmt.config` | | |
-| `services.frr.mgmt.configFile` | | |
-| `services.frr.mgmt.enable` | | |
-| `services.frr.mgmt.extraOptions` | | |
-| `services.frr.mgmt.vtyListenAddress` | | |
-| `services.frr.mgmt.vtyListenPort` | | |
-| `services.frr.mgmtd.extraOptions` | | |
-| `services.frr.mgmtd.options` | | |
-| `services.frr.nhrp.config` | | |
-| `services.frr.nhrp.configFile` | | |
-| `services.frr.nhrp.enable` | | |
-| `services.frr.nhrp.extraOptions` | | |
-| `services.frr.nhrp.vtyListenAddress` | | |
-| `services.frr.nhrp.vtyListenPort` | | |
-| `services.frr.nhrpd.enable` | | |
-| `services.frr.nhrpd.extraOptions` | | |
-| `services.frr.nhrpd.options` | | |
-| `services.frr.openFilesLimit` | | |
-| `services.frr.ospf.config` | | |
-| `services.frr.ospf.configFile` | | |
-| `services.frr.ospf.enable` | | |
-| `services.frr.ospf.extraOptions` | | |
-| `services.frr.ospf.vtyListenAddress` | | |
-| `services.frr.ospf.vtyListenPort` | | |
-| `services.frr.ospf6.config` | | |
-| `services.frr.ospf6.configFile` | | |
-| `services.frr.ospf6.enable` | | |
-| `services.frr.ospf6.extraOptions` | | |
-| `services.frr.ospf6.vtyListenAddress` | | |
-| `services.frr.ospf6.vtyListenPort` | | |
-| `services.frr.ospf6d.enable` | | |
-| `services.frr.ospf6d.extraOptions` | | |
-| `services.frr.ospf6d.options` | | |
-| `services.frr.ospfd.enable` | | |
-| `services.frr.ospfd.extraOptions` | | |
-| `services.frr.ospfd.options` | | |
-| `services.frr.pathd.enable` | | |
-| `services.frr.pathd.extraOptions` | | |
-| `services.frr.pathd.options` | | |
-| `services.frr.pbr.config` | | |
-| `services.frr.pbr.configFile` | | |
-| `services.frr.pbr.enable` | | |
-| `services.frr.pbr.extraOptions` | | |
-| `services.frr.pbr.vtyListenAddress` | | |
-| `services.frr.pbr.vtyListenPort` | | |
-| `services.frr.pbrd.enable` | | |
-| `services.frr.pbrd.extraOptions` | | |
-| `services.frr.pbrd.options` | | |
-| `services.frr.pim.config` | | |
-| `services.frr.pim.configFile` | | |
-| `services.frr.pim.enable` | | |
-| `services.frr.pim.extraOptions` | | |
-| `services.frr.pim.vtyListenAddress` | | |
-| `services.frr.pim.vtyListenPort` | | |
-| `services.frr.pim6d.enable` | | |
-| `services.frr.pim6d.extraOptions` | | |
-| `services.frr.pim6d.options` | | |
-| `services.frr.pimd.enable` | | |
-| `services.frr.pimd.extraOptions` | | |
-| `services.frr.pimd.options` | | |
-| `services.frr.rip.config` | | |
-| `services.frr.rip.configFile` | | |
-| `services.frr.rip.enable` | | |
-| `services.frr.rip.extraOptions` | | |
-| `services.frr.rip.vtyListenAddress` | | |
-| `services.frr.rip.vtyListenPort` | | |
-| `services.frr.ripd.enable` | | |
-| `services.frr.ripd.extraOptions` | | |
-| `services.frr.ripd.options` | | |
-| `services.frr.ripng.config` | | |
-| `services.frr.ripng.configFile` | | |
-| `services.frr.ripng.enable` | | |
-| `services.frr.ripng.extraOptions` | | |
-| `services.frr.ripng.vtyListenAddress` | | |
-| `services.frr.ripng.vtyListenPort` | | |
-| `services.frr.ripngd.enable` | | |
-| `services.frr.ripngd.extraOptions` | | |
-| `services.frr.ripngd.options` | | |
-| `services.frr.sharp.config` | | |
-| `services.frr.sharp.configFile` | | |
-| `services.frr.sharp.enable` | | |
-| `services.frr.sharp.extraOptions` | | |
-| `services.frr.sharp.vtyListenAddress` | | |
-| `services.frr.sharp.vtyListenPort` | | |
-| `services.frr.sharpd.enable` | | |
-| `services.frr.sharpd.extraOptions` | | |
-| `services.frr.sharpd.options` | | |
-| `services.frr.static.config` | | |
-| `services.frr.static.configFile` | | |
-| `services.frr.static.enable` | | |
-| `services.frr.static.extraOptions` | | |
-| `services.frr.static.vtyListenAddress` | | |
-| `services.frr.static.vtyListenPort` | | |
-| `services.frr.staticd.extraOptions` | | |
-| `services.frr.staticd.options` | | |
-| `services.frr.vrrpd.enable` | | |
-| `services.frr.vrrpd.extraOptions` | | |
-| `services.frr.vrrpd.options` | | |
-| `services.frr.zebra.config` | | |
-| `services.frr.zebra.configFile` | | |
-| `services.frr.zebra.enable` | | |
-| `services.frr.zebra.extraOptions` | | |
-| `services.frr.zebra.options` | | |
-| `services.frr.zebra.vtyListenAddress` | | |
-| `services.frr.zebra.vtyListenPort` | | |
+| --- | --- | --- |
+| `services.frr.babeld.enable` | `boolean` | Whether to enable FRR babeld. |
+| `services.frr.babeld.extraOptions` | `list of string` | Extra options to be appended to the FRR babeld daemon options. |
+| `services.frr.babeld.options` | `list of string` | Options for the FRR babeld daemon. |
+| `services.frr.bfdd.enable` | `boolean` | Whether to enable FRR bfdd. |
+| `services.frr.bfdd.extraOptions` | `list of string` | Extra options to be appended to the FRR bfdd daemon options. |
+| `services.frr.bfdd.options` | `list of string` | Options for the FRR bfdd daemon. |
+| `services.frr.bgpd.enable` | `boolean` | Whether to enable FRR bgpd. |
+| `services.frr.bgpd.extraOptions` | `list of string` | Extra options to be appended to the FRR bgpd daemon options. |
+| `services.frr.bgpd.options` | `list of string` | Options for the FRR bgpd daemon. |
+| `services.frr.config` | `strings concatenated with "\n"` | FRR configuration statements. |
+| `services.frr.configFile` | `null or absolute path` | Configuration file to use for FRR. By default the NixOS generated files are used. |
+| `services.frr.eigrpd.enable` | `boolean` | Whether to enable FRR eigrpd. |
+| `services.frr.eigrpd.extraOptions` | `list of string` | Extra options to be appended to the FRR eigrpd daemon options. |
+| `services.frr.eigrpd.options` | `list of string` | Options for the FRR eigrpd daemon. |
+| `services.frr.fabricd.enable` | `boolean` | Whether to enable FRR fabricd. |
+| `services.frr.fabricd.extraOptions` | `list of string` | Extra options to be appended to the FRR fabricd daemon options. |
+| `services.frr.fabricd.options` | `list of string` | Options for the FRR fabricd daemon. |
+| `services.frr.isisd.enable` | `boolean` | Whether to enable FRR isisd. |
+| `services.frr.isisd.extraOptions` | `list of string` | Extra options to be appended to the FRR isisd daemon options. |
+| `services.frr.isisd.options` | `list of string` | Options for the FRR isisd daemon. |
+| `services.frr.ldpd.enable` | `boolean` | Whether to enable FRR ldpd. |
+| `services.frr.ldpd.extraOptions` | `list of string` | Extra options to be appended to the FRR ldpd daemon options. |
+| `services.frr.ldpd.options` | `list of string` | Options for the FRR ldpd daemon. |
+| `services.frr.mgmtd.extraOptions` | `list of string` | Extra options to be appended to the FRR mgmtd daemon options. |
+| `services.frr.mgmtd.options` | `list of string` | Options for the FRR mgmtd daemon. |
+| `services.frr.nhrpd.enable` | `boolean` | Whether to enable FRR nhrpd. |
+| `services.frr.nhrpd.extraOptions` | `list of string` | Extra options to be appended to the FRR nhrpd daemon options. |
+| `services.frr.nhrpd.options` | `list of string` | Options for the FRR nhrpd daemon. |
+| `services.frr.openFilesLimit` | `unsigned integer, meaning >=0` | This is the maximum number of FD's that will be available. Use a reasonable value for your setup if you are expecting a large number of peers in say BGP. |
+| `services.frr.ospf6d.enable` | `boolean` | Whether to enable FRR ospf6d. |
+| `services.frr.ospf6d.extraOptions` | `list of string` | Extra options to be appended to the FRR ospf6d daemon options. |
+| `services.frr.ospf6d.options` | `list of string` | Options for the FRR ospf6d daemon. |
+| `services.frr.ospfd.enable` | `boolean` | Whether to enable FRR ospfd. |
+| `services.frr.ospfd.extraOptions` | `list of string` | Extra options to be appended to the FRR ospfd daemon options. |
+| `services.frr.ospfd.options` | `list of string` | Options for the FRR ospfd daemon. |
+| `services.frr.pathd.enable` | `boolean` | Whether to enable FRR pathd. |
+| `services.frr.pathd.extraOptions` | `list of string` | Extra options to be appended to the FRR pathd daemon options. |
+| `services.frr.pathd.options` | `list of string` | Options for the FRR pathd daemon. |
+| `services.frr.pbrd.enable` | `boolean` | Whether to enable FRR pbrd. |
+| `services.frr.pbrd.extraOptions` | `list of string` | Extra options to be appended to the FRR pbrd daemon options. |
+| `services.frr.pbrd.options` | `list of string` | Options for the FRR pbrd daemon. |
+| `services.frr.pim6d.enable` | `boolean` | Whether to enable FRR pim6d. |
+| `services.frr.pim6d.extraOptions` | `list of string` | Extra options to be appended to the FRR pim6d daemon options. |
+| `services.frr.pim6d.options` | `list of string` | Options for the FRR pim6d daemon. |
+| `services.frr.pimd.enable` | `boolean` | Whether to enable FRR pimd. |
+| `services.frr.pimd.extraOptions` | `list of string` | Extra options to be appended to the FRR pimd daemon options. |
+| `services.frr.pimd.options` | `list of string` | Options for the FRR pimd daemon. |
+| `services.frr.ripd.enable` | `boolean` | Whether to enable FRR ripd. |
+| `services.frr.ripd.extraOptions` | `list of string` | Extra options to be appended to the FRR ripd daemon options. |
+| `services.frr.ripd.options` | `list of string` | Options for the FRR ripd daemon. |
+| `services.frr.ripngd.enable` | `boolean` | Whether to enable FRR ripngd. |
+| `services.frr.ripngd.extraOptions` | `list of string` | Extra options to be appended to the FRR ripngd daemon options. |
+| `services.frr.ripngd.options` | `list of string` | Options for the FRR ripngd daemon. |
+| `services.frr.sharpd.enable` | `boolean` | Whether to enable FRR sharpd. |
+| `services.frr.sharpd.extraOptions` | `list of string` | Extra options to be appended to the FRR sharpd daemon options. |
+| `services.frr.sharpd.options` | `list of string` | Options for the FRR sharpd daemon. |
+| `services.frr.staticd.extraOptions` | `list of string` | Extra options to be appended to the FRR staticd daemon options. |
+| `services.frr.staticd.options` | `list of string` | Options for the FRR staticd daemon. |
+| `services.frr.vrrpd.enable` | `boolean` | Whether to enable FRR vrrpd. |
+| `services.frr.vrrpd.extraOptions` | `list of string` | Extra options to be appended to the FRR vrrpd daemon options. |
+| `services.frr.vrrpd.options` | `list of string` | Options for the FRR vrrpd daemon. |
+| `services.frr.zebra.extraOptions` | `list of string` | Extra options to be appended to the FRR zebra daemon options. |
+| `services.frr.zebra.options` | `list of string` | Options for the FRR zebra daemon. |

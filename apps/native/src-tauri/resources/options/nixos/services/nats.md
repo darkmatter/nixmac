@@ -5,13 +5,13 @@
 All options under `services.nats`.
 
 | Option | Type | Description |
-| ------------------------------ | ---- | ----------- |
-| `services.nats.dataDir` | | |
-| `services.nats.enable` | | |
-| `services.nats.group` | | |
-| `services.nats.jetstream` | | |
-| `services.nats.port` | | |
-| `services.nats.serverName` | | |
-| `services.nats.settings` | | |
-| `services.nats.user` | | |
-| `services.nats.validateConfig` | | |
+| --- | --- | --- |
+| `services.nats.dataDir` | `absolute path` | The NATS data directory. Only used if JetStream is enabled, for storing stream metadata and messages. If left as the default value this directory will automatically be created before the NATS server starts, otherwise the sysadmin is responsible for ensuring the directory exists with appropriate ownership and permissions. |
+| `services.nats.enable` | `boolean` | Whether to enable NATS messaging system. |
+| `services.nats.group` | `string` | Group under which NATS runs. |
+| `services.nats.jetstream` | `boolean` | Whether to enable JetStream. |
+| `services.nats.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port on which to listen. |
+| `services.nats.serverName` | `string` | Name of the NATS server, must be unique if clustered. |
+| `services.nats.settings` | `JSON value` | Declarative NATS configuration. See the [ NATS documentation](https://docs.nats.io/nats-server/configuration) for a list of options. |
+| `services.nats.user` | `string` | User account under which NATS runs. |
+| `services.nats.validateConfig` | `boolean` | If true, validate nats config at build time. When the config can't be checked during build time, for example when it includes other files, disable this option. |

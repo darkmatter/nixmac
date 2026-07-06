@@ -5,5 +5,5 @@
 All options under `programs.info`.
 
 | Option | Type | Description |
-| ---------------------- | --------- | -------------------------------------------------- |
-| `programs.info.enable` | `boolean` | Whether to enable info pages and the info command. |
+| --- | --- | --- |
+| `programs.info.enable` | `boolean` | Whether to enable info pages and the {command}`info` command. |

@@ -5,7 +5,7 @@
 All options under `services.timekpr`.
 
 | Option | Type | Description |
-| ----------------------------- | ---- | ----------- |
-| `services.timekpr.adminUsers` | | |
-| `services.timekpr.enable` | | |
-| `services.timekpr.package` | | |
+| --- | --- | --- |
+| `services.timekpr.adminUsers` | `list of string` | All listed users will become part of the `timekpr` group so they can manage timekpr settings without requiring sudo. |
+| `services.timekpr.enable` | `boolean` | Whether to enable Timekpr-nExT, a screen time managing application that helps optimizing time spent at computer for your subordinates, children or even for yourself. |
+| `services.timekpr.package` | `package` | The timekpr package to use. |

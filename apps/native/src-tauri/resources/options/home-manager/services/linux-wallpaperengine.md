@@ -5,9 +5,17 @@
 All options under `services.linux-wallpaperengine`.
 
 | Option | Type | Description |
-| ------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `services.linux-wallpaperengine.assetsPath` | `null or absolute path` | Path to the assets directory. |
-| `services.linux-wallpaperengine.clamping` | `null or one of “clamp”, “border”, “repeat”` | Clamping mode for all wallpapers. |
+| `services.linux-wallpaperengine.clamping` | `null or one of "clamp", "border", "repeat"` | Clamping mode for all wallpapers. |
 | `services.linux-wallpaperengine.enable` | `boolean` | Whether to enable linux-wallpaperengine, an implementation of Wallpaper Engine functionality. |
 | `services.linux-wallpaperengine.package` | `package` | The linux-wallpaperengine package to use. |
 | `services.linux-wallpaperengine.wallpapers` | `list of (submodule)` | Define wallpapers. |
+| `services.linux-wallpaperengine.wallpapers.*.audio.automute` | `boolean` | Automute when another app is playing sound. |
+| `services.linux-wallpaperengine.wallpapers.*.audio.processing` | `boolean` | Enables audio processing for background. |
+| `services.linux-wallpaperengine.wallpapers.*.audio.silent` | `boolean` | Mutes all sound of the wallpaper. |
+| `services.linux-wallpaperengine.wallpapers.*.extraOptions` | `list of string` | Extra arguments to pass to the linux-wallpaperengine command for this wallpaper. |
+| `services.linux-wallpaperengine.wallpapers.*.fps` | `null or signed integer` | Limits the FPS to a given number. |
+| `services.linux-wallpaperengine.wallpapers.*.monitor` | `string` | Which monitor to display the wallpaper. |
+| `services.linux-wallpaperengine.wallpapers.*.scaling` | `null or one of "stretch", "fit", "fill", "default"` | Scaling mode for this wallpaper. |
+| `services.linux-wallpaperengine.wallpapers.*.wallpaperId` | `string` | Wallpaper to be used. Can either be a Steam Workshop ID or the path to the background folder. |

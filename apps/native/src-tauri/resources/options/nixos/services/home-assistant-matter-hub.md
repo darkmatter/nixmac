@@ -5,9 +5,11 @@
 All options under `services.home-assistant-matter-hub`.
 
 | Option | Type | Description |
-| ---------------------------------------------------- | ---- | ----------- |
-| `services.home-assistant-matter-hub.accessTokenFile` | | |
-| `services.home-assistant-matter-hub.enable` | | |
-| `services.home-assistant-matter-hub.openFirewall` | | |
-| `services.home-assistant-matter-hub.package` | | |
-| `services.home-assistant-matter-hub.settings` | | |
+| --- | --- | --- |
+| `services.home-assistant-matter-hub.accessTokenFile` | `absolute path not in the Nix store` | Path to a file containing a Home Assistant long-lived access token. The file is loaded as a systemd credential and read into `HAMH_HOME_ASSISTANT_ACCESS_TOKEN` at service start. |
+| `services.home-assistant-matter-hub.enable` | `boolean` | Whether to enable home-assistant-matter-hub, a Matter bridge for Home Assistant. |
+| `services.home-assistant-matter-hub.openFirewall` | `boolean` | Whether to open the Matter commissioning ports (UDP/TCP 5540) in the firewall. |
+| `services.home-assistant-matter-hub.package` | `package` | The home-assistant-matter-hub package to use. |
+| `services.home-assistant-matter-hub.settings` | `open submodule of (JSON value)` | Configuration written to a JSON file and passed to `home-assistant-matter-hub start --config`. Keys use camelCase, matching the long-form CLI flags. See <https://riddix.github.io/home-assistant-matter-hub/getting-started/installation#23-configuration-options> for the full list of options. |
+| `services.home-assistant-matter-hub.settings.homeAssistantUrl` | `string` | HTTP URL of the Home Assistant instance to bridge. |
+| `services.home-assistant-matter-hub.settings.httpPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port the web interface listens on. |

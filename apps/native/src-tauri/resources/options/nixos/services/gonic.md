@@ -5,7 +5,7 @@
 All options under `services.gonic`.
 
 | Option | Type | Description |
-| ------------------------- | ---- | ----------- |
-| `services.gonic.enable` | | |
-| `services.gonic.package` | | |
-| `services.gonic.settings` | | |
+| --- | --- | --- |
+| `services.gonic.enable` | `boolean` | Whether to enable Gonic music server. |
+| `services.gonic.package` | `package` | The gonic package to use. |
+| `services.gonic.settings` | `attribute set of (atom (null, bool, int, float or string) or a list of them for duplicate keys)` | Configuration for Gonic, see <https://github.com/sentriz/gonic#configuration-options> for supported values. |

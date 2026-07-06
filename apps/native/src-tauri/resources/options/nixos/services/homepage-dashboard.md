@@ -5,20 +5,19 @@
 All options under `services.homepage-dashboard`.
 
 | Option | Type | Description |
-| ---------------------------------------------- | ---- | ----------- |
-| `services.homepage-dashboard.allowedHosts` | | |
-| `services.homepage-dashboard.bookmarks` | | |
-| `services.homepage-dashboard.customCSS` | | |
-| `services.homepage-dashboard.customJS` | | |
-| `services.homepage-dashboard.docker` | | |
-| `services.homepage-dashboard.enable` | | |
-| `services.homepage-dashboard.environmentFile` | | |
-| `services.homepage-dashboard.environmentFiles` | | |
-| `services.homepage-dashboard.kubernetes` | | |
-| `services.homepage-dashboard.listenPort` | | |
-| `services.homepage-dashboard.openFirewall` | | |
-| `services.homepage-dashboard.package` | | |
-| `services.homepage-dashboard.proxmox` | | |
-| `services.homepage-dashboard.services` | | |
-| `services.homepage-dashboard.settings` | | |
-| `services.homepage-dashboard.widgets` | | |
+| --- | --- | --- |
+| `services.homepage-dashboard.allowedHosts` | `string` | Hosts that homepage-dashboard will be running under. You will want to change this in order to acess homepage from anything other than localhost. see the upsream documentation: <https://gethomepage.dev/installation/#homepage_allowed_hosts> |
+| `services.homepage-dashboard.bookmarks` | `YAML 1.1 value` | Homepage bookmarks configuration. See <https://gethomepage.dev/configs/bookmarks/>. |
+| `services.homepage-dashboard.customCSS` | `strings concatenated with "\n"` | Custom CSS for styling Homepage. See <https://gethomepage.dev/configs/custom-css-js/>. |
+| `services.homepage-dashboard.customJS` | `strings concatenated with "\n"` | Custom Javascript for Homepage. See <https://gethomepage.dev/configs/custom-css-js/>. |
+| `services.homepage-dashboard.docker` | `YAML 1.1 value` | Homepage docker configuration. See <https://gethomepage.dev/configs/docker/>. |
+| `services.homepage-dashboard.enable` | `boolean` | Whether to enable Homepage Dashboard, a highly customizable application dashboard. |
+| `services.homepage-dashboard.environmentFiles` | `list of absolute path` | A list of paths to environment files that contain environment variables to pass to the homepage-dashboard service, for the purpose of passing secrets to the service. See the upstream documentation: <https://gethomepage.dev/installation/docker/#using-environment-secrets> |
+| `services.homepage-dashboard.kubernetes` | `YAML 1.1 value` | Homepage kubernetes configuration. See <https://gethomepage.dev/configs/kubernetes/>. |
+| `services.homepage-dashboard.listenPort` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port for Homepage to bind to. |
+| `services.homepage-dashboard.openFirewall` | `boolean` | Open ports in the firewall for Homepage. |
+| `services.homepage-dashboard.package` | `package` | The homepage-dashboard package to use. |
+| `services.homepage-dashboard.proxmox` | `YAML 1.1 value` | Homepage proxmox configuration. See <https://gethomepage.dev/configs/proxmox/>. |
+| `services.homepage-dashboard.services` | `YAML 1.1 value` | Homepage services configuration. See <https://gethomepage.dev/configs/services/>. |
+| `services.homepage-dashboard.settings` | `YAML 1.1 value` | Homepage settings. See <https://gethomepage.dev/configs/settings/>. |
+| `services.homepage-dashboard.widgets` | `YAML 1.1 value` | Homepage widgets configuration. See <https://gethomepage.dev/widgets/>. |

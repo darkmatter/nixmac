@@ -5,10 +5,10 @@
 All options under `services.labgrid`.
 
 | Option | Type | Description |
-| ------------------------------------------- | ---- | ----------- |
-| `services.labgrid.coordinator.bindAddress` | | |
-| `services.labgrid.coordinator.debug` | | |
-| `services.labgrid.coordinator.enable` | | |
-| `services.labgrid.coordinator.openFirewall` | | |
-| `services.labgrid.coordinator.package` | | |
-| `services.labgrid.coordinator.port` | | |
+| --- | --- | --- |
+| `services.labgrid.coordinator.bindAddress` | `string` | Bind address for the labgrid coordinator. |
+| `services.labgrid.coordinator.debug` | `boolean` | Whether to enable debug mode. |
+| `services.labgrid.coordinator.enable` | `boolean` | Whether to enable Labgrid Coordinator. |
+| `services.labgrid.coordinator.openFirewall` | `boolean` | Whether to automatically open the coordinator listen port in the firewall. |
+| `services.labgrid.coordinator.package` | `package` | The labgrid package to use. |
+| `services.labgrid.coordinator.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Coordinator port to bind to. |

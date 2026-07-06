@@ -5,7 +5,7 @@
 All options under `services.osmscout-server`.
 
 | Option | Type | Description |
-| -------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------- |
+| --- | --- | --- |
 | `services.osmscout-server.enable` | `boolean` | Whether to enable OSM Scout Server. |
 | `services.osmscout-server.network.listenAddress` | `string` | The address for the server to listen on. |
 | `services.osmscout-server.network.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The TCP port on which the server will listen. |

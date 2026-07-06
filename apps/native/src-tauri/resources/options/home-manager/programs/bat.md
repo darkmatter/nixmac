@@ -5,10 +5,10 @@
 All options under `programs.bat`.
 
 | Option | Type | Description |
-| ---------------------------- | ------------------------------------------------------------------ | ---------------------------------------------- |
+| --- | --- | --- |
 | `programs.bat.config` | `attribute set of (string or list of string or boolean)` | Bat configuration. |
 | `programs.bat.enable` | `boolean` | Whether to enable bat, a cat clone with wings. |
 | `programs.bat.extraPackages` | `list of package` | Additional bat packages to install. |
 | `programs.bat.package` | `package` | The bat package to use. |
-| `programs.bat.syntaxes` | `attribute set of (strings concatenated with “\n” or (submodule))` | Additional syntaxes to provide. |
-| `programs.bat.themes` | `attribute set of (strings concatenated with “\n” or (submodule))` | Additional themes to provide. |
+| `programs.bat.syntaxes` | `attribute set of (strings concatenated with "\n" or (submodule))` | Additional syntaxes to provide. |
+| `programs.bat.themes` | `attribute set of (strings concatenated with "\n" or (submodule))` | Additional themes to provide. |

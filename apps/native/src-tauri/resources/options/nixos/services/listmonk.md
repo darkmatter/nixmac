@@ -5,11 +5,22 @@
 All options under `services.listmonk`.
 
 | Option | Type | Description |
-| -------------------------------------------- | ---- | ----------- |
-| `services.listmonk.database.createLocally` | | |
-| `services.listmonk.database.mutableSettings` | | |
-| `services.listmonk.database.settings` | | |
-| `services.listmonk.enable` | | |
-| `services.listmonk.package` | | |
-| `services.listmonk.secretFile` | | |
-| `services.listmonk.settings` | | |
+| --- | --- | --- |
+| `services.listmonk.database.createLocally` | `boolean` | Create the PostgreSQL database and database user locally. |
+| `services.listmonk.database.mutableSettings` | `boolean` | Database settings will be reset to the value set in this module if this is not enabled. Enable this if you want to persist changes you have done in the application. |
+| `services.listmonk.database.settings` | `null or (open submodule of attribute set of ((list of string) or list of attribute set of anything or string or signed integer or boolean))` | Dynamic settings in the PostgreSQL database, set by a SQL script, see <https://github.com/knadh/listmonk/blob/master/schema.sql#L177-L230> for details. |
+| `services.listmonk.database.settings."app.notify_emails"` | `list of string` | Administrator emails for system notifications |
+| `services.listmonk.database.settings."bounce.mailboxes"` | `list of (open submodule of list of attribute set of anything)` | List of bounce mailboxes |
+| `services.listmonk.database.settings."privacy.domain_blocklist"` | `list of string` | E-mail addresses with these domains are disallowed from subscribing. |
+| `services.listmonk.database.settings."privacy.exportable"` | `list of string` | List of fields which can be exported through an automatic export request |
+| `services.listmonk.database.settings.messengers` | `list of string` | List of messengers, see: <https://github.com/knadh/listmonk/blob/master/models/settings.go#L64-L74> for options. |
+| `services.listmonk.database.settings.smtp` | `list of (open submodule of attribute set of anything)` | List of outgoing SMTP servers |
+| `services.listmonk.database.settings.smtp.*.enabled` | `boolean` | Whether to enable this SMTP server for listmonk. |
+| `services.listmonk.database.settings.smtp.*.host` | `string` | Hostname for the SMTP server |
+| `services.listmonk.database.settings.smtp.*.max_conns` | `signed integer` | Maximum number of simultaneous connections, defaults to 1 |
+| `services.listmonk.database.settings.smtp.*.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Port for the SMTP server |
+| `services.listmonk.database.settings.smtp.*.tls_type` | `one of "none", "STARTTLS", "TLS"` | Type of TLS authentication with the SMTP server |
+| `services.listmonk.enable` | `boolean` | Whether to enable Listmonk, this module assumes a reverse proxy to be set. |
+| `services.listmonk.package` | `package` | The listmonk package to use. |
+| `services.listmonk.secretFile` | `null or string` | A file containing secrets as environment variables. See <https://listmonk.app/docs/configuration/#environment-variables> for details on supported values. |
+| `services.listmonk.settings` | `open submodule of (TOML value)` | Static settings set in the config.toml, see <https://github.com/knadh/listmonk/blob/master/config.toml.sample> for details. You can set secrets using the secretFile option with environment variables following <https://listmonk.app/docs/configuration/#environment-variables>. |

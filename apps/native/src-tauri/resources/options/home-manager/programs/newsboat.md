@@ -5,18 +5,21 @@
 All options under `programs.newsboat`.
 
 | Option | Type | Description |
-| ------------------------------------------------ | -------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.newsboat.autoFetchArticles.enable` | `boolean` | Whether to enable automatic article fetcher timer. |
-| `programs.newsboat.autoFetchArticles.onCalendar` | `string` | How often to fetch new articles. |
+| `programs.newsboat.autoFetchArticles.onCalendar` | `string` | How often to fetch new articles. See {manpage}`systemd.time(7)` for more information about the format. |
 | `programs.newsboat.autoReload` | `boolean` | Whether to enable automatic reloading while newsboat is running. |
 | `programs.newsboat.autoVacuum.enable` | `boolean` | Whether to enable automatic cleaning of the newsboat cache. |
-| `programs.newsboat.autoVacuum.onCalendar` | `string` | How often to run the cleaning command. |
+| `programs.newsboat.autoVacuum.onCalendar` | `string` | How often to run the cleaning command. See {manpage}`systemd.time(7)` for more information about the format. |
 | `programs.newsboat.browser` | `string` | External browser to use. |
 | `programs.newsboat.enable` | `boolean` | Whether to enable the Newsboat feed reader. |
-| `programs.newsboat.extraConfig` | `strings concatenated with “\n”` | Extra configuration values that will be appended to the end. |
+| `programs.newsboat.extraConfig` | `strings concatenated with "\n"` | Extra configuration values that will be appended to the end. |
 | `programs.newsboat.maxItems` | `signed integer` | Maximum number of items per feed, 0 for infinite. |
 | `programs.newsboat.package` | `null or package` | The newsboat package to use. |
 | `programs.newsboat.queries` | `attribute set of string` | A list of queries to use. |
 | `programs.newsboat.reloadThreads` | `signed integer` | How many threads to use for updating the feeds. |
 | `programs.newsboat.reloadTime` | `null or signed integer` | Time in minutes between reloads. |
 | `programs.newsboat.urls` | `list of (submodule)` | List of news feeds. Leave it empty if you want to manage feeds imperatively, for example, using Syncthing. |
+| `programs.newsboat.urls.*.tags` | `list of string` | Feed tags. |
+| `programs.newsboat.urls.*.title` | `null or string` | Feed title. |
+| `programs.newsboat.urls.*.url` | `string` | Feed URL. |

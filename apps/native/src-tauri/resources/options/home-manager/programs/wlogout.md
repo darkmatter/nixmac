@@ -5,8 +5,15 @@
 All options under `programs.wlogout`.
 
 | Option | Type | Description |
-| -------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.wlogout.enable` | `boolean` | Whether to enable wlogout. |
-| `programs.wlogout.layout` | `list of (open submodule of (JSON value))` | Layout configuration for wlogout, see https://github.com/ArtsyMacaw/wlogout#config for supported values. |
+| `programs.wlogout.layout` | `list of (open submodule of (JSON value))` | Layout configuration for wlogout, see <https://github.com/ArtsyMacaw/wlogout#config> for supported values. |
+| `programs.wlogout.layout.*.action` | `absolute path or string` | Command to execute when clicked. |
+| `programs.wlogout.layout.*.circular` | `null or boolean` | Make button circular. |
+| `programs.wlogout.layout.*.height` | `null or integer or floating point number between 0 and 1 (both inclusive)` | Relative height of tile. |
+| `programs.wlogout.layout.*.keybind` | `string` | Keyboard character to trigger this action. |
+| `programs.wlogout.layout.*.label` | `string` | CSS label of button. |
+| `programs.wlogout.layout.*.text` | `string` | Text displayed on button. |
+| `programs.wlogout.layout.*.width` | `null or integer or floating point number between 0 and 1 (both inclusive)` | Relative width of tile. |
 | `programs.wlogout.package` | `null or package` | The wlogout package to use. |
-| `programs.wlogout.style` | `null or absolute path or strings concatenated with “\n”` | CSS style of the bar. |
+| `programs.wlogout.style` | `null or absolute path or strings concatenated with "\n"` | CSS style of the bar. See <https://github.com/ArtsyMacaw/wlogout#style> for the documentation. If the value is set to a path literal, then the path will be used as the css file. |

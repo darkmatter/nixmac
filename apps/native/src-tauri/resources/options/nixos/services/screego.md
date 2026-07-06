@@ -5,8 +5,8 @@
 All options under `services.screego`.
 
 | Option | Type | Description |
-| ---------------------------------- | ---- | ----------- |
-| `services.screego.enable` | | |
-| `services.screego.environmentFile` | | |
-| `services.screego.openFirewall` | | |
-| `services.screego.settings` | | |
+| --- | --- | --- |
+| `services.screego.enable` | `boolean` | Whether to enable screego screen-sharing server for developers. |
+| `services.screego.environmentFile` | `null or absolute path` | Environment file (see {manpage}`systemd.exec(5)` "EnvironmentFile=" section for the syntax) passed to the service. This option can be used to safely include secrets in the configuration. |
+| `services.screego.openFirewall` | `boolean` | Open the firewall port(s). |
+| `services.screego.settings` | `attribute set of string` | Screego settings passed as Nix attribute set, they will be merged with the defaults. Settings will be passed as environment variables. See <https://screego.net/#/config> for possible values |

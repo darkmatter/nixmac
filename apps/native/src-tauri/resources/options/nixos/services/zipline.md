@@ -5,9 +5,11 @@
 All options under `services.zipline`.
 
 | Option | Type | Description |
-| ----------------------------------------- | ---- | ----------- |
-| `services.zipline.database.createLocally` | | |
-| `services.zipline.enable` | | |
-| `services.zipline.environmentFiles` | | |
-| `services.zipline.package` | | |
-| `services.zipline.settings` | | |
+| --- | --- | --- |
+| `services.zipline.database.createLocally` | `boolean` | Whether to enable and configure a local PostgreSQL database server. |
+| `services.zipline.enable` | `boolean` | Whether to enable Zipline. |
+| `services.zipline.environmentFiles` | `list of absolute path` | Files to load environment variables from (in addition to [](#opt-services.zipline.settings)). This is useful to avoid putting secrets into the nix store. See <https://zipline.diced.sh/docs/config> for more information. |
+| `services.zipline.package` | `package` | The zipline package to use. |
+| `services.zipline.settings` | `open submodule of attribute set of (string or signed integer)` | Configuration of Zipline. See <https://zipline.diced.sh/docs/config> for more information. |
+| `services.zipline.settings.CORE_HOSTNAME` | `string` | The hostname to listen on. |
+| `services.zipline.settings.CORE_PORT` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to listen on. |

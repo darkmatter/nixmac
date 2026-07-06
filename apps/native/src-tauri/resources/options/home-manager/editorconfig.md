@@ -5,6 +5,6 @@
 All options under `editorconfig`.
 
 | Option | Type | Description |
-| ----------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `editorconfig.enable` | `boolean` | Whether to enable EditorConfig home configuration file. |
-| `editorconfig.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to $HOME/.editorconfig . root = true is automatically added to the file, it must not be added here. See https://editorconfig.org for documentation. |
+| `editorconfig.settings` | `attribute set of section of an INI file (attrs of INI atom (null, bool, int, float or string))` | Configuration written to {file}`$HOME/.editorconfig`. `root = true` is automatically added to the file, it must not be added here. See <https://editorconfig.org> for documentation. |

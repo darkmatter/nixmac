@@ -5,5 +5,5 @@
 All options under `services.mstpd`.
 
 | Option | Type | Description |
-| ----------------------- | ---- | ----------- |
-| `services.mstpd.enable` | | |
+| --- | --- | --- |
+| `services.mstpd.enable` | `boolean` | Whether to enable the multiple spanning tree protocol daemon. |

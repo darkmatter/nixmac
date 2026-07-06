@@ -5,6 +5,6 @@
 All options under `services.elephant`.
 
 | Option | Type | Description |
-| --------------------------- | ---- | ----------- |
-| `services.elephant.enable` | | |
-| `services.elephant.package` | | |
+| --- | --- | --- |
+| `services.elephant.enable` | `boolean` | Whether to enable Elephant application launcher backend. |
+| `services.elephant.package` | `package` | The elephant package to use. |

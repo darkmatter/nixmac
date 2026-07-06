@@ -5,17 +5,18 @@
 All options under `services.prefect`.
 
 | Option | Type | Description |
-| --------------------------------------- | ---- | ----------- |
-| `services.prefect.baseUrl` | | |
-| `services.prefect.dataDir` | | |
-| `services.prefect.database` | | |
-| `services.prefect.databaseHost` | | |
-| `services.prefect.databaseName` | | |
-| `services.prefect.databasePasswordFile` | | |
-| `services.prefect.databasePort` | | |
-| `services.prefect.databaseUser` | | |
-| `services.prefect.enable` | | |
-| `services.prefect.host` | | |
-| `services.prefect.package` | | |
-| `services.prefect.port` | | |
-| `services.prefect.workerPools` | | |
+| --- | --- | --- |
+| `services.prefect.baseUrl` | `null or string` | external url when served by a reverse proxy, e.g. `https://example.com/prefect` |
+| `services.prefect.dataDir` | `absolute path` | Specify the directory for Prefect. |
+| `services.prefect.database` | `one of "sqlite", "postgres"` | which database to use for prefect server: sqlite or postgres |
+| `services.prefect.databaseHost` | `string` | database host for postgres only |
+| `services.prefect.databaseName` | `string` | database name for postgres only |
+| `services.prefect.databasePasswordFile` | `null or string` | path to a file containing e.g.: DBPASSWORD=supersecret stored outside the nix store, read by systemd as EnvironmentFile. |
+| `services.prefect.databasePort` | `string` | database port for postgres only |
+| `services.prefect.databaseUser` | `string` | database user for postgres only |
+| `services.prefect.enable` | `boolean` | enable prefect server and worker services |
+| `services.prefect.host` | `string` | Prefect server host |
+| `services.prefect.package` | `package` | The prefect package to use. |
+| `services.prefect.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | Prefect server port |
+| `services.prefect.workerPools` | `attribute set of (submodule)` | define a set of worker pools with submodule config. example: workerPools.my-pool = { installPolicy = "never"; }; |
+| `services.prefect.workerPools.<name>.installPolicy` | `one of "always", "if-not-present", "never", "prompt"` | install policy for the worker (always, if-not-present, never, prompt) |

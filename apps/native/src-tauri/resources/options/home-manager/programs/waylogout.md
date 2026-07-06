@@ -5,7 +5,7 @@
 All options under `programs.waylogout`.
 
 | Option | Type | Description |
-| ----------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.waylogout.enable` | `boolean` | Whether or not to enable waylogout. |
 | `programs.waylogout.package` | `null or package` | The waylogout package to use. |
-| `programs.waylogout.settings` | `attribute set of (boolean or floating point number or signed integer or absolute path or string)` | Default arguments to waylogout . An empty set disables configuration generation. |
+| `programs.waylogout.settings` | `attribute set of (boolean or floating point number or signed integer or absolute path or string)` | Default arguments to {command}`waylogout`. An empty set disables configuration generation. |

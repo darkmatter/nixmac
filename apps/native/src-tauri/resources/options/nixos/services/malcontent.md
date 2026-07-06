@@ -5,5 +5,5 @@
 All options under `services.malcontent`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.malcontent.enable` | | |
+| --- | --- | --- |
+| `services.malcontent.enable` | `boolean` | Whether to enable Malcontent, parental control support for applications. |

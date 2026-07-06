@@ -5,9 +5,9 @@
 All options under `services.transfer-sh`.
 
 | Option | Type | Description |
-| --------------------------------- | ---- | ----------- |
-| `services.transfer-sh.enable` | | |
-| `services.transfer-sh.package` | | |
-| `services.transfer-sh.provider` | | |
-| `services.transfer-sh.secretFile` | | |
-| `services.transfer-sh.settings` | | |
+| --- | --- | --- |
+| `services.transfer-sh.enable` | `boolean` | Whether to enable Easy and fast file sharing from the command-line. |
+| `services.transfer-sh.package` | `package` | The transfer-sh package to use. |
+| `services.transfer-sh.provider` | `one of "local", "s3", "storj", "gdrive"` | Storage providers to use |
+| `services.transfer-sh.secretFile` | `null or absolute path` | Path to file containing environment variables. Useful for passing down secrets. Some variables that can be considered secrets are: - AWS_ACCESS_KEY - AWS_ACCESS_KEY - TLS_PRIVATE_KEY - HTTP_AUTH_HTPASSWD |
+| `services.transfer-sh.settings` | `open submodule of attribute set of (boolean or signed integer or string)` | Additional configuration for transfer-sh, see <https://github.com/dutchcoders/transfer.sh#usage-1> for supported values. For secrets use secretFile option instead. |

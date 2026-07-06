@@ -5,5 +5,5 @@
 All options under `services.xfs`.
 
 | Option | Type | Description |
-| --------------------- | ---- | ----------- |
-| `services.xfs.enable` | | |
+| --- | --- | --- |
+| `services.xfs.enable` | `boolean` | Whether to enable the X Font Server. |

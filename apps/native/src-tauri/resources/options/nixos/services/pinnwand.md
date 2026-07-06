@@ -5,7 +5,11 @@
 All options under `services.pinnwand`.
 
 | Option | Type | Description |
-| ---------------------------- | ---- | ----------- |
-| `services.pinnwand.enable` | | |
-| `services.pinnwand.port` | | |
-| `services.pinnwand.settings` | | |
+| --- | --- | --- |
+| `services.pinnwand.enable` | `boolean` | Whether to enable Pinnwand, a pastebin. |
+| `services.pinnwand.port` | `16 bit unsigned integer; between 0 and 65535 (both inclusive)` | The port to listen on. |
+| `services.pinnwand.settings` | `open submodule of (TOML value)` | Your {file}`pinnwand.toml` as a Nix attribute set. Look up possible options in the [documentation](https://pinnwand.readthedocs.io/en/v1.6.1/configuration.html). |
+| `services.pinnwand.settings.database_uri` | `string` | Database URI compatible with [SQLAlchemy](https://docs.sqlalchemy.org/en/14/core/engines.html#database-urls). Additional packages may need to be introduced into the environment for certain databases. |
+| `services.pinnwand.settings.footer` | `string` | The footer in raw HTML. |
+| `services.pinnwand.settings.paste_help` | `string` | Raw HTML help text shown in the header area. |
+| `services.pinnwand.settings.paste_size` | `positive integer, meaning >0` | Maximum size of a paste in bytes. |

@@ -5,6 +5,6 @@
 All options under `programs.minipro`.
 
 | Option | Type | Description |
-| -------------------------- | ---- | ----------- |
-| `programs.minipro.enable` | | |
-| `programs.minipro.package` | | |
+| --- | --- | --- |
+| `programs.minipro.enable` | `boolean` | Whether to enable minipro and its udev rules. Users of the `plugdev` group can interact with connected MiniPRO chip programmers. |
+| `programs.minipro.package` | `package` | The minipro package to use. |

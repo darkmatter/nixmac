@@ -5,8 +5,8 @@
 All options under `programs.todoman`.
 
 | Option | Type | Description |
-| ------------------------------ | -------------------------------- | ---------------------------------------------------------- |
+| --- | --- | --- |
 | `programs.todoman.enable` | `boolean` | Whether to enable todoman. |
-| `programs.todoman.extraConfig` | `strings concatenated with “\n”` | Text for configuration of todoman. The syntax is Python. |
+| `programs.todoman.extraConfig` | `strings concatenated with "\n"` | Text for configuration of todoman. The syntax is Python. See [docs](%60https://todoman.readthedocs.io/en/stable/man.html#id5%60). for the full list of options. |
 | `programs.todoman.glob` | `string` | The glob expansion which matches all directories relevant. |
 | `programs.todoman.package` | `null or package` | The todoman package to use. |
