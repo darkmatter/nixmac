@@ -19,6 +19,17 @@ import { startPermissionsSync } from "./permissions";
 import { startPreferencesSync } from "./preferences";
 import { startPromptHistorySync } from "./prompt-history";
 import { startRebuildSync } from "./rebuild";
+import { viewModelActions } from "@nixmac/state";
+
+/**
+ * Mark the initial hydration pass complete. Called by the app mount effect
+ * after `startViewModelSync` AND the explicit probes (nix check, permissions,
+ * git status) have written their real values, so non-persisted slices are
+ * loaded before any gate reads them.
+ */
+export function markViewModelHydrated(): void {
+  viewModelActions.setState({ hydrated: true });
+}
 
 export async function startViewModelSync(): Promise<() => void> {
   const unlisteners: Array<() => void> = [];

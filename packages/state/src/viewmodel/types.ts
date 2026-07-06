@@ -38,6 +38,8 @@ export type ViewModelState = {
   permissions: PermissionsState | null;
   /** True once the permissions slice has hydrated (even to null). */
   permissionsHydrated: boolean;
+  /** True once the initial viewmodel hydration pass completes. */
+  hydrated: boolean;
   promptHistory: string[];
   /** Mirrored nix / darwin-rebuild installation status; null until hydrated. */
   nixInstall: NixInstallState | null;
