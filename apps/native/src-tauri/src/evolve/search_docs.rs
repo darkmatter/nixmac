@@ -166,11 +166,22 @@ fn install_static_docs_index_if_needed() {
     }
 }
 
+/// Delays between background generation attempts. Failures are usually
+/// transient (network not up yet after login, a flake fetch timing out), so a
+/// few spaced retries recover within the session instead of leaving it on
+/// static docs until the next launch.
+const GENERATED_DOCS_RETRY_DELAYS: &[std::time::Duration] = &[
+    std::time::Duration::from_secs(30),
+    std::time::Duration::from_secs(2 * 60),
+    std::time::Duration::from_secs(10 * 60),
+];
+
 /// Generate runtime docs in the background and swap them in when complete.
 /// The foreground path has already installed static docs before this is called,
 /// so a slow Nix build does not block `search_docs`. On success, the generated
-/// index atomically replaces the static one. On failure, the static index stays
-/// active and the refresh guard is reset for a possible future retry.
+/// index atomically replaces the static one. Failures are retried with backoff;
+/// once the retries are exhausted the static index stays active for the rest
+/// of the session and the refresh guard is reset for a future initialization.
 fn start_generated_docs_refresh<R: Runtime>(app: AppHandle<R>) {
     if GENERATED_DOCS_REFRESH_STARTED.swap(true, Ordering::SeqCst) {
         return;
@@ -178,11 +189,26 @@ fn start_generated_docs_refresh<R: Runtime>(app: AppHandle<R>) {
 
     tauri::async_runtime::spawn_blocking(move || {
         let _timer = TimerGuard::new("start_generated_docs_refresh");
-        match GeneratedDocsIndexLoader::for_app(&app).and_then(|loader| loader.load()) {
-            Ok(index) => install_docs_index(index, "generated docs"),
-            Err(err) => {
-                GENERATED_DOCS_REFRESH_STARTED.store(false, Ordering::SeqCst);
-                log::warn!("[search_docs] failed to generate docs index: {err:#}");
+        let mut delays = GENERATED_DOCS_RETRY_DELAYS.iter();
+        loop {
+            match GeneratedDocsIndexLoader::for_app(&app).and_then(|loader| loader.load()) {
+                Ok(index) => return install_docs_index(index, "generated docs"),
+                Err(err) => match delays.next() {
+                    Some(delay) => {
+                        log::warn!(
+                            "[search_docs] failed to generate docs index (retrying in {}s): {err:#}",
+                            delay.as_secs()
+                        );
+                        std::thread::sleep(*delay);
+                    }
+                    None => {
+                        GENERATED_DOCS_REFRESH_STARTED.store(false, Ordering::SeqCst);
+                        log::warn!(
+                            "[search_docs] failed to generate docs index; giving up for this session: {err:#}"
+                        );
+                        return;
+                    }
+                },
             }
         }
     });
