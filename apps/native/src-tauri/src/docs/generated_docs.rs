@@ -323,11 +323,10 @@ fn generate_options_json(tool: OptionsTool, docs_dir: &Path) -> Result<String> {
 }
 
 /// Convert raw `nixosOptionsDoc` metadata into the compact search index JSON:
-/// sorted option keys become flat rows containing the option path, anchor id,
-/// summary, and type. This is the only generator of the format — both the
-/// runtime app-data cache and the bundled static resources (via the
-/// `gen-docs-index` dev command wrapped by `scripts/nix-options.sh`) come from
-/// here.
+/// sorted option keys become flat rows containing the option path, summary,
+/// and type. This is the only generator of the format — both the runtime
+/// app-data cache and the bundled static resources (via the `gen-docs-index`
+/// dev command wrapped by `scripts/nix-options.sh`) come from here.
 fn docs_index_json_from_options_json(options_json: &str) -> Result<String> {
     let options: Value =
         serde_json::from_str(options_json).context("failed to parse generated options JSON")?;
@@ -347,7 +346,6 @@ fn docs_index_json_from_options_json(options_json: &str) -> Result<String> {
         };
         docs.push(json!({
             "option_path": path,
-            "anchor_id": format!("opt-{path}"),
             "summary": entry.get("description").and_then(Value::as_str).unwrap_or(""),
             "option_type": entry.get("type").and_then(Value::as_str),
         }));
@@ -533,7 +531,10 @@ mod tests {
         let docs: Vec<Value> = serde_json::from_str(&json).expect("generated JSON should parse");
         assert_eq!(docs.len(), 1);
         assert_eq!(docs[0]["option_path"], "programs.git.enable");
-        assert_eq!(docs[0]["anchor_id"], "opt-programs.git.enable");
+        assert!(
+            docs[0].get("anchor_id").is_none(),
+            "anchor_id is derivable from option_path and consumed by nothing"
+        );
         assert_eq!(docs[0]["summary"], "Enable Git.");
         assert_eq!(docs[0]["option_type"], "boolean");
     }
