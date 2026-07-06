@@ -34,6 +34,7 @@ generate_options_json() {
     nix-darwin)
       eval_expr='
         flake = builtins.getFlake "github:nix-darwin/nix-darwin";
+        pkgs = import flake.inputs.nixpkgs {};
         eval = flake.lib.darwinSystem {
           inherit pkgs;
           modules = [{
@@ -48,6 +49,7 @@ generate_options_json() {
     home-manager)
       eval_expr='
         hm = builtins.getFlake "github:nix-community/home-manager";
+        pkgs = import hm.inputs.nixpkgs {};
         eval = hm.lib.homeManagerConfiguration {
           inherit pkgs;
           modules = [{
@@ -69,8 +71,6 @@ generate_options_json() {
   local expr
   expr=$(cat <<EOF
 let
-  pkgs = import <nixpkgs> {};
-
   ${eval_expr}
 
   optionsDoc = pkgs.nixosOptionsDoc {

@@ -78,11 +78,16 @@ impl OptionsTool {
         }
     }
 
+    /// Nix snippet defining `pkgs` and `eval` for this tool. `pkgs` comes from
+    /// the flake's own pinned nixpkgs input rather than `<nixpkgs>`, so
+    /// generation does not depend on a channel/NIX_PATH being configured in
+    /// the app's launch environment (GUI launches often have neither).
     fn eval_expr(self) -> &'static str {
         match self {
             Self::NixDarwin => {
                 r#"
         flake = builtins.getFlake "github:nix-darwin/nix-darwin";
+        pkgs = import flake.inputs.nixpkgs {};
         eval = flake.lib.darwinSystem {
           inherit pkgs;
           modules = [{
@@ -96,6 +101,7 @@ impl OptionsTool {
             Self::HomeManager => {
                 r#"
         hm = builtins.getFlake "github:nix-community/home-manager";
+        pkgs = import hm.inputs.nixpkgs {};
         eval = hm.lib.homeManagerConfiguration {
           inherit pkgs;
           modules = [{
@@ -244,8 +250,6 @@ fn options_expr(tool: OptionsTool) -> String {
     format!(
         r#"
 let
-  pkgs = import <nixpkgs> {{}};
-
   {}
 
   optionsDoc = pkgs.nixosOptionsDoc {{
