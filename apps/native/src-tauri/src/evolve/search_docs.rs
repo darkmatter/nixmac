@@ -49,11 +49,10 @@ const DEFAULT_RESULT_LIMIT: usize = 10;
 // Max limit for search_docs results to prevent token bonfires or overwhelming the agent.
 const MAX_RESULT_LIMIT: usize = 20;
 
-/// Top-level categories that the docs generator splits into one file per
-/// second-level subcategory (mirrors SPLIT_KEYS in scripts/nix-options.sh).
-/// Doc keys for options under these are `<source>/<top>/<sub>.md` instead of
-/// `<source>/<top>.md`, so the agent reads a focused slice rather than a giant
-/// `programs.md` / `services.md`.
+/// Top-level categories large enough to warrant one doc key per second-level
+/// subcategory. Doc keys for options under these are `<source>/<top>/<sub>.md`
+/// instead of `<source>/<top>.md`, so the agent reads a focused slice rather
+/// than a giant `programs.md` / `services.md`.
 const SPLIT_KEYS: &[&str] = &["programs", "services"];
 
 /// Safety cap on how many options a single "read doc" response can include, to
@@ -65,8 +64,9 @@ const MAX_DOC_OPTIONS: usize = 400;
 /// which would be futile and could cause token overuse.
 const NO_RESULTS_SENTINEL: &str = "SEARCH_DOCS_NO_RESULTS";
 
-/// Aggregate for a single doc (one generated markdown file). The doc key is the
-/// relative markdown path, e.g. `home-manager/programs/git.md`.
+/// Aggregate for a single doc key. Doc keys are synthetic markdown-style paths
+/// (e.g. `home-manager/programs/git.md`) used purely as stable grouping labels
+/// for options — no such files exist on disk.
 #[derive(Debug, Default)]
 struct DocGroup {
     /// Number of options contained in the doc.
@@ -78,8 +78,8 @@ struct DocGroup {
     source: Option<DocsSource>,
 }
 
-/// Compute the doc key (relative markdown path) that contains an option,
-/// mirroring the layout produced by scripts/nix-options.sh.
+/// Compute the doc key grouping an option: `<source>/<top>.md`, split one
+/// level deeper for the large `SPLIT_KEYS` categories.
 fn doc_key_for(source: DocsSource, option_path: &str) -> String {
     let segments: Vec<&str> = option_path.split('.').collect();
     let first = segments.first().copied().unwrap_or("");
@@ -252,7 +252,7 @@ pub fn initialize_docs_index_for_app<R: Runtime>(app: AppHandle<R>) {
 ///
 /// Two complementary modes keep token usage low:
 /// - Key search (default): given `query`, return a compact ranked list of doc
-///   keys (the generated markdown filenames, e.g. `home-manager/programs/git.md`)
+///   keys (markdown-style grouping labels, e.g. `home-manager/programs/git.md`)
 ///   with an option count and a representative matching option. No per-option
 ///   summaries are emitted here.
 /// - Read doc: given `doc_path` (one of the keys above), return the flat table
