@@ -132,9 +132,9 @@ fn directory_has_entries(path: &Path) -> Result<bool, String> {
 
 fn ensure_canonical_directory_owned() -> Result<(), String> {
     let user = whoami::username().map_err(|e| format!("Failed to resolve username: {e}"))?;
-    let script = format!(
-        "set -e\nmkdir -p '{CANONICAL_CONFIG_DIR}'\nchown -R '{user}' '{CANONICAL_CONFIG_DIR}'"
-    );
+    let canonical_dir = shell_literal(CANONICAL_CONFIG_DIR);
+    let owner = shell_literal(&user);
+    let script = format!("set -e\nmkdir -p {canonical_dir}\nchown -R {owner} {canonical_dir}");
     run_privileged_shell(&script)
 }
 
@@ -142,13 +142,23 @@ fn ensure_symlink_to(target: &Path) -> Result<(), String> {
     let target = target
         .to_str()
         .ok_or_else(|| "Configuration directory path is not valid UTF-8".to_string())?;
-    let script = format!(
-        "set -e\nTARGET='{target}'\nLINK='{CANONICAL_CONFIG_DIR}'\n\
+    let script = symlink_script(target, CANONICAL_CONFIG_DIR);
+    run_privileged_shell(&script)
+}
+
+fn symlink_script(target: &str, link: &str) -> String {
+    let target = shell_literal(target);
+    let link = shell_literal(link);
+    format!(
+        "set -e\nTARGET={target}\nLINK={link}\n\
          if [ -L \"$LINK\" ] && [ \"$(readlink \"$LINK\")\" = \"$TARGET\" ]; then exit 0; fi\n\
          if [ -e \"$LINK\" ] && [ ! -L \"$LINK\" ]; then rm -rf \"$LINK\"; fi\n\
          ln -sfn \"$TARGET\" \"$LINK\""
-    );
-    run_privileged_shell(&script)
+    )
+}
+
+fn shell_literal(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
 }
 
 fn run_privileged_shell(script: &str) -> Result<(), String> {
@@ -214,5 +224,31 @@ mod tests {
         std::os::unix::fs::symlink(&target, &link).expect("create symlink");
 
         assert!(symlink_points_to(&link, &target).expect("check symlink"));
+    }
+
+    #[test]
+    fn symlink_script_treats_shell_metacharacters_as_path_data() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let injected_marker = temp.path().join("injected");
+        let target = format!(
+            "{}/'; touch {}; echo '",
+            temp.path().display(),
+            injected_marker.display()
+        );
+        let link = temp.path().join("nix-darwin");
+
+        let output = std::process::Command::new("sh")
+            .arg("-c")
+            .arg(symlink_script(&target, link.to_str().expect("utf-8 link")))
+            .output()
+            .expect("run symlink script");
+
+        assert!(
+            output.status.success(),
+            "script failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(!injected_marker.exists());
+        assert_eq!(fs::read_link(link).expect("read symlink"), PathBuf::from(target));
     }
 }
