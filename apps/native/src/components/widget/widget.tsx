@@ -30,10 +30,10 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { useTrayEvents } from "@/hooks/use-tray-events";
 import { markBootRenderStage, markBootStage } from "@/lib/boot-diagnostics";
 import { useEvolveMascot } from "@/hooks/use-evolve-mascot";
-import { useUiState } from "@nixmac/state";
+import { useUiState, useViewModel } from "@nixmac/state";
 import { useCurrentStep } from "@/hooks/use-current-step";
 import { UpdateBanner } from "@/components/widget/layout/update-banner";
-import { startViewModelSync } from "@/viewmodel";
+import { markViewModelHydrated, startViewModelSync } from "@/viewmodel";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
 import { setupWidgetTestHelpers } from "@/utils/widget-test-helpers";
 import { useEffect } from "react";
@@ -128,6 +128,13 @@ export function DarwinWidget() {
         uiActions.setError((e as Error)?.message || String(e));
       }
 
+      // Mark hydration complete only after the explicit probes (nix check,
+      // permissions, git status) have written their real values. The nix
+      // install cell is NOT persisted — it defaults to null on every launch —
+      // so flipping `hydrated` before checkNix runs would let the onboarding
+      // gate see a stale null and flash OnboardingFlow for a frame.
+      markViewModelHydrated();
+
       if (cancelled) return;
       surfaceRecoveryReport();
     })();
@@ -144,6 +151,15 @@ export function DarwinWidget() {
   // preferences) by useOnboardingFlow, so a finished user never re-enters it
   // across restarts.
   const { showFlow: showOnboarding } = useOnboardingFlow();
+  // Suppress the boot flash: before the ViewModel hydrates, every gate input
+  // is a default (null preferences/nixInstall), so both OnboardingFlow and the
+  // main widget would render against stale state for a frame. Hold a neutral
+  // container until hydration completes, then render the correct path directly.
+  const hydrated = useViewModel((s) => s.hydrated);
+
+  if (!hydrated) {
+    return <div className="flex h-full w-full flex-col bg-background/60" />;
+  }
 
   // Routing mechanism
   const getActiveStepComponent = () => {
@@ -167,6 +183,13 @@ export function DarwinWidget() {
 
       case "filesystem":
         return <FilesystemStep />;
+
+      // Defensive fallback: permissions/nix-setup/setup are owned by
+      // OnboardingFlow, which takes over the window via showOnboarding when
+      // those gates are unsatisfied. If a gate mismatch ever routes here
+      // anyway, fall back to the prompt step instead of rendering nothing.
+      default:
+        return <BeginStep />;
     }
   };
 

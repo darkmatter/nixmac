@@ -27,6 +27,7 @@ export const initialViewModelState: ViewModelState = {
   hosts: [],
   permissions: null,
   permissionsHydrated: false,
+  hydrated: false,
   promptHistory: [],
   nixInstall: null,
   rebuildStatus: null,
