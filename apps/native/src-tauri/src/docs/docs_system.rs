@@ -1,0 +1,200 @@
+use anyhow::Result;
+use serde::Deserialize;
+use std::fmt;
+
+use crate::commands::debug::TimerGuard;
+
+/// A compact source tag carried on every parsed option so `search_docs` can
+/// filter and render doc keys without caring whether entries came from bundled
+/// static JSON or runtime-generated JSON.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum DocsSource {
+    #[default]
+    NixDarwin,
+    HomeManager,
+}
+
+impl fmt::Display for DocsSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DocsSource::NixDarwin => write!(f, "nix-darwin"),
+            DocsSource::HomeManager => write!(f, "home-manager"),
+        }
+    }
+}
+
+impl DocsSource {
+    /// Parse from a user-provided string, returning None for "all"/unrecognized.
+    pub fn from_filter(s: &str) -> Option<Self> {
+        match s.to_ascii_lowercase().as_str() {
+            "nix-darwin" | "nixdarwin" | "darwin" => Some(DocsSource::NixDarwin),
+            "home-manager" | "homemanager" | "home" | "hm" => Some(DocsSource::HomeManager),
+            _ => None,
+        }
+    }
+}
+
+/// One normalized option row in the in-memory docs index.
+///
+/// Both static and generated docs are converted into this shape. Keeping the
+/// search layer on this compact representation lets the generated-docs path
+/// swap in transparently once the app has produced fresher docs.
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct DocsOptionEntry {
+    pub(crate) option_path: String,
+    pub(crate) summary: String,
+    pub(crate) option_type: Option<String>,
+    #[serde(skip)]
+    pub(crate) source: DocsSource,
+}
+
+/// The complete in-memory docs index consumed by `search_docs`.
+#[derive(Debug, Default)]
+pub(crate) struct DocsIndex {
+    pub(crate) entries: Vec<DocsOptionEntry>,
+}
+
+/// Loader abstraction for any source that can produce a complete docs index.
+///
+/// The static loader reads bundled resources, while the generated loader reads
+/// app-data cache files or generates them with Nix. `search_docs` only depends
+/// on this trait so it can choose the fastest available source at startup.
+pub trait DocsIndexLoader {
+    fn load(&self) -> Result<DocsIndex>;
+}
+
+/// Parse one compact docs JSON file into tagged option entries.
+///
+/// The generated JSON intentionally mirrors `scripts/generate-docs-index.py`:
+/// a flat array with `option_path`, `summary`, and `option_type`. Invalid rows
+/// are skipped so a single malformed entry does not disable the whole docs tool.
+pub(crate) fn parse_entries(json: &str, source: DocsSource) -> Vec<DocsOptionEntry> {
+    match serde_json::from_str::<Vec<serde_json::Value>>(json) {
+        Ok(v) => {
+            let mut out: Vec<DocsOptionEntry> = Vec::with_capacity(v.len());
+            for item in v.into_iter() {
+                if let Some(obj) = item.as_object() {
+                    let option_path = obj
+                        .get("option_path")
+                        .and_then(|s| s.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    if option_path.is_empty() {
+                        continue;
+                    }
+                    let summary = obj
+                        .get("summary")
+                        .and_then(|s| s.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let option_type = obj
+                        .get("option_type")
+                        .and_then(|s| s.as_str())
+                        .map(|s| s.to_string());
+
+                    out.push(DocsOptionEntry {
+                        option_path,
+                        summary,
+                        option_type,
+                        source,
+                    });
+                }
+            }
+            out
+        }
+        Err(e) => {
+            log::error!("[docs_system] failed to parse {} docs JSON: {}", source, e);
+            Vec::new()
+        }
+    }
+}
+
+/// Build a single index from the nix-darwin and Home Manager compact docs JSON.
+///
+/// This is shared by both loaders so static resources and generated app-data
+/// files behave identically once they reach the search layer.
+pub fn initialize_docs_index_from_strs(
+    nix_darwin_json: &str,
+    home_manager_json: &str,
+) -> Result<DocsIndex> {
+    let _timer = TimerGuard::new("initialize_docs_index_from_strs");
+
+    let mut entries = parse_entries(nix_darwin_json, DocsSource::NixDarwin);
+    let darwin_count = entries.len();
+
+    let hm_entries = parse_entries(home_manager_json, DocsSource::HomeManager);
+    let hm_count = hm_entries.len();
+    entries.extend(hm_entries);
+
+    log::info!(
+        "[docs_system] build docs index with {} nix-darwin + {} home-manager = {} total entries",
+        darwin_count,
+        hm_count,
+        entries.len(),
+    );
+    Ok(DocsIndex { entries })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::docs::docs_system::parse_entries;
+    use crate::docs::static_docs::{HOME_MANAGER_DOCS_JSON, NIX_DARWIN_DOCS_JSON};
+
+    #[test]
+    fn parse_nix_darwin_entries_loads_json() {
+        let entries = parse_entries(NIX_DARWIN_DOCS_JSON, DocsSource::NixDarwin);
+        assert!(!entries.is_empty(), "expected parsed entries from JSON");
+        assert!(
+            entries.iter().all(|e| e.source == DocsSource::NixDarwin),
+            "all entries should be tagged as nix-darwin"
+        );
+    }
+
+    #[test]
+    fn parse_home_manager_entries_loads_json() {
+        let entries = parse_entries(HOME_MANAGER_DOCS_JSON, DocsSource::HomeManager);
+        assert!(
+            !entries.is_empty(),
+            "expected parsed home-manager entries from JSON"
+        );
+        assert!(
+            entries.iter().all(|e| e.source == DocsSource::HomeManager),
+            "all entries should be tagged as home-manager"
+        );
+    }
+
+    #[test]
+    fn documentation_enable_entry_present() {
+        let entries = parse_entries(NIX_DARWIN_DOCS_JSON, DocsSource::NixDarwin);
+        let found = entries
+            .iter()
+            .find(|e| e.option_path == "documentation.enable");
+        assert!(found.is_some(), "documentation.enable not found in docs");
+        let e = found.unwrap();
+        // expect the documented type to include "boolean"
+        let has_bool = e
+            .option_type
+            .as_deref()
+            .map(|s| s.to_ascii_lowercase().contains("boolean"))
+            .unwrap_or(false);
+        assert!(
+            has_bool,
+            "documentation.enable type does not indicate boolean"
+        );
+    }
+
+    #[test]
+    fn sample_entries_have_summary_and_path() {
+        let entries = parse_entries(NIX_DARWIN_DOCS_JSON, DocsSource::NixDarwin);
+        for e in entries.iter().take(50) {
+            assert!(!e.option_path.is_empty(), "option_path empty");
+            assert!(
+                e.summary.len() > 8,
+                "summary too short for {}",
+                e.option_path
+            );
+        }
+    }
+}
