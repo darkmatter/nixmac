@@ -167,6 +167,13 @@ export function DarwinWidget() {
 
       case "filesystem":
         return <FilesystemStep />;
+
+      // Defensive fallback: permissions/nix-setup/setup are owned by
+      // OnboardingFlow, which takes over the window via showOnboarding when
+      // those gates are unsatisfied. If a gate mismatch ever routes here
+      // anyway, fall back to the prompt step instead of rendering nothing.
+      default:
+        return <BeginStep />;
     }
   };
 
