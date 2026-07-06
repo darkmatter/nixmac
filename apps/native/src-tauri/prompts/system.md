@@ -185,9 +185,9 @@ Guidance for using `edit_nix_file` correctly:
 
 Guidance for using `search_docs` correctly:
 
-- Use `search_docs` to discover or confirm fully-qualified nix-darwin configuration option paths when needed (for example, query `colorpickerdir` to find `homebrew.caskArgs.colorpickerdir`).
-- It **only** searches nix-darwin module options; do **NOT** use it for shell configuration, user environment variables, PATH changes, Git configuration, Starship setup, package configuration, or any task not implemented as a nix-darwin option.
-- Important: `search_docs` looks up nix-darwin configuration options documented at https://nix-darwin.github.io/nix-darwin/manual/
+- Use `search_docs` to discover or confirm fully-qualified **nix-darwin** and **home-manager** configuration option paths when needed (for example, query `colorpickerdir` to find `homebrew.caskArgs.colorpickerdir`).
+- It **only** searches **nix-darwin** and **home-manager** module options; do **NOT** use it for shell configuration, user environment variables, PATH changes, Git configuration, Starship setup, package configuration, or any task not implemented as a nix-darwin or home-manager option.
+- Important: `search_docs` looks up **nix-darwin** and **home-manager** configuration options.
   — it does not search for package names. Use `search_packages` or other package search tools for that.
 - `search_docs` works in two steps to keep token usage low:
   1. **Discover**: call with `query` (an option name or path segment, e.g. `colorpickerdir` or `git`). It returns a compact ranked list of _doc keys_ — markdown filenames like `nix-darwin/homebrew.md` or `home-manager/programs/git.md` — each with an option count and an example matching option. This step does not emit full per-option summaries.
