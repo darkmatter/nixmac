@@ -439,7 +439,7 @@ impl GeneratedDocsIndexLoader {
     /// regenerating rather than reading any cached file when `force` is set.
     fn load_with(
         &self,
-        generate: impl Fn(OptionsTool, bool) -> Result<String>,
+        generate: impl Fn(OptionsTool, bool) -> Result<String> + Sync,
     ) -> Result<DocsIndex> {
         std::fs::create_dir_all(&self.docs_dir)?;
 
@@ -460,8 +460,16 @@ impl GeneratedDocsIndexLoader {
         // back. Fresh metadata with a missing file only happens for a corrupt
         // cache; reusing the intact file is then safe.
         let force = !self.cache_meta_is_fresh();
-        let generated = generate(OptionsTool::NixDarwin, force)
-            .and_then(|nix_darwin| Ok((nix_darwin, generate(OptionsTool::HomeManager, force)?)));
+        // The two option sets evaluate independently and each nix invocation
+        // can take tens of seconds on a cold cache, so run them concurrently.
+        let generated = std::thread::scope(|scope| {
+            let nix_darwin = scope.spawn(|| generate(OptionsTool::NixDarwin, force));
+            let home_manager = generate(OptionsTool::HomeManager, force);
+            let nix_darwin = nix_darwin
+                .join()
+                .unwrap_or_else(|panic| std::panic::resume_unwind(panic));
+            nix_darwin.and_then(|nix_darwin| Ok((nix_darwin, home_manager?)))
+        });
         match generated {
             Ok((nix_darwin_json, home_manager_json)) => {
                 self.write_cache_meta()?;
@@ -611,14 +619,14 @@ mod tests {
         write_meta(docs_dir, DOCS_CACHE_SCHEMA_VERSION - 1, now_unix_secs())?;
 
         let loader = GeneratedDocsIndexLoader::new(docs_dir.to_path_buf());
-        let forced = std::cell::RefCell::new(Vec::new());
+        let forced = std::sync::Mutex::new(Vec::new());
         let index = loader.load_with(|_tool, force| {
-            forced.borrow_mut().push(force);
+            forced.lock().unwrap().push(force);
             Ok(TEST_DOCS_JSON.to_string())
         })?;
 
         assert_eq!(
-            forced.into_inner(),
+            forced.into_inner().unwrap(),
             vec![true, true],
             "stale metadata must force regeneration of both sources"
         );
@@ -640,14 +648,14 @@ mod tests {
         write_fresh_meta(docs_dir)?;
 
         let loader = GeneratedDocsIndexLoader::new(docs_dir.to_path_buf());
-        let forced = std::cell::RefCell::new(Vec::new());
+        let forced = std::sync::Mutex::new(Vec::new());
         loader.load_with(|_tool, force| {
-            forced.borrow_mut().push(force);
+            forced.lock().unwrap().push(force);
             Ok(TEST_DOCS_JSON.to_string())
         })?;
 
         assert_eq!(
-            forced.into_inner(),
+            forced.into_inner().unwrap(),
             vec![false, false],
             "fresh metadata must not force regeneration"
         );
