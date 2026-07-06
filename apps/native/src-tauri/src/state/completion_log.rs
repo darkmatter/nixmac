@@ -89,7 +89,8 @@ pub async fn append_event_jsonl<T: Serialize>(
     // Mirror the JSONL line to stderr so it appears in the console alongside
     // other `tracing` output. Gated by the same `NIXMAC_RECORD_COMPLETIONS`
     // flag as the file write — no extra env var needed.
-    info!("[completion_log] {line}");
+    // This swamps other output and therefore is commented out by default, but can be uncommented for debugging.
+    //info!("[completion_log] {line}");
 
     let path = log_path_for_today(prefix);
     // Build the complete line buffer before entering spawn_blocking.
