@@ -322,11 +322,12 @@ fn generate_options_json(tool: OptionsTool, docs_dir: &Path) -> Result<String> {
     })
 }
 
-/// Convert raw `nixosOptionsDoc` metadata into the compact search index JSON.
-///
-/// This is the Rust equivalent of `scripts/generate-docs-index.py`: sorted
-/// option keys become flat rows containing the option path, anchor id, summary,
-/// and type. The output is what we cache in app data.
+/// Convert raw `nixosOptionsDoc` metadata into the compact search index JSON:
+/// sorted option keys become flat rows containing the option path, anchor id,
+/// summary, and type. This is the only generator of the format — both the
+/// runtime app-data cache and the bundled static resources (via the
+/// `gen-docs-index` dev command wrapped by `scripts/nix-options.sh`) come from
+/// here.
 fn docs_index_json_from_options_json(options_json: &str) -> Result<String> {
     let options: Value =
         serde_json::from_str(options_json).context("failed to parse generated options JSON")?;
@@ -381,6 +382,20 @@ fn read_cached_docs_json(tool: OptionsTool, docs_dir: &Path) -> Option<String> {
             None
         }
     }
+}
+
+/// Regenerate the compact docs JSON files into `out_dir`, bypassing caches.
+///
+/// This is the `gen-docs-index` dev command used to refresh the bundled
+/// static resources. It runs the exact pipeline the app uses at runtime, so
+/// the committed fallback JSON cannot drift from runtime-generated docs.
+pub fn generate_docs_index_files(out_dir: &Path) -> Result<()> {
+    std::fs::create_dir_all(out_dir)?;
+    for tool in [OptionsTool::NixDarwin, OptionsTool::HomeManager] {
+        read_or_generate_docs_json(tool, out_dir, true)?;
+        println!("  {}", out_dir.join(tool.docs_file_name()).display());
+    }
+    Ok(())
 }
 
 /// Read a generated docs file if cached, otherwise generate and cache it.
@@ -495,7 +510,7 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
-    fn docs_index_json_from_options_json_matches_python_shape() {
+    fn docs_index_json_from_options_json_emits_compact_shape() {
         let json = docs_index_json_from_options_json(
             r#"{
               "programs.git.enable": {

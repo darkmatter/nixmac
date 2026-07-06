@@ -67,7 +67,7 @@ pub trait DocsIndexLoader {
 
 /// Parse one compact docs JSON file into tagged option entries.
 ///
-/// The generated JSON intentionally mirrors `scripts/generate-docs-index.py`:
+/// The format is produced by `generated_docs::docs_index_json_from_options_json`:
 /// a flat array with `option_path`, `summary`, and `option_type`. Invalid rows
 /// are skipped so a single malformed entry does not disable the whole docs tool.
 pub(crate) fn parse_entries(json: &str, source: DocsSource) -> Vec<DocsOptionEntry> {

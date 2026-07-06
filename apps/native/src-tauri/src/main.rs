@@ -249,6 +249,19 @@ fn main() {
         return;
     }
 
+    if std::env::args().nth(1).as_deref() == Some("gen-docs-index") {
+        let out_dir = std::env::args()
+            .nth(2)
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("resources"));
+        println!("Generating docs indexes into {}:", out_dir.display());
+        if let Err(error) = docs::generated_docs::generate_docs_index_files(&out_dir) {
+            eprintln!("gen-docs-index: {error:#}");
+            std::process::exit(1);
+        }
+        return;
+    }
+
     // Initialize tracing subscriber with optional file logging
     let env_filter = crate::e2e_runtime::value("RUST_LOG")
         .map(EnvFilter::new)

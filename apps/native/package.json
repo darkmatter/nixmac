@@ -46,7 +46,8 @@
     "test:wdio:onboarding": "npm run build:e2e && wdio run e2e-tauri/wdio.onboarding.conf.mjs",
     "generate": "bun run gen:schemas",
     "gen:schemas": "cargo run --manifest-path src-tauri/Cargo.toml --bin nixmac -- gen-schemas",
-    "gen:orpc": "cargo run --manifest-path src-tauri/Cargo.toml --bin nixmac -- gen-orpc"
+    "gen:orpc": "cargo run --manifest-path src-tauri/Cargo.toml --bin nixmac -- gen-orpc",
+    "gen:docs-index": "cargo run --manifest-path src-tauri/Cargo.toml --bin nixmac -- gen-docs-index"
   },
   "dependencies": {
     "@daveyplate/better-auth-tauri": "0.1.9",
