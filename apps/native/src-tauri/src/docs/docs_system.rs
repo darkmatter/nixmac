@@ -36,18 +36,68 @@ impl DocsSource {
     }
 }
 
+/// Top-level categories large enough to warrant one doc key per second-level
+/// subcategory. Doc keys for options under these are `<source>/<top>/<sub>.md`
+/// instead of `<source>/<top>.md`, so the agent reads a focused slice rather
+/// than a giant `programs.md` / `services.md`.
+const SPLIT_KEYS: &[&str] = &["programs", "services"];
+
+/// Compute the doc key grouping an option: `<source>/<top>.md`, split one
+/// level deeper for the large `SPLIT_KEYS` categories. Doc keys are synthetic
+/// markdown-style paths used purely as stable grouping labels — no such files
+/// exist on disk.
+pub(crate) fn doc_key_for(source: DocsSource, option_path: &str) -> String {
+    let segments: Vec<&str> = option_path.split('.').collect();
+    let first = segments.first().copied().unwrap_or("");
+    if first.is_empty() {
+        return format!("{}/index.md", source);
+    }
+    if SPLIT_KEYS.contains(&first) && segments.len() >= 2 {
+        format!("{}/{}/{}.md", source, first, segments[1])
+    } else {
+        format!("{}/{}.md", source, first)
+    }
+}
+
 /// One normalized option row in the in-memory docs index.
 ///
 /// Both static and generated docs are converted into this shape. Keeping the
 /// search layer on this compact representation lets the generated-docs path
 /// swap in transparently once the app has produced fresher docs.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone)]
 pub(crate) struct DocsOptionEntry {
     pub(crate) option_path: String,
     pub(crate) summary: String,
     pub(crate) option_type: Option<String>,
-    #[serde(skip)]
     pub(crate) source: DocsSource,
+    /// Query-independent data derived from the fields above, computed once at
+    /// index build so per-query scoring does not re-lowercase or re-format
+    /// every entry (several thousand per search).
+    pub(crate) option_path_lower: String,
+    pub(crate) summary_lower: String,
+    pub(crate) doc_key: String,
+}
+
+impl DocsOptionEntry {
+    pub(crate) fn new(
+        option_path: String,
+        summary: String,
+        option_type: Option<String>,
+        source: DocsSource,
+    ) -> Self {
+        let option_path_lower = option_path.to_ascii_lowercase();
+        let summary_lower = summary.to_ascii_lowercase();
+        let doc_key = doc_key_for(source, &option_path);
+        Self {
+            option_path,
+            summary,
+            option_type,
+            source,
+            option_path_lower,
+            summary_lower,
+            doc_key,
+        }
+    }
 }
 
 /// The complete in-memory docs index consumed by `search_docs`.
@@ -67,7 +117,7 @@ pub trait DocsIndexLoader {
 
 /// Parse one compact docs JSON file into tagged option entries.
 ///
-/// The generated JSON intentionally mirrors `scripts/generate-docs-index.py`:
+/// The format is produced by `generated_docs::docs_index_json_from_options_json`:
 /// a flat array with `option_path`, `summary`, and `option_type`. Invalid rows
 /// are skipped so a single malformed entry does not disable the whole docs tool.
 pub(crate) fn parse_entries(json: &str, source: DocsSource) -> Vec<DocsOptionEntry> {
@@ -94,12 +144,12 @@ pub(crate) fn parse_entries(json: &str, source: DocsSource) -> Vec<DocsOptionEnt
                         .and_then(|s| s.as_str())
                         .map(|s| s.to_string());
 
-                    out.push(DocsOptionEntry {
+                    out.push(DocsOptionEntry::new(
                         option_path,
                         summary,
                         option_type,
                         source,
-                    });
+                    ));
                 }
             }
             out

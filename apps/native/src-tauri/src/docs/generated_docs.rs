@@ -17,6 +17,36 @@ use crate::system::nix::nix_command;
 
 const NIX_DARWIN_DOCS_JSON_BASE: &str = "nix-darwin-docs.json";
 const HOME_MANAGER_DOCS_JSON_BASE: &str = "home-manager-docs.json";
+const DOCS_CACHE_META_FILE: &str = "docs-cache-meta.json";
+
+/// Version of the docs generation pipeline: the Nix eval expressions plus the
+/// compact index format. Bump when either changes so existing caches
+/// regenerate. App releases that leave the pipeline untouched keep the cache
+/// (keying on the app version would regenerate identical content on every
+/// upgrade).
+const DOCS_CACHE_SCHEMA_VERSION: u32 = 1;
+
+/// Maximum cache age before the cache counts as stale and the background
+/// refresh regenerates it. The generated docs track floating upstream refs
+/// (nix-darwin and home-manager master, plus the nixpkgs they resolve) that we
+/// cannot observe without network round-trips, so refresh periodically.
+const DOCS_CACHE_MAX_AGE: std::time::Duration = std::time::Duration::from_secs(7 * 24 * 60 * 60);
+
+/// On-disk metadata describing the cached generated docs, stored next to them.
+#[derive(serde::Serialize, serde::Deserialize)]
+struct DocsCacheMeta {
+    schema_version: u32,
+    /// Unix seconds at generation time.
+    generated_at: u64,
+}
+
+/// Current time as unix seconds; 0 if the clock is before the epoch.
+fn now_unix_secs() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
 
 /// Loader for runtime-generated option docs stored in the app data directory.
 /// The app persists the compact `*-docs.json` files in the format used by `search_docs`.
@@ -48,11 +78,16 @@ impl OptionsTool {
         }
     }
 
+    /// Nix snippet defining `pkgs` and `eval` for this tool. `pkgs` comes from
+    /// the flake's own pinned nixpkgs input rather than `<nixpkgs>`, so
+    /// generation does not depend on a channel/NIX_PATH being configured in
+    /// the app's launch environment (GUI launches often have neither).
     fn eval_expr(self) -> &'static str {
         match self {
             Self::NixDarwin => {
                 r#"
         flake = builtins.getFlake "github:nix-darwin/nix-darwin";
+        pkgs = import flake.inputs.nixpkgs {};
         eval = flake.lib.darwinSystem {
           inherit pkgs;
           modules = [{
@@ -66,6 +101,7 @@ impl OptionsTool {
             Self::HomeManager => {
                 r#"
         hm = builtins.getFlake "github:nix-community/home-manager";
+        pkgs = import hm.inputs.nixpkgs {};
         eval = hm.lib.homeManagerConfiguration {
           inherit pkgs;
           modules = [{
@@ -94,21 +130,55 @@ impl GeneratedDocsIndexLoader {
         Ok(Self::new(docs_dir))
     }
 
-    /// Return true only when both generated docs files are present.
-    /// `search_docs` uses this as a fast readiness check. Partial caches are
-    /// treated as missing so we never mix generated docs from one source with
-    /// static docs from the other.
+    /// Return true only when both generated docs files are present and the
+    /// cache metadata is fresh (matching schema version, within the maximum
+    /// age). `search_docs` uses this as a fast readiness check. Partial and
+    /// stale caches are treated as missing so we never mix stale generated
+    /// docs with static docs.
     pub fn has_cached_docs(&self) -> bool {
-        self.docs_dir.join(NIX_DARWIN_DOCS_JSON_BASE).exists()
-            && self.docs_dir.join(HOME_MANAGER_DOCS_JSON_BASE).exists()
+        if !self.docs_dir.join(NIX_DARWIN_DOCS_JSON_BASE).exists()
+            || !self.docs_dir.join(HOME_MANAGER_DOCS_JSON_BASE).exists()
+        {
+            return false;
+        }
+        self.cache_meta_is_fresh()
+    }
+
+    /// True when the cache metadata exists, was written by the current docs
+    /// pipeline schema, and is younger than `DOCS_CACHE_MAX_AGE`. Missing or
+    /// unparsable metadata counts as stale.
+    fn cache_meta_is_fresh(&self) -> bool {
+        let Ok(raw) = std::fs::read_to_string(self.docs_dir.join(DOCS_CACHE_META_FILE)) else {
+            return false;
+        };
+        let Ok(meta) = serde_json::from_str::<DocsCacheMeta>(&raw) else {
+            return false;
+        };
+        meta.schema_version == DOCS_CACHE_SCHEMA_VERSION
+            && now_unix_secs().saturating_sub(meta.generated_at) <= DOCS_CACHE_MAX_AGE.as_secs()
+    }
+
+    /// Write the cache metadata so future startups recognise the cache.
+    fn write_cache_meta(&self) -> Result<()> {
+        let meta = DocsCacheMeta {
+            schema_version: DOCS_CACHE_SCHEMA_VERSION,
+            generated_at: now_unix_secs(),
+        };
+        let json = serde_json::to_string(&meta).context("failed to serialize docs cache meta")?;
+        write_file_atomically(&self.docs_dir.join(DOCS_CACHE_META_FILE), &json)
+            .context("failed to write docs cache metadata")
     }
 
     /// Load generated docs from app data without starting Nix generation.
     /// This is the foreground startup path: if the cache is complete, the app
     /// can immediately use generated docs. If not, the caller can fall back to
     /// static docs and decide whether to generate in the background.
-    /// TODO: Detect when we ought to regenerate the cache, e.g. when the nixpkgs flake input has changed
-    /// in a significant way.
+    ///
+    /// The cache is invalidated when the docs pipeline schema changes or the
+    /// cache exceeds its maximum age. We write `DOCS_CACHE_META_FILE` alongside
+    /// the docs files at generation time; if it is missing, unparsable, or
+    /// stale, the cache is treated as incomplete so the background refresh
+    /// regenerates it.
     pub fn load_cached(&self) -> Result<DocsIndex> {
         if !self.has_cached_docs() {
             anyhow::bail!(
@@ -116,7 +186,13 @@ impl GeneratedDocsIndexLoader {
                 self.docs_dir.display()
             );
         }
+        self.load_cached_files()
+    }
 
+    /// Read and validate both docs files, ignoring the metadata freshness.
+    /// Used by `load_cached` behind the readiness check, and as the stale
+    /// fallback when regeneration fails.
+    fn load_cached_files(&self) -> Result<DocsIndex> {
         let nix_darwin_json =
             std::fs::read_to_string(self.docs_dir.join(NIX_DARWIN_DOCS_JSON_BASE))
                 .with_context(|| format!("failed to read {}", NIX_DARWIN_DOCS_JSON_BASE))?;
@@ -174,8 +250,6 @@ fn options_expr(tool: OptionsTool) -> String {
     format!(
         r#"
 let
-  pkgs = import <nixpkgs> {{}};
-
   {}
 
   optionsDoc = pkgs.nixosOptionsDoc {{
@@ -248,11 +322,11 @@ fn generate_options_json(tool: OptionsTool, docs_dir: &Path) -> Result<String> {
     })
 }
 
-/// Convert raw `nixosOptionsDoc` metadata into the compact search index JSON.
-///
-/// This is the Rust equivalent of `scripts/generate-docs-index.py`: sorted
-/// option keys become flat rows containing the option path, anchor id, summary,
-/// and type. The output is what we cache in app data.
+/// Convert raw `nixosOptionsDoc` metadata into the compact search index JSON:
+/// sorted option keys become flat rows containing the option path, summary,
+/// and type. This is the only generator of the format — both the runtime
+/// app-data cache and the bundled static resources (via the `gen-docs-index`
+/// dev command wrapped by `scripts/nix-options.sh`) come from here.
 fn docs_index_json_from_options_json(options_json: &str) -> Result<String> {
     let options: Value =
         serde_json::from_str(options_json).context("failed to parse generated options JSON")?;
@@ -272,7 +346,6 @@ fn docs_index_json_from_options_json(options_json: &str) -> Result<String> {
         };
         docs.push(json!({
             "option_path": path,
-            "anchor_id": format!("opt-{path}"),
             "summary": entry.get("description").and_then(Value::as_str).unwrap_or(""),
             "option_type": entry.get("type").and_then(Value::as_str),
         }));
@@ -283,24 +356,60 @@ fn docs_index_json_from_options_json(options_json: &str) -> Result<String> {
     Ok(json)
 }
 
+/// Read a tool's cached docs file if it exists and validates, else `None`.
+fn read_cached_docs_json(tool: OptionsTool, docs_dir: &Path) -> Option<String> {
+    let docs_path = docs_dir.join(tool.docs_file_name());
+    let cached_json = match std::fs::read_to_string(&docs_path) {
+        Ok(json) => json,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return None,
+        Err(err) => {
+            log::warn!(
+                "[generated_docs] ignoring unreadable generated docs cache {}: {err:#}",
+                docs_path.display()
+            );
+            return None;
+        }
+    };
+    match validate_docs_json(&cached_json, tool.docs_file_name()) {
+        Ok(()) => Some(cached_json),
+        Err(err) => {
+            log::warn!(
+                "[generated_docs] ignoring invalid generated docs cache {}: {err:#}",
+                docs_path.display()
+            );
+            None
+        }
+    }
+}
+
+/// Regenerate the compact docs JSON files into `out_dir`, bypassing caches.
+///
+/// This is the `gen-docs-index` dev command used to refresh the bundled
+/// static resources. It runs the exact pipeline the app uses at runtime, so
+/// the committed fallback JSON cannot drift from runtime-generated docs.
+pub fn generate_docs_index_files(out_dir: &Path) -> Result<()> {
+    std::fs::create_dir_all(out_dir)?;
+    for tool in [OptionsTool::NixDarwin, OptionsTool::HomeManager] {
+        read_or_generate_docs_json(tool, out_dir, true)?;
+        println!("  {}", out_dir.join(tool.docs_file_name()).display());
+    }
+    Ok(())
+}
+
 /// Read a generated docs file if cached, otherwise generate and cache it.
+/// With `force`, skip the cached file entirely and regenerate — used when the
+/// cache is stale, where returning the existing file would defeat invalidation.
 ///
 /// The durable artifact is the compact `*-docs.json` file. The raw options JSON
 /// is generated, transformed, and then dropped.
-fn read_or_generate_docs_json(tool: OptionsTool, docs_dir: &Path) -> Result<String> {
-    let docs_path = docs_dir.join(tool.docs_file_name());
-    if docs_path.exists() {
-        let cached_json = std::fs::read_to_string(&docs_path)
-            .with_context(|| format!("failed to read {}", docs_path.display()))?;
-        match validate_docs_json(&cached_json, tool.docs_file_name()) {
-            Ok(()) => return Ok(cached_json),
-            Err(err) => log::warn!(
-                "[generated_docs] ignoring invalid generated docs cache {}: {err:#}",
-                docs_path.display()
-            ),
+fn read_or_generate_docs_json(tool: OptionsTool, docs_dir: &Path, force: bool) -> Result<String> {
+    if !force {
+        if let Some(cached_json) = read_cached_docs_json(tool, docs_dir) {
+            return Ok(cached_json);
         }
     }
 
+    let docs_path = docs_dir.join(tool.docs_file_name());
     let options_json = generate_options_json(tool, docs_dir)?;
     let docs_json = docs_index_json_from_options_json(&options_json)?;
     validate_docs_json(&docs_json, tool.docs_file_name())?;
@@ -310,23 +419,26 @@ fn read_or_generate_docs_json(tool: OptionsTool, docs_dir: &Path) -> Result<Stri
 }
 
 /// Produce or read the cached nix-darwin compact docs JSON.
-fn generate_nix_darwin_docs_json(docs_dir: &Path) -> Result<String> {
+fn generate_nix_darwin_docs_json(docs_dir: &Path, force: bool) -> Result<String> {
     let _timer = TimerGuard::new("generate_nix_darwin_docs_json");
-    read_or_generate_docs_json(OptionsTool::NixDarwin, docs_dir)
+    read_or_generate_docs_json(OptionsTool::NixDarwin, docs_dir, force)
 }
 
 /// Produce or read the cached Home Manager compact docs JSON.
-fn generate_home_manager_docs_json(docs_dir: &Path) -> Result<String> {
+fn generate_home_manager_docs_json(docs_dir: &Path, force: bool) -> Result<String> {
     let _timer = TimerGuard::new("generate_home_manager_docs_json");
-    read_or_generate_docs_json(OptionsTool::HomeManager, docs_dir)
+    read_or_generate_docs_json(OptionsTool::HomeManager, docs_dir, force)
 }
 
-impl DocsIndexLoader for GeneratedDocsIndexLoader {
-    /// Load a complete generated docs index, generating missing files if needed.
-    ///
-    /// Callers that must not block on Nix should use `load_cached` first and
-    /// only call this method from a background task.
-    fn load(&self) -> Result<DocsIndex> {
+impl GeneratedDocsIndexLoader {
+    /// Core load flow with an injectable per-tool generator so tests can
+    /// exercise the cache and staleness decisions without running Nix.
+    /// `generate(tool, force)` must return the compact docs JSON for `tool`,
+    /// regenerating rather than reading any cached file when `force` is set.
+    fn load_with(
+        &self,
+        generate: impl Fn(OptionsTool, bool) -> Result<String> + Sync,
+    ) -> Result<DocsIndex> {
         std::fs::create_dir_all(&self.docs_dir)?;
 
         if self.has_cached_docs() {
@@ -340,11 +452,60 @@ impl DocsIndexLoader for GeneratedDocsIndexLoader {
             }
         }
 
-        // Otherwise, generate in the same way as we do with the nix-options.sh script
-        // but right here in Rust.
-        let nix_darwin_json = generate_nix_darwin_docs_json(&self.docs_dir)?;
-        let home_manager_json = generate_home_manager_docs_json(&self.docs_dir)?;
-        initialize_docs_index_from_strs(&nix_darwin_json, &home_manager_json)
+        // Stale (or absent) metadata means any docs files on disk predate the
+        // current pipeline schema or exceeded the maximum age, so force
+        // regeneration instead of letting the generator hand the stale files
+        // back. Fresh metadata with a missing file only happens for a corrupt
+        // cache; reusing the intact file is then safe.
+        let force = !self.cache_meta_is_fresh();
+        // The two option sets evaluate independently and each nix invocation
+        // can take tens of seconds on a cold cache, so run them concurrently.
+        let generated = std::thread::scope(|scope| {
+            let nix_darwin = scope.spawn(|| generate(OptionsTool::NixDarwin, force));
+            let home_manager = generate(OptionsTool::HomeManager, force);
+            let nix_darwin = nix_darwin
+                .join()
+                .unwrap_or_else(|panic| std::panic::resume_unwind(panic));
+            nix_darwin.and_then(|nix_darwin| Ok((nix_darwin, home_manager?)))
+        });
+        match generated {
+            Ok((nix_darwin_json, home_manager_json)) => {
+                self.write_cache_meta()?;
+                initialize_docs_index_from_strs(&nix_darwin_json, &home_manager_json)
+            }
+            Err(err) => {
+                // Regeneration failed (offline, upstream breakage, missing
+                // nix). Valid-but-stale generated docs still describe the
+                // user's system better than the bundled static fallback the
+                // caller would revert to, so serve them. The metadata is left
+                // stale so a later launch retries the regeneration.
+                match self.load_cached_files() {
+                    Ok(index) => {
+                        log::warn!(
+                            "[generated_docs] regeneration failed; serving stale generated docs: {err:#}"
+                        );
+                        Ok(index)
+                    }
+                    Err(_) => Err(err),
+                }
+            }
+        }
+    }
+}
+
+impl DocsIndexLoader for GeneratedDocsIndexLoader {
+    /// Load a complete generated docs index, generating missing or stale files
+    /// if needed.
+    ///
+    /// Callers that must not block on Nix should use `load_cached` first and
+    /// only call this method from a background task.
+    fn load(&self) -> Result<DocsIndex> {
+        // Generate in the same way as we do with the nix-options.sh script but
+        // right here in Rust.
+        self.load_with(|tool, force| match tool {
+            OptionsTool::NixDarwin => generate_nix_darwin_docs_json(&self.docs_dir, force),
+            OptionsTool::HomeManager => generate_home_manager_docs_json(&self.docs_dir, force),
+        })
     }
 }
 
@@ -355,7 +516,7 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
-    fn docs_index_json_from_options_json_matches_python_shape() {
+    fn docs_index_json_from_options_json_emits_compact_shape() {
         let json = docs_index_json_from_options_json(
             r#"{
               "programs.git.enable": {
@@ -370,7 +531,10 @@ mod tests {
         let docs: Vec<Value> = serde_json::from_str(&json).expect("generated JSON should parse");
         assert_eq!(docs.len(), 1);
         assert_eq!(docs[0]["option_path"], "programs.git.enable");
-        assert_eq!(docs[0]["anchor_id"], "opt-programs.git.enable");
+        assert!(
+            docs[0].get("anchor_id").is_none(),
+            "anchor_id is derivable from option_path and consumed by nothing"
+        );
         assert_eq!(docs[0]["summary"], "Enable Git.");
         assert_eq!(docs[0]["option_type"], "boolean");
     }
@@ -397,6 +561,248 @@ mod tests {
             .count();
         assert_eq!(leftover_temp_files, 0);
 
+        Ok(())
+    }
+
+    #[test]
+    fn read_or_generate_docs_json_returns_cached_file_without_nix() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let docs_dir = temp.path();
+        let cached = r#"[
+          {"option_path":"programs.git.enable","anchor_id":"opt-programs.git.enable","summary":"Enable Git.","option_type":"boolean"}
+        ]"#;
+        std::fs::write(docs_dir.join(NIX_DARWIN_DOCS_JSON_BASE), cached)?;
+
+        let result = read_or_generate_docs_json(OptionsTool::NixDarwin, docs_dir, false)?;
+        assert_eq!(result, cached, "should return the cached file verbatim");
+        Ok(())
+    }
+
+    #[test]
+    fn read_cached_docs_json_rejects_invalid_file() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let docs_dir = temp.path();
+        std::fs::write(docs_dir.join(NIX_DARWIN_DOCS_JSON_BASE), "not json")?;
+
+        assert!(read_cached_docs_json(OptionsTool::NixDarwin, docs_dir).is_none());
+        Ok(())
+    }
+
+    const TEST_DOCS_JSON: &str = r#"[
+      {"option_path":"programs.git.enable","anchor_id":"opt-programs.git.enable","summary":"Enable Git.","option_type":"boolean"}
+    ]"#;
+
+    /// Write both docs files so the cache looks complete apart from the metadata.
+    fn write_docs_files(docs_dir: &Path) -> Result<()> {
+        std::fs::write(docs_dir.join(NIX_DARWIN_DOCS_JSON_BASE), TEST_DOCS_JSON)?;
+        std::fs::write(docs_dir.join(HOME_MANAGER_DOCS_JSON_BASE), TEST_DOCS_JSON)?;
+        Ok(())
+    }
+
+    fn write_meta(docs_dir: &Path, schema_version: u32, generated_at: u64) -> Result<()> {
+        let meta = serde_json::to_string(&DocsCacheMeta {
+            schema_version,
+            generated_at,
+        })?;
+        std::fs::write(docs_dir.join(DOCS_CACHE_META_FILE), meta)?;
+        Ok(())
+    }
+
+    fn write_fresh_meta(docs_dir: &Path) -> Result<()> {
+        write_meta(docs_dir, DOCS_CACHE_SCHEMA_VERSION, now_unix_secs())
+    }
+
+    #[test]
+    fn load_forces_regeneration_when_cache_is_stale() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let docs_dir = temp.path();
+        write_docs_files(docs_dir)?;
+        write_meta(docs_dir, DOCS_CACHE_SCHEMA_VERSION - 1, now_unix_secs())?;
+
+        let loader = GeneratedDocsIndexLoader::new(docs_dir.to_path_buf());
+        let forced = std::sync::Mutex::new(Vec::new());
+        let index = loader.load_with(|_tool, force| {
+            forced.lock().unwrap().push(force);
+            Ok(TEST_DOCS_JSON.to_string())
+        })?;
+
+        assert_eq!(
+            forced.into_inner().unwrap(),
+            vec![true, true],
+            "stale metadata must force regeneration of both sources"
+        );
+        assert_eq!(index.entries.len(), 2);
+        assert!(
+            loader.cache_meta_is_fresh(),
+            "metadata should be refreshed after regeneration"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn load_reuses_intact_files_when_meta_is_fresh() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let docs_dir = temp.path();
+        // Fresh metadata but one docs file missing: the surviving file may be
+        // reused, only the missing one needs generating.
+        std::fs::write(docs_dir.join(NIX_DARWIN_DOCS_JSON_BASE), TEST_DOCS_JSON)?;
+        write_fresh_meta(docs_dir)?;
+
+        let loader = GeneratedDocsIndexLoader::new(docs_dir.to_path_buf());
+        let forced = std::sync::Mutex::new(Vec::new());
+        loader.load_with(|_tool, force| {
+            forced.lock().unwrap().push(force);
+            Ok(TEST_DOCS_JSON.to_string())
+        })?;
+
+        assert_eq!(
+            forced.into_inner().unwrap(),
+            vec![false, false],
+            "fresh metadata must not force regeneration"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn load_serves_stale_cache_when_regeneration_fails() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let docs_dir = temp.path();
+        write_docs_files(docs_dir)?;
+        let expired = now_unix_secs() - DOCS_CACHE_MAX_AGE.as_secs() - 1;
+        write_meta(docs_dir, DOCS_CACHE_SCHEMA_VERSION, expired)?;
+
+        let loader = GeneratedDocsIndexLoader::new(docs_dir.to_path_buf());
+        let index =
+            loader.load_with(|_tool, _force| anyhow::bail!("nix is unavailable in this test"))?;
+
+        assert_eq!(index.entries.len(), 2, "stale docs files should be served");
+        assert!(
+            !loader.cache_meta_is_fresh(),
+            "metadata must stay stale so a later launch retries regeneration"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn load_propagates_error_when_no_cache_and_generation_fails() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let loader = GeneratedDocsIndexLoader::new(temp.path().to_path_buf());
+        let result = loader.load_with(|_tool, _force| anyhow::bail!("nix is unavailable"));
+        assert!(result.is_err(), "no cache to fall back to");
+        Ok(())
+    }
+
+    #[test]
+    fn load_skips_generation_when_cache_is_fresh_and_complete() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let docs_dir = temp.path();
+        write_docs_files(docs_dir)?;
+        write_fresh_meta(docs_dir)?;
+
+        let loader = GeneratedDocsIndexLoader::new(docs_dir.to_path_buf());
+        let index = loader.load_with(|tool, _force| {
+            panic!("generator must not run for a fresh cache: {}", tool.label())
+        })?;
+        assert_eq!(index.entries.len(), 2);
+        Ok(())
+    }
+
+    #[test]
+    fn load_cached_tags_entries_by_source() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let docs_dir = temp.path();
+
+        let nix_darwin_docs = r#"[
+          {"option_path":"homebrew.enable","anchor_id":"opt-homebrew.enable","summary":"Enable Homebrew.","option_type":"boolean"}
+        ]"#;
+        let home_manager_docs = r#"[
+          {"option_path":"programs.git.enable","anchor_id":"opt-programs.git.enable","summary":"Enable Git.","option_type":"boolean"}
+        ]"#;
+        std::fs::write(docs_dir.join(NIX_DARWIN_DOCS_JSON_BASE), nix_darwin_docs)?;
+        std::fs::write(
+            docs_dir.join(HOME_MANAGER_DOCS_JSON_BASE),
+            home_manager_docs,
+        )?;
+        write_fresh_meta(docs_dir)?;
+
+        let loader = GeneratedDocsIndexLoader::new(docs_dir.to_path_buf());
+        let index = loader.load_cached()?;
+
+        assert_eq!(index.entries.len(), 2, "both sources loaded");
+        let darwin = index
+            .entries
+            .iter()
+            .find(|e| e.option_path == "homebrew.enable");
+        let hm = index
+            .entries
+            .iter()
+            .find(|e| e.option_path == "programs.git.enable");
+        assert_eq!(darwin.map(|e| e.source), Some(DocsSource::NixDarwin));
+        assert_eq!(hm.map(|e| e.source), Some(DocsSource::HomeManager));
+        Ok(())
+    }
+
+    #[test]
+    fn has_cached_docs_false_when_one_source_missing() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let docs_dir = temp.path();
+        std::fs::write(
+            docs_dir.join(NIX_DARWIN_DOCS_JSON_BASE),
+            r#"[{"option_path":"homebrew.enable"}]"#,
+        )?;
+
+        let loader = GeneratedDocsIndexLoader::new(docs_dir.to_path_buf());
+        assert!(
+            !loader.has_cached_docs(),
+            "partial cache should not be ready"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn stale_schema_version_invalidates_cache() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let docs_dir = temp.path();
+        write_docs_files(docs_dir)?;
+        // Metadata from an older docs pipeline schema.
+        write_meta(docs_dir, DOCS_CACHE_SCHEMA_VERSION - 1, now_unix_secs())?;
+
+        let loader = GeneratedDocsIndexLoader::new(docs_dir.to_path_buf());
+        assert!(
+            !loader.has_cached_docs(),
+            "cache with a stale schema version should not be ready"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn expired_cache_age_invalidates_cache() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let docs_dir = temp.path();
+        write_docs_files(docs_dir)?;
+        let expired = now_unix_secs() - DOCS_CACHE_MAX_AGE.as_secs() - 1;
+        write_meta(docs_dir, DOCS_CACHE_SCHEMA_VERSION, expired)?;
+
+        let loader = GeneratedDocsIndexLoader::new(docs_dir.to_path_buf());
+        assert!(
+            !loader.has_cached_docs(),
+            "cache older than the maximum age should not be ready"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn fresh_meta_keeps_cache() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let docs_dir = temp.path();
+        write_docs_files(docs_dir)?;
+        write_fresh_meta(docs_dir)?;
+
+        let loader = GeneratedDocsIndexLoader::new(docs_dir.to_path_buf());
+        assert!(
+            loader.has_cached_docs(),
+            "cache with fresh metadata should be ready"
+        );
         Ok(())
     }
 

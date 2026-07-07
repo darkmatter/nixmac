@@ -49,13 +49,6 @@ const DEFAULT_RESULT_LIMIT: usize = 10;
 // Max limit for search_docs results to prevent token bonfires or overwhelming the agent.
 const MAX_RESULT_LIMIT: usize = 20;
 
-/// Top-level categories that the docs generator splits into one file per
-/// second-level subcategory (mirrors SPLIT_KEYS in scripts/nix-options.sh).
-/// Doc keys for options under these are `<source>/<top>/<sub>.md` instead of
-/// `<source>/<top>.md`, so the agent reads a focused slice rather than a giant
-/// `programs.md` / `services.md`.
-const SPLIT_KEYS: &[&str] = &["programs", "services"];
-
 /// Safety cap on how many options a single "read doc" response can include, to
 /// avoid token bonfires if a split subcategory is unexpectedly large.
 const MAX_DOC_OPTIONS: usize = 400;
@@ -65,8 +58,9 @@ const MAX_DOC_OPTIONS: usize = 400;
 /// which would be futile and could cause token overuse.
 const NO_RESULTS_SENTINEL: &str = "SEARCH_DOCS_NO_RESULTS";
 
-/// Aggregate for a single doc (one generated markdown file). The doc key is the
-/// relative markdown path, e.g. `home-manager/programs/git.md`.
+/// Aggregate for a single doc key. Doc keys are synthetic markdown-style paths
+/// (e.g. `home-manager/programs/git.md`) used purely as stable grouping labels
+/// for options — no such files exist on disk.
 #[derive(Debug, Default)]
 struct DocGroup {
     /// Number of options contained in the doc.
@@ -76,21 +70,6 @@ struct DocGroup {
     /// A representative matching option path, shown as a hint.
     best_path: String,
     source: Option<DocsSource>,
-}
-
-/// Compute the doc key (relative markdown path) that contains an option,
-/// mirroring the layout produced by scripts/nix-options.sh.
-fn doc_key_for(source: DocsSource, option_path: &str) -> String {
-    let segments: Vec<&str> = option_path.split('.').collect();
-    let first = segments.first().copied().unwrap_or("");
-    if first.is_empty() {
-        return format!("{}/index.md", source);
-    }
-    if SPLIT_KEYS.contains(&first) && segments.len() >= 2 {
-        format!("{}/{}/{}.md", source, first, segments[1])
-    } else {
-        format!("{}/{}.md", source, first)
-    }
 }
 
 /// Normalize a doc path/key for comparison: lowercase, trim, drop a leading
@@ -166,11 +145,22 @@ fn install_static_docs_index_if_needed() {
     }
 }
 
+/// Delays between background generation attempts. Failures are usually
+/// transient (network not up yet after login, a flake fetch timing out), so a
+/// few spaced retries recover within the session instead of leaving it on
+/// static docs until the next launch.
+const GENERATED_DOCS_RETRY_DELAYS: &[std::time::Duration] = &[
+    std::time::Duration::from_secs(30),
+    std::time::Duration::from_secs(2 * 60),
+    std::time::Duration::from_secs(10 * 60),
+];
+
 /// Generate runtime docs in the background and swap them in when complete.
 /// The foreground path has already installed static docs before this is called,
 /// so a slow Nix build does not block `search_docs`. On success, the generated
-/// index atomically replaces the static one. On failure, the static index stays
-/// active and the refresh guard is reset for a possible future retry.
+/// index atomically replaces the static one. Failures are retried with backoff;
+/// once the retries are exhausted the static index stays active for the rest
+/// of the session and the refresh guard is reset for a future initialization.
 fn start_generated_docs_refresh<R: Runtime>(app: AppHandle<R>) {
     if GENERATED_DOCS_REFRESH_STARTED.swap(true, Ordering::SeqCst) {
         return;
@@ -178,11 +168,26 @@ fn start_generated_docs_refresh<R: Runtime>(app: AppHandle<R>) {
 
     tauri::async_runtime::spawn_blocking(move || {
         let _timer = TimerGuard::new("start_generated_docs_refresh");
-        match GeneratedDocsIndexLoader::for_app(&app).and_then(|loader| loader.load()) {
-            Ok(index) => install_docs_index(index, "generated docs"),
-            Err(err) => {
-                GENERATED_DOCS_REFRESH_STARTED.store(false, Ordering::SeqCst);
-                log::warn!("[search_docs] failed to generate docs index: {err:#}");
+        let mut delays = GENERATED_DOCS_RETRY_DELAYS.iter();
+        loop {
+            match GeneratedDocsIndexLoader::for_app(&app).and_then(|loader| loader.load()) {
+                Ok(index) => return install_docs_index(index, "generated docs"),
+                Err(err) => match delays.next() {
+                    Some(delay) => {
+                        log::warn!(
+                            "[search_docs] failed to generate docs index (retrying in {}s): {err:#}",
+                            delay.as_secs()
+                        );
+                        std::thread::sleep(*delay);
+                    }
+                    None => {
+                        GENERATED_DOCS_REFRESH_STARTED.store(false, Ordering::SeqCst);
+                        log::warn!(
+                            "[search_docs] failed to generate docs index; giving up for this session: {err:#}"
+                        );
+                        return;
+                    }
+                },
             }
         }
     });
@@ -226,7 +231,7 @@ pub fn initialize_docs_index_for_app<R: Runtime>(app: AppHandle<R>) {
 ///
 /// Two complementary modes keep token usage low:
 /// - Key search (default): given `query`, return a compact ranked list of doc
-///   keys (the generated markdown filenames, e.g. `home-manager/programs/git.md`)
+///   keys (markdown-style grouping labels, e.g. `home-manager/programs/git.md`)
 ///   with an option count and a representative matching option. No per-option
 ///   summaries are emitted here.
 /// - Read doc: given `doc_path` (one of the keys above), return the flat table
@@ -267,14 +272,14 @@ pub fn execute_search_docs(
         );
     }
 
-    let entries: Vec<&DocsOptionEntry> = index
-        .entries
-        .iter()
-        .filter(|e| source_filter.is_none_or(|s| e.source == s))
-        .collect();
-
     let max_results = limit.clamp(1, MAX_RESULT_LIMIT);
-    let ranked = rank_doc_keys(&entries, &normalized_query);
+    let ranked = rank_doc_keys(
+        index
+            .entries
+            .iter()
+            .filter(|e| source_filter.is_none_or(|s| e.source == s)),
+        &normalized_query,
+    );
 
     log::debug!(
         "[search_docs] key-search query='{}' source={:?} matched {} docs before truncation",
@@ -337,12 +342,11 @@ fn read_doc(index: &DocsIndex, requested: &str, source_filter: Option<DocsSource
         .iter()
         .filter(|e| source_filter.is_none_or(|s| e.source == s))
     {
-        let key = doc_key_for(entry.source, &entry.option_path);
-        let key_norm = normalize_doc_path(&key);
+        let key_norm = normalize_doc_path(&entry.doc_key);
         if key_norm == target {
             exact.push(entry);
         } else if key_norm.starts_with(child_prefix.as_str()) {
-            *child_keys.entry(key).or_insert(0) += 1;
+            *child_keys.entry(entry.doc_key.clone()).or_insert(0) += 1;
         }
     }
 
@@ -407,14 +411,16 @@ fn format_no_results_message(query: &str, source_filter: Option<DocsSource>) -> 
 
 /// Rank doc keys by the best per-option relevance score within each doc, with a
 /// bonus when the doc key (filename/category name) itself matches the query.
-fn rank_doc_keys(entries: &[&DocsOptionEntry], query: &str) -> Vec<(String, DocGroup)> {
+fn rank_doc_keys<'a>(
+    entries: impl Iterator<Item = &'a DocsOptionEntry>,
+    query: &str,
+) -> Vec<(String, DocGroup)> {
     let tokens: Vec<&str> = query.split_whitespace().filter(|t| !t.is_empty()).collect();
 
-    let mut groups: HashMap<String, DocGroup> = HashMap::new();
+    let mut groups: HashMap<&'a str, DocGroup> = HashMap::new();
     for entry in entries {
-        let key = doc_key_for(entry.source, &entry.option_path);
         let score = score_entry(entry, query, &tokens);
-        let group = groups.entry(key).or_default();
+        let group = groups.entry(entry.doc_key.as_str()).or_default();
         group.count += 1;
         group.source.get_or_insert(entry.source);
         if score > group.best_score {
@@ -426,8 +432,8 @@ fn rank_doc_keys(entries: &[&DocsOptionEntry], query: &str) -> Vec<(String, DocG
     let mut ranked: Vec<(String, DocGroup)> = groups
         .into_iter()
         .map(|(key, mut group)| {
-            group.best_score += score_doc_key(&key, query, &tokens);
-            (key, group)
+            group.best_score += score_doc_key(key, query, &tokens);
+            (key.to_string(), group)
         })
         .filter(|(_, group)| group.best_score >= MIN_SCORE)
         .collect();
@@ -478,9 +484,11 @@ fn score_doc_key(doc_key: &str, query: &str, tokens: &[&str]) -> i32 {
 }
 
 fn score_entry(entry: &DocsOptionEntry, query: &str, tokens: &[&str]) -> i32 {
-    let option_lower = entry.option_path.to_ascii_lowercase();
-    let summary_lower = entry.summary.to_ascii_lowercase();
-    let segments: Vec<&str> = option_lower.split('.').collect();
+    // Case-normalized fields are precomputed on the entry at index build;
+    // segments are iterated lazily. Nothing here should allocate — this runs
+    // for every entry in the index on every query.
+    let option_lower = entry.option_path_lower.as_str();
+    let summary_lower = entry.summary_lower.as_str();
 
     let mut score = 0;
 
@@ -503,8 +511,10 @@ fn score_entry(entry: &DocsOptionEntry, query: &str, tokens: &[&str]) -> i32 {
     //   helpful but weaker.
     //   exact segment weight: +250
     //   partial segment weight: +110
-    for segment in &segments {
-        if *segment == query {
+    let mut segment_count = 0;
+    for segment in option_lower.split('.') {
+        segment_count += 1;
+        if segment == query {
             score += 250;
         } else if segment.contains(query) {
             score += 110;
@@ -531,7 +541,7 @@ fn score_entry(entry: &DocsOptionEntry, query: &str, tokens: &[&str]) -> i32 {
 
     // Slight preference for deeper, fully qualified option paths for shape
     // guidance: +2 points per segment.
-    let mut base_score = score + (segments.len() as i32 * 2);
+    let mut base_score = score + (segment_count * 2);
 
     // Conservative fuzzy tie-breaker: only apply when base_score is not
     // already a strong match (prevents fuzzy from outranking exact/prefix
@@ -571,6 +581,7 @@ pub fn max_limit() -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::docs::docs_system::doc_key_for;
 
     #[test]
     fn fuzzy_tiebreaker_prefers_similar_entry() {
@@ -579,19 +590,19 @@ mod tests {
 
         // The "close" entry is the correct spelling in docs; fuzzy should
         // prefer this when the query is misspelled.
-        let entry_close = DocsOptionEntry {
-            option_path: "services.nginx.enable".to_string(),
-            summary: "Enable nginx service".to_string(),
-            option_type: None,
-            source: DocsSource::NixDarwin,
-        };
+        let entry_close = DocsOptionEntry::new(
+            "services.nginx.enable".to_string(),
+            "Enable nginx service".to_string(),
+            None,
+            DocsSource::NixDarwin,
+        );
 
-        let entry_far = DocsOptionEntry {
-            option_path: "services.ssh.enable".to_string(),
-            summary: "Enable SSH service".to_string(),
-            option_type: None,
-            source: DocsSource::NixDarwin,
-        };
+        let entry_far = DocsOptionEntry::new(
+            "services.ssh.enable".to_string(),
+            "Enable SSH service".to_string(),
+            None,
+            DocsSource::NixDarwin,
+        );
 
         let score_close = score_entry(&entry_close, query, &tokens);
         let score_far = score_entry(&entry_far, query, &tokens);
