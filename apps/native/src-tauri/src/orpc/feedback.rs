@@ -28,12 +28,21 @@ async fn submit(ctx: OrpcCtx, payload: String) -> Result<bool, ORPCError> {
         .map_err(|e| internal_err("feedback.submit", e))
 }
 
+async fn is_available(ctx: OrpcCtx, _input: ()) -> Result<bool, ORPCError> {
+    cmd::feedback_is_available(ctx.app)
+        .await
+        .map_err(|e| internal_err("feedback.isAvailable", e))
+}
+
 pub fn routes() -> Router<OrpcCtx> {
     router! {
         "gatherMetadata" => os::<OrpcCtx>()
             .input(orpc_specta::specta::<GatherMetadataInput>())
             .output(orpc_specta::specta::<FeedbackMetadata>())
             .handler(gather_metadata),
+        "isAvailable" => os::<OrpcCtx>()
+            .output(orpc_specta::specta::<bool>())
+            .handler(is_available),
         "submit" => os::<OrpcCtx>()
             .input(orpc_specta::specta::<String>())
             .output(orpc_specta::specta::<bool>())
