@@ -79,7 +79,11 @@ fn apply_secret_updates<R: Runtime>(app: &AppHandle<R>, update: &UiPrefsUpdate) 
 }
 
 pub fn host_attr<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
-    preferences::try_read(app).and_then(|prefs| prefs.host_attr)
+    // Staged-first, like the config dir: an uncommitted onboarding flow's
+    // host selection is the active one until the first apply commits it.
+    crate::state::onboarding::try_read(app)
+        .and_then(|state| state.staged_host_attr)
+        .or_else(|| preferences::try_read(app).and_then(|prefs| prefs.host_attr))
 }
 
 pub fn evolve_provider<R: Runtime>(app: &AppHandle<R>) -> Option<String> {

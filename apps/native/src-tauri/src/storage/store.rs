@@ -55,6 +55,14 @@ pub fn get_config_dir_if_set<R: Runtime>(app: &AppHandle<R>) -> Result<Option<St
         return Ok(Some(dir));
     }
 
+    // A selection staged by an uncommitted onboarding flow names the active
+    // config; `finalize_apply` commits it into preferences on first apply.
+    if let Some(dir) =
+        crate::state::onboarding::try_read(app).and_then(|state| state.staged_config_dir)
+    {
+        return Ok(Some(dir));
+    }
+
     if let Some(dir) = preferences::try_read(app).and_then(|prefs| prefs.config_dir) {
         return Ok(Some(dir));
     }
@@ -65,6 +73,17 @@ pub fn get_config_dir_if_set<R: Runtime>(app: &AppHandle<R>) -> Result<Option<St
 pub fn get_repo_root<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
     if let Some(dir) = crate::env::e2e_override(crate::env::keys::NIXMAC_E2E_CONFIG_DIR) {
         return Ok(dir);
+    }
+
+    if let Some(state) = crate::state::onboarding::try_read(app) {
+        if let Some(root) = state.staged_repo_root {
+            return Ok(root);
+        }
+        // A staged dir without a staged root: derive without persisting —
+        // preferences must stay untouched while the flow is uncommitted.
+        if let Some(dir) = state.staged_config_dir {
+            return Ok(repo_root(&dir).to_string_lossy().to_string());
+        }
     }
 
     if let Some(root) = preferences::try_read(app).and_then(|prefs| prefs.repo_root) {

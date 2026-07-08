@@ -24,6 +24,8 @@ pub fn load_observable<R: Runtime>(app: &AppHandle<R>) -> Result<Observable<Onbo
     let mut changed = false;
     if let Ok(prefs_persistence) = AppDataJson::for_app(app, preferences::GLOBAL_PREFERENCES_PATH) {
         changed |= migrate_from_prefs_file(&mut initial, &prefs_persistence)?;
+        changed |= reconcile_completion(&mut initial);
+        changed |= adopt_uncommitted_selection(&mut initial, &prefs_persistence)?;
     }
     changed |= reconcile_completion(&mut initial);
     if changed {
@@ -101,6 +103,40 @@ pub(crate) fn migrate_from_prefs_file(
     }
 
     Ok(changed)
+}
+
+/// One-shot adoption for flows that were mid-onboarding under the old model,
+/// where the wizard wrote its selection straight into preferences: an
+/// uncommitted flow (no latch, no recorded build) copies the preference
+/// selection into the staged fields so the staged-first reads and the
+/// commit-at-first-apply keep working. Values are copied, not moved — a
+/// completed-but-unlatched profile must never lose its working preferences.
+/// Runs after completion reconciliation so finished users are never adopted.
+/// Returns whether `state` changed.
+pub(crate) fn adopt_uncommitted_selection(
+    state: &mut OnboardingState,
+    prefs_persistence: &dyn Persistence,
+) -> Result<bool> {
+    if state.completed_at.is_some()
+        || state.last_build_at.is_some()
+        || state.staged_config_dir.is_some()
+    {
+        return Ok(false);
+    }
+    let Some(raw) = prefs_persistence.load()? else {
+        return Ok(false);
+    };
+    let Some(fields) = raw.as_object() else {
+        return Ok(false);
+    };
+    let string_field = |key: &str| fields.get(key).and_then(|v| v.as_str()).map(str::to_string);
+    let Some(config_dir) = string_field("configDir") else {
+        return Ok(false);
+    };
+    state.staged_config_dir = Some(config_dir);
+    state.staged_repo_root = string_field("repoRoot");
+    state.staged_host_attr = string_field("hostAttr");
+    Ok(true)
 }
 
 /// Latch completion for profiles that finished onboarding without the latch:
@@ -262,6 +298,50 @@ mod tests {
         };
         assert!(!migrate_from_prefs_file(&mut state, &prefs).unwrap());
         assert_eq!(state.last_build_at, Some(99));
+    }
+
+    #[test]
+    fn adoption_stages_an_uncommitted_old_model_selection() {
+        let prefs = MemoryPersistence {
+            value: Mutex::new(Some(json!({
+                "configDir": "/Users/cm/.darwin",
+                "repoRoot": "/Users/cm/.darwin",
+                "hostAttr": "macbook"
+            }))),
+        };
+        let mut state = OnboardingState::default();
+
+        assert!(adopt_uncommitted_selection(&mut state, &prefs).unwrap());
+        assert_eq!(
+            state.staged_config_dir.as_deref(),
+            Some("/Users/cm/.darwin")
+        );
+        assert_eq!(state.staged_host_attr.as_deref(), Some("macbook"));
+
+        // Copied, not moved: the prefs file keeps its values.
+        let raw = prefs.load().unwrap().unwrap();
+        assert_eq!(raw.get("configDir"), Some(&json!("/Users/cm/.darwin")));
+    }
+
+    #[test]
+    fn adoption_skips_completed_and_built_profiles() {
+        let prefs = MemoryPersistence {
+            value: Mutex::new(Some(json!({ "configDir": "/Users/cm/.darwin" }))),
+        };
+
+        let mut latched = OnboardingState {
+            completed_at: Some(1),
+            ..OnboardingState::default()
+        };
+        assert!(!adopt_uncommitted_selection(&mut latched, &prefs).unwrap());
+        assert_eq!(latched.staged_config_dir, None);
+
+        let mut built = OnboardingState {
+            last_build_at: Some(1),
+            ..OnboardingState::default()
+        };
+        assert!(!adopt_uncommitted_selection(&mut built, &prefs).unwrap());
+        assert_eq!(built.staged_config_dir, None);
     }
 
     #[test]
