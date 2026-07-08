@@ -144,8 +144,12 @@ export function DriftReview() {
           <DriftSummaryView />
         ) : (
           <ul className="divide-y divide-border/50">
-            {files.map((file) => (
-              <DriftFileRow key={`${file.oldFilename ?? ""}\0${file.filename}`} file={file} />
+            {files.map((file, index) => (
+              <DriftFileRow
+                key={`${file.oldFilename ?? ""}\0${file.filename}`}
+                file={file}
+                defaultOpen={index === 0}
+              />
             ))}
           </ul>
         )}
