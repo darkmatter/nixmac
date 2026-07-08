@@ -157,6 +157,24 @@ export function DarwinWidget() {
   // container until hydration completes, then render the correct path directly.
   const hydrated = useViewModel((s) => s.hydrated);
 
+  // permissions/nix-setup/setup are owned by OnboardingFlow. Reaching one of
+  // them while OnboardingFlow considers setup complete means the two gate
+  // derivations (useOnboardingFlow vs useCurrentStep) disagree — a programming
+  // error a user should never see. Surface it through the standard error
+  // banner (with its Report Error flow) instead of letting the BeginStep
+  // fallback below mask it. "setup" is excluded while a bootstrap is running:
+  // computeCurrentStep legitimately returns it then, whatever the gates say.
+  const isBootstrapping = useUiState((s) => s.isBootstrapping);
+  useEffect(() => {
+    const gateMismatch =
+      step === "permissions" || step === "nix-setup" || (step === "setup" && !isBootstrapping);
+    if (hydrated && !showOnboarding && gateMismatch) {
+      uiActions.setError(
+        `Internal error: onboarding step "${step}" was reached outside onboarding. This is a nixmac bug — please use "Report Error" to let us know.`,
+      );
+    }
+  }, [step, hydrated, showOnboarding, isBootstrapping]);
+
   if (!hydrated) {
     return <div className="flex h-full w-full flex-col bg-background/60" />;
   }
