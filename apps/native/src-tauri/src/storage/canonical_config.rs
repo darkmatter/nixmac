@@ -1,8 +1,13 @@
 //! Canonical nix-darwin configuration path at `/etc/nix-darwin`.
 //!
-//! nix-darwin expects the system flake at this location. When the user stores
-//! their configuration elsewhere, we maintain a symlink from `/etc/nix-darwin` to
-//! the chosen directory (requires administrator privileges on macOS).
+//! `darwin-rebuild` invoked without `--flake` looks for the system flake at
+//! this location, so when the user stores their configuration elsewhere a
+//! symlink from `/etc/nix-darwin` keeps the bare-CLI convention working.
+//! Updating the link needs root, so it is maintained during the privileged
+//! activation step of the next apply ([`canonical_link_pending`] decides,
+//! the activation scripts execute) rather than eagerly on directory
+//! selection — nixmac itself always passes `--flake` and never needs the
+//! link for its own operation.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -14,36 +19,17 @@ pub fn is_canonical_config_path(path: &Path) -> bool {
     paths_equivalent(path, Path::new(CANONICAL_CONFIG_DIR))
 }
 
-/// Ensures `/etc/nix-darwin` points at the repository directory.
-///
-/// When `repo_dir` is the canonical path, creates the directory and assigns
-/// ownership to the current user. Otherwise creates or updates a symlink at
-/// `/etc/nix-darwin` that targets `repo_dir`.
-pub fn ensure_canonical_config_link(repo_dir: &Path) -> Result<(), String> {
+/// Ensures `/etc/nix-darwin` exists and is writable by the current user, for
+/// configurations kept at the canonical path itself. Prompts for admin
+/// approval when the directory must be created or re-owned.
+pub fn ensure_canonical_dir_ready() -> Result<(), String> {
     if crate::env::e2e_override(crate::env::keys::NIXMAC_E2E_CONFIG_DIR).is_some() {
         return Ok(());
     }
-
-    let repo = repo_dir
-        .canonicalize()
-        .unwrap_or_else(|_| repo_dir.to_path_buf());
-
-    if is_canonical_config_path(&repo) {
-        if canonical_directory_is_ready() {
-            return Ok(());
-        }
-        return ensure_canonical_directory_owned();
-    }
-
-    if let Some(message) = symlink_blocked_reason(&repo)? {
-        return Err(message);
-    }
-
-    if canonical_symlink_is_current(&repo)? {
+    if canonical_directory_is_ready() {
         return Ok(());
     }
-
-    ensure_symlink_to(&repo)
+    ensure_canonical_directory_owned()
 }
 
 /// Decides whether the next privileged activation should re-point
@@ -188,19 +174,6 @@ fn ensure_canonical_directory_owned() -> Result<(), String> {
     let user = whoami::username().map_err(|e| format!("Failed to resolve username: {e}"))?;
     let script = format!(
         "set -e\nmkdir -p '{CANONICAL_CONFIG_DIR}'\nchown -R '{user}' '{CANONICAL_CONFIG_DIR}'"
-    );
-    run_privileged_shell(&script)
-}
-
-fn ensure_symlink_to(target: &Path) -> Result<(), String> {
-    let target = target
-        .to_str()
-        .ok_or_else(|| "Configuration directory path is not valid UTF-8".to_string())?;
-    let script = format!(
-        "set -e\nTARGET='{target}'\nLINK='{CANONICAL_CONFIG_DIR}'\n\
-         if [ -L \"$LINK\" ] && [ \"$(readlink \"$LINK\")\" = \"$TARGET\" ]; then exit 0; fi\n\
-         if [ -e \"$LINK\" ] && [ ! -L \"$LINK\" ]; then rm -rf \"$LINK\"; fi\n\
-         ln -sfn \"$TARGET\" \"$LINK\""
     );
     run_privileged_shell(&script)
 }

@@ -87,19 +87,18 @@ pub fn set_config_dir<R: Runtime>(app: &AppHandle<R>, dir: &str) -> Result<()> {
     })
 }
 
-pub fn sync_canonical_config_link(dir: &str) -> Result<(), String> {
-    canonical_config::ensure_canonical_config_link(Path::new(dir))
-}
-
 pub fn ensure_config_dir_exists<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
     let dir = get_config_dir(app)?;
     let path = Path::new(&dir);
 
     if canonical_config::is_canonical_config_path(path) {
-        canonical_config::ensure_canonical_config_link(path).map_err(anyhow::Error::msg)?;
+        // Creating /etc/nix-darwin itself needs root — a one-time privileged
+        // step when the user keeps the config at the canonical path. The
+        // convention *link* (config elsewhere) is maintained during apply
+        // instead; see canonical_config::canonical_link_pending.
+        canonical_config::ensure_canonical_dir_ready().map_err(anyhow::Error::msg)?;
     } else {
         std::fs::create_dir_all(path)?;
-        canonical_config::ensure_canonical_config_link(path).map_err(anyhow::Error::msg)?;
     }
 
     Ok(dir)
