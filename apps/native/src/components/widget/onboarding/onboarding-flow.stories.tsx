@@ -240,9 +240,15 @@ function installBackend(startAt: string) {
         developerMode: false,
         pinnedVersion: null,
         updateChannel: "stable",
-        onboardingMacScannedAt: state.macScannedAt,
-        onboardingLoginDecided: state.loginDecided,
-        onboardingLastBuildAt: state.lastBuildAt,
+      },
+      // Mid-flow stories never latch completion; the wizard is mounted
+      // directly and derives its step from these journey facts.
+      onboardingState: {
+        completedAt: null,
+        macScannedAt: state.macScannedAt,
+        loginDecided: state.loginDecided,
+        lastBuildAt: state.lastBuildAt,
+        provisionalConfigDir: null,
       },
       hosts: state.hosts,
       git: { headCommitHash: "abc1234", files: [], changes: [] } as any,

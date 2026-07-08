@@ -474,7 +474,10 @@ fn cascade_config_dir_replacement(app: &AppHandle, new_dir: &Path) {
     let Some(prefs) = crate::state::preferences::try_read(app) else {
         return;
     };
-    if prefs.onboarding_last_build_at.is_some() {
+    let Some(onboarding) = crate::state::onboarding::try_read(app) else {
+        return;
+    };
+    if onboarding.last_build_at.is_some() {
         return;
     }
     let Some(old_dir) = prefs.config_dir.as_deref() else {
@@ -486,9 +489,9 @@ fn cascade_config_dir_replacement(app: &AppHandle, new_dir: &Path) {
     }
 
     if let Some(root) = super::onboarding::provisional_root_to_wipe(
-        prefs.onboarding_provisional_config_dir.as_deref(),
+        onboarding.provisional_config_dir.as_deref(),
         Some(old_dir),
-        prefs.onboarding_last_build_at,
+        onboarding.last_build_at,
     ) {
         // Never delete the tree the new selection lives in.
         if !new_canonical.starts_with(super::onboarding::canonicalized(&root)) {
@@ -499,12 +502,10 @@ fn cascade_config_dir_replacement(app: &AppHandle, new_dir: &Path) {
         }
     }
 
-    if prefs.onboarding_mac_scanned_at.is_some()
-        || prefs.onboarding_provisional_config_dir.is_some()
-    {
-        if let Err(e) = crate::state::preferences::write(app, |prefs| {
-            prefs.onboarding_mac_scanned_at = None;
-            prefs.onboarding_provisional_config_dir = None;
+    if onboarding.mac_scanned_at.is_some() || onboarding.provisional_config_dir.is_some() {
+        if let Err(e) = crate::state::onboarding::write(app, |state| {
+            state.mac_scanned_at = None;
+            state.provisional_config_dir = None;
         }) {
             log::warn!("Failed to cascade onboarding facts on config dir change: {e:#}");
         }
@@ -520,10 +521,13 @@ fn release_provisional_target(app: &AppHandle, target: &Path) {
     let Some(prefs) = crate::state::preferences::try_read(app) else {
         return;
     };
+    let Some(onboarding) = crate::state::onboarding::try_read(app) else {
+        return;
+    };
     let Some(root) = super::onboarding::provisional_root_to_wipe(
-        prefs.onboarding_provisional_config_dir.as_deref(),
+        onboarding.provisional_config_dir.as_deref(),
         prefs.config_dir.as_deref(),
-        prefs.onboarding_last_build_at,
+        onboarding.last_build_at,
     ) else {
         return;
     };

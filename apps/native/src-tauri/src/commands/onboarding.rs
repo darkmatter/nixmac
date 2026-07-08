@@ -19,9 +19,9 @@ use tauri::AppHandle;
 pub async fn onboarding_complete<R: tauri::Runtime>(
     app: AppHandle<R>,
 ) -> Result<shared_types::OkResult, String> {
-    let prefs = preferences::try_read(&app)
-        .ok_or_else(|| capture_err("onboarding_complete", "Preferences not loaded"))?;
-    if prefs.onboarding_last_build_at.is_none() {
+    let state = onboarding_state::try_read(&app)
+        .ok_or_else(|| capture_err("onboarding_complete", "Onboarding state not loaded"))?;
+    if state.last_build_at.is_none() {
         return Err("Onboarding is not finished: no build has been applied yet.".to_string());
     }
 
@@ -56,15 +56,17 @@ pub async fn onboarding_reset(app: AppHandle) -> Result<shared_types::OkResult, 
 
     let prefs = preferences::try_read(&app)
         .ok_or_else(|| capture_err("onboarding_reset", "Preferences not loaded"))?;
+    let onboarding = onboarding_state::try_read(&app)
+        .ok_or_else(|| capture_err("onboarding_reset", "Onboarding state not loaded"))?;
 
     // Stop polling before the directory disappears; the watcher would emit a
     // git_state_error on every tick against a deleted path.
     watcher::stop_watching();
 
     if let Some(root) = provisional_root_to_wipe(
-        prefs.onboarding_provisional_config_dir.as_deref(),
+        onboarding.provisional_config_dir.as_deref(),
         prefs.config_dir.as_deref(),
-        prefs.onboarding_last_build_at,
+        onboarding.last_build_at,
     ) {
         // The canonical /etc/nix-darwin must stay in place (privileged
         // creation); anything else onboarding materialized can go entirely.
@@ -94,17 +96,16 @@ pub async fn onboarding_reset(app: AppHandle) -> Result<shared_types::OkResult, 
         prefs.config_dir = None;
         prefs.repo_root = None;
         prefs.host_attr = None;
-        prefs.onboarding_mac_scanned_at = None;
-        prefs.onboarding_login_decided = false;
-        prefs.onboarding_last_build_at = None;
-        prefs.onboarding_provisional_config_dir = None;
     })
     .map_err(|e| capture_err("onboarding_reset", e))?;
 
-    // Clear the completion latch after the durable facts, so when the wizard
-    // re-appears the step machine already computes the restart target step.
-    onboarding_state::write(&app, |state| state.completed_at = None)
-        .map_err(|e| capture_err("onboarding_reset", e))?;
+    // Clear the journey facts and the completion latch after the preference
+    // facts, so when the wizard re-appears the step machine already computes
+    // the restart target step.
+    onboarding_state::write(&app, |state| {
+        *state = shared_types::OnboardingState::default();
+    })
+    .map_err(|e| capture_err("onboarding_reset", e))?;
 
     // The migration keeps legacy keys around for reversibility, and
     // `get_config_dir_if_set` falls back to them — without this the old
@@ -156,11 +157,11 @@ mod tests {
         let app = tauri::test::mock_builder()
             .build(tauri::test::mock_context(tauri::test::noop_assets()))
             .expect("mock app builds");
-        app.manage(Observable::new(GlobalPreferences {
-            onboarding_last_build_at: last_build_at,
-            ..GlobalPreferences::default()
+        app.manage(Observable::new(GlobalPreferences::default()));
+        app.manage(Observable::new(OnboardingState {
+            last_build_at,
+            ..OnboardingState::default()
         }));
-        app.manage(Observable::new(OnboardingState::default()));
         app
     }
 

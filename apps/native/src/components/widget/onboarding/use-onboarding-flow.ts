@@ -33,9 +33,9 @@ export function useOnboardingFlow(): {
   const hosts = useViewModel((s) => s.hosts);
   const evolveProvider = useViewModel((s) => s.preferences?.evolveProvider ?? null);
   const evolveModel = useViewModel((s) => s.preferences?.evolveModel ?? null);
-  const macScannedAt = useViewModel((s) => s.preferences?.onboardingMacScannedAt ?? null);
-  const loginDecided = useViewModel((s) => s.preferences?.onboardingLoginDecided ?? false);
-  const lastBuildAt = useViewModel((s) => s.preferences?.onboardingLastBuildAt ?? null);
+  const macScannedAt = useViewModel((s) => s.onboardingState?.macScannedAt ?? null);
+  const loginDecided = useViewModel((s) => s.onboardingState?.loginDecided ?? false);
+  const lastBuildAt = useViewModel((s) => s.onboardingState?.lastBuildAt ?? null);
   const completedAt = useViewModel((s) => s.onboardingState?.completedAt ?? null);
 
   const inferenceDeferred = useOnboarding((s) => s.inferenceDeferred);
