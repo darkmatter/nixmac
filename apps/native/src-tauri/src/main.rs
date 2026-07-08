@@ -349,6 +349,8 @@ fn main() {
 /// the CLI lost its `GlobalPreferences` observable in the first place).
 fn register_managed_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> anyhow::Result<()> {
     app.manage(state::preferences::load_global_observable(app)?);
+    // After preferences: startup reconciliation reads the last-build timestamp.
+    app.manage(state::onboarding::load_observable(app)?);
     app.manage(evolve::config::load_observable(app)?);
     app.manage(state::evolve_state::load_observable(app)?);
     app.manage(state::git_state::load_observable(app));
@@ -406,6 +408,7 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                     .invoke_handler(tauri::generate_handler![])
                     .setup(|app| {
                         app.manage(state::preferences::load_global_observable(app.handle())?);
+                        app.manage(state::onboarding::load_observable(app.handle())?);
                         app.manage(evolve::config::load_observable(app.handle())?);
                         app.manage(env::config::load_observable(app.handle())?);
                         app.manage(state::evolve_state::load_observable(app.handle())?);
@@ -683,6 +686,7 @@ fn run_gui_mode(
             panic_handler::setup_panic_hook(handle.clone());
 
             app.manage(state::preferences::load_global_observable(handle)?);
+            app.manage(state::onboarding::load_observable(handle)?);
             app.manage(evolve::config::load_observable(handle)?);
             app.manage(env::config::load_observable(handle)?);
             app.manage(state::evolve_state::load_observable(handle)?);

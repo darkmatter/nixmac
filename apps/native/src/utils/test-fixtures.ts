@@ -38,6 +38,8 @@ export function makeGlobalPreferences(
 		onboardingMacScannedAt: null,
 		onboardingLoginDecided: false,
 		onboardingLastBuildAt: null,
+		onboardingProvisionalConfigDir: null,
+		pendingImportDir: null,
 		autoFormatNixFiles: false,
 		...overrides,
 	};

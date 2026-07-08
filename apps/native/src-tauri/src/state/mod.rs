@@ -21,6 +21,7 @@ pub mod drift_notifications;
 pub mod evolve_state;
 pub mod git_state;
 pub mod nix_install_state;
+pub mod onboarding;
 pub mod permissions_state;
 pub mod preferences;
 pub mod rebuild_status;

@@ -1245,6 +1245,22 @@ onboardingLoginDecided: boolean;
  */
 onboardingLastBuildAt: number | null; 
 /**
+ * Root directory the app materialized during onboarding (import/scaffold)
+ * and still owns: until the first successful apply clears this, restart
+ * and re-import may wipe and re-create it. Never set for user-selected
+ * pre-existing directories. Not writable via `UiPrefsUpdate` — backend
+ * code paths only, like `onboarding_last_build_at`.
+ */
+onboardingProvisionalConfigDir: string | null; 
+/**
+ * Root of an import clone parked on the "which flake dir?" choice
+ * (`NeedsFlakeDirChoice`). Recorded so an abandoned choice can be
+ * discarded by the next import or an onboarding reset instead of
+ * orphaning the tree. Cleared on finalize/discard. Not writable via
+ * `UiPrefsUpdate`.
+ */
+pendingImportDir: string | null; 
+/**
  * Whether or not to auto-format Nix files when making changes to the flakes.
  */
 autoFormatNixFiles: boolean }
@@ -1593,6 +1609,29 @@ export type OkResult = {
  * True when the command completed successfully.
  */
 ok: boolean }
+
+/**
+ * Backend-owned onboarding lifecycle state.
+ * 
+ * Whether the onboarding flow is shown is gated by this latch, not by
+ * re-deriving completion from preference facts: "the user finished
+ * onboarding" is a historical fact about a journey, and current state
+ * (a cleared host during a settings edit, a revoked permission) can
+ * regress while the journey stays finished. The step machine *inside*
+ * the flow keeps deriving progress from durable facts.
+ * 
+ * Hydrated via `onboarding.getState`; every mutation emits
+ * `onboarding_state_changed` with the full struct as payload.
+ * See `docs/2026-07-08-onboarding-state-ownership.md`.
+ */
+export type OnboardingState = { 
+/**
+ * Timestamp (unix secs) the user completed onboarding. Set when the
+ * celebration is dismissed (validated against a successful first build),
+ * reconciled at startup for profiles that finished before the latch
+ * existed, and cleared by "Restart setup".
+ */
+completedAt: number | null }
 
 /**
  * Individual permission state.
