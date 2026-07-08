@@ -5,6 +5,7 @@ import type {
   GlobalPreferences,
   HistoryItem,
   NixInstallState,
+  OnboardingState,
   PermissionsState,
   RebuildStatus,
   SemanticChangeMap,
@@ -33,6 +34,8 @@ export type ViewModelState = {
   history: HistoryItem[];
   /** Mirrored `GlobalPreferences`; null until the slice hydrates. */
   preferences: GlobalPreferences | null;
+  /** Mirrored onboarding lifecycle (completion latch); null until hydrated. */
+  onboardingState: OnboardingState | null;
   /** Hosts listed from the flake; refreshed when preferences change. */
   hosts: string[];
   permissions: PermissionsState | null;
