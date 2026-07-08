@@ -327,7 +327,11 @@ function applyArgsToStores(a: Record<string, any>): void {
     hosts: a.hostsListed ? [...DEMO_HOSTS] : [],
     onboardingState: a.onboardingComplete
       ? makeCompletedOnboardingState()
-      : makeOnboardingState(),
+      : // Uncommitted flows read the staged selection, not preferences.
+        makeOnboardingState({
+          stagedConfigDir: a.configDir || null,
+          stagedHostAttr: a.host || null,
+        }),
     permissions: a.permissionsGranted ? makeGrantedPermissions() : makeIncompletePermissions(),
     permissionsHydrated: true,
     nixInstall: makeNixInstallState(),

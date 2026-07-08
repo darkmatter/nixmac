@@ -34,15 +34,34 @@ pub async fn get_this_hostname() -> Result<String, String> {
 pub async fn config_set_host_attr(
     app: AppHandle,
     host: String,
+    stage: bool,
 ) -> Result<shared_types::OkResult, String> {
-    store::set_host_attr(&app, &host).map_err(|e| capture_err("config_set_host_attr", e))?;
+    if stage {
+        crate::state::onboarding::stage_host_attr(&app, &host)
+            .map_err(|e| capture_err("config_set_host_attr", e))?;
+    } else {
+        store::set_host_attr(&app, &host).map_err(|e| capture_err("config_set_host_attr", e))?;
+    }
     Ok(shared_types::OkResult::yes())
+}
+
+/// Writes the selection to the caller-chosen destination: the onboarding UI
+/// passes `stage: true` and lands on `OnboardingState` (committed into
+/// preferences by the first successful apply); the preferences UI passes
+/// `stage: false` and writes preferences directly. The two paths never mix.
+fn write_selected_dir(app: &AppHandle, dir: &str, stage: bool) -> Result<(), String> {
+    if stage {
+        crate::state::onboarding::stage_config_dir(app, dir).map_err(|e| e.to_string())
+    } else {
+        store::set_config_dir(app, dir).map_err(|e| e.to_string())
+    }
 }
 
 /// Sets the flake configuration directory path.
 pub async fn config_set_dir(
     app: AppHandle,
     dir: String,
+    stage: bool,
 ) -> Result<shared_types::SetDirResult, String> {
     let normalized_dir =
         utils::normalize_path_input(&dir).map_err(|e| capture_err("config_set_dir", e))?;
@@ -62,7 +81,7 @@ pub async fn config_set_dir(
     let prev_dir = store::get_config_dir(&app).ok();
     let new_dir = normalized_dir.to_string_lossy().to_string();
     cascade_config_dir_replacement(&app, normalized_dir.as_path());
-    store::set_config_dir(&app, &new_dir).map_err(|e| capture_err("config_set_dir", e))?;
+    write_selected_dir(&app, &new_dir, stage).map_err(|e| capture_err("config_set_dir", e))?;
     // The user chose a pre-existing directory: it is theirs, not onboarding's.
     clear_config_dir_provisional(&app);
     store::sync_canonical_config_link(&new_dir).map_err(|e| capture_err("config_set_dir", e))?;
@@ -132,6 +151,7 @@ fn validate_new_dir_location(path: &Path) -> Result<(), String> {
 pub async fn config_prepare_new_dir(
     app: AppHandle,
     dir: String,
+    stage: bool,
 ) -> Result<shared_types::SetDirResult, String> {
     let normalized_dir =
         utils::normalize_path_input(&dir).map_err(|e| capture_err("config_prepare_new_dir", e))?;
@@ -156,7 +176,8 @@ pub async fn config_prepare_new_dir(
     let prev_dir = store::get_config_dir(&app).ok();
     let new_dir = normalized_dir.to_string_lossy().to_string();
     cascade_config_dir_replacement(&app, normalized_dir.as_path());
-    store::set_config_dir(&app, &new_dir).map_err(|e| capture_err("config_prepare_new_dir", e))?;
+    write_selected_dir(&app, &new_dir, stage)
+        .map_err(|e| capture_err("config_prepare_new_dir", e))?;
     store::ensure_config_dir_exists(&app).map_err(|e| capture_err("config_prepare_new_dir", e))?;
     // Scaffolded by us, so owned by onboarding until the first successful apply.
     mark_config_dir_provisional(&app, normalized_dir.as_path());
@@ -174,7 +195,10 @@ pub async fn config_prepare_new_dir(
 }
 
 /// Opens a native folder picker dialog to select the flake directory.
-pub async fn config_pick_dir(app: AppHandle) -> Result<Option<shared_types::SetDirResult>, String> {
+pub async fn config_pick_dir(
+    app: AppHandle,
+    stage: bool,
+) -> Result<Option<shared_types::SetDirResult>, String> {
     let dialog = app.dialog();
     // Try to open the picker at the currently configured directory
     let prev_dir = store::get_config_dir(&app).map_err(|e| capture_err("config_pick_dir", e))?;
@@ -192,7 +216,7 @@ pub async fn config_pick_dir(app: AppHandle) -> Result<Option<shared_types::SetD
     if let Some(path) = result {
         let dir = path.to_string();
         cascade_config_dir_replacement(&app, Path::new(&dir));
-        store::set_config_dir(&app, &dir).map_err(|e| capture_err("config_pick_dir", e))?;
+        write_selected_dir(&app, &dir, stage).map_err(|e| capture_err("config_pick_dir", e))?;
         // The user chose a pre-existing directory: it is theirs, not onboarding's.
         clear_config_dir_provisional(&app);
         store::ensure_config_dir_exists(&app).map_err(|e| capture_err("config_pick_dir", e))?;
@@ -471,18 +495,18 @@ fn is_importable_target(path: &Path) -> Result<bool, String> {
 /// lives inside it. After the first successful apply this is a no-op:
 /// post-onboarding dir changes must not rewind onboarding or delete anything.
 fn cascade_config_dir_replacement(app: &AppHandle, new_dir: &Path) {
-    let Some(prefs) = crate::state::preferences::try_read(app) else {
-        return;
-    };
     let Some(onboarding) = crate::state::onboarding::try_read(app) else {
         return;
     };
     if onboarding.last_build_at.is_some() {
         return;
     }
-    let Some(old_dir) = prefs.config_dir.as_deref() else {
+    // The outgoing selection is the *active* one: staged during an
+    // uncommitted flow, committed preferences otherwise.
+    let Ok(Some(old_dir)) = store::get_config_dir_if_set(app) else {
         return;
     };
+    let old_dir = old_dir.as_str();
     let new_canonical = super::onboarding::canonicalized(new_dir);
     if new_canonical == super::onboarding::canonicalized(Path::new(old_dir)) {
         return;
@@ -667,7 +691,8 @@ fn finalize_imported_dir(
 ) -> Result<shared_types::SetDirResult, String> {
     let new_dir = target.to_string_lossy().to_string();
     cascade_config_dir_replacement(app, target);
-    store::set_config_dir(app, &new_dir).map_err(|e| capture_err("finalize_imported_dir", e))?;
+    // Imports are wizard-only surfaces: the selection is always staged.
+    write_selected_dir(app, &new_dir, true).map_err(|e| capture_err("finalize_imported_dir", e))?;
     store::sync_canonical_config_link(&new_dir)
         .map_err(|e| capture_err("finalize_imported_dir", e))?;
     handle_new_config_dir(app, &new_dir).map_err(|e| capture_err("finalize_imported_dir", e))?;

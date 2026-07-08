@@ -9,6 +9,7 @@ import { useViewModel } from "@nixmac/state";
 import { useUiState } from "@nixmac/state";
 import { AlertCircle, GitCommit, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
+import { activeConfigDir } from "@/lib/active-config";
 
 interface BootstrapConfigProps {
   label: string;
@@ -28,7 +29,7 @@ export function BootstrapConfig({
   const [hostname, setHostname] = useState(DEFAULT_HOSTNAME);
   const [localError, setLocalError] = useState<string | null>(null);
   const { bootstrap, isBootstrapping } = useDarwinConfig();
-  const configDir = useViewModel((state) => state.preferences?.configDir ?? "");
+  const configDir = useViewModel(activeConfigDir);
   const gitStatus = useViewModel((state) => state.git);
   const flakeExists = useFlakeExists(configDir);
 

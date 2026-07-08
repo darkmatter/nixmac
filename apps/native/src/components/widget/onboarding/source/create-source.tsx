@@ -30,7 +30,7 @@ type TemplateChoice = StarterTemplateId | "custom";
  * template's git history.
  */
 export function CreateSource({ onCreated }: CreateSourceProps) {
-  const { prepareNewDir, bootstrap, createFromTemplate } = useDarwinConfig();
+  const { prepareNewDir, bootstrap, createFromTemplate } = useDarwinConfig({ stage: true });
   const [templateId, setTemplateId] = useState<TemplateChoice>("nix-darwin-determinate");
   const [templateRef, setTemplateRef] = useState("");
   const [hostName, setHostName] = useState("");

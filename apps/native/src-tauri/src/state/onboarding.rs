@@ -162,6 +162,28 @@ pub fn try_read<R: Runtime>(app: &AppHandle<R>) -> Option<OnboardingState> {
         .map(|obs| obs.read_sync().clone())
 }
 
+/// Stage the wizard's config-dir selection. The onboarding UI calls this
+/// path (via the `stage` flag on the config commands); the preferences UI
+/// writes `GlobalPreferences` directly — the two never mix, and
+/// `finalize_apply` is the single commit step between them.
+pub fn stage_config_dir<R: Runtime>(app: &AppHandle<R>, dir: &str) -> Result<()> {
+    let root = crate::git::query::repo_root(dir)
+        .to_string_lossy()
+        .to_string();
+    let dir = dir.to_string();
+    write(app, move |state| {
+        state.staged_config_dir = Some(dir);
+        state.staged_repo_root = Some(root);
+    })
+}
+
+/// Stage the wizard's host selection; empty clears it. See [`stage_config_dir`].
+pub fn stage_host_attr<R: Runtime>(app: &AppHandle<R>, attr: &str) -> Result<()> {
+    let attr = attr.trim().to_string();
+    let attr = if attr.is_empty() { None } else { Some(attr) };
+    write(app, move |state| state.staged_host_attr = attr)
+}
+
 /// Mutate the onboarding state through the observable.
 ///
 /// Applies `f` to a copy and writes it back only when it actually changed,

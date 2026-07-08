@@ -24,10 +24,10 @@ interface DarwinConfigActions {
 // Config dir/host/hosts and the evolve/git mirrors are no longer written
 // locally: the backend emits `*_changed` events after these mutations and the
 // sync modules mirror the new values (and re-list hosts) into the ViewModel.
-const applyDirResult = async (result: SetDirResult) => {
+const applyDirResult = async (result: SetDirResult, stage: boolean) => {
   if (result.changed) {
     try {
-      await client.config.setHostAttr({ host: "" });
+      await client.config.setHostAttr({ host: "", stage });
     } catch {}
   }
 };
@@ -40,27 +40,28 @@ const applyDirResult = async (result: SetDirResult) => {
 export const applyImportResult = async (result: ImportConfigResult) => {
   if (result.status === "imported" && result.changed) {
     try {
-      await client.config.setHostAttr({ host: "" });
+      // Imports are wizard-only surfaces: the cleared host is staged.
+      await client.config.setHostAttr({ host: "", stage: true });
     } catch {}
   }
 };
 
-const setDir = async (dir: string) => {
-  const result = await client.config.setDir({ dir });
-  await applyDirResult(result);
+const setDir = async (dir: string, stage: boolean) => {
+  const result = await client.config.setDir({ dir, stage });
+  await applyDirResult(result, stage);
   return result;
 };
 
-const prepareNewDir = async (dir: string) => {
-  const result = await client.config.prepareNewDir({ dir });
-  await applyDirResult(result);
+const prepareNewDir = async (dir: string, stage: boolean) => {
+  const result = await client.config.prepareNewDir({ dir, stage });
+  await applyDirResult(result, stage);
   return result;
 };
 
-const pickDir = async () => {
-  const result = await client.config.pickDir();
+const pickDir = async (stage: boolean) => {
+  const result = await client.config.pickDir({ stage });
   if (!result) return;
-  await applyDirResult(result);
+  await applyDirResult(result, stage);
   return result;
 };
 
@@ -99,16 +100,16 @@ const createFromTemplate = async (templateRef: string, hostname: string, dirName
   });
 };
 
-const saveHost = async (host: string) => {
+const saveHost = async (host: string, stage: boolean) => {
   try {
-    await client.config.setHostAttr({ host });
+    await client.config.setHostAttr({ host, stage });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     uiActions.setError(`Failed to save host: ${message}`);
   }
 };
 
-const bootstrap = async (hostname: string, templateId?: StarterTemplateId) => {
+const bootstrap = async (hostname: string, stage: boolean, templateId?: StarterTemplateId) => {
   const commitExisting = !hostname.trim();
   uiActions.setError(null);
   uiActions.setBootstrapping(true);
@@ -122,13 +123,13 @@ const bootstrap = async (hostname: string, templateId?: StarterTemplateId) => {
     if (commitExisting) {
       const hosts = await tauriAPI.flake.listHosts();
       if (hosts.length === 1) {
-        await client.config.setHostAttr({ host: hosts[0] });
+        await client.config.setHostAttr({ host: hosts[0], stage });
       }
     } else {
       // Set the host directly from the hostname used for bootstrap.
       // We can't call listHosts() here because Nix may not be installed yet
       // (listHosts requires `nix eval` which needs Nix).
-      await client.config.setHostAttr({ host: hostname });
+      await client.config.setHostAttr({ host: hostname, stage });
     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
@@ -138,15 +139,22 @@ const bootstrap = async (hostname: string, templateId?: StarterTemplateId) => {
   }
 };
 
-export function useDarwinConfig(): DarwinConfigActions {
+/**
+ * Config-selection actions, bound to an explicit destination: the onboarding
+ * UI passes `stage: true` (selections land on `OnboardingState` and are
+ * committed to preferences by the first successful apply); the preferences
+ * UI uses the default and writes preferences directly. The context is a
+ * caller decision, never inferred.
+ */
+export function useDarwinConfig({ stage = false }: { stage?: boolean } = {}): DarwinConfigActions {
   const isBootstrapping = useUiState((state) => state.isBootstrapping);
 
   return {
-    setDir,
-    prepareNewDir,
-    pickDir,
-    saveHost,
-    bootstrap,
+    setDir: (dir) => setDir(dir, stage),
+    prepareNewDir: (dir) => prepareNewDir(dir, stage),
+    pickDir: () => pickDir(stage),
+    saveHost: (host) => saveHost(host, stage),
+    bootstrap: (hostname, templateId) => bootstrap(hostname, stage, templateId),
     isBootstrapping,
     importGithub,
     importZip,

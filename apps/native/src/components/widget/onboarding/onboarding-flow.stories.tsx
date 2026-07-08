@@ -220,8 +220,10 @@ function installBackend(startAt: string) {
         installing: false,
       },
       preferences: {
-        configDir: state.configDir || null,
-        hostAttr: state.hostAttr || null,
+        // Mid-flow, the selection is staged on onboardingState below —
+        // preferences only carry it after the first apply commits it.
+        configDir: null,
+        hostAttr: null,
         repoRoot: null,
         sendDiagnostics: false,
         evolveProvider: state.evolveProvider,
@@ -249,6 +251,9 @@ function installBackend(startAt: string) {
         loginDecided: state.loginDecided,
         lastBuildAt: state.lastBuildAt,
         provisionalConfigDir: null,
+        stagedConfigDir: state.configDir || null,
+        stagedRepoRoot: null,
+        stagedHostAttr: state.hostAttr || null,
       },
       hosts: state.hosts,
       git: { headCommitHash: "abc1234", files: [], changes: [] } as any,

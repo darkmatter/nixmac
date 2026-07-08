@@ -325,9 +325,24 @@ export type ConfigImportGithubInput = { repoRef: string; dirName: string | null 
 
 export type ConfigImportZipInput = { zipPath: string; dirName: string | null }
 
-export type ConfigSetDirInput = { dir: string }
+export type ConfigPickDirInput = { 
+/**
+ * True when called from the onboarding UI; see `ConfigSetHostAttrInput`.
+ */
+stage?: boolean }
 
-export type ConfigSetHostAttrInput = { host: string }
+export type ConfigSetDirInput = { dir: string; 
+/**
+ * True when called from the onboarding UI; see `ConfigSetHostAttrInput`.
+ */
+stage?: boolean }
+
+export type ConfigSetHostAttrInput = { host: string; 
+/**
+ * True when called from the onboarding UI: the selection stages on
+ * `OnboardingState` instead of writing preferences.
+ */
+stage?: boolean }
 
 /**
  * One section in the auto-rendered settings panel — corresponds to one
@@ -1440,7 +1455,24 @@ lastBuildAt: number | null;
  * and re-import may wipe and re-create it. Never set for user-selected
  * pre-existing directories. Backend code paths only.
  */
-provisionalConfigDir: string | null }
+provisionalConfigDir: string | null; 
+/**
+ * The wizard's config-dir selection, staged here while onboarding is
+ * uncommitted. Reads resolve staged-first (`store::get_config_dir_if_set`);
+ * `finalize_apply` commits it into `GlobalPreferences` on the first
+ * successful apply and clears it. Keeps "Restart setup" non-destructive:
+ * the committed configuration stays active until a restarted flow
+ * applies a new one.
+ */
+stagedConfigDir: string | null; 
+/**
+ * Repo root of the staged config-dir selection; committed with it.
+ */
+stagedRepoRoot: string | null; 
+/**
+ * The wizard's host selection, staged and committed like the dir.
+ */
+stagedHostAttr: string | null }
 
 export type PathExistsInput = { dir: string }
 
@@ -1848,7 +1880,7 @@ export type Procedures = {
     getThisHostname: Client<Record<never, never>, void, string, Error>
     importGithub: Client<Record<never, never>, ConfigImportGithubInput, ImportConfigResult, Error>
     importZip: Client<Record<never, never>, ConfigImportZipInput, ImportConfigResult, Error>
-    pickDir: Client<Record<never, never>, void, SetDirResult | null, Error>
+    pickDir: Client<Record<never, never>, ConfigPickDirInput, SetDirResult | null, Error>
     pickFolder: Client<Record<never, never>, void, string | null, Error>
     pickZip: Client<Record<never, never>, void, string | null, Error>
     prepareNewDir: Client<Record<never, never>, ConfigSetDirInput, SetDirResult, Error>

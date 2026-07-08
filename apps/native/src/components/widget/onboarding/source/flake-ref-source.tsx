@@ -19,7 +19,7 @@ interface FlakeRefSourceProps {
  * `bootstrap::import::parse_repo_ref`, plus a `.zip` archive picker.
  */
 export function FlakeRefSource({ onImported }: FlakeRefSourceProps) {
-  const { importGithub, pickZip, importZip } = useDarwinConfig();
+  const { importGithub, pickZip, importZip } = useDarwinConfig({ stage: true });
   const [value, setValue] = useState("");
   const [dir, setDir] = useState("~/.darwin");
   const [loading, setLoading] = useState(false);

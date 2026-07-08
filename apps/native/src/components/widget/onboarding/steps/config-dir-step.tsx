@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import type { ComponentType } from "react";
 import { useEffect, useState } from "react";
+import { activeConfigDir } from "@/lib/active-config";
 
 type Mode = "choose" | "import" | "create";
 type Method = "github" | "local" | "ref";
@@ -117,7 +118,7 @@ function BackLink({ onClick }: { onClick: () => void }) {
  * Host selection lives in the next step (`setup`).
  */
 export function ConfigDirStep() {
-  const configDir = useViewModel((s) => s.preferences?.configDir ?? "");
+  const configDir = useViewModel(activeConfigDir);
 
   const [changing, setChanging] = useState(false);
   const [mode, setMode] = useState<Mode>("choose");

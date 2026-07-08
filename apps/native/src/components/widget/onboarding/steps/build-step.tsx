@@ -32,6 +32,7 @@ import { client } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import type { InferenceConfig } from "@/components/widget/onboarding/lib/inference";
+import { activeConfigDir, activeHostAttr } from "@/lib/active-config";
 
 interface BuildStepProps {
   /** Whether AI inference is already configured. */
@@ -62,8 +63,8 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
   const { handleApply } = useApply();
   const rebuildStatus = useViewModel((s) => s.rebuildStatus);
   const rawLines = useViewModel((s) => s.rebuildLog.rawLines);
-  const configDir = useViewModel((s) => s.preferences?.configDir ?? "");
-  const host = useViewModel((s) => s.preferences?.hostAttr ?? "this-mac");
+  const configDir = useViewModel(activeConfigDir);
+  const host = useViewModel(activeHostAttr) || "this-mac";
   const celebrating = useOnboarding((s) => s.celebrating);
 
   const [started, setStarted] = useState(false);

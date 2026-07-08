@@ -8,6 +8,7 @@ import {
 import { settings } from "@/lib/env";
 import { onboardingActions, useOnboarding, useViewModel } from "@nixmac/state";
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { activeConfigDir, activeHostAttr } from "@/lib/active-config";
 
 export function useOnboardingFlow(): {
   /** Step to render. */
@@ -28,8 +29,8 @@ export function useOnboardingFlow(): {
   const permissions = useViewModel((s) => s.permissions);
   const permissionsHydrated = useViewModel((s) => s.permissionsHydrated);
   const nixInstalled = useViewModel((s) => s.nixInstall?.installed ?? null);
-  const configDir = useViewModel((s) => s.preferences?.configDir ?? "");
-  const host = useViewModel((s) => s.preferences?.hostAttr ?? "");
+  const configDir = useViewModel(activeConfigDir);
+  const host = useViewModel(activeHostAttr);
   const hosts = useViewModel((s) => s.hosts);
   const evolveProvider = useViewModel((s) => s.preferences?.evolveProvider ?? null);
   const evolveModel = useViewModel((s) => s.preferences?.evolveModel ?? null);

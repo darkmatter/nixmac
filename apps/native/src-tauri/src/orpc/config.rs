@@ -11,12 +11,19 @@ use specta::Type;
 #[serde(rename_all = "camelCase")]
 struct ConfigSetHostAttrInput {
     host: String,
+    /// True when called from the onboarding UI: the selection stages on
+    /// `OnboardingState` instead of writing preferences.
+    #[serde(default)]
+    stage: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 struct ConfigSetDirInput {
     dir: String,
+    /// True when called from the onboarding UI; see `ConfigSetHostAttrInput`.
+    #[serde(default)]
+    stage: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, Type)]
@@ -69,13 +76,13 @@ async fn get_this_hostname(_ctx: OrpcCtx, _input: ()) -> Result<String, ORPCErro
 }
 
 async fn set_host_attr(ctx: OrpcCtx, input: ConfigSetHostAttrInput) -> Result<OkResult, ORPCError> {
-    config::config_set_host_attr(ctx.app, input.host)
+    config::config_set_host_attr(ctx.app, input.host, input.stage)
         .await
         .map_err(|error| internal_err("config.setHostAttr", error))
 }
 
 async fn set_dir(ctx: OrpcCtx, input: ConfigSetDirInput) -> Result<SetDirResult, ORPCError> {
-    config::config_set_dir(ctx.app, input.dir)
+    config::config_set_dir(ctx.app, input.dir, input.stage)
         .await
         .map_err(|error| internal_err("config.setDir", error))
 }
@@ -84,13 +91,24 @@ async fn prepare_new_dir(
     ctx: OrpcCtx,
     input: ConfigSetDirInput,
 ) -> Result<SetDirResult, ORPCError> {
-    config::config_prepare_new_dir(ctx.app, input.dir)
+    config::config_prepare_new_dir(ctx.app, input.dir, input.stage)
         .await
         .map_err(|error| internal_err("config.prepareNewDir", error))
 }
 
-async fn pick_dir(ctx: OrpcCtx, _input: ()) -> Result<Option<SetDirResult>, ORPCError> {
-    config::config_pick_dir(ctx.app)
+#[derive(Debug, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+struct ConfigPickDirInput {
+    /// True when called from the onboarding UI; see `ConfigSetHostAttrInput`.
+    #[serde(default)]
+    stage: bool,
+}
+
+async fn pick_dir(
+    ctx: OrpcCtx,
+    input: ConfigPickDirInput,
+) -> Result<Option<SetDirResult>, ORPCError> {
+    config::config_pick_dir(ctx.app, input.stage)
         .await
         .map_err(|error| internal_err("config.pickDir", error))
 }
@@ -173,6 +191,7 @@ pub fn routes() -> Router<OrpcCtx> {
             .output(orpc_specta::specta::<SetDirResult>())
             .handler(prepare_new_dir),
         "pickDir" => os::<OrpcCtx>()
+            .input(orpc_specta::specta::<ConfigPickDirInput>())
             .output(orpc_specta::specta::<Option<SetDirResult>>())
             .handler(pick_dir),
         "pickFolder" => os::<OrpcCtx>()

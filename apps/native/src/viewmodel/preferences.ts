@@ -18,8 +18,10 @@ function mirrorPreferences(preferences: GlobalPreferences): void {
 export async function refreshHostsSnapshot({
   force = false,
 }: { force?: boolean } = {}): Promise<void> {
-  const preferences = viewModelActions.getState().preferences;
-  if (!force && !preferences?.configDir) return;
+  const state = viewModelActions.getState();
+  // Staged-first: an uncommitted onboarding selection is the active config.
+  const configDir = state.onboardingState?.stagedConfigDir ?? state.preferences?.configDir;
+  if (!force && !configDir) return;
   try {
     // deprecated(orpc): replace with client/orpc from @/lib/orpc
     const hosts = await tauriAPI.flake.listHosts();

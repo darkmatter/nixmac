@@ -4,9 +4,9 @@ use super::config::{ImportTarget, cleanup_import_target};
 use super::helpers::capture_err;
 use crate::shared_types;
 use crate::state::{
-    evolve_state, git_state, onboarding as onboarding_state, preferences, rebuild_status, watcher,
+    evolve_state, git_state, onboarding as onboarding_state, rebuild_status, watcher,
 };
-use crate::storage::{canonical_config, legacy_kv};
+use crate::storage::canonical_config;
 use std::path::{Path, PathBuf};
 use tauri::AppHandle;
 
@@ -35,14 +35,18 @@ pub async fn onboarding_complete<R: tauri::Runtime>(
     Ok(shared_types::OkResult::yes())
 }
 
-/// Rewinds onboarding to the config-dir step by clearing every durable fact
-/// the step machine derives progress from. When the current config directory
-/// was materialized by onboarding itself (import/scaffold) and no build has
-/// been applied from it yet, its contents are deleted too, so the next import
-/// finds an empty target — that is what makes "Restart setup" idempotent.
+/// Rewinds onboarding to the config-dir step by resetting `OnboardingState` —
+/// journey facts, staged selection, and the completion latch. When the staged
+/// config directory was materialized by onboarding itself (import/scaffold)
+/// and no build has been applied from it yet, its contents are deleted too,
+/// so the next import finds an empty target — that is what makes "Restart
+/// setup" idempotent.
 ///
-/// System-state gates (permissions, Nix install) are untouched: they re-derive
-/// as satisfied and the flow lands on the first user-driven step.
+/// Preferences are untouched: a previously committed configuration stays
+/// active until a restarted flow applies a new one, so restarting can never
+/// break a working install. System-state gates (permissions, Nix install)
+/// are also untouched: they re-derive as satisfied and the flow lands on the
+/// first user-driven step.
 pub async fn onboarding_reset(app: AppHandle) -> Result<shared_types::OkResult, String> {
     // The build step is exactly where users wait long enough to reach for
     // "Restart setup"; wiping the directory under a running rebuild stream
@@ -54,8 +58,6 @@ pub async fn onboarding_reset(app: AppHandle) -> Result<shared_types::OkResult, 
         );
     }
 
-    let prefs = preferences::try_read(&app)
-        .ok_or_else(|| capture_err("onboarding_reset", "Preferences not loaded"))?;
     let onboarding = onboarding_state::try_read(&app)
         .ok_or_else(|| capture_err("onboarding_reset", "Onboarding state not loaded"))?;
 
@@ -63,9 +65,12 @@ pub async fn onboarding_reset(app: AppHandle) -> Result<shared_types::OkResult, 
     // git_state_error on every tick against a deleted path.
     watcher::stop_watching();
 
+    let active_dir = crate::storage::store::get_config_dir_if_set(&app)
+        .ok()
+        .flatten();
     if let Some(root) = provisional_root_to_wipe(
         onboarding.provisional_config_dir.as_deref(),
-        prefs.config_dir.as_deref(),
+        active_dir.as_deref(),
         onboarding.last_build_at,
     ) {
         // The canonical /etc/nix-darwin must stay in place (privileged
@@ -79,8 +84,7 @@ pub async fn onboarding_reset(app: AppHandle) -> Result<shared_types::OkResult, 
     // An import parked on the flake-dir chooser is real on-disk state too.
     super::config::discard_pending_import(&app);
 
-    // No new dir is being selected, so `handle_new_config_dir` will not run —
-    // clear the derived cells explicitly.
+    // Clear the derived cells; re-derived below when a committed config remains.
     git_state::update(
         &app,
         shared_types::GitState {
@@ -92,26 +96,19 @@ pub async fn onboarding_reset(app: AppHandle) -> Result<shared_types::OkResult, 
         log::warn!("Failed to clear evolve state during onboarding reset: {e:#}");
     }
 
-    preferences::write(&app, |prefs| {
-        prefs.config_dir = None;
-        prefs.repo_root = None;
-        prefs.host_attr = None;
-    })
-    .map_err(|e| capture_err("onboarding_reset", e))?;
-
-    // Clear the journey facts and the completion latch after the preference
-    // facts, so when the wizard re-appears the step machine already computes
-    // the restart target step.
+    // The whole reset in one write: staged selection, journey facts, latch.
     onboarding_state::write(&app, |state| {
         *state = shared_types::OnboardingState::default();
     })
     .map_err(|e| capture_err("onboarding_reset", e))?;
 
-    // The migration keeps legacy keys around for reversibility, and
-    // `get_config_dir_if_set` falls back to them — without this the old
-    // selection would silently resurrect for every backend caller.
-    if let Err(e) = legacy_kv::delete_legacy_key(&app, "configDir") {
-        log::warn!("Failed to clear legacy configDir during onboarding reset: {e:#}");
+    // A committed configuration survives the reset — resume watching it so
+    // the app behind the wizard keeps working (and the config-dir step can
+    // pre-fill from it).
+    if let Ok(Some(dir)) = crate::storage::store::get_config_dir_if_set(&app) {
+        if let Err(e) = super::helpers::handle_new_config_dir(&app, &dir) {
+            log::warn!("Failed to resume committed config after onboarding reset: {e}");
+        }
     }
 
     Ok(shared_types::OkResult::yes())
@@ -163,6 +160,50 @@ mod tests {
             ..OnboardingState::default()
         }));
         app
+    }
+
+    #[test]
+    fn staging_writers_land_on_onboarding_state_only() {
+        let app = mock_app_with_state(None);
+        let handle = app.handle();
+
+        crate::state::onboarding::stage_config_dir(handle, "/tmp/nixmac-staged-config").unwrap();
+        crate::state::onboarding::stage_host_attr(handle, "macbook").unwrap();
+
+        let prefs = crate::state::preferences::try_read(handle).unwrap();
+        assert_eq!(prefs.config_dir, None, "preferences stay untouched");
+        assert_eq!(prefs.host_attr, None);
+
+        // Staged-first resolution names the staged selection as active.
+        assert_eq!(
+            crate::storage::store::get_config_dir_if_set(handle)
+                .unwrap()
+                .as_deref(),
+            Some("/tmp/nixmac-staged-config"),
+        );
+        assert_eq!(
+            crate::state::ui_prefs::host_attr(handle).as_deref(),
+            Some("macbook")
+        );
+    }
+
+    #[test]
+    fn preference_writers_never_touch_the_staged_selection() {
+        let app = mock_app_with_state(None);
+        let handle = app.handle();
+
+        crate::storage::store::set_config_dir(handle, "/tmp/nixmac-committed-config").unwrap();
+        crate::state::ui_prefs::set_host_attr(handle, "workmac").unwrap();
+
+        let prefs = crate::state::preferences::try_read(handle).unwrap();
+        assert_eq!(
+            prefs.config_dir.as_deref(),
+            Some("/tmp/nixmac-committed-config")
+        );
+        assert_eq!(prefs.host_attr.as_deref(), Some("workmac"));
+        let state = crate::state::onboarding::try_read(handle).unwrap();
+        assert_eq!(state.staged_config_dir, None);
+        assert_eq!(state.staged_host_attr, None);
     }
 
     #[test]

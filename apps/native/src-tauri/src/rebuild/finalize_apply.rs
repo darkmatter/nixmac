@@ -35,12 +35,38 @@ pub async fn finalize_apply(app: &AppHandle) -> Result<()> {
     build_state::record_build(app, &final_status).context("Failed to record build state")?;
     // Mark onboarding's "first build/evolution" gate as satisfied. Best-effort:
     // a bookkeeping failure must not turn a successful build into a failed apply.
-    if crate::state::onboarding::try_read(app).is_some() {
+    if let Some(onboarding) = crate::state::onboarding::try_read(app) {
+        // Commit point of the staged wizard selection: the applied
+        // configuration stops being a proposal the moment it runs on the
+        // machine, so preferences adopt it in the same breath as the build
+        // timestamp. Committing later (e.g. at the celebration) would leave
+        // a window where the system runs a config preferences don't name.
+        if let Some(dir) = onboarding.staged_config_dir.clone() {
+            let root = onboarding.staged_repo_root.clone().unwrap_or_else(|| {
+                crate::git::query::repo_root(&dir)
+                    .to_string_lossy()
+                    .to_string()
+            });
+            let host = onboarding.staged_host_attr.clone();
+            if let Err(error) = crate::state::preferences::write(app, move |prefs| {
+                prefs.config_dir = Some(dir);
+                prefs.repo_root = Some(root);
+                if host.is_some() {
+                    prefs.host_attr = host;
+                }
+            }) {
+                log::warn!("Failed to commit staged onboarding selection: {error:#}");
+            }
+        }
         if let Err(error) = crate::state::onboarding::write(app, |state| {
             state.last_build_at = Some(crate::utils::unix_now());
             // The applied config is live now: onboarding's ownership of the
-            // materialized directory ends, restart must never delete it.
+            // materialized directory ends, restart must never delete it —
+            // and the staged selection has just been committed above.
             state.provisional_config_dir = None;
+            state.staged_config_dir = None;
+            state.staged_repo_root = None;
+            state.staged_host_attr = None;
         }) {
             log::warn!("Failed to record onboarding build timestamp: {error:#}");
         }

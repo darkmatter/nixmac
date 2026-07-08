@@ -1633,7 +1633,24 @@ lastBuildAt: number | null;
  * and re-import may wipe and re-create it. Never set for user-selected
  * pre-existing directories. Backend code paths only.
  */
-provisionalConfigDir: string | null }
+provisionalConfigDir: string | null; 
+/**
+ * The wizard's config-dir selection, staged here while onboarding is
+ * uncommitted. Reads resolve staged-first (`store::get_config_dir_if_set`);
+ * `finalize_apply` commits it into `GlobalPreferences` on the first
+ * successful apply and clears it. Keeps "Restart setup" non-destructive:
+ * the committed configuration stays active until a restarted flow
+ * applies a new one.
+ */
+stagedConfigDir: string | null; 
+/**
+ * Repo root of the staged config-dir selection; committed with it.
+ */
+stagedRepoRoot: string | null; 
+/**
+ * The wizard's host selection, staged and committed like the dir.
+ */
+stagedHostAttr: string | null }
 
 /**
  * Individual permission state.

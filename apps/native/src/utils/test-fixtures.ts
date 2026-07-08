@@ -57,6 +57,9 @@ export function makeOnboardingState(
 		loginDecided: false,
 		lastBuildAt: null,
 		provisionalConfigDir: null,
+		stagedConfigDir: null,
+		stagedRepoRoot: null,
+		stagedHostAttr: null,
 		...overrides,
 	};
 }

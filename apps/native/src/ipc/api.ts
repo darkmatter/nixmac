@@ -33,7 +33,7 @@ export const tauriAPI = {
     /** @deprecated Use `client.config.prepareNewDir()` or `orpc.config.prepareNewDir` from `@/lib/orpc`. */
     prepareNewDir: (dir: string) => client.config.prepareNewDir({ dir }),
     /** @deprecated Use `client.config.pickDir()` or `orpc.config.pickDir` from `@/lib/orpc`. */
-    pickDir: () => client.config.pickDir(),
+    pickDir: () => client.config.pickDir({}),
     /** @deprecated Use `client.config.setHostAttr()` or `orpc.config.setHostAttr` from `@/lib/orpc`. */
     setHostAttr: (host: string) => client.config.setHostAttr({ host }),
     /** @deprecated Use `client.config.pickZip()` or `orpc.config.pickZip` from `@/lib/orpc`. */

@@ -23,7 +23,7 @@ interface PendingLocalChoice {
  * user picks when there are several.
  */
 export function LocalSource({ onImported }: LocalSourceProps) {
-  const { setDir } = useDarwinConfig();
+  const { setDir } = useDarwinConfig({ stage: true });
   const [browsing, setBrowsing] = useState(false);
   const [choosing, setChoosing] = useState(false);
   const [pending, setPending] = useState<PendingLocalChoice | null>(null);

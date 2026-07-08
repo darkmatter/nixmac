@@ -21,6 +21,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { useState } from "react";
+import { activeConfigDir, activeHostAttr } from "@/lib/active-config";
 
 /**
  * Step 4: pick the `darwinConfiguration` host that matches this Mac, given a
@@ -30,11 +31,11 @@ import { useState } from "react";
  */
 
 export function SetupStep() {
-  const configDir = useViewModel((s) => s.preferences?.configDir ?? "");
+  const configDir = useViewModel(activeConfigDir);
   const hosts = useViewModel((s) => s.hosts);
-  const savedHost = useViewModel((s) => s.preferences?.hostAttr ?? "");
+  const savedHost = useViewModel(activeHostAttr);
   const gitStatus = useViewModel((s) => s.git);
-  const { saveHost, bootstrap, isBootstrapping } = useDarwinConfig();
+  const { saveHost, bootstrap, isBootstrapping } = useDarwinConfig({ stage: true });
 
   const [selectedHost, setSelectedHost] = useState("");
   const [savingHost, setSavingHost] = useState(false);

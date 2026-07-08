@@ -118,11 +118,15 @@ Review of the initial implementation surfaced a leftover cross-slice write:
 its own side effects. Accepted follow-up, implemented as phase 4:
 
 1. **The wizard's selections are staged on `OnboardingState`**
-   (`staged_config_dir`, `staged_repo_root`, `staged_host_attr`). While
-   onboarding is uncommitted (`completed_at` unset), the config write path
-   (`config.setDir` / `setHostAttr` / imports / scaffold) writes the staged
-   fields; after completion the same commands write preferences directly, so
-   the shared picker components need no context switch.
+   (`staged_config_dir`, `staged_repo_root`, `staged_host_attr`). The two UIs
+   use explicitly different write paths — the onboarding surfaces pass
+   `stage: true` on the config commands (`useDarwinConfig({ stage: true })`)
+   and land on the staged fields; the preferences UI uses the default and
+   writes preferences directly. The destination is a caller decision, never
+   inferred from the latch: keeping onboarding and preferences logically
+   separate, with the first apply as the single commit step between them, is
+   the point of the design. Wizard-only surfaces (imports, scaffold) always
+   stage.
 1. **The commit point is the first successful apply, not the celebration.**
    `finalize_apply` moves the staged selection into `GlobalPreferences` in
    the same breath as `last_build_at` — the moment the configuration stops

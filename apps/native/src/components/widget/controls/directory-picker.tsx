@@ -12,6 +12,7 @@ import { FolderOpen, FolderPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CANONICAL_CONFIG_DIR } from "@/components/widget/onboarding/lib/flake-ref";
 import { client } from "@/lib/orpc";
+import { activeConfigDir } from "@/lib/active-config";
 
 type DirectoryPickerProps = {
   label: string;
@@ -36,7 +37,7 @@ export function DirectoryPicker({
   flow = "existing",
   onConfigured,
 }: DirectoryPickerProps) {
-  const configDir = useViewModel((state) => state.preferences?.configDir ?? "");
+  const configDir = useViewModel(activeConfigDir);
   const { pickDir, prepareNewDir, setDir } = useDarwinConfig();
   const isSetupFlow = flow === "setup";
 
