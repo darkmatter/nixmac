@@ -64,7 +64,11 @@ fn run_once() -> anyhow::Result<()> {
     }
 
     let activate_path = std::path::Path::new(&config_dir).join("result/activate");
-    let request = privileged_helper::protocol::current_user_activation_request(&activate_path)?;
+    // No canonical-link maintenance here: this agent re-applies the same
+    // config dir it was registered with, so the /etc/nix-darwin link set by
+    // the interactive apply that registered it is still correct.
+    let request =
+        privileged_helper::protocol::current_user_activation_request(&activate_path, None)?;
     let response = privileged_helper::client::activate_store_path(request)?;
     if !response.ok {
         return Err(anyhow::anyhow!(

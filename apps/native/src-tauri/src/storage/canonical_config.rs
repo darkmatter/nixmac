@@ -7,7 +7,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-pub const CANONICAL_CONFIG_DIR: &str = "/etc/nix-darwin";
+pub use crate::privileged_helper::protocol::CANONICAL_CONFIG_DIR;
 
 /// Returns true when `path` resolves to the canonical nix-darwin directory.
 pub fn is_canonical_config_path(path: &Path) -> bool {
@@ -44,6 +44,60 @@ pub fn ensure_canonical_config_link(repo_dir: &Path) -> Result<(), String> {
     }
 
     ensure_symlink_to(&repo)
+}
+
+/// Decides whether the next privileged activation should re-point
+/// `/etc/nix-darwin` at `repo_dir`, returning the canonicalized target.
+///
+/// The link is maintained during apply — an already-privileged step — so
+/// changing the configuration directory in preferences never has to prompt
+/// for a password on its own, and the link always names the configuration
+/// that was last *applied* (the one a bare `darwin-rebuild switch` should
+/// rebuild), not one merely selected.
+///
+/// Returns `None` when there is nothing to do: the link is already current,
+/// the config lives at the canonical path itself, the location is occupied
+/// by a foreign non-empty directory (logged, never deleted), or an e2e
+/// override is active.
+pub fn canonical_link_pending(repo_dir: &Path) -> Option<String> {
+    if crate::env::e2e_override(crate::env::keys::NIXMAC_E2E_CONFIG_DIR).is_some() {
+        return None;
+    }
+
+    let repo = repo_dir
+        .canonicalize()
+        .unwrap_or_else(|_| repo_dir.to_path_buf());
+
+    if is_canonical_config_path(&repo) {
+        return None;
+    }
+
+    match symlink_blocked_reason(&repo) {
+        Ok(None) => {}
+        Ok(Some(reason)) => {
+            log::warn!("[canonical-config] leaving {CANONICAL_CONFIG_DIR} alone: {reason}");
+            return None;
+        }
+        Err(error) => {
+            log::warn!("[canonical-config] cannot inspect {CANONICAL_CONFIG_DIR}: {error}");
+            return None;
+        }
+    }
+
+    match canonical_symlink_is_current(&repo) {
+        Ok(true) => None,
+        Ok(false) => match repo.to_str() {
+            Some(target) => Some(target.to_string()),
+            None => {
+                log::warn!("[canonical-config] config dir path is not valid UTF-8");
+                None
+            }
+        },
+        Err(error) => {
+            log::warn!("[canonical-config] cannot read {CANONICAL_CONFIG_DIR}: {error}");
+            None
+        }
+    }
 }
 
 fn paths_equivalent(left: &Path, right: &Path) -> bool {

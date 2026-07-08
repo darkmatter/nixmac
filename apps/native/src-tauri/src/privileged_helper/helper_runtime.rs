@@ -1,6 +1,6 @@
 use crate::privileged_helper::protocol::{
     ActivateStorePathRequest, HELPER_SOCKET_DIR, HELPER_SOCKET_PATH, HelperRequest, HelperResponse,
-    validate_canonical_activate_path,
+    canonical_link_shell_snippet, validate_canonical_activate_path, validate_canonical_link_target,
 };
 use anyhow::{Context, Result, bail};
 use std::fs;
@@ -99,6 +99,13 @@ fn activate_store_path(request: &ActivateStorePathRequest) -> Result<HelperRespo
 
 pub fn validate_activation_request(request: &ActivateStorePathRequest) -> Result<()> {
     validate_canonical_activate_path(&request.activate_path)?;
+    if let Some(target) = &request.canonical_link_target {
+        validate_canonical_link_target(target)?;
+        // Checked here, as root: the link must point at a real directory.
+        if !Path::new(target).is_dir() {
+            bail!("canonical link target is not a directory: {target}");
+        }
+    }
     if request.user_name.trim().is_empty() {
         bail!("activation user is required");
     }
@@ -261,6 +268,15 @@ pub fn root_activation_script(request: &ActivateStorePathRequest) -> Result<Stri
     validate_canonical_activate_path(&request.activate_path)?;
     let sudoers_path = "/etc/sudoers.d/nixmac-activate-helper";
     let ssh_sock = request.ssh_auth_sock.as_deref().unwrap_or("");
+    // The canonical-link lines run after activation succeeded (`set -e`) and
+    // are best-effort themselves — a link failure must not fail the apply.
+    let canonical_link = match &request.canonical_link_target {
+        Some(target) => {
+            validate_canonical_link_target(target)?;
+            format!("{}\n", canonical_link_shell_snippet(target))
+        }
+        None => String::new(),
+    };
     Ok(format!(
         "set -e\n\
          ACTIVATE='{activate}'\n\
@@ -275,7 +291,8 @@ pub fn root_activation_script(request: &ActivateStorePathRequest) -> Result<Stri
          export SSH_AUTH_SOCK='{sock}'\n\
          launchctl asuser \"$USER_ID\" sudo -E -n \"$ACTIVATE\" 2>&1\n\
          SYSTEM_PATH=$(dirname \"$ACTIVATE\")\n\
-         nix-env -p /nix/var/nix/profiles/system --set \"$SYSTEM_PATH\" || true\n",
+         nix-env -p /nix/var/nix/profiles/system --set \"$SYSTEM_PATH\" || true\n\
+         {canonical_link}",
         activate = shell_single_quote(&request.activate_path),
         user_id = request.user_id,
         user_name = shell_single_quote(&request.user_name),
@@ -301,6 +318,7 @@ mod tests {
             home: "/Users/alice".to_string(),
             ssh_auth_sock: Some("/tmp/ssh.sock".to_string()),
             nix_path: "/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin".to_string(),
+            canonical_link_target: None,
         }
     }
 
@@ -319,6 +337,38 @@ mod tests {
     #[test]
     fn root_activation_script_rejects_non_store_path() {
         assert!(root_activation_script(&request("/tmp/activate")).is_err());
+    }
+
+    #[test]
+    fn root_activation_script_appends_canonical_link_after_activation() {
+        let mut with_link = request("/nix/store/abc123-darwin-system-25.05.20260629/activate");
+        with_link.canonical_link_target = Some("/Users/alice/.darwin".to_string());
+
+        let script = root_activation_script(&with_link).expect("build script");
+
+        let activate_pos = script.find("launchctl asuser").expect("activation line");
+        let link_pos = script
+            .find("ln -sfn '/Users/alice/.darwin' '/etc/nix-darwin' || true")
+            .expect("link line");
+        assert!(link_pos > activate_pos, "link must run after activation");
+    }
+
+    #[test]
+    fn root_activation_script_omits_link_lines_without_target() {
+        let script = root_activation_script(&request(
+            "/nix/store/abc123-darwin-system-25.05.20260629/activate",
+        ))
+        .expect("build script");
+
+        assert!(!script.contains("ln -sfn"));
+    }
+
+    #[test]
+    fn root_activation_script_rejects_relative_link_target() {
+        let mut with_link = request("/nix/store/abc123-darwin-system-25.05.20260629/activate");
+        with_link.canonical_link_target = Some("relative/dir".to_string());
+
+        assert!(root_activation_script(&with_link).is_err());
     }
 
     #[test]
