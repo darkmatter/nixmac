@@ -1,5 +1,9 @@
 # nixmac GitHub App — server-side contract & implementation prompt
 
+> Harness status: historical server contract. Before relying on this, verify it
+> against current oRPC bindings, GitHub onboarding commands, config import flow,
+> and server auth behavior.
+
 This is the contract the nixmac **desktop app** (Tauri) is being built against. Implement these
 endpoints on the nixmac server (the service the desktop already talks to via `VITE_SERVER_URL`).
 

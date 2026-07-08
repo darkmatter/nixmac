@@ -19,6 +19,7 @@
     "test:e2e": "bun -F native test:e2e",
     "test:e2e:ui": "bun -F native test:e2e:ui",
     "test:e2e:install": "bun -F native test:e2e:install",
+    "check:agent-docs": "node scripts/check-agent-docs.mjs",
     "knip": "knip"
   },
   "dependencies": {},

@@ -104,16 +104,15 @@ bun run tauri build --debug
 
 ```bash
 devenv shell
-bun install
 
-# Start everything (web + server + native app in dev mode)
+# Start the local process-compose stack. On macOS this starts the Tauri app
+# through nix/dev.nix -> processes.tauri.
 devenv up
-
-# Or start individual pieces
-bun run dev:web        # React frontend at http://localhost:3001
-bun run dev:server     # API server at http://localhost:3000
-bun run dev:native     # Tauri desktop app
 ```
+
+Use the process-compose TUI from `devenv up` for optional local processes. Do
+not use the old `bun run dev:web`, `bun run dev:server`, or `bun run dev:native`
+commands; they are no longer package scripts.
 
 ### Profiling (Rust-side)
 

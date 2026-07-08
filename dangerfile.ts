@@ -21,11 +21,10 @@ const touched = [...modified, ...created];
 // File classifiers
 // ---------------------------------------------------------------------------
 //
-// Only apps/native exists in this repo — the web app lives in
-// darkmatter/nixmac-web. No packages/ workspace, no DB migrations,
-// no infra/ dir. Secrets are sops-encrypted at ops/secrets/secrets.sops.json.
+// The native app is the main deliverable. Shared frontend packages live under
+// packages/. Secrets are sops-encrypted at ops/secrets/secrets.sops.json.
 
-const UI_COMPONENT_RE = /^apps\/native\/src\/components\/.+\.tsx$/;
+const UI_COMPONENT_RE = /^(apps\/native\/src\/components|packages\/ui\/src\/components)\/.+\.tsx$/;
 const STORY_RE = /\.stories\.tsx?$/;
 const TS_TEST_RE = /\.(test|spec)\.tsx?$/;
 const RUST_SOURCE_RE = /^apps\/native\/src-tauri\/src\/.+\.rs$/;
@@ -398,19 +397,34 @@ async function checkDebugStatements(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// 7. Docs-drift gate — behavior code changes need companion docs PR
+// 7. Docs-drift gate — behavior code changes need repo-local docs attention
 // ---------------------------------------------------------------------------
 
 const DOCS_SENSITIVE_PATHS = [
+  "apps/native/src/components/widget/onboarding/",
+  "apps/native/src/lib/env.ts",
+  "apps/native/src/lib/errors.ts",
   "apps/native/src-tauri/src/evolve/",
-  "apps/native/src-tauri/src/recovery_resolver.rs",
   "apps/native/src-tauri/src/cli.rs",
-  "apps/native/src-tauri/src/darwin.rs",
-  "apps/native/src-tauri/src/nix.rs",
-  "apps/native/src-tauri/src/permissions.rs",
-  "apps/native/src-tauri/src/rollback.rs",
+  "apps/native/src-tauri/src/rebuild/darwin.rs",
+  "apps/native/src-tauri/src/system/nix.rs",
+  "apps/native/src-tauri/src/system/permissions.rs",
+  "apps/native/src-tauri/src/commands/permissions.rs",
+  "apps/native/src-tauri/src/orpc/darwin.rs",
+  "apps/native/src-tauri/src/orpc/nix.rs",
+  "apps/native/src-tauri/src/orpc/permissions.rs",
+  "apps/native/src-tauri/src/commands/rollback.rs",
+  "apps/native/src-tauri/src/rebuild/rollback.rs",
+  "apps/native/src-tauri/src/rebuild/finalize_apply.rs",
+  "apps/native/src-tauri/src/rebuild/finalize_restore.rs",
+  "apps/native/src-tauri/src/db/restore_commits.rs",
+  "apps/native/src-tauri/src/history/",
+  "apps/native/src-tauri/src/orpc/",
+  "apps/native/src-tauri/src/summarize/",
   "apps/native/src-tauri/prompts/system.md",
   "apps/native/templates/",
+  "packages/state/",
+  ".github/workflows/",
 ];
 
 function checkDocsDrift(): void {
@@ -423,19 +437,24 @@ function checkDocsDrift(): void {
     return;
   }
 
-  const docsUpdated = body.includes("[x] Docs updated");
+  const docsUpdated =
+    body.includes("[x] Repo-local docs updated") ||
+    body.includes("[x] Companion product docs updated") ||
+    body.includes("[x] Docs updated");
   const noDocsNeeded = body.includes("[x] No docs update needed");
 
   if (!docsUpdated && !noDocsNeeded) {
     warn(
       "This PR touches behavior-sensitive code that is documented in " +
+      "repo-local `docs/` and may also affect " +
       "[darkmatter/nixmac-web](https://github.com/darkmatter/nixmac-web). " +
       "Please either:\n" +
-      "- Open a companion docs PR and check **Docs updated** in the PR description, or\n" +
+      "- Update `docs/` / `AGENTS.md` and check **Repo-local docs updated**, or\n" +
+      "- Open a companion product docs PR when user-facing docs changed, or\n" +
       "- Check **No docs update needed** if the change doesn't affect user-facing behavior.",
     );
   } else if (docsUpdated) {
-    message("Docs companion PR linked — thank you.");
+    message("Docs update acknowledged.");
   } else {
     message("No docs update needed — acknowledged.");
   }
