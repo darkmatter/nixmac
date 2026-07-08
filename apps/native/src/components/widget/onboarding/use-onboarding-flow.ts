@@ -15,7 +15,13 @@ export function useOnboardingFlow(): {
   /** Furthest gate reached; `build` once onboarding is complete. */
   furthestStep: StepId;
   progress: number;
-  /** Whether onboarding should take over the window. */
+  /**
+   * Whether onboarding should take over the window. Gated by the backend
+   * completion latch (`onboardingState.completedAt`), not by re-deriving
+   * completion from preference facts — a completed user editing preferences
+   * (e.g. changing the config dir, which clears the host) must never be
+   * thrown back into the wizard. See docs/2026-07-08-onboarding-state-ownership.md.
+   */
   showFlow: boolean;
   goToStep: (stepId: StepId) => void;
 } {
@@ -30,6 +36,7 @@ export function useOnboardingFlow(): {
   const macScannedAt = useViewModel((s) => s.preferences?.onboardingMacScannedAt ?? null);
   const loginDecided = useViewModel((s) => s.preferences?.onboardingLoginDecided ?? false);
   const lastBuildAt = useViewModel((s) => s.preferences?.onboardingLastBuildAt ?? null);
+  const completedAt = useViewModel((s) => s.onboardingState?.completedAt ?? null);
 
   const inferenceDeferred = useOnboarding((s) => s.inferenceDeferred);
   const celebrating = useOnboarding((s) => s.celebrating);
@@ -77,7 +84,10 @@ export function useOnboardingFlow(): {
   // progress bar. Celebration keeps the flow mounted past completion until the
   // user dismisses it.
   const furthestStep: StepId = derivedStep ?? "build";
-  const showFlow = !complete || celebrating;
+  // Visibility reads the latch; `derivedStep` only routes *within* the flow.
+  // Dismissing the celebration latches `completedAt` on the backend, which is
+  // what finally routes into the app.
+  const showFlow = completedAt === null || celebrating;
 
   const prevFurthestStep = useRef(furthestStep);
   useEffect(() => {
