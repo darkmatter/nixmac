@@ -9,7 +9,6 @@
 //! had selected an existing flake.
 
 use anyhow::{Context, Result, anyhow, bail};
-use git2::{Cred, FetchOptions, RemoteCallbacks};
 use std::fs::File;
 use std::path::{Component, Path, PathBuf};
 use tauri::AppHandle;
@@ -17,6 +16,9 @@ use tauri::AppHandle;
 use crate::bootstrap::default_config::{detect_hostname, detect_username};
 use crate::bootstrap::detect_darwin_platform;
 use crate::bootstrap::template::apply_template_placeholders_in_dir;
+use crate::git::auth::{
+    authenticated_fetch_options, is_github_clone_url, sanitize_clone_url_for_logs,
+};
 
 /// A parsed GitHub/git reference ready to clone.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,40 +35,11 @@ pub struct RepoRef {
     pub repo: String,
 }
 
-/// Sanitize a clone URL for logging, removing any embedded credentials.
-fn sanitize_clone_url_for_logs(clone_url: &str) -> String {
-    if let Ok(mut url) = url::Url::parse(clone_url) {
-        let _ = url.set_username("");
-        let _ = url.set_password(None);
-        return url.to_string();
-    }
-
-    if let Some((_, rest)) = clone_url.split_once('@') {
-        if rest.contains(':') {
-            return format!("***@{}", rest);
-        }
-    }
-
-    clone_url.to_string()
-}
-
 fn is_valid_segment(segment: &str) -> bool {
     !segment.is_empty()
         && segment
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
-}
-
-/// Checks if the given clone URL is a GitHub URL, either in HTTPS or SSH form.
-fn is_github_clone_url(clone_url: &str) -> bool {
-    if clone_url.starts_with("git@github.com:") {
-        return true;
-    }
-
-    url::Url::parse(clone_url)
-        .ok()
-        .and_then(|url| url.host_str().map(|h| h.to_ascii_lowercase()))
-        .is_some_and(|host| host == "github.com" || host == "www.github.com")
 }
 
 /// Parses one of our repository locator forms into an owner/repo pair, stripping any `.git` suffix and optional `github.com/` prefix.
@@ -329,56 +302,7 @@ fn clone_repo(spec: &RepoRef, dest: &Path, token: Option<&str>) -> Result<()> {
         builder.branch(branch);
     }
 
-    let git_config = git2::Config::open_default().ok();
-    let mut token_attempted = false;
-    let mut ssh_agent_attempted = false;
-    let mut credential_helper_attempted = false;
-    let mut callbacks = RemoteCallbacks::new();
-    callbacks.credentials(move |url, username_from_url, allowed| {
-        if allowed.contains(git2::CredentialType::USERNAME)
-            && !allowed.contains(git2::CredentialType::USER_PASS_PLAINTEXT)
-            && !allowed.contains(git2::CredentialType::SSH_KEY)
-            && !allowed.contains(git2::CredentialType::DEFAULT)
-        {
-            return Cred::username(username_from_url.unwrap_or("git"));
-        }
-
-        if allowed.contains(git2::CredentialType::USER_PASS_PLAINTEXT) && !token_attempted {
-            token_attempted = true;
-            if let Some(token) = token {
-                return Cred::userpass_plaintext("x-access-token", token);
-            }
-        }
-
-        if allowed.contains(git2::CredentialType::SSH_KEY) && !ssh_agent_attempted {
-            ssh_agent_attempted = true;
-            return Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"));
-        }
-
-        if allowed.contains(git2::CredentialType::USER_PASS_PLAINTEXT)
-            && !credential_helper_attempted
-        {
-            credential_helper_attempted = true;
-            if let Some(config) = &git_config {
-                if let Ok(credential) = Cred::credential_helper(config, url, username_from_url) {
-                    return Ok(credential);
-                }
-            }
-        }
-
-        if allowed.contains(git2::CredentialType::DEFAULT) {
-            return Cred::default();
-        }
-
-        Err(git2::Error::from_str(
-            "no supported authentication methods succeeded",
-        ))
-    });
-
-    let mut fetch_options = FetchOptions::new();
-    fetch_options.remote_callbacks(callbacks);
-
-    builder.fetch_options(fetch_options);
+    builder.fetch_options(authenticated_fetch_options(token.map(str::to_string)));
 
     if let Err(error) = builder.clone(&spec.clone_url, dest) {
         log::error!(
@@ -969,29 +893,5 @@ mod tests {
         assert!(txt.contains("HOSTNAME_PLACEHOLDER"));
         assert!(txt.contains("PLATFORM_PLACEHOLDER"));
         assert!(txt.contains("USERNAME_PLACEHOLDER"));
-    }
-
-    #[test]
-    fn test_sanitize_clone_url_for_logs() {
-        let url = "https://user:password@github.com/repo.git";
-        let sanitized = sanitize_clone_url_for_logs(url);
-        assert_eq!(sanitized, "https://github.com/repo.git");
-
-        // SSH
-        let url = "ssh://user:password@github.com/repo.git";
-        let sanitized = sanitize_clone_url_for_logs(url);
-        assert_eq!(sanitized, "ssh://github.com/repo.git");
-
-        // SCP-style with git://.
-        let url = "git://user:password@github.com/repo.git";
-        let sanitized = sanitize_clone_url_for_logs(url);
-        assert_eq!(sanitized, "git://github.com/repo.git");
-    }
-
-    #[test]
-    fn test_is_github_clone_url() {
-        assert!(is_github_clone_url("https://github.com/repo.git"));
-        assert!(is_github_clone_url("https://www.github.com/repo.git"));
-        assert!(!is_github_clone_url("https://gitlab.com/repo.git"));
     }
 }

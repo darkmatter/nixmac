@@ -1,5 +1,7 @@
 //! Git module: low-level subprocess wrappers and diff parsing.
 
+pub mod auth;
+pub mod auto_update;
 pub mod exec;
 pub mod init;
 pub mod query;

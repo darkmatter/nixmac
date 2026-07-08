@@ -1,6 +1,6 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use git2::{DiffOptions, Oid, Repository};
 use tauri::AppHandle;
 
@@ -79,21 +79,61 @@ pub fn repo_root(dir: &str) -> PathBuf {
     }
 }
 
+/// Input types supported by [`current_branch`].
+pub trait CurrentBranchSource {
+    fn current_branch(self) -> Option<String>;
+}
+
+impl CurrentBranchSource for &Repository {
+    fn current_branch(self) -> Option<String> {
+        let head = self.head().ok()?;
+        let name = head.shorthand().ok()?;
+
+        match name {
+            "HEAD" => None,
+            other => Some(other.to_string()),
+        }
+    }
+}
+
+macro_rules! impl_current_branch_for_path_source {
+    ($source_type:ty) => {
+        impl CurrentBranchSource for $source_type {
+            fn current_branch(self) -> Option<String> {
+                let repo = git2::Repository::discover(self).ok()?;
+                current_branch(&repo)
+            }
+        }
+    };
+}
+
+impl_current_branch_for_path_source!(&str);
+impl_current_branch_for_path_source!(String);
+impl_current_branch_for_path_source!(&String);
+impl_current_branch_for_path_source!(&Path);
+impl_current_branch_for_path_source!(PathBuf);
+impl_current_branch_for_path_source!(&PathBuf);
+
 /// Returns the current branch name (None if detached HEAD or not a repo).
 ///
 /// This is equivalent to:
 ///     git rev-parse --abbrev-ref HEAD
-pub fn current_branch(dir: &str) -> Option<String> {
-    let repo = git2::Repository::discover(dir).ok()?;
+pub fn current_branch<S: CurrentBranchSource>(source: S) -> Option<String> {
+    source.current_branch()
+}
 
-    let head = repo.head().ok()?;
-
-    let name = head.shorthand().ok()?;
-
-    match name {
-        "HEAD" => None,
-        other => Some(other.to_string()),
-    }
+/// Returns the commit OID that HEAD currently resolves to.
+///
+/// This is intentionally repository-based so callers that already opened a repo
+/// do not need to rediscover it just to inspect HEAD.
+/// (It's possible that some of our other helper methods would benefit from this technique, too.)
+pub fn head_oid(repo: &Repository) -> Result<Oid> {
+    Ok(repo
+        .head()
+        .context("failed to read repository HEAD")?
+        .peel_to_commit()
+        .context("HEAD does not resolve to a commit")?
+        .id())
 }
 
 /// Resolves a Git reference (branch, tag, HEAD, or full ref name) to its commit SHA.
@@ -630,9 +670,35 @@ mod tests {
     }
 
     #[test]
+    fn current_branch_accepts_open_repository() {
+        let (temp, _) = repo_with_initial_commit();
+        let path = temp.path().to_string_lossy().to_string();
+        let repo = git2::Repository::discover(&path).expect("discover repo");
+
+        assert_eq!(current_branch(&repo), current_branch(&path));
+    }
+
+    #[test]
     fn current_branch_none_for_non_repo() {
         let temp = TempDir::new().expect("create temp dir");
-        assert_eq!(current_branch(&temp.path().to_string_lossy()), None);
+        assert_eq!(current_branch(temp.path()), None);
+    }
+
+    #[test]
+    fn head_oid_resolves_head_commit() {
+        let (temp, commit_id) = repo_with_initial_commit();
+        let path = temp.path().to_string_lossy().to_string();
+        let repo = git2::Repository::discover(&path).expect("discover repo");
+
+        assert_eq!(head_oid(&repo).expect("read HEAD oid"), commit_id);
+    }
+
+    #[test]
+    fn head_oid_errors_for_unborn_head() {
+        let temp = TempDir::new().expect("create temp dir");
+        let repo = git2::Repository::init(temp.path()).expect("init repo");
+
+        assert!(head_oid(&repo).is_err());
     }
 
     #[test]
