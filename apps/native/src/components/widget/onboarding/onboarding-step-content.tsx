@@ -7,6 +7,7 @@ import { NixSetupStep } from "@/components/widget/onboarding/steps/nix-setup-ste
 import { PermissionsStep } from "@/components/widget/onboarding/steps/permissions-step";
 import { SetupStep } from "@/components/widget/onboarding/steps/setup-step";
 import { useOnboardingProgress } from "@/hooks/use-onboarding-progress";
+import { isInferenceConfigured } from "@/lib/providers/ai-provider-validation";
 import { onboardingActions, useOnboarding, useViewModel } from "@nixmac/state";
 
 interface OnboardingStepContentProps {
@@ -22,7 +23,7 @@ export function OnboardingStepContent({ currentStep, title }: OnboardingStepCont
   // separately. The build step only needs to know inference is configured.
   const evolveProvider = useViewModel((s) => s.preferences?.evolveProvider ?? null);
   const evolveModel = useViewModel((s) => s.preferences?.evolveModel ?? null);
-  const hasInference = Boolean(evolveProvider) && Boolean(evolveModel);
+  const hasInference = isInferenceConfigured(evolveProvider, evolveModel);
   const { markMacScanned, markLoginDecided } = useOnboardingProgress();
 
   return (

@@ -12,6 +12,19 @@ export function isCliProvider(provider: string): boolean {
   return CLI_PROVIDER_VALUES.includes(provider as (typeof CLI_PROVIDER_VALUES)[number]);
 }
 
+/**
+ * Whether persisted prefs describe a usable inference setup. CLI providers
+ * (claude/codex/opencode) accept an optional model — an empty model means
+ * "use the CLI's own default" — so only non-CLI providers require a model.
+ */
+export function isInferenceConfigured(
+  provider: string | null | undefined,
+  model: string | null | undefined,
+): boolean {
+  if (!provider) return false;
+  return isCliProvider(provider) || hasValue(model);
+}
+
 export function resolveOpenAiCompatibleProvider(
   provider: string | null | undefined,
   prefs: Pick<DarwinPrefs, "openrouterApiKey" | "openaiApiKey">,

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getProviderConfigInvalidReason,
+  isInferenceConfigured,
   resolveOpenAiCompatibleProvider,
 } from "./ai-provider-validation";
 
@@ -12,6 +13,26 @@ const EMPTY_PREFS = {
 };
 
 const NO_CLI_TOOLS = { claude: false, codex: false, opencode: false };
+
+describe("isInferenceConfigured", () => {
+  it("accepts CLI providers without a model (empty means CLI default)", () => {
+    expect(isInferenceConfigured("codex", "")).toBe(true);
+    expect(isInferenceConfigured("claude", null)).toBe(true);
+    expect(isInferenceConfigured("opencode", undefined)).toBe(true);
+  });
+
+  it("requires a model for non-CLI providers", () => {
+    expect(isInferenceConfigured("openrouter", "")).toBe(false);
+    expect(isInferenceConfigured("openrouter", "   ")).toBe(false);
+    expect(isInferenceConfigured("openrouter", "openai/gpt-4o-mini")).toBe(true);
+    expect(isInferenceConfigured("nixmac", "openai/gpt-4o-mini")).toBe(true);
+  });
+
+  it("requires a provider", () => {
+    expect(isInferenceConfigured(null, "openai/gpt-4o-mini")).toBe(false);
+    expect(isInferenceConfigured(undefined, undefined)).toBe(false);
+  });
+});
 
 describe("getProviderConfigInvalidReason", () => {
   it("accepts nixmac hosted inference without BYOK credentials", () => {
