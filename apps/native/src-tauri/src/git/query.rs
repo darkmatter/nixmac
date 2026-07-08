@@ -925,6 +925,31 @@ mod tests {
     }
 
     #[test]
+    fn test_status_from_config_subdir_detects_repo_changes() {
+        // Mirrors a config dir that is a subfolder of a larger repo
+        // (e.g. ~/dotfiles/nix/os inside ~/dotfiles).
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        let config_dir = repo_dir.join("nix").join("os");
+        fs::create_dir_all(&config_dir).unwrap();
+        fs::write(config_dir.join("flake.nix"), "{ }").unwrap();
+        crate::git::commit_all(&repo_dir_str, "initial").unwrap();
+
+        fs::write(config_dir.join("flake.nix"), "{ inputs = {}; }").unwrap();
+
+        let status = status(&config_dir.to_string_lossy()).unwrap();
+        assert!(!status.clean_head);
+        assert!(
+            status.files.iter().any(|f| f.path == "nix/os/flake.nix"),
+            "expected nix/os/flake.nix in {:?}",
+            status.files
+        );
+    }
+
+    #[test]
     fn test_status_excludes_gitignored_file() {
         let temp_dir = TempDir::new().unwrap();
         let repo_dir = temp_dir.path().join("repo");
