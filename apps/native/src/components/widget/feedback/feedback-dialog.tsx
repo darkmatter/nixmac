@@ -63,6 +63,8 @@ const ISSUE_SHARE_OPTIONS: ShareOptions = {
   appLogs: true,
 };
 
+type FeedbackAvailability = "idle" | "checking" | "available";
+
 // Visibility helper functions for share options checkboxes
 // Each function returns a boolean indicating whether the checkbox should be visible
 // Parameters: feedbackType, step, mainWindowError
@@ -286,15 +288,17 @@ function shouldShowAppLogs(
 export function FeedbackDialog() {
   const feedbackOpen = useUiState((s) => s.feedbackOpen);
   const feedbackTypeOverride = useUiState((s) => s.feedbackTypeOverride);
-  const feedbackInitialText = useUiState((s) => s.feedbackInitialText);
+  const pendingFeedbackInitialText = useUiState((s) => s.feedbackInitialText);
   const panicDetails = useUiState((s) => s.panicDetails);
   const step = useCurrentStep();
   const mainWindowError = useUiState((s) => s.error) ?? undefined;
 
-  const [feedbackAvailable, setFeedbackAvailable] = useState(false);
+  const [feedbackAvailability, setFeedbackAvailability] =
+    useState<FeedbackAvailability>("idle");
   const [signInAlertOpen, setSignInAlertOpen] = useState(false);
   const [feedbackType, setFeedbackType] = useState<FeedbackType>(FeedbackType.Suggestion);
   const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackInitialText, setFeedbackInitialText] = useState<string | null>(null);
   const [expectedText, setExpectedText] = useState("");
   const [email, setEmail] = useState("");
   const [promptHistory, setPromptHistory] = useState<string[]>([]);
@@ -305,17 +309,21 @@ export function FeedbackDialog() {
   const [submitting, setSubmitting] = useState(false);
 
   const resetFeedbackState = () => {
-    setFeedbackAvailable(false);
+    setFeedbackAvailability("idle");
     setFeedbackType(FeedbackType.Suggestion);
     setFeedbackText("");
+    setFeedbackInitialText(null);
     setExpectedText("");
     setEmail("");
     setRelatedPrompt("");
     setShareOptions(DEFAULT_SHARE_OPTIONS);
     setIsPreviewingReport(false);
     setPreviewReportText("");
-    uiActions.setFeedbackTypeOverride(null);
-    uiActions.setState({ feedbackInitialText: null, panicDetails: null });
+    uiActions.setState({
+      feedbackTypeOverride: null,
+      feedbackInitialText: null,
+      panicDetails: null,
+    });
   };
 
   const cancelOpenForSignIn = () => {
@@ -326,11 +334,12 @@ export function FeedbackDialog() {
 
   useEffect(() => {
     if (!feedbackOpen) {
-      setFeedbackAvailable(false);
+      setFeedbackAvailability("idle");
       return;
     }
 
     let cancelled = false;
+    setFeedbackAvailability("checking");
 
     client.feedback
       .isAvailable()
@@ -342,7 +351,7 @@ export function FeedbackDialog() {
           return;
         }
 
-        setFeedbackAvailable(true);
+        setFeedbackAvailability("available");
         client.promptHistory.get().then(setPromptHistory).catch(console.error);
       })
       .catch((err) => {
@@ -358,27 +367,30 @@ export function FeedbackDialog() {
   }, [feedbackOpen]);
 
   useEffect(() => {
-    if (!feedbackOpen || !feedbackTypeOverride) {
+    if (!feedbackOpen || (!feedbackTypeOverride && !pendingFeedbackInitialText)) {
       return;
     }
 
-    setFeedbackType(feedbackTypeOverride);
-    if (
-      feedbackTypeOverride === FeedbackType.Issue ||
-      feedbackTypeOverride === FeedbackType.Error
-    ) {
-      setShareOptions(ISSUE_SHARE_OPTIONS);
-    }
-  }, [feedbackOpen, feedbackTypeOverride]);
-
-  // Pre-populate feedback text when opening with initial text (e.g., from panic)
-  useEffect(() => {
-    if (!feedbackOpen || !feedbackInitialText) {
-      return;
+    if (feedbackTypeOverride) {
+      setFeedbackType(feedbackTypeOverride);
+      if (
+        feedbackTypeOverride === FeedbackType.Issue ||
+        feedbackTypeOverride === FeedbackType.Error
+      ) {
+        setShareOptions(ISSUE_SHARE_OPTIONS);
+      }
     }
 
-    setFeedbackText(feedbackInitialText);
-  }, [feedbackOpen, feedbackInitialText]);
+    if (pendingFeedbackInitialText) {
+      setFeedbackText(pendingFeedbackInitialText);
+      setFeedbackInitialText(pendingFeedbackInitialText);
+    }
+
+    uiActions.setState({
+      feedbackTypeOverride: null,
+      feedbackInitialText: null,
+    });
+  }, [feedbackOpen, feedbackTypeOverride, pendingFeedbackInitialText]);
 
   // When the user actively selects a feedback type, reset the evolutionLog
   // share option to the sensible default for that type. It's acceptable to
@@ -514,7 +526,8 @@ export function FeedbackDialog() {
   const dialogDescription = hasAutoFilledError
     ? "An error was detected. The details have been pre-filled below. Please review and submit to help us fix this issue."
     : "Help us make nixmac better";
-  const feedbackDialogOpen = feedbackOpen && feedbackAvailable;
+  const feedbackDialogOpen = feedbackOpen;
+  const checkingFeedbackAvailability = feedbackAvailability !== "available";
 
   return (
     <>
@@ -543,6 +556,20 @@ export function FeedbackDialog() {
         }}
       >
       <DialogContent className="max-w-2xl h-[85vh] flex flex-col">
+        {checkingFeedbackAvailability ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Checking feedback availability</DialogTitle>
+              <DialogDescription>
+                Verifying that feedback can be sent from this device.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-1 items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          </>
+        ) : (
+          <>
         <DialogHeader>
           <DialogTitle className={hasAutoFilledError ? "flex items-center gap-2" : ""}>
             {hasAutoFilledError && <span className="text-red-500">⚠️</span>}
@@ -1045,6 +1072,8 @@ export function FeedbackDialog() {
             </>
           )}
         </DialogFooter>
+          </>
+        )}
       </DialogContent>
       </Dialog>
     </>
