@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/select";
 import { BootstrapConfig } from "@/components/widget/controls/bootstrap-config";
 import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
+import { RestartSetupConfirmation } from "@/components/widget/onboarding/restart-setup";
 import { getWebSiteUrl } from "@/lib/env";
 import { useViewModel } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
@@ -57,6 +58,7 @@ export function GeneralTab({
   sendDiagnosticsField,
 }: GeneralTabProps) {
   const telemetry = useTelemetry();
+  const [confirmingRestart, setConfirmingRestart] = useState(false);
   return (
     <div className="space-y-6">
       <div>
@@ -98,6 +100,11 @@ export function GeneralTab({
               <p className="text-muted-foreground text-xs">
                 The darwin configuration to use for this machine
               </p>
+              {!host && (
+                <p className="text-amber-500 text-xs">
+                  No host selected — pick one above to finish switching to this configuration.
+                </p>
+              )}
             </div>
           ) : (
             configDir && (
@@ -161,6 +168,25 @@ export function GeneralTab({
               <ExternalLink className="h-3.5 w-3.5" />
             </Button>
           </div>
+
+          {/* Restart setup */}
+          <div className="flex items-center justify-between rounded-lg border border-border p-3">
+            <div className="space-y-0.5">
+              <div className="font-medium text-sm">Restart setup</div>
+              <div className="text-muted-foreground text-xs">
+                Run the first-time setup wizard again. Recorded setup progress is discarded.
+              </div>
+            </div>
+            <Button onClick={() => setConfirmingRestart(true)} size="sm" variant="outline">
+              Restart…
+            </Button>
+          </div>
+          <RestartSetupConfirmation
+            open={confirmingRestart}
+            onOpenChange={setConfirmingRestart}
+            // Close the settings overlay so the re-surfaced wizard is visible.
+            onRestarted={() => setSettingsOpen(false)}
+          />
 
           <VersionRow />
         </div>
