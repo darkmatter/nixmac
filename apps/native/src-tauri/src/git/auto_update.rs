@@ -139,8 +139,7 @@ fn decide_auto_update(status: &AutoUpdateGitStatus) -> AutoUpdateDecision {
 
 /// For auto-update, we have strict requirements for the working tree to be clean, including:
 /// 1. No uncommitted changes in tracked files.
-/// 2. No untracked files or directories.
-/// 3. No ignored files or directories.
+/// 2. No untracked files or directories (ignored files are not considered).
 fn is_worktree_clean_for_auto_update(dir: &str) -> anyhow::Result<bool> {
     crate::git::init::require_repo(dir)?;
 

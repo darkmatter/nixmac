@@ -189,10 +189,14 @@ where
                 // Detect upstream git commits we may want to offer to pull.
                 // This is a fire-and-forget, best-effort check; if it fails,
                 // we just try again on the next scheduled check.
-                if let Some(ref dir) = current_dir {
-                    if should_check_auto_update(dir, Instant::now()) {
-                        let decision = git::auto_update::check_auto_update(dir);
-                        log::debug!("[watcher] git auto-update check result: {:?}", decision);
+                if let Some(dir) = current_dir.clone() {
+                    if should_check_auto_update(&dir, Instant::now()) {
+                        // Use a separate thread so we don't block the crazy-fast 100ms loop. The check itself is a git fetch
+                        // which is more like order-of-seconds (usually about 1-2 seconds in practice).
+                        std::thread::spawn(move || {
+                            let decision = git::auto_update::check_auto_update(&dir);
+                            log::debug!("[watcher] git auto-update check result: {:?}", decision);
+                        });
                     }
                 }
 
