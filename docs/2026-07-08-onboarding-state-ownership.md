@@ -110,6 +110,46 @@ Phase 1 (latch + gate)
 1. **Two sources of "complete" during the transition.** Between phases, `computeOnboardingStep === null` and `completed_at` can disagree. Keep the derivation authoritative *inside* the flow and the latch authoritative for *visibility*, and never read `derivedStep === null` outside the flow after phase 1 — enforce with a lint-grep in review.
 1. **`onboarding.complete()` racing `celebrating`.** The latch flips `showFlow`'s first disjunct while `celebrating` still holds the flow open; ordering is already handled by the existing `celebrating` mechanics, but the phase 1 gate should test the dismiss path explicitly.
 
+## Amendment (2026-07-08): staged selections, committed at first apply
+
+Review of the initial implementation surfaced a leftover cross-slice write:
+`onboarding_reset` still cleared `config_dir`/`repo_root`/`host_attr` out of
+`GlobalPreferences` — onboarding reaching into another owner's state to undo
+its own side effects. Accepted follow-up, implemented as phase 4:
+
+1. **The wizard's selections are staged on `OnboardingState`**
+   (`staged_config_dir`, `staged_repo_root`, `staged_host_attr`). While
+   onboarding is uncommitted (`completed_at` unset), the config write path
+   (`config.setDir` / `setHostAttr` / imports / scaffold) writes the staged
+   fields; after completion the same commands write preferences directly, so
+   the shared picker components need no context switch.
+1. **The commit point is the first successful apply, not the celebration.**
+   `finalize_apply` moves the staged selection into `GlobalPreferences` in
+   the same breath as `last_build_at` — the moment the configuration stops
+   being a proposal and becomes what the machine runs. Committing any later
+   would leave a window where the system runs a config that preferences
+   don't name. The flow's other side effects (clones, scaffolds, scans, the
+   build itself) are real and cannot be staged; only the selection pointers
+   are.
+1. **Reads resolve staged-first in the existing single accessors**
+   (`store::get_config_dir_if_set`, `get_repo_root`, host attr): staged
+   values, when present, name the active config for every backend consumer
+   (flake listing, watcher, scan, build). No per-call-site threading.
+1. **Reset touches only `OnboardingState`.** "Restart setup" stops being
+   destructive: the committed configuration keeps working until a restarted
+   flow applies a new one, and an abandoned restart leaves the app intact.
+   The config-dir step pre-fills from the still-committed preferences so a
+   restart feels safe rather than amnesiac.
+1. **Migration:** at slice load, an uncommitted old-model flow (no latch, no
+   recorded build, but preferences carry a config dir) adopts the preference
+   values as staged. Values are copied, not moved — a completed-but-unlatched
+   profile must never lose its working preferences.
+
+Inference settings (`evolveProvider`/`evolveModel`) stay ordinary
+preferences written immediately: they are genuine user preferences, not
+journey state — which also resolves the previous inconsistency where reset
+cleared the config selection but kept inference settings.
+
 ## Resolved questions (2026-07-08)
 
 1. **Permission revoked after completion: banner, not takeover.** A blocking card only when the app is actually inoperable; phase 3 includes a pass over which permissions are truly load-bearing at runtime.

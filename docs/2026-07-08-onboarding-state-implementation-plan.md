@@ -80,6 +80,36 @@ Green when: phase 2 review gate — completed user restarts from preferences and
 
 Green when: phase 3 review gate — deleting the config dir after completion yields the repair card, not the wizard; `global-preferences.json` no longer carries onboarding fields after one launch; restart/reset still behaves.
 
+## Phase 4 — staged selections, committed at first apply (design amendment)
+
+### Commit 9: staged fields + staged-first resolution
+
+- `OnboardingState` gains `staged_config_dir` / `staged_repo_root` /
+  `staged_host_attr`; `store::get_config_dir_if_set`, `get_repo_root`, and
+  the host-attr read resolve staged-first.
+- Adoption migration in `state/onboarding.rs::load_observable`: uncommitted
+  old-model flows (no latch, no build) copy the preference selection into
+  the staged fields.
+- Nothing writes the staged fields yet; behavior unchanged. Unit tests for
+  resolution order and adoption.
+
+### Commit 10: wizard writes stage; apply commits; reset stops touching prefs
+
+- `store::set_config_dir` / `set_host_attr` branch on the latch: uncommitted
+  → staged fields, committed → preferences (wizard vs settings need no
+  UI-side context switch).
+- `finalize_apply` commits staged → preferences alongside `last_build_at`
+  and clears the staged fields; `onboarding_reset` resets `OnboardingState`
+  only and re-initializes derived state against the still-committed config.
+- Frontend: the wizard gates and build step read the staged selection from
+  `onboardingState`; hosts re-list on `onboarding_state_changed`; fixtures
+  and stories updated. Bindings regenerated.
+
+Review gate: fresh flow stages (prefs stay empty until the first apply
+commits them); "Restart setup" leaves the committed config active and the
+config-dir step pre-filled; abandoned restart + relaunch keeps the app on
+the committed config; mid-flow crash resumes from staged values.
+
 ## Ordering and independence
 
 ```text
