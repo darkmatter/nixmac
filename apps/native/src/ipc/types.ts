@@ -1260,26 +1260,6 @@ summaryModel: string | null;
  */
 summaryModels: Partial<{ [key in string]: string }>; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
 /**
- * Timestamp (unix secs) of the last onboarding "scan this Mac" / customizations review.
- */
-onboardingMacScannedAt: number | null; 
-/**
- * True once the user logged in or explicitly chose bring-your-own-key during onboarding.
- */
-onboardingLoginDecided: boolean; 
-/**
- * Timestamp (unix secs) of the last successful build/evolution apply. Set by `finalize_apply`.
- */
-onboardingLastBuildAt: number | null; 
-/**
- * Root directory the app materialized during onboarding (import/scaffold)
- * and still owns: until the first successful apply clears this, restart
- * and re-import may wipe and re-create it. Never set for user-selected
- * pre-existing directories. Not writable via `UiPrefsUpdate` — backend
- * code paths only, like `onboarding_last_build_at`.
- */
-onboardingProvisionalConfigDir: string | null; 
-/**
  * Root of an import clone parked on the "which flake dir?" choice
  * (`NeedsFlakeDirChoice`). Recorded so an abandoned choice can be
  * discarded by the next import or an onboarding reset instead of
@@ -1640,12 +1620,12 @@ ok: boolean }
 /**
  * Backend-owned onboarding lifecycle state.
  * 
- * Whether the onboarding flow is shown is gated by this latch, not by
- * re-deriving completion from preference facts: "the user finished
+ * Whether the onboarding flow is shown is gated by the `completed_at` latch,
+ * not by re-deriving completion from preference facts: "the user finished
  * onboarding" is a historical fact about a journey, and current state
  * (a cleared host during a settings edit, a revoked permission) can
  * regress while the journey stays finished. The step machine *inside*
- * the flow keeps deriving progress from durable facts.
+ * the flow derives progress from the journey facts recorded here.
  * 
  * Hydrated via `onboarding.getState`; every mutation emits
  * `onboarding_state_changed` with the full struct as payload.
@@ -1658,7 +1638,29 @@ export type OnboardingState = {
  * reconciled at startup for profiles that finished before the latch
  * existed, and cleared by "Restart setup".
  */
-completedAt: number | null }
+completedAt: number | null; 
+/**
+ * Timestamp (unix secs) of the last onboarding "scan this Mac" /
+ * customizations review.
+ */
+macScannedAt: number | null; 
+/**
+ * True once the user logged in or explicitly chose bring-your-own-key
+ * during onboarding.
+ */
+loginDecided: boolean; 
+/**
+ * Timestamp (unix secs) of the last successful build/evolution apply.
+ * Set by `finalize_apply`.
+ */
+lastBuildAt: number | null; 
+/**
+ * Root directory the app materialized during onboarding (import/scaffold)
+ * and still owns: until the first successful apply clears this, restart
+ * and re-import may wipe and re-create it. Never set for user-selected
+ * pre-existing directories. Backend code paths only.
+ */
+provisionalConfigDir: string | null }
 
 /**
  * Individual permission state.

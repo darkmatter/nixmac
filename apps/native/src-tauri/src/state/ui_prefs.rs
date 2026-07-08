@@ -30,6 +30,21 @@ pub fn apply_ui_prefs_update<R: Runtime>(app: &AppHandle<R>, update: &UiPrefsUpd
         preferences::write(app, |prefs| prefs.apply_ui_update(update))?;
     }
 
+    // Onboarding journey facts live on the OnboardingState slice; the
+    // UiPrefsUpdate wire contract keeps carrying them for the frontend.
+    if (update.onboarding_mac_scanned_at.is_some() || update.onboarding_login_decided.is_some())
+        && crate::state::onboarding::try_read(app).is_some()
+    {
+        crate::state::onboarding::write(app, |state| {
+            if let Some(v) = update.onboarding_mac_scanned_at {
+                state.mac_scanned_at = Some(v);
+            }
+            if let Some(v) = update.onboarding_login_decided {
+                state.login_decided = v;
+            }
+        })?;
+    }
+
     if needs_limits_update(update) {
         config::write(app, |limits| limits.apply_ui_update(update))?;
     }

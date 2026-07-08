@@ -194,20 +194,6 @@ pub struct GlobalPreferences {
     pub pinned_version: Option<String>,
     pub update_channel: UpdateChannel,
     pub feature_flag_overrides: Option<BTreeMap<String, String>>,
-    /// Timestamp (unix secs) of the last onboarding "scan this Mac" / customizations review.
-    #[specta(type = Option<f64>)]
-    pub onboarding_mac_scanned_at: Option<i64>,
-    /// True once the user logged in or explicitly chose bring-your-own-key during onboarding.
-    pub onboarding_login_decided: bool,
-    /// Timestamp (unix secs) of the last successful build/evolution apply. Set by `finalize_apply`.
-    #[specta(type = Option<f64>)]
-    pub onboarding_last_build_at: Option<i64>,
-    /// Root directory the app materialized during onboarding (import/scaffold)
-    /// and still owns: until the first successful apply clears this, restart
-    /// and re-import may wipe and re-create it. Never set for user-selected
-    /// pre-existing directories. Not writable via `UiPrefsUpdate` — backend
-    /// code paths only, like `onboarding_last_build_at`.
-    pub onboarding_provisional_config_dir: Option<String>,
     /// Root of an import clone parked on the "which flake dir?" choice
     /// (`NeedsFlakeDirChoice`). Recorded so an abandoned choice can be
     /// discarded by the next import or an onboarding reset instead of
@@ -248,10 +234,6 @@ impl Default for GlobalPreferences {
             pinned_version: None,
             update_channel: UpdateChannel::default(),
             feature_flag_overrides: None,
-            onboarding_mac_scanned_at: None,
-            onboarding_login_decided: false,
-            onboarding_last_build_at: None,
-            onboarding_provisional_config_dir: None,
             pending_import_dir: None,
             auto_format_nix_files: false,
         }
@@ -322,12 +304,8 @@ impl GlobalPreferences {
         if let Some(v) = &update.feature_flag_overrides {
             self.feature_flag_overrides = v.clone();
         }
-        if let Some(v) = update.onboarding_mac_scanned_at {
-            self.onboarding_mac_scanned_at = Some(v);
-        }
-        if let Some(v) = update.onboarding_login_decided {
-            self.onboarding_login_decided = v;
-        }
+        // `onboarding_mac_scanned_at` / `onboarding_login_decided` are routed
+        // to the `OnboardingState` slice by `apply_ui_prefs_update`, not here.
         if let Some(v) = update.auto_format_nix_files {
             self.auto_format_nix_files = v;
         }

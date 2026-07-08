@@ -15,7 +15,7 @@ use tauri::{AppHandle, Manager, Runtime};
 use crate::observable::{AppDataJson, Observable, Persistence};
 pub use crate::shared_types::GlobalPreferences;
 
-const GLOBAL_PREFERENCES_PATH: &str = "global-preferences.json";
+pub(crate) const GLOBAL_PREFERENCES_PATH: &str = "global-preferences.json";
 
 /// Marker key set in the legacy `settings.json` once its preference values
 /// have been copied into `global-preferences.json`. The legacy values are
@@ -243,32 +243,6 @@ mod tests {
         assert_eq!(prefs.update_channel, UpdateChannel::Develop);
         assert!(prefs.send_diagnostics);
         assert!(prefs.developer_mode);
-    }
-
-    #[test]
-    fn global_preferences_provisional_config_dir_roundtrip() {
-        // Absent in a pre-existing file -> None; persisted value survives a
-        // load/serialize round trip.
-        let persistence = MemoryPersistence::with_value(json!({
-            "configDir": "/Users/cm/.darwin"
-        }));
-        let prefs = load_or_default::<GlobalPreferences>(&persistence).unwrap();
-        assert_eq!(prefs.onboarding_provisional_config_dir, None);
-
-        let persistence = MemoryPersistence::with_value(json!({
-            "configDir": "/Users/cm/.darwin",
-            "onboardingProvisionalConfigDir": "/Users/cm/.darwin"
-        }));
-        let prefs = load_or_default::<GlobalPreferences>(&persistence).unwrap();
-        assert_eq!(
-            prefs.onboarding_provisional_config_dir.as_deref(),
-            Some("/Users/cm/.darwin")
-        );
-        let serialized = serde_json::to_value(&prefs).unwrap();
-        assert_eq!(
-            serialized.get("onboardingProvisionalConfigDir"),
-            Some(&json!("/Users/cm/.darwin"))
-        );
     }
 
     #[test]

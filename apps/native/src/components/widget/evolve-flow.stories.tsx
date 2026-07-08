@@ -21,6 +21,7 @@ import {
   makeGlobalPreferences,
   makeGrantedPermissions,
   makeNixInstallState,
+  makeOnboardingState,
   makeRebuildStatus,
 } from "@/utils/test-fixtures";
 import {
@@ -410,10 +411,13 @@ function applyArgsToStores(args: EvolveFlowArgs) {
       evolveModels: { claude: "claude-sonnet-4.5" },
       summaryProvider: "claude",
       summaryModels: { claude: "claude-sonnet-4.5" },
-      onboardingMacScannedAt: STABLE_NOW_SECONDS,
-      onboardingLoginDecided: true,
-      onboardingLastBuildAt: STABLE_NOW_SECONDS,
       scanHomebrewOnStartup: false,
+    }),
+    onboardingState: makeOnboardingState({
+      completedAt: STABLE_NOW_SECONDS,
+      macScannedAt: STABLE_NOW_SECONDS,
+      loginDecided: true,
+      lastBuildAt: STABLE_NOW_SECONDS,
     }),
     hosts: args.hostsListed ? [...DEMO_HOSTS] : [],
     permissions: args.permissionsGranted ? makeGrantedPermissions() : makeIncompletePermissions(),

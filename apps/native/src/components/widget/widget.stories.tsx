@@ -8,9 +8,11 @@ import type {
   SemanticChangeMap,
 } from "@/ipc/types";
 import {
+  makeCompletedOnboardingState,
   makeGlobalPreferences,
   makeGrantedPermissions,
   makeNixInstallState,
+  makeOnboardingState,
   makeRebuildStatus,
 } from "@/utils/test-fixtures";
 import { uiActions, useUiState, useViewModel, viewModelActions } from "@nixmac/state";
@@ -323,7 +325,9 @@ function applyArgsToStores(a: Record<string, any>): void {
       repoRoot: a.configDir || null,
     }),
     hosts: a.hostsListed ? [...DEMO_HOSTS] : [],
-    onboardingState: a.onboardingComplete ? { completedAt: 1751967600 } : { completedAt: null },
+    onboardingState: a.onboardingComplete
+      ? makeCompletedOnboardingState()
+      : makeOnboardingState(),
     permissions: a.permissionsGranted ? makeGrantedPermissions() : makeIncompletePermissions(),
     permissionsHydrated: true,
     nixInstall: makeNixInstallState(),
