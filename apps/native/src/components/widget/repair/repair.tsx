@@ -206,7 +206,11 @@ export function RepairBlockingCard({
             Check again
           </Button>
         </div>
-        <RestartSetupConfirmation open={confirmingRestart} onOpenChange={setConfirmingRestart} />
+        <RestartSetupConfirmation
+          open={confirmingRestart}
+          onOpenChange={setConfirmingRestart}
+          context="completed"
+        />
       </div>
     </div>
   );

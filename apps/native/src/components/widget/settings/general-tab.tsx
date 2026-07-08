@@ -184,6 +184,7 @@ export function GeneralTab({
           <RestartSetupConfirmation
             open={confirmingRestart}
             onOpenChange={setConfirmingRestart}
+            context="completed"
             // Close the settings overlay so the re-surfaced wizard is visible.
             onRestarted={() => setSettingsOpen(false)}
           />

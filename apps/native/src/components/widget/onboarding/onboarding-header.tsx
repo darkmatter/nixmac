@@ -32,7 +32,7 @@ export function OnboardingHeader({ title }: Props) {
         Restart setup
       </button>
 
-      <RestartSetupConfirmation open={confirming} onOpenChange={setConfirming} />
+      <RestartSetupConfirmation open={confirming} onOpenChange={setConfirming} context="midFlow" />
     </header>
   );
 }
