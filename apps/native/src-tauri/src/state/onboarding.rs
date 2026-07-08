@@ -6,7 +6,7 @@
 
 use anyhow::Result;
 use std::sync::Arc;
-use tauri::{AppHandle, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 
 use crate::observable::{AppDataJson, Observable, Persistence};
 pub use crate::shared_types::OnboardingState;
@@ -48,6 +48,31 @@ pub(crate) fn reconcile_completion(
     };
     state.completed_at = Some(last_build_at);
     true
+}
+
+/// Read the current onboarding state, or `None` when the observable is not
+/// managed (early startup, bare test harnesses).
+pub fn try_read<R: Runtime>(app: &AppHandle<R>) -> Option<OnboardingState> {
+    app.try_state::<Observable<OnboardingState>>()
+        .map(|obs| obs.read_sync().clone())
+}
+
+/// Mutate the onboarding state through the observable.
+///
+/// Applies `f` to a copy and writes it back only when it actually changed,
+/// so unchanged writes emit no event and trigger no persistence flush.
+/// Errors when the observable is not managed.
+pub fn write<R: Runtime>(app: &AppHandle<R>, f: impl FnOnce(&mut OnboardingState)) -> Result<()> {
+    let observable = app
+        .try_state::<Observable<OnboardingState>>()
+        .ok_or_else(|| anyhow::anyhow!("OnboardingState observable is not managed"))?;
+    let mut next = observable.read_sync().clone();
+    f(&mut next);
+    if *observable.read_sync() == next {
+        return Ok(());
+    }
+    *observable.write_sync() = next;
+    Ok(())
 }
 
 #[cfg(test)]
