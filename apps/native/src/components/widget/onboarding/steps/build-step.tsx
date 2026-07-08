@@ -28,6 +28,7 @@ const CelebrationOverlay = lazy(() =>
 import { onboardingActions, useOnboarding, useViewModel } from "@nixmac/state";
 import { useApply } from "@/hooks/use-apply";
 import { tauriAPI } from "@/ipc/api";
+import { client } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import type { InferenceConfig } from "@/components/widget/onboarding/lib/inference";
@@ -320,7 +321,18 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
         <Suspense fallback={null}>
           <CelebrationOverlay
             host={host}
-            onDismiss={() => {
+            onDismiss={async () => {
+              // Latch completion on the backend before lowering the celebration
+              // flag: `showFlow` reads the latch, so this is the moment the
+              // wizard hands over to the app. On failure keep the flow open —
+              // silently dropping the latch would re-summon onboarding on the
+              // next launch.
+              try {
+                await client.onboarding.complete();
+              } catch (error) {
+                console.error("[onboarding] failed to latch completion:", error);
+                return;
+              }
               setDismissedCelebration(true);
               onboardingActions.setCelebrating(false);
             }}

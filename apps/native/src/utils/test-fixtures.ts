@@ -89,10 +89,10 @@ export function makeRebuildStatus(
 
 /**
  * Seed the ViewModel with the Storybook/test bypass invariants: permissions
- * granted, Nix installed with nix-darwin available, and a demo config
- * selected — so a widget mounted inside a story never falls into the
- * permissions/setup/nix-setup screens. Story-level seeding (which runs after
- * this) can still override any field.
+ * granted, Nix installed with nix-darwin available, a demo config selected,
+ * and the onboarding completion latch set — so a widget mounted inside a
+ * story never falls into the onboarding flow. Story-level seeding (which
+ * runs after this) can still override any field.
  */
 export function seedViewModelBypass(): void {
 	const current = viewModelActions.getState();
@@ -100,6 +100,9 @@ export function seedViewModelBypass(): void {
 		permissions: makeGrantedPermissions(),
 		permissionsHydrated: true,
 		nixInstall: makeNixInstallState(),
+		onboardingState: current.onboardingState ?? {
+			completedAt: 1751967600,
+		},
 		preferences:
 			current.preferences ??
 			makeGlobalPreferences({

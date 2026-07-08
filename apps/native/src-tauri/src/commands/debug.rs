@@ -86,6 +86,12 @@ pub async fn developer_clear_tauri_state(app: AppHandle) -> Result<(), String> {
         *prefs = crate::state::preferences::GlobalPreferences::default();
     })
     .map_err(|e| e.to_string())?;
+    // Same for the onboarding completion latch — leaving it set would make
+    // this dev reset a no-op for the wizard (its visibility reads the latch).
+    crate::state::onboarding::write(&app, |state| {
+        *state = crate::state::onboarding::OnboardingState::default();
+    })
+    .map_err(|e| e.to_string())?;
     // Reset the evolve-state observable (emits `evolve_state_changed`) and
     // broadcast the now-empty prompt history so the frontend mirrors the
     // cleared values without any manual store writes.

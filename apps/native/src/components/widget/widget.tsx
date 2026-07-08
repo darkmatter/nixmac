@@ -146,10 +146,11 @@ export function DarwinWidget() {
   }, []);
 
   // Onboarding (permissions → nix → flake import → customizations → inference →
-  // first build) takes over the whole window via OnboardingFlow. Whether to show
-  // it is derived entirely from durable facts (live backend gates + persisted
-  // preferences) by useOnboardingFlow, so a finished user never re-enters it
-  // across restarts.
+  // first build) takes over the whole window via OnboardingFlow. Whether to
+  // show it is gated by the backend completion latch (mirrored as
+  // `onboardingState`): the wizard appears on first launch and after an
+  // explicit "Restart setup", never because a preference fact regressed
+  // mid-session. In-flow step routing still derives from durable facts.
   const { showFlow: showOnboarding } = useOnboardingFlow();
   // Suppress the boot flash: before the ViewModel hydrates, every gate input
   // is a default (null preferences/nixInstall), so both OnboardingFlow and the
