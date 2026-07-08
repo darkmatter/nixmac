@@ -14,6 +14,11 @@ import { StepContentWrapper } from "@/components/widget/layout/step-content-wrap
 import { Stepper } from "@/components/widget/layout/stepper";
 import { OnboardingFlow } from "@/components/widget/onboarding/onboarding-flow";
 import { useOnboardingFlow } from "@/components/widget/onboarding/use-onboarding-flow";
+import {
+  RepairBanners,
+  RepairBlockingCard,
+  useLaunchRepair,
+} from "@/components/widget/repair/repair";
 import { uiActions } from "@nixmac/state";
 import {
   BeginStep,
@@ -152,6 +157,9 @@ export function DarwinWidget() {
   // explicit "Restart setup", never because a preference fact regressed
   // mid-session. In-flow step routing still derives from durable facts.
   const { showFlow: showOnboarding } = useOnboardingFlow();
+  // Post-completion prerequisite regressions surface as repair cards/banners
+  // (evaluated once at launch), never by re-entering the wizard.
+  const repair = useLaunchRepair();
   // Suppress the boot flash: before the ViewModel hydrates, every gate input
   // is a default (null preferences/nixInstall), so both OnboardingFlow and the
   // main widget would render against stale state for a frame. Hold a neutral
@@ -227,11 +235,30 @@ export function DarwinWidget() {
     );
   }
 
+  // The configured flake is gone: the main surfaces have nothing to operate
+  // on, so a repair card replaces the step content until the user fixes the
+  // folder, restarts setup, or a recheck passes.
+  if (repair.plan.blocking) {
+    return (
+      <div className="flex min-w-[800px] min-h-[600px] h-full w-full flex-col bg-background/60">
+        <Header />
+        <RepairBlockingCard issue={repair.plan.blocking} onRecheck={repair.recheck} />
+        <FeedbackDialog />
+        <Console />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-w-[800px] min-h-[600px]  h-full w-full flex-col bg-background/60">
       <Header />
       <Stepper />
       <UpdateBanner />
+      <RepairBanners
+        banners={repair.plan.banners}
+        onDismiss={repair.dismissBanner}
+        onRecheck={repair.recheck}
+      />
 
       {isEdgeToEdgeStep ? (
         <div className="relative flex min-h-0 flex-1 flex-col">
