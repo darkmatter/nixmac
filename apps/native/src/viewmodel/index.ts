@@ -15,6 +15,7 @@ import { startEvolutionSync } from "./evolution";
 import { startEvolveSync } from "./evolve";
 import { startGitSync } from "./git";
 import { startNixInstallSync } from "./nix-install";
+import { startOnboardingStateSync } from "./onboarding-state";
 import { startPermissionsSync } from "./permissions";
 import { startPreferencesSync } from "./preferences";
 import { startPromptHistorySync } from "./prompt-history";
@@ -39,6 +40,7 @@ export async function startViewModelSync(): Promise<() => void> {
     unlisteners.push(await startGitSync());
     unlisteners.push(await startChangeMapSync());
     unlisteners.push(await startPreferencesSync());
+    unlisteners.push(await startOnboardingStateSync());
     unlisteners.push(await startPermissionsSync());
     unlisteners.push(await startPromptHistorySync());
     unlisteners.push(await startNixInstallSync());
