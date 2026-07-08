@@ -8,7 +8,15 @@ import {
   summarizeChangesByFile,
 } from "@/components/widget/utils";
 import type { EvolveState, EvolveStep } from "@/ipc/types";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// Pin the env-profile settings so routing tests don't depend on which
+// NIXMAC_ENV profile the test run was built with.
+const mockSettings = vi.hoisted(() => ({
+  skipPermissions: false,
+  nixInstalledOverride: false,
+}));
+vi.mock("@/lib/env", () => ({ settings: mockSettings }));
 
 function change(
   id: number,
@@ -247,5 +255,33 @@ describe("computeCurrentStep — diff gating", () => {
 
   it("keeps earlier gates ahead of the diff check", () => {
     expect(computeCurrentStep(readyState({ showHistory: true }))).toBe("history");
+  });
+
+  describe("permissions gate", () => {
+    beforeEach(() => {
+      mockSettings.skipPermissions = false;
+    });
+
+    const incomplete = { allRequiredGranted: false } as never;
+
+    it("routes to permissions while a required permission is missing", () => {
+      expect(computeCurrentStep(readyState({ permissionsState: incomplete }))).toBe("permissions");
+    });
+
+    it("honors settings.skipPermissions exactly like the onboarding gate", () => {
+      // Regression: a skip-permissions frontend paired with a backend that
+      // reports permissions honestly used to strand the widget on the
+      // fallback step, hiding the manual-changes review flow.
+      mockSettings.skipPermissions = true;
+      expect(
+        computeCurrentStep(
+          readyState({
+            permissionsState: incomplete,
+            hasChanges: true,
+            evolveState: evolveAt("manualEvolve"),
+          }),
+        ),
+      ).toBe("manualEvolve");
+    });
   });
 });

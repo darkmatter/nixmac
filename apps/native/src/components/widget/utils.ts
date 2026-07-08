@@ -31,7 +31,12 @@ const orderByStep: { [key in EvolveStep]: number } = {
 export function computeCurrentStep(state: CurrentStepState): WidgetStep {
   const hasConfigDir = !!state.configDir;
   const hasHost = !!state.host && state.hosts.includes(state.host);
+  // Must mirror useOnboardingFlow's permissionsReady gate (including the
+  // skipPermissions bypass): if the two disagree, OnboardingFlow considers
+  // setup complete while this returns "permissions" — a step the widget has
+  // no case for — and the UI strands on the fallback prompt step.
   const permissionsCheckedAndIncomplete =
+    !settings.skipPermissions &&
     state.permissionsChecked &&
     state.permissionsState &&
     !state.permissionsState.allRequiredGranted;
