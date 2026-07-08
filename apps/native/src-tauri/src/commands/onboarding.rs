@@ -3,10 +3,37 @@
 use super::config::{ImportTarget, cleanup_import_target};
 use super::helpers::capture_err;
 use crate::shared_types;
-use crate::state::{evolve_state, git_state, preferences, rebuild_status, watcher};
+use crate::state::{
+    evolve_state, git_state, onboarding as onboarding_state, preferences, rebuild_status, watcher,
+};
 use crate::storage::{canonical_config, legacy_kv};
 use std::path::{Path, PathBuf};
 use tauri::AppHandle;
+
+/// Latches the completion timestamp that gates the onboarding takeover.
+///
+/// Called when the user dismisses the celebration. Validated against the
+/// final durable gate — a successful first build — so a stray call can
+/// never mark an unfinished onboarding as done. Idempotent: an existing
+/// latch keeps its original timestamp.
+pub async fn onboarding_complete<R: tauri::Runtime>(
+    app: AppHandle<R>,
+) -> Result<shared_types::OkResult, String> {
+    let prefs = preferences::try_read(&app)
+        .ok_or_else(|| capture_err("onboarding_complete", "Preferences not loaded"))?;
+    if prefs.onboarding_last_build_at.is_none() {
+        return Err("Onboarding is not finished: no build has been applied yet.".to_string());
+    }
+
+    onboarding_state::write(&app, |state| {
+        if state.completed_at.is_none() {
+            state.completed_at = Some(crate::utils::unix_now());
+        }
+    })
+    .map_err(|e| capture_err("onboarding_complete", e))?;
+
+    Ok(shared_types::OkResult::yes())
+}
 
 /// Rewinds onboarding to the config-dir step by clearing every durable fact
 /// the step machine derives progress from. When the current config directory
@@ -74,6 +101,11 @@ pub async fn onboarding_reset(app: AppHandle) -> Result<shared_types::OkResult, 
     })
     .map_err(|e| capture_err("onboarding_reset", e))?;
 
+    // Clear the completion latch after the durable facts, so when the wizard
+    // re-appears the step machine already computes the restart target step.
+    onboarding_state::write(&app, |state| state.completed_at = None)
+        .map_err(|e| capture_err("onboarding_reset", e))?;
+
     // The migration keeps legacy keys around for reversibility, and
     // `get_config_dir_if_set` falls back to them — without this the old
     // selection would silently resurrect for every backend caller.
@@ -116,6 +148,57 @@ pub(super) fn canonicalized(path: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::observable::Observable;
+    use crate::shared_types::{GlobalPreferences, OnboardingState};
+    use tauri::Manager;
+
+    fn mock_app_with_state(last_build_at: Option<i64>) -> tauri::App<tauri::test::MockRuntime> {
+        let app = tauri::test::mock_builder()
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .expect("mock app builds");
+        app.manage(Observable::new(GlobalPreferences {
+            onboarding_last_build_at: last_build_at,
+            ..GlobalPreferences::default()
+        }));
+        app.manage(Observable::new(OnboardingState::default()));
+        app
+    }
+
+    #[test]
+    fn complete_refuses_before_the_first_successful_build() {
+        let app = mock_app_with_state(None);
+        let handle = app.handle();
+
+        let result = tauri::async_runtime::block_on(onboarding_complete(handle.clone()));
+
+        assert!(result.is_err());
+        assert_eq!(
+            crate::state::onboarding::try_read(handle)
+                .unwrap()
+                .completed_at,
+            None,
+        );
+    }
+
+    #[test]
+    fn complete_latches_once_and_keeps_the_first_timestamp() {
+        let app = mock_app_with_state(Some(1));
+        let handle = app.handle();
+
+        tauri::async_runtime::block_on(onboarding_complete(handle.clone())).unwrap();
+        let first = crate::state::onboarding::try_read(handle)
+            .unwrap()
+            .completed_at
+            .expect("latched");
+
+        tauri::async_runtime::block_on(onboarding_complete(handle.clone())).unwrap();
+        assert_eq!(
+            crate::state::onboarding::try_read(handle)
+                .unwrap()
+                .completed_at,
+            Some(first),
+        );
+    }
 
     fn temp_dir(name: &str) -> PathBuf {
         let nonce = std::time::UNIX_EPOCH.elapsed().unwrap().as_nanos();
