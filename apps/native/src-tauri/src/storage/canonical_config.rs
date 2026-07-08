@@ -32,22 +32,31 @@ pub fn ensure_canonical_dir_ready() -> Result<(), String> {
     ensure_canonical_directory_owned()
 }
 
+/// What the next privileged activation should do about the `/etc/nix-darwin`
+/// convention link. See [`canonical_link_plan`].
+pub enum CanonicalLinkPlan {
+    /// Nothing to do: link already current, config lives at the canonical
+    /// path itself, or an e2e override is active.
+    UpToDate,
+    /// Re-point the link at this canonicalized config directory.
+    Update(String),
+    /// The canonical path is occupied by something nixmac must not delete;
+    /// the link stays untouched. Carries a user-facing reason so the apply
+    /// stream can surface it as a notice.
+    Blocked(String),
+}
+
 /// Decides whether the next privileged activation should re-point
-/// `/etc/nix-darwin` at `repo_dir`, returning the canonicalized target.
+/// `/etc/nix-darwin` at `repo_dir`.
 ///
 /// The link is maintained during apply — an already-privileged step — so
 /// changing the configuration directory in preferences never has to prompt
 /// for a password on its own, and the link always names the configuration
 /// that was last *applied* (the one a bare `darwin-rebuild switch` should
 /// rebuild), not one merely selected.
-///
-/// Returns `None` when there is nothing to do: the link is already current,
-/// the config lives at the canonical path itself, the location is occupied
-/// by a foreign non-empty directory (logged, never deleted), or an e2e
-/// override is active.
-pub fn canonical_link_pending(repo_dir: &Path) -> Option<String> {
+pub fn canonical_link_plan(repo_dir: &Path) -> CanonicalLinkPlan {
     if crate::env::e2e_override(crate::env::keys::NIXMAC_E2E_CONFIG_DIR).is_some() {
-        return None;
+        return CanonicalLinkPlan::UpToDate;
     }
 
     let repo = repo_dir
@@ -55,33 +64,29 @@ pub fn canonical_link_pending(repo_dir: &Path) -> Option<String> {
         .unwrap_or_else(|_| repo_dir.to_path_buf());
 
     if is_canonical_config_path(&repo) {
-        return None;
+        return CanonicalLinkPlan::UpToDate;
     }
 
     match symlink_blocked_reason(&repo) {
         Ok(None) => {}
-        Ok(Some(reason)) => {
+        Ok(Some(reason)) | Err(reason) => {
             log::warn!("[canonical-config] leaving {CANONICAL_CONFIG_DIR} alone: {reason}");
-            return None;
-        }
-        Err(error) => {
-            log::warn!("[canonical-config] cannot inspect {CANONICAL_CONFIG_DIR}: {error}");
-            return None;
+            return CanonicalLinkPlan::Blocked(reason);
         }
     }
 
     match canonical_symlink_is_current(&repo) {
-        Ok(true) => None,
+        Ok(true) => CanonicalLinkPlan::UpToDate,
         Ok(false) => match repo.to_str() {
-            Some(target) => Some(target.to_string()),
+            Some(target) => CanonicalLinkPlan::Update(target.to_string()),
             None => {
                 log::warn!("[canonical-config] config dir path is not valid UTF-8");
-                None
+                CanonicalLinkPlan::UpToDate
             }
         },
         Err(error) => {
             log::warn!("[canonical-config] cannot read {CANONICAL_CONFIG_DIR}: {error}");
-            None
+            CanonicalLinkPlan::UpToDate
         }
     }
 }
@@ -119,7 +124,7 @@ fn symlink_blocked_reason(target: &Path) -> Result<Option<String>, String> {
 
     if directory_has_entries(&link)? {
         return Ok(Some(format!(
-            "{CANONICAL_CONFIG_DIR} already contains a configuration. Move or remove it before using a different directory."
+            "{CANONICAL_CONFIG_DIR} already contains a configuration that nixmac will not delete. Move or remove it to let nixmac maintain the link."
         )));
     }
 

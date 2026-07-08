@@ -469,13 +469,9 @@ fn run_build_step(
 fn run_activate_step(
     config_dir: &str,
     allow_helper: bool,
+    canonical_link_target: Option<String>,
 ) -> Result<ActivateResult, anyhow::Error> {
     let activate_path = format!("{}/result/activate", config_dir);
-    // Piggyback the /etc/nix-darwin convention link on this already-privileged
-    // step: the link then always names the configuration that was last
-    // applied, and selecting a directory in preferences never prompts.
-    let canonical_link_target =
-        crate::storage::canonical_config::canonical_link_pending(Path::new(config_dir));
     run_activate_with_path(&activate_path, allow_helper, canonical_link_target)
 }
 
@@ -1079,16 +1075,37 @@ fn run_darwin_rebuild(
     // =========================================================================
     log_and_emit!("Requesting admin privileges for activation...");
 
-    let activate_result = run_activate_step(config_dir, allow_activation_helper).map_err(|e| {
-        serde_json::json!({
-            "ok": false,
-            "code": -1,
-            "log_file": log_path.to_string_lossy(),
-            "error_type": "generic_error",
-            "system_untouched": true,
-            "error": format!("Activation step failed to execute: {}", e),
-        })
-    })?;
+    // Piggyback the /etc/nix-darwin convention link on the already-privileged
+    // activation: the link then always names the configuration that was last
+    // applied, and selecting a directory in preferences never prompts. When
+    // the canonical path is occupied by something nixmac must not delete,
+    // say so in the apply stream — the frontend surfaces it as a notice.
+    use crate::storage::canonical_config::CanonicalLinkPlan;
+    let canonical_link_target =
+        match crate::storage::canonical_config::canonical_link_plan(Path::new(config_dir)) {
+            CanonicalLinkPlan::Update(target) => Some(target),
+            CanonicalLinkPlan::UpToDate => None,
+            CanonicalLinkPlan::Blocked(reason) => {
+                log_and_emit!(format!(
+                    "warning: /etc/nix-darwin was not updated: {reason}"
+                ));
+                None
+            }
+        };
+
+    let activate_result =
+        run_activate_step(config_dir, allow_activation_helper, canonical_link_target).map_err(
+            |e| {
+                serde_json::json!({
+                    "ok": false,
+                    "code": -1,
+                    "log_file": log_path.to_string_lossy(),
+                    "error_type": "generic_error",
+                    "system_untouched": true,
+                    "error": format!("Activation step failed to execute: {}", e),
+                })
+            },
+        )?;
 
     if !activate_result.success {
         summarizer.complete(false);

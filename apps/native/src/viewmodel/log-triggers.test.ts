@@ -19,6 +19,21 @@ describe("build log triggers", () => {
     });
   });
 
+  it("emits canonical-link guidance when /etc/nix-darwin could not be updated", () => {
+    const notices = noticesForBuildLogLines(
+      [
+        "warning: /etc/nix-darwin was not updated: /etc/nix-darwin already contains a configuration that nixmac will not delete. Move or remove it to let nixmac maintain the link.",
+      ],
+      [],
+    );
+
+    expect(notices).toHaveLength(1);
+    expect(notices[0]).toMatchObject({
+      id: "canonical-link-blocked",
+      title: "/etc/nix-darwin was not updated",
+    });
+  });
+
   it("deduplicates notices that already fired for a rebuild", () => {
     const [existingNotice] = noticesForBuildLogLines(
       ["error: permission denied when trying to update apps, aborting activation"],
