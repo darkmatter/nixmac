@@ -41,7 +41,7 @@ pub struct UserPreferences {
     pub max_iterations: usize,
 
     #[config(
-        default = 50_000,
+        default = 750_000,
         key = "maxTokenBudget",
         label = "Token budget",
         range = 1_000..=1_000_000,
@@ -77,7 +77,7 @@ impl Default for UserPreferences {
     fn default() -> Self {
         Self {
             max_iterations: 25,
-            max_token_budget: 50_000,
+            max_token_budget: 750_000,
             max_build_attempts: 5,
             max_output_tokens: 32_768,
         }
@@ -148,7 +148,7 @@ mod tests {
         let limits = UserPreferences::default();
 
         assert_eq!(limits.max_iterations, 25);
-        assert_eq!(limits.max_token_budget, 50_000);
+        assert_eq!(limits.max_token_budget, 750_000);
         assert_eq!(limits.max_build_attempts, 5);
         assert_eq!(limits.max_output_tokens, 32_768);
     }
@@ -183,7 +183,7 @@ mod tests {
         .expect("limits deserialize");
 
         assert_eq!(limits.max_iterations, 11);
-        assert_eq!(limits.max_token_budget, 50_000);
+        assert_eq!(limits.max_token_budget, 750_000);
         assert_eq!(limits.max_build_attempts, 5);
         assert_eq!(limits.max_output_tokens, 32_768);
     }
