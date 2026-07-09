@@ -8,8 +8,8 @@ use crate::evolve::sops::{
 };
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
 
+use super::gitignore::GitignoreChecker;
 use anyhow::{Result, anyhow};
-use ignore::gitignore::Gitignore;
 use serde::{Deserialize, Serialize};
 use std::path::{Component, Path, PathBuf};
 
@@ -80,7 +80,7 @@ pub fn execute_ensure_secret(
     base: &Path,
     args: &serde_json::Value,
     auto_format: bool,
-    gitignore_matcher: Option<&Gitignore>,
+    gitignore_matcher: Option<&GitignoreChecker>,
 ) -> Result<EnsureSecretResult> {
     let parsed: EnsureSecretArgs = serde_json::from_value(args.clone()).map_err(|error| {
         anyhow!(
@@ -160,7 +160,7 @@ fn inject_secret(
     secret_path: &str,
     inject: &SecretInject,
     auto_format: bool,
-    gitignore_matcher: Option<&Gitignore>,
+    gitignore_matcher: Option<&GitignoreChecker>,
 ) -> Result<()> {
     if inject.file.trim().is_empty() {
         return Err(anyhow!(

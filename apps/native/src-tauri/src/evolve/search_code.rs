@@ -1,6 +1,6 @@
+use super::gitignore::{GitignoreChecker, VisibleFiles};
 use super::utils::truncate_error;
 use anyhow::{Result, anyhow};
-use ignore::gitignore::Gitignore;
 use log::info;
 use serde_json::Value;
 use std::path::{Component, Path, PathBuf};
@@ -14,9 +14,13 @@ pub fn execute_search_code(
     base: &Path,
     pattern: &str,
     file_pattern: Option<&str>,
-    gitignore: Option<&Gitignore>,
+    gitignore: Option<&GitignoreChecker>,
 ) -> Result<String> {
     info!("Searching for pattern: {}", pattern);
+
+    let visible = gitignore
+        .map(|checker| checker.visible_files())
+        .transpose()?;
 
     let mut cmd = Command::new("rg");
     cmd.args([
@@ -59,7 +63,7 @@ pub fn execute_search_code(
         Ok(out) => {
             let status = out.status;
             if status.success() {
-                let formatted = format_rg_json_matches(&out.stdout, gitignore);
+                let formatted = format_rg_json_matches(&out.stdout, visible.as_ref());
                 if formatted.is_empty() {
                     Ok("No matches found.".to_string())
                 } else {
@@ -97,7 +101,7 @@ pub fn execute_search_code(
             }
             let output = grep_cmd.arg(pattern).arg(".").current_dir(base).output()?;
             let stdout = String::from_utf8_lossy(&output.stdout);
-            let filtered = filter_grep_matches(&stdout, gitignore);
+            let filtered = filter_grep_matches(&stdout, visible.as_ref());
             if filtered.trim().is_empty() {
                 Ok("No matches found.".to_string())
             } else {
@@ -107,7 +111,7 @@ pub fn execute_search_code(
     }
 }
 
-fn format_rg_json_matches(stdout: &[u8], gitignore: Option<&Gitignore>) -> String {
+fn format_rg_json_matches(stdout: &[u8], visible: Option<&VisibleFiles>) -> String {
     let mut lines: Vec<String> = Vec::new();
 
     for json_line in String::from_utf8_lossy(stdout).lines() {
@@ -129,7 +133,7 @@ fn format_rg_json_matches(stdout: &[u8], gitignore: Option<&Gitignore>) -> Strin
             continue;
         };
 
-        if is_ignored_match(path, false, gitignore) {
+        if is_hidden_match(path, visible) {
             continue;
         }
 
@@ -145,7 +149,7 @@ fn format_rg_json_matches(stdout: &[u8], gitignore: Option<&Gitignore>) -> Strin
     lines.join("\n")
 }
 
-fn filter_grep_matches(stdout: &str, gitignore: Option<&Gitignore>) -> String {
+fn filter_grep_matches(stdout: &str, visible: Option<&VisibleFiles>) -> String {
     let mut lines: Vec<String> = Vec::new();
 
     for line in stdout.lines() {
@@ -168,7 +172,7 @@ fn filter_grep_matches(stdout: &str, gitignore: Option<&Gitignore>) -> String {
             continue;
         }
 
-        if is_ignored_match(path, false, gitignore) {
+        if is_hidden_match(path, visible) {
             continue;
         }
 
@@ -178,9 +182,11 @@ fn filter_grep_matches(stdout: &str, gitignore: Option<&Gitignore>) -> String {
     lines.join("\n")
 }
 
-fn is_ignored_match(path: &str, is_dir: bool, gitignore: Option<&Gitignore>) -> bool {
+fn is_hidden_match(path: &str, visible: Option<&VisibleFiles>) -> bool {
     let rel = normalize_match_path(path);
-    super::gitignore::is_ignored_by_matcher(gitignore, &rel, is_dir)
+    visible
+        .map(|visible| !visible.contains_file(&rel))
+        .unwrap_or(false)
 }
 
 fn normalize_match_path(path: &str) -> PathBuf {
@@ -197,7 +203,7 @@ fn normalize_match_path(path: &str) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::{execute_search_code, filter_grep_matches};
-    use crate::evolve::gitignore::load_gitignore_matcher;
+    use crate::evolve::gitignore::GitignoreChecker;
     use std::fs;
     use tempfile::tempdir;
 
@@ -205,10 +211,11 @@ mod tests {
     fn search_code_skips_files_ignored_by_base_gitignore() {
         let binding = tempdir().expect("tempdir");
         let tmp = binding.path();
+        git2::Repository::init(tmp).expect("init git repo");
         fs::write(tmp.join(".gitignore"), "secret.txt\n").expect("write .gitignore");
         fs::write(tmp.join("visible.txt"), "NEEDLE").expect("write visible file");
         fs::write(tmp.join("secret.txt"), "NEEDLE").expect("write secret file");
-        let gitignore_matcher = load_gitignore_matcher(tmp).expect("load matcher");
+        let gitignore_matcher = GitignoreChecker::new(tmp).expect("load matcher");
 
         let output = execute_search_code(tmp, "NEEDLE", None, gitignore_matcher.as_ref())
             .expect("search should succeed");
@@ -221,9 +228,10 @@ mod tests {
     fn search_code_respects_gitignore_even_with_file_pattern() {
         let binding = tempdir().expect("tempdir");
         let tmp = binding.path();
+        git2::Repository::init(tmp).expect("init git repo");
         fs::write(tmp.join(".gitignore"), "secret.txt\n").expect("write .gitignore");
         fs::write(tmp.join("secret.txt"), "NEEDLE").expect("write secret file");
-        let gitignore_matcher = load_gitignore_matcher(tmp).expect("load matcher");
+        let gitignore_matcher = GitignoreChecker::new(tmp).expect("load matcher");
 
         let output = execute_search_code(
             tmp,
@@ -240,11 +248,12 @@ mod tests {
     fn search_code_skips_files_ignored_by_subdir_gitignore() {
         let binding = tempdir().expect("tempdir");
         let tmp = binding.path();
+        git2::Repository::init(tmp).expect("init git repo");
         fs::create_dir_all(tmp.join("nested")).expect("make nested dir");
         fs::write(tmp.join("nested/.gitignore"), "secret.txt\n").expect("write nested .gitignore");
         fs::write(tmp.join("nested/visible.txt"), "NEEDLE").expect("write nested visible file");
         fs::write(tmp.join("nested/secret.txt"), "NEEDLE").expect("write nested secret file");
-        let gitignore_matcher = load_gitignore_matcher(tmp).expect("load matcher");
+        let gitignore_matcher = GitignoreChecker::new(tmp).expect("load matcher");
 
         let output = execute_search_code(tmp, "NEEDLE", None, gitignore_matcher.as_ref())
             .expect("search should succeed");

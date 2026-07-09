@@ -1,9 +1,8 @@
 // Builds a picture of the config_dir for the evolve provider to use as context.
 // This is used to DRAMATICALLY cut down on the amount of file system exploration
 // that the agent needs to do using the `list_files` tool.
-use super::gitignore::{is_ignored_by_matcher, load_gitignore_matcher};
+use super::gitignore::{GitignoreChecker, VisibleFiles};
 use anyhow::{Context, Result};
-use ignore::gitignore::Gitignore;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -75,14 +74,16 @@ pub fn format_config_dir_context_with_max_depth(
     }
 
     // Use the repo root for the ignore base since we may have ignored things at a higher level than the nix config dir.
-    let gitignore = load_gitignore_matcher(repo_root)?;
+    let visible = GitignoreChecker::new(repo_root)?
+        .map(|checker| checker.visible_files())
+        .transpose()?;
 
     let mut output_paths = Vec::new();
     let mut rendered_entries = 0usize;
     collect_file_paths(
         repo_root,
         config_dir_path,
-        gitignore.as_ref(),
+        visible.as_ref(),
         0,
         max_depth,
         &mut output_paths,
@@ -97,13 +98,13 @@ pub fn format_config_dir_context_with_max_depth(
 fn collect_file_paths(
     repo_root: &Path,
     dir: &Path,
-    gitignore: Option<&Gitignore>,
+    visible: Option<&VisibleFiles>,
     depth: usize,
     max_depth: usize,
     output_paths: &mut Vec<String>,
     rendered_entries: &mut usize,
 ) -> Result<()> {
-    let mut entries = collect_filtered_entries(repo_root, dir, gitignore)?;
+    let mut entries = collect_filtered_entries(repo_root, dir, visible)?;
     entries.sort_by(|a, b| a.name.cmp(&b.name));
 
     for entry in entries {
@@ -117,7 +118,7 @@ fn collect_file_paths(
                 collect_file_paths(
                     repo_root,
                     &entry.path,
-                    gitignore,
+                    visible,
                     depth + 1,
                     max_depth,
                     output_paths,
@@ -160,7 +161,7 @@ fn collect_file_paths(
 fn collect_filtered_entries(
     repo_root: &Path,
     dir: &Path,
-    gitignore: Option<&Gitignore>,
+    visible: Option<&VisibleFiles>,
 ) -> Result<Vec<DirEntryView>> {
     let mut out = Vec::new();
     for entry in
@@ -186,8 +187,15 @@ fn collect_filtered_entries(
             continue;
         }
 
-        if is_ignored_by_matcher(gitignore, relative_for_gitignore, file_type.is_dir()) {
-            continue;
+        if let Some(visible) = visible {
+            let is_visible = if file_type.is_dir() {
+                visible.contains_dir(relative_for_gitignore)
+            } else {
+                visible.contains_file(relative_for_gitignore)
+            };
+            if !is_visible {
+                continue;
+            }
         }
 
         if !file_type.is_dir() && !is_allowed_file(&name, &path) {
@@ -276,6 +284,7 @@ mod tests {
         let repo_root = tmp.path().join("repo");
         let config_dir = repo_root.join("nix/os");
         fs::create_dir_all(&config_dir)?;
+        git2::Repository::init(&repo_root)?;
 
         fs::write(repo_root.join(".gitignore"), "nix/os/secret.txt\n")?;
         fs::write(config_dir.join("visible.txt"), "hello")?;
@@ -295,6 +304,7 @@ mod tests {
         let repo_root = tmp.path().join("repo");
         let config_dir = repo_root.join("nix/os");
         fs::create_dir_all(config_dir.join("nested"))?;
+        git2::Repository::init(&repo_root)?;
         fs::write(config_dir.join("nested/.gitignore"), "secret.txt\n")?;
         fs::write(config_dir.join("nested/visible.txt"), "hello")?;
         fs::write(config_dir.join("nested/secret.txt"), "hidden")?;

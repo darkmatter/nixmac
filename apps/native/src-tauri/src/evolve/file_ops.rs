@@ -7,9 +7,9 @@
 
 use crate::shared_types::FileEdit;
 
-use super::gitignore::is_ignored_by_matcher;
+use super::gitignore::GitignoreChecker;
+use super::gitignore::is_path_ignored;
 use super::utils::normalize_relative_path;
-use ignore::gitignore::Gitignore;
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
@@ -93,7 +93,7 @@ pub(crate) fn rewrite_existing_file_in_dir<F>(
     base: &Path,
     rel: &str,
     operation: &str,
-    gitignore_matcher: Option<&Gitignore>,
+    gitignore_matcher: Option<&GitignoreChecker>,
     edit: F,
 ) -> anyhow::Result<()>
 where
@@ -370,7 +370,7 @@ pub(crate) fn validate_file_content(file_path: &str, content: &str) -> anyhow::R
 pub fn apply_file_edits(
     base: &Path,
     edit: &FileEdit,
-    gitignore_matcher: Option<&Gitignore>,
+    gitignore_matcher: Option<&GitignoreChecker>,
 ) -> anyhow::Result<()> {
     reject_gitignored_edit_path(base, &edit.path, "apply file edit", gitignore_matcher)?;
 
@@ -439,10 +439,10 @@ fn reject_gitignored_edit_path(
     _base: &Path,
     rel: &str,
     operation: &str,
-    gitignore_matcher: Option<&Gitignore>,
+    gitignore_matcher: Option<&GitignoreChecker>,
 ) -> anyhow::Result<()> {
     let normalized_rel = normalize_relative_path(Path::new(rel))?;
-    let is_ignored = is_ignored_by_matcher(gitignore_matcher, &normalized_rel, false);
+    let is_ignored = is_path_ignored(gitignore_matcher, &normalized_rel)?;
 
     if is_ignored {
         return Err(anyhow::anyhow!(
@@ -458,7 +458,7 @@ fn reject_gitignored_edit_path(
 #[cfg(test)]
 mod tests {
     use super::{apply_file_edits, rewrite_existing_file_in_dir};
-    use crate::evolve::gitignore::load_gitignore_matcher;
+    use crate::evolve::gitignore::GitignoreChecker;
     use crate::shared_types::FileEdit;
     use std::fs;
 
@@ -536,8 +536,9 @@ mod tests {
     fn apply_file_edits_rejects_gitignored_target() {
         let temp = tempfile::tempdir().expect("create temp dir");
         let base = temp.path();
+        git2::Repository::init(base).expect("init git repo");
         fs::write(base.join(".gitignore"), "secret.txt\n").expect("write .gitignore");
-        let gitignore_matcher = load_gitignore_matcher(base).expect("load matcher");
+        let gitignore_matcher = GitignoreChecker::new(base).expect("load matcher");
 
         let edit = FileEdit {
             path: "secret.txt".to_string(),
@@ -554,9 +555,10 @@ mod tests {
     fn rewrite_existing_file_in_dir_rejects_gitignored_target() {
         let temp = tempfile::tempdir().expect("create temp dir");
         let base = temp.path();
+        git2::Repository::init(base).expect("init git repo");
         fs::write(base.join(".gitignore"), "secret.txt\n").expect("write .gitignore");
         fs::write(base.join("secret.txt"), "old").expect("seed file");
-        let gitignore_matcher = load_gitignore_matcher(base).expect("load matcher");
+        let gitignore_matcher = GitignoreChecker::new(base).expect("load matcher");
 
         let err = rewrite_existing_file_in_dir(
             base,

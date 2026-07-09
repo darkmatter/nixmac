@@ -6,7 +6,6 @@ use std::path::Component;
 
 use crate::evolve::IGNORED_DIRS;
 use crate::evolve::file_ops::{ensure_path_under_base, join_in_dir};
-use crate::evolve::gitignore::is_ignored_by_matcher;
 use crate::evolve::messages::Tool;
 
 use super::{ToolCtx, ToolResult};
@@ -38,6 +37,11 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
     let full_pattern = join_in_dir(repo_root, pattern)?;
     info!("Listing files matching: {}", full_pattern.display());
 
+    let visible = ctx
+        .gitignore_matcher
+        .map(|checker| checker.visible_files())
+        .transpose()?;
+
     let ignored_dirs = IGNORED_DIRS;
     let matched_files = glob::glob(full_pattern.to_str().unwrap())
         .map_err(|e| anyhow!("Invalid glob pattern: {}", e))?
@@ -66,8 +70,10 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
             }
         }
 
-        if is_ignored_by_matcher(ctx.gitignore_matcher, rel, false) {
-            continue;
+        if let Some(visible) = &visible {
+            if !visible.contains_file(rel) {
+                continue;
+            }
         }
 
         files.push(rel.to_string_lossy().to_string());

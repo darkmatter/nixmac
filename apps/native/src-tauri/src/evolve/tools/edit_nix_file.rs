@@ -3,7 +3,7 @@
 use anyhow::{Result, anyhow};
 
 use crate::evolve::file_ops::resolve_existing_path_in_dir;
-use crate::evolve::gitignore::is_ignored_by_matcher;
+use crate::evolve::gitignore::is_path_ignored;
 use crate::evolve::messages::Tool;
 use crate::evolve::nix_file_editor::{apply_semantic_edit, infer_single_list_attrpath};
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
@@ -199,7 +199,7 @@ fn sibling_attr_path(args: &serde_json::Value) -> Option<String> {
 
 fn infer_attr_path_from_file(ctx: &ToolCtx, path: &str) -> Result<Option<String>> {
     let normalized_path = normalize_relative_path(std::path::Path::new(path))?;
-    if is_ignored_by_matcher(ctx.gitignore_matcher, &normalized_path, false) {
+    if is_path_ignored(ctx.gitignore_matcher, &normalized_path)? {
         return Err(anyhow!(
             "edit_nix_file: '{}' is ignored by .gitignore in git repository; refusing to infer action path",
             path
