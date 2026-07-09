@@ -1047,7 +1047,7 @@ pub async fn generate_evolution<R: Runtime>(
         None,
     ));
 
-    let gitignore_matcher = gitignore::load_gitignore_matcher(repo_root.as_path())?;
+    let gitignore_matcher = gitignore::GitignoreChecker::new(repo_root.as_path())?;
 
     // Track whether we've made any actual edits and/or build checks
     let mut made_edit = false;
