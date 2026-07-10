@@ -1,3 +1,4 @@
+pub mod defaults;
 pub mod log_summarizer;
 pub mod model_capabilities;
 pub mod provider_errors;

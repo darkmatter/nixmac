@@ -1,0 +1,34 @@
+{
+  "$comment": "Single source of truth for hardcoded per-provider default models and static model suggestions. Consumed by the frontend via src/lib/providers/ai-defaults.ts and by the backend via src-tauri/src/ai/defaults.rs. Providers without suggestedModels fetch their model list dynamically.",
+  "providers": {
+    "nixmac": {
+      "evolveModel": "auto",
+      "summaryModel": "flash",
+      "suggestedModels": ["auto", "flash"]
+    },
+    "openrouter": {
+      "$comment": "Claude for evolution: better reasoning without strict content policies.",
+      "evolveModel": "~anthropic/claude-sonnet-latest",
+      "summaryModel": "openai/gpt-oss-120b"
+    },
+    "openai": {
+      "evolveModel": "gpt-5.6-terra",
+      "summaryModel": "gpt-5.6-luna",
+      "suggestedModels": [
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+        "gpt-5.5",
+        "gpt-5.1"
+      ]
+    },
+    "ollama": { "evolveModel": "", "summaryModel": "llama3.1" },
+    "openai_compatible": {
+      "evolveModel": "gpt-oss-120b",
+      "summaryModel": "gpt-oss-120b"
+    },
+    "claude": { "evolveModel": "", "summaryModel": "" },
+    "codex": { "evolveModel": "", "summaryModel": "" },
+    "opencode": { "evolveModel": "", "summaryModel": "" }
+  }
+}

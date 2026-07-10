@@ -24,12 +24,12 @@ describe("isInferenceConfigured", () => {
   it("requires a model for non-CLI providers", () => {
     expect(isInferenceConfigured("openrouter", "")).toBe(false);
     expect(isInferenceConfigured("openrouter", "   ")).toBe(false);
-    expect(isInferenceConfigured("openrouter", "openai/gpt-4o-mini")).toBe(true);
-    expect(isInferenceConfigured("nixmac", "openai/gpt-4o-mini")).toBe(true);
+    expect(isInferenceConfigured("openrouter", "openai/gpt-oss-120b")).toBe(true);
+    expect(isInferenceConfigured("nixmac", "openai/gpt-oss-120b")).toBe(true);
   });
 
   it("requires a provider", () => {
-    expect(isInferenceConfigured(null, "openai/gpt-4o-mini")).toBe(false);
+    expect(isInferenceConfigured(null, "openai/gpt-oss-120b")).toBe(false);
     expect(isInferenceConfigured(undefined, undefined)).toBe(false);
   });
 });
@@ -37,7 +37,7 @@ describe("isInferenceConfigured", () => {
 describe("getProviderConfigInvalidReason", () => {
   it("accepts nixmac hosted inference without BYOK credentials", () => {
     expect(
-      getProviderConfigInvalidReason("nixmac", EMPTY_PREFS, NO_CLI_TOOLS, "openai/gpt-4o-mini"),
+      getProviderConfigInvalidReason("nixmac", EMPTY_PREFS, NO_CLI_TOOLS, "openai/gpt-oss-120b"),
     ).toBeNull();
   });
 

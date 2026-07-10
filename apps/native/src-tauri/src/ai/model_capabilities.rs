@@ -58,12 +58,13 @@ fn context_window_tokens(model: &str) -> u32 {
 
     if model == "flash"
         || model.contains("gpt-oss")
+        || model.contains("gpt-5")
         || model.contains("o1")
         || model.contains("o3")
+        || model.contains("o4")
         || model.contains("gpt-4.1")
-        || model.contains("claude-3")
-        || model.contains("gemini-1.5")
-        || model.contains("gemini-2")
+        || model.contains("claude")
+        || model.contains("gemini")
     {
         return 32768;
     }
@@ -183,10 +184,18 @@ mod tests {
         for model in [
             "flash",
             "gpt-oss-120b",
+            "openai/gpt-oss-120b",
+            "gpt-5.6-sol",
+            "gpt-5.6-terra",
+            "gpt-5.6-luna",
+            "gpt-5.5",
             "o1-preview",
             "o3-mini",
+            "o4-mini",
             "gpt-4.1-mini",
             "claude-3-5-sonnet",
+            "claude-sonnet-4.5",
+            "~anthropic/claude-sonnet-latest",
             "gemini-1.5-pro",
             "gemini-2.5-pro",
             "my-qwen-finetune",
@@ -235,6 +244,10 @@ mod tests {
             "o4-mini",
             "gpt-5",
             "gpt-5.1",
+            "gpt-5.5",
+            "gpt-5.6-sol",
+            "gpt-5.6-terra",
+            "openai/gpt-5.6-luna",
             "openai/gpt-oss-20b",
             "openai/o3",
         ] {
@@ -252,6 +265,7 @@ mod tests {
             "gpt-4o-mini",
             "gpt-4.1",
             "claude-3-5-sonnet",
+            "~anthropic/claude-sonnet-latest",
             "gemini-2.5-pro",
             "llama3:8b-instruct",
             "unknown-model",

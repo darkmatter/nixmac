@@ -193,7 +193,7 @@ function installBackend(startAt: string) {
     flakeExists: startIdx >= 3,
     macScannedAt: (startIdx >= 5 ? 1_700_000_000 : null) as number | null,
     evolveProvider: (startIdx >= 6 ? "openrouter" : null) as string | null,
-    evolveModel: (startIdx >= 6 ? "anthropic/claude-sonnet-4" : null) as string | null,
+    evolveModel: (startIdx >= 6 ? "~anthropic/claude-sonnet-latest" : null) as string | null,
     loginDecided: startIdx >= 6,
     lastBuildAt: null as number | null,
     githubConnected: false,
