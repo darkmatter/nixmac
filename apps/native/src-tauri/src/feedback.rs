@@ -706,6 +706,14 @@ pub async fn retry_pending(app: &AppHandle) -> Result<usize> {
 // Main Entry Point
 // =============================================================================
 
+/// Check if feedback submission is available (configured and signed in).
+/// We'll reuse the feedback_destination function and if it does not return an
+/// error AND the destination is Some, then feedback is available.
+pub fn is_available(app: &AppHandle) -> bool {
+    let dest = feedback_destination(app);
+    dest.is_ok() && dest.unwrap().is_some()
+}
+
 /// Master function to gather all requested feedback metadata
 pub fn gather_metadata(
     app: &AppHandle,

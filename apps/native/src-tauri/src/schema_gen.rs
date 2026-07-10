@@ -4,12 +4,16 @@
 
 use anyhow::{Context, Result};
 use configurable::{ConfigurableMeta, inventory};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::env::config::NixmacEnvSettings;
 use crate::evolve::config::UserPreferences;
 
-const DEFAULT_OUT_DIR: &str = "resources/schemas";
+/// Resolved against the crate root so output doesn't depend on the cwd the
+/// binary was invoked from (`bun run gen:schemas` runs cargo from apps/native).
+fn default_out_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("resources/schemas")
+}
 
 /// Ensures inventory entries are linked into the binary.
 fn link_configurables() {
@@ -39,7 +43,7 @@ pub fn write_config_schemas(out_dir: impl AsRef<Path>) -> Result<()> {
 }
 
 pub fn write_default_config_schemas() -> Result<()> {
-    write_config_schemas(DEFAULT_OUT_DIR)
+    write_config_schemas(default_out_dir())
 }
 
 #[cfg(test)]
@@ -82,7 +86,7 @@ mod tests {
         link_configurables();
         for meta in inventory::iter::<ConfigurableMeta>() {
             let generated = (meta.json_schema_fn)();
-            let path = Path::new(DEFAULT_OUT_DIR).join(meta.schema_file);
+            let path = default_out_dir().join(meta.schema_file);
             let committed = std::fs::read_to_string(&path)
                 .unwrap_or_else(|_| panic!("missing committed schema at {}", path.display()));
             let committed_value: Value =
