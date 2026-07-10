@@ -55,7 +55,7 @@ const EVOLVE_EVENTS: EvolveEvent[] = [
   {
     eventType: "start",
     summary: "Starting AI evolution",
-    raw: "Starting evolution with model anthropic/claude-sonnet-4.5",
+    raw: "Starting evolution with model ~anthropic/claude-sonnet-latest",
     iteration: null,
     timestampMs: 0,
   },
@@ -194,7 +194,7 @@ function seedWidgetState(preset: WidgetPreset) {
       hostAttr: "Demo-MacBook-Pro",
       repoRoot: "/Users/demo/.darwin",
       evolveProvider: "openrouter",
-      evolveModel: "anthropic/claude-sonnet-4.5",
+      evolveModel: "~anthropic/claude-sonnet-latest",
       onboardingMacScannedAt: 1_767_200_000,
       onboardingLoginDecided: true,
       onboardingLastBuildAt: 1_767_200_300,

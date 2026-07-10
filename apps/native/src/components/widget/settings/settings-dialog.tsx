@@ -9,6 +9,7 @@ import { TuningTab } from "@/components/widget/settings/tuning-tab";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { tauriAPI } from "@/ipc/api";
 import { resolveOpenAiCompatibleProvider } from "@/lib/providers/ai-provider-validation";
+import { DEFAULT_EVOLVE_MODEL, DEFAULT_SUMMARY_MODEL } from "@/lib/providers/ai-models";
 import {
   createVerifiedApiKeyHandler,
   verifyOpenaiApiKey,
@@ -139,9 +140,9 @@ export function SettingsDialog() {
       openaiCompatibleApiBaseUrl: "",
       openaiCompatibleApiKey: "",
       summaryProvider: "openrouter",
-      summaryModel: "openai/gpt-4o-mini",
+      summaryModel: DEFAULT_SUMMARY_MODEL.openrouter,
       evolveProvider: "openrouter",
-      evolveModel: "anthropic/claude-sonnet-4",
+      evolveModel: DEFAULT_EVOLVE_MODEL.openrouter,
       sendDiagnostics: false,
     },
   });
@@ -166,13 +167,15 @@ export function SettingsDialog() {
           form.setFieldValue(
             "summaryModel",
             prefs.summaryModel ??
-            (summaryProvider === "openai" ? "gpt-4o-mini" : "openai/gpt-4o-mini"),
+            DEFAULT_SUMMARY_MODEL[summaryProvider] ??
+            DEFAULT_SUMMARY_MODEL.openrouter,
           );
           form.setFieldValue("evolveProvider", evolveProvider);
           form.setFieldValue(
             "evolveModel",
             prefs.evolveModel ??
-            (evolveProvider === "openai" ? "gpt-4o" : "anthropic/claude-sonnet-4"),
+            DEFAULT_EVOLVE_MODEL[evolveProvider] ??
+            DEFAULT_EVOLVE_MODEL.openrouter,
           );
           form.setFieldValue("sendDiagnostics", prefs.sendDiagnostics ?? false);
 

@@ -1,18 +1,12 @@
 import type { ProviderIconId } from "@/components/widget/controls/provider-icons/provider-icon";
+import {
+	type AiProviderId,
+	providerModelDefaults,
+} from "@/lib/providers/ai-defaults";
 
 const NIXMAC_PROVIDER = "nixmac";
-const DEFAULT_NIXMAC_MODEL = "openai/gpt-4o-mini";
-const DEFAULT_OLLAMA_MODEL = "llama3.1";
 
-type AiModelProviderId =
-	| "nixmac"
-	| "openrouter"
-	| "openai"
-	| "ollama"
-	| "openai_compatible"
-	| "claude"
-	| "codex"
-	| "opencode";
+type AiModelProviderId = AiProviderId;
 
 type ApiKeyPrefsField = "openrouterApiKey" | "openaiApiKey";
 
@@ -43,21 +37,30 @@ interface AiModelProvider {
 		| { kind: "cli"; plainModelInput: boolean };
 }
 
+function modelDefaults(id: AiModelProviderId): {
+	defaultEvolveModel: string;
+	defaultSummaryModel: string;
+} {
+	const defaults = providerModelDefaults(id);
+	return {
+		defaultEvolveModel: defaults.evolveModel,
+		defaultSummaryModel: defaults.summaryModel,
+	};
+}
+
 export const AI_MODEL_PROVIDERS: readonly AiModelProvider[] = [
 	{
 		id: NIXMAC_PROVIDER,
 		name: "nixmac hosted",
 		icon: "nixmac",
-		defaultEvolveModel: DEFAULT_NIXMAC_MODEL,
-		defaultSummaryModel: DEFAULT_NIXMAC_MODEL,
+		...modelDefaults(NIXMAC_PROVIDER),
 		setup: { kind: "hosted" },
 	},
 	{
 		id: "openrouter",
 		name: "OpenRouter",
 		icon: "openrouter",
-		defaultEvolveModel: "anthropic/claude-sonnet-4",
-		defaultSummaryModel: "openai/gpt-4o-mini",
+		...modelDefaults("openrouter"),
 		setup: {
 			kind: "apiKey",
 			prefsKeyField: "openrouterApiKey",
@@ -70,8 +73,7 @@ export const AI_MODEL_PROVIDERS: readonly AiModelProvider[] = [
 		id: "openai",
 		name: "OpenAI",
 		icon: "openai",
-		defaultEvolveModel: "gpt-4o",
-		defaultSummaryModel: "gpt-4o-mini",
+		...modelDefaults("openai"),
 		setup: {
 			kind: "apiKey",
 			prefsKeyField: "openaiApiKey",
@@ -84,16 +86,14 @@ export const AI_MODEL_PROVIDERS: readonly AiModelProvider[] = [
 		id: "ollama",
 		name: "Ollama",
 		icon: "ollama",
-		defaultEvolveModel: "",
-		defaultSummaryModel: "llama3.1",
+		...modelDefaults("ollama"),
 		setup: { kind: "local" },
 	},
 	{
 		id: "openai_compatible",
 		name: "OpenAI Compatible",
 		icon: "openai_compatible",
-		defaultEvolveModel: "gpt-oss-120b",
-		defaultSummaryModel: "gpt-oss-120b",
+		...modelDefaults("openai_compatible"),
 		setup: {
 			kind: "baseUrl",
 			prefsBaseUrlField: "openaiCompatibleApiBaseUrl",
@@ -107,24 +107,21 @@ export const AI_MODEL_PROVIDERS: readonly AiModelProvider[] = [
 		id: "claude",
 		name: "Claude CLI",
 		icon: "claude",
-		defaultEvolveModel: "",
-		defaultSummaryModel: "",
+		...modelDefaults("claude"),
 		setup: { kind: "cli", plainModelInput: true },
 	},
 	{
 		id: "codex",
 		name: "Codex CLI",
 		icon: "codex",
-		defaultEvolveModel: "",
-		defaultSummaryModel: "",
+		...modelDefaults("codex"),
 		setup: { kind: "cli", plainModelInput: true },
 	},
 	{
 		id: "opencode",
 		name: "OpenCode CLI",
 		icon: "opencode",
-		defaultEvolveModel: "",
-		defaultSummaryModel: "",
+		...modelDefaults("opencode"),
 		setup: { kind: "cli", plainModelInput: false },
 	},
 ];
@@ -159,24 +156,15 @@ export function isPlainInputCliProvider(provider: string): boolean {
 	return setup.kind === "cli" && setup.plainModelInput;
 }
 
-export function modelPlaceholder(provider: string, fallback: string): string {
+export function modelPlaceholder(
+	provider: string,
+	kind: "evolve" | "summary",
+): string {
 	const config = getAiModelProvider(provider);
-	if (config.id === NIXMAC_PROVIDER) {
-		return DEFAULT_NIXMAC_MODEL;
-	}
-	if (config.id === "openai") {
-		return fallback;
-	}
-	if (config.id === "ollama") {
-		return DEFAULT_OLLAMA_MODEL;
-	}
-	if (config.id === "openai_compatible") {
-		return "gpt-oss-120b";
-	}
-	if (config.id === "opencode" || config.setup.kind === "cli") {
+	if (config.setup.kind === "cli") {
 		return "Leave empty for CLI default";
 	}
-	return fallback === "gpt-4o"
-		? "anthropic/claude-sonnet-4"
-		: "openai/gpt-4o-mini";
+	const defaultModel =
+		kind === "evolve" ? config.defaultEvolveModel : config.defaultSummaryModel;
+	return defaultModel || "Select model...";
 }

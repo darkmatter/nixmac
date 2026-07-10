@@ -10,11 +10,8 @@ use tauri::{AppHandle, Runtime};
 
 use async_trait::async_trait;
 
-const DEFAULT_SUMMARY_MODEL: &str = "openai/gpt-4o-mini";
-const DEFAULT_OPENAI_SUMMARY_MODEL: &str = "gpt-4o-mini";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 pub(crate) const NIXMAC_PROVIDER: &str = "nixmac";
-pub(crate) const DEFAULT_NIXMAC_MODEL: &str = "auto";
 
 pub(crate) fn nixmac_llm_api_base(web_server_url: &str) -> String {
     format!("{}/api/llm/v1", web_server_url.trim_end_matches('/'))
@@ -262,14 +259,14 @@ pub fn create_provider<R: Runtime>(
             let api_key = crate::storage::store::get_device_api_key(app)?
                 .ok_or_else(|| anyhow::anyhow!("Sign in to nixmac hosted inference first."))?;
             let base_url = nixmac_llm_api_base(&crate::storage::store::get_web_server_url()?);
-            let model =
-                configured_summary_model.unwrap_or_else(|| DEFAULT_NIXMAC_MODEL.to_string());
+            let model = configured_summary_model
+                .unwrap_or_else(|| crate::ai::defaults::nixmac_model().to_string());
 
             Ok(Box::new(OpenAIClient::new(&api_key, &base_url, &model)))
         }
         "openai" => {
             let model = configured_summary_model
-                .unwrap_or_else(|| DEFAULT_OPENAI_SUMMARY_MODEL.to_string());
+                .unwrap_or_else(|| crate::ai::defaults::openai_summary_model().to_string());
 
             let (key, base_url) = if let Some(app) = app_handle {
                 crate::storage::store::get_effective_openai_provider_credential(app)?
@@ -287,10 +284,11 @@ pub fn create_provider<R: Runtime>(
             Ok(Box::new(OpenAIClient::new(&key, base_url, &model)))
         }
         _ => {
+            let default_summary_model = crate::ai::defaults::openrouter_summary_model();
             let model = if used_legacy_openai_fallback {
-                openrouter_model_slug_or_default(configured_summary_model, DEFAULT_SUMMARY_MODEL)
+                openrouter_model_slug_or_default(configured_summary_model, default_summary_model)
             } else {
-                configured_summary_model.unwrap_or_else(|| DEFAULT_SUMMARY_MODEL.to_string())
+                configured_summary_model.unwrap_or_else(|| default_summary_model.to_string())
             };
 
             let (key, base_url) = if let Some(app) = app_handle {
@@ -328,7 +326,7 @@ mod tests {
     fn legacy_openai_provider_falls_back_to_openrouter_for_openrouter_model_slug() {
         let provider = resolve_legacy_openai_provider(
             "openai".to_string(),
-            Some("anthropic/claude-sonnet-4"),
+            Some("~anthropic/claude-sonnet-latest"),
             true,
             true,
         );
@@ -395,7 +393,7 @@ mod tests {
     fn openrouter_model_slug_is_preserved() {
         let model = openrouter_model_slug_or_default(
             Some("google/gemini-2.5-pro".to_string()),
-            "anthropic/claude-sonnet-4",
+            "~anthropic/claude-sonnet-latest",
         );
 
         assert_eq!(model, "google/gemini-2.5-pro");
@@ -405,9 +403,9 @@ mod tests {
     fn bare_openai_model_uses_openrouter_default() {
         let model = openrouter_model_slug_or_default(
             Some("gpt-4o".to_string()),
-            "anthropic/claude-sonnet-4",
+            "~anthropic/claude-sonnet-latest",
         );
 
-        assert_eq!(model, "anthropic/claude-sonnet-4");
+        assert_eq!(model, "~anthropic/claude-sonnet-latest");
     }
 }

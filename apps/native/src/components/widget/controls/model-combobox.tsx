@@ -4,7 +4,8 @@ import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { DEFAULT_NIXMAC_MODEL, NIXMAC_PROVIDER } from "@/components/widget/onboarding/lib/inference";
+import { NIXMAC_PROVIDER } from "@/components/widget/onboarding/lib/inference";
+import { suggestedModels } from "@/lib/providers/ai-defaults";
 import {
   Command,
   CommandEmpty,
@@ -38,8 +39,6 @@ interface OllamaModel {
 interface OpenAiCompatibleModel {
   id: string;
 }
-
-const OPENAI_MODELS = ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini"] as const;
 
 async function fetchOpenRouterModels(): Promise<string[]> {
   try {
@@ -118,13 +117,13 @@ type ModelProvider = ModelComboboxProps["provider"];
 
 async function fetchFreshModels(provider: ModelProvider): Promise<string[]> {
   if (provider === NIXMAC_PROVIDER) {
-    return [DEFAULT_NIXMAC_MODEL];
+    return suggestedModels(NIXMAC_PROVIDER);
   }
   if (provider === "openrouter") {
     return fetchOpenRouterModels();
   }
   if (provider === "openai") {
-    return [...OPENAI_MODELS];
+    return suggestedModels("openai");
   }
   if (provider === "ollama") {
     // deprecated(orpc): replace with client/orpc from @/lib/orpc
@@ -149,11 +148,11 @@ async function loadProviderModels(
   applyModels: (models: string[]) => void,
 ) {
   if (provider === "openai") {
-    applyModels([...OPENAI_MODELS]);
+    applyModels(suggestedModels("openai"));
     return;
   }
   if (provider === NIXMAC_PROVIDER) {
-    applyModels([DEFAULT_NIXMAC_MODEL]);
+    applyModels(suggestedModels(NIXMAC_PROVIDER));
     return;
   }
 

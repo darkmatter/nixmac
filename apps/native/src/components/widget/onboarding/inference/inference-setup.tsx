@@ -810,7 +810,7 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
               }
               value={model}
               onChange={setModel}
-              placeholder={modelPlaceholder(provider.id, provider.defaultEvolveModel || "gpt-4o")}
+              placeholder={modelPlaceholder(provider.id, "evolve")}
             />
           )}
         </div>

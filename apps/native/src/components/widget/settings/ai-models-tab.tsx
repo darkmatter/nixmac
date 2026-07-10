@@ -8,12 +8,15 @@ import {
 } from "@/components/ui/select";
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
 import { ProviderIcon } from "@/components/widget/controls/provider-icons/provider-icon";
-import { DEFAULT_NIXMAC_MODEL, DEFAULT_NIXMAC_SUMMARY_MODEL, NIXMAC_PROVIDER } from "@/components/widget/onboarding/lib/inference";
 import { tauriAPI } from "@/ipc/api";
 import type { CliToolsState } from "@/ipc/types";
 import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/providers/ai-provider-validation";
 import {
   AI_MODEL_PROVIDERS,
+  DEFAULT_EVOLVE_MODEL,
+  DEFAULT_SUMMARY_MODEL,
+  isPlainInputCliProvider,
+  modelPlaceholder,
 } from "@/lib/providers/ai-models";
 import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
 import { useEffect, useState } from "react";
@@ -29,51 +32,6 @@ interface AiModelsTabProps {
   summaryModelField: AnyFieldApi;
   // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
   form: ReactFormExtendedApi<any, any, any, any, any, any, any, any, any, any, any, any>;
-}
-
-function isPlainInputCliProvider(provider: string): boolean {
-  return provider === "claude" || provider === "codex";
-}
-
-const DEFAULT_EVOLVE_MODEL: Record<string, string> = {
-  [NIXMAC_PROVIDER]: DEFAULT_NIXMAC_MODEL,
-  openrouter: "anthropic/claude-sonnet-4",
-  openai: "gpt-4o",
-  ollama: "",
-  openai_compatible: "",
-  claude: "",
-  codex: "",
-  opencode: "",
-};
-
-const DEFAULT_SUMMARY_MODEL: Record<string, string> = {
-  [NIXMAC_PROVIDER]: DEFAULT_NIXMAC_SUMMARY_MODEL,
-  openrouter: "openai/gpt-4o-mini",
-  openai: "gpt-4o-mini",
-  ollama: "llama3.1",
-  openai_compatible: "",
-  claude: "",
-  codex: "",
-  opencode: "",
-};
-
-function modelPlaceholder(provider: string, fallback: string): string {
-  if (provider === NIXMAC_PROVIDER) {
-    return DEFAULT_NIXMAC_MODEL;
-  }
-  if (provider === "openai") {
-    return fallback;
-  }
-  if (provider === "ollama") {
-    return fallback === "gpt-4o" ? "" : "llama3.1";
-  }
-  if (provider === "openai_compatible") {
-    return "gpt-oss-120b";
-  }
-  if (provider === "opencode") {
-    return "Leave empty for CLI default";
-  }
-  return fallback === "gpt-4o" ? "anthropic/claude-sonnet-4" : "openai/gpt-4o-mini";
 }
 
 function useCliToolStatus() {
@@ -248,7 +206,7 @@ export function AiModelsTab({
                             await tauriAPI.ui.setPrefs({ evolveModel: value });
                           }}
                           onBlur={evolveModelField.handleBlur}
-                          placeholder={modelPlaceholder(evolveProvider, "gpt-4o")}
+                          placeholder={modelPlaceholder(evolveProvider, "evolve")}
                         />
                       )}
                     </>
@@ -342,7 +300,7 @@ export function AiModelsTab({
                             await tauriAPI.ui.setPrefs({ summaryModel: value });
                           }}
                           onBlur={summaryModelField.handleBlur}
-                          placeholder={modelPlaceholder(summaryProvider, "gpt-4o-mini")}
+                          placeholder={modelPlaceholder(summaryProvider, "summary")}
                         />
                       )}
                     </>

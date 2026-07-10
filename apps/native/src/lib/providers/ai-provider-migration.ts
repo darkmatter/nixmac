@@ -1,9 +1,12 @@
 import type { UiPrefs, UiPrefsUpdate } from "@/ipc/types";
+import { providerModelDefaults } from "@/lib/providers/ai-defaults";
 
 const OPENROUTER_PROVIDER = "openrouter";
 const OPENAI_PROVIDER = "openai";
-const DEFAULT_OPENROUTER_EVOLVE_MODEL = "anthropic/claude-sonnet-4";
-const DEFAULT_OPENROUTER_SUMMARY_MODEL = "openai/gpt-4o-mini";
+const DEFAULT_OPENROUTER_EVOLVE_MODEL =
+  providerModelDefaults(OPENROUTER_PROVIDER).evolveModel;
+const DEFAULT_OPENROUTER_SUMMARY_MODEL =
+  providerModelDefaults(OPENROUTER_PROVIDER).summaryModel;
 
 interface ProviderMigrationValues {
   evolveProvider: string;

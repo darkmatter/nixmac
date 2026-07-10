@@ -1,5 +1,8 @@
 import type { UiPrefs } from "@/ipc/types";
+import { providerModelDefaults } from "@/lib/providers/ai-defaults";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const OPENROUTER_DEFAULTS = providerModelDefaults("openrouter");
 
 const mocks = vi.hoisted(() => ({
   invoke: vi.fn<(command: string, args?: Record<string, unknown>) => Promise<unknown>>(),
@@ -31,9 +34,9 @@ const prefs = (overrides: Partial<UiPrefs> = {}): UiPrefs =>
     openaiCompatibleApiBaseUrl: null,
     openaiCompatibleApiKey: null,
     summaryProvider: "openrouter",
-    summaryModel: "openai/gpt-4o-mini",
+    summaryModel: OPENROUTER_DEFAULTS.summaryModel,
     evolveProvider: "openrouter",
-    evolveModel: "anthropic/claude-sonnet-4",
+    evolveModel: OPENROUTER_DEFAULTS.evolveModel,
     maxIterations: 25,
     maxTokenBudget: 50000,
     maxOutputTokens: 32768,
@@ -87,16 +90,16 @@ describe("tauriAPI.ui.getPrefs", () => {
     const migrated = await tauriAPI.ui.getPrefs();
 
     expect(migrated.evolveProvider).toBe("openrouter");
-    expect(migrated.evolveModel).toBe("anthropic/claude-sonnet-4");
+    expect(migrated.evolveModel).toBe(OPENROUTER_DEFAULTS.evolveModel);
     expect(migrated.summaryProvider).toBe("openrouter");
-    expect(migrated.summaryModel).toBe("openai/gpt-4o-mini");
+    expect(migrated.summaryModel).toBe(OPENROUTER_DEFAULTS.summaryModel);
     expect(mocks.invoke).toHaveBeenNthCalledWith(1, "ui_get_prefs");
     expect(mocks.invoke).toHaveBeenNthCalledWith(2, "ui_set_prefs", {
       prefs: {
         evolveProvider: "openrouter",
-        evolveModel: "anthropic/claude-sonnet-4",
+        evolveModel: OPENROUTER_DEFAULTS.evolveModel,
         summaryProvider: "openrouter",
-        summaryModel: "openai/gpt-4o-mini",
+        summaryModel: OPENROUTER_DEFAULTS.summaryModel,
       },
     });
   });
@@ -116,13 +119,13 @@ describe("tauriAPI.ui.getPrefs", () => {
     const migrated = await tauriAPI.ui.getPrefs();
 
     expect(migrated.evolveProvider).toBe("openrouter");
-    expect(migrated.evolveModel).toBe("anthropic/claude-sonnet-4");
+    expect(migrated.evolveModel).toBe(OPENROUTER_DEFAULTS.evolveModel);
     expect(migrated.summaryProvider).toBe("ollama");
     expect(migrated.summaryModel).toBeNull();
     expect(mocks.invoke).toHaveBeenNthCalledWith(2, "ui_set_prefs", {
       prefs: {
         evolveProvider: "openrouter",
-        evolveModel: "anthropic/claude-sonnet-4",
+        evolveModel: OPENROUTER_DEFAULTS.evolveModel,
       },
     });
   });
