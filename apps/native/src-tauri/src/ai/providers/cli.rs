@@ -31,7 +31,12 @@ impl CliTool {
         }
     }
 
-    /// Whether this tool should be passed a model name, and if so via which flag.
+    /// CLI flag used to pass a model name, for tools that accept one.
+    /// Claude and Codex accept a model but do not require it: when the
+    /// configured model is empty (or the sentinel equal to the binary
+    /// name, substituted by the provider-selection code when no model is
+    /// set), no flag is passed and the CLI's own default model is used.
+    /// OpenCode takes no model flag.
     pub fn model_flag(&self) -> Option<&str> {
         match self {
             CliTool::Claude => Some("--model"),
