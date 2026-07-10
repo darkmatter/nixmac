@@ -18,3 +18,9 @@ pub async fn feedback_submit(app: AppHandle, payload: String) -> Result<bool, St
         .await
         .map_err(|e| capture_err("feedback_submit", e))
 }
+
+/// Checks to see if the feedback system is set up correctly.
+#[tauri::command]
+pub async fn feedback_is_available(app: AppHandle) -> Result<bool, String> {
+    Ok(feedback::is_available(&app))
+}
