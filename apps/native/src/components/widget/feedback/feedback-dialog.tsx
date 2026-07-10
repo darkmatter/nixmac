@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { uiActions, useUiState } from "@nixmac/state";
 import { useCurrentStep } from "@/hooks/use-current-step";
@@ -309,6 +309,16 @@ export function FeedbackDialog() {
   const [submitting, setSubmitting] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const busy = submitting || previewLoading;
+  const feedbackTextRef = useRef<HTMLTextAreaElement>(null);
+
+  // The dialog opens on the availability-check spinner, so Radix's own
+  // open-autofocus (suppressed below — it would land on the X close button)
+  // can't target the textarea; focus it once the form actually renders.
+  useEffect(() => {
+    if (feedbackOpen && feedbackAvailability === "available") {
+      feedbackTextRef.current?.focus();
+    }
+  }, [feedbackOpen, feedbackAvailability]);
 
   const resetFeedbackState = () => {
     setFeedbackAvailability("idle");
@@ -557,7 +567,10 @@ export function FeedbackDialog() {
           uiActions.setFeedbackOpen(true);
         }}
       >
-      <DialogContent className="max-w-2xl h-[85vh] flex flex-col">
+      <DialogContent
+        className="max-w-2xl h-[85vh] flex flex-col"
+        onOpenAutoFocus={(e: Event) => e.preventDefault()}
+      >
         {checkingFeedbackAvailability ? (
           <>
             <DialogHeader>
@@ -651,6 +664,7 @@ export function FeedbackDialog() {
                 </Label>
                 <Textarea
                   id="feedback-text"
+                  ref={feedbackTextRef}
                   value={feedbackText}
                   onChange={(e) => setFeedbackText(e.target.value)}
                   placeholder="Tell us more..."
