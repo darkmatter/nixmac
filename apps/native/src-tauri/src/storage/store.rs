@@ -24,7 +24,7 @@ pub use crate::storage::secrets::{
 
 pub const DEFAULT_MAX_ITERATIONS: usize = 25;
 pub const DEFAULT_MAX_OUTPUT_TOKENS: usize = 32_768;
-pub const DEFAULT_MAX_TOKEN_BUDGET: u32 = 50_000;
+pub const DEFAULT_MAX_TOKEN_BUDGET: u32 = 750_000;
 
 pub const SYNC_SERVER_URL_KEY: &str = "syncServerUrl";
 pub const SYNC_ACCOUNT_ID_KEY: &str = "syncAccountId";

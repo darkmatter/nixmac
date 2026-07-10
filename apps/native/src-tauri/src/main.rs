@@ -565,6 +565,7 @@ fn run_gui_mode(
             // Feedback
             commands::feedback::feedback_gather_metadata,
             commands::feedback::feedback_submit,
+            commands::feedback::feedback_is_available,
             #[cfg(debug_assertions)]
             commands::debug::trigger_test_panic,
             commands::debug::developer_clear_tauri_state,

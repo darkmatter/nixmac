@@ -1874,6 +1874,7 @@ export type Procedures = {
   }
   feedback: {
     gatherMetadata: Client<Record<never, never>, GatherMetadataInput, FeedbackMetadata, Error>
+    isAvailable: Client<Record<never, never>, void, boolean, Error>
     submit: Client<Record<never, never>, string, boolean, Error>
   }
   flake: {
