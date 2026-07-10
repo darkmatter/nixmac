@@ -89,8 +89,10 @@ jobs:
       - name: Setup Xcode Swift toolchain
         uses: ./.github/actions/setup-xcode
 
-      - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+      # Rust (pinned stable rustc/cargo) comes from the devenv profile above.
+      # Do NOT add dtolnay/rust-toolchain here: it installs rustup into the
+      # runner's persistent ~/.cargo, and a broken rustup there took down the
+      # merge queue ("cannot execute binary file").
 
       - name: Install frontend dependencies
         run: bun install
@@ -124,9 +126,19 @@ jobs:
           if ! command -v sccache &>/dev/null; then
             brew install sccache 2>/dev/null || cargo install sccache 2>/dev/null || true
           fi
-          echo "SCCACHE_DIR=$RUNNER_TEMP/sccache" >> "$GITHUB_ENV"
-          echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+          # cargo install lands in ~/.cargo/bin, which is not on PATH (rustup
+          # is intentionally absent); resolve an absolute path for RUSTC_WRAPPER.
+          SCCACHE_BIN="$(command -v sccache || true)"
+          if [ -z "$SCCACHE_BIN" ] && [ -x "$HOME/.cargo/bin/sccache" ]; then
+            SCCACHE_BIN="$HOME/.cargo/bin/sccache"
+          fi
           mkdir -p "$RUNNER_TEMP/sccache"
+          if [ -n "$SCCACHE_BIN" ]; then
+            echo "SCCACHE_DIR=$RUNNER_TEMP/sccache" >> "$GITHUB_ENV"
+            echo "RUSTC_WRAPPER=$SCCACHE_BIN" >> "$GITHUB_ENV"
+          else
+            echo "::notice::sccache unavailable; building without a compiler cache."
+          fi
 
       - name: Restore sccache
         uses: actions/cache/restore@v4
