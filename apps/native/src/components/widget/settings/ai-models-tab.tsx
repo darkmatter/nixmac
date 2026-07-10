@@ -43,7 +43,7 @@ function isPlainInputCliProvider(provider: string): boolean {
 
 const DEFAULT_EVOLVE_MODEL: Record<string, string> = {
   [NIXMAC_PROVIDER]: DEFAULT_NIXMAC_MODEL,
-  openrouter: "anthropic/claude-sonnet-4",
+  openrouter: "~anthropic/claude-sonnet-latest",
   openai: "gpt-4o",
   ollama: "",
   openai_compatible: "",
@@ -54,8 +54,8 @@ const DEFAULT_EVOLVE_MODEL: Record<string, string> = {
 
 const DEFAULT_SUMMARY_MODEL: Record<string, string> = {
   [NIXMAC_PROVIDER]: DEFAULT_NIXMAC_SUMMARY_MODEL,
-  openrouter: "openai/gpt-4o-mini",
-  openai: "gpt-4o-mini",
+  openrouter: "openai/gpt-oss-120b",
+  openai: "gpt-5-mini",
   ollama: "llama3.1",
   openai_compatible: "",
   claude: "",
@@ -79,7 +79,7 @@ function modelPlaceholder(provider: string, fallback: string): string {
   if (provider === "opencode") {
     return "Leave empty for CLI default";
   }
-  return fallback === "gpt-4o" ? "anthropic/claude-sonnet-4" : "openai/gpt-4o-mini";
+  return fallback === "gpt-4o" ? "~anthropic/claude-sonnet-latest" : "openai/gpt-oss-120b";
 }
 
 function useCliToolStatus() {
@@ -348,7 +348,7 @@ export function AiModelsTab({
                             await tauriAPI.ui.setPrefs({ summaryModel: value });
                           }}
                           onBlur={summaryModelField.handleBlur}
-                          placeholder={modelPlaceholder(summaryProvider, "gpt-4o-mini")}
+                          placeholder={modelPlaceholder(summaryProvider, "gpt-5-mini")}
                         />
                       )}
                     </>

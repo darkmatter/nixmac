@@ -1,7 +1,7 @@
 import type { ProviderIconId } from "@/components/widget/controls/provider-icons/provider-icon";
 
 export const NIXMAC_PROVIDER = "nixmac";
-export const DEFAULT_NIXMAC_MODEL = "openai/gpt-4o-mini";
+export const DEFAULT_NIXMAC_MODEL = "openai/gpt-oss-120b";
 const DEFAULT_OLLAMA_MODEL = "llama3.1";
 
 export type AiModelProviderId =
@@ -56,8 +56,8 @@ export const AI_MODEL_PROVIDERS: readonly AiModelProvider[] = [
 		id: "openrouter",
 		name: "OpenRouter",
 		icon: "openrouter",
-		defaultEvolveModel: "anthropic/claude-sonnet-4",
-		defaultSummaryModel: "openai/gpt-4o-mini",
+		defaultEvolveModel: "~anthropic/claude-sonnet-latest",
+		defaultSummaryModel: "openai/gpt-oss-120b",
 		setup: {
 			kind: "apiKey",
 			prefsKeyField: "openrouterApiKey",
@@ -71,7 +71,7 @@ export const AI_MODEL_PROVIDERS: readonly AiModelProvider[] = [
 		name: "OpenAI",
 		icon: "openai",
 		defaultEvolveModel: "gpt-4o",
-		defaultSummaryModel: "gpt-4o-mini",
+		defaultSummaryModel: "gpt-5-mini",
 		setup: {
 			kind: "apiKey",
 			prefsKeyField: "openaiApiKey",
@@ -177,6 +177,6 @@ export function modelPlaceholder(provider: string, fallback: string): string {
 		return "Leave empty for CLI default";
 	}
 	return fallback === "gpt-4o"
-		? "anthropic/claude-sonnet-4"
-		: "openai/gpt-4o-mini";
+		? "~anthropic/claude-sonnet-latest"
+		: "openai/gpt-oss-120b";
 }

@@ -176,9 +176,9 @@ nixmac uses separate models for **evolution** (config changes via tool use) and 
 | Variable | Default | Description |
 | --------------------- | --------------------------- | ----------------------------------------------------------------------- |
 | `EVOLVE_PROVIDER` | `openrouter` | `openrouter`, `openai`, `ollama`, or `openai_compatible` |
-| `EVOLVE_MODEL` | `anthropic/claude-sonnet-4` | Model for config evolution |
+| `EVOLVE_MODEL` | `~anthropic/claude-sonnet-latest` | Model for config evolution |
 | `SUMMARY_AI_PROVIDER` | `openrouter` | Provider for summarization |
-| `SUMMARY_MODEL` | `openai/gpt-4o-mini` | Model for summaries |
+| `SUMMARY_MODEL` | `openai/gpt-oss-120b` | Model for summaries |
 | `OLLAMA_API_BASE` | `http://localhost:11434` | Ollama endpoint |
 | `VLLM_API_BASE` | unset | OpenAI-compatible endpoint, for example `http://localhost:8000/v1` |
 | `VLLM_API_KEY` | unset | Optional OpenAI-compatible API key |

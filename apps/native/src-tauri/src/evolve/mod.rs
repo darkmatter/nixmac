@@ -317,7 +317,7 @@ fn log_api_error(
 }
 
 // Use OpenRouter with Claude for evolution - better reasoning without strict content policies
-const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
+const DEFAULT_MODEL: &str = "~anthropic/claude-sonnet-latest";
 const DEFAULT_OPENAI_MODEL: &str = "gpt-4o";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 

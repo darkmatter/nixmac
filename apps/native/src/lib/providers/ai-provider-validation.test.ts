@@ -16,7 +16,7 @@ const NO_CLI_TOOLS = { claude: false, codex: false, opencode: false };
 describe("getProviderConfigInvalidReason", () => {
   it("accepts nixmac hosted inference without BYOK credentials", () => {
     expect(
-      getProviderConfigInvalidReason("nixmac", EMPTY_PREFS, NO_CLI_TOOLS, "openai/gpt-4o-mini"),
+      getProviderConfigInvalidReason("nixmac", EMPTY_PREFS, NO_CLI_TOOLS, "openai/gpt-oss-120b"),
     ).toBeNull();
   });
 

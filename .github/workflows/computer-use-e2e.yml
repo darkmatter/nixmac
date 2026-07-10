@@ -28,9 +28,9 @@ jobs:
       REPORT_ROOT: artifacts/computer-use-remote
       NIXMAC_E2E_WORKFLOW_TIMINGS: artifacts/computer-use-remote/workflow-timing.json
       NIXMAC_E2E_EVOLVE_PROVIDER: openai
-      NIXMAC_E2E_EVOLVE_MODEL: anthropic/claude-sonnet-4.6
+      NIXMAC_E2E_EVOLVE_MODEL: "~anthropic/claude-sonnet-latest"
       NIXMAC_E2E_SUMMARY_PROVIDER: openai
-      NIXMAC_E2E_SUMMARY_MODEL: openai/gpt-4o-mini
+      NIXMAC_E2E_SUMMARY_MODEL: openai/gpt-oss-120b
     outputs:
       remote_ready: ${{ steps.prepare-status.outputs.remote_ready }}
       setup_failed: ${{ steps.prepare-status.outputs.setup_failed }}
@@ -604,9 +604,9 @@ jobs:
       REPORT_ROOT: artifacts/computer-use-remote
       NIXMAC_E2E_WORKFLOW_TIMINGS: artifacts/computer-use-remote/workflow-timing.json
       NIXMAC_E2E_EVOLVE_PROVIDER: openai
-      NIXMAC_E2E_EVOLVE_MODEL: anthropic/claude-sonnet-4.6
+      NIXMAC_E2E_EVOLVE_MODEL: "~anthropic/claude-sonnet-latest"
       NIXMAC_E2E_SUMMARY_PROVIDER: openai
-      NIXMAC_E2E_SUMMARY_MODEL: openai/gpt-4o-mini
+      NIXMAC_E2E_SUMMARY_MODEL: openai/gpt-oss-120b
       NIXMAC_E2E_STORYBOOK_PREVIEW_JSON_PATH: artifacts/computer-use-storybook-plan/storybook-preview.json
     outputs:
       has_report: ${{ steps.report-meta.outputs.has_report }}

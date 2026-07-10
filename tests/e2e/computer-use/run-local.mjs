@@ -874,12 +874,12 @@ async function setup({ mode = "deterministic" } = {}) {
       evolveModel:
         process.env.NIXMAC_COMPUTER_USE_EVOLVE_MODEL ??
         settings.evolveModel ??
-        "anthropic/claude-sonnet-4",
+        "~anthropic/claude-sonnet-latest",
       summaryProvider: "openai",
       summaryModel:
         process.env.NIXMAC_COMPUTER_USE_SUMMARY_MODEL ??
         settings.summaryModel ??
-        "openai/gpt-4o-mini",
+        "openai/gpt-oss-120b",
       sendDiagnostics: false,
       confirmBuild: true,
       confirmClear: true,

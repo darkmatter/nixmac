@@ -10,8 +10,8 @@ use tauri::{AppHandle, Runtime};
 
 use async_trait::async_trait;
 
-const DEFAULT_SUMMARY_MODEL: &str = "openai/gpt-4o-mini";
-const DEFAULT_OPENAI_SUMMARY_MODEL: &str = "gpt-4o-mini";
+const DEFAULT_SUMMARY_MODEL: &str = "openai/gpt-oss-120b";
+const DEFAULT_OPENAI_SUMMARY_MODEL: &str = "gpt-5-mini";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 pub(crate) const NIXMAC_PROVIDER: &str = "nixmac";
 pub(crate) const DEFAULT_NIXMAC_MODEL: &str = "auto";
@@ -328,7 +328,7 @@ mod tests {
     fn legacy_openai_provider_falls_back_to_openrouter_for_openrouter_model_slug() {
         let provider = resolve_legacy_openai_provider(
             "openai".to_string(),
-            Some("anthropic/claude-sonnet-4"),
+            Some("~anthropic/claude-sonnet-latest"),
             true,
             true,
         );
@@ -395,7 +395,7 @@ mod tests {
     fn openrouter_model_slug_is_preserved() {
         let model = openrouter_model_slug_or_default(
             Some("google/gemini-2.5-pro".to_string()),
-            "anthropic/claude-sonnet-4",
+            "~anthropic/claude-sonnet-latest",
         );
 
         assert_eq!(model, "google/gemini-2.5-pro");
@@ -405,9 +405,9 @@ mod tests {
     fn bare_openai_model_uses_openrouter_default() {
         let model = openrouter_model_slug_or_default(
             Some("gpt-4o".to_string()),
-            "anthropic/claude-sonnet-4",
+            "~anthropic/claude-sonnet-latest",
         );
 
-        assert_eq!(model, "anthropic/claude-sonnet-4");
+        assert_eq!(model, "~anthropic/claude-sonnet-latest");
     }
 }

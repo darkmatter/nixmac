@@ -9,9 +9,9 @@ const PREFS: UiPrefs = {
 	openaiCompatibleApiBaseUrl: "",
 	openaiCompatibleApiKey: "",
 	summaryProvider: "openrouter",
-	summaryModel: "openai/gpt-4o-mini",
+	summaryModel: "openai/gpt-oss-120b",
 	evolveProvider: "openrouter",
-	evolveModel: "anthropic/claude-sonnet-4",
+	evolveModel: "~anthropic/claude-sonnet-latest",
 	maxIterations: null,
 	maxTokenBudget: null,
 	maxBuildAttempts: null,
@@ -68,9 +68,9 @@ describe("migrateLegacyOpenaiProviderPrefs", () => {
 
 		expect(result.values).toEqual({
 			evolveProvider: "openrouter",
-			evolveModel: "anthropic/claude-sonnet-4",
+			evolveModel: "~anthropic/claude-sonnet-latest",
 			summaryProvider: "openrouter",
-			summaryModel: "openai/gpt-4o-mini",
+			summaryModel: "openai/gpt-oss-120b",
 		});
 		expect(result.update).toEqual(result.values);
 	});
@@ -81,14 +81,14 @@ describe("migrateLegacyOpenaiProviderPrefs", () => {
 			openrouterApiKey: "sk-or-key",
 			openaiApiKey: "sk-openai-key",
 			evolveProvider: "openai",
-			evolveModel: "anthropic/claude-sonnet-4",
+			evolveModel: "~anthropic/claude-sonnet-latest",
 			summaryProvider: "openai",
 			summaryModel: "gpt-4o-mini",
 		});
 
 		expect(result.values).toEqual({
 			evolveProvider: "openrouter",
-			evolveModel: "anthropic/claude-sonnet-4",
+			evolveModel: "~anthropic/claude-sonnet-latest",
 			summaryProvider: "openai",
 			summaryModel: "gpt-4o-mini",
 		});

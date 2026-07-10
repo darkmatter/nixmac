@@ -26,7 +26,7 @@ export const BYOK_PROVIDERS: InferenceProvider[] = [
 	{
 		id: "openrouter",
 		name: "OpenRouter",
-		defaultModel: "anthropic/claude-sonnet-4",
+		defaultModel: "~anthropic/claude-sonnet-latest",
 		prefsKeyField: "openrouterApiKey",
 		keyPrefix: "sk-or-",
 		keyPlaceholder: "sk-or-v1-…",

@@ -503,8 +503,8 @@ run. The report never prints the key value.
 
 The remote fixture also overwrites provider/model settings in the backed-up app
 support directory before launch so runs do not inherit stale DXU state:
-`evolveProvider=openai`, `evolveModel=anthropic/claude-sonnet-4.6`,
-`summaryProvider=openai`, and `summaryModel=openai/gpt-4o-mini`.
+`evolveProvider=openai`, `evolveModel=~anthropic/claude-sonnet-latest`,
+`summaryProvider=openai`, and `summaryModel=openai/gpt-oss-120b`.
 
 The PR-built macOS app artifact is also staged under a per-run `/tmp`
 directory and launched from that exact staged `.app` bundle. The workflow

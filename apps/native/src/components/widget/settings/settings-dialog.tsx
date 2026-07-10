@@ -139,9 +139,9 @@ export function SettingsDialog() {
       openaiCompatibleApiBaseUrl: "",
       openaiCompatibleApiKey: "",
       summaryProvider: "openrouter",
-      summaryModel: "openai/gpt-4o-mini",
+      summaryModel: "openai/gpt-oss-120b",
       evolveProvider: "openrouter",
-      evolveModel: "anthropic/claude-sonnet-4",
+      evolveModel: "~anthropic/claude-sonnet-latest",
       sendDiagnostics: false,
     },
   });
@@ -166,13 +166,13 @@ export function SettingsDialog() {
           form.setFieldValue(
             "summaryModel",
             prefs.summaryModel ??
-            (summaryProvider === "openai" ? "gpt-4o-mini" : "openai/gpt-4o-mini"),
+            (summaryProvider === "openai" ? "gpt-5-mini" : "openai/gpt-oss-120b"),
           );
           form.setFieldValue("evolveProvider", evolveProvider);
           form.setFieldValue(
             "evolveModel",
             prefs.evolveModel ??
-            (evolveProvider === "openai" ? "gpt-4o" : "anthropic/claude-sonnet-4"),
+            (evolveProvider === "openai" ? "gpt-4o" : "~anthropic/claude-sonnet-latest"),
           );
           form.setFieldValue("sendDiagnostics", prefs.sendDiagnostics ?? false);
 
