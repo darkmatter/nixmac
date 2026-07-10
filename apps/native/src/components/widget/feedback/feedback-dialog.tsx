@@ -668,7 +668,10 @@ export function FeedbackDialog() {
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select a prompt (optional)" />
                   </SelectTrigger>
-                  <SelectContent>
+                  {/* Cap the popper at the trigger's width; prompts are long
+                      and would otherwise blow the menu out much wider than
+                      the control. Items wrap via line-clamp instead. */}
+                  <SelectContent className="w-[var(--radix-select-trigger-width)] max-w-[var(--radix-select-trigger-width)]">
                     {promptHistory.length > 0 ? (
                       promptHistory.map((prompt) => (
                         <SelectItem key={prompt} value={prompt}>
@@ -719,7 +722,9 @@ export function FeedbackDialog() {
               {/* Share with team */}
               <div className="space-y-2">
                 <Label className="text-foreground">SHARE WITH THE TEAM</Label>
-                <div className="space-y-2 max-h-[28vh] overflow-y-auto pr-2">
+                {/* py-1/pl-1 keep the checkboxes' focus ring from being
+                    clipped by this scroll container's edges */}
+                <div className="space-y-2 max-h-[28vh] overflow-y-auto py-1 pl-1 pr-2">
                   {shouldShowCurrentAppState(feedbackType, step, mainWindowError) && (
                     <div className="flex items-center gap-2">
                       <Checkbox
@@ -742,7 +747,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group outline-none focus-visible:bg-accent/50"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -777,7 +782,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group outline-none focus-visible:bg-accent/50"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -812,7 +817,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group outline-none focus-visible:bg-accent/50"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -847,7 +852,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group outline-none focus-visible:bg-accent/50"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -882,7 +887,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group outline-none focus-visible:bg-accent/50"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -917,7 +922,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group outline-none focus-visible:bg-accent/50"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -952,7 +957,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group outline-none focus-visible:bg-accent/50"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -987,7 +992,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group outline-none focus-visible:bg-accent/50"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -1022,7 +1027,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group outline-none focus-visible:bg-accent/50"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
