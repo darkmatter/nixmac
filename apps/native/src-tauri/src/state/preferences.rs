@@ -31,7 +31,9 @@ pub fn load_global_observable<R: Runtime>(
         Arc::new(AppDataJson::for_app(app, GLOBAL_PREFERENCES_PATH)?);
     let mut initial = load_or_default::<GlobalPreferences>(persistence.as_ref())?;
 
-    if migrate_from_legacy_store(app, &mut initial)? {
+    let mut dirty = migrate_from_legacy_store(app, &mut initial)?;
+    dirty |= migrate_diagnostics_default_on(&mut initial);
+    if dirty {
         persistence.flush(&serde_json::to_value(&initial)?)?;
     }
 
@@ -102,6 +104,28 @@ fn migrate_from_legacy_store<R: Runtime>(
     store.set(LEGACY_MIGRATED_MARKER, serde_json::Value::Bool(true));
     store.save()?;
     Ok(true)
+}
+
+/// One-shot flip to default-on diagnostics for installs that predate the
+/// change. Existing installs have `sendDiagnostics: false` persisted (the old
+/// default) even though most users never made an explicit choice. Until the
+/// one-time consent notice has been acknowledged, `send_diagnostics: false`
+/// is treated as "never chose" and flipped on; the notice (shown by the
+/// frontend while `diagnostics_notice_acknowledged` is false) discloses this
+/// and offers opt-out.
+///
+/// Known trade-off: pre-change installs where the user *explicitly* toggled
+/// diagnostics off are indistinguishable from never-chose (both persisted
+/// `false`, and the ack flag didn't exist yet), so those installs get flipped
+/// on once and re-disclosed via the notice. Choices made after this shipped
+/// are safe: any explicit `send_diagnostics` update also sets the acknowledged
+/// flag (see `GlobalPreferences::apply_ui_update`), which makes this a no-op.
+fn migrate_diagnostics_default_on(prefs: &mut GlobalPreferences) -> bool {
+    if prefs.diagnostics_notice_acknowledged || prefs.send_diagnostics {
+        return false;
+    }
+    prefs.send_diagnostics = true;
+    true
 }
 
 pub(crate) fn load_or_default<T>(persistence: &dyn Persistence) -> Result<T>
@@ -213,6 +237,46 @@ mod tests {
         let prefs = load_or_default::<GlobalPreferences>(&persistence).unwrap();
 
         assert_eq!(prefs, GlobalPreferences::default());
+    }
+
+    #[test]
+    fn diagnostics_default_on_flips_unacknowledged_opt_out() {
+        // Pre-change install: persisted false only because the old default
+        // was false and the user never saw a consent prompt.
+        let mut prefs = GlobalPreferences {
+            send_diagnostics: false,
+            diagnostics_notice_acknowledged: false,
+            ..GlobalPreferences::default()
+        };
+        assert!(migrate_diagnostics_default_on(&mut prefs));
+        assert!(prefs.send_diagnostics);
+        // The notice stays un-acknowledged so the frontend still shows it.
+        assert!(!prefs.diagnostics_notice_acknowledged);
+    }
+
+    #[test]
+    fn diagnostics_default_on_respects_explicit_opt_out() {
+        let mut prefs = GlobalPreferences {
+            send_diagnostics: false,
+            diagnostics_notice_acknowledged: true,
+            ..GlobalPreferences::default()
+        };
+        assert!(!migrate_diagnostics_default_on(&mut prefs));
+        assert!(!prefs.send_diagnostics);
+    }
+
+    #[test]
+    fn explicit_send_diagnostics_update_acknowledges_notice() {
+        let mut prefs = GlobalPreferences::default();
+        prefs.apply_ui_update(&crate::shared_types::UiPrefsUpdate {
+            send_diagnostics: Some(false),
+            ..Default::default()
+        });
+        assert!(!prefs.send_diagnostics);
+        assert!(prefs.diagnostics_notice_acknowledged);
+        // Idempotent at next load: the migration must not flip it back.
+        assert!(!migrate_diagnostics_default_on(&mut prefs));
+        assert!(!prefs.send_diagnostics);
     }
 
     #[test]

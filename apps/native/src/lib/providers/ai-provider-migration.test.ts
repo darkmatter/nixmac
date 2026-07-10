@@ -17,6 +17,7 @@ const PREFS: UiPrefs = {
 	maxBuildAttempts: null,
 	maxOutputTokens: null,
 	sendDiagnostics: false,
+	diagnosticsNoticeAcknowledged: false,
 	confirmBuild: false,
 	confirmClear: false,
 	confirmRollback: false,

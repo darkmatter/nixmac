@@ -1,12 +1,15 @@
+import { useDiagnosticsNotice } from "@/hooks/use-diagnostics-notice";
 import { useAuthDeepLink } from "@/lib/auth-deep-link";
 import { bootBreadcrumb, clearBootStage, markBootStage } from "@/lib/boot-diagnostics";
 import { useTelemetry } from "@/lib/telemetry/context";
 import { RouterProvider, router } from "@/router";
+import { AlertTriangle, Check, Info } from "lucide-react";
 import { useEffect } from "react";
 import { Toaster } from "sonner";
 
 export default function App() {
   useAuthDeepLink();
+  useDiagnosticsNotice();
   const telemetry = useTelemetry();
 
   useEffect(() => {
@@ -37,13 +40,19 @@ export default function App() {
       />
       <RouterProvider router={router} />
       <Toaster
-        position="top-center"
+        position="bottom-right"
+        icons={{
+          success: <Check className="h-4 w-4" />,
+          info: <Info className="h-4 w-4" />,
+          warning: <AlertTriangle className="h-4 w-4" />,
+          error: <AlertTriangle className="h-4 w-4" />,
+        }}
         theme="dark"
         toastOptions={{
           classNames: {
-            success: "bg-teal-900! border-teal-500/50! text-teal-100!",
-            title: "text-teal-100!",
-            description: "text-teal-200!",
+            // success: "bg-emerald-900! border-emerald-500/50! text-emerald-100!",
+            // title: "text-foreground!",
+            description: "text-muted-foreground!",
           },
         }}
       />

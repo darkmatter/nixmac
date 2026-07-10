@@ -43,6 +43,8 @@ pub struct UiPrefs {
     pub max_output_tokens: Option<usize>,
     /// Whether diagnostic feedback may be sent.
     pub send_diagnostics: bool,
+    /// Whether the one-time diagnostics consent notice has been shown.
+    pub diagnostics_notice_acknowledged: bool,
     /// Whether to confirm before running build/apply.
     pub confirm_build: bool,
     /// Whether to confirm before clearing changes.
@@ -104,6 +106,8 @@ pub struct UiPrefsUpdate {
     pub openai_compatible_api_key: Option<String>,
     /// Diagnostics sharing preference update.
     pub send_diagnostics: Option<bool>,
+    /// Diagnostics notice acknowledgement update.
+    pub diagnostics_notice_acknowledged: Option<bool>,
     /// Build confirmation preference update.
     pub confirm_build: Option<bool>,
     /// Clear confirmation preference update.
@@ -156,6 +160,9 @@ pub struct GlobalPreferences {
     pub config_dir: Option<String>,
     pub repo_root: Option<String>,
     pub send_diagnostics: bool,
+    /// True once the user has seen the one-time diagnostics consent notice
+    /// (first launch after the default-on telemetry change).
+    pub diagnostics_notice_acknowledged: bool,
     pub evolve_provider: Option<String>,
     pub evolve_model: Option<String>,
     pub summary_provider: Option<String>,
@@ -203,7 +210,11 @@ impl Default for GlobalPreferences {
             host_attr: None,
             config_dir: None,
             repo_root: None,
-            send_diagnostics: false,
+            // Default-on with disclosure: a one-time notice is shown on first
+            // launch (diagnostics_notice_acknowledged) and opt-out lives in
+            // settings. PostHog only ever receives sanitized product events.
+            send_diagnostics: true,
+            diagnostics_notice_acknowledged: false,
             evolve_provider: None,
             evolve_model: None,
             summary_provider: None,
@@ -254,6 +265,13 @@ impl GlobalPreferences {
         }
         if let Some(v) = update.send_diagnostics {
             self.send_diagnostics = v;
+            // An explicit choice supersedes the one-time notice: without this,
+            // the default-on migration in `state::preferences` would flip an
+            // un-acknowledged opt-out back on at next launch.
+            self.diagnostics_notice_acknowledged = true;
+        }
+        if let Some(v) = update.diagnostics_notice_acknowledged {
+            self.diagnostics_notice_acknowledged = v;
         }
         if let Some(v) = update.confirm_build {
             self.confirm_build = v;
@@ -316,6 +334,7 @@ impl GlobalPreferences {
             max_build_attempts: None,
             max_output_tokens: None,
             send_diagnostics: self.send_diagnostics,
+            diagnostics_notice_acknowledged: self.diagnostics_notice_acknowledged,
             confirm_build: self.confirm_build,
             confirm_clear: self.confirm_clear,
             confirm_rollback: self.confirm_rollback,
