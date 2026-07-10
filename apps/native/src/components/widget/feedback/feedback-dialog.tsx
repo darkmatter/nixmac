@@ -307,6 +307,8 @@ export function FeedbackDialog() {
   const [isPreviewingReport, setIsPreviewingReport] = useState(false);
   const [previewReportText, setPreviewReportText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const busy = submitting || previewLoading;
 
   const resetFeedbackState = () => {
     setFeedbackAvailability("idle");
@@ -474,7 +476,7 @@ export function FeedbackDialog() {
   };
 
   const handleSubmit = async () => {
-    if (submitting) return;
+    if (busy) return;
 
     setSubmitting(true);
     try {
@@ -490,15 +492,15 @@ export function FeedbackDialog() {
   };
 
   const handlePreview = async () => {
-    if (submitting || isPreviewingReport) return;
+    if (busy || isPreviewingReport) return;
 
-    setSubmitting(true);
+    setPreviewLoading(true);
     try {
       const payload = await buildFeedbackPayload();
       setPreviewReportText(payload);
       setIsPreviewingReport(true);
     } finally {
-      setSubmitting(false);
+      setPreviewLoading(false);
     }
   };
 
@@ -1038,35 +1040,87 @@ export function FeedbackDialog() {
           )}
         </div>
 
+        {/* The footer buttons must never change size across loading states:
+            a resize reflows the right-justified footer and shifts the other
+            buttons. The label therefore stays in the layout (invisible while
+            loading) to freeze the button's footprint, and the spinner is
+            absolutely positioned on top of it. The spinner must be wrapped in
+            a span: a direct svg child triggers the Button's has-[>svg]:px-3
+            variant, which narrows the padding and resizes the button. */}
         <DialogFooter>
+          {/* Keys prevent React from reusing a button's DOM node across the
+              preview/edit footer swap: a reused node animates its old variant
+              styles away (transition-all), flashing e.g. a white Preview
+              button where the primary Send button was. */}
           {isPreviewingReport ? (
             <>
               <Button
+                key="preview-cancel"
                 variant="outline"
                 onClick={() => setIsPreviewingReport(false)}
-                disabled={submitting}
+                disabled={busy}
+                className="disabled:transition-none"
               >
                 Cancel
               </Button>
-              <Button onClick={handleSubmit} disabled={submitting} aria-label="Send feedback">
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send"}
+              <Button
+                key="preview-send"
+                onClick={handleSubmit}
+                disabled={busy}
+                aria-label="Send feedback"
+                className="relative disabled:transition-none"
+              >
+                <span className={submitting ? "invisible" : undefined}>Send</span>
+                {submitting && (
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </span>
+                )}
               </Button>
             </>
           ) : (
             <>
-              <Button variant="outline" onClick={handleClose} disabled={submitting}>
+              {/* disabled:transition-none — the buttons dim together the
+                  instant a footer action starts; transition-all would ease
+                  the opacity and make the outline buttons look like they
+                  disable later than the filled one. */}
+              <Button
+                key="edit-cancel"
+                variant="outline"
+                onClick={handleClose}
+                disabled={busy}
+                className="disabled:transition-none"
+              >
                 Cancel
               </Button>
-              <Button variant="outline" onClick={handlePreview} disabled={submitting}>
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Preview"}
+              <Button
+                key="edit-preview"
+                variant="outline"
+                onClick={handlePreview}
+                disabled={busy}
+                className="relative disabled:transition-none"
+              >
+                <span className={previewLoading ? "invisible" : undefined}>Preview</span>
+                {previewLoading && (
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </span>
+                )}
               </Button>
-              <Button onClick={handleSubmit} disabled={submitting} aria-label="Send feedback">
-                {submitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : isReportMode ? (
-                  "Send Report"
-                ) : (
-                  "Send Feedback"
+              <Button
+                key="edit-send"
+                onClick={handleSubmit}
+                disabled={busy}
+                aria-label="Send feedback"
+                className="relative disabled:transition-none"
+              >
+                <span className={submitting ? "invisible" : undefined}>
+                  {isReportMode ? "Send Report" : "Send Feedback"}
+                </span>
+                {submitting && (
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </span>
                 )}
               </Button>
             </>
