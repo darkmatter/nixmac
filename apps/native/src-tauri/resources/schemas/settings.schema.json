@@ -28,7 +28,7 @@
       "type": "integer"
     },
     "maxTokenBudget": {
-      "default": 50000,
+      "default": 750000,
       "description": "Provider-reported tokens before stopping. Lower = faster/cheaper, may not finish complex changes.",
       "maximum": 1000000,
       "minimum": 1000,

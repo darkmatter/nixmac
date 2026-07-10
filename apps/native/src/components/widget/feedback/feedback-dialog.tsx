@@ -3,6 +3,15 @@ import { useEffect, useState } from "react";
 import { uiActions, useUiState } from "@nixmac/state";
 import { useCurrentStep } from "@/hooks/use-current-step";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -26,7 +35,7 @@ import {
 import { Lightbulb, Bug, MessageCircle, Info, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Feedback as FeedbackModel, FeedbackType, ShareOptions } from "@/types/feedback";
-import { tauriAPI } from "@/ipc/api";
+import { client } from "@/lib/orpc";
 import { toast } from "sonner";
 import { getTelemetry } from "@/lib/telemetry/instance";
 
@@ -53,6 +62,8 @@ const ISSUE_SHARE_OPTIONS: ShareOptions = {
   flakeInputsSnapshot: true,
   appLogs: true,
 };
+
+type FeedbackAvailability = "idle" | "checking" | "available";
 
 // Visibility helper functions for share options checkboxes
 // Each function returns a boolean indicating whether the checkbox should be visible
@@ -276,14 +287,18 @@ function shouldShowAppLogs(
 
 export function FeedbackDialog() {
   const feedbackOpen = useUiState((s) => s.feedbackOpen);
-    const feedbackTypeOverride = useUiState((s) => s.feedbackTypeOverride);
-  const feedbackInitialText = useUiState((s) => s.feedbackInitialText);
+  const feedbackTypeOverride = useUiState((s) => s.feedbackTypeOverride);
+  const pendingFeedbackInitialText = useUiState((s) => s.feedbackInitialText);
   const panicDetails = useUiState((s) => s.panicDetails);
-    const step = useCurrentStep();
+  const step = useCurrentStep();
   const mainWindowError = useUiState((s) => s.error) ?? undefined;
 
+  const [feedbackAvailability, setFeedbackAvailability] =
+    useState<FeedbackAvailability>("idle");
+  const [signInAlertOpen, setSignInAlertOpen] = useState(false);
   const [feedbackType, setFeedbackType] = useState<FeedbackType>(FeedbackType.Suggestion);
   const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackInitialText, setFeedbackInitialText] = useState<string | null>(null);
   const [expectedText, setExpectedText] = useState("");
   const [email, setEmail] = useState("");
   const [promptHistory, setPromptHistory] = useState<string[]>([]);
@@ -293,37 +308,89 @@ export function FeedbackDialog() {
   const [previewReportText, setPreviewReportText] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const resetFeedbackState = () => {
+    setFeedbackAvailability("idle");
+    setFeedbackType(FeedbackType.Suggestion);
+    setFeedbackText("");
+    setFeedbackInitialText(null);
+    setExpectedText("");
+    setEmail("");
+    setRelatedPrompt("");
+    setShareOptions(DEFAULT_SHARE_OPTIONS);
+    setIsPreviewingReport(false);
+    setPreviewReportText("");
+    uiActions.setState({
+      feedbackTypeOverride: null,
+      feedbackInitialText: null,
+      panicDetails: null,
+    });
+  };
+
+  const cancelOpenForSignIn = () => {
+    uiActions.setFeedbackOpen(false);
+    resetFeedbackState();
+    setSignInAlertOpen(true);
+  };
+
   useEffect(() => {
     if (!feedbackOpen) {
+      setFeedbackAvailability("idle");
       return;
     }
 
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    tauriAPI.promptHistory.get().then(setPromptHistory).catch(console.error);
+    let cancelled = false;
+    setFeedbackAvailability("checking");
+
+    client.feedback
+      .isAvailable()
+      .then((available) => {
+        if (cancelled) return;
+
+        if (!available) {
+          cancelOpenForSignIn();
+          return;
+        }
+
+        setFeedbackAvailability("available");
+        client.promptHistory.get().then(setPromptHistory).catch(console.error);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+
+        console.error(err);
+        cancelOpenForSignIn();
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [feedbackOpen]);
 
   useEffect(() => {
-    if (!feedbackOpen || !feedbackTypeOverride) {
+    if (!feedbackOpen || (!feedbackTypeOverride && !pendingFeedbackInitialText)) {
       return;
     }
 
-    setFeedbackType(feedbackTypeOverride);
-    if (
-      feedbackTypeOverride === FeedbackType.Issue ||
-      feedbackTypeOverride === FeedbackType.Error
-    ) {
-      setShareOptions(ISSUE_SHARE_OPTIONS);
-    }
-  }, [feedbackOpen, feedbackTypeOverride]);
-
-  // Pre-populate feedback text when opening with initial text (e.g., from panic)
-  useEffect(() => {
-    if (!feedbackOpen || !feedbackInitialText) {
-      return;
+    if (feedbackTypeOverride) {
+      setFeedbackType(feedbackTypeOverride);
+      if (
+        feedbackTypeOverride === FeedbackType.Issue ||
+        feedbackTypeOverride === FeedbackType.Error
+      ) {
+        setShareOptions(ISSUE_SHARE_OPTIONS);
+      }
     }
 
-    setFeedbackText(feedbackInitialText);
-  }, [feedbackOpen, feedbackInitialText]);
+    if (pendingFeedbackInitialText) {
+      setFeedbackText(pendingFeedbackInitialText);
+      setFeedbackInitialText(pendingFeedbackInitialText);
+    }
+
+    uiActions.setState({
+      feedbackTypeOverride: null,
+      feedbackInitialText: null,
+    });
+  }, [feedbackOpen, feedbackTypeOverride, pendingFeedbackInitialText]);
 
   // When the user actively selects a feedback type, reset the evolutionLog
   // share option to the sensible default for that type. It's acceptable to
@@ -344,24 +411,15 @@ export function FeedbackDialog() {
 
   const handleClose = () => {
     uiActions.setFeedbackOpen(false);
-    // Reset state
-    setFeedbackType(FeedbackType.Suggestion);
-    setFeedbackText("");
-    setExpectedText("");
-    setEmail("");
-    setRelatedPrompt("");
-    setShareOptions(DEFAULT_SHARE_OPTIONS);
-    setIsPreviewingReport(false);
-    setPreviewReportText("");
-    uiActions.setFeedbackTypeOverride(null);
-    uiActions.setState({ feedbackInitialText: null, panicDetails: null });
+    resetFeedbackState();
   };
 
   const buildFeedbackPayload = async () => {
-    let metadata: Awaited<ReturnType<typeof tauriAPI.feedback.gatherMetadata>> | null = null;
+    let metadata: Awaited<ReturnType<typeof client.feedback.gatherMetadata>> | null = null;
     try {
-      // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      metadata = await tauriAPI.feedback.gatherMetadata(feedbackType, shareOptions);
+      metadata = await client.feedback.gatherMetadata({
+        request: { feedbackType, share: shareOptions },
+      });
     } catch (err) {
       // eslint-disable-next-line no-console
       console.warn("Failed to gather feedback metadata:", err);
@@ -403,8 +461,7 @@ export function FeedbackDialog() {
   };
 
   const submitPayload = async (payload: string) => {
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    const sent = await tauriAPI.feedback.submit(payload);
+    const sent = await client.feedback.submit(payload);
 
     if (sent) {
       getTelemetry().captureEvent({ name: "feedback_submitted", props: { type: feedbackType } });
@@ -469,19 +526,50 @@ export function FeedbackDialog() {
   const dialogDescription = hasAutoFilledError
     ? "An error was detected. The details have been pre-filled below. Please review and submit to help us fix this issue."
     : "Help us make nixmac better";
+  const feedbackDialogOpen = feedbackOpen;
+  const checkingFeedbackAvailability = feedbackAvailability !== "available";
 
   return (
-    <Dialog
-      open={feedbackOpen}
-      onOpenChange={(open: boolean) => {
-        if (!open) {
-          handleClose();
-          return;
-        }
-        uiActions.setFeedbackOpen(true);
-      }}
-    >
+    <>
+      <AlertDialog open={signInAlertOpen} onOpenChange={setSignInAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign in to send feedback</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sign in to your nixmac account before sending feedback.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog
+        open={feedbackDialogOpen}
+        onOpenChange={(open: boolean) => {
+          if (!open) {
+            handleClose();
+            return;
+          }
+          uiActions.setFeedbackOpen(true);
+        }}
+      >
       <DialogContent className="max-w-2xl h-[85vh] flex flex-col">
+        {checkingFeedbackAvailability ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Checking feedback availability</DialogTitle>
+              <DialogDescription>
+                Verifying that feedback can be sent from this device.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-1 items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          </>
+        ) : (
+          <>
         <DialogHeader>
           <DialogTitle className={hasAutoFilledError ? "flex items-center gap-2" : ""}>
             {hasAutoFilledError && <span className="text-red-500">⚠️</span>}
@@ -984,7 +1072,10 @@ export function FeedbackDialog() {
             </>
           )}
         </DialogFooter>
+          </>
+        )}
       </DialogContent>
-    </Dialog>
+      </Dialog>
+    </>
   );
 }
