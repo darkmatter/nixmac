@@ -802,7 +802,7 @@ export const SavingCommit = meta.story({
   },
 });
 
-/** Commit-step interaction: continue editing returns to the prompt branch. */
+/** Commit-step interaction: refine further returns to the prompt branch. */
 export const SaveContinueEditing = meta.story({
   args: {
     evolveStep: "commit",
@@ -814,8 +814,11 @@ export const SaveContinueEditing = meta.story({
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole("button", { name: /continue editing/i }));
-    await expect(await canvas.findByText(/Back to commit/i)).toBeInTheDocument();
+    // Radix dropdown content portals to document.body, outside the story canvas.
+    const body = within(document.body);
+    await userEvent.click(await canvas.findByRole("button", { name: "More change options" }));
+    await userEvent.click(await body.findByText("Refine further"));
+    await expect(await canvas.findByText(/Back to the drawing board/i)).toBeInTheDocument();
   },
 });
 
