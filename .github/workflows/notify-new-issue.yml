@@ -1,12 +1,14 @@
-name: Notify Slack of new GitHub issues
+name: Notify Slack of external GitHub activity
 
 on:
   issues:
     types: [opened]
+  issue_comment:
+    types: [created]
   workflow_dispatch:
     inputs:
       issue_number:
-        description: Existing GitHub issue number to notify
+        description: Existing issue number to notify; may duplicate a completed post
         required: true
         type: string
 
@@ -16,19 +18,21 @@ permissions:
 
 jobs:
   notify:
-    name: Post issue links to Slack
+    name: Post external activity to Slack
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Test notifier
-        run: node --test .github/scripts/notify-new-issue.test.mjs
-
       - name: Notify nixmac support
         env:
+          ACTOR_TYPE: ${{ github.event.comment.user.type || github.event.issue.user.type || '' }}
+          AUTHOR_ASSOCIATION: ${{ github.event.comment.author_association || github.event.issue.author_association || '' }}
+          COMMENT_ID: ${{ github.event.comment.id || '' }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_TOKEN: ${{ github.token }}
+          IS_PULL_REQUEST: ${{ github.event.issue.pull_request && 'true' || 'false' }}
           ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
           SLACK_WEBHOOK_URL: ${{ secrets.NIXMAC_SUPPORT_SLACK_WEBHOOK_URL }}
         run: node .github/scripts/notify-new-issue.mjs

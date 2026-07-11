@@ -5,6 +5,7 @@ const LINEAR_BACKLINK_ATTEMPTS = 20;
 const LINEAR_BACKLINK_INTERVAL_MS = 3_000;
 const LINEAR_ISSUE_URL =
   /https:\/\/linear\.app\/[A-Za-z0-9_-]+\/issue\/([A-Za-z][A-Za-z0-9]*-\d+)(?:\/[A-Za-z0-9-]+)?/i;
+const INTERNAL_AUTHOR_ASSOCIATIONS = new Set(["MEMBER", "OWNER"]);
 
 function escapeSlackText(value) {
   return String(value)
@@ -21,6 +22,27 @@ function requiredEnvironment(name) {
   return value;
 }
 
+export function shouldNotifyActivity({
+  actorType,
+  authorAssociation,
+  eventName,
+  isPullRequest,
+}) {
+  if (eventName === "workflow_dispatch") {
+    return true;
+  }
+
+  if (!["issues", "issue_comment"].includes(eventName)) {
+    return false;
+  }
+
+  if (actorType === "Bot" || INTERNAL_AUTHOR_ASSOCIATIONS.has(authorAssociation)) {
+    return false;
+  }
+
+  return eventName !== "issue_comment" || !isPullRequest;
+}
+
 async function requestJson(url, options = {}) {
   const response = await fetch(url, options);
   const payload = await response.json();
@@ -35,7 +57,8 @@ async function requestJson(url, options = {}) {
 }
 
 export function extractLinearIssueLink(comments) {
-  for (const comment of comments) {
+  for (let index = comments.length - 1; index >= 0; index -= 1) {
+    const comment = comments[index];
     if (comment.user?.login !== "linear-code[bot]") {
       continue;
     }
@@ -52,9 +75,44 @@ export function extractLinearIssueLink(comments) {
   return null;
 }
 
-export function buildSlackMessage(githubIssue, linearIssue) {
+export function buildSlackMessage(githubIssue, linearIssue, githubComment = null) {
   const title = escapeSlackText(githubIssue.title);
-  const author = escapeSlackText(githubIssue.user.login);
+  const activityAuthor = githubComment?.user ?? githubIssue.user;
+  const author = escapeSlackText(activityAuthor.login);
+
+  if (githubComment) {
+    const escapedBody = escapeSlackText(githubComment.body?.trim() || "(No comment text)");
+    const bodyPreview =
+      escapedBody.length > 1_200 ? `${escapedBody.slice(0, 1_197)}...` : escapedBody;
+
+    return {
+      text: [
+        `New GitHub comment on issue #${githubIssue.number}: ${title}`,
+        `Comment: ${githubComment.html_url}`,
+        `GitHub issue: ${githubIssue.html_url}`,
+        `Linear ${linearIssue.identifier}: ${linearIssue.url}`,
+      ].join("\n"),
+      unfurl_links: false,
+      blocks: [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*New GitHub comment on issue #${githubIssue.number}*\n*${title}*\nCommented by <${activityAuthor.html_url}|@${author}>\n\n${bodyPreview}`,
+          },
+        },
+        {
+          type: "context",
+          elements: [
+            {
+              type: "mrkdwn",
+              text: `*Comment:* <${githubComment.html_url}|View comment>  |  *GitHub:* <${githubIssue.html_url}|#${githubIssue.number}>  |  *Linear:* <${linearIssue.url}|${linearIssue.identifier}>`,
+            },
+          ],
+        },
+      ],
+    };
+  }
 
   return {
     text: [
@@ -106,9 +164,13 @@ export async function waitForLinearIssue({
   sleep = (duration) => new Promise((resolve) => setTimeout(resolve, duration)),
 }) {
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    const linearIssue = extractLinearIssueLink(await fetchComments());
-    if (linearIssue) {
-      return linearIssue;
+    try {
+      const linearIssue = extractLinearIssueLink(await fetchComments());
+      if (linearIssue) {
+        return linearIssue;
+      }
+    } catch {
+      // A later poll can recover from transient GitHub API failures.
     }
 
     if (attempt < attempts) {
@@ -122,10 +184,30 @@ export async function waitForLinearIssue({
 }
 
 async function main() {
+  const eventName = requiredEnvironment("GITHUB_EVENT_NAME");
+  const actorType = process.env.ACTOR_TYPE ?? "";
+  const authorAssociation = process.env.AUTHOR_ASSOCIATION ?? "";
+  const isPullRequest = process.env.IS_PULL_REQUEST === "true";
+
+  if (
+    !shouldNotifyActivity({
+      actorType,
+      authorAssociation,
+      eventName,
+      isPullRequest,
+    })
+  ) {
+    console.log(
+      `Skipped ${eventName} activity from ${actorType || "unknown actor"} with ${authorAssociation || "no"} association`,
+    );
+    return;
+  }
+
   const githubToken = requiredEnvironment("GITHUB_TOKEN");
   const repository = requiredEnvironment("GITHUB_REPOSITORY");
   const issueNumber = requiredEnvironment("ISSUE_NUMBER");
   const slackWebhookUrl = requiredEnvironment("SLACK_WEBHOOK_URL");
+  const commentId = process.env.COMMENT_ID;
   const githubHeaders = {
     Accept: "application/vnd.github+json",
     Authorization: `Bearer ${githubToken}`,
@@ -143,11 +225,17 @@ async function main() {
         { headers: githubHeaders },
       ),
   });
-  const slackMessage = buildSlackMessage(issue, linearIssue);
+  const comment = commentId
+    ? await requestJson(
+        `${GITHUB_API_URL}/repos/${repository}/issues/comments/${commentId}`,
+        { headers: githubHeaders },
+      )
+    : null;
+  const slackMessage = buildSlackMessage(issue, linearIssue, comment);
   await postSlackWebhook(slackWebhookUrl, slackMessage);
 
   console.log(
-    `Posted GitHub issue #${issue.number} and Linear issue ${linearIssue.identifier} to Slack`,
+    `Posted GitHub ${comment ? "comment on " : ""}issue #${issue.number} and Linear issue ${linearIssue.identifier} to Slack`,
   );
 }
 

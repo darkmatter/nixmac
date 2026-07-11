@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import * as notifier from "./notify-new-issue.mjs";
 import {
   buildSlackMessage,
   extractLinearIssueLink,
@@ -37,6 +38,24 @@ test("extractLinearIssueLink supports Linear's production linkback format", () =
   assert.deepEqual(result, {
     identifier: "ENG-593",
     url: "https://linear.app/darkmatterlabs/issue/ENG-593",
+  });
+});
+
+test("extractLinearIssueLink uses the newest Linear backlink", () => {
+  const result = extractLinearIssueLink([
+    {
+      body: '<!-- linear-linkback -->\n<p><a href="https://linear.app/darkmatterlabs/issue/ENG-100">ENG-100</a></p>',
+      user: { login: "linear-code[bot]" },
+    },
+    {
+      body: '<!-- linear-linkback -->\n<p><a href="https://linear.app/darkmatterlabs/issue/ENG-200">ENG-200</a></p>',
+      user: { login: "linear-code[bot]" },
+    },
+  ]);
+
+  assert.deepEqual(result, {
+    identifier: "ENG-200",
+    url: "https://linear.app/darkmatterlabs/issue/ENG-200",
   });
 });
 
@@ -77,6 +96,133 @@ test("buildSlackMessage includes both issue links and escapes untrusted text", (
   assert.match(serializedBlocks, /linear\.app\/darkmatter\/issue\/ENG-593/);
 });
 
+test("buildSlackMessage describes an external issue comment", () => {
+  const githubIssue = {
+    html_url: "https://github.com/darkmatter/nixmac/issues/510",
+    number: 510,
+    title: "Login fails",
+    user: {
+      html_url: "https://github.com/issue-author",
+      login: "issue-author",
+    },
+  };
+  const linearIssue = {
+    identifier: "ENG-593",
+    url: "https://linear.app/darkmatterlabs/issue/ENG-593",
+  };
+  const githubComment = {
+    body: "Still broken <@channel> & waiting",
+    html_url: "https://github.com/darkmatter/nixmac/issues/510#issuecomment-123",
+    user: {
+      html_url: "https://github.com/comment-author",
+      login: "comment-author",
+    },
+  };
+
+  const message = buildSlackMessage(githubIssue, linearIssue, githubComment);
+  const serializedBlocks = JSON.stringify(message.blocks);
+
+  assert.match(message.text, /New GitHub comment on issue #510/);
+  assert.match(message.text, /issues\/510#issuecomment-123/);
+  assert.match(message.text, /issues\/510/);
+  assert.match(message.text, /linear\.app\/darkmatterlabs\/issue\/ENG-593/);
+  assert.match(serializedBlocks, /Commented by/);
+  assert.match(serializedBlocks, /@comment-author/);
+  assert.match(serializedBlocks, /Still broken &lt;@channel&gt; &amp; waiting/);
+  assert.doesNotMatch(serializedBlocks, /Still broken <@channel> & waiting/);
+});
+
+test("shouldNotifyActivity excludes members, owners, bots, and pull request comments", () => {
+  assert.equal(typeof notifier.shouldNotifyActivity, "function");
+
+  const cases = [
+    {
+      expected: true,
+      label: "external issue",
+      value: {
+        actorType: "User",
+        authorAssociation: "NONE",
+        eventName: "issues",
+        isPullRequest: false,
+      },
+    },
+    {
+      expected: true,
+      label: "external comment on a team-created issue",
+      value: {
+        actorType: "User",
+        authorAssociation: "CONTRIBUTOR",
+        eventName: "issue_comment",
+        isPullRequest: false,
+      },
+    },
+    {
+      expected: true,
+      label: "outside collaborator",
+      value: {
+        actorType: "User",
+        authorAssociation: "COLLABORATOR",
+        eventName: "issue_comment",
+        isPullRequest: false,
+      },
+    },
+    {
+      expected: false,
+      label: "organization member",
+      value: {
+        actorType: "User",
+        authorAssociation: "MEMBER",
+        eventName: "issue_comment",
+        isPullRequest: false,
+      },
+    },
+    {
+      expected: false,
+      label: "repository owner",
+      value: {
+        actorType: "User",
+        authorAssociation: "OWNER",
+        eventName: "issues",
+        isPullRequest: false,
+      },
+    },
+    {
+      expected: false,
+      label: "bot",
+      value: {
+        actorType: "Bot",
+        authorAssociation: "NONE",
+        eventName: "issue_comment",
+        isPullRequest: false,
+      },
+    },
+    {
+      expected: false,
+      label: "pull request comment",
+      value: {
+        actorType: "User",
+        authorAssociation: "NONE",
+        eventName: "issue_comment",
+        isPullRequest: true,
+      },
+    },
+    {
+      expected: true,
+      label: "manual dispatch",
+      value: {
+        actorType: "",
+        authorAssociation: "",
+        eventName: "workflow_dispatch",
+        isPullRequest: false,
+      },
+    },
+  ];
+
+  for (const { expected, label, value } of cases) {
+    assert.equal(notifier.shouldNotifyActivity(value), expected, label);
+  }
+});
+
 test("waitForLinearIssue retries until the backlink appears", async () => {
   const responses = [
     [],
@@ -96,6 +242,38 @@ test("waitForLinearIssue retries until the backlink appears", async () => {
   });
 
   assert.equal(calls, 2);
+  assert.equal(result.identifier, "ENG-593");
+});
+
+test("waitForLinearIssue retries after a comments fetch failure", async () => {
+  const responses = [
+    new Error("temporary GitHub API failure"),
+    [
+      {
+        body: '<!-- linear-linkback -->\n<p><a href="https://linear.app/darkmatterlabs/issue/ENG-593">ENG-593</a></p>',
+        user: { login: "linear-code[bot]" },
+      },
+    ],
+  ];
+  let calls = 0;
+  let sleeps = 0;
+
+  const result = await waitForLinearIssue({
+    attempts: 3,
+    fetchComments: async () => {
+      const response = responses[calls++];
+      if (response instanceof Error) {
+        throw response;
+      }
+      return response;
+    },
+    sleep: async () => {
+      sleeps += 1;
+    },
+  });
+
+  assert.equal(calls, 2);
+  assert.equal(sleeps, 1);
   assert.equal(result.identifier, "ENG-593");
 });
 

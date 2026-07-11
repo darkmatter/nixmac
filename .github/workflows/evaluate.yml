@@ -16,6 +16,16 @@ permissions:
   packages: read
 
 jobs:
+  github-issue-notifier:
+    name: GitHub Issue Notifier
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Test notifier
+        run: node --test .github/scripts/notify-new-issue.test.mjs
+
   rust-check:
     name: Rust Check
     runs-on: arc
