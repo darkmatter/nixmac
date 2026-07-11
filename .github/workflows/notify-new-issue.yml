@@ -1,0 +1,34 @@
+name: Notify Slack of new GitHub issues
+
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Existing GitHub issue number to notify
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  notify:
+    name: Post issue links to Slack
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Test notifier
+        run: node --test .github/scripts/notify-new-issue.test.mjs
+
+      - name: Notify nixmac support
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
+          SLACK_WEBHOOK_URL: ${{ secrets.NIXMAC_SUPPORT_SLACK_WEBHOOK_URL }}
+        run: node .github/scripts/notify-new-issue.mjs
