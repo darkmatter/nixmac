@@ -26,6 +26,20 @@ test("extractLinearIssueLink finds Linear's GitHub backlink", () => {
   });
 });
 
+test("extractLinearIssueLink supports Linear's production linkback format", () => {
+  const result = extractLinearIssueLink([
+    {
+      body: '<!-- linear-linkback -->\n<p><a href="https://linear.app/darkmatterlabs/issue/ENG-593">ENG-593</a></p>',
+      user: { login: "linear-code[bot]" },
+    },
+  ]);
+
+  assert.deepEqual(result, {
+    identifier: "ENG-593",
+    url: "https://linear.app/darkmatterlabs/issue/ENG-593",
+  });
+});
+
 test("extractLinearIssueLink returns null when no Linear backlink exists", () => {
   assert.equal(
     extractLinearIssueLink([
