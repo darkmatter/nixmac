@@ -9,7 +9,6 @@ import {
   InputGroupTextarea,
 } from "@/components/ui/input-group";
 import { Separator } from "@/components/ui/separator";
-import { BeginEvolveWarning } from "@/components/widget/promptinput/begin-evolve-warning";
 import { HomebrewBadge } from "@/components/widget/promptinput/homebrew-badge";
 import { MacRecommendationChip } from "@/components/widget/promptinput/mac-recommendation-chip";
 import { PromptHistoryBadge } from "@/components/widget/promptinput/prompt-history-badge";
@@ -24,11 +23,11 @@ import { SystemDefaultsCTA } from "@/components/widget/promptinput/system-defaul
 import { TrendingFeed } from "@/components/widget/promptinput/trending-feed";
 import { useTypewriterPlaceholder } from "@/components/widget/promptinput/use-typewriter-placeholder";
 import { useEvolve } from "@/hooks/use-evolve";
-import { getTelemetry } from "@/lib/telemetry/instance";
 import { tauriAPI } from "@/ipc/api";
 import { getProviderConfigInvalidReason } from "@/lib/providers/ai-provider-validation";
-import { uiActions, useUiState, useViewModel } from "@nixmac/state";
+import { getTelemetry } from "@/lib/telemetry/instance";
 import { nav } from "@/router";
+import { uiActions, useUiState, useViewModel } from "@nixmac/state";
 import { ArrowUpIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -39,10 +38,8 @@ export function PromptInput() {
   const isProcessing = useUiState((s) => s.isProcessing);
   const processingAction = useUiState((s) => s.processingAction);
   const evolveState = useViewModel((s) => s.evolve);
-  const gitStatus = useViewModel((s) => s.git);
   const settingsOpen = useUiState((s) => s.settingsOpen);
   const { handleEvolve } = useEvolve();
-  const [warningOpen, setWarningOpen] = useState(false);
   const [providerErrors, setProviderErrors] = useState<{
     evolve: string | null;
     summary: string | null;
@@ -99,8 +96,6 @@ export function PromptInput() {
     };
   }, [settingsOpen]);
 
-  const needsResolution = !evolveState?.evolutionId && gitStatus && !gitStatus.cleanHead;
-
   const promptValidationError = (() => {
     const evolveError = providerErrors.evolve;
     const summaryError = providerErrors.summary;
@@ -126,10 +121,6 @@ export function PromptInput() {
   const handleSubmit = () => {
     if (!evolvePrompt.trim()) return;
     if (promptValidationError) return;
-    if (needsResolution) {
-      setWarningOpen(true);
-      return;
-    }
     handleEvolve();
   };
 
@@ -158,11 +149,6 @@ export function PromptInput() {
 
   return (
     <div className="space-y-3 flex-col min-h-24">
-      <BeginEvolveWarning
-        open={warningOpen}
-        onOpenChange={setWarningOpen}
-        handleEvolve={handleEvolve}
-      />
       <InputGroup className="bg-background flex-col min-h-24">
         <InputGroupTextarea
           id="evolve-prompt-input"
