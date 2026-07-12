@@ -233,9 +233,9 @@ describe("InferenceSetup", () => {
       expect(mocks.setPrefs).toHaveBeenCalledWith(
         expect.objectContaining({
           evolveProvider: "openrouter",
-          evolveModel: "anthropic/claude-sonnet-4",
+          evolveModel: "~anthropic/claude-sonnet-latest",
           summaryProvider: "openrouter",
-          summaryModel: "anthropic/claude-sonnet-4",
+          summaryModel: "~anthropic/claude-sonnet-latest",
           openrouterApiKey: "sk-or-v1-test-key-with-enough-length",
         }),
       ),

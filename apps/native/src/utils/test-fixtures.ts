@@ -1,10 +1,10 @@
-import { viewModelActions } from "@nixmac/state";
 import type {
 	GlobalPreferences,
 	NixInstallState,
 	PermissionsState,
 	RebuildStatus,
 } from "@/ipc/types";
+import { viewModelActions } from "@nixmac/state";
 
 /**
  * Full `GlobalPreferences` value for tests and stories. Matches the backend
@@ -17,7 +17,8 @@ export function makeGlobalPreferences(
 		hostAttr: null,
 		configDir: null,
 		repoRoot: null,
-		sendDiagnostics: false,
+		sendDiagnostics: true,
+		diagnosticsNoticeAcknowledged: true,
 		evolveProvider: null,
 		evolveModel: null,
 		summaryProvider: null,
@@ -38,6 +39,8 @@ export function makeGlobalPreferences(
 		onboardingMacScannedAt: null,
 		onboardingLoginDecided: false,
 		onboardingLastBuildAt: null,
+		onboardingProvisionalConfigDir: null,
+		pendingImportDir: null,
 		autoFormatNixFiles: false,
 		...overrides,
 	};

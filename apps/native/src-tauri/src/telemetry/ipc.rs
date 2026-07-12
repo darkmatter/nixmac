@@ -9,6 +9,7 @@ use tauri::command;
 
 /// Serialized span data received from the WebView's ForwardingSpanProcessor.
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ForwardedSpan {
     pub name: String,
     pub trace_id: String,

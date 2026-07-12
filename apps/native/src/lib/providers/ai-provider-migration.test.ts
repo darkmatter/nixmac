@@ -1,6 +1,9 @@
 import type { UiPrefs } from "@/ipc/types";
+import { providerModelDefaults } from "@/lib/providers/ai-defaults";
 import { migrateLegacyOpenaiProviderPrefs } from "@/lib/providers/ai-provider-migration";
 import { describe, expect, it } from "vitest";
+
+const OPENROUTER_DEFAULTS = providerModelDefaults("openrouter");
 
 const PREFS: UiPrefs = {
 	openrouterApiKey: "",
@@ -9,14 +12,15 @@ const PREFS: UiPrefs = {
 	openaiCompatibleApiBaseUrl: "",
 	openaiCompatibleApiKey: "",
 	summaryProvider: "openrouter",
-	summaryModel: "openai/gpt-4o-mini",
+	summaryModel: OPENROUTER_DEFAULTS.summaryModel,
 	evolveProvider: "openrouter",
-	evolveModel: "anthropic/claude-sonnet-4",
+	evolveModel: OPENROUTER_DEFAULTS.evolveModel,
 	maxIterations: null,
 	maxTokenBudget: null,
 	maxBuildAttempts: null,
 	maxOutputTokens: null,
 	sendDiagnostics: false,
+	diagnosticsNoticeAcknowledged: false,
 	confirmBuild: false,
 	confirmClear: false,
 	confirmRollback: false,
@@ -68,9 +72,9 @@ describe("migrateLegacyOpenaiProviderPrefs", () => {
 
 		expect(result.values).toEqual({
 			evolveProvider: "openrouter",
-			evolveModel: "anthropic/claude-sonnet-4",
+			evolveModel: OPENROUTER_DEFAULTS.evolveModel,
 			summaryProvider: "openrouter",
-			summaryModel: "openai/gpt-4o-mini",
+			summaryModel: OPENROUTER_DEFAULTS.summaryModel,
 		});
 		expect(result.update).toEqual(result.values);
 	});
@@ -81,14 +85,14 @@ describe("migrateLegacyOpenaiProviderPrefs", () => {
 			openrouterApiKey: "sk-or-key",
 			openaiApiKey: "sk-openai-key",
 			evolveProvider: "openai",
-			evolveModel: "anthropic/claude-sonnet-4",
+			evolveModel: "~anthropic/claude-sonnet-latest",
 			summaryProvider: "openai",
 			summaryModel: "gpt-4o-mini",
 		});
 
 		expect(result.values).toEqual({
 			evolveProvider: "openrouter",
-			evolveModel: "anthropic/claude-sonnet-4",
+			evolveModel: "~anthropic/claude-sonnet-latest",
 			summaryProvider: "openai",
 			summaryModel: "gpt-4o-mini",
 		});

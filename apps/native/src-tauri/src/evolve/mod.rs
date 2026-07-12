@@ -316,9 +316,6 @@ fn log_api_error(
     report_provider_error(err, provider, model, messages, iteration);
 }
 
-// Use OpenRouter with Claude for evolution - better reasoning without strict content policies
-const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
-const DEFAULT_OPENAI_MODEL: &str = "gpt-4o";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 
 // Percentage of max_iterations after which we require at least one edit/build_check.
@@ -872,7 +869,7 @@ pub async fn generate_evolution<R: Runtime>(
             .ok_or_else(|| anyhow!("Sign in to nixmac hosted inference first."))?;
         let base_url = crate::ai::providers::nixmac_llm_api_base(&store::get_web_server_url()?);
         let model = configured_evolve_model
-            .unwrap_or_else(|| crate::ai::providers::DEFAULT_NIXMAC_MODEL.to_string());
+            .unwrap_or_else(|| crate::ai::defaults::nixmac_model().to_string());
         info!(
             "Using nixmac hosted provider | Model: {} | Max output tokens: {}",
             model, max_output_tokens_for_request
@@ -891,7 +888,8 @@ pub async fn generate_evolution<R: Runtime>(
                 )
             })?;
 
-        let model = configured_evolve_model.unwrap_or_else(|| DEFAULT_OPENAI_MODEL.to_string());
+        let model = configured_evolve_model
+            .unwrap_or_else(|| crate::ai::defaults::openai_evolve_model().to_string());
         let model = model.strip_prefix("openai/").unwrap_or(&model).to_string();
         let openai_max_output_tokens_for_request =
             normalize_openai_max_output_tokens(&model, max_output_tokens);
@@ -911,13 +909,14 @@ pub async fn generate_evolution<R: Runtime>(
                 anyhow!("No OpenRouter API key found. Please add your API key in Settings to get started.")
             })?;
 
+        let default_evolve_model = crate::ai::defaults::openrouter_evolve_model();
         let model = if used_legacy_openai_fallback {
             crate::ai::providers::openrouter_model_slug_or_default(
                 configured_evolve_model,
-                DEFAULT_MODEL,
+                default_evolve_model,
             )
         } else {
-            configured_evolve_model.unwrap_or_else(|| DEFAULT_MODEL.to_string())
+            configured_evolve_model.unwrap_or_else(|| default_evolve_model.to_string())
         };
         info!(
             "Using OpenRouter provider | Model: {} | Max output tokens: {}",
