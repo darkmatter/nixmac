@@ -65,7 +65,9 @@ pub async fn config_set_dir(
     store::set_config_dir(&app, &new_dir).map_err(|e| capture_err("config_set_dir", e))?;
     // The user chose a pre-existing directory: it is theirs, not onboarding's.
     clear_config_dir_provisional(&app);
-    store::sync_canonical_config_link(&new_dir).map_err(|e| capture_err("config_set_dir", e))?;
+    // The /etc/nix-darwin convention link is NOT updated here: it follows the
+    // next successful apply (an already-privileged step), so selecting a
+    // directory never prompts for a password on its own.
 
     let changed = prev_dir.as_deref() != Some(&new_dir);
     if changed {
@@ -664,8 +666,7 @@ fn finalize_imported_dir(
     let new_dir = target.to_string_lossy().to_string();
     cascade_config_dir_replacement(app, target);
     store::set_config_dir(app, &new_dir).map_err(|e| capture_err("finalize_imported_dir", e))?;
-    store::sync_canonical_config_link(&new_dir)
-        .map_err(|e| capture_err("finalize_imported_dir", e))?;
+    // Canonical-link maintenance happens on the next apply; see config_set_dir.
     handle_new_config_dir(app, &new_dir).map_err(|e| capture_err("finalize_imported_dir", e))?;
     Ok(shared_types::SetDirResult {
         dir: new_dir,
