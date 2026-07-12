@@ -1093,7 +1093,12 @@ installationId: number }
  * Hydrated via `get_global_preferences`; every mutation emits
  * `global_preferences_changed` with the full struct as payload.
  */
-export type GlobalPreferences = { hostAttr: string | null; configDir: string | null; repoRoot: string | null; sendDiagnostics: boolean; evolveProvider: string | null; evolveModel: string | null; summaryProvider: string | null; summaryModel: string | null; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
+export type GlobalPreferences = { hostAttr: string | null; configDir: string | null; repoRoot: string | null; sendDiagnostics: boolean; 
+/**
+ * True once the user has seen the one-time diagnostics consent notice
+ * (first launch after the default-on telemetry change).
+ */
+diagnosticsNoticeAcknowledged: boolean; evolveProvider: string | null; evolveModel: string | null; summaryProvider: string | null; summaryModel: string | null; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
 /**
  * Timestamp (unix secs) of the last onboarding "scan this Mac" / customizations review.
  */

@@ -171,31 +171,8 @@ import { QueryClient } from "@tanstack/react-query";
 
 export type {
   AccountBilling,
-  
   BillingProductInfo,
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  PreviewIndicatorState,
-  
-  
-  
-  
+  PreviewIndicatorState
 } from "@/ipc/orpc-bindings";
 
 /** Routes RPC calls through Tauri IPC (`plugin:orpc|handle_rpc`), not HTTP. */
@@ -221,3 +198,13 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+
+if (import.meta.env.DEV) {
+  // oxlint-disable-next-line no-unused-expressions
+  (window as any).__NIXMAC_ORPC__ = {
+    client,
+    queryUtils: orpc,
+    queryClient,
+  }
+}

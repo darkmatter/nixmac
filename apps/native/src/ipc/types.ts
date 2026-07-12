@@ -1231,7 +1231,12 @@ installationId: number }
  * Hydrated via `get_global_preferences`; every mutation emits
  * `global_preferences_changed` with the full struct as payload.
  */
-export type GlobalPreferences = { hostAttr: string | null; configDir: string | null; repoRoot: string | null; sendDiagnostics: boolean; evolveProvider: string | null; evolveModel: string | null; summaryProvider: string | null; summaryModel: string | null; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
+export type GlobalPreferences = { hostAttr: string | null; configDir: string | null; repoRoot: string | null; sendDiagnostics: boolean; 
+/**
+ * True once the user has seen the one-time diagnostics consent notice
+ * (first launch after the default-on telemetry change).
+ */
+diagnosticsNoticeAcknowledged: boolean; evolveProvider: string | null; evolveModel: string | null; summaryProvider: string | null; summaryModel: string | null; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
 /**
  * Timestamp (unix secs) of the last onboarding "scan this Mac" / customizations review.
  */
@@ -1244,6 +1249,22 @@ onboardingLoginDecided: boolean;
  * Timestamp (unix secs) of the last successful build/evolution apply. Set by `finalize_apply`.
  */
 onboardingLastBuildAt: number | null; 
+/**
+ * Root directory the app materialized during onboarding (import/scaffold)
+ * and still owns: until the first successful apply clears this, restart
+ * and re-import may wipe and re-create it. Never set for user-selected
+ * pre-existing directories. Not writable via `UiPrefsUpdate` — backend
+ * code paths only, like `onboarding_last_build_at`.
+ */
+onboardingProvisionalConfigDir: string | null; 
+/**
+ * Root of an import clone parked on the "which flake dir?" choice
+ * (`NeedsFlakeDirChoice`). Recorded so an abandoned choice can be
+ * discarded by the next import or an onboarding reset instead of
+ * orphaning the tree. Cleared on finalize/discard. Not writable via
+ * `UiPrefsUpdate`.
+ */
+pendingImportDir: string | null; 
 /**
  * Whether or not to auto-format Nix files when making changes to the flakes.
  */
@@ -2066,6 +2087,10 @@ maxOutputTokens: number | null;
  */
 sendDiagnostics: boolean; 
 /**
+ * Whether the one-time diagnostics consent notice has been shown.
+ */
+diagnosticsNoticeAcknowledged: boolean; 
+/**
  * Whether to confirm before running build/apply.
  */
 confirmBuild: boolean; 
@@ -2177,6 +2202,10 @@ openaiCompatibleApiKey: string | null;
  * Diagnostics sharing preference update.
  */
 sendDiagnostics: boolean | null; 
+/**
+ * Diagnostics notice acknowledgement update.
+ */
+diagnosticsNoticeAcknowledged: boolean | null; 
 /**
  * Build confirmation preference update.
  */
