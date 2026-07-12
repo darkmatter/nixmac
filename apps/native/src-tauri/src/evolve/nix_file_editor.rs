@@ -11,9 +11,9 @@ use rowan::ast::AstNode;
 use rowan::{TextRange, TextSize};
 use std::path::Path;
 
+use super::gitignore::GitignoreChecker;
 use crate::evolve::file_ops::rewrite_existing_file_in_dir;
 use crate::evolve::types::FileEditAction;
-use ignore::gitignore::Gitignore;
 
 /// Internal marker key used in JSON edit payloads to request a raw Nix path literal.
 ///
@@ -339,7 +339,7 @@ pub fn apply_semantic_edit(
     base: &Path,
     edit: &SemanticFileEdit,
     auto_format: bool,
-    gitignore_matcher: Option<&Gitignore>,
+    gitignore_matcher: Option<&GitignoreChecker>,
 ) -> anyhow::Result<()> {
     rewrite_existing_file_in_dir(
         base,

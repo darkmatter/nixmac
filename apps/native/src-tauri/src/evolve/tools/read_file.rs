@@ -5,7 +5,7 @@ use log::info;
 use std::path::Path;
 
 use crate::evolve::file_ops::resolve_existing_path_in_dir;
-use crate::evolve::gitignore::is_ignored_by_matcher;
+use crate::evolve::gitignore::is_path_ignored;
 use crate::evolve::messages::Tool;
 use crate::evolve::utils::normalize_relative_path;
 
@@ -33,7 +33,7 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
         .as_str()
         .ok_or_else(|| anyhow!("read_file: missing path"))?;
     let normalized_rel = normalize_relative_path(Path::new(path))?;
-    if is_ignored_by_matcher(ctx.gitignore_matcher, &normalized_rel, false) {
+    if is_path_ignored(ctx.gitignore_matcher, &normalized_rel)? {
         return Err(anyhow!(
             "read_file: '{}' is ignored by .gitignore in git repository at '{}'",
             path,

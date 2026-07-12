@@ -28,8 +28,8 @@ use crate::evolve::types::SemanticFileEdit;
 use crate::evolve::utils::normalize_relative_path;
 use crate::shared_types::FileEdit;
 
+use super::gitignore::GitignoreChecker;
 use anyhow::{Result, anyhow};
-use ignore::gitignore::Gitignore;
 use std::path::{Component, Path};
 
 // =============================================================================
@@ -69,7 +69,7 @@ pub(crate) struct ToolCtx<'a> {
     pub(crate) config_dir: &'a str,
     pub(crate) host_attr: &'a str,
     pub(crate) args: &'a serde_json::Value,
-    pub(crate) gitignore_matcher: Option<&'a Gitignore>,
+    pub(crate) gitignore_matcher: Option<&'a GitignoreChecker>,
     pub(crate) auto_format: bool,
 }
 
@@ -114,7 +114,7 @@ pub fn execute_tool(
     name: &str,
     args: &serde_json::Value,
     auto_format: bool,
-    gitignore_matcher: Option<&Gitignore>,
+    gitignore_matcher: Option<&GitignoreChecker>,
 ) -> Result<ToolResult> {
     let ctx = ToolCtx {
         repo_root,
@@ -214,7 +214,7 @@ pub(crate) fn ensure_nixmac_edit_allowed(tool: &str, path: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::{ToolResult, execute_tool, is_editing_tool, truncate_for_log};
-    use crate::evolve::gitignore::load_gitignore_matcher;
+    use crate::evolve::gitignore::GitignoreChecker;
     use serde_json::json;
     use std::fs;
     use tempfile::tempdir;
@@ -261,9 +261,10 @@ mod tests {
     #[test]
     fn read_file_rejects_base_gitignored_files() {
         let tmp = tempdir().expect("tempdir");
+        git2::Repository::init(tmp.path()).expect("init git repo");
         fs::write(tmp.path().join(".gitignore"), "secret.txt\n").expect("write .gitignore");
         fs::write(tmp.path().join("secret.txt"), "top secret").expect("write secret file");
-        let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
+        let gitignore_matcher = GitignoreChecker::new(tmp.path()).expect("load matcher");
 
         let result = execute_tool(
             tmp.path(),
@@ -285,12 +286,13 @@ mod tests {
     #[test]
     fn read_file_rejects_subdir_gitignored_files() {
         let tmp = tempdir().expect("tempdir");
+        git2::Repository::init(tmp.path()).expect("init git repo");
         fs::create_dir_all(tmp.path().join("nested")).expect("make nested dir");
         fs::write(tmp.path().join("nested/.gitignore"), "secret.txt\n")
             .expect("write nested .gitignore");
         fs::write(tmp.path().join("nested/secret.txt"), "top secret")
             .expect("write nested secret file");
-        let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
+        let gitignore_matcher = GitignoreChecker::new(tmp.path()).expect("load matcher");
 
         let result = execute_tool(
             tmp.path(),
@@ -312,13 +314,14 @@ mod tests {
     #[test]
     fn list_files_skips_base_gitignored_files() {
         let tmp = tempdir().expect("tempdir");
+        git2::Repository::init(tmp.path()).expect("init git repo");
         fs::write(tmp.path().join(".gitignore"), "secret.txt\nignored-dir/\n")
             .expect("write .gitignore");
         fs::write(tmp.path().join("visible.txt"), "visible").expect("write visible file");
         fs::write(tmp.path().join("secret.txt"), "secret").expect("write secret file");
         fs::create_dir_all(tmp.path().join("ignored-dir")).expect("make ignored dir");
         fs::write(tmp.path().join("ignored-dir/file.txt"), "ignored").expect("write ignored file");
-        let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
+        let gitignore_matcher = GitignoreChecker::new(tmp.path()).expect("load matcher");
 
         let result = execute_tool(
             tmp.path(),
@@ -343,8 +346,9 @@ mod tests {
     #[test]
     fn edit_file_rejects_base_gitignored_paths() {
         let tmp = tempdir().expect("tempdir");
+        git2::Repository::init(tmp.path()).expect("init git repo");
         fs::write(tmp.path().join(".gitignore"), "secret.txt\n").expect("write .gitignore");
-        let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
+        let gitignore_matcher = GitignoreChecker::new(tmp.path()).expect("load matcher");
 
         let result = execute_tool(
             tmp.path(),
@@ -371,9 +375,10 @@ mod tests {
     #[test]
     fn edit_nix_file_rejects_base_gitignored_paths() {
         let tmp = tempdir().expect("tempdir");
+        git2::Repository::init(tmp.path()).expect("init git repo");
         fs::write(tmp.path().join(".gitignore"), "ignored.nix\n").expect("write .gitignore");
         fs::write(tmp.path().join("ignored.nix"), "{ ... }: { }\n").expect("write nix file");
-        let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
+        let gitignore_matcher = GitignoreChecker::new(tmp.path()).expect("load matcher");
 
         let result = execute_tool(
             tmp.path(),
@@ -500,6 +505,7 @@ mod tests {
     #[test]
     fn edit_nix_file_reports_shorthand_action_missing_attr_path() {
         let tmp = tempdir().expect("tempdir");
+        git2::Repository::init(tmp.path()).expect("init git repo");
         fs::write(tmp.path().join("services.nix"), "{ ... }: { }\n").expect("write nix file");
 
         let result = execute_tool(
@@ -534,6 +540,7 @@ mod tests {
     #[test]
     fn edit_nix_file_reports_non_object_action_payload() {
         let tmp = tempdir().expect("tempdir");
+        git2::Repository::init(tmp.path()).expect("init git repo");
         fs::write(tmp.path().join("services.nix"), "{ ... }: { }\n").expect("write nix file");
 
         let result = execute_tool(
@@ -822,6 +829,7 @@ mod tests {
     #[test]
     fn edit_file_rejects_stray_nixmac_data_json() {
         let tmp = tempdir().expect("tempdir");
+        git2::Repository::init(tmp.path()).expect("init git repo");
         fs::create_dir_all(tmp.path().join(".nixmac")).expect("make nixmac dir");
         fs::write(tmp.path().join(".nixmac/data.json"), "{}\n").expect("write stray data");
 
@@ -900,10 +908,11 @@ mod tests {
     #[test]
     fn edit_file_rejects_subdir_gitignored_paths() {
         let tmp = tempdir().expect("tempdir");
+        git2::Repository::init(tmp.path()).expect("init git repo");
         fs::create_dir_all(tmp.path().join("nested")).expect("make nested dir");
         fs::write(tmp.path().join("nested/.gitignore"), "secret.txt\n")
             .expect("write nested .gitignore");
-        let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
+        let gitignore_matcher = GitignoreChecker::new(tmp.path()).expect("load matcher");
 
         let result = execute_tool(
             tmp.path(),
