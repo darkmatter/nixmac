@@ -49,15 +49,14 @@ pub fn start_watching<R>(app_handle: AppHandle<R>, dir: String, interval_ms: u64
 where
     R: Runtime + 'static,
 {
+    let mut thread_guard = WATCHER_THREAD.lock().unwrap();
+
     // Step 1: Stop any existing watcher and wait for it to fully exit.
-    {
-        let mut thread_guard = WATCHER_THREAD.lock().unwrap();
-        if let Some(old_thread) = thread_guard.take() {
-            WATCHER_ACTIVE.store(false, Ordering::SeqCst);
-            // fire-and-forget join: join() only fails if the thread panicked.
-            // We are replacing it regardless; ignoring the panic payload is correct.
-            let _ = old_thread.join();
-        }
+    if let Some(old_thread) = thread_guard.take() {
+        WATCHER_ACTIVE.store(false, Ordering::SeqCst);
+        // fire-and-forget join: join() only fails if the thread panicked.
+        // We are replacing it regardless; ignoring the panic payload is correct.
+        let _ = old_thread.join();
     }
 
     // Step 2: Store the directory to watch.
@@ -169,5 +168,5 @@ where
     });
 
     // Step 4: Store the new thread's handle so restart can join() it
-    *WATCHER_THREAD.lock().unwrap() = Some(new_thread);
+    *thread_guard = Some(new_thread);
 }
