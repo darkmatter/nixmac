@@ -127,6 +127,18 @@ jobs:
         working-directory: apps/native
         run: bun run build-storybook
 
+      - name: Check Storybook app fonts
+        working-directory: apps/native
+        run: |
+          python3 -m http.server 6100 --directory storybook-static >/tmp/storybook-font-check.log 2>&1 &
+          SB_PID=$!
+          trap 'kill $SB_PID 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do
+            curl -sf http://127.0.0.1:6100/index.json >/dev/null && break
+            sleep 1
+          done
+          STORYBOOK_URL=http://127.0.0.1:6100 node scripts/check-storybook-fonts.mjs
+
       - name: Create Cloudflare Pages project (if needed)
         env:
           CLOUDFLARE_API_TOKEN: ${{ env.CLOUDFLARE_API_TOKEN }}

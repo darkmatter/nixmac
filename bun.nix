@@ -333,6 +333,14 @@
     url = "https://registry.npmjs.org/@floating-ui/utils/-/utils-0.2.11.tgz";
     hash = "sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==";
   };
+  "@fontsource-variable/geist-mono@5.2.8" = fetchurl {
+    url = "https://registry.npmjs.org/@fontsource-variable/geist-mono/-/geist-mono-5.2.8.tgz";
+    hash = "sha512-KI5bj+hkkRiHttYHmccotUZ80ZuZyai+RwI1d7UId0clkx/jXxlo8qYK8j54WzmpBjtMoEMPyllV7faDcj+6RA==";
+  };
+  "@fontsource-variable/inter@5.2.8" = fetchurl {
+    url = "https://registry.npmjs.org/@fontsource-variable/inter/-/inter-5.2.8.tgz";
+    hash = "sha512-kOfP2D+ykbcX/P3IFnokOhVRNoTozo5/JxhAIVYLpea/UBmCQ/YWPBfWIDuBImXX/15KH+eKh4xpEUyS2sQQGQ==";
+  };
   "@gitbeaker/core@38.12.1" = fetchurl {
     url = "https://registry.npmjs.org/@gitbeaker/core/-/core-38.12.1.tgz";
     hash = "sha512-8XMVcBIdVAAoxn7JtqmZ2Ee8f+AZLcCPmqEmPFOXY2jPS84y/DERISg/+sbhhb18iRy+ZsZhpWgQ/r3CkYNJOQ==";

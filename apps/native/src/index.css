@@ -1,3 +1,8 @@
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/inter/wght-italic.css";
+@import "@fontsource-variable/geist-mono";
+@import "@fontsource-variable/geist-mono/wght-italic.css";
+
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 @import "tw-animate-css";
@@ -94,6 +99,8 @@
 }
 
 @theme inline {
+  --font-sans: "Inter Variable", sans-serif;
+  --font-mono: "Geist Mono Variable", monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -198,7 +205,7 @@
 
   body {
     margin: 0;
-    @apply text-foreground;
+    @apply font-sans text-foreground;
   }
 
   /* Subtle text selection — a soft, desaturated tint instead of the default

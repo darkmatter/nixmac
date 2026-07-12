@@ -51,6 +51,8 @@
   },
   "dependencies": {
     "@daveyplate/better-auth-tauri": "0.1.9",
+    "@fontsource-variable/geist-mono": "5.2.8",
+    "@fontsource-variable/inter": "5.2.8",
     "@monaco-editor/react": "4.7.0",
     "@nixmac/state": "workspace:*",
     "@nixmac/ui": "workspace:*",
