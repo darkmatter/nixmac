@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { uiActions, useUiState } from "@nixmac/state";
 import { useCurrentStep } from "@/hooks/use-current-step";
@@ -307,6 +307,18 @@ export function FeedbackDialog() {
   const [isPreviewingReport, setIsPreviewingReport] = useState(false);
   const [previewReportText, setPreviewReportText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const busy = submitting || previewLoading;
+  const feedbackTextRef = useRef<HTMLTextAreaElement>(null);
+
+  // The dialog opens on the availability-check spinner, so Radix's own
+  // open-autofocus (suppressed below — it would land on the X close button)
+  // can't target the textarea; focus it once the form actually renders.
+  useEffect(() => {
+    if (feedbackOpen && feedbackAvailability === "available") {
+      feedbackTextRef.current?.focus();
+    }
+  }, [feedbackOpen, feedbackAvailability]);
 
   const resetFeedbackState = () => {
     setFeedbackAvailability("idle");
@@ -474,7 +486,7 @@ export function FeedbackDialog() {
   };
 
   const handleSubmit = async () => {
-    if (submitting) return;
+    if (busy) return;
 
     setSubmitting(true);
     try {
@@ -490,15 +502,15 @@ export function FeedbackDialog() {
   };
 
   const handlePreview = async () => {
-    if (submitting || isPreviewingReport) return;
+    if (busy || isPreviewingReport) return;
 
-    setSubmitting(true);
+    setPreviewLoading(true);
     try {
       const payload = await buildFeedbackPayload();
       setPreviewReportText(payload);
       setIsPreviewingReport(true);
     } finally {
-      setSubmitting(false);
+      setPreviewLoading(false);
     }
   };
 
@@ -555,7 +567,10 @@ export function FeedbackDialog() {
           uiActions.setFeedbackOpen(true);
         }}
       >
-      <DialogContent className="max-w-2xl h-[85vh] flex flex-col">
+      <DialogContent
+        className="max-w-2xl h-[85vh] flex flex-col"
+        onOpenAutoFocus={(e: Event) => e.preventDefault()}
+      >
         {checkingFeedbackAvailability ? (
           <>
             <DialogHeader>
@@ -649,6 +664,7 @@ export function FeedbackDialog() {
                 </Label>
                 <Textarea
                   id="feedback-text"
+                  ref={feedbackTextRef}
                   value={feedbackText}
                   onChange={(e) => setFeedbackText(e.target.value)}
                   placeholder="Tell us more..."
@@ -666,7 +682,10 @@ export function FeedbackDialog() {
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select a prompt (optional)" />
                   </SelectTrigger>
-                  <SelectContent>
+                  {/* Cap the popper at the trigger's width; prompts are long
+                      and would otherwise blow the menu out much wider than
+                      the control. Items wrap via line-clamp instead. */}
+                  <SelectContent className="w-[var(--radix-select-trigger-width)] max-w-[var(--radix-select-trigger-width)]">
                     {promptHistory.length > 0 ? (
                       promptHistory.map((prompt) => (
                         <SelectItem key={prompt} value={prompt}>
@@ -717,7 +736,9 @@ export function FeedbackDialog() {
               {/* Share with team */}
               <div className="space-y-2">
                 <Label className="text-foreground">SHARE WITH THE TEAM</Label>
-                <div className="space-y-2 max-h-[28vh] overflow-y-auto pr-2">
+                {/* py-1/pl-1 keep the checkboxes' focus ring from being
+                    clipped by this scroll container's edges */}
+                <div className="space-y-2 max-h-[28vh] overflow-y-auto py-1 pl-1 pr-2">
                   {shouldShowCurrentAppState(feedbackType, step, mainWindowError) && (
                     <div className="flex items-center gap-2">
                       <Checkbox
@@ -740,7 +761,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group outline-none focus-visible:bg-accent/50"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -775,7 +796,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group outline-none focus-visible:bg-accent/50"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -810,7 +831,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group outline-none focus-visible:bg-accent/50"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -845,7 +866,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group outline-none focus-visible:bg-accent/50"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -880,7 +901,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group outline-none focus-visible:bg-accent/50"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -915,7 +936,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group outline-none focus-visible:bg-accent/50"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -950,7 +971,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group outline-none focus-visible:bg-accent/50"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -985,7 +1006,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group outline-none focus-visible:bg-accent/50"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -1020,7 +1041,7 @@ export function FeedbackDialog() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group"
+                            className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors shrink-0 group outline-none focus-visible:bg-accent/50"
                             aria-label="More information"
                           >
                             <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
@@ -1038,35 +1059,87 @@ export function FeedbackDialog() {
           )}
         </div>
 
+        {/* The footer buttons must never change size across loading states:
+            a resize reflows the right-justified footer and shifts the other
+            buttons. The label therefore stays in the layout (invisible while
+            loading) to freeze the button's footprint, and the spinner is
+            absolutely positioned on top of it. The spinner must be wrapped in
+            a span: a direct svg child triggers the Button's has-[>svg]:px-3
+            variant, which narrows the padding and resizes the button. */}
         <DialogFooter>
+          {/* Keys prevent React from reusing a button's DOM node across the
+              preview/edit footer swap: a reused node animates its old variant
+              styles away (transition-all), flashing e.g. a white Preview
+              button where the primary Send button was. */}
           {isPreviewingReport ? (
             <>
               <Button
+                key="preview-cancel"
                 variant="outline"
                 onClick={() => setIsPreviewingReport(false)}
-                disabled={submitting}
+                disabled={busy}
+                className="disabled:transition-none"
               >
                 Cancel
               </Button>
-              <Button onClick={handleSubmit} disabled={submitting} aria-label="Send feedback">
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send"}
+              <Button
+                key="preview-send"
+                onClick={handleSubmit}
+                disabled={busy}
+                aria-label="Send feedback"
+                className="relative disabled:transition-none"
+              >
+                <span className={submitting ? "invisible" : undefined}>Send</span>
+                {submitting && (
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </span>
+                )}
               </Button>
             </>
           ) : (
             <>
-              <Button variant="outline" onClick={handleClose} disabled={submitting}>
+              {/* disabled:transition-none — the buttons dim together the
+                  instant a footer action starts; transition-all would ease
+                  the opacity and make the outline buttons look like they
+                  disable later than the filled one. */}
+              <Button
+                key="edit-cancel"
+                variant="outline"
+                onClick={handleClose}
+                disabled={busy}
+                className="disabled:transition-none"
+              >
                 Cancel
               </Button>
-              <Button variant="outline" onClick={handlePreview} disabled={submitting}>
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Preview"}
+              <Button
+                key="edit-preview"
+                variant="outline"
+                onClick={handlePreview}
+                disabled={busy}
+                className="relative disabled:transition-none"
+              >
+                <span className={previewLoading ? "invisible" : undefined}>Preview</span>
+                {previewLoading && (
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </span>
+                )}
               </Button>
-              <Button onClick={handleSubmit} disabled={submitting} aria-label="Send feedback">
-                {submitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : isReportMode ? (
-                  "Send Report"
-                ) : (
-                  "Send Feedback"
+              <Button
+                key="edit-send"
+                onClick={handleSubmit}
+                disabled={busy}
+                aria-label="Send feedback"
+                className="relative disabled:transition-none"
+              >
+                <span className={submitting ? "invisible" : undefined}>
+                  {isReportMode ? "Send Report" : "Send Feedback"}
+                </span>
+                {submitting && (
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </span>
                 )}
               </Button>
             </>
