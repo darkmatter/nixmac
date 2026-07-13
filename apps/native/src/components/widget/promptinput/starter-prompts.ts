@@ -70,12 +70,40 @@ export const STARTER_PROMPT_CHIPS = STARTER_PROMPT_ARCHETYPES.flatMap((archetype
  * animated placeholder hint (e.g. the part before the first `:` or `,`),
  * capped at a word boundary so the typewriter stays snappy.
  */
+const DANGLING_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "at",
+  "by",
+  "for",
+  "from",
+  "in",
+  "into",
+  "my",
+  "of",
+  "on",
+  "or",
+  "over",
+  "the",
+  "to",
+  "with",
+]);
+
 function toPlaceholderPhrase(prompt: string, maxLength = 64): string {
   const lead = prompt.split(/[:,]/, 1)[0]?.trim() ?? prompt.trim();
   if (lead.length <= maxLength) return lead;
   const truncated = lead.slice(0, maxLength);
   const lastSpace = truncated.lastIndexOf(" ");
-  return (lastSpace > 0 ? truncated.slice(0, lastSpace) : truncated).trim();
+  const words = (lastSpace > 0 ? truncated.slice(0, lastSpace) : truncated)
+    .trim()
+    .split(" ");
+  // A cut can land right after a connector ("… with Tailscale or"), which reads
+  // as if the typewriter stalled mid-sentence — drop such trailing words.
+  while (words.length > 1 && DANGLING_WORDS.has(words[words.length - 1]!.toLowerCase())) {
+    words.pop();
+  }
+  return words.join(" ");
 }
 
 /**
