@@ -9,7 +9,6 @@ import { TuningTab } from "@/components/widget/settings/tuning-tab";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { tauriAPI } from "@/ipc/api";
 import { resolveOpenAiCompatibleProvider } from "@/lib/providers/ai-provider-validation";
-import { DEFAULT_EVOLVE_MODEL, DEFAULT_SUMMARY_MODEL } from "@/lib/providers/ai-models";
 import {
   createVerifiedApiKeyHandler,
   verifyOpenaiApiKey,
@@ -140,9 +139,9 @@ export function SettingsDialog() {
       openaiCompatibleApiBaseUrl: "",
       openaiCompatibleApiKey: "",
       summaryProvider: "openrouter",
-      summaryModel: DEFAULT_SUMMARY_MODEL.openrouter,
+      summaryModel: "",
       evolveProvider: "openrouter",
-      evolveModel: DEFAULT_EVOLVE_MODEL.openrouter,
+      evolveModel: "",
       sendDiagnostics: false,
     },
   });
@@ -164,19 +163,11 @@ export function SettingsDialog() {
           form.setFieldValue("openaiCompatibleApiBaseUrl", prefs.openaiCompatibleApiBaseUrl ?? "");
           form.setFieldValue("openaiCompatibleApiKey", prefs.openaiCompatibleApiKey ?? "");
           form.setFieldValue("summaryProvider", summaryProvider);
-          form.setFieldValue(
-            "summaryModel",
-            prefs.summaryModel ??
-            DEFAULT_SUMMARY_MODEL[summaryProvider] ??
-            DEFAULT_SUMMARY_MODEL.openrouter,
-          );
+          // Empty model is a real state (track the provider default) — don't
+          // dress it up as a concrete value.
+          form.setFieldValue("summaryModel", prefs.summaryModel ?? "");
           form.setFieldValue("evolveProvider", evolveProvider);
-          form.setFieldValue(
-            "evolveModel",
-            prefs.evolveModel ??
-            DEFAULT_EVOLVE_MODEL[evolveProvider] ??
-            DEFAULT_EVOLVE_MODEL.openrouter,
-          );
+          form.setFieldValue("evolveModel", prefs.evolveModel ?? "");
           form.setFieldValue("sendDiagnostics", prefs.sendDiagnostics ?? false);
 
           setOpenrouterKeyStatus(prefs.openrouterApiKey ? "valid" : "idle");

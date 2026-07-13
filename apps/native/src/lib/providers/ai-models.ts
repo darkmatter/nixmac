@@ -3,6 +3,7 @@ import {
 	type AiProviderId,
 	providerModelDefaults,
 } from "@/lib/providers/ai-defaults";
+import { providerRequiresModel } from "@/lib/providers/ai-provider-validation";
 
 const NIXMAC_PROVIDER = "nixmac";
 
@@ -130,20 +131,6 @@ export const BYOK_MODEL_PROVIDERS = AI_MODEL_PROVIDERS.filter(
 	(provider) => provider.setup.kind !== "hosted",
 );
 
-export const DEFAULT_EVOLVE_MODEL: Record<string, string> = Object.fromEntries(
-	AI_MODEL_PROVIDERS.map((provider) => [
-		provider.id,
-		provider.defaultEvolveModel,
-	]),
-);
-
-export const DEFAULT_SUMMARY_MODEL: Record<string, string> = Object.fromEntries(
-	AI_MODEL_PROVIDERS.map((provider) => [
-		provider.id,
-		provider.defaultSummaryModel,
-	]),
-);
-
 export function getAiModelProvider(id: string): AiModelProvider {
 	return (
 		AI_MODEL_PROVIDERS.find((provider) => provider.id === id) ??
@@ -156,6 +143,9 @@ export function isPlainInputCliProvider(provider: string): boolean {
 	return setup.kind === "cli" && setup.plainModelInput;
 }
 
+// The placeholder describes what an empty field means at runtime: providers
+// with a fallback name it explicitly; providers that require a model get a
+// plain prompt.
 export function modelPlaceholder(
 	provider: string,
 	kind: "evolve" | "summary",
@@ -164,7 +154,10 @@ export function modelPlaceholder(
 	if (config.setup.kind === "cli") {
 		return "Leave empty for CLI default";
 	}
+	if (providerRequiresModel(provider)) {
+		return "Select model...";
+	}
 	const defaultModel =
 		kind === "evolve" ? config.defaultEvolveModel : config.defaultSummaryModel;
-	return defaultModel || "Select model...";
+	return defaultModel ? `Default: ${defaultModel}` : "Select model...";
 }

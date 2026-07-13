@@ -1,6 +1,5 @@
 import type { CliToolsState, UiPrefs as DarwinPrefs } from "@/ipc/types";
-
-const CLI_PROVIDER_VALUES = ["claude", "codex", "opencode"] as const;
+import { providerModelDefaults } from "@/lib/providers/ai-defaults";
 
 type OpenAiCompatibleProvider = "openrouter" | "openai";
 
@@ -8,21 +7,26 @@ function hasValue(value?: string | null): boolean {
   return Boolean(value?.trim());
 }
 
-export function isCliProvider(provider: string): boolean {
-  return CLI_PROVIDER_VALUES.includes(provider as (typeof CLI_PROVIDER_VALUES)[number]);
+/**
+ * Providers where the backend has no runtime fallback for an empty model.
+ * Everyone else falls back to a default when the model is empty: CLI
+ * providers to the CLI tool's own default, the rest to their default from
+ * shared/ai-defaults.json.
+ */
+export function providerRequiresModel(provider: string): boolean {
+  return providerModelDefaults(provider).requiresModel ?? false;
 }
 
 /**
- * Whether persisted prefs describe a usable inference setup. CLI providers
- * (claude/codex/opencode) accept an optional model — an empty model means
- * "use the CLI's own default" — so only non-CLI providers require a model.
+ * Whether persisted prefs describe a usable inference setup. An empty model
+ * means "use the runtime default", so only providers without one require it.
  */
 export function isInferenceConfigured(
   provider: string | null | undefined,
   model: string | null | undefined,
 ): boolean {
   if (!provider) return false;
-  return isCliProvider(provider) || hasValue(model);
+  return !providerRequiresModel(provider) || hasValue(model);
 }
 
 export function resolveOpenAiCompatibleProvider(
@@ -48,34 +52,26 @@ export function getProviderConfigInvalidReason(
 ): string | null {
   provider = resolveOpenAiCompatibleProvider(provider, prefs);
 
-  if (isCliProvider(provider) && cliStatus != null) {
-    const key = provider as keyof CliToolsState;
-    if (cliStatus[key] === false) {
+  if (cliStatus != null && provider in cliStatus) {
+    if (cliStatus[provider as keyof CliToolsState] === false) {
       return "CLI tool not found in PATH";
     }
   }
 
-  if (provider === "nixmac") {
-    return null;
+  if (provider === "openrouter" && !prefs.openrouterApiKey?.trim()) {
+    return "No OpenRouter API key set";
   }
 
-  if (provider === "openrouter") {
-    return prefs.openrouterApiKey?.trim() ? null : "No OpenRouter API key set";
+  if (provider === "openai" && !prefs.openaiApiKey?.trim()) {
+    return "No OpenAI API key set";
   }
 
-  if (provider === "openai") {
-    return prefs.openaiApiKey?.trim() ? null : "No OpenAI API key set";
+  if (provider === "openai_compatible" && !prefs.openaiCompatibleApiBaseUrl?.trim()) {
+    return "No base URL set";
   }
 
-  if (provider === "openai_compatible") {
-    if (!prefs.openaiCompatibleApiBaseUrl?.trim()) {
-      return "No base URL set";
-    }
-    return model?.trim() ? null : "No model set";
-  }
-
-  if (provider === "ollama") {
-    return model?.trim() ? null : "No model set";
+  if (providerRequiresModel(provider) && !hasValue(model)) {
+    return "No model set";
   }
 
   return null;

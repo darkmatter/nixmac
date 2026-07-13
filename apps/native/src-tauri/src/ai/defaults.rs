@@ -70,10 +70,13 @@ pub fn openai_summary_model() -> &'static str {
     &providers().openai.summary_model
 }
 
-/// The nixmac hosted service routes `"auto"` server-side; the settings UI
-/// additionally defaults summaries to the JSON's `summaryModel` ("flash").
+/// The nixmac hosted service routes `"auto"` server-side.
 pub fn nixmac_model() -> &'static str {
     &providers().nixmac.evolve_model
+}
+
+pub fn nixmac_summary_model() -> &'static str {
+    &providers().nixmac.summary_model
 }
 
 #[cfg(test)]

@@ -1,10 +1,6 @@
-import { providerModelDefaults } from "@/lib/providers/ai-defaults";
-
 export type { InferenceConfig, InferenceMode } from "@nixmac/state";
 
 export const NIXMAC_PROVIDER = "nixmac";
-export const DEFAULT_NIXMAC_MODEL =
-	providerModelDefaults(NIXMAC_PROVIDER).evolveModel;
 
 /** Checkout product identifiers exposed by the billing API. */
 export type CheckoutProduct = "pro" | "credits";

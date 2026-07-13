@@ -11,7 +11,6 @@ import {
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
 import { ProviderIcon } from "@/components/widget/controls/provider-icons/provider-icon";
 import {
-  DEFAULT_NIXMAC_MODEL,
   NIXMAC_PROVIDER,
   validateKeyFormat,
   type CheckoutProduct,
@@ -26,6 +25,8 @@ import {
   isPlainInputCliProvider,
   modelPlaceholder,
 } from "@/lib/providers/ai-models";
+import { prefillModel } from "@/lib/providers/ai-defaults";
+import { providerRequiresModel } from "@/lib/providers/ai-provider-validation";
 import type { AccountBilling, BillingProductInfo } from "@/lib/orpc";
 import { client, orpc } from "@/lib/orpc";
 import { getTelemetry } from "@/lib/telemetry/instance";
@@ -297,11 +298,12 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
   }
 
   async function finishHostedSetup(planSuffix: string) {
+    // Empty model tracks the hosted defaults at runtime.
     await tauriAPI.ui.setPrefs({
       evolveProvider: NIXMAC_PROVIDER,
-      evolveModel: DEFAULT_NIXMAC_MODEL,
+      evolveModel: "",
       summaryProvider: NIXMAC_PROVIDER,
-      summaryModel: DEFAULT_NIXMAC_MODEL,
+      summaryModel: "",
     });
     getTelemetry().captureEvent({
       name: "inference_configured",
@@ -692,7 +694,8 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
   const initialProvider = getAiModelProvider("openrouter");
   const [providerId, setProviderId] = useState(initialProvider.id);
   const provider = useMemo(() => getAiModelProvider(providerId), [providerId]);
-  const [model, setModel] = useState(initialProvider.defaultEvolveModel);
+  // Empty model tracks the provider default at runtime.
+  const [model, setModel] = useState("");
   const [key, setKey] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [keyState, setKeyState] = useState<KeyState>("idle");
@@ -703,7 +706,7 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
   const setup = provider.setup;
   const isApiKeyProvider = setup.kind === "apiKey";
   const isBaseUrlProvider = setup.kind === "baseUrl";
-  const requiresModel = provider.id === "ollama" || provider.id === "openai_compatible";
+  const requiresModel = providerRequiresModel(provider.id);
   const setupReady =
     isApiKeyProvider
       ? format.valid
@@ -715,7 +718,7 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
     const next = getAiModelProvider(id);
     await tauriAPI.models.clearCached(next.id);
     setProviderId(next.id);
-    setModel(next.defaultEvolveModel);
+    setModel(prefillModel(next.id, "evolve"));
     setKey("");
     setBaseUrl("");
     setKeyState("idle");

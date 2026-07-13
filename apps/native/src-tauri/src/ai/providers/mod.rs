@@ -260,7 +260,7 @@ pub fn create_provider<R: Runtime>(
                 .ok_or_else(|| anyhow::anyhow!("Sign in to nixmac hosted inference first."))?;
             let base_url = nixmac_llm_api_base(&crate::storage::store::get_web_server_url()?);
             let model = configured_summary_model
-                .unwrap_or_else(|| crate::ai::defaults::nixmac_model().to_string());
+                .unwrap_or_else(|| crate::ai::defaults::nixmac_summary_model().to_string());
 
             Ok(Box::new(OpenAIClient::new(&api_key, &base_url, &model)))
         }

@@ -1,12 +1,7 @@
 import type { UiPrefs, UiPrefsUpdate } from "@/ipc/types";
-import { providerModelDefaults } from "@/lib/providers/ai-defaults";
 
 const OPENROUTER_PROVIDER = "openrouter";
 const OPENAI_PROVIDER = "openai";
-const DEFAULT_OPENROUTER_EVOLVE_MODEL =
-  providerModelDefaults(OPENROUTER_PROVIDER).evolveModel;
-const DEFAULT_OPENROUTER_SUMMARY_MODEL =
-  providerModelDefaults(OPENROUTER_PROVIDER).summaryModel;
 
 interface ProviderMigrationValues {
   evolveProvider: string;
@@ -38,11 +33,12 @@ export function migrateLegacyOpenaiProviderPrefs(prefs: UiPrefs): {
   update: Partial<UiPrefsUpdate> | null;
 } {
   const update: Partial<UiPrefsUpdate> = {};
+  // Empty model means "track the provider default at runtime".
   const values = {
     evolveProvider: prefs.evolveProvider ?? OPENROUTER_PROVIDER,
-    evolveModel: prefs.evolveModel ?? DEFAULT_OPENROUTER_EVOLVE_MODEL,
+    evolveModel: prefs.evolveModel ?? "",
     summaryProvider: prefs.summaryProvider ?? OPENROUTER_PROVIDER,
-    summaryModel: prefs.summaryModel ?? DEFAULT_OPENROUTER_SUMMARY_MODEL,
+    summaryModel: prefs.summaryModel ?? "",
   };
 
   if (
@@ -52,7 +48,7 @@ export function migrateLegacyOpenaiProviderPrefs(prefs: UiPrefs): {
     values.evolveProvider = OPENROUTER_PROVIDER;
     update.evolveProvider = values.evolveProvider;
     if (!isOpenrouterModelSlug(prefs.evolveModel)) {
-      values.evolveModel = DEFAULT_OPENROUTER_EVOLVE_MODEL;
+      values.evolveModel = "";
       update.evolveModel = values.evolveModel;
     }
   }
@@ -64,7 +60,7 @@ export function migrateLegacyOpenaiProviderPrefs(prefs: UiPrefs): {
     values.summaryProvider = OPENROUTER_PROVIDER;
     update.summaryProvider = values.summaryProvider;
     if (!isOpenrouterModelSlug(prefs.summaryModel)) {
-      values.summaryModel = DEFAULT_OPENROUTER_SUMMARY_MODEL;
+      values.summaryModel = "";
       update.summaryModel = values.summaryModel;
     }
   }

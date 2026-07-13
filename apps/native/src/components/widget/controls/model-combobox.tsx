@@ -280,7 +280,9 @@ export function ModelCombobox({
           className="w-full justify-between font-normal"
           disabled={disabled}
         >
-          <span className="truncate">{inputValue || placeholder}</span>
+          <span className={cn("truncate", !inputValue && "text-muted-foreground")}>
+            {inputValue || placeholder}
+          </span>
           {isLoading ? (
             <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-50" />
           ) : (
