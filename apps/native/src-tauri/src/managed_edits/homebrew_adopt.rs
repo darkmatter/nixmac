@@ -350,6 +350,28 @@ fn load_nix_eval_homebrew(config_dir: &std::path::Path, hostname: &str) -> Resul
     Ok(state)
 }
 
+fn attach_existing_homebrew_source(
+    config_dir: &std::path::Path,
+    mut eval_state: HomebrewState,
+) -> HomebrewState {
+    if eval_state.source.is_some() {
+        return eval_state;
+    }
+
+    match load_nix_config_homebrew(config_dir) {
+        Ok(file_state) => {
+            if file_state.source.is_some() {
+                eval_state.source = file_state.source;
+            }
+        }
+        Err(error) => {
+            log::warn!("failed to infer Homebrew source from config files: {error}");
+        }
+    }
+
+    eval_state
+}
+
 /// Reads the homebrew state currently in nix config in the provided config dir, if it exists.
 /// Otherwise returns an empty state.
 /// The only supported nix config layouts for homebrew are:
@@ -422,12 +444,14 @@ fn load_nix_config_homebrew(config_dir: &std::path::Path) -> Result<HomebrewStat
 /// Reads the homebrew state first by using nix-eval and if that fails by falling
 /// back to some heuristic evaluation of likely flake files.
 fn load_nix_homebrew(config_dir: &std::path::Path, hostname: &str) -> Result<HomebrewState> {
-    load_nix_eval_homebrew(config_dir, hostname).or_else(|e| {
-        log::warn!(
-            "load_nix_homebrew: nix eval failed, falling back to heuristic config parse: {e}"
-        );
-        load_nix_config_homebrew(config_dir)
-    })
+    load_nix_eval_homebrew(config_dir, hostname)
+        .map(|state| attach_existing_homebrew_source(config_dir, state))
+        .or_else(|e| {
+            log::warn!(
+                "load_nix_homebrew: nix eval failed, falling back to heuristic config parse: {e}"
+            );
+            load_nix_config_homebrew(config_dir)
+        })
 }
 
 /// Finds what's missing from the config compared to the installed state,
@@ -859,6 +883,46 @@ mod tests {
 
         // Print the state for debugging purposes, but don't assert on it since it may vary by host.
         println!("Loaded nix eval homebrew state: {:?}", state);
+    }
+
+    #[test]
+    fn attach_existing_homebrew_source_preserves_eval_items() {
+        let temp = tempfile::tempdir().expect("tempdir should be created");
+        write_file(
+            &temp.path().join("modules/darwin/homebrew.nix"),
+            r#"{ ... }: {
+  homebrew.brews = [ "already-in-file" ];
+}
+"#,
+        );
+        let eval_state = homebrew_state(&["eval-cask"], &["eval-brew"], &[], None);
+
+        let state = attach_existing_homebrew_source(temp.path(), eval_state);
+
+        assert_eq!(state.source.as_deref(), Some("modules/darwin/homebrew.nix"));
+        assert_eq!(state.casks, vec!["eval-cask"]);
+        assert_eq!(state.brews, vec!["eval-brew"]);
+        assert!(state.taps.is_empty());
+    }
+
+    #[test]
+    fn attach_existing_homebrew_source_keeps_explicit_eval_source() {
+        let temp = tempfile::tempdir().expect("tempdir should be created");
+        write_file(
+            &temp.path().join(NIXMAC_HOMEBREW_DATA_PATH),
+            r#"{
+  "taps": [],
+  "brews": ["file-brew"],
+  "casks": []
+}
+"#,
+        );
+        let eval_state = homebrew_state(&[], &["eval-brew"], &[], Some("custom/homebrew.nix"));
+
+        let state = attach_existing_homebrew_source(temp.path(), eval_state);
+
+        assert_eq!(state.source.as_deref(), Some("custom/homebrew.nix"));
+        assert_eq!(state.brews, vec!["eval-brew"]);
     }
 
     #[test]
