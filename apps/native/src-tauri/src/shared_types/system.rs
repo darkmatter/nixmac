@@ -15,8 +15,8 @@ pub struct HomebrewState {
     pub brews: Vec<String>,
     /// Configured Homebrew tap names.
     pub taps: Vec<String>,
-    /// Source used to collect the state, when known.
-    pub source: Option<String>,
+    /// Config file path to write Homebrew edits into, when known.
+    pub write_target: Option<String>,
     /// Unix timestamp when this state was last collected.
     #[specta(type = f64)]
     pub last_checked: i64,

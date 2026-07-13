@@ -59,7 +59,7 @@ async function runScan(): Promise<CustomizationGroup[]> {
       casks: [],
       brews: [],
       taps: [],
-      source: null,
+      writeTarget: null,
       lastChecked: 0,
     })),
     // deprecated(orpc): replace with client/orpc from @/lib/orpc
