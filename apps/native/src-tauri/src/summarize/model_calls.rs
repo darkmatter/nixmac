@@ -73,7 +73,8 @@ async fn request_json<R: Runtime, T: serde::de::DeserializeOwned>(
         ));
     }
 
-    match serde_json::from_str::<T>(&raw_response) {
+    let cleaned = strip_json_fences(&raw_response);
+    match serde_json::from_str::<T>(cleaned) {
         Ok(parsed) => Ok((parsed, tokens_used)),
         Err(e) => {
             warn!(
@@ -83,6 +84,27 @@ async fn request_json<R: Runtime, T: serde::de::DeserializeOwned>(
             Err(anyhow::anyhow!("{}: failed to parse JSON: {}", fn_name, e))
         }
     }
+}
+
+/// Some models wrap their JSON output in a Markdown code fence
+/// (```json ... ``` or ``` ... ```). Strip that wrapper so the payload
+/// parses cleanly. Returns the input unchanged if no fence is present.
+fn strip_json_fences(raw: &str) -> &str {
+    let trimmed = raw.trim();
+    let Some(inner) = trimmed.strip_prefix("```") else {
+        return trimmed;
+    };
+    // Drop the opening fence's language tag / rest of that line.
+    let inner = match inner.split_once('\n') {
+        Some((_lang, rest)) => rest,
+        None => inner,
+    };
+    // Drop the closing fence.
+    inner
+        .trim_end()
+        .strip_suffix("```")
+        .unwrap_or(inner)
+        .trim()
 }
 
 pub async fn generate_commit_message<R: Runtime>(
@@ -127,4 +149,33 @@ fn report_provider_error(
         "{}: provider completion failed",
         context
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::strip_json_fences;
+
+    #[test]
+    fn strips_json_language_fence() {
+        let raw = "```json\n{\"message\":\"hi\"}\n```";
+        assert_eq!(strip_json_fences(raw), "{\"message\":\"hi\"}");
+    }
+
+    #[test]
+    fn strips_bare_fence() {
+        let raw = "```\n{\"message\":\"hi\"}\n```";
+        assert_eq!(strip_json_fences(raw), "{\"message\":\"hi\"}");
+    }
+
+    #[test]
+    fn leaves_plain_json_untouched() {
+        let raw = "{\"message\":\"hi\"}";
+        assert_eq!(strip_json_fences(raw), "{\"message\":\"hi\"}");
+    }
+
+    #[test]
+    fn handles_surrounding_whitespace() {
+        let raw = "  ```json\n{\"message\":\"hi\"}\n```  \n";
+        assert_eq!(strip_json_fences(raw), "{\"message\":\"hi\"}");
+    }
 }
