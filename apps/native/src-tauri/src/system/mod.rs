@@ -11,5 +11,6 @@ pub mod launchd_scanner;
 pub mod nix;
 pub mod nix_ast_lists;
 pub mod permissions;
+pub mod re2_ascii;
 pub mod scanner;
 pub mod secret_scanner;

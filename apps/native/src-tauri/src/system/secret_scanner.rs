@@ -1,11 +1,12 @@
 use fancy_regex::Regex;
-use log::warn;
+use log::{debug, warn};
 use serde::Deserialize;
 use serde_json::Value;
 use std::sync::OnceLock;
 use tauri::{AppHandle, Manager};
 
 use crate::commands::debug::TimerGuard;
+use crate::system::re2_ascii::ascii_rewrite;
 
 static SECRET_SCANNER: OnceLock<SecretScanner> = OnceLock::new();
 
@@ -18,6 +19,7 @@ struct GitleaksConfig {
 struct GitleaksRule {
     id: String,
     regex: Option<String>,
+    path: Option<String>,
 }
 
 pub struct SecretScanner {
@@ -77,37 +79,54 @@ impl SecretScanner {
                 let regex = match rule.regex {
                     Some(regex) => regex,
                     None => {
-                        warn!("Skipping gitleaks rule without regex: {}", rule.id);
+                        // Path-only rules (e.g. pkcs12-file) match filenames, which
+                        // doesn't apply to scanning JSON values.
+                        if rule.path.is_none() {
+                            warn!("Skipping gitleaks rule without regex: {}", rule.id);
+                        }
                         return None;
                     }
                 };
 
+                // Startup fast path: skip the original compile attempt when we
+                // know it fails — a failing NFA build takes ~0.3-1s per rule.
+                // Purely advisory: a stale hint falls through to the normal path.
+                if prefers_ascii_rewrite(&rule.id) {
+                    if let Some(Ok(compiled)) = ascii_rewrite(&regex).map(|p| Regex::new(&p)) {
+                        return Some((rule.id, compiled));
+                    }
+                }
+
                 match Regex::new(&regex) {
                     Ok(compiled) => Some((rule.id, compiled)),
                     Err(err) => {
-                        if let Some(fallback) = fallback_regex_for(&rule.id) {
-                            match Regex::new(fallback) {
-                                Ok(compiled) => {
-                                    warn!(
-                                        "Using fallback regex for gitleaks rule: {} (original error: {})",
-                                        rule.id, err
-                                    );
-                                    Some((rule.id, compiled))
-                                }
-                                Err(fallback_err) => {
-                                    warn!(
-                                        "Skipping gitleaks rule with invalid regex: {} (original: {}, fallback: {})",
-                                        rule.id, err, fallback_err
-                                    );
-                                    None
-                                }
+                        // Patterns with large bounded repetitions of `\w` blow past
+                        // the regex crate's compiled-size limits. Gitleaks runs on
+                        // Go's RE2 where `\w`/`\d`/`\s`/`\b` are ASCII-only, so the
+                        // ASCII rewrite is exactly what gitleaks executes — and it
+                        // compiles cheaply.
+                        match ascii_rewrite(&regex).map(|p| Regex::new(&p)) {
+                            Some(Ok(compiled)) => {
+                                debug!(
+                                    "Compiled ASCII rewrite for gitleaks rule: {} (original error: {})",
+                                    rule.id, err
+                                );
+                                Some((rule.id, compiled))
                             }
-                        } else {
-                            warn!(
-                                "Skipping gitleaks rule with invalid regex: {} ({})",
-                                rule.id, err
-                            );
-                            None
+                            Some(Err(rewrite_err)) => {
+                                warn!(
+                                    "Skipping gitleaks rule with invalid regex: {} (original: {}, ascii rewrite: {})",
+                                    rule.id, err, rewrite_err
+                                );
+                                None
+                            }
+                            None => {
+                                warn!(
+                                    "Skipping gitleaks rule with invalid regex: {} ({})",
+                                    rule.id, err
+                                );
+                                None
+                            }
                         }
                     }
                 }
@@ -285,15 +304,95 @@ fn is_entropy_candidate_char(ch: char) -> bool {
     ch.is_ascii_alphanumeric() || matches!(ch, '+' | '/' | '=' | '-' | '_')
 }
 
-fn fallback_regex_for(id: &str) -> Option<&'static str> {
-    match id {
-        // Broad, simpler fallback for generic API-style secrets since the ones in gitleaks have very complex regexes that can fail to compile in Rust.
-        // This is a best-effort backup to catch obvious secrets without crashing the scanner.
-        "generic-api-key" => Some(
-            r#"(?i)(?:access|auth|api|credential|creds|key|password|secret|token)[\w .-]{0,20}[:=][ \t\"']{0,5}([A-Za-z0-9_\-]{12,})"#,
-        ),
-        "pypi-upload-token" => Some(r#"pypi-AgEIcHlwaS5vcmc[\w-]{50,}"#),
-        "vault-batch-token" => Some(r#"\bhvb\.[A-Za-z0-9+/=]{20,}"#),
-        _ => None,
+/// Rules whose patterns are known to exceed the regex crate's NFA size limits
+/// (as of the currently bundled gitleaks.toml), so compilation goes straight
+/// to the ASCII rewrite. Kept exact by the `hint_list_is_exact` test; a stale
+/// entry only affects startup speed, never redaction.
+fn prefers_ascii_rewrite(id: &str) -> bool {
+    matches!(
+        id,
+        "generic-api-key" | "pypi-upload-token" | "vault-batch-token"
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn bundled_scanner() -> &'static SecretScanner {
+        static SCANNER: OnceLock<SecretScanner> = OnceLock::new();
+        SCANNER
+            .get_or_init(|| SecretScanner::from_toml(include_str!("../../resources/gitleaks.toml")))
     }
+
+    fn bundled_config() -> GitleaksConfig {
+        toml::from_str(include_str!("../../resources/gitleaks.toml")).unwrap()
+    }
+
+    #[test]
+    fn no_bundled_rule_is_silently_lost() {
+        let scanner = bundled_scanner();
+        let ids: Vec<&str> = scanner
+            .compiled_rules
+            .iter()
+            .map(|(id, _)| id.as_str())
+            .collect();
+
+        // Every rule with a regex must compile, via the original or the
+        // ASCII rewrite. Catches gitleaks.toml bumps that introduce patterns
+        // neither path can handle.
+        for rule in bundled_config().rules {
+            if rule.regex.is_some() {
+                assert!(ids.contains(&rule.id.as_str()), "rule {} was lost", rule.id);
+            } else {
+                assert!(
+                    !ids.contains(&rule.id.as_str()),
+                    "regex-less rule {} unexpectedly compiled",
+                    rule.id
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn hint_list_is_exact() {
+        // The fast-path hint must match reality in both directions: a hinted
+        // rule whose original now compiles means the hint is removable; an
+        // unhinted rule whose original fails means boot pays a slow failing
+        // compile attempt and the hint list should grow. Either way, update
+        // prefers_ascii_rewrite when this fails after a gitleaks.toml bump.
+        for rule in bundled_config().rules {
+            let Some(regex) = rule.regex else { continue };
+            let original_compiles = Regex::new(&regex).is_ok();
+            assert_eq!(
+                original_compiles,
+                !prefers_ascii_rewrite(&rule.id),
+                "hint list is stale for rule {}",
+                rule.id
+            );
+        }
+    }
+
+    #[test]
+    fn redacts_previously_failing_rules() {
+        let scanner = bundled_scanner();
+
+        let pypi = format!("pypi-AgEIcHlwaS5vcmc{}", "Ab1-".repeat(15));
+        let vault = format!("hvb.{}", "Ab1-".repeat(36));
+        let generic = r#"api_key = "zaCELgL0imfnc8mVLWwsAawjYr4Rx""#.to_string();
+
+        for (input, id) in [
+            (format!("token: {pypi} end"), "pypi-upload-token"),
+            (format!("token: {vault} end"), "vault-batch-token"),
+            (generic, "generic-api-key"),
+        ] {
+            let (redacted, changed) = scanner.redact_string(&input);
+            assert!(changed, "{id}: expected redaction in {input:?}");
+            assert!(
+                redacted.contains("[REDACTED]"),
+                "{id}: no [REDACTED] in {redacted:?}"
+            );
+        }
+    }
+
 }
