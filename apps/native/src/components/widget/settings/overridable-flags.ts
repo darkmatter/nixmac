@@ -2,6 +2,10 @@ import {
   EVOLVE_PROMPT_SUGGESTIONS_FLAG,
   PROMPT_SUGGESTIONS_VARIANTS,
 } from "@/components/widget/promptinput/prompt-suggestions-variant";
+import {
+  CLI_PROVIDERS_FLAG,
+  CLI_PROVIDERS_VARIANTS,
+} from "@/lib/providers/cli-providers-flag";
 
 /** One selectable override value for a flag, plus its human-facing label. */
 type FlagOverrideOption = { value: string; label: string };
@@ -34,6 +38,13 @@ export const OVERRIDABLE_FLAGS: readonly OverridableFlag[] = [
   {
     key: EVOLVE_PROMPT_SUGGESTIONS_FLAG,
     options: PROMPT_SUGGESTIONS_VARIANTS.map((variant) => ({
+      value: variant,
+      label: variant,
+    })),
+  },
+  {
+    key: CLI_PROVIDERS_FLAG,
+    options: CLI_PROVIDERS_VARIANTS.map((variant) => ({
       value: variant,
       label: variant,
     })),

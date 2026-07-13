@@ -16,11 +16,12 @@ import {
   providerRequiresModel,
 } from "@/lib/providers/ai-provider-validation";
 import {
-  AI_MODEL_PROVIDERS,
   isPlainInputCliProvider,
   modelForProvider,
   modelPlaceholder,
+  visibleModelProviders,
 } from "@/lib/providers/ai-models";
+import { useCliProvidersVisible } from "@/lib/providers/cli-providers-flag";
 import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
 import { useEffect, useState } from "react";
 
@@ -88,11 +89,12 @@ export function AiModelsTab({
 }: AiModelsTabProps) {
   const cliStatus = useCliToolStatus();
   const providerPrefs = useProviderPrefs(form);
+  const cliProvidersVisible = useCliProvidersVisible();
 
-  const renderProviderItems = () => {
+  const renderProviderItems = (selectedProvider: string) => {
     return (
       <>
-        {AI_MODEL_PROVIDERS.map((provider) => (
+        {visibleModelProviders(cliProvidersVisible, selectedProvider).map((provider) => (
           <SelectItem key={provider.id} value={provider.id}>
             <span className="flex items-center gap-2">
               <ProviderIcon provider={provider.icon} size={14} />
@@ -164,7 +166,7 @@ export function AiModelsTab({
                   <SelectTrigger id="evolveProvider">
                     <SelectValue placeholder="Select provider" />
                   </SelectTrigger>
-                  <SelectContent>{renderProviderItems()}</SelectContent>
+                  <SelectContent>{renderProviderItems(evolveProviderField.state.value)}</SelectContent>
                 </Select>
                 {evolveProviderError && (
                   <p className="text-destructive text-xs">{evolveProviderError}</p>
@@ -277,7 +279,7 @@ export function AiModelsTab({
                   <SelectTrigger id="summaryProvider">
                     <SelectValue placeholder="Select provider" />
                   </SelectTrigger>
-                  <SelectContent>{renderProviderItems()}</SelectContent>
+                  <SelectContent>{renderProviderItems(summaryProviderField.state.value)}</SelectContent>
                 </Select>
                 {summaryProviderError && (
                   <p className="text-destructive text-xs">{summaryProviderError}</p>
