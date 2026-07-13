@@ -25,11 +25,6 @@ vi.mock("@/hooks/use-evolve", () => ({
   }),
 }));
 
-vi.mock("@/components/widget/promptinput/begin-evolve-warning", () => ({
-  BeginEvolveWarning: ({ open }: { open: boolean }) =>
-    open ? <div role="dialog">Resolve local changes</div> : null,
-}));
-
 vi.mock("@/components/widget/promptinput/mac-recommendation-chip", () => ({
   MacRecommendationChip: () => null,
 }));
@@ -121,7 +116,7 @@ describe("<PromptInput>", () => {
     vi.clearAllMocks();
   });
 
-  it("opens the dirty-tree resolution dialog instead of racing adopt and evolve", async () => {
+  it("evolves directly on a dirty tree without opening a blocking dialog", async () => {
     uiActions.setEvolvePrompt("install vim");
     viewModelActions.setState({ git: dirtyGitStatus, evolve: null });
 
@@ -130,11 +125,10 @@ describe("<PromptInput>", () => {
 
     fireEvent.click(screen.getByTestId("evolve-prompt-send"));
 
-    expect(await screen.findByRole("dialog")).toHaveTextContent("Resolve local changes");
     await waitFor(() => {
-      expect(mocks.evolveFromManual).not.toHaveBeenCalled();
-      expect(mocks.handleEvolve).not.toHaveBeenCalled();
+      expect(mocks.handleEvolve).toHaveBeenCalled();
     });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("seeds a full starter prompt from the curated chips", async () => {
