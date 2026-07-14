@@ -21,11 +21,17 @@ describe("isInferenceConfigured", () => {
     expect(isInferenceConfigured("opencode", undefined)).toBe(true);
   });
 
-  it("requires a model for non-CLI providers", () => {
-    expect(isInferenceConfigured("openrouter", "")).toBe(false);
-    expect(isInferenceConfigured("openrouter", "   ")).toBe(false);
+  it("accepts an empty model where the runtime falls back to a default", () => {
+    expect(isInferenceConfigured("openrouter", "")).toBe(true);
+    expect(isInferenceConfigured("openai", "   ")).toBe(true);
+    expect(isInferenceConfigured("nixmac", null)).toBe(true);
     expect(isInferenceConfigured("openrouter", "openai/gpt-oss-120b")).toBe(true);
-    expect(isInferenceConfigured("nixmac", "openai/gpt-oss-120b")).toBe(true);
+  });
+
+  it("requires a model where the runtime has no fallback", () => {
+    expect(isInferenceConfigured("ollama", "")).toBe(false);
+    expect(isInferenceConfigured("openai_compatible", "   ")).toBe(false);
+    expect(isInferenceConfigured("ollama", "llama3")).toBe(true);
   });
 
   it("requires a provider", () => {

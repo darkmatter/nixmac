@@ -220,7 +220,7 @@ describe("InferenceSetup", () => {
     await waitFor(() => expect(mocks.billingCheckout).toHaveBeenCalledWith({ product: "pro" }));
   });
 
-  it("saves the selected BYOK model for both evolution and summary", async () => {
+  it("keeps the BYOK model empty so it tracks the provider default", async () => {
     renderSetup();
 
     fireEvent.click(screen.getByRole("tab", { name: /bring your own key/i }));
@@ -233,9 +233,9 @@ describe("InferenceSetup", () => {
       expect(mocks.setPrefs).toHaveBeenCalledWith(
         expect.objectContaining({
           evolveProvider: "openrouter",
-          evolveModel: "~anthropic/claude-sonnet-latest",
+          evolveModel: "",
           summaryProvider: "openrouter",
-          summaryModel: "~anthropic/claude-sonnet-latest",
+          summaryModel: "",
           openrouterApiKey: "sk-or-v1-test-key-with-enough-length",
         }),
       ),

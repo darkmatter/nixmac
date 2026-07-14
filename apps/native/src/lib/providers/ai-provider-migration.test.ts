@@ -59,7 +59,7 @@ describe("migrateLegacyOpenaiProviderPrefs", () => {
 		});
 	});
 
-	it("uses OpenRouter defaults when migrated legacy openai models are bare or missing", () => {
+	it("clears bare or missing legacy openai models so they track the OpenRouter default", () => {
 		const result = migrateLegacyOpenaiProviderPrefs({
 			...PREFS,
 			openrouterApiKey: "sk-or-key",
@@ -72,9 +72,9 @@ describe("migrateLegacyOpenaiProviderPrefs", () => {
 
 		expect(result.values).toEqual({
 			evolveProvider: "openrouter",
-			evolveModel: OPENROUTER_DEFAULTS.evolveModel,
+			evolveModel: "",
 			summaryProvider: "openrouter",
-			summaryModel: OPENROUTER_DEFAULTS.summaryModel,
+			summaryModel: "",
 		});
 		expect(result.update).toEqual(result.values);
 	});

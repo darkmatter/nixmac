@@ -1,5 +1,5 @@
 {
-  "$comment": "Single source of truth for hardcoded per-provider default models and static model suggestions. Consumed by the frontend via src/lib/providers/ai-defaults.ts and by the backend via src-tauri/src/ai/defaults.rs. Providers without suggestedModels fetch their model list dynamically.",
+  "$comment": "Single source of truth for per-provider model configuration. evolveModel/summaryModel are runtime defaults: when the stored model is empty the backend falls back to them (CLI tools fall back to the CLI's own default), so an empty stored model means 'track the default'. Providers with requiresModel have no fallback — the app rejects an empty model and seeds prefillEvolveModel/prefillSummaryModel when the user switches to them. Consumed by the frontend via src/lib/providers/ai-defaults.ts and by the backend via src-tauri/src/ai/defaults.rs. Providers without suggestedModels fetch their model list dynamically.",
   "providers": {
     "nixmac": {
       "evolveModel": "auto",
@@ -22,10 +22,19 @@
         "gpt-5.1"
       ]
     },
-    "ollama": { "evolveModel": "", "summaryModel": "llama3.1" },
+    "ollama": {
+      "evolveModel": "",
+      "summaryModel": "",
+      "requiresModel": true,
+      "prefillEvolveModel": "llama3.1",
+      "prefillSummaryModel": "llama3.1"
+    },
     "openai_compatible": {
-      "evolveModel": "gpt-oss-120b",
-      "summaryModel": "gpt-oss-120b"
+      "evolveModel": "",
+      "summaryModel": "",
+      "requiresModel": true,
+      "prefillEvolveModel": "gpt-oss-120b",
+      "prefillSummaryModel": "gpt-oss-120b"
     },
     "claude": { "evolveModel": "", "summaryModel": "" },
     "codex": { "evolveModel": "", "summaryModel": "" },

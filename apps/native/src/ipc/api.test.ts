@@ -90,16 +90,16 @@ describe("tauriAPI.ui.getPrefs", () => {
     const migrated = await tauriAPI.ui.getPrefs();
 
     expect(migrated.evolveProvider).toBe("openrouter");
-    expect(migrated.evolveModel).toBe(OPENROUTER_DEFAULTS.evolveModel);
+    expect(migrated.evolveModel).toBe("");
     expect(migrated.summaryProvider).toBe("openrouter");
-    expect(migrated.summaryModel).toBe(OPENROUTER_DEFAULTS.summaryModel);
+    expect(migrated.summaryModel).toBe("");
     expect(mocks.invoke).toHaveBeenNthCalledWith(1, "ui_get_prefs");
     expect(mocks.invoke).toHaveBeenNthCalledWith(2, "ui_set_prefs", {
       prefs: {
         evolveProvider: "openrouter",
-        evolveModel: OPENROUTER_DEFAULTS.evolveModel,
+        evolveModel: "",
         summaryProvider: "openrouter",
-        summaryModel: OPENROUTER_DEFAULTS.summaryModel,
+        summaryModel: "",
       },
     });
   });
@@ -119,13 +119,13 @@ describe("tauriAPI.ui.getPrefs", () => {
     const migrated = await tauriAPI.ui.getPrefs();
 
     expect(migrated.evolveProvider).toBe("openrouter");
-    expect(migrated.evolveModel).toBe(OPENROUTER_DEFAULTS.evolveModel);
+    expect(migrated.evolveModel).toBe("");
     expect(migrated.summaryProvider).toBe("ollama");
     expect(migrated.summaryModel).toBeNull();
     expect(mocks.invoke).toHaveBeenNthCalledWith(2, "ui_set_prefs", {
       prefs: {
         evolveProvider: "openrouter",
-        evolveModel: OPENROUTER_DEFAULTS.evolveModel,
+        evolveModel: "",
       },
     });
   });

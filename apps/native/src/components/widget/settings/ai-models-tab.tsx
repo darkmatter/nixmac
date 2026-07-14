@@ -10,11 +10,13 @@ import { ModelCombobox } from "@/components/widget/controls/model-combobox";
 import { ProviderIcon } from "@/components/widget/controls/provider-icons/provider-icon";
 import { tauriAPI } from "@/ipc/api";
 import type { CliToolsState } from "@/ipc/types";
-import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/providers/ai-provider-validation";
+import { prefillModel } from "@/lib/providers/ai-defaults";
+import {
+  getProviderConfigInvalidReason,
+  providerRequiresModel,
+} from "@/lib/providers/ai-provider-validation";
 import {
   AI_MODEL_PROVIDERS,
-  DEFAULT_EVOLVE_MODEL,
-  DEFAULT_SUMMARY_MODEL,
   isPlainInputCliProvider,
   modelPlaceholder,
 } from "@/lib/providers/ai-models";
@@ -141,12 +143,14 @@ export function AiModelsTab({
                     // deprecated(orpc): replace with client/orpc from @/lib/orpc
                     await tauriAPI.models.clearCached(value);
                     evolveProviderField.handleChange(value);
-                    const defaultModel = DEFAULT_EVOLVE_MODEL[value] ?? "";
-                    evolveModelField.handleChange(defaultModel);
+                    // Empty model tracks the provider default at runtime;
+                    // providers that require a model get a prefill to edit.
+                    const model = prefillModel(value, "evolve");
+                    evolveModelField.handleChange(model);
                     // deprecated(orpc): replace with client/orpc from @/lib/orpc
                     await tauriAPI.ui.setPrefs({
                       evolveProvider: value,
-                      evolveModel: defaultModel,
+                      evolveModel: model,
                     });
                   }}
                   value={evolveProviderField.state.value}
@@ -174,7 +178,7 @@ export function AiModelsTab({
                         className="text-xs font-medium text-muted-foreground"
                         htmlFor="evolveModel"
                       >
-                        Model Name{isCliProvider(evolveProvider) ? " (optional)" : ""}
+                        Model Name{providerRequiresModel(evolveProvider) ? "" : " (optional)"}
                       </label>
                       {isPlainInputCliProvider(evolveProvider) ? (
                         <Input
@@ -235,12 +239,14 @@ export function AiModelsTab({
                     // deprecated(orpc): replace with client/orpc from @/lib/orpc
                     await tauriAPI.models.clearCached(value);
                     summaryProviderField.handleChange(value);
-                    const defaultModel = DEFAULT_SUMMARY_MODEL[value] ?? "";
-                    summaryModelField.handleChange(defaultModel);
+                    // Empty model tracks the provider default at runtime;
+                    // providers that require a model get a prefill to edit.
+                    const model = prefillModel(value, "summary");
+                    summaryModelField.handleChange(model);
                     // deprecated(orpc): replace with client/orpc from @/lib/orpc
                     await tauriAPI.ui.setPrefs({
                       summaryProvider: value,
-                      summaryModel: defaultModel,
+                      summaryModel: model,
                     });
                   }}
                   value={summaryProviderField.state.value}
@@ -268,7 +274,7 @@ export function AiModelsTab({
                         className="text-xs font-medium text-muted-foreground"
                         htmlFor="summaryModel"
                       >
-                        Model Name{isCliProvider(summaryProvider) ? " (optional)" : ""}
+                        Model Name{providerRequiresModel(summaryProvider) ? "" : " (optional)"}
                       </label>
                       {isPlainInputCliProvider(summaryProvider) ? (
                         <Input
