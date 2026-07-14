@@ -41,6 +41,7 @@ mod summarize;
 mod sync;
 mod system;
 mod telemetry;
+mod tray_icon;
 mod types;
 mod updater_pin;
 mod utils;
@@ -55,7 +56,6 @@ use std::sync::{
 use std::time::Duration;
 use tauri::{
     Emitter, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
-    image::Image,
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
     webview::PageLoadEvent,
@@ -760,13 +760,7 @@ fn run_gui_mode(
             let log_guard_for_menu = log_guard.clone();
 
             let _tray = TrayIconBuilder::new()
-                .icon(
-                    Image::from_path("icons/outline@2x.png").unwrap_or_else(|_| {
-                        app.default_window_icon()
-                            .expect("app must have a default icon bundled")
-                            .clone()
-                    }),
-                )
+                .icon(tray_icon::load()?)
                 .icon_as_template(true)
                 .menu(&menu)
                 .show_menu_on_left_click(true)
