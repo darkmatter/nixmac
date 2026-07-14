@@ -331,6 +331,8 @@ export function FeedbackDialog() {
     setShareOptions(DEFAULT_SHARE_OPTIONS);
     setIsPreviewingReport(false);
     setPreviewReportText("");
+    setSubmitting(false);
+    setPreviewLoading(false);
     uiActions.setState({
       feedbackTypeOverride: null,
       feedbackInitialText: null,
