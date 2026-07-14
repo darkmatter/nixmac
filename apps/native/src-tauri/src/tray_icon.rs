@@ -20,7 +20,7 @@ mod tests {
         let mut alpha = icon.rgba().chunks_exact(4).map(|pixel| pixel[3]);
         assert!(
             alpha.clone().any(|value| value == 0),
-            "template icon must contain transparent pixels",
+        let alpha = icon.rgba().chunks_exact(4).map(|pixel| pixel[3]);
         );
         assert!(
             alpha.any(|value| value > 0),
