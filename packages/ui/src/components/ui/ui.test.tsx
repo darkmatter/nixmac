@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "./card";
+import { CopyButton } from "./copy-button";
 import { Input } from "./input";
 import { Skeleton } from "./skeleton";
 import { Textarea } from "./textarea";
@@ -124,5 +125,54 @@ test("Textarea disabled matches snapshot", () => {
 // Skeleton
 test("Skeleton matches snapshot", () => {
   const { container } = render(<Skeleton className="h-4 w-[200px]" />);
+  expect(container).toMatchSnapshot();
+});
+
+// CopyButton
+test("CopyButton default matches snapshot", () => {
+  const { container } = render(<CopyButton value="hello world" />);
+  expect(container).toMatchSnapshot();
+});
+
+test("CopyButton variants match snapshot", () => {
+  const { container } = render(
+    <div>
+      <CopyButton value="a" variant="default" size="default">
+        Default
+      </CopyButton>
+      <CopyButton value="b" variant="secondary" size="default">
+        Secondary
+      </CopyButton>
+      <CopyButton value="c" variant="ghost" size="default">
+        Ghost
+      </CopyButton>
+      <CopyButton value="d" variant="outline" size="default">
+        Outline
+      </CopyButton>
+      <CopyButton value="e" variant="destructive" size="default">
+        Destructive
+      </CopyButton>
+    </div>,
+  );
+  expect(container).toMatchSnapshot();
+});
+
+test("CopyButton icon sizes match snapshot", () => {
+  const { container } = render(
+    <div>
+      <CopyButton value="a" size="icon-sm" />
+      <CopyButton value="b" size="icon" />
+      <CopyButton value="c" size="icon-lg" />
+    </div>,
+  );
+  expect(container).toMatchSnapshot();
+});
+
+test("CopyButton disabled matches snapshot", () => {
+  const { container } = render(
+    <CopyButton value="secret" disabled>
+      Copy
+    </CopyButton>,
+  );
   expect(container).toMatchSnapshot();
 });
