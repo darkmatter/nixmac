@@ -75,6 +75,17 @@ function CommandInput({
   );
 }
 
+/**
+ * Unstyled cmdk input without the search-icon wrapper, for comboboxes where
+ * the form field itself is the command input (list rendered in a popover).
+ */
+function CommandBareInput({
+  className,
+  ...props
+}: React.ComponentProps<typeof CommandPrimitive.Input>) {
+  return <CommandPrimitive.Input className={className} data-slot="command-bare-input" {...props} />;
+}
+
 function CommandList({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.List>) {
   return (
     <CommandPrimitive.List
@@ -149,6 +160,7 @@ function CommandShortcut({ className, ...props }: React.ComponentProps<"span">) 
 
 export {
   Command,
+  CommandBareInput,
   CommandDialog,
   CommandInput,
   CommandList,

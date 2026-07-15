@@ -1,25 +1,30 @@
 "use client";
 
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { NIXMAC_PROVIDER } from "@/components/widget/onboarding/lib/inference";
 import { suggestedModels } from "@/lib/providers/ai-defaults";
+import { providerRequiresModel } from "@/lib/providers/ai-provider-validation";
 import {
   Command,
+  CommandBareInput,
   CommandEmpty,
   CommandGroup,
-  CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { tauriAPI } from "@/ipc/api";
 
+/** cmdk item value for the "use the provider default" row (models are their own value). */
+const DEFAULT_OPTION_VALUE = "__provider_default__";
+
 interface ModelComboboxProps {
   provider: "nixmac" | "openrouter" | "openai" | "ollama" | "openai_compatible" | "opencode";
+  /** Model the provider falls back to when the value is empty; labels the "default" option. Empty when the runtime (e.g. a CLI) picks its own default. */
+  defaultModel: string;
   value: string;
   onChange: (value: string) => void;
   onBlur?: () => void;
@@ -193,6 +198,7 @@ async function loadProviderModels(
 
 export function ModelCombobox({
   provider,
+  defaultModel,
   value,
   onChange,
   onBlur,
@@ -202,24 +208,43 @@ export function ModelCombobox({
   const [open, setOpen] = useState(false);
   const [models, setModels] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [inputValue, setInputValue] = useState(value);
+  // Text shown in the field while the popover is open (falls back to `value`
+  // when closed). Seeded with `value` on open so the field keeps showing the
+  // current model.
+  const [search, setSearch] = useState("");
+  // What the list is filtered by. Kept separate from `search` so the full
+  // list shows on open (empty query despite the field showing the value) and
+  // selecting an item doesn't re-filter the list while the close animation is
+  // still playing.
+  const [query, setQuery] = useState("");
+  // cmdk's highlighted item, controlled so opening highlights the current
+  // selection instead of the first row (Enter must not commit a different
+  // model than the one already chosen).
+  const [highlighted, setHighlighted] = useState("");
+  const anchorRef = useRef<HTMLDivElement>(null);
 
-  // Sync input value with external value
-  useEffect(() => {
-    setInputValue(value);
-  }, [value]);
-
-  const loadModels = useCallback(() => {
+  const loadModels = useCallback((options?: { clear?: boolean }) => {
     let cancelled = false;
 
     setIsLoading(true);
 
-    // Clear current list immediately when loading to avoid showing stale models
-    setModels([]);
+    // Clear only when the provider changed (its models are wrong for the new
+    // one). On refreshes keep the current list: async remove/re-add of the
+    // items makes cmdk re-highlight and re-focus, which WebKit answers by
+    // collapsing the caret to the start when it lands mid-click.
+    if (options?.clear) {
+      setModels([]);
+    }
 
     loadProviderModels(provider, (nextModels) => {
       if (!cancelled) {
-        setModels(nextModels);
+        // Keep the previous array when the content is unchanged so the items
+        // don't re-render (and cmdk doesn't re-register them) on every open.
+        setModels((prev) =>
+          prev.length === nextModels.length && prev.every((m, i) => m === nextModels[i])
+            ? prev
+            : nextModels,
+        );
       }
     }).finally(() => {
       if (!cancelled) {
@@ -232,7 +257,7 @@ export function ModelCombobox({
     };
   }, [provider]);
 
-  // Load models when popover opens
+  // Refresh models when popover opens, keeping the current list meanwhile
   useEffect(() => {
     if (open) {
       return loadModels();
@@ -240,70 +265,128 @@ export function ModelCombobox({
   }, [loadModels, open]);
 
   // Also load models on mount and provider change to have them ready
-  useEffect(() => loadModels(), [loadModels]);
+  useEffect(() => loadModels({ clear: true }), [loadModels]);
 
-  const handleSelect = (selectedValue: string) => {
-    onChange(selectedValue);
-    setInputValue(selectedValue);
-    setOpen(false);
-    onBlur?.();
+  const openPopover = () => {
+    if (!open) {
+      setSearch(value);
+      // Empty query so the full list is visible on open.
+      setQuery("");
+      setHighlighted(value || DEFAULT_OPTION_VALUE);
+      setOpen(true);
+    }
   };
 
-  const handleInputChange = (newValue: string) => {
-    setInputValue(newValue);
-    onChange(newValue);
-  };
-
-  const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen);
-    if (!newOpen) {
+  const closePopover = () => {
+    if (open) {
+      setOpen(false);
       onBlur?.();
     }
   };
 
-  // Filter models based on input
-  const filteredModels = models.filter((model) =>
-    model.toLowerCase().includes(inputValue.toLowerCase()),
-  );
+  const handleSelect = (selectedValue: string) => {
+    // Intentionally leave `query` alone so the list doesn't re-filter
+    // mid-close; it gets reset on the next open.
+    onChange(selectedValue);
+    setSearch(selectedValue);
+    setOpen(false);
+    onBlur?.();
+  };
 
-  // Show input value in list if it doesn't match any model
-  const showCustomOption =
-    inputValue && !models.some((m) => m.toLowerCase() === inputValue.toLowerCase());
+  // Typing only filters; the value is committed on selection (click or Enter
+  // on a list item, including the "Use ..." custom row).
+  const handleInputChange = (newValue: string) => {
+    setSearch(newValue);
+    setQuery(newValue);
+    // Typing into the field after a selection reopens the list.
+    if (!open) {
+      setOpen(true);
+    }
+  };
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (newOpen) {
+      openPopover();
+    } else {
+      closePopover();
+    }
+  };
+
+  // Filter models based on what the user typed since opening
+  const filteredModels = query
+    ? models.filter((model) => model.toLowerCase().includes(query.toLowerCase()))
+    : models;
+
+  // Show typed text in list if it doesn't match any model
+  const showCustomOption = query && !models.some((m) => m.toLowerCase() === query.toLowerCase());
+
+  // An empty model means "use the provider default"; offer it as an explicit
+  // option (selecting is the only way to commit a value, including "").
+  const showDefaultOption = !query && !providerRequiresModel(provider);
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="w-full justify-between font-normal"
-          disabled={disabled}
+      <Command
+        className="overflow-visible bg-transparent"
+        shouldFilter={false}
+        vimBindings={false}
+        value={highlighted}
+        onValueChange={setHighlighted}
+      >
+        <PopoverAnchor asChild>
+          <div ref={anchorRef} className="relative">
+            <CommandBareInput
+              className="flex h-9 w-full rounded-md border border-input bg-transparent py-1 pr-8 pl-3 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+              value={open ? search : value}
+              onValueChange={handleInputChange}
+              onMouseDown={openPopover}
+              onFocus={openPopover}
+              onBlur={closePopover}
+              onKeyDown={(e) => {
+                if (open) {
+                  return;
+                }
+                // While closed, cmdk's root handler would swallow these keys
+                // even though the list is unmounted; open on arrows and keep
+                // native caret behavior for the rest.
+                if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                  e.preventDefault();
+                  openPopover();
+                } else if (e.key === "Enter" || e.key === "Home" || e.key === "End") {
+                  e.stopPropagation();
+                }
+              }}
+              placeholder={placeholder}
+              disabled={disabled}
+            />
+            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin opacity-50" />
+              ) : (
+                <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+              )}
+            </span>
+          </div>
+        </PopoverAnchor>
+        <PopoverContent
+          className="w-[400px] p-0"
+          align="start"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          // Keep focus (and the popover) on the input while clicking the list
+          onMouseDown={(e) => e.preventDefault()}
+          onInteractOutside={(e) => {
+            if (anchorRef.current?.contains(e.target as Node)) {
+              e.preventDefault();
+            }
+          }}
         >
-          <span className={cn("truncate", !inputValue && "text-muted-foreground")}>
-            {inputValue || placeholder}
-          </span>
-          {isLoading ? (
-            <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-50" />
-          ) : (
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="start">
-        <Command shouldFilter={false}>
-          <CommandInput
-            placeholder="Search or enter model..."
-            value={inputValue}
-            onValueChange={handleInputChange}
-          />
           <CommandList>
             {isLoading && models.length === 0 ? (
               <div className="flex items-center justify-center py-6">
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 <span className="ml-2 text-sm text-muted-foreground">Loading models...</span>
               </div>
-            ) : filteredModels.length === 0 && !showCustomOption ? (
+            ) : filteredModels.length === 0 && !showCustomOption && !showDefaultOption ? (
               <CommandEmpty>
                 {models.length === 0
                   ? "No models found. Enter a model name manually."
@@ -311,19 +394,29 @@ export function ModelCombobox({
               </CommandEmpty>
             ) : (
               <CommandGroup>
+                {showDefaultOption && (
+                  <CommandItem value={DEFAULT_OPTION_VALUE} onSelect={() => handleSelect("")}>
+                    <Check
+                      className={cn("mr-2 h-4 w-4", value === "" ? "opacity-100" : "opacity-0")}
+                    />
+                    <span className="truncate text-muted-foreground">
+                      {defaultModel ? `Default: ${defaultModel}` : "Provider default"}
+                    </span>
+                  </CommandItem>
+                )}
                 {showCustomOption && (
                   <CommandItem
-                    value={inputValue}
-                    onSelect={() => handleSelect(inputValue)}
+                    value={query}
+                    onSelect={() => handleSelect(query)}
                     className="text-primary"
                   >
                     <Check
                       className={cn(
                         "mr-2 h-4 w-4",
-                        value === inputValue ? "opacity-100" : "opacity-0",
+                        value === query ? "opacity-100" : "opacity-0",
                       )}
                     />
-                    Use "{inputValue}"
+                    Use "{query}"
                   </CommandItem>
                 )}
                 {filteredModels.map((model) => (
@@ -337,8 +430,8 @@ export function ModelCombobox({
               </CommandGroup>
             )}
           </CommandList>
-        </Command>
-      </PopoverContent>
+        </PopoverContent>
+      </Command>
     </Popover>
   );
 }
