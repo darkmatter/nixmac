@@ -61,7 +61,7 @@ function ApiKeyInput({
         type="button"
         aria-label={show ? "Hide API key" : "Show API key"}
         onClick={() => setShow((s) => !s)}
-        className="rounded p-1 text-muted-foreground hover:text-foreground"
+        className="flex items-center justify-center rounded p-1 text-muted-foreground hover:text-foreground"
       >
         {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </button>
@@ -77,7 +77,8 @@ function ApiKeyInput({
         <input
           id={id}
           className={cn(
-            "w-full rounded-md border bg-background px-3 py-2 pr-14 font-mono text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50",
+            "w-full rounded-md border bg-background px-3 py-2 font-mono text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50",
+            status === "idle" ? "pr-10" : "pr-16",
             status === "valid"
               ? "border-green-500"
               : status === "invalid"
@@ -105,7 +106,7 @@ function ApiKeyInput({
           type={show ? "text" : "password"}
           value={field.state.value}
         />
-        <div className="absolute inset-y-0 right-0 flex items-center pr-3 space-x-2 pointer-events-none">
+        <div className="absolute inset-y-0 right-0 flex items-center pr-3 space-x-0.5 pointer-events-none">
           {status === "verifying" && (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           )}
