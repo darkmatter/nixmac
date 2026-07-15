@@ -21,7 +21,7 @@ import {
   Square,
   XCircle,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { client } from "@/lib/orpc";
 import type { EvolveEvent, EvolveEventType } from "@/ipc/types";
@@ -466,7 +466,15 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
   // Live clock: something must visibly change during long waits (model
   // calls, builds), so the header elapsed time and the working indicator
   // tick every second while generating.
-  const lastEventReceivedAt = useMemo(() => Date.now(), [events.length]);
+  //
+  // The arrival time must live in state set from an effect, not a
+  // `useMemo(() => Date.now(), ...)`: the React Compiler does not preserve
+  // manual memoization of impure computations and recompiles it to run on
+  // every render, which pins `waitingMs` at ~0 and freezes the clock.
+  const [lastEventReceivedAt, setLastEventReceivedAt] = useState(() => Date.now());
+  useEffect(() => {
+    setLastEventReceivedAt(Date.now());
+  }, [events.length]);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!isGenerating) {
