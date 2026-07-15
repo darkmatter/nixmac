@@ -56,17 +56,22 @@ impl EvolveEvent {
     }
 
     pub(crate) fn thinking(start_time: i64, iter: usize, category: &str, thought: &str) -> Self {
-        let summary = match category {
-            "planning" => "Planning approach...",
-            "analysis" => "Analyzing the codebase...",
-            "debugging" => "Debugging an issue...",
-            "verification" => "Verifying changes...",
-            _ => "Thinking...",
+        let summary = if thought.trim().is_empty() {
+            match category {
+                "planning" => "Planning approach...",
+                "analysis" => "Analyzing the codebase...",
+                "debugging" => "Debugging an issue...",
+                "verification" => "Verifying changes...",
+                _ => "Thinking...",
+            }
+            .to_string()
+        } else {
+            truncate(first_sentence(thought), 100)
         };
         Self::new(
             EvolveEventType::Thinking,
-            format!("[{}] {}", category, truncate(thought, 200)),
-            summary.to_string(),
+            format!("[{}] {}", category, truncate(thought, 2000)),
+            summary,
             Some(iter),
             start_time,
         )
@@ -263,6 +268,27 @@ fn truncate(s: &str, max_len: usize) -> String {
     global_utils::truncate_with_ellipsis(s, max_len)
 }
 
+/// First sentence of a free-form text: up to the first line break or
+/// sentence-ending punctuation followed by whitespace.
+fn first_sentence(text: &str) -> &str {
+    let trimmed = text.trim();
+    let end = trimmed
+        .char_indices()
+        .find_map(|(i, c)| match c {
+            '\n' => Some(i),
+            '.' | '!' | '?' => {
+                let rest = &trimmed[i + c.len_utf8()..];
+                rest.chars()
+                    .next()
+                    .is_none_or(char::is_whitespace)
+                    .then_some(i + c.len_utf8())
+            }
+            _ => None,
+        })
+        .unwrap_or(trimmed.len());
+    trimmed[..end].trim_end()
+}
+
 /// Shorten a file path to just the filename or last path component
 fn shorten_path(path: &str) -> &str {
     path.rsplit('/').next().unwrap_or(path)
@@ -286,5 +312,53 @@ pub(crate) fn emit_evolve_event<R: tauri::Runtime>(app: &tauri::AppHandle<R>, ev
         if let Err(e) = tauri::Emitter::emit(&window, EVOLVE_EVENT_CHANNEL, &event) {
             log::warn!("Failed to emit evolve event: {}", e);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn thinking_summary_should_be_first_sentence_of_thought() {
+        let event = EvolveEvent::thinking(
+            0,
+            1,
+            "planning",
+            "The user wants spotify. I'll search nixpkgs first.",
+        );
+        assert_eq!(event.summary, "The user wants spotify.");
+    }
+
+    #[test]
+    fn thinking_summary_should_stop_at_line_break() {
+        let event = EvolveEvent::thinking(0, 1, "analysis", "Check homebrew section\nthen edit");
+        assert_eq!(event.summary, "Check homebrew section");
+    }
+
+    #[test]
+    fn thinking_summary_should_not_split_inside_version_numbers() {
+        let event = EvolveEvent::thinking(0, 1, "analysis", "Pin nixpkgs to 24.05 for stability");
+        assert_eq!(event.summary, "Pin nixpkgs to 24.05 for stability");
+    }
+
+    #[test]
+    fn thinking_summary_should_clamp_long_sentences() {
+        let event = EvolveEvent::thinking(0, 1, "planning", &"word ".repeat(100));
+        // truncate() clamps to 100 bytes plus the "..." ellipsis
+        assert!(event.summary.len() <= 103);
+        assert!(event.summary.ends_with("..."));
+    }
+
+    #[test]
+    fn thinking_summary_should_fall_back_to_category_when_thought_empty() {
+        let event = EvolveEvent::thinking(0, 1, "debugging", "  ");
+        assert_eq!(event.summary, "Debugging an issue...");
+    }
+
+    #[test]
+    fn thinking_raw_should_keep_category_prefix() {
+        let event = EvolveEvent::thinking(0, 1, "planning", "Some thought.");
+        assert_eq!(event.raw, "[planning] Some thought.");
     }
 }
