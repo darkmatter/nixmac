@@ -86,10 +86,24 @@ const mockEventsInProgress: EvolveEvent[] = [
   },
   {
     eventType: "thinking",
-    summary: "Planning approach...",
+    summary: "I need to understand the current nix-darwin configuration structure before making changes.",
     raw: "[planning] I need to understand the current nix-darwin configuration structure before making changes. Let me first read the main configuration file to see what's already set up.",
     iteration: 1,
     timestampMs: 2400,
+  },
+  {
+    eventType: "toolCall",
+    summary: "Searching packages for 'vim'...",
+    raw: 'search_packages | args: query="vim"',
+    iteration: 1,
+    timestampMs: 2500,
+  },
+  {
+    eventType: "searchPackages",
+    summary: "Searched packages for 'vim' → vim, neovim, vim-full",
+    raw: "Searched packages for 'vim'; found 3: vim, neovim, vim-full",
+    iteration: 1,
+    timestampMs: 2700,
   },
   {
     eventType: "iteration",
@@ -114,7 +128,7 @@ const mockEventsInProgress: EvolveEvent[] = [
   },
   {
     eventType: "toolCall",
-    summary: "Using read_file tool...",
+    summary: "Reading default.nix...",
     raw: 'read_file | args: path="modules/darwin/default.nix"',
     iteration: 2,
     timestampMs: 4550,
@@ -153,15 +167,15 @@ const mockEventsComplete: EvolveEvent[] = [
   },
   {
     eventType: "toolCall",
-    summary: "Using edit_file tool...",
-    raw: 'edit_file | args: path="modules/darwin/default.nix"',
+    summary: "Editing default.nix...",
+    raw: 'edit_nix_file | args: path="modules/darwin/default.nix"',
     iteration: 3,
     timestampMs: 7250,
   },
   {
     eventType: "editing",
-    summary: "Editing default.nix",
-    raw: "Editing file: modules/darwin/default.nix",
+    summary: "Adding vim to environment.systemPackages",
+    raw: 'Editing file: modules/darwin/default.nix | {"add":{"path":"environment.systemPackages","values":["vim"]}}',
     iteration: 3,
     timestampMs: 7300,
   },
@@ -188,17 +202,10 @@ const mockEventsComplete: EvolveEvent[] = [
   },
   {
     eventType: "toolCall",
-    summary: "Using build_check tool...",
+    summary: "Checking the configuration builds...",
     raw: 'build_check | args: host="Demo-MacBook-Pro"',
     iteration: 4,
     timestampMs: 9550,
-  },
-  {
-    eventType: "buildCheck",
-    summary: "Running build check...",
-    raw: "Running build check for host: Demo-MacBook-Pro",
-    iteration: 4,
-    timestampMs: 9600,
   },
   {
     eventType: "buildPass",
@@ -295,15 +302,15 @@ const mockEventsWithBuildFailure: EvolveEvent[] = [
     timestampMs: 4000,
   },
   {
-    eventType: "buildCheck",
-    summary: "Running build check...",
-    raw: "Running build check for host: Demo-MacBook-Pro",
+    eventType: "toolCall",
+    summary: "Checking the configuration builds...",
+    raw: 'build_check | args: host="Demo-MacBook-Pro"',
     iteration: 2,
     timestampMs: 4050,
   },
   {
     eventType: "buildFail",
-    summary: "Build check failed, retrying...",
+    summary: "Build check failed: error: attribute 'nonExistentPackage' missing",
     raw: "Build check failed: error: attribute 'nonExistentPackage' missing\nat /nix/store/...",
     iteration: 2,
     timestampMs: 8500,
@@ -317,7 +324,7 @@ const mockEventsWithBuildFailure: EvolveEvent[] = [
   },
   {
     eventType: "thinking",
-    summary: "Debugging an issue...",
+    summary: "The build failed because 'nonExistentPackage' doesn't exist.",
     raw: "[debugging] The build failed because 'nonExistentPackage' doesn't exist. I need to find the correct package name.",
     iteration: 3,
     timestampMs: 9000,
@@ -410,7 +417,7 @@ function generateManyIterations(): EvolveEvent[] {
       },
       {
         eventType: "thinking",
-        summary: "Thinking...",
+        summary: `Analyzing iteration ${i + 1}`,
         raw: `[analysis] Analyzing iteration ${i + 1}`,
         iteration: i + 1,
         timestampMs: baseTime + 2500,
@@ -459,8 +466,8 @@ const allEventTypes: EvolveEvent[] = [
   },
   {
     eventType: "thinking",
-    summary: "Planning approach...",
-    raw: "[planning] Detailed thinking content that shows the AI reasoning process",
+    summary: "Detailed thinking content that shows the AI reasoning process.",
+    raw: "[planning] Detailed thinking content that shows the AI reasoning process. More detail follows here.",
     iteration: 1,
     timestampMs: 2100,
   },
@@ -472,16 +479,23 @@ const allEventTypes: EvolveEvent[] = [
     timestampMs: 2500,
   },
   {
+    eventType: "searchPackages",
+    summary: "Searched packages for 'vim' → vim, neovim",
+    raw: "Searched packages for 'vim'; found 2: vim, neovim",
+    iteration: 1,
+    timestampMs: 2800,
+  },
+  {
     eventType: "editing",
-    summary: "Editing default.nix",
-    raw: "Editing file: modules/darwin/default.nix",
+    summary: "Adding vim to environment.systemPackages",
+    raw: 'Editing file: modules/darwin/default.nix | {"add":{"path":"environment.systemPackages","values":["vim"]}}',
     iteration: 1,
     timestampMs: 3000,
   },
   {
     eventType: "toolCall",
-    summary: "Using list_files tool...",
-    raw: 'list_files | args: path="."',
+    summary: "Listing files...",
+    raw: 'list_files | args: pattern="**/*"',
     iteration: 1,
     timestampMs: 3500,
   },
@@ -501,8 +515,8 @@ const allEventTypes: EvolveEvent[] = [
   },
   {
     eventType: "buildFail",
-    summary: "Build check failed, retrying...",
-    raw: "Build failed with error details",
+    summary: "Build check failed: error: something went wrong",
+    raw: "Build check failed: error: something went wrong\ntrace: more detail",
     iteration: 2,
     timestampMs: 12_000,
   },
@@ -512,6 +526,13 @@ const allEventTypes: EvolveEvent[] = [
     raw: "Detailed error message",
     iteration: 2,
     timestampMs: 15_000,
+  },
+  {
+    eventType: "summarizing",
+    summary: "Analyzing changes...",
+    raw: "Analyzing changes...",
+    iteration: 3,
+    timestampMs: 18_000,
   },
   {
     eventType: "complete",
@@ -615,7 +636,9 @@ export const ManyIterations = meta.story({
 });
 
 /**
- * Various event types showcase
+ * Various event types showcase. Machinery events (iteration, apiRequest,
+ * apiResponse, and tool calls with a specific follow-up event) are present
+ * in the data but filtered from the timeline by design.
  */
 export const AllEventTypes = meta.story({
   args: {
