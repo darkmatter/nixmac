@@ -21,7 +21,7 @@ import {
   Square,
   XCircle,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { client } from "@/lib/orpc";
 import type { EvolveEvent, EvolveEventType } from "@/ipc/types";
@@ -216,19 +216,19 @@ function getEventColor(eventType: EvolveEventType): string {
 // Event Item Component
 // =============================================================================
 
+function formatTime(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) {
+    return `${seconds}s`;
+  }
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}m ${remainingSeconds}s`;
+}
+
 function EventItem({ event, isLatest }: EventItemProps) {
   const [expanded, setExpanded] = useState(false);
   const hasRawContent = event.raw && event.raw !== event.summary && event.raw.length > 0;
-
-  const formatTime = (ms: number): string => {
-    const seconds = Math.floor(ms / 1000);
-    if (seconds < 60) {
-      return `${seconds}s`;
-    }
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}m ${remainingSeconds}s`;
-  };
 
   const content = (
     <>
@@ -463,6 +463,25 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
   const tokenProgress = getTokenProgress(events);
   const visibleEvents = events.filter(isVisibleEvent);
 
+  // Live clock: something must visibly change during long waits (model
+  // calls, builds), so the header elapsed time and the working indicator
+  // tick every second while generating.
+  const lastEventReceivedAt = useMemo(() => Date.now(), [events.length]);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!isGenerating) {
+      return;
+    }
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [isGenerating]);
+
+  const lastEvent = events[events.length - 1];
+  const waitingMs = Math.max(0, now - lastEventReceivedAt);
+  // Run elapsed = the last event's elapsed-since-start stamp, plus the time
+  // we've been waiting on the next one.
+  const elapsedMs = lastEvent ? lastEvent.timestampMs + (isGenerating ? waitingMs : 0) : null;
+
   if (events.length === 0 && !isGenerating) {
     return null;
   }
@@ -486,9 +505,11 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-muted-foreground text-xs">
-            {events.length} event{events.length !== 1 ? "s" : ""}
-          </span>
+          {elapsedMs !== null && (
+            <span className="font-mono text-muted-foreground text-xs">
+              {formatTime(elapsedMs)}
+            </span>
+          )}
           {tokenProgress && (
             <span className="rounded bg-muted/50 px-1.5 py-0.5 font-mono text-muted-foreground text-xs">
               {formatTokenProgress(tokenProgress)}
@@ -533,11 +554,15 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
             );
           })}
 
-          {/* Loading indicator for next event */}
+          {/* Working indicator; shows how long the current step has been
+              running once the wait is noticeable. */}
           {!!isGenerating && (
             <div className="flex items-center gap-2 px-2 py-1.5 text-muted-foreground/60">
               <Loader2 className="h-3 w-3 animate-spin" />
-              <span className="text-xs">Waiting for next event...</span>
+              <span className="text-xs">
+                Working...
+                {waitingMs >= 5000 ? ` ${formatTime(waitingMs)}` : ""}
+              </span>
             </div>
           )}
         </div>
