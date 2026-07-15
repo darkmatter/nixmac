@@ -626,12 +626,14 @@ export const SingleEvent = meta.story({
 });
 
 /**
- * Long running evolution with many iterations
+ * Long running evolution with many iterations. The explicit height exercises
+ * the internal scrolling the overlay panel gets by stretching the component.
  */
 export const ManyIterations = meta.story({
   args: {
     events: generateManyIterations(),
     isGenerating: true,
+    className: "h-[400px]",
   },
 });
 

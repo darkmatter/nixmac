@@ -528,9 +528,11 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
         </div>
       </div>
 
-      {/* Events List */}
+      {/* Events List: fills whatever height the parent gives the component
+          (the overlay panel stretches it to the card height); without an
+          explicit parent height it hugs its content. */}
       <div
-        className="max-h-100 min-h-[120px] flex-1 overflow-y-auto p-2"
+        className="min-h-[120px] flex-1 overflow-y-auto p-2"
         onScroll={handleScroll}
         ref={scrollRef}
       >
