@@ -1375,7 +1375,7 @@ pub async fn generate_evolution<R: Runtime>(
                                 ToolResult::EditSemantic(edit) => {
                                     emit_evolve_event(
                                         app,
-                                        EvolveEvent::editing(start_time, iteration, &edit.path),
+                                        EvolveEvent::editing_semantic(start_time, iteration, edit),
                                     );
                                 }
                                 ToolResult::EnsureSecret(result) => {

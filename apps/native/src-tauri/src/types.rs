@@ -97,6 +97,42 @@ impl EvolveEvent {
         )
     }
 
+    /// Editing event for semantic nix edits: the summary states the change
+    /// itself ("Adding ripgrep to environment.systemPackages") instead of
+    /// just the file touched.
+    pub(crate) fn editing_semantic(
+        start_time: i64,
+        iter: usize,
+        edit: &crate::evolve::types::SemanticFileEdit,
+    ) -> Self {
+        use crate::evolve::types::FileEditAction;
+        let list = |values: &[String]| truncate(&values.join(", "), 80);
+        let summary = match &edit.action {
+            FileEditAction::Add { path, values } => {
+                format!("Adding {} to {}", list(values), path)
+            }
+            FileEditAction::Remove { path, values } => {
+                format!("Removing {} from {}", list(values), path)
+            }
+            FileEditAction::Set { path, value } => {
+                format!("Setting {} = {}", path, truncate(&value.to_string(), 60))
+            }
+            FileEditAction::SetAttrs { path, attrs } => {
+                let keys: Vec<&str> = attrs.keys().map(String::as_str).collect();
+                format!("Configuring {} ({})", path, truncate(&keys.join(", "), 60))
+            }
+        };
+        let action_json =
+            serde_json::to_string(&edit.action).unwrap_or_else(|_| format!("{:?}", edit.action));
+        Self::new(
+            EvolveEventType::Editing,
+            format!("Editing file: {} | {}", edit.path, action_json),
+            summary,
+            Some(iter),
+            start_time,
+        )
+    }
+
     pub(crate) fn build_pass(start_time: i64, iter: usize) -> Self {
         Self::new(
             EvolveEventType::BuildPass,
@@ -425,6 +461,38 @@ mod tests {
         let args = serde_json::json!({"pattern": "**/*"});
         let event = EvolveEvent::tool_call(0, 1, "list_files", &args, "");
         assert_eq!(event.summary, "Listing files...");
+    }
+
+    #[test]
+    fn editing_semantic_summary_should_state_the_change() {
+        use crate::evolve::types::{FileEditAction, SemanticFileEdit};
+        let edit = SemanticFileEdit {
+            path: "flake.nix".to_string(),
+            action: FileEditAction::Add {
+                path: "environment.systemPackages".to_string(),
+                values: vec!["ripgrep".to_string()],
+            },
+        };
+        let event = EvolveEvent::editing_semantic(0, 1, &edit);
+        assert_eq!(
+            event.summary,
+            "Adding ripgrep to environment.systemPackages"
+        );
+        assert!(event.raw.starts_with("Editing file: flake.nix | "));
+    }
+
+    #[test]
+    fn editing_semantic_summary_should_render_scalar_sets() {
+        use crate::evolve::types::{FileEditAction, SemanticFileEdit};
+        let edit = SemanticFileEdit {
+            path: "flake.nix".to_string(),
+            action: FileEditAction::Set {
+                path: "services.tailscale.enable".to_string(),
+                value: serde_json::json!(true),
+            },
+        };
+        let event = EvolveEvent::editing_semantic(0, 1, &edit);
+        assert_eq!(event.summary, "Setting services.tailscale.enable = true");
     }
 
     #[test]
