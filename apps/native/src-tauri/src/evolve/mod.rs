@@ -1404,17 +1404,12 @@ pub async fn generate_evolution<R: Runtime>(
                                         } else {
                                             output
                                         };
-                                        let error_preview = error_source
-                                            .lines()
-                                            .take(3)
-                                            .collect::<Vec<_>>()
-                                            .join("\n");
                                         emit_evolve_event(
                                             app,
                                             EvolveEvent::build_fail(
                                                 start_time,
                                                 iteration,
-                                                &error_preview,
+                                                error_source,
                                             ),
                                         );
                                     }

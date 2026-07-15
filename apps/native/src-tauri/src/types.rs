@@ -143,11 +143,15 @@ impl EvolveEvent {
         )
     }
 
-    pub(crate) fn build_fail(start_time: i64, iter: usize, error_preview: &str) -> Self {
+    pub(crate) fn build_fail(start_time: i64, iter: usize, output: &str) -> Self {
+        let summary = match first_error_line(output) {
+            Some(line) => format!("Build check failed: {}", truncate(line, 120)),
+            None => "Build check failed, retrying...".to_string(),
+        };
         Self::new(
             EvolveEventType::BuildFail,
-            format!("Build check failed: {}", error_preview),
-            "Build check failed, retrying...".to_string(),
+            format!("Build check failed: {}", truncate(output, 6000)),
+            summary,
             Some(iter),
             start_time,
         )
@@ -341,6 +345,16 @@ fn truncate(s: &str, max_len: usize) -> String {
     global_utils::truncate_with_ellipsis(s, max_len)
 }
 
+/// First line of build output that looks like the actual error, falling back
+/// to the first non-empty line. Nix errors are prefixed with "error:", often
+/// preceded by pages of trace/progress noise.
+fn first_error_line(output: &str) -> Option<&str> {
+    let non_empty = || output.lines().map(str::trim).filter(|l| !l.is_empty());
+    non_empty()
+        .find(|l| l.to_lowercase().contains("error"))
+        .or_else(|| non_empty().next())
+}
+
 /// First sentence of a free-form text: up to the first line break or
 /// sentence-ending punctuation followed by whitespace.
 fn first_sentence(text: &str) -> &str {
@@ -461,6 +475,35 @@ mod tests {
         let args = serde_json::json!({"pattern": "**/*"});
         let event = EvolveEvent::tool_call(0, 1, "list_files", &args, "");
         assert_eq!(event.summary, "Listing files...");
+    }
+
+    #[test]
+    fn build_fail_summary_should_surface_the_error_line() {
+        let output = "these 3 derivations will be built:\n\nerror: attribute 'spotfy' missing\n   at /flake.nix:12";
+        let event = EvolveEvent::build_fail(0, 1, output);
+        assert_eq!(
+            event.summary,
+            "Build check failed: error: attribute 'spotfy' missing"
+        );
+    }
+
+    #[test]
+    fn build_fail_summary_should_fall_back_to_first_line_without_error_marker() {
+        let event = EvolveEvent::build_fail(0, 1, "\nsomething went wrong\nmore context");
+        assert_eq!(event.summary, "Build check failed: something went wrong");
+    }
+
+    #[test]
+    fn build_fail_summary_should_keep_generic_text_for_empty_output() {
+        let event = EvolveEvent::build_fail(0, 1, "");
+        assert_eq!(event.summary, "Build check failed, retrying...");
+    }
+
+    #[test]
+    fn build_fail_raw_should_carry_full_output() {
+        let output = "line one\nerror: boom\nline three";
+        let event = EvolveEvent::build_fail(0, 1, output);
+        assert_eq!(event.raw, format!("Build check failed: {}", output));
     }
 
     #[test]
