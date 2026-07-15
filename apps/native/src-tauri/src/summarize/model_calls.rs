@@ -100,11 +100,7 @@ fn strip_json_fences(raw: &str) -> &str {
         None => inner,
     };
     // Drop the closing fence.
-    inner
-        .trim_end()
-        .strip_suffix("```")
-        .unwrap_or(inner)
-        .trim()
+    inner.trim_end().strip_suffix("```").unwrap_or(inner).trim()
 }
 
 pub async fn generate_commit_message<R: Runtime>(
