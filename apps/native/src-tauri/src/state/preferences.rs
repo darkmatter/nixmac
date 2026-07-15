@@ -33,6 +33,7 @@ pub fn load_global_observable<R: Runtime>(
 
     let mut dirty = migrate_from_legacy_store(app, &mut initial)?;
     dirty |= migrate_diagnostics_default_on(&mut initial);
+    dirty |= migrate_model_scalars_to_maps(&mut initial);
     if dirty {
         persistence.flush(&serde_json::to_value(&initial)?)?;
     }
@@ -126,6 +127,45 @@ fn migrate_diagnostics_default_on(prefs: &mut GlobalPreferences) -> bool {
     }
     prefs.send_diagnostics = true;
     true
+}
+
+/// One-shot fold of the deprecated single-model fields into the per-provider
+/// maps. `evolve_model`/`summary_model` exist only so settings written by
+/// older versions still load; each is moved under the provider it was saved
+/// with (an existing map entry wins) and the scalar is cleared. Empty scalars
+/// are dropped. Scalars persisted without a provider are left in place: they
+/// have no provider to key under.
+pub(crate) fn migrate_model_scalars_to_maps(prefs: &mut GlobalPreferences) -> bool {
+    fn fold(
+        provider: Option<&str>,
+        scalar: &mut Option<String>,
+        map: &mut std::collections::BTreeMap<String, String>,
+    ) -> bool {
+        let Some(provider) = provider else {
+            return false;
+        };
+        let Some(model) = scalar.take() else {
+            return false;
+        };
+        if !model.is_empty() {
+            map.entry(provider.to_string()).or_insert(model);
+        }
+        true
+    }
+
+    let evolve_provider = prefs.evolve_provider.clone();
+    let summary_provider = prefs.summary_provider.clone();
+    let mut dirty = fold(
+        evolve_provider.as_deref(),
+        &mut prefs.evolve_model,
+        &mut prefs.evolve_models,
+    );
+    dirty |= fold(
+        summary_provider.as_deref(),
+        &mut prefs.summary_model,
+        &mut prefs.summary_models,
+    );
+    dirty
 }
 
 pub(crate) fn load_or_default<T>(persistence: &dyn Persistence) -> Result<T>
@@ -277,6 +317,110 @@ mod tests {
         // Idempotent at next load: the migration must not flip it back.
         assert!(!migrate_diagnostics_default_on(&mut prefs));
         assert!(!prefs.send_diagnostics);
+    }
+
+    #[test]
+    fn model_scalar_migration_folds_into_map_and_clears_scalar() {
+        let mut prefs = GlobalPreferences {
+            evolve_provider: Some("openrouter".to_string()),
+            evolve_model: Some("anthropic/claude".to_string()),
+            summary_provider: Some("openai".to_string()),
+            summary_model: Some("gpt-5-mini".to_string()),
+            ..GlobalPreferences::default()
+        };
+
+        assert!(migrate_model_scalars_to_maps(&mut prefs));
+        assert_eq!(
+            prefs.evolve_models.get("openrouter").map(String::as_str),
+            Some("anthropic/claude")
+        );
+        assert_eq!(
+            prefs.summary_models.get("openai").map(String::as_str),
+            Some("gpt-5-mini")
+        );
+        assert_eq!(prefs.evolve_model, None);
+        assert_eq!(prefs.summary_model, None);
+        // Idempotent: nothing left to fold.
+        assert!(!migrate_model_scalars_to_maps(&mut prefs));
+    }
+
+    #[test]
+    fn model_scalar_migration_keeps_existing_map_entry() {
+        let mut prefs = GlobalPreferences {
+            evolve_provider: Some("openrouter".to_string()),
+            evolve_model: Some("stale/model".to_string()),
+            evolve_models: [("openrouter".to_string(), "newer/model".to_string())].into(),
+            ..GlobalPreferences::default()
+        };
+
+        assert!(migrate_model_scalars_to_maps(&mut prefs));
+        assert_eq!(
+            prefs.evolve_models.get("openrouter").map(String::as_str),
+            Some("newer/model")
+        );
+        assert_eq!(prefs.evolve_model, None);
+    }
+
+    #[test]
+    fn model_scalar_migration_drops_empty_and_keeps_providerless() {
+        // Empty scalar: cleared without creating a map entry.
+        let mut prefs = GlobalPreferences {
+            evolve_provider: Some("ollama".to_string()),
+            evolve_model: Some(String::new()),
+            ..GlobalPreferences::default()
+        };
+        assert!(migrate_model_scalars_to_maps(&mut prefs));
+        assert!(prefs.evolve_models.is_empty());
+        assert_eq!(prefs.evolve_model, None);
+
+        // No provider to key under: scalar stays untouched.
+        let mut prefs = GlobalPreferences {
+            evolve_model: Some("orphan".to_string()),
+            ..GlobalPreferences::default()
+        };
+        assert!(!migrate_model_scalars_to_maps(&mut prefs));
+        assert_eq!(prefs.evolve_model.as_deref(), Some("orphan"));
+    }
+
+    #[test]
+    fn model_updates_write_per_provider_map_only() {
+        let mut prefs = GlobalPreferences {
+            evolve_provider: Some("openrouter".to_string()),
+            ..GlobalPreferences::default()
+        };
+        prefs.apply_ui_update(&crate::shared_types::UiPrefsUpdate {
+            evolve_model: Some("anthropic/claude".to_string()),
+            ..Default::default()
+        });
+        assert_eq!(
+            prefs.evolve_models.get("openrouter").map(String::as_str),
+            Some("anthropic/claude")
+        );
+        assert_eq!(prefs.evolve_model, None);
+
+        // Switching provider leaves the remembered entry in place; the model
+        // sent with the switch keys under the new provider.
+        prefs.apply_ui_update(&crate::shared_types::UiPrefsUpdate {
+            evolve_provider: Some("openai".to_string()),
+            evolve_model: Some("gpt-5".to_string()),
+            ..Default::default()
+        });
+        assert_eq!(
+            prefs.evolve_models.get("openrouter").map(String::as_str),
+            Some("anthropic/claude")
+        );
+        assert_eq!(
+            prefs.evolve_models.get("openai").map(String::as_str),
+            Some("gpt-5")
+        );
+
+        // Empty model reverts the current provider to its default.
+        prefs.apply_ui_update(&crate::shared_types::UiPrefsUpdate {
+            evolve_model: Some(String::new()),
+            ..Default::default()
+        });
+        assert!(!prefs.evolve_models.contains_key("openai"));
+        assert_eq!(prefs.current_evolve_model(), None);
     }
 
     #[test]

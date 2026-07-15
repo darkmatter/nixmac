@@ -72,7 +72,7 @@ pub fn evolve_provider<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
 }
 
 pub fn evolve_model<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
-    preferences::try_read(app).and_then(|prefs| prefs.evolve_model)
+    preferences::try_read(app).and_then(|prefs| prefs.current_evolve_model())
 }
 
 pub fn summary_provider<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
@@ -80,7 +80,7 @@ pub fn summary_provider<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
 }
 
 pub fn summary_model<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
-    preferences::try_read(app).and_then(|prefs| prefs.summary_model)
+    preferences::try_read(app).and_then(|prefs| prefs.current_summary_model())
 }
 
 pub fn ollama_api_base_url<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
@@ -117,7 +117,7 @@ pub fn set_evolve_provider<R: Runtime>(app: &AppHandle<R>, provider: &str) -> Re
 
 pub fn set_evolve_model<R: Runtime>(app: &AppHandle<R>, model: &str) -> Result<()> {
     let model = model.to_string();
-    preferences::write(app, move |prefs| prefs.evolve_model = Some(model))
+    preferences::write(app, move |prefs| prefs.set_evolve_model(&model))
 }
 
 pub fn set_summary_provider<R: Runtime>(app: &AppHandle<R>, provider: &str) -> Result<()> {
@@ -127,7 +127,7 @@ pub fn set_summary_provider<R: Runtime>(app: &AppHandle<R>, provider: &str) -> R
 
 pub fn set_summary_model<R: Runtime>(app: &AppHandle<R>, model: &str) -> Result<()> {
     let model = model.to_string();
-    preferences::write(app, move |prefs| prefs.summary_model = Some(model))
+    preferences::write(app, move |prefs| prefs.set_summary_model(&model))
 }
 
 pub fn set_ollama_api_base_url<R: Runtime>(app: &AppHandle<R>, url: &str) -> Result<()> {

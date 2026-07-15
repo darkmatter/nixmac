@@ -34,9 +34,9 @@ const prefs = (overrides: Partial<UiPrefs> = {}): UiPrefs =>
     openaiCompatibleApiBaseUrl: null,
     openaiCompatibleApiKey: null,
     summaryProvider: "openrouter",
-    summaryModel: OPENROUTER_DEFAULTS.summaryModel,
+    summaryModels: { openrouter: OPENROUTER_DEFAULTS.summaryModel },
     evolveProvider: "openrouter",
-    evolveModel: OPENROUTER_DEFAULTS.evolveModel,
+    evolveModels: { openrouter: OPENROUTER_DEFAULTS.evolveModel },
     maxIterations: 25,
     maxTokenBudget: 50000,
     maxOutputTokens: 32768,
@@ -80,28 +80,33 @@ describe("tauriAPI.ui.getPrefs", () => {
       openrouterApiKey: "openrouter-secret",
       openaiApiKey: "",
       evolveProvider: "openai",
-      evolveModel: "gpt-4o",
+      evolveModels: { openai: "gpt-4o" },
       summaryProvider: "openai",
-      summaryModel: "gpt-4o-mini",
+      summaryModels: { openai: "gpt-4o-mini" },
     });
-    mocks.invoke.mockResolvedValueOnce(loaded).mockResolvedValueOnce({ ok: true });
+    const reloaded = prefs({
+      openrouterApiKey: "openrouter-secret",
+      openaiApiKey: "",
+      evolveModels: {},
+      summaryModels: {},
+    });
+    mocks.invoke
+      .mockResolvedValueOnce(loaded)
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce(reloaded);
     const { tauriAPI } = await import("./api");
 
     const migrated = await tauriAPI.ui.getPrefs();
 
-    expect(migrated.evolveProvider).toBe("openrouter");
-    expect(migrated.evolveModel).toBe("");
-    expect(migrated.summaryProvider).toBe("openrouter");
-    expect(migrated.summaryModel).toBe("");
+    expect(migrated).toBe(reloaded);
     expect(mocks.invoke).toHaveBeenNthCalledWith(1, "ui_get_prefs");
     expect(mocks.invoke).toHaveBeenNthCalledWith(2, "ui_set_prefs", {
       prefs: {
         evolveProvider: "openrouter",
-        evolveModel: "",
         summaryProvider: "openrouter",
-        summaryModel: "",
       },
     });
+    expect(mocks.invoke).toHaveBeenNthCalledWith(3, "ui_get_prefs");
   });
 
   it("does not cache defaults for unrelated provider prefs during migration", async () => {
@@ -109,25 +114,32 @@ describe("tauriAPI.ui.getPrefs", () => {
       openrouterApiKey: "openrouter-secret",
       openaiApiKey: "",
       evolveProvider: "openai",
-      evolveModel: "gpt-4o",
+      evolveModels: { openai: "gpt-4o" },
       summaryProvider: "ollama",
-      summaryModel: null,
+      summaryModels: {},
     });
-    mocks.invoke.mockResolvedValueOnce(loaded).mockResolvedValueOnce({ ok: true });
+    const reloaded = prefs({
+      openrouterApiKey: "openrouter-secret",
+      openaiApiKey: "",
+      evolveModels: {},
+      summaryProvider: "ollama",
+      summaryModels: {},
+    });
+    mocks.invoke
+      .mockResolvedValueOnce(loaded)
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce(reloaded);
     const { tauriAPI } = await import("./api");
 
     const migrated = await tauriAPI.ui.getPrefs();
 
-    expect(migrated.evolveProvider).toBe("openrouter");
-    expect(migrated.evolveModel).toBe("");
-    expect(migrated.summaryProvider).toBe("ollama");
-    expect(migrated.summaryModel).toBeNull();
+    expect(migrated).toBe(reloaded);
     expect(mocks.invoke).toHaveBeenNthCalledWith(2, "ui_set_prefs", {
       prefs: {
         evolveProvider: "openrouter",
-        evolveModel: "",
       },
     });
+    expect(mocks.invoke).toHaveBeenNthCalledWith(3, "ui_get_prefs");
   });
 
   it("reuses loaded preferences until a write invalidates the cache", async () => {

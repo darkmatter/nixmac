@@ -225,9 +225,14 @@ function installBackend(startAt: string) {
         repoRoot: null,
         sendDiagnostics: false,
         evolveProvider: state.evolveProvider,
-        evolveModel: state.evolveModel,
+        evolveModel: null,
+        evolveModels:
+          state.evolveProvider && state.evolveModel
+            ? { [state.evolveProvider]: state.evolveModel }
+            : {},
         summaryProvider: null,
         summaryModel: null,
+        summaryModels: {},
         ollamaApiBaseUrl: null,
         openaiCompatibleApiBaseUrl: null,
         confirmBuild: true,

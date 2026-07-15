@@ -18,7 +18,7 @@ import {
   type InferenceMode,
 } from "@/components/widget/onboarding/lib/inference";
 import { tauriAPI } from "@/ipc/api";
-import type { UiPrefs } from "@/ipc/types";
+import type { UiPrefsUpdate } from "@/ipc/types";
 import {
   BYOK_MODEL_PROVIDERS,
   getAiModelProvider,
@@ -730,7 +730,7 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
     setKeyState("checking");
     setServerError("");
     try {
-      const prefs: Partial<UiPrefs> = {
+      const prefs: Partial<UiPrefsUpdate> = {
         evolveProvider: provider.id,
         evolveModel: model,
         summaryProvider: provider.id,

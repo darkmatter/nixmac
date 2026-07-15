@@ -1236,7 +1236,29 @@ export type GlobalPreferences = { hostAttr: string | null; configDir: string | n
  * True once the user has seen the one-time diagnostics consent notice
  * (first launch after the default-on telemetry change).
  */
-diagnosticsNoticeAcknowledged: boolean; evolveProvider: string | null; evolveModel: string | null; summaryProvider: string | null; summaryModel: string | null; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
+diagnosticsNoticeAcknowledged: boolean; evolveProvider: string | null; 
+/**
+ * Deprecated: pre-map single model. Kept only so settings written by
+ * older versions still load; read exclusively by the load-time migration
+ * into `evolve_models`, which clears it.
+ */
+evolveModel: string | null; 
+/**
+ * Remembered evolve model per provider; a missing entry means the
+ * provider default is used. Never stores `""`.
+ */
+evolveModels: Partial<{ [key in string]: string }>; summaryProvider: string | null; 
+/**
+ * Deprecated: pre-map single model. Kept only so settings written by
+ * older versions still load; read exclusively by the load-time migration
+ * into `summary_models`, which clears it.
+ */
+summaryModel: string | null; 
+/**
+ * Remembered summary model per provider; a missing entry means the
+ * provider default is used. Never stores `""`.
+ */
+summaryModels: Partial<{ [key in string]: string }>; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
 /**
  * Timestamp (unix secs) of the last onboarding "scan this Mac" / customizations review.
  */
@@ -2055,17 +2077,19 @@ openaiCompatibleApiKey: string | null;
  */
 summaryProvider: string | null; 
 /**
- * Model used for change summaries.
+ * Remembered summary model per provider; a missing entry means the
+ * provider default is used.
  */
-summaryModel: string | null; 
+summaryModels: Partial<{ [key in string]: string }>; 
 /**
  * Provider used for AI evolution.
  */
 evolveProvider: string | null; 
 /**
- * Model used for AI evolution.
+ * Remembered evolve model per provider; a missing entry means the
+ * provider default is used.
  */
-evolveModel: string | null; 
+evolveModels: Partial<{ [key in string]: string }>; 
 /**
  * Legacy maximum agent iterations per evolution.
  */

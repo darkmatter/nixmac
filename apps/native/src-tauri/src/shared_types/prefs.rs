@@ -27,12 +27,14 @@ pub struct UiPrefs {
     pub openai_compatible_api_key: Option<String>,
     /// Provider used for change summaries.
     pub summary_provider: Option<String>,
-    /// Model used for change summaries.
-    pub summary_model: Option<String>,
+    /// Remembered summary model per provider; a missing entry means the
+    /// provider default is used.
+    pub summary_models: BTreeMap<String, String>,
     /// Provider used for AI evolution.
     pub evolve_provider: Option<String>,
-    /// Model used for AI evolution.
-    pub evolve_model: Option<String>,
+    /// Remembered evolve model per provider; a missing entry means the
+    /// provider default is used.
+    pub evolve_models: BTreeMap<String, String>,
     /// Legacy maximum agent iterations per evolution.
     pub max_iterations: Option<usize>,
     /// Maximum provider-reported tokens per evolution.
@@ -164,9 +166,21 @@ pub struct GlobalPreferences {
     /// (first launch after the default-on telemetry change).
     pub diagnostics_notice_acknowledged: bool,
     pub evolve_provider: Option<String>,
+    /// Deprecated: pre-map single model. Kept only so settings written by
+    /// older versions still load; read exclusively by the load-time migration
+    /// into `evolve_models`, which clears it.
     pub evolve_model: Option<String>,
+    /// Remembered evolve model per provider; a missing entry means the
+    /// provider default is used. Never stores `""`.
+    pub evolve_models: BTreeMap<String, String>,
     pub summary_provider: Option<String>,
+    /// Deprecated: pre-map single model. Kept only so settings written by
+    /// older versions still load; read exclusively by the load-time migration
+    /// into `summary_models`, which clears it.
     pub summary_model: Option<String>,
+    /// Remembered summary model per provider; a missing entry means the
+    /// provider default is used. Never stores `""`.
+    pub summary_models: BTreeMap<String, String>,
     pub ollama_api_base_url: Option<String>,
     pub openai_compatible_api_base_url: Option<String>,
     pub confirm_build: bool,
@@ -217,8 +231,10 @@ impl Default for GlobalPreferences {
             diagnostics_notice_acknowledged: false,
             evolve_provider: None,
             evolve_model: None,
+            evolve_models: BTreeMap::new(),
             summary_provider: None,
             summary_model: None,
+            summary_models: BTreeMap::new(),
             ollama_api_base_url: None,
             openai_compatible_api_base_url: None,
             confirm_build: true,
@@ -249,13 +265,13 @@ impl GlobalPreferences {
             self.summary_provider = Some(v.clone());
         }
         if let Some(v) = &update.summary_model {
-            self.summary_model = Some(v.clone());
+            self.set_summary_model(v);
         }
         if let Some(v) = &update.evolve_provider {
             self.evolve_provider = Some(v.clone());
         }
         if let Some(v) = &update.evolve_model {
-            self.evolve_model = Some(v.clone());
+            self.set_evolve_model(v);
         }
         if let Some(v) = &update.ollama_api_base_url {
             self.ollama_api_base_url = Some(v.clone());
@@ -317,6 +333,46 @@ impl GlobalPreferences {
         }
     }
 
+    /// Records a model pick for the current evolve provider; `""` reverts the
+    /// provider to its default by removing the entry. No-op without a provider.
+    pub fn set_evolve_model(&mut self, model: &str) {
+        let Some(provider) = &self.evolve_provider else {
+            return;
+        };
+        if model.is_empty() {
+            self.evolve_models.remove(provider);
+        } else {
+            self.evolve_models
+                .insert(provider.clone(), model.to_string());
+        }
+    }
+
+    /// Records a model pick for the current summary provider; `""` reverts the
+    /// provider to its default by removing the entry. No-op without a provider.
+    pub fn set_summary_model(&mut self, model: &str) {
+        let Some(provider) = &self.summary_provider else {
+            return;
+        };
+        if model.is_empty() {
+            self.summary_models.remove(provider);
+        } else {
+            self.summary_models
+                .insert(provider.clone(), model.to_string());
+        }
+    }
+
+    /// Model remembered for the current evolve provider, when one was picked.
+    pub fn current_evolve_model(&self) -> Option<String> {
+        let provider = self.evolve_provider.as_deref()?;
+        self.evolve_models.get(provider).cloned()
+    }
+
+    /// Model remembered for the current summary provider, when one was picked.
+    pub fn current_summary_model(&self) -> Option<String> {
+        let provider = self.summary_provider.as_deref()?;
+        self.summary_models.get(provider).cloned()
+    }
+
     /// Builds the non-secret subset of [`UiPrefs`] from global preferences.
     pub fn to_ui_prefs_base(&self) -> UiPrefs {
         UiPrefs {
@@ -326,9 +382,9 @@ impl GlobalPreferences {
             openai_compatible_api_base_url: self.openai_compatible_api_base_url.clone(),
             openai_compatible_api_key: None,
             summary_provider: self.summary_provider.clone(),
-            summary_model: self.summary_model.clone(),
+            summary_models: self.summary_models.clone(),
             evolve_provider: self.evolve_provider.clone(),
-            evolve_model: self.evolve_model.clone(),
+            evolve_models: self.evolve_models.clone(),
             max_iterations: None,
             max_token_budget: None,
             max_build_attempts: None,

@@ -29,12 +29,13 @@ export function getCachedPrefs(): Promise<DarwinPrefs> {
   pendingPrefs = invoke<DarwinPrefs>("ui_get_prefs")
     .then(async (prefs) => {
       const migration = migrateLegacyOpenaiProviderPrefs(prefs);
-      const nextPrefs: DarwinPrefs = migration.update
-        ? ({ ...prefs, ...migration.update } as DarwinPrefs)
-        : prefs;
+      let nextPrefs = prefs;
 
       if (migration.update) {
         await invoke<OkResult>("ui_set_prefs", { prefs: migration.update });
+        // Model updates are folded into the per-provider maps backend-side;
+        // re-read instead of reimplementing that fold on the update payload.
+        nextPrefs = await invoke<DarwinPrefs>("ui_get_prefs");
       }
 
       cachedPrefs = nextPrefs;

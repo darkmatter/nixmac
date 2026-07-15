@@ -18,6 +18,7 @@ import {
 import {
   AI_MODEL_PROVIDERS,
   isPlainInputCliProvider,
+  modelForProvider,
   modelPlaceholder,
 } from "@/lib/providers/ai-models";
 import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
@@ -143,9 +144,14 @@ export function AiModelsTab({
                     // deprecated(orpc): replace with client/orpc from @/lib/orpc
                     await tauriAPI.models.clearCached(value);
                     evolveProviderField.handleChange(value);
-                    // Empty model tracks the provider default at runtime;
+                    // Restore the model remembered for this provider; without
+                    // one, empty tracks the provider default at runtime and
                     // providers that require a model get a prefill to edit.
-                    const model = prefillModel(value, "evolve");
+                    // deprecated(orpc): replace with client/orpc from @/lib/orpc
+                    const prefs = await tauriAPI.ui.getPrefs();
+                    const model =
+                      modelForProvider(prefs?.evolveModels ?? {}, value) ||
+                      prefillModel(value, "evolve");
                     evolveModelField.handleChange(model);
                     // deprecated(orpc): replace with client/orpc from @/lib/orpc
                     await tauriAPI.ui.setPrefs({
@@ -186,8 +192,14 @@ export function AiModelsTab({
                           value={evolveModelField.state.value}
                           onChange={async (e) => {
                             evolveModelField.handleChange(e.target.value);
+                            // Send the displayed provider too: models are keyed
+                            // per provider, and the persisted provider can still
+                            // be unset when the UI shows a resolved fallback.
                             // deprecated(orpc): replace with client/orpc from @/lib/orpc
-                            await tauriAPI.ui.setPrefs({ evolveModel: e.target.value });
+                            await tauriAPI.ui.setPrefs({
+                              evolveProvider,
+                              evolveModel: e.target.value,
+                            });
                           }}
                           onBlur={evolveModelField.handleBlur}
                           placeholder="Leave empty for CLI default"
@@ -206,8 +218,14 @@ export function AiModelsTab({
                           value={evolveModelField.state.value}
                           onChange={async (value) => {
                             evolveModelField.handleChange(value);
+                            // Send the displayed provider too: models are keyed
+                            // per provider, and the persisted provider can still
+                            // be unset when the UI shows a resolved fallback.
                             // deprecated(orpc): replace with client/orpc from @/lib/orpc
-                            await tauriAPI.ui.setPrefs({ evolveModel: value });
+                            await tauriAPI.ui.setPrefs({
+                              evolveProvider,
+                              evolveModel: value,
+                            });
                           }}
                           onBlur={evolveModelField.handleBlur}
                           placeholder={modelPlaceholder(evolveProvider, "evolve")}
@@ -239,9 +257,14 @@ export function AiModelsTab({
                     // deprecated(orpc): replace with client/orpc from @/lib/orpc
                     await tauriAPI.models.clearCached(value);
                     summaryProviderField.handleChange(value);
-                    // Empty model tracks the provider default at runtime;
+                    // Restore the model remembered for this provider; without
+                    // one, empty tracks the provider default at runtime and
                     // providers that require a model get a prefill to edit.
-                    const model = prefillModel(value, "summary");
+                    // deprecated(orpc): replace with client/orpc from @/lib/orpc
+                    const prefs = await tauriAPI.ui.getPrefs();
+                    const model =
+                      modelForProvider(prefs?.summaryModels ?? {}, value) ||
+                      prefillModel(value, "summary");
                     summaryModelField.handleChange(model);
                     // deprecated(orpc): replace with client/orpc from @/lib/orpc
                     await tauriAPI.ui.setPrefs({
@@ -282,8 +305,14 @@ export function AiModelsTab({
                           value={summaryModelField.state.value}
                           onChange={async (e) => {
                             summaryModelField.handleChange(e.target.value);
+                            // Send the displayed provider too: models are keyed
+                            // per provider, and the persisted provider can still
+                            // be unset when the UI shows a resolved fallback.
                             // deprecated(orpc): replace with client/orpc from @/lib/orpc
-                            await tauriAPI.ui.setPrefs({ summaryModel: e.target.value });
+                            await tauriAPI.ui.setPrefs({
+                              summaryProvider,
+                              summaryModel: e.target.value,
+                            });
                           }}
                           onBlur={summaryModelField.handleBlur}
                           placeholder="Leave empty for CLI default"
@@ -302,8 +331,14 @@ export function AiModelsTab({
                           value={summaryModelField.state.value}
                           onChange={async (value) => {
                             summaryModelField.handleChange(value);
+                            // Send the displayed provider too: models are keyed
+                            // per provider, and the persisted provider can still
+                            // be unset when the UI shows a resolved fallback.
                             // deprecated(orpc): replace with client/orpc from @/lib/orpc
-                            await tauriAPI.ui.setPrefs({ summaryModel: value });
+                            await tauriAPI.ui.setPrefs({
+                              summaryProvider,
+                              summaryModel: value,
+                            });
                           }}
                           onBlur={summaryModelField.handleBlur}
                           placeholder={modelPlaceholder(summaryProvider, "summary")}

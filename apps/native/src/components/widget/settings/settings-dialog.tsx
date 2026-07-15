@@ -8,6 +8,7 @@ import { PreferencesTab } from "@/components/widget/settings/preferences-tab";
 import { TuningTab } from "@/components/widget/settings/tuning-tab";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { tauriAPI } from "@/ipc/api";
+import { modelForProvider } from "@/lib/providers/ai-models";
 import { resolveOpenAiCompatibleProvider } from "@/lib/providers/ai-provider-validation";
 import {
   createVerifiedApiKeyHandler,
@@ -165,9 +166,15 @@ export function SettingsDialog() {
           form.setFieldValue("summaryProvider", summaryProvider);
           // Empty model is a real state (track the provider default) — don't
           // dress it up as a concrete value.
-          form.setFieldValue("summaryModel", prefs.summaryModel ?? "");
+          form.setFieldValue(
+            "summaryModel",
+            modelForProvider(prefs.summaryModels, prefs.summaryProvider),
+          );
           form.setFieldValue("evolveProvider", evolveProvider);
-          form.setFieldValue("evolveModel", prefs.evolveModel ?? "");
+          form.setFieldValue(
+            "evolveModel",
+            modelForProvider(prefs.evolveModels, prefs.evolveProvider),
+          );
           form.setFieldValue("sendDiagnostics", prefs.sendDiagnostics ?? false);
 
           setOpenrouterKeyStatus(prefs.openrouterApiKey ? "valid" : "idle");
