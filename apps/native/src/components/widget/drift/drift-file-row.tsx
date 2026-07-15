@@ -37,6 +37,8 @@ type DriftFileRowProps = {
   included?: boolean;
   onIncludedChange?: (included: boolean) => void;
   showActions?: boolean;
+  /** Start with the diff expanded (used for the first row of a list). */
+  defaultOpen?: boolean;
 };
 
 export function DriftFileRow({
@@ -44,12 +46,13 @@ export function DriftFileRow({
   included,
   onIncludedChange,
   showActions = true,
+  defaultOpen = false,
 }: DriftFileRowProps) {
   const { changeType, filename, oldFilename, hunkCount, stats, diffText } = file;
   const { icon: Icon, iconColor } = CHANGE_TYPE_STYLES[changeType];
   const glyph = CHANGE_TYPE_GLYPH[changeType];
-  const [open, setOpen] = useState(false);
   const hasDiff = diffText.trim().length > 0;
+  const [open, setOpen] = useState(defaultOpen && hasDiff);
 
   return (
     <li className="group">
