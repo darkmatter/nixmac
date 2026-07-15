@@ -1415,15 +1415,16 @@ pub async fn generate_evolution<R: Runtime>(
                                     }
                                 }
                                 ToolResult::SearchPackages(results) => {
-                                    let packages = results
-                                        .iter()
-                                        .map(|r| r.name.as_str())
-                                        .collect::<Vec<_>>()
-                                        .join(", ");
+                                    let query = args
+                                        .get("query")
+                                        .and_then(|v| v.as_str())
+                                        .unwrap_or_default();
+                                    let names: Vec<String> =
+                                        results.iter().map(|r| r.name.clone()).collect();
                                     emit_evolve_event(
                                         app,
                                         EvolveEvent::search_packages(
-                                            start_time, iteration, &packages,
+                                            start_time, iteration, query, &names,
                                         ),
                                     );
                                 }

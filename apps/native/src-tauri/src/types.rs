@@ -157,11 +157,43 @@ impl EvolveEvent {
         )
     }
 
-    pub(crate) fn search_packages(start_time: i64, iter: usize, packages: &str) -> Self {
+    pub(crate) fn search_packages(
+        start_time: i64,
+        iter: usize,
+        query: &str,
+        found: &[String],
+    ) -> Self {
+        const SHOWN: usize = 3;
+        let for_query = if query.is_empty() {
+            String::new()
+        } else {
+            format!(" for '{}'", truncate(query, 60))
+        };
+        let summary = if found.is_empty() {
+            format!("Searched packages{} — no matches", for_query)
+        } else {
+            let shown = found
+                .iter()
+                .take(SHOWN)
+                .map(String::as_str)
+                .collect::<Vec<_>>()
+                .join(", ");
+            let more = found.len().saturating_sub(SHOWN);
+            if more > 0 {
+                format!("Searched packages{} → {} +{} more", for_query, shown, more)
+            } else {
+                format!("Searched packages{} → {}", for_query, shown)
+            }
+        };
         Self::new(
             EvolveEventType::SearchPackages,
-            format!("Found packages: {}", packages),
-            format!("Found packages: {}", packages),
+            format!(
+                "Searched packages{}; found {}: {}",
+                for_query,
+                found.len(),
+                found.join(", ")
+            ),
+            summary,
             Some(iter),
             start_time,
         )
@@ -475,6 +507,31 @@ mod tests {
         let args = serde_json::json!({"pattern": "**/*"});
         let event = EvolveEvent::tool_call(0, 1, "list_files", &args, "");
         assert_eq!(event.summary, "Listing files...");
+    }
+
+    #[test]
+    fn search_packages_summary_should_show_query_and_top_results() {
+        let found = ["spotify", "spotifyd", "spotify-player", "ncspot"]
+            .map(String::from)
+            .to_vec();
+        let event = EvolveEvent::search_packages(0, 1, "spotify", &found);
+        assert_eq!(
+            event.summary,
+            "Searched packages for 'spotify' → spotify, spotifyd, spotify-player +1 more"
+        );
+    }
+
+    #[test]
+    fn search_packages_summary_should_say_no_matches() {
+        let event = EvolveEvent::search_packages(0, 1, "spotfy", &[]);
+        assert_eq!(event.summary, "Searched packages for 'spotfy' — no matches");
+    }
+
+    #[test]
+    fn search_packages_raw_should_list_all_results() {
+        let found = ["a", "b", "c", "d"].map(String::from).to_vec();
+        let event = EvolveEvent::search_packages(0, 1, "q", &found);
+        assert_eq!(event.raw, "Searched packages for 'q'; found 4: a, b, c, d");
     }
 
     #[test]
