@@ -127,19 +127,56 @@ impl EvolveEvent {
         )
     }
 
-    pub(crate) fn tool_call(start_time: i64, iter: usize, tool: &str, args_summary: &str) -> Self {
+    pub(crate) fn tool_call(
+        start_time: i64,
+        iter: usize,
+        tool: &str,
+        args: &serde_json::Value,
+        args_summary: &str,
+    ) -> Self {
+        // Name the object being acted on, so the row reads as progress toward
+        // the user's goal rather than as loop machinery.
+        let arg = |key: &str| {
+            args.get(key)
+                .and_then(|v| v.as_str())
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+        };
+        let quoted = |s: &str| format!("'{}'", truncate(s, 60));
         let summary = match tool {
-            "read_file" => "Reading file...".to_string(),
-            "edit_file" => "Editing file...".to_string(),
-            "edit_nix_file" => "Editing nix config...".to_string(),
-            "list_files" => "Listing files...".to_string(),
-            "search_code" => "Searching code...".to_string(),
-            "search_packages" => "Searching packages...".to_string(),
-            "search_docs" => "Searching docs...".to_string(),
-            "build_check" => "Running build check...".to_string(),
+            "read_file" => match arg("path") {
+                Some(path) => format!("Reading {}...", shorten_path(path)),
+                None => "Reading file...".to_string(),
+            },
+            "edit_file" | "edit_nix_file" => match arg("path") {
+                Some(path) => format!("Editing {}...", shorten_path(path)),
+                None => "Editing configuration...".to_string(),
+            },
+            "list_files" => match arg("pattern") {
+                Some(pattern) if pattern != "**/*" => {
+                    format!("Listing files matching {}...", quoted(pattern))
+                }
+                _ => "Listing files...".to_string(),
+            },
+            "search_code" => match arg("pattern") {
+                Some(pattern) => format!("Searching the config for {}...", quoted(pattern)),
+                None => "Searching the config...".to_string(),
+            },
+            "search_packages" => match arg("query") {
+                Some(query) => format!("Searching packages for {}...", quoted(query)),
+                None => "Searching packages...".to_string(),
+            },
+            "search_docs" => match arg("query") {
+                Some(query) => format!("Searching docs for {}...", quoted(query)),
+                None => "Searching docs...".to_string(),
+            },
+            "ensure_secret" => match arg("name") {
+                Some(name) => format!("Setting up secret {}...", quoted(name)),
+                None => "Setting up a secret...".to_string(),
+            },
+            "build_check" => "Checking the configuration builds...".to_string(),
             "think" => "Thinking...".to_string(),
             "ask_user" => "Asking a question...".to_string(),
-            "ensure_secret" => "Ensuring secret exists...".to_string(),
             "done" => "Finishing up...".to_string(),
             _ => format!("Using {} tool...", tool),
         };
@@ -360,5 +397,40 @@ mod tests {
     fn thinking_raw_should_keep_category_prefix() {
         let event = EvolveEvent::thinking(0, 1, "planning", "Some thought.");
         assert_eq!(event.raw, "[planning] Some thought.");
+    }
+
+    #[test]
+    fn tool_call_summary_should_name_the_package_query() {
+        let args = serde_json::json!({"query": "spotify"});
+        let event = EvolveEvent::tool_call(0, 1, "search_packages", &args, "query=\"spotify\"");
+        assert_eq!(event.summary, "Searching packages for 'spotify'...");
+    }
+
+    #[test]
+    fn tool_call_summary_should_name_the_file_being_read() {
+        let args = serde_json::json!({"path": "modules/apps.nix"});
+        let event = EvolveEvent::tool_call(0, 1, "read_file", &args, "");
+        assert_eq!(event.summary, "Reading apps.nix...");
+    }
+
+    #[test]
+    fn tool_call_summary_should_fall_back_when_arg_missing() {
+        let args = serde_json::json!({});
+        let event = EvolveEvent::tool_call(0, 1, "search_packages", &args, "");
+        assert_eq!(event.summary, "Searching packages...");
+    }
+
+    #[test]
+    fn tool_call_summary_should_hide_default_list_pattern() {
+        let args = serde_json::json!({"pattern": "**/*"});
+        let event = EvolveEvent::tool_call(0, 1, "list_files", &args, "");
+        assert_eq!(event.summary, "Listing files...");
+    }
+
+    #[test]
+    fn tool_call_raw_should_keep_tool_and_args() {
+        let args = serde_json::json!({"query": "spotify"});
+        let event = EvolveEvent::tool_call(0, 1, "search_packages", &args, "query=\"spotify\"");
+        assert_eq!(event.raw, "search_packages | args: query=\"spotify\"");
     }
 }

@@ -1314,7 +1314,13 @@ pub async fn generate_evolution<R: Runtime>(
                     // Emit tool call event
                     emit_evolve_event(
                         app,
-                        EvolveEvent::tool_call(start_time, iteration, tool_name, &args_summary),
+                        EvolveEvent::tool_call(
+                            start_time,
+                            iteration,
+                            tool_name,
+                            &args,
+                            &args_summary,
+                        ),
                     );
 
                     let result = execute_tool(
