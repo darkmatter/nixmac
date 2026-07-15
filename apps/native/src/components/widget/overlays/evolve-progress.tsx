@@ -14,6 +14,7 @@ import {
   Hammer,
   Loader2,
   MessageSquare,
+  PackageSearch,
   Play,
   Repeat,
   Send,
@@ -39,6 +40,50 @@ interface EvolveProgressProps {
 interface EventItemProps {
   event: EvolveEvent;
   isLatest: boolean;
+}
+
+// =============================================================================
+// Timeline Curation
+// =============================================================================
+
+// Loop machinery: kept in the store (and mirrored to the Console via `raw`)
+// but never shown as timeline rows — they narrate the agent loop, not
+// progress toward the user's goal.
+const HIDDEN_EVENT_TYPES: ReadonlySet<EvolveEventType> = new Set([
+  "iteration",
+  "apiRequest",
+  "apiResponse",
+]);
+
+// Tools whose execution is fast and immediately followed by a more specific
+// event narrating the same action (thinking/reading/editing/question), which
+// would otherwise appear as a duplicate row. Slow tools (build_check, the
+// searches) keep their toolCall row: it is the only in-progress indicator
+// while they run.
+const TOOLS_WITH_SPECIFIC_EVENT: ReadonlySet<string> = new Set([
+  "think",
+  "read_file",
+  "edit_file",
+  "edit_nix_file",
+  "ensure_secret",
+  "ask_user",
+  "done",
+]);
+
+// Until the event payload carries structured detail, the tool name is only
+// available as the `{tool} | args: ...` prefix of the raw detail.
+function toolCallToolName(event: EvolveEvent): string {
+  return event.raw.split(" | ")[0] ?? "";
+}
+
+export function isVisibleEvent(event: EvolveEvent): boolean {
+  if (HIDDEN_EVENT_TYPES.has(event.eventType)) {
+    return false;
+  }
+  if (event.eventType === "toolCall") {
+    return !TOOLS_WITH_SPECIFIC_EVENT.has(toolCallToolName(event));
+  }
+  return true;
 }
 
 function parseTokenCount(value: string): number {
@@ -99,8 +144,12 @@ function getEventIcon(eventType: EvolveEventType, isLatest: boolean) {
       return <FileSearch className={iconClassName} />;
     case "editing":
       return <FileEdit className={iconClassName} />;
+    // buildCheck is declared in the event enum but currently never emitted
+    // by the backend (it emits buildPass/buildFail instead).
     case "buildCheck":
       return <Hammer className={iconClassName} />;
+    case "searchPackages":
+      return <PackageSearch className={iconClassName} />;
     case "buildPass":
       return <CheckCircle className={cn(iconClassName, "text-green-400")} />;
     case "buildFail":
@@ -138,6 +187,8 @@ function getEventColor(eventType: EvolveEventType): string {
       return "text-orange-400";
     case "buildCheck":
       return "text-amber-400";
+    case "searchPackages":
+      return "text-teal-400";
     case "buildPass":
       return "text-green-400";
     case "buildFail":
@@ -217,12 +268,6 @@ function EventItem({ event, isLatest }: EventItemProps) {
             </div>
           </div>
 
-          {/* Iteration badge */}
-          {!!event.iteration && (
-            <span className="mt-0.5 inline-block rounded bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-              iter {event.iteration}
-            </span>
-          )}
         </div>
       </div>
 
@@ -416,6 +461,7 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
 
   const isAnalyzing = isGenerating && events[events.length - 1]?.eventType === "summarizing";
   const tokenProgress = getTokenProgress(events);
+  const visibleEvents = events.filter(isVisibleEvent);
 
   if (events.length === 0 && !isGenerating) {
     return null;
@@ -468,7 +514,7 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
         ref={scrollRef}
       >
         <div className="space-y-1">
-          {events.map((event, index) => {
+          {visibleEvents.map((event, index) => {
             if (event.eventType === "question") {
               return (
                 <QuestionPrompt
@@ -481,7 +527,7 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
             return (
               <EventItem
                 event={event}
-                isLatest={!!(isGenerating && index === events.length - 1)}
+                isLatest={!!(isGenerating && index === visibleEvents.length - 1)}
                 key={`${event.timestampMs}-${index}`}
               />
             );
