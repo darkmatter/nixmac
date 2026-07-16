@@ -260,22 +260,28 @@ export function DarwinWidget() {
         onRecheck={repair.recheck}
       />
 
-      {isEdgeToEdgeStep ? (
-        <div className="relative flex min-h-0 flex-1 flex-col">
-          <ErrorMessage />
-          {getActiveStepComponent()}
-        </div>
-      ) : (
-        <StepContentWrapper>
-          <ErrorMessage />
-          {getActiveStepComponent()}
-          <ReportIssueButton />
-        </StepContentWrapper>
-      )}
+      {/* The evolve and rebuild overlays cover only this content region, so
+          the header/stepper above and the console below stay visible while a
+          run is in progress. */}
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        {isEdgeToEdgeStep ? (
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            <ErrorMessage />
+            {getActiveStepComponent()}
+          </div>
+        ) : (
+          <StepContentWrapper>
+            <ErrorMessage />
+            {getActiveStepComponent()}
+            <ReportIssueButton />
+          </StepContentWrapper>
+        )}
 
-      <EvolveOverlayPanel />
+        <EvolveOverlayPanel />
+        <RebuildOverlayPanel />
+      </div>
+
       <ConfigEditOverlayPanel />
-      <RebuildOverlayPanel />
       <EditorPanel />
       <EtcClobberWarningDialog />
 
