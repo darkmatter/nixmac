@@ -253,7 +253,7 @@ export const orpcHandlers: Record<string, OrpcHandler> = {
   "git.state": async () => {
     const { viewModelActions } = await import("@nixmac/state");
     const vm = viewModelActions.getState();
-    return baseGitState(vm.git, vm.build?.externalBuildDetected ?? false);
+    return baseGitState(vm.git ?? baseGitStatus(), vm.build?.externalBuildDetected ?? false);
   },
   "git.status": async () => {
     const { viewModelActions } = await import("@nixmac/state");
@@ -340,6 +340,25 @@ export const orpcHandlers: Record<string, OrpcHandler> = {
   ],
   "billing.checkout": async () => ({ url: "https://polar.sh/demo-checkout" }),
   "billing.portal": async () => ({ url: "https://polar.sh/demo-portal" }),
+  "models.getCached": async (input) => {
+    const provider = (input as { provider?: string } | undefined)?.provider;
+    return provider ? (cachedModels.get(provider) ?? null) : null;
+  },
+  "models.setCached": async (input) => {
+    const { provider, models } =
+      (input as { provider?: string; models?: string[] } | undefined) ?? {};
+    if (provider) {
+      cachedModels.set(provider, [...(models ?? [])]);
+    }
+    return okResult();
+  },
+  "models.clearCached": async (input) => {
+    const provider = (input as { provider?: string } | undefined)?.provider;
+    if (provider) {
+      cachedModels.delete(provider);
+    }
+    return okResult();
+  },
   "preferences.get": async () => {
     const { viewModelActions } = await import("@nixmac/state");
     return viewModelActions.getState().preferences;
