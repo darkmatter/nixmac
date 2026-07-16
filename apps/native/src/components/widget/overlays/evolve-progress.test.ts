@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { EvolveEvent, EvolveEventDetail, EvolveEventType } from "@/ipc/types";
-import { answeredTextFor, getTokenProgress, isVisibleEvent } from "./evolve-progress";
+import {
+  answeredTextFor,
+  attemptFailureReason,
+  getFocusState,
+  getPendingQuestion,
+  getTokenProgress,
+  groupByAttempt,
+  isVisibleEvent,
+} from "./evolve-progress";
 
 function event(eventType: EvolveEventType, raw = "", detail?: EvolveEventDetail): EvolveEvent {
   return { eventType, raw, summary: "", iteration: 1, timestampMs: 0, detail };
@@ -90,6 +98,129 @@ describe("getTokenProgress", () => {
 
   it("returns null when no progress detail was received", () => {
     expect(getTokenProgress([event("apiResponse", "tokens used: 999")])).toBeNull();
+  });
+});
+
+describe("getPendingQuestion", () => {
+  const question = event("question");
+
+  it("finds the question the run is blocked on", () => {
+    expect(getPendingQuestion([event("start"), question])).toBe(question);
+  });
+
+  it("ignores questions that have been answered", () => {
+    const events = [question, event("answered", "", { type: "answered", text: "yes" })];
+    expect(getPendingQuestion(events)).toBeNull();
+  });
+
+  it("returns null when no question was ever asked", () => {
+    expect(getPendingQuestion([event("start"), event("thinking")])).toBeNull();
+  });
+});
+
+describe("getFocusState", () => {
+  it("switches to needs-you mode on a pending question", () => {
+    const question = event("question", "", {
+      type: "question",
+      text: "Which variant?",
+      choices: ["a", "b"],
+      kind: "agent",
+    });
+    const focus = getFocusState([event("start"), question]);
+    expect(focus.mode).toBe("needsYou");
+    expect(focus.event).toBe(question);
+    expect(focus.headline).toBe("Which variant?");
+  });
+
+  it("shows current narration text in working mode", () => {
+    const narration: EvolveEvent = {
+      ...event("narration", "", { type: "narration", text: "The plain vim package is best. I'll add it." }),
+      summary: "The plain vim package is best.",
+    };
+    const focus = getFocusState([event("start"), narration]);
+    expect(focus.mode).toBe("working");
+    expect(focus.headline).toBe("The plain vim package is best.");
+    expect(focus.detailText).toBe("The plain vim package is best. I'll add it.");
+  });
+
+  it("collapses narration once superseded by a later event", () => {
+    const narration = event("narration", "", { type: "narration", text: "Adding it now." });
+    const editing: EvolveEvent = { ...event("editing"), summary: "Adding vim to systemPackages" };
+    const focus = getFocusState([narration, editing]);
+    expect(focus.mode).toBe("waiting");
+    expect(focus.headline).toBe("Adding vim to systemPackages");
+    expect(focus.detailText).toBeNull();
+  });
+
+  it("skips detail text that repeats the headline", () => {
+    const narration: EvolveEvent = {
+      ...event("narration", "", { type: "narration", text: "Short thought." }),
+      summary: "Short thought.",
+    };
+    expect(getFocusState([narration]).detailText).toBeNull();
+  });
+
+  it("narrates the latest visible event, not hidden machinery", () => {
+    const editing: EvolveEvent = { ...event("editing"), summary: "Adding vim" };
+    const focus = getFocusState([editing, event("apiRequest"), event("iteration")]);
+    expect(focus.mode).toBe("waiting");
+    expect(focus.headline).toBe("Adding vim");
+  });
+
+  it("waits with a generic headline before any event arrives", () => {
+    const focus = getFocusState([]);
+    expect(focus.mode).toBe("waiting");
+    expect(focus.event).toBeNull();
+    expect(focus.headline).toBe("Working...");
+  });
+});
+
+describe("groupByAttempt", () => {
+  const fail = (attempt: number): EvolveEvent => ({
+    ...event("buildFail", "", { type: "build", pass: false, attempt, output: "error: boom" }),
+    summary: "Build check failed: error: boom",
+  });
+
+  it("keeps a run without build failures as a single trailing group", () => {
+    const events = [event("start"), event("editing")];
+    expect(groupByAttempt(events)).toEqual([{ attempt: null, failure: null, events }]);
+  });
+
+  it("closes a group at each failed build and keeps the rest as the current attempt", () => {
+    const [start, edit1, fail1, edit2] = [event("start"), event("editing"), fail(1), event("editing")];
+    expect(groupByAttempt([start, edit1, fail1, edit2])).toEqual([
+      { attempt: 1, failure: "Build check failed: error: boom", events: [start, edit1, fail1] },
+      { attempt: null, failure: null, events: [edit2] },
+    ]);
+  });
+
+  it("numbers attempts from the build detail", () => {
+    const groups = groupByAttempt([fail(3)]);
+    expect(groups[0].attempt).toBe(3);
+  });
+
+  it("falls back to sequential numbering without structured detail", () => {
+    const legacyFail = event("buildFail");
+    const groups = groupByAttempt([legacyFail, legacyFail]);
+    expect(groups.map((g) => g.attempt)).toEqual([1, 2, null]);
+  });
+
+  it("leaves an empty trailing group right after a failure", () => {
+    const groups = groupByAttempt([fail(1)]);
+    expect(groups[1]).toEqual({ attempt: null, failure: null, events: [] });
+  });
+});
+
+describe("attemptFailureReason", () => {
+  it("strips the redundant prefix from build failure summaries", () => {
+    expect(attemptFailureReason("Build check failed: error: attribute 'x' missing")).toBe(
+      "error: attribute 'x' missing",
+    );
+    expect(attemptFailureReason("Build check failed, retrying...")).toBe("retrying...");
+  });
+
+  it("keeps unrecognized summaries verbatim", () => {
+    expect(attemptFailureReason("something else")).toBe("something else");
   });
 });
 

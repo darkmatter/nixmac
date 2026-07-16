@@ -110,6 +110,97 @@ function formatTokenProgress(progress: { total: number; budget: number }): strin
 }
 
 // =============================================================================
+// Focus / History Derivation
+// =============================================================================
+
+export type FocusMode = "working" | "waiting" | "needsYou";
+
+export interface FocusState {
+  mode: FocusMode;
+  /** The event whose activity the focus zone narrates; the pending question
+   * in `needsYou` mode, null when nothing has happened yet. */
+  event: EvolveEvent | null;
+  headline: string;
+  /** Current narration/thinking text, shown quietly under the headline while
+   * it is the latest activity; collapsed into its history row once
+   * superseded. */
+  detailText: string | null;
+}
+
+/// The question the run is currently blocked on: the most recent question
+/// event with no answered event after it.
+export function getPendingQuestion(events: EvolveEvent[]): EvolveEvent | null {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i];
+    if (e.eventType === "answered") return null;
+    if (e.eventType === "question") return e;
+  }
+  return null;
+}
+
+/// What the focus zone should show right now, derived from the event stream.
+export function getFocusState(events: EvolveEvent[]): FocusState {
+  const question = getPendingQuestion(events);
+  if (question) {
+    const text = question.detail?.type === "question" ? question.detail.text : question.summary;
+    return { mode: "needsYou", event: question, headline: text, detailText: null };
+  }
+
+  const visible = events.filter(isVisibleEvent);
+  const current = visible[visible.length - 1] ?? null;
+  if (!current) {
+    return { mode: "waiting", event: null, headline: "Working...", detailText: null };
+  }
+
+  const detail = current.detail;
+  const text =
+    detail?.type === "narration" || detail?.type === "thinking" ? detail.text : null;
+  // The summary is derived from the text; only show the text when it adds
+  // something beyond the headline.
+  const detailText = text && text !== current.summary ? text : null;
+  return {
+    mode: detailText ? "working" : "waiting",
+    event: current,
+    headline: current.summary,
+    detailText,
+  };
+}
+
+export interface AttemptGroup {
+  /** Build attempt number for groups closed by a failed build; null for the
+   * trailing (current) group. */
+  attempt: number | null;
+  /** The failed build's summary; null for the trailing group. */
+  failure: string | null;
+  events: EvolveEvent[];
+}
+
+/// Split history rows into build attempts: each failed build closes a group
+/// (rendered collapsed under an "Attempt N failed" header), and whatever
+/// follows the last failure is the current attempt.
+export function groupByAttempt(events: EvolveEvent[]): AttemptGroup[] {
+  const groups: AttemptGroup[] = [];
+  let bucket: EvolveEvent[] = [];
+  for (const e of events) {
+    bucket.push(e);
+    if (e.eventType === "buildFail") {
+      const attempt =
+        e.detail?.type === "build" ? e.detail.attempt : groups.length + 1;
+      groups.push({ attempt, failure: e.summary, events: bucket });
+      bucket = [];
+    }
+  }
+  groups.push({ attempt: null, failure: null, events: bucket });
+  return groups;
+}
+
+/// Header copy for a failed attempt group; strips the summary's redundant
+/// "Build check failed" prefix since the header already says "failed".
+export function attemptFailureReason(failure: string): string {
+  return failure.replace(/^Build check failed[:,]?\s*/, "") || "build check failed";
+}
+
+// =============================================================================
 // Event Icon Mapping
 // =============================================================================
 
