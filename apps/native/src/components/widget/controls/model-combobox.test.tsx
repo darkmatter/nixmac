@@ -5,6 +5,9 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
 
+// Generic combobox behavior (filtering, committing, key handling) is covered
+// by packages/ui combobox.test.tsx; this suite covers the model-loading glue.
+
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
@@ -35,20 +38,16 @@ interface HarnessProps {
   initial?: string;
   provider?: "openrouter" | "ollama";
   defaultModel?: string;
-  onChangeSpy?: (value: string) => void;
 }
 
-function Harness({ initial = "", provider = "openrouter", defaultModel = "", onChangeSpy }: HarnessProps) {
+function Harness({ initial = "", provider = "openrouter", defaultModel = "" }: HarnessProps) {
   const [value, setValue] = useState(initial);
   return (
     <ModelCombobox
       provider={provider}
       defaultModel={defaultModel}
       value={value}
-      onChange={(v) => {
-        onChangeSpy?.(v);
-        setValue(v);
-      }}
+      onChange={setValue}
       placeholder="Pick a model"
     />
   );
@@ -105,81 +104,16 @@ beforeEach(() => {
 });
 
 // ---------------------------------------------------------------------------
-// Interaction matrix
+// Model-loading glue
 // ---------------------------------------------------------------------------
 
 describe("ModelCombobox", () => {
-  it("opens with the full unfiltered list and the current selection highlighted", async () => {
+  it("lists the provider models with a default row naming the default model", async () => {
     render(<Harness initial="model-b" defaultModel="model-a" />);
 
     const options = await openList();
 
-    // Full list (default row + all models), no filtering by the current value
-    expect(options.map((o) => o.textContent)).toEqual([
-      "Default: model-a",
-      ...MODELS,
-    ]);
-    // The selected model is highlighted, not the first row
-    expect(screen.getByRole("option", { name: "model-b" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-  });
-
-  it("regression: Enter right after opening re-commits the current selection, not the default row", async () => {
-    const onChangeSpy = vi.fn();
-    render(<Harness initial="model-b" defaultModel="model-a" onChangeSpy={onChangeSpy} />);
-
-    await openList();
-    fireEvent.keyDown(input(), { key: "Enter" });
-
-    expect(onChangeSpy).toHaveBeenCalledWith("model-b");
-    expect(onChangeSpy).not.toHaveBeenCalledWith("");
-    expect(input()).toHaveValue("model-b");
-    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-  });
-
-  it("typing filters the list without committing; clicking a model commits it", async () => {
-    const onChangeSpy = vi.fn();
-    render(<Harness initial="model-b" onChangeSpy={onChangeSpy} />);
-
-    await openList();
-    fireEvent.change(input(), { target: { value: "model-a" } });
-
-    expect(onChangeSpy).not.toHaveBeenCalled();
-    expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["model-a"]);
-
-    fireEvent.click(screen.getByRole("option", { name: "model-a" }));
-
-    expect(onChangeSpy).toHaveBeenCalledExactlyOnceWith("model-a");
-    expect(input()).toHaveValue("model-a");
-    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-  });
-
-  it("offers typed text that matches no model as a custom row and commits it on select", async () => {
-    const onChangeSpy = vi.fn();
-    render(<Harness onChangeSpy={onChangeSpy} />);
-
-    await openList();
-    fireEvent.change(input(), { target: { value: "org/custom-model" } });
-
-    const customRow = screen.getByRole("option", { name: 'Use "org/custom-model"' });
-    fireEvent.click(customRow);
-
-    expect(onChangeSpy).toHaveBeenCalledExactlyOnceWith("org/custom-model");
-    expect(input()).toHaveValue("org/custom-model");
-  });
-
-  it("commits the empty string via the default row (meaning: use the provider default)", async () => {
-    const onChangeSpy = vi.fn();
-    render(<Harness initial="model-b" defaultModel="model-a" onChangeSpy={onChangeSpy} />);
-
-    await openList();
-    fireEvent.click(screen.getByRole("option", { name: "Default: model-a" }));
-
-    expect(onChangeSpy).toHaveBeenCalledExactlyOnceWith("");
-    expect(input()).toHaveValue("");
-    expect(input()).toHaveAttribute("placeholder", "Pick a model");
+    expect(options.map((o) => o.textContent)).toEqual(["Default: model-a", ...MODELS]);
   });
 
   it("hides the default row for providers that require an explicit model", async () => {
@@ -188,20 +122,6 @@ describe("ModelCombobox", () => {
     const options = await openList();
 
     expect(options.map((o) => o.textContent)).toEqual(MODELS);
-  });
-
-  it("regression: keeps native key handling while the popover is closed, ArrowDown opens it", async () => {
-    render(<Harness initial="model-b" />);
-    await flushLoads();
-
-    // Not swallowed by cmdk while closed (preventDefault would return false)
-    expect(fireEvent.keyDown(input(), { key: "Home" })).toBe(true);
-    expect(fireEvent.keyDown(input(), { key: "End" })).toBe(true);
-    expect(fireEvent.keyDown(input(), { key: "Enter" })).toBe(true);
-
-    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-    fireEvent.keyDown(input(), { key: "ArrowDown" });
-    expect(screen.getByRole("listbox")).toBeInTheDocument();
   });
 
   it("regression: keeps the loaded models across close/reopen instead of clearing", async () => {
