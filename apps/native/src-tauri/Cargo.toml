@@ -69,6 +69,7 @@ hex = "0.4.3"
 regex = "1.12.3"
 tauri-plugin-http = "2"
 fancy-regex = "0.17.0"
+regex-syntax = "0.8"
 toml = "1.0.3"
 backtrace = "0.3"
 clap = { version = "4", features = ["derive"] }
