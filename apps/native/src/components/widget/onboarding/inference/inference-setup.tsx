@@ -24,9 +24,11 @@ import {
   getAiModelProvider,
   isPlainInputCliProvider,
   modelPlaceholder,
+  visibleModelProviders,
 } from "@/lib/providers/ai-models";
 import { prefillModel } from "@/lib/providers/ai-defaults";
 import { providerRequiresModel } from "@/lib/providers/ai-provider-validation";
+import { useCliProvidersVisible } from "@/lib/providers/cli-providers-flag";
 import type { AccountBilling, BillingProductInfo } from "@/lib/orpc";
 import { client, orpc } from "@/lib/orpc";
 import { getTelemetry } from "@/lib/telemetry/instance";
@@ -700,6 +702,11 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
   const [baseUrl, setBaseUrl] = useState("");
   const [keyState, setKeyState] = useState<KeyState>("idle");
   const [serverError, setServerError] = useState("");
+  const cliProvidersVisible = useCliProvidersVisible();
+  const byokProviders = useMemo(
+    () => visibleModelProviders(cliProvidersVisible, providerId, BYOK_MODEL_PROVIDERS),
+    [cliProvidersVisible, providerId],
+  );
 
   const format = useMemo(() => validateKeyFormat(provider, key), [provider, key]);
   const touched = key.trim().length > 0;
@@ -785,7 +792,7 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
               <SelectValue placeholder="Select provider" />
             </SelectTrigger>
             <SelectContent>
-              {BYOK_MODEL_PROVIDERS.map((p) => (
+              {byokProviders.map((p) => (
                 <SelectItem key={p.id} value={p.id}>
                   <span className="flex items-center gap-2">
                     <ProviderIcon provider={p.icon} size={14} />

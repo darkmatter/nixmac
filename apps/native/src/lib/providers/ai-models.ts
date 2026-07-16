@@ -17,6 +17,8 @@ interface AiModelProvider {
 	icon: ProviderIconId;
 	defaultEvolveModel: string;
 	defaultSummaryModel: string;
+	/** Hidden from provider pickers unless the `cli-providers` flag enables them. */
+	developerOnly?: boolean;
 	setup:
 		| { kind: "hosted" }
 		| {
@@ -104,12 +106,14 @@ export const AI_MODEL_PROVIDERS: readonly AiModelProvider[] = [
 			docsHint: "Your OpenAI-compatible /v1 endpoint.",
 		},
 	},
+	// CLI providers don't currently work; hidden unless the `cli-providers` flag enables them.
 	{
 		id: "claude",
 		name: "Claude CLI",
 		icon: "claude",
 		...modelDefaults("claude"),
 		setup: { kind: "cli", plainModelInput: true },
+		developerOnly: true,
 	},
 	{
 		id: "codex",
@@ -117,6 +121,7 @@ export const AI_MODEL_PROVIDERS: readonly AiModelProvider[] = [
 		icon: "codex",
 		...modelDefaults("codex"),
 		setup: { kind: "cli", plainModelInput: true },
+		developerOnly: true,
 	},
 	{
 		id: "opencode",
@@ -124,8 +129,27 @@ export const AI_MODEL_PROVIDERS: readonly AiModelProvider[] = [
 		icon: "opencode",
 		...modelDefaults("opencode"),
 		setup: { kind: "cli", plainModelInput: false },
+		developerOnly: true,
 	},
 ];
+
+/**
+ * Providers to show in a picker: developer-only providers are hidden unless
+ * the `cli-providers` feature flag enables them (see useCliProvidersVisible)
+ * or one is already selected (so the picker stays valid).
+ */
+export function visibleModelProviders(
+	showDeveloperOnly: boolean,
+	selectedId?: string,
+	providers: readonly AiModelProvider[] = AI_MODEL_PROVIDERS,
+): readonly AiModelProvider[] {
+	return providers.filter(
+		(provider) =>
+			!provider.developerOnly ||
+			showDeveloperOnly ||
+			provider.id === selectedId,
+	);
+}
 
 export const BYOK_MODEL_PROVIDERS = AI_MODEL_PROVIDERS.filter(
 	(provider) => provider.setup.kind !== "hosted",
