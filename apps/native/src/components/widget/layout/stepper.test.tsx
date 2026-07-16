@@ -120,6 +120,22 @@ describe("Stepper", () => {
     expect(screen.getByRole("button", { name: "Go to Save step" })).toBeDisabled();
   });
 
+  it("animates the connector out of the current step while generating", () => {
+    viewModelActions.setState({
+      evolve: makeEvolveState({ step: "begin" }),
+    });
+
+    const { rerender } = render(<Stepper />);
+    expect(screen.queryByTestId("stepper-transition")).toBeNull();
+
+    act(() => {
+      uiActions.setState({ isGenerating: true });
+    });
+    rerender(<Stepper />);
+
+    expect(screen.getByTestId("stepper-transition")).toBeInTheDocument();
+  });
+
   it("collapses progress to the prompt step when there is no diff", () => {
     // An active, committable session but an empty working tree: there is nothing
     // to review or save, so Review and Save must stay locked.

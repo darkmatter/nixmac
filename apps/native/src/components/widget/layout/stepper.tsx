@@ -112,7 +112,10 @@ export function Stepper() {
                       isCompleted
                         ? "bg-slate-800 text-slate-100 border border-slate-700/20 shadow-md shadow-slate-800/20"
                         : isActive
-                          ? "bg-primary text-primary-foreground"
+                          ? isBusy
+                            ? // In transit away from this step: outline only.
+                              "border border-primary/60 bg-transparent text-primary"
+                            : "bg-primary text-primary-foreground"
                           : "bg-muted text-muted-foreground",
                     )}
                   >
@@ -139,7 +142,9 @@ export function Stepper() {
                           isCompleted
                             ? "bg-slate-700 text-white"
                             : isActive
-                              ? "bg-primary text-primary-foreground"
+                              ? isBusy
+                                ? "border border-primary/60 bg-transparent text-primary"
+                                : "bg-primary text-primary-foreground"
                               : "bg-muted text-muted-foreground",
                         )}
                       >
@@ -153,15 +158,24 @@ export function Stepper() {
                 </button>
               </div>
 
-              {/* Connector line cell (after steps 1 and 2) */}
+              {/* Connector line cell (after steps 1 and 2). While a run is
+                  active, the line out of the current step carries a flowing
+                  gradient: we are in transit toward the next step. */}
               {!isLast && (
                 <div
                   key={`line-${index}`}
+                  data-testid={
+                    isBusy && index === currentStepIndex ? "stepper-transition" : undefined
+                  }
                   className={cn(
                     "h-0.5 w-[70%] xs:w-[50%]",
                     index === 0 && "ml-[30%]",
                     index === 1 && "mr-[20%]",
-                    isCompleted ? "bg-slate-500" : "bg-border",
+                    isBusy && index === currentStepIndex
+                      ? "bg-[linear-gradient(90deg,var(--color-border)_25%,var(--color-primary)_50%,var(--color-border)_75%)] bg-[length:200%_100%] motion-safe:animate-stepper-flow"
+                      : isCompleted
+                        ? "bg-slate-500"
+                        : "bg-border",
                   )}
                 />
               )}
