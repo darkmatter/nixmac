@@ -55,6 +55,9 @@ const HIDDEN_EVENT_TYPES: ReadonlySet<EvolveEventType> = new Set([
   "apiResponse",
   // Rendered inside the question card it answers, not as its own row.
   "answered",
+  // Streamed build_check output chunks: rendered as the active row's log tail
+  // while the check runs, never as timeline rows.
+  "buildCheck",
 ]);
 
 // Tools whose execution is fast and immediately followed by a more specific
@@ -124,6 +127,25 @@ export interface FocusState {
    * it is the latest activity; collapsed into its history row once
    * superseded. */
   detailText: string | null;
+  /** Streamed build_check output tail; non-null while a check is running. */
+  buildLog: string[] | null;
+}
+
+/// Ring-buffer cap on retained streamed build-log lines.
+const BUILD_LOG_MAX_LINES = 500;
+
+/// The streamed output of a build check that is running right now: the
+/// buildOutput chunks trailing the event stream, split into lines. Null once
+/// any other event follows (the check finished).
+export function trailingBuildLog(events: EvolveEvent[]): string[] | null {
+  const lines: string[] = [];
+  for (let i = events.length - 1; i >= 0; i--) {
+    const detail = events[i].detail;
+    if (detail?.type !== "buildOutput") break;
+    lines.unshift(...detail.chunk.split("\n").filter((line) => line.length > 0));
+  }
+  if (lines.length === 0) return null;
+  return lines.slice(-BUILD_LOG_MAX_LINES);
 }
 
 /// The question the run is currently blocked on: the most recent question
@@ -142,13 +164,27 @@ export function getFocusState(events: EvolveEvent[]): FocusState {
   const question = getPendingQuestion(events);
   if (question) {
     const text = question.detail?.type === "question" ? question.detail.text : question.summary;
-    return { mode: "needsYou", event: question, headline: text, detailText: null };
+    return { mode: "needsYou", event: question, headline: text, detailText: null, buildLog: null };
   }
 
   const visible = events.filter(isVisibleEvent);
   const current = visible[visible.length - 1] ?? null;
+
+  // A build check streaming output right now: the headline is the visible
+  // build_check tool call row, the detail area is the log tail.
+  const buildLog = trailingBuildLog(events);
+  if (buildLog) {
+    return {
+      mode: "working",
+      event: current,
+      headline: current?.summary ?? "Checking the configuration builds...",
+      detailText: null,
+      buildLog,
+    };
+  }
+
   if (!current) {
-    return { mode: "waiting", event: null, headline: "Working...", detailText: null };
+    return { mode: "waiting", event: null, headline: "Working...", detailText: null, buildLog: null };
   }
 
   const detail = current.detail;
@@ -162,6 +198,7 @@ export function getFocusState(events: EvolveEvent[]): FocusState {
     event: current,
     headline: current.summary,
     detailText,
+    buildLog: null,
   };
 }
 
@@ -184,8 +221,9 @@ function getEventIcon(eventType: EvolveEventType) {
       return <FileSearch className={iconClassName} />;
     case "editing":
       return <FileEdit className={iconClassName} />;
-    // buildCheck is declared in the event enum but currently never emitted
-    // by the backend (it emits buildPass/buildFail instead).
+    // buildCheck events carry streamed output chunks and are hidden from the
+    // timeline (they render as the active row's log tail); the icon is kept in
+    // case a chunk ever surfaces through the fallback path.
     case "buildCheck":
       return <Hammer className={iconClassName} />;
     case "searchPackages":
@@ -505,12 +543,35 @@ function QuestionPrompt({
 // =============================================================================
 
 /**
+ * Streamed build-check output, monospace and tail-following: the newest
+ * lines stay in view as chunks arrive.
+ */
+function BuildLogTail({ lines }: { lines: string[] }) {
+  const ref = useRef<HTMLPreElement>(null);
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.scrollTop = ref.current.scrollHeight;
+    }
+  }, [lines]);
+
+  return (
+    <pre
+      className="mt-1.5 ml-6 max-h-36 overflow-y-auto whitespace-pre-wrap break-all rounded border border-border/40 bg-black/30 p-2 font-mono text-[11px] text-muted-foreground/80"
+      data-testid="evolve-build-log"
+      ref={ref}
+    >
+      {lines.join("\n")}
+    </pre>
+  );
+}
+
+/**
  * The timeline's last row while the run is live: the current activity as one
  * visually dominant row — spinner, highlight, per-step timer — with the
- * current narration/thinking as quiet expanded detail that collapses into a
- * plain row once the next event supersedes it. The row is sticky at the
- * container's bottom edge, so the current step stays in view even when the
- * user scrolls up through history.
+ * current narration/thinking or streamed build output as quiet expanded
+ * detail that collapses into a plain row once the next event supersedes it.
+ * The row is sticky at the container's bottom edge, so the current step
+ * stays in view even when the user scrolls up through history.
  */
 function ActiveRow({
   focus,
@@ -572,6 +633,7 @@ function ActiveRow({
           {focus.detailText}
         </p>
       )}
+      {!!focus.buildLog && <BuildLogTail lines={focus.buildLog} />}
     </div>
   );
 }

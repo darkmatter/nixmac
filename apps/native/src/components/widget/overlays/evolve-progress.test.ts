@@ -6,6 +6,7 @@ import {
   getPendingQuestion,
   getTokenProgress,
   isVisibleEvent,
+  trailingBuildLog,
 } from "./evolve-progress";
 
 function event(eventType: EvolveEventType, raw = "", detail?: EvolveEventDetail): EvolveEvent {
@@ -21,6 +22,10 @@ describe("isVisibleEvent", () => {
 
   it("hides answered events, which render inside the question card", () => {
     expect(isVisibleEvent(event("answered"))).toBe(false);
+  });
+
+  it("hides streamed build output chunks, which render under the active row", () => {
+    expect(isVisibleEvent(event("buildCheck"))).toBe(false);
   });
 
   it("shows narration events", () => {
@@ -170,6 +175,58 @@ describe("getFocusState", () => {
     expect(focus.mode).toBe("waiting");
     expect(focus.event).toBeNull();
     expect(focus.headline).toBe("Working...");
+  });
+
+  it("shows the streamed build log while a check runs", () => {
+    const toolCall: EvolveEvent = {
+      ...event("toolCall", "", { type: "toolCall", tool: "build_check", args: {} }),
+      summary: "Checking the configuration builds...",
+    };
+    const chunk = event("buildCheck", "evaluating flake\n", {
+      type: "buildOutput",
+      chunk: "evaluating flake\n",
+    });
+    const focus = getFocusState([event("start"), toolCall, chunk]);
+    expect(focus.mode).toBe("working");
+    expect(focus.headline).toBe("Checking the configuration builds...");
+    expect(focus.buildLog).toEqual(["evaluating flake"]);
+    expect(focus.detailText).toBeNull();
+  });
+});
+
+describe("trailingBuildLog", () => {
+  const chunk = (text: string) => event("buildCheck", text, { type: "buildOutput", chunk: text });
+
+  it("returns null when the latest activity is not a build check", () => {
+    expect(trailingBuildLog([event("start"), event("editing")])).toBeNull();
+    expect(trailingBuildLog([])).toBeNull();
+  });
+
+  it("collects trailing chunks into ordered lines", () => {
+    const events = [
+      event("start"),
+      event("toolCall"),
+      chunk("evaluating flake\ncopying sources\n"),
+      chunk("these 4 derivations will be built:\n"),
+    ];
+    expect(trailingBuildLog(events)).toEqual([
+      "evaluating flake",
+      "copying sources",
+      "these 4 derivations will be built:",
+    ]);
+  });
+
+  it("ends the log once any other event follows the chunks", () => {
+    const events = [chunk("evaluating flake\n"), event("buildPass")];
+    expect(trailingBuildLog(events)).toBeNull();
+  });
+
+  it("caps retained lines at the ring-buffer limit", () => {
+    const big = Array.from({ length: 600 }, (_, i) => `line ${i}`).join("\n");
+    const log = trailingBuildLog([chunk(big)]);
+    expect(log).toHaveLength(500);
+    expect(log?.[0]).toBe("line 100");
+    expect(log?.[499]).toBe("line 599");
   });
 });
 

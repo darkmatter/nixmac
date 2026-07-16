@@ -754,6 +754,51 @@ export const NarrationInFocus = meta.story({
 });
 
 /**
+ * A build check streaming its dry-run output: the active row shows a
+ * monospace, tail-following log area under the headline.
+ */
+export const BuildCheckStreaming = meta.story({
+  args: {
+    events: [
+      ...mockEventsInProgress,
+      {
+        eventType: "toolCall",
+        summary: "Checking the configuration builds...",
+        raw: 'build_check | args: host="Demo-MacBook-Pro"',
+        iteration: 3,
+        timestampMs: 5000,
+        detail: { type: "toolCall", tool: "build_check", args: {} },
+      },
+      {
+        eventType: "buildCheck",
+        summary: "Checking the configuration builds...",
+        raw: "evaluating file '/nix/store/aaa-source/flake.nix'\ncopying source '/nix/store/bbb-source'\n",
+        iteration: 3,
+        timestampMs: 5600,
+        detail: {
+          type: "buildOutput",
+          chunk:
+            "evaluating file '/nix/store/aaa-source/flake.nix'\ncopying source '/nix/store/bbb-source'\n",
+        },
+      },
+      {
+        eventType: "buildCheck",
+        summary: "Checking the configuration builds...",
+        raw: "these 4 derivations will be built:\n  /nix/store/ccc-darwin-system.drv\n  /nix/store/ddd-vim.drv\n",
+        iteration: 3,
+        timestampMs: 6100,
+        detail: {
+          type: "buildOutput",
+          chunk:
+            "these 4 derivations will be built:\n  /nix/store/ccc-darwin-system.drv\n  /nix/store/ddd-vim.drv\n",
+        },
+      },
+    ],
+    isGenerating: true,
+  },
+});
+
+/**
  * Agent question with choices — the run is blocked until the user answers.
  * The question card is the sticky active row at the end of the timeline.
  */
