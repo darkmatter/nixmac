@@ -670,3 +670,119 @@ export const AllEventTypes = meta.story({
     isGenerating: false,
   },
 });
+
+/**
+ * Agent question with choices — the run is blocked until the user answers.
+ */
+export const AgentQuestion = meta.story({
+  args: {
+    events: [
+      ...mockEventsInProgress,
+      {
+        eventType: "question",
+        summary: "Which Spotify variant do you want?",
+        raw: 'Which Spotify variant do you want?\nChoicesJson: ["spotify","spotifyd","spotify-player"]\nChoices: spotify, spotifyd, spotify-player',
+        iteration: 2,
+        timestampMs: 5000,
+        detail: {
+          type: "question",
+          text: "Which Spotify variant do you want?",
+          choices: ["spotify", "spotifyd", "spotify-player"],
+          kind: "agent",
+        },
+      },
+    ],
+    isGenerating: true,
+  },
+});
+
+/**
+ * Free-text agent question.
+ */
+export const FreeTextQuestion = meta.story({
+  args: {
+    events: [
+      ...mockEventsInProgress,
+      {
+        eventType: "question",
+        summary: "What git email should I configure?",
+        raw: "What git email should I configure?",
+        iteration: 2,
+        timestampMs: 5000,
+        detail: {
+          type: "question",
+          text: "What git email should I configure?",
+          choices: null,
+          kind: "agent",
+        },
+      },
+    ],
+    isGenerating: true,
+  },
+});
+
+/**
+ * Safety-limit checkpoint: the system asks whether to keep going.
+ */
+export const CheckpointQuestion = meta.story({
+  args: {
+    events: [
+      ...mockEventsInProgress,
+      {
+        eventType: "question",
+        summary: "The AI has used 64.7K tokens. Keep going?",
+        raw: 'The AI has used 64.7K tokens. Keep going?\nChoicesJson: ["Yes, keep going","Stop"]\nChoices: Yes, keep going, Stop',
+        iteration: 2,
+        timestampMs: 5000,
+        detail: {
+          type: "question",
+          text: "The AI has used 64.7K tokens. Keep going?",
+          choices: ["Yes, keep going", "Stop"],
+          kind: "checkpoint",
+        },
+      },
+    ],
+    isGenerating: true,
+  },
+});
+
+/**
+ * A question already answered — collapsed into a Q&A record via the
+ * Answered event that follows it.
+ */
+export const AnsweredQuestion = meta.story({
+  args: {
+    events: [
+      ...mockEventsInProgress,
+      {
+        eventType: "question",
+        summary: "Which Spotify variant do you want?",
+        raw: "Which Spotify variant do you want?",
+        iteration: 2,
+        timestampMs: 5000,
+        detail: {
+          type: "question",
+          text: "Which Spotify variant do you want?",
+          choices: ["spotify", "spotifyd"],
+          kind: "agent",
+        },
+      },
+      {
+        eventType: "answered",
+        summary: "Answered: spotify",
+        raw: "User answered: spotify",
+        iteration: 2,
+        timestampMs: 8000,
+        detail: { type: "answered", text: "spotify" },
+      },
+      {
+        eventType: "editing",
+        summary: "Adding spotify to environment.systemPackages",
+        raw: 'Editing file: modules/darwin/default.nix | {"add":{"path":"environment.systemPackages","values":["spotify"]}}',
+        iteration: 3,
+        timestampMs: 9000,
+      },
+    ],
+    isGenerating: true,
+  },
+});
