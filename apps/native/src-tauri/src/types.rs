@@ -5,9 +5,10 @@
 //! for JavaScript/TypeScript consumption.
 
 pub(crate) use crate::shared_types::{
-    Config, EvolutionTelemetry, EvolveEvent, EvolveEventType, FeedbackAiProviderModelInfo,
-    FeedbackFlakeInputEntry, FeedbackFlakeInputsSnapshot, FeedbackMetadata,
-    FeedbackMetadataRequest, FeedbackSystemInfo, FeedbackUsageStats,
+    Config, EvolutionTelemetry, EvolveEvent, EvolveEventDetail, EvolveEventType,
+    FeedbackAiProviderModelInfo, FeedbackFlakeInputEntry, FeedbackFlakeInputsSnapshot,
+    FeedbackMetadata, FeedbackMetadataRequest, FeedbackSystemInfo, FeedbackUsageStats,
+    QuestionKind,
 };
 use crate::utils as global_utils;
 use tauri::Manager;
@@ -31,6 +32,11 @@ impl EvolveEvent {
             telemetry: None,
             conversational_response: None,
         }
+    }
+
+    fn with_detail(mut self, detail: EvolveEventDetail) -> Self {
+        self.detail = Some(detail);
+        self
     }
 
     pub(crate) fn start(start_time: i64, model: &str, prompt: &str) -> Self {
@@ -76,6 +82,10 @@ impl EvolveEvent {
             Some(iter),
             start_time,
         )
+        .with_detail(EvolveEventDetail::Thinking {
+            category: category.to_string(),
+            text: thought.to_string(),
+        })
     }
 
     pub(crate) fn reading(start_time: i64, iter: usize, path: &str) -> Self {
@@ -96,6 +106,10 @@ impl EvolveEvent {
             Some(iter),
             start_time,
         )
+        .with_detail(EvolveEventDetail::Edit {
+            file: path.to_string(),
+            action: None,
+        })
     }
 
     /// Editing event for semantic nix edits: the summary states the change
@@ -132,9 +146,13 @@ impl EvolveEvent {
             Some(iter),
             start_time,
         )
+        .with_detail(EvolveEventDetail::Edit {
+            file: edit.path.clone(),
+            action: Some(edit.action.clone()),
+        })
     }
 
-    pub(crate) fn build_pass(start_time: i64, iter: usize) -> Self {
+    pub(crate) fn build_pass(start_time: i64, iter: usize, attempt: usize) -> Self {
         Self::new(
             EvolveEventType::BuildPass,
             "Build check passed".to_string(),
@@ -142,9 +160,14 @@ impl EvolveEvent {
             Some(iter),
             start_time,
         )
+        .with_detail(EvolveEventDetail::Build {
+            pass: true,
+            attempt,
+            output: String::new(),
+        })
     }
 
-    pub(crate) fn build_fail(start_time: i64, iter: usize, output: &str) -> Self {
+    pub(crate) fn build_fail(start_time: i64, iter: usize, attempt: usize, output: &str) -> Self {
         let summary = match first_error_line(output) {
             Some(line) => format!("Build check failed: {}", truncate(line, 120)),
             None => "Build check failed, retrying...".to_string(),
@@ -156,6 +179,11 @@ impl EvolveEvent {
             Some(iter),
             start_time,
         )
+        .with_detail(EvolveEventDetail::Build {
+            pass: false,
+            attempt,
+            output: truncate(output, 6000),
+        })
     }
 
     pub(crate) fn search_packages(
@@ -198,6 +226,10 @@ impl EvolveEvent {
             Some(iter),
             start_time,
         )
+        .with_detail(EvolveEventDetail::SearchPackages {
+            query: query.to_string(),
+            found: found.to_vec(),
+        })
     }
 
     pub(crate) fn tool_call(
@@ -260,6 +292,10 @@ impl EvolveEvent {
             Some(iter),
             start_time,
         )
+        .with_detail(EvolveEventDetail::ToolCall {
+            tool: tool.to_string(),
+            args: args.clone(),
+        })
     }
 
     pub(crate) fn api_request(start_time: i64, iter: usize) -> Self {
@@ -278,6 +314,7 @@ impl EvolveEvent {
         tokens: u32,
         total_tokens: u32,
         max_token_budget: u32,
+        max_iterations: usize,
     ) -> Self {
         Self::new(
             EvolveEventType::ApiResponse,
@@ -289,6 +326,12 @@ impl EvolveEvent {
             Some(iter),
             start_time,
         )
+        .with_detail(EvolveEventDetail::Progress {
+            tokens: total_tokens,
+            budget: max_token_budget,
+            iteration: iter,
+            limit: max_iterations,
+        })
     }
 
     /// Terminal completion event. Emitted once per successful run, after the
@@ -340,6 +383,7 @@ impl EvolveEvent {
         iter: usize,
         question: &str,
         choices: &Option<Vec<String>>,
+        kind: QuestionKind,
     ) -> Self {
         let raw = match choices {
             Some(c) => {
@@ -360,6 +404,11 @@ impl EvolveEvent {
             Some(iter),
             start_time,
         )
+        .with_detail(EvolveEventDetail::Question {
+            text: question.to_string(),
+            choices: choices.clone(),
+            kind,
+        })
     }
 
     pub(crate) fn analyzing(start_time: i64, iter: Option<usize>) -> Self {
@@ -538,7 +587,7 @@ mod tests {
     #[test]
     fn build_fail_summary_should_surface_the_error_line() {
         let output = "these 3 derivations will be built:\n\nerror: attribute 'spotfy' missing\n   at /flake.nix:12";
-        let event = EvolveEvent::build_fail(0, 1, output);
+        let event = EvolveEvent::build_fail(0, 1, 1, output);
         assert_eq!(
             event.summary,
             "Build check failed: error: attribute 'spotfy' missing"
@@ -547,20 +596,20 @@ mod tests {
 
     #[test]
     fn build_fail_summary_should_fall_back_to_first_line_without_error_marker() {
-        let event = EvolveEvent::build_fail(0, 1, "\nsomething went wrong\nmore context");
+        let event = EvolveEvent::build_fail(0, 1, 1, "\nsomething went wrong\nmore context");
         assert_eq!(event.summary, "Build check failed: something went wrong");
     }
 
     #[test]
     fn build_fail_summary_should_keep_generic_text_for_empty_output() {
-        let event = EvolveEvent::build_fail(0, 1, "");
+        let event = EvolveEvent::build_fail(0, 1, 1, "");
         assert_eq!(event.summary, "Build check failed, retrying...");
     }
 
     #[test]
     fn build_fail_raw_should_carry_full_output() {
         let output = "line one\nerror: boom\nline three";
-        let event = EvolveEvent::build_fail(0, 1, output);
+        let event = EvolveEvent::build_fail(0, 1, 1, output);
         assert_eq!(event.raw, format!("Build check failed: {}", output));
     }
 
@@ -601,5 +650,121 @@ mod tests {
         let args = serde_json::json!({"query": "spotify"});
         let event = EvolveEvent::tool_call(0, 1, "search_packages", &args, "query=\"spotify\"");
         assert_eq!(event.raw, "search_packages | args: query=\"spotify\"");
+    }
+}
+
+#[cfg(test)]
+mod detail_tests {
+    use super::*;
+    use crate::shared_types::FileEditAction;
+
+    #[test]
+    fn thinking_detail_should_carry_full_text() {
+        let event = EvolveEvent::thinking(0, 1, "planning", "First. Second.");
+        match event.detail {
+            Some(EvolveEventDetail::Thinking { category, text }) => {
+                assert_eq!(category, "planning");
+                assert_eq!(text, "First. Second.");
+            }
+            other => panic!("unexpected detail: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn tool_call_detail_should_carry_tool_and_args() {
+        let args = serde_json::json!({"query": "spotify"});
+        let event = EvolveEvent::tool_call(0, 1, "search_packages", &args, "");
+        match event.detail {
+            Some(EvolveEventDetail::ToolCall { tool, args }) => {
+                assert_eq!(tool, "search_packages");
+                assert_eq!(args["query"], "spotify");
+            }
+            other => panic!("unexpected detail: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn editing_semantic_detail_should_carry_action() {
+        let edit = crate::shared_types::SemanticFileEdit {
+            path: "flake.nix".to_string(),
+            action: FileEditAction::Add {
+                path: "environment.systemPackages".to_string(),
+                values: vec!["ripgrep".to_string()],
+            },
+        };
+        let event = EvolveEvent::editing_semantic(0, 1, &edit);
+        match event.detail {
+            Some(EvolveEventDetail::Edit {
+                file,
+                action: Some(FileEditAction::Add { path, values }),
+            }) => {
+                assert_eq!(file, "flake.nix");
+                assert_eq!(path, "environment.systemPackages");
+                assert_eq!(values, vec!["ripgrep".to_string()]);
+            }
+            other => panic!("unexpected detail: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn build_fail_detail_should_carry_attempt_and_output() {
+        let event = EvolveEvent::build_fail(0, 1, 2, "error: boom");
+        match event.detail {
+            Some(EvolveEventDetail::Build {
+                pass,
+                attempt,
+                output,
+            }) => {
+                assert!(!pass);
+                assert_eq!(attempt, 2);
+                assert_eq!(output, "error: boom");
+            }
+            other => panic!("unexpected detail: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn api_response_detail_should_carry_budget_progress() {
+        let event = EvolveEvent::api_response(0, 3, 1000, 5000, 60_000, 50);
+        match event.detail {
+            Some(EvolveEventDetail::Progress {
+                tokens,
+                budget,
+                iteration,
+                limit,
+            }) => {
+                assert_eq!(tokens, 5000);
+                assert_eq!(budget, 60_000);
+                assert_eq!(iteration, 3);
+                assert_eq!(limit, 50);
+            }
+            other => panic!("unexpected detail: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn question_detail_should_carry_choices_and_kind() {
+        let choices = Some(vec!["Yes, keep going".to_string(), "Stop".to_string()]);
+        let event = EvolveEvent::question(0, 1, "Keep going?", &choices, QuestionKind::Checkpoint);
+        match event.detail {
+            Some(EvolveEventDetail::Question {
+                text,
+                choices: Some(c),
+                kind,
+            }) => {
+                assert_eq!(text, "Keep going?");
+                assert_eq!(c.len(), 2);
+                assert_eq!(kind, QuestionKind::Checkpoint);
+            }
+            other => panic!("unexpected detail: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn question_detail_should_serialize_with_camel_case_tag() {
+        let event = EvolveEvent::question(0, 1, "Q?", &None, QuestionKind::Agent);
+        let json = serde_json::to_value(&event).expect("serializes");
+        assert_eq!(json["detail"]["type"], "question");
+        assert_eq!(json["detail"]["kind"], "agent");
     }
 }
