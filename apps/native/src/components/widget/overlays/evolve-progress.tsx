@@ -53,6 +53,8 @@ const HIDDEN_EVENT_TYPES: ReadonlySet<EvolveEventType> = new Set([
   "iteration",
   "apiRequest",
   "apiResponse",
+  // Rendered inside the question card it answers, not as its own row.
+  "answered",
 ]);
 
 // Tools whose execution is fast and immediately followed by a more specific
@@ -70,9 +72,11 @@ const TOOLS_WITH_SPECIFIC_EVENT: ReadonlySet<string> = new Set([
   "done",
 ]);
 
-// Until the event payload carries structured detail, the tool name is only
-// available as the `{tool} | args: ...` prefix of the raw detail.
 function toolCallToolName(event: EvolveEvent): string {
+  if (event.detail?.type === "toolCall") {
+    return event.detail.tool;
+  }
+  // Fallback for events recorded before the structured detail existed.
   return event.raw.split(" | ")[0] ?? "";
 }
 
@@ -86,44 +90,22 @@ export function isVisibleEvent(event: EvolveEvent): boolean {
   return true;
 }
 
-function parseTokenCount(value: string): number {
-  return Number.parseInt(value.replace(/,/g, ""), 10);
-}
-
-function getTokenProgress(events: EvolveEvent[]): { total: number; budget: number | null } | null {
-  let total = 0;
-  let budget: number | null = null;
-  let sawTokenEvent = false;
-
-  for (const event of events) {
-    if (event.eventType !== "apiResponse") {
-      continue;
-    }
-
-    const totalMatch = event.raw.match(/total tokens:\s*([\d,]+)\s*\/\s*([\d,]+)/i);
-    if (totalMatch) {
-      total = parseTokenCount(totalMatch[1]);
-      budget = parseTokenCount(totalMatch[2]);
-      sawTokenEvent = true;
-      continue;
-    }
-
-    const tokenMatch = event.raw.match(/tokens used:\s*([\d,]+)/i);
-    if (tokenMatch) {
-      total += parseTokenCount(tokenMatch[1]);
-      sawTokenEvent = true;
+/// Latest budget counters from the structured Progress detail carried by
+/// provider responses.
+export function getTokenProgress(
+  events: EvolveEvent[],
+): { total: number; budget: number } | null {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const detail = events[i].detail;
+    if (detail?.type === "progress") {
+      return { total: detail.tokens, budget: detail.budget };
     }
   }
-
-  return sawTokenEvent ? { total, budget } : null;
+  return null;
 }
 
-function formatTokenProgress(progress: { total: number; budget: number | null }): string {
-  const total = progress.total.toLocaleString();
-  if (progress.budget === null) {
-    return `${total} tokens`;
-  }
-  return `${total} / ${progress.budget.toLocaleString()} tokens`;
+function formatTokenProgress(progress: { total: number; budget: number }): string {
+  return `${progress.total.toLocaleString()} / ${progress.budget.toLocaleString()} tokens`;
 }
 
 // =============================================================================
@@ -168,6 +150,8 @@ function getEventIcon(eventType: EvolveEventType, isLatest: boolean) {
       return <FileText className={iconClassName} />;
     case "question":
       return <HelpCircle className={iconClassName} />;
+    case "narration":
+      return <MessageSquare className={iconClassName} />;
     default:
       return <CircleDot className={iconClassName} />;
   }
@@ -207,6 +191,8 @@ function getEventColor(eventType: EvolveEventType): string {
       return "text-pink-400";
     case "question":
       return "text-violet-400";
+    case "narration":
+      return "text-sky-300";
     default:
       return "text-muted-foreground";
   }

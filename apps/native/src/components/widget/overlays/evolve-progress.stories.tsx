@@ -104,6 +104,18 @@ const mockEventsInProgress: EvolveEvent[] = [
     raw: "Searched packages for 'vim'; found 3: vim, neovim, vim-full",
     iteration: 1,
     timestampMs: 2700,
+    detail: { type: "searchPackages", query: "vim", found: ["vim", "neovim", "vim-full"] },
+  },
+  {
+    eventType: "narration",
+    summary: "The plain vim package is what we want here.",
+    raw: "The plain vim package is what we want here. I'll add it to the system packages and then configure git.",
+    iteration: 1,
+    timestampMs: 2750,
+    detail: {
+      type: "narration",
+      text: "The plain vim package is what we want here. I'll add it to the system packages and then configure git.",
+    },
   },
   {
     eventType: "iteration",
@@ -125,6 +137,7 @@ const mockEventsInProgress: EvolveEvent[] = [
     raw: "Received response | tokens used: 2104",
     iteration: 2,
     timestampMs: 4500,
+    detail: { type: "progress", tokens: 3627, budget: 500_000, iteration: 2, limit: 50 },
   },
   {
     eventType: "toolCall",
@@ -234,6 +247,7 @@ const mockEventsComplete: EvolveEvent[] = [
     raw: "Received response | tokens used: 3456",
     iteration: 5,
     timestampMs: 17_000,
+    detail: { type: "progress", tokens: 13_752, budget: 500_000, iteration: 5, limit: 50 },
   },
   {
     eventType: "complete",
@@ -526,6 +540,14 @@ const allEventTypes: EvolveEvent[] = [
     raw: "Detailed error message",
     iteration: 2,
     timestampMs: 15_000,
+  },
+  {
+    eventType: "narration",
+    summary: "Everything checks out.",
+    raw: "Everything checks out. Wrapping up the change summary now.",
+    iteration: 3,
+    timestampMs: 17_000,
+    detail: { type: "narration", text: "Everything checks out. Wrapping up the change summary now." },
   },
   {
     eventType: "summarizing",
