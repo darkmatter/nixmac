@@ -1454,6 +1454,8 @@ macScannedAt: number | null;
 /**
  * True once the user logged in or explicitly chose bring-your-own-key
  * during onboarding.
+ * @todo consider if this should be computed - other code computes from the
+ * existence of a device API key (e.g. better-auth). If these 2 values conflict,
  */
 loginDecided: boolean; 
 /**
