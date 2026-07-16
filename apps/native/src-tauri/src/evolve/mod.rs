@@ -46,6 +46,7 @@ pub use types::{EvolutionProgress, EvolutionRunError};
 
 use crate::{
     ai::model_capabilities::capabilities_for_model,
+    shared_types::QuestionKind,
     statistics, store,
     types::{EvolveEvent, emit_evolve_event},
     utils as global_utils,
@@ -672,6 +673,7 @@ async fn ask_to_continue_after_limit<R: Runtime>(
                 LIMIT_DECISION_CONTINUE.to_string(),
                 LIMIT_DECISION_STOP.to_string(),
             ]),
+            QuestionKind::Checkpoint,
         ),
     );
 
@@ -1209,6 +1211,7 @@ pub async fn generate_evolution<R: Runtime>(
                     usage.total,
                     total_tokens,
                     max_token_budget,
+                    max_iterations,
                 ),
             );
         }
@@ -1391,10 +1394,13 @@ pub async fn generate_evolution<R: Runtime>(
                                     stderr,
                                     stdout,
                                 } => {
+                                    // build_attempts is incremented later in
+                                    // process_tool_result; this is that attempt's number.
+                                    let attempt = build_attempts + 1;
                                     if *success {
                                         emit_evolve_event(
                                             app,
-                                            EvolveEvent::build_pass(start_time, iteration),
+                                            EvolveEvent::build_pass(start_time, iteration, attempt),
                                         );
                                     } else {
                                         let error_source = if !stderr.is_empty() {
@@ -1409,6 +1415,7 @@ pub async fn generate_evolution<R: Runtime>(
                                             EvolveEvent::build_fail(
                                                 start_time,
                                                 iteration,
+                                                attempt,
                                                 error_source,
                                             ),
                                         );
@@ -1451,7 +1458,11 @@ pub async fn generate_evolution<R: Runtime>(
                                     emit_evolve_event(
                                         app,
                                         EvolveEvent::question(
-                                            start_time, iteration, question, choices,
+                                            start_time,
+                                            iteration,
+                                            question,
+                                            choices,
+                                            QuestionKind::Agent,
                                         ),
                                     );
                                 }
