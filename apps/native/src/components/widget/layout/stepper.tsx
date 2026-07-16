@@ -172,7 +172,10 @@ export function Stepper() {
                     index === 0 && "ml-[30%]",
                     index === 1 && "mr-[20%]",
                     isBusy && index === currentStepIndex
-                      ? "bg-[linear-gradient(90deg,var(--color-border)_25%,var(--color-primary)_50%,var(--color-border)_75%)] bg-[length:200%_100%] motion-safe:animate-stepper-flow"
+                      ? // no-repeat over the base border color: the highlight
+                        // starts off-screen, sweeps across, and leaves a quiet
+                        // gap before the next cycle instead of popping in.
+                        "bg-border bg-[linear-gradient(90deg,var(--color-border)_25%,var(--color-primary)_50%,var(--color-border)_75%)] bg-[length:200%_100%] bg-no-repeat motion-safe:animate-stepper-flow"
                       : isCompleted
                         ? "bg-slate-500"
                         : "bg-border",
