@@ -2,33 +2,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::shared_types::{Evolution, EvolutionState, ThinkingEntry, ToolCallRecord};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum FileEditAction {
-    /// Generic add to an attribute path: e.g. { path: "environment.systemPackages", values: ["ripgrep"] }
-    Add { path: String, values: Vec<String> },
-    /// Generic remove from an attribute path
-    Remove { path: String, values: Vec<String> },
-    /// Set an attribute path to a scalar JSON value (bool/string/number/null)
-    Set {
-        path: String,
-        value: serde_json::Value,
-    },
-    /// Create or update an attribute set at a given path, setting multiple scalar key-value pairs.
-    /// For missing paths a new attrset assignment is inserted; for existing ones the named keys are
-    /// updated in-place (or appended) without disturbing the rest of the block.
-    SetAttrs {
-        path: String,
-        attrs: serde_json::Map<String, serde_json::Value>,
-    },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SemanticFileEdit {
-    pub path: String, // the nix file being edited
-    pub action: FileEditAction,
-}
+// Moved to shared_types so they can ride the wire in EvolveEventDetail;
+// re-exported here for the existing tool/editor code.
+pub use crate::shared_types::{FileEditAction, SemanticFileEdit};
 
 impl Evolution {
     pub fn new(prompt: &str) -> Self {
