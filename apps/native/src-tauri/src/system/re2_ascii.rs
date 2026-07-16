@@ -53,7 +53,10 @@ fn collect_ascii_replacements(node: &Ast, out: &mut Vec<(Range<usize>, String)>)
                 AssertionKind::NotWordBoundary => ASCII_NOT_WORD_BOUNDARY,
                 _ => return,
             };
-            out.push((a.span.start.offset..a.span.end.offset, replacement.to_string()));
+            out.push((
+                a.span.start.offset..a.span.end.offset,
+                replacement.to_string(),
+            ));
         }
         Ast::ClassBracketed(c) => collect_class_set(&c.kind, out),
         Ast::Repetition(r) => collect_ascii_replacements(&r.ast, out),
@@ -104,7 +107,9 @@ fn collect_class_item(item: &ClassSetItem, out: &mut Vec<(Range<usize>, String)>
 /// so escaped literals and class-internal contexts are handled correctly.
 /// Returns None if the pattern doesn't parse or contains nothing to rewrite.
 pub fn ascii_rewrite(pattern: &str) -> Option<String> {
-    let ast = regex_syntax::ast::parse::Parser::new().parse(pattern).ok()?;
+    let ast = regex_syntax::ast::parse::Parser::new()
+        .parse(pattern)
+        .ok()?;
     let mut replacements: Vec<(Range<usize>, String)> = Vec::new();
     collect_ascii_replacements(&ast, &mut replacements);
     if replacements.is_empty() {
@@ -189,8 +194,7 @@ mod tests {
                 .delegate_size_limit(64 << 20)
                 .build()
                 .expect("original compiles at raised limit");
-            let rewritten =
-                Regex::new(&ascii_rewrite(pattern).unwrap()).expect("rewrite compiles");
+            let rewritten = Regex::new(&ascii_rewrite(pattern).unwrap()).expect("rewrite compiles");
 
             for hay in &corpus {
                 let a = original.find(hay).unwrap().map(|m| (m.start(), m.end()));
