@@ -64,12 +64,32 @@ function RootLayout() {
 // Router instance
 // ---------------------------------------------------------------------------
 
-const memoryHistory = createMemoryHistory({ initialEntries: ["/"] });
+function createAppRouter() {
+  return createRouter({
+    routeTree,
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+}
 
-export const router = createRouter({
-  routeTree,
-  history: memoryHistory,
-});
+// This module sits in an import cycle: route components (SettingsDialog,
+// DarwinWidget, header, tray hook, ...) import `nav` back from here. A Vite
+// hot update that re-evaluates this module would otherwise mint a fresh
+// router + memory history while mounted closures (Esc handler, tray listener,
+// RouterProvider) still hold the previous instance — `nav` calls then drive a
+// router that isn't rendered, so Close/reopen silently do nothing until a full
+// reload. Pin the instance in hot.data so every evaluation shares one router.
+const hotRouter = import.meta.hot?.data?.appRouter as
+  | ReturnType<typeof createAppRouter>
+  | undefined;
+
+// On reuse, still swap in this evaluation's route tree so route edits apply.
+hotRouter?.update({ routeTree });
+
+export const router = hotRouter ?? createAppRouter();
+
+if (import.meta.hot?.data) {
+  import.meta.hot.data.appRouter = router;
+}
 
 declare module "@tanstack/react-router" {
   interface Register {
