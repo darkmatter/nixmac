@@ -117,28 +117,28 @@ export function RepairBanners({
                   {issue.missing.map((p) => p.name).join(", ")}
                 </p>
                 <p className="mt-0.5 text-xs opacity-70">
-                  Some features will fail until access is granted again in System Settings.
+                  Some features will fail until access is granted again. Review and re-grant
+                  permissions in Settings → Permissions.
                 </p>
               </>
             ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {issue.kind === "permissions-revoked" && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={async () => {
-                  // Deep-link the first missing permission's grant flow, then
-                  // re-probe so a fixed banner clears.
-                  try {
-                    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-                    await tauriAPI.permissions.request(issue.missing[0].id);
-                  } catch {}
-                  await onRecheck();
-                }}
-              >
-                Fix…
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => nav.openSettings("permissions")}
+                >
+                  Open Settings
+                </Button>
+                {/* Repair is launch-scoped, so the banner won't observe grants
+                    made in the settings tab — offer an explicit re-probe. */}
+                <Button size="sm" variant="ghost" onClick={() => void onRecheck()}>
+                  Check again
+                </Button>
+              </>
             )}
             <button
               type="button"
