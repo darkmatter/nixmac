@@ -12,7 +12,7 @@ use crate::state::{
 use crate::{db, git, summarize};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
 /// Set to `false` by `start_watching` to stop the old thread before starting a new one.
@@ -23,6 +23,29 @@ static WATCH_DIR: Mutex<Option<String>> = Mutex::new(None);
 
 /// Holds handle to current watcher so we can wait for it to stop on restart.
 static WATCHER_THREAD: Mutex<Option<std::thread::JoinHandle<()>>> = Mutex::new(None);
+
+/// Last auto-update check by watched directory.
+///
+/// This is process-global rather than thread-local so focus-driven watcher
+/// restarts do not reset the five-minute throttle.
+static LAST_AUTO_UPDATE_CHECK: Mutex<Option<(String, Instant)>> = Mutex::new(None);
+
+/// Check the upstream git repo for new commits that we might be able to pull
+/// every 5 minutes.
+const AUTO_UPDATE_CHECK_INTERVAL: Duration = Duration::from_secs(5 * 60);
+
+fn should_check_auto_update(dir: &str, now: Instant) -> bool {
+    let mut last_check = LAST_AUTO_UPDATE_CHECK.lock().unwrap();
+
+    if let Some((last_dir, checked_at)) = last_check.as_ref() {
+        if last_dir == dir && now.duration_since(*checked_at) < AUTO_UPDATE_CHECK_INTERVAL {
+            return false;
+        }
+    }
+
+    *last_check = Some((dir.to_string(), now));
+    true
+}
 
 /// Stops the git status watcher, if one is running, and waits for it to exit.
 /// Used when the config directory is cleared (onboarding reset) — without a
@@ -162,6 +185,21 @@ where
                 if !WATCHER_ACTIVE.load(Ordering::SeqCst) {
                     break;
                 }
+
+                // Detect upstream git commits we may want to offer to pull.
+                // This is a fire-and-forget, best-effort check; if it fails,
+                // we just try again on the next scheduled check.
+                if let Some(dir) = current_dir.clone() {
+                    if should_check_auto_update(&dir, Instant::now()) {
+                        // Use a separate thread so we don't block the crazy-fast 100ms loop. The check itself is a git fetch
+                        // which is more like order-of-seconds (usually about 1-2 seconds in practice).
+                        std::thread::spawn(move || {
+                            let decision = git::auto_update::check_auto_update(&dir);
+                            log::debug!("[watcher] git auto-update check result: {:?}", decision);
+                        });
+                    }
+                }
+
                 std::thread::sleep(Duration::from_millis(100));
             }
         }
