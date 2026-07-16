@@ -393,7 +393,9 @@ const mockEventsFewEvents: EvolveEvent[] = [
   },
 ];
 
-// Generate many iterations for stress testing
+// A long run that keeps failing the build check: exercises the
+// attempt-grouped history (failed attempts collapse under a header) and the
+// internal scrolling the overlay panel gets by stretching the component.
 function generateManyIterations(): EvolveEvent[] {
   const events: EvolveEvent[] = [
     {
@@ -405,39 +407,93 @@ function generateManyIterations(): EvolveEvent[] {
     },
   ];
 
-  for (let i = 0; i < 20; i++) {
-    const baseTime = (i + 1) * 3000;
+  const candidates = ["spotfy", "spotify-unfree", "spotify-client", "spotifyPlayer"];
+  for (const [i, pkg] of candidates.entries()) {
+    const attempt = i + 1;
+    const baseTime = attempt * 20_000;
     events.push(
       {
         eventType: "iteration",
-        summary: `Processing iteration ${i + 1}...`,
-        raw: `Iteration ${i + 1}`,
-        iteration: i + 1,
+        summary: `Processing iteration ${attempt}...`,
+        raw: `Iteration ${attempt}`,
+        iteration: attempt,
         timestampMs: baseTime,
       },
       {
         eventType: "apiRequest",
         summary: "Querying AI model...",
         raw: "Sending request",
-        iteration: i + 1,
+        iteration: attempt,
         timestampMs: baseTime + 100,
       },
       {
         eventType: "apiResponse",
         summary: "Received AI response",
-        raw: `Tokens: ${1000 + i * 200}`,
-        iteration: i + 1,
+        raw: `Tokens: ${2000 + i * 1500}`,
+        iteration: attempt,
         timestampMs: baseTime + 2000,
+        detail: {
+          type: "progress",
+          tokens: 2000 + i * 1500,
+          budget: 500_000,
+          iteration: attempt,
+          limit: 50,
+        },
       },
       {
         eventType: "thinking",
-        summary: `Analyzing iteration ${i + 1}`,
-        raw: `[analysis] Analyzing iteration ${i + 1}`,
-        iteration: i + 1,
+        summary: `Trying the ${pkg} attribute next.`,
+        raw: `[debugging] Trying the ${pkg} attribute next.`,
+        iteration: attempt,
         timestampMs: baseTime + 2500,
+      },
+      {
+        eventType: "editing",
+        summary: `Adding ${pkg} to environment.systemPackages`,
+        raw: `Editing file: modules/darwin/default.nix | {"add":{"path":"environment.systemPackages","values":["${pkg}"]}}`,
+        iteration: attempt,
+        timestampMs: baseTime + 3000,
+      },
+      {
+        eventType: "toolCall",
+        summary: "Checking the configuration builds...",
+        raw: 'build_check | args: host="Demo-MacBook-Pro"',
+        iteration: attempt,
+        timestampMs: baseTime + 3500,
+      },
+      {
+        eventType: "buildFail",
+        summary: `Build check failed: error: attribute '${pkg}' missing`,
+        raw: `Build check failed: error: attribute '${pkg}' missing\n   at /flake.nix:12`,
+        iteration: attempt,
+        timestampMs: baseTime + 9000,
+        detail: {
+          type: "build",
+          pass: false,
+          attempt,
+          output: `error: attribute '${pkg}' missing\n   at /flake.nix:12`,
+        },
       },
     );
   }
+
+  // The current attempt, still in progress.
+  events.push(
+    {
+      eventType: "thinking",
+      summary: "The package is unfree; enabling allowUnfree should fix it.",
+      raw: "[debugging] The package is unfree; enabling allowUnfree should fix it.",
+      iteration: 5,
+      timestampMs: 110_000,
+    },
+    {
+      eventType: "editing",
+      summary: "Adding spotify to environment.systemPackages",
+      raw: 'Editing file: modules/darwin/default.nix | {"add":{"path":"environment.systemPackages","values":["spotify"]}}',
+      iteration: 5,
+      timestampMs: 112_000,
+    },
+  );
 
   return events;
 }
@@ -648,8 +704,10 @@ export const SingleEvent = meta.story({
 });
 
 /**
- * Long running evolution with many iterations. The explicit height exercises
- * the internal scrolling the overlay panel gets by stretching the component.
+ * Long running evolution across several failed build attempts: history rows
+ * group by attempt, with failed attempts collapsed under their headers. The
+ * explicit height exercises the internal scrolling the overlay panel gets by
+ * stretching the component.
  */
 export const ManyIterations = meta.story({
   args: {

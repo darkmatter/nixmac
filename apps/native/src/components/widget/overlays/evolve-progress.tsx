@@ -22,7 +22,8 @@ import {
   Square,
   XCircle,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { client } from "@/lib/orpc";
 import type { EvolveEvent, EvolveEventType } from "@/ipc/types";
@@ -534,6 +535,52 @@ function QuestionPrompt({
 }
 
 // =============================================================================
+// Attempt Group
+// =============================================================================
+
+/**
+ * A failed build attempt in the history zone: collapsed to a single header
+ * row by default (§7 decision — group history by build attempt), expandable
+ * to the steps that led to the failure.
+ */
+function AttemptGroupSection({
+  group,
+  children,
+}: {
+  group: AttemptGroup;
+  children: ReactNode;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div>
+      <button
+        className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted/30"
+        onClick={() => setExpanded(!expanded)}
+        type="button"
+      >
+        <ChevronDown
+          className={cn(
+            "h-3 w-3 shrink-0 text-muted-foreground/40 transition-transform",
+            !expanded && "-rotate-90",
+          )}
+        />
+        <XCircle className="h-4 w-4 shrink-0 text-red-400" />
+        <span className="min-w-0 flex-1 truncate text-muted-foreground text-sm">
+          Attempt {group.attempt} failed: {group.failure ? attemptFailureReason(group.failure) : ""}
+        </span>
+        <span className="whitespace-nowrap text-muted-foreground/50 text-xs">
+          {group.events.length} {group.events.length === 1 ? "step" : "steps"}
+        </span>
+      </button>
+      {!!expanded && (
+        <div className="ml-3 space-y-1 border-border/40 border-l pl-1">{children}</div>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
 // Focus Zone
 // =============================================================================
 
@@ -731,18 +778,30 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
         ref={scrollRef}
       >
         <div className="space-y-1">
-          {historyEvents.map((event, index) => {
-            if (event.eventType === "question") {
-              return (
-                <QuestionPrompt
-                  answeredText={answeredTextFor(events, event)}
-                  event={event}
-                  key={`${event.timestampMs}-${index}`}
-                  onAnswer={handleQuestionAnswer}
-                />
-              );
+          {groupByAttempt(historyEvents).map((group, groupIndex) => {
+            const rows = group.events.map((event, index) => {
+              if (event.eventType === "question") {
+                return (
+                  <QuestionPrompt
+                    answeredText={answeredTextFor(events, event)}
+                    event={event}
+                    key={`${event.timestampMs}-${index}`}
+                    onAnswer={handleQuestionAnswer}
+                  />
+                );
+              }
+              return <EventItem event={event} key={`${event.timestampMs}-${index}`} />;
+            });
+            // The trailing group is the current attempt: rendered flat,
+            // never collapsed. Failed attempts collapse under a header.
+            if (group.failure === null) {
+              return <Fragment key={`attempt-${groupIndex}`}>{rows}</Fragment>;
             }
-            return <EventItem event={event} key={`${event.timestampMs}-${index}`} />;
+            return (
+              <AttemptGroupSection group={group} key={`attempt-${groupIndex}`}>
+                {rows}
+              </AttemptGroupSection>
+            );
           })}
         </div>
       </div>
