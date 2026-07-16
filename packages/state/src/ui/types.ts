@@ -14,6 +14,7 @@ export type SettingsTab =
   | "api-keys"
   | "ai-models"
   | "preferences"
+  | "permissions"
   | "tuning"
   | "developer";
 

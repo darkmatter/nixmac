@@ -552,6 +552,7 @@ const meta = preview.meta({
         "api-keys",
         "ai-models",
         "preferences",
+        "permissions",
         "tuning",
         "developer",
       ],
