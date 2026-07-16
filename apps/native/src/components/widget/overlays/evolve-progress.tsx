@@ -18,6 +18,7 @@ import {
   Play,
   Repeat,
   Send,
+  ShieldAlert,
   Square,
   XCircle,
 } from "lucide-react";
@@ -318,36 +319,83 @@ function parseQuestionChoices(raw: string): string[] | null {
   return match[1].split(", ").filter(Boolean);
 }
 
+/// The user's answer to `question`, taken from the Answered event that
+/// follows it in the stream (before any subsequent question).
+export function answeredTextFor(events: EvolveEvent[], question: EvolveEvent): string | null {
+  const start = events.indexOf(question);
+  if (start === -1) return null;
+  for (let i = start + 1; i < events.length; i++) {
+    const e = events[i];
+    if (e.eventType === "question") return null;
+    if (e.eventType === "answered") {
+      return e.detail?.type === "answered" ? e.detail.text : e.summary;
+    }
+  }
+  return null;
+}
+
 function QuestionPrompt({
   event,
+  answeredText,
   onAnswer,
 }: {
   event: EvolveEvent;
+  answeredText: string | null;
   onAnswer: (answer: string) => void;
 }) {
   const [input, setInput] = useState("");
-  const [answered, setAnswered] = useState(false);
+  // Optimistic local state so the input locks immediately on submit; the
+  // durable answered record is the Answered event (answeredText).
+  const [submitted, setSubmitted] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const choices = parseQuestionChoices(event.raw);
+  const detail = event.detail?.type === "question" ? event.detail : null;
+  const choices = detail ? detail.choices : parseQuestionChoices(event.raw);
+  const isCheckpoint = detail?.kind === "checkpoint";
+  const questionText = detail?.text ?? event.summary;
+  const answered = submitted || answeredText !== null;
+
+  const palette = isCheckpoint
+    ? {
+        icon: <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />,
+        border: "border-amber-500/30",
+        borderAnswered: "border-amber-500/20",
+        bg: "bg-amber-500/5",
+        choice:
+          "rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-300 transition-colors hover:bg-amber-500/20",
+        label: "Safety checkpoint",
+      }
+    : {
+        icon: <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-violet-400" />,
+        border: "border-violet-500/30",
+        borderAnswered: "border-violet-500/20",
+        bg: "bg-violet-500/5",
+        choice:
+          "rounded-md border border-violet-500/30 bg-violet-500/10 px-3 py-1.5 text-sm text-violet-300 transition-colors hover:bg-violet-500/20",
+        label: null,
+      };
 
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (!answered) {
+      inputRef.current?.focus();
+    }
+  }, [answered]);
 
   const handleSubmit = (value: string) => {
     if (!value.trim() || answered) return;
-    setAnswered(true);
+    setSubmitted(true);
     onAnswer(value.trim());
   };
 
   if (answered) {
     return (
-      <div className="mx-2 my-2 rounded-lg border border-violet-500/20 bg-violet-500/5 p-3">
+      <div className={cn("mx-2 my-2 rounded-lg border p-3", palette.borderAnswered, palette.bg)}>
         <div className="flex items-start gap-2">
-          <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-violet-400" />
+          {palette.icon}
           <div className="min-w-0 flex-1">
-            <p className="text-sm text-foreground">{event.summary}</p>
-            <p className="mt-1 text-muted-foreground text-xs">Answered: {input}</p>
+            <p className="text-sm text-foreground">{questionText}</p>
+            <p className="mt-1 text-muted-foreground text-xs">
+              Answered: {answeredText ?? input}
+            </p>
           </div>
         </div>
       </div>
@@ -355,17 +403,22 @@ function QuestionPrompt({
   }
 
   return (
-    <div className="mx-2 my-2 rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
+    <div className={cn("mx-2 my-2 rounded-lg border p-3", palette.border, palette.bg)}>
       <div className="flex items-start gap-2">
-        <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-violet-400" />
+        {palette.icon}
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-foreground text-sm">{event.summary}</p>
+          {!!palette.label && (
+            <p className="mb-0.5 font-mono text-[10px] text-amber-400/80 uppercase tracking-wide">
+              {palette.label}
+            </p>
+          )}
+          <p className="font-medium text-foreground text-sm">{questionText}</p>
 
           {choices ? (
             <div className="mt-2 flex flex-wrap gap-1.5">
               {choices.map((choice) => (
                 <button
-                  className="rounded-md border border-violet-500/30 bg-violet-500/10 px-3 py-1.5 text-sm text-violet-300 transition-colors hover:bg-violet-500/20"
+                  className={palette.choice}
                   key={choice}
                   onClick={() => {
                     setInput(choice);
@@ -535,6 +588,7 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
             if (event.eventType === "question") {
               return (
                 <QuestionPrompt
+                  answeredText={answeredTextFor(events, event)}
                   event={event}
                   key={`${event.timestampMs}-${index}`}
                   onAnswer={handleQuestionAnswer}

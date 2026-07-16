@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EvolveEvent, EvolveEventDetail, EvolveEventType } from "@/ipc/types";
-import { getTokenProgress, isVisibleEvent } from "./evolve-progress";
+import { answeredTextFor, getTokenProgress, isVisibleEvent } from "./evolve-progress";
 
 function event(eventType: EvolveEventType, raw = "", detail?: EvolveEventDetail): EvolveEvent {
   return { eventType, raw, summary: "", iteration: 1, timestampMs: 0, detail };
@@ -90,5 +90,26 @@ describe("getTokenProgress", () => {
 
   it("returns null when no progress detail was received", () => {
     expect(getTokenProgress([event("apiResponse", "tokens used: 999")])).toBeNull();
+  });
+});
+
+describe("answeredTextFor", () => {
+  const question = event("question");
+  const answer = event("answered", "", { type: "answered", text: "spotify" });
+
+  it("pairs a question with the answered event that follows it", () => {
+    const events = [event("start"), question, answer, event("editing")];
+    expect(answeredTextFor(events, question)).toBe("spotify");
+  });
+
+  it("returns null while the question is still pending", () => {
+    expect(answeredTextFor([event("start"), question], question)).toBeNull();
+  });
+
+  it("does not cross into the next question's answer", () => {
+    const q2 = event("question", "second");
+    const events = [question, q2, answer];
+    expect(answeredTextFor(events, question)).toBeNull();
+    expect(answeredTextFor(events, q2)).toBe("spotify");
   });
 });
