@@ -508,9 +508,39 @@ pub(crate) fn emit_evolve_event<R: tauri::Runtime>(app: &tauri::AppHandle<R>, ev
     }
 
     if let Some(window) = app.get_webview_window("main") {
+        // A question blocks the run until the user answers; nudge them if
+        // they are looking elsewhere.
+        if matches!(event.event_type, EvolveEventType::Question)
+            && !window.is_focused().unwrap_or(false)
+        {
+            notify_question(app, &window, &event.summary);
+        }
         if let Err(e) = tauri::Emitter::emit(&window, EVOLVE_EVENT_CHANNEL, &event) {
             log::warn!("Failed to emit evolve event: {}", e);
         }
+    }
+}
+
+/// OS-level nudge for a question that arrived while the app was unfocused:
+/// a notification plus a request for attention (dock bounce on macOS).
+fn notify_question<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    window: &tauri::WebviewWindow<R>,
+    question: &str,
+) {
+    use tauri_plugin_notification::NotificationExt;
+
+    if let Err(e) = window.request_user_attention(Some(tauri::UserAttentionType::Informational)) {
+        log::warn!("Failed to request user attention: {}", e);
+    }
+    if let Err(e) = app
+        .notification()
+        .builder()
+        .title("nixmac needs your input")
+        .body(truncate(question, 120))
+        .show()
+    {
+        log::warn!("Failed to send question notification: {}", e);
     }
 }
 
