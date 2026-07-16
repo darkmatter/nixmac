@@ -696,6 +696,7 @@ async fn ask_to_continue_after_limit<R: Runtime>(
     match answer {
         Some(answer) if should_continue_after_limit(&answer) => {
             info!("User chose to continue after reaching an evolution limit");
+            emit_evolve_event(app, EvolveEvent::answered(start_time, iteration, &answer));
             emit_evolve_event(
                 app,
                 EvolveEvent::info(start_time, Some(iteration), "Continuing evolution..."),
@@ -707,6 +708,7 @@ async fn ask_to_continue_after_limit<R: Runtime>(
                 "User chose to stop after reaching an evolution limit: {}",
                 answer
             );
+            emit_evolve_event(app, EvolveEvent::answered(start_time, iteration, &answer));
             LimitDecision::Stop
         }
         None => {
@@ -1279,6 +1281,12 @@ pub async fn generate_evolution<R: Runtime>(
                     "Assistant returned content alongside tool_calls; content treated as non-executable text | content_preview={}",
                     global_utils::truncate_with_ellipsis(text, 300)
                 );
+                // Surface intermediate narration to the timeline. Terminal
+                // text (no tool calls) travels with the Complete event
+                // instead, as summary or conversational response.
+                if !text.trim().is_empty() {
+                    emit_evolve_event(app, EvolveEvent::narration(start_time, iteration, text));
+                }
             }
             info!(
                 "💬 Assistant: {}",
@@ -1505,6 +1513,10 @@ pub async fn generate_evolution<R: Runtime>(
                                     }
                                 };
                                 info!("📨 User answered: {}", user_answer);
+                                emit_evolve_event(
+                                    app,
+                                    EvolveEvent::answered(start_time, iteration, &user_answer),
+                                );
                                 messages.push(store_tool_result(
                                     Message::Tool {
                                         tool_call_id: tool_call.id.clone(),

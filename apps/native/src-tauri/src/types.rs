@@ -411,6 +411,36 @@ impl EvolveEvent {
         })
     }
 
+    /// Assistant narration between tool calls: the model explaining what it
+    /// is doing or about to do, in its own words.
+    pub(crate) fn narration(start_time: i64, iter: usize, text: &str) -> Self {
+        Self::new(
+            EvolveEventType::Narration,
+            truncate(text, 2000),
+            truncate(first_sentence(text), 100),
+            Some(iter),
+            start_time,
+        )
+        .with_detail(EvolveEventDetail::Narration {
+            text: text.to_string(),
+        })
+    }
+
+    /// The user's answer to the pending question; pairs with the preceding
+    /// `Question` event so the timeline records the full exchange.
+    pub(crate) fn answered(start_time: i64, iter: usize, answer: &str) -> Self {
+        Self::new(
+            EvolveEventType::Answered,
+            format!("User answered: {}", answer),
+            format!("Answered: {}", truncate(answer, 100)),
+            Some(iter),
+            start_time,
+        )
+        .with_detail(EvolveEventDetail::Answered {
+            text: answer.to_string(),
+        })
+    }
+
     pub(crate) fn analyzing(start_time: i64, iter: Option<usize>) -> Self {
         Self::new(
             EvolveEventType::Summarizing,
@@ -756,6 +786,28 @@ mod detail_tests {
                 assert_eq!(c.len(), 2);
                 assert_eq!(kind, QuestionKind::Checkpoint);
             }
+            other => panic!("unexpected detail: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn narration_summary_should_be_first_sentence() {
+        let event = EvolveEvent::narration(0, 1, "The nixpkgs build is broken. I'll use homebrew.");
+        assert_eq!(event.summary, "The nixpkgs build is broken.");
+        match event.detail {
+            Some(EvolveEventDetail::Narration { text }) => {
+                assert_eq!(text, "The nixpkgs build is broken. I'll use homebrew.");
+            }
+            other => panic!("unexpected detail: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn answered_should_pair_answer_with_detail() {
+        let event = EvolveEvent::answered(0, 1, "spotify-player");
+        assert_eq!(event.summary, "Answered: spotify-player");
+        match event.detail {
+            Some(EvolveEventDetail::Answered { text }) => assert_eq!(text, "spotify-player"),
             other => panic!("unexpected detail: {:?}", other),
         }
     }
