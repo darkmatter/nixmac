@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { EvolveEvent, EvolveEventType } from "@/ipc/types";
-import { isVisibleEvent } from "./evolve-progress";
+import type { EvolveEvent, EvolveEventDetail, EvolveEventType } from "@/ipc/types";
+import { getTokenProgress, isVisibleEvent } from "./evolve-progress";
 
-function event(eventType: EvolveEventType, raw = ""): EvolveEvent {
-  return { eventType, raw, summary: "", iteration: 1, timestampMs: 0 };
+function event(eventType: EvolveEventType, raw = "", detail?: EvolveEventDetail): EvolveEvent {
+  return { eventType, raw, summary: "", iteration: 1, timestampMs: 0, detail };
 }
 
 describe("isVisibleEvent", () => {
@@ -11,6 +11,21 @@ describe("isVisibleEvent", () => {
     expect(isVisibleEvent(event("iteration"))).toBe(false);
     expect(isVisibleEvent(event("apiRequest"))).toBe(false);
     expect(isVisibleEvent(event("apiResponse"))).toBe(false);
+  });
+
+  it("hides answered events, which render inside the question card", () => {
+    expect(isVisibleEvent(event("answered"))).toBe(false);
+  });
+
+  it("shows narration events", () => {
+    expect(isVisibleEvent(event("narration"))).toBe(true);
+  });
+
+  it("prefers the structured detail for the tool name", () => {
+    const hidden = event("toolCall", "", { type: "toolCall", tool: "think", args: {} });
+    const shown = event("toolCall", "", { type: "toolCall", tool: "search_docs", args: {} });
+    expect(isVisibleEvent(hidden)).toBe(false);
+    expect(isVisibleEvent(shown)).toBe(true);
   });
 
   it("shows goal-relevant events", () => {
@@ -48,5 +63,32 @@ describe("isVisibleEvent", () => {
 
   it("shows tool calls for unknown tools", () => {
     expect(isVisibleEvent(event("toolCall", "future_tool | args: "))).toBe(true);
+  });
+});
+
+describe("getTokenProgress", () => {
+  it("returns the latest progress detail", () => {
+    const events = [
+      event("apiResponse", "", {
+        type: "progress",
+        tokens: 1000,
+        budget: 500_000,
+        iteration: 1,
+        limit: 50,
+      }),
+      event("thinking"),
+      event("apiResponse", "", {
+        type: "progress",
+        tokens: 2500,
+        budget: 500_000,
+        iteration: 2,
+        limit: 50,
+      }),
+    ];
+    expect(getTokenProgress(events)).toEqual({ total: 2500, budget: 500_000 });
+  });
+
+  it("returns null when no progress detail was received", () => {
+    expect(getTokenProgress([event("apiResponse", "tokens used: 999")])).toBeNull();
   });
 });
