@@ -42,12 +42,15 @@ export function Stepper() {
     step === "permissions" ||
     step === "nix-setup" ||
     step === "history" ||
-    step === "filesystem" ||
-    isGenerating ||
-    isRebuilding
+    step === "filesystem"
   ) {
     return null;
   }
+
+  // While a run is active the stepper stays visible as context (the evolve
+  // overlay only covers the content area below it), but navigating between
+  // steps is locked.
+  const isBusy = isGenerating || isRebuilding;
 
   // Determine current step index based on widget state
   const currentStepIndex = stepIndexByEvolveStep[step];
@@ -66,7 +69,7 @@ export function Stepper() {
         {STEPS.map((stepInfo, index) => {
           const isActive = currentStepIndex === index;
           const isCompleted = backendStepIndex > index && !isActive;
-          const canSelectStep = backendStepIndex >= index && !isActive;
+          const canSelectStep = backendStepIndex >= index && !isActive && !isBusy;
           const stepNumber = index + 1;
           const isFirst = index === 0;
           const isMiddle = index === 1;

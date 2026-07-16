@@ -101,6 +101,25 @@ describe("Stepper", () => {
     expect(screen.getByRole("button", { name: "Go to Review step" })).toBeDisabled();
   });
 
+  it("stays visible while generating, with navigation locked", () => {
+    viewModelActions.setState({
+      evolve: makeEvolveState({ step: "commit" }),
+      git: gitWithChanges(),
+    });
+    act(() => {
+      uiActions.setState({ isGenerating: true });
+    });
+
+    render(<Stepper />);
+
+    // Visible as context above the evolve overlay...
+    expect(screen.getByRole("list", { name: /Progress/ })).toBeInTheDocument();
+    // ...but no step can be selected while the run is active.
+    expect(screen.getByRole("button", { name: "Go to Describe step" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Go to Review step" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Go to Save step" })).toBeDisabled();
+  });
+
   it("collapses progress to the prompt step when there is no diff", () => {
     // An active, committable session but an empty working tree: there is nothing
     // to review or save, so Review and Save must stay locked.
