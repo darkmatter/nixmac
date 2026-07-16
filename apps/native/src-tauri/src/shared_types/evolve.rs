@@ -144,6 +144,9 @@ pub enum EvolveEventDetail {
         attempt: usize,
         output: String,
     },
+    /// A streamed chunk of build-check output, emitted in throttled batches
+    /// while the check runs.
+    BuildOutput { chunk: String },
     /// Assistant narration between tool calls.
     Narration { text: String },
     /// Budget counters, emitted with every provider response.

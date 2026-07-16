@@ -74,6 +74,9 @@ pub(crate) struct ToolCtx<'a> {
     pub(crate) args: &'a serde_json::Value,
     pub(crate) gitignore_matcher: Option<&'a GitignoreChecker>,
     pub(crate) auto_format: bool,
+    /// Sink for streamed `build_check` output batches; when absent the check
+    /// runs blocking with no progress feedback.
+    pub(crate) on_build_output: Option<&'a dyn Fn(&str)>,
 }
 
 /// Result of executing a tool call
@@ -118,6 +121,7 @@ pub fn execute_tool(
     args: &serde_json::Value,
     auto_format: bool,
     gitignore_matcher: Option<&GitignoreChecker>,
+    on_build_output: Option<&dyn Fn(&str)>,
 ) -> Result<ToolResult> {
     // Repair double-encoded arguments at the dispatch boundary so every
     // caller — the live model loop, tests, and replayed tool calls alike —
@@ -130,6 +134,7 @@ pub fn execute_tool(
         args: &args,
         auto_format,
         gitignore_matcher,
+        on_build_output,
     };
 
     match name {
@@ -282,6 +287,7 @@ mod tests {
             &json!({ "path": "secret.txt" }),
             false,
             gitignore_matcher.as_ref(),
+            None,
         );
 
         let err = result.expect_err("ignored file should be rejected");
@@ -310,6 +316,7 @@ mod tests {
             &json!({ "path": "nested/secret.txt" }),
             false,
             gitignore_matcher.as_ref(),
+            None,
         );
 
         let err = result.expect_err("nested gitignored file should be rejected");
@@ -339,6 +346,7 @@ mod tests {
             &json!({ "pattern": "**/*.txt" }),
             false,
             gitignore_matcher.as_ref(),
+            None,
         )
         .expect("list_files should succeed");
 
@@ -370,6 +378,7 @@ mod tests {
             }),
             false,
             gitignore_matcher.as_ref(),
+            None,
         );
 
         let err = result.expect_err("edit_file should reject gitignored paths");
@@ -404,6 +413,7 @@ mod tests {
             }),
             false,
             gitignore_matcher.as_ref(),
+            None,
         );
 
         let err = result.expect_err("edit_nix_file should reject gitignored paths");
@@ -435,6 +445,7 @@ mod tests {
                 }
             }),
             false,
+            None,
             None,
         );
 
@@ -470,6 +481,7 @@ mod tests {
             }),
             false,
             None,
+            None,
         );
 
         let err = result.expect_err("list attr path in top-level path should suggest add");
@@ -499,6 +511,7 @@ mod tests {
                 "value": ["alpha", "beta"]
             }),
             false,
+            None,
             None,
         );
 
@@ -535,6 +548,7 @@ mod tests {
             }),
             false,
             None,
+            None,
         );
 
         let err = result.expect_err("shorthand set_attrs should require an action path");
@@ -561,6 +575,7 @@ mod tests {
                 "action": "{\"set\": {\"path\": \"system.defaults.NSGlobalDomain._HIHideMenuBar\", \"value\": false}}"
             }),
             false,
+            None,
             None,
         )
         .expect("double-encoded action string should be recovered as the action object");
@@ -592,6 +607,7 @@ mod tests {
             }),
             false,
             None,
+            None,
         )
         .expect("stringified action payload should be repaired at dispatch");
 
@@ -620,6 +636,7 @@ mod tests {
             }),
             false,
             None,
+            None,
         );
 
         let err = result.expect_err("non-object double-encoded action should still error");
@@ -647,6 +664,7 @@ mod tests {
                 }
             }),
             false,
+            None,
             None,
         );
 
@@ -689,6 +707,7 @@ mod tests {
             }),
             false,
             None,
+            None,
         )
         .expect("edit_nix_file should quote Homebrew values");
 
@@ -725,6 +744,7 @@ mod tests {
                 "values": ["wget"]
             }),
             false,
+            None,
             None,
         )
         .expect("edit_nix_file should accept add shorthand");
@@ -779,6 +799,7 @@ mod tests {
             }),
             false,
             None,
+            None,
         )
         .expect("edit_nix_file should accept explicit attr_path shorthand");
 
@@ -817,6 +838,7 @@ mod tests {
                 "values": ["fd"]
             }),
             false,
+            None,
             None,
         );
 
@@ -862,6 +884,7 @@ mod tests {
             }),
             false,
             None,
+            None,
         )
         .expect("edit_nix_file should match quoted Homebrew values");
 
@@ -889,6 +912,7 @@ mod tests {
             }),
             false,
             None,
+            None,
         )
         .expect("data.json edits should be allowed");
     }
@@ -911,6 +935,7 @@ mod tests {
                 "replace": "{\"name\":\"Changed\"}"
             }),
             false,
+            None,
             None,
         );
 
@@ -936,6 +961,7 @@ mod tests {
                 "replace": "{\"enabled\":true}"
             }),
             false,
+            None,
             None,
         );
 
@@ -966,6 +992,7 @@ mod tests {
             }),
             false,
             None,
+            None,
         );
 
         let err = result.expect_err(".nixmac nix edits should be rejected");
@@ -990,6 +1017,7 @@ mod tests {
                 }
             }),
             false,
+            None,
             None,
         );
 
@@ -1018,6 +1046,7 @@ mod tests {
             }),
             false,
             gitignore_matcher.as_ref(),
+            None,
         );
 
         let err = result.expect_err("edit_file should reject nested gitignored paths");

@@ -152,6 +152,22 @@ impl EvolveEvent {
         })
     }
 
+    /// A streamed chunk of build-check output. `raw` carries the chunk so
+    /// the Console mirror and session transcripts get the log; the timeline
+    /// renders it in the focus zone instead of as rows.
+    pub(crate) fn build_output(start_time: i64, iter: usize, chunk: &str) -> Self {
+        Self::new(
+            EvolveEventType::BuildCheck,
+            chunk.to_string(),
+            "Checking the configuration builds...".to_string(),
+            Some(iter),
+            start_time,
+        )
+        .with_detail(EvolveEventDetail::BuildOutput {
+            chunk: chunk.to_string(),
+        })
+    }
+
     pub(crate) fn build_pass(start_time: i64, iter: usize, attempt: usize) -> Self {
         Self::new(
             EvolveEventType::BuildPass,
@@ -664,6 +680,18 @@ mod tests {
     fn build_fail_summary_should_keep_generic_text_for_empty_output() {
         let event = EvolveEvent::build_fail(0, 1, 1, "");
         assert_eq!(event.summary, "Build check failed, retrying...");
+    }
+
+    #[test]
+    fn build_output_should_carry_the_chunk_in_raw_and_detail() {
+        let event = EvolveEvent::build_output(0, 2, "evaluating derivation\nthese 3 will be built");
+        assert_eq!(event.raw, "evaluating derivation\nthese 3 will be built");
+        assert_eq!(event.summary, "Checking the configuration builds...");
+        assert!(matches!(
+            event.detail,
+            Some(EvolveEventDetail::BuildOutput { ref chunk })
+                if chunk == "evaluating derivation\nthese 3 will be built"
+        ));
     }
 
     #[test]

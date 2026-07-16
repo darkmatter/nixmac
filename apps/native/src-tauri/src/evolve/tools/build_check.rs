@@ -36,8 +36,18 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
         host_attr, show_trace, config_dir
     );
 
-    let (passed, stdout, stderr) =
-        crate::rebuild::dry_run_build_check(config_dir, host_attr, show_trace)?;
+    let (passed, stdout, stderr) = match ctx.on_build_output {
+        // Stream output while the check runs; poll cancellation so a
+        // cancelled evolution kills the child instead of waiting it out.
+        Some(on_output) => crate::rebuild::dry_run_build_check_streaming(
+            config_dir,
+            host_attr,
+            show_trace,
+            on_output,
+            &crate::evolve::session_control::is_evolve_cancelled,
+        )?,
+        None => crate::rebuild::dry_run_build_check(config_dir, host_attr, show_trace)?,
+    };
 
     if passed {
         info!("Build check passed for host: {}", host_attr);

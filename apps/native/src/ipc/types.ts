@@ -644,6 +644,11 @@ export type EvolveEventDetail =
  */
 { type: "build"; pass: boolean; attempt: number; output: string } | 
 /**
+ * A streamed chunk of build-check output, emitted in throttled batches
+ * while the check runs.
+ */
+{ type: "buildOutput"; chunk: string } | 
+/**
  * Assistant narration between tool calls.
  */
 { type: "narration"; text: string } | 

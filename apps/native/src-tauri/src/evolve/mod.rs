@@ -1400,6 +1400,14 @@ pub async fn generate_evolution<R: Runtime>(
                         recent_read_calls.insert(key, iteration);
                     }
 
+                    // Stream build_check output into the event channel in
+                    // throttled batches; the focus zone renders the tail.
+                    let build_output_emitter = |chunk: &str| {
+                        emit_evolve_event(
+                            app,
+                            EvolveEvent::build_output(start_time, iteration, chunk),
+                        );
+                    };
                     let result = execute_tool(
                         repo_root.as_path(),
                         config_dir,
@@ -1408,6 +1416,7 @@ pub async fn generate_evolution<R: Runtime>(
                         &args,
                         auto_format_nix_files,
                         gitignore_matcher.as_ref(),
+                        Some(&build_output_emitter),
                     );
 
                     let mut tool_key: Option<String> = None;
