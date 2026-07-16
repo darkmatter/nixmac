@@ -24,6 +24,7 @@ export const initialViewModelState: ViewModelState = {
   changeMap: null,
   history: [],
   preferences: null,
+  onboardingState: null,
   hosts: [],
   permissions: null,
   permissionsHydrated: false,

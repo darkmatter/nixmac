@@ -8,9 +8,11 @@ import type {
   SemanticChangeMap,
 } from "@/ipc/types";
 import {
+  makeCompletedOnboardingState,
   makeGlobalPreferences,
   makeGrantedPermissions,
   makeNixInstallState,
+  makeOnboardingState,
   makeRebuildStatus,
 } from "@/utils/test-fixtures";
 import { uiActions, useUiState, useViewModel, viewModelActions } from "@nixmac/state";
@@ -323,6 +325,9 @@ function applyArgsToStores(a: Record<string, any>): void {
       repoRoot: a.configDir || null,
     }),
     hosts: a.hostsListed ? [...DEMO_HOSTS] : [],
+    onboardingState: a.onboardingComplete
+      ? makeCompletedOnboardingState()
+      : makeOnboardingState(),
     permissions: a.permissionsGranted ? makeGrantedPermissions() : makeIncompletePermissions(),
     permissionsHydrated: true,
     nixInstall: makeNixInstallState(),
@@ -374,6 +379,7 @@ function computeArgsView(): Record<string, any> {
     committable: vm.evolve?.committable ?? false,
     configDir: vm.preferences?.configDir ?? "",
     host: vm.preferences?.hostAttr ?? "",
+    onboardingComplete: vm.onboardingState?.completedAt != null,
     permissionsGranted: vm.permissions?.allRequiredGranted ?? true,
     isBootstrapping: ui.isBootstrapping,
     showHistory: ui.showHistory,
@@ -495,6 +501,10 @@ const meta = preview.meta({
       control: "boolean",
       ...cat("Routing / Gating", "Hosts discovered from the flake (false = fresh onboarding)"),
     },
+    onboardingComplete: {
+      control: "boolean",
+      ...cat("Routing / Gating", "Completion latch; false → OnboardingFlow takes over"),
+    },
     permissionsGranted: {
       control: "boolean",
       ...cat("Routing / Gating", "false → Permissions step"),
@@ -573,6 +583,7 @@ const meta = preview.meta({
     configDir: "/Users/demo/.darwin",
     host: "Demo-MacBook-Pro",
     hostsListed: true,
+    onboardingComplete: true,
     permissionsGranted: true,
     isBootstrapping: false,
     showHistory: false,
@@ -609,12 +620,12 @@ export const Playground = meta.story({});
 
 /** First-time setup, no config selected yet. */
 export const Onboarding = meta.story({
-  args: { configDir: "", host: "", hostsListed: false },
+  args: { configDir: "", host: "", hostsListed: false, onboardingComplete: false },
 });
 
 /** Directory chosen, waiting for a host selection. */
 export const OnboardingWithDirectory = meta.story({
-  args: { host: "", hostsListed: true },
+  args: { host: "", hostsListed: true, onboardingComplete: false },
 });
 
 /** Default ready state. */

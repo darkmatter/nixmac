@@ -13,6 +13,7 @@ import {
   makeGlobalPreferences,
   makeGrantedPermissions,
   makeNixInstallState,
+  makeOnboardingState,
   makeRebuildStatus,
 } from "@/utils/test-fixtures";
 import { uiActions, viewModelActions } from "@nixmac/state";
@@ -195,9 +196,12 @@ function seedWidgetState(preset: WidgetPreset) {
       repoRoot: "/Users/demo/.darwin",
       evolveProvider: "openrouter",
       evolveModel: "~anthropic/claude-sonnet-latest",
-      onboardingMacScannedAt: 1_767_200_000,
-      onboardingLoginDecided: true,
-      onboardingLastBuildAt: 1_767_200_300,
+    }),
+    onboardingState: makeOnboardingState({
+      completedAt: 1_767_200_300,
+      macScannedAt: 1_767_200_000,
+      loginDecided: true,
+      lastBuildAt: 1_767_200_300,
     }),
     hosts: ["Demo-MacBook-Pro", "Work-MacBook"],
     permissions: makeGrantedPermissions(),

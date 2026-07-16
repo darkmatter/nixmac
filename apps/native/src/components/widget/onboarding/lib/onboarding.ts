@@ -81,10 +81,13 @@ export interface OnboardingStepInputs {
 
 /**
  * Returns the first onboarding gate that is not yet satisfied, or `null` when
- * onboarding is complete. Every gate is derived from durable facts, so the
- * answer is stable across restarts — a finished user computes `null` and never
- * re-enters the flow, while a regressed prerequisite (revoked permission,
- * missing flake) naturally re-surfaces its gate. Steps run strictly in order.
+ * every gate holds. This is the step machine *inside* the flow: gates derive
+ * from durable facts, so in-flow progress is stable across restarts and
+ * crashes. It does NOT decide whether the flow is shown — visibility is gated
+ * by the backend completion latch (`OnboardingState.completedAt`), so a
+ * regressed fact after completion (a cleared host during a settings edit, a
+ * revoked permission) never re-summons the wizard. Steps run strictly in
+ * order. See docs/2026-07-08-onboarding-state-ownership.md.
  */
 export function computeOnboardingStep(inputs: OnboardingStepInputs): StepId | null {
   if (!inputs.permissionsReady) return "permissions";

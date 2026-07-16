@@ -1,6 +1,7 @@
 import type {
 	GlobalPreferences,
 	NixInstallState,
+	OnboardingState,
 	PermissionsState,
 	RebuildStatus,
 } from "@/ipc/types";
@@ -38,14 +39,42 @@ export function makeGlobalPreferences(
 		pinnedVersion: null,
 		updateChannel: "stable",
 		featureFlagOverrides: null,
-		onboardingMacScannedAt: null,
-		onboardingLoginDecided: false,
-		onboardingLastBuildAt: null,
-		onboardingProvisionalConfigDir: null,
 		pendingImportDir: null,
 		autoFormatNixFiles: false,
 		...overrides,
 	};
+}
+
+/**
+ * Full `OnboardingState` value for tests and stories; defaults to a fresh
+ * (never-onboarded) profile. Matches the backend defaults; override the
+ * fields a scenario cares about — `makeCompletedOnboardingState` for the
+ * common "finished user" shape.
+ */
+export function makeOnboardingState(
+	overrides: Partial<OnboardingState> = {},
+): OnboardingState {
+	return {
+		completedAt: null,
+		macScannedAt: null,
+		loginDecided: false,
+		lastBuildAt: null,
+		provisionalConfigDir: null,
+		...overrides,
+	};
+}
+
+/** Onboarding state of a user who completed the wizard. */
+export function makeCompletedOnboardingState(
+	overrides: Partial<OnboardingState> = {},
+): OnboardingState {
+	return makeOnboardingState({
+		completedAt: 1751967600,
+		macScannedAt: 1751967000,
+		loginDecided: true,
+		lastBuildAt: 1751967300,
+		...overrides,
+	});
 }
 
 /** All-granted permissions snapshot for tests and stories. */
@@ -89,10 +118,10 @@ export function makeRebuildStatus(
 
 /**
  * Seed the ViewModel with the Storybook/test bypass invariants: permissions
- * granted, Nix installed with nix-darwin available, and a demo config
- * selected — so a widget mounted inside a story never falls into the
- * permissions/setup/nix-setup screens. Story-level seeding (which runs after
- * this) can still override any field.
+ * granted, Nix installed with nix-darwin available, a demo config selected,
+ * and the onboarding completion latch set — so a widget mounted inside a
+ * story never falls into the onboarding flow. Story-level seeding (which
+ * runs after this) can still override any field.
  */
 export function seedViewModelBypass(): void {
 	const current = viewModelActions.getState();
@@ -100,6 +129,7 @@ export function seedViewModelBypass(): void {
 		permissions: makeGrantedPermissions(),
 		permissionsHydrated: true,
 		nixInstall: makeNixInstallState(),
+		onboardingState: current.onboardingState ?? makeCompletedOnboardingState(),
 		preferences:
 			current.preferences ??
 			makeGlobalPreferences({

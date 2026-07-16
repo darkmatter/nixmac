@@ -84,6 +84,7 @@ fn main() {
         .register::<shared_types::UpdateChannel>()
         .register::<shared_types::UpdateInfo>()
         .register::<shared_types::GlobalPreferences>()
+        .register::<shared_types::OnboardingState>()
         .register::<shared_types::UiPrefs>()
         .register::<shared_types::FileDiffContents>()
         .register::<shared_types::UiPrefsUpdate>()

@@ -33,8 +33,8 @@ pub(super) fn handle_new_config_dir(app: &AppHandle, dir: &str) -> Result<(), St
 /// non-root-flake imports is an ancestor of the selected config dir.
 pub(super) fn mark_config_dir_provisional(app: &AppHandle, root: &std::path::Path) {
     let root = root.to_string_lossy().to_string();
-    if let Err(e) = crate::state::preferences::write(app, move |prefs| {
-        prefs.onboarding_provisional_config_dir = Some(root);
+    if let Err(e) = crate::state::onboarding::write(app, move |state| {
+        state.provisional_config_dir = Some(root);
     }) {
         log::warn!("Failed to record provisional config dir: {e:#}");
     }
@@ -42,8 +42,8 @@ pub(super) fn mark_config_dir_provisional(app: &AppHandle, root: &std::path::Pat
 
 /// Releases onboarding's ownership claim over the config directory, if any.
 pub(super) fn clear_config_dir_provisional(app: &AppHandle) {
-    if let Err(e) = crate::state::preferences::write(app, |prefs| {
-        prefs.onboarding_provisional_config_dir = None;
+    if let Err(e) = crate::state::onboarding::write(app, |state| {
+        state.provisional_config_dir = None;
     }) {
         log::warn!("Failed to clear provisional config dir: {e:#}");
     }

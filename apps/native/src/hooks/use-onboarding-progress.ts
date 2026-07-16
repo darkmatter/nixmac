@@ -2,11 +2,12 @@ import { tauriAPI } from "@/ipc/api";
 import { onboardingActions } from "@nixmac/state";
 
 /**
- * Persists durable onboarding progress into `GlobalPreferences`. These facts —
- * unlike the transient onboarding UI store — survive restarts and are what the
- * step machine derives completion from. The backend emits
- * `global_preferences_changed`, which the preferences sync mirrors into the
- * ViewModel, so the flow re-derives automatically after each write.
+ * Persists durable onboarding progress into the backend `OnboardingState`
+ * slice (routed there by `ui_set_prefs`). These facts — unlike the transient
+ * onboarding UI store — survive restarts and are what the step machine
+ * derives in-flow progress from. The backend emits `onboarding_state_changed`,
+ * which the onboarding-state sync mirrors into the ViewModel, so the flow
+ * re-derives automatically after each write.
  */
 export function useOnboardingProgress() {
 	// The user ran the "scan this Mac" customizations pass (or skipped it from the

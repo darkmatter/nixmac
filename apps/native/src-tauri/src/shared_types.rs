@@ -16,6 +16,8 @@ mod git;
 mod github;
 #[path = "shared_types/managed_edits.rs"]
 mod managed_edits;
+#[path = "shared_types/onboarding.rs"]
+mod onboarding;
 #[path = "shared_types/prefs.rs"]
 mod prefs;
 #[path = "shared_types/settings_io.rs"]
@@ -31,6 +33,7 @@ pub use feedback::*;
 pub use git::*;
 pub use github::*;
 pub use managed_edits::*;
+pub use onboarding::*;
 pub use prefs::*;
 pub use settings_io::*;
 pub use system::*;
