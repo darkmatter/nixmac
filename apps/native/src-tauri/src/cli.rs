@@ -106,6 +106,39 @@ pub enum Commands {
     },
 }
 
+/// Pins a provider when a CLI model flag arrives while none is stored, using
+/// the provider the run itself will resolve to: the env default when set,
+/// otherwise the credential-based openai/openrouter fallback. Models are
+/// remembered per provider, so without this the model could not persist.
+fn pin_provider_for_cli_model(
+    app: &AppHandle,
+    stored_provider: Option<String>,
+    env_default: Option<String>,
+    set_provider: fn(&AppHandle, &str) -> anyhow::Result<()>,
+) -> Result<(), String> {
+    if stored_provider.is_some() {
+        return Ok(());
+    }
+    let provider = match env_default {
+        Some(provider) => provider,
+        None => {
+            let has_openai = crate::storage::store::get_effective_openai_provider_credential(app)
+                .map_err(|e| format!("Failed to read OpenAI credential: {}", e))?
+                .is_some();
+            let has_openrouter =
+                crate::storage::store::get_effective_openrouter_provider_credential(app)
+                    .map_err(|e| format!("Failed to read OpenRouter credential: {}", e))?
+                    .is_some();
+            crate::ai::providers::resolve_unconfigured_openai_compatible_provider(
+                None,
+                has_openai,
+                has_openrouter,
+            )
+        }
+    };
+    set_provider(app, &provider).map_err(|e| format!("Failed to set provider: {}", e))
+}
+
 /// Runs evolution with provided or default settings
 pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result<(), String> {
     let EvolveConfig {
@@ -152,13 +185,25 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
             .map_err(|e| format!("Failed to set Ollama URL: {}", e))?;
     }
 
-    // Model prefs
+    // Model prefs. Models are remembered per provider, so a model flag
+    // without any stored provider first pins the provider this run will
+    // resolve to — otherwise the model would have no key to persist under.
+    let env_settings = crate::env::settings_from_app(Some(app));
+
     if let Some(ref provider) = evolve_provider {
         crate::storage::store::set_evolve_provider(app, provider)
             .map_err(|e| format!("Failed to set evolve provider: {}", e))?;
     }
 
     if let Some(ref model) = evolve_model {
+        pin_provider_for_cli_model(
+            app,
+            crate::storage::store::get_evolve_provider(app)
+                .ok()
+                .flatten(),
+            crate::env::optional(env_settings.default_evolve_provider.clone()),
+            crate::storage::store::set_evolve_provider,
+        )?;
         crate::storage::store::set_evolve_model(app, model)
             .map_err(|e| format!("Failed to set evolve model: {}", e))?;
     }
@@ -169,6 +214,14 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
     }
 
     if let Some(ref model) = summary_model {
+        pin_provider_for_cli_model(
+            app,
+            crate::storage::store::get_summary_provider(app)
+                .ok()
+                .flatten(),
+            crate::env::optional(env_settings.default_summary_provider.clone()),
+            crate::storage::store::set_summary_provider,
+        )?;
         crate::storage::store::set_summary_model(app, model)
             .map_err(|e| format!("Failed to set summary model: {}", e))?;
     }

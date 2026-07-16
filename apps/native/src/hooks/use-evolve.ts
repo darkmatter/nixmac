@@ -3,6 +3,7 @@ import { uiActions, useUiState, viewModelActions } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import { client } from "@/lib/orpc";
+import { modelForProvider } from "@/lib/providers/ai-models";
 
 /**
  * Hook for the evolution operation.
@@ -59,7 +60,9 @@ const handleEvolve = async () => {
     props: {
       trigger: "prompt",
       provider: prefs?.evolveProvider ?? "default",
-      has_custom_model: Boolean(prefs?.evolveModel),
+      has_custom_model: Boolean(
+        prefs && modelForProvider(prefs.evolveModels, prefs.evolveProvider),
+      ),
     },
   });
 

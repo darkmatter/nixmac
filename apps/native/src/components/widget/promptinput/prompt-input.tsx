@@ -26,6 +26,7 @@ import { useTypewriterPlaceholder } from "@/components/widget/promptinput/use-ty
 import { useEvolve } from "@/hooks/use-evolve";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import { tauriAPI } from "@/ipc/api";
+import { modelForProvider } from "@/lib/providers/ai-models";
 import { getProviderConfigInvalidReason } from "@/lib/providers/ai-provider-validation";
 import { uiActions, useUiState, useViewModel } from "@nixmac/state";
 import { nav } from "@/router";
@@ -75,13 +76,13 @@ export function PromptInput() {
               prefs?.evolveProvider,
               normalizedPrefs,
               cliStatus,
-              prefs?.evolveModel,
+              prefs ? modelForProvider(prefs.evolveModels, prefs.evolveProvider) : null,
             ),
             summary: getProviderConfigInvalidReason(
               prefs?.summaryProvider,
               normalizedPrefs,
               cliStatus,
-              prefs?.summaryModel,
+              prefs ? modelForProvider(prefs.summaryModels, prefs.summaryProvider) : null,
             ),
           });
         }

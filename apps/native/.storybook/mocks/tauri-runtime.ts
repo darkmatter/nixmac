@@ -68,9 +68,9 @@ const cachedModels = new Map<string, string[]>();
 const listeners = new Map<string, Set<(event: { payload: unknown }) => void>>();
 const prefs = {
   summaryProvider: "openai",
-  summaryModel: "gpt-5-mini",
+  summaryModels: { openai: "gpt-5-mini" },
   evolveProvider: "openai",
-  evolveModel: "gpt-5",
+  evolveModels: { openai: "gpt-5" },
   maxIterations: 25,
   maxTokenBudget: 750_000,
   maxBuildAttempts: 3,

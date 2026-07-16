@@ -1,5 +1,6 @@
 import { EVOLUTION_CANCELLED_MSG } from "@/lib/constants";
 import { client } from "@/lib/orpc";
+import { modelForProvider } from "@/lib/providers/ai-models";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import { uiActions, useUiState, viewModelActions } from "@nixmac/state";
 
@@ -53,7 +54,9 @@ export function useFixWithAi() {
       props: {
         trigger: "fix_build_error",
         provider: prefs?.evolveProvider ?? "default",
-        has_custom_model: Boolean(prefs?.evolveModel),
+        has_custom_model: Boolean(
+          prefs && modelForProvider(prefs.evolveModels, prefs.evolveProvider),
+        ),
       },
     });
 

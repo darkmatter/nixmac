@@ -143,6 +143,15 @@ export function isPlainInputCliProvider(provider: string): boolean {
 	return setup.kind === "cli" && setup.plainModelInput;
 }
 
+// Remembered model for a provider from the per-provider prefs map; "" means
+// "track the provider default".
+export function modelForProvider(
+	models: Partial<Record<string, string>>,
+	provider: string | null | undefined,
+): string {
+	return (provider && models[provider]) || "";
+}
+
 // The placeholder describes what an empty field means at runtime: providers
 // with a fallback name it explicitly; providers that require a model get a
 // plain prompt.

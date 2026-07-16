@@ -6,6 +6,7 @@ import {
   type StepId,
 } from "@/components/widget/onboarding/lib/onboarding";
 import { settings } from "@/lib/env";
+import { modelForProvider } from "@/lib/providers/ai-models";
 import { isInferenceConfigured } from "@/lib/providers/ai-provider-validation";
 import { onboardingActions, useOnboarding, useViewModel } from "@nixmac/state";
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -27,7 +28,9 @@ export function useOnboardingFlow(): {
   const host = useViewModel((s) => s.preferences?.hostAttr ?? "");
   const hosts = useViewModel((s) => s.hosts);
   const evolveProvider = useViewModel((s) => s.preferences?.evolveProvider ?? null);
-  const evolveModel = useViewModel((s) => s.preferences?.evolveModel ?? null);
+  const evolveModel = useViewModel((s) =>
+    s.preferences ? modelForProvider(s.preferences.evolveModels, s.preferences.evolveProvider) : null,
+  );
   const macScannedAt = useViewModel((s) => s.preferences?.onboardingMacScannedAt ?? null);
   const loginDecided = useViewModel((s) => s.preferences?.onboardingLoginDecided ?? false);
   const lastBuildAt = useViewModel((s) => s.preferences?.onboardingLastBuildAt ?? null);

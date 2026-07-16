@@ -12,9 +12,9 @@ const PREFS: UiPrefs = {
 	openaiCompatibleApiBaseUrl: "",
 	openaiCompatibleApiKey: "",
 	summaryProvider: "openrouter",
-	summaryModel: OPENROUTER_DEFAULTS.summaryModel,
+	summaryModels: { openrouter: OPENROUTER_DEFAULTS.summaryModel },
 	evolveProvider: "openrouter",
-	evolveModel: OPENROUTER_DEFAULTS.evolveModel,
+	evolveModels: { openrouter: OPENROUTER_DEFAULTS.evolveModel },
 	maxIterations: null,
 	maxTokenBudget: null,
 	maxBuildAttempts: null,
@@ -42,9 +42,9 @@ describe("migrateLegacyOpenaiProviderPrefs", () => {
 			openrouterApiKey: "sk-or-key",
 			openaiApiKey: "",
 			evolveProvider: "openai",
-			evolveModel: "google/gemini-2.5-pro",
+			evolveModels: { openai: "google/gemini-2.5-pro" },
 			summaryProvider: "openai",
-			summaryModel: "anthropic/claude-3.5-haiku",
+			summaryModels: { openai: "anthropic/claude-3.5-haiku" },
 		});
 
 		expect(result.values).toEqual({
@@ -53,9 +53,12 @@ describe("migrateLegacyOpenaiProviderPrefs", () => {
 			summaryProvider: "openrouter",
 			summaryModel: "anthropic/claude-3.5-haiku",
 		});
+		// The kept slugs are re-sent so they land under the openrouter map key.
 		expect(result.update).toEqual({
 			evolveProvider: "openrouter",
+			evolveModel: "google/gemini-2.5-pro",
 			summaryProvider: "openrouter",
+			summaryModel: "anthropic/claude-3.5-haiku",
 		});
 	});
 
@@ -65,9 +68,9 @@ describe("migrateLegacyOpenaiProviderPrefs", () => {
 			openrouterApiKey: "sk-or-key",
 			openaiApiKey: "",
 			evolveProvider: "openai",
-			evolveModel: "gpt-4o",
+			evolveModels: { openai: "gpt-4o" },
 			summaryProvider: "openai",
-			summaryModel: " ",
+			summaryModels: { openai: " " },
 		});
 
 		expect(result.values).toEqual({
@@ -76,7 +79,29 @@ describe("migrateLegacyOpenaiProviderPrefs", () => {
 			summaryProvider: "openrouter",
 			summaryModel: "",
 		});
-		expect(result.update).toEqual(result.values);
+		// No model updates: sending "" would delete openrouter's remembered
+		// per-provider entry.
+		expect(result.update).toEqual({
+			evolveProvider: "openrouter",
+			summaryProvider: "openrouter",
+		});
+	});
+
+	it("keeps openrouter's remembered model when migrating a bare openai model", () => {
+		const result = migrateLegacyOpenaiProviderPrefs({
+			...PREFS,
+			openrouterApiKey: "sk-or-key",
+			openaiApiKey: "",
+			evolveProvider: "openai",
+			evolveModels: {
+				openai: "gpt-4o",
+				openrouter: "anthropic/claude-haiku-latest",
+			},
+		});
+
+		expect(result.values.evolveProvider).toBe("openrouter");
+		expect(result.values.evolveModel).toBe("anthropic/claude-haiku-latest");
+		expect(result.update).not.toHaveProperty("evolveModel");
 	});
 
 	it("preserves legacy OpenRouter slugs when both OpenRouter and OpenAI keys exist", () => {
@@ -85,9 +110,9 @@ describe("migrateLegacyOpenaiProviderPrefs", () => {
 			openrouterApiKey: "sk-or-key",
 			openaiApiKey: "sk-openai-key",
 			evolveProvider: "openai",
-			evolveModel: "~anthropic/claude-sonnet-latest",
+			evolveModels: { openai: "~anthropic/claude-sonnet-latest" },
 			summaryProvider: "openai",
-			summaryModel: "gpt-4o-mini",
+			summaryModels: { openai: "gpt-4o-mini" },
 		});
 
 		expect(result.values).toEqual({
@@ -98,6 +123,7 @@ describe("migrateLegacyOpenaiProviderPrefs", () => {
 		});
 		expect(result.update).toEqual({
 			evolveProvider: "openrouter",
+			evolveModel: "~anthropic/claude-sonnet-latest",
 		});
 	});
 
@@ -107,7 +133,7 @@ describe("migrateLegacyOpenaiProviderPrefs", () => {
 			openrouterApiKey: "sk-or-key",
 			openaiApiKey: "sk-openai-key",
 			evolveProvider: "openai",
-			evolveModel: "gpt-4o",
+			evolveModels: { openai: "gpt-4o" },
 		});
 
 		expect(result.values.evolveProvider).toBe("openai");
@@ -121,7 +147,7 @@ describe("migrateLegacyOpenaiProviderPrefs", () => {
 			openrouterApiKey: "sk-or-key",
 			openaiApiKey: "sk-openai-key",
 			summaryProvider: "openai",
-			summaryModel: "",
+			summaryModels: {},
 		});
 
 		expect(result.values.summaryProvider).toBe("openai");
