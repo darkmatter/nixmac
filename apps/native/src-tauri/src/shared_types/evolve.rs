@@ -11,6 +11,35 @@ pub struct FileEdit {
     pub replace: String,
 }
 
+/// A semantic edit operation on a nix attribute path.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum FileEditAction {
+    /// Generic add to an attribute path: e.g. { path: "environment.systemPackages", values: ["ripgrep"] }
+    Add { path: String, values: Vec<String> },
+    /// Generic remove from an attribute path
+    Remove { path: String, values: Vec<String> },
+    /// Set an attribute path to a scalar JSON value (bool/string/number/null)
+    Set {
+        path: String,
+        value: serde_json::Value,
+    },
+    /// Create or update an attribute set at a given path, setting multiple scalar key-value pairs.
+    /// For missing paths a new attrset assignment is inserted; for existing ones the named keys are
+    /// updated in-place (or appended) without disturbing the rest of the block.
+    SetAttrs {
+        path: String,
+        attrs: serde_json::Map<String, serde_json::Value>,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SemanticFileEdit {
+    pub path: String, // the nix file being edited
+    pub action: FileEditAction,
+}
+
 /// A single thinking entry from the agent's reasoning process
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -78,6 +107,68 @@ pub struct Evolution {
     pub suggested_commit_message: Option<String>,
 }
 
+/// Who is asking a [`EvolveEventDetail::Question`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum QuestionKind {
+    /// The agent needs a content decision from the user (`ask_user` tool).
+    Agent,
+    /// A safety limit was reached and the system asks whether to continue.
+    Checkpoint,
+}
+
+/// Structured payload carried by an [`EvolveEvent`]. Lets the frontend render
+/// events from typed data instead of parsing the formatted `summary`/`raw`
+/// strings (which remain the fallback and feed the Console / transcripts).
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum EvolveEventDetail {
+    /// The `think` tool's full reasoning text.
+    Thinking { category: String, text: String },
+    /// A tool invocation with its (sanitized) arguments.
+    ToolCall {
+        tool: String,
+        args: serde_json::Value,
+    },
+    /// A package search and its results.
+    SearchPackages { query: String, found: Vec<String> },
+    /// A file edit; `action` is present for semantic nix edits.
+    Edit {
+        file: String,
+        action: Option<FileEditAction>,
+    },
+    /// A build check outcome with the captured output.
+    Build {
+        pass: bool,
+        #[specta(type = f64)]
+        attempt: usize,
+        output: String,
+    },
+    /// Assistant narration between tool calls.
+    Narration { text: String },
+    /// Budget counters, emitted with every provider response.
+    Progress {
+        /// Cumulative session tokens used.
+        tokens: u32,
+        /// Session token budget.
+        budget: u32,
+        /// Current iteration.
+        #[specta(type = f64)]
+        iteration: usize,
+        /// Iteration limit.
+        #[specta(type = f64)]
+        limit: usize,
+    },
+    /// A question the run is blocked on.
+    Question {
+        text: String,
+        choices: Option<Vec<String>>,
+        kind: QuestionKind,
+    },
+    /// The user's answer to the pending question.
+    Answered { text: String },
+}
+
 /// Event type for streaming evolve progress updates.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -92,6 +183,11 @@ pub struct EvolveEvent {
     pub iteration: Option<usize>,
     /// Milliseconds elapsed since the evolution started.
     pub timestamp_ms: i64,
+    /// Structured payload for typed rendering; `None` on events that predate
+    /// it or have no structure.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[specta(optional)]
+    pub detail: Option<EvolveEventDetail>,
     /// Telemetry collected during the run; only on the terminal `Complete` event.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[specta(optional)]
@@ -141,6 +237,10 @@ pub enum EvolveEventType {
     Summarizing,
     /// Agent asked the user for input.
     Question,
+    /// User answered the pending question.
+    Answered,
+    /// Assistant narration between tool calls.
+    Narration,
 }
 
 /// Widget step derived from `EvolveState` fields.

@@ -27,6 +27,7 @@ impl EvolveEvent {
             event_type,
             iteration,
             timestamp_ms: now - (start_time * 1000),
+            detail: None,
             telemetry: None,
             conversational_response: None,
         }
