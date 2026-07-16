@@ -1224,9 +1224,9 @@ brews: string[];
  */
 taps: string[]; 
 /**
- * Source used to collect the state, when known.
+ * Config file path to write Homebrew edits into, when known.
  */
-source: string | null; 
+writeTarget: string | null; 
 /**
  * Unix timestamp when this state was last collected.
  */

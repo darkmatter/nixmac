@@ -32,7 +32,7 @@ const diff: HomebrewState = {
   taps: ["homebrew/cask-fonts"],
   brews: ["jq", "ripgrep"],
   casks: ["rectangle"],
-  source: "brew",
+  writeTarget: ".nixmac/homebrew/data.json",
   lastChecked: 0,
 };
 
