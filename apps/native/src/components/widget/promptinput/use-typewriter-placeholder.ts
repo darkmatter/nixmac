@@ -27,15 +27,20 @@ export function useTypewriterPlaceholder(
     const full = examples[idx % examples.length] ?? "";
     charRef.current = 0;
     setTyped("");
+    // The hold must start only once the phrase is fully typed, otherwise the
+    // typing time eats into the hold and long phrases advance almost instantly.
+    let next: ReturnType<typeof setTimeout> | undefined;
     const typer = setInterval(() => {
       charRef.current += 1;
       setTyped(full.slice(0, charRef.current));
-      if (charRef.current >= full.length) clearInterval(typer);
+      if (charRef.current >= full.length) {
+        clearInterval(typer);
+        next = setTimeout(() => setIdx((i) => (i + 1) % examples.length), holdMs);
+      }
     }, charMs);
-    const next = setTimeout(() => setIdx((i) => (i + 1) % examples.length), holdMs);
     return () => {
       clearInterval(typer);
-      clearTimeout(next);
+      if (next !== undefined) clearTimeout(next);
     };
   }, [idx, paused, charMs, holdMs, examples]);
 
