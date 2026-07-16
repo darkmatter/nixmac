@@ -672,7 +672,32 @@ export const AllEventTypes = meta.story({
 });
 
 /**
+ * Working focus: the agent's latest narration is the current activity, shown
+ * in the focus zone with its full text as quiet detail.
+ */
+export const NarrationInFocus = meta.story({
+  args: {
+    events: [
+      ...mockEventsInProgress,
+      {
+        eventType: "narration",
+        summary: "The nixpkgs build is broken on darwin, so I'll use homebrew.",
+        raw: "The nixpkgs build is broken on darwin, so I'll use homebrew. The cask list already carries other GUI apps in this config, so spotify fits there naturally.",
+        iteration: 3,
+        timestampMs: 5200,
+        detail: {
+          type: "narration",
+          text: "The nixpkgs build is broken on darwin, so I'll use homebrew. The cask list already carries other GUI apps in this config, so spotify fits there naturally.",
+        },
+      },
+    ],
+    isGenerating: true,
+  },
+});
+
+/**
  * Agent question with choices — the run is blocked until the user answers.
+ * The question card takes over the focus zone.
  */
 export const AgentQuestion = meta.story({
   args: {

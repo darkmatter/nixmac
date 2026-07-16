@@ -40,7 +40,6 @@ interface EvolveProgressProps {
 
 interface EventItemProps {
   event: EvolveEvent;
-  isLatest: boolean;
 }
 
 // =============================================================================
@@ -204,8 +203,8 @@ export function attemptFailureReason(failure: string): string {
 // Event Icon Mapping
 // =============================================================================
 
-function getEventIcon(eventType: EvolveEventType, isLatest: boolean) {
-  const iconClassName = cn("h-4 w-4 shrink-0", isLatest && "animate-pulse");
+function getEventIcon(eventType: EvolveEventType) {
+  const iconClassName = "h-4 w-4 shrink-0";
 
   switch (eventType) {
     case "start":
@@ -304,7 +303,7 @@ function formatTime(ms: number): string {
   return `${minutes}m ${remainingSeconds}s`;
 }
 
-function EventItem({ event, isLatest }: EventItemProps) {
+function EventItem({ event }: EventItemProps) {
   const [expanded, setExpanded] = useState(false);
   const hasRawContent = event.raw && event.raw !== event.summary && event.raw.length > 0;
 
@@ -313,24 +312,13 @@ function EventItem({ event, isLatest }: EventItemProps) {
       <div className="flex items-start gap-2">
         {/* Icon */}
         <div className={cn("mt-0.5", getEventColor(event.eventType))}>
-          {isLatest && event.eventType !== "complete" ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            getEventIcon(event.eventType, isLatest)
-          )}
+          {getEventIcon(event.eventType)}
         </div>
 
         {/* Content */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <span
-              className={cn(
-                "truncate text-sm",
-                isLatest ? "font-medium text-foreground" : "text-muted-foreground",
-              )}
-            >
-              {event.summary}
-            </span>
+            <span className="truncate text-muted-foreground text-sm">{event.summary}</span>
             <div className="flex items-center gap-1">
               <span className="whitespace-nowrap font-mono text-muted-foreground/60 text-xs">
                 {formatTime(event.timestampMs)}
@@ -363,11 +351,7 @@ function EventItem({ event, isLatest }: EventItemProps) {
   if (hasRawContent) {
     return (
       <button
-        className={cn(
-          "group w-full rounded-md border border-transparent px-2 py-1.5 text-left transition-all",
-          !!isLatest && "border-primary/30 bg-primary/5",
-          "cursor-pointer hover:bg-muted/30",
-        )}
+        className="group w-full cursor-pointer rounded-md border border-transparent px-2 py-1.5 text-left transition-all hover:bg-muted/30"
         onClick={() => setExpanded(!expanded)}
         type="button"
       >
@@ -377,12 +361,7 @@ function EventItem({ event, isLatest }: EventItemProps) {
   }
 
   return (
-    <div
-      className={cn(
-        "group rounded-md border border-transparent px-2 py-1.5 transition-all",
-        !!isLatest && "border-primary/30 bg-primary/5",
-      )}
-    >
+    <div className="group rounded-md border border-transparent px-2 py-1.5 transition-all">
       {content}
     </div>
   );
@@ -555,6 +534,69 @@ function QuestionPrompt({
 }
 
 // =============================================================================
+// Focus Zone
+// =============================================================================
+
+/**
+ * The visually dominant bottom zone narrating the current activity:
+ * a headline plus quiet narration detail while working, timer-only while
+ * waiting on the provider, and the question card when the run blocks on the
+ * user (design §4.1).
+ */
+function FocusZone({
+  focus,
+  waitingMs,
+  onAnswer,
+}: {
+  focus: FocusState;
+  waitingMs: number;
+  onAnswer: (answer: string) => void;
+}) {
+  if (focus.mode === "needsYou" && focus.event) {
+    // The agent is genuinely idle while blocked on the user, so no spinner;
+    // the timer relabels so idle time doesn't read as agent slowness.
+    return (
+      <div
+        aria-live="assertive"
+        className="border-border/50 border-t bg-muted/10"
+        data-testid="evolve-focus-zone"
+      >
+        <QuestionPrompt answeredText={null} event={focus.event} onAnswer={onAnswer} />
+        <div className="flex items-center gap-2 px-4 pb-2 text-muted-foreground/60">
+          <HelpCircle className="h-3 w-3 shrink-0" />
+          <span className="font-mono text-xs">Waiting for you... {formatTime(waitingMs)}</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="border-border/50 border-t bg-muted/10 px-3 py-2.5"
+      data-testid="evolve-focus-zone"
+    >
+      <div className="flex items-center gap-2">
+        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
+        <span
+          aria-live="polite"
+          className="min-w-0 flex-1 truncate font-medium text-foreground text-sm"
+        >
+          {focus.headline}
+        </span>
+        <span className="whitespace-nowrap font-mono text-muted-foreground/60 text-xs">
+          {formatTime(waitingMs)}
+        </span>
+      </div>
+      {!!focus.detailText && (
+        <p className="mt-1.5 ml-6 line-clamp-4 border-border/50 border-l-2 pl-2 text-muted-foreground/80 text-xs">
+          {focus.detailText}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
 // Main Component
 // =============================================================================
 
@@ -593,6 +635,15 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
   const tokenProgress = getTokenProgress(events);
   const visibleEvents = events.filter(isVisibleEvent);
 
+  // While generating, the latest activity lives in the focus zone and the
+  // history zone holds only completed actions; once the run ends everything
+  // is history.
+  const focus = isGenerating ? getFocusState(events) : null;
+  const historyEvents = focus?.event
+    ? visibleEvents.filter((e) => e !== focus.event)
+    : visibleEvents;
+  const needsYou = focus?.mode === "needsYou";
+
   // Live clock: something must visibly change during long waits (model
   // calls, builds), so the header elapsed time and the working indicator
   // tick every second while generating.
@@ -629,17 +680,21 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
       {/* Header */}
       <div className="flex items-center justify-between border-border/50 border-b px-3 py-2">
         <div className="flex items-center gap-2">
-          {isGenerating ? (
+          {needsYou ? (
+            <HelpCircle className="h-4 w-4 text-violet-400" />
+          ) : isGenerating ? (
             <Loader2 className="h-4 w-4 animate-spin text-primary" />
           ) : (
             <Check className="h-4 w-4 text-green-400" />
           )}
           <span className="font-medium text-foreground text-sm">
-            {isAnalyzing
-              ? "Analyzing changes..."
-              : isGenerating
-                ? "Evolving..."
-                : "Evolution Complete"}
+            {needsYou
+              ? "Waiting for your input..."
+              : isAnalyzing
+                ? "Analyzing changes..."
+                : isGenerating
+                  ? "Evolving..."
+                  : "Evolution Complete"}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -666,16 +721,17 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
         </div>
       </div>
 
-      {/* Events List: fills whatever height the parent gives the component
-          (the overlay panel stretches it to the card height); without an
-          explicit parent height it hugs its content. */}
+      {/* History zone: compact completed actions. Fills whatever height the
+          parent gives the component (the overlay panel stretches it to the
+          card height); without an explicit parent height it hugs its
+          content. */}
       <div
-        className="min-h-[120px] flex-1 overflow-y-auto p-2"
+        className="min-h-[80px] flex-1 overflow-y-auto p-2"
         onScroll={handleScroll}
         ref={scrollRef}
       >
         <div className="space-y-1">
-          {visibleEvents.map((event, index) => {
+          {historyEvents.map((event, index) => {
             if (event.eventType === "question") {
               return (
                 <QuestionPrompt
@@ -686,26 +742,8 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
                 />
               );
             }
-            return (
-              <EventItem
-                event={event}
-                isLatest={!!(isGenerating && index === visibleEvents.length - 1)}
-                key={`${event.timestampMs}-${index}`}
-              />
-            );
+            return <EventItem event={event} key={`${event.timestampMs}-${index}`} />;
           })}
-
-          {/* Working indicator; shows how long the current step has been
-              running once the wait is noticeable. */}
-          {!!isGenerating && (
-            <div className="flex items-center gap-2 px-2 py-1.5 text-muted-foreground/60">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span className="text-xs">
-                Working...
-                {waitingMs >= 5000 ? ` ${formatTime(waitingMs)}` : ""}
-              </span>
-            </div>
-          )}
         </div>
       </div>
 
@@ -724,6 +762,11 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
           <ChevronDown className="h-3 w-3" />
           Jump to latest
         </button>
+      )}
+
+      {/* Focus zone: the current activity, pinned below the history. */}
+      {!!focus && (
+        <FocusZone focus={focus} onAnswer={handleQuestionAnswer} waitingMs={waitingMs} />
       )}
     </div>
   );
