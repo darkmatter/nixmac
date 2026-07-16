@@ -14,6 +14,7 @@ import {
   Hammer,
   Loader2,
   MessageSquare,
+  PackageSearch,
   Play,
   Repeat,
   Send,
@@ -39,6 +40,50 @@ interface EvolveProgressProps {
 interface EventItemProps {
   event: EvolveEvent;
   isLatest: boolean;
+}
+
+// =============================================================================
+// Timeline Curation
+// =============================================================================
+
+// Loop machinery: kept in the store (and mirrored to the Console via `raw`)
+// but never shown as timeline rows — they narrate the agent loop, not
+// progress toward the user's goal.
+const HIDDEN_EVENT_TYPES: ReadonlySet<EvolveEventType> = new Set([
+  "iteration",
+  "apiRequest",
+  "apiResponse",
+]);
+
+// Tools whose execution is fast and immediately followed by a more specific
+// event narrating the same action (thinking/reading/editing/question), which
+// would otherwise appear as a duplicate row. Slow tools (build_check, the
+// searches) keep their toolCall row: it is the only in-progress indicator
+// while they run.
+const TOOLS_WITH_SPECIFIC_EVENT: ReadonlySet<string> = new Set([
+  "think",
+  "read_file",
+  "edit_file",
+  "edit_nix_file",
+  "ensure_secret",
+  "ask_user",
+  "done",
+]);
+
+// Until the event payload carries structured detail, the tool name is only
+// available as the `{tool} | args: ...` prefix of the raw detail.
+function toolCallToolName(event: EvolveEvent): string {
+  return event.raw.split(" | ")[0] ?? "";
+}
+
+export function isVisibleEvent(event: EvolveEvent): boolean {
+  if (HIDDEN_EVENT_TYPES.has(event.eventType)) {
+    return false;
+  }
+  if (event.eventType === "toolCall") {
+    return !TOOLS_WITH_SPECIFIC_EVENT.has(toolCallToolName(event));
+  }
+  return true;
 }
 
 function parseTokenCount(value: string): number {
@@ -99,8 +144,12 @@ function getEventIcon(eventType: EvolveEventType, isLatest: boolean) {
       return <FileSearch className={iconClassName} />;
     case "editing":
       return <FileEdit className={iconClassName} />;
+    // buildCheck is declared in the event enum but currently never emitted
+    // by the backend (it emits buildPass/buildFail instead).
     case "buildCheck":
       return <Hammer className={iconClassName} />;
+    case "searchPackages":
+      return <PackageSearch className={iconClassName} />;
     case "buildPass":
       return <CheckCircle className={cn(iconClassName, "text-green-400")} />;
     case "buildFail":
@@ -138,6 +187,8 @@ function getEventColor(eventType: EvolveEventType): string {
       return "text-orange-400";
     case "buildCheck":
       return "text-amber-400";
+    case "searchPackages":
+      return "text-teal-400";
     case "buildPass":
       return "text-green-400";
     case "buildFail":
@@ -165,19 +216,19 @@ function getEventColor(eventType: EvolveEventType): string {
 // Event Item Component
 // =============================================================================
 
+function formatTime(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) {
+    return `${seconds}s`;
+  }
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}m ${remainingSeconds}s`;
+}
+
 function EventItem({ event, isLatest }: EventItemProps) {
   const [expanded, setExpanded] = useState(false);
   const hasRawContent = event.raw && event.raw !== event.summary && event.raw.length > 0;
-
-  const formatTime = (ms: number): string => {
-    const seconds = Math.floor(ms / 1000);
-    if (seconds < 60) {
-      return `${seconds}s`;
-    }
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}m ${remainingSeconds}s`;
-  };
 
   const content = (
     <>
@@ -217,12 +268,6 @@ function EventItem({ event, isLatest }: EventItemProps) {
             </div>
           </div>
 
-          {/* Iteration badge */}
-          {!!event.iteration && (
-            <span className="mt-0.5 inline-block rounded bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-              iter {event.iteration}
-            </span>
-          )}
         </div>
       </div>
 
@@ -416,6 +461,34 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
 
   const isAnalyzing = isGenerating && events[events.length - 1]?.eventType === "summarizing";
   const tokenProgress = getTokenProgress(events);
+  const visibleEvents = events.filter(isVisibleEvent);
+
+  // Live clock: something must visibly change during long waits (model
+  // calls, builds), so the header elapsed time and the working indicator
+  // tick every second while generating.
+  //
+  // The arrival time must live in state set from an effect, not a
+  // `useMemo(() => Date.now(), ...)`: the React Compiler does not preserve
+  // manual memoization of impure computations and recompiles it to run on
+  // every render, which pins `waitingMs` at ~0 and freezes the clock.
+  const [lastEventReceivedAt, setLastEventReceivedAt] = useState(() => Date.now());
+  useEffect(() => {
+    setLastEventReceivedAt(Date.now());
+  }, [events.length]);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!isGenerating) {
+      return;
+    }
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [isGenerating]);
+
+  const lastEvent = events[events.length - 1];
+  const waitingMs = Math.max(0, now - lastEventReceivedAt);
+  // Run elapsed = the last event's elapsed-since-start stamp, plus the time
+  // we've been waiting on the next one.
+  const elapsedMs = lastEvent ? lastEvent.timestampMs + (isGenerating ? waitingMs : 0) : null;
 
   if (events.length === 0 && !isGenerating) {
     return null;
@@ -440,9 +513,11 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-muted-foreground text-xs">
-            {events.length} event{events.length !== 1 ? "s" : ""}
-          </span>
+          {elapsedMs !== null && (
+            <span className="font-mono text-muted-foreground text-xs">
+              {formatTime(elapsedMs)}
+            </span>
+          )}
           {tokenProgress && (
             <span className="rounded bg-muted/50 px-1.5 py-0.5 font-mono text-muted-foreground text-xs">
               {formatTokenProgress(tokenProgress)}
@@ -461,14 +536,16 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
         </div>
       </div>
 
-      {/* Events List */}
+      {/* Events List: fills whatever height the parent gives the component
+          (the overlay panel stretches it to the card height); without an
+          explicit parent height it hugs its content. */}
       <div
-        className="max-h-100 min-h-[120px] flex-1 overflow-y-auto p-2"
+        className="min-h-[120px] flex-1 overflow-y-auto p-2"
         onScroll={handleScroll}
         ref={scrollRef}
       >
         <div className="space-y-1">
-          {events.map((event, index) => {
+          {visibleEvents.map((event, index) => {
             if (event.eventType === "question") {
               return (
                 <QuestionPrompt
@@ -481,17 +558,21 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
             return (
               <EventItem
                 event={event}
-                isLatest={!!(isGenerating && index === events.length - 1)}
+                isLatest={!!(isGenerating && index === visibleEvents.length - 1)}
                 key={`${event.timestampMs}-${index}`}
               />
             );
           })}
 
-          {/* Loading indicator for next event */}
+          {/* Working indicator; shows how long the current step has been
+              running once the wait is noticeable. */}
           {!!isGenerating && (
             <div className="flex items-center gap-2 px-2 py-1.5 text-muted-foreground/60">
               <Loader2 className="h-3 w-3 animate-spin" />
-              <span className="text-xs">Waiting for next event...</span>
+              <span className="text-xs">
+                Working...
+                {waitingMs >= 5000 ? ` ${formatTime(waitingMs)}` : ""}
+              </span>
             </div>
           )}
         </div>

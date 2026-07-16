@@ -1314,7 +1314,13 @@ pub async fn generate_evolution<R: Runtime>(
                     // Emit tool call event
                     emit_evolve_event(
                         app,
-                        EvolveEvent::tool_call(start_time, iteration, tool_name, &args_summary),
+                        EvolveEvent::tool_call(
+                            start_time,
+                            iteration,
+                            tool_name,
+                            &args,
+                            &args_summary,
+                        ),
                     );
 
                     let result = execute_tool(
@@ -1369,7 +1375,7 @@ pub async fn generate_evolution<R: Runtime>(
                                 ToolResult::EditSemantic(edit) => {
                                     emit_evolve_event(
                                         app,
-                                        EvolveEvent::editing(start_time, iteration, &edit.path),
+                                        EvolveEvent::editing_semantic(start_time, iteration, edit),
                                     );
                                 }
                                 ToolResult::EnsureSecret(result) => {
@@ -1398,31 +1404,27 @@ pub async fn generate_evolution<R: Runtime>(
                                         } else {
                                             output
                                         };
-                                        let error_preview = error_source
-                                            .lines()
-                                            .take(3)
-                                            .collect::<Vec<_>>()
-                                            .join("\n");
                                         emit_evolve_event(
                                             app,
                                             EvolveEvent::build_fail(
                                                 start_time,
                                                 iteration,
-                                                &error_preview,
+                                                error_source,
                                             ),
                                         );
                                     }
                                 }
                                 ToolResult::SearchPackages(results) => {
-                                    let packages = results
-                                        .iter()
-                                        .map(|r| r.name.as_str())
-                                        .collect::<Vec<_>>()
-                                        .join(", ");
+                                    let query = args
+                                        .get("query")
+                                        .and_then(|v| v.as_str())
+                                        .unwrap_or_default();
+                                    let names: Vec<String> =
+                                        results.iter().map(|r| r.name.clone()).collect();
                                     emit_evolve_event(
                                         app,
                                         EvolveEvent::search_packages(
-                                            start_time, iteration, &packages,
+                                            start_time, iteration, query, &names,
                                         ),
                                     );
                                 }
