@@ -119,11 +119,15 @@ pub fn execute_tool(
     auto_format: bool,
     gitignore_matcher: Option<&GitignoreChecker>,
 ) -> Result<ToolResult> {
+    // Repair double-encoded arguments at the dispatch boundary so every
+    // caller — the live model loop, tests, and replayed tool calls alike —
+    // executes with identically normalized arguments.
+    let args = coerce_stringified_args(name, args.clone());
     let ctx = ToolCtx {
         repo_root,
         config_dir,
         host_attr,
-        args,
+        args: &args,
         auto_format,
         gitignore_matcher,
     };
@@ -564,6 +568,36 @@ mod tests {
         let content = fs::read_to_string(tmp.path().join("system.nix")).expect("read nix file");
         assert!(
             content.contains("_HIHideMenuBar = false"),
+            "unexpected content: {content}"
+        );
+    }
+
+    #[test]
+    fn execute_tool_repairs_stringified_action_payload() {
+        let tmp = tempdir().expect("tempdir");
+        git2::Repository::init(tmp.path()).expect("init git repo");
+        fs::write(tmp.path().join("services.nix"), "{ ... }: { }\n").expect("write nix file");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "path": "services.nix",
+                "action": {
+                    "set": "{\"path\": \"services.tailscale.enable\", \"value\": true}"
+                }
+            }),
+            false,
+            None,
+        )
+        .expect("stringified action payload should be repaired at dispatch");
+
+        assert!(matches!(result, ToolResult::EditSemantic(_)));
+        let content = fs::read_to_string(tmp.path().join("services.nix")).expect("read nix file");
+        assert!(
+            content.contains("services.tailscale.enable = true"),
             "unexpected content: {content}"
         );
     }

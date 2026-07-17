@@ -9,6 +9,7 @@
 //! parsed value, so legitimately string-typed arguments (including strings that
 //! happen to contain JSON) always pass through untouched.
 
+use once_cell::sync::Lazy;
 use serde_json::Value;
 
 use crate::evolve::messages::Tool;
@@ -17,10 +18,19 @@ use crate::evolve::messages::Tool;
 /// branches. Real tool schemas here are at most a few levels deep.
 const MAX_BRANCH_DEPTH: usize = 8;
 
+/// Full tool registry used to look up parameter schemas. Built without bans:
+/// bans only affect which tools the model is offered, not how the arguments
+/// of a call that did happen are repaired.
+static ALL_TOOL_DEFINITIONS: Lazy<Vec<Tool>> = Lazy::new(|| super::create_tools(&[]));
+
 /// Coerce double-encoded string arguments for `tool_name` back into structured
-/// values. Arguments for unknown tools pass through unchanged.
-pub(crate) fn coerce_stringified_args(tools: &[Tool], tool_name: &str, mut args: Value) -> Value {
-    if let Some(tool) = tools.iter().find(|tool| tool.name == tool_name) {
+/// values. Arguments for unknown tools pass through unchanged. Idempotent:
+/// already-structured arguments are never changed.
+pub(crate) fn coerce_stringified_args(tool_name: &str, mut args: Value) -> Value {
+    if let Some(tool) = ALL_TOOL_DEFINITIONS
+        .iter()
+        .find(|tool| tool.name == tool_name)
+    {
         coerce_value(&tool.parameters, &tool.parameters, &mut args);
     }
     args
@@ -163,12 +173,7 @@ fn type_name_matches(name: &str, value: &Value) -> bool {
 mod tests {
     use serde_json::json;
 
-    use super::super::{edit_file, edit_nix_file};
     use super::coerce_stringified_args;
-
-    fn tools() -> Vec<crate::evolve::messages::Tool> {
-        vec![edit_file::definition(), edit_nix_file::definition()]
-    }
 
     #[test]
     fn coerces_double_encoded_action_into_object() {
@@ -177,7 +182,7 @@ mod tests {
             "action": "{\"set\": {\"path\": \"system.defaults.NSGlobalDomain._HIHideMenuBar\", \"value\": false}}"
         });
 
-        let coerced = coerce_stringified_args(&tools(), "edit_nix_file", args);
+        let coerced = coerce_stringified_args("edit_nix_file", args);
 
         assert_eq!(
             coerced["action"]["set"]["path"],
@@ -190,7 +195,7 @@ mod tests {
     fn keeps_shorthand_action_enum_string() {
         let args = json!({ "path": "packages.nix", "action": "add", "values": ["bat"] });
 
-        let coerced = coerce_stringified_args(&tools(), "edit_nix_file", args);
+        let coerced = coerce_stringified_args("edit_nix_file", args);
 
         assert_eq!(coerced["action"], "add");
     }
@@ -203,7 +208,7 @@ mod tests {
             "replace": "{\"set\": {\"key\": \"value\"}}"
         });
 
-        let coerced = coerce_stringified_args(&tools(), "edit_file", args.clone());
+        let coerced = coerce_stringified_args("edit_file", args.clone());
 
         assert_eq!(coerced, args);
     }
@@ -212,7 +217,7 @@ mod tests {
     fn keeps_unparseable_action_strings() {
         let args = json!({ "path": "system.nix", "action": "definitely not json" });
 
-        let coerced = coerce_stringified_args(&tools(), "edit_nix_file", args.clone());
+        let coerced = coerce_stringified_args("edit_nix_file", args.clone());
 
         assert_eq!(coerced, args);
     }
@@ -226,7 +231,7 @@ mod tests {
             }
         });
 
-        let coerced = coerce_stringified_args(&tools(), "edit_nix_file", args);
+        let coerced = coerce_stringified_args("edit_nix_file", args);
 
         assert_eq!(
             coerced["action"]["set"]["path"],
@@ -239,7 +244,7 @@ mod tests {
     fn passes_unknown_tools_through_unchanged() {
         let args = json!({ "anything": "{\"looks\": \"like json\"}" });
 
-        let coerced = coerce_stringified_args(&tools(), "no_such_tool", args.clone());
+        let coerced = coerce_stringified_args("no_such_tool", args.clone());
 
         assert_eq!(coerced, args);
     }
