@@ -140,6 +140,17 @@ jobs:
         run: |
           cargo fetch --locked
           bash "$GITHUB_WORKSPACE/ops/scripts/ci/patch-passkey-swift.sh"
+
+      # Lint before the expensive release build. Runs here (not in a Linux
+      # job) because this runner already has the full devenv toolchain and
+      # macOS SDK, and clippy on macOS covers the cfg(target_os = "macos")
+      # code that actually ships. Placed before the sccache setup: sccache as
+      # RUSTC_WRAPPER does not reliably cache clippy-driver invocations.
+      - name: Cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+        env:
+          NIXMAC_ENV: prod
+
       # Decide what kind of build this is:
       #   - tag:     push of refs/tags/v* → ship that exact version on stable
       #   - develop: push to main → ship on the develop channel

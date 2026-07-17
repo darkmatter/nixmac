@@ -7,7 +7,7 @@ members = [
 resolver = "2"
 
 [workspace.lints.rust]
-unused = "deny"
+unused = { level = "deny", priority = -1 }
 unexpected_cfgs = { level = "allow" }
 
 [profile.profiling]
