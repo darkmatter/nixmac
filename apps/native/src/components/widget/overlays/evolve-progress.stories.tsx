@@ -393,9 +393,9 @@ const mockEventsFewEvents: EvolveEvent[] = [
   },
 ];
 
-// A long run that keeps failing the build check: exercises the
-// attempt-grouped history (failed attempts collapse under a header) and the
-// internal scrolling the overlay panel gets by stretching the component.
+// A long run that keeps failing the build check: exercises inline failure
+// rows in a long flat history and the internal scrolling the overlay panel
+// gets by stretching the component.
 function generateManyIterations(): EvolveEvent[] {
   const events: EvolveEvent[] = [
     {
@@ -704,10 +704,10 @@ export const SingleEvent = meta.story({
 });
 
 /**
- * Long running evolution across several failed build attempts: history rows
- * group by attempt, with failed attempts collapsed under their headers. The
- * explicit height exercises the internal scrolling the overlay panel gets by
- * stretching the component.
+ * Long running evolution across several failed build attempts: one flat
+ * chronology where each failure shows its error inline and later steps
+ * visibly follow up on it. The explicit height exercises the internal
+ * scrolling the overlay panel gets by stretching the component.
  */
 export const ManyIterations = meta.story({
   args: {

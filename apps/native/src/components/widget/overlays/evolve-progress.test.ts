@@ -2,11 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { EvolveEvent, EvolveEventDetail, EvolveEventType } from "@/ipc/types";
 import {
   answeredTextFor,
-  attemptFailureReason,
   getFocusState,
   getPendingQuestion,
   getTokenProgress,
-  groupByAttempt,
   isVisibleEvent,
 } from "./evolve-progress";
 
@@ -172,55 +170,6 @@ describe("getFocusState", () => {
     expect(focus.mode).toBe("waiting");
     expect(focus.event).toBeNull();
     expect(focus.headline).toBe("Working...");
-  });
-});
-
-describe("groupByAttempt", () => {
-  const fail = (attempt: number): EvolveEvent => ({
-    ...event("buildFail", "", { type: "build", pass: false, attempt, output: "error: boom" }),
-    summary: "Build check failed: error: boom",
-  });
-
-  it("keeps a run without build failures as a single trailing group", () => {
-    const events = [event("start"), event("editing")];
-    expect(groupByAttempt(events)).toEqual([{ attempt: null, failure: null, events }]);
-  });
-
-  it("closes a group at each failed build and keeps the rest as the current attempt", () => {
-    const [start, edit1, fail1, edit2] = [event("start"), event("editing"), fail(1), event("editing")];
-    expect(groupByAttempt([start, edit1, fail1, edit2])).toEqual([
-      { attempt: 1, failure: "Build check failed: error: boom", events: [start, edit1, fail1] },
-      { attempt: null, failure: null, events: [edit2] },
-    ]);
-  });
-
-  it("numbers attempts from the build detail", () => {
-    const groups = groupByAttempt([fail(3)]);
-    expect(groups[0].attempt).toBe(3);
-  });
-
-  it("falls back to sequential numbering without structured detail", () => {
-    const legacyFail = event("buildFail");
-    const groups = groupByAttempt([legacyFail, legacyFail]);
-    expect(groups.map((g) => g.attempt)).toEqual([1, 2, null]);
-  });
-
-  it("leaves an empty trailing group right after a failure", () => {
-    const groups = groupByAttempt([fail(1)]);
-    expect(groups[1]).toEqual({ attempt: null, failure: null, events: [] });
-  });
-});
-
-describe("attemptFailureReason", () => {
-  it("strips the redundant prefix from build failure summaries", () => {
-    expect(attemptFailureReason("Build check failed: error: attribute 'x' missing")).toBe(
-      "error: attribute 'x' missing",
-    );
-    expect(attemptFailureReason("Build check failed, retrying...")).toBe("retrying...");
-  });
-
-  it("keeps unrecognized summaries verbatim", () => {
-    expect(attemptFailureReason("something else")).toBe("something else");
   });
 });
 
