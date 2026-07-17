@@ -166,7 +166,12 @@ pub fn dry_run_build_check_streaming(
     command
         .arg("build")
         .arg(format!(".#darwinConfigurations.{}.system", safe_host_attr))
-        .arg("--dry-run");
+        .arg("--dry-run")
+        // At default verbosity a dry run prints NOTHING until evaluation
+        // finishes — there would be nothing to stream during the long part.
+        // -v emits "evaluating file/derivation ..." lines throughout, which
+        // is the liveness signal this variant exists for.
+        .arg("--verbose");
 
     if show_trace {
         command.arg("--show-trace");
