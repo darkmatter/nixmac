@@ -167,7 +167,13 @@ export function trailingStreamText(events: EvolveEvent[]): string | null {
     parts.unshift(detail.text);
   }
   if (parts.length === 0) return null;
-  const text = parts.join("");
+  // Tool announcements carry their own surrounding newlines and thoughts end
+  // in whatever the model wrote; collapse blank lines so the clamped tail
+  // reads as a tight step list instead of airy paragraphs.
+  const text = parts
+    .join("")
+    .replace(/\n\s*\n/g, "\n")
+    .replace(/^\s*\n/, "");
   if (text.length <= STREAM_TAIL_MAX_CHARS) return text;
   // Slice by code points so the cut can't land inside a surrogate pair.
   return `…${[...text].slice(-STREAM_TAIL_MAX_CHARS).join("")}`;

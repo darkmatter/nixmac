@@ -272,6 +272,21 @@ describe("trailingStreamText", () => {
     expect(text).toHaveLength(321);
     expect(text?.startsWith("…")).toBe(true);
   });
+
+  it("collapses blank lines between thoughts and tool announcements", () => {
+    const events = [
+      delta("Need vim installed.\n"),
+      delta("\n→ Searching packages...\n"),
+      delta("\n→ Editing configuration...\n"),
+    ];
+    expect(trailingStreamText(events)).toBe(
+      "Need vim installed.\n→ Searching packages...\n→ Editing configuration...\n",
+    );
+  });
+
+  it("drops a leading blank line when an announcement starts the stream", () => {
+    expect(trailingStreamText([delta("\n→ Reading file...\n")])).toBe("→ Reading file...\n");
+  });
 });
 describe("answeredTextFor", () => {
   const question = event("question");
