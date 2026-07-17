@@ -247,9 +247,10 @@ print_results() {
     local total=$((_E2E_PASS_COUNT + _E2E_FAIL_COUNT))
     
     for result in "${_E2E_PHASE_RESULTS[@]}"; do
-        local status=$(echo "$result" | cut -d'|' -f1)
-        local num=$(echo "$result" | cut -d'|' -f2)
-        local msg=$(echo "$result" | cut -d'|' -f3-)
+        local status num msg
+        status=$(echo "$result" | cut -d'|' -f1)
+        num=$(echo "$result" | cut -d'|' -f2)
+        msg=$(echo "$result" | cut -d'|' -f3-)
         if [ "$status" = "PASS" ]; then
             echo -e "  ${_GREEN}✅${_NC} Phase $num: $msg" | tee -a "$E2E_LOG_FILE"
         else
@@ -271,9 +272,10 @@ print_results() {
 results_json() {
     local phases="[]"
     for result in "${_E2E_PHASE_RESULTS[@]}"; do
-        local status=$(echo "$result" | cut -d'|' -f1)
-        local num=$(echo "$result" | cut -d'|' -f2)
-        local msg=$(echo "$result" | cut -d'|' -f3-)
+        local status num msg
+        status=$(echo "$result" | cut -d'|' -f1)
+        num=$(echo "$result" | cut -d'|' -f2)
+        msg=$(echo "$result" | cut -d'|' -f3-)
         phases=$(echo "$phases" | jq --arg s "$status" --arg n "$num" --arg m "$msg" \
             '. + [{"phase": ($n | tonumber), "status": $s, "message": $m}]')
     done
