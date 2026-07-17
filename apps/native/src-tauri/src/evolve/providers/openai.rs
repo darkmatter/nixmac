@@ -316,8 +316,10 @@ impl AiProvider for OpenAIProvider {
                     merge_tool_call_chunk(&mut tool_calls, tool_chunk);
                     let name = tool_calls[index].name.as_str();
                     // A call's first chunk carries its id and name.
-                    if tool_chunk.id.is_some() && !name.is_empty() && name != "think" {
-                        on_delta(&format!("\n\u{2192} {}\n", name));
+                    if tool_chunk.id.is_some() && !name.is_empty() {
+                        if let Some(announcement) = super::tool_call_announcement(name) {
+                            on_delta(&announcement);
+                        }
                     }
                     if name == "think" {
                         if let Some(fragment) = tool_chunk

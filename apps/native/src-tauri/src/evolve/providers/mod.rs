@@ -29,6 +29,29 @@ pub struct ProviderResponse {
 /// Callback receiving streamed assistant-text deltas as they arrive.
 pub type OnDelta<'a> = &'a (dyn Fn(&str) + Send + Sync);
 
+/// The line streamed when a tool call's name arrives, before its arguments
+/// finish generating. Uses the same user-facing voice as the timeline's
+/// tool_call rows (`EvolveEvent::tool_call` in types.rs), minus the object —
+/// the arguments carrying it are still streaming. None for `think`, whose
+/// thought text streams instead of an announcement.
+pub(crate) fn tool_call_announcement(tool: &str) -> Option<String> {
+    let label = match tool {
+        "think" => return None,
+        "read_file" => "Reading file...",
+        "edit_file" | "edit_nix_file" => "Editing configuration...",
+        "list_files" => "Listing files...",
+        "search_code" => "Searching the config...",
+        "search_packages" => "Searching packages...",
+        "search_docs" => "Searching docs...",
+        "ensure_secret" => "Setting up a secret...",
+        "build_check" => "Checking the configuration builds...",
+        "ask_user" => "Asking a question...",
+        "done" => "Finishing up...",
+        other => return Some(format!("\n\u{2192} Using {} tool...\n", other)),
+    };
+    Some(format!("\n\u{2192} {}\n", label))
+}
+
 /// Incrementally extracts the `think` tool's `thought` string value from
 /// streamed JSON argument fragments, so the model's reasoning can be
 /// displayed while it generates. Models in the evolve loop emit most of
@@ -320,6 +343,24 @@ mod tests {
         let json = r#"{"category":"thought","thought":"real text"}"#;
         let mut extractor = ThoughtExtractor::default();
         assert_eq!(extractor.push(json), "real text");
+    }
+
+    #[test]
+    fn tool_announcements_use_the_timeline_voice() {
+        assert_eq!(
+            tool_call_announcement("edit_nix_file").as_deref(),
+            Some("\n\u{2192} Editing configuration...\n")
+        );
+        assert_eq!(
+            tool_call_announcement("build_check").as_deref(),
+            Some("\n\u{2192} Checking the configuration builds...\n")
+        );
+        assert_eq!(
+            tool_call_announcement("future_tool").as_deref(),
+            Some("\n\u{2192} Using future_tool tool...\n")
+        );
+        // The think tool streams its thought text instead.
+        assert_eq!(tool_call_announcement("think"), None);
     }
 
     #[test]

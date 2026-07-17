@@ -348,8 +348,10 @@ impl AiProvider for OllamaProvider {
                             {
                                 on_delta(thought);
                             }
-                        } else {
-                            on_delta(&format!("\n\u{2192} {}\n", call.function.name));
+                        } else if let Some(announcement) =
+                            super::tool_call_announcement(&call.function.name)
+                        {
+                            on_delta(&announcement);
                         }
                     }
                     assembled
