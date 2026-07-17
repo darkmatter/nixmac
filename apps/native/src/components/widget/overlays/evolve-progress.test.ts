@@ -7,6 +7,7 @@ import {
   getTokenProgress,
   isVisibleEvent,
   trailingBuildLog,
+  trailingStreamText,
 } from "./evolve-progress";
 
 function event(eventType: EvolveEventType, raw = "", detail?: EvolveEventDetail): EvolveEvent {
@@ -26,6 +27,10 @@ describe("isVisibleEvent", () => {
 
   it("hides streamed build output chunks, which render under the active row", () => {
     expect(isVisibleEvent(event("buildCheck"))).toBe(false);
+  });
+
+  it("hides streamed response slices, which render as the active row's typewriter tail", () => {
+    expect(isVisibleEvent(event("streamDelta"))).toBe(false);
   });
 
   it("shows narration events", () => {
@@ -177,6 +182,21 @@ describe("getFocusState", () => {
     expect(focus.headline).toBe("Working...");
   });
 
+  it("types the streamed response into its own active row", () => {
+    const editing: EvolveEvent = { ...event("editing"), summary: "Adding vim" };
+    const delta = event("streamDelta", "", {
+      type: "streamDelta",
+      text: "The plain vim package is what we want.",
+    });
+    const focus = getFocusState([event("start"), editing, delta]);
+    expect(focus.mode).toBe("working");
+    // event: null → the stream renders as the placeholder row after the
+    // last completed action, which keeps its own plain row.
+    expect(focus.event).toBeNull();
+    expect(focus.headline).toBe("Thinking...");
+    expect(focus.detailText).toBe("The plain vim package is what we want.");
+  });
+
   it("shows the streamed build log while a check runs", () => {
     const toolCall: EvolveEvent = {
       ...event("toolCall", "", { type: "toolCall", tool: "build_check", args: {} }),
@@ -230,6 +250,29 @@ describe("trailingBuildLog", () => {
   });
 });
 
+describe("trailingStreamText", () => {
+  const delta = (text: string) => event("streamDelta", text, { type: "streamDelta", text });
+
+  it("returns null when nothing is streaming", () => {
+    expect(trailingStreamText([event("start"), event("editing")])).toBeNull();
+    expect(trailingStreamText([])).toBeNull();
+  });
+
+  it("joins trailing deltas in order", () => {
+    const events = [event("start"), delta("The nixpkgs build "), delta("is broken on darwin.")];
+    expect(trailingStreamText(events)).toBe("The nixpkgs build is broken on darwin.");
+  });
+
+  it("ends the stream once any other event follows", () => {
+    expect(trailingStreamText([delta("partial"), event("narration")])).toBeNull();
+  });
+
+  it("clips long streams to a tail with a leading ellipsis", () => {
+    const text = trailingStreamText([delta("x".repeat(400))]);
+    expect(text).toHaveLength(321);
+    expect(text?.startsWith("…")).toBe(true);
+  });
+});
 describe("answeredTextFor", () => {
   const question = event("question");
   const answer = event("answered", "", { type: "answered", text: "spotify" });

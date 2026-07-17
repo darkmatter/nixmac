@@ -754,6 +754,42 @@ export const NarrationInFocus = meta.story({
 });
 
 /**
+ * The model's response streaming in (experimental flag): the active row
+ * types the accumulated text as quiet detail while the last completed
+ * action keeps its own row above.
+ */
+export const StreamingResponse = meta.story({
+  args: {
+    events: [
+      ...mockEventsInProgress,
+      {
+        eventType: "streamDelta",
+        summary: "Thinking...",
+        raw: "The nixpkgs spotify build is broken on darwin, ",
+        iteration: 3,
+        timestampMs: 5100,
+        detail: {
+          type: "streamDelta",
+          text: "The nixpkgs spotify build is broken on darwin, ",
+        },
+      },
+      {
+        eventType: "streamDelta",
+        summary: "Thinking...",
+        raw: "so I'll install it via homebrew.casks which is already used for other GUI apps in this config.",
+        iteration: 3,
+        timestampMs: 5300,
+        detail: {
+          type: "streamDelta",
+          text: "so I'll install it via homebrew.casks which is already used for other GUI apps in this config.",
+        },
+      },
+    ],
+    isGenerating: true,
+  },
+});
+
+/**
  * A build check streaming its dry-run output: the active row shows a
  * monospace, tail-following log area under the headline.
  */

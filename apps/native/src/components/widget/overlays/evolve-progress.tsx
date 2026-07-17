@@ -58,6 +58,9 @@ const HIDDEN_EVENT_TYPES: ReadonlySet<EvolveEventType> = new Set([
   // Streamed build_check output chunks: rendered as the active row's log tail
   // while the check runs, never as timeline rows.
   "buildCheck",
+  // Streamed assistant-text slices: rendered as the active row's typewriter
+  // tail while the model responds, never as timeline rows.
+  "streamDelta",
 ]);
 
 // Tools whose execution is fast and immediately followed by a more specific
@@ -148,6 +151,27 @@ export function trailingBuildLog(events: EvolveEvent[]): string[] | null {
   return lines.slice(-BUILD_LOG_MAX_LINES);
 }
 
+/// Display cap for the streamed-response tail shown in the active row: about
+/// four quiet lines; the full text lands as a Narration row (or the terminal
+/// summary) when the response completes.
+const STREAM_TAIL_MAX_CHARS = 320;
+
+/// The assistant text streaming in right now: the streamDelta chunks
+/// trailing the event stream, joined and clipped to a display tail. Null
+/// once any other event follows (the response completed).
+export function trailingStreamText(events: EvolveEvent[]): string | null {
+  const parts: string[] = [];
+  for (let i = events.length - 1; i >= 0; i--) {
+    const detail = events[i].detail;
+    if (detail?.type !== "streamDelta") break;
+    parts.unshift(detail.text);
+  }
+  if (parts.length === 0) return null;
+  const text = parts.join("");
+  if (text.length <= STREAM_TAIL_MAX_CHARS) return text;
+  return `…${text.slice(-STREAM_TAIL_MAX_CHARS)}`;
+}
+
 /// The question the run is currently blocked on: the most recent question
 /// event with no answered event after it.
 export function getPendingQuestion(events: EvolveEvent[]): EvolveEvent | null {
@@ -180,6 +204,20 @@ export function getFocusState(events: EvolveEvent[]): FocusState {
       headline: current?.summary ?? "Checking the configuration builds...",
       detailText: null,
       buildLog,
+    };
+  }
+
+  // The model's response streaming in right now: rendered as its own active
+  // row after the last completed action (event: null → the placeholder row),
+  // with the accumulated tail typing in as quiet detail.
+  const streamText = trailingStreamText(events);
+  if (streamText) {
+    return {
+      mode: "working",
+      event: null,
+      headline: "Thinking...",
+      detailText: streamText,
+      buildLog: null,
     };
   }
 
