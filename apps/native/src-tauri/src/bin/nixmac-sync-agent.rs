@@ -26,6 +26,13 @@ mod privileged_helper {
     }
 }
 
+mod out_link {
+    include!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/rebuild/out_link.rs"
+    ));
+}
+
 fn main() {
     if let Err(error) = run_once() {
         eprintln!("nixmac-sync-agent failed: {error:#}");
@@ -46,24 +53,36 @@ fn run_once() -> anyhow::Result<()> {
         run_command("git", &["-C", &config_dir, "pull", "--ff-only"])?;
     }
 
+    // Build via nix directly (what darwin-rebuild build runs underneath), with
+    // the out-link in app-support so the config dir never grows a `result`
+    // symlink. NIX_CONFIG is required here: darwin-rebuild used to enable the
+    // experimental features itself, and a launchd context has no user nix.conf
+    // guarantees.
+    let link = out_link::prepare_out_link(out_link::SYNC_OUT_LINK_NAME)?;
+    let safe_host_attr = serde_json::to_string(&host_attr)?;
     run_command_in_dir(
-        "darwin-rebuild",
+        "nix",
         &[
             "build",
-            "--flake",
-            &format!(".#{host_attr}"),
+            &format!(".#darwinConfigurations.{safe_host_attr}.system"),
+            "--out-link",
+            &link.to_string_lossy(),
             "--show-trace",
             "--verbose",
         ],
         Some(&config_dir),
     )?;
+    let store_path = out_link::resolve_out_link(&link)?;
 
     if !env_flag_enabled("NIXMAC_UNATTENDED_APPLY") {
+        // Build-only mode keeps nothing pinned: the goal is warming the store,
+        // not rooting a closure that may never be activated.
+        out_link::cleanup_out_link(&link);
         println!("nixmac-sync-agent: build completed; unattended activation disabled");
         return Ok(());
     }
 
-    let activate_path = std::path::Path::new(&config_dir).join("result/activate");
+    let activate_path = store_path.join("activate");
     // No canonical-link maintenance here: this agent re-applies the same
     // config dir it was registered with, so the /etc/nix-darwin link set by
     // the interactive apply that registered it is still correct.
@@ -71,12 +90,20 @@ fn run_once() -> anyhow::Result<()> {
         privileged_helper::protocol::current_user_activation_request(&activate_path, None)?;
     let response = privileged_helper::client::activate_store_path(request)?;
     if !response.ok {
+        // Leave the out-link in place: it keeps the built closure GC-rooted
+        // for the next attempt, and that attempt's --out-link replaces it.
         return Err(anyhow::anyhow!(
             "activation failed ({}): {}",
             response.code,
             response.error.unwrap_or(response.stderr)
         ));
     }
+
+    // Activation set the durable system-profile GC root, so the out-link is
+    // no longer needed. Also clear the `result` link older nixmac versions
+    // left in the config dir.
+    out_link::cleanup_out_link(&link);
+    out_link::remove_legacy_result_link(&config_dir);
 
     println!("nixmac-sync-agent: build and activation completed");
     Ok(())
@@ -120,6 +147,7 @@ fn run_command_in_dir(
 ) -> anyhow::Result<()> {
     let mut command = std::process::Command::new(program);
     command.args(args).env("PATH", system::nix::get_nix_path());
+    command.env("NIX_CONFIG", "experimental-features = nix-command flakes");
     if let Some(current_dir) = current_dir {
         command.current_dir(current_dir);
     }
