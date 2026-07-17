@@ -1,7 +1,8 @@
-use super::{AiProvider, ProviderError, ProviderResponse, TokenUsage};
+use super::{AiProvider, OnDelta, ProviderError, ProviderResponse, TokenUsage};
 use crate::evolve::messages::{Message, Tool as GenericTool, ToolCall};
 use anyhow::anyhow;
 use async_trait::async_trait;
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 
 const DEFAULT_RETRY_ATTEMPTS: usize = 1;
@@ -223,6 +224,225 @@ impl AiProvider for OllamaProvider {
             return Ok(ProviderResponse { message, usage });
         }
     }
+
+    async fn completion_streaming(
+        &self,
+        messages: &[Message],
+        tools: &[GenericTool],
+        on_delta: OnDelta<'_>,
+    ) -> std::result::Result<ProviderResponse, ProviderError> {
+        let mut ollama_messages = convert_to_ollama_messages(messages);
+        let ollama_tools = convert_to_ollama_tools(tools);
+        let url = format!("{}/api/chat", self.base_url);
+        let mut retry_attempt = 0usize;
+
+        loop {
+            let request = ChatRequest {
+                model: self.model.clone(),
+                messages: ollama_messages.clone(),
+                stream: true,
+                options: OllamaOptions {
+                    num_predict: self.max_output_tokens,
+                },
+                tools: ollama_tools.clone(),
+            };
+
+            crate::state::completion_log::append_event_jsonl(
+                self.record_chat_logs,
+                "evolve_provider_chat",
+                "ollama",
+                "request",
+                &request,
+            )
+            .await;
+
+            let response = self
+                .client
+                .post(&url)
+                .json(&request)
+                .send()
+                .await
+                .map_err(|e| ProviderError::Other(anyhow!(e)))?;
+
+            if !response.status().is_success() {
+                let status = response.status();
+                let error_text = response
+                    .text()
+                    .await
+                    .map_err(|e| ProviderError::Other(anyhow!(e)))?;
+
+                let should_retry = retry_attempt < DEFAULT_RETRY_ATTEMPTS
+                    && is_ollama_tool_call_parse_error(status, &error_text);
+
+                crate::state::completion_log::append_event_jsonl(
+                    self.record_chat_logs,
+                    "evolve_provider_chat",
+                    "ollama",
+                    "response_error",
+                    &serde_json::json!({
+                        "status": status.as_u16(),
+                        "body": error_text.clone(),
+                    }),
+                )
+                .await;
+
+                if should_retry {
+                    retry_attempt += 1;
+                    log::warn!(
+                        "Ollama parse error response; retrying streamed completion ({}/{})",
+                        retry_attempt,
+                        DEFAULT_RETRY_ATTEMPTS
+                    );
+                    append_retry_guidance(&mut ollama_messages);
+                    continue;
+                }
+
+                return Err(ProviderError::Http {
+                    status,
+                    body: error_text,
+                });
+            }
+
+            // NDJSON: one ChatResponse object per line, the last with
+            // done:true carrying the eval counters.
+            let mut byte_stream = response.bytes_stream();
+            let mut line_buffer = String::new();
+            let mut assembled = OllamaMessage {
+                role: "assistant".to_string(),
+                content: String::new(),
+                tool_calls: None,
+            };
+            let mut done_chunk: Option<ChatResponse> = None;
+
+            let handle_line = |line: &str,
+                               assembled: &mut OllamaMessage,
+                               done_chunk: &mut Option<ChatResponse>|
+             -> std::result::Result<(), ProviderError> {
+                if line.is_empty() {
+                    return Ok(());
+                }
+                let chunk: ChatResponse = serde_json::from_str(line).map_err(|e| {
+                    // Mid-stream failures arrive as an {"error": "..."} line.
+                    if let Ok(err) = serde_json::from_str::<OllamaStreamError>(line) {
+                        ProviderError::Other(anyhow!("Ollama stream error: {}", err.error))
+                    } else {
+                        ProviderError::Other(anyhow!("Unparseable Ollama stream line: {e}"))
+                    }
+                })?;
+                if !chunk.message.content.is_empty() {
+                    assembled.content.push_str(&chunk.message.content);
+                    on_delta(&chunk.message.content);
+                }
+                if let Some(calls) = &chunk.message.tool_calls {
+                    assembled
+                        .tool_calls
+                        .get_or_insert_with(Vec::new)
+                        .extend(calls.iter().cloned());
+                }
+                if chunk.done {
+                    *done_chunk = Some(chunk);
+                }
+                Ok(())
+            };
+
+            let mut stream_result: std::result::Result<(), ProviderError> = Ok(());
+            'read: while let Some(bytes) = byte_stream.next().await {
+                let bytes = match bytes {
+                    Ok(bytes) => bytes,
+                    Err(e) => {
+                        stream_result = Err(ProviderError::Other(anyhow!(e)));
+                        break 'read;
+                    }
+                };
+                line_buffer.push_str(&String::from_utf8_lossy(&bytes));
+                while let Some(pos) = line_buffer.find('\n') {
+                    let line: String = line_buffer.drain(..=pos).collect();
+                    if let Err(e) = handle_line(line.trim(), &mut assembled, &mut done_chunk) {
+                        stream_result = Err(e);
+                        break 'read;
+                    }
+                }
+            }
+            if stream_result.is_ok() {
+                stream_result = handle_line(line_buffer.trim(), &mut assembled, &mut done_chunk);
+            }
+
+            if let Err(e) = stream_result {
+                // Tool-call parse failures can surface mid-stream instead of
+                // as an HTTP 500; keep the blocking path's retry semantics.
+                let text = format!("{e:#}");
+                if retry_attempt < DEFAULT_RETRY_ATTEMPTS
+                    && text.contains("error parsing tool call")
+                {
+                    retry_attempt += 1;
+                    log::warn!(
+                        "Ollama mid-stream parse error; retrying streamed completion ({}/{})",
+                        retry_attempt,
+                        DEFAULT_RETRY_ATTEMPTS
+                    );
+                    append_retry_guidance(&mut ollama_messages);
+                    continue;
+                }
+                return Err(e);
+            }
+
+            let Some(done) = done_chunk else {
+                return Err(ProviderError::Other(anyhow!(
+                    "Ollama stream ended without a done chunk"
+                )));
+            };
+
+            let full_response = ChatResponse {
+                model: done.model,
+                created_at: done.created_at,
+                message: assembled,
+                done: true,
+                total_duration: done.total_duration,
+                load_duration: done.load_duration,
+                prompt_eval_count: done.prompt_eval_count,
+                prompt_eval_duration: done.prompt_eval_duration,
+                eval_count: done.eval_count,
+                eval_duration: done.eval_duration,
+            };
+
+            crate::state::completion_log::append_event_jsonl(
+                self.record_chat_logs,
+                "evolve_provider_chat",
+                "ollama",
+                "response",
+                &full_response,
+            )
+            .await;
+
+            if retry_attempt < DEFAULT_RETRY_ATTEMPTS
+                && is_empty_assistant_response(&full_response.message)
+            {
+                retry_attempt += 1;
+                log::warn!(
+                    "Ollama returned empty streamed assistant message without tool calls; retrying completion ({}/{})",
+                    retry_attempt,
+                    DEFAULT_RETRY_ATTEMPTS
+                );
+                append_retry_guidance(&mut ollama_messages);
+                continue;
+            }
+
+            let message = convert_from_ollama_response(&full_response);
+
+            let usage = full_response.eval_count.map(|eval_count| TokenUsage {
+                input: full_response.prompt_eval_count.unwrap_or(0),
+                output: eval_count,
+                total: full_response.prompt_eval_count.unwrap_or(0) + eval_count,
+            });
+
+            return Ok(ProviderResponse { message, usage });
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct OllamaStreamError {
+    error: String,
 }
 
 fn is_ollama_tool_call_parse_error(status: reqwest::StatusCode, body: &str) -> bool {
