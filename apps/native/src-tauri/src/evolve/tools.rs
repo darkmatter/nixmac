@@ -7,6 +7,7 @@
 //! ([`ToolResult`], [`ToolCtx`]) and helpers live here so every tool module can
 //! reach them via `super::`.
 
+mod arg_coercion;
 mod ask_user;
 mod build_check;
 mod done;
@@ -31,6 +32,8 @@ use crate::shared_types::FileEdit;
 use super::gitignore::GitignoreChecker;
 use anyhow::{Result, anyhow};
 use std::path::{Component, Path};
+
+pub(crate) use arg_coercion::coerce_stringified_args;
 
 // =============================================================================
 // Tool Definitions

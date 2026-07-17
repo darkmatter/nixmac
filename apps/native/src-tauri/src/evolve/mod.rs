@@ -1306,6 +1306,9 @@ pub async fn generate_evolution<R: Runtime>(
                     let args_str = &tool_call.arguments;
                     let args_raw: serde_json::Value =
                         serde_json::from_str(args_str).unwrap_or(serde_json::json!({}));
+                    // Repair double-encoded arguments (nested objects the model
+                    // serialized into strings) before sanitizing and executing.
+                    let args_raw = tools::coerce_stringified_args(&tools, tool_name, args_raw);
                     let args = sanitize_tool_args(tool_name, &args_raw);
 
                     let args_summary = summarize_args(&args);
