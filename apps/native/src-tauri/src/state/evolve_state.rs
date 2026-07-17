@@ -125,10 +125,10 @@ fn write_session<R: Runtime>(app: &AppHandle<R>, session: &EvolveSession) {
         return;
     }
     // Unmanaged (CLI / bare tests): persist directly.
-    if let Ok(persistence) = AppDataJson::for_app(app, EVOLVE_STATE_PATH) {
-        if let Ok(value) = serde_json::to_value(session) {
-            let _ = persistence.flush(&value);
-        }
+    if let Ok(persistence) = AppDataJson::for_app(app, EVOLVE_STATE_PATH)
+        && let Ok(value) = serde_json::to_value(session)
+    {
+        let _ = persistence.flush(&value);
     }
 }
 

@@ -223,7 +223,7 @@ fn fetch_upstream(repo: &Repository, remote_name: &str) -> Result<()> {
     fetch_options.download_tags(AutotagOption::Unspecified);
 
     let mut remote = repo
-        .find_remote(&remote_name)
+        .find_remote(remote_name)
         .with_context(|| format!("failed to find remote {remote_name}"))?;
 
     // Empty refspecs means use the remote's configured fetch refspecs.

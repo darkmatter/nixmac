@@ -65,11 +65,11 @@ fn coerce_value(schema: &Value, root: &Value, value: &mut Value) {
                         }
                     }
                 }
-                if let Some(additional) = branch.get("additionalProperties") {
-                    if additional.is_object() {
-                        for item in map.values_mut() {
-                            coerce_value(additional, root, item);
-                        }
+                if let Some(additional) = branch.get("additionalProperties")
+                    && additional.is_object()
+                {
+                    for item in map.values_mut() {
+                        coerce_value(additional, root, item);
                     }
                 }
             }

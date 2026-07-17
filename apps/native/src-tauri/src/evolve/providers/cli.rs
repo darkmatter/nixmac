@@ -285,11 +285,12 @@ impl AiProvider for CliProvider {
         };
 
         // Append model flag when applicable
-        if let Some(flag) = self.tool.model_flag() {
-            if !self.model.is_empty() && self.model != self.tool.binary_name() {
-                args.push(flag.to_string());
-                args.push(self.model.clone());
-            }
+        if let Some(flag) = self.tool.model_flag()
+            && !self.model.is_empty()
+            && self.model != self.tool.binary_name()
+        {
+            args.push(flag.to_string());
+            args.push(self.model.clone());
         }
 
         let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();

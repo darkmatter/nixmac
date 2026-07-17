@@ -158,12 +158,11 @@ fn extract_error_metadata(error: &str) -> (Option<u16>, Option<String>, Option<S
         Regex::new(r"(?i)\bstatus(?:Code|_code|:)?\s*[:=]?\s*(\d{3})\b")
             .expect("Failed to compile status regex")
     });
-    if let Some(cap) = STATUS_RE.captures(error) {
-        if let Some(m) = cap.get(1) {
-            if let Ok(s) = m.as_str().parse::<u16>() {
-                return (Some(s), None, None, error.len());
-            }
-        }
+    if let Some(cap) = STATUS_RE.captures(error)
+        && let Some(m) = cap.get(1)
+        && let Ok(s) = m.as_str().parse::<u16>()
+    {
+        return (Some(s), None, None, error.len());
     }
 
     (None, None, None, error.len())
@@ -1518,16 +1517,15 @@ pub async fn generate_evolution<R: Runtime>(
                                     );
                                 }
                                 ToolResult::Continue(_content) => {
-                                    if tool_name == "read_file" {
-                                        if let Some(path) =
+                                    if tool_name == "read_file"
+                                        && let Some(path) =
                                             args.get("path").and_then(|v| v.as_str())
-                                        {
-                                            tool_key = read_file_dedup_key(path, &args);
-                                            emit_evolve_event(
-                                                app,
-                                                EvolveEvent::reading(start_time, iteration, path),
-                                            );
-                                        }
+                                    {
+                                        tool_key = read_file_dedup_key(path, &args);
+                                        emit_evolve_event(
+                                            app,
+                                            EvolveEvent::reading(start_time, iteration, path),
+                                        );
                                     }
                                 }
                                 ToolResult::Done(summary_text) => {
@@ -2113,20 +2111,17 @@ fn canonical_json(value: &serde_json::Value) -> String {
 fn sanitize_tool_args(tool_name: &str, args: &serde_json::Value) -> serde_json::Value {
     let mut sanitized = tools::coerce_stringified_args(tool_name, args.clone());
 
-    if tool_name == "ensure_secret" {
-        if let Some(args_obj) = sanitized.as_object_mut() {
-            if let Some(scaffold_obj) = args_obj
-                .get_mut("scaffold")
-                .and_then(serde_json::Value::as_object_mut)
-            {
-                if scaffold_obj.contains_key("content") {
-                    scaffold_obj.insert(
-                        "content".to_string(),
-                        serde_json::Value::String("[REDACTED]".to_string()),
-                    );
-                }
-            }
-        }
+    if tool_name == "ensure_secret"
+        && let Some(args_obj) = sanitized.as_object_mut()
+        && let Some(scaffold_obj) = args_obj
+            .get_mut("scaffold")
+            .and_then(serde_json::Value::as_object_mut)
+        && scaffold_obj.contains_key("content")
+    {
+        scaffold_obj.insert(
+            "content".to_string(),
+            serde_json::Value::String("[REDACTED]".to_string()),
+        );
     }
 
     sanitized

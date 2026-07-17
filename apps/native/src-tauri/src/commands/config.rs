@@ -91,10 +91,10 @@ fn is_dir_empty_or_only_git(path: &Path) -> Result<bool, String> {
         return Ok(true);
     }
 
-    if entries.len() == 1 {
-        if let Some(name) = entries[0].file_name().to_str() {
-            return Ok(name == ".git");
-        }
+    if entries.len() == 1
+        && let Some(name) = entries[0].file_name().to_str()
+    {
+        return Ok(name == ".git");
     }
 
     Ok(false)
@@ -410,10 +410,10 @@ pub async fn config_create_from_template(
 
     // Mirror the bundled bootstrap: generate and commit flake.lock once the
     // config dir is selected. Non-fatal — a template may ship its own lock.
-    if nix::is_nix_installed() {
-        if let Err(e) = default_config::finalize_flake_lock(&app) {
-            log::info!("Could not finalize flake.lock for the template: {}", e);
-        }
+    if nix::is_nix_installed()
+        && let Err(e) = default_config::finalize_flake_lock(&app)
+    {
+        log::info!("Could not finalize flake.lock for the template: {}", e);
     }
 
     Ok(result)
@@ -504,13 +504,13 @@ fn cascade_config_dir_replacement(app: &AppHandle, new_dir: &Path) {
         }
     }
 
-    if onboarding.mac_scanned_at.is_some() || onboarding.provisional_config_dir.is_some() {
-        if let Err(e) = crate::state::onboarding::write(app, |state| {
+    if (onboarding.mac_scanned_at.is_some() || onboarding.provisional_config_dir.is_some())
+        && let Err(e) = crate::state::onboarding::write(app, |state| {
             state.mac_scanned_at = None;
             state.provisional_config_dir = None;
-        }) {
-            log::warn!("Failed to cascade onboarding facts on config dir change: {e:#}");
-        }
+        })
+    {
+        log::warn!("Failed to cascade onboarding facts on config dir change: {e:#}");
     }
 }
 
@@ -651,14 +651,14 @@ pub(super) fn cleanup_import_target(target: &ImportTarget) {
             }
         }
     }
-    if target.created {
-        if let Err(e) = std::fs::remove_dir(&target.path) {
-            log::warn!(
-                "Failed to remove import target {}: {}",
-                target.path.display(),
-                e
-            );
-        }
+    if target.created
+        && let Err(e) = std::fs::remove_dir(&target.path)
+    {
+        log::warn!(
+            "Failed to remove import target {}: {}",
+            target.path.display(),
+            e
+        );
     }
 }
 

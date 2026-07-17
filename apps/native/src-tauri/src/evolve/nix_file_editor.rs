@@ -432,10 +432,10 @@ fn list_full_attrpath(content: &str, list_start: usize) -> Option<String> {
                 // Use the exact position from the iteration, not rfind, to avoid selecting
                 // the wrong brace if there are fully-closed { ... } blocks in between.
                 let brace_pos = *idx;
-                if let Some(parent_equals) = content.get(..brace_pos).and_then(|s| s.rfind('=')) {
-                    if let Some(parent_lhs) = assignment_lhs_at_equals(content, parent_equals) {
-                        path_segments.insert(0, parent_lhs.to_string());
-                    }
+                if let Some(parent_equals) = content.get(..brace_pos).and_then(|s| s.rfind('='))
+                    && let Some(parent_lhs) = assignment_lhs_at_equals(content, parent_equals)
+                {
+                    path_segments.insert(0, parent_lhs.to_string());
                 }
                 break;
             }
@@ -536,13 +536,12 @@ fn find_statement_end(content: &str, start: usize) -> Option<usize> {
         }
 
         if in_indented_string {
-            if ch == '\'' {
-                if let Some((_, next)) = iter.peek() {
-                    if *next == '\'' {
-                        iter.next();
-                        in_indented_string = false;
-                    }
-                }
+            if ch == '\''
+                && let Some((_, next)) = iter.peek()
+                && *next == '\''
+            {
+                iter.next();
+                in_indented_string = false;
             }
             continue;
         }
@@ -551,11 +550,11 @@ fn find_statement_end(content: &str, start: usize) -> Option<usize> {
             '#' => in_comment = true,
             '"' => in_double_string = true,
             '\'' => {
-                if let Some((_, next)) = iter.peek() {
-                    if *next == '\'' {
-                        iter.next();
-                        in_indented_string = true;
-                    }
+                if let Some((_, next)) = iter.peek()
+                    && *next == '\''
+                {
+                    iter.next();
+                    in_indented_string = true;
                 }
             }
             '[' => bracket_depth += 1,
@@ -674,10 +673,10 @@ fn resolve_in_attrset(attrset: &AttrSet, target: &[String]) -> Option<SyntaxNode
         }
         // Strict prefix: the remaining segments must resolve inside this
         // entry's attrset value (e.g. `dock` matched, `mru-spaces` is inside).
-        if let Some(inner) = AttrSet::cast(value_node) {
-            if let Some(found) = resolve_in_attrset(&inner, &target[key.len()..]) {
-                return Some(found);
-            }
+        if let Some(inner) = AttrSet::cast(value_node)
+            && let Some(found) = resolve_in_attrset(&inner, &target[key.len()..])
+        {
+            return Some(found);
         }
     }
     None

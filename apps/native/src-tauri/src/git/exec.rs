@@ -216,10 +216,10 @@ pub fn commit_file(dir: &str, path: &str, message: &str) -> Result<CommitInfo> {
     index.write().context("git2 write staged index")?;
 
     let tree_id = index.write_tree().context("git2 write commit tree")?;
-    if let Some(parent) = parent.as_ref() {
-        if parent.tree_id() == tree_id {
-            anyhow::bail!("nothing to commit");
-        }
+    if let Some(parent) = parent.as_ref()
+        && parent.tree_id() == tree_id
+    {
+        anyhow::bail!("nothing to commit");
     }
     let tree = repo.find_tree(tree_id).context("git2 find commit tree")?;
 
