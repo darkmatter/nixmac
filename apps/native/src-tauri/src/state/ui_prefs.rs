@@ -118,6 +118,10 @@ pub fn experimental_spinning_mascot<R: Runtime>(app: &AppHandle<R>) -> bool {
     preferences::try_read(app).is_some_and(|prefs| prefs.experimental_spinning_mascot)
 }
 
+pub fn experimental_streaming_evolve<R: Runtime>(app: &AppHandle<R>) -> bool {
+    preferences::try_read(app).is_some_and(|prefs| prefs.experimental_streaming_evolve)
+}
+
 pub fn set_host_attr<R: Runtime>(app: &AppHandle<R>, attr: &str) -> Result<()> {
     let attr = attr.trim().to_string();
     preferences::write(app, move |prefs| {

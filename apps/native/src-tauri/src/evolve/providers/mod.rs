@@ -26,6 +26,9 @@ pub struct ProviderResponse {
     pub usage: Option<TokenUsage>,
 }
 
+/// Callback receiving streamed assistant-text deltas as they arrive.
+pub type OnDelta<'a> = &'a (dyn Fn(&str) + Send + Sync);
+
 #[async_trait]
 pub trait AiProvider: Send + Sync {
     async fn completion(
@@ -33,6 +36,21 @@ pub trait AiProvider: Send + Sync {
         messages: &[Message],
         tools: &[Tool],
     ) -> std::result::Result<ProviderResponse, ProviderError>;
+
+    /// Like [`Self::completion`], but forwards assistant-text deltas to
+    /// `on_delta` while the response is assembled. The returned response is
+    /// identical to the blocking call's. The default delegates to
+    /// [`Self::completion`] without deltas — the CLI provider can never
+    /// stream (its stdout is the parsed payload, arriving whole on exit),
+    /// and the accepted design gives it no filler treatment (design §7).
+    async fn completion_streaming(
+        &self,
+        messages: &[Message],
+        tools: &[Tool],
+        _on_delta: OnDelta<'_>,
+    ) -> std::result::Result<ProviderResponse, ProviderError> {
+        self.completion(messages, tools).await
+    }
 
     fn model_name(&self) -> String;
 }

@@ -168,6 +168,23 @@ impl EvolveEvent {
         })
     }
 
+    /// A streamed slice of the assistant response being generated. `raw`
+    /// carries the delta so the Console mirror and session transcripts see
+    /// the text as it arrives; the timeline renders the accumulated tail in
+    /// the active row instead of as rows.
+    pub(crate) fn stream_delta(start_time: i64, iter: usize, text: &str) -> Self {
+        Self::new(
+            EvolveEventType::StreamDelta,
+            text.to_string(),
+            "Thinking...".to_string(),
+            Some(iter),
+            start_time,
+        )
+        .with_detail(EvolveEventDetail::StreamDelta {
+            text: text.to_string(),
+        })
+    }
+
     pub(crate) fn build_pass(start_time: i64, iter: usize, attempt: usize) -> Self {
         Self::new(
             EvolveEventType::BuildPass,

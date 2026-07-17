@@ -755,6 +755,64 @@ fn finish_after_limit_stop<R: Runtime>(
     evolution.state = EvolutionState::LimitReached;
 }
 
+/// How often streamed provider text deltas are flushed as StreamDelta
+/// events. Batching keeps event volume low (mirrors `log_summarizer` and the
+/// build-check stream) while the text still reads as live typing.
+const STREAM_DELTA_FLUSH_INTERVAL: Duration = Duration::from_millis(120);
+
+/// Coalesces streamed provider text deltas into throttled StreamDelta
+/// events. `push` is called from inside the provider's response loop;
+/// `flush` emits whatever remains once the response completes.
+struct DeltaBatcher<'a, R: Runtime> {
+    app: &'a AppHandle<R>,
+    start_time: i64,
+    iteration: usize,
+    buffer: std::sync::Mutex<(String, std::time::Instant)>,
+}
+
+impl<'a, R: Runtime> DeltaBatcher<'a, R> {
+    fn new(app: &'a AppHandle<R>, start_time: i64, iteration: usize) -> Self {
+        Self {
+            app,
+            start_time,
+            iteration,
+            buffer: std::sync::Mutex::new((String::new(), std::time::Instant::now())),
+        }
+    }
+
+    fn push(&self, delta: &str) {
+        let Ok(mut guard) = self.buffer.lock() else {
+            return;
+        };
+        guard.0.push_str(delta);
+        if guard.0.is_empty() || guard.1.elapsed() < STREAM_DELTA_FLUSH_INTERVAL {
+            return;
+        }
+        let text = std::mem::take(&mut guard.0);
+        guard.1 = std::time::Instant::now();
+        drop(guard);
+        emit_evolve_event(
+            self.app,
+            EvolveEvent::stream_delta(self.start_time, self.iteration, &text),
+        );
+    }
+
+    fn flush(&self) {
+        let Ok(mut guard) = self.buffer.lock() else {
+            return;
+        };
+        if guard.0.is_empty() {
+            return;
+        }
+        let text = std::mem::take(&mut guard.0);
+        drop(guard);
+        emit_evolve_event(
+            self.app,
+            EvolveEvent::stream_delta(self.start_time, self.iteration, &text),
+        );
+    }
+}
+
 /// Generate an evolution from a user prompt using OpenAI function calling.
 ///
 /// This runs an agentic loop where the model can read files, make edits,
@@ -832,6 +890,13 @@ pub async fn generate_evolution<R: Runtime>(
     let max_output_tokens =
         store::get_max_output_tokens(app).unwrap_or(store::DEFAULT_MAX_OUTPUT_TOKENS);
     let max_output_tokens_for_request = normalize_max_output_tokens(max_output_tokens);
+
+    // Experimental developer flag: stream provider text deltas into the
+    // progress view while the model responds.
+    let streaming_evolve = crate::state::ui_prefs::experimental_streaming_evolve(app);
+    if streaming_evolve {
+        info!("Experimental streaming evolve enabled");
+    }
 
     // Select provider implementation
     let provider: Arc<dyn AiProvider> = if provider_type == "ollama" {
@@ -1137,11 +1202,24 @@ pub async fn generate_evolution<R: Runtime>(
         emit_evolve_event(app, EvolveEvent::api_request(start_time, iteration));
 
         let response_result = {
-            let fut = provider.completion(&active_provider_messages, &tools);
+            let delta_batcher = DeltaBatcher::new(app, start_time, iteration);
+            let on_delta = |delta: &str| delta_batcher.push(delta);
+            let fut = async {
+                if streaming_evolve {
+                    provider
+                        .completion_streaming(&active_provider_messages, &tools, &on_delta)
+                        .await
+                } else {
+                    provider.completion(&active_provider_messages, &tools).await
+                }
+            };
             tokio::pin!(fut);
 
             tokio::select! {
-                res = &mut fut => res,
+                res = &mut fut => {
+                    delta_batcher.flush();
+                    res
+                },
                 _ = async {
                     loop {
                         if session_control::is_evolve_cancelled() {

@@ -147,6 +147,10 @@ pub enum EvolveEventDetail {
     /// A streamed chunk of build-check output, emitted in throttled batches
     /// while the check runs.
     BuildOutput { chunk: String },
+    /// A streamed slice of assistant text, emitted in throttled batches while
+    /// the provider responds; the full text follows as Narration or the
+    /// terminal summary once the response completes.
+    StreamDelta { text: String },
     /// Assistant narration between tool calls.
     Narration { text: String },
     /// Budget counters, emitted with every provider response.
@@ -244,6 +248,8 @@ pub enum EvolveEventType {
     Answered,
     /// Assistant narration between tool calls.
     Narration,
+    /// A streamed slice of the assistant response being generated.
+    StreamDelta,
 }
 
 /// Widget step derived from `EvolveState` fields.
