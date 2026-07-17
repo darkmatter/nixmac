@@ -1,4 +1,4 @@
-use super::{AiProvider, OnDelta, ProviderError, ProviderResponse, TokenUsage};
+use super::{AiProvider, OnDelta, ProviderError, ProviderResponse, ThoughtExtractor, TokenUsage};
 use crate::ai::model_capabilities::capabilities_for_model;
 use crate::ai::provider_errors::classify_openai_error;
 use crate::evolve::messages::{Message, Tool as GenericTool, ToolCall};
@@ -270,6 +270,11 @@ impl AiProvider for OpenAIProvider {
 
         let mut content = String::new();
         let mut tool_calls: Vec<StreamedToolCall> = Vec::new();
+        // The model spends most of its tokens on tool-call arguments, not
+        // assistant content, so surface those too: the think tool's thought
+        // text types out as it generates, other tools announce themselves.
+        let mut thought_extractors: std::collections::HashMap<usize, ThoughtExtractor> =
+            std::collections::HashMap::new();
         let mut usage: Option<TokenUsage> = None;
 
         while let Some(chunk) = stream.next().await {
@@ -307,7 +312,25 @@ impl AiProvider for OpenAIProvider {
             }
             if let Some(chunks) = &choice.delta.tool_calls {
                 for tool_chunk in chunks {
+                    let index = tool_chunk.index as usize;
                     merge_tool_call_chunk(&mut tool_calls, tool_chunk);
+                    let name = tool_calls[index].name.as_str();
+                    // A call's first chunk carries its id and name.
+                    if tool_chunk.id.is_some() && !name.is_empty() && name != "think" {
+                        on_delta(&format!("\n\u{2192} {}\n", name));
+                    }
+                    if name == "think" {
+                        if let Some(fragment) = tool_chunk
+                            .function
+                            .as_ref()
+                            .and_then(|f| f.arguments.as_deref())
+                        {
+                            let text = thought_extractors.entry(index).or_default().push(fragment);
+                            if !text.is_empty() {
+                                on_delta(&text);
+                            }
+                        }
+                    }
                 }
             }
         }

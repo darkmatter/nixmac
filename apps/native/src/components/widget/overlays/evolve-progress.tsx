@@ -169,7 +169,8 @@ export function trailingStreamText(events: EvolveEvent[]): string | null {
   if (parts.length === 0) return null;
   const text = parts.join("");
   if (text.length <= STREAM_TAIL_MAX_CHARS) return text;
-  return `…${text.slice(-STREAM_TAIL_MAX_CHARS)}`;
+  // Slice by code points so the cut can't land inside a surrogate pair.
+  return `…${[...text].slice(-STREAM_TAIL_MAX_CHARS).join("")}`;
 }
 
 /// The question the run is currently blocked on: the most recent question
@@ -667,7 +668,7 @@ function ActiveRow({
         </span>
       </div>
       {!!focus.detailText && (
-        <p className="mt-1.5 ml-6 line-clamp-4 border-border/50 border-l-2 pl-2 text-muted-foreground/80 text-xs">
+        <p className="mt-1.5 ml-6 line-clamp-4 whitespace-pre-line border-border/50 border-l-2 pl-2 text-muted-foreground/80 text-xs">
           {focus.detailText}
         </p>
       )}

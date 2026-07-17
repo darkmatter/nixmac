@@ -334,6 +334,24 @@ impl AiProvider for OllamaProvider {
                     on_delta(&chunk.message.content);
                 }
                 if let Some(calls) = &chunk.message.tool_calls {
+                    // Ollama sends tool calls whole; surface them so the
+                    // stream shows more than the (often empty) content: the
+                    // think tool's thought text, and announcements for the
+                    // rest.
+                    for call in calls {
+                        if call.function.name == "think" {
+                            if let Some(thought) = call
+                                .function
+                                .arguments
+                                .get("thought")
+                                .and_then(|v| v.as_str())
+                            {
+                                on_delta(thought);
+                            }
+                        } else {
+                            on_delta(&format!("\n\u{2192} {}\n", call.function.name));
+                        }
+                    }
                     assembled
                         .tool_calls
                         .get_or_insert_with(Vec::new)
