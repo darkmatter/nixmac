@@ -818,6 +818,7 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
               provider={
                 provider.id as "nixmac" | "openrouter" | "openai" | "ollama" | "openai_compatible" | "opencode"
               }
+              defaultModel={getAiModelProvider(provider.id).defaultEvolveModel}
               value={model}
               onChange={setModel}
               placeholder={modelPlaceholder(provider.id, "evolve")}

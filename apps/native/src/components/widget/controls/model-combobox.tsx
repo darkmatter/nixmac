@@ -1,25 +1,17 @@
 "use client";
 
-import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
 import { NIXMAC_PROVIDER } from "@/components/widget/onboarding/lib/inference";
 import { suggestedModels } from "@/lib/providers/ai-defaults";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { providerRequiresModel } from "@/lib/providers/ai-provider-validation";
 import { tauriAPI } from "@/ipc/api";
 
 interface ModelComboboxProps {
   provider: "nixmac" | "openrouter" | "openai" | "ollama" | "openai_compatible" | "opencode";
+  /** Model the provider falls back to when the value is empty; labels the "default" option. Empty when the runtime (e.g. a CLI) picks its own default. */
+  defaultModel: string;
   value: string;
   onChange: (value: string) => void;
   onBlur?: () => void;
@@ -193,33 +185,39 @@ async function loadProviderModels(
 
 export function ModelCombobox({
   provider,
+  defaultModel,
   value,
   onChange,
   onBlur,
   placeholder = "Select model...",
   disabled = false,
 }: ModelComboboxProps) {
-  const [open, setOpen] = useState(false);
   const [models, setModels] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [inputValue, setInputValue] = useState(value);
+  const [refreshTick, setRefreshTick] = useState(0);
 
-  // Sync input value with external value
-  useEffect(() => {
-    setInputValue(value);
-  }, [value]);
-
-  const loadModels = useCallback(() => {
+  const loadModels = useCallback((options?: { clear?: boolean }) => {
     let cancelled = false;
 
     setIsLoading(true);
 
-    // Clear current list immediately when loading to avoid showing stale models
-    setModels([]);
+    // Clear only when the provider changed (its models are wrong for the new
+    // one). On refreshes keep the current list: async remove/re-add of the
+    // items makes cmdk re-highlight and re-focus, which WebKit answers by
+    // collapsing the caret to the start when it lands mid-click.
+    if (options?.clear) {
+      setModels([]);
+    }
 
     loadProviderModels(provider, (nextModels) => {
       if (!cancelled) {
-        setModels(nextModels);
+        // Keep the previous array when the content is unchanged so the items
+        // don't re-render (and cmdk doesn't re-register them) on every open.
+        setModels((prev) =>
+          prev.length === nextModels.length && prev.every((m, i) => m === nextModels[i])
+            ? prev
+            : nextModels,
+        );
       }
     }).finally(() => {
       if (!cancelled) {
@@ -232,113 +230,40 @@ export function ModelCombobox({
     };
   }, [provider]);
 
-  // Load models when popover opens
+  // Refresh models when the popover opens, keeping the current list meanwhile
   useEffect(() => {
-    if (open) {
+    if (refreshTick > 0) {
       return loadModels();
     }
-  }, [loadModels, open]);
+  }, [loadModels, refreshTick]);
 
   // Also load models on mount and provider change to have them ready
-  useEffect(() => loadModels(), [loadModels]);
-
-  const handleSelect = (selectedValue: string) => {
-    onChange(selectedValue);
-    setInputValue(selectedValue);
-    setOpen(false);
-    onBlur?.();
-  };
-
-  const handleInputChange = (newValue: string) => {
-    setInputValue(newValue);
-    onChange(newValue);
-  };
-
-  const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen);
-    if (!newOpen) {
-      onBlur?.();
-    }
-  };
-
-  // Filter models based on input
-  const filteredModels = models.filter((model) =>
-    model.toLowerCase().includes(inputValue.toLowerCase()),
-  );
-
-  // Show input value in list if it doesn't match any model
-  const showCustomOption =
-    inputValue && !models.some((m) => m.toLowerCase() === inputValue.toLowerCase());
+  useEffect(() => loadModels({ clear: true }), [loadModels]);
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="w-full justify-between font-normal"
-          disabled={disabled}
-        >
-          <span className={cn("truncate", !inputValue && "text-muted-foreground")}>
-            {inputValue || placeholder}
-          </span>
-          {isLoading ? (
-            <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-50" />
-          ) : (
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="start">
-        <Command shouldFilter={false}>
-          <CommandInput
-            placeholder="Search or enter model..."
-            value={inputValue}
-            onValueChange={handleInputChange}
-          />
-          <CommandList>
-            {isLoading && models.length === 0 ? (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                <span className="ml-2 text-sm text-muted-foreground">Loading models...</span>
-              </div>
-            ) : filteredModels.length === 0 && !showCustomOption ? (
-              <CommandEmpty>
-                {models.length === 0
-                  ? "No models found. Enter a model name manually."
-                  : "No matching models. Press Enter to use custom value."}
-              </CommandEmpty>
-            ) : (
-              <CommandGroup>
-                {showCustomOption && (
-                  <CommandItem
-                    value={inputValue}
-                    onSelect={() => handleSelect(inputValue)}
-                    className="text-primary"
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        value === inputValue ? "opacity-100" : "opacity-0",
-                      )}
-                    />
-                    Use "{inputValue}"
-                  </CommandItem>
-                )}
-                {filteredModels.map((model) => (
-                  <CommandItem key={model} value={model} onSelect={() => handleSelect(model)}>
-                    <Check
-                      className={cn("mr-2 h-4 w-4", value === model ? "opacity-100" : "opacity-0")}
-                    />
-                    <span className="truncate">{model}</span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <Combobox
+      items={models}
+      value={value}
+      onChange={onChange}
+      onBlur={onBlur}
+      onOpenChange={(open) => {
+        if (open) {
+          setRefreshTick((tick) => tick + 1);
+        }
+      }}
+      placeholder={placeholder}
+      disabled={disabled}
+      isLoading={isLoading}
+      allowCustomValue
+      emptyValueLabel={
+        providerRequiresModel(provider)
+          ? undefined
+          : defaultModel
+            ? `Default: ${defaultModel}`
+            : "Provider default"
+      }
+      emptyMessage="No models found. Enter a model name manually."
+      loadingMessage="Loading models..."
+    />
   );
 }

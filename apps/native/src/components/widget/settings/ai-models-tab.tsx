@@ -16,6 +16,7 @@ import {
   providerRequiresModel,
 } from "@/lib/providers/ai-provider-validation";
 import {
+  getAiModelProvider,
   isPlainInputCliProvider,
   modelForProvider,
   modelPlaceholder,
@@ -217,6 +218,7 @@ export function AiModelsTab({
                             | "openai_compatible"
                             | "opencode"
                           }
+                          defaultModel={getAiModelProvider(evolveProvider).defaultEvolveModel}
                           value={evolveModelField.state.value}
                           onChange={async (value) => {
                             evolveModelField.handleChange(value);
@@ -330,6 +332,7 @@ export function AiModelsTab({
                             | "openai_compatible"
                             | "opencode"
                           }
+                          defaultModel={getAiModelProvider(summaryProvider).defaultSummaryModel}
                           value={summaryModelField.state.value}
                           onChange={async (value) => {
                             summaryModelField.handleChange(value);
