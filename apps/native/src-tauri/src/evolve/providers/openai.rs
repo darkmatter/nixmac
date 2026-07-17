@@ -1,4 +1,4 @@
-use super::{AiProvider, ProviderError, ProviderResponse, TokenUsage};
+use super::{AiProvider, OnDelta, ProviderError, ProviderResponse, TokenUsage};
 use crate::ai::model_capabilities::capabilities_for_model;
 use crate::ai::provider_errors::classify_openai_error;
 use crate::evolve::messages::{Message, Tool as GenericTool, ToolCall};
@@ -8,14 +8,16 @@ use async_openai::{
     config::OpenAIConfig,
     error::OpenAIError,
     types::{
-        ChatCompletionMessageToolCall, ChatCompletionRequestAssistantMessageArgs,
-        ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageArgs,
-        ChatCompletionRequestToolMessageArgs, ChatCompletionRequestUserMessageArgs,
-        ChatCompletionTool, ChatCompletionToolArgs, ChatCompletionToolType,
+        ChatCompletionMessageToolCall, ChatCompletionMessageToolCallChunk,
+        ChatCompletionRequestAssistantMessageArgs, ChatCompletionRequestMessage,
+        ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestToolMessageArgs,
+        ChatCompletionRequestUserMessageArgs, ChatCompletionStreamOptions, ChatCompletionTool,
+        ChatCompletionToolArgs, ChatCompletionToolType, CreateChatCompletionRequest,
         CreateChatCompletionRequestArgs, FunctionCall, FunctionObjectArgs,
     },
 };
 use async_trait::async_trait;
+use futures_util::StreamExt;
 use log::{info, warn};
 use reqwest::StatusCode;
 
@@ -43,6 +45,71 @@ impl OpenAIProvider {
             chat_completions_url,
             max_output_tokens,
             record_chat_logs,
+        }
+    }
+
+    fn build_request(
+        &self,
+        messages: &[Message],
+        tools: &[GenericTool],
+        stream: bool,
+    ) -> std::result::Result<CreateChatCompletionRequest, ProviderError> {
+        let mut request_builder = CreateChatCompletionRequestArgs::default();
+        request_builder
+            .model(&self.model)
+            .messages(convert_to_openai_messages(messages))
+            .tools(convert_to_openai_tools(tools));
+
+        if stream {
+            // Usage arrives only in the stream's final chunk, and only when
+            // asked for explicitly.
+            request_builder
+                .stream(true)
+                .stream_options(ChatCompletionStreamOptions {
+                    include_usage: true,
+                });
+        }
+
+        if capabilities_for_model(&self.model).supports_custom_temperature {
+            request_builder.temperature(0.2);
+        }
+
+        request_builder.max_completion_tokens(self.max_output_tokens);
+
+        request_builder
+            .build()
+            .map_err(|e| ProviderError::Other(anyhow!(e)))
+    }
+}
+
+/// A tool call being assembled from stream chunks: the first chunk for an
+/// index carries the id and function name, later chunks append argument
+/// fragments.
+#[derive(Debug, Default, PartialEq)]
+struct StreamedToolCall {
+    id: String,
+    name: String,
+    arguments: String,
+}
+
+fn merge_tool_call_chunk(
+    calls: &mut Vec<StreamedToolCall>,
+    chunk: &ChatCompletionMessageToolCallChunk,
+) {
+    let index = chunk.index as usize;
+    if calls.len() <= index {
+        calls.resize_with(index + 1, Default::default);
+    }
+    let call = &mut calls[index];
+    if let Some(id) = &chunk.id {
+        call.id = id.clone();
+    }
+    if let Some(function) = &chunk.function {
+        if let Some(name) = &function.name {
+            call.name.push_str(name);
+        }
+        if let Some(arguments) = &function.arguments {
+            call.arguments.push_str(arguments);
         }
     }
 }
@@ -114,24 +181,7 @@ impl AiProvider for OpenAIProvider {
         messages: &[Message],
         tools: &[GenericTool],
     ) -> std::result::Result<ProviderResponse, ProviderError> {
-        let openai_messages = convert_to_openai_messages(messages);
-        let openai_tools = convert_to_openai_tools(tools);
-
-        let mut request_builder = CreateChatCompletionRequestArgs::default();
-        request_builder
-            .model(&self.model)
-            .messages(openai_messages)
-            .tools(openai_tools);
-
-        if capabilities_for_model(&self.model).supports_custom_temperature {
-            request_builder.temperature(0.2);
-        }
-
-        request_builder.max_completion_tokens(self.max_output_tokens);
-
-        let request = request_builder
-            .build()
-            .map_err(|e| ProviderError::Other(anyhow!(e)))?;
+        let request = self.build_request(messages, tools, false)?;
 
         crate::state::completion_log::append_event_jsonl(
             self.record_chat_logs,
@@ -181,6 +231,125 @@ impl AiProvider for OpenAIProvider {
             output: u.completion_tokens,
             total: u.total_tokens,
         });
+
+        Ok(ProviderResponse { message, usage })
+    }
+
+    async fn completion_streaming(
+        &self,
+        messages: &[Message],
+        tools: &[GenericTool],
+        on_delta: OnDelta<'_>,
+    ) -> std::result::Result<ProviderResponse, ProviderError> {
+        let request = self.build_request(messages, tools, true)?;
+
+        crate::state::completion_log::append_event_jsonl(
+            self.record_chat_logs,
+            "evolve_provider_chat",
+            "openai-compatible",
+            "request",
+            &request,
+        )
+        .await;
+
+        let start =
+            log_provider_request_start("chat-stream", &self.chat_completions_url, &self.model);
+        let mut stream = match self.client.chat().create_stream(request).await {
+            Ok(stream) => stream,
+            Err(error) => {
+                log_provider_request_err(
+                    "chat-stream",
+                    &self.chat_completions_url,
+                    &self.model,
+                    start,
+                    &error,
+                );
+                return Err(normalize_openai_error(error));
+            }
+        };
+
+        let mut content = String::new();
+        let mut tool_calls: Vec<StreamedToolCall> = Vec::new();
+        let mut usage: Option<TokenUsage> = None;
+
+        while let Some(chunk) = stream.next().await {
+            let chunk = match chunk {
+                Ok(chunk) => chunk,
+                Err(error) => {
+                    log_provider_request_err(
+                        "chat-stream",
+                        &self.chat_completions_url,
+                        &self.model,
+                        start,
+                        &error,
+                    );
+                    return Err(normalize_openai_error(error));
+                }
+            };
+
+            // With include_usage the final chunk has empty choices and the
+            // whole request's usage.
+            if let Some(u) = &chunk.usage {
+                usage = Some(TokenUsage {
+                    input: u.prompt_tokens,
+                    output: u.completion_tokens,
+                    total: u.total_tokens,
+                });
+            }
+            let Some(choice) = chunk.choices.first() else {
+                continue;
+            };
+            if let Some(text) = &choice.delta.content {
+                if !text.is_empty() {
+                    content.push_str(text);
+                    on_delta(text);
+                }
+            }
+            if let Some(chunks) = &choice.delta.tool_calls {
+                for tool_chunk in chunks {
+                    merge_tool_call_chunk(&mut tool_calls, tool_chunk);
+                }
+            }
+        }
+        log_provider_request_ok(
+            "chat-stream",
+            &self.chat_completions_url,
+            &self.model,
+            start,
+        );
+
+        let tool_calls: Vec<ToolCall> = tool_calls
+            .into_iter()
+            .map(|call| ToolCall {
+                id: call.id,
+                name: call.name,
+                arguments: call.arguments,
+            })
+            .collect();
+        let message = Message::Assistant {
+            content: if content.is_empty() {
+                None
+            } else {
+                Some(content)
+            },
+            tool_calls: if tool_calls.is_empty() {
+                None
+            } else {
+                Some(tool_calls)
+            },
+        };
+
+        crate::state::completion_log::append_event_jsonl(
+            self.record_chat_logs,
+            "evolve_provider_chat",
+            "openai-compatible",
+            "response",
+            &serde_json::json!({
+                "streamed": true,
+                "message": format!("{:?}", message),
+            }),
+        )
+        .await;
 
         Ok(ProviderResponse { message, usage })
     }
@@ -287,5 +456,66 @@ fn normalize_openai_error(e: OpenAIError) -> ProviderError {
         ProviderError::Http { status, body: msg }
     } else {
         ProviderError::Other(anyhow!(e))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn chunk(
+        index: u32,
+        id: Option<&str>,
+        name: Option<&str>,
+        arguments: Option<&str>,
+    ) -> ChatCompletionMessageToolCallChunk {
+        ChatCompletionMessageToolCallChunk {
+            index,
+            id: id.map(str::to_string),
+            r#type: None,
+            function: Some(async_openai::types::FunctionCallStream {
+                name: name.map(str::to_string),
+                arguments: arguments.map(str::to_string),
+            }),
+        }
+    }
+
+    #[test]
+    fn assembles_tool_call_arguments_across_chunks() {
+        let mut calls = Vec::new();
+        merge_tool_call_chunk(
+            &mut calls,
+            &chunk(0, Some("call_1"), Some("edit_nix_file"), None),
+        );
+        merge_tool_call_chunk(&mut calls, &chunk(0, None, None, Some("{\"path\":")));
+        merge_tool_call_chunk(&mut calls, &chunk(0, None, None, Some("\"flake.nix\"}")));
+
+        assert_eq!(
+            calls,
+            vec![StreamedToolCall {
+                id: "call_1".to_string(),
+                name: "edit_nix_file".to_string(),
+                arguments: "{\"path\":\"flake.nix\"}".to_string(),
+            }]
+        );
+    }
+
+    #[test]
+    fn assembles_parallel_tool_calls_by_index() {
+        let mut calls = Vec::new();
+        merge_tool_call_chunk(
+            &mut calls,
+            &chunk(0, Some("call_1"), Some("think"), Some("{}")),
+        );
+        merge_tool_call_chunk(
+            &mut calls,
+            &chunk(1, Some("call_2"), Some("read_file"), Some("{")),
+        );
+        merge_tool_call_chunk(&mut calls, &chunk(1, None, None, Some("}")));
+
+        assert_eq!(calls.len(), 2);
+        assert_eq!(calls[0].name, "think");
+        assert_eq!(calls[1].id, "call_2");
+        assert_eq!(calls[1].arguments, "{}");
     }
 }
