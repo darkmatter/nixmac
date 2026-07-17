@@ -4,6 +4,7 @@ import { AiModelsTab } from "@/components/widget/settings/ai-models-tab";
 import { ApiKeysTab } from "@/components/widget/settings/api-keys-tab";
 import { DeveloperTab } from "@/components/widget/settings/developer-tab";
 import { GeneralTab } from "@/components/widget/settings/general-tab";
+import { PermissionsTab } from "@/components/widget/settings/permissions-tab";
 import { PreferencesTab } from "@/components/widget/settings/preferences-tab";
 import { TuningTab } from "@/components/widget/settings/tuning-tab";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
@@ -27,6 +28,7 @@ import {
   FolderOpen,
   Key,
   Settings2,
+  ShieldCheck,
   SlidersHorizontal,
   UserCircle2,
   Wrench,
@@ -241,6 +243,12 @@ export function SettingsDialog() {
                 onClick={() => setActiveTab("preferences")}
               />
               <NavItem
+                active={activeTab === "permissions"}
+                icon={<ShieldCheck className="h-4 w-4" />}
+                label="Permissions"
+                onClick={() => setActiveTab("permissions")}
+              />
+              <NavItem
                 active={activeTab === "tuning"}
                 icon={<SlidersHorizontal className="h-4 w-4" />}
                 label="Tuning"
@@ -331,6 +339,8 @@ export function SettingsDialog() {
             {activeTab === "account" && <AccountTab />}
 
             {activeTab === "preferences" && <PreferencesTab />}
+
+            {activeTab === "permissions" && <PermissionsTab />}
 
             {activeTab === "tuning" && <TuningTab />}
 
