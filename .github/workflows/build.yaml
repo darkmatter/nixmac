@@ -17,6 +17,38 @@ env:
   CARGO_TERM_COLOR: always
   SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 jobs:
+  # Run the repo's git-hooks (treefmt, shellcheck) across the whole tree so a
+  # commit made with hooks skipped/broken still gets flagged. Intentionally
+  # not in any `needs` chain: a failure shows up as a red check on the PR but
+  # never blocks rust-tests/build from running.
+  git-hooks:
+    name: Git Hooks
+    runs-on: arc
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Nix and caches
+        uses: ./.github/actions/setup-nix
+        with:
+          darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
+
+      # Pinned to match .github/actions/setup-devenv. The devenv CLI is needed
+      # here (not just the cached profile): entering the shell is what
+      # materializes the .pre-commit-config.yaml symlink that prek reads.
+      - name: Install devenv
+        run: nix build github:cachix/devenv/v2.1.2 --out-link "$RUNNER_TEMP/devenv-cli"
+
+      - name: Run git hooks on all files
+        env:
+          NIXPKGS_ALLOW_UNFREE: 1
+        run: |
+          "$RUNNER_TEMP/devenv-cli/bin/devenv" shell --impure -- \
+            prek run --all-files --show-diff-on-failure
+
   rust-tests:
     name: Rust Tests (Linux)
     runs-on: arc
