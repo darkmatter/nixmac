@@ -154,7 +154,7 @@ impl EvolveEvent {
 
     /// A streamed chunk of build-check output. `raw` carries the chunk so
     /// the Console mirror and session transcripts get the log; the timeline
-    /// renders it in the focus zone instead of as rows.
+    /// renders it as the active row's log tail instead of as rows.
     pub(crate) fn build_output(start_time: i64, iter: usize, chunk: &str) -> Self {
         Self::new(
             EvolveEventType::BuildCheck,
@@ -188,9 +188,10 @@ impl EvolveEvent {
             Some(line) => format!("Build check failed: {}", truncate(line, 120)),
             None => "Build check failed, retrying...".to_string(),
         };
+        let output_tail = build_output_tail(output, 6000);
         Self::new(
             EvolveEventType::BuildFail,
-            format!("Build check failed: {}", truncate(output, 6000)),
+            format!("Build check failed: {}", truncate(output_tail, 6000)),
             summary,
             Some(iter),
             start_time,
@@ -198,7 +199,7 @@ impl EvolveEvent {
         .with_detail(EvolveEventDetail::Build {
             pass: false,
             attempt,
-            output: truncate(output, 6000),
+            output: truncate(output_tail, 6000),
         })
     }
 
@@ -473,13 +474,36 @@ fn truncate(s: &str, max_len: usize) -> String {
     global_utils::truncate_with_ellipsis(s, max_len)
 }
 
+/// The slice of build output worth keeping when it exceeds `max_len`: from
+/// the last "error:" line onward (nix prints the failure after pages of
+/// evaluation/progress chatter), falling back to the tail. Head-truncating
+/// oversized output instead would keep only the chatter and cut the error.
+fn build_output_tail(output: &str, max_len: usize) -> &str {
+    if output.len() <= max_len {
+        return output;
+    }
+    let mut error_offset = None;
+    let mut pos = 0;
+    for line in output.split_inclusive('\n') {
+        if line.to_lowercase().contains("error:") {
+            error_offset = Some(pos);
+        }
+        pos += line.len();
+    }
+    let start = error_offset
+        .unwrap_or_else(|| output.floor_char_boundary(output.len().saturating_sub(max_len)));
+    &output[start..]
+}
+
 /// First line of build output that looks like the actual error, falling back
 /// to the first non-empty line. Nix errors are prefixed with "error:", often
-/// preceded by pages of trace/progress noise.
+/// preceded by pages of trace/progress noise (which can mention "error"
+/// inside file paths, hence the colon-anchored match is tried first).
 fn first_error_line(output: &str) -> Option<&str> {
     let non_empty = || output.lines().map(str::trim).filter(|l| !l.is_empty());
     non_empty()
-        .find(|l| l.to_lowercase().contains("error"))
+        .find(|l| l.to_lowercase().contains("error:"))
+        .or_else(|| non_empty().find(|l| l.to_lowercase().contains("error")))
         .or_else(|| non_empty().next())
 }
 
@@ -680,6 +704,46 @@ mod tests {
     fn build_fail_summary_should_keep_generic_text_for_empty_output() {
         let event = EvolveEvent::build_fail(0, 1, 1, "");
         assert_eq!(event.summary, "Build check failed, retrying...");
+    }
+
+    #[test]
+    fn build_fail_should_keep_the_error_when_chatter_overflows_the_raw_budget() {
+        // Verbose dry-run output: thousands of evaluation lines, error last.
+        let chatter = "evaluating file '/nix/store/aaa-source/lib/attrsets.nix'\n".repeat(200);
+        let output = format!(
+            "{}error: attribute 'spotfy' missing\n   at /flake.nix:12",
+            chatter
+        );
+        let event = EvolveEvent::build_fail(0, 1, 1, &output);
+        assert_eq!(
+            event.summary,
+            "Build check failed: error: attribute 'spotfy' missing"
+        );
+        assert!(
+            event
+                .raw
+                .starts_with("Build check failed: error: attribute 'spotfy' missing"),
+            "raw should start at the error line, got: {}",
+            &event.raw[..120.min(event.raw.len())]
+        );
+    }
+
+    #[test]
+    fn build_fail_summary_should_not_anchor_on_paths_mentioning_error() {
+        let output =
+            "evaluating file '/nix/store/aaa/error-handling.nix'\nerror: attribute 'x' missing";
+        let event = EvolveEvent::build_fail(0, 1, 1, output);
+        assert_eq!(
+            event.summary,
+            "Build check failed: error: attribute 'x' missing"
+        );
+    }
+
+    #[test]
+    fn build_fail_should_keep_the_tail_when_oversized_output_has_no_error_line() {
+        let output = format!("{}the final line", "chatter line\n".repeat(1000));
+        let event = EvolveEvent::build_fail(0, 1, 1, &output);
+        assert!(event.raw.contains("the final line"), "tail should survive");
     }
 
     #[test]
