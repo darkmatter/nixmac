@@ -351,6 +351,14 @@ fn shorthand_action_object(
     Ok(serde_json::Value::Object(action))
 }
 
+/// Some models double-encode the action, serializing the whole action object
+/// into the string slot of the schema union (e.g. `"action": "{\"set\": {...}}"`).
+/// Recover the object so the call behaves as if it had been sent unencoded.
+fn parse_stringified_action_object(action_str: &str) -> Option<serde_json::Value> {
+    let value: serde_json::Value = serde_json::from_str(action_str.trim()).ok()?;
+    value.is_object().then_some(value)
+}
+
 pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
     let args = ctx.args;
     let path = args["path"]
@@ -362,10 +370,14 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
     ensure_nixmac_edit_allowed("edit_nix_file", path)?;
 
     // Prefer an object like { "add": { "path": "a.b", "values": ["v"] } }, but
-    // tolerate shorthand calls like { "action": "add", "path": "file.nix", "values": ["v"] }.
+    // tolerate shorthand calls like { "action": "add", "path": "file.nix", "values": ["v"] }
+    // and double-encoded actions like { "action": "{\"set\": {...}}" }.
     let normalized_action;
-    let action_val = if let Some(action_name) = args["action"].as_str() {
-        normalized_action = shorthand_action_object(ctx, path, action_name, args)?;
+    let action_val = if let Some(action_str) = args["action"].as_str() {
+        normalized_action = match parse_stringified_action_object(action_str) {
+            Some(action) => action,
+            None => shorthand_action_object(ctx, path, action_str, args)?,
+        };
         &normalized_action
     } else if args["action"].is_object() {
         &args["action"]

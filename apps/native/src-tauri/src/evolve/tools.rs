@@ -538,6 +538,60 @@ mod tests {
     }
 
     #[test]
+    fn edit_nix_file_recovers_double_encoded_action_string() {
+        let tmp = tempdir().expect("tempdir");
+        git2::Repository::init(tmp.path()).expect("init git repo");
+        fs::write(tmp.path().join("system.nix"), "{ ... }: { }\n").expect("write nix file");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "path": "system.nix",
+                "action": "{\"set\": {\"path\": \"system.defaults.NSGlobalDomain._HIHideMenuBar\", \"value\": false}}"
+            }),
+            false,
+            None,
+        )
+        .expect("double-encoded action string should be recovered as the action object");
+
+        assert!(matches!(result, ToolResult::EditSemantic(_)));
+        let content = fs::read_to_string(tmp.path().join("system.nix")).expect("read nix file");
+        assert!(
+            content.contains("_HIHideMenuBar = false"),
+            "unexpected content: {content}"
+        );
+    }
+
+    #[test]
+    fn edit_nix_file_rejects_double_encoded_non_action_string() {
+        let tmp = tempdir().expect("tempdir");
+        git2::Repository::init(tmp.path()).expect("init git repo");
+        fs::write(tmp.path().join("system.nix"), "{ ... }: { }\n").expect("write nix file");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "path": "system.nix",
+                "action": "\"not-an-action\""
+            }),
+            false,
+            None,
+        );
+
+        let err = result.expect_err("non-object double-encoded action should still error");
+        assert!(
+            err.to_string().contains("unsupported shorthand action"),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
     fn edit_nix_file_reports_non_object_action_payload() {
         let tmp = tempdir().expect("tempdir");
         git2::Repository::init(tmp.path()).expect("init git repo");
