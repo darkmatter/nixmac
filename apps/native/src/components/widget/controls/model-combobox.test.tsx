@@ -124,6 +124,20 @@ describe("ModelCombobox", () => {
     expect(options.map((o) => o.textContent)).toEqual(MODELS);
   });
 
+  it("regression: a provider change after an open starts a single load, not a duplicate", async () => {
+    const { rerender } = render(<Harness initial="model-b" />);
+
+    // Open once so the refresh path is armed (refreshTick > 0)
+    await openList();
+    fireEvent.keyDown(input(), { key: "Escape" });
+
+    mockGetCached.mockClear();
+    rerender(<Harness initial="model-b" provider="ollama" />);
+    await flushLoads();
+
+    expect(mockGetCached).toHaveBeenCalledExactlyOnceWith("ollama");
+  });
+
   it("regression: keeps the loaded models across close/reopen instead of clearing", async () => {
     render(<Harness initial="model-b" />);
 
