@@ -195,21 +195,21 @@ lib.mkIf (!config.container.isBuilding) {
   process.manager.implementation = "process-compose";
 
   processes.tauri = {
-    cwd = "${config.git.root}/apps/native";
+    cwd = "${config.devenv.root}/apps/native";
     exec = lib.optionalString pkgs.stdenv.isDarwin xcodeSwiftPathHook + ''
-      exec "${config.git.root}/apps/native/src-tauri/scripts/tauri-dev.sh"
+      exec "${config.devenv.root}/apps/native/src-tauri/scripts/tauri-dev.sh"
     '';
   };
 
   # processes.tauri
 
   # processes.server = {
-  #   cwd = "${config.git.root}/apps/server";
+  #   cwd = "${config.devenv.root}/apps/server";
   #   exec = "${pkgs.bun}/bin/bun run dev";
   # };
 
   processes.storybook = {
-    cwd = "${config.git.root}/apps/native";
+    cwd = "${config.devenv.root}/apps/native";
     exec = "${pkgs.bun}/bin/bun run storybook";
     process-compose = {
       is_foreground = true;
@@ -224,10 +224,10 @@ lib.mkIf (!config.container.isBuilding) {
   # signs with the SOPS team certificate via `sops exec-env`. This is a
   # production `tauri build` (static frontend) — no HMR; use `tauri dev` for that.
   processes.desktop-build-local = {
-    cwd = "${config.git.root}/apps/native";
+    cwd = "${config.devenv.root}/apps/native";
     exec = lib.optionalString pkgs.stdenv.isDarwin xcodeSwiftPathHook + ''
       "${pkgs.bun}/bin/bun" run desktop:build:local \
-        && open "${config.git.root}/target/release/bundle/macos/nixmac.app"
+        && open "${config.devenv.root}/target/release/bundle/macos/nixmac.app"
     '';
     process-compose = {
       is_foreground = true;
@@ -236,8 +236,8 @@ lib.mkIf (!config.container.isBuilding) {
   };
 
   processes.test = {
-    cwd = "${config.git.root}/apps/native";
-    exec = "sops exec-env ${config.git.root}/ops/secrets/secrets.sops.json 'bun run test:watch'";
+    cwd = "${config.devenv.root}/apps/native";
+    exec = "sops exec-env ${config.devenv.root}/ops/secrets/secrets.sops.json 'bun run test:watch'";
   };
 
   scripts.check = {
