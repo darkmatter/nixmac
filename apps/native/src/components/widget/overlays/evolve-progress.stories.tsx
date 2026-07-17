@@ -730,8 +730,8 @@ export const AllEventTypes = meta.story({
 });
 
 /**
- * Working focus: the agent's latest narration is the current activity, shown
- * in the focus zone with its full text as quiet detail.
+ * The agent's latest narration is the current activity: the sticky active
+ * row shows it with its full text expanded as quiet detail.
  */
 export const NarrationInFocus = meta.story({
   args: {
@@ -755,7 +755,7 @@ export const NarrationInFocus = meta.story({
 
 /**
  * Agent question with choices — the run is blocked until the user answers.
- * The question card takes over the focus zone.
+ * The question card is the sticky active row at the end of the timeline.
  */
 export const AgentQuestion = meta.story({
   args: {

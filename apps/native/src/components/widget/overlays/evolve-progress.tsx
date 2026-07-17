@@ -110,14 +110,14 @@ function formatTokenProgress(progress: { total: number; budget: number }): strin
 }
 
 // =============================================================================
-// Focus / History Derivation
+// Active-Step Derivation
 // =============================================================================
 
 export type FocusMode = "working" | "waiting" | "needsYou";
 
 export interface FocusState {
   mode: FocusMode;
-  /** The event whose activity the focus zone narrates; the pending question
+  /** The event whose activity the active row narrates; the pending question
    * in `needsYou` mode, null when nothing has happened yet. */
   event: EvolveEvent | null;
   headline: string;
@@ -138,7 +138,7 @@ export function getPendingQuestion(events: EvolveEvent[]): EvolveEvent | null {
   return null;
 }
 
-/// What the focus zone should show right now, derived from the event stream.
+/// What the active row should show right now, derived from the event stream.
 export function getFocusState(events: EvolveEvent[]): FocusState {
   const question = getPendingQuestion(events);
   if (question) {
@@ -581,37 +581,50 @@ function AttemptGroupSection({
 }
 
 // =============================================================================
-// Focus Zone
+// Active Row
 // =============================================================================
 
 /**
- * The visually dominant bottom zone narrating the current activity:
- * a headline plus quiet narration detail while working, timer-only while
- * waiting on the provider, and the question card when the run blocks on the
- * user (design §4.1).
+ * The timeline's last row while the run is live: the current activity as one
+ * visually dominant row — spinner, highlight, per-step timer — with the
+ * current narration/thinking as quiet expanded detail that collapses into a
+ * plain row once the next event supersedes it. The row is sticky at the
+ * container's bottom edge, so the current step stays in view even when the
+ * user scrolls up through history.
  */
-function FocusZone({
+function ActiveRow({
   focus,
+  answeredText,
   waitingMs,
   onAnswer,
 }: {
   focus: FocusState;
+  answeredText: string | null;
   waitingMs: number;
   onAnswer: (answer: string) => void;
 }) {
-  if (focus.mode === "needsYou" && focus.event) {
-    // The agent is genuinely idle while blocked on the user, so no spinner;
-    // the timer relabels so idle time doesn't read as agent slowness.
+  if (focus.event?.eventType === "question") {
+    const pending = focus.mode === "needsYou";
+    // While blocked on the user the agent is genuinely idle, so no spinner
+    // and the timer relabels so idle time doesn't read as agent slowness.
+    // Right after the answer (before the next event) the loop is working
+    // again, so the status line flips back.
     return (
       <div
-        aria-live="assertive"
-        className="border-border/50 border-t bg-muted/10"
-        data-testid="evolve-focus-zone"
+        aria-live={pending ? "assertive" : "polite"}
+        className="sticky bottom-0 z-10 rounded-lg bg-background"
+        data-testid="evolve-active-row"
       >
-        <QuestionPrompt answeredText={null} event={focus.event} onAnswer={onAnswer} />
+        <QuestionPrompt answeredText={answeredText} event={focus.event} onAnswer={onAnswer} />
         <div className="flex items-center gap-2 px-4 pb-2 text-muted-foreground/60">
-          <HelpCircle className="h-3 w-3 shrink-0" />
-          <span className="font-mono text-xs">Waiting for you... {formatTime(waitingMs)}</span>
+          {pending ? (
+            <HelpCircle className="h-3 w-3 shrink-0" />
+          ) : (
+            <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+          )}
+          <span className="font-mono text-xs">
+            {pending ? "Waiting for you..." : "Working..."} {formatTime(waitingMs)}
+          </span>
         </div>
       </div>
     );
@@ -619,8 +632,8 @@ function FocusZone({
 
   return (
     <div
-      className="border-border/50 border-t bg-muted/10 px-3 py-2.5"
-      data-testid="evolve-focus-zone"
+      className="sticky bottom-0 z-10 rounded-md border border-primary/30 bg-background px-2 py-1.5"
+      data-testid="evolve-active-row"
     >
       <div className="flex items-center gap-2">
         <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
@@ -682,13 +695,10 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
   const tokenProgress = getTokenProgress(events);
   const visibleEvents = events.filter(isVisibleEvent);
 
-  // While generating, the latest activity lives in the focus zone and the
-  // history zone holds only completed actions; once the run ends everything
-  // is history.
+  // While generating, the latest visible event renders as the sticky active
+  // row narrating the current step; once the run ends every row is plain
+  // history.
   const focus = isGenerating ? getFocusState(events) : null;
-  const historyEvents = focus?.event
-    ? visibleEvents.filter((e) => e !== focus.event)
-    : visibleEvents;
   const needsYou = focus?.mode === "needsYou";
 
   // Live clock: something must visibly change during long waits (model
@@ -768,18 +778,31 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
         </div>
       </div>
 
-      {/* History zone: compact completed actions. Fills whatever height the
-          parent gives the component (the overlay panel stretches it to the
-          card height); without an explicit parent height it hugs its
-          content. */}
+      {/* Timeline: completed actions as compact rows, the current step as
+          the sticky active row at the end. Fills whatever height the parent
+          gives the component (the overlay panel stretches it to the card
+          height); without an explicit parent height it hugs its content. */}
       <div
         className="min-h-[80px] flex-1 overflow-y-auto p-2"
         onScroll={handleScroll}
         ref={scrollRef}
       >
         <div className="space-y-1">
-          {groupByAttempt(historyEvents).map((group, groupIndex) => {
+          {groupByAttempt(visibleEvents).map((group, groupIndex) => {
             const rows = group.events.map((event, index) => {
+              if (focus && event === focus.event) {
+                return (
+                  <ActiveRow
+                    answeredText={
+                      event.eventType === "question" ? answeredTextFor(events, event) : null
+                    }
+                    focus={focus}
+                    key={`${event.timestampMs}-${index}`}
+                    onAnswer={handleQuestionAnswer}
+                    waitingMs={waitingMs}
+                  />
+                );
+              }
               if (event.eventType === "question") {
                 return (
                   <QuestionPrompt
@@ -803,6 +826,16 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
               </AttemptGroupSection>
             );
           })}
+
+          {/* Placeholder active row before the first visible event. */}
+          {!!focus && !focus.event && (
+            <ActiveRow
+              answeredText={null}
+              focus={focus}
+              onAnswer={handleQuestionAnswer}
+              waitingMs={waitingMs}
+            />
+          )}
         </div>
       </div>
 
@@ -821,11 +854,6 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
           <ChevronDown className="h-3 w-3" />
           Jump to latest
         </button>
-      )}
-
-      {/* Focus zone: the current activity, pinned below the history. */}
-      {!!focus && (
-        <FocusZone focus={focus} onAnswer={handleQuestionAnswer} waitingMs={waitingMs} />
       )}
     </div>
   );
