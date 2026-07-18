@@ -103,6 +103,15 @@ existing attrset binding, merge the new attribute inside it instead of
 inserting a sibling path assignment; detect values that parse as Nix
 expressions and splice them unquoted rather than stringifying.
 
+## 6. `list_files` with `pattern="**"` returns 0 files in a populated repo
+
+Observed once during the fix-4 recalibration run (case 50, crashed
+attempt): the model called `list_files pattern="**"` and got
+"Found 0 files" from a fully populated temp config. The glob semantics
+of bare `**` apparently match nothing (vs `**/*`). This feeds the model
+a false "repository is empty" signal at the worst possible moment.
+Check the glob translation in `evolve/tools/list_files.rs`.
+
 ## Re-run log
 
 - **2026-07-18, after fix 1** (branch `jp/evolve-build-truncation`,
@@ -127,6 +136,21 @@ expressions and splice them unquoted rather than stringifying.
   had passed cleanly in the previous sample. Illustrates how
   run-to-run variance dominates 3-case samples with gpt-oss-120b;
   item 4 is now clearly the dominant remaining failure mode.
+
+- **2026-07-18, after fix 4** (branch `jp/evolve-thrash`, PR #553;
+  results in `data/results-pr3-check` and `data/results-pr3b-check`,
+  run against a PR1+PR2+PR3 merge): case 65 now ends
+  **conversationally at iteration 2 / 18k tokens** (baseline 25 it /
+  453k) — the headline win. Case 50 `generated` cleanly on repro with
+  git config implemented (baseline: 18 it of pure thrash, 0 edits);
+  its first attempt died as a one-off process exit mid-`read_file path="."` that did not reproduce (also surfaced item 6). Case 44
+  `generated` with a verified build. Calibration note: the first
+  prompt draft made case 39 bail out conversationally at iteration 4
+  instead of creating the zsh config — fixed by gating the bail-out on
+  vague *intent* rather than missing *files* before landing. Case 39
+  remains noisy across runs (generated in some samples, limitReached
+  in others). The repeat-call nudge fired once across these runs;
+  literal repeats are rarer than the baseline suggested.
 
 ## How to re-measure
 
