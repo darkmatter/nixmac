@@ -138,6 +138,21 @@ twice). Rate-limit/auth/server statuses cannot classify by
 construction — only the dedicated variant triggers the fallback, and
 nothing maps a status to it.
 
+#### Resolution (2026-07-18, SSE payload follow-up)
+
+The remaining SSE edge case is addressed directly. `async-openai` represents a
+structured error sent inside a successful HTTP SSE `data:` frame as
+`OpenAIError::JSONDeserialize`, because it first tries to deserialize that frame
+as a completion chunk. `classify_streaming_rejection` now recognizes both a
+direct `ApiError` and a `JSONDeserialize` payload that parses as the standard
+wrapped API-error shape, then applies the same narrow parameter/message checks.
+Unrelated malformed chunks remain ordinary stream failures.
+
+Regression tests cover an SSE error naming `stream_options`, an SSE message
+stating that streaming is unsupported, a context-window SSE error, and an
+unrelated malformed SSE payload. This completes the open acceptance criterion
+for providers that report unsupported streaming inside the event stream.
+
 ## Findings
 
 ### 1. Medium: elapsed time runs too fast during coalesced streaming

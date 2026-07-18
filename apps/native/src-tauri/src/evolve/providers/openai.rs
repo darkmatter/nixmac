@@ -8,7 +8,7 @@ use anyhow::anyhow;
 use async_openai::{
     Client,
     config::OpenAIConfig,
-    error::OpenAIError,
+    error::{ApiError, OpenAIError, WrappedError},
     types::{
         ChatCompletionMessageToolCall, ChatCompletionMessageToolCallChunk,
         ChatCompletionRequestAssistantMessageArgs, ChatCompletionRequestMessage,
@@ -496,10 +496,7 @@ fn convert_from_openai_response(choice: &async_openai::types::ChatChoice) -> Mes
 /// standard ApiErrors) would turn ordinary failures like model-not-found or
 /// context-window errors into a second billable request via the blocking
 /// fallback.
-fn classify_streaming_rejection(error: &OpenAIError) -> Option<String> {
-    let OpenAIError::ApiError(api_error) = error else {
-        return None;
-    };
+fn classify_api_streaming_rejection(api_error: &ApiError) -> Option<String> {
     if matches!(
         api_error.param.as_deref(),
         Some("stream") | Some("stream_options")
@@ -526,6 +523,21 @@ fn classify_streaming_rejection(error: &OpenAIError) -> Option<String> {
         return Some(api_error.message.clone());
     }
     None
+}
+
+fn classify_streaming_rejection(error: &OpenAIError) -> Option<String> {
+    match error {
+        OpenAIError::ApiError(api_error) => classify_api_streaming_rejection(api_error),
+        // async-openai deserializes every successful HTTP SSE `data:` frame
+        // directly as a completion chunk. A proxy that reports a structured
+        // API error inside such a frame therefore surfaces as JSONDeserialize,
+        // not ApiError. Recover only the standard wrapped error shape; an
+        // unrelated malformed chunk must remain a normal stream failure.
+        OpenAIError::JSONDeserialize(_, content) => serde_json::from_str::<WrappedError>(content)
+            .ok()
+            .and_then(|wrapped| classify_api_streaming_rejection(&wrapped.error)),
+        _ => None,
+    }
 }
 
 /// Normalize an async_openai error into a `ProviderError`.
@@ -560,12 +572,27 @@ mod tests {
     }
 
     fn api_error(message: &str, param: Option<&str>) -> OpenAIError {
-        OpenAIError::ApiError(async_openai::error::ApiError {
+        OpenAIError::ApiError(ApiError {
             message: message.to_string(),
             r#type: Some("invalid_request_error".to_string()),
             param: param.map(str::to_string),
             code: None,
         })
+    }
+
+    fn sse_error(message: &str, param: Option<&str>) -> OpenAIError {
+        let content = serde_json::json!({
+            "error": {
+                "message": message,
+                "type": "invalid_request_error",
+                "param": param,
+                "code": null,
+            }
+        })
+        .to_string();
+        let deserialize_error =
+            serde_json::from_str::<u64>(&content).expect_err("error payload is not a completion");
+        OpenAIError::JSONDeserialize(deserialize_error, content)
     }
 
     #[test]
@@ -586,6 +613,43 @@ mod tests {
                 None
             ))
             .is_some()
+        );
+    }
+
+    #[test]
+    fn streaming_rejections_inside_sse_error_frames_are_classified() {
+        assert!(
+            classify_streaming_rejection(&sse_error("Unknown parameter.", Some("stream_options")))
+                .is_some()
+        );
+        assert!(
+            classify_streaming_rejection(&sse_error(
+                "This endpoint does not support streaming.",
+                None
+            ))
+            .is_some()
+        );
+    }
+
+    #[test]
+    fn unrelated_sse_error_frames_are_not_streaming_rejections() {
+        assert!(
+            classify_streaming_rejection(&sse_error(
+                "This model's maximum context length is 65536 tokens.",
+                Some("max_tokens")
+            ))
+            .is_none()
+        );
+
+        let malformed_content = r#"{"unexpected":"chunk"}"#.to_string();
+        let deserialize_error = serde_json::from_str::<u64>(&malformed_content)
+            .expect_err("malformed chunk is not a completion");
+        assert!(
+            classify_streaming_rejection(&OpenAIError::JSONDeserialize(
+                deserialize_error,
+                malformed_content,
+            ))
+            .is_none()
         );
     }
 
