@@ -117,6 +117,17 @@ expressions and splice them unquoted rather than stringifying.
   (iteration 18/25). Single runs — the full 28-case sweep is still the
   real re-measure.
 
+- **2026-07-18, after fixes 2+3** (branch `jp/evolve-done-rejection`,
+  PR #552; results in `data/results-pr2-check`, cases 39/44/60, run
+  against a PR1+PR2 merge): all three hit `limitReached` at 25
+  iterations — but **zero `done` rejections occurred in any of them**,
+  so the new paths (escalating rejection message, early stop after 3
+  rejections) were never exercised. All three failed via
+  exploration/edit thrash this round (item 4), including case 39 which
+  had passed cleanly in the previous sample. Illustrates how
+  run-to-run variance dominates 3-case samples with gpt-oss-120b;
+  item 4 is now clearly the dominant remaining failure mode.
+
 ## How to re-measure
 
 Re-run the baseline after each fix and diff the scorecards:
