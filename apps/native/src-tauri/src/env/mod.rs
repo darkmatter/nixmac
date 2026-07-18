@@ -68,6 +68,42 @@ pub fn submitted_feedback_dsn() -> Option<String> {
     non_empty(settings(None).submitted_feedback_dsn)
 }
 
+/// Hermetic state override: when `NIXMAC_APP_DATA_DIR` is set, all per-device
+/// state (global preferences, legacy `settings.json` store, sqlite DB, docs
+/// cache, feedback queue, secret cache) is rooted there instead of the OS
+/// app-data directory.
+///
+/// This is the isolation mechanism for automated harnesses (the eval suite,
+/// scripted runs) that must never read or mutate the developer's real app
+/// state. It is deliberately available in all build profiles: a debug-only
+/// gate would silently fall back to the real app-data directory when pointed
+/// at a release binary, which is exactly the failure mode this exists to
+/// prevent. Read directly from the process environment (not via
+/// `NixmacEnvSettings`) because settings resolution itself depends on state
+/// loaded from this directory.
+pub fn app_data_dir_override() -> Option<std::path::PathBuf> {
+    std::env::var(keys::NIXMAC_APP_DATA_DIR)
+        .ok()
+        .and_then(non_empty)
+        .map(std::path::PathBuf::from)
+}
+
+/// The directory holding per-device state: the `NIXMAC_APP_DATA_DIR` override
+/// when set, otherwise Tauri's app-data directory. Created if missing.
+pub fn app_data_dir<R: Runtime>(app: &AppHandle<R>) -> Result<std::path::PathBuf> {
+    use tauri::Manager;
+    let dir = match app_data_dir_override() {
+        Some(dir) => dir,
+        None => app
+            .path()
+            .app_data_dir()
+            .context("failed to resolve app data directory")?,
+    };
+    std::fs::create_dir_all(&dir)
+        .with_context(|| format!("failed to create app data directory {}", dir.display()))?;
+    Ok(dir)
+}
+
 /// Debug-only E2E mock-system gate shared across store and scanners.
 pub fn e2e_mock_system_enabled() -> bool {
     cfg!(debug_assertions) && crate::e2e_runtime::enabled(keys::NIXMAC_E2E_MOCK_SYSTEM)

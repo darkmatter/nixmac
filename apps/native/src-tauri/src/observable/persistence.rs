@@ -5,10 +5,10 @@
 //! Subscribers attach a backend to an [`Observable<T>`] via
 //! [`Observable::persist_to`](super::Observable::persist_to).
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use serde_json::Value;
 use std::path::{Path, PathBuf};
-use tauri::{Manager, Runtime};
+use tauri::Runtime;
 
 use super::json_io::{read_json_file, write_json_file};
 
@@ -41,16 +41,14 @@ impl AppDataJson {
         Self { path: path.into() }
     }
 
-    /// Resolve a file under Tauri's app data directory.
+    /// Resolve a file under the app data directory (honors the hermetic
+    /// `NIXMAC_APP_DATA_DIR` override).
     #[allow(dead_code)]
     pub fn for_app<R: Runtime>(
         app: &tauri::AppHandle<R>,
         file_name: impl AsRef<Path>,
     ) -> Result<Self> {
-        let app_data = app
-            .path()
-            .app_data_dir()
-            .context("failed to resolve app data directory")?;
+        let app_data = crate::env::app_data_dir(app)?;
         Ok(Self::new(app_data.join(file_name)))
     }
 }

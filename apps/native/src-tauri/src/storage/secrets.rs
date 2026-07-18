@@ -1,14 +1,12 @@
 //! Keychain-backed secrets with env-first resolution for dev/CI.
 
 use crate::storage::credential_store::CredentialStore;
-#[cfg(debug_assertions)]
 use crate::storage::credential_store::FileStore;
 #[cfg(not(debug_assertions))]
 use crate::storage::credential_store::KeychainStore;
 use crate::storage::legacy_kv::{delete_legacy_key, get_legacy_string, set_legacy_string};
 
 use anyhow::Result;
-#[cfg(debug_assertions)]
 use std::path::PathBuf;
 use tauri::{AppHandle, Runtime};
 
@@ -47,7 +45,6 @@ fn keychain_store_for<R: Runtime>(app: &AppHandle<R>, key: &str) -> KeychainStor
     KeychainStore::new(app.clone(), KEYCHAIN_SERVICE, key)
 }
 
-#[cfg(debug_assertions)]
 fn sanitize_dev_cache_segment(value: &str) -> String {
     let sanitized: String = value
         .chars()
@@ -132,7 +129,23 @@ fn delete_persistent_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static s
         .map_err(anyhow::Error::from)
 }
 
+/// Hermetic secret storage: when `NIXMAC_APP_DATA_DIR` is set, secrets live
+/// in plain files under `<dir>/secrets/` in every build profile, so a
+/// hermetic run can neither read nor write the real keychain or the shared
+/// dev secret cache.
+fn hermetic_secret_store(key: &str) -> Option<FileStore> {
+    crate::env::app_data_dir_override()
+        .map(|dir| FileStore::new(dir.join("secrets").join(sanitize_dev_cache_segment(key))))
+}
+
 fn get_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> Result<Option<String>> {
+    if let Some(store) = hermetic_secret_store(key) {
+        return store
+            .get()
+            .map(normalize_secret)
+            .map_err(anyhow::Error::from);
+    }
+
     if crate::env::e2e_mock_system_enabled() {
         return Ok(normalize_secret(get_legacy_string(app, key)?));
     }
@@ -145,6 +158,10 @@ fn set_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str, value: &st
         return delete_secret_pref(app, key);
     };
 
+    if let Some(store) = hermetic_secret_store(key) {
+        return store.set(&value).map_err(anyhow::Error::from);
+    }
+
     if crate::env::e2e_mock_system_enabled() {
         return set_legacy_string(app, key, &value);
     }
@@ -153,6 +170,10 @@ fn set_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str, value: &st
 }
 
 fn delete_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> Result<()> {
+    if let Some(store) = hermetic_secret_store(key) {
+        return store.delete().map_err(anyhow::Error::from);
+    }
+
     if crate::env::e2e_mock_system_enabled() {
         return delete_legacy_key(app, key);
     }
