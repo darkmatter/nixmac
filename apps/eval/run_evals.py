@@ -36,14 +36,17 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 # Location where we store JSON evaluation results during test runs
 RESULTS_DIR: Path = SCRIPT_DIR / "data/results"
 
+# Repository root (the eval suite lives in apps/eval of the nixmac repo).
+REPO_ROOT: Path = SCRIPT_DIR.parent.parent
+
 # Directory holding all bundled nix-darwin templates (one subdir per template).
-TEMPLATES_DIR: Path = SCRIPT_DIR.parent.parent / "vendor/nixmac/apps/native/templates"
+TEMPLATES_DIR: Path = REPO_ROOT / "apps/native/templates"
 
 # Template used when no --base-config is supplied.
 DEFAULT_TEMPLATE_NAME = "nix-darwin-determinate"
 
-# Default nixmac binary from the vendored public repo submodule (build with `cargo build` there).
-DEFAULT_NIXMAC = SCRIPT_DIR.parent.parent / "vendor/nixmac/target/debug/nixmac"
+# Default nixmac binary built from this repo (build with `cargo build` at the root).
+DEFAULT_NIXMAC = REPO_ROOT / "target/debug/nixmac"
 
 # Directory containing nixmac config/state files (settings.json, evolve-state.json, etc.)
 NIXMAC_CONFIG_DIR: Path = Path.home() / "Library" / "Application Support" / "com.darkmatter.nixmac"
