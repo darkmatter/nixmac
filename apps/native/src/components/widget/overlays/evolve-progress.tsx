@@ -604,20 +604,33 @@ function QuestionPrompt({
 
 /**
  * Streamed build-check output, monospace and tail-following: the newest
- * lines stay in view as chunks arrive.
+ * lines stay in view as chunks arrive. Scrolling up (to inspect an error,
+ * say) pauses the tail-follow so the next chunk doesn't yank the view back
+ * down; scrolling back to the bottom resumes it.
  */
 function BuildLogTail({ lines }: { lines: string[] }) {
   const ref = useRef<HTMLPreElement>(null);
+  const followRef = useRef(true);
+
   useEffect(() => {
-    if (ref.current) {
+    if (ref.current && followRef.current) {
       ref.current.scrollTop = ref.current.scrollHeight;
     }
   }, [lines]);
+
+  const handleScroll = () => {
+    const el = ref.current;
+    if (!el) {
+      return;
+    }
+    followRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+  };
 
   return (
     <pre
       className="mt-1.5 ml-6 max-h-36 overflow-y-auto whitespace-pre-wrap break-all rounded border border-border/40 bg-black/30 p-2 font-mono text-[11px] text-muted-foreground/80"
       data-testid="evolve-build-log"
+      onScroll={handleScroll}
       ref={ref}
     >
       {lines.join("\n")}
