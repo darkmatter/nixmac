@@ -127,6 +127,30 @@ fn sanitize_payload_for_session_log(payload: &Value) -> Value {
     sanitized
 }
 
+/// Queues a JSON line for the session log, preserving emission order.
+///
+/// High-frequency events (streamed deltas and build chunks every ~120ms)
+/// made the previous one-spawned-task-per-event approach a line-order race.
+/// A single lazily-spawned writer task drains the queue sequentially, so
+/// lines land in the order they were enqueued. Fire-and-forget: requires a
+/// Tokio runtime (every caller runs inside the evolve command context).
+pub fn append_event_ordered(path: PathBuf, event_type: &'static str, payload: serde_json::Value) {
+    type QueueItem = (PathBuf, &'static str, serde_json::Value);
+    static QUEUE: OnceLock<tokio::sync::mpsc::UnboundedSender<QueueItem>> = OnceLock::new();
+    let sender = QUEUE.get_or_init(|| {
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<QueueItem>();
+        tokio::spawn(async move {
+            while let Some((path, event_type, payload)) = rx.recv().await {
+                append_event(&path, event_type, &payload).await;
+            }
+        });
+        tx
+    });
+    if sender.send((path, event_type, payload)).is_err() {
+        log::warn!("Session log writer task is gone; dropping transcript line");
+    }
+}
+
 /// Appends a JSON line to the session log file.
 ///
 /// Dispatched to a blocking thread to avoid stalling the Tokio runtime. The
@@ -214,6 +238,42 @@ mod tests {
         assert!(serialized.contains("leave normal diagnostic text alone"));
         assert!(!serialized.contains("sk-abcdefghijklmnopqrstuvwx"));
         assert!(serialized.contains("[REDACTED"));
+    }
+
+    #[tokio::test]
+    async fn append_event_ordered_preserves_emission_order() {
+        let temp = tempfile::tempdir().expect("create temp dir");
+        let path = temp.path().join("session.jsonl");
+        std::fs::File::create(&path).expect("create session log");
+
+        // Compile the secret scanner up front so the drain deadline below
+        // measures the writer, not the one-time regex build (seconds in
+        // debug builds).
+        sanitize_payload_for_session_log(&json!({}));
+
+        const LINES: usize = 50;
+        for i in 0..LINES {
+            super::append_event_ordered(path.clone(), "evolve_event", json!({ "seq": i }));
+        }
+
+        // The queue drains asynchronously; poll until every line has landed.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        let contents = loop {
+            let contents = std::fs::read_to_string(&path).expect("read session log");
+            if contents.lines().count() >= LINES {
+                break contents;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "writer did not drain the queue in time; got:\n{contents}"
+            );
+            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        };
+
+        for (i, line) in contents.lines().enumerate() {
+            let parsed: serde_json::Value = serde_json::from_str(line).expect("valid JSON line");
+            assert_eq!(parsed["data"]["seq"], i, "line {i} out of order");
+        }
     }
 
     #[tokio::test]

@@ -9,12 +9,13 @@ pub async fn run_evolve(app: AppHandle, description: String) -> Result<(), Strin
     let session_log = crate::state::session_log::create_session_log().ok();
     if let Some(ref path) = session_log {
         crate::state::session_log::set_session_path(Some(path.clone()));
-        crate::state::session_log::append_event(
-            path,
+        // Through the ordered queue, like the events that follow — a direct
+        // write could otherwise land after queued lines.
+        crate::state::session_log::append_event_ordered(
+            path.clone(),
             "prompt",
-            &serde_json::json!({ "description": description }),
-        )
-        .await;
+            serde_json::json!({ "description": description }),
+        );
     }
 
     let result =
@@ -52,7 +53,7 @@ pub async fn run_evolve(app: AppHandle, description: String) -> Result<(), Strin
     if let Some(ref path) = session_log {
         let result_json = serde_json::to_value(&result)
             .unwrap_or(serde_json::json!({ "error": "serialization failed" }));
-        crate::state::session_log::append_event(path, "result", &result_json).await;
+        crate::state::session_log::append_event_ordered(path.clone(), "result", result_json);
     }
     crate::state::session_log::set_session_path(None);
 
