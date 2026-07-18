@@ -764,10 +764,15 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
   // `useMemo(() => Date.now(), ...)`: the React Compiler does not preserve
   // manual memoization of impure computations and recompiles it to run on
   // every render, which pins `waitingMs` at ~0 and freezes the clock.
+  // Anchored to the last event's identity, not the array length: coalescing
+  // replaces the trailing stream event in place (same length, newer backend
+  // timestamp), and an anchor that missed the replacement would double-count
+  // the interval — timestamp + full time since the first coalesced chunk.
+  const lastEvent = events[events.length - 1];
   const [lastEventReceivedAt, setLastEventReceivedAt] = useState(() => Date.now());
   useEffect(() => {
     setLastEventReceivedAt(Date.now());
-  }, [events.length]);
+  }, [lastEvent]);
   // The active-step timer anchors to semantic events only: stream chunks
   // arrive every ~120ms and would otherwise pin it at 0s.
   const semanticEventCount = countSemanticEvents(events);
@@ -784,7 +789,6 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
     return () => clearInterval(id);
   }, [isGenerating]);
 
-  const lastEvent = events[events.length - 1];
   const waitingMs = Math.max(0, now - lastEventReceivedAt);
   const stepMs = Math.max(0, now - stepStartedAt);
   // Run elapsed = the last event's elapsed-since-start stamp, plus the time
