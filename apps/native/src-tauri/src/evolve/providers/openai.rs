@@ -270,6 +270,9 @@ impl AiProvider for OpenAIProvider {
                     start,
                     &error,
                 );
+                if let Some(message) = classify_streaming_rejection(&error) {
+                    return Err(ProviderError::StreamingUnsupported { message });
+                }
                 return Err(normalize_openai_error(error));
             }
         };
@@ -294,6 +297,11 @@ impl AiProvider for OpenAIProvider {
                         start,
                         &error,
                     );
+                    // Some proxies accept the request and only then report
+                    // streaming as unsupported, as an SSE error payload.
+                    if let Some(message) = classify_streaming_rejection(&error) {
+                        return Err(ProviderError::StreamingUnsupported { message });
+                    }
                     return Err(normalize_openai_error(error));
                 }
             };
@@ -480,6 +488,46 @@ fn convert_from_openai_response(choice: &async_openai::types::ChatChoice) -> Mes
     }
 }
 
+/// The provider's structured error message, when it specifically identifies
+/// the streaming request as the problem: an unknown/unsupported
+/// `stream`/`stream_options` parameter, or an endpoint that doesn't
+/// implement streaming at all. Deliberately narrow — a broad match (e.g. by
+/// status, which classify_openai_error can't even recover reliably for
+/// standard ApiErrors) would turn ordinary failures like model-not-found or
+/// context-window errors into a second billable request via the blocking
+/// fallback.
+fn classify_streaming_rejection(error: &OpenAIError) -> Option<String> {
+    let OpenAIError::ApiError(api_error) = error else {
+        return None;
+    };
+    if matches!(
+        api_error.param.as_deref(),
+        Some("stream") | Some("stream_options")
+    ) {
+        return Some(api_error.message.clone());
+    }
+    let message = api_error.message.to_ascii_lowercase();
+    let mentions_stream_param = message.contains("stream_options")
+        || message.contains("'stream'")
+        || message.contains("\"stream\"");
+    let says_rejected = message.contains("unsupported")
+        || message.contains("not supported")
+        || message.contains("does not support")
+        || message.contains("not implemented")
+        || message.contains("unknown parameter")
+        || message.contains("unrecognized");
+    if mentions_stream_param && says_rejected {
+        return Some(api_error.message.clone());
+    }
+    if message.contains("streaming is not supported")
+        || message.contains("streaming not supported")
+        || message.contains("does not support streaming")
+    {
+        return Some(api_error.message.clone());
+    }
+    None
+}
+
 /// Normalize an async_openai error into a `ProviderError`.
 fn normalize_openai_error(e: OpenAIError) -> ProviderError {
     if let Some((status_u16, msg)) = classify_openai_error(&e) {
@@ -509,6 +557,69 @@ mod tests {
                 arguments: arguments.map(str::to_string),
             }),
         }
+    }
+
+    fn api_error(message: &str, param: Option<&str>) -> OpenAIError {
+        OpenAIError::ApiError(async_openai::error::ApiError {
+            message: message.to_string(),
+            r#type: Some("invalid_request_error".to_string()),
+            param: param.map(str::to_string),
+            code: None,
+        })
+    }
+
+    #[test]
+    fn streaming_rejections_are_classified_from_structured_errors() {
+        // The param field names the offending parameter directly.
+        assert!(
+            classify_streaming_rejection(&api_error("Unknown parameter.", Some("stream_options")))
+                .is_some()
+        );
+        // Or the message identifies it.
+        assert!(
+            classify_streaming_rejection(&api_error("Unknown parameter: 'stream_options'.", None))
+                .is_some()
+        );
+        assert!(
+            classify_streaming_rejection(&api_error(
+                "Streaming is not supported for this model.",
+                None
+            ))
+            .is_some()
+        );
+    }
+
+    #[test]
+    fn ordinary_request_errors_are_not_streaming_rejections() {
+        // Context window: the blocking call would fail identically.
+        assert!(
+            classify_streaming_rejection(&api_error(
+                "This model's maximum context length is 65536 tokens. However, you requested 70000 tokens.",
+                Some("max_tokens"),
+            ))
+            .is_none()
+        );
+        // Model not found.
+        assert!(
+            classify_streaming_rejection(&api_error("The model 'gpt-9' does not exist.", None))
+                .is_none()
+        );
+        // Unrelated validation failure.
+        assert!(
+            classify_streaming_rejection(&api_error(
+                "Invalid value for 'tools': array too long.",
+                Some("tools"),
+            ))
+            .is_none()
+        );
+        // Non-API failures (transport and the like) never classify — only a
+        // structured ApiError can identify the streaming request.
+        assert!(
+            classify_streaming_rejection(&OpenAIError::InvalidArgument(
+                "connection reset".to_string()
+            ))
+            .is_none()
+        );
     }
 
     #[test]

@@ -196,6 +196,16 @@ fn report_provider_error(
                 "AI API HTTP error (redacted)"
             );
         }
+        ProviderError::StreamingUnsupported { message } => {
+            tracing::error!(
+                provider = provider,
+                model = model,
+                iteration = iteration,
+                messages_count = messages.len(),
+                error_hash = %short_hash(message),
+                "AI provider rejected the streaming request (redacted)"
+            );
+        }
         ProviderError::Other(e) => {
             let err_str = format!("{:#}", e);
             // fallback: use parsing extractor to try to pull metadata
@@ -270,6 +280,9 @@ fn log_api_error(
             let _ = writeln!(file);
             let _ = writeln!(file, "Response body:");
             let _ = writeln!(file, "{}", body);
+        }
+        ProviderError::StreamingUnsupported { message } => {
+            let _ = writeln!(file, "Streaming rejected by endpoint: {}", message);
         }
         ProviderError::Other(e) => {
             let err_str = format!("{:#}", e);

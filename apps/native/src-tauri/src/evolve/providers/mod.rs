@@ -288,6 +288,13 @@ pub enum ProviderError {
     /// HTTP-style error with status code and body
     #[error("http error {status}: {body}")]
     Http { status: StatusCode, body: String },
+    /// The endpoint rejected the streaming request itself — an unknown
+    /// `stream`/`stream_options` parameter or unimplemented SSE. Produced
+    /// only when the provider's structured error specifically identifies
+    /// streaming as the problem, so the loop can retry blocking without
+    /// duplicating an ordinarily failed (possibly billable) request.
+    #[error("streaming unsupported: {message}")]
+    StreamingUnsupported { message: String },
     /// Other error (wrapped anyhow::Error)
     #[error(transparent)]
     Other(AnyhowError),
@@ -308,20 +315,15 @@ fn looks_like_context_window_error(body: &str) -> bool {
 }
 
 impl ProviderError {
-    /// Whether a pre-delta streaming failure plausibly means the endpoint
-    /// rejected the streaming request itself (unknown `stream`/
-    /// `stream_options` fields, unimplemented SSE) — the cases worth
-    /// retrying through the blocking path. Auth failures, rate limits,
-    /// server errors, and transport failures would hit the blocking call
-    /// identically, so retrying them only delays the real error and can
-    /// double a billable request.
+    /// Whether the endpoint rejected the streaming request itself — the one
+    /// case worth retrying through the blocking path. Providers classify
+    /// this from their structured errors (see
+    /// `classify_streaming_rejection` in openai.rs); every other failure —
+    /// auth, rate limits, validation, model-not-found, server or transport
+    /// errors — would hit the blocking call identically, so retrying only
+    /// delays the real error and can double a billable request.
     pub fn indicates_streaming_unsupported(&self) -> bool {
-        match self {
-            ProviderError::Http { status, .. } => {
-                matches!(status.as_u16(), 400 | 404 | 405 | 415 | 422 | 501)
-            }
-            ProviderError::Other(_) => false,
-        }
+        matches!(self, ProviderError::StreamingUnsupported { .. })
     }
 
     /// Return a user-friendly error message suitable for display in the UI.
@@ -337,6 +339,11 @@ impl ProviderError {
                 "The AI provider rejected the request because the configured max output tokens exceed the model's context window. Lower Max output tokens in Settings or switch to a model with a larger context window.".to_string()
             }
             ProviderError::Http { status, .. } => friendly_provider_error(status.as_u16()),
+            // Normally consumed by the blocking fallback before reaching the
+            // UI; kept actionable in case it ever surfaces directly.
+            ProviderError::StreamingUnsupported { .. } => {
+                "The AI provider rejected the streaming request. Disable 'Streaming evolve' in Developer settings and try again.".to_string()
+            }
             ProviderError::Other(e) => {
                 let msg = format!("{:#}", e);
                 // Preserve controlled messages that are already user-friendly.
@@ -452,22 +459,35 @@ mod tests {
     }
 
     #[test]
-    fn streaming_unsupported_matches_rejection_shaped_statuses() {
-        let http = |code: u16| ProviderError::Http {
-            status: StatusCode::from_u16(code).expect("valid status"),
-            body: String::new(),
+    fn only_the_dedicated_variant_indicates_streaming_unsupported() {
+        let rejected = ProviderError::StreamingUnsupported {
+            message: "Unknown parameter: 'stream_options'".to_string(),
         };
-        // Rejected request shapes: worth one blocking retry.
-        for code in [400, 404, 405, 415, 422, 501] {
-            assert!(http(code).indicates_streaming_unsupported(), "{code}");
-        }
-        // Auth, rate limits, and server failures would hit the blocking
-        // path identically; transport errors likewise.
-        for code in [401, 403, 429, 500, 502, 503] {
-            assert!(!http(code).indicates_streaming_unsupported(), "{code}");
+        assert!(rejected.indicates_streaming_unsupported());
+
+        // HTTP failures of any status — auth, rate limits, validation,
+        // server errors — would hit the blocking path identically, so none
+        // of them may trigger the fallback; transport errors likewise.
+        for code in [400, 401, 403, 404, 422, 429, 500, 501, 503] {
+            let http = ProviderError::Http {
+                status: StatusCode::from_u16(code).expect("valid status"),
+                body: String::new(),
+            };
+            assert!(!http.indicates_streaming_unsupported(), "{code}");
         }
         let transport = ProviderError::Other(anyhow::anyhow!("connection refused"));
         assert!(!transport.indicates_streaming_unsupported());
+    }
+
+    #[test]
+    fn the_cli_provider_does_not_take_the_streaming_path() {
+        // Its completion_streaming default IS the blocking call; entering
+        // the streaming path (and its fallback) could run it twice.
+        let cli = CliProvider::new(
+            crate::ai::providers::cli::CliTool::Claude,
+            "claude".to_string(),
+        );
+        assert!(!cli.supports_streaming());
     }
 
     #[test]
