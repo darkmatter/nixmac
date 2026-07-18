@@ -824,14 +824,26 @@ impl<'a, R: Runtime> DeltaBatcher<'a, R> {
     }
 
     /// The provider abandoned the partial response (retry): drop what this
-    /// attempt buffered and mark the boundary so the visible tail restarts.
+    /// attempt buffered, mark the boundary so the visible tail restarts, and
+    /// say why. The explanation bypasses the flush throttle — buffered, it
+    /// would stay invisible until the retry's first delta, which is exactly
+    /// the pause it exists to explain.
     fn reset(&self) {
         if let Ok(mut guard) = self.buffer.lock() {
             guard.0.clear();
+            guard.1 = std::time::Instant::now();
         }
         emit_evolve_event(
             self.app,
             EvolveEvent::stream_reset(self.start_time, self.iteration),
+        );
+        emit_evolve_event(
+            self.app,
+            EvolveEvent::stream_delta(
+                self.start_time,
+                self.iteration,
+                "\u{2192} Response interrupted; retrying...\n",
+            ),
         );
     }
 }

@@ -511,13 +511,11 @@ struct OllamaStreamError {
     error: String,
 }
 
-/// Discard the abandoned attempt's visible tail and explain the pause; the
-/// Console and transcripts keep the discarded deltas plus the reset marker.
+/// Discard the abandoned attempt's visible tail; the reset handler shows the
+/// "retrying" explanation immediately, and the Console and transcripts keep
+/// the discarded deltas plus the reset marker.
 fn announce_stream_retry(on_delta: OnDelta<'_>) {
     on_delta(StreamEvent::Reset);
-    on_delta(StreamEvent::Delta(
-        "\u{2192} Response interrupted; retrying...\n",
-    ));
 }
 
 fn is_ollama_tool_call_parse_error(status: reqwest::StatusCode, body: &str) -> bool {
