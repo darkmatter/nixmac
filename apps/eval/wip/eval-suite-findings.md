@@ -76,6 +76,47 @@ model to commit to a decision; strengthen system-prompt guidance on
 when to answer conversationally / ask for clarification instead of
 continuing to explore.
 
+## 5. `edit_nix_file action=set` on nested paths inserts conflicting, stringified assignments
+
+Observed in the case 44 re-run after fix 1 landed (2026-07-18,
+`data/results-critical-truncfix`). The model called
+`edit_nix_file action=set path=inputs.home-manager` with a Nix attrset
+as the value. `nix_file_editor` did not find the path and fell back to
+"inserting scalar assignment", producing a **top-level**
+
+```nix
+inputs.home-manager = "{
+      url = \"github:nix-community/home-manager\";
+      inputs.nixpkgs.follows = \"nixpkgs\";
+    }";
+```
+
+Two defects in one: the assignment conflicts with the existing
+`inputs = { … }` binding (`error: attribute 'inputs' already defined`,
+because Nix forbids mixing `inputs = {…}` and `inputs.x = …` at the
+same level), and the attrset value was serialized as a quoted string
+literal. The model then spent its remaining iterations repairing the
+damage and hit `limitReached` anyway.
+
+**Fix direction:** when a `set` path's outer segment matches an
+existing attrset binding, merge the new attribute inside it instead of
+inserting a sibling path assignment; detect values that parse as Nix
+expressions and splice them unquoted rather than stringifying.
+
+## Re-run log
+
+- **2026-07-18, after fix 1** (branch `jp/evolve-build-truncation`,
+  PR #551; results in `data/results-critical-truncfix`, cases 39/44/60
+  only): case 39 `limitReached` → `generated` (25→16 iterations,
+  265k→162k tokens); case 60 unchanged (0 builds/edits — pure
+  exploration thrash, item 4); case 44 still `limitReached` but no
+  longer error-blind — with the dirty-tree warning stripped the model
+  correctly diagnosed `attribute 'inputs' already defined` instead of
+  inventing a git-tracking explanation. Its remaining blockers are
+  item 5 (which caused that error) and a late first `build_check`
+  (iteration 18/25). Single runs — the full 28-case sweep is still the
+  real re-measure.
+
 ## How to re-measure
 
 Re-run the baseline after each fix and diff the scorecards:
