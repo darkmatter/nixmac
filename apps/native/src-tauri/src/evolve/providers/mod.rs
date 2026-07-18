@@ -166,8 +166,44 @@ fn decode_json_string_prefix(input: &str) -> (String, usize, bool) {
                         let Some(hex) = input.get(hex_start..hex_start + 4) else {
                             return (out, idx, false);
                         };
-                        if let Some(c) = u32::from_str_radix(hex, 16).ok().and_then(char::from_u32)
-                        {
+                        let code = u32::from_str_radix(hex, 16).ok();
+
+                        // Non-BMP characters (emoji etc.) arrive as UTF-16
+                        // surrogate pairs: a high surrogate escape followed
+                        // by a low one. Combine them; a pair split across
+                        // fragments is held until both halves are buffered.
+                        if let Some(hi) = code.filter(|c| (0xD800..=0xDBFF).contains(c)) {
+                            let pair_start = hex_start + 4;
+                            // ASCII hex precedes pair_start, so this is a
+                            // valid boundary.
+                            let rest = &input.as_bytes()[pair_start..];
+                            let escape_prefix = &b"\\u"[..rest.len().min(2)];
+                            if rest.len() < 6 && rest.starts_with(escape_prefix) {
+                                // The low surrogate may still be arriving —
+                                // what's buffered so far is a prefix of a
+                                // possible \uXXXX escape.
+                                return (out, idx, false);
+                            }
+                            let low = input
+                                .get(pair_start..pair_start + 6)
+                                .and_then(|s| s.strip_prefix("\\u"))
+                                .and_then(|h| u32::from_str_radix(h, 16).ok())
+                                .filter(|c| (0xDC00..=0xDFFF).contains(c));
+                            if let Some(lo) = low {
+                                let scalar = 0x10000 + ((hi - 0xD800) << 10) + (lo - 0xDC00);
+                                if let Some(c) = char::from_u32(scalar) {
+                                    out.push(c);
+                                }
+                                // Skip this escape's hex plus the whole
+                                // second escape (all ASCII).
+                                for _ in 0..10 {
+                                    chars.next();
+                                }
+                                consumed = pair_start + 6;
+                                continue;
+                            }
+                            // Lone high surrogate: drop it and move on.
+                        } else if let Some(c) = code.and_then(char::from_u32) {
                             out.push(c);
                         }
                         // Skip the 4 hex chars (ASCII, 1 byte each).
@@ -343,6 +379,30 @@ mod tests {
         let json = r#"{"category":"thought","thought":"real text"}"#;
         let mut extractor = ThoughtExtractor::default();
         assert_eq!(extractor.push(json), "real text");
+    }
+
+    #[test]
+    fn thought_extractor_combines_surrogate_pairs_at_any_boundary() {
+        // JSON encodes 😀 (U+1F600) as the surrogate pair \uD83D\uDE00; it
+        // must decode whole wherever the fragment boundary lands — before,
+        // between, or inside the escapes.
+        let json = r#"{"thought":"done \uD83D\uDE00 next"}"#;
+        let expected = "done \u{1F600} next";
+        let mut extractor = ThoughtExtractor::default();
+        assert_eq!(extractor.push(json), expected);
+        for at in 0..json.len() {
+            assert_eq!(extract_split(json, at), expected, "split at {at}");
+        }
+    }
+
+    #[test]
+    fn thought_extractor_drops_lone_surrogates() {
+        let mut extractor = ThoughtExtractor::default();
+        assert_eq!(
+            extractor.push(r#"{"thought":"a \uD83D b"}"#),
+            "a  b",
+            "an unpaired high surrogate cannot be rendered"
+        );
     }
 
     #[test]
