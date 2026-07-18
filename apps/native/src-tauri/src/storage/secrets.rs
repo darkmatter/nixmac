@@ -7,6 +7,7 @@ use crate::storage::credential_store::KeychainStore;
 use crate::storage::legacy_kv::{delete_legacy_key, get_legacy_string, set_legacy_string};
 
 use anyhow::Result;
+#[cfg(debug_assertions)]
 use std::path::PathBuf;
 use tauri::{AppHandle, Runtime};
 
