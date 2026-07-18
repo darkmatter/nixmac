@@ -994,7 +994,7 @@ pub async fn generate_evolution<R: Runtime>(
     let mut evolution = Evolution::new(prompt);
     let mut iteration: usize = 0;
     let mut build_attempts: usize = 0;
-    let mut build_verified = false;
+    let mut done_gate = DoneGate::default();
     let mut total_tokens: u32 = 0;
     let chat_memory_store = session_chat_memory_store();
 
@@ -1533,7 +1533,7 @@ pub async fn generate_evolution<R: Runtime>(
                                 &tool_call.id,
                                 res,
                                 &mut evolution,
-                                &mut build_verified,
+                                &mut done_gate,
                                 &mut build_attempts,
                                 max_build_attempts,
                                 start_time,
@@ -2024,11 +2024,23 @@ fn summarize_result(result: &ToolResult) -> (String, bool) {
 /// Returns `Ok(Some(true))` if the loop should break, `Ok(Some(false))` to continue,
 /// or `Ok(None)` to break the inner tool loop but continue the outer loop.
 #[allow(clippy::too_many_arguments)]
+/// Gate deciding whether `done` may complete the evolution.
+///
+/// Kept as a struct (rather than a bare bool) so the completion rules —
+/// verification state and, later, repeated-rejection tracking — travel
+/// together through the tool-result pipeline.
+#[derive(Default)]
+struct DoneGate {
+    /// Set by a passing build_check; cleared by any subsequent edit or a
+    /// failing build.
+    build_verified: bool,
+}
+
 fn process_tool_result(
     tool_call_id: &str,
     result: &ToolResult,
     evolution: &mut Evolution,
-    build_verified: &mut bool,
+    done_gate: &mut DoneGate,
     build_attempts: &mut usize,
     max_build_attempts: usize,
     start_time: i64,
@@ -2092,7 +2104,7 @@ fn process_tool_result(
             // A new edit invalidates any prior successful build: the verified
             // state no longer matches the files, so `done` must require a fresh
             // build_check.
-            *build_verified = false;
+            done_gate.build_verified = false;
             let msg = Message::Tool {
                 tool_call_id: tool_call_id.to_string(),
                 content:
@@ -2115,7 +2127,7 @@ fn process_tool_result(
                 replace: format!("semantic:{:?}", edit.action),
             });
             // A new edit invalidates any prior successful build verification.
-            *build_verified = false;
+            done_gate.build_verified = false;
 
             let msg = Message::Tool {
                 tool_call_id: tool_call_id.to_string(),
@@ -2134,7 +2146,7 @@ fn process_tool_result(
                 replace: format!("ensure_secret:{}", result.name),
             });
             // A new edit invalidates any prior successful build verification.
-            *build_verified = false;
+            done_gate.build_verified = false;
             let content = serde_json::to_string(result)
                 .unwrap_or_else(|_| format!("{{\"name\":\"{}\"}}", result.name));
             let msg = Message::Tool {
@@ -2180,7 +2192,7 @@ fn process_tool_result(
 
             if *success {
                 info!("✅ BUILD CHECK PASSED");
-                *build_verified = true;
+                done_gate.build_verified = true;
 
                 let msg = Message::Tool {
                     tool_call_id: tool_call_id.to_string(),
@@ -2193,7 +2205,7 @@ fn process_tool_result(
             } else {
                 // A failing build invalidates any earlier successful verification,
                 // otherwise `done` could still accept the (now broken) config.
-                *build_verified = false;
+                done_gate.build_verified = false;
                 warn!(
                     "❌ BUILD CHECK FAILED (attempt {}/{})",
                     build_attempts, max_build_attempts
@@ -2224,7 +2236,7 @@ fn process_tool_result(
         }
 
         ToolResult::Done(summary) => {
-            if *build_verified {
+            if done_gate.build_verified {
                 info!("✅ EVOLUTION COMPLETE (build verified)");
                 info!("Summary: {}", summary);
                 evolution.summary = Some(summary.clone());
@@ -2270,10 +2282,10 @@ fn process_tool_result(
 #[cfg(test)]
 mod tests {
     use super::{
-        BUILD_OUTPUT_MAX_CHARS, Evolution, EvolutionMessage, EvolutionState, FileEdit, Message,
-        Retention, ToolResult, filter_evolution_messages, normalize_openai_max_output_tokens,
-        process_tool_result, read_file_dedup_key, store_tool_result,
-        truncate_build_output_for_model,
+        BUILD_OUTPUT_MAX_CHARS, DoneGate, Evolution, EvolutionMessage, EvolutionState, FileEdit,
+        Message, Retention, ToolResult, filter_evolution_messages,
+        normalize_openai_max_output_tokens, process_tool_result, read_file_dedup_key,
+        store_tool_result, truncate_build_output_for_model,
     };
 
     fn build_result(success: bool) -> ToolResult {
@@ -2289,13 +2301,13 @@ mod tests {
         }
     }
 
-    fn run_tool_result(result: &ToolResult, evolution: &mut Evolution, build_verified: &mut bool) {
+    fn run_tool_result(result: &ToolResult, evolution: &mut Evolution, done_gate: &mut DoneGate) {
         let mut build_attempts = 0usize;
         process_tool_result(
             "tool-call-id",
             result,
             evolution,
-            build_verified,
+            done_gate,
             &mut build_attempts,
             5,
             0,
@@ -2336,17 +2348,17 @@ mod tests {
     #[test]
     fn failing_build_check_clears_prior_verification() {
         let mut evolution = Evolution::new("prompt");
-        let mut build_verified = false;
+        let mut done_gate = DoneGate::default();
 
-        run_tool_result(&build_result(true), &mut evolution, &mut build_verified);
+        run_tool_result(&build_result(true), &mut evolution, &mut done_gate);
         assert!(
-            build_verified,
+            done_gate.build_verified,
             "a passing build_check should set build_verified"
         );
 
-        run_tool_result(&build_result(false), &mut evolution, &mut build_verified);
+        run_tool_result(&build_result(false), &mut evolution, &mut done_gate);
         assert!(
-            !build_verified,
+            !done_gate.build_verified,
             "a failing build_check must clear the prior verification"
         );
     }
@@ -2361,14 +2373,14 @@ mod tests {
             search: "a".to_string(),
             replace: "b".to_string(),
         });
-        let mut build_verified = false;
+        let mut done_gate = DoneGate::default();
 
-        run_tool_result(&build_result(true), &mut evolution, &mut build_verified);
-        run_tool_result(&build_result(false), &mut evolution, &mut build_verified);
+        run_tool_result(&build_result(true), &mut evolution, &mut done_gate);
+        run_tool_result(&build_result(false), &mut evolution, &mut done_gate);
         run_tool_result(
             &ToolResult::Done("done".to_string()),
             &mut evolution,
-            &mut build_verified,
+            &mut done_gate,
         );
 
         assert!(
@@ -2387,14 +2399,14 @@ mod tests {
             search: "a".to_string(),
             replace: "b".to_string(),
         });
-        let mut build_verified = false;
+        let mut done_gate = DoneGate::default();
         let mut build_attempts = 0usize;
 
         let (msg, _) = process_tool_result(
             "tool-call-id",
             &ToolResult::Done("done".to_string()),
             &mut evolution,
-            &mut build_verified,
+            &mut done_gate,
             &mut build_attempts,
             5,
             0,
@@ -2417,11 +2429,11 @@ mod tests {
     #[test]
     fn edit_after_passing_build_clears_verification() {
         let mut evolution = Evolution::new("prompt");
-        let mut build_verified = false;
+        let mut done_gate = DoneGate::default();
 
-        run_tool_result(&build_result(true), &mut evolution, &mut build_verified);
+        run_tool_result(&build_result(true), &mut evolution, &mut done_gate);
         assert!(
-            build_verified,
+            done_gate.build_verified,
             "a passing build_check should set build_verified"
         );
 
@@ -2432,10 +2444,10 @@ mod tests {
                 replace: "b".to_string(),
             }),
             &mut evolution,
-            &mut build_verified,
+            &mut done_gate,
         );
         assert!(
-            !build_verified,
+            !done_gate.build_verified,
             "an edit after a passing build must clear the prior verification"
         );
     }
