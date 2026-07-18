@@ -1,4 +1,4 @@
-use super::{AiProvider, OnDelta, ProviderError, ProviderResponse, TokenUsage};
+use super::{AiProvider, OnDelta, ProviderError, ProviderResponse, StreamEvent, TokenUsage};
 use crate::evolve::messages::{Message, Tool as GenericTool, ToolCall};
 use anyhow::anyhow;
 use async_trait::async_trait;
@@ -332,6 +332,7 @@ impl AiProvider for OllamaProvider {
                         retry_attempt,
                         DEFAULT_RETRY_ATTEMPTS
                     );
+                    announce_stream_retry(on_delta);
                     append_retry_guidance(&mut ollama_messages);
                     continue;
                 }
@@ -370,7 +371,7 @@ impl AiProvider for OllamaProvider {
                 })?;
                 if !chunk.message.content.is_empty() {
                     assembled.content.push_str(&chunk.message.content);
-                    on_delta(&chunk.message.content);
+                    on_delta(StreamEvent::Delta(&chunk.message.content));
                 }
                 if let Some(calls) = &chunk.message.tool_calls {
                     // Ollama sends tool calls whole; surface them so the
@@ -385,12 +386,12 @@ impl AiProvider for OllamaProvider {
                                 .get("thought")
                                 .and_then(|v| v.as_str())
                             {
-                                on_delta(thought);
+                                on_delta(StreamEvent::Delta(thought));
                             }
                         } else if let Some(announcement) =
                             super::tool_call_announcement(&call.function.name)
                         {
-                            on_delta(&announcement);
+                            on_delta(StreamEvent::Delta(&announcement));
                         }
                     }
                     assembled
@@ -439,6 +440,7 @@ impl AiProvider for OllamaProvider {
                         retry_attempt,
                         DEFAULT_RETRY_ATTEMPTS
                     );
+                    announce_stream_retry(on_delta);
                     append_retry_guidance(&mut ollama_messages);
                     continue;
                 }
@@ -482,6 +484,7 @@ impl AiProvider for OllamaProvider {
                     retry_attempt,
                     DEFAULT_RETRY_ATTEMPTS
                 );
+                announce_stream_retry(on_delta);
                 append_retry_guidance(&mut ollama_messages);
                 continue;
             }
@@ -502,6 +505,15 @@ impl AiProvider for OllamaProvider {
 #[derive(Deserialize)]
 struct OllamaStreamError {
     error: String,
+}
+
+/// Discard the abandoned attempt's visible tail and explain the pause; the
+/// Console and transcripts keep the discarded deltas plus the reset marker.
+fn announce_stream_retry(on_delta: OnDelta<'_>) {
+    on_delta(StreamEvent::Reset);
+    on_delta(StreamEvent::Delta(
+        "\u{2192} Response interrupted; retrying...\n",
+    ));
 }
 
 fn is_ollama_tool_call_parse_error(status: reqwest::StatusCode, body: &str) -> bool {

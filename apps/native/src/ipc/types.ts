@@ -655,6 +655,11 @@ export type EvolveEventDetail =
  */
 { type: "streamDelta"; text: string } | 
 /**
+ * The provider abandoned a partial streamed response and is retrying;
+ * deltas before this marker belong to the discarded attempt.
+ */
+{ type: "streamReset" } | 
+/**
  * Assistant narration between tool calls.
  */
 { type: "narration"; text: string } | 

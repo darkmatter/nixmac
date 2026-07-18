@@ -151,6 +151,9 @@ pub enum EvolveEventDetail {
     /// the provider responds; the full text follows as Narration or the
     /// terminal summary once the response completes.
     StreamDelta { text: String },
+    /// The provider abandoned a partial streamed response and is retrying;
+    /// deltas before this marker belong to the discarded attempt.
+    StreamReset,
     /// Assistant narration between tool calls.
     Narration { text: String },
     /// Budget counters, emitted with every provider response.

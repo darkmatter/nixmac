@@ -273,6 +273,21 @@ describe("trailingStreamText", () => {
     expect(text?.startsWith("…")).toBe(true);
   });
 
+  it("discards the abandoned attempt at a provider retry marker", () => {
+    const reset = event("streamDelta", "Response interrupted; retrying...", {
+      type: "streamReset",
+    });
+    const events = [
+      delta("half a response that will be discarded"),
+      reset,
+      delta("→ Response interrupted; retrying...\n"),
+      delta("fresh attempt"),
+    ];
+    expect(trailingStreamText(events)).toBe(
+      "→ Response interrupted; retrying...\nfresh attempt",
+    );
+  });
+
   it("collapses blank lines between thoughts and tool announcements", () => {
     const events = [
       delta("Need vim installed.\n"),

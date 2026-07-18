@@ -58,7 +58,9 @@ use chat_memory::{ChatMessage, Role as ChatMemoryRole, to_provider_context_messa
 pub(crate) use chat_memory::session_chat_memory_store;
 use config_dir_context::format_config_dir_context;
 use messages::Message;
-use providers::{AiProvider, CliProvider, OllamaProvider, OpenAIProvider, ProviderError};
+use providers::{
+    AiProvider, CliProvider, OllamaProvider, OpenAIProvider, ProviderError, StreamEvent,
+};
 
 /// Strategy for retaining evolution messages in the conversation history for provider context.
 /// This is used to balance keeping important context visible to the model with limiting token usage
@@ -811,6 +813,18 @@ impl<'a, R: Runtime> DeltaBatcher<'a, R> {
             EvolveEvent::stream_delta(self.start_time, self.iteration, &text),
         );
     }
+
+    /// The provider abandoned the partial response (retry): drop what this
+    /// attempt buffered and mark the boundary so the visible tail restarts.
+    fn reset(&self) {
+        if let Ok(mut guard) = self.buffer.lock() {
+            guard.0.clear();
+        }
+        emit_evolve_event(
+            self.app,
+            EvolveEvent::stream_reset(self.start_time, self.iteration),
+        );
+    }
 }
 
 /// Generate an evolution from a user prompt using OpenAI function calling.
@@ -1203,7 +1217,10 @@ pub async fn generate_evolution<R: Runtime>(
 
         let response_result = {
             let delta_batcher = DeltaBatcher::new(app, start_time, iteration);
-            let on_delta = |delta: &str| delta_batcher.push(delta);
+            let on_delta = |event: StreamEvent<'_>| match event {
+                StreamEvent::Delta(delta) => delta_batcher.push(delta),
+                StreamEvent::Reset => delta_batcher.reset(),
+            };
             let fut = async {
                 if streaming_evolve {
                     provider

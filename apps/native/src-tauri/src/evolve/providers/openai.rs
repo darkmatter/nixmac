@@ -1,4 +1,6 @@
-use super::{AiProvider, OnDelta, ProviderError, ProviderResponse, ThoughtExtractor, TokenUsage};
+use super::{
+    AiProvider, OnDelta, ProviderError, ProviderResponse, StreamEvent, ThoughtExtractor, TokenUsage,
+};
 use crate::ai::model_capabilities::capabilities_for_model;
 use crate::ai::provider_errors::classify_openai_error;
 use crate::evolve::messages::{Message, Tool as GenericTool, ToolCall};
@@ -307,7 +309,7 @@ impl AiProvider for OpenAIProvider {
             if let Some(text) = &choice.delta.content {
                 if !text.is_empty() {
                     content.push_str(text);
-                    on_delta(text);
+                    on_delta(StreamEvent::Delta(text));
                 }
             }
             if let Some(chunks) = &choice.delta.tool_calls {
@@ -318,7 +320,7 @@ impl AiProvider for OpenAIProvider {
                     // A call's first chunk carries its id and name.
                     if tool_chunk.id.is_some() && !name.is_empty() {
                         if let Some(announcement) = super::tool_call_announcement(name) {
-                            on_delta(&announcement);
+                            on_delta(StreamEvent::Delta(&announcement));
                         }
                     }
                     if name == "think" {
@@ -329,7 +331,7 @@ impl AiProvider for OpenAIProvider {
                         {
                             let text = thought_extractors.entry(index).or_default().push(fragment);
                             if !text.is_empty() {
-                                on_delta(&text);
+                                on_delta(StreamEvent::Delta(&text));
                             }
                         }
                     }

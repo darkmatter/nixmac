@@ -185,6 +185,21 @@ impl EvolveEvent {
         })
     }
 
+    /// The provider abandoned a partial streamed response and is retrying;
+    /// marks where the visible stream tail restarts. Deltas before this
+    /// marker belong to the discarded attempt (kept in the Console and
+    /// transcripts for diagnostics).
+    pub(crate) fn stream_reset(start_time: i64, iter: usize) -> Self {
+        Self::new(
+            EvolveEventType::StreamDelta,
+            "Response interrupted; retrying...".to_string(),
+            "Retrying...".to_string(),
+            Some(iter),
+            start_time,
+        )
+        .with_detail(EvolveEventDetail::StreamReset)
+    }
+
     pub(crate) fn build_pass(start_time: i64, iter: usize, attempt: usize) -> Self {
         Self::new(
             EvolveEventType::BuildPass,

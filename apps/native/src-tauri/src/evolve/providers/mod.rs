@@ -26,8 +26,17 @@ pub struct ProviderResponse {
     pub usage: Option<TokenUsage>,
 }
 
-/// Callback receiving streamed assistant-text deltas as they arrive.
-pub type OnDelta<'a> = &'a (dyn Fn(&str) + Send + Sync);
+/// A streamed signal from a provider mid-completion.
+pub enum StreamEvent<'a> {
+    /// Text to append to the visible stream tail.
+    Delta(&'a str),
+    /// The provider abandoned the partial response (it is retrying); the
+    /// visible tail should discard what this attempt streamed.
+    Reset,
+}
+
+/// Callback receiving streamed events as they arrive.
+pub type OnDelta<'a> = &'a (dyn Fn(StreamEvent<'_>) + Send + Sync);
 
 /// The line streamed when a tool call's name arrives, before its arguments
 /// finish generating. Uses the same user-facing voice as the timeline's
