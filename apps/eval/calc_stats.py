@@ -1,13 +1,15 @@
 import argparse
 import json
 import statistics
-from collections.abc import Iterable
 from collections import Counter
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
 import tabulate
+
+import grade as grading
 
 
 @dataclass
@@ -29,6 +31,45 @@ class ResultMetrics:
     state: str = "generated"
     conversational_reply: str | None = None
     model_name: str | None = None
+    expected_outcome: str | None = None
+    graded_pass: bool | None = None
+    failure_class: str | None = None
+
+    @property
+    def passed(self) -> bool:
+        """Graded verdict when available, engine `ok` otherwise.
+
+        The engine's `ok` only means "a result was produced" — it says
+        nothing about whether the behavior matched the case's
+        expected_outcome, which is what the grader checks.
+        """
+        return self.graded_pass if self.graded_pass is not None else self.ok
+
+
+def ensure_grades(results: list[tuple[int, dict[str, Any]]], csv_path: Path, expectations_path: Path) -> int:
+    """Grade any results that lack a persisted `grade` object, in memory.
+
+    Reuses grade.py's deterministic grader so stats always reflect
+    expected_outcome, even when `grade` hasn't been run on the results dir.
+    Nothing is written back to disk. Returns the number graded in memory.
+    """
+    csv_lookup = grading.load_csv_lookup(csv_path)
+    expectations = grading.load_expectations(expectations_path)
+
+    graded = 0
+    for case_num, data in results:
+        if isinstance(data.get("grade"), dict):
+            continue
+        csv_row = csv_lookup.get(case_num)
+        expected = (csv_row or {}).get("expected_outcome", "")
+        if not expected:
+            continue  # not in the CSV — leave ungraded, falls back to `ok`
+        data["_case_id"] = case_num
+        result = grading.grade_case(data, expected, expectations.get(str(case_num)), csv_row)
+        data.pop("_case_id", None)
+        data["grade"] = grading.grade_to_dict(result)
+        graded += 1
+    return graded
 
 
 def extract_metrics(result_path: Path) -> ResultMetrics | None:
@@ -39,7 +80,15 @@ def extract_metrics(result_path: Path) -> ResultMetrics | None:
 
         # Extract case number from filename (e.g., "case_5_result.json" -> 5)
         case_num = int(result_path.stem.split("_")[1])
+        return extract_metrics_from_data(case_num, data)
+    except (json.JSONDecodeError, KeyError, ValueError) as e:
+        print(f"Warning: Failed to parse {result_path}: {e}")
+        return None
 
+
+def extract_metrics_from_data(case_num: int, data: dict[str, Any]) -> ResultMetrics | None:
+    """Extract metrics from an already loaded result JSON object."""
+    try:
         result = data.get("result", {})
 
         def optional_int(d: dict[str, Any], key: str) -> int | None:
@@ -58,7 +107,11 @@ def extract_metrics(result_path: Path) -> ResultMetrics | None:
             or (result.get("summary") or {}).get("commitMessage")
             or ""
         )
-        state = data.get("state") or result.get("state") or "generated"
+        # Prefer the engine state from telemetry (limitReached, conversational,
+        # failed, ...) over the coarser top-level state, which is "generated"
+        # for any run that produced a result.
+        telemetry_state = (result.get("telemetry") or {}).get("state")
+        state = telemetry_state or data.get("state") or result.get("state") or "generated"
         conversational_reply: str | None = None
         if state == "conversational":
             conversational_reply = (result.get("summary") or {}).get("instructions") or None
@@ -88,6 +141,8 @@ def extract_metrics(result_path: Path) -> ResultMetrics | None:
         # newer `branchHasBuiltCommit` key.
         branch_has_built_commit = bool(git_status.get("branchHasBuiltCommit", git_status.get("headIsBuilt", False)))
 
+        grade_obj = data.get("grade") if isinstance(data.get("grade"), dict) else None
+
         return ResultMetrics(
             case_num=case_num,
             prompt=data.get("prompt", ""),
@@ -104,9 +159,12 @@ def extract_metrics(result_path: Path) -> ResultMetrics | None:
             state=state,
             conversational_reply=conversational_reply,
             model_name=model_name,
+            expected_outcome=grade_obj.get("expected_outcome") if grade_obj else None,
+            graded_pass=grade_obj.get("pass") if grade_obj else None,
+            failure_class=grade_obj.get("failure_class") if grade_obj else None,
         )
-    except (json.JSONDecodeError, KeyError, ValueError) as e:
-        print(f"Warning: Failed to parse {result_path}: {e}")
+    except (KeyError, ValueError) as e:
+        print(f"Warning: Failed to parse result for case {case_num}: {e}")
         return None
 
 
@@ -148,8 +206,8 @@ def calculate_stats(metrics_list: list[ResultMetrics]) -> Statistics:
     if not metrics_list:
         raise ValueError("No valid metrics to analyze")
 
-    passed = [m for m in metrics_list if m.ok]
-    failed = [m for m in metrics_list if not m.ok]
+    passed = [m for m in metrics_list if m.passed]
+    failed = [m for m in metrics_list if not m.passed]
 
     durations = [m.duration_ms for m in metrics_list]
     iterations = [m.iterations for m in metrics_list]
@@ -203,8 +261,8 @@ def print_summary_table(stats: Statistics, metrics_list: list[ResultMetrics]) ->
         except Exception:
             return None
 
-    passed_metrics = [m for m in metrics_list if m.ok]
-    failed_metrics = [m for m in metrics_list if not m.ok]
+    passed_metrics = [m for m in metrics_list if m.passed]
+    failed_metrics = [m for m in metrics_list if not m.passed]
     passed_stats = _safe_calc(passed_metrics)
     failed_stats = _safe_calc(failed_metrics)
 
@@ -272,6 +330,24 @@ def print_summary_table(stats: Statistics, metrics_list: list[ResultMetrics]) ->
     for state, cnt in sorted(counts.items()):
         rows.append([f"  {state}", f"{cnt}", f"{passed_counts.get(state, 0)}", f"{failed_counts.get(state, 0)}"])
 
+    # Graded pass rate per expected outcome (succeed / fail_gracefully / refuse)
+    graded = [m for m in metrics_list if m.expected_outcome]
+    if graded:
+        rows.append(["", "", "", ""])
+        rows.append(["Expected Outcome", "Passed/Total", "", ""])
+        for outcome in sorted({m.expected_outcome for m in graded}):
+            subset = [m for m in graded if m.expected_outcome == outcome]
+            n_pass = sum(1 for m in subset if m.passed)
+            rows.append([f"  {outcome}", f"{n_pass}/{len(subset)}", "", ""])
+
+    # Failure-class breakdown for graded failures
+    fail_classes = Counter(m.failure_class or "unclassified" for m in failed_metrics if m.graded_pass is False)
+    if fail_classes:
+        rows.append(["", "", "", ""])
+        rows.append(["Failure Classes", "Count", "", ""])
+        for cls, cnt in fail_classes.most_common():
+            rows.append([f"  {cls}", f"{cnt}", "", ""])
+
     print("\n" + "=" * 95)
     print(f"EVALUATION STATISTICS SUMMARY — {model_title}")
     print("=" * 95)
@@ -285,33 +361,36 @@ def print_cases_table(metrics_list: list[ResultMetrics]) -> None:
 
     cases_data = []
     for m in sorted_metrics:
-        status = "✓ PASS" if m.ok else "✗ FAIL"
+        status = "✓ PASS" if m.passed else "✗ FAIL"
+        if m.graded_pass is None:
+            status += " (ungraded)"
         if m.state == "conversational" and m.conversational_reply:
             raw = m.conversational_reply.replace("\n", " ").strip()
-            commit_msg_display = ("💬 " + raw)[:80]
-            if len("💬 " + raw) > 80:
-                commit_msg_display = commit_msg_display[:77] + "..."
+            commit_msg_display = ("💬 " + raw)[:60]
+            if len("💬 " + raw) > 60:
+                commit_msg_display = commit_msg_display[:57] + "..."
         else:
             commit_msg_display = m.commit_message or ""
-            if len(commit_msg_display) > 80:
-                commit_msg_display = commit_msg_display[:77] + "..."
+            if len(commit_msg_display) > 60:
+                commit_msg_display = commit_msg_display[:57] + "..."
 
         cases_data.append(
             [
                 m.case_num,
                 status,
+                m.expected_outcome or "-",
+                m.state,
+                m.failure_class or "" if m.graded_pass is False else "",
                 m.iterations,
                 m.build_attempts,
                 f"{m.duration_ms // 1000}s",
                 m.total_tokens,
-                m.thinking_count if m.thinking_count is not None else "-",
-                m.tool_calls_count if m.tool_calls_count is not None else "-",
                 m.edits_count,
                 commit_msg_display,
             ]
         )
 
-    headers = ["#", "Status", "Iters", "Blds", "Dur", "Toks", "Think", "Tools", "Edits", "Commit"]
+    headers = ["#", "Status", "Expected", "State", "Class", "Iters", "Blds", "Dur", "Toks", "Edits", "Commit"]
     print("\n" + "=" * 95)
     print("INDIVIDUAL CASE RESULTS")
     print("=" * 95)
@@ -346,6 +425,18 @@ def main() -> None:
         action="store_true",
         help="Print first parsed ResultMetrics for debugging",
     )
+    parser.add_argument(
+        "--csv",
+        type=Path,
+        default=grading.CSV_PATH,
+        help="Path to test_prompts.csv (used to grade ungraded results in memory)",
+    )
+    parser.add_argument(
+        "--expectations",
+        type=Path,
+        default=grading.EXPECTATIONS_PATH,
+        help="Path to golden_set_expectations.json",
+    )
     args = parser.parse_args()
 
     input_dir = args.input_dir
@@ -359,10 +450,30 @@ def main() -> None:
         print(f"No result files found in {input_dir}")
         return
 
-    # Extract metrics from all result files
-    metrics_list: list[ResultMetrics] = []
+    # Load all results, then grade any that lack a persisted grade so
+    # pass/fail always reflects expected_outcome (grades are computed in
+    # memory only; run grade.py to persist them).
+    results: list[tuple[int, dict[str, Any]]] = []
     for result_file in result_files:
-        metrics = extract_metrics(result_file)
+        try:
+            with result_file.open() as f:
+                data = json.load(f)
+            case_num = int(result_file.stem.split("_")[1])
+        except (json.JSONDecodeError, ValueError, OSError) as e:
+            print(f"Warning: Failed to read {result_file}: {e}")
+            continue
+        results.append((case_num, data))
+
+    graded_in_memory = ensure_grades(results, args.csv, args.expectations)
+    if graded_in_memory:
+        print(
+            f"Note: graded {graded_in_memory} result(s) in memory against "
+            f"expected_outcome; run grade.py to persist grades."
+        )
+
+    metrics_list: list[ResultMetrics] = []
+    for case_num, data in results:
+        metrics = extract_metrics_from_data(case_num, data)
         if metrics:
             metrics_list.append(metrics)
 
