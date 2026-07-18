@@ -77,6 +77,45 @@ struct OllamaToolFunction {
     parameters: serde_json::Value,
 }
 
+/// Buffers raw HTTP body bytes and yields complete newline-terminated NDJSON
+/// records. Transport chunk boundaries are arbitrary — they can split a
+/// multibyte UTF-8 character or a JSON record — so bytes stay buffered until
+/// a full record has arrived and can be decoded as a whole. Decoding each
+/// chunk independently would turn a character split across packets into
+/// replacement characters, corrupting streamed prose and tool arguments.
+#[derive(Default)]
+struct NdjsonBuffer {
+    buffer: Vec<u8>,
+}
+
+impl NdjsonBuffer {
+    /// Append a transport chunk and drain the complete records it finishes.
+    fn push(&mut self, bytes: &[u8]) -> Vec<String> {
+        self.buffer.extend_from_slice(bytes);
+        let mut records = Vec::new();
+        while let Some(pos) = self.buffer.iter().position(|&b| b == b'\n') {
+            let record: Vec<u8> = self.buffer.drain(..=pos).collect();
+            let record = String::from_utf8_lossy(&record);
+            let record = record.trim();
+            if !record.is_empty() {
+                records.push(record.to_string());
+            }
+        }
+        records
+    }
+
+    /// The trailing record the stream ended without newline-terminating.
+    fn finish(self) -> Option<String> {
+        let record = String::from_utf8_lossy(&self.buffer);
+        let record = record.trim();
+        if record.is_empty() {
+            None
+        } else {
+            Some(record.to_string())
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 #[allow(dead_code)] // some fields may be unused
 struct ChatResponse {
@@ -306,7 +345,7 @@ impl AiProvider for OllamaProvider {
             // NDJSON: one ChatResponse object per line, the last with
             // done:true carrying the eval counters.
             let mut byte_stream = response.bytes_stream();
-            let mut line_buffer = String::new();
+            let mut ndjson = NdjsonBuffer::default();
             let mut assembled = OllamaMessage {
                 role: "assistant".to_string(),
                 content: String::new(),
@@ -374,17 +413,17 @@ impl AiProvider for OllamaProvider {
                         break 'read;
                     }
                 };
-                line_buffer.push_str(&String::from_utf8_lossy(&bytes));
-                while let Some(pos) = line_buffer.find('\n') {
-                    let line: String = line_buffer.drain(..=pos).collect();
-                    if let Err(e) = handle_line(line.trim(), &mut assembled, &mut done_chunk) {
+                for record in ndjson.push(&bytes) {
+                    if let Err(e) = handle_line(&record, &mut assembled, &mut done_chunk) {
                         stream_result = Err(e);
                         break 'read;
                     }
                 }
             }
             if stream_result.is_ok() {
-                stream_result = handle_line(line_buffer.trim(), &mut assembled, &mut done_chunk);
+                if let Some(record) = ndjson.finish() {
+                    stream_result = handle_line(&record, &mut assembled, &mut done_chunk);
+                }
             }
 
             if let Err(e) = stream_result {
@@ -633,5 +672,63 @@ fn convert_from_ollama_response(response: &ChatResponse) -> Message {
     Message::Assistant {
         content,
         tool_calls,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::NdjsonBuffer;
+
+    fn collect_split(input: &[u8], at: usize) -> Vec<String> {
+        let mut buffer = NdjsonBuffer::default();
+        let mut records = buffer.push(&input[..at]);
+        records.extend(buffer.push(&input[at..]));
+        records.extend(buffer.finish());
+        records
+    }
+
+    #[test]
+    fn ndjson_survives_any_chunk_boundary() {
+        // Multibyte content (é is 2 bytes, → is 3): any split point must
+        // yield the same records, never replacement characters.
+        let input = "{\"path\":\"café.nix\"}\n{\"note\":\"a → b\"}\n".as_bytes();
+        let expected = vec![
+            "{\"path\":\"café.nix\"}".to_string(),
+            "{\"note\":\"a → b\"}".to_string(),
+        ];
+        for at in 0..=input.len() {
+            assert_eq!(collect_split(input, at), expected, "split at byte {at}");
+        }
+    }
+
+    #[test]
+    fn ndjson_yields_multiple_records_from_one_chunk() {
+        let mut buffer = NdjsonBuffer::default();
+        assert_eq!(
+            buffer.push(b"{\"a\":1}\n{\"b\":2}\n{\"c\":3}\n"),
+            vec!["{\"a\":1}", "{\"b\":2}", "{\"c\":3}"]
+        );
+    }
+
+    #[test]
+    fn ndjson_assembles_a_record_from_many_chunks() {
+        let mut buffer = NdjsonBuffer::default();
+        assert!(buffer.push(b"{\"mess").is_empty());
+        assert!(buffer.push(b"age\":\"hi").is_empty());
+        assert_eq!(buffer.push(b"\"}\n"), vec!["{\"message\":\"hi\"}"]);
+    }
+
+    #[test]
+    fn ndjson_finish_returns_the_unterminated_tail() {
+        let mut buffer = NdjsonBuffer::default();
+        assert_eq!(buffer.push(b"{\"a\":1}\n{\"tail\""), vec!["{\"a\":1}"]);
+        assert_eq!(buffer.finish().as_deref(), Some("{\"tail\""));
+    }
+
+    #[test]
+    fn ndjson_skips_blank_lines() {
+        let mut buffer = NdjsonBuffer::default();
+        assert_eq!(buffer.push(b"\n\r\n{\"a\":1}\n\n"), vec!["{\"a\":1}"]);
+        assert_eq!(buffer.finish(), None);
     }
 }
