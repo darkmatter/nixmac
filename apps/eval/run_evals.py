@@ -5,13 +5,13 @@
 
 import argparse
 import csv
+import getpass
 import json
 import os
 import shutil
+import signal
 import subprocess
 import tempfile
-import getpass
-import signal
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
@@ -54,10 +54,6 @@ DEFAULT_NIXMAC = REPO_ROOT / "target/debug/nixmac"
 # are fully hermetic: they can never read or mutate the developer's real app
 # state, credentials, or nix config.
 NIXMAC_APP_DATA_DIR_ENV = "NIXMAC_APP_DATA_DIR"
-
-# Populated in __main__ when running as a script
-args: argparse.Namespace | None = None
-
 
 def _looks_like_git_url(value: str) -> bool:
     """Heuristic: is `value` a git URL rather than a local path?"""
@@ -624,6 +620,15 @@ def generate_nixmac_settings(
 
 
 def main(parsed_args: argparse.Namespace) -> None:
+    # Validate that at least one backend is configured: either ollama or vllm
+    ollama_set = bool(getattr(parsed_args, "ollama_url", None)) and parsed_args.ollama_url.strip() != ""
+    vllm_set = bool(getattr(parsed_args, "vllm_url", None)) and parsed_args.vllm_url.strip() != ""
+    if not (ollama_set or vllm_set):
+        print(
+            "Error: you must provide either --ollama-url or --vllm-url (and optionally --vllm-api-key)"
+        )
+        raise SystemExit(2)
+
     stop_requested = False
 
     def _sigint_handler(signum, frame):
@@ -773,8 +778,10 @@ def main(parsed_args: argparse.Namespace) -> None:
                 shutil.rmtree(clone_dir)
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run evaluation test cases.")
+def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.ArgumentParser:
+    """Add the run arguments to `parser` (or a fresh one) and return it."""
+    if parser is None:
+        parser = argparse.ArgumentParser(description="Run evaluation test cases.")
 
     parser.add_argument(
         "--nixmac", type=str, default=str(DEFAULT_NIXMAC), help="Path to nixmac binary"
@@ -903,15 +910,9 @@ if __name__ == "__main__":
         "--persona", type=str, help="Filter test cases by persona (e.g., --persona Developer)"
     )
 
-    args = parser.parse_args()
+    parser.set_defaults(func=main)
+    return parser
 
-    # Validate that at least one backend is configured: either ollama or vllm
-    ollama_set = bool(getattr(args, "ollama_url", None)) and args.ollama_url.strip() != ""
-    vllm_set = bool(getattr(args, "vllm_url", None)) and args.vllm_url.strip() != ""
-    if not (ollama_set or vllm_set):
-        print(
-            "Error: you must provide either --ollama-url or --vllm-url (and optionally --vllm-api-key)"
-        )
-        raise SystemExit(2)
 
-    main(args)
+if __name__ == "__main__":
+    main(build_parser().parse_args())

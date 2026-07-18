@@ -612,8 +612,12 @@ def grade_to_dict(grade: GradeResult) -> dict[str, Any]:
     }
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Grade nixmac eval results (Phase 1 deterministic)")
+def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.ArgumentParser:
+    """Add the grading arguments to `parser` (or a fresh one) and return it."""
+    if parser is None:
+        parser = argparse.ArgumentParser(
+            description="Grade nixmac eval results (Phase 1 deterministic)"
+        )
     parser.add_argument(
         "-i", "--input-dir",
         type=Path,
@@ -643,8 +647,12 @@ def main() -> None:
         default=EXPECTATIONS_PATH,
         help="Path to golden_set_expectations.json",
     )
-    args = parser.parse_args()
+    parser.set_defaults(func=main)
+    return parser
 
+
+def main(args: argparse.Namespace) -> None:
+    """Grade the results in `args.input_dir` and persist grade objects."""
     if not args.input_dir.exists():
         print(f"Error: Input directory does not exist: {args.input_dir}")
         return
@@ -782,4 +790,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(build_parser().parse_args())
