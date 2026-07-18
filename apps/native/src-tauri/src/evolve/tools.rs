@@ -212,8 +212,21 @@ pub(crate) fn ensure_nixmac_edit_allowed(tool: &str, path: &str) -> Result<()> {
         return Ok(());
     }
 
+    // A data.json path rejected only because of the tool choice needs a
+    // different message: telling the model "you may edit only
+    // .nixmac/<module>/data.json" while it is doing exactly that reads as a
+    // contradiction (observed: gpt-oss-120b gave up and never edited again).
+    if is_module_data_json {
+        return Err(anyhow!(
+            "{}: .nixmac/<module>/data.json is JSON, not Nix — edit it with the \
+             edit_file tool instead",
+            tool
+        ));
+    }
+
     Err(anyhow!(
-        "{}: .nixmac is reserved for Nixmac official modules; agents may edit only .nixmac/<module>/data.json",
+        "{}: .nixmac is reserved for Nixmac official modules; agents may edit only \
+         .nixmac/<module>/data.json (via edit_file)",
         tool
     ))
 }
@@ -1042,5 +1055,22 @@ mod tests {
                 banned
             );
         }
+    }
+
+    #[test]
+    fn nixmac_guard_points_wrong_tool_at_edit_file_for_data_json() {
+        let err = super::ensure_nixmac_edit_allowed("edit_nix_file", ".nixmac/homebrew/data.json")
+            .expect_err("edit_nix_file must not edit module data.json");
+        assert!(
+            err.to_string().contains("edit_file"),
+            "error must name the tool that CAN do this edit: {err:#}"
+        );
+
+        let err = super::ensure_nixmac_edit_allowed("edit_file", ".nixmac/homebrew/default.nix")
+            .expect_err("non-data.json .nixmac files stay reserved");
+        assert!(err.to_string().contains("reserved"), "unexpected: {err:#}");
+
+        super::ensure_nixmac_edit_allowed("edit_file", ".nixmac/homebrew/data.json")
+            .expect("edit_file on module data.json is allowed");
     }
 }
