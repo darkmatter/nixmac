@@ -28,9 +28,22 @@ pub(crate) fn definition() -> Tool {
     }
 }
 
+/// The glob crate's `**` component matches *directories* (zero or more), not
+/// files, so a pattern ending in `**` — including the bare `**` models like
+/// to send — matches nothing once directories are filtered out. Treat a
+/// trailing `**` as `**/*`, which is what the caller invariably means.
+fn normalize_trailing_recursive_glob(pattern: &str) -> String {
+    if pattern == "**" || pattern.ends_with("/**") {
+        format!("{}/*", pattern)
+    } else {
+        pattern.to_string()
+    }
+}
+
 pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
     let repo_root = ctx.repo_root;
     let pattern = ctx.args["pattern"].as_str().unwrap_or("**/*");
+    let pattern = &normalize_trailing_recursive_glob(pattern);
     // Validate and normalize the provided glob pattern so it cannot
     // escape `base` (reject absolute/prefix components) and so any
     // `..`/`.` components are resolved before we run the glob.
@@ -97,4 +110,49 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
 
     debug!("Found {} files", files.len());
     Ok(ToolResult::Continue(files.join("\n")))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_trailing_recursive_glob;
+
+    #[test]
+    fn trailing_recursive_glob_is_extended_to_match_files() {
+        assert_eq!(normalize_trailing_recursive_glob("**"), "**/*");
+        assert_eq!(
+            normalize_trailing_recursive_glob("modules/**"),
+            "modules/**/*"
+        );
+    }
+
+    #[test]
+    fn other_patterns_pass_through_unchanged() {
+        assert_eq!(normalize_trailing_recursive_glob("**/*.nix"), "**/*.nix");
+        assert_eq!(normalize_trailing_recursive_glob("*.nix"), "*.nix");
+        assert_eq!(
+            normalize_trailing_recursive_glob("**/flake.nix"),
+            "**/flake.nix"
+        );
+    }
+
+    // Prove the premise this fix rests on: the glob crate's `**` component
+    // matches directories only, so without normalization a bare `**` finds
+    // zero files in a populated tree.
+    #[test]
+    fn glob_trailing_recursive_component_needs_the_normalization() {
+        let temp = tempfile::tempdir().expect("create temp dir");
+        std::fs::create_dir(temp.path().join("modules")).expect("create modules dir");
+        std::fs::write(temp.path().join("flake.nix"), "{}").expect("write flake.nix");
+        std::fs::write(temp.path().join("modules/home.nix"), "{}").expect("write home.nix");
+
+        let count = |pat: &str| {
+            glob::glob(temp.path().join(pat).to_str().expect("utf8 path"))
+                .expect("valid glob")
+                .filter_map(|p| p.ok())
+                .filter(|p| p.is_file())
+                .count()
+        };
+        assert_eq!(count("**"), 0, "premise: bare ** matches no files");
+        assert_eq!(count(&normalize_trailing_recursive_glob("**")), 2);
+    }
 }
