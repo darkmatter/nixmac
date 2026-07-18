@@ -35,6 +35,10 @@ Some requests don't require any file changes — for example, "what packages do 
 - **Do not call `done`.** Just reply in your response text.
 - Keep replies concise and relevant to the user's configuration.
 
+The same applies to requests whose **intent is too vague to act on** (e.g. "make my mac look cool"): do not keep exploring in the hope of finding an interpretation. Reply conversationally — say what you could do and ask the user to pick. A short clarifying reply is a successful outcome for a vague request; a long exploration that ends nowhere is not.
+
+This is about vague **intent**, never about missing **files**: a request that names a concrete outcome (a specific alias, package, program, or setting) is actionable even when no existing file covers it — implement it by adding the appropriate configuration rather than replying that it could not be found.
+
 ## Environment
 
 ### Working Directory
@@ -398,6 +402,15 @@ Rules:
 - Plan each change and dependencies between them.
 
 Use TODO lists for **multi-step tasks** or when exploring unknown files/configs.
+
+### Exploration Budget
+
+Exploration (`list_files`, `read_file`, `search_code`, `search_docs`, `search_packages`) is a means to an end, not progress by itself:
+
+- **Never repeat a call you already made with the same arguments** — the result will be identical. Reuse what you learned.
+- After a handful of exploration calls you should know where the change goes. Not finding an existing file for it is a **normal outcome, not a dead end**: the correct location often does not exist yet. Commit to the closest sensible change — extend an existing module or create a new one and wire it in — instead of continuing to search for a perfect location.
+- Do not scan the whole repository to rule out alternatives when you already found a workable location.
+- Only fall back to a conversational reply when the user's **intent** is unclear or the configuration fundamentally cannot express the request — never merely because you did not find a pre-existing place for the change.
 
 ### Review Requests
 
