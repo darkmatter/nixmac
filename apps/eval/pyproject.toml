@@ -2,7 +2,7 @@
 name = "nixmac-eval"
 version = "1.0.0"
 description = "AI Evolution Engine Evaluation runner for nixmac"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = [
     "openpyxl>=3.0.0",
     "gitpython>=3.1.46",
@@ -14,4 +14,22 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "types-tabulate>=0.9.0.20241207",
+]
+
+[project.scripts]
+nixmac-eval = "cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Flat module layout: ship the top-level modules and the report package.
+[tool.hatch.build.targets.wheel]
+include = [
+    "cli.py",
+    "run_evals.py",
+    "calc_stats.py",
+    "grade.py",
+    "generate_report.py",
+    "report/",
 ]

@@ -402,17 +402,18 @@ def print_cases_table(metrics_list: list[ResultMetrics]) -> None:
     print("=" * 95 + "\n")
 
 
-def main() -> None:
-    """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Calculate statistics from nixmac evaluation result files"
-    )
+def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.ArgumentParser:
+    """Add the stats arguments to `parser` (or a fresh one) and return it."""
+    if parser is None:
+        parser = argparse.ArgumentParser(
+            description="Calculate statistics from nixmac evaluation result files"
+        )
     parser.add_argument(
         "-i",
         "--input-dir",
         type=Path,
-        default=Path("./data/results"),
-        help="Directory containing result JSON files (default: ./data/results)",
+        default=grading.DEFAULT_RESULTS_DIR,
+        help="Directory containing result JSON files (default: data/results)",
     )
     parser.add_argument(
         "-s",
@@ -437,8 +438,12 @@ def main() -> None:
         default=grading.EXPECTATIONS_PATH,
         help="Path to golden_set_expectations.json",
     )
-    args = parser.parse_args()
+    parser.set_defaults(func=main)
+    return parser
 
+
+def main(args: argparse.Namespace) -> None:
+    """Compute and print statistics for the results in `args.input_dir`."""
     input_dir = args.input_dir
     if not input_dir.exists():
         print(f"Error: Input directory does not exist: {input_dir}")
@@ -498,4 +503,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(build_parser().parse_args())
