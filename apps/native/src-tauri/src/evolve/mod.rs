@@ -328,6 +328,10 @@ const MAX_ITERATIONS_BEFORE_EDIT_PERCENT: usize = 75;
 const BUILD_OUTPUT_MAX_CHARS: usize = 6_000;
 const BUILD_OUTPUT_TAIL_LINES: usize = 80;
 
+// Consecutive rejected `done` calls after which the evolution stops gracefully
+// (limit prompt / LimitReached) instead of grinding to the iteration limit.
+const MAX_REJECTED_DONE_CALLS: usize = 3;
+
 const SYSTEM_PROMPT: &str = include_str!("../../prompts/system.md");
 
 fn configured_model(
@@ -562,6 +566,7 @@ enum EvolutionLimitKind {
     MaxIterations,
     BuildAttempts,
     TokenBudget,
+    DoneRejections,
 }
 
 fn format_token_count(tokens: usize) -> String {
@@ -587,6 +592,7 @@ impl EvolutionLimitKind {
             Self::BuildAttempts => format!("{} build attempts", attempts),
             Self::NoProgress | Self::MaxIterations => format!("{} attempts", attempts),
             Self::TokenBudget => format!("{} tokens", format_token_count(attempts)),
+            Self::DoneRejections => format!("{} unverified attempts to finish", attempts),
         }
     }
 
@@ -619,6 +625,10 @@ impl EvolutionLimitKind {
             ),
             Self::TokenBudget => format!(
                 "Evolution stopped after consuming {}. You can review the current changes or continue with a follow-up prompt.",
+                self.attempts_label(attempts)
+            ),
+            Self::DoneRejections => format!(
+                "Evolution stopped after {} — the changes never passed a build check. You can review the current changes or continue with a follow-up prompt.",
                 self.attempts_label(attempts)
             ),
         }
@@ -1782,6 +1792,51 @@ Do not invent tool names and do not place tool invocations in assistant content.
                         iteration,
                         EvolutionLimitKind::BuildAttempts,
                         build_attempts,
+                    );
+                    break;
+                }
+                LimitDecision::Cancelled => {
+                    evolution.state = EvolutionState::Failed;
+                    return Err(EvolutionRunError::from_state(
+                        session_control::EVOLUTION_CANCELLED_MSG,
+                        &evolution,
+                        iteration,
+                        build_attempts,
+                        total_tokens,
+                    )
+                    .into());
+                }
+            }
+        }
+
+        // Safety limits -- Repeated rejected `done` calls
+        if done_gate.rejected_dones >= MAX_REJECTED_DONE_CALLS {
+            warn!(
+                "⚠️ Model tried to finish {} times without a verified build - asking whether to continue",
+                done_gate.rejected_dones
+            );
+            match ask_to_continue_after_limit(
+                app,
+                start_time,
+                iteration,
+                EvolutionLimitKind::DoneRejections,
+                done_gate.rejected_dones,
+                interactive_limit_prompt,
+            )
+            .await
+            {
+                LimitDecision::Continue => {
+                    done_gate.rejected_dones = 0;
+                    info!("Resetting rejected-done streak at user request");
+                }
+                LimitDecision::Stop => {
+                    finish_after_limit_stop(
+                        app,
+                        &mut evolution,
+                        start_time,
+                        iteration,
+                        EvolutionLimitKind::DoneRejections,
+                        done_gate.rejected_dones,
                     );
                     break;
                 }
