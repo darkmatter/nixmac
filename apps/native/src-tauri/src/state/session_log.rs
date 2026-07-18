@@ -127,28 +127,65 @@ fn sanitize_payload_for_session_log(payload: &Value) -> Value {
     sanitized
 }
 
+enum QueueItem {
+    Line(PathBuf, &'static str, serde_json::Value),
+    /// A flush barrier: acknowledged once every line enqueued before it has
+    /// been written.
+    Barrier(tokio::sync::oneshot::Sender<()>),
+}
+
+static QUEUE: OnceLock<tokio::sync::mpsc::UnboundedSender<QueueItem>> = OnceLock::new();
+
+/// The ordered-writer queue, lazily spawning its single consumer task.
+/// Requires a Tokio runtime (every caller runs inside the evolve command
+/// context).
+fn queue_sender() -> &'static tokio::sync::mpsc::UnboundedSender<QueueItem> {
+    QUEUE.get_or_init(|| {
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<QueueItem>();
+        tokio::spawn(async move {
+            while let Some(item) = rx.recv().await {
+                match item {
+                    QueueItem::Line(path, event_type, payload) => {
+                        append_event(&path, event_type, &payload).await;
+                    }
+                    QueueItem::Barrier(ack) => {
+                        let _ = ack.send(());
+                    }
+                }
+            }
+        });
+        tx
+    })
+}
+
 /// Queues a JSON line for the session log, preserving emission order.
 ///
 /// High-frequency events (streamed deltas and build chunks every ~120ms)
 /// made the previous one-spawned-task-per-event approach a line-order race.
 /// A single lazily-spawned writer task drains the queue sequentially, so
-/// lines land in the order they were enqueued. Fire-and-forget: requires a
-/// Tokio runtime (every caller runs inside the evolve command context).
+/// lines land in the order they were enqueued. Fire-and-forget; await
+/// [`flush_ordered`] for a durability point.
 pub fn append_event_ordered(path: PathBuf, event_type: &'static str, payload: serde_json::Value) {
-    type QueueItem = (PathBuf, &'static str, serde_json::Value);
-    static QUEUE: OnceLock<tokio::sync::mpsc::UnboundedSender<QueueItem>> = OnceLock::new();
-    let sender = QUEUE.get_or_init(|| {
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<QueueItem>();
-        tokio::spawn(async move {
-            while let Some((path, event_type, payload)) = rx.recv().await {
-                append_event(&path, event_type, &payload).await;
-            }
-        });
-        tx
-    });
-    if sender.send((path, event_type, payload)).is_err() {
+    if queue_sender()
+        .send(QueueItem::Line(path, event_type, payload))
+        .is_err()
+    {
         log::warn!("Session log writer task is gone; dropping transcript line");
     }
+}
+
+/// Waits until every transcript line enqueued so far has been written, so a
+/// caller returning control (and possibly letting the app exit) doesn't lose
+/// the tail of the transcript. A no-op when nothing was ever enqueued.
+pub async fn flush_ordered() {
+    let Some(sender) = QUEUE.get() else {
+        return;
+    };
+    let (ack, done) = tokio::sync::oneshot::channel();
+    if sender.send(QueueItem::Barrier(ack)).is_err() {
+        return;
+    }
+    let _ = done.await;
 }
 
 /// Appends a JSON line to the session log file.
@@ -256,24 +293,27 @@ mod tests {
             super::append_event_ordered(path.clone(), "evolve_event", json!({ "seq": i }));
         }
 
-        // The queue drains asynchronously; poll until every line has landed.
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
-        let contents = loop {
-            let contents = std::fs::read_to_string(&path).expect("read session log");
-            if contents.lines().count() >= LINES {
-                break contents;
-            }
-            assert!(
-                std::time::Instant::now() < deadline,
-                "writer did not drain the queue in time; got:\n{contents}"
-            );
-            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
-        };
+        // The flush barrier is the durability point: once it resolves, every
+        // line enqueued before it must be on disk, in order.
+        super::flush_ordered().await;
 
+        let contents = std::fs::read_to_string(&path).expect("read session log");
+        assert_eq!(contents.lines().count(), LINES);
         for (i, line) in contents.lines().enumerate() {
             let parsed: serde_json::Value = serde_json::from_str(line).expect("valid JSON line");
             assert_eq!(parsed["data"]["seq"], i, "line {i} out of order");
         }
+    }
+
+    #[tokio::test]
+    async fn flush_ordered_is_a_noop_before_anything_was_enqueued() {
+        // Must not spawn a writer or hang when the queue was never used.
+        // (Other tests may have initialized the global queue already; the
+        // no-op branch is only reachable in a fresh process, so this mainly
+        // guards against hangs either way.)
+        tokio::time::timeout(std::time::Duration::from_secs(5), super::flush_ordered())
+            .await
+            .expect("flush_ordered must not hang");
     }
 
     #[tokio::test]

@@ -36,6 +36,7 @@ pub async fn run_evolve(app: AppHandle, description: String) -> Result<(), Strin
                         failure.telemetry.iterations,
                         failure.telemetry.build_attempts
                     );
+                    crate::state::session_log::flush_ordered().await;
                     crate::state::session_log::set_session_path(None);
                     return Err(failure.error);
                 }
@@ -45,6 +46,7 @@ pub async fn run_evolve(app: AppHandle, description: String) -> Result<(), Strin
                     failure.telemetry.iterations,
                     failure.telemetry.build_attempts
                 );
+                crate::state::session_log::flush_ordered().await;
                 crate::state::session_log::set_session_path(None);
                 return Err(capture_err("darwin_evolve", failure.error));
             }
@@ -55,6 +57,9 @@ pub async fn run_evolve(app: AppHandle, description: String) -> Result<(), Strin
             .unwrap_or(serde_json::json!({ "error": "serialization failed" }));
         crate::state::session_log::append_event_ordered(path.clone(), "result", result_json);
     }
+    // Durability point: don't return (after which the app may exit) until
+    // the queued transcript lines — including the result — are on disk.
+    crate::state::session_log::flush_ordered().await;
     crate::state::session_log::set_session_path(None);
 
     Ok(())
