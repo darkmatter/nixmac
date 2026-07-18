@@ -50,6 +50,94 @@ one commit per finding:
 Verified afterwards: 713 backend tests, 298 frontend tests, typecheck, lint at
 the existing baseline, and the evolve storybook snapshots unchanged.
 
+## Post-resolution review (2026-07-18)
+
+Findings 1, 3, and 4 are resolved. Finding 2 remains open: the provider
+capability correctly prevents the CLI provider from executing its blocking call
+twice, but the HTTP-error classification is not yet specific enough to establish
+that streaming is unsupported.
+
+### Open: distinguish an unsupported stream from other request errors
+
+**Locations:**
+
+- `apps/native/src-tauri/src/evolve/providers/mod.rs:318`
+- `apps/native/src-tauri/src/ai/provider_errors.rs:54`
+- `apps/native/src-tauri/src/evolve/mod.rs:1245`
+
+`ProviderError::indicates_streaming_unsupported` currently returns true for
+every HTTP 400, 404, 405, 415, 422, or 501 response. Those statuses do not by
+themselves mean that the endpoint rejected streaming. They also represent
+ordinary failures that the blocking request will repeat, including:
+
+- an Ollama model-not-found response (commonly 404);
+- a context-window or invalid-token-limit response (400; the provider tests
+  already construct this case);
+- malformed tools or unsupported model parameters (400/422); and
+- a wrong endpoint or other routing error (404/405).
+
+These errors still cause a second, unnecessary request. That can delay the
+useful error, duplicate expensive work, or potentially issue a second billable
+completion.
+
+The classification can also miss the intended fallback. `async-openai`'s
+normal `ApiError` does not retain the HTTP response status. The local
+`classify_openai_error` maps an unrecognized symbolic error code to 500. A
+standard OpenAI-shaped 400 response whose message or `param` says that
+`stream_options` is unsupported can therefore become a 500 and never reach the
+blocking fallback.
+
+The current unit test verifies the selected status list, so it encodes the
+classification assumption rather than exercising representative provider
+errors.
+
+#### Required resolution
+
+Classify unsupported streaming at the provider boundary using structured error
+information. A dedicated `ProviderError::StreamingUnsupported` variant is the
+clearest contract: each streaming provider can produce it only when its error
+specifically identifies `stream`, `stream_options`, or unsupported SSE behavior.
+If the existing error variant is retained, classification should at least
+inspect structured fields such as `param == "stream_options"` and narrowly
+matched provider messages instead of accepting a status alone.
+
+Add tests proving that:
+
+- an explicit unknown/unsupported `stream_options` error does retry blocking;
+- an unsupported streaming/SSE error does retry blocking;
+- a 400 context-window error does not retry;
+- a 404 model-not-found error does not retry;
+- unrelated 400/422 validation errors do not retry;
+- authentication, rate-limit, server, and transport errors remain un-retried;
+  and
+- the CLI provider continues to execute only once.
+
+Finding 2 should remain open until those cases are distinguished. The
+`supports_streaming` addition is still a valid partial resolution.
+
+#### Resolution (2026-07-18, second pass)
+
+Fixed in `7b6e1b21`, adopting the dedicated-variant recommendation. The
+status-list classification is gone;
+`ProviderError::StreamingUnsupported` is produced at the provider
+boundary by `classify_streaming_rejection`, which matches only a
+structured `ApiError` whose `param` is `stream`/`stream_options` or
+whose message names those parameters as rejected, or states that
+streaming/SSE is unsupported. The classifier runs at both the request
+site and the mid-stream error site, since some proxies accept the
+request and only then reject streaming via an SSE error payload — this
+also sidesteps the `classify_openai_error` unknown-code-to-500 mapping
+entirely, because classification happens before status normalization.
+
+Tests cover the required cases: `stream_options` rejected via `param`
+and via message, an explicit streaming-unsupported message, a 400-style
+context-window error, model-not-found, an unrelated validation error,
+a non-API transport error, and the CLI provider staying off the
+streaming path (`supports_streaming` is false, so it can never execute
+twice). Rate-limit/auth/server statuses cannot classify by
+construction — only the dedicated variant triggers the fallback, and
+nothing maps a status to it.
+
 ## Findings
 
 ### 1. Medium: elapsed time runs too fast during coalesced streaming
