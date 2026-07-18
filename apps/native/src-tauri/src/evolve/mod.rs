@@ -24,7 +24,7 @@ pub mod lifecycle;
 /// Directories ignored by file listing and search helpers.
 pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
-use crate::evolve::utils::{escape_user_query, format_duration_secs};
+use crate::evolve::utils::{escape_user_query, format_duration_secs, truncate_error};
 use crate::git::query::repo_root;
 // Re-export public API
 use crate::shared_types::{Evolution, EvolutionState, FileEdit};
@@ -1900,8 +1900,10 @@ fn truncate_build_output_for_model(output: &str) -> String {
     let mut truncated = tail_lines.join("\n");
 
     if truncated.len() > BUILD_OUTPUT_MAX_CHARS {
-        global_utils::truncate_utf8(&mut truncated, BUILD_OUTPUT_MAX_CHARS);
-        truncated.push_str("\n\n... [truncated] ...");
+        // Keep both edges: the "error:" header at the start and the causal
+        // message nix prints at the end of the "… while evaluating …" chain.
+        // Cutting the tail would leave the model with only trace preamble.
+        truncated = truncate_error(&truncated, BUILD_OUTPUT_MAX_CHARS);
     } else if start_idx > 0 {
         truncated = format!(
             "... [omitted {} lines; original size={} chars] ...\n\n{}",
@@ -2871,5 +2873,37 @@ warning: creating lock file '/Users/test/.nixmac/flake.lock':
 
         let result = truncate_build_output_for_model(&output);
         assert_eq!(result, error);
+    }
+
+    #[test]
+    fn truncate_should_keep_causal_tail_of_oversized_error_section() {
+        // Model an eval failure with a single "error:" header whose
+        // "… while evaluating …" chain exceeds the budget, with the causal
+        // message on the last lines (as nix prints it).
+        let frames = (0..600)
+            .map(|i| format!("       … while evaluating the attribute 'frame{}'", i))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let output = format!(
+            "evaluating flake...\nerror:\n{}\n       undefined variable 'gitt'\n       at /Users/test/.nixmac/flake.nix:12:5",
+            frames
+        );
+        assert!(output.len() > BUILD_OUTPUT_MAX_CHARS);
+
+        let result = truncate_build_output_for_model(&output);
+        assert!(result.contains("undefined variable 'gitt'"));
+        assert!(result.contains("at /Users/test/.nixmac/flake.nix:12:5"));
+        assert!(result.contains("[truncated"));
+        assert!(result.len() <= BUILD_OUTPUT_MAX_CHARS + 200);
+    }
+
+    #[test]
+    fn truncate_should_keep_tail_when_no_error_marker_present() {
+        let lines = (0..1000)
+            .map(|i| format!("copying path /nix/store/{i}-pkg to store"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let result = truncate_build_output_for_model(&lines);
+        assert!(result.contains("999-pkg"));
     }
 }
