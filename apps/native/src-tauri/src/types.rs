@@ -297,43 +297,30 @@ impl EvolveEvent {
                 .filter(|s| !s.is_empty())
         };
         let quoted = |s: &str| format!("'{}'", truncate(s, 60));
-        let summary = match tool {
-            "read_file" => match arg("path") {
-                Some(path) => format!("Reading {}...", shorten_path(path)),
-                None => "Reading file...".to_string(),
-            },
-            "edit_file" | "edit_nix_file" => match arg("path") {
-                Some(path) => format!("Editing {}...", shorten_path(path)),
-                None => "Editing configuration...".to_string(),
-            },
-            "list_files" => match arg("pattern") {
-                Some(pattern) if pattern != "**/*" => {
-                    format!("Listing files matching {}...", quoted(pattern))
-                }
-                _ => "Listing files...".to_string(),
-            },
-            "search_code" => match arg("pattern") {
-                Some(pattern) => format!("Searching the config for {}...", quoted(pattern)),
-                None => "Searching the config...".to_string(),
-            },
-            "search_packages" => match arg("query") {
-                Some(query) => format!("Searching packages for {}...", quoted(query)),
-                None => "Searching packages...".to_string(),
-            },
-            "search_docs" => match arg("query") {
-                Some(query) => format!("Searching docs for {}...", quoted(query)),
-                None => "Searching docs...".to_string(),
-            },
-            "ensure_secret" => match arg("name") {
-                Some(name) => format!("Setting up secret {}...", quoted(name)),
-                None => "Setting up a secret...".to_string(),
-            },
-            "build_check" => "Checking the configuration builds...".to_string(),
-            "think" => "Thinking...".to_string(),
-            "ask_user" => "Asking a question...".to_string(),
-            "done" => "Finishing up...".to_string(),
-            _ => format!("Using {} tool...", tool),
+        let with_object = match tool {
+            "read_file" => arg("path").map(|path| format!("Reading {}...", shorten_path(path))),
+            "edit_file" | "edit_nix_file" => {
+                arg("path").map(|path| format!("Editing {}...", shorten_path(path)))
+            }
+            "list_files" => arg("pattern")
+                .filter(|pattern| *pattern != "**/*")
+                .map(|pattern| format!("Listing files matching {}...", quoted(pattern))),
+            "search_code" => {
+                arg("pattern").map(|p| format!("Searching the config for {}...", quoted(p)))
+            }
+            "search_packages" => {
+                arg("query").map(|q| format!("Searching packages for {}...", quoted(q)))
+            }
+            "search_docs" => arg("query").map(|q| format!("Searching docs for {}...", quoted(q))),
+            "ensure_secret" => {
+                arg("name").map(|name| format!("Setting up secret {}...", quoted(name)))
+            }
+            _ => None,
         };
+        let summary = with_object
+            .or_else(|| tool_action_label(tool))
+            // Only `think` has no action label; its summary is its thought.
+            .unwrap_or_else(|| "Thinking...".to_string());
         Self::new(
             EvolveEventType::ToolCall,
             format!("{} | args: {}", tool, args_summary),
@@ -504,6 +491,29 @@ impl EvolveEvent {
 /// Truncate a string to max length with ellipsis
 fn truncate(s: &str, max_len: usize) -> String {
     global_utils::truncate_with_ellipsis(s, max_len)
+}
+
+/// Generic action label for a tool, without the object being acted on. The
+/// single source for how a tool presents to the user: the tool_call summary
+/// falls back to it when the object argument is missing, and the stream
+/// announcements use it before the arguments have finished generating. None
+/// for `think`, which presents as its thought text instead.
+pub(crate) fn tool_action_label(tool: &str) -> Option<String> {
+    let label = match tool {
+        "think" => return None,
+        "read_file" => "Reading file...",
+        "edit_file" | "edit_nix_file" => "Editing configuration...",
+        "list_files" => "Listing files...",
+        "search_code" => "Searching the config...",
+        "search_packages" => "Searching packages...",
+        "search_docs" => "Searching docs...",
+        "ensure_secret" => "Setting up a secret...",
+        "build_check" => "Checking the configuration builds...",
+        "ask_user" => "Asking a question...",
+        "done" => "Finishing up...",
+        other => return Some(format!("Using {} tool...", other)),
+    };
+    Some(label.to_string())
 }
 
 /// The slice of build output worth keeping when it exceeds `max_len`: from

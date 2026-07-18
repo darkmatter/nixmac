@@ -39,25 +39,11 @@ pub enum StreamEvent<'a> {
 pub type OnDelta<'a> = &'a (dyn Fn(StreamEvent<'_>) + Send + Sync);
 
 /// The line streamed when a tool call's name arrives, before its arguments
-/// finish generating. Uses the same user-facing voice as the timeline's
-/// tool_call rows (`EvolveEvent::tool_call` in types.rs), minus the object —
-/// the arguments carrying it are still streaming. None for `think`, whose
-/// thought text streams instead of an announcement.
+/// finish generating: the tool's shared action label (see
+/// `types::tool_action_label`) on its own arrow-prefixed line. None for
+/// `think`, whose thought text streams instead of an announcement.
 pub(crate) fn tool_call_announcement(tool: &str) -> Option<String> {
-    let label = match tool {
-        "think" => return None,
-        "read_file" => "Reading file...",
-        "edit_file" | "edit_nix_file" => "Editing configuration...",
-        "list_files" => "Listing files...",
-        "search_code" => "Searching the config...",
-        "search_packages" => "Searching packages...",
-        "search_docs" => "Searching docs...",
-        "ensure_secret" => "Setting up a secret...",
-        "build_check" => "Checking the configuration builds...",
-        "ask_user" => "Asking a question...",
-        "done" => "Finishing up...",
-        other => return Some(format!("\n\u{2192} Using {} tool...\n", other)),
-    };
+    let label = crate::types::tool_action_label(tool)?;
     Some(format!("\n\u{2192} {}\n", label))
 }
 
