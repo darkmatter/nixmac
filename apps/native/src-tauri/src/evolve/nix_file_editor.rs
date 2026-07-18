@@ -923,7 +923,33 @@ fn set_value(content: &str, attrpath: &str, value: &serde_json::Value) -> Result
     let root: Root = parsed
         .ok()
         .context("Failed to parse Nix content when setting value")?;
-    let insert_pos = find_top_level_attrset_end(&root.syntax().clone())
+    let root_node = root.syntax().clone();
+
+    // The flat matcher above only sees `a.b.c = …` written literally. A leaf
+    // that lives inside an attrset literal (`a = { b.c = …; }`) must be
+    // replaced in place — inserting a fresh assignment would define the same
+    // attribute twice.
+    if let Some(value_node) = find_attrpath_value_node(&root_node, attrpath) {
+        let byte_range = text_range_to_usize_range(value_node.text_range());
+        info!(
+            "Replacing nested value for {} at {:?} with {}",
+            attrpath, byte_range, rendered_value
+        );
+        let mut patched = content.to_string();
+        patched.replace_range(byte_range, &rendered_value);
+        return Ok(patched);
+    }
+
+    // Nix forbids `inputs = { … }` and `inputs.home-manager = …` side by
+    // side ("attribute 'inputs' already defined"), so when a prefix of the
+    // attrpath is already bound, the new attribute must go inside it.
+    if let Some(patched) =
+        insert_into_prefix_attrset(content, &root_node, attrpath, &rendered_value)?
+    {
+        return Ok(patched);
+    }
+
+    let insert_pos = find_top_level_attrset_end(&root_node)
         .context("Cannot find top-level attribute set to insert scalar attr")?;
     let addition = format!("\n  {} = {};", attrpath, rendered_value);
     info!(
@@ -933,6 +959,70 @@ fn set_value(content: &str, attrpath: &str, value: &serde_json::Value) -> Result
     let mut patched = content.to_string();
     patched.insert_str(insert_pos, &addition);
     Ok(patched)
+}
+
+/// If a strict prefix of `attrpath` is already bound, insert the remainder
+/// inside that binding's attrset literal (before its closing brace). Errors
+/// when the prefix is bound to something that is not an attrset literal —
+/// inserting a sibling dotted assignment would be invalid Nix, and silently
+/// rewriting a non-literal value (e.g. `inputs = import ./x.nix`) is not our
+/// call to make.
+fn insert_into_prefix_attrset(
+    content: &str,
+    root: &SyntaxNode,
+    attrpath: &str,
+    rendered_value: &str,
+) -> Result<Option<String>> {
+    let segments: Vec<&str> = attrpath.split('.').collect();
+    for split in (1..segments.len()).rev() {
+        let prefix = segments[..split].join(".");
+        let Some(prefix_value) = find_attrpath_value_node(root, &prefix) else {
+            continue;
+        };
+        let remainder = segments[split..].join(".");
+
+        if AttrSet::cast(prefix_value.clone()).is_none() {
+            return Err(anyhow::anyhow!(
+                "Cannot set '{}': '{}' is already defined and is not an attrset literal. \
+                 Edit the value of '{}' directly instead.",
+                attrpath,
+                prefix,
+                prefix
+            ));
+        }
+
+        let byte_range = text_range_to_usize_range(prefix_value.text_range());
+        let attrset_text = content
+            .get(byte_range.clone())
+            .context("Attrset text range was out of bounds")?;
+        let close_offset = attrset_text
+            .rfind('}')
+            .context("Existing attrset literal had no closing '}' token")?;
+
+        let insertion = if attrset_text.contains('\n') {
+            // Multiline: the closing line's indentation already precedes the
+            // insertion point, so emit one extra level, then restore the
+            // closing line's own indent after the newline.
+            let before_close = &attrset_text[..close_offset];
+            let close_line_start = before_close.rfind('\n').map_or(0, |idx| idx + 1);
+            let close_indent: String = attrset_text[close_line_start..close_offset]
+                .chars()
+                .take_while(|ch| ch.is_whitespace())
+                .collect();
+            format!("  {} = {};\n{}", remainder, rendered_value, close_indent)
+        } else {
+            format!("{} = {}; ", remainder, rendered_value)
+        };
+
+        info!(
+            "Inserting '{} = {}' inside existing attrset '{}'",
+            remainder, rendered_value, prefix
+        );
+        let mut patched = content.to_string();
+        patched.insert_str(byte_range.start + close_offset, &insertion);
+        return Ok(Some(patched));
+    }
+    Ok(None)
 }
 
 /// Find the end of the top-level attribute set to insert new attributes
@@ -1437,6 +1527,86 @@ environment.systemPackages = with pkgs; [
         assert!(
             edited.contains("networking.hostName = \"my-mac\";"),
             "expected set to quote string values as Nix strings"
+        );
+    }
+
+    const FLAKE_WITH_INPUTS: &str = r#"{
+  description = "test";
+
+  inputs = {
+    nixpkgs = {
+      url = "github:NixOS/nixpkgs";
+    };
+  };
+
+  outputs = { self, nixpkgs, ... }: { };
+}
+"#;
+
+    // The case-44 failure shape: setting `inputs.home-manager` while
+    // `inputs = { … }` exists must merge into that block — a sibling
+    // top-level assignment is invalid Nix ("attribute 'inputs' already
+    // defined").
+    #[test]
+    fn set_merges_new_attribute_into_existing_prefix_attrset() {
+        let edited = set_value(
+            FLAKE_WITH_INPUTS,
+            "inputs.home-manager",
+            &serde_json::json!({"url": "github:nix-community/home-manager"}),
+        )
+        .expect("set should succeed");
+
+        assert_eq!(
+            edited.matches("inputs =").count(),
+            1,
+            "must not add a second `inputs` binding:\n{edited}"
+        );
+        assert!(
+            edited.contains("home-manager = { url = \"github:nix-community/home-manager\"; };"),
+            "expected home-manager inside the inputs block:\n{edited}"
+        );
+        assert!(
+            Root::parse(&edited).errors().is_empty(),
+            "edited content must stay valid Nix:\n{edited}"
+        );
+    }
+
+    #[test]
+    fn set_replaces_leaf_nested_inside_attrset_literal() {
+        let edited = set_value(
+            FLAKE_WITH_INPUTS,
+            "inputs.nixpkgs.url",
+            &serde_json::Value::String("github:NixOS/nixpkgs/nixos-24.05".to_string()),
+        )
+        .expect("set should succeed");
+
+        assert!(
+            edited.contains("url = \"github:NixOS/nixpkgs/nixos-24.05\";"),
+            "expected nested url to be replaced in place:\n{edited}"
+        );
+        assert!(
+            !edited.contains("inputs.nixpkgs.url ="),
+            "must not insert a duplicate flat assignment:\n{edited}"
+        );
+        assert!(
+            Root::parse(&edited).errors().is_empty(),
+            "edited content must stay valid Nix:\n{edited}"
+        );
+    }
+
+    #[test]
+    fn set_rejects_prefix_bound_to_non_attrset() {
+        let content = "{\n  inputs = import ./inputs.nix;\n}\n";
+        let err = set_value(
+            content,
+            "inputs.home-manager",
+            &serde_json::json!({"url": "github:nix-community/home-manager"}),
+        )
+        .expect_err("set should refuse to shadow a non-attrset binding");
+
+        assert!(
+            err.to_string().contains("not an attrset literal"),
+            "unexpected error: {err:#}"
         );
     }
 
