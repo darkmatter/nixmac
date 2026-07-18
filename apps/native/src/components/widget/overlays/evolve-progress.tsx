@@ -96,6 +96,21 @@ export function isVisibleEvent(event: EvolveEvent): boolean {
   return true;
 }
 
+// Streamed chunks of the current step, arriving every ~120ms while a model
+// responds or a build check runs.
+const EPHEMERAL_EVENT_TYPES: ReadonlySet<EvolveEventType> = new Set([
+  "streamDelta",
+  "buildCheck",
+]);
+
+/// Number of events that start a new step rather than stream a chunk of the
+/// current one. The active-step timer restarts when this grows — anchoring
+/// it to every event would pin the clock at 0s through exactly the long
+/// waits it exists to measure.
+export function countSemanticEvents(events: EvolveEvent[]): number {
+  return events.filter((e) => !EPHEMERAL_EVENT_TYPES.has(e.eventType)).length;
+}
+
 /// Latest budget counters from the structured Progress detail carried by
 /// provider responses.
 export function getTokenProgress(
@@ -740,6 +755,13 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
   useEffect(() => {
     setLastEventReceivedAt(Date.now());
   }, [events.length]);
+  // The active-step timer anchors to semantic events only: stream chunks
+  // arrive every ~120ms and would otherwise pin it at 0s.
+  const semanticEventCount = countSemanticEvents(events);
+  const [stepStartedAt, setStepStartedAt] = useState(() => Date.now());
+  useEffect(() => {
+    setStepStartedAt(Date.now());
+  }, [semanticEventCount]);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!isGenerating) {
@@ -751,6 +773,7 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
 
   const lastEvent = events[events.length - 1];
   const waitingMs = Math.max(0, now - lastEventReceivedAt);
+  const stepMs = Math.max(0, now - stepStartedAt);
   // Run elapsed = the last event's elapsed-since-start stamp, plus the time
   // we've been waiting on the next one.
   const elapsedMs = lastEvent ? lastEvent.timestampMs + (isGenerating ? waitingMs : 0) : null;
@@ -825,7 +848,7 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
                   focus={focus}
                   key={`${event.timestampMs}-${index}`}
                   onAnswer={handleQuestionAnswer}
-                  waitingMs={waitingMs}
+                  waitingMs={stepMs}
                 />
               );
             }
@@ -848,7 +871,7 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
               answeredText={null}
               focus={focus}
               onAnswer={handleQuestionAnswer}
-              waitingMs={waitingMs}
+              waitingMs={stepMs}
             />
           )}
         </div>

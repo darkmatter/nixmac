@@ -44,6 +44,30 @@ describe("EvolveProgress elapsed clock", () => {
     expect(screen.getAllByText("22s").length).toBeGreaterThan(0);
   });
 
+  it("keeps the step timer running while stream chunks arrive", async () => {
+    const { rerender } = render(<EvolveProgress events={[event(10_000)]} isGenerating={true} />);
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
+    // Streamed chunks arrive every ~120ms; they must not restart the
+    // active-step clock (only semantic events do).
+    const delta: EvolveEvent = {
+      eventType: "streamDelta",
+      summary: "Thinking...",
+      raw: "hello",
+      iteration: 1,
+      timestampMs: 13_000,
+      detail: { type: "streamDelta", text: "hello" },
+    };
+    rerender(<EvolveProgress events={[event(10_000), delta]} isGenerating={true} />);
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+    // Step timer: 3s before the chunk + 2s after = 5s (the pre-fix behavior
+    // would show 2s, re-anchored at the chunk).
+    expect(screen.getAllByText("5s").length).toBeGreaterThan(0);
+  });
+
   it("shows the final timestamp without ticking when not generating", async () => {
     render(<EvolveProgress events={[event(10_000)]} isGenerating={false} />);
     await act(async () => {
