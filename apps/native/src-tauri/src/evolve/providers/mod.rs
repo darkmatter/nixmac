@@ -38,13 +38,15 @@ pub enum StreamEvent<'a> {
 /// Callback receiving streamed events as they arrive.
 pub type OnDelta<'a> = &'a (dyn Fn(StreamEvent<'_>) + Send + Sync);
 
-/// The line streamed when a tool call's name arrives, before its arguments
-/// finish generating: the tool's shared action label (see
-/// `types::tool_action_label`) on its own arrow-prefixed line. None for
-/// `think`, whose thought text streams instead of an announcement.
-pub(crate) fn tool_call_announcement(tool: &str) -> Option<String> {
-    let label = crate::types::tool_action_label(tool)?;
-    Some(format!("\n\u{2192} {}\n", label))
+/// Streams the announcement line for a tool call when its name arrives,
+/// before its arguments finish generating: the tool's shared action label
+/// (`types::tool_action_label`, the single source for tool copy) on its own
+/// arrow-prefixed line. Nothing is emitted for `think`, whose thought text
+/// streams instead.
+pub(crate) fn announce_tool_call(on_delta: OnDelta<'_>, tool: &str) {
+    if let Some(label) = crate::types::tool_action_label(tool) {
+        on_delta(StreamEvent::Delta(&format!("\n\u{2192} {}\n", label)));
+    }
 }
 
 /// Incrementally extracts the `think` tool's `thought` string value from
@@ -433,20 +435,27 @@ mod tests {
 
     #[test]
     fn tool_announcements_use_the_timeline_voice() {
+        let seen = std::sync::Mutex::new(Vec::<String>::new());
+        let on_delta = |event: StreamEvent<'_>| {
+            if let StreamEvent::Delta(text) = event {
+                seen.lock().unwrap().push(text.to_string());
+            }
+        };
+
+        announce_tool_call(&on_delta, "edit_nix_file");
+        announce_tool_call(&on_delta, "build_check");
+        announce_tool_call(&on_delta, "future_tool");
+        // The think tool streams its thought text instead of an announcement.
+        announce_tool_call(&on_delta, "think");
+
         assert_eq!(
-            tool_call_announcement("edit_nix_file").as_deref(),
-            Some("\n\u{2192} Editing configuration...\n")
+            seen.lock().unwrap().as_slice(),
+            [
+                "\n\u{2192} Editing configuration...\n",
+                "\n\u{2192} Checking the configuration builds...\n",
+                "\n\u{2192} Using future_tool tool...\n",
+            ]
         );
-        assert_eq!(
-            tool_call_announcement("build_check").as_deref(),
-            Some("\n\u{2192} Checking the configuration builds...\n")
-        );
-        assert_eq!(
-            tool_call_announcement("future_tool").as_deref(),
-            Some("\n\u{2192} Using future_tool tool...\n")
-        );
-        // The think tool streams its thought text instead.
-        assert_eq!(tool_call_announcement("think"), None);
     }
 
     #[test]

@@ -392,10 +392,8 @@ impl AiProvider for OllamaProvider {
                             {
                                 on_delta(StreamEvent::Delta(thought));
                             }
-                        } else if let Some(announcement) =
-                            super::tool_call_announcement(&call.function.name)
-                        {
-                            on_delta(StreamEvent::Delta(&announcement));
+                        } else {
+                            super::announce_tool_call(on_delta, &call.function.name);
                         }
                     }
                     assembled

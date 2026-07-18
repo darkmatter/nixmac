@@ -331,9 +331,7 @@ impl AiProvider for OpenAIProvider {
                     let name = tool_calls[index].name.as_str();
                     // A call's first chunk carries its id and name.
                     if tool_chunk.id.is_some() && !name.is_empty() {
-                        if let Some(announcement) = super::tool_call_announcement(name) {
-                            on_delta(StreamEvent::Delta(&announcement));
-                        }
+                        super::announce_tool_call(on_delta, name);
                     }
                     if name == "think" {
                         if let Some(fragment) = tool_chunk
