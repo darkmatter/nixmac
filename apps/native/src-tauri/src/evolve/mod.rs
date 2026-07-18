@@ -1536,7 +1536,6 @@ pub async fn generate_evolution<R: Runtime>(
                                 &mut build_verified,
                                 &mut build_attempts,
                                 max_build_attempts,
-                                &host_attr,
                                 start_time,
                                 iteration,
                             ) {
@@ -2032,7 +2031,6 @@ fn process_tool_result(
     build_verified: &mut bool,
     build_attempts: &mut usize,
     max_build_attempts: usize,
-    host_attr: &str,
     start_time: i64,
     iteration: usize,
 ) -> Result<(Message, Option<bool>)> {
@@ -2240,11 +2238,10 @@ fn process_tool_result(
                 info!("⚠️ Agent called done without build verification");
                 let msg = Message::Tool {
                     tool_call_id: tool_call_id.to_string(),
-                    content: format!(
-                        "Before completing, you must verify your changes compile. \
-                         Run build_check with host='{}' to validate, then call done again.",
-                        host_attr
-                    ),
+                    content: "Before completing, you must verify your changes compile. \
+                              Call the build_check tool (it takes no required arguments) \
+                              to validate, then call done again."
+                        .to_string(),
                 };
                 (msg, None) // Break inner loop, continue outer
             } else {
@@ -2301,7 +2298,6 @@ mod tests {
             build_verified,
             &mut build_attempts,
             5,
-            "host",
             0,
             0,
         )
@@ -2378,6 +2374,41 @@ mod tests {
         assert!(
             !matches!(evolution.state, EvolutionState::Generated),
             "done must not complete an evolution whose last build_check failed"
+        );
+    }
+
+    // The rejection hint must only reference parameters build_check actually
+    // accepts; a phantom host= argument sent gpt-oss-120b into a retry loop.
+    #[test]
+    fn done_rejection_hint_references_only_real_build_check_parameters() {
+        let mut evolution = Evolution::new("prompt");
+        evolution.edits.push(FileEdit {
+            path: "configuration.nix".to_string(),
+            search: "a".to_string(),
+            replace: "b".to_string(),
+        });
+        let mut build_verified = false;
+        let mut build_attempts = 0usize;
+
+        let (msg, _) = process_tool_result(
+            "tool-call-id",
+            &ToolResult::Done("done".to_string()),
+            &mut evolution,
+            &mut build_verified,
+            &mut build_attempts,
+            5,
+            0,
+            0,
+        )
+        .expect("done rejection should not error");
+
+        let Message::Tool { content, .. } = msg else {
+            panic!("done rejection should produce a tool message");
+        };
+        assert!(content.contains("build_check"));
+        assert!(
+            !content.contains("host="),
+            "hint must not reference a parameter build_check does not accept: {content}"
         );
     }
 
