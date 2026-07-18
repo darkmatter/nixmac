@@ -167,6 +167,23 @@ uv run nixmac-eval run --csv data/test_prompts.csv \
   --evolve-model gpt-oss-120b
 ```
 
+Provider arguments also fall back to the environment, so with the
+variables exported a plain `nixmac-eval run --csv ...` works:
+
+| Flag | Environment fallback |
+| ----------------- | ------------------------------ |
+| `--vllm-url` | `VLLM_URL` or `VLLM_API_BASE` |
+| `--vllm-api-key` | `VLLM_API_KEY` |
+| `--ollama-url` | `OLLAMA_URL` or `OLLAMA_API_BASE` |
+| `--evolve-model` | `EVOLVE_MODEL` |
+| `--summary-model` | `SUMMARY_MODEL` |
+
+Explicit flags always win. If both a vLLM and an Ollama endpoint are
+set in the environment, the vLLM one is preferred and a warning is
+printed; pass `--ollama-url` to override. (`OPENAI_API_KEY` and
+`OPENROUTER_API_KEY` are picked up by the nixmac binary itself from
+the inherited environment.)
+
 ### Choose the nix-darwin baseline
 
 By default, every test case starts from the bundled
