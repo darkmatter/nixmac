@@ -2,6 +2,24 @@
 
 This directory contains tools for evaluating nixmac's evolution capabilities against a test matrix of user requests.
 
+## Isolation
+
+Every test case runs fully hermetically. The suite creates a fresh temp
+directory per case and passes it to the nixmac binary via the
+`NIXMAC_APP_DATA_DIR` environment variable, which roots **all** of the
+binary's per-device state there: `settings.json`,
+`global-preferences.json`, the sqlite DB, docs cache, and secrets. Eval
+runs therefore never read or mutate your real nixmac preferences, your
+keychain/dev credentials, or your real nix configuration. API keys are
+passed to the child process through the environment
+(`OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `VLLM_API_KEY`), never written
+to disk.
+
+The suite verifies after the first invocation that the binary actually
+honored the override and aborts otherwise, so pointing `--nixmac` at an
+old binary that predates `NIXMAC_APP_DATA_DIR` fails loudly instead of
+silently running against your real state.
+
 ## Setup
 
 Install dependencies with `uv`:
@@ -26,7 +44,7 @@ Options:
 - `--priority <level>` - Filter by priority level
 - `--limit <num>` - Max number of cases to run
 - `--persona <name>` - Filter by persona
-- `--nixmac <path>` - Path to nixmac binary (default: `../../target/debug/nixmac`)
+- `--nixmac <path>` - Path to nixmac binary (default: `../../target/debug/nixmac`, built from this repo with `cargo build`)
 
 Results are saved to `data/results/` as JSON files.
 
