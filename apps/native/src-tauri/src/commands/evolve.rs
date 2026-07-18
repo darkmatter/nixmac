@@ -3,7 +3,21 @@ use crate::{evolve, shared_types};
 use tauri::AppHandle;
 
 /// Shared implementation for `darwin_evolve` (invoke) and `darwin.evolve` (oRPC).
+///
+/// A thin single-exit wrapper: whatever path the run takes through
+/// [`run_evolve_session`], the transcript queue is flushed (the durability
+/// point — the app may exit right after this returns) and the session path
+/// cleared exactly once, so no exit path can forget them.
 pub async fn run_evolve(app: AppHandle, description: String) -> Result<(), String> {
+    let result = run_evolve_session(app, description).await;
+    crate::state::session_log::flush_ordered().await;
+    crate::state::session_log::set_session_path(None);
+    result
+}
+
+/// The body of [`run_evolve`]. May return early freely: transcript flushing
+/// and session teardown are the wrapper's job.
+async fn run_evolve_session(app: AppHandle, description: String) -> Result<(), String> {
     evolve::session_control::set_evolve_cancelled(false);
 
     let session_log = crate::state::session_log::create_session_log().ok();
@@ -36,8 +50,6 @@ pub async fn run_evolve(app: AppHandle, description: String) -> Result<(), Strin
                         failure.telemetry.iterations,
                         failure.telemetry.build_attempts
                     );
-                    crate::state::session_log::flush_ordered().await;
-                    crate::state::session_log::set_session_path(None);
                     return Err(failure.error);
                 }
 
@@ -46,8 +58,6 @@ pub async fn run_evolve(app: AppHandle, description: String) -> Result<(), Strin
                     failure.telemetry.iterations,
                     failure.telemetry.build_attempts
                 );
-                crate::state::session_log::flush_ordered().await;
-                crate::state::session_log::set_session_path(None);
                 return Err(capture_err("darwin_evolve", failure.error));
             }
         };
@@ -57,10 +67,6 @@ pub async fn run_evolve(app: AppHandle, description: String) -> Result<(), Strin
             .unwrap_or(serde_json::json!({ "error": "serialization failed" }));
         crate::state::session_log::append_event_ordered(path.clone(), "result", result_json);
     }
-    // Durability point: don't return (after which the app may exit) until
-    // the queued transcript lines — including the result — are on disk.
-    crate::state::session_log::flush_ordered().await;
-    crate::state::session_log::set_session_path(None);
 
     Ok(())
 }
