@@ -247,7 +247,12 @@ def _get_eval_hostname() -> str:
         return "localhost"
 
 
-def create_nix_config_git_repo(template_dir: Path, hostname: str | None = None):
+def create_nix_config_git_repo(
+    template_dir: Path,
+    hostname: str | None = None,
+    max_token_budget: int | None = None,
+    max_iterations: int | None = None,
+):
     """
     Create a temporary nix config git repo from `template_dir`, with hostname
     and platform placeholders replaced (where present), ready for nix-darwin
@@ -300,11 +305,20 @@ def create_nix_config_git_repo(template_dir: Path, hostname: str | None = None):
     # a part of dirty changes is noisy and obfuscates the actual changes
     # made by the evolve engine during test runs.
     #
-    # .nixmac/ holds repo-scoped EvolutionLimits (maxTokenBudget,
-    # maxIterations, etc.) the eval writes per-case via
-    # generate_repo_scoped_settings; keep it out of git so it doesn't
-    # show up in the model's view of the working tree.
-    (tmpdir / ".gitignore").write_text("flake.lock\n.nixmac/\n")
+    # .nixmac/ must NOT be gitignored: the template's flake.nix imports
+    # ./.nixmac as a module, and nix flakes only see git-tracked files, so
+    # ignoring it makes every build_check fail before the model has done
+    # anything. It is also where repo-scoped EvolutionLimits live
+    # (mirroring production, where .nixmac/settings.json is tracked so it
+    # follows the repo across machines) — write them before the initial
+    # commit so they are committed and the tree starts clean.
+    (tmpdir / ".gitignore").write_text("flake.lock\n")
+
+    generate_repo_scoped_settings(
+        tmpdir,
+        max_token_budget=max_token_budget,
+        max_iterations=max_iterations,
+    )
 
     # Initialize git repo
     repo = Repo.init(str(tmpdir))
@@ -357,7 +371,15 @@ def run_test_case(
     result_dir: Path | None = None
     app_data_dir: Path | None = None
     try:
-        config_dir = create_nix_config_git_repo(template_dir, hostname=eval_hostname)
+        # Repo-scoped EvolutionLimits (maxTokenBudget, maxIterations) are
+        # written into <config_dir>/.nixmac/settings.json and committed as
+        # part of the fixture's initial state.
+        config_dir = create_nix_config_git_repo(
+            template_dir,
+            hostname=eval_hostname,
+            max_token_budget=max_token_budget,
+            max_iterations=max_iterations,
+        )
         print(f"Created git repo with config at: {config_dir}")
 
         # Fresh hermetic app-data dir per case: the binary roots ALL of its
@@ -366,15 +388,6 @@ def run_test_case(
         # nothing leaks between cases.
         app_data_dir = Path(tempfile.mkdtemp(prefix="nixmac-appdata-"))
         print(f"Created hermetic app-data dir at: {app_data_dir}")
-
-        # Repo-scoped EvolutionLimits (maxTokenBudget, maxIterations) live
-        # under <config_dir>/.nixmac/settings.json. Write after git init
-        # so the file lands in the .gitignored .nixmac/ dir.
-        generate_repo_scoped_settings(
-            config_dir,
-            max_token_budget=max_token_budget,
-            max_iterations=max_iterations,
-        )
 
         # Generate nixmac settings.json pointing to the config dir
         # Use the same eval_hostname for hostAttr so template and build agree
