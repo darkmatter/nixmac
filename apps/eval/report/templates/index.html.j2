@@ -1,0 +1,115 @@
+{% extends "base.html.j2" %}
+{% block title %}nixmac eval — {{ run.meta.title }}{% endblock %}
+{% block content %}
+
+<section class="headline">
+  <div class="headline-main">
+    <div class="pass-rate">{{ run.aggregate_stats.pass_rate | pct }}</div>
+    <div class="pass-rate-detail">
+      <strong>{{ run.aggregate_stats.passed }} / {{ run.aggregate_stats.total }}</strong> passed
+      <span class="muted">· {{ run.meta.title }}</span>
+    </div>
+  </div>
+  <dl class="headline-meta">
+    {% if run.meta.evolve_models %}
+    <dt>Model</dt><dd>{{ run.meta.evolve_models | join(", ") }}{% if run.meta.evolve_providers %} <span class="muted">({{ run.meta.evolve_providers | join(", ") }})</span>{% endif %}</dd>
+    {% endif %}
+    {% if run.meta.summary_models %}
+    <dt>Summary model</dt><dd>{{ run.meta.summary_models | join(", ") }}</dd>
+    {% endif %}
+    {% if run.meta.run_started_at %}
+    <dt>Run started</dt><dd>{{ run.meta.run_started_at | isoformat }}</dd>
+    {% endif %}
+    {% if run.meta.nixmac_git_sha %}
+    <dt>nixmac SHA</dt><dd><code>{{ run.meta.nixmac_git_sha[:12] }}</code></dd>
+    {% endif %}
+    {% if run.meta.eval_host %}
+    <dt>Host</dt><dd>{{ run.meta.eval_host }}</dd>
+    {% endif %}
+  </dl>
+</section>
+
+<section class="segments">
+  <h2>By expected outcome</h2>
+  <div class="segment-cards">
+  {% for seg in run.segments %}
+    <div class="segment-card {% if seg.total == 0 %}segment-empty{% endif %}">
+      <div class="segment-name">{{ seg.name | outcome_label }}</div>
+      {% if seg.total %}
+        <div class="segment-rate">{{ seg.pass_rate | pct }}</div>
+        <div class="segment-detail">
+          <strong>{{ seg.passed }} / {{ seg.total }}</strong> passed
+        </div>
+      {% else %}
+        <div class="segment-detail muted">no cases</div>
+      {% endif %}
+    </div>
+  {% endfor %}
+  </div>
+</section>
+
+<section>
+  <h2>Aggregate statistics</h2>
+  <table class="stats-table">
+    <thead>
+      <tr><th>Metric</th><th>Overall</th><th>Passing</th><th>Failing</th></tr>
+    </thead>
+    <tbody>
+    {% for row in run.aggregate_stats.rows %}
+      <tr class="stat-{{ row.kind }}">
+        <th>{{ row.label }}</th><td>{{ row.overall }}</td><td>{{ row.passing }}</td><td>{{ row.failing }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% if run.outcome_breakdown %}
+<section>
+  <h2>Outcome breakdown</h2>
+  {% set max_count = run.outcome_breakdown | map(attribute="count") | max %}
+  <ul class="outcome-bars">
+    {% for row in run.outcome_breakdown %}
+    <li>
+      <a class="outcome-bar-link outcome-bar-{{ row.kind }}" href="#cases" data-filter-outcome="{{ row.label }}">
+        <span class="outcome-bar-label"><span class="outcome-badge outcome-{{ row.kind }}">{{ row.label }}</span></span>
+        <span class="outcome-bar-track">
+          <span class="outcome-bar-fill" style="width: {{ (row.count / max_count * 100) | round(1) }}%"></span>
+        </span>
+        <span class="outcome-bar-count">{{ row.count }}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section id="cases">
+  <h2>Cases</h2>
+  <table class="case-table">
+    <thead>
+      <tr>
+        <th>#</th><th>Outcome</th><th>Category</th>
+        <th>Iters</th><th>Builds</th><th>Tokens</th><th>Duration</th>
+        <th>Prompt</th><th>Set</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for case in run.cases %}
+      <tr class="row-{{ case.status_label }}" data-href="cases/case_{{ case.case_id }}.html">
+        <td><a href="cases/case_{{ case.case_id }}.html">{{ case.case_id }}</a></td>
+        <td><span class="outcome-badge outcome-{{ case.status_label }}">{{ case.outcome_label }}</span></td>
+        <td><code>{{ case.category }}</code></td>
+        <td>{{ case.iterations }}</td>
+        <td>{{ case.build_attempts }}</td>
+        <td>{{ case.total_tokens | tokens }}</td>
+        <td>{{ case.duration_ms | duration }}</td>
+        <td class="prompt-cell">{{ case.prompt_truncated }}</td>
+        <td>{% if case.is_golden %}<span class="badge">golden</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% endblock %}

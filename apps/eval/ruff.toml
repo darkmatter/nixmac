@@ -1,0 +1,48 @@
+exclude = [
+    "build",
+    "dist",
+    "gen",
+    "gen/pb",
+    ".venv",
+    ".mypy_cache",
+    ".pytest_cache",
+    "__pycache__",
+]
+
+line-length = 100
+indent-width = 4
+
+target-version = "py310"
+cache-dir = "/tmp/ruff_cache"
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "C4",  # flake8-comprehensions
+    "TID", # flake8-tidy-imports
+    "SIM", # flake8-simplify
+    "PL",  # pylintw
+    "RUF", # Ruff-specific rules
+]
+ignore = [
+    "E501",    # Ignore line length errors (handled by line-length above)
+    "E203",    # Ignore whitespace before ':'
+    "PLR0913", # Ignore 'Too many return args' (handled by complexity)
+    "PLC0415", # Ignore 'Imports should be at the top level'
+    "PLR0915", # Ignore 'Too many statements' (handled by complexity)
+    "PLR2004", # Ignore magic value
+]
+
+# Ignore "imported but unused" (F401) and "unable to detect undefined names" (F403) in all __init__.py files
+per-file-ignores = { "**/__init__.py" = ["F401", "F403"] }
+
+isort.split-on-trailing-comma = false
+isort.known-first-party = ["apollo", "tests"]
+
+[format]
+quote-style = "double"
+skip-magic-trailing-comma = true
