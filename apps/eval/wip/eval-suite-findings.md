@@ -121,16 +121,15 @@ Sweep case 69: the model called `edit_nix_file` on
 the model concluded the file was uneditable and stopped editing
 altogether. Fixed by naming the correct tool in the error.
 
-## 8. `edit_nix_file` rejects flat argument shapes models produce
+## 8. `edit_nix_file` rejects flat argument shapes models produce (addressed: PR #548)
 
 Sweep case 22: the model sent
 `edit_nix_file action="set" path="modules/darwin/packages.nix" value=[…]`
 (file path in `path`, action as a plain string) and got
 "missing action path. Put the scalar option path inside
-action.set.path". The model never recovered. The information needed to
-coerce this shape is present (string action + file-level path + value).
-Related: the schema-driven arg coercion on the evolution-fixes branch
-may cover this once landed — check before implementing separately.
+action.set.path". The model never recovered. Addressed by the
+schema-driven argument coercion in PR #548 (`jp/evolution-fixes`);
+once that lands, re-check case 22's shape in the next sweep.
 
 ## Re-run log
 
