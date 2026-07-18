@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{% block title %}nixmac eval report{% endblock %}</title>
+<link rel="stylesheet" href="{{ asset_root | default('assets') }}/style.css">
+<script defer src="{{ asset_root | default('assets') }}/report.js"></script>
+</head>
+<body>
+<header class="page-header">
+  <a class="brand" href="{{ index_href | default('index.html') }}">nixmac eval report</a>
+  <span class="muted">{{ run.meta.title }} · generated {{ run.meta.generated_at | isoformat }}</span>
+</header>
+<main>
+{% block content %}{% endblock %}
+</main>
+<footer class="page-footer">
+  <span class="muted">{{ run.cases | length }} case(s) · sourced from {{ run.meta.sourced_from }}</span>
+</footer>
+</body>
+</html>
