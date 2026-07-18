@@ -770,6 +770,8 @@ struct DeltaBatcher<'a, R: Runtime> {
     start_time: i64,
     iteration: usize,
     buffer: std::sync::Mutex<(String, std::time::Instant)>,
+    /// Whether any delta arrived at all — i.e. the stream actually started.
+    received: std::sync::atomic::AtomicBool,
 }
 
 impl<'a, R: Runtime> DeltaBatcher<'a, R> {
@@ -779,10 +781,17 @@ impl<'a, R: Runtime> DeltaBatcher<'a, R> {
             start_time,
             iteration,
             buffer: std::sync::Mutex::new((String::new(), std::time::Instant::now())),
+            received: std::sync::atomic::AtomicBool::new(false),
         }
     }
 
+    fn received(&self) -> bool {
+        self.received.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
     fn push(&self, delta: &str) {
+        self.received
+            .store(true, std::sync::atomic::Ordering::Relaxed);
         let Ok(mut guard) = self.buffer.lock() else {
             return;
         };
@@ -906,8 +915,9 @@ pub async fn generate_evolution<R: Runtime>(
     let max_output_tokens_for_request = normalize_max_output_tokens(max_output_tokens);
 
     // Experimental developer flag: stream provider text deltas into the
-    // progress view while the model responds.
-    let streaming_evolve = crate::state::ui_prefs::experimental_streaming_evolve(app);
+    // progress view while the model responds. Mutable: cleared for the rest
+    // of the run when the provider turns out not to support streaming.
+    let mut streaming_evolve = crate::state::ui_prefs::experimental_streaming_evolve(app);
     if streaming_evolve {
         info!("Experimental streaming evolve enabled");
     }
@@ -1215,6 +1225,7 @@ pub async fn generate_evolution<R: Runtime>(
         debug!("Sending request to AI provider, preview: {}", preview);
         emit_evolve_event(app, EvolveEvent::api_request(start_time, iteration));
 
+        let streaming_fallback = std::sync::atomic::AtomicBool::new(false);
         let response_result = {
             let delta_batcher = DeltaBatcher::new(app, start_time, iteration);
             let on_delta = |event: StreamEvent<'_>| match event {
@@ -1223,9 +1234,26 @@ pub async fn generate_evolution<R: Runtime>(
             };
             let fut = async {
                 if streaming_evolve {
-                    provider
+                    match provider
                         .completion_streaming(&active_provider_messages, &tools, &on_delta)
                         .await
+                    {
+                        // A provider that doesn't support streaming (some
+                        // OpenAI-compatible proxies reject stream requests)
+                        // fails before producing any output; retry the same
+                        // call blocking instead of failing the evolution. A
+                        // stream that already produced output failed for
+                        // real and keeps its error.
+                        Err(e) if !delta_batcher.received() => {
+                            warn!(
+                                "Streaming completion failed before any output ({}); retrying without streaming",
+                                e.user_message()
+                            );
+                            streaming_fallback.store(true, std::sync::atomic::Ordering::Relaxed);
+                            provider.completion(&active_provider_messages, &tools).await
+                        }
+                        other => other,
+                    }
                 } else {
                     provider.completion(&active_provider_messages, &tools).await
                 }
@@ -1267,6 +1295,13 @@ pub async fn generate_evolution<R: Runtime>(
                 }
             }
         };
+
+        if streaming_fallback.load(std::sync::atomic::Ordering::Relaxed) {
+            info!(
+                "Provider does not appear to support streaming; disabled for the rest of this run"
+            );
+            streaming_evolve = false;
+        }
 
         // Handle API failures
         let response = match response_result {
@@ -1329,6 +1364,13 @@ pub async fn generate_evolution<R: Runtime>(
                     max_token_budget,
                     max_iterations,
                 ),
+            );
+        } else if streaming_evolve {
+            // Streamed usage rides the final chunk and only when requested;
+            // a provider that omits it silently weakens the token budget
+            // (the iteration guard still applies) — say so.
+            warn!(
+                "Provider returned no token usage for the streamed completion; the session token budget may undercount"
             );
         }
 
