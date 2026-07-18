@@ -906,7 +906,34 @@ fn remove(content: &str, attrpath: &str, values: &[String]) -> Result<String> {
     Ok(content.to_string())
 }
 
+/// Reject string values that are Nix source in disguise. A value like
+/// `"{ url = …; }"` would be spliced as a *quoted string literal* — observed
+/// with gpt-oss-120b setting `inputs.home-manager` to a stringified attrset,
+/// which produced `inputs.home-manager = "{ … }";` and a broken flake. Only
+/// strings that actually parse as Nix attrset/list syntax are rejected, so
+/// ordinary string values (including ones containing braces) pass through.
+fn reject_nix_source_string(value: &serde_json::Value) -> Result<()> {
+    let Some(text) = value.as_str() else {
+        return Ok(());
+    };
+    let trimmed = text.trim();
+    let looks_structural = (trimmed.starts_with('{') && trimmed.ends_with('}'))
+        || (trimmed.starts_with('[') && trimmed.ends_with(']'));
+    if !looks_structural {
+        return Ok(());
+    }
+    if Root::parse(trimmed).errors().is_empty() {
+        return Err(anyhow::anyhow!(
+            "The value is Nix source serialized as a string; inserting it would produce a \
+             quoted string literal, not the expression you intend. Pass structured JSON \
+             instead: objects become attrsets and arrays become lists."
+        ));
+    }
+    Ok(())
+}
+
 fn set_value(content: &str, attrpath: &str, value: &serde_json::Value) -> Result<String> {
+    reject_nix_source_string(value)?;
     let rendered_value = render_nix_value(value)?;
 
     if let Some(value_range) = find_assignment_value_range(content, attrpath) {
@@ -1591,6 +1618,38 @@ environment.systemPackages = with pkgs; [
         assert!(
             Root::parse(&edited).errors().is_empty(),
             "edited content must stay valid Nix:\n{edited}"
+        );
+    }
+
+    #[test]
+    fn set_rejects_stringified_nix_attrset_value() {
+        let err = set_value(
+            FLAKE_WITH_INPUTS,
+            "inputs.home-manager",
+            &serde_json::Value::String(
+                "{\n  url = \"github:nix-community/home-manager\";\n}".to_string(),
+            ),
+        )
+        .expect_err("set should refuse Nix source disguised as a string");
+
+        assert!(
+            err.to_string().contains("structured JSON"),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
+    fn set_keeps_braced_prose_strings_as_strings() {
+        let edited = set_value(
+            WITH_PKGS_EMPTY,
+            "system.defaults.loginwindow.LoginwindowText",
+            &serde_json::Value::String("{ welcome to this mac }".to_string()),
+        )
+        .expect("prose in braces is still a string value");
+
+        assert!(
+            edited.contains("LoginwindowText = \"{ welcome to this mac }\";"),
+            "expected the prose string to stay quoted:\n{edited}"
         );
     }
 
