@@ -112,6 +112,26 @@ of bare `**` apparently match nothing (vs `**/*`). This feeds the model
 a false "repository is empty" signal at the worst possible moment.
 Check the glob translation in `evolve/tools/list_files.rs`.
 
+## 7. `.nixmac` guard message reads as a contradiction (fixed: PR #556)
+
+Sweep case 69: the model called `edit_nix_file` on
+`.nixmac/homebrew/data.json` and was told "agents may edit only
+`.nixmac/<module>/data.json`" — the exact path it passed. The real rule
+(module data.json is editable only via `edit_file`) was never stated;
+the model concluded the file was uneditable and stopped editing
+altogether. Fixed by naming the correct tool in the error.
+
+## 8. `edit_nix_file` rejects flat argument shapes models produce
+
+Sweep case 22: the model sent
+`edit_nix_file action="set" path="modules/darwin/packages.nix" value=[…]`
+(file path in `path`, action as a plain string) and got
+"missing action path. Put the scalar option path inside
+action.set.path". The model never recovered. The information needed to
+coerce this shape is present (string action + file-level path + value).
+Related: the schema-driven arg coercion on the evolution-fixes branch
+may cover this once landed — check before implementing separately.
+
 ## Re-run log
 
 - **2026-07-18, after fix 1** (branch `jp/evolve-build-truncation`,
@@ -151,6 +171,23 @@ Check the glob translation in `evolve/tools/list_files.rs`.
   remains noisy across runs (generated in some samples, limitReached
   in others). The repeat-call nudge fired once across these runs;
   literal repeats are rarer than the baseline suggested.
+
+- **2026-07-18, full 28-case sweep with fixes 1–4**
+  (`data/results-critical-allfixes`, PR1+PR2+PR3 merge): total tokens
+  3.92M → 3.26M (−17%). States: generated 16→12, conversational 7→9,
+  limitReached 5→7 — but the raw state counts mislead. Case 65 fixed
+  (conversational at it=2). Case 72 ("Install Homebrew",
+  expected_outcome=fail_gracefully) now correctly explains Homebrew is
+  already configured — the baseline's "generated" was the *wrong*
+  outcome that count-as-PASS scoring rewarded. The three
+  generated→limitReached flips (9, 22, 69) all share one shape:
+  an `edit_nix_file` failure (items 7 and 8) followed by the
+  no-progress limiter at iteration 18 with zero successful edits.
+  Done-rejections: zero across all 28 cases. Repeat-call nudges fired
+  in 2 cases; in case 9 the model repeated the identical `read_file`
+  once more even after the first nudge. Grade-aware stats
+  (`calc_stats`) should be used for the next sweep so
+  expected_outcome mismatches like case 72 are visible.
 
 ## How to re-measure
 
