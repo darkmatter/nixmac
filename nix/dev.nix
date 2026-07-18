@@ -245,6 +245,15 @@ lib.mkIf (!config.container.isBuilding) {
     exec = "bun run check";
   };
 
+  # Eval suite CLI, callable from anywhere in the repo without cd'ing into
+  # apps/eval. `uv run --project` resolves (and auto-syncs) that project's
+  # venv; the tools' own path defaults are script-relative, so the caller's
+  # cwd doesn't matter.
+  scripts.nixmac-eval = {
+    description = "nixmac evaluation suite (run | grade | stats | report | all)";
+    exec = ''exec ${pkgs.uv}/bin/uv run --project "${config.git.root}/apps/eval" nixmac-eval "$@"'';
+  };
+
   # Formatting
   treefmt.enable = true;
   treefmt.config = {
