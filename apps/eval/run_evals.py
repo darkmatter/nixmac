@@ -619,13 +619,64 @@ def generate_nixmac_settings(
     print(f"Generated nixmac settings at: {settings_path}")
 
 
+def _env_first(*names: str) -> str:
+    """First non-empty value among the given environment variables, or ""."""
+    for name in names:
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+    return ""
+
+
+def resolve_backend_from_env(parsed_args: argparse.Namespace) -> None:
+    """Fill in backend arguments from the environment when flags are absent.
+
+    Precedence: explicit CLI flags always win. When neither --ollama-url
+    nor --vllm-url is given, fall back to the environment — preferring the
+    vLLM/OpenAI-compatible endpoint (VLLM_URL or VLLM_API_BASE) over Ollama
+    (OLLAMA_URL or OLLAMA_API_BASE), since hosted endpoints are usually
+    exported deliberately for a session. If both are present in the
+    environment, warn about the choice and how to override it.
+
+    The vLLM API key similarly falls back to VLLM_API_KEY. (OPENAI_API_KEY
+    and OPENROUTER_API_KEY need no handling here: the nixmac binary already
+    resolves those env-first from the inherited child environment.)
+    """
+    if not parsed_args.ollama_url.strip() and not parsed_args.vllm_url.strip():
+        env_vllm = _env_first("VLLM_URL", "VLLM_API_BASE")
+        env_ollama = _env_first("OLLAMA_URL", "OLLAMA_API_BASE")
+        if env_vllm and env_ollama:
+            print(
+                "Warning: both vLLM (VLLM_URL/VLLM_API_BASE) and Ollama "
+                "(OLLAMA_URL/OLLAMA_API_BASE) endpoints are set in the "
+                "environment; preferring vLLM. Pass --ollama-url explicitly "
+                "to use Ollama."
+            )
+        if env_vllm:
+            parsed_args.vllm_url = env_vllm
+            print(f"Using vLLM endpoint from environment: {env_vllm}")
+        elif env_ollama:
+            parsed_args.ollama_url = env_ollama
+            print(f"Using Ollama endpoint from environment: {env_ollama}")
+
+    if parsed_args.vllm_url.strip() and not parsed_args.vllm_api_key:
+        env_key = _env_first("VLLM_API_KEY")
+        if env_key:
+            parsed_args.vllm_api_key = env_key
+            print("Using vLLM API key from environment (VLLM_API_KEY)")
+
+
 def main(parsed_args: argparse.Namespace) -> None:
+    resolve_backend_from_env(parsed_args)
+
     # Validate that at least one backend is configured: either ollama or vllm
     ollama_set = bool(getattr(parsed_args, "ollama_url", None)) and parsed_args.ollama_url.strip() != ""
     vllm_set = bool(getattr(parsed_args, "vllm_url", None)) and parsed_args.vllm_url.strip() != ""
     if not (ollama_set or vllm_set):
         print(
-            "Error: you must provide either --ollama-url or --vllm-url (and optionally --vllm-api-key)"
+            "Error: no model backend configured. Pass --ollama-url or "
+            "--vllm-url, or export VLLM_URL/VLLM_API_BASE or "
+            "OLLAMA_URL/OLLAMA_API_BASE (plus VLLM_API_KEY if needed)."
         )
         raise SystemExit(2)
 
@@ -786,15 +837,19 @@ def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.Argu
     parser.add_argument(
         "--nixmac", type=str, default=str(DEFAULT_NIXMAC), help="Path to nixmac binary"
     )
-    # Flags mirroring main nixmac app settings
+    # Flags mirroring main nixmac app settings. Model defaults honor the
+    # same env vars the nixmac binary uses (EVOLVE_MODEL / SUMMARY_MODEL).
     parser.add_argument(
-        "--evolve-model", type=str, default=DEFAULT_EVOLVE_MODEL, help="Evolve model (e.g. gpt-4)"
+        "--evolve-model",
+        type=str,
+        default=os.environ.get("EVOLVE_MODEL") or DEFAULT_EVOLVE_MODEL,
+        help=f"Evolve model (env: EVOLVE_MODEL; default: {DEFAULT_EVOLVE_MODEL})",
     )
     parser.add_argument(
         "--summary-model",
         type=str,
-        default=DEFAULT_SUMMARY_MODEL,
-        help="Summary model (e.g. gpt-4)",
+        default=os.environ.get("SUMMARY_MODEL") or DEFAULT_SUMMARY_MODEL,
+        help=f"Summary model (env: SUMMARY_MODEL; default: {DEFAULT_SUMMARY_MODEL})",
     )
     parser.add_argument(
         "--openai-key", dest="openai_key", type=str, default=None, help="OpenAI API key"
@@ -810,21 +865,24 @@ def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.Argu
         dest="ollama_url",
         type=str,
         default="",
-        help="Ollama base URL (e.g. http://localhost:11434)",
+        help="Ollama base URL, e.g. http://localhost:11434 (env: OLLAMA_URL or OLLAMA_API_BASE)",
     )
     parser.add_argument(
         "--vllm-url",
         dest="vllm_url",
         type=str,
         default="",
-        help="vLLM base URL (e.g. http://100.111.97.14:8002/v1)",
+        help=(
+            "OpenAI-compatible/vLLM base URL, e.g. https://host/v1 "
+            "(env: VLLM_URL or VLLM_API_BASE; preferred over Ollama when both are set)"
+        ),
     )
     parser.add_argument(
         "--vllm-api-key",
         dest="vllm_api_key",
         type=str,
         default=None,
-        help="vLLM API key (if required)",
+        help="vLLM API key if required (env: VLLM_API_KEY)",
     )
     parser.add_argument("--host", type=str, default=None, help="Host name for your Mac")
 
