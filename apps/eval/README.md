@@ -37,11 +37,16 @@ uv run nixmac-eval run --csv data/test_prompts.csv --vllm-url ... # run cases
 uv run nixmac-eval grade  -i data/results                         # persist grades
 uv run nixmac-eval stats  -i data/results                         # scorecard tables
 uv run nixmac-eval report -i data/results -o data/report          # HTML report
+
+uv run nixmac-eval all --csv data/test_prompts.csv --vllm-url ... # all of the above
 ```
 
-The typical workflow is `run` → `grade` → `stats`/`report`. `stats` also
-works on ungraded results: it grades them in memory (without writing
-back) so its pass/fail always reflects each case's `expected_outcome`.
+The typical workflow is `run` → `grade` → `stats`/`report`; `all` runs
+those four steps in order against a single results directory (it takes
+all of `run`'s flags, plus `--golden-only`, `-s/--summary-only` and
+`-o/--output-dir` for the later stages). `stats` also works on ungraded
+results: it grades them in memory (without writing back) so its
+pass/fail always reflects each case's `expected_outcome`.
 
 The original entry points (`python run_evals.py`, `python calc_stats.py`,
 `python grade.py`, `python generate_report.py`) still work with the same
