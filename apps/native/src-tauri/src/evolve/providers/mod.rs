@@ -244,6 +244,14 @@ pub trait AiProvider: Send + Sync {
         self.completion(messages, tools).await
     }
 
+    /// Whether [`Self::completion_streaming`] actually streams. The loop
+    /// skips the streaming path (and its unsupported-endpoint fallback) for
+    /// providers whose "streaming" call is just the blocking one — retrying
+    /// those would run an identical, possibly expensive call twice.
+    fn supports_streaming(&self) -> bool {
+        false
+    }
+
     fn model_name(&self) -> String;
 }
 
@@ -300,6 +308,22 @@ fn looks_like_context_window_error(body: &str) -> bool {
 }
 
 impl ProviderError {
+    /// Whether a pre-delta streaming failure plausibly means the endpoint
+    /// rejected the streaming request itself (unknown `stream`/
+    /// `stream_options` fields, unimplemented SSE) — the cases worth
+    /// retrying through the blocking path. Auth failures, rate limits,
+    /// server errors, and transport failures would hit the blocking call
+    /// identically, so retrying them only delays the real error and can
+    /// double a billable request.
+    pub fn indicates_streaming_unsupported(&self) -> bool {
+        match self {
+            ProviderError::Http { status, .. } => {
+                matches!(status.as_u16(), 400 | 404 | 405 | 415 | 422 | 501)
+            }
+            ProviderError::Other(_) => false,
+        }
+    }
+
     /// Return a user-friendly error message suitable for display in the UI.
     ///
     /// Translates raw provider errors into actionable guidance without
@@ -425,6 +449,25 @@ mod tests {
             extractor.push(r#"{"path":"flake.nix","values":["vim"]}"#),
             ""
         );
+    }
+
+    #[test]
+    fn streaming_unsupported_matches_rejection_shaped_statuses() {
+        let http = |code: u16| ProviderError::Http {
+            status: StatusCode::from_u16(code).expect("valid status"),
+            body: String::new(),
+        };
+        // Rejected request shapes: worth one blocking retry.
+        for code in [400, 404, 405, 415, 422, 501] {
+            assert!(http(code).indicates_streaming_unsupported(), "{code}");
+        }
+        // Auth, rate limits, and server failures would hit the blocking
+        // path identically; transport errors likewise.
+        for code in [401, 403, 429, 500, 502, 503] {
+            assert!(!http(code).indicates_streaming_unsupported(), "{code}");
+        }
+        let transport = ProviderError::Other(anyhow::anyhow!("connection refused"));
+        assert!(!transport.indicates_streaming_unsupported());
     }
 
     #[test]

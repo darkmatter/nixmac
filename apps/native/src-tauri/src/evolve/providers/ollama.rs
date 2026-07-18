@@ -137,6 +137,10 @@ impl AiProvider for OllamaProvider {
         self.model.clone()
     }
 
+    fn supports_streaming(&self) -> bool {
+        true
+    }
+
     async fn completion(
         &self,
         messages: &[Message],

@@ -178,6 +178,10 @@ impl AiProvider for OpenAIProvider {
         self.model.clone()
     }
 
+    fn supports_streaming(&self) -> bool {
+        true
+    }
+
     async fn completion(
         &self,
         messages: &[Message],

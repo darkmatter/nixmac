@@ -1233,20 +1233,26 @@ pub async fn generate_evolution<R: Runtime>(
                 StreamEvent::Reset => delta_batcher.reset(),
             };
             let fut = async {
-                if streaming_evolve {
+                if streaming_evolve && provider.supports_streaming() {
                     match provider
                         .completion_streaming(&active_provider_messages, &tools, &on_delta)
                         .await
                     {
-                        // A provider that doesn't support streaming (some
-                        // OpenAI-compatible proxies reject stream requests)
-                        // fails before producing any output; retry the same
-                        // call blocking instead of failing the evolution. A
-                        // stream that already produced output failed for
-                        // real and keeps its error.
-                        Err(e) if !delta_batcher.received() => {
+                        // An endpoint that rejects the streaming request
+                        // itself (some OpenAI-compatible proxies) fails
+                        // before producing any output with a
+                        // rejection-shaped status; retry that one case
+                        // blocking instead of failing the evolution. Other
+                        // failures — auth, rate limits, transport, server
+                        // errors, or a stream that already produced output —
+                        // keep their error: the blocking path would hit them
+                        // identically, and retrying can double a billable
+                        // request.
+                        Err(e)
+                            if !delta_batcher.received() && e.indicates_streaming_unsupported() =>
+                        {
                             warn!(
-                                "Streaming completion failed before any output ({}); retrying without streaming",
+                                "Endpoint rejected the streaming request ({}); retrying without streaming",
                                 e.user_message()
                             );
                             streaming_fallback.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -1365,7 +1371,7 @@ pub async fn generate_evolution<R: Runtime>(
                     max_iterations,
                 ),
             );
-        } else if streaming_evolve {
+        } else if streaming_evolve && provider.supports_streaming() {
             // Streamed usage rides the final chunk and only when requested;
             // a provider that omits it silently weakens the token budget
             // (the iteration guard still applies) — say so.
