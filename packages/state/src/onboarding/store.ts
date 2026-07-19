@@ -7,11 +7,28 @@
  */
 
 import { create } from "zustand";
-import type { OnboardingStateValues, OnboardingStepId } from "./types";
+import type { InferenceSetupDraft, OnboardingStateValues, OnboardingStepId } from "./types";
+
+export const initialInferenceSetupDraft: InferenceSetupDraft = {
+	mode: "hosted",
+	hosted: {
+		email: "",
+		otp: "",
+		otpSent: false,
+		selectedPlan: "credits",
+	},
+	byok: {
+		providerId: "openrouter",
+		model: "",
+		key: "",
+		baseUrl: "",
+	},
+};
 
 export const initialOnboardingState: OnboardingStateValues = {
 	trackedCustomizations: [],
 	trackedCustomizationSources: {},
+	inferenceSetupDraft: initialInferenceSetupDraft,
 	inferenceDeferred: false,
 	celebrating: false,
 	viewingStep: null,
@@ -24,6 +41,11 @@ export type OnboardingActions = {
 		trackedCustomizations: string[],
 		trackedCustomizationSources: OnboardingStateValues["trackedCustomizationSources"],
 	) => void;
+	setInferenceSetupDraft: (draft: Partial<InferenceSetupDraft>) => void;
+	setHostedInferenceDraft: (
+		draft: Partial<InferenceSetupDraft["hosted"]>,
+	) => void;
+	setByokInferenceDraft: (draft: Partial<InferenceSetupDraft["byok"]>) => void;
 	/** Defer inference to the build step (inline setup runs alongside the build). */
 	deferInference: () => void;
 	/** Keep the success celebration mounted after the build gate is satisfied. */
@@ -41,6 +63,33 @@ export const onboardingStore = create<OnboardingStore>()((set) => ({
 		trackedCustomizations,
 		trackedCustomizationSources,
 	) => set({ trackedCustomizations, trackedCustomizationSources }),
+	setInferenceSetupDraft: (draft) =>
+		set((state) => ({
+			inferenceSetupDraft: {
+				...state.inferenceSetupDraft,
+				...draft,
+			},
+		})),
+	setHostedInferenceDraft: (draft) =>
+		set((state) => ({
+			inferenceSetupDraft: {
+				...state.inferenceSetupDraft,
+				hosted: {
+					...state.inferenceSetupDraft.hosted,
+					...draft,
+				},
+			},
+		})),
+	setByokInferenceDraft: (draft) =>
+		set((state) => ({
+			inferenceSetupDraft: {
+				...state.inferenceSetupDraft,
+				byok: {
+					...state.inferenceSetupDraft.byok,
+					...draft,
+				},
+			},
+		})),
 	deferInference: () => set({ inferenceDeferred: true, viewingStep: null }),
 	setCelebrating: (celebrating) => set({ celebrating }),
 	setViewingStep: (viewingStep) => set({ viewingStep }),
@@ -56,6 +105,9 @@ export const onboardingStore = create<OnboardingStore>()((set) => ({
 const {
 	reset,
 	setTrackedCustomizations,
+	setInferenceSetupDraft,
+	setHostedInferenceDraft,
+	setByokInferenceDraft,
 	deferInference,
 	setCelebrating,
 	setViewingStep,
@@ -71,6 +123,9 @@ export const onboardingActions: OnboardingActions & {
 	subscribe: onboardingStore.subscribe,
 	reset,
 	setTrackedCustomizations,
+	setInferenceSetupDraft,
+	setHostedInferenceDraft,
+	setByokInferenceDraft,
 	deferInference,
 	setCelebrating,
 	setViewingStep,
