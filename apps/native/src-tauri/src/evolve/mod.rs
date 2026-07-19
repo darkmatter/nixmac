@@ -1885,9 +1885,14 @@ fn truncate_build_output_for_model(output: &str) -> String {
     truncated
 }
 
-/// Sanitize sensitive tool arguments before logging, telemetry emission, and execution.
+/// Normalize and sanitize tool arguments before logging, telemetry emission,
+/// and execution: repair double-encoded arguments the model serialized into
+/// strings, then redact sensitive fields. `execute_tool` re-applies the
+/// (idempotent) coercion itself so replayed or direct tool calls behave the
+/// same; doing it here as well keeps emitted telemetry consistent with what
+/// actually executes.
 fn sanitize_tool_args(tool_name: &str, args: &serde_json::Value) -> serde_json::Value {
-    let mut sanitized = args.clone();
+    let mut sanitized = tools::coerce_stringified_args(tool_name, args.clone());
 
     if tool_name == "ensure_secret" {
         if let Some(args_obj) = sanitized.as_object_mut() {

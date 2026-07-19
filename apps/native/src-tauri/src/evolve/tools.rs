@@ -7,6 +7,7 @@
 //! ([`ToolResult`], [`ToolCtx`]) and helpers live here so every tool module can
 //! reach them via `super::`.
 
+mod arg_coercion;
 mod ask_user;
 mod build_check;
 mod done;
@@ -31,6 +32,8 @@ use crate::shared_types::FileEdit;
 use super::gitignore::GitignoreChecker;
 use anyhow::{Result, anyhow};
 use std::path::{Component, Path};
+
+pub(crate) use arg_coercion::coerce_stringified_args;
 
 // =============================================================================
 // Tool Definitions
@@ -116,11 +119,15 @@ pub fn execute_tool(
     auto_format: bool,
     gitignore_matcher: Option<&GitignoreChecker>,
 ) -> Result<ToolResult> {
+    // Repair double-encoded arguments at the dispatch boundary so every
+    // caller — the live model loop, tests, and replayed tool calls alike —
+    // executes with identically normalized arguments.
+    let args = coerce_stringified_args(name, args.clone());
     let ctx = ToolCtx {
         repo_root,
         config_dir,
         host_attr,
-        args,
+        args: &args,
         auto_format,
         gitignore_matcher,
     };
@@ -533,6 +540,90 @@ mod tests {
         let msg = err.to_string();
         assert!(
             msg.contains("edit_nix_file.set_attrs: missing action path"),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
+    fn edit_nix_file_recovers_double_encoded_action_string() {
+        let tmp = tempdir().expect("tempdir");
+        git2::Repository::init(tmp.path()).expect("init git repo");
+        fs::write(tmp.path().join("system.nix"), "{ ... }: { }\n").expect("write nix file");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "path": "system.nix",
+                "action": "{\"set\": {\"path\": \"system.defaults.NSGlobalDomain._HIHideMenuBar\", \"value\": false}}"
+            }),
+            false,
+            None,
+        )
+        .expect("double-encoded action string should be recovered as the action object");
+
+        assert!(matches!(result, ToolResult::EditSemantic(_)));
+        let content = fs::read_to_string(tmp.path().join("system.nix")).expect("read nix file");
+        assert!(
+            content.contains("_HIHideMenuBar = false"),
+            "unexpected content: {content}"
+        );
+    }
+
+    #[test]
+    fn execute_tool_repairs_stringified_action_payload() {
+        let tmp = tempdir().expect("tempdir");
+        git2::Repository::init(tmp.path()).expect("init git repo");
+        fs::write(tmp.path().join("services.nix"), "{ ... }: { }\n").expect("write nix file");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "path": "services.nix",
+                "action": {
+                    "set": "{\"path\": \"services.tailscale.enable\", \"value\": true}"
+                }
+            }),
+            false,
+            None,
+        )
+        .expect("stringified action payload should be repaired at dispatch");
+
+        assert!(matches!(result, ToolResult::EditSemantic(_)));
+        let content = fs::read_to_string(tmp.path().join("services.nix")).expect("read nix file");
+        assert!(
+            content.contains("services.tailscale.enable = true"),
+            "unexpected content: {content}"
+        );
+    }
+
+    #[test]
+    fn edit_nix_file_rejects_double_encoded_non_action_string() {
+        let tmp = tempdir().expect("tempdir");
+        git2::Repository::init(tmp.path()).expect("init git repo");
+        fs::write(tmp.path().join("system.nix"), "{ ... }: { }\n").expect("write nix file");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "path": "system.nix",
+                "action": "\"not-an-action\""
+            }),
+            false,
+            None,
+        );
+
+        let err = result.expect_err("non-object double-encoded action should still error");
+        assert!(
+            err.to_string().contains("unsupported shorthand action"),
             "unexpected error: {err:#}"
         );
     }
