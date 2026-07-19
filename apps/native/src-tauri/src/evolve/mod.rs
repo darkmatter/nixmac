@@ -24,7 +24,7 @@ pub mod lifecycle;
 /// Directories ignored by file listing and search helpers.
 pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
-use crate::evolve::utils::{escape_user_query, format_duration_secs};
+use crate::evolve::utils::{escape_user_query, format_duration_secs, truncate_error};
 use crate::git::query::repo_root;
 // Re-export public API
 use crate::shared_types::{Evolution, EvolutionState, FileEdit};
@@ -1873,10 +1873,39 @@ Do not invent tool names and do not place tool invocations in assistant content.
     Ok(evolution)
 }
 
+// Drop transient nix chatter (lockfile creation notes, input pinning bullets,
+// dirty-tree warnings) that can crowd the actual error out of the character
+// budget on first builds.
+fn strip_build_noise(output: &str) -> String {
+    let mut kept: Vec<&str> = Vec::new();
+    let mut in_lock_block = false;
+    for line in output.lines() {
+        let trimmed = line.trim_start();
+        if trimmed.contains("creating lock file") {
+            in_lock_block = true;
+            continue;
+        }
+        if in_lock_block {
+            // Bullets like "• Added input 'nixpkgs':" and their indented
+            // continuation lines belong to the lockfile-creation block.
+            if trimmed.starts_with('•') || (!trimmed.is_empty() && line.starts_with(' ')) {
+                continue;
+            }
+            in_lock_block = false;
+        }
+        if trimmed.starts_with("warning: Git tree") && trimmed.contains("is dirty") {
+            continue;
+        }
+        kept.push(line);
+    }
+    kept.join("\n")
+}
+
 // Truncate build output to save against model token limits while preserving the tail where error details usually are
 fn truncate_build_output_for_model(output: &str) -> String {
+    let cleaned = strip_build_noise(output);
     // Short-circuit if output is already within limits
-    let output = output.trim();
+    let output = cleaned.trim();
     if output.len() <= BUILD_OUTPUT_MAX_CHARS {
         return output.to_string();
     }
@@ -1894,8 +1923,10 @@ fn truncate_build_output_for_model(output: &str) -> String {
     let mut truncated = tail_lines.join("\n");
 
     if truncated.len() > BUILD_OUTPUT_MAX_CHARS {
-        global_utils::truncate_utf8(&mut truncated, BUILD_OUTPUT_MAX_CHARS);
-        truncated.push_str("\n\n... [truncated] ...");
+        // Keep both edges: the "error:" header at the start and the causal
+        // message nix prints at the end of the "… while evaluating …" chain.
+        // Cutting the tail would leave the model with only trace preamble.
+        truncated = truncate_error(&truncated, BUILD_OUTPUT_MAX_CHARS);
     } else if start_idx > 0 {
         truncated = format!(
             "... [omitted {} lines; original size={} chars] ...\n\n{}",
@@ -2242,9 +2273,10 @@ fn process_tool_result(
 #[cfg(test)]
 mod tests {
     use super::{
-        Evolution, EvolutionMessage, EvolutionState, FileEdit, Message, Retention, ToolResult,
-        filter_evolution_messages, normalize_openai_max_output_tokens, process_tool_result,
-        read_file_dedup_key, store_tool_result,
+        BUILD_OUTPUT_MAX_CHARS, Evolution, EvolutionMessage, EvolutionState, FileEdit, Message,
+        Retention, ToolResult, filter_evolution_messages, normalize_openai_max_output_tokens,
+        process_tool_result, read_file_dedup_key, store_tool_result,
+        truncate_build_output_for_model,
     };
 
     fn build_result(success: bool) -> ToolResult {
@@ -2809,5 +2841,97 @@ mod tests {
             read_file_dedup_key("modules/darwin/defaults.nix", &partial_args),
             None
         );
+    }
+
+    const LOCKFILE_NOISE: &str = "\
+warning: creating lock file '/Users/test/.nixmac/flake.lock':
+• Added input 'nixpkgs':
+    'github:NixOS/nixpkgs/abc123' (2026-07-01)
+• Added input 'nix-darwin':
+    'github:LnL7/nix-darwin/def456' (2026-06-15)";
+
+    const DIRTY_TREE_NOISE: &str = "warning: Git tree '/Users/test/.nixmac' is dirty";
+
+    #[test]
+    fn truncate_should_strip_lockfile_creation_block() {
+        let output = format!("{}\nerror: undefined variable 'gitt'", LOCKFILE_NOISE);
+        let result = truncate_build_output_for_model(&output);
+        assert_eq!(result, "error: undefined variable 'gitt'");
+    }
+
+    #[test]
+    fn truncate_should_strip_dirty_tree_warning() {
+        let output = format!("{}\nerror: syntax error, unexpected ';'", DIRTY_TREE_NOISE);
+        let result = truncate_build_output_for_model(&output);
+        assert_eq!(result, "error: syntax error, unexpected ';'");
+    }
+
+    #[test]
+    fn truncate_should_keep_error_lines_following_lockfile_block() {
+        let output = format!(
+            "{}\nerror:\n       … while evaluating the attribute 'system'\n       error: attribute 'foo' missing",
+            LOCKFILE_NOISE
+        );
+        let result = truncate_build_output_for_model(&output);
+        assert!(!result.contains("Added input"));
+        assert!(result.contains("… while evaluating the attribute 'system'"));
+        assert!(result.contains("error: attribute 'foo' missing"));
+    }
+
+    #[test]
+    fn truncate_should_return_short_output_unchanged() {
+        let output = "error: something small";
+        assert_eq!(truncate_build_output_for_model(output), output);
+    }
+
+    #[test]
+    fn truncate_noise_stripping_should_bring_output_within_budget() {
+        // Enough lockfile noise to blow the budget on its own; the error text
+        // must survive intact once the noise is gone.
+        let noise = LOCKFILE_NOISE
+            .lines()
+            .cycle()
+            .take(400)
+            .collect::<Vec<_>>()
+            .join("\n");
+        let error =
+            "error: undefined variable 'gitt'\n       at /Users/test/.nixmac/flake.nix:12:5";
+        let output = format!("{}\n{}", noise, error);
+        assert!(output.len() > BUILD_OUTPUT_MAX_CHARS);
+
+        let result = truncate_build_output_for_model(&output);
+        assert_eq!(result, error);
+    }
+
+    #[test]
+    fn truncate_should_keep_causal_tail_of_oversized_error_section() {
+        // Model an eval failure with a single "error:" header whose
+        // "… while evaluating …" chain exceeds the budget, with the causal
+        // message on the last lines (as nix prints it).
+        let frames = (0..600)
+            .map(|i| format!("       … while evaluating the attribute 'frame{}'", i))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let output = format!(
+            "evaluating flake...\nerror:\n{}\n       undefined variable 'gitt'\n       at /Users/test/.nixmac/flake.nix:12:5",
+            frames
+        );
+        assert!(output.len() > BUILD_OUTPUT_MAX_CHARS);
+
+        let result = truncate_build_output_for_model(&output);
+        assert!(result.contains("undefined variable 'gitt'"));
+        assert!(result.contains("at /Users/test/.nixmac/flake.nix:12:5"));
+        assert!(result.contains("[truncated"));
+        assert!(result.len() <= BUILD_OUTPUT_MAX_CHARS + 200);
+    }
+
+    #[test]
+    fn truncate_should_keep_tail_when_no_error_marker_present() {
+        let lines = (0..1000)
+            .map(|i| format!("copying path /nix/store/{i}-pkg to store"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let result = truncate_build_output_for_model(&lines);
+        assert!(result.contains("999-pkg"));
     }
 }
