@@ -328,6 +328,10 @@ const MAX_ITERATIONS_BEFORE_EDIT_PERCENT: usize = 75;
 const BUILD_OUTPUT_MAX_CHARS: usize = 6_000;
 const BUILD_OUTPUT_TAIL_LINES: usize = 80;
 
+// Consecutive rejected `done` calls after which the evolution stops gracefully
+// (limit prompt / LimitReached) instead of grinding to the iteration limit.
+const MAX_REJECTED_DONE_CALLS: usize = 3;
+
 const SYSTEM_PROMPT: &str = include_str!("../../prompts/system.md");
 
 fn configured_model(
@@ -562,6 +566,7 @@ enum EvolutionLimitKind {
     MaxIterations,
     BuildAttempts,
     TokenBudget,
+    DoneRejections,
 }
 
 fn format_token_count(tokens: usize) -> String {
@@ -587,6 +592,7 @@ impl EvolutionLimitKind {
             Self::BuildAttempts => format!("{} build attempts", attempts),
             Self::NoProgress | Self::MaxIterations => format!("{} attempts", attempts),
             Self::TokenBudget => format!("{} tokens", format_token_count(attempts)),
+            Self::DoneRejections => format!("{} unverified attempts to finish", attempts),
         }
     }
 
@@ -619,6 +625,10 @@ impl EvolutionLimitKind {
             ),
             Self::TokenBudget => format!(
                 "Evolution stopped after consuming {}. You can review the current changes or continue with a follow-up prompt.",
+                self.attempts_label(attempts)
+            ),
+            Self::DoneRejections => format!(
+                "Evolution stopped after {} — the changes never passed a build check. You can review the current changes or continue with a follow-up prompt.",
                 self.attempts_label(attempts)
             ),
         }
@@ -994,7 +1004,7 @@ pub async fn generate_evolution<R: Runtime>(
     let mut evolution = Evolution::new(prompt);
     let mut iteration: usize = 0;
     let mut build_attempts: usize = 0;
-    let mut build_verified = false;
+    let mut done_gate = DoneGate::default();
     let mut total_tokens: u32 = 0;
     let chat_memory_store = session_chat_memory_store();
 
@@ -1533,10 +1543,9 @@ pub async fn generate_evolution<R: Runtime>(
                                 &tool_call.id,
                                 res,
                                 &mut evolution,
-                                &mut build_verified,
+                                &mut done_gate,
                                 &mut build_attempts,
                                 max_build_attempts,
-                                &host_attr,
                                 start_time,
                                 iteration,
                             ) {
@@ -1799,6 +1808,51 @@ Do not invent tool names and do not place tool invocations in assistant content.
                 }
             }
         }
+
+        // Safety limits -- Repeated rejected `done` calls
+        if done_gate.rejected_dones >= MAX_REJECTED_DONE_CALLS {
+            warn!(
+                "⚠️ Model tried to finish {} times without a verified build - asking whether to continue",
+                done_gate.rejected_dones
+            );
+            match ask_to_continue_after_limit(
+                app,
+                start_time,
+                iteration,
+                EvolutionLimitKind::DoneRejections,
+                done_gate.rejected_dones,
+                interactive_limit_prompt,
+            )
+            .await
+            {
+                LimitDecision::Continue => {
+                    done_gate.rejected_dones = 0;
+                    info!("Resetting rejected-done streak at user request");
+                }
+                LimitDecision::Stop => {
+                    finish_after_limit_stop(
+                        app,
+                        &mut evolution,
+                        start_time,
+                        iteration,
+                        EvolutionLimitKind::DoneRejections,
+                        done_gate.rejected_dones,
+                    );
+                    break;
+                }
+                LimitDecision::Cancelled => {
+                    evolution.state = EvolutionState::Failed;
+                    return Err(EvolutionRunError::from_state(
+                        session_control::EVOLUTION_CANCELLED_MSG,
+                        &evolution,
+                        iteration,
+                        build_attempts,
+                        total_tokens,
+                    )
+                    .into());
+                }
+            }
+        }
     }
 
     // Update evolution stats
@@ -2025,14 +2079,31 @@ fn summarize_result(result: &ToolResult) -> (String, bool) {
 /// Returns `Ok(Some(true))` if the loop should break, `Ok(Some(false))` to continue,
 /// or `Ok(None)` to break the inner tool loop but continue the outer loop.
 #[allow(clippy::too_many_arguments)]
+/// Gate deciding whether `done` may complete the evolution.
+///
+/// Kept as a struct (rather than a bare bool) so the completion rules —
+/// verification state and, later, repeated-rejection tracking — travel
+/// together through the tool-result pipeline.
+#[derive(Default)]
+struct DoneGate {
+    /// Set by a passing build_check; cleared by any subsequent edit or a
+    /// failing build.
+    build_verified: bool,
+    /// Consecutive `done` calls rejected for lacking a verified build.
+    /// Reset whenever the model actually runs build_check.
+    rejected_dones: usize,
+    /// Model-facing output of the last failed build_check, inlined into
+    /// repeated rejections so the loop has fresh signal to break on.
+    last_build_error: Option<String>,
+}
+
 fn process_tool_result(
     tool_call_id: &str,
     result: &ToolResult,
     evolution: &mut Evolution,
-    build_verified: &mut bool,
+    done_gate: &mut DoneGate,
     build_attempts: &mut usize,
     max_build_attempts: usize,
-    host_attr: &str,
     start_time: i64,
     iteration: usize,
 ) -> Result<(Message, Option<bool>)> {
@@ -2094,7 +2165,7 @@ fn process_tool_result(
             // A new edit invalidates any prior successful build: the verified
             // state no longer matches the files, so `done` must require a fresh
             // build_check.
-            *build_verified = false;
+            done_gate.build_verified = false;
             let msg = Message::Tool {
                 tool_call_id: tool_call_id.to_string(),
                 content:
@@ -2117,7 +2188,7 @@ fn process_tool_result(
                 replace: format!("semantic:{:?}", edit.action),
             });
             // A new edit invalidates any prior successful build verification.
-            *build_verified = false;
+            done_gate.build_verified = false;
 
             let msg = Message::Tool {
                 tool_call_id: tool_call_id.to_string(),
@@ -2136,7 +2207,7 @@ fn process_tool_result(
                 replace: format!("ensure_secret:{}", result.name),
             });
             // A new edit invalidates any prior successful build verification.
-            *build_verified = false;
+            done_gate.build_verified = false;
             let content = serde_json::to_string(result)
                 .unwrap_or_else(|_| format!("{{\"name\":\"{}\"}}", result.name));
             let msg = Message::Tool {
@@ -2180,9 +2251,14 @@ fn process_tool_result(
                 (None, None) => "(no build output captured)".to_string(),
             };
 
+            // Running build_check is exactly what a done-rejection asks for,
+            // so any attempt (pass or fail) resets the rejection streak.
+            done_gate.rejected_dones = 0;
+
             if *success {
                 info!("✅ BUILD CHECK PASSED");
-                *build_verified = true;
+                done_gate.build_verified = true;
+                done_gate.last_build_error = None;
 
                 let msg = Message::Tool {
                     tool_call_id: tool_call_id.to_string(),
@@ -2195,7 +2271,8 @@ fn process_tool_result(
             } else {
                 // A failing build invalidates any earlier successful verification,
                 // otherwise `done` could still accept the (now broken) config.
-                *build_verified = false;
+                done_gate.build_verified = false;
+                done_gate.last_build_error = Some(model_output.clone());
                 warn!(
                     "❌ BUILD CHECK FAILED (attempt {}/{})",
                     build_attempts, max_build_attempts
@@ -2226,7 +2303,7 @@ fn process_tool_result(
         }
 
         ToolResult::Done(summary) => {
-            if *build_verified {
+            if done_gate.build_verified {
                 info!("✅ EVOLUTION COMPLETE (build verified)");
                 info!("Summary: {}", summary);
                 evolution.summary = Some(summary.clone());
@@ -2237,14 +2314,36 @@ fn process_tool_result(
                 };
                 (msg, Some(true))
             } else if evolution.has_edits() {
-                info!("⚠️ Agent called done without build verification");
+                done_gate.rejected_dones += 1;
+                info!(
+                    "⚠️ Agent called done without build verification (rejection #{})",
+                    done_gate.rejected_dones
+                );
+                // Vary the message on repeats: an identical rejection gives a
+                // looping model nothing new to react to, so escalate with the
+                // concrete blocker (the last build error) when we have one.
+                let content = if done_gate.rejected_dones <= 1 {
+                    "Before completing, you must verify your changes compile. \
+                     Call the build_check tool (it takes no required arguments) \
+                     to validate, then call done again."
+                        .to_string()
+                } else if let Some(last_error) = &done_gate.last_build_error {
+                    format!(
+                        "done rejected again: the build is still not verified. Do not \
+                         call done again until build_check passes. The last build_check \
+                         failed with:\n\n{}\n\nFix that error, run build_check, and only \
+                         call done once it passes.",
+                        last_error
+                    )
+                } else {
+                    "done rejected again: you have made edits but have not run \
+                     build_check even once. Call the build_check tool now (it takes \
+                     no required arguments); call done only after it passes."
+                        .to_string()
+                };
                 let msg = Message::Tool {
                     tool_call_id: tool_call_id.to_string(),
-                    content: format!(
-                        "Before completing, you must verify your changes compile. \
-                         Run build_check with host='{}' to validate, then call done again.",
-                        host_attr
-                    ),
+                    content,
                 };
                 (msg, None) // Break inner loop, continue outer
             } else {
@@ -2273,10 +2372,10 @@ fn process_tool_result(
 #[cfg(test)]
 mod tests {
     use super::{
-        BUILD_OUTPUT_MAX_CHARS, Evolution, EvolutionMessage, EvolutionState, FileEdit, Message,
-        Retention, ToolResult, filter_evolution_messages, normalize_openai_max_output_tokens,
-        process_tool_result, read_file_dedup_key, store_tool_result,
-        truncate_build_output_for_model,
+        BUILD_OUTPUT_MAX_CHARS, DoneGate, Evolution, EvolutionMessage, EvolutionState, FileEdit,
+        Message, Retention, ToolResult, filter_evolution_messages,
+        normalize_openai_max_output_tokens, process_tool_result, read_file_dedup_key,
+        store_tool_result, truncate_build_output_for_model,
     };
 
     fn build_result(success: bool) -> ToolResult {
@@ -2292,16 +2391,15 @@ mod tests {
         }
     }
 
-    fn run_tool_result(result: &ToolResult, evolution: &mut Evolution, build_verified: &mut bool) {
+    fn run_tool_result(result: &ToolResult, evolution: &mut Evolution, done_gate: &mut DoneGate) {
         let mut build_attempts = 0usize;
         process_tool_result(
             "tool-call-id",
             result,
             evolution,
-            build_verified,
+            done_gate,
             &mut build_attempts,
             5,
-            "host",
             0,
             0,
         )
@@ -2340,17 +2438,17 @@ mod tests {
     #[test]
     fn failing_build_check_clears_prior_verification() {
         let mut evolution = Evolution::new("prompt");
-        let mut build_verified = false;
+        let mut done_gate = DoneGate::default();
 
-        run_tool_result(&build_result(true), &mut evolution, &mut build_verified);
+        run_tool_result(&build_result(true), &mut evolution, &mut done_gate);
         assert!(
-            build_verified,
+            done_gate.build_verified,
             "a passing build_check should set build_verified"
         );
 
-        run_tool_result(&build_result(false), &mut evolution, &mut build_verified);
+        run_tool_result(&build_result(false), &mut evolution, &mut done_gate);
         assert!(
-            !build_verified,
+            !done_gate.build_verified,
             "a failing build_check must clear the prior verification"
         );
     }
@@ -2365,14 +2463,14 @@ mod tests {
             search: "a".to_string(),
             replace: "b".to_string(),
         });
-        let mut build_verified = false;
+        let mut done_gate = DoneGate::default();
 
-        run_tool_result(&build_result(true), &mut evolution, &mut build_verified);
-        run_tool_result(&build_result(false), &mut evolution, &mut build_verified);
+        run_tool_result(&build_result(true), &mut evolution, &mut done_gate);
+        run_tool_result(&build_result(false), &mut evolution, &mut done_gate);
         run_tool_result(
             &ToolResult::Done("done".to_string()),
             &mut evolution,
-            &mut build_verified,
+            &mut done_gate,
         );
 
         assert!(
@@ -2381,16 +2479,118 @@ mod tests {
         );
     }
 
+    // The rejection hint must only reference parameters build_check actually
+    // accepts; a phantom host= argument sent gpt-oss-120b into a retry loop.
+    #[test]
+    fn done_rejection_hint_references_only_real_build_check_parameters() {
+        let mut evolution = Evolution::new("prompt");
+        evolution.edits.push(FileEdit {
+            path: "configuration.nix".to_string(),
+            search: "a".to_string(),
+            replace: "b".to_string(),
+        });
+        let mut done_gate = DoneGate::default();
+        let mut build_attempts = 0usize;
+
+        let (msg, _) = process_tool_result(
+            "tool-call-id",
+            &ToolResult::Done("done".to_string()),
+            &mut evolution,
+            &mut done_gate,
+            &mut build_attempts,
+            5,
+            0,
+            0,
+        )
+        .expect("done rejection should not error");
+
+        let Message::Tool { content, .. } = msg else {
+            panic!("done rejection should produce a tool message");
+        };
+        assert!(content.contains("build_check"));
+        assert!(
+            !content.contains("host="),
+            "hint must not reference a parameter build_check does not accept: {content}"
+        );
+    }
+
+    fn done_rejection_content(evolution: &mut Evolution, done_gate: &mut DoneGate) -> String {
+        let mut build_attempts = 0usize;
+        let (msg, _) = process_tool_result(
+            "tool-call-id",
+            &ToolResult::Done("done".to_string()),
+            evolution,
+            done_gate,
+            &mut build_attempts,
+            5,
+            0,
+            0,
+        )
+        .expect("done rejection should not error");
+        match msg {
+            Message::Tool { content, .. } => content,
+            _ => panic!("done rejection should produce a tool message"),
+        }
+    }
+
+    // Repeated rejections must not be byte-identical: the repeat names the
+    // last build failure so the model has something new to react to.
+    #[test]
+    fn repeated_done_rejections_escalate_with_the_last_build_error() {
+        let mut evolution = Evolution::new("prompt");
+        evolution.edits.push(FileEdit {
+            path: "configuration.nix".to_string(),
+            search: "a".to_string(),
+            replace: "b".to_string(),
+        });
+        let mut done_gate = DoneGate::default();
+
+        run_tool_result(&build_result(false), &mut evolution, &mut done_gate);
+
+        let first = done_rejection_content(&mut evolution, &mut done_gate);
+        let second = done_rejection_content(&mut evolution, &mut done_gate);
+
+        assert_ne!(
+            first, second,
+            "a repeated rejection must vary so the model can break the loop"
+        );
+        assert!(
+            second.contains("boom"),
+            "repeat rejection should inline the last build error: {second}"
+        );
+    }
+
+    #[test]
+    fn running_build_check_resets_the_rejected_done_streak() {
+        let mut evolution = Evolution::new("prompt");
+        evolution.edits.push(FileEdit {
+            path: "configuration.nix".to_string(),
+            search: "a".to_string(),
+            replace: "b".to_string(),
+        });
+        let mut done_gate = DoneGate::default();
+
+        done_rejection_content(&mut evolution, &mut done_gate);
+        done_rejection_content(&mut evolution, &mut done_gate);
+        assert_eq!(done_gate.rejected_dones, 2);
+
+        run_tool_result(&build_result(false), &mut evolution, &mut done_gate);
+        assert_eq!(
+            done_gate.rejected_dones, 0,
+            "any build_check attempt should reset the rejection streak"
+        );
+    }
+
     // A new edit after a passing build_check must clear verification, so the
     // agent cannot call done on files that were changed since the last build.
     #[test]
     fn edit_after_passing_build_clears_verification() {
         let mut evolution = Evolution::new("prompt");
-        let mut build_verified = false;
+        let mut done_gate = DoneGate::default();
 
-        run_tool_result(&build_result(true), &mut evolution, &mut build_verified);
+        run_tool_result(&build_result(true), &mut evolution, &mut done_gate);
         assert!(
-            build_verified,
+            done_gate.build_verified,
             "a passing build_check should set build_verified"
         );
 
@@ -2401,10 +2601,10 @@ mod tests {
                 replace: "b".to_string(),
             }),
             &mut evolution,
-            &mut build_verified,
+            &mut done_gate,
         );
         assert!(
-            !build_verified,
+            !done_gate.build_verified,
             "an edit after a passing build must clear the prior verification"
         );
     }
