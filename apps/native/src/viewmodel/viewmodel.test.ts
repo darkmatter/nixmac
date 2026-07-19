@@ -25,7 +25,7 @@ import { startNixInstallSync } from "./nix-install";
 import { startPermissionsSync } from "./permissions";
 import { refreshHostsSnapshot, startPreferencesSync } from "./preferences";
 import { startPromptHistorySync } from "./prompt-history";
-import { startRebuildSync } from "./rebuild";
+import { clearRebuildProjection, startRebuildSync } from "./rebuild";
 
 const apiMocks = vi.hoisted(() => ({
   listeners: new Map<string, (event: { payload: unknown }) => void>(),
@@ -399,6 +399,32 @@ describe("view model sync", () => {
     expect(viewModelActions.getState().rebuildLog.lines).toEqual([]);
 
     stop();
+  });
+
+  it("can clear a stale finished rebuild projection after onboarding reset", async () => {
+    viewModelActions.setState({
+      rebuildStatus: makeRebuildStatus({ success: true, exitCode: 0 }),
+      rebuildLog: {
+        lines: [{ id: 7, text: "stale success", type: "info" }],
+        rawLines: ["stale success"],
+        notices: [
+          {
+            id: "stale-notice",
+            title: "Stale notice",
+            body: "This should be cleared when onboarding restarts.",
+          },
+        ],
+      },
+    });
+
+    clearRebuildProjection();
+
+    expect(viewModelActions.getState().rebuildStatus).toBeNull();
+    expect(viewModelActions.getState().rebuildLog).toEqual({
+      lines: [],
+      rawLines: [],
+      notices: [],
+    });
   });
 
   it("opens the rebuild panel when hydrating a run that is still in flight", async () => {

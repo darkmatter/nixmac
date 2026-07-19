@@ -1,6 +1,7 @@
 import { ConfirmationDialog } from "@/components/widget/controls/confirmation-dialog";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import { client } from "@/lib/orpc";
+import { clearRebuildProjection } from "@/viewmodel/rebuild";
 import { onboardingActions } from "@nixmac/state";
 import { toast } from "sonner";
 
@@ -18,6 +19,7 @@ async function restartSetup() {
     return false;
   }
   onboardingActions.reset();
+  clearRebuildProjection();
   getTelemetry().captureEvent({ name: "onboarding_restarted" });
   return true;
 }

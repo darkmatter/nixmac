@@ -2,7 +2,7 @@ import { onboardingActions, uiActions } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
 import { clearChangeMap } from "@/viewmodel/change-map";
 import { clearEvolveEvents } from "@/viewmodel/evolution";
-import { clearRebuildLog } from "@/viewmodel/rebuild";
+import { clearRebuildProjection } from "@/viewmodel/rebuild";
 
 export interface ResetOnboardingOptions {
   reload?: boolean;
@@ -30,7 +30,7 @@ async function resetOnboarding(options: ResetOnboardingOptions = {}): Promise<Re
   uiActions.setCommitMessageSuggestion(null);
   clearEvolveEvents();
   clearChangeMap();
-  clearRebuildLog();
+  clearRebuildProjection();
   window.localStorage.clear();
   window.sessionStorage.clear();
 
