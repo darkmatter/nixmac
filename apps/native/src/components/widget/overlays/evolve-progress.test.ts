@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
-import type { EvolveEvent, EvolveEventType } from "@/ipc/types";
-import { isVisibleEvent } from "./evolve-progress";
+import type { EvolveEvent, EvolveEventDetail, EvolveEventType } from "@/ipc/types";
+import {
+  answeredTextFor,
+  getFocusState,
+  getPendingQuestion,
+  getTokenProgress,
+  isVisibleEvent,
+} from "./evolve-progress";
 
-function event(eventType: EvolveEventType, raw = ""): EvolveEvent {
-  return { eventType, raw, summary: "", iteration: 1, timestampMs: 0 };
+function event(eventType: EvolveEventType, raw = "", detail?: EvolveEventDetail): EvolveEvent {
+  return { eventType, raw, summary: "", iteration: 1, timestampMs: 0, detail };
 }
 
 describe("isVisibleEvent", () => {
@@ -11,6 +17,21 @@ describe("isVisibleEvent", () => {
     expect(isVisibleEvent(event("iteration"))).toBe(false);
     expect(isVisibleEvent(event("apiRequest"))).toBe(false);
     expect(isVisibleEvent(event("apiResponse"))).toBe(false);
+  });
+
+  it("hides answered events, which render inside the question card", () => {
+    expect(isVisibleEvent(event("answered"))).toBe(false);
+  });
+
+  it("shows narration events", () => {
+    expect(isVisibleEvent(event("narration"))).toBe(true);
+  });
+
+  it("prefers the structured detail for the tool name", () => {
+    const hidden = event("toolCall", "", { type: "toolCall", tool: "think", args: {} });
+    const shown = event("toolCall", "", { type: "toolCall", tool: "search_docs", args: {} });
+    expect(isVisibleEvent(hidden)).toBe(false);
+    expect(isVisibleEvent(shown)).toBe(true);
   });
 
   it("shows goal-relevant events", () => {
@@ -48,5 +69,127 @@ describe("isVisibleEvent", () => {
 
   it("shows tool calls for unknown tools", () => {
     expect(isVisibleEvent(event("toolCall", "future_tool | args: "))).toBe(true);
+  });
+});
+
+describe("getTokenProgress", () => {
+  it("returns the latest progress detail", () => {
+    const events = [
+      event("apiResponse", "", {
+        type: "progress",
+        tokens: 1000,
+        budget: 500_000,
+        iteration: 1,
+        limit: 50,
+      }),
+      event("thinking"),
+      event("apiResponse", "", {
+        type: "progress",
+        tokens: 2500,
+        budget: 500_000,
+        iteration: 2,
+        limit: 50,
+      }),
+    ];
+    expect(getTokenProgress(events)).toEqual({ total: 2500, budget: 500_000 });
+  });
+
+  it("returns null when no progress detail was received", () => {
+    expect(getTokenProgress([event("apiResponse", "tokens used: 999")])).toBeNull();
+  });
+});
+
+describe("getPendingQuestion", () => {
+  const question = event("question");
+
+  it("finds the question the run is blocked on", () => {
+    expect(getPendingQuestion([event("start"), question])).toBe(question);
+  });
+
+  it("ignores questions that have been answered", () => {
+    const events = [question, event("answered", "", { type: "answered", text: "yes" })];
+    expect(getPendingQuestion(events)).toBeNull();
+  });
+
+  it("returns null when no question was ever asked", () => {
+    expect(getPendingQuestion([event("start"), event("thinking")])).toBeNull();
+  });
+});
+
+describe("getFocusState", () => {
+  it("switches to needs-you mode on a pending question", () => {
+    const question = event("question", "", {
+      type: "question",
+      text: "Which variant?",
+      choices: ["a", "b"],
+      kind: "agent",
+    });
+    const focus = getFocusState([event("start"), question]);
+    expect(focus.mode).toBe("needsYou");
+    expect(focus.event).toBe(question);
+    expect(focus.headline).toBe("Which variant?");
+  });
+
+  it("shows current narration text in working mode", () => {
+    const narration: EvolveEvent = {
+      ...event("narration", "", { type: "narration", text: "The plain vim package is best. I'll add it." }),
+      summary: "The plain vim package is best.",
+    };
+    const focus = getFocusState([event("start"), narration]);
+    expect(focus.mode).toBe("working");
+    expect(focus.headline).toBe("The plain vim package is best.");
+    expect(focus.detailText).toBe("The plain vim package is best. I'll add it.");
+  });
+
+  it("collapses narration once superseded by a later event", () => {
+    const narration = event("narration", "", { type: "narration", text: "Adding it now." });
+    const editing: EvolveEvent = { ...event("editing"), summary: "Adding vim to systemPackages" };
+    const focus = getFocusState([narration, editing]);
+    expect(focus.mode).toBe("waiting");
+    expect(focus.headline).toBe("Adding vim to systemPackages");
+    expect(focus.detailText).toBeNull();
+  });
+
+  it("skips detail text that repeats the headline", () => {
+    const narration: EvolveEvent = {
+      ...event("narration", "", { type: "narration", text: "Short thought." }),
+      summary: "Short thought.",
+    };
+    expect(getFocusState([narration]).detailText).toBeNull();
+  });
+
+  it("narrates the latest visible event, not hidden machinery", () => {
+    const editing: EvolveEvent = { ...event("editing"), summary: "Adding vim" };
+    const focus = getFocusState([editing, event("apiRequest"), event("iteration")]);
+    expect(focus.mode).toBe("waiting");
+    expect(focus.headline).toBe("Adding vim");
+  });
+
+  it("waits with a generic headline before any event arrives", () => {
+    const focus = getFocusState([]);
+    expect(focus.mode).toBe("waiting");
+    expect(focus.event).toBeNull();
+    expect(focus.headline).toBe("Working...");
+  });
+});
+
+describe("answeredTextFor", () => {
+  const question = event("question");
+  const answer = event("answered", "", { type: "answered", text: "spotify" });
+
+  it("pairs a question with the answered event that follows it", () => {
+    const events = [event("start"), question, answer, event("editing")];
+    expect(answeredTextFor(events, question)).toBe("spotify");
+  });
+
+  it("returns null while the question is still pending", () => {
+    expect(answeredTextFor([event("start"), question], question)).toBeNull();
+  });
+
+  it("does not cross into the next question's answer", () => {
+    const q2 = event("question", "second");
+    const events = [question, q2, answer];
+    expect(answeredTextFor(events, question)).toBeNull();
+    expect(answeredTextFor(events, q2)).toBe("spotify");
   });
 });

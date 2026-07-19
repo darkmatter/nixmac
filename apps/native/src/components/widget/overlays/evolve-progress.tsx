@@ -18,6 +18,7 @@ import {
   Play,
   Repeat,
   Send,
+  ShieldAlert,
   Square,
   XCircle,
 } from "lucide-react";
@@ -39,7 +40,6 @@ interface EvolveProgressProps {
 
 interface EventItemProps {
   event: EvolveEvent;
-  isLatest: boolean;
 }
 
 // =============================================================================
@@ -53,6 +53,8 @@ const HIDDEN_EVENT_TYPES: ReadonlySet<EvolveEventType> = new Set([
   "iteration",
   "apiRequest",
   "apiResponse",
+  // Rendered inside the question card it answers, not as its own row.
+  "answered",
 ]);
 
 // Tools whose execution is fast and immediately followed by a more specific
@@ -70,9 +72,11 @@ const TOOLS_WITH_SPECIFIC_EVENT: ReadonlySet<string> = new Set([
   "done",
 ]);
 
-// Until the event payload carries structured detail, the tool name is only
-// available as the `{tool} | args: ...` prefix of the raw detail.
 function toolCallToolName(event: EvolveEvent): string {
+  if (event.detail?.type === "toolCall") {
+    return event.detail.tool;
+  }
+  // Fallback for events recorded before the structured detail existed.
   return event.raw.split(" | ")[0] ?? "";
 }
 
@@ -86,52 +90,88 @@ export function isVisibleEvent(event: EvolveEvent): boolean {
   return true;
 }
 
-function parseTokenCount(value: string): number {
-  return Number.parseInt(value.replace(/,/g, ""), 10);
-}
-
-function getTokenProgress(events: EvolveEvent[]): { total: number; budget: number | null } | null {
-  let total = 0;
-  let budget: number | null = null;
-  let sawTokenEvent = false;
-
-  for (const event of events) {
-    if (event.eventType !== "apiResponse") {
-      continue;
-    }
-
-    const totalMatch = event.raw.match(/total tokens:\s*([\d,]+)\s*\/\s*([\d,]+)/i);
-    if (totalMatch) {
-      total = parseTokenCount(totalMatch[1]);
-      budget = parseTokenCount(totalMatch[2]);
-      sawTokenEvent = true;
-      continue;
-    }
-
-    const tokenMatch = event.raw.match(/tokens used:\s*([\d,]+)/i);
-    if (tokenMatch) {
-      total += parseTokenCount(tokenMatch[1]);
-      sawTokenEvent = true;
+/// Latest budget counters from the structured Progress detail carried by
+/// provider responses.
+export function getTokenProgress(
+  events: EvolveEvent[],
+): { total: number; budget: number } | null {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const detail = events[i].detail;
+    if (detail?.type === "progress") {
+      return { total: detail.tokens, budget: detail.budget };
     }
   }
-
-  return sawTokenEvent ? { total, budget } : null;
+  return null;
 }
 
-function formatTokenProgress(progress: { total: number; budget: number | null }): string {
-  const total = progress.total.toLocaleString();
-  if (progress.budget === null) {
-    return `${total} tokens`;
+function formatTokenProgress(progress: { total: number; budget: number }): string {
+  return `${progress.total.toLocaleString()} / ${progress.budget.toLocaleString()} tokens`;
+}
+
+// =============================================================================
+// Active-Step Derivation
+// =============================================================================
+
+export type FocusMode = "working" | "waiting" | "needsYou";
+
+export interface FocusState {
+  mode: FocusMode;
+  /** The event whose activity the active row narrates; the pending question
+   * in `needsYou` mode, null when nothing has happened yet. */
+  event: EvolveEvent | null;
+  headline: string;
+  /** Current narration/thinking text, shown quietly under the headline while
+   * it is the latest activity; collapsed into its history row once
+   * superseded. */
+  detailText: string | null;
+}
+
+/// The question the run is currently blocked on: the most recent question
+/// event with no answered event after it.
+export function getPendingQuestion(events: EvolveEvent[]): EvolveEvent | null {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i];
+    if (e.eventType === "answered") return null;
+    if (e.eventType === "question") return e;
   }
-  return `${total} / ${progress.budget.toLocaleString()} tokens`;
+  return null;
 }
+
+/// What the active row should show right now, derived from the event stream.
+export function getFocusState(events: EvolveEvent[]): FocusState {
+  const question = getPendingQuestion(events);
+  if (question) {
+    const text = question.detail?.type === "question" ? question.detail.text : question.summary;
+    return { mode: "needsYou", event: question, headline: text, detailText: null };
+  }
+
+  const visible = events.filter(isVisibleEvent);
+  const current = visible[visible.length - 1] ?? null;
+  if (!current) {
+    return { mode: "waiting", event: null, headline: "Working...", detailText: null };
+  }
+
+  const detail = current.detail;
+  const text =
+    detail?.type === "narration" || detail?.type === "thinking" ? detail.text : null;
+  // The summary is derived from the text; only show the text when it adds
+  // something beyond the headline.
+  const detailText = text && text !== current.summary ? text : null;
+  return {
+    mode: detailText ? "working" : "waiting",
+    event: current,
+    headline: current.summary,
+    detailText,
+  };
+}
+
 
 // =============================================================================
 // Event Icon Mapping
 // =============================================================================
 
-function getEventIcon(eventType: EvolveEventType, isLatest: boolean) {
-  const iconClassName = cn("h-4 w-4 shrink-0", isLatest && "animate-pulse");
+function getEventIcon(eventType: EvolveEventType) {
+  const iconClassName = "h-4 w-4 shrink-0";
 
   switch (eventType) {
     case "start":
@@ -168,6 +208,8 @@ function getEventIcon(eventType: EvolveEventType, isLatest: boolean) {
       return <FileText className={iconClassName} />;
     case "question":
       return <HelpCircle className={iconClassName} />;
+    case "narration":
+      return <MessageSquare className={iconClassName} />;
     default:
       return <CircleDot className={iconClassName} />;
   }
@@ -207,6 +249,8 @@ function getEventColor(eventType: EvolveEventType): string {
       return "text-pink-400";
     case "question":
       return "text-violet-400";
+    case "narration":
+      return "text-sky-300";
     default:
       return "text-muted-foreground";
   }
@@ -226,7 +270,7 @@ function formatTime(ms: number): string {
   return `${minutes}m ${remainingSeconds}s`;
 }
 
-function EventItem({ event, isLatest }: EventItemProps) {
+function EventItem({ event }: EventItemProps) {
   const [expanded, setExpanded] = useState(false);
   const hasRawContent = event.raw && event.raw !== event.summary && event.raw.length > 0;
 
@@ -235,24 +279,13 @@ function EventItem({ event, isLatest }: EventItemProps) {
       <div className="flex items-start gap-2">
         {/* Icon */}
         <div className={cn("mt-0.5", getEventColor(event.eventType))}>
-          {isLatest && event.eventType !== "complete" ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            getEventIcon(event.eventType, isLatest)
-          )}
+          {getEventIcon(event.eventType)}
         </div>
 
         {/* Content */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <span
-              className={cn(
-                "truncate text-sm",
-                isLatest ? "font-medium text-foreground" : "text-muted-foreground",
-              )}
-            >
-              {event.summary}
-            </span>
+            <span className="truncate text-muted-foreground text-sm">{event.summary}</span>
             <div className="flex items-center gap-1">
               <span className="whitespace-nowrap font-mono text-muted-foreground/60 text-xs">
                 {formatTime(event.timestampMs)}
@@ -285,11 +318,7 @@ function EventItem({ event, isLatest }: EventItemProps) {
   if (hasRawContent) {
     return (
       <button
-        className={cn(
-          "group w-full rounded-md border border-transparent px-2 py-1.5 text-left transition-all",
-          !!isLatest && "border-primary/30 bg-primary/5",
-          "cursor-pointer hover:bg-muted/30",
-        )}
+        className="group w-full cursor-pointer rounded-md border border-transparent px-2 py-1.5 text-left transition-all hover:bg-muted/30"
         onClick={() => setExpanded(!expanded)}
         type="button"
       >
@@ -299,12 +328,7 @@ function EventItem({ event, isLatest }: EventItemProps) {
   }
 
   return (
-    <div
-      className={cn(
-        "group rounded-md border border-transparent px-2 py-1.5 transition-all",
-        !!isLatest && "border-primary/30 bg-primary/5",
-      )}
-    >
+    <div className="group rounded-md border border-transparent px-2 py-1.5 transition-all">
       {content}
     </div>
   );
@@ -332,36 +356,83 @@ function parseQuestionChoices(raw: string): string[] | null {
   return match[1].split(", ").filter(Boolean);
 }
 
+/// The user's answer to `question`, taken from the Answered event that
+/// follows it in the stream (before any subsequent question).
+export function answeredTextFor(events: EvolveEvent[], question: EvolveEvent): string | null {
+  const start = events.indexOf(question);
+  if (start === -1) return null;
+  for (let i = start + 1; i < events.length; i++) {
+    const e = events[i];
+    if (e.eventType === "question") return null;
+    if (e.eventType === "answered") {
+      return e.detail?.type === "answered" ? e.detail.text : e.summary;
+    }
+  }
+  return null;
+}
+
 function QuestionPrompt({
   event,
+  answeredText,
   onAnswer,
 }: {
   event: EvolveEvent;
+  answeredText: string | null;
   onAnswer: (answer: string) => void;
 }) {
   const [input, setInput] = useState("");
-  const [answered, setAnswered] = useState(false);
+  // Optimistic local state so the input locks immediately on submit; the
+  // durable answered record is the Answered event (answeredText).
+  const [submitted, setSubmitted] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const choices = parseQuestionChoices(event.raw);
+  const detail = event.detail?.type === "question" ? event.detail : null;
+  const choices = detail ? detail.choices : parseQuestionChoices(event.raw);
+  const isCheckpoint = detail?.kind === "checkpoint";
+  const questionText = detail?.text ?? event.summary;
+  const answered = submitted || answeredText !== null;
+
+  const palette = isCheckpoint
+    ? {
+        icon: <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />,
+        border: "border-amber-500/30",
+        borderAnswered: "border-amber-500/20",
+        bg: "bg-amber-500/5",
+        choice:
+          "rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-300 transition-colors hover:bg-amber-500/20",
+        label: "Safety checkpoint",
+      }
+    : {
+        icon: <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-violet-400" />,
+        border: "border-violet-500/30",
+        borderAnswered: "border-violet-500/20",
+        bg: "bg-violet-500/5",
+        choice:
+          "rounded-md border border-violet-500/30 bg-violet-500/10 px-3 py-1.5 text-sm text-violet-300 transition-colors hover:bg-violet-500/20",
+        label: null,
+      };
 
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (!answered) {
+      inputRef.current?.focus();
+    }
+  }, [answered]);
 
   const handleSubmit = (value: string) => {
     if (!value.trim() || answered) return;
-    setAnswered(true);
+    setSubmitted(true);
     onAnswer(value.trim());
   };
 
   if (answered) {
     return (
-      <div className="mx-2 my-2 rounded-lg border border-violet-500/20 bg-violet-500/5 p-3">
+      <div className={cn("mx-2 my-2 rounded-lg border p-3", palette.borderAnswered, palette.bg)}>
         <div className="flex items-start gap-2">
-          <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-violet-400" />
+          {palette.icon}
           <div className="min-w-0 flex-1">
-            <p className="text-sm text-foreground">{event.summary}</p>
-            <p className="mt-1 text-muted-foreground text-xs">Answered: {input}</p>
+            <p className="text-sm text-foreground">{questionText}</p>
+            <p className="mt-1 text-muted-foreground text-xs">
+              Answered: {answeredText ?? input}
+            </p>
           </div>
         </div>
       </div>
@@ -369,17 +440,22 @@ function QuestionPrompt({
   }
 
   return (
-    <div className="mx-2 my-2 rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
+    <div className={cn("mx-2 my-2 rounded-lg border p-3", palette.border, palette.bg)}>
       <div className="flex items-start gap-2">
-        <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-violet-400" />
+        {palette.icon}
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-foreground text-sm">{event.summary}</p>
+          {!!palette.label && (
+            <p className="mb-0.5 font-mono text-[10px] text-amber-400/80 uppercase tracking-wide">
+              {palette.label}
+            </p>
+          )}
+          <p className="font-medium text-foreground text-sm">{questionText}</p>
 
           {choices ? (
             <div className="mt-2 flex flex-wrap gap-1.5">
               {choices.map((choice) => (
                 <button
-                  className="rounded-md border border-violet-500/30 bg-violet-500/10 px-3 py-1.5 text-sm text-violet-300 transition-colors hover:bg-violet-500/20"
+                  className={palette.choice}
                   key={choice}
                   onClick={() => {
                     setInput(choice);
@@ -425,6 +501,82 @@ function QuestionPrompt({
 }
 
 // =============================================================================
+// Active Row
+// =============================================================================
+
+/**
+ * The timeline's last row while the run is live: the current activity as one
+ * visually dominant row — spinner, highlight, per-step timer — with the
+ * current narration/thinking as quiet expanded detail that collapses into a
+ * plain row once the next event supersedes it. The row is sticky at the
+ * container's bottom edge, so the current step stays in view even when the
+ * user scrolls up through history.
+ */
+function ActiveRow({
+  focus,
+  answeredText,
+  waitingMs,
+  onAnswer,
+}: {
+  focus: FocusState;
+  answeredText: string | null;
+  waitingMs: number;
+  onAnswer: (answer: string) => void;
+}) {
+  if (focus.event?.eventType === "question") {
+    const pending = focus.mode === "needsYou";
+    // While blocked on the user the agent is genuinely idle, so no spinner
+    // and the timer relabels so idle time doesn't read as agent slowness.
+    // Right after the answer (before the next event) the loop is working
+    // again, so the status line flips back.
+    return (
+      <div
+        aria-live={pending ? "assertive" : "polite"}
+        className="sticky bottom-0 z-10 rounded-lg bg-background"
+        data-testid="evolve-active-row"
+      >
+        <QuestionPrompt answeredText={answeredText} event={focus.event} onAnswer={onAnswer} />
+        <div className="flex items-center gap-2 px-4 pb-2 text-muted-foreground/60">
+          {pending ? (
+            <HelpCircle className="h-3 w-3 shrink-0" />
+          ) : (
+            <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+          )}
+          <span className="font-mono text-xs">
+            {pending ? "Waiting for you..." : "Working..."} {formatTime(waitingMs)}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="sticky bottom-0 z-10 rounded-md border border-primary/30 bg-background px-2 py-1.5"
+      data-testid="evolve-active-row"
+    >
+      <div className="flex items-center gap-2">
+        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
+        <span
+          aria-live="polite"
+          className="min-w-0 flex-1 truncate font-medium text-foreground text-sm"
+        >
+          {focus.headline}
+        </span>
+        <span className="whitespace-nowrap font-mono text-muted-foreground/60 text-xs">
+          {formatTime(waitingMs)}
+        </span>
+      </div>
+      {!!focus.detailText && (
+        <p className="mt-1.5 ml-6 line-clamp-4 border-border/50 border-l-2 pl-2 text-muted-foreground/80 text-xs">
+          {focus.detailText}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
 // Main Component
 // =============================================================================
 
@@ -463,6 +615,12 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
   const tokenProgress = getTokenProgress(events);
   const visibleEvents = events.filter(isVisibleEvent);
 
+  // While generating, the latest visible event renders as the sticky active
+  // row narrating the current step; once the run ends every row is plain
+  // history.
+  const focus = isGenerating ? getFocusState(events) : null;
+  const needsYou = focus?.mode === "needsYou";
+
   // Live clock: something must visibly change during long waits (model
   // calls, builds), so the header elapsed time and the working indicator
   // tick every second while generating.
@@ -499,17 +657,21 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
       {/* Header */}
       <div className="flex items-center justify-between border-border/50 border-b px-3 py-2">
         <div className="flex items-center gap-2">
-          {isGenerating ? (
+          {needsYou ? (
+            <HelpCircle className="h-4 w-4 text-violet-400" />
+          ) : isGenerating ? (
             <Loader2 className="h-4 w-4 animate-spin text-primary" />
           ) : (
             <Check className="h-4 w-4 text-green-400" />
           )}
           <span className="font-medium text-foreground text-sm">
-            {isAnalyzing
-              ? "Analyzing changes..."
-              : isGenerating
-                ? "Evolving..."
-                : "Evolution Complete"}
+            {needsYou
+              ? "Waiting for your input..."
+              : isAnalyzing
+                ? "Analyzing changes..."
+                : isGenerating
+                  ? "Evolving..."
+                  : "Evolution Complete"}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -536,44 +698,51 @@ export function EvolveProgress({ events, isGenerating, className, onStop }: Evol
         </div>
       </div>
 
-      {/* Events List: fills whatever height the parent gives the component
-          (the overlay panel stretches it to the card height); without an
-          explicit parent height it hugs its content. */}
+      {/* Timeline: completed actions as compact rows, the current step as
+          the sticky active row at the end. Fills whatever height the parent
+          gives the component (the overlay panel stretches it to the card
+          height); without an explicit parent height it hugs its content. */}
       <div
-        className="min-h-[120px] flex-1 overflow-y-auto p-2"
+        className="min-h-[80px] flex-1 overflow-y-auto p-2"
         onScroll={handleScroll}
         ref={scrollRef}
       >
         <div className="space-y-1">
           {visibleEvents.map((event, index) => {
+            if (focus && event === focus.event) {
+              return (
+                <ActiveRow
+                  answeredText={
+                    event.eventType === "question" ? answeredTextFor(events, event) : null
+                  }
+                  focus={focus}
+                  key={`${event.timestampMs}-${index}`}
+                  onAnswer={handleQuestionAnswer}
+                  waitingMs={waitingMs}
+                />
+              );
+            }
             if (event.eventType === "question") {
               return (
                 <QuestionPrompt
+                  answeredText={answeredTextFor(events, event)}
                   event={event}
                   key={`${event.timestampMs}-${index}`}
                   onAnswer={handleQuestionAnswer}
                 />
               );
             }
-            return (
-              <EventItem
-                event={event}
-                isLatest={!!(isGenerating && index === visibleEvents.length - 1)}
-                key={`${event.timestampMs}-${index}`}
-              />
-            );
+            return <EventItem event={event} key={`${event.timestampMs}-${index}`} />;
           })}
 
-          {/* Working indicator; shows how long the current step has been
-              running once the wait is noticeable. */}
-          {!!isGenerating && (
-            <div className="flex items-center gap-2 px-2 py-1.5 text-muted-foreground/60">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span className="text-xs">
-                Working...
-                {waitingMs >= 5000 ? ` ${formatTime(waitingMs)}` : ""}
-              </span>
-            </div>
+          {/* Placeholder active row before the first visible event. */}
+          {!!focus && !focus.event && (
+            <ActiveRow
+              answeredText={null}
+              focus={focus}
+              onAnswer={handleQuestionAnswer}
+              waitingMs={waitingMs}
+            />
           )}
         </div>
       </div>

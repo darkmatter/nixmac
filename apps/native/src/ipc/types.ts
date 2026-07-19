@@ -603,6 +603,11 @@ iteration: number | null;
  */
 timestampMs: number; 
 /**
+ * Structured payload for typed rendering; `None` on events that predate
+ * it or have no structure.
+ */
+detail?: EvolveEventDetail | null; 
+/**
  * Telemetry collected during the run; only on the terminal `Complete` event.
  */
 telemetry?: EvolutionTelemetry | null; 
@@ -611,6 +616,49 @@ telemetry?: EvolutionTelemetry | null;
  * the terminal `Complete` event.
  */
 conversationalResponse?: string | null }
+
+/**
+ * Structured payload carried by an [`EvolveEvent`]. Lets the frontend render
+ * events from typed data instead of parsing the formatted `summary`/`raw`
+ * strings (which remain the fallback and feed the Console / transcripts).
+ */
+export type EvolveEventDetail = 
+/**
+ * The `think` tool's full reasoning text.
+ */
+{ type: "thinking"; category: string; text: string } | 
+/**
+ * A tool invocation with its (sanitized) arguments.
+ */
+{ type: "toolCall"; tool: string; args: JsonValue } | 
+/**
+ * A package search and its results.
+ */
+{ type: "searchPackages"; query: string; found: string[] } | 
+/**
+ * A file edit; `action` is present for semantic nix edits.
+ */
+{ type: "edit"; file: string; action: FileEditAction | null } | 
+/**
+ * A build check outcome with the captured output.
+ */
+{ type: "build"; pass: boolean; attempt: number; output: string } | 
+/**
+ * Assistant narration between tool calls.
+ */
+{ type: "narration"; text: string } | 
+/**
+ * Budget counters, emitted with every provider response.
+ */
+{ type: "progress"; tokens: number; budget: number; iteration: number; limit: number } | 
+/**
+ * A question the run is blocked on.
+ */
+{ type: "question"; text: string; choices: string[] | null; kind: QuestionKind } | 
+/**
+ * The user's answer to the pending question.
+ */
+{ type: "answered"; text: string }
 
 /**
  * Types of evolve events for UI rendering.
@@ -679,7 +727,15 @@ export type EvolveEventType =
 /**
  * Agent asked the user for input.
  */
-"question"
+"question" | 
+/**
+ * User answered the pending question.
+ */
+"answered" | 
+/**
+ * Assistant narration between tool calls.
+ */
+"narration"
 
 /**
  * The evolve routing state as projected for the frontend: the owned
@@ -1028,6 +1084,29 @@ export type FieldType =
 export type FileDiffContents = { original: string; modified: string }
 
 export type FileEdit = { path: string; search: string; replace: string }
+
+/**
+ * A semantic edit operation on a nix attribute path.
+ */
+export type FileEditAction = 
+/**
+ * Generic add to an attribute path: e.g. { path: "environment.systemPackages", values: ["ripgrep"] }
+ */
+{ add: { path: string; values: string[] } } | 
+/**
+ * Generic remove from an attribute path
+ */
+{ remove: { path: string; values: string[] } } | 
+/**
+ * Set an attribute path to a scalar JSON value (bool/string/number/null)
+ */
+{ set: { path: string; value: JsonValue } } | 
+/**
+ * Create or update an attribute set at a given path, setting multiple scalar key-value pairs.
+ * For missing paths a new attrset assignment is inserted; for existing ones the named keys are
+ * updated in-place (or appended) without disturbing the rest of the block.
+ */
+{ setAttrs: { path: string; attrs: Partial<{ [key in string]: JsonValue }> } }
 
 /**
  * Individual file status parsed from diff headers.
@@ -1763,6 +1842,19 @@ deletions: number | null;
 isLoading: boolean }
 
 /**
+ * Who is asking a [`EvolveEventDetail::Question`].
+ */
+export type QuestionKind = 
+/**
+ * The agent needs a content decision from the user (`ask_user` tool).
+ */
+"agent" | 
+/**
+ * A safety limit was reached and the system asks whether to continue.
+ */
+"checkpoint"
+
+/**
  * Known rebuild/activation failure categories.
  */
 export type RebuildErrorType = 
@@ -1903,6 +1995,8 @@ singles: ChangeWithSummary[];
  * Hashes for changes that could not be summarized.
  */
 unsummarizedHashes: string[] }
+
+export type SemanticFileEdit = { path: string; action: FileEditAction }
 
 /**
  * Result returned when the config directory is set (typed or picked).

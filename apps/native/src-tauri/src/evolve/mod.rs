@@ -46,6 +46,7 @@ pub use types::{EvolutionProgress, EvolutionRunError};
 
 use crate::{
     ai::model_capabilities::capabilities_for_model,
+    shared_types::QuestionKind,
     statistics, store,
     types::{EvolveEvent, emit_evolve_event},
     utils as global_utils,
@@ -672,6 +673,7 @@ async fn ask_to_continue_after_limit<R: Runtime>(
                 LIMIT_DECISION_CONTINUE.to_string(),
                 LIMIT_DECISION_STOP.to_string(),
             ]),
+            QuestionKind::Checkpoint,
         ),
     );
 
@@ -694,6 +696,7 @@ async fn ask_to_continue_after_limit<R: Runtime>(
     match answer {
         Some(answer) if should_continue_after_limit(&answer) => {
             info!("User chose to continue after reaching an evolution limit");
+            emit_evolve_event(app, EvolveEvent::answered(start_time, iteration, &answer));
             emit_evolve_event(
                 app,
                 EvolveEvent::info(start_time, Some(iteration), "Continuing evolution..."),
@@ -705,6 +708,7 @@ async fn ask_to_continue_after_limit<R: Runtime>(
                 "User chose to stop after reaching an evolution limit: {}",
                 answer
             );
+            emit_evolve_event(app, EvolveEvent::answered(start_time, iteration, &answer));
             LimitDecision::Stop
         }
         None => {
@@ -1209,6 +1213,7 @@ pub async fn generate_evolution<R: Runtime>(
                     usage.total,
                     total_tokens,
                     max_token_budget,
+                    max_iterations,
                 ),
             );
         }
@@ -1276,6 +1281,12 @@ pub async fn generate_evolution<R: Runtime>(
                     "Assistant returned content alongside tool_calls; content treated as non-executable text | content_preview={}",
                     global_utils::truncate_with_ellipsis(text, 300)
                 );
+                // Surface intermediate narration to the timeline. Terminal
+                // text (no tool calls) travels with the Complete event
+                // instead, as summary or conversational response.
+                if !text.trim().is_empty() {
+                    emit_evolve_event(app, EvolveEvent::narration(start_time, iteration, text));
+                }
             }
             info!(
                 "💬 Assistant: {}",
@@ -1391,10 +1402,13 @@ pub async fn generate_evolution<R: Runtime>(
                                     stderr,
                                     stdout,
                                 } => {
+                                    // build_attempts is incremented later in
+                                    // process_tool_result; this is that attempt's number.
+                                    let attempt = build_attempts + 1;
                                     if *success {
                                         emit_evolve_event(
                                             app,
-                                            EvolveEvent::build_pass(start_time, iteration),
+                                            EvolveEvent::build_pass(start_time, iteration, attempt),
                                         );
                                     } else {
                                         let error_source = if !stderr.is_empty() {
@@ -1409,6 +1423,7 @@ pub async fn generate_evolution<R: Runtime>(
                                             EvolveEvent::build_fail(
                                                 start_time,
                                                 iteration,
+                                                attempt,
                                                 error_source,
                                             ),
                                         );
@@ -1451,7 +1466,11 @@ pub async fn generate_evolution<R: Runtime>(
                                     emit_evolve_event(
                                         app,
                                         EvolveEvent::question(
-                                            start_time, iteration, question, choices,
+                                            start_time,
+                                            iteration,
+                                            question,
+                                            choices,
+                                            QuestionKind::Agent,
                                         ),
                                     );
                                 }
@@ -1494,6 +1513,10 @@ pub async fn generate_evolution<R: Runtime>(
                                     }
                                 };
                                 info!("📨 User answered: {}", user_answer);
+                                emit_evolve_event(
+                                    app,
+                                    EvolveEvent::answered(start_time, iteration, &user_answer),
+                                );
                                 messages.push(store_tool_result(
                                     Message::Tool {
                                         tool_call_id: tool_call.id.clone(),
