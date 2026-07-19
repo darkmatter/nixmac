@@ -35,6 +35,7 @@ use log::{debug, error, info, warn};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::Arc;
@@ -331,6 +332,12 @@ const BUILD_OUTPUT_TAIL_LINES: usize = 80;
 // Consecutive rejected `done` calls after which the evolution stops gracefully
 // (limit prompt / LimitReached) instead of grinding to the iteration limit.
 const MAX_REJECTED_DONE_CALLS: usize = 3;
+
+// A read-only tool call repeated with identical arguments within this many
+// iterations is answered with a nudge instead of re-executed. Beyond the
+// window the call runs again: its earlier result may have been pruned from
+// the model's context by message retention.
+const REPEAT_CALL_WINDOW_ITERATIONS: usize = 10;
 
 const SYSTEM_PROMPT: &str = include_str!("../../prompts/system.md");
 
@@ -1005,6 +1012,9 @@ pub async fn generate_evolution<R: Runtime>(
     let mut iteration: usize = 0;
     let mut build_attempts: usize = 0;
     let mut done_gate = DoneGate::default();
+    // Read-only calls executed recently, keyed by call identity → iteration.
+    // Used to short-circuit the model repeating an identical call.
+    let mut recent_read_calls: HashMap<String, usize> = HashMap::new();
     let mut total_tokens: u32 = 0;
     let chat_memory_store = session_chat_memory_store();
 
@@ -1344,6 +1354,53 @@ pub async fn generate_evolution<R: Runtime>(
                         ),
                     );
 
+                    // Short-circuit exact repeats of read-only calls: nothing
+                    // has changed since the identical call, so re-running it
+                    // cannot surface new information — it only burns
+                    // iterations (observed: sessions looping on
+                    // list_files/search_code without ever editing).
+                    if let Some(key) = repeat_call_key(tool_name, &args) {
+                        let repeated_recently = recent_read_calls.get(&key).is_some_and(|&prev| {
+                            iteration.saturating_sub(prev) <= REPEAT_CALL_WINDOW_ITERATIONS
+                        });
+                        if repeated_recently {
+                            info!(
+                                "  ↩ {} repeated with identical arguments — nudging instead of re-executing",
+                                tool_name
+                            );
+                            evolution.add_tool_call(
+                                start_time,
+                                iteration,
+                                tool_name,
+                                &args_summary,
+                                "repeated identical call skipped",
+                                false,
+                            );
+                            messages.push(store_tool_result(
+                                Message::Tool {
+                                    tool_call_id: tool_call.id.clone(),
+                                    content: format!(
+                                        "You already called {} with exactly these arguments \
+                                         and nothing has changed since, so repeating it cannot \
+                                         surface new information. Commit to a next step now: \
+                                         make an edit if you know what to change, run \
+                                         build_check to validate edits you have made, or — if \
+                                         the request is ambiguous or cannot be fulfilled from \
+                                         this configuration — stop calling tools and reply \
+                                         conversationally to the user instead of exploring \
+                                         further.",
+                                        tool_name
+                                    ),
+                                },
+                                tool_name,
+                                iteration,
+                                None,
+                            ));
+                            continue;
+                        }
+                        recent_read_calls.insert(key, iteration);
+                    }
+
                     let result = execute_tool(
                         repo_root.as_path(),
                         config_dir,
@@ -1374,6 +1431,13 @@ pub async fn generate_evolution<R: Runtime>(
                             if tool_name == "build_check" {
                                 made_build_check = true;
                                 tool_key = Some(format!("build_check_{}", iteration));
+                            }
+
+                            // Edits change file contents and build_check can
+                            // write flake.lock, so earlier read results may be
+                            // stale: identical re-reads become legitimate again.
+                            if is_editing_tool(tool_name) || tool_name == "build_check" {
+                                recent_read_calls.clear();
                             }
 
                             // Emit specific events based on tool result type
@@ -1993,6 +2057,53 @@ fn truncate_build_output_for_model(output: &str) -> String {
     truncated
 }
 
+/// Tools whose results depend only on repo/config state: an identical call
+/// returns an identical result unless something mutated state in between.
+const READ_ONLY_TOOLS: &[&str] = &[
+    "list_files",
+    "read_file",
+    "search_code",
+    "search_docs",
+    "search_packages",
+];
+
+/// Stable identity of a read-only tool call, used to detect the model
+/// repeating an identical call. `None` for tools that mutate state or are
+/// inherently repeatable (think, build_check, done, ...).
+fn repeat_call_key(tool_name: &str, args: &serde_json::Value) -> Option<String> {
+    if !READ_ONLY_TOOLS.contains(&tool_name) {
+        return None;
+    }
+    Some(format!("{}:{}", tool_name, canonical_json(args)))
+}
+
+/// Serialize JSON with object keys sorted, so argument order chosen by the
+/// model does not affect call identity.
+fn canonical_json(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::Object(map) => {
+            let mut keys: Vec<&String> = map.keys().collect();
+            keys.sort();
+            let inner: Vec<String> = keys
+                .into_iter()
+                .map(|k| {
+                    format!(
+                        "{}:{}",
+                        serde_json::Value::String(k.clone()),
+                        canonical_json(&map[k])
+                    )
+                })
+                .collect();
+            format!("{{{}}}", inner.join(","))
+        }
+        serde_json::Value::Array(items) => {
+            let inner: Vec<String> = items.iter().map(canonical_json).collect();
+            format!("[{}]", inner.join(","))
+        }
+        other => other.to_string(),
+    }
+}
+
 /// Normalize and sanitize tool arguments before logging, telemetry emission,
 /// and execution: repair double-encoded arguments the model serialized into
 /// strings, then redact sensitive fields. `execute_tool` re-applies the
@@ -2375,7 +2486,7 @@ mod tests {
         BUILD_OUTPUT_MAX_CHARS, DoneGate, Evolution, EvolutionMessage, EvolutionState, FileEdit,
         Message, Retention, ToolResult, filter_evolution_messages,
         normalize_openai_max_output_tokens, process_tool_result, read_file_dedup_key,
-        store_tool_result, truncate_build_output_for_model,
+        repeat_call_key, store_tool_result, truncate_build_output_for_model,
     };
 
     fn build_result(success: bool) -> ToolResult {
@@ -3133,5 +3244,46 @@ warning: creating lock file '/Users/test/.nixmac/flake.lock':
             .join("\n");
         let result = truncate_build_output_for_model(&lines);
         assert!(result.contains("999-pkg"));
+    }
+
+    #[test]
+    fn repeat_call_key_is_stable_across_argument_order() {
+        let a = serde_json::json!({"pattern": "**/*.nix", "max_results": 10});
+        let b = serde_json::json!({"max_results": 10, "pattern": "**/*.nix"});
+        assert!(repeat_call_key("list_files", &a).is_some());
+        assert_eq!(
+            repeat_call_key("list_files", &a),
+            repeat_call_key("list_files", &b)
+        );
+    }
+
+    #[test]
+    fn repeat_call_key_distinguishes_different_arguments() {
+        let a = serde_json::json!({"pattern": "**/*.nix"});
+        let b = serde_json::json!({"pattern": "**/*.yaml"});
+        assert_ne!(
+            repeat_call_key("list_files", &a),
+            repeat_call_key("list_files", &b)
+        );
+    }
+
+    #[test]
+    fn repeat_call_key_skips_mutating_and_repeatable_tools() {
+        let args = serde_json::json!({"path": "flake.nix"});
+        for tool in [
+            "edit_file",
+            "edit_nix_file",
+            "ensure_secret",
+            "build_check",
+            "think",
+            "done",
+            "ask_user",
+        ] {
+            assert_eq!(
+                repeat_call_key(tool, &args),
+                None,
+                "{tool} must never be answered with a repeat-call nudge"
+            );
+        }
     }
 }
