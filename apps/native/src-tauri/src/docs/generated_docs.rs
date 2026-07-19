@@ -6,7 +6,7 @@ use anyhow::{Context, Result};
 use serde_json::{Value, json};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Runtime};
 use walkdir::WalkDir;
 
 use crate::commands::debug::TimerGuard;
@@ -125,8 +125,7 @@ impl GeneratedDocsIndexLoader {
 
     /// Resolve the app-data directory and create a loader for generated docs.
     pub fn for_app<R: Runtime>(app: &AppHandle<R>) -> Result<Self> {
-        let docs_dir = app.path().app_data_dir()?;
-        std::fs::create_dir_all(&docs_dir)?;
+        let docs_dir = crate::env::app_data_dir(app)?;
         Ok(Self::new(docs_dir))
     }
 

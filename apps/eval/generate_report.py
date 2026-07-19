@@ -36,8 +36,9 @@ DEFAULT_CSV = SCRIPT_DIR / "data" / "test_prompts.csv"
 DEFAULT_EXPECTATIONS = SCRIPT_DIR / "data" / "golden_set_expectations.json"
 
 
-def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.ArgumentParser:
+    """Add the report arguments to `parser` (or a fresh one) and return it."""
+    p = parser if parser is not None else argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("-i", "--input-dir", type=Path, default=DEFAULT_RESULTS,
                    help="Directory of case_*_result.json (default: data/results)")
     p.add_argument("-o", "--output-dir", type=Path, default=DEFAULT_OUTPUT,
@@ -49,11 +50,11 @@ def parse_args() -> argparse.Namespace:
                    help="Path to run_meta.json (default: <input-dir>/run_meta.json)")
     p.add_argument("--golden-only", action="store_true",
                    help="Only include cases in the golden set")
-    return p.parse_args()
+    p.set_defaults(func=main)
+    return p
 
 
-def main() -> int:
-    args = parse_args()
+def main(args: argparse.Namespace) -> int:
     run = loader.load(
         results_dir=args.input_dir,
         csv_path=args.csv,
@@ -73,4 +74,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(build_parser().parse_args()))

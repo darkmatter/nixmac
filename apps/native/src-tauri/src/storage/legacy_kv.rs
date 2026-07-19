@@ -9,6 +9,12 @@ use tauri_plugin_store::{Store, StoreExt};
 const STORE_PATH: &str = "settings.json";
 
 pub fn get_store<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<Store<R>>> {
+    // tauri-plugin-store resolves relative paths against the OS app-data
+    // directory, so the hermetic NIXMAC_APP_DATA_DIR override must be applied
+    // here as an absolute path.
+    if let Some(dir) = crate::env::app_data_dir_override() {
+        return Ok(app.store(dir.join(STORE_PATH))?);
+    }
     Ok(app.store(STORE_PATH)?)
 }
 

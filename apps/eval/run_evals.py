@@ -5,13 +5,13 @@
 
 import argparse
 import csv
+import getpass
 import json
 import os
 import shutil
+import signal
 import subprocess
 import tempfile
-import getpass
-import signal
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
@@ -36,24 +36,24 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 # Location where we store JSON evaluation results during test runs
 RESULTS_DIR: Path = SCRIPT_DIR / "data/results"
 
+# Repository root (the eval suite lives in apps/eval of the nixmac repo).
+REPO_ROOT: Path = SCRIPT_DIR.parent.parent
+
 # Directory holding all bundled nix-darwin templates (one subdir per template).
-TEMPLATES_DIR: Path = SCRIPT_DIR.parent.parent / "vendor/nixmac/apps/native/templates"
+TEMPLATES_DIR: Path = REPO_ROOT / "apps/native/templates"
 
 # Template used when no --base-config is supplied.
 DEFAULT_TEMPLATE_NAME = "nix-darwin-determinate"
 
-# Default nixmac binary from the vendored public repo submodule (build with `cargo build` there).
-DEFAULT_NIXMAC = SCRIPT_DIR.parent.parent / "vendor/nixmac/target/debug/nixmac"
+# Default nixmac binary built from this repo (build with `cargo build` at the root).
+DEFAULT_NIXMAC = REPO_ROOT / "target/debug/nixmac"
 
-# Directory containing nixmac config/state files (settings.json, evolve-state.json, etc.)
-NIXMAC_CONFIG_DIR: Path = Path.home() / "Library" / "Application Support" / "com.darkmatter.nixmac"
-
-# System nixmac settings.json (~/Library/Application Support/com.darkmatter.nixmac/settings.json)
-NIXMAC_SETTINGS_PATH: Path = NIXMAC_CONFIG_DIR / "settings.json"
-
-# Populated in __main__ when running as a script
-args: argparse.Namespace | None = None
-
+# Environment variable the nixmac binary honors to root ALL of its per-device
+# state (settings.json, global-preferences.json, nixmac.db, secrets, ...) in a
+# directory of our choosing. Each test case gets a fresh temp dir, so eval runs
+# are fully hermetic: they can never read or mutate the developer's real app
+# state, credentials, or nix config.
+NIXMAC_APP_DATA_DIR_ENV = "NIXMAC_APP_DATA_DIR"
 
 def _looks_like_git_url(value: str) -> bool:
     """Heuristic: is `value` a git URL rather than a local path?"""
@@ -243,7 +243,12 @@ def _get_eval_hostname() -> str:
         return "localhost"
 
 
-def create_nix_config_git_repo(template_dir: Path, hostname: str | None = None):
+def create_nix_config_git_repo(
+    template_dir: Path,
+    hostname: str | None = None,
+    max_token_budget: int | None = None,
+    max_iterations: int | None = None,
+):
     """
     Create a temporary nix config git repo from `template_dir`, with hostname
     and platform placeholders replaced (where present), ready for nix-darwin
@@ -296,11 +301,20 @@ def create_nix_config_git_repo(template_dir: Path, hostname: str | None = None):
     # a part of dirty changes is noisy and obfuscates the actual changes
     # made by the evolve engine during test runs.
     #
-    # .nixmac/ holds repo-scoped EvolutionLimits (maxTokenBudget,
-    # maxIterations, etc.) the eval writes per-case via
-    # generate_repo_scoped_settings; keep it out of git so it doesn't
-    # show up in the model's view of the working tree.
-    (tmpdir / ".gitignore").write_text("flake.lock\n.nixmac/\n")
+    # .nixmac/ must NOT be gitignored: the template's flake.nix imports
+    # ./.nixmac as a module, and nix flakes only see git-tracked files, so
+    # ignoring it makes every build_check fail before the model has done
+    # anything. It is also where repo-scoped EvolutionLimits live
+    # (mirroring production, where .nixmac/settings.json is tracked so it
+    # follows the repo across machines) — write them before the initial
+    # commit so they are committed and the tree starts clean.
+    (tmpdir / ".gitignore").write_text("flake.lock\n")
+
+    generate_repo_scoped_settings(
+        tmpdir,
+        max_token_budget=max_token_budget,
+        max_iterations=max_iterations,
+    )
 
     # Initialize git repo
     repo = Repo.init(str(tmpdir))
@@ -333,6 +347,7 @@ def run_test_case(
     openai_key: str | None = None,
     openrouter_key: str | None = None,
     auth_props: dict | None = None,
+    api_key_env: dict | None = None,
     max_iterations: int | None = None,
     max_token_budget: int | None = None,
     host: str | None = None,
@@ -350,26 +365,32 @@ def run_test_case(
     # Create a git repo in a temporary directory from nix-darwin-determinate
     config_dir: Path | None = None
     result_dir: Path | None = None
+    app_data_dir: Path | None = None
     try:
-        config_dir = create_nix_config_git_repo(template_dir, hostname=eval_hostname)
-        print(f"Created git repo with config at: {config_dir}")
-
-        # Repo-scoped EvolutionLimits (maxTokenBudget, maxIterations) live
-        # under <config_dir>/.nixmac/settings.json. Write after git init
-        # so the file lands in the .gitignored .nixmac/ dir.
-        generate_repo_scoped_settings(
-            config_dir,
+        # Repo-scoped EvolutionLimits (maxTokenBudget, maxIterations) are
+        # written into <config_dir>/.nixmac/settings.json and committed as
+        # part of the fixture's initial state.
+        config_dir = create_nix_config_git_repo(
+            template_dir,
+            hostname=eval_hostname,
             max_token_budget=max_token_budget,
             max_iterations=max_iterations,
         )
+        print(f"Created git repo with config at: {config_dir}")
+
+        # Fresh hermetic app-data dir per case: the binary roots ALL of its
+        # per-device state here (via NIXMAC_APP_DATA_DIR), so nothing is
+        # read from or written to the developer's real app state, and
+        # nothing leaks between cases.
+        app_data_dir = Path(tempfile.mkdtemp(prefix="nixmac-appdata-"))
+        print(f"Created hermetic app-data dir at: {app_data_dir}")
 
         # Generate nixmac settings.json pointing to the config dir
         # Use the same eval_hostname for hostAttr so template and build agree
         generate_nixmac_settings(
+            app_data_dir,
             evolve_model,
             summary_model,
-            openai_key,
-            openrouter_key,
             auth_props,
             max_iterations,
             max_token_budget,
@@ -387,6 +408,19 @@ def run_test_case(
         # the stop_requested handler until after the child exits.
         # This way we don't have to Ctrl-C O(n) times stop a long-running test suite.
         cmd = [str(nixmac), "evolve", case.request, "--out", str(out_path)]
+
+        # Hermetic state root plus env-first API keys. The keys go through
+        # the environment because that is the binary's highest-precedence
+        # secret source and it keeps them out of on-disk settings.
+        child_env = os.environ.copy()
+        child_env[NIXMAC_APP_DATA_DIR_ENV] = str(app_data_dir)
+        if openai_key:
+            child_env["OPENAI_API_KEY"] = openai_key
+        if openrouter_key:
+            child_env["OPENROUTER_API_KEY"] = openrouter_key
+        for env_key, value in (api_key_env or {}).items():
+            child_env[env_key] = value
+
         timed_out = False
         timeout_seconds = case_timeout if case_timeout and case_timeout > 0 else None
         # Run in a new session so subprocess.run can kill the whole process
@@ -398,6 +432,7 @@ def run_test_case(
                 check=False,
                 timeout=timeout_seconds,
                 start_new_session=True,
+                env=child_env,
             )
         except subprocess.TimeoutExpired:
             timed_out = True
@@ -406,6 +441,10 @@ def run_test_case(
                 f"{timeout_seconds}s; killed nixmac. "
                 f"See apps/eval/wip/evolve_limits-plan.md for the proper fix."
             )
+
+        # Refuse to continue if the binary ignored the hermetic override —
+        # that would mean this case just ran against real user state.
+        assert_hermetic_run(app_data_dir)
 
         # If we timed out, prefer a structured stub so the result is recorded
         # but graders can distinguish a timeout from a successful or
@@ -451,6 +490,10 @@ def run_test_case(
             print(f"Cleaning up temporary evolution result directory: {result_dir}")
             with suppress(Exception):
                 shutil.rmtree(result_dir)
+        if app_data_dir is not None:
+            print(f"Cleaning up hermetic app-data directory: {app_data_dir}")
+            with suppress(Exception):
+                shutil.rmtree(app_data_dir)
 
 
 def update_test_case_status(case_num: Any, result: Any, results_dir: Path = RESULTS_DIR) -> None:
@@ -463,72 +506,23 @@ def update_test_case_status(case_num: Any, result: Any, results_dir: Path = RESU
     print(f"Saved results for case {case_num} to: {result_path}")
 
 
-def backup_nixmac_settings() -> dict:
-    """Back up nixmac config/state files.
+def assert_hermetic_run(app_data_dir: Path) -> None:
+    """Verify the nixmac binary actually honored NIXMAC_APP_DATA_DIR.
 
-    Copies any existing files to a .bak sibling and deletes the originals
-    so each run starts from a known-empty state. Restored from the .bak
-    siblings at the end of main().
-
-    `global-preferences.json` is included because PR #411 on the nixmac
-    side moved GlobalPreferences (configDir, repoRoot, host, model,
-    provider, …) onto a managed Observable persisted there. The legacy
-    settings.json is only consulted via a one-shot migration that
-    *overrides* only fields present in the eval-written settings.json;
-    any field the eval doesn't write (e.g. repoRoot, set by prior GUI
-    use) would otherwise leak through and override the eval's intent.
-    Wiping global-preferences.json forces the observable to start from
-    Default and pick up the eval's values via migration each run.
-    Returns a dict mapping original Path -> backup Path for later
-    restoration.
+    A binary built before the hermetic override existed would silently fall
+    back to the real OS app-data directory — running the evolution against
+    the developer's real nix config with their real credentials. The CLI
+    always creates its sqlite DB in the app-data dir on startup, so its
+    absence in the hermetic dir means the override was ignored. Abort the
+    whole suite in that case rather than keep spawning unsafe runs.
     """
-    backups: dict[Path, Path] = {}
-
-    candidates = [
-        NIXMAC_SETTINGS_PATH,
-        NIXMAC_CONFIG_DIR / "global-preferences.json",
-        NIXMAC_CONFIG_DIR / "evolve-state.json",
-        NIXMAC_CONFIG_DIR / "build-state.json",
-    ]
-
-    for p in candidates:
-        try:
-            if p.exists():
-                backup_path = p.with_suffix(".bak")
-                shutil.copy2(p, backup_path)
-                print(f"Backed up {p.name} to: {backup_path}")
-                # remove the original so tests start from a clean slate
-                p.unlink()
-                print(f"Removed original {p}")
-                backups[p] = backup_path
-        except Exception as exc:
-            print(f"Warning: failed to back up {p}: {exc}")
-
-    if not backups:
-        print("No nixmac files found to back up.")
-
-    return backups
-
-
-def restore_nixmac_settings(backups: dict) -> None:
-    """Restore previously backed up nixmac files from the provided mapping.
-
-    `backups` should be the dict returned from `backup_nixmac_settings`.
-    """
-    if not backups:
-        print("No nixmac backups to restore.")
-        return
-
-    for original_path, backup_path in backups.items():
-        try:
-            if backup_path.exists():
-                shutil.copy2(backup_path, original_path)
-                backup_path.unlink()
-                print(f"Restored {original_path.name} from backup: {backup_path}")
-            else:
-                print(f"Backup not found for {original_path}: {backup_path}")
-        except Exception as exc:
-            print(f"Warning: failed to restore {original_path} from {backup_path}: {exc}")
+    if not (app_data_dir / "nixmac.db").exists():
+        raise RuntimeError(
+            f"nixmac did not write state into {app_data_dir}; the binary "
+            f"appears to ignore {NIXMAC_APP_DATA_DIR_ENV}. Rebuild nixmac "
+            "from this repo (the hermetic override is required for eval "
+            "runs) — refusing to continue against real user state."
+        )
 
 
 def generate_repo_scoped_settings(
@@ -561,37 +555,33 @@ def generate_repo_scoped_settings(
 
 
 def generate_nixmac_settings(
+    app_data_dir: Path,
     evolve_model: str | None = None,
     summary_model: str | None = None,
-    openai_key: str | None = None,
-    openrouter_key: str | None = None,
     auth_props: dict | None = None,
     max_iterations: int | None = None,
     max_token_budget: int | None = None,
     host: str | None = None,
     configDir: str | None = None,
 ) -> None:
-    """Generate a nixmac settings.json file based on provided parameters."""
+    """Write a legacy-format settings.json into the hermetic app-data dir.
+
+    The binary's one-shot legacy migration copies these values into its
+    GlobalPreferences on first load. Because `app_data_dir` is a fresh temp
+    dir per case, there is no stale global-preferences.json to override them
+    and nothing leaks between cases.
+
+    API keys are NOT written here — the binary only reads secrets from the
+    legacy store under the e2e mock-system gate. They are passed via the
+    child environment instead (OPENAI_API_KEY etc.), which the binary's
+    env-first secret resolution picks up.
+    """
     if host is None:
         host = _get_eval_hostname()
-
-    # Wipe the observable's persisted file BETWEEN cases as well, not just
-    # at the start of main(). After any successful case the binary persists
-    # derived state (repoRoot, etc.) back to global-preferences.json; the
-    # legacy-store migration only overrides keys present in the eval-written
-    # settings.json, so fields like repoRoot — which the eval doesn't write
-    # — would otherwise leak from case N into case N+1 and point at a temp
-    # dir that's already been cleaned up.
-    global_prefs_path = NIXMAC_CONFIG_DIR / "global-preferences.json"
-    if global_prefs_path.exists():
-        with suppress(Exception):
-            global_prefs_path.unlink()
 
     settings = {
         "evolveModel": evolve_model,
         "summaryModel": summary_model,
-        "openaiApiKey": openai_key,
-        "openrouterApiKey": openrouter_key,
         "hostAttr": host,
         "configDir": configDir,
     }
@@ -606,32 +596,90 @@ def generate_nixmac_settings(
     if max_token_budget is not None:
         settings["maxTokenBudget"] = max_token_budget
 
-    # Merge any auth_props (e.g., ollamaApiBaseUrl OR vllmApiBaseUrl/vllmApiKey)
-    # Also set provider per auth type.
+    # Merge any auth_props (ollamaApiBaseUrl OR openaiCompatibleApiBaseUrl)
+    # and set the provider per auth type. "openai_compatible" is the current
+    # name for what the eval flags still call vLLM.
     if auth_props is not None:
         for k, v in auth_props.items():
             settings[k] = v
 
-        # Derive provider kind from auth_props after merging: prefer ollama, else vllm
         provider: str | None = None
         if "ollamaApiBaseUrl" in auth_props:
             provider = "ollama"
-        elif "vllmApiBaseUrl" in auth_props:
-            provider = "vllm"
+        elif "openaiCompatibleApiBaseUrl" in auth_props:
+            provider = "openai_compatible"
 
         settings["evolveProvider"] = provider
         settings["summaryProvider"] = provider
 
-    NIXMAC_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    with open(NIXMAC_SETTINGS_PATH, "w") as f:
+    app_data_dir.mkdir(parents=True, exist_ok=True)
+    settings_path = app_data_dir / "settings.json"
+    with open(settings_path, "w") as f:
         json.dump(settings, f, indent=4)
-    print(f"Generated nixmac settings at: {NIXMAC_SETTINGS_PATH}")
+    print(f"Generated nixmac settings at: {settings_path}")
+
+
+def _env_first(*names: str) -> str:
+    """First non-empty value among the given environment variables, or ""."""
+    for name in names:
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+    return ""
+
+
+def resolve_backend_from_env(parsed_args: argparse.Namespace) -> None:
+    """Fill in backend arguments from the environment when flags are absent.
+
+    Precedence: explicit CLI flags always win. When neither --ollama-url
+    nor --vllm-url is given, fall back to the environment — preferring the
+    vLLM/OpenAI-compatible endpoint (VLLM_URL or VLLM_API_BASE) over Ollama
+    (OLLAMA_URL or OLLAMA_API_BASE), since hosted endpoints are usually
+    exported deliberately for a session. If both are present in the
+    environment, warn about the choice and how to override it.
+
+    The vLLM API key similarly falls back to VLLM_API_KEY. (OPENAI_API_KEY
+    and OPENROUTER_API_KEY need no handling here: the nixmac binary already
+    resolves those env-first from the inherited child environment.)
+    """
+    if not parsed_args.ollama_url.strip() and not parsed_args.vllm_url.strip():
+        env_vllm = _env_first("VLLM_URL", "VLLM_API_BASE")
+        env_ollama = _env_first("OLLAMA_URL", "OLLAMA_API_BASE")
+        if env_vllm and env_ollama:
+            print(
+                "Warning: both vLLM (VLLM_URL/VLLM_API_BASE) and Ollama "
+                "(OLLAMA_URL/OLLAMA_API_BASE) endpoints are set in the "
+                "environment; preferring vLLM. Pass --ollama-url explicitly "
+                "to use Ollama."
+            )
+        if env_vllm:
+            parsed_args.vllm_url = env_vllm
+            print(f"Using vLLM endpoint from environment: {env_vllm}")
+        elif env_ollama:
+            parsed_args.ollama_url = env_ollama
+            print(f"Using Ollama endpoint from environment: {env_ollama}")
+
+    if parsed_args.vllm_url.strip() and not parsed_args.vllm_api_key:
+        env_key = _env_first("VLLM_API_KEY")
+        if env_key:
+            parsed_args.vllm_api_key = env_key
+            print("Using vLLM API key from environment (VLLM_API_KEY)")
 
 
 def main(parsed_args: argparse.Namespace) -> None:
-    # Back up nixmac files (settings.json, evolve-state.json, build-state.json)
-    # before running any test cases, and restore them at the end
-    backups = backup_nixmac_settings()
+    resolve_backend_from_env(parsed_args)
+
+    # Validate that at least one backend is configured: either ollama or vllm
+    ollama_set = bool(getattr(parsed_args, "ollama_url", None)) and parsed_args.ollama_url.strip() != ""
+    vllm_set = bool(getattr(parsed_args, "vllm_url", None)) and parsed_args.vllm_url.strip() != ""
+    if not (ollama_set or vllm_set):
+        print(
+            "Error: no model backend configured. Pass --ollama-url or "
+            "--vllm-url, or export VLLM_URL/VLLM_API_BASE or "
+            "OLLAMA_URL/OLLAMA_API_BASE (plus VLLM_API_KEY if needed)."
+        )
+        raise SystemExit(2)
+
     stop_requested = False
 
     def _sigint_handler(signum, frame):
@@ -721,6 +769,7 @@ def main(parsed_args: argparse.Namespace) -> None:
             try:
                 # Build auth_props based on which backend URL is provided (ollama or vllm); validate that both are not provided at the same time
                 auth_props: dict | None = None
+                api_key_env: dict = {}
                 ollama_url = getattr(parsed_args, "ollama_url", "").strip()
                 vllm_url = getattr(parsed_args, "vllm_url", "").strip()
 
@@ -732,10 +781,12 @@ def main(parsed_args: argparse.Namespace) -> None:
                 if ollama_url:
                     auth_props = {"ollamaApiBaseUrl": ollama_url}
                 elif vllm_url:
-                    auth_props = {"vllmApiBaseUrl": vllm_url}
+                    # vLLM is served through the binary's "openai_compatible"
+                    # provider; its key travels via the VLLM_API_KEY env var.
+                    auth_props = {"openaiCompatibleApiBaseUrl": vllm_url}
                     vllm_api_key = getattr(parsed_args, "vllm_api_key", None)
                     if vllm_api_key:
-                        auth_props["vllmApiKey"] = vllm_api_key
+                        api_key_env["VLLM_API_KEY"] = vllm_api_key
 
                 # Run the test case and capture the result
                 result = run_test_case(
@@ -747,6 +798,7 @@ def main(parsed_args: argparse.Namespace) -> None:
                     parsed_args.openai_key,
                     parsed_args.openrouter_key,
                     auth_props,
+                    api_key_env,
                     parsed_args.max_iterations,
                     parsed_args.max_token_budget,
                     parsed_args.host,
@@ -770,8 +822,6 @@ def main(parsed_args: argparse.Namespace) -> None:
         except Exception:
             pass
 
-        restore_nixmac_settings(backups)
-
         # Clean up the session-level cloned base config, if any.
         if clone_dir is not None:
             print(f"Cleaning up cloned base config directory: {clone_dir}")
@@ -779,21 +829,27 @@ def main(parsed_args: argparse.Namespace) -> None:
                 shutil.rmtree(clone_dir)
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run evaluation test cases.")
+def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.ArgumentParser:
+    """Add the run arguments to `parser` (or a fresh one) and return it."""
+    if parser is None:
+        parser = argparse.ArgumentParser(description="Run evaluation test cases.")
 
     parser.add_argument(
         "--nixmac", type=str, default=str(DEFAULT_NIXMAC), help="Path to nixmac binary"
     )
-    # Flags mirroring main nixmac app settings
+    # Flags mirroring main nixmac app settings. Model defaults honor the
+    # same env vars the nixmac binary uses (EVOLVE_MODEL / SUMMARY_MODEL).
     parser.add_argument(
-        "--evolve-model", type=str, default=DEFAULT_EVOLVE_MODEL, help="Evolve model (e.g. gpt-4)"
+        "--evolve-model",
+        type=str,
+        default=os.environ.get("EVOLVE_MODEL") or DEFAULT_EVOLVE_MODEL,
+        help=f"Evolve model (env: EVOLVE_MODEL; default: {DEFAULT_EVOLVE_MODEL})",
     )
     parser.add_argument(
         "--summary-model",
         type=str,
-        default=DEFAULT_SUMMARY_MODEL,
-        help="Summary model (e.g. gpt-4)",
+        default=os.environ.get("SUMMARY_MODEL") or DEFAULT_SUMMARY_MODEL,
+        help=f"Summary model (env: SUMMARY_MODEL; default: {DEFAULT_SUMMARY_MODEL})",
     )
     parser.add_argument(
         "--openai-key", dest="openai_key", type=str, default=None, help="OpenAI API key"
@@ -809,21 +865,24 @@ if __name__ == "__main__":
         dest="ollama_url",
         type=str,
         default="",
-        help="Ollama base URL (e.g. http://localhost:11434)",
+        help="Ollama base URL, e.g. http://localhost:11434 (env: OLLAMA_URL or OLLAMA_API_BASE)",
     )
     parser.add_argument(
         "--vllm-url",
         dest="vllm_url",
         type=str,
         default="",
-        help="vLLM base URL (e.g. http://100.111.97.14:8002/v1)",
+        help=(
+            "OpenAI-compatible/vLLM base URL, e.g. https://host/v1 "
+            "(env: VLLM_URL or VLLM_API_BASE; preferred over Ollama when both are set)"
+        ),
     )
     parser.add_argument(
         "--vllm-api-key",
         dest="vllm_api_key",
         type=str,
         default=None,
-        help="vLLM API key (if required)",
+        help="vLLM API key if required (env: VLLM_API_KEY)",
     )
     parser.add_argument("--host", type=str, default=None, help="Host name for your Mac")
 
@@ -909,15 +968,9 @@ if __name__ == "__main__":
         "--persona", type=str, help="Filter test cases by persona (e.g., --persona Developer)"
     )
 
-    args = parser.parse_args()
+    parser.set_defaults(func=main)
+    return parser
 
-    # Validate that at least one backend is configured: either ollama or vllm
-    ollama_set = bool(getattr(args, "ollama_url", None)) and args.ollama_url.strip() != ""
-    vllm_set = bool(getattr(args, "vllm_url", None)) and args.vllm_url.strip() != ""
-    if not (ollama_set or vllm_set):
-        print(
-            "Error: you must provide either --ollama-url or --vllm-url (and optionally --vllm-api-key)"
-        )
-        raise SystemExit(2)
 
-    main(args)
+if __name__ == "__main__":
+    main(build_parser().parse_args())

@@ -42,6 +42,8 @@ pub mod names {
     pub const NIXMAC_E2E_CONFIG_DIR: &str = "NIXMAC_E2E_CONFIG_DIR";
     pub const NIXMAC_E2E_HOST_ATTR: &str = "NIXMAC_E2E_HOST_ATTR";
 
+    pub const NIXMAC_APP_DATA_DIR: &str = "NIXMAC_APP_DATA_DIR";
+
     pub const NIXMAC_RECORD_COMPLETIONS: &str = "NIXMAC_RECORD_COMPLETIONS";
     pub const NIXMAC_COMPLETION_LOG_DIR: &str = "NIXMAC_COMPLETION_LOG_DIR";
     pub const NIXMAC_LOGFILE: &str = "NIXMAC_LOGFILE";

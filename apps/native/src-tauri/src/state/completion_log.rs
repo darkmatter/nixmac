@@ -10,12 +10,14 @@ use tokio::task::spawn_blocking;
 ///
 /// Uses `NIXMAC_COMPLETION_LOG_DIR` (resolved through `crate::env`, which
 /// checks process env, the build-time profile, and the e2e runtime file)
-/// when set, otherwise defaults to
+/// when set, then the hermetic `NIXMAC_APP_DATA_DIR` override (so hermetic
+/// runs never write recordings outside their state root), otherwise
 /// `~/Library/Application Support/nixmac/logs/{prefix}_YYYY-MM-DD.jsonl` on macOS.
 fn log_path_for_today(prefix: &str) -> PathBuf {
     let date = Local::now().format("%Y-%m-%d");
     crate::env::completion_log_dir()
         .map(PathBuf::from)
+        .or_else(crate::env::app_data_dir_override)
         .unwrap_or_else(|| {
             dirs::data_local_dir()
                 .unwrap_or_else(|| PathBuf::from("."))
