@@ -17,6 +17,7 @@ pub(crate) fn definition() -> Tool {
         description: r#"Edit a Nix file with semantic operations using attribute-path Add/Remove/Set/SetAttrs actions.
 Use this tool whenever you need the agent to make structured edits to Nix config. `add` and `remove` operate on list-valued attributes such as `home.packages` or `environment.systemPackages`. For Homebrew list attributes (`homebrew.brews`, `homebrew.casks`, and `homebrew.taps`), pass raw package/token strings such as `"bat"`; the tool writes them as Nix string literals. `set` assigns a scalar value such as a boolean, string, number, or `null` to an attribute path like `services.tailscale.enable`. `set_attrs` creates or updates a Nix attribute set (object) at a given path and sets key-value pairs inside it, including nested JSON objects/arrays that map to nested Nix attrsets/lists. Use this for options like `system.defaults.dock` that take an attrset value. The tool understands Nix syntax and will modify existing assignments when possible, or insert a new assignment into the module body if missing.
 Prefer: provide an `action` object with exactly one of `add`, `remove`, `set`, or `set_attrs`. A shorthand string action such as `"add"` is also accepted with sibling payload fields (for example `values`) and, when possible, the tool infers the only list attribute path in the target file. After calling this tool, run `build_check` to verify changes.
+IMPORTANT: This tool edits .nix files only; use edit_file for JSON and other file types.
 IMPORTANT: Do not use this tool for files under .nixmac. Nix implementation files there are reserved for Nixmac; only exact .nixmac/<module>/data.json files may be edited with edit_file.
 IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with syntax errors (unmatched braces/brackets, unclosed strings, etc) will be rejected. Ensure all generated code is syntactically complete and correct."#.to_string(),            parameters: serde_json::json!({
             "type": "object",
@@ -366,6 +367,18 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
         .ok_or_else(|| anyhow!("edit_nix_file: missing path"))?;
     if looks_like_attr_path(path) {
         return Err(explain_attr_path_used_as_file_path(args, path));
+    }
+    // Reject non-Nix files before the .nixmac guard: a data.json path must get
+    // a "wrong tool" error, not a reservation error telling the model it may
+    // edit only the very path it passed (observed: gpt-oss-120b read that as a
+    // contradiction and gave up).
+    if !path.ends_with(".nix") {
+        return Err(anyhow!(
+            "edit_nix_file: '{}' is not a .nix file — this tool makes semantic edits \
+             to Nix code only. Use edit_file for JSON and other file types \
+             (e.g. .nixmac/<module>/data.json).",
+            path
+        ));
     }
     ensure_nixmac_edit_allowed("edit_nix_file", path)?;
 
