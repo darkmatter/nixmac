@@ -213,7 +213,8 @@ pub(crate) fn ensure_nixmac_edit_allowed(tool: &str, path: &str) -> Result<()> {
     }
 
     Err(anyhow!(
-        "{}: .nixmac is reserved for Nixmac official modules; agents may edit only .nixmac/<module>/data.json",
+        "{}: .nixmac is reserved for Nixmac official modules; agents may edit only \
+         .nixmac/<module>/data.json (via edit_file)",
         tool
     ))
 }
@@ -1040,6 +1041,58 @@ mod tests {
                 found.is_none(),
                 "Banned tool '{}' should not be in the tools list",
                 banned
+            );
+        }
+    }
+
+    #[test]
+    fn nixmac_guard_names_edit_file_for_module_data_json() {
+        let err = super::ensure_nixmac_edit_allowed("ensure_secret", ".nixmac/homebrew/data.json")
+            .expect_err("only edit_file may edit module data.json");
+        assert!(
+            err.to_string().contains("edit_file"),
+            "error must name the tool that CAN do this edit: {err:#}"
+        );
+
+        let err = super::ensure_nixmac_edit_allowed("edit_file", ".nixmac/homebrew/default.nix")
+            .expect_err("non-data.json .nixmac files stay reserved");
+        assert!(err.to_string().contains("reserved"), "unexpected: {err:#}");
+
+        super::ensure_nixmac_edit_allowed("edit_file", ".nixmac/homebrew/data.json")
+            .expect("edit_file on module data.json is allowed");
+    }
+
+    #[test]
+    fn edit_nix_file_rejects_non_nix_files_and_names_edit_file() {
+        let tmp = tempdir().expect("tempdir");
+
+        for path in [".nixmac/homebrew/data.json", "config/settings.json"] {
+            let result = execute_tool(
+                tmp.path(),
+                tmp.path().to_str().expect("utf-8 path"),
+                "dummy-host",
+                "edit_nix_file",
+                &json!({
+                    "path": path,
+                    "action": {
+                        "set": {
+                            "path": "homebrew.enable",
+                            "value": true
+                        }
+                    }
+                }),
+                false,
+                None,
+            );
+
+            let err = result.expect_err("edit_nix_file must reject non-.nix files");
+            assert!(
+                err.to_string().contains("not a .nix file"),
+                "'{path}' must be rejected by the extension gate: {err:#}"
+            );
+            assert!(
+                err.to_string().contains("edit_file"),
+                "error must name the tool that CAN edit '{path}': {err:#}"
             );
         }
     }
