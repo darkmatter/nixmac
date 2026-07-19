@@ -5,8 +5,8 @@
   ...
 }:
 let
-  nativeDir = "${config.git.root}/apps/native";
-  tauriDir = "${config.git.root}/apps/native/src-tauri";
+  nativeDir = "${config.devenv.root}/apps/native";
+  tauriDir = "${config.devenv.root}/apps/native/src-tauri";
   disabledProcess = {
     exec = lib.mkOverride 60 "true";
     process-compose.disabled = lib.mkOverride 60 true;
