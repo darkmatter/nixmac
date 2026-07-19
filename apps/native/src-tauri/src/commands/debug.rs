@@ -96,6 +96,7 @@ pub async fn developer_clear_tauri_state(app: AppHandle) -> Result<(), String> {
     // broadcast the now-empty prompt history so the frontend mirrors the
     // cleared values without any manual store writes.
     crate::state::evolve_state::clear(&app).map_err(|e| e.to_string())?;
+    crate::state::rebuild_status::reset(&app);
     {
         use tauri::Emitter;
         let _ = app.emit(store::PROMPT_HISTORY_CHANGED_EVENT, Vec::<String>::new());

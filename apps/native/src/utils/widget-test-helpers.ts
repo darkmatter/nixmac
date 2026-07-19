@@ -8,7 +8,7 @@ import { clearChangeMap } from "@/viewmodel/change-map";
 import { clearEvolveEvents } from "@/viewmodel/evolution";
 import { refreshEvolveSnapshot } from "@/viewmodel/evolve";
 import { refreshGitSnapshot } from "@/viewmodel/git";
-import { clearRebuildProjection } from "@/viewmodel/rebuild";
+import { clearRebuildLog } from "@/viewmodel/rebuild";
 
 interface WidgetTestHelpers {
   /**
@@ -68,7 +68,7 @@ export function setupWidgetTestHelpers() {
       uiActions.setCommitMessageSuggestion(null);
       clearChangeMap();
       uiActions.setError(null);
-      clearRebuildProjection();
+      clearRebuildLog();
       uiActions.setRebuildPanelDismissed(false);
       uiActions.setRebuildContext("apply");
     },

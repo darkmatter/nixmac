@@ -25,7 +25,7 @@ import { startNixInstallSync } from "./nix-install";
 import { startPermissionsSync } from "./permissions";
 import { refreshHostsSnapshot, startPreferencesSync } from "./preferences";
 import { startPromptHistorySync } from "./prompt-history";
-import { clearRebuildProjection, startRebuildSync } from "./rebuild";
+import { startRebuildSync } from "./rebuild";
 
 const apiMocks = vi.hoisted(() => ({
   listeners: new Map<string, (event: { payload: unknown }) => void>(),
@@ -381,6 +381,12 @@ describe("view model sync", () => {
     expect(useUiState.getState().isProcessing).toBe(false);
     expect(apiMocks.refreshPermissions).not.toHaveBeenCalled();
 
+    // A backend reset, such as onboarding.reset, clears the stale finished
+    // result through the normal observable mirror path.
+    const reset = makeRebuildStatus();
+    apiMocks.listeners.get("rebuild_status_changed")?.({ payload: reset });
+    expect(viewModelActions.getState().rebuildStatus).toBe(reset);
+
     stop();
     expect(apiMocks.unlisten).toHaveBeenCalledTimes(3);
   });
@@ -399,32 +405,6 @@ describe("view model sync", () => {
     expect(viewModelActions.getState().rebuildLog.lines).toEqual([]);
 
     stop();
-  });
-
-  it("can clear a stale finished rebuild projection after onboarding reset", async () => {
-    viewModelActions.setState({
-      rebuildStatus: makeRebuildStatus({ success: true, exitCode: 0 }),
-      rebuildLog: {
-        lines: [{ id: 7, text: "stale success", type: "info" }],
-        rawLines: ["stale success"],
-        notices: [
-          {
-            id: "stale-notice",
-            title: "Stale notice",
-            body: "This should be cleared when onboarding restarts.",
-          },
-        ],
-      },
-    });
-
-    clearRebuildProjection();
-
-    expect(viewModelActions.getState().rebuildStatus).toBeNull();
-    expect(viewModelActions.getState().rebuildLog).toEqual({
-      lines: [],
-      rawLines: [],
-      notices: [],
-    });
   });
 
   it("opens the rebuild panel when hydrating a run that is still in flight", async () => {

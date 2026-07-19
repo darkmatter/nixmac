@@ -35,22 +35,6 @@ export function clearRebuildLog(): void {
   });
 }
 
-/**
- * Clear the webview-local rebuild projection after an explicit lifecycle
- * reset. The backend rebuild-status cell intentionally remembers the last
- * completed run, but onboarding's first-build step must not treat that stale
- * session result as proof that the restarted journey has already built.
- * Otherwise we would semi-skip the build step and the UI would get stuck on the
- * "Congrats" screen.
- */
-export function clearRebuildProjection(): void {
-  nextLineId = 1;
-  viewModelActions.setState({
-    rebuildStatus: null,
-    rebuildLog: { lines: [], rawLines: [], notices: [] },
-  });
-}
-
 function appendSummaryLines(texts: string[], type: RebuildLine["type"]): void {
   viewModelActions.setState((state) => ({
     rebuildLog: {
