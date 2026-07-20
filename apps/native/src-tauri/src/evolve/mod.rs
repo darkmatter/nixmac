@@ -2181,10 +2181,6 @@ fn summarize_result(result: &ToolResult) -> (String, bool) {
     }
 }
 
-/// Process a successful tool result and return the appropriate response message.
-/// Returns `Ok(Some(true))` if the loop should break, `Ok(Some(false))` to continue,
-/// or `Ok(None)` to break the inner tool loop but continue the outer loop.
-#[allow(clippy::too_many_arguments)]
 /// Gate deciding whether `done` may complete the evolution.
 ///
 /// Kept as a struct (rather than a bare bool) so the completion rules —
@@ -2203,6 +2199,10 @@ struct DoneGate {
     last_build_error: Option<String>,
 }
 
+/// Process a successful tool result and return the appropriate response message.
+/// Returns `Ok(Some(true))` if the loop should break, `Ok(Some(false))` to continue,
+/// or `Ok(None)` to break the inner tool loop but continue the outer loop.
+#[allow(clippy::too_many_arguments)]
 fn process_tool_result(
     tool_call_id: &str,
     result: &ToolResult,
