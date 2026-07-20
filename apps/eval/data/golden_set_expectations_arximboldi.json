@@ -1,0 +1,10 @@
+{
+  "_meta": {
+    "description": "No repository-specific semantic expectations are defined yet. This file prevents default-template expectations from being applied to reused case IDs in test_prompts_arximboldi.csv.",
+    "template": "arximboldi/dotfiles:nix/os",
+    "revision": "c4afbb3f740a25b0e6af8459501ffb614bab009d",
+    "host": "tyrell2",
+    "status": "placeholder",
+    "case_count": 0
+  }
+}
