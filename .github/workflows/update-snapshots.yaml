@@ -93,32 +93,13 @@ jobs:
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
 
-      # nixpkgs' playwright browsers can ship a different revision than the
-      # bun-installed playwright-core expects; alias the registry dir names.
-      - name: Align Playwright browsers with node_modules
-        working-directory: apps/native
-        run: node scripts/align-playwright-browsers.mjs
-
+      # Fail fast if the nix-provided chromium can't launch on this runner
+      # (unrealised store path, missing libs, fontless container). The script
+      # also aliases nixpkgs browser revisions onto what playwright-core
+      # expects before launching.
       - name: Check Playwright browser availability
         working-directory: apps/native
-        run: |
-          bunx playwright install --dry-run chromium
-          DEBUG=pw:browser bun --eval '
-            const { chromium } = await import("playwright");
-            const browser = await chromium.launch({
-              args: [
-                "--no-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-gpu-sandbox",
-                "--disable-gpu",
-                "--no-zygote",
-              ],
-            });
-            const page = await browser.newPage();
-            await page.setContent("<h1>ok</h1>");
-            console.log(await page.textContent("h1"));
-            await browser.close();
-          '
+        run: DEBUG=pw:browser node scripts/check-playwright-browsers.ts
 
       - name: Update snapshots
         working-directory: apps/native

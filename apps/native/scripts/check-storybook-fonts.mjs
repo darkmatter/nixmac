@@ -1,4 +1,11 @@
-import { chromium } from "playwright";
+import { alignPlaywrightBrowsers } from "./align-playwright-browsers.ts";
+
+// Nix-provided browsers may ship under different revision names than this
+// playwright version expects; rewrite PLAYWRIGHT_BROWSERS_PATH before launch.
+alignPlaywrightBrowsers();
+
+// Import after aligning so no resolution happens against a stale registry.
+const { chromium } = await import("playwright");
 
 const storybookUrl = process.env.STORYBOOK_URL ?? "http://127.0.0.1:6100";
 // Each app font maps a Tailwind utility (`font-<kind>`) to the CSS @font-face

@@ -1,6 +1,11 @@
 import path from "node:path";
 import type { CreeveyConfig } from "creevey";
 import { PlaywrightWebdriver } from "creevey/playwright";
+import { alignPlaywrightBrowsers } from "./scripts/align-playwright-browsers";
+
+// Nix-provided browsers may ship under different revision names than this
+// playwright version expects; rewrite PLAYWRIGHT_BROWSERS_PATH before launch.
+alignPlaywrightBrowsers();
 
 // Creevey is used here in a narrow, baseline-free mode: it captures fresh
 // screenshots of the handful of stories whose HTML snapshots failed (selected
