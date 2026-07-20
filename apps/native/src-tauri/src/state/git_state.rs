@@ -16,6 +16,7 @@ pub fn load_observable<R: Runtime>(app: &AppHandle<R>) -> Observable<GitState> {
     Observable::new(GitState {
         git_status: None,
         external_build_detected: false,
+        upstream_update_available: false,
     })
     .emit_to(app, GIT_STATE_CHANGED_EVENT)
 }
@@ -42,11 +43,13 @@ pub fn update<R: Runtime>(app: &AppHandle<R>, next: GitState) -> bool {
 /// a build nixmac itself initiated — both make any previously detected
 /// external build stale.
 pub fn update_status<R: Runtime>(app: &AppHandle<R>, status: GitStatus) -> bool {
+    let upstream_update_available = get(app).upstream_update_available;
     update(
         app,
         GitState {
             git_status: Some(status),
             external_build_detected: false,
+            upstream_update_available,
         },
     )
 }

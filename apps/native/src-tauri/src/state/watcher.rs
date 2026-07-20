@@ -34,6 +34,34 @@ static LAST_AUTO_UPDATE_CHECK: Mutex<Option<(String, Instant)>> = Mutex::new(Non
 /// every 5 minutes.
 const AUTO_UPDATE_CHECK_INTERVAL: Duration = Duration::from_secs(5 * 60);
 
+/// Git auto-update mode preference values.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum GitAutoUpdateMode {
+    Off,
+    Confirm,
+    Automatic,
+}
+
+/// Git auto-update mode preference implementation.
+/// TODO: Move to real system preference when ready to hook up to UI.
+impl GitAutoUpdateMode {
+    fn from_env() -> Self {
+        Self::from_value(std::env::var("NIXMAC_GIT_AUTO_UPDATE_MODE").ok().as_deref())
+    }
+
+    fn from_value(value: Option<&str>) -> Self {
+        match value {
+            Some("confirm") => Self::Confirm,
+            Some("automatic") => Self::Automatic,
+            Some(value) if !value.is_empty() && value != "off" => {
+                log::warn!("[watcher] ignoring invalid NIXMAC_GIT_AUTO_UPDATE_MODE value: {value}");
+                Self::Off
+            }
+            _ => Self::Off,
+        }
+    }
+}
+
 fn should_check_auto_update(dir: &str, now: Instant) -> bool {
     let mut last_check = LAST_AUTO_UPDATE_CHECK.lock().unwrap();
 
@@ -167,6 +195,7 @@ where
                                 GitState {
                                     git_status: Some(status),
                                     external_build_detected: flag,
+                                    upstream_update_available: current.upstream_update_available,
                                 },
                             );
                             // The cell write emits `change_map_changed`.
@@ -190,14 +219,24 @@ where
                 // Detect upstream git commits we may want to offer to pull.
                 // This is a fire-and-forget, best-effort check; if it fails,
                 // we just try again on the next scheduled check.
-                if let Some(dir) = current_dir.clone()
+                if GitAutoUpdateMode::from_env() != GitAutoUpdateMode::Off
+                    && let Some(dir) = current_dir.clone()
                     && should_check_auto_update(&dir, Instant::now())
                 {
                     // Use a separate thread so we don't block the crazy-fast 100ms loop. The check itself is a git fetch
                     // which is more like order-of-seconds (usually about 1-2 seconds in practice).
+                    let check_app_handle = app_handle.clone();
                     std::thread::spawn(move || {
                         let decision = git::auto_update::check_auto_update(&dir);
                         log::debug!("[watcher] git auto-update check result: {:?}", decision);
+                        if let Ok(decision) = decision {
+                            let mut state = git_state::get(&check_app_handle);
+                            state.upstream_update_available = matches!(
+                                decision,
+                                git::auto_update::AutoUpdateDecision::UpdateAndRebuild { .. }
+                            );
+                            git_state::update(&check_app_handle, state);
+                        }
                     });
                 }
 
@@ -208,4 +247,34 @@ where
 
     // Step 4: Store the new thread's handle so restart can join() it
     *thread_guard = Some(new_thread);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::GitAutoUpdateMode;
+
+    #[test]
+    fn parses_auto_update_mode() {
+        assert_eq!(GitAutoUpdateMode::from_value(None), GitAutoUpdateMode::Off);
+        assert_eq!(
+            GitAutoUpdateMode::from_value(Some("")),
+            GitAutoUpdateMode::Off
+        );
+        assert_eq!(
+            GitAutoUpdateMode::from_value(Some("off")),
+            GitAutoUpdateMode::Off
+        );
+        assert_eq!(
+            GitAutoUpdateMode::from_value(Some("confirm")),
+            GitAutoUpdateMode::Confirm
+        );
+        assert_eq!(
+            GitAutoUpdateMode::from_value(Some("automatic")),
+            GitAutoUpdateMode::Automatic
+        );
+        assert_eq!(
+            GitAutoUpdateMode::from_value(Some("invalid")),
+            GitAutoUpdateMode::Off
+        );
+    }
 }

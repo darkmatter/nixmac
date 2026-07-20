@@ -921,7 +921,11 @@ gitStatus: GitStatus | null;
 /**
  * True when a build outside nixmac was detected.
  */
-externalBuildDetected: boolean }
+externalBuildDetected: boolean;
+/**
+ * True when the configured upstream contains a fast-forward update.
+ */
+upstreamUpdateAvailable: boolean }
 
 /**
  * Comprehensive git repository status.

@@ -23,7 +23,11 @@ describe("Storybook Tauri oRPC mocks", () => {
   it("hydrates git.state as null when no story seeded the git slice", async () => {
     const response = (await orpcHandlers["git.state"]?.(undefined)) as GitState | undefined;
 
-    expect(response).toEqual({ externalBuildDetected: false, gitStatus: null });
+    expect(response).toEqual({
+      externalBuildDetected: false,
+      upstreamUpdateAvailable: false,
+      gitStatus: null,
+    });
   });
 
   it("mirrors a story-applied git status back through git.state", async () => {
@@ -41,6 +45,10 @@ describe("Storybook Tauri oRPC mocks", () => {
 
     const response = (await orpcHandlers["git.state"]?.(undefined)) as GitState | undefined;
 
-    expect(response).toEqual({ externalBuildDetected: false, gitStatus });
+    expect(response).toEqual({
+      externalBuildDetected: false,
+      upstreamUpdateAvailable: false,
+      gitStatus,
+    });
   });
 });

@@ -114,9 +114,14 @@ const okResult = () => ({ ok: true });
 
 const baseSemanticChangeMap = () => ({ groups: [], singles: [], unsummarizedHashes: [] });
 
-const baseGitState = (gitStatus: unknown, externalBuildDetected = false) => ({
+const baseGitState = (
+  gitStatus: unknown,
+  externalBuildDetected = false,
+  upstreamUpdateAvailable = false,
+) => ({
   gitStatus: gitStatus ?? null,
   externalBuildDetected,
+  upstreamUpdateAvailable,
 });
 
 const baseNixInstallState = () => ({
@@ -253,7 +258,11 @@ export const orpcHandlers: Record<string, OrpcHandler> = {
   "git.state": async () => {
     const { viewModelActions } = await import("@nixmac/state");
     const vm = viewModelActions.getState();
-    return baseGitState(vm.git, vm.build?.externalBuildDetected ?? false);
+    return baseGitState(
+      vm.git,
+      vm.build?.externalBuildDetected ?? false,
+      vm.build?.upstreamUpdateAvailable ?? false,
+    );
   },
   "git.status": async () => {
     const { viewModelActions } = await import("@nixmac/state");
@@ -469,9 +478,13 @@ export async function invoke(command: string, args?: Record<string, unknown>) {
     case "flake_list_hosts":
     case "plugin:darwin|list_hosts":
       return vm.hosts?.length ? [...vm.hosts] : [...defaultHosts];
-    // GitState slice (event shape: `{ gitStatus, externalBuildDetected }`).
+    // GitState slice (event shape includes status, external build, and upstream update flags).
     case "get_git_state":
-      return baseGitState(vm.git, vm.build?.externalBuildDetected ?? false);
+      return baseGitState(
+        vm.git,
+        vm.build?.externalBuildDetected ?? false,
+        vm.build?.upstreamUpdateAvailable ?? false,
+      );
     // GitStatus reads used by the explicit on-mount probe + manual refreshes.
     // Return the store value *verbatim* (including null) so the on-mount
     // `getInitialStatus` probe mirrors back exactly what a story applied —

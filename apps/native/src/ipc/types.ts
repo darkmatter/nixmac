@@ -5,645 +5,714 @@
 /**
  * Billing snapshot returned by `/api/billing/state` for onboarding and account UI.
  */
-export type AccountBilling = { usage: BillingUsage; subscriptions: BillingSubscription[]; hasPaymentMethod: boolean; canUseHostedInference: boolean; canUseDeviceSync: boolean }
+export type AccountBilling = {
+	usage: BillingUsage;
+	subscriptions: BillingSubscription[];
+	hasPaymentMethod: boolean;
+	canUseHostedInference: boolean;
+	canUseDeviceSync: boolean;
+};
 
 /**
  * Result of proactively checking App Management-sensitive copyApps targets.
  */
-export type AppManagementCheckResult = { 
-/**
- * True when every existing managed app bundle accepted the update probe.
- */
-ok: boolean; 
-/**
- * Number of existing app bundles inspected.
- */
-checked: number; 
-/**
- * Target directories with existing app bundles that were inspected.
- */
-targets: AppManagementPermissionTarget[]; 
-/**
- * Existing app bundles that could not be updated.
- */
-failures: AppManagementProbeFailure[] }
+export type AppManagementCheckResult = {
+	/**
+	 * True when every existing managed app bundle accepted the update probe.
+	 */
+	ok: boolean;
+	/**
+	 * Number of existing app bundles inspected.
+	 */
+	checked: number;
+	/**
+	 * Target directories with existing app bundles that were inspected.
+	 */
+	targets: AppManagementPermissionTarget[];
+	/**
+	 * Existing app bundles that could not be updated.
+	 */
+	failures: AppManagementProbeFailure[];
+};
 
 /**
  * Home Manager copyApps target that requires App Management-sensitive probing.
  */
-export type AppManagementPermissionTarget = { 
-/**
- * Home Manager user that owns the target directory.
- */
-user: string; 
-/**
- * Absolute copyApps target directory.
- */
-directory: string; 
-/**
- * Existing app bundles inspected under the target directory.
- */
-appBundles: string[] }
+export type AppManagementPermissionTarget = {
+	/**
+	 * Home Manager user that owns the target directory.
+	 */
+	user: string;
+	/**
+	 * Absolute copyApps target directory.
+	 */
+	directory: string;
+	/**
+	 * Existing app bundles inspected under the target directory.
+	 */
+	appBundles: string[];
+};
 
 /**
  * An existing app bundle that could not be updated during the preflight probe.
  */
-export type AppManagementProbeFailure = { 
-/**
- * Home Manager user that owns the app bundle target.
- */
-user: string; 
-/**
- * Existing app bundle that macOS blocked nixmac from updating.
- */
-appBundle: string; 
-/**
- * OS error returned by the harmless `.DS_Store` update probe.
- */
-error: string }
+export type AppManagementProbeFailure = {
+	/**
+	 * Home Manager user that owns the app bundle target.
+	 */
+	user: string;
+	/**
+	 * Existing app bundle that macOS blocked nixmac from updating.
+	 */
+	appBundle: string;
+	/**
+	 * OS error returned by the harmless `.DS_Store` update probe.
+	 */
+	error: string;
+};
 
 /**
  * The signed-in nixmac account, minus any secret material.
  */
-export type AuthAccount = { 
-/**
- * Stable account identifier assigned by the server.
- */
-id: string; 
-/**
- * Account email address used to sign in.
- */
-email: string }
+export type AuthAccount = {
+	/**
+	 * Stable account identifier assigned by the server.
+	 */
+	id: string;
+	/**
+	 * Account email address used to sign in.
+	 */
+	email: string;
+};
 
 /**
  * Snapshot of the desktop client's authentication state, returned by
  * `account_status`. The HMAC secret is never included.
  */
-export type AuthStatus = { 
-/**
- * Whether a usable account credential is stored on this device.
- */
-signedIn: boolean; 
-/**
- * The signed-in account, when `signed_in` is true.
- */
-account: AuthAccount | null; 
-/**
- * Public credential/key identifier sent in the `Authorization` header.
- */
-keyId: string | null; 
-/**
- * Base URL of the sync server this device is configured to talk to.
- */
-serverUrl: string; 
-/**
- * Whether this device can call server-brokered GitHub endpoints (has a
- * minted Better Auth api-key for the web origin).
- */
-githubReady: boolean; 
-/**
- * The web-origin account used for GitHub, when `github_ready` is true.
- */
-webAccount: AuthAccount | null }
+export type AuthStatus = {
+	/**
+	 * Whether a usable account credential is stored on this device.
+	 */
+	signedIn: boolean;
+	/**
+	 * The signed-in account, when `signed_in` is true.
+	 */
+	account: AuthAccount | null;
+	/**
+	 * Public credential/key identifier sent in the `Authorization` header.
+	 */
+	keyId: string | null;
+	/**
+	 * Base URL of the sync server this device is configured to talk to.
+	 */
+	serverUrl: string;
+	/**
+	 * Whether this device can call server-brokered GitHub endpoints (has a
+	 * minted Better Auth api-key for the web origin).
+	 */
+	githubReady: boolean;
+	/**
+	 * The web-origin account used for GitHub, when `github_ready` is true.
+	 */
+	webAccount: AuthAccount | null;
+};
 
 /**
  * Active Polar subscription mapped to a known nixmac product slug.
  */
-export type BillingSubscription = { id: string; slug: string; productId: string; status: string }
+export type BillingSubscription = {
+	id: string;
+	slug: string;
+	productId: string;
+	status: string;
+};
 
 /**
  * Hosted inference usage for the signed-in web account.
  */
-export type BillingUsage = { currency: string; spentUsd: number }
+export type BillingUsage = { currency: string; spentUsd: number };
 
 /**
  * Result of `darwin_build_check` — dry-run build outcome.
  */
-export type BuildCheckResult = { 
-/**
- * Whether the dry-run build passed.
- */
-passed: boolean; 
-/**
- * Build output or failure details.
- */
-output: string }
+export type BuildCheckResult = {
+	/**
+	 * Whether the dry-run build passed.
+	 */
+	passed: boolean;
+	/**
+	 * Build output or failure details.
+	 */
+	output: string;
+};
 
-export type Change = { id: number; hash: string; filename: string; diff: string; lineCount: number; createdAt: number; ownSummaryId: number }
+export type Change = {
+	id: number;
+	hash: string;
+	filename: string;
+	diff: string;
+	lineCount: number;
+	createdAt: number;
+	ownSummaryId: number;
+};
 
 /**
  * Groups Changes for a commit→base_commit pair. `commit_id` is NULL for speculative
  * (uncommitted) changesets. Membership is stored in the `set_changes` join table.
  */
-export type ChangeSet = { id: number; commitId: number | null; baseCommitId: number; commitMessage: string | null; generatedCommitMessage: string | null; createdAt: number; evolutionId: number | null }
+export type ChangeSet = {
+	id: number;
+	commitId: number | null;
+	baseCommitId: number;
+	commitMessage: string | null;
+	generatedCommitMessage: string | null;
+	createdAt: number;
+	evolutionId: number | null;
+};
 
-export type ChangeSummary = { id: number; title: string; description: string; 
-/**
- * One of `"QUEUED"`, `"DONE"`, `"FAILED"`, `"CANCELLED"`.
- */
-status: string; createdAt: number }
+export type ChangeSummary = {
+	id: number;
+	title: string;
+	description: string;
+	/**
+	 * One of `"QUEUED"`, `"DONE"`, `"FAILED"`, `"CANCELLED"`.
+	 */
+	status: string;
+	createdAt: number;
+};
 
 /**
  * Type of change for a file in git status.
  */
-export type ChangeType = 
-/**
- * File was added.
- */
-"new" | 
-/**
- * File contents changed.
- */
-"edited" | 
-/**
- * File was deleted.
- */
-"removed" | 
-/**
- * File was renamed or moved.
- */
-"renamed"
+export type ChangeType =
+	/**
+	 * File was added.
+	 */
+	| "new"
+	/**
+	 * File contents changed.
+	 */
+	| "edited"
+	/**
+	 * File was deleted.
+	 */
+	| "removed"
+	/**
+	 * File was renamed or moved.
+	 */
+	| "renamed";
 
-export type ChangeWithSummary = { 
-/**
- * Change row identifier.
- */
-id: number; 
-/**
- * Stable content hash for the change.
- */
-hash: string; 
-/**
- * Repository-relative changed file path.
- */
-filename: string; 
-/**
- * Unified diff content for this change.
- */
-diff: string; 
-/**
- * Number of lines in the change diff.
- */
-lineCount: number; 
-/**
- * Unix timestamp when the change was recorded.
- */
-createdAt: number; 
-/**
- * Direct summary row id assigned to this change, if any.
- */
-ownSummaryId: number; 
-/**
- * Summary title used for display.
- */
-title: string; 
-/**
- * Summary description used for display.
- */
-description: string }
+export type ChangeWithSummary = {
+	/**
+	 * Change row identifier.
+	 */
+	id: number;
+	/**
+	 * Stable content hash for the change.
+	 */
+	hash: string;
+	/**
+	 * Repository-relative changed file path.
+	 */
+	filename: string;
+	/**
+	 * Unified diff content for this change.
+	 */
+	diff: string;
+	/**
+	 * Number of lines in the change diff.
+	 */
+	lineCount: number;
+	/**
+	 * Unix timestamp when the change was recorded.
+	 */
+	createdAt: number;
+	/**
+	 * Direct summary row id assigned to this change, if any.
+	 */
+	ownSummaryId: number;
+	/**
+	 * Summary title used for display.
+	 */
+	title: string;
+	/**
+	 * Summary description used for display.
+	 */
+	description: string;
+};
 
 /**
  * Availability of known AI CLI tools.
  */
-export type CliToolsState = { 
-/**
- * Whether the Claude CLI is installed.
- */
-claude: boolean; 
-/**
- * Whether the Codex CLI is installed.
- */
-codex: boolean; 
-/**
- * Whether the OpenCode CLI is installed.
- */
-opencode: boolean }
+export type CliToolsState = {
+	/**
+	 * Whether the Claude CLI is installed.
+	 */
+	claude: boolean;
+	/**
+	 * Whether the Codex CLI is installed.
+	 */
+	codex: boolean;
+	/**
+	 * Whether the OpenCode CLI is installed.
+	 */
+	opencode: boolean;
+};
 
-export type Commit = { id: number; hash: string; treeHash: string; message: string | null; createdAt: number }
+export type Commit = {
+	id: number;
+	hash: string;
+	treeHash: string;
+	message: string | null;
+	createdAt: number;
+};
 
 /**
  * Result of a successful `git_commit` command. State mirrors (git, evolve,
  * change map) flow through the `*_changed` events.
  */
-export type CommitResult = { 
-/**
- * Hash of the commit that was created.
- */
-hash: string }
+export type CommitResult = {
+	/**
+	 * Hash of the commit that was created.
+	 */
+	hash: string;
+};
 
 /**
  * Application configuration returned by `config_get`.
  */
-export type Config = { 
-/**
- * Absolute path to the selected nix-darwin flake/config directory.
- */
-configDir: string; 
-/**
- * Selected `darwinConfigurations.<host>` attribute, when configured.
- */
-hostAttr: string | null }
+export type Config = {
+	/**
+	 * Absolute path to the selected nix-darwin flake/config directory.
+	 */
+	configDir: string;
+	/**
+	 * Selected `darwinConfigurations.<host>` attribute, when configured.
+	 */
+	hostAttr: string | null;
+};
 
 /**
  * Payload for `config:changed`, when emitted by a filesystem watcher.
  */
-export type ConfigChangedEvent = { 
-/**
- * Whether the selected config currently has changes.
- */
-hasChanges: boolean }
+export type ConfigChangedEvent = {
+	/**
+	 * Whether the selected config currently has changes.
+	 */
+	hasChanges: boolean;
+};
 
 /**
  * Result of a managed-edit apply operation (homebrew, system-defaults, etc.).
  */
-export type ConfigEditApplyResult = { 
-/**
- * Whether the config edit was applied.
- */
-ok: boolean; 
-/**
- * Number of items applied.
- */
-count: number }
+export type ConfigEditApplyResult = {
+	/**
+	 * Whether the config edit was applied.
+	 */
+	ok: boolean;
+	/**
+	 * Number of items applied.
+	 */
+	count: number;
+};
 
 /**
  * Static description of one Configurable field.
- * 
+ *
  * Produced by the derive macro with no runtime context; the same value every
  * call. Joined with the current store-backed value by `key` at render time.
  */
-export type ConfigFieldSchema = { 
-/**
- * Key as written to the underlying store (typically camelCase).
- */
-key: string; 
-/**
- * Human-readable label rendered above the input.
- */
-label: string; 
-/**
- * Optional help text (rendered as a tooltip / "info" icon).
- */
-help?: string | null; 
-/**
- * What control to render.
- */
-ty: FieldType; 
-/**
- * Default if the store has no value yet.
- */
-default: JsonValue }
+export type ConfigFieldSchema = {
+	/**
+	 * Key as written to the underlying store (typically camelCase).
+	 */
+	key: string;
+	/**
+	 * Human-readable label rendered above the input.
+	 */
+	label: string;
+	/**
+	 * Optional help text (rendered as a tooltip / "info" icon).
+	 */
+	help?: string | null;
+	/**
+	 * What control to render.
+	 */
+	ty: FieldType;
+	/**
+	 * Default if the store has no value yet.
+	 */
+	default: JsonValue;
+};
 
 /**
  * One section in the auto-rendered settings panel — corresponds to one
  * `#[derive(Configurable)]` struct. Static metadata only; current values are
  * fetched separately and joined by struct name + field key on the frontend.
  */
-export type ConfigurableSchema = { 
-/**
- * Unique stable identifier (struct's Rust name). Used by the setter to
- * dispatch to the right registered configurable.
- */
-name: string; 
-/**
- * Title shown above the section in the UI.
- */
-displayName: string; 
-/**
- * Optional one-line description shown under the title.
- */
-description?: string | null; fields: ConfigFieldSchema[] }
+export type ConfigurableSchema = {
+	/**
+	 * Unique stable identifier (struct's Rust name). Used by the setter to
+	 * dispatch to the right registered configurable.
+	 */
+	name: string;
+	/**
+	 * Title shown above the section in the UI.
+	 */
+	displayName: string;
+	/**
+	 * Optional one-line description shown under the title.
+	 */
+	description?: string | null;
+	fields: ConfigFieldSchema[];
+};
 
 /**
  * Payload for `darwin:apply:data`.
  */
-export type DarwinApplyDataEvent = { 
-/**
- * Raw output chunk from the rebuild process.
- */
-chunk: string }
+export type DarwinApplyDataEvent = {
+	/**
+	 * Raw output chunk from the rebuild process.
+	 */
+	chunk: string;
+};
 
 /**
  * Payload for `darwin:apply:end`.
  */
-export type DarwinApplyEndEvent = { 
-/**
- * Whether rebuild/apply completed successfully.
- */
-ok: boolean; 
-/**
- * Exit/status code for the rebuild/apply operation.
- */
-code: number; 
-/**
- * Error category on failure.
- */
-error_type: RebuildErrorType | null; 
-/**
- * Human-readable failure message.
- */
-error: string | null; 
-/**
- * Whether the failed operation completed before changing system state.
- */
-system_untouched: boolean | null; 
-/**
- * Path to the captured rebuild log, when available.
- */
-log_file: string | null; 
-/**
- * Structured `/etc` clobber conflicts when `error_type` is `etc_clobber`.
- */
-etc_clobber: EtcClobberCheckResult | null; 
-/**
- * Structured App Management probe failures when `error_type` is `app_management`.
- */
-app_management: AppManagementCheckResult | null }
+export type DarwinApplyEndEvent = {
+	/**
+	 * Whether rebuild/apply completed successfully.
+	 */
+	ok: boolean;
+	/**
+	 * Exit/status code for the rebuild/apply operation.
+	 */
+	code: number;
+	/**
+	 * Error category on failure.
+	 */
+	error_type: RebuildErrorType | null;
+	/**
+	 * Human-readable failure message.
+	 */
+	error: string | null;
+	/**
+	 * Whether the failed operation completed before changing system state.
+	 */
+	system_untouched: boolean | null;
+	/**
+	 * Path to the captured rebuild log, when available.
+	 */
+	log_file: string | null;
+	/**
+	 * Structured `/etc` clobber conflicts when `error_type` is `etc_clobber`.
+	 */
+	etc_clobber: EtcClobberCheckResult | null;
+	/**
+	 * Structured App Management probe failures when `error_type` is `app_management`.
+	 */
+	app_management: AppManagementCheckResult | null;
+};
 
 /**
  * Payload for `darwin:apply:summary`.
  */
-export type DarwinApplySummaryEvent = { 
-/**
- * Human-readable summary text.
- */
-text: string; 
-/**
- * Whether this is the final summary event.
- */
-complete: boolean | null; 
-/**
- * Whether the rebuild succeeded.
- */
-success: boolean | null; 
-/**
- * Whether this event describes an error.
- */
-error: boolean | null; 
-/**
- * Error category when `error` or `complete && !success` is set.
- */
-error_type: RebuildErrorType | null }
+export type DarwinApplySummaryEvent = {
+	/**
+	 * Human-readable summary text.
+	 */
+	text: string;
+	/**
+	 * Whether this is the final summary event.
+	 */
+	complete: boolean | null;
+	/**
+	 * Whether the rebuild succeeded.
+	 */
+	success: boolean | null;
+	/**
+	 * Whether this event describes an error.
+	 */
+	error: boolean | null;
+	/**
+	 * Error category when `error` or `complete && !success` is set.
+	 */
+	error_type: RebuildErrorType | null;
+};
 
-export type EnumVariant = { value: string; label: string }
+export type EnumVariant = { value: string; label: string };
 
 /**
  * Result of proactively checking managed-file overwrite safety.
  */
-export type EtcClobberCheckResult = { 
-/**
- * True when no hard conflicts were detected.
- */
-ok: boolean; 
-/**
- * Number of enabled managed-file entries inspected.
- */
-checked: number; 
-/**
- * Conflicts that would make nix-darwin abort activation.
- */
-conflicts: EtcClobberConflict[]; 
-/**
- * Non-blocking managed-file collisions that activation will back up.
- */
-warnings: ManagedFileWarning[] }
+export type EtcClobberCheckResult = {
+	/**
+	 * True when no hard conflicts were detected.
+	 */
+	ok: boolean;
+	/**
+	 * Number of enabled managed-file entries inspected.
+	 */
+	checked: number;
+	/**
+	 * Conflicts that would make nix-darwin abort activation.
+	 */
+	conflicts: EtcClobberConflict[];
+	/**
+	 * Non-blocking managed-file collisions that activation will back up.
+	 */
+	warnings: ManagedFileWarning[];
+};
 
 /**
  * A single `/etc` path that nix-darwin would refuse to overwrite.
  */
-export type EtcClobberConflict = { 
-/**
- * Absolute path under `/etc` that would be clobbered.
- */
-path: string; 
-/**
- * nix-darwin `environment.etc.<name>.target` value.
- */
-target: string; 
-/**
- * Symlink target nix-darwin expects for an already-managed file.
- */
-expectedStaticPath: string; 
-/**
- * Existing symlink target, if the path is currently a symlink.
- */
-currentLinkTarget: string | null; 
-/**
- * Safe hashes advertised by nix-darwin for this entry.
- */
-knownSha256Hashes: string[]; 
-/**
- * Reason this path is considered unsafe to overwrite.
- */
-kind: EtcClobberConflictKind }
+export type EtcClobberConflict = {
+	/**
+	 * Absolute path under `/etc` that would be clobbered.
+	 */
+	path: string;
+	/**
+	 * nix-darwin `environment.etc.<name>.target` value.
+	 */
+	target: string;
+	/**
+	 * Symlink target nix-darwin expects for an already-managed file.
+	 */
+	expectedStaticPath: string;
+	/**
+	 * Existing symlink target, if the path is currently a symlink.
+	 */
+	currentLinkTarget: string | null;
+	/**
+	 * Safe hashes advertised by nix-darwin for this entry.
+	 */
+	knownSha256Hashes: string[];
+	/**
+	 * Reason this path is considered unsafe to overwrite.
+	 */
+	kind: EtcClobberConflictKind;
+};
 
 /**
  * Kind of `/etc` clobber conflict detected before nix-darwin activation.
  */
-export type EtcClobberConflictKind = 
-/**
- * Existing file content does not match any nix-darwin known safe hash.
- */
-"unrecognized_content" | 
-/**
- * Existing path is not a regular file, so nix-darwin cannot hash/adopt it.
- */
-"non_regular_target" | 
-/**
- * Existing path could not be inspected or hashed by nixmac.
- */
-"unreadable"
+export type EtcClobberConflictKind =
+	/**
+	 * Existing file content does not match any nix-darwin known safe hash.
+	 */
+	| "unrecognized_content"
+	/**
+	 * Existing path is not a regular file, so nix-darwin cannot hash/adopt it.
+	 */
+	| "non_regular_target"
+	/**
+	 * Existing path could not be inspected or hashed by nixmac.
+	 */
+	| "unreadable";
 
-export type Evolution = { id: string; createdAt: number; state: EvolutionState; prompt: string; edits: FileEdit[]; commitHash: string | null; summary: string | null; 
-/**
- * Full message history for context
- */
-messages: JsonValue[]; 
-/**
- * Agent's thinking/reasoning log
- */
-thinking: ThinkingEntry[]; 
-/**
- * Tool call activity log
- */
-toolCalls: ToolCallRecord[]; 
-/**
- * Total tokens used
- */
-totalTokens: number; 
-/**
- * Number of iterations
- */
-iterations: number; 
-/**
- * Number of build attempts
- */
-buildAttempts: number; 
-/**
- * AI-generated summary of changes for preview
- */
-changesSummary: string | null; 
-/**
- * AI-generated commit message suggestion
- */
-suggestedCommitMessage: string | null }
+export type Evolution = {
+	id: string;
+	createdAt: number;
+	state: EvolutionState;
+	prompt: string;
+	edits: FileEdit[];
+	commitHash: string | null;
+	summary: string | null;
+	/**
+	 * Full message history for context
+	 */
+	messages: JsonValue[];
+	/**
+	 * Agent's thinking/reasoning log
+	 */
+	thinking: ThinkingEntry[];
+	/**
+	 * Tool call activity log
+	 */
+	toolCalls: ToolCallRecord[];
+	/**
+	 * Total tokens used
+	 */
+	totalTokens: number;
+	/**
+	 * Number of iterations
+	 */
+	iterations: number;
+	/**
+	 * Number of build attempts
+	 */
+	buildAttempts: number;
+	/**
+	 * AI-generated summary of changes for preview
+	 */
+	changesSummary: string | null;
+	/**
+	 * AI-generated commit message suggestion
+	 */
+	suggestedCommitMessage: string | null;
+};
 
 /**
  * Evolution lifecycle state.
  */
-export type EvolutionState = 
-/**
- * Initial state before generation starts.
- */
-"pending" | 
-/**
- * Currently generating/processing.
- */
-"loading" | 
-/**
- * Generation complete, ready for review.
- */
-"generated" | 
-/**
- * Changes have been applied (darwin-rebuild ran).
- */
-"applied" | 
-/**
- * Changes have been committed.
- */
-"committed" | 
-/**
- * An error occurred.
- */
-"failed" | 
-/**
- * Agent responded conversationally without making any environment changes.
- */
-"conversational" | 
-/**
- * Evolution was stopped because a safety limit was reached
- * (iterations, build attempts, token budget, or stale progress).
- * Distinguishes "we cut it off" from "the agent finished" so
- * the eval harness can score runaways correctly.
- */
-"limitReached"
+export type EvolutionState =
+	/**
+	 * Initial state before generation starts.
+	 */
+	| "pending"
+	/**
+	 * Currently generating/processing.
+	 */
+	| "loading"
+	/**
+	 * Generation complete, ready for review.
+	 */
+	| "generated"
+	/**
+	 * Changes have been applied (darwin-rebuild ran).
+	 */
+	| "applied"
+	/**
+	 * Changes have been committed.
+	 */
+	| "committed"
+	/**
+	 * An error occurred.
+	 */
+	| "failed"
+	/**
+	 * Agent responded conversationally without making any environment changes.
+	 */
+	| "conversational"
+	/**
+	 * Evolution was stopped because a safety limit was reached
+	 * (iterations, build attempts, token budget, or stale progress).
+	 * Distinguishes "we cut it off" from "the agent finished" so
+	 * the eval harness can score runaways correctly.
+	 */
+	| "limitReached";
 
 /**
  * Telemetry counters from a completed evolution run.
  */
-export type EvolutionTelemetry = { 
-/**
- * Final lifecycle state for the evolution.
- */
-state: EvolutionState; 
-/**
- * Number of agent iterations completed.
- */
-iterations: number; 
-/**
- * Number of build attempts completed.
- */
-buildAttempts: number; 
-/**
- * Total token count reported by the provider.
- */
-totalTokens: number; 
-/**
- * Number of edit operations performed.
- */
-editsCount: number; 
-/**
- * Number of reasoning/thinking events observed.
- */
-thinkingCount: number; 
-/**
- * Number of tool calls performed.
- */
-toolCallsCount: number; 
-/**
- * Total evolution duration in milliseconds.
- */
-durationMs: number }
+export type EvolutionTelemetry = {
+	/**
+	 * Final lifecycle state for the evolution.
+	 */
+	state: EvolutionState;
+	/**
+	 * Number of agent iterations completed.
+	 */
+	iterations: number;
+	/**
+	 * Number of build attempts completed.
+	 */
+	buildAttempts: number;
+	/**
+	 * Total token count reported by the provider.
+	 */
+	totalTokens: number;
+	/**
+	 * Number of edit operations performed.
+	 */
+	editsCount: number;
+	/**
+	 * Number of reasoning/thinking events observed.
+	 */
+	thinkingCount: number;
+	/**
+	 * Number of tool calls performed.
+	 */
+	toolCallsCount: number;
+	/**
+	 * Total evolution duration in milliseconds.
+	 */
+	durationMs: number;
+};
 
 /**
  * Acknowledgement from `darwin_evolve_cancel`.
  */
-export type EvolveCancelResult = { 
-/**
- * Whether the cancellation request was accepted.
- */
-ok: boolean; 
-/**
- * Human-readable cancellation result.
- */
-message: string }
+export type EvolveCancelResult = {
+	/**
+	 * Whether the cancellation request was accepted.
+	 */
+	ok: boolean;
+	/**
+	 * Human-readable cancellation result.
+	 */
+	message: string;
+};
 
 /**
  * Event type for streaming evolve progress updates.
  */
-export type EvolveEvent = { 
-/**
- * Raw log output or technical details for the event.
- */
-raw: string; 
-/**
- * Human-readable status text for rendering in the widget.
- */
-summary: string; 
-/**
- * Event category used by the UI timeline.
- */
-eventType: EvolveEventType; 
-/**
- * Agent iteration associated with the event, if applicable.
- */
-iteration: number | null; 
-/**
- * Milliseconds elapsed since the evolution started.
- */
-timestampMs: number; 
-/**
- * Structured payload for typed rendering; `None` on events that predate
- * it or have no structure.
- */
-detail?: EvolveEventDetail | null; 
-/**
- * Telemetry collected during the run; only on the terminal `Complete` event.
- */
-telemetry?: EvolutionTelemetry | null; 
-/**
- * Assistant response when no environment changes were produced; only on
- * the terminal `Complete` event.
- */
-conversationalResponse?: string | null }
+export type EvolveEvent = {
+	/**
+	 * Raw log output or technical details for the event.
+	 */
+	raw: string;
+	/**
+	 * Human-readable status text for rendering in the widget.
+	 */
+	summary: string;
+	/**
+	 * Event category used by the UI timeline.
+	 */
+	eventType: EvolveEventType;
+	/**
+	 * Agent iteration associated with the event, if applicable.
+	 */
+	iteration: number | null;
+	/**
+	 * Milliseconds elapsed since the evolution started.
+	 */
+	timestampMs: number;
+	/**
+	 * Structured payload for typed rendering; `None` on events that predate
+	 * it or have no structure.
+	 */
+	detail?: EvolveEventDetail | null;
+	/**
+	 * Telemetry collected during the run; only on the terminal `Complete` event.
+	 */
+	telemetry?: EvolutionTelemetry | null;
+	/**
+	 * Assistant response when no environment changes were produced; only on
+	 * the terminal `Complete` event.
+	 */
+	conversationalResponse?: string | null;
+};
 
 /**
  * Structured payload carried by an [`EvolveEvent`]. Lets the frontend render
  * events from typed data instead of parsing the formatted `summary`/`raw`
  * strings (which remain the fallback and feed the Console / transcripts).
  */
-export type EvolveEventDetail = 
-/**
- * The `think` tool's full reasoning text.
- */
-{ type: "thinking"; category: string; text: string } | 
-/**
- * A tool invocation with its (sanitized) arguments.
- */
-{ type: "toolCall"; tool: string; args: JsonValue } | 
-/**
- * A package search and its results.
- */
-{ type: "searchPackages"; query: string; found: string[] } | 
-/**
- * A file edit; `action` is present for semantic nix edits.
- */
-{ type: "edit"; file: string; action: FileEditAction | null } | 
-/**
- * A build check outcome with the captured output.
- */
-{ type: "build"; pass: boolean; attempt: number; output: string } | 
-/**
+export type EvolveEventDetail =
+	/**
+	 * The `think` tool's full reasoning text.
+	 */
+	| { type: "thinking"; category: string; text: string }
+	/**
+	 * A tool invocation with its (sanitized) arguments.
+	 */
+	| { type: "toolCall"; tool: string; args: JsonValue }
+	/**
+	 * A package search and its results.
+	 */
+	| { type: "searchPackages"; query: string; found: string[] }
+	/**
+	 * A file edit; `action` is present for semantic nix edits.
+	 */
+	| { type: "edit"; file: string; action: FileEditAction | null }
+	/**
+	 * A build check outcome with the captured output.
+	 */
+	| { type: "build"; pass: boolean; attempt: number; output: string }
+	/**
  * A streamed chunk of build-check output, emitted in throttled batches
  * while the check runs.
  */
@@ -660,98 +729,110 @@ export type EvolveEventDetail =
  */
 { type: "streamReset" } | 
 /**
- * Assistant narration between tool calls.
- */
-{ type: "narration"; text: string } | 
-/**
- * Budget counters, emitted with every provider response.
- */
-{ type: "progress"; tokens: number; budget: number; iteration: number; limit: number } | 
-/**
- * A question the run is blocked on.
- */
-{ type: "question"; text: string; choices: string[] | null; kind: QuestionKind } | 
-/**
- * The user's answer to the pending question.
- */
-{ type: "answered"; text: string }
+	 * Assistant narration between tool calls.
+	 */
+	| { type: "narration"; text: string }
+	/**
+	 * Budget counters, emitted with every provider response.
+	 */
+	| {
+			type: "progress";
+			tokens: number;
+			budget: number;
+			iteration: number;
+			limit: number;
+	  }
+	/**
+	 * A question the run is blocked on.
+	 */
+	| {
+			type: "question";
+			text: string;
+			choices: string[] | null;
+			kind: QuestionKind;
+	  }
+	/**
+	 * The user's answer to the pending question.
+	 */
+	| { type: "answered"; text: string };
 
 /**
  * Types of evolve events for UI rendering.
  */
-export type EvolveEventType = 
-/**
- * Evolution is starting.
- */
-"start" | 
-/**
- * Agent loop entered a new iteration.
- */
-"iteration" | 
-/**
- * Model reasoning/thinking content was observed.
- */
-"thinking" | 
-/**
- * Agent is reading a file.
- */
-"reading" | "searchPackages" | 
-/**
- * Agent is editing a file.
- */
-"editing" | 
-/**
- * Agent is running a build check.
- */
-"buildCheck" | 
-/**
- * Build check passed.
- */
-"buildPass" | 
-/**
- * Build check failed.
- */
-"buildFail" | 
-/**
- * Agent invoked a tool.
- */
-"toolCall" | 
-/**
- * Request was sent to an AI provider.
- */
-"apiRequest" | 
-/**
- * Response was received from an AI provider.
- */
-"apiResponse" | 
-/**
- * Evolution completed successfully.
- */
-"complete" | 
-/**
- * Evolution failed or emitted an error.
- */
-"error" | 
-/**
- * Informational event without a more specific category.
- */
-"info" | 
-/**
- * Change summarization is running.
- */
-"summarizing" | 
-/**
- * Agent asked the user for input.
- */
-"question" | 
-/**
- * User answered the pending question.
- */
-"answered" | 
-/**
- * Assistant narration between tool calls.
- */
-"narration" | 
+export type EvolveEventType =
+	/**
+	 * Evolution is starting.
+	 */
+	| "start"
+	/**
+	 * Agent loop entered a new iteration.
+	 */
+	| "iteration"
+	/**
+	 * Model reasoning/thinking content was observed.
+	 */
+	| "thinking"
+	/**
+	 * Agent is reading a file.
+	 */
+	| "reading"
+	| "searchPackages"
+	/**
+	 * Agent is editing a file.
+	 */
+	| "editing"
+	/**
+	 * Agent is running a build check.
+	 */
+	| "buildCheck"
+	/**
+	 * Build check passed.
+	 */
+	| "buildPass"
+	/**
+	 * Build check failed.
+	 */
+	| "buildFail"
+	/**
+	 * Agent invoked a tool.
+	 */
+	| "toolCall"
+	/**
+	 * Request was sent to an AI provider.
+	 */
+	| "apiRequest"
+	/**
+	 * Response was received from an AI provider.
+	 */
+	| "apiResponse"
+	/**
+	 * Evolution completed successfully.
+	 */
+	| "complete"
+	/**
+	 * Evolution failed or emitted an error.
+	 */
+	| "error"
+	/**
+	 * Informational event without a more specific category.
+	 */
+	| "info"
+	/**
+	 * Change summarization is running.
+	 */
+	| "summarizing"
+	/**
+	 * Agent asked the user for input.
+	 */
+	| "question"
+	/**
+	 * User answered the pending question.
+	 */
+	| "answered"
+	/**
+	 * Assistant narration between tool calls.
+	 */
+	| "narration"; | 
 /**
  * A streamed slice of the assistant response being generated.
  */
@@ -761,680 +842,736 @@ export type EvolveEventType =
  * The evolve routing state as projected for the frontend: the owned
  * [`EvolveSession`] fields joined with the two derived values (`step`,
  * `committable`).
- * 
+ *
  * This is the wire/event type — it is computed by
  * `state::evolve_state::project` and is never persisted or treated as a
  * source of truth on its own. `step` and `committable` are always recomputed
  * from live build/git state, so a value of this type is only a snapshot.
  */
-export type EvolveState = { 
-/**
- * Active evolution database id.
- */
-evolutionId: number | null; 
-/**
- * Active changeset id for the current repo state.
- */
-currentChangesetId: number | null; 
-/**
- * Whether the current state has been successfully built and can be committed.
- */
-committable: boolean; 
-/**
- * Branch used to reset repo state on evolve failure.
- */
-backupBranch: string | null; 
-/**
- * Branch used to recover repo state during rollback.
- */
-rollbackBranch: string | null; 
-/**
- * Nix store path that should be reactivated during rollback.
- */
-rollbackStorePath: string | null; 
-/**
- * Changeset id associated with the rollback target.
- */
-rollbackChangesetId: number | null; 
-/**
- * UI step derived from the session plus live build/git state.
- */
-step: EvolveStep; 
-/**
- * Last terminal state observed for this routing session.
- */
-lastEvolutionState?: EvolutionState | null }
+export type EvolveState = {
+	/**
+	 * Active evolution database id.
+	 */
+	evolutionId: number | null;
+	/**
+	 * Active changeset id for the current repo state.
+	 */
+	currentChangesetId: number | null;
+	/**
+	 * Whether the current state has been successfully built and can be committed.
+	 */
+	committable: boolean;
+	/**
+	 * Branch used to reset repo state on evolve failure.
+	 */
+	backupBranch: string | null;
+	/**
+	 * Branch used to recover repo state during rollback.
+	 */
+	rollbackBranch: string | null;
+	/**
+	 * Nix store path that should be reactivated during rollback.
+	 */
+	rollbackStorePath: string | null;
+	/**
+	 * Changeset id associated with the rollback target.
+	 */
+	rollbackChangesetId: number | null;
+	/**
+	 * UI step derived from the session plus live build/git state.
+	 */
+	step: EvolveStep;
+	/**
+	 * Last terminal state observed for this routing session.
+	 */
+	lastEvolutionState?: EvolutionState | null;
+};
 
 /**
  * Widget step derived from `EvolveState` fields.
  */
-export type EvolveStep = 
-/**
- * Initial prompt entry state.
- */
-"begin" | 
-/**
- * AI evolution is in progress or ready for review.
- */
-"evolve" | 
-/**
- * Changes are built and ready to commit.
- */
-"commit" | 
-/**
- * User is manually editing generated changes.
- */
-"manualEvolve" | 
-/**
- * Manual changes are ready to commit.
- */
-"manualCommit"
+export type EvolveStep =
+	/**
+	 * Initial prompt entry state.
+	 */
+	| "begin"
+	/**
+	 * AI evolution is in progress or ready for review.
+	 */
+	| "evolve"
+	/**
+	 * Changes are built and ready to commit.
+	 */
+	| "commit"
+	/**
+	 * User is manually editing generated changes.
+	 */
+	| "manualEvolve"
+	/**
+	 * Manual changes are ready to commit.
+	 */
+	| "manualCommit";
 
 /**
  * Result of a successful settings export. Returned to the frontend so it can
  * show the file path and the count of skipped sensitive keys.
  */
-export type ExportResult = { path: string; keysWritten: number; keysSkipped: string[] }
+export type ExportResult = {
+	path: string;
+	keysWritten: number;
+	keysSkipped: string[];
+};
 
 /**
  * AI provider/model info and usage signals.
  */
-export type FeedbackAiProviderModelInfo = { 
-/**
- * Provider used for evolution requests.
- */
-evolveProvider: string | null; 
-/**
- * Model used for evolution requests.
- */
-evolveModel: string | null; 
-/**
- * Provider used for summary requests.
- */
-summaryProvider: string | null; 
-/**
- * Model used for summary requests.
- */
-summaryModel: string | null; 
-/**
- * Token count reported for the related AI run.
- */
-totalTokens: number | null; 
-/**
- * Latency in milliseconds for the related AI run.
- */
-latencyMs: number; 
-/**
- * Iterations completed by the related evolution.
- */
-iterations: number | null; 
-/**
- * Build attempts completed by the related evolution.
- */
-buildAttempts: number | null }
+export type FeedbackAiProviderModelInfo = {
+	/**
+	 * Provider used for evolution requests.
+	 */
+	evolveProvider: string | null;
+	/**
+	 * Model used for evolution requests.
+	 */
+	evolveModel: string | null;
+	/**
+	 * Provider used for summary requests.
+	 */
+	summaryProvider: string | null;
+	/**
+	 * Model used for summary requests.
+	 */
+	summaryModel: string | null;
+	/**
+	 * Token count reported for the related AI run.
+	 */
+	totalTokens: number | null;
+	/**
+	 * Latency in milliseconds for the related AI run.
+	 */
+	latencyMs: number;
+	/**
+	 * Iterations completed by the related evolution.
+	 */
+	iterations: number | null;
+	/**
+	 * Build attempts completed by the related evolution.
+	 */
+	buildAttempts: number | null;
+};
 
 /**
  * Flake input metadata captured from flake.lock.
  */
-export type FeedbackFlakeInputEntry = { 
-/**
- * Git revision for the flake input.
- */
-rev: string | null; 
-/**
- * Flake input last-modified timestamp from `flake.lock`.
- */
-lastModified: number; 
-/**
- * Store hash for the locked input.
- */
-narHash: string | null }
+export type FeedbackFlakeInputEntry = {
+	/**
+	 * Git revision for the flake input.
+	 */
+	rev: string | null;
+	/**
+	 * Flake input last-modified timestamp from `flake.lock`.
+	 */
+	lastModified: number;
+	/**
+	 * Store hash for the locked input.
+	 */
+	narHash: string | null;
+};
 
 /**
  * Snapshot of selected flake inputs.
  */
-export type FeedbackFlakeInputsSnapshot = { 
-/**
- * Locked `nixpkgs` input metadata.
- */
-nixpkgs: FeedbackFlakeInputEntry | null; 
-/**
- * Locked `nix-darwin` input metadata.
- */
-"nix-darwin": FeedbackFlakeInputEntry | null; 
-/**
- * Locked `home-manager` input metadata.
- */
-"home-manager": FeedbackFlakeInputEntry | null }
+export type FeedbackFlakeInputsSnapshot = {
+	/**
+	 * Locked `nixpkgs` input metadata.
+	 */
+	nixpkgs: FeedbackFlakeInputEntry | null;
+	/**
+	 * Locked `nix-darwin` input metadata.
+	 */
+	"nix-darwin": FeedbackFlakeInputEntry | null;
+	/**
+	 * Locked `home-manager` input metadata.
+	 */
+	"home-manager": FeedbackFlakeInputEntry | null;
+};
 
 /**
  * Metadata collected for feedback submission based on user opt-in.
  */
-export type FeedbackMetadata = { 
-/**
- * Current frontend/store snapshot, represented as arbitrary JSON.
- */
-currentAppStateSnapshot: JsonValue | null; 
-/**
- * Runtime system information.
- */
-systemInfo: FeedbackSystemInfo | null; 
-/**
- * Aggregated local usage statistics.
- */
-usageStats: FeedbackUsageStats | null; 
-/**
- * Captured evolution log content.
- */
-evolutionLogContent: Evolution | null; 
-/**
- * Diff for changed Nix files at submission time.
- */
-changedNixFilesDiff: string | null; 
-/**
- * AI provider/model metadata for the related run.
- */
-aiProviderModelInfo: FeedbackAiProviderModelInfo | null; 
-/**
- * Latest build error output.
- */
-buildErrorOutput: string | null; 
-/**
- * Selected locked flake input metadata.
- */
-flakeInputsSnapshot: FeedbackFlakeInputsSnapshot | null; 
-/**
- * Recent application log content.
- */
-appLogsContent: string | null; 
-/**
- * Panic details when feedback is submitted after a crash.
- */
-panicDetails: FeedbackPanicDetails | null }
+export type FeedbackMetadata = {
+	/**
+	 * Current frontend/store snapshot, represented as arbitrary JSON.
+	 */
+	currentAppStateSnapshot: JsonValue | null;
+	/**
+	 * Runtime system information.
+	 */
+	systemInfo: FeedbackSystemInfo | null;
+	/**
+	 * Aggregated local usage statistics.
+	 */
+	usageStats: FeedbackUsageStats | null;
+	/**
+	 * Captured evolution log content.
+	 */
+	evolutionLogContent: Evolution | null;
+	/**
+	 * Diff for changed Nix files at submission time.
+	 */
+	changedNixFilesDiff: string | null;
+	/**
+	 * AI provider/model metadata for the related run.
+	 */
+	aiProviderModelInfo: FeedbackAiProviderModelInfo | null;
+	/**
+	 * Latest build error output.
+	 */
+	buildErrorOutput: string | null;
+	/**
+	 * Selected locked flake input metadata.
+	 */
+	flakeInputsSnapshot: FeedbackFlakeInputsSnapshot | null;
+	/**
+	 * Recent application log content.
+	 */
+	appLogsContent: string | null;
+	/**
+	 * Panic details when feedback is submitted after a crash.
+	 */
+	panicDetails: FeedbackPanicDetails | null;
+};
 
 /**
  * Request payload for gathering feedback metadata.
  */
-export type FeedbackMetadataRequest = { 
-/**
- * Feedback category selected by the user.
- */
-feedbackType: string; 
-/**
- * User opt-in flags controlling which artifacts may be gathered.
- */
-share: FeedbackShareOptions }
+export type FeedbackMetadataRequest = {
+	/**
+	 * Feedback category selected by the user.
+	 */
+	feedbackType: string;
+	/**
+	 * User opt-in flags controlling which artifacts may be gathered.
+	 */
+	share: FeedbackShareOptions;
+};
 
 /**
  * Panic/crash information captured when a Rust panic occurs.
  */
-export type FeedbackPanicDetails = { 
-/**
- * Panic message captured by the panic hook.
- */
-message: string; 
-/**
- * Source location reported by Rust, when available.
- */
-location: string | null; 
-/**
- * Captured backtrace, when available.
- */
-backtrace: string | null; 
-/**
- * UTC timestamp when the panic was captured.
- */
-timestamp: string }
+export type FeedbackPanicDetails = {
+	/**
+	 * Panic message captured by the panic hook.
+	 */
+	message: string;
+	/**
+	 * Source location reported by Rust, when available.
+	 */
+	location: string | null;
+	/**
+	 * Captured backtrace, when available.
+	 */
+	backtrace: string | null;
+	/**
+	 * UTC timestamp when the panic was captured.
+	 */
+	timestamp: string;
+};
 
 /**
  * Options indicating which feedback artifacts the user allows sharing.
  */
-export type FeedbackShareOptions = { 
-/**
- * Include the current widget/store state snapshot.
- */
-currentAppState: boolean; 
-/**
- * Include OS, architecture, Nix, and app version details.
- */
-systemInfo: boolean; 
-/**
- * Include aggregated usage statistics.
- */
-usageStats: boolean; 
-/**
- * Include the active evolution log.
- */
-evolutionLog: boolean; 
-/**
- * Include the current diff for changed Nix files.
- */
-changedNixFiles: boolean; 
-/**
- * Include selected AI provider/model and usage details.
- */
-aiProviderModelInfo: boolean; 
-/**
- * Include the latest build error output, if any.
- */
-buildErrorOutput: boolean; 
-/**
- * Include selected `flake.lock` input metadata.
- */
-flakeInputsSnapshot: boolean; 
-/**
- * Include recent application logs.
- */
-appLogs: boolean }
+export type FeedbackShareOptions = {
+	/**
+	 * Include the current widget/store state snapshot.
+	 */
+	currentAppState: boolean;
+	/**
+	 * Include OS, architecture, Nix, and app version details.
+	 */
+	systemInfo: boolean;
+	/**
+	 * Include aggregated usage statistics.
+	 */
+	usageStats: boolean;
+	/**
+	 * Include the active evolution log.
+	 */
+	evolutionLog: boolean;
+	/**
+	 * Include the current diff for changed Nix files.
+	 */
+	changedNixFiles: boolean;
+	/**
+	 * Include selected AI provider/model and usage details.
+	 */
+	aiProviderModelInfo: boolean;
+	/**
+	 * Include the latest build error output, if any.
+	 */
+	buildErrorOutput: boolean;
+	/**
+	 * Include selected `flake.lock` input metadata.
+	 */
+	flakeInputsSnapshot: boolean;
+	/**
+	 * Include recent application logs.
+	 */
+	appLogs: boolean;
+};
 
 /**
  * System information captured from the runtime.
  */
-export type FeedbackSystemInfo = { 
-/**
- * Operating system name, e.g. `macOS`.
- */
-osName: string | null; 
-/**
- * Operating system version string.
- */
-osVersion: string | null; 
-/**
- * Hardware/system architecture, e.g. `aarch64-darwin`.
- */
-arch: string | null; 
-/**
- * Installed Nix version, when detected.
- */
-nixVersion: string | null; 
-/**
- * nixmac application version.
- */
-appVersion: string | null }
+export type FeedbackSystemInfo = {
+	/**
+	 * Operating system name, e.g. `macOS`.
+	 */
+	osName: string | null;
+	/**
+	 * Operating system version string.
+	 */
+	osVersion: string | null;
+	/**
+	 * Hardware/system architecture, e.g. `aarch64-darwin`.
+	 */
+	arch: string | null;
+	/**
+	 * Installed Nix version, when detected.
+	 */
+	nixVersion: string | null;
+	/**
+	 * nixmac application version.
+	 */
+	appVersion: string | null;
+};
 
 /**
  * Aggregated usage stats for feedback.
  */
-export type FeedbackUsageStats = { 
-/**
- * Number of evolutions recorded locally.
- */
-totalEvolutions: number | null; 
-/**
- * Percentage of evolutions that completed successfully.
- */
-successRate: number | null; 
-/**
- * Average number of agent iterations per evolution.
- */
-avgIterations: number | null; 
-/**
- * Timestamp when the stats were computed.
- */
-lastComputedAt: string | null; 
-/**
- * Additional structured usage fields that are not part of the stable contract.
- */
-extra: JsonValue | null }
+export type FeedbackUsageStats = {
+	/**
+	 * Number of evolutions recorded locally.
+	 */
+	totalEvolutions: number | null;
+	/**
+	 * Percentage of evolutions that completed successfully.
+	 */
+	successRate: number | null;
+	/**
+	 * Average number of agent iterations per evolution.
+	 */
+	avgIterations: number | null;
+	/**
+	 * Timestamp when the stats were computed.
+	 */
+	lastComputedAt: string | null;
+	/**
+	 * Additional structured usage fields that are not part of the stable contract.
+	 */
+	extra: JsonValue | null;
+};
 
 /**
  * What kind of control should render this field.
  */
-export type FieldType = 
-/**
- * Numeric input with optional min/max/step.
- */
-{ kind: "number"; min?: number | null; max?: number | null; step?: number | null } | 
-/**
- * Toggle / checkbox.
- */
-{ kind: "boolean" } | 
-/**
- * Single-line text or multi-line textarea when `multiline = true`.
- */
-{ kind: "string"; multiline: boolean } | 
-/**
- * Select / dropdown of pre-declared options.
- */
-{ kind: "enum"; variants: EnumVariant[] }
+export type FieldType =
+	/**
+	 * Numeric input with optional min/max/step.
+	 */
+	| {
+			kind: "number";
+			min?: number | null;
+			max?: number | null;
+			step?: number | null;
+	  }
+	/**
+	 * Toggle / checkbox.
+	 */
+	| { kind: "boolean" }
+	/**
+	 * Single-line text or multi-line textarea when `multiline = true`.
+	 */
+	| { kind: "string"; multiline: boolean }
+	/**
+	 * Select / dropdown of pre-declared options.
+	 */
+	| { kind: "enum"; variants: EnumVariant[] };
 
 /**
  * HEAD content vs working-tree content for a file, used by the diff tab Monaco DiffEditor.
  */
-export type FileDiffContents = { original: string; modified: string }
+export type FileDiffContents = { original: string; modified: string };
 
-export type FileEdit = { path: string; search: string; replace: string }
+export type FileEdit = { path: string; search: string; replace: string };
 
 /**
  * A semantic edit operation on a nix attribute path.
  */
-export type FileEditAction = 
-/**
- * Generic add to an attribute path: e.g. { path: "environment.systemPackages", values: ["ripgrep"] }
- */
-{ add: { path: string; values: string[] } } | 
-/**
- * Generic remove from an attribute path
- */
-{ remove: { path: string; values: string[] } } | 
-/**
- * Set an attribute path to a scalar JSON value (bool/string/number/null)
- */
-{ set: { path: string; value: JsonValue } } | 
-/**
- * Create or update an attribute set at a given path, setting multiple scalar key-value pairs.
- * For missing paths a new attrset assignment is inserted; for existing ones the named keys are
- * updated in-place (or appended) without disturbing the rest of the block.
- */
-{ setAttrs: { path: string; attrs: Partial<{ [key in string]: JsonValue }> } }
+export type FileEditAction =
+	/**
+	 * Generic add to an attribute path: e.g. { path: "environment.systemPackages", values: ["ripgrep"] }
+	 */
+	| { add: { path: string; values: string[] } }
+	/**
+	 * Generic remove from an attribute path
+	 */
+	| { remove: { path: string; values: string[] } }
+	/**
+	 * Set an attribute path to a scalar JSON value (bool/string/number/null)
+	 */
+	| { set: { path: string; value: JsonValue } }
+	/**
+	 * Create or update an attribute set at a given path, setting multiple scalar key-value pairs.
+	 * For missing paths a new attrset assignment is inserted; for existing ones the named keys are
+	 * updated in-place (or appended) without disturbing the rest of the block.
+	 */
+	| {
+			setAttrs: {
+				path: string;
+				attrs: Partial<{ [key in string]: JsonValue }>;
+			};
+	  };
 
 /**
  * Individual file status parsed from diff headers.
  */
-export type GitFileStatus = { 
-/**
- * Repository-relative file path.
- */
-path: string; 
-/**
- * Parsed status category for this file.
- */
-changeType: ChangeType }
+export type GitFileStatus = {
+	/**
+	 * Repository-relative file path.
+	 */
+	path: string;
+	/**
+	 * Parsed status category for this file.
+	 */
+	changeType: ChangeType;
+};
 
 /**
  * Payload emitted on `git_state_changed` by the git status watcher.
  */
-export type GitState = { 
-/**
- * Latest git status snapshot, if it could be read.
- */
-gitStatus: GitStatus | null; 
-/**
- * True when a build outside nixmac was detected.
- */
-externalBuildDetected: boolean }
+export type GitState = {
+	/**
+	 * Latest git status snapshot, if it could be read.
+	 */
+	gitStatus: GitStatus | null;
+	/**
+	 * True when a build outside nixmac was detected.
+	 */
+	externalBuildDetected: boolean;
+	/**
+	 * True when the configured upstream contains a fast-forward update.
+	 */
+	upstreamUpdateAvailable: boolean;
+};
 
 /**
  * Comprehensive git repository status.
  */
-export type GitStatus = { 
-/**
- * Changed files parsed from git status/diff output.
- */
-files: GitFileStatus[]; 
-/**
- * Current branch name, when the repository has one checked out.
- */
-branch: string | null; 
-/**
- * Unified diff for the current working tree/index changes.
- */
-diff: string; 
-/**
- * Total added lines in `diff`.
- */
-additions: number; 
-/**
- * Total removed lines in `diff`.
- */
-deletions: number; 
-/**
- * Current HEAD commit hash, when available.
- */
-headCommitHash: string | null; 
-/**
- * Whether HEAD is known to be clean relative to tracked changes.
- */
-cleanHead: boolean; 
-/**
- * Raw change rows associated with the current diff.
- */
-changes: Change[] }
+export type GitStatus = {
+	/**
+	 * Changed files parsed from git status/diff output.
+	 */
+	files: GitFileStatus[];
+	/**
+	 * Current branch name, when the repository has one checked out.
+	 */
+	branch: string | null;
+	/**
+	 * Unified diff for the current working tree/index changes.
+	 */
+	diff: string;
+	/**
+	 * Total added lines in `diff`.
+	 */
+	additions: number;
+	/**
+	 * Total removed lines in `diff`.
+	 */
+	deletions: number;
+	/**
+	 * Current HEAD commit hash, when available.
+	 */
+	headCommitHash: string | null;
+	/**
+	 * Whether HEAD is known to be clean relative to tracked changes.
+	 */
+	cleanHead: boolean;
+	/**
+	 * Raw change rows associated with the current diff.
+	 */
+	changes: Change[];
+};
 
 /**
  * Current state of a GitHub-first desktop bootstrap flow.
  */
-export type GithubBootstrapState = 
-/**
- * The browser OAuth/install flow has not finished yet.
- */
-"pending" | 
-/**
- * The server created/bound the Better Auth user and returned a device key.
- */
-"complete" | 
-/**
- * The server could not create an account from GitHub identity; use email OTP.
- */
-"fallbackRequired" | 
-/**
- * The state token expired or is no longer usable.
- */
-"expired"
+export type GithubBootstrapState =
+	/**
+	 * The browser OAuth/install flow has not finished yet.
+	 */
+	| "pending"
+	/**
+	 * The server created/bound the Better Auth user and returned a device key.
+	 */
+	| "complete"
+	/**
+	 * The server could not create an account from GitHub identity; use email OTP.
+	 */
+	| "fallbackRequired"
+	/**
+	 * The state token expired or is no longer usable.
+	 */
+	| "expired";
 
 /**
  * Public bootstrap status returned to the frontend. Secret material returned by
  * the server is persisted natively and intentionally omitted from this type.
  */
-export type GithubBootstrapStatus = { 
-/**
- * Bootstrap lifecycle state for this browser flow.
- */
-state: GithubBootstrapState; 
-/**
- * True once the account is linked to a GitHub App installation.
- */
-connected: boolean; 
-/**
- * The connected GitHub login (for display), when known.
- */
-login: string | null; 
-/**
- * The linked installation id, when connected.
- */
-installationId: number; 
-/**
- * The Better Auth account created or bound by the server, when complete.
- */
-account: AuthAccount | null; 
-/**
- * Human-readable reason to show when email OTP fallback is needed.
- */
-fallbackReason: string | null; 
-/**
- * Server-requested polling interval in seconds (used for GitHub slow_down).
- */
-pollIntervalSeconds: number | null }
+export type GithubBootstrapStatus = {
+	/**
+	 * Bootstrap lifecycle state for this browser flow.
+	 */
+	state: GithubBootstrapState;
+	/**
+	 * True once the account is linked to a GitHub App installation.
+	 */
+	connected: boolean;
+	/**
+	 * The connected GitHub login (for display), when known.
+	 */
+	login: string | null;
+	/**
+	 * The linked installation id, when connected.
+	 */
+	installationId: number;
+	/**
+	 * The Better Auth account created or bound by the server, when complete.
+	 */
+	account: AuthAccount | null;
+	/**
+	 * Human-readable reason to show when email OTP fallback is needed.
+	 */
+	fallbackReason: string | null;
+	/**
+	 * Server-requested polling interval in seconds (used for GitHub slow_down).
+	 */
+	pollIntervalSeconds: number | null;
+};
 
 /**
  * Result of starting a GitHub connection flow. Authenticated connections use
  * `install_url` as the GitHub App install URL; unauthenticated bootstrap uses
  * GitHub device OAuth and includes a user code to display.
  */
-export type GithubConnectStart = { 
-/**
- * GitHub URL to open in the user's browser.
- */
-installUrl: string; 
-/**
- * Opaque state bound to the account/server flow.
- */
-state: string; 
-/**
- * Device OAuth code the user must enter at `verification_uri`.
- */
-userCode: string | null; 
-/**
- * Device OAuth verification URL.
- */
-verificationUri: string | null; 
-/**
- * Seconds until the device code expires.
- */
-expiresIn: number | null; 
-/**
- * Minimum polling interval, in seconds.
- */
-interval: number | null }
+export type GithubConnectStart = {
+	/**
+	 * GitHub URL to open in the user's browser.
+	 */
+	installUrl: string;
+	/**
+	 * Opaque state bound to the account/server flow.
+	 */
+	state: string;
+	/**
+	 * Device OAuth code the user must enter at `verification_uri`.
+	 */
+	userCode: string | null;
+	/**
+	 * Device OAuth verification URL.
+	 */
+	verificationUri: string | null;
+	/**
+	 * Seconds until the device code expires.
+	 */
+	expiresIn: number | null;
+	/**
+	 * Minimum polling interval, in seconds.
+	 */
+	interval: number | null;
+};
 
 /**
  * A repository the installation can access, returned by `github_list_repos`.
  */
-export type GithubRepo = { 
-/**
- * Repository owner login.
- */
-owner: string; 
-/**
- * Repository name.
- */
-name: string; 
-/**
- * Whether the repository is private.
- */
-private: boolean; 
-/**
- * ISO-8601 timestamp of the last update.
- */
-updatedAt: string; 
-/**
- * Default branch name (where `flake.nix` is checked).
- */
-defaultBranch: string; 
-/**
- * Whether a `flake.nix` exists at the default branch root.
- */
-hasFlake: boolean }
+export type GithubRepo = {
+	/**
+	 * Repository owner login.
+	 */
+	owner: string;
+	/**
+	 * Repository name.
+	 */
+	name: string;
+	/**
+	 * Whether the repository is private.
+	 */
+	private: boolean;
+	/**
+	 * ISO-8601 timestamp of the last update.
+	 */
+	updatedAt: string;
+	/**
+	 * Default branch name (where `flake.nix` is checked).
+	 */
+	defaultBranch: string;
+	/**
+	 * Whether a `flake.nix` exists at the default branch root.
+	 */
+	hasFlake: boolean;
+};
 
 /**
  * Whether this account has a linked GitHub App installation, returned by
  * `github_status` (polled while the browser install completes).
  */
-export type GithubStatus = { 
-/**
- * True once the account is linked to a GitHub App installation.
- */
-connected: boolean; 
-/**
- * The connected GitHub login (for display), when known.
- */
-login: string | null; 
-/**
- * The linked installation id, when connected.
- */
-installationId: number }
+export type GithubStatus = {
+	/**
+	 * True once the account is linked to a GitHub App installation.
+	 */
+	connected: boolean;
+	/**
+	 * The connected GitHub login (for display), when known.
+	 */
+	login: string | null;
+	/**
+	 * The linked installation id, when connected.
+	 */
+	installationId: number;
+};
 
 /**
  * Preferences local to this app installation.
- * 
+ *
  * Hydrated via `get_global_preferences`; every mutation emits
  * `global_preferences_changed` with the full struct as payload.
  */
-export type GlobalPreferences = { hostAttr: string | null; configDir: string | null; repoRoot: string | null; sendDiagnostics: boolean; 
-/**
- * True once the user has seen the one-time diagnostics consent notice
- * (first launch after the default-on telemetry change).
- */
-diagnosticsNoticeAcknowledged: boolean; evolveProvider: string | null; 
-/**
- * Deprecated: pre-map single model. Kept only so settings written by
- * older versions still load; read exclusively by the load-time migration
- * into `evolve_models`, which clears it.
- */
-evolveModel: string | null; 
-/**
- * Remembered evolve model per provider; a missing entry means the
- * provider default is used. Never stores `""`.
- */
-evolveModels: Partial<{ [key in string]: string }>; summaryProvider: string | null; 
-/**
- * Deprecated: pre-map single model. Kept only so settings written by
- * older versions still load; read exclusively by the load-time migration
- * into `summary_models`, which clears it.
- */
-summaryModel: string | null; 
-/**
- * Remembered summary model per provider; a missing entry means the
- * provider default is used. Never stores `""`.
- */
-summaryModels: Partial<{ [key in string]: string }>; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; experimentalStreamingEvolve: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
-/**
- * Root of an import clone parked on the "which flake dir?" choice
- * (`NeedsFlakeDirChoice`). Recorded so an abandoned choice can be
- * discarded by the next import or an onboarding reset instead of
- * orphaning the tree. Cleared on finalize/discard. Not writable via
- * `UiPrefsUpdate`.
- */
-pendingImportDir: string | null; 
-/**
- * Whether or not to auto-format Nix files when making changes to the flakes.
- */
-autoFormatNixFiles: boolean }
+export type GlobalPreferences = {
+	hostAttr: string | null;
+	configDir: string | null;
+	repoRoot: string | null;
+	sendDiagnostics: boolean;
+	/**
+	 * True once the user has seen the one-time diagnostics consent notice
+	 * (first launch after the default-on telemetry change).
+	 */
+	diagnosticsNoticeAcknowledged: boolean;
+	evolveProvider: string | null;
+	/**
+	 * Deprecated: pre-map single model. Kept only so settings written by
+	 * older versions still load; read exclusively by the load-time migration
+	 * into `evolve_models`, which clears it.
+	 */
+	evolveModel: string | null;
+	/**
+	 * Remembered evolve model per provider; a missing entry means the
+	 * provider default is used. Never stores `""`.
+	 */
+	evolveModels: Partial<{ [key in string]: string }>;
+	summaryProvider: string | null;
+	/**
+	 * Deprecated: pre-map single model. Kept only so settings written by
+	 * older versions still load; read exclusively by the load-time migration
+	 * into `summary_models`, which clears it.
+	 */
+	summaryModel: string | null;
+	/**
+	 * Remembered summary model per provider; a missing entry means the
+	 * provider default is used. Never stores `""`.
+	 */
+	summaryModels: Partial<{ [key in string]: string }>;
+	ollamaApiBaseUrl: string | null;
+	openaiCompatibleApiBaseUrl: string | null;
+	confirmBuild: boolean;
+	confirmClear: boolean;
+	confirmRollback: boolean;
+	autoSummarizeOnFocus: boolean;
+	scanHomebrewOnStartup: boolean;
+	defaultToDiffTab: boolean;
+	experimentalSpinningMascot: boolean; experimentalStreamingEvolve: boolean;
+	developerMode: boolean;
+	pinnedVersion: string | null;
+	updateChannel: UpdateChannel;
+	featureFlagOverrides: Partial<{ [key in string]: string }> | null;
+	/**
+	 * Root of an import clone parked on the "which flake dir?" choice
+	 * (`NeedsFlakeDirChoice`). Recorded so an abandoned choice can be
+	 * discarded by the next import or an onboarding reset instead of
+	 * orphaning the tree. Cleared on finalize/discard. Not writable via
+	 * `UiPrefsUpdate`.
+	 */
+	pendingImportDir: string | null;
+	/**
+	 * Whether or not to auto-format Nix files when making changes to the flakes.
+	 */
+	autoFormatNixFiles: boolean;
+};
 
 /**
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
  */
-export type HistoryItem = { 
-/**
- * Git commit hash represented by this history row.
- */
-hash: string; 
-/**
- * Commit message, if available from git or local metadata.
- */
-message: string | null; 
-/**
- * Commit timestamp.
- */
-createdAt: number; 
-/**
- * Whether this commit corresponds to the active build record.
- */
-isBuilt: boolean; 
-/**
- * Whether this commit is the configured base commit.
- */
-isBase: boolean; 
-/**
- * Whether this commit was created outside nixmac.
- */
-isExternal: boolean; 
-/**
- * Number of files changed in this commit.
- */
-fileCount: number; 
-/**
- * Matching persisted commit row, if one exists.
- */
-commit: Commit | null; 
-/**
- * Semantic summaries for this commit's changes.
- */
-changeMap: SemanticChangeMap | null; 
-/**
- * Change hashes without summaries.
- */
-unsummarizedHashes: string[]; 
-/**
- * Raw changes parsed for this history item.
- */
-rawChanges: Change[]; 
-/**
- * Message of the commit this entry originated from, for restore/orphan flows.
- */
-originMessage: string | null; 
-/**
- * Hash of the commit this entry originated from, for restore/orphan flows.
- */
-originHash: string | null; 
-/**
- * Whether this represents a restored build no longer on the visible branch.
- */
-isOrphanedRestore: boolean; 
-/**
- * Whether this history item has been undone by a later restore operation.
- */
-isUndone: boolean }
+export type HistoryItem = {
+	/**
+	 * Git commit hash represented by this history row.
+	 */
+	hash: string;
+	/**
+	 * Commit message, if available from git or local metadata.
+	 */
+	message: string | null;
+	/**
+	 * Commit timestamp.
+	 */
+	createdAt: number;
+	/**
+	 * Whether this commit corresponds to the active build record.
+	 */
+	isBuilt: boolean;
+	/**
+	 * Whether this commit is the configured base commit.
+	 */
+	isBase: boolean;
+	/**
+	 * Whether this commit was created outside nixmac.
+	 */
+	isExternal: boolean;
+	/**
+	 * Number of files changed in this commit.
+	 */
+	fileCount: number;
+	/**
+	 * Matching persisted commit row, if one exists.
+	 */
+	commit: Commit | null;
+	/**
+	 * Semantic summaries for this commit's changes.
+	 */
+	changeMap: SemanticChangeMap | null;
+	/**
+	 * Change hashes without summaries.
+	 */
+	unsummarizedHashes: string[];
+	/**
+	 * Raw changes parsed for this history item.
+	 */
+	rawChanges: Change[];
+	/**
+	 * Message of the commit this entry originated from, for restore/orphan flows.
+	 */
+	originMessage: string | null;
+	/**
+	 * Hash of the commit this entry originated from, for restore/orphan flows.
+	 */
+	originHash: string | null;
+	/**
+	 * Whether this represents a restored build no longer on the visible branch.
+	 */
+	isOrphanedRestore: boolean;
+	/**
+	 * Whether this history item has been undone by a later restore operation.
+	 */
+	isUndone: boolean;
+};
 
 /**
  * A page of history items with a total count, returned by `history.get`.
@@ -1459,1025 +1596,1066 @@ hasMore: boolean }
 
 export type HomebrewItem = { name: string; version: string | null; itemType: HomebrewItemType }
 
-export type HomebrewItemType = "tap" | "cask" | "brew"
+export type HomebrewItemType = "tap" | "cask" | "brew";
 
 /**
  * Current Homebrew package state detected on the machine.
  */
-export type HomebrewState = { 
-/**
- * Whether Homebrew is installed and discoverable.
- */
-isInstalled: boolean; 
-/**
- * Installed cask names.
- */
-casks: string[]; 
-/**
- * Installed formula names.
- */
-brews: string[]; 
-/**
- * Configured Homebrew tap names.
- */
-taps: string[]; 
-/**
- * Config file path to write Homebrew edits into, when known.
- */
-writeTarget: string | null; 
-/**
- * Unix timestamp when this state was last collected.
- */
-lastChecked: number }
+export type HomebrewState = {
+	/**
+	 * Whether Homebrew is installed and discoverable.
+	 */
+	isInstalled: boolean;
+	/**
+	 * Installed cask names.
+	 */
+	casks: string[];
+	/**
+	 * Installed formula names.
+	 */
+	brews: string[];
+	/**
+	 * Configured Homebrew tap names.
+	 */
+	taps: string[];
+	/**
+	 * Config file path to write Homebrew edits into, when known.
+	 */
+	writeTarget: string | null;
+	/**
+	 * Unix timestamp when this state was last collected.
+	 */
+	lastChecked: number;
+};
 
 /**
  * Result of a successful settings import.
  */
-export type ImportResult = { path: string; keysImported: number }
+export type ImportResult = { path: string; keysImported: number };
 
-export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
+export type JsonValue =
+	| null
+	| boolean
+	| number
+	| string
+	| JsonValue[]
+	| Partial<{ [key in string]: JsonValue }>;
 
-export type LaunchdItem = { 
-/**
- * launchd Label
- */
-label: string; scope: LaunchdItemType; 
-/**
- * Suggested Nix attribute name.
- * Example: "redis"
- */
-name: string; 
-/**
- * Command and arguments to execute.
- */
-programArguments: string[]; 
-/**
- * Launch when loaded.
- */
-runAtLoad: boolean; 
-/**
- * Keep the service running.
- */
-keepAlive: boolean; 
-/**
- * Environment variables.
- */
-environmentVariables: Partial<{ [key in string]: string }>; 
-/**
- * Log file locations.
- */
-standardOutPath: string | null; standardErrorPath: string | null; 
-/**
- * Working directory, if specified.
- */
-workingDirectory: string | null }
+export type LaunchdItem = {
+	/**
+	 * launchd Label
+	 */
+	label: string;
+	scope: LaunchdItemType;
+	/**
+	 * Suggested Nix attribute name.
+	 * Example: "redis"
+	 */
+	name: string;
+	/**
+	 * Command and arguments to execute.
+	 */
+	programArguments: string[];
+	/**
+	 * Launch when loaded.
+	 */
+	runAtLoad: boolean;
+	/**
+	 * Keep the service running.
+	 */
+	keepAlive: boolean;
+	/**
+	 * Environment variables.
+	 */
+	environmentVariables: Partial<{ [key in string]: string }>;
+	/**
+	 * Log file locations.
+	 */
+	standardOutPath: string | null;
+	standardErrorPath: string | null;
+	/**
+	 * Working directory, if specified.
+	 */
+	workingDirectory: string | null;
+};
 
-export type LaunchdItemType = "LaunchAgent" | "LaunchDaemon" | "LaunchdUserAgent"
+export type LaunchdItemType =
+	| "LaunchAgent"
+	| "LaunchDaemon"
+	| "LaunchdUserAgent";
 
 /**
  * Managed file root inspected by the clobber preflight.
  */
-export type ManagedFileRoot = 
-/**
- * nix-darwin `environment.etc`, rooted at `/etc`.
- */
-"etc" | 
-/**
- * Home Manager `xdg.configFile`, rooted at `$XDG_CONFIG_HOME`.
- */
-"xdg_config"
+export type ManagedFileRoot =
+	/**
+	 * nix-darwin `environment.etc`, rooted at `/etc`.
+	 */
+	| "etc"
+	/**
+	 * Home Manager `xdg.configFile`, rooted at `$XDG_CONFIG_HOME`.
+	 */
+	| "xdg_config";
 
 /**
  * A managed file that will be moved aside before activation continues.
  */
-export type ManagedFileWarning = { 
-/**
- * Absolute path that will be moved aside or replaced by activation.
- */
-path: string; 
-/**
- * Managed-file target relative to its root.
- */
-target: string; 
-/**
- * Root and option family that owns this target.
- */
-managedRoot: ManagedFileRoot; 
-/**
- * Home Manager user that owns the file, when known.
- */
-user: string | null; 
-/**
- * Existing symlink target, if the path is currently a symlink.
- */
-currentLinkTarget: string | null; 
-/**
- * Expected symlink target, when the configuration exposes a concrete source.
- */
-expectedLinkTarget: string | null; 
-/**
- * Backup suffix activation will append before linking the generated file.
- */
-backupExtension: string | null }
+export type ManagedFileWarning = {
+	/**
+	 * Absolute path that will be moved aside or replaced by activation.
+	 */
+	path: string;
+	/**
+	 * Managed-file target relative to its root.
+	 */
+	target: string;
+	/**
+	 * Root and option family that owns this target.
+	 */
+	managedRoot: ManagedFileRoot;
+	/**
+	 * Home Manager user that owns the file, when known.
+	 */
+	user: string | null;
+	/**
+	 * Existing symlink target, if the path is currently a symlink.
+	 */
+	currentLinkTarget: string | null;
+	/**
+	 * Expected symlink target, when the configuration exposes a concrete source.
+	 */
+	expectedLinkTarget: string | null;
+	/**
+	 * Backup suffix activation will append before linking the generated file.
+	 */
+	backupExtension: string | null;
+};
 
 /**
  * Result of `nix_check` — reports whether Nix and darwin-rebuild are available.
  */
-export type NixCheckResult = { 
-/**
- * Whether Nix is installed.
- */
-installed: boolean; 
-/**
- * Installed Nix version string, when available.
- */
-version: string | null; 
-/**
- * Whether `darwin-rebuild` is available.
- */
-darwinRebuildAvailable: boolean }
+export type NixCheckResult = {
+	/**
+	 * Whether Nix is installed.
+	 */
+	installed: boolean;
+	/**
+	 * Installed Nix version string, when available.
+	 */
+	version: string | null;
+	/**
+	 * Whether `darwin-rebuild` is available.
+	 */
+	darwinRebuildAvailable: boolean;
+};
 
 /**
  * Payload for `nix:darwin-rebuild:end`.
  */
-export type NixDarwinRebuildEndEvent = { 
-/**
- * Whether nix-darwin setup completed successfully.
- */
-ok: boolean; 
-/**
- * Human-readable failure message.
- */
-error: string | null }
+export type NixDarwinRebuildEndEvent = {
+	/**
+	 * Whether nix-darwin setup completed successfully.
+	 */
+	ok: boolean;
+	/**
+	 * Human-readable failure message.
+	 */
+	error: string | null;
+};
 
 /**
  * Payload for `nix:install:end`.
  */
-export type NixInstallEndEvent = { 
-/**
- * Whether setup completed successfully.
- */
-ok: boolean; 
-/**
- * Exit/status code for the completed setup phase.
- */
-code: number; 
-/**
- * Installed Nix version on success.
- */
-nix_version: string | null; 
-/**
- * Whether `darwin-rebuild` is available after setup.
- */
-darwin_rebuild_available: boolean | null; 
-/**
- * Failure category on error.
- */
-error_type: NixInstallErrorType | null; 
-/**
- * Human-readable failure message.
- */
-error: string | null }
+export type NixInstallEndEvent = {
+	/**
+	 * Whether setup completed successfully.
+	 */
+	ok: boolean;
+	/**
+	 * Exit/status code for the completed setup phase.
+	 */
+	code: number;
+	/**
+	 * Installed Nix version on success.
+	 */
+	nix_version: string | null;
+	/**
+	 * Whether `darwin-rebuild` is available after setup.
+	 */
+	darwin_rebuild_available: boolean | null;
+	/**
+	 * Failure category on error.
+	 */
+	error_type: NixInstallErrorType | null;
+	/**
+	 * Human-readable failure message.
+	 */
+	error: string | null;
+};
 
 /**
  * Known Nix installation failure categories.
  */
-export type NixInstallErrorType = 
-/**
- * Unexpected internal error before a specific phase failed.
- */
-"internal" | 
-/**
- * Failed while downloading the installer package.
- */
-"download_failed" | 
-/**
- * The macOS installer failed or was cancelled.
- */
-"installer_failed" | 
-/**
- * A setup phase timed out.
- */
-"timeout" | 
-/**
- * nix-darwin prefetch/setup failed.
- */
-"darwin_rebuild"
+export type NixInstallErrorType =
+	/**
+	 * Unexpected internal error before a specific phase failed.
+	 */
+	| "internal"
+	/**
+	 * Failed while downloading the installer package.
+	 */
+	| "download_failed"
+	/**
+	 * The macOS installer failed or was cancelled.
+	 */
+	| "installer_failed"
+	/**
+	 * A setup phase timed out.
+	 */
+	| "timeout"
+	/**
+	 * nix-darwin prefetch/setup failed.
+	 */
+	| "darwin_rebuild";
 
 /**
  * Phase emitted during Nix installation/setup.
  */
-export type NixInstallPhase = 
-/**
- * Downloading the Determinate Nix installer package.
- */
-"downloading" | 
-/**
- * Waiting for the macOS installer UI to complete.
- */
-"waiting-for-installer" | 
-/**
- * Prefetching nix-darwin's `darwin-rebuild` command.
- */
-"prefetching"
+export type NixInstallPhase =
+	/**
+	 * Downloading the Determinate Nix installer package.
+	 */
+	| "downloading"
+	/**
+	 * Waiting for the macOS installer UI to complete.
+	 */
+	| "waiting-for-installer"
+	/**
+	 * Prefetching nix-darwin's `darwin-rebuild` command.
+	 */
+	| "prefetching";
 
 /**
  * Payload for `nix:install:progress`.
  */
-export type NixInstallProgressEvent = { 
-/**
- * Current setup phase.
- */
-phase: NixInstallPhase; 
-/**
- * Bytes downloaded so far, for download phase progress.
- */
-downloaded: number | null; 
-/**
- * Total bytes expected, when known.
- */
-total: number | null }
+export type NixInstallProgressEvent = {
+	/**
+	 * Current setup phase.
+	 */
+	phase: NixInstallPhase;
+	/**
+	 * Bytes downloaded so far, for download phase progress.
+	 */
+	downloaded: number | null;
+	/**
+	 * Total bytes expected, when known.
+	 */
+	total: number | null;
+};
 
 /**
  * Status of the nix / darwin-rebuild installation flow.
  */
-export type NixInstallState = { 
-/**
- * Whether nix is installed; `None` until first checked.
- */
-installed: boolean | null; 
-/**
- * Whether darwin-rebuild is available; `None` until first checked.
- */
-darwinRebuildAvailable: boolean | null; 
-/**
- * True while an install run is in flight.
- */
-installing: boolean; 
-/**
- * Current installer phase ("downloading", "waiting-for-installer",
- * "prefetching"); `None` when idle.
- */
-installPhase: string | null; 
-/**
- * True while the standalone darwin-rebuild prefetch is in flight.
- */
-prefetching: boolean; 
-/**
- * Error from the last finished run, if it failed.
- */
-lastError: string | null }
+export type NixInstallState = {
+	/**
+	 * Whether nix is installed; `None` until first checked.
+	 */
+	installed: boolean | null;
+	/**
+	 * Whether darwin-rebuild is available; `None` until first checked.
+	 */
+	darwinRebuildAvailable: boolean | null;
+	/**
+	 * True while an install run is in flight.
+	 */
+	installing: boolean;
+	/**
+	 * Current installer phase ("downloading", "waiting-for-installer",
+	 * "prefetching"); `None` when idle.
+	 */
+	installPhase: string | null;
+	/**
+	 * True while the standalone darwin-rebuild prefetch is in flight.
+	 */
+	prefetching: boolean;
+	/**
+	 * Error from the last finished run, if it failed.
+	 */
+	lastError: string | null;
+};
 
 /**
  * Generic acknowledgement returned by fire-and-forget commands.
  */
-export type OkResult = { 
-/**
- * True when the command completed successfully.
- */
-ok: boolean }
+export type OkResult = {
+	/**
+	 * True when the command completed successfully.
+	 */
+	ok: boolean;
+};
 
 /**
  * Backend-owned onboarding lifecycle state.
- * 
+ *
  * Whether the onboarding flow is shown is gated by the `completed_at` latch,
  * not by re-deriving completion from preference facts: "the user finished
  * onboarding" is a historical fact about a journey, and current state
  * (a cleared host during a settings edit, a revoked permission) can
  * regress while the journey stays finished. The step machine *inside*
  * the flow derives progress from the journey facts recorded here.
- * 
+ *
  * Hydrated via `onboarding.getState`; every mutation emits
  * `onboarding_state_changed` with the full struct as payload.
  * See `docs/2026-07-08-onboarding-state-ownership.md`.
  */
-export type OnboardingState = { 
-/**
- * Timestamp (unix secs) the user completed onboarding. Set when the
- * celebration is dismissed (validated against a successful first build),
- * reconciled at startup for profiles that finished before the latch
- * existed, and cleared by "Restart setup".
- */
-completedAt: number | null; 
-/**
- * Timestamp (unix secs) of the last onboarding "scan this Mac" /
- * customizations review.
- */
-macScannedAt: number | null; 
-/**
- * True once the user logged in or explicitly chose bring-your-own-key
- * during onboarding.
- * @todo consider if this should be computed - other code computes from the
+export type OnboardingState = {
+	/**
+	 * Timestamp (unix secs) the user completed onboarding. Set when the
+	 * celebration is dismissed (validated against a successful first build),
+	 * reconciled at startup for profiles that finished before the latch
+	 * existed, and cleared by "Restart setup".
+	 */
+	completedAt: number | null;
+	/**
+	 * Timestamp (unix secs) of the last onboarding "scan this Mac" /
+	 * customizations review.
+	 */
+	macScannedAt: number | null;
+	/**
+	 * True once the user logged in or explicitly chose bring-your-own-key
+	 * during onboarding.
+	 * @todo consider if this should be computed - other code computes from the
  * existence of a device API key (e.g. better-auth). If these 2 values conflict,
  */
-loginDecided: boolean; 
-/**
- * Timestamp (unix secs) of the last successful build/evolution apply.
- * Set by `finalize_apply`.
- */
-lastBuildAt: number | null; 
-/**
- * Root directory the app materialized during onboarding (import/scaffold)
- * and still owns: until the first successful apply clears this, restart
- * and re-import may wipe and re-create it. Never set for user-selected
- * pre-existing directories. Backend code paths only.
- */
-provisionalConfigDir: string | null }
+	loginDecided: boolean;
+	/**
+	 * Timestamp (unix secs) of the last successful build/evolution apply.
+	 * Set by `finalize_apply`.
+	 */
+	lastBuildAt: number | null;
+	/**
+	 * Root directory the app materialized during onboarding (import/scaffold)
+	 * and still owns: until the first successful apply clears this, restart
+	 * and re-import may wipe and re-create it. Never set for user-selected
+	 * pre-existing directories. Backend code paths only.
+	 */
+	provisionalConfigDir: string | null;
+};
 
 /**
  * Individual permission state.
  */
-export type Permission = { 
-/**
- * Stable permission identifier.
- */
-id: string; 
-/**
- * Human-readable permission name.
- */
-name: string; 
-/**
- * Why nixmac needs this permission.
- */
-description: string; 
-/**
- * Whether onboarding requires this permission.
- */
-required: boolean; 
-/**
- * Whether the app can trigger the system prompt directly.
- */
-canRequestProgrammatically: boolean; 
-/**
- * Current permission status.
- */
-status: PermissionStatus; 
-/**
- * Manual instructions for permissions that cannot be requested programmatically.
- */
-instructions?: string | null }
+export type Permission = {
+	/**
+	 * Stable permission identifier.
+	 */
+	id: string;
+	/**
+	 * Human-readable permission name.
+	 */
+	name: string;
+	/**
+	 * Why nixmac needs this permission.
+	 */
+	description: string;
+	/**
+	 * Whether onboarding requires this permission.
+	 */
+	required: boolean;
+	/**
+	 * Whether the app can trigger the system prompt directly.
+	 */
+	canRequestProgrammatically: boolean;
+	/**
+	 * Current permission status.
+	 */
+	status: PermissionStatus;
+	/**
+	 * Manual instructions for permissions that cannot be requested programmatically.
+	 */
+	instructions?: string | null;
+};
 
 /**
  * Permission status.
  */
-export type PermissionStatus = 
-/**
- * Permission has been granted.
- */
-"granted" | 
-/**
- * Permission was checked and denied.
- */
-"denied" | 
-/**
- * Permission has not been resolved yet.
- */
-"pending" | 
-/**
- * Permission state could not be determined.
- */
-"unknown"
+export type PermissionStatus =
+	/**
+	 * Permission has been granted.
+	 */
+	| "granted"
+	/**
+	 * Permission was checked and denied.
+	 */
+	| "denied"
+	/**
+	 * Permission has not been resolved yet.
+	 */
+	| "pending"
+	/**
+	 * Permission state could not be determined.
+	 */
+	| "unknown";
 
 /**
  * All permissions state.
  */
-export type PermissionsState = { 
-/**
- * Individual permission states.
- */
-permissions: Permission[]; 
-/**
- * True when every required permission is granted.
- */
-allRequiredGranted: boolean; 
-/**
- * Unix timestamp when permissions were last checked.
- */
-checkedAt: number | null }
+export type PermissionsState = {
+	/**
+	 * Individual permission states.
+	 */
+	permissions: Permission[];
+	/**
+	 * True when every required permission is granted.
+	 */
+	allRequiredGranted: boolean;
+	/**
+	 * Unix timestamp when permissions were last checked.
+	 */
+	checkedAt: number | null;
+};
 
 /**
  * State sent to the preview indicator window.
  */
-export type PreviewIndicatorState = { 
-/**
- * Whether the floating preview indicator should be visible.
- */
-visible: boolean; 
-/**
- * Summary text displayed in the indicator.
- */
-summary: string | null; 
-/**
- * Number of changed files represented by the indicator.
- */
-filesChanged: number; 
-/**
- * Added lines displayed in the indicator.
- */
-additions: number | null; 
-/**
- * Removed lines displayed in the indicator.
- */
-deletions: number | null; 
-/**
- * Whether the indicator should show a loading state.
- */
-isLoading: boolean }
+export type PreviewIndicatorState = {
+	/**
+	 * Whether the floating preview indicator should be visible.
+	 */
+	visible: boolean;
+	/**
+	 * Summary text displayed in the indicator.
+	 */
+	summary: string | null;
+	/**
+	 * Number of changed files represented by the indicator.
+	 */
+	filesChanged: number;
+	/**
+	 * Added lines displayed in the indicator.
+	 */
+	additions: number | null;
+	/**
+	 * Removed lines displayed in the indicator.
+	 */
+	deletions: number | null;
+	/**
+	 * Whether the indicator should show a loading state.
+	 */
+	isLoading: boolean;
+};
 
 /**
  * Who is asking a [`EvolveEventDetail::Question`].
  */
-export type QuestionKind = 
-/**
- * The agent needs a content decision from the user (`ask_user` tool).
- */
-"agent" | 
-/**
- * A safety limit was reached and the system asks whether to continue.
- */
-"checkpoint"
+export type QuestionKind =
+	/**
+	 * The agent needs a content decision from the user (`ask_user` tool).
+	 */
+	| "agent"
+	/**
+	 * A safety limit was reached and the system asks whether to continue.
+	 */
+	| "checkpoint";
 
 /**
  * Known rebuild/activation failure categories.
  */
-export type RebuildErrorType = 
-/**
- * Nix evaluation hit infinite recursion.
- */
-"infinite_recursion" | 
-/**
- * Nix evaluation failed.
- */
-"evaluation_error" | 
-/**
- * Build failed after evaluation.
- */
-"build_error" | 
-/**
- * Full Disk Access is missing for activation.
- */
-"full_disk_access" | 
-/**
- * App Management is missing for managed app bundle updates.
- */
-"app_management" | 
-/**
- * User cancelled the privileged activation prompt.
- */
-"user_cancelled" | 
-/**
- * Administrator authorization failed.
- */
-"authorization_denied" | 
-/**
- * nix-darwin would overwrite unmanaged files in /etc.
- */
-"etc_clobber" | 
-/**
- * Fallback for uncategorized failures.
- */
-"generic_error"
+export type RebuildErrorType =
+	/**
+	 * Nix evaluation hit infinite recursion.
+	 */
+	| "infinite_recursion"
+	/**
+	 * Nix evaluation failed.
+	 */
+	| "evaluation_error"
+	/**
+	 * Build failed after evaluation.
+	 */
+	| "build_error"
+	/**
+	 * Full Disk Access is missing for activation.
+	 */
+	| "full_disk_access"
+	/**
+	 * App Management is missing for managed app bundle updates.
+	 */
+	| "app_management"
+	/**
+	 * User cancelled the privileged activation prompt.
+	 */
+	| "user_cancelled"
+	/**
+	 * Administrator authorization failed.
+	 */
+	| "authorization_denied"
+	/**
+	 * nix-darwin would overwrite unmanaged files in /etc.
+	 */
+	| "etc_clobber"
+	/**
+	 * Fallback for uncategorized failures.
+	 */
+	| "generic_error";
 
 /**
  * Lifecycle status of the darwin-rebuild apply/activate streams.
  */
-export type RebuildStatus = { 
-/**
- * True while a rebuild stream is in flight.
- */
-isRunning: boolean; 
-/**
- * Outcome of the last finished run; `None` while running or never run.
- */
-success: boolean | null; 
-/**
- * Exit code of the last finished run.
- */
-exitCode: number | null; 
-/**
- * Error class of the last failed run.
- */
-errorType: string | null; 
-/**
- * Error message of the last failed run.
- */
-errorMessage: string | null; 
-/**
- * Whether the failure left the system untouched.
- */
-systemUntouched: boolean | null }
+export type RebuildStatus = {
+	/**
+	 * True while a rebuild stream is in flight.
+	 */
+	isRunning: boolean;
+	/**
+	 * Outcome of the last finished run; `None` while running or never run.
+	 */
+	success: boolean | null;
+	/**
+	 * Exit code of the last finished run.
+	 */
+	exitCode: number | null;
+	/**
+	 * Error class of the last failed run.
+	 */
+	errorType: string | null;
+	/**
+	 * Error message of the last failed run.
+	 */
+	errorMessage: string | null;
+	/**
+	 * Whether the failure left the system untouched.
+	 */
+	systemUntouched: boolean | null;
+};
 
 /**
  * A recommended prompt based on the user's current macOS settings.
  */
-export type RecommendedPrompt = { 
-/**
- * Stable prompt identifier.
- */
-id: string; 
-/**
- * Prompt text suggested to the user.
- */
-promptText: string }
+export type RecommendedPrompt = {
+	/**
+	 * Stable prompt identifier.
+	 */
+	id: string;
+	/**
+	 * Prompt text suggested to the user.
+	 */
+	promptText: string;
+};
 
 /**
  * Result returned from a rollback erase operation. Git/evolve state mirrors
  * flow through the `*_changed` events; this only carries the rollback target.
  */
-export type RollbackResult = { 
-/**
- * Store path to reactivate as part of the rollback flow.
- */
-rollbackStorePath: string | null; 
-/**
- * Changeset id associated with the rollback target.
- */
-rollbackChangesetId: number | null }
+export type RollbackResult = {
+	/**
+	 * Store path to reactivate as part of the rollback flow.
+	 */
+	rollbackStorePath: string | null;
+	/**
+	 * Changeset id associated with the rollback target.
+	 */
+	rollbackChangesetId: number | null;
+};
 
 /**
  * Payload for `rust:panic`.
  */
-export type RustPanicEvent = { 
-/**
- * Panic message captured by the panic hook.
- */
-message: string; 
-/**
- * Source location reported by Rust, when available.
- */
-location: string | null; 
-/**
- * Captured backtrace, when available.
- */
-backtrace: string | null; 
-/**
- * UTC timestamp when the panic was captured.
- */
-timestamp: string }
+export type RustPanicEvent = {
+	/**
+	 * Panic message captured by the panic hook.
+	 */
+	message: string;
+	/**
+	 * Source location reported by Rust, when available.
+	 */
+	location: string | null;
+	/**
+	 * Captured backtrace, when available.
+	 */
+	backtrace: string | null;
+	/**
+	 * UTC timestamp when the panic was captured.
+	 */
+	timestamp: string;
+};
 
-export type SemanticChangeGroup = { 
-/**
- * Shared summary describing the grouped changes.
- */
-summary: ChangeSummary; 
-/**
- * Changes that belong to this semantic group.
- */
-changes: ChangeWithSummary[] }
+export type SemanticChangeGroup = {
+	/**
+	 * Shared summary describing the grouped changes.
+	 */
+	summary: ChangeSummary;
+	/**
+	 * Changes that belong to this semantic group.
+	 */
+	changes: ChangeWithSummary[];
+};
 
-export type SemanticChangeMap = { 
-/**
- * Groups of changes that share a generated semantic summary.
- */
-groups: SemanticChangeGroup[]; 
-/**
- * Changes with their own summaries or no group membership.
- */
-singles: ChangeWithSummary[]; 
-/**
- * Hashes for changes that could not be summarized.
- */
-unsummarizedHashes: string[] }
+export type SemanticChangeMap = {
+	/**
+	 * Groups of changes that share a generated semantic summary.
+	 */
+	groups: SemanticChangeGroup[];
+	/**
+	 * Changes with their own summaries or no group membership.
+	 */
+	singles: ChangeWithSummary[];
+	/**
+	 * Hashes for changes that could not be summarized.
+	 */
+	unsummarizedHashes: string[];
+};
 
-export type SemanticFileEdit = { path: string; action: FileEditAction }
+export type SemanticFileEdit = { path: string; action: FileEditAction };
 
 /**
  * Result returned when the config directory is set (typed or picked).
  * State mirrors (evolve state, git state, hosts) flow through the
  * `*_changed` events; this only carries genuine command results.
  */
-export type SetDirResult = { 
-/**
- * Selected absolute config directory.
- */
-dir: string; 
-/**
- * True when the selected directory differs from the previous one.
- */
-changed: boolean }
+export type SetDirResult = {
+	/**
+	 * Selected absolute config directory.
+	 */
+	dir: string;
+	/**
+	 * True when the selected directory differs from the previous one.
+	 */
+	changed: boolean;
+};
 
-export type SummarizedChange = { 
-/**
- * Raw change row.
- */
-change: Change; 
-/**
- * Summary attached directly to this change.
- */
-ownSummary: ChangeSummary | null; 
-/**
- * Summary inherited from this change's group.
- */
-groupSummary: ChangeSummary | null }
+export type SummarizedChange = {
+	/**
+	 * Raw change row.
+	 */
+	change: Change;
+	/**
+	 * Summary attached directly to this change.
+	 */
+	ownSummary: ChangeSummary | null;
+	/**
+	 * Summary inherited from this change's group.
+	 */
+	groupSummary: ChangeSummary | null;
+};
 
-export type SummarizedChangeSet = { 
-/**
- * Change set represented by this response.
- */
-changeSet: ChangeSet; 
-/**
- * Changes in the set with their available summaries.
- */
-changes: SummarizedChange[]; 
-/**
- * Change hashes expected in the set but missing from the database.
- */
-missedHashes: string[] }
+export type SummarizedChangeSet = {
+	/**
+	 * Change set represented by this response.
+	 */
+	changeSet: ChangeSet;
+	/**
+	 * Changes in the set with their available summaries.
+	 */
+	changes: SummarizedChange[];
+	/**
+	 * Change hashes expected in the set but missing from the database.
+	 */
+	missedHashes: string[];
+};
 
 /**
  * Remote sync state for the current account, returned by `sync_status`.
  */
-export type SyncRemoteStatus = { 
-/**
- * Whether the server has a stored configuration snapshot for this account.
- */
-configured: boolean; 
-/**
- * Commit hash of the latest snapshot the server holds, if any.
- */
-headCommitHash: string | null; 
-/**
- * Unix timestamp (seconds) of the latest server-side snapshot, if any.
- */
-updatedAt: number | null; 
-/**
- * Number of devices currently registered to the account.
- */
-deviceCount: number }
+export type SyncRemoteStatus = {
+	/**
+	 * Whether the server has a stored configuration snapshot for this account.
+	 */
+	configured: boolean;
+	/**
+	 * Commit hash of the latest snapshot the server holds, if any.
+	 */
+	headCommitHash: string | null;
+	/**
+	 * Unix timestamp (seconds) of the latest server-side snapshot, if any.
+	 */
+	updatedAt: number | null;
+	/**
+	 * Number of devices currently registered to the account.
+	 */
+	deviceCount: number;
+};
 
 /**
  * Result of a `sync_push` or `sync_pull` operation.
  */
-export type SyncResult = { 
-/**
- * Whether the operation succeeded end-to-end.
- */
-ok: boolean; 
-/**
- * Commit hash that is now current after the operation, when known.
- */
-headCommitHash: string | null; 
-/**
- * Human-readable status detail for display in the UI.
- */
-message: string }
+export type SyncResult = {
+	/**
+	 * Whether the operation succeeded end-to-end.
+	 */
+	ok: boolean;
+	/**
+	 * Commit hash that is now current after the operation, when known.
+	 */
+	headCommitHash: string | null;
+	/**
+	 * Human-readable status detail for display in the UI.
+	 */
+	message: string;
+};
 
 /**
  * A single macOS system default that differs from the factory value.
  */
-export type SystemDefault = { 
-/**
- * nix-darwin option path for this macOS default.
- */
-nixKey: string; 
-/**
- * Human-readable setting label.
- */
-label: string; 
-/**
- * UI grouping category.
- */
-category: string; 
-/**
- * Current value read from macOS defaults.
- */
-currentValue: string; 
-/**
- * Factory/default value used for comparison.
- */
-defaultValue: string }
+export type SystemDefault = {
+	/**
+	 * nix-darwin option path for this macOS default.
+	 */
+	nixKey: string;
+	/**
+	 * Human-readable setting label.
+	 */
+	label: string;
+	/**
+	 * UI grouping category.
+	 */
+	category: string;
+	/**
+	 * Current value read from macOS defaults.
+	 */
+	currentValue: string;
+	/**
+	 * Factory/default value used for comparison.
+	 */
+	defaultValue: string;
+};
 
 /**
  * Result of a full system defaults scan.
  */
-export type SystemDefaultsScan = { 
-/**
- * Defaults that differ from known factory values.
- */
-defaults: SystemDefault[]; 
-/**
- * Number of defaults keys scanned.
- */
-totalScanned: number }
+export type SystemDefaultsScan = {
+	/**
+	 * Defaults that differ from known factory values.
+	 */
+	defaults: SystemDefault[];
+	/**
+	 * Number of defaults keys scanned.
+	 */
+	totalScanned: number;
+};
 
 /**
  * A single thinking entry from the agent's reasoning process
  */
-export type ThinkingEntry = { 
-/**
- * When this thought occurred (ms since evolution start)
- */
-timestampMs: number; 
-/**
- * The iteration number when this thought occurred
- */
-iteration: number; 
-/**
- * Category of thinking (planning, analysis, debugging, etc.)
- */
-category: string; 
-/**
- * The actual thought content
- */
-content: string }
+export type ThinkingEntry = {
+	/**
+	 * When this thought occurred (ms since evolution start)
+	 */
+	timestampMs: number;
+	/**
+	 * The iteration number when this thought occurred
+	 */
+	iteration: number;
+	/**
+	 * Category of thinking (planning, analysis, debugging, etc.)
+	 */
+	category: string;
+	/**
+	 * The actual thought content
+	 */
+	content: string;
+};
 
 /**
  * A tool call record for the activity log
  */
-export type ToolCallRecord = { 
-/**
- * When this tool was called (ms since evolution start)
- */
-timestampMs: number; 
-/**
- * The iteration number
- */
-iteration: number; 
-/**
- * Tool name
- */
-tool: string; 
-/**
- * Tool arguments (simplified)
- */
-argsSummary: string; 
-/**
- * Result summary
- */
-resultSummary: string; 
-/**
- * Whether the call succeeded
- */
-success: boolean }
+export type ToolCallRecord = {
+	/**
+	 * When this tool was called (ms since evolution start)
+	 */
+	timestampMs: number;
+	/**
+	 * The iteration number
+	 */
+	iteration: number;
+	/**
+	 * Tool name
+	 */
+	tool: string;
+	/**
+	 * Tool arguments (simplified)
+	 */
+	argsSummary: string;
+	/**
+	 * Result summary
+	 */
+	resultSummary: string;
+	/**
+	 * Whether the call succeeded
+	 */
+	success: boolean;
+};
 
 /**
  * User interface preferences (synced to settings.json via tauri-plugin-store).
  */
-export type UiPrefs = { 
-/**
- * OpenRouter API key stored in local app preferences.
- */
-openrouterApiKey: string | null; 
-/**
- * OpenAI API key stored in local app preferences.
- */
-openaiApiKey: string | null; 
-/**
- * Base URL for Ollama-compatible local models.
- */
-ollamaApiBaseUrl: string | null; 
-/**
- * Base URL for OpenAI-compatible model servers.
- */
-openaiCompatibleApiBaseUrl: string | null; 
-/**
- * API key for OpenAI-compatible model servers.
- */
-openaiCompatibleApiKey: string | null; 
-/**
- * Provider used for change summaries.
- */
-summaryProvider: string | null; 
-/**
- * Remembered summary model per provider; a missing entry means the
- * provider default is used.
- */
-summaryModels: Partial<{ [key in string]: string }>; 
-/**
- * Provider used for AI evolution.
- */
-evolveProvider: string | null; 
-/**
- * Remembered evolve model per provider; a missing entry means the
- * provider default is used.
- */
-evolveModels: Partial<{ [key in string]: string }>; 
-/**
- * Legacy maximum agent iterations per evolution.
- */
-maxIterations: number | null; 
-/**
- * Maximum provider-reported tokens per evolution.
- */
-maxTokenBudget: number | null; 
-/**
- * Maximum build attempts per evolution.
- */
-maxBuildAttempts: number | null; 
-/**
- * Maximum output tokens requested per evolution model call.
- */
-maxOutputTokens: number | null; 
-/**
- * Whether diagnostic feedback may be sent.
- */
-sendDiagnostics: boolean; 
-/**
- * Whether the one-time diagnostics consent notice has been shown.
- */
-diagnosticsNoticeAcknowledged: boolean; 
-/**
- * Whether to confirm before running build/apply.
- */
-confirmBuild: boolean; 
-/**
- * Whether to confirm before clearing changes.
- */
-confirmClear: boolean; 
-/**
- * Whether to confirm before rollback.
- */
-confirmRollback: boolean; 
-/**
- * Whether to auto-summarize changes when the app regains focus.
- */
-autoSummarizeOnFocus: boolean; 
-/**
- * Whether Homebrew state should be scanned on app startup.
- */
-scanHomebrewOnStartup: boolean; 
-/**
- * Whether the change view defaults to the Diff tab instead of Summary.
- */
-defaultToDiffTab: boolean; 
-/**
- * Experimental: spin the nixmac mascot (horizontal-axis flip) in a corner
- * indicator window while an evolution is running or a build is in progress.
- */
-experimentalSpinningMascot: boolean; 
-/**
+export type UiPrefs = {
+	/**
+	 * OpenRouter API key stored in local app preferences.
+	 */
+	openrouterApiKey: string | null;
+	/**
+	 * OpenAI API key stored in local app preferences.
+	 */
+	openaiApiKey: string | null;
+	/**
+	 * Base URL for Ollama-compatible local models.
+	 */
+	ollamaApiBaseUrl: string | null;
+	/**
+	 * Base URL for OpenAI-compatible model servers.
+	 */
+	openaiCompatibleApiBaseUrl: string | null;
+	/**
+	 * API key for OpenAI-compatible model servers.
+	 */
+	openaiCompatibleApiKey: string | null;
+	/**
+	 * Provider used for change summaries.
+	 */
+	summaryProvider: string | null;
+	/**
+	 * Remembered summary model per provider; a missing entry means the
+	 * provider default is used.
+	 */
+	summaryModels: Partial<{ [key in string]: string }>;
+	/**
+	 * Provider used for AI evolution.
+	 */
+	evolveProvider: string | null;
+	/**
+	 * Remembered evolve model per provider; a missing entry means the
+	 * provider default is used.
+	 */
+	evolveModels: Partial<{ [key in string]: string }>;
+	/**
+	 * Legacy maximum agent iterations per evolution.
+	 */
+	maxIterations: number | null;
+	/**
+	 * Maximum provider-reported tokens per evolution.
+	 */
+	maxTokenBudget: number | null;
+	/**
+	 * Maximum build attempts per evolution.
+	 */
+	maxBuildAttempts: number | null;
+	/**
+	 * Maximum output tokens requested per evolution model call.
+	 */
+	maxOutputTokens: number | null;
+	/**
+	 * Whether diagnostic feedback may be sent.
+	 */
+	sendDiagnostics: boolean;
+	/**
+	 * Whether the one-time diagnostics consent notice has been shown.
+	 */
+	diagnosticsNoticeAcknowledged: boolean;
+	/**
+	 * Whether to confirm before running build/apply.
+	 */
+	confirmBuild: boolean;
+	/**
+	 * Whether to confirm before clearing changes.
+	 */
+	confirmClear: boolean;
+	/**
+	 * Whether to confirm before rollback.
+	 */
+	confirmRollback: boolean;
+	/**
+	 * Whether to auto-summarize changes when the app regains focus.
+	 */
+	autoSummarizeOnFocus: boolean;
+	/**
+	 * Whether Homebrew state should be scanned on app startup.
+	 */
+	scanHomebrewOnStartup: boolean;
+	/**
+	 * Whether the change view defaults to the Diff tab instead of Summary.
+	 */
+	defaultToDiffTab: boolean;
+	/**
+	 * Experimental: spin the nixmac mascot (horizontal-axis flip) in a corner
+	 * indicator window while an evolution is running or a build is in progress.
+	 */
+	experimentalSpinningMascot: boolean;
+	/**
  * Experimental: stream provider token deltas into the evolve progress
  * view while the model responds (developer flag until stable).
  */
 experimentalStreamingEvolve: boolean; 
 /**
- * Whether developer-only UI/actions are enabled.
- */
-developerMode: boolean; 
-/**
- * Version pinned by the user, when update pinning is active.
- */
-pinnedVersion: string | null; 
-/**
- * Auto-update channel used when no explicit version pin is active.
- */
-updateChannel: UpdateChannel; 
-/**
- * Developer-only feature flag overrides (flag key → variant string).
- * `None` or missing key = use PostHog default.
- */
-featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
-/**
- * Whether or not to auto-format Nix files when making changes to the flakes.
- */
-autoFormatNixFiles: boolean }
+	 * Whether developer-only UI/actions are enabled.
+	 */
+	developerMode: boolean;
+	/**
+	 * Version pinned by the user, when update pinning is active.
+	 */
+	pinnedVersion: string | null;
+	/**
+	 * Auto-update channel used when no explicit version pin is active.
+	 */
+	updateChannel: UpdateChannel;
+	/**
+	 * Developer-only feature flag overrides (flag key → variant string).
+	 * `None` or missing key = use PostHog default.
+	 */
+	featureFlagOverrides: Partial<{ [key in string]: string }> | null;
+	/**
+	 * Whether or not to auto-format Nix files when making changes to the flakes.
+	 */
+	autoFormatNixFiles: boolean;
+};
 
 /**
  * Partial update to UI preferences — every field is optional so the caller
  * can send only the fields they wish to change.
  */
-export type UiPrefsUpdate = { 
-/**
- * OpenRouter API key update.
- */
-openrouterApiKey: string | null; 
-/**
- * OpenAI API key update.
- */
-openaiApiKey: string | null; 
-/**
- * Evolution provider update.
- */
-evolveProvider: string | null; 
-/**
- * Evolution model update.
- */
-evolveModel: string | null; 
-/**
- * Summary provider update.
- */
-summaryProvider: string | null; 
-/**
- * Summary model update.
- */
-summaryModel: string | null; 
-/**
- * Legacy maximum iteration count update.
- */
-maxIterations: number | null; 
-/**
- * Maximum token budget update.
- */
-maxTokenBudget: number | null; 
-/**
- * Maximum build-attempt count update.
- */
-maxBuildAttempts: number | null; 
-/**
- * Maximum output token count update.
- */
-maxOutputTokens: number | null; 
-/**
- * Ollama base URL update.
- */
-ollamaApiBaseUrl: string | null; 
-/**
- * OpenAI-compatible base URL update.
- */
-openaiCompatibleApiBaseUrl: string | null; 
-/**
- * OpenAI-compatible API key update.
- */
-openaiCompatibleApiKey: string | null; 
-/**
- * Diagnostics sharing preference update.
- */
-sendDiagnostics: boolean | null; 
-/**
- * Diagnostics notice acknowledgement update.
- */
-diagnosticsNoticeAcknowledged: boolean | null; 
-/**
- * Build confirmation preference update.
- */
-confirmBuild: boolean | null; 
-/**
- * Clear confirmation preference update.
- */
-confirmClear: boolean | null; 
-/**
- * Rollback confirmation preference update.
- */
-confirmRollback: boolean | null; 
-/**
- * Focus auto-summary preference update.
- */
-autoSummarizeOnFocus: boolean | null; 
-/**
- * Startup Homebrew scan preference update.
- */
-scanHomebrewOnStartup: boolean | null; 
-/**
- * Default-to-diff-tab preference update.
- */
-defaultToDiffTab: boolean | null; 
-/**
- * Experimental spinning-mascot preference update.
- */
-experimentalSpinningMascot: boolean | null; 
-/**
+export type UiPrefsUpdate = {
+	/**
+	 * OpenRouter API key update.
+	 */
+	openrouterApiKey: string | null;
+	/**
+	 * OpenAI API key update.
+	 */
+	openaiApiKey: string | null;
+	/**
+	 * Evolution provider update.
+	 */
+	evolveProvider: string | null;
+	/**
+	 * Evolution model update.
+	 */
+	evolveModel: string | null;
+	/**
+	 * Summary provider update.
+	 */
+	summaryProvider: string | null;
+	/**
+	 * Summary model update.
+	 */
+	summaryModel: string | null;
+	/**
+	 * Legacy maximum iteration count update.
+	 */
+	maxIterations: number | null;
+	/**
+	 * Maximum token budget update.
+	 */
+	maxTokenBudget: number | null;
+	/**
+	 * Maximum build-attempt count update.
+	 */
+	maxBuildAttempts: number | null;
+	/**
+	 * Maximum output token count update.
+	 */
+	maxOutputTokens: number | null;
+	/**
+	 * Ollama base URL update.
+	 */
+	ollamaApiBaseUrl: string | null;
+	/**
+	 * OpenAI-compatible base URL update.
+	 */
+	openaiCompatibleApiBaseUrl: string | null;
+	/**
+	 * OpenAI-compatible API key update.
+	 */
+	openaiCompatibleApiKey: string | null;
+	/**
+	 * Diagnostics sharing preference update.
+	 */
+	sendDiagnostics: boolean | null;
+	/**
+	 * Diagnostics notice acknowledgement update.
+	 */
+	diagnosticsNoticeAcknowledged: boolean | null;
+	/**
+	 * Build confirmation preference update.
+	 */
+	confirmBuild: boolean | null;
+	/**
+	 * Clear confirmation preference update.
+	 */
+	confirmClear: boolean | null;
+	/**
+	 * Rollback confirmation preference update.
+	 */
+	confirmRollback: boolean | null;
+	/**
+	 * Focus auto-summary preference update.
+	 */
+	autoSummarizeOnFocus: boolean | null;
+	/**
+	 * Startup Homebrew scan preference update.
+	 */
+	scanHomebrewOnStartup: boolean | null;
+	/**
+	 * Default-to-diff-tab preference update.
+	 */
+	defaultToDiffTab: boolean | null;
+	/**
+	 * Experimental spinning-mascot preference update.
+	 */
+	experimentalSpinningMascot: boolean | null;
+	/**
  * Experimental streaming-evolve preference update.
  */
 experimentalStreamingEvolve: boolean | null; 
 /**
- * Developer mode preference update.
- */
-developerMode: boolean | null; 
-/**
- * `None` -> field not sent; `Some(None)` -> clear the pinned version.
- */
-pinnedVersion?: string | null; 
-/**
- * Auto-update channel preference update.
- */
-updateChannel: UpdateChannel | null; 
-/**
- * `None` -> field not sent; `Some(None)` -> clear all overrides;
- * `Some(Some(map))` -> replace overrides with `map`.
- */
-featureFlagOverrides?: Partial<{ [key in string]: string }> | null; 
-/**
- * Timestamp (unix secs) of the last onboarding "scan this Mac" / customizations review.
- */
-onboardingMacScannedAt: number | null; 
-/**
- * Set true once the user logged in or explicitly chose bring-your-own-key.
- */
-onboardingLoginDecided: boolean | null; 
-/**
- * Auto-format Nix files after smart edits.
- */
-autoFormatNixFiles: boolean | null }
+	 * Developer mode preference update.
+	 */
+	developerMode: boolean | null;
+	/**
+	 * `None` -> field not sent; `Some(None)` -> clear the pinned version.
+	 */
+	pinnedVersion?: string | null;
+	/**
+	 * Auto-update channel preference update.
+	 */
+	updateChannel: UpdateChannel | null;
+	/**
+	 * `None` -> field not sent; `Some(None)` -> clear all overrides;
+	 * `Some(Some(map))` -> replace overrides with `map`.
+	 */
+	featureFlagOverrides?: Partial<{ [key in string]: string }> | null;
+	/**
+	 * Timestamp (unix secs) of the last onboarding "scan this Mac" / customizations review.
+	 */
+	onboardingMacScannedAt: number | null;
+	/**
+	 * Set true once the user logged in or explicitly chose bring-your-own-key.
+	 */
+	onboardingLoginDecided: boolean | null;
+	/**
+	 * Auto-format Nix files after smart edits.
+	 */
+	autoFormatNixFiles: boolean | null;
+};
 
 /**
  * Auto-update channel selected for release-mode builds.
  */
-export type UpdateChannel = "stable" | "develop"
+export type UpdateChannel = "stable" | "develop";
 
 /**
  * Lightweight update metadata returned by the channel-aware updater command.
  */
-export type UpdateInfo = { 
-/**
- * Channel whose manifest produced this update.
- */
-channel: UpdateChannel; 
-/**
- * Version advertised by the channel manifest.
- */
-version: string; 
-/**
- * Release notes from the channel manifest, when available.
- */
-notes: string | null }
-
+export type UpdateInfo = {
+	/**
+	 * Channel whose manifest produced this update.
+	 */
+	channel: UpdateChannel;
+	/**
+	 * Version advertised by the channel manifest.
+	 */
+	version: string;
+	/**
+	 * Release notes from the channel manifest, when available.
+	 */
+	notes: string | null;
+};

@@ -11,6 +11,7 @@ import {
 } from "@/components/widget/filesystem/data";
 import { UntrackedBanner } from "@/components/widget/filesystem/untracked-banner";
 import { GetStartedMessage } from "@/components/widget/layout/get-started-message";
+import { UpstreamUpdateAvailable } from "@/components/widget/notifications/upstream-update-available";
 import { PromptInputSection } from "@/components/widget/promptinput/prompt-input-section";
 import { useHomebrewDiff } from "@/hooks/use-homebrew-diff";
 import { useLaunchdItems } from "@/hooks/use-launchd-items";
@@ -40,6 +41,7 @@ export function BeginStep() {
   return (
     <>
       <GetStartedMessage />
+      <UpstreamUpdateAvailable />
       {filesystemViewEnabled && (
         <UntrackedBanner
           candidates={untrackedCandidates}
