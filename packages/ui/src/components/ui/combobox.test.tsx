@@ -122,6 +122,22 @@ describe("Combobox", () => {
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
 
+  it("matches scattered characters fuzzily and ranks contiguous matches first", () => {
+    render(
+      <Harness items={["google/gemini-flash-latest", "gfl-tool", "anthropic/claude-sonnet"]} />,
+    );
+
+    openList();
+    fireEvent.change(input(), { target: { value: "gfl" } });
+
+    // "gfl" is contiguous in gfl-tool and scattered in google/gemini-flash-latest;
+    // the contiguous match ranks first, the non-match is filtered out
+    expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual([
+      "gfl-tool",
+      "google/gemini-flash-latest",
+    ]);
+  });
+
   it("offers unmatched typed text as a custom row when allowed and commits it on select", () => {
     const onChangeSpy = vi.fn();
     render(<Harness allowCustomValue onChangeSpy={onChangeSpy} />);
