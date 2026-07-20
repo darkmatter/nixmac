@@ -234,10 +234,10 @@ pub fn read_tags(dir: &str, hash: &str) -> Vec<String> {
             continue;
         };
 
-        if resolved.id() == target_obj.id() {
-            if let Ok(name) = reference.shorthand() {
-                tags.push(name.to_string());
-            }
+        if resolved.id() == target_obj.id()
+            && let Ok(name) = reference.shorthand()
+        {
+            tags.push(name.to_string());
         }
     }
 

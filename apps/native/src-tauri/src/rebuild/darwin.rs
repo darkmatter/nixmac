@@ -852,56 +852,6 @@ fn activation_failure_left_system_untouched(error_type: &str) -> bool {
     matches!(error_type, "user_cancelled")
 }
 
-#[cfg(test)]
-mod activation_safety_tests {
-    use super::{
-        ActivateResult, activation_failure_left_system_untouched, classify_activate_error,
-    };
-
-    fn failed_activation(stdout: &str, stderr: &str) -> ActivateResult {
-        ActivateResult {
-            success: false,
-            code: 1,
-            stdout: stdout.to_string(),
-            stderr: stderr.to_string(),
-        }
-    }
-
-    #[test]
-    fn app_management_failure_is_classified_from_activation_stdout() {
-        let result = failed_activation(
-            "error: permission denied when trying to update apps, aborting activation\nhome-manager requires permission to update your apps",
-            "",
-        );
-
-        let (error_type, message) = classify_activate_error(&result);
-
-        assert_eq!(error_type, "app_management");
-        assert!(message.contains("App Management"));
-    }
-
-    #[test]
-    fn app_management_failure_takes_precedence_over_generic_not_permitted_text() {
-        let result = failed_activation(
-            "Operation not permitted\nIf you did not get a notification, navigate to System Settings > Privacy & Security > App Management.",
-            "",
-        );
-
-        let (error_type, _) = classify_activate_error(&result);
-
-        assert_eq!(error_type, "app_management");
-    }
-
-    #[test]
-    fn only_explicit_cancellation_is_known_untouched() {
-        assert!(activation_failure_left_system_untouched("user_cancelled"));
-        assert!(!activation_failure_left_system_untouched(
-            "authorization_denied"
-        ));
-        assert!(!activation_failure_left_system_untouched("generic_error"));
-    }
-}
-
 /// Internal function to run darwin-rebuild with proper streaming.
 /// All output is written to ~/Library/Logs/nixmac/darwin-rebuild_<timestamp>.log
 /// Returns Ok(success_payload) on success, Err(error_payload) on failure.
@@ -1232,13 +1182,63 @@ fn run_darwin_rebuild(
         "code": activate_result.code,
         "log_file": log_path.to_string_lossy(),
     });
-    if let Some(et) = error_type {
-        if let Some(obj) = success_payload.as_object_mut() {
-            obj.insert(
-                "error_type".to_string(),
-                serde_json::Value::String(et.to_string()),
-            );
-        }
+    if let Some(et) = error_type
+        && let Some(obj) = success_payload.as_object_mut()
+    {
+        obj.insert(
+            "error_type".to_string(),
+            serde_json::Value::String(et.to_string()),
+        );
     }
     Ok(success_payload)
+}
+
+#[cfg(test)]
+mod activation_safety_tests {
+    use super::{
+        ActivateResult, activation_failure_left_system_untouched, classify_activate_error,
+    };
+
+    fn failed_activation(stdout: &str, stderr: &str) -> ActivateResult {
+        ActivateResult {
+            success: false,
+            code: 1,
+            stdout: stdout.to_string(),
+            stderr: stderr.to_string(),
+        }
+    }
+
+    #[test]
+    fn app_management_failure_is_classified_from_activation_stdout() {
+        let result = failed_activation(
+            "error: permission denied when trying to update apps, aborting activation\nhome-manager requires permission to update your apps",
+            "",
+        );
+
+        let (error_type, message) = classify_activate_error(&result);
+
+        assert_eq!(error_type, "app_management");
+        assert!(message.contains("App Management"));
+    }
+
+    #[test]
+    fn app_management_failure_takes_precedence_over_generic_not_permitted_text() {
+        let result = failed_activation(
+            "Operation not permitted\nIf you did not get a notification, navigate to System Settings > Privacy & Security > App Management.",
+            "",
+        );
+
+        let (error_type, _) = classify_activate_error(&result);
+
+        assert_eq!(error_type, "app_management");
+    }
+
+    #[test]
+    fn only_explicit_cancellation_is_known_untouched() {
+        assert!(activation_failure_left_system_untouched("user_cancelled"));
+        assert!(!activation_failure_left_system_untouched(
+            "authorization_denied"
+        ));
+        assert!(!activation_failure_left_system_untouched("generic_error"));
+    }
 }

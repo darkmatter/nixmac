@@ -990,12 +990,11 @@ use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectStat
             // set up watcher with interval based on focus
             let handle_for_focus = handle.clone();
             main_window.on_window_event(move |event| {
-                if let WindowEvent::Focused(focused) = event {
-                    if let Ok(config_dir) = store::get_config_dir(&handle_for_focus) {
+                if let WindowEvent::Focused(focused) = event
+                    && let Ok(config_dir) = store::get_config_dir(&handle_for_focus) {
                         let interval_ms = if *focused { 2500 } else { 15000 };
                         watcher::start_watching(handle_for_focus.clone(), config_dir, interval_ms);
                     }
-                }
             });
 
             // Keep window shadow for visual polish (shadow doesn't cause click issues, Acrylic did)
@@ -1009,11 +1008,10 @@ use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectStat
             // Experimental: create the spinning-mascot indicator window when the
             // flag is enabled at launch. Gated here so users who never enable it
             // pay no startup cost; enabling the flag applies on the next launch.
-            if crate::state::ui_prefs::experimental_spinning_mascot(handle) {
-                if let Err(e) = peek::create_evolve_mascot_window(handle) {
+            if crate::state::ui_prefs::experimental_spinning_mascot(handle)
+                && let Err(e) = peek::create_evolve_mascot_window(handle) {
                     log::error!("[peek] failed to create evolve mascot window: {}", e);
                 }
-            }
 
             // Start config watcher - monitors config directory for file changes
             // This emits config:changed events to the frontend when files are modified
@@ -1032,8 +1030,7 @@ use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectStat
                 event: WindowEvent::CloseRequested { api, .. },
                 ..
             } = &event
-            {
-                if label == "main" {
+                && label == "main" {
                     // Prevent the window from being destroyed
                     api.prevent_close();
                     if let Some(window) = app_handle.get_webview_window("main") {
@@ -1043,18 +1040,16 @@ use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectStat
                         peek::unlock_and_hide();
                     }
                 }
-            }
 
             #[cfg(target_os = "macos")]
             {
                 // Click Nixmac icon to show
-                if let RunEvent::Reopen { .. } = &event {
-                    if let Some(window) = app_handle.get_webview_window("main") {
+                if let RunEvent::Reopen { .. } = &event
+                    && let Some(window) = app_handle.get_webview_window("main") {
                         // fire-and-forget: show/set_focus fail only on destroyed window.
                         let _ = window.show();
                         let _ = window.set_focus();
                     }
-                }
             }
         });
 }

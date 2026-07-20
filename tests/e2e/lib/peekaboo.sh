@@ -500,18 +500,17 @@ screenshot() {
     local name="${1:-screenshot}"
     local app="${2:-}"
     local path
-    local args=""
+    local screenshot_args=()
     local marker=""
     local generated=""
     path="${E2E_SCREENSHOT_DIR}/${name}-$(date +%s).png"
-    [ -n "$app" ] && args="--app $app"
+    [ -n "$app" ] && screenshot_args=(--app "$app")
 
     mkdir -p "$E2E_SCREENSHOT_DIR"
     marker=$(mktemp "${TMPDIR:-/tmp}/e2e-peekaboo-marker.XXXXXX" 2>/dev/null || true)
     [ -n "$marker" ] && touch "$marker"
 
-    # shellcheck disable=SC2086
-    peekaboo_run see $args --annotate --path "$path" 2>/dev/null \
+    peekaboo_run see ${screenshot_args[@]+"${screenshot_args[@]}"} --annotate --path "$path" 2>/dev/null \
         || peekaboo_run image --mode screen --path "$path" 2>/dev/null \
         || true
 

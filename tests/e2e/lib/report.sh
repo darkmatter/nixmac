@@ -106,7 +106,7 @@ e2e_report_write() {
         while IFS= read -r diagnostic; do
             [ -f "$diagnostic" ] || continue
             local rel_path dest rel caption
-            rel_path="${diagnostic#$E2E_DIAGNOSTIC_DIR/}"
+            rel_path="${diagnostic#"$E2E_DIAGNOSTIC_DIR"/}"
             dest="$diagnostics_dest/$rel_path"
             mkdir -p "$(dirname "$dest")"
             cp "$diagnostic" "$dest"

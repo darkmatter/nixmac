@@ -183,10 +183,10 @@ fn generate_field(field: &syn::Field, scope: StoreScope) -> syn::Result<FieldCod
 /// Key used in `apps/native/env.*.json` and env JSON Schema. Env-scoped fields prefer
 /// their `env_var` name so profile files mirror process environment variables.
 fn profile_json_key(scope: StoreScope, ui_key: &str, cfg: &FieldConfig) -> String {
-    if matches!(scope, StoreScope::Env) {
-        if let Some(env_var) = &cfg.env_var {
-            return env_var.clone();
-        }
+    if matches!(scope, StoreScope::Env)
+        && let Some(env_var) = &cfg.env_var
+    {
+        return env_var.clone();
     }
     ui_key.to_string()
 }

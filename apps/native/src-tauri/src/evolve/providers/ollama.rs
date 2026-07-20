@@ -331,10 +331,10 @@ fn convert_from_ollama_response(response: &ChatResponse) -> Message {
 
                         // Some models (e.g., command-r) wrap arguments in a "parameters" field
                         // Extract and unwrap if present
-                        if let Some(params) = args.get("parameters") {
-                            if params.is_object() {
-                                args = params.clone();
-                            }
+                        if let Some(params) = args.get("parameters")
+                            && params.is_object()
+                        {
+                            args = params.clone();
                         }
 
                         ToolCall {
@@ -351,43 +351,42 @@ fn convert_from_ollama_response(response: &ChatResponse) -> Message {
     };
 
     // Fallback: If no structured tool_calls but content looks like JSON tool invocation, parse it
-    if tool_calls.is_none() {
-        if let Some(ref text) = content {
-            if let Ok(json) = serde_json::from_str::<serde_json::Value>(text) {
-                if let (Some(name), Some(params)) = (
-                    json.get("name").and_then(|v| v.as_str()),
-                    json.get("parameters"),
-                ) {
-                    log::warn!(
-                        "Model returned text-based tool call ({}), converting to structured format",
-                        name
-                    );
-                    tool_calls = Some(vec![ToolCall {
-                        id: "call_ollama".to_string(),
-                        name: name.to_string(),
-                        arguments: params.to_string(),
-                    }]);
-                } else if let (Some(category), Some(thought)) = (
-                    json.get("category").and_then(|v| v.as_str()),
-                    json.get("thought").and_then(|v| v.as_str()),
-                ) {
-                    // Some Ollama models seem to occasionally emit think payloads as plain assistant JSON content.
-                    // Coerce these into structured tool calls so the loop continues instead of
-                    // being treated as a conversational completion.
-                    log::warn!(
-                        "Model returned text-based think payload, converting to structured tool call"
-                    );
-                    let args = serde_json::json!({
-                        "category": category,
-                        "thought": thought,
-                    });
-                    tool_calls = Some(vec![ToolCall {
-                        id: "call_ollama".to_string(),
-                        name: "think".to_string(),
-                        arguments: args.to_string(),
-                    }]);
-                }
-            }
+    if tool_calls.is_none()
+        && let Some(ref text) = content
+        && let Ok(json) = serde_json::from_str::<serde_json::Value>(text)
+    {
+        if let (Some(name), Some(params)) = (
+            json.get("name").and_then(|v| v.as_str()),
+            json.get("parameters"),
+        ) {
+            log::warn!(
+                "Model returned text-based tool call ({}), converting to structured format",
+                name
+            );
+            tool_calls = Some(vec![ToolCall {
+                id: "call_ollama".to_string(),
+                name: name.to_string(),
+                arguments: params.to_string(),
+            }]);
+        } else if let (Some(category), Some(thought)) = (
+            json.get("category").and_then(|v| v.as_str()),
+            json.get("thought").and_then(|v| v.as_str()),
+        ) {
+            // Some Ollama models seem to occasionally emit think payloads as plain assistant JSON content.
+            // Coerce these into structured tool calls so the loop continues instead of
+            // being treated as a conversational completion.
+            log::warn!(
+                "Model returned text-based think payload, converting to structured tool call"
+            );
+            let args = serde_json::json!({
+                "category": category,
+                "thought": thought,
+            });
+            tool_calls = Some(vec![ToolCall {
+                id: "call_ollama".to_string(),
+                name: "think".to_string(),
+                arguments: args.to_string(),
+            }]);
         }
     }
 

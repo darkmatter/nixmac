@@ -43,10 +43,10 @@ pub fn read_current_store_path() -> Option<String> {
 /// Load the persisted build state. Returns `BuildState::default()` if absent or corrupt.
 pub fn get<R: Runtime>(app: &AppHandle<R>) -> Result<BuildState> {
     let store = app.store(BUILD_STATE_PATH)?;
-    if let Some(val) = store.get(BUILD_STATE_KEY) {
-        if let Ok(state) = serde_json::from_value::<BuildState>(val.clone()) {
-            return Ok(state);
-        }
+    if let Some(val) = store.get(BUILD_STATE_KEY)
+        && let Ok(state) = serde_json::from_value::<BuildState>(val.clone())
+    {
+        return Ok(state);
     }
     Ok(BuildState::default())
 }

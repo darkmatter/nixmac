@@ -50,7 +50,6 @@ fn now_unix_secs() -> u64 {
 
 /// Loader for runtime-generated option docs stored in the app data directory.
 /// The app persists the compact `*-docs.json` files in the format used by `search_docs`.
-
 pub struct GeneratedDocsIndexLoader {
     docs_dir: PathBuf,
 }
@@ -402,10 +401,8 @@ pub fn generate_docs_index_files(out_dir: &Path) -> Result<()> {
 /// The durable artifact is the compact `*-docs.json` file. The raw options JSON
 /// is generated, transformed, and then dropped.
 fn read_or_generate_docs_json(tool: OptionsTool, docs_dir: &Path, force: bool) -> Result<String> {
-    if !force {
-        if let Some(cached_json) = read_cached_docs_json(tool, docs_dir) {
-            return Ok(cached_json);
-        }
+    if !force && let Some(cached_json) = read_cached_docs_json(tool, docs_dir) {
+        return Ok(cached_json);
     }
 
     let docs_path = docs_dir.join(tool.docs_file_name());

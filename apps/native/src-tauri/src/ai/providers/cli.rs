@@ -171,13 +171,13 @@ fn build_args(tool: &CliTool, model: Option<&str>) -> Vec<String> {
         CliTool::OpenCode => vec!["-p".into()],
     };
 
-    if let Some(flag) = tool.model_flag() {
-        if let Some(m) = model {
-            if !m.is_empty() && m != tool.binary_name() {
-                args.push(flag.into());
-                args.push(m.into());
-            }
-        }
+    if let Some(flag) = tool.model_flag()
+        && let Some(m) = model
+        && !m.is_empty()
+        && m != tool.binary_name()
+    {
+        args.push(flag.into());
+        args.push(m.into());
     }
 
     args

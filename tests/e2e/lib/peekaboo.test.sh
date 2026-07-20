@@ -4,7 +4,8 @@ set -euo pipefail
 TEST_DIR="$(mktemp -d "${TMPDIR:-/tmp}/peekaboo-lib-test.XXXXXX")"
 trap 'rm -rf "$TEST_DIR"' EXIT
 
-export E2E_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+E2E_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export E2E_ROOT
 export E2E_LIB="$E2E_ROOT/lib"
 export E2E_SCREENSHOT_DIR="$TEST_DIR/screenshots"
 export E2E_PEEKABOO_CAPTURE_DIR="$TEST_DIR/captures"

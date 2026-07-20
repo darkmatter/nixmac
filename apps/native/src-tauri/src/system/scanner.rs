@@ -1579,10 +1579,10 @@ pub fn scan_system_defaults(hostname: &str, config_dir: &str) -> SystemDefaultsS
             // Check if this key is currently managed by nix. If it is, we skip it because we don't want to report it as a non-default.
             // Currently we won't compare the value against the factory default because if it's managed by nix it might be intentionally set to a default
             // or non-default value.
-            if let Ok(ref nix_values) = current_nix_managed_values {
-                if nix_values.contains_key(def.defaults_key) {
-                    continue;
-                }
+            if let Ok(ref nix_values) = current_nix_managed_values
+                && nix_values.contains_key(def.defaults_key)
+            {
+                continue;
             }
 
             total_scanned += 1;
@@ -1669,12 +1669,11 @@ pub(crate) fn system_default_current_value_to_json(
             .map(serde_json::Value::Number)
             .unwrap_or_else(|| serde_json::Value::String(value.to_string())),
         Some(ValType::StringFromIntMap) => {
-            if let Ok(n) = value.trim().parse::<i32>() {
-                if let Some(map) = key_def.and_then(|def| def.int_to_string_map) {
-                    if let Some((_, mapped)) = map.iter().find(|(k, _)| *k == n) {
-                        return serde_json::Value::String((*mapped).to_string());
-                    }
-                }
+            if let Ok(n) = value.trim().parse::<i32>()
+                && let Some(map) = key_def.and_then(|def| def.int_to_string_map)
+                && let Some((_, mapped)) = map.iter().find(|(k, _)| *k == n)
+            {
+                return serde_json::Value::String((*mapped).to_string());
             }
             serde_json::Value::String(value.to_string())
         }
@@ -1993,8 +1992,8 @@ mod tests {
             Some("42".to_string())
         );
         assert_eq!(
-            parse_plist_value(plist::Value::Real(3.14)),
-            Some("3.14".to_string())
+            parse_plist_value(plist::Value::Real(2.5)),
+            Some("2.5".to_string())
         );
         assert_eq!(
             parse_plist_value(plist::Value::String("hello".to_string())),

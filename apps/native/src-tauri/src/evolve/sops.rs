@@ -63,10 +63,10 @@ fn resolve_sops_config_path(base: &Path) -> PathBuf {
 fn merge_sops_config(existing: &str, public_key: &str) -> Result<String> {
     // Attempt a simple string replacement for the placeholder. This preserves comments
     // and structure for the common case of merging into a template.
-    if existing.contains("AGE_PUBLIC_KEY_PLACEHOLDER") {
-        if let Ok(result) = try_simple_placeholder_replacement(existing, public_key) {
-            return Ok(result);
-        }
+    if existing.contains("AGE_PUBLIC_KEY_PLACEHOLDER")
+        && let Ok(result) = try_simple_placeholder_replacement(existing, public_key)
+    {
+        return Ok(result);
     }
 
     let mut doc = parse_sops_document(existing)?;
@@ -152,12 +152,11 @@ fn ensure_creation_rules_sequence(doc: &mut Value) -> Result<&mut Sequence> {
 fn find_managed_rule_mut(rules: &mut Sequence) -> Option<&mut Mapping> {
     let key = Value::String("path_regex".to_string());
     for rule in rules.iter_mut() {
-        if let Some(map) = rule.as_mapping_mut() {
-            if let Some(path_regex) = map.get(&key).and_then(|v| v.as_str()) {
-                if path_regex == MANAGED_PATH_REGEX {
-                    return Some(map);
-                }
-            }
+        if let Some(map) = rule.as_mapping_mut()
+            && let Some(path_regex) = map.get(&key).and_then(|v| v.as_str())
+            && path_regex == MANAGED_PATH_REGEX
+        {
+            return Some(map);
         }
     }
     None
