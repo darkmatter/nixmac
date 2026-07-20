@@ -644,6 +644,22 @@ export type EvolveEventDetail =
  */
 { type: "build"; pass: boolean; attempt: number; output: string } | 
 /**
+ * A streamed chunk of build-check output, emitted in throttled batches
+ * while the check runs.
+ */
+{ type: "buildOutput"; chunk: string } | 
+/**
+ * A streamed slice of assistant text, emitted in throttled batches while
+ * the provider responds; the full text follows as Narration or the
+ * terminal summary once the response completes.
+ */
+{ type: "streamDelta"; text: string } | 
+/**
+ * The provider abandoned a partial streamed response and is retrying;
+ * deltas before this marker belong to the discarded attempt.
+ */
+{ type: "streamReset" } | 
+/**
  * Assistant narration between tool calls.
  */
 { type: "narration"; text: string } | 
@@ -735,7 +751,11 @@ export type EvolveEventType =
 /**
  * Assistant narration between tool calls.
  */
-"narration"
+"narration" | 
+/**
+ * A streamed slice of the assistant response being generated.
+ */
+"streamDelta"
 
 /**
  * The evolve routing state as projected for the frontend: the owned
@@ -1337,7 +1357,7 @@ summaryModel: string | null;
  * Remembered summary model per provider; a missing entry means the
  * provider default is used. Never stores `""`.
  */
-summaryModels: Partial<{ [key in string]: string }>; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
+summaryModels: Partial<{ [key in string]: string }>; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; experimentalStreamingEvolve: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
 /**
  * Root of an import clone parked on the "which flake dir?" choice
  * (`NeedsFlakeDirChoice`). Recorded so an abandoned choice can be
@@ -1726,6 +1746,8 @@ macScannedAt: number | null;
 /**
  * True once the user logged in or explicitly chose bring-your-own-key
  * during onboarding.
+ * @todo consider if this should be computed - other code computes from the
+ * existence of a device API key (e.g. better-auth). If these 2 values conflict,
  */
 loginDecided: boolean; 
 /**
@@ -2263,6 +2285,11 @@ defaultToDiffTab: boolean;
  */
 experimentalSpinningMascot: boolean; 
 /**
+ * Experimental: stream provider token deltas into the evolve progress
+ * view while the model responds (developer flag until stable).
+ */
+experimentalStreamingEvolve: boolean; 
+/**
  * Whether developer-only UI/actions are enabled.
  */
 developerMode: boolean; 
@@ -2377,6 +2404,10 @@ defaultToDiffTab: boolean | null;
  * Experimental spinning-mascot preference update.
  */
 experimentalSpinningMascot: boolean | null; 
+/**
+ * Experimental streaming-evolve preference update.
+ */
+experimentalStreamingEvolve: boolean | null; 
 /**
  * Developer mode preference update.
  */

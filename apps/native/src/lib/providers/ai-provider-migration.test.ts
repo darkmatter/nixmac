@@ -29,6 +29,7 @@ const PREFS: UiPrefs = {
 	defaultToDiffTab: false,
 	developerMode: false,
 	experimentalSpinningMascot: false,
+	experimentalStreamingEvolve: false,
 	pinnedVersion: null,
 	updateChannel: "stable",
 	featureFlagOverrides: null,

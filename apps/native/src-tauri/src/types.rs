@@ -152,6 +152,54 @@ impl EvolveEvent {
         })
     }
 
+    /// A streamed chunk of build-check output. `raw` carries the chunk so
+    /// the Console mirror and session transcripts get the log; the timeline
+    /// renders it as the active row's log tail instead of as rows.
+    pub(crate) fn build_output(start_time: i64, iter: usize, chunk: &str) -> Self {
+        Self::new(
+            EvolveEventType::BuildCheck,
+            chunk.to_string(),
+            "Checking the configuration builds...".to_string(),
+            Some(iter),
+            start_time,
+        )
+        .with_detail(EvolveEventDetail::BuildOutput {
+            chunk: chunk.to_string(),
+        })
+    }
+
+    /// A streamed slice of the assistant response being generated. `raw`
+    /// carries the delta so the Console mirror and session transcripts see
+    /// the text as it arrives; the timeline renders the accumulated tail in
+    /// the active row instead of as rows.
+    pub(crate) fn stream_delta(start_time: i64, iter: usize, text: &str) -> Self {
+        Self::new(
+            EvolveEventType::StreamDelta,
+            text.to_string(),
+            "Thinking...".to_string(),
+            Some(iter),
+            start_time,
+        )
+        .with_detail(EvolveEventDetail::StreamDelta {
+            text: text.to_string(),
+        })
+    }
+
+    /// The provider abandoned a partial streamed response and is retrying;
+    /// marks where the visible stream tail restarts. Deltas before this
+    /// marker belong to the discarded attempt (kept in the Console and
+    /// transcripts for diagnostics).
+    pub(crate) fn stream_reset(start_time: i64, iter: usize) -> Self {
+        Self::new(
+            EvolveEventType::StreamDelta,
+            "Response interrupted; retrying...".to_string(),
+            "Retrying...".to_string(),
+            Some(iter),
+            start_time,
+        )
+        .with_detail(EvolveEventDetail::StreamReset)
+    }
+
     pub(crate) fn build_pass(start_time: i64, iter: usize, attempt: usize) -> Self {
         Self::new(
             EvolveEventType::BuildPass,
@@ -172,9 +220,10 @@ impl EvolveEvent {
             Some(line) => format!("Build check failed: {}", truncate(line, 120)),
             None => "Build check failed, retrying...".to_string(),
         };
+        let output_tail = build_output_tail(output, 6000);
         Self::new(
             EvolveEventType::BuildFail,
-            format!("Build check failed: {}", truncate(output, 6000)),
+            format!("Build check failed: {}", truncate(output_tail, 6000)),
             summary,
             Some(iter),
             start_time,
@@ -182,7 +231,7 @@ impl EvolveEvent {
         .with_detail(EvolveEventDetail::Build {
             pass: false,
             attempt,
-            output: truncate(output, 6000),
+            output: truncate(output_tail, 6000),
         })
     }
 
@@ -248,43 +297,30 @@ impl EvolveEvent {
                 .filter(|s| !s.is_empty())
         };
         let quoted = |s: &str| format!("'{}'", truncate(s, 60));
-        let summary = match tool {
-            "read_file" => match arg("path") {
-                Some(path) => format!("Reading {}...", shorten_path(path)),
-                None => "Reading file...".to_string(),
-            },
-            "edit_file" | "edit_nix_file" => match arg("path") {
-                Some(path) => format!("Editing {}...", shorten_path(path)),
-                None => "Editing configuration...".to_string(),
-            },
-            "list_files" => match arg("pattern") {
-                Some(pattern) if pattern != "**/*" => {
-                    format!("Listing files matching {}...", quoted(pattern))
-                }
-                _ => "Listing files...".to_string(),
-            },
-            "search_code" => match arg("pattern") {
-                Some(pattern) => format!("Searching the config for {}...", quoted(pattern)),
-                None => "Searching the config...".to_string(),
-            },
-            "search_packages" => match arg("query") {
-                Some(query) => format!("Searching packages for {}...", quoted(query)),
-                None => "Searching packages...".to_string(),
-            },
-            "search_docs" => match arg("query") {
-                Some(query) => format!("Searching docs for {}...", quoted(query)),
-                None => "Searching docs...".to_string(),
-            },
-            "ensure_secret" => match arg("name") {
-                Some(name) => format!("Setting up secret {}...", quoted(name)),
-                None => "Setting up a secret...".to_string(),
-            },
-            "build_check" => "Checking the configuration builds...".to_string(),
-            "think" => "Thinking...".to_string(),
-            "ask_user" => "Asking a question...".to_string(),
-            "done" => "Finishing up...".to_string(),
-            _ => format!("Using {} tool...", tool),
+        let with_object = match tool {
+            "read_file" => arg("path").map(|path| format!("Reading {}...", shorten_path(path))),
+            "edit_file" | "edit_nix_file" => {
+                arg("path").map(|path| format!("Editing {}...", shorten_path(path)))
+            }
+            "list_files" => arg("pattern")
+                .filter(|pattern| *pattern != "**/*")
+                .map(|pattern| format!("Listing files matching {}...", quoted(pattern))),
+            "search_code" => {
+                arg("pattern").map(|p| format!("Searching the config for {}...", quoted(p)))
+            }
+            "search_packages" => {
+                arg("query").map(|q| format!("Searching packages for {}...", quoted(q)))
+            }
+            "search_docs" => arg("query").map(|q| format!("Searching docs for {}...", quoted(q))),
+            "ensure_secret" => {
+                arg("name").map(|name| format!("Setting up secret {}...", quoted(name)))
+            }
+            _ => None,
         };
+        let summary = with_object
+            .or_else(|| tool_action_label(tool))
+            // Only `think` has no action label; its summary is its thought.
+            .unwrap_or_else(|| "Thinking...".to_string());
         Self::new(
             EvolveEventType::ToolCall,
             format!("{} | args: {}", tool, args_summary),
@@ -457,13 +493,59 @@ fn truncate(s: &str, max_len: usize) -> String {
     global_utils::truncate_with_ellipsis(s, max_len)
 }
 
+/// Generic action label for a tool, without the object being acted on. The
+/// single source for how a tool presents to the user: the tool_call summary
+/// falls back to it when the object argument is missing, and the stream
+/// announcements use it before the arguments have finished generating. None
+/// for `think`, which presents as its thought text instead.
+pub(crate) fn tool_action_label(tool: &str) -> Option<String> {
+    let label = match tool {
+        "think" => return None,
+        "read_file" => "Reading file...",
+        "edit_file" | "edit_nix_file" => "Editing configuration...",
+        "list_files" => "Listing files...",
+        "search_code" => "Searching the config...",
+        "search_packages" => "Searching packages...",
+        "search_docs" => "Searching docs...",
+        "ensure_secret" => "Setting up a secret...",
+        "build_check" => "Checking the configuration builds...",
+        "ask_user" => "Asking a question...",
+        "done" => "Finishing up...",
+        other => return Some(format!("Using {} tool...", other)),
+    };
+    Some(label.to_string())
+}
+
+/// The slice of build output worth keeping when it exceeds `max_len`: from
+/// the last "error:" line onward (nix prints the failure after pages of
+/// evaluation/progress chatter), falling back to the tail. Head-truncating
+/// oversized output instead would keep only the chatter and cut the error.
+fn build_output_tail(output: &str, max_len: usize) -> &str {
+    if output.len() <= max_len {
+        return output;
+    }
+    let mut error_offset = None;
+    let mut pos = 0;
+    for line in output.split_inclusive('\n') {
+        if line.to_lowercase().contains("error:") {
+            error_offset = Some(pos);
+        }
+        pos += line.len();
+    }
+    let start = error_offset
+        .unwrap_or_else(|| output.floor_char_boundary(output.len().saturating_sub(max_len)));
+    &output[start..]
+}
+
 /// First line of build output that looks like the actual error, falling back
 /// to the first non-empty line. Nix errors are prefixed with "error:", often
-/// preceded by pages of trace/progress noise.
+/// preceded by pages of trace/progress noise (which can mention "error"
+/// inside file paths, hence the colon-anchored match is tried first).
 fn first_error_line(output: &str) -> Option<&str> {
     let non_empty = || output.lines().map(str::trim).filter(|l| !l.is_empty());
     non_empty()
-        .find(|l| l.to_lowercase().contains("error"))
+        .find(|l| l.to_lowercase().contains("error:"))
+        .or_else(|| non_empty().find(|l| l.to_lowercase().contains("error")))
         .or_else(|| non_empty().next())
 }
 
@@ -498,13 +580,12 @@ pub(crate) const EVOLVE_EVENT_CHANNEL: &str = "darwin:evolve:event";
 
 /// Helper to emit evolve events to the frontend
 pub(crate) fn emit_evolve_event<R: tauri::Runtime>(app: &tauri::AppHandle<R>, event: EvolveEvent) {
-    // Append to the session transcript if an evolution is currently recording.
+    // Append to the session transcript if an evolution is currently
+    // recording. Queued rather than spawned so high-frequency stream events
+    // land in emission order.
     if let Some(path) = crate::state::session_log::active_session_path() {
         let event_json = serde_json::to_value(&event).unwrap_or_default();
-        // Fire-and-forget: emit_evolve_event always runs inside the async evolve loop.
-        tokio::spawn(async move {
-            crate::state::session_log::append_event(&path, "evolve_event", &event_json).await;
-        });
+        crate::state::session_log::append_event_ordered(path, "evolve_event", event_json);
     }
 
     if let Some(window) = app.get_webview_window("main") {
@@ -664,6 +745,58 @@ mod tests {
     fn build_fail_summary_should_keep_generic_text_for_empty_output() {
         let event = EvolveEvent::build_fail(0, 1, 1, "");
         assert_eq!(event.summary, "Build check failed, retrying...");
+    }
+
+    #[test]
+    fn build_fail_should_keep_the_error_when_chatter_overflows_the_raw_budget() {
+        // Verbose dry-run output: thousands of evaluation lines, error last.
+        let chatter = "evaluating file '/nix/store/aaa-source/lib/attrsets.nix'\n".repeat(200);
+        let output = format!(
+            "{}error: attribute 'spotfy' missing\n   at /flake.nix:12",
+            chatter
+        );
+        let event = EvolveEvent::build_fail(0, 1, 1, &output);
+        assert_eq!(
+            event.summary,
+            "Build check failed: error: attribute 'spotfy' missing"
+        );
+        assert!(
+            event
+                .raw
+                .starts_with("Build check failed: error: attribute 'spotfy' missing"),
+            "raw should start at the error line, got: {}",
+            &event.raw[..120.min(event.raw.len())]
+        );
+    }
+
+    #[test]
+    fn build_fail_summary_should_not_anchor_on_paths_mentioning_error() {
+        let output =
+            "evaluating file '/nix/store/aaa/error-handling.nix'\nerror: attribute 'x' missing";
+        let event = EvolveEvent::build_fail(0, 1, 1, output);
+        assert_eq!(
+            event.summary,
+            "Build check failed: error: attribute 'x' missing"
+        );
+    }
+
+    #[test]
+    fn build_fail_should_keep_the_tail_when_oversized_output_has_no_error_line() {
+        let output = format!("{}the final line", "chatter line\n".repeat(1000));
+        let event = EvolveEvent::build_fail(0, 1, 1, &output);
+        assert!(event.raw.contains("the final line"), "tail should survive");
+    }
+
+    #[test]
+    fn build_output_should_carry_the_chunk_in_raw_and_detail() {
+        let event = EvolveEvent::build_output(0, 2, "evaluating derivation\nthese 3 will be built");
+        assert_eq!(event.raw, "evaluating derivation\nthese 3 will be built");
+        assert_eq!(event.summary, "Checking the configuration builds...");
+        assert!(matches!(
+            event.detail,
+            Some(EvolveEventDetail::BuildOutput { ref chunk })
+                if chunk == "evaluating derivation\nthese 3 will be built"
+        ));
     }
 
     #[test]
