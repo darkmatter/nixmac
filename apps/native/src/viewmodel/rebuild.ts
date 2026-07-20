@@ -27,12 +27,14 @@ export function setRebuildRawLineEcho(echo: boolean): void {
   echoRawToSummary = echo;
 }
 
+function emptyRebuildLog() {
+  return { lines: [], rawLines: [], notices: [] };
+}
+
 /** Reset the rebuild output fold (debug tooling / e2e reset). */
 export function clearRebuildLog(): void {
   nextLineId = 1;
-  viewModelActions.setState({
-    rebuildLog: { lines: [], rawLines: [], notices: [] },
-  });
+  viewModelActions.setState({ rebuildLog: emptyRebuildLog() });
 }
 
 function appendSummaryLines(texts: string[], type: RebuildLine["type"]): void {
@@ -69,6 +71,13 @@ function mirrorRebuildStatus(status: RebuildStatus): void {
   const wasRunning =
     viewModelActions.getState().rebuildStatus?.isRunning ?? false;
   const isHydration = !hydrated;
+  const isReset =
+    !status.isRunning &&
+    status.success === null &&
+    status.exitCode === null &&
+    status.errorType === null &&
+    status.errorMessage === null &&
+    status.systemUntouched === null;
   hydrated = true;
 
   // Startup hydration of a finished run: the backend process outlives the
@@ -77,7 +86,15 @@ function mirrorRebuildStatus(status: RebuildStatus): void {
   // empty log => a stale "Starting rebuild..." fold). Only an actively running
   // rebuild should open the panel on hydration; keep a finished one dismissed.
   if (isHydration && !status.isRunning) {
-    viewModelActions.setState({ rebuildStatus: status });
+    if (isReset) {
+      nextLineId = 1;
+      viewModelActions.setState({
+        rebuildStatus: status,
+        rebuildLog: emptyRebuildLog(),
+      });
+    } else {
+      viewModelActions.setState({ rebuildStatus: status });
+    }
     uiActions.setRebuildPanelDismissed(true);
     return;
   }
@@ -97,7 +114,18 @@ function mirrorRebuildStatus(status: RebuildStatus): void {
     return;
   }
 
-  viewModelActions.setState({ rebuildStatus: status });
+  if (isReset) {
+    // Backend resets (for example onboarding.reset) emit the default status.
+    // Clear the webview-local stream projection from that authoritative event
+    // so every reset path observes the same lifecycle transition.
+    nextLineId = 1;
+    viewModelActions.setState({
+      rebuildStatus: status,
+      rebuildLog: emptyRebuildLog(),
+    });
+  } else {
+    viewModelActions.setState({ rebuildStatus: status });
+  }
 
   if (wasRunning && !status.isRunning) {
     // Run ended: release the global processing flag. On probeable permission

@@ -321,7 +321,7 @@ describe("view model sync", () => {
     expect(apiMocks.unlisten).toHaveBeenCalledTimes(1);
   });
 
-  it("hydrates and mirrors the rebuild slice, resetting the log on new runs", async () => {
+  it("hydrates and mirrors the rebuild slice, resetting the log at lifecycle boundaries", async () => {
     const stop = await startRebuildSync();
 
     expect(viewModelActions.getState().rebuildStatus).toBe(apiMocks.rebuildStatus);
@@ -378,6 +378,7 @@ describe("view model sync", () => {
     const done = makeRebuildStatus({ success: true, exitCode: 0 });
     apiMocks.listeners.get("rebuild_status_changed")?.({ payload: done });
     expect(viewModelActions.getState().rebuildStatus).toBe(done);
+    expect(viewModelActions.getState().rebuildLog.lines).toHaveLength(3);
     expect(useUiState.getState().isProcessing).toBe(false);
     expect(apiMocks.refreshPermissions).not.toHaveBeenCalled();
 
@@ -386,6 +387,11 @@ describe("view model sync", () => {
     const reset = makeRebuildStatus();
     apiMocks.listeners.get("rebuild_status_changed")?.({ payload: reset });
     expect(viewModelActions.getState().rebuildStatus).toBe(reset);
+    expect(viewModelActions.getState().rebuildLog).toEqual({
+      lines: [],
+      rawLines: [],
+      notices: [],
+    });
 
     stop();
     expect(apiMocks.unlisten).toHaveBeenCalledTimes(3);
