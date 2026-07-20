@@ -190,12 +190,12 @@ where
                                 || (current.external_build_detected && !status_changed);
                             // The cell write emits `git_state_changed`; one emit per
                             // slice — frontend listens on its dedicated channel.
-                            git_state::update(
+                            git_state::update_preserving_upstream(
                                 &app_handle,
                                 GitState {
                                     git_status: Some(status),
                                     external_build_detected: flag,
-                                    upstream_update_available: current.upstream_update_available,
+                                    upstream_update_available: false,
                                 },
                             );
                             // The cell write emits `change_map_changed`.
@@ -211,6 +211,7 @@ where
 
             // Check periodically (100ms) to break if restart / stop was requested
             let sleep_until = std::time::Instant::now() + Duration::from_millis(interval_ms);
+            let auto_update_mode = GitAutoUpdateMode::from_env();
             while std::time::Instant::now() < sleep_until {
                 if !WATCHER_ACTIVE.load(Ordering::SeqCst) {
                     break;
@@ -219,7 +220,7 @@ where
                 // Detect upstream git commits we may want to offer to pull.
                 // This is a fire-and-forget, best-effort check; if it fails,
                 // we just try again on the next scheduled check.
-                if GitAutoUpdateMode::from_env() != GitAutoUpdateMode::Off
+                if auto_update_mode != GitAutoUpdateMode::Off
                     && let Some(dir) = current_dir.clone()
                     && should_check_auto_update(&dir, Instant::now())
                 {
