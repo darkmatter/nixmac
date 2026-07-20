@@ -77,30 +77,49 @@ export function DarwinWidget() {
     }
   }, []);
 
-  // Esc closes the topmost overlay. Settings is now a route (handled via the
-  // router); history/filesystem are still store-driven pending migration.
-  // Respects defaultPrevented so nested Radix layers (Select/Popover/inner
-  // dialogs) handle Esc first. Skips during IME composition — Esc cancels the
-  // candidate, not the modal.
+  // Esc and Cmd+W close the topmost overlay. Settings is now a route (handled
+  // via the router); history/filesystem are still store-driven pending
+  // migration. Respects defaultPrevented so nested Radix layers
+  // (Select/Popover/inner dialogs) handle Esc first. Skips during IME
+  // composition — Esc cancels the candidate, not the modal.
   const isOverlayActive = useIsOverlayActive();
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
-      // Settings route takes priority (it overlays everything else).
+    // Returns true if an overlay was closed (topmost first: the settings
+    // route overlays everything else).
+    const closeTopmostOverlay = (): boolean => {
       if (isOverlayActive) {
-        e.preventDefault();
         nav.goHome();
-        return;
+        return true;
       }
       const { showHistory, showFilesystem, isProcessing, isGenerating } =
         useUiState.getState();
       if (showHistory && !(isProcessing || isGenerating)) {
-        e.preventDefault();
         uiActions.setShowHistory(false);
-      } else if (showFilesystem && !(isProcessing || isGenerating)) {
-        e.preventDefault();
-        uiActions.setShowFilesystem(false);
+        return true;
       }
+      if (showFilesystem && !(isProcessing || isGenerating)) {
+        uiActions.setShowFilesystem(false);
+        return true;
+      }
+      return false;
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
+      const cmdOnly = e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey;
+      // Cmd+, opens settings (standard macOS shortcut).
+      if (e.key === "," && cmdOnly) {
+        e.preventDefault();
+        nav.openSettings();
+        return;
+      }
+      // Cmd+W closes the topmost overlay; with none open we don't
+      // preventDefault, so the menu's Close Window hides the widget.
+      if (e.key === "w" && cmdOnly) {
+        if (closeTopmostOverlay()) e.preventDefault();
+        return;
+      }
+      if (e.key !== "Escape") return;
+      if (closeTopmostOverlay()) e.preventDefault();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
