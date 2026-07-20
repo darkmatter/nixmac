@@ -3,7 +3,7 @@ import tailwindcss from "@tailwindcss/vite";
 import path, { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { mergeConfig } from "vite";
-import { nixmacBuildDefines } from "../nixmac-profile";
+import { nixmacBuildDefines } from "../nixmac-profile.ts";
 
 const storybookDir = fileURLToPath(new URL(".", import.meta.url));
 const appRoot = path.resolve(storybookDir, "..");
@@ -13,7 +13,6 @@ const statePackageRoot = path.resolve(repoRoot, "packages/state/src");
 
 const config: StorybookConfig = {
   stories: [
-    "../src/**/*.mdx",
     "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)",
     "../../../packages/ui/src/**/*.stories.@(js|jsx|mjs|ts|tsx)",
   ],
