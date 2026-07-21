@@ -318,11 +318,11 @@ impl AiProvider for OpenAIProvider {
             let Some(choice) = chunk.choices.first() else {
                 continue;
             };
-            if let Some(text) = &choice.delta.content {
-                if !text.is_empty() {
-                    content.push_str(text);
-                    on_delta(StreamEvent::Delta(text));
-                }
+            if let Some(text) = &choice.delta.content
+                && !text.is_empty()
+            {
+                content.push_str(text);
+                on_delta(StreamEvent::Delta(text));
             }
             if let Some(chunks) = &choice.delta.tool_calls {
                 for tool_chunk in chunks {
@@ -333,16 +333,15 @@ impl AiProvider for OpenAIProvider {
                     if tool_chunk.id.is_some() && !name.is_empty() {
                         super::announce_tool_call(on_delta, name);
                     }
-                    if name == "think" {
-                        if let Some(fragment) = tool_chunk
+                    if name == "think"
+                        && let Some(fragment) = tool_chunk
                             .function
                             .as_ref()
                             .and_then(|f| f.arguments.as_deref())
-                        {
-                            let text = thought_extractors.entry(index).or_default().push(fragment);
-                            if !text.is_empty() {
-                                on_delta(StreamEvent::Delta(&text));
-                            }
+                    {
+                        let text = thought_extractors.entry(index).or_default().push(fragment);
+                        if !text.is_empty() {
+                            on_delta(StreamEvent::Delta(&text));
                         }
                     }
                 }

@@ -423,10 +423,10 @@ impl AiProvider for OllamaProvider {
                     }
                 }
             }
-            if stream_result.is_ok() {
-                if let Some(record) = ndjson.finish() {
-                    stream_result = handle_line(&record, &mut assembled, &mut done_chunk);
-                }
+            if stream_result.is_ok()
+                && let Some(record) = ndjson.finish()
+            {
+                stream_result = handle_line(&record, &mut assembled, &mut done_chunk);
             }
 
             if let Err(e) = stream_result {

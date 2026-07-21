@@ -10,6 +10,9 @@ resolver = "2"
 unused = { level = "deny", priority = -1 }
 unexpected_cfgs = { level = "allow" }
 
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+
 [profile.profiling]
 inherits = "release"
 debug = true
