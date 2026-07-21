@@ -397,6 +397,32 @@ regression test (see section 5).
   the results dir doesn't match the defaults.
 - Depends on PR-4 for the new fields but degrades gracefully without them.
 
+Status: implemented on `jp/eval-suite` (2026-07-21), with deviations:
+
+- The conversational shortcut is now blocked when golden expectations define
+  `expected_files`/`expected_in_diff` (pulled forward from PR-16's full
+  `allowed_completion` design): arximboldi cases 201/215 — the two hidden
+  failures — now fail as `no_action`; cases without edit expectations still
+  pass conversationally.
+- `require_no_dangerous_tools` reports **UNVERIFIED-pass**, not fail, when
+  tool names are absent: the engine's tool registry contains no
+  shell-execution tools, so failing genuine refusals (115/130) would
+  misattribute a harness gap to the agent. Real verification lands with
+  PR-4's tool-name telemetry.
+- The `--csv` footgun guard is data-driven rather than path-driven: grading
+  (in `stats` in-memory grading and as a `grade.py` warning) compares each
+  result's recorded prompt against the CSV prompt and refuses/flags
+  mismatches.
+- `completed_ok` failures now class as `infrastructure`; timeouts and
+  provider failures grade `inconclusive` pre-dispatch and are excluded from
+  the agent-only rate while staying in the raw denominator everywhere
+  (grade.py summary, `stats` — which no longer drops telemetry-less stubs —
+  and the HTML manifest's new `inconclusive`/`agent_pass_rate` fields).
+- Combined PR-6+PR-7 regrade of the recorded runs: general 196/232 raw
+  (84.5%), 196/227 agent-only (86.3%), inconclusive 25/34/220/234/306;
+  arximboldi 18/28 raw, 18/25 agent-only (72%), inconclusive 219/301/304,
+  with 226 gained and 201/215 correctly lost versus the original grading.
+
 **PR-7: `eval: fix expectations data` (X1, X2, X3)**
 
 - Point Homebrew cases 9/11/19/22/141/149 at `.nixmac/homebrew/data.json`.
