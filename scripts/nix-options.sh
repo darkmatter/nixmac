@@ -15,4 +15,4 @@ ROOT_DIR=$(cd "$SCRIPT_DIR/.." && pwd)
 RESOURCES_DIR="$ROOT_DIR/apps/native/src-tauri/resources"
 
 cargo run --manifest-path "$ROOT_DIR/apps/native/src-tauri/Cargo.toml" \
-  --bin nixmac -- gen-docs-index "$RESOURCES_DIR"
+  --bin nixmac --features codegen -- gen-docs-index "$RESOURCES_DIR"

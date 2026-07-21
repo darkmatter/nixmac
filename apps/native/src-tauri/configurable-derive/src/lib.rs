@@ -16,7 +16,7 @@
 //! merges process env, CI secrets, and the embedded profile JSON.
 //!
 //! `schema_file` selects the JSON Schema output filename for codegen
-//! (`cargo run -- gen-schemas`). Defaults: `settings.schema.json` (repo),
+//! (`cargo run --features codegen -- gen-schemas`). Defaults: `settings.schema.json` (repo),
 //! `env.schema.json` (env), `{snake_case_struct}.schema.json` (global).
 //!
 //! The companion `configurable` crate provides the runtime helpers and

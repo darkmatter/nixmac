@@ -10,6 +10,15 @@ default-run = "nixmac"
 [lints]
 workspace = true
 
+[features]
+# Dev-time codegen commands (`gen-schemas`, `gen-orpc`, `gen-docs-index`,
+# `specta_gen_ts` example); excluded from release builds.
+codegen = ["dep:specta-typescript"]
+
+[[example]]
+name = "specta_gen_ts"
+required-features = ["codegen"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 serde_json = "1"
@@ -75,7 +84,7 @@ toml = "1.0.3"
 backtrace = "0.3"
 clap = { version = "4", features = ["derive"] }
 specta = { version = "=2.0.0-rc.22", features = ["derive", "serde_json"] }
-specta-typescript = "0.0.9"
+specta-typescript = { version = "0.0.9", optional = true }
 rnix = "0.14.0"
 serde_yaml = "0.9"
 rowan = "0.16.1"

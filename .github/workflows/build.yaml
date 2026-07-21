@@ -146,8 +146,11 @@ jobs:
       # macOS SDK, and clippy on macOS covers the cfg(target_os = "macos")
       # code that actually ships. Placed before the sccache setup: sccache as
       # RUSTC_WRAPPER does not reliably cache clippy-driver invocations.
+      # nixmac/codegen keeps the feature-gated codegen paths (gen-schemas,
+      # gen-orpc, gen-docs-index, specta_gen_ts) covered by the lint even
+      # though release builds exclude them.
       - name: Cargo clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets --features nixmac/codegen -- -D warnings
         env:
           NIXMAC_ENV: prod
 

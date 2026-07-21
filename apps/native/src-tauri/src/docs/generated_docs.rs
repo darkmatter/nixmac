@@ -385,6 +385,7 @@ fn read_cached_docs_json(tool: OptionsTool, docs_dir: &Path) -> Option<String> {
 /// This is the `gen-docs-index` dev command used to refresh the bundled
 /// static resources. It runs the exact pipeline the app uses at runtime, so
 /// the committed fallback JSON cannot drift from runtime-generated docs.
+#[cfg(feature = "codegen")]
 pub fn generate_docs_index_files(out_dir: &Path) -> Result<()> {
     std::fs::create_dir_all(out_dir)?;
     for tool in [OptionsTool::NixDarwin, OptionsTool::HomeManager] {

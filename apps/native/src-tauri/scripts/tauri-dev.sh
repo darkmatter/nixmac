@@ -65,7 +65,7 @@ fi
 
 if [ "$schema_needs_regen" = true ]; then
   echo "[tauri-dev] Regenerating configurable JSON Schema files"
-  cargo run --bin nixmac -- gen-schemas
+  cargo run --bin nixmac --features codegen -- gen-schemas
   printf '%s\n' "$input_hash" > "$schema_stamp_file"
 else
   echo "[tauri-dev] Configurable JSON Schemas up-to-date; skipping generation"
@@ -74,7 +74,7 @@ fi
 if [ "$needs_regen" = true ]; then
   echo "[tauri-dev] Regenerating Specta TypeScript bindings"
   printf '[tauri-dev] Regeneration reason: %s\n' "${reasons[@]}"
-  cargo run --example specta_gen_ts
+  cargo run --example specta_gen_ts --features codegen
   printf '%s\n' "$input_hash" > "$stamp_file"
 else
   echo "[tauri-dev] Specta bindings up-to-date; skipping generation"
