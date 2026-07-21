@@ -70,11 +70,38 @@ jobs:
           echo "pr_number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
           echo "Resolved PR #${PR_NUMBER} head: ${head_ref} (${head_sha})"
 
+      - name: Validate Storybook comment is current
+        if: github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ steps.bot-token.outputs.token }}
+          REPO: ${{ github.repository }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+          CURRENT_SHA: ${{ steps.ref.outputs.sha }}
+        run: |
+          set -euo pipefail
+          # UI edits (checkbox flips) can rewrite the body with CRLF endings;
+          # strip \r so the anchored sed match below still works.
+          body=$(gh api "repos/${REPO}/issues/comments/${COMMENT_ID}" --jq '.body' | tr -d '\r')
+          rendered_sha=$(printf '%s\n' "$body" | sed -n 's/^<!-- nixmac-storybook-sha:\([0-9a-f]\{40\}\) -->$/\1/p' | head -n1 || true)
+          if [ -z "$rendered_sha" ]; then
+            gh api --method POST "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
+              -f content='confused' >/dev/null
+            echo "::error::Storybook comment does not include a rendered commit SHA; wait for the latest Storybook run to refresh the comment."
+            exit 1
+          fi
+          if [ "$rendered_sha" != "$CURRENT_SHA" ]; then
+            gh api --method POST "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
+              -f content='-1' >/dev/null
+            gh pr comment "${{ steps.ref.outputs.pr_number }}" --repo "${REPO}" --body "Storybook snapshot acceptance is stale: the checked gallery was rendered for ${rendered_sha}, but the PR head is ${CURRENT_SHA}. Wait for the latest Storybook run to update the comment, then accept again."
+            echo "::error::Storybook snapshot acceptance is stale: rendered ${rendered_sha}, current ${CURRENT_SHA}."
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          ref: ${{ steps.ref.outputs.ref || github.ref }}
+          ref: ${{ steps.ref.outputs.sha || github.ref }}
           token: ${{ steps.bot-token.outputs.token }}
 
       - name: Setup Nix and caches
