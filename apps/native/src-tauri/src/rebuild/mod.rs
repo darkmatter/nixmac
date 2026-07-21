@@ -4,6 +4,7 @@
 pub mod darwin;
 pub mod finalize_apply;
 pub mod finalize_restore;
+pub mod out_link;
 pub mod rollback;
 
 // Re-export the key public API so callers can use short paths.
