@@ -110,10 +110,10 @@ fn extract_content_or_length_error(
         ));
     };
 
-    if let Some(content) = choice.message.content.clone() {
-        if !content.is_empty() {
-            return Ok(content);
-        }
+    if let Some(content) = choice.message.content.clone()
+        && !content.is_empty()
+    {
+        return Ok(content);
     }
 
     let finish_reason = choice.finish_reason;

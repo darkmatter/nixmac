@@ -39,11 +39,11 @@ fn write_file_in_repo_root(base: &Path, rel_path: &str, content: &str) -> Result
     // Validate syntax for known file types before writing
     file_ops::validate_file_content(rel_path, content).map_err(|e| e.to_string())?;
 
-    if let Some(parent) = full_path.parent() {
-        if !parent.exists() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| format!("Failed to create directories for {}: {}", rel_path, e))?;
-        }
+    if let Some(parent) = full_path.parent()
+        && !parent.exists()
+    {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create directories for {}: {}", rel_path, e))?;
     }
 
     std::fs::write(&full_path, content).map_err(|e| format!("Failed to write {}: {}", rel_path, e))

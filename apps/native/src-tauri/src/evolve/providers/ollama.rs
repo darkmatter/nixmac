@@ -1,7 +1,8 @@
-use super::{AiProvider, ProviderError, ProviderResponse, TokenUsage};
+use super::{AiProvider, OnDelta, ProviderError, ProviderResponse, StreamEvent, TokenUsage};
 use crate::evolve::messages::{Message, Tool as GenericTool, ToolCall};
 use anyhow::anyhow;
 use async_trait::async_trait;
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 
 const DEFAULT_RETRY_ATTEMPTS: usize = 1;
@@ -76,6 +77,45 @@ struct OllamaToolFunction {
     parameters: serde_json::Value,
 }
 
+/// Buffers raw HTTP body bytes and yields complete newline-terminated NDJSON
+/// records. Transport chunk boundaries are arbitrary — they can split a
+/// multibyte UTF-8 character or a JSON record — so bytes stay buffered until
+/// a full record has arrived and can be decoded as a whole. Decoding each
+/// chunk independently would turn a character split across packets into
+/// replacement characters, corrupting streamed prose and tool arguments.
+#[derive(Default)]
+struct NdjsonBuffer {
+    buffer: Vec<u8>,
+}
+
+impl NdjsonBuffer {
+    /// Append a transport chunk and drain the complete records it finishes.
+    fn push(&mut self, bytes: &[u8]) -> Vec<String> {
+        self.buffer.extend_from_slice(bytes);
+        let mut records = Vec::new();
+        while let Some(pos) = self.buffer.iter().position(|&b| b == b'\n') {
+            let record: Vec<u8> = self.buffer.drain(..=pos).collect();
+            let record = String::from_utf8_lossy(&record);
+            let record = record.trim();
+            if !record.is_empty() {
+                records.push(record.to_string());
+            }
+        }
+        records
+    }
+
+    /// The trailing record the stream ended without newline-terminating.
+    fn finish(self) -> Option<String> {
+        let record = String::from_utf8_lossy(&self.buffer);
+        let record = record.trim();
+        if record.is_empty() {
+            None
+        } else {
+            Some(record.to_string())
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 #[allow(dead_code)] // some fields may be unused
 struct ChatResponse {
@@ -95,6 +135,10 @@ struct ChatResponse {
 impl AiProvider for OllamaProvider {
     fn model_name(&self) -> String {
         self.model.clone()
+    }
+
+    fn supports_streaming(&self) -> bool {
+        true
     }
 
     async fn completion(
@@ -223,6 +267,253 @@ impl AiProvider for OllamaProvider {
             return Ok(ProviderResponse { message, usage });
         }
     }
+
+    async fn completion_streaming(
+        &self,
+        messages: &[Message],
+        tools: &[GenericTool],
+        on_delta: OnDelta<'_>,
+    ) -> std::result::Result<ProviderResponse, ProviderError> {
+        let mut ollama_messages = convert_to_ollama_messages(messages);
+        let ollama_tools = convert_to_ollama_tools(tools);
+        let url = format!("{}/api/chat", self.base_url);
+        let mut retry_attempt = 0usize;
+
+        loop {
+            let request = ChatRequest {
+                model: self.model.clone(),
+                messages: ollama_messages.clone(),
+                stream: true,
+                options: OllamaOptions {
+                    num_predict: self.max_output_tokens,
+                },
+                tools: ollama_tools.clone(),
+            };
+
+            crate::state::completion_log::append_event_jsonl(
+                self.record_chat_logs,
+                "evolve_provider_chat",
+                "ollama",
+                "request",
+                &request,
+            )
+            .await;
+
+            let response = self
+                .client
+                .post(&url)
+                .json(&request)
+                .send()
+                .await
+                .map_err(|e| ProviderError::Other(anyhow!(e)))?;
+
+            if !response.status().is_success() {
+                let status = response.status();
+                let error_text = response
+                    .text()
+                    .await
+                    .map_err(|e| ProviderError::Other(anyhow!(e)))?;
+
+                let should_retry = retry_attempt < DEFAULT_RETRY_ATTEMPTS
+                    && is_ollama_tool_call_parse_error(status, &error_text);
+
+                crate::state::completion_log::append_event_jsonl(
+                    self.record_chat_logs,
+                    "evolve_provider_chat",
+                    "ollama",
+                    "response_error",
+                    &serde_json::json!({
+                        "status": status.as_u16(),
+                        "body": error_text.clone(),
+                    }),
+                )
+                .await;
+
+                if should_retry {
+                    retry_attempt += 1;
+                    log::warn!(
+                        "Ollama parse error response; retrying streamed completion ({}/{})",
+                        retry_attempt,
+                        DEFAULT_RETRY_ATTEMPTS
+                    );
+                    announce_stream_retry(on_delta);
+                    append_retry_guidance(&mut ollama_messages);
+                    continue;
+                }
+
+                return Err(ProviderError::Http {
+                    status,
+                    body: error_text,
+                });
+            }
+
+            // NDJSON: one ChatResponse object per line, the last with
+            // done:true carrying the eval counters.
+            let mut byte_stream = response.bytes_stream();
+            let mut ndjson = NdjsonBuffer::default();
+            let mut assembled = OllamaMessage {
+                role: "assistant".to_string(),
+                content: String::new(),
+                tool_calls: None,
+            };
+            let mut done_chunk: Option<ChatResponse> = None;
+
+            let handle_line = |line: &str,
+                               assembled: &mut OllamaMessage,
+                               done_chunk: &mut Option<ChatResponse>|
+             -> std::result::Result<(), ProviderError> {
+                if line.is_empty() {
+                    return Ok(());
+                }
+                let chunk: ChatResponse = serde_json::from_str(line).map_err(|e| {
+                    // Mid-stream failures arrive as an {"error": "..."} line.
+                    if let Ok(err) = serde_json::from_str::<OllamaStreamError>(line) {
+                        ProviderError::Other(anyhow!("Ollama stream error: {}", err.error))
+                    } else {
+                        ProviderError::Other(anyhow!("Unparseable Ollama stream line: {e}"))
+                    }
+                })?;
+                if !chunk.message.content.is_empty() {
+                    assembled.content.push_str(&chunk.message.content);
+                    on_delta(StreamEvent::Delta(&chunk.message.content));
+                }
+                if let Some(calls) = &chunk.message.tool_calls {
+                    // Ollama sends tool calls whole; surface them so the
+                    // stream shows more than the (often empty) content: the
+                    // think tool's thought text, and announcements for the
+                    // rest.
+                    for call in calls {
+                        if call.function.name == "think" {
+                            if let Some(thought) = call
+                                .function
+                                .arguments
+                                .get("thought")
+                                .and_then(|v| v.as_str())
+                            {
+                                on_delta(StreamEvent::Delta(thought));
+                            }
+                        } else {
+                            super::announce_tool_call(on_delta, &call.function.name);
+                        }
+                    }
+                    assembled
+                        .tool_calls
+                        .get_or_insert_with(Vec::new)
+                        .extend(calls.iter().cloned());
+                }
+                if chunk.done {
+                    *done_chunk = Some(chunk);
+                }
+                Ok(())
+            };
+
+            let mut stream_result: std::result::Result<(), ProviderError> = Ok(());
+            'read: while let Some(bytes) = byte_stream.next().await {
+                let bytes = match bytes {
+                    Ok(bytes) => bytes,
+                    Err(e) => {
+                        stream_result = Err(ProviderError::Other(anyhow!(e)));
+                        break 'read;
+                    }
+                };
+                for record in ndjson.push(&bytes) {
+                    if let Err(e) = handle_line(&record, &mut assembled, &mut done_chunk) {
+                        stream_result = Err(e);
+                        break 'read;
+                    }
+                }
+            }
+            if stream_result.is_ok()
+                && let Some(record) = ndjson.finish()
+            {
+                stream_result = handle_line(&record, &mut assembled, &mut done_chunk);
+            }
+
+            if let Err(e) = stream_result {
+                // Tool-call parse failures can surface mid-stream instead of
+                // as an HTTP 500; keep the blocking path's retry semantics.
+                let text = format!("{e:#}");
+                if retry_attempt < DEFAULT_RETRY_ATTEMPTS
+                    && text.contains("error parsing tool call")
+                {
+                    retry_attempt += 1;
+                    log::warn!(
+                        "Ollama mid-stream parse error; retrying streamed completion ({}/{})",
+                        retry_attempt,
+                        DEFAULT_RETRY_ATTEMPTS
+                    );
+                    announce_stream_retry(on_delta);
+                    append_retry_guidance(&mut ollama_messages);
+                    continue;
+                }
+                return Err(e);
+            }
+
+            let Some(done) = done_chunk else {
+                return Err(ProviderError::Other(anyhow!(
+                    "Ollama stream ended without a done chunk"
+                )));
+            };
+
+            let full_response = ChatResponse {
+                model: done.model,
+                created_at: done.created_at,
+                message: assembled,
+                done: true,
+                total_duration: done.total_duration,
+                load_duration: done.load_duration,
+                prompt_eval_count: done.prompt_eval_count,
+                prompt_eval_duration: done.prompt_eval_duration,
+                eval_count: done.eval_count,
+                eval_duration: done.eval_duration,
+            };
+
+            crate::state::completion_log::append_event_jsonl(
+                self.record_chat_logs,
+                "evolve_provider_chat",
+                "ollama",
+                "response",
+                &full_response,
+            )
+            .await;
+
+            if retry_attempt < DEFAULT_RETRY_ATTEMPTS
+                && is_empty_assistant_response(&full_response.message)
+            {
+                retry_attempt += 1;
+                log::warn!(
+                    "Ollama returned empty streamed assistant message without tool calls; retrying completion ({}/{})",
+                    retry_attempt,
+                    DEFAULT_RETRY_ATTEMPTS
+                );
+                announce_stream_retry(on_delta);
+                append_retry_guidance(&mut ollama_messages);
+                continue;
+            }
+
+            let message = convert_from_ollama_response(&full_response);
+
+            let usage = full_response.eval_count.map(|eval_count| TokenUsage {
+                input: full_response.prompt_eval_count.unwrap_or(0),
+                output: eval_count,
+                total: full_response.prompt_eval_count.unwrap_or(0) + eval_count,
+            });
+
+            return Ok(ProviderResponse { message, usage });
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct OllamaStreamError {
+    error: String,
+}
+
+/// Discard the abandoned attempt's visible tail; the reset handler shows the
+/// "retrying" explanation immediately, and the Console and transcripts keep
+/// the discarded deltas plus the reset marker.
+fn announce_stream_retry(on_delta: OnDelta<'_>) {
+    on_delta(StreamEvent::Reset);
 }
 
 fn is_ollama_tool_call_parse_error(status: reqwest::StatusCode, body: &str) -> bool {
@@ -331,10 +622,10 @@ fn convert_from_ollama_response(response: &ChatResponse) -> Message {
 
                         // Some models (e.g., command-r) wrap arguments in a "parameters" field
                         // Extract and unwrap if present
-                        if let Some(params) = args.get("parameters") {
-                            if params.is_object() {
-                                args = params.clone();
-                            }
+                        if let Some(params) = args.get("parameters")
+                            && params.is_object()
+                        {
+                            args = params.clone();
                         }
 
                         ToolCall {
@@ -351,48 +642,105 @@ fn convert_from_ollama_response(response: &ChatResponse) -> Message {
     };
 
     // Fallback: If no structured tool_calls but content looks like JSON tool invocation, parse it
-    if tool_calls.is_none() {
-        if let Some(ref text) = content {
-            if let Ok(json) = serde_json::from_str::<serde_json::Value>(text) {
-                if let (Some(name), Some(params)) = (
-                    json.get("name").and_then(|v| v.as_str()),
-                    json.get("parameters"),
-                ) {
-                    log::warn!(
-                        "Model returned text-based tool call ({}), converting to structured format",
-                        name
-                    );
-                    tool_calls = Some(vec![ToolCall {
-                        id: "call_ollama".to_string(),
-                        name: name.to_string(),
-                        arguments: params.to_string(),
-                    }]);
-                } else if let (Some(category), Some(thought)) = (
-                    json.get("category").and_then(|v| v.as_str()),
-                    json.get("thought").and_then(|v| v.as_str()),
-                ) {
-                    // Some Ollama models seem to occasionally emit think payloads as plain assistant JSON content.
-                    // Coerce these into structured tool calls so the loop continues instead of
-                    // being treated as a conversational completion.
-                    log::warn!(
-                        "Model returned text-based think payload, converting to structured tool call"
-                    );
-                    let args = serde_json::json!({
-                        "category": category,
-                        "thought": thought,
-                    });
-                    tool_calls = Some(vec![ToolCall {
-                        id: "call_ollama".to_string(),
-                        name: "think".to_string(),
-                        arguments: args.to_string(),
-                    }]);
-                }
-            }
+    if tool_calls.is_none()
+        && let Some(ref text) = content
+        && let Ok(json) = serde_json::from_str::<serde_json::Value>(text)
+    {
+        if let (Some(name), Some(params)) = (
+            json.get("name").and_then(|v| v.as_str()),
+            json.get("parameters"),
+        ) {
+            log::warn!(
+                "Model returned text-based tool call ({}), converting to structured format",
+                name
+            );
+            tool_calls = Some(vec![ToolCall {
+                id: "call_ollama".to_string(),
+                name: name.to_string(),
+                arguments: params.to_string(),
+            }]);
+        } else if let (Some(category), Some(thought)) = (
+            json.get("category").and_then(|v| v.as_str()),
+            json.get("thought").and_then(|v| v.as_str()),
+        ) {
+            // Some Ollama models seem to occasionally emit think payloads as plain assistant JSON content.
+            // Coerce these into structured tool calls so the loop continues instead of
+            // being treated as a conversational completion.
+            log::warn!(
+                "Model returned text-based think payload, converting to structured tool call"
+            );
+            let args = serde_json::json!({
+                "category": category,
+                "thought": thought,
+            });
+            tool_calls = Some(vec![ToolCall {
+                id: "call_ollama".to_string(),
+                name: "think".to_string(),
+                arguments: args.to_string(),
+            }]);
         }
     }
 
     Message::Assistant {
         content,
         tool_calls,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::NdjsonBuffer;
+
+    fn collect_split(input: &[u8], at: usize) -> Vec<String> {
+        let mut buffer = NdjsonBuffer::default();
+        let mut records = buffer.push(&input[..at]);
+        records.extend(buffer.push(&input[at..]));
+        records.extend(buffer.finish());
+        records
+    }
+
+    #[test]
+    fn ndjson_survives_any_chunk_boundary() {
+        // Multibyte content (é is 2 bytes, → is 3): any split point must
+        // yield the same records, never replacement characters.
+        let input = "{\"path\":\"café.nix\"}\n{\"note\":\"a → b\"}\n".as_bytes();
+        let expected = vec![
+            "{\"path\":\"café.nix\"}".to_string(),
+            "{\"note\":\"a → b\"}".to_string(),
+        ];
+        for at in 0..=input.len() {
+            assert_eq!(collect_split(input, at), expected, "split at byte {at}");
+        }
+    }
+
+    #[test]
+    fn ndjson_yields_multiple_records_from_one_chunk() {
+        let mut buffer = NdjsonBuffer::default();
+        assert_eq!(
+            buffer.push(b"{\"a\":1}\n{\"b\":2}\n{\"c\":3}\n"),
+            vec!["{\"a\":1}", "{\"b\":2}", "{\"c\":3}"]
+        );
+    }
+
+    #[test]
+    fn ndjson_assembles_a_record_from_many_chunks() {
+        let mut buffer = NdjsonBuffer::default();
+        assert!(buffer.push(b"{\"mess").is_empty());
+        assert!(buffer.push(b"age\":\"hi").is_empty());
+        assert_eq!(buffer.push(b"\"}\n"), vec!["{\"message\":\"hi\"}"]);
+    }
+
+    #[test]
+    fn ndjson_finish_returns_the_unterminated_tail() {
+        let mut buffer = NdjsonBuffer::default();
+        assert_eq!(buffer.push(b"{\"a\":1}\n{\"tail\""), vec!["{\"a\":1}"]);
+        assert_eq!(buffer.finish().as_deref(), Some("{\"tail\""));
+    }
+
+    #[test]
+    fn ndjson_skips_blank_lines() {
+        let mut buffer = NdjsonBuffer::default();
+        assert_eq!(buffer.push(b"\n\r\n{\"a\":1}\n\n"), vec!["{\"a\":1}"]);
+        assert_eq!(buffer.finish(), None);
     }
 }

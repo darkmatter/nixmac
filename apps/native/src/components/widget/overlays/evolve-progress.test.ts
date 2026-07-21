@@ -6,6 +6,8 @@ import {
   getPendingQuestion,
   getTokenProgress,
   isVisibleEvent,
+  trailingBuildLog,
+  trailingStreamText,
 } from "./evolve-progress";
 
 function event(eventType: EvolveEventType, raw = "", detail?: EvolveEventDetail): EvolveEvent {
@@ -21,6 +23,14 @@ describe("isVisibleEvent", () => {
 
   it("hides answered events, which render inside the question card", () => {
     expect(isVisibleEvent(event("answered"))).toBe(false);
+  });
+
+  it("hides streamed build output chunks, which render under the active row", () => {
+    expect(isVisibleEvent(event("buildCheck"))).toBe(false);
+  });
+
+  it("hides streamed response slices, which render as the active row's typewriter tail", () => {
+    expect(isVisibleEvent(event("streamDelta"))).toBe(false);
   });
 
   it("shows narration events", () => {
@@ -171,8 +181,128 @@ describe("getFocusState", () => {
     expect(focus.event).toBeNull();
     expect(focus.headline).toBe("Working...");
   });
+
+  it("types the streamed response into its own active row", () => {
+    const editing: EvolveEvent = { ...event("editing"), summary: "Adding vim" };
+    const delta = event("streamDelta", "", {
+      type: "streamDelta",
+      text: "The plain vim package is what we want.",
+    });
+    const focus = getFocusState([event("start"), editing, delta]);
+    expect(focus.mode).toBe("working");
+    // event: null → the stream renders as the placeholder row after the
+    // last completed action, which keeps its own plain row.
+    expect(focus.event).toBeNull();
+    expect(focus.headline).toBe("Thinking...");
+    expect(focus.detailText).toBe("The plain vim package is what we want.");
+  });
+
+  it("shows the streamed build log while a check runs", () => {
+    const toolCall: EvolveEvent = {
+      ...event("toolCall", "", { type: "toolCall", tool: "build_check", args: {} }),
+      summary: "Checking the configuration builds...",
+    };
+    const chunk = event("buildCheck", "evaluating flake\n", {
+      type: "buildOutput",
+      chunk: "evaluating flake\n",
+    });
+    const focus = getFocusState([event("start"), toolCall, chunk]);
+    expect(focus.mode).toBe("working");
+    expect(focus.headline).toBe("Checking the configuration builds...");
+    expect(focus.buildLog).toEqual(["evaluating flake"]);
+    expect(focus.detailText).toBeNull();
+  });
 });
 
+describe("trailingBuildLog", () => {
+  const chunk = (text: string) => event("buildCheck", text, { type: "buildOutput", chunk: text });
+
+  it("returns null when the latest activity is not a build check", () => {
+    expect(trailingBuildLog([event("start"), event("editing")])).toBeNull();
+    expect(trailingBuildLog([])).toBeNull();
+  });
+
+  it("collects trailing chunks into ordered lines", () => {
+    const events = [
+      event("start"),
+      event("toolCall"),
+      chunk("evaluating flake\ncopying sources\n"),
+      chunk("these 4 derivations will be built:\n"),
+    ];
+    expect(trailingBuildLog(events)).toEqual([
+      "evaluating flake",
+      "copying sources",
+      "these 4 derivations will be built:",
+    ]);
+  });
+
+  it("ends the log once any other event follows the chunks", () => {
+    const events = [chunk("evaluating flake\n"), event("buildPass")];
+    expect(trailingBuildLog(events)).toBeNull();
+  });
+
+  it("caps retained lines at the ring-buffer limit", () => {
+    const big = Array.from({ length: 600 }, (_, i) => `line ${i}`).join("\n");
+    const log = trailingBuildLog([chunk(big)]);
+    expect(log).toHaveLength(500);
+    expect(log?.[0]).toBe("line 100");
+    expect(log?.[499]).toBe("line 599");
+  });
+});
+
+describe("trailingStreamText", () => {
+  const delta = (text: string) => event("streamDelta", text, { type: "streamDelta", text });
+
+  it("returns null when nothing is streaming", () => {
+    expect(trailingStreamText([event("start"), event("editing")])).toBeNull();
+    expect(trailingStreamText([])).toBeNull();
+  });
+
+  it("joins trailing deltas in order", () => {
+    const events = [event("start"), delta("The nixpkgs build "), delta("is broken on darwin.")];
+    expect(trailingStreamText(events)).toBe("The nixpkgs build is broken on darwin.");
+  });
+
+  it("ends the stream once any other event follows", () => {
+    expect(trailingStreamText([delta("partial"), event("narration")])).toBeNull();
+  });
+
+  it("clips long streams to a tail with a leading ellipsis", () => {
+    const text = trailingStreamText([delta("x".repeat(400))]);
+    expect(text).toHaveLength(321);
+    expect(text?.startsWith("…")).toBe(true);
+  });
+
+  it("discards the abandoned attempt at a provider retry marker", () => {
+    const reset = event("streamDelta", "Response interrupted; retrying...", {
+      type: "streamReset",
+    });
+    const events = [
+      delta("half a response that will be discarded"),
+      reset,
+      delta("→ Response interrupted; retrying...\n"),
+      delta("fresh attempt"),
+    ];
+    expect(trailingStreamText(events)).toBe(
+      "→ Response interrupted; retrying...\nfresh attempt",
+    );
+  });
+
+  it("collapses blank lines between thoughts and tool announcements", () => {
+    const events = [
+      delta("Need vim installed.\n"),
+      delta("\n→ Searching packages...\n"),
+      delta("\n→ Editing configuration...\n"),
+    ];
+    expect(trailingStreamText(events)).toBe(
+      "Need vim installed.\n→ Searching packages...\n→ Editing configuration...\n",
+    );
+  });
+
+  it("drops a leading blank line when an announcement starts the stream", () => {
+    expect(trailingStreamText([delta("\n→ Reading file...\n")])).toBe("→ Reading file...\n");
+  });
+});
 describe("answeredTextFor", () => {
   const question = event("question");
   const answer = event("answered", "", { type: "answered", text: "spotify" });

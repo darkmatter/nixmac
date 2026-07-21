@@ -340,13 +340,13 @@ fn redact_bootstrap_body(body: &str) -> String {
     let Ok(mut value) = serde_json::from_str::<serde_json::Value>(body) else {
         return truncate_body(body);
     };
-    if let Some(obj) = value.as_object_mut() {
-        if obj.contains_key("apiKey") {
-            obj.insert(
-                "apiKey".to_string(),
-                serde_json::Value::String("[redacted]".to_string()),
-            );
-        }
+    if let Some(obj) = value.as_object_mut()
+        && obj.contains_key("apiKey")
+    {
+        obj.insert(
+            "apiKey".to_string(),
+            serde_json::Value::String("[redacted]".to_string()),
+        );
     }
     truncate_body(&value.to_string())
 }

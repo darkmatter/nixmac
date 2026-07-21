@@ -150,14 +150,14 @@ fn authorize_request(peer: &PeerIdentity, request: &HelperRequest) -> Result<()>
         );
     }
 
-    if let HelperRequest::ActivateStorePath { request } = request {
-        if peer.uid != request.user_id {
-            bail!(
-                "activation peer uid {} does not match requested uid {}",
-                peer.uid,
-                request.user_id
-            );
-        }
+    if let HelperRequest::ActivateStorePath { request } = request
+        && peer.uid != request.user_id
+    {
+        bail!(
+            "activation peer uid {} does not match requested uid {}",
+            peer.uid,
+            request.user_id
+        );
     }
 
     Ok(())

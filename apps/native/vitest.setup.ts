@@ -14,3 +14,7 @@ afterEach(() => {
 if (!document.queryCommandSupported) {
   document.queryCommandSupported = () => false;
 }
+
+// jsdom's scrollTo throws "Not implemented"; TanStack Router calls it on
+// navigation.
+window.scrollTo = () => {};

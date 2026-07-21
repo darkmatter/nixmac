@@ -125,6 +125,153 @@ pub fn dry_run_build_check(
     Ok((output.status.success(), stdout, stderr))
 }
 
+/// How often streamed build-check output is flushed to the caller. Batching
+/// keeps the event volume low (mirrors `log_summarizer`'s approach) while
+/// still reading as live.
+const BUILD_CHECK_FLUSH_INTERVAL: std::time::Duration = std::time::Duration::from_millis(120);
+
+/// Streaming variant of [`dry_run_build_check`]: identical check, but output
+/// lines are forwarded to `on_output` in throttled batches while the check
+/// runs, and `should_cancel` is polled between batches — a cancelled run
+/// kills the child instead of waiting minutes for a doomed evaluation.
+///
+/// Modeled on `run_build_step`'s piped-stdio reader threads. stdout and
+/// stderr are read concurrently, so interleaving in `on_output` is
+/// best-effort (like the apply stream), but the returned strings keep each
+/// stream whole for the model.
+pub fn dry_run_build_check_streaming(
+    config_dir: &str,
+    host_attr: &str,
+    show_trace: bool,
+    on_output: &dyn Fn(&str),
+    should_cancel: &dyn Fn() -> bool,
+) -> Result<(bool, String, String), anyhow::Error> {
+    if e2e_mock_system_enabled() {
+        info!(
+            "[darwin] NIXMAC_E2E_MOCK_SYSTEM enabled; dry-run build check bypassed for config_dir={}, host_attr={}",
+            config_dir, host_attr
+        );
+        let mock = "NIXMAC_E2E_MOCK_SYSTEM dry-run build check passed\n";
+        on_output(mock);
+        return Ok((true, mock.to_string(), String::new()));
+    }
+
+    // Ensure untracked files are visible to flake evaluation.
+    // Hard-fail: if this fails, untracked .nix files won't be seen and the
+    // build result would be misleading.
+    crate::git::intent_add_untracked(config_dir)?;
+
+    let mut command = Command::new("nix");
+    let safe_host_attr = serde_json::to_string(host_attr)?;
+    command
+        .arg("build")
+        .arg(format!(".#darwinConfigurations.{}.system", safe_host_attr))
+        .arg("--dry-run")
+        // At default verbosity a dry run prints NOTHING until evaluation
+        // finishes — there would be nothing to stream during the long part.
+        // -v emits "evaluating file/derivation ..." lines throughout, which
+        // is the liveness signal this variant exists for.
+        .arg("--verbose");
+
+    if show_trace {
+        command.arg("--show-trace");
+    }
+
+    let mut child = command
+        .current_dir(config_dir)
+        .env("PATH", crate::system::nix::get_nix_path())
+        .env("NIX_CONFIG", "experimental-features = nix-command flakes")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    let (tx, rx) = std::sync::mpsc::channel::<String>();
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
+    let tx_err = tx.clone();
+    let stdout_handle = std::thread::spawn(move || {
+        let mut lines = Vec::new();
+        if let Some(stdout) = stdout {
+            for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+                // fire-and-forget: the receiver is gone only when the caller
+                // already gave up on the check.
+                let _ = tx.send(line.clone());
+                lines.push(line);
+            }
+        }
+        lines
+    });
+    let stderr_handle = std::thread::spawn(move || {
+        let mut lines = Vec::new();
+        if let Some(stderr) = stderr {
+            for line in BufReader::new(stderr).lines().map_while(Result::ok) {
+                let _ = tx_err.send(line.clone());
+                lines.push(line);
+            }
+        }
+        lines
+    });
+
+    // Pump lines into throttled batches until both reader threads hang up.
+    let mut batch = String::new();
+    let mut last_flush = std::time::Instant::now();
+    loop {
+        if should_cancel() {
+            // Reap the child so it doesn't outlive the cancelled evolution;
+            // the readers end when the pipes close.
+            let _ = child.kill();
+            let _ = child.wait();
+            let _ = stdout_handle.join();
+            let _ = stderr_handle.join();
+            return Err(anyhow::anyhow!("Build check cancelled"));
+        }
+        match rx.recv_timeout(BUILD_CHECK_FLUSH_INTERVAL) {
+            Ok(line) => {
+                batch.push_str(&line);
+                batch.push('\n');
+                if last_flush.elapsed() >= BUILD_CHECK_FLUSH_INTERVAL {
+                    on_output(&batch);
+                    batch.clear();
+                    last_flush = std::time::Instant::now();
+                }
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                if !batch.is_empty() {
+                    on_output(&batch);
+                    batch.clear();
+                    last_flush = std::time::Instant::now();
+                }
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+        }
+    }
+    if !batch.is_empty() {
+        on_output(&batch);
+    }
+
+    let stdout_lines = stdout_handle
+        .join()
+        .map_err(|_| anyhow::anyhow!("Build check stdout reader panicked"))?;
+    let stderr_lines = stderr_handle
+        .join()
+        .map_err(|_| anyhow::anyhow!("Build check stderr reader panicked"))?;
+    let status = child.wait()?;
+
+    let join_lines = |lines: Vec<String>| {
+        let mut joined = lines.join("\n");
+        if !joined.is_empty() {
+            joined.push('\n');
+        }
+        joined
+    };
+
+    Ok((
+        status.success(),
+        join_lines(stdout_lines),
+        join_lines(stderr_lines),
+    ))
+}
+
 /// Thin re-export of the `/etc` clobber preflight so callers in this module (and
 /// the rebuild flow) don't reach across into `system::etc_preflight` directly.
 pub fn preflight_etc_clobber(
@@ -201,9 +348,10 @@ fn app_management_error_payload(
     })
 }
 
-/// Runs `darwin-rebuild switch` with streaming output in two steps:
-/// 1. `darwin-rebuild build` as the user (no sudo)
-/// 2. `result/activate` as root via native macOS authentication dialog (supports Touch ID)
+/// Runs the equivalent of `darwin-rebuild switch` with streaming output in two steps:
+/// 1. `nix build` of the system closure as the user (no sudo), with the
+///    out-link in app-support so the config dir stays clean
+/// 2. `<store path>/activate` as root via native macOS authentication dialog (supports Touch ID)
 ///
 /// This pattern avoids Git ownership issues by keeping all file operations
 /// under the user's permissions during the build phase while still making system
@@ -316,6 +464,11 @@ struct BuildResult {
     success: bool,
     code: i32,
     stderr: Vec<String>,
+    /// GC-root link in app-support; removed once activation has set the
+    /// durable system-profile root.
+    out_link: PathBuf,
+    /// Resolved /nix/store path of the built system; `Some` iff `success`.
+    store_path: Option<PathBuf>,
 }
 
 /// Result of the activation step.
@@ -326,8 +479,13 @@ struct ActivateResult {
     stderr: String,
 }
 
-/// Run the darwin-rebuild build step as the current user (no sudo).
+/// Run the build step as the current user (no sudo).
 /// This avoids Git ownership issues while building the configuration.
+///
+/// Builds with `nix build` directly (what `darwin-rebuild build` runs under
+/// the hood), with the out-link in the nixmac app-support directory so the
+/// user's config dir never grows a `result` symlink. The link only serves as
+/// a GC root until activation sets the system profile.
 fn run_build_step(
     app: &AppHandle,
     config_dir: &str,
@@ -340,28 +498,17 @@ fn run_build_step(
         info!("[darwin] intent_add_untracked warning: {}", e);
     }
 
-    let use_fallback = !crate::system::nix::is_darwin_rebuild_available();
-    let flake_arg = format!(".#{}", host_attr);
+    let out_link = super::out_link::prepare_out_link(super::out_link::APPLY_OUT_LINK_NAME)?;
+    let safe_host_attr = serde_json::to_string(host_attr)?;
 
-    let mut build_cmd = if use_fallback {
-        let mut cmd = Command::new("nix");
-        cmd.args([
-            "run",
-            "nix-darwin/master#darwin-rebuild",
-            "--",
-            "build",
-            "--flake",
-            &flake_arg,
-            "--show-trace",
-            "--verbose",
-        ]);
-        cmd.env("NIX_CONFIG", "experimental-features = nix-command flakes");
-        cmd
-    } else {
-        let mut cmd = Command::new("darwin-rebuild");
-        cmd.args(["build", "--flake", &flake_arg, "--show-trace", "--verbose"]);
-        cmd
-    };
+    let mut build_cmd = Command::new("nix");
+    build_cmd
+        .arg("build")
+        .arg(format!(".#darwinConfigurations.{}.system", safe_host_attr))
+        .arg("--out-link")
+        .arg(&out_link)
+        .args(["--show-trace", "--verbose"])
+        .env("NIX_CONFIG", "experimental-features = nix-command flakes");
 
     let mut build_child = build_cmd
         .env("PATH", crate::system::nix::get_nix_path())
@@ -369,7 +516,7 @@ fn run_build_step(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .map_err(|e| anyhow::anyhow!("Failed to spawn darwin-rebuild build: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to spawn nix build: {}", e))?;
 
     let stdout = build_child.stdout.take();
     let stderr = build_child.stderr.take();
@@ -431,7 +578,7 @@ fn run_build_step(
 
     let build_status = build_child
         .wait()
-        .map_err(|e| anyhow::anyhow!("Failed to wait for darwin-rebuild build: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to wait for nix build: {}", e))?;
     let build_code = build_status.code().unwrap_or(-1);
 
     info!(
@@ -440,10 +587,21 @@ fn run_build_step(
         build_status.success()
     );
 
+    // Resolve the built system's store path immediately: activation uses it
+    // directly, so the out-link never needs to be read again (and can't be
+    // redirected under us by a concurrent apply).
+    let store_path = if build_status.success() {
+        Some(super::out_link::resolve_out_link(&out_link)?)
+    } else {
+        None
+    };
+
     Ok(BuildResult {
         success: build_status.success(),
         code: build_code,
         stderr: build_stderr,
+        out_link,
+        store_path,
     })
 }
 
@@ -467,12 +625,16 @@ fn run_build_step(
 ///   addressed, immutable nix store activate path and is removed via a shell
 ///   trap — no persistent system configuration is required.
 fn run_activate_step(
-    config_dir: &str,
+    system_store_path: &Path,
     allow_helper: bool,
     canonical_link_target: Option<String>,
 ) -> Result<ActivateResult, anyhow::Error> {
-    let activate_path = format!("{}/result/activate", config_dir);
-    run_activate_with_path(&activate_path, allow_helper, canonical_link_target)
+    let activate_path = system_store_path.join("activate");
+    run_activate_with_path(
+        &activate_path.to_string_lossy(),
+        allow_helper,
+        canonical_link_target,
+    )
 }
 
 /// Activate a specific nix store path directly
@@ -852,56 +1014,6 @@ fn activation_failure_left_system_untouched(error_type: &str) -> bool {
     matches!(error_type, "user_cancelled")
 }
 
-#[cfg(test)]
-mod activation_safety_tests {
-    use super::{
-        ActivateResult, activation_failure_left_system_untouched, classify_activate_error,
-    };
-
-    fn failed_activation(stdout: &str, stderr: &str) -> ActivateResult {
-        ActivateResult {
-            success: false,
-            code: 1,
-            stdout: stdout.to_string(),
-            stderr: stderr.to_string(),
-        }
-    }
-
-    #[test]
-    fn app_management_failure_is_classified_from_activation_stdout() {
-        let result = failed_activation(
-            "error: permission denied when trying to update apps, aborting activation\nhome-manager requires permission to update your apps",
-            "",
-        );
-
-        let (error_type, message) = classify_activate_error(&result);
-
-        assert_eq!(error_type, "app_management");
-        assert!(message.contains("App Management"));
-    }
-
-    #[test]
-    fn app_management_failure_takes_precedence_over_generic_not_permitted_text() {
-        let result = failed_activation(
-            "Operation not permitted\nIf you did not get a notification, navigate to System Settings > Privacy & Security > App Management.",
-            "",
-        );
-
-        let (error_type, _) = classify_activate_error(&result);
-
-        assert_eq!(error_type, "app_management");
-    }
-
-    #[test]
-    fn only_explicit_cancellation_is_known_untouched() {
-        assert!(activation_failure_left_system_untouched("user_cancelled"));
-        assert!(!activation_failure_left_system_untouched(
-            "authorization_denied"
-        ));
-        assert!(!activation_failure_left_system_untouched("generic_error"));
-    }
-}
-
 /// Internal function to run darwin-rebuild with proper streaming.
 /// All output is written to ~/Library/Logs/nixmac/darwin-rebuild_<timestamp>.log
 /// Returns Ok(success_payload) on success, Err(error_payload) on failure.
@@ -959,7 +1071,7 @@ fn run_darwin_rebuild(
     // =========================================================================
     // Step 1: build as user (no sudo, avoids Git ownership issues)
     // =========================================================================
-    log_and_emit!("Starting darwin-rebuild build (as user)...");
+    log_and_emit!("Starting nix build (as user)...");
 
     let build_result = run_build_step(app, config_dir, host_attr, &summarizer, log_file.clone())
         .map_err(|e| {
@@ -976,7 +1088,7 @@ fn run_darwin_rebuild(
     if !build_result.success {
         let tail = &build_result.stderr[build_result.stderr.len().saturating_sub(10)..];
         let err_msg = format!(
-            "darwin-rebuild build failed (exit code {}):\n{}",
+            "nix build failed (exit code {}):\n{}",
             build_result.code,
             tail.join("\n")
         );
@@ -986,7 +1098,7 @@ fn run_darwin_rebuild(
         {
             if let Ok(mut f) = log_file.lock() {
                 // fire-and-forget: log write in error path — see macro comment above.
-                let _ = writeln!(f, "\n=== darwin-rebuild build FAILED ===");
+                let _ = writeln!(f, "\n=== nix build FAILED ===");
                 let _ = writeln!(f, "Exit code: {}", build_result.code);
                 let _ = f.flush();
             }
@@ -1002,7 +1114,7 @@ fn run_darwin_rebuild(
         }));
     }
 
-    log_and_emit!("darwin-rebuild build completed successfully.");
+    log_and_emit!("nix build completed successfully.");
 
     // =========================================================================
     // Step 1b: proactively detect /etc files nix-darwin would refuse to
@@ -1093,19 +1205,33 @@ fn run_darwin_rebuild(
             }
         };
 
-    let activate_result =
-        run_activate_step(config_dir, allow_activation_helper, canonical_link_target).map_err(
-            |e| {
-                serde_json::json!({
-                    "ok": false,
-                    "code": -1,
-                    "log_file": log_path.to_string_lossy(),
-                    "error_type": "generic_error",
-                    "system_untouched": true,
-                    "error": format!("Activation step failed to execute: {}", e),
-                })
-            },
-        )?;
+    // The build succeeded, so the resolved store path is present.
+    let Some(system_store_path) = build_result.store_path.as_deref() else {
+        return Err(serde_json::json!({
+            "ok": false,
+            "code": -1,
+            "log_file": log_path.to_string_lossy(),
+            "error_type": "generic_error",
+            "system_untouched": true,
+            "error": "Build succeeded but produced no system store path",
+        }));
+    };
+
+    let activate_result = run_activate_step(
+        system_store_path,
+        allow_activation_helper,
+        canonical_link_target,
+    )
+    .map_err(|e| {
+        serde_json::json!({
+            "ok": false,
+            "code": -1,
+            "log_file": log_path.to_string_lossy(),
+            "error_type": "generic_error",
+            "system_untouched": true,
+            "error": format!("Activation step failed to execute: {}", e),
+        })
+    })?;
 
     if !activate_result.success {
         summarizer.complete(false);
@@ -1175,6 +1301,13 @@ fn run_darwin_rebuild(
 
     log_and_emit!("Activating configuration...");
 
+    // Activation set the durable GC root (`nix-env -p .../profiles/system
+    // --set`), so the out-link has done its job; remove it so it never pins
+    // this closure once the system moves on. Also clear the `result` link
+    // that pre-out-link versions left in the config dir.
+    super::out_link::cleanup_out_link(&build_result.out_link);
+    super::out_link::remove_legacy_result_link(config_dir);
+
     // Emit captured output to frontend
     for line in activate_result.stdout.lines() {
         if !line.is_empty() {
@@ -1232,13 +1365,63 @@ fn run_darwin_rebuild(
         "code": activate_result.code,
         "log_file": log_path.to_string_lossy(),
     });
-    if let Some(et) = error_type {
-        if let Some(obj) = success_payload.as_object_mut() {
-            obj.insert(
-                "error_type".to_string(),
-                serde_json::Value::String(et.to_string()),
-            );
-        }
+    if let Some(et) = error_type
+        && let Some(obj) = success_payload.as_object_mut()
+    {
+        obj.insert(
+            "error_type".to_string(),
+            serde_json::Value::String(et.to_string()),
+        );
     }
     Ok(success_payload)
+}
+
+#[cfg(test)]
+mod activation_safety_tests {
+    use super::{
+        ActivateResult, activation_failure_left_system_untouched, classify_activate_error,
+    };
+
+    fn failed_activation(stdout: &str, stderr: &str) -> ActivateResult {
+        ActivateResult {
+            success: false,
+            code: 1,
+            stdout: stdout.to_string(),
+            stderr: stderr.to_string(),
+        }
+    }
+
+    #[test]
+    fn app_management_failure_is_classified_from_activation_stdout() {
+        let result = failed_activation(
+            "error: permission denied when trying to update apps, aborting activation\nhome-manager requires permission to update your apps",
+            "",
+        );
+
+        let (error_type, message) = classify_activate_error(&result);
+
+        assert_eq!(error_type, "app_management");
+        assert!(message.contains("App Management"));
+    }
+
+    #[test]
+    fn app_management_failure_takes_precedence_over_generic_not_permitted_text() {
+        let result = failed_activation(
+            "Operation not permitted\nIf you did not get a notification, navigate to System Settings > Privacy & Security > App Management.",
+            "",
+        );
+
+        let (error_type, _) = classify_activate_error(&result);
+
+        assert_eq!(error_type, "app_management");
+    }
+
+    #[test]
+    fn only_explicit_cancellation_is_known_untouched() {
+        assert!(activation_failure_left_system_untouched("user_cancelled"));
+        assert!(!activation_failure_left_system_untouched(
+            "authorization_denied"
+        ));
+        assert!(!activation_failure_left_system_untouched("generic_error"));
+    }
 }

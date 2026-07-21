@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Combobox } from "@/components/ui/combobox";
 import { NIXMAC_PROVIDER } from "@/components/widget/onboarding/lib/inference";
@@ -230,9 +230,13 @@ export function ModelCombobox({
     };
   }, [provider]);
 
-  // Refresh models when the popover opens, keeping the current list meanwhile
+  // Refresh models when the popover opens, keeping the current list meanwhile.
+  // Compare against the previous tick so a provider change (new `loadModels`
+  // identity) doesn't start a duplicate load next to the clearing one below.
+  const prevRefreshTick = useRef(refreshTick);
   useEffect(() => {
-    if (refreshTick > 0) {
+    if (refreshTick !== prevRefreshTick.current) {
+      prevRefreshTick.current = refreshTick;
       return loadModels();
     }
   }, [loadModels, refreshTick]);

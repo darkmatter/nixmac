@@ -1,5 +1,6 @@
 "use client";
 
+import { defaultFilter } from "cmdk";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { useRef, useState } from "react";
 import {
@@ -131,9 +132,16 @@ export function Combobox({
     }
   };
 
-  // Filter items based on what the user typed since opening
+  // Fuzzy-filter items based on what the user typed since opening: cmdk's
+  // command-score matches scattered characters (fzf-style) and ranks word
+  // boundaries and contiguous runs higher, so the best match comes first and
+  // Enter (which selects the auto-highlighted first row) picks it.
   const filteredItems = query
-    ? items.filter((item) => item.toLowerCase().includes(query.toLowerCase()))
+    ? items
+        .map((item) => [item, defaultFilter(item, query)] as const)
+        .filter(([, score]) => score > 0)
+        .sort((a, b) => b[1] - a[1])
+        .map(([item]) => item)
     : items;
 
   // Show typed text in list if it doesn't match any item

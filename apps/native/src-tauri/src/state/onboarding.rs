@@ -53,14 +53,13 @@ pub(crate) fn migrate_from_prefs_file(
     };
 
     let mut changed = false;
-    if state.mac_scanned_at.is_none() {
-        if let Some(v) = fields
+    if state.mac_scanned_at.is_none()
+        && let Some(v) = fields
             .get("onboardingMacScannedAt")
             .and_then(|v| v.as_i64())
-        {
-            state.mac_scanned_at = Some(v);
-            changed = true;
-        }
+    {
+        state.mac_scanned_at = Some(v);
+        changed = true;
     }
     if !state.login_decided
         && fields
@@ -71,20 +70,19 @@ pub(crate) fn migrate_from_prefs_file(
         state.login_decided = true;
         changed = true;
     }
-    if state.last_build_at.is_none() {
-        if let Some(v) = fields.get("onboardingLastBuildAt").and_then(|v| v.as_i64()) {
-            state.last_build_at = Some(v);
-            changed = true;
-        }
+    if state.last_build_at.is_none()
+        && let Some(v) = fields.get("onboardingLastBuildAt").and_then(|v| v.as_i64())
+    {
+        state.last_build_at = Some(v);
+        changed = true;
     }
-    if state.provisional_config_dir.is_none() {
-        if let Some(v) = fields
+    if state.provisional_config_dir.is_none()
+        && let Some(v) = fields
             .get("onboardingProvisionalConfigDir")
             .and_then(|v| v.as_str())
-        {
-            state.provisional_config_dir = Some(v.to_string());
-            changed = true;
-        }
+    {
+        state.provisional_config_dir = Some(v.to_string());
+        changed = true;
     }
 
     let mut stripped = false;

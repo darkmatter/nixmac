@@ -71,7 +71,7 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
   const [trackedOutcome, setTrackedOutcome] = useState<"success" | "error" | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
 
-  const command = `darwin-rebuild switch --flake ${configDir || "."}#${host}`;
+  const command = `nix build ${configDir || "."}#darwinConfigurations.${host}.system`;
 
   const status: BuildStatus = rebuildStatus?.isRunning
     ? "running"
@@ -162,7 +162,7 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
     <StepShell
       eyebrow={stepEyebrow("build")}
       title="Run your first build"
-      description="This applies your flake to this Mac with darwin-rebuild. We'll stream the logs here and help you fix anything that fails before you finish."
+      description="This builds your flake and activates it on this Mac. We'll stream the logs here and help you fix anything that fails before you finish."
     >
       {/* Command + run control */}
       <div className="mb-4 flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">

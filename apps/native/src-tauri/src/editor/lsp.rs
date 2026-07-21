@@ -164,10 +164,10 @@ async fn read_lsp_message<R: tokio::io::AsyncRead + Unpin>(
             break;
         }
 
-        if let Some(value) = trimmed.strip_prefix("Content-Length:") {
-            if let Ok(len) = value.trim().parse::<usize>() {
-                content_length = Some(len);
-            }
+        if let Some(value) = trimmed.strip_prefix("Content-Length:")
+            && let Ok(len) = value.trim().parse::<usize>()
+        {
+            content_length = Some(len);
         }
     }
 

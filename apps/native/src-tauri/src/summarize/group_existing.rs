@@ -29,17 +29,17 @@ pub fn from_change_sets(change_sets: Vec<FoundSetForCurrent>) -> SemanticChangeM
                 Some(true) => continue, // already in a group, nothing better to do
                 Some(false) => {
                     // check for valid group before deduping change currently single
-                    if let Some(gs) = sc.group_summary {
-                        if !is_invalid(&gs) {
-                            singles.retain(|c| c.id != change_id);
-                            let cws = to_change_with_summary(&sc.change, sc.own_summary.as_ref());
-                            groups
-                                .entry(gs.id)
-                                .or_insert_with(|| (gs, vec![]))
-                                .1
-                                .push(cws);
-                            seen.insert(change_id, true);
-                        }
+                    if let Some(gs) = sc.group_summary
+                        && !is_invalid(&gs)
+                    {
+                        singles.retain(|c| c.id != change_id);
+                        let cws = to_change_with_summary(&sc.change, sc.own_summary.as_ref());
+                        groups
+                            .entry(gs.id)
+                            .or_insert_with(|| (gs, vec![]))
+                            .1
+                            .push(cws);
+                        seen.insert(change_id, true);
                     }
                 }
                 None => {

@@ -153,10 +153,10 @@ mod tests {
         );
 
         // restore (best-effort; ignore failure to restore current dir)
-        if let Some(orig) = orig_cwd {
-            if let Err(e) = std::env::set_current_dir(orig) {
-                eprintln!("restore cwd failed: {}", e);
-            }
+        if let Some(orig) = orig_cwd
+            && let Err(e) = std::env::set_current_dir(orig)
+        {
+            eprintln!("restore cwd failed: {}", e);
         }
     }
 
@@ -185,10 +185,10 @@ mod tests {
         );
 
         // restore (best-effort; ignore failure to restore current dir)
-        if let Some(orig) = orig_cwd {
-            if let Err(e) = std::env::set_current_dir(orig) {
-                eprintln!("restore cwd failed: {}", e);
-            }
+        if let Some(orig) = orig_cwd
+            && let Err(e) = std::env::set_current_dir(orig)
+        {
+            eprintln!("restore cwd failed: {}", e);
         }
     }
 
@@ -204,10 +204,10 @@ mod tests {
         assert!(got.is_absolute(), "should resolve to absolute path");
 
         // restore (best-effort; ignore failure to restore current dir)
-        if let Some(orig) = orig_cwd {
-            if let Err(e) = std::env::set_current_dir(orig) {
-                eprintln!("restore cwd failed: {}", e);
-            }
+        if let Some(orig) = orig_cwd
+            && let Err(e) = std::env::set_current_dir(orig)
+        {
+            eprintln!("restore cwd failed: {}", e);
         }
     }
 
@@ -241,10 +241,10 @@ mod tests {
         );
 
         // restore BEFORE tempdir is dropped so the directory still exists
-        if let Some(orig) = orig_cwd {
-            if let Err(e) = std::env::set_current_dir(orig) {
-                eprintln!("restore cwd failed: {}", e);
-            }
+        if let Some(orig) = orig_cwd
+            && let Err(e) = std::env::set_current_dir(orig)
+        {
+            eprintln!("restore cwd failed: {}", e);
         }
     }
 }

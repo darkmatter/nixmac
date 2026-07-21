@@ -91,11 +91,10 @@ impl SecretScanner {
                 // Startup fast path: skip the original compile attempt when we
                 // know it fails — a failing NFA build takes ~0.3-1s per rule.
                 // Purely advisory: a stale hint falls through to the normal path.
-                if prefers_ascii_rewrite(&rule.id) {
-                    if let Some(Ok(compiled)) = ascii_rewrite(&regex).map(|p| Regex::new(&p)) {
+                if prefers_ascii_rewrite(&rule.id)
+                    && let Some(Ok(compiled)) = ascii_rewrite(&regex).map(|p| Regex::new(&p)) {
                         return Some((rule.id, compiled));
                     }
-                }
 
                 match Regex::new(&regex) {
                     Ok(compiled) => Some((rule.id, compiled)),

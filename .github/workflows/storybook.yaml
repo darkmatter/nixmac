@@ -258,7 +258,7 @@ jobs:
 
       # ---- Failed-story screenshots (PR only, only when snapshots drifted) ----
       # Resolve the failed stories (recorded by the runner) into Storybook IDs +
-      # deep links, and emit the Creevey skip regex used to scope capture.
+      # deep links, then capture PR-head "after" and merge-base "before" images.
       - name: Resolve failed stories
         id: resolve_failures
         if: steps.snapshot_tests.outcome == 'failure' && github.event_name == 'pull_request' && steps.deploy.outputs.deployment-url != ''
@@ -287,9 +287,50 @@ jobs:
             curl -sf http://localhost:6100/index.json >/dev/null && break
             sleep 1
           done
+          rm -rf test-results/creevey test-results/shots
           CREEVEY_STORYBOOK_URL="http://localhost:6100" bunx creevey test --no-docker || true
-          node scripts/harvest-creevey-shots.mjs
+          SHOT_KIND=after node scripts/harvest-creevey-shots.mjs
 
+      - name: Capture before failed-story screenshots (Creevey)
+        if: ${{ steps.resolve_failures.outcome == 'success' && steps.resolve_failures.outputs.count != '0' }}
+        continue-on-error: true
+        env:
+          BASE_REF: origin/${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          APP_DIR="$GITHUB_WORKSPACE/apps/native"
+          SKIP_REGEX="$(cat "$APP_DIR/test-results/creevey-skip-regex.txt")"
+          BASE_COMMIT="$(git merge-base HEAD "$BASE_REF")"
+          BASE_PARENT="$(mktemp -d)"
+          BASE_WORKTREE="$BASE_PARENT/base"
+          git worktree add --detach "$BASE_WORKTREE" "$BASE_COMMIT"
+          BASE_PID=""
+          cleanup() {
+            if [ -n "$BASE_PID" ]; then
+              kill "$BASE_PID" 2>/dev/null || true
+            fi
+            git worktree remove --force "$BASE_WORKTREE" 2>/dev/null || true
+            rm -rf "$BASE_PARENT"
+          }
+          trap cleanup EXIT
+          if [ -d "$GITHUB_WORKSPACE/node_modules" ] && [ ! -e "$BASE_WORKTREE/node_modules" ]; then
+            ln -s "$GITHUB_WORKSPACE/node_modules" "$BASE_WORKTREE/node_modules"
+          fi
+          if [ -d "$APP_DIR/node_modules" ] && [ ! -e "$BASE_WORKTREE/apps/native/node_modules" ]; then
+            ln -s "$APP_DIR/node_modules" "$BASE_WORKTREE/apps/native/node_modules"
+          fi
+          cd "$BASE_WORKTREE/apps/native"
+          VITE_CREEVEY_SKIP_REGEX="$SKIP_REGEX" bun run build-storybook
+          python3 -m http.server 6101 --directory storybook-static >/tmp/creevey-storybook-before.log 2>&1 &
+          BASE_PID=$!
+          for _ in $(seq 1 30); do
+            curl -sf http://localhost:6101/index.json >/dev/null && break
+            sleep 1
+          done
+          cd "$APP_DIR"
+          rm -rf test-results/creevey
+          CREEVEY_STORYBOOK_URL="http://localhost:6101" bunx creevey test --no-docker || true
+          SHOT_KIND=before node scripts/harvest-creevey-shots.mjs
       # Host the screenshots on Cloudflare Pages so the PR comment can embed them.
       - name: Deploy failed-story screenshots
         id: deploy_shots
