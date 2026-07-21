@@ -184,15 +184,23 @@ where
                         let status_changed = current.git_status.as_ref() != Some(&status);
 
                         if status_changed || external_build_detected {
-                            let pool = app_handle.state::<db::DbPool>();
-                            let change_map =
+                            // HEAD may have moved since an evolution session was
+                            // persisted. Invalidate that session before choosing
+                            // the summary base ref, so a stale rollback branch
+                            // cannot turn committed changes into manual drift.
+                            evolve_state::refresh(&app_handle, &status.changes);
+                            let change_map = if status.clean_head {
+                                // A clean worktree has no manual drift. Never
+                                // carry a historical/session-derived diff into
+                                // the live drift cell.
+                                Default::default()
+                            } else {
+                                let pool = app_handle.state::<db::DbPool>();
                                 summarize::find_existing::for_current_state(&pool, dir)
                                     .ok()
                                     .map(summarize::group_existing::from_change_sets)
-                                    .unwrap_or_default();
-                            // Refresh the derived evolve projection from the new git/build
-                            // state; the projection cell emits `evolve_state_changed`.
-                            evolve_state::refresh(&app_handle, &status.changes);
+                                    .unwrap_or_default()
+                            };
                             // Native drift notification (config drift / external build).
                             drift_notifications::maybe_notify(
                                 Some(&status),

@@ -78,6 +78,12 @@ async fn status_and_cache(ctx: OrpcCtx, _input: ()) -> Result<GitStatus, ORPCErr
         .map_err(|error| internal_err("git.statusAndCache", error))
 }
 
+async fn pull_from_upstream(ctx: OrpcCtx, _input: ()) -> Result<OkResult, ORPCError> {
+    git::pull_from_upstream(ctx.app)
+        .await
+        .map_err(|error| internal_err("git.pullFromUpstream", error))
+}
+
 pub fn routes() -> Router<OrpcCtx> {
     router! {
         "commit" => os::<OrpcCtx>()
@@ -105,5 +111,8 @@ pub fn routes() -> Router<OrpcCtx> {
         "statusAndCache" => os::<OrpcCtx>()
             .output(orpc_specta::specta::<GitStatus>())
             .handler(status_and_cache),
+        "pullFromUpstream" => os::<OrpcCtx>()
+            .output(orpc_specta::specta::<OkResult>())
+            .handler(pull_from_upstream),
     }
 }
