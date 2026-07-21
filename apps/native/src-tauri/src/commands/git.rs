@@ -155,9 +155,9 @@ pub async fn discard_single_file(
 /// Pull from the upstream remote and update the local repo.
 /// Currently, the only pull we support must be a fast-forward.
 /// If a fast-forward is possible, this will succeed and return Ok.
-/// If the local repo has diverged from the upstream, this will return
-/// an error with a message to display to the user.
-/// In either case, the git state is refreshed and cached for later comparison.
+/// If the local repo is already up to date, this will also return Ok (the banner was stale).
+/// If the local repo has diverged from the upstream and the update no longer looks safe,
+/// this will return an error with a message to display to the user.
 pub async fn pull_from_upstream(app: AppHandle) -> Result<shared_types::OkResult, String> {
     let dir = store::ensure_git_repo_folder(&app)
         .map_err(|e| capture_err("git_pull_from_upstream", e))?;
@@ -171,10 +171,14 @@ pub async fn pull_from_upstream(app: AppHandle) -> Result<shared_types::OkResult
             // Fast-forward succeeded; immediately hide the stale banner.
             crate::state::git_state::set_upstream_update_available(&app, false);
         }
-        git::auto_update::AutoUpdateDecision::Noop(message)
-        | git::auto_update::AutoUpdateDecision::WarnAndSkip(message) => {
-            // The pre-click banner can become stale (local edits, upstream moved, etc.).
-            // Clear it now rather than waiting for the next background check.
+        git::auto_update::AutoUpdateDecision::Noop(_) => {
+            // The banner was stale: nothing needed updating. Clear it and
+            // continue through the normal state refresh below.
+            crate::state::git_state::set_upstream_update_available(&app, false);
+        }
+        git::auto_update::AutoUpdateDecision::WarnAndSkip(message) => {
+            // The update is no longer safe (local edits, divergence, etc.).
+            // Clear the stale banner and surface the reason to the user.
             crate::state::git_state::set_upstream_update_available(&app, false);
             return Err(message);
         }

@@ -67,7 +67,7 @@ pub fn fast_forward_to_upstream(repo: &Repository, upstream_oid: git2::Oid) -> R
         .to_string_lossy();
 
     // Fetching can take long enough for the worktree to change after the
-    // initial safety check. Recheck immediately before the forced checkout.
+    // initial safety check. Recheck immediately before the checkout.
     if !is_worktree_clean_for_auto_update(&workdir)? {
         anyhow::bail!("worktree changed while preparing the upstream update");
     }
@@ -107,7 +107,7 @@ pub fn fast_forward_to_upstream(repo: &Repository, upstream_oid: git2::Oid) -> R
     let mut checkout_builder = git2::build::CheckoutBuilder::new();
 
     checkout_builder
-        .force()
+        .safe()
         .recreate_missing(true)
         .remove_untracked(false);
 
@@ -358,7 +358,11 @@ pub fn check_auto_update(config_dir: &str) -> Result<AutoUpdateDecision> {
 
 /// Pull from upstream only if it's safe from a fast-forward perspective.
 ///
-/// Returns the fresh auto-update decision so the caller can react immediately as appropriate (e.g., hide the stale banner, show a warning, etc.).
+/// Returns the pre-pull decision:
+///   - if a fast-forward is performed, returns `UpdateAndRebuild` to indicate
+///     a rebuild may be needed.
+///   - otherwise the result can be used to determine if the caller needs
+///     to update UI since the previous state it was using may have been stale.
 pub fn pull_from_upstream(config_dir: &str) -> Result<AutoUpdateDecision> {
     require_repo(config_dir)?;
     let repo = Repository::discover(config_dir)?;
