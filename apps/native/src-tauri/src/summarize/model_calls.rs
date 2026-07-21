@@ -7,7 +7,7 @@ use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Runtime};
 
 use crate::ai::providers::{TokenUsage, create_provider};
-use crate::summarize::token_budgets::{changeset_summaries_budget, commit_message_budget};
+use crate::summarize::token_budgets::changeset_summaries_budget;
 
 /// One item in the model's multi-summary response: a conventional commit
 /// message plus the file paths it covers.
@@ -17,10 +17,6 @@ pub struct ChangesetSummaryItem {
     pub files: Vec<String>,
 }
 
-#[derive(Deserialize)]
-struct CommitMessageJson {
-    message: String,
-}
 
 async fn request_json<R: Runtime, T: serde::de::DeserializeOwned>(
     system_prompt: &str,
@@ -199,27 +195,6 @@ fn extract_json_object(raw: &str) -> &str {
 }
 
 
-pub async fn generate_commit_message<R: Runtime>(
-    system_prompt: &str,
-    user_prompt: &str,
-    app_handle: Option<&AppHandle<R>>,
-) -> Result<(String, TokenUsage)> {
-    let (parsed, usage) = request_json::<_, CommitMessageJson>(
-        system_prompt,
-        user_prompt,
-        commit_message_budget,
-        0.2,
-        "generate_commit_message",
-        app_handle,
-    )
-    .await?;
-    if parsed.message.trim().is_empty() {
-        return Err(anyhow::anyhow!(
-            "generate_commit_message: parsed empty message"
-        ));
-    }
-    Ok((parsed.message.trim().to_string(), usage))
-}
 
 /// Calls the model and parses a `[{ summary, files }]` array response.
 ///
