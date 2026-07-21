@@ -197,12 +197,22 @@ export function SettingsDialog() {
 
   return (
     <Suspense fallback={<div>loading...</div>}>
-      <div className="fixed inset-0 z-40 flex items-center justify-center" data-tauri-no-drag>
+      <div className="fixed inset-0 z-40 flex items-center justify-center">
         <button
           aria-label="Close settings"
           className="absolute inset-0 bg-black/40"
           onClick={() => nav.closeSettings()}
           type="button"
+        />
+        {/*
+         * The overlay covers the app-level drag strip (App.tsx), and Tauri's
+         * drag handler only fires on the exact element under the cursor — so
+         * the strip must be re-created above the backdrop, same geometry.
+         */}
+        <div
+          data-tauri-drag-region
+          className="absolute top-0 left-20 right-44 h-7"
+          aria-hidden="true"
         />
         <div className="relative z-10 flex h-[460px] w-[620px] max-w-[90vw] overflow-hidden rounded-xl border border-border bg-card/95 shadow-2xl backdrop-blur-xl">
           {/* Sidebar */}
