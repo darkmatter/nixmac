@@ -53,6 +53,7 @@ pub async fn onboarding_reset(app: AppHandle) -> Result<shared_types::OkResult, 
                 .to_string(),
         );
     }
+    rebuild_status::reset(&app);
 
     let prefs = preferences::try_read(&app)
         .ok_or_else(|| capture_err("onboarding_reset", "Preferences not loaded"))?;

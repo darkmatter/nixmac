@@ -21,6 +21,12 @@ pub fn get<R: Runtime>(app: &AppHandle<R>) -> RebuildStatus {
     app.state::<Observable<RebuildStatus>>().read_sync().clone()
 }
 
+/// Clear the last-known rebuild status.
+pub fn reset<R: Runtime>(app: &AppHandle<R>) {
+    let observable = app.state::<Observable<RebuildStatus>>();
+    *observable.write_sync() = RebuildStatus::default();
+}
+
 /// Record the start of a rebuild stream; clears the previous run's outcome.
 pub fn record_start<R: Runtime>(app: &AppHandle<R>) {
     let observable = app.state::<Observable<RebuildStatus>>();
@@ -50,4 +56,40 @@ pub fn record_end<R: Runtime>(app: &AppHandle<R>, payload: &serde_json::Value) {
             .map(ToString::to_string),
         system_untouched: payload.get("system_untouched").and_then(|v| v.as_bool()),
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tauri::Manager;
+
+    fn mock_app() -> tauri::App<tauri::test::MockRuntime> {
+        let app = tauri::test::mock_builder()
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .expect("mock app builds");
+        app.manage(load_observable(app.handle()));
+        app
+    }
+
+    #[test]
+    fn reset_clears_last_finished_result() {
+        let app = mock_app();
+        let handle = app.handle();
+
+        record_end(
+            handle,
+            &serde_json::json!({
+                "ok": true,
+                "code": 0,
+                "error_type": null,
+                "error": null,
+                "system_untouched": null,
+            }),
+        );
+        assert_eq!(get(handle).success, Some(true));
+
+        reset(handle);
+
+        assert_eq!(get(handle), RebuildStatus::default());
+    }
 }
