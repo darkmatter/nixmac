@@ -1112,6 +1112,7 @@ mod tests {
                 }),
                 false,
                 None,
+                None,
             );
 
             let err = result.expect_err("edit_nix_file must reject non-.nix files");
