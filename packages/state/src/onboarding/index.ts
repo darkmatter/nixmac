@@ -13,4 +13,4 @@ export {
 	useOnboarding,
 	type OnboardingSelector,
 } from "./selectors";
-export type { TrackedCustomizationSource } from "./types";
+export type { InferenceSetupDraft, TrackedCustomizationSource } from "./types";
