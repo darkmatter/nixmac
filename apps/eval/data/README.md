@@ -27,19 +27,30 @@ pinned revision and invocation.
 ### `golden_set_expectations.json`
 
 Additional semantic grading rules for selected general-corpus cases. Entries
-are keyed by case ID and can require particular diff content, target files,
-option values, empty diffs, explanations, or the absence of dangerous tools.
-The `_meta` object records the intended template and expectation-set status.
+are keyed by case ID and can require particular diff content (`expected_in_diff`,
+`forbidden_in_diff`), target files (`expected_files` — editing ANY listed file
+satisfies the check), empty diffs, explanations, or the absence of dangerous
+tools. `allowed_files` lists files the agent MAY edit without penalty; it is
+consumed by the `flake_scope` check so that necessary flake wiring (enabling
+the commented-out home-manager integration, adding a new module to the modules
+list that lives inline in the template's `flake.nix`) does not fail a case,
+while unrelated flake churn on cases without the allowance still does. Unlike
+`expected_files`, an allowed file is never required and does not satisfy
+`expected_files`. The `_meta` object records the intended template and
+expectation-set status.
 
 This is not a second prompt list: cases without an entry still run and receive
 the generic grading appropriate to their `expected_outcome`.
 
 ### `golden_set_expectations_arximboldi.json`
 
-An intentionally empty repository-specific expectations set. Pass it with the
-arximboldi CSV so reused case IDs do not inherit semantic file-path assertions
-written for the default template. The arximboldi cases currently receive the
-generic grading associated with their CSV `expected_outcome`.
+Repository-specific expectations for every arximboldi case, authored against
+the pinned revision below. Succeed cases assert the tyrell2-active edit target
+(`tyrell0/darwin-configuration.nix`) so that edits to unimported NixOS modules
+(`common/*.nix`) fail; no-op cases require an empty diff with an explanation.
+Pass it with the arximboldi CSV so reused case IDs do not inherit file-path
+assertions written for the default template. Diff paths in these expectations
+are relative to the `nix/os` config dir, matching the eval working copy.
 
 ## CSV schema
 
