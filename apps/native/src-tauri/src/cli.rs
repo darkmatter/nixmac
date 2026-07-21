@@ -337,12 +337,7 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
     };
 
     if let Some(out_path) = out {
-        // Hoist `state` to the envelope so test suites can branch on it without
-        // digging into result.telemetry.state.
-        let state_str = output_value
-            .get("state")
-            .and_then(|v| v.as_str())
-            .unwrap_or(if ok { "generated" } else { "failed" });
+        let state_str = hoisted_state(&output_value, ok);
 
         let combined = json!({
             "ok": ok,
@@ -373,6 +368,18 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
     Ok(())
 }
 
+/// Hoist `state` to the envelope so test suites can branch on it without
+/// digging into result.telemetry.state. Both `EvolutionResult` and
+/// `EvolutionFailureResult` carry it at `telemetry.state`; the fallback only
+/// covers outputs that failed to serialize into that shape.
+fn hoisted_state(output_value: &serde_json::Value, ok: bool) -> &str {
+    output_value
+        .get("telemetry")
+        .and_then(|telemetry| telemetry.get("state"))
+        .and_then(|state| state.as_str())
+        .unwrap_or(if ok { "generated" } else { "failed" })
+}
+
 /// Check if CLI mode should be activated based on arguments
 pub fn should_run_cli() -> bool {
     let args: Vec<String> = std::env::args().collect();
@@ -388,4 +395,56 @@ pub fn should_run_cli() -> bool {
 /// Parse args
 pub fn parse_cli() -> Result<Cli, String> {
     Cli::try_parse().map_err(|error| error.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::shared_types::{EvolutionState, EvolutionTelemetry};
+
+    fn output_with_state(state: EvolutionState) -> serde_json::Value {
+        let telemetry = EvolutionTelemetry {
+            state,
+            iterations: 18,
+            build_attempts: 0,
+            total_tokens: 222_976,
+            edits_count: 0,
+            thinking_count: 0,
+            tool_calls_count: 42,
+            duration_ms: 1_000,
+        };
+        json!({
+            "telemetry": serde_json::to_value(&telemetry).unwrap(),
+        })
+    }
+
+    #[test]
+    fn hoisted_state_should_report_limit_reached_from_telemetry() {
+        let output = output_with_state(EvolutionState::LimitReached);
+        assert_eq!(hoisted_state(&output, true), "limitReached");
+    }
+
+    #[test]
+    fn hoisted_state_should_report_conversational_from_telemetry() {
+        let output = output_with_state(EvolutionState::Conversational);
+        assert_eq!(hoisted_state(&output, true), "conversational");
+    }
+
+    #[test]
+    fn hoisted_state_should_report_failed_from_failure_telemetry() {
+        let output = output_with_state(EvolutionState::Failed);
+        assert_eq!(hoisted_state(&output, false), "failed");
+    }
+
+    #[test]
+    fn hoisted_state_should_fall_back_to_generated_when_telemetry_missing() {
+        let output = json!({ "raw": "unserializable output" });
+        assert_eq!(hoisted_state(&output, true), "generated");
+    }
+
+    #[test]
+    fn hoisted_state_should_fall_back_to_failed_when_telemetry_missing() {
+        let output = json!({ "error": "boom" });
+        assert_eq!(hoisted_state(&output, false), "failed");
+    }
 }
