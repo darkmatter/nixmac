@@ -348,9 +348,10 @@ fn app_management_error_payload(
     })
 }
 
-/// Runs `darwin-rebuild switch` with streaming output in two steps:
-/// 1. `darwin-rebuild build` as the user (no sudo)
-/// 2. `result/activate` as root via native macOS authentication dialog (supports Touch ID)
+/// Runs the equivalent of `darwin-rebuild switch` with streaming output in two steps:
+/// 1. `nix build` of the system closure as the user (no sudo), with the
+///    out-link in app-support so the config dir stays clean
+/// 2. `<store path>/activate` as root via native macOS authentication dialog (supports Touch ID)
 ///
 /// This pattern avoids Git ownership issues by keeping all file operations
 /// under the user's permissions during the build phase while still making system
@@ -463,6 +464,11 @@ struct BuildResult {
     success: bool,
     code: i32,
     stderr: Vec<String>,
+    /// GC-root link in app-support; removed once activation has set the
+    /// durable system-profile root.
+    out_link: PathBuf,
+    /// Resolved /nix/store path of the built system; `Some` iff `success`.
+    store_path: Option<PathBuf>,
 }
 
 /// Result of the activation step.
@@ -473,8 +479,13 @@ struct ActivateResult {
     stderr: String,
 }
 
-/// Run the darwin-rebuild build step as the current user (no sudo).
+/// Run the build step as the current user (no sudo).
 /// This avoids Git ownership issues while building the configuration.
+///
+/// Builds with `nix build` directly (what `darwin-rebuild build` runs under
+/// the hood), with the out-link in the nixmac app-support directory so the
+/// user's config dir never grows a `result` symlink. The link only serves as
+/// a GC root until activation sets the system profile.
 fn run_build_step(
     app: &AppHandle,
     config_dir: &str,
@@ -487,28 +498,17 @@ fn run_build_step(
         info!("[darwin] intent_add_untracked warning: {}", e);
     }
 
-    let use_fallback = !crate::system::nix::is_darwin_rebuild_available();
-    let flake_arg = format!(".#{}", host_attr);
+    let out_link = super::out_link::prepare_out_link(super::out_link::APPLY_OUT_LINK_NAME)?;
+    let safe_host_attr = serde_json::to_string(host_attr)?;
 
-    let mut build_cmd = if use_fallback {
-        let mut cmd = Command::new("nix");
-        cmd.args([
-            "run",
-            "nix-darwin/master#darwin-rebuild",
-            "--",
-            "build",
-            "--flake",
-            &flake_arg,
-            "--show-trace",
-            "--verbose",
-        ]);
-        cmd.env("NIX_CONFIG", "experimental-features = nix-command flakes");
-        cmd
-    } else {
-        let mut cmd = Command::new("darwin-rebuild");
-        cmd.args(["build", "--flake", &flake_arg, "--show-trace", "--verbose"]);
-        cmd
-    };
+    let mut build_cmd = Command::new("nix");
+    build_cmd
+        .arg("build")
+        .arg(format!(".#darwinConfigurations.{}.system", safe_host_attr))
+        .arg("--out-link")
+        .arg(&out_link)
+        .args(["--show-trace", "--verbose"])
+        .env("NIX_CONFIG", "experimental-features = nix-command flakes");
 
     let mut build_child = build_cmd
         .env("PATH", crate::system::nix::get_nix_path())
@@ -516,7 +516,7 @@ fn run_build_step(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .map_err(|e| anyhow::anyhow!("Failed to spawn darwin-rebuild build: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to spawn nix build: {}", e))?;
 
     let stdout = build_child.stdout.take();
     let stderr = build_child.stderr.take();
@@ -578,7 +578,7 @@ fn run_build_step(
 
     let build_status = build_child
         .wait()
-        .map_err(|e| anyhow::anyhow!("Failed to wait for darwin-rebuild build: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to wait for nix build: {}", e))?;
     let build_code = build_status.code().unwrap_or(-1);
 
     info!(
@@ -587,10 +587,21 @@ fn run_build_step(
         build_status.success()
     );
 
+    // Resolve the built system's store path immediately: activation uses it
+    // directly, so the out-link never needs to be read again (and can't be
+    // redirected under us by a concurrent apply).
+    let store_path = if build_status.success() {
+        Some(super::out_link::resolve_out_link(&out_link)?)
+    } else {
+        None
+    };
+
     Ok(BuildResult {
         success: build_status.success(),
         code: build_code,
         stderr: build_stderr,
+        out_link,
+        store_path,
     })
 }
 
@@ -614,12 +625,16 @@ fn run_build_step(
 ///   addressed, immutable nix store activate path and is removed via a shell
 ///   trap — no persistent system configuration is required.
 fn run_activate_step(
-    config_dir: &str,
+    system_store_path: &Path,
     allow_helper: bool,
     canonical_link_target: Option<String>,
 ) -> Result<ActivateResult, anyhow::Error> {
-    let activate_path = format!("{}/result/activate", config_dir);
-    run_activate_with_path(&activate_path, allow_helper, canonical_link_target)
+    let activate_path = system_store_path.join("activate");
+    run_activate_with_path(
+        &activate_path.to_string_lossy(),
+        allow_helper,
+        canonical_link_target,
+    )
 }
 
 /// Activate a specific nix store path directly
@@ -1056,7 +1071,7 @@ fn run_darwin_rebuild(
     // =========================================================================
     // Step 1: build as user (no sudo, avoids Git ownership issues)
     // =========================================================================
-    log_and_emit!("Starting darwin-rebuild build (as user)...");
+    log_and_emit!("Starting nix build (as user)...");
 
     let build_result = run_build_step(app, config_dir, host_attr, &summarizer, log_file.clone())
         .map_err(|e| {
@@ -1073,7 +1088,7 @@ fn run_darwin_rebuild(
     if !build_result.success {
         let tail = &build_result.stderr[build_result.stderr.len().saturating_sub(10)..];
         let err_msg = format!(
-            "darwin-rebuild build failed (exit code {}):\n{}",
+            "nix build failed (exit code {}):\n{}",
             build_result.code,
             tail.join("\n")
         );
@@ -1083,7 +1098,7 @@ fn run_darwin_rebuild(
         {
             if let Ok(mut f) = log_file.lock() {
                 // fire-and-forget: log write in error path — see macro comment above.
-                let _ = writeln!(f, "\n=== darwin-rebuild build FAILED ===");
+                let _ = writeln!(f, "\n=== nix build FAILED ===");
                 let _ = writeln!(f, "Exit code: {}", build_result.code);
                 let _ = f.flush();
             }
@@ -1099,7 +1114,7 @@ fn run_darwin_rebuild(
         }));
     }
 
-    log_and_emit!("darwin-rebuild build completed successfully.");
+    log_and_emit!("nix build completed successfully.");
 
     // =========================================================================
     // Step 1b: proactively detect /etc files nix-darwin would refuse to
@@ -1190,19 +1205,33 @@ fn run_darwin_rebuild(
             }
         };
 
-    let activate_result =
-        run_activate_step(config_dir, allow_activation_helper, canonical_link_target).map_err(
-            |e| {
-                serde_json::json!({
-                    "ok": false,
-                    "code": -1,
-                    "log_file": log_path.to_string_lossy(),
-                    "error_type": "generic_error",
-                    "system_untouched": true,
-                    "error": format!("Activation step failed to execute: {}", e),
-                })
-            },
-        )?;
+    // The build succeeded, so the resolved store path is present.
+    let Some(system_store_path) = build_result.store_path.as_deref() else {
+        return Err(serde_json::json!({
+            "ok": false,
+            "code": -1,
+            "log_file": log_path.to_string_lossy(),
+            "error_type": "generic_error",
+            "system_untouched": true,
+            "error": "Build succeeded but produced no system store path",
+        }));
+    };
+
+    let activate_result = run_activate_step(
+        system_store_path,
+        allow_activation_helper,
+        canonical_link_target,
+    )
+    .map_err(|e| {
+        serde_json::json!({
+            "ok": false,
+            "code": -1,
+            "log_file": log_path.to_string_lossy(),
+            "error_type": "generic_error",
+            "system_untouched": true,
+            "error": format!("Activation step failed to execute: {}", e),
+        })
+    })?;
 
     if !activate_result.success {
         summarizer.complete(false);
@@ -1271,6 +1300,13 @@ fn run_darwin_rebuild(
     }
 
     log_and_emit!("Activating configuration...");
+
+    // Activation set the durable GC root (`nix-env -p .../profiles/system
+    // --set`), so the out-link has done its job; remove it so it never pins
+    // this closure once the system moves on. Also clear the `result` link
+    // that pre-out-link versions left in the config dir.
+    super::out_link::cleanup_out_link(&build_result.out_link);
+    super::out_link::remove_legacy_result_link(config_dir);
 
     // Emit captured output to frontend
     for line in activate_result.stdout.lines() {

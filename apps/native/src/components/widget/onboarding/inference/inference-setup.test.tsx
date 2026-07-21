@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { InferenceSetup } from "@/components/widget/onboarding/inference/inference-setup";
 import type { AccountBilling, BillingProductInfo } from "@/lib/orpc";
+import { onboardingActions } from "@nixmac/state";
 
 type AuthStatus = {
   signedIn: boolean;
@@ -134,6 +135,7 @@ function renderSetup(onConfigured = vi.fn<(config: unknown) => void>()): void {
 describe("InferenceSetup", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    onboardingActions.reset();
     mocks.status.mockResolvedValue({
       signedIn: false,
       account: null,
@@ -240,6 +242,34 @@ describe("InferenceSetup", () => {
         }),
       ),
     );
+  });
+
+  it("preserves BYOK entries when the setup component remounts", async () => {
+    const { unmount } = render(
+      <QueryClientProvider
+        client={
+          new QueryClient({
+            defaultOptions: { queries: { retry: false } },
+          })
+        }
+      >
+        <InferenceSetup onConfigured={vi.fn<(config: unknown) => void>()} />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: /bring your own key/i }));
+    fireEvent.change(screen.getByLabelText("API key"), {
+      target: { value: "sk-or-v1-test-key-with-enough-length" },
+    });
+
+    unmount();
+    renderSetup();
+
+    expect(screen.getByRole("tab", { name: /bring your own key/i })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByLabelText("API key")).toHaveValue("sk-or-v1-test-key-with-enough-length");
   });
 
   it("resumes at payment when a web account is already persisted", async () => {

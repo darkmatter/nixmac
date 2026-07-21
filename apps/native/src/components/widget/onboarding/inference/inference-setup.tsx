@@ -33,6 +33,7 @@ import type { AccountBilling, BillingProductInfo } from "@/lib/orpc";
 import { client, orpc } from "@/lib/orpc";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import { cn } from "@/lib/utils";
+import { onboardingActions, useOnboarding } from "@nixmac/state";
 import NixmacIcon from "@nixmac/ui/components/icon";
 import { useQuery } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-shell";
@@ -53,7 +54,9 @@ interface InferenceSetupProps {
 }
 
 export function InferenceSetup({ onConfigured }: InferenceSetupProps) {
-  const [mode, setMode] = useState<InferenceMode>("hosted");
+  const mode = useOnboarding((s) => s.inferenceSetupDraft.mode);
+  const setMode = (nextMode: InferenceMode) =>
+    onboardingActions.setInferenceSetupDraft({ mode: nextMode });
 
   return (
     <div className="flex flex-col gap-5">
@@ -260,10 +263,10 @@ function activeBillingLabel(billing: AccountBilling | null | undefined): string 
 
 function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) => void }) {
   const [stage, setStage] = useState<HostedStage>("account");
-  const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<CheckoutProduct>("credits");
+  const { email, otp, otpSent, selectedPlan } = useOnboarding(
+    (s) => s.inferenceSetupDraft.hosted,
+  );
+  const setHostedDraft = onboardingActions.setHostedInferenceDraft;
   const [checkoutStarted, setCheckoutStarted] = useState(false);
   const [planChooserExpanded, setPlanChooserExpanded] = useState(false);
   const [working, setWorking] = useState(false);
@@ -294,7 +297,7 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
   const showPlanChooser = !activePlanLabel || planChooserExpanded;
 
   function selectPlan(plan: CheckoutProduct) {
-    setSelectedPlan(plan);
+    setHostedDraft({ selectedPlan: plan });
     setCheckoutStarted(false);
     setError(null);
   }
@@ -320,16 +323,14 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
       .status()
       .then((status) => {
         if (cancelled || !status.webAccount) return;
-        setEmail(status.webAccount.email);
-        setOtp("");
-        setOtpSent(false);
+        setHostedDraft({ email: status.webAccount.email, otp: "", otpSent: false });
         setStage("payment");
       })
       .catch(() => { });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [setHostedDraft]);
 
   async function sendSignInCode() {
     if (!emailValid) return;
@@ -338,8 +339,7 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
     try {
       // deprecated(orpc): replace with client/orpc from @/lib/orpc
       await tauriAPI.account.sendOtp(normalizedEmail);
-      setOtp("");
-      setOtpSent(true);
+      setHostedDraft({ otp: "", otpSent: true });
     } catch (e: unknown) {
       setError(errorMessage(e));
     } finally {
@@ -348,8 +348,7 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
   }
 
   function changeEmail() {
-    setOtp("");
-    setOtpSent(false);
+    setHostedDraft({ otp: "", otpSent: false });
     setError(null);
   }
 
@@ -364,8 +363,7 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
         otp.trim(),
         accountNameFromEmail(normalizedEmail),
       );
-      setEmail(normalizedEmail);
-      setOtp("");
+      setHostedDraft({ email: normalizedEmail, otp: "" });
       posthog.identify(normalizedEmail, { email: normalizedEmail });
       getTelemetry().captureEvent({ name: "account_signed_in" });
       setStage("payment");
@@ -443,7 +441,7 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
             id="inf-email"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => setHostedDraft({ email: e.target.value })}
             placeholder="you@example.com"
             autoComplete="email"
             disabled={otpSent || working}
@@ -462,7 +460,7 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
                 type="text"
                 inputMode="numeric"
                 value={otp}
-                onChange={(e) => setOtp(e.target.value)}
+                onChange={(e) => setHostedDraft({ otp: e.target.value })}
                 placeholder="Enter the code from your email"
                 autoComplete="one-time-code"
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -693,13 +691,9 @@ function PlanCard({
 type KeyState = "idle" | "checking" | "invalid" | "valid";
 
 function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) => void }) {
-  const initialProvider = getAiModelProvider("openrouter");
-  const [providerId, setProviderId] = useState(initialProvider.id);
+  const { providerId, model, key, baseUrl } = useOnboarding((s) => s.inferenceSetupDraft.byok);
+  const setByokDraft = onboardingActions.setByokInferenceDraft;
   const provider = useMemo(() => getAiModelProvider(providerId), [providerId]);
-  // Empty model tracks the provider default at runtime.
-  const [model, setModel] = useState("");
-  const [key, setKey] = useState("");
-  const [baseUrl, setBaseUrl] = useState("");
   const [keyState, setKeyState] = useState<KeyState>("idle");
   const [serverError, setServerError] = useState("");
   const cliProvidersVisible = useCliProvidersVisible();
@@ -724,10 +718,14 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
   async function changeProvider(id: string) {
     const next = getAiModelProvider(id);
     await tauriAPI.models.clearCached(next.id);
-    setProviderId(next.id);
-    setModel(prefillModel(next.id, "evolve"));
-    setKey("");
-    setBaseUrl("");
+    setByokDraft({
+      providerId: next.id,
+      // Empty model tracks the provider default at runtime unless provider choice
+      // carries an explicit onboarding prefill.
+      model: prefillModel(next.id, "evolve"),
+      key: "",
+      baseUrl: "",
+    });
     setKeyState("idle");
     setServerError("");
   }
@@ -809,7 +807,7 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
             <input
               type="text"
               value={model}
-              onChange={(e) => setModel(e.target.value)}
+              onChange={(e) => setByokDraft({ model: e.target.value })}
               placeholder="Leave empty for CLI default"
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
@@ -820,7 +818,7 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
               }
               defaultModel={getAiModelProvider(provider.id).defaultEvolveModel}
               value={model}
-              onChange={setModel}
+              onChange={(nextModel) => setByokDraft({ model: nextModel })}
               placeholder={modelPlaceholder(provider.id, "evolve")}
             />
           )}
@@ -848,7 +846,7 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
               type="password"
               value={key}
               onChange={(e) => {
-                setKey(e.target.value);
+                setByokDraft({ key: e.target.value });
                 setKeyState("idle");
                 setServerError("");
               }}
@@ -903,7 +901,7 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
               type="url"
               value={baseUrl}
               onChange={(e) => {
-                setBaseUrl(e.target.value);
+                setByokDraft({ baseUrl: e.target.value });
                 setKeyState("idle");
                 setServerError("");
               }}
@@ -926,7 +924,7 @@ function ByokFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) =>
                   type="password"
                   value={key}
                   onChange={(e) => {
-                    setKey(e.target.value);
+                    setByokDraft({ key: e.target.value });
                     setKeyState("idle");
                     setServerError("");
                   }}

@@ -74,6 +74,6 @@ export {
 	useOnboarding,
 	type OnboardingSelector,
 } from "./onboarding";
-export type { TrackedCustomizationSource } from "./onboarding";
+export type { InferenceSetupDraft, TrackedCustomizationSource } from "./onboarding";
 
 export type { InferenceConfig, InferenceMode } from "./onboarding-types";

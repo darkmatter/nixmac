@@ -49,9 +49,10 @@ export function useOnboardingFlow(): {
   const permissionsReady =
     settings.skipPermissions ||
     !(permissionsHydrated && permissions && !permissions.allRequiredGranted);
-  // nix-darwin is not a hard prerequisite: the first build runs it via
-  // `nix run nix-darwin`, so we only gate on the Nix package manager itself.
-  // `darwinRebuildAvailable` is still surfaced in the step as an optional check.
+  // nix-darwin is not a hard prerequisite: the build invokes `nix build` on
+  // the flake's system closure directly (no darwin-rebuild CLI needed), so we
+  // only gate on the Nix package manager itself. `darwinRebuildAvailable` is
+  // still surfaced in the step as an optional check.
   const nixReady = nixInstalled === true || settings.nixInstalledOverride === true;
   const configDirReady = Boolean(configDir);
   const flakeReady = configDirReady && Boolean(host) && hosts.includes(host);

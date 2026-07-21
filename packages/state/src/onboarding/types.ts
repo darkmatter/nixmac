@@ -14,6 +14,22 @@ export type TrackedCustomizationSource =
   | { type: "launchd"; item: LaunchdItem }
   | { type: "system-default"; item: SystemDefault };
 
+export type InferenceSetupDraft = {
+  mode: "hosted" | "byok";
+  hosted: {
+    email: string;
+    otp: string;
+    otpSent: boolean;
+    selectedPlan: "credits" | "pro";
+  };
+  byok: {
+    providerId: string;
+    model: string;
+    key: string;
+    baseUrl: string;
+  };
+};
+
 /**
  * Transient, session-only onboarding UI state. Completion and per-step progress
  * are NOT stored here — they are derived from durable facts (permissions, nix,
@@ -25,6 +41,8 @@ export type OnboardingStateValues = {
   trackedCustomizations: string[];
   /** Original scanner payload for each tracked customization, keyed by customization ID. */
   trackedCustomizationSources: Record<string, TrackedCustomizationSource>;
+  /** In-progress inference form values, kept in memory while the wizard remounts steps. */
+  inferenceSetupDraft: InferenceSetupDraft;
   /** User chose to defer inference setup until the first build runs. */
   inferenceDeferred: boolean;
   /** Keep the success celebration mounted after the build gate is satisfied. */
