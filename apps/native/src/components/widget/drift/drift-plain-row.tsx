@@ -8,6 +8,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { ChangeType } from "@/ipc/types";
 import { File } from "lucide-react";
+import { useDisplayPath } from "@/hooks/use-display-path";
 import { DriftActionsMenu } from "./drift-actions-menu";
 
 // The change type is conveyed by the filename's color (git-diff convention):
@@ -26,17 +27,18 @@ const NAME_COLOR: Record<ChangeType, string> = {
  */
 export function DriftPlainRow({ file }: { file: ChangeFileSummary }) {
   const { changeType, filename } = file;
-  const dir = getDirectory(filename);
+  const displayPath = useDisplayPath()(filename);
+  const dir = getDirectory(displayPath);
   // Directory as a muted path prefix so the whole entry fits on one line.
-  const prefix = dir ? `/${dir}/` : "/";
+  const prefix = dir ? `${dir}/` : "";
 
   return (
     <li className="group flex items-center gap-3 py-2.5">
       <File className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <p className="min-w-0 flex-1 truncate font-mono text-[13px]">
-        <span className="text-muted-foreground">{prefix}</span>
+        {prefix && <span className="text-muted-foreground">{prefix}</span>}
         <span className={cn("font-medium", NAME_COLOR[changeType])}>
-          {getShortFilename(filename)}
+          {getShortFilename(displayPath)}
         </span>
       </p>
       <DriftActionsMenu filename={filename} />

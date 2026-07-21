@@ -3,13 +3,15 @@
 import { Button } from "@/components/ui/button";
 import type { ChangeFileSummary } from "@/components/widget/utils";
 import { CHANGE_TYPE_STYLES, getDirectory, getShortFilename } from "@/components/widget/utils";
+import { useDisplayPath } from "@/hooks/use-display-path";
 import { cn } from "@/lib/utils";
 import { EllipsisVerticalIcon, MoveRight, Undo } from "lucide-react";
 import { useState } from "react";
 
 function FilePath({ path, role }: { path: string; role?: "old" | "new" }) {
-  const dir = getDirectory(path);
-  const name = getShortFilename(path);
+  const displayPath = useDisplayPath()(path);
+  const dir = getDirectory(displayPath);
+  const name = getShortFilename(displayPath);
   return (
     <span className="min-w-0 font-mono text-[11px]">
       {dir && (

@@ -102,6 +102,31 @@ export function getDirectory(path: string): string {
   return parts.slice(0, -1).join("/");
 }
 
+/**
+ * Re-express a repo-root-relative path (how git reports changes) relative to
+ * the config dir for display: files inside it lose the config-dir prefix, and
+ * files elsewhere in the repo gain `../` so their location is honest. Backend
+ * calls must keep the repo-relative path — this is display-only.
+ *
+ * Falls back to the input when the config dir *is* the repo root (the common
+ * case, where the two forms are identical) or when either path is unknown.
+ */
+export function configRelativePath(
+  filename: string,
+  configDir: string | null | undefined,
+  repoRoot: string | null | undefined,
+): string {
+  if (!configDir || !repoRoot) return filename;
+  const root = repoRoot.replace(/\/+$/, "");
+  const config = configDir.replace(/\/+$/, "");
+  if (config === root || !config.startsWith(`${root}/`)) return filename;
+  const prefix = config.slice(root.length + 1).split("/");
+  const parts = filename.split("/");
+  let common = 0;
+  while (common < prefix.length && parts[common] === prefix[common]) common += 1;
+  return "../".repeat(prefix.length - common) + parts.slice(common).join("/");
+}
+
 // =============================================================================
 // SUMMARY CATEGORY COLORS
 // =============================================================================

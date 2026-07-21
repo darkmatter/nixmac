@@ -5,6 +5,7 @@ import {
   getShortFilename,
   type ChangeWithRichType,
 } from "@/components/widget/utils";
+import { useDisplayPath } from "@/hooks/use-display-path";
 import { ChevronRight } from "lucide-react";
 
 interface CollapsibleDiffProps {
@@ -27,8 +28,11 @@ export function CollapsibleDiff({
   children,
 }: CollapsibleDiffProps) {
   const { icon: Icon, iconColor } = CHANGE_TYPE_STYLES[change.changeType];
-  const dir = getDirectory(change.filename);
-  const name = getShortFilename(change.filename);
+  // Display-only: the data-testid below must keep the repo-relative filename
+  // (e2e selectors key off it).
+  const displayPath = useDisplayPath()(change.filename);
+  const dir = getDirectory(displayPath);
+  const name = getShortFilename(displayPath);
 
   return (
     <Collapsible

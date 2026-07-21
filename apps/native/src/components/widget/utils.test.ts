@@ -2,6 +2,7 @@ import type { ChangeWithRichType } from "@/components/widget/utils";
 import {
   categorizeRenamed,
   computeCurrentStep,
+  configRelativePath,
   getModStartLine,
   inferChangeType,
   newFileContentFromDiffs,
@@ -283,5 +284,55 @@ describe("computeCurrentStep — diff gating", () => {
         ),
       ).toBe("manualEvolve");
     });
+  });
+});
+
+describe("configRelativePath", () => {
+  const root = "/Users/alex/repos/nixos";
+  const config = "/Users/alex/repos/nixos/apple-slicer";
+
+  it("passes through when the config dir is the repo root", () => {
+    expect(configRelativePath("configuration.nix", root, root)).toBe("configuration.nix");
+  });
+
+  it("strips the config-dir prefix for files inside it", () => {
+    expect(configRelativePath("apple-slicer/configuration.nix", config, root)).toBe(
+      "configuration.nix",
+    );
+  });
+
+  it("marks files outside the config dir with ../", () => {
+    expect(configRelativePath("alex-laptop/configuration.nix", config, root)).toBe(
+      "../alex-laptop/configuration.nix",
+    );
+  });
+
+  it("does not strip a sibling dir that merely shares the prefix string", () => {
+    expect(configRelativePath("apple-slicer-old/configuration.nix", config, root)).toBe(
+      "../apple-slicer-old/configuration.nix",
+    );
+  });
+
+  it("walks up one level per nesting segment", () => {
+    expect(configRelativePath("other.nix", `${root}/hosts/mac`, root)).toBe("../../other.nix");
+  });
+
+  it("keeps shared parent segments instead of backing out to the root", () => {
+    expect(configRelativePath("hosts/other.nix", `${root}/hosts/mac`, root)).toBe("../other.nix");
+  });
+
+  it("tolerates trailing slashes on both dirs", () => {
+    expect(configRelativePath("apple-slicer/configuration.nix", `${config}/`, `${root}/`)).toBe(
+      "configuration.nix",
+    );
+  });
+
+  it("passes through when either path is unknown", () => {
+    expect(configRelativePath("a/b.nix", null, root)).toBe("a/b.nix");
+    expect(configRelativePath("a/b.nix", config, null)).toBe("a/b.nix");
+  });
+
+  it("passes through when the config dir is not under the repo root", () => {
+    expect(configRelativePath("a/b.nix", "/etc/nix-darwin", root)).toBe("a/b.nix");
   });
 });
