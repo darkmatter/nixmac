@@ -3577,6 +3577,7 @@ dependencies = [
  "diesel_migrations",
  "dirs 5.0.1",
  "fancy-regex 0.17.0",
+ "futures-util",
  "fuzzy-matcher",
  "git2",
  "glob",

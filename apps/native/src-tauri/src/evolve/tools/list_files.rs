@@ -77,16 +77,16 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
             continue;
         };
 
-        if let Some(Component::Normal(name)) = rel.components().next() {
-            if ignored_dirs.contains(&name.to_string_lossy().as_ref()) {
-                continue;
-            }
+        if let Some(Component::Normal(name)) = rel.components().next()
+            && ignored_dirs.contains(&name.to_string_lossy().as_ref())
+        {
+            continue;
         }
 
-        if let Some(visible) = &visible {
-            if !visible.contains_file(rel) {
-                continue;
-            }
+        if let Some(visible) = &visible
+            && !visible.contains_file(rel)
+        {
+            continue;
         }
 
         files.push(rel.to_string_lossy().to_string());

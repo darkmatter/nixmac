@@ -10,10 +10,10 @@ pub fn sanitize_clone_url_for_logs(clone_url: &str) -> String {
         return url.to_string();
     }
 
-    if let Some((_, rest)) = clone_url.split_once('@') {
-        if rest.contains(':') {
-            return format!("***@{}", rest);
-        }
+    if let Some((_, rest)) = clone_url.split_once('@')
+        && rest.contains(':')
+    {
+        return format!("***@{}", rest);
     }
 
     clone_url.to_string()
@@ -69,10 +69,10 @@ pub fn authenticated_fetch_options(token: Option<String>) -> FetchOptions<'stati
             && !credential_helper_attempted
         {
             credential_helper_attempted = true;
-            if let Some(config) = &git_config {
-                if let Ok(credential) = Cred::credential_helper(config, url, username_from_url) {
-                    return Ok(credential);
-                }
+            if let Some(config) = &git_config
+                && let Ok(credential) = Cred::credential_helper(config, url, username_from_url)
+            {
+                return Ok(credential);
             }
         }
 

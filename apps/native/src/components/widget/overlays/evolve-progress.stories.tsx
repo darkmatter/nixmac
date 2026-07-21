@@ -754,6 +754,87 @@ export const NarrationInFocus = meta.story({
 });
 
 /**
+ * The model's response streaming in (experimental flag): the active row
+ * types the accumulated text as quiet detail while the last completed
+ * action keeps its own row above.
+ */
+export const StreamingResponse = meta.story({
+  args: {
+    events: [
+      ...mockEventsInProgress,
+      {
+        eventType: "streamDelta",
+        summary: "Thinking...",
+        raw: "The nixpkgs spotify build is broken on darwin, ",
+        iteration: 3,
+        timestampMs: 5100,
+        detail: {
+          type: "streamDelta",
+          text: "The nixpkgs spotify build is broken on darwin, ",
+        },
+      },
+      {
+        eventType: "streamDelta",
+        summary: "Thinking...",
+        raw: "so I'll install it via homebrew.casks which is already used for other GUI apps in this config.",
+        iteration: 3,
+        timestampMs: 5300,
+        detail: {
+          type: "streamDelta",
+          text: "so I'll install it via homebrew.casks which is already used for other GUI apps in this config.",
+        },
+      },
+    ],
+    isGenerating: true,
+  },
+});
+
+/**
+ * A build check streaming its dry-run output: the active row shows a
+ * monospace, tail-following log area under the headline.
+ */
+export const BuildCheckStreaming = meta.story({
+  args: {
+    events: [
+      ...mockEventsInProgress,
+      {
+        eventType: "toolCall",
+        summary: "Checking the configuration builds...",
+        raw: 'build_check | args: host="Demo-MacBook-Pro"',
+        iteration: 3,
+        timestampMs: 5000,
+        detail: { type: "toolCall", tool: "build_check", args: {} },
+      },
+      {
+        eventType: "buildCheck",
+        summary: "Checking the configuration builds...",
+        raw: "evaluating file '/nix/store/aaa-source/flake.nix'\ncopying source '/nix/store/bbb-source'\n",
+        iteration: 3,
+        timestampMs: 5600,
+        detail: {
+          type: "buildOutput",
+          chunk:
+            "evaluating file '/nix/store/aaa-source/flake.nix'\ncopying source '/nix/store/bbb-source'\n",
+        },
+      },
+      {
+        eventType: "buildCheck",
+        summary: "Checking the configuration builds...",
+        raw: "these 4 derivations will be built:\n  /nix/store/ccc-darwin-system.drv\n  /nix/store/ddd-vim.drv\n",
+        iteration: 3,
+        timestampMs: 6100,
+        detail: {
+          type: "buildOutput",
+          chunk:
+            "these 4 derivations will be built:\n  /nix/store/ccc-darwin-system.drv\n  /nix/store/ddd-vim.drv\n",
+        },
+      },
+    ],
+    isGenerating: true,
+  },
+});
+
+/**
  * Agent question with choices — the run is blocked until the user answers.
  * The question card is the sticky active row at the end of the timeline.
  */

@@ -58,7 +58,9 @@ use chat_memory::{ChatMessage, Role as ChatMemoryRole, to_provider_context_messa
 pub(crate) use chat_memory::session_chat_memory_store;
 use config_dir_context::format_config_dir_context;
 use messages::Message;
-use providers::{AiProvider, CliProvider, OllamaProvider, OpenAIProvider, ProviderError};
+use providers::{
+    AiProvider, CliProvider, OllamaProvider, OpenAIProvider, ProviderError, StreamEvent,
+};
 
 /// Strategy for retaining evolution messages in the conversation history for provider context.
 /// This is used to balance keeping important context visible to the model with limiting token usage
@@ -158,12 +160,11 @@ fn extract_error_metadata(error: &str) -> (Option<u16>, Option<String>, Option<S
         Regex::new(r"(?i)\bstatus(?:Code|_code|:)?\s*[:=]?\s*(\d{3})\b")
             .expect("Failed to compile status regex")
     });
-    if let Some(cap) = STATUS_RE.captures(error) {
-        if let Some(m) = cap.get(1) {
-            if let Ok(s) = m.as_str().parse::<u16>() {
-                return (Some(s), None, None, error.len());
-            }
-        }
+    if let Some(cap) = STATUS_RE.captures(error)
+        && let Some(m) = cap.get(1)
+        && let Ok(s) = m.as_str().parse::<u16>()
+    {
+        return (Some(s), None, None, error.len());
     }
 
     (None, None, None, error.len())
@@ -193,6 +194,16 @@ fn report_provider_error(
                 error_length = body.len(),
                 error_hash = %body_hash,
                 "AI API HTTP error (redacted)"
+            );
+        }
+        ProviderError::StreamingUnsupported { message } => {
+            tracing::error!(
+                provider = provider,
+                model = model,
+                iteration = iteration,
+                messages_count = messages.len(),
+                error_hash = %short_hash(message),
+                "AI provider rejected the streaming request (redacted)"
             );
         }
         ProviderError::Other(e) => {
@@ -269,6 +280,9 @@ fn log_api_error(
             let _ = writeln!(file);
             let _ = writeln!(file, "Response body:");
             let _ = writeln!(file, "{}", body);
+        }
+        ProviderError::StreamingUnsupported { message } => {
+            let _ = writeln!(file, "Streaming rejected by endpoint: {}", message);
         }
         ProviderError::Other(e) => {
             let err_str = format!("{:#}", e);
@@ -756,6 +770,97 @@ fn finish_after_limit_stop<R: Runtime>(
     evolution.state = EvolutionState::LimitReached;
 }
 
+/// How often streamed provider text deltas are flushed as StreamDelta
+/// events. Batching keeps event volume low (mirrors `log_summarizer` and the
+/// build-check stream) while the text still reads as live typing.
+const STREAM_DELTA_FLUSH_INTERVAL: Duration = Duration::from_millis(120);
+
+/// Coalesces streamed provider text deltas into throttled StreamDelta
+/// events. `push` is called from inside the provider's response loop;
+/// `flush` emits whatever remains once the response completes.
+struct DeltaBatcher<'a, R: Runtime> {
+    app: &'a AppHandle<R>,
+    start_time: i64,
+    iteration: usize,
+    buffer: std::sync::Mutex<(String, std::time::Instant)>,
+    /// Whether any delta arrived at all — i.e. the stream actually started.
+    received: std::sync::atomic::AtomicBool,
+}
+
+impl<'a, R: Runtime> DeltaBatcher<'a, R> {
+    fn new(app: &'a AppHandle<R>, start_time: i64, iteration: usize) -> Self {
+        Self {
+            app,
+            start_time,
+            iteration,
+            buffer: std::sync::Mutex::new((String::new(), std::time::Instant::now())),
+            received: std::sync::atomic::AtomicBool::new(false),
+        }
+    }
+
+    fn received(&self) -> bool {
+        self.received.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    fn push(&self, delta: &str) {
+        self.received
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        let Ok(mut guard) = self.buffer.lock() else {
+            return;
+        };
+        guard.0.push_str(delta);
+        if guard.0.is_empty() || guard.1.elapsed() < STREAM_DELTA_FLUSH_INTERVAL {
+            return;
+        }
+        let text = std::mem::take(&mut guard.0);
+        guard.1 = std::time::Instant::now();
+        drop(guard);
+        emit_evolve_event(
+            self.app,
+            EvolveEvent::stream_delta(self.start_time, self.iteration, &text),
+        );
+    }
+
+    fn flush(&self) {
+        let Ok(mut guard) = self.buffer.lock() else {
+            return;
+        };
+        if guard.0.is_empty() {
+            return;
+        }
+        let text = std::mem::take(&mut guard.0);
+        drop(guard);
+        emit_evolve_event(
+            self.app,
+            EvolveEvent::stream_delta(self.start_time, self.iteration, &text),
+        );
+    }
+
+    /// The provider abandoned the partial response (retry): drop what this
+    /// attempt buffered, mark the boundary so the visible tail restarts, and
+    /// say why. The explanation bypasses the flush throttle — buffered, it
+    /// would stay invisible until the retry's first delta, which is exactly
+    /// the pause it exists to explain.
+    fn reset(&self) {
+        if let Ok(mut guard) = self.buffer.lock() {
+            guard.0.clear();
+            guard.1 = std::time::Instant::now();
+        }
+        emit_evolve_event(
+            self.app,
+            EvolveEvent::stream_reset(self.start_time, self.iteration),
+        );
+        emit_evolve_event(
+            self.app,
+            EvolveEvent::stream_delta(
+                self.start_time,
+                self.iteration,
+                "\u{2192} Response interrupted; retrying...\n",
+            ),
+        );
+    }
+}
+
 /// Generate an evolution from a user prompt using OpenAI function calling.
 ///
 /// This runs an agentic loop where the model can read files, make edits,
@@ -833,6 +938,14 @@ pub async fn generate_evolution<R: Runtime>(
     let max_output_tokens =
         store::get_max_output_tokens(app).unwrap_or(store::DEFAULT_MAX_OUTPUT_TOKENS);
     let max_output_tokens_for_request = normalize_max_output_tokens(max_output_tokens);
+
+    // Experimental developer flag: stream provider text deltas into the
+    // progress view while the model responds. Mutable: cleared for the rest
+    // of the run when the provider turns out not to support streaming.
+    let mut streaming_evolve = crate::state::ui_prefs::experimental_streaming_evolve(app);
+    if streaming_evolve {
+        info!("Experimental streaming evolve enabled");
+    }
 
     // Select provider implementation
     let provider: Arc<dyn AiProvider> = if provider_type == "ollama" {
@@ -1137,12 +1250,52 @@ pub async fn generate_evolution<R: Runtime>(
         debug!("Sending request to AI provider, preview: {}", preview);
         emit_evolve_event(app, EvolveEvent::api_request(start_time, iteration));
 
+        let streaming_fallback = std::sync::atomic::AtomicBool::new(false);
         let response_result = {
-            let fut = provider.completion(&active_provider_messages, &tools);
+            let delta_batcher = DeltaBatcher::new(app, start_time, iteration);
+            let on_delta = |event: StreamEvent<'_>| match event {
+                StreamEvent::Delta(delta) => delta_batcher.push(delta),
+                StreamEvent::Reset => delta_batcher.reset(),
+            };
+            let fut = async {
+                if streaming_evolve && provider.supports_streaming() {
+                    match provider
+                        .completion_streaming(&active_provider_messages, &tools, &on_delta)
+                        .await
+                    {
+                        // An endpoint that rejects the streaming request
+                        // itself (some OpenAI-compatible proxies) fails
+                        // before producing any output with a
+                        // rejection-shaped status; retry that one case
+                        // blocking instead of failing the evolution. Other
+                        // failures — auth, rate limits, transport, server
+                        // errors, or a stream that already produced output —
+                        // keep their error: the blocking path would hit them
+                        // identically, and retrying can double a billable
+                        // request.
+                        Err(e)
+                            if !delta_batcher.received() && e.indicates_streaming_unsupported() =>
+                        {
+                            warn!(
+                                "Endpoint rejected the streaming request ({}); retrying without streaming",
+                                e.user_message()
+                            );
+                            streaming_fallback.store(true, std::sync::atomic::Ordering::Relaxed);
+                            provider.completion(&active_provider_messages, &tools).await
+                        }
+                        other => other,
+                    }
+                } else {
+                    provider.completion(&active_provider_messages, &tools).await
+                }
+            };
             tokio::pin!(fut);
 
             tokio::select! {
-                res = &mut fut => res,
+                res = &mut fut => {
+                    delta_batcher.flush();
+                    res
+                },
                 _ = async {
                     loop {
                         if session_control::is_evolve_cancelled() {
@@ -1173,6 +1326,13 @@ pub async fn generate_evolution<R: Runtime>(
                 }
             }
         };
+
+        if streaming_fallback.load(std::sync::atomic::Ordering::Relaxed) {
+            info!(
+                "Provider does not appear to support streaming; disabled for the rest of this run"
+            );
+            streaming_evolve = false;
+        }
 
         // Handle API failures
         let response = match response_result {
@@ -1235,6 +1395,13 @@ pub async fn generate_evolution<R: Runtime>(
                     max_token_budget,
                     max_iterations,
                 ),
+            );
+        } else if streaming_evolve && provider.supports_streaming() {
+            // Streamed usage rides the final chunk and only when requested;
+            // a provider that omits it silently weakens the token budget
+            // (the iteration guard still applies) — say so.
+            warn!(
+                "Provider returned no token usage for the streamed completion; the session token budget may undercount"
             );
         }
 
@@ -1401,6 +1568,14 @@ pub async fn generate_evolution<R: Runtime>(
                         recent_read_calls.insert(key, iteration);
                     }
 
+                    // Stream build_check output into the event channel in
+                    // throttled batches; the focus zone renders the tail.
+                    let build_output_emitter = |chunk: &str| {
+                        emit_evolve_event(
+                            app,
+                            EvolveEvent::build_output(start_time, iteration, chunk),
+                        );
+                    };
                     let result = execute_tool(
                         repo_root.as_path(),
                         config_dir,
@@ -1409,6 +1584,7 @@ pub async fn generate_evolution<R: Runtime>(
                         &args,
                         auto_format_nix_files,
                         gitignore_matcher.as_ref(),
+                        Some(&build_output_emitter),
                     );
 
                     let mut tool_key: Option<String> = None;
@@ -1518,16 +1694,15 @@ pub async fn generate_evolution<R: Runtime>(
                                     );
                                 }
                                 ToolResult::Continue(_content) => {
-                                    if tool_name == "read_file" {
-                                        if let Some(path) =
+                                    if tool_name == "read_file"
+                                        && let Some(path) =
                                             args.get("path").and_then(|v| v.as_str())
-                                        {
-                                            tool_key = read_file_dedup_key(path, &args);
-                                            emit_evolve_event(
-                                                app,
-                                                EvolveEvent::reading(start_time, iteration, path),
-                                            );
-                                        }
+                                    {
+                                        tool_key = read_file_dedup_key(path, &args);
+                                        emit_evolve_event(
+                                            app,
+                                            EvolveEvent::reading(start_time, iteration, path),
+                                        );
                                     }
                                 }
                                 ToolResult::Done(summary_text) => {
@@ -2113,20 +2288,17 @@ fn canonical_json(value: &serde_json::Value) -> String {
 fn sanitize_tool_args(tool_name: &str, args: &serde_json::Value) -> serde_json::Value {
     let mut sanitized = tools::coerce_stringified_args(tool_name, args.clone());
 
-    if tool_name == "ensure_secret" {
-        if let Some(args_obj) = sanitized.as_object_mut() {
-            if let Some(scaffold_obj) = args_obj
-                .get_mut("scaffold")
-                .and_then(serde_json::Value::as_object_mut)
-            {
-                if scaffold_obj.contains_key("content") {
-                    scaffold_obj.insert(
-                        "content".to_string(),
-                        serde_json::Value::String("[REDACTED]".to_string()),
-                    );
-                }
-            }
-        }
+    if tool_name == "ensure_secret"
+        && let Some(args_obj) = sanitized.as_object_mut()
+        && let Some(scaffold_obj) = args_obj
+            .get_mut("scaffold")
+            .and_then(serde_json::Value::as_object_mut)
+        && scaffold_obj.contains_key("content")
+    {
+        scaffold_obj.insert(
+            "content".to_string(),
+            serde_json::Value::String("[REDACTED]".to_string()),
+        );
     }
 
     sanitized
@@ -2186,10 +2358,6 @@ fn summarize_result(result: &ToolResult) -> (String, bool) {
     }
 }
 
-/// Process a successful tool result and return the appropriate response message.
-/// Returns `Ok(Some(true))` if the loop should break, `Ok(Some(false))` to continue,
-/// or `Ok(None)` to break the inner tool loop but continue the outer loop.
-#[allow(clippy::too_many_arguments)]
 /// Gate deciding whether `done` may complete the evolution.
 ///
 /// Kept as a struct (rather than a bare bool) so the completion rules —
@@ -2208,6 +2376,10 @@ struct DoneGate {
     last_build_error: Option<String>,
 }
 
+/// Process a successful tool result and return the appropriate response message.
+/// Returns `Ok(Some(true))` if the loop should break, `Ok(Some(false))` to continue,
+/// or `Ok(None)` to break the inner tool loop but continue the outer loop.
+#[allow(clippy::too_many_arguments)]
 fn process_tool_result(
     tool_call_id: &str,
     result: &ToolResult,

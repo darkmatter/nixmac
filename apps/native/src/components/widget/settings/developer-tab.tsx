@@ -36,6 +36,9 @@ export function DeveloperTab() {
   const experimentalSpinningMascot = useViewModel(
     (s) => s.preferences?.experimentalSpinningMascot ?? false,
   );
+  const experimentalStreamingEvolve = useViewModel(
+    (s) => s.preferences?.experimentalStreamingEvolve ?? false,
+  );
   const pinnedVersion = useViewModel((s) => s.preferences?.pinnedVersion ?? null);
   const updateChannel = useViewModel((s) => s.preferences?.updateChannel ?? "stable");
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);
@@ -215,6 +218,19 @@ export function DeveloperTab() {
           <Switch
             checked={experimentalSpinningMascot}
             onCheckedChange={(checked) => setPref("experimentalSpinningMascot", checked)}
+          />
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <div className="text-sm">Streaming evolve</div>
+            <div className="text-muted-foreground text-xs">
+              Stream the model's response into the evolve progress view as it is generated,
+              instead of waiting for each full reply. Applies to the next evolution.
+            </div>
+          </div>
+          <Switch
+            checked={experimentalStreamingEvolve}
+            onCheckedChange={(checked) => setPref("experimentalStreamingEvolve", checked)}
           />
         </div>
       </div>

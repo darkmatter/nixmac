@@ -68,12 +68,11 @@ pub fn detect_hostname() -> Result<String, String> {
     if let Ok(output) = std::process::Command::new("scutil")
         .args(["--get", "LocalHostName"])
         .output()
+        && output.status.success()
     {
-        if output.status.success() {
-            let name = sanitize_hostname(&String::from_utf8_lossy(&output.stdout));
-            if !name.is_empty() {
-                return Ok(name);
-            }
+        let name = sanitize_hostname(&String::from_utf8_lossy(&output.stdout));
+        if !name.is_empty() {
+            return Ok(name);
         }
     }
 
@@ -228,12 +227,11 @@ fn is_dir_safe_for_bootstrap(path: &Path) -> Result<bool, String> {
     }
 
     // Only .git directory is safe
-    if entries.len() == 1 {
-        if let Some(name) = entries[0].file_name().to_str() {
-            if name == ".git" {
-                return Ok(true);
-            }
-        }
+    if entries.len() == 1
+        && let Some(name) = entries[0].file_name().to_str()
+        && name == ".git"
+    {
+        return Ok(true);
     }
 
     Ok(false)
@@ -355,10 +353,10 @@ pub fn bootstrap_with_template(
         &detect_username(),
     )?;
 
-    if nix::is_nix_installed() {
-        if let Err(e) = finalize_flake_lock(app) {
-            log::info!("Could not finalize flake.lock during bootstrap: {}", e);
-        }
+    if nix::is_nix_installed()
+        && let Err(e) = finalize_flake_lock(app)
+    {
+        log::info!("Could not finalize flake.lock during bootstrap: {}", e);
     }
 
     Ok(())

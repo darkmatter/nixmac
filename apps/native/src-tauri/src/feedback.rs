@@ -176,10 +176,10 @@ pub fn extract_build_error_output(app: &AppHandle) -> Option<String> {
 
     let mut last_error: Option<String> = None;
     for message in messages {
-        if let Some(content) = message.get("content").and_then(|v| v.as_str()) {
-            if content.contains("Build check FAILED") || content.contains("Build check failed") {
-                last_error = Some(content.to_string());
-            }
+        if let Some(content) = message.get("content").and_then(|v| v.as_str())
+            && (content.contains("Build check FAILED") || content.contains("Build check failed"))
+        {
+            last_error = Some(content.to_string());
         }
     }
 
@@ -336,17 +336,16 @@ pub fn gather_flake_inputs_snapshot(app: &AppHandle) -> Option<types::FeedbackFl
     };
 
     for name in ["nixpkgs", "nix-darwin", "home-manager"] {
-        if let Some(node) = nodes.get(name) {
-            if let Some(locked) = node.get("locked") {
-                let entry = extract_entry(locked);
-                if entry.rev.is_some() || entry.last_modified.is_some() || entry.nar_hash.is_some()
-                {
-                    match name {
-                        "nixpkgs" => nixpkgs = Some(entry),
-                        "nix-darwin" => nix_darwin = Some(entry),
-                        "home-manager" => home_manager = Some(entry),
-                        _ => {}
-                    }
+        if let Some(node) = nodes.get(name)
+            && let Some(locked) = node.get("locked")
+        {
+            let entry = extract_entry(locked);
+            if entry.rev.is_some() || entry.last_modified.is_some() || entry.nar_hash.is_some() {
+                match name {
+                    "nixpkgs" => nixpkgs = Some(entry),
+                    "nix-darwin" => nix_darwin = Some(entry),
+                    "home-manager" => home_manager = Some(entry),
+                    _ => {}
                 }
             }
         }

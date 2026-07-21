@@ -88,7 +88,7 @@ else
       fi
 
       ((COUNT++))
-      if [ $COUNT -gt $LIMIT ]; then
+      if [ "$COUNT" -gt "$LIMIT" ]; then
         echo -e "\n${YELLOW}Showing first $LIMIT results. Use -n to show more.${NC}"
         break
       fi

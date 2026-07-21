@@ -135,10 +135,10 @@ fn list_full_attrpath(content: &str, list_start: usize) -> Option<String> {
             }
             '{' if brace_depth == 0 => {
                 let brace_pos = *idx;
-                if let Some(parent_equals) = content.get(..brace_pos).and_then(|s| s.rfind('=')) {
-                    if let Some(parent_lhs) = assignment_lhs_at_equals(content, parent_equals) {
-                        path_segments.insert(0, parent_lhs.to_string());
-                    }
+                if let Some(parent_equals) = content.get(..brace_pos).and_then(|s| s.rfind('='))
+                    && let Some(parent_lhs) = assignment_lhs_at_equals(content, parent_equals)
+                {
+                    path_segments.insert(0, parent_lhs.to_string());
                 }
                 break;
             }

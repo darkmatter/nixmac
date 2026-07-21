@@ -204,6 +204,21 @@
   }
 }
 
+/* The window is an app surface, not a page: the document itself must never
+   pan. Without this, touchpad gestures rubber-band the whole UI sideways and
+   expose the transparent window backing behind it. `clip` forbids scrolling
+   without creating a scroll container, and overscroll-behavior stops
+   WKWebView's bounce; inner scrollers (step content, console) keep their own
+   scrolling. Deliberately UNLAYERED: unlayered rules outrank every @layer,
+   so a stray Tailwind overflow-* / overscroll-* utility on html/body/#root
+   cannot silently re-enable panning. Guarded by e2e/no-horizontal-pan.spec.ts. */
+html,
+body,
+#root {
+  overflow: clip;
+  overscroll-behavior: none;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

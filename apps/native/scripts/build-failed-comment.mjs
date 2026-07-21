@@ -23,6 +23,11 @@ const deployUrl = process.env.DEPLOY_URL ?? "";
 const commitSha = process.env.COMMIT_SHA ?? "";
 const shotsBaseUrl = (process.env.SHOTS_BASE_URL ?? "").replace(/\/+$/, "");
 
+function shotUrl(file) {
+  const url = `${shotsBaseUrl}/${file}`;
+  return commitSha ? `${url}?sha=${commitSha}` : url;
+}
+
 async function readManifest() {
   try {
     return JSON.parse(await readFile(manifestFile, "utf8"));
@@ -42,7 +47,11 @@ async function readDigest() {
 const manifest = await readManifest();
 const digest = await readDigest();
 
-const lines = [marker, "### 🎨 Storybook preview", ""];
+const lines = [marker];
+if (commitSha) {
+  lines.push(`<!-- nixmac-storybook-sha:${commitSha} -->`);
+}
+lines.push("### 🎨 Storybook preview", "");
 if (deployUrl) {
   lines.push(`[Open Storybook preview](${deployUrl})`, "");
 }
@@ -66,8 +75,19 @@ if (manifest.length > 0) {
     const label = `${story.title} › ${story.name}`;
     const heading = story.storyUrl ? `[${label}](${story.storyUrl})` : label;
     lines.push(`#### ${heading}`, "");
-    if (shotsBaseUrl) {
-      lines.push(`![${label}](${shotsBaseUrl}/${story.file})`, "");
+    if (shotsBaseUrl && story.afterFile) {
+      lines.push(`![${label}](${shotUrl(story.afterFile)})`, "");
+    }
+    if (shotsBaseUrl && story.beforeFile) {
+      lines.push(
+        "<details>",
+        "<summary>Before</summary>",
+        "",
+        `![${label} before](${shotUrl(story.beforeFile)})`,
+        "",
+        "</details>",
+        "",
+      );
     }
   }
   lines.push(

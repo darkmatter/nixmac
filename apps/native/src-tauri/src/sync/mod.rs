@@ -88,10 +88,10 @@ async fn read_billing_json<T: serde::de::DeserializeOwned>(
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
     if !status.is_success() {
-        if let Ok(payload) = serde_json::from_str::<serde_json::Value>(&body) {
-            if let Some(message) = payload.get("message").and_then(|value| value.as_str()) {
-                return Err(anyhow!("{context} failed ({status}): {message}"));
-            }
+        if let Ok(payload) = serde_json::from_str::<serde_json::Value>(&body)
+            && let Some(message) = payload.get("message").and_then(|value| value.as_str())
+        {
+            return Err(anyhow!("{context} failed ({status}): {message}"));
         }
         return Err(anyhow!("{context} failed ({status}): {body}"));
     }

@@ -62,6 +62,9 @@ pub struct UiPrefs {
     /// Experimental: spin the nixmac mascot (horizontal-axis flip) in a corner
     /// indicator window while an evolution is running or a build is in progress.
     pub experimental_spinning_mascot: bool,
+    /// Experimental: stream provider token deltas into the evolve progress
+    /// view while the model responds (developer flag until stable).
+    pub experimental_streaming_evolve: bool,
     /// Whether developer-only UI/actions are enabled.
     pub developer_mode: bool,
     /// Version pinned by the user, when update pinning is active.
@@ -124,6 +127,8 @@ pub struct UiPrefsUpdate {
     pub default_to_diff_tab: Option<bool>,
     /// Experimental spinning-mascot preference update.
     pub experimental_spinning_mascot: Option<bool>,
+    /// Experimental streaming-evolve preference update.
+    pub experimental_streaming_evolve: Option<bool>,
     /// Developer mode preference update.
     pub developer_mode: Option<bool>,
     /// `None` -> field not sent; `Some(None)` -> clear the pinned version.
@@ -190,6 +195,7 @@ pub struct GlobalPreferences {
     pub scan_homebrew_on_startup: bool,
     pub default_to_diff_tab: bool,
     pub experimental_spinning_mascot: bool,
+    pub experimental_streaming_evolve: bool,
     pub developer_mode: bool,
     pub pinned_version: Option<String>,
     pub update_channel: UpdateChannel,
@@ -230,6 +236,7 @@ impl Default for GlobalPreferences {
             scan_homebrew_on_startup: true,
             default_to_diff_tab: false,
             experimental_spinning_mascot: false,
+            experimental_streaming_evolve: false,
             developer_mode: false,
             pinned_version: None,
             update_channel: UpdateChannel::default(),
@@ -291,6 +298,9 @@ impl GlobalPreferences {
         }
         if let Some(v) = update.experimental_spinning_mascot {
             self.experimental_spinning_mascot = v;
+        }
+        if let Some(v) = update.experimental_streaming_evolve {
+            self.experimental_streaming_evolve = v;
         }
         if let Some(v) = update.developer_mode {
             self.developer_mode = v;
@@ -376,6 +386,7 @@ impl GlobalPreferences {
             scan_homebrew_on_startup: self.scan_homebrew_on_startup,
             default_to_diff_tab: self.default_to_diff_tab,
             experimental_spinning_mascot: self.experimental_spinning_mascot,
+            experimental_streaming_evolve: self.experimental_streaming_evolve,
             developer_mode: self.developer_mode,
             pinned_version: self.pinned_version.clone(),
             update_channel: self.update_channel,

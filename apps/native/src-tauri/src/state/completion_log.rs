@@ -35,15 +35,15 @@ pub fn init_recording(prefix: &str, label: &str) -> bool {
     }
 
     let path = log_path_for_today(prefix);
-    if let Some(parent) = path.parent() {
-        if let Err(e) = std::fs::create_dir_all(parent) {
-            error!(
-                "Failed to create completion-recording log directory {}: {}",
-                parent.display(),
-                e
-            );
-            return false;
-        }
+    if let Some(parent) = path.parent()
+        && let Err(e) = std::fs::create_dir_all(parent)
+    {
+        error!(
+            "Failed to create completion-recording log directory {}: {}",
+            parent.display(),
+            e
+        );
+        return false;
     }
 
     info!(

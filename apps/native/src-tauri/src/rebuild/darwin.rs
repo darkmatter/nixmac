@@ -125,6 +125,153 @@ pub fn dry_run_build_check(
     Ok((output.status.success(), stdout, stderr))
 }
 
+/// How often streamed build-check output is flushed to the caller. Batching
+/// keeps the event volume low (mirrors `log_summarizer`'s approach) while
+/// still reading as live.
+const BUILD_CHECK_FLUSH_INTERVAL: std::time::Duration = std::time::Duration::from_millis(120);
+
+/// Streaming variant of [`dry_run_build_check`]: identical check, but output
+/// lines are forwarded to `on_output` in throttled batches while the check
+/// runs, and `should_cancel` is polled between batches — a cancelled run
+/// kills the child instead of waiting minutes for a doomed evaluation.
+///
+/// Modeled on `run_build_step`'s piped-stdio reader threads. stdout and
+/// stderr are read concurrently, so interleaving in `on_output` is
+/// best-effort (like the apply stream), but the returned strings keep each
+/// stream whole for the model.
+pub fn dry_run_build_check_streaming(
+    config_dir: &str,
+    host_attr: &str,
+    show_trace: bool,
+    on_output: &dyn Fn(&str),
+    should_cancel: &dyn Fn() -> bool,
+) -> Result<(bool, String, String), anyhow::Error> {
+    if e2e_mock_system_enabled() {
+        info!(
+            "[darwin] NIXMAC_E2E_MOCK_SYSTEM enabled; dry-run build check bypassed for config_dir={}, host_attr={}",
+            config_dir, host_attr
+        );
+        let mock = "NIXMAC_E2E_MOCK_SYSTEM dry-run build check passed\n";
+        on_output(mock);
+        return Ok((true, mock.to_string(), String::new()));
+    }
+
+    // Ensure untracked files are visible to flake evaluation.
+    // Hard-fail: if this fails, untracked .nix files won't be seen and the
+    // build result would be misleading.
+    crate::git::intent_add_untracked(config_dir)?;
+
+    let mut command = Command::new("nix");
+    let safe_host_attr = serde_json::to_string(host_attr)?;
+    command
+        .arg("build")
+        .arg(format!(".#darwinConfigurations.{}.system", safe_host_attr))
+        .arg("--dry-run")
+        // At default verbosity a dry run prints NOTHING until evaluation
+        // finishes — there would be nothing to stream during the long part.
+        // -v emits "evaluating file/derivation ..." lines throughout, which
+        // is the liveness signal this variant exists for.
+        .arg("--verbose");
+
+    if show_trace {
+        command.arg("--show-trace");
+    }
+
+    let mut child = command
+        .current_dir(config_dir)
+        .env("PATH", crate::system::nix::get_nix_path())
+        .env("NIX_CONFIG", "experimental-features = nix-command flakes")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    let (tx, rx) = std::sync::mpsc::channel::<String>();
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
+    let tx_err = tx.clone();
+    let stdout_handle = std::thread::spawn(move || {
+        let mut lines = Vec::new();
+        if let Some(stdout) = stdout {
+            for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+                // fire-and-forget: the receiver is gone only when the caller
+                // already gave up on the check.
+                let _ = tx.send(line.clone());
+                lines.push(line);
+            }
+        }
+        lines
+    });
+    let stderr_handle = std::thread::spawn(move || {
+        let mut lines = Vec::new();
+        if let Some(stderr) = stderr {
+            for line in BufReader::new(stderr).lines().map_while(Result::ok) {
+                let _ = tx_err.send(line.clone());
+                lines.push(line);
+            }
+        }
+        lines
+    });
+
+    // Pump lines into throttled batches until both reader threads hang up.
+    let mut batch = String::new();
+    let mut last_flush = std::time::Instant::now();
+    loop {
+        if should_cancel() {
+            // Reap the child so it doesn't outlive the cancelled evolution;
+            // the readers end when the pipes close.
+            let _ = child.kill();
+            let _ = child.wait();
+            let _ = stdout_handle.join();
+            let _ = stderr_handle.join();
+            return Err(anyhow::anyhow!("Build check cancelled"));
+        }
+        match rx.recv_timeout(BUILD_CHECK_FLUSH_INTERVAL) {
+            Ok(line) => {
+                batch.push_str(&line);
+                batch.push('\n');
+                if last_flush.elapsed() >= BUILD_CHECK_FLUSH_INTERVAL {
+                    on_output(&batch);
+                    batch.clear();
+                    last_flush = std::time::Instant::now();
+                }
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                if !batch.is_empty() {
+                    on_output(&batch);
+                    batch.clear();
+                    last_flush = std::time::Instant::now();
+                }
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+        }
+    }
+    if !batch.is_empty() {
+        on_output(&batch);
+    }
+
+    let stdout_lines = stdout_handle
+        .join()
+        .map_err(|_| anyhow::anyhow!("Build check stdout reader panicked"))?;
+    let stderr_lines = stderr_handle
+        .join()
+        .map_err(|_| anyhow::anyhow!("Build check stderr reader panicked"))?;
+    let status = child.wait()?;
+
+    let join_lines = |lines: Vec<String>| {
+        let mut joined = lines.join("\n");
+        if !joined.is_empty() {
+            joined.push('\n');
+        }
+        joined
+    };
+
+    Ok((
+        status.success(),
+        join_lines(stdout_lines),
+        join_lines(stderr_lines),
+    ))
+}
+
 /// Thin re-export of the `/etc` clobber preflight so callers in this module (and
 /// the rebuild flow) don't reach across into `system::etc_preflight` directly.
 pub fn preflight_etc_clobber(
@@ -852,56 +999,6 @@ fn activation_failure_left_system_untouched(error_type: &str) -> bool {
     matches!(error_type, "user_cancelled")
 }
 
-#[cfg(test)]
-mod activation_safety_tests {
-    use super::{
-        ActivateResult, activation_failure_left_system_untouched, classify_activate_error,
-    };
-
-    fn failed_activation(stdout: &str, stderr: &str) -> ActivateResult {
-        ActivateResult {
-            success: false,
-            code: 1,
-            stdout: stdout.to_string(),
-            stderr: stderr.to_string(),
-        }
-    }
-
-    #[test]
-    fn app_management_failure_is_classified_from_activation_stdout() {
-        let result = failed_activation(
-            "error: permission denied when trying to update apps, aborting activation\nhome-manager requires permission to update your apps",
-            "",
-        );
-
-        let (error_type, message) = classify_activate_error(&result);
-
-        assert_eq!(error_type, "app_management");
-        assert!(message.contains("App Management"));
-    }
-
-    #[test]
-    fn app_management_failure_takes_precedence_over_generic_not_permitted_text() {
-        let result = failed_activation(
-            "Operation not permitted\nIf you did not get a notification, navigate to System Settings > Privacy & Security > App Management.",
-            "",
-        );
-
-        let (error_type, _) = classify_activate_error(&result);
-
-        assert_eq!(error_type, "app_management");
-    }
-
-    #[test]
-    fn only_explicit_cancellation_is_known_untouched() {
-        assert!(activation_failure_left_system_untouched("user_cancelled"));
-        assert!(!activation_failure_left_system_untouched(
-            "authorization_denied"
-        ));
-        assert!(!activation_failure_left_system_untouched("generic_error"));
-    }
-}
-
 /// Internal function to run darwin-rebuild with proper streaming.
 /// All output is written to ~/Library/Logs/nixmac/darwin-rebuild_<timestamp>.log
 /// Returns Ok(success_payload) on success, Err(error_payload) on failure.
@@ -1232,13 +1329,63 @@ fn run_darwin_rebuild(
         "code": activate_result.code,
         "log_file": log_path.to_string_lossy(),
     });
-    if let Some(et) = error_type {
-        if let Some(obj) = success_payload.as_object_mut() {
-            obj.insert(
-                "error_type".to_string(),
-                serde_json::Value::String(et.to_string()),
-            );
-        }
+    if let Some(et) = error_type
+        && let Some(obj) = success_payload.as_object_mut()
+    {
+        obj.insert(
+            "error_type".to_string(),
+            serde_json::Value::String(et.to_string()),
+        );
     }
     Ok(success_payload)
+}
+
+#[cfg(test)]
+mod activation_safety_tests {
+    use super::{
+        ActivateResult, activation_failure_left_system_untouched, classify_activate_error,
+    };
+
+    fn failed_activation(stdout: &str, stderr: &str) -> ActivateResult {
+        ActivateResult {
+            success: false,
+            code: 1,
+            stdout: stdout.to_string(),
+            stderr: stderr.to_string(),
+        }
+    }
+
+    #[test]
+    fn app_management_failure_is_classified_from_activation_stdout() {
+        let result = failed_activation(
+            "error: permission denied when trying to update apps, aborting activation\nhome-manager requires permission to update your apps",
+            "",
+        );
+
+        let (error_type, message) = classify_activate_error(&result);
+
+        assert_eq!(error_type, "app_management");
+        assert!(message.contains("App Management"));
+    }
+
+    #[test]
+    fn app_management_failure_takes_precedence_over_generic_not_permitted_text() {
+        let result = failed_activation(
+            "Operation not permitted\nIf you did not get a notification, navigate to System Settings > Privacy & Security > App Management.",
+            "",
+        );
+
+        let (error_type, _) = classify_activate_error(&result);
+
+        assert_eq!(error_type, "app_management");
+    }
+
+    #[test]
+    fn only_explicit_cancellation_is_known_untouched() {
+        assert!(activation_failure_left_system_untouched("user_cancelled"));
+        assert!(!activation_failure_left_system_untouched(
+            "authorization_denied"
+        ));
+        assert!(!activation_failure_left_system_untouched("generic_error"));
+    }
 }

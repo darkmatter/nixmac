@@ -46,12 +46,10 @@ in
 lib.mkIf (!config.container.isBuilding) {
   # Dev-only packages (excluded from container builds by conditional import).
   packages = [
-    pkgs.rustPackages.rustc
-    pkgs.rustPackages.cargo
-    pkgs.rustPackages.clippy
-    pkgs.rustPackages.rustfmt
-    pkgs.rust-analyzer
-    pkgs.clippy
+    # rustc/cargo/clippy/rustfmt/rust-analyzer come from languages.rust below
+    # as matching-version components. Do not add nixpkgs copies here: mixing
+    # toolchains made cargo compile deps with one rustc while clippy-driver
+    # came from another (E0514 on CI).
     pkgs.cargo-watch
     pkgs.cargo-nextest
     pkgs.flyctl

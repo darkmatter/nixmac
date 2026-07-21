@@ -9,8 +9,8 @@ pub mod rollback;
 // Re-export the key public API so callers can use short paths.
 #[allow(unused_imports)]
 pub use darwin::{
-    activate_store_path_stream, apply_stream, dry_run_build_check, preflight_app_management,
-    preflight_etc_clobber, read_latest_rebuild_log_tail,
+    activate_store_path_stream, apply_stream, dry_run_build_check, dry_run_build_check_streaming,
+    preflight_app_management, preflight_etc_clobber, read_latest_rebuild_log_tail,
 };
 #[allow(unused_imports)]
 pub use finalize_apply::{finalize_apply, finalize_rollback};
