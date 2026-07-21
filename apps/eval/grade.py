@@ -256,6 +256,21 @@ def grade_succeed(
         grade.failure_class = "other"
         return grade
 
+    # Check: terminal_state — a succeed case that hit a safety limit did not
+    # complete, whatever else the artifact looks like. Read telemetry.state
+    # directly: the top-level state hoisted by the CLI was wrong before
+    # jp/fix-cli-state-hoist (it always fell back to "generated"), so recorded
+    # runs can only be judged from telemetry.
+    telemetry_state = _telemetry(result).get("state", "")
+    if telemetry_state in ("limitReached", "failed", "timeout"):
+        grade.checks["terminal_state"] = CheckResult(
+            passed=False,
+            detail=f"Evolution ended {telemetry_state} — the run was cut off before completing",
+        )
+        grade.passed = False
+        grade.failure_class = "limit_reached" if telemetry_state == "limitReached" else "other"
+        return grade
+
     # Conversational succeed cases (e.g., "Hi!") don't produce diffs or builds
     state = extract_state(result)
     if is_conversational(result):
@@ -329,15 +344,20 @@ def grade_succeed(
         )
 
     # Check: flake_scope (succeed cases shouldn't silently edit flake infrastructure
-    # unless the case is explicitly flake_management or expected_files lists flake paths).
+    # unless the case is explicitly flake_management or the expectations allow it).
     # The system prompt still requires flake.nix / flake-modules edits to be explicitly
     # requested — this check catches models that hallucinate flake edits on unrelated
-    # prompts. Bypassed when the case is intentionally about flake editing.
+    # prompts. Bypassed when the case is intentionally about flake editing, or when
+    # the requested end state can require flake wiring: in the nix-darwin-determinate
+    # template the main configuration block and the modules list live inline in
+    # flake.nix, so enabling home-manager or adding any new module file necessarily
+    # edits flake.nix.
     #
     # Bypass signals (any one is sufficient):
     # 1. Golden JSON expectations.type == "flake_management" — explicit per-case metadata
-    # 2. Golden JSON expected_files lists a flake path
-    # 3. CSV subcategory == "flake_management" — avoids expanding the golden-set cohort
+    # 2. Golden JSON expected_files lists a flake path (flake edit REQUIRED to match)
+    # 3. Golden JSON allowed_files lists a flake path (flake edit PERMITTED, not required)
+    # 4. CSV subcategory == "flake_management" — avoids expanding the golden-set cohort
     #    just to unblock the check for cases that aren't in the golden set
     is_flake_management = bool(
         (expectations and expectations.get("type") == "flake_management")
@@ -348,6 +368,13 @@ def grade_succeed(
         and any(
             f.startswith(FLAKE_PATH_PREFIXES)
             for f in expectations.get("expected_files", [])
+        )
+    )
+    allowed_is_flake = bool(
+        expectations
+        and any(
+            f.startswith(FLAKE_PATH_PREFIXES)
+            for f in expectations.get("allowed_files", [])
         )
     )
     if has_diff:
@@ -362,7 +389,7 @@ def grade_succeed(
                 detail=f"Flake edit present: {flake_edits}" if flake_edits
                 else "flake_management case expects a flake edit but none found",
             )
-        elif not is_flake_management and not expected_is_flake:
+        elif not is_flake_management and not expected_is_flake and not allowed_is_flake:
             # Non-flake cases: any flake edit is unexpected (agent hallucinated
             # flake work on an unrelated prompt).
             grade.checks["flake_scope"] = CheckResult(
@@ -371,8 +398,10 @@ def grade_succeed(
                 else f"Unexpected flake edit(s) on non-flake_management case: {flake_edits}",
             )
         # If expected_is_flake (golden expected_files lists a flake path), the
-        # expected_files check above already enforces file-level correctness;
-        # no additional flake_scope check is needed.
+        # expected_files check above already enforces file-level correctness.
+        # If allowed_is_flake (golden allowed_files lists a flake path), the
+        # necessary integration edit is permitted without being required;
+        # no additional flake_scope check is needed in either case.
 
     # Check: relevant_changes (keyword matching from expectations)
     # Only check added lines to avoid false matches from removed/context lines
