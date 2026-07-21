@@ -177,10 +177,14 @@ fn directory_has_entries(path: &Path) -> Result<bool, String> {
 
 fn ensure_canonical_directory_owned() -> Result<(), String> {
     let user = whoami::username().map_err(|e| format!("Failed to resolve username: {e}"))?;
-    let script = format!(
-        "set -e\nmkdir -p '{CANONICAL_CONFIG_DIR}'\nchown -R '{user}' '{CANONICAL_CONFIG_DIR}'"
-    );
+    let canonical_dir = shell_literal(CANONICAL_CONFIG_DIR);
+    let owner = shell_literal(&user);
+    let script = format!("set -e\nmkdir -p {canonical_dir}\nchown -R {owner} {canonical_dir}");
     run_privileged_shell(&script)
+}
+
+fn shell_literal(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
 }
 
 fn run_privileged_shell(script: &str) -> Result<(), String> {
@@ -246,5 +250,11 @@ mod tests {
         std::os::unix::fs::symlink(&target, &link).expect("create symlink");
 
         assert!(symlink_points_to(&link, &target).expect("check symlink"));
+    }
+
+    #[test]
+    fn shell_literal_escapes_embedded_single_quotes() {
+        assert_eq!(shell_literal("alice"), "'alice'");
+        assert_eq!(shell_literal("al'ice"), "'al'\\''ice'");
     }
 }
