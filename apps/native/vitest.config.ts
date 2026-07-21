@@ -4,6 +4,12 @@ import storybookTest from "@storybook/addon-vitest/vitest-plugin";
 import type {} from "@vitest/browser/providers/playwright";
 import { defineConfig } from "vitest/config";
 import { nixmacBuildDefines } from "./nixmac-profile";
+import { alignPlaywrightBrowsers } from "./scripts/align-playwright-browsers";
+
+// Nix-provided browsers may ship under different revision names than this
+// playwright version expects; rewrite PLAYWRIGHT_BROWSERS_PATH before the
+// storybook browser project launches chromium.
+alignPlaywrightBrowsers();
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 const uiPackageRoot = path.resolve(repoRoot, "packages/ui/src");

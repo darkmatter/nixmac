@@ -51,12 +51,6 @@ jobs:
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
 
-      # nixpkgs' playwright browsers can ship a different revision than the
-      # bun-installed playwright-core expects; alias the registry dir names.
-      - name: Align Playwright browsers with node_modules
-        working-directory: apps/native
-        run: node scripts/align-playwright-browsers.mjs
-
       - name: Resolve secrets
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
@@ -77,51 +71,13 @@ jobs:
             echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID"
           } >> "$GITHUB_ENV"
 
+      # Fail fast if the nix-provided chromium can't launch on this runner
+      # (unrealised store path, missing libs, fontless container). The script
+      # also aliases nixpkgs browser revisions onto what playwright-core
+      # expects before launching.
       - name: Check Playwright browser availability
         working-directory: apps/native
-        run: |
-          bunx playwright install --dry-run chromium
-          DEBUG=pw:browser bun --eval '
-            const { chromium } = await import("playwright");
-            const browser = await chromium.launch({
-              args: [
-                "--no-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-gpu-sandbox",
-                "--disable-gpu",
-                "--no-zygote",
-              ],
-            });
-            const page = await browser.newPage();
-            await page.setContent("<h1>ok</h1>");
-            console.log(await page.textContent("h1"));
-            // Fonts smoke test: a fontless container (no /etc/fonts, no
-            // FONTCONFIG_FILE) renders zero glyphs, silently producing
-            // textless Creevey screenshots. Rasterize text on a canvas and
-            // require lit pixels.
-            const litPixels = await page.evaluate(() => {
-              const canvas = document.createElement("canvas");
-              canvas.width = 200;
-              canvas.height = 50;
-              const ctx = canvas.getContext("2d");
-              ctx.fillStyle = "#000";
-              ctx.fillRect(0, 0, 200, 50);
-              ctx.fillStyle = "#fff";
-              ctx.font = "32px sans-serif";
-              ctx.fillText("Aa gg 123", 10, 38);
-              const { data } = ctx.getImageData(0, 0, 200, 50);
-              let lit = 0;
-              for (let i = 0; i < data.length; i += 4) if (data[i] > 128) lit++;
-              return lit;
-            });
-            console.log(`font smoke test: ${litPixels} lit pixels`);
-            if (litPixels < 50) {
-              throw new Error(
-                `Font rendering check failed (${litPixels} lit pixels) — no usable fonts; check FONTCONFIG_FILE / devenv fonts`,
-              );
-            }
-            await browser.close();
-          '
+        run: DEBUG=pw:browser node scripts/check-playwright-browsers.ts
 
       - name: Build Storybook
         working-directory: apps/native

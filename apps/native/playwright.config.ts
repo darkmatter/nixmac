@@ -1,4 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
+import { alignPlaywrightBrowsers } from "./scripts/align-playwright-browsers";
+
+// Nix-provided browsers may ship under different revision names than this
+// playwright version expects; rewrite PLAYWRIGHT_BROWSERS_PATH before launch.
+alignPlaywrightBrowsers();
 
 /**
  * Playwright end-to-end tests for the native (web) UI.
@@ -47,13 +52,6 @@ export default defineConfig({
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
-        launchOptions: {
-          ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
-            ? {
-                executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
-              }
-            : {}),
-        },
       },
     },
     // Uncomment when we want cross-browser coverage. Each browser must
