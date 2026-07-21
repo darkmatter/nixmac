@@ -67,7 +67,7 @@ pub fn fast_forward_to_upstream(repo: &Repository, upstream_oid: git2::Oid) -> R
         .to_string_lossy();
 
     // Fetching can take long enough for the worktree to change after the
-    // initial safety check. Recheck immediately before the checkout.
+    // initial safety check. Recheck immediately before updating the tip.
     if !is_worktree_clean_for_auto_update(&workdir)? {
         anyhow::bail!("worktree changed while preparing the upstream update");
     }
@@ -104,12 +104,15 @@ pub fn fast_forward_to_upstream(repo: &Repository, upstream_oid: git2::Oid) -> R
     repo.set_head(&refname)
         .with_context(|| format!("failed to set HEAD to {refname}"))?;
 
+    // Force checkout after moving the tip so the index and worktree match the
+    // new HEAD. Safe because we just confirmed a clean worktree and a
+    // fast-forward-only relationship.
     let mut checkout_builder = git2::build::CheckoutBuilder::new();
-
     checkout_builder
-        .safe()
+        .force()
         .recreate_missing(true)
-        .remove_untracked(false);
+        .remove_untracked(false)
+        .remove_ignored(false);
 
     repo.checkout_head(Some(&mut checkout_builder))
         .context("failed to check out updated HEAD")?;
