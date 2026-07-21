@@ -20,7 +20,7 @@ import { filesystemViewEnabled } from "@/lib/flags";
 import { uiActions, useViewModel } from "@nixmac/state";
 
 export function BeginStep() {
-    const prefsLoaded = useViewModel((s) => s.preferences !== null);
+  const prefsLoaded = useViewModel((s) => s.preferences !== null);
   const scanHomebrewOnStartup = useViewModel((s) => s.preferences?.scanHomebrewOnStartup ?? false);
   const shouldScan = filesystemViewEnabled && prefsLoaded && scanHomebrewOnStartup;
   const { diff, error } = useHomebrewDiff(shouldScan);

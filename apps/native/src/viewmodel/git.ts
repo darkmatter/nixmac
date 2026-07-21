@@ -27,8 +27,7 @@ function mirrorGitState(
  */
 export async function refreshGitSnapshot(): Promise<void> {
   // deprecated(orpc): replace with client/orpc from @/lib/orpc
-  const status = await tauriAPI.git.statusAndCache();
-  mirrorGitState(status);
+  await tauriAPI.git.statusAndCache();
 }
 
 export async function startGitSync(): Promise<() => void> {

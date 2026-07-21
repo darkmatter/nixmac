@@ -86,6 +86,28 @@ impl<T: Send + Sync + 'static> Observable<T> {
 
 impl<T> Observable<T>
 where
+    T: Clone + PartialEq + Send + Sync + 'static,
+{
+    /// Mutate the value while holding its write lock, notifying subscribers
+    /// only when the closure actually changes it.
+    pub fn update_if_changed(&self, update: impl FnOnce(&mut T)) -> bool {
+        let mut guard = self.inner.write().expect("observable lock poisoned");
+        let previous = guard.clone();
+        update(&mut guard);
+
+        if *guard == previous {
+            return false;
+        }
+
+        for subscriber in &self.subscribers {
+            subscriber(&guard);
+        }
+        true
+    }
+}
+
+impl<T> Observable<T>
+where
     T: Serialize + Send + Sync + 'static,
 {
     /// Subscribe Tauri event emission for this observable.
@@ -219,6 +241,21 @@ mod tests {
         }
 
         assert_eq!(*observable.read_sync(), 42);
+    }
+
+    #[test]
+    fn update_if_changed_is_atomic_and_suppresses_noop_notifications() {
+        let captured: Arc<Mutex<Vec<DemoState>>> = Arc::new(Mutex::new(Vec::new()));
+        let captured_for_closure = captured.clone();
+        let observable = Observable::new(DemoState::default()).subscribe(move |value| {
+            captured_for_closure.lock().unwrap().push(value.clone());
+        });
+
+        assert!(observable.update_if_changed(|state| state.count = 1));
+        assert!(!observable.update_if_changed(|state| state.count = 1));
+
+        assert_eq!(captured.lock().unwrap().len(), 1);
+        assert_eq!(observable.read_sync().count, 1);
     }
 
     #[test]
