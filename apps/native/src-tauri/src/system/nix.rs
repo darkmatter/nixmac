@@ -156,7 +156,7 @@ fn nix_eval_value_to_string(value: serde_json::Value) -> String {
 pub fn is_rebuild_needed(hostname: &str, config_dir: &str) -> Result<bool> {
     /* General approach:
         expected=$(nix eval --raw ".#darwinConfigurations.${host}.system")
-        active=$(readlink /run/current-system)
+        active=$(realpath /run/current-system)
 
         Helper bash function to test:
 
@@ -197,7 +197,7 @@ pub fn is_rebuild_needed(hostname: &str, config_dir: &str) -> Result<bool> {
         .trim()
         .to_string();
 
-    let actual_system_output = Command::new("readlink")
+    let actual_system_output = Command::new("realpath")
         .arg("/run/current-system")
         .output()?;
     if !actual_system_output.status.success() {

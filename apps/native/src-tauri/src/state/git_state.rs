@@ -63,8 +63,11 @@ pub fn set_rebuild_needed_from_check<R: Runtime>(
     revision: u64,
     needed: bool,
 ) -> bool {
-    let current_revision = REBUILD_NEEDED_REVISION.lock().unwrap();
-    if *current_revision != revision {
+    let should_apply = {
+        let current_revision = REBUILD_NEEDED_REVISION.lock().unwrap();
+        *current_revision == revision
+    };
+    if !should_apply {
         return false;
     }
     set_rebuild_needed(app, needed);
@@ -75,8 +78,11 @@ pub fn set_rebuild_needed_from_check<R: Runtime>(
 /// in-flight check has been replaced or discarded. Invalidates older checks
 /// so they cannot publish a result derived from the previous working tree.
 pub fn invalidate_rebuild_needed<R: Runtime>(app: &AppHandle<R>) {
-    let mut revision = REBUILD_NEEDED_REVISION.lock().unwrap();
-    *revision = revision.wrapping_add(1);
+    {
+        let mut revision = REBUILD_NEEDED_REVISION.lock().unwrap();
+        *revision = revision.wrapping_add(1);
+    }
+
     set_rebuild_needed(app, false);
 }
 
