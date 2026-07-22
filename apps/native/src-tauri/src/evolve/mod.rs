@@ -57,7 +57,7 @@ use chat_memory::{ChatMessage, Role as ChatMemoryRole, to_provider_context_messa
 
 pub(crate) use chat_memory::session_chat_memory_store;
 use config_dir_context::format_config_dir_context;
-use messages::Message;
+use messages::{Message, ToolCall};
 use providers::{
     AiProvider, CliProvider, OllamaProvider, OpenAIProvider, ProviderError, StreamEvent,
 };
@@ -428,7 +428,10 @@ fn filter_evolution_messages(
     let strategy = MemoryStrategy::from_env();
 
     if matches!(strategy, MemoryStrategy::None) {
-        return messages.to_vec();
+        // No retention pruning, but the tool loop can still skip sibling calls
+        // when it breaks early, so the pairing invariant must be enforced here
+        // too.
+        return repair_tool_call_pairing(messages.to_vec());
     }
 
     // 1. Filter by retention policy.
@@ -497,7 +500,65 @@ fn filter_evolution_messages(
         filtered.push((*m).clone());
     }
     filtered.reverse();
-    filtered
+
+    // 4. Repair tool-call/result pairing. Steps 1-3 drop tool *result*
+    //    messages (build_check after 1 iteration, edits after 3, superseded
+    //    reads, pre-build-check thinks), but the assistant messages carrying
+    //    the paired tool_calls are Permanent and always survive. An assistant
+    //    tool_call with no following tool response is a protocol error that
+    //    strict OpenAI-compatible servers reject with HTTP 400 (and that
+    //    tolerant servers show the model as a dangling call). Substitute a
+    //    stub tool result for every orphaned call so the transcript stays
+    //    well-formed. This also covers the sibling calls skipped when the
+    //    tool loop breaks early (e.g. a rejected `done` batched with another
+    //    call).
+    repair_tool_call_pairing(filtered)
+}
+
+/// Ensure every assistant `tool_calls` entry has a following `Tool` result so
+/// the message list satisfies the OpenAI-compatible pairing invariant.
+/// Preserves order; inserts a stub result immediately after the assistant
+/// message that owns each orphaned call. Reverse orphans (a `Tool` message
+/// with no assistant call) cannot arise here — assistant messages are
+/// `Permanent` and never pruned — so they are left untouched.
+fn repair_tool_call_pairing(messages: Vec<EvolutionMessage>) -> Vec<EvolutionMessage> {
+    let answered: std::collections::HashSet<String> = messages
+        .iter()
+        .filter_map(|m| match &m.message {
+            Message::Tool { tool_call_id, .. } => Some(tool_call_id.clone()),
+            _ => None,
+        })
+        .collect();
+
+    let mut repaired: Vec<EvolutionMessage> = Vec::with_capacity(messages.len());
+    for m in messages {
+        let stubs: Vec<EvolutionMessage> = match &m.message {
+            Message::Assistant {
+                tool_calls: Some(calls),
+                ..
+            } => calls
+                .iter()
+                .filter(|c| !answered.contains(&c.id))
+                .map(|c| {
+                    EvolutionMessage::permanent(
+                        Message::Tool {
+                            tool_call_id: c.id.clone(),
+                            content: "[tool result unavailable: pruned from context or not \
+                                      executed because the turn ended early]"
+                                .to_string(),
+                        },
+                        m.created_iteration,
+                        None,
+                    )
+                })
+                .collect(),
+            _ => Vec::new(),
+        };
+
+        repaired.push(m);
+        repaired.extend(stubs);
+    }
+    repaired
 }
 
 /// Map a tool name to its retention window in provider-loop iterations.
@@ -558,6 +619,32 @@ fn store_tool_result(
         Retention::Recent { keep_iterations } => {
             EvolutionMessage::recent(msg, iteration, keep_iterations, key)
         }
+    }
+}
+
+/// Push a stub tool result for each tool call the inner loop is about to skip
+/// by breaking early (e.g. a `done` in the middle of a batch ends the turn
+/// before its siblings run). Every assistant `tool_calls` entry must have a
+/// paired `Tool` message or strict OpenAI-compatible providers reject the next
+/// request; this keeps the persisted transcript well-formed at the source
+/// rather than relying on the send-time repair alone.
+fn answer_skipped_tool_calls(
+    messages: &mut Vec<EvolutionMessage>,
+    remaining: &[ToolCall],
+    iteration: usize,
+) {
+    for skipped in remaining {
+        messages.push(store_tool_result(
+            Message::Tool {
+                tool_call_id: skipped.id.clone(),
+                content: "Not executed: the turn ended after a completion signal earlier in \
+                          this batch. Re-issue this call on your next turn if you still need it."
+                    .to_string(),
+            },
+            &skipped.name,
+            iteration,
+            None,
+        ));
     }
 }
 
@@ -1502,11 +1589,56 @@ pub async fn generate_evolution<R: Runtime>(
                 info!("🔧 Model requested {} tool call(s)", tool_calls.len());
                 let mut should_break = false;
 
-                for tool_call in tool_calls {
+                for (tool_call_idx, tool_call) in tool_calls.iter().enumerate() {
                     let tool_name = &tool_call.name;
                     let args_str = &tool_call.arguments;
-                    let args_raw: serde_json::Value =
-                        serde_json::from_str(args_str).unwrap_or(serde_json::json!({}));
+                    // Malformed arguments used to be silently coerced to `{}`,
+                    // so the model saw a "missing required field" error and
+                    // "fixed" the wrong thing — when the real cause was often a
+                    // JSON payload truncated by the output-token limit. Tell it
+                    // what actually happened instead. Empty string is treated
+                    // as no-args {} (some providers emit "" for argumentless
+                    // tools).
+                    let args_raw: serde_json::Value = if args_str.trim().is_empty() {
+                        serde_json::json!({})
+                    } else {
+                        match serde_json::from_str(args_str) {
+                            Ok(value) => value,
+                            Err(parse_err) => {
+                                warn!(
+                                    "  ✗ {} received unparseable arguments ({} bytes): {}",
+                                    tool_name,
+                                    args_str.len(),
+                                    parse_err
+                                );
+                                evolution.add_tool_call(
+                                    start_time,
+                                    iteration,
+                                    tool_name,
+                                    "<unparseable arguments>",
+                                    &format!("ERROR: malformed arguments: {}", parse_err),
+                                    false,
+                                );
+                                messages.push(store_tool_result(
+                                    Message::Tool {
+                                        tool_call_id: tool_call.id.clone(),
+                                        content: format!(
+                                            "Your arguments for {} were not valid JSON ({}). This \
+                                             usually means the call was cut off by the output-token \
+                                             limit. Re-issue the call with complete, valid JSON \
+                                             arguments — keep them short if the previous attempt \
+                                             was long.",
+                                            tool_name, parse_err
+                                        ),
+                                    },
+                                    tool_name,
+                                    iteration,
+                                    None,
+                                ));
+                                continue;
+                            }
+                        }
+                    };
                     let args = sanitize_tool_args(tool_name, &args_raw);
 
                     let args_summary = summarize_args(&args);
@@ -1808,11 +1940,25 @@ pub async fn generate_evolution<R: Runtime>(
 
                             match break_signal {
                                 Some(true) => {
+                                    answer_skipped_tool_calls(
+                                        &mut messages,
+                                        &tool_calls[tool_call_idx + 1..],
+                                        iteration,
+                                    );
                                     should_break = true;
                                     break;
                                 }
                                 Some(false) => {}
-                                None => break, // Break inner loop only
+                                None => {
+                                    // Break inner loop only (e.g. rejected done);
+                                    // the outer loop gives the model another turn.
+                                    answer_skipped_tool_calls(
+                                        &mut messages,
+                                        &tool_calls[tool_call_idx + 1..],
+                                        iteration,
+                                    );
+                                    break;
+                                }
                             }
                         }
                         Err(e) => {
@@ -2659,10 +2805,69 @@ fn process_tool_result(
 mod tests {
     use super::{
         BUILD_OUTPUT_MAX_CHARS, DoneGate, Evolution, EvolutionMessage, EvolutionState, FileEdit,
-        Message, Retention, ToolResult, filter_evolution_messages,
+        Message, Retention, ToolCall, ToolResult, filter_evolution_messages,
         normalize_openai_max_output_tokens, process_tool_result, read_file_dedup_key,
-        repeat_call_key, store_tool_result, truncate_build_output_for_model,
+        repair_tool_call_pairing, repeat_call_key, store_tool_result,
+        truncate_build_output_for_model,
     };
+
+    /// Assert the OpenAI-compatible invariant: every assistant tool_call id has
+    /// a following Tool result with the same id.
+    fn assert_tool_calls_paired(messages: &[EvolutionMessage]) {
+        let answered: std::collections::HashSet<&str> = messages
+            .iter()
+            .filter_map(|m| match &m.message {
+                Message::Tool { tool_call_id, .. } => Some(tool_call_id.as_str()),
+                _ => None,
+            })
+            .collect();
+        for m in messages {
+            if let Message::Assistant {
+                tool_calls: Some(calls),
+                ..
+            } = &m.message
+            {
+                for call in calls {
+                    assert!(
+                        answered.contains(call.id.as_str()),
+                        "tool_call {} has no paired tool result",
+                        call.id
+                    );
+                }
+            }
+        }
+    }
+
+    fn assistant_with_calls(ids: &[&str], iteration: usize) -> EvolutionMessage {
+        EvolutionMessage::permanent(
+            Message::Assistant {
+                content: None,
+                tool_calls: Some(
+                    ids.iter()
+                        .map(|id| ToolCall {
+                            id: (*id).to_string(),
+                            name: "read_file".to_string(),
+                            arguments: "{}".to_string(),
+                        })
+                        .collect(),
+                ),
+            },
+            iteration,
+            None,
+        )
+    }
+
+    fn tool_result_msg(id: &str, iteration: usize) -> EvolutionMessage {
+        EvolutionMessage::recent(
+            Message::Tool {
+                tool_call_id: id.to_string(),
+                content: "result".to_string(),
+            },
+            iteration,
+            1,
+            None,
+        )
+    }
 
     fn build_result(success: bool) -> ToolResult {
         ToolResult::BuildResult {
@@ -3013,6 +3218,102 @@ mod tests {
             .iter()
             .any(|m| matches!(&m.message, Message::Tool { tool_call_id, .. } if tool_call_id == "think-2")));
         assert!(out.iter().filter(|m| matches!(&m.message, Message::Tool { tool_call_id, .. } if tool_call_id == "read-file-1" || tool_call_id == "read-file-2")).count() == 2);
+    }
+
+    #[test]
+    fn repair_stubs_a_tool_call_whose_result_was_pruned() {
+        // Assistant (permanent) survives; its recent tool result is expired by
+        // retention. The pairing repair must add a stub so the assistant call
+        // is not left dangling.
+        let messages = vec![
+            assistant_with_calls(&["call-a"], 1),
+            tool_result_msg("call-a", 1),
+        ];
+        let (_lock, _restore) = set_memory_strategy_for_test("retention");
+
+        // Far enough in the future that the recent tool result (keep=1) expires
+        // but the permanent assistant message stays.
+        let out = filter_evolution_messages(&messages, 100, false);
+
+        assert!(
+            !out.iter().any(|m| matches!(
+                &m.message,
+                Message::Tool { tool_call_id, content } if tool_call_id == "call-a" && content == "result"
+            )),
+            "the real tool result should have expired"
+        );
+        assert_tool_calls_paired(&out);
+    }
+
+    #[test]
+    fn repair_stubs_siblings_when_only_some_results_survive() {
+        let messages = vec![
+            assistant_with_calls(&["call-a", "call-b"], 0),
+            // Only one of the two results present (models the early-break case).
+            EvolutionMessage::permanent(
+                Message::Tool {
+                    tool_call_id: "call-a".to_string(),
+                    content: "answered".to_string(),
+                },
+                0,
+                None,
+            ),
+        ];
+
+        let repaired = repair_tool_call_pairing(messages);
+
+        assert_tool_calls_paired(&repaired);
+        // The surviving real result is untouched.
+        assert!(repaired.iter().any(|m| matches!(
+            &m.message,
+            Message::Tool { tool_call_id, content } if tool_call_id == "call-a" && content == "answered"
+        )));
+    }
+
+    #[test]
+    fn repair_stub_is_inserted_directly_after_its_assistant_message() {
+        let messages = vec![
+            EvolutionMessage::permanent(
+                Message::User {
+                    content: "prompt".to_string(),
+                },
+                0,
+                None,
+            ),
+            assistant_with_calls(&["call-x"], 0),
+        ];
+
+        let repaired = repair_tool_call_pairing(messages);
+
+        let assistant_idx = repaired
+            .iter()
+            .position(|m| matches!(&m.message, Message::Assistant { .. }))
+            .expect("assistant present");
+        assert!(matches!(
+            &repaired[assistant_idx + 1].message,
+            Message::Tool { tool_call_id, .. } if tool_call_id == "call-x"
+        ));
+    }
+
+    #[test]
+    fn repair_leaves_fully_paired_messages_unchanged() {
+        let messages = vec![
+            assistant_with_calls(&["call-a"], 0),
+            EvolutionMessage::permanent(
+                Message::Tool {
+                    tool_call_id: "call-a".to_string(),
+                    content: "answered".to_string(),
+                },
+                0,
+                None,
+            ),
+        ];
+        let before = messages.len();
+
+        let repaired = repair_tool_call_pairing(messages);
+
+        assert_eq!(repaired.len(), before, "no stubs should be added");
+        assert_tool_calls_paired(&repaired);
     }
 
     #[test]
