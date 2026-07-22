@@ -152,6 +152,65 @@ pub async fn discard_single_file(
     Ok(shared_types::OkResult { ok: true })
 }
 
+/// Pull from the upstream remote and update the local repo.
+/// Currently, the only pull we support must be a fast-forward.
+/// If a fast-forward is possible, this will succeed and return Ok.
+/// If the local repo is already up to date, this will also return Ok (the banner was stale).
+/// If the local repo has diverged from the upstream and the update no longer looks safe,
+/// this will return an error with a message to display to the user.
+pub async fn pull_from_upstream(app: AppHandle) -> Result<shared_types::OkResult, String> {
+    let dir = store::ensure_git_repo_folder(&app)
+        .map_err(|e| capture_err("git_pull_from_upstream", e))?;
+
+    log::info!("[git_pull_from_upstream] Pulling from upstream in {}", dir);
+    let decision = git::auto_update::pull_from_upstream(&dir)
+        .map_err(|e| capture_err("git_pull_from_upstream", e))?;
+
+    match decision {
+        git::auto_update::AutoUpdateDecision::UpdateAndRebuild { .. } => {
+            // Fast-forward succeeded; immediately hide the stale banner.
+            crate::state::git_state::set_upstream_update_available(&app, false);
+        }
+        git::auto_update::AutoUpdateDecision::Noop(_) => {
+            // The banner was stale: nothing needed updating. Clear it and
+            // continue through the normal state refresh below.
+            crate::state::git_state::set_upstream_update_available(&app, false);
+        }
+        git::auto_update::AutoUpdateDecision::WarnAndSkip(message) => {
+            // The update is no longer safe (local edits, divergence, etc.).
+            // Clear the stale banner and surface the reason to the user.
+            crate::state::git_state::set_upstream_update_available(&app, false);
+            return Err(message);
+        }
+    }
+
+    match git::query::status_and_cache(&dir, &app) {
+        Ok(status) => {
+            // Moving HEAD invalidates any persisted evolution/rollback base
+            // anchored at the old commit. Clear that stale session before
+            // rebuilding the change map, otherwise the pulled commit range is
+            // presented as manual drift, which is super-annoying particularly
+            // since the manual drift UI makes that situation non-actionable
+            // (no rollback possible even though it suggests otherwise, plus
+            // bogus diff rows between the previous commit and the HEAD would
+            // be presented).
+            // TODO: Update the "Review" screen to handle this new use case properly.
+            evolve_state::refresh(&app, &status.changes);
+            if status.clean_head {
+                crate::state::change_map::clear(&app);
+            } else {
+                crate::summarize::refresh_change_map(&app);
+            }
+        }
+        Err(e) => log::warn!(
+            "[git_pull_from_upstream] Failed to refresh git state: {}",
+            e
+        ),
+    }
+
+    Ok(shared_types::OkResult { ok: true })
+}
+
 /// Returns original (HEAD) and modified (working-tree) content for each requested file.
 #[tauri::command]
 pub async fn git_file_diff_contents(

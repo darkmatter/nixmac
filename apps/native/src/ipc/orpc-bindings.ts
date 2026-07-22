@@ -1978,6 +1978,7 @@ export type Procedures = {
     commitFile: Client<Record<never, never>, GitCommitFileInput, CommitResult, Error>
     discardFile: Client<Record<never, never>, GitDiscardFileInput, OkResult, Error>
     fileDiffContents: Client<Record<never, never>, GitFileDiffContentsInput, Partial<{ [key in string]: FileDiffContents }>, Error>
+    pullFromUpstream: Client<Record<never, never>, void, OkResult, Error>
     state: Client<Record<never, never>, void, GitState, Error>
     status: Client<Record<never, never>, void, GitStatus, Error>
     statusAndCache: Client<Record<never, never>, void, GitStatus, Error>

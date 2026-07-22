@@ -59,12 +59,18 @@ pub struct AutoUpdateConfig {
 }
 
 /// Fast-forwards the current local branch to an already-fetched upstream commit.
-///
-/// TODO: This is not hooked up yet but will be the next step in implementing the actual update
-/// after the check decision is made.
-#[allow(dead_code)]
 pub fn fast_forward_to_upstream(repo: &Repository, upstream_oid: git2::Oid) -> Result<()> {
     let branch_name = current_branch(repo).context("repository is in detached HEAD state")?;
+    let workdir = repo
+        .workdir()
+        .context("cannot fast-forward a bare repository")?
+        .to_string_lossy();
+
+    // Fetching can take long enough for the worktree to change after the
+    // initial safety check. Recheck immediately before updating the tip.
+    if !is_worktree_clean_for_auto_update(&workdir)? {
+        anyhow::bail!("worktree changed while preparing the upstream update");
+    }
 
     let annotated = repo
         .find_annotated_commit(upstream_oid)
@@ -98,12 +104,15 @@ pub fn fast_forward_to_upstream(repo: &Repository, upstream_oid: git2::Oid) -> R
     repo.set_head(&refname)
         .with_context(|| format!("failed to set HEAD to {refname}"))?;
 
+    // Force checkout after moving the tip so the index and worktree match the
+    // new HEAD. Safe because we just confirmed a clean worktree and a
+    // fast-forward-only relationship.
     let mut checkout_builder = git2::build::CheckoutBuilder::new();
-
     checkout_builder
-        .safe()
+        .force()
         .recreate_missing(true)
-        .remove_untracked(false);
+        .remove_untracked(false)
+        .remove_ignored(false);
 
     repo.checkout_head(Some(&mut checkout_builder))
         .context("failed to check out updated HEAD")?;
@@ -350,6 +359,41 @@ pub fn check_auto_update(config_dir: &str) -> Result<AutoUpdateDecision> {
     Ok(decide_auto_update(&status))
 }
 
+/// Pull from upstream only if it's safe from a fast-forward perspective.
+///
+/// Returns the pre-pull decision:
+///   - if a fast-forward is performed, returns `UpdateAndRebuild` to indicate
+///     a rebuild may be needed.
+///   - otherwise the result can be used to determine if the caller needs
+///     to update UI since the previous state it was using may have been stale.
+pub fn pull_from_upstream(config_dir: &str) -> Result<AutoUpdateDecision> {
+    require_repo(config_dir)?;
+    let repo = Repository::discover(config_dir)?;
+
+    let decision = check_auto_update(config_dir)?;
+
+    if let AutoUpdateDecision::UpdateAndRebuild {
+        local_oid,
+        upstream_oid,
+        upstream_name,
+    } = decision
+    {
+        fast_forward_to_upstream(&repo, upstream_oid).with_context(|| {
+            format!(
+                "failed to fast-forward branch from {local_oid} to {upstream_oid} ({upstream_name})"
+            )
+        })?;
+
+        return Ok(AutoUpdateDecision::UpdateAndRebuild {
+            local_oid,
+            upstream_oid,
+            upstream_name,
+        });
+    }
+
+    Ok(decision)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::git::init::init_repo;
@@ -423,6 +467,28 @@ mod tests {
         let branch_name = current_branch(repo).unwrap();
         let mut branch = repo.find_branch(&branch_name, BranchType::Local).unwrap();
         branch.set_upstream(Some("origin/main")).unwrap();
+    }
+
+    fn setup_remote_and_local_clone() -> (TempDir, Repository, std::path::PathBuf, Repository) {
+        let temp_dir = TempDir::new().unwrap();
+        let remote_dir = temp_dir.path().join("remote");
+        let local_dir = temp_dir.path().join("local");
+
+        let remote_repo = Repository::init(&remote_dir).unwrap();
+        create_commit(
+            &remote_repo,
+            &remote_dir,
+            "flake.nix",
+            "{ remote = 1; }\n",
+            "initial",
+            None,
+            Some("HEAD"),
+        );
+
+        let remote_url = remote_dir.to_string_lossy().to_string();
+        let local_repo = Repository::clone(&remote_url, &local_dir).unwrap();
+
+        (temp_dir, remote_repo, local_dir, local_repo)
     }
 
     #[test]
@@ -582,5 +648,95 @@ mod tests {
         fs::write(&file_path, "content").unwrap();
 
         assert!(!is_worktree_clean_for_auto_update(&repo_dir_str).unwrap());
+    }
+
+    #[test]
+    fn pull_from_upstream_fast_forwards_when_still_safe() {
+        let (_temp_dir, remote_repo, local_dir, local_repo) = setup_remote_and_local_clone();
+        let local_before = head_oid(&local_repo).unwrap();
+
+        let remote_before = head_oid(&remote_repo).unwrap();
+        let remote_after = create_commit(
+            &remote_repo,
+            local_dir.parent().unwrap().join("remote").as_path(),
+            "flake.nix",
+            "{ remote = 2; }\n",
+            "upstream",
+            Some(remote_before),
+            Some("HEAD"),
+        );
+
+        let local_dir_str = local_dir.to_string_lossy().to_string();
+        let decision = pull_from_upstream(&local_dir_str).unwrap();
+
+        let AutoUpdateDecision::UpdateAndRebuild {
+            local_oid,
+            upstream_oid,
+            ..
+        } = decision
+        else {
+            panic!("expected UpdateAndRebuild decision")
+        };
+
+        assert_eq!(local_oid, local_before);
+        assert_eq!(upstream_oid, remote_after);
+
+        let local_after = head_oid(&Repository::discover(&local_dir).unwrap()).unwrap();
+        assert_eq!(local_after, remote_after);
+        assert_eq!(
+            fs::read_to_string(local_dir.join("flake.nix")).unwrap(),
+            "{ remote = 2; }\n"
+        );
+        assert!(
+            crate::git::status(local_dir_str.as_str())
+                .unwrap()
+                .clean_head
+        );
+    }
+
+    #[test]
+    fn pull_from_upstream_returns_noop_when_no_update_is_needed() {
+        let (_temp_dir, _remote_repo, local_dir, local_repo) = setup_remote_and_local_clone();
+        let local_before = head_oid(&local_repo).unwrap();
+
+        let local_dir_str = local_dir.to_string_lossy().to_string();
+        let decision = pull_from_upstream(&local_dir_str).unwrap();
+
+        let AutoUpdateDecision::Noop(message) = decision else {
+            panic!("expected Noop decision")
+        };
+
+        assert!(message.contains("already up to date"));
+
+        let local_after = head_oid(&Repository::discover(&local_dir).unwrap()).unwrap();
+        assert_eq!(local_after, local_before);
+    }
+
+    #[test]
+    fn pull_from_upstream_returns_warn_and_skip_when_local_is_ahead() {
+        let (_temp_dir, _remote_repo, local_dir, local_repo) = setup_remote_and_local_clone();
+        let local_before = head_oid(&local_repo).unwrap();
+
+        let local_after_commit = create_commit(
+            &local_repo,
+            &local_dir,
+            "flake.nix",
+            "{ local = 2; }\n",
+            "local",
+            Some(local_before),
+            Some("HEAD"),
+        );
+
+        let local_dir_str = local_dir.to_string_lossy().to_string();
+        let decision = pull_from_upstream(&local_dir_str).unwrap();
+
+        let AutoUpdateDecision::WarnAndSkip(message) = decision else {
+            panic!("expected WarnAndSkip decision")
+        };
+
+        assert!(message.contains("ahead of"));
+
+        let local_after = head_oid(&Repository::discover(&local_dir).unwrap()).unwrap();
+        assert_eq!(local_after, local_after_commit);
     }
 }

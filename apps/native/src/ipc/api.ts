@@ -102,6 +102,8 @@ export const tauriAPI = {
     commit: (message: string) => client.git.commit({ message }),
     /** @deprecated Use `client.git.fileDiffContents()` or `orpc.git.fileDiffContents` from `@/lib/orpc`. */
     fileDiffContents: (filenames: string[]) => client.git.fileDiffContents({ filenames }),
+    /** @deprecated Use `client.git.pullFromUpstream()` or `orpc.git.pullFromUpstream` from `@/lib/orpc`. */
+    pullFromUpstream: () => client.git.pullFromUpstream(),
   },
   darwin: {
     /** @deprecated Use `client.darwin.evolve()` or `orpc.darwin.evolve` from `@/lib/orpc`. */
