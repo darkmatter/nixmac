@@ -301,8 +301,8 @@ export const orpcHandlers: Record<string, OrpcHandler> = {
   "evolveMascot.show": async () => okResult(),
   "evolveMascot.hide": async () => okResult(),
   "history.get": async () => {
-    const { viewModelActions } = await import("@nixmac/state");
-    return viewModelActions.getState().history ?? [];
+    // History lives in TanStack Query now (not ViewModelStore).
+    return { items: [], total: 0, hasMore: false };
   },
   "homebrew.getStateDiff": async () => ({
     isInstalled: true,
