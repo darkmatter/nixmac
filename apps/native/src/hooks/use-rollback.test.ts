@@ -137,4 +137,32 @@ describe("useRollback", () => {
     expect(useUiState.getState().isProcessing).toBe(false);
     expect(useUiState.getState().evolvePrompt).toBe("");
   });
+
+  it("discards manual drift without attempting a rollback rebuild", async () => {
+    viewModelActions.setState({
+      evolve: {
+        ...committableEvolveState,
+        committable: false,
+        evolutionId: null,
+        rollbackBranch: null,
+        rollbackChangesetId: null,
+        rollbackStorePath: null,
+        step: "manualEvolve",
+      },
+    });
+    mocks.rollbackErase.mockResolvedValue({
+      rollbackChangesetId: null,
+      rollbackStorePath: null,
+    });
+
+    const { result } = renderHook(() => useRollback());
+
+    await act(async () => {
+      await result.current.handleRollback();
+    });
+
+    expect(mocks.rollbackErase).toHaveBeenCalledTimes(1);
+    expect(mocks.triggerRebuild).not.toHaveBeenCalled();
+    expect(useUiState.getState().isProcessing).toBe(false);
+  });
 });
