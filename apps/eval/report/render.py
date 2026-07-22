@@ -60,6 +60,14 @@ def _short(s: str | None, length: int = 80) -> str:
 
 
 def _manifest(run: RunView) -> dict:
+    # Inconclusive cases (timeouts, provider failures) stay in the raw
+    # denominator; agent_pass_rate excludes them — they say nothing about
+    # agent quality.
+    inconclusive = sum(1 for c in run.cases if c.failure_class == "inconclusive")
+    conclusive_total = run.aggregate_stats.total - inconclusive
+    agent_pass_rate = (
+        run.aggregate_stats.passed / conclusive_total * 100.0 if conclusive_total else 0.0
+    )
     return {
         "generated_at": run.meta.generated_at.isoformat(timespec="seconds"),
         "title": run.meta.title,
@@ -68,6 +76,8 @@ def _manifest(run: RunView) -> dict:
         "passed": run.aggregate_stats.passed,
         "failed": run.aggregate_stats.failed,
         "pass_rate": run.aggregate_stats.pass_rate,
+        "inconclusive": inconclusive,
+        "agent_pass_rate": agent_pass_rate,
         "case_outcomes": {
             str(c.case_id): {"passed": c.passed, "failure_class": c.failure_class}
             for c in run.cases

@@ -215,3 +215,10 @@ When `--base-config` points at a real config (not a bundled template),
 its `.nix` files won't contain the `HOSTNAME_PLACEHOLDER` markers the
 suite normally substitutes, so you'll typically want to pass `--host`
 matching a `darwinConfigurations.<name>` entry in your config.
+
+### Repository-specific cases
+
+Some prompts only make sense against a particular existing configuration.
+The [`arximboldi/dotfiles` cases](data/README.md#running-the-arximboldi-corpus) are kept
+separate from the generic corpus because their expectations depend on which
+modules and packages are already active for the `tyrell2` host.

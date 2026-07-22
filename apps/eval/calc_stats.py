@@ -34,6 +34,7 @@ class ResultMetrics:
     expected_outcome: str | None = None
     graded_pass: bool | None = None
     failure_class: str | None = None
+    has_telemetry: bool = True
 
     @property
     def passed(self) -> bool:
@@ -57,6 +58,7 @@ def ensure_grades(results: list[tuple[int, dict[str, Any]]], csv_path: Path, exp
     expectations = grading.load_expectations(expectations_path)
 
     graded = 0
+    prompt_mismatches: list[int] = []
     for case_num, data in results:
         if isinstance(data.get("grade"), dict):
             continue
@@ -64,11 +66,25 @@ def ensure_grades(results: list[tuple[int, dict[str, Any]]], csv_path: Path, exp
         expected = (csv_row or {}).get("expected_outcome", "")
         if not expected:
             continue  # not in the CSV — leave ungraded, falls back to `ok`
+        # Refuse to grade against the wrong prompt set: the default --csv is
+        # the general corpus, but this results dir may come from another one.
+        result_prompt = (data.get("prompt") or "").strip()
+        csv_prompt = (csv_row or {}).get("prompt", "").strip()
+        if result_prompt and csv_prompt and result_prompt != csv_prompt:
+            prompt_mismatches.append(case_num)
+            continue
         data["_case_id"] = case_num
         result = grading.grade_case(data, expected, expectations.get(str(case_num)), csv_row)
         data.pop("_case_id", None)
         data["grade"] = grading.grade_to_dict(result)
         graded += 1
+    if prompt_mismatches:
+        print(
+            f"Warning: skipped in-memory grading for {len(prompt_mismatches)} case(s) "
+            f"whose recorded prompt differs from the CSV ({prompt_mismatches[:5]}"
+            f"{'…' if len(prompt_mismatches) > 5 else ''}) — pass --csv/--expectations "
+            f"matching this results dir."
+        )
     return graded
 
 
@@ -107,11 +123,10 @@ def extract_metrics_from_data(case_num: int, data: dict[str, Any]) -> ResultMetr
             or (result.get("summary") or {}).get("commitMessage")
             or ""
         )
-        # Prefer the engine state from telemetry (limitReached, conversational,
-        # failed, ...) over the coarser top-level state, which is "generated"
-        # for any run that produced a result.
-        telemetry_state = (result.get("telemetry") or {}).get("state")
-        state = telemetry_state or data.get("state") or result.get("state") or "generated"
+        # One shared state extractor with grade.py: telemetry.state preferred,
+        # top-level as fallback (correct only after jp/fix-cli-state-hoist, or
+        # for stubs whose only state IS the top-level one).
+        state = grading.extract_state(data) or "generated"
         conversational_reply: str | None = None
         if state == "conversational":
             conversational_reply = (result.get("summary") or {}).get("instructions") or None
@@ -124,14 +139,18 @@ def extract_metrics_from_data(case_num: int, data: dict[str, Any]) -> ResultMetr
             or None
         )
 
-        # Assume the new result shape: metrics are under `result.telemetry`
-        telemetry = result["telemetry"]
+        # Metrics live under `result.telemetry`; stubs (timeouts, provider
+        # failures killed before a result) have none. Keep those cases in the
+        # denominator with zeroed metrics instead of dropping them — dropping
+        # made `stats` and the HTML report disagree on the case count.
+        telemetry = result.get("telemetry") if isinstance(result.get("telemetry"), dict) else {}
+        has_telemetry = bool(telemetry)
 
-        duration_ms = int(telemetry["durationMs"])
-        iterations = int(telemetry["iterations"])
-        build_attempts = int(telemetry["buildAttempts"])
-        edits_count = int(telemetry["editsCount"])
-        total_tokens = int(telemetry["totalTokens"])
+        duration_ms = int(telemetry.get("durationMs", 0) or 0)
+        iterations = int(telemetry.get("iterations", 0) or 0)
+        build_attempts = int(telemetry.get("buildAttempts", 0) or 0)
+        edits_count = int(telemetry.get("editsCount", 0) or 0)
+        total_tokens = int(telemetry.get("totalTokens", 0) or 0)
 
         thinking_count = optional_int(telemetry, "thinkingCount")
         tool_calls_count = optional_int(telemetry, "toolCallsCount")
@@ -162,6 +181,7 @@ def extract_metrics_from_data(case_num: int, data: dict[str, Any]) -> ResultMetr
             expected_outcome=grade_obj.get("expected_outcome") if grade_obj else None,
             graded_pass=grade_obj.get("pass") if grade_obj else None,
             failure_class=grade_obj.get("failure_class") if grade_obj else None,
+            has_telemetry=has_telemetry,
         )
     except (KeyError, ValueError) as e:
         print(f"Warning: Failed to parse result for case {case_num}: {e}")
@@ -209,13 +229,16 @@ def calculate_stats(metrics_list: list[ResultMetrics]) -> Statistics:
     passed = [m for m in metrics_list if m.passed]
     failed = [m for m in metrics_list if not m.passed]
 
-    durations = [m.duration_ms for m in metrics_list]
-    iterations = [m.iterations for m in metrics_list]
-    build_attempts = [m.build_attempts for m in metrics_list]
-    edits = [m.edits_count for m in metrics_list]
-    tokens = [m.total_tokens for m in metrics_list]
-    thinking = [m.thinking_count for m in metrics_list if m.thinking_count is not None]
-    tool_calls = [m.tool_calls_count for m in metrics_list if m.tool_calls_count is not None]
+    # Counts and pass rates cover every case; numeric aggregates only cover
+    # cases with real telemetry so stubs' zeroed metrics don't skew averages.
+    numeric = [m for m in metrics_list if m.has_telemetry] or metrics_list
+    durations = [m.duration_ms for m in numeric]
+    iterations = [m.iterations for m in numeric]
+    build_attempts = [m.build_attempts for m in numeric]
+    edits = [m.edits_count for m in numeric]
+    tokens = [m.total_tokens for m in numeric]
+    thinking = [m.thinking_count for m in numeric if m.thinking_count is not None]
+    tool_calls = [m.tool_calls_count for m in numeric if m.tool_calls_count is not None]
     built_commits = [m.branch_has_built_commit for m in metrics_list]
 
     def safe_stdev(values: list[float]) -> float:
@@ -281,6 +304,19 @@ def print_summary_table(stats: Statistics, metrics_list: list[ResultMetrics]) ->
     rows = []
     rows.append(["Total Cases", f"{stats.total_cases}", f"{passed_stats.total_cases}" if passed_stats else "0", f"{failed_stats.total_cases}" if failed_stats else "0"])
     rows.append(["Pass Rate", f"{stats.pass_rate:.1f}%", "100.0%" if passed_stats else "n/a", "0.0%" if failed_stats else "n/a"])
+
+    # Agent-only rate: inconclusive cases (timeouts, provider failures) say
+    # nothing about agent quality — show the rate with them excluded.
+    inconclusive = [m for m in metrics_list if m.failure_class == "inconclusive"]
+    if inconclusive:
+        conclusive = [m for m in metrics_list if m.failure_class != "inconclusive"]
+        n_pass = sum(1 for m in conclusive if m.passed)
+        rate = n_pass / len(conclusive) * 100 if conclusive else 0.0
+        rows.append([
+            "Agent-only Rate",
+            f"{rate:.1f}% ({n_pass}/{len(conclusive)}, {len(inconclusive)} inconclusive excluded)",
+            "", "",
+        ])
 
     rows.append(["", "", "", ""])
     rows.append(["Duration (ms)", "", "", ""])

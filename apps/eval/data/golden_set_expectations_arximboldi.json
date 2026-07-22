@@ -1,0 +1,309 @@
+{
+  "_meta": {
+    "description": "Semantic grading rules for the arximboldi/dotfiles corpus (nix/os config dir, host tyrell2). Diff paths are relative to nix/os. tyrell2 is built from tyrell0/darwin-configuration.nix plus an inline platform block in flake.nix; common/*.nix are NixOS-only modules NOT in the tyrell2 closure.",
+    "repository": "arximboldi/dotfiles",
+    "revision": "c4afbb3f740a25b0e6af8459501ffb614bab009d",
+    "config_dir": "nix/os",
+    "host": "tyrell2",
+    "author": "eval verification pass",
+    "date": "2026-07-21",
+    "status": "authored",
+    "expected_files_semantics": "When multiple files are listed, ANY of them is valid.",
+    "allowed_files_semantics": "Files the agent MAY edit without penalty (currently consumed by the flake_scope check). Editing an allowed file is never required and does not satisfy expected_files.",
+    "case_count": 28
+  },
+  "2": {
+    "expected_outcome": "succeed",
+    "type": "target_scope",
+    "expected_in_diff": [
+      "jq",
+      "yq"
+    ],
+    "expected_files": [
+      "tyrell0/darwin-configuration.nix"
+    ],
+    "allowed_files": [
+      "flake.nix"
+    ],
+    "notes": "jq occurs in common/devel.nix (NixOS-only, not in the tyrell2 closure); both packages must be added to the active Darwin configuration."
+  },
+  "3": {
+    "expected_outcome": "fail_gracefully",
+    "type": "already_satisfied",
+    "expected_in_diff": [],
+    "require_empty_diff": true,
+    "require_explanation": true,
+    "notes": "htop is already in environment.systemPackages in tyrell0/darwin-configuration.nix, which tyrell2 imports. Editing common/devel.nix (as observed in the 2026-07-20 run) is a host-scope error."
+  },
+  "4": {
+    "expected_outcome": "succeed",
+    "type": "target_scope",
+    "expected_in_diff": [
+      "wget",
+      "curl"
+    ],
+    "expected_files": [
+      "tyrell0/darwin-configuration.nix"
+    ],
+    "allowed_files": [
+      "flake.nix"
+    ],
+    "notes": "wget occurs only in the NixOS devel module; both must be configured for the Darwin host."
+  },
+  "5": {
+    "expected_outcome": "succeed",
+    "type": "target_scope",
+    "expected_in_diff": [
+      "tree"
+    ],
+    "expected_files": [
+      "tyrell0/darwin-configuration.nix"
+    ],
+    "allowed_files": [
+      "flake.nix"
+    ],
+    "notes": "tree occurs only in common/devel.nix; must not be reported as already installed."
+  },
+  "9": {
+    "expected_outcome": "succeed",
+    "type": "target_scope",
+    "expected_in_diff": [
+      "firefox"
+    ],
+    "expected_files": [
+      "tyrell0/darwin-configuration.nix"
+    ],
+    "allowed_files": [
+      "flake.nix"
+    ],
+    "notes": "firefox occurs in common/internet.nix (NixOS-only); install for the Darwin host."
+  },
+  "10": {
+    "expected_outcome": "succeed",
+    "type": "package_source_migration",
+    "expected_in_diff": [
+      "visual-studio-code"
+    ],
+    "expected_files": [
+      "tyrell0/darwin-configuration.nix"
+    ],
+    "notes": "vscode is already a Nix system package; honor the explicit Homebrew request (cask visual-studio-code) without leaving a duplicate installation."
+  },
+  "11": {
+    "expected_outcome": "succeed",
+    "type": "partial_existing_state",
+    "expected_in_diff": [
+      "discord"
+    ],
+    "forbidden_in_diff": [
+      "slack"
+    ],
+    "expected_files": [
+      "tyrell0/darwin-configuration.nix"
+    ],
+    "notes": "Slack is already active for tyrell2; only Discord may be added. Re-adding slack is a duplicate-state error."
+  },
+  "12": {
+    "expected_outcome": "fail_gracefully",
+    "type": "already_satisfied",
+    "expected_in_diff": [],
+    "require_empty_diff": true,
+    "require_explanation": true,
+    "notes": "1Password GUI and CLI are already installed for tyrell2."
+  },
+  "13": {
+    "expected_outcome": "fail_gracefully",
+    "type": "already_satisfied",
+    "expected_in_diff": [],
+    "require_empty_diff": true,
+    "require_explanation": true,
+    "notes": "iterm2 is already installed for tyrell2."
+  },
+  "16": {
+    "expected_outcome": "succeed",
+    "type": "target_scope",
+    "expected_in_diff": [
+      "docker"
+    ],
+    "expected_files": [
+      "tyrell0/darwin-configuration.nix"
+    ],
+    "allowed_files": [
+      "flake.nix"
+    ],
+    "notes": "Linux Docker configuration exists elsewhere in the repo; Docker Desktop must be added for tyrell2."
+  },
+  "21": {
+    "expected_outcome": "succeed",
+    "type": "package_source_migration",
+    "expected_in_diff": [],
+    "expected_files": [
+      "tyrell0/darwin-configuration.nix"
+    ],
+    "notes": "gh is already a Nix system package; honor the Homebrew request without duplication. No keyword — 'gh' is too short for reliable substring matching."
+  },
+  "48": {
+    "expected_outcome": "succeed",
+    "type": "target_scope",
+    "expected_in_diff": [
+      "direnv"
+    ],
+    "expected_files": [
+      "tyrell0/darwin-configuration.nix"
+    ],
+    "allowed_files": [
+      "flake.nix"
+    ],
+    "notes": "direnv occurs only in common/devel.nix; configure for the Darwin host."
+  },
+  "53": {
+    "expected_outcome": "fail_gracefully",
+    "type": "already_satisfied",
+    "expected_in_diff": [],
+    "require_empty_diff": true,
+    "require_explanation": true,
+    "notes": "nerd-fonts.jetbrains-mono and fira-code are already installed for tyrell2 (plain jetbrains-mono is commented out deliberately). Prompt names the Nerd Font variant explicitly so this is a strict no-op."
+  },
+  "72": {
+    "expected_outcome": "fail_gracefully",
+    "type": "already_satisfied",
+    "expected_in_diff": [],
+    "require_empty_diff": true,
+    "require_explanation": true,
+    "notes": "homebrew.enable is already true for tyrell2; explain the existing declarative management."
+  },
+  "169": {
+    "expected_outcome": "fail_gracefully",
+    "type": "already_absent",
+    "expected_in_diff": [],
+    "require_empty_diff": true,
+    "require_explanation": true,
+    "notes": "Firefox is not in the tyrell2 Homebrew casks (already absent). The explanation must not deny the existing Darwin/Homebrew setup — tyrell0/darwin-configuration.nix contains homebrew.casks."
+  },
+  "170": {
+    "expected_outcome": "fail_gracefully",
+    "type": "already_absent",
+    "expected_in_diff": [],
+    "require_empty_diff": true,
+    "require_explanation": true,
+    "notes": "Docker Desktop and a Docker Homebrew tap are absent for tyrell2; Linux Docker references elsewhere must not trigger edits."
+  },
+  "201": {
+    "expected_outcome": "succeed",
+    "type": "target_scope",
+    "expected_in_diff": [
+      "firefox"
+    ],
+    "expected_files": [
+      "tyrell0/darwin-configuration.nix"
+    ],
+    "allowed_files": [
+      "flake.nix"
+    ],
+    "notes": "firefox in common/internet.nix is NOT in the tyrell2 closure — claiming already-satisfied from that file is the failure mode under test."
+  },
+  "210": {
+    "expected_outcome": "fail_gracefully",
+    "type": "already_satisfied",
+    "expected_in_diff": [],
+    "require_empty_diff": true,
+    "require_explanation": true,
+    "notes": "nixpkgs-unstable is already a direct flake input."
+  },
+  "215": {
+    "expected_outcome": "succeed",
+    "type": "missing_integration",
+    "expected_in_diff": [
+      "syncthing"
+    ],
+    "expected_files": [
+      "flake.nix"
+    ],
+    "notes": "No active Home Manager integration exists for tyrell2, so fulfilling services.syncthing.enable requires wiring home-manager in flake.nix. The concrete request authorizes that integration; asking permission first is the failure mode under test."
+  },
+  "219": {
+    "expected_outcome": "fail_gracefully",
+    "type": "already_satisfied",
+    "expected_in_diff": [],
+    "require_empty_diff": true,
+    "require_explanation": true,
+    "notes": "Both experimental features are already enabled for tyrell2."
+  },
+  "226": {
+    "expected_outcome": "fail_gracefully",
+    "type": "already_satisfied",
+    "expected_in_diff": [],
+    "require_empty_diff": true,
+    "require_explanation": true,
+    "notes": "allowUnfree is already true and both applications are already active for tyrell2. A read-only verification build is acceptable and must not fail this case."
+  },
+  "301": {
+    "expected_outcome": "succeed",
+    "type": "target_scope",
+    "expected_in_diff": [
+      "gnujump"
+    ],
+    "expected_files": [
+      "tyrell0/darwin-configuration.nix"
+    ],
+    "allowed_files": [
+      "flake.nix"
+    ],
+    "notes": "gnujump exists in common/gaming.nix (NixOS-only, unimported); it must be installed for the Darwin host, not reported as present."
+  },
+  "302": {
+    "expected_outcome": "fail_gracefully",
+    "type": "already_satisfied",
+    "expected_in_diff": [],
+    "require_empty_diff": true,
+    "require_explanation": true,
+    "notes": "Slack is an active Nix package and Telegram and WhatsApp are active Homebrew casks; recognize the combined state across mechanisms."
+  },
+  "303": {
+    "expected_outcome": "fail_gracefully",
+    "type": "already_satisfied",
+    "expected_in_diff": [],
+    "require_empty_diff": true,
+    "require_explanation": true,
+    "notes": "programs.bash and the raskolnikov login shell are already configured. Rewriting the working dscl invocation (e.g. -create to -change without old_val) is the failure mode under test."
+  },
+  "304": {
+    "expected_outcome": "succeed",
+    "type": "cross_platform_module",
+    "expected_in_diff": [],
+    "expected_files": [
+      "common/devel.nix"
+    ],
+    "allowed_files": [
+      "flake.nix"
+    ],
+    "notes": "Reuse common/devel.nix for tyrell2 while guarding Linux-only packages and systemd options; wiring the module into the tyrell2 output requires a flake.nix edit. No reliable keywords for the guard pattern."
+  },
+  "305": {
+    "expected_outcome": "succeed",
+    "type": "application_preferences",
+    "expected_in_diff": [
+      "inconsolata"
+    ],
+    "allowed_files": [
+      "flake.nix"
+    ],
+    "notes": "Font already installed; only the iTerm preference must change. File target is open-ended (activation script or module). Known risks from the 2026-07-20 run: hard-coded /Users/... path, profile 0 only, failures swallowed with || true — not yet detectable deterministically."
+  },
+  "306": {
+    "expected_outcome": "fail_gracefully",
+    "type": "already_satisfied",
+    "expected_in_diff": [],
+    "require_empty_diff": true,
+    "require_explanation": true,
+    "notes": "Apple symbolic hotkeys 60 and 61 are already disabled. A comment-only rewrite of the same values is the failure mode under test."
+  },
+  "307": {
+    "expected_outcome": "fail_gracefully",
+    "type": "already_satisfied",
+    "expected_in_diff": [],
+    "require_empty_diff": true,
+    "require_explanation": true,
+    "notes": "Both applications are already present in homebrew.casks."
+  }
+}

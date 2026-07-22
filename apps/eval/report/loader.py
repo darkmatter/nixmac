@@ -12,9 +12,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-# Reuse the shared CSV/expectations helpers from grade.py so we have one
-# source of truth for the column meanings.
-from grade import load_csv_lookup, load_expectations
+# Reuse the shared CSV/expectations/state helpers from grade.py so we have
+# one source of truth for the column meanings and state extraction.
+from grade import extract_state, load_csv_lookup, load_expectations
 from report import diff_html, stats
 from report.viewmodel import CaseView, CheckView, RunMeta, RunView
 
@@ -97,7 +97,7 @@ def _build_case(
         thinking_count=telemetry.get("thinkingCount"),
         duration_ms=int(telemetry.get("durationMs", 0) or 0),
         total_tokens=int(telemetry.get("totalTokens", 0) or 0),
-        state=result.get("state") or inner.get("state") or "",
+        state=extract_state(result) or "",
         log_excerpt=None,
         evolve_model=result.get("evolveModel"),
         evolve_provider=result.get("evolveProvider"),
