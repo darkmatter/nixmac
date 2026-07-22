@@ -8,7 +8,7 @@ use crate::privileged_helper::{
     service as helper_service,
 };
 use chrono::Local;
-use log::{error, info};
+use log::{error, info, warn};
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
@@ -844,19 +844,42 @@ fn try_activate_with_helper(activate_path: &str) -> Option<Result<ActivateResult
     };
 
     match helper_client::activate_store_path(request) {
-        Ok(response) => Some(Ok(ActivateResult {
-            success: response.ok,
-            code: response.code,
-            stdout: response.stdout,
-            stderr: response.error.unwrap_or(response.stderr),
-        })),
-        Err(error) => {
-            if error
-                .to_string()
-                .contains("failed to connect to /var/run/nixmac/helper.sock")
+        Ok(response) => {
+            // A live daemon that refuses this peer means the running build is
+            // not signed as an approved client (unsigned dev build, or a
+            // helper/app version skew). The osascript prompt is the intended
+            // path there, not a hard failure.
+            if !response.ok
+                && response
+                    .error
+                    .as_deref()
+                    .is_some_and(|error| error.contains(helper_protocol::UNAUTHORIZED_CLIENT_ERROR))
             {
                 info!(
+                    "[darwin] privileged helper rejected this client; falling back to osascript: {}",
+                    response.error.unwrap_or_default()
+                );
+                return None;
+            }
+
+            Some(Ok(ActivateResult {
+                success: response.ok,
+                code: response.code,
+                stdout: response.stdout,
+                stderr: response.error.unwrap_or(response.stderr),
+            }))
+        }
+        Err(error) => {
+            let error_text = format!("{error:#}");
+            if error_text.contains("failed to connect to /var/run/nixmac/helper.sock") {
+                info!(
                     "[darwin] privileged helper socket was stale; falling back to osascript: {error:#}"
+                );
+                return None;
+            }
+            if error_text.contains(crate::privileged_helper::peer_auth::HELPER_VALIDATION_FAILED) {
+                warn!(
+                    "[darwin] process at helper socket failed signature validation; falling back to osascript: {error:#}"
                 );
                 return None;
             }
