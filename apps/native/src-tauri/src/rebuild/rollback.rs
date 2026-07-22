@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use log::warn;
 use tauri::{AppHandle, Runtime};
 
-use crate::state::evolve_state;
+use crate::state::{evolve_state, git_state};
 use crate::storage::store;
 use crate::{
     git,
@@ -55,6 +55,9 @@ pub fn rollback_erase<R: Runtime>(app: &AppHandle<R>) -> Result<RollbackResult> 
     restore_worktree(&repo_root, &current_evolve)?;
 
     let final_status = git::status(&repo_root).context("Failed to get final git status")?;
+    // Any rebuild-needed evaluation started before the restore describes the
+    // discarded tree. Clear it and reject late results from that tree.
+    git_state::invalidate_rebuild_needed(app);
     // Record the post-rollback status; the cell write emits `git_state_changed`.
     crate::state::git_state::update_status(app, final_status.clone());
     evolve_state::set_session(app, EvolveSession::default(), &final_status.changes)

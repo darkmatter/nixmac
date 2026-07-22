@@ -71,10 +71,10 @@ pub fn set_rebuild_needed_from_check<R: Runtime>(
     true
 }
 
-/// Record that a successful activation brought the running system up to date.
-/// Invalidates older asynchronous checks and emits `git_state_changed` when
-/// the rebuild-needed flag changes.
-pub fn mark_build_applied<R: Runtime>(app: &AppHandle<R>) {
+/// Clear the cached rebuild-needed result. Useful to call after the configuration used by an
+/// in-flight check has been replaced or discarded. Invalidates older checks
+/// so they cannot publish a result derived from the previous working tree.
+pub fn invalidate_rebuild_needed<R: Runtime>(app: &AppHandle<R>) {
     let mut revision = REBUILD_NEEDED_REVISION.lock().unwrap();
     *revision = revision.wrapping_add(1);
     set_rebuild_needed(app, false);

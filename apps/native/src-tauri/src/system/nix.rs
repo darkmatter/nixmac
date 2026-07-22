@@ -157,6 +157,26 @@ pub fn is_rebuild_needed(hostname: &str, config_dir: &str) -> Result<bool> {
     /* General approach:
         expected=$(nix eval --raw ".#darwinConfigurations.${host}.system")
         active=$(readlink /run/current-system)
+
+        Helper bash function to test:
+
+        ```sh
+        config="your-host-name"
+
+        check_state() {
+        expected=$(nix eval --raw ".#darwinConfigurations.${config}.system") || return
+        active=$(realpath /run/current-system)
+
+        printf 'expected: %s\n' "$expected"
+        printf 'active:   %s\n' "$active"
+
+        if [ "$expected" = "$active" ]; then
+            echo "STATUS: even"
+        else
+            echo "STATUS: rebuild needed"
+        fi
+        }
+        ```
     */
     let host_attr = serde_json::to_string(hostname)?;
     let flake_attr = format!(".#darwinConfigurations.{}.system", host_attr);
