@@ -30,8 +30,16 @@ const NIX_EVAL_HOMEBREW_APPLY: &str = r#"cfg: {
   taps = builtins.map (x: x.name) cfg.taps;
 }"#;
 
-const NIX_EVAL_HOMEBREW_ATTR_TEMPLATE: &str =
-    r#".#darwinConfigurations."{hostname}".config.homebrew"#;
+fn nix_eval_homebrew_attr(hostname: &str) -> Result<String> {
+    // serde_json::to_string already wraps the hostname in quotes and escapes
+    // internals — do not also embed quote chars in the format string or we
+    // produce malformed attrs like .#darwinConfigurations.""host"".config…
+    let host_attr = serde_json::to_string(hostname)?;
+    Ok(format!(
+        ".#darwinConfigurations.{}.config.homebrew",
+        host_attr
+    ))
+}
 
 /// Checks if Homebrew is installed by trying to run `brew --version`.
 fn is_homebrew_installed() -> bool {
@@ -288,8 +296,7 @@ fn load_nix_eval_homebrew(config_dir: &std::path::Path, hostname: &str) -> Resul
         .to_str()
         .ok_or_else(|| anyhow::anyhow!("invalid config dir path"))?;
 
-    let safe_host_attr = serde_json::to_string(hostname)?;
-    let attr = NIX_EVAL_HOMEBREW_ATTR_TEMPLATE.replace("{hostname}", &safe_host_attr);
+    let attr = nix_eval_homebrew_attr(hostname)?;
     let output = nix_command(path)
         .args(["eval", "--json", "--apply", NIX_EVAL_HOMEBREW_APPLY, &attr])
         .output()?;
@@ -881,6 +888,18 @@ mod tests {
             std::fs::create_dir_all(parent).expect("failed to create parent directories");
         }
         std::fs::write(path, content).expect("failed to write test file");
+    }
+
+    #[test]
+    fn nix_eval_homebrew_attr_quotes_hostname_once() {
+        assert_eq!(
+            nix_eval_homebrew_attr("macbook-pro").expect("attr should format"),
+            r#".#darwinConfigurations."macbook-pro".config.homebrew"#
+        );
+        assert_eq!(
+            nix_eval_homebrew_attr(r#"office"mac"#).expect("attr should escape hostname"),
+            r#".#darwinConfigurations."office\"mac".config.homebrew"#
+        );
     }
 
     #[test]
