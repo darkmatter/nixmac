@@ -519,6 +519,12 @@ pub struct EvolutionFailureResult {
     /// provider request.
     #[serde(default)]
     pub provider_failure: Option<ProviderFailure>,
+    /// Unified diff of the edits that were rolled back by failure recovery.
+    /// Captured before the working tree is restored, so a run that died
+    /// mid-flight (e.g. a transient provider failure after verified edits)
+    /// still leaves its work inspectable.
+    #[serde(default)]
+    pub discarded_diff: Option<String>,
 }
 
 /// Acknowledgement from `darwin_evolve_cancel`.

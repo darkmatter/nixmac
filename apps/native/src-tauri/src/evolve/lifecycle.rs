@@ -85,6 +85,7 @@ impl EvolutionFailureResult {
             git_status,
             telemetry,
             provider_failure: None,
+            discarded_diff: None,
         }
     }
 
@@ -231,7 +232,15 @@ pub async fn backup_evolve_and_record_changeset(
         Ok(evolution) => evolution,
         Err(e) => {
             let duration_ms = elapsed_since(start_time_ms);
+            // Capture the tree's state BEFORE restore_after_failure rolls it
+            // back: for a run that died with edits in place (e.g. a transient
+            // provider failure at a late iteration), this diff is the only
+            // surviving record of the work (N9).
             let git_status = git::status(&repo_root).ok();
+            let discarded_diff = git_status
+                .as_ref()
+                .map(|status| status.diff.clone())
+                .filter(|diff| !diff.trim().is_empty());
             restore_after_failure(app, &repo_root, &backup_branch);
             if let Some(run_error) = e.downcast_ref::<evolve::EvolutionRunError>() {
                 let mut failure = EvolutionFailureResult::new(
@@ -240,13 +249,16 @@ pub async fn backup_evolve_and_record_changeset(
                     EvolutionTelemetry::from_failed_progress(&run_error.progress, duration_ms),
                 );
                 failure.provider_failure = run_error.provider_failure.clone();
+                failure.discarded_diff = discarded_diff;
                 return Err(failure);
             }
-            return Err(EvolutionFailureResult::defaults(
+            let mut failure = EvolutionFailureResult::defaults(
                 format!("AI evolution failed: {}", e),
                 git_status,
                 duration_ms,
-            ));
+            );
+            failure.discarded_diff = discarded_diff;
+            return Err(failure);
         }
     };
 
