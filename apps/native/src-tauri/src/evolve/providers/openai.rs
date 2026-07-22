@@ -23,6 +23,27 @@ use futures_util::StreamExt;
 use log::{info, warn};
 use reqwest::StatusCode;
 
+/// Time allowed to establish a connection to the provider.
+const CONNECT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+
+/// Maximum silence between reads of the response. An idle bound (rather than
+/// a whole-request timeout) so long streamed completions stay legal while a
+/// server that accepts the request and never answers cannot hang the
+/// evolution — reqwest's default client has no timeout at all, which is how
+/// runs stalled for 8-13 minutes before failing (N8).
+const READ_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(120);
+
+/// async-openai internally retries 429/5xx responses with an exponential
+/// backoff whose default gives up only after 15 minutes of invisible
+/// retrying. Retry policy belongs to the evolve loop (bounded, logged, and
+/// classified there), so cap the internal policy at a single attempt.
+fn single_attempt_backoff() -> backoff::ExponentialBackoff {
+    backoff::ExponentialBackoff {
+        max_elapsed_time: Some(std::time::Duration::ZERO),
+        ..Default::default()
+    }
+}
+
 pub struct OpenAIProvider {
     client: Client<OpenAIConfig>,
     model: String,
@@ -38,7 +59,12 @@ impl OpenAIProvider {
         let config = OpenAIConfig::new()
             .with_api_key(api_key)
             .with_api_base(api_base);
-        let client = Client::with_config(config);
+        let http_client = reqwest::Client::builder()
+            .connect_timeout(CONNECT_TIMEOUT)
+            .read_timeout(READ_TIMEOUT)
+            .build()
+            .expect("reqwest client with the default TLS backend");
+        let client = Client::build(http_client, config, single_attempt_backoff());
         let record_chat_logs =
             crate::state::completion_log::init_recording("evolve_provider_chat", "evolve provider");
         Self {

@@ -349,6 +349,29 @@ const BUILD_OUTPUT_TAIL_LINES: usize = 80;
 // (limit prompt / LimitReached) instead of grinding to the iteration limit.
 const MAX_REJECTED_DONE_CALLS: usize = 3;
 
+// Wall-clock bound for a single provider request (per attempt). The HTTP
+// client's connect/read timeouts catch hung connections; this is the
+// backstop against a response that trickles forever.
+const PROVIDER_REQUEST_TIMEOUT: Duration = Duration::from_secs(600);
+
+// Retries after a transient provider failure (so up to this + 1 attempts).
+const MAX_PROVIDER_RETRIES: usize = 2;
+
+/// Capped exponential retry delay with jitter: ~1s, ~2s (+0-500ms). Jitter
+/// is derived from the clock's sub-second nanos — enough to de-synchronize
+/// concurrent eval runs without pulling in a rand dependency.
+fn provider_retry_delay(completed_attempts: usize) -> Duration {
+    let exponent = completed_attempts.saturating_sub(1).min(4) as u32;
+    let base_ms = 1000u64.saturating_mul(1u64 << exponent);
+    let jitter_ms = u64::from(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.subsec_nanos())
+            .unwrap_or(0),
+    ) % 500;
+    Duration::from_millis(base_ms + jitter_ms)
+}
+
 // A read-only tool call repeated with identical arguments within this many
 // iterations is answered with a nudge instead of re-executed. Beyond the
 // window the call runs again: its earlier result may have been pruned from
@@ -1333,42 +1356,97 @@ pub async fn generate_evolution<R: Runtime>(
 
         let streaming_fallback = std::sync::atomic::AtomicBool::new(false);
         let provider_call_started = std::time::Instant::now();
-        let (response_result, streamed_any) = {
+        let (response_result, provider_attempts, streamed_any) = {
             let delta_batcher = DeltaBatcher::new(app, start_time, iteration);
             let on_delta = |event: StreamEvent<'_>| match event {
                 StreamEvent::Delta(delta) => delta_batcher.push(delta),
                 StreamEvent::Reset => delta_batcher.reset(),
             };
             let fut = async {
-                if streaming_evolve && provider.supports_streaming() {
-                    match provider
-                        .completion_streaming(&active_provider_messages, &tools, &on_delta)
-                        .await
-                    {
-                        // An endpoint that rejects the streaming request
-                        // itself (some OpenAI-compatible proxies) fails
-                        // before producing any output with a
-                        // rejection-shaped status; retry that one case
-                        // blocking instead of failing the evolution. Other
-                        // failures — auth, rate limits, transport, server
-                        // errors, or a stream that already produced output —
-                        // keep their error: the blocking path would hit them
-                        // identically, and retrying can double a billable
-                        // request.
-                        Err(e)
-                            if !delta_batcher.received() && e.indicates_streaming_unsupported() =>
+                let mut attempts: usize = 0;
+                loop {
+                    attempts += 1;
+                    let attempt = async {
+                        if streaming_evolve
+                            && provider.supports_streaming()
+                            && !streaming_fallback.load(std::sync::atomic::Ordering::Relaxed)
                         {
-                            warn!(
-                                "Endpoint rejected the streaming request ({}); retrying without streaming",
-                                e.user_message()
-                            );
-                            streaming_fallback.store(true, std::sync::atomic::Ordering::Relaxed);
+                            match provider
+                                .completion_streaming(&active_provider_messages, &tools, &on_delta)
+                                .await
+                            {
+                                // An endpoint that rejects the streaming request
+                                // itself (some OpenAI-compatible proxies) fails
+                                // before producing any output with a
+                                // rejection-shaped status; retry that one case
+                                // blocking instead of failing the evolution. Other
+                                // failures — auth, rate limits, transport, server
+                                // errors, or a stream that already produced output —
+                                // keep their error: the blocking path would hit them
+                                // identically, and retrying can double a billable
+                                // request.
+                                Err(e)
+                                    if !delta_batcher.received()
+                                        && e.indicates_streaming_unsupported() =>
+                                {
+                                    warn!(
+                                        "Endpoint rejected the streaming request ({}); retrying without streaming",
+                                        e.user_message()
+                                    );
+                                    streaming_fallback
+                                        .store(true, std::sync::atomic::Ordering::Relaxed);
+                                    provider.completion(&active_provider_messages, &tools).await
+                                }
+                                other => other,
+                            }
+                        } else {
                             provider.completion(&active_provider_messages, &tools).await
                         }
-                        other => other,
+                    };
+                    // Backstop wall-clock bound per attempt; the HTTP
+                    // client's connect/read timeouts catch hung connections
+                    // earlier.
+                    let result = match tokio::time::timeout(PROVIDER_REQUEST_TIMEOUT, attempt).await
+                    {
+                        Ok(result) => result,
+                        Err(_) => Err(ProviderError::Other(anyhow!(
+                            "The AI provider did not respond within {} seconds.",
+                            PROVIDER_REQUEST_TIMEOUT.as_secs()
+                        ))),
+                    };
+                    match result {
+                        // Retry only clearly transient failures (bad-gateway
+                        // class statuses, pre-stream connection resets) with
+                        // a small capped backoff; everything else fails the
+                        // evolution with its error.
+                        Err(e)
+                            if e.is_transient(delta_batcher.received())
+                                && attempts <= MAX_PROVIDER_RETRIES =>
+                        {
+                            let delay = provider_retry_delay(attempts);
+                            warn!(
+                                "Transient provider failure (attempt {}/{}); retrying in {:?}: {:#}",
+                                attempts,
+                                MAX_PROVIDER_RETRIES + 1,
+                                delay,
+                                e
+                            );
+                            emit_evolve_event(
+                                app,
+                                EvolveEvent::info(
+                                    start_time,
+                                    Some(iteration),
+                                    &format!(
+                                        "The AI provider request failed with a transient error; retrying (attempt {} of {})...",
+                                        attempts + 1,
+                                        MAX_PROVIDER_RETRIES + 1
+                                    ),
+                                ),
+                            );
+                            sleep(delay).await;
+                        }
+                        other => break (other, attempts),
                     }
-                } else {
-                    provider.completion(&active_provider_messages, &tools).await
                 }
             };
             tokio::pin!(fut);
@@ -1376,7 +1454,8 @@ pub async fn generate_evolution<R: Runtime>(
             tokio::select! {
                 res = &mut fut => {
                     delta_batcher.flush();
-                    (res, delta_batcher.received())
+                    let (result, attempts) = res;
+                    (result, attempts, delta_batcher.received())
                 },
                 _ = async {
                     loop {
@@ -1458,7 +1537,7 @@ pub async fn generate_evolution<R: Runtime>(
                     retryable: e.is_transient(streamed_any),
                     duration_ms: provider_call_started.elapsed().as_millis() as i64,
                     streamed_any,
-                    attempts: 1,
+                    attempts: provider_attempts,
                 };
 
                 evolution.state = EvolutionState::Failed;

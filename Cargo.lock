@@ -3568,6 +3568,7 @@ dependencies = [
  "anyhow",
  "async-openai",
  "async-trait",
+ "backoff",
  "backtrace",
  "chrono",
  "clap",

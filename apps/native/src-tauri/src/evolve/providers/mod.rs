@@ -424,11 +424,15 @@ impl ProviderError {
             ProviderError::Other(e) => {
                 let msg = format!("{:#}", e);
                 // Preserve controlled messages that are already user-friendly.
-                // These are our own anyhow errors from setup validation, not
-                // raw provider/network errors:
+                // These are our own anyhow errors from setup validation or
+                // the loop's request bound, not raw provider/network errors:
                 //   - "No API key found. Please add your API key in Settings..."
                 //   - "No host attribute configured. Please set a host first."
-                if msg.contains("API key") || msg.contains("No host") {
+                //   - "The AI provider did not respond within N seconds."
+                if msg.contains("API key")
+                    || msg.contains("No host")
+                    || msg.contains("did not respond within")
+                {
                     msg
                 } else {
                     // Transport errors, DNS failures, connection refused, etc.
@@ -625,6 +629,14 @@ mod tests {
             (ProviderFailureOrigin::Streaming, None)
         );
         assert!(!streaming.is_transient(false));
+    }
+
+    #[test]
+    fn request_timeout_messages_reach_the_user_verbatim() {
+        let err = ProviderError::Other(anyhow::anyhow!(
+            "The AI provider did not respond within 600 seconds."
+        ));
+        assert!(err.user_message().contains("did not respond within"));
     }
 
     #[test]
