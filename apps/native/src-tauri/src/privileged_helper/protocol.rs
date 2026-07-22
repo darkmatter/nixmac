@@ -12,6 +12,11 @@ pub const SYNC_AGENT_PLIST_NAME: &str = "com.darkmatter.nixmac.sync-agent.plist"
 pub const HELPER_SOCKET_PATH: &str = "/var/run/nixmac/helper.sock";
 #[allow(dead_code)]
 pub const HELPER_SOCKET_DIR: &str = "/var/run/nixmac";
+/// Prefix of the daemon's response when the connecting peer fails
+/// authorization. The app matches on it to fall back to the interactive
+/// osascript path instead of surfacing a hard error (unsigned dev builds
+/// land here by design).
+pub const UNAUTHORIZED_CLIENT_ERROR: &str = "unauthorized helper client";
 const DEFAULT_SYNC_AGENT_INTERVAL_SECONDS: u32 = 900;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq, Eq)]
@@ -22,6 +27,9 @@ pub struct HelperServiceStatus {
     pub registered: bool,
     pub authorized: bool,
     pub socket_available: bool,
+    /// The daemon answered an authenticated status round-trip: the client
+    /// validated the daemon's signature and the daemon accepted this client.
+    pub responding: bool,
     pub detail: Option<String>,
 }
 
@@ -33,6 +41,7 @@ impl HelperServiceStatus {
             registered: false,
             authorized: false,
             socket_available: false,
+            responding: false,
             detail: Some(detail.into()),
         }
     }
