@@ -126,6 +126,7 @@ describe("view model sync", () => {
       gitStatus: { hasChanges: false, files: [] } as unknown as GitStatus,
       externalBuildDetected: false,
       upstreamUpdateAvailable: false,
+      rebuildNeeded: false,
     };
     apiMocks.changeMap = { groups: [], singles: [] } as unknown as SemanticChangeMap;
     apiMocks.preferences = makeGlobalPreferences();
@@ -143,7 +144,11 @@ describe("view model sync", () => {
     viewModelActions.setState({
       evolve: null,
       git: null,
-      build: { externalBuildDetected: false, upstreamUpdateAvailable: false },
+      build: {
+        externalBuildDetected: false,
+        upstreamUpdateAvailable: false,
+        rebuildNeeded: false,
+      },
       changeMap: null,
       preferences: null,
       hosts: [],
@@ -183,6 +188,7 @@ describe("view model sync", () => {
       gitStatus,
       externalBuildDetected: true,
       upstreamUpdateAvailable: true,
+      rebuildNeeded: true,
     };
 
     apiMocks.listeners.get("git_state_changed")?.({ payload: event });
@@ -190,6 +196,7 @@ describe("view model sync", () => {
     expect(viewModelActions.getState().git).toBe(gitStatus);
     expect(viewModelActions.getState().build.externalBuildDetected).toBe(true);
     expect(viewModelActions.getState().build.upstreamUpdateAvailable).toBe(true);
+    expect(viewModelActions.getState().build.rebuildNeeded).toBe(true);
 
     stop();
     expect(apiMocks.unlisten).toHaveBeenCalledTimes(2);

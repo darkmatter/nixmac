@@ -26,6 +26,7 @@ import {
   Sparkles,
   Trash2,
   Wrench,
+  CircleCheckBig,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { DriftBanner } from "./drift-banner";
@@ -50,6 +51,7 @@ export function DriftReview() {
   const evolveState = useViewModel((s) => s.evolve);
   const isApplyBusy = useUiState((s) => s.isProcessing && s.processingAction === "apply");
   const rebuildRunning = useViewModel((s) => s.rebuildStatus?.isRunning ?? false);
+  const rebuildNeeded = useViewModel((s) => s.build.rebuildNeeded);
 
   // No active evolution → the changes are manual drift, not AI-generated.
   const isManualDrift = (evolveState?.evolutionId ?? null) === null;
@@ -66,6 +68,7 @@ export function DriftReview() {
   const changes = gitStatus?.changes;
   const files = useMemo(() => deriveDriftFiles(changes ?? []), [changes]);
   const counts = useMemo(() => summarizeDriftCounts(files), [files]);
+  const isSavedBuildPending = rebuildNeeded && files.length === 0;
 
   // Re-run the dry build check whenever the set of changes changes.
   const changeFingerprint = useMemo(
@@ -77,7 +80,7 @@ export function DriftReview() {
     // AI-generated changes were already built during evolution, so there's no
     // dry-run gate — the build button is ready immediately (matching the prior
     // evolve step). Manual drift hasn't been built, so dry-run check it first.
-    if (!isManualDrift) {
+    if (!isManualDrift || isSavedBuildPending) {
       setBuildStatus("passed");
       return;
     }
@@ -96,13 +99,52 @@ export function DriftReview() {
     return () => {
       cancelled = true;
     };
-  }, [buildCheck, changeFingerprint, isManualDrift]);
+  }, [buildCheck, changeFingerprint, isManualDrift, isSavedBuildPending]);
 
-  if (!gitStatus || files.length === 0) return null;
+  if (!gitStatus) return null;
+
+  const buildReady = buildStatus === "passed" && !isApplyBusy && !rebuildRunning;
+
+  if (isSavedBuildPending) {
+    return (
+      <div className="flex flex-col gap-5 rounded-xl border border-border/70 bg-card/50 p-5">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 rounded-full bg-teal-500/10 p-2 text-teal-500">
+            <CircleCheckBig className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="font-semibold text-foreground">New configuration updates are available</h2>
+            <p className="max-w-xl text-muted-foreground text-sm leading-relaxed">
+              This Mac isn’t using the latest configuration yet. Apply the updates to bring it up to date.
+            </p>
+          </div>
+        </div>
+
+        <footer className="flex justify-end border-border/60 border-t pt-4">
+          <ConfirmButton
+            size="sm"
+            disabled={!buildReady}
+            confirmPrefKey="confirmBuild"
+            onConfirm={handleApply}
+            message="Build and apply your saved configuration?"
+            color="teal"
+          >
+            {rebuildRunning ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+            ) : (
+              <Wrench className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+            {rebuildRunning ? "Building…" : "Build & Test"}
+          </ConfirmButton>
+        </footer>
+      </div>
+    );
+  }
+
+  if (files.length === 0) return null;
 
   const total = files.length;
   const buildChecking = isManualDrift && buildStatus === "checking";
-  const buildReady = buildStatus === "passed" && !isApplyBusy && !rebuildRunning;
 
   return (
     <div className="flex flex-col gap-4">

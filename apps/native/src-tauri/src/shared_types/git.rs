@@ -69,6 +69,8 @@ pub struct GitState {
     pub external_build_detected: bool,
     /// True when the configured upstream contains a fast-forward update.
     pub upstream_update_available: bool,
+    /// True when a rebuild is needed to bring the system up to date with the current working tree.
+    pub rebuild_needed: bool,
 }
 
 /// Result of a successful `git_commit` command. State mirrors (git, evolve,

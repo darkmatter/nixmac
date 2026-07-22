@@ -8,6 +8,7 @@ function mirrorGitState(
   git: GitStatus | null,
   externalBuildDetected = false,
   upstreamUpdateAvailable = false,
+  rebuildNeeded = false,
 ): void {
   viewModelActions.setState((state) => ({
     git,
@@ -15,6 +16,7 @@ function mirrorGitState(
       ...state.build,
       externalBuildDetected,
       upstreamUpdateAvailable,
+      rebuildNeeded,
     },
   }));
 }
@@ -36,8 +38,13 @@ export async function startGitSync(): Promise<() => void> {
       // deprecated(orpc): replace with client/orpc from @/lib/orpc
       hydrate: () => tauriAPI.git.state(),
       event: "git_state_changed",
-      mirror: ({ gitStatus, externalBuildDetected, upstreamUpdateAvailable }) =>
-        mirrorGitState(gitStatus, externalBuildDetected, upstreamUpdateAvailable),
+      mirror: ({ gitStatus, externalBuildDetected, upstreamUpdateAvailable, rebuildNeeded }) =>
+        mirrorGitState(
+          gitStatus,
+          externalBuildDetected,
+          upstreamUpdateAvailable,
+          rebuildNeeded,
+        ),
       onEvent: () => invalidateHistory(),
     }),
     ipcRenderer.on<string>("git_state_error", (event) => {

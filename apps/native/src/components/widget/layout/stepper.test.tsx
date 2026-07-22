@@ -101,6 +101,26 @@ describe("Stepper", () => {
     expect(screen.getByRole("button", { name: "Go to Review step" })).toBeDisabled();
   });
 
+  it("shows Review as the active destination when saved updates need a build", () => {
+    viewModelActions.setState({
+      evolve: makeEvolveState({ step: "begin" }),
+      git: { ...gitWithChanges(), changes: [], cleanHead: true },
+      build: {
+        externalBuildDetected: false,
+        upstreamUpdateAvailable: false,
+        rebuildNeeded: true,
+      },
+    });
+
+    render(<Stepper />);
+
+    expect(screen.getByRole("list", { name: /step 2 of 3, Review/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Go to Review step" })).toHaveAttribute(
+      "aria-current",
+      "step",
+    );
+  });
+
   it("stays visible while generating, with navigation locked", () => {
     viewModelActions.setState({
       evolve: makeEvolveState({ step: "commit" }),

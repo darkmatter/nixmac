@@ -5,6 +5,7 @@
 //! record the status they just produced. Everything else reads the cell via
 //! [`get`] or subscribes to [`GIT_STATE_CHANGED_EVENT`].
 
+use std::sync::Mutex;
 use tauri::{AppHandle, Manager, Runtime};
 
 use crate::observable::Observable;
@@ -12,11 +13,17 @@ use crate::shared_types::{GitState, GitStatus};
 
 pub const GIT_STATE_CHANGED_EVENT: &str = "git_state_changed";
 
+/// Coordinates asynchronous rebuild-needed checks with successful builds.
+/// A mutex makes validating a check revision and writing its result atomic
+/// with invalidating checks after activation.
+static REBUILD_NEEDED_REVISION: Mutex<u64> = Mutex::new(0);
+
 pub fn load_observable<R: Runtime>(app: &AppHandle<R>) -> Observable<GitState> {
     Observable::new(GitState {
         git_status: None,
         external_build_detected: false,
         upstream_update_available: false,
+        rebuild_needed: false,
     })
     .emit_to(app, GIT_STATE_CHANGED_EVENT)
 }
@@ -36,6 +43,41 @@ pub fn update<R: Runtime>(app: &AppHandle<R>, next: GitState) -> bool {
 pub fn set_upstream_update_available<R: Runtime>(app: &AppHandle<R>, available: bool) -> bool {
     app.state::<Observable<GitState>>()
         .update_if_changed(|state| state.upstream_update_available = available)
+}
+
+/// Atomically update only the result of the asynchronous rebuild-needed check.
+pub fn set_rebuild_needed<R: Runtime>(app: &AppHandle<R>, needed: bool) -> bool {
+    app.state::<Observable<GitState>>()
+        .update_if_changed(|state| state.rebuild_needed = needed)
+}
+
+/// Capture the revision an asynchronous rebuild-needed check belongs to.
+pub fn rebuild_needed_check_revision() -> u64 {
+    *REBUILD_NEEDED_REVISION.lock().unwrap()
+}
+
+/// Apply an asynchronous rebuild-needed result only if no successful build
+/// has invalidated it since the check began. Returns whether it was accepted.
+pub fn set_rebuild_needed_from_check<R: Runtime>(
+    app: &AppHandle<R>,
+    revision: u64,
+    needed: bool,
+) -> bool {
+    let current_revision = REBUILD_NEEDED_REVISION.lock().unwrap();
+    if *current_revision != revision {
+        return false;
+    }
+    set_rebuild_needed(app, needed);
+    true
+}
+
+/// Record that a successful activation brought the running system up to date.
+/// Invalidates older asynchronous checks and emits `git_state_changed` when
+/// the rebuild-needed flag changes.
+pub fn mark_build_applied<R: Runtime>(app: &AppHandle<R>) {
+    let mut revision = REBUILD_NEEDED_REVISION.lock().unwrap();
+    *revision = revision.wrapping_add(1);
+    set_rebuild_needed(app, false);
 }
 
 /// Record a fresh status snapshot, clearing the external-build flag.

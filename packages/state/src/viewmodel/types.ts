@@ -14,6 +14,7 @@ import type { RebuildLine, RebuildNotice } from "@nixmac/native/types/rebuild";
 type BuildView = {
   externalBuildDetected: boolean;
   upstreamUpdateAvailable: boolean;
+  rebuildNeeded: boolean;
 };
 
 export type RebuildLog = {

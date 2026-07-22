@@ -88,6 +88,7 @@ pub async fn onboarding_reset(app: AppHandle) -> Result<shared_types::OkResult, 
             git_status: None,
             external_build_detected: false,
             upstream_update_available: false,
+            rebuild_needed: false,
         },
     );
     if let Err(e) = evolve_state::clear(&app) {

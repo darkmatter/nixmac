@@ -33,6 +33,7 @@ export function Header() {
         isBootstrapping: state.isBootstrapping,
         activeStepOverride: state.activeStepOverride,
         hasChanges: (viewModel.git?.changes.length ?? 0) > 0,
+        rebuildNeeded: viewModel.build.rebuildNeeded,
       });
       if (step !== "setup" && state.error && state.error !== prevState.error) {
         setIsPulsing(true);

@@ -3,7 +3,7 @@
 use anyhow::{Context, Result};
 use tauri::AppHandle;
 
-use crate::state::{build_state, evolve_state};
+use crate::state::{build_state, evolve_state, git_state};
 use crate::storage::store;
 use crate::{git, shared_types};
 
@@ -33,6 +33,10 @@ pub async fn finalize_apply(app: &AppHandle) -> Result<()> {
     }
 
     build_state::record_build(app, &final_status).context("Failed to record build state")?;
+    // `prepare` refreshed the git status before the build record existed. Now
+    // that activation and bookkeeping both succeeded, immediately clear the
+    // rebuild-needed projection instead of waiting for the watcher interval.
+    git_state::mark_build_applied(app);
     // Mark onboarding's "first build/evolution" gate as satisfied. Best-effort:
     // a bookkeeping failure must not turn a successful build into a failed apply.
     if crate::state::onboarding::try_read(app).is_some()

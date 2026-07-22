@@ -133,11 +133,13 @@ function setup({
   changeMap,
   configDir = "/Users/user/darwin",
   evolve = null,
+  rebuildNeeded = false,
 }: {
   changes: Change[];
   changeMap: SemanticChangeMap;
   configDir?: string;
   evolve?: unknown;
+  rebuildNeeded?: boolean;
 }) {
   useEffect(() => {
     viewModelActions.setState({
@@ -146,6 +148,11 @@ function setup({
       preferences: makeGlobalPreferences({ configDir }),
       rebuildStatus: null,
       evolve: evolve as never,
+      build: {
+        externalBuildDetected: false,
+        upstreamUpdateAvailable: false,
+        rebuildNeeded,
+      },
     });
   }, []);
 
@@ -190,6 +197,15 @@ export const Grouped = meta.story({
 export const AiSession = meta.story({
   render: () =>
     setup({ changes: driftChanges, changeMap: summarizedChangeMap, evolve: aiSession }),
+});
+
+/**
+ * Saved configuration is newer than the running system, while the working
+ * tree itself is clean. Only the explanation and applicable build action show.
+ */
+export const SavedUpdatesReady = meta.story({
+  render: () =>
+    setup({ changes: [], changeMap: emptyChangeMap, rebuildNeeded: true }),
 });
 
 /**
