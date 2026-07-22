@@ -313,7 +313,7 @@ export const tauriAPI = {
 
   history: {
     /** @deprecated Use `client.history.get()` or `orpc.history.get` from `@/lib/orpc`. */
-    get: () => client.history.get(),
+    get: () => client.history.get({ limit: null, offset: null }),
     /** @deprecated Use `client.history.generateFrom()` or `orpc.history.generateFrom` from `@/lib/orpc`. */
     generateFrom: (commitHash: string, number: number) =>
       client.history.generateFrom({ commitHash, number }),

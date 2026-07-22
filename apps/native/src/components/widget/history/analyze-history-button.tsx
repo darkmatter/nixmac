@@ -1,21 +1,21 @@
 import { Button } from "@/components/ui/button";
 import { AnalyzeButton } from "@/components/widget/summaries/analyze-button";
-import { useHistory } from "@/hooks/use-history";
-import { useViewModel } from "@nixmac/state";
+import { useHistory, useHistoryQuery } from "@/hooks/use-history";
 import { useUiState } from "@nixmac/state";
 import { Dna, Square } from "lucide-react";
 
 // Generates commit (if need be) and summary metadata for history items that are missing it.
 export function AnalyzeHistoryButton() {
-  const history = useViewModel((state) => state.history);
+  const { history } = useHistoryQuery();
   const analyzingSize = useUiState((state) => state.analyzingHistoryForHashes.size);
   const { analyzeMany, stopAnalyzing } = useHistory();
 
-  const recentUnsummarizedHashes = history
-    .filter((item) => !item.isBase)
+  const recentUnsummarized = history
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => !item.isBase)
     .slice(0, 5)
-    .filter((item) => !item.changeMap || item.unsummarizedHashes.length > 0)
-    .map((item) => item.hash);
+    .filter(({ item }) => !item.changeMap || item.unsummarizedHashes.length > 0)
+    .map(({ item, index }) => ({ hash: item.hash, priority: index }));
 
   //stop only works for queued items
   if (analyzingSize > 1) {
@@ -32,14 +32,14 @@ export function AnalyzeHistoryButton() {
       </Button>
     );
   }
-  if (recentUnsummarizedHashes.length > 0) {
+  if (recentUnsummarized.length > 0) {
     return (
       <AnalyzeButton
         disabled={analyzingSize === 1}
-        onClick={() => analyzeMany(recentUnsummarizedHashes)}
+        onClick={() => analyzeMany(recentUnsummarized)}
       >
         <Dna className="h-[10px] w-[10px]" />
-        Analyze recent ({recentUnsummarizedHashes.length})
+        Analyze recent ({recentUnsummarized.length})
       </AnalyzeButton>
     );
   }

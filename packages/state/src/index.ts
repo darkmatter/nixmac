@@ -1,17 +1,10 @@
 export {
 	initialViewModelState,
-	viewModelActions,
-	viewModelStore,
-	type ViewModelActions,
-	type ViewModelStore,
-} from "./viewmodel";
-export {
 	selectChangeMap,
 	selectEvolve,
 	selectEvolveEvents,
 	selectExternalBuildDetected,
 	selectGit,
-	selectHistory,
 	selectHosts,
 	selectNixInstall,
 	selectPermissions,
@@ -21,18 +14,16 @@ export {
 	selectRebuildLog,
 	selectRebuildStatus,
 	useViewModel,
+	viewModelActions,
+	viewModelStore,
+	type ViewModelActions,
 	type ViewModelSelector,
+	type ViewModelStore
 } from "./viewmodel";
 export type { RebuildLog, ViewModel, ViewModelState } from "./viewmodel";
 
 export {
 	initialUiState,
-	uiActions,
-	uiStore,
-	type UiStateActions,
-	type UiStateStore,
-} from "./ui";
-export {
 	selectCommitMessageSuggestion,
 	selectConsoleLogs,
 	selectConversationalResponse,
@@ -47,15 +38,19 @@ export {
 	selectIsProcessing,
 	selectIsSummarizing,
 	selectProcessingAction,
-	selectRecommendedPrompt,
 	selectRebuildContext,
 	selectRebuildPanelDismissed,
+	selectRecommendedPrompt,
 	selectSettingsActiveTab,
 	selectSettingsOpen,
 	selectShowFilesystem,
 	selectShowHistory,
+	uiActions,
+	uiStore,
 	useUiState,
+	type UiStateActions,
 	type UiStateSelector,
+	type UiStateStore
 } from "./ui";
 export type { ProcessingAction, SettingsTab, UiStateValues } from "./ui";
 
@@ -63,16 +58,14 @@ export {
 	initialOnboardingState,
 	onboardingActions,
 	onboardingStore,
-	type OnboardingActions,
-	type OnboardingStore,
-} from "./onboarding";
-export {
 	selectCelebrating,
 	selectInferenceDeferred,
 	selectTrackedCustomizations,
 	selectViewingStep,
 	useOnboarding,
+	type OnboardingActions,
 	type OnboardingSelector,
+	type OnboardingStore
 } from "./onboarding";
 export type { InferenceSetupDraft, TrackedCustomizationSource } from "./onboarding";
 

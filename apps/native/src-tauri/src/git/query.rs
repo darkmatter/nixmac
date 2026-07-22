@@ -277,6 +277,53 @@ pub fn log(
     Ok(commits)
 }
 
+/// Total number of commits reachable from `start_hash` (HEAD by default).
+///
+/// Cheaper than `log` because it only walks OIDs without hydrating commit
+/// metadata. Used to give the frontend a total count for pagination without
+/// materializing every commit.
+pub fn commit_count(dir: &str, start_hash: &str) -> Result<usize> {
+    let repo = Repository::discover(dir)?;
+    let commit = repo.revparse_single(start_hash)?.peel_to_commit()?;
+    let mut revwalk = repo.revwalk()?;
+    revwalk.set_sorting(git2::Sort::TIME)?;
+    revwalk.push(commit.id())?;
+    Ok(revwalk.count())
+}
+
+/// Commits reachable from `commit_hash`, newest-first, capped at `limit + 1`.
+///
+/// Returns `limit + 1` commits when available so the caller can diff each
+/// commit against its parent (the last item has no parent in the window and
+/// is skipped by the summarize pipeline). This avoids walking the entire log
+/// when summarizing a single commit by hash — the previous implementation
+/// loaded every commit from HEAD and then searched for `commit_hash`.
+pub fn log_from_commit(
+    dir: &str,
+    commit_hash: &str,
+    limit: usize,
+) -> Result<Vec<crate::sqlite_types::Commit>> {
+    let repo = Repository::discover(dir)?;
+    let commit = repo.revparse_single(commit_hash)?.peel_to_commit()?;
+    let mut revwalk = repo.revwalk()?;
+    revwalk.set_sorting(git2::Sort::TIME)?;
+    revwalk.push(commit.id())?;
+
+    let mut commits = Vec::with_capacity(limit.saturating_add(1).min(512));
+    for oid in revwalk.take(limit.saturating_add(1)) {
+        let c = repo.find_commit(oid?)?;
+        let subject = c.summary().unwrap_or_default().unwrap_or_default();
+        commits.push(crate::sqlite_types::Commit {
+            id: 0,
+            hash: c.id().to_string(),
+            tree_hash: c.tree_id().to_string(),
+            message: (!subject.is_empty()).then(|| subject.to_string()),
+            created_at: c.time().seconds(),
+        });
+    }
+    Ok(commits)
+}
+
 /// Returns structured FileDiffs representing the changes between `base_ref` and the working tree.
 /// We use this to feed change details to summarization for uncommitted changes since
 /// an arbitrary reference point (e.g. last commit, last push, evolution start, etc).

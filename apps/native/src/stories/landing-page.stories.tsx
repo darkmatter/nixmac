@@ -1,14 +1,14 @@
 // @ts-nocheck - Marketing stories compose typed app fixtures and partial store state.
 import preview from "#storybook/preview";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { DriftDiffPreview } from "@/components/widget/drift/drift-diff-preview";
 import { EvolveProgress } from "@/components/widget/overlays/evolve-progress";
 import { SummaryItems } from "@/components/widget/summaries/summary-items";
 import { DarwinWidget } from "@/components/widget/widget";
 import type { EvolveEvent, EvolveState, GitStatus, SemanticChangeMap } from "@/ipc/types";
 import { cn } from "@/lib/utils";
-import { nav, RouterProvider, router } from "@/router";
+import { nav, router, RouterProvider } from "@/router";
 import {
   makeGlobalPreferences,
   makeGrantedPermissions,
@@ -218,7 +218,6 @@ function seedWidgetState(preset: WidgetPreset) {
     promptHistory: [],
     rebuildStatus: makeRebuildStatus(),
     rebuildLog: { lines: [], rawLines: [], notices: [] },
-    history: [],
   });
 
   uiActions.setShowHistory(false);

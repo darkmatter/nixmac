@@ -3,7 +3,6 @@ import type {
   EvolveState,
   GitStatus,
   GlobalPreferences,
-  HistoryItem,
   NixInstallState,
   OnboardingState,
   PermissionsState,
@@ -31,7 +30,6 @@ export type ViewModelState = {
   git: GitStatus | null;
   build: BuildView;
   changeMap: SemanticChangeMap | null;
-  history: HistoryItem[];
   /** Mirrored `GlobalPreferences`; null until the slice hydrates. */
   preferences: GlobalPreferences | null;
   /** Mirrored onboarding lifecycle (completion latch); null until hydrated. */

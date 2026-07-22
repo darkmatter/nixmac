@@ -879,6 +879,16 @@ export type GatherMetadataInput = { request: FeedbackMetadataRequest }
 
 export type GenerateHistoryFromInput = { commitHash: string; number: number }
 
+export type GetHistoryInput = { 
+/**
+ * Max items to return (page size). `None` uses the backend default.
+ */
+limit: number | null; 
+/**
+ * Number of items to skip from HEAD (newest-first offset). `None` = 0.
+ */
+offset: number | null }
+
 export type GitCommitFileInput = { filename: string; message: string }
 
 export type GitCommitInput = { message: string }
@@ -1200,6 +1210,27 @@ isOrphanedRestore: boolean;
  * Whether this history item has been undone by a later restore operation.
  */
 isUndone: boolean }
+
+/**
+ * A page of history items with a total count, returned by `history.get`.
+ * 
+ * `total` is the full commit count reachable from HEAD (not just this page),
+ * so the frontend can decide whether more pages exist without an extra round
+ * trip. `has_more` is the same thing expressed as a boolean for convenience.
+ */
+export type HistoryPage = { 
+/**
+ * Items in this page, newest-first.
+ */
+items: HistoryItem[]; 
+/**
+ * Total number of commits reachable from HEAD.
+ */
+total: number; 
+/**
+ * True when more pages remain beyond this page (offset + items.len() < total).
+ */
+hasMore: boolean }
 
 export type HomebrewItem = { name: string; version: string | null; itemType: HomebrewItemType }
 
@@ -1958,7 +1989,7 @@ export type Procedures = {
   }
   history: {
     generateFrom: Client<Record<never, never>, GenerateHistoryFromInput, void, Error>
-    get: Client<Record<never, never>, void, HistoryItem[], Error>
+    get: Client<Record<never, never>, GetHistoryInput, HistoryPage, Error>
   }
   homebrew: {
     addItems: Client<Record<never, never>, AddItemsInput, ConfigEditApplyResult, Error>

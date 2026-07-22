@@ -2,7 +2,7 @@ import { AnalyzeButton } from "@/components/widget/summaries/analyze-button";
 import { useHistory } from "@/hooks/use-history";
 import { useUiState } from "@nixmac/state";
 import { Dna, Loader2 } from "lucide-react";
-import { useState } from "react";
+
 interface AnalyzeHistoryItemButtonProps {
   hash: string;
   isPartial?: boolean;
@@ -14,23 +14,18 @@ export function AnalyzeHistoryItemButton({
   isPartial,
   className,
 }: AnalyzeHistoryItemButtonProps) {
-  const [localAnalyzing, setLocalAnalyzing] = useState(false);
-  const queuedByMany = useUiState((state) => state.analyzingHistoryForHashes.has(hash));
-  const isAnalyzing = localAnalyzing || queuedByMany;
+  // The summarize queue mirrors queued/in-flight hashes into this set, so
+  // membership covers both the "analyze all" flow and this button's own click.
+  const isAnalyzing = useUiState((state) => state.analyzingHistoryForHashes.has(hash));
   const { analyzeOne } = useHistory();
 
   return (
     <AnalyzeButton
       disabled={isAnalyzing}
       className={className}
-      onClick={async (e) => {
+      onClick={(e) => {
         e.stopPropagation();
-        setLocalAnalyzing(true);
-        try {
-          await analyzeOne(hash);
-        } finally {
-          setLocalAnalyzing(false);
-        }
+        analyzeOne(hash);
       }}
     >
       {isAnalyzing ? (

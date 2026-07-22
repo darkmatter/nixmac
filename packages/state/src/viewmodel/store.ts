@@ -22,7 +22,6 @@ export const initialViewModelState: ViewModelState = {
     externalBuildDetected: false,
   },
   changeMap: null,
-  history: [],
   preferences: null,
   onboardingState: null,
   hosts: [],

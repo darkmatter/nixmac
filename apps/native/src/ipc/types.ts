@@ -1436,6 +1436,27 @@ isOrphanedRestore: boolean;
  */
 isUndone: boolean }
 
+/**
+ * A page of history items with a total count, returned by `history.get`.
+ * 
+ * `total` is the full commit count reachable from HEAD (not just this page),
+ * so the frontend can decide whether more pages exist without an extra round
+ * trip. `has_more` is the same thing expressed as a boolean for convenience.
+ */
+export type HistoryPage = { 
+/**
+ * Items in this page, newest-first.
+ */
+items: HistoryItem[]; 
+/**
+ * Total number of commits reachable from HEAD.
+ */
+total: number; 
+/**
+ * True when more pages remain beyond this page (offset + items.len() < total).
+ */
+hasMore: boolean }
+
 export type HomebrewItem = { name: string; version: string | null; itemType: HomebrewItemType }
 
 export type HomebrewItemType = "tap" | "cask" | "brew"

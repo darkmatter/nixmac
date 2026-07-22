@@ -1,5 +1,5 @@
-import { viewModelStore } from "./store";
 import type { ViewModelStore } from "./store";
+import { viewModelStore } from "./store";
 
 /** Subscribe to slices of the Rust-backed ViewModel. */
 export const useViewModel = viewModelStore;
@@ -18,6 +18,5 @@ export const selectRebuildStatus = (state: ViewModelStore) => state.rebuildStatu
 export const selectRebuildLog = (state: ViewModelStore) => state.rebuildLog;
 export const selectEvolveEvents = (state: ViewModelStore) => state.evolveEvents;
 export const selectPromptHistory = (state: ViewModelStore) => state.promptHistory;
-export const selectHistory = (state: ViewModelStore) => state.history;
 export const selectExternalBuildDetected = (state: ViewModelStore) =>
   state.build.externalBuildDetected;

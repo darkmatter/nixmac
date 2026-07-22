@@ -1,11 +1,9 @@
-export { initialViewModelState, viewModelActions, viewModelStore, type ViewModelActions, type ViewModelStore } from "./store";
 export {
   selectChangeMap,
   selectEvolve,
   selectEvolveEvents,
   selectExternalBuildDetected,
   selectGit,
-  selectHistory,
   selectHosts,
   selectNixInstall,
   selectPermissions,
@@ -15,6 +13,7 @@ export {
   selectRebuildLog,
   selectRebuildStatus,
   useViewModel,
-  type ViewModelSelector,
+  type ViewModelSelector
 } from "./selectors";
+export { initialViewModelState, viewModelActions, viewModelStore, type ViewModelActions, type ViewModelStore } from "./store";
 export type { RebuildLog, ViewModel, ViewModelState } from "./types";

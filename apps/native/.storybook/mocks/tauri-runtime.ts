@@ -301,8 +301,8 @@ export const orpcHandlers: Record<string, OrpcHandler> = {
   "evolveMascot.show": async () => okResult(),
   "evolveMascot.hide": async () => okResult(),
   "history.get": async () => {
-    const { viewModelActions } = await import("@nixmac/state");
-    return viewModelActions.getState().history ?? [];
+    // History lives in TanStack Query now (not ViewModelStore).
+    return { items: [], total: 0, hasMore: false };
   },
   "homebrew.getStateDiff": async () => ({
     isInstalled: true,
@@ -497,7 +497,7 @@ export async function invoke(command: string, args?: Record<string, unknown>) {
       // instead of injecting a list that flips the prompt-history UI post-render.
       return [...vm.promptHistory];
     case "get_history":
-      return vm.history ?? [];
+      return { items: [], total: 0, hasMore: false };
     case "ui_get_prefs":
       return { ...prefs };
     case "permissions_check_all":
@@ -729,7 +729,7 @@ export const storybookTauriAPI = {
     },
   },
   history: {
-    get: async () => [],
+    get: async () => ({ items: [], total: 0, hasMore: false }),
     generateFrom: async () => undefined,
   },
   homebrew: {

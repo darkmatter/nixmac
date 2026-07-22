@@ -1,10 +1,10 @@
-import { useState } from "react";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
-import { useHistory } from "@/hooks/use-history";
 import type { HistoryItem } from "@/ipc/types";
-import { uiActions, useViewModel } from "@nixmac/state";
-import { getTelemetry } from "@/lib/telemetry/instance";
 import { client } from "@/lib/orpc";
+import { getTelemetry } from "@/lib/telemetry/instance";
+import { invalidateHistory } from "@/viewmodel/history";
+import { uiActions, useViewModel } from "@nixmac/state";
+import { useState } from "react";
 
 // Sentinel hash used to identify the frontend-only preview item.
 export const PREVIEW_ITEM_HASH = "n1xm4c0";
@@ -186,7 +186,6 @@ export function useHistoryRestore(
   history: HistoryItem[],
   onUncommittedChanges: () => void,
 ): HistoryRestoreResult {
-  const { loadHistory } = useHistory();
   const gitStatus = useViewModel((state) => state.git);
   const { triggerRebuild } = useRebuildStream();
 
@@ -242,7 +241,7 @@ export function useHistoryRestore(
           // The backend writes the git-state cell; `git_state_changed` mirrors it.
           await client.darwin.finalizeRestore({ targetHash: hash });
           getTelemetry().captureEvent({ name: "history_restored" });
-          await loadHistory();
+          invalidateHistory();
         },
         onFailure: async () => {
           await client.darwin.abortRestore();

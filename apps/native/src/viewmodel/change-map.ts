@@ -2,7 +2,7 @@ import type { SemanticChangeMap } from "@/ipc/types";
 import { client } from "@/lib/orpc";
 import { viewModelActions } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
-import { refreshHistorySnapshot } from "./history";
+import { invalidateHistory } from "./history";
 
 function mirrorChangeMapState(changeMap: SemanticChangeMap | null): void {
   viewModelActions.setState({ changeMap });
@@ -18,6 +18,6 @@ export function startChangeMapSync(): Promise<() => void> {
     hydrate: () => client.summarizedChanges.getChangeMap(),
     event: "change_map_changed",
     mirror: mirrorChangeMapState,
-    onEvent: () => void refreshHistorySnapshot(),
+    onEvent: () => invalidateHistory(),
   });
 }
