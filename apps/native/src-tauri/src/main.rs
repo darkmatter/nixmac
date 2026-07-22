@@ -31,6 +31,7 @@ mod panic_handler;
 mod peek;
 mod privileged_helper;
 mod rebuild;
+#[cfg(any(test, feature = "codegen"))]
 mod schema_gen;
 mod shared_types;
 mod sqlite_types;
@@ -225,6 +226,7 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
 "#;
 
 fn main() {
+    #[cfg(feature = "codegen")]
     if std::env::args().nth(1).as_deref() == Some("gen-schemas") {
         if let Err(error) = schema_gen::write_default_config_schemas() {
             eprintln!("gen-schemas: {error:#}");
@@ -233,6 +235,7 @@ fn main() {
         return;
     }
 
+    #[cfg(feature = "codegen")]
     if std::env::args().nth(1).as_deref() == Some("gen-orpc") {
         let router = orpc::build_router();
         let output_path =
@@ -249,6 +252,7 @@ fn main() {
         return;
     }
 
+    #[cfg(feature = "codegen")]
     if std::env::args().nth(1).as_deref() == Some("gen-docs-index") {
         let out_dir = std::env::args()
             .nth(2)

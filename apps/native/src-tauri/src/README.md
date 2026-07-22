@@ -11,7 +11,7 @@ callers — Rust resolves both identically.
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | `main.rs` | App entry point: initializes Tauri GUI (window, tray, plugins, DB, watcher) or dispatches to CLI mode | OS / process launcher |
 | `cli.rs` | Clap argument parsing and headless `nixmac evolve` execution | main.rs |
-| `shared_types.rs` | Specta-exported contract types (events, evolve state, feedback, git, prefs, system). Regenerated into TypeScript via `cargo run --example specta_gen_ts` | Nearly every module |
+| `shared_types.rs` | Specta-exported contract types (events, evolve state, feedback, git, prefs, system). Regenerated into TypeScript via `cargo run --example specta_gen_ts --features codegen` | Nearly every module |
 | `sqlite_types.rs` | Structs mirroring SQLite table rows (Commit, Evolution, Prompt, Change, etc.) kept in sync with `db/schema.rs` | db, summarize, history, state |
 | `types.rs` | Tauri command response types and `emit_evolve_event` helper for streaming progress to the frontend | commands, evolve, rebuild, watcher |
 | `peek.rs` | Peek/preview-indicator UX: monitors screen corners, manages overlay window for uncommitted changes | main.rs, commands::peek |

@@ -1,7 +1,8 @@
 //! JSON Schema codegen for `#[derive(Configurable)]` settings files.
 //!
-//! Run: `cd apps/native/src-tauri && cargo run -- gen-schemas`
+//! Run: `cd apps/native/src-tauri && cargo run --features codegen -- gen-schemas`
 
+#[cfg(feature = "codegen")]
 use anyhow::{Context, Result};
 use configurable::{ConfigurableMeta, inventory};
 use std::path::{Path, PathBuf};
@@ -24,6 +25,7 @@ fn link_configurables() {
 }
 
 /// Write JSON Schema files for every registered configurable.
+#[cfg(feature = "codegen")]
 pub fn write_config_schemas(out_dir: impl AsRef<Path>) -> Result<()> {
     link_configurables();
     let out_dir = out_dir.as_ref();
@@ -42,6 +44,7 @@ pub fn write_config_schemas(out_dir: impl AsRef<Path>) -> Result<()> {
     Ok(())
 }
 
+#[cfg(feature = "codegen")]
 pub fn write_default_config_schemas() -> Result<()> {
     write_config_schemas(default_out_dir())
 }
@@ -93,7 +96,7 @@ mod tests {
                 serde_json::from_str(committed.trim()).expect("parse committed schema");
             assert_eq!(
                 generated, committed_value,
-                "schema drift for {} — run: cargo run -- gen-schemas",
+                "schema drift for {} — run: cargo run --features codegen -- gen-schemas",
                 meta.schema_file
             );
         }
