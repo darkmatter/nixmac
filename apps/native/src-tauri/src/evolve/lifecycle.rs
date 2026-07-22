@@ -25,6 +25,10 @@ impl EvolutionTelemetry {
     fn failed_defaults(duration_ms: i64) -> Self {
         Self {
             state: EvolutionState::Failed,
+            terminal_reason: None,
+            build_verified: false,
+            last_build_ok: None,
+            tool_names: vec![],
             iterations: 0,
             build_attempts: 0,
             total_tokens: 0,
@@ -38,6 +42,10 @@ impl EvolutionTelemetry {
     fn from_evolution(evolution: &evolve::Evolution, duration_ms: i64) -> Self {
         Self {
             state: evolution.state.clone(),
+            terminal_reason: evolution.terminal_reason,
+            build_verified: evolution.build_verified,
+            last_build_ok: evolution.last_build_ok,
+            tool_names: evolution.tool_names(),
             iterations: evolution.iterations,
             build_attempts: evolution.build_attempts,
             total_tokens: evolution.total_tokens,
@@ -51,6 +59,10 @@ impl EvolutionTelemetry {
     fn from_failed_progress(progress: &evolve::EvolutionProgress, duration_ms: i64) -> Self {
         Self {
             state: progress.state.clone(),
+            terminal_reason: progress.terminal_reason,
+            build_verified: progress.build_verified,
+            last_build_ok: progress.last_build_ok,
+            tool_names: progress.tool_names.clone(),
             iterations: progress.iterations,
             build_attempts: progress.build_attempts,
             total_tokens: progress.total_tokens,

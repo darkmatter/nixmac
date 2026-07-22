@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::shared_types::{Evolution, EvolutionState, ThinkingEntry, ToolCallRecord};
+use crate::shared_types::{
+    Evolution, EvolutionState, TerminalReason, ThinkingEntry, ToolCallRecord,
+};
 
 // Moved to shared_types so they can ride the wire in EvolveEventDetail;
 // re-exported here for the existing tool/editor code.
@@ -24,11 +26,24 @@ impl Evolution {
             build_attempts: 0,
             changes_summary: None,
             suggested_commit_message: None,
+            terminal_reason: None,
+            build_verified: false,
+            last_build_ok: None,
         }
     }
 
     pub fn has_edits(&self) -> bool {
         !self.edits.is_empty()
+    }
+
+    /// Names of the tools invoked so far, deduplicated in first-call order.
+    pub fn tool_names(&self) -> Vec<String> {
+        let mut seen = std::collections::HashSet::new();
+        self.tool_calls
+            .iter()
+            .filter(|call| seen.insert(call.tool.as_str()))
+            .map(|call| call.tool.clone())
+            .collect()
     }
 
     /// Add a thinking entry
@@ -75,6 +90,10 @@ impl Evolution {
 #[serde(rename_all = "camelCase")]
 pub struct EvolutionProgress {
     pub state: EvolutionState,
+    pub terminal_reason: Option<TerminalReason>,
+    pub build_verified: bool,
+    pub last_build_ok: Option<bool>,
+    pub tool_names: Vec<String>,
     pub iterations: usize,
     pub build_attempts: usize,
     pub total_tokens: u32,
@@ -103,6 +122,10 @@ impl EvolutionRunError {
             message: message.into(),
             progress: EvolutionProgress {
                 state: EvolutionState::Failed,
+                terminal_reason: evolution.terminal_reason,
+                build_verified: evolution.build_verified,
+                last_build_ok: evolution.last_build_ok,
+                tool_names: evolution.tool_names(),
                 iterations,
                 build_attempts,
                 total_tokens,

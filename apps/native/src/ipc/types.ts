@@ -486,7 +486,22 @@ changesSummary: string | null;
 /**
  * AI-generated commit message suggestion
  */
-suggestedCommitMessage: string | null }
+suggestedCommitMessage: string | null; 
+/**
+ * Why the agent loop ended; `None` while the run is still in flight or
+ * on evolutions recorded before this field existed.
+ */
+terminalReason?: TerminalReason | null; 
+/**
+ * Whether the tree passed `build_check` with no edits after it. Kept in
+ * sync by the tool-result pipeline; the `done` gate reads it to decide
+ * whether a completion may be accepted.
+ */
+buildVerified?: boolean; 
+/**
+ * Outcome of the most recent `build_check`; `None` when no build ran.
+ */
+lastBuildOk?: boolean | null }
 
 /**
  * Evolution lifecycle state.
@@ -536,6 +551,23 @@ export type EvolutionTelemetry = {
  * Final lifecycle state for the evolution.
  */
 state: EvolutionState; 
+/**
+ * Why the agent loop ended; `None` on results recorded before this
+ * field existed or when the run died outside the loop.
+ */
+terminalReason?: TerminalReason | null; 
+/**
+ * Whether the tree passed `build_check` with no edits after it.
+ */
+buildVerified?: boolean; 
+/**
+ * Outcome of the most recent `build_check`; `None` when no build ran.
+ */
+lastBuildOk?: boolean | null; 
+/**
+ * Names of the tools invoked, deduplicated in first-call order.
+ */
+toolNames?: string[]; 
 /**
  * Number of agent iterations completed.
  */
@@ -1156,7 +1188,7 @@ externalBuildDetected: boolean;
 /**
  * True when the configured upstream contains a fast-forward update.
  */
-upstreamUpdateAvailable: boolean;
+upstreamUpdateAvailable: boolean; 
 /**
  * True when a rebuild is needed to bring the system up to date with the current working tree.
  */
@@ -2169,6 +2201,40 @@ defaults: SystemDefault[];
 totalScanned: number }
 
 /**
+ * Why the agent loop reached its terminal state.
+ * 
+ * Recorded independently of [`EvolutionState`] so results distinguish *how*
+ * a run ended (explicit `done`, plain-text response, safety limit, provider
+ * failure, ...) from *what* it produced.
+ */
+export type TerminalReason = 
+/**
+ * The agent called the `done` tool and the gate accepted it.
+ */
+"done" | 
+/**
+ * The agent returned plain text with no tool calls.
+ */
+"plainResponse" | 
+/**
+ * A safety limit stopped the run (iterations, builds, tokens, or
+ * repeated rejected completions).
+ */
+"limit" | 
+/**
+ * The AI provider request failed.
+ */
+"providerError" | 
+/**
+ * The AI provider request exceeded its time bound.
+ */
+"timeout" | 
+/**
+ * The user cancelled the evolution.
+ */
+"cancelled"
+
+/**
  * A single thinking entry from the agent's reasoning process
  */
 export type ThinkingEntry = { 
@@ -2488,3 +2554,4 @@ version: string;
  * Release notes from the channel manifest, when available.
  */
 notes: string | null }
+

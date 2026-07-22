@@ -105,6 +105,18 @@ pub struct Evolution {
     pub changes_summary: Option<String>,
     /// AI-generated commit message suggestion
     pub suggested_commit_message: Option<String>,
+    /// Why the agent loop ended; `None` while the run is still in flight or
+    /// on evolutions recorded before this field existed.
+    #[serde(default)]
+    pub terminal_reason: Option<TerminalReason>,
+    /// Whether the tree passed `build_check` with no edits after it. Kept in
+    /// sync by the tool-result pipeline; the `done` gate reads it to decide
+    /// whether a completion may be accepted.
+    #[serde(default)]
+    pub build_verified: bool,
+    /// Outcome of the most recent `build_check`; `None` when no build ran.
+    #[serde(default)]
+    pub last_build_ok: Option<bool>,
 }
 
 /// Who is asking a [`EvolveEventDetail::Question`].
@@ -379,12 +391,48 @@ pub enum EvolutionState {
     LimitReached,
 }
 
+/// Why the agent loop reached its terminal state.
+///
+/// Recorded independently of [`EvolutionState`] so results distinguish *how*
+/// a run ended (explicit `done`, plain-text response, safety limit, provider
+/// failure, ...) from *what* it produced.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum TerminalReason {
+    /// The agent called the `done` tool and the gate accepted it.
+    Done,
+    /// The agent returned plain text with no tool calls.
+    PlainResponse,
+    /// A safety limit stopped the run (iterations, builds, tokens, or
+    /// repeated rejected completions).
+    Limit,
+    /// The AI provider request failed.
+    ProviderError,
+    /// The AI provider request exceeded its time bound.
+    Timeout,
+    /// The user cancelled the evolution.
+    Cancelled,
+}
+
 /// Telemetry counters from a completed evolution run.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct EvolutionTelemetry {
     /// Final lifecycle state for the evolution.
     pub state: EvolutionState,
+    /// Why the agent loop ended; `None` on results recorded before this
+    /// field existed or when the run died outside the loop.
+    #[serde(default)]
+    pub terminal_reason: Option<TerminalReason>,
+    /// Whether the tree passed `build_check` with no edits after it.
+    #[serde(default)]
+    pub build_verified: bool,
+    /// Outcome of the most recent `build_check`; `None` when no build ran.
+    #[serde(default)]
+    pub last_build_ok: Option<bool>,
+    /// Names of the tools invoked, deduplicated in first-call order.
+    #[serde(default)]
+    pub tool_names: Vec<String>,
     /// Number of agent iterations completed.
     pub iterations: usize,
     /// Number of build attempts completed.
