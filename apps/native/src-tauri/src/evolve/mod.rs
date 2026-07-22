@@ -771,6 +771,80 @@ fn finish_after_limit_stop<R: Runtime>(
     evolution.terminal_reason = Some(TerminalReason::Limit);
 }
 
+/// Plain-text (no tool call) responses over unverified edits tolerated
+/// before the run stops instead of accepting the result: the first one is
+/// answered with a verification instruction, the next one ends the run.
+const MAX_UNVERIFIED_PLAIN_RESPONSES: usize = 2;
+
+/// Outcome of a plain-text assistant response (no tool calls).
+enum PlainResponseOutcome {
+    /// Terminal: state, summary, and terminal reason are set on the
+    /// evolution; the loop should break.
+    Finish,
+    /// Edits exist but are unverified: send the instruction back to the
+    /// model and continue the loop.
+    RequireVerification(String),
+}
+
+/// Resolve a plain-text response into a terminal state, consulting the same
+/// verification flag the `done` gate enforces (N4).
+///
+/// Without this, a model that made edits and then replied with prose —
+/// instead of calling `done` — completed as `Generated` with zero builds,
+/// bypassing the gate entirely (eval case 67). Now the first such reply is
+/// answered with a structured instruction (verify or revert), and a repeat
+/// ends the run as `LimitReached` — never a silently successful result.
+fn resolve_plain_response_terminal(
+    evolution: &mut Evolution,
+    content: Option<String>,
+    unverified_plain_responses: &mut usize,
+) -> PlainResponseOutcome {
+    evolution.terminal_reason = Some(TerminalReason::PlainResponse);
+
+    if evolution.edits.is_empty() {
+        // No files were changed — this is a conversational reply (e.g. "hi").
+        // The lifecycle emits the terminal `Complete` event carrying the
+        // content as `conversational_response`; mark the state so the
+        // caller can skip the review workflow.
+        info!("Conversational response (no edits made)");
+        evolution.summary = content;
+        evolution.state = EvolutionState::Conversational;
+        return PlainResponseOutcome::Finish;
+    }
+
+    if evolution.build_verified {
+        info!("Model finished without tool calls (edits verified by build_check)");
+        evolution.summary = content;
+        evolution.state = EvolutionState::Generated;
+        return PlainResponseOutcome::Finish;
+    }
+
+    *unverified_plain_responses += 1;
+    if *unverified_plain_responses >= MAX_UNVERIFIED_PLAIN_RESPONSES {
+        warn!(
+            "⚠️ Model finished with plain text over unverified edits {} times — stopping",
+            unverified_plain_responses
+        );
+        evolution.summary = Some(
+            "Evolution stopped: the AI made edits but repeatedly finished without \
+             verifying them with a build check. The changes were left unverified — \
+             review them before applying."
+                .to_string(),
+        );
+        evolution.state = EvolutionState::LimitReached;
+        return PlainResponseOutcome::Finish;
+    }
+
+    PlainResponseOutcome::RequireVerification(
+        "You replied with plain text, but you have edits that have not passed \
+         build_check since the last change. Do not finish with unverified edits. \
+         Either run build_check now and, once it passes, call done with your \
+         summary — or, if these changes should be abandoned, revert them by \
+         editing the files back and then explain why in your reply."
+            .to_string(),
+    )
+}
+
 /// How often streamed provider text deltas are flushed as StreamDelta
 /// events. Batching keeps event volume low (mirrors `log_summarizer` and the
 /// build-check stream) while the text still reads as live typing.
@@ -1189,6 +1263,9 @@ pub async fn generate_evolution<R: Runtime>(
     // Track whether we've made any actual edits and/or build checks
     let mut made_edit = false;
     let mut made_build_check = false;
+    // Plain-text terminal responses given while edits were unverified; the
+    // run stops once this reaches MAX_UNVERIFIED_PLAIN_RESPONSES.
+    let mut unverified_plain_responses: usize = 0;
 
     // Agentic loop - let the model use tools until done AND build passes
     loop {
@@ -1880,30 +1957,37 @@ Do not invent tool names and do not place tool invocations in assistant content.
         };
 
         if no_tool_calls {
-            evolution.terminal_reason = Some(TerminalReason::PlainResponse);
-            if let Message::Assistant {
-                content: Some(content),
-                ..
-            } = assistant_msg
-            {
-                if evolution.edits.is_empty() {
-                    // No files were changed — this is a conversational reply (e.g. "hi").
-                    // The lifecycle emits the terminal `Complete` event carrying the
-                    // content as `conversational_response`; mark the state so the
-                    // caller can skip the review workflow.
-                    info!("Conversational response (no edits made)");
-                    evolution.summary = Some(content);
-                    evolution.state = EvolutionState::Conversational;
-                } else {
-                    info!("Model finished without tool calls (edits already made)");
-                    evolution.summary = Some(content);
-                    evolution.state = EvolutionState::Generated;
+            let content = match assistant_msg {
+                Message::Assistant { content, .. } => content,
+                _ => None,
+            };
+            match resolve_plain_response_terminal(
+                &mut evolution,
+                content,
+                &mut unverified_plain_responses,
+            ) {
+                PlainResponseOutcome::Finish => break,
+                PlainResponseOutcome::RequireVerification(instruction) => {
+                    info!(
+                        "Model replied with plain text over unverified edits — requiring build_check or revert"
+                    );
+                    emit_evolve_event(
+                        app,
+                        EvolveEvent::info(
+                            start_time,
+                            Some(iteration),
+                            "The agent stopped without verifying its edits — asking it to run a build check or revert.",
+                        ),
+                    );
+                    messages.push(EvolutionMessage::permanent(
+                        Message::User {
+                            content: instruction,
+                        },
+                        iteration,
+                        None,
+                    ));
                 }
-            } else {
-                info!("Model finished without tool calls");
-                evolution.state = EvolutionState::Generated;
             }
-            break;
         }
 
         // Safety limits -- Max Iterations Before Edit Check
@@ -2780,6 +2864,102 @@ mod tests {
         assert!(
             !matches!(evolution.state, EvolutionState::Generated),
             "done must not complete an evolution whose last build_check failed"
+        );
+    }
+
+    // Regression for eval case 67 (N4): one edit followed by a plain-text
+    // response (no tool calls, zero builds) must never complete as a
+    // successful Generated result. The first offense asks for verification;
+    // the second ends the run as LimitReached.
+    #[test]
+    fn plain_response_after_unverified_edit_never_completes_as_generated() {
+        let mut evolution = Evolution::new("prompt");
+        let mut done_gate = DoneGate::default();
+        let mut offenses = 0usize;
+
+        run_tool_result(
+            &ToolResult::Edit(FileEdit {
+                path: "configuration.nix".to_string(),
+                search: "a".to_string(),
+                replace: "b".to_string(),
+            }),
+            &mut evolution,
+            &mut done_gate,
+        );
+
+        let first = super::resolve_plain_response_terminal(
+            &mut evolution,
+            Some("I added the package.".to_string()),
+            &mut offenses,
+        );
+        let super::PlainResponseOutcome::RequireVerification(instruction) = first else {
+            panic!("the first unverified plain response must ask for verification");
+        };
+        assert!(
+            instruction.contains("build_check"),
+            "instruction should point at build_check: {instruction}"
+        );
+        assert!(
+            !matches!(evolution.state, EvolutionState::Generated),
+            "evolution must not be Generated after an unverified plain response"
+        );
+
+        let second = super::resolve_plain_response_terminal(
+            &mut evolution,
+            Some("I added the package.".to_string()),
+            &mut offenses,
+        );
+        assert!(matches!(second, super::PlainResponseOutcome::Finish));
+        assert_eq!(evolution.state, EvolutionState::LimitReached);
+        assert_eq!(
+            evolution.terminal_reason,
+            Some(TerminalReason::PlainResponse)
+        );
+        assert!(!evolution.build_verified);
+    }
+
+    // A plain-text response after a verified build is a legitimate
+    // completion: edits exist and the tree passed build_check unchanged.
+    #[test]
+    fn plain_response_with_verified_edits_completes_as_generated() {
+        let mut evolution = Evolution::new("prompt");
+        let mut done_gate = DoneGate::default();
+        let mut offenses = 0usize;
+
+        run_tool_result(
+            &ToolResult::Edit(FileEdit {
+                path: "configuration.nix".to_string(),
+                search: "a".to_string(),
+                replace: "b".to_string(),
+            }),
+            &mut evolution,
+            &mut done_gate,
+        );
+        run_tool_result(&build_result(true), &mut evolution, &mut done_gate);
+
+        let outcome = super::resolve_plain_response_terminal(
+            &mut evolution,
+            Some("All set.".to_string()),
+            &mut offenses,
+        );
+        assert!(matches!(outcome, super::PlainResponseOutcome::Finish));
+        assert_eq!(evolution.state, EvolutionState::Generated);
+        assert_eq!(evolution.summary.as_deref(), Some("All set."));
+    }
+
+    // A plain-text response with no edits stays a conversational reply, even
+    // with no content at all.
+    #[test]
+    fn plain_response_without_edits_is_conversational() {
+        let mut evolution = Evolution::new("prompt");
+        let mut offenses = 0usize;
+
+        let outcome = super::resolve_plain_response_terminal(&mut evolution, None, &mut offenses);
+        assert!(matches!(outcome, super::PlainResponseOutcome::Finish));
+        assert_eq!(evolution.state, EvolutionState::Conversational);
+        assert_eq!(
+            evolution.terminal_reason,
+            Some(TerminalReason::PlainResponse)
         );
     }
 
