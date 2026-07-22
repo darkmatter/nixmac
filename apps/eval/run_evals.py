@@ -8,12 +8,14 @@ import csv
 import getpass
 import json
 import os
+import platform
 import shutil
 import signal
 import subprocess
 import tempfile
 from contextlib import suppress
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -55,14 +57,14 @@ DEFAULT_NIXMAC = REPO_ROOT / "target/debug/nixmac"
 # state, credentials, or nix config.
 NIXMAC_APP_DATA_DIR_ENV = "NIXMAC_APP_DATA_DIR"
 
+
 def _looks_like_git_url(value: str) -> bool:
     """Heuristic: is `value` a git URL rather than a local path?"""
     if value.startswith(("git+", "github:")):
         return True
     head = value.split("?", 1)[0]
-    return (
-        head.startswith(("http://", "https://", "git@", "ssh://", "git://"))
-        or head.endswith(".git")
+    return head.startswith(("http://", "https://", "git@", "ssh://", "git://")) or head.endswith(
+        ".git"
     )
 
 
@@ -76,20 +78,18 @@ def _parse_flake_url(value: str) -> tuple[str, str | None]:
       git@host:user/repo.git[?ref=X]                 — ssh
     """
     if value.startswith("github:"):
-        rest = value[len("github:"):]
+        rest = value[len("github:") :]
         # Strip any query string for safety; refs in github: come via the path.
         rest = rest.split("?", 1)[0]
         parts = rest.split("/", 2)
         if len(parts) < 2 or not parts[0] or not parts[1]:
-            raise ValueError(
-                f"github: URL must be github:user/repo[/ref]: {value!r}"
-            )
+            raise ValueError(f"github: URL must be github:user/repo[/ref]: {value!r}")
         user, repo = parts[0], parts[1]
         ref = parts[2] if len(parts) == 3 and parts[2] else None
         return f"https://github.com/{user}/{repo}", ref
 
     if value.startswith("git+"):
-        value = value[len("git+"):]
+        value = value[len("git+") :]
 
     if "?" in value:
         base, qs = value.split("?", 1)
@@ -102,10 +102,7 @@ def _parse_flake_url(value: str) -> tuple[str, str | None]:
     return value, None
 
 
-def resolve_base_config(
-    base_config: str | None,
-    clone_into: Path,
-) -> Path:
+def resolve_base_config(base_config: str | None, clone_into: Path) -> Path:
     """Resolve --base-config into a directory holding a nix-darwin config.
 
     Resolution order:
@@ -136,11 +133,7 @@ def resolve_base_config(
         kwargs: dict[str, Any] = {"depth": 1, "single_branch": True}
         if ref:
             kwargs["branch"] = ref
-        print(
-            f"Cloning {clone_url}"
-            + (f" @ {ref}" if ref else "")
-            + f" into {clone_into}"
-        )
+        print(f"Cloning {clone_url}" + (f" @ {ref}" if ref else "") + f" into {clone_into}")
         Repo.clone_from(clone_url, str(clone_into), **kwargs)
         return clone_into
 
@@ -264,12 +257,7 @@ def create_nix_config_git_repo(
     # Copy template into temp dir (full recursive copy, preserve all files).
     # Ignore any .git from the source so we always init a fresh repo and
     # don't inherit the source's branch state or bloat the temp dir.
-    shutil.copytree(
-        template_dir,
-        tmpdir,
-        dirs_exist_ok=True,
-        ignore=shutil.ignore_patterns(".git"),
-    )
+    shutil.copytree(template_dir, tmpdir, dirs_exist_ok=True, ignore=shutil.ignore_patterns(".git"))
 
     if hostname is None:
         hostname = _get_eval_hostname()
@@ -311,9 +299,7 @@ def create_nix_config_git_repo(
     (tmpdir / ".gitignore").write_text("flake.lock\n")
 
     generate_repo_scoped_settings(
-        tmpdir,
-        max_token_budget=max_token_budget,
-        max_iterations=max_iterations,
+        tmpdir, max_token_budget=max_token_budget, max_iterations=max_iterations
     )
 
     # Initialize git repo
@@ -338,6 +324,173 @@ def create_nix_config_git_repo(
     return tmpdir
 
 
+def _terminate_process_group(proc: subprocess.Popen, grace_seconds: float = 10.0) -> None:
+    """Kill the case's whole process group, not just the direct child.
+
+    nixmac shells out to nix / darwin-rebuild / git / sops, and a blocking
+    tool (e.g. ensure_secret opening an editor) can leave grandchildren alive
+    after the parent is signalled. subprocess.run only SIGKILLs the direct
+    child on timeout, so those orphans survived and one case's `sops` +
+    `emacsclient` kept a terminal blocked. We start each case in its own
+    session (setsid) so os.killpg can take the entire tree down: SIGTERM
+    first, then SIGKILL if it does not exit within the grace period.
+    """
+    try:
+        pgid = os.getpgid(proc.pid)
+    except ProcessLookupError:
+        return
+    with suppress(ProcessLookupError):
+        os.killpg(pgid, signal.SIGTERM)
+    try:
+        proc.wait(timeout=grace_seconds)
+        return
+    except subprocess.TimeoutExpired:
+        pass
+    with suppress(ProcessLookupError):
+        os.killpg(pgid, signal.SIGKILL)
+    with suppress(Exception):
+        proc.wait(timeout=5)
+
+
+def _run_case_process(
+    cmd: list[str], child_env: dict, timeout_seconds: int | None
+) -> tuple[bool, int | None]:
+    """Run the case subprocess; return (timed_out, returncode).
+
+    On timeout the whole process group is terminated (see
+    _terminate_process_group)."""
+    proc = subprocess.Popen(cmd, start_new_session=True, env=child_env)
+    try:
+        proc.wait(timeout=timeout_seconds)
+        return False, proc.returncode
+    except subprocess.TimeoutExpired:
+        _terminate_process_group(proc)
+        return True, None
+
+
+def _scrub_secrets(text: str, secrets: list[str]) -> str:
+    """Redact known secret values before writing anything durable."""
+    for secret in secrets:
+        if secret:
+            text = text.replace(secret, "«redacted»")
+    return text
+
+
+def harvest_case_artifacts(
+    app_data_dir: Path | None,
+    result_dir: Path | None,
+    results_dir: Path,
+    case_num: Any,
+    secrets: list[str],
+) -> None:
+    """Copy diagnostic evidence into the results dir before cleanup wipes it.
+
+    The per-case app-data dir (which holds NIXMAC_RECORD_COMPLETIONS logs) and
+    the temp result dir are deleted in the finally below, so a failed,
+    timed-out, or limit-reached run otherwise leaves nothing to diagnose. Copy
+    the completion-log JSONL and any partial evolution_result.json into
+    `<results_dir>/case_<n>_artifacts/`, scrubbing known secret values. Never
+    copies credentials or settings files.
+    """
+    dest = results_dir / f"case_{case_num}_artifacts"
+    copied = False
+
+    logs_src = app_data_dir / "logs" if app_data_dir else None
+    if logs_src and logs_src.is_dir():
+        for log_file in sorted(logs_src.glob("*.jsonl")):
+            with suppress(Exception):
+                text = log_file.read_text(errors="replace")
+                dest.mkdir(parents=True, exist_ok=True)
+                (dest / log_file.name).write_text(_scrub_secrets(text, secrets))
+                copied = True
+
+    partial = result_dir / "evolution_result.json" if result_dir else None
+    if partial and partial.exists():
+        with suppress(Exception):
+            text = partial.read_text(errors="replace")
+            dest.mkdir(parents=True, exist_ok=True)
+            (dest / "evolution_result.partial.json").write_text(_scrub_secrets(text, secrets))
+            copied = True
+
+    if copied:
+        print(f"Case {case_num}: preserved diagnostic artifacts in {dest}")
+
+
+def _interpret_case_outcome(
+    case_num: Any,
+    cmd: list[str],
+    app_data_dir: Path,
+    out_path: Path,
+    timed_out: bool,
+    timeout_seconds: int | None,
+) -> Any:
+    """Turn a finished (or killed) case process into a result dict.
+
+    Structured stubs let graders distinguish a timeout or infrastructure
+    failure from a model-decided stop. A timeout that killed the binary before
+    it created its sqlite DB is recorded as infrastructure rather than
+    aborting the whole suite via assert_hermetic_run (the hermetic env var was
+    set regardless, so this is not proof of a non-hermetic run)."""
+    if timed_out and not (app_data_dir / "nixmac.db").exists():
+        print(
+            f"Case {case_num}: timed out before nixmac created its state DB; "
+            f"recording as infrastructure failure."
+        )
+        return {
+            "success": False,
+            "error": f"case timed out after {timeout_seconds}s (before state init)",
+            "case": case_num,
+            "command": cmd,
+            "state": "timeout",
+        }
+
+    # Refuse to continue if the binary ignored the hermetic override — that
+    # would mean this case just ran against real user state.
+    assert_hermetic_run(app_data_dir)
+
+    if timed_out:
+        stub = {
+            "success": False,
+            "error": f"case timed out after {timeout_seconds}s",
+            "case": case_num,
+            "command": cmd,
+            "state": "timeout",
+        }
+        if out_path.exists():
+            with suppress(Exception):
+                stub["partial_result"] = json.loads(out_path.read_text())
+        return stub
+
+    if out_path.exists():
+        evolution_result = json.loads(out_path.read_text())
+        print(json.dumps(evolution_result, indent=2))
+        return evolution_result
+
+    print("No evolution result file found after running nixmac.")
+    # TODO: nixmac CLI should report structured failure info (exit code + JSON).
+    stub = {
+        "success": False,
+        "error": "nixmac did not produce evolution_result.json",
+        "case": case_num,
+        "command": cmd,
+    }
+    with suppress(Exception):
+        out_path.write_text(json.dumps(stub, indent=2))
+    return stub
+
+
+def _result_is_unclean(result: Any, timed_out: bool) -> bool:
+    """True when a run merits keeping diagnostic artifacts."""
+    if timed_out:
+        return True
+    if not isinstance(result, dict):
+        return False
+    if result.get("success") is False or result.get("ok") is False:
+        return True
+    state = (result.get("result") or {}).get("telemetry", {}).get("state") or result.get("state")
+    return state in {"limitReached", "failed", "timeout"}
+
+
 def run_test_case(
     case: EvalTestCase,
     nixmac: Path,
@@ -352,6 +505,8 @@ def run_test_case(
     max_token_budget: int | None = None,
     host: str | None = None,
     case_timeout: int | None = None,
+    results_dir: Path = RESULTS_DIR,
+    keep_logs: bool = False,
 ) -> Any:
     """Run a single test case.
 
@@ -366,6 +521,9 @@ def run_test_case(
     config_dir: Path | None = None
     result_dir: Path | None = None
     app_data_dir: Path | None = None
+    final_result: Any = None
+    timed_out = False
+    secrets = [s for s in [openai_key, openrouter_key, *(api_key_env or {}).values()] if s]
     try:
         # Repo-scoped EvolutionLimits (maxTokenBudget, maxIterations) are
         # written into <config_dir>/.nixmac/settings.json and committed as
@@ -420,68 +578,38 @@ def run_test_case(
             child_env["OPENROUTER_API_KEY"] = openrouter_key
         for env_key, value in (api_key_env or {}).items():
             child_env[env_key] = value
+        # Record full provider request/response JSONL under the hermetic
+        # app-data dir so failed/timed-out/limit-reached runs can be
+        # diagnosed; harvest_case_artifacts copies it out before cleanup.
+        child_env["NIXMAC_RECORD_COMPLETIONS"] = "1"
+        # Defense in depth against a tool that opens an interactive editor in a
+        # headless run (ensure_secret → sops → $EDITOR deadlocked a case): make
+        # every editor a no-op that exits 0. The real fix is a non-blocking
+        # secret flow (wip plan PR-10); this stops the eval from hanging.
+        for editor_var in ("EDITOR", "VISUAL", "GIT_EDITOR", "SOPS_EDITOR"):
+            child_env[editor_var] = "true"
 
-        timed_out = False
         timeout_seconds = case_timeout if case_timeout and case_timeout > 0 else None
-        # Run in a new session so subprocess.run can kill the whole process
-        # group on timeout (nixmac shells out to nix / nixos-rebuild / git;
-        # we don't want orphans burning CPU after we cut the parent).
-        try:
-            subprocess.run(
-                cmd,
-                check=False,
-                timeout=timeout_seconds,
-                start_new_session=True,
-                env=child_env,
-            )
-        except subprocess.TimeoutExpired:
-            timed_out = True
-            print(
-                f"Case {case.num}: wall-clock timeout after "
-                f"{timeout_seconds}s; killed nixmac. "
-                f"See apps/eval/wip/evolve_limits-plan.md for the proper fix."
-            )
-
-        # Refuse to continue if the binary ignored the hermetic override —
-        # that would mean this case just ran against real user state.
-        assert_hermetic_run(app_data_dir)
-
-        # If we timed out, prefer a structured stub so the result is recorded
-        # but graders can distinguish a timeout from a successful or
-        # model-decided stop.
+        # Run in its own session (setsid) so the whole process group can be
+        # killed on timeout — nixmac shells out to nix / darwin-rebuild / git /
+        # sops and we don't want orphans surviving the parent.
+        timed_out, _returncode = _run_case_process(cmd, child_env, timeout_seconds)
         if timed_out:
-            stub = {
-                "success": False,
-                "error": f"case timed out after {timeout_seconds}s",
-                "case": case.num,
-                "command": cmd,
-                "state": "timeout",
-            }
-            return stub
+            print(
+                f"Case {case.num}: wall-clock timeout after {timeout_seconds}s; "
+                f"terminated the nixmac process group."
+            )
 
-        # Read and return the evolution result if present
-        if out_path.exists():
-            with open(out_path) as f:
-                evolution_result = json.load(f)
-            print(json.dumps(evolution_result, indent=2))
-            return evolution_result
-        else:
-            print("No evolution result file found after running nixmac.")
-            # TODO: nixmac CLI should report structured failure info (exit code + JSON).
-            # For now create a stub JSON result indicating failure so tests can record it.
-            stub = {
-                "success": False,
-                "error": "nixmac did not produce evolution_result.json",
-                "case": case.num,
-                "command": cmd,
-            }
-            try:
-                with open(out_path, "w") as f:
-                    json.dump(stub, f, indent=2)
-            except Exception:
-                pass
-            return stub
+        final_result = _interpret_case_outcome(
+            case.num, cmd, app_data_dir, out_path, timed_out, timeout_seconds
+        )
+        return final_result
     finally:
+        # Preserve diagnostic evidence for non-clean runs before the temp dirs
+        # holding the completion logs and any partial result are deleted.
+        if keep_logs or _result_is_unclean(final_result, timed_out):
+            with suppress(Exception):
+                harvest_case_artifacts(app_data_dir, result_dir, results_dir, case.num, secrets)
         if config_dir is not None:
             print(f"Cleaning up temporary config directory: {config_dir}")
             with suppress(Exception):
@@ -526,9 +654,7 @@ def assert_hermetic_run(app_data_dir: Path) -> None:
 
 
 def generate_repo_scoped_settings(
-    config_dir: Path,
-    max_token_budget: int | None = None,
-    max_iterations: int | None = None,
+    config_dir: Path, max_token_budget: int | None = None, max_iterations: int | None = None
 ) -> None:
     """Write `<config_dir>/.nixmac/settings.json` for EvolutionLimits.
 
@@ -670,7 +796,9 @@ def main(parsed_args: argparse.Namespace) -> None:
     resolve_backend_from_env(parsed_args)
 
     # Validate that at least one backend is configured: either ollama or vllm
-    ollama_set = bool(getattr(parsed_args, "ollama_url", None)) and parsed_args.ollama_url.strip() != ""
+    ollama_set = (
+        bool(getattr(parsed_args, "ollama_url", None)) and parsed_args.ollama_url.strip() != ""
+    )
     vllm_set = bool(getattr(parsed_args, "vllm_url", None)) and parsed_args.vllm_url.strip() != ""
     if not (ollama_set or vllm_set):
         print(
@@ -697,6 +825,9 @@ def main(parsed_args: argparse.Namespace) -> None:
     )
     print(f"Writing results to: {results_dir}")
 
+    run_started_at = datetime.now(timezone.utc)
+    template_dir: Path | None = None
+
     # Session-level clone dir, only allocated if --base-config is a URL.
     clone_dir: Path | None = None
     base_config_arg = getattr(parsed_args, "base_config", None)
@@ -706,8 +837,7 @@ def main(parsed_args: argparse.Namespace) -> None:
     try:
         # Resolve the nix-darwin baseline once per run.
         template_dir = resolve_base_config(
-            base_config_arg,
-            clone_into=clone_dir or Path(tempfile.gettempdir()),
+            base_config_arg, clone_into=clone_dir or Path(tempfile.gettempdir())
         )
         print(f"Using nix-darwin baseline: {template_dir}")
 
@@ -803,6 +933,8 @@ def main(parsed_args: argparse.Namespace) -> None:
                     parsed_args.max_token_budget,
                     parsed_args.host,
                     case_timeout=parsed_args.case_timeout,
+                    results_dir=results_dir,
+                    keep_logs=getattr(parsed_args, "keep_logs", False),
                 )
             except KeyboardInterrupt:
                 # Signal handler also sets `stop_requested`; ensure we record
@@ -816,6 +948,14 @@ def main(parsed_args: argparse.Namespace) -> None:
                 print("Stop requested; exiting after current test.")
                 break
     finally:
+        # Record what produced this results dir so reports/reruns aren't
+        # guessing (the report loader already reads run_meta.json). Written in
+        # the finally so an interrupted run still leaves a manifest.
+        with suppress(Exception):
+            write_run_meta(
+                results_dir, parsed_args, template_dir, run_started_at, datetime.now(timezone.utc)
+            )
+
         # Restore original SIGINT handler
         try:
             signal.signal(signal.SIGINT, old_handler)
@@ -827,6 +967,61 @@ def main(parsed_args: argparse.Namespace) -> None:
             print(f"Cleaning up cloned base config directory: {clone_dir}")
             with suppress(Exception):
                 shutil.rmtree(clone_dir)
+
+
+def _nixmac_git_sha() -> str | None:
+    """Best-effort HEAD sha of the repo the eval suite runs from."""
+    with suppress(Exception):
+        out = subprocess.run(
+            ["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return out.stdout.strip() or None
+    return None
+
+
+def _redacted_cli_args(parsed_args: argparse.Namespace) -> dict[str, Any]:
+    """Serialize the run's CLI args for the manifest, dropping secret values."""
+    secret_keys = {"openai_key", "openrouter_key", "vllm_api_key"}
+    out: dict[str, Any] = {}
+    for key, value in vars(parsed_args).items():
+        if key == "func":
+            continue
+        if key in secret_keys:
+            out[key] = "«redacted»" if value else None
+        elif isinstance(value, (str, int, float, bool)) or value is None:
+            out[key] = value
+        else:
+            out[key] = str(value)
+    return out
+
+
+def write_run_meta(
+    results_dir: Path,
+    parsed_args: argparse.Namespace,
+    template_dir: Path | None,
+    run_started_at: datetime,
+    run_finished_at: datetime,
+) -> None:
+    """Write run_meta.json describing this run (read by the report loader)."""
+    meta = {
+        "run_started_at": run_started_at.isoformat(),
+        "run_finished_at": run_finished_at.isoformat(),
+        "evolve_model": getattr(parsed_args, "evolve_model", None),
+        "summary_model": getattr(parsed_args, "summary_model", None),
+        "base_config": getattr(parsed_args, "base_config", None),
+        "resolved_base_config": str(template_dir) if template_dir else None,
+        "host": getattr(parsed_args, "host", None),
+        "case_timeout": getattr(parsed_args, "case_timeout", None),
+        "nixmac_git_sha": _nixmac_git_sha(),
+        "eval_host": platform.node() or None,
+        "cli_args": _redacted_cli_args(parsed_args),
+    }
+    results_dir.mkdir(parents=True, exist_ok=True)
+    (results_dir / "run_meta.json").write_text(json.dumps(meta, indent=2))
+    print(f"Wrote run metadata to {results_dir / 'run_meta.json'}")
 
 
 def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.ArgumentParser:
@@ -945,6 +1140,17 @@ def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.Argu
             "Directory to write case_<n>_result.json files into. Useful for "
             "side-by-side runs (e.g. comparing two --base-config baselines) "
             "without one overwriting the other. Default: data/results."
+        ),
+    )
+    parser.add_argument(
+        "--keep-logs",
+        dest="keep_logs",
+        action="store_true",
+        help=(
+            "Preserve a redacted diagnostic bundle (completion-log JSONL and "
+            "any partial evolution_result.json) under "
+            "<results-dir>/case_<n>_artifacts for EVERY case. Non-clean cases "
+            "(failures, timeouts, limitReached) always keep theirs regardless."
         ),
     )
     parser.add_argument(
