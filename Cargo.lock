@@ -3680,6 +3680,7 @@ dependencies = [
  "cfg-if",
  "cfg_aliases",
  "libc",
+ "memoffset",
 ]
 
 [[package]]
@@ -3694,6 +3695,7 @@ dependencies = [
  "clap",
  "cocoa",
  "configurable",
+ "core-foundation 0.10.1",
  "diesel",
  "diesel_migrations",
  "dirs 5.0.1",
@@ -3730,6 +3732,7 @@ dependencies = [
  "reqwest-tracing",
  "rnix",
  "rowan",
+ "security-framework 3.7.0",
  "serde",
  "serde_json",
  "serde_yaml",
