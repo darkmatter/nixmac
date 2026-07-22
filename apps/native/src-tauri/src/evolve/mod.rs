@@ -27,7 +27,7 @@ pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 use crate::evolve::utils::{escape_user_query, format_duration_secs, truncate_error};
 use crate::git::query::repo_root;
 // Re-export public API
-use crate::shared_types::{Evolution, EvolutionState, FileEdit};
+use crate::shared_types::{Evolution, EvolutionState, FileEdit, TerminalReason};
 use crate::system::nix;
 use anyhow::{Context as AnyhowContext, Result, anyhow};
 use chrono::Utc;
@@ -855,6 +855,7 @@ fn finish_after_limit_stop<R: Runtime>(
 
     evolution.summary = Some(summary);
     evolution.state = EvolutionState::LimitReached;
+    evolution.terminal_reason = Some(TerminalReason::Limit);
 }
 
 /// How often streamed provider text deltas are flushed as StreamDelta
@@ -1285,6 +1286,7 @@ pub async fn generate_evolution<R: Runtime>(
         if session_control::is_evolve_cancelled() {
             warn!("⚠️ {}", session_control::EVOLUTION_CANCELLED_MSG);
             evolution.state = EvolutionState::Failed;
+            evolution.terminal_reason = Some(TerminalReason::Cancelled);
             emit_evolve_event(
                 app,
                 EvolveEvent::error(
@@ -1397,6 +1399,7 @@ pub async fn generate_evolution<R: Runtime>(
                 } => {
                     warn!("⚠️ {} during provider call", session_control::EVOLUTION_CANCELLED_MSG);
                     evolution.state = EvolutionState::Failed;
+                    evolution.terminal_reason = Some(TerminalReason::Cancelled);
                     emit_evolve_event(
                         app,
                         EvolveEvent::error(start_time, Some(iteration), session_control::EVOLUTION_CANCELLED_MSG, session_control::EVOLUTION_CANCELLED_MSG),
@@ -1457,6 +1460,7 @@ pub async fn generate_evolution<R: Runtime>(
                 let user_msg = e.user_message();
 
                 evolution.state = EvolutionState::Failed;
+                evolution.terminal_reason = Some(TerminalReason::ProviderError);
                 return Err(EvolutionRunError::from_state(
                     user_msg,
                     &evolution,
@@ -1531,6 +1535,7 @@ pub async fn generate_evolution<R: Runtime>(
                 }
                 LimitDecision::Cancelled => {
                     evolution.state = EvolutionState::Failed;
+                    evolution.terminal_reason = Some(TerminalReason::Cancelled);
                     return Err(EvolutionRunError::from_state(
                         session_control::EVOLUTION_CANCELLED_MSG,
                         &evolution,
@@ -1887,6 +1892,7 @@ pub async fn generate_evolution<R: Runtime>(
                                     } => {
                                         warn!("Evolution cancelled while waiting for question response");
                                         evolution.state = EvolutionState::Failed;
+                                        evolution.terminal_reason = Some(TerminalReason::Cancelled);
                                         return Err(EvolutionRunError::from_state(
                                             session_control::EVOLUTION_CANCELLED_MSG,
                                             &evolution,
@@ -2023,6 +2029,7 @@ Do not invent tool names and do not place tool invocations in assistant content.
         };
 
         if no_tool_calls {
+            evolution.terminal_reason = Some(TerminalReason::PlainResponse);
             if let Message::Assistant {
                 content: Some(content),
                 ..
@@ -2085,6 +2092,7 @@ Do not invent tool names and do not place tool invocations in assistant content.
                 }
                 LimitDecision::Cancelled => {
                     evolution.state = EvolutionState::Failed;
+                    evolution.terminal_reason = Some(TerminalReason::Cancelled);
                     return Err(EvolutionRunError::from_state(
                         session_control::EVOLUTION_CANCELLED_MSG,
                         &evolution,
@@ -2140,6 +2148,7 @@ Do not invent tool names and do not place tool invocations in assistant content.
                 }
                 LimitDecision::Cancelled => {
                     evolution.state = EvolutionState::Failed;
+                    evolution.terminal_reason = Some(TerminalReason::Cancelled);
                     return Err(EvolutionRunError::from_state(
                         session_control::EVOLUTION_CANCELLED_MSG,
                         &evolution,
@@ -2185,6 +2194,7 @@ Do not invent tool names and do not place tool invocations in assistant content.
                 }
                 LimitDecision::Cancelled => {
                     evolution.state = EvolutionState::Failed;
+                    evolution.terminal_reason = Some(TerminalReason::Cancelled);
                     return Err(EvolutionRunError::from_state(
                         session_control::EVOLUTION_CANCELLED_MSG,
                         &evolution,
@@ -2230,6 +2240,7 @@ Do not invent tool names and do not place tool invocations in assistant content.
                 }
                 LimitDecision::Cancelled => {
                     evolution.state = EvolutionState::Failed;
+                    evolution.terminal_reason = Some(TerminalReason::Cancelled);
                     return Err(EvolutionRunError::from_state(
                         session_control::EVOLUTION_CANCELLED_MSG,
                         &evolution,
@@ -2510,13 +2521,12 @@ fn summarize_result(result: &ToolResult) -> (String, bool) {
 /// Gate deciding whether `done` may complete the evolution.
 ///
 /// Kept as a struct (rather than a bare bool) so the completion rules —
-/// verification state and, later, repeated-rejection tracking — travel
-/// together through the tool-result pipeline.
+/// rejection tracking and its escalation material — travel together through
+/// the tool-result pipeline. The verification flag itself lives on
+/// [`Evolution::build_verified`] so terminal states and telemetry read the
+/// same source of truth the gate enforces.
 #[derive(Default)]
 struct DoneGate {
-    /// Set by a passing build_check; cleared by any subsequent edit or a
-    /// failing build.
-    build_verified: bool,
     /// Consecutive `done` calls rejected for lacking a verified build.
     /// Reset whenever the model actually runs build_check.
     rejected_dones: usize,
@@ -2597,7 +2607,7 @@ fn process_tool_result(
             // A new edit invalidates any prior successful build: the verified
             // state no longer matches the files, so `done` must require a fresh
             // build_check.
-            done_gate.build_verified = false;
+            evolution.build_verified = false;
             let msg = Message::Tool {
                 tool_call_id: tool_call_id.to_string(),
                 content:
@@ -2620,7 +2630,7 @@ fn process_tool_result(
                 replace: format!("semantic:{:?}", edit.action),
             });
             // A new edit invalidates any prior successful build verification.
-            done_gate.build_verified = false;
+            evolution.build_verified = false;
 
             let msg = Message::Tool {
                 tool_call_id: tool_call_id.to_string(),
@@ -2639,7 +2649,7 @@ fn process_tool_result(
                 replace: format!("ensure_secret:{}", result.name),
             });
             // A new edit invalidates any prior successful build verification.
-            done_gate.build_verified = false;
+            evolution.build_verified = false;
             let content = serde_json::to_string(result)
                 .unwrap_or_else(|_| format!("{{\"name\":\"{}\"}}", result.name));
             let msg = Message::Tool {
@@ -2686,10 +2696,11 @@ fn process_tool_result(
             // Running build_check is exactly what a done-rejection asks for,
             // so any attempt (pass or fail) resets the rejection streak.
             done_gate.rejected_dones = 0;
+            evolution.last_build_ok = Some(*success);
 
             if *success {
                 info!("✅ BUILD CHECK PASSED");
-                done_gate.build_verified = true;
+                evolution.build_verified = true;
                 done_gate.last_build_error = None;
 
                 let msg = Message::Tool {
@@ -2703,7 +2714,7 @@ fn process_tool_result(
             } else {
                 // A failing build invalidates any earlier successful verification,
                 // otherwise `done` could still accept the (now broken) config.
-                done_gate.build_verified = false;
+                evolution.build_verified = false;
                 done_gate.last_build_error = Some(model_output.clone());
                 warn!(
                     "❌ BUILD CHECK FAILED (attempt {}/{})",
@@ -2735,11 +2746,12 @@ fn process_tool_result(
         }
 
         ToolResult::Done(summary) => {
-            if done_gate.build_verified {
+            if evolution.build_verified {
                 info!("✅ EVOLUTION COMPLETE (build verified)");
                 info!("Summary: {}", summary);
                 evolution.summary = Some(summary.clone());
                 evolution.state = EvolutionState::Generated;
+                evolution.terminal_reason = Some(TerminalReason::Done);
                 let msg = Message::Tool {
                     tool_call_id: tool_call_id.to_string(),
                     content: "Evolution complete.".to_string(),
@@ -2783,6 +2795,7 @@ fn process_tool_result(
                 info!("Summary: {}", summary);
                 evolution.summary = Some(summary.clone());
                 evolution.state = EvolutionState::Generated;
+                evolution.terminal_reason = Some(TerminalReason::Done);
                 let msg = Message::Tool {
                     tool_call_id: tool_call_id.to_string(),
                     content: "Evolution complete.".to_string(),
@@ -2933,15 +2946,17 @@ mod tests {
 
         run_tool_result(&build_result(true), &mut evolution, &mut done_gate);
         assert!(
-            done_gate.build_verified,
+            evolution.build_verified,
             "a passing build_check should set build_verified"
         );
+        assert_eq!(evolution.last_build_ok, Some(true));
 
         run_tool_result(&build_result(false), &mut evolution, &mut done_gate);
         assert!(
-            !done_gate.build_verified,
+            !evolution.build_verified,
             "a failing build_check must clear the prior verification"
         );
+        assert_eq!(evolution.last_build_ok, Some(false));
     }
 
     // End-to-end consequence: with edits present, calling done after a build that
@@ -3081,7 +3096,7 @@ mod tests {
 
         run_tool_result(&build_result(true), &mut evolution, &mut done_gate);
         assert!(
-            done_gate.build_verified,
+            evolution.build_verified,
             "a passing build_check should set build_verified"
         );
 
@@ -3095,7 +3110,7 @@ mod tests {
             &mut done_gate,
         );
         assert!(
-            !done_gate.build_verified,
+            !evolution.build_verified,
             "an edit after a passing build must clear the prior verification"
         );
     }
