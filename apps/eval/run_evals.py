@@ -12,6 +12,7 @@ import shutil
 import signal
 import subprocess
 import tempfile
+from collections.abc import Callable
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
@@ -496,6 +497,36 @@ def run_test_case(
                 shutil.rmtree(app_data_dir)
 
 
+def is_retryable_provider_failure(result: Any) -> bool:
+    """Whether a run died on a provider failure the engine classified as
+    transient (``result.providerFailure.retryable`` in the failure
+    envelope). Such a failure says nothing about the agent, so the case
+    earns one fresh run before its result is recorded."""
+    if not isinstance(result, dict) or result.get("ok"):
+        return False
+    inner = result.get("result")
+    if not isinstance(inner, dict):
+        return False
+    provider_failure = inner.get("providerFailure")
+    return isinstance(provider_failure, dict) and bool(provider_failure.get("retryable"))
+
+
+def run_with_transient_retry(case_num: Any, run_once: Callable[[], Any]) -> Any:
+    """Run a case, giving it one fresh rerun if it dies on a transient
+    provider failure; the recorded result notes the retry."""
+    result = run_once()
+    if not is_retryable_provider_failure(result):
+        return result
+    print(
+        f"Case {case_num}: transient provider failure "
+        f"(providerFailure.retryable=true); rerunning once..."
+    )
+    result = run_once()
+    if isinstance(result, dict):
+        result["retriedAfterProviderFailure"] = True
+    return result
+
+
 def update_test_case_status(case_num: Any, result: Any, results_dir: Path = RESULTS_DIR) -> None:
     """Persist test result to file system."""
     print(f"Writing results JSON to {results_dir} for case {case_num}...")
@@ -788,22 +819,31 @@ def main(parsed_args: argparse.Namespace) -> None:
                     if vllm_api_key:
                         api_key_env["VLLM_API_KEY"] = vllm_api_key
 
-                # Run the test case and capture the result
-                result = run_test_case(
-                    case,
-                    nixmac_path,
-                    template_dir,
-                    parsed_args.evolve_model,
-                    parsed_args.summary_model,
-                    parsed_args.openai_key,
-                    parsed_args.openrouter_key,
-                    auth_props,
-                    api_key_env,
-                    parsed_args.max_iterations,
-                    parsed_args.max_token_budget,
-                    parsed_args.host,
-                    case_timeout=parsed_args.case_timeout,
-                )
+                def run_once(
+                    case=case,
+                    nixmac_path=nixmac_path,
+                    auth_props=auth_props,
+                    api_key_env=api_key_env,
+                ) -> Any:
+                    return run_test_case(
+                        case,
+                        nixmac_path,
+                        template_dir,
+                        parsed_args.evolve_model,
+                        parsed_args.summary_model,
+                        parsed_args.openai_key,
+                        parsed_args.openrouter_key,
+                        auth_props,
+                        api_key_env,
+                        parsed_args.max_iterations,
+                        parsed_args.max_token_budget,
+                        parsed_args.host,
+                        case_timeout=parsed_args.case_timeout,
+                    )
+
+                # Run the test case and capture the result, rerunning once
+                # if the run died on a transient provider failure.
+                result = run_with_transient_retry(case.num, run_once)
             except KeyboardInterrupt:
                 # Signal handler also sets `stop_requested`; ensure we record
                 # that this case was interrupted and then break the loop so
