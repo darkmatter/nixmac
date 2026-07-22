@@ -1,16 +1,18 @@
+use crate::privileged_helper::peer_auth::{self, PeerIdentity};
 use crate::privileged_helper::protocol::{
     ActivateStorePathRequest, HELPER_SOCKET_DIR, HELPER_SOCKET_PATH, HELPER_WARNING_PREFIX,
-    HelperRequest, HelperResponse, validate_canonical_activate_path,
+    HelperRequest, HelperResponse, UNAUTHORIZED_CLIENT_ERROR, validate_canonical_activate_path,
 };
 use anyhow::{Context, Result, bail};
 use std::fs;
-use std::io::{BufRead, BufReader, Write};
-#[cfg(target_os = "macos")]
-use std::os::fd::AsRawFd;
+use std::io::{BufRead, BufReader, Read, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
 use std::process::Command;
+
+/// Post-auth cap on the request line; real requests are well under 4 KiB.
+const MAX_REQUEST_BYTES: u64 = 64 * 1024;
 
 /// Fixed PATH for the privileged activation: root-owned system and Nix
 /// profile directories only. The requester's `nix_path` never reaches root
@@ -60,33 +62,38 @@ pub fn run_daemon() -> Result<()> {
 }
 
 fn harden_socket_permissions(socket_path: &Path) -> Result<()> {
-    if let Some(console_user) = console_user() {
-        let owner = format!("{console_user}:admin");
-        let _ = Command::new("/usr/sbin/chown")
-            .arg(owner)
-            .arg(socket_path)
-            .status();
+    let admin_gid = admin_group_id();
+    if let Some(console_uid) = peer_auth::console_user_uid() {
+        let _ = std::os::unix::fs::chown(socket_path, Some(console_uid), admin_gid);
         fs::set_permissions(socket_path, fs::Permissions::from_mode(0o600))?;
     } else {
-        let _ = Command::new("/usr/sbin/chown")
-            .arg("root:admin")
-            .arg(socket_path)
-            .status();
+        let _ = std::os::unix::fs::chown(socket_path, Some(0), admin_gid);
         fs::set_permissions(socket_path, fs::Permissions::from_mode(0o660))?;
     }
     Ok(())
 }
 
+/// Gid of the macOS `admin` group, the socket's group owner.
+fn admin_group_id() -> Option<u32> {
+    nix::unistd::Group::from_name("admin")
+        .ok()
+        .flatten()
+        .map(|group| group.gid.as_raw())
+}
+
 fn handle_stream(mut stream: UnixStream) -> Result<()> {
-    let mut line = String::new();
-    BufReader::new(stream.try_clone()?).read_line(&mut line)?;
-    let request: HelperRequest = serde_json::from_str(&line)?;
-    let response = match peer_identity(&stream) {
-        Ok(peer) => match authorize_request(&peer, &request) {
-            Ok(()) => handle_request(&peer, request),
+    // The peer is authorized from its socket credentials before the request
+    // body is touched: an unauthorized peer must never reach the reader or
+    // the JSON parser.
+    let response = match authorize_peer(&stream) {
+        Ok(peer) => match read_request(stream.try_clone()?) {
+            Ok(request) => match authorize_request(&peer, &request) {
+                Ok(()) => handle_request(&peer, request),
+                Err(error) => HelperResponse::error(-1, error.to_string()),
+            },
             Err(error) => HelperResponse::error(-1, error.to_string()),
         },
-        Err(error) => HelperResponse::error(-1, error.to_string()),
+        Err(error) => HelperResponse::error(-1, format!("{UNAUTHORIZED_CLIENT_ERROR}: {error:#}")),
     };
     serde_json::to_writer(&mut stream, &response)?;
     stream.write_all(b"\n")?;
@@ -94,7 +101,40 @@ fn handle_stream(mut stream: UnixStream) -> Result<()> {
     Ok(())
 }
 
-pub fn handle_request(peer: &PeerIdentity, request: HelperRequest) -> HelperResponse {
+fn authorize_peer(stream: &UnixStream) -> Result<PeerIdentity> {
+    let peer = peer_auth::peer_identity(stream)?;
+    check_peer_policy(peer.euid, peer_auth::console_user_uid())?;
+    peer_auth::validate_client_code(&peer)?;
+    Ok(peer)
+}
+
+/// The peer must be the active console user; root is rejected outright (the
+/// GUI and sync agent always run in the user session).
+fn check_peer_policy(peer_euid: u32, console_uid: Option<u32>) -> Result<()> {
+    if peer_euid == 0 {
+        bail!("root peers may not drive activation");
+    }
+    let Some(console_uid) = console_uid else {
+        bail!("no active console user");
+    };
+    if peer_euid != console_uid {
+        bail!("peer uid {peer_euid} does not match console user uid {console_uid}");
+    }
+    Ok(())
+}
+
+fn read_request(stream: impl Read) -> Result<HelperRequest> {
+    let mut line = String::new();
+    BufReader::new(stream)
+        .take(MAX_REQUEST_BYTES)
+        .read_line(&mut line)?;
+    if !line.ends_with('\n') && line.len() as u64 >= MAX_REQUEST_BYTES {
+        bail!("request exceeds {MAX_REQUEST_BYTES} bytes");
+    }
+    Ok(serde_json::from_str(&line)?)
+}
+
+fn handle_request(peer: &PeerIdentity, request: HelperRequest) -> HelperResponse {
     match request {
         HelperRequest::Status => HelperResponse::ok("nixmac helper ready"),
         HelperRequest::ActivateStorePath { request } => match activate_store_path(peer, &request) {
@@ -111,9 +151,9 @@ fn activate_store_path(
     validate_canonical_activate_path(&request.activate_path)?;
     // Account values are derived from the socket peer credentials; the
     // request's `user_name`/`user_id`/`home` are never trusted here.
-    let account = user_account(peer.uid)?;
+    let account = user_account(peer.euid)?;
     let argv = activation_argv(
-        peer.uid,
+        peer.euid,
         &account,
         &request.activate_path,
         request.ssh_auth_sock.as_deref(),
@@ -225,34 +265,20 @@ fn set_system_profile(activate_path: &str) -> Result<()> {
     Ok(())
 }
 
+/// Request-level cross-check, after the peer itself is already authorized:
+/// activation must be requested for the peer's own uid.
 fn authorize_request(peer: &PeerIdentity, request: &HelperRequest) -> Result<()> {
-    if !peer_executable_allowed(peer.executable.as_deref()) {
-        bail!(
-            "unauthorized helper client{}",
-            peer.executable
-                .as_deref()
-                .map(|path| format!(": {path}"))
-                .unwrap_or_default()
-        );
-    }
-
     if let HelperRequest::ActivateStorePath { request } = request
-        && peer.uid != request.user_id
+        && peer.euid != request.user_id
     {
         bail!(
             "activation peer uid {} does not match requested uid {}",
-            peer.uid,
+            peer.euid,
             request.user_id
         );
     }
 
     Ok(())
-}
-
-#[derive(Debug, Clone)]
-pub struct PeerIdentity {
-    pub uid: u32,
-    pub executable: Option<String>,
 }
 
 pub(crate) struct UserAccount {
@@ -279,101 +305,6 @@ pub(crate) fn user_account(uid: u32) -> Result<UserAccount> {
 #[cfg(not(target_os = "macos"))]
 pub(crate) fn user_account(_uid: u32) -> Result<UserAccount> {
     bail!("peer account lookup is only implemented on macOS")
-}
-
-#[cfg(target_os = "macos")]
-fn peer_identity(stream: &UnixStream) -> Result<PeerIdentity> {
-    let fd = stream.as_raw_fd();
-    let mut uid: libc::uid_t = 0;
-    let mut gid: libc::gid_t = 0;
-    let result = unsafe { libc::getpeereid(fd, &mut uid, &mut gid) };
-    if result != 0 {
-        return Err(std::io::Error::last_os_error()).context("failed to read peer credentials");
-    }
-
-    Ok(PeerIdentity {
-        uid,
-        executable: peer_executable_path(fd).ok(),
-    })
-}
-
-#[cfg(not(target_os = "macos"))]
-fn peer_identity(_stream: &UnixStream) -> Result<PeerIdentity> {
-    bail!("peer credential validation is only implemented on macOS")
-}
-
-#[cfg(target_os = "macos")]
-fn peer_executable_path(fd: std::os::fd::RawFd) -> Result<String> {
-    let mut pid: libc::pid_t = 0;
-    let mut len = std::mem::size_of::<libc::pid_t>() as libc::socklen_t;
-    let result = unsafe {
-        libc::getsockopt(
-            fd,
-            libc::SOL_LOCAL,
-            libc::LOCAL_PEERPID,
-            (&mut pid as *mut libc::pid_t).cast(),
-            &mut len,
-        )
-    };
-    if result != 0 {
-        return Err(std::io::Error::last_os_error()).context("failed to read peer pid");
-    }
-
-    executable_path_for_pid(pid)
-}
-
-#[cfg(not(target_os = "macos"))]
-fn peer_executable_path(_fd: std::os::fd::RawFd) -> Result<String> {
-    bail!("peer executable validation is only implemented on macOS")
-}
-
-#[cfg(target_os = "macos")]
-fn executable_path_for_pid(pid: libc::pid_t) -> Result<String> {
-    const PROC_PIDPATHINFO_MAXSIZE: usize = 4096;
-    let mut buffer = [0u8; PROC_PIDPATHINFO_MAXSIZE];
-    let len = unsafe {
-        proc_pidpath(
-            pid,
-            buffer.as_mut_ptr().cast(),
-            PROC_PIDPATHINFO_MAXSIZE as u32,
-        )
-    };
-    if len <= 0 {
-        return Err(std::io::Error::last_os_error()).context("failed to read peer executable path");
-    }
-    let len = len as usize;
-    Ok(String::from_utf8_lossy(&buffer[..len]).to_string())
-}
-
-#[cfg(target_os = "macos")]
-#[link(name = "proc")]
-unsafe extern "C" {
-    fn proc_pidpath(pid: libc::c_int, buffer: *mut libc::c_void, buffersize: u32) -> libc::c_int;
-}
-
-fn peer_executable_allowed(path: Option<&str>) -> bool {
-    let Some(path) = path else {
-        return false;
-    };
-    let allowed_name = path.ends_with("/nixmac") || path.ends_with("/nixmac-sync-agent");
-    let allowed_location = path.contains(".app/Contents/MacOS/") || path.contains("/target/debug/");
-    allowed_name && allowed_location
-}
-
-fn console_user() -> Option<String> {
-    let output = Command::new("/usr/bin/stat")
-        .args(["-f", "%Su", "/dev/console"])
-        .output()
-        .ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    let user = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if user.is_empty() || user == "root" {
-        None
-    } else {
-        Some(user)
-    }
 }
 
 #[cfg(test)]
@@ -450,12 +381,12 @@ mod tests {
         }
     }
 
+    #[cfg(target_os = "macos")]
     #[test]
     fn helper_status_request_returns_ready_response() {
-        let peer = PeerIdentity {
-            uid: 501,
-            executable: None,
-        };
+        // A status request never inspects the peer; any real identity works.
+        let (stream, _other_end) = UnixStream::pair().expect("socketpair");
+        let peer = peer_auth::peer_identity(&stream).expect("peer identity");
         let response = handle_request(&peer, HelperRequest::Status);
 
         assert!(response.ok);
@@ -463,19 +394,68 @@ mod tests {
     }
 
     #[test]
-    fn peer_executable_allows_bundled_app_and_sync_agent() {
-        assert!(peer_executable_allowed(Some(
-            "/Applications/nixmac.app/Contents/MacOS/nixmac"
-        )));
-        assert!(peer_executable_allowed(Some(
-            "/Applications/nixmac.app/Contents/MacOS/nixmac-sync-agent"
-        )));
+    fn peer_policy_rejects_root_peer() {
+        assert!(check_peer_policy(0, Some(501)).is_err());
     }
 
     #[test]
-    fn peer_executable_rejects_unrelated_paths() {
-        assert!(!peer_executable_allowed(Some("/tmp/nixmac-sync-agent")));
-        assert!(!peer_executable_allowed(Some("/bin/sh")));
-        assert!(!peer_executable_allowed(None));
+    fn peer_policy_rejects_uid_not_matching_console_user() {
+        assert!(check_peer_policy(502, Some(501)).is_err());
+    }
+
+    #[test]
+    fn peer_policy_rejects_when_no_console_user() {
+        assert!(check_peer_policy(501, None).is_err());
+    }
+
+    #[test]
+    fn peer_policy_accepts_console_user_peer() {
+        assert!(check_peer_policy(501, Some(501)).is_ok());
+    }
+
+    #[test]
+    fn read_request_parses_status_request() {
+        let request = read_request(&b"{\"op\":\"status\"}\n"[..]).expect("parse status");
+
+        assert_eq!(request, HelperRequest::Status);
+    }
+
+    #[test]
+    fn read_request_rejects_oversized_line() {
+        let mut body = vec![b' '; MAX_REQUEST_BYTES as usize + 1];
+        body.push(b'\n');
+
+        let error = read_request(&body[..]).expect_err("oversized request must fail");
+
+        assert!(error.to_string().contains("exceeds"));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn unauthorized_peer_gets_error_response_without_its_body_being_read() {
+        // The unsigned test binary can never pass code validation, so
+        // handle_stream must answer with an authorization error even though
+        // this end never sends a request line — proof the body is not read
+        // (or parsed) before authorization.
+        let (client, server) = UnixStream::pair().expect("socketpair");
+        let handler = std::thread::spawn(move || handle_stream(server));
+
+        let mut reply = String::new();
+        BufReader::new(client)
+            .read_line(&mut reply)
+            .expect("read response");
+        handler
+            .join()
+            .expect("handler thread")
+            .expect("stream handled");
+
+        let response: HelperResponse = serde_json::from_str(&reply).expect("response json");
+        assert!(!response.ok);
+        assert!(
+            response
+                .error
+                .expect("error message")
+                .contains(UNAUTHORIZED_CLIENT_ERROR)
+        );
     }
 }
