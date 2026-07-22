@@ -30,12 +30,17 @@ export function Stepper() {
   const isGenerating = useUiState((s) => s.isGenerating);
   const rawBackendStep = useViewModel((s) => s.evolve?.step ?? "begin");
   const hasChanges = useViewModel((s) => (s.git?.changes.length ?? 0) > 0);
+  const rebuildNeeded = useViewModel((s) => s.build.rebuildNeeded);
   const isRebuilding = useViewModel((s) => s.rebuildStatus?.isRunning ?? false);
 
   // Review/Save are only real destinations when there's a diff. Without changes
   // the user belongs at the prompt step, so progress collapses to "begin" and
   // the later steps stay locked — matching computeCurrentStep.
-  const backendStep = hasChanges ? rawBackendStep : "begin";
+  const backendStep = rebuildNeeded && !hasChanges
+    ? "manualEvolve"
+    : hasChanges
+      ? rawBackendStep
+      : "begin";
 
   if (
     step === "setup" ||

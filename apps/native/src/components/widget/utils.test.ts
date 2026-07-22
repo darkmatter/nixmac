@@ -213,6 +213,7 @@ describe("computeCurrentStep — diff gating", () => {
       evolveState: null as EvolveState | null,
       activeStepOverride: null as EvolveStep | null,
       hasChanges: false,
+      rebuildNeeded: false,
       ...overrides,
     };
   }
@@ -223,6 +224,10 @@ describe("computeCurrentStep — diff gating", () => {
     expect(computeCurrentStep(readyState({ evolveState: evolveAt("evolve") }))).toBe("begin");
     expect(computeCurrentStep(readyState({ evolveState: evolveAt("commit") }))).toBe("begin");
     expect(computeCurrentStep(readyState({ evolveState: evolveAt("manualEvolve") }))).toBe("begin");
+  });
+
+  it("routes a clean working tree with unapplied settings to review", () => {
+    expect(computeCurrentStep(readyState({ rebuildNeeded: true }))).toBe("manualEvolve");
   });
 
   it("honors the backend step once there is a diff to act on", () => {

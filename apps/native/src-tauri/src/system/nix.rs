@@ -151,6 +151,67 @@ fn nix_eval_value_to_string(value: serde_json::Value) -> String {
     }
 }
 
+/// Check to see if a rebuild is needed for the given host and config dir.
+/// This can happen when (for example) the user pulled git changes from the upstream.
+pub fn is_rebuild_needed(hostname: &str, config_dir: &str) -> Result<bool> {
+    /* General approach:
+        expected=$(nix eval --raw ".#darwinConfigurations.${host}.system")
+        active=$(realpath /run/current-system)
+
+        Helper bash function to test:
+
+        ```sh
+        config="your-host-name"
+
+        check_state() {
+        expected=$(nix eval --raw ".#darwinConfigurations.${config}.system") || return
+        active=$(realpath /run/current-system)
+
+        printf 'expected: %s\n' "$expected"
+        printf 'active:   %s\n' "$active"
+
+        if [ "$expected" = "$active" ]; then
+            echo "STATUS: even"
+        else
+            echo "STATUS: rebuild needed"
+        fi
+        }
+        ```
+    */
+    let host_attr = serde_json::to_string(hostname)?;
+    let flake_attr = format!(".#darwinConfigurations.{}.system", host_attr);
+
+    let expected_output = nix_command(config_dir)
+        .args(["eval", "--raw", &flake_attr])
+        .output()?;
+
+    if !expected_output.status.success() {
+        anyhow::bail!(
+            "Failed to evaluate expected system for host {}: {}",
+            hostname,
+            String::from_utf8_lossy(&expected_output.stderr)
+        );
+    }
+
+    let expected_system = String::from_utf8(expected_output.stdout)?
+        .trim()
+        .to_string();
+
+    let actual_system_output = Command::new("realpath")
+        .arg("/run/current-system")
+        .output()?;
+    if !actual_system_output.status.success() {
+        anyhow::bail!(
+            "Failed to read current system symlink: {}",
+            String::from_utf8_lossy(&actual_system_output.stderr)
+        );
+    }
+    let actual_system = String::from_utf8(actual_system_output.stdout)?
+        .trim()
+        .to_string();
+    Ok(expected_system != actual_system)
+}
+
 /// Gets the `system.primaryUser` for the given host by running `nix eval` if it's
 /// defined. This is required for (for example) setting system.defaults.
 pub fn get_system_primary_user(hostname: &str, config_dir: &str) -> Option<String> {
@@ -1079,6 +1140,24 @@ mod tests {
                 eprintln!("Error evaluating nix launchd items: {}", err);
             }
         }
+    }
+
+    #[test]
+    #[ignore = "Runs against the local system; enable explicitly when debugging the nix rebuild check."]
+    #[cfg(target_os = "macos")]
+    fn test_is_rebuild_needed() -> Result<()> {
+        use crate::bootstrap::default_config::detect_hostname;
+
+        let this_host_name = detect_hostname().expect("failed to get hostname");
+        const CONFIG_DIR: &str = "~/.darwin";
+
+        let rebuild_needed = is_rebuild_needed(&this_host_name, CONFIG_DIR)?;
+        println!(
+            "Rebuild needed for host {}: {}",
+            this_host_name, rebuild_needed
+        );
+
+        Ok(())
     }
 
     #[test]

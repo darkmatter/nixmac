@@ -240,6 +240,7 @@ pub async fn get_git_state(app: AppHandle) -> Result<shared_types::GitState, Str
             git_status: Some(status),
             external_build_detected: false,
             upstream_update_available: state.upstream_update_available,
+            rebuild_needed: state.rebuild_needed,
         });
     }
     Ok(crate::state::git_state::get(&app))

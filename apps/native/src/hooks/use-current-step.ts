@@ -25,6 +25,7 @@ export function useCurrentStep(): WidgetStep {
   const isBootstrapping = useUiState((state) => state.isBootstrapping);
   const activeStepOverride = useUiState((state) => state.activeStepOverride);
   const hasChanges = useViewModel((state) => (state.git?.changes.length ?? 0) > 0);
+  const rebuildNeeded = useViewModel((state) => state.build.rebuildNeeded);
   return computeCurrentStep({
     nixInstalled,
     darwinRebuildAvailable,
@@ -39,5 +40,6 @@ export function useCurrentStep(): WidgetStep {
     isBootstrapping,
     activeStepOverride,
     hasChanges,
+    rebuildNeeded,
   });
 }

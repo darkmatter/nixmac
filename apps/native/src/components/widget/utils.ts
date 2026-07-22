@@ -18,6 +18,8 @@ type CurrentStepState = {
   activeStepOverride: EvolveStep | null;
   /** Whether the working tree currently has any tracked changes (a diff). */
   hasChanges: boolean;
+  /** Whether saved configuration is newer than the currently running system. */
+  rebuildNeeded: boolean;
 };
 
 const orderByStep: { [key in EvolveStep]: number } = {
@@ -68,11 +70,14 @@ export function computeCurrentStep(state: CurrentStepState): WidgetStep {
     return "filesystem";
   }
 
-  // The review/commit steps only make sense when there's an actual diff to act
-  // on. Without changes there is nothing to review, build, or save, so route to
-  // the prompt step even if an evolve session is still active (e.g. all changes
-  // were discarded, or a session persisted across restart). The prompt step
-  // still surfaces any conversational response, so nothing is lost.
+  // A clean working tree can still need a build after pulling or committing
+  // configuration changes. Route that state to Review so the user can bring
+  // the running system up to date without inventing a diff to review.
+  if (state.rebuildNeeded && !state.hasChanges) {
+    return "manualEvolve";
+  }
+
+  // Otherwise Review/Save only make sense when there's an actual diff.
   if (!state.hasChanges) {
     return "begin";
   }

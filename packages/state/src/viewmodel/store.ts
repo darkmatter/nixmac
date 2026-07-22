@@ -21,6 +21,7 @@ export const initialViewModelState: ViewModelState = {
   build: {
     externalBuildDetected: false,
     upstreamUpdateAvailable: false,
+    rebuildNeeded: false,
   },
   changeMap: null,
   preferences: null,

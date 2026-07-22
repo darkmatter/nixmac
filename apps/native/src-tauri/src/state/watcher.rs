@@ -9,6 +9,7 @@ use crate::shared_types::GitState;
 use crate::state::{
     build_state, change_map as change_map_state, drift_notifications, evolve_state, git_state,
 };
+use crate::system::nix;
 use crate::{db, git, summarize};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -33,9 +34,16 @@ static WATCHER_THREAD: Mutex<Option<std::thread::JoinHandle<()>>> = Mutex::new(N
 /// restarts do not reset the five-minute throttle.
 static LAST_AUTO_UPDATE_CHECK: Mutex<Option<(String, Instant)>> = Mutex::new(None);
 
+/// Last rebuild-needed check by watched directory.
+static LAST_REBUILD_NEEDED_CHECK: Mutex<Option<(String, Instant)>> = Mutex::new(None);
+
 /// Check the upstream git repo for new commits that we might be able to pull
 /// every 5 minutes.
 const AUTO_UPDATE_CHECK_INTERVAL: Duration = Duration::from_secs(5 * 60);
+
+/// Check if we need to suggest a darwin-rebuild switch to the user (if the current working tree is newer than the last build)
+/// every 1 minute.
+const REBUILD_NEEDED_CHECK_INTERVAL: Duration = Duration::from_secs(60);
 
 /// Git auto-update mode preference values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -77,6 +85,171 @@ fn should_check_auto_update(dir: &str, now: Instant) -> bool {
 
     *last_check = Some((dir.to_string(), now));
     true
+}
+
+fn should_check_rebuild_needed(dir: &str, now: Instant) -> bool {
+    let mut last_check = LAST_REBUILD_NEEDED_CHECK.lock().unwrap();
+
+    if let Some((last_dir, checked_at)) = last_check.as_ref()
+        && last_dir == dir
+        && now.duration_since(*checked_at) < REBUILD_NEEDED_CHECK_INTERVAL
+    {
+        return false;
+    }
+
+    *last_check = Some((dir.to_string(), now));
+    true
+}
+
+fn check_for_external_build<R: Runtime>(
+    app_handle: &AppHandle<R>,
+    last_known_store_path: &mut Option<String>,
+) -> bool {
+    let live_store_path = build_state::read_current_store_path();
+    if live_store_path == *last_known_store_path {
+        return false;
+    }
+
+    *last_known_store_path = live_store_path.clone();
+    if let Ok(mut build_state) = build_state::get(app_handle) {
+        build_state.current_nix_store_path = live_store_path.clone();
+        let _ = build_state::set(app_handle, build_state);
+    }
+
+    let nixmac_built = build_state::get(app_handle)
+        .ok()
+        .and_then(|state| state.nixmac_built_store_path);
+    live_store_path.is_some() && live_store_path != nixmac_built
+}
+
+fn check_git_status<R: Runtime>(
+    app_handle: &AppHandle<R>,
+    dir: &str,
+    external_build_detected: bool,
+) {
+    let status = match git::status(dir) {
+        Ok(status) => status,
+        Err(error) => {
+            let _ = app_handle.emit("git_state_error", error.to_string());
+            return;
+        }
+    };
+
+    let current = git_state::get(app_handle);
+    let status_changed = current.git_status.as_ref() != Some(&status);
+    if !status_changed && !external_build_detected {
+        return;
+    }
+
+    evolve_state::refresh(app_handle, &status.changes);
+    let change_map = if status.clean_head {
+        Default::default()
+    } else {
+        let pool = app_handle.state::<db::DbPool>();
+        summarize::find_existing::for_current_state(&pool, dir)
+            .ok()
+            .map(summarize::group_existing::from_change_sets)
+            .unwrap_or_default()
+    };
+    drift_notifications::maybe_notify(Some(&status), external_build_detected);
+    app_handle
+        .state::<crate::observable::Observable<GitState>>()
+        .update_if_changed(move |state| {
+            let live_status_changed = state.git_status.as_ref() != Some(&status);
+            let flag =
+                external_build_detected || (state.external_build_detected && !live_status_changed);
+            state.git_status = Some(status);
+            state.external_build_detected = flag;
+        });
+    change_map_state::update(app_handle, change_map);
+}
+
+fn check_upstream<R: Runtime + 'static>(app_handle: &AppHandle<R>, dir: &str, generation: u64) {
+    if GitAutoUpdateMode::from_env() == GitAutoUpdateMode::Off
+        || !should_check_auto_update(dir, Instant::now())
+    {
+        return;
+    }
+
+    let check_app_handle = app_handle.clone();
+    let dir = dir.to_string();
+    std::thread::spawn(move || {
+        let decision = git::auto_update::check_auto_update(&dir);
+        log::debug!("[watcher] git auto-update check result: {:?}", decision);
+        if let Ok(decision) = decision {
+            let available = matches!(
+                decision,
+                git::auto_update::AutoUpdateDecision::UpdateAndRebuild { .. }
+            );
+            let watch_dir = WATCH_DIR.lock().unwrap();
+            if WATCHER_GENERATION.load(Ordering::SeqCst) == generation
+                && watch_dir.as_deref() == Some(dir.as_str())
+            {
+                git_state::set_upstream_update_available(&check_app_handle, available);
+            } else {
+                log::debug!("[watcher] discarding stale git auto-update result for {dir}");
+            }
+        }
+    });
+}
+
+fn check_rebuild_needed<R: Runtime + 'static>(
+    app_handle: &AppHandle<R>,
+    dir: &str,
+    generation: u64,
+) {
+    if !should_check_rebuild_needed(dir, Instant::now()) {
+        return;
+    }
+    let Some(hostname) = nix::determine_host_attr(app_handle) else {
+        return;
+    };
+
+    let check_app_handle = app_handle.clone();
+    let dir = dir.to_string();
+    let rebuild_check_revision = git_state::rebuild_needed_check_revision();
+    std::thread::spawn(move || match nix::is_rebuild_needed(&hostname, &dir) {
+        Ok(needed) => {
+            log::debug!(
+                "[watcher] rebuild-needed check result for {dir} on {hostname}: {}",
+                if needed { "needed" } else { "not needed" }
+            );
+            let watch_dir = WATCH_DIR.lock().unwrap();
+            if WATCHER_GENERATION.load(Ordering::SeqCst) == generation
+                && watch_dir.as_deref() == Some(dir.as_str())
+                && nix::determine_host_attr(&check_app_handle).as_deref() == Some(&hostname)
+            {
+                if !git_state::set_rebuild_needed_from_check(
+                    &check_app_handle,
+                    rebuild_check_revision,
+                    needed,
+                ) {
+                    log::debug!(
+                        "[watcher] discarding rebuild-needed result invalidated by a successful build"
+                    );
+                }
+            } else {
+                log::debug!("[watcher] discarding stale rebuild-needed result for {dir}");
+            }
+        }
+        Err(error) => log::warn!("[watcher] rebuild-needed check failed: {error:#}"),
+    });
+}
+
+fn wait_for_next_poll<R: Runtime + 'static>(
+    app_handle: &AppHandle<R>,
+    dir: Option<&str>,
+    interval_ms: u64,
+    generation: u64,
+) {
+    let sleep_until = Instant::now() + Duration::from_millis(interval_ms);
+    while Instant::now() < sleep_until && WATCHER_ACTIVE.load(Ordering::SeqCst) {
+        if let Some(dir) = dir {
+            check_upstream(app_handle, dir, generation);
+            check_rebuild_needed(app_handle, dir, generation);
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
 }
 
 /// Stops the git status watcher, if one is running, and waits for it to exit.
@@ -130,6 +303,7 @@ where
     // If the repository changed, reset the upstream update available flag so the next check can re-evaluate it.
     if repository_changed {
         git_state::set_upstream_update_available(&app_handle, false);
+        git_state::set_rebuild_needed(&app_handle, false);
     }
 
     // Step 3: Signal that a watcher is now active and spawn the new thread.
@@ -153,131 +327,14 @@ where
                 watch_dir.clone()
             };
 
-            // Detect external builds
-            let mut external_build_detected = false;
-            let live_store_path = build_state::read_current_store_path();
-            if live_store_path != last_known_store_path {
-                last_known_store_path = live_store_path.clone();
-                // Persist so the next app start initialises correctly.
-                if let Ok(mut bs) = build_state::get(&app_handle) {
-                    bs.current_nix_store_path = live_store_path.clone();
-                    // fire-and-forget: persisting the updated store path to cache.
-                    // The in-memory value is already updated above; a write failure
-                    // means the next app start will re-detect the path from the filesystem.
-                    let _ = build_state::set(&app_handle, bs);
-                }
-                // If the new path differs from what nixmac built, it's an external build.
-                let nixmac_built = build_state::get(&app_handle)
-                    .ok()
-                    .and_then(|bs| bs.nixmac_built_store_path);
-                if live_store_path.is_some() && live_store_path != nixmac_built {
-                    external_build_detected = true;
-                }
-            }
+            let external_build_detected =
+                check_for_external_build(&app_handle, &mut last_known_store_path);
 
             if let Some(ref dir) = current_dir {
-                match git::status(dir) {
-                    Ok(status) => {
-                        // Compare against the in-memory cell (last-known state).
-                        // Both this watcher and the mutating commands write it.
-                        let current = git_state::get(&app_handle);
-                        let status_changed = current.git_status.as_ref() != Some(&status);
-
-                        if status_changed || external_build_detected {
-                            // HEAD may have moved since an evolution session was
-                            // persisted. Invalidate that session before choosing
-                            // the summary base ref, so a stale rollback branch
-                            // cannot turn committed changes into manual drift.
-                            evolve_state::refresh(&app_handle, &status.changes);
-                            let change_map = if status.clean_head {
-                                // A clean worktree has no manual drift. Never
-                                // carry a historical/session-derived diff into
-                                // the live drift cell.
-                                Default::default()
-                            } else {
-                                let pool = app_handle.state::<db::DbPool>();
-                                summarize::find_existing::for_current_state(&pool, dir)
-                                    .ok()
-                                    .map(summarize::group_existing::from_change_sets)
-                                    .unwrap_or_default()
-                            };
-                            // Native drift notification (config drift / external build).
-                            drift_notifications::maybe_notify(
-                                Some(&status),
-                                external_build_detected,
-                            );
-                            // The cell write emits `git_state_changed`; one emit per
-                            // slice — frontend listens on its dedicated channel. Derive
-                            // the sticky external-build flag from the live cell while its
-                            // write lock is held so another writer cannot be clobbered.
-                            app_handle
-                                .state::<crate::observable::Observable<GitState>>()
-                                .update_if_changed(move |state| {
-                                    let live_status_changed =
-                                        state.git_status.as_ref() != Some(&status);
-                                    let flag = external_build_detected
-                                        || (state.external_build_detected && !live_status_changed);
-                                    state.git_status = Some(status);
-                                    state.external_build_detected = flag;
-                                });
-                            // The cell write emits `change_map_changed`.
-                            change_map_state::update(&app_handle, change_map);
-                        }
-                    }
-                    Err(e) => {
-                        // fire-and-forget: error event delivery to frontend.
-                        let _ = app_handle.emit("git_state_error", e.to_string());
-                    }
-                }
+                check_git_status(&app_handle, dir, external_build_detected);
             }
 
-            // Check periodically (100ms) to break if restart / stop was requested
-            let sleep_until = std::time::Instant::now() + Duration::from_millis(interval_ms);
-            let auto_update_mode = GitAutoUpdateMode::from_env();
-            while std::time::Instant::now() < sleep_until {
-                if !WATCHER_ACTIVE.load(Ordering::SeqCst) {
-                    break;
-                }
-
-                // Detect upstream git commits we may want to offer to pull.
-                // This is a fire-and-forget, best-effort check; if it fails,
-                // we just try again on the next scheduled check.
-                if auto_update_mode != GitAutoUpdateMode::Off
-                    && let Some(dir) = current_dir.clone()
-                    && should_check_auto_update(&dir, Instant::now())
-                {
-                    // Use a separate thread so we don't block the crazy-fast 100ms loop. The check itself is a git fetch
-                    // which is more like order-of-seconds (usually about 1-2 seconds in practice).
-                    let check_app_handle = app_handle.clone();
-                    std::thread::spawn(move || {
-                        let decision = git::auto_update::check_auto_update(&dir);
-                        log::debug!("[watcher] git auto-update check result: {:?}", decision);
-                        if let Ok(decision) = decision {
-                            let available = matches!(
-                                decision,
-                                git::auto_update::AutoUpdateDecision::UpdateAndRebuild { .. }
-                            );
-                            // Hold WATCH_DIR through the state write so a repository
-                            // switch cannot race the validation below.
-                            let watch_dir = WATCH_DIR.lock().unwrap();
-                            if WATCHER_GENERATION.load(Ordering::SeqCst) == generation
-                                && watch_dir.as_deref() == Some(dir.as_str())
-                            {
-                                git_state::set_upstream_update_available(
-                                    &check_app_handle,
-                                    available,
-                                );
-                            } else {
-                                log::debug!(
-                                    "[watcher] discarding stale git auto-update result for {dir}"
-                                );
-                            }
-                        }
-                    });
-                }
-
-                std::thread::sleep(Duration::from_millis(100));
-            }
+            wait_for_next_poll(&app_handle, current_dir.as_deref(), interval_ms, generation);
         }
     });
 
