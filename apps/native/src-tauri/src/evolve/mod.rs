@@ -2746,7 +2746,24 @@ fn process_tool_result(
         }
 
         ToolResult::Done(summary) => {
-            if evolution.build_verified {
+            if !evolution.has_edits() {
+                // No environment changes were made: this is a no-op
+                // completion (question answered, request already satisfied,
+                // nothing to do), not a generated changeset. Completing as
+                // Conversational keeps the git/db/summarize pipeline from
+                // recording an empty evolution and lets the caller surface
+                // the summary as the response (N5).
+                info!("✅ EVOLUTION COMPLETE (no edits — conversational)");
+                info!("Summary: {}", summary);
+                evolution.summary = Some(summary.clone());
+                evolution.state = EvolutionState::Conversational;
+                evolution.terminal_reason = Some(TerminalReason::Done);
+                let msg = Message::Tool {
+                    tool_call_id: tool_call_id.to_string(),
+                    content: "Evolution complete.".to_string(),
+                };
+                (msg, Some(true))
+            } else if evolution.build_verified {
                 info!("✅ EVOLUTION COMPLETE (build verified)");
                 info!("Summary: {}", summary);
                 evolution.summary = Some(summary.clone());
@@ -2757,7 +2774,7 @@ fn process_tool_result(
                     content: "Evolution complete.".to_string(),
                 };
                 (msg, Some(true))
-            } else if evolution.has_edits() {
+            } else {
                 done_gate.rejected_dones += 1;
                 info!(
                     "⚠️ Agent called done without build verification (rejection #{})",
@@ -2790,17 +2807,6 @@ fn process_tool_result(
                     content,
                 };
                 (msg, None) // Break inner loop, continue outer
-            } else {
-                info!("✅ EVOLUTION COMPLETE (no edits)");
-                info!("Summary: {}", summary);
-                evolution.summary = Some(summary.clone());
-                evolution.state = EvolutionState::Generated;
-                evolution.terminal_reason = Some(TerminalReason::Done);
-                let msg = Message::Tool {
-                    tool_call_id: tool_call_id.to_string(),
-                    content: "Evolution complete.".to_string(),
-                };
-                (msg, Some(true))
             }
         }
 
@@ -2818,7 +2824,7 @@ fn process_tool_result(
 mod tests {
     use super::{
         BUILD_OUTPUT_MAX_CHARS, DoneGate, Evolution, EvolutionMessage, EvolutionState, FileEdit,
-        Message, Retention, ToolCall, ToolResult, filter_evolution_messages,
+        Message, Retention, TerminalReason, ToolCall, ToolResult, filter_evolution_messages,
         normalize_openai_max_output_tokens, process_tool_result, read_file_dedup_key,
         repair_tool_call_pairing, repeat_call_key, store_tool_result,
         truncate_build_output_for_model,
@@ -2983,6 +2989,66 @@ mod tests {
             !matches!(evolution.state, EvolutionState::Generated),
             "done must not complete an evolution whose last build_check failed"
         );
+    }
+
+    // A `done` with no edits is a no-op completion: it must end as a
+    // Conversational result (summary as the response), never as a Generated
+    // changeset with an empty diff (N5).
+    #[test]
+    fn no_edit_done_completes_as_conversational() {
+        let mut evolution = Evolution::new("prompt");
+        let mut done_gate = DoneGate::default();
+
+        run_tool_result(
+            &ToolResult::Done("already satisfied".to_string()),
+            &mut evolution,
+            &mut done_gate,
+        );
+
+        assert_eq!(evolution.state, EvolutionState::Conversational);
+        assert_eq!(evolution.terminal_reason, Some(TerminalReason::Done));
+        assert_eq!(evolution.summary.as_deref(), Some("already satisfied"));
+    }
+
+    // Even when a diagnostic build_check ran (and passed), a completion
+    // without edits is still a no-op, not a generated changeset.
+    #[test]
+    fn no_edit_done_after_diagnostic_build_is_still_conversational() {
+        let mut evolution = Evolution::new("prompt");
+        let mut done_gate = DoneGate::default();
+
+        run_tool_result(&build_result(true), &mut evolution, &mut done_gate);
+        run_tool_result(
+            &ToolResult::Done("nothing to change".to_string()),
+            &mut evolution,
+            &mut done_gate,
+        );
+
+        assert_eq!(evolution.state, EvolutionState::Conversational);
+    }
+
+    // The verified-edit path is unchanged: edits plus a passing build_check
+    // still complete as Generated.
+    #[test]
+    fn verified_done_with_edits_completes_as_generated() {
+        let mut evolution = Evolution::new("prompt");
+        evolution.edits.push(FileEdit {
+            path: "configuration.nix".to_string(),
+            search: "a".to_string(),
+            replace: "b".to_string(),
+        });
+        let mut done_gate = DoneGate::default();
+
+        run_tool_result(&build_result(true), &mut evolution, &mut done_gate);
+        run_tool_result(
+            &ToolResult::Done("done".to_string()),
+            &mut evolution,
+            &mut done_gate,
+        );
+
+        assert_eq!(evolution.state, EvolutionState::Generated);
+        assert_eq!(evolution.terminal_reason, Some(TerminalReason::Done));
+        assert!(evolution.build_verified);
     }
 
     // The rejection hint must only reference parameters build_check actually
