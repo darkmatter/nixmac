@@ -67,6 +67,8 @@ pub struct GitState {
     pub git_status: Option<GitStatus>,
     /// True when a build outside nixmac was detected.
     pub external_build_detected: bool,
+    /// True when the configured upstream contains a fast-forward update.
+    pub upstream_update_available: bool,
 }
 
 /// Result of a successful `git_commit` command. State mirrors (git, evolve,

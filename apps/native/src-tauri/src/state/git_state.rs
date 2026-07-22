@@ -16,6 +16,7 @@ pub fn load_observable<R: Runtime>(app: &AppHandle<R>) -> Observable<GitState> {
     Observable::new(GitState {
         git_status: None,
         external_build_detected: false,
+        upstream_update_available: false,
     })
     .emit_to(app, GIT_STATE_CHANGED_EVENT)
 }
@@ -25,15 +26,16 @@ pub fn get<R: Runtime>(app: &AppHandle<R>) -> GitState {
     app.state::<Observable<GitState>>().read_sync().clone()
 }
 
-/// Write the cell — and notify subscribers — when `next` differs from the
-/// current value. Returns whether a write happened.
+/// Write the cell atomically, notifying subscribers only when it changes.
 pub fn update<R: Runtime>(app: &AppHandle<R>, next: GitState) -> bool {
     let observable = app.state::<Observable<GitState>>();
-    if *observable.read_sync() == next {
-        return false;
-    }
-    *observable.write_sync() = next;
-    true
+    observable.update_if_changed(move |current| *current = next)
+}
+
+/// Atomically update only the result of the asynchronous upstream check.
+pub fn set_upstream_update_available<R: Runtime>(app: &AppHandle<R>, available: bool) -> bool {
+    app.state::<Observable<GitState>>()
+        .update_if_changed(|state| state.upstream_update_available = available)
 }
 
 /// Record a fresh status snapshot, clearing the external-build flag.
@@ -41,12 +43,10 @@ pub fn update<R: Runtime>(app: &AppHandle<R>, next: GitState) -> bool {
 /// Mutating commands call this after they change the working tree or finish
 /// a build nixmac itself initiated — both make any previously detected
 /// external build stale.
-pub fn update_status<R: Runtime>(app: &AppHandle<R>, status: GitStatus) -> bool {
-    update(
-        app,
-        GitState {
-            git_status: Some(status),
-            external_build_detected: false,
-        },
-    )
+pub fn update_status<R: Runtime>(app: &AppHandle<R>, status: GitStatus) {
+    app.state::<Observable<GitState>>()
+        .update_if_changed(move |state| {
+            state.git_status = Some(status);
+            state.external_build_detected = false;
+        });
 }

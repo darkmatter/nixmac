@@ -88,7 +88,7 @@ function resetStore() {
   viewModelActions.setState({
     git: null,
     evolve: null,
-    build: { externalBuildDetected: false },
+    build: { externalBuildDetected: false, upstreamUpdateAvailable: false },
     preferences: makeGlobalPreferences(),
   });
   uiActions.setProcessing(false);

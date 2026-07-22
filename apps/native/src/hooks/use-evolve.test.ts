@@ -45,7 +45,7 @@ describe("useEvolve", () => {
       changeMap: null,
       git: null,
       evolve: null,
-      build: { externalBuildDetected: false },
+      build: { externalBuildDetected: false, upstreamUpdateAvailable: false },
     });
   });
 

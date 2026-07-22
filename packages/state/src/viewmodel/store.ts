@@ -20,6 +20,7 @@ export const initialViewModelState: ViewModelState = {
   git: null,
   build: {
     externalBuildDetected: false,
+    upstreamUpdateAvailable: false,
   },
   changeMap: null,
   preferences: null,

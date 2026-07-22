@@ -11,12 +11,15 @@ use crate::state::{
 };
 use crate::{db, git, summarize};
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
 /// Set to `false` by `start_watching` to stop the old thread before starting a new one.
 static WATCHER_ACTIVE: AtomicBool = AtomicBool::new(false);
+
+/// Invalidates results from checks started by an older watcher instance.
+static WATCHER_GENERATION: AtomicU64 = AtomicU64::new(0);
 
 /// The directory being watched. Stored globally so we can access it from the thread.
 static WATCH_DIR: Mutex<Option<String>> = Mutex::new(None);
@@ -33,6 +36,34 @@ static LAST_AUTO_UPDATE_CHECK: Mutex<Option<(String, Instant)>> = Mutex::new(Non
 /// Check the upstream git repo for new commits that we might be able to pull
 /// every 5 minutes.
 const AUTO_UPDATE_CHECK_INTERVAL: Duration = Duration::from_secs(5 * 60);
+
+/// Git auto-update mode preference values.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum GitAutoUpdateMode {
+    Off,
+    Confirm,
+    Automatic,
+}
+
+/// Git auto-update mode preference implementation.
+/// TODO: Move to real system preference when ready to hook up to UI.
+impl GitAutoUpdateMode {
+    fn from_env() -> Self {
+        Self::from_value(std::env::var("NIXMAC_GIT_AUTO_UPDATE_MODE").ok().as_deref())
+    }
+
+    fn from_value(value: Option<&str>) -> Self {
+        match value {
+            Some("confirm") => Self::Confirm,
+            Some("automatic") => Self::Automatic,
+            Some(value) if !value.is_empty() && value != "off" => {
+                log::warn!("[watcher] ignoring invalid NIXMAC_GIT_AUTO_UPDATE_MODE value: {value}");
+                Self::Off
+            }
+            _ => Self::Off,
+        }
+    }
+}
 
 fn should_check_auto_update(dir: &str, now: Instant) -> bool {
     let mut last_check = LAST_AUTO_UPDATE_CHECK.lock().unwrap();
@@ -54,6 +85,7 @@ fn should_check_auto_update(dir: &str, now: Instant) -> bool {
 /// a `git_state_error` on every tick.
 pub fn stop_watching() {
     let mut thread_guard = WATCHER_THREAD.lock().unwrap();
+    WATCHER_GENERATION.fetch_add(1, Ordering::SeqCst);
     if let Some(old_thread) = thread_guard.take() {
         WATCHER_ACTIVE.store(false, Ordering::SeqCst);
         // fire-and-forget join, as in `start_watching`: a panicked watcher is
@@ -74,6 +106,12 @@ where
     R: Runtime + 'static,
 {
     let mut thread_guard = WATCHER_THREAD.lock().unwrap();
+    let repository_changed = WATCH_DIR.lock().unwrap().as_deref() != Some(dir.as_str());
+    let generation = if repository_changed {
+        WATCHER_GENERATION.fetch_add(1, Ordering::SeqCst) + 1
+    } else {
+        WATCHER_GENERATION.load(Ordering::SeqCst)
+    };
 
     // Step 1: Stop any existing watcher and wait for it to fully exit.
     if let Some(old_thread) = thread_guard.take() {
@@ -87,6 +125,11 @@ where
     {
         let mut watch_dir = WATCH_DIR.lock().unwrap();
         *watch_dir = Some(dir.clone());
+    }
+
+    // If the repository changed, reset the upstream update available flag so the next check can re-evaluate it.
+    if repository_changed {
+        git_state::set_upstream_update_available(&app_handle, false);
     }
 
     // Step 3: Signal that a watcher is now active and spawn the new thread.
@@ -155,20 +198,20 @@ where
                                 Some(&status),
                                 external_build_detected,
                             );
-                            // The external-build flag is sticky while the status stays
-                            // put (the frontend keeps showing the banner) and clears on
-                            // the next status change, matching the pre-cell emissions.
-                            let flag = external_build_detected
-                                || (current.external_build_detected && !status_changed);
                             // The cell write emits `git_state_changed`; one emit per
-                            // slice — frontend listens on its dedicated channel.
-                            git_state::update(
-                                &app_handle,
-                                GitState {
-                                    git_status: Some(status),
-                                    external_build_detected: flag,
-                                },
-                            );
+                            // slice — frontend listens on its dedicated channel. Derive
+                            // the sticky external-build flag from the live cell while its
+                            // write lock is held so another writer cannot be clobbered.
+                            app_handle
+                                .state::<crate::observable::Observable<GitState>>()
+                                .update_if_changed(move |state| {
+                                    let live_status_changed =
+                                        state.git_status.as_ref() != Some(&status);
+                                    let flag = external_build_detected
+                                        || (state.external_build_detected && !live_status_changed);
+                                    state.git_status = Some(status);
+                                    state.external_build_detected = flag;
+                                });
                             // The cell write emits `change_map_changed`.
                             change_map_state::update(&app_handle, change_map);
                         }
@@ -182,6 +225,7 @@ where
 
             // Check periodically (100ms) to break if restart / stop was requested
             let sleep_until = std::time::Instant::now() + Duration::from_millis(interval_ms);
+            let auto_update_mode = GitAutoUpdateMode::from_env();
             while std::time::Instant::now() < sleep_until {
                 if !WATCHER_ACTIVE.load(Ordering::SeqCst) {
                     break;
@@ -190,14 +234,37 @@ where
                 // Detect upstream git commits we may want to offer to pull.
                 // This is a fire-and-forget, best-effort check; if it fails,
                 // we just try again on the next scheduled check.
-                if let Some(dir) = current_dir.clone()
+                if auto_update_mode != GitAutoUpdateMode::Off
+                    && let Some(dir) = current_dir.clone()
                     && should_check_auto_update(&dir, Instant::now())
                 {
                     // Use a separate thread so we don't block the crazy-fast 100ms loop. The check itself is a git fetch
                     // which is more like order-of-seconds (usually about 1-2 seconds in practice).
+                    let check_app_handle = app_handle.clone();
                     std::thread::spawn(move || {
                         let decision = git::auto_update::check_auto_update(&dir);
                         log::debug!("[watcher] git auto-update check result: {:?}", decision);
+                        if let Ok(decision) = decision {
+                            let available = matches!(
+                                decision,
+                                git::auto_update::AutoUpdateDecision::UpdateAndRebuild { .. }
+                            );
+                            // Hold WATCH_DIR through the state write so a repository
+                            // switch cannot race the validation below.
+                            let watch_dir = WATCH_DIR.lock().unwrap();
+                            if WATCHER_GENERATION.load(Ordering::SeqCst) == generation
+                                && watch_dir.as_deref() == Some(dir.as_str())
+                            {
+                                git_state::set_upstream_update_available(
+                                    &check_app_handle,
+                                    available,
+                                );
+                            } else {
+                                log::debug!(
+                                    "[watcher] discarding stale git auto-update result for {dir}"
+                                );
+                            }
+                        }
                     });
                 }
 
@@ -208,4 +275,34 @@ where
 
     // Step 4: Store the new thread's handle so restart can join() it
     *thread_guard = Some(new_thread);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::GitAutoUpdateMode;
+
+    #[test]
+    fn parses_auto_update_mode() {
+        assert_eq!(GitAutoUpdateMode::from_value(None), GitAutoUpdateMode::Off);
+        assert_eq!(
+            GitAutoUpdateMode::from_value(Some("")),
+            GitAutoUpdateMode::Off
+        );
+        assert_eq!(
+            GitAutoUpdateMode::from_value(Some("off")),
+            GitAutoUpdateMode::Off
+        );
+        assert_eq!(
+            GitAutoUpdateMode::from_value(Some("confirm")),
+            GitAutoUpdateMode::Confirm
+        );
+        assert_eq!(
+            GitAutoUpdateMode::from_value(Some("automatic")),
+            GitAutoUpdateMode::Automatic
+        );
+        assert_eq!(
+            GitAutoUpdateMode::from_value(Some("invalid")),
+            GitAutoUpdateMode::Off
+        );
+    }
 }

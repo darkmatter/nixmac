@@ -4,12 +4,17 @@ import { uiActions, viewModelActions } from "@nixmac/state";
 import { bindBackendSlice } from "./_helpers";
 import { invalidateHistory } from "./history";
 
-function mirrorGitState(git: GitStatus | null, externalBuildDetected = false): void {
+function mirrorGitState(
+  git: GitStatus | null,
+  externalBuildDetected = false,
+  upstreamUpdateAvailable = false,
+): void {
   viewModelActions.setState((state) => ({
     git,
     build: {
       ...state.build,
       externalBuildDetected,
+      upstreamUpdateAvailable,
     },
   }));
 }
@@ -22,8 +27,7 @@ function mirrorGitState(git: GitStatus | null, externalBuildDetected = false): v
  */
 export async function refreshGitSnapshot(): Promise<void> {
   // deprecated(orpc): replace with client/orpc from @/lib/orpc
-  const status = await tauriAPI.git.statusAndCache();
-  mirrorGitState(status);
+  await tauriAPI.git.statusAndCache();
 }
 
 export async function startGitSync(): Promise<() => void> {
@@ -32,8 +36,8 @@ export async function startGitSync(): Promise<() => void> {
       // deprecated(orpc): replace with client/orpc from @/lib/orpc
       hydrate: () => tauriAPI.git.state(),
       event: "git_state_changed",
-      mirror: ({ gitStatus, externalBuildDetected }) =>
-        mirrorGitState(gitStatus, externalBuildDetected),
+      mirror: ({ gitStatus, externalBuildDetected, upstreamUpdateAvailable }) =>
+        mirrorGitState(gitStatus, externalBuildDetected, upstreamUpdateAvailable),
       onEvent: () => invalidateHistory(),
     }),
     ipcRenderer.on<string>("git_state_error", (event) => {

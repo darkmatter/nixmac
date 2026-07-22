@@ -67,7 +67,7 @@ describe("useRollback", () => {
     viewModelActions.setState({
       evolve: committableEvolveState,
       git: cleanGitStatus,
-      build: { externalBuildDetected: false },
+      build: { externalBuildDetected: false, upstreamUpdateAvailable: false },
     });
   });
 
