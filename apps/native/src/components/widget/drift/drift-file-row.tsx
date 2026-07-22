@@ -9,11 +9,13 @@ import { ChevronRight, MoveRight } from "lucide-react";
 import { useState } from "react";
 import { DriftActionsMenu } from "./drift-actions-menu";
 import { DriftDiffPreview } from "./drift-diff-preview";
+import { useDisplayPath } from "@/hooks/use-display-path";
 import { CHANGE_TYPE_GLYPH, type DriftFileRowData } from "./drift-utils";
 
 function FilePath({ path, role }: { path: string; role?: "old" | "new" }) {
-  const dir = getDirectory(path);
-  const name = getShortFilename(path);
+  const displayPath = useDisplayPath()(path);
+  const dir = getDirectory(displayPath);
+  const name = getShortFilename(displayPath);
   return (
     <span className="min-w-0 truncate font-mono text-[13px]">
       {dir && (
