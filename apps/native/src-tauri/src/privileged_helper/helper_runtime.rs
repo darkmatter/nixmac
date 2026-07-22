@@ -1,6 +1,6 @@
 use crate::privileged_helper::protocol::{
-    ActivateStorePathRequest, HELPER_SOCKET_DIR, HELPER_SOCKET_PATH, HelperRequest, HelperResponse,
-    validate_canonical_activate_path,
+    ActivateStorePathRequest, HELPER_SOCKET_DIR, HELPER_SOCKET_PATH, HELPER_WARNING_PREFIX,
+    HelperRequest, HelperResponse, validate_canonical_activate_path,
 };
 use anyhow::{Context, Result, bail};
 use std::fs;
@@ -12,7 +12,30 @@ use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
 use std::process::Command;
 
+/// Fixed PATH for the privileged activation: root-owned system and Nix
+/// profile directories only. The requester's `nix_path` never reaches root
+/// command lookup.
+const ACTIVATION_PATH_ENV: &str =
+    "/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+const SYSTEM_PROFILE: &str = "/nix/var/nix/profiles/system";
+const NIX_ENV_CANDIDATES: [&str; 2] = [
+    "/nix/var/nix/profiles/default/bin/nix-env",
+    "/run/current-system/sw/bin/nix-env",
+];
+/// Sudoers rule older helpers created (and could leave behind on forced
+/// termination). No longer written; removed on startup if present.
+const LEGACY_SUDOERS_PATH: &str = "/etc/sudoers.d/nixmac-activate-helper";
+
 pub fn run_daemon() -> Result<()> {
+    if let Err(error) = fs::remove_file(LEGACY_SUDOERS_PATH)
+        && error.kind() != std::io::ErrorKind::NotFound
+    {
+        // Keep serving — failing startup would not remove the rule either —
+        // but a stale NOPASSWD grant must never go unnoticed.
+        eprintln!(
+            "nixmac-helper: SECURITY: failed to remove legacy sudoers rule {LEGACY_SUDOERS_PATH}: {error}"
+        );
+    }
     fs::create_dir_all(HELPER_SOCKET_DIR)?;
     let socket_path = Path::new(HELPER_SOCKET_PATH);
     if socket_path.exists() {
@@ -58,9 +81,11 @@ fn handle_stream(mut stream: UnixStream) -> Result<()> {
     let mut line = String::new();
     BufReader::new(stream.try_clone()?).read_line(&mut line)?;
     let request: HelperRequest = serde_json::from_str(&line)?;
-    let response = match peer_identity(&stream).and_then(|peer| authorize_request(&peer, &request))
-    {
-        Ok(()) => handle_request(request),
+    let response = match peer_identity(&stream) {
+        Ok(peer) => match authorize_request(&peer, &request) {
+            Ok(()) => handle_request(&peer, request),
+            Err(error) => HelperResponse::error(-1, error.to_string()),
+        },
         Err(error) => HelperResponse::error(-1, error.to_string()),
     };
     serde_json::to_writer(&mut stream, &response)?;
@@ -69,66 +94,124 @@ fn handle_stream(mut stream: UnixStream) -> Result<()> {
     Ok(())
 }
 
-pub fn handle_request(request: HelperRequest) -> HelperResponse {
+pub fn handle_request(peer: &PeerIdentity, request: HelperRequest) -> HelperResponse {
     match request {
         HelperRequest::Status => HelperResponse::ok("nixmac helper ready"),
-        HelperRequest::ActivateStorePath { request } => match activate_store_path(&request) {
+        HelperRequest::ActivateStorePath { request } => match activate_store_path(peer, &request) {
             Ok(response) => response,
             Err(error) => HelperResponse::error(-1, error.to_string()),
         },
     }
 }
 
-fn activate_store_path(request: &ActivateStorePathRequest) -> Result<HelperResponse> {
-    validate_activation_request(request)?;
-    let script = root_activation_script(request)?;
-    let output = Command::new("/bin/sh")
-        .arg("-c")
-        .arg(script)
-        .output()
-        .context("failed to execute activation shell")?;
+fn activate_store_path(
+    peer: &PeerIdentity,
+    request: &ActivateStorePathRequest,
+) -> Result<HelperResponse> {
+    validate_canonical_activate_path(&request.activate_path)?;
+    // Account values are derived from the socket peer credentials; the
+    // request's `user_name`/`user_id`/`home` are never trusted here.
+    let account = user_account(peer.uid)?;
+    let argv = activation_argv(peer.uid, &account, request);
+    // Merge stderr into stdout (the old script's `2>&1`): consumers stream,
+    // log, and summarize the response's stdout only, and the activate script
+    // writes most of its output to stderr.
+    let (mut reader, writer) = std::io::pipe().context("failed to create activation pipe")?;
+    let mut command = Command::new(&argv[0]);
+    command
+        .args(&argv[1..])
+        .stdout(
+            writer
+                .try_clone()
+                .context("failed to clone activation pipe")?,
+        )
+        .stderr(writer);
+    let mut child = command.spawn().context("failed to execute activation")?;
+    // The command still holds write ends of the pipe; drop them so the read
+    // below ends when the child (and its descendants) exit.
+    drop(command);
+    let mut output = Vec::new();
+    std::io::Read::read_to_end(&mut reader, &mut output)
+        .context("failed to read activation output")?;
+    let status = child.wait().context("failed to wait for activation")?;
+
+    let mut stdout = String::from_utf8_lossy(&output).to_string();
+    // Profile and link maintenance run only after a successful activation and
+    // are best-effort: the system switch already happened, so their failures
+    // surface as warnings instead of failing the apply.
+    if status.success() {
+        for warning in post_activation_maintenance(request) {
+            stdout.push_str(&format!("\n{HELPER_WARNING_PREFIX} {warning}"));
+        }
+    }
 
     Ok(HelperResponse {
-        ok: output.status.success(),
-        code: output.status.code().unwrap_or(-1),
-        stdout: String::from_utf8_lossy(&output.stdout).to_string(),
-        stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+        ok: status.success(),
+        code: status.code().unwrap_or(-1),
+        stdout,
+        stderr: String::new(),
         error: None,
     })
 }
 
-pub fn validate_activation_request(request: &ActivateStorePathRequest) -> Result<()> {
-    validate_canonical_activate_path(&request.activate_path)?;
-    if request.user_name.trim().is_empty() {
-        bail!("activation user is required");
+/// Direct-exec activation command: no shell, absolute programs only, a fixed
+/// root-owned PATH, and an otherwise empty environment (`env -i`).
+fn activation_argv(
+    uid: u32,
+    account: &UserAccount,
+    request: &ActivateStorePathRequest,
+) -> Vec<String> {
+    let mut argv = vec![
+        "/bin/launchctl".to_string(),
+        "asuser".to_string(),
+        uid.to_string(),
+        "/usr/bin/env".to_string(),
+        "-i".to_string(),
+        format!("PATH={ACTIVATION_PATH_ENV}"),
+        format!("HOME={}", account.home),
+        format!("USER={}", account.name),
+        format!("LOGNAME={}", account.name),
+    ];
+    if let Some(sock) = request
+        .ssh_auth_sock
+        .as_deref()
+        .filter(|sock| !sock.is_empty())
+    {
+        argv.push(format!("SSH_AUTH_SOCK={sock}"));
     }
-    if request.home.trim().is_empty() {
-        bail!("activation home is required");
-    }
-    if request.nix_path.trim().is_empty() {
-        bail!("activation PATH is required");
-    }
+    argv.push(request.activate_path.clone());
+    argv
+}
 
-    let id_output = Command::new("/usr/bin/id")
-        .args(["-u", &request.user_name])
-        .output()
-        .with_context(|| format!("failed to look up user {}", request.user_name))?;
-    if !id_output.status.success() {
-        bail!("activation user {} does not exist", request.user_name);
+fn post_activation_maintenance(request: &ActivateStorePathRequest) -> Vec<String> {
+    let mut warnings = Vec::new();
+    if let Err(error) = set_system_profile(&request.activate_path) {
+        warnings.push(format!("failed to update system profile: {error:#}"));
     }
-    let actual_uid = String::from_utf8_lossy(&id_output.stdout)
-        .trim()
-        .parse::<u32>()
-        .context("failed to parse user id")?;
-    if actual_uid != request.user_id {
+    warnings
+}
+
+fn set_system_profile(activate_path: &str) -> Result<()> {
+    let system_path = Path::new(activate_path)
+        .parent()
+        .context("activation path has no parent")?;
+    let nix_env = NIX_ENV_CANDIDATES
+        .iter()
+        .find(|candidate| Path::new(candidate).exists())
+        .context("nix-env not found in root-owned profile directories")?;
+    let output = Command::new(nix_env)
+        .args(["-p", SYSTEM_PROFILE, "--set"])
+        .arg(system_path)
+        .env_clear()
+        .env("PATH", ACTIVATION_PATH_ENV)
+        .output()
+        .context("failed to execute nix-env")?;
+    if !output.status.success() {
         bail!(
-            "activation user id mismatch for {}: expected {}, got {}",
-            request.user_name,
-            request.user_id,
-            actual_uid
+            "nix-env --set failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
         );
     }
-
     Ok(())
 }
 
@@ -157,9 +240,32 @@ fn authorize_request(peer: &PeerIdentity, request: &HelperRequest) -> Result<()>
 }
 
 #[derive(Debug, Clone)]
-struct PeerIdentity {
-    uid: u32,
-    executable: Option<String>,
+pub struct PeerIdentity {
+    pub uid: u32,
+    pub executable: Option<String>,
+}
+
+struct UserAccount {
+    name: String,
+    home: String,
+}
+
+#[cfg(target_os = "macos")]
+fn user_account(uid: u32) -> Result<UserAccount> {
+    let user = nix::unistd::User::from_uid(nix::unistd::Uid::from_raw(uid))
+        .context("failed to look up peer account")?
+        .with_context(|| format!("no account found for peer uid {uid}"))?;
+    let name = user.name;
+    let home = user.dir.to_string_lossy().into_owned();
+    if name.is_empty() || home.is_empty() {
+        bail!("peer uid {uid} resolves to an account without a name or home");
+    }
+    Ok(UserAccount { name, home })
+}
+
+#[cfg(not(target_os = "macos"))]
+fn user_account(_uid: u32) -> Result<UserAccount> {
+    bail!("peer account lookup is only implemented on macOS")
 }
 
 #[cfg(target_os = "macos")]
@@ -257,38 +363,6 @@ fn console_user() -> Option<String> {
     }
 }
 
-pub fn root_activation_script(request: &ActivateStorePathRequest) -> Result<String> {
-    validate_canonical_activate_path(&request.activate_path)?;
-    let sudoers_path = "/etc/sudoers.d/nixmac-activate-helper";
-    let ssh_sock = request.ssh_auth_sock.as_deref().unwrap_or("");
-    Ok(format!(
-        "set -e\n\
-         ACTIVATE='{activate}'\n\
-         USER_ID='{user_id}'\n\
-         USER_NAME='{user_name}'\n\
-         trap 'rm -f {sudoers_path}' EXIT\n\
-         printf '%s ALL=(ALL) NOPASSWD: %s\\n' \"$USER_NAME\" \"$ACTIVATE\" > {sudoers_path}\n\
-         chmod 440 {sudoers_path}\n\
-         visudo -cf {sudoers_path} >/dev/null\n\
-         export PATH='{path}'\n\
-         export HOME='{home}'\n\
-         export SSH_AUTH_SOCK='{sock}'\n\
-         launchctl asuser \"$USER_ID\" sudo -E -n \"$ACTIVATE\" 2>&1\n\
-         SYSTEM_PATH=$(dirname \"$ACTIVATE\")\n\
-         nix-env -p /nix/var/nix/profiles/system --set \"$SYSTEM_PATH\" || true\n",
-        activate = shell_single_quote(&request.activate_path),
-        user_id = request.user_id,
-        user_name = shell_single_quote(&request.user_name),
-        path = shell_single_quote(&request.nix_path),
-        home = shell_single_quote(&request.home),
-        sock = shell_single_quote(ssh_sock),
-    ))
-}
-
-fn shell_single_quote(value: &str) -> String {
-    value.replace('\'', "'\\''")
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -300,30 +374,70 @@ mod tests {
             user_id: 501,
             home: "/Users/alice".to_string(),
             ssh_auth_sock: Some("/tmp/ssh.sock".to_string()),
-            nix_path: "/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin".to_string(),
+            nix_path: "/tmp/attacker-bin:/usr/bin".to_string(),
+        }
+    }
+
+    fn account() -> UserAccount {
+        UserAccount {
+            name: "peer-alice".to_string(),
+            home: "/Users/peer-alice".to_string(),
         }
     }
 
     #[test]
-    fn root_activation_script_contains_exact_activate_path() {
-        let script = root_activation_script(&request(
-            "/nix/store/abc123-darwin-system-25.05.20260629/activate",
-        ))
-        .expect("build script");
+    fn activation_argv_execs_directly_with_fixed_path_and_derived_account() {
+        let argv = activation_argv(
+            501,
+            &account(),
+            &request("/nix/store/abc123-darwin-system-25.05.20260629/activate"),
+        );
 
-        assert!(script.contains("/nix/store/abc123-darwin-system-25.05.20260629/activate"));
-        assert!(script.contains("launchctl asuser"));
-        assert!(script.contains("NOPASSWD"));
+        assert_eq!(argv[0], "/bin/launchctl");
+        assert_eq!(&argv[1..3], ["asuser", "501"]);
+        assert_eq!(&argv[3..5], ["/usr/bin/env", "-i"]);
+        assert!(argv.contains(&format!("PATH={ACTIVATION_PATH_ENV}")));
+        // Account values come from the peer lookup, not the request.
+        assert!(argv.contains(&"HOME=/Users/peer-alice".to_string()));
+        assert!(argv.contains(&"USER=peer-alice".to_string()));
+        assert!(!argv.iter().any(|arg| arg.contains("/tmp/attacker-bin")));
+        assert!(!argv.iter().any(|arg| arg.contains("/Users/alice")));
+        assert_eq!(
+            argv.last().map(String::as_str),
+            Some("/nix/store/abc123-darwin-system-25.05.20260629/activate")
+        );
     }
 
     #[test]
-    fn root_activation_script_rejects_non_store_path() {
-        assert!(root_activation_script(&request("/tmp/activate")).is_err());
+    fn activation_argv_never_builds_shell_or_sudoers() {
+        let argv = activation_argv(
+            501,
+            &account(),
+            &request("/nix/store/abc123-darwin-system-25.05.20260629/activate"),
+        );
+
+        assert!(!argv.iter().any(|arg| arg.contains("/bin/sh")));
+        assert!(!argv.iter().any(|arg| arg.contains("sudo")));
+        assert!(!argv.iter().any(|arg| arg.contains("sudoers")));
+    }
+
+    #[test]
+    fn activation_argv_omits_ssh_sock_when_absent() {
+        let mut without_sock = request("/nix/store/abc123-darwin-system-25.05.20260629/activate");
+        without_sock.ssh_auth_sock = None;
+
+        let argv = activation_argv(501, &account(), &without_sock);
+
+        assert!(!argv.iter().any(|arg| arg.starts_with("SSH_AUTH_SOCK=")));
     }
 
     #[test]
     fn helper_status_request_returns_ready_response() {
-        let response = handle_request(HelperRequest::Status);
+        let peer = PeerIdentity {
+            uid: 501,
+            executable: None,
+        };
+        let response = handle_request(&peer, HelperRequest::Status);
 
         assert!(response.ok);
         assert_eq!(response.code, 0);

@@ -91,8 +91,11 @@ fn run_once() -> anyhow::Result<()> {
         return Err(anyhow::anyhow!(
             "activation failed ({}): {}",
             response.code,
-            response.error.unwrap_or(response.stderr)
+            response.failure_detail()
         ));
+    }
+    for warning in response.warnings() {
+        eprintln!("nixmac-sync-agent: {warning}");
     }
 
     // Activation set the durable system-profile GC root, so the out-link is
@@ -113,7 +116,7 @@ fn verify_helper_ready() {
         Ok(response) => {
             eprintln!(
                 "nixmac-sync-agent: helper unhealthy: {}",
-                response.error.unwrap_or(response.stderr)
+                response.failure_detail()
             );
             std::process::exit(2);
         }
