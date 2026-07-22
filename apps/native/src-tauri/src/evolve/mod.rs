@@ -29,7 +29,7 @@ use crate::git::query::repo_root;
 // Re-export public API
 use crate::shared_types::{Evolution, EvolutionState, FileEdit};
 use crate::system::nix;
-use anyhow::{Result, anyhow};
+use anyhow::{Context as AnyhowContext, Result, anyhow};
 use chrono::Utc;
 use log::{debug, error, info, warn};
 use regex::Regex;
@@ -1147,17 +1147,20 @@ pub async fn generate_evolution<R: Runtime>(
     info!("Evolution ID: {}", evolution.id);
     info!("════════════════════════════════════════════════════════════════");
 
-    // Initialize conversation with system prompt
-    let repo_view_context = match format_config_dir_context(repo_root.as_path(), config_dir) {
-        Ok(tree) => tree,
-        Err(e) => {
-            warn!(
-                "Failed to build repo view context for prompt ({}): {}",
-                config_dir, e
-            );
-            "(Failed to render repo view)".to_string()
-        }
-    };
+    // Initialize conversation with system prompt. The system prompt tells the
+    // model to plan from <repo_view> and to use its literal paths, so running
+    // without it is not a degraded mode — it spends the whole token budget
+    // rediscovering the repository through tools. Fail before the first
+    // provider request instead.
+    let repo_view_context =
+        format_config_dir_context(repo_root.as_path(), std::path::Path::new(config_dir))
+            .with_context(|| {
+                format!(
+                    "Failed to build the repository view for '{}'; refusing to start an \
+                     evolution without <repo_view> context",
+                    config_dir
+                )
+            })?;
 
     let mut messages: Vec<EvolutionMessage> = vec![EvolutionMessage::permanent(
         Message::System {

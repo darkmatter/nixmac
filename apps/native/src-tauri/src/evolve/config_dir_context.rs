@@ -34,45 +34,70 @@ struct DirEntryView {
     is_dir: bool,
 }
 
-fn calc_max_depth(repo_root: &Path, config_dir: &str) -> usize {
+fn calc_max_depth(repo_root: &Path, config_dir: &Path) -> Result<usize> {
     // Max depth should be the default config dir depth + the number of levels (if any)
     // between the repo root and the config dir. For example, if the config dir is at my/repo/nix/os,
     // then the max depth should be 6 (default) + 2 (nix/os) = 8.
-    let config_dir_path = Path::new(config_dir);
-    let relative_depth = config_dir_path
+    // Expects both paths in the same (canonical) spelling; a config dir that is
+    // not inside the repo root is a configuration error, not a depth of 0 —
+    // the silent 0 fallback used to hide exactly the symlink mismatch that
+    // killed the whole render further down.
+    let relative_depth = config_dir
         .strip_prefix(repo_root)
         .map(|relative_path| relative_path.components().count())
-        .unwrap_or(0);
+        .with_context(|| {
+            format!(
+                "config_dir '{}' is not inside repo root '{}'",
+                config_dir.display(),
+                repo_root.display()
+            )
+        })?;
 
-    MAX_CONFIG_DIR_DEPTH + relative_depth
-}
-
-pub fn format_config_dir_context(repo_root: &Path, config_dir: &str) -> Result<String> {
-    format_config_dir_context_with_max_depth(
-        repo_root,
-        config_dir,
-        calc_max_depth(repo_root, config_dir),
-    )
+    Ok(MAX_CONFIG_DIR_DEPTH + relative_depth)
 }
 
 // Returns a flattened list of repo-root-relative file paths under config_dir,
 // one path per line.
-pub fn format_config_dir_context_with_max_depth(
-    repo_root: &Path,
-    config_dir: &str,
-    max_depth: usize,
-) -> Result<String> {
-    let config_dir_path = Path::new(config_dir);
-    if !config_dir_path.exists() {
-        return Err(anyhow::anyhow!("config_dir does not exist: {}", config_dir));
+pub fn format_config_dir_context(repo_root: &Path, config_dir: &Path) -> Result<String> {
+    if !config_dir.exists() {
+        return Err(anyhow::anyhow!(
+            "config_dir does not exist: {}",
+            config_dir.display()
+        ));
     }
-    if !config_dir_path.is_dir() {
+    if !config_dir.is_dir() {
         return Err(anyhow::anyhow!(
             "config_dir is not a directory: {}",
-            config_dir
+            config_dir.display()
         ));
     }
 
+    // Canonicalize both sides once and derive every child path from the
+    // canonical root. The repo root usually comes from
+    // git2::Repository::discover, which resolves symlinks, while config_dir is
+    // caller-supplied; on macOS `/tmp` and `/private/tmp` name the same
+    // directory but are not lexically prefix-compatible, so mixed spellings
+    // broke every strip_prefix below and lost the entire repo view.
+    let repo_root = repo_root
+        .canonicalize()
+        .with_context(|| format!("failed to canonicalize repo root: {}", repo_root.display()))?;
+    let config_dir = config_dir.canonicalize().with_context(|| {
+        format!(
+            "failed to canonicalize config_dir: {}",
+            config_dir.display()
+        )
+    })?;
+    let max_depth = calc_max_depth(&repo_root, &config_dir)?;
+
+    format_config_dir_context_with_max_depth(&repo_root, &config_dir, max_depth)
+}
+
+// Inner walk over already-canonicalized paths.
+fn format_config_dir_context_with_max_depth(
+    repo_root: &Path,
+    config_dir: &Path,
+    max_depth: usize,
+) -> Result<String> {
     // Use the repo root for the ignore base since we may have ignored things at a higher level than the nix config dir.
     let visible = GitignoreChecker::new(repo_root)?
         .map(|checker| checker.visible_files())
@@ -82,7 +107,7 @@ pub fn format_config_dir_context_with_max_depth(
     let mut rendered_entries = 0usize;
     collect_file_paths(
         repo_root,
-        config_dir_path,
+        config_dir,
         visible.as_ref(),
         0,
         max_depth,
@@ -244,10 +269,7 @@ mod tests {
         fs::write(config_dir.join("flake.nix"), "{ }")?;
         fs::write(config_dir.join("modules/darwin/default.nix"), "{ }")?;
 
-        let context = format_config_dir_context(
-            &repo_root,
-            config_dir.to_str().context("utf-8 config path")?,
-        )?;
+        let context = format_config_dir_context(&repo_root, &config_dir)?;
 
         assert!(context.contains("nix/os/flake.nix"), "context: {context}");
         assert!(
@@ -265,10 +287,7 @@ mod tests {
         fs::write(repo_root.join("flake.nix"), "{ }")?;
         fs::write(repo_root.join("modules/default.nix"), "{ }")?;
 
-        let context = format_config_dir_context(
-            &repo_root,
-            repo_root.to_str().context("utf-8 config path")?,
-        )?;
+        let context = format_config_dir_context(&repo_root, &repo_root)?;
 
         assert!(context.contains("flake.nix"), "context: {context}");
         assert!(
@@ -290,8 +309,7 @@ mod tests {
         fs::write(config_dir.join("visible.txt"), "hello")?;
         fs::write(config_dir.join("secret.txt"), "hidden")?;
 
-        let context =
-            format_config_dir_context(&repo_root, config_dir.to_str().context("utf-8 path")?)?;
+        let context = format_config_dir_context(&repo_root, &config_dir)?;
 
         assert!(context.contains("nix/os/visible.txt"), "context: {context}");
         assert!(!context.contains("secret.txt"), "context: {context}");
@@ -309,8 +327,7 @@ mod tests {
         fs::write(config_dir.join("nested/visible.txt"), "hello")?;
         fs::write(config_dir.join("nested/secret.txt"), "hidden")?;
 
-        let context =
-            format_config_dir_context(&repo_root, config_dir.to_str().context("utf-8 path")?)?;
+        let context = format_config_dir_context(&repo_root, &config_dir)?;
 
         assert!(
             context.contains("nix/os/nested/visible.txt"),
@@ -330,8 +347,7 @@ mod tests {
         fs::write(repo_root.join("outside.md"), "outside")?;
         fs::write(config_dir.join("inside.md"), "inside")?;
 
-        let context =
-            format_config_dir_context(&repo_root, config_dir.to_str().context("utf-8 path")?)?;
+        let context = format_config_dir_context(&repo_root, &config_dir)?;
 
         assert!(context.contains("nix/os/inside.md"), "context: {context}");
         assert!(!context.contains("outside.md"), "context: {context}");
@@ -339,19 +355,89 @@ mod tests {
     }
 
     #[test]
-    fn calc_max_depth_same_dir() {
+    fn calc_max_depth_same_dir() -> Result<()> {
         let repo_root = Path::new("/repo");
-        let config_dir = "/repo";
-        assert_eq!(calc_max_depth(repo_root, config_dir), MAX_CONFIG_DIR_DEPTH);
+        let config_dir = Path::new("/repo");
+        assert_eq!(calc_max_depth(repo_root, config_dir)?, MAX_CONFIG_DIR_DEPTH);
+        Ok(())
     }
 
     #[test]
-    fn calc_max_depth_nested_dir() {
+    fn calc_max_depth_nested_dir() -> Result<()> {
         let repo_root = Path::new("/repo");
-        let config_dir = "/repo/nix/os";
+        let config_dir = Path::new("/repo/nix/os");
         assert_eq!(
-            calc_max_depth(repo_root, config_dir),
+            calc_max_depth(repo_root, config_dir)?,
             MAX_CONFIG_DIR_DEPTH + 2
         );
+        Ok(())
+    }
+
+    #[test]
+    fn calc_max_depth_errors_when_config_dir_is_outside_repo_root() {
+        let err = calc_max_depth(Path::new("/repo"), Path::new("/elsewhere/nix/os"))
+            .expect_err("config dir outside the repo root must be an error, not depth 0");
+        assert!(
+            err.to_string().contains("not inside"),
+            "unexpected: {err:#}"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn renders_when_repo_root_and_config_dir_use_different_symlink_spellings() -> Result<()> {
+        // Mirror the production mismatch behind the 2026-07-20 eval runs'
+        // "(Failed to render repo view)": git2 resolves the repo root to its
+        // canonical spelling while the caller-supplied config dir keeps the
+        // symlinked one — macOS names the same directory /tmp and
+        // /private/tmp.
+        let tmp = tempdir()?;
+        let real_root = tmp.path().join("real");
+        let repo_root = real_root.join("repo");
+        let config_dir = repo_root.join("nix/os");
+        fs::create_dir_all(config_dir.join("modules"))?;
+        fs::write(config_dir.join("flake.nix"), "{ }")?;
+        fs::write(config_dir.join("modules/default.nix"), "{ }")?;
+        std::os::unix::fs::symlink(&real_root, tmp.path().join("alias"))?;
+
+        let canonical_repo_root = repo_root.canonicalize()?;
+        let aliased_config_dir = tmp.path().join("alias/repo/nix/os");
+
+        let context = format_config_dir_context(&canonical_repo_root, &aliased_config_dir)?;
+        assert!(context.contains("nix/os/flake.nix"), "context: {context}");
+        assert!(
+            context.contains("nix/os/modules/default.nix"),
+            "context: {context}"
+        );
+
+        // And the reverse spelling mismatch.
+        let aliased_repo_root = tmp.path().join("alias/repo");
+        let context = format_config_dir_context(&aliased_repo_root, &config_dir.canonicalize()?)?;
+        assert!(context.contains("nix/os/flake.nix"), "context: {context}");
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn depth_budget_survives_symlink_spelling_mismatch() -> Result<()> {
+        // A partial fix that only canonicalized the render would still walk
+        // with MAX_CONFIG_DIR_DEPTH instead of MAX_CONFIG_DIR_DEPTH + 2 for a
+        // nested config dir, because calc_max_depth used to swallow the
+        // prefix mismatch as depth 0.
+        let tmp = tempdir()?;
+        let real_root = tmp.path().join("real");
+        let repo_root = real_root.join("repo");
+        let config_dir = repo_root.join("nix/os");
+        fs::create_dir_all(&config_dir)?;
+        std::os::unix::fs::symlink(&real_root, tmp.path().join("alias"))?;
+
+        let canonical_repo_root = repo_root.canonicalize()?;
+        let aliased_config_dir = tmp.path().join("alias/repo/nix/os");
+
+        assert_eq!(
+            calc_max_depth(&canonical_repo_root, &aliased_config_dir.canonicalize()?)?,
+            MAX_CONFIG_DIR_DEPTH + 2
+        );
+        Ok(())
     }
 }
