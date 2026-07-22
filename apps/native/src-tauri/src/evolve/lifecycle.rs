@@ -84,6 +84,7 @@ impl EvolutionFailureResult {
             error,
             git_status,
             telemetry,
+            provider_failure: None,
         }
     }
 
@@ -233,11 +234,13 @@ pub async fn backup_evolve_and_record_changeset(
             let git_status = git::status(&repo_root).ok();
             restore_after_failure(app, &repo_root, &backup_branch);
             if let Some(run_error) = e.downcast_ref::<evolve::EvolutionRunError>() {
-                return Err(EvolutionFailureResult::new(
+                let mut failure = EvolutionFailureResult::new(
                     run_error.message.clone(),
                     git_status,
                     EvolutionTelemetry::from_failed_progress(&run_error.progress, duration_ms),
-                ));
+                );
+                failure.provider_failure = run_error.provider_failure.clone();
+                return Err(failure);
             }
             return Err(EvolutionFailureResult::defaults(
                 format!("AI evolution failed: {}", e),

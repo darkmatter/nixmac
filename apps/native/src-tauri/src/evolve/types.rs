@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::shared_types::{
-    Evolution, EvolutionState, TerminalReason, ThinkingEntry, ToolCallRecord,
+    Evolution, EvolutionState, ProviderFailure, TerminalReason, ThinkingEntry, ToolCallRecord,
 };
 
 // Moved to shared_types so they can ride the wire in EvolveEventDetail;
@@ -108,6 +108,8 @@ pub struct EvolutionProgress {
 pub struct EvolutionRunError {
     pub message: String,
     pub progress: EvolutionProgress,
+    /// Structured metadata when the run died on an AI provider request.
+    pub provider_failure: Option<ProviderFailure>,
 }
 
 impl EvolutionRunError {
@@ -120,6 +122,7 @@ impl EvolutionRunError {
     ) -> Self {
         Self {
             message: message.into(),
+            provider_failure: None,
             progress: EvolutionProgress {
                 state: EvolutionState::Failed,
                 terminal_reason: evolution.terminal_reason,

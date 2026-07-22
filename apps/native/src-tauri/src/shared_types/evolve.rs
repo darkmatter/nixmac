@@ -465,6 +465,46 @@ pub struct EvolutionResult {
     pub telemetry: EvolutionTelemetry,
 }
 
+/// Where a failed AI provider request broke down.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum ProviderFailureOrigin {
+    /// The provider answered with an HTTP-level error.
+    Http,
+    /// The connection failed before or while transferring the response.
+    Transport,
+    /// The request exceeded its time bound.
+    Timeout,
+    /// The endpoint rejected the streaming request itself.
+    Streaming,
+    /// Anything else (client-side validation, parsing, ...).
+    Other,
+}
+
+/// Structured metadata about a failed AI provider request.
+///
+/// Deliberately carries no message bodies: provider error bodies can embed
+/// prompts or completions, and this struct is persisted into result
+/// artifacts (see the privacy notes on `ProviderError`).
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderFailure {
+    /// Where the request broke down.
+    pub origin: ProviderFailureOrigin,
+    /// HTTP status reported by the provider, when there was one.
+    pub http_status: Option<u16>,
+    /// Whether the failure looked transient (retry could have succeeded).
+    pub retryable: bool,
+    /// Wall-clock time spent on the failing request, across retries.
+    #[specta(type = f64)]
+    pub duration_ms: i64,
+    /// Whether any streamed content arrived before the failure.
+    pub streamed_any: bool,
+    /// Number of attempts made (1 = no retries).
+    #[specta(type = f64)]
+    pub attempts: usize,
+}
+
 /// Evolution failure payload with partial telemetry.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -475,6 +515,10 @@ pub struct EvolutionFailureResult {
     pub git_status: Option<GitStatus>,
     /// Partial telemetry captured before failure.
     pub telemetry: EvolutionTelemetry,
+    /// Structured provider-error metadata when the run died on an AI
+    /// provider request.
+    #[serde(default)]
+    pub provider_failure: Option<ProviderFailure>,
 }
 
 /// Acknowledgement from `darwin_evolve_cancel`.

@@ -1,5 +1,6 @@
 use super::messages::{Message, Tool};
 use crate::ai::provider_errors::friendly_provider_error;
+use crate::shared_types::ProviderFailureOrigin;
 use anyhow::Error as AnyhowError;
 use async_trait::async_trait;
 use reqwest::StatusCode;
@@ -316,7 +317,81 @@ fn looks_like_context_window_error(body: &str) -> bool {
             || body.contains("requested"))
 }
 
+/// HTTP statuses treated as clearly transient: bad-gateway-class upstream
+/// failures (502/503/504) and Cloudflare's origin-timeout (524). Anything
+/// else — auth, validation, rate limits, plain 500s — is not retried: the
+/// identical request would most likely fail identically or needs user
+/// action.
+const TRANSIENT_HTTP_STATUSES: [u16; 4] = [502, 503, 504, 524];
+
+/// Whether an error chain looks like a broken connection (as opposed to a
+/// well-formed provider response). Recovers the typed reqwest error from
+/// async-openai's wrapper when possible, with a message fallback for
+/// transport failures that arrive stringified (e.g. through SSE streams).
+fn is_transport_error(e: &AnyhowError) -> bool {
+    if let Some(openai_error) = e.downcast_ref::<async_openai::error::OpenAIError>()
+        && let async_openai::error::OpenAIError::Reqwest(reqwest_error) = openai_error
+        && !reqwest_error.is_timeout()
+        && reqwest_error.is_connect()
+    {
+        return true;
+    }
+    let message = format!("{e:#}").to_ascii_lowercase();
+    message.contains("connection reset")
+        || message.contains("connection refused")
+        || message.contains("connection closed")
+        || message.contains("broken pipe")
+}
+
+/// Whether an error chain is a request timeout reported by the HTTP layer
+/// (connect or read timeout on the underlying client).
+fn is_timeout_error(e: &AnyhowError) -> bool {
+    if let Some(async_openai::error::OpenAIError::Reqwest(reqwest_error)) =
+        e.downcast_ref::<async_openai::error::OpenAIError>()
+    {
+        return reqwest_error.is_timeout();
+    }
+    let message = format!("{e:#}").to_ascii_lowercase();
+    message.contains("timed out") || message.contains("timeout")
+}
+
 impl ProviderError {
+    /// Classify this failure for telemetry and retry decisions: where it
+    /// originated and, when known, the HTTP status.
+    pub fn classify(&self) -> (ProviderFailureOrigin, Option<u16>) {
+        match self {
+            ProviderError::Http { status, .. } => {
+                (ProviderFailureOrigin::Http, Some(status.as_u16()))
+            }
+            ProviderError::StreamingUnsupported { .. } => (ProviderFailureOrigin::Streaming, None),
+            ProviderError::Other(e) if is_timeout_error(e) => {
+                (ProviderFailureOrigin::Timeout, None)
+            }
+            ProviderError::Other(e) if is_transport_error(e) => {
+                (ProviderFailureOrigin::Transport, None)
+            }
+            ProviderError::Other(_) => (ProviderFailureOrigin::Other, None),
+        }
+    }
+
+    /// Whether retrying the identical request has a realistic chance of
+    /// succeeding: bad-gateway-class HTTP failures and broken connections,
+    /// and only when no streamed content had arrived yet (a partial response
+    /// means the request itself worked; re-running it would duplicate a
+    /// possibly billable call).
+    pub fn is_transient(&self, streamed_any: bool) -> bool {
+        if streamed_any {
+            return false;
+        }
+        match self.classify() {
+            (ProviderFailureOrigin::Http, Some(status)) => {
+                TRANSIENT_HTTP_STATUSES.contains(&status)
+            }
+            (ProviderFailureOrigin::Transport, _) => true,
+            _ => false,
+        }
+    }
+
     /// Whether the endpoint rejected the streaming request itself — the one
     /// case worth retrying through the blocking path. Providers classify
     /// this from their structured errors (see
@@ -497,6 +572,59 @@ mod tests {
             "claude".to_string(),
         );
         assert!(!cli.supports_streaming());
+    }
+
+    #[test]
+    fn only_bad_gateway_class_http_failures_are_transient() {
+        for code in [502, 503, 504, 524] {
+            let err = ProviderError::Http {
+                status: StatusCode::from_u16(code).expect("valid status"),
+                body: String::new(),
+            };
+            assert!(err.is_transient(false), "{code} should be transient");
+            assert_eq!(err.classify(), (ProviderFailureOrigin::Http, Some(code)));
+        }
+        // Auth, validation, rate limits, and plain server errors are not
+        // retried: the identical request would fail identically or needs
+        // user action first.
+        for code in [400, 401, 403, 404, 422, 429, 500] {
+            let err = ProviderError::Http {
+                status: StatusCode::from_u16(code).expect("valid status"),
+                body: String::new(),
+            };
+            assert!(!err.is_transient(false), "{code} must not be transient");
+        }
+    }
+
+    #[test]
+    fn connection_resets_are_transient_only_before_streamed_content() {
+        let err = ProviderError::Other(anyhow::anyhow!("stream failed: connection reset by peer"));
+        assert_eq!(err.classify(), (ProviderFailureOrigin::Transport, None));
+        assert!(err.is_transient(false));
+        assert!(
+            !err.is_transient(true),
+            "a partial response means the request worked; retrying would duplicate it"
+        );
+    }
+
+    #[test]
+    fn timeouts_and_unknown_failures_are_not_transient() {
+        let timeout = ProviderError::Other(anyhow::anyhow!("operation timed out"));
+        assert_eq!(timeout.classify(), (ProviderFailureOrigin::Timeout, None));
+        assert!(!timeout.is_transient(false));
+
+        let other = ProviderError::Other(anyhow::anyhow!("some unexpected failure"));
+        assert_eq!(other.classify(), (ProviderFailureOrigin::Other, None));
+        assert!(!other.is_transient(false));
+
+        let streaming = ProviderError::StreamingUnsupported {
+            message: "no streaming".to_string(),
+        };
+        assert_eq!(
+            streaming.classify(),
+            (ProviderFailureOrigin::Streaming, None)
+        );
+        assert!(!streaming.is_transient(false));
     }
 
     #[test]

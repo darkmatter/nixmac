@@ -27,7 +27,9 @@ pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 use crate::evolve::utils::{escape_user_query, format_duration_secs, truncate_error};
 use crate::git::query::repo_root;
 // Re-export public API
-use crate::shared_types::{Evolution, EvolutionState, FileEdit, TerminalReason};
+use crate::shared_types::{
+    Evolution, EvolutionState, FileEdit, ProviderFailure, ProviderFailureOrigin, TerminalReason,
+};
 use crate::system::nix;
 use anyhow::{Result, anyhow};
 use chrono::Utc;
@@ -1330,7 +1332,8 @@ pub async fn generate_evolution<R: Runtime>(
         emit_evolve_event(app, EvolveEvent::api_request(start_time, iteration));
 
         let streaming_fallback = std::sync::atomic::AtomicBool::new(false);
-        let response_result = {
+        let provider_call_started = std::time::Instant::now();
+        let (response_result, streamed_any) = {
             let delta_batcher = DeltaBatcher::new(app, start_time, iteration);
             let on_delta = |event: StreamEvent<'_>| match event {
                 StreamEvent::Delta(delta) => delta_batcher.push(delta),
@@ -1373,7 +1376,7 @@ pub async fn generate_evolution<R: Runtime>(
             tokio::select! {
                 res = &mut fut => {
                     delta_batcher.flush();
-                    res
+                    (res, delta_batcher.received())
                 },
                 _ = async {
                     loop {
@@ -1446,16 +1449,32 @@ pub async fn generate_evolution<R: Runtime>(
                 // errors into actionable guidance without technical details.
                 let user_msg = e.user_message();
 
+                // Persist a structured, body-free summary of the failure so
+                // artifacts record more than an opaque message (C3/N8).
+                let (origin, http_status) = e.classify();
+                let provider_failure = ProviderFailure {
+                    origin,
+                    http_status,
+                    retryable: e.is_transient(streamed_any),
+                    duration_ms: provider_call_started.elapsed().as_millis() as i64,
+                    streamed_any,
+                    attempts: 1,
+                };
+
                 evolution.state = EvolutionState::Failed;
-                evolution.terminal_reason = Some(TerminalReason::ProviderError);
-                return Err(EvolutionRunError::from_state(
+                evolution.terminal_reason = Some(match origin {
+                    ProviderFailureOrigin::Timeout => TerminalReason::Timeout,
+                    _ => TerminalReason::ProviderError,
+                });
+                let mut run_error = EvolutionRunError::from_state(
                     user_msg,
                     &evolution,
                     iteration,
                     build_attempts,
                     total_tokens,
-                )
-                .into());
+                );
+                run_error.provider_failure = Some(provider_failure);
+                return Err(run_error.into());
             }
         };
 
