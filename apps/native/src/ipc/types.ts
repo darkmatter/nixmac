@@ -1470,6 +1470,41 @@ total: number;
  */
 hasMore: boolean }
 
+/**
+ * Result of `homebrew_check` — reports whether Homebrew is available.
+ */
+export type HomebrewCheckResult = { 
+/**
+ * Whether Homebrew is installed.
+ */
+installed: boolean }
+
+/**
+ * Payload for `homebrew:install:data`.
+ */
+export type HomebrewInstallDataEvent = { 
+/**
+ * Raw output chunk from the Homebrew installer.
+ */
+chunk: string }
+
+/**
+ * Payload for `homebrew:install:end`.
+ */
+export type HomebrewInstallEndEvent = { 
+/**
+ * Whether the install completed successfully.
+ */
+ok: boolean; 
+/**
+ * Exit/status code for the installer.
+ */
+code: number; 
+/**
+ * Human-readable failure message, when the install failed.
+ */
+error: string | null }
+
 export type HomebrewItem = { name: string; version: string | null; itemType: HomebrewItemType }
 
 export type HomebrewItemType = "tap" | "cask" | "brew"

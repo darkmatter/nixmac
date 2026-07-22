@@ -6,6 +6,7 @@
 
 pub mod app_management_preflight;
 pub mod etc_preflight;
+pub mod homebrew;
 pub mod install_location;
 pub mod launchd_scanner;
 pub mod nix;

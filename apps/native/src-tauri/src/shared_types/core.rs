@@ -92,6 +92,14 @@ pub struct NixCheckResult {
     pub darwin_rebuild_available: bool,
 }
 
+/// Result of `homebrew_check` — reports whether Homebrew is available.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct HomebrewCheckResult {
+    /// Whether Homebrew is installed.
+    pub installed: bool,
+}
+
 /// Result of `darwin_build_check` — dry-run build outcome.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct BuildCheckResult {

@@ -9,6 +9,8 @@ import {
 const complete: OnboardingStepInputs = {
   permissionsReady: true,
   nixReady: true,
+  homebrewReady: true,
+  homebrewSkipped: false,
   configDirReady: true,
   flakeReady: true,
   macScanned: true,
@@ -26,6 +28,7 @@ describe("computeOnboardingStep", () => {
   it("returns the first unsatisfied gate in step order", () => {
     expect(computeOnboardingStep({ ...complete, permissionsReady: false })).toBe("permissions");
     expect(computeOnboardingStep({ ...complete, nixReady: false })).toBe("nix-setup");
+    expect(computeOnboardingStep({ ...complete, homebrewReady: false })).toBe("homebrew-setup");
     expect(computeOnboardingStep({ ...complete, configDirReady: false })).toBe("config-dir");
     expect(computeOnboardingStep({ ...complete, flakeReady: false })).toBe("setup");
     expect(computeOnboardingStep({ ...complete, macScanned: false })).toBe("customizations");
@@ -77,6 +80,17 @@ describe("computeOnboardingStep", () => {
     // The build gate stays unsatisfied until inference resolves, even after
     // a successful build.
     expect(computeOnboardingStep({ ...deferred, buildComplete: true })).toBe("build");
+  });
+
+  it("skipping the optional Homebrew step advances past it", () => {
+    expect(
+      computeOnboardingStep({
+        ...complete,
+        homebrewReady: false,
+        homebrewSkipped: true,
+        configDirReady: false,
+      }),
+    ).toBe("config-dir");
   });
 });
 

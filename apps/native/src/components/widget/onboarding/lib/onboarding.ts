@@ -1,6 +1,7 @@
 export type StepId =
   | "permissions"
   | "nix-setup"
+  | "homebrew-setup"
   | "config-dir"
   | "setup"
   | "customizations"
@@ -10,6 +11,7 @@ export type StepId =
 export const STEPS: { id: StepId; label: string; description: string }[] = [
   { id: "permissions", label: "Permissions", description: "Grant macOS access" },
   { id: "nix-setup", label: "System Setup", description: "Install Nix" },
+  { id: "homebrew-setup", label: "Homebrew", description: "Install the Homebrew package manager" },
   { id: "config-dir", label: "Config Directory", description: "Import or create your flake" },
   { id: "setup", label: "Choose Machine", description: "Pick your host configuration" },
   { id: "customizations", label: "Import Customizations", description: "Capture existing tweaks" },
@@ -63,6 +65,10 @@ export interface OnboardingStepInputs {
   /** The Nix package manager is detected (or test override). nix-darwin is not
    * required here — the first build runs it via `nix run nix-darwin`. */
   nixReady: boolean;
+  /** Homebrew (`brew`) is detected on this Mac. */
+  homebrewReady: boolean;
+  /** Session-only: user chose to skip the optional Homebrew step. */
+  homebrewSkipped: boolean;
   /** A config directory has been chosen/imported. */
   configDirReady: boolean;
   /** A valid host attribute is set for the chosen config dir. */
@@ -92,6 +98,9 @@ export interface OnboardingStepInputs {
 export function computeOnboardingStep(inputs: OnboardingStepInputs): StepId | null {
   if (!inputs.permissionsReady) return "permissions";
   if (!inputs.nixReady) return "nix-setup";
+  // Homebrew is optional: surface the guided-install gate only until brew is
+  // detected or the user skips it for the session.
+  if (!inputs.homebrewReady && !inputs.homebrewSkipped) return "homebrew-setup";
   if (!inputs.configDirReady) return "config-dir";
   if (!inputs.flakeReady) return "setup";
   // Importing existing customizations is optional, but the user must run the

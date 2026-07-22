@@ -43,12 +43,7 @@ fn nix_eval_homebrew_attr(hostname: &str) -> Result<String> {
 
 /// Checks if Homebrew is installed by trying to run `brew --version`.
 fn is_homebrew_installed() -> bool {
-    std::process::Command::new("brew")
-        .arg("--version")
-        .env("PATH", crate::system::nix::get_nix_path())
-        .output()
-        .map(|output| output.status.success())
-        .unwrap_or(false)
+    crate::system::homebrew::is_installed()
 }
 
 // Private factory to create a HomebrewState with common defaults.

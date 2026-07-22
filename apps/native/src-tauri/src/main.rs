@@ -589,7 +589,9 @@ fn run_gui_mode(
             // Homebrew
             commands::homebrew::homebrew_add_items,
             commands::homebrew::homebrew_apply_diff,
+            commands::homebrew::homebrew_check,
             commands::homebrew::homebrew_get_state_diff,
+            commands::homebrew::homebrew_install_stream,
             // Git
             commands::git::get_git_state,
             commands::git::git_status,

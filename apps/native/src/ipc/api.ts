@@ -7,6 +7,7 @@
 import type { StarterTemplateId } from "@/components/widget/onboarding/lib/flake-ref";
 import type {
   FeedbackShareOptions,
+  HomebrewCheckResult,
   HomebrewItem,
   HomebrewState,
   JsonValue,
@@ -339,6 +340,10 @@ export const tauriAPI = {
   },
 
   homebrew: {
+    /** Detects whether `brew` is installed. Guided-onboarding path (not yet on oRPC). */
+    check: () => invoke<HomebrewCheckResult>("homebrew_check"),
+    /** Runs the official Homebrew installer, streaming `homebrew:install:{data,end}` events. */
+    installStream: () => invoke<OkResult>("homebrew_install_stream"),
     /** @deprecated Use `client.homebrew.getStateDiff()` or `orpc.homebrew.getStateDiff` from `@/lib/orpc`. */
     getStateDiff: () => client.homebrew.getStateDiff(),
     /** @deprecated Use `client.homebrew.applyDiff()` or `orpc.homebrew.applyDiff` from `@/lib/orpc`. */

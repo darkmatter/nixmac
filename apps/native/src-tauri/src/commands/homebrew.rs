@@ -25,6 +25,28 @@ pub async fn homebrew_get_state_diff(
         .map_err(|e| capture_err("homebrew_get_state_diff", e))
 }
 
+/// Reports whether Homebrew is installed so onboarding can offer a guided install.
+#[tauri::command]
+pub async fn homebrew_check() -> Result<shared_types::HomebrewCheckResult, String> {
+    let installed = if cfg!(debug_assertions)
+        && crate::e2e_runtime::enabled("NIXMAC_E2E_MOCK_SYSTEM")
+    {
+        crate::e2e_runtime::enabled("NIXMAC_E2E_HOMEBREW_INSTALLED")
+    } else {
+        crate::system::homebrew::is_installed()
+    };
+    Ok(shared_types::HomebrewCheckResult { installed })
+}
+
+/// Starts a streaming Homebrew install. Progress is emitted via
+/// `homebrew:install:data` events, completion via `homebrew:install:end`.
+#[tauri::command]
+pub async fn homebrew_install_stream(app: AppHandle) -> Result<shared_types::OkResult, String> {
+    crate::system::homebrew::install_stream(&app)
+        .map_err(|e| capture_err("homebrew_install_stream", e))?;
+    Ok(shared_types::OkResult::yes())
+}
+
 #[tauri::command]
 pub async fn homebrew_add_items(
     app: AppHandle,

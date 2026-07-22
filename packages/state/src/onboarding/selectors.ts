@@ -10,5 +10,9 @@ export const selectTrackedCustomizations = (state: OnboardingStore) =>
 	state.trackedCustomizations;
 export const selectInferenceDeferred = (state: OnboardingStore) =>
 	state.inferenceDeferred;
+export const selectHomebrewInstalled = (state: OnboardingStore) =>
+	state.homebrewInstalled;
+export const selectHomebrewSkipped = (state: OnboardingStore) =>
+	state.homebrewSkipped;
 export const selectCelebrating = (state: OnboardingStore) => state.celebrating;
 export const selectViewingStep = (state: OnboardingStore) => state.viewingStep;
