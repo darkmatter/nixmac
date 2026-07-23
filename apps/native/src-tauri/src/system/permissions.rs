@@ -114,6 +114,12 @@ fn granted_permissions_state() -> PermissionsState {
     let mut permissions = get_default_permissions();
     for perm in &mut permissions {
         perm.status = PermissionStatus::Granted;
+        // Granted here is a debug-build fiction, not a probe result; say so
+        // instead of letting the row imply the real thing was verified.
+        perm.instructions = Some(
+            "Check skipped: this build has VITE_NIXMAC_SKIP_PERMISSIONS enabled, so the real status was not probed."
+                .to_string(),
+        );
     }
     PermissionsState {
         permissions,
@@ -341,7 +347,15 @@ pub fn check_all_permissions() -> PermissionsState {
             "admin" => check_admin_privileges(),
             "full-disk" => check_full_disk_access(),
             "app-management" => check_app_management(),
-            "privileged-helper" => check_privileged_helper(),
+            "privileged-helper" => {
+                let (status, detail) = check_privileged_helper();
+                // Keep the default instructions when healthy; surface what is
+                // actually wrong otherwise.
+                if let Some(detail) = detail {
+                    perm.instructions = Some(detail);
+                }
+                status
+            }
             _ => PermissionStatus::Unknown,
         };
 
@@ -528,46 +542,121 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
                 .bundle_path
                 .is_some();
 
+            const APPROVE_INSTRUCTIONS: &str = "Approve nixmac in System Settings → General → Login Items & Extensions if macOS asks for background item approval.";
+
             let (status, instructions) = if !bundle_present {
                 warn!(
                     "privileged helper registration skipped: nixmac is not running from a .app bundle"
                 );
                 (
                     PermissionStatus::Pending,
-                    "Build a signed .app with `bun run desktop:build:local`, drag it into /Applications, and launch it from there to install the unattended sync helper. It cannot be installed from a dev build.",
+                    "Build a signed .app with `bun run desktop:build:local`, drag it into /Applications, and launch it from there to install the unattended sync helper. It cannot be installed from a dev build."
+                        .to_string(),
                 )
             } else {
-                let status = match crate::privileged_helper::service::register() {
-                    Ok(status) if status.authorized => PermissionStatus::Granted,
+                match crate::privileged_helper::service::register() {
+                    // Registration alone is not a working helper: wait briefly
+                    // for the freshly launched daemon to answer a status
+                    // round-trip before reporting Granted.
+                    Ok(status) if status.authorized => match await_helper_ready() {
+                        Ok(()) => (PermissionStatus::Granted, APPROVE_INSTRUCTIONS.to_string()),
+                        Err(error) => (
+                            PermissionStatus::Pending,
+                            format!(
+                                "The helper is registered but did not answer a status probe: {error:#}."
+                            ),
+                        ),
+                    },
                     Ok(_) => {
                         crate::privileged_helper::service::open_login_items_settings();
-                        PermissionStatus::Pending
+                        (PermissionStatus::Pending, APPROVE_INSTRUCTIONS.to_string())
                     }
                     Err(error) => {
                         warn!("privileged helper registration failed: {error:#}");
                         crate::privileged_helper::service::open_login_items_settings();
-                        PermissionStatus::Pending
+                        (PermissionStatus::Pending, APPROVE_INSTRUCTIONS.to_string())
                     }
-                };
-                (
-                    status,
-                    "Approve nixmac in System Settings → General → Login Items & Extensions if macOS asks for background item approval.",
-                )
+                }
             };
-            Ok(privileged_helper_permission(status, instructions))
+            Ok(privileged_helper_permission(status, &instructions))
         }
         _ => Err(anyhow::anyhow!("Unknown permission: {}", permission_id)),
     }
 }
 
-fn check_privileged_helper() -> PermissionStatus {
+/// Wait for a freshly registered helper daemon to come up and answer a
+/// status round-trip. launchd starts it asynchronously after approval, so the
+/// socket appears a moment after `register()` returns.
+fn await_helper_ready() -> Result<()> {
+    const ATTEMPTS: u32 = 10;
+    const RETRY_DELAY: std::time::Duration = std::time::Duration::from_millis(300);
+
+    let mut last_error = anyhow::anyhow!("helper socket never appeared");
+    for attempt in 0..ATTEMPTS {
+        if attempt > 0 {
+            std::thread::sleep(RETRY_DELAY);
+        }
+        if !crate::privileged_helper::client::socket_available() {
+            continue;
+        }
+        match crate::privileged_helper::client::status() {
+            Ok(response) if response.ok => return Ok(()),
+            Ok(response) => {
+                last_error = anyhow::anyhow!(
+                    response
+                        .error
+                        .unwrap_or_else(|| "helper returned an error".to_string())
+                );
+            }
+            Err(error) => last_error = error,
+        }
+    }
+    Err(last_error)
+}
+
+/// Status of the unattended sync helper, with a detail message when it is
+/// not fully working.
+///
+/// `SMAppService` registration alone is not proof of a working helper: the
+/// approval persists in the BackgroundTaskManagement database even after the
+/// helper binary is gone or replaced. Granted therefore additionally requires
+/// a live status round-trip through the socket, which also exercises both
+/// code-signature checks (client validates the daemon, daemon validates this
+/// client).
+fn check_privileged_helper() -> (PermissionStatus, Option<String>) {
     let status = crate::privileged_helper::service::status();
-    if status.authorized {
-        PermissionStatus::Granted
-    } else if status.available {
-        PermissionStatus::Pending
-    } else {
-        PermissionStatus::Unknown
+    if !status.available {
+        return (PermissionStatus::Unknown, status.detail);
+    }
+    if !status.authorized {
+        return (PermissionStatus::Pending, None);
+    }
+    if !status.socket_available {
+        return (
+            PermissionStatus::Pending,
+            Some(
+                "The helper is approved in Login Items, but its daemon is not running (no socket). Use Grant to re-register it, or toggle nixmac off and on in System Settings → General → Login Items & Extensions."
+                    .to_string(),
+            ),
+        );
+    }
+    match crate::privileged_helper::client::status() {
+        Ok(response) if response.ok => (PermissionStatus::Granted, None),
+        Ok(response) => (
+            PermissionStatus::Pending,
+            Some(format!(
+                "The helper is running but refused this app: {}. Unattended sync will fall back to password prompts until a matching signed build talks to it.",
+                response
+                    .error
+                    .unwrap_or_else(|| "unknown error".to_string())
+            )),
+        ),
+        Err(error) => (
+            PermissionStatus::Pending,
+            Some(format!(
+                "The helper is registered but did not answer a status probe: {error:#}."
+            )),
+        ),
     }
 }
 
