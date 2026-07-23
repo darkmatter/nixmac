@@ -17,7 +17,6 @@ pub struct ChangesetSummaryItem {
     pub files: Vec<String>,
 }
 
-
 async fn request_json<R: Runtime, T: serde::de::DeserializeOwned>(
     system_prompt: &str,
     user_prompt: &str,
@@ -193,8 +192,6 @@ fn extract_json_object(raw: &str) -> &str {
         (None, None) => body,
     }
 }
-
-
 
 /// Calls the model and parses a `[{ summary, files }]` array response.
 ///

@@ -246,6 +246,13 @@ lib.mkIf (!config.container.isBuilding) {
 
   # Formatting
   treefmt.enable = true;
+  # treefmt.enable registers a devenv:treefmt:run task that formats the tree
+  # on every shell entry (before = ["devenv:enterShell"]). That silently fixes
+  # violations before anything can check them — CI's git-hooks job runs prek
+  # inside `devenv shell`, so its treefmt hook could never fail. Detach the
+  # task from shell entry; formatting happens at commit time via the hook, or
+  # on demand with `treefmt`.
+  tasks."devenv:treefmt:run".before = lib.mkForce [ ];
   treefmt.config = {
     # The commit hook runs treefmt repo-wide; enabling more formatters here
     # expands pre-commit cost and can surface unrelated formatting drift.
