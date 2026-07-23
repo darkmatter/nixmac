@@ -83,11 +83,7 @@ fn run_once() -> anyhow::Result<()> {
     }
 
     let activate_path = store_path.join("activate");
-    // No canonical-link maintenance here: this agent re-applies the same
-    // config dir it was registered with, so the /etc/nix-darwin link set by
-    // the interactive apply that registered it is still correct.
-    let request =
-        privileged_helper::protocol::current_user_activation_request(&activate_path, None)?;
+    let request = privileged_helper::protocol::current_user_activation_request(&activate_path)?;
     let response = privileged_helper::client::activate_store_path(request)?;
     if !response.ok {
         // Leave the out-link in place: it keeps the built closure GC-rooted
@@ -95,8 +91,11 @@ fn run_once() -> anyhow::Result<()> {
         return Err(anyhow::anyhow!(
             "activation failed ({}): {}",
             response.code,
-            response.error.unwrap_or(response.stderr)
+            response.failure_detail()
         ));
+    }
+    for warning in response.warnings() {
+        eprintln!("nixmac-sync-agent: {warning}");
     }
 
     // Activation set the durable system-profile GC root, so the out-link is
@@ -117,7 +116,7 @@ fn verify_helper_ready() {
         Ok(response) => {
             eprintln!(
                 "nixmac-sync-agent: helper unhealthy: {}",
-                response.error.unwrap_or(response.stderr)
+                response.failure_detail()
             );
             std::process::exit(2);
         }

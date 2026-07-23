@@ -12,11 +12,6 @@ pub const SYNC_AGENT_PLIST_NAME: &str = "com.darkmatter.nixmac.sync-agent.plist"
 pub const HELPER_SOCKET_PATH: &str = "/var/run/nixmac/helper.sock";
 #[allow(dead_code)]
 pub const HELPER_SOCKET_DIR: &str = "/var/run/nixmac";
-/// Canonical nix-darwin configuration path. Lives here (rather than in
-/// `storage::canonical_config`, which re-exports it) because this file is
-/// `include!`d into the helper binary, which maintains the link during
-/// privileged activation.
-pub const CANONICAL_CONFIG_DIR: &str = "/etc/nix-darwin";
 const DEFAULT_SYNC_AGENT_INTERVAL_SECONDS: u32 = 900;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq, Eq)]
@@ -52,14 +47,6 @@ pub struct ActivateStorePathRequest {
     pub home: String,
     pub ssh_auth_sock: Option<String>,
     pub nix_path: String,
-    /// When set, activation also re-points `/etc/nix-darwin` at this config
-    /// directory — the convention that makes a bare `darwin-rebuild switch`
-    /// on the CLI rebuild the nixmac-managed config. Maintained here, during
-    /// an already-privileged step, so selecting a directory in preferences
-    /// never has to prompt for a password on its own. `default` keeps the
-    /// wire format compatible with helpers/apps from before the field.
-    #[serde(default)]
-    pub canonical_link_target: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Type, PartialEq, Eq)]
@@ -89,7 +76,41 @@ pub struct HelperResponse {
     pub error: Option<String>,
 }
 
+/// Prefix the helper puts on post-activation maintenance warnings appended to
+/// the (merged) stdout, so consumers can surface them.
+pub const HELPER_WARNING_PREFIX: &str = "nixmac-helper: warning:";
+
 impl HelperResponse {
+    /// Human-readable failure detail: the explicit error when present, else
+    /// stderr, else the tail of stdout — the helper merges the activation's
+    /// stderr into stdout (`2>&1`), so on a plain nonzero exit the detail
+    /// lives there. Used by the sync-agent binary (this file is `include!`d
+    /// there), hence dead code in targets that report through other paths.
+    #[allow(dead_code)]
+    pub fn failure_detail(&self) -> String {
+        if let Some(error) = self.error.as_deref().filter(|error| !error.is_empty()) {
+            return error.to_string();
+        }
+        if !self.stderr.is_empty() {
+            return self.stderr.clone();
+        }
+        let lines: Vec<&str> = self
+            .stdout
+            .lines()
+            .filter(|line| !line.is_empty())
+            .collect();
+        lines[lines.len().saturating_sub(20)..].join("\n")
+    }
+
+    /// Post-activation maintenance warnings embedded in stdout.
+    #[allow(dead_code)]
+    pub fn warnings(&self) -> Vec<&str> {
+        self.stdout
+            .lines()
+            .filter(|line| line.starts_with(HELPER_WARNING_PREFIX))
+            .collect()
+    }
+
     pub fn ok(stdout: impl Into<String>) -> Self {
         Self {
             ok: true,
@@ -147,47 +168,8 @@ pub fn canonicalize_activate_path(path: impl AsRef<Path>) -> Result<PathBuf> {
     validate_canonical_activate_path(&canonical)
 }
 
-/// Validates a `canonical_link_target`: an absolute path with no relative
-/// components. Existence is checked at execution time by the privileged side
-/// (the requesting user may not even be able to stat it).
-pub fn validate_canonical_link_target(path: impl AsRef<Path>) -> Result<PathBuf> {
-    let path = path.as_ref();
-    if !path.is_absolute() {
-        bail!("canonical link target must be absolute");
-    }
-    if path
-        .components()
-        .any(|component| !matches!(component, Component::RootDir | Component::Normal(_)))
-    {
-        bail!("canonical link target must not contain relative components");
-    }
-    Ok(path.to_path_buf())
-}
-
-/// Shell lines that re-point `/etc/nix-darwin` at `target`, appended to both
-/// privileged activation scripts (helper daemon and osascript fallback).
-/// Best-effort by design: the system switch already succeeded by the time
-/// these run, so a link failure must not turn the apply into an error.
-/// `target` must have passed [`validate_canonical_link_target`]; the caller
-/// decides *whether* an update is needed (see
-/// `storage::canonical_config::canonical_link_pending`).
-pub fn canonical_link_shell_snippet(target: &str) -> String {
-    let target = target.replace('\'', "'\\''");
-    format!(
-        "if [ -e '{link}' ] && [ ! -L '{link}' ]; then rm -rf '{link}' || true; fi\n\
-         ln -sfn '{target}' '{link}' || true",
-        link = CANONICAL_CONFIG_DIR,
-    )
-}
-
-pub fn current_user_activation_request(
-    activate_path: &Path,
-    canonical_link_target: Option<String>,
-) -> Result<ActivateStorePathRequest> {
+pub fn current_user_activation_request(activate_path: &Path) -> Result<ActivateStorePathRequest> {
     let canonical = canonicalize_activate_path(activate_path)?;
-    if let Some(target) = &canonical_link_target {
-        validate_canonical_link_target(target)?;
-    }
     let user_name = whoami::username().unwrap_or_else(|_| "root".to_string());
     let user_id = current_user_id();
     let home = std::env::var("HOME").unwrap_or_default();
@@ -203,7 +185,6 @@ pub fn current_user_activation_request(
         home,
         ssh_auth_sock,
         nix_path,
-        canonical_link_target,
     })
 }
 
@@ -369,34 +350,66 @@ mod tests {
     }
 
     #[test]
-    fn link_target_accepts_absolute_paths_only() {
-        assert!(validate_canonical_link_target("/Users/alice/.darwin").is_ok());
-        assert!(validate_canonical_link_target("relative/dir").is_err());
-        assert!(validate_canonical_link_target("/Users/alice/../root").is_err());
-    }
-
-    #[test]
-    fn link_snippet_targets_the_canonical_path_and_never_fails() {
-        let snippet = canonical_link_shell_snippet("/Users/alice/.darwin");
-
-        assert!(snippet.contains("ln -sfn '/Users/alice/.darwin' '/etc/nix-darwin' || true"));
-        assert!(snippet.contains("rm -rf '/etc/nix-darwin' || true"));
-    }
-
-    #[test]
-    fn link_snippet_escapes_single_quotes() {
-        let snippet = canonical_link_shell_snippet("/Users/al'ice/.darwin");
-
-        assert!(snippet.contains("'/Users/al'\\''ice/.darwin'"));
-    }
-
-    #[test]
-    fn activation_request_json_roundtrips_without_link_field() {
-        // Wire compat with pre-link helpers/apps: the field is optional in
-        // both directions.
-        let json = r#"{"activatePath":"/nix/store/abc-darwin-system/activate","userName":"alice","userId":501,"home":"/Users/alice","sshAuthSock":null,"nixPath":"/bin"}"#;
+    fn activation_request_json_ignores_removed_link_field() {
+        // Wire compat with apps that still send canonicalLinkTarget: unknown
+        // fields are ignored on deserialization.
+        let json = r#"{"activatePath":"/nix/store/abc-darwin-system/activate","userName":"alice","userId":501,"home":"/Users/alice","sshAuthSock":null,"nixPath":"/bin","canonicalLinkTarget":"/Users/alice/.darwin"}"#;
         let request: ActivateStorePathRequest = serde_json::from_str(json).expect("deserializes");
-        assert_eq!(request.canonical_link_target, None);
+        assert_eq!(request.user_id, 501);
+    }
+
+    fn response(stdout: &str, stderr: &str, error: Option<&str>) -> HelperResponse {
+        HelperResponse {
+            ok: false,
+            code: 1,
+            stdout: stdout.to_string(),
+            stderr: stderr.to_string(),
+            error: error.map(String::from),
+        }
+    }
+
+    #[test]
+    fn failure_detail_prefers_error_then_stderr_then_stdout_tail() {
+        assert_eq!(
+            response("out", "err", Some("boom")).failure_detail(),
+            "boom"
+        );
+        assert_eq!(response("out", "err", None).failure_detail(), "err");
+        // The helper merges activation stderr into stdout, so a plain nonzero
+        // exit must still produce a detail.
+        assert_eq!(
+            response("activation exploded\n", "", None).failure_detail(),
+            "activation exploded"
+        );
+    }
+
+    #[test]
+    fn failure_detail_returns_stdout_tail_only() {
+        let lines: Vec<String> = (1..=30).map(|n| format!("line {n}")).collect();
+        let detail = response(&lines.join("\n"), "", None).failure_detail();
+
+        assert!(detail.starts_with("line 11"));
+        assert!(detail.ends_with("line 30"));
+    }
+
+    #[test]
+    fn warnings_extracts_prefixed_stdout_lines() {
+        let stdout = format!(
+            "activated\n{HELPER_WARNING_PREFIX} failed to update system profile\nplain line"
+        );
+        let with_warning = response(&stdout, "", None);
+
+        assert_eq!(
+            with_warning.warnings(),
+            vec![format!(
+                "{HELPER_WARNING_PREFIX} failed to update system profile"
+            )]
+        );
+        assert!(
+            response("no warnings here\n", "", None)
+                .warnings()
+                .is_empty()
+        );
     }
 
     #[test]

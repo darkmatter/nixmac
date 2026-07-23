@@ -226,6 +226,19 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
 "#;
 
 fn main() {
+    // Root re-entry for the interactive activation fallback: `osascript ...
+    // with administrator privileges` re-executes this binary with this
+    // argument so the privileged step runs fixed Rust code instead of a
+    // generated shell script. Dispatched before anything else — the elevated
+    // process must never boot the GUI.
+    if std::env::args().nth(1).as_deref()
+        == Some(privileged_helper::root_activation::ROOT_ACTIVATE_ARG)
+    {
+        std::process::exit(privileged_helper::root_activation::run(
+            std::env::args().skip(2),
+        ));
+    }
+
     #[cfg(feature = "codegen")]
     if std::env::args().nth(1).as_deref() == Some("gen-schemas") {
         if let Err(error) = schema_gen::write_default_config_schemas() {

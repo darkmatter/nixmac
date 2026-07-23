@@ -130,6 +130,9 @@ cocoa = "0.26"
 objc = "0.2"
 window-vibrancy = "0.6"
 
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.31", features = ["user"] }
+
 [dependencies.tera]
 version = "1"
 
