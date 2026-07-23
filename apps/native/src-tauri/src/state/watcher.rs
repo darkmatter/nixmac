@@ -5,9 +5,10 @@
 //! compares against the in-memory git-state cell, which is kept in sync by
 //! both this watcher and the mutating command paths.
 
-use crate::shared_types::GitState;
+use crate::shared_types::{GitAutoUpdate, GitState};
 use crate::state::{
     build_state, change_map as change_map_state, drift_notifications, evolve_state, git_state,
+    preferences,
 };
 use crate::system::nix;
 use crate::{db, git, summarize};
@@ -45,7 +46,6 @@ const AUTO_UPDATE_CHECK_INTERVAL: Duration = Duration::from_secs(5 * 60);
 /// every 1 minute.
 const REBUILD_NEEDED_CHECK_INTERVAL: Duration = Duration::from_secs(60);
 
-/// Git auto-update mode preference values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum GitAutoUpdateMode {
     Off,
@@ -53,24 +53,36 @@ enum GitAutoUpdateMode {
     Automatic,
 }
 
-/// Git auto-update mode preference implementation.
-/// TODO: Move to real system preference when ready to hook up to UI.
 impl GitAutoUpdateMode {
-    fn from_env() -> Self {
-        Self::from_value(std::env::var("NIXMAC_GIT_AUTO_UPDATE_MODE").ok().as_deref())
+    fn resolve(override_value: Option<&str>, preference: GitAutoUpdate) -> Self {
+        override_value
+            .map(Self::from_override)
+            .unwrap_or(match preference {
+                GitAutoUpdate::Off => Self::Off,
+                GitAutoUpdate::Confirm => Self::Confirm,
+                GitAutoUpdate::Automatic => Self::Automatic,
+            })
     }
 
-    fn from_value(value: Option<&str>) -> Self {
+    fn from_override(value: &str) -> Self {
         match value {
-            Some("confirm") => Self::Confirm,
-            Some("automatic") => Self::Automatic,
-            Some(value) if !value.is_empty() && value != "off" => {
+            "confirm" => Self::Confirm,
+            "automatic" => Self::Automatic,
+            value if !value.is_empty() && value != "off" => {
                 log::warn!("[watcher] ignoring invalid NIXMAC_GIT_AUTO_UPDATE_MODE value: {value}");
                 Self::Off
             }
             _ => Self::Off,
         }
     }
+}
+
+fn git_auto_update_mode<R: Runtime>(app_handle: &AppHandle<R>) -> GitAutoUpdateMode {
+    let override_value = std::env::var("NIXMAC_GIT_AUTO_UPDATE_MODE").ok();
+    let preference = preferences::try_read(app_handle)
+        .map(|prefs| prefs.git_auto_update)
+        .unwrap_or_default();
+    GitAutoUpdateMode::resolve(override_value.as_deref(), preference)
 }
 
 fn should_check_auto_update(dir: &str, now: Instant) -> bool {
@@ -165,7 +177,7 @@ fn check_git_status<R: Runtime>(
 }
 
 fn check_upstream<R: Runtime + 'static>(app_handle: &AppHandle<R>, dir: &str, generation: u64) {
-    if GitAutoUpdateMode::from_env() == GitAutoUpdateMode::Off
+    if git_auto_update_mode(app_handle) == GitAutoUpdateMode::Off
         || !should_check_auto_update(dir, Instant::now())
     {
         return;
@@ -345,28 +357,45 @@ where
 #[cfg(test)]
 mod tests {
     use super::GitAutoUpdateMode;
+    use crate::shared_types::GitAutoUpdate;
 
     #[test]
-    fn parses_auto_update_mode() {
-        assert_eq!(GitAutoUpdateMode::from_value(None), GitAutoUpdateMode::Off);
+    fn stored_auto_update_mode_is_used_without_an_environment_override() {
         assert_eq!(
-            GitAutoUpdateMode::from_value(Some("")),
-            GitAutoUpdateMode::Off
-        );
-        assert_eq!(
-            GitAutoUpdateMode::from_value(Some("off")),
-            GitAutoUpdateMode::Off
-        );
-        assert_eq!(
-            GitAutoUpdateMode::from_value(Some("confirm")),
+            GitAutoUpdateMode::resolve(None, GitAutoUpdate::Confirm),
             GitAutoUpdateMode::Confirm
         );
+    }
+
+    #[test]
+    fn environment_auto_update_mode_overrides_the_stored_preference() {
         assert_eq!(
-            GitAutoUpdateMode::from_value(Some("automatic")),
+            GitAutoUpdateMode::resolve(Some("automatic"), GitAutoUpdate::Off),
             GitAutoUpdateMode::Automatic
         );
         assert_eq!(
-            GitAutoUpdateMode::from_value(Some("invalid")),
+            GitAutoUpdateMode::resolve(Some("off"), GitAutoUpdate::Confirm),
+            GitAutoUpdateMode::Off
+        );
+    }
+
+    #[test]
+    fn parses_auto_update_mode() {
+        assert_eq!(GitAutoUpdateMode::from_override(""), GitAutoUpdateMode::Off);
+        assert_eq!(
+            GitAutoUpdateMode::from_override("off"),
+            GitAutoUpdateMode::Off
+        );
+        assert_eq!(
+            GitAutoUpdateMode::from_override("confirm"),
+            GitAutoUpdateMode::Confirm
+        );
+        assert_eq!(
+            GitAutoUpdateMode::from_override("automatic"),
+            GitAutoUpdateMode::Automatic
+        );
+        assert_eq!(
+            GitAutoUpdateMode::from_override("invalid"),
             GitAutoUpdateMode::Off
         );
     }
