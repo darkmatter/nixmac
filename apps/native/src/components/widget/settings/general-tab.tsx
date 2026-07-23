@@ -122,11 +122,15 @@ export function GeneralTab({
             <Select
               value={gitAutoUpdate}
               onValueChange={async (value) => {
-                await tauriAPI.ui.setPrefs({ gitAutoUpdate: value as GitAutoUpdate });
-                telemetry.captureEvent({
-                  name: "settings_changed",
-                  props: { setting: "git_auto_update" },
-                });
+                try {
+                  await tauriAPI.ui.setPrefs({ gitAutoUpdate: value as GitAutoUpdate });
+                  telemetry.captureEvent({
+                    name: "settings_changed",
+                    props: { setting: "git_auto_update" },
+                  });
+                } catch (error) {
+                  console.error("Failed to update git auto-update setting:", error);
+                }
               }}
             >
               <SelectTrigger id="git-auto-update" className="w-full">
