@@ -8,6 +8,9 @@ use std::time::Duration;
 
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(30);
 const ACTIVATION_TIMEOUT: Duration = Duration::from_secs(30 * 60);
+/// Status probes back the permissions UI; a wedged helper must not stall a
+/// permissions refresh, so they get a short leash instead of CLIENT_TIMEOUT.
+const STATUS_PROBE_TIMEOUT: Duration = Duration::from_secs(2);
 
 pub fn socket_available() -> bool {
     std::path::Path::new(HELPER_SOCKET_PATH).exists()
@@ -33,13 +36,8 @@ fn request_with_timeout(request: &HelperRequest, timeout: Duration) -> Result<He
     Ok(serde_json::from_str(&line)?)
 }
 
-pub fn request(request: &HelperRequest) -> Result<HelperResponse> {
-    request_with_timeout(request, CLIENT_TIMEOUT)
-}
-
-#[allow(dead_code)]
 pub fn status() -> Result<HelperResponse> {
-    request(&HelperRequest::Status)
+    request_with_timeout(&HelperRequest::Status, STATUS_PROBE_TIMEOUT)
 }
 
 pub fn activate_store_path(request_body: ActivateStorePathRequest) -> Result<HelperResponse> {
