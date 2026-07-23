@@ -112,10 +112,40 @@ fn activate_store_path(
     // Account values are derived from the socket peer credentials; the
     // request's `user_name`/`user_id`/`home` are never trusted here.
     let account = user_account(peer.uid)?;
-    let argv = activation_argv(peer.uid, &account, request);
-    // Merge stderr into stdout (the old script's `2>&1`): consumers stream,
-    // log, and summarize the response's stdout only, and the activate script
-    // writes most of its output to stderr.
+    let argv = activation_argv(
+        peer.uid,
+        &account,
+        &request.activate_path,
+        request.ssh_auth_sock.as_deref(),
+    );
+    let (status, mut stdout) = run_activation_command(&argv)?;
+
+    // Profile maintenance runs only after a successful activation and is
+    // best-effort: the system switch already happened, so its failures
+    // surface as warnings instead of failing the apply.
+    if status.success() {
+        for warning in post_activation_maintenance(&request.activate_path) {
+            stdout.push_str(&format!("\n{HELPER_WARNING_PREFIX} {warning}"));
+        }
+    }
+
+    Ok(HelperResponse {
+        ok: status.success(),
+        code: status.code().unwrap_or(-1),
+        stdout,
+        stderr: String::new(),
+        error: None,
+    })
+}
+
+/// Runs a prepared activation argv with stderr merged into stdout (the old
+/// script's `2>&1`): consumers stream, log, and summarize a single output
+/// stream, and the activate script writes most of its output to stderr.
+/// Shared by the helper daemon and the interactive fallback's root re-entry
+/// (`privileged_helper::root_activation`).
+pub(crate) fn run_activation_command(
+    argv: &[String],
+) -> Result<(std::process::ExitStatus, String)> {
     let (mut reader, writer) = std::io::pipe().context("failed to create activation pipe")?;
     let mut command = Command::new(&argv[0]);
     command
@@ -134,32 +164,16 @@ fn activate_store_path(
     std::io::Read::read_to_end(&mut reader, &mut output)
         .context("failed to read activation output")?;
     let status = child.wait().context("failed to wait for activation")?;
-
-    let mut stdout = String::from_utf8_lossy(&output).to_string();
-    // Profile and link maintenance run only after a successful activation and
-    // are best-effort: the system switch already happened, so their failures
-    // surface as warnings instead of failing the apply.
-    if status.success() {
-        for warning in post_activation_maintenance(request) {
-            stdout.push_str(&format!("\n{HELPER_WARNING_PREFIX} {warning}"));
-        }
-    }
-
-    Ok(HelperResponse {
-        ok: status.success(),
-        code: status.code().unwrap_or(-1),
-        stdout,
-        stderr: String::new(),
-        error: None,
-    })
+    Ok((status, String::from_utf8_lossy(&output).to_string()))
 }
 
 /// Direct-exec activation command: no shell, absolute programs only, a fixed
 /// root-owned PATH, and an otherwise empty environment (`env -i`).
-fn activation_argv(
+pub(crate) fn activation_argv(
     uid: u32,
     account: &UserAccount,
-    request: &ActivateStorePathRequest,
+    activate_path: &str,
+    ssh_auth_sock: Option<&str>,
 ) -> Vec<String> {
     let mut argv = vec![
         "/bin/launchctl".to_string(),
@@ -172,20 +186,16 @@ fn activation_argv(
         format!("USER={}", account.name),
         format!("LOGNAME={}", account.name),
     ];
-    if let Some(sock) = request
-        .ssh_auth_sock
-        .as_deref()
-        .filter(|sock| !sock.is_empty())
-    {
+    if let Some(sock) = ssh_auth_sock.filter(|sock| !sock.is_empty()) {
         argv.push(format!("SSH_AUTH_SOCK={sock}"));
     }
-    argv.push(request.activate_path.clone());
+    argv.push(activate_path.to_string());
     argv
 }
 
-fn post_activation_maintenance(request: &ActivateStorePathRequest) -> Vec<String> {
+pub(crate) fn post_activation_maintenance(activate_path: &str) -> Vec<String> {
     let mut warnings = Vec::new();
-    if let Err(error) = set_system_profile(&request.activate_path) {
+    if let Err(error) = set_system_profile(activate_path) {
         warnings.push(format!("failed to update system profile: {error:#}"));
     }
     warnings
@@ -245,13 +255,16 @@ pub struct PeerIdentity {
     pub executable: Option<String>,
 }
 
-struct UserAccount {
+pub(crate) struct UserAccount {
     name: String,
     home: String,
 }
 
+/// Resolves the account name and home directory for `uid` from the user
+/// database, so privileged activation never trusts requester-supplied
+/// account values.
 #[cfg(target_os = "macos")]
-fn user_account(uid: u32) -> Result<UserAccount> {
+pub(crate) fn user_account(uid: u32) -> Result<UserAccount> {
     let user = nix::unistd::User::from_uid(nix::unistd::Uid::from_raw(uid))
         .context("failed to look up peer account")?
         .with_context(|| format!("no account found for peer uid {uid}"))?;
@@ -264,7 +277,7 @@ fn user_account(uid: u32) -> Result<UserAccount> {
 }
 
 #[cfg(not(target_os = "macos"))]
-fn user_account(_uid: u32) -> Result<UserAccount> {
+pub(crate) fn user_account(_uid: u32) -> Result<UserAccount> {
     bail!("peer account lookup is only implemented on macOS")
 }
 
@@ -390,7 +403,8 @@ mod tests {
         let argv = activation_argv(
             501,
             &account(),
-            &request("/nix/store/abc123-darwin-system-25.05.20260629/activate"),
+            "/nix/store/abc123-darwin-system-25.05.20260629/activate",
+            Some("/tmp/ssh.sock"),
         );
 
         assert_eq!(argv[0], "/bin/launchctl");
@@ -413,7 +427,8 @@ mod tests {
         let argv = activation_argv(
             501,
             &account(),
-            &request("/nix/store/abc123-darwin-system-25.05.20260629/activate"),
+            "/nix/store/abc123-darwin-system-25.05.20260629/activate",
+            Some("/tmp/ssh.sock"),
         );
 
         assert!(!argv.iter().any(|arg| arg.contains("/bin/sh")));
@@ -422,13 +437,17 @@ mod tests {
     }
 
     #[test]
-    fn activation_argv_omits_ssh_sock_when_absent() {
-        let mut without_sock = request("/nix/store/abc123-darwin-system-25.05.20260629/activate");
-        without_sock.ssh_auth_sock = None;
+    fn activation_argv_omits_ssh_sock_when_absent_or_empty() {
+        for sock in [None, Some("")] {
+            let argv = activation_argv(
+                501,
+                &account(),
+                "/nix/store/abc123-darwin-system-25.05.20260629/activate",
+                sock,
+            );
 
-        let argv = activation_argv(501, &account(), &without_sock);
-
-        assert!(!argv.iter().any(|arg| arg.starts_with("SSH_AUTH_SOCK=")));
+            assert!(!argv.iter().any(|arg| arg.starts_with("SSH_AUTH_SOCK=")));
+        }
     }
 
     #[test]

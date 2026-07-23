@@ -4,7 +4,8 @@
 
 use crate::ai::log_summarizer;
 use crate::privileged_helper::{
-    client as helper_client, protocol as helper_protocol, service as helper_service,
+    client as helper_client, protocol as helper_protocol, root_activation,
+    service as helper_service,
 };
 use chrono::Local;
 use log::{error, info};
@@ -615,15 +616,17 @@ fn run_build_step(
 ///   calls `launchctl managername` and aborts with the "over SSH" error
 ///   whenever the result is not "Aqua" — even when called from a GUI app.
 ///
-/// Fix: from within the root osascript shell, use `launchctl asuser <uid>`
-///   to re-enter the user's Aqua bootstrap domain before invoking sudo.
+/// Fix: the elevated step uses `launchctl asuser <uid>` to re-enter the
+///   user's Aqua bootstrap domain before exec'ing the activation script.
 ///   fork()/exec() inherits the bootstrap port, so the activation script
 ///   sees `launchctl managername == "Aqua"` and the App Management check
 ///   proceeds correctly.
 ///
-///   A temporary NOPASSWD sudoers rule is created for the exact, content-
-///   addressed, immutable nix store activate path and is removed via a shell
-///   trap — no persistent system configuration is required.
+///   The elevated command is this binary re-executed in root-activation
+///   mode (`privileged_helper::root_activation`): fixed Rust code with the
+///   same hardening rules as the helper daemon — no shell script, no
+///   sudoers rules, no EXIT traps, absolute programs, and a fixed root-owned
+///   environment.
 fn run_activate_step(
     system_store_path: &Path,
     allow_helper: bool,
@@ -760,13 +763,8 @@ fn run_activate_with_path(
     activate_path: &str,
     allow_helper: bool,
 ) -> Result<ActivateResult, anyhow::Error> {
-    let nix_path = crate::system::nix::get_nix_path();
-    let home = std::env::var("HOME").unwrap_or_default();
-    let ssh_sock = std::env::var("SSH_AUTH_SOCK").unwrap_or_default();
-    let user = whoami::username().unwrap_or_else(|_| "root".to_string());
-
-    // Resolve the symlink to the real nix store path.
-    // sudo / visudo match against the canonical path, not the symlink.
+    // Resolve the symlink to the real nix store path: the privileged step
+    // only ever accepts canonical /nix/store activation paths.
     let real_activate = std::fs::canonicalize(activate_path)
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|_| activate_path.to_owned());
@@ -779,53 +777,35 @@ fn run_activate_with_path(
         info!("[darwin] Skipping privileged helper for App Management-sensitive activation");
     }
 
-    // Escape a value for safe embedding inside a shell single-quoted string.
-    let sq = |s: &str| s.replace('\'', "'\\''");
+    // Interactive fallback: one native admin prompt (Touch ID capable), then
+    // re-execute this binary in root-activation mode. The privileged step is
+    // fixed Rust code mirroring the helper daemon — direct exec of absolute
+    // programs with a fixed root-owned environment. No sudoers rules, EXIT
+    // traps, or requester-controlled PATH/HOME reach root.
+    let root_args = root_activation::RootActivationArgs {
+        // SAFETY: `getuid` is thread-safe, has no preconditions, and cannot fail.
+        uid: unsafe { libc::getuid() },
+        activate_path: real_activate,
+        ssh_auth_sock: std::env::var("SSH_AUTH_SOCK")
+            .ok()
+            .filter(|sock| !sock.is_empty()),
+    };
+    let exe = std::env::current_exe()
+        .map_err(|e| anyhow::anyhow!("Failed to resolve current executable: {}", e))?;
+    let shell_command = root_activation::shell_command(&exe.to_string_lossy(), &root_args);
 
-    // Build the privileged shell script that runs as root via osascript.
-    // It:
-    //   1. Creates a temp NOPASSWD sudoers rule for this exact nix store path.
-    //   2. Uses `launchctl asuser` to switch into the user's Aqua bootstrap
-    //      domain before calling sudo, so the activation script sees
-    //      `launchctl managername == "Aqua"`.
-    //   3. Removes the temp sudoers file via a trap on exit.
-    let shell_script = format!(
-        "set -e\n\
-         ACTIVATE='{activate}'\n\
-         USER_ID=$(id -u '{user}')\n\
-         \n\
-         trap 'rm -f /etc/sudoers.d/nixmac-activate-temp' EXIT\n\
-         \n\
-         printf '%s ALL=(ALL) NOPASSWD: %s\\n' '{user}' \"$ACTIVATE\" \
-             > /etc/sudoers.d/nixmac-activate-temp\n\
-         chmod 440 /etc/sudoers.d/nixmac-activate-temp\n\
-         visudo -cf /etc/sudoers.d/nixmac-activate-temp >/dev/null\n\
-         \n\
-         export PATH='{path}'\n\
-         export HOME='{home}'\n\
-         export SSH_AUTH_SOCK='{sock}'\n\
-         launchctl asuser \"$USER_ID\" sudo -E -n \"$ACTIVATE\" 2>&1\n\
-         SYSTEM_PATH=$(dirname \"$ACTIVATE\")\n\
-         nix-env -p /nix/var/nix/profiles/system --set \"$SYSTEM_PATH\" || true",
-        activate = sq(&real_activate),
-        user = sq(&user),
-        path = sq(&nix_path),
-        home = sq(&home),
-        sock = sq(&ssh_sock),
-    );
-
-    // Escape the shell script for embedding in an AppleScript string literal:
+    // Escape the command for embedding in an AppleScript string literal:
     //   \ → \\ and " → \"
-    let escaped_script = shell_script.replace('\\', "\\\\").replace('"', "\\\"");
+    let escaped_command = shell_command.replace('\\', "\\\\").replace('"', "\\\"");
 
     let osascript_cmd = format!(
         "do shell script \"{}\" with administrator privileges",
-        escaped_script
+        escaped_command
     );
 
-    info!("[darwin] Running activation with launchctl asuser (Aqua bootstrap domain)");
+    info!("[darwin] Running interactive activation via root re-exec of the app binary");
 
-    let output = Command::new("osascript")
+    let output = Command::new("/usr/bin/osascript")
         .args(["-e", &osascript_cmd])
         .output()
         .map_err(|e| anyhow::anyhow!("Failed to run osascript: {}", e))?;
@@ -1187,7 +1167,8 @@ fn run_darwin_rebuild(
 
     if !activate_result.success {
         summarizer.complete(false);
-        // Write and emit activation output (osascript uses `2>&1`, so useful details are often in stdout)
+        // Write and emit activation output (the privileged step merges stderr
+        // into stdout, so useful details are often in stdout)
         let mut stdout_lines: Vec<String> = Vec::new();
         for line in activate_result.stdout.lines() {
             if !line.is_empty() {

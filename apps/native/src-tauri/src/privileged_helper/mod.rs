@@ -8,5 +8,6 @@ pub mod client;
 #[allow(dead_code)]
 pub mod helper_runtime;
 pub mod protocol;
+pub mod root_activation;
 pub mod service;
 pub mod sync_agent;
