@@ -3587,6 +3587,7 @@ dependencies = [
  "libc",
  "libsqlite3-sys",
  "log",
+ "nix",
  "objc",
  "once_cell",
  "opentelemetry",

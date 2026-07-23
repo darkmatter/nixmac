@@ -76,7 +76,41 @@ pub struct HelperResponse {
     pub error: Option<String>,
 }
 
+/// Prefix the helper puts on post-activation maintenance warnings appended to
+/// the (merged) stdout, so consumers can surface them.
+pub const HELPER_WARNING_PREFIX: &str = "nixmac-helper: warning:";
+
 impl HelperResponse {
+    /// Human-readable failure detail: the explicit error when present, else
+    /// stderr, else the tail of stdout — the helper merges the activation's
+    /// stderr into stdout (`2>&1`), so on a plain nonzero exit the detail
+    /// lives there. Used by the sync-agent binary (this file is `include!`d
+    /// there), hence dead code in targets that report through other paths.
+    #[allow(dead_code)]
+    pub fn failure_detail(&self) -> String {
+        if let Some(error) = self.error.as_deref().filter(|error| !error.is_empty()) {
+            return error.to_string();
+        }
+        if !self.stderr.is_empty() {
+            return self.stderr.clone();
+        }
+        let lines: Vec<&str> = self
+            .stdout
+            .lines()
+            .filter(|line| !line.is_empty())
+            .collect();
+        lines[lines.len().saturating_sub(20)..].join("\n")
+    }
+
+    /// Post-activation maintenance warnings embedded in stdout.
+    #[allow(dead_code)]
+    pub fn warnings(&self) -> Vec<&str> {
+        self.stdout
+            .lines()
+            .filter(|line| line.starts_with(HELPER_WARNING_PREFIX))
+            .collect()
+    }
+
     pub fn ok(stdout: impl Into<String>) -> Self {
         Self {
             ok: true,
@@ -322,6 +356,60 @@ mod tests {
         let json = r#"{"activatePath":"/nix/store/abc-darwin-system/activate","userName":"alice","userId":501,"home":"/Users/alice","sshAuthSock":null,"nixPath":"/bin","canonicalLinkTarget":"/Users/alice/.darwin"}"#;
         let request: ActivateStorePathRequest = serde_json::from_str(json).expect("deserializes");
         assert_eq!(request.user_id, 501);
+    }
+
+    fn response(stdout: &str, stderr: &str, error: Option<&str>) -> HelperResponse {
+        HelperResponse {
+            ok: false,
+            code: 1,
+            stdout: stdout.to_string(),
+            stderr: stderr.to_string(),
+            error: error.map(String::from),
+        }
+    }
+
+    #[test]
+    fn failure_detail_prefers_error_then_stderr_then_stdout_tail() {
+        assert_eq!(
+            response("out", "err", Some("boom")).failure_detail(),
+            "boom"
+        );
+        assert_eq!(response("out", "err", None).failure_detail(), "err");
+        // The helper merges activation stderr into stdout, so a plain nonzero
+        // exit must still produce a detail.
+        assert_eq!(
+            response("activation exploded\n", "", None).failure_detail(),
+            "activation exploded"
+        );
+    }
+
+    #[test]
+    fn failure_detail_returns_stdout_tail_only() {
+        let lines: Vec<String> = (1..=30).map(|n| format!("line {n}")).collect();
+        let detail = response(&lines.join("\n"), "", None).failure_detail();
+
+        assert!(detail.starts_with("line 11"));
+        assert!(detail.ends_with("line 30"));
+    }
+
+    #[test]
+    fn warnings_extracts_prefixed_stdout_lines() {
+        let stdout = format!(
+            "activated\n{HELPER_WARNING_PREFIX} failed to update system profile\nplain line"
+        );
+        let with_warning = response(&stdout, "", None);
+
+        assert_eq!(
+            with_warning.warnings(),
+            vec![format!(
+                "{HELPER_WARNING_PREFIX} failed to update system profile"
+            )]
+        );
+        assert!(
+            response("no warnings here\n", "", None)
+                .warnings()
+                .is_empty()
+        );
     }
 
     #[test]
