@@ -17,6 +17,25 @@ pub struct ChangesetSummaryItem {
     pub files: Vec<String>,
 }
 
+/// The prompt asks for an array, but providers request
+/// `response_format: json_object`, which steers models toward a top-level
+/// object — especially when there is only one group. Accept both shapes.
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum ChangesetSummariesResponse {
+    Many(Vec<ChangesetSummaryItem>),
+    One(ChangesetSummaryItem),
+}
+
+impl From<ChangesetSummariesResponse> for Vec<ChangesetSummaryItem> {
+    fn from(response: ChangesetSummariesResponse) -> Self {
+        match response {
+            ChangesetSummariesResponse::Many(items) => items,
+            ChangesetSummariesResponse::One(item) => vec![item],
+        }
+    }
+}
+
 async fn request_json<R: Runtime, T: serde::de::DeserializeOwned>(
     system_prompt: &str,
     user_prompt: &str,
@@ -203,7 +222,7 @@ pub async fn generate_changeset_summaries<R: Runtime>(
     user_prompt: &str,
     app_handle: Option<&AppHandle<R>>,
 ) -> Result<(Vec<ChangesetSummaryItem>, TokenUsage)> {
-    let (items, usage) = request_json::<_, Vec<ChangesetSummaryItem>>(
+    let (response, usage) = request_json::<_, ChangesetSummariesResponse>(
         system_prompt,
         user_prompt,
         changeset_summaries_budget,
@@ -213,7 +232,7 @@ pub async fn generate_changeset_summaries<R: Runtime>(
     )
     .await?;
 
-    let cleaned: Vec<ChangesetSummaryItem> = items
+    let cleaned: Vec<ChangesetSummaryItem> = Vec::from(response)
         .into_iter()
         .map(|mut item| {
             item.summary = item.summary.trim().to_string();
@@ -309,6 +328,26 @@ mod tests {
         // starts first, so it should win.
         let raw = "ok: {\"a\":1} then [\"x\"]";
         assert_eq!(extract_json_object(raw), r#"{"a":1}"#);
+    }
+
+    #[test]
+    fn summaries_response_parses_array() {
+        let parsed: ChangesetSummariesResponse =
+            serde_json::from_str(r#"[{"summary":"a","files":["f.nix"]}]"#).unwrap();
+        let items = Vec::from(parsed);
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].summary, "a");
+    }
+
+    #[test]
+    fn summaries_response_parses_single_object() {
+        let parsed: ChangesetSummariesResponse = serde_json::from_str(
+            r#"{"summary":"chore(home): rename pi4 host","files":["alex-laptop/home.nix"]}"#,
+        )
+        .unwrap();
+        let items = Vec::from(parsed);
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].files, vec!["alex-laptop/home.nix"]);
     }
 
     #[test]
