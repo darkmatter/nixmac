@@ -83,11 +83,7 @@ fn run_once() -> anyhow::Result<()> {
     }
 
     let activate_path = store_path.join("activate");
-    // No canonical-link maintenance here: this agent re-applies the same
-    // config dir it was registered with, so the /etc/nix-darwin link set by
-    // the interactive apply that registered it is still correct.
-    let request =
-        privileged_helper::protocol::current_user_activation_request(&activate_path, None)?;
+    let request = privileged_helper::protocol::current_user_activation_request(&activate_path)?;
     let response = privileged_helper::client::activate_store_path(request)?;
     if !response.ok {
         // Leave the out-link in place: it keeps the built closure GC-rooted

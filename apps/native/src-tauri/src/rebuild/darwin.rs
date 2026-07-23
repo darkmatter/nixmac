@@ -627,23 +627,15 @@ fn run_build_step(
 fn run_activate_step(
     system_store_path: &Path,
     allow_helper: bool,
-    canonical_link_target: Option<String>,
 ) -> Result<ActivateResult, anyhow::Error> {
     let activate_path = system_store_path.join("activate");
-    run_activate_with_path(
-        &activate_path.to_string_lossy(),
-        allow_helper,
-        canonical_link_target,
-    )
+    run_activate_with_path(&activate_path.to_string_lossy(), allow_helper)
 }
 
 /// Activate a specific nix store path directly
 fn activate_store_path(store_path: &str) -> Result<ActivateResult, anyhow::Error> {
     let activate_path = format!("{}/activate", store_path);
-    // Rollback-style activation: the source config dir did not change, so the
-    // canonical link is left alone (a stale link must not be "fixed" to point
-    // at a directory whose config was never applied).
-    run_activate_with_path(&activate_path, true, None)
+    run_activate_with_path(&activate_path, true)
 }
 
 /// Classify an activation failure into (error_type, error_message).
@@ -767,7 +759,6 @@ pub fn activate_store_path_stream(
 fn run_activate_with_path(
     activate_path: &str,
     allow_helper: bool,
-    canonical_link_target: Option<String>,
 ) -> Result<ActivateResult, anyhow::Error> {
     let nix_path = crate::system::nix::get_nix_path();
     let home = std::env::var("HOME").unwrap_or_default();
@@ -781,9 +772,7 @@ fn run_activate_with_path(
         .unwrap_or_else(|_| activate_path.to_owned());
 
     if allow_helper {
-        if let Some(result) =
-            try_activate_with_helper(&real_activate, canonical_link_target.clone())
-        {
+        if let Some(result) = try_activate_with_helper(&real_activate) {
             return result;
         }
     } else {
@@ -800,15 +789,6 @@ fn run_activate_with_path(
     //      domain before calling sudo, so the activation script sees
     //      `launchctl managername == "Aqua"`.
     //   3. Removes the temp sudoers file via a trap on exit.
-    // Same best-effort canonical-link maintenance as the helper path: runs
-    // only after activation succeeded (`set -e`), never fails the apply.
-    let canonical_link = match &canonical_link_target {
-        Some(target) => format!(
-            "\n{}",
-            crate::privileged_helper::protocol::canonical_link_shell_snippet(target)
-        ),
-        None => String::new(),
-    };
     let shell_script = format!(
         "set -e\n\
          ACTIVATE='{activate}'\n\
@@ -826,7 +806,7 @@ fn run_activate_with_path(
          export SSH_AUTH_SOCK='{sock}'\n\
          launchctl asuser \"$USER_ID\" sudo -E -n \"$ACTIVATE\" 2>&1\n\
          SYSTEM_PATH=$(dirname \"$ACTIVATE\")\n\
-         nix-env -p /nix/var/nix/profiles/system --set \"$SYSTEM_PATH\" || true{canonical_link}",
+         nix-env -p /nix/var/nix/profiles/system --set \"$SYSTEM_PATH\" || true",
         activate = sq(&real_activate),
         user = sq(&user),
         path = sq(&nix_path),
@@ -868,19 +848,13 @@ fn run_activate_with_path(
     })
 }
 
-fn try_activate_with_helper(
-    activate_path: &str,
-    canonical_link_target: Option<String>,
-) -> Option<Result<ActivateResult, anyhow::Error>> {
+fn try_activate_with_helper(activate_path: &str) -> Option<Result<ActivateResult, anyhow::Error>> {
     let status = helper_service::status();
     if !status.authorized || !status.socket_available {
         return None;
     }
 
-    let request = match helper_protocol::current_user_activation_request(
-        Path::new(activate_path),
-        canonical_link_target,
-    ) {
+    let request = match helper_protocol::current_user_activation_request(Path::new(activate_path)) {
         Ok(request) => request,
         Err(error) => {
             return Some(Err(
@@ -1187,24 +1161,6 @@ fn run_darwin_rebuild(
     // =========================================================================
     log_and_emit!("Requesting admin privileges for activation...");
 
-    // Piggyback the /etc/nix-darwin convention link on the already-privileged
-    // activation: the link then always names the configuration that was last
-    // applied, and selecting a directory in preferences never prompts. When
-    // the canonical path is occupied by something nixmac must not delete,
-    // say so in the apply stream — the frontend surfaces it as a notice.
-    use crate::storage::canonical_config::CanonicalLinkPlan;
-    let canonical_link_target =
-        match crate::storage::canonical_config::canonical_link_plan(Path::new(config_dir)) {
-            CanonicalLinkPlan::Update(target) => Some(target),
-            CanonicalLinkPlan::UpToDate => None,
-            CanonicalLinkPlan::Blocked(reason) => {
-                log_and_emit!(format!(
-                    "warning: /etc/nix-darwin was not updated: {reason}"
-                ));
-                None
-            }
-        };
-
     // The build succeeded, so the resolved store path is present.
     let Some(system_store_path) = build_result.store_path.as_deref() else {
         return Err(serde_json::json!({
@@ -1217,21 +1173,17 @@ fn run_darwin_rebuild(
         }));
     };
 
-    let activate_result = run_activate_step(
-        system_store_path,
-        allow_activation_helper,
-        canonical_link_target,
-    )
-    .map_err(|e| {
-        serde_json::json!({
-            "ok": false,
-            "code": -1,
-            "log_file": log_path.to_string_lossy(),
-            "error_type": "generic_error",
-            "system_untouched": true,
-            "error": format!("Activation step failed to execute: {}", e),
-        })
-    })?;
+    let activate_result =
+        run_activate_step(system_store_path, allow_activation_helper).map_err(|e| {
+            serde_json::json!({
+                "ok": false,
+                "code": -1,
+                "log_file": log_path.to_string_lossy(),
+                "error_type": "generic_error",
+                "system_untouched": true,
+                "error": format!("Activation step failed to execute: {}", e),
+            })
+        })?;
 
     if !activate_result.success {
         summarizer.complete(false);
