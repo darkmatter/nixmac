@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Marks a binary as an approved client of the privileged helper. The
+         helper's peer validation (privileged_helper/peer_auth.rs) requires
+         this entitlement in RequirementMode::Production. Keep this file
+         minimal: the sync agent must not inherit the app's broader
+         entitlements (notably com.apple.security.cs.disable-library-validation). -->
+    <key>com.darkmatter.nixmac.helper-client</key>
+    <true/>
+</dict>
+</plist>

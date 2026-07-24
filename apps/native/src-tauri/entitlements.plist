@@ -19,7 +19,18 @@
     <!-- Allow spawning helper processes (git, nix, darwin-rebuild) -->
     <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
     <true/>
+    <!-- TODO: scope this down if Tauri allows — it lets the signed app load
+         unsigned libraries in-process, which weakens what the helper's
+         dynamic code validation of its clients can prove. -->
     <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+
+    <!-- Marks the app as an approved client of the privileged helper; the
+         helper's peer validation (privileged_helper/peer_auth.rs) requires it
+         in RequirementMode::Production. Restricted entitlement: signing with
+         an Apple Development certificate must strip this key or AMFI kills
+         the launch (no provisioning profile can grant it). -->
+    <key>com.darkmatter.nixmac.helper-client</key>
     <true/>
 </dict>
 </plist>

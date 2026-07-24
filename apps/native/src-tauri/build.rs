@@ -33,6 +33,35 @@ fn embed_build_profile() {
     println!("cargo:rustc-env=NIXMAC_ENV_PROFILE_JSON={minified}");
 }
 
+/// Embed the Apple signing team for the privileged-helper peer handshake
+/// (`privileged_helper/peer_auth.rs` reads `option_env!("NIXMAC_TEAM_ID")`).
+///
+/// The checked-in `signing-team-id` file is the single source of truth for
+/// the team's Developer ID; the release sign scripts read the same file, and
+/// `sign-app.sh` refuses a certificate from any other team. An explicit
+/// `NIXMAC_TEAM_ID` env var wins so personal-certificate builds can pin
+/// their own team. The value is not a secret: every distributed signed
+/// binary carries it.
+fn embed_signing_team_id() {
+    println!("cargo:rerun-if-env-changed=NIXMAC_TEAM_ID");
+    let file = Path::new(env!("CARGO_MANIFEST_DIR")).join("signing-team-id");
+    println!("cargo:rerun-if-changed={}", file.display());
+
+    // An empty env var falls back to the file, matching the sign scripts'
+    // `${NIXMAC_TEAM_ID:-...}`.
+    let team_id = std::env::var("NIXMAC_TEAM_ID")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .or_else(|| std::fs::read_to_string(&file).ok())
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+    // When absent, leave NIXMAC_TEAM_ID unset: peer validation fails closed
+    // and activation falls back to the interactive administrator prompt.
+    if let Some(team_id) = team_id {
+        println!("cargo:rustc-env=NIXMAC_TEAM_ID={team_id}");
+    }
+}
+
 fn add_debug_swift_runtime_rpaths() {
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("macos")
         || std::env::var("PROFILE").as_deref() != Ok("debug")
@@ -71,6 +100,7 @@ fn add_debug_swift_runtime_rpaths() {
 
 fn main() {
     embed_build_profile();
+    embed_signing_team_id();
     add_debug_swift_runtime_rpaths();
 
     // Set up passthrough for relevant environment variables.

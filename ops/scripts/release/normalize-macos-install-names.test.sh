@@ -105,6 +105,11 @@ printf '%s\n' "fresh signature" >"${target}.sig"
 SH
 chmod +x "$FAKE_BIN/bun"
 
+# The signing routine refuses certificates from any team other than the
+# checked-in signing-team-id, so the fake identity must carry the real team.
+TEAM_ID="$(tr -d '[:space:]' <"$SCRIPT_DIR/../../../apps/native/src-tauri/signing-team-id")"
+export TEAM_ID
+
 cat >"$FAKE_BIN/security" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -114,7 +119,7 @@ if [ "$1" != "find-identity" ]; then
 	exit 2
 fi
 
-printf '%s\n' '  1) ABCDEF1234567890 "Developer ID Application: Test Signing (TEAMID)"'
+printf '  1) ABCDEF1234567890 "Developer ID Application: Test Signing (%s)"\n' "$TEAM_ID"
 SH
 chmod +x "$FAKE_BIN/security"
 
@@ -126,19 +131,15 @@ printf '%s\n' "$*" >>"$CODESIGN_LOG"
 SH
 chmod +x "$FAKE_BIN/codesign"
 
+# Every app gets the helper sidecars: the shared signing routine hard-fails
+# when they are missing from a bundle.
 make_app() {
 	local app="$1"
 	local executable_name="$2"
 	mkdir -p "$app/Contents/MacOS"
-	printf 'fake mach-o\n' >"$app/Contents/MacOS/$executable_name"
-	chmod +x "$app/Contents/MacOS/$executable_name"
-}
-
-add_helper_bins() {
-	local app="$1"
-	for helper in nixmac-helper nixmac-sync-agent; do
-		printf 'fake mach-o\n' >"$app/Contents/MacOS/$helper"
-		chmod +x "$app/Contents/MacOS/$helper"
+	for bin in "$executable_name" nixmac-helper nixmac-sync-agent; do
+		printf 'fake mach-o\n' >"$app/Contents/MacOS/$bin"
+		chmod +x "$app/Contents/MacOS/$bin"
 	done
 }
 
@@ -179,7 +180,6 @@ fi
 : >"$INSTALL_NAME_TOOL_LOG"
 : >"$CODESIGN_LOG"
 make_app "$TMP_DIR/NixIconvUpdater.app" nix-iconv-updater
-add_helper_bins "$TMP_DIR/NixIconvUpdater.app"
 tar -czf "$TMP_DIR/nixmac.app.tar.gz" -C "$TMP_DIR" NixIconvUpdater.app
 printf '%s\n' "stale signature" >"$TMP_DIR/nixmac.app.tar.gz.sig"
 ABS_TAR_PATH="$(cd "$TMP_DIR" && pwd -P)/nixmac.app.tar.gz"
@@ -203,9 +203,24 @@ if ! grep -F "NixIconvUpdater.app" "$CODESIGN_LOG" >/dev/null; then
 	exit 1
 fi
 
-if ! grep -F "NixIconvUpdater.app/Contents/MacOS/nixmac-helper" "$CODESIGN_LOG" >/dev/null ||
-	! grep -F "NixIconvUpdater.app/Contents/MacOS/nixmac-sync-agent" "$CODESIGN_LOG" >/dev/null; then
-	echo "expected nested helper binaries to be signed before sealing the app" >&2
+if ! grep -F -- "--identifier com.darkmatter.nixmac.helper" "$CODESIGN_LOG" | grep -F "NixIconvUpdater.app/Contents/MacOS/nixmac-helper" >/dev/null ||
+	! grep -F -- "--identifier com.darkmatter.nixmac.sync-agent" "$CODESIGN_LOG" | grep -F "NixIconvUpdater.app/Contents/MacOS/nixmac-sync-agent" >/dev/null; then
+	echo "expected nested helper binaries to be signed with pinned identifiers before sealing the app" >&2
+	cat "$CODESIGN_LOG" >&2
+	exit 1
+fi
+
+if ! grep -F -- "--entitlements" "$CODESIGN_LOG" | grep -F "entitlements-helper.plist" >/dev/null ||
+	! grep -F -- "--entitlements" "$CODESIGN_LOG" | grep -F "entitlements-helper-client.plist" >/dev/null; then
+	echo "expected nested helper binaries to be signed with per-binary entitlements" >&2
+	cat "$CODESIGN_LOG" >&2
+	exit 1
+fi
+
+# Inside-out: --deep on a bundle sign would re-sign the nested binaries and
+# clobber their pinned identifiers and entitlements.
+if grep -- "--sign" "$CODESIGN_LOG" | grep -- "--deep" >/dev/null; then
+	echo "expected the updater tarball app to be signed without --deep" >&2
 	cat "$CODESIGN_LOG" >&2
 	exit 1
 fi
@@ -256,6 +271,19 @@ fi
 
 if ! grep -F -- "--sign -" "$CODESIGN_LOG" >/dev/null; then
 	echo "expected fallback signing to use an ad-hoc identity" >&2
+	cat "$CODESIGN_LOG" >&2
+	exit 1
+fi
+
+if ! grep -F -- "--identifier com.darkmatter.nixmac.helper" "$CODESIGN_LOG" >/dev/null ||
+	! grep -F -- "--identifier com.darkmatter.nixmac.sync-agent" "$CODESIGN_LOG" >/dev/null; then
+	echo "expected ad-hoc fallback to keep the pinned nested identifiers" >&2
+	cat "$CODESIGN_LOG" >&2
+	exit 1
+fi
+
+if grep -- "--sign" "$CODESIGN_LOG" | grep -- "--deep" >/dev/null; then
+	echo "expected ad-hoc fallback to sign without --deep" >&2
 	cat "$CODESIGN_LOG" >&2
 	exit 1
 fi
