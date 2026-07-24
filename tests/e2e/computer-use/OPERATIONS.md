@@ -102,8 +102,9 @@ noisy for reliable Product Proof.
    ```
 
 1. Verify TCP, SSH identity, expected local hostname, Codex binary, notarized
-   Computer Use MCP handshake, app-server readiness when required, and macOS
-   version.
+   Computer Use runtime and authorization plug-in, Terminal Apple Events grant,
+   a live `list_apps` result through a temporary Terminal-launched app-server,
+   app-server readiness when required, and macOS version.
 
 1. Run one advisory Product Proof pass and confirm the report shows the new host
    metadata, app metadata, cleanup state, and evidence video.

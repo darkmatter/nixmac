@@ -8,6 +8,10 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 
 const DEFAULT_SSH_PORT = 22;
+const appServerComputerUseProbe = fs.readFileSync(
+  new URL("./app-server-computer-use-probe.mjs", import.meta.url),
+  "utf8",
+);
 
 function usage() {
   return [
@@ -23,7 +27,7 @@ function usage() {
     "  --expected-local-hostname <name>    Require scutil LocalHostName/hostname to match",
     "  --check-app-path <path>             Require a remote app path to exist",
     "  --check-codex-binary                Require Codex app-server binary on remote Mac",
-    "  --check-computer-use-plugin         Require a notarized Computer Use MCP handshake",
+    "  --check-computer-use-plugin         Require a live authorized Computer Use app-server probe",
     "  --check-recording-tools             Require ffmpeg, ffprobe, and Terminal on remote Mac",
     "  --require-app-server <port>         Require remote 127.0.0.1:<port> to be listening",
   ].join("\n");
@@ -209,6 +213,7 @@ if not any(response.get("id") == 1 and "result" in response for response in resp
 `;
 
 function computerUsePluginShell() {
+  const probeBase64 = Buffer.from(appServerComputerUseProbe).toString("base64");
   return [
     codexBinaryShell,
     'PLUGIN_LIST="$("$CODEX_BIN" plugin list)"',
@@ -221,6 +226,38 @@ function computerUsePluginShell() {
     'test -x "$CLIENT"',
     'spctl -a -vv "$PLUGIN_APP" 2>&1 | grep -q "accepted"',
     `/usr/bin/python3 -c ${remoteShellQuote(computerUseProbePython)} "$CLIENT"`,
+    'RUNTIME_APP="$HOME/.codex/computer-use/Codex Computer Use.app"',
+    'RUNTIME_SERVICE="$RUNTIME_APP/Contents/MacOS/SkyComputerUseService"',
+    'INSTALLER="$RUNTIME_APP/Contents/SharedSupport/Codex Computer Use Installer.app/Contents/MacOS/Codex Computer Use Installer"',
+    'test -x "$RUNTIME_SERVICE"',
+    'test -x "$INSTALLER"',
+    'spctl -a -vv "$RUNTIME_APP" 2>&1 | grep -q "accepted"',
+    'cmp -s "$PLUGIN_APP/Contents/MacOS/SkyComputerUseService" "$RUNTIME_SERVICE"',
+    '"$INSTALLER" status 2>&1 | grep -q "OK: installed"',
+    'pgrep -x SkyComputerUseService >/dev/null || open "$RUNTIME_APP"',
+    "for _ in $(seq 1 20); do pgrep -x SkyComputerUseService >/dev/null && break; sleep 1; done",
+    "pgrep -x SkyComputerUseService >/dev/null",
+    'TCC_DB="$HOME/Library/Application Support/com.apple.TCC/TCC.db"',
+    'test "$(sqlite3 "$TCC_DB" "SELECT auth_value FROM access WHERE service = \'kTCCServiceAppleEvents\' AND client = \'com.apple.Terminal\' AND indirect_object_identifier = \'com.openai.sky.CUAService\' ORDER BY last_modified DESC LIMIT 1;")" = "2"',
+    "PREFLIGHT_PORT=18789",
+    'PREFLIGHT_TAG="nixmac-cua-preflight-$$"',
+    'PREFLIGHT_LAUNCHER="/tmp/${PREFLIGHT_TAG}-app-server.sh"',
+    'PREFLIGHT_PROBE="/tmp/${PREFLIGHT_TAG}-probe.mjs"',
+    'PREFLIGHT_LOG="/tmp/${PREFLIGHT_TAG}-app-server.log"',
+    'cleanup_computer_use_preflight() { pkill -f "[c]odex app-server .*--listen ws://127.0.0.1:${PREFLIGHT_PORT}" >/dev/null 2>&1 || true; rm -f "$PREFLIGHT_LAUNCHER" "$PREFLIGHT_PROBE" "$PREFLIGHT_LOG"; }',
+    "trap cleanup_computer_use_preflight EXIT INT TERM",
+    'pkill -f "[c]odex app-server .*--listen ws://127.0.0.1:${PREFLIGHT_PORT}" >/dev/null 2>&1 || true',
+    `printf '%s' ${remoteShellQuote(probeBase64)} | /usr/bin/base64 --decode > "$PREFLIGHT_PROBE"`,
+    'printf \'#!/bin/bash\\nexport PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"\\n%q app-server -c %q --listen ws://127.0.0.1:%s >%q 2>&1\\nexit 0\\n\' "$CODEX_BIN" \'service_tier="fast"\' "$PREFLIGHT_PORT" "$PREFLIGHT_LOG" > "$PREFLIGHT_LAUNCHER"',
+    'chmod 700 "$PREFLIGHT_LAUNCHER"',
+    "osascript -e 'on run argv' -e 'tell application \"Terminal\" to do script \"/bin/bash \" & quoted form of item 1 of argv' -e 'end run' \"$PREFLIGHT_LAUNCHER\" >/dev/null",
+    "app_server_ready=false",
+    'for _ in $(seq 1 30); do if curl --fail --silent "http://127.0.0.1:${PREFLIGHT_PORT}/readyz" >/dev/null; then app_server_ready=true; break; fi; sleep 1; done',
+    'if test "$app_server_ready" != "true"; then cat "$PREFLIGHT_LOG" >&2; exit 1; fi',
+    'export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"',
+    'node "$PREFLIGHT_PROBE" "ws://127.0.0.1:${PREFLIGHT_PORT}"',
+    "cleanup_computer_use_preflight",
+    "trap - EXIT INT TERM",
     'printf "codex_bin=%s\\n" "$CODEX_BIN"',
     'printf "codex_version=%s\\n" "$("$CODEX_BIN" --version)"',
     'printf "computer_use_version=%s\\n" "$(basename "$PLUGIN_ROOT")"',
@@ -366,7 +403,7 @@ async function main() {
         const values = parseKeyValues(output);
         pass(
           "computer-use-plugin",
-          `Computer Use ${values.computer_use_version} is notarized and completed an MCP initialize handshake`,
+          `Computer Use ${values.computer_use_version} is notarized, installed, authorized, and returned a live app inventory through Codex app-server`,
           {
             codexBinary: values.codex_bin,
             codexVersion: values.codex_version,
@@ -376,7 +413,7 @@ async function main() {
       } catch (error) {
         fail(
           "computer-use-plugin",
-          `Computer Use notarization/MCP handshake failed: ${error.message}`,
+          `Computer Use runtime/app-server probe failed: ${error.message}`,
         );
       }
     }

@@ -122,8 +122,13 @@ assert.match(
 );
 assert.match(
   remote,
-  /if \[\[ -x \/opt\/homebrew\/bin\/codex \]\][\s\S]*CODEX_BIN=\/opt\/homebrew\/bin\/codex[\s\S]*nohup "\$CODEX_BIN" app-server/,
-  "remote launch must prefer the preflight-approved current Homebrew Codex CLI",
+  /if \[\[ -x \/opt\/homebrew\/bin\/codex \]\][\s\S]*CODEX_BIN=\/opt\/homebrew\/bin\/codex[\s\S]*APP_SERVER_LAUNCHER[\s\S]*tell application "Terminal" to do script[\s\S]*curl --fail --silent http:\/\/127\.0\.0\.1:18790\/readyz/,
+  "remote launch must prefer the current Homebrew Codex CLI and start app-server through the authorized Terminal GUI process",
+);
+assert.doesNotMatch(
+  remote,
+  /nohup "\$CODEX_BIN" app-server/,
+  "remote launch must not start app-server from the unauthenticated SSH process tree",
 );
 assert.ok(recordingStartIndex >= 0, "remote job must start continuous screen recording");
 assert.ok(recordingStopIndex >= 0, "remote job must collect continuous screen recording");

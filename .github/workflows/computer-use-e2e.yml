@@ -954,8 +954,31 @@ jobs:
             echo "error: preflight-approved Codex binary disappeared before app-server launch" >&2
             exit 1
           fi
-          nohup "$CODEX_BIN" app-server -c 'service_tier="fast"' --listen ws://127.0.0.1:18790 >/tmp/nixmac-codex-app-server.log 2>&1 &
-          sleep 2
+          APP_SERVER_LAUNCHER="$REMOTE_APP_STAGE/start-codex-app-server.sh"
+          APP_SERVER_LOG=/tmp/nixmac-codex-app-server.log
+          printf '#!/bin/bash\nexport PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"\n%q app-server -c %q --listen ws://127.0.0.1:18790 >%q 2>&1\nexit 0\n' \
+            "$CODEX_BIN" \
+            'service_tier="fast"' \
+            "$APP_SERVER_LOG" > "$APP_SERVER_LAUNCHER"
+          chmod 700 "$APP_SERVER_LAUNCHER"
+          osascript \
+            -e 'on run argv' \
+            -e 'tell application "Terminal" to do script "/bin/bash " & quoted form of item 1 of argv' \
+            -e 'end run' \
+            "$APP_SERVER_LAUNCHER" >/dev/null
+          app_server_ready=false
+          for _ in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:18790/readyz >/dev/null; then
+              app_server_ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [[ "$app_server_ready" != "true" ]]; then
+            cat "$APP_SERVER_LOG" >&2
+            echo "error: Terminal-launched Codex app-server did not become ready" >&2
+            exit 1
+          fi
           if ! open -n "$REMOTE_APP_PATH"; then
             echo "warning: open returned non-zero while launching $REMOTE_APP_PATH; continuing so Computer Use can inspect app state" >&2
           fi

@@ -20,8 +20,11 @@ must fail or downgrade the run instead of being hidden behind a passing check.
 
 ## Remote Computer Use Lane
 
-This is the PR-ready lane. Start Codex app-server on the target Mac and tunnel
-it locally:
+This is the PR-ready lane. Start Codex app-server from Terminal in the target
+Mac's GUI session so its Computer Use client inherits Terminal's explicit Apple
+Events grant, then tunnel it locally. Do not start the server from a headless
+SSH process tree; macOS will reject the signed client as unauthenticated even
+when Accessibility and Screen Recording are already granted.
 
 ```bash
 ssh -N -L 18790:127.0.0.1:18790 admin@REMOTE-MAC
@@ -46,6 +49,9 @@ node tests/e2e/computer-use/run-remote-cua.mjs self-test
 
 The runner:
 
+- preflights the installed/notarized Computer Use runtime, authorization
+  plug-in, Terminal Apple Events grant, and an actual `list_apps` call through a
+  temporary Terminal-launched Codex app-server before staging the app;
 - builds and publishes a per-run Storybook preview for PRs that touch frontend
   UI files, then links changed files to direct Storybook story URLs in the
   report so reviewers can inspect affected UI states before reading native
