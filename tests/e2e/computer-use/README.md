@@ -104,10 +104,11 @@ The runner:
   failures;
 - renders coverage gaps, PR-specific focus, evidence grades, primary artifact
   links, and visual proof cards with screenshot callouts plus text excerpts;
-- copies the generated report back to the remote Mac, opens it as the active
-  Safari document, and requires multiple report-body markers before Computer
-  Use can count the browser inspection as proof; a matching background tab
-  title is insufficient;
+- copies the generated report back to the remote Mac, serves it from a
+  loopback-only HTTP server, opens it as the active Safari document without
+  AppleScript Automation privileges, and requires multiple report-body markers
+  before Computer Use can count the browser inspection as proof; a matching
+  background tab title is insufficient;
 - writes `index.html`, `state.json`, `events.json`, screenshots, text
   snapshots, the continuous recording, a secondary screenshot reel, and remote
   metadata under `artifacts/computer-use-remote/<timestamp>/`.

@@ -870,6 +870,8 @@ jobs:
           pkill -f 'nixmac-activate-temp|with administrator privileges|/nix/store/.*/activate|ln -s /etc/static/pam.d/sudo_local /etc/pam.d/sudo_local' >/dev/null 2>&1 || true
           osascript -e 'tell application id "com.darkmatter.nixmac" to quit' >/dev/null 2>&1 || true
           pkill -x nixmac >/dev/null 2>&1 || true
+          killall Safari >/dev/null 2>&1 || true
+          pkill -f 'com.apple.WebKit.(GPU|WebContent|Networking).xpc' >/dev/null 2>&1 || true
           sleep 2
           rm -rf "$REMOTE_APP_STAGE"
           mkdir -p "$REMOTE_APP_STAGE"
@@ -983,6 +985,11 @@ jobs:
             echo "warning: open returned non-zero while launching $REMOTE_APP_PATH; continuing so Computer Use can inspect app state" >&2
           fi
           sleep 4
+          if log show --last 15s --style compact --predicate 'process == "nixmac"' 2>/dev/null |
+            grep -q 'GPUProcessProxy::didBecomeUnresponsive'; then
+            echo "error: remote WebKit GPU process became unresponsive while launching the staged nixmac app" >&2
+            exit 1
+          fi
           REMOTE
           node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id remote-staging-app-launch \

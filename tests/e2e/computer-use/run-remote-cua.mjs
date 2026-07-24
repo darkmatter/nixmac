@@ -101,6 +101,7 @@ const DEFAULT_WS = "ws://127.0.0.1:18790";
 const DEFAULT_BUILD_ATTEMPTS = 180;
 const ARTIFACT_ROOT = path.join(REPO_ROOT, "artifacts", "computer-use-remote");
 const COVERAGE_MANIFEST_PATH = path.join(TOOL_DIR, "coverage-manifest.json");
+const REPORT_SERVER_PORT = 18791;
 
 let activeRunDir = "";
 
@@ -227,6 +228,30 @@ function hasReportBodyEvidence(text) {
       /Remote Machine \/ App Metadata/i,
     ]) >= 2
   );
+}
+
+function reportServerStartCommand(remoteDir) {
+  const reportUrl = `http://127.0.0.1:${REPORT_SERVER_PORT}/index.html`;
+  const logPath = `/tmp/nixmac-e2e-report-server-${REPORT_SERVER_PORT}.log`;
+  const script = `
+set -euo pipefail
+/usr/bin/pkill -f '[h]ttp.server ${REPORT_SERVER_PORT}' >/dev/null 2>&1 || true
+/usr/bin/nohup /usr/bin/python3 -m http.server ${REPORT_SERVER_PORT} --bind 127.0.0.1 --directory ${shellQuote(
+    remoteDir,
+  )} >${shellQuote(logPath)} 2>&1 </dev/null &
+server_pid=$!
+for _ in $(/usr/bin/seq 1 20); do
+  if /usr/bin/curl --fail --silent --show-error ${shellQuote(reportUrl)} >/dev/null; then
+    printf '%s\\n' "$server_pid"
+    exit 0
+  fi
+  /bin/sleep 0.25
+done
+/bin/cat ${shellQuote(logPath)} >&2 || true
+/bin/kill "$server_pid" >/dev/null 2>&1 || true
+exit 1
+`.trim();
+  return `/bin/bash -lc ${shellQuote(script)}`;
 }
 
 function countMatches(text, patterns) {
@@ -1413,79 +1438,97 @@ async function inspectReportWithComputerUse(client, state) {
     return;
   }
   const remoteIndex = `${remoteDir}/index.html`;
-  const reportUrl = `file://${remoteIndex}`;
-  const safariScript = [
-    'tell application "Safari"',
-    "activate",
-    `make new document with properties {URL:${JSON.stringify(reportUrl)}}`,
-    "end tell",
-  ]
-    .map((line) => `-e ${shellQuote(line)}`)
-    .join(" ");
-  const openResult = ssh(`osascript ${safariScript}; sleep 3`);
+  const reportUrl = `http://127.0.0.1:${REPORT_SERVER_PORT}/index.html`;
+  const serverResult = ssh(reportServerStartCommand(remoteDir));
+  const serverPid = serverResult.ok ? serverResult.stdout.trim().split(/\s+/).at(-1) : "";
+  await addEvent(state, "report.remote-server", {
+    ok: serverResult.ok,
+    pid: /^\d+$/.test(serverPid) ? serverPid : "",
+    url: reportUrl,
+    stderr: redact(serverResult.stderr),
+  });
+  if (!serverResult.ok || !/^\d+$/.test(serverPid)) {
+    updateScenario(
+      state,
+      "reportInspection",
+      "fail",
+      `Could not serve the generated report on the remote Mac: ${serverResult.stderr || "report server did not return a PID"}`,
+    );
+    return;
+  }
+  const openResult = ssh(
+    `/usr/bin/killall Safari >/dev/null 2>&1 || true; /bin/sleep 1; /usr/bin/open -a Safari ${shellQuote(
+      reportUrl,
+    )} >/dev/null 2>&1 && /bin/sleep 5`,
+  );
   await addEvent(state, "report.remote-open", {
     ok: openResult.ok,
     stdout: redact(openResult.stdout),
     stderr: redact(openResult.stderr),
     remoteIndex,
+    reportUrl,
   });
   const browserApps = ["com.apple.Safari", "Safari"];
-  for (const app of browserApps) {
-    try {
-      const response = await client.tool("get_app_state", { app }, 60000);
-      const text = redact(contentText(response));
-      if (hasReportBodyEvidence(text)) {
-        const label = `report-inspection-${app.replace(/[^a-zA-Z0-9._-]+/g, "-")}`;
-        const image = contentImage(response);
-        const textOrdinal = String(state.textSnapshots.length + 1).padStart(2, "0");
-        const textPath = path.join(state.runDir, "texts", `${textOrdinal}-${label}.txt`);
-        await writeFile(textPath, `${text}\n`, "utf8");
-        if (image) {
-          const screenshotOrdinal = String(state.screenshots.length + 1).padStart(2, "0");
-          const imageBuffer = Buffer.from(image, "base64");
-          const metadata = imageMetadata(imageBuffer, contentImageMimeType(response));
-          const imagePath = path.join(
-            state.runDir,
-            "screenshots",
-            `${screenshotOrdinal}-${label}${metadata.extension}`,
-          );
-          await writeFile(imagePath, imageBuffer);
-          const dimensions = imageDimensions(imagePath);
-          state.screenshots.push({
+  try {
+    for (const app of browserApps) {
+      try {
+        const response = await client.tool("get_app_state", { app }, 60000);
+        const text = redact(contentText(response));
+        if (hasReportBodyEvidence(text)) {
+          const label = `report-inspection-${app.replace(/[^a-zA-Z0-9._-]+/g, "-")}`;
+          const image = contentImage(response);
+          const textOrdinal = String(state.textSnapshots.length + 1).padStart(2, "0");
+          const textPath = path.join(state.runDir, "texts", `${textOrdinal}-${label}.txt`);
+          await writeFile(textPath, `${text}\n`, "utf8");
+          if (image) {
+            const screenshotOrdinal = String(state.screenshots.length + 1).padStart(2, "0");
+            const imageBuffer = Buffer.from(image, "base64");
+            const metadata = imageMetadata(imageBuffer, contentImageMimeType(response));
+            const imagePath = path.join(
+              state.runDir,
+              "screenshots",
+              `${screenshotOrdinal}-${label}${metadata.extension}`,
+            );
+            await writeFile(imagePath, imageBuffer);
+            const dimensions = imageDimensions(imagePath);
+            state.screenshots.push({
+              label: "HTML report inspection",
+              path: path.relative(state.runDir, imagePath),
+              capturedAt: new Date().toISOString(),
+              note: `Computer Use inspected the generated report in ${app}.`,
+              source: "Codex Computer Use get_app_state image",
+              format: metadata.format,
+              mimeType: metadata.mimeType,
+              ...(dimensions ? { imageSize: dimensions } : {}),
+            });
+          }
+          state.textSnapshots.push({
             label: "HTML report inspection",
-            path: path.relative(state.runDir, imagePath),
+            path: path.relative(state.runDir, textPath),
             capturedAt: new Date().toISOString(),
             note: `Computer Use inspected the generated report in ${app}.`,
-            source: "Codex Computer Use get_app_state image",
-            format: metadata.format,
-            mimeType: metadata.mimeType,
-            ...(dimensions ? { imageSize: dimensions } : {}),
           });
+          updateScenario(
+            state,
+            "reportInspection",
+            "pass",
+            `Computer Use inspected the generated report in ${app}; report text and evidence sections were visible.`,
+          );
+          addNarrative(
+            state,
+            `Computer Use inspected the generated HTML report in ${app} on the remote Mac.`,
+          );
+          return;
         }
-        state.textSnapshots.push({
-          label: "HTML report inspection",
-          path: path.relative(state.runDir, textPath),
-          capturedAt: new Date().toISOString(),
-          note: `Computer Use inspected the generated report in ${app}.`,
+      } catch (error) {
+        await addEvent(state, "report.browser-inspection-error", {
+          app,
+          error: redact(error instanceof Error ? error.message : String(error)),
         });
-        updateScenario(
-          state,
-          "reportInspection",
-          "pass",
-          `Computer Use inspected the generated report in ${app}; report text and evidence sections were visible.`,
-        );
-        addNarrative(
-          state,
-          `Computer Use inspected the generated HTML report in ${app} on the remote Mac.`,
-        );
-        return;
       }
-    } catch (error) {
-      await addEvent(state, "report.browser-inspection-error", {
-        app,
-        error: redact(error instanceof Error ? error.message : String(error)),
-      });
     }
+  } finally {
+    ssh(`/bin/kill ${shellQuote(serverPid)} >/dev/null 2>&1 || true`);
   }
   updateScenario(
     state,
@@ -4947,6 +4990,20 @@ async function runSelfTest() {
     ),
     true,
     "report inspection should require multiple body-level evidence markers",
+  );
+  const reportServerCommand = reportServerStartCommand("/tmp/report path");
+  assert.equal(
+    reportServerCommand.includes(
+      `/usr/bin/python3 -m http.server ${REPORT_SERVER_PORT} --bind 127.0.0.1`,
+    ),
+    true,
+    "report inspection should serve the report over loopback HTTP",
+  );
+  assert.equal(
+    reportServerCommand.includes("/tmp/report path") &&
+      !reportServerCommand.includes("--directory /tmp/report path"),
+    true,
+    "report server command should shell-quote the copied report directory",
   );
   const sentMessages = [];
   class MockWebSocket {

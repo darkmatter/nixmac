@@ -135,6 +135,23 @@ can be honestly accepted from the failed artifact. No further retry is
 implicitly authorized: another material result must be adjudicated against the
 acceptance contract before any new dispatch.
 
+Third post-execution deviation (2026-07-24): the exact-head run at
+`5f1cc1862` selected the correct staged main window and produced truthful JPEG
+screenshots plus a valid continuous recording, but the main WebView stayed
+blank and Safari timed out during report inspection. The downloaded recording
+and remote unified logs adjudicated both symptoms as the same host-level
+failure: nixmac and Safari successfully loaded their resources while
+`com.apple.WebKit.GPU` became unresponsive and was terminated roughly every 15
+seconds. The dedicated Mac had 22 days of uptime, 16 stale terminal sessions,
+old Safari tabs, and persistent TCC dialogs. This is neither the repaired
+Preview targeting defect nor an unchanged blind retry. Before one additional
+qualification run, reset the dedicated host, verify its GUI/WebKit health, kill
+stale Safari/WebKit helper processes in preflight, fail fast if the staged
+nixmac launch logs another GPU-process hang, and replace AppleScript report
+opening with a loopback HTTP server plus `open -a Safari`. This is the final
+infrastructure-remediated attempt; the same failure after a clean host reset is
+`blocked-on-external-infrastructure`.
+
 For the final qualifying run, verify all of the following:
 
 1. **Provenance**

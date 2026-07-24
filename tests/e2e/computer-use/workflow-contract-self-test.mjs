@@ -153,6 +153,16 @@ assert.doesNotMatch(
   "remote launch must not start app-server from the unauthenticated SSH process tree",
 );
 assert.match(
+  remote,
+  /killall Safari[\s\S]*pkill -f 'com\.apple\.WebKit\.\(GPU\|WebContent\|Networking\)\.xpc'[\s\S]*open -n "\$REMOTE_APP_PATH"/,
+  "remote launch must clear stale Safari/WebKit helpers before starting the staged app",
+);
+assert.match(
+  remote,
+  /log show --last 15s[\s\S]*GPUProcessProxy::didBecomeUnresponsive[\s\S]*remote WebKit GPU process became unresponsive/,
+  "remote launch must fail fast when a poisoned WebKit GPU service would otherwise produce blank evidence",
+);
+assert.match(
   peekSource,
   /"preview-indicator"[\s\S]*?\.always_on_top\(true\)[\s\S]*?\.visible\(false\)/,
   "the auxiliary Preview indicator must start hidden so Computer Use targets the main nixmac window",
