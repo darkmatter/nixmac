@@ -152,6 +152,25 @@ opening with a loopback HTTP server plus `open -a Safari`. This is the final
 infrastructure-remediated attempt; the same failure after a clean host reset is
 `blocked-on-external-infrastructure`.
 
+Fourth post-execution deviation (2026-07-24): the clean-host exact-head run at
+`3540a60b` proved the WebKit reset and fast-failure guard worked, launched the
+correct staged signed app, and captured a valid continuous recording. That
+recording exposed two new evidence blockers which app-scoped screenshots could
+not reveal. First, macOS displayed a Documents-folder consent alert because
+DXU's stored grant was tied to an obsolete app cdhash; the alert blocked the
+real app throughout the run. The grant was repaired once through the real GUI
+and is now stored against nixmac's Developer ID requirement, so future exact
+signed builds can match it. Second, Safari reused the fixed loopback
+`/index.html` URL and displayed a cached report from `5f1cc1862`; the runner
+incorrectly accepted generic report-body markers without checking provenance.
+The report artifact itself was current, but the browser-inspection claim was
+false. Before requalification, give each report a run/head-specific browser
+entrypoint and require the visible report body to contain the expected workflow
+run ID and head SHA. This is an evidence-integrity repair after a distinct
+host-consent failure, not a repetition of the prior WebKit failure. A new
+exact-head build and real-Mac run remain mandatory; neither the manually
+repaired host nor the uninspected current artifact can satisfy acceptance.
+
 For the final qualifying run, verify all of the following:
 
 1. **Provenance**

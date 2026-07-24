@@ -218,20 +218,26 @@ function hasAny(text, patterns) {
   return patterns.some((pattern) => pattern.test(text));
 }
 
-function hasReportBodyEvidence(text) {
-  return (
+function hasReportBodyEvidence(text, { expectedHeadSha = "", expectedWorkflowRunId = "" } = {}) {
+  const bodyEvidence =
     countMatches(text, [
       /Scenario Checklist/i,
       /Claims vs Evidence/i,
       /Failures \/ Open Issues/i,
       /Continuous remote-Mac screen recording/i,
       /Remote Machine \/ App Metadata/i,
-    ]) >= 2
+    ]) >= 2;
+  const expectedHead = expectedHeadSha.trim().slice(0, 8);
+  const expectedRun = expectedWorkflowRunId.trim();
+  return (
+    bodyEvidence &&
+    (!expectedHead || text.includes(expectedHead)) &&
+    (!expectedRun || text.includes(expectedRun))
   );
 }
 
-function reportServerStartCommand(remoteDir) {
-  const reportUrl = `http://127.0.0.1:${REPORT_SERVER_PORT}/index.html`;
+function reportServerStartCommand(remoteDir, reportFileName = "index.html") {
+  const reportUrl = `http://127.0.0.1:${REPORT_SERVER_PORT}/${encodeURIComponent(reportFileName)}`;
   const logPath = `/tmp/nixmac-e2e-report-server-${REPORT_SERVER_PORT}.log`;
   const script = `
 set -euo pipefail
@@ -1438,8 +1444,31 @@ async function inspectReportWithComputerUse(client, state) {
     return;
   }
   const remoteIndex = `${remoteDir}/index.html`;
-  const reportUrl = `http://127.0.0.1:${REPORT_SERVER_PORT}/index.html`;
-  const serverResult = ssh(reportServerStartCommand(remoteDir));
+  const expectedHeadSha = state.buildGate?.requiredHeadSha || state.sha || "";
+  const expectedWorkflowRunId = process.env.GITHUB_RUN_ID || "";
+  const reportIdentity = [
+    expectedWorkflowRunId || path.basename(state.runDir),
+    process.env.GITHUB_RUN_ATTEMPT || "0",
+    expectedHeadSha.slice(0, 12) || "unknown-head",
+  ]
+    .join("-")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-");
+  const reportFileName = `index-${reportIdentity}.html`;
+  const remoteBrowserIndex = `${remoteDir}/${reportFileName}`;
+  const identityCopyResult = ssh(
+    `/bin/cp ${shellQuote(remoteIndex)} ${shellQuote(remoteBrowserIndex)}`,
+  );
+  if (!identityCopyResult.ok) {
+    updateScenario(
+      state,
+      "reportInspection",
+      "fail",
+      `Could not create a uniquely addressed report entrypoint: ${identityCopyResult.stderr}`,
+    );
+    return;
+  }
+  const reportUrl = `http://127.0.0.1:${REPORT_SERVER_PORT}/${encodeURIComponent(reportFileName)}`;
+  const serverResult = ssh(reportServerStartCommand(remoteDir, reportFileName));
   const serverPid = serverResult.ok ? serverResult.stdout.trim().split(/\s+/).at(-1) : "";
   await addEvent(state, "report.remote-server", {
     ok: serverResult.ok,
@@ -1466,6 +1495,7 @@ async function inspectReportWithComputerUse(client, state) {
     stdout: redact(openResult.stdout),
     stderr: redact(openResult.stderr),
     remoteIndex,
+    remoteBrowserIndex,
     reportUrl,
   });
   const browserApps = ["com.apple.Safari", "Safari"];
@@ -1474,7 +1504,12 @@ async function inspectReportWithComputerUse(client, state) {
       try {
         const response = await client.tool("get_app_state", { app }, 60000);
         const text = redact(contentText(response));
-        if (hasReportBodyEvidence(text)) {
+        if (
+          hasReportBodyEvidence(text, {
+            expectedHeadSha,
+            expectedWorkflowRunId,
+          })
+        ) {
           const label = `report-inspection-${app.replace(/[^a-zA-Z0-9._-]+/g, "-")}`;
           const image = contentImage(response);
           const textOrdinal = String(state.textSnapshots.length + 1).padStart(2, "0");
@@ -4991,7 +5026,32 @@ async function runSelfTest() {
     true,
     "report inspection should require multiple body-level evidence markers",
   );
-  const reportServerCommand = reportServerStartCommand("/tmp/report path");
+  assert.equal(
+    hasReportBodyEvidence(
+      "1 heading Scenario Checklist\n2 heading Claims vs Evidence\n3 text Continuous remote-Mac screen recording\n4 text Head 5f1cc186\n5 text Workflow 30080148703",
+      {
+        expectedHeadSha: "3540a60b669701694d2bb1abfecf0e9a7583827d",
+        expectedWorkflowRunId: "30082257457",
+      },
+    ),
+    false,
+    "report inspection must reject a body from a different workflow run and head",
+  );
+  assert.equal(
+    hasReportBodyEvidence(
+      "1 heading Scenario Checklist\n2 heading Claims vs Evidence\n3 text Continuous remote-Mac screen recording\n4 text Head 3540a60b\n5 text Workflow 30082257457",
+      {
+        expectedHeadSha: "3540a60b669701694d2bb1abfecf0e9a7583827d",
+        expectedWorkflowRunId: "30082257457",
+      },
+    ),
+    true,
+    "report inspection should accept only current run and head provenance",
+  );
+  const reportServerCommand = reportServerStartCommand(
+    "/tmp/report path",
+    "index-30082257457-1-3540a60b.html",
+  );
   assert.equal(
     reportServerCommand.includes(
       `/usr/bin/python3 -m http.server ${REPORT_SERVER_PORT} --bind 127.0.0.1`,
@@ -5004,6 +5064,11 @@ async function runSelfTest() {
       !reportServerCommand.includes("--directory /tmp/report path"),
     true,
     "report server command should shell-quote the copied report directory",
+  );
+  assert.equal(
+    reportServerCommand.includes("index-30082257457-1-3540a60b.html"),
+    true,
+    "report server readiness must probe the uniquely addressed current-run entrypoint",
   );
   const sentMessages = [];
   class MockWebSocket {
