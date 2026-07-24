@@ -46,7 +46,7 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
     let path = args["path"]
         .as_str()
         .ok_or_else(|| anyhow!("edit_file: missing path"))?;
-    ensure_nixmac_edit_allowed("edit_file", path)?;
+    ensure_nixmac_edit_allowed("edit_file", path, ctx.nixmac_ignore_matcher)?;
     let search = args["search"]
         .as_str()
         .ok_or_else(|| anyhow!("edit_file: missing search"))?;

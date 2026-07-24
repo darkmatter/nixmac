@@ -1,3 +1,5 @@
+use crate::evolve::nixmac_ignore::NixmacIgnoreChecker;
+
 use super::gitignore::{GitignoreChecker, VisibleFiles};
 use super::utils::truncate_error;
 use anyhow::{Result, anyhow};
@@ -15,6 +17,7 @@ pub fn execute_search_code(
     pattern: &str,
     file_pattern: Option<&str>,
     gitignore: Option<&GitignoreChecker>,
+    nixmac_ignore: Option<&NixmacIgnoreChecker>,
 ) -> Result<String> {
     info!("Searching for pattern: {}", pattern);
 
@@ -32,12 +35,6 @@ pub fn execute_search_code(
     // Do not pass --max-count here: that flag caps matches *per file*, so the
     // total output could still far exceed MAX_SEARCH_RESULTS across many files.
     // The global cap is enforced in format_rg_json_matches instead.
-
-    // Exclude common ignored directories from ripgrep results by adding
-    // negative glob patterns (e.g. `!.git/**/*`).
-    for d in super::IGNORED_DIRS {
-        cmd.arg("--glob").arg(format!("!{}/**/*", d));
-    }
 
     if let Some(fp) = file_pattern {
         // Keep glob semantics for ripgrep while disallowing directory escapes.
@@ -63,7 +60,8 @@ pub fn execute_search_code(
         Ok(out) => {
             let status = out.status;
             if status.success() {
-                let formatted = format_rg_json_matches(&out.stdout, visible.as_ref());
+                let formatted =
+                    format_rg_json_matches(&out.stdout, visible.as_ref(), nixmac_ignore);
                 if formatted.is_empty() {
                     Ok("No matches found.".to_string())
                 } else {
@@ -96,12 +94,9 @@ pub fn execute_search_code(
             grep_cmd
                 .arg("--max-count")
                 .arg(MAX_SEARCH_RESULTS.to_string());
-            for d in super::IGNORED_DIRS {
-                grep_cmd.arg(format!("--exclude-dir={}", d));
-            }
             let output = grep_cmd.arg(pattern).arg(".").current_dir(base).output()?;
             let stdout = String::from_utf8_lossy(&output.stdout);
-            let filtered = filter_grep_matches(&stdout, visible.as_ref());
+            let filtered = filter_grep_matches(&stdout, visible.as_ref(), nixmac_ignore);
             if filtered.trim().is_empty() {
                 Ok("No matches found.".to_string())
             } else {
@@ -111,7 +106,11 @@ pub fn execute_search_code(
     }
 }
 
-fn format_rg_json_matches(stdout: &[u8], visible: Option<&VisibleFiles>) -> String {
+fn format_rg_json_matches(
+    stdout: &[u8],
+    visible: Option<&VisibleFiles>,
+    nixmac_ignore: Option<&NixmacIgnoreChecker>,
+) -> String {
     let mut lines: Vec<String> = Vec::new();
 
     for json_line in String::from_utf8_lossy(stdout).lines() {
@@ -133,7 +132,7 @@ fn format_rg_json_matches(stdout: &[u8], visible: Option<&VisibleFiles>) -> Stri
             continue;
         };
 
-        if is_hidden_match(path, visible) {
+        if is_hidden_match(path, visible, nixmac_ignore) {
             continue;
         }
 
@@ -149,7 +148,11 @@ fn format_rg_json_matches(stdout: &[u8], visible: Option<&VisibleFiles>) -> Stri
     lines.join("\n")
 }
 
-fn filter_grep_matches(stdout: &str, visible: Option<&VisibleFiles>) -> String {
+fn filter_grep_matches(
+    stdout: &str,
+    visible: Option<&VisibleFiles>,
+    nixmac_ignore: Option<&NixmacIgnoreChecker>,
+) -> String {
     let mut lines: Vec<String> = Vec::new();
 
     for line in stdout.lines() {
@@ -172,7 +175,7 @@ fn filter_grep_matches(stdout: &str, visible: Option<&VisibleFiles>) -> String {
             continue;
         }
 
-        if is_hidden_match(path, visible) {
+        if is_hidden_match(path, visible, nixmac_ignore) {
             continue;
         }
 
@@ -182,11 +185,16 @@ fn filter_grep_matches(stdout: &str, visible: Option<&VisibleFiles>) -> String {
     lines.join("\n")
 }
 
-fn is_hidden_match(path: &str, visible: Option<&VisibleFiles>) -> bool {
+fn is_hidden_match(
+    path: &str,
+    visible: Option<&VisibleFiles>,
+    nixmac_ignore: Option<&NixmacIgnoreChecker>,
+) -> bool {
     let rel = normalize_match_path(path);
-    visible
-        .map(|visible| !visible.contains_file(&rel))
-        .unwrap_or(false)
+    nixmac_ignore.is_some_and(|checker| checker.is_ignored(&rel, false))
+        || visible
+            .map(|visible| !visible.contains_file(&rel))
+            .unwrap_or(false)
 }
 
 fn normalize_match_path(path: &str) -> PathBuf {
@@ -204,7 +212,9 @@ fn normalize_match_path(path: &str) -> PathBuf {
 mod tests {
     use super::{execute_search_code, filter_grep_matches};
     use crate::evolve::gitignore::GitignoreChecker;
+    use crate::evolve::nixmac_ignore;
     use std::fs;
+    use std::path::Path;
     use tempfile::tempdir;
 
     #[test]
@@ -217,7 +227,7 @@ mod tests {
         fs::write(tmp.join("secret.txt"), "NEEDLE").expect("write secret file");
         let gitignore_matcher = GitignoreChecker::new(tmp).expect("load matcher");
 
-        let output = execute_search_code(tmp, "NEEDLE", None, gitignore_matcher.as_ref())
+        let output = execute_search_code(tmp, "NEEDLE", None, gitignore_matcher.as_ref(), None)
             .expect("search should succeed");
 
         assert!(output.contains("visible.txt"), "output: {output}");
@@ -238,6 +248,7 @@ mod tests {
             "NEEDLE",
             Some("secret.txt"),
             gitignore_matcher.as_ref(),
+            None,
         )
         .expect("search should succeed");
 
@@ -255,7 +266,7 @@ mod tests {
         fs::write(tmp.join("nested/secret.txt"), "NEEDLE").expect("write nested secret file");
         let gitignore_matcher = GitignoreChecker::new(tmp).expect("load matcher");
 
-        let output = execute_search_code(tmp, "NEEDLE", None, gitignore_matcher.as_ref())
+        let output = execute_search_code(tmp, "NEEDLE", None, gitignore_matcher.as_ref(), None)
             .expect("search should succeed");
 
         assert!(output.contains("nested/visible.txt"), "output: {output}");
@@ -263,10 +274,39 @@ mod tests {
     }
 
     #[test]
+    fn search_code_skips_tracked_files_ignored_by_nixmacignore() {
+        let binding = tempdir().expect("tempdir");
+        let tmp = binding.path();
+        let repo = git2::Repository::init(tmp).expect("init git repo");
+        fs::write(tmp.join(".nixmacignore"), "secret.txt\n").expect("write .nixmacignore");
+        fs::write(tmp.join("visible.txt"), "NEEDLE").expect("write visible file");
+        fs::write(tmp.join("secret.txt"), "NEEDLE").expect("write secret file");
+        let mut index = repo.index().expect("open git index");
+        index
+            .add_path(Path::new("secret.txt"))
+            .expect("track secret file");
+        index.write().expect("write git index");
+        let gitignore_matcher = GitignoreChecker::new(tmp).expect("load matcher");
+        let nixmac_ignore_matcher =
+            nixmac_ignore::NixmacIgnoreChecker::new(tmp).expect("load nixmac ignore matcher");
+        let output = execute_search_code(
+            tmp,
+            "NEEDLE",
+            None,
+            gitignore_matcher.as_ref(),
+            nixmac_ignore_matcher.as_ref(),
+        )
+        .expect("search should succeed");
+
+        assert!(output.contains("visible.txt"), "output: {output}");
+        assert!(!output.contains("secret.txt"), "output: {output}");
+    }
+
+    #[test]
     fn grep_fallback_parser_handles_colons_in_filename() {
         let stdout = "dir:with:colon/file.txt:12:match text\ndir/file.txt:not-a-line:ignored\n";
 
-        let output = filter_grep_matches(stdout, None);
+        let output = filter_grep_matches(stdout, None, None);
 
         assert!(
             output.contains("dir:with:colon/file.txt:12:match text"),
