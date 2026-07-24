@@ -1717,12 +1717,27 @@ async function addRemoteGitEvent(state, type, snapshot) {
   });
 }
 
-async function waitForRemoteGit(state, label, predicate, { attempts = 20, delayMs = 1500 } = {}) {
+async function waitForRemoteGit(
+  state,
+  label,
+  predicate,
+  {
+    attempts = 20,
+    delayMs = 1500,
+    configDir: requestedConfigDir = "",
+    baselineHead: requestedBaselineHead,
+  } = {},
+) {
   let snapshot = null;
-  const configDir = state.remoteConfig?.configDir || remoteConfigDirFromSettings();
+  const configDir =
+    requestedConfigDir || state.remoteConfig?.configDir || remoteConfigDirFromSettings();
+  const baselineHead =
+    requestedBaselineHead === undefined
+      ? state.remoteConfig?.baselineHead || ""
+      : requestedBaselineHead;
   for (let i = 0; i < attempts; i += 1) {
     await new Promise((resolve) => setTimeout(resolve, delayMs));
-    snapshot = remoteGitSnapshot(configDir, state.remoteConfig?.baselineHead || "");
+    snapshot = remoteGitSnapshot(configDir, baselineHead);
     await addRemoteGitEvent(
       state,
       `remote.git.${label}.${String(i + 1).padStart(2, "0")}`,
@@ -2928,9 +2943,21 @@ async function prepareDisposableRemoteBaseline(state) {
     });
     return null;
   }
-  const initial = remoteGitSnapshot(configDir);
+  const snapshotOptions = {
+    attempts: Number(process.env.NIXMAC_E2E_BASELINE_GIT_ATTEMPTS || 6),
+    delayMs: Number(process.env.NIXMAC_E2E_BASELINE_GIT_DELAY_MS || 1000),
+    configDir,
+    baselineHead: "",
+  };
+  const initialWait = await waitForRemoteGit(
+    state,
+    "initial-probe",
+    (snapshot) => snapshot?.ok,
+    snapshotOptions,
+  );
+  const initial = initialWait.snapshot;
   await addRemoteGitEvent(state, "remote.git.initial", initial);
-  if (!initial.ok) return null;
+  if (!initialWait.ok) return null;
 
   const markerResult = ssh(
     [
@@ -2948,9 +2975,15 @@ async function prepareDisposableRemoteBaseline(state) {
   });
   if (!markerResult.ok) return null;
 
-  const baseline = remoteGitSnapshot(configDir);
+  const baselineWait = await waitForRemoteGit(
+    state,
+    "baseline-probe",
+    (snapshot) => snapshot?.ok && !snapshot.statusShort,
+    snapshotOptions,
+  );
+  const baseline = baselineWait.snapshot;
   await addRemoteGitEvent(state, "remote.git.baseline", baseline);
-  if (baseline.ok && !baseline.statusShort) {
+  if (baselineWait.ok) {
     state.remoteConfig = {
       configDir,
       initialHead: initial.head,
@@ -2958,7 +2991,7 @@ async function prepareDisposableRemoteBaseline(state) {
       baselinePrepared: true,
     };
     await saveState(state);
-  } else if (baseline.ok) {
+  } else if (baseline?.ok) {
     await addEvent(state, "remote.git.baseline.dirty", {
       reason: "Disposable baseline was created but the worktree was not clean.",
       statusShort: redact(baseline.statusShort || ""),
@@ -3027,7 +3060,16 @@ async function runSuite(args) {
   const client = new AppServerClient(options.ws);
   try {
     await client.connect();
-    await prepareDisposableRemoteBaseline(state);
+    const baseline = await prepareDisposableRemoteBaseline(state);
+    if (
+      state.safety?.disposableConfig === true &&
+      state.safety?.buildConfirmEnabled === true &&
+      (!baseline?.ok || state.remoteConfig?.baselinePrepared !== true)
+    ) {
+      throw new Error(
+        "Disposable baseline preparation did not produce a clean, retry-qualified git snapshot.",
+      );
+    }
     await maybeRelaunchRemote(state);
     captureRemoteMetadata(state);
 

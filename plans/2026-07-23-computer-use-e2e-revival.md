@@ -308,6 +308,17 @@ the earlier runner-owned cleanup field and labeled remote restore
 inconclusive. Derive remote-restore status from the final cleanup timing phase
 when present so the uploaded HTML agrees with its own post-run evidence.
 
+Thirteenth post-execution deviation (2026-07-24): exact report-correction head
+`b9aa6818dec3a6dda335c2c8a0f62f37f23c8fa3` produced successful signed Build
+run `30099233574`; real-Mac run `30100448301` confirmed the cleanup-summary fix
+but failed after one transient SSH `connection refused` during the single
+post-commit disposable-baseline snapshot. The initial snapshot and baseline
+commit had succeeded, but the missing retry left the runner without
+`remoteConfig`, so it correctly refused destructive confirmation and could not
+restore through its git safety proof. Add bounded retries around both baseline
+snapshots and fail fast if a build-confirm-enabled run cannot establish the
+clean disposable baseline.
+
 For the final qualifying run, verify all of the following:
 
 1. **Provenance**
