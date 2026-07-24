@@ -1382,38 +1382,74 @@ function hasReportIssueDialog(text) {
   );
 }
 
+function isTransientComputerUseConnectionFailure(value) {
+  return /^\s*remoteConnection\s*$/i.test(String(value || ""));
+}
+
 async function clickElementIndex(client, state, elementIndex, label, note = "") {
-  let response;
-  try {
-    response = await client.tool("click", { app: state.app, element_index: elementIndex }, 60000);
-  } catch (error) {
-    await addEvent(state, "computer-use.click.failed", {
-      label,
-      elementIndex,
-      error: redact(error instanceof Error ? error.message : String(error)).slice(0, 800),
-      note,
-    });
-    return false;
-  }
-  const rawResponseText = contentText(response);
-  const responseText = redact(rawResponseText);
-  if (clickResponseIndicatesFailure(response, rawResponseText)) {
-    await addEvent(state, "computer-use.click.failed", {
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    let response;
+    try {
+      response = await client.tool(
+        "click",
+        { app: state.app, element_index: elementIndex },
+        60000,
+      );
+    } catch (error) {
+      const errorText = redact(error instanceof Error ? error.message : String(error));
+      if (attempt < maxAttempts && isTransientComputerUseConnectionFailure(errorText)) {
+        await addEvent(state, "computer-use.click.retry", {
+          label,
+          elementIndex,
+          attempt,
+          error: errorText.slice(0, 800),
+          note,
+        });
+        await new Promise((resolve) => setTimeout(resolve, 750));
+        continue;
+      }
+      await addEvent(state, "computer-use.click.failed", {
+        label,
+        elementIndex,
+        error: errorText.slice(0, 800),
+        note,
+      });
+      return false;
+    }
+    const rawResponseText = contentText(response);
+    const responseText = redact(rawResponseText);
+    if (clickResponseIndicatesFailure(response, rawResponseText)) {
+      if (attempt < maxAttempts && isTransientComputerUseConnectionFailure(rawResponseText)) {
+        await addEvent(state, "computer-use.click.retry", {
+          label,
+          elementIndex,
+          attempt,
+          response: responseText.slice(0, 800),
+          isError: response?.result?.isError === true,
+          note,
+        });
+        await new Promise((resolve) => setTimeout(resolve, 750));
+        continue;
+      }
+      await addEvent(state, "computer-use.click.failed", {
+        label,
+        elementIndex,
+        response: responseText.slice(0, 800),
+        isError: response?.result?.isError === true,
+        note,
+      });
+      return false;
+    }
+    await addEvent(state, "computer-use.click", {
       label,
       elementIndex,
       response: responseText.slice(0, 800),
-      isError: response?.result?.isError === true,
       note,
     });
-    return false;
+    return true;
   }
-  await addEvent(state, "computer-use.click", {
-    label,
-    elementIndex,
-    response: responseText.slice(0, 800),
-    note,
-  });
-  return true;
+  return false;
 }
 
 async function setValueByPattern(client, state, text, label, patterns, value) {
@@ -5810,6 +5846,98 @@ async function runSelfTest() {
     /synthetic tool failure/,
     "AppServerClient should reject JSON-RPC error responses",
   );
+  const transientClickRunDir = path.join(
+    os.tmpdir(),
+    `nixmac-transient-click-${Date.now()}`,
+  );
+  await mkdir(transientClickRunDir, { recursive: true });
+  const transientClickAttempts = [];
+  const transientClickClient = {
+    tool: async (tool, args) => {
+      transientClickAttempts.push({ tool, args });
+      if (transientClickAttempts.length === 1) {
+        return {
+          result: {
+            isError: true,
+            content: [{ type: "text", text: "remoteConnection" }],
+          },
+        };
+      }
+      return {
+        result: {
+          content: [{ type: "text", text: "App=com.darkmatter.nixmac" }],
+        },
+      };
+    },
+  };
+  const transientClickState = {
+    app: "com.darkmatter.nixmac",
+    runDir: transientClickRunDir,
+    events: [],
+  };
+  assert.equal(
+    await clickElementIndex(
+      transientClickClient,
+      transientClickState,
+      "17",
+      "Send prompt",
+      "Submit the real prompt.",
+    ),
+    true,
+    "Computer Use click should retry an exact remoteConnection transport failure",
+  );
+  assert.equal(
+    transientClickAttempts.length,
+    2,
+    "Computer Use click should stop retrying after the first successful response",
+  );
+  assert.deepEqual(
+    transientClickState.events.map((event) => event.type),
+    ["computer-use.click.retry", "computer-use.click"],
+    "Computer Use click should preserve retry and success evidence",
+  );
+  const exhaustedClickAttempts = [];
+  const exhaustedClickState = {
+    app: "com.darkmatter.nixmac",
+    runDir: transientClickRunDir,
+    events: [],
+  };
+  assert.equal(
+    await clickElementIndex(
+      {
+        tool: async (tool, args) => {
+          exhaustedClickAttempts.push({ tool, args });
+          return {
+            result: {
+              isError: true,
+              content: [{ type: "text", text: "remoteConnection" }],
+            },
+          };
+        },
+      },
+      exhaustedClickState,
+      "17",
+      "Send prompt",
+      "Submit the real prompt.",
+    ),
+    false,
+    "Computer Use click should fail after bounded remoteConnection retries",
+  );
+  assert.equal(
+    exhaustedClickAttempts.length,
+    3,
+    "Computer Use click should cap remoteConnection attempts at three",
+  );
+  assert.deepEqual(
+    exhaustedClickState.events.map((event) => event.type),
+    [
+      "computer-use.click.retry",
+      "computer-use.click.retry",
+      "computer-use.click.failed",
+    ],
+    "Computer Use click should preserve bounded retry exhaustion evidence",
+  );
+  await rm(transientClickRunDir, { recursive: true, force: true });
   const timeoutClient = new AppServerClient("ws://mock-timeout");
   timeoutClient.ws = { send() {} };
   await assert.rejects(

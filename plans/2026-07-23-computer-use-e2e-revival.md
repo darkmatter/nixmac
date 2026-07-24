@@ -319,6 +319,19 @@ restore through its git safety proof. Add bounded retries around both baseline
 snapshots and fail fast if a build-confirm-enabled run cannot establish the
 clean disposable baseline.
 
+Fourteenth post-execution deviation (2026-07-24): exact baseline-retry head
+`07c41c6fa70eaa25c60e7d6241de8a3e0f6f980e` produced successful signed Build
+run `30101249841`. Real-Mac run `30102122413` established the retry-qualified
+clean baseline and completed the entire untracked Homebrew Build, Commit, and
+History-restore lifecycle. The next Computer Use click, submitting the
+provider prompt, returned a one-off tool-level `remoteConnection` result even
+though the prior and later Computer Use actions succeeded. The runner treated
+that transient transport marker as a semantic click failure and skipped the
+remaining provider lifecycle. Retry only the exact `remoteConnection` marker,
+cap the click at three total attempts, preserve each retry in `events.json`,
+and continue to fail immediately for ordinary stale, invalid, missing, or
+non-clickable element responses.
+
 For the final qualifying run, verify all of the following:
 
 1. **Provenance**
