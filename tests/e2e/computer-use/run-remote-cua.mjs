@@ -6875,6 +6875,10 @@ async function runSelfTest() {
     renderState.scenarios[key].status = "pass";
     renderState.scenarios[key].notes = ["Self-test pass note."];
   }
+  renderState.scenarios.customizationSaveRollback.exercised = false;
+  renderState.scenarios.customizationSaveRollback.notes = [
+    "No untracked customizations chip was visible, so there was no interaction to exercise.",
+  ];
   renderState.screenshots.push({
     path: "screenshots/self-test.png",
     label: "Self test",
@@ -6998,6 +7002,23 @@ async function runSelfTest() {
     renderedHtml.includes("CI wrapper remote cleanup passed"),
     true,
     "rendered report should promote successful post-run cleanup timing to remote-restore proof",
+  );
+  const unexercisedCustomizationRow = renderedHtml.match(
+    /<tr><td class="scenario-cell">Untracked macOS customizations can be saved and rolled back[\s\S]*?<\/tr>/,
+  )?.[0];
+  assert.ok(
+    unexercisedCustomizationRow,
+    "rendered report should include the unexercised customization scenario",
+  );
+  assert.equal(
+    unexercisedCustomizationRow.includes('<span class="grade">not-run</span>'),
+    true,
+    "rendered unexercised scenarios must display the contract's not-run grade",
+  );
+  assert.equal(
+    unexercisedCustomizationRow.includes('<span class="grade">action-confirmed</span>'),
+    false,
+    "rendered unexercised scenarios must not display the static action-confirmed grade",
   );
   assert.equal(
     renderedHtml.includes('href="storybook/"'),

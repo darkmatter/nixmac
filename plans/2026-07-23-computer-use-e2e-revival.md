@@ -370,6 +370,21 @@ the qualifying run had no secret violation and its first baseline probe was
 clean. Because the accepted evidence-contract changes alter the artifact, a
 new exact-head signed build and real-Mac qualification are required.
 
+Seventeenth post-execution deviation (2026-07-24): exact contract-hardening
+head `be67bc18d92e5ad524b891dc72a18fc57ade25fb` produced successful signed
+Build run `30108985617` and fully green real-Mac run `30109890275`. The
+authoritative JSON correctly rendered unexercised scenarios as `not-run` /
+`not-proved` with no assertion types, but Codex's downloaded-artifact HTML
+inspection found the human report still displayed the proof catalog's static
+legacy grade for three of those rows (`action-confirmed`,
+`guardrail-confirmed`, or `manifest-confirmed`). Render both the legacy grade
+and evidence strength from the run-derived scenario contract, retain the proof
+catalog only as a fallback for old reports without that contract, and add a
+renderer regression asserting that an unexercised customization row cannot
+display `action-confirmed`. The stale human-facing grade makes this otherwise
+green artifact non-qualifying; produce one more exact-head signed build and
+real-Mac run.
+
 For the final qualifying run, verify all of the following:
 
 1. **Provenance**
