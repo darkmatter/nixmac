@@ -1297,6 +1297,39 @@ async function clickByPattern(client, state, text, label, patterns, note = "") {
   return clickElementIndex(client, state, elementIndex, label, note);
 }
 
+function findDialogDismissElement(text) {
+  return findElement(text, [
+    /^button OK(?:\s|$)/i,
+    /^button Cancel(?:\s|$)/i,
+    /^button Close(?:\s|$)/i,
+    /^button [×X](?:\s|$)/i,
+  ]);
+}
+
+async function dismissDialog(client, state, text, label, note = "") {
+  const elementIndex = findDialogDismissElement(text);
+  if (!elementIndex) {
+    await addEvent(state, "computer-use.click.skipped", {
+      label,
+      note: `No in-app dialog dismissal element found for ${label}`,
+    });
+    return false;
+  }
+  return clickElementIndex(client, state, elementIndex, label, note);
+}
+
+function hasFeedbackDialog(text) {
+  return /(?:container|heading) Sign in to send feedback|heading (?:Give )?Feedback|button Submit(?: feedback)?/i.test(
+    text,
+  );
+}
+
+function hasReportIssueDialog(text) {
+  return /(?:container|heading) Sign in to (?:report|send)|heading Report (?:Issue|Error)|button Submit(?: report| issue)?/i.test(
+    text,
+  );
+}
+
 async function clickElementIndex(client, state, elementIndex, label, note = "") {
   let response;
   try {
@@ -3100,20 +3133,22 @@ async function runSuite(args) {
       )
     ) {
       text = await captureState(client, state, "feedback", "Computer Use opened Give Feedback.");
+      const feedbackDialogVisible = hasFeedbackDialog(text);
       updateScenario(
         state,
         "feedback",
-        /Feedback|message|Cancel|Submit/i.test(text) ? "pass" : "fail",
-        /Feedback|message|Cancel|Submit/i.test(text)
-          ? "Feedback dialog rendered and no submission was made."
+        feedbackDialogVisible ? "pass" : "fail",
+        feedbackDialogVisible
+          ? /Sign in to send feedback/i.test(text)
+            ? "Signed-out feedback gate rendered and no submission was made."
+            : "Feedback dialog rendered and no submission was made."
           : "Feedback dialog did not visibly render.",
       );
-      await clickByPattern(
+      const feedbackDismissed = await dismissDialog(
         client,
         state,
         text,
-        "Cancel feedback",
-        [/Cancel/i, /Close/i, /^button ×/i, /^button X/i],
+        "Dismiss feedback",
         "Cancel Give Feedback.",
       );
       text = await captureState(
@@ -3122,6 +3157,14 @@ async function runSuite(args) {
         "home-after-feedback",
         "Computer Use returned home after Feedback.",
       );
+      if (!feedbackDismissed || hasFeedbackDialog(text)) {
+        updateScenario(
+          state,
+          "feedback",
+          "fail",
+          "Feedback opened, but its in-app dialog could not be dismissed back to the prompt surface.",
+        );
+      }
     }
 
     if (
@@ -3135,20 +3178,22 @@ async function runSuite(args) {
       )
     ) {
       text = await captureState(client, state, "report-issue", "Computer Use opened Report Issue.");
+      const reportIssueDialogVisible = hasReportIssueDialog(text);
       updateScenario(
         state,
         "reportIssue",
-        /Report|Issue|Error|Cancel|Submit/i.test(text) ? "pass" : "fail",
-        /Report|Issue|Error|Cancel|Submit/i.test(text)
-          ? "Report Issue dialog rendered and no submission was made."
+        reportIssueDialogVisible ? "pass" : "fail",
+        reportIssueDialogVisible
+          ? /Sign in to (?:report|send)/i.test(text)
+            ? "Signed-out report-issue gate rendered and no submission was made."
+            : "Report Issue dialog rendered and no submission was made."
           : "Report Issue did not visibly render.",
       );
-      await clickByPattern(
+      const reportIssueDismissed = await dismissDialog(
         client,
         state,
         text,
-        "Cancel report issue",
-        [/Cancel/i, /Close/i, /^button ×/i, /^button X/i],
+        "Dismiss report issue",
         "Cancel Report Issue.",
       );
       text = await captureState(
@@ -3157,6 +3202,14 @@ async function runSuite(args) {
         "home-after-report-issue",
         "Computer Use returned home after Report Issue.",
       );
+      if (!reportIssueDismissed || hasReportIssueDialog(text)) {
+        updateScenario(
+          state,
+          "reportIssue",
+          "fail",
+          "Report Issue opened, but its in-app dialog could not be dismissed back to the prompt surface.",
+        );
+      }
     } else {
       updateScenario(
         state,
@@ -5107,6 +5160,28 @@ async function runSelfTest() {
     findElement(simpleElementText, [/button Missing/i]),
     null,
     "findElement should return null when no AX element matches",
+  );
+  const signedOutFeedbackDialogText = `
+    4 container Sign in to send feedback
+    5 heading Sign in to send feedback, Value: 2
+    7 text Sign in to your nixmac account before sending feedback.
+    8 button OK
+    9 close button
+  `;
+  assert.equal(
+    findDialogDismissElement(signedOutFeedbackDialogText),
+    "8",
+    "dialog dismissal must choose the in-app OK button instead of the macOS window close button",
+  );
+  assert.equal(
+    hasFeedbackDialog(signedOutFeedbackDialogText),
+    true,
+    "the signed-out feedback gate should count as the visible feedback dialog",
+  );
+  assert.equal(
+    hasFeedbackDialog(launchText),
+    false,
+    "the home Give feedback button alone must not look like an open feedback dialog",
   );
   assert.deepEqual(
     elementEntries(simpleElementText),

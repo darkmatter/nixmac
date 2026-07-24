@@ -197,6 +197,21 @@ router ignores its override. Fix that truthful-control bug and have the runner
 use the control to normalize a saved-update Review state back to the prompt
 before starting the calibrated scenario.
 
+Sixth post-execution deviation (2026-07-24): exact-head build
+`30086340441` succeeded for `c0516af22`, and Computer Use run
+`30087070174` proved the typed fixture and saved-update navigation fix on the
+real signed app. The run then failed because the signed-out Give Feedback path
+rendered an in-app "Sign in to send feedback" gate with an `OK` button, while
+the generic runner cancellation matcher selected the macOS window's `close button` instead. The failed click left the modal over the app, making Report
+Issue, suggestion cards, and the prompt unreachable and causing a cascade of
+harness failures. The continuous recording and recording-aware final report
+inspection both succeeded, making the root cause directly inspectable. Replace
+the broad close matcher with an in-app dialog dismissal helper that prioritizes
+`OK`, uses anchored button roles so it cannot select the system window control,
+and verifies that the modal is absent before downstream scenarios continue.
+Cover the signed-out feedback gate and window-close collision in the runner
+self-test, then repeat the exact-head build and real-Mac qualification.
+
 For the final qualifying run, verify all of the following:
 
 1. **Provenance**
