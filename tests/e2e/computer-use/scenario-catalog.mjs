@@ -10,6 +10,7 @@ function freezeDeep(value) {
 export const DEFAULT_PROMPT =
   'Add the bat command line tool to my Homebrew packages as the plain string "bat" only, with no inline comments.';
 export const supportedHomebrewSourcePaths = freezeDeep([
+  ".nixmac/homebrew/data.json",
   "modules/darwin/homebrew.nix",
   "flake-modules/darwin.nix",
 ]);

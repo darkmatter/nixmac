@@ -267,6 +267,23 @@ preservation harness, the 28-case adversarial replay against run `30090161104`,
 `git diff --check`, targeted oxlint (zero errors, eight existing warnings), and
 the full repository check (zero errors, 164 existing warnings).
 
+Tenth post-execution deviation (2026-07-24): exact post-review head
+`0e0e08551b08883fb61c176e9cf5b8a0c49729d1` produced successful signed Build
+run `30093142572` and real-Mac run `30093946735`. The run passed the provider
+Review, Semantic, Diff, Build & Test boundary, Step 3 Keep Changes and Commit,
+clean committed git proof, History rollback, cleanup, screenshots, continuous
+video, and recording-aware HTML inspection. Its only failing scenario was the
+separate untracked Homebrew Add-to-config lifecycle. The raw git event proved
+the product correctly wrote `.nixmac/homebrew/data.json`, which current product
+code documents as the official managed source, while the runner accepted only
+two legacy `.nix` paths. The runner had also deliberately navigated a prior
+saved update back to Describe, so this managed mutation exposed an enabled
+`Go to Review step` instead of auto-switching. Accept the current managed data
+path, require disposable git proof before using that step, and retry the
+managed-review navigation until the processing overlay clears. Preserve the
+same exact-head build, real-app, continuous-video, report-inspection, and
+cleanup gates on the next qualification run.
+
 For the final qualifying run, verify all of the following:
 
 1. **Provenance**

@@ -1307,6 +1307,22 @@ function isProviderReviewReady(text) {
   return !providerStillRunning && reviewTabsVisible && reviewActionVisible;
 }
 
+function isManagedReviewNavigationAvailable(text) {
+  return (
+    /Progress: step 1 of 3, Describe/i.test(text) &&
+    /button Go to Review step(?:\s|$)/i.test(text) &&
+    !/button \(disabled\) Go to Review step(?:\s|$)/i.test(text)
+  );
+}
+
+function isManagedBuildReviewReady(text) {
+  return (
+    isProviderReviewReady(text) &&
+    /button Build & Test(?:\s|$)/i.test(text) &&
+    !/button \(disabled\) Build & Test(?:\s|$)/i.test(text)
+  );
+}
+
 function isStep3Ready(text) {
   return (
     /Progress: step 3 of 3|All changes active/i.test(text) &&
@@ -2229,7 +2245,8 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
     state,
     `${config.prefix}-apply`,
     (candidate) => {
-      if (isProviderReviewReady(candidate) || isSavedUpdateReview(candidate)) return "review";
+      if (isManagedBuildReviewReady(candidate) || isSavedUpdateReview(candidate)) return "review";
+      if (isManagedReviewNavigationAvailable(candidate)) return "review-navigation";
       if (/failed|error|could not|Could not|Failed/i.test(candidate)) return "error";
       return null;
     },
@@ -2243,8 +2260,60 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
     },
   );
   text = applyWait.text;
+  let enteredAfterNavigation = false;
   let recoveredAfterRelaunch = false;
-  if (applyWait.result !== "review") {
+  if (applyWait.result === "review-navigation") {
+    const mutation = await waitForRemoteGit(
+      state,
+      `${config.prefix}-managed-edit`,
+      (snapshot) =>
+        snapshot?.ok &&
+        (config.prefix === "homebrew"
+          ? hasExpectedHomebrewSourceDiff(snapshot)
+          : Boolean(meaningfulBaselineDiff(snapshot))),
+      {
+        attempts: Number(process.env.NIXMAC_E2E_MANAGED_EDIT_GIT_ATTEMPTS || 20),
+        delayMs: Number(process.env.NIXMAC_E2E_MANAGED_EDIT_GIT_DELAY_MS || 1000),
+      },
+    );
+    if (mutation.ok) {
+      for (
+        let attempt = 1;
+        attempt <= Number(process.env.NIXMAC_E2E_MANAGED_REVIEW_ATTEMPTS || 30);
+        attempt += 1
+      ) {
+        if (isManagedBuildReviewReady(text) || isSavedUpdateReview(text)) {
+          enteredAfterNavigation = true;
+          break;
+        }
+        if (isManagedReviewNavigationAvailable(text)) {
+          await clickByPattern(
+            client,
+            state,
+            text,
+            `${config.name} Go to Review step`,
+            [/^button Go to Review step(?:\s|$)/i],
+            `Open the verified managed ${config.name} mutation in Review.`,
+          );
+        }
+        await new Promise((resolve) =>
+          setTimeout(
+            resolve,
+            Number(process.env.NIXMAC_E2E_MANAGED_REVIEW_DELAY_MS || 1000),
+          ),
+        );
+        text = await captureState(
+          client,
+          state,
+          `${config.prefix}-review-navigation-${String(attempt).padStart(2, "0")}`,
+          `Computer Use opened the verified managed ${config.name} mutation in Review.`,
+        );
+      }
+      enteredAfterNavigation =
+        enteredAfterNavigation || isManagedBuildReviewReady(text) || isSavedUpdateReview(text);
+    }
+  }
+  if (applyWait.result !== "review" && !enteredAfterNavigation) {
     const snapshot = remoteGitSnapshot(
       state.remoteConfig?.configDir || remoteConfigDirFromSettings(),
       state.remoteConfig?.baselineHead || "",
@@ -2263,10 +2332,10 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
         `${config.prefix}-review-recovery`,
         `Computer Use verified the ${config.name} mutation in disposable git state and relaunched after the in-process Review transition timed out.`,
       );
-      recoveredAfterRelaunch = isSavedUpdateReview(text) || isProviderReviewReady(text);
+      recoveredAfterRelaunch = isSavedUpdateReview(text) || isManagedBuildReviewReady(text);
     }
   }
-  if (applyWait.result !== "review" && !recoveredAfterRelaunch) {
+  if (applyWait.result !== "review" && !enteredAfterNavigation && !recoveredAfterRelaunch) {
     const cleanup = await externallyRestoreManagedEdit(client, state, {
       name: config.name,
       prefix: config.prefix,
@@ -2294,7 +2363,9 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
     state,
     scenarioKey,
     result.ok ? "pass" : "fail",
-    recoveredAfterRelaunch
+    enteredAfterNavigation
+      ? `${result.note} The runner used the enabled Review step after proving the managed mutation in disposable git state.`
+      : recoveredAfterRelaunch
       ? `${result.note} The Add to config mutation persisted, but the in-process Review transition required a verified relaunch recovery.`
       : result.note,
   );
@@ -5390,6 +5461,46 @@ async function runSelfTest() {
     findElement(providerReviewReadyText, [/^button Build & Test(?:\s|$)/i]),
     "28",
     "Build & Test lookup must select the actionable button instead of the earlier banner text",
+  );
+  assert.equal(
+    isManagedBuildReviewReady(providerReviewReadyText),
+    true,
+    "managed Review readiness should require an enabled Build & Test action",
+  );
+  assert.equal(
+    isManagedBuildReviewReady(
+      providerReviewReadyText.replace(
+        "28 button Build & Test",
+        "28 button (disabled) Build & Test",
+      ),
+    ),
+    false,
+    "managed Review must wait while Build & Test remains disabled even if Discard is available",
+  );
+  const managedReviewNavigationText = `
+    8 content list Progress: step 1 of 3, Describe
+    9 button (disabled) Go to Describe step
+    10 button Go to Review step
+  `;
+  assert.equal(
+    isManagedReviewNavigationAvailable(managedReviewNavigationText),
+    true,
+    "a managed mutation left on Describe should expose an actionable Review step",
+  );
+  assert.equal(
+    isManagedReviewNavigationAvailable(
+      managedReviewNavigationText.replace(
+        "10 button Go to Review step",
+        "10 button (disabled) Go to Review step",
+      ),
+    ),
+    false,
+    "a disabled Review step must not count as managed-review navigation",
+  );
+  assert.equal(
+    supportedHomebrewSourcePaths.includes(".nixmac/homebrew/data.json"),
+    true,
+    "Homebrew adoption must accept the current managed data.json source path",
   );
   const currentSaveStepText = `
     8 content list Progress: step 3 of 3, Save
