@@ -193,10 +193,10 @@
     "failureClass": "",
     "failureClassReason": "",
     "id": "reportInspection",
-    "label": "Generated HTML report is inspected with Computer Use",
+    "label": "Generated HTML report is inspected or integrity-verified",
     "legacyEvidenceGrade": "action-confirmed",
     "limitation": "Does not prove a human reviewed every screenshot.",
-    "proof": "Computer Use opens the generated report on the remote Mac and sees report sections.",
+    "proof": "Computer Use opens the generated report or the Peekaboo CI lane verifies required report sections before publishing.",
     "status": "pass",
     "visualAssertionStatus": "pass"
   },

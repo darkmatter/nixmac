@@ -96,6 +96,7 @@ noisy for reliable Product Proof.
      --known-hosts <known-hosts-path> \
      --expected-local-hostname <local-hostname> \
      --check-codex-binary \
+     --check-recording-tools \
      --json artifacts/computer-use-remote/readiness/remote-readiness.json
    ```
 
@@ -111,20 +112,17 @@ noisy for reliable Product Proof.
 ## Evidence Policy
 
 Authoritative evidence requirements live in `README.md`. Operationally, treat
-the screenshot-compilation video as the current reviewer scanning artifact and
-do not remove the underlying screenshot/text contracts when adding new evidence
-media.
+the continuous remote-GUI recording as the primary temporal evidence. It must
+start before the first Computer Use interaction, end after the final interaction,
+decode successfully, contain changing visual samples, and be attached to the
+same run's state and HTML report. A screenshot-compilation reel may remain as a
+secondary reviewer scanning aid, but it cannot satisfy the continuous-video
+gate.
 
-Continuous full-session video is not implemented and is not the current required
-evidence policy. Revisit it when one of these becomes true:
-
-- screenshot reels fail to explain important reviewer questions;
-- branch-protection promotion requires stronger temporal proof;
-- a host pool makes continuous capture cheap and reliable;
-- a recurring incident needs before/after footage that screenshots cannot show.
-
-If continuous recording is added, it must preserve the existing screenshot/text
-contracts rather than replacing them.
+Continuous recording preserves rather than replaces the existing binding
+screenshot, redacted text, event, exact-build, and cleanup contracts. If
+recording cannot start, cannot be collected, is static/blank, or does not span
+the action timeline, the run is not qualifying evidence.
 
 ## Override Lifecycle
 
@@ -160,7 +158,8 @@ Monthly:
 - rotate or revalidate pinned known-host material when the host changes;
 - review queue/runtime metrics against singleton capacity;
 - confirm the DXU operator and Product Proof owner are still correct;
-- inspect whether continuous recording has become a requirement.
+- inspect continuous-recording validity, duration, visual samples, and remote
+  Screen Recording permission health.
 
 Before promotion:
 

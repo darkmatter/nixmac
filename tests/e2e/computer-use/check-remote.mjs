@@ -23,6 +23,7 @@ function usage() {
     "  --expected-local-hostname <name>    Require scutil LocalHostName/hostname to match",
     "  --check-app-path <path>             Require a remote app path to exist",
     "  --check-codex-binary                Require Codex app-server binary on remote Mac",
+    "  --check-recording-tools             Require ffmpeg, ffprobe, and Terminal on remote Mac",
     "  --require-app-server <port>         Require remote 127.0.0.1:<port> to be listening",
   ].join("\n");
 }
@@ -33,6 +34,10 @@ function parseArgs(argv) {
     const arg = argv[i];
     if (arg === "--check-codex-binary") {
       out.checkCodexBinary = true;
+      continue;
+    }
+    if (arg === "--check-recording-tools") {
+      out.checkRecordingTools = true;
       continue;
     }
     const next = argv[i + 1];
@@ -60,6 +65,7 @@ function parseArgs(argv) {
   const sshChecksRequested = Boolean(
     out.expectedLocalHostname ||
     out.checkCodexBinary ||
+    out.checkRecordingTools ||
     out.checkAppPath ||
     out.requireAppServer ||
     out.key ||
@@ -275,6 +281,21 @@ async function main() {
         pass("codex-binary", "Codex app-server binary exists");
       } catch (error) {
         fail("codex-binary", `Codex app-server binary check failed: ${error.message}`);
+      }
+    }
+
+    if (options.user && failures.length === 0 && options.checkRecordingTools) {
+      try {
+        runSsh(
+          options,
+          "export PATH=/opt/homebrew/bin:$PATH; command -v ffmpeg >/dev/null && command -v ffprobe >/dev/null && open -Ra Terminal >/dev/null",
+        );
+        pass("recording-tools", "ffmpeg, ffprobe, and Terminal are available");
+      } catch (error) {
+        fail(
+          "recording-tools",
+          `Continuous screen recording dependency check failed: ${error.message}`,
+        );
       }
     }
 

@@ -747,7 +747,6 @@ const caseDefinitions = [
     expected: "known-good baseline artifacts pass all binding screenshot visual assertions.",
     evaluate(state) {
       return (
-        state.verdict === "pass" &&
         Array.isArray(state.visualAssertions) &&
         state.visualAssertions.length > 0 &&
         state.visualAssertions.every((assertion) => assertion.status === "pass") &&

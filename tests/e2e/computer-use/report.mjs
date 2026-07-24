@@ -651,7 +651,8 @@ function renderEvolvedCaseStrategy(state) {
 }
 
 function derivedVideoChapters(state) {
-  if (state.video?.status !== "available" || !state.screenshots?.length) return [];
+  const reel = state.derivedVideo || state.video;
+  if (reel?.status !== "available" || !state.screenshots?.length) return [];
   const frameDuration = 1.1;
   const candidates = [
     ["launch", "Launch"],
@@ -704,23 +705,51 @@ function renderSummaryVideo(state) {
       <a href="#remote-metadata"><strong>DXU</strong><span>Remote state</span><small>Machine, app, process, and git metadata.</small></a>
     </div>
   </div>`;
-  if (state.video?.status === "available" && state.video.path) {
+  const continuous =
+    state.video?.status === "available" &&
+    state.video?.kind === "continuous-screen-recording" &&
+    state.video.path;
+  const derivedReel =
+    state.derivedVideo?.status === "available"
+      ? state.derivedVideo
+      : state.video?.status === "available" && state.video?.kind !== "continuous-screen-recording"
+        ? state.video
+        : null;
+  const derivedReelHtml = derivedReel?.path
+    ? `<details class="derived-video">
+      <summary>Derived screenshot reel (secondary aid; not continuous evidence)</summary>
+      <p><small>${escapeHtml(derivedReel.note || "Screenshot walkthrough compiled from stored proof frames.")}</small></p>
+      <video controls preload="metadata" src="${escapeHtml(derivedReel.path)}"></video>
+      ${renderVideoChapters(state)}
+    </details>`
+    : "";
+  if (continuous) {
+    const samples = (state.video.sampleFrames || [])
+      .map(
+        (sample) => `<figure>
+          <img src="${escapeHtml(sample.path)}" alt="${escapeHtml(sample.label)}">
+          <figcaption>${escapeHtml(sample.label)} at ${escapeHtml(formatDuration((sample.seconds || 0) * 1000))}</figcaption>
+        </figure>`,
+      )
+      .join("\n");
     return `<div id="summary-video" class="summary-video">
       <div class="summary-video-copy">
-        <strong>Evidence video</strong>
-        <small>Screenshot walkthrough compiled from ${escapeHtml(String(state.video.frames || state.screenshots.length))} safe-to-store frames.</small>
-        ${renderVideoChapters(state)}
+        <strong>Continuous remote-Mac screen recording</strong>
+        <small>${escapeHtml(formatDuration((state.video.durationSeconds || 0) * 1000))}, ${escapeHtml(String(state.video.width || "?"))}x${escapeHtml(String(state.video.height || "?"))} at ${escapeHtml(Number(state.video.framesPerSecond || 0).toFixed(2))}fps. Captured ${escapeHtml(state.video.startedAt || "unknown")} to ${escapeHtml(state.video.endedAt || "unknown")} via ${escapeHtml(state.video.captureMethod || "unknown")}.</small>
       </div>
       <video controls preload="metadata" src="${escapeHtml(state.video.path)}"></video>
     </div>
+    ${samples ? `<div class="continuous-video-samples">${samples}</div>` : ""}
+    ${derivedReelHtml}
     ${evidencePack}`;
   }
   return `<div id="summary-video" class="summary-video summary-video-unavailable">
     <div class="summary-video-copy">
-      <strong>Evidence video unavailable</strong>
-      <small>${escapeHtml(state.video?.note || "No screenshot compilation video was generated for this run.")}</small>
+      <strong>Continuous screen recording unavailable</strong>
+      <small>${escapeHtml(state.video?.note || "No qualifying continuous remote-Mac recording was attached to this run.")}</small>
     </div>
   </div>
+  ${derivedReelHtml}
   ${evidencePack}`;
 }
 
@@ -729,7 +758,12 @@ function renderExecutiveSummary(state, counts, evidenceSummary) {
   const prSurface = prSurfaceSummary(state);
   const confidence = mergeConfidence(state, counts);
   const limits = knownLimitCount(state);
-  const videoStatus = state.video?.status === "available" ? "pass" : "inconclusive";
+  const videoStatus =
+    state.video?.status === "available" && state.video?.kind === "continuous-screen-recording"
+      ? "pass"
+      : state.video?.kind === "continuous-screen-recording"
+        ? "fail"
+        : "inconclusive";
   const evidenceStatus = state.scenarios.visualProofQuality?.status || "inconclusive";
   const prLabel = pr.configured
     ? `PR ${pr.number || "?"}${pr.title ? ` - ${pr.title}` : ""}`
@@ -800,7 +834,7 @@ function renderExecutiveSummary(state, counts, evidenceSummary) {
       ${signal("Native lane", state.nativeComputerUse?.skipped ? "pass" : metadataStatus, nativeSkip)}
       ${signal("Scenario health", scenarioHealth, scenarioHealthNote)}
       ${signal("Evidence health", evidenceStatus, state.scenarios.visualProofQuality?.notes?.join(" ") || "Visual/text proof quality not recorded.")}
-      ${signal("Video", videoStatus, state.video?.status === "available" ? `${state.video.frames || state.screenshots.length} safe-to-store frames with derived chapters.` : state.video?.note || "No video generated.")}
+      ${signal("Video", videoStatus, videoStatus === "pass" ? `${formatDuration((state.video.durationSeconds || 0) * 1000)} continuous remote-Mac capture with ${state.video.uniqueSampleHashes || 0} unique visual samples.` : state.video?.note || "No qualifying continuous recording attached.")}
       ${signal("Known limits", limits ? "inconclusive" : "pass", limits ? `${limits} runtime gap(s) or explicit waiver(s) need human acceptance.` : "No runtime gaps or explicit waivers recorded.")}
       ${signal("Remote restore", remoteRestoreStatus, state.cleanup?.note || "Remote app-support restore status was not recorded.")}
       ${signal("Step 3 save", saveStatus, "Disposable config change persisted through the save path.")}
@@ -855,7 +889,7 @@ function renderReportNav(state, counts) {
     <a href="#findings-first">Findings ${navBadge("", counts.fail + counts.inconclusive, counts.fail ? "fail" : counts.inconclusive ? "inconclusive" : "pass")}</a>
     <a href="#evidence-quality">Evidence Quality ${navBadge("", riskCount)}</a>
     <a href="#visual-assertions">Visual Assertions ${navBadge("", state.visualAssertions?.length || 0)}</a>
-    <a href="#summary-video">Evidence Video ${navBadge("", state.video?.status === "available" ? "available" : "off")}</a>
+    <a href="#summary-video">Continuous Video ${navBadge("", state.video?.status === "available" && state.video?.kind === "continuous-screen-recording" ? "available" : "off")}</a>
     <a href="#visual-proof">Visual Proof ${navBadge("", state.screenshots.length)}</a>
     <a href="#scenario-checklist">Scenario Checklist</a>
     <a href="#main-coverage">Coverage</a>
@@ -1271,7 +1305,11 @@ export async function renderReportHtml(state, { proofForScenario }) {
   const prPriorityHtml = renderPrPriority(state, proofForScenario);
   const priorityTriageHtml = renderPriorityTriage(state, proofForScenario);
   const verificationQueueHtml = renderVerificationQueue(state, proofForScenario);
-  if (state.video?.status === "available") evidenceSummary += ", 1 screenshot video";
+  if (state.video?.status === "available" && state.video?.kind === "continuous-screen-recording") {
+    evidenceSummary += ", 1 continuous screen recording";
+  } else if (state.video?.status === "available") {
+    evidenceSummary += ", 1 derived screenshot reel (not continuous evidence)";
+  }
   const executiveSummaryHtml = renderExecutiveSummary(state, counts, evidenceSummary);
   const reportNavHtml = renderReportNav(state, counts);
   const storybookPreviewHtml = renderStorybookPreview(state);
@@ -1389,6 +1427,11 @@ export async function renderReportHtml(state, { proofForScenario }) {
     .summary-video-copy small { color: #b8c0cb; line-height: 1.45; }
     .summary-video video { width: 100%; max-height: 520px; border: 1px solid #2e3541; border-radius: 6px; background: #050609; }
     .summary-video-unavailable { display: block; }
+    .derived-video { margin: 14px 0 24px; padding: 12px 16px; border: 1px solid #2e3541; border-radius: 8px; background: #0d1016; }
+    .derived-video video { width: 100%; max-height: 420px; margin-top: 10px; background: #050609; }
+    .continuous-video-samples { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: -10px 0 24px; }
+    .continuous-video-samples figure { margin: 0; }
+    .continuous-video-samples img { width: 100%; border: 1px solid #2e3541; border-radius: 6px; }
     .video-chapters { margin-top: 14px; display: grid; gap: 8px; }
     .chapter-list { display: flex; flex-wrap: wrap; gap: 6px; }
     .chapter-list button { border: 1px solid #3c4654; border-radius: 999px; padding: 6px 9px; background: #171a21; color: #dce3ec; cursor: pointer; font: inherit; font-size: 12px; }

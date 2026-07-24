@@ -148,6 +148,7 @@ jobs:
           node --check tests/e2e/computer-use/check-remote.mjs
           node --check tests/e2e/computer-use/check-stale-run.mjs
           node --check tests/e2e/computer-use/storybook-preview.mjs
+          node --check tests/e2e/computer-use/continuous-recording.mjs
           node tests/e2e/computer-use/storybook-preview.mjs self-test
           node --check tests/e2e/computer-use/workflow-contract-self-test.mjs
           node tests/e2e/computer-use/run-remote-cua.mjs self-test
@@ -758,7 +759,7 @@ jobs:
             --id remote-preflight \
             --label "Remote preflight" \
             --category remote \
-            --note "Checking SSH, expected host identity, and remote Codex binary readiness."
+            --note "Checking SSH, expected host identity, remote Codex binary, and continuous-recording dependencies."
           readiness_json="artifacts/computer-use-remote/readiness/remote-readiness-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
           node tests/e2e/computer-use/check-remote.mjs \
             --host "$REMOTE_HOST" \
@@ -767,6 +768,7 @@ jobs:
             --known-hosts ~/.ssh/known_hosts \
             --expected-local-hostname "${REMOTE_EXPECTED_LOCAL_HOSTNAME:-DXU97120}" \
             --check-codex-binary \
+            --check-recording-tools \
             --json "$readiness_json"
           node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id remote-preflight \
@@ -998,6 +1000,86 @@ jobs:
             --id remote-app-server-tunnel \
             --status success
 
+      - name: Start continuous remote screen recording
+        id: screen-recording
+        if: steps.stale-run.outputs.stale != 'true'
+        shell: bash
+        env:
+          SSH_DEST: ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}
+          REMOTE_APP_STAGE: ${{ steps.remote-start.outputs.remote_app_stage }}
+        run: |
+          set -euo pipefail
+          node tests/e2e/computer-use/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id continuous-screen-recording \
+            --label "Continuous remote screen recording" \
+            --category evidence \
+            --note "Starting a continuous recording in the remote GUI session before the first Computer Use interaction."
+          remote_recording_dir="${REMOTE_APP_STAGE}/continuous-recording"
+          remote_video="${remote_recording_dir}/continuous-screen-recording.mp4"
+          remote_metadata="${remote_recording_dir}/recording-metadata.json"
+          remote_state="${remote_recording_dir}/recording-state.sh"
+          remote_started_at="${remote_recording_dir}/started-at.txt"
+          {
+            echo "remote_recording_dir=$remote_recording_dir"
+            echo "remote_video=$remote_video"
+            echo "remote_metadata=$remote_metadata"
+            echo "remote_state=$remote_state"
+            echo "remote_started_at=$remote_started_at"
+          } >> "$GITHUB_OUTPUT"
+          ssh_common=(-i ~/.ssh/nixmac-e2e -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts)
+          remote_recording_dir_q=$(printf '%q' "$remote_recording_dir")
+          remote_video_q=$(printf '%q' "$remote_video")
+          remote_state_q=$(printf '%q' "$remote_state")
+          remote_started_at_q=$(printf '%q' "$remote_started_at")
+          # shellcheck disable=SC2029
+          ssh "${ssh_common[@]}" "$SSH_DEST" "mkdir -p $remote_recording_dir_q"
+          scp "${ssh_common[@]}" \
+            tests/e2e/lib/core.sh \
+            tests/e2e/lib/recording.sh \
+            "$SSH_DEST:$remote_recording_dir/"
+          # shellcheck disable=SC2029
+          ssh "${ssh_common[@]}" "$SSH_DEST" \
+            "REMOTE_RECORDING_DIR=$remote_recording_dir_q REMOTE_VIDEO=$remote_video_q REMOTE_STATE=$remote_state_q REMOTE_STARTED_AT=$remote_started_at_q E2E_RUN_ID=$(printf '%q' "${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}") bash -s" <<'REMOTE'
+          set -euo pipefail
+          export PATH="/opt/homebrew/bin:$PATH"
+          command -v ffmpeg >/dev/null
+          command -v ffprobe >/dev/null
+          open -Ra Terminal >/dev/null
+          # shellcheck source=/dev/null
+          source "$REMOTE_RECORDING_DIR/core.sh"
+          # shellcheck source=/dev/null
+          source "$REMOTE_RECORDING_DIR/recording.sh"
+          export E2E_RECORD=1
+          export E2E_VIDEO_FILE="$REMOTE_VIDEO"
+          export E2E_RECORD_FPS=20
+          export E2E_RECORD_MAX_DURATION_SECONDS=7200
+          export E2E_RECORDING_STRICT=1
+          export E2E_RECORDING_TRIM_START_SECONDS=3
+          export E2E_RECORDING_LAUNCH_MODE=open
+          export E2E_HIDE_RECORDING_TERMINAL=1
+          export E2E_CLOSE_RECORDING_TERMINAL=1
+          start_recording "$REMOTE_VIDEO" "$E2E_RECORD_FPS" "$E2E_RECORD_MAX_DURATION_SECONDS"
+          if [[ -z "${_RECORDER_PID:-}" ]] || ! kill -0 "$_RECORDER_PID" 2>/dev/null; then
+            cp /tmp/e2e-ffmpeg.log "$REMOTE_RECORDING_DIR/ffmpeg-start.log" 2>/dev/null || true
+            echo "error: continuous screen recorder did not start" >&2
+            exit 1
+          fi
+          {
+            printf '_RECORDER_PID=%q\n' "$_RECORDER_PID"
+            printf '_RECORDER_SCRIPT=%q\n' "$_RECORDER_SCRIPT"
+            printf '_RECORDER_WINDOW_TITLE=%q\n' "$_RECORDER_WINDOW_TITLE"
+          } > "$REMOTE_STATE"
+          /usr/bin/python3 - <<'PY' > "$REMOTE_STARTED_AT"
+          from datetime import datetime, timezone
+
+          print(datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z"))
+          PY
+          REMOTE
+          node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id continuous-screen-recording \
+            --status in_progress \
+            --note "Continuous recorder is active; final status is recorded after collection and validation."
+
       - name: Run Computer Use E2E
         if: steps.stale-run.outputs.stale != 'true'
         env:
@@ -1053,6 +1135,144 @@ jobs:
             --workflow-timings "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --note "$note"
 
+      - name: Stop, collect, and attach continuous screen recording
+        if: always() && steps.stale-run.outputs.stale != 'true'
+        shell: bash
+        env:
+          SSH_DEST: ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}
+          RECORDING_START_OUTCOME: ${{ steps.screen-recording.outcome }}
+          REMOTE_RECORDING_DIR: ${{ steps.screen-recording.outputs.remote_recording_dir }}
+          REMOTE_VIDEO: ${{ steps.screen-recording.outputs.remote_video }}
+          REMOTE_METADATA: ${{ steps.screen-recording.outputs.remote_metadata }}
+          REMOTE_STATE: ${{ steps.screen-recording.outputs.remote_state }}
+          REMOTE_STARTED_AT: ${{ steps.screen-recording.outputs.remote_started_at }}
+        run: |
+          set +e
+          latest_report="$(find artifacts/computer-use-remote -mindepth 2 -maxdepth 2 -name state.json -type f -exec dirname {} \; 2>/dev/null | sort | tail -1 || true)"
+          if [[ -z "$latest_report" ]]; then
+            echo "error: no Computer Use report exists to receive the continuous recording" >&2
+            exit 1
+          fi
+          mkdir -p "$latest_report/video"
+          local_metadata="$latest_report/video/recording-metadata.json"
+          local_video="$latest_report/video/continuous-screen-recording.mp4"
+          if [[ "$RECORDING_START_OUTCOME" != "success" || -z "$REMOTE_RECORDING_DIR" ]]; then
+            if [[ -n "${REMOTE_VIDEO:-}" ]]; then
+              remote_video_basename="$(basename "$REMOTE_VIDEO")"
+              # shellcheck disable=SC2029
+              ssh -i ~/.ssh/nixmac-e2e \
+                -o BatchMode=yes \
+                -o StrictHostKeyChecking=yes \
+                -o UserKnownHostsFile=~/.ssh/known_hosts \
+                "$SSH_DEST" \
+                "pkill -INT -f 'ffmpeg.*${remote_video_basename}' >/dev/null 2>&1 || true; sleep 2; pkill -f 'ffmpeg.*${remote_video_basename}' >/dev/null 2>&1 || true" \
+                >/dev/null 2>&1 || true
+            fi
+            node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+              --id continuous-screen-recording \
+              --status failure \
+              --note "Continuous recorder failed before the Computer Use run."
+            echo "error: continuous recorder start outcome was ${RECORDING_START_OUTCOME:-unknown}" >&2
+            exit 1
+          fi
+
+          ssh_common=(-i ~/.ssh/nixmac-e2e -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts)
+          remote_recording_dir_q=$(printf '%q' "$REMOTE_RECORDING_DIR")
+          remote_video_q=$(printf '%q' "$REMOTE_VIDEO")
+          remote_metadata_q=$(printf '%q' "$REMOTE_METADATA")
+          remote_state_q=$(printf '%q' "$REMOTE_STATE")
+          remote_started_at_q=$(printf '%q' "$REMOTE_STARTED_AT")
+          # shellcheck disable=SC2029
+          ssh "${ssh_common[@]}" "$SSH_DEST" \
+            "REMOTE_RECORDING_DIR=$remote_recording_dir_q REMOTE_VIDEO=$remote_video_q REMOTE_METADATA=$remote_metadata_q REMOTE_STATE=$remote_state_q REMOTE_STARTED_AT=$remote_started_at_q bash -s" <<'REMOTE'
+          set +e
+          export PATH="/opt/homebrew/bin:$PATH"
+          # shellcheck source=/dev/null
+          source "$REMOTE_RECORDING_DIR/core.sh"
+          # shellcheck source=/dev/null
+          source "$REMOTE_RECORDING_DIR/recording.sh"
+          # shellcheck source=/dev/null
+          source "$REMOTE_STATE"
+          export E2E_RECORD=1
+          export E2E_VIDEO_FILE="$REMOTE_VIDEO"
+          export E2E_RECORD_FPS=20
+          export E2E_RECORDING_STRICT=1
+          export E2E_RECORDING_TRIM_START_SECONDS=3
+          export E2E_RECORDING_LAUNCH_MODE=open
+          export E2E_HIDE_RECORDING_TERMINAL=1
+          export E2E_CLOSE_RECORDING_TERMINAL=1
+          ended_at="$(/usr/bin/python3 - <<'PY'
+          from datetime import datetime, timezone
+
+          print(datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z"))
+          PY
+          )"
+          stop_recording "$REMOTE_VIDEO"
+          recording_status=0
+          if [[ ! -f "$REMOTE_VIDEO" ]]; then
+            recording_status=1
+          fi
+          started_at="$(cat "$REMOTE_STARTED_AT" 2>/dev/null || true)"
+          duration="$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$REMOTE_VIDEO" 2>/dev/null | head -1)"
+          dimensions="$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "$REMOTE_VIDEO" 2>/dev/null | head -1)"
+          frame_rate="$(ffprobe -v error -select_streams v:0 -show_entries stream=avg_frame_rate -of default=noprint_wrappers=1:nokey=1 "$REMOTE_VIDEO" 2>/dev/null | head -1)"
+          bytes="$(wc -c < "$REMOTE_VIDEO" 2>/dev/null | tr -d ' ' || echo 0)"
+          export RECORDING_STATUS="$recording_status"
+          export STARTED_AT="$started_at"
+          export ENDED_AT="$ended_at"
+          export DURATION="$duration"
+          export DIMENSIONS="$dimensions"
+          export FRAME_RATE="$frame_rate"
+          export BYTES="$bytes"
+          /usr/bin/python3 - "$REMOTE_METADATA" <<'PY'
+          import json
+          import os
+          import sys
+
+          output = sys.argv[1]
+          payload = {
+              "version": 1,
+              "status": "available" if os.environ.get("RECORDING_STATUS") == "0" else "unavailable",
+              "captureMethod": "ffmpeg-avfoundation-terminal-gui",
+              "startedAt": os.environ.get("STARTED_AT", ""),
+              "endedAt": os.environ.get("ENDED_AT", ""),
+              "durationSeconds": float(os.environ.get("DURATION") or 0),
+              "dimensions": os.environ.get("DIMENSIONS", ""),
+              "averageFrameRate": os.environ.get("FRAME_RATE", ""),
+              "bytes": int(os.environ.get("BYTES") or 0),
+          }
+          with open(output, "w", encoding="utf-8") as handle:
+              json.dump(payload, handle, indent=2, sort_keys=True)
+              handle.write("\n")
+          PY
+          cp /tmp/e2e-ffmpeg.log "$REMOTE_RECORDING_DIR/ffmpeg.log" 2>/dev/null || true
+          exit "$recording_status"
+          REMOTE
+          remote_status=$?
+          scp "${ssh_common[@]}" "$SSH_DEST:$REMOTE_METADATA" "$local_metadata"
+          metadata_status=$?
+          scp "${ssh_common[@]}" "$SSH_DEST:$REMOTE_VIDEO" "$local_video"
+          video_status=$?
+
+          if [[ "$metadata_status" -ne 0 ]]; then
+            node -e 'const fs=require("fs"); fs.writeFileSync(process.argv[1], JSON.stringify({version:1,status:"unavailable",captureMethod:"ffmpeg-avfoundation-terminal-gui",startedAt:"",endedAt:"",note:"recording metadata could not be collected"}, null, 2)+"\n")' "$local_metadata"
+          fi
+
+          node tests/e2e/computer-use/run-remote-cua.mjs attach-recording \
+            --run-dir "$latest_report" \
+            --video "video/continuous-screen-recording.mp4" \
+            --metadata "$local_metadata"
+          attach_status=$?
+          final_status=0
+          if [[ "$remote_status" -ne 0 || "$video_status" -ne 0 || "$attach_status" -ne 0 ]]; then
+            final_status=1
+          fi
+          node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id continuous-screen-recording \
+            --status "$([[ "$final_status" -eq 0 ]] && echo success || echo failure)" \
+            --note "$([[ "$final_status" -eq 0 ]] && echo "Continuous remote-Mac recording collected, probed, visually sampled, and attached to the report." || echo "Continuous remote-Mac recording failed collection or qualification.")"
+          exit "$final_status"
+
       - name: Restore remote app support
         if: always() && steps.stale-run.outputs.stale != 'true'
         shell: bash
@@ -1098,6 +1318,10 @@ jobs:
             local plist_path="$1"
             /usr/bin/plutil -extract authenticate-user raw -o - "$plist_path" 2>/dev/null || true
           }
+          pkill -INT -f 'ffmpeg.*continuous-screen-recording\.mp4' >/dev/null 2>&1 || true
+          sleep 2
+          pkill -f 'ffmpeg.*continuous-screen-recording\.mp4' >/dev/null 2>&1 || true
+          pkill -f '/tmp/nixmac-e2e-recorder-' >/dev/null 2>&1 || true
           pkill -f 'nixmac-activate-temp|with administrator privileges|/nix/store/.*/activate|ln -s /etc/static/pam.d/sudo_local /etc/pam.d/sudo_local' >/dev/null 2>&1 || true
           osascript -e 'tell application id "com.darkmatter.nixmac" to quit' >/dev/null 2>&1 || true
           pkill -x nixmac >/dev/null 2>&1 || true

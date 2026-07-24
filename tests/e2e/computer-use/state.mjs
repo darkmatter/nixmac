@@ -99,6 +99,7 @@ export function ensureCurrentSchema(
   state.screenshots ||= [];
   state.textSnapshots ||= [];
   state.video ||= null;
+  state.derivedVideo ||= null;
   state.secretMaskingViolations ||= [];
   state.visualAssertions ||= [];
   ensureTimingState(state);

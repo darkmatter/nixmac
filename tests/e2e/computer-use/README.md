@@ -6,7 +6,8 @@ Use can drive the real nixmac macOS app like a human QA tester.
 The first-class lane now uses Codex app-server on a Mac that has GUI access to
 nixmac. It drives the app through the `computer-use` MCP, records evidence
 metadata, captures Computer Use screenshots and redacted text snapshots, records
-remote Mac/app/process metadata, and renders a standalone HTML report.
+remote Mac/app/process metadata, continuously records the remote GUI session,
+and renders a standalone HTML report.
 
 Computer Use is required for the actual app interaction and final report
 inspection. Shell is used for setup, launch, backup/restore, artifact movement,
@@ -53,8 +54,13 @@ The runner:
 - captures API Keys screenshots only when raw accessibility text confirms no
   unmasked key-like secret is present; Console image artifacts are still
   omitted while retaining redacted accessibility text snapshots;
-- compiles safe-to-store screenshots into `video/computer-use-evidence.mp4` and
-  embeds that video near the top of the report for fast reviewer scanning;
+- records the full remote GUI interaction window through Terminal's Screen
+  Recording permission and ffmpeg AVFoundation, validates changing frames,
+  attaches `video/continuous-screen-recording.mp4` as the primary video, and
+  embeds it near the top of the report;
+- also compiles safe-to-store screenshots into
+  `video/computer-use-evidence.mp4`, clearly labeled as a secondary derived
+  scanning aid that cannot satisfy the continuous-video evidence gate;
 - treats non-sensitive required screenshots as binding corroborating evidence:
   missing, corrupt, blank, occluded, or low-signal screenshot regions can fail
   the owning scenario and the final verdict;
@@ -90,8 +96,8 @@ The runner:
 - copies the generated report back to the remote Mac and uses Computer Use to
   inspect it in a browser when `NIXMAC_E2E_REMOTE_SSH_DEST` is set;
 - writes `index.html`, `state.json`, `events.json`, screenshots, text
-  snapshots, a screenshot-compilation video, and remote metadata under
-  `artifacts/computer-use-remote/<timestamp>/`.
+  snapshots, the continuous recording, a secondary screenshot reel, and remote
+  metadata under `artifacts/computer-use-remote/<timestamp>/`.
 - exits non-zero when the final report verdict is `fail` or `inconclusive`
   unless `NIXMAC_E2E_STRICT_VERDICT=false` is set. For PRs, keep the check
   non-blocking through branch protection rather than by forcing a green result.
@@ -357,9 +363,8 @@ Promotion checklist:
 - Stay advisory beta until no-touch classes are structured, stale queued runs do
   not consume DXU time, override records are discoverable, and managed waivers
   are reviewed.
-- Promote release/high-risk app-facing PR gate only after the team accepts the
-  screenshot-reel evidence policy or continuous recording is implemented, and
-  after the lane has enough consecutive current-head clean passes to trust
+- Promote release/high-risk app-facing PR gate only after continuous recording
+  has enough consecutive current-head clean passes to trust
   retry/override behavior.
 - Promote broad required PR gate only after singleton capacity, queue p95,
   cleanup reliability, owner coverage, host rotation, and infra-only override
@@ -404,8 +409,9 @@ Required repository secrets for the real remote lane:
 
 The GitHub-hosted runner installs `ffmpeg` before running the suite. The report
 renderer uses it to reject blank or corrupt screenshot artifacts, run
-deterministic signal checks on broad required screenshot regions, and generate
-the screenshot-compilation evidence video.
+deterministic signal checks on broad required screenshot regions, validate and
+sample the collected continuous recording, and generate the secondary
+screenshot-compilation reel.
 
 `NIXMAC_E2E_REMOTE_HOST` must be a resolvable FQDN or stable IP address, not
 the Mac's local hostname. For the current DXU MacinCloud lane, use
@@ -456,6 +462,7 @@ node tests/e2e/computer-use/check-remote.mjs \
   --known-hosts ~/.ssh/known_hosts \
   --expected-local-hostname DXU97120 \
   --check-codex-binary \
+  --check-recording-tools \
   --json artifacts/computer-use-remote/readiness/remote-readiness.json
 ```
 

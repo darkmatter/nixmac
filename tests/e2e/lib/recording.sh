@@ -256,7 +256,9 @@ RECEOF
     
     # Launch in GUI context (Terminal.app has Screen Recording TCC permission).
     # CI uses `open -F` to avoid restoring stale Terminal windows from previous runs.
-    if [ "${E2E_TERMINAL_CLEANUP_MODE:-}" = "kill" ]; then
+    if [ "${E2E_RECORDING_LAUNCH_MODE:-}" = "open" ]; then
+        open -F -a Terminal "$script"
+    elif [ "${E2E_TERMINAL_CLEANUP_MODE:-}" = "kill" ]; then
         recording_clear_terminal_saved_state
         open -F -a Terminal "$script"
         recording_dismiss_terminal_automation_prompt

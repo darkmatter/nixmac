@@ -68,7 +68,7 @@ assert.match(
 );
 assert.match(
   remote,
-  /concurrency:\n\s+group: computer-use-e2e-dxu-remote\n\s+cancel-in-progress: false/,
+  /concurrency:\n\s+group: nixmac-macincloud-e2e-remote\n\s+cancel-in-progress: false/,
   "remote job must keep the singleton DXU lock",
 );
 assert.match(
@@ -104,6 +104,50 @@ assert.ok(
 assert.ok(
   staleRecheckIndex < prepareSshIndex,
   "stale recheck must happen before SSH or remote work",
+);
+const recordingStartIndex = remote.indexOf("Start continuous remote screen recording");
+const computerUseRunIndex = remote.indexOf("Run Computer Use E2E");
+const recordingStopIndex = remote.indexOf("Stop, collect, and attach continuous screen recording");
+const restoreRemoteIndex = remote.indexOf("Restore remote app support");
+const remotePreflightIndex = remote.indexOf("Preflight remote Mac");
+const remoteStagingIndex = remote.indexOf("Start remote Codex app-server and nixmac");
+assert.ok(
+  remotePreflightIndex >= 0 && remotePreflightIndex < remoteStagingIndex,
+  "remote readiness must run before app staging mutates remote state",
+);
+assert.match(
+  remote,
+  /name: Preflight remote Mac[\s\S]*--check-recording-tools[\s\S]*name: Start remote Codex app-server and nixmac/,
+  "remote readiness must require continuous-recording dependencies before app staging",
+);
+assert.ok(recordingStartIndex >= 0, "remote job must start continuous screen recording");
+assert.ok(recordingStopIndex >= 0, "remote job must collect continuous screen recording");
+assert.ok(
+  recordingStartIndex < computerUseRunIndex,
+  "continuous recording must start before Computer Use interaction",
+);
+assert.ok(
+  computerUseRunIndex < recordingStopIndex,
+  "continuous recording must stop only after the Computer Use run",
+);
+assert.ok(
+  recordingStopIndex < restoreRemoteIndex,
+  "continuous recording must be collected before remote cleanup removes its staging directory",
+);
+assert.match(
+  remote,
+  /source "\$REMOTE_RECORDING_DIR\/recording\.sh"[\s\S]*start_recording/,
+  "continuous recording must reuse the proven Terminal/ffmpeg AVFoundation recorder",
+);
+assert.match(
+  remote,
+  /if: always\(\) && steps\.stale-run\.outputs\.stale != 'true'[\s\S]*attach-recording[\s\S]*--video "video\/continuous-screen-recording\.mp4"/,
+  "recording collection must run on failure and attach the continuous artifact to the report",
+);
+assert.match(
+  remote,
+  /name: Restore remote app support[\s\S]*pkill -INT -f 'ffmpeg\.\*continuous-screen-recording\\\.mp4'/,
+  "remote cleanup must stop a stranded continuous recorder before deleting its staging directory",
 );
 assert.match(
   remote,

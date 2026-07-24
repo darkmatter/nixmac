@@ -52,6 +52,13 @@ import {
 } from "./transport.mjs";
 import { containsUnmaskedSecret, redact } from "./redaction.mjs";
 import {
+  CONTINUOUS_RECORDING_KIND,
+  SCREENSHOT_REEL_KIND,
+  attachContinuousRecording,
+  readRecordingMetadata,
+  runContinuousRecordingSelfTest,
+} from "./continuous-recording.mjs";
+import {
   addEvent,
   addTimingPhase,
   addNarrative,
@@ -911,6 +918,9 @@ function activationAuthRequired(text) {
 
 function proofQualityIssues(state) {
   const issues = [];
+  if (state.video?.kind === CONTINUOUS_RECORDING_KIND && state.video?.status !== "available") {
+    issues.push(state.video.note || "Continuous remote-Mac recording is unavailable.");
+  }
   for (const violation of state.secretMaskingViolations || []) {
     issues.push(`Secret masking violation: ${violation}`);
   }
@@ -979,11 +989,17 @@ function screenshotVideoFrameEntries(state) {
 async function maybeGenerateEvidenceVideo(state) {
   const runDir = path.resolve(state.runDir);
   const frames = screenshotVideoFrameEntries(state);
+  const hasContinuousRecording = state.video?.kind === CONTINUOUS_RECORDING_KIND;
+  const assignScreenshotReel = (video) => {
+    const reel = { ...video, kind: SCREENSHOT_REEL_KIND };
+    if (hasContinuousRecording) state.derivedVideo = reel;
+    else state.video = reel;
+  };
   if (!frames.length) {
-    state.video = {
+    assignScreenshotReel({
       status: "unavailable",
       note: "No safe-to-store screenshot frames were available for the evidence video.",
-    };
+    });
     return;
   }
 
@@ -1023,29 +1039,31 @@ async function maybeGenerateEvidenceVideo(state) {
   ]);
 
   if (!result.ok) {
-    state.video = {
+    assignScreenshotReel({
       status: "unavailable",
       note: `ffmpeg could not generate the screenshot evidence video: ${redact(result.stderr || result.error || "unknown error")}`,
       frames: frames.length,
-    };
+    });
     return;
   }
 
   const relativePath = path.relative(runDir, videoPath);
   const issue = artifactFileIssue(state, relativePath);
-  state.video = issue
-    ? {
-        status: "unavailable",
-        path: relativePath,
-        note: `Evidence video was generated but is not usable: ${issue}`,
-        frames: frames.length,
-      }
-    : {
-        status: "available",
-        path: relativePath,
-        frames: frames.length,
-        note: "Screenshot-compilation video generated from safe-to-store Computer Use frames.",
-      };
+  assignScreenshotReel(
+    issue
+      ? {
+          status: "unavailable",
+          path: relativePath,
+          note: `Evidence video was generated but is not usable: ${issue}`,
+          frames: frames.length,
+        }
+      : {
+          status: "available",
+          path: relativePath,
+          frames: frames.length,
+          note: "Derived screenshot reel generated from safe-to-store Computer Use frames. This is a secondary scanning aid and not continuous evidence.",
+        },
+  );
 }
 
 function applyVisualAssertions(state) {
@@ -3951,6 +3969,43 @@ async function renderExisting(args) {
   console.log(path.join(runDir, "index.html"));
 }
 
+async function attachRecording(args) {
+  const runDir = argValue(args, "--run-dir", "");
+  const relativeVideoPath = argValue(args, "--video", "");
+  const metadataPath = argValue(args, "--metadata", "");
+  if (!runDir) throw new Error("attach-recording requires --run-dir <path>");
+  if (!relativeVideoPath) throw new Error("attach-recording requires --video <relative-path>");
+  if (!metadataPath) throw new Error("attach-recording requires --metadata <path>");
+  const statePath = path.join(runDir, "state.json");
+  if (!existsSync(statePath)) throw new Error(`attach-recording state is missing: ${statePath}`);
+  const state = ensureCurrentSchema({
+    ...JSON.parse(await readFile(statePath, "utf8")),
+    runDir,
+  });
+  const metadata = await readRecordingMetadata(metadataPath);
+  const inspection = await attachContinuousRecording(state, {
+    relativePath: relativeVideoPath,
+    metadata,
+  });
+  if (!inspection.ok) {
+    const note = `Continuous screen recording failed qualification: ${inspection.issue}.`;
+    updateScenario(state, "visualProofQuality", "fail", note);
+    state.failures.push(note);
+  }
+  addNarrative(
+    state,
+    inspection.ok
+      ? `Continuous screen recording attached: ${inspection.durationSeconds.toFixed(2)}s, ${inspection.width}x${inspection.height}, ${inspection.uniqueSampleHashes} unique visual samples.`
+      : `Continuous screen recording rejected: ${inspection.issue}.`,
+  );
+  await render(state);
+  await saveState(state);
+  console.log(path.join(runDir, "index.html"));
+  if (!inspection.ok) {
+    throw new Error(`Continuous screen recording failed qualification: ${inspection.issue}`);
+  }
+}
+
 async function renderErrorReport(error, args) {
   const note = `Computer Use remote runner failed before completing the suite: ${redact(error instanceof Error ? error.message : String(error))}`;
   const runDir = argValue(args, "--run-dir", activeRunDir || "");
@@ -3983,6 +4038,7 @@ async function renderErrorReport(error, args) {
 }
 
 async function runSelfTest() {
+  await runContinuousRecordingSelfTest();
   const launchText = `
     5 button History
     6 button Give feedback
@@ -4933,6 +4989,29 @@ async function runSelfTest() {
     "CLI dispatcher should dispatch render-existing args",
   );
   await dispatchRemoteCuaCommand(
+    ["attach-recording", "--run-dir", "/tmp/run", "--video", "video/live.mp4"],
+    {
+      run: async (args) => dispatched.push(["run", args]),
+      renderUnavailable: async (args) => dispatched.push(["renderUnavailable", args]),
+      renderExisting: async (args) => dispatched.push(["renderExisting", args]),
+      attachRecording: async (args) => dispatched.push(["attachRecording", args]),
+      selfTest: async () => dispatched.push(["selfTest", []]),
+    },
+    {
+      usage: () => {
+        dispatchUsageCalls += 1;
+      },
+      exit: (code) => {
+        dispatchExits.push(code);
+      },
+    },
+  );
+  assert.deepEqual(
+    dispatched.pop(),
+    ["attachRecording", ["--run-dir", "/tmp/run", "--video", "video/live.mp4"]],
+    "CLI dispatcher should dispatch attach-recording args",
+  );
+  await dispatchRemoteCuaCommand(
     ["render-unavailable", "--note", "not ready"],
     {
       run: async (args) => dispatched.push(["run", args]),
@@ -5478,6 +5557,26 @@ async function runSelfTest() {
     app: DEFAULT_APP,
     prompt: DEFAULT_PROMPT,
   });
+  const rejectedRecordingState = await baseState(renderRunDir, {
+    app: DEFAULT_APP,
+    prompt: DEFAULT_PROMPT,
+  });
+  rejectedRecordingState.video = {
+    status: "unavailable",
+    kind: CONTINUOUS_RECORDING_KIND,
+    note: "Synthetic continuous recording qualification failure.",
+  };
+  refreshVisualProofQuality(rejectedRecordingState);
+  assert.equal(
+    rejectedRecordingState.scenarios.visualProofQuality.status,
+    "fail",
+    "a rejected continuous recording must fail visual proof quality",
+  );
+  assert.equal(
+    verdictFor(rejectedRecordingState),
+    "fail",
+    "a rejected continuous recording must keep the report verdict from passing",
+  );
   renderState.prFocus = {
     configured: true,
     number: "63",
@@ -5530,6 +5629,19 @@ async function runSelfTest() {
     note: "Synthetic phase proves timing renders in Product Proof reports.",
   });
   renderState.confirmationBoundaries = ["Self-test confirmation boundary."];
+  renderState.video = {
+    status: "available",
+    kind: CONTINUOUS_RECORDING_KIND,
+    path: "video/continuous-screen-recording.mp4",
+    captureMethod: "ffmpeg-avfoundation-terminal-gui",
+    startedAt: "2026-05-02T00:00:00.000Z",
+    endedAt: "2026-05-02T00:01:00.000Z",
+    durationSeconds: 60,
+    width: 1280,
+    height: 720,
+    framesPerSecond: 20,
+    uniqueSampleHashes: 5,
+  };
   await render(renderState, { stateFileName: "state.self-test.json", recordEvent: false });
   const renderedHtml = await readFile(path.join(renderRunDir, "index.html"), "utf8");
   for (const anchor of [
@@ -5572,6 +5684,11 @@ async function runSelfTest() {
     renderedHtml.includes("5aa5e5ab"),
     true,
     "rendered report should include same-head build gate SHA",
+  );
+  assert.equal(
+    renderedHtml.includes("Continuous remote-Mac screen recording"),
+    true,
+    "rendered report should identify the continuous recording as primary video evidence",
   );
   const ids = [...renderedHtml.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
   const duplicateIds = ids.filter((id, index) => ids.indexOf(id) !== index);
@@ -5647,6 +5764,7 @@ async function main() {
       renderUnavailable,
       renderStorybookOnly,
       renderExisting,
+      attachRecording,
       selfTest: runSelfTest,
     },
     {
