@@ -380,7 +380,7 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
             path
         ));
     }
-    ensure_nixmac_edit_allowed("edit_nix_file", path)?;
+    ensure_nixmac_edit_allowed("edit_nix_file", path, ctx.nixmac_ignore_matcher)?;
 
     // Prefer an object like { "add": { "path": "a.b", "values": ["v"] } }, but
     // tolerate shorthand calls like { "action": "add", "path": "file.nix", "values": ["v"] }
