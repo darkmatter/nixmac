@@ -1156,7 +1156,7 @@ externalBuildDetected: boolean;
 /**
  * True when the configured upstream contains a fast-forward update.
  */
-upstreamUpdateAvailable: boolean;
+upstreamUpdateAvailable: boolean; 
 /**
  * True when a rebuild is needed to bring the system up to date with the current working tree.
  */
@@ -2488,3 +2488,4 @@ version: string;
  * Release notes from the channel manifest, when available.
  */
 notes: string | null }
+
