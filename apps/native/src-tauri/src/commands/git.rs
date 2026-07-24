@@ -168,8 +168,10 @@ pub async fn pull_from_upstream(app: AppHandle) -> Result<shared_types::OkResult
 
     match decision {
         git::auto_update::AutoUpdateDecision::UpdateAndRebuild { .. } => {
-            // Fast-forward succeeded; immediately hide the stale banner.
-            crate::state::git_state::set_upstream_update_available(&app, false);
+            // Fast-forward succeeded -- update the git state so that things
+            // that watch it (e.g. the UI rebuild-needed banner) can react to the new state.
+            // Marking rebuild-needed invalidates checks started against the pre-pull repository state.
+            crate::state::git_state::mark_upstream_update_applied(&app);
         }
         git::auto_update::AutoUpdateDecision::Noop(_) => {
             // The banner was stale: nothing needed updating. Clear it and
@@ -194,7 +196,6 @@ pub async fn pull_from_upstream(app: AppHandle) -> Result<shared_types::OkResult
             // (no rollback possible even though it suggests otherwise, plus
             // bogus diff rows between the previous commit and the HEAD would
             // be presented).
-            // TODO: Update the "Review" screen to handle this new use case properly.
             evolve_state::refresh(&app, &status.changes);
             if status.clean_head {
                 crate::state::change_map::clear(&app);
