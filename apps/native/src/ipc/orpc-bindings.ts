@@ -1157,7 +1157,12 @@ pendingImportDir: string | null;
  */
 autoFormatNixFiles: boolean }
 
-export type HelperServiceStatus = { label: string; available: boolean; registered: boolean; authorized: boolean; socketAvailable: boolean; detail: string | null }
+export type HelperServiceStatus = { label: string; available: boolean; registered: boolean; authorized: boolean; socketAvailable: boolean; 
+/**
+ * The daemon answered an authenticated status round-trip: the client
+ * validated the daemon's signature and the daemon accepted this client.
+ */
+responding: boolean; detail: string | null }
 
 /**
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.

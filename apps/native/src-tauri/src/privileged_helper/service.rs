@@ -7,6 +7,20 @@ use anyhow::Result;
 pub fn status() -> HelperServiceStatus {
     let mut status = platform_status();
     status.socket_available = client::socket_available();
+    // SMAppService state and a socket path prove nothing about the daemon:
+    // only an authenticated round-trip (mutual code-signature validation)
+    // shows the connection actually works.
+    if status.socket_available {
+        match client::status() {
+            Ok(response) if response.ok => status.responding = true,
+            Ok(response) => {
+                status.detail = Some(response.error.unwrap_or_else(|| {
+                    "helper answered the status probe with an error".to_string()
+                }));
+            }
+            Err(error) => status.detail = Some(format!("{error:#}")),
+        }
+    }
     status
 }
 
@@ -33,6 +47,7 @@ fn platform_status() -> HelperServiceStatus {
             registered: raw != macos::SM_APP_SERVICE_STATUS_NOT_REGISTERED,
             authorized: raw == macos::SM_APP_SERVICE_STATUS_ENABLED,
             socket_available: false,
+            responding: false,
             detail: Some(macos::describe_status(raw).to_string()),
         },
         Err(error) => HelperServiceStatus::unavailable(error.to_string()),

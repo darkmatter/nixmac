@@ -18,6 +18,13 @@ mod privileged_helper {
         ));
     }
 
+    pub mod peer_auth {
+        include!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/src/privileged_helper/peer_auth.rs"
+        ));
+    }
+
     pub mod client {
         include!(concat!(
             env!("CARGO_MANIFEST_DIR"),
