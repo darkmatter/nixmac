@@ -1,0 +1,102 @@
+import type { SecretsVault } from "./types";
+
+/**
+ * Demo fixture for Storybook — mirrors the reference design's data. No value
+ * here is a real credential.
+ */
+export const MOCK_VAULT: SecretsVault = {
+  hostId: "demo-mbp",
+  recipients: [
+    {
+      id: "demo-mbp",
+      label: "Demo-MacBook-Pro",
+      kind: "host",
+      device: "This Mac · Apple Silicon",
+      publicKey: "age1qy8x0v4k2n7pq3wl9d0m5s8t1r6c4h2j",
+      fingerprint: "SHA256:0f2a b7e4 … 9c1d",
+      inRepo: true,
+      isThisHost: true,
+    },
+    {
+      id: "work-mini",
+      label: "work-mac-mini",
+      kind: "host",
+      device: "Mac mini · office",
+      publicKey: "age1ld0k2r7m4s9pqx3v6n8t1w5c2h4j7q0",
+      fingerprint: "SHA256:77b1 3ac9 … 4e02",
+      inRepo: true,
+    },
+    {
+      id: "yubikey",
+      label: "yubikey-personal",
+      kind: "user",
+      device: "FIDO2 · age-plugin-yubikey",
+      publicKey: "age1yubikey1qw8x3v0k2m7n4p9s6t1r5c2",
+      fingerprint: "SHA256:a3c9 12ff … 1f88",
+      inRepo: true,
+    },
+    {
+      id: "framework",
+      label: "framework-13",
+      kind: "host",
+      device: "NixOS · staged, not committed",
+      publicKey: "age1f3w9d2z0k8rql5m7n4p6s1t3v2c9h0j",
+      fingerprint: "SHA256:b8e0 44ad … 9a15",
+      inRepo: false,
+    },
+  ],
+  secrets: [
+    {
+      id: "github-token",
+      name: "github-token",
+      backend: "agenix",
+      file: "secrets/github-token.age",
+      recipientIds: ["demo-mbp", "work-mini"],
+      value: "ghp_R2d2c3PO7hisIsaFakeT0ken0nly",
+      updated: "2 days ago",
+      encryptedSize: "1.1 KB",
+    },
+    {
+      id: "tailscale-authkey",
+      name: "tailscale-authkey",
+      backend: "agenix",
+      file: "secrets/tailscale.age",
+      recipientIds: ["demo-mbp"],
+      value: "tskey-auth-k8Xh2Qw-D3m0nstrati0nKey",
+      updated: "6 days ago",
+      encryptedSize: "0.9 KB",
+    },
+    {
+      id: "anthropic-api-key",
+      name: "anthropic-api-key",
+      backend: "agenix",
+      file: "secrets/anthropic.age",
+      recipientIds: ["demo-mbp", "yubikey"],
+      value: "sk-ant-api03-fake-demo-value-not-real",
+      updated: "yesterday",
+      encryptedSize: "1.2 KB",
+    },
+    {
+      id: "wifi-password",
+      name: "wifi_password",
+      backend: "sops",
+      file: "secrets/network.yaml",
+      sopsKey: "wifi_password",
+      recipientIds: ["demo-mbp", "work-mini"],
+      value: "correct-horse-battery-staple",
+      updated: "3 weeks ago",
+      encryptedSize: "2.4 KB",
+    },
+    {
+      id: "cachix-signing-key",
+      name: "cachix_signing_key",
+      backend: "sops",
+      file: "secrets/cachix.yaml",
+      sopsKey: "signing_key",
+      recipientIds: ["work-mini"],
+      value: "do-not-share-cachix-signing-material",
+      updated: "1 month ago",
+      encryptedSize: "1.8 KB",
+    },
+  ],
+};
