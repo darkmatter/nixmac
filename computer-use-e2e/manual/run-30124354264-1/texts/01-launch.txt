@@ -1,0 +1,42 @@
+Computer Use state (CUA App Version: 1000387)
+<app_state>
+App=/tmp/nixmac-computer-use-e2e-app-30124354264-1/nixmac.app/ (bundleID com.darkmatter.nixmac, pid 3750)
+Window: "nixmac", App: nixmac.
+0 standard window nixmac, Secondary Actions: Raise
+	1 scroll area
+		2 HTML content Description: nixmac, URL: tauri://localhost
+			3 heading nixmac, Value: 3
+				4 text nixmac
+			5 button History
+			6 button Give feedback
+			7 button Settings
+			8 content list Progress: step 2 of 3, Review
+				9 button Go to Describe step
+				10 button (disabled) Go to Review step
+				11 button (disabled) Go to Save step
+			12 container
+				13 text Update available: v 0.32.1
+			14 text ## What's Changed * ci: stop devenv auto-format defeating git hooks by @alex-sparus in https://github.com/darkmatter/nixmac/pull/584 * fix(summarize): accept single-object model response by @alex-sparus in https://github.com/darkmatter/nixmac/pull/591 * feat(helper)!: drop /etc/nix-darwin link maintenance by @alex-sparus in https://github.com/darkmatter/nixmac/pull/587 * fix(cli): take the result envelope state from telemetry.state by @arximboldi in https://github.com/darkmatter/nixmac/pull/583 * feat:
+			15 button (collapsed) Expand details, Secondary Actions: Expand
+			16 button Install & Restart
+			17 button Dismiss
+			18 heading New configuration updates are available, Value: 2
+				19 text New configuration updates are available
+			20 text This Mac isn’t using the latest configuration yet. Apply the updates to bring it up to date.
+			21 button Build & Test
+			22 button Report Issue
+			23 button Console
+			24 container Notifications alt+T
+	25 close button
+	26 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	27 minimize button
+28 menu bar
+	29 nixmac
+	30 File
+	31 Edit
+	32 View
+	33 Window
+	34 Help
+
+The focused UI element is 2 HTML content Description: nixmac, URL: tauri://localhost
+</app_state>

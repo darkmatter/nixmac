@@ -1,0 +1,11 @@
+{
+  "averageFrameRate": "17225/877",
+  "bytes": 1013497,
+  "captureMethod": "ffmpeg-avfoundation-terminal-gui",
+  "dimensions": "1280x720",
+  "durationSeconds": 175.4,
+  "endedAt": "2026-07-24T20:37:58.139Z",
+  "startedAt": "2026-07-24T20:35:01.852Z",
+  "status": "available",
+  "version": 1
+}

@@ -1,0 +1,53 @@
+Computer Use state (CUA App Version: 1000387)
+<app_state>
+App=/tmp/nixmac-computer-use-e2e-app-30124354264-1/nixmac.app/ (bundleID com.darkmatter.nixmac, pid 3750)
+Window: "nixmac", App: nixmac.
+0 standard window nixmac, Secondary Actions: Raise
+	1 scroll area
+		2 HTML content Description: nixmac, URL: tauri://localhost
+			3 heading nixmac, Value: 3
+				4 text nixmac
+			5 button History
+			6 button Give feedback
+			7 button Settings
+			8 content list Progress: step 2 of 3, Review
+				9 button (disabled) Go to Describe step
+				10 button (disabled) Go to Review step
+				11 button (disabled) Go to Save step
+			12 container
+				13 text 1 change  ready to apply
+			14 container
+				15 text Press  Build & Test  to activate the changes you asked for. Reviewing the diffs below is optional.
+			16 button Dismiss notice
+			17 container
+				18 text Proposed changes 1 modified
+				19 tab group (selectable)
+					20 tab (selected) Semantic
+					21 tab (selectable) Diff
+			22 container
+				23 text data.json chore(homebrew): update brews, casks, and taps
+				24 pop up button Actions for data.json
+			25 container
+				26 button Discard
+				27 button Back to Prompt
+				28 button (disabled) Build & Test
+			29 button Report Issue
+			30 button Console
+			31 container
+				32 text Preparing rebuild... Starting system rebuild... Evaluating various development tools and libraries. Evaluating various packages for system configuration. Building Darwin system and version files.
+			33 button Console
+			34 text No output yet...
+			35 container Notifications alt+T
+	36 close button
+	37 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	38 minimize button
+39 menu bar
+	40 nixmac
+	41 File
+	42 Edit
+	43 View
+	44 Window
+	45 Help
+
+The focused UI element is 2 HTML content Description: nixmac, URL: tauri://localhost
+</app_state>

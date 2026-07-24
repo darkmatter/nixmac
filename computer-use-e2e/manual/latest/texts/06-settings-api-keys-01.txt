@@ -1,0 +1,109 @@
+Computer Use state (CUA App Version: 1000387)
+<app_state>
+App=/tmp/nixmac-computer-use-e2e-app-30124354264-1/nixmac.app/ (bundleID com.darkmatter.nixmac, pid 3750)
+Window: "nixmac", App: nixmac.
+0 standard window nixmac, Secondary Actions: Raise
+	1 scroll area
+		2 HTML content Description: nixmac, URL: tauri://localhost
+			3 heading nixmac, Value: 3
+				4 text nixmac
+			5 button History
+			6 button Give feedback
+			7 button Settings
+			8 content list Progress: step 1 of 3, Describe
+				9 button (disabled) Go to Describe step
+				10 button Go to Review step
+				11 button (disabled) Go to Save step
+			12 heading Get started, Value: 3
+				13 text Get started
+			14 container
+				15 text entry area (settable, string) Try: Install OB▍
+					16 text Try: Install OB▍
+				17 button (disabled) Send
+			18 text TRY
+			19 button Dev workstation For Programmers
+			20 button Previous suggestion
+			21 button Next suggestion
+			22 button Go to For Programmers
+			23 button Go to For Streamers
+			24 button Go to For Homelab Admins
+			25 button Go to For Security-Minded Users
+			26 button Go to For Designers
+			27 button Go to For Writers and Researchers
+			28 button Go to For Laptop Nomads
+			29 button Go to For Gamers
+			30 button Enable the Finder path bar and status bar
+			31 pop up button 12 untracked settings
+			32 pop up button 8 untracked Homebrew items
+			33 button Report Issue
+			34 button Console
+			35 button Close settings
+			36 text Settings
+			37 container
+				38 button General
+				39 button Account
+				40 button AI Models
+				41 button API Keys
+				42 button Preferences
+				43 button Permissions
+				44 button Tuning
+			45 button Close
+			46 heading API Keys, Value: 2
+				47 text API Keys
+			48 image OpenRouter
+			49 heading OpenRouter, Value: 3
+				50 text OpenRouter
+			51 text Access 100+ models through a single API
+			52 text API Key
+			53 container
+				54 secure text field (settable, string) API Key, Value: •••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••, Placeholder: [REDACTED_API_KEY]...
+				55 button Show API key
+			56 container
+				57 text Recommended for accessing multiple AI models.
+				58 link Get an API key →, Value: openrouter.ai/keys
+			59 text API key verified and saved.
+			60 image OpenAI
+			61 heading OpenAI, Value: 3
+				62 text OpenAI
+			63 text Direct OpenAI API access for GPT and reasoning models
+			64 text API Key
+			65 container
+				66 secure text field (settable, string) API Key, Value: sk-...
+				67 button Show API key
+			68 container
+				69 text Saved locally and used only when OpenAI is selected as the provider.
+				70 link Get an API key →, Value: platform.openai.com/api-keys
+			71 image Ollama
+			72 heading Ollama, Value: 3
+				73 text Ollama
+			74 text Local AI models running on your machine
+			75 text API Base URL
+			76 text field (settable, string) API Base URL, Placeholder: http://localhost:11434
+			77 text The URL where your Ollama instance is running.
+			78 image OpenAI Compatible
+			79 heading OpenAI Compatible, Value: 3
+				80 text OpenAI Compatible
+			81 text Self-hosted OpenAI-compatible inference server
+			82 text API Base URL
+			83 text field (settable, string) API Base URL, Placeholder: http://localhost:8000/v1
+			84 text API Key (optional)
+			85 container
+				86 secure text field (settable, string) API Key (optional), Value: sk-...
+				87 button Show
+			88 text Leave blank if your OpenAI-compatible endpoint is unauthenticated. Required for LiteLLM proxy.
+			89 container
+				90 text Tip:  Select the matching provider in AI Models for the key you add here. OpenAI and OpenRouter keys are stored separately.
+			91 container Notifications alt+T
+	92 close button
+	93 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	94 minimize button
+95 menu bar
+	96 nixmac
+	97 File
+	98 Edit
+	99 View
+	100 Window
+	101 Help
+
+The focused UI element is 2 HTML content Description: nixmac, URL: tauri://localhost
+</app_state>

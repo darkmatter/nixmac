@@ -1,0 +1,90 @@
+Computer Use state (CUA App Version: 1000387)
+<app_state>
+App=/tmp/nixmac-computer-use-e2e-app-30124354264-1/nixmac.app/ (bundleID com.darkmatter.nixmac, pid 3750)
+Window: "nixmac", App: nixmac.
+0 standard window nixmac, Secondary Actions: Raise
+	1 scroll area
+		2 HTML content Description: nixmac, URL: tauri://localhost
+			3 heading nixmac, Value: 3
+				4 text nixmac
+			5 button History
+			6 button Give feedback
+			7 button Settings
+			8 content list Progress: step 1 of 3, Describe
+				9 button (disabled) Go to Describe step
+				10 button Go to Review step
+				11 button (disabled) Go to Save step
+			12 heading Get started, Value: 3
+				13 text Get started
+			14 container
+				15 text entry area (settable, string) Try: Install OBS Studio
+					16 text Try: Install OBS Studio
+				17 button (disabled) Send
+			18 text TRY
+			19 button Dev workstation For Programmers
+			20 button Previous suggestion
+			21 button Next suggestion
+			22 button Go to For Programmers
+			23 button Go to For Streamers
+			24 button Go to For Homelab Admins
+			25 button Go to For Security-Minded Users
+			26 button Go to For Designers
+			27 button Go to For Writers and Researchers
+			28 button Go to For Laptop Nomads
+			29 button Go to For Gamers
+			30 button Enable the Finder path bar and status bar
+			31 pop up button 12 untracked settings
+			32 pop up button 8 untracked Homebrew items
+			33 button Report Issue
+			34 button Console
+			35 button Close settings
+			36 text Settings
+			37 container
+				38 button General
+				39 button Account
+				40 button AI Models
+				41 button API Keys
+				42 button Preferences
+				43 button Permissions
+				44 button Tuning
+			45 button Close
+			46 heading Preferences, Value: 2
+				47 text Preferences
+			48 text Confirmation dialogs
+			49 text Build
+			50 text Ask before rebuilding with changes
+			51 switch (settable, boolean) on
+			52 text Clear / Discard
+			53 text Ask before discarding changes
+			54 switch (settable, boolean) on
+			55 text Rollback
+			56 text Ask before rolling back to a previous commit
+			57 switch (settable, boolean) on
+			58 text Summarization
+			59 text Auto-summarize on focus
+			60 text Summarize unsummarized changes when the window is focused
+			61 switch (settable, boolean) off
+			62 text Diff Tab
+			63 text Prefer Diff tab when reviewing changes
+			64 switch (settable, boolean) off
+			65 text Auto-Format Nix Files
+			66 text Automatically format Nix files after smart edits
+			67 switch (settable, boolean) off
+			68 text Startup scans
+			69 text Scan Homebrew
+			70 text Detect Homebrew drift and offer to resolve
+			71 switch (settable, boolean) on
+			72 container Notifications alt+T
+	73 close button
+	74 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	75 minimize button
+76 menu bar
+	77 nixmac
+	78 File
+	79 Edit
+	80 View
+	81 Window
+	82 Help
+
+The focused UI element is 2 HTML content Description: nixmac, URL: tauri://localhost
+</app_state>

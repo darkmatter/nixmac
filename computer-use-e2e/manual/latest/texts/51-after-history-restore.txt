@@ -1,0 +1,65 @@
+Computer Use state (CUA App Version: 1000387)
+<app_state>
+App=/tmp/nixmac-computer-use-e2e-app-30124354264-1/nixmac.app/ (bundleID com.darkmatter.nixmac, pid 7595)
+Window: "nixmac", App: nixmac.
+0 standard window nixmac, Secondary Actions: Raise
+	1 scroll area
+		2 HTML content Description: nixmac, URL: tauri://localhost
+			3 heading nixmac, Value: 3
+				4 text nixmac
+			5 button History
+			6 button Give feedback
+			7 button Settings
+			8 container
+				9 text Update available: v 0.32.1
+			10 text ## What's Changed * ci: stop devenv auto-format defeating git hooks by @alex-sparus in https://github.com/darkmatter/nixmac/pull/584 * fix(summarize): accept single-object model response by @alex-sparus in https://github.com/darkmatter/nixmac/pull/591 * feat(helper)!: drop /etc/nix-darwin link maintenance by @alex-sparus in https://github.com/darkmatter/nixmac/pull/587 * fix(cli): take the result envelope state from telemetry.state by @arximboldi in https://github.com/darkmatter/nixmac/pull/583 * feat:
+			11 button (collapsed) Expand details, Secondary Actions: Expand
+			12 button Install & Restart
+			13 button Dismiss
+			14 heading History, Value: 2
+				15 text History
+			16 text 6
+			17 button Analyze recent (3)
+			18 text TODAY
+			19 text Restore commit 58236d5a
+			20 text nixmac e2e restore baseline
+			21 text CURRENT
+			22 text 37ea9bc
+			23 text just now
+			24 button Analyze
+			25 button chore(homebrew): add 'bat' to brews list Restore4883f69 just now 1 filechore(homebrew): add 'bat' to brews list
+			26 text Restore commit 58236d5a
+			27 text nixmac e2e restore baseline
+			28 button Restore
+			29 text f4007a9
+			30 text 1 min ago
+			31 button Analyze
+			32 button chore(homebrew): update brews, casks, and taps Restorec010144 1 min ago 1 filechore(homebrew): update brews, casks, and taps
+			33 text nixmac e2e restore baseline
+			34 button Restore
+			35 text 58236d5
+			36 text 2 min ago
+			37 text External commit
+			38 button Analyze
+			39 text Initial disposable nixmac E2E config
+			40 button Restore
+			41 text 44f9568
+			42 text 2 min ago
+			43 text External commit
+			44 button Analyze
+			45 button Report Issue
+			46 button Console
+			47 container Notifications alt+T
+	48 close button
+	49 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	50 minimize button
+51 menu bar
+	52 nixmac
+	53 File
+	54 Edit
+	55 View
+	56 Window
+	57 Help
+
+The focused UI element is 2 HTML content Description: nixmac, URL: tauri://localhost
+</app_state>

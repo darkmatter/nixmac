@@ -1,0 +1,100 @@
+Computer Use state (CUA App Version: 1000387)
+<app_state>
+App=/tmp/nixmac-computer-use-e2e-app-30124354264-1/nixmac.app/ (bundleID com.darkmatter.nixmac, pid 3750)
+Window: "nixmac", App: nixmac.
+0 standard window nixmac, Secondary Actions: Raise
+	1 scroll area
+		2 HTML content Description: nixmac, URL: tauri://localhost
+			3 heading nixmac, Value: 3
+				4 text nixmac
+			5 button History
+			6 button Give feedback
+			7 button Settings
+			8 content list Progress: step 1 of 3, Describe
+				9 button (disabled) Go to Describe step
+				10 button Go to Review step
+				11 button (disabled) Go to Save step
+			12 heading Get started, Value: 3
+				13 text Get started
+			14 container
+				15 text entry area (settable, string) Try: Install OBS Studio
+					16 text Try: Install OBS Studio
+				17 button (disabled) Send
+			18 text TRY
+			19 button Dev workstation For Programmers
+			20 button Previous suggestion
+			21 button Next suggestion
+			22 button Go to For Programmers
+			23 button Go to For Streamers
+			24 button Go to For Homelab Admins
+			25 button Go to For Security-Minded Users
+			26 button Go to For Designers
+			27 button Go to For Writers and Researchers
+			28 button Go to For Laptop Nomads
+			29 button Go to For Gamers
+			30 button Enable the Finder path bar and status bar
+			31 pop up button 12 untracked settings
+			32 pop up button 8 untracked Homebrew items
+			33 button Report Issue
+			34 button Console
+			35 text No output yet...
+			36 container Notifications alt+T
+			37 container
+				38 text Taps
+				39 text  (
+				40 text 1
+				41 text )
+				42 container steipete/tap
+					43 container
+						44 checkbox (settable, integer) steipete/tap, Value: 1
+						45 text steipete/tap
+				46 text Brews
+				47 text  (
+				48 text 6
+				49 text )
+				50 container bat
+					51 container
+						52 checkbox (settable, integer) bat, Value: 1
+						53 text bat
+				54 container cliclick
+					55 container
+						56 checkbox (settable, integer) cliclick, Value: 1
+						57 text cliclick
+				58 container ffmpeg
+					59 container
+						60 checkbox (settable, integer) ffmpeg, Value: 1
+						61 text ffmpeg
+				62 container gh
+					63 container
+						64 checkbox (settable, integer) gh, Value: 1
+						65 text gh
+				66 container imagemagick
+					67 container
+						68 checkbox (settable, integer) imagemagick, Value: 1
+						69 text imagemagick
+				70 container node
+					71 container
+						72 checkbox (settable, integer) node, Value: 1
+						73 text node
+				74 text Casks
+				75 text  (
+				76 text 1
+				77 text )
+				78 container codex
+					79 container
+						80 checkbox (settable, integer) codex, Value: 1
+						81 text codex
+				82 button Add to config
+	83 close button
+	84 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	85 minimize button
+86 menu bar
+	87 nixmac
+	88 File
+	89 Edit
+	90 View
+	91 Window
+	92 Help
+
+The focused UI element is 44 checkbox (settable, integer) steipete/tap, Value: 1
+</app_state>

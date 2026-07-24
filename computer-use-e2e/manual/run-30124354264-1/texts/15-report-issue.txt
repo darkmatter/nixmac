@@ -1,0 +1,26 @@
+Computer Use state (CUA App Version: 1000387)
+<app_state>
+App=/tmp/nixmac-computer-use-e2e-app-30124354264-1/nixmac.app/ (bundleID com.darkmatter.nixmac, pid 3750)
+Window: "nixmac", App: nixmac.
+0 standard window nixmac, Secondary Actions: Raise
+	1 scroll area
+		2 HTML content Description: nixmac, URL: tauri://localhost
+			3 container Notifications alt+T
+			4 container Sign in to send feedback
+				5 heading Sign in to send feedback, Value: 2
+					6 text Sign in to send feedback
+				7 text Sign in to your nixmac account before sending feedback.
+				8 button OK
+	9 close button
+	10 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	11 minimize button
+12 menu bar
+	13 nixmac
+	14 File
+	15 Edit
+	16 View
+	17 Window
+	18 Help
+
+The focused UI element is 2 HTML content Description: nixmac, URL: tauri://localhost
+</app_state>

@@ -1,0 +1,57 @@
+Computer Use state (CUA App Version: 1000387)
+<app_state>
+App=/tmp/nixmac-computer-use-e2e-app-30124354264-1/nixmac.app/ (bundleID com.darkmatter.nixmac, pid 7595)
+Window: "nixmac", App: nixmac.
+0 standard window nixmac, Secondary Actions: Raise
+	1 scroll area
+		2 HTML content Description: nixmac, URL: tauri://localhost
+			3 heading nixmac, Value: 3
+				4 text nixmac
+			5 button History
+			6 button Give feedback
+			7 button Settings
+			8 content list Progress: step 1 of 3, Describe
+				9 button (disabled) Go to Describe step
+				10 button Go to Review step
+				11 button (disabled) Go to Save step
+			12 container
+				13 text Update available: v 0.32.1
+			14 text ## What's Changed * ci: stop devenv auto-format defeating git hooks by @alex-sparus in https://github.com/darkmatter/nixmac/pull/584 * fix(summarize): accept single-object model response by @alex-sparus in https://github.com/darkmatter/nixmac/pull/591 * feat(helper)!: drop /etc/nix-darwin link maintenance by @alex-sparus in https://github.com/darkmatter/nixmac/pull/587 * fix(cli): take the result envelope state from telemetry.state by @arximboldi in https://github.com/darkmatter/nixmac/pull/583 * feat:
+			15 button (collapsed) Expand details, Secondary Actions: Expand
+			16 button Install & Restart
+			17 button Dismiss
+			18 heading Get started, Value: 3
+				19 text Get started
+			20 container
+				21 text entry area (settable, string) Try: Set up m▍
+					22 text Try: Set up m▍
+				23 button (disabled) Send
+			24 text TRY
+			25 button Dev workstation For Programmers
+			26 button Previous suggestion
+			27 button Next suggestion
+			28 button Go to For Programmers
+			29 button Go to For Streamers
+			30 button Go to For Homelab Admins
+			31 button Go to For Security-Minded Users
+			32 button Go to For Designers
+			33 button Go to For Writers and Researchers
+			34 button Go to For Laptop Nomads
+			35 button Go to For Gamers
+			36 button Enable the Finder path bar and status bar
+			37 button Report Issue
+			38 button Console
+			39 container Notifications alt+T
+	40 close button
+	41 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	42 minimize button
+43 menu bar
+	44 nixmac
+	45 File
+	46 Edit
+	47 View
+	48 Window
+	49 Help
+
+The focused UI element is 2 HTML content Description: nixmac, URL: tauri://localhost
+</app_state>

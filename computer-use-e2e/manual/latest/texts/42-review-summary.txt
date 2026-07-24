@@ -1,0 +1,55 @@
+Computer Use state (CUA App Version: 1000387)
+<app_state>
+App=/tmp/nixmac-computer-use-e2e-app-30124354264-1/nixmac.app/ (bundleID com.darkmatter.nixmac, pid 7595)
+Window: "nixmac", App: nixmac.
+0 standard window nixmac, Secondary Actions: Raise
+	1 scroll area
+		2 HTML content Description: nixmac, URL: tauri://localhost
+			3 heading nixmac, Value: 3
+				4 text nixmac
+			5 button History
+			6 button Give feedback
+			7 button Settings
+			8 content list Progress: step 2 of 3, Review
+				9 button Go to Describe step
+				10 button (disabled) Go to Review step
+				11 button (disabled) Go to Save step
+			12 container
+				13 text Update available: v 0.32.1
+			14 text ## What's Changed * ci: stop devenv auto-format defeating git hooks by @alex-sparus in https://github.com/darkmatter/nixmac/pull/584 * fix(summarize): accept single-object model response by @alex-sparus in https://github.com/darkmatter/nixmac/pull/591 * feat(helper)!: drop /etc/nix-darwin link maintenance by @alex-sparus in https://github.com/darkmatter/nixmac/pull/587 * fix(cli): take the result envelope state from telemetry.state by @arximboldi in https://github.com/darkmatter/nixmac/pull/583 * feat:
+			15 button (collapsed) Expand details, Secondary Actions: Expand
+			16 button Install & Restart
+			17 button Dismiss
+			18 container
+				19 text 1 change  ready to apply
+			20 container
+				21 text Press  Build & Test  to activate the changes you asked for. Reviewing the diffs below is optional.
+			22 button Dismiss notice
+			23 container
+				24 text Proposed changes 1 modified
+				25 tab group (selectable)
+					26 tab (selected) Semantic, Value: on
+					27 tab (selectable) Diff
+			28 container
+				29 text data.json chore(homebrew): add 'bat' to brews list
+				30 pop up button Actions for data.json
+			31 container
+				32 button Discard
+				33 button Back to Prompt
+				34 button Build & Test
+			35 button Report Issue
+			36 button Console
+			37 container Notifications alt+T
+	38 close button
+	39 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	40 minimize button
+41 menu bar
+	42 nixmac
+	43 File
+	44 Edit
+	45 View
+	46 Window
+	47 Help
+
+The focused UI element is 26 tab (selected) Semantic, Value: on
+</app_state>

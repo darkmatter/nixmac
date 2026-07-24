@@ -1,0 +1,876 @@
+[
+  {
+    "ts": "2026-07-24T20:35:03.867Z",
+    "type": "remote.git.initial-probe.01",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-30124354264-1/config",
+    "head": "44f9568a6906f353618d71c51079ff437d5bf7b3",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-07-24T20:35:03.868Z",
+    "type": "remote.git.initial",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-30124354264-1/config",
+    "head": "44f9568a6906f353618d71c51079ff437d5bf7b3",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-07-24T20:35:04.404Z",
+    "type": "remote.git.baseline-commit",
+    "ok": true,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "ts": "2026-07-24T20:35:05.945Z",
+    "type": "remote.git.baseline-probe.01",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-30124354264-1/config",
+    "head": "58236d5ad4b63d6704048c1ebd6443bfacaad636",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-07-24T20:35:05.946Z",
+    "type": "remote.git.baseline",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-30124354264-1/config",
+    "head": "58236d5ad4b63d6704048c1ebd6443bfacaad636",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-07-24T20:35:12.606Z",
+    "type": "remote.relaunch",
+    "ok": true,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "ts": "2026-07-24T20:35:14.430Z",
+    "type": "computer-use.capture",
+    "label": "launch",
+    "note": "Computer Use observed the nixmac window at launch."
+  },
+  {
+    "ts": "2026-07-24T20:35:15.461Z",
+    "type": "computer-use.click",
+    "label": "Go to Describe step",
+    "elementIndex": "9",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t9 button (disabled) Go to Describe step\n\t\t\t\t10 button Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 container\n\t\t\t\t13 text Update available: v 0.32.1\n\t\t\t14 text ## What's Changed\r * ci: stop devenv auto-format defeating git hooks by @alex-sparus in https://github.com/darkmatter/nixmac/pull/584\r * fix(summarize): accept single-object model response by @alex-sparus in https://github.com/darkmatter/nixmac/pull/591\r * ",
+    "note": "Return from a saved-configuration update review to the prompt surface before continuing the E2E scenario."
+  },
+  {
+    "ts": "2026-07-24T20:35:15.669Z",
+    "type": "computer-use.capture",
+    "label": "launch-describe",
+    "note": "Computer Use returned from the saved-configuration review to the Describe prompt."
+  },
+  {
+    "ts": "2026-07-24T20:35:16.904Z",
+    "type": "computer-use.click",
+    "label": "Dismiss update banner",
+    "elementIndex": "17",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t9 button (disabled) Go to Describe step\n\t\t\t\t10 button Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 heading Get started, Value: 3\n\t\t\t\t13 text Get started\n\t\t\t14 container\n\t\t\t\t15 text entry area (settable, string) Try: Set up my daily coding ▍\n\t\t\t\t\t16 text Try: Set up my daily coding ▍\n\t\t\t\t17 button (disabled) Send\n\t\t\t18 text TRY\n\t\t\t19 button Dev workstation For Programmers\n\t\t\t20 button Previous suggestion\n\t\t\t21 but",
+    "note": "Dismiss update/error banner if present."
+  },
+  {
+    "ts": "2026-07-24T20:35:17.096Z",
+    "type": "computer-use.capture",
+    "label": "after-dismiss",
+    "note": "Computer Use clicked a visible Dismiss button."
+  },
+  {
+    "ts": "2026-07-24T20:35:17.984Z",
+    "type": "computer-use.click",
+    "label": "Settings",
+    "elementIndex": "7",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t9 button (disabled) Go to Describe step\n\t\t\t\t10 button Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 heading Get started, Value: 3\n\t\t\t\t13 text Get started\n\t\t\t14 container\n\t\t\t\t15 text entry area (settable, string) Try: Set up my daily coding terminal\n\t\t\t\t\t16 text Try: Set up my daily coding terminal\n\t\t\t\t17 button (disabled) Send\n\t\t\t18 text TRY\n\t\t\t19 button Dev workstation For Programmers\n\t\t\t20 button Previous sugges",
+    "note": "Open Settings."
+  },
+  {
+    "ts": "2026-07-24T20:35:18.212Z",
+    "type": "computer-use.capture",
+    "label": "settings-general",
+    "note": "Computer Use opened Settings."
+  },
+  {
+    "ts": "2026-07-24T20:35:19.356Z",
+    "type": "computer-use.click",
+    "label": "AI Models tab",
+    "elementIndex": "40",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t9 button (disabled) Go to Describe step\n\t\t\t\t10 button Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 heading Get started, Value: 3\n\t\t\t\t13 text Get started\n\t\t\t14 container\n\t\t\t\t15 text entry area (settable, string) Try: Set up my daily coding terminal\n\t\t\t\t\t16 text Try: Set up my daily coding terminal\n\t\t\t\t17 button (disabled) Send\n\t\t\t18 text TRY\n\t\t\t19 button Dev workstation For Programmers\n\t\t\t20 button Previous sugges",
+    "note": "Open AI Models settings."
+  },
+  {
+    "ts": "2026-07-24T20:35:19.563Z",
+    "type": "computer-use.capture",
+    "label": "settings-ai-models",
+    "note": "Computer Use opened AI Models settings."
+  },
+  {
+    "ts": "2026-07-24T20:35:20.326Z",
+    "type": "computer-use.click",
+    "label": "API Keys tab",
+    "elementIndex": "41",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t9 button (disabled) Go to Describe step\n\t\t\t\t10 button Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 heading Get started, Value: 3\n\t\t\t\t13 text Get started\n\t\t\t14 container\n\t\t\t\t15 text entry area (settable, string) Try: Set up my daily coding terminal\n\t\t\t\t\t16 text Try: Set up my daily coding terminal\n\t\t\t\t17 button (disabled) Send\n\t\t\t18 text TRY\n\t\t\t19 button Dev workstation For Programmers\n\t\t\t20 button Previous sugges",
+    "note": "Open API Keys settings."
+  },
+  {
+    "ts": "2026-07-24T20:35:21.544Z",
+    "type": "computer-use.capture",
+    "label": "settings-api-keys-01",
+    "note": "Polling settings-api-keys."
+  },
+  {
+    "ts": "2026-07-24T20:35:22.300Z",
+    "type": "computer-use.click",
+    "label": "Preferences tab",
+    "elementIndex": "42",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t9 button (disabled) Go to Describe step\n\t\t\t\t10 button Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 heading Get started, Value: 3\n\t\t\t\t13 text Get started\n\t\t\t14 container\n\t\t\t\t15 text entry area (settable, string) Try: Install OBS Studio\n\t\t\t\t\t16 text Try: Install OBS Studio\n\t\t\t\t17 button (disabled) Send\n\t\t\t18 text TRY\n\t\t\t19 button Dev workstation For Programmers\n\t\t\t20 button Previous suggestion\n\t\t\t21 button Next sug",
+    "note": "Open Preferences settings."
+  },
+  {
+    "ts": "2026-07-24T20:35:22.510Z",
+    "type": "computer-use.capture",
+    "label": "settings-preferences",
+    "note": "Computer Use opened Preferences settings."
+  },
+  {
+    "ts": "2026-07-24T20:35:23.873Z",
+    "type": "computer-use.click",
+    "label": "Close settings",
+    "elementIndex": "35",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t9 button (disabled) Go to Describe step\n\t\t\t\t10 button Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 heading Get started, Value: 3\n\t\t\t\t13 text Get started\n\t\t\t14 container\n\t\t\t\t15 text entry area (settable, string) Try: Install OBS Studio\n\t\t\t\t\t16 text Try: Install OBS Studio\n\t\t\t\t17 button (disabled) Send\n\t\t\t18 text TRY\n\t\t\t19 button Dev workstation For Programmers\n\t\t\t20 button Previous suggestion\n\t\t\t21 button Next sug",
+    "note": "Close Settings."
+  },
+  {
+    "ts": "2026-07-24T20:35:24.062Z",
+    "type": "computer-use.capture",
+    "label": "home-after-settings",
+    "note": "Computer Use returned to the main app surface after Settings coverage."
+  },
+  {
+    "ts": "2026-07-24T20:35:25.065Z",
+    "type": "computer-use.click",
+    "label": "History",
+    "elementIndex": "5",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 heading History, Value: 2\n\t\t\t\t9 text History\n\t\t\t10 text 2\n\t\t\t11 button Analyze recent (2)\n\t\t\t12 text TODAY\n\t\t\t13 text nixmac e2e restore baseline\n\t\t\t14 button Build\n\t\t\t15 text 58236d5\n\t\t\t16 text just now\n\t\t\t17 text External commit\n\t\t\t18 button Analyze\n\t\t\t19 text Initial disposable nixmac E2E config\n\t\t\t20 button Restore\n\t\t\t21 text 44f9568\n\t\t\t22 text just now\n\t\t\t23 text External commit\n\t\t\t24 button Analyze\n\t\t\t25 button Report Issue\n\t\t\t26 button Console\n\t\t\t27 container Notifications ",
+    "note": "Open My History."
+  },
+  {
+    "ts": "2026-07-24T20:35:25.252Z",
+    "type": "computer-use.capture",
+    "label": "history",
+    "note": "Computer Use opened History."
+  },
+  {
+    "ts": "2026-07-24T20:35:25.254Z",
+    "type": "computer-use.click.skipped",
+    "label": "Close history",
+    "note": "No element found for Close history"
+  },
+  {
+    "ts": "2026-07-24T20:35:25.947Z",
+    "type": "computer-use.click",
+    "label": "Toggle history closed",
+    "elementIndex": "5",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t9 button (disabled) Go to Describe step\n\t\t\t\t10 button Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 heading Get started, Value: 3\n\t\t\t\t13 text Get started\n\t\t\t14 container\n\t\t\t\t15 text entry area (settable, string) Try: Set▍\n\t\t\t\t\t16 text Try: Set▍\n\t\t\t\t17 button (disabled) Send\n\t\t\t18 text TRY\n\t\t\t19 button Dev workstation For Programmers\n\t\t\t20 button Previous suggestion\n\t\t\t21 button Next suggestion\n\t\t\t22 button Go to F",
+    "note": "Toggle History closed to return to the prompt surface."
+  },
+  {
+    "ts": "2026-07-24T20:35:26.136Z",
+    "type": "computer-use.capture",
+    "label": "home-after-history",
+    "note": "Computer Use returned home after History."
+  },
+  {
+    "ts": "2026-07-24T20:35:27.303Z",
+    "type": "computer-use.click",
+    "label": "Console",
+    "elementIndex": "33",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t9 button (disabled) Go to Describe step\n\t\t\t\t10 button Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 heading Get started, Value: 3\n\t\t\t\t13 text Get started\n\t\t\t14 container\n\t\t\t\t15 text entry area (settable, string) Try: Set up my daily codin▍\n\t\t\t\t\t16 text Try: Set up my daily codin▍\n\t\t\t\t17 button (disabled) Send\n\t\t\t18 text TRY\n\t\t\t19 button Dev workstation For Programmers\n\t\t\t20 button Previous suggestion\n\t\t\t21 button ",
+    "note": "Open Console."
+  },
+  {
+    "ts": "2026-07-24T20:35:27.485Z",
+    "type": "computer-use.screenshot-omitted",
+    "label": "console",
+    "reason": "Sensitive view image omitted from screenshot artifacts; redacted accessibility text snapshot retained."
+  },
+  {
+    "ts": "2026-07-24T20:35:27.486Z",
+    "type": "computer-use.capture",
+    "label": "console",
+    "note": "Computer Use opened Console."
+  },
+  {
+    "ts": "2026-07-24T20:35:27.487Z",
+    "type": "computer-use.click.skipped",
+    "label": "Close console",
+    "note": "No element found for Close console"
+  },
+  {
+    "ts": "2026-07-24T20:35:27.670Z",
+    "type": "computer-use.screenshot-omitted",
+    "label": "home-after-console",
+    "reason": "Sensitive view image omitted from screenshot artifacts; redacted accessibility text snapshot retained."
+  },
+  {
+    "ts": "2026-07-24T20:35:27.671Z",
+    "type": "computer-use.capture",
+    "label": "home-after-console",
+    "note": "Computer Use returned home after Console."
+  },
+  {
+    "ts": "2026-07-24T20:35:28.746Z",
+    "type": "computer-use.click",
+    "label": "Give feedback",
+    "elementIndex": "6",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 container Notifications alt+T\n\t\t\t4 container Sign in to send feedback\n\t\t\t\t5 heading Sign in to send feedback, Value: 2\n\t\t\t\t\t6 text Sign in to send feedback\n\t\t\t\t7 text Sign in to your nixmac account before sending feedback.\n\t\t\t\t8 button OK\n\t9 close button\n\t10 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window\n\t11 minimize button\n12 menu bar\n\t13 nixmac\n\t14 File\n\t15 Edit\n\t16 View\n\t17 Window\n\t18 Help\n\nThe focused UI element is 2 HTML content Description: nixmac, URL: tauri://localhost",
+    "note": "Open Give Feedback."
+  },
+  {
+    "ts": "2026-07-24T20:35:28.912Z",
+    "type": "computer-use.capture",
+    "label": "feedback",
+    "note": "Computer Use opened Give Feedback."
+  },
+  {
+    "ts": "2026-07-24T20:35:30.233Z",
+    "type": "computer-use.click",
+    "label": "Dismiss feedback",
+    "elementIndex": "8",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t9 button (disabled) Go to Describe step\n\t\t\t\t10 button Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 heading Get started, Value: 3\n\t\t\t\t13 text Get started\n\t\t\t14 container\n\t\t\t\t15 text entry area (settable, string) Try: Set up my daily coding terminal\n\t\t\t\t\t16 text Try: Set up my daily coding terminal\n\t\t\t\t17 button (disabled) Send\n\t\t\t18 text TRY\n\t\t\t19 button Dev workstation For Programmers\n\t\t\t20 button Previous sugges",
+    "note": "Cancel Give Feedback."
+  },
+  {
+    "ts": "2026-07-24T20:35:30.405Z",
+    "type": "computer-use.capture",
+    "label": "home-after-feedback",
+    "note": "Computer Use returned home after Feedback."
+  },
+  {
+    "ts": "2026-07-24T20:35:31.535Z",
+    "type": "computer-use.click",
+    "label": "Report Issue",
+    "elementIndex": "33",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 container Notifications alt+T\n\t\t\t4 container Sign in to send feedback\n\t\t\t\t5 heading Sign in to send feedback, Value: 2\n\t\t\t\t\t6 text Sign in to send feedback\n\t\t\t\t7 text Sign in to your nixmac account before sending feedback.\n\t\t\t\t8 button OK\n\t9 close button\n\t10 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window\n\t11 minimize button\n12 menu bar\n\t13 nixmac\n\t14 File\n\t15 Edit\n\t16 View\n\t17 Window\n\t18 Help\n\nThe focused UI element is 2 HTML content Description: nixmac, URL: tauri://localhost",
+    "note": "Open Report Issue."
+  },
+  {
+    "ts": "2026-07-24T20:35:31.700Z",
+    "type": "computer-use.capture",
+    "label": "report-issue",
+    "note": "Computer Use opened Report Issue."
+  },
+  {
+    "ts": "2026-07-24T20:35:32.886Z",
+    "type": "computer-use.click",
+    "label": "Dismiss report issue",
+    "elementIndex": "8",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t9 button (disabled) Go to Describe step\n\t\t\t\t10 button Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 heading Get started, Value: 3\n\t\t\t\t13 text Get started\n\t\t\t14 container\n\t\t\t\t15 text entry area (settable, string) Try: Install OBS Studio\n\t\t\t\t\t16 text Try: Install OBS Studio\n\t\t\t\t17 button (disabled) Send\n\t\t\t18 text TRY\n\t\t\t19 button Dev workstation For Programmers\n\t\t\t20 button Previous suggestion\n\t\t\t21 button Next sug",
+    "note": "Cancel Report Issue."
+  },
+  {
+    "ts": "2026-07-24T20:35:33.044Z",
+    "type": "computer-use.capture",
+    "label": "home-after-report-issue",
+    "note": "Computer Use returned home after Report Issue."
+  },
+  {
+    "ts": "2026-07-24T20:35:33.760Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items chip",
+    "elementIndex": "32",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t9 button (disabled) Go to Describe step\n\t\t\t\t10 button Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 heading Get started, Value: 3\n\t\t\t\t13 text Get started\n\t\t\t14 container\n\t\t\t\t15 text entry area (settable, string) Try: Install OBS Studio\n\t\t\t\t\t16 text Try: Install OBS Studio\n\t\t\t\t17 button (disabled) Send\n\t\t\t18 text TRY\n\t\t\t19 button Dev workstation For Programmers\n\t\t\t20 button Previous suggestion\n\t\t\t21 button Next sug",
+    "note": "Open Untracked Homebrew items Add to config popover."
+  },
+  {
+    "ts": "2026-07-24T20:35:33.964Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-popover",
+    "note": "Computer Use opened Untracked Homebrew items Add to config popover."
+  },
+  {
+    "ts": "2026-07-24T20:35:34.708Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items Add to config",
+    "elementIndex": "82",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t9 button (disabled) Go to Describe step\n\t\t\t\t10 button Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 heading Get started, Value: 3\n\t\t\t\t13 text Get started\n\t\t\t14 container\n\t\t\t\t15 text entry area (settable, string) Describe additional changes or refinements...\n\t\t\t\t\t16 text Describe additional changes or refinements...\n\t\t\t\t17 button (disabled) Send\n\t\t\t18 text TRY\n\t\t\t19 button Dev workstation For Programmers\n\t\t\t20 butt",
+    "note": "Apply Untracked Homebrew items to config."
+  },
+  {
+    "ts": "2026-07-24T20:35:35.898Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-apply-01",
+    "note": "Polling homebrew-apply."
+  },
+  {
+    "ts": "2026-07-24T20:35:37.690Z",
+    "type": "remote.git.homebrew-managed-edit.01",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-30124354264-1/config",
+    "head": "58236d5ad4b63d6704048c1ebd6443bfacaad636",
+    "statusShort": "M .nixmac/homebrew/data.json",
+    "diffNameOnly": ".nixmac/homebrew/data.json",
+    "baselineDiffNameOnly": "",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-07-24T20:35:38.696Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items Go to Review step",
+    "elementIndex": "10",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 2 of 3, Review\n\t\t\t\t9 button Go to Describe step\n\t\t\t\t10 button (disabled) Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 container\n\t\t\t\t13 text 1 change  ready to apply\n\t\t\t14 container\n\t\t\t\t15 text Press  Build & Test  to activate the changes you asked for. Reviewing the diffs below is optional.\n\t\t\t16 button Dismiss notice\n\t\t\t17 container\n\t\t\t\t18 text Proposed changes 1 modified\n\t\t\t\t19 tab group (selectable)\n\t\t\t\t\t20 tab (selected) Semantic",
+    "note": "Open the verified managed Untracked Homebrew items mutation in Review."
+  },
+  {
+    "ts": "2026-07-24T20:35:39.891Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-review-navigation-01",
+    "note": "Computer Use opened the verified managed Untracked Homebrew items mutation in Review."
+  },
+  {
+    "ts": "2026-07-24T20:35:40.053Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-apply",
+    "note": "Computer Use reached review/build state after applying Untracked Homebrew items to config."
+  },
+  {
+    "ts": "2026-07-24T20:35:41.297Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items Build & Test",
+    "elementIndex": "28",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 container Notifications alt+T\n\t\t\t4 container Confirm Action\n\t\t\t\t5 heading Confirm Action, Value: 2\n\t\t\t\t\t6 text Confirm Action\n\t\t\t\t7 text Rebuild with these configuration changes?\n\t\t\t\t8 checkbox (settable, integer) Switch this confirmation off in settings., Value: 0\n\t\t\t\t9 text Switch this confirmation off in settings.\n\t\t\t\t10 button Cancel\n\t\t\t\t11 button Confirm\n\t\t\t\t12 button Close\n\t13 close button\n\t14 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window\n\t15 minimize button\n16 menu bar\n\t17 nixmac\n\t18 File\n\t19 Edit\n\t20 View\n\t21 W",
+    "note": "Click Build & Test for Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-07-24T20:35:41.445Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-build-boundary",
+    "note": "Computer Use clicked Build & Test for Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-07-24T20:35:42.436Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items confirm build boundary",
+    "elementIndex": "11",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 2 of 3, Review\n\t\t\t\t9 button (disabled) Go to Describe step\n\t\t\t\t10 button (disabled) Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 container\n\t\t\t\t13 text 1 change  ready to apply\n\t\t\t14 container\n\t\t\t\t15 text Press  Build & Test  to activate the changes you asked for. Reviewing the diffs below is optional.\n\t\t\t16 button Dismiss notice\n\t\t\t17 container\n\t\t\t\t18 text Proposed changes 1 modified\n\t\t\t\t19 tab group (selectable)\n\t\t\t\t\t20 tab (selecte",
+    "note": "Confirm Build & Test for Untracked Homebrew items in proven disposable state."
+  },
+  {
+    "ts": "2026-07-24T20:35:47.729Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-build-to-step-3-01",
+    "note": "Polling homebrew-build-to-step-3."
+  },
+  {
+    "ts": "2026-07-24T20:35:53.481Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-build-to-step-3-02",
+    "note": "Polling homebrew-build-to-step-3."
+  },
+  {
+    "ts": "2026-07-24T20:35:53.641Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-step-3-ready",
+    "note": "Computer Use reached Step 3 after Untracked Homebrew items Build & Test."
+  },
+  {
+    "ts": "2026-07-24T20:35:54.337Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items Keep Changes",
+    "elementIndex": "23",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 3 of 3, Save\n\t\t\t\t9 button Go to Describe step\n\t\t\t\t10 button Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 text Changes applied Successfully\n\t\t\t13 container\n\t\t\t\t14 text 1 modified\n\t\t\t\t15 tab group (selectable)\n\t\t\t\t\t16 tab (selected) Semantic\n\t\t\t\t\t17 tab (selectable) Diff\n\t\t\t18 container\n\t\t\t\t19 text data.json chore(homebrew): update brews, casks, and taps\n\t\t\t\t20 pop up button Actions for data.json\n\t\t\t21 heading Additional Description(St",
+    "note": "Open the Step 3 commit form for Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-07-24T20:35:54.550Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-keep-changes",
+    "note": "Computer Use selected Keep Changes for Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-07-24T20:35:55.749Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-commit-ready-01",
+    "note": "Polling homebrew-commit-ready."
+  },
+  {
+    "ts": "2026-07-24T20:35:56.773Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items commit changes",
+    "elementIndex": "26",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t9 button (disabled) Go to Describe step\n\t\t\t\t10 button (disabled) Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 heading Get started, Value: 3\n\t\t\t\t13 text Get started\n\t\t\t14 container\n\t\t\t\t15 text entry area (settable, string) Try: Set▍\n\t\t\t\t\t16 text Try: Set▍\n\t\t\t\t17 button (disabled) Send\n\t\t\t18 text TRY\n\t\t\t19 button Dev workstation For Programmers\n\t\t\t20 button Previous suggestion\n\t\t\t21 button Next suggestion\n\t\t\t22 but",
+    "note": "Commit Step 3 changes for Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-07-24T20:35:58.344Z",
+    "type": "remote.git.homebrew-after-commit.01",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-30124354264-1/config",
+    "head": "c010144077570f19e24b81dfbf950957680c7355",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": ".nixmac/homebrew/data.json",
+    "containsBat": true,
+    "error": ""
+  },
+  {
+    "ts": "2026-07-24T20:35:58.571Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-after-commit",
+    "note": "Computer Use committed Untracked Homebrew items changes."
+  },
+  {
+    "ts": "2026-07-24T20:35:59.696Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items History after commit",
+    "elementIndex": "5",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 heading History, Value: 2\n\t\t\t\t9 text History\n\t\t\t10 text 3\n\t\t\t11 button Analyze recent (2)\n\t\t\t12 text TODAY\n\t\t\t13 button chore(homebrew): update brews, casks, and taps CURRENTc010144 just now 1 filechore(homebrew): update brews, casks, and taps\n\t\t\t14 text nixmac e2e restore baseline\n\t\t\t15 button Restore\n\t\t\t16 text 58236d5\n\t\t\t17 text just now\n\t\t\t18 text External commit\n\t\t\t19 button Analyze\n\t\t\t20 text Initial disposable nixmac E2E config\n\t\t\t21 button Restore\n\t\t\t22 text 44f9568\n\t\t\t23 ",
+    "note": "Open History to restore baseline after Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-07-24T20:35:59.899Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-history-before-restore",
+    "note": "Computer Use opened History after Untracked Homebrew items commit."
+  },
+  {
+    "ts": "2026-07-24T20:36:01.060Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items restore previous commit",
+    "elementIndex": "15",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 heading History, Value: 2\n\t\t\t\t9 text History\n\t\t\t10 text 3\n\t\t\t11 button Analyze recent (2)\n\t\t\t12 text TODAY\n\t\t\t13 text Restore Commit 58236d5\n\t\t\t14 text nixmac e2e restore baseline\n\t\t\t15 button Confirm Restore\n\t\t\t16 button Cancel\n\t\t\t17 container\n\t\t\t\t18 text This will deactivate  1  commit .\n\t\t\t19 text Deactivated commits will stay in history.\n\t\t\t20 text You can restore them again later.\n\t\t\t21 text n1xm4c0\n\t\t\t22 button Analyze\n\t\t\t23 button chore(homebrew): update brews, casks, and t",
+    "note": "Restore the pre-test baseline after Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-07-24T20:36:01.296Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-history-restore-preview",
+    "note": "Computer Use previewed History restore after Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-07-24T20:36:02.214Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items confirm restore",
+    "elementIndex": "15",
+    "response": "App=com.darkmatter.nixmac (pid 3750)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 heading History, Value: 2\n\t\t\t\t9 text History\n\t\t\t10 text 3\n\t\t\t11 button Analyze recent (2)\n\t\t\t12 text 1\n\t\t\t13 text  uncommitted \n\t\t\t14 text change\n\t\t\t15 text  in\n\t\t\t16 text config\n\t\t\t17 text (restore is disabled)\n\t\t\t18 button Discard\n\t\t\t19 text TODAY\n\t\t\t20 button chore(homebrew): update brews, casks, and taps CURRENTc010144 just now 1 filechore(homebrew): update brews, casks, and taps\n\t\t\t21 text nixmac e2e restore baseline\n\t\t\t22 button Restore\n\t\t\t23 text 58236d5\n\t\t\t24 text just now",
+    "note": "Confirm History restore cleanup after Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-07-24T20:36:07.841Z",
+    "type": "remote.git.homebrew-after-history-restore.01",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-30124354264-1/config",
+    "head": "c010144077570f19e24b81dfbf950957680c7355",
+    "statusShort": "M  .nixmac/homebrew/data.json",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": ".nixmac/homebrew/data.json",
+    "containsBat": true,
+    "error": ""
+  },
+  {
+    "ts": "2026-07-24T20:36:13.401Z",
+    "type": "remote.git.homebrew-after-history-restore.02",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-30124354264-1/config",
+    "head": "f4007a9607be13fde62b27606f9977a43b2d3be0",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-07-24T20:36:13.628Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-after-history-restore",
+    "note": "Computer Use completed History restore cleanup after Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-07-24T20:36:20.305Z",
+    "type": "remote.relaunch",
+    "ok": true,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "ts": "2026-07-24T20:36:20.648Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-after-rollback-home",
+    "note": "Computer Use returned to the prompt surface after Untracked Homebrew items rollback cleanup."
+  },
+  {
+    "ts": "2026-07-24T20:36:21.642Z",
+    "type": "computer-use.click",
+    "label": "Go to Describe step",
+    "elementIndex": "9",
+    "response": "App=com.darkmatter.nixmac (pid 7595)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t9 button (disabled) Go to Describe step\n\t\t\t\t10 button Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 container\n\t\t\t\t13 text Update available: v 0.32.1\n\t\t\t14 text ## What's Changed\r * ci: stop devenv auto-format defeating git hooks by @alex-sparus in https://github.com/darkmatter/nixmac/pull/584\r * fix(summarize): accept single-object model response by @alex-sparus in https://github.com/darkmatter/nixmac/pull/591\r * ",
+    "note": "Return from a saved-configuration update review to the prompt surface before continuing the E2E scenario."
+  },
+  {
+    "ts": "2026-07-24T20:36:21.838Z",
+    "type": "computer-use.capture",
+    "label": "home-after-homebrew-normalization",
+    "note": "Computer Use returned from the saved-configuration review to the Describe prompt."
+  },
+  {
+    "ts": "2026-07-24T20:36:22.050Z",
+    "type": "computer-use.capture",
+    "label": "customization-absent",
+    "note": "Computer Use checked for Untracked customizations; no matching chip was visible."
+  },
+  {
+    "ts": "2026-07-24T20:36:23.282Z",
+    "type": "computer-use.click",
+    "label": "Suggestion card",
+    "elementIndex": "36",
+    "response": "App=com.darkmatter.nixmac (pid 7595)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t9 button (disabled) Go to Describe step\n\t\t\t\t10 button Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 container\n\t\t\t\t13 text Update available: v 0.32.1\n\t\t\t14 text ## What's Changed\r * ci: stop devenv auto-format defeating git hooks by @alex-sparus in https://github.com/darkmatter/nixmac/pull/584\r * fix(summarize): accept single-object model response by @alex-sparus in https://github.com/darkmatter/nixmac/pull/591\r * ",
+    "note": "Click a home suggestion card."
+  },
+  {
+    "ts": "2026-07-24T20:36:23.528Z",
+    "type": "computer-use.capture",
+    "label": "suggestion-card",
+    "note": "Computer Use checked home suggestion cards."
+  },
+  {
+    "ts": "2026-07-24T20:36:24.562Z",
+    "type": "computer-use.set_value",
+    "label": "Prompt input",
+    "elementIndex": "21",
+    "response": "App=com.darkmatter.nixmac (pid 7595)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t9 button (disabled) Go to Describe step\n\t\t\t\t10 button Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 container\n\t\t\t\t13 text Update available: v 0.32.1\n\t\t\t14 text ## What's Changed\r * ci: stop devenv auto-format defeating git hooks by @alex-sparus in https://github.com/darkmatter/nixmac/pull/584\r * fix(summarize): accept single-object model response by @alex-sparus in https://github.com/darkmatter/nixmac/pull/591\r * "
+  },
+  {
+    "ts": "2026-07-24T20:36:24.776Z",
+    "type": "computer-use.capture",
+    "label": "typed-intent",
+    "note": "Computer Use set a real prompt in the app prompt field."
+  },
+  {
+    "ts": "2026-07-24T20:36:26.066Z",
+    "type": "computer-use.click",
+    "label": "Send prompt",
+    "elementIndex": "23",
+    "response": "App=com.darkmatter.nixmac (pid 7595)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 2 of 3, Review\n\t\t\t\t9 button (disabled) Go to Describe step\n\t\t\t\t10 button (disabled) Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 container\n\t\t\t\t13 text Update available: v 0.32.1\n\t\t\t14 text ## What's Changed\r * ci: stop devenv auto-format defeating git hooks by @alex-sparus in https://github.com/darkmatter/nixmac/pull/584\r * fix(summarize): accept single-object model response by @alex-sparus in https://github.com/darkmatter/nixmac/pul",
+    "note": "Submit the real prompt."
+  },
+  {
+    "ts": "2026-07-24T20:36:31.290Z",
+    "type": "computer-use.capture",
+    "label": "provider-progress-01",
+    "note": "Polling provider-progress."
+  },
+  {
+    "ts": "2026-07-24T20:36:36.548Z",
+    "type": "computer-use.capture",
+    "label": "provider-progress-02",
+    "note": "Polling provider-progress."
+  },
+  {
+    "ts": "2026-07-24T20:36:41.786Z",
+    "type": "computer-use.capture",
+    "label": "provider-progress-03",
+    "note": "Polling provider-progress."
+  },
+  {
+    "ts": "2026-07-24T20:36:47.112Z",
+    "type": "computer-use.capture",
+    "label": "provider-progress-04",
+    "note": "Polling provider-progress."
+  },
+  {
+    "ts": "2026-07-24T20:36:52.344Z",
+    "type": "computer-use.capture",
+    "label": "provider-progress-05",
+    "note": "Polling provider-progress."
+  },
+  {
+    "ts": "2026-07-24T20:36:57.558Z",
+    "type": "computer-use.capture",
+    "label": "provider-progress-06",
+    "note": "Polling provider-progress."
+  },
+  {
+    "ts": "2026-07-24T20:36:58.349Z",
+    "type": "computer-use.click",
+    "label": "Summary tab",
+    "elementIndex": "26",
+    "response": "App=com.darkmatter.nixmac (pid 7595)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 2 of 3, Review\n\t\t\t\t9 button Go to Describe step\n\t\t\t\t10 button (disabled) Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 container\n\t\t\t\t13 text Update available: v 0.32.1\n\t\t\t14 text ## What's Changed\r * ci: stop devenv auto-format defeating git hooks by @alex-sparus in https://github.com/darkmatter/nixmac/pull/584\r * fix(summarize): accept single-object model response by @alex-sparus in https://github.com/darkmatter/nixmac/pull/591\r * fe",
+    "note": "Open the semantic summary tab."
+  },
+  {
+    "ts": "2026-07-24T20:36:58.529Z",
+    "type": "computer-use.capture",
+    "label": "review-summary",
+    "note": "Computer Use opened Summary after Review."
+  },
+  {
+    "ts": "2026-07-24T20:36:59.296Z",
+    "type": "computer-use.click",
+    "label": "Diff tab",
+    "elementIndex": "27",
+    "response": "App=com.darkmatter.nixmac (pid 7595)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 2 of 3, Review\n\t\t\t\t9 button Go to Describe step\n\t\t\t\t10 button (disabled) Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 container\n\t\t\t\t13 text Update available: v 0.32.1\n\t\t\t14 text ## What's Changed\r * ci: stop devenv auto-format defeating git hooks by @alex-sparus in https://github.com/darkmatter/nixmac/pull/584\r * fix(summarize): accept single-object model response by @alex-sparus in https://github.com/darkmatter/nixmac/pull/591\r * fe",
+    "note": "Open Diff tab."
+  },
+  {
+    "ts": "2026-07-24T20:36:59.506Z",
+    "type": "computer-use.capture",
+    "label": "review-diff",
+    "note": "Computer Use opened Diff after Review."
+  },
+  {
+    "ts": "2026-07-24T20:37:00.619Z",
+    "type": "computer-use.click",
+    "label": "Build & Test",
+    "elementIndex": "43",
+    "response": "App=com.darkmatter.nixmac (pid 7595)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 container Notifications alt+T\n\t\t\t4 container Confirm Action\n\t\t\t\t5 heading Confirm Action, Value: 2\n\t\t\t\t\t6 text Confirm Action\n\t\t\t\t7 text Rebuild with these configuration changes?\n\t\t\t\t8 checkbox (settable, integer) Switch this confirmation off in settings., Value: 0\n\t\t\t\t9 text Switch this confirmation off in settings.\n\t\t\t\t10 button Cancel\n\t\t\t\t11 button Confirm\n\t\t\t\t12 button Close\n\t13 close button\n\t14 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window\n\t15 minimize button\n16 menu bar\n\t17 nixmac\n\t18 File\n\t19 Edit\n\t20 View\n\t21 W",
+    "note": "Click Build & Test boundary."
+  },
+  {
+    "ts": "2026-07-24T20:37:00.814Z",
+    "type": "computer-use.capture",
+    "label": "build-boundary",
+    "note": "Computer Use clicked Build & Test to verify the destructive boundary."
+  },
+  {
+    "ts": "2026-07-24T20:37:01.772Z",
+    "type": "computer-use.click",
+    "label": "Confirm build boundary",
+    "elementIndex": "11",
+    "response": "App=com.darkmatter.nixmac (pid 7595)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 2 of 3, Review\n\t\t\t\t9 button (disabled) Go to Describe step\n\t\t\t\t10 button (disabled) Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 container\n\t\t\t\t13 text Update available: v 0.32.1\n\t\t\t14 text ## What's Changed\r * ci: stop devenv auto-format defeating git hooks by @alex-sparus in https://github.com/darkmatter/nixmac/pull/584\r * fix(summarize): accept single-object model response by @alex-sparus in https://github.com/darkmatter/nixmac/pul",
+    "note": "Confirm Build & Test in proven disposable state."
+  },
+  {
+    "ts": "2026-07-24T20:37:06.974Z",
+    "type": "computer-use.capture",
+    "label": "build-to-step-3-01",
+    "note": "Polling build-to-step-3."
+  },
+  {
+    "ts": "2026-07-24T20:37:07.153Z",
+    "type": "computer-use.capture",
+    "label": "step-3-ready",
+    "note": "Computer Use reached Step 3 after Build & Test."
+  },
+  {
+    "ts": "2026-07-24T20:37:07.892Z",
+    "type": "computer-use.click",
+    "label": "the generated configuration Keep Changes",
+    "elementIndex": "29",
+    "response": "App=com.darkmatter.nixmac (pid 7595)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 3 of 3, Save\n\t\t\t\t9 button Go to Describe step\n\t\t\t\t10 button Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 container\n\t\t\t\t13 text Update available: v 0.32.1\n\t\t\t14 text ## What's Changed\r * ci: stop devenv auto-format defeating git hooks by @alex-sparus in https://github.com/darkmatter/nixmac/pull/584\r * fix(summarize): accept single-object model response by @alex-sparus in https://github.com/darkmatter/nixmac/pull/591\r * feat(helper)!: ",
+    "note": "Open the Step 3 commit form for the generated configuration."
+  },
+  {
+    "ts": "2026-07-24T20:37:08.102Z",
+    "type": "computer-use.capture",
+    "label": "save-flow-keep-changes",
+    "note": "Computer Use selected Keep Changes for the generated configuration."
+  },
+  {
+    "ts": "2026-07-24T20:37:09.122Z",
+    "type": "computer-use.click",
+    "label": "Commit changes",
+    "elementIndex": "32",
+    "response": "App=com.darkmatter.nixmac (pid 7595)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t9 button (disabled) Go to Describe step\n\t\t\t\t10 button (disabled) Go to Review step\n\t\t\t\t11 button (disabled) Go to Save step\n\t\t\t12 container\n\t\t\t\t13 text Update available: v 0.32.1\n\t\t\t14 text ## What's Changed\r * ci: stop devenv auto-format defeating git hooks by @alex-sparus in https://github.com/darkmatter/nixmac/pull/584\r * fix(summarize): accept single-object model response by @alex-sparus in https://github.com/darkmatter/nixmac/p",
+    "note": "Commit Step 3 changes."
+  },
+  {
+    "ts": "2026-07-24T20:37:10.650Z",
+    "type": "remote.git.after-commit.01",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-30124354264-1/config",
+    "head": "4883f69c801a442f3b36f40459ec0bf035098da7",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": ".nixmac/homebrew/data.json",
+    "containsBat": true,
+    "error": ""
+  },
+  {
+    "ts": "2026-07-24T20:37:10.851Z",
+    "type": "computer-use.capture",
+    "label": "after-commit",
+    "note": "Computer Use committed Step 3 changes."
+  },
+  {
+    "ts": "2026-07-24T20:37:11.993Z",
+    "type": "computer-use.click",
+    "label": "History after commit",
+    "elementIndex": "5",
+    "response": "App=com.darkmatter.nixmac (pid 7595)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 container\n\t\t\t\t9 text Update available: v 0.32.1\n\t\t\t10 text ## What's Changed\r * ci: stop devenv auto-format defeating git hooks by @alex-sparus in https://github.com/darkmatter/nixmac/pull/584\r * fix(summarize): accept single-object model response by @alex-sparus in https://github.com/darkmatter/nixmac/pull/591\r * feat(helper)!: drop /etc/nix-darwin link maintenance by @alex-sparus in https://github.com/darkmatter/nixmac/pull/587\r * fix(cli): take the result envelope state from te",
+    "note": "Open History to restore the disposable baseline."
+  },
+  {
+    "ts": "2026-07-24T20:37:12.225Z",
+    "type": "computer-use.capture",
+    "label": "history-before-restore",
+    "note": "Computer Use opened History after Step 3 commit."
+  },
+  {
+    "ts": "2026-07-24T20:37:13.394Z",
+    "type": "computer-use.click",
+    "label": "Restore previous commit",
+    "elementIndex": "22",
+    "response": "App=com.darkmatter.nixmac (pid 7595)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 container\n\t\t\t\t9 text Update available: v 0.32.1\n\t\t\t10 text ## What's Changed\r * ci: stop devenv auto-format defeating git hooks by @alex-sparus in https://github.com/darkmatter/nixmac/pull/584\r * fix(summarize): accept single-object model response by @alex-sparus in https://github.com/darkmatter/nixmac/pull/591\r * feat(helper)!: drop /etc/nix-darwin link maintenance by @alex-sparus in https://github.com/darkmatter/nixmac/pull/587\r * fix(cli): take the result envelope state from te",
+    "note": "Restore the pre-test disposable baseline from History."
+  },
+  {
+    "ts": "2026-07-24T20:37:13.605Z",
+    "type": "computer-use.capture",
+    "label": "history-restore-preview",
+    "note": "Computer Use previewed History restore."
+  },
+  {
+    "ts": "2026-07-24T20:37:14.354Z",
+    "type": "computer-use.click",
+    "label": "Confirm restore",
+    "elementIndex": "21",
+    "response": "App=com.darkmatter.nixmac (pid 7595)\nWindow: \"nixmac\", App: nixmac.\n0 standard window nixmac, Secondary Actions: Raise\n\t1 scroll area\n\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t4 text nixmac\n\t\t\t5 button History\n\t\t\t6 button Give feedback\n\t\t\t7 button Settings\n\t\t\t8 container\n\t\t\t\t9 text Update available: v 0.32.1\n\t\t\t10 text ## What's Changed\r * ci: stop devenv auto-format defeating git hooks by @alex-sparus in https://github.com/darkmatter/nixmac/pull/584\r * fix(summarize): accept single-object model response by @alex-sparus in https://github.com/darkmatter/nixmac/pull/591\r * feat(helper)!: drop /etc/nix-darwin link maintenance by @alex-sparus in https://github.com/darkmatter/nixmac/pull/587\r * fix(cli): take the result envelope state from te",
+    "note": "Confirm History restore cleanup."
+  },
+  {
+    "ts": "2026-07-24T20:37:19.929Z",
+    "type": "remote.git.after-history-restore.01",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-30124354264-1/config",
+    "head": "4883f69c801a442f3b36f40459ec0bf035098da7",
+    "statusShort": "M  .nixmac/homebrew/data.json",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": ".nixmac/homebrew/data.json",
+    "containsBat": true,
+    "error": ""
+  },
+  {
+    "ts": "2026-07-24T20:37:25.470Z",
+    "type": "remote.git.after-history-restore.02",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-30124354264-1/config",
+    "head": "37ea9bc094128404d38402074fb6fdcae911616a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-07-24T20:37:25.728Z",
+    "type": "computer-use.capture",
+    "label": "after-history-restore",
+    "note": "Computer Use completed History restore cleanup."
+  },
+  {
+    "ts": "2026-07-24T20:37:27.695Z",
+    "type": "report.rendered",
+    "path": "index.html",
+    "verdict": "inconclusive"
+  },
+  {
+    "ts": "2026-07-24T20:37:41.717Z",
+    "type": "report.remote-server",
+    "ok": true,
+    "pid": "9904",
+    "url": "http://127.0.0.1:18791/index-30124354264-1-84c16a8d988c-inspection-01.html",
+    "stderr": "curl: (7) Failed to connect to 127.0.0.1 port 18791 after 0 ms: Couldn't connect to server"
+  },
+  {
+    "ts": "2026-07-24T20:37:48.279Z",
+    "type": "report.remote-open",
+    "ok": true,
+    "stdout": "",
+    "stderr": "",
+    "remoteIndex": "/tmp/nixmac-computer-use-reports/2026-07-24T203502026Z/index.html",
+    "remoteBrowserIndex": "/tmp/nixmac-computer-use-reports/2026-07-24T203502026Z/index-30124354264-1-84c16a8d988c-inspection-01.html",
+    "reportUrl": "http://127.0.0.1:18791/index-30124354264-1-84c16a8d988c-inspection-01.html"
+  },
+  {
+    "ts": "2026-07-24T20:37:57.467Z",
+    "type": "report.rendered",
+    "path": "index.html",
+    "verdict": "pass"
+  },
+  {
+    "ts": "2026-07-24T20:38:13.594Z",
+    "type": "report.rendered",
+    "path": "index.html",
+    "verdict": "pass"
+  },
+  {
+    "ts": "2026-07-24T20:38:15.845Z",
+    "type": "report.rendered",
+    "path": "index.html",
+    "verdict": "pass"
+  },
+  {
+    "ts": "2026-07-24T20:38:30.658Z",
+    "type": "report.remote-server",
+    "ok": true,
+    "pid": "10194",
+    "url": "http://127.0.0.1:18791/index-30124354264-1-84c16a8d988c-inspection-02.html",
+    "stderr": "curl: (7) Failed to connect to 127.0.0.1 port 18791 after 0 ms: Couldn't connect to server"
+  },
+  {
+    "ts": "2026-07-24T20:38:37.430Z",
+    "type": "report.remote-open",
+    "ok": true,
+    "stdout": "",
+    "stderr": "",
+    "remoteIndex": "/tmp/nixmac-computer-use-reports/2026-07-24T203502026Z/index.html",
+    "remoteBrowserIndex": "/tmp/nixmac-computer-use-reports/2026-07-24T203502026Z/index-30124354264-1-84c16a8d988c-inspection-02.html",
+    "reportUrl": "http://127.0.0.1:18791/index-30124354264-1-84c16a8d988c-inspection-02.html"
+  },
+  {
+    "ts": "2026-07-24T20:38:41.787Z",
+    "type": "report.rendered",
+    "path": "index.html",
+    "verdict": "pass"
+  },
+  {
+    "ts": "2026-07-24T20:38:43.787Z",
+    "type": "report.rendered",
+    "path": "index.html",
+    "verdict": "pass"
+  },
+  {
+    "ts": "2026-07-24T20:38:58.497Z",
+    "type": "report.remote-server",
+    "ok": true,
+    "pid": "10274",
+    "url": "http://127.0.0.1:18791/index-30124354264-1-84c16a8d988c-inspection-03.html",
+    "stderr": "curl: (7) Failed to connect to 127.0.0.1 port 18791 after 0 ms: Couldn't connect to server"
+  },
+  {
+    "ts": "2026-07-24T20:39:05.211Z",
+    "type": "report.remote-open",
+    "ok": true,
+    "stdout": "",
+    "stderr": "",
+    "remoteIndex": "/tmp/nixmac-computer-use-reports/2026-07-24T203502026Z/index.html",
+    "remoteBrowserIndex": "/tmp/nixmac-computer-use-reports/2026-07-24T203502026Z/index-30124354264-1-84c16a8d988c-inspection-03.html",
+    "reportUrl": "http://127.0.0.1:18791/index-30124354264-1-84c16a8d988c-inspection-03.html"
+  },
+  {
+    "ts": "2026-07-24T20:39:14.109Z",
+    "type": "report.rendered",
+    "path": "index.html",
+    "verdict": "pass"
+  }
+]

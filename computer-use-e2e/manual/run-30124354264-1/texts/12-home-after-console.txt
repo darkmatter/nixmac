@@ -1,0 +1,53 @@
+Computer Use state (CUA App Version: 1000387)
+<app_state>
+App=/tmp/nixmac-computer-use-e2e-app-30124354264-1/nixmac.app/ (bundleID com.darkmatter.nixmac, pid 3750)
+Window: "nixmac", App: nixmac.
+0 standard window nixmac, Secondary Actions: Raise
+	1 scroll area
+		2 HTML content Description: nixmac, URL: tauri://localhost
+			3 heading nixmac, Value: 3
+				4 text nixmac
+			5 button History
+			6 button Give feedback
+			7 button Settings
+			8 content list Progress: step 1 of 3, Describe
+				9 button (disabled) Go to Describe step
+				10 button Go to Review step
+				11 button (disabled) Go to Save step
+			12 heading Get started, Value: 3
+				13 text Get started
+			14 container
+				15 text entry area (settable, string) Try: Set up my daily coding ter▍
+					16 text Try: Set up my daily coding ter▍
+				17 button (disabled) Send
+			18 text TRY
+			19 button Dev workstation For Programmers
+			20 button Previous suggestion
+			21 button Next suggestion
+			22 button Go to For Programmers
+			23 button Go to For Streamers
+			24 button Go to For Homelab Admins
+			25 button Go to For Security-Minded Users
+			26 button Go to For Designers
+			27 button Go to For Writers and Researchers
+			28 button Go to For Laptop Nomads
+			29 button Go to For Gamers
+			30 button Enable the Finder path bar and status bar
+			31 pop up button 8 untracked Homebrew items
+			32 button Report Issue
+			33 button Console
+			34 text No output yet...
+			35 container Notifications alt+T
+	36 close button
+	37 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	38 minimize button
+39 menu bar
+	40 nixmac
+	41 File
+	42 Edit
+	43 View
+	44 Window
+	45 Help
+
+The focused UI element is 33 button Console
+</app_state>
