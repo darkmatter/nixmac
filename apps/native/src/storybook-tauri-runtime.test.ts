@@ -29,4 +29,15 @@ describe("Storybook Tauri oRPC mocks", () => {
       },
     });
   });
+
+  it("handles model cache oRPC calls used by provider selectors", async () => {
+    await orpcHandlers["models.setCached"]?.({
+      provider: "claude",
+      models: ["sonnet"],
+    });
+
+    expect(await orpcHandlers["models.getCached"]?.({ provider: "claude" })).toEqual(["sonnet"]);
+    expect(await orpcHandlers["models.clearCached"]?.({ provider: "claude" })).toEqual({ ok: true });
+    expect(await orpcHandlers["models.getCached"]?.({ provider: "claude" })).toBeNull();
+  });
 });
