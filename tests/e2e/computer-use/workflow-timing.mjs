@@ -90,9 +90,11 @@ async function main() {
       category: "workflow",
       source: "github-actions",
     };
+    const finalizedPhase = { ...existing };
+    delete finalizedPhase.durationMs;
     const holder = { timing };
     recordTimingPhase(holder, {
-      ...existing,
+      ...finalizedPhase,
       endedAt: nowIso(),
       status: argValue(args, "--status", "success"),
       note: argValue(args, "--note", existing.note || ""),

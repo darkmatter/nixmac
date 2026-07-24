@@ -332,6 +332,20 @@ cap the click at three total attempts, preserve each retry in `events.json`,
 and continue to fail immediately for ordinary stale, invalid, missing, or
 non-clickable element responses.
 
+Fifteenth post-execution deviation (2026-07-24): exact click-retry head
+`2c324403a455fbcf530e17f0991b3e36619a2e82` produced successful signed Build
+run `30103065704` and fully green real-Mac run `30104215692`, including 27/27
+scenarios, continuous video, recording-aware Safari inspection, and CI-wrapper
+cleanup. Artifact inspection found one report-accuracy defect in timing
+telemetry: the continuous-recording phase retained the roughly five-second
+interim startup duration even after its final end timestamp moved three minutes
+later. The video metadata and visible report summary correctly reported the
+163.05-second recording, but the timing row disagreed with its own timestamps.
+When the workflow timing CLI finalizes a phase, discard any interim
+`durationMs` and recompute from the preserved start and new final end. Cover
+the two-stage `in_progress` then `success` lifecycle with an executable CLI
+regression test before the final exact-head qualification run.
+
 For the final qualifying run, verify all of the following:
 
 1. **Provenance**

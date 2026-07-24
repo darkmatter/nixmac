@@ -1,6 +1,8 @@
 #!/usr/bin/env node
+import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -15,6 +17,66 @@ const appServerProbePath = path.join(
 const appServerProbe = readFileSync(appServerProbePath, "utf8");
 const peekSourcePath = path.join(repoRoot, "apps/native/src-tauri/src/peek.rs");
 const peekSource = readFileSync(peekSourcePath, "utf8");
+const workflowTimingPath = path.join(
+  repoRoot,
+  "tests/e2e/computer-use/workflow-timing.mjs",
+);
+
+const timingTestDir = mkdtempSync(path.join(os.tmpdir(), "nixmac-workflow-timing-"));
+const timingTestFile = path.join(timingTestDir, "workflow-timing.json");
+const timingStartedAt = new Date(Date.now() - 10_000).toISOString();
+const timingInterimEndedAt = new Date(Date.now() - 5_000).toISOString();
+writeFileSync(
+  timingTestFile,
+  `${JSON.stringify(
+    {
+      version: 1,
+      phases: [
+        {
+          id: "continuous-screen-recording",
+          label: "Continuous remote screen recording",
+          category: "evidence",
+          status: "in_progress",
+          source: "github-actions",
+          observable: true,
+          startedAt: timingStartedAt,
+          endedAt: timingInterimEndedAt,
+          durationMs: 5_000,
+        },
+      ],
+    },
+    null,
+    2,
+  )}\n`,
+  "utf8",
+);
+const timingEnd = spawnSync(
+  process.execPath,
+  [
+    workflowTimingPath,
+    "end",
+    "--file",
+    timingTestFile,
+    "--id",
+    "continuous-screen-recording",
+    "--status",
+    "success",
+  ],
+  { encoding: "utf8" },
+);
+assert.equal(
+  timingEnd.status,
+  0,
+  `workflow timing end should succeed: ${timingEnd.stderr || timingEnd.stdout}`,
+);
+const finalizedRecordingTiming = JSON.parse(readFileSync(timingTestFile, "utf8")).phases.find(
+  (phase) => phase.id === "continuous-screen-recording",
+);
+assert.ok(
+  finalizedRecordingTiming.durationMs >= 9_000,
+  "workflow timing end should recompute duration when replacing an interim end timestamp",
+);
+rmSync(timingTestDir, { recursive: true, force: true });
 
 function section(startPattern, endPattern = null) {
   const start = workflow.search(startPattern);
