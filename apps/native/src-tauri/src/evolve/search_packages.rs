@@ -72,6 +72,35 @@ fn channel_is_registered(registry_list: &str, channel: &str) -> bool {
     })
 }
 
+/// Splits the query terms into the appropriate argument(s) for the nix search command, handling regex vs. non-regex searches.
+fn build_search_queries(query: &str, use_regex: bool) -> Result<Vec<String>> {
+    // Nix search supports regex implicitly. So if the user wants non-"regex"
+    // search, we need to pin with ^$.
+    // It also returns search results for both name and description so there
+    // is no point to have separate "search types".
+    // It also treats multiple regex arguments as separate search terms.
+    // Anchor the overall search while allowing punctuation, such as "-",
+    // between terms:
+    //
+    // "google chrome" -> ["^google", "chrome$"]
+    if use_regex {
+        return Ok(vec![query.to_string()]);
+    }
+
+    // Anchor the first and last terms to avoid partial matches, but allow punctuation between terms.
+    let anchored_query = format!("^{}$", query);
+    let terms = anchored_query
+        .split_whitespace()
+        .map(|s| s.to_string())
+        .collect::<Vec<_>>();
+
+    if terms.is_empty() {
+        anyhow::bail!("package search query cannot be empty");
+    }
+
+    Ok(terms)
+}
+
 /// Search a single channel and return a list of SearchPackageResult
 /// results.
 fn search_single_channel(
@@ -80,19 +109,12 @@ fn search_single_channel(
     use_regex: bool,
     channel: &str,
 ) -> Result<Vec<SearchPackageResult>> {
-    // Nix search supports regex implicitly. So if the user wants non-"regex"
-    // search, we need to pin it with ^$.
-    // It also returns search results for both name and description so there
-    // is no point to have separate "search types".
-    let search_query = match use_regex {
-        false => format!("^{}$", query_term), // Search in attr path (package name)
-        true => query_term.to_string(),
-    };
+    let search_queries = build_search_queries(query_term, use_regex)?;
 
     let mut cmd = Command::new("nix");
     cmd.args(["search", channel]);
 
-    cmd.arg(&search_query)
+    cmd.args(&search_queries)
         .arg("--json")
         .current_dir(config_dir)
         .env("PATH", crate::system::nix::get_nix_path())
@@ -493,5 +515,23 @@ mod tests {
             registry_list,
             "unregistered-channel"
         ));
+    }
+
+    #[test]
+    fn build_search_queries_no_regex() {
+        let query = "google chrome";
+        let use_regex = false;
+        let expected = vec!["^google", "chrome$"];
+        let result = build_search_queries(query, use_regex).unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn build_search_queries_with_regex() {
+        let query = "google chrome";
+        let use_regex = true;
+        let expected = vec!["google chrome"];
+        let result = build_search_queries(query, use_regex).unwrap();
+        assert_eq!(result, expected);
     }
 }
