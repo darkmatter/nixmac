@@ -9,6 +9,7 @@ pub(crate) mod file_ops;
 mod gitignore;
 pub mod messages;
 pub(crate) mod nix_file_editor;
+mod nixmac_ignore;
 pub mod providers;
 mod search_code;
 pub mod search_docs;
@@ -20,9 +21,6 @@ pub(crate) mod types;
 mod utils;
 
 pub mod lifecycle;
-
-/// Directories ignored by file listing and search helpers.
-pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
 use crate::evolve::utils::{escape_user_query, format_duration_secs, truncate_error};
 use crate::git::query::repo_root;
@@ -1184,6 +1182,7 @@ pub async fn generate_evolution<R: Runtime>(
     ));
 
     let gitignore_matcher = gitignore::GitignoreChecker::new(repo_root.as_path())?;
+    let nixmac_ignore_matcher = nixmac_ignore::NixmacIgnoreChecker::new(repo_root.as_path())?;
 
     // Track whether we've made any actual edits and/or build checks
     let mut made_edit = false;
@@ -1584,6 +1583,7 @@ pub async fn generate_evolution<R: Runtime>(
                         &args,
                         auto_format_nix_files,
                         gitignore_matcher.as_ref(),
+                        nixmac_ignore_matcher.as_ref(),
                         Some(&build_output_emitter),
                     );
 

@@ -1,12 +1,10 @@
 //! `list_files` tool: glob the config directory (gitignore-aware).
 
-use anyhow::{Result, anyhow};
-use log::{debug, info};
-use std::path::Component;
-
-use crate::evolve::IGNORED_DIRS;
 use crate::evolve::file_ops::{ensure_path_under_base, join_in_dir};
 use crate::evolve::messages::Tool;
+use crate::evolve::nixmac_ignore::NixmacIgnoreChecker;
+use anyhow::{Result, anyhow};
+use log::{debug, info};
 
 use super::{ToolCtx, ToolResult};
 
@@ -54,8 +52,8 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
         .gitignore_matcher
         .map(|checker| checker.visible_files())
         .transpose()?;
+    let nixmac_ignore = NixmacIgnoreChecker::new(repo_root)?;
 
-    let ignored_dirs = IGNORED_DIRS;
     let matched_files = glob::glob(full_pattern.to_str().unwrap())
         .map_err(|e| anyhow!("Invalid glob pattern: {}", e))?
         .filter_map(|p| p.ok())
@@ -77,8 +75,9 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
             continue;
         };
 
-        if let Some(Component::Normal(name)) = rel.components().next()
-            && ignored_dirs.contains(&name.to_string_lossy().as_ref())
+        if nixmac_ignore
+            .as_ref()
+            .is_some_and(|checker| checker.is_ignored(rel, false))
         {
             continue;
         }
