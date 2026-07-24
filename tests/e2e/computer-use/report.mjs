@@ -135,6 +135,38 @@ function knownLimitCount(state) {
   return knownCoverageGaps(state).length + coverageWaivers(state).length;
 }
 
+function remoteRestoreEvidence(state) {
+  const cleanupPhase = state.timing?.phases?.find((phase) => phase.id === "cleanup");
+  if (cleanupPhase?.status === "failure") {
+    return {
+      status: "fail",
+      note: `CI wrapper remote cleanup failed. ${cleanupPhase.note || "No cleanup detail was recorded."}`,
+    };
+  }
+  if (cleanupPhase?.status === "success") {
+    return {
+      status: "pass",
+      note: `CI wrapper remote cleanup passed. ${cleanupPhase.note || "Remote cleanup completed successfully."}`,
+    };
+  }
+  if (state.cleanup?.restored) {
+    return {
+      status: "pass",
+      note: state.cleanup.note || "The runner restored remote app-support state.",
+    };
+  }
+  if (state.cleanup?.attempted) {
+    return {
+      status: "fail",
+      note: state.cleanup.note || "The runner attempted remote cleanup but did not prove restore.",
+    };
+  }
+  return {
+    status: "inconclusive",
+    note: state.cleanup?.note || "Remote app-support restore status was not recorded.",
+  };
+}
+
 function prSurfaceSummary(state) {
   const pr = state.prFocus || { configured: false, userVisibleFiles: [], scenarioKeys: [] };
   if (!pr.configured) {
@@ -772,11 +804,7 @@ function renderExecutiveSummary(state, counts, evidenceSummary) {
   const coverageStatus = state.scenarios.mainCoverageFreshness?.status || "inconclusive";
   const saveStatus = state.scenarios.saveFlow?.status || "inconclusive";
   const rollbackStatus = state.scenarios.rollbackCleanup?.status || "inconclusive";
-  const remoteRestoreStatus = state.cleanup?.restored
-    ? "pass"
-    : state.cleanup?.attempted
-      ? "fail"
-      : "inconclusive";
+  const remoteRestore = remoteRestoreEvidence(state);
   const metadataStatus = state.remoteMachine && state.remoteApp ? "pass" : "inconclusive";
   const storybook = state.storybookPreview || {
     status: "not_applicable",
@@ -836,7 +864,7 @@ function renderExecutiveSummary(state, counts, evidenceSummary) {
       ${signal("Evidence health", evidenceStatus, state.scenarios.visualProofQuality?.notes?.join(" ") || "Visual/text proof quality not recorded.")}
       ${signal("Video", videoStatus, videoStatus === "pass" ? `${formatDuration((state.video.durationSeconds || 0) * 1000)} continuous remote-Mac capture with ${state.video.uniqueSampleHashes || 0} unique visual samples.` : state.video?.note || "No qualifying continuous recording attached.")}
       ${signal("Known limits", limits ? "inconclusive" : "pass", limits ? `${limits} runtime gap(s) or explicit waiver(s) need human acceptance.` : "No runtime gaps or explicit waivers recorded.")}
-      ${signal("Remote restore", remoteRestoreStatus, state.cleanup?.note || "Remote app-support restore status was not recorded.")}
+      ${signal("Remote restore", remoteRestore.status, remoteRestore.note)}
       ${signal("Step 3 save", saveStatus, "Disposable config change persisted through the save path.")}
       ${signal("Rollback cleanup", rollbackStatus, "History rollback returned the disposable config to baseline.")}
       ${signal("Remote metadata", metadataStatus, "DXU machine, app, and process metadata were captured.")}
@@ -1237,11 +1265,7 @@ function renderRawEvidence(state, screenshotHtml) {
 function renderCleanupStatus(state) {
   const rollback = state.scenarios.rollbackCleanup || { status: "inconclusive", notes: [] };
   const discard = state.scenarios.discard || { status: "inconclusive", notes: [] };
-  const remoteRestoreStatus = state.cleanup?.restored
-    ? "pass"
-    : state.cleanup?.attempted
-      ? "fail"
-      : "inconclusive";
+  const remoteRestore = remoteRestoreEvidence(state);
   return `<h2 id="cleanup">Cleanup / Restore Status</h2>
   <section class="panel cleanup-grid">
     <div class="cleanup-card">
@@ -1257,8 +1281,8 @@ function renderCleanupStatus(state) {
     </div>
     <div class="cleanup-card">
       <h3>Remote App-Support Restore</h3>
-      <p><span class="verdict ${escapeHtml(remoteRestoreStatus)}">${escapeHtml(remoteRestoreStatus)}</span></p>
-      <p>${escapeHtml(state.cleanup?.note || "No remote cleanup status recorded.")}</p>
+      <p><span class="verdict ${escapeHtml(remoteRestore.status)}">${escapeHtml(remoteRestore.status)}</span></p>
+      <p>${escapeHtml(remoteRestore.note)}</p>
     </div>
   </section>`;
 }

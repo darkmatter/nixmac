@@ -6495,6 +6495,16 @@ async function runSelfTest() {
     endedAt: "2026-05-02T00:00:03.500Z",
     note: "Synthetic phase proves timing renders in Product Proof reports.",
   });
+  addTimingPhase(renderState, {
+    id: "cleanup",
+    label: "Cleanup",
+    category: "cleanup",
+    source: "github-actions",
+    status: "success",
+    startedAt: "2026-05-02T00:00:03.500Z",
+    endedAt: "2026-05-02T00:00:04.500Z",
+    note: "Remote cleanup exited with status 0.",
+  });
   renderState.confirmationBoundaries = ["Self-test confirmation boundary."];
   renderState.video = {
     status: "available",
@@ -6556,6 +6566,11 @@ async function runSelfTest() {
     renderedHtml.includes("Continuous remote-Mac screen recording"),
     true,
     "rendered report should identify the continuous recording as primary video evidence",
+  );
+  assert.equal(
+    renderedHtml.includes("CI wrapper remote cleanup passed"),
+    true,
+    "rendered report should promote successful post-run cleanup timing to remote-restore proof",
   );
   assert.equal(
     renderedHtml.includes('href="storybook/"'),

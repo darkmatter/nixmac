@@ -296,6 +296,18 @@ helper read only committed `baseline..HEAD` paths. Consider both working-tree
 and committed source paths; retain the post-Commit requirements for a changed
 HEAD and clean worktree before accepting persistence.
 
+Twelfth post-execution deviation (2026-07-24): exact correction head
+`7fd11b908a214df3639f3268b5e5aa9bbfc019fa` produced successful signed Build
+run `30097233291` and the first fully green real-Mac run `30098093726` with
+27/27 scenarios passing. Independent artifact inspection confirmed the real
+signed app, Homebrew and provider save/rollback lifecycles, 47 screenshots,
+recording-aware Safari report inspection, and a qualifying continuous H.264
+video. The final workflow timing metadata also proved CI-wrapper remote cleanup
+completed successfully, but the regenerated executive summary still read only
+the earlier runner-owned cleanup field and labeled remote restore
+inconclusive. Derive remote-restore status from the final cleanup timing phase
+when present so the uploaded HTML agrees with its own post-run evidence.
+
 For the final qualifying run, verify all of the following:
 
 1. **Provenance**
