@@ -112,6 +112,10 @@ export function contentImage(response) {
   return response?.result?.content?.find((item) => item.type === "image")?.data ?? "";
 }
 
+export function contentImageMimeType(response) {
+  return response?.result?.content?.find((item) => item.type === "image")?.mimeType ?? "";
+}
+
 export function findElement(text, patterns) {
   const list = Array.isArray(patterns) ? patterns : [patterns];
   for (const line of text.split("\n")) {

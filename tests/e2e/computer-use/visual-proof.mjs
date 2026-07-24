@@ -1,5 +1,6 @@
 import path from "node:path";
-import { artifactFileIssue, artifactForLabel, pngDimensions } from "./artifact-utils.mjs";
+import { artifactFileIssue, artifactForLabel, imageDimensions } from "./artifact-utils.mjs";
+import { mediaToolEnvironment } from "./continuous-recording.mjs";
 import { tryRun } from "./process-utils.mjs";
 
 const visualProbeDefaults = {
@@ -24,18 +25,11 @@ export function pngSignalStats(filePath, crop = null) {
   const filters = [];
   if (crop) filters.push(`crop=${crop.w}:${crop.h}:${crop.x}:${crop.y}`);
   filters.push("signalstats", "metadata=print:file=-");
-  const result = tryRun("ffmpeg", [
-    "-hide_banner",
-    "-i",
-    filePath,
-    "-vf",
-    filters.join(","),
-    "-frames:v",
-    "1",
-    "-f",
-    "null",
-    "-",
-  ]);
+  const result = tryRun(
+    "ffmpeg",
+    ["-hide_banner", "-i", filePath, "-vf", filters.join(","), "-frames:v", "1", "-f", "null", "-"],
+    { env: mediaToolEnvironment() },
+  );
   if (!result.ok) {
     return {
       ok: false,
@@ -52,7 +46,6 @@ export function pngSignalStats(filePath, crop = null) {
 export function imageArtifactIssue(state, relativePath) {
   const baseIssue = artifactFileIssue(state, relativePath);
   if (baseIssue) return baseIssue;
-  if (!/\.png$/i.test(relativePath)) return "";
   const fullPath = path.join(state.runDir, relativePath);
   const result = pngSignalStats(fullPath);
   if (!result.ok) return `ffmpeg could not inspect the image (${result.error})`;
@@ -113,9 +106,9 @@ export function evaluateScreenshotVisualContract(state, screenshotRequirement) {
     };
   }
 
-  const imageSize = shot.imageSize || pngDimensions(fullPath);
+  const imageSize = shot.imageSize || imageDimensions(fullPath);
   if (!imageSize) {
-    checks.push(visualCheckFail("image dimensions", "Could not read PNG dimensions."));
+    checks.push(visualCheckFail("image dimensions", "Could not read image dimensions."));
   } else if (
     imageSize.width < visualProbeDefaults.minWidth ||
     imageSize.height < visualProbeDefaults.minHeight

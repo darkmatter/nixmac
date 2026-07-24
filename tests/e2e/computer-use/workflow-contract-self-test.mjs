@@ -13,6 +13,8 @@ const appServerProbePath = path.join(
   "tests/e2e/computer-use/app-server-computer-use-probe.mjs",
 );
 const appServerProbe = readFileSync(appServerProbePath, "utf8");
+const peekSourcePath = path.join(repoRoot, "apps/native/src-tauri/src/peek.rs");
+const peekSource = readFileSync(peekSourcePath, "utf8");
 
 function section(startPattern, endPattern = null) {
   const start = workflow.search(startPattern);
@@ -149,6 +151,11 @@ assert.doesNotMatch(
   remote,
   /nohup "\$CODEX_BIN" app-server/,
   "remote launch must not start app-server from the unauthenticated SSH process tree",
+);
+assert.match(
+  peekSource,
+  /"preview-indicator"[\s\S]*?\.always_on_top\(true\)[\s\S]*?\.visible\(false\)/,
+  "the auxiliary Preview indicator must start hidden so Computer Use targets the main nixmac window",
 );
 assert.ok(recordingStartIndex >= 0, "remote job must start continuous screen recording");
 assert.ok(recordingStopIndex >= 0, "remote job must collect continuous screen recording");

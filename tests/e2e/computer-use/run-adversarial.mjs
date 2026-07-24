@@ -147,6 +147,12 @@ function addSensitiveScreenshot(state) {
   return { source, dest };
 }
 
+function screenshotPathFor(state, label) {
+  const relativePath = state.screenshots.find((shot) => shot.label === label)?.path;
+  if (!relativePath) throw new Error(`${label} screenshot missing from base state`);
+  return relativePath;
+}
+
 function prepareCase(root, baseRun, id, slug) {
   const runDir = path.join(root, `${String(id).padStart(2, "0")}-${slug}`);
   rmSync(runDir, { recursive: true, force: true });
@@ -326,8 +332,8 @@ const caseDefinitions = [
     name: "Report evidence artifact corruption",
     expected:
       "visualProofQuality and the owning scenario fail when a required screenshot artifact is missing.",
-    mutate({ runDir }) {
-      rmSync(path.join(runDir, "screenshots/01-launch.png"), { force: true });
+    mutate({ runDir, state }) {
+      rmSync(path.join(runDir, screenshotPathFor(state, "launch")), { force: true });
     },
     evaluate(state) {
       return (
@@ -343,8 +349,8 @@ const caseDefinitions = [
     name: "Visual UI regression: blank/occluded screenshot",
     expected:
       "visualProofQuality and the owning scenario fail when a required screenshot is visually blank.",
-    mutate({ runDir }) {
-      createBlackPng(path.join(runDir, "screenshots/01-launch.png"));
+    mutate({ runDir, state }) {
+      createBlackPng(path.join(runDir, screenshotPathFor(state, "launch")));
     },
     evaluate(state) {
       return (
@@ -421,8 +427,8 @@ const caseDefinitions = [
     slug: "zero-byte-screenshot",
     name: "Zero-byte screenshot artifact",
     expected: "visualProofQuality fails when a linked screenshot file is empty.",
-    mutate({ runDir }) {
-      truncateSync(path.join(runDir, "screenshots/01-launch.png"), 0);
+    mutate({ runDir, state }) {
+      truncateSync(path.join(runDir, screenshotPathFor(state, "launch")), 0);
     },
     evaluate(state) {
       return (

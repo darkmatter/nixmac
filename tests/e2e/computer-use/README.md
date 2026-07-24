@@ -59,7 +59,9 @@ The runner:
   UI files, then links changed files to direct Storybook story URLs in the
   report so reviewers can inspect affected UI states before reading native
   evidence;
-- captures screenshots from `get_app_state`, not Screen Sharing;
+- captures screenshots from `get_app_state`, not Screen Sharing, and preserves
+  the returned image format (`.jpg` or `.png`) from the bytes and MCP media type
+  instead of labeling JPEG evidence as PNG;
 - captures API Keys screenshots only when raw accessibility text confirms no
   unmasked key-like secret is present; Console image artifacts are still
   omitted while retaining redacted accessibility text snapshots;
@@ -102,8 +104,10 @@ The runner:
   failures;
 - renders coverage gaps, PR-specific focus, evidence grades, primary artifact
   links, and visual proof cards with screenshot callouts plus text excerpts;
-- copies the generated report back to the remote Mac and uses Computer Use to
-  inspect it in a browser when `NIXMAC_E2E_REMOTE_SSH_DEST` is set;
+- copies the generated report back to the remote Mac, opens it as the active
+  Safari document, and requires multiple report-body markers before Computer
+  Use can count the browser inspection as proof; a matching background tab
+  title is insufficient;
 - writes `index.html`, `state.json`, `events.json`, screenshots, text
   snapshots, the continuous recording, a secondary screenshot reel, and remote
   metadata under `artifacts/computer-use-remote/<timestamp>/`.
@@ -117,11 +121,12 @@ are still missing, using the current config source rather than trusting a stale
 submitted source. Stale no-longer-missing items are silently dropped for this
 phase; the existing post-apply refetch refreshes the chip state.
 
-Planned next coverage feature: the suite should stay fresh with `main`. That
-means maintaining a scenario manifest for every major user-visible nixmac
-surface/workflow on `main`, then reporting coverage drift when a surface has no
-Computer Use scenario or explicit waiver. PR-specific focus is additive; it does
-not replace the baseline `main` coverage check.
+The suite stays fresh with `main` through a versioned coverage manifest for
+major user-visible nixmac surfaces/workflows. Every candidate must map to a
+Computer Use scenario, a managed waiver, or an explicit non-claiming
+classification with a reason. Non-claiming means the file remains visible to
+the gate but no screenshot coverage is implied. PR-specific focus is additive;
+it does not replace the baseline `main` coverage check.
 
 The evidence layer remains inside this Product Proof lane and does not modify
 core nixmac app code. Its durable contract is the runner-owned scenario catalog,
@@ -181,12 +186,11 @@ the HTML report as Main Coverage Freshness.
 
 ## PR Workflow
 
-`.github/workflows/computer-use-e2e.yml` triggers on every pull request and
-`workflow_dispatch`. On same-repository pull requests, it publishes the generated
-report to the `gh-pages` report branch and upserts one sticky PR comment with
-the verdict, counts, public hosted `index.html`, Actions run, and artifact
-backup. The workflow does not send Slack or other team
-notifications.
+`.github/workflows/computer-use-e2e.yml` is currently manual-only through
+`workflow_dispatch` while the lane is being requalified. The dormant
+same-repository PR publish/comment logic is retained for a deliberate future
+re-enable; manual runs upload artifacts but do not publish to `gh-pages`, post a
+PR comment, or send Slack/team notifications.
 
 For PRs that touch component/story files under `apps/native/src/components/**`,
 the prepare job also builds Storybook, uploads the static preview, and publishes
@@ -533,6 +537,10 @@ directory, launched from that exact staged `.app` bundle, and passed to every
 Computer Use call by absolute path. The path binding is required because DXU
 can retain diagnostic app copies with the same bundle identifier; selecting by
 bundle ID would be ambiguous and would not prove which artifact was exercised.
+The app's auxiliary always-on-top Preview indicator also starts hidden and is
+shown only when preview state requests it. Otherwise app-level Computer Use can
+select that 300x80 helper window instead of the main nixmac window even when the
+correct staged process launched.
 The workflow removes the staged bundle in cleanup and intentionally does not
 repair or replace the persistent `/Applications/nixmac.app` installation on
 DXU.

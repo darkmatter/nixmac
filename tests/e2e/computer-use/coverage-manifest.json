@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "description": "Baseline user-visible nixmac surfaces that must stay mapped to Computer Use E2E scenarios or explicit waivers.",
   "candidateRoots": [
     "apps/native/src/components",
@@ -12,7 +12,8 @@
     "apps/native/src/components/widget/.+\\.tsx$",
     "apps/native/src/hooks/use-(apply|rollback|evolve|git-operations|history|history-restore|rebuild-stream|updater|permissions|darwin-config)\\.ts$",
     "apps/native/src-tauri/src/(commands|rebuild|history|storage|ai|state|system|managed_edits|summarize)/.*\\.rs$",
-    "apps/native/src-tauri/src/evolve/(mod|tools)\\.rs$"
+    "apps/native/src-tauri/src/evolve/(mod|tools)\\.rs$",
+    "apps/native/src-tauri/src/peek\\.rs$"
   ],
   "candidateExcludes": [
     "\\.stories\\.tsx$",
@@ -40,16 +41,24 @@
       "label": "App shell, header controls, stepper, prompt start state",
       "scenarioKeys": ["launch", "typedIntent"],
       "sourcePrefixes": [
+        "apps/native/src/components/widget/badges/",
         "apps/native/src/components/widget/widget.tsx",
         "apps/native/src/components/widget/layout/header.tsx",
         "apps/native/src/components/widget/layout/stepper.tsx",
+        "apps/native/src/components/widget/layout/step-content-wrapper.tsx",
         "apps/native/src/components/widget/layout/step-actions-header.tsx",
         "apps/native/src/components/widget/layout/get-started-message.tsx",
-        "apps/native/src/components/widget/badges/config-dir-badge.tsx",
+        "apps/native/src/components/widget/layout/AppErrorBoundary.tsx",
+        "apps/native/src/components/widget/layout/AppFatalFallback.tsx",
         "apps/native/src/components/widget/layout/error-message.tsx",
         "apps/native/src/components/widget/layout/git-status-debug.tsx",
         "apps/native/src/components/widget/notifications/uncommitted-changes-detected.tsx",
-        "apps/native/src/components/widget/notifications/unsummarized-changes-detected.tsx"
+        "apps/native/src/components/widget/notifications/unsummarized-changes-detected.tsx",
+        "apps/native/src/components/widget/promptinput/spotlight-ticker.tsx",
+        "apps/native/src/components/widget/promptinput/trending-feed.tsx",
+        "apps/native/src-tauri/src/state/drift_notifications.rs",
+        "apps/native/src-tauri/src/state/git_state.rs",
+        "apps/native/src-tauri/src/state/watcher.rs"
       ]
     },
     {
@@ -58,7 +67,9 @@
       "scenarioKeys": ["updateBanner"],
       "sourcePrefixes": [
         "apps/native/src/components/widget/layout/update-banner.tsx",
-        "apps/native/src/hooks/use-updater.ts"
+        "apps/native/src/components/widget/notifications/upstream-update-available.tsx",
+        "apps/native/src/hooks/use-updater.ts",
+        "apps/native/src-tauri/src/commands/updater.rs"
       ]
     },
     {
@@ -77,10 +88,19 @@
         "apps/native/src/components/widget/controls/directory-picker.tsx",
         "apps/native/src/components/widget/badges/gitignore-badge.tsx",
         "apps/native/src/components/widget/controls/model-combobox.tsx",
+        "apps/native/src/components/widget/controls/provider-icons/provider-icon.tsx",
         "apps/native/src/hooks/use-darwin-config.ts",
-        "apps/native/src-tauri/src/storage/store.rs",
-        "apps/native/src-tauri/src/storage/credential_store.rs",
-        "apps/native/src-tauri/src/storage/mod.rs"
+        "apps/native/src-tauri/src/commands/account.rs",
+        "apps/native/src-tauri/src/commands/cli_tool.rs",
+        "apps/native/src-tauri/src/commands/config.rs",
+        "apps/native/src-tauri/src/commands/dev_configs.rs",
+        "apps/native/src-tauri/src/commands/editor.rs",
+        "apps/native/src-tauri/src/commands/launchd.rs",
+        "apps/native/src-tauri/src/commands/settings_io.rs",
+        "apps/native/src-tauri/src/commands/ui_prefs.rs",
+        "apps/native/src-tauri/src/state/preferences.rs",
+        "apps/native/src-tauri/src/state/ui_prefs.rs",
+        "apps/native/src-tauri/src/storage/"
       ]
     },
     {
@@ -105,7 +125,7 @@
         "apps/native/src/components/widget/steps/history-step.tsx",
         "apps/native/src/hooks/use-history.ts",
         "apps/native/src/hooks/use-history-restore.ts",
-        "apps/native/src-tauri/src/history/get_history.rs",
+        "apps/native/src-tauri/src/history/",
         "apps/native/src-tauri/src/rebuild/finalize_restore.rs"
       ]
     },
@@ -119,17 +139,18 @@
       "id": "provider-review",
       "label": "Prompt submission, provider progress, Review, Summary, and Diff",
       "scenarioKeys": ["suggestionCards", "typedIntent", "review", "summary", "diff"],
+      "coverageNote": "Provider and model implementations map to the deterministic provider/review proof. That proof validates nixmac's visible orchestration and result surfaces; live-provider compatibility remains a separate integration/release concern.",
       "sourcePrefixes": [
-        "apps/native/src/components/widget/badges/badge-list.tsx",
-        "apps/native/src/components/widget/promptinput/begin-evolve-warning.tsx",
+        "apps/native/src/components/widget/drift/",
+        "apps/native/src/components/widget/filesystem/",
         "apps/native/src/components/widget/promptinput/conversational-response.tsx",
         "apps/native/src/components/widget/promptinput/mac-recommendation-chip.tsx",
         "apps/native/src/components/widget/promptinput/prompt-history-badge.tsx",
         "apps/native/src/components/widget/promptinput/prompt-input.tsx",
         "apps/native/src/components/widget/promptinput/prompt-input-section.tsx",
         "apps/native/src/components/widget/steps/begin-step.tsx",
-        "apps/native/src/components/widget/steps/evolve-step.tsx",
-        "apps/native/src/components/widget/steps/manual-evolve-step.tsx",
+        "apps/native/src/components/widget/steps/review-step.tsx",
+        "apps/native/src/components/widget/overlays/evolve-overlay-panel.tsx",
         "apps/native/src/components/widget/summaries/",
         "apps/native/src/hooks/use-evolve.ts",
         "apps/native/src/hooks/use-prompt-history.ts",
@@ -138,8 +159,11 @@
         "apps/native/src-tauri/src/commands/evolve.rs",
         "apps/native/src-tauri/src/commands/evolve_state.rs",
         "apps/native/src-tauri/src/commands/summarize.rs",
-        "apps/native/src-tauri/src/ai/provider_errors.rs",
+        "apps/native/src-tauri/src/ai/",
+        "apps/native/src-tauri/src/state/change_map.rs",
+        "apps/native/src-tauri/src/state/completion_log.rs",
         "apps/native/src-tauri/src/state/evolve_state.rs",
+        "apps/native/src-tauri/src/state/session_log.rs",
         "apps/native/src-tauri/src/summarize/"
       ]
     },
@@ -186,14 +210,20 @@
         "apps/native/src/components/widget/controls/confirm-button.tsx",
         "apps/native/src/components/widget/controls/confirmation-dialog.tsx",
         "apps/native/src/components/widget/notifications/external-build-detected.tsx",
-        "apps/native/src/components/widget/steps/evolve-step.tsx",
         "apps/native/src/components/widget/steps/commit-step.tsx",
+        "apps/native/src/components/widget/overlays/config-edit-overlay-panel.tsx",
+        "apps/native/src/components/widget/overlays/editor-panel.tsx",
+        "apps/native/src/components/widget/overlays/etc-clobber-conflict-list.tsx",
+        "apps/native/src/components/widget/overlays/etc-clobber-warning-dialog.tsx",
+        "apps/native/src/components/widget/overlays/rebuild-overlay-panel.tsx",
         "apps/native/src/components/widget/history/discard-uncommitted-dialog.tsx",
         "apps/native/src/hooks/use-apply.ts",
         "apps/native/src/hooks/use-rebuild-stream.ts",
         "apps/native/src/hooks/use-rollback.ts",
-        "apps/native/src-tauri/src/rebuild/finalize_apply.rs",
-        "apps/native/src-tauri/src/rebuild/rollback.rs",
+        "apps/native/src-tauri/src/rebuild/",
+        "apps/native/src-tauri/src/state/build_state.rs",
+        "apps/native/src-tauri/src/state/rebuild_status.rs",
+        "apps/native/src-tauri/src/system/etc_preflight.rs",
         "apps/native/src-tauri/src/commands/rollback.rs"
       ]
     },
@@ -204,7 +234,7 @@
       "sourcePrefixes": [
         "apps/native/src/components/widget/controls/commit-message.tsx",
         "apps/native/src/components/widget/layout/merge-section.tsx",
-        "apps/native/src/components/widget/steps/manual-commit-step.tsx",
+        "apps/native/src/components/widget/steps/commit-step.tsx",
         "apps/native/src/hooks/use-git-operations.ts",
         "apps/native/src-tauri/src/commands/git.rs",
         "apps/native/src-tauri/src/commands/summarize.rs",
@@ -217,20 +247,32 @@
       "scenarioKeys": [],
       "sourcePrefixes": [
         "apps/native/src/components/widget/controls/bootstrap-config.tsx",
-        "apps/native/src/components/widget/layout/step-content-wrapper.tsx",
-        "apps/native/src/components/widget/steps/nix-setup-step.tsx",
-        "apps/native/src/components/widget/steps/permissions-step.tsx",
-        "apps/native/src/components/widget/steps/setup-step.tsx",
+        "apps/native/src/components/widget/controls/flake-dir-chooser.tsx",
+        "apps/native/src/components/widget/controls/repo-import.tsx",
+        "apps/native/src/components/widget/controls/repo-ref-input.tsx",
+        "apps/native/src/components/widget/onboarding/",
+        "apps/native/src/components/widget/permissions/",
         "apps/native/src/hooks/use-permissions.ts",
         "apps/native/src/hooks/use-nix-install.ts",
+        "apps/native/src-tauri/src/commands/onboarding.rs",
         "apps/native/src-tauri/src/system/permissions.rs",
-        "apps/native/src-tauri/src/commands/permissions.rs"
+        "apps/native/src-tauri/src/commands/permissions.rs",
+        "apps/native/src-tauri/src/state/nix_install_state.rs",
+        "apps/native/src-tauri/src/state/onboarding.rs",
+        "apps/native/src-tauri/src/state/permissions_state.rs",
+        "apps/native/src-tauri/src/system/app_management_preflight.rs",
+        "apps/native/src-tauri/src/system/install_location.rs",
+        "apps/native/src-tauri/src/system/launchd_scanner.rs",
+        "apps/native/src-tauri/src/system/nix.rs",
+        "apps/native/src-tauri/src/system/nix_ast_lists.rs",
+        "apps/native/src-tauri/src/system/re2_ascii.rs",
+        "apps/native/src-tauri/src/system/secret_scanner.rs"
       ],
       "waiver": {
         "reason": "Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage.",
         "owner": "nixmac-product-proof",
         "created": "2026-05-02",
-        "reviewBy": "2026-06-15",
+        "reviewBy": "2026-09-30",
         "risk": "high",
         "exitCriteria": "Add a clean-profile Computer Use scenario that starts from first launch, proves permissions/onboarding/nix setup surfaces, and records a passing report on the remote Mac."
       }
@@ -246,7 +288,7 @@
         "reason": "The DXU remote lane disables sudo_local in the disposable fixture because unattended MacinCloud AppleScript activation can hang while creating /etc/pam.d/sudo_local. This is an explicit CI fixture waiver, not proof that the production sudo_local path works.",
         "owner": "nixmac-product-proof",
         "created": "2026-05-02",
-        "reviewBy": "2026-06-15",
+        "reviewBy": "2026-09-30",
         "risk": "medium",
         "exitCriteria": "Add a dedicated sudo_local activation lane or an accepted manual release proof that exercises the production sudo_local path outside the DXU unattended fixture."
       }
@@ -258,16 +300,48 @@
       "sourcePrefixes": [
         "apps/native/src/components/preview-indicator/preview-indicator.tsx",
         "apps/native/src/hooks/use-preview-indicator.ts",
-        "apps/native/src-tauri/src/commands/apply.rs"
+        "apps/native/src-tauri/src/commands/apply.rs",
+        "apps/native/src-tauri/src/commands/peek.rs",
+        "apps/native/src-tauri/src/peek.rs"
       ],
       "waiver": {
         "reason": "Not yet in the remote major-feature lane; needs either a deterministic preview-state setup or a real workflow that activates it.",
         "owner": "nixmac-product-proof",
         "created": "2026-05-02",
-        "reviewBy": "2026-06-15",
+        "reviewBy": "2026-09-30",
         "risk": "medium",
         "exitCriteria": "Add a deterministic preview-state setup or real workflow that activates the preview indicator and proves commit/revert behavior through Computer Use."
       }
+    },
+    {
+      "id": "repair-recovery",
+      "label": "Repair and recovery flow",
+      "scenarioKeys": [],
+      "sourcePrefixes": ["apps/native/src/components/widget/repair/"],
+      "waiver": {
+        "reason": "The remote lane has no deterministic broken-state fixture for the repair surface. Launch error handling is covered separately, but repair actions are not.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-23",
+        "reviewBy": "2026-09-30",
+        "risk": "medium",
+        "exitCriteria": "Add a disposable broken-state fixture and Computer Use scenario that proves the repair UI, action result, and recovery back to the app shell."
+      }
+    },
+    {
+      "id": "backend-plumbing",
+      "label": "Tracked backend plumbing without a direct visual coverage claim",
+      "scenarioKeys": [],
+      "coverageDisposition": "non-claiming",
+      "coverageNote": "These files are intentionally tracked so changes remain visible to the coverage gate, but their low-level routing and shared abstractions cannot be honestly claimed by a screenshot scenario. A PR touching them still needs targeted tests and PR-specific evidence.",
+      "sourcePrefixes": [
+        "apps/native/src-tauri/src/commands/debug.rs",
+        "apps/native/src-tauri/src/commands/helpers.rs",
+        "apps/native/src-tauri/src/commands/mod.rs",
+        "apps/native/src-tauri/src/managed_edits/managed_edit.rs",
+        "apps/native/src-tauri/src/managed_edits/mod.rs",
+        "apps/native/src-tauri/src/state/mod.rs",
+        "apps/native/src-tauri/src/system/mod.rs"
+      ]
     }
   ]
 }

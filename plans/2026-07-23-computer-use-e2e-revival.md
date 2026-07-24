@@ -114,6 +114,27 @@ regression contract that binds every Computer Use call to the per-run staged
 `.app` path. This is a one-attempt exception, not an open retry loop; a further
 material defect returns to explicit adjudication rather than another dispatch.
 
+Second post-execution deviation (2026-07-24): the one-attempt exception reached
+the exact staged app and produced a valid continuous recording, but it exposed a
+product-level targeting defect: nixmac created its always-on-top 300x80 Preview
+indicator as visible at startup, so app-scoped Computer Use selected that
+auxiliary window instead of the main window. The same artifact also proved three
+evidence-truthfulness defects: Computer Use JPEG bytes were stored under `.png`
+names, Linux media verification inherited an incompatible Nix
+`LD_LIBRARY_PATH`, and report inspection accepted a background Safari tab title
+while the active document was blank. The coverage gate independently found a
+manifest that had drifted since the June frontend/backend restructure.
+
+These are distinct, now-reproduced implementation defects, not an unchanged
+remote retry. The repair therefore starts the Preview indicator hidden, binds
+image filenames and dimensions to actual bytes/media type, sanitizes media-tool
+environment, requires active report-body evidence, and makes current-tree
+coverage classification a self-test. One final exact-head build and real-Mac
+qualification run is required because none of those visual/evidence properties
+can be honestly accepted from the failed artifact. No further retry is
+implicitly authorized: another material result must be adjudicated against the
+acceptance contract before any new dispatch.
+
 For the final qualifying run, verify all of the following:
 
 1. **Provenance**

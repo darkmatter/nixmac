@@ -511,7 +511,7 @@ pub fn create_preview_indicator_window<R: Runtime>(app: &AppHandle<R>) -> Result
     .decorations(false)
     .transparent(true)
     .always_on_top(true)
-    .visible(true) // Start hidden
+    .visible(false) // shown only when update_preview_indicator receives visible state
     .visible_on_all_workspaces(true)
     .skip_taskbar(true)
     .build()

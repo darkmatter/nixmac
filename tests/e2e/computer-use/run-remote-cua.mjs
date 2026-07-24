@@ -7,7 +7,12 @@ import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { artifactFileIssue, artifactForLabel, pngDimensions } from "./artifact-utils.mjs";
+import {
+  artifactFileIssue,
+  artifactForLabel,
+  imageDimensions,
+  imageMetadata,
+} from "./artifact-utils.mjs";
 import { dispatchRemoteCuaCommand, remoteCuaUsage } from "./cli.mjs";
 import {
   builtInElementAddressKinds,
@@ -45,6 +50,7 @@ import {
   clickResponseIndicatesFailure,
   codexAppServerDriverDescriptor,
   contentImage,
+  contentImageMimeType,
   contentText,
   elementEntries,
   findElement,
@@ -55,6 +61,7 @@ import {
   CONTINUOUS_RECORDING_KIND,
   SCREENSHOT_REEL_KIND,
   attachContinuousRecording,
+  mediaToolEnvironment,
   readRecordingMetadata,
   runContinuousRecordingSelfTest,
 } from "./continuous-recording.mjs";
@@ -208,6 +215,18 @@ function hasAnsweredQuestionEvidence(text, answer) {
 
 function hasAny(text, patterns) {
   return patterns.some((pattern) => pattern.test(text));
+}
+
+function hasReportBodyEvidence(text) {
+  return (
+    countMatches(text, [
+      /Scenario Checklist/i,
+      /Claims vs Evidence/i,
+      /Failures \/ Open Issues/i,
+      /Continuous remote-Mac screen recording/i,
+      /Remote Machine \/ App Metadata/i,
+    ]) >= 2
+  );
 }
 
 function countMatches(text, patterns) {
@@ -501,9 +520,11 @@ function buildCoverageFreshness(state) {
   const drift = [];
   const waivers = [];
   let mapped = 0;
+  let trackedNonClaiming = 0;
 
   for (const surface of surfaces) {
     const scenarioKeys = surface.scenarioKeys || [];
+    const nonClaiming = surface.coverageDisposition === "non-claiming";
     const unknown = scenarioKeys.filter((key) => !knownScenarioKey(key));
     const missingSources = (surface.sourcePrefixes || []).filter(
       (sourcePath) => !sourcePrefixExists(sourcePath),
@@ -515,11 +536,20 @@ function buildCoverageFreshness(state) {
     }
     if (unknown.length)
       drift.push(`${surface.id} maps to unknown scenarios: ${unknown.join(", ")}`);
+    if (surface.coverageDisposition && !nonClaiming) {
+      drift.push(
+        `${surface.id} has unsupported coverageDisposition ${surface.coverageDisposition}.`,
+      );
+    }
+    if (nonClaiming && !surface.coverageNote) {
+      drift.push(`${surface.id} is non-claiming but has no coverageNote.`);
+    }
     if (missingSources.length)
       drift.push(`${surface.id} references missing source paths: ${missingSources.join(", ")}`);
-    if (!scenarioKeys.length && !surface.waiver)
-      drift.push(`${surface.id} has no scenario mapping and no waiver.`);
+    if (!scenarioKeys.length && !surface.waiver && !nonClaiming)
+      drift.push(`${surface.id} has no scenario mapping, waiver, or non-claiming classification.`);
     if (scenarioKeys.length) mapped += 1;
+    if (nonClaiming) trackedNonClaiming += 1;
   }
 
   const candidates = [
@@ -543,6 +573,7 @@ function buildCoverageFreshness(state) {
     totalSurfaces: surfaces.length,
     mappedSurfaces: mapped,
     waivedSurfaces: waivers.length,
+    trackedNonClaimingSurfaces: trackedNonClaiming,
     candidateFiles: candidates.length,
     unmappedCandidateFiles,
     waivers,
@@ -565,7 +596,7 @@ function updateMainCoverageFreshness(state) {
     drift.length ? "fail" : "pass",
     drift.length
       ? `Coverage drift detected against main: ${drift.join("; ")}${waiverNote}`
-      : `Coverage manifest v${state.coverageFreshness.manifestVersion} maps ${state.coverageFreshness.totalSurfaces} user-visible surfaces to scenarios or explicit waivers.${waiverNote}`,
+      : `Coverage manifest v${state.coverageFreshness.manifestVersion} classifies ${state.coverageFreshness.totalSurfaces} candidate surfaces as scenario-mapped, explicitly waived, or tracked non-claiming (${state.coverageFreshness.trackedNonClaimingSurfaces || 0}).${waiverNote}`,
   );
 }
 
@@ -697,7 +728,7 @@ function ensureCurrentSchema(state) {
     scenarioLabels,
     evolvedCaseStrategy,
     buildPrFocus,
-    pngDimensions,
+    pngDimensions: imageDimensions,
     env: process.env,
   });
 }
@@ -1020,23 +1051,27 @@ async function maybeGenerateEvidenceVideo(state) {
     "utf8",
   );
 
-  const result = tryRun("ffmpeg", [
-    "-y",
-    "-hide_banner",
-    "-loglevel",
-    "error",
-    "-f",
-    "concat",
-    "-safe",
-    "0",
-    "-i",
-    framesPath,
-    "-vf",
-    "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p",
-    "-movflags",
-    "+faststart",
-    videoPath,
-  ]);
+  const result = tryRun(
+    "ffmpeg",
+    [
+      "-y",
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-f",
+      "concat",
+      "-safe",
+      "0",
+      "-i",
+      framesPath,
+      "-vf",
+      "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p",
+      "-movflags",
+      "+faststart",
+      videoPath,
+    ],
+    { env: mediaToolEnvironment() },
+  );
 
   if (!result.ok) {
     assignScreenshotReel({
@@ -1178,15 +1213,23 @@ async function captureState(client, state, label, note = "") {
   }
   const sensitiveImage = /console/i.test(label) || apiKeysHasUnmaskedSecret;
   if (image && !sensitiveImage) {
-    const pngPath = path.join(state.runDir, "screenshots", `${ordinal}-${safeLabel}.png`);
-    await writeFile(pngPath, Buffer.from(image, "base64"));
-    const dimensions = pngDimensions(pngPath);
+    const imageBuffer = Buffer.from(image, "base64");
+    const metadata = imageMetadata(imageBuffer, contentImageMimeType(response));
+    const imagePath = path.join(
+      state.runDir,
+      "screenshots",
+      `${ordinal}-${safeLabel}${metadata.extension}`,
+    );
+    await writeFile(imagePath, imageBuffer);
+    const dimensions = imageDimensions(imagePath);
     state.screenshots.push({
       label,
-      path: path.relative(state.runDir, pngPath),
+      path: path.relative(state.runDir, imagePath),
       capturedAt: new Date().toISOString(),
       note: redact(note),
       source: "Codex Computer Use get_app_state image",
+      format: metadata.format,
+      mimeType: metadata.mimeType,
       ...(dimensions ? { imageSize: dimensions } : {}),
     });
   } else if (image && sensitiveImage) {
@@ -1370,25 +1413,28 @@ async function inspectReportWithComputerUse(client, state) {
     return;
   }
   const remoteIndex = `${remoteDir}/index.html`;
-  const openResult = ssh(
-    `open -a "Google Chrome" ${shellQuote(`file://${remoteIndex}`)} || open ${shellQuote(`file://${remoteIndex}`)}; sleep 2`,
-  );
+  const reportUrl = `file://${remoteIndex}`;
+  const safariScript = [
+    'tell application "Safari"',
+    "activate",
+    `make new document with properties {URL:${JSON.stringify(reportUrl)}}`,
+    "end tell",
+  ]
+    .map((line) => `-e ${shellQuote(line)}`)
+    .join(" ");
+  const openResult = ssh(`osascript ${safariScript}; sleep 3`);
   await addEvent(state, "report.remote-open", {
     ok: openResult.ok,
     stdout: redact(openResult.stdout),
     stderr: redact(openResult.stderr),
     remoteIndex,
   });
-  const browserApps = ["com.google.Chrome", "Safari", "com.apple.Safari"];
+  const browserApps = ["com.apple.Safari", "Safari"];
   for (const app of browserApps) {
     try {
       const response = await client.tool("get_app_state", { app }, 60000);
       const text = redact(contentText(response));
-      if (
-        /nixmac Computer Use|Scenario Checklist|Claims vs Evidence|Failures \/ Open Issues/i.test(
-          text,
-        )
-      ) {
+      if (hasReportBodyEvidence(text)) {
         const label = `report-inspection-${app.replace(/[^a-zA-Z0-9._-]+/g, "-")}`;
         const image = contentImage(response);
         const textOrdinal = String(state.textSnapshots.length + 1).padStart(2, "0");
@@ -1396,18 +1442,24 @@ async function inspectReportWithComputerUse(client, state) {
         await writeFile(textPath, `${text}\n`, "utf8");
         if (image) {
           const screenshotOrdinal = String(state.screenshots.length + 1).padStart(2, "0");
-          const pngPath = path.join(
+          const imageBuffer = Buffer.from(image, "base64");
+          const metadata = imageMetadata(imageBuffer, contentImageMimeType(response));
+          const imagePath = path.join(
             state.runDir,
             "screenshots",
-            `${screenshotOrdinal}-${label}.png`,
+            `${screenshotOrdinal}-${label}${metadata.extension}`,
           );
-          await writeFile(pngPath, Buffer.from(image, "base64"));
+          await writeFile(imagePath, imageBuffer);
+          const dimensions = imageDimensions(imagePath);
           state.screenshots.push({
             label: "HTML report inspection",
-            path: path.relative(state.runDir, pngPath),
+            path: path.relative(state.runDir, imagePath),
             capturedAt: new Date().toISOString(),
             note: `Computer Use inspected the generated report in ${app}.`,
             source: "Codex Computer Use get_app_state image",
+            format: metadata.format,
+            mimeType: metadata.mimeType,
+            ...(dimensions ? { imageSize: dimensions } : {}),
           });
         }
         state.textSnapshots.push({
@@ -1439,7 +1491,7 @@ async function inspectReportWithComputerUse(client, state) {
     state,
     "reportInspection",
     "fail",
-    "Computer Use could not observe the report in Chrome or Safari after opening it on the remote Mac.",
+    "Computer Use could not observe the active report body in Safari after opening it on the remote Mac.",
   );
 }
 
@@ -4039,6 +4091,12 @@ async function renderErrorReport(error, args) {
 
 async function runSelfTest() {
   await runContinuousRecordingSelfTest();
+  const currentCoverageFreshness = buildCoverageFreshness({});
+  assert.deepEqual(
+    currentCoverageFreshness.drift,
+    [],
+    `coverage-manifest.json must classify every current candidate surface: ${currentCoverageFreshness.drift.join("; ")}`,
+  );
   const launchText = `
     5 button History
     6 button Give feedback
@@ -4847,12 +4905,48 @@ async function runSelfTest() {
       result: {
         content: [
           { type: "text", text: "state text" },
-          { type: "image", data: "png" },
+          { type: "image", data: "png", mimeType: "image/png" },
         ],
       },
     }),
     "png",
     "contentImage should extract the first image response payload",
+  );
+  assert.equal(
+    contentImageMimeType({
+      result: {
+        content: [{ type: "image", data: "jpeg", mimeType: "image/jpeg" }],
+      },
+    }),
+    "image/jpeg",
+    "contentImageMimeType should preserve the Computer Use image media type",
+  );
+  const syntheticJpeg = Buffer.from([
+    0xff, 0xd8, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x00, 0x50, 0x01, 0x2c, 0x03, 0x01, 0x11, 0x00, 0x02,
+    0x11, 0x00, 0x03, 0x11, 0x00, 0xff, 0xd9,
+  ]);
+  assert.deepEqual(
+    imageMetadata(syntheticJpeg, "image/jpeg"),
+    {
+      format: "jpeg",
+      extension: ".jpg",
+      mimeType: "image/jpeg",
+      width: 300,
+      height: 80,
+    },
+    "Computer Use JPEG bytes should retain a truthful extension and dimensions",
+  );
+  assert.equal(
+    hasReportBodyEvidence("23 tab nixmac Computer Use E2E Evidence"),
+    false,
+    "a background report tab title must not satisfy report inspection",
+  );
+  assert.equal(
+    hasReportBodyEvidence(
+      "1 heading Scenario Checklist\n2 heading Claims vs Evidence\n3 text Continuous remote-Mac screen recording",
+    ),
+    true,
+    "report inspection should require multiple body-level evidence markers",
   );
   const sentMessages = [];
   class MockWebSocket {
