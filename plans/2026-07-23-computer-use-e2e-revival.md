@@ -248,6 +248,25 @@ verified and included in the final implementation/evidence review but are not
 called qualified without a future exact-head real-Mac pass. Do not dispatch a
 fourth run silently.
 
+Ninth post-execution deviation (2026-07-24): the final independent
+Claude/Fable implementation-and-evidence review found that the corrected
+provider wait was followed by an unanchored `Build & Test` click. In the
+recorded AX ordering, that matcher selected the preceding informational banner
+instead of the button. It also found three default-off evolved-case waits that
+retained the stale provider-ready predicate, a 20-second commit-message budget
+shorter than measured provider latency, and an immediate post-discard verdict
+that did not allow the rollback rebuild to finish. These safe local review
+findings were applied with a banner-inclusive selector regression assertion,
+then the local contract suites were rerun. This does not change the qualification
+boundary: the post-review head still requires a future exact-head real-Mac pass
+and the exhausted three-attempt bound still forbids silently dispatching
+another run.
+
+Post-review validation passed: runner self-test, workflow-contract self-test,
+preservation harness, the 28-case adversarial replay against run `30090161104`,
+`git diff --check`, targeted oxlint (zero errors, eight existing warnings), and
+the full repository check (zero errors, 164 existing warnings).
+
 For the final qualifying run, verify all of the following:
 
 1. **Provenance**

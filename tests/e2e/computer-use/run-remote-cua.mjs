@@ -1914,7 +1914,10 @@ async function prepareStep3Commit(client, state, text, prefix, name) {
       `${prefix}-commit-ready`,
       (candidate) => (isCommitFormReady(candidate) ? "ready" : null),
       {
-        attempts: Number(process.env.NIXMAC_E2E_COMMIT_READY_ATTEMPTS || 20),
+        // Commit-message generation uses the configured provider. Keep this
+        // aligned with the measured real-Mac summary latency rather than
+        // failing a healthy provider response after only twenty seconds.
+        attempts: Number(process.env.NIXMAC_E2E_COMMIT_READY_ATTEMPTS || 90),
         delayMs: Number(process.env.NIXMAC_E2E_COMMIT_READY_DELAY_MS || 1000),
       },
     );
@@ -1975,7 +1978,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
     state,
     text,
     `${labels.name} Build & Test`,
-    [/Build & Test/i, /Build/i],
+    [/^button Build & Test(?:\s|$)/i],
     `Click Build & Test for ${labels.name}.`,
   );
   if (!buildClicked) {
@@ -2392,8 +2395,7 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
     state,
     `evolved-${caseDef.id}-provider-progress`,
     (candidate) => {
-      if (/heading Review|button Build & Test|button Discard|Summary|Diff/i.test(candidate))
-        return "review";
+      if (isProviderReviewReady(candidate)) return "review";
       if (/Payment Required|Insufficient credits|out of credits|billing limit/i.test(candidate))
         return "billing-error";
       if (
@@ -2589,8 +2591,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     (candidate) => {
       if (findQuestionInputEntry(candidate)) return "text-input";
       if (findQuestionChoiceEntry(candidate, caseDef.questionChoicePatterns || [])) return "choice";
-      if (/heading Review|button Build & Test|button Discard|Summary|Diff/i.test(candidate))
-        return "review-without-question";
+      if (isProviderReviewReady(candidate)) return "review-without-question";
       if (/Payment Required|Insufficient credits|out of credits|billing limit/i.test(candidate))
         return "billing-error";
       if (
@@ -2730,8 +2731,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     state,
     `evolved-${caseDef.id}-provider-progress`,
     (candidate) => {
-      if (/heading Review|button Build & Test|button Discard|Summary|Diff/i.test(candidate))
-        return "review";
+      if (isProviderReviewReady(candidate)) return "review";
       if (/Waiting for next event/i.test(candidate) && !answerWait.ok) return null;
       if (/Payment Required|Insufficient credits|out of credits|billing limit/i.test(candidate))
         return "billing-error";
@@ -3608,7 +3608,7 @@ async function runSuite(args) {
         state,
         text,
         "Build & Test",
-        [/Build & Test/i, /Build/i],
+        [/^button Build & Test(?:\s|$)/i],
         "Click Build & Test boundary.",
       );
       if (buildClicked) {
@@ -4083,12 +4083,30 @@ async function runSuite(args) {
             [/Cancel/i, /Close/i, /^button ×/i, /^button X/i],
             "Exit Discard dialog without confirming.",
           );
-        text = await captureState(
-          client,
-          state,
-          "after-discard",
-          "Computer Use exited Discard flow.",
-        );
+        let discardExit = null;
+        if (canConfirmDiscard && exitedDiscard) {
+          discardExit = await waitFor(
+            client,
+            state,
+            "after-discard",
+            (candidate) =>
+              /Progress: step 1 of 3|Get started/i.test(candidate) ? "start" : null,
+            {
+              // Confirming discard can rebuild the previous generation. Give
+              // it the same bounded real-Mac budget as History restore.
+              attempts: Number(process.env.NIXMAC_E2E_DISCARD_ATTEMPTS || 80),
+              delayMs: Number(process.env.NIXMAC_E2E_DISCARD_DELAY_MS || 5000),
+            },
+          );
+          text = discardExit.text;
+        } else {
+          text = await captureState(
+            client,
+            state,
+            "after-discard",
+            "Computer Use exited Discard flow.",
+          );
+        }
         if (!boundary) {
           updateScenario(
             state,
@@ -4105,7 +4123,7 @@ async function runSuite(args) {
           );
           state.failures.push("Discard confirmation was not reachable in disposable mode.");
         } else if (canConfirmDiscard) {
-          const returnedToStart = exitedDiscard && /Progress: step 1 of 3|Get started/i.test(text);
+          const returnedToStart = exitedDiscard && discardExit?.result === "start";
           updateScenario(
             state,
             "discard",
@@ -5356,6 +5374,7 @@ async function runSelfTest() {
   );
   const providerReviewReadyText = `
     8 content list Progress: step 2 of 3, Review
+    15 text Press  Build & Test  to activate the changes you asked for. Reviewing the diffs below is optional.
     18 text Proposed changes 1 modified
     20 tab (selected) Semantic
     21 tab (selectable) Diff
@@ -5366,6 +5385,11 @@ async function runSelfTest() {
     isProviderReviewReady(providerReviewReadyText),
     true,
     "provider Review readiness should require settled Semantic/Diff tabs and a review action",
+  );
+  assert.equal(
+    findElement(providerReviewReadyText, [/^button Build & Test(?:\s|$)/i]),
+    "28",
+    "Build & Test lookup must select the actionable button instead of the earlier banner text",
   );
   const currentSaveStepText = `
     8 content list Progress: step 3 of 3, Save
