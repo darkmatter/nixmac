@@ -24,10 +24,6 @@ use std::path::{Path, PathBuf};
 /// Directories always ignored by file listing and search helpers.
 const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
-pub fn get_always_ignored_dirs() -> Vec<String> {
-    IGNORED_DIRS.iter().map(|s| s.to_string()).collect()
-}
-
 pub(crate) struct NixmacIgnoreChecker {
     repo_root: PathBuf,
     matcher: Gitignore,
@@ -123,6 +119,13 @@ impl NixmacIgnoreChecker {
         // );
         ignored
     }
+}
+
+/// Returns the list of directories that are always ignored by the evolution agent.
+/// This is used to more proactively filter in ripgrep searches and other file listing operations,
+/// so that we don't waste time searching in directories that are always eventually ignored.
+pub(crate) fn get_always_ignored_dirs() -> &'static [&'static str] {
+    &IGNORED_DIRS
 }
 
 #[cfg(test)]
