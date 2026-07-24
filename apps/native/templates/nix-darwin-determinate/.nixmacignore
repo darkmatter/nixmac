@@ -1,4 +1,4 @@
-# .nixmacignore contains Files and directories listed here are excluded from nixmac agent exploration and changes.
+# .nixmacignore: files and directories listed here are excluded from nixmac agent exploration and changes.
 # Patterns use .gitignore syntax and apply even to files tracked by Git.
 # Examples:
 #

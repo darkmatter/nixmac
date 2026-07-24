@@ -121,6 +121,13 @@ impl NixmacIgnoreChecker {
     }
 }
 
+/// Returns the list of directories that are always ignored by the evolution agent.
+/// This is used to more proactively filter in ripgrep searches and other file listing operations,
+/// so that we don't waste time searching in directories that are always eventually ignored.
+pub(crate) fn get_always_ignored_dirs() -> &'static [&'static str] {
+    &IGNORED_DIRS
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

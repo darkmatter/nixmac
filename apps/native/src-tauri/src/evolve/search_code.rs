@@ -1,7 +1,7 @@
-use crate::evolve::nixmac_ignore::NixmacIgnoreChecker;
-
 use super::gitignore::{GitignoreChecker, VisibleFiles};
+use super::nixmac_ignore::get_always_ignored_dirs;
 use super::utils::truncate_error;
+use crate::evolve::nixmac_ignore::NixmacIgnoreChecker;
 use anyhow::{Result, anyhow};
 use log::info;
 use serde_json::Value;
@@ -35,6 +35,12 @@ pub fn execute_search_code(
     // Do not pass --max-count here: that flag caps matches *per file*, so the
     // total output could still far exceed MAX_SEARCH_RESULTS across many files.
     // The global cap is enforced in format_rg_json_matches instead.
+
+    // Exclude common ignored directories from ripgrep results by adding
+    // negative glob patterns (e.g. `!.git/**/*`).
+    for d in get_always_ignored_dirs() {
+        cmd.arg("--glob").arg(format!("!{}/**/*", d));
+    }
 
     if let Some(fp) = file_pattern {
         // Keep glob semantics for ripgrep while disallowing directory escapes.
@@ -94,6 +100,9 @@ pub fn execute_search_code(
             grep_cmd
                 .arg("--max-count")
                 .arg(MAX_SEARCH_RESULTS.to_string());
+            for d in get_always_ignored_dirs() {
+                grep_cmd.arg(format!("--exclude-dir={}", d));
+            }
             let output = grep_cmd.arg(pattern).arg(".").current_dir(base).output()?;
             let stdout = String::from_utf8_lossy(&output.stdout);
             let filtered = filter_grep_matches(&stdout, visible.as_ref(), nixmac_ignore);
