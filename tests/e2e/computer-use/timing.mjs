@@ -34,11 +34,14 @@ function normalizeTimingPhase(input = {}) {
   const startedAt = input.startedAt || input.start || null;
   const endedAt = input.endedAt || input.end || null;
   const computedDurationMs = durationMsBetween(startedAt, endedAt);
+  const hasTimestampPair = Boolean(startedAt && endedAt);
+  const invalidTimestampRange = hasTimestampPair && computedDurationMs === null;
   const hasExplicitDuration =
     input.durationMs !== undefined && input.durationMs !== null && input.durationMs !== "";
   const numericDuration = Number(input.durationMs);
-  const durationMs =
-    hasExplicitDuration && Number.isFinite(numericDuration) && numericDuration >= 0
+  const durationMs = invalidTimestampRange
+    ? null
+    : hasExplicitDuration && Number.isFinite(numericDuration) && numericDuration >= 0
       ? Math.round(numericDuration)
       : computedDurationMs;
   const status = knownStatuses.has(input.status)

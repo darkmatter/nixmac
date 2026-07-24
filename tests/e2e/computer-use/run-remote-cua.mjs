@@ -646,6 +646,7 @@ function updatePrSpecificCoverage(state) {
       "prSpecificCoverage",
       "pass",
       "No PR metadata was provided, so the optional PR-specific focus lane was not applicable for this run.",
+      { exercised: false },
     );
   } else if (!state.prFocus.changedFiles?.length) {
     updateScenario(
@@ -721,6 +722,7 @@ function updateStorybookPreviewCoverage(state) {
       "storybookPreview",
       "pass",
       "No changed frontend UI source files were detected, so a Storybook preview was not required.",
+      { exercised: false },
     );
     return;
   }
@@ -802,6 +804,13 @@ function assertionTypesForScenario(key, proof = scenarioProofCatalog[key] || {})
 function evidenceStrengthForScenario(state, key) {
   const scenario = state.scenarios?.[key];
   const proof = proofForScenario(state, key);
+  if (scenario?.exercised === false) {
+    return {
+      strength: "not-proved",
+      reason:
+        "The scenario outcome was recorded without exercising its interaction, so no positive evidence strength is assigned.",
+    };
+  }
   if (!scenario || scenario.status !== "pass") {
     return {
       strength: "not-proved",
@@ -834,7 +843,10 @@ function evidenceStrengthForScenario(state, key) {
     weak: "The claim depends on sparse text, calibration, or intentionally limited artifacts.",
     "not-proved": "The scenario is skipped, inconclusive, or lacks sufficient proof artifacts.",
   };
-  return { strength, reason: reasonByStrength[strength] || reasonByStrength["not-proved"] };
+  return {
+    strength,
+    reason: reasonByStrength[strength] || reasonByStrength["not-proved"],
+  };
 }
 
 function classifyScenarioResult(key, scenario) {
@@ -882,20 +894,35 @@ function classifyScenarioResult(key, scenario) {
     ) ||
     /Coverage|Freshness|prSpecificCoverage/.test(key)
   ) {
-    return { class: "coverage", reason: "Coverage or mapping wording was detected." };
+    return {
+      class: "coverage",
+      reason: "Coverage or mapping wording was detected.",
+    };
   }
   if (
     /blank WebView|did not visibly|did not show|missing|not visible|no Restore|boundary was missing|wrong content|mismatch/i.test(
       note,
     )
   ) {
-    return { class: "app", reason: "App UI/state mismatch wording was detected." };
+    return {
+      class: "app",
+      reason: "App UI/state mismatch wording was detected.",
+    };
   }
-  return { class: "inconclusive", reason: "No more specific failure class matched." };
+  return {
+    class: "inconclusive",
+    reason: "No more specific failure class matched.",
+  };
 }
 
 function accessibilityRiskForScenario(state, key) {
   const scenario = state.scenarios?.[key];
+  if (scenario?.exercised === false) {
+    return {
+      risk: "low",
+      reason: "The interaction was not exercised, so no accessibility assertion is claimed.",
+    };
+  }
   const proof = proofForScenario(state, key);
   const assertionTypes = assertionTypesForScenario(key, proof);
   if (assertionTypes.includes("remote_state") || assertionTypes.includes("coverage_manifest")) {
@@ -927,7 +954,11 @@ function accessibilityRiskForScenario(state, key) {
 
 function buildScenarioContract(state, key) {
   const proof = proofForScenario(state, key);
-  const scenario = state.scenarios?.[key] || { status: "inconclusive", notes: [] };
+  const scenario = state.scenarios?.[key] || {
+    status: "inconclusive",
+    notes: [],
+  };
+  const exercised = scenario.exercised !== false;
   const failure = classifyScenarioResult(key, scenario);
   const evidence = evidenceStrengthForScenario(state, key);
   const accessibility = accessibilityRiskForScenario(state, key);
@@ -936,10 +967,11 @@ function buildScenarioContract(state, key) {
     id: key,
     label: scenario.label || scenarioLabels[key] || key,
     status: scenario.status || "inconclusive",
-    legacyEvidenceGrade: proof.grade,
+    exercised,
+    legacyEvidenceGrade: exercised ? proof.grade : "not-run",
     evidenceStrength: evidence.strength,
     evidenceStrengthReason: evidence.reason,
-    assertionTypes: assertionTypesForScenario(key, proof),
+    assertionTypes: exercised ? assertionTypesForScenario(key, proof) : [],
     failureClass: failure.class,
     failureClassReason: failure.reason,
     accessibilityRisk: accessibility.risk,
@@ -958,6 +990,7 @@ function updateV2Contracts(state) {
     scenarioContracts[key] = buildScenarioContract(state, key);
     state.scenarios[key].evidenceStrength = scenarioContracts[key].evidenceStrength;
     state.scenarios[key].evidenceStrengthReason = scenarioContracts[key].evidenceStrengthReason;
+    state.scenarios[key].exercised = scenarioContracts[key].exercised;
     state.scenarios[key].assertionTypes = scenarioContracts[key].assertionTypes;
     state.scenarios[key].failureClass = scenarioContracts[key].failureClass;
     state.scenarios[key].failureClassReason = scenarioContracts[key].failureClassReason;
@@ -1219,6 +1252,14 @@ async function baseState(runDir, options) {
   });
 }
 
+function nextArtifactOrdinal(state) {
+  const ordinals = [...(state.textSnapshots || []), ...(state.screenshots || [])]
+    .map((item) => path.basename(item.path || "").match(/^(\d+)-/)?.[1])
+    .map(Number)
+    .filter(Number.isFinite);
+  return String((ordinals.length ? Math.max(...ordinals) : 0) + 1).padStart(2, "0");
+}
+
 async function captureState(client, state, label, note = "") {
   let response = await client.tool("get_app_state", { app: state.app }, 90000);
   let rawText = contentText(response);
@@ -1235,7 +1276,7 @@ async function captureState(client, state, label, note = "") {
   }
   const image = contentImage(response);
   const safeLabel = label.replace(/[^a-zA-Z0-9._-]+/g, "-");
-  const ordinal = String(state.textSnapshots.length + 1).padStart(2, "0");
+  const ordinal = nextArtifactOrdinal(state);
   const textPath = path.join(state.runDir, "texts", `${ordinal}-${safeLabel}.txt`);
   await writeFile(textPath, `${text}\n`, "utf8");
   state.textSnapshots.push({
@@ -1298,8 +1339,7 @@ async function clickByPattern(client, state, text, label, patterns, note = "") {
 }
 
 function isProviderReviewReady(text) {
-  const providerStillRunning =
-    /button Stop(?:\s|$)|text Evolving(?:…|\.\.\.)/i.test(text);
+  const providerStillRunning = /button Stop(?:\s|$)|text Evolving(?:…|\.\.\.)/i.test(text);
   const reviewTabsVisible =
     /tab(?: \(selected\)| \(selectable\))? Semantic(?:\s|$)/i.test(text) &&
     /tab(?: \(selected\)| \(selectable\))? Diff(?:\s|$)/i.test(text);
@@ -1331,10 +1371,7 @@ function isStep3Ready(text) {
 }
 
 function isCommitReady(text) {
-  return (
-    /button Commit(?:\s|$)/i.test(text) &&
-    !/button \(disabled\) Commit(?:\s|$)/i.test(text)
-  );
+  return /button Commit(?:\s|$)/i.test(text) && !/button \(disabled\) Commit(?:\s|$)/i.test(text);
 }
 
 function isCommitFormReady(text) {
@@ -1386,16 +1423,18 @@ function isTransientComputerUseConnectionFailure(value) {
   return /^\s*remoteConnection\s*$/i.test(String(value || ""));
 }
 
+function isRetrySafeClickLabel(label) {
+  return !/\b(?:confirm|discard|delete|remove|commit|keep changes|build & test|restore)\b/i.test(
+    String(label || ""),
+  );
+}
+
 async function clickElementIndex(client, state, elementIndex, label, note = "") {
-  const maxAttempts = 3;
+  const maxAttempts = isRetrySafeClickLabel(label) ? 3 : 1;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     let response;
     try {
-      response = await client.tool(
-        "click",
-        { app: state.app, element_index: elementIndex },
-        60000,
-      );
+      response = await client.tool("click", { app: state.app, element_index: elementIndex }, 60000);
     } catch (error) {
       const errorText = redact(error instanceof Error ? error.message : String(error));
       if (attempt < maxAttempts && isTransientComputerUseConnectionFailure(errorText)) {
@@ -1649,17 +1688,16 @@ async function inspectReportWithComputerUse(
         ) {
           const label = `report-inspection-${app.replace(/[^a-zA-Z0-9._-]+/g, "-")}`;
           const image = contentImage(response);
-          const textOrdinal = String(state.textSnapshots.length + 1).padStart(2, "0");
-          const textPath = path.join(state.runDir, "texts", `${textOrdinal}-${label}.txt`);
+          const artifactOrdinal = nextArtifactOrdinal(state);
+          const textPath = path.join(state.runDir, "texts", `${artifactOrdinal}-${label}.txt`);
           await writeFile(textPath, `${text}\n`, "utf8");
           if (image) {
-            const screenshotOrdinal = String(state.screenshots.length + 1).padStart(2, "0");
             const imageBuffer = Buffer.from(image, "base64");
             const metadata = imageMetadata(imageBuffer, contentImageMimeType(response));
             const imagePath = path.join(
               state.runDir,
               "screenshots",
-              `${screenshotOrdinal}-${label}${metadata.extension}`,
+              `${artifactOrdinal}-${label}${metadata.extension}`,
             );
             await writeFile(imagePath, imageBuffer);
             const dimensions = imageDimensions(imagePath);
@@ -1940,13 +1978,33 @@ async function restoreManagedEditViaHistory(client, state, text, labels) {
           `${labels.prefix}-after-history-restore`,
           `Computer Use completed History restore cleanup after ${labels.name}.`,
         );
-        return { ok: restored.ok, text, method: "history-restore", snapshot: restored.snapshot };
+        return {
+          ok: restored.ok,
+          text,
+          method: "history-restore",
+          snapshot: restored.snapshot,
+        };
       }
-      return { ok: false, text, method: "history-restore", reason: "confirm-restore-unreachable" };
+      return {
+        ok: false,
+        text,
+        method: "history-restore",
+        reason: "confirm-restore-unreachable",
+      };
     }
-    return { ok: false, text, method: "history-restore", reason: "restore-control-unreachable" };
+    return {
+      ok: false,
+      text,
+      method: "history-restore",
+      reason: "restore-control-unreachable",
+    };
   }
-  return { ok: false, text, method: "history-restore", reason: "history-unreachable" };
+  return {
+    ok: false,
+    text,
+    method: "history-restore",
+    reason: "history-unreachable",
+  };
 }
 
 async function externallyRestoreManagedEdit(client, state, labels) {
@@ -1958,7 +2016,12 @@ async function externallyRestoreManagedEdit(client, state, labels) {
     `${labels.prefix}-external-restore`,
     `Computer Use relaunched after external cleanup for ${labels.name}.`,
   );
-  return { ok: restored.ok, text, method: "external-restore", snapshot: restored.snapshot };
+  return {
+    ok: restored.ok,
+    text,
+    method: "external-restore",
+    snapshot: restored.snapshot,
+  };
 }
 
 async function prepareStep3Commit(client, state, text, prefix, name) {
@@ -2151,13 +2214,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
     `${labels.prefix}-step-3-ready`,
     `Computer Use reached Step 3 after ${labels.name} Build & Test.`,
   );
-  const commitForm = await prepareStep3Commit(
-    client,
-    state,
-    text,
-    labels.prefix,
-    labels.name,
-  );
+  const commitForm = await prepareStep3Commit(client, state, text, labels.prefix, labels.name);
   text = commitForm.text;
 
   if (
@@ -2249,6 +2306,7 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
       scenarioKey,
       "pass",
       `${config.name} chip was not visible, so there were no ${config.absentNoun} to save in this run.`,
+      { exercised: false },
     );
     return text;
   }
@@ -2354,10 +2412,7 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
           );
         }
         await new Promise((resolve) =>
-          setTimeout(
-            resolve,
-            Number(process.env.NIXMAC_E2E_MANAGED_REVIEW_DELAY_MS || 1000),
-          ),
+          setTimeout(resolve, Number(process.env.NIXMAC_E2E_MANAGED_REVIEW_DELAY_MS || 1000)),
         );
         text = await captureState(
           client,
@@ -2423,8 +2478,8 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
     enteredAfterNavigation
       ? `${result.note} The runner used the enabled Review step after proving the managed mutation in disposable git state.`
       : recoveredAfterRelaunch
-      ? `${result.note} The Add to config mutation persisted, but the in-process Review transition required a verified relaunch recovery.`
-      : result.note,
+        ? `${result.note} The Add to config mutation persisted, but the in-process Review transition required a verified relaunch recovery.`
+        : result.note,
   );
   if (!result.ok) state.failures.push(result.note);
   return result.text;
@@ -3845,14 +3900,14 @@ async function runSuite(args) {
               text = commitForm.text;
               if (
                 commitForm.ok &&
-                await clickByPattern(
+                (await clickByPattern(
                   client,
                   state,
                   text,
                   "Commit changes",
                   [/^button Commit(?:\s|$)/i],
                   "Commit Step 3 changes.",
-                )
+                ))
               ) {
                 const committed = await waitForRemoteGit(
                   state,
@@ -4182,6 +4237,7 @@ async function runSuite(args) {
           "discard",
           "pass",
           "Discard was intentionally not exercised because the stronger Step 3 save plus History restore cleanup path returned the disposable config to baseline.",
+          { exercised: false },
         );
       } else if (activationAuthRequired(text)) {
         updateScenario(
@@ -4244,8 +4300,7 @@ async function runSuite(args) {
             client,
             state,
             "after-discard",
-            (candidate) =>
-              /Progress: step 1 of 3|Get started/i.test(candidate) ? "start" : null,
+            (candidate) => (/Progress: step 1 of 3|Get started/i.test(candidate) ? "start" : null),
             {
               // Confirming discard can rebuild the previous generation. Give
               // it the same bounded real-Mac budget as History restore.
@@ -4479,13 +4534,18 @@ async function loadExistingRunState(runDir) {
 async function renderExisting(args) {
   const runDir = argValue(args, "--run-dir", "");
   if (!runDir) throw new Error("render-existing requires --run-dir <path>");
+  const persistState = args.includes("--persist-state");
   const statePath = path.join(runDir, "state.json");
   const original = JSON.parse(await readFile(statePath, "utf8"));
   const state = ensureCurrentSchema({
     ...original,
     runDir,
-    regeneratedFrom: "state.json",
-    regeneratedAt: new Date().toISOString(),
+    ...(persistState
+      ? { authoritativeRefreshedAt: new Date().toISOString() }
+      : {
+          regeneratedFrom: "state.json",
+          regeneratedAt: new Date().toISOString(),
+        }),
   });
   await mergeWorkflowTimingsFromArgs(state, args);
 
@@ -4498,7 +4558,10 @@ async function renderExisting(args) {
   }));
   updateMainCoverageFreshness(state);
   updatePrSpecificCoverage(state);
-  await render(state, { stateFileName: "state.regenerated.json", recordEvent: false });
+  await render(state, {
+    stateFileName: persistState ? "state.json" : "state.regenerated.json",
+    recordEvent: false,
+  });
   console.log(path.join(runDir, "index.html"));
 }
 
@@ -4587,7 +4650,9 @@ async function inspectExisting(args) {
   const client = new AppServerClient(process.env.NIXMAC_COMPUTER_USE_WS || DEFAULT_WS);
   try {
     await client.connect();
-    await inspectReportWithComputerUse(client, state, { requireContinuousRecording: true });
+    await inspectReportWithComputerUse(client, state, {
+      requireContinuousRecording: true,
+    });
     if (state.scenarios.reportInspection.status !== "pass") {
       await render(state);
       throw new Error("Computer Use could not validate the recording-aware report");
@@ -4602,7 +4667,9 @@ async function inspectExisting(args) {
       "Recording-aware report body and provenance loaded; capturing the final passing document.",
     );
     await render(state);
-    await inspectReportWithComputerUse(client, state, { requireContinuousRecording: true });
+    await inspectReportWithComputerUse(client, state, {
+      requireContinuousRecording: true,
+    });
     refreshVisualProofQuality(state);
     updatePrSpecificCoverage(state);
     await render(state);
@@ -4653,7 +4720,9 @@ async function runSelfTest() {
     os.tmpdir(),
     `nixmac-report-inspection-cleanup-${Date.now()}`,
   );
-  await mkdir(path.join(reportCleanupRunDir, "screenshots"), { recursive: true });
+  await mkdir(path.join(reportCleanupRunDir, "screenshots"), {
+    recursive: true,
+  });
   await mkdir(path.join(reportCleanupRunDir, "texts"), { recursive: true });
   await writeFile(
     path.join(reportCleanupRunDir, "screenshots", "01-old-report.png"),
@@ -4663,7 +4732,10 @@ async function runSelfTest() {
   const reportCleanupState = {
     runDir: reportCleanupRunDir,
     screenshots: [
-      { label: "HTML report inspection", path: "screenshots/01-old-report.png" },
+      {
+        label: "HTML report inspection",
+        path: "screenshots/01-old-report.png",
+      },
       { label: "Launch", path: "screenshots/02-launch.png" },
     ],
     textSnapshots: [
@@ -4804,23 +4876,35 @@ async function runSelfTest() {
     "redact should mask Bearer tokens",
   );
   assert.equal(
-    verdictFor({ scenarios: { launch: { status: "pass" }, review: { status: "fail" } } }),
+    verdictFor({
+      scenarios: { launch: { status: "pass" }, review: { status: "fail" } },
+    }),
     "fail",
     "verdictFor should fail when any scenario fails",
   );
   assert.equal(
-    verdictFor({ scenarios: { launch: { status: "pass" }, review: { status: "inconclusive" } } }),
+    verdictFor({
+      scenarios: {
+        launch: { status: "pass" },
+        review: { status: "inconclusive" },
+      },
+    }),
     "inconclusive",
     "verdictFor should be inconclusive when no scenario fails but one is inconclusive",
   );
   assert.equal(
-    verdictFor({ scenarios: { launch: { status: "pass" }, review: { status: "pass" } } }),
+    verdictFor({
+      scenarios: { launch: { status: "pass" }, review: { status: "pass" } },
+    }),
     "pass",
     "verdictFor should pass when all scenarios pass",
   );
   assert.equal(
     verdictFor({
-      scenarios: { storybookPreview: { status: "pass" }, launch: { status: "not_required" } },
+      scenarios: {
+        storybookPreview: { status: "pass" },
+        launch: { status: "not_required" },
+      },
     }),
     "pass",
     "verdictFor should ignore explicitly not-required scenarios",
@@ -4868,6 +4952,12 @@ async function runSelfTest() {
     "pass",
     "Recovered with Bearer abcdefghijklmnopqrstuvwxyz",
   );
+  updateScenario(
+    stateHelperState,
+    "sample",
+    "pass",
+    "Recovered with Bearer abcdefghijklmnopqrstuvwxyz",
+  );
   assert.equal(
     stateHelperState.scenarios.sample.status,
     "pass",
@@ -4880,8 +4970,19 @@ async function runSelfTest() {
   );
   assert.deepEqual(
     stateHelperState.claims,
-    [{ claim: "Sample scenario", status: "pass", evidence: "Recovered with Bearer [REDACTED]" }],
+    [
+      {
+        claim: "Sample scenario",
+        status: "pass",
+        evidence: "Recovered with Bearer [REDACTED]",
+      },
+    ],
     "updateScenario should upsert a redacted claim for the scenario label",
+  );
+  assert.equal(
+    stateHelperState.scenarios.sample.notes.length,
+    2,
+    "updateScenario should not duplicate an identical scenario note during report regeneration",
   );
   addNarrative(stateHelperState, "Narrative includes OPENROUTER_API_KEY=sk-or-v1-1234567890abcdef");
   assert.equal(
@@ -4889,7 +4990,9 @@ async function runSelfTest() {
     "Narrative includes OPENROUTER_API_KEY=[REDACTED]",
     "addNarrative should redact narrative text",
   );
-  await addEvent(stateHelperState, "state.self-test", { detail: "event detail" });
+  await addEvent(stateHelperState, "state.self-test", {
+    detail: "event detail",
+  });
   assert.deepEqual(
     JSON.parse(await readFile(path.join(stateHelperRunDir, "events.json"), "utf8")).map(
       (event) => event.type,
@@ -4909,14 +5012,24 @@ async function runSelfTest() {
       runDir: stateHelperRunDir,
       scenarios: {
         sample: { label: "Old sample label", status: "pass", notes: [] },
-        videoEvidence: { label: "Legacy video evidence", status: "pass", notes: [] },
+        videoEvidence: {
+          label: "Legacy video evidence",
+          status: "pass",
+          notes: [],
+        },
       },
       screenshots: [{ label: "sample-shot", path: "screenshots/sample.png" }],
     },
     {
       scenarioLabels: { sample: "Sample scenario", added: "Added scenario" },
-      evolvedCaseStrategy: () => ({ defaultCaseId: "homebrew-bat", extraCaseIds: [] }),
-      buildPrFocus: () => ({ changedFiles: ["apps/native/src/app.tsx"], scenarioKeys: ["sample"] }),
+      evolvedCaseStrategy: () => ({
+        defaultCaseId: "homebrew-bat",
+        extraCaseIds: [],
+      }),
+      buildPrFocus: () => ({
+        changedFiles: ["apps/native/src/app.tsx"],
+        scenarioKeys: ["sample"],
+      }),
       pngDimensions: (filePath) =>
         filePath.endsWith("screenshots/sample.png") ? { width: 100, height: 80 } : null,
       env: {
@@ -4995,7 +5108,10 @@ async function runSelfTest() {
   const previousEvolvedCaseStrategy = schemaLifecycleState.evolvedCaseStrategy;
   ensureStateCurrentSchema(schemaLifecycleState, {
     scenarioLabels: { sample: "Sample scenario", added: "Added scenario" },
-    evolvedCaseStrategy: () => ({ defaultCaseId: "unexpected", extraCaseIds: ["unexpected"] }),
+    evolvedCaseStrategy: () => ({
+      defaultCaseId: "unexpected",
+      extraCaseIds: ["unexpected"],
+    }),
     buildPrFocus: () => ({ scenarioKeys: ["unexpected"] }),
     pngDimensions: () => ({ width: 1, height: 1 }),
     env: {
@@ -5039,8 +5155,14 @@ async function runSelfTest() {
       repoRoot: "/repo",
       remoteAppPathFromEnv: () => "/tmp/nixmac.app",
       scenarioLabels: { launch: "App launches", review: "Review renders" },
-      evolvedCaseStrategy: () => ({ defaultCaseId: "homebrew-bat", selectedAt: "stubbed" }),
-      buildPrFocus: () => ({ changedFiles: ["apps/native/src/app.tsx"], scenarioKeys: ["launch"] }),
+      evolvedCaseStrategy: () => ({
+        defaultCaseId: "homebrew-bat",
+        selectedAt: "stubbed",
+      }),
+      buildPrFocus: () => ({
+        changedFiles: ["apps/native/src/app.tsx"],
+        scenarioKeys: ["launch"],
+      }),
       env: {
         NIXMAC_E2E_MACOS_VERSION: "test-macos",
         NIXMAC_E2E_DISPOSABLE_CONFIG: "true",
@@ -5187,7 +5309,10 @@ async function runSelfTest() {
   const nativeInconclusiveDiscardState = {
     safety: { disposableConfig: true },
     scenarios: {
-      discard: { status: "inconclusive", notes: ["Native historical inconclusive."] },
+      discard: {
+        status: "inconclusive",
+        notes: ["Native historical inconclusive."],
+      },
       rollbackCleanup: { status: "pass", notes: [] },
     },
   };
@@ -5778,14 +5903,22 @@ async function runSelfTest() {
       const message = JSON.parse(payload);
       sentMessages.push(message);
       const result = message.method === "thread/start" ? { thread: { id: "thread-123" } } : {};
-      setTimeout(() => this.onmessage?.({ data: JSON.stringify({ id: message.id, result }) }), 0);
+      setTimeout(
+        () =>
+          this.onmessage?.({
+            data: JSON.stringify({ id: message.id, result }),
+          }),
+        0,
+      );
     }
 
     close() {
       this.closed = true;
     }
   }
-  const appServerClient = new AppServerClient("ws://mock", { WebSocketImpl: MockWebSocket });
+  const appServerClient = new AppServerClient("ws://mock", {
+    WebSocketImpl: MockWebSocket,
+  });
   await appServerClient.connect();
   assert.equal(
     appServerClient.threadId,
@@ -5846,10 +5979,7 @@ async function runSelfTest() {
     /synthetic tool failure/,
     "AppServerClient should reject JSON-RPC error responses",
   );
-  const transientClickRunDir = path.join(
-    os.tmpdir(),
-    `nixmac-transient-click-${Date.now()}`,
-  );
+  const transientClickRunDir = path.join(os.tmpdir(), `nixmac-transient-click-${Date.now()}`);
   await mkdir(transientClickRunDir, { recursive: true });
   const transientClickAttempts = [];
   const transientClickClient = {
@@ -5896,6 +6026,43 @@ async function runSelfTest() {
     ["computer-use.click.retry", "computer-use.click"],
     "Computer Use click should preserve retry and success evidence",
   );
+  const destructiveClickAttempts = [];
+  const destructiveClickState = {
+    app: "com.darkmatter.nixmac",
+    runDir: transientClickRunDir,
+    events: [],
+  };
+  assert.equal(
+    await clickElementIndex(
+      {
+        tool: async (tool, args) => {
+          destructiveClickAttempts.push({ tool, args });
+          return {
+            result: {
+              isError: true,
+              content: [{ type: "text", text: "remoteConnection" }],
+            },
+          };
+        },
+      },
+      destructiveClickState,
+      "18",
+      "Confirm Build & Test",
+      "Confirm the disposable build boundary.",
+    ),
+    false,
+    "Computer Use should fail closed when a destructive click has ambiguous delivery",
+  );
+  assert.equal(
+    destructiveClickAttempts.length,
+    1,
+    "Computer Use must not retry an ambiguously delivered destructive confirmation",
+  );
+  assert.deepEqual(
+    destructiveClickState.events.map((event) => event.type),
+    ["computer-use.click.failed"],
+    "Computer Use should record one terminal failure for an ambiguous destructive click",
+  );
   const exhaustedClickAttempts = [];
   const exhaustedClickState = {
     app: "com.darkmatter.nixmac",
@@ -5930,11 +6097,7 @@ async function runSelfTest() {
   );
   assert.deepEqual(
     exhaustedClickState.events.map((event) => event.type),
-    [
-      "computer-use.click.retry",
-      "computer-use.click.retry",
-      "computer-use.click.failed",
-    ],
+    ["computer-use.click.retry", "computer-use.click.retry", "computer-use.click.failed"],
     "Computer Use click should preserve bounded retry exhaustion evidence",
   );
   await rm(transientClickRunDir, { recursive: true, force: true });
@@ -6159,7 +6322,10 @@ async function runSelfTest() {
 
   assert.equal(
     clickResponseIndicatesFailure({
-      result: { isError: true, content: [{ type: "text", text: "Tool returned an error." }] },
+      result: {
+        isError: true,
+        content: [{ type: "text", text: "Tool returned an error." }],
+      },
     }),
     true,
     "MCP isError should fail click",
@@ -6168,7 +6334,10 @@ async function runSelfTest() {
     clickResponseIndicatesFailure({
       result: {
         content: [
-          { type: "text", text: "App state includes button Report Error and Console Error logs." },
+          {
+            type: "text",
+            text: "App state includes button Report Error and Console Error logs.",
+          },
         ],
       },
     }),
@@ -6177,21 +6346,28 @@ async function runSelfTest() {
   );
   assert.equal(
     clickResponseIndicatesFailure({
-      result: { content: [{ type: "text", text: "Error: stale element index 7" }] },
+      result: {
+        content: [{ type: "text", text: "Error: stale element index 7" }],
+      },
     }),
     true,
     "stale element sentinel should fail click",
   );
   assert.equal(
     clickResponseIndicatesFailure({
-      result: { content: [{ type: "text", text: "Element index 7 not clickable" }] },
+      result: {
+        content: [{ type: "text", text: "Element index 7 not clickable" }],
+      },
     }),
     true,
     "not-clickable element sentinel should fail click",
   );
   assert.equal(
     setValueResponseIndicatesFailure({
-      result: { isError: true, content: [{ type: "text", text: "Tool returned an error." }] },
+      result: {
+        isError: true,
+        content: [{ type: "text", text: "Tool returned an error." }],
+      },
     }),
     true,
     "MCP isError should fail set_value",
@@ -6200,7 +6376,10 @@ async function runSelfTest() {
     setValueResponseIndicatesFailure({
       result: {
         content: [
-          { type: "text", text: "App state includes Value: Add the bat command line tool." },
+          {
+            type: "text",
+            text: "App state includes Value: Add the bat command line tool.",
+          },
         ],
       },
     }),
@@ -6209,7 +6388,9 @@ async function runSelfTest() {
   );
   assert.equal(
     setValueResponseIndicatesFailure({
-      result: { content: [{ type: "text", text: "Error: set_value element index 18 not found" }] },
+      result: {
+        content: [{ type: "text", text: "Error: set_value element index 18 not found" }],
+      },
     }),
     true,
     "set_value element sentinel should fail input",
@@ -6230,12 +6411,20 @@ async function runSelfTest() {
     "driver contract should reject invalid Codex indexes",
   );
   assert.deepEqual(
-    validateElementAddress({ kind: "text-pattern", source: "button Send", flags: "i" }).normalized,
+    validateElementAddress({
+      kind: "text-pattern",
+      source: "button Send",
+      flags: "i",
+    }).normalized,
     { kind: "text-pattern", patterns: [{ source: "button Send", flags: "i" }] },
     "driver contract should normalize text-pattern addresses",
   );
   assert.equal(
-    validateElementAddress({ kind: "text-pattern", source: "button Send", flags: "[" }).ok,
+    validateElementAddress({
+      kind: "text-pattern",
+      source: "button Send",
+      flags: "[",
+    }).ok,
     false,
     "driver contract should reject invalid regex flags",
   );
@@ -6274,18 +6463,26 @@ async function runSelfTest() {
     "driver contract should reject unknown capabilities",
   );
   assert.equal(
-    validateDriverCapabilities({ ...codexAppServerDriverDescriptor.capabilities, click: false }).ok,
+    validateDriverCapabilities({
+      ...codexAppServerDriverDescriptor.capabilities,
+      click: false,
+    }).ok,
     false,
     "driver contract should reject missing required capabilities",
   );
   assert.equal(
-    validateDriverDescriptor({ ...codexAppServerDriverDescriptor, contractVersion: "future" }).ok,
+    validateDriverDescriptor({
+      ...codexAppServerDriverDescriptor,
+      contractVersion: "future",
+    }).ok,
     false,
     "driver contract should reject descriptor version drift",
   );
   assert.equal(
-    validateDriverDescriptor({ ...codexAppServerDriverDescriptor, addressKinds: ["coordinate"] })
-      .ok,
+    validateDriverDescriptor({
+      ...codexAppServerDriverDescriptor,
+      addressKinds: ["coordinate"],
+    }).ok,
     false,
     "driver contract should reject unregistered descriptor address kinds",
   );
@@ -6293,7 +6490,10 @@ async function runSelfTest() {
     () =>
       createDriverDescriptor({
         ...codexAppServerDriverDescriptor,
-        capabilities: { ...codexAppServerDriverDescriptor.capabilities, click: false },
+        capabilities: {
+          ...codexAppServerDriverDescriptor.capabilities,
+          click: false,
+        },
       }),
     /Invalid Computer Use driver descriptor/,
     "driver descriptor creation should fail fast for invalid descriptors",
@@ -6485,8 +6685,14 @@ async function runSelfTest() {
       {
         runDir: os.tmpdir(),
         screenshots: [
-          { label: "provider-progress-01", path: "missing-provider-progress-01.png" },
-          { label: "provider-progress-05", path: "missing-provider-progress-05.png" },
+          {
+            label: "provider-progress-01",
+            path: "missing-provider-progress-01.png",
+          },
+          {
+            label: "provider-progress-05",
+            path: "missing-provider-progress-05.png",
+          },
         ],
       },
       {
@@ -6588,6 +6794,47 @@ async function runSelfTest() {
     "PR focus coverage should fail when a mapped scenario fails",
   );
 
+  const unexercisedContractState = ensureCurrentSchema({
+    scenarios: {},
+    claims: [],
+  });
+  updateScenario(
+    unexercisedContractState,
+    "customizationSaveRollback",
+    "pass",
+    "No untracked customizations chip was visible, so there was no interaction to exercise.",
+    { exercised: false },
+  );
+  updateV2Contracts(unexercisedContractState);
+  assert.equal(
+    unexercisedContractState.scenarios.customizationSaveRollback.exercised,
+    false,
+    "conditional scenario passes should disclose when the interaction was not exercised",
+  );
+  assert.equal(
+    unexercisedContractState.v2.scenarioContracts.customizationSaveRollback.evidenceStrength,
+    "not-proved",
+    "unexercised scenarios must not inherit a strong static evidence tier",
+  );
+  assert.equal(
+    unexercisedContractState.v2.scenarioContracts.customizationSaveRollback.legacyEvidenceGrade,
+    "not-run",
+    "unexercised scenarios must not inherit a static action-confirmed grade",
+  );
+  assert.deepEqual(
+    unexercisedContractState.v2.scenarioContracts.customizationSaveRollback.assertionTypes,
+    [],
+    "unexercised scenarios must not claim action_result or remote_state assertions",
+  );
+  assert.equal(
+    nextArtifactOrdinal({
+      textSnapshots: [{ path: "texts/53-existing.txt" }],
+      screenshots: [{ path: "screenshots/51-existing.jpg" }],
+    }),
+    "54",
+    "artifact numbering should advance from the highest persisted prefix across text and images",
+  );
+
   const renderRunDir = path.join(os.tmpdir(), `nixmac-e2e-self-test-${Date.now()}`);
   await mkdir(renderRunDir, { recursive: true });
   const renderState = await baseState(renderRunDir, {
@@ -6634,13 +6881,20 @@ async function runSelfTest() {
     note: "Synthetic screenshot metadata.",
     capturedAt: new Date().toISOString(),
   });
-  renderState.textSnapshots.push({ path: "texts/self-test.txt", label: "Self test text" });
+  renderState.textSnapshots.push({
+    path: "texts/self-test.txt",
+    label: "Self test text",
+  });
   renderState.remoteMachine = {
     hostname: "DXU97120",
     macosProductVersion: "26.2",
     architecture: "arm64",
   };
-  renderState.remoteApp = { bundleName: "nixmac", shortVersion: "0.22.40", codesignVerified: true };
+  renderState.remoteApp = {
+    bundleName: "nixmac",
+    shortVersion: "0.22.40",
+    codesignVerified: true,
+  };
   renderState.processEnvVerification = {
     processFound: true,
     pid: "123",
@@ -6689,7 +6943,10 @@ async function runSelfTest() {
     framesPerSecond: 20,
     uniqueSampleHashes: 5,
   };
-  await render(renderState, { stateFileName: "state.self-test.json", recordEvent: false });
+  await render(renderState, {
+    stateFileName: "state.self-test.json",
+    recordEvent: false,
+  });
   const renderedHtml = await readFile(path.join(renderRunDir, "index.html"), "utf8");
   for (const anchor of [
     'id="summary"',
@@ -6758,6 +7015,48 @@ async function runSelfTest() {
     true,
     "artifact screenshot links should target rendered screenshot gallery anchors",
   );
+  const persistedTimingPath = path.join(renderRunDir, "workflow-timing.final.json");
+  await writeFile(
+    persistedTimingPath,
+    `${JSON.stringify({
+      version: 1,
+      phases: [
+        {
+          id: "final-report-inspection",
+          label: "Final recording-aware report inspection",
+          category: "reporting",
+          source: "github-actions",
+          status: "success",
+          startedAt: "2026-05-02T00:00:04.500Z",
+          endedAt: "2026-05-02T00:00:06.500Z",
+        },
+      ],
+    })}\n`,
+    "utf8",
+  );
+  await saveState(renderState);
+  await renderExisting([
+    "--run-dir",
+    renderRunDir,
+    "--workflow-timings",
+    persistedTimingPath,
+    "--persist-state",
+  ]);
+  const persistedState = JSON.parse(await readFile(path.join(renderRunDir, "state.json"), "utf8"));
+  assert.equal(
+    persistedState.timing.phases.some(
+      (phase) =>
+        phase.id === "final-report-inspection" &&
+        phase.status === "success" &&
+        phase.durationMs === 2_000,
+    ),
+    true,
+    "persist-state rendering should merge final workflow timing into authoritative state.json",
+  );
+  assert.ok(
+    persistedState.authoritativeRefreshedAt,
+    "persist-state rendering should mark when authoritative state.json was refreshed",
+  );
 
   const crashRunDir = path.join(os.tmpdir(), `nixmac-e2e-crash-fallback-${Date.now()}`);
   await mkdir(path.join(crashRunDir, "texts"), { recursive: true });
@@ -6773,7 +7072,10 @@ async function runSelfTest() {
     "Launch partial evidence was captured before the synthetic crash.",
   );
   await writeFile(path.join(crashRunDir, "texts", "01-partial.txt"), "partial evidence\n", "utf8");
-  crashState.textSnapshots.push({ path: "texts/01-partial.txt", label: "Partial evidence" });
+  crashState.textSnapshots.push({
+    path: "texts/01-partial.txt",
+    label: "Partial evidence",
+  });
   await saveState(crashState);
   const previousActiveRunDir = activeRunDir;
   activeRunDir = crashRunDir;

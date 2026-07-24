@@ -331,9 +331,10 @@ infra-class semantics.
 preservation harness must compare a normalized subset with explicit equality
 semantics:
 
-- byte-equal: scenario keys, labels, statuses, legacy evidence grades, evidence
-  strength values, failure classes, accessibility risk values, assertion types,
-  visual assertion status, proof text, and limitation text;
+- byte-equal: contract version, scenario keys, labels, statuses, whether each
+  interaction was exercised, legacy evidence grades, evidence strength values,
+  failure classes, accessibility risk values, assertion types, visual assertion
+  status, proof text, and limitation text;
 - normalized text: reason fields, notes, and evidence strings after timestamp,
   run id, absolute path, and regenerated-at removal;
 - ignored or separately asserted: known nondeterministic timestamps, machine

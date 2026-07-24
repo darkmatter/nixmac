@@ -346,6 +346,30 @@ When the workflow timing CLI finalizes a phase, discard any interim
 the two-stage `in_progress` then `success` lifecycle with an executable CLI
 regression test before the final exact-head qualification run.
 
+Sixteenth post-execution deviation (2026-07-24): exact timing-correction head
+`35e17e2812afff943bced8436f03a97fa9a3ec81` produced successful signed Build
+run `30105278832` and fully green real-Mac run `30106456582`. Codex confirmed
+27/27 scenarios, exact-head provenance, a 176.6-second continuous H.264
+recording, 51 decodable screenshots, complete local HTML assets, accurate
+three-minute recording timing, and successful remote cleanup. The required
+final Claude/Fable review accepted the run as genuine product proof but found
+one blocking machine-contract defect: conditional no-op and deliberately
+superseded scenarios retained static strong/action evidence metadata even
+though the interaction was not exercised. It also identified safe adjacent
+hardening: remote cleanup could silently skip missing backup state, destructive
+clicks shared the transport retry used for idempotent navigation, authoritative
+`state.json` did not receive final workflow cleanup timing, final Safari
+inspection was untimed, repeated renders duplicated notes, and text/image
+ordinal counts could collide. Make evidence metadata run-derived with an
+explicit `exercised` field; fail closed and content-verify remote restoration;
+retry only non-destructive clicks; persist final workflow timing to
+authoritative state; time the final inspection; and make note/artifact
+generation idempotent. The broader OCR-style screenshot secret scan and
+surfacing a recovered transient baseline probe remain non-blocking follow-ups:
+the qualifying run had no secret violation and its first baseline probe was
+clean. Because the accepted evidence-contract changes alter the artifact, a
+new exact-head signed build and real-Mac qualification are required.
+
 For the final qualifying run, verify all of the following:
 
 1. **Provenance**

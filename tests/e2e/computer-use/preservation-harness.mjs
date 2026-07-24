@@ -123,7 +123,9 @@ function buildFixtureRun(workDir) {
 
   const sourceScreenshots = path.join(FIXTURE_DIR, "screenshots");
   if (existsSync(sourceScreenshots))
-    cpSync(sourceScreenshots, path.join(runDir, "screenshots"), { recursive: true });
+    cpSync(sourceScreenshots, path.join(runDir, "screenshots"), {
+      recursive: true,
+    });
   mkdirSync(path.join(runDir, "texts"), { recursive: true });
   for (const item of seed.textSnapshots || []) {
     const fullPath = path.join(runDir, item.path);
@@ -181,6 +183,7 @@ function reportSignature(runDir, state) {
     return counts;
   }, {});
   return {
+    contractVersion: state.v2?.contractVersion || null,
     anchors: Object.fromEntries(anchors.map((anchor) => [anchor, html.includes(anchor)])),
     order: {
       prFocusBeforeFindings: positions.prFocus >= 0 && positions.findings > positions.prFocus,
@@ -222,6 +225,7 @@ function scenarioContracts(state) {
       id: item.id,
       label: item.label,
       status: item.status,
+      exercised: item.exercised,
       legacyEvidenceGrade: item.legacyEvidenceGrade,
       evidenceStrength: item.evidenceStrength,
       evidenceStrengthReason: normalizeText(item.evidenceStrengthReason),

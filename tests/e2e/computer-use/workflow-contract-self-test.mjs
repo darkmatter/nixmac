@@ -17,10 +17,7 @@ const appServerProbePath = path.join(
 const appServerProbe = readFileSync(appServerProbePath, "utf8");
 const peekSourcePath = path.join(repoRoot, "apps/native/src-tauri/src/peek.rs");
 const peekSource = readFileSync(peekSourcePath, "utf8");
-const workflowTimingPath = path.join(
-  repoRoot,
-  "tests/e2e/computer-use/workflow-timing.mjs",
-);
+const workflowTimingPath = path.join(repoRoot, "tests/e2e/computer-use/workflow-timing.mjs");
 
 const timingTestDir = mkdtempSync(path.join(os.tmpdir(), "nixmac-workflow-timing-"));
 const timingTestFile = path.join(timingTestDir, "workflow-timing.json");
@@ -75,6 +72,40 @@ const finalizedRecordingTiming = JSON.parse(readFileSync(timingTestFile, "utf8")
 assert.ok(
   finalizedRecordingTiming.durationMs >= 9_000,
   "workflow timing end should recompute duration when replacing an interim end timestamp",
+);
+writeFileSync(
+  timingTestFile,
+  `${JSON.stringify({
+    version: 1,
+    phases: [
+      {
+        id: "invalid-range",
+        label: "Invalid range",
+        startedAt: "2026-07-24T12:00:10.000Z",
+        endedAt: "2026-07-24T12:00:00.000Z",
+        durationMs: 5_000,
+        status: "success",
+      },
+    ],
+  })}\n`,
+  "utf8",
+);
+const invalidRangeMarkdown = spawnSync(
+  process.execPath,
+  [workflowTimingPath, "markdown", "--file", timingTestFile],
+  { encoding: "utf8" },
+);
+assert.equal(
+  invalidRangeMarkdown.status,
+  0,
+  `invalid timing range markdown should still render: ${
+    invalidRangeMarkdown.stderr || invalidRangeMarkdown.stdout
+  }`,
+);
+assert.match(
+  invalidRangeMarkdown.stdout,
+  /\| Invalid range \| `success` \| `not recorded` \|/,
+  "an end timestamp before its start must not preserve a stale explicit duration",
 );
 rmSync(timingTestDir, { recursive: true, force: true });
 
@@ -268,8 +299,33 @@ assert.match(
 );
 assert.match(
   remote,
+  /name: Inspect final recording-aware report with Computer Use[\s\S]*workflow-timing\.mjs start[\s\S]*--id final-report-inspection[\s\S]*run-remote-cua\.mjs inspect-existing[\s\S]*workflow-timing\.mjs end[\s\S]*--id final-report-inspection/,
+  "the final Safari report inspection must have explicit workflow timing",
+);
+assert.match(
+  remote,
   /name: Restore remote app support[\s\S]*pkill -INT -f 'ffmpeg\.\*continuous-screen-recording\\\.mp4'/,
   "remote cleanup must stop a stranded continuous recorder before deleting its staging directory",
+);
+assert.match(
+  remote,
+  /if \[\[ ! -f "\$\{REMOTE_BACKUP\}\.state" \]\][\s\S]*cleanup_status=1/,
+  "remote cleanup must fail when the app-support backup state marker is missing",
+);
+assert.match(
+  remote,
+  /diff -qr "\$REMOTE_BACKUP" "\$SUPPORT"/,
+  "remote cleanup must verify restored app-support content before reporting success",
+);
+assert.match(
+  remote,
+  /name: Refresh report timing metadata[\s\S]*render-existing[\s\S]*--persist-state/,
+  "the final timing refresh must persist cleanup evidence into authoritative state.json",
+);
+assert.doesNotMatch(
+  workflow,
+  /Final duration is emitted in the workflow summary/,
+  "workflow timing notes must not promise durations that are never recorded",
 );
 assert.match(
   remote,

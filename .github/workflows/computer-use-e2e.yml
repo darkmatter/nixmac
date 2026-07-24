@@ -129,7 +129,7 @@ jobs:
               --source github-actions \
               --status pending \
               --observable false \
-              --note "This phase happens after the HTML report is refreshed. Final duration is emitted in the workflow summary; the hosted HTML may show this row as pending by design."
+              --note "This downstream phase is not measured in the report artifact; the hosted HTML leaves it pending rather than inventing a duration."
           done
 
       - name: Install media dependencies
@@ -1384,13 +1384,29 @@ jobs:
           NIXMAC_E2E_SSH_KEY: /home/runner/.ssh/nixmac-e2e
           NIXMAC_E2E_SSH_KNOWN_HOSTS: /home/runner/.ssh/known_hosts
         run: |
+          set +e
+          node tests/e2e/computer-use/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id final-report-inspection \
+            --label "Final recording-aware report inspection" \
+            --category reporting \
+            --note "Computer Use is opening the final recording-aware HTML report in Safari."
           latest_report="$(find artifacts/computer-use-remote -mindepth 2 -maxdepth 2 -name state.json -type f -exec dirname {} \; 2>/dev/null | sort | tail -1 || true)"
           if [[ -z "$latest_report" || ! -f "$latest_report/state.json" ]]; then
             echo "error: no current report exists for final Computer Use inspection" >&2
+            node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+              --id final-report-inspection \
+              --status failure \
+              --note "No current report existed for final Computer Use inspection."
             exit 1
           fi
           node tests/e2e/computer-use/run-remote-cua.mjs inspect-existing \
             --run-dir "$latest_report"
+          inspection_status=$?
+          node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id final-report-inspection \
+            --status "$([[ "$inspection_status" -eq 0 ]] && echo success || echo failure)" \
+            --note "Final recording-aware Safari inspection exited with status $inspection_status."
+          exit "$inspection_status"
 
       - name: Restore remote app support
         if: always() && steps.stale-run.outputs.stale != 'true'
@@ -1448,8 +1464,15 @@ jobs:
           rm -rf "$REMOTE_APP_STAGE" || cleanup_status=1
           SUPPORT="$HOME/Library/Application Support/com.darkmatter.nixmac"
           STATE=""
-          if [[ -n "$REMOTE_BACKUP" && -f "${REMOTE_BACKUP}.state" ]]; then
+          if [[ ! -f "${REMOTE_BACKUP}.state" ]]; then
+            echo "error: app-support backup state marker is missing" >&2
+            cleanup_status=1
+          else
             STATE="$(cat "${REMOTE_BACKUP}.state")"
+            if [[ "$STATE" != "existed" && "$STATE" != "absent" ]]; then
+              echo "error: app-support backup state marker is invalid" >&2
+              cleanup_status=1
+            fi
           fi
           GUI_UID="$(stat -f %u /dev/console 2>/dev/null || id -u)"
           if ! sudo -n launchctl asuser "$GUI_UID" launchctl unsetenv OPENROUTER_API_KEY >/dev/null 2>&1; then
@@ -1463,6 +1486,9 @@ jobs:
               echo "error: failed to restore system.privilege.admin authorization policy" >&2
               cleanup_status=1
             fi
+          else
+            echo "error: authorization policy backup is missing" >&2
+            cleanup_status=1
           fi
           current_auth="$(mktemp /tmp/nixmac-e2e-auth-current.XXXXXX)"
           if sudo -n security authorizationdb read system.privilege.admin > "$current_auth" 2>/tmp/nixmac-e2e-auth-current.err; then
@@ -1491,13 +1517,24 @@ jobs:
             if ! rm -rf "$SUPPORT" || ! mkdir -p "$(dirname "$SUPPORT")" || ! cp -pR "$REMOTE_BACKUP" "$SUPPORT"; then
               echo "error: failed to restore nixmac app-support backup" >&2
               cleanup_status=1
+            elif ! diff -qr "$REMOTE_BACKUP" "$SUPPORT" >/tmp/nixmac-e2e-support-restore.diff 2>&1; then
+              echo "error: restored nixmac app-support content differs from backup" >&2
+              cat /tmp/nixmac-e2e-support-restore.diff >&2
+              cleanup_status=1
             fi
+          elif [[ "$STATE" == "existed" ]]; then
+            echo "error: app-support backup directory is missing" >&2
+            cleanup_status=1
           elif [[ "$STATE" == "absent" ]]; then
             if ! rm -rf "$SUPPORT"; then
               echo "error: failed to remove disposable nixmac app-support directory" >&2
               cleanup_status=1
+            elif [[ -e "$SUPPORT" ]]; then
+              echo "error: disposable nixmac app-support directory still exists after cleanup" >&2
+              cleanup_status=1
             fi
           fi
+          rm -f /tmp/nixmac-e2e-support-restore.diff
           rm -rf "$REMOTE_BACKUP" "${REMOTE_BACKUP}.state" || cleanup_status=1
           rm -rf "$REMOTE_CONFIG" || cleanup_status=1
           rm -f "$REMOTE_AUTH_BACKUP" || cleanup_status=1
@@ -1524,12 +1561,18 @@ jobs:
             --id timing-report-refresh \
             --label "Timing report refresh" \
             --category reporting
-          node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
-            --id timing-report-refresh \
-            --status success
           node tests/e2e/computer-use/run-remote-cua.mjs render-existing \
             --run-dir "$latest_report" \
-            --workflow-timings "$NIXMAC_E2E_WORKFLOW_TIMINGS"
+            --workflow-timings "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --persist-state
+          node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id timing-report-refresh \
+            --status success \
+            --note "Workflow timing metadata, including final inspection and cleanup, was merged into authoritative state.json."
+          node tests/e2e/computer-use/run-remote-cua.mjs render-existing \
+            --run-dir "$latest_report" \
+            --workflow-timings "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --persist-state
 
       - name: Collect evidence report metadata
         id: report-meta

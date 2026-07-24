@@ -22,9 +22,11 @@
     "id=\"visual-assertions\"": true,
     "id=\"visual-proof\"": true
   },
+  "contractVersion": 3,
   "duplicateIds": [],
   "evidenceStrengthCounts": {
-    "operational": 14,
+    "not-proved": 2,
+    "operational": 12,
     "strong": 4,
     "visual-supported": 4,
     "weak": 3

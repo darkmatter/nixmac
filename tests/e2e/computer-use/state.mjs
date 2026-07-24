@@ -87,11 +87,22 @@ export function ensureCurrentSchema(
       state.scenarios[key] = {
         label,
         status: "inconclusive",
+        exercised: false,
         notes: [`Scenario was added after this run or was not exercised by this runner.`],
       };
     }
   }
-  for (const [key, label] of Object.entries(scenarioLabels)) state.scenarios[key].label = label;
+  for (const [key, label] of Object.entries(scenarioLabels)) {
+    const scenario = state.scenarios[key];
+    scenario.label = label;
+    if (typeof scenario.exercised !== "boolean") {
+      const legacyNotes = (scenario.notes || []).join(" ");
+      scenario.exercised =
+        !/intentionally not exercised|chip was not visible|not applicable for this run|preview was not required/i.test(
+          legacyNotes,
+        );
+    }
+  }
   state.claims ||= [];
   state.failures ||= [];
   state.narrative ||= [];
@@ -111,7 +122,11 @@ export function ensureCurrentSchema(
       if (dimensions) shot.imageSize = dimensions;
     }
   }
-  state.cleanup ||= { attempted: false, restored: false, note: "No cleanup status recorded." };
+  state.cleanup ||= {
+    attempted: false,
+    restored: false,
+    note: "No cleanup status recorded.",
+  };
   state.safety ||= {
     disposableConfig: env.NIXMAC_E2E_DISPOSABLE_CONFIG === "true",
     buildConfirmEnabled: env.NIXMAC_E2E_ALLOW_BUILD_CONFIRM === "true",
@@ -147,7 +162,7 @@ export async function createBaseState(
   const scenarios = Object.fromEntries(
     Object.entries(scenarioLabels).map(([key, label]) => [
       key,
-      { label, status: "inconclusive", notes: [] },
+      { label, status: "inconclusive", exercised: false, notes: [] },
     ]),
   );
   return {
@@ -175,7 +190,11 @@ export async function createBaseState(
     buildGate: buildGateFromEnv(env),
     prFocus: buildPrFocus(),
     storybookPreview: storybookPreviewFromEnv(env),
-    cleanup: { attempted: false, restored: false, note: "Cleanup has not run yet." },
+    cleanup: {
+      attempted: false,
+      restored: false,
+      note: "Cleanup has not run yet.",
+    },
     timing: {
       version: 1,
       generatedAt: now(),
@@ -214,6 +233,7 @@ export function applyHistoricalRenderMigration(state) {
     state.scenarios.discard?.status === "inconclusive"
   ) {
     state.scenarios.discard.status = "pass";
+    state.scenarios.discard.exercised = false;
     state.scenarios.discard.notes = [
       "Discard was intentionally not exercised because the stronger Step 3 save plus History restore cleanup path returned the disposable config to baseline.",
     ];
@@ -256,14 +276,18 @@ export function addTimingPhase(state, phase) {
   return recordTimingPhase(state, phase);
 }
 
-export function updateScenario(state, key, status, note) {
+export function updateScenario(state, key, status, note, { exercised = true } = {}) {
   if (!state.scenarios[key]) throw new Error(`Unknown scenario ${key}`);
   state.scenarios[key].status = status;
-  if (note) state.scenarios[key].notes.push(redact(note));
+  state.scenarios[key].exercised = exercised;
+  const redactedNote = note ? redact(note) : "";
+  if (redactedNote && !state.scenarios[key].notes.includes(redactedNote)) {
+    state.scenarios[key].notes.push(redactedNote);
+  }
   const claim = {
     claim: state.scenarios[key].label,
     status,
-    evidence: redact(note || "See Computer Use screenshots and text snapshots."),
+    evidence: redactedNote || "See Computer Use screenshots and text snapshots.",
   };
   const existing = state.claims.find((item) => item.claim === claim.claim);
   if (existing) Object.assign(existing, claim);

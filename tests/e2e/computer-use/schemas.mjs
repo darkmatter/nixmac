@@ -7,7 +7,7 @@ function freezeDeep(value) {
   return Object.freeze(value);
 }
 
-export const scenarioContractVersion = 2;
+export const scenarioContractVersion = 3;
 
 export const v1GradeToEvidenceStrength = freezeDeep({
   "action-confirmed": "operational",
