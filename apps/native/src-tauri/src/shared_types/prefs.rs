@@ -11,6 +11,16 @@ pub enum UpdateChannel {
     Develop,
 }
 
+/// How nixmac handles updates available from the configuration Git repository.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum GitAutoUpdate {
+    #[default]
+    Off,
+    Confirm,
+    Automatic,
+}
+
 /// User interface preferences (synced to settings.json via tauri-plugin-store).
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -71,6 +81,8 @@ pub struct UiPrefs {
     pub pinned_version: Option<String>,
     /// Auto-update channel used when no explicit version pin is active.
     pub update_channel: UpdateChannel,
+    /// How updates from the configuration Git repository are handled.
+    pub git_auto_update: GitAutoUpdate,
     /// Developer-only feature flag overrides (flag key → variant string).
     /// `None` or missing key = use PostHog default.
     pub feature_flag_overrides: Option<BTreeMap<String, String>>,
@@ -140,6 +152,8 @@ pub struct UiPrefsUpdate {
     pub pinned_version: Option<Option<String>>,
     /// Auto-update channel preference update.
     pub update_channel: Option<UpdateChannel>,
+    /// Git repository auto-update preference update.
+    pub git_auto_update: Option<GitAutoUpdate>,
     /// `None` -> field not sent; `Some(None)` -> clear all overrides;
     /// `Some(Some(map))` -> replace overrides with `map`.
     #[serde(
@@ -199,6 +213,7 @@ pub struct GlobalPreferences {
     pub developer_mode: bool,
     pub pinned_version: Option<String>,
     pub update_channel: UpdateChannel,
+    pub git_auto_update: GitAutoUpdate,
     pub feature_flag_overrides: Option<BTreeMap<String, String>>,
     /// Root of an import clone parked on the "which flake dir?" choice
     /// (`NeedsFlakeDirChoice`). Recorded so an abandoned choice can be
@@ -240,6 +255,7 @@ impl Default for GlobalPreferences {
             developer_mode: false,
             pinned_version: None,
             update_channel: UpdateChannel::default(),
+            git_auto_update: GitAutoUpdate::default(),
             feature_flag_overrides: None,
             pending_import_dir: None,
             auto_format_nix_files: false,
@@ -310,6 +326,9 @@ impl GlobalPreferences {
         }
         if let Some(v) = update.update_channel {
             self.update_channel = v;
+        }
+        if let Some(v) = update.git_auto_update {
+            self.git_auto_update = v;
         }
         if let Some(v) = &update.feature_flag_overrides {
             self.feature_flag_overrides = v.clone();
@@ -390,6 +409,7 @@ impl GlobalPreferences {
             developer_mode: self.developer_mode,
             pinned_version: self.pinned_version.clone(),
             update_channel: self.update_channel,
+            git_auto_update: self.git_auto_update,
             feature_flag_overrides: self.feature_flag_overrides.clone(),
             auto_format_nix_files: self.auto_format_nix_files,
         }

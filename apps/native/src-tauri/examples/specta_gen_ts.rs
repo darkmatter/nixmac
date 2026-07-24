@@ -87,6 +87,7 @@ fn main() {
         .register::<shared_types::RollbackResult>()
         .register::<shared_types::SetDirResult>()
         .register::<shared_types::UpdateChannel>()
+        .register::<shared_types::GitAutoUpdate>()
         .register::<shared_types::UpdateInfo>()
         .register::<shared_types::GlobalPreferences>()
         .register::<shared_types::OnboardingState>()

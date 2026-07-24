@@ -1129,6 +1129,11 @@ export type FileEditAction =
 { setAttrs: { path: string; attrs: Partial<{ [key in string]: JsonValue }> } }
 
 /**
+ * How nixmac handles updates available from the configuration Git repository.
+ */
+export type GitAutoUpdate = "off" | "confirm" | "automatic"
+
+/**
  * Individual file status parsed from diff headers.
  */
 export type GitFileStatus = { 
@@ -1156,7 +1161,7 @@ externalBuildDetected: boolean;
 /**
  * True when the configured upstream contains a fast-forward update.
  */
-upstreamUpdateAvailable: boolean;
+upstreamUpdateAvailable: boolean; 
 /**
  * True when a rebuild is needed to bring the system up to date with the current working tree.
  */
@@ -1365,7 +1370,7 @@ summaryModel: string | null;
  * Remembered summary model per provider; a missing entry means the
  * provider default is used. Never stores `""`.
  */
-summaryModels: Partial<{ [key in string]: string }>; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; experimentalStreamingEvolve: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
+summaryModels: Partial<{ [key in string]: string }>; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; experimentalStreamingEvolve: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; gitAutoUpdate: GitAutoUpdate; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
 /**
  * Root of an import clone parked on the "which flake dir?" choice
  * (`NeedsFlakeDirChoice`). Recorded so an abandoned choice can be
@@ -2331,6 +2336,10 @@ pinnedVersion: string | null;
  */
 updateChannel: UpdateChannel; 
 /**
+ * How updates from the configuration Git repository are handled.
+ */
+gitAutoUpdate: GitAutoUpdate; 
+/**
  * Developer-only feature flag overrides (flag key → variant string).
  * `None` or missing key = use PostHog default.
  */
@@ -2450,6 +2459,10 @@ pinnedVersion?: string | null;
  */
 updateChannel: UpdateChannel | null; 
 /**
+ * Git repository auto-update preference update.
+ */
+gitAutoUpdate: GitAutoUpdate | null; 
+/**
  * `None` -> field not sent; `Some(None)` -> clear all overrides;
  * `Some(Some(map))` -> replace overrides with `map`.
  */
@@ -2488,3 +2501,4 @@ version: string;
  * Release notes from the channel manifest, when available.
  */
 notes: string | null }
+

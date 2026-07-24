@@ -39,6 +39,7 @@ export function makeGlobalPreferences(
 		developerMode: false,
 		pinnedVersion: null,
 		updateChannel: "stable",
+		gitAutoUpdate: "off",
 		featureFlagOverrides: null,
 		pendingImportDir: null,
 		autoFormatNixFiles: false,

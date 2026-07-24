@@ -889,6 +889,11 @@ limit: number | null;
  */
 offset: number | null }
 
+/**
+ * How nixmac handles updates available from the configuration Git repository.
+ */
+export type GitAutoUpdate = "off" | "confirm" | "automatic"
+
 export type GitCommitFileInput = { filename: string; message: string }
 
 export type GitCommitInput = { message: string }
@@ -921,11 +926,11 @@ gitStatus: GitStatus | null;
 /**
  * True when a build outside nixmac was detected.
  */
-externalBuildDetected: boolean;
+externalBuildDetected: boolean; 
 /**
  * True when the configured upstream contains a fast-forward update.
  */
-upstreamUpdateAvailable: boolean;
+upstreamUpdateAvailable: boolean; 
 /**
  * True when a rebuild is needed to bring the system up to date with the current working tree.
  */
@@ -1138,7 +1143,7 @@ summaryModel: string | null;
  * Remembered summary model per provider; a missing entry means the
  * provider default is used. Never stores `""`.
  */
-summaryModels: Partial<{ [key in string]: string }>; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; experimentalStreamingEvolve: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
+summaryModels: Partial<{ [key in string]: string }>; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; experimentalStreamingEvolve: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; gitAutoUpdate: GitAutoUpdate; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
 /**
  * Root of an import clone parked on the "which flake dir?" choice
  * (`NeedsFlakeDirChoice`). Recorded so an abandoned choice can be

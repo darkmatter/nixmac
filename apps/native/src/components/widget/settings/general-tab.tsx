@@ -13,6 +13,7 @@ import { RestartSetupConfirmation } from "@/components/widget/onboarding/restart
 import { getWebSiteUrl } from "@/lib/env";
 import { useViewModel } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
+import type { GitAutoUpdate } from "@/ipc/types";
 import { useTelemetry } from "@/lib/telemetry/context";
 import { getVersion } from "@tauri-apps/api/app";
 import { open } from "@tauri-apps/plugin-shell";
@@ -58,6 +59,7 @@ export function GeneralTab({
   sendDiagnosticsField,
 }: GeneralTabProps) {
   const telemetry = useTelemetry();
+  const gitAutoUpdate = useViewModel((s) => s.preferences?.gitAutoUpdate ?? "off");
   const [confirmingRestart, setConfirmingRestart] = useState(false);
   return (
     <div className="space-y-6">
@@ -111,6 +113,39 @@ export function GeneralTab({
               <BootstrapConfig label="Configuration" onSuccess={() => setSettingsOpen(false)} />
             )
           )}
+
+          {/* Git auto-update */}
+          <label className="font-medium text-sm" htmlFor="git-auto-update">
+            Git auto-update
+          </label>
+          <div className="flex items-center gap-2">
+            <Select
+              value={gitAutoUpdate}
+              onValueChange={async (value) => {
+                try {
+                  await tauriAPI.ui.setPrefs({ gitAutoUpdate: value as GitAutoUpdate });
+                  telemetry.captureEvent({
+                    name: "settings_changed",
+                    props: { setting: "git_auto_update" },
+                  });
+                } catch (error) {
+                  console.error("Failed to update git auto-update setting:", error);
+                }
+              }}
+            >
+              <SelectTrigger id="git-auto-update" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="off">Off</SelectItem>
+                <SelectItem value="confirm">Confirm</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="text-muted-foreground text-xs">
+            Check your configuration repository for upstream commits. Confirm offers available
+            updates for review before applying them.
+          </div>
 
           {/* Diagnostics */}
           <div className="flex items-center justify-between rounded-lg border border-border p-3">
