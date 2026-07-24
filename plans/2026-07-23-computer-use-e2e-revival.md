@@ -226,6 +226,28 @@ Review-to-Describe normalization after each managed-edit path so cleanup cannot
 poison unrelated downstream checks. Use the third and final bounded real-Mac
 attempt for qualification.
 
+Eighth post-execution deviation (2026-07-24): the third bounded run
+`30090161104` used exact head
+`cf3184f70fcd113081d23423db8b9c49c6c917a5` and exact-head successful Build
+run `30089327985`. It launched the staged signed app, passed remote readiness,
+captured a 267.05-second continuous 1280x720 recording, reached a real
+provider-authored Homebrew change, completed Build & Test, visibly reached
+Step 3, restored remote app support, and passed the independent
+recording-aware HTML report inspection. The scenario verdict still failed.
+The evidence identified three stale harness contracts: the provider wait
+accepted Review while `Evolving...` and `Stop` were still visible; the summary
+tab is now named `Semantic`; and Step 3 now requires `Keep Changes` before the
+final `Commit`, with discard/undo behind `More change options`. The Homebrew
+managed-edit action also persisted its git mutation but returned from its
+spinner to Describe without entering Review in-process; the saved-update
+Review appeared only after relaunch. Repair the selectors and predicates, make
+that relaunch an explicitly reported recovery backed by disposable git state,
+and remove the broken `storybook/` link rendered when Storybook is not
+applicable. The three-attempt bound is exhausted, so these repairs are locally
+verified and included in the final implementation/evidence review but are not
+called qualified without a future exact-head real-Mac pass. Do not dispatch a
+fourth run silently.
+
 For the final qualifying run, verify all of the following:
 
 1. **Provenance**

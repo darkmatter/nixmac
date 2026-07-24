@@ -961,12 +961,18 @@ function renderStorybookPreview(state) {
         .map((file) => `<li><code>${escapeHtml(file)}</code></li>`)
         .join("\n")
     : "<li>No native/runtime files detected in the changed-file set.</li>";
+  const previewBase =
+    preview.status !== "not_applicable" && preview.baseUrl
+      ? `<a href="${escapeHtml(preview.baseUrl)}" target="_blank" rel="noopener">${escapeHtml(preview.baseUrl)}</a>`
+      : preview.status === "not_applicable"
+        ? "not applicable"
+        : "not recorded";
   return `<h2 id="storybook-preview">Storybook Preview</h2>
   <section class="panel">
     <p><span class="verdict ${statusTone}">${escapeHtml(preview.status || "unknown")}</span></p>
     <p>${escapeHtml(preview.recommendation || "")}</p>
     ${state.nativeComputerUse?.skipped ? `<p><strong>Native Computer Use:</strong> ${escapeHtml(state.nativeComputerUse.reason || "Skipped by UI-only Storybook policy.")}</p>` : ""}
-    <p><strong>Preview base:</strong> ${preview.baseUrl ? `<a href="${escapeHtml(preview.baseUrl)}" target="_blank" rel="noopener">${escapeHtml(preview.baseUrl)}</a>` : "not recorded"}${preview.workflowUrl ? `<br><strong>Workflow:</strong> <a href="${escapeHtml(preview.workflowUrl)}" target="_blank" rel="noopener">${escapeHtml(preview.workflowUrl)}</a>` : ""}</p>
+    <p><strong>Preview base:</strong> ${previewBase}${preview.workflowUrl ? `<br><strong>Workflow:</strong> <a href="${escapeHtml(preview.workflowUrl)}" target="_blank" rel="noopener">${escapeHtml(preview.workflowUrl)}</a>` : ""}</p>
     <div class="quality-grid">
       <div>
         <h3>Affected Story URLs</h3>

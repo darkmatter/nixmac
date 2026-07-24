@@ -1297,6 +1297,42 @@ async function clickByPattern(client, state, text, label, patterns, note = "") {
   return clickElementIndex(client, state, elementIndex, label, note);
 }
 
+function isProviderReviewReady(text) {
+  const providerStillRunning =
+    /button Stop(?:\s|$)|text Evolving(?:…|\.\.\.)/i.test(text);
+  const reviewTabsVisible =
+    /tab(?: \(selected\)| \(selectable\))? Semantic(?:\s|$)/i.test(text) &&
+    /tab(?: \(selected\)| \(selectable\))? Diff(?:\s|$)/i.test(text);
+  const reviewActionVisible = /button (?:Build & Test|Discard)(?:\s|$)/i.test(text);
+  return !providerStillRunning && reviewTabsVisible && reviewActionVisible;
+}
+
+function isStep3Ready(text) {
+  return (
+    /Progress: step 3 of 3|All changes active/i.test(text) &&
+    /button (?:Keep Changes|Commit)(?:\s|$)/i.test(text)
+  );
+}
+
+function isCommitReady(text) {
+  return (
+    /button Commit(?:\s|$)/i.test(text) &&
+    !/button \(disabled\) Commit(?:\s|$)/i.test(text)
+  );
+}
+
+function isCommitFormReady(text) {
+  const commitMessageReady = text
+    .split("\n")
+    .some(
+      (line) =>
+        /(?:text field|text entry area)/i.test(line) &&
+        /Commit message/i.test(line) &&
+        /Value:\s*\S/i.test(line),
+    );
+  return isCommitReady(text) && commitMessageReady;
+}
+
 function findDialogDismissElement(text) {
   return findElement(text, [
     /^button OK(?:\s|$)/i,
@@ -1852,6 +1888,83 @@ async function externallyRestoreManagedEdit(client, state, labels) {
   return { ok: restored.ok, text, method: "external-restore", snapshot: restored.snapshot };
 }
 
+async function prepareStep3Commit(client, state, text, prefix, name) {
+  if (findElement(text, [/^button Keep Changes(?:\s|$)/i])) {
+    const keepClicked = await clickByPattern(
+      client,
+      state,
+      text,
+      `${name} Keep Changes`,
+      [/^button Keep Changes(?:\s|$)/i],
+      `Open the Step 3 commit form for ${name}.`,
+    );
+    if (!keepClicked) return { ok: false, text };
+    text = await captureState(
+      client,
+      state,
+      `${prefix}-keep-changes`,
+      `Computer Use selected Keep Changes for ${name}.`,
+    );
+  }
+
+  if (!isCommitFormReady(text)) {
+    const commitReady = await waitFor(
+      client,
+      state,
+      `${prefix}-commit-ready`,
+      (candidate) => (isCommitFormReady(candidate) ? "ready" : null),
+      {
+        attempts: Number(process.env.NIXMAC_E2E_COMMIT_READY_ATTEMPTS || 20),
+        delayMs: Number(process.env.NIXMAC_E2E_COMMIT_READY_DELAY_MS || 1000),
+      },
+    );
+    text = commitReady.text;
+  }
+  return { ok: isCommitFormReady(text), text };
+}
+
+async function openDiscardBoundary(client, state, text, prefix, name) {
+  if (
+    await clickByPattern(
+      client,
+      state,
+      text,
+      `${name} Discard`,
+      [/^button Discard(?:\s|$)/i],
+      `Open the Discard confirmation for ${name}.`,
+    )
+  ) {
+    return { opened: true, text };
+  }
+  if (
+    !(await clickByPattern(
+      client,
+      state,
+      text,
+      `${name} change options`,
+      [/^pop up button More change options(?:\s|$)/i, /^button More change options(?:\s|$)/i],
+      `Open the Step 3 change options for ${name}.`,
+    ))
+  ) {
+    return { opened: false, text };
+  }
+  text = await captureState(
+    client,
+    state,
+    `${prefix}-change-options`,
+    `Computer Use opened the Step 3 change options for ${name}.`,
+  );
+  const opened = await clickByPattern(
+    client,
+    state,
+    text,
+    `${name} undo changes`,
+    [/^(?:menu item|button) (?:Undo All|Undo last build)(?:\s|$)/i],
+    `Open the discard/undo confirmation for ${name}.`,
+  );
+  return { opened, text };
+}
+
 async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
   const canConfirmBuild =
     state.safety?.disposableConfig === true &&
@@ -1923,13 +2036,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
     state,
     `${labels.prefix}-build-to-step-3`,
     (candidate) => {
-      if (
-        /All changes active|Commit Changes|button Commit|Progress: step 3 of 3|Save Keep changes/i.test(
-          candidate,
-        ) &&
-        !/button \(disabled\) Commit/i.test(candidate)
-      )
-        return "step-3";
+      if (isStep3Ready(candidate)) return "step-3";
       if (activationAuthRequired(candidate)) return "activation-auth-required";
       if (buildAppearsActive(candidate) && remoteActivationPamSymlinkHang()) {
         pamSymlinkHangSeen += 1;
@@ -1968,30 +2075,23 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
     `${labels.prefix}-step-3-ready`,
     `Computer Use reached Step 3 after ${labels.name} Build & Test.`,
   );
-  if (/button \(disabled\) Commit/i.test(text)) {
-    const commitReady = await waitFor(
-      client,
-      state,
-      `${labels.prefix}-commit-ready`,
-      (candidate) =>
-        /button Commit/i.test(candidate) && !/button \(disabled\) Commit/i.test(candidate)
-          ? "ready"
-          : null,
-      {
-        attempts: Number(process.env.NIXMAC_E2E_COMMIT_READY_ATTEMPTS || 20),
-        delayMs: Number(process.env.NIXMAC_E2E_COMMIT_READY_DELAY_MS || 1000),
-      },
-    );
-    text = commitReady.text;
-  }
+  const commitForm = await prepareStep3Commit(
+    client,
+    state,
+    text,
+    labels.prefix,
+    labels.name,
+  );
+  text = commitForm.text;
 
   if (
+    !commitForm.ok ||
     !(await clickByPattern(
       client,
       state,
       text,
       `${labels.name} commit changes`,
-      [/button Commit/i],
+      [/^button Commit(?:\s|$)/i],
       `Commit Step 3 changes for ${labels.name}.`,
     ))
   ) {
@@ -2126,12 +2226,7 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
     state,
     `${config.prefix}-apply`,
     (candidate) => {
-      if (
-        /Ready to test-drive|heading Review|button Build & Test|button Discard|Summary|Diff/i.test(
-          candidate,
-        )
-      )
-        return "review";
+      if (isProviderReviewReady(candidate) || isSavedUpdateReview(candidate)) return "review";
       if (/failed|error|could not|Could not|Failed/i.test(candidate)) return "error";
       return null;
     },
@@ -2145,7 +2240,30 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
     },
   );
   text = applyWait.text;
+  let recoveredAfterRelaunch = false;
   if (applyWait.result !== "review") {
+    const snapshot = remoteGitSnapshot(
+      state.remoteConfig?.configDir || remoteConfigDirFromSettings(),
+      state.remoteConfig?.baselineHead || "",
+    );
+    await addRemoteGitEvent(state, `remote.git.${config.prefix}.post-apply-timeout`, snapshot);
+    const mutationPersisted =
+      snapshot?.ok &&
+      (config.prefix === "homebrew"
+        ? hasExpectedHomebrewSourceDiff(snapshot)
+        : Boolean(meaningfulBaselineDiff(snapshot)));
+    if (mutationPersisted) {
+      await maybeRelaunchRemote(state);
+      text = await captureState(
+        client,
+        state,
+        `${config.prefix}-review-recovery`,
+        `Computer Use verified the ${config.name} mutation in disposable git state and relaunched after the in-process Review transition timed out.`,
+      );
+      recoveredAfterRelaunch = isSavedUpdateReview(text) || isProviderReviewReady(text);
+    }
+  }
+  if (applyWait.result !== "review" && !recoveredAfterRelaunch) {
     const cleanup = await externallyRestoreManagedEdit(client, state, {
       name: config.name,
       prefix: config.prefix,
@@ -2169,7 +2287,14 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
     name: config.name,
     prefix: config.prefix,
   });
-  updateScenario(state, scenarioKey, result.ok ? "pass" : "fail", result.note);
+  updateScenario(
+    state,
+    scenarioKey,
+    result.ok ? "pass" : "fail",
+    recoveredAfterRelaunch
+      ? `${result.note} The Add to config mutation persisted, but the in-process Review transition required a verified relaunch recovery.`
+      : result.note,
+  );
   if (!result.ok) state.failures.push(result.note);
   return result.text;
 }
@@ -3333,8 +3458,7 @@ async function runSuite(args) {
         state,
         "provider-progress",
         (candidate) => {
-          if (/heading Review|button Build & Test|button Discard|Summary|Diff/i.test(candidate))
-            return "review";
+          if (isProviderReviewReady(candidate)) return "review";
           if (/Payment Required|Insufficient credits|out of credits|billing limit/i.test(candidate))
             return "billing-error";
           if (
@@ -3416,8 +3540,8 @@ async function runSuite(args) {
         state,
         text,
         "Summary tab",
-        [/Summary/i],
-        "Open Summary tab.",
+        [/^tab(?: \(selected\)| \(selectable\))? (?:Semantic|Summary)(?:\s|$)/i],
+        "Open the semantic summary tab.",
       );
       if (summaryClicked) {
         text = await captureState(
@@ -3449,7 +3573,7 @@ async function runSuite(args) {
         state,
         text,
         "Diff tab",
-        [/Diff/i],
+        [/^tab(?: \(selected\)| \(selectable\))? Diff(?:\s|$)/i],
         "Open Diff tab.",
       );
       if (diffClicked) {
@@ -3527,13 +3651,7 @@ async function runSuite(args) {
               state,
               "build-to-step-3",
               (candidate) => {
-                if (
-                  /All changes active|Commit Changes|button Commit|Progress: step 3 of 3|Save Keep changes/i.test(
-                    candidate,
-                  ) &&
-                  !/button \(disabled\) Commit/i.test(candidate)
-                )
-                  return "step-3";
+                if (isStep3Ready(candidate)) return "step-3";
                 if (activationAuthRequired(candidate)) return "activation-auth-required";
                 if (buildAppearsActive(candidate) && remoteActivationPamSymlinkHang()) {
                   pamSymlinkHangSeen += 1;
@@ -3562,30 +3680,22 @@ async function runSuite(args) {
                 "step-3-ready",
                 "Computer Use reached Step 3 after Build & Test.",
               );
-              if (/button \(disabled\) Commit/i.test(text)) {
-                const commitReady = await waitFor(
-                  client,
-                  state,
-                  "commit-ready",
-                  (candidate) =>
-                    /button Commit/i.test(candidate) &&
-                    !/button \(disabled\) Commit/i.test(candidate)
-                      ? "ready"
-                      : null,
-                  {
-                    attempts: Number(process.env.NIXMAC_E2E_COMMIT_READY_ATTEMPTS || 20),
-                    delayMs: Number(process.env.NIXMAC_E2E_COMMIT_READY_DELAY_MS || 1000),
-                  },
-                );
-                text = commitReady.text;
-              }
+              const commitForm = await prepareStep3Commit(
+                client,
+                state,
+                text,
+                "save-flow",
+                "the generated configuration",
+              );
+              text = commitForm.text;
               if (
+                commitForm.ok &&
                 await clickByPattern(
                   client,
                   state,
                   text,
                   "Commit changes",
-                  [/button Commit/i],
+                  [/^button Commit(?:\s|$)/i],
                   "Commit Step 3 changes.",
                 )
               ) {
@@ -3896,6 +4006,21 @@ async function runSuite(args) {
         );
       }
 
+      let discardBoundaryResult = null;
+      if (
+        state.scenarios.rollbackCleanup.status !== "pass" &&
+        !activationAuthRequired(text) &&
+        !buildAppearsActive(text)
+      ) {
+        discardBoundaryResult = await openDiscardBoundary(
+          client,
+          state,
+          text,
+          "discard",
+          "the generated configuration",
+        );
+      }
+
       if (state.scenarios.rollbackCleanup.status === "pass") {
         updateScenario(
           state,
@@ -3917,16 +4042,8 @@ async function runSuite(args) {
           "inconclusive",
           "Discard was not exercised because Build & Test still appeared active; external disposable-state restore handles cleanup.",
         );
-      } else if (
-        await clickByPattern(
-          client,
-          state,
-          text,
-          "Discard",
-          [/Discard/i],
-          "Open Discard confirmation.",
-        )
-      ) {
+      } else if (discardBoundaryResult?.opened) {
+        text = discardBoundaryResult.text;
         text = await captureState(
           client,
           state,
@@ -5225,6 +5342,70 @@ async function runSelfTest() {
     false,
     "the normal Describe surface must not trigger saved-update normalization",
   );
+  const providerStillRunningText = `
+    8 content list Progress: step 2 of 3, Review
+    15 button Build & Test
+    17 text Evolving...
+    20 button Stop
+    24 text Adding bat to the Homebrew package list.
+  `;
+  assert.equal(
+    isProviderReviewReady(providerStillRunningText),
+    false,
+    "provider Review readiness must not pass while Evolving and Stop remain visible",
+  );
+  const providerReviewReadyText = `
+    8 content list Progress: step 2 of 3, Review
+    18 text Proposed changes 1 modified
+    20 tab (selected) Semantic
+    21 tab (selectable) Diff
+    26 button Discard
+    28 button Build & Test
+  `;
+  assert.equal(
+    isProviderReviewReady(providerReviewReadyText),
+    true,
+    "provider Review readiness should require settled Semantic/Diff tabs and a review action",
+  );
+  const currentSaveStepText = `
+    8 content list Progress: step 3 of 3, Save
+    16 tab (selected) Semantic
+    17 tab (selectable) Diff
+    23 button Keep Changes
+    24 pop up button More change options
+  `;
+  assert.equal(
+    isStep3Ready(currentSaveStepText),
+    true,
+    "Step 3 readiness should recognize the current Keep Changes surface",
+  );
+  assert.equal(
+    findElement(currentSaveStepText, [/^button Keep Changes(?:\s|$)/i]),
+    "23",
+    "the current Step 3 primary action should be selectable without matching the options menu",
+  );
+  assert.equal(
+    isCommitReady("23 button Keep Changes"),
+    false,
+    "Keep Changes alone is not the final Commit action",
+  );
+  assert.equal(
+    isCommitReady("23 button Commit"),
+    true,
+    "the enabled Commit form action should be recognized after Keep Changes",
+  );
+  assert.equal(
+    isCommitFormReady("23 button Commit"),
+    false,
+    "the Commit button alone must not race an empty provider-generated commit message",
+  );
+  assert.equal(
+    isCommitFormReady(
+      "22 text field (settable, string) Placeholder: Commit message…, Value: chore(homebrew): add bat\n23 button Commit",
+    ),
+    true,
+    "the commit form should be ready only with a non-empty message and enabled Commit action",
+  );
   assert.deepEqual(
     elementEntries(simpleElementText),
     [
@@ -6226,6 +6407,11 @@ async function runSelfTest() {
     renderedHtml.includes("Continuous remote-Mac screen recording"),
     true,
     "rendered report should identify the continuous recording as primary video evidence",
+  );
+  assert.equal(
+    renderedHtml.includes('href="storybook/"'),
+    false,
+    "a not-applicable Storybook preview must not render a broken artifact-relative link",
   );
   const ids = [...renderedHtml.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
   const duplicateIds = ids.filter((id, index) => ids.indexOf(id) !== index);
