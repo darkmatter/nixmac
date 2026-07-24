@@ -1,3 +1,5 @@
+use crate::evolve::nixmac_ignore::{NixmacIgnoreChecker, get_always_ignored_dirs};
+
 use super::gitignore::{GitignoreChecker, VisibleFiles};
 use super::utils::truncate_error;
 use anyhow::{Result, anyhow};
@@ -37,6 +39,7 @@ pub fn execute_search_code(
     pattern: &str,
     file_pattern: Option<&str>,
     gitignore: Option<&GitignoreChecker>,
+    nixmac_ignore: Option<&NixmacIgnoreChecker>,
 ) -> Result<String> {
     info!("Searching for pattern: {}", pattern);
 
@@ -64,7 +67,8 @@ pub fn execute_search_code(
     let (code, stdout, stderr) = run_inprocess_rg(base, pattern, file_pattern);
     match code {
         0 => {
-            let formatted = format_rg_json_matches(stdout.as_bytes(), visible.as_ref());
+            let formatted =
+                format_rg_json_matches(stdout.as_bytes(), visible.as_ref(), nixmac_ignore);
             if formatted.is_empty() {
                 Ok("No matches found.".to_string())
             } else {
@@ -107,7 +111,8 @@ fn run_inprocess_rg(
         "--color=never".into(),
         "--text".into(),
     ];
-    for d in super::IGNORED_DIRS {
+    let ignored_dirs = get_always_ignored_dirs();
+    for d in ignored_dirs {
         argv.push("--glob".into());
         argv.push(format!("!{d}/**/*").into());
     }
@@ -124,7 +129,11 @@ fn run_inprocess_rg(
     (code, stdout, stderr)
 }
 
-fn format_rg_json_matches(stdout: &[u8], visible: Option<&VisibleFiles>) -> String {
+fn format_rg_json_matches(
+    stdout: &[u8],
+    visible: Option<&VisibleFiles>,
+    nixmac_ignore: Option<&NixmacIgnoreChecker>,
+) -> String {
     let mut lines: Vec<String> = Vec::new();
 
     for json_line in String::from_utf8_lossy(stdout).lines() {
@@ -146,7 +155,7 @@ fn format_rg_json_matches(stdout: &[u8], visible: Option<&VisibleFiles>) -> Stri
             continue;
         };
 
-        if is_hidden_match(path, visible) {
+        if is_hidden_match(path, visible, nixmac_ignore) {
             continue;
         }
 
@@ -162,11 +171,16 @@ fn format_rg_json_matches(stdout: &[u8], visible: Option<&VisibleFiles>) -> Stri
     lines.join("\n")
 }
 
-fn is_hidden_match(path: &str, visible: Option<&VisibleFiles>) -> bool {
+fn is_hidden_match(
+    path: &str,
+    visible: Option<&VisibleFiles>,
+    nixmac_ignore: Option<&NixmacIgnoreChecker>,
+) -> bool {
     let rel = normalize_match_path(path);
-    visible
-        .map(|visible| !visible.contains_file(&rel))
-        .unwrap_or(false)
+    nixmac_ignore.is_some_and(|checker| checker.is_ignored(&rel, false))
+        || visible
+            .map(|visible| !visible.contains_file(&rel))
+            .unwrap_or(false)
 }
 
 fn normalize_match_path(path: &str) -> PathBuf {
@@ -184,7 +198,9 @@ fn normalize_match_path(path: &str) -> PathBuf {
 mod tests {
     use super::execute_search_code;
     use crate::evolve::gitignore::GitignoreChecker;
+    use crate::evolve::nixmac_ignore;
     use std::fs;
+    use std::path::Path;
     use tempfile::tempdir;
 
     #[test]
@@ -197,7 +213,7 @@ mod tests {
         fs::write(tmp.join("secret.txt"), "NEEDLE").expect("write secret file");
         let gitignore_matcher = GitignoreChecker::new(tmp).expect("load matcher");
 
-        let output = execute_search_code(tmp, "NEEDLE", None, gitignore_matcher.as_ref())
+        let output = execute_search_code(tmp, "NEEDLE", None, gitignore_matcher.as_ref(), None)
             .expect("search should succeed");
 
         assert!(output.contains("visible.txt"), "output: {output}");
@@ -218,6 +234,7 @@ mod tests {
             "NEEDLE",
             Some("secret.txt"),
             gitignore_matcher.as_ref(),
+            None,
         )
         .expect("search should succeed");
 
@@ -235,10 +252,39 @@ mod tests {
         fs::write(tmp.join("nested/secret.txt"), "NEEDLE").expect("write nested secret file");
         let gitignore_matcher = GitignoreChecker::new(tmp).expect("load matcher");
 
-        let output = execute_search_code(tmp, "NEEDLE", None, gitignore_matcher.as_ref())
+        let output = execute_search_code(tmp, "NEEDLE", None, gitignore_matcher.as_ref(), None)
             .expect("search should succeed");
 
         assert!(output.contains("nested/visible.txt"), "output: {output}");
         assert!(!output.contains("nested/secret.txt"), "output: {output}");
+    }
+
+    #[test]
+    fn search_code_skips_tracked_files_ignored_by_nixmacignore() {
+        let binding = tempdir().expect("tempdir");
+        let tmp = binding.path();
+        let repo = git2::Repository::init(tmp).expect("init git repo");
+        fs::write(tmp.join(".nixmacignore"), "secret.txt\n").expect("write .nixmacignore");
+        fs::write(tmp.join("visible.txt"), "NEEDLE").expect("write visible file");
+        fs::write(tmp.join("secret.txt"), "NEEDLE").expect("write secret file");
+        let mut index = repo.index().expect("open git index");
+        index
+            .add_path(Path::new("secret.txt"))
+            .expect("track secret file");
+        index.write().expect("write git index");
+        let gitignore_matcher = GitignoreChecker::new(tmp).expect("load matcher");
+        let nixmac_ignore_matcher =
+            nixmac_ignore::NixmacIgnoreChecker::new(tmp).expect("load nixmac ignore matcher");
+        let output = execute_search_code(
+            tmp,
+            "NEEDLE",
+            None,
+            gitignore_matcher.as_ref(),
+            nixmac_ignore_matcher.as_ref(),
+        )
+        .expect("search should succeed");
+
+        assert!(output.contains("visible.txt"), "output: {output}");
+        assert!(!output.contains("secret.txt"), "output: {output}");
     }
 }
