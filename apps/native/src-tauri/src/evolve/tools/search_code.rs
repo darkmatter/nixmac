@@ -37,6 +37,12 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
         .as_str()
         .ok_or_else(|| anyhow!("search_code: missing pattern"))?;
     let file_pattern = ctx.args["file_pattern"].as_str();
-    let output = execute_search_code(ctx.repo_root, pattern, file_pattern, ctx.gitignore_matcher)?;
+    let output = execute_search_code(
+        ctx.repo_root,
+        pattern,
+        file_pattern,
+        ctx.gitignore_matcher,
+        ctx.nixmac_ignore_matcher,
+    )?;
     Ok(ToolResult::Continue(output))
 }

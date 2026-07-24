@@ -30,6 +30,7 @@ use crate::evolve::utils::normalize_relative_path;
 use crate::shared_types::FileEdit;
 
 use super::gitignore::GitignoreChecker;
+use super::nixmac_ignore::NixmacIgnoreChecker;
 use anyhow::{Result, anyhow};
 use std::path::{Component, Path};
 
@@ -73,6 +74,7 @@ pub(crate) struct ToolCtx<'a> {
     pub(crate) host_attr: &'a str,
     pub(crate) args: &'a serde_json::Value,
     pub(crate) gitignore_matcher: Option<&'a GitignoreChecker>,
+    pub(crate) nixmac_ignore_matcher: Option<&'a NixmacIgnoreChecker>,
     pub(crate) auto_format: bool,
     /// Sink for streamed `build_check` output batches; when absent the check
     /// runs blocking with no progress feedback.
@@ -121,6 +123,7 @@ pub fn execute_tool(
     args: &serde_json::Value,
     auto_format: bool,
     gitignore_matcher: Option<&GitignoreChecker>,
+    nixmac_ignore_matcher: Option<&NixmacIgnoreChecker>,
     on_build_output: Option<&dyn Fn(&str)>,
 ) -> Result<ToolResult> {
     // Repair double-encoded arguments at the dispatch boundary so every
@@ -134,6 +137,7 @@ pub fn execute_tool(
         args: &args,
         auto_format,
         gitignore_matcher,
+        nixmac_ignore_matcher,
         on_build_output,
     };
 
@@ -194,18 +198,42 @@ pub(crate) fn truncate_for_log(s: &str, max_len: usize) -> String {
     }
 }
 
-pub(crate) fn ensure_nixmac_edit_allowed(tool: &str, path: &str) -> Result<()> {
+/// Makes sure that the given path is allowed to be edited under .nixmac.
+/// Rules:
+/// 1. In the special .nixmac directory, only .nixmac/<module>/data.json files may be edited by the agent.
+/// 2. Files that are nixmac-ignored or .nixmacignore itself cannot be edited by the agent.
+pub(crate) fn ensure_nixmac_edit_allowed(
+    tool: &str,
+    path: &str,
+    nixmac_ignore: Option<&NixmacIgnoreChecker>,
+) -> Result<()> {
     let normalized = normalize_relative_path(Path::new(path))?;
     let components = normalized.components().collect::<Vec<_>>();
-    let is_nixmac =
-        matches!(components.first(), Some(Component::Normal(name)) if *name == ".nixmac");
 
-    if !is_nixmac {
-        return Ok(());
+    // Check Nixmac's ignore policy before the `.nixmac` exception. This keeps
+    // mandatory ignores such as `result` and `.git` non-negatable even when a
+    // path below them happens to contain a `.nixmac` component.
+    if normalized == Path::new(".nixmacignore")
+        || nixmac_ignore.is_some_and(|checker| checker.is_ignored(&normalized, false))
+    {
+        return Err(anyhow!(
+            "{}: '{}' is protected by Nixmac ignore rules and cannot be edited by the agent",
+            tool,
+            normalized.display()
+        ));
     }
 
+    let Some(nixmac_index) = components
+        .iter()
+        .position(|component| matches!(component, Component::Normal(name) if *name == ".nixmac"))
+    else {
+        return Ok(());
+    };
+
+    // A repository's special `.nixmac` directory may live below the root, so
+    // apply the reserved-file rules to the path suffix beginning there.
     let is_module_data_json = matches!(
-        components.as_slice(),
+        &components[nixmac_index..],
         [
             Component::Normal(root),
             Component::Normal(_module),
@@ -228,8 +256,10 @@ pub(crate) fn ensure_nixmac_edit_allowed(tool: &str, path: &str) -> Result<()> {
 mod tests {
     use super::{ToolResult, execute_tool, is_editing_tool, truncate_for_log};
     use crate::evolve::gitignore::GitignoreChecker;
+    use crate::evolve::nixmac_ignore::NixmacIgnoreChecker;
     use serde_json::json;
     use std::fs;
+    use std::path::Path;
     use tempfile::tempdir;
 
     #[test]
@@ -288,6 +318,7 @@ mod tests {
             false,
             gitignore_matcher.as_ref(),
             None,
+            None,
         );
 
         let err = result.expect_err("ignored file should be rejected");
@@ -317,6 +348,7 @@ mod tests {
             false,
             gitignore_matcher.as_ref(),
             None,
+            None,
         );
 
         let err = result.expect_err("nested gitignored file should be rejected");
@@ -324,6 +356,41 @@ mod tests {
             err.to_string().contains("ignored by .gitignore"),
             "unexpected error: {err:#}"
         );
+    }
+
+    #[test]
+    fn list_files_skips_nixmac_ignored_files() {
+        let tmp = tempdir().expect("tempdir");
+        let repo = git2::Repository::init(tmp.path()).expect("init git repo");
+        fs::write(tmp.path().join(".nixmacignore"), "secret.txt\n").expect("write .nixmacignore");
+        fs::write(tmp.path().join("visible.txt"), "visible").expect("write visible file");
+        fs::write(tmp.path().join("secret.txt"), "secret").expect("write secret file");
+        let mut index = repo.index().expect("open git index");
+        index
+            .add_path(Path::new("secret.txt"))
+            .expect("track secret file");
+        index.write().expect("write git index");
+        let nixmac_ignore_matcher = NixmacIgnoreChecker::new(tmp.path()).expect("load matcher");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "list_files",
+            &json!({ "pattern": "**/*.txt" }),
+            false,
+            None,
+            nixmac_ignore_matcher.as_ref(),
+            None,
+        )
+        .expect("list_files should succeed");
+
+        let ToolResult::Continue(output) = result else {
+            panic!("expected ToolResult::Continue");
+        };
+
+        assert!(output.contains("visible.txt"), "output: {output}");
+        assert!(!output.contains("secret.txt"), "output: {output}");
     }
 
     #[test]
@@ -347,6 +414,7 @@ mod tests {
             false,
             gitignore_matcher.as_ref(),
             None,
+            None,
         )
         .expect("list_files should succeed");
 
@@ -357,6 +425,41 @@ mod tests {
         assert!(output.contains("visible.txt"), "output: {output}");
         assert!(!output.contains("secret.txt"), "output: {output}");
         assert!(!output.contains("ignored-dir/file.txt"), "output: {output}");
+    }
+
+    #[test]
+    fn list_files_skips_tracked_files_ignored_by_nixmacignore() {
+        let tmp = tempdir().expect("tempdir");
+        let repo = git2::Repository::init(tmp.path()).expect("init git repo");
+        fs::write(tmp.path().join(".nixmacignore"), "secret.txt\n").expect("write .nixmacignore");
+        fs::write(tmp.path().join("visible.txt"), "visible").expect("write visible file");
+        fs::write(tmp.path().join("secret.txt"), "secret").expect("write secret file");
+        let mut index = repo.index().expect("open git index");
+        index
+            .add_path(Path::new("secret.txt"))
+            .expect("track secret file");
+        index.write().expect("write git index");
+        let gitignore_matcher = GitignoreChecker::new(tmp.path()).expect("load matcher");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "list_files",
+            &json!({ "pattern": "**/*.txt" }),
+            false,
+            gitignore_matcher.as_ref(),
+            None,
+            None,
+        )
+        .expect("list_files should succeed");
+
+        let ToolResult::Continue(output) = result else {
+            panic!("expected ToolResult::Continue");
+        };
+
+        assert!(output.contains("visible.txt"), "output: {output}");
+        assert!(!output.contains("secret.txt"), "output: {output}");
     }
 
     #[test]
@@ -378,6 +481,7 @@ mod tests {
             }),
             false,
             gitignore_matcher.as_ref(),
+            None,
             None,
         );
 
@@ -414,6 +518,7 @@ mod tests {
             false,
             gitignore_matcher.as_ref(),
             None,
+            None,
         );
 
         let err = result.expect_err("edit_nix_file should reject gitignored paths");
@@ -445,6 +550,7 @@ mod tests {
                 }
             }),
             false,
+            None,
             None,
             None,
         );
@@ -482,6 +588,7 @@ mod tests {
             false,
             None,
             None,
+            None,
         );
 
         let err = result.expect_err("list attr path in top-level path should suggest add");
@@ -511,6 +618,7 @@ mod tests {
                 "value": ["alpha", "beta"]
             }),
             false,
+            None,
             None,
             None,
         );
@@ -549,6 +657,7 @@ mod tests {
             false,
             None,
             None,
+            None,
         );
 
         let err = result.expect_err("shorthand set_attrs should require an action path");
@@ -575,6 +684,7 @@ mod tests {
                 "action": "{\"set\": {\"path\": \"system.defaults.NSGlobalDomain._HIHideMenuBar\", \"value\": false}}"
             }),
             false,
+            None,
             None,
             None,
         )
@@ -608,6 +718,7 @@ mod tests {
             false,
             None,
             None,
+            None,
         )
         .expect("stringified action payload should be repaired at dispatch");
 
@@ -637,6 +748,7 @@ mod tests {
             false,
             None,
             None,
+            None,
         );
 
         let err = result.expect_err("non-object double-encoded action should still error");
@@ -664,6 +776,7 @@ mod tests {
                 }
             }),
             false,
+            None,
             None,
             None,
         );
@@ -708,6 +821,7 @@ mod tests {
             false,
             None,
             None,
+            None,
         )
         .expect("edit_nix_file should quote Homebrew values");
 
@@ -744,6 +858,7 @@ mod tests {
                 "values": ["wget"]
             }),
             false,
+            None,
             None,
             None,
         )
@@ -800,6 +915,7 @@ mod tests {
             false,
             None,
             None,
+            None,
         )
         .expect("edit_nix_file should accept explicit attr_path shorthand");
 
@@ -838,6 +954,7 @@ mod tests {
                 "values": ["fd"]
             }),
             false,
+            None,
             None,
             None,
         );
@@ -885,6 +1002,7 @@ mod tests {
             false,
             None,
             None,
+            None,
         )
         .expect("edit_nix_file should match quoted Homebrew values");
 
@@ -913,6 +1031,7 @@ mod tests {
             false,
             None,
             None,
+            None,
         )
         .expect("data.json edits should be allowed");
     }
@@ -935,6 +1054,7 @@ mod tests {
                 "replace": "{\"name\":\"Changed\"}"
             }),
             false,
+            None,
             None,
             None,
         );
@@ -961,6 +1081,7 @@ mod tests {
                 "replace": "{\"enabled\":true}"
             }),
             false,
+            None,
             None,
             None,
         );
@@ -993,6 +1114,7 @@ mod tests {
             false,
             None,
             None,
+            None,
         );
 
         let err = result.expect_err(".nixmac nix edits should be rejected");
@@ -1017,6 +1139,7 @@ mod tests {
                 }
             }),
             false,
+            None,
             None,
             None,
         );
@@ -1047,6 +1170,7 @@ mod tests {
             false,
             gitignore_matcher.as_ref(),
             None,
+            None,
         );
 
         let err = result.expect_err("edit_file should reject nested gitignored paths");
@@ -1076,19 +1200,109 @@ mod tests {
 
     #[test]
     fn nixmac_guard_names_edit_file_for_module_data_json() {
-        let err = super::ensure_nixmac_edit_allowed("ensure_secret", ".nixmac/homebrew/data.json")
-            .expect_err("only edit_file may edit module data.json");
+        let err =
+            super::ensure_nixmac_edit_allowed("ensure_secret", ".nixmac/homebrew/data.json", None)
+                .expect_err("only edit_file may edit module data.json");
         assert!(
             err.to_string().contains("edit_file"),
             "error must name the tool that CAN do this edit: {err:#}"
         );
 
-        let err = super::ensure_nixmac_edit_allowed("edit_file", ".nixmac/homebrew/default.nix")
-            .expect_err("non-data.json .nixmac files stay reserved");
+        let err =
+            super::ensure_nixmac_edit_allowed("edit_file", ".nixmac/homebrew/default.nix", None)
+                .expect_err("non-data.json .nixmac files stay reserved");
         assert!(err.to_string().contains("reserved"), "unexpected: {err:#}");
 
-        super::ensure_nixmac_edit_allowed("edit_file", ".nixmac/homebrew/data.json")
+        super::ensure_nixmac_edit_allowed("edit_file", ".nixmac/homebrew/data.json", None)
             .expect("edit_file on module data.json is allowed");
+    }
+
+    #[test]
+    fn nixmac_guard_applies_reserved_rules_to_nested_nixmac_directories() {
+        super::ensure_nixmac_edit_allowed(
+            "edit_file",
+            "hosts/macbook/.nixmac/homebrew/data.json",
+            None,
+        )
+        .expect("nested module data.json is allowed through edit_file");
+
+        for (tool, path) in [
+            ("edit_nix_file", "hosts/macbook/.nixmac/homebrew/data.json"),
+            ("edit_file", "hosts/macbook/.nixmac/homebrew/default.nix"),
+            ("edit_file", "hosts/macbook/.nixmac/data.json"),
+        ] {
+            let error = super::ensure_nixmac_edit_allowed(tool, path, None)
+                .expect_err("reserved nested .nixmac path must be rejected");
+            assert!(error.to_string().contains("reserved"), "error: {error:#}");
+        }
+    }
+
+    #[test]
+    fn nixmac_guard_rejects_nixmac_ignored_edit_paths() {
+        let tmp = tempdir().expect("tempdir");
+        git2::Repository::init(tmp.path()).expect("init git repo");
+        fs::write(tmp.path().join(".nixmacignore"), "private/\n").expect("write ignore file");
+        let checker = NixmacIgnoreChecker::new(tmp.path())
+            .expect("create checker")
+            .expect("git repository has a checker");
+
+        let error =
+            super::ensure_nixmac_edit_allowed("edit_file", "private/settings.json", Some(&checker))
+                .expect_err("nixmac-ignored file must be rejected");
+        assert!(
+            error.to_string().contains("Nixmac ignore rules"),
+            "error: {error:#}"
+        );
+
+        super::ensure_nixmac_edit_allowed("edit_file", "visible/settings.json", Some(&checker))
+            .expect("non-ignored ordinary path remains editable");
+    }
+
+    #[test]
+    fn nixmac_guard_preserves_nested_module_data_exception_with_ignore_matcher() {
+        let tmp = tempdir().expect("tempdir");
+        git2::Repository::init(tmp.path()).expect("init git repo");
+        fs::write(tmp.path().join(".nixmacignore"), "*\n").expect("write ignore file");
+        let checker = NixmacIgnoreChecker::new(tmp.path())
+            .expect("create checker")
+            .expect("git repository has a checker");
+
+        super::ensure_nixmac_edit_allowed(
+            "edit_file",
+            "hosts/macbook/.nixmac/homebrew/data.json",
+            Some(&checker),
+        )
+        .expect("the special .nixmac directory is immune to user ignore rules");
+    }
+
+    #[test]
+    fn nixmac_guard_never_allows_root_nixmacignore_edits() {
+        let error = super::ensure_nixmac_edit_allowed("edit_file", "./.nixmacignore", None)
+            .expect_err(".nixmacignore must be protected even without a checker");
+        assert!(
+            error.to_string().contains("Nixmac ignore rules"),
+            "error: {error:#}"
+        );
+    }
+
+    #[test]
+    fn mandatory_ignores_precede_nested_nixmac_edit_exception() {
+        let tmp = tempdir().expect("tempdir");
+        git2::Repository::init(tmp.path()).expect("init git repo");
+        let checker = NixmacIgnoreChecker::new(tmp.path())
+            .expect("create checker")
+            .expect("git repository has a checker");
+
+        let error = super::ensure_nixmac_edit_allowed(
+            "edit_file",
+            "result/.nixmac/homebrew/data.json",
+            Some(&checker),
+        )
+        .expect_err("mandatory result ignore must take precedence");
+        assert!(
+            error.to_string().contains("Nixmac ignore rules"),
+            "error: {error:#}"
+        );
     }
 
     #[test]
@@ -1111,6 +1325,7 @@ mod tests {
                     }
                 }),
                 false,
+                None,
                 None,
                 None,
             );

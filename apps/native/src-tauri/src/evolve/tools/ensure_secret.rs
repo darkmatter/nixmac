@@ -78,7 +78,7 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
         .and_then(|inject| inject.get("file"))
         .and_then(|file| file.as_str())
     {
-        ensure_nixmac_edit_allowed("ensure_secret", inject_file)?;
+        ensure_nixmac_edit_allowed("ensure_secret", inject_file, ctx.nixmac_ignore_matcher)?;
     }
 
     let result = execute_ensure_secret(
