@@ -528,10 +528,28 @@ to seed the GUI launchd environment. Start and cleanup both remove that file,
 and cleanup fails the check if `OPENROUTER_API_KEY` remains in launchd after the
 run. The report never prints the key value.
 
-The remote fixture also overwrites provider/model settings in the backed-up app
-support directory before launch so runs do not inherit stale DXU state:
-`evolveProvider=openai`, `evolveModel=anthropic/claude-sonnet-4.6`,
-`summaryProvider=openai`, and `summaryModel=openai/gpt-4o-mini`.
+The remote fixture also writes the current typed app-support slices before
+launch so runs do not inherit stale DXU state. `global-preferences.json`
+selects the disposable config repo and records the provider-specific model
+maps (`openai` compatibility provider with
+`anthropic/claude-sonnet-4.6` for evolution and `openai/gpt-4o-mini` for
+summaries). `onboarding-state.json` carries a completed latch because this
+lane tests the configured product surface; onboarding is tracked by a separate
+explicit coverage waiver. The entire app-support directory is backed up before
+these writes and restored during cleanup.
+
+The runner smoke-inspects the generated HTML during the Computer Use suite.
+After the wrapper stops, validates, and attaches the continuous recording, it
+runs `inspect-existing` and opens the recording-aware report through Computer
+Use again. That final inspection requires the visible body to contain the
+current workflow ID, head SHA, and an available continuous-video marker. The
+pre-attachment report screenshot/text are replaced so the uploaded artifact
+cannot claim both that the recording is unavailable and that it is attached.
+If the disposable config evaluates to a system generation newer than the
+remote Mac's active generation, nixmac correctly opens the saved-update Review
+surface. The runner uses the product stepper to return to Describe before the
+calibrated prompt flow; the product router must therefore honor that enabled
+back-navigation control even while `rebuildNeeded` remains true.
 
 The PR-built macOS app artifact is also staged under a per-run `/tmp`
 directory, launched from that exact staged `.app` bundle, and passed to every

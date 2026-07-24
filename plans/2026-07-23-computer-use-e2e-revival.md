@@ -171,6 +171,32 @@ host-consent failure, not a repetition of the prior WebKit failure. A new
 exact-head build and real-Mac run remain mandatory; neither the manually
 repaired host nor the uninspected current artifact can satisfy acceptance.
 
+Fifth post-execution deviation (2026-07-24): the provenance-fixed exact-head
+run at `eef225632` launched the correct signed app, passed remote readiness,
+and produced a valid 36.5-second continuous recording plus a current-run
+Safari inspection. It exposed two distinct harness-state defects. The workflow
+still seeded legacy `settings.json`, while the current app reads
+`global-preferences.json` and gates the product surface on the separate
+`onboarding-state.json` completion latch; consequently the suite observed
+onboarding step 3 instead of the configured product UI. The browser inspection
+also ran before the wrapper attached the continuous recording, so its otherwise
+current screenshot truthfully said the recording was unavailable even though
+the final artifact later contained it. Before requalification, seed the typed
+preferences and completed onboarding slices inside the already backed-up app
+support directory, and add a post-attachment Computer Use inspection that
+requires the visible report to show the current run/head and an available
+continuous recording. Replace the earlier report-inspection screenshot so the
+artifact cannot contain contradictory pre-attachment evidence. A stale
+host-owned encrypted-volume dialog seen in the continuous recording must also
+be dismissed before the staged app launches. These are current-schema and
+evidence-sequencing repairs, not waivers of the real-app gate. A targeted
+signed-app smoke then confirmed the typed fixture reaches the real product UI
+and exposed a product navigation defect: when a clean config needs a rebuild,
+the stepper presents an enabled "Go to Describe" control but the current-step
+router ignores its override. Fix that truthful-control bug and have the runner
+use the control to normalize a saved-update Review state back to the prompt
+before starting the calibrated scenario.
+
 For the final qualifying run, verify all of the following:
 
 1. **Provenance**

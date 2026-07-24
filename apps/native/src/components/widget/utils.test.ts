@@ -230,13 +230,24 @@ describe("computeCurrentStep — diff gating", () => {
     expect(computeCurrentStep(readyState({ rebuildNeeded: true }))).toBe("manualEvolve");
   });
 
+  it("allows the user to return to Describe while saved settings still need a build", () => {
+    expect(
+      computeCurrentStep(
+        readyState({
+          rebuildNeeded: true,
+          activeStepOverride: "begin",
+        }),
+      ),
+    ).toBe("begin");
+  });
+
   it("honors the backend step once there is a diff to act on", () => {
-    expect(computeCurrentStep(readyState({ evolveState: evolveAt("evolve"), hasChanges: true }))).toBe(
-      "evolve",
-    );
-    expect(computeCurrentStep(readyState({ evolveState: evolveAt("commit"), hasChanges: true }))).toBe(
-      "commit",
-    );
+    expect(
+      computeCurrentStep(readyState({ evolveState: evolveAt("evolve"), hasChanges: true })),
+    ).toBe("evolve");
+    expect(
+      computeCurrentStep(readyState({ evolveState: evolveAt("commit"), hasChanges: true })),
+    ).toBe("commit");
     expect(
       computeCurrentStep(readyState({ evolveState: evolveAt("manualEvolve"), hasChanges: true })),
     ).toBe("manualEvolve");

@@ -2,7 +2,7 @@
 import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
@@ -218,7 +218,10 @@ function hasAny(text, patterns) {
   return patterns.some((pattern) => pattern.test(text));
 }
 
-function hasReportBodyEvidence(text, { expectedHeadSha = "", expectedWorkflowRunId = "" } = {}) {
+function hasReportBodyEvidence(
+  text,
+  { expectedHeadSha = "", expectedWorkflowRunId = "", requireContinuousRecording = false } = {},
+) {
   const bodyEvidence =
     countMatches(text, [
       /Scenario Checklist/i,
@@ -229,8 +232,13 @@ function hasReportBodyEvidence(text, { expectedHeadSha = "", expectedWorkflowRun
     ]) >= 2;
   const expectedHead = expectedHeadSha.trim().slice(0, 8);
   const expectedRun = expectedWorkflowRunId.trim();
+  const continuousRecordingVisible =
+    !requireContinuousRecording ||
+    (/Continuous Video\s+available/i.test(text) &&
+      /Continuous remote-Mac screen recording/i.test(text));
   return (
     bodyEvidence &&
+    continuousRecordingVisible &&
     (!expectedHead || text.includes(expectedHead)) &&
     (!expectedRun || text.includes(expectedRun))
   );
@@ -1406,7 +1414,11 @@ async function maybeRelaunchRemote(state) {
   });
 }
 
-async function inspectReportWithComputerUse(client, state) {
+async function inspectReportWithComputerUse(
+  client,
+  state,
+  { requireContinuousRecording = false } = {},
+) {
   const dest = process.env.NIXMAC_E2E_REMOTE_SSH_DEST;
   const remoteParent =
     process.env.NIXMAC_E2E_REMOTE_REPORT_DIR || "/tmp/nixmac-computer-use-reports";
@@ -1453,7 +1465,10 @@ async function inspectReportWithComputerUse(client, state) {
   ]
     .join("-")
     .replace(/[^a-zA-Z0-9._-]+/g, "-");
-  const reportFileName = `index-${reportIdentity}.html`;
+  const inspectionOrdinal = String(
+    state.events.filter((event) => event.type === "report.remote-open").length + 1,
+  ).padStart(2, "0");
+  const reportFileName = `index-${reportIdentity}-inspection-${inspectionOrdinal}.html`;
   const remoteBrowserIndex = `${remoteDir}/${reportFileName}`;
   const identityCopyResult = ssh(
     `/bin/cp ${shellQuote(remoteIndex)} ${shellQuote(remoteBrowserIndex)}`,
@@ -1508,6 +1523,7 @@ async function inspectReportWithComputerUse(client, state) {
           hasReportBodyEvidence(text, {
             expectedHeadSha,
             expectedWorkflowRunId,
+            requireContinuousRecording,
           })
         ) {
           const label = `report-inspection-${app.replace(/[^a-zA-Z0-9._-]+/g, "-")}`;
@@ -1547,7 +1563,7 @@ async function inspectReportWithComputerUse(client, state) {
             state,
             "reportInspection",
             "pass",
-            `Computer Use inspected the generated report in ${app}; report text and evidence sections were visible.`,
+            `Computer Use inspected the generated report in ${app}; report text, evidence sections, provenance${requireContinuousRecording ? ", and the available continuous recording" : ""} were visible.`,
           );
           addNarrative(
             state,
@@ -2755,6 +2771,24 @@ async function runSuite(args) {
       "launch",
       "Computer Use observed the nixmac window at launch.",
     );
+    if (/Progress: step 2 of 3, Review/i.test(text) && /button Go to Describe step/i.test(text)) {
+      const returnedToDescribe = await clickByPattern(
+        client,
+        state,
+        text,
+        "Go to Describe step",
+        [/button Go to Describe step/i],
+        "Return from a saved-configuration update review to the prompt surface before exercising the E2E scenario.",
+      );
+      if (returnedToDescribe) {
+        text = await captureState(
+          client,
+          state,
+          "launch-describe",
+          "Computer Use returned from the saved-configuration review to the Describe prompt.",
+        );
+      }
+    }
     if (
       /nixmac/i.test(text) &&
       hasAny(text, [
@@ -4136,6 +4170,83 @@ async function attachRecording(args) {
   }
 }
 
+async function clearReportInspectionArtifacts(state) {
+  const removedPaths = [];
+  state.screenshots = state.screenshots.filter((item) => {
+    if (item.label !== "HTML report inspection") return true;
+    if (item.path) removedPaths.push(item.path);
+    return false;
+  });
+  state.textSnapshots = state.textSnapshots.filter((item) => {
+    if (item.label !== "HTML report inspection") return true;
+    if (item.path) removedPaths.push(item.path);
+    return false;
+  });
+  for (const relativePath of removedPaths) {
+    const absolutePath = path.resolve(state.runDir, relativePath);
+    const relativeToRun = path.relative(state.runDir, absolutePath);
+    if (relativeToRun.startsWith("..") || path.isAbsolute(relativeToRun)) {
+      throw new Error(
+        `refusing to remove report evidence outside the run directory: ${relativePath}`,
+      );
+    }
+    await rm(absolutePath, { force: true });
+  }
+  state.scenarios.reportInspection.notes = [];
+}
+
+async function inspectExisting(args) {
+  const runDir = argValue(args, "--run-dir", "");
+  if (!runDir) throw new Error("inspect-existing requires --run-dir <path>");
+  const statePath = path.join(runDir, "state.json");
+  if (!existsSync(statePath)) throw new Error(`inspect-existing state is missing: ${statePath}`);
+  const state = ensureCurrentSchema({
+    ...JSON.parse(await readFile(statePath, "utf8")),
+    runDir,
+  });
+  if (state.video?.status !== "available" || state.video?.kind !== CONTINUOUS_RECORDING_KIND) {
+    throw new Error("inspect-existing requires an attached, qualified continuous screen recording");
+  }
+
+  // The suite performs an early smoke inspection so the run step can retain a
+  // truthful verdict. Replace that pre-recording screenshot/text before
+  // certifying the final report; otherwise the artifact would preserve a stale
+  // "continuous recording unavailable" claim beside the attached MP4.
+  await clearReportInspectionArtifacts(state);
+  await render(state);
+
+  const client = new AppServerClient(process.env.NIXMAC_COMPUTER_USE_WS || DEFAULT_WS);
+  try {
+    await client.connect();
+    await inspectReportWithComputerUse(client, state, { requireContinuousRecording: true });
+    if (state.scenarios.reportInspection.status !== "pass") {
+      await render(state);
+      throw new Error("Computer Use could not validate the recording-aware report");
+    }
+
+    // Re-render the now-passing report, then replace the provisional capture
+    // with one taken from that passing document. A fresh inspection ordinal
+    // prevents Safari from reusing its first loopback response.
+    await render(state);
+    await clearReportInspectionArtifacts(state);
+    state.scenarios.reportInspection.notes.push(
+      "Recording-aware report body and provenance loaded; capturing the final passing document.",
+    );
+    await render(state);
+    await inspectReportWithComputerUse(client, state, { requireContinuousRecording: true });
+    refreshVisualProofQuality(state);
+    updatePrSpecificCoverage(state);
+    await render(state);
+    await saveState(state);
+    console.log(path.join(runDir, "index.html"));
+    if (state.scenarios.reportInspection.status !== "pass") {
+      throw new Error("Computer Use could not validate the final passing report");
+    }
+  } finally {
+    client.close();
+  }
+}
+
 async function renderErrorReport(error, args) {
   const note = `Computer Use remote runner failed before completing the suite: ${redact(error instanceof Error ? error.message : String(error))}`;
   const runDir = argValue(args, "--run-dir", activeRunDir || "");
@@ -4169,6 +4280,51 @@ async function renderErrorReport(error, args) {
 
 async function runSelfTest() {
   await runContinuousRecordingSelfTest();
+  const reportCleanupRunDir = path.join(
+    os.tmpdir(),
+    `nixmac-report-inspection-cleanup-${Date.now()}`,
+  );
+  await mkdir(path.join(reportCleanupRunDir, "screenshots"), { recursive: true });
+  await mkdir(path.join(reportCleanupRunDir, "texts"), { recursive: true });
+  await writeFile(
+    path.join(reportCleanupRunDir, "screenshots", "01-old-report.png"),
+    "old report image",
+  );
+  await writeFile(path.join(reportCleanupRunDir, "texts", "01-old-report.txt"), "old report text");
+  const reportCleanupState = {
+    runDir: reportCleanupRunDir,
+    screenshots: [
+      { label: "HTML report inspection", path: "screenshots/01-old-report.png" },
+      { label: "Launch", path: "screenshots/02-launch.png" },
+    ],
+    textSnapshots: [
+      { label: "HTML report inspection", path: "texts/01-old-report.txt" },
+      { label: "Launch", path: "texts/02-launch.txt" },
+    ],
+    scenarios: { reportInspection: { notes: ["pre-recording inspection"] } },
+  };
+  await clearReportInspectionArtifacts(reportCleanupState);
+  assert.deepEqual(
+    reportCleanupState.screenshots.map((item) => item.label),
+    ["Launch"],
+    "final inspection should remove the pre-recording report screenshot",
+  );
+  assert.deepEqual(
+    reportCleanupState.textSnapshots.map((item) => item.label),
+    ["Launch"],
+    "final inspection should remove the pre-recording report text",
+  );
+  assert.equal(
+    existsSync(path.join(reportCleanupRunDir, "screenshots", "01-old-report.png")),
+    false,
+    "final inspection should delete the stale report screenshot artifact",
+  );
+  assert.deepEqual(
+    reportCleanupState.scenarios.reportInspection.notes,
+    [],
+    "final inspection should remove stale pre-recording report notes",
+  );
+  await rm(reportCleanupRunDir, { recursive: true, force: true });
   const currentCoverageFreshness = buildCoverageFreshness({});
   assert.deepEqual(
     currentCoverageFreshness.drift,
@@ -5048,6 +5204,30 @@ async function runSelfTest() {
     true,
     "report inspection should accept only current run and head provenance",
   );
+  assert.equal(
+    hasReportBodyEvidence(
+      "1 heading Scenario Checklist\n2 heading Claims vs Evidence\n3 text Continuous remote-Mac screen recording\n4 text Head 3540a60b\n5 text Workflow 30082257457",
+      {
+        expectedHeadSha: "3540a60b669701694d2bb1abfecf0e9a7583827d",
+        expectedWorkflowRunId: "30082257457",
+        requireContinuousRecording: true,
+      },
+    ),
+    false,
+    "recording-aware inspection must reject a report that does not show the continuous video as available",
+  );
+  assert.equal(
+    hasReportBodyEvidence(
+      "1 link Continuous Video available\n2 heading Scenario Checklist\n3 heading Claims vs Evidence\n4 text Continuous remote-Mac screen recording\n5 text Head 3540a60b\n6 text Workflow 30082257457",
+      {
+        expectedHeadSha: "3540a60b669701694d2bb1abfecf0e9a7583827d",
+        expectedWorkflowRunId: "30082257457",
+        requireContinuousRecording: true,
+      },
+    ),
+    true,
+    "recording-aware inspection should require the current report to expose the attached continuous video",
+  );
   const reportServerCommand = reportServerStartCommand(
     "/tmp/report path",
     "index-30082257457-1-3540a60b.html",
@@ -5226,6 +5406,30 @@ async function runSelfTest() {
     dispatched.pop(),
     ["attachRecording", ["--run-dir", "/tmp/run", "--video", "video/live.mp4"]],
     "CLI dispatcher should dispatch attach-recording args",
+  );
+  await dispatchRemoteCuaCommand(
+    ["inspect-existing", "--run-dir", "/tmp/run"],
+    {
+      run: async (args) => dispatched.push(["run", args]),
+      renderUnavailable: async (args) => dispatched.push(["renderUnavailable", args]),
+      renderExisting: async (args) => dispatched.push(["renderExisting", args]),
+      attachRecording: async (args) => dispatched.push(["attachRecording", args]),
+      inspectExisting: async (args) => dispatched.push(["inspectExisting", args]),
+      selfTest: async () => dispatched.push(["selfTest", []]),
+    },
+    {
+      usage: () => {
+        dispatchUsageCalls += 1;
+      },
+      exit: (code) => {
+        dispatchExits.push(code);
+      },
+    },
+  );
+  assert.deepEqual(
+    dispatched.pop(),
+    ["inspectExisting", ["--run-dir", "/tmp/run"]],
+    "CLI dispatcher should dispatch inspect-existing args",
   );
   await dispatchRemoteCuaCommand(
     ["render-unavailable", "--note", "not ready"],
@@ -5981,6 +6185,7 @@ async function main() {
       renderStorybookOnly,
       renderExisting,
       attachRecording,
+      inspectExisting,
       selfTest: runSelfTest,
     },
     {

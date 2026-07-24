@@ -36,7 +36,15 @@ function gitWithChanges(): GitStatus {
     headCommitHash: null,
     cleanHead: false,
     changes: [
-      { id: 1, hash: "h1", filename: "configuration.nix", diff: "", lineCount: 1, createdAt: 0, ownSummaryId: 0 },
+      {
+        id: 1,
+        hash: "h1",
+        filename: "configuration.nix",
+        diff: "",
+        lineCount: 1,
+        createdAt: 0,
+        ownSummaryId: 0,
+      },
     ],
   };
 }
@@ -119,6 +127,24 @@ describe("Stepper", () => {
       "aria-current",
       "step",
     );
+  });
+
+  it("lets the user return to Describe when saved updates still need a build", () => {
+    viewModelActions.setState({
+      evolve: makeEvolveState({ step: "begin" }),
+      git: { ...gitWithChanges(), changes: [], cleanHead: true },
+      build: {
+        externalBuildDetected: false,
+        upstreamUpdateAvailable: false,
+        rebuildNeeded: true,
+      },
+    });
+
+    render(<Stepper />);
+    fireEvent.click(screen.getByRole("button", { name: "Go to Describe step" }));
+
+    expect(uiActions.getState().activeStepOverride).toBe("begin");
+    expect(screen.getByRole("list", { name: /step 1 of 3, Describe/ })).toBeInTheDocument();
   });
 
   it("stays visible while generating, with navigation locked", () => {

@@ -115,6 +115,9 @@ assert.ok(
 const recordingStartIndex = remote.indexOf("Start continuous remote screen recording");
 const computerUseRunIndex = remote.indexOf("Run Computer Use E2E");
 const recordingStopIndex = remote.indexOf("Stop, collect, and attach continuous screen recording");
+const finalReportInspectionIndex = remote.indexOf(
+  "Inspect final recording-aware report with Computer Use",
+);
 const restoreRemoteIndex = remote.indexOf("Restore remote app support");
 const remotePreflightIndex = remote.indexOf("Preflight remote Mac");
 const remoteStagingIndex = remote.indexOf("Start remote Codex app-server and nixmac");
@@ -181,6 +184,11 @@ assert.ok(
   recordingStopIndex < restoreRemoteIndex,
   "continuous recording must be collected before remote cleanup removes its staging directory",
 );
+assert.ok(
+  recordingStopIndex < finalReportInspectionIndex &&
+    finalReportInspectionIndex < restoreRemoteIndex,
+  "Computer Use must inspect the recording-aware report after attachment and before remote cleanup",
+);
 assert.match(
   remote,
   /source "\$REMOTE_RECORDING_DIR\/recording\.sh"[\s\S]*start_recording/,
@@ -190,6 +198,11 @@ assert.match(
   remote,
   /if: always\(\) && steps\.stale-run\.outputs\.stale != 'true'[\s\S]*attach-recording[\s\S]*--video "video\/continuous-screen-recording\.mp4"/,
   "recording collection must run on failure and attach the continuous artifact to the report",
+);
+assert.match(
+  remote,
+  /name: Inspect final recording-aware report with Computer Use[\s\S]*run-remote-cua\.mjs inspect-existing[\s\S]*--run-dir "\$latest_report"/,
+  "the final report must be re-opened through Computer Use after continuous recording attachment",
 );
 assert.match(
   remote,
@@ -205,6 +218,31 @@ assert.match(
   remote,
   /printf '%s\\n' \/flake\.lock \/result > "\$config_tmp\/config\/\.gitignore"/,
   "remote disposable config must ignore generated flake.lock and result artifacts before launch",
+);
+assert.match(
+  remote,
+  /global-preferences\.json[\s\S]*"configDir": config_dir[\s\S]*"repoRoot": config_dir/,
+  "remote staging must seed the current typed global preferences",
+);
+assert.match(
+  remote,
+  /onboarding = \{[\s\S]*"completedAt": completed_at[\s\S]*onboarding-state\.json/,
+  "remote staging must seed the current completed onboarding slice",
+);
+assert.match(
+  remote,
+  /legacy\["globalPreferencesMigratedV1"\] = True/,
+  "remote staging must prevent legacy settings from overwriting the typed E2E fixture",
+);
+assert.match(
+  remote,
+  /pkill -x SecurityAgent/,
+  "remote staging must dismiss stale host-owned SecurityAgent dialogs before evidence capture",
+);
+assert.match(
+  remote,
+  /killall Terminal[\s\S]*Terminal-launched Codex app-server did not become ready[\s\S]*tell application "Terminal" to set visible to false/,
+  "remote staging must remove stale Terminal windows and hide the current app-server window before recording",
 );
 
 assert.match(

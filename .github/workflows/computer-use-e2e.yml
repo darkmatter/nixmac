@@ -870,7 +870,16 @@ jobs:
           pkill -f 'nixmac-activate-temp|with administrator privileges|/nix/store/.*/activate|ln -s /etc/static/pam.d/sudo_local /etc/pam.d/sudo_local' >/dev/null 2>&1 || true
           osascript -e 'tell application id "com.darkmatter.nixmac" to quit' >/dev/null 2>&1 || true
           pkill -x nixmac >/dev/null 2>&1 || true
+          # A stale encrypted-volume unlock dialog can survive a host reboot and
+          # float above every app. It is unrelated to nixmac and makes the
+          # continuous recording misleading, so close the pre-existing
+          # SecurityAgent before launching the staged app. Any later nixmac
+          # authorization dialog is a fresh product interaction and is retained.
+          pkill -x SecurityAgent >/dev/null 2>&1 || true
           killall Safari >/dev/null 2>&1 || true
+          killall Terminal >/dev/null 2>&1 || true
+          killall "System Settings" >/dev/null 2>&1 || true
+          killall Photos >/dev/null 2>&1 || true
           pkill -f 'com.apple.WebKit.(GPU|WebContent|Networking).xpc' >/dev/null 2>&1 || true
           sleep 2
           rm -rf "$REMOTE_APP_STAGE"
@@ -922,24 +931,73 @@ jobs:
 
           support = os.path.expanduser("~/Library/Application Support/com.darkmatter.nixmac")
           os.makedirs(support, exist_ok=True)
-          settings_path = os.path.join(support, "settings.json")
+          config_dir = os.path.join(os.environ["REMOTE_CONFIG"], "config")
+          preferences_path = os.path.join(support, "global-preferences.json")
           try:
-              with open(settings_path, "r", encoding="utf-8") as handle:
-                  settings = json.load(handle)
+              with open(preferences_path, "r", encoding="utf-8") as handle:
+                  preferences = json.load(handle)
           except FileNotFoundError:
-              settings = {}
-          settings["confirmBuild"] = True
-          settings["confirmClear"] = True
-          settings["confirmRollback"] = True
-          settings["hostAttr"] = os.environ["REMOTE_HOSTNAME"]
-          settings["configDir"] = os.path.join(os.environ["REMOTE_CONFIG"], "config")
-          settings["evolveProvider"] = os.environ["NIXMAC_E2E_EVOLVE_PROVIDER"]
-          settings["evolveModel"] = os.environ["NIXMAC_E2E_EVOLVE_MODEL"]
-          settings["summaryProvider"] = os.environ["NIXMAC_E2E_SUMMARY_PROVIDER"]
-          settings["summaryModel"] = os.environ["NIXMAC_E2E_SUMMARY_MODEL"]
-          settings["sendDiagnostics"] = False
-          with open(settings_path, "w", encoding="utf-8") as handle:
-              json.dump(settings, handle, indent=2, sort_keys=True)
+              preferences = {}
+          evolve_provider = os.environ["NIXMAC_E2E_EVOLVE_PROVIDER"]
+          evolve_model = os.environ["NIXMAC_E2E_EVOLVE_MODEL"]
+          summary_provider = os.environ["NIXMAC_E2E_SUMMARY_PROVIDER"]
+          summary_model = os.environ["NIXMAC_E2E_SUMMARY_MODEL"]
+          evolve_models = preferences.get("evolveModels")
+          if not isinstance(evolve_models, dict):
+              evolve_models = {}
+          evolve_models[evolve_provider] = evolve_model
+          summary_models = preferences.get("summaryModels")
+          if not isinstance(summary_models, dict):
+              summary_models = {}
+          summary_models[summary_provider] = summary_model
+          preferences.update({
+              "confirmBuild": True,
+              "confirmClear": True,
+              "confirmRollback": True,
+              "hostAttr": os.environ["REMOTE_HOSTNAME"],
+              "configDir": config_dir,
+              "repoRoot": config_dir,
+              "evolveProvider": evolve_provider,
+              "evolveModel": None,
+              "evolveModels": evolve_models,
+              "summaryProvider": summary_provider,
+              "summaryModel": None,
+              "summaryModels": summary_models,
+              "sendDiagnostics": False,
+              "diagnosticsNoticeAcknowledged": True,
+          })
+          with open(preferences_path, "w", encoding="utf-8") as handle:
+              json.dump(preferences, handle, indent=2, sort_keys=True)
+              handle.write("\n")
+
+          # The current app owns onboarding progress in a separate typed slice.
+          # This lane intentionally starts from a configured profile because
+          # onboarding has its own explicit coverage waiver; without this latch
+          # the suite would test step 3 of onboarding instead of the product UI.
+          import time
+          completed_at = int(time.time())
+          onboarding = {
+              "completedAt": completed_at,
+              "macScannedAt": completed_at,
+              "loginDecided": True,
+              "lastBuildAt": completed_at,
+              "provisionalConfigDir": None,
+          }
+          with open(os.path.join(support, "onboarding-state.json"), "w", encoding="utf-8") as handle:
+              json.dump(onboarding, handle, indent=2, sort_keys=True)
+              handle.write("\n")
+
+          # Prevent any stale legacy preference keys from overwriting the typed
+          # fixture through the one-shot settings.json migration.
+          legacy_path = os.path.join(support, "settings.json")
+          try:
+              with open(legacy_path, "r", encoding="utf-8") as handle:
+                  legacy = json.load(handle)
+          except FileNotFoundError:
+              legacy = {}
+          legacy["globalPreferencesMigratedV1"] = True
+          with open(legacy_path, "w", encoding="utf-8") as handle:
+              json.dump(legacy, handle, indent=2, sort_keys=True)
               handle.write("\n")
           PY
           gui_launchctl unsetenv OPENROUTER_API_KEY
@@ -981,6 +1039,7 @@ jobs:
             echo "error: Terminal-launched Codex app-server did not become ready" >&2
             exit 1
           fi
+          osascript -e 'tell application "Terminal" to set visible to false' >/dev/null 2>&1 || true
           if ! open -n "$REMOTE_APP_PATH"; then
             echo "warning: open returned non-zero while launching $REMOTE_APP_PATH; continuing so Computer Use can inspect app state" >&2
           fi
@@ -1314,6 +1373,24 @@ jobs:
             --status "$([[ "$final_status" -eq 0 ]] && echo success || echo failure)" \
             --note "$([[ "$final_status" -eq 0 ]] && echo "Continuous remote-Mac recording collected, probed, visually sampled, and attached to the report." || echo "Continuous remote-Mac recording failed collection or qualification.")"
           exit "$final_status"
+
+      - name: Inspect final recording-aware report with Computer Use
+        if: always() && steps.stale-run.outputs.stale != 'true' && steps.remote-start.outcome == 'success'
+        shell: bash
+        env:
+          NIXMAC_COMPUTER_USE_WS: ws://127.0.0.1:18790
+          NIXMAC_COMPUTER_USE_APP: ${{ steps.remote-start.outputs.remote_app_path }}
+          NIXMAC_E2E_REMOTE_SSH_DEST: ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}
+          NIXMAC_E2E_SSH_KEY: /home/runner/.ssh/nixmac-e2e
+          NIXMAC_E2E_SSH_KNOWN_HOSTS: /home/runner/.ssh/known_hosts
+        run: |
+          latest_report="$(find artifacts/computer-use-remote -mindepth 2 -maxdepth 2 -name state.json -type f -exec dirname {} \; 2>/dev/null | sort | tail -1 || true)"
+          if [[ -z "$latest_report" || ! -f "$latest_report/state.json" ]]; then
+            echo "error: no current report exists for final Computer Use inspection" >&2
+            exit 1
+          fi
+          node tests/e2e/computer-use/run-remote-cua.mjs inspect-existing \
+            --run-dir "$latest_report"
 
       - name: Restore remote app support
         if: always() && steps.stale-run.outputs.stale != 'true'

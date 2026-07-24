@@ -72,8 +72,12 @@ export function computeCurrentStep(state: CurrentStepState): WidgetStep {
 
   // A clean working tree can still need a build after pulling or committing
   // configuration changes. Route that state to Review so the user can bring
-  // the running system up to date without inventing a diff to review.
+  // the running system up to date without inventing a diff to review. The
+  // user may still navigate back to Describe to request another change while
+  // the saved configuration is pending; the Review stepper already exposes
+  // that destination, so honoring its override keeps the control truthful.
   if (state.rebuildNeeded && !state.hasChanges) {
+    if (state.activeStepOverride === "begin") return "begin";
     return "manualEvolve";
   }
 
