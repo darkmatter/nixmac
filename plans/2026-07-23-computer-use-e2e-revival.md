@@ -284,6 +284,18 @@ managed-review navigation until the processing overlay clears. Preserve the
 same exact-head build, real-app, continuous-video, report-inspection, and
 cleanup gates on the next qualification run.
 
+Eleventh post-execution deviation (2026-07-24): exact correction head
+`6916988980be3994762da52febe6c0c2a3a7f789` produced successful signed Build
+run `30095199539` and real-Mac run `30096331156`. The second run again passed
+the full provider, Build & Test, Step 3 Commit, History rollback, visual,
+continuous-video, and report-inspection lifecycle. Its isolated Homebrew
+failure proved a narrower harness bug: the newly accepted
+`.nixmac/homebrew/data.json` path appeared in `git diff --name-only` while the
+managed edit was intentionally uncommitted, but the reusable Homebrew proof
+helper read only committed `baseline..HEAD` paths. Consider both working-tree
+and committed source paths; retain the post-Commit requirements for a changed
+HEAD and clean worktree before accepting persistence.
+
 For the final qualifying run, verify all of the following:
 
 1. **Provenance**

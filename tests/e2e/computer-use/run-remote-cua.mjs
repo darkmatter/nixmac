@@ -1689,9 +1689,15 @@ function captureRemoteMetadata(state) {
 }
 
 function changedHomebrewSourcePaths(snapshot) {
-  return meaningfulBaselineDiff(snapshot)
-    .split("\n")
-    .filter((line) => supportedHomebrewSourcePaths.includes(line));
+  return [
+    ...new Set(
+      [snapshot?.diffNameOnly, meaningfulBaselineDiff(snapshot)]
+        .filter(Boolean)
+        .flatMap((paths) => String(paths).split("\n"))
+        .map((line) => line.trim())
+        .filter((line) => supportedHomebrewSourcePaths.includes(line)),
+    ),
+  ];
 }
 
 function hasExpectedHomebrewSourceDiff(snapshot) {
@@ -6232,6 +6238,14 @@ async function runSelfTest() {
     }),
     true,
     "Homebrew proof should accept flake-modules source path",
+  );
+  assert.equal(
+    hasExpectedHomebrewSourceDiff({
+      diffNameOnly: ".nixmac/homebrew/data.json\n",
+      baselineDiffNameOnly: "",
+    }),
+    true,
+    "pre-commit Homebrew proof should accept the managed worktree source path",
   );
   assert.equal(
     hasExpectedHomebrewSourceDiff({
