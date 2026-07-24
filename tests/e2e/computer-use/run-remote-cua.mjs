@@ -2136,7 +2136,11 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
       return null;
     },
     {
-      attempts: Number(process.env.NIXMAC_E2E_MANAGED_EDIT_ATTEMPTS || 30),
+      // Managed edits write synchronously, then await provider-backed summary
+      // generation before the frontend receives the Review state. Thirty
+      // seconds was shorter than a healthy real-Mac summary in run
+      // 30088633253, so retain a bounded but realistic default.
+      attempts: Number(process.env.NIXMAC_E2E_MANAGED_EDIT_ATTEMPTS || 90),
       delayMs: Number(process.env.NIXMAC_E2E_MANAGED_EDIT_DELAY_MS || 1000),
     },
   );
@@ -2168,6 +2172,33 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
   updateScenario(state, scenarioKey, result.ok ? "pass" : "fail", result.note);
   if (!result.ok) state.failures.push(result.note);
   return result.text;
+}
+
+function isSavedUpdateReview(text) {
+  return (
+    /Progress: step 2 of 3, Review/i.test(text) &&
+    /New configuration updates are available/i.test(text) &&
+    /button Go to Describe step/i.test(text)
+  );
+}
+
+async function normalizeSavedUpdateReview(client, state, text, label) {
+  if (!isSavedUpdateReview(text)) return text;
+  const returnedToDescribe = await clickByPattern(
+    client,
+    state,
+    text,
+    "Go to Describe step",
+    [/button Go to Describe step/i],
+    "Return from a saved-configuration update review to the prompt surface before continuing the E2E scenario.",
+  );
+  if (!returnedToDescribe) return text;
+  return captureState(
+    client,
+    state,
+    label,
+    "Computer Use returned from the saved-configuration review to the Describe prompt.",
+  );
 }
 
 async function runReviewOnlyEvolvedCase(client, state, caseDef) {
@@ -2804,24 +2835,7 @@ async function runSuite(args) {
       "launch",
       "Computer Use observed the nixmac window at launch.",
     );
-    if (/Progress: step 2 of 3, Review/i.test(text) && /button Go to Describe step/i.test(text)) {
-      const returnedToDescribe = await clickByPattern(
-        client,
-        state,
-        text,
-        "Go to Describe step",
-        [/button Go to Describe step/i],
-        "Return from a saved-configuration update review to the prompt surface before exercising the E2E scenario.",
-      );
-      if (returnedToDescribe) {
-        text = await captureState(
-          client,
-          state,
-          "launch-describe",
-          "Computer Use returned from the saved-configuration review to the Describe prompt.",
-        );
-      }
-    }
+    text = await normalizeSavedUpdateReview(client, state, text, "launch-describe");
     if (
       /nixmac/i.test(text) &&
       hasAny(text, [
@@ -3225,6 +3239,12 @@ async function runSuite(args) {
       badgePatterns: [/untracked Homebrew/i],
       absentNoun: "Homebrew items",
     });
+    text = await normalizeSavedUpdateReview(
+      client,
+      state,
+      text,
+      "home-after-homebrew-normalization",
+    );
 
     text = await runConditionalBadgeSaveScenario(client, state, text, "customizationSaveRollback", {
       name: "Untracked customizations",
@@ -3232,6 +3252,12 @@ async function runSuite(args) {
       badgePatterns: [/untracked settings?/i],
       absentNoun: "macOS customizations",
     });
+    text = await normalizeSavedUpdateReview(
+      client,
+      state,
+      text,
+      "home-after-customization-normalization",
+    );
 
     const suggestionVisible = hasAny(text, [/Install vim/i, /Add Rectangle/i, /Finder path bar/i]);
     const suggestionClicked = suggestionVisible
@@ -5182,6 +5208,22 @@ async function runSelfTest() {
     hasFeedbackDialog(launchText),
     false,
     "the home Give feedback button alone must not look like an open feedback dialog",
+  );
+  const savedUpdateReviewText = `
+    8 content list Progress: step 2 of 3, Review
+    9 button Go to Describe step
+    12 heading New configuration updates are available, Value: 2
+    15 button Build & Test
+  `;
+  assert.equal(
+    isSavedUpdateReview(savedUpdateReviewText),
+    true,
+    "saved-update Review should be normalized back to Describe before later scenarios",
+  );
+  assert.equal(
+    isSavedUpdateReview(launchText),
+    false,
+    "the normal Describe surface must not trigger saved-update normalization",
   );
   assert.deepEqual(
     elementEntries(simpleElementText),

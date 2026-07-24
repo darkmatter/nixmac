@@ -212,6 +212,20 @@ and verifies that the modal is absent before downstream scenarios continue.
 Cover the signed-out feedback gate and window-close collision in the runner
 self-test, then repeat the exact-head build and real-Mac qualification.
 
+Seventh post-execution deviation (2026-07-24): the modal repair worked in
+exact-head run `30088633253`: Computer Use selected the in-app `OK` control for
+both signed-out feedback gates and returned to the prompt. The run then exposed
+a managed-edit timing defect in the harness. Homebrew "Add to config" removed
+the untracked badge and moved the prompt into a processing-only state, but the
+runner allowed only 30 seconds for the provider-backed summary before treating
+the edit as failed and restoring the disposable repo. That restoration
+correctly produced a clean saved-update Review state; the runner then attempted
+the remaining prompt scenarios without returning to Describe. Increase the
+managed-edit wait to a bounded 90 seconds, and reuse the saved-update
+Review-to-Describe normalization after each managed-edit path so cleanup cannot
+poison unrelated downstream checks. Use the third and final bounded real-Mac
+attempt for qualification.
+
 For the final qualifying run, verify all of the following:
 
 1. **Provenance**
