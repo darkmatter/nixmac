@@ -72,33 +72,55 @@ fn is_github_clone_url(clone_url: &str) -> bool {
 /// Parses one of our repository locator forms into an owner/repo pair, stripping any `.git` suffix and optional `github.com/` prefix.
 /// This is used to populate the `owner` and `repo` fields of `RepoRef`, which are actually only necessary for the GitHub App token retrieval logic.
 fn owner_and_repo(locator: &str) -> Result<(String, String)> {
-    let path = if ["https://", "http://", "ssh://"]
+    let (path, require_exact_github_path) = if ["https://", "http://", "ssh://"]
         .iter()
         .any(|scheme| locator.starts_with(scheme))
     {
         let url = url::Url::parse(locator)
             .with_context(|| format!("Invalid repository URL: '{}'", locator))?;
-        url.path().trim_matches('/').to_string()
+        let require_exact = url
+            .host_str()
+            .map(|host| {
+                let host = host.to_ascii_lowercase();
+                host == "github.com" || host == "www.github.com"
+            })
+            .unwrap_or(false);
+        (url.path().trim_matches('/').to_string(), require_exact)
     } else if let Some((_, path)) = locator
         .split_once(':')
         .filter(|_| locator.starts_with("git@"))
     {
-        path.trim_matches('/').to_string()
+        (
+            path.trim_matches('/').to_string(),
+            locator.starts_with("git@github.com:"),
+        )
     } else {
-        locator
+        let github_host_prefixed =
+            locator.starts_with("github.com/") || locator.starts_with("www.github.com/");
+        let path = locator
             .strip_prefix("github.com/")
             .or_else(|| locator.strip_prefix("www.github.com/"))
             .unwrap_or(locator)
             .trim_matches('/')
-            .to_string()
+            .to_string();
+        (path, github_host_prefixed)
     };
 
-    let mut parts = path.rsplit('/');
-    let repo = parts
-        .next()
-        .map(|repo| repo.strip_suffix(".git").unwrap_or(repo))
-        .unwrap_or_default();
-    let owner = parts.next().unwrap_or_default();
+    let (owner, repo) = if require_exact_github_path {
+        let mut parts = path.split('/');
+        let (Some(owner), Some(repo), None) = (parts.next(), parts.next(), parts.next()) else {
+            bail!("Expected a repository reference like 'owner/repo'");
+        };
+        (owner, repo.strip_suffix(".git").unwrap_or(repo))
+    } else {
+        let mut parts = path.rsplit('/');
+        let repo = parts
+            .next()
+            .map(|repo| repo.strip_suffix(".git").unwrap_or(repo))
+            .unwrap_or_default();
+        let owner = parts.next().unwrap_or_default();
+        (owner, repo)
+    };
 
     if !is_valid_segment(owner) || !is_valid_segment(repo) {
         bail!("Expected a repository reference like 'owner/repo'");
@@ -817,6 +839,18 @@ mod tests {
         assert_eq!(r.subdir.as_deref(), Some("mac"));
         assert_eq!(r.owner, "czxtm");
         assert_eq!(r.repo, "darwin");
+    }
+
+    #[test]
+    fn rejects_github_urls_with_extra_path_segments() {
+        for input in [
+            "https://github.com/czxtm/darwin/tree/main",
+            "https://github.com/czxtm/darwin/tree/main?dir=hosts/work",
+            "git@github.com:czxtm/darwin/tree/main.git",
+            "github.com/czxtm/darwin/tree/main",
+        ] {
+            assert!(parse_repo_ref(input).is_err(), "accepted {input}");
+        }
     }
 
     #[test]
