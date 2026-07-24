@@ -13,7 +13,7 @@ Restore a current, trustworthy nixmac Computer Use E2E result on a real macOS ho
 Use the existing Product Proof architecture on `origin/main` as the baseline and repair only failures observed in a fresh run. Keep the workflow manual and quiet while it is being requalified. Preserve a clean boundary between:
 
 1. the vision-capable real-Mac runner that drives nixmac and creates evidence; and
-2. Cooper's Buzz/GLM layer, which should poll, select work, and consume a text/JSON verdict without receiving screenshots or being asked to perform vision.
+1. Cooper's Buzz/GLM layer, which should poll, select work, and consume a text/JSON verdict without receiving screenshots or being asked to perform vision.
 
 Do not replace the established runner with a speculative CuaDriver adapter before the current evidence path has been measured. If the current path cannot satisfy the acceptance contract, introduce the smallest isolated driver adapter or handoff needed, behind the existing report contract.
 
@@ -110,18 +110,18 @@ For the final qualifying run, verify all of the following:
    - report records the exact tested head SHA and successful build run;
    - the staged app is the downloaded `.app`, not an installed fallback;
    - the report is from the qualifying run, not a copied fixture or historical directory.
-2. **State**
+1. **State**
    - `state.json` parses;
    - final verdict is `pass`;
    - every required scenario has a terminal passing state;
    - cleanup succeeds and remote state restoration is reported.
-3. **Screenshots**
+1. **Screenshots**
    - referenced files exist and decode;
    - report bindings match the screenshot files;
    - frames visibly contain the nixmac application;
    - labels/descriptions match the visible UI state;
    - text is legible at normal viewing size and no unrelated or stale desktop is presented as proof.
-4. **Video**
+1. **Video**
    - the primary MP4 is a continuous capture of the remote Mac GUI, not an ffmpeg concat/slideshow of stored screenshots;
    - capture begins before the first tested app interaction and ends after the final tested app interaction;
    - capture metadata, duration, and timestamps overlap the scenario/action timeline and bind it to the same workflow run;
@@ -130,7 +130,7 @@ For the final qualifying run, verify all of the following:
    - text and controls needed to understand the transitions are legible at normal viewing size;
    - video content matches the same app/run represented by the screenshots;
    - any screenshot-compilation video is labeled `derived screenshot reel` and cannot satisfy this gate.
-5. **HTML**
+1. **HTML**
    - `index.html` opens from the downloaded artifact through a local HTTP server;
    - assets resolve without console/network failures;
    - scenario status, screenshots, video, provenance, and failure details render accurately;
