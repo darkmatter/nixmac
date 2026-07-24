@@ -16,10 +16,10 @@
     <key>com.apple.security.network.client</key>
     <true/>
 
-    <!-- Allow spawning helper processes (git, nix, darwin-rebuild) -->
-    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-    <true/>
-    <key>com.apple.security.cs.disable-library-validation</key>
-    <true/>
+    <!-- No com.apple.security.cs.* keys: nothing in the bundle loads unsigned
+         or foreign-team libraries (spawning child processes needs no
+         entitlement), and keeping library validation active lets the helper's
+         dynamic validation of this app also prove no foreign code is loaded
+         in-process. -->
 </dict>
 </plist>

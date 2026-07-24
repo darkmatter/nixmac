@@ -22,7 +22,8 @@ fi
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/../../.." && pwd)
-ENTITLEMENTS_PATH="$REPO_ROOT/apps/native/src-tauri/entitlements.plist"
+# shellcheck source=ops/scripts/release/codesign-app-lib.sh disable=SC1091
+. "$SCRIPT_DIR/codesign-app-lib.sh"
 TMP_DIR=$(mktemp -d)
 MOUNTS_FILE="$TMP_DIR/mounts"
 REWRITES_FILE="$TMP_DIR/rewrites"
@@ -142,22 +143,6 @@ require_codesign() {
 	fi
 }
 
-sign_nested_helpers() {
-	local app_path="$1"
-	local identity="$2"
-	local helper_path
-
-	for helper in nixmac-helper nixmac-sync-agent; do
-		helper_path="$app_path/Contents/MacOS/$helper"
-		if [ -f "$helper_path" ]; then
-			echo "Code signing nested helper: $helper_path"
-			codesign --force --options runtime \
-				--sign "$identity" \
-				"$helper_path"
-		fi
-	done
-}
-
 sign_app_if_certificate_available() {
 	local app_path="$1"
 	local keychain_path
@@ -167,8 +152,7 @@ sign_app_if_certificate_available() {
 
 	if [ -z "${RUNNER_TEMP:-}" ]; then
 		echo "No GitHub Actions temp directory available; ad-hoc signing normalized app: $app_path"
-		sign_nested_helpers "$app_path" "-"
-		codesign --force --deep --sign - "$app_path"
+		nixmac_sign_app_inside_out "$app_path" "-"
 		codesign --verify --deep --strict --verbose=4 "$app_path"
 		return
 	fi
@@ -176,8 +160,7 @@ sign_app_if_certificate_available() {
 	keychain_path="${RUNNER_TEMP}/app-signing.keychain-db"
 	if [ ! -f "$keychain_path" ]; then
 		echo "No code-signing keychain found; ad-hoc signing normalized app: $app_path"
-		sign_nested_helpers "$app_path" "-"
-		codesign --force --deep --sign - "$app_path"
+		nixmac_sign_app_inside_out "$app_path" "-"
 		codesign --verify --deep --strict --verbose=4 "$app_path"
 		return
 	fi
@@ -195,11 +178,7 @@ sign_app_if_certificate_available() {
 	fi
 
 	echo "Code signing normalized app: $app_path"
-	sign_nested_helpers "$app_path" "$identity"
-	codesign --force --deep --options runtime \
-		--entitlements "$ENTITLEMENTS_PATH" \
-		--sign "$identity" \
-		"$app_path"
+	nixmac_sign_app_inside_out "$app_path" "$identity"
 
 	echo "Verifying normalized app signature: $app_path"
 	codesign --verify --deep --strict --verbose=4 "$app_path"
