@@ -768,6 +768,7 @@ jobs:
             --known-hosts ~/.ssh/known_hosts \
             --expected-local-hostname "${REMOTE_EXPECTED_LOCAL_HOSTNAME:-DXU97120}" \
             --check-codex-binary \
+            --check-computer-use-plugin \
             --check-recording-tools \
             --json "$readiness_json"
           node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
@@ -945,7 +946,15 @@ jobs:
             gui_launchctl setenv OPENROUTER_API_KEY "$(cat "$REMOTE_KEY_FILE")"
             rm -f "$REMOTE_KEY_FILE"
           fi
-          nohup /Applications/Codex.app/Contents/Resources/codex app-server -c 'service_tier="fast"' --listen ws://127.0.0.1:18790 >/tmp/nixmac-codex-app-server.log 2>&1 &
+          if [[ -x /opt/homebrew/bin/codex ]]; then
+            CODEX_BIN=/opt/homebrew/bin/codex
+          elif [[ -x /Applications/Codex.app/Contents/Resources/codex ]]; then
+            CODEX_BIN=/Applications/Codex.app/Contents/Resources/codex
+          else
+            echo "error: preflight-approved Codex binary disappeared before app-server launch" >&2
+            exit 1
+          fi
+          nohup "$CODEX_BIN" app-server -c 'service_tier="fast"' --listen ws://127.0.0.1:18790 >/tmp/nixmac-codex-app-server.log 2>&1 &
           sleep 2
           if ! open -n "$REMOTE_APP_PATH"; then
             echo "warning: open returned non-zero while launching $REMOTE_APP_PATH; continuing so Computer Use can inspect app state" >&2

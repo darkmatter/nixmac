@@ -31,6 +31,17 @@ function fileSha256(filePath) {
   return createHash("sha256").update(readFileSync(filePath)).digest("hex");
 }
 
+export function mediaToolEnvironment(environment = process.env) {
+  const sanitized = { ...environment };
+  delete sanitized.LD_LIBRARY_PATH;
+  delete sanitized.FONTCONFIG_FILE;
+  return sanitized;
+}
+
+function runMediaTool(run, command, args) {
+  return run(command, args, { env: mediaToolEnvironment() });
+}
+
 function frameHash(stdout) {
   const match = stdout.match(/,\s*([a-f0-9]{32,})\s*$/im);
   return match?.[1] || "";
@@ -81,7 +92,7 @@ export function inspectContinuousRecording(
   const timelineIssue = recordingTimelineIssue(state, metadata || {});
   if (timelineIssue) return { ok: false, issue: timelineIssue };
 
-  const probe = run("ffprobe", [
+  const probe = runMediaTool(run, "ffprobe", [
     "-v",
     "error",
     "-select_streams",
@@ -139,7 +150,7 @@ export function inspectContinuousRecording(
   ];
   const hashes = sampleTimes
     .map((seconds) =>
-      run("ffmpeg", [
+      runMediaTool(run, "ffmpeg", [
         "-hide_banner",
         "-loglevel",
         "error",
@@ -194,7 +205,7 @@ async function extractSampleFrames(state, inspection, run = tryRun) {
   for (const [label, seconds] of candidates) {
     const relativePath = `video/${label}.png`;
     const outputPath = path.join(state.runDir, relativePath);
-    const result = run("ffmpeg", [
+    const result = runMediaTool(run, "ffmpeg", [
       "-y",
       "-hide_banner",
       "-loglevel",
@@ -303,8 +314,8 @@ export async function runContinuousRecordingSelfTest() {
     endedAt: new Date(now + 4_000).toISOString(),
   };
   const calls = [];
-  const fakeRun = (command, args) => {
-    calls.push([command, args]);
+  const fakeRun = (command, args, options) => {
+    calls.push([command, args, options]);
     if (command === "ffprobe") {
       return {
         ok: true,
@@ -335,6 +346,15 @@ export async function runContinuousRecordingSelfTest() {
     "late capture should be rejected",
   );
   assert.equal(fractionToNumber("30000/1001") > 29, true, "fractional frame rate should parse");
+  assert.deepEqual(
+    mediaToolEnvironment({
+      PATH: "/usr/bin",
+      LD_LIBRARY_PATH: "/nix/store/incompatible-glibc",
+      FONTCONFIG_FILE: "/nix/store/incompatible-fontconfig",
+    }),
+    { PATH: "/usr/bin" },
+    "host media tools must not inherit Nix runtime library or fontconfig overrides",
+  );
   assert.equal(
     frameHash("0, 0, 0, 1, 1, abcdefabcdefabcdefabcdefabcdefab"),
     "abcdefabcdefabcdefabcdefabcdefab",
@@ -369,6 +389,13 @@ export async function runContinuousRecordingSelfTest() {
   assert.equal(
     calls.some(([command]) => command === "ffprobe"),
     true,
+  );
+  assert.equal(
+    calls.every(([, , options]) => {
+      return !("LD_LIBRARY_PATH" in options.env) && !("FONTCONFIG_FILE" in options.env);
+    }),
+    true,
+    "every ffmpeg/ffprobe child must use the sanitized host-tool environment",
   );
   console.log("Continuous recording self-test passed.");
 }

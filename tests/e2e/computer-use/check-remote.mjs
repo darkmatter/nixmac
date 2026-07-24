@@ -23,6 +23,7 @@ function usage() {
     "  --expected-local-hostname <name>    Require scutil LocalHostName/hostname to match",
     "  --check-app-path <path>             Require a remote app path to exist",
     "  --check-codex-binary                Require Codex app-server binary on remote Mac",
+    "  --check-computer-use-plugin         Require a notarized Computer Use MCP handshake",
     "  --check-recording-tools             Require ffmpeg, ffprobe, and Terminal on remote Mac",
     "  --require-app-server <port>         Require remote 127.0.0.1:<port> to be listening",
   ].join("\n");
@@ -38,6 +39,10 @@ function parseArgs(argv) {
     }
     if (arg === "--check-recording-tools") {
       out.checkRecordingTools = true;
+      continue;
+    }
+    if (arg === "--check-computer-use-plugin") {
+      out.checkComputerUsePlugin = true;
       continue;
     }
     const next = argv[i + 1];
@@ -65,6 +70,7 @@ function parseArgs(argv) {
   const sshChecksRequested = Boolean(
     out.expectedLocalHostname ||
     out.checkCodexBinary ||
+    out.checkComputerUsePlugin ||
     out.checkRecordingTools ||
     out.checkAppPath ||
     out.requireAppServer ||
@@ -157,6 +163,68 @@ function parseKeyValues(output) {
 
 function remoteShellQuote(value) {
   return `'${String(value).replaceAll("'", "'\\''")}'`;
+}
+
+const codexBinaryShell = [
+  'export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"',
+  "if test -x /opt/homebrew/bin/codex; then CODEX_BIN=/opt/homebrew/bin/codex",
+  "elif test -x /Applications/Codex.app/Contents/Resources/codex; then CODEX_BIN=/Applications/Codex.app/Contents/Resources/codex",
+  'else echo "Codex CLI not found" >&2; exit 1',
+  "fi",
+].join("; ");
+
+const computerUseProbePython = `
+import json
+import subprocess
+import sys
+
+message = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+        "protocolVersion": "2025-03-26",
+        "capabilities": {},
+        "clientInfo": {"name": "nixmac-e2e-preflight", "version": "1.0"},
+    },
+}
+result = subprocess.run(
+    [sys.argv[1], "mcp"],
+    input=(json.dumps(message) + "\\n").encode(),
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    timeout=12,
+)
+if result.stderr:
+    sys.stderr.buffer.write(result.stderr)
+if result.returncode != 0:
+    raise SystemExit(result.returncode)
+responses = [
+    json.loads(line)
+    for line in result.stdout.decode().splitlines()
+    if line.strip().startswith("{")
+]
+if not any(response.get("id") == 1 and "result" in response for response in responses):
+    raise SystemExit("Computer Use MCP initialize response missing")
+`;
+
+function computerUsePluginShell() {
+  return [
+    codexBinaryShell,
+    'PLUGIN_LIST="$("$CODEX_BIN" plugin list)"',
+    'printf "%s\\n" "$PLUGIN_LIST" | grep -Eq "^computer-use@openai-bundled[[:space:]]+installed, enabled[[:space:]]"',
+    'COMPUTER_USE_VERSION="$(printf "%s\\n" "$PLUGIN_LIST" | awk \'$1 == "computer-use@openai-bundled" && $2 == "installed," && $3 == "enabled" { print $4; exit }\')"',
+    'test -n "$COMPUTER_USE_VERSION"',
+    'PLUGIN_ROOT="$HOME/.codex/plugins/cache/openai-bundled/computer-use/$COMPUTER_USE_VERSION"',
+    'PLUGIN_APP="$PLUGIN_ROOT/Codex Computer Use.app"',
+    'CLIENT="$PLUGIN_APP/Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient"',
+    'test -x "$CLIENT"',
+    'spctl -a -vv "$PLUGIN_APP" 2>&1 | grep -q "accepted"',
+    `/usr/bin/python3 -c ${remoteShellQuote(computerUseProbePython)} "$CLIENT"`,
+    'printf "codex_bin=%s\\n" "$CODEX_BIN"',
+    'printf "codex_version=%s\\n" "$("$CODEX_BIN" --version)"',
+    'printf "computer_use_version=%s\\n" "$(basename "$PLUGIN_ROOT")"',
+  ].join("; ");
 }
 
 function readinessReport(options, startedAt, checks, passes, failures, remoteIdentity) {
@@ -277,10 +345,39 @@ async function main() {
 
     if (options.user && failures.length === 0 && options.checkCodexBinary) {
       try {
-        runSsh(options, "test -x /Applications/Codex.app/Contents/Resources/codex");
-        pass("codex-binary", "Codex app-server binary exists");
+        const output = runSsh(
+          options,
+          `${codexBinaryShell}; printf "codex_bin=%s\\n" "$CODEX_BIN"; printf "codex_version=%s\\n" "$("$CODEX_BIN" --version)"`,
+        );
+        const values = parseKeyValues(output);
+        pass(
+          "codex-binary",
+          `Codex app-server binary exists: ${values.codex_bin} (${values.codex_version})`,
+          { codexBinary: values.codex_bin, codexVersion: values.codex_version },
+        );
       } catch (error) {
         fail("codex-binary", `Codex app-server binary check failed: ${error.message}`);
+      }
+    }
+
+    if (options.user && failures.length === 0 && options.checkComputerUsePlugin) {
+      try {
+        const output = runSsh(options, computerUsePluginShell());
+        const values = parseKeyValues(output);
+        pass(
+          "computer-use-plugin",
+          `Computer Use ${values.computer_use_version} is notarized and completed an MCP initialize handshake`,
+          {
+            codexBinary: values.codex_bin,
+            codexVersion: values.codex_version,
+            computerUseVersion: values.computer_use_version,
+          },
+        );
+      } catch (error) {
+        fail(
+          "computer-use-plugin",
+          `Computer Use notarization/MCP handshake failed: ${error.message}`,
+        );
       }
     }
 

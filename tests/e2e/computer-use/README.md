@@ -462,6 +462,7 @@ node tests/e2e/computer-use/check-remote.mjs \
   --known-hosts ~/.ssh/known_hosts \
   --expected-local-hostname DXU97120 \
   --check-codex-binary \
+  --check-computer-use-plugin \
   --check-recording-tools \
   --json artifacts/computer-use-remote/readiness/remote-readiness.json
 ```
@@ -478,6 +479,11 @@ repository secrets and the remote Mac. Top-level fields are:
 - `passes` and `failures`: compact message lists for report summaries.
 - `remoteIdentity`: hostname, local hostname, user, and macOS version when SSH
   identity collection succeeds.
+
+`--check-computer-use-plugin` rejects an installed plugin whose macOS signature
+is no longer accepted and requires a real MCP `initialize` response. The
+workflow prefers `/opt/homebrew/bin/codex` over an older app-bundled CLI after
+that check succeeds.
 
 If DXU is unavailable, do not treat local-only render checks or adversarial
 replay as a live remote pass. Continue useful local work, but the CI lane should

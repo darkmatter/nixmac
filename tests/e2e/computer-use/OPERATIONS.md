@@ -96,12 +96,14 @@ noisy for reliable Product Proof.
      --known-hosts <known-hosts-path> \
      --expected-local-hostname <local-hostname> \
      --check-codex-binary \
+     --check-computer-use-plugin \
      --check-recording-tools \
      --json artifacts/computer-use-remote/readiness/remote-readiness.json
    ```
 
-1. Verify TCP, SSH identity, expected local hostname, Codex binary, app-server
-   readiness when required, and macOS version.
+1. Verify TCP, SSH identity, expected local hostname, Codex binary, notarized
+   Computer Use MCP handshake, app-server readiness when required, and macOS
+   version.
 
 1. Run one advisory Product Proof pass and confirm the report shows the new host
    metadata, app metadata, cleanup state, and evidence video.

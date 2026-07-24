@@ -117,8 +117,13 @@ assert.ok(
 );
 assert.match(
   remote,
-  /name: Preflight remote Mac[\s\S]*--check-recording-tools[\s\S]*name: Start remote Codex app-server and nixmac/,
-  "remote readiness must require continuous-recording dependencies before app staging",
+  /name: Preflight remote Mac[\s\S]*--check-computer-use-plugin[\s\S]*--check-recording-tools[\s\S]*name: Start remote Codex app-server and nixmac/,
+  "remote readiness must require a valid Computer Use handshake and continuous-recording dependencies before app staging",
+);
+assert.match(
+  remote,
+  /if \[\[ -x \/opt\/homebrew\/bin\/codex \]\][\s\S]*CODEX_BIN=\/opt\/homebrew\/bin\/codex[\s\S]*nohup "\$CODEX_BIN" app-server/,
+  "remote launch must prefer the preflight-approved current Homebrew Codex CLI",
 );
 assert.ok(recordingStartIndex >= 0, "remote job must start continuous screen recording");
 assert.ok(recordingStopIndex >= 0, "remote job must collect continuous screen recording");

@@ -288,6 +288,8 @@ Stable flags:
 - `--expected-local-hostname <name>`;
 - `--check-app-path <path>`;
 - `--check-codex-binary`;
+- `--check-computer-use-plugin`;
+- `--check-recording-tools`;
 - `--require-app-server <port>`.
 
 Workflow-tested failure contracts:
