@@ -1116,7 +1116,10 @@ jobs:
         if: steps.stale-run.outputs.stale != 'true'
         env:
           NIXMAC_COMPUTER_USE_WS: ws://127.0.0.1:18790
-          NIXMAC_COMPUTER_USE_APP: com.darkmatter.nixmac
+          # Bind Computer Use to this run's exact artifact. DXU intentionally
+          # retains older diagnostic app copies with the same bundle ID, so a
+          # bundle-ID lookup is ambiguous and cannot prove which binary ran.
+          NIXMAC_COMPUTER_USE_APP: ${{ steps.remote-start.outputs.remote_app_path }}
           NIXMAC_E2E_BUILD_GATE_STATUS: ${{ needs.prepare.outputs.build_gate_status }}
           NIXMAC_E2E_BUILD_GATE_REASON: ${{ needs.prepare.outputs.build_gate_reason }}
           NIXMAC_E2E_BUILD_ARTIFACT_SHA: ${{ needs.prepare.outputs.build_artifact_sha }}

@@ -8,6 +8,11 @@ const thisFile = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(thisFile), "../../..");
 const workflowPath = path.join(repoRoot, ".github/workflows/computer-use-e2e.yml");
 const workflow = readFileSync(workflowPath, "utf8");
+const appServerProbePath = path.join(
+  repoRoot,
+  "tests/e2e/computer-use/app-server-computer-use-probe.mjs",
+);
+const appServerProbe = readFileSync(appServerProbePath, "utf8");
 
 function section(startPattern, endPattern = null) {
   const start = workflow.search(startPattern);
@@ -121,9 +126,24 @@ assert.match(
   "remote readiness must require a valid Computer Use handshake and continuous-recording dependencies before app staging",
 );
 assert.match(
+  appServerProbe,
+  /tool: "list_apps"[\s\S]*tool: "get_app_state"[\s\S]*arguments: \{ app: "Finder" \}[\s\S]*captureImage\?\.data/,
+  "Computer Use readiness must prove both app inventory and a real screenshot-capable app-state capture",
+);
+assert.match(
   remote,
   /if \[\[ -x \/opt\/homebrew\/bin\/codex \]\][\s\S]*CODEX_BIN=\/opt\/homebrew\/bin\/codex[\s\S]*APP_SERVER_LAUNCHER[\s\S]*tell application "Terminal" to do script[\s\S]*curl --fail --silent http:\/\/127\.0\.0\.1:18790\/readyz/,
   "remote launch must prefer the current Homebrew Codex CLI and start app-server through the authorized Terminal GUI process",
+);
+assert.match(
+  remote,
+  /NIXMAC_COMPUTER_USE_APP: \$\{\{ steps\.remote-start\.outputs\.remote_app_path \}\}/,
+  "Computer Use must target the exact staged PR app path, not an ambiguous bundle identifier",
+);
+assert.doesNotMatch(
+  remote,
+  /NIXMAC_COMPUTER_USE_APP: com\.darkmatter\.nixmac/,
+  "Computer Use workflow must not target a bundle identifier shared by stale DXU app copies",
 );
 assert.doesNotMatch(
   remote,

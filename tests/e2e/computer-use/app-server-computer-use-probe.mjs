@@ -93,8 +93,35 @@ try {
   const appCount = text.split("\n").filter((line) => line.includes(" — ")).length;
   if (appCount < 1) throw new Error("Computer Use list_apps returned an empty app inventory");
 
+  const capture = await request(
+    "mcpServer/tool/call",
+    {
+      server: "computer-use",
+      threadId,
+      tool: "get_app_state",
+      arguments: { app: "Finder" },
+    },
+    90000,
+  );
+  const captureText = capture?.result?.content?.find((item) => item.type === "text")?.text || "";
+  const captureImage = capture?.result?.content?.find((item) => item.type === "image");
+  if (capture?.result?.isError === true) {
+    throw new Error(`Computer Use get_app_state returned isError: ${captureText}`);
+  }
+  if (
+    !captureText.includes("<app_state>") ||
+    !captureImage?.data ||
+    captureImage.data.length < 1_000
+  ) {
+    throw new Error(
+      `Computer Use get_app_state did not return an accessibility tree and screenshot: ${captureText}`,
+    );
+  }
+
   console.log("computer_use_list_apps=ok");
   console.log(`computer_use_app_count=${appCount}`);
+  console.log("computer_use_get_app_state=ok");
+  console.log(`computer_use_capture_bytes=${Math.floor((captureImage.data.length * 3) / 4)}`);
 } finally {
   socket.close();
 }

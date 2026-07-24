@@ -34,7 +34,7 @@ Then run:
 
 ```bash
 NIXMAC_COMPUTER_USE_WS=ws://127.0.0.1:18790 \
-NIXMAC_COMPUTER_USE_APP=com.darkmatter.nixmac \
+NIXMAC_COMPUTER_USE_APP=/absolute/path/to/the/staged/nixmac.app \
 NIXMAC_E2E_REMOTE_SSH_DEST=admin@REMOTE-MAC \
 NIXMAC_E2E_SSH_KEY=/path/to/key \
 NIXMAC_E2E_SSH_KNOWN_HOSTS=/path/to/known_hosts \
@@ -52,6 +52,9 @@ The runner:
 - preflights the installed/notarized Computer Use runtime, authorization
   plug-in, Terminal Apple Events grant, and an actual `list_apps` call through a
   temporary Terminal-launched Codex app-server before staging the app;
+- requires that same preflight app-server to return both Finder's
+  accessibility tree and a real screenshot, so a pending macOS direct
+  screen/audio consent sheet cannot hide behind a successful inventory call;
 - builds and publishes a per-run Storybook preview for PRs that touch frontend
   UI files, then links changed files to direct Storybook story URLs in the
   report so reviewers can inspect affected UI states before reading native
@@ -526,9 +529,13 @@ support directory before launch so runs do not inherit stale DXU state:
 `summaryProvider=openai`, and `summaryModel=openai/gpt-4o-mini`.
 
 The PR-built macOS app artifact is also staged under a per-run `/tmp`
-directory and launched from that exact staged `.app` bundle. The workflow
-removes the staged bundle in cleanup and intentionally does not repair or
-replace the persistent `/Applications/nixmac.app` installation on DXU.
+directory, launched from that exact staged `.app` bundle, and passed to every
+Computer Use call by absolute path. The path binding is required because DXU
+can retain diagnostic app copies with the same bundle identifier; selecting by
+bundle ID would be ambiguous and would not prove which artifact was exercised.
+The workflow removes the staged bundle in cleanup and intentionally does not
+repair or replace the persistent `/Applications/nixmac.app` installation on
+DXU.
 
 If any required remote secret is missing, including the OpenRouter provider
 key, the workflow still triggers and uploads an inconclusive HTML report

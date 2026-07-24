@@ -103,6 +103,17 @@ Exit gate: local tests pass and the observed root cause is covered by a regressi
 
 Allow at most three real-Mac qualification attempts total. A deterministic local pre-remote failure does not consume a rented-Mac attempt; the first patched dispatch is attempt one. Do not repeat an identical external-infrastructure failure without a new reason to expect success. If the host, SSH/auth, remote Codex installation, screen-recording permission, provider credit, or another external dependency remains unavailable after the bounded attempts, stop in an explicit `blocked-on-external-infrastructure` state and hand back the exact failing step, logs, readiness evidence, cleanup result, and smallest required operator action. Never convert that state into a passing or infra-waived acceptance result.
 
+Post-execution deviation (2026-07-24): the first three attempts each exposed a
+different deterministic harness/runtime defect and none repeated an unchanged
+external-infrastructure failure. Attempt three reached the real app and
+Computer Use, then proved that bundle-ID targeting was ambiguous because DXU
+retains several diagnostic copies of nixmac. Farhan's standing terminal
+condition is to continue until the acceptance contract is actually met.
+Therefore allow exactly one additional qualification attempt after adding a
+regression contract that binds every Computer Use call to the per-run staged
+`.app` path. This is a one-attempt exception, not an open retry loop; a further
+material defect returns to explicit adjudication rather than another dispatch.
+
 For the final qualifying run, verify all of the following:
 
 1. **Provenance**
