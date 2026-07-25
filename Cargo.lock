@@ -3702,6 +3702,7 @@ dependencies = [
  "fuzzy-matcher",
  "git2",
  "hex",
+ "hmac",
  "http",
  "libc",
  "libsqlite3-sys",
