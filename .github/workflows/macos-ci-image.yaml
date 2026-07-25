@@ -156,22 +156,16 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::Scanning for secrets"
-          # Patterns: private keys, API tokens, age keys, SOPS keys
-          PATTERNS='(
-            -----BEGIN (RSA |EC |OPENSSH |AGE )?PRIVATE KEY-----
-            |SOPS_AGE_KEY=
-            |age-encryption\.org
-            |ghp_[0-9a-f]{36}
-            |gho_[0-9a-f]{36}
-            |CACHIX_AUTH_TOKEN=
-            |DARKMATTER_CACHIX_AUTH_TOKEN=
-            |DEVELOPER_ID_APPLICATION=
-            |p12:
-          )'
+          # Keep this a flat ERE. The remote grep status is meaningful:
+          # 0 = matches, 1 = no matches, >1 = scanner/permission/I/O error.
+          PATTERNS='-----BEGIN (RSA |EC |OPENSSH |AGE )?PRIVATE KEY-----|SOPS_AGE_KEY=|age-encryption\.org|ghp_[0-9a-f]{36}|gho_[0-9a-f]{36}|CACHIX_AUTH_TOKEN=|DARKMATTER_CACHIX_AUTH_TOKEN=|DEVELOPER_ID_APPLICATION=|p12:'
 
-          SCAN_DIRS="/Users/admin /Users/runner /tmp /var/tmp /etc"
-          FOUND=$(sshpass -p admin ssh -o StrictHostKeyChecking=no "admin@$TART_IP" \
-            "grep -rIlE '$PATTERNS' $SCAN_DIRS 2>/dev/null || true")
+          SCAN_DIRS="/Users/admin /Users/runner /tmp /var/tmp /etc /nix"
+          if ! FOUND=$(sshpass -p admin ssh -o StrictHostKeyChecking=no "admin@$TART_IP" \
+            "set +e; grep -rIlE '$PATTERNS' $SCAN_DIRS; status=\\$?; if [ \\\"\\$status\\\" -gt 1 ]; then exit \\\"\\$status\\\"; fi; exit 0"); then
+            echo "::error::Secret scanner failed (grep error, permission error, or I/O error); refusing to push"
+            exit 1
+          fi
 
           if [ -n "$FOUND" ]; then
             echo "::error::Secret patterns found in image:"

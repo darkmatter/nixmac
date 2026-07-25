@@ -98,6 +98,7 @@ packer {
 }
 
 source "tart-cli" "tart" {
+  vm_name            = var.image_name
   vm_base_name       = "ghcr.io/cirruslabs/macos-tahoe-xcode@${var.base_image_digest}"
   cpu_count          = var.cpu_count
   memory_gb          = var.memory_gb
