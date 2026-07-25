@@ -119,7 +119,7 @@ build {
       "set -euo pipefail",
       "rm -rf /tmp/xcode-expanded /tmp/Xcode.app",
       "mkdir -p /tmp/xcode-expanded",
-      "case /tmp/Xcode-artifact.${var.xcode_artifact_type} in *.xip) xip --expand /tmp/Xcode-artifact.${var.xcode_artifact_type} /tmp/xcode-expanded ;; *.pkg) sudo installer -pkg /tmp/Xcode-artifact.${var.xcode_artifact_type} -target / ;; *) echo 'Unsupported Xcode artifact; use .xip or .pkg' >&2; exit 1 ;; esac",
+      "case /tmp/Xcode-artifact.${var.xcode_artifact_type} in *.xip) cd /tmp/xcode-expanded && xip --expand /tmp/Xcode-artifact.${var.xcode_artifact_type} ;; *.pkg) sudo installer -pkg /tmp/Xcode-artifact.${var.xcode_artifact_type} -target / ;; *) echo 'Unsupported Xcode artifact; use .xip or .pkg' >&2; exit 1 ;; esac",
       "if [ -d /tmp/xcode-expanded/Xcode.app ]; then sudo ditto /tmp/xcode-expanded/Xcode.app /Applications/Xcode.app; fi",
       "test -x /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild",
       "sudo xcode-select -s /Applications/Xcode.app/Contents/Developer",
