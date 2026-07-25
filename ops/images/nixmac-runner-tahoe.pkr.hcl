@@ -127,7 +127,8 @@ build {
       "sudo xcodebuild -runFirstLaunch",
       "xcodebuild -version",
       "xcrun --sdk macosx --show-sdk-path",
-      "rm -rf /tmp/Xcode-artifact /tmp/xcode-expanded /tmp/Xcode.app",
+      "rm -rf /tmp/Xcode-artifact.${var.xcode_artifact_type} /tmp/xcode-expanded /tmp/Xcode.app",
+      "test ! -e /tmp/Xcode-artifact.${var.xcode_artifact_type}",
     ]
   }
 

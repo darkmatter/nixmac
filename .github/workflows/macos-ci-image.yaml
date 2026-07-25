@@ -153,10 +153,10 @@ jobs:
             tart stop "$VM_NAME" 2>/dev/null || true
             exit 1
           fi
-          echo "::group::Verifying Nix daemon and non-login PATH after VM start"
+          echo "::group::Verifying Xcode after VM start"
           if ! sshpass -p admin ssh -o StrictHostKeyChecking=no "admin@$TART_IP" \
-            'env -i PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin /bin/bash --noprofile --norc -c "set -eu; for tool in nix nix-daemon cachix sops age node treefmt nixfmt; do test -x /usr/local/bin/$tool; command -v $tool; done; nix store ping --store daemon; cachix --version"'; then
-            echo "::error::Nix daemon or runner-visible Nix shims unavailable after VM start; refusing to push image"
+            'set -eu; test -x /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild; xcodebuild -version; xcrun --sdk macosx --show-sdk-path'; then
+            echo "::error::Xcode or macOS SDK unavailable after VM start; refusing to push image"
             exit 1
           fi
           echo "::endgroup::"
