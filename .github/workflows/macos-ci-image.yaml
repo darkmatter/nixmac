@@ -138,44 +138,40 @@ jobs:
             exit 1
           fi
           echo "VM IP: $TART_IP"
-          # The dedicated builder has /usr/bin/expect but not necessarily
-          # sshpass. Keep the VM's known default password in the helper
-          # environment; do not put it in a process argument.
-          cat > /tmp/ssh-vm.exp <<'EXPECT'
-          #!/usr/bin/expect -f
-          set timeout 30
-          set host [lindex $argv 0]
-          set remote_command [lrange $argv 1 end]
-          set password $env(SSH_PASSWORD)
-          spawn ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 $host {*}$remote_command
-          expect {
-            "*assword:" { send "$password\r"; exp_continue }
-            eof {}
-            timeout { exit 124 }
-          }
-          catch wait result
-          exit [lindex $result 3]
-          EXPECT
-          chmod 700 /tmp/ssh-vm.exp
+          # The dedicated builder has OpenSSH but not necessarily sshpass.
+          # SSH_ASKPASS keeps the password out of argv and preserves only
+          # remote stdout for command substitutions such as FOUND=$(...).
+          cat > /tmp/ssh-vm.sh <<'SSHVM'
+          #!/bin/bash
+          set -euo pipefail
+          host="$1"
+          shift
+          askpass="$(mktemp)"
+          trap 'rm -f "$askpass"' EXIT
+          printf '#!/bin/sh\nprintf "%%s\\n" "$SSH_PASSWORD"\n' > "$askpass"
+          chmod 700 "$askpass"
+          exec env DISPLAY=:0 SSH_ASKPASS="$askpass" SSH_ASKPASS_REQUIRE=force \
+            ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            -o ConnectTimeout=5 -o PreferredAuthentications=password \
+            -o PubkeyAuthentication=no "$host" "$@"
+          SSHVM
+          chmod 700 /tmp/ssh-vm.sh
 
           # Wait for SSH to be available.
           for i in $(seq 1 30); do
-            if SSH_PASSWORD=admin /tmp/ssh-vm.exp "admin@$TART_IP" true 2>/dev/null; then
-              break
+            if SSH_PASSWORD=admin /tmp/ssh-vm.sh "admin@$TART_IP" true 2>/dev/null; then
             fi
             sleep 5
           done
 
-          if ! SSH_PASSWORD=admin /tmp/ssh-vm.exp "admin@$TART_IP" true 2>/dev/null; then
-            echo "::error::SSH to VM failed after 2.5 min; refusing to push unscanned image"
+          if ! SSH_PASSWORD=admin /tmp/ssh-vm.sh "admin@$TART_IP" true 2>/dev/null; then
             kill "$TART_PID" 2>/dev/null || true
             tart stop "$VM_NAME" 2>/dev/null || true
             exit 1
           fi
           echo "::group::Verifying Xcode after VM start"
-          if ! SSH_PASSWORD=admin /tmp/ssh-vm.exp "admin@$TART_IP" \
+          if ! SSH_PASSWORD=admin /tmp/ssh-vm.sh "admin@$TART_IP" \
             'set -eu; test -x /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild; xcodebuild -version; xcrun --sdk macosx --show-sdk-path'; then
-            echo "::error::Xcode or macOS SDK unavailable after VM start; refusing to push image"
             exit 1
           fi
           echo "::endgroup::"
@@ -188,9 +184,8 @@ jobs:
           # matches, >1 = scanner/permission/I/O error.
           PATTERNS='-----BEGIN (RSA |EC |OPENSSH |AGE )?PRIVATE KEY-----|SOPS_AGE_KEY=|ghp_[0-9a-f]{36}|gho_[0-9a-f]{36}|CACHIX_AUTH_TOKEN=|DARKMATTER_CACHIX_AUTH_TOKEN=|DEVELOPER_ID_APPLICATION=|TAURI_SIGNING_PRIVATE_KEY='
 
-          if ! FOUND=$(SSH_PASSWORD=admin /tmp/ssh-vm.exp "admin@$TART_IP" \
+          if ! FOUND=$(SSH_PASSWORD=admin /tmp/ssh-vm.sh "admin@$TART_IP" \
             "set -eu
-             targets=
              for path in /Users/admin/.zprofile /Users/admin/.zshrc /Users/admin/.bash_profile /Users/admin/.config /Users/runner/.zprofile /Users/runner/.zshrc /Users/runner/.config /etc/paths.d/nixmac /etc/nix/nix.conf; do
                if [ -e \\\"\\$path\\\" ]; then targets=\\\"\\$targets \\$path\\\"; fi
              done
