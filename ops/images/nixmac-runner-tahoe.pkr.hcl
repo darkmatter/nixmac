@@ -65,10 +65,6 @@ variable "disk_size_gb" {
   default     = 100
   description = "VM disk size in GB (must accommodate base image + tools)."
 }
-
-# Base image: macos-tahoe-xcode:26.5, pinned by digest for reproducibility.
-# Tag kept as documentation; digest is the immutable reference.
-# To update: resolve the new tag's digest and update both fields.
 variable "base_image" {
   type    = string
   default = "ghcr.io/cirruslabs/macos-tahoe-xcode:26.5"
@@ -76,7 +72,8 @@ variable "base_image" {
 
 variable "base_image_digest" {
   type    = string
-  default = "sha256:3a6cb4eb6201aa00136781f9d350858ca23054fdda419893193af3e3a044b3a8"
+  # Manifest digest for the 26.5 tag, resolved 2026-07-25.
+  default = "sha256:61f6e857a3d65dd2f8daf9c51c7b837fa458bcc9181ae8556e645b534dab6bf6"
 }
 
 # SSH credentials for the base image (Cirrus Labs default).
@@ -101,8 +98,7 @@ packer {
 }
 
 source "tart-cli" "tart" {
-  vm_base_name       = var.base_image
-  vm_name            = var.image_name
+  vm_base_name       = "ghcr.io/cirruslabs/macos-tahoe-xcode@${var.base_image_digest}"
   cpu_count          = var.cpu_count
   memory_gb          = var.memory_gb
   disk_size_gb       = var.disk_size_gb

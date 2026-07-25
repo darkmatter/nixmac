@@ -11,11 +11,13 @@ name: macOS CI Image
 # node_modules, Cargo cache. These are built per job, same as the Linux CI
 # image (.github/ci-image/Dockerfile).
 #
+#
+ # Base reference is pinned by digest in ops/images/nixmac-runner-tahoe.pkr.hcl;
+ # this workflow does not resolve floating image tags at build time.
 # Triggers:
-#   - Push to main that changes the Packer template, nix/, devenv.nix,
-#     flake.*, or package.json
-#   - Weekly schedule (Sun 10:00 UTC) to keep the base layer fresh
-#   - Manual dispatch
+#   - Manual dispatch only until a dedicated image-builder host is online.
+#   - After a prepared host with verified capacity carries the
+#     `nixmac-image-builder` label, re-enable push/schedule triggers.
 #
 # SECURITY: The Packer template uses public inputs only (no secrets). A
 # secret-scan step runs before push and fails the build if any known secret
@@ -23,22 +25,25 @@ name: macOS CI Image
 # =============================================================================
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ops/images/**
-      - .github/workflows/macos-ci-image.yaml
-      - nix/**
-      - devenv.nix
-      - flake.nix
-      - flake.lock
-      - treefmt.nix
-      - package.json
-      - bun.lock
-  schedule:
-    # Sunday 10:00 UTC — weekly refresh of the base layer.
-    - cron: "0 10 * * 0"
   workflow_dispatch:
+
+# Re-enable after the image-builder host is prepared:
+# on:
+#   push:
+#     branches: [main]
+#     paths:
+#       - ops/images/**
+#       - .github/workflows/macos-ci-image.yaml
+#       - nix/**
+#       - devenv.nix
+#       - flake.nix
+#       - flake.lock
+#       - treefmt.nix
+#       - package.json
+#       - bun.lock
+#   schedule:
+#     - cron: "0 10 * * 0"
+#   workflow_dispatch:
 
 concurrency:
   group: macos-ci-image-${{ github.ref }}
@@ -58,7 +63,7 @@ jobs:
     # Must run on a self-hosted mac with tart + packer installed.
     # Uses the nixmac-mac label (same fleet as the build job) but does not
     # compete with builds: this runs on schedule/manual only, not on PRs.
-    runs-on: [self-hosted, macOS, nixmac-mac]
+    runs-on: [self-hosted, macOS, nixmac-image-builder]
     timeout-minutes: 90
     outputs:
       image: ${{ steps.meta.outputs.tags }}
@@ -104,20 +109,49 @@ jobs:
             nixmac-runner-tahoe.pkr.hcl
 
       - name: Secret scan (pre-push gate)
+        id: secret-scan
         shell: bash
         run: |
           set -euo pipefail
-          # Scan the built VM's filesystem for common secret patterns before
-          # pushing to the registry. This is a belt-and-braces check; the
-          # Packer template uses public inputs only, but we verify.
+          # Fail-closed: if we cannot start the VM, get its IP, SSH in, and
+          # scan, the image is NOT pushed. The Packer template uses public
+          # inputs only, but this gate enforces it — never skip.
           VM_NAME="nixmac-runner-tahoe"
-          echo "::group::Mounting VM disk for secret scan"
-          # tart run starts the VM; we SSH in and scan.
-          # Use tart ip to get the VM's IP, then ssh as admin/admin.
-          TART_IP=$(tart ip "$VM_NAME" 2>/dev/null || true)
+
+          echo "::group::Starting VM for secret scan"
+          # Packer leaves the VM stopped; start it in the background.
+          tart run "$VM_NAME" &>/tmp/tart-scan-run.log &
+          TART_PID=$!
+
+          # Wait up to 5 min for the VM to get an IP.
+          TART_IP=""
+          for i in $(seq 1 60); do
+            TART_IP=$(tart ip "$VM_NAME" 2>/dev/null || true)
+            if [ -n "$TART_IP" ]; then break; fi
+            sleep 5
+          done
+
           if [ -z "$TART_IP" ]; then
-            echo "::warning::Could not get VM IP for secret scan; skipping (template uses public inputs only)"
-            exit 0
+            echo "::error::Could not get VM IP after 5 min; refusing to push unscanned image"
+            kill "$TART_PID" 2>/dev/null || true
+            tart stop "$VM_NAME" 2>/dev/null || true
+            exit 1
+          fi
+          echo "VM IP: $TART_IP"
+
+          # Wait for SSH to be available.
+          for i in $(seq 1 30); do
+            if sshpass -p admin ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 "admin@$TART_IP" true 2>/dev/null; then
+              break
+            fi
+            sleep 5
+          done
+
+          if ! sshpass -p admin ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 "admin@$TART_IP" true 2>/dev/null; then
+            echo "::error::SSH to VM failed after 2.5 min; refusing to push unscanned image"
+            kill "$TART_PID" 2>/dev/null || true
+            tart stop "$VM_NAME" 2>/dev/null || true
+            exit 1
           fi
           echo "::endgroup::"
 
@@ -135,7 +169,6 @@ jobs:
             |p12:
           )'
 
-          # Scan home dirs and common locations
           SCAN_DIRS="/Users/admin /Users/runner /tmp /var/tmp /etc"
           FOUND=$(sshpass -p admin ssh -o StrictHostKeyChecking=no "admin@$TART_IP" \
             "grep -rIlE '$PATTERNS' $SCAN_DIRS 2>/dev/null || true")
@@ -147,6 +180,13 @@ jobs:
           fi
           echo "No secret patterns found."
           echo "::endgroup::"
+
+      - name: Stop scan VM
+        if: always()
+        shell: bash
+        run: |
+          tart stop nixmac-runner-tahoe 2>/dev/null || true
+          pkill -f "tart run nixmac-runner-tahoe" 2>/dev/null || true
 
       - name: Log in to GHCR
         shell: bash
