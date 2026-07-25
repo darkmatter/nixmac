@@ -90,10 +90,10 @@ pub struct NixmacEnvSettings {
     pub debug_skip_restore_all: bool,
 
     #[config(
-        default = "",
+        default = "retention",
         env_var = "NIXMAC_EVOLUTION_MEMORY_STRATEGY",
         label = "Evolution memory strategy",
-        help = "One of: none, retention."
+        help = "One of: none, retention. Default retention expires stale tool results so the context window does not fill until only a handful of output tokens remain."
     )]
     pub evolution_memory_strategy: String,
 
