@@ -1,6 +1,17 @@
 "use client";
 
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { InferenceSetup } from "@/components/widget/onboarding/inference/inference-setup";
+import { collectTrackedCustomizationSources } from "@/components/widget/onboarding/lib/customizations";
+import type { InferenceConfig } from "@/components/widget/onboarding/lib/inference";
+import { stepEyebrow } from "@/components/widget/onboarding/lib/onboarding";
+import { StepShell } from "@/components/widget/onboarding/step-shell";
+import { useApply } from "@/hooks/use-apply";
+import { tauriAPI } from "@/ipc/api";
+import { client } from "@/lib/orpc";
+import { getTelemetry } from "@/lib/telemetry/instance";
+import { cn } from "@/lib/utils";
+import { onboardingActions, useOnboarding, useViewModel } from "@nixmac/state";
 import {
   ArrowRight,
   CheckCircle2,
@@ -12,11 +23,7 @@ import {
   Terminal,
   Wrench,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { StepShell } from "@/components/widget/onboarding/step-shell";
-import { InferenceSetup } from "@/components/widget/onboarding/inference/inference-setup";
-import { collectTrackedCustomizationSources } from "@/components/widget/onboarding/lib/customizations";
-import { stepEyebrow } from "@/components/widget/onboarding/lib/onboarding";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 
 // Lazy so lottie-web (and its canvas usage) stays out of the main bundle and
 // the jsdom test graph — it only loads when the celebration actually shows.
@@ -25,13 +32,6 @@ const CelebrationOverlay = lazy(() =>
     default: m.CelebrationOverlay,
   })),
 );
-import { onboardingActions, useOnboarding, useViewModel } from "@nixmac/state";
-import { useApply } from "@/hooks/use-apply";
-import { tauriAPI } from "@/ipc/api";
-import { client } from "@/lib/orpc";
-import { cn } from "@/lib/utils";
-import { getTelemetry } from "@/lib/telemetry/instance";
-import type { InferenceConfig } from "@/components/widget/onboarding/lib/inference";
 
 interface BuildStepProps {
   /** Whether AI inference is already configured. */
@@ -67,6 +67,9 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
   const celebrating = useOnboarding((s) => s.celebrating);
 
   const [started, setStarted] = useState(false);
+  // True from click until rebuildStatus reports running/terminal — covers the
+  // applyTrackedCustomizations gap before handleApply flips isRunning.
+  const [pending, setPending] = useState(false);
   const [dismissedCelebration, setDismissedCelebration] = useState(false);
   const [trackedOutcome, setTrackedOutcome] = useState<"success" | "error" | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
@@ -81,7 +84,14 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
         ? "error"
         : "idle";
 
+  const isBusy = pending || status === "running";
   const buildStarted = started || status !== "idle";
+
+  useEffect(() => {
+    if (status === "running" || status === "success" || status === "error") {
+      setPending(false);
+    }
+  }, [status]);
 
   // Auto-scroll the log panel as lines stream in.
   useEffect(() => {
@@ -141,6 +151,7 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
   // to apply any selected "tracking" customizations.
   async function runFirstBuild() {
     setStarted(true);
+    setPending(true);
 
     // Keep this outside handleApply, which is also used for ordinary rebuilds
     // after onboarding and has no customization scan context.
@@ -149,6 +160,7 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
     } catch (error) {
       console.error("Failed to apply tracked customizations before first build:", error);
       setStarted(false);
+      setPending(false);
       setTrackedOutcome("error");
       return;
     }
@@ -172,26 +184,26 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
           </p>
           <code className="block truncate font-mono text-foreground text-sm">{command}</code>
         </div>
-        {status === "idle" ? (
-          <Button onClick={runFirstBuild} className="shrink-0">
-            <Play className="size-4" aria-hidden="true" />
-            Run build
-          </Button>
-        ) : status === "running" ? (
-          <Button disabled className="shrink-0">
+        {isBusy ? (
+          <Button disabled className="shrink-0" aria-busy="true">
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-            Building…
+            {status === "running" ? "Building…" : "Starting…"}
           </Button>
         ) : status === "error" ? (
           <Button onClick={runFirstBuild} className="shrink-0">
             <RotateCcw className="size-4" aria-hidden="true" />
             Retry build
           </Button>
-        ) : (
+        ) : status === "success" ? (
           <span className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-success/15 px-3 py-1.5 font-medium text-success text-sm">
             <CheckCircle2 className="size-4" aria-hidden="true" />
             Build succeeded
           </span>
+        ) : (
+          <Button onClick={runFirstBuild} className="shrink-0">
+            <Play className="size-4" aria-hidden="true" />
+            Run build
+          </Button>
         )}
       </div>
 
@@ -200,7 +212,7 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
         <div className="flex items-center gap-2 border-border border-b px-4 py-2.5">
           <Terminal className="size-4 text-muted-foreground" aria-hidden="true" />
           <span className="font-medium text-muted-foreground text-xs">Build log</span>
-          {status === "running" ? (
+          {isBusy ? (
             <Loader2
               className="ml-auto size-3.5 animate-spin text-muted-foreground"
               aria-hidden="true"
@@ -213,7 +225,11 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
           aria-live="polite"
         >
           {rawLines.length === 0 ? (
-            <p className="text-muted-foreground/60">Logs will appear here once the build starts.</p>
+            <p className="text-muted-foreground/60">
+              {isBusy
+                ? "Preparing build…"
+                : "Logs will appear here once the build starts."}
+            </p>
           ) : (
             rawLines.map((line, i) => (
               <div
@@ -276,7 +292,7 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
             </span>
             <div>
               <p className="font-semibold text-sm">
-                {status === "running"
+                {isBusy
                   ? "While this builds: set up AI inference"
                   : "One more step: set up AI inference"}
               </p>
