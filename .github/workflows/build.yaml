@@ -91,7 +91,7 @@ jobs:
           NIXMAC_ENV: production
   build:
     needs: rust-tests
-    runs-on: [self-hosted, macOS]
+    runs-on: depot-macos-latest
     permissions:
       contents: write
     steps:
