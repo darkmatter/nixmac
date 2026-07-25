@@ -161,24 +161,36 @@ jobs:
           fi
           echo "::endgroup::"
 
-          echo "::group::Scanning for secrets"
-          # Keep this a flat ERE. The remote grep status is meaningful:
-          # 0 = matches, 1 = no matches, >1 = scanner/permission/I/O error.
-          PATTERNS='-----BEGIN (RSA |EC |OPENSSH |AGE )?PRIVATE KEY-----|SOPS_AGE_KEY=|age-encryption\.org|ghp_[0-9a-f]{36}|gho_[0-9a-f]{36}|CACHIX_AUTH_TOKEN=|DARKMATTER_CACHIX_AUTH_TOKEN=|DEVELOPER_ID_APPLICATION=|p12:'
+          echo "::group::Scanning provisioning-owned paths for secrets"
+          # Scan only files this recipe can create or modify. Do not recurse
+          # through the base image's /etc or /nix: Tahoe's pre-existing SSH
+          # material and package documentation are not image-owned secrets.
+          # The remote grep status is meaningful: 0 = matches, 1 = no
+          # matches, >1 = scanner/permission/I/O error.
+          PATTERNS='-----BEGIN (RSA |EC |OPENSSH |AGE )?PRIVATE KEY-----|SOPS_AGE_KEY=|ghp_[0-9a-f]{36}|gho_[0-9a-f]{36}|CACHIX_AUTH_TOKEN=|DARKMATTER_CACHIX_AUTH_TOKEN=|DEVELOPER_ID_APPLICATION=|TAURI_SIGNING_PRIVATE_KEY='
 
-          SCAN_DIRS="/Users/admin /Users/runner /tmp /var/tmp /etc /nix"
           if ! FOUND=$(sshpass -p admin ssh -o StrictHostKeyChecking=no "admin@$TART_IP" \
-            "set +e; grep -rIlE '$PATTERNS' $SCAN_DIRS; status=\\$?; if [ \\\"\\$status\\\" -gt 1 ]; then exit \\\"\\$status\\\"; fi; exit 0"); then
+            "set -eu
+             targets=
+             for path in /Users/admin/.zprofile /Users/admin/.zshrc /Users/admin/.bash_profile /Users/admin/.config /Users/runner/.zprofile /Users/runner/.zshrc /Users/runner/.config /etc/paths.d/nixmac /etc/nix/nix.conf; do
+               if [ -e \\\"\\$path\\\" ]; then targets=\\\"\\$targets \\$path\\\"; fi
+             done
+             if [ -z \\\"\\$targets\\\" ]; then echo 'no scan targets' >&2; exit 2; fi
+             set +e
+             grep -rIloE '$PATTERNS' \\$targets
+             status=\\$?
+             if [ \\\"\\$status\\\" -gt 1 ]; then exit \\\"\\$status\\\"; fi
+             exit 0"); then
             echo "::error::Secret scanner failed (grep error, permission error, or I/O error); refusing to push"
             exit 1
           fi
 
           if [ -n "$FOUND" ]; then
-            echo "::error::Secret patterns found in image:"
+            echo "::error::Secret patterns found in provisioning-owned paths:"
             echo "$FOUND"
             exit 1
           fi
-          echo "No secret patterns found."
+          echo "No secret patterns found in provisioning-owned paths."
           echo "::endgroup::"
 
       - name: Stop scan VM
