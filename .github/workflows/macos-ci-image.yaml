@@ -138,23 +138,42 @@ jobs:
             exit 1
           fi
           echo "VM IP: $TART_IP"
+          # The dedicated builder has /usr/bin/expect but not necessarily
+          # sshpass. Keep the VM's known default password in the helper
+          # environment; do not put it in a process argument.
+          cat > /tmp/ssh-vm.exp <<'EXPECT'
+          #!/usr/bin/expect -f
+          set timeout 30
+          set host [lindex $argv 0]
+          set remote_command [lrange $argv 1 end]
+          set password $env(SSH_PASSWORD)
+          spawn ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 $host {*}$remote_command
+          expect {
+            "*assword:" { send "$password\r"; exp_continue }
+            eof {}
+            timeout { exit 124 }
+          }
+          catch wait result
+          exit [lindex $result 3]
+          EXPECT
+          chmod 700 /tmp/ssh-vm.exp
 
           # Wait for SSH to be available.
           for i in $(seq 1 30); do
-            if sshpass -p admin ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 "admin@$TART_IP" true 2>/dev/null; then
+            if SSH_PASSWORD=admin /tmp/ssh-vm.exp "admin@$TART_IP" true 2>/dev/null; then
               break
             fi
             sleep 5
           done
 
-          if ! sshpass -p admin ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 "admin@$TART_IP" true 2>/dev/null; then
+          if ! SSH_PASSWORD=admin /tmp/ssh-vm.exp "admin@$TART_IP" true 2>/dev/null; then
             echo "::error::SSH to VM failed after 2.5 min; refusing to push unscanned image"
             kill "$TART_PID" 2>/dev/null || true
             tart stop "$VM_NAME" 2>/dev/null || true
             exit 1
           fi
           echo "::group::Verifying Xcode after VM start"
-          if ! sshpass -p admin ssh -o StrictHostKeyChecking=no "admin@$TART_IP" \
+          if ! SSH_PASSWORD=admin /tmp/ssh-vm.exp "admin@$TART_IP" \
             'set -eu; test -x /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild; xcodebuild -version; xcrun --sdk macosx --show-sdk-path'; then
             echo "::error::Xcode or macOS SDK unavailable after VM start; refusing to push image"
             exit 1
@@ -169,7 +188,7 @@ jobs:
           # matches, >1 = scanner/permission/I/O error.
           PATTERNS='-----BEGIN (RSA |EC |OPENSSH |AGE )?PRIVATE KEY-----|SOPS_AGE_KEY=|ghp_[0-9a-f]{36}|gho_[0-9a-f]{36}|CACHIX_AUTH_TOKEN=|DARKMATTER_CACHIX_AUTH_TOKEN=|DEVELOPER_ID_APPLICATION=|TAURI_SIGNING_PRIVATE_KEY='
 
-          if ! FOUND=$(sshpass -p admin ssh -o StrictHostKeyChecking=no "admin@$TART_IP" \
+          if ! FOUND=$(SSH_PASSWORD=admin /tmp/ssh-vm.exp "admin@$TART_IP" \
             "set -eu
              targets=
              for path in /Users/admin/.zprofile /Users/admin/.zshrc /Users/admin/.bash_profile /Users/admin/.config /Users/runner/.zprofile /Users/runner/.zshrc /Users/runner/.config /etc/paths.d/nixmac /etc/nix/nix.conf; do

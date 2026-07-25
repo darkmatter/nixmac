@@ -117,18 +117,21 @@ build {
   provisioner "shell" {
     inline = [
       "set -euo pipefail",
-      "rm -rf /tmp/xcode-expanded /tmp/Xcode.app",
+      "rm -rf /tmp/xcode-expanded /tmp/Xcode.app /Applications/Xcode.app",
       "mkdir -p /tmp/xcode-expanded",
       "case /tmp/Xcode-artifact.${var.xcode_artifact_type} in *.xip) cd /tmp/xcode-expanded && xip --expand /tmp/Xcode-artifact.${var.xcode_artifact_type} ;; *.pkg) sudo installer -pkg /tmp/Xcode-artifact.${var.xcode_artifact_type} -target / ;; *) echo 'Unsupported Xcode artifact; use .xip or .pkg' >&2; exit 1 ;; esac",
-      "if [ -d /tmp/xcode-expanded/Xcode.app ]; then sudo ditto /tmp/xcode-expanded/Xcode.app /Applications/Xcode.app; fi",
+      # Delete the .xip before copying to avoid peak disk = .xip + expanded + copy.
+      "rm -f /tmp/Xcode-artifact.${var.xcode_artifact_type}",
+      "if [ -d /tmp/xcode-expanded/Xcode.app ]; then sudo mv /tmp/xcode-expanded/Xcode.app /Applications/Xcode.app; fi",
       "test -x /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild",
       "sudo xcode-select -s /Applications/Xcode.app/Contents/Developer",
       "sudo xcodebuild -license accept",
       "sudo xcodebuild -runFirstLaunch",
       "xcodebuild -version",
       "xcrun --sdk macosx --show-sdk-path",
-      "rm -rf /tmp/Xcode-artifact.${var.xcode_artifact_type} /tmp/xcode-expanded /tmp/Xcode.app",
+      "rm -rf /tmp/xcode-expanded /tmp/Xcode.app",
       "test ! -e /tmp/Xcode-artifact.${var.xcode_artifact_type}",
+      "test ! -e /tmp/xcode-expanded",
     ]
   }
 
