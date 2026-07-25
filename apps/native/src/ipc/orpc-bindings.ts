@@ -94,25 +94,17 @@ email: string }
 
 /**
  * Snapshot of the desktop client's authentication state, returned by
- * `account_status`. The HMAC secret is never included.
+ * `account_status`. The device API key is never included.
  */
 export type AuthStatus = { 
 /**
- * Whether a usable account credential is stored on this device.
+ * Whether a usable device API key is stored on this device.
  */
 signedIn: boolean; 
 /**
- * The signed-in account, when `signed_in` is true.
+ * The signed-in account, when `signed_in` is true and metadata is present.
  */
 account: AuthAccount | null; 
-/**
- * Public credential/key identifier sent in the `Authorization` header.
- */
-keyId: string | null; 
-/**
- * Base URL of the sync server this device is configured to talk to.
- */
-serverUrl: string; 
 /**
  * Whether this device can call server-brokered GitHub endpoints (has a
  * minted Better Auth api-key for the web origin).
@@ -1730,8 +1722,6 @@ changed: boolean }
 
 export type SetInput = { structName: string; value: JsonValue }
 
-export type SetServerUrlInput = { url: string }
-
 export type SignInInput = { email: string; password: string }
 
 export type SignUpWebInput = { name: string; email: string; password: string }
@@ -1739,44 +1729,6 @@ export type SignUpWebInput = { name: string; email: string; password: string }
 export type SyncAgentLaunchConfig = { configDir: string | null; hostAttr: string | null; syncPull: boolean; unattendedApply: boolean; startIntervalSeconds: number | null }
 
 export type SyncAgentStatus = { label: string; installed: boolean; loaded: boolean; plistPath: string; detail: string | null }
-
-/**
- * Remote sync state for the current account, returned by `sync_status`.
- */
-export type SyncRemoteStatus = { 
-/**
- * Whether the server has a stored configuration snapshot for this account.
- */
-configured: boolean; 
-/**
- * Commit hash of the latest snapshot the server holds, if any.
- */
-headCommitHash: string | null; 
-/**
- * Unix timestamp (seconds) of the latest server-side snapshot, if any.
- */
-updatedAt: number | null; 
-/**
- * Number of devices currently registered to the account.
- */
-deviceCount: number }
-
-/**
- * Result of a `sync_push` or `sync_pull` operation.
- */
-export type SyncResult = { 
-/**
- * Whether the operation succeeded end-to-end.
- */
-ok: boolean; 
-/**
- * Commit hash that is now current after the operation, when known.
- */
-headCommitHash: string | null; 
-/**
- * Human-readable status detail for display in the UI.
- */
-message: string }
 
 /**
  * A single macOS system default that differs from the factory value.
@@ -1895,8 +1847,6 @@ export type WriteFileInput = { relPath: string; content: string }
 export type Procedures = {
   account: {
     sendOtp: Client<Record<never, never>, SendOtpInput, void, Error>
-    setServerUrl: Client<Record<never, never>, SetServerUrlInput, AuthStatus, Error>
-    signIn: Client<Record<never, never>, SignInInput, AuthStatus, Error>
     signInWeb: Client<Record<never, never>, SignInInput, AuthStatus, Error>
     signOut: Client<Record<never, never>, void, AuthStatus, Error>
     signUpWeb: Client<Record<never, never>, SignUpWebInput, AuthStatus, Error>
@@ -2069,11 +2019,6 @@ export type Procedures = {
     generateCommitMessage: Client<Record<never, never>, void, string, Error>
     getChangeMap: Client<Record<never, never>, void, SemanticChangeMap, Error>
     summarizeCurrent: Client<Record<never, never>, void, SemanticChangeMap, Error>
-  }
-  sync: {
-    pull: Client<Record<never, never>, void, SyncResult, Error>
-    push: Client<Record<never, never>, void, SyncResult, Error>
-    status: Client<Record<never, never>, void, SyncRemoteStatus, Error>
   }
   system: {
     installLocation: Client<Record<never, never>, void, InstallLocationState, Error>
