@@ -3586,6 +3586,7 @@ dependencies = [
  "http",
  "libc",
  "libsqlite3-sys",
+ "libz-sys",
  "log",
  "nix",
  "objc",

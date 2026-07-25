@@ -15,6 +15,7 @@
     "desktop:build": "bun run build:sidecars && tauri build --config '{\"bundle\":{\"externalBin\":[\"binaries/nixmac-helper\",\"binaries/nixmac-sync-agent\"]}}'",
     "desktop:build:local": "bun run build:sidecars && tauri build --bundles app --config '{\"bundle\":{\"createUpdaterArtifacts\":false,\"externalBin\":[\"binaries/nixmac-helper\",\"binaries/nixmac-sync-agent\"]}}' && bun run sign:local-app",
     "desktop:test": "cargo test --manifest-path src-tauri/Cargo.toml && bun run test:unit",
+    "check:portability": "node scripts/check-bundle-portability.mjs",
     "lint": "oxlint .",
     "preview": "vite preview",
     "test": "vitest run",
