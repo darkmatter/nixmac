@@ -120,30 +120,41 @@ build {
     ]
   }
 
-  # ---- Determinate Nix (multi-user, no init system) -------------------------
-  # Mirrors the Linux CI image's Nix install. --init none: no launchd service;
-  # the runner starts nix-daemon via launchd plist if needed.
+  # ---- Determinate Nix (multi-user, launchd integration) --------------------
+  # Keep the launchd service in the image. setup-nix detects `nix` on PATH and
+  # skips reinstalling, so the daemon must remain available after reboot.
   provisioner "shell" {
     inline = [
-      "curl -fsSL https://install.determinate.systems/nix | sh -s -- install darwin --init none --extra-conf 'trusted-users = root admin' --extra-conf 'max-jobs = 4' --no-confirm",
+      "curl -fsSL https://install.determinate.systems/nix | sh -s -- install darwin --extra-conf 'trusted-users = root admin' --extra-conf 'max-jobs = 4' --no-confirm",
     ]
   }
 
   # ---- Nix packages + binary cache config -----------------------------------
   # Public binary caches only (pull). No auth tokens.
-  # Each provisioner is a separate SSH session; nix-daemon is started inline.
   provisioner "shell" {
     inline = [
       "export PATH=/nix/var/nix/profiles/default/bin:$HOME/.nix-profile/bin:$PATH",
-      "nix-daemon &>/tmp/nix-daemon.log & sleep 3",
+      "nix store ping --store daemon",
       "nix profile install nixpkgs#cachix nixpkgs#sops nixpkgs#age nixpkgs#nodejs_22 nixpkgs#treefmt nixpkgs#nixfmt",
       # Configure binary caches (public keys fetched from cachix API; no auth)
       "cachix use darkmatter",
       "cachix use devenv",
       "cachix use nixpkgs-python",
-      # Verify
-      "nix --version && cachix --version && sops --version && age --version && node --version && treefmt --version && nixfmt --version",
-      "pkill nix-daemon 2>/dev/null || true",
+      # Verify the client and daemon, not just the client binary.
+      "nix store ping --store daemon && nix --version && cachix --version && sops --version && age --version && node --version && treefmt --version && nixfmt --version",
+    ]
+  }
+
+  # ---- Runner-visible PATH --------------------------------------------------
+  # GitHub Actions invokes non-login shells. Provide stable /usr/local/bin
+  # shims and /etc/paths.d so setup-nix sees the baked client without relying
+  # on .zprofile/.zshrc.
+  provisioner "shell" {
+    inline = [
+      "sudo mkdir -p /etc/paths.d",
+      "printf '%s\\n' /nix/var/nix/profiles/default/bin /usr/local/bin | sudo tee /etc/paths.d/nixmac >/dev/null",
+      "for tool in nix nix-daemon cachix sops age node treefmt nixfmt; do sudo ln -sf /nix/var/nix/profiles/default/bin/$tool /usr/local/bin/$tool; done",
+      "env -i PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin /bin/bash --noprofile --norc -c 'command -v nix && nix store ping --store daemon && cachix --version'",
     ]
   }
 
