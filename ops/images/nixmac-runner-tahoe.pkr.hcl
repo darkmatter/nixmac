@@ -33,8 +33,8 @@ variable "memory_gb" {
 
 variable "disk_size_gb" {
   type        = number
-  default     = 100
-  description = "VM disk size; measure physical usage after compaction."
+  default     = 140
+  description = "Sparse VM disk capacity; measure physical/OCI usage after build."
 }
 
 # Documentation tag plus immutable manifest digest. The tag is not used as the
