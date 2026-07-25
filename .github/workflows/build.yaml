@@ -5,9 +5,15 @@ on:
     tags:
       - "v*"
   pull_request:
-    branches: [main]
-  merge_group:
   workflow_dispatch:
+    inputs:
+      runner_pool:
+        description: "Mac runner pool for manual verification"
+        type: choice
+        options: [auto, self-hosted, depot]
+        default: auto
+        required: true
+  merge_group:
 
 concurrency:
   group: build-${{ github.event.pull_request.number || github.ref }}
@@ -36,18 +42,17 @@ jobs:
         with:
           darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
 
-      # Pinned to match .github/actions/setup-devenv. The devenv CLI is needed
-      # here (not just the cached profile): entering the shell is what
-      # materializes the .pre-commit-config.yaml symlink that prek reads.
-      - name: Install devenv
-        run: nix build github:cachix/devenv/v2.1.2 --out-link "$RUNNER_TEMP/devenv-cli"
-
+      # Entering the flake-parts devenv shell materializes the
+      # .pre-commit-config.yaml symlink that prek reads.
       - name: Run git hooks on all files
         env:
           NIXPKGS_ALLOW_UNFREE: 1
         run: |
-          "$RUNNER_TEMP/devenv-cli/bin/devenv" shell --impure -- \
-            prek run --all-files --show-diff-on-failure
+          mkdir -p .devenv
+          printf %s "$PWD" > .devenv/root
+          nix develop . --no-pure-eval \
+            --override-input devenv-root "file+file://$PWD/.devenv/root" \
+            -c prek run --all-files --show-diff-on-failure
 
   rust-tests:
     name: Rust Tests (Linux)
@@ -89,9 +94,72 @@ jobs:
         run: cargo test --manifest-path src-tauri/Cargo.toml
         env:
           NIXMAC_ENV: production
-  build:
+  # Decide whether the mac build lands on the dedicated self-hosted mac fleet
+  # or on a Depot macOS runner. Prefer self-hosted (flat monthly cost); fall
+  # back to Depot (per-minute) when no fleet runner is online AND idle. The
+  # fleet is identified by the custom `nixmac-mac` label so that unrelated
+  # org mac runners (private groups this public repo can't route to, or
+  # future Depot mac runners) never count as available capacity. Runs only
+  # after rust-tests so the pool decision is seconds (not a full rust-test
+  # duration) stale at dispatch; a runner claimed in that window just queues
+  # the build on self-hosted, same as before this job existed.
+  pick-mac-runner:
+    name: Pick mac runner pool
     needs: rust-tests
-    runs-on: [self-hosted, macOS]
+    runs-on: arc
+    timeout-minutes: 5
+    outputs:
+      runs-on: ${{ steps.pick.outputs.runs-on }}
+    steps:
+      - name: Mint org token
+        id: bot-token
+        if: inputs.runner_pool == '' || inputs.runner_pool == 'auto'
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.DARKMATTER_APP_ID }}
+          private-key: ${{ secrets.DARKMATTER_APP_PRIVATE_KEY }}
+      - name: Pick pool
+        id: pick
+        shell: bash
+        env:
+          GH_TOKEN: ${{ steps.bot-token.outputs.token }}
+          RUNNER_POOL: ${{ inputs.runner_pool || 'auto' }}
+        run: |
+          set -uo pipefail
+          # depot-macos-14 (Sonoma) matches the self-hosted cilicon image
+          # (macos-sonoma-xcode:16.1) most closely.
+          self_hosted='["self-hosted","macOS","nixmac-mac"]'
+          depot='["depot-macos-14"]'
+          if [ "$RUNNER_POOL" = "self-hosted" ]; then
+            echo "runs-on=$self_hosted" | tee -a "$GITHUB_OUTPUT"
+            echo "::notice::manual verification requested self-hosted"
+            exit 0
+          fi
+          if [ "$RUNNER_POOL" = "depot" ]; then
+            echo "runs-on=$depot" | tee -a "$GITHUB_OUTPUT"
+            echo "::notice::manual verification requested Depot"
+            exit 0
+          fi
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::org app token unavailable; refusing to guess runner availability"
+            exit 1
+          fi
+          if idle=$(gh api --paginate orgs/darkmatter/actions/runners --jq '.runners[] | select((.labels[].name == "nixmac-mac") and .status == "online" and .busy == false) | .name' 2>/dev/null); then
+            n=$(printf '%s\n' "$idle" | grep -c . || true)
+            if [ "$n" -gt 0 ]; then
+              echo "runs-on=$self_hosted" | tee -a "$GITHUB_OUTPUT"
+              echo "idle self-hosted mac runners: $n"
+            else
+              echo "runs-on=$depot" | tee -a "$GITHUB_OUTPUT"
+              echo "::notice::no idle self-hosted mac runners; routing to $depot"
+            fi
+          else
+            echo "::error::org runner API failed; refusing to guess runner availability"
+            exit 1
+          fi
+  build:
+    needs: pick-mac-runner
+    runs-on: ${{ fromJSON(needs.pick-mac-runner.outputs.runs-on) }}
     permissions:
       contents: write
     steps:
