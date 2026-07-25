@@ -3,6 +3,12 @@ members = [
   "apps/native/src-tauri",
   "apps/native/src-tauri/configurable",
   "apps/native/src-tauri/configurable-derive",
+  # Vendored Oh My Pi extracts — see crates/vendor/oh-my-pi/VENDOR.md
+  "crates/vendor/oh-my-pi/pi-walker",
+  "crates/vendor/oh-my-pi/pi-uutils-ctx",
+  "crates/vendor/oh-my-pi/pi-uu-grep",
+  "crates/vendor/oh-my-pi/pi-iso",
+  "crates/vendor/oh-my-pi/pi-ast",
 ]
 resolver = "2"
 

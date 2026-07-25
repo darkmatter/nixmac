@@ -2,14 +2,36 @@ use super::gitignore::{GitignoreChecker, VisibleFiles};
 use super::utils::truncate_error;
 use anyhow::{Result, anyhow};
 use log::info;
+use pi_uutils_ctx::{ScopeIo, scope};
 use serde_json::Value;
+use std::collections::HashMap;
+use std::ffi::OsString;
+use std::io::{self, Write};
 use std::path::{Component, Path, PathBuf};
-use std::process::Command;
+use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, Mutex};
 
 // Maximum number of rg search results to return.
 const MAX_SEARCH_RESULTS: usize = 50;
 
-/// Execute a code search using ripgrep with a grep fallback.
+/// Sink that collects writes into a shared buffer (mirrors pi_uu_grep tests).
+struct SharedBuf(Arc<Mutex<Vec<u8>>>);
+
+impl Write for SharedBuf {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.0
+            .lock()
+            .map_err(|_| io::Error::other("stdout buffer lock poisoned"))?
+            .extend_from_slice(buf);
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+/// Execute a code search using in-process ripgrep (`pi_uu_grep`).
 pub fn execute_search_code(
     base: &Path,
     pattern: &str,
@@ -22,25 +44,7 @@ pub fn execute_search_code(
         .map(|checker| checker.visible_files())
         .transpose()?;
 
-    let mut cmd = Command::new("rg");
-    cmd.args([
-        "--json",
-        "--color=never", // Disable color to simplify output parsing.
-        "--text",        // Treat all files as text to avoid binary file issues.
-        pattern,
-    ]);
-    // Do not pass --max-count here: that flag caps matches *per file*, so the
-    // total output could still far exceed MAX_SEARCH_RESULTS across many files.
-    // The global cap is enforced in format_rg_json_matches instead.
-
-    // Exclude common ignored directories from ripgrep results by adding
-    // negative glob patterns (e.g. `!.git/**/*`).
-    for d in super::IGNORED_DIRS {
-        cmd.arg("--glob").arg(format!("!{}/**/*", d));
-    }
-
     if let Some(fp) = file_pattern {
-        // Keep glob semantics for ripgrep while disallowing directory escapes.
         let fp_path = Path::new(fp);
         if fp_path.is_absolute() {
             return Err(anyhow!(
@@ -55,60 +59,69 @@ pub fn execute_search_code(
                 ));
             }
         }
-
-        cmd.arg("--glob").arg(fp);
     }
 
-    match cmd.current_dir(base).output() {
-        Ok(out) => {
-            let status = out.status;
-            if status.success() {
-                let formatted = format_rg_json_matches(&out.stdout, visible.as_ref());
-                if formatted.is_empty() {
-                    Ok("No matches found.".to_string())
-                } else {
-                    Ok(truncate_error(&formatted, 8000))
-                }
-            } else {
-                match status.code() {
-                    Some(1) => Ok("No matches found.".to_string()),
-                    Some(code) => {
-                        let stderr = String::from_utf8_lossy(&out.stderr);
-                        let truncated = truncate_error(&stderr, 8000);
-                        Err(anyhow!(
-                            "rg exited with status code {}: {}",
-                            code,
-                            truncated
-                        ))
-                    }
-                    None => {
-                        let stderr = String::from_utf8_lossy(&out.stderr);
-                        let truncated = truncate_error(&stderr, 8000);
-                        Err(anyhow!("rg terminated by signal: {}", truncated))
-                    }
-                }
-            }
-        }
-        Err(_) => {
-            // Fallback to grep if rg is not available.
-            let mut grep_cmd = Command::new("grep");
-            grep_cmd.arg("-rn");
-            grep_cmd
-                .arg("--max-count")
-                .arg(MAX_SEARCH_RESULTS.to_string());
-            for d in super::IGNORED_DIRS {
-                grep_cmd.arg(format!("--exclude-dir={}", d));
-            }
-            let output = grep_cmd.arg(pattern).arg(".").current_dir(base).output()?;
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let filtered = filter_grep_matches(&stdout, visible.as_ref());
-            if filtered.trim().is_empty() {
+    let (code, stdout, stderr) = run_inprocess_rg(base, pattern, file_pattern);
+    match code {
+        0 => {
+            let formatted = format_rg_json_matches(stdout.as_bytes(), visible.as_ref());
+            if formatted.is_empty() {
                 Ok("No matches found.".to_string())
             } else {
-                Ok(truncate_error(&filtered, 8000))
+                Ok(truncate_error(&formatted, 8000))
             }
         }
+        1 => Ok("No matches found.".to_string()),
+        code => {
+            let truncated = truncate_error(&stderr, 8000);
+            Err(anyhow!(
+                "rg exited with status code {}: {}",
+                code,
+                truncated
+            ))
+        }
     }
+}
+
+fn run_inprocess_rg(
+    base: &Path,
+    pattern: &str,
+    file_pattern: Option<&str>,
+) -> (i32, String, String) {
+    let out = Arc::new(Mutex::new(Vec::new()));
+    let err = Arc::new(Mutex::new(Vec::new()));
+    let io = ScopeIo {
+        stdin: Box::new(io::empty()),
+        stdin_fd: None,
+        stdin_is_search_input: false,
+        stdout: Box::new(SharedBuf(Arc::clone(&out))),
+        stderr: Box::new(SharedBuf(Arc::clone(&err))),
+        cwd: base.to_path_buf(),
+        env: HashMap::new(),
+        cancel: Arc::new(AtomicBool::new(false)),
+    };
+
+    let mut argv: Vec<OsString> = vec![
+        "rg".into(),
+        "--json".into(),
+        "--color=never".into(),
+        "--text".into(),
+    ];
+    for d in super::IGNORED_DIRS {
+        argv.push("--glob".into());
+        argv.push(format!("!{d}/**/*").into());
+    }
+    if let Some(fp) = file_pattern {
+        argv.push("--glob".into());
+        argv.push(fp.into());
+    }
+    argv.push(pattern.into());
+    argv.push(".".into());
+
+    let code = scope(io, || pi_uu_grep::run_rg(argv));
+    let stdout = String::from_utf8_lossy(&out.lock().expect("stdout lock")).into_owned();
+    let stderr = String::from_utf8_lossy(&err.lock().expect("stderr lock")).into_owned();
+    (code, stdout, stderr)
 }
 
 fn format_rg_json_matches(stdout: &[u8], visible: Option<&VisibleFiles>) -> String {
@@ -149,39 +162,6 @@ fn format_rg_json_matches(stdout: &[u8], visible: Option<&VisibleFiles>) -> Stri
     lines.join("\n")
 }
 
-fn filter_grep_matches(stdout: &str, visible: Option<&VisibleFiles>) -> String {
-    let mut lines: Vec<String> = Vec::new();
-
-    for line in stdout.lines() {
-        if lines.len() >= MAX_SEARCH_RESULTS {
-            break;
-        }
-
-        let mut parts = line.rsplitn(3, ':');
-        let Some(_text) = parts.next() else {
-            continue;
-        };
-        let Some(line_no) = parts.next() else {
-            continue;
-        };
-        let Some(path) = parts.next() else {
-            continue;
-        };
-
-        if line_no.parse::<u64>().is_err() {
-            continue;
-        }
-
-        if is_hidden_match(path, visible) {
-            continue;
-        }
-
-        lines.push(line.to_string());
-    }
-
-    lines.join("\n")
-}
-
 fn is_hidden_match(path: &str, visible: Option<&VisibleFiles>) -> bool {
     let rel = normalize_match_path(path);
     visible
@@ -202,7 +182,7 @@ fn normalize_match_path(path: &str) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::{execute_search_code, filter_grep_matches};
+    use super::execute_search_code;
     use crate::evolve::gitignore::GitignoreChecker;
     use std::fs;
     use tempfile::tempdir;
@@ -260,21 +240,5 @@ mod tests {
 
         assert!(output.contains("nested/visible.txt"), "output: {output}");
         assert!(!output.contains("nested/secret.txt"), "output: {output}");
-    }
-
-    #[test]
-    fn grep_fallback_parser_handles_colons_in_filename() {
-        let stdout = "dir:with:colon/file.txt:12:match text\ndir/file.txt:not-a-line:ignored\n";
-
-        let output = filter_grep_matches(stdout, None);
-
-        assert!(
-            output.contains("dir:with:colon/file.txt:12:match text"),
-            "output: {output}"
-        );
-        assert!(
-            !output.contains("dir/file.txt:not-a-line:ignored"),
-            "output: {output}"
-        );
     }
 }
