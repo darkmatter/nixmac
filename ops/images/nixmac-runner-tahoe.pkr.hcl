@@ -135,7 +135,8 @@ build {
     inline = [
       "export PATH=/nix/var/nix/profiles/default/bin:$HOME/.nix-profile/bin:$PATH",
       "nix store ping --store daemon",
-      "nix profile install nixpkgs#cachix nixpkgs#sops nixpkgs#age nixpkgs#nodejs_22 nixpkgs#treefmt nixpkgs#nixfmt",
+      "sudo nix profile install --profile /nix/var/nix/profiles/nixmac nixpkgs#cachix nixpkgs#sops nixpkgs#age nixpkgs#nodejs_22 nixpkgs#treefmt nixpkgs#nixfmt",
+      "export PATH=/nix/var/nix/profiles/nixmac/bin:$PATH",
       # Configure binary caches (public keys fetched from cachix API; no auth)
       "cachix use darkmatter",
       "cachix use devenv",
@@ -152,9 +153,10 @@ build {
   provisioner "shell" {
     inline = [
       "sudo mkdir -p /etc/paths.d",
-      "printf '%s\\n' /nix/var/nix/profiles/default/bin /usr/local/bin | sudo tee /etc/paths.d/nixmac >/dev/null",
-      "for tool in nix nix-daemon cachix sops age node treefmt nixfmt; do sudo ln -sf /nix/var/nix/profiles/default/bin/$tool /usr/local/bin/$tool; done",
-      "env -i PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin /bin/bash --noprofile --norc -c 'command -v nix && nix store ping --store daemon && cachix --version'",
+      "printf '%s\\n' /nix/var/nix/profiles/nixmac/bin /nix/var/nix/profiles/default/bin /usr/local/bin | sudo tee /etc/paths.d/nixmac >/dev/null",
+      "for tool in nix nix-daemon; do test -x /nix/var/nix/profiles/default/bin/$tool; sudo ln -sf /nix/var/nix/profiles/default/bin/$tool /usr/local/bin/$tool; done",
+      "for tool in cachix sops age node treefmt nixfmt; do test -x /nix/var/nix/profiles/nixmac/bin/$tool; sudo ln -sf /nix/var/nix/profiles/nixmac/bin/$tool /usr/local/bin/$tool; done",
+      "env -i PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin /bin/bash --noprofile --norc -c 'set -eu; for tool in nix nix-daemon cachix sops age node treefmt nixfmt; do test -x /usr/local/bin/$tool; command -v $tool; done; nix store ping --store daemon; cachix --version'",
     ]
   }
 
