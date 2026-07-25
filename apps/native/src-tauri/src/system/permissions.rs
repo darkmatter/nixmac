@@ -538,13 +538,11 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
             // registerAndReturnError: fails with an opaque "Operation not
             // permitted". Detect that up front and surface a clear Pending
             // state instead of propagating the OS error to the UI.
-            let bundle_present = crate::system::install_location::check_install_location()
-                .bundle_path
-                .is_some();
+            let install = crate::system::install_location::check_install_location();
 
             const APPROVE_INSTRUCTIONS: &str = "Approve nixmac in System Settings → General → Login Items & Extensions if macOS asks for background item approval.";
 
-            let (status, instructions) = if !bundle_present {
+            let (status, instructions) = if install.bundle_path.is_none() {
                 warn!(
                     "privileged helper registration skipped: nixmac is not running from a .app bundle"
                 );
@@ -552,6 +550,20 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
                     PermissionStatus::Pending,
                     "Build a signed .app with `bun run desktop:build:local`, drag it into /Applications, and launch it from there to install the unattended sync helper. It cannot be installed from a dev build."
                         .to_string(),
+                )
+            } else if cfg!(debug_assertions) && !install.in_applications_dir {
+                // Debug builds run out of the build tree, never /Applications.
+                // Registering from there would pin the LaunchDaemon to that
+                // bundle path, so only connect to a helper that an
+                // /Applications install already registered. Release builds
+                // keep the normal register flow regardless of location.
+                warn!(
+                    "privileged helper registration skipped: nixmac is running outside /Applications"
+                );
+                let (status, detail) = probe_installed_helper();
+                (
+                    status,
+                    detail.unwrap_or_else(|| APPROVE_INSTRUCTIONS.to_string()),
                 )
             } else {
                 match crate::privileged_helper::service::register() {
@@ -614,6 +626,41 @@ fn await_helper_ready() -> Result<()> {
     Err(last_error)
 }
 
+/// One authenticated status round-trip to an already-installed helper
+/// daemon, bypassing SMAppService entirely. Used when the app is not running
+/// from /Applications: it must never install the helper from there (the
+/// LaunchDaemon would point at the wrong bundle path), but if a signed
+/// /Applications copy already installed one, mutual code-signature
+/// validation is what decides whether this copy may use it.
+fn probe_installed_helper() -> (PermissionStatus, Option<String>) {
+    const INSTALL_FROM_APPLICATIONS: &str = "nixmac is not running from /Applications, so it cannot install the unattended sync helper itself. Install it by launching a signed nixmac from /Applications; a correctly signed copy running elsewhere can then connect to it.";
+
+    if !crate::privileged_helper::client::socket_available() {
+        return (
+            PermissionStatus::Pending,
+            Some(INSTALL_FROM_APPLICATIONS.to_string()),
+        );
+    }
+    match crate::privileged_helper::client::status() {
+        Ok(response) if response.ok => (PermissionStatus::Granted, None),
+        Ok(response) => (
+            PermissionStatus::Pending,
+            Some(format!(
+                "The helper is running but refused this app: {}. {INSTALL_FROM_APPLICATIONS}",
+                response
+                    .error
+                    .unwrap_or_else(|| "unknown error".to_string())
+            )),
+        ),
+        Err(error) => (
+            PermissionStatus::Pending,
+            Some(format!(
+                "The helper did not answer a status probe: {error:#}. {INSTALL_FROM_APPLICATIONS}"
+            )),
+        ),
+    }
+}
+
 /// Status of the unattended sync helper, with a detail message when it is
 /// not fully working.
 ///
@@ -624,6 +671,18 @@ fn await_helper_ready() -> Result<()> {
 /// code-signature checks (client validates the daemon, daemon validates this
 /// client).
 fn check_privileged_helper() -> (PermissionStatus, Option<String>) {
+    // Debug builds run outside /Applications (bare dev binaries or a locally
+    // built .app), where SMAppService describes this bundle copy rather than
+    // the daemon that an /Applications install registered. Skip it there and
+    // rely on the authenticated socket round-trip alone: a correctly signed
+    // copy can talk to an installed helper from anywhere. Release builds
+    // always go through the full SMAppService check below.
+    if cfg!(debug_assertions)
+        && !crate::system::install_location::check_install_location().in_applications_dir
+    {
+        return probe_installed_helper();
+    }
+
     let status = crate::privileged_helper::service::status();
     if !status.available {
         return (PermissionStatus::Unknown, status.detail);
