@@ -2,8 +2,8 @@
 //! origin.
 //!
 //! The server-brokered GitHub App endpoints (`/api/auth/github/*`) authenticate
-//! with a Better Auth **api-key plugin** credential (`nixmac_…`), not the HMAC
-//! sync secret. To obtain one headlessly we:
+//! with a Better Auth **api-key plugin** credential (`nixmac_…`). To obtain one
+//! headlessly we:
 //!
 //! 1. `POST /api/auth/sign-in/email-otp` (or the legacy email/password
 //!    endpoints below) — establishes a Better Auth session (the cookie is held

@@ -472,8 +472,6 @@ function installBackend(startAt: string) {
   patch(tauriAPI.account, "verifyOtp", async (email: string) => ({
     signedIn: true,
     account: { id: "demo-account", email },
-    keyId: null,
-    serverUrl: "https://sync.nixmac.app",
     githubReady: true,
     webAccount: { id: "demo-account", email },
   }));
