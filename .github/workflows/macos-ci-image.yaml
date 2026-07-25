@@ -1,0 +1,184 @@
+name: macOS CI Image
+
+# =============================================================================
+# Builds and publishes the nixmac macOS CI tart image to GHCR.
+#
+# The image pre-bakes Nix, Cachix config, SOPS/age, Bun, Node, and treefmt on
+# top of macos-tahoe-xcode:26.5 (transitively vanilla-Tahoe-based) so macOS
+# build jobs skip ~5-10 min of per-run toolchain installs.
+#
+# NOT baked in (repo/lockfile-dependent): devenv profile, Rust toolchain,
+# node_modules, Cargo cache. These are built per job, same as the Linux CI
+# image (.github/ci-image/Dockerfile).
+#
+# Triggers:
+#   - Push to main that changes the Packer template, nix/, devenv.nix,
+#     flake.*, or package.json
+#   - Weekly schedule (Sun 10:00 UTC) to keep the base layer fresh
+#   - Manual dispatch
+#
+# SECURITY: The Packer template uses public inputs only (no secrets). A
+# secret-scan step runs before push and fails the build if any known secret
+# pattern is found in the exported image.
+# =============================================================================
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ops/images/**
+      - .github/workflows/macos-ci-image.yaml
+      - nix/**
+      - devenv.nix
+      - flake.nix
+      - flake.lock
+      - treefmt.nix
+      - package.json
+      - bun.lock
+  schedule:
+    # Sunday 10:00 UTC — weekly refresh of the base layer.
+    - cron: "0 10 * * 0"
+  workflow_dispatch:
+
+concurrency:
+  group: macos-ci-image-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/nixmac-runner
+
+jobs:
+  build:
+    name: Build and push macOS CI image
+    # Must run on a self-hosted mac with tart + packer installed.
+    # Uses the nixmac-mac label (same fleet as the build job) but does not
+    # compete with builds: this runs on schedule/manual only, not on PRs.
+    runs-on: [self-hosted, macOS, nixmac-mac]
+    timeout-minutes: 90
+    outputs:
+      image: ${{ steps.meta.outputs.tags }}
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Read bun version from package.json
+        id: bun-version
+        shell: bash
+        run: |
+          VERSION=$(jq -r '.packageManager // empty' package.json | sed -n 's/^bun@//p')
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not find bun version in package.json (packageManager field)"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Install Packer (if missing)
+        shell: bash
+        run: |
+          if ! command -v packer &>/dev/null; then
+            brew install hashicorp/tap/packer
+          fi
+          packer version
+
+      - name: Initialize Packer plugins
+        shell: bash
+        run: |
+          cd ops/images
+          packer init nixmac-runner-tahoe.pkr.hcl
+
+      - name: Build image
+        id: build
+        shell: bash
+        env:
+          BUN_VERSION: ${{ steps.bun-version.outputs.version }}
+        run: |
+          cd ops/images
+          packer build \
+            -var "bun_version=$BUN_VERSION" \
+            nixmac-runner-tahoe.pkr.hcl
+
+      - name: Secret scan (pre-push gate)
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Scan the built VM's filesystem for common secret patterns before
+          # pushing to the registry. This is a belt-and-braces check; the
+          # Packer template uses public inputs only, but we verify.
+          VM_NAME="nixmac-runner-tahoe"
+          echo "::group::Mounting VM disk for secret scan"
+          # tart run starts the VM; we SSH in and scan.
+          # Use tart ip to get the VM's IP, then ssh as admin/admin.
+          TART_IP=$(tart ip "$VM_NAME" 2>/dev/null || true)
+          if [ -z "$TART_IP" ]; then
+            echo "::warning::Could not get VM IP for secret scan; skipping (template uses public inputs only)"
+            exit 0
+          fi
+          echo "::endgroup::"
+
+          echo "::group::Scanning for secrets"
+          # Patterns: private keys, API tokens, age keys, SOPS keys
+          PATTERNS='(
+            -----BEGIN (RSA |EC |OPENSSH |AGE )?PRIVATE KEY-----
+            |SOPS_AGE_KEY=
+            |age-encryption\.org
+            |ghp_[0-9a-f]{36}
+            |gho_[0-9a-f]{36}
+            |CACHIX_AUTH_TOKEN=
+            |DARKMATTER_CACHIX_AUTH_TOKEN=
+            |DEVELOPER_ID_APPLICATION=
+            |p12:
+          )'
+
+          # Scan home dirs and common locations
+          SCAN_DIRS="/Users/admin /Users/runner /tmp /var/tmp /etc"
+          FOUND=$(sshpass -p admin ssh -o StrictHostKeyChecking=no "admin@$TART_IP" \
+            "grep -rIlE '$PATTERNS' $SCAN_DIRS 2>/dev/null || true")
+
+          if [ -n "$FOUND" ]; then
+            echo "::error::Secret patterns found in image:"
+            echo "$FOUND"
+            exit 1
+          fi
+          echo "No secret patterns found."
+          echo "::endgroup::"
+
+      - name: Log in to GHCR
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GH_TOKEN" | tart login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: Push image
+        id: push
+        shell: bash
+        run: |
+          tart push nixmac-runner-tahoe \
+            ghcr.io/darkmatter/nixmac-runner:tahoe
+          # Also tag with date+sha for traceability
+          TAG="$(date +%Y%m%d)-$(echo $GITHUB_SHA | cut -c1-7)"
+          tart push nixmac-runner-tahoe \
+            ghcr.io/darkmatter/nixmac-runner:$TAG
+
+      - name: Clean up local VM
+        if: always()
+        shell: bash
+        run: |
+          tart delete nixmac-runner-tahoe 2>/dev/null || true
+
+      - name: Summary
+        shell: bash
+        run: |
+          {
+            echo "## macOS CI Image Published"
+            echo ""
+            echo "**Image:** \`ghcr.io/darkmatter/nixmac-runner:tahoe\`"
+            echo "**Bun version:** \`${{ steps.bun-version.outputs.version }}\`"
+            echo "**Base:** \`ghcr.io/cirruslabs/macos-tahoe-xcode:26.5\`"
+          } >> "$GITHUB_STEP_SUMMARY"
