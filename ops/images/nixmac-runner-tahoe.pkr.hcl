@@ -1,46 +1,19 @@
 # =============================================================================
 # nixmac CI image (macOS / Tahoe)
 #
-# Pre-bakes everything the macOS GitHub Actions runner needs so each build
-# skips ~5-10 min of nix-installer + cachix + bun + system dep installs.
+# Minimal image design:
+#   ghcr.io/cirruslabs/macos-tahoe-base@<pinned digest>
+#   + one supplied Xcode 26.x artifact
 #
-# Base: ghcr.io/cirruslabs/macos-tahoe-xcode:26.5 (transitively vanilla-Tahoe-
-# based via -base; carries a single Xcode 26.5 — smaller than macos-runner:tahoe
-# which bundles multiple Xcode versions).
+# Nix, devenv, Bun, Rust, Cargo, and node_modules are intentionally NOT baked
+# here. The existing CI setup uses public/remote caches for those artifacts;
+# keeping them remote avoids a large image and keeps lockfile changes out of
+# the base-image lifecycle.
 #
-# Baked in (system-level, version-stable):
-#   - Determinate Nix (multi-user, no init system)
-#   - Cachix CLI + pre-configured binary caches (darkmatter, devenv, nixpkgs-python)
-#   - SOPS + age (secrets decryption)
-#   - Bun (version pinned to package.json packageManager)
-#   - Node.js 22 (via nix profile)
-#   - treefmt, nixfmt (via nix profile)
-#
-# NOT baked in (repo/lockfile-dependent — must build per job):
-#   - devenv profile (depends on devenv.nix + flake.lock)
-#   - Rust toolchain (managed by devenv profile per job)
-#   - node_modules (bun install per job — depends on bun.lock)
-#   - Cargo registry cache (changes per Cargo.lock)
-#
-# This mirrors the Linux CI image (.github/ci-image/Dockerfile) philosophy:
-# bake toolchain installers and system-level tools, not per-repo artifacts.
-#
-# SECURITY: This template uses PUBLIC inputs only. No SOPS_AGE_KEY, Cachix auth
-# tokens, Apple signing keys, or API keys are injected. The image is safe to
-# publish to a public registry. Secrets are provided at job runtime via the
-# existing workflow secret injection.
-#
-# Usage:
-#   packer init .
-   # packer build -var "bun_version=1.3.14" .
-#   tart push nixmac-runner-tahoe ghcr.io/darkmatter/nixmac-runner:tahoe
+# SECURITY: all inputs except the supplied Xcode artifact are public. No
+# SOPS_AGE_KEY, Cachix auth, Apple signing keys, or API keys are provisioned.
+# The workflow scans provisioning-owned text paths before pushing.
 # =============================================================================
-
-variable "bun_version" {
-  type        = string
-  default     = "1.3.14"
-  description = "Bun version to bake (must match package.json packageManager)."
-}
 
 variable "image_name" {
   type        = string
@@ -51,40 +24,54 @@ variable "image_name" {
 variable "cpu_count" {
   type        = number
   default     = 8
-  description = "VM CPU count during build."
 }
 
 variable "memory_gb" {
   type        = number
   default     = 16
-  description = "VM memory in GB during build."
 }
 
 variable "disk_size_gb" {
   type        = number
   default     = 100
-  description = "VM disk size in GB (must accommodate base image + tools)."
+  description = "VM disk size; measure physical usage after compaction."
 }
-variable "base_image" {
+
+# Documentation tag plus immutable manifest digest. The tag is not used as the
+# source reference; update the digest when changing the base image.
+variable "base_image_tag" {
   type    = string
-  default = "ghcr.io/cirruslabs/macos-tahoe-xcode:26.5"
+  default = "ghcr.io/cirruslabs/macos-tahoe-base:latest"
 }
 
 variable "base_image_digest" {
   type    = string
-  # Manifest digest for the 26.5 tag, resolved 2026-07-25.
-  default = "sha256:61f6e857a3d65dd2f8daf9c51c7b837fa458bcc9181ae8556e645b534dab6bf6"
+  # Manifest digest resolved 2026-07-25 for macos-tahoe-base:latest.
+  default = "sha256:a8e1c8305758643f513fdccdd829c2243687c60791083dea42f73f0b7aeb435c"
 }
 
-# SSH credentials for the base image (Cirrus Labs default).
+ # Required local path on the dedicated image-builder host. This is supplied
+ # by the operator; it is not stored in the repository or in image layers.
+variable "xcode_artifact" {
+  type        = string
+  default     = ""
+  description = "Local path to the approved Xcode 26.x .xip or .pkg artifact."
+}
+
+variable "xcode_artifact_type" {
+  type        = string
+  default     = "xip"
+  description = "Artifact extension: xip or pkg."
+}
+
 variable "ssh_username" {
   type    = string
   default = "admin"
 }
 
 variable "ssh_password" {
-  type    = string
-  default = "admin"
+  type      = string
+  default   = "admin"
   sensitive = true
 }
 
@@ -98,21 +85,21 @@ packer {
 }
 
 source "tart-cli" "tart" {
-  vm_name            = var.image_name
-  vm_base_name       = "ghcr.io/cirruslabs/macos-tahoe-xcode@${var.base_image_digest}"
-  cpu_count          = var.cpu_count
-  memory_gb          = var.memory_gb
-  disk_size_gb       = var.disk_size_gb
-  ssh_username       = var.ssh_username
-  ssh_password       = var.ssh_password
-  ssh_timeout        = "30m"
-  headless           = true
+  vm_name      = var.image_name
+  vm_base_name = "ghcr.io/cirruslabs/macos-tahoe-base@${var.base_image_digest}"
+  cpu_count    = var.cpu_count
+  memory_gb    = var.memory_gb
+  disk_size_gb = var.disk_size_gb
+  ssh_username = var.ssh_username
+  ssh_password = var.ssh_password
+  ssh_timeout  = "30m"
+  headless     = true
 }
 
 build {
   sources = ["source.tart-cli.tart"]
 
-  # ---- Disable Spotlight indexing (saves CPU + disk during build) -----------
+  # Keep the image build deterministic and avoid indexing the large Xcode tree.
   provisioner "shell" {
     inline = [
       "sudo mdutil -a -i off",
@@ -120,76 +107,35 @@ build {
     ]
   }
 
-  # ---- Determinate Nix (multi-user, launchd integration) --------------------
-  # Keep the launchd service in the image. setup-nix detects `nix` on PATH and
-  # skips reinstalling, so the daemon must remain available after reboot.
+  # Xcode is the only large toolchain baked into this image. The artifact is
+  # uploaded directly by Packer and removed after installation.
+  provisioner "file" {
+    source      = var.xcode_artifact
+    destination = "/tmp/Xcode-artifact.${var.xcode_artifact_type}"
+  }
+
   provisioner "shell" {
     inline = [
-      "curl -fsSL https://install.determinate.systems/nix | sh -s -- install darwin --extra-conf 'trusted-users = root admin' --extra-conf 'max-jobs = 4' --no-confirm",
+      "set -euo pipefail",
+      "rm -rf /tmp/xcode-expanded /tmp/Xcode.app",
+      "mkdir -p /tmp/xcode-expanded",
+      "case /tmp/Xcode-artifact.${var.xcode_artifact_type} in *.xip) xip --expand /tmp/Xcode-artifact.${var.xcode_artifact_type} /tmp/xcode-expanded ;; *.pkg) sudo installer -pkg /tmp/Xcode-artifact.${var.xcode_artifact_type} -target / ;; *) echo 'Unsupported Xcode artifact; use .xip or .pkg' >&2; exit 1 ;; esac",
+      "if [ -d /tmp/xcode-expanded/Xcode.app ]; then sudo ditto /tmp/xcode-expanded/Xcode.app /Applications/Xcode.app; fi",
+      "test -x /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild",
+      "sudo xcode-select -s /Applications/Xcode.app/Contents/Developer",
+      "sudo xcodebuild -license accept",
+      "sudo xcodebuild -runFirstLaunch",
+      "xcodebuild -version",
+      "xcrun --sdk macosx --show-sdk-path",
+      "rm -rf /tmp/Xcode-artifact /tmp/xcode-expanded /tmp/Xcode.app",
     ]
   }
 
-  # ---- Nix packages + binary cache config -----------------------------------
-  # Public binary caches only (pull). No auth tokens.
-  provisioner "shell" {
-    inline = [
-      "export PATH=/nix/var/nix/profiles/default/bin:$HOME/.nix-profile/bin:$PATH",
-      "nix store ping --store daemon",
-      "sudo nix profile install --profile /nix/var/nix/profiles/nixmac nixpkgs#cachix nixpkgs#sops nixpkgs#age nixpkgs#nodejs_22 nixpkgs#treefmt nixpkgs#nixfmt",
-      "export PATH=/nix/var/nix/profiles/nixmac/bin:$PATH",
-      # Configure binary caches (public keys fetched from cachix API; no auth)
-      "cachix use darkmatter",
-      "cachix use devenv",
-      "cachix use nixpkgs-python",
-      # Verify the client and daemon, not just the client binary.
-      "nix store ping --store daemon && nix --version && cachix --version && sops --version && age --version && node --version && treefmt --version && nixfmt --version",
-    ]
-  }
-
-  # ---- Runner-visible PATH --------------------------------------------------
-  # GitHub Actions invokes non-login shells. Provide stable /usr/local/bin
-  # shims and /etc/paths.d so setup-nix sees the baked client without relying
-  # on .zprofile/.zshrc.
-  provisioner "shell" {
-    inline = [
-      "sudo mkdir -p /etc/paths.d",
-      "printf '%s\\n' /nix/var/nix/profiles/nixmac/bin /nix/var/nix/profiles/default/bin /usr/local/bin | sudo tee /etc/paths.d/nixmac >/dev/null",
-      "for tool in nix nix-daemon; do test -x /nix/var/nix/profiles/default/bin/$tool; sudo ln -sf /nix/var/nix/profiles/default/bin/$tool /usr/local/bin/$tool; done",
-      "for tool in cachix sops age node treefmt nixfmt; do test -x /nix/var/nix/profiles/nixmac/bin/$tool; sudo ln -sf /nix/var/nix/profiles/nixmac/bin/$tool /usr/local/bin/$tool; done",
-      "env -i PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin /bin/bash --noprofile --norc -c 'set -eu; for tool in nix nix-daemon cachix sops age node treefmt nixfmt; do test -x /usr/local/bin/$tool; command -v $tool; done; nix store ping --store daemon; cachix --version'",
-    ]
-  }
-
-  # ---- Bun ------------------------------------------------------------------
-  # Version pinned to match package.json packageManager field.
-  # macOS arm64 build.
-  provisioner "shell" {
-    inline = [
-      "BUN_TAG='bun-v${var.bun_version}'",
-      "curl -fsSL \"https://github.com/oven-sh/bun/releases/download/$BUN_TAG/bun-darwin-arm64.zip\" -o /tmp/bun.zip",
-      "unzip -q /tmp/bun.zip -d /tmp/bun",
-      "sudo mv /tmp/bun/bun-darwin-arm64/bun /usr/local/bin/bun",
-      "sudo chmod +x /usr/local/bin/bun",
-      "rm -rf /tmp/bun /tmp/bun.zip",
-      "bun --version",
-    ]
-  }
-
-  # ---- Shell profile (PATH for runner user) ---------------------------------
-  # Ensure /nix/var/nix/profiles/default/bin and /usr/local/bin are on PATH
-  # for all login shells. The GitHub Actions runner uses the admin user.
-  provisioner "shell" {
-    inline = [
-      "grep -q 'nix/var/nix/profiles/default/bin' ~/.zprofile 2>/dev/null || echo 'export PATH=/nix/var/nix/profiles/default/bin:$HOME/.nix-profile/bin:/usr/local/bin:$PATH' >> ~/.zprofile",
-      "grep -q 'nix/var/nix/profiles/default/bin' ~/.zshrc 2>/dev/null || echo 'export PATH=/nix/var/nix/profiles/default/bin:$HOME/.nix-profile/bin:/usr/local/bin:$PATH' >> ~/.zshrc",
-    ]
-  }
-
-  # ---- Clean up -------------------------------------------------------------
+  # Remove installer residue. Do not attempt to delete Xcode platforms or
+  # compaction-sensitive VM data here; measure the resulting Tart image first.
   provisioner "shell" {
     inline = [
       "sudo rm -rf /private/var/folders/* /tmp/* /var/tmp/*",
-      "sudo purge 2>/dev/null || true",
     ]
   }
 }

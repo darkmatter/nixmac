@@ -3,13 +3,11 @@ name: macOS CI Image
 # =============================================================================
 # Builds and publishes the nixmac macOS CI tart image to GHCR.
 #
-# The image pre-bakes Nix, Cachix config, SOPS/age, Bun, Node, and treefmt on
-# top of macos-tahoe-xcode:26.5 (transitively vanilla-Tahoe-based) so macOS
-# build jobs skip ~5-10 min of per-run toolchain installs.
-#
-# NOT baked in (repo/lockfile-dependent): devenv profile, Rust toolchain,
-# node_modules, Cargo cache. These are built per job, same as the Linux CI
-# image (.github/ci-image/Dockerfile).
+ # Builds the minimal nixmac macOS Tart image:
+ #   macos-tahoe-base (pinned digest) + one supplied Xcode artifact.
+ #
+ # Nix, devenv, Bun, Rust, Cargo, and node_modules remain remote/lockfile-keyed
+ # caches and are installed by the existing build workflow.
 #
 #
  # Base reference is pinned by digest in ops/images/nixmac-runner-tahoe.pkr.hcl;
@@ -26,7 +24,17 @@ name: macOS CI Image
 
 on:
   workflow_dispatch:
-
+    inputs:
+      xcode_artifact:
+        description: "Absolute path to approved Xcode 26.x .xip/.pkg on the builder"
+        required: true
+        type: string
+      xcode_artifact_type:
+        description: "Xcode artifact extension"
+        required: true
+        type: choice
+        options: [xip, pkg]
+        default: xip
 # Re-enable after the image-builder host is prepared:
 # on:
 #   push:
@@ -60,9 +68,8 @@ env:
 jobs:
   build:
     name: Build and push macOS CI image
-    # Must run on a self-hosted mac with tart + packer installed.
-    # Uses the nixmac-mac label (same fleet as the build job) but does not
-    # compete with builds: this runs on schedule/manual only, not on PRs.
+    # Dedicated image-builder host only; never use production nixmac-mac
+    # runners. The Xcode artifact is supplied at manual dispatch time.
     runs-on: [self-hosted, macOS, nixmac-image-builder]
     timeout-minutes: 90
     outputs:
@@ -72,17 +79,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Read bun version from package.json
-        id: bun-version
-        shell: bash
-        run: |
-          VERSION=$(jq -r '.packageManager // empty' package.json | sed -n 's/^bun@//p')
-          if [ -z "$VERSION" ]; then
-            echo "::error::Could not find bun version in package.json (packageManager field)"
-            exit 1
-          fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
       - name: Install Packer (if missing)
         shell: bash
         run: |
@@ -90,6 +86,7 @@ jobs:
             brew install hashicorp/tap/packer
           fi
           packer version
+
 
       - name: Initialize Packer plugins
         shell: bash
@@ -101,11 +98,14 @@ jobs:
         id: build
         shell: bash
         env:
-          BUN_VERSION: ${{ steps.bun-version.outputs.version }}
+          XCODE_ARTIFACT: ${{ inputs.xcode_artifact }}
+          XCODE_ARTIFACT_TYPE: ${{ inputs.xcode_artifact_type }}
         run: |
           cd ops/images
+          test -f "$XCODE_ARTIFACT"
           packer build \
-            -var "bun_version=$BUN_VERSION" \
+            -var "xcode_artifact=$XCODE_ARTIFACT" \
+            -var "xcode_artifact_type=$XCODE_ARTIFACT_TYPE" \
             nixmac-runner-tahoe.pkr.hcl
 
       - name: Secret scan (pre-push gate)
@@ -231,6 +231,6 @@ jobs:
             echo "## macOS CI Image Published"
             echo ""
             echo "**Image:** \`ghcr.io/darkmatter/nixmac-runner:tahoe\`"
-            echo "**Bun version:** \`${{ steps.bun-version.outputs.version }}\`"
-            echo "**Base:** \`ghcr.io/cirruslabs/macos-tahoe-xcode:26.5\`"
+            echo "**Xcode artifact:** \`${{ inputs.xcode_artifact_type }}\`"
+            echo "**Base:** \`ghcr.io/cirruslabs/macos-tahoe-base@sha256:a8e1c8305758643f513fdccdd829c2243687c60791083dea42f73f0b7aeb435c\`"
           } >> "$GITHUB_STEP_SUMMARY"
