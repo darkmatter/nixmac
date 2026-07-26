@@ -88,7 +88,11 @@ push. Centaur therefore uses the idempotent exact-SHA backfill in `build.yaml`:
    SHA, `e2e_backfill=true`, and `e2e_merge_sha` set to the same SHA.
 1. The workflow proves the SHA is in default-branch history. Same-SHA
    backfills serialize without cancellation and re-check for an already
-   successful artifact before allocating the macOS builder.
+   successful artifact before allocating the macOS builder. When a queued
+   duplicate finds an existing artifact, the ARC job downloads it by exact
+   run/artifact ID and republishes the same preserved app payload into the
+   newer run. Every successful backfill run therefore remains independently
+   discoverable and has exactly one `nixmac-macos-app-e2e` artifact.
 1. Poll for a bounded interval in Centaur. If no successful exact-SHA artifact
    appears, record `BUILD_UNAVAILABLE` and do not dispatch or retry a Mac job
    indefinitely.
@@ -127,6 +131,11 @@ trusted lease owner token. The host-lease sidecar separately proves the same run
 identity, owner-matched acquisition/release hashes, and monotonic lease
 timestamps. Cleanup, inventory, or lease-release ambiguity creates both the
 durable Centaur backend quarantine and the host quarantine marker.
+Before failing lease acquisition, the controller writes
+`static-controller/terminal-disposition.json` and retains it in the diagnostics
+artifact. Its disposition is exactly one of `LEASE_ACQUIRED`, `LEASE_BUSY`,
+`LEASE_QUARANTINED`, or `INFRASTRUCTURE_FAILURE`; Centaur uses that durable
+record instead of parsing workflow logs.
 
 ### Audited static-host recovery
 
@@ -139,8 +148,9 @@ ops/runner/macincloud-host-lease.sh status \
   --known-hosts "$KNOWN_HOSTS"
 ```
 
-Copy the exact occupied lease digest from that output. Recover only with an
-operator reason:
+Copy the exact digest from the `OCCUPIED` or `AMBIGUOUS` status output. An
+ambiguous digest binds the bounded direct-file snapshot after its orphaned
+heartbeat is stopped. Recover only with an operator reason:
 
 ```bash
 ops/runner/macincloud-host-lease.sh recover \
@@ -151,9 +161,12 @@ ops/runner/macincloud-host-lease.sh recover \
   --operator-reason "ticket and verified recovery reason"
 ```
 
-Recovery refuses a changed digest, an active owning GitHub run, an unverifiable
-owner, or any nixmac process. It snapshots exact lease/quarantine metadata into
-the recovery audit directory and removes only known lease files; it never uses a
+For an occupied lease, recovery refuses a changed digest, an active owning
+GitHub run, or an unverifiable owner. Ambiguous recovery is allowed only through
+this explicit digest-and-reason path because owner metadata is absent by
+definition. Both modes refuse while nixmac or CuaDriver is active, snapshot
+every bounded regular lease file plus quarantine metadata into the recovery
+audit directory, and remove only the validated direct files; neither uses a
 generic recursive delete. Then attach that proof to a separate audited Centaur
 operation that clears durable backend quarantine. Reimaging the host or losing
 the host marker does not clear Centaur state.

@@ -294,6 +294,8 @@ jobs:
           NIXMAC_E2E_DISPOSABLE_CONFIG_PATH="$run_root/staging/evidence/config"
           NIXMAC_E2E_RUNNER_ATTESTATION_PATH="$run_root/attestations/runner.json"
           NIXMAC_E2E_ARTIFACT_ATTESTATION_PATH="$run_root/attestations/artifact.json"
+          NIXMAC_E2E_PYTHON_PATH="$(command -v python3)"
+          NIXMAC_E2E_FFMPEG_PATH="$(command -v ffmpeg)"
           export \
             NIXMAC_E2E_APP_PATH \
             NIXMAC_E2E_APP_BUNDLE_DIGEST \
@@ -301,7 +303,9 @@ jobs:
             NIXMAC_E2E_STAGING_PARENT \
             NIXMAC_E2E_DISPOSABLE_CONFIG_PATH \
             NIXMAC_E2E_RUNNER_ATTESTATION_PATH \
-            NIXMAC_E2E_ARTIFACT_ATTESTATION_PATH
+            NIXMAC_E2E_ARTIFACT_ATTESTATION_PATH \
+            NIXMAC_E2E_PYTHON_PATH \
+            NIXMAC_E2E_FFMPEG_PATH
           node tests/e2e/computer-use/run-cua-driver.mjs run --run-dir "$run_root/evidence"
           node tests/e2e/computer-use/evidence-manifest.mjs verify --run-dir "$run_root/evidence"
           printf '%s\n' "$run_root/evidence" > "$RUNNER_TEMP/nixmac-centaur-evidence-path"
@@ -341,6 +345,7 @@ jobs:
       artifact_id: ${{ steps.upload.outputs.artifact-id }}
       artifact_digest: ${{ steps.upload.outputs.artifact-digest }}
       artifact_url: ${{ steps.upload.outputs.artifact-url }}
+      infra_disposition: ${{ steps.lease.outputs.disposition }}
     env:
       REMOTE_HOST: ${{ secrets.NIXMAC_E2E_REMOTE_HOST }}
       REMOTE_USER: ${{ secrets.NIXMAC_E2E_REMOTE_USER }}
@@ -373,33 +378,105 @@ jobs:
 
       - name: Acquire shared MacinCloud host lease
         id: lease
+        continue-on-error: true
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          controller="$RUNNER_TEMP/static-controller"
+          disposition_file="$controller/terminal-disposition.json"
+          lease_error="$controller/lease-acquire.stderr"
+          mkdir -p "$controller"
           owner_token="$(
             printf '%s' "${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${{ inputs.job_id }}|${{ inputs.attempt }}|${{ inputs.attestation_nonce }}" |
               shasum -a 256 |
               awk '{print $1}'
           )"
+          install -m 600 /dev/null "$RUNNER_TEMP/nixmac-host-owner-token"
           printf '%s' "$owner_token" > "$RUNNER_TEMP/nixmac-host-owner-token"
-          lease_acquired_at="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
-          ops/runner/macincloud-host-lease.sh acquire \
-            --ssh-dest "${REMOTE_USER}@${REMOTE_HOST}" \
-            --ssh-key "$RUNNER_TEMP/nixmac-ssh/key" \
-            --known-hosts "$RUNNER_TEMP/nixmac-ssh/known_hosts" \
-            --owner-token "$owner_token" \
-            --repository "$GITHUB_REPOSITORY" \
-            --run-id "$GITHUB_RUN_ID" \
-            --logical-job "${{ inputs.job_id }}" \
-            --attempt "${{ inputs.attempt }}" \
-            --nonce "${{ inputs.attestation_nonce }}" \
-            --wait-seconds 3600 \
-            --poll-seconds 15 \
-            --max-hold-seconds 10800
-          echo "acquired=true" >> "$GITHUB_OUTPUT"
-          echo "acquired_at=$lease_acquired_at" >> "$GITHUB_OUTPUT"
+          set +e
+          lease_output="$(
+            ops/runner/macincloud-host-lease.sh acquire \
+              --ssh-dest "${REMOTE_USER}@${REMOTE_HOST}" \
+              --ssh-key "$RUNNER_TEMP/nixmac-ssh/key" \
+              --known-hosts "$RUNNER_TEMP/nixmac-ssh/known_hosts" \
+              --owner-token "$owner_token" \
+              --repository "$GITHUB_REPOSITORY" \
+              --run-id "$GITHUB_RUN_ID" \
+              --logical-job "${{ inputs.job_id }}" \
+              --attempt "${{ inputs.attempt }}" \
+              --nonce "${{ inputs.attestation_nonce }}" \
+              --wait-seconds 3600 \
+              --poll-seconds 15 \
+              --max-hold-seconds 10800 \
+              2>"$lease_error"
+          )"
+          lease_exit=$?
+          set -e
+
+          acquired=false
+          acquired_at=""
+          disposition="INFRASTRUCTURE_FAILURE"
+          if [[ "$lease_exit" == "0" ]]; then
+            IFS=$'\t' read -r lease_state acquired_at owner_binding <<<"$lease_output"
+            if [[ "$lease_state" == "LEASE_ACQUIRED" &&
+              "$acquired_at" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ &&
+              "$owner_binding" =~ ^owner_token_sha256=[0-9a-f]{64}$ ]]; then
+              acquired=true
+              disposition="LEASE_ACQUIRED"
+            fi
+          elif grep -Fq "LEASE_BUSY:" "$lease_error"; then
+            disposition="LEASE_BUSY"
+          elif grep -Fq "LEASE_QUARANTINED:" "$lease_error"; then
+            disposition="LEASE_QUARANTINED"
+          fi
+          observed_at="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
+          jq -n \
+            --arg disposition "$disposition" \
+            --argjson exitCode "$lease_exit" \
+            --argjson acquired "$acquired" \
+            --arg acquiredAt "$acquired_at" \
+            --arg observedAt "$observed_at" \
+            '{
+              schemaVersion:1,
+              disposition:$disposition,
+              exitCode:$exitCode,
+              acquired:$acquired,
+              acquiredAt:$acquiredAt,
+              observedAt:$observedAt
+            }' \
+            > "$disposition_file"
+          rm -f "$lease_error"
+          {
+            echo "acquired=$acquired"
+            echo "acquired_at=$acquired_at"
+            echo "disposition=$disposition"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Enforce classified host lease acquisition
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          disposition_file="$RUNNER_TEMP/static-controller/terminal-disposition.json"
+          disposition="$(
+            jq -er '
+              select(
+                .schemaVersion == 1 and
+                (.acquired | type == "boolean") and
+                (.exitCode | type == "number")
+              ) |
+              .disposition
+            ' "$disposition_file"
+          )"
+          case "$disposition" in
+            LEASE_ACQUIRED) exit 0 ;;
+            LEASE_BUSY) exit 75 ;;
+            LEASE_QUARANTINED) exit 73 ;;
+            INFRASTRUCTURE_FAILURE) exit 74 ;;
+            *) exit 65 ;;
+          esac
 
       - name: Reserve attempt-owned static paths
         id: static-paths
@@ -762,8 +839,16 @@ jobs:
               --cleanup-probe-file "$controller/finalization/cleanup-probe.json" \
               --host-lease-file "$controller/finalization/host-lease.json" \
               --verdict "$verdict"
-          node tests/e2e/computer-use/evidence-manifest.mjs create --run-dir "$evidence"
-          node tests/e2e/computer-use/evidence-manifest.mjs verify --run-dir "$evidence"
+          python_path="$(command -v python3)"
+          ffmpeg_path="$(command -v ffmpeg)"
+          NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN="$owner_token" \
+            NIXMAC_E2E_PYTHON_PATH="$python_path" \
+            NIXMAC_E2E_FFMPEG_PATH="$ffmpeg_path" \
+            node tests/e2e/computer-use/evidence-manifest.mjs create --run-dir "$evidence"
+          NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN="$owner_token" \
+            NIXMAC_E2E_PYTHON_PATH="$python_path" \
+            NIXMAC_E2E_FFMPEG_PATH="$ffmpeg_path" \
+            node tests/e2e/computer-use/evidence-manifest.mjs verify --run-dir "$evidence"
 
       - name: Quarantine unclean static backend
         if: always() && steps.lease.outputs.acquired == 'true' && steps.finalize.outputs.host_clean != 'true'
@@ -884,6 +969,7 @@ jobs:
           PRIMARY_ARTIFACT_DIGEST: ${{ needs.primary.outputs.artifact_digest }}
           STATIC_ARTIFACT_ID: ${{ needs.static_ssh.outputs.artifact_id }}
           STATIC_ARTIFACT_DIGEST: ${{ needs.static_ssh.outputs.artifact_digest }}
+          STATIC_INFRA_DISPOSITION: ${{ needs.static_ssh.outputs.infra_disposition }}
           REPORT_URL: ${{ needs.publish_report.outputs.report_url }}
         run: |
           set -euo pipefail
@@ -900,6 +986,8 @@ jobs:
             artifact_id="$STATIC_ARTIFACT_ID"
             artifact_digest="$STATIC_ARTIFACT_DIGEST"
           fi
+          infra_disposition="${STATIC_INFRA_DISPOSITION:-NOT_APPLICABLE}"
+          printf 'infra-disposition=%s\n' "$infra_disposition" | tee -a "$GITHUB_STEP_SUMMARY"
           [[ "$backend_result" == "success" && "$REPORT_RESULT" == "success" ]]
           [[ "$artifact_id" =~ ^[0-9]+$ ]]
           [[ "$artifact_digest" =~ ^sha256:[0-9a-f]{64}$ ]]

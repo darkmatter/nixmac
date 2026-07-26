@@ -102,6 +102,32 @@ assert.match(
   /needs\.resolve-e2e-backfill\.outputs\.build_needed/,
   "macOS build capacity must be skipped when an exact artifact already exists",
 );
+const reuseBackfillJob = parsedBuildWorkflow.jobs["reuse-e2e-backfill"];
+assert.ok(
+  reuseBackfillJob,
+  "an idempotent exact-SHA backfill must materialize the reused artifact in the newer run",
+);
+const reuseBackfillText = JSON.stringify(reuseBackfillJob);
+assert.match(
+  reuseBackfillText,
+  /needs\.resolve-e2e-backfill\.outputs\.build_needed == 'false'/,
+  "artifact reuse must run only when the exact-SHA macOS build is skipped",
+);
+assert.match(
+  reuseBackfillText,
+  /actions\/download-artifact@v7[\s\S]*artifact-ids[\s\S]*existing_artifact_id/,
+  "artifact reuse must download the resolver-selected artifact by immutable ID",
+);
+assert.match(
+  reuseBackfillText,
+  /run-id[\s\S]*existing_build_run_id/,
+  "artifact reuse must stay bound to the resolver-selected source run",
+);
+assert.match(
+  reuseBackfillText,
+  /actions\/upload-artifact@v7[\s\S]*nixmac-macos-app-e2e/,
+  "the newer successful backfill run must publish its own exact E2E artifact",
+);
 assert.match(
   JSON.stringify(parsedBuildWorkflow.jobs.build),
   /nixmac-macos-app-preserved\.zip/,

@@ -164,7 +164,33 @@ if [[ ! -d "$lease_dir" ]]; then
   exit 0
 fi
 if [[ ! -f "$lease_dir/owner.json" ]]; then
-  printf 'AMBIGUOUS\tmissing-owner-metadata\n'
+  if [[ -f "$lease_dir/heartbeat.pid" ]]; then
+    heartbeat_pid="$(cat "$lease_dir/heartbeat.pid" 2>/dev/null || true)"
+    if [[ "$heartbeat_pid" =~ ^[0-9]+$ ]] &&
+      ps -p "$heartbeat_pid" -o command= 2>/dev/null | grep -Fq "$lease_dir/heartbeat.sh"; then
+      kill -TERM "$heartbeat_pid" 2>/dev/null || true
+    fi
+  fi
+  ambiguous_digest="$(
+    (
+      shopt -s nullglob dotglob
+      count=0
+      for entry in "$lease_dir"/*; do
+        name="${entry##*/}"
+        [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]]
+        [[ -f "$entry" && ! -L "$entry" ]]
+        count=$((count + 1))
+        ((count <= 32))
+        if ! size="$(stat -f '%z' "$entry" 2>/dev/null)"; then
+          size="$(stat -c '%s' "$entry")"
+        fi
+        [[ "$size" =~ ^[0-9]+$ ]] && ((size <= 1048576))
+        digest="$(shasum -a 256 "$entry" | awk '{print $1}')"
+        printf '%s\t%s\t%s\n' "${#name}" "$name" "$digest"
+      done
+    ) | shasum -a 256 | awk '{print $1}'
+  )"
+  printf 'AMBIGUOUS\t%s\tmissing-owner-metadata\n' "$ambiguous_digest"
   exit 0
 fi
 owner_digest="$(shasum -a 256 "$lease_dir/owner.json" | awk '{print $1}')"
@@ -219,8 +245,6 @@ acquire() {
 
   local owner_token_sha256
   owner_token_sha256="$(token_digest)"
-  local created_at
-  created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   local owner_json
   owner_json="$(
     jq -cn \
@@ -230,7 +254,6 @@ acquire() {
       --arg logical_job "$logical_job" \
       --arg attempt "$attempt" \
       --arg nonce "$nonce" \
-      --arg created_at "$created_at" \
       '{
         schemaVersion:1,
         owner_token_sha256:$owner_token_sha256,
@@ -239,7 +262,7 @@ acquire() {
         logical_job:$logical_job,
         attempt:$attempt,
         nonce:$nonce,
-        created_at:$created_at
+        created_at:""
       }'
   )"
   local owner_b64
@@ -265,7 +288,11 @@ if [[ -f "$quarantine_file" ]]; then
 fi
 if mkdir "$lease_dir" 2>/dev/null; then
   trap 'rm -f "$lease_dir/owner.json.tmp.$$"; rmdir "$lease_dir" 2>/dev/null || true' ERR
-  printf '%s' "$owner_b64" | /usr/bin/base64 -D > "$lease_dir/owner.json.tmp.$$"
+  acquired_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  printf '%s' "$owner_b64" |
+    /usr/bin/base64 -D |
+    jq -c --arg acquired_at "$acquired_at" '.created_at = $acquired_at' \
+      > "$lease_dir/owner.json.tmp.$$"
   chmod 600 "$lease_dir/owner.json.tmp.$$"
   mv "$lease_dir/owner.json.tmp.$$" "$lease_dir/owner.json"
   date -u +%s > "$lease_dir/heartbeat"
@@ -289,7 +316,7 @@ HEARTBEAT
   nohup "$lease_dir/heartbeat.sh" "$lease_dir" "$owner_token_sha256" \
     "$heartbeat_deadline" </dev/null >"$lease_dir/heartbeat.log" 2>&1 &
   printf '%s\n' "$!" > "$lease_dir/heartbeat.pid"
-  printf 'ACQUIRED\n'
+  printf 'ACQUIRED\t%s\n' "$acquired_at"
   exit 0
 fi
 if [[ ! -f "$lease_dir/owner.json" ]]; then
@@ -300,7 +327,9 @@ existing="$(jq -r '.owner_token_sha256 // ""' "$lease_dir/owner.json" 2>/dev/nul
 if [[ "$existing" == "$owner_token_sha256" ]]; then
   date -u +%s > "$lease_dir/heartbeat.tmp.$$"
   mv "$lease_dir/heartbeat.tmp.$$" "$lease_dir/heartbeat"
-  printf 'ACQUIRED\n'
+  acquired_at="$(jq -er '.created_at' "$lease_dir/owner.json")"
+  [[ "$acquired_at" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]
+  printf 'ACQUIRED\t%s\n' "$acquired_at"
 else
   printf 'OCCUPIED\t'
   base64 < "$lease_dir/owner.json" | tr -d '\n'
@@ -311,7 +340,12 @@ REMOTE
 
     case "${response%%$'\t'*}" in
       ACQUIRED)
-        printf 'LEASE_ACQUIRED owner_token_sha256=%s\n' "$owner_token_sha256"
+        local acquired_at="${response#*$'\t'}"
+        [[ "$acquired_at" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] ||
+          { echo "LEASE_QUARANTINED: invalid acquisition timestamp" >&2; return 73; }
+        printf 'LEASE_ACQUIRED\t%s\towner_token_sha256=%s\n' \
+          "$acquired_at" \
+          "$owner_token_sha256"
         return 0
         ;;
       QUARANTINED)
@@ -397,6 +431,19 @@ last_heartbeat_epoch="$(cat "$lease_dir/heartbeat")"
 if ! last_heartbeat_at="$(date -u -d "@$last_heartbeat_epoch" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)"; then
   last_heartbeat_at="$(/bin/date -u -r "$last_heartbeat_epoch" +%Y-%m-%dT%H:%M:%SZ)"
 fi
+shopt -s nullglob dotglob
+for entry in "$lease_dir"/*; do
+  name="${entry##*/}"
+  case "$name" in
+    owner.json|heartbeat|heartbeat.pid|heartbeat.sh|heartbeat.log) ;;
+    *)
+      echo "LEASE_QUARANTINED: unexpected lease metadata $name" >&2
+      exit 73
+      ;;
+  esac
+  [[ -f "$entry" && ! -L "$entry" ]] ||
+    { echo "LEASE_QUARANTINED: unsafe lease metadata $name" >&2; exit 73; }
+done
 if [[ -f "$lease_dir/heartbeat.pid" ]]; then
   heartbeat_pid="$(cat "$lease_dir/heartbeat.pid")"
   if [[ "$heartbeat_pid" =~ ^[0-9]+$ ]] &&
@@ -426,52 +473,108 @@ recover() {
   status_line="$(remote_status)"
   local state digest encoded
   IFS=$'\t' read -r state digest encoded <<<"$status_line"
-  [[ "$state" == "OCCUPIED" ]] ||
-    { echo "Recovery requires an occupied lease; observed $state" >&2; exit 65; }
+  [[ "$state" == "OCCUPIED" || "$state" == "AMBIGUOUS" ]] ||
+    { echo "Recovery requires an occupied or ambiguous lease; observed $state" >&2; exit 65; }
   [[ "$digest" == "$observed_lease_digest" ]] ||
     { echo "Observed lease digest changed; refusing recovery" >&2; exit 65; }
 
-  local owner_json owner_repo owner_run owner_status
-  owner_json="$(printf '%s' "$encoded" | base64 --decode)"
-  owner_repo="$(jq -r '.repository // ""' <<<"$owner_json")"
-  owner_run="$(jq -r '.run_id // ""' <<<"$owner_json")"
-  if ! owner_status="$(github_run_status "$owner_repo" "$owner_run" 2>/dev/null)"; then
-    echo "Owning GitHub run is unverifiable; refusing recovery" >&2
-    exit 73
-  fi
-  case "$owner_status" in
-    queued|in_progress|requested|waiting|pending)
-      echo "Owning GitHub run is active; refusing recovery" >&2
+  if [[ "$state" == "OCCUPIED" ]]; then
+    local owner_json owner_repo owner_run owner_status
+    owner_json="$(printf '%s' "$encoded" | base64 --decode)"
+    owner_repo="$(jq -r '.repository // ""' <<<"$owner_json")"
+    owner_run="$(jq -r '.run_id // ""' <<<"$owner_json")"
+    if ! owner_status="$(github_run_status "$owner_repo" "$owner_run" 2>/dev/null)"; then
+      echo "Owning GitHub run is unverifiable; refusing recovery" >&2
       exit 73
-      ;;
-  esac
+    fi
+    case "$owner_status" in
+      queued|in_progress|requested|waiting|pending)
+        echo "Owning GitHub run is active; refusing recovery" >&2
+        exit 73
+        ;;
+    esac
+  fi
 
   local reason_b64
   reason_b64="$(printf '%s' "$operator_reason" | base64 | tr -d '\n')"
   ssh_script "$lease_dir" "$quarantine_file" "$recovery_audit_root" \
-    "$observed_lease_digest" "$reason_b64" <<'REMOTE'
+    "$observed_lease_digest" "$reason_b64" "$state" <<'REMOTE'
 set -euo pipefail
 lease_dir="$1"
 quarantine_file="$2"
 recovery_audit_root="$3"
 expected_digest="$4"
 reason_b64="$5"
-[[ -f "$lease_dir/owner.json" ]] || { echo "owner metadata disappeared" >&2; exit 65; }
-actual_digest="$(shasum -a 256 "$lease_dir/owner.json" | awk '{print $1}')"
+lease_state="$6"
+if [[ "$lease_state" == "OCCUPIED" ]]; then
+  [[ -f "$lease_dir/owner.json" ]] || { echo "owner metadata disappeared" >&2; exit 65; }
+  actual_digest="$(shasum -a 256 "$lease_dir/owner.json" | awk '{print $1}')"
+else
+  [[ "$lease_state" == "AMBIGUOUS" && ! -e "$lease_dir/owner.json" ]] ||
+    { echo "ambiguous lease state changed during recovery" >&2; exit 65; }
+  if [[ -f "$lease_dir/heartbeat.pid" ]]; then
+    heartbeat_pid="$(cat "$lease_dir/heartbeat.pid" 2>/dev/null || true)"
+    if [[ "$heartbeat_pid" =~ ^[0-9]+$ ]] &&
+      ps -p "$heartbeat_pid" -o command= 2>/dev/null | grep -Fq "$lease_dir/heartbeat.sh"; then
+      kill -TERM "$heartbeat_pid" 2>/dev/null || true
+    fi
+  fi
+  actual_digest="$(
+    (
+      shopt -s nullglob dotglob
+      count=0
+      for entry in "$lease_dir"/*; do
+        name="${entry##*/}"
+        [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]]
+        [[ -f "$entry" && ! -L "$entry" ]]
+        count=$((count + 1))
+        ((count <= 32))
+        if ! size="$(stat -f '%z' "$entry" 2>/dev/null)"; then
+          size="$(stat -c '%s' "$entry")"
+        fi
+        [[ "$size" =~ ^[0-9]+$ ]] && ((size <= 1048576))
+        digest="$(shasum -a 256 "$entry" | awk '{print $1}')"
+        printf '%s\t%s\t%s\n' "${#name}" "$name" "$digest"
+      done
+    ) | shasum -a 256 | awk '{print $1}'
+  )"
+fi
 [[ "$actual_digest" == "$expected_digest" ]] ||
   { echo "lease digest changed during recovery" >&2; exit 65; }
-if pgrep -f 'nixmac\.app/Contents/MacOS/nixmac|/Contents/MacOS/nixmac' >/dev/null; then
-  echo "nixmac process active; refusing recovery" >&2
+if pgrep -f 'nixmac\.app/Contents/MacOS/nixmac|/Contents/MacOS/nixmac|[c]ua-driver|[C]uaDriver\.app/Contents/MacOS' >/dev/null; then
+  echo "nixmac or CuaDriver process active; refusing recovery" >&2
   exit 73
 fi
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 audit_dir="${recovery_audit_root}/${stamp}-${expected_digest}"
-mkdir -p "$audit_dir"
-cp "$lease_dir/owner.json" "$audit_dir/owner.json"
-[[ -f "$lease_dir/heartbeat" ]] && cp "$lease_dir/heartbeat" "$audit_dir/heartbeat"
-[[ -f "$quarantine_file" ]] && cp "$quarantine_file" "$audit_dir/QUARANTINED.json"
+mkdir -p "$recovery_audit_root"
+mkdir "$audit_dir"
+mkdir "$audit_dir/lease"
+shopt -s nullglob dotglob
+count=0
+for entry in "$lease_dir"/*; do
+  name="${entry##*/}"
+  [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]]
+  [[ -f "$entry" && ! -L "$entry" ]]
+  count=$((count + 1))
+  ((count <= 32))
+  if ! size="$(stat -f '%z' "$entry" 2>/dev/null)"; then
+    size="$(stat -c '%s' "$entry")"
+  fi
+  [[ "$size" =~ ^[0-9]+$ ]] && ((size <= 1048576))
+  cp "$entry" "$audit_dir/lease/$name"
+  chmod 600 "$audit_dir/lease/$name"
+done
+if [[ -e "$quarantine_file" || -L "$quarantine_file" ]]; then
+  [[ -f "$quarantine_file" && ! -L "$quarantine_file" ]] ||
+    { echo "unsafe quarantine metadata; refusing recovery" >&2; exit 65; }
+  cp "$quarantine_file" "$audit_dir/QUARANTINED.json"
+  chmod 600 "$audit_dir/QUARANTINED.json"
+fi
 printf '%s' "$reason_b64" | /usr/bin/base64 -D > "$audit_dir/operator-reason.txt"
-chmod 600 "$audit_dir"/*
+printf '%s\n' "$lease_state" > "$audit_dir/lease-state.txt"
+printf '%s\n' "$expected_digest" > "$audit_dir/observed-lease-digest.txt"
+chmod 600 "$audit_dir"/*.txt
 if [[ -f "$lease_dir/heartbeat.pid" ]]; then
   heartbeat_pid="$(cat "$lease_dir/heartbeat.pid")"
   if [[ "$heartbeat_pid" =~ ^[0-9]+$ ]] &&
@@ -479,8 +582,10 @@ if [[ -f "$lease_dir/heartbeat.pid" ]]; then
     kill -TERM "$heartbeat_pid" 2>/dev/null || true
   fi
 fi
-rm -f "$lease_dir/heartbeat.pid" "$lease_dir/heartbeat" \
-  "$lease_dir/heartbeat.sh" "$lease_dir/heartbeat.log" "$lease_dir/owner.json"
+for entry in "$lease_dir"/*; do
+  [[ -f "$entry" && ! -L "$entry" ]]
+  rm -f -- "$entry"
+done
 rmdir "$lease_dir"
 rm -f "$quarantine_file"
 printf 'LEASE_RECOVERED audit=%s\n' "$audit_dir"

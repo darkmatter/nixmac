@@ -148,6 +148,48 @@ jobs:
             exit 0
           done < <(jq -r '.workflow_runs | map(select(.conclusion == "success")) | sort_by(.created_at) | reverse | .[].id' <<<"$runs")
 
+  reuse-e2e-backfill:
+    name: Materialize reused exact-SHA E2E artifact
+    needs: resolve-e2e-backfill
+    if: github.event_name == 'workflow_dispatch' && inputs.e2e_backfill == true && needs.resolve-e2e-backfill.outputs.build_needed == 'false'
+    runs-on: arc
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Download resolver-selected exact artifact
+        uses: actions/download-artifact@v7
+        with:
+          artifact-ids: ${{ needs.resolve-e2e-backfill.outputs.existing_artifact_id }}
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.resolve-e2e-backfill.outputs.existing_build_run_id }}
+          path: ${{ runner.temp }}/reused-e2e-artifact
+          merge-multiple: true
+
+      - name: Verify reused artifact payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact_root="$RUNNER_TEMP/reused-e2e-artifact"
+          expected="$artifact_root/nixmac-macos-app-preserved.zip"
+          [[ -f "$expected" && ! -L "$expected" ]]
+          [[ "$(find "$artifact_root" -type f | wc -l | tr -d ' ')" == "1" ]]
+          [[ "$(find "$artifact_root" -type l | wc -l | tr -d ' ')" == "0" ]]
+          if unzip -Z1 "$expected" | grep -Eq '(^/|(^|/)\.\.(/|$)|\\)'; then
+            echo "Reused E2E app archive contains an unsafe path." >&2
+            exit 65
+          fi
+
+      - name: Publish reused exact-SHA E2E artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: nixmac-macos-app-e2e
+          path: ${{ runner.temp }}/reused-e2e-artifact/nixmac-macos-app-preserved.zip
+          if-no-files-found: error
+          retention-days: 90
+
   rust-tests:
     name: Rust Tests (Linux)
     runs-on: arc

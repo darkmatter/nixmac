@@ -1,7 +1,14 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -136,7 +143,11 @@ exit 64
     "60",
   ]);
   assert.equal(acquired.status, 0, acquired.stderr);
-  assert.match(acquired.stdout, /LEASE_ACQUIRED/);
+  assert.match(
+    acquired.stdout,
+    /^LEASE_ACQUIRED\t\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\towner_token_sha256=[0-9a-f]{64}$/m,
+    "acquire must return the authoritative post-acquisition host timestamp",
+  );
   const idempotent = invoke("acquire", "owner-a", [
     "--wait-seconds",
     "0",
@@ -205,6 +216,70 @@ exit 64
   const free = invoke("status", "owner-b", [], terminalEnv);
   assert.equal(free.status, 0, free.stderr);
   assert.match(free.stdout, /^FREE$/m);
+
+  const acquiredForUnexpectedEntry = invoke("acquire", "owner-c", [
+    "--wait-seconds",
+    "0",
+    "--poll-seconds",
+    "1",
+    "--max-hold-seconds",
+    "60",
+  ]);
+  assert.equal(acquiredForUnexpectedEntry.status, 0, acquiredForUnexpectedEntry.stderr);
+  writeFileSync(path.join(leaseRoot, "owner", "unexpected-metadata"), "retain owner proof\n");
+  const unsafeRelease = invoke("release", "owner-c");
+  assert.equal(unsafeRelease.status, 73, unsafeRelease.stderr);
+  const recoverableOccupied = invoke("status", "owner-c", [], terminalEnv);
+  assert.match(
+    recoverableOccupied.stdout,
+    /^OCCUPIED\t[0-9a-f]{64}\t/,
+    "a partial release must retain owner metadata for audited recovery",
+  );
+  const [, recoverableOccupiedDigest] = recoverableOccupied.stdout.trim().split("\t");
+  const recoveredUnexpectedEntry = invoke(
+    "recover",
+    "owner-c",
+    [
+      "--observed-lease-digest",
+      recoverableOccupiedDigest,
+      "--operator-reason",
+      "unexpected metadata recovery",
+    ],
+    terminalEnv,
+  );
+  assert.equal(recoveredUnexpectedEntry.status, 0, recoveredUnexpectedEntry.stderr);
+
+  const acquiredForAmbiguousRecovery = invoke("acquire", "owner-d", [
+    "--wait-seconds",
+    "0",
+    "--poll-seconds",
+    "1",
+    "--max-hold-seconds",
+    "60",
+  ]);
+  assert.equal(acquiredForAmbiguousRecovery.status, 0, acquiredForAmbiguousRecovery.stderr);
+  unlinkSync(path.join(leaseRoot, "owner", "owner.json"));
+  const ambiguous = invoke("status", "owner-d", [], terminalEnv);
+  assert.equal(ambiguous.status, 0, ambiguous.stderr);
+  assert.match(
+    ambiguous.stdout,
+    /^AMBIGUOUS\t[0-9a-f]{64}\tmissing-owner-metadata$/m,
+    "ambiguous leases must expose an exact snapshot digest",
+  );
+  const [, ambiguousDigest] = ambiguous.stdout.trim().split("\t");
+  const recoveredAmbiguous = invoke(
+    "recover",
+    "owner-d",
+    [
+      "--observed-lease-digest",
+      ambiguousDigest,
+      "--operator-reason",
+      "ambiguous metadata recovery",
+    ],
+    terminalEnv,
+  );
+  assert.equal(recoveredAmbiguous.status, 0, recoveredAmbiguous.stderr);
+  assert.match(recoveredAmbiguous.stdout, /LEASE_RECOVERED/);
 } finally {
   rmSync(fixtureRoot, { recursive: true, force: true });
 }

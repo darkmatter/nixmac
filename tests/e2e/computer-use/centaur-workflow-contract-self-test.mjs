@@ -80,6 +80,11 @@ assert.equal(
 assert.deepEqual(primary["runs-on"], ["self-hosted", "macOS", "nixmac-e2e"]);
 assert.deepEqual(staticJob["runs-on"], ["self-hosted", "linux", "nixmac-e2e-static-controller"]);
 assert.equal(Object.hasOwn(staticJob, "concurrency"), false);
+assert.equal(
+  staticJob.outputs.infra_disposition,
+  "${{ steps.lease.outputs.disposition }}",
+  "static failures must expose their classified lease/infrastructure disposition",
+);
 assert.deepEqual(primary.concurrency, {
   group: "computer-use-e2e-${{ needs.preflight.outputs.job_key }}",
   "cancel-in-progress": false,
@@ -124,6 +129,32 @@ for (const [id, job] of Object.entries({ primary, static_ssh: staticJob })) {
 }
 
 const staticText = JSON.stringify(staticJob);
+const leaseStep = staticJob.steps.find((step) => step.name === "Acquire shared MacinCloud host lease");
+const enforceLeaseStep = staticJob.steps.find(
+  (step) => step.name === "Enforce classified host lease acquisition",
+);
+assert.ok(leaseStep, "static transition lane must define lease acquisition");
+assert.ok(enforceLeaseStep, "static transition lane must fail through a classified lease guard");
+assert.equal(
+  leaseStep["continue-on-error"],
+  true,
+  "lease acquisition must persist its disposition before the job fails",
+);
+assert.match(leaseStep.run, /terminal-disposition\.json/);
+assert.match(leaseStep.run, /LEASE_ACQUIRED/);
+assert.match(leaseStep.run, /LEASE_BUSY/);
+assert.match(leaseStep.run, /LEASE_QUARANTINED/);
+assert.match(leaseStep.run, /INFRASTRUCTURE_FAILURE/);
+assert.doesNotMatch(
+  leaseStep.run,
+  /lease_acquired_at=.*date/,
+  "lease acquisition evidence must use the helper's post-acquisition host timestamp",
+);
+assert.match(
+  enforceLeaseStep.run,
+  /terminal-disposition\.json[\s\S]*LEASE_ACQUIRED/,
+  "the guard must consume the persisted machine-readable disposition",
+);
 assert.match(staticText, /macincloud-host-lease\.sh.*acquire/);
 assert.match(staticText, /macincloud-host-lease\.sh.*release/);
 assert.match(staticText, /StrictHostKeyChecking=yes/);
@@ -246,6 +277,11 @@ assert.match(resultText, /BUILD_UNAVAILABLE/);
 assert.match(resultText, /artifact-id/);
 assert.match(resultText, /artifact-digest/);
 assert.match(resultText, /retention-days.*90/);
+assert.match(
+  resultText,
+  /STATIC_INFRA_DISPOSITION[\s\S]*infra-disposition/,
+  "the terminal summary must expose the classified static infrastructure disposition",
+);
 
 assert.doesNotMatch(
   source,
