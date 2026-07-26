@@ -68,8 +68,13 @@ assert.match(
 );
 assert.match(
   remote,
-  /concurrency:\n\s+group: computer-use-e2e-dxu-remote\n\s+cancel-in-progress: false/,
-  "remote job must keep the singleton DXU lock",
+  /concurrency:\n\s+group: nixmac-macincloud-e2e-remote\n\s+cancel-in-progress: false/,
+  "remote job must keep the shared MacInCloud singleton lock without canceling queued work",
+);
+assert.equal(
+  workflow.match(/group: nixmac-macincloud-e2e-remote/g)?.length ?? 0,
+  1,
+  "workflow must acquire the shared MacInCloud singleton lock exactly once",
 );
 assert.match(
   publish,
