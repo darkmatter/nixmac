@@ -2,6 +2,8 @@
 """Descriptor-relative, bounded scanner for immutable Computer Use evidence."""
 
 import argparse
+import ctypes
+import errno
 import hashlib
 import json
 import os
@@ -43,6 +45,66 @@ MAX_ARCHIVE_OVERHEAD_BYTES = 4 * 1024 * 1024
 
 class ScanError(Exception):
     pass
+
+
+def rename_directory_noreplace(parent_fd, source_name, target_name):
+    """Atomically publish a directory without replacing any existing target."""
+    libc = ctypes.CDLL(None, use_errno=True)
+    source = os.fsencode(source_name)
+    target = os.fsencode(target_name)
+    if sys.platform == "darwin":
+        rename_noreplace = libc.renameatx_np
+        rename_noreplace.argtypes = [
+            ctypes.c_int,
+            ctypes.c_char_p,
+            ctypes.c_int,
+            ctypes.c_char_p,
+            ctypes.c_uint,
+        ]
+        rename_noreplace.restype = ctypes.c_int
+        status = rename_noreplace(
+            parent_fd,
+            source,
+            parent_fd,
+            target,
+            0x00000004,  # RENAME_EXCL
+        )
+    elif sys.platform.startswith("linux"):
+        try:
+            rename_noreplace = libc.renameat2
+        except AttributeError as error:
+            raise ScanError(
+                "atomic no-replace materialization requires renameat2"
+            ) from error
+        rename_noreplace.argtypes = [
+            ctypes.c_int,
+            ctypes.c_char_p,
+            ctypes.c_int,
+            ctypes.c_char_p,
+            ctypes.c_uint,
+        ]
+        rename_noreplace.restype = ctypes.c_int
+        status = rename_noreplace(
+            parent_fd,
+            source,
+            parent_fd,
+            target,
+            0x00000001,  # RENAME_NOREPLACE
+        )
+    else:
+        raise ScanError(
+            f"atomic no-replace materialization is unsupported on {sys.platform}"
+        )
+    if status == 0:
+        return
+    error_number = ctypes.get_errno()
+    if error_number in (errno.EEXIST, errno.ENOTEMPTY):
+        raise ScanError("canonical archive materialization target must be absent")
+    raise OSError(
+        error_number,
+        os.strerror(error_number),
+        f"{source_name} -> {target_name}",
+    )
 
 
 def stable_stat(value):
@@ -817,6 +879,13 @@ class ArchiveVerifier:
         try:
             archive_stat = os.fstat(archive_fd)
             archive_sha256, archive_bytes = self.hash_archive(archive_fd, archive_stat)
+            if (
+                self.args.expected_archive_sha256
+                and archive_sha256 != self.args.expected_archive_sha256
+            ):
+                raise ScanError(
+                    "canonical archive digest sidecar does not match the exact archive"
+                )
             extraction_parent = (
                 os.path.dirname(self.args.materialize_out)
                 if self.args.materialize_out
@@ -888,23 +957,10 @@ class ArchiveVerifier:
                 parent_chain = Scanner(parent_args).open_root_chain()
                 try:
                     parent_fd = parent_chain[-1][0]
-                    try:
-                        os.stat(
-                            target_name,
-                            dir_fd=parent_fd,
-                            follow_symlinks=False,
-                        )
-                    except FileNotFoundError:
-                        pass
-                    else:
-                        raise ScanError(
-                            "canonical archive materialization target must be absent"
-                        )
-                    os.rename(
+                    rename_directory_noreplace(
+                        parent_fd,
                         temporary_name,
                         target_name,
-                        src_dir_fd=parent_fd,
-                        dst_dir_fd=parent_fd,
                     )
                     os.fsync(parent_fd)
                     materialized = True
@@ -937,6 +993,7 @@ def parse_args():
     parser.add_argument("--archive")
     parser.add_argument("--archive-out")
     parser.add_argument("--materialize-out")
+    parser.add_argument("--expected-archive-sha256")
     parser.add_argument("--ffmpeg", required=True)
     parser.add_argument("--ffprobe", required=True)
     parser.add_argument("--max-files", type=int, required=True)
@@ -964,11 +1021,21 @@ def parse_args():
             parser.error(
                 "archive materialization requires an absolute normalized non-root output path"
             )
+        if args.expected_archive_sha256 and not all(
+            character in "0123456789abcdef"
+            for character in args.expected_archive_sha256
+        ):
+            parser.error("expected archive SHA-256 must be lowercase hexadecimal")
+        if args.expected_archive_sha256 and len(args.expected_archive_sha256) != 64:
+            parser.error("expected archive SHA-256 must contain 64 characters")
+        if args.materialize_out and not args.expected_archive_sha256:
+            parser.error("archive materialization requires an expected archive SHA-256")
     else:
         if (
             not args.run_dir
             or args.archive
             or args.materialize_out
+            or args.expected_archive_sha256
             or not os.path.isabs(args.run_dir)
             or os.path.normpath(args.run_dir) != args.run_dir
         ):

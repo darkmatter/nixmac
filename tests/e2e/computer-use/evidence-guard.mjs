@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import { execFile as execFileCallback } from "node:child_process";
+import { execFile as execFileCallback, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { once } from "node:events";
 import { constants as fsConstants } from "node:fs";
 import {
   link,
@@ -73,6 +74,21 @@ if read_bytes != ctypes.sizeof(info):
 print(f"{info.pbi_start_tvsec}.{info.pbi_start_tvusec:06d}")
 `;
 
+const RECLAMATION_GATE_SCRIPT = String.raw`
+import fcntl
+import os
+import sys
+
+path = sys.argv[1]
+fd = os.open(path, os.O_RDWR | os.O_NOFOLLOW)
+try:
+    fcntl.flock(fd, fcntl.LOCK_EX)
+    os.write(sys.stdout.fileno(), b"locked\n")
+    sys.stdin.buffer.read(1)
+finally:
+    os.close(fd)
+`;
+
 function validateRunDir(runDir) {
   if (typeof runDir !== "string" || !path.isAbsolute(runDir) || path.normalize(runDir) !== runDir) {
     throw new Error("evidence run directory must be an absolute normalized path");
@@ -89,6 +105,7 @@ export function evidenceControlPaths(runDir) {
     controlDirectory,
     activeWritersDirectory: path.join(controlDirectory, "active-writers"),
     staleOwnersDirectory: path.join(controlDirectory, "stale-owners"),
+    reclamationGatePath: path.join(controlDirectory, "reclamation.gate"),
     admissionLockPath: path.join(controlDirectory, "admission.lock"),
     admissionClosedPath: path.join(controlDirectory, "admission.closed"),
     sealerLockPath: path.join(controlDirectory, "sealer.lock"),
@@ -171,7 +188,10 @@ async function linuxProcessBirthMarker(pid) {
   }
   const commandEnd = raw.lastIndexOf(")");
   if (commandEnd < 0) throw new Error(`cannot parse process identity for PID ${pid}`);
-  const fields = raw.slice(commandEnd + 2).trim().split(/\s+/);
+  const fields = raw
+    .slice(commandEnd + 2)
+    .trim()
+    .split(/\s+/);
   const startTicks = fields[19];
   if (!/^\d+$/.test(startTicks ?? "")) {
     throw new Error(`cannot parse process birth marker for PID ${pid}`);
@@ -294,6 +314,90 @@ async function publishOwnerRecord(ownerPath, record, fixedPath) {
   }
 }
 
+async function ensureReclamationGate(paths) {
+  const gateContents = '{"version":1,"purpose":"serialize-stale-owner-reclamation"}\n';
+  const temporaryPath = path.join(
+    paths.controlDirectory,
+    `.reclamation-gate-${process.pid}-${randomUUID()}.tmp`,
+  );
+  await writeSyncedFile(temporaryPath, gateContents);
+  try {
+    await link(temporaryPath, paths.reclamationGatePath);
+    await fsyncDirectory(paths.controlDirectory);
+  } catch (error) {
+    if (error?.code !== "EEXIST") throw error;
+  } finally {
+    await unlink(temporaryPath).catch((error) => {
+      if (error?.code !== "ENOENT") throw error;
+    });
+  }
+  const handle = await open(paths.reclamationGatePath, fsConstants.O_RDWR | fsConstants.O_NOFOLLOW);
+  try {
+    const stats = await handle.stat();
+    if (!stats.isFile() || stats.isSymbolicLink() || stats.nlink !== 1) {
+      throw new Error("evidence reclamation gate must be one direct regular file");
+    }
+    if ((await handle.readFile("utf8")) !== gateContents) {
+      throw new Error("evidence reclamation gate contents are invalid");
+    }
+  } finally {
+    await handle.close();
+  }
+}
+
+async function acquireReclamationGate(paths) {
+  await ensureReclamationGate(paths);
+  const child = spawn(
+    "/usr/bin/python3",
+    ["-c", RECLAMATION_GATE_SCRIPT, paths.reclamationGatePath],
+    { stdio: ["pipe", "pipe", "pipe"] },
+  );
+  let stderr = "";
+  child.stderr.on("data", (chunk) => {
+    stderr += chunk;
+  });
+  const exit = once(child, "exit");
+  await new Promise((resolve, reject) => {
+    let stdout = "";
+    const onData = (chunk) => {
+      stdout += chunk;
+      if (stdout === "locked\n") {
+        child.stdout.off("data", onData);
+        resolve();
+      } else if (!"locked\n".startsWith(stdout)) {
+        reject(new Error(`invalid reclamation gate handshake: ${JSON.stringify(stdout)}`));
+      }
+    };
+    child.stdout.on("data", onData);
+    child.once("error", reject);
+    child.once("exit", (code, signal) => {
+      reject(
+        new Error(
+          `reclamation gate helper exited before locking (${code ?? signal}): ${stderr.trim()}`,
+        ),
+      );
+    });
+  });
+  return async () => {
+    child.stdin.end("x");
+    const [code, signal] = await exit;
+    if (code !== 0) {
+      throw new Error(
+        `reclamation gate helper failed during release (${code ?? signal}): ${stderr.trim()}`,
+      );
+    }
+  };
+}
+
+async function withReclamationGate(paths, action) {
+  const release = await acquireReclamationGate(paths);
+  try {
+    return await action();
+  } finally {
+    await release();
+  }
+}
+
 async function readOwnerRecord(ownerPath, expectedKind) {
   let handle;
   try {
@@ -367,8 +471,7 @@ async function classifyOwner(record) {
 
 async function quarantineStaleOwner(paths, ownerPath, record, classification) {
   const reasonSlug = classification.reason.replace(/[^a-z0-9-]/gi, "-");
-  const quarantineName =
-    `${path.basename(ownerPath)}.${reasonSlug}.${Date.now()}.${randomUUID()}.stale`;
+  const quarantineName = `${path.basename(ownerPath)}.${reasonSlug}.${Date.now()}.${randomUUID()}.stale`;
   const quarantinePath = path.join(paths.staleOwnersDirectory, quarantineName);
   try {
     await rename(ownerPath, quarantinePath);
@@ -396,7 +499,30 @@ async function quarantineStaleOwner(paths, ownerPath, record, classification) {
   return true;
 }
 
-async function inspectAndMaybeReclaim(paths, ownerPath, expectedKind) {
+async function pauseAtDeterministicReclaimBarrier(record) {
+  const barrierDirectory = process.env.NIXMAC_E2E_TEST_RECLAIM_BARRIER_DIR || "";
+  if (!barrierDirectory) return;
+  if (!path.isAbsolute(barrierDirectory) || path.normalize(barrierDirectory) !== barrierDirectory) {
+    throw new Error("test reclaim barrier directory must be absolute and normalized");
+  }
+  const markerPath = path.join(barrierDirectory, `${process.pid}-${record.nonce}.classified`);
+  await writeFile(markerPath, "classified\n", { encoding: "utf8", flag: "wx", mode: 0o600 });
+  const deadline = Date.now() + 500;
+  while (Date.now() < deadline) {
+    const markers = (await readdir(barrierDirectory)).filter((entry) =>
+      entry.endsWith(".classified"),
+    );
+    if (markers.length >= 2) break;
+    await delay(CONTROL_POLL_MS);
+  }
+  const postBarrierDelay = Number(process.env.NIXMAC_E2E_TEST_RECLAIM_POST_BARRIER_DELAY_MS || 0);
+  if (!Number.isSafeInteger(postBarrierDelay) || postBarrierDelay < 0 || postBarrierDelay > 2_000) {
+    throw new Error("test reclaim post-barrier delay must be 0-2000 milliseconds");
+  }
+  if (postBarrierDelay > 0) await delay(postBarrierDelay);
+}
+
+async function inspectAndMaybeReclaimLocked(paths, ownerPath, expectedKind) {
   const record = await readOwnerRecord(ownerPath, expectedKind);
   if (record === null) return { status: "gone" };
   if (
@@ -407,6 +533,7 @@ async function inspectAndMaybeReclaim(paths, ownerPath, expectedKind) {
   }
   const classification = await classifyOwner(record);
   if (classification.status === "stale") {
+    await pauseAtDeterministicReclaimBarrier(record);
     const reclaimed = await quarantineStaleOwner(paths, ownerPath, record, classification);
     return { status: reclaimed ? "reclaimed" : "gone", reason: classification.reason };
   }
@@ -416,6 +543,12 @@ async function inspectAndMaybeReclaim(paths, ownerPath, expectedKind) {
     );
   }
   return classification;
+}
+
+async function inspectAndMaybeReclaim(paths, ownerPath, expectedKind) {
+  return withReclamationGate(paths, () =>
+    inspectAndMaybeReclaimLocked(paths, ownerPath, expectedKind),
+  );
 }
 
 async function releaseOwnedPath(ownerPath, expectedKind, nonce) {
@@ -550,7 +683,9 @@ async function drainActiveWriters(paths) {
     }
     if (!sawLiveOwner) continue;
     if (Date.now() >= deadline) {
-      throw new Error(`timed out draining registered evidence writers: ${activeWriters.join(", ")}`);
+      throw new Error(
+        `timed out draining registered evidence writers: ${activeWriters.join(", ")}`,
+      );
     }
     await delay(CONTROL_POLL_MS);
   }

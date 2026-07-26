@@ -908,6 +908,170 @@ async function runSelfTest() {
       /materialization target must be absent/i,
       "publisher materialization must never overwrite an existing path",
     );
+    const foreignMaterializationTarget = path.join(root, "foreign-materialization-target");
+    await mkdir(foreignMaterializationTarget);
+    await writeFile(
+      path.join(foreignMaterializationTarget, "owner.txt"),
+      "created by another publisher\n",
+    );
+    await assert.rejects(
+      () =>
+        evidenceManifest.verifyCanonicalEvidenceArchive(localArchive.archivePath, {
+          digestPath: localArchive.digestPath,
+          materializeOut: foreignMaterializationTarget,
+        }),
+      /materialization target must be absent/i,
+    );
+    assert.equal(
+      await readFile(path.join(foreignMaterializationTarget, "owner.txt"), "utf8"),
+      "created by another publisher\n",
+      "a failed invocation must never delete a materialization target it does not own",
+    );
+    const racedMaterializationTarget = path.join(root, "raced-materialization-target");
+    const ffprobeEntered = path.join(root, "materialize-ffprobe-entered");
+    const ffprobeRelease = path.join(root, "materialize-ffprobe-release");
+    const ffprobeWrapper = path.join(root, "blocking-ffprobe.sh");
+    const realFfprobe = spawnSync("which", ["ffprobe"], { encoding: "utf8" }).stdout.trim();
+    assert.ok(realFfprobe);
+    await writeFile(
+      ffprobeWrapper,
+      `#!/bin/sh
+set -eu
+: > "$NIXMAC_E2E_TEST_FFPROBE_ENTERED"
+while [ ! -e "$NIXMAC_E2E_TEST_FFPROBE_RELEASE" ]; do sleep 0.01; done
+exec "$NIXMAC_E2E_TEST_REAL_FFPROBE" "$@"
+`,
+      { mode: 0o700 },
+    );
+    const materializeRace = spawn(
+      process.execPath,
+      [
+        path.join(process.cwd(), "tests/e2e/computer-use/evidence-manifest.mjs"),
+        "materialize",
+        "--archive",
+        localArchive.archivePath,
+        "--out",
+        racedMaterializationTarget,
+      ],
+      {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          NIXMAC_E2E_FFPROBE_PATH: ffprobeWrapper,
+          NIXMAC_E2E_TEST_FFPROBE_ENTERED: ffprobeEntered,
+          NIXMAC_E2E_TEST_FFPROBE_RELEASE: ffprobeRelease,
+          NIXMAC_E2E_TEST_REAL_FFPROBE: realFfprobe,
+        },
+        stdio: ["ignore", "ignore", "pipe"],
+      },
+    );
+    let materializeRaceError = "";
+    materializeRace.stderr.on("data", (chunk) => {
+      materializeRaceError += chunk;
+    });
+    const materializeRaceExit = once(materializeRace, "exit");
+    await waitForPath(ffprobeEntered);
+    await mkdir(racedMaterializationTarget);
+    await writeFile(
+      path.join(racedMaterializationTarget, "owner.txt"),
+      "won target creation race\n",
+    );
+    await writeFile(ffprobeRelease, "release\n");
+    const [materializeRaceCode] = await materializeRaceExit;
+    assert.notEqual(materializeRaceCode, 0, materializeRaceError);
+    assert.equal(
+      await readFile(path.join(racedMaterializationTarget, "owner.txt"), "utf8"),
+      "won target creation race\n",
+      "a target created after validation must survive the failed materialization",
+    );
+    const sharedMaterializationTarget = path.join(root, "shared-materialization-target");
+    const materializeBarrierRelease = path.join(root, "materialize-barrier-release");
+    const spawnMaterializeContender = (label) => {
+      const enteredPath = path.join(root, `materialize-${label}-entered`);
+      const child = spawn(
+        process.execPath,
+        [
+          path.join(process.cwd(), "tests/e2e/computer-use/evidence-manifest.mjs"),
+          "materialize",
+          "--archive",
+          localArchive.archivePath,
+          "--out",
+          sharedMaterializationTarget,
+        ],
+        {
+          cwd: process.cwd(),
+          env: {
+            ...process.env,
+            NIXMAC_E2E_FFPROBE_PATH: ffprobeWrapper,
+            NIXMAC_E2E_TEST_FFPROBE_ENTERED: enteredPath,
+            NIXMAC_E2E_TEST_FFPROBE_RELEASE: materializeBarrierRelease,
+            NIXMAC_E2E_TEST_REAL_FFPROBE: realFfprobe,
+          },
+          stdio: ["ignore", "ignore", "pipe"],
+        },
+      );
+      let stderr = "";
+      child.stderr.on("data", (chunk) => {
+        stderr += chunk;
+      });
+      return {
+        child,
+        enteredPath,
+        exit: once(child, "exit").then(([code, signal]) => ({ code, signal, stderr })),
+      };
+    };
+    const materializeA = spawnMaterializeContender("a");
+    const materializeB = spawnMaterializeContender("b");
+    await Promise.all([
+      waitForPath(materializeA.enteredPath),
+      waitForPath(materializeB.enteredPath),
+    ]);
+    await writeFile(materializeBarrierRelease, "release\n");
+    const materializeResults = await Promise.all([materializeA.exit, materializeB.exit]);
+    assert.deepEqual(
+      materializeResults.map(({ code }) => code).sort(),
+      [0, 1],
+      materializeResults.map(({ stderr }) => stderr).join("\n"),
+    );
+    assert.equal(
+      JSON.parse(await readFile(path.join(sharedMaterializationTarget, "state.json"), "utf8"))
+        .verdict,
+      "pass",
+      "one atomic no-replace materializer must win without loser cleanup deleting it",
+    );
+    const originalDigestSidecar = await readFile(localArchive.digestPath, "utf8");
+    const invalidSidecarTarget = path.join(root, "invalid-sidecar-target");
+    const invalidSidecarProbeMarker = path.join(root, "invalid-sidecar-probe-entered");
+    await writeFile(
+      localArchive.digestPath,
+      `${"0".repeat(64)}  ${path.basename(localArchive.archivePath)}\n`,
+    );
+    const invalidSidecarMaterialize = spawnSync(
+      process.execPath,
+      [
+        path.join(process.cwd(), "tests/e2e/computer-use/evidence-manifest.mjs"),
+        "materialize",
+        "--archive",
+        localArchive.archivePath,
+        "--out",
+        invalidSidecarTarget,
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          NIXMAC_E2E_FFPROBE_PATH: ffprobeWrapper,
+          NIXMAC_E2E_TEST_FFPROBE_ENTERED: invalidSidecarProbeMarker,
+          NIXMAC_E2E_TEST_FFPROBE_RELEASE: materializeBarrierRelease,
+          NIXMAC_E2E_TEST_REAL_FFPROBE: realFfprobe,
+        },
+      },
+    );
+    assert.notEqual(invalidSidecarMaterialize.status, 0);
+    await assert.rejects(() => lstat(invalidSidecarProbeMarker), /ENOENT/);
+    await assert.rejects(() => lstat(invalidSidecarTarget), /ENOENT/);
+    await writeFile(localArchive.digestPath, originalDigestSidecar);
     executedNodeCases.add("valid-ephemeral-safe-frame");
     const localAttempt = JSON.parse(
       await readFile(path.join(local.runDir, "attempt.json"), "utf8"),
@@ -1491,6 +1655,86 @@ async function runSelfTest() {
         (audit) => audit.owner.kind === "sealer-lock" && audit.reason === "owner-process-dead",
       ),
       "a stale sealer recovery must retain the dead process identity and reason",
+    );
+
+    const reclaimRace = await prepareStaticSealFixture();
+    const reclaimRacePaths = await spawnCrashingOwner(reclaimRace, "sealer");
+    const originalStaleSealer = JSON.parse(await readFile(reclaimRacePaths.sealerLockPath, "utf8"));
+    const reclaimBarrierDirectory = path.join(root, "two-reclaimer-barrier");
+    const reclaimCriticalPath = path.join(root, "two-reclaimer-critical");
+    await mkdir(reclaimBarrierDirectory);
+    const reclaimerScript = `
+      import { unlink, writeFile } from "node:fs/promises";
+      import { setTimeout as delay } from "node:timers/promises";
+      import { withEvidenceTreeSeal } from ${JSON.stringify(guardUrl)};
+      const [runDir, criticalPath, label] = process.argv.slice(1);
+      await withEvidenceTreeSeal(runDir, async () => {
+        let ownsCriticalPath = false;
+        try {
+          await writeFile(criticalPath, label, { flag: "wx" });
+          ownsCriticalPath = true;
+          await delay(300);
+        } finally {
+          if (ownsCriticalPath) await unlink(criticalPath);
+        }
+      });
+    `;
+    const spawnReclaimer = (label, postBarrierDelay) => {
+      const child = spawn(
+        process.execPath,
+        [
+          "--input-type=module",
+          "--eval",
+          reclaimerScript,
+          reclaimRace.runDir,
+          reclaimCriticalPath,
+          label,
+        ],
+        {
+          env: {
+            ...process.env,
+            NIXMAC_E2E_TEST_RECLAIM_BARRIER_DIR: reclaimBarrierDirectory,
+            NIXMAC_E2E_TEST_RECLAIM_POST_BARRIER_DELAY_MS: String(postBarrierDelay),
+          },
+          stdio: ["ignore", "ignore", "pipe"],
+        },
+      );
+      let stderr = "";
+      child.stderr.on("data", (chunk) => {
+        stderr += chunk;
+      });
+      return once(child, "exit").then(([code, signal]) => ({
+        code,
+        signal,
+        stderr,
+      }));
+    };
+    const reclaimRaceResults = await Promise.all([
+      spawnReclaimer("first", 0),
+      spawnReclaimer("second", 150),
+    ]);
+    assert.ok(
+      reclaimRaceResults.every(({ code }) => code === 0),
+      reclaimRaceResults
+        .map(({ code, signal, stderr }) => `${code ?? signal}: ${stderr}`)
+        .join("\n"),
+    );
+    const reclaimRaceAudits = await Promise.all(
+      (await readdir(reclaimRacePaths.staleOwnersDirectory))
+        .filter((entry) => entry.endsWith(".audit.json"))
+        .map(async (entry) =>
+          JSON.parse(
+            await readFile(path.join(reclaimRacePaths.staleOwnersDirectory, entry), "utf8"),
+          ),
+        ),
+    );
+    assert.equal(
+      reclaimRaceAudits.filter(
+        (audit) =>
+          audit.owner.kind === "sealer-lock" && audit.owner.nonce === originalStaleSealer.nonce,
+      ).length,
+      1,
+      "two reclaimers must quarantine only the original stale lock, never a live replacement",
     );
 
     await assert.rejects(

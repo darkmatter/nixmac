@@ -2,7 +2,7 @@
 import { spawnSync } from "node:child_process";
 import { createHash, createHmac } from "node:crypto";
 import { accessSync, constants as fsConstants, lstatSync, realpathSync } from "node:fs";
-import { readFile, rm, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -246,10 +246,16 @@ function scanEvidenceTree(runDir, mode, { archiveOut = "" } = {}) {
   ]);
 }
 
-function scanEvidenceArchive(archivePath, { materializeOut = "" } = {}) {
+function scanEvidenceArchive(
+  archivePath,
+  { expectedArchiveSha256 = "", materializeOut = "" } = {},
+) {
   requireNonEmpty(archivePath, "canonical evidence archive");
   if (!path.isAbsolute(archivePath) || path.normalize(archivePath) !== archivePath) {
     throw new Error("canonical evidence archive must be an absolute normalized path");
+  }
+  if (expectedArchiveSha256 && !/^[0-9a-f]{64}$/.test(expectedArchiveSha256)) {
+    throw new Error("expected canonical archive SHA-256 must be lowercase hexadecimal");
   }
   if (
     materializeOut &&
@@ -264,6 +270,7 @@ function scanEvidenceArchive(archivePath, { materializeOut = "" } = {}) {
     "archive-verify",
     "--archive",
     archivePath,
+    ...(expectedArchiveSha256 ? ["--expected-archive-sha256", expectedArchiveSha256] : []),
     ...(materializeOut ? ["--materialize-out", materializeOut] : []),
   ]);
 }
@@ -1143,18 +1150,6 @@ function validateCanonicalArchiveVerifyOptions(archivePath, options) {
   ) {
     throw new Error("canonical archive materialization target must be absolute and normalized");
   }
-  if (materializeOut) {
-    let materializeTargetExists = false;
-    try {
-      lstatSync(materializeOut);
-      materializeTargetExists = true;
-    } catch (error) {
-      if (error?.code !== "ENOENT") throw error;
-    }
-    if (materializeTargetExists) {
-      throw new Error("canonical archive materialization target must be absent");
-    }
-  }
   return {
     digestPath,
     materializeOut,
@@ -1162,6 +1157,15 @@ function validateCanonicalArchiveVerifyOptions(archivePath, options) {
       options.trustedOwnerToken ? { trustedOwnerToken: options.trustedOwnerToken } : {},
     ),
   };
+}
+
+async function readCanonicalArchiveDigest(archivePath, digestPath) {
+  const digestSource = await readFile(digestPath, "utf8");
+  const match = /^([0-9a-f]{64})  ([^\r\n]+)\n$/.exec(digestSource);
+  if (!match || match[2] !== path.basename(archivePath)) {
+    throw new Error("canonical archive digest sidecar has an invalid exact format");
+  }
+  return { digestSource, sha256: match[1] };
 }
 
 export async function createCanonicalEvidenceArchive(runDir, options = {}) {
@@ -1201,24 +1205,33 @@ export async function verifyCanonicalEvidenceArchive(archivePath, options = {}) 
     archivePath,
     options,
   );
-  try {
-    const scan = scanEvidenceArchive(archivePath, { materializeOut });
-    const manifest = await verifyManifestScan(scan, manifestOptions);
-    const expectedDigest = `${scan.archive.sha256}  ${path.basename(archivePath)}\n`;
-    const digestSource = await readFile(digestPath, "utf8");
-    if (digestSource !== expectedDigest) {
-      throw new Error("canonical archive digest sidecar does not match the exact archive");
-    }
-    if (materializeOut && scan.materializedPath !== materializeOut) {
-      throw new Error("canonical archive scanner did not materialize the verified evidence");
-    }
-    return canonicalArchiveResult(manifest, scan.archive, digestPath);
-  } catch (error) {
-    if (materializeOut) {
-      await rm(materializeOut, { force: true, recursive: true });
-    }
-    throw error;
+  const expectedDigest = await readCanonicalArchiveDigest(archivePath, digestPath);
+  const verifiedScan = scanEvidenceArchive(archivePath, {
+    expectedArchiveSha256: expectedDigest.sha256,
+  });
+  const manifest = await verifyManifestScan(verifiedScan, manifestOptions);
+  if (verifiedScan.archive.sha256 !== expectedDigest.sha256) {
+    throw new Error("canonical archive digest sidecar does not match the exact archive");
   }
+  if (materializeOut) {
+    const materializedScan = scanEvidenceArchive(archivePath, {
+      expectedArchiveSha256: expectedDigest.sha256,
+      materializeOut,
+    });
+    if (
+      materializedScan.materializedPath !== materializeOut ||
+      materializedScan.archive.sha256 !== verifiedScan.archive.sha256 ||
+      materializedScan.archive.bytes !== verifiedScan.archive.bytes ||
+      materializedScan.manifest !== verifiedScan.manifest
+    ) {
+      throw new Error("canonical archive materialization does not match the prevalidated archive");
+    }
+  }
+  const finalDigest = await readCanonicalArchiveDigest(archivePath, digestPath);
+  if (finalDigest.digestSource !== expectedDigest.digestSource) {
+    throw new Error("canonical archive digest sidecar changed during verification");
+  }
+  return canonicalArchiveResult(manifest, verifiedScan.archive, digestPath);
 }
 
 function cliArg(args, flag) {
