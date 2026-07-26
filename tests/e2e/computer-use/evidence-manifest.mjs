@@ -1,13 +1,8 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 import { createHash, createHmac } from "node:crypto";
-import {
-  accessSync,
-  constants as fsConstants,
-  lstatSync,
-  realpathSync,
-} from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
+import { accessSync, constants as fsConstants, lstatSync, realpathSync } from "node:fs";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -251,12 +246,26 @@ function scanEvidenceTree(runDir, mode, { archiveOut = "" } = {}) {
   ]);
 }
 
-function scanEvidenceArchive(archivePath) {
+function scanEvidenceArchive(archivePath, { materializeOut = "" } = {}) {
   requireNonEmpty(archivePath, "canonical evidence archive");
   if (!path.isAbsolute(archivePath) || path.normalize(archivePath) !== archivePath) {
     throw new Error("canonical evidence archive must be an absolute normalized path");
   }
-  return runEvidenceScanner(["--mode", "archive-verify", "--archive", archivePath]);
+  if (
+    materializeOut &&
+    (!path.isAbsolute(materializeOut) ||
+      path.normalize(materializeOut) !== materializeOut ||
+      materializeOut === path.parse(materializeOut).root)
+  ) {
+    throw new Error("canonical archive materialization target must be absolute and normalized");
+  }
+  return runEvidenceScanner([
+    "--mode",
+    "archive-verify",
+    "--archive",
+    archivePath,
+    ...(materializeOut ? ["--materialize-out", materializeOut] : []),
+  ]);
 }
 
 function readRequiredJson(scan, relativePath) {
@@ -1059,10 +1068,7 @@ export function canonicalEvidenceArchivePaths(runDir) {
   if (!path.isAbsolute(runDir) || path.normalize(runDir) !== runDir) {
     throw new Error("evidence run root must be an absolute normalized path");
   }
-  const archivePath = path.join(
-    path.dirname(runDir),
-    `${path.basename(runDir)}.canonical.zip`,
-  );
+  const archivePath = path.join(path.dirname(runDir), `${path.basename(runDir)}.canonical.zip`);
   return Object.freeze({
     archivePath,
     digestPath: `${archivePath}.sha256`,
@@ -1112,10 +1118,12 @@ function validateCanonicalArchiveVerifyOptions(archivePath, options) {
   if (
     !options ||
     typeof options !== "object" ||
-    Object.keys(options).some((key) => !["digestPath", "trustedOwnerToken"].includes(key))
+    Object.keys(options).some(
+      (key) => !["digestPath", "materializeOut", "trustedOwnerToken"].includes(key),
+    )
   ) {
     throw new Error(
-      "canonical archive verification accepts only digestPath and trustedOwnerToken",
+      "canonical archive verification accepts only digestPath, materializeOut, and trustedOwnerToken",
     );
   }
   const digestPath = options.digestPath || `${archivePath}.sha256`;
@@ -1126,8 +1134,30 @@ function validateCanonicalArchiveVerifyOptions(archivePath, options) {
   ) {
     throw new Error("canonical archive digest path must be the fixed archive sibling");
   }
+  const materializeOut = options.materializeOut || "";
+  if (
+    materializeOut &&
+    (!path.isAbsolute(materializeOut) ||
+      path.normalize(materializeOut) !== materializeOut ||
+      materializeOut === path.parse(materializeOut).root)
+  ) {
+    throw new Error("canonical archive materialization target must be absolute and normalized");
+  }
+  if (materializeOut) {
+    let materializeTargetExists = false;
+    try {
+      lstatSync(materializeOut);
+      materializeTargetExists = true;
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+    if (materializeTargetExists) {
+      throw new Error("canonical archive materialization target must be absent");
+    }
+  }
   return {
     digestPath,
+    materializeOut,
     manifestOptions: validateManifestOptions(
       options.trustedOwnerToken ? { trustedOwnerToken: options.trustedOwnerToken } : {},
     ),
@@ -1167,18 +1197,28 @@ export async function verifyCanonicalEvidenceArchive(archivePath, options = {}) 
   if (!path.isAbsolute(archivePath) || path.normalize(archivePath) !== archivePath) {
     throw new Error("canonical evidence archive must be an absolute normalized path");
   }
-  const { digestPath, manifestOptions } = validateCanonicalArchiveVerifyOptions(
+  const { digestPath, materializeOut, manifestOptions } = validateCanonicalArchiveVerifyOptions(
     archivePath,
     options,
   );
-  const scan = scanEvidenceArchive(archivePath);
-  const manifest = await verifyManifestScan(scan, manifestOptions);
-  const expectedDigest = `${scan.archive.sha256}  ${path.basename(archivePath)}\n`;
-  const digestSource = await readFile(digestPath, "utf8");
-  if (digestSource !== expectedDigest) {
-    throw new Error("canonical archive digest sidecar does not match the exact archive");
+  try {
+    const scan = scanEvidenceArchive(archivePath, { materializeOut });
+    const manifest = await verifyManifestScan(scan, manifestOptions);
+    const expectedDigest = `${scan.archive.sha256}  ${path.basename(archivePath)}\n`;
+    const digestSource = await readFile(digestPath, "utf8");
+    if (digestSource !== expectedDigest) {
+      throw new Error("canonical archive digest sidecar does not match the exact archive");
+    }
+    if (materializeOut && scan.materializedPath !== materializeOut) {
+      throw new Error("canonical archive scanner did not materialize the verified evidence");
+    }
+    return canonicalArchiveResult(manifest, scan.archive, digestPath);
+  } catch (error) {
+    if (materializeOut) {
+      await rm(materializeOut, { force: true, recursive: true });
+    }
+    throw error;
   }
-  return canonicalArchiveResult(manifest, scan.archive, digestPath);
 }
 
 function cliArg(args, flag) {
@@ -1190,11 +1230,13 @@ async function main() {
   const [command, ...args] = process.argv.slice(2);
   const runDir = cliArg(args, "--run-dir");
   const archivePath = cliArg(args, "--archive");
-  const validCreate = command === "create" && runDir && !archivePath;
-  const validVerify = command === "verify" && archivePath && !runDir;
-  if (!validCreate && !validVerify) {
+  const materializeOut = cliArg(args, "--out");
+  const validCreate = command === "create" && runDir && !archivePath && !materializeOut;
+  const validVerify = command === "verify" && archivePath && !runDir && !materializeOut;
+  const validMaterialize = command === "materialize" && archivePath && materializeOut && !runDir;
+  if (!validCreate && !validVerify && !validMaterialize) {
     console.error(
-      "Usage: evidence-manifest.mjs create --run-dir <path> | verify --archive <path>",
+      "Usage: evidence-manifest.mjs create --run-dir <path> | verify --archive <path> | materialize --archive <path> --out <path>",
     );
     process.exitCode = 64;
     return;
@@ -1205,14 +1247,18 @@ async function main() {
   const result =
     command === "create"
       ? await createCanonicalEvidenceArchive(runDir, trustedOwnerOptions)
-      : await verifyCanonicalEvidenceArchive(archivePath, trustedOwnerOptions);
+      : await verifyCanonicalEvidenceArchive(archivePath, {
+          ...trustedOwnerOptions,
+          ...(validMaterialize ? { materializeOut } : {}),
+        });
   console.log(
     JSON.stringify({
       archive: result.archive.archivePath,
       digest: result.archive.digestPath,
       files: result.manifest.files.length,
+      materialized: validMaterialize ? materializeOut : "",
       verdict: result.manifest.verdict,
-      verified: command === "verify",
+      verified: command !== "create",
     }),
   );
 }

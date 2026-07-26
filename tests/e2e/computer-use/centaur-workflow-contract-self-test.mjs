@@ -200,8 +200,6 @@ assert.match(preflightText, /job_key/, "preflight must derive one encoded canoni
 for (const [id, job] of Object.entries({ primary, static_ssh: staticJob })) {
   const text = JSON.stringify(job);
   assert.match(text, /run-cua-driver\.mjs/, `${id} must use CuaDriver entrypoint`);
-  assert.match(text, /actions\/upload-artifact@v7/, `${id} must always upload diagnostics`);
-  assert.match(text, /always\(\)/, `${id} must always upload diagnostics`);
   assert.match(text, /NIXMAC_E2E_ATTEMPT_STARTED_AT/, `${id} must bind attempt start time`);
   assert.match(
     text,
@@ -226,16 +224,26 @@ for (const [id, job] of Object.entries({ primary, static_ssh: staticJob })) {
     `${id} must pass the attempt nonce into evidence digest sealing`,
   );
   assert.match(text, /NIXMAC_E2E_FFMPEG_PATH/, `${id} must pin the media verifier in use`);
+  assert.match(
+    text,
+    /NIXMAC_E2E_FFPROBE_PATH/,
+    `${id} must pin the all-stream media inventory verifier`,
+  );
 }
 assert.doesNotMatch(
   source,
-  /NIXMAC_E2E_FFPROBE_PATH/,
-  "the workflow must not claim to pin an unused ffprobe path",
+  /Upload (primary|static) diagnostics/,
+  "unverified mutable evidence must never be uploaded as diagnostics",
 );
 assert.match(
   evidenceManifestSource,
   /process\.env\.NIXMAC_E2E_FFMPEG_PATH/,
   "the workflow's explicit media verifier path must be consumed by the evidence scanner",
+);
+assert.match(
+  evidenceManifestSource,
+  /process\.env\.NIXMAC_E2E_FFPROBE_PATH/,
+  "the workflow's explicit all-stream verifier path must be consumed by the evidence scanner",
 );
 
 const staticText = JSON.stringify(staticJob);
@@ -427,14 +435,11 @@ assert.match(
   publishText,
   /computer-use-e2e\/jobs\/\$\{\{ needs\.preflight\.outputs\.job_key \}\}\/attempt-\$\{\{ inputs\.attempt \}\}/,
 );
-assert.match(publishText, /evidence-manifest\.mjs verify/);
+assert.match(publishText, /evidence-manifest\.mjs materialize/);
 assert.match(publishText, /actions\/download-artifact@v7/);
-assert.doesNotMatch(
-  publishText,
-  /find.*manifest\.json/,
-  "publisher must require one manifest at the canonical artifact root",
-);
-assert.match(publishText, /canonical\/manifest\.json/);
+assert.match(publishText, /find.*\*\.canonical\.zip/);
+assert.match(publishText, /archive\.sha256/);
+assert.doesNotMatch(publishText, /canonical\/manifest\.json/);
 const publishStep = publish.steps.find(
   (step) => step.name === "Publish verified gh-pages report with optimistic retry",
 );
@@ -456,12 +461,18 @@ const staticCanonicalUpload = staticJob.steps.find(
 );
 assert.equal(
   staticCanonicalUpload.with.path.trim(),
-  "${{ runner.temp }}/static-controller/evidence/",
+  [
+    "${{ runner.temp }}/static-controller/evidence.canonical.zip",
+    "${{ runner.temp }}/static-controller/evidence.canonical.zip.sha256",
+  ].join("\n"),
 );
 assert.equal(
   primaryCanonicalUpload.with.path.trim(),
-  "${{ runner.temp }}/nixmac-centaur-${{ github.run_id }}-${{ github.run_attempt }}/evidence/",
-  "primary upload must flatten the one exact evidence directory to the artifact root",
+  [
+    "${{ runner.temp }}/nixmac-centaur-${{ github.run_id }}-${{ github.run_attempt }}/evidence.canonical.zip",
+    "${{ runner.temp }}/nixmac-centaur-${{ github.run_id }}-${{ github.run_attempt }}/evidence.canonical.zip.sha256",
+  ].join("\n"),
+  "primary upload must contain only the exact canonical archive and digest",
 );
 assert.doesNotMatch(primaryCanonicalUpload.with.path, /\*/);
 assert.doesNotMatch(
@@ -477,6 +488,7 @@ assert.ok(verifyPublishStep);
 assert.match(verifyPublishStep.run, /NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN/);
 assert.match(verifyPublishStep.run, /NIXMAC_E2E_PYTHON_PATH/);
 assert.match(verifyPublishStep.run, /NIXMAC_E2E_FFMPEG_PATH/);
+assert.match(verifyPublishStep.run, /NIXMAC_E2E_FFPROBE_PATH/);
 assert.match(
   verifyPublishStep.run,
   /GITHUB_REPOSITORY.*GITHUB_RUN_ID.*INPUT_JOB_ID.*INPUT_ATTEMPT.*ATTESTATION_NONCE/s,

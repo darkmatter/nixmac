@@ -338,9 +338,7 @@ async function runSelfTest() {
     "function",
     "canonical evidence must be verified independently from the mutable source tree",
   );
-  const sharedCaseBytes = await readFile(
-    new URL("./fixtures/cases.json", import.meta.url),
-  );
+  const sharedCaseBytes = await readFile(new URL("./fixtures/cases.json", import.meta.url));
   assert.equal(
     createHash("sha256").update(sharedCaseBytes).digest("hex"),
     "ea493777018c7ff31cafc5f6834a4d172db04d0a2c07f72ae9977eda33e45293",
@@ -884,6 +882,32 @@ async function runSelfTest() {
       localFinalization,
       "the exact canonical archive and digest must verify independently",
     );
+    const materializedPath = path.join(root, "materialized-canonical-evidence");
+    assert.deepEqual(
+      await evidenceManifest.verifyCanonicalEvidenceArchive(localArchive.archivePath, {
+        digestPath: localArchive.digestPath,
+        materializeOut: materializedPath,
+      }),
+      localFinalization,
+      "publisher materialization must come from the same independently verified archive",
+    );
+    assert.equal(
+      JSON.parse(await readFile(path.join(materializedPath, "state.json"), "utf8")).verdict,
+      "pass",
+    );
+    assert.match(
+      await readFile(path.join(materializedPath, "index.html"), "utf8"),
+      /final-result-attestation/,
+    );
+    await assert.rejects(
+      () =>
+        evidenceManifest.verifyCanonicalEvidenceArchive(localArchive.archivePath, {
+          digestPath: localArchive.digestPath,
+          materializeOut: materializedPath,
+        }),
+      /materialization target must be absent/i,
+      "publisher materialization must never overwrite an existing path",
+    );
     executedNodeCases.add("valid-ephemeral-safe-frame");
     const localAttempt = JSON.parse(
       await readFile(path.join(local.runDir, "attempt.json"), "utf8"),
@@ -1425,7 +1449,9 @@ async function runSelfTest() {
     });
     const reusedAudits = (
       await Promise.all(
-        (await readdir(reusedPidPaths.staleOwnersDirectory))
+        (
+          await readdir(reusedPidPaths.staleOwnersDirectory)
+        )
           .filter((entry) => entry.endsWith(".audit.json"))
           .map(async (entry) =>
             JSON.parse(
@@ -1455,13 +1481,14 @@ async function runSelfTest() {
       (await readdir(crashedSealerPaths.staleOwnersDirectory))
         .filter((entry) => entry.endsWith(".audit.json"))
         .map(async (entry) =>
-          JSON.parse(await readFile(path.join(crashedSealerPaths.staleOwnersDirectory, entry), "utf8")),
+          JSON.parse(
+            await readFile(path.join(crashedSealerPaths.staleOwnersDirectory, entry), "utf8"),
+          ),
         ),
     );
     assert.ok(
       sealerAudits.some(
-        (audit) =>
-          audit.owner.kind === "sealer-lock" && audit.reason === "owner-process-dead",
+        (audit) => audit.owner.kind === "sealer-lock" && audit.reason === "owner-process-dead",
       ),
       "a stale sealer recovery must retain the dead process identity and reason",
     );
@@ -1848,9 +1875,7 @@ async function runSelfTest() {
     );
 
     const missingSafeFrame = await createEvidenceFixture(root);
-    await rm(
-      path.join(missingSafeFrame.runDir, "video", "computer-use-evidence.mp4"),
-    );
+    await rm(path.join(missingSafeFrame.runDir, "video", "computer-use-evidence.mp4"));
     await assert.rejects(
       () =>
         finalizeLocalEvidence(missingSafeFrame.runDir, {
@@ -2104,6 +2129,31 @@ async function runSelfTest() {
       },
     );
     assert.equal(verifyCli.status, 0, verifyCli.stderr || verifyCli.stdout);
+    const cliMaterialized = path.join(root, "controller-materialized");
+    const materializeCli = spawnSync(
+      process.execPath,
+      [
+        path.join(process.cwd(), "tests/e2e/computer-use/evidence-manifest.mjs"),
+        "materialize",
+        "--archive",
+        cliArchive,
+        "--out",
+        cliMaterialized,
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN: TRUSTED_OWNER_TOKEN,
+        },
+      },
+    );
+    assert.equal(materializeCli.status, 0, materializeCli.stderr || materializeCli.stdout);
+    assert.equal(
+      JSON.parse(await readFile(path.join(cliMaterialized, "state.json"), "utf8")).verdict,
+      "pass",
+    );
     executedNodeCases.add("valid-static-released-owner-lease");
     assert.deepEqual(
       [...executedNodeCases].sort(),

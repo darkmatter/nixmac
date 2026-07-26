@@ -189,7 +189,10 @@ class Scanner:
 
     def validate_video_inventory(self, file_fd, fd_path, relative_path):
         remaining = max(0.1, self.deadline - time.monotonic())
-        with tempfile.TemporaryFile() as probe_output, tempfile.TemporaryFile() as error_output:
+        with (
+            tempfile.TemporaryFile() as probe_output,
+            tempfile.TemporaryFile() as error_output,
+        ):
             process = subprocess.Popen(
                 [
                     self.args.ffprobe,
@@ -223,7 +226,9 @@ class Scanner:
                     f"{detail or 'ffprobe rejected it'}"
                 )
             if output_bytes <= 0 or output_bytes > MAX_FFPROBE_OUTPUT_BYTES:
-                raise ScanError(f"media inventory output is outside bounds: {relative_path}")
+                raise ScanError(
+                    f"media inventory output is outside bounds: {relative_path}"
+                )
             probe_output.seek(0)
             try:
                 inventory = json.loads(probe_output.read().decode("utf-8"))
@@ -271,25 +276,35 @@ class Scanner:
             or height > MAX_VIDEO_HEIGHT
             or width * height > MAX_VIDEO_PIXELS
         ):
-            raise ScanError(f"video dimensions exceed the evidence contract: {relative_path}")
+            raise ScanError(
+                f"video dimensions exceed the evidence contract: {relative_path}"
+            )
         duration_source = stream.get("duration", media_format.get("duration"))
         try:
             duration = float(duration_source)
         except (TypeError, ValueError) as error:
-            raise ScanError(f"video duration is missing or invalid: {relative_path}") from error
+            raise ScanError(
+                f"video duration is missing or invalid: {relative_path}"
+            ) from error
         if (
             not duration > 0
             or not duration <= MAX_VIDEO_DURATION_SECONDS
             or duration == float("inf")
         ):
-            raise ScanError(f"video duration exceeds the evidence contract: {relative_path}")
+            raise ScanError(
+                f"video duration exceeds the evidence contract: {relative_path}"
+            )
         frame_source = stream.get("nb_read_frames", stream.get("nb_frames"))
         try:
             frames = int(frame_source)
         except (TypeError, ValueError) as error:
-            raise ScanError(f"video frame count is missing or invalid: {relative_path}") from error
+            raise ScanError(
+                f"video frame count is missing or invalid: {relative_path}"
+            ) from error
         if str(frames) != str(frame_source) or frames < 1 or frames > MAX_VIDEO_FRAMES:
-            raise ScanError(f"video frame count exceeds the evidence contract: {relative_path}")
+            raise ScanError(
+                f"video frame count exceeds the evidence contract: {relative_path}"
+            )
         self.check_deadline()
 
     def scan_file(self, directory_fd, name, relative_path, before, include_record=True):
@@ -297,7 +312,9 @@ class Scanner:
         file_fd = os.open(name, flags, dir_fd=directory_fd)
         try:
             opened = os.fstat(file_fd)
-            if stable_stat(before) != stable_stat(opened) or not stat.S_ISREG(opened.st_mode):
+            if stable_stat(before) != stable_stat(opened) or not stat.S_ISREG(
+                opened.st_mode
+            ):
                 raise ScanError(f"evidence file changed while opening: {relative_path}")
             if opened.st_size <= 0:
                 raise ScanError(f"required evidence file is empty: {relative_path}")
@@ -336,7 +353,9 @@ class Scanner:
                     )
                 if captured is not None:
                     if self.captured_text_bytes + len(chunk) > MAX_CAPTURED_TEXT_BYTES:
-                        raise ScanError("captured evidence metadata exceeds total limit")
+                        raise ScanError(
+                            "captured evidence metadata exceeds total limit"
+                        )
                     captured.extend(chunk)
                     self.captured_text_bytes += len(chunk)
             after = os.fstat(file_fd)
@@ -347,7 +366,9 @@ class Scanner:
                 raise ScanError(f"evidence file changed while hashing: {relative_path}")
             self.validate_media(file_fd, relative_path, prefix)
             if stable_stat(opened) != stable_stat(os.fstat(file_fd)):
-                raise ScanError(f"evidence file changed while decoding: {relative_path}")
+                raise ScanError(
+                    f"evidence file changed while decoding: {relative_path}"
+                )
             self.total_bytes += observed_bytes
             if captured is not None:
                 try:
@@ -491,9 +512,7 @@ class Scanner:
             raise ScanError("canonical archive input contains duplicate paths")
         if MANIFEST_PATH not in paths:
             raise ScanError("canonical archive input is missing manifest.json")
-        temporary_name = (
-            f".{archive_name}.tmp-{os.getpid()}-{secrets.token_hex(16)}"
-        )
+        temporary_name = f".{archive_name}.tmp-{os.getpid()}-{secrets.token_hex(16)}"
         flags = os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
         archive_fd = os.open(temporary_name, flags, 0o600, dir_fd=parent_fd)
         published = False
@@ -550,10 +569,9 @@ class Scanner:
                     break
                 digest.update(chunk)
                 observed_bytes += len(chunk)
-            if (
-                observed_bytes != archive_stat.st_size
-                or stable_stat(archive_stat) != stable_stat(os.fstat(archive_fd))
-            ):
+            if observed_bytes != archive_stat.st_size or stable_stat(
+                archive_stat
+            ) != stable_stat(os.fstat(archive_fd)):
                 raise ScanError("canonical archive changed while hashing")
             os.link(
                 temporary_name,
@@ -605,7 +623,9 @@ class Scanner:
                         )
             if self.archive_spool is not None:
                 if len(retained) < 2:
-                    raise ScanError("canonical archive requires an evidence parent directory")
+                    raise ScanError(
+                        "canonical archive requires an evidence parent directory"
+                    )
                 self.archive = self.write_archive(retained[-2][0])
         finally:
             for fd, _, _ in reversed(retained):
@@ -703,15 +723,11 @@ class ArchiveVerifier:
                 break
             digest.update(chunk)
             observed_bytes += len(chunk)
-            if (
-                observed_bytes
-                > self.args.max_total_bytes + MAX_ARCHIVE_OVERHEAD_BYTES
-            ):
+            if observed_bytes > self.args.max_total_bytes + MAX_ARCHIVE_OVERHEAD_BYTES:
                 raise ScanError("canonical archive exceeds its bounded size contract")
-        if (
-            observed_bytes != expected_stat.st_size
-            or stable_stat(expected_stat) != stable_stat(os.fstat(archive_fd))
-        ):
+        if observed_bytes != expected_stat.st_size or stable_stat(
+            expected_stat
+        ) != stable_stat(os.fstat(archive_fd)):
             raise ScanError("canonical archive changed while hashing")
         return digest.hexdigest(), observed_bytes
 
@@ -759,9 +775,7 @@ class ArchiveVerifier:
                         )
                     if total_bytes + info.file_size > self.args.max_total_bytes:
                         raise ScanError("canonical archive exceeds total-byte limit")
-                    target = os.path.join(
-                        extraction_root, *info.filename.split("/")
-                    )
+                    target = os.path.join(extraction_root, *info.filename.split("/"))
                     os.makedirs(os.path.dirname(target), mode=0o700, exist_ok=True)
                     target_fd = os.open(
                         target,
@@ -799,17 +813,22 @@ class ArchiveVerifier:
             self.args.archive
         )
         extraction_root = None
+        materialized = False
         try:
             archive_stat = os.fstat(archive_fd)
-            archive_sha256, archive_bytes = self.hash_archive(
-                archive_fd, archive_stat
+            archive_sha256, archive_bytes = self.hash_archive(archive_fd, archive_stat)
+            extraction_parent = (
+                os.path.dirname(self.args.materialize_out)
+                if self.args.materialize_out
+                else None
             )
             extraction_root = os.path.realpath(
-                tempfile.mkdtemp(prefix="nixmac-canonical-evidence-")
+                tempfile.mkdtemp(
+                    prefix=".nixmac-canonical-evidence-",
+                    dir=extraction_parent,
+                )
             )
-            extracted_bytes, entry_count = self.extract(
-                archive_fd, extraction_root
-            )
+            extracted_bytes, entry_count = self.extract(archive_fd, extraction_root)
             remaining = max(0.1, self.deadline - time.monotonic())
             scan_args = argparse.Namespace(
                 **{
@@ -856,14 +875,54 @@ class ArchiveVerifier:
                 "bytes": archive_bytes,
                 "entryCount": entry_count,
             }
+            if self.args.materialize_out:
+                target = self.args.materialize_out
+                parent = os.path.dirname(target)
+                target_name = os.path.basename(target)
+                temporary_name = os.path.basename(extraction_root)
+                parent_args = argparse.Namespace(
+                    run_dir=parent,
+                    archive_out="",
+                    deadline_seconds=max(0.1, self.deadline - time.monotonic()),
+                )
+                parent_chain = Scanner(parent_args).open_root_chain()
+                try:
+                    parent_fd = parent_chain[-1][0]
+                    try:
+                        os.stat(
+                            target_name,
+                            dir_fd=parent_fd,
+                            follow_symlinks=False,
+                        )
+                    except FileNotFoundError:
+                        pass
+                    else:
+                        raise ScanError(
+                            "canonical archive materialization target must be absent"
+                        )
+                    os.rename(
+                        temporary_name,
+                        target_name,
+                        src_dir_fd=parent_fd,
+                        dst_dir_fd=parent_fd,
+                    )
+                    os.fsync(parent_fd)
+                    materialized = True
+                    extraction_root = None
+                    scan["materializedPath"] = target
+                finally:
+                    for fd, _, _ in reversed(parent_chain):
+                        os.close(fd)
             return scan
         except zipfile.BadZipFile as error:
-            raise ScanError(f"canonical archive ZIP validation failed: {error}") from error
+            raise ScanError(
+                f"canonical archive ZIP validation failed: {error}"
+            ) from error
         finally:
             os.close(archive_fd)
             for fd, _, _ in reversed(retained):
                 os.close(fd)
-            if extraction_root is not None:
+            if extraction_root is not None and not materialized:
                 import shutil
 
                 shutil.rmtree(extraction_root)
@@ -877,6 +936,7 @@ def parse_args():
     )
     parser.add_argument("--archive")
     parser.add_argument("--archive-out")
+    parser.add_argument("--materialize-out")
     parser.add_argument("--ffmpeg", required=True)
     parser.add_argument("--ffprobe", required=True)
     parser.add_argument("--max-files", type=int, required=True)
@@ -896,10 +956,19 @@ def parse_args():
             parser.error(
                 "archive verification requires one absolute normalized --archive path"
             )
+        if args.materialize_out and (
+            not os.path.isabs(args.materialize_out)
+            or os.path.normpath(args.materialize_out) != args.materialize_out
+            or args.materialize_out in (os.sep, os.path.dirname(args.materialize_out))
+        ):
+            parser.error(
+                "archive materialization requires an absolute normalized non-root output path"
+            )
     else:
         if (
             not args.run_dir
             or args.archive
+            or args.materialize_out
             or not os.path.isabs(args.run_dir)
             or os.path.normpath(args.run_dir) != args.run_dir
         ):

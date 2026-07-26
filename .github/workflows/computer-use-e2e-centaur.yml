@@ -299,6 +299,7 @@ jobs:
           NIXMAC_E2E_ARTIFACT_ATTESTATION_PATH="$run_root/attestations/artifact.json"
           NIXMAC_E2E_PYTHON_PATH="$(command -v python3)"
           NIXMAC_E2E_FFMPEG_PATH="$(command -v ffmpeg)"
+          NIXMAC_E2E_FFPROBE_PATH="$(command -v ffprobe)"
           export \
             NIXMAC_E2E_APP_PATH \
             NIXMAC_E2E_APP_BUNDLE_DIGEST \
@@ -308,10 +309,12 @@ jobs:
             NIXMAC_E2E_RUNNER_ATTESTATION_PATH \
             NIXMAC_E2E_ARTIFACT_ATTESTATION_PATH \
             NIXMAC_E2E_PYTHON_PATH \
-            NIXMAC_E2E_FFMPEG_PATH
+            NIXMAC_E2E_FFMPEG_PATH \
+            NIXMAC_E2E_FFPROBE_PATH
           node tests/e2e/computer-use/run-cua-driver.mjs run --run-dir "$run_root/evidence"
-          node tests/e2e/computer-use/evidence-manifest.mjs verify --run-dir "$run_root/evidence"
-          printf '%s\n' "$run_root/evidence" > "$RUNNER_TEMP/nixmac-centaur-evidence-path"
+          archive="$run_root/evidence.canonical.zip"
+          node tests/e2e/computer-use/evidence-manifest.mjs verify --archive "$archive"
+          printf '%s\n' "$archive" > "$RUNNER_TEMP/nixmac-centaur-evidence-path"
 
       - name: Upload canonical verified evidence
         id: upload
@@ -319,22 +322,12 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: nixmac-computer-use-e2e-${{ needs.preflight.outputs.job_key }}-attempt-${{ inputs.attempt }}
-          path: ${{ runner.temp }}/nixmac-centaur-${{ github.run_id }}-${{ github.run_attempt }}/evidence/
+          path: |
+            ${{ runner.temp }}/nixmac-centaur-${{ github.run_id }}-${{ github.run_attempt }}/evidence.canonical.zip
+            ${{ runner.temp }}/nixmac-centaur-${{ github.run_id }}-${{ github.run_attempt }}/evidence.canonical.zip.sha256
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 90
-
-      - name: Upload primary diagnostics
-        if: always() && steps.run.outcome != 'success'
-        uses: actions/upload-artifact@v7
-        with:
-          name: nixmac-computer-use-e2e-${{ needs.preflight.outputs.job_key }}-attempt-${{ inputs.attempt }}-diagnostics
-          path: |
-            ${{ runner.temp }}/nixmac-centaur-*/evidence/
-            ${{ runner.temp }}/centaur-preflight/
-          if-no-files-found: warn
-          include-hidden-files: true
-          retention-days: 14
 
   static_ssh:
     name: Static transition CuaDriver E2E
@@ -935,23 +928,25 @@ jobs:
           });
           NODE
           verdict="$(jq -r '.verdict' "$evidence/state.json")"
+          python_path="$(command -v python3)"
+          ffmpeg_path="$(command -v ffmpeg)"
+          ffprobe_path="$(command -v ffprobe)"
           NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN="$owner_token" \
+            NIXMAC_E2E_PYTHON_PATH="$python_path" \
+            NIXMAC_E2E_FFMPEG_PATH="$ffmpeg_path" \
+            NIXMAC_E2E_FFPROBE_PATH="$ffprobe_path" \
             node tests/e2e/computer-use/run-metadata.mjs finalize-controller \
               --run-dir "$evidence" \
               --cleanup-file "$controller/finalization/cleanup.json" \
               --cleanup-probe-file "$controller/finalization/cleanup-probe.json" \
               --host-lease-file "$controller/finalization/host-lease.json" \
               --verdict "$verdict"
-          python_path="$(command -v python3)"
-          ffmpeg_path="$(command -v ffmpeg)"
+          archive="$controller/evidence.canonical.zip"
           NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN="$owner_token" \
             NIXMAC_E2E_PYTHON_PATH="$python_path" \
             NIXMAC_E2E_FFMPEG_PATH="$ffmpeg_path" \
-            node tests/e2e/computer-use/evidence-manifest.mjs create --run-dir "$evidence"
-          NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN="$owner_token" \
-            NIXMAC_E2E_PYTHON_PATH="$python_path" \
-            NIXMAC_E2E_FFMPEG_PATH="$ffmpeg_path" \
-            node tests/e2e/computer-use/evidence-manifest.mjs verify --run-dir "$evidence"
+            NIXMAC_E2E_FFPROBE_PATH="$ffprobe_path" \
+            node tests/e2e/computer-use/evidence-manifest.mjs verify --archive "$archive"
 
       - name: Quarantine unclean static backend
         if: always() && steps.lease.outputs.acquired == 'true' && steps.cleanup.outputs.host_clean != 'true'
@@ -972,22 +967,12 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: nixmac-computer-use-e2e-${{ needs.preflight.outputs.job_key }}-attempt-${{ inputs.attempt }}
-          path: ${{ runner.temp }}/static-controller/evidence/
+          path: |
+            ${{ runner.temp }}/static-controller/evidence.canonical.zip
+            ${{ runner.temp }}/static-controller/evidence.canonical.zip.sha256
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 90
-
-      - name: Upload static diagnostics
-        if: always() && steps.seal.outcome != 'success'
-        uses: actions/upload-artifact@v7
-        with:
-          name: nixmac-computer-use-e2e-${{ needs.preflight.outputs.job_key }}-attempt-${{ inputs.attempt }}-diagnostics
-          path: |
-            ${{ runner.temp }}/static-controller/
-            ${{ runner.temp }}/centaur-preflight/
-          if-no-files-found: warn
-          include-hidden-files: true
-          retention-days: 14
 
       - name: Remove static controller credentials
         if: always()
@@ -1033,14 +1018,20 @@ jobs:
           ATTESTATION_NONCE: ${{ inputs.attestation_nonce }}
         run: |
           set -euo pipefail
-          run_dir="$RUNNER_TEMP/canonical"
-          manifest="$RUNNER_TEMP/canonical/manifest.json"
-          [[ -f "$manifest" && ! -L "$manifest" ]]
+          mapfile -t archives < <(
+            find "$RUNNER_TEMP/canonical" -maxdepth 1 -type f -name '*.canonical.zip' -print |
+              sort
+          )
+          [[ ${#archives[@]} -eq 1 ]]
+          archive="${archives[0]}"
+          [[ -f "$archive.sha256" && ! -L "$archive.sha256" ]]
           python_path="$(command -v python3)"
           ffmpeg_path="$(command -v ffmpeg)"
+          ffprobe_path="$(command -v ffprobe)"
           verify_env=(
             "NIXMAC_E2E_PYTHON_PATH=$python_path"
             "NIXMAC_E2E_FFMPEG_PATH=$ffmpeg_path"
+            "NIXMAC_E2E_FFPROBE_PATH=$ffprobe_path"
           )
           if [[ "$INPUT_BACKEND" == "static_ssh" ]]; then
             owner_token="$(
@@ -1052,8 +1043,12 @@ jobs:
             [[ "$owner_token" =~ ^[0-9a-f]{64}$ ]]
             verify_env+=("NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN=$owner_token")
           fi
+          run_dir="$RUNNER_TEMP/verified-report"
+          [[ ! -e "$run_dir" && ! -L "$run_dir" ]]
           env "${verify_env[@]}" \
-            node tests/e2e/computer-use/evidence-manifest.mjs verify --run-dir "$run_dir"
+            node tests/e2e/computer-use/evidence-manifest.mjs materialize \
+              --archive "$archive" \
+              --out "$run_dir"
           printf '%s\n' "$run_dir" > "$RUNNER_TEMP/verified-report-dir"
 
       - name: Publish verified gh-pages report with optimistic retry
