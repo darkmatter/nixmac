@@ -10,10 +10,14 @@
     "team_identifier": "YCK386LBJ7"
   },
   "cli": {
+    "code_signing_digest_sha256": "b0c0ca9c84e2400ae757710bef868a13ac709a07cb6e598b9f71a3a3c613a6b8",
+    "developer_id": "Cua AI, Inc. (YCK386LBJ7)",
     "release_archive": "cua-driver-rs-v0.12.6-darwin-arm64.tar.gz",
     "release_archive_sha256": "c64017d5878d022df34137082fb918ae0d4304e28890569ff14458f1a54fd361",
     "release_published_at": "2026-07-24",
     "release_tag": "cua-driver-rs-v0.12.6",
+    "sha256": "3ee06efc14bb4ec501a4a8d8963514150684332f0281cc224c51b3dba3ef76ea",
+    "team_identifier": "YCK386LBJ7",
     "version": "0.12.6",
     "version_output": "cua-driver 0.12.6"
   },
@@ -22,8 +26,7 @@
       "/usr/bin/open",
       "-n",
       "-g",
-      "-a",
-      "CuaDriver",
+      "<verified-app-bundle-path>",
       "--args",
       "serve",
       "--socket",

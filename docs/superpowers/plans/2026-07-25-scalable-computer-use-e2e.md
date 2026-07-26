@@ -478,7 +478,7 @@ git commit -m "refactor(e2e): inject computer-use driver"
 
 - Modify: `tests/e2e/computer-use/drivers/driver-self-test.mjs`
 
-- [ ] **Step 1: Create provenance-labeled, source-grounded response fixtures**
+- [x] **Step 1: Create provenance-labeled, source-grounded response fixtures**
 
 Use the pinned CuaDriver 0.12.6 `call <tool> <json> --socket <socket>` surface.
 That release does not support `--raw`, `--compact`, or `--no-daemon`: the CLI
@@ -493,9 +493,11 @@ when a fixture was derived from pinned source.
 Record the exact CLI version, `CuaDriver.app` bundle version/digest, supported
 daemon launch mode, research date, and per-fixture provenance in sanitized
 fixture metadata. The adapter and image qualification must use the same pinned
-release and launch mode.
+release and launch mode. Pin the CLI itself by byte SHA-256, full codesign
+digest, Developer ID, and Team ID; resolving a command name or symlink is not
+an identity proof.
 
-- [ ] **Step 2: Write failing adapter tests**
+- [x] **Step 2: Write failing adapter tests**
 
 Cover:
 
@@ -537,19 +539,26 @@ Cover:
   daemon peers before `check_permissions`, even when that RPC's `source`
   self-attests correctly;
 
-- delayed target readiness, post-launch failure cleanup, PID reuse refusal,
-  post-kill exit confirmation, pre-stop daemon peer replacement refusal,
-  post-stop PID-plus-listener confirmation, and target/daemon cleanup retries;
+- launch produces exactly one new signed daemon process instance before any
+  status probe, and every RPC is bracketed by the same daemon PID, high-
+  resolution birth time, executable, and socket device/inode;
 
-- screenshot no-write, symlink, inode replacement, header-only PNG, corrupt
-  IDAT, bytes after the zlib end marker, valid PNG, and cleanup-retry paths;
+- delayed target readiness, post-launch failure cleanup, same-app PID reuse
+  refusal, post-kill exit confirmation, pre-stop daemon peer replacement
+  refusal, post-stop PID-plus-listener-plus-socket confirmation, and
+  target/daemon cleanup retries;
+
+- inline screenshot MIME/base64 validation, encoded and decoded limits,
+  same-UID filesystem-substitution rejection, header-only PNG, corrupt IDAT,
+  bytes after the zlib end marker, forbidden text/profile metadata chunks, and
+  valid PNG;
 
 - close calls `stop --socket` only after re-resolving the exact signed daemon
   PID and executable the adapter started, clears ownership only after both that
   process and listener are gone, and retains each failed owned-resource cleanup
   independently for retry.
 
-- [ ] **Step 3: Implement a process runner**
+- [x] **Step 3: Implement a process runner**
 
 Use `spawn` with argv arrays:
 
@@ -582,24 +591,31 @@ against its own exact compatibility schema rather than the current direct
 stdout schema. The process exit code/stderr remains the authority for current
 0.12.6 CLI tool failures.
 
-- [ ] **Step 4: Implement connection and targeting**
+- [x] **Step 4: Implement connection and targeting**
 
 `connect()` must:
 
-1. run `--version`, read the installed `CuaDriver.app` bundle version, and
-   require both to match the pinned fixture/image identity;
-1. in owned mode, require the selected socket path to be absent before launch;
-   only `attachSocket` may intentionally name an existing socket;
-1. start the standalone app-owned daemon with argv equivalent to
-   `open -n -g -a CuaDriver --args serve --socket <run-socket>`;
-1. poll `status --socket <run-socket>`;
+1. resolve the configured CLI once to a canonical absolute regular executable,
+   verify its byte SHA-256, full codesign digest, Developer ID, Team ID, and
+   exact `--version` output against fixture metadata, then use only that path;
+1. read and verify the installed `CuaDriver.app` bundle identity;
+1. reject attach mode: pinned 0.12.6 accepts unauthenticated line-delimited
+   JSON on each fresh Unix-stream connection and exposes no peer credential or
+   authentication mechanism;
+1. require the owned socket path to be absent and no longer than 103 UTF-8
+   bytes, then snapshot process instances for the verified daemon executable;
+1. start the standalone app-owned daemon with exact argv
+   `open -n -g <verified-app-path> --args serve --socket <run-socket>`;
+1. require exactly one new signed daemon PID/birth-time/executable instance
+   before polling `status --socket <run-socket>`;
 1. canonicalize the Unix socket and run
    `/usr/sbin/lsof -nP -Fpcn -a -U <socket>`;
 1. require exactly one `cua-driver` PID holding the exact canonical socket,
-   resolve that PID's executable through the OS, and require the canonical
-   executable inside the verified `CuaDriver.app/Contents/MacOS`;
-1. bind that daemon PID, executable, and socket, then reverify the enclosing
-   bundle's identity, digest, and Developer ID signature;
+   resolve that PID's high-resolution process birth time and executable
+   through `/usr/bin/python3` plus macOS `libproc`, and require it to match the
+   provisional instance;
+1. bind that process instance plus socket device/inode, then reverify the
+   enclosing bundle identity, digest, and Developer ID signature;
 1. call `check_permissions`;
 1. fail unless Accessibility and Screen Recording are granted;
 1. treat `check_permissions.source` only as corroboration, requiring its
@@ -608,17 +624,17 @@ stdout schema. The process exit code/stderr remains the authority for current
 Directly spawning raw `cua-driver serve` outside `CuaDriver.app` is prohibited:
 upstream documents that mode as unsupported for stable macOS TCC attribution.
 The static and ephemeral images grant Accessibility and Screen Recording to
-the pinned `CuaDriver.app` bundle identity. `close()` may stop only an
-app-owned daemon this adapter instance started; attach-to-existing mode never
-stops another process. Before `stop`, `close()` re-resolves the exact socket
-listener and requires its PID and executable to match the bound signed peer;
-a missing listener while that bound process remains alive or a replacement
-listener fails closed without sending `stop`. A zero-exit `stop` is not cleanup
-proof: bounded polling must show the bound PID absent or reused and no matching
-bound listener. An already absent listener plus absent or reused bound PID is
-already-cleaned evidence. Target, screenshot, and daemon cleanup are
-independent: state is cleared only after confirmed cleanup, failures are
-aggregated, and a later `close()` retries only the resources still owned.
+the pinned `CuaDriver.app` bundle identity. Until upstream supplies an
+authenticated transport, the adapter supports owned-only fallback. Before and
+after every `call` RPC it re-proves the exact socket device/inode, listener
+PID/birth-time/executable, and signed bundle; output from an in-flight rebind
+is discarded. `close()` may stop only the exact daemon process instance this
+adapter started. A missing listener while that instance remains alive or any
+replacement listener/socket fails closed without deleting or stopping the
+replacement. A zero-exit `stop` is not cleanup proof: bounded polling must show
+no listener, the exact process absent or reused, and the socket path absent.
+Only the same listener-free owned socket inode may be unlinked and then
+re-proven `ENOENT`. Startup and cleanup failures are aggregated.
 
 `prepareTarget({ appBundleId, appPath })` must:
 
@@ -629,8 +645,9 @@ aggregated, and a later `close()` retries only the resources still owned.
 1. reject a returned pid of zero or a mismatched bundle ID;
 1. persist ownership of that pid plus the exact app path and digest immediately
    after the valid launch response;
-1. query the launched pid's executable path without AppleScript and require its
-   canonical path to be inside `appPath/Contents/MacOS/`;
+1. capture the launched pid's high-resolution macOS start time and executable
+   without AppleScript and require its canonical path inside
+   `appPath/Contents/MacOS/`;
 1. recompute the running bundle digest and require it to equal the preflight
    digest;
 1. poll `list_apps` and `list_windows` under a bounded readiness deadline;
@@ -639,41 +656,44 @@ aggregated, and a later `close()` retries only the resources still owned.
    pinned macOS 0.12.6 only accept null as an `is_on_screen=true` fallback
    because upstream emits null for every window; record which proof path was
    used and break ties by frontmost `z_index`, then stable window ID;
-1. retain pid/window/app-path identity for every later state/action;
+1. retain pid/birth-time/executable/window/app-path identity and re-prove the
+   process instance before and after every visible-state, click, and set-value
+   RPC, discarding output if it changed in flight;
 1. on later preparation failure or close, re-prove the owned PID's current
    executable and exact bundle identity before `/bin/kill -KILL <pid>`, then
    poll until the PID is absent or demonstrably reused; never clear ownership
    on signal success alone.
 
-- [ ] **Step 5: Implement normalized UI methods**
+- [x] **Step 5: Implement normalized UI methods**
 
 `visibleState()` calls:
 
 ```text
 call get_window_state
 {"pid":<pid>,"window_id":<windowId>}
---screenshot-out-file <tempPng> --socket <runSocket>
+--socket <runSocket>
 ```
 
-It returns text, base64-encoded PNG bytes read from `tempPng`, and:
+It accepts only `screenshot_mime_type:"image/png"` plus canonical inline
+`screenshot_png_b64`, rejects any filesystem screenshot handoff, and returns
+text, normalized base64 PNG bytes, and:
 
 ```js
 { pid, windowId, snapshotId: `${pid}:${windowId}:${turnId}` }
 ```
 
-Each capture uses a fresh randomized 0700 directory under `runDir` and an
-exclusive empty 0600 regular file. The adapter requires the same inode after
-the call, a nonzero fresh write, and a complete qualified non-interlaced 8-bit
-RGB/RGBA PNG: valid chunk bounds/order and CRC, sane IHDR, a hard decoded-byte
-ceiling before IDAT inflation, complete consumption of the concatenated IDAT
-zlib stream, the expected scanline length, IEND, and no bytes after IEND. It
-always attempts owned artifact cleanup and retains failed directory cleanup
-for `close()` retry.
+The subprocess stdout cap is the maximum canonical base64 size plus 1 MiB of
+JSON overhead. The adapter enforces both encoded and decoded image limits and
+requires a complete qualified non-interlaced 8-bit RGB/RGBA PNG: valid chunk
+bounds/order and CRC, sane IHDR, a hard decoded-byte ceiling before IDAT
+inflation, complete consumption of the concatenated IDAT zlib stream, the
+expected scanline length, IEND, and no bytes after IEND. It also rejects
+`tEXt`, `zTXt`, `iTXt`, and `iCCP` so screenshot evidence is pixel-only.
 
 `click()` and `setValue()` reject addresses whose target differs from the most
 recent snapshot and then invoke `click` or `set_value`.
 
-- [ ] **Step 6: Run tests**
+- [x] **Step 6: Run tests**
 
 Run:
 
@@ -684,13 +704,13 @@ node tests/e2e/computer-use/run-remote-cua.mjs self-test
 
 Expected: PASS without a remote Mac.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add tests/e2e/computer-use/drivers/cua-driver.mjs \
   tests/e2e/computer-use/drivers/driver-self-test.mjs \
   tests/e2e/computer-use/fixtures/cua-driver
-git commit -m "feat(e2e): add CuaDriver adapter"
+git commit -m "fix(e2e): bind CuaDriver process instances"
 ```
 
 ### Task 5: Add The On-Mac Runner
@@ -732,14 +752,13 @@ createDriver: (options) => new CuaDriver({
 executionTopology: "local-cua-driver",
 ```
 
-`binary` is the CLI executable, `socketPath` is an owned daemon socket,
-`appBundleId` is the default target bundle, and `runDir` owns screenshot
-scratch paths. When `socketPath` is omitted, the owned socket remains under the
-short `socketDirectory`/system-temp path rather than the potentially long
-artifact `runDir`, respecting macOS Unix-socket path limits. `attachSocket`
-remains the explicit, non-owning existing-socket mode. The constructor rejects
-unknown and conflicting options instead of silently ignoring entrypoint
-configuration.
+`binary` is the pinned CLI executable, `socketPath` is an owned daemon socket,
+and `appBundleId` is the default target bundle. Screenshots remain inline and
+never use `runDir` scratch paths. When `socketPath` is omitted, the owned socket
+remains under the short `socketDirectory`/system-temp path, respecting the
+103-byte macOS Unix-socket path limit. `attachSocket` is rejected until the
+upstream transport can authenticate its peer. The constructor rejects unknown
+and conflicting options instead of silently ignoring entrypoint configuration.
 
 - [ ] **Step 3: Make topology-specific steps explicit**
 

@@ -313,7 +313,7 @@ tests/e2e/computer-use/drivers/cua-driver.mjs
 
 The adapter targets the current CuaDriver CLI/daemon:
 
-- `open -n -g -a CuaDriver --args serve --socket <run-socket>`
+- `open -n -g <verified-app-bundle-path> --args serve --socket <run-socket>`
 - `call check_permissions`
 - `call launch_app`
 - `call list_windows`
@@ -330,12 +330,12 @@ Fixture metadata, the adapter, and the runner image bind the same pinned CLI
 version, app-bundle version/digest, and standalone app-owned launch mode.
 CuaDriver 0.12.6 `call` prints `structuredContent` JSON directly when the tool
 provides it, otherwise it prints successful text content. It supports
-`--socket` plus `--screenshot-out-file`; it does not expose the historical
-`--raw`, `--compact`, or `--no-daemon` flags. Nonzero process status/stderr is
-the current CLI error boundary. Direct JSON is validated against the invoked
-tool's pinned schema. Plaintext success is accepted only for pinned macOS
-`set_value`, using source-derived success grammars bound to the requested
-integer element index. `click` requires structured success evidence and treats
+`--socket`; it does not expose the historical `--raw`, `--compact`, or
+`--no-daemon` flags. Nonzero process status/stderr is the current CLI error
+boundary. Direct JSON is validated against the invoked tool's pinned schema.
+Plaintext success is accepted only for pinned macOS `set_value`, using
+source-derived success grammars bound to the requested integer element index.
+`click` requires structured success evidence and treats
 `effect:"suspected_noop"` as a semantic soft failure. A raw MCP envelope may be
 unwrapped only as an exact, bounded compatibility input for sanitized
 historical fixtures and is validated against an envelope-specific tool schema.
@@ -345,43 +345,57 @@ requires `is_on_screen=true` and layer 0, rejects an explicit false
 `on_current_space`, prefers explicit true when a future release supplies it,
 and records when the pinned-version on-screen fallback was used.
 
+The configured CLI is resolved once to a canonical absolute regular executable
+and pinned by byte SHA-256, full codesign digest, Developer ID, Team ID, and
+exact version output. The daemon is launched with the verified absolute app
+path, never `open -a`. Before launch, the adapter snapshots process instances
+for the verified daemon executable. Exactly one new signed PID,
+microsecond-resolution birth time, and executable must appear before the first
+status probe.
+
 After status becomes ready and before `check_permissions`, the adapter
-canonicalizes the selected Unix socket and runs
+canonicalizes the selected Unix socket, captures its device/inode, and runs
 `/usr/sbin/lsof -nP -Fpcn -a -U <socket>`. Exactly one `cua-driver` PID must
 hold the exact canonical socket. The adapter derives that PID's executable
-through the OS, requires it inside the already verified
-`CuaDriver.app/Contents/MacOS`, binds the PID plus executable, and reverifies
-the enclosing bundle's identity, content digest, and Developer ID signature.
+and microsecond-resolution birth time through the Apple-signed
+`/usr/bin/python3` system shim calling macOS `libproc`, requires it to match the
+provisional process instance, binds that instance plus the socket device/inode,
+and reverifies the bundle identity, content digest, and Developer ID signature.
 Only then may it call `check_permissions`; that RPC's `source` is corroboration
-only and must match the OS-derived executable. This proof is required in both
-owned-daemon and attach-to-existing modes because the name-based
-`open -a CuaDriver` launch contract and daemon self-attestation do not identify
-the process that answered the socket.
+only and must match the OS-derived executable.
 
-Owned mode first proves its selected socket path is absent, launches the app,
-and only then binds the OS-derived owner. A caller must use the distinct
-`attachSocket` option to intentionally connect to an existing socket. Generated
-owned sockets stay under the short system-temp `socketDirectory`; the
-potentially long artifact `runDir` is used for randomized screenshot scratch
-directories and never lengthens the macOS Unix-socket path.
+Pinned 0.12.6 opens a fresh Unix stream for each unauthenticated,
+line-delimited JSON request. It exposes neither transport authentication nor
+peer credentials, and its caller-selected `session_id` is lifecycle state, not
+authentication. Attach-to-existing mode is therefore disabled. Owned mode
+first proves its socket path is absent, launches the app, and only then binds
+the OS-derived owner. Before and after every `call` RPC, the adapter re-proves
+the exact socket device/inode, listener PID/birth-time/executable, and signed
+bundle. If any proof changes in flight, the response is discarded. Generated
+owned sockets stay under the short system-temp `socketDirectory`; their
+absolute UTF-8 path is capped at 103 bytes.
 
-`close()` may send `stop --socket` only for an adapter-started daemon after
-re-resolving the socket listener and requiring its PID and canonical executable
-to match the bound signed peer. A missing listener while that process remains
-alive, an ambiguous listener, or a replacement listener fails closed without
-stopping anything and retains ownership for retry. A zero-exit `stop` is not
-teardown proof: bounded polling must confirm that the bound PID is absent or
-reused and that no listener still matches the bound peer. If both were already
-absent or reused before stop, cleanup is already complete. Otherwise lingering
-or ambiguous state retains ownership so a later `close()` can retry.
+`close()` may send `stop --socket` only for the exact adapter-started process
+instance after re-proving the socket inode and listener identity. A missing
+listener while that process remains alive, an ambiguous listener, or a
+replacement listener/socket fails closed without stopping or deleting the
+replacement and retains ownership for retry. A zero-exit `stop` is not teardown
+proof: bounded polling must confirm no listener, the exact process absent or
+reused, and the socket path absent. If only the exact owned socket inode remains
+after its listener and process are gone, the adapter may unlink that inode and
+must re-prove `ENOENT`. Startup failures terminate only an unambiguous exact
+provisional instance; startup and cleanup errors are aggregated.
 
 Once `launch_app` returns a valid PID and bundle ID, the adapter immediately
-persists an owned-target record containing that PID, canonical staged app path,
-and digest. It polls `list_apps` and `list_windows` under a bounded readiness
-deadline. Any later preparation failure and every `close()` attempt re-prove
-that PID's current executable and exact bundle identity before signaling it.
-After `/bin/kill -KILL`, ownership is cleared only when the PID is absent or is
-demonstrably reused by a different executable. Target, screenshot, and daemon
+persists an owned-target record containing that PID, microsecond-resolution
+birth time, executable, canonical staged app path, and digest. It polls
+`list_apps` and `list_windows` under a bounded readiness deadline. Every
+visible-state, click, and set-value RPC re-proves the process instance before
+and after the request and discards an in-flight response if it changed. Any
+later preparation failure and every `close()` attempt re-prove that same
+instance and exact bundle identity before signaling it. Same-app PID reuse
+receives no action and is never killed. After `/bin/kill -KILL`, ownership is
+cleared only when the exact instance is absent or reused. Target and daemon
 cleanup failures are aggregated but retained independently so later `close()`
 calls retry only unfinished cleanup.
 
@@ -394,23 +408,22 @@ Adapter response normalization must hide CLI/MCP transport details from the
 scenario runner. It must expose:
 
 - stable visible text;
-- screenshot path or bytes from `get_window_state` in `som` mode, using its
-  MCP image block or `screenshot_out_file`; the separate `screenshot` tool is a
-  fallback for explicit raw capture;
+- canonical inline PNG bytes from `get_window_state` with
+  `screenshot_mime_type:"image/png"` and `screenshot_png_b64`;
 - element lookup by canonical pattern;
 - normalized action success/failure;
 - driver/version/capture metadata;
 - teardown status.
 
-Every `screenshot_out_file` is an exclusive empty 0600 regular file inside a
-fresh randomized 0700 directory under the run directory. The response is
-accepted only if the path remains the same inode and contains a nonzero fresh
-write. Screenshot decoding is pinned to qualified non-interlaced 8-bit RGB or
-RGBA PNGs and validates chunk bounds/order and CRC, sane IHDR dimensions, a
-hard decoded-byte ceiling before IDAT inflation, complete consumption of the
-concatenated IDAT zlib stream, exact scanline length and filter bytes, IEND, and
-absence of bytes after IEND. Failed scratch cleanup stays owned and is retried
-by `close()`.
+Filesystem screenshot paths are rejected, including same-UID substitution.
+The subprocess stdout cap is the maximum canonical base64 size plus 1 MiB of
+JSON overhead; both encoded and decoded image sizes are bounded. Screenshot
+decoding is pinned to qualified non-interlaced 8-bit RGB or RGBA PNGs and
+validates chunk bounds/order and CRC, sane IHDR dimensions, a hard decoded-byte
+ceiling before IDAT inflation, complete consumption of the concatenated IDAT
+zlib stream, exact scanline length and filter bytes, IEND, and absence of bytes
+after IEND. `tEXt`, `zTXt`, `iTXt`, and `iCCP` are forbidden so screenshot
+evidence is pixel-only.
 
 These capabilities were verified against the installed static-Mac CuaDriver:
 `get_window_state` returns a native screenshot image in `som` mode,

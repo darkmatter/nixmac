@@ -1,16 +1,6 @@
 import { spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import {
-  chmod,
-  lstat,
-  mkdtemp,
-  open as openFile,
-  readFile,
-  readdir,
-  realpath,
-  rm,
-  unlink,
-} from "node:fs/promises";
+import { lstat, readFile, readdir, realpath, unlink } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,6 +15,7 @@ import { normalizeActionResult, normalizeVisibleState } from "./runtime-contract
 const DEFAULT_TIMEOUT_MS = 90_000;
 const DEFAULT_MAX_OUTPUT_BYTES = 1_048_576;
 const DEFAULT_MAX_IMAGE_BYTES = 25 * 1_048_576;
+const INLINE_SCREENSHOT_JSON_OVERHEAD_BYTES = 1_048_576;
 const DEFAULT_KILL_GRACE_MS = 1_000;
 const PINNED_CURRENT_SPACE_FALLBACK_VERSION = "0.12.6";
 const PINNED_METADATA_PATH = fileURLToPath(
@@ -33,6 +24,78 @@ const PINNED_METADATA_PATH = fileURLToPath(
 const PNG_SIGNATURE = Buffer.from("89504e470d0a1a0a", "hex");
 const PNG_MAX_DIMENSION = 16_384;
 const PNG_MAX_DECODED_BYTES = 100 * 1_048_576;
+const MACOS_PROCESS_INSTANCE_SCRIPT = String.raw`
+import ctypes
+import json
+import sys
+
+class ProcBsdInfo(ctypes.Structure):
+    _fields_ = [
+        ("pbi_flags", ctypes.c_uint32),
+        ("pbi_status", ctypes.c_uint32),
+        ("pbi_xstatus", ctypes.c_uint32),
+        ("pbi_pid", ctypes.c_uint32),
+        ("pbi_ppid", ctypes.c_uint32),
+        ("pbi_uid", ctypes.c_uint32),
+        ("pbi_gid", ctypes.c_uint32),
+        ("pbi_ruid", ctypes.c_uint32),
+        ("pbi_rgid", ctypes.c_uint32),
+        ("pbi_svuid", ctypes.c_uint32),
+        ("pbi_svgid", ctypes.c_uint32),
+        ("rfu_1", ctypes.c_uint32),
+        ("pbi_comm", ctypes.c_char * 16),
+        ("pbi_name", ctypes.c_char * 32),
+        ("pbi_nfiles", ctypes.c_uint32),
+        ("pbi_pgid", ctypes.c_uint32),
+        ("pbi_pjobc", ctypes.c_uint32),
+        ("e_tdev", ctypes.c_uint32),
+        ("e_tpgid", ctypes.c_uint32),
+        ("pbi_nice", ctypes.c_int32),
+        ("pbi_start_tvsec", ctypes.c_uint64),
+        ("pbi_start_tvusec", ctypes.c_uint64),
+    ]
+
+libproc = ctypes.CDLL("/usr/lib/libproc.dylib", use_errno=True)
+
+def process_instance(pid):
+    info = ProcBsdInfo()
+    size = ctypes.sizeof(info)
+    if libproc.proc_pidinfo(pid, 3, 0, ctypes.byref(info), size) != size:
+        return None
+    path_buffer = ctypes.create_string_buffer(4096)
+    path_length = libproc.proc_pidpath(pid, path_buffer, len(path_buffer))
+    if path_length <= 0:
+        return None
+    return {
+        "executable": path_buffer.value.decode("utf-8"),
+        "pid": int(info.pbi_pid),
+        "start_sec": int(info.pbi_start_tvsec),
+        "start_usec": int(info.pbi_start_tvusec),
+    }
+
+mode = sys.argv[1]
+if mode == "one":
+    value = process_instance(int(sys.argv[2]))
+    if value is None:
+        sys.exit(3)
+    print(json.dumps(value, separators=(",", ":")))
+elif mode == "list":
+    executable = sys.argv[2]
+    needed = libproc.proc_listpids(1, 0, None, 0)
+    pids = (ctypes.c_int * max(1, needed // ctypes.sizeof(ctypes.c_int)))()
+    actual = libproc.proc_listpids(1, 0, pids, ctypes.sizeof(pids))
+    values = []
+    for pid in pids[:actual // ctypes.sizeof(ctypes.c_int)]:
+        if pid <= 0:
+            continue
+        value = process_instance(pid)
+        if value is not None and value["executable"] == executable:
+            values.append(value)
+    values.sort(key=lambda value: (value["pid"], value["start_sec"], value["start_usec"]))
+    print(json.dumps(values, separators=(",", ":")))
+else:
+    sys.exit(64)
+`;
 const PNG_CRC_TABLE = Uint32Array.from({ length: 256 }, (_, value) => {
   let crc = value;
   for (let bit = 0; bit < 8; bit += 1) {
@@ -307,6 +370,8 @@ export function validatePngScreenshot(bytes) {
         sawIend = true;
       } else if (type === "PLTE") {
         invalidPng("PLTE is not allowed by the qualified RGB/RGBA screenshot contract");
+      } else if (["tEXt", "zTXt", "iTXt", "iCCP"].includes(type)) {
+        invalidPng(`${type} is not allowed in pixel-only screenshot evidence`);
       } else if (type[0] === type[0].toUpperCase()) {
         invalidPng(`unknown critical PNG chunk ${type}`);
       }
@@ -612,6 +677,37 @@ async function defaultCanonicalPath(inputPath) {
   return realpath(inputPath);
 }
 
+async function defaultResolveExecutablePath(inputPath, processRunner) {
+  const requested = requireNonEmptyString(inputPath, "CuaDriver CLI path");
+  if (requested.includes(path.sep)) return realpath(requested);
+  const result = await processRunner.run("/usr/bin/which", [requested]);
+  return realpath(requireNonEmptyString(result.stdout.trim(), "resolved CuaDriver CLI path"));
+}
+
+async function defaultReadExecutableIdentity(executablePath, processRunner) {
+  const stats = await lstat(executablePath);
+  if (!stats.isFile() || (stats.mode & 0o111) === 0) {
+    throw new Error(`CuaDriver CLI is not a regular executable: ${executablePath}`);
+  }
+  const bytes = await readFile(executablePath);
+  const digestSha256 = createHash("sha256").update(bytes).digest("hex");
+  await processRunner.run("/usr/bin/codesign", [
+    "--verify",
+    "--strict",
+    "--verbose=2",
+    executablePath,
+  ]);
+  const codesignResult = await processRunner.run("/usr/bin/codesign", [
+    "-d",
+    "--verbose=4",
+    executablePath,
+  ]);
+  return {
+    digestSha256,
+    ...parseCuaCodesignIdentity(`${codesignResult.stdout}\n${codesignResult.stderr}`),
+  };
+}
+
 async function defaultRemoveFile(filePath) {
   try {
     await unlink(filePath);
@@ -670,21 +766,87 @@ async function defaultReadBundleIdentity(
   };
 }
 
-async function defaultQueryPidExecutable(pid, processRunner) {
+function parseProcessInstance(value, expectedPid = 0) {
+  if (
+    !isPlainObject(value) ||
+    !hasExactKeys(value, ["executable", "pid", "start_sec", "start_usec"]) ||
+    typeof value.executable !== "string" ||
+    value.executable === "" ||
+    !Number.isInteger(value.pid) ||
+    value.pid <= 0 ||
+    !Number.isSafeInteger(value.start_sec) ||
+    value.start_sec <= 0 ||
+    !Number.isInteger(value.start_usec) ||
+    value.start_usec < 0 ||
+    value.start_usec >= 1_000_000 ||
+    (expectedPid > 0 && value.pid !== expectedPid)
+  ) {
+    throw new Error("CuaDriver macOS process-instance helper returned malformed JSON");
+  }
+  return Object.freeze({
+    birthMarker: `${value.start_sec}.${String(value.start_usec).padStart(6, "0")}`,
+    executable: value.executable,
+    pid: value.pid,
+    startSec: value.start_sec,
+    startUsec: value.start_usec,
+  });
+}
+
+async function defaultQueryProcessInstance(pid, processRunner) {
   let result;
   try {
-    result = await processRunner.run("/bin/ps", ["-p", String(pid), "-o", "comm="]);
+    result = await processRunner.run("/usr/bin/python3", [
+      "-c",
+      MACOS_PROCESS_INSTANCE_SCRIPT,
+      "one",
+      String(pid),
+    ]);
   } catch (error) {
-    if (error instanceof CuaProcessError && error.code === 1) {
+    if (error instanceof CuaProcessError && error.code === 3) {
       const gone = new Error(`pid ${pid} no longer exists`);
       gone.code = "ESRCH";
       throw gone;
     }
     throw error;
   }
-  const executable = result.stdout.trim();
-  if (!executable) throw new Error(`could not resolve executable for pid ${pid}`);
-  return executable;
+  let decoded;
+  try {
+    decoded = JSON.parse(result.stdout);
+  } catch {
+    throw new Error("CuaDriver macOS process-instance helper returned malformed JSON");
+  }
+  const instance = parseProcessInstance(decoded, pid);
+  return Object.freeze({
+    ...instance,
+    executable: await realpath(instance.executable),
+  });
+}
+
+async function defaultListProcessInstances(executablePath, processRunner) {
+  const result = await processRunner.run("/usr/bin/python3", [
+    "-c",
+    MACOS_PROCESS_INSTANCE_SCRIPT,
+    "list",
+    executablePath,
+  ]);
+  let decoded;
+  try {
+    decoded = JSON.parse(result.stdout);
+  } catch {
+    throw new Error("CuaDriver macOS process-instance helper returned malformed JSON");
+  }
+  if (!Array.isArray(decoded)) {
+    throw new Error("CuaDriver macOS process-instance helper returned malformed JSON");
+  }
+  return Promise.all(
+    decoded.map(async (value) => {
+      const instance = parseProcessInstance(value);
+      return Object.freeze({
+        ...instance,
+        executable: await realpath(instance.executable),
+      });
+    }),
+  );
 }
 
 function assertIdentity(actual, expected, label) {
@@ -710,6 +872,14 @@ function requireAbsoluteCanonicalInput(appPath, canonicalPath) {
 function pathIsWithin(filePath, directory) {
   const relative = path.relative(directory, filePath);
   return relative !== "" && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+}
+
+function sameProcessInstance(left, right) {
+  return (
+    left?.pid === right?.pid &&
+    left?.birthMarker === right?.birthMarker &&
+    left?.executable === right?.executable
+  );
 }
 
 export function parseCuaSocketOwner(output, canonicalSocketPath) {
@@ -959,6 +1129,11 @@ export class CuaDriver {
     if (attachSocket !== "" && options.socketPath !== undefined) {
       throw new TypeError("CuaDriver attachSocket conflicts with owned socketPath");
     }
+    if (attachSocket !== "") {
+      throw new Error(
+        "CuaDriver attach mode is disabled because upstream 0.12.6 has no authenticated socket transport",
+      );
+    }
     const runDir = options.runDir ?? os.tmpdir();
     const socketDirectory = options.socketDirectory ?? os.tmpdir();
     this.runDir = requireNonEmptyString(runDir, "CuaDriver runDir");
@@ -985,10 +1160,8 @@ export class CuaDriver {
     this.processRunner = options.processRunner ?? createCuaProcessRunner();
     const runId = options.runId ?? randomUUID();
     this.runId = requireNonEmptyString(runId, "CuaDriver runId").replace(/[^a-zA-Z0-9._-]/g, "-");
-    this.attachMode = attachSocket !== "";
-    if (this.attachMode) {
-      this.socketPath = requireNonEmptyString(attachSocket, "CuaDriver attach socket");
-    } else if (options.socketPath !== undefined) {
+    this.attachMode = false;
+    if (options.socketPath !== undefined) {
       this.socketPath = requireNonEmptyString(options.socketPath, "CuaDriver owned socketPath");
     } else {
       this.socketPath = path.join(this.socketDirectory, `nixmac-cua-${this.runId}.sock`);
@@ -996,7 +1169,13 @@ export class CuaDriver {
     if (!path.isAbsolute(this.socketPath) || path.normalize(this.socketPath) !== this.socketPath) {
       throw new Error("CuaDriver socket path must be an absolute normalized path");
     }
+    if (Buffer.byteLength(this.socketPath, "utf8") > 103) {
+      throw new Error("CuaDriver Unix socket path exceeds 103 UTF-8 bytes");
+    }
     this.maxImageBytes = options.maxImageBytes ?? DEFAULT_MAX_IMAGE_BYTES;
+    if (!Number.isInteger(this.maxImageBytes) || this.maxImageBytes <= 0) {
+      throw new TypeError("CuaDriver maxImageBytes must be a positive integer");
+    }
     this.metadata = options.metadata ?? pinnedCuaDriverMetadata;
     this.statusAttempts = options.statusAttempts ?? 20;
     this.statusPollMs = options.statusPollMs ?? 250;
@@ -1008,19 +1187,17 @@ export class CuaDriver {
     this.targetExitPollMs = options.targetExitPollMs ?? 250;
     this.dependencies = {
       canonicalPath: defaultCanonicalPath,
-      createScratchDirectory: async (prefix) => {
-        const directory = await mkdtemp(prefix);
-        await chmod(directory, 0o700);
-        return directory;
-      },
       lstat,
-      openExclusiveFile: (filePath) => openFile(filePath, "wx+", 0o600),
-      queryPidExecutable: (pid) => defaultQueryPidExecutable(pid, this.processRunner),
+      listProcessInstances: (executablePath) =>
+        defaultListProcessInstances(executablePath, this.processRunner),
+      queryProcessInstance: (pid) => defaultQueryProcessInstance(pid, this.processRunner),
       readBundleIdentity: (appPath, options) =>
         defaultReadBundleIdentity(appPath, this.processRunner, options),
-      readFile,
-      removeDirectory: (directory) => rm(directory, { force: true, recursive: true }),
+      readExecutableIdentity: (executablePath) =>
+        defaultReadExecutableIdentity(executablePath, this.processRunner),
       removeFile: defaultRemoveFile,
+      resolveExecutablePath: (inputPath) =>
+        defaultResolveExecutablePath(inputPath, this.processRunner),
       sleep: (delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs)),
       ...options.dependencies,
     };
@@ -1028,10 +1205,10 @@ export class CuaDriver {
     this.startedDaemon = false;
     this.daemonPeer = null;
     this.canonicalDriverAppPath = "";
+    this.canonicalDaemonExecutablePath = "";
     this.ownedTarget = null;
     this.boundTarget = null;
     this.latestSnapshot = null;
-    this.pendingScratchDirectories = new Set();
     this.turnId = 0;
   }
 
@@ -1039,18 +1216,87 @@ export class CuaDriver {
     return this.processRunner.run(this.cliPath, args, options);
   }
 
-  async _call(tool, input, { screenshotOutFile = "" } = {}) {
-    const args = ["call", tool, JSON.stringify(input)];
-    if (screenshotOutFile) {
-      args.push("--screenshot-out-file", screenshotOutFile);
+  async _assertBoundDaemonEndpoint(stage) {
+    const boundPeer = this.daemonPeer;
+    if (!this.startedDaemon || !boundPeer?.socketIdentity) {
+      throw new Error(`CuaDriver has no fully bound owned daemon before ${stage}`);
     }
+    const socketIdentity = await this._readSocketIdentity();
+    if (
+      socketIdentity.dev !== boundPeer.socketIdentity.dev ||
+      socketIdentity.ino !== boundPeer.socketIdentity.ino
+    ) {
+      throw new Error(`CuaDriver daemon socket object changed during RPC ${stage}`);
+    }
+    const listener = await this._resolveSocketListener();
+    if (!sameProcessInstance(listener, boundPeer)) {
+      throw new Error(`CuaDriver daemon listener process instance changed during RPC ${stage}`);
+    }
+    await this._assertVerifiedDaemonPeer(listener);
+  }
+
+  async _call(tool, input, { maxOutputBytes } = {}) {
+    const args = ["call", tool, JSON.stringify(input)];
     args.push("--socket", this.socketPath);
-    const result = await this._run(args);
-    return parseCuaCliOutput(result.stdout);
+    await this._assertBoundDaemonEndpoint(`before ${tool}`);
+    let result;
+    let operationError;
+    try {
+      result = await this._run(args, maxOutputBytes ? { maxOutputBytes } : undefined);
+    } catch (error) {
+      operationError = error;
+    }
+    let postconditionError;
+    try {
+      await this._assertBoundDaemonEndpoint(`after ${tool}`);
+    } catch (error) {
+      postconditionError = error;
+    }
+    if (operationError && postconditionError) {
+      throw new AggregateError(
+        [operationError, postconditionError],
+        `CuaDriver ${tool} failed and daemon endpoint postcondition failed`,
+      );
+    }
+    if (postconditionError) throw postconditionError;
+    if (operationError) throw operationError;
+    return parseCuaCliOutput(result.stdout, {
+      maxBytes: maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES,
+    });
   }
 
   async _callStructured(tool, input, options) {
     return requireStructured(await this._call(tool, input, options), tool);
+  }
+
+  async _callForTarget(target, tool, input, options) {
+    await this._assertOwnedTargetProcess(target);
+    let result;
+    let operationError;
+    try {
+      result = await this._call(tool, input, options);
+    } catch (error) {
+      operationError = error;
+    }
+    let postconditionError;
+    try {
+      await this._assertOwnedTargetProcess(target);
+    } catch (error) {
+      postconditionError = error;
+    }
+    if (operationError && postconditionError) {
+      throw new AggregateError(
+        [operationError, postconditionError],
+        `CuaDriver ${tool} failed and target process-instance postcondition failed`,
+      );
+    }
+    if (postconditionError) throw postconditionError;
+    if (operationError) throw operationError;
+    return result;
+  }
+
+  async _callStructuredForTarget(target, tool, input, options) {
+    return requireStructured(await this._callForTarget(target, tool, input, options), tool);
   }
 
   async _pollStatus() {
@@ -1115,21 +1361,43 @@ export class CuaDriver {
     }
     if (allowMissing && lsofResult.stdout.trim() === "") return null;
     const socketOwner = parseCuaSocketOwner(lsofResult.stdout, canonicalSocketPath);
-    const executable = await this.dependencies.canonicalPath(
-      await this.dependencies.queryPidExecutable(socketOwner.pid),
-    );
+    const processInstance = await this.dependencies.queryProcessInstance(socketOwner.pid);
+    const executable = await this.dependencies.canonicalPath(processInstance.executable);
     return Object.freeze({
+      birthMarker: processInstance.birthMarker,
       executable,
       pid: socketOwner.pid,
       socketPath: canonicalSocketPath,
+      startSec: processInstance.startSec,
+      startUsec: processInstance.startUsec,
     });
   }
 
-  async _assertVerifiedDaemonPeer(peer) {
+  async _readSocketIdentity({ allowMissing = false } = {}) {
+    let stats;
+    try {
+      stats = await this.dependencies.lstat(this.socketPath);
+    } catch (error) {
+      if (allowMissing && error?.code === "ENOENT") return null;
+      throw error;
+    }
     if (
-      !this.canonicalDriverAppPath ||
-      !pathIsWithin(peer.executable, path.join(this.canonicalDriverAppPath, "Contents", "MacOS"))
+      stats.isSymbolicLink() ||
+      !stats.isSocket() ||
+      !Number.isInteger(stats.dev) ||
+      !Number.isInteger(stats.ino)
     ) {
+      throw new Error("CuaDriver owned socket path is not a stable Unix socket object");
+    }
+    const canonicalSocketPath = await this.dependencies.canonicalPath(this.socketPath);
+    if (canonicalSocketPath !== this.socketPath) {
+      throw new Error(`CuaDriver socket path must be canonical: expected ${canonicalSocketPath}`);
+    }
+    return Object.freeze({ dev: stats.dev, ino: stats.ino });
+  }
+
+  async _assertVerifiedDaemonPeer(peer) {
+    if (!this.canonicalDriverAppPath || peer.executable !== this.canonicalDaemonExecutablePath) {
       throw new Error("CuaDriver socket owner executable is outside the verified CuaDriver.app");
     }
     const identity = await this.dependencies.readBundleIdentity(this.canonicalDriverAppPath, {
@@ -1140,19 +1408,136 @@ export class CuaDriver {
 
   async _daemonProcessState(peer = this.daemonPeer) {
     try {
-      const executable = await this.dependencies.canonicalPath(
-        await this.dependencies.queryPidExecutable(peer.pid),
-      );
-      return Object.freeze({ exists: true, executable });
+      const instance = await this.dependencies.queryProcessInstance(peer.pid);
+      const executable = await this.dependencies.canonicalPath(instance.executable);
+      return Object.freeze({ ...instance, exists: true, executable });
     } catch (error) {
-      if (error?.code === "ESRCH") return Object.freeze({ exists: false, executable: "" });
+      if (error?.code === "ESRCH") {
+        return Object.freeze({
+          birthMarker: "",
+          executable: "",
+          exists: false,
+          pid: peer.pid,
+          startSec: 0,
+          startUsec: 0,
+        });
+      }
       throw error;
     }
+  }
+
+  async _pollNewDaemonInstance(previousInstances) {
+    const previousKeys = new Set(
+      previousInstances.map(
+        (instance) => `${instance.pid}:${instance.birthMarker}:${instance.executable}`,
+      ),
+    );
+    let lastError;
+    for (let attempt = 1; attempt <= this.statusAttempts; attempt += 1) {
+      try {
+        const currentInstances = await this.dependencies.listProcessInstances(
+          this.canonicalDaemonExecutablePath,
+        );
+        const newInstances = currentInstances.filter(
+          (instance) =>
+            !previousKeys.has(`${instance.pid}:${instance.birthMarker}:${instance.executable}`),
+        );
+        if (newInstances.length > 1) {
+          throw new Error("CuaDriver launch created multiple new daemon process instances");
+        }
+        if (newInstances.length === 1) {
+          const candidate = await this.dependencies.queryProcessInstance(newInstances[0].pid);
+          const executable = await this.dependencies.canonicalPath(candidate.executable);
+          const provisional = Object.freeze({
+            ...candidate,
+            executable,
+            socketIdentity: null,
+            socketPath: this.socketPath,
+          });
+          if (!sameProcessInstance(provisional, { ...newInstances[0], executable })) {
+            throw new Error("CuaDriver new daemon process instance changed during capture");
+          }
+          await this._assertVerifiedDaemonPeer(provisional);
+          return provisional;
+        }
+        lastError = new Error("CuaDriver launch has not produced a new daemon process");
+      } catch (error) {
+        lastError = error;
+        if (/multiple new daemon process instances/.test(error.message)) throw error;
+      }
+      if (attempt < this.statusAttempts) {
+        await this.dependencies.sleep(this.statusPollMs);
+      }
+    }
+    throw new Error(
+      `CuaDriver did not produce exactly one new daemon process instance: ${actionErrorText(
+        lastError,
+      )}`,
+    );
   }
 
   _clearDaemonOwnership() {
     this.startedDaemon = false;
     this.daemonPeer = null;
+  }
+
+  async _waitForOwnedDaemonExit(boundPeer) {
+    for (let attempt = 1; attempt <= this.daemonTeardownAttempts; attempt += 1) {
+      const processState = await this._daemonProcessState(boundPeer);
+      if (!processState.exists || !sameProcessInstance(processState, boundPeer)) return;
+      if (attempt < this.daemonTeardownAttempts) {
+        await this.dependencies.sleep(this.daemonTeardownPollMs);
+      }
+    }
+    throw new Error(
+      `CuaDriver bound daemon did not terminate after ${this.daemonTeardownAttempts} checks`,
+    );
+  }
+
+  async _removeExactOwnedSocket(socketIdentity) {
+    const before = await this._readSocketIdentity({ allowMissing: true });
+    if (!before) return;
+    if (before.dev !== socketIdentity.dev || before.ino !== socketIdentity.ino) {
+      throw new Error("CuaDriver owned socket inode was replaced before cleanup");
+    }
+    await this.dependencies.removeFile(this.socketPath);
+    const after = await this._readSocketIdentity({ allowMissing: true });
+    if (after) {
+      throw new Error("CuaDriver owned socket path still exists after exact-inode cleanup");
+    }
+  }
+
+  async _cleanupProvisionalDaemon(boundPeer) {
+    let capturedSocketIdentity = null;
+    const socketIdentity = await this._readSocketIdentity({ allowMissing: true });
+    if (socketIdentity) {
+      const listener = await this._resolveSocketListener({ allowMissing: true });
+      if (!listener || !sameProcessInstance(listener, boundPeer)) {
+        throw new Error("CuaDriver provisional daemon socket is contaminated");
+      }
+      capturedSocketIdentity = socketIdentity;
+    }
+    const processState = await this._daemonProcessState(boundPeer);
+    if (processState.exists && sameProcessInstance(processState, boundPeer)) {
+      await this.processRunner.run("/bin/kill", ["-TERM", String(boundPeer.pid)]);
+      await this._waitForOwnedDaemonExit(boundPeer);
+    }
+    const postListener = await this._resolveSocketListener({ allowMissing: true });
+    if (postListener) {
+      throw new Error("CuaDriver provisional daemon listener remains after termination");
+    }
+    const remainingSocket = await this._readSocketIdentity({ allowMissing: true });
+    if (remainingSocket) {
+      if (
+        !capturedSocketIdentity ||
+        remainingSocket.dev !== capturedSocketIdentity.dev ||
+        remainingSocket.ino !== capturedSocketIdentity.ino
+      ) {
+        throw new Error("CuaDriver provisional daemon socket was replaced during cleanup");
+      }
+      await this._removeExactOwnedSocket(capturedSocketIdentity);
+    }
+    this._clearDaemonOwnership();
   }
 
   async _cleanupOwnedDaemon() {
@@ -1161,10 +1546,30 @@ export class CuaDriver {
     if (!boundPeer) {
       throw new Error("CuaDriver cannot stop an owned daemon without a bound OS-derived peer");
     }
+    if (!boundPeer.socketIdentity) {
+      await this._cleanupProvisionalDaemon(boundPeer);
+      return;
+    }
+    const currentSocketIdentity = await this._readSocketIdentity({ allowMissing: true });
+    if (!currentSocketIdentity) {
+      const processState = await this._daemonProcessState(boundPeer);
+      if (!processState.exists || !sameProcessInstance(processState, boundPeer)) {
+        this._clearDaemonOwnership();
+        return;
+      }
+      throw new Error("CuaDriver bound daemon pid is still alive without its socket");
+    }
+    if (
+      currentSocketIdentity.dev !== boundPeer.socketIdentity.dev ||
+      currentSocketIdentity.ino !== boundPeer.socketIdentity.ino
+    ) {
+      throw new Error("CuaDriver socket object changed before stop");
+    }
     const currentListener = await this._resolveSocketListener({ allowMissing: true });
     if (!currentListener) {
       const processState = await this._daemonProcessState(boundPeer);
-      if (!processState.exists || processState.executable !== boundPeer.executable) {
+      if (!processState.exists || !sameProcessInstance(processState, boundPeer)) {
+        await this._removeExactOwnedSocket(boundPeer.socketIdentity);
         this._clearDaemonOwnership();
         return;
       }
@@ -1172,6 +1577,7 @@ export class CuaDriver {
     }
     if (
       currentListener.pid !== boundPeer.pid ||
+      currentListener.birthMarker !== boundPeer.birthMarker ||
       currentListener.executable !== boundPeer.executable
     ) {
       throw new Error("CuaDriver socket listener changed before stop");
@@ -1183,18 +1589,33 @@ export class CuaDriver {
     for (let attempt = 1; attempt <= this.daemonTeardownAttempts; attempt += 1) {
       let listener;
       let processState;
+      let socketIdentity;
       try {
         listener = await this._resolveSocketListener({ allowMissing: true });
         processState = await this._daemonProcessState(boundPeer);
+        socketIdentity = await this._readSocketIdentity({ allowMissing: true });
         lastProofError = null;
       } catch (error) {
         lastProofError = error;
       }
       if (!lastProofError) {
-        const sameListener =
-          listener?.pid === boundPeer.pid && listener?.executable === boundPeer.executable;
-        const sameProcess = processState.exists && processState.executable === boundPeer.executable;
-        if (!sameListener && !sameProcess) {
+        if (listener && !sameProcessInstance(listener, boundPeer)) {
+          throw new Error("CuaDriver replacement listener contamination after stop");
+        }
+        if (
+          socketIdentity &&
+          (socketIdentity.dev !== boundPeer.socketIdentity.dev ||
+            socketIdentity.ino !== boundPeer.socketIdentity.ino)
+        ) {
+          throw new Error("CuaDriver replacement socket contamination after stop");
+        }
+        const sameListener = listener !== null;
+        const sameProcess = processState.exists && sameProcessInstance(processState, boundPeer);
+        if (!sameListener && !sameProcess && socketIdentity) {
+          await this._removeExactOwnedSocket(boundPeer.socketIdentity);
+          socketIdentity = null;
+        }
+        if (!sameListener && !sameProcess && !socketIdentity) {
           this._clearDaemonOwnership();
           return;
         }
@@ -1204,7 +1625,7 @@ export class CuaDriver {
       }
     }
     throw new Error(
-      `CuaDriver bound daemon did not terminate after ${this.daemonTeardownAttempts} checks${
+      `CuaDriver bound daemon or socket did not terminate after ${this.daemonTeardownAttempts} checks${
         lastProofError ? `: ${actionErrorText(lastProofError)}` : ""
       }`,
     );
@@ -1212,6 +1633,21 @@ export class CuaDriver {
 
   async connect() {
     if (this.connected) return;
+    this.cliPath = await this.dependencies.resolveExecutablePath(this.cliPath);
+    if (!path.isAbsolute(this.cliPath) || path.normalize(this.cliPath) !== this.cliPath) {
+      throw new Error("CuaDriver CLI must resolve to an absolute normalized path");
+    }
+    const cliIdentity = await this.dependencies.readExecutableIdentity(this.cliPath);
+    assertIdentity(
+      cliIdentity,
+      {
+        digestSha256: this.metadata.cli.sha256,
+        codeSigningDigestSha256: this.metadata.cli.code_signing_digest_sha256,
+        developerId: this.metadata.cli.developer_id,
+        teamIdentifier: this.metadata.cli.team_identifier,
+      },
+      "CuaDriver CLI",
+    );
     const versionResult = await this._run(["--version"]);
     const actualVersion = versionResult.stdout.trim();
     if (actualVersion !== this.metadata.cli.version_output) {
@@ -1221,35 +1657,43 @@ export class CuaDriver {
     }
     this.canonicalDriverAppPath = await this.dependencies.canonicalPath(this.driverAppPath);
     requireAbsoluteCanonicalInput(this.driverAppPath, this.canonicalDriverAppPath);
+    this.canonicalDaemonExecutablePath = await this.dependencies.canonicalPath(
+      path.join(this.canonicalDriverAppPath, "Contents", "MacOS", "cua-driver"),
+    );
     const appIdentity = await this.dependencies.readBundleIdentity(this.canonicalDriverAppPath, {
       requireDeveloperSigningIdentity: true,
     });
     this._assertPinnedDriverIdentity(appIdentity);
 
     try {
-      if (!this.attachMode) {
-        try {
-          await this.dependencies.lstat(this.socketPath);
-          throw new Error(`CuaDriver owned socket path already exists: ${this.socketPath}`);
-        } catch (error) {
-          if (error?.code !== "ENOENT") throw error;
-        }
-        await this.processRunner.run("/usr/bin/open", [
-          "-n",
-          "-g",
-          "-a",
-          "CuaDriver",
-          "--args",
-          "serve",
-          "--socket",
-          this.socketPath,
-        ]);
-        this.startedDaemon = true;
+      try {
+        await this.dependencies.lstat(this.socketPath);
+        throw new Error(`CuaDriver owned socket path already exists: ${this.socketPath}`);
+      } catch (error) {
+        if (error?.code !== "ENOENT") throw error;
       }
+      const previousDaemonInstances = await this.dependencies.listProcessInstances(
+        this.canonicalDaemonExecutablePath,
+      );
+      await this.processRunner.run("/usr/bin/open", [
+        "-n",
+        "-g",
+        this.canonicalDriverAppPath,
+        "--args",
+        "serve",
+        "--socket",
+        this.socketPath,
+      ]);
+      this.startedDaemon = true;
+      this.daemonPeer = await this._pollNewDaemonInstance(previousDaemonInstances);
       await this._pollStatus();
+      const socketIdentity = await this._readSocketIdentity();
       const socketListener = await this._resolveSocketListener();
+      if (!sameProcessInstance(socketListener, this.daemonPeer)) {
+        throw new Error("CuaDriver socket listener does not match the launched daemon instance");
+      }
       await this._assertVerifiedDaemonPeer(socketListener);
-      this.daemonPeer = socketListener;
+      this.daemonPeer = Object.freeze({ ...socketListener, socketIdentity });
       const permissions = await this._callStructured("check_permissions", {
         prompt: false,
       });
@@ -1287,9 +1731,14 @@ export class CuaDriver {
       if (this.startedDaemon) {
         try {
           await this.close();
-        } catch {}
-      } else if (this.attachMode) {
-        this.daemonPeer = null;
+        } catch (cleanupError) {
+          throw new AggregateError(
+            [error, cleanupError],
+            `CuaDriver startup failed and exact daemon cleanup failed: ${actionErrorText(
+              error,
+            )}; ${actionErrorText(cleanupError)}`,
+          );
+        }
       }
       throw error;
     }
@@ -1339,8 +1788,15 @@ export class CuaDriver {
 
   async _assertOwnedTargetProcess(target = this.ownedTarget) {
     if (!target) throw new Error("CuaDriver has no owned target process");
-    const executable = await this.dependencies.queryPidExecutable(target.pid);
-    const canonicalExecutable = await this.dependencies.canonicalPath(executable);
+    const instance = await this.dependencies.queryProcessInstance(target.pid);
+    const canonicalExecutable = await this.dependencies.canonicalPath(instance.executable);
+    if (
+      instance.pid !== target.pid ||
+      instance.birthMarker !== target.birthMarker ||
+      canonicalExecutable !== target.executable
+    ) {
+      throw new Error(`CuaDriver target process instance changed for pid ${target.pid}`);
+    }
     if (!pathIsWithin(canonicalExecutable, path.join(target.appPath, "Contents", "MacOS"))) {
       throw new Error(
         `refusing cleanup for pid ${target.pid}: executable is outside the owned target bundle`,
@@ -1350,7 +1806,7 @@ export class CuaDriver {
     if (identity.bundleId !== target.appBundleId || identity.digestSha256 !== target.digestSha256) {
       throw new Error(`refusing cleanup for pid ${target.pid}: owned target identity changed`);
     }
-    return Object.freeze({ executable: canonicalExecutable, identity });
+    return Object.freeze({ ...instance, executable: canonicalExecutable, identity });
   }
 
   _clearOwnedTarget(target) {
@@ -1362,8 +1818,9 @@ export class CuaDriver {
   async _cleanupOwnedTarget() {
     const target = this.ownedTarget;
     if (!target) return;
+    let currentInstance;
     try {
-      await this._assertOwnedTargetProcess(target);
+      currentInstance = await this.dependencies.queryProcessInstance(target.pid);
     } catch (error) {
       if (error?.code === "ESRCH") {
         this._clearOwnedTarget(target);
@@ -1371,29 +1828,39 @@ export class CuaDriver {
       }
       throw error;
     }
+    const currentExecutable = await this.dependencies.canonicalPath(currentInstance.executable);
+    if (
+      currentInstance.birthMarker !== target.birthMarker ||
+      currentExecutable !== target.executable
+    ) {
+      this._clearOwnedTarget(target);
+      return;
+    }
+    await this._assertOwnedTargetProcess(target);
     await this.processRunner.run("/bin/kill", ["-KILL", String(target.pid)]);
-    let stillOwnedExecutable = "";
+    let stillOwned = false;
     for (let attempt = 1; attempt <= this.targetExitAttempts; attempt += 1) {
+      let instance;
       try {
-        stillOwnedExecutable = await this.dependencies.canonicalPath(
-          await this.dependencies.queryPidExecutable(target.pid),
-        );
+        instance = await this.dependencies.queryProcessInstance(target.pid);
       } catch (error) {
         if (error?.code === "ESRCH") {
-          stillOwnedExecutable = "";
+          stillOwned = false;
           break;
         }
         throw error;
       }
-      if (!pathIsWithin(stillOwnedExecutable, path.join(target.appPath, "Contents", "MacOS"))) {
-        stillOwnedExecutable = "";
+      const executable = await this.dependencies.canonicalPath(instance.executable);
+      if (instance.birthMarker !== target.birthMarker || executable !== target.executable) {
+        stillOwned = false;
         break;
       }
+      stillOwned = true;
       if (attempt < this.targetExitAttempts) {
         await this.dependencies.sleep(this.targetExitPollMs);
       }
     }
-    if (stillOwnedExecutable) {
+    if (stillOwned) {
       throw new Error(
         `owned target pid ${target.pid} did not exit after ${this.targetExitAttempts} checks`,
       );
@@ -1439,11 +1906,20 @@ export class CuaDriver {
       );
     }
     const pid = launched.pid;
+    const launchedInstance = await this.dependencies.queryProcessInstance(pid);
+    const launchedExecutable = await this.dependencies.canonicalPath(launchedInstance.executable);
+    if (!pathIsWithin(launchedExecutable, path.join(canonicalAppPath, "Contents", "MacOS"))) {
+      throw new Error(`CuaDriver launched pid ${pid} outside the staged target bundle`);
+    }
     this.ownedTarget = Object.freeze({
       appBundleId: bundleId,
       appPath: canonicalAppPath,
+      birthMarker: launchedInstance.birthMarker,
       digestSha256: preflightIdentity.digestSha256,
+      executable: launchedExecutable,
       pid,
+      startSec: launchedInstance.startSec,
+      startUsec: launchedInstance.startUsec,
     });
     try {
       let selected;
@@ -1479,8 +1955,12 @@ export class CuaDriver {
       this.boundTarget = Object.freeze({
         appBundleId: bundleId,
         appPath: canonicalAppPath,
+        birthMarker: launchedInstance.birthMarker,
         digestSha256: preflightIdentity.digestSha256,
+        executable: launchedExecutable,
         pid,
+        startSec: launchedInstance.startSec,
+        startUsec: launchedInstance.startUsec,
         windowId: selected.window.window_id,
         currentSpaceEvidence: selected.currentSpaceEvidence,
       });
@@ -1512,120 +1992,47 @@ export class CuaDriver {
     return this.boundTarget;
   }
 
-  async _createScreenshotArtifact() {
-    const directory = await this.dependencies.createScratchDirectory(
-      path.join(this.runDir, `nixmac-cua-${this.runId}-state-`),
-    );
-    this.pendingScratchDirectories.add(directory);
-    const screenshotPath = path.join(directory, "screenshot.png");
-    let handle;
-    try {
-      handle = await this.dependencies.openExclusiveFile(screenshotPath);
-      const stats = await handle.stat();
-      if (!stats.isFile() || (stats.mode & 0o777) !== 0o600 || stats.size !== 0) {
-        throw new Error(
-          "CuaDriver screenshot artifact was not created as an empty 0600 regular file",
-        );
-      }
-      return { directory, handle, initialStats: stats, screenshotPath };
-    } catch (setupError) {
-      let cleanupError;
-      try {
-        await handle?.close();
-      } catch (error) {
-        cleanupError = error;
-      }
-      try {
-        await this._cleanupScratchDirectory(directory);
-      } catch (error) {
-        cleanupError ??= error;
-      }
-      if (cleanupError) {
-        throw new AggregateError(
-          [setupError, cleanupError],
-          `CuaDriver screenshot artifact setup and cleanup failed: ${actionErrorText(setupError)}; ${actionErrorText(cleanupError)}`,
-        );
-      }
-      throw setupError;
-    }
-  }
-
-  async _cleanupScratchDirectory(directory) {
-    await this.dependencies.removeDirectory(directory);
-    this.pendingScratchDirectories.delete(directory);
-  }
-
   async visibleState({ app } = {}) {
     const target = this._requireBoundApp(app);
     const turnId = this.turnId + 1;
-    let artifact;
-    let screenshotBytes;
-    let state;
-    let operationError;
-    try {
-      artifact = await this._createScreenshotArtifact();
-      state = await this._callStructured(
-        "get_window_state",
-        {
-          pid: target.pid,
-          window_id: target.windowId,
-        },
-        { screenshotOutFile: artifact.screenshotPath },
-      );
-      if (state.pid !== target.pid || state.window_id !== target.windowId) {
-        throw new Error("CuaDriver window state target identity mismatch");
-      }
-      const pathStats = await this.dependencies.lstat(artifact.screenshotPath);
-      const handleStats = await artifact.handle.stat();
-      if (
-        pathStats.isSymbolicLink() ||
-        !pathStats.isFile() ||
-        pathStats.dev !== artifact.initialStats.dev ||
-        pathStats.ino !== artifact.initialStats.ino ||
-        handleStats.dev !== artifact.initialStats.dev ||
-        handleStats.ino !== artifact.initialStats.ino
-      ) {
-        throw new Error("CuaDriver screenshot artifact inode changed during capture");
-      }
-      if (
-        (pathStats.mode & 0o777) !== 0o600 ||
-        (handleStats.mode & 0o777) !== 0o600 ||
-        handleStats.size <= 0
-      ) {
-        throw new Error("CuaDriver did not produce a fresh screenshot write");
-      }
-      screenshotBytes = await artifact.handle.readFile();
-    } catch (error) {
-      operationError = error;
+    const maxEncodedImageBytes = 4 * Math.ceil(this.maxImageBytes / 3);
+    const state = await this._callStructuredForTarget(
+      target,
+      "get_window_state",
+      {
+        pid: target.pid,
+        window_id: target.windowId,
+      },
+      {
+        maxOutputBytes: maxEncodedImageBytes + INLINE_SCREENSHOT_JSON_OVERHEAD_BYTES,
+      },
+    );
+    if (state.pid !== target.pid || state.window_id !== target.windowId) {
+      throw new Error("CuaDriver window state target identity mismatch");
     }
-    let cleanupError;
-    if (artifact) {
-      try {
-        await artifact.handle.close();
-      } catch (error) {
-        cleanupError = error;
-      }
-      try {
-        await this._cleanupScratchDirectory(artifact.directory);
-      } catch (error) {
-        cleanupError ??= error;
-      }
+    if (
+      Object.hasOwn(state, "screenshot_file_path") ||
+      typeof state.screenshot_png_b64 !== "string"
+    ) {
+      throw new Error("CuaDriver get_window_state requires an inline PNG screenshot");
     }
-    if (operationError && cleanupError) {
-      throw new AggregateError(
-        [operationError, cleanupError],
-        `CuaDriver screenshot capture and cleanup failed: ${actionErrorText(operationError)}; ${actionErrorText(cleanupError)}`,
-      );
+    if (state.screenshot_mime_type !== "image/png") {
+      throw new Error("CuaDriver screenshot_mime_type must be image/png");
     }
-    if (operationError) throw operationError;
-    if (cleanupError) throw cleanupError;
-    if (!Buffer.isBuffer(screenshotBytes)) {
-      screenshotBytes = Buffer.from(screenshotBytes);
+    const encodedScreenshot = state.screenshot_png_b64;
+    if (
+      encodedScreenshot.length === 0 ||
+      encodedScreenshot.length > maxEncodedImageBytes ||
+      !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encodedScreenshot)
+    ) {
+      throw new Error("CuaDriver screenshot_png_b64 must be bounded canonical base64");
+    }
+    const screenshotBytes = Buffer.from(encodedScreenshot, "base64");
+    if (screenshotBytes.toString("base64") !== encodedScreenshot) {
+      throw new Error("CuaDriver screenshot_png_b64 must be canonical base64");
     }
     if (screenshotBytes.length === 0 || screenshotBytes.length > this.maxImageBytes) {
-      throw new Error(
-        `CuaDriver screenshot size ${screenshotBytes.length} is outside allowed bounds`,
-      );
+      throw new Error(`CuaDriver decoded screenshot exceeds ${this.maxImageBytes} bytes`);
     }
     validatePngScreenshot(screenshotBytes);
 
@@ -1703,7 +2110,7 @@ export class CuaDriver {
     };
     if (elementToken) input.element_token = elementToken;
     try {
-      return normalizeCuaActionOutput(await this._call("click", input), {
+      return normalizeCuaActionOutput(await this._callForTarget(this.boundTarget, "click", input), {
         tool: "click",
         input,
         version: this.metadata.cli.version,
@@ -1730,11 +2137,14 @@ export class CuaDriver {
     if (elementToken) input.element_token = elementToken;
     input.value = request.value;
     try {
-      return normalizeCuaActionOutput(await this._call("set_value", input), {
-        tool: "set_value",
-        input,
-        version: this.metadata.cli.version,
-      });
+      return normalizeCuaActionOutput(
+        await this._callForTarget(this.boundTarget, "set_value", input),
+        {
+          tool: "set_value",
+          input,
+          version: this.metadata.cli.version,
+        },
+      );
     } catch (error) {
       return normalizeActionResult({
         ok: false,
@@ -1746,13 +2156,6 @@ export class CuaDriver {
 
   async close() {
     const failures = [];
-    for (const directory of this.pendingScratchDirectories) {
-      try {
-        await this._cleanupScratchDirectory(directory);
-      } catch (error) {
-        failures.push(error);
-      }
-    }
     try {
       await this._cleanupOwnedTarget();
     } catch (error) {

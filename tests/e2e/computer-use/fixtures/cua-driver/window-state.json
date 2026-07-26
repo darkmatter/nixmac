@@ -50,9 +50,9 @@
     }
   ],
   "pid": 4242,
-  "screenshot_file_path": "/tmp/nixmac-cua-fixture-state.png",
   "screenshot_height": 720,
   "screenshot_mime_type": "image/png",
+  "screenshot_png_b64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==",
   "screenshot_width": 960,
   "snapshot_id": "s0042",
   "tree_markdown": "- [0] AXWindow \"Nixmac E2E Fixture\"\n  - [7] AXButton \"Save changes\"\n  - [8] AXTextField \"Configuration value\" value=\"fixture value\"",
