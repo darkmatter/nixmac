@@ -532,6 +532,9 @@ Cover:
 - `isError: true`, empty objects, unknown envelopes, and semantic soft errors
   map to failure;
 
+- every pinned direct response rejects unknown keys at both the top level and
+  every nested source/app/window/bounds/element object;
+
 - stdout/stderr overflow, nonzero exit/stderr, and timeout
   SIGTERM-to-SIGKILL escalation are deterministic;
 
@@ -539,9 +542,10 @@ Cover:
   daemon peers before `check_permissions`, even when that RPC's `source`
   self-attests correctly;
 
-- launch produces exactly one new signed daemon process instance before any
-  status probe, and every RPC is bracketed by the same daemon PID, high-
-  resolution birth time, executable, and socket device/inode;
+- launch produces exactly one new daemon process instance, persists its PID,
+  high-resolution birth time, and executable before post-launch verification,
+  validates that provisional instance before any status probe, and brackets
+  every RPC by that same instance and socket device/inode;
 
 - delayed target readiness, post-launch failure cleanup, same-app PID reuse
   refusal, post-kill exit confirmation, pre-stop daemon peer replacement
@@ -633,21 +637,27 @@ adapter started. A missing listener while that instance remains alive or any
 replacement listener/socket fails closed without deleting or stopping the
 replacement. A zero-exit `stop` is not cleanup proof: bounded polling must show
 no listener, the exact process absent or reused, and the socket path absent.
-Only the same listener-free owned socket inode may be unlinked and then
-re-proven `ENOENT`. Startup and cleanup failures are aggregated.
+The adapter never unlinks a residual socket path because `lstat` plus `unlink`
+cannot atomically exclude a same-UID replacement. A stale path remains an
+owned cleanup failure for Task 6 controller quarantine or ephemeral-host
+disposal. Startup and cleanup failures are aggregated.
 
 `prepareTarget({ appBundleId, appPath })` must:
 
 1. prove `appPath` exists and its bundle ID equals `appBundleId`;
 1. prove the workflow placed the exact staged bundle at the run-specific
    canonical app path and no other process for that bundle ID is running;
+1. resolve the staged bundle's exact main executable and snapshot its
+   high-resolution process instances before launch;
 1. call `launch_app` with the bundle ID;
-1. reject a returned pid of zero or a mismatched bundle ID;
-1. persist ownership of that pid plus the exact app path and digest immediately
-   after the valid launch response;
-1. capture the launched pid's high-resolution macOS start time and executable
-   without AppleScript and require its canonical path inside
-   `appPath/Contents/MacOS/`;
+1. after success or RPC error, poll the same executable and require exactly one
+   new PID/birth-time/executable instance;
+1. persist that provisional instance before parsing or trusting the response,
+   canonicalizing the returned executable, or reverifying the bundle;
+1. reject a returned pid of zero, a mismatched bundle ID, or a response PID
+   different from the provisionally captured instance;
+1. require the captured executable's canonical path to equal the pre-launch
+   executable inside `appPath/Contents/MacOS/`;
 1. recompute the running bundle digest and require it to equal the preflight
    digest;
 1. poll `list_apps` and `list_windows` under a bounded readiness deadline;
@@ -659,10 +669,11 @@ re-proven `ENOENT`. Startup and cleanup failures are aggregated.
 1. retain pid/birth-time/executable/window/app-path identity and re-prove the
    process instance before and after every visible-state, click, and set-value
    RPC, discarding output if it changed in flight;
-1. on later preparation failure or close, re-prove the owned PID's current
-   executable and exact bundle identity before `/bin/kill -KILL <pid>`, then
-   poll until the PID is absent or demonstrably reused; never clear ownership
-   on signal success alone.
+1. on later preparation failure or close, compare the current PID,
+   birth-time, and executable directly with the provisionally owned instance
+   before `/bin/kill -KILL <pid>`, then poll until that exact instance is
+   absent or reused; never signal a replacement and never clear ownership on
+   signal success alone.
 
 - [x] **Step 5: Implement normalized UI methods**
 
@@ -710,7 +721,7 @@ Expected: PASS without a remote Mac.
 git add tests/e2e/computer-use/drivers/cua-driver.mjs \
   tests/e2e/computer-use/drivers/driver-self-test.mjs \
   tests/e2e/computer-use/fixtures/cua-driver
-git commit -m "fix(e2e): bind CuaDriver process instances"
+git commit -m "fix(e2e): close CuaDriver ownership races"
 ```
 
 ### Task 5: Add The On-Mac Runner

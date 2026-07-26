@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { lstat, readFile, readdir, realpath, unlink } from "node:fs/promises";
+import { lstat, readFile, readdir, realpath } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -677,6 +677,27 @@ async function defaultCanonicalPath(inputPath) {
   return realpath(inputPath);
 }
 
+async function defaultResolveBundleExecutablePath(appPath, processRunner) {
+  const executableResult = await processRunner.run("/usr/bin/plutil", [
+    "-extract",
+    "CFBundleExecutable",
+    "raw",
+    "-o",
+    "-",
+    path.join(appPath, "Contents", "Info.plist"),
+  ]);
+  const executableName = requireNonEmptyString(
+    executableResult.stdout.trim(),
+    "target CFBundleExecutable",
+  );
+  const executablePath = await realpath(path.join(appPath, "Contents", "MacOS", executableName));
+  const stats = await lstat(executablePath);
+  if (!stats.isFile() || (stats.mode & 0o111) === 0) {
+    throw new Error(`target bundle executable is not a regular executable: ${executablePath}`);
+  }
+  return executablePath;
+}
+
 async function defaultResolveExecutablePath(inputPath, processRunner) {
   const requested = requireNonEmptyString(inputPath, "CuaDriver CLI path");
   if (requested.includes(path.sep)) return realpath(requested);
@@ -706,14 +727,6 @@ async function defaultReadExecutableIdentity(executablePath, processRunner) {
     digestSha256,
     ...parseCuaCodesignIdentity(`${codesignResult.stdout}\n${codesignResult.stderr}`),
   };
-}
-
-async function defaultRemoveFile(filePath) {
-  try {
-    await unlink(filePath);
-  } catch (error) {
-    if (error?.code !== "ENOENT") throw error;
-  }
 }
 
 async function defaultReadBundleIdentity(
@@ -982,47 +995,134 @@ function normalizeElementsText(elements, treeMarkdown) {
 
 function hasValidPermissionSchema(value) {
   return (
+    hasExactKeys(value, [
+      "accessibility",
+      "direct_capture_status",
+      "screen_recording",
+      "screen_recording_capturable",
+      "source",
+    ]) &&
     typeof value.accessibility === "boolean" &&
     typeof value.screen_recording === "boolean" &&
+    [true, false, null].includes(value.screen_recording_capturable) &&
+    ["ready", "unavailable", "blocked_by_screen_recording", "not_checked"].includes(
+      value.direct_capture_status,
+    ) &&
     isPlainObject(value.source) &&
+    hasExactKeys(value.source, [
+      "attribution",
+      "bundle_id",
+      "disclaim_env",
+      "executable",
+      "note",
+      "pid",
+      "responsible_ppid",
+    ]) &&
     typeof value.source.attribution === "string" &&
-    typeof value.source.bundle_id === "string" &&
-    typeof value.source.executable === "string"
+    (value.source.bundle_id === null || typeof value.source.bundle_id === "string") &&
+    typeof value.source.disclaim_env === "boolean" &&
+    typeof value.source.executable === "string" &&
+    typeof value.source.note === "string" &&
+    Number.isInteger(value.source.pid) &&
+    value.source.pid > 0 &&
+    Number.isInteger(value.source.responsible_ppid) &&
+    value.source.responsible_ppid >= 0
   );
 }
 
 function hasValidListAppsSchema(value) {
   return (
+    hasExactKeys(value, ["apps"]) &&
     Array.isArray(value.apps) &&
     value.apps.every(
       (app) =>
         isPlainObject(app) &&
-        typeof app.bundle_id === "string" &&
+        hasExactKeys(app, [
+          "active",
+          "bundle_id",
+          "kind",
+          "last_used",
+          "launch_path",
+          "name",
+          "pid",
+          "running",
+          "windows",
+        ]) &&
+        typeof app.active === "boolean" &&
+        (app.bundle_id === null || typeof app.bundle_id === "string") &&
+        (app.kind === null || typeof app.kind === "string") &&
+        (app.last_used === null || typeof app.last_used === "string") &&
+        (app.launch_path === null || typeof app.launch_path === "string") &&
+        typeof app.name === "string" &&
         Number.isInteger(app.pid) &&
         app.pid >= 0 &&
         typeof app.running === "boolean" &&
-        (app.launch_path === null ||
-          app.launch_path === undefined ||
-          typeof app.launch_path === "string"),
+        Array.isArray(app.windows) &&
+        app.windows.length === 0,
     )
+  );
+}
+
+function hasValidBounds(value, keys) {
+  return (
+    isPlainObject(value) &&
+    hasExactKeys(value, keys) &&
+    keys.every((key) => Number.isFinite(value[key]))
+  );
+}
+
+function hasValidLaunchWindow(value) {
+  return (
+    isPlainObject(value) &&
+    hasExactKeys(value, ["app_name", "bounds", "is_on_screen", "pid", "title", "window_id"]) &&
+    typeof value.app_name === "string" &&
+    hasValidBounds(value.bounds, ["height", "width", "x", "y"]) &&
+    typeof value.is_on_screen === "boolean" &&
+    Number.isInteger(value.pid) &&
+    value.pid > 0 &&
+    typeof value.title === "string" &&
+    Number.isInteger(value.window_id) &&
+    value.window_id > 0
   );
 }
 
 function hasValidLaunchAppSchema(value) {
   return (
+    hasExactKeys(value, ["bundle_id", "name", "pid", "windows"], ["self_activation_suppressed"]) &&
     Number.isInteger(value.pid) &&
     value.pid > 0 &&
     typeof value.bundle_id === "string" &&
-    value.bundle_id !== ""
+    value.bundle_id !== "" &&
+    typeof value.name === "string" &&
+    Array.isArray(value.windows) &&
+    value.windows.every(hasValidLaunchWindow) &&
+    (value.self_activation_suppressed === undefined ||
+      typeof value.self_activation_suppressed === "boolean")
   );
 }
 
 function hasValidListWindowsSchema(value) {
   return (
+    hasExactKeys(value, ["current_space_id", "windows"]) &&
+    value.current_space_id === null &&
     Array.isArray(value.windows) &&
     value.windows.every(
       (window) =>
         isPlainObject(window) &&
+        hasExactKeys(window, [
+          "app_name",
+          "bounds",
+          "is_on_screen",
+          "layer",
+          "on_current_space",
+          "pid",
+          "space_ids",
+          "title",
+          "window_id",
+          "z_index",
+        ]) &&
+        typeof window.app_name === "string" &&
+        hasValidBounds(window.bounds, ["height", "width", "x", "y"]) &&
         Number.isInteger(window.pid) &&
         window.pid > 0 &&
         Number.isInteger(window.window_id) &&
@@ -1030,13 +1130,77 @@ function hasValidListWindowsSchema(value) {
         Number.isInteger(window.layer) &&
         typeof window.is_on_screen === "boolean" &&
         [true, false, null].includes(window.on_current_space) &&
+        (window.space_ids === null ||
+          (Array.isArray(window.space_ids) &&
+            window.space_ids.every((spaceId) => Number.isSafeInteger(spaceId)))) &&
+        typeof window.title === "string" &&
         Number.isFinite(window.z_index),
     )
   );
 }
 
+function hasValidWindowStateElement(element) {
+  const validRange =
+    (element.min === undefined && element.max === undefined) ||
+    (Number.isFinite(element.min) && Number.isFinite(element.max));
+  return (
+    isPlainObject(element) &&
+    hasExactKeys(
+      element,
+      ["depth", "element_index", "element_token", "role"],
+      [
+        "enabled",
+        "frame",
+        "label",
+        "max",
+        "min",
+        "parent_index",
+        "selected",
+        "value",
+        "value_description",
+      ],
+    ) &&
+    Number.isInteger(element.depth) &&
+    element.depth >= 0 &&
+    Number.isInteger(element.element_index) &&
+    element.element_index >= 0 &&
+    typeof element.element_token === "string" &&
+    element.element_token !== "" &&
+    typeof element.role === "string" &&
+    (element.enabled === undefined || typeof element.enabled === "boolean") &&
+    (element.frame === undefined || hasValidBounds(element.frame, ["h", "w", "x", "y"])) &&
+    (element.label === undefined || typeof element.label === "string") &&
+    validRange &&
+    (element.parent_index === undefined ||
+      (Number.isInteger(element.parent_index) && element.parent_index >= 0)) &&
+    (element.selected === undefined || typeof element.selected === "boolean") &&
+    (element.value === undefined || typeof element.value === "string") &&
+    (element.value_description === undefined || typeof element.value_description === "string")
+  );
+}
+
 function hasValidWindowStateSchema(value) {
   return (
+    hasExactKeys(
+      value,
+      [
+        "_note",
+        "element_count",
+        "elements",
+        "pid",
+        "screenshot_height",
+        "screenshot_mime_type",
+        "screenshot_png_b64",
+        "screenshot_width",
+        "snapshot_id",
+        "tree_markdown",
+        "window_id",
+      ],
+      ["degraded", "degraded_reason", "escalation"],
+    ) &&
+    typeof value._note === "string" &&
+    Number.isInteger(value.element_count) &&
+    value.element_count >= 0 &&
     Number.isInteger(value.pid) &&
     value.pid > 0 &&
     Number.isInteger(value.window_id) &&
@@ -1045,13 +1209,21 @@ function hasValidWindowStateSchema(value) {
     value.snapshot_id !== "" &&
     typeof value.tree_markdown === "string" &&
     Array.isArray(value.elements) &&
-    value.elements.every(
-      (element) =>
-        isPlainObject(element) &&
-        Number.isInteger(element.element_index) &&
-        element.element_index >= 0 &&
-        typeof element.role === "string",
-    )
+    value.element_count === value.elements.length &&
+    value.elements.every(hasValidWindowStateElement) &&
+    Number.isInteger(value.screenshot_height) &&
+    value.screenshot_height > 0 &&
+    typeof value.screenshot_mime_type === "string" &&
+    typeof value.screenshot_png_b64 === "string" &&
+    Number.isInteger(value.screenshot_width) &&
+    value.screenshot_width > 0 &&
+    (value.degraded === undefined || value.degraded === true) &&
+    (value.degraded_reason === undefined || typeof value.degraded_reason === "string") &&
+    (value.escalation === undefined ||
+      (isPlainObject(value.escalation) &&
+        hasExactKeys(value.escalation, ["reason", "recommended"]) &&
+        typeof value.escalation.reason === "string" &&
+        typeof value.escalation.recommended === "string"))
   );
 }
 
@@ -1195,7 +1367,8 @@ export class CuaDriver {
         defaultReadBundleIdentity(appPath, this.processRunner, options),
       readExecutableIdentity: (executablePath) =>
         defaultReadExecutableIdentity(executablePath, this.processRunner),
-      removeFile: defaultRemoveFile,
+      resolveBundleExecutablePath: (appPath) =>
+        defaultResolveBundleExecutablePath(appPath, this.processRunner),
       resolveExecutablePath: (inputPath) =>
         defaultResolveExecutablePath(inputPath, this.processRunner),
       sleep: (delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs)),
@@ -1333,7 +1506,7 @@ export class CuaDriver {
     );
   }
 
-  async _resolveSocketListener({ allowMissing = false } = {}) {
+  async _resolveSocketListener({ allowMissing = false, canonicalizeExecutable = true } = {}) {
     let canonicalSocketPath = this.daemonPeer?.socketPath ?? "";
     if (!canonicalSocketPath) {
       try {
@@ -1362,7 +1535,9 @@ export class CuaDriver {
     if (allowMissing && lsofResult.stdout.trim() === "") return null;
     const socketOwner = parseCuaSocketOwner(lsofResult.stdout, canonicalSocketPath);
     const processInstance = await this.dependencies.queryProcessInstance(socketOwner.pid);
-    const executable = await this.dependencies.canonicalPath(processInstance.executable);
+    const executable = canonicalizeExecutable
+      ? await this.dependencies.canonicalPath(processInstance.executable)
+      : processInstance.executable;
     return Object.freeze({
       birthMarker: processInstance.birthMarker,
       executable,
@@ -1409,8 +1584,7 @@ export class CuaDriver {
   async _daemonProcessState(peer = this.daemonPeer) {
     try {
       const instance = await this.dependencies.queryProcessInstance(peer.pid);
-      const executable = await this.dependencies.canonicalPath(instance.executable);
-      return Object.freeze({ ...instance, exists: true, executable });
+      return Object.freeze({ ...instance, exists: true });
     } catch (error) {
       if (error?.code === "ESRCH") {
         return Object.freeze({
@@ -1446,7 +1620,13 @@ export class CuaDriver {
           throw new Error("CuaDriver launch created multiple new daemon process instances");
         }
         if (newInstances.length === 1) {
-          const candidate = await this.dependencies.queryProcessInstance(newInstances[0].pid);
+          const listedCandidate = newInstances[0];
+          this.daemonPeer = Object.freeze({
+            ...listedCandidate,
+            socketIdentity: null,
+            socketPath: this.socketPath,
+          });
+          const candidate = await this.dependencies.queryProcessInstance(listedCandidate.pid);
           const executable = await this.dependencies.canonicalPath(candidate.executable);
           const provisional = Object.freeze({
             ...candidate,
@@ -1454,10 +1634,11 @@ export class CuaDriver {
             socketIdentity: null,
             socketPath: this.socketPath,
           });
-          if (!sameProcessInstance(provisional, { ...newInstances[0], executable })) {
+          if (!sameProcessInstance(provisional, { ...listedCandidate, executable })) {
             throw new Error("CuaDriver new daemon process instance changed during capture");
           }
           await this._assertVerifiedDaemonPeer(provisional);
+          this.daemonPeer = provisional;
           return provisional;
         }
         lastError = new Error("CuaDriver launch has not produced a new daemon process");
@@ -1494,24 +1675,14 @@ export class CuaDriver {
     );
   }
 
-  async _removeExactOwnedSocket(socketIdentity) {
-    const before = await this._readSocketIdentity({ allowMissing: true });
-    if (!before) return;
-    if (before.dev !== socketIdentity.dev || before.ino !== socketIdentity.ino) {
-      throw new Error("CuaDriver owned socket inode was replaced before cleanup");
-    }
-    await this.dependencies.removeFile(this.socketPath);
-    const after = await this._readSocketIdentity({ allowMissing: true });
-    if (after) {
-      throw new Error("CuaDriver owned socket path still exists after exact-inode cleanup");
-    }
-  }
-
   async _cleanupProvisionalDaemon(boundPeer) {
     let capturedSocketIdentity = null;
     const socketIdentity = await this._readSocketIdentity({ allowMissing: true });
     if (socketIdentity) {
-      const listener = await this._resolveSocketListener({ allowMissing: true });
+      const listener = await this._resolveSocketListener({
+        allowMissing: true,
+        canonicalizeExecutable: false,
+      });
       if (!listener || !sameProcessInstance(listener, boundPeer)) {
         throw new Error("CuaDriver provisional daemon socket is contaminated");
       }
@@ -1522,7 +1693,10 @@ export class CuaDriver {
       await this.processRunner.run("/bin/kill", ["-TERM", String(boundPeer.pid)]);
       await this._waitForOwnedDaemonExit(boundPeer);
     }
-    const postListener = await this._resolveSocketListener({ allowMissing: true });
+    const postListener = await this._resolveSocketListener({
+      allowMissing: true,
+      canonicalizeExecutable: false,
+    });
     if (postListener) {
       throw new Error("CuaDriver provisional daemon listener remains after termination");
     }
@@ -1535,7 +1709,7 @@ export class CuaDriver {
       ) {
         throw new Error("CuaDriver provisional daemon socket was replaced during cleanup");
       }
-      await this._removeExactOwnedSocket(capturedSocketIdentity);
+      throw new Error("CuaDriver stale owned socket requires controller quarantine");
     }
     this._clearDaemonOwnership();
   }
@@ -1569,9 +1743,7 @@ export class CuaDriver {
     if (!currentListener) {
       const processState = await this._daemonProcessState(boundPeer);
       if (!processState.exists || !sameProcessInstance(processState, boundPeer)) {
-        await this._removeExactOwnedSocket(boundPeer.socketIdentity);
-        this._clearDaemonOwnership();
-        return;
+        throw new Error("CuaDriver stale owned socket requires controller quarantine");
       }
       throw new Error("CuaDriver bound daemon pid is still alive without its socket listener");
     }
@@ -1612,8 +1784,7 @@ export class CuaDriver {
         const sameListener = listener !== null;
         const sameProcess = processState.exists && sameProcessInstance(processState, boundPeer);
         if (!sameListener && !sameProcess && socketIdentity) {
-          await this._removeExactOwnedSocket(boundPeer.socketIdentity);
-          socketIdentity = null;
+          throw new Error("CuaDriver stale owned socket requires controller quarantine");
         }
         if (!sameListener && !sameProcess && !socketIdentity) {
           this._clearDaemonOwnership();
@@ -1786,6 +1957,58 @@ export class CuaDriver {
     return exact[0];
   }
 
+  async _pollNewTargetInstance(
+    previousInstances,
+    executable,
+    { appBundleId, appPath, digestSha256 },
+  ) {
+    const previousKeys = new Set(
+      previousInstances.map(
+        (instance) => `${instance.pid}:${instance.birthMarker}:${instance.executable}`,
+      ),
+    );
+    let lastError;
+    for (let attempt = 1; attempt <= this.targetReadyAttempts; attempt += 1) {
+      try {
+        const currentInstances = await this.dependencies.listProcessInstances(executable);
+        const newInstances = currentInstances.filter(
+          (instance) =>
+            !previousKeys.has(`${instance.pid}:${instance.birthMarker}:${instance.executable}`),
+        );
+        if (newInstances.length > 1) {
+          throw new Error("CuaDriver launch created multiple new target process instances");
+        }
+        if (newInstances.length === 1) {
+          const candidate = newInstances[0];
+          this.ownedTarget = Object.freeze({
+            appBundleId,
+            appPath,
+            birthMarker: candidate.birthMarker,
+            digestSha256,
+            executable: candidate.executable,
+            pid: candidate.pid,
+            provisional: true,
+            startSec: candidate.startSec,
+            startUsec: candidate.startUsec,
+          });
+          return this.ownedTarget;
+        }
+        lastError = new Error("CuaDriver launch has not produced a new target process");
+      } catch (error) {
+        lastError = error;
+        if (/multiple new target process instances/.test(error.message)) throw error;
+      }
+      if (attempt < this.targetReadyAttempts) {
+        await this.dependencies.sleep(this.targetReadyPollMs);
+      }
+    }
+    throw new Error(
+      `CuaDriver did not produce exactly one new target process instance: ${actionErrorText(
+        lastError,
+      )}`,
+    );
+  }
+
   async _assertOwnedTargetProcess(target = this.ownedTarget) {
     if (!target) throw new Error("CuaDriver has no owned target process");
     const instance = await this.dependencies.queryProcessInstance(target.pid);
@@ -1828,15 +2051,13 @@ export class CuaDriver {
       }
       throw error;
     }
-    const currentExecutable = await this.dependencies.canonicalPath(currentInstance.executable);
     if (
       currentInstance.birthMarker !== target.birthMarker ||
-      currentExecutable !== target.executable
+      currentInstance.executable !== target.executable
     ) {
       this._clearOwnedTarget(target);
       return;
     }
-    await this._assertOwnedTargetProcess(target);
     await this.processRunner.run("/bin/kill", ["-KILL", String(target.pid)]);
     let stillOwned = false;
     for (let attempt = 1; attempt <= this.targetExitAttempts; attempt += 1) {
@@ -1850,8 +2071,10 @@ export class CuaDriver {
         }
         throw error;
       }
-      const executable = await this.dependencies.canonicalPath(instance.executable);
-      if (instance.birthMarker !== target.birthMarker || executable !== target.executable) {
+      if (
+        instance.birthMarker !== target.birthMarker ||
+        instance.executable !== target.executable
+      ) {
         stillOwned = false;
         break;
       }
@@ -1894,34 +2117,86 @@ export class CuaDriver {
       );
     }
 
-    const launched = await this._callStructured("launch_app", {
-      bundle_id: bundleId,
-    });
-    if (!Number.isInteger(launched.pid) || launched.pid <= 0) {
-      throw new Error("CuaDriver launch_app returned an invalid pid");
+    const stagedExecutable = await this.dependencies.resolveBundleExecutablePath(canonicalAppPath);
+    if (!pathIsWithin(stagedExecutable, path.join(canonicalAppPath, "Contents", "MacOS"))) {
+      throw new Error("target CFBundleExecutable resolves outside the staged target bundle");
     }
-    if (launched.bundle_id !== bundleId) {
-      throw new Error(
-        `CuaDriver launch_app bundle mismatch: expected ${bundleId}, got ${launched.bundle_id}`,
-      );
-    }
-    const pid = launched.pid;
-    const launchedInstance = await this.dependencies.queryProcessInstance(pid);
-    const launchedExecutable = await this.dependencies.canonicalPath(launchedInstance.executable);
-    if (!pathIsWithin(launchedExecutable, path.join(canonicalAppPath, "Contents", "MacOS"))) {
-      throw new Error(`CuaDriver launched pid ${pid} outside the staged target bundle`);
-    }
-    this.ownedTarget = Object.freeze({
-      appBundleId: bundleId,
-      appPath: canonicalAppPath,
-      birthMarker: launchedInstance.birthMarker,
-      digestSha256: preflightIdentity.digestSha256,
-      executable: launchedExecutable,
-      pid,
-      startSec: launchedInstance.startSec,
-      startUsec: launchedInstance.startUsec,
-    });
+    const previousTargetInstances = await this.dependencies.listProcessInstances(stagedExecutable);
+    let launched;
+    let launchError;
     try {
+      launched = await this._callStructured("launch_app", {
+        bundle_id: bundleId,
+      });
+    } catch (error) {
+      launchError = error;
+    }
+    let provisionalTarget;
+    try {
+      provisionalTarget = await this._pollNewTargetInstance(
+        previousTargetInstances,
+        stagedExecutable,
+        {
+          appBundleId: bundleId,
+          appPath: canonicalAppPath,
+          digestSha256: preflightIdentity.digestSha256,
+        },
+      );
+    } catch (captureError) {
+      if (launchError) {
+        throw new AggregateError(
+          [launchError, captureError],
+          `CuaDriver launch_app failed and target process capture failed: ${actionErrorText(
+            launchError,
+          )}; ${actionErrorText(captureError)}`,
+        );
+      }
+      throw captureError;
+    }
+    try {
+      if (launchError) throw launchError;
+      if (!Number.isInteger(launched.pid) || launched.pid <= 0) {
+        throw new Error("CuaDriver launch_app returned an invalid pid");
+      }
+      if (launched.bundle_id !== bundleId) {
+        throw new Error(
+          `CuaDriver launch_app bundle mismatch: expected ${bundleId}, got ${launched.bundle_id}`,
+        );
+      }
+      if (launched.pid !== provisionalTarget.pid) {
+        throw new Error(
+          `CuaDriver launch_app pid ${launched.pid} does not match captured process ${provisionalTarget.pid}`,
+        );
+      }
+      const pid = provisionalTarget.pid;
+      const launchedInstance = await this.dependencies.queryProcessInstance(pid);
+      const launchedExecutable = await this.dependencies.canonicalPath(launchedInstance.executable);
+      if (
+        !sameProcessInstance(
+          { ...launchedInstance, executable: launchedExecutable },
+          provisionalTarget,
+        )
+      ) {
+        throw new Error(`CuaDriver launched process instance changed for pid ${pid}`);
+      }
+      if (
+        launchedExecutable !== stagedExecutable ||
+        !pathIsWithin(launchedExecutable, path.join(canonicalAppPath, "Contents", "MacOS"))
+      ) {
+        throw new Error(`CuaDriver launched pid ${pid} outside the staged target bundle`);
+      }
+      const postLaunchIdentity = await this.dependencies.readBundleIdentity(canonicalAppPath);
+      if (
+        postLaunchIdentity.bundleId !== bundleId ||
+        postLaunchIdentity.digestSha256 !== preflightIdentity.digestSha256
+      ) {
+        throw new Error(`CuaDriver launched target bundle identity changed for pid ${pid}`);
+      }
+      this.ownedTarget = Object.freeze({
+        ...provisionalTarget,
+        executable: launchedExecutable,
+        provisional: false,
+      });
       let selected;
       let readinessError;
       for (let attempt = 1; attempt <= this.targetReadyAttempts; attempt += 1) {
@@ -1955,12 +2230,12 @@ export class CuaDriver {
       this.boundTarget = Object.freeze({
         appBundleId: bundleId,
         appPath: canonicalAppPath,
-        birthMarker: launchedInstance.birthMarker,
+        birthMarker: provisionalTarget.birthMarker,
         digestSha256: preflightIdentity.digestSha256,
         executable: launchedExecutable,
         pid,
-        startSec: launchedInstance.startSec,
-        startUsec: launchedInstance.startUsec,
+        startSec: provisionalTarget.startSec,
+        startUsec: provisionalTarget.startUsec,
         windowId: selected.window.window_id,
         currentSpaceEvidence: selected.currentSpaceEvidence,
       });

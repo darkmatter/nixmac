@@ -333,6 +333,9 @@ provides it, otherwise it prints successful text content. It supports
 `--socket`; it does not expose the historical `--raw`, `--compact`, or
 `--no-daemon` flags. Nonzero process status/stderr is the current CLI error
 boundary. Direct JSON is validated against the invoked tool's pinned schema.
+Pinned direct schemas reject additive keys at every top-level and nested
+source/app/window/bounds/element object rather than accepting a forward-
+extended response under 0.12.6 semantics.
 Plaintext success is accepted only for pinned macOS `set_value`, using
 source-derived success grammars bound to the requested integer element index.
 `click` requires structured success evidence and treats
@@ -349,9 +352,12 @@ The configured CLI is resolved once to a canonical absolute regular executable
 and pinned by byte SHA-256, full codesign digest, Developer ID, Team ID, and
 exact version output. The daemon is launched with the verified absolute app
 path, never `open -a`. Before launch, the adapter snapshots process instances
-for the verified daemon executable. Exactly one new signed PID,
-microsecond-resolution birth time, and executable must appear before the first
-status probe.
+for the verified daemon executable. Exactly one new PID,
+microsecond-resolution birth time, and executable must appear and become the
+provisionally owned instance before canonical-path, bundle-digest, or signature
+verification. That provisional instance must validate before the first status
+probe. A later verification/readiness failure can therefore terminate only
+the captured instance; cleanup failure is aggregated with startup failure.
 
 After status becomes ready and before `check_permissions`, the adapter
 canonicalizes the selected Unix socket, captures its device/inode, and runs
@@ -381,23 +387,31 @@ listener while that process remains alive, an ambiguous listener, or a
 replacement listener/socket fails closed without stopping or deleting the
 replacement and retains ownership for retry. A zero-exit `stop` is not teardown
 proof: bounded polling must confirm no listener, the exact process absent or
-reused, and the socket path absent. If only the exact owned socket inode remains
-after its listener and process are gone, the adapter may unlink that inode and
-must re-prove `ENOENT`. Startup failures terminate only an unambiguous exact
+reused, and the socket path absent. The adapter never path-unlinks a residual
+socket: `lstat` and `unlink` cannot form an atomic compare-and-delete, so a
+same-UID process could replace the path between those operations. Any stale
+socket remains an owned cleanup failure for Task 6 controller quarantine or
+ephemeral-host disposal. Startup failures terminate only an unambiguous exact
 provisional instance; startup and cleanup errors are aggregated.
 
-Once `launch_app` returns a valid PID and bundle ID, the adapter immediately
-persists an owned-target record containing that PID, microsecond-resolution
-birth time, executable, canonical staged app path, and digest. It polls
+Before `launch_app`, the adapter resolves the staged bundle's exact main
+executable and snapshots its process instances. After either a successful
+response or an RPC error, it polls that executable and requires exactly one
+new PID/birth-time/executable instance. That instance becomes provisionally
+owned before response validation, executable canonicalization, or post-launch
+bundle verification. Only then does it require the response PID/bundle ID to
+match and promote the record. It polls
 `list_apps` and `list_windows` under a bounded readiness deadline. Every
 visible-state, click, and set-value RPC re-proves the process instance before
 and after the request and discards an in-flight response if it changed. Any
-later preparation failure and every `close()` attempt re-prove that same
-instance and exact bundle identity before signaling it. Same-app PID reuse
-receives no action and is never killed. After `/bin/kill -KILL`, ownership is
-cleared only when the exact instance is absent or reused. Target and daemon
-cleanup failures are aggregated but retained independently so later `close()`
-calls retry only unfinished cleanup.
+later preparation failure and every `close()` attempt compare the current PID,
+birth time, and executable directly with the provisionally owned instance
+before signaling it. This cleanup boundary deliberately does not depend on a
+canonicalization or signature check that may itself have caused preparation to
+fail. Same-app PID reuse receives no action and is never killed. After
+`/bin/kill -KILL`, ownership is cleared only when the exact instance is absent
+or reused. Target and daemon cleanup failures are aggregated but retained
+independently so later `close()` calls retry only unfinished cleanup.
 
 Element addresses use a new reviewed `cua-element-index` kind scoped to
 `(pid, window_id, snapshot)`. The adapter must refresh visible state before

@@ -1679,6 +1679,23 @@ assert.throws(
     normalizeCuaActionOutput(
       parseCuaCliOutput(
         JSON.stringify({
+          ...cuaClickSuccessFixture,
+          unexpected_top_level: true,
+        }),
+      ),
+      {
+        tool: "click",
+        input: { element_index: 7 },
+      },
+    ),
+  /click lacks pinned structured success evidence/,
+  "click must reject additive unknown structured response keys",
+);
+assert.throws(
+  () =>
+    normalizeCuaActionOutput(
+      parseCuaCliOutput(
+        JSON.stringify({
           content: [{ type: "text", text: "set_value was rejected" }],
           structuredContent: { ok: false },
           isError: false,
@@ -1853,8 +1870,10 @@ function createCuaHarness({
   cliIdentityOverrides = {},
   competingRecord = null,
   daemonBirthUsec = 101,
+  daemonCanonicalFailuresAfterLaunch = 0,
   daemonExecutable = "/Applications/CuaDriver.app/Contents/MacOS/cua-driver",
   daemonExitChecksAfterStop = 0,
+  daemonIdentityFailuresAfterLaunch = 0,
   daemonKillFailures = 0,
   daemonListenerExecutable = daemonExecutable,
   daemonListenerLingerChecksAfterStop = 0,
@@ -1867,13 +1886,20 @@ function createCuaHarness({
   lsofOutput = "",
   permissionSourceExecutable = "/Applications/CuaDriver.app/Contents/MacOS/cua-driver",
   replacementListenerAfterStop = false,
+  replacementSocketAfterStop = false,
   screenshotBytes = cuaScreenshotBytes,
   socketAppearsOnOpen = true,
   socketPathLingersAfterStop = false,
   statusFailures = 0,
+  launchAppRpcFailures = 0,
   targetBirthUsec = 202,
+  targetCanonicalFailuresAfterLaunch = 0,
   targetExitChecksAfterKill = 0,
+  targetIdentityFailuresAfterLaunch = 0,
   targetKillFailures = 0,
+  targetQueryFailuresAfterLaunch = 0,
+  targetReplacementAfterQueryFailure = false,
+  toolStructuredMutators = {},
   windowReadyAfter = 0,
   toolOutputs = {},
   driverOptions = {},
@@ -1882,15 +1908,17 @@ function createCuaHarness({
   const commandOptions = [];
   const events = [];
   const identityReads = [];
+  const listedProcessExecutables = [];
   const pidQueries = [];
   const processInstanceQueries = [];
-  const removedSocketPaths = [];
   const sleeps = [];
   const control = {
     daemonBirthSec: 1_785_000_000,
     daemonBirthUsec,
+    daemonCanonicalFailuresAfterLaunch,
     daemonExecutable,
     daemonExitChecksRemaining: daemonExitChecksAfterStop,
+    daemonIdentityFailuresAfterLaunch,
     daemonKillFailures,
     daemonListenerBirthSec: 1_785_000_000,
     daemonListenerBirthUsec: daemonBirthUsec,
@@ -1904,17 +1932,23 @@ function createCuaHarness({
     daemonStopped: false,
     postKillExecutable: "",
     replacementListenerAfterStop,
+    replacementSocketAfterStop,
     socketDev: 42,
     socketIno: 9001,
     socketAppearsOnOpen,
     socketPathLingersAfterStop,
     socketPresent: false,
     statusFailures,
+    launchAppRpcFailures,
     targetBirthSec: 1_785_000_100,
     targetBirthUsec,
+    targetCanonicalFailuresAfterLaunch,
     targetExecutable: `${cuaTargetPath}/Contents/MacOS/nixmac`,
     targetExitChecksRemaining: targetExitChecksAfterKill,
+    targetIdentityFailuresAfterLaunch,
     targetKillFailures,
+    targetQueryFailuresAfterLaunch,
+    targetReplacementAfterQueryFailure,
     targetRunning: false,
   };
   let listWindowsCalls = 0;
@@ -1994,7 +2028,12 @@ function createCuaHarness({
           control.socketPresent = true;
         } else {
           control.daemonListenerPresent = false;
-          control.socketPresent = control.socketPathLingersAfterStop;
+          if (control.replacementSocketAfterStop) {
+            control.socketIno += 1;
+            control.socketPresent = true;
+          } else {
+            control.socketPresent = control.socketPathLingersAfterStop;
+          }
         }
         return { stdout: "stopped\n", stderr: "" };
       }
@@ -2011,19 +2050,24 @@ function createCuaHarness({
         };
       }
       if (tool === "check_permissions") {
+        const output = {
+          accessibility: true,
+          screen_recording: true,
+          screen_recording_capturable: null,
+          direct_capture_status: "not_checked",
+          source: {
+            attribution: "driver-daemon",
+            bundle_id: "com.trycua.driver",
+            disclaim_env: true,
+            executable: permissionSourceExecutable,
+            note: "fixture daemon attribution",
+            pid: 31337,
+            responsible_ppid: 1,
+          },
+        };
+        toolStructuredMutators[tool]?.(output);
         return {
-          stdout: JSON.stringify({
-            accessibility: true,
-            screen_recording: true,
-            screen_recording_capturable: null,
-            direct_capture_status: "not_checked",
-            source: {
-              attribution: "driver-daemon",
-              bundle_id: "com.trycua.driver",
-              executable: permissionSourceExecutable,
-              responsible_ppid: 1,
-            },
-          }),
+          stdout: JSON.stringify(output),
           stderr: "",
         };
       }
@@ -2034,34 +2078,42 @@ function createCuaHarness({
           fixture.apps[0].pid = 4242;
           fixture.apps[0].running = true;
         }
+        toolStructuredMutators[tool]?.(fixture);
         return { stdout: JSON.stringify(fixture), stderr: "" };
       }
       if (tool === "launch_app") {
         control.targetRunning = true;
-        return {
-          stdout: JSON.stringify({
-            pid: 4242,
-            bundle_id: cuaTargetBundleId,
-            name: "Nixmac E2E",
-            windows: [],
-          }),
-          stderr: "",
+        if (control.launchAppRpcFailures > 0) {
+          control.launchAppRpcFailures -= 1;
+          throw new Error("synthetic launch_app transport failure after process creation");
+        }
+        const output = {
+          pid: 4242,
+          bundle_id: cuaTargetBundleId,
+          name: "Nixmac E2E",
+          windows: [],
         };
+        toolStructuredMutators[tool]?.(output);
+        return { stdout: JSON.stringify(output), stderr: "" };
       }
       if (tool === "list_windows") {
         listWindowsCalls += 1;
         if (listWindowsCalls <= windowReadyAfter) {
           return { stdout: JSON.stringify({ windows: [] }), stderr: "" };
         }
-        return { stdout: JSON.stringify(cuaListWindowsFixture), stderr: "" };
+        const output = structuredClone(cuaListWindowsFixture);
+        toolStructuredMutators[tool]?.(output);
+        return { stdout: JSON.stringify(output), stderr: "" };
       }
       if (tool === "get_window_state") {
         duringTool[tool]?.(control);
+        const output = {
+          ...structuredClone(cuaWindowStateFixture),
+          screenshot_png_b64: screenshotBytes.toString("base64"),
+        };
+        toolStructuredMutators[tool]?.(output);
         return {
-          stdout: JSON.stringify({
-            ...cuaWindowStateFixture,
-            screenshot_png_b64: screenshotBytes.toString("base64"),
-          }),
+          stdout: JSON.stringify(output),
           stderr: "",
         };
       }
@@ -2117,6 +2169,10 @@ function createCuaHarness({
     async readBundleIdentity(appPath) {
       identityReads.push(appPath);
       if (appPath === "/Applications/CuaDriver.app") {
+        if (control.daemonRunning && control.daemonIdentityFailuresAfterLaunch > 0) {
+          control.daemonIdentityFailuresAfterLaunch -= 1;
+          throw new Error("synthetic post-launch daemon signature failure");
+        }
         return {
           bundleId: pinnedCuaDriverMetadata.app.bundle_id,
           shortVersion: pinnedCuaDriverMetadata.app.short_version,
@@ -2129,6 +2185,10 @@ function createCuaHarness({
         };
       }
       assert.equal(appPath, cuaTargetPath);
+      if (control.targetRunning && control.targetIdentityFailuresAfterLaunch > 0) {
+        control.targetIdentityFailuresAfterLaunch -= 1;
+        throw new Error("synthetic post-launch target signature failure");
+      }
       return {
         bundleId: cuaTargetBundleId,
         shortVersion: "0.32.1",
@@ -2137,10 +2197,46 @@ function createCuaHarness({
       };
     },
     async canonicalPath(appPath) {
+      if (
+        appPath === control.daemonExecutable &&
+        control.daemonRunning &&
+        control.daemonCanonicalFailuresAfterLaunch > 0
+      ) {
+        control.daemonCanonicalFailuresAfterLaunch -= 1;
+        throw new Error("synthetic post-launch daemon canonicalization failure");
+      }
+      if (
+        appPath === control.targetExecutable &&
+        control.targetRunning &&
+        control.targetCanonicalFailuresAfterLaunch > 0
+      ) {
+        control.targetCanonicalFailuresAfterLaunch -= 1;
+        throw new Error("synthetic post-launch target canonicalization failure");
+      }
       return appPath;
+    },
+    async resolveBundleExecutablePath(appPath) {
+      assert.equal(appPath, cuaTargetPath);
+      return control.targetExecutable;
     },
     async listProcessInstances(executablePath) {
       events.push("dependency:listProcessInstances");
+      listedProcessExecutables.push(executablePath);
+      if (executablePath === control.targetExecutable) {
+        if (!control.targetRunning) return [];
+        return [
+          {
+            birthMarker: `${control.targetBirthSec}.${String(control.targetBirthUsec).padStart(
+              6,
+              "0",
+            )}`,
+            executable: control.targetExecutable,
+            pid: 4242,
+            startSec: control.targetBirthSec,
+            startUsec: control.targetBirthUsec,
+          },
+        ];
+      }
       if (!control.daemonRunning || executablePath !== control.daemonExecutable) return [];
       const instances = [
         {
@@ -2194,6 +2290,13 @@ function createCuaHarness({
       }
       if (pid === 4242) {
         if (control.targetRunning) {
+          if (control.targetQueryFailuresAfterLaunch > 0) {
+            control.targetQueryFailuresAfterLaunch -= 1;
+            if (control.targetReplacementAfterQueryFailure) {
+              control.targetBirthUsec += 1;
+            }
+            throw new Error("synthetic post-launch target process query failure");
+          }
           return {
             birthMarker: `${control.targetBirthSec}.${String(control.targetBirthUsec).padStart(
               6,
@@ -2264,15 +2367,6 @@ function createCuaHarness({
       }
       throw new Error(`Unexpected fixture pid: ${pid}`);
     },
-    async removeFile(filePath) {
-      removedSocketPaths.push(filePath);
-      if (filePath !== "/tmp/nixmac-cua-owned-fixture.sock" || !control.socketPresent) {
-        const error = new Error(`fixture path does not exist: ${filePath}`);
-        error.code = "ENOENT";
-        throw error;
-      }
-      control.socketPresent = false;
-    },
     async sleep(delayMs) {
       sleeps.push(delayMs);
     },
@@ -2295,9 +2389,9 @@ function createCuaHarness({
     driver,
     events,
     identityReads,
+    listedProcessExecutables,
     pidQueries,
     processInstanceQueries,
-    removedSocketPaths,
     sleeps,
   };
 }
@@ -2593,7 +2687,10 @@ const permissionFailureHarness = createCuaHarness({
       source: {
         attribution: "driver-daemon",
         bundle_id: "com.trycua.driver",
+        disclaim_env: true,
         executable: "/Applications/CuaDriver.app/Contents/MacOS/cua-driver",
+        note: "fixture daemon attribution",
+        pid: 31337,
         responsible_ppid: 1,
       },
     },
@@ -2644,6 +2741,7 @@ assert.equal(
 assert.equal(replacementListenerHarness.driver.startedDaemon, true);
 replacementListenerHarness.control.daemonListenerPresent = false;
 replacementListenerHarness.control.daemonRunning = false;
+replacementListenerHarness.control.socketPresent = false;
 await replacementListenerHarness.driver.close();
 assert.equal(replacementListenerHarness.driver.startedDaemon, false);
 
@@ -2661,6 +2759,7 @@ assert.equal(
   false,
 );
 missingLiveListenerHarness.control.daemonRunning = false;
+missingLiveListenerHarness.control.socketPresent = false;
 await missingLiveListenerHarness.driver.close();
 
 const lingeringDaemonHarness = createCuaHarness({
@@ -2710,6 +2809,7 @@ const alreadyCleanedDaemonHarness = createCuaHarness();
 await alreadyCleanedDaemonHarness.driver.connect();
 alreadyCleanedDaemonHarness.control.daemonListenerPresent = false;
 alreadyCleanedDaemonHarness.control.daemonRunning = false;
+alreadyCleanedDaemonHarness.control.socketPresent = false;
 await alreadyCleanedDaemonHarness.driver.close();
 assert.equal(
   alreadyCleanedDaemonHarness.commands.some(
@@ -2723,13 +2823,30 @@ const lingeringOwnedSocketHarness = createCuaHarness({
   socketPathLingersAfterStop: true,
 });
 await lingeringOwnedSocketHarness.driver.connect();
-await lingeringOwnedSocketHarness.driver.close();
-assert.deepEqual(
-  lingeringOwnedSocketHarness.removedSocketPaths,
-  [lingeringOwnedSocketHarness.driver.socketPath],
-  "a listener-free exact owned socket inode must be removed and re-proven absent",
+await assert.rejects(
+  () => lingeringOwnedSocketHarness.driver.close(),
+  /stale owned socket requires controller quarantine/,
+  "the adapter must retain a listener-free stale socket for controller quarantine",
 );
+assert.equal(lingeringOwnedSocketHarness.driver.startedDaemon, true);
+lingeringOwnedSocketHarness.control.socketPresent = false;
+await lingeringOwnedSocketHarness.driver.close();
 assert.equal(lingeringOwnedSocketHarness.driver.startedDaemon, false);
+
+const socketReplacementAtCleanupBoundaryHarness = createCuaHarness({
+  replacementSocketAfterStop: true,
+});
+await socketReplacementAtCleanupBoundaryHarness.driver.connect();
+await assert.rejects(
+  () => socketReplacementAtCleanupBoundaryHarness.driver.close(),
+  /replacement socket contamination after stop/,
+  "same-UID replacement between proof and cleanup must remain untouched",
+);
+assert.equal(socketReplacementAtCleanupBoundaryHarness.driver.startedDaemon, true);
+assert.equal(socketReplacementAtCleanupBoundaryHarness.control.socketPresent, true);
+assert.equal(socketReplacementAtCleanupBoundaryHarness.control.socketIno, 9002);
+socketReplacementAtCleanupBoundaryHarness.control.socketPresent = false;
+await socketReplacementAtCleanupBoundaryHarness.driver.close();
 
 const replacementAfterStopHarness = createCuaHarness({
   replacementListenerAfterStop: true,
@@ -2741,7 +2858,6 @@ await assert.rejects(
   "post-stop replacement listeners must remain retryable contamination",
 );
 assert.equal(replacementAfterStopHarness.driver.startedDaemon, true);
-assert.equal(replacementAfterStopHarness.removedSocketPaths.length, 0);
 replacementAfterStopHarness.control.daemonListenerPresent = false;
 replacementAfterStopHarness.control.socketPresent = false;
 await replacementAfterStopHarness.driver.close();
@@ -2762,6 +2878,58 @@ assert.equal(
   ),
   true,
   "readiness failure must terminate the exact provisional daemon instance",
+);
+
+const daemonVerificationFailureHarness = createCuaHarness({
+  daemonIdentityFailuresAfterLaunch: 1,
+  driverOptions: { statusAttempts: 1 },
+});
+await assert.rejects(
+  () => daemonVerificationFailureHarness.driver.connect(),
+  /synthetic post-launch daemon signature failure/,
+  "the unique daemon candidate must become provisionally owned before signature verification",
+);
+assert.equal(
+  daemonVerificationFailureHarness.commands.filter(
+    (entry) =>
+      entry.command === "/bin/kill" && entry.args[0] === "-TERM" && entry.args[1] === "31337",
+  ).length,
+  1,
+  "post-launch daemon verification failure must clean the exact captured instance",
+);
+
+const daemonCanonicalizationFailureHarness = createCuaHarness({
+  daemonCanonicalFailuresAfterLaunch: 2,
+  driverOptions: { statusAttempts: 1 },
+});
+await assert.rejects(
+  () => daemonCanonicalizationFailureHarness.driver.connect(),
+  /synthetic post-launch daemon canonicalization failure/,
+);
+assert.equal(
+  daemonCanonicalizationFailureHarness.commands.filter(
+    (entry) =>
+      entry.command === "/bin/kill" && entry.args[0] === "-TERM" && entry.args[1] === "31337",
+  ).length,
+  1,
+  "daemon cleanup must not depend on canonicalization that failed after provisional capture",
+);
+
+const daemonVerificationAndCleanupFailureHarness = createCuaHarness({
+  daemonIdentityFailuresAfterLaunch: 1,
+  daemonKillFailures: 1,
+  driverOptions: { statusAttempts: 1 },
+});
+await assert.rejects(
+  () => daemonVerificationAndCleanupFailureHarness.driver.connect(),
+  (error) => {
+    assert.equal(error instanceof AggregateError, true);
+    assert.match(error.message, /startup failed and exact daemon cleanup failed/);
+    assert.match(error.errors[0].message, /post-launch daemon signature failure/);
+    assert.match(error.errors[1].message, /synthetic daemon kill failure/);
+    return true;
+  },
+  "daemon verification and exact cleanup failures must both remain visible",
 );
 
 const readinessAndCleanupFailureHarness = createCuaHarness({
@@ -2846,8 +3014,15 @@ assert.equal(
 );
 assert.equal(
   confirmedExitHarness.processInstanceQueries.filter((pid) => pid === 4242).length,
-  7,
-  "launch, readiness, pre-kill, and exit polling must use high-resolution process-instance proof",
+  6,
+  "post-capture validation, readiness, pre-kill, and exit polling must use high-resolution process-instance proof",
+);
+assert.equal(
+  confirmedExitHarness.listedProcessExecutables.filter(
+    (executable) => executable === `${cuaTargetPath}/Contents/MacOS/nixmac`,
+  ).length,
+  2,
+  "target launch must be bracketed by exact-executable process snapshots",
 );
 assert.deepEqual(
   confirmedExitHarness.sleeps,
@@ -2875,6 +3050,93 @@ assert.equal(
 assert.equal(postLaunchFailureHarness.control.targetRunning, false);
 await postLaunchFailureHarness.driver.close();
 
+for (const [name, options, expectedError] of [
+  [
+    "process query",
+    { targetQueryFailuresAfterLaunch: 1 },
+    /synthetic post-launch target process query failure/,
+  ],
+  [
+    "canonicalization",
+    { targetCanonicalFailuresAfterLaunch: 1 },
+    /synthetic post-launch target canonicalization failure/,
+  ],
+  [
+    "signature",
+    { targetIdentityFailuresAfterLaunch: 1 },
+    /synthetic post-launch target signature failure/,
+  ],
+]) {
+  const orphanBoundaryHarness = createCuaHarness(options);
+  await orphanBoundaryHarness.driver.connect();
+  await assert.rejects(
+    () =>
+      orphanBoundaryHarness.driver.prepareTarget({
+        appBundleId: cuaTargetBundleId,
+        appPath: cuaTargetPath,
+      }),
+    expectedError,
+    `${name} failure after launch must remain inside the owned-target cleanup boundary`,
+  );
+  assert.equal(
+    orphanBoundaryHarness.commands.filter(
+      (entry) =>
+        entry.command === "/bin/kill" && entry.args[0] === "-KILL" && entry.args[1] === "4242",
+    ).length,
+    1,
+    `${name} failure must clean the uniquely launched target instance`,
+  );
+  assert.equal(orphanBoundaryHarness.control.targetRunning, false);
+  await orphanBoundaryHarness.driver.close();
+}
+
+const targetReplacementDuringValidationHarness = createCuaHarness({
+  targetQueryFailuresAfterLaunch: 1,
+  targetReplacementAfterQueryFailure: true,
+});
+await targetReplacementDuringValidationHarness.driver.connect();
+await assert.rejects(
+  () =>
+    targetReplacementDuringValidationHarness.driver.prepareTarget({
+      appBundleId: cuaTargetBundleId,
+      appPath: cuaTargetPath,
+    }),
+  /synthetic post-launch target process query failure/,
+);
+assert.equal(
+  targetReplacementDuringValidationHarness.commands.some(
+    (entry) =>
+      entry.command === "/bin/kill" && entry.args[0] === "-KILL" && entry.args[1] === "4242",
+  ),
+  false,
+  "cleanup must never kill a replacement that reused the provisionally owned target PID",
+);
+targetReplacementDuringValidationHarness.control.targetRunning = false;
+await targetReplacementDuringValidationHarness.driver.close();
+
+const launchRpcOrphanBoundaryHarness = createCuaHarness({
+  launchAppRpcFailures: 1,
+});
+await launchRpcOrphanBoundaryHarness.driver.connect();
+await assert.rejects(
+  () =>
+    launchRpcOrphanBoundaryHarness.driver.prepareTarget({
+      appBundleId: cuaTargetBundleId,
+      appPath: cuaTargetPath,
+    }),
+  /synthetic launch_app transport failure after process creation/,
+  "a launch RPC error must still poll for and own a uniquely created target",
+);
+assert.equal(
+  launchRpcOrphanBoundaryHarness.commands.filter(
+    (entry) =>
+      entry.command === "/bin/kill" && entry.args[0] === "-KILL" && entry.args[1] === "4242",
+  ).length,
+  1,
+);
+assert.equal(launchRpcOrphanBoundaryHarness.control.targetRunning, false);
+await launchRpcOrphanBoundaryHarness.driver.close();
+
 const preparedTarget = await ownedHarness.driver.prepareTarget({
   appBundleId: cuaTargetBundleId,
   appPath: cuaTargetPath,
@@ -2899,8 +3161,8 @@ assert.deepEqual(
 );
 assert.equal(
   ownedHarness.identityReads.filter((entry) => entry === cuaTargetPath).length,
-  2,
-  "prepareTarget should hash the staged bundle before launch and again after binding its pid",
+  3,
+  "prepareTarget should hash before launch, after provisional capture, and during readiness proof",
 );
 assert.equal(
   ownedHarness.processInstanceQueries.includes(4242),
@@ -3171,6 +3433,20 @@ await assert.rejects(
   /malformed CuaDriver check_permissions structured output/,
 );
 
+const extendedPermissionsHarness = createCuaHarness({
+  toolStructuredMutators: {
+    check_permissions(output) {
+      output.unexpected_top_level = true;
+      output.source.unexpected_nested = true;
+    },
+  },
+});
+await assert.rejects(
+  () => extendedPermissionsHarness.driver.connect(),
+  /malformed CuaDriver check_permissions structured output/,
+  "check_permissions must reject unknown top-level and nested source keys",
+);
+
 const malformedListAppsHarness = createCuaHarness({
   toolOutputs: { list_apps: {} },
 });
@@ -3184,6 +3460,26 @@ await assert.rejects(
   /malformed CuaDriver list_apps structured output/,
 );
 await malformedListAppsHarness.driver.close();
+
+const extendedListAppsHarness = createCuaHarness({
+  toolStructuredMutators: {
+    list_apps(output) {
+      output.unexpected_top_level = true;
+      output.apps[0].unexpected_nested = true;
+    },
+  },
+});
+await extendedListAppsHarness.driver.connect();
+await assert.rejects(
+  () =>
+    extendedListAppsHarness.driver.prepareTarget({
+      appBundleId: cuaTargetBundleId,
+      appPath: cuaTargetPath,
+    }),
+  /malformed CuaDriver list_apps structured output/,
+  "list_apps must reject unknown top-level and nested app keys",
+);
+await extendedListAppsHarness.driver.close();
 
 const malformedLaunchHarness = createCuaHarness({
   toolOutputs: { launch_app: {} },
@@ -3199,6 +3495,33 @@ await assert.rejects(
 );
 await malformedLaunchHarness.driver.close();
 
+const extendedLaunchHarness = createCuaHarness({
+  toolStructuredMutators: {
+    launch_app(output) {
+      output.unexpected_top_level = true;
+      output.windows.push({
+        app_name: "Nixmac E2E",
+        bounds: { height: 720, unexpected_nested: true, width: 960, x: 80, y: 120 },
+        is_on_screen: true,
+        pid: 4242,
+        title: "Nixmac E2E",
+        window_id: 7002,
+      });
+    },
+  },
+});
+await extendedLaunchHarness.driver.connect();
+await assert.rejects(
+  () =>
+    extendedLaunchHarness.driver.prepareTarget({
+      appBundleId: cuaTargetBundleId,
+      appPath: cuaTargetPath,
+    }),
+  /malformed CuaDriver launch_app structured output/,
+  "launch_app must reject unknown top-level and nested window keys",
+);
+await extendedLaunchHarness.driver.close();
+
 const malformedWindowsHarness = createCuaHarness({
   toolOutputs: { list_windows: { windows: [{}] } },
 });
@@ -3212,6 +3535,26 @@ await assert.rejects(
   /malformed CuaDriver list_windows structured output/,
 );
 await malformedWindowsHarness.driver.close();
+
+const extendedWindowsHarness = createCuaHarness({
+  toolStructuredMutators: {
+    list_windows(output) {
+      output.unexpected_top_level = true;
+      output.windows[0].bounds.unexpected_nested = true;
+    },
+  },
+});
+await extendedWindowsHarness.driver.connect();
+await assert.rejects(
+  () =>
+    extendedWindowsHarness.driver.prepareTarget({
+      appBundleId: cuaTargetBundleId,
+      appPath: cuaTargetPath,
+    }),
+  /malformed CuaDriver list_windows structured output/,
+  "list_windows must reject unknown top-level and nested window keys",
+);
+await extendedWindowsHarness.driver.close();
 
 const malformedWindowStateHarness = createCuaHarness({
   toolOutputs: {
@@ -3232,6 +3575,26 @@ await assert.rejects(
   /malformed CuaDriver get_window_state structured output/,
 );
 await malformedWindowStateHarness.driver.close();
+
+const extendedWindowStateHarness = createCuaHarness({
+  toolStructuredMutators: {
+    get_window_state(output) {
+      output.unexpected_top_level = true;
+      output.elements[0].frame.unexpected_nested = true;
+    },
+  },
+});
+await extendedWindowStateHarness.driver.connect();
+await extendedWindowStateHarness.driver.prepareTarget({
+  appBundleId: cuaTargetBundleId,
+  appPath: cuaTargetPath,
+});
+await assert.rejects(
+  () => extendedWindowStateHarness.driver.visibleState({ app: cuaTargetBundleId }),
+  /malformed CuaDriver get_window_state structured output/,
+  "get_window_state must reject unknown top-level and nested element keys",
+);
+await extendedWindowStateHarness.driver.close();
 
 const competingHarness = createCuaHarness({
   competingRecord: {
@@ -3425,7 +3788,7 @@ await sameUidFilesystemForgeryHarness.driver.prepareTarget({
 });
 await assert.rejects(
   () => sameUidFilesystemForgeryHarness.driver.visibleState({ app: cuaTargetBundleId }),
-  /inline PNG screenshot/,
+  /malformed CuaDriver get_window_state structured output/,
   "a same-UID filesystem path must not substitute for inline screenshot bytes",
 );
 await sameUidFilesystemForgeryHarness.driver.close();
