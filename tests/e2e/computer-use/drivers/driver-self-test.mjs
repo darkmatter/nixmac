@@ -7,7 +7,9 @@ import {
   validateRuntimeDriver,
 } from "./runtime-contract.mjs";
 import {
+  driverContractVersion,
   validateCuaElementIndexAddress,
+  validateDriverDescriptor,
   validateElementAddress,
 } from "./contract.mjs";
 
@@ -114,6 +116,64 @@ assert.deepEqual(
     issues: [],
     normalized: { kind: "constructor", registered: true },
   },
+);
+
+const baseDriverDescriptor = {
+  id: "contract-self-test",
+  displayName: "Contract self-test",
+  contractVersion: driverContractVersion,
+  capabilities: {
+    connect: true,
+    visibleState: true,
+    findElement: true,
+    click: true,
+    setValue: true,
+    screenshotFromState: true,
+    textFromState: true,
+    close: true,
+  },
+  addressKinds: ["codex-index"],
+};
+const descriptorWithCustomKind = {
+  ...baseDriverDescriptor,
+  addressKinds: ["custom"],
+};
+
+const nonFunctionDescriptorResult = validateDriverDescriptor(descriptorWithCustomKind, {
+  additionalAddressValidators: { custom: true },
+});
+assert.equal(nonFunctionDescriptorResult.ok, false);
+assert.equal(
+  nonFunctionDescriptorResult.issues.some((entry) => entry.code === "unknown_address_kind"),
+  true,
+);
+
+assert.deepEqual(
+  validateDriverDescriptor(baseDriverDescriptor, {
+    additionalAddressValidators: null,
+  }),
+  { ok: true, issues: [] },
+);
+
+assert.deepEqual(
+  validateDriverDescriptor(descriptorWithCustomKind, {
+    additionalAddressValidators: {
+      custom: () => ({ ok: true, issues: [], normalized: null }),
+    },
+  }),
+  { ok: true, issues: [] },
+);
+
+const inheritedAddressValidators = Object.create({
+  custom: () => ({ ok: true, issues: [], normalized: null }),
+});
+const inheritedDescriptorResult = validateDriverDescriptor(descriptorWithCustomKind, {
+  additionalAddressValidators: inheritedAddressValidators,
+});
+assert.equal(inheritedDescriptorResult.ok, false);
+assert.equal(
+  inheritedDescriptorResult.issues.some((entry) => entry.code === "unknown_address_kind"),
+  true,
 );
 
 const cuaAddressValidators = {

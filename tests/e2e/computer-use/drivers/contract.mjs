@@ -164,6 +164,26 @@ const builtInAddressValidators = Object.freeze({
   "text-pattern": validateTextPatternAddress,
 });
 
+function canContainAddressValidators(registry) {
+  return (
+    registry !== null &&
+    (typeof registry === "object" || typeof registry === "function")
+  );
+}
+
+function ownAddressValidator(registry, kind) {
+  if (!canContainAddressValidators(registry) || !Object.hasOwn(registry, kind)) return null;
+  const validator = registry[kind];
+  return typeof validator === "function" ? validator : null;
+}
+
+function addressValidatorForKind(kind, additionalAddressValidators) {
+  return (
+    ownAddressValidator(builtInAddressValidators, kind) ??
+    ownAddressValidator(additionalAddressValidators, kind)
+  );
+}
+
 export function validateElementAddress(address, { additionalAddressValidators = {} } = {}) {
   if (!isPlainObject(address)) {
     return {
@@ -179,17 +199,8 @@ export function validateElementAddress(address, { additionalAddressValidators = 
       normalized: null,
     };
   }
-  const builtInValidator = Object.hasOwn(builtInAddressValidators, address.kind)
-    ? builtInAddressValidators[address.kind]
-    : null;
-  const additionalValidator =
-    additionalAddressValidators !== null &&
-    ["object", "function"].includes(typeof additionalAddressValidators) &&
-    Object.hasOwn(additionalAddressValidators, address.kind)
-      ? additionalAddressValidators[address.kind]
-      : null;
-  const validator = builtInValidator ?? additionalValidator;
-  if (typeof validator !== "function") {
+  const validator = addressValidatorForKind(address.kind, additionalAddressValidators);
+  if (!validator) {
     return {
       ok: false,
       issues: [
@@ -269,12 +280,8 @@ export function validateDriverDescriptor(descriptor, { additionalAddressValidato
       ),
     );
   } else {
-    const knownKinds = new Set([
-      ...builtInElementAddressKinds,
-      ...Object.keys(additionalAddressValidators),
-    ]);
     for (const [index, kind] of descriptor.addressKinds.entries()) {
-      if (!knownKinds.has(kind))
+      if (!addressValidatorForKind(kind, additionalAddressValidators))
         issues.push(
           issue(
             "unknown_address_kind",
