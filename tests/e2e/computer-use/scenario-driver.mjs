@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { assertEvidenceTreeMutable } from "./evidence-guard.mjs";
+import { withEvidenceTreeMutation } from "./evidence-guard.mjs";
 
 const REQUIRED_DEPENDENCIES = [
   "addEvent",
@@ -94,7 +94,12 @@ export function createScenarioDriverHelpers(dependencies) {
   }
 
   async function captureState(driver, state, label, note = "") {
-    await assertEvidenceTreeMutable(state.runDir);
+    return withEvidenceTreeMutation(state.runDir, () =>
+      captureStateAdmitted(driver, state, label, note),
+    );
+  }
+
+  async function captureStateAdmitted(driver, state, label, note) {
     let visible = await driver.visibleState({ app: state.app });
     let rawText = visible.text;
     let text = redact(rawText);
@@ -157,6 +162,12 @@ export function createScenarioDriverHelpers(dependencies) {
   }
 
   async function clickElementIndex(driver, state, observation, elementIndex, label, note = "") {
+    return withEvidenceTreeMutation(state.runDir, () =>
+      clickElementIndexAdmitted(driver, state, observation, elementIndex, label, note),
+    );
+  }
+
+  async function clickElementIndexAdmitted(driver, state, observation, elementIndex, label, note) {
     let result;
     try {
       const elementAddress = elementAddressForVisibleState(
@@ -210,6 +221,19 @@ export function createScenarioDriverHelpers(dependencies) {
   }
 
   async function setValueElementIndex(driver, state, observation, elementIndex, label, value) {
+    return withEvidenceTreeMutation(state.runDir, () =>
+      setValueElementIndexAdmitted(driver, state, observation, elementIndex, label, value),
+    );
+  }
+
+  async function setValueElementIndexAdmitted(
+    driver,
+    state,
+    observation,
+    elementIndex,
+    label,
+    value,
+  ) {
     let result;
     try {
       const elementAddress = elementAddressForVisibleState(

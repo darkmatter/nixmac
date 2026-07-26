@@ -5,7 +5,8 @@ import { lstat, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { assertEvidenceTreeMutable, withEvidenceTreeMutation } from "./evidence-guard.mjs";
+import { withEvidenceTreeMutation } from "./evidence-guard.mjs";
+import { escapeReportHtml, finalCleanupAttestationHtml } from "./report.mjs";
 
 const PREFLIGHT_FIELDS = Object.freeze([
   "jobId",
@@ -507,7 +508,10 @@ export async function resolveRunPreflightIdentity(
 
 export async function writeRunProvisioning(runDir, rawInput) {
   requireAbsoluteNormalizedPath(runDir, "runDir");
-  await assertEvidenceTreeMutable(runDir);
+  return withEvidenceTreeMutation(runDir, () => writeRunProvisioningAdmitted(runDir, rawInput));
+}
+
+async function writeRunProvisioningAdmitted(runDir, rawInput) {
   const input = validatePreflightInput(rawInput);
   await assertPreflightSidecarsAbsent(runDir);
   const sidecars = preflightSidecars(input, { permissionsStatus: "pending" });
@@ -517,7 +521,14 @@ export async function writeRunProvisioning(runDir, rawInput) {
   return sidecars;
 }
 
-export async function recordRunPermissions(
+export async function recordRunPermissions(runDir, permissionProbe) {
+  requireAbsoluteNormalizedPath(runDir, "runDir");
+  return withEvidenceTreeMutation(runDir, () =>
+    recordRunPermissionsAdmitted(runDir, permissionProbe),
+  );
+}
+
+async function recordRunPermissionsAdmitted(
   runDir,
   {
     accessibilityGranted,
@@ -526,8 +537,6 @@ export async function recordRunPermissions(
     probedAt = new Date().toISOString(),
   },
 ) {
-  requireAbsoluteNormalizedPath(runDir, "runDir");
-  await assertEvidenceTreeMutable(runDir);
   if (typeof accessibilityGranted !== "boolean" || typeof screenRecordingGranted !== "boolean") {
     throw new Error("permission probe results must be boolean");
   }
@@ -572,9 +581,14 @@ export async function recordRunPermissions(
   return Object.freeze({ permissions: nextPermissions, attempt: nextAttempt });
 }
 
-export async function transitionRunAttempt(runDir, state, { at = new Date().toISOString() } = {}) {
+export async function transitionRunAttempt(runDir, state, options = {}) {
   requireAbsoluteNormalizedPath(runDir, "runDir");
-  await assertEvidenceTreeMutable(runDir);
+  return withEvidenceTreeMutation(runDir, () =>
+    transitionRunAttemptAdmitted(runDir, state, options),
+  );
+}
+
+async function transitionRunAttemptAdmitted(runDir, state, { at = new Date().toISOString() } = {}) {
   requireIsoTimestamp(at, "attempt lifecycle transition timestamp");
   if (!Object.hasOwn(ATTEMPT_TRANSITIONS, state)) {
     throw new Error(`unknown attempt lifecycle state: ${state}`);
@@ -589,6 +603,10 @@ export async function transitionRunAttempt(runDir, state, { at = new Date().toIS
 }
 
 export async function writeRunPreflight(runDir, rawInput) {
+  return withEvidenceTreeMutation(runDir, () => writeRunPreflightAdmitted(runDir, rawInput));
+}
+
+async function writeRunPreflightAdmitted(runDir, rawInput) {
   const input = validatePreflightInput(rawInput);
   await writeRunProvisioning(runDir, input);
   await recordRunPermissions(runDir, {
@@ -1031,10 +1049,41 @@ async function independentlyProbeLocalCleanup(
   return probed;
 }
 
+const FINAL_LEASE_WAIT_REASONS = new Set(["", "live-owner-wait-completed"]);
+
+function assertNoRawTrustedOwnerToken(
+  value,
+  trustedOwnerToken,
+  label = "host lease",
+  seen = new WeakSet(),
+) {
+  requireString(trustedOwnerToken, "trusted owner token");
+  if (typeof value === "string") {
+    if (value.includes(trustedOwnerToken)) {
+      throw new Error(`raw owner token must not be stored in ${label} evidence`);
+    }
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  if (seen.has(value)) throw new Error(`${label} evidence must not contain cyclic values`);
+  seen.add(value);
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      assertNoRawTrustedOwnerToken(item, trustedOwnerToken, label, seen);
+    }
+  } else {
+    for (const [field, item] of Object.entries(value)) {
+      assertNoRawTrustedOwnerToken(item, trustedOwnerToken, `${label}.${field}`, seen);
+    }
+  }
+  seen.delete(value);
+}
+
 function validateHostLease(hostLease, { identity, attempt, trustedOwnerToken }) {
   if (!hostLease || typeof hostLease !== "object" || Array.isArray(hostLease)) {
     throw new Error("host lease must be an object");
   }
+  assertNoRawTrustedOwnerToken(hostLease, trustedOwnerToken);
   const allowedFields = new Set([
     "version",
     "acquired",
@@ -1058,6 +1107,9 @@ function validateHostLease(hostLease, { identity, attempt, trustedOwnerToken }) 
       throw new Error("raw owner token must not be stored in host lease evidence");
     }
     throw new Error(`host lease contains unexpected field: ${field}`);
+  }
+  if (hostLease.version !== undefined && hostLease.version !== 1) {
+    throw new Error("host lease version must be 1 when provided");
   }
   if (hostLease.acquired !== true || hostLease.released !== true) {
     throw new Error("static host lease must explicitly prove acquired and released");
@@ -1100,11 +1152,15 @@ function validateHostLease(hostLease, { identity, attempt, trustedOwnerToken }) 
       throw new Error(`hostLease.${field} must be an ISO timestamp`);
     }
   }
-  for (const field of ["waitReason", "quarantineReason"]) {
-    if (typeof hostLease[field] !== "string") throw new Error(`hostLease.${field} must be string`);
+  if (!FINAL_LEASE_WAIT_REASONS.has(hostLease.waitReason)) {
+    throw new Error(
+      `hostLease.waitReason must be one of: ${[...FINAL_LEASE_WAIT_REASONS]
+        .map((value) => value || "<none>")
+        .join(", ")}`,
+    );
   }
   if (hostLease.quarantineReason !== "") {
-    throw new Error("static host lease cannot pass with a quarantine reason");
+    throw new Error("hostLease.quarantineReason must be the final-pass <none> enum");
   }
   const acquiredAt = Date.parse(hostLease.acquiredAt);
   const releasedAt = Date.parse(hostLease.releasedAt);
@@ -1112,7 +1168,9 @@ function validateHostLease(hostLease, { identity, attempt, trustedOwnerToken }) 
   if (releasedAt < acquiredAt || heartbeatAt < acquiredAt || heartbeatAt > releasedAt) {
     throw new Error("static host lease timestamps are not monotonic");
   }
-  return { version: 1, ...hostLease };
+  const normalizedLease = { ...hostLease };
+  delete normalizedLease.version;
+  return { version: 1, ...normalizedLease };
 }
 
 function cleanupObservationDigest(cleanup) {
@@ -1296,15 +1354,6 @@ function cleanupStateForReport(cleanup) {
   };
 }
 
-function escapeReportText(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
 async function writeFinalCleanupArtifacts(runDir, cleanup) {
   const state = await readJson(runDir, "state.json");
   const previousCleanupNote = typeof state.cleanup?.note === "string" ? state.cleanup.note : "";
@@ -1317,15 +1366,11 @@ async function writeFinalCleanupArtifacts(runDir, cleanup) {
   if (report.includes(marker)) {
     throw new Error("final cleanup report attestation already exists");
   }
-  const heading =
-    cleanup.ownershipMode === "controller-static"
-      ? "Controller cleanup attestation"
-      : "Local cleanup attestation";
-  const attestation = `<section id="final-cleanup-attestation" class="panel"><h2>${heading}</h2><p>${escapeReportText(state.cleanup.note)}</p></section>`;
+  const attestation = finalCleanupAttestationHtml(state.cleanup);
   let updatedReport = previousCleanupNote
-    ? report.replaceAll(escapeReportText(previousCleanupNote), escapeReportText(state.cleanup.note))
+    ? report.replaceAll(escapeReportHtml(previousCleanupNote), escapeReportHtml(state.cleanup.note))
     : report;
-  const cleanupNoteIndex = updatedReport.indexOf(escapeReportText(state.cleanup.note));
+  const cleanupNoteIndex = updatedReport.indexOf(escapeReportHtml(state.cleanup.note));
   const signalStart =
     cleanupNoteIndex === -1
       ? -1
@@ -1336,7 +1381,7 @@ async function writeFinalCleanupArtifacts(runDir, cleanup) {
     signalEnd !== -1 &&
     updatedReport.slice(signalStart, signalEnd).includes("<strong>Remote restore</strong>")
   ) {
-    const replacement = `<div class="signal signal-pass"><span class="verdict pass">pass</span><strong>Remote restore</strong><small>${escapeReportText(state.cleanup.note)}</small></div>`;
+    const replacement = `<div class="signal signal-pass"><span class="verdict pass">pass</span><strong>Remote restore</strong><small>${escapeReportHtml(state.cleanup.note)}</small></div>`;
     updatedReport =
       updatedReport.slice(0, signalStart) +
       replacement +
@@ -1400,11 +1445,14 @@ async function finalizeAttempt(
   return next;
 }
 
-export async function stageControllerEvidence(
+export async function stageControllerEvidence(runDir, options) {
+  return withEvidenceTreeMutation(runDir, () => stageControllerEvidenceAdmitted(runDir, options));
+}
+
+async function stageControllerEvidenceAdmitted(
   runDir,
   { verdict, capture = { status: "available", uiStarted: true, reason: "" } },
 ) {
-  await assertEvidenceTreeMutable(runDir);
   const identity = await readJson(runDir, "runner/identity.json");
   if (
     identity.runnerBackend !== "static_ssh" ||
@@ -1430,12 +1478,18 @@ async function sealEvidence(runDir, { trustedOwnerToken = "" } = {}) {
   return manifest;
 }
 
-export async function finalizeLocalEvidence(
+export async function finalizeLocalEvidence(runDir, options, probes = {}) {
+  await withEvidenceTreeMutation(runDir, () =>
+    finalizeLocalEvidenceAdmitted(runDir, options, probes),
+  );
+  return sealEvidence(runDir);
+}
+
+async function finalizeLocalEvidenceAdmitted(
   runDir,
   { cleanup, verdict, capture = { status: "available", uiStarted: true, reason: "" } },
   probes = {},
 ) {
-  await assertEvidenceTreeMutable(runDir);
   const [identity, artifact, attempt] = await Promise.all([
     readJson(runDir, "runner/identity.json"),
     readJson(runDir, "artifact/source.json"),
@@ -1464,11 +1518,13 @@ export async function finalizeLocalEvidence(
     completeLifecycle: true,
     capture: normalizedCapture,
   });
-  return sealEvidence(runDir);
 }
 
 export async function writeRunCleanup(runDir, cleanup) {
-  await assertEvidenceTreeMutable(runDir);
+  return withEvidenceTreeMutation(runDir, () => writeRunCleanupAdmitted(runDir, cleanup));
+}
+
+async function writeRunCleanupAdmitted(runDir, cleanup) {
   const [identity, artifact] = await Promise.all([
     readJson(runDir, "runner/identity.json"),
     readJson(runDir, "artifact/source.json"),
@@ -1493,11 +1549,16 @@ export async function finalizeControllerEvidence(
   return sealEvidence(runDir, { trustedOwnerToken });
 }
 
-export async function writeControllerFinalization(
+export async function writeControllerFinalization(runDir, options) {
+  return withEvidenceTreeMutation(runDir, () =>
+    writeControllerFinalizationAdmitted(runDir, options),
+  );
+}
+
+async function writeControllerFinalizationAdmitted(
   runDir,
   { cleanup, cleanupProbe, hostLease, trustedOwnerToken, verdict, capture },
 ) {
-  await assertEvidenceTreeMutable(runDir);
   const [identity, artifact, attempt] = await Promise.all([
     readJson(runDir, "runner/identity.json"),
     readJson(runDir, "artifact/source.json"),

@@ -48,6 +48,17 @@ def stable_directory(value):
     return (value.st_dev, value.st_ino, value.st_mode)
 
 
+def stable_directory_contents(value):
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
+
+
 class Scanner:
     def __init__(self, args):
         self.args = args
@@ -223,7 +234,7 @@ class Scanner:
 
     def walk(self, directory_fd, relative_directory=""):
         self.check_deadline()
-        directory_before = stable_directory(os.fstat(directory_fd))
+        directory_before = stable_directory_contents(os.fstat(directory_fd))
         names = []
         with os.scandir(directory_fd) as entries:
             for entry in entries:
@@ -232,6 +243,7 @@ class Scanner:
                     raise ScanError("evidence tree exceeds entry-count limit")
                 names.append(entry.name)
         names.sort()
+        expected_entries = {}
         for name in names:
             self.check_deadline()
             if not name or "/" in name or "\x00" in name:
@@ -257,10 +269,13 @@ class Scanner:
                             f"evidence directory changed while opening: {relative_path}"
                         )
                     self.walk(child_fd, relative_path)
-                    if stable_directory(opened) != stable_directory(os.fstat(child_fd)):
+                    if stable_directory_contents(opened) != stable_directory_contents(
+                        os.fstat(child_fd)
+                    ):
                         raise ScanError(
                             f"evidence directory changed during traversal: {relative_path}"
                         )
+                    expected_entries[name] = stable_stat(os.fstat(child_fd))
                 finally:
                     os.close(child_fd)
             elif stat.S_ISREG(before.st_mode):
@@ -276,30 +291,67 @@ class Scanner:
                         before,
                         include_record=False,
                     )
+                    expected_entries[name] = stable_stat(
+                        os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+                    )
                     continue
                 self.file_count += 1
                 if self.file_count > self.args.max_files:
                     raise ScanError("evidence tree exceeds file-count limit")
                 self.scan_file(directory_fd, name, relative_path, before)
+                expected_entries[name] = stable_stat(
+                    os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+                )
             else:
                 raise ScanError(
                     f"evidence tree contains unsupported filesystem entry: {relative_path}"
                 )
-            if stable_directory(os.fstat(directory_fd)) != directory_before:
+            if stable_directory_contents(os.fstat(directory_fd)) != directory_before:
                 raise ScanError(
                     f"evidence directory changed during traversal: {relative_directory or '.'}"
                 )
+        final_names = []
+        with os.scandir(directory_fd) as entries:
+            for entry in entries:
+                final_names.append(entry.name)
+        final_names.sort()
+        if final_names != names:
+            raise ScanError(
+                f"evidence directory entry set changed during traversal: "
+                f"{relative_directory or '.'}"
+            )
+        for name in final_names:
+            current = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+            if stable_stat(current) != expected_entries[name]:
+                relative_path = (
+                    f"{relative_directory}/{name}" if relative_directory else name
+                )
+                raise ScanError(
+                    f"evidence entry changed during final revalidation: {relative_path}"
+                )
+        if stable_directory_contents(os.fstat(directory_fd)) != directory_before:
+            raise ScanError(
+                f"evidence directory changed during final revalidation: "
+                f"{relative_directory or '.'}"
+            )
 
     def run(self):
         retained = self.open_root_chain()
         try:
             root_fd = retained[-1][0]
             self.walk(root_fd)
-            for fd, expected, label in retained:
+            for index, (fd, expected, label) in enumerate(retained):
                 if stable_directory(os.fstat(fd)) != expected:
                     raise ScanError(
                         f"evidence path component changed during scan: {label}"
                     )
+                if index > 0:
+                    parent_fd = retained[index - 1][0]
+                    rebound = os.stat(label, dir_fd=parent_fd, follow_symlinks=False)
+                    if stable_directory(rebound) != expected:
+                        raise ScanError(
+                            f"evidence path component binding changed during scan: {label}"
+                        )
         finally:
             for fd, _, _ in reversed(retained):
                 os.close(fd)

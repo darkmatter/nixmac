@@ -27,6 +27,17 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
+export function escapeReportHtml(value) {
+  return escapeHtml(value);
+}
+
+export function finalCleanupAttestationHtml(cleanup) {
+  const controllerOwned = cleanup?.ownershipMode === "controller-static";
+  const heading = controllerOwned ? "Controller cleanup attestation" : "Local cleanup attestation";
+  const status = cleanup?.clean === true ? "clean" : "not-clean";
+  return `<section id="final-cleanup-attestation" class="panel" data-cleanup-status="${status}"><h2>${heading}</h2><p><strong>Status: ${status}</strong></p><p>${escapeHtml(cleanup?.note || "")}</p></section>`;
+}
+
 function slugify(value) {
   return String(value || "")
     .toLowerCase()

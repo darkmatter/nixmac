@@ -8,7 +8,7 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { artifactFileIssue, artifactForLabel, pngDimensions } from "./artifact-utils.mjs";
-import { assertEvidenceTreeMutable } from "./evidence-guard.mjs";
+import { withEvidenceTreeMutation } from "./evidence-guard.mjs";
 import { dispatchRemoteCuaCommand, remoteCuaUsage } from "./cli.mjs";
 import { buildManifestPrFocus, isLikelyUserVisiblePrFile } from "./coverage-focus.mjs";
 import {
@@ -1831,7 +1831,13 @@ async function maybeRelaunchRemote(state, { ssh: sshBoundary = ssh } = {}) {
   });
 }
 
-async function inspectReportWithComputerUse(
+async function inspectReportWithComputerUse(driver, state, boundaries = {}) {
+  return withEvidenceTreeMutation(state.runDir, () =>
+    inspectReportWithComputerUseAdmitted(driver, state, boundaries),
+  );
+}
+
+async function inspectReportWithComputerUseAdmitted(
   driver,
   state,
   { scpToRemote: scpBoundary = scpToRemote, ssh: sshBoundary = ssh } = {},
@@ -3064,7 +3070,11 @@ async function prepareDisposableRemoteBaseline(state, { ssh: sshBoundary = ssh }
   return baseline;
 }
 
-async function render(
+async function render(state, options = {}) {
+  return withEvidenceTreeMutation(state.runDir, () => renderAdmitted(state, options));
+}
+
+async function renderAdmitted(
   state,
   {
     generateVideo = true,
@@ -3073,7 +3083,6 @@ async function render(
     updateStorybook = true,
   } = {},
 ) {
-  await assertEvidenceTreeMutable(state.runDir);
   const renderStartedAt = nowIso();
   ensureCurrentSchema(state);
   if (updateStorybook) updateStorybookPreviewCoverage(state);
@@ -3141,15 +3150,17 @@ export async function runSuiteWithDriver(
       ? { ws: env.NIXMAC_COMPUTER_USE_WS || DEFAULT_WS }
       : {}),
   };
-  let runDir = argValue(args, "--run-dir", path.join(ARTIFACT_ROOT, timestampSlug()));
+  let runDir = path.resolve(argValue(args, "--run-dir", path.join(ARTIFACT_ROOT, timestampSlug())));
   if (typeof createDriver !== "function") {
     throw new TypeError("runSuiteWithDriver requires createDriver");
   }
   if (executionTopology !== "remote-codex-app-server" && executionTopology !== "local-cua-driver") {
     throw new Error(`unsupported Computer Use execution topology: ${executionTopology}`);
   }
-  await mkdir(path.join(runDir, "screenshots"), { recursive: true });
-  await mkdir(path.join(runDir, "texts"), { recursive: true });
+  await withEvidenceTreeMutation(runDir, async () => {
+    await mkdir(path.join(runDir, "screenshots"), { recursive: true });
+    await mkdir(path.join(runDir, "texts"), { recursive: true });
+  });
   if (executionTopology === "local-cua-driver") runDir = await realpath(runDir);
   activeRunDir = runDir;
   const state = await baseState(runDir, options, { env });
@@ -4669,9 +4680,11 @@ export async function runSmokeWithDriver(
     app: env.NIXMAC_COMPUTER_USE_APP || DEFAULT_APP,
     prompt: DEFAULT_PROMPT,
   };
-  let runDir = argValue(args, "--run-dir", path.join(ARTIFACT_ROOT, timestampSlug()));
-  await mkdir(path.join(runDir, "screenshots"), { recursive: true });
-  await mkdir(path.join(runDir, "texts"), { recursive: true });
+  let runDir = path.resolve(argValue(args, "--run-dir", path.join(ARTIFACT_ROOT, timestampSlug())));
+  await withEvidenceTreeMutation(runDir, async () => {
+    await mkdir(path.join(runDir, "screenshots"), { recursive: true });
+    await mkdir(path.join(runDir, "texts"), { recursive: true });
+  });
   runDir = await realpath(runDir);
   activeRunDir = runDir;
   const localPreflight = await validateLocalCuaPreflight(
@@ -4855,9 +4868,13 @@ async function runSuite(args) {
 
 async function renderUnavailable(args) {
   const note = argValue(args, "--note", "Computer Use remote runner was not available.");
-  const runDir = argValue(args, "--run-dir", path.join(ARTIFACT_ROOT, timestampSlug()));
-  await mkdir(path.join(runDir, "screenshots"), { recursive: true });
-  await mkdir(path.join(runDir, "texts"), { recursive: true });
+  const runDir = path.resolve(
+    argValue(args, "--run-dir", path.join(ARTIFACT_ROOT, timestampSlug())),
+  );
+  await withEvidenceTreeMutation(runDir, async () => {
+    await mkdir(path.join(runDir, "screenshots"), { recursive: true });
+    await mkdir(path.join(runDir, "texts"), { recursive: true });
+  });
   const state = await baseState(runDir, {
     ws: process.env.NIXMAC_COMPUTER_USE_WS || DEFAULT_WS,
     app: process.env.NIXMAC_COMPUTER_USE_APP || DEFAULT_APP,
@@ -4877,9 +4894,13 @@ async function renderStorybookOnly(args) {
     "--note",
     "Native Computer Use skipped because the PR is UI-only and has Storybook preview evidence.",
   );
-  const runDir = argValue(args, "--run-dir", path.join(ARTIFACT_ROOT, timestampSlug()));
-  await mkdir(path.join(runDir, "screenshots"), { recursive: true });
-  await mkdir(path.join(runDir, "texts"), { recursive: true });
+  const runDir = path.resolve(
+    argValue(args, "--run-dir", path.join(ARTIFACT_ROOT, timestampSlug())),
+  );
+  await withEvidenceTreeMutation(runDir, async () => {
+    await mkdir(path.join(runDir, "screenshots"), { recursive: true });
+    await mkdir(path.join(runDir, "texts"), { recursive: true });
+  });
   const state = await baseState(runDir, {
     ws: process.env.NIXMAC_COMPUTER_USE_WS || DEFAULT_WS,
     app: process.env.NIXMAC_COMPUTER_USE_APP || DEFAULT_APP,
@@ -4958,10 +4979,10 @@ export async function renderSuiteErrorReport(
     await renderUnavailable([...fallbackArgs, "--note", note]);
     return;
   }
-  await assertEvidenceTreeMutable(runDir);
-
-  await mkdir(path.join(runDir, "screenshots"), { recursive: true });
-  await mkdir(path.join(runDir, "texts"), { recursive: true });
+  await withEvidenceTreeMutation(runDir, async () => {
+    await mkdir(path.join(runDir, "screenshots"), { recursive: true });
+    await mkdir(path.join(runDir, "texts"), { recursive: true });
+  });
   let existingState = await loadExistingRunState(runDir);
   if (!existingState) {
     if (executionTopology !== "local-cua-driver") {
@@ -5029,11 +5050,13 @@ export async function renderSuiteErrorReport(
   await addEvent(existingState, "runner.crash-fallback", { note });
   if (finalization?.capture?.uiStarted === false) {
     const blockerTextPath = path.join(runDir, "texts", "pre-ui-blocker.txt");
-    await writeFile(
-      blockerTextPath,
-      `${note}\nCapture status: ${finalization.capture.status}\nReason: ${finalization.capture.reason}\n`,
-      "utf8",
-    );
+    await withEvidenceTreeMutation(runDir, async () => {
+      await writeFile(
+        blockerTextPath,
+        `${note}\nCapture status: ${finalization.capture.status}\nReason: ${finalization.capture.reason}\n`,
+        "utf8",
+      );
+    });
     existingState.screenshots = [];
     existingState.textSnapshots = [
       {

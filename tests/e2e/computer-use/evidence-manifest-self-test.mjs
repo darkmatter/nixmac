@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { once } from "node:events";
 import {
+  lstat,
   mkdtemp,
   mkdir,
   readFile,
+  readdir,
   realpath,
   rm,
   symlink,
@@ -14,6 +17,8 @@ import {
 } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
+import { pathToFileURL } from "node:url";
 import { hashCuaBundleTree } from "./drivers/cua-driver.mjs";
 import * as evidenceGuard from "./evidence-guard.mjs";
 import { createEvidenceManifest, verifyEvidenceManifest } from "./evidence-manifest.mjs";
@@ -44,6 +49,22 @@ const VALID_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAACXBIWXMAAAABAAAAAQBPJcTWAAAAFElEQVR4nGNkIBGwjGoY1TB8NQAAYgAAPn161xsAAAAASUVORK5CYII=";
 let fixtureSequence = 0;
 let validMp4Fixture = null;
+
+async function waitForPath(filePath, timeoutMs = 5_000) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    try {
+      await lstat(filePath);
+      return;
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+    if (Date.now() >= deadline) {
+      throw new Error(`timed out waiting for test path: ${filePath}`);
+    }
+    await delay(10);
+  }
+}
 
 async function writeValidMediaFixtures(runDir) {
   const screenshotPath = path.join(runDir, "screenshots", "launch.png");
@@ -985,8 +1006,10 @@ async function runSelfTest() {
       /ENOENT/,
       "remote static runner must not create manifest.json",
     );
+    const prematureSeal = await createEvidenceFixture(root, { backend: "static_ssh" });
+    await stageControllerEvidence(prematureSeal.runDir, { verdict: "pass" });
     await assert.rejects(
-      () => createEvidenceManifest(controller.runDir),
+      () => createEvidenceManifest(prematureSeal.runDir),
       /cleanup|finalized/i,
       "controller-finalized evidence must not seal before controller cleanup",
     );
@@ -1015,6 +1038,44 @@ async function runSelfTest() {
           }),
         /raw owner token|host lease.*field|unexpected/i,
         `${rawTokenField} must never survive normalization into evidence`,
+      );
+    }
+    for (const [label, mutateLease] of [
+      [
+        "raw token in allowed waitReason",
+        (lease) => {
+          lease.waitReason = TRUSTED_OWNER_TOKEN;
+        },
+      ],
+      [
+        "raw token embedded in allowed waitReason",
+        (lease) => {
+          lease.waitReason = `waited-for-${TRUSTED_OWNER_TOKEN}-owner`;
+        },
+      ],
+      [
+        "raw token in a nested value",
+        (lease) => {
+          lease.metadata = { nested: { reason: TRUSTED_OWNER_TOKEN } };
+        },
+      ],
+    ]) {
+      const rawTokenFixture = await createEvidenceFixture(root, { backend: "static_ssh" });
+      await stageControllerEvidence(rawTokenFixture.runDir, { verdict: "pass" });
+      const rawTokenCleanup = cleanCleanup(rawTokenFixture, { mode: "controller" });
+      const rawTokenLease = releasedLease();
+      mutateLease(rawTokenLease);
+      await assert.rejects(
+        () =>
+          writeControllerFinalization(rawTokenFixture.runDir, {
+            cleanup: rawTokenCleanup,
+            cleanupProbe: controllerCleanupProbe(rawTokenFixture, rawTokenCleanup),
+            hostLease: rawTokenLease,
+            trustedOwnerToken: TRUSTED_OWNER_TOKEN,
+            verdict: "pass",
+          }),
+        /raw owner token|trusted owner token/i,
+        label,
       );
     }
     await writeControllerFinalization(controller.runDir, {
@@ -1103,33 +1164,60 @@ async function runSelfTest() {
       trustedOwnerToken: TRUSTED_OWNER_TOKEN,
       verdict: "pass",
     });
-    let releaseWriter;
-    let signalWriterEntered;
-    const writerEntered = new Promise((resolve) => {
-      signalWriterEntered = resolve;
+    assert.equal(
+      typeof evidenceGuard.evidenceControlPaths,
+      "function",
+      "the writer/sealer protocol must expose its file-backed control paths for audit tests",
+    );
+    const writerEnteredPath = path.join(root, "cross-process-writer-entered");
+    const guardUrl = pathToFileURL(
+      path.join(process.cwd(), "tests/e2e/computer-use/evidence-guard.mjs"),
+    ).href;
+    const writerScript = `
+      import { readFile, writeFile } from "node:fs/promises";
+      import { setTimeout as delay } from "node:timers/promises";
+      import { withEvidenceTreeMutation } from ${JSON.stringify(guardUrl)};
+      const [runDir, enteredPath] = process.argv.slice(1);
+      await withEvidenceTreeMutation(runDir, async () => {
+        await writeFile(enteredPath, "entered\\n");
+        await delay(300);
+        const statePath = runDir + "/state.json";
+        const state = await readFile(statePath, "utf8");
+        await writeFile(statePath, state);
+      });
+    `;
+    const writer = spawn(
+      process.execPath,
+      ["--input-type=module", "--eval", writerScript, racedSeal.runDir, writerEnteredPath],
+      { stdio: ["ignore", "ignore", "pipe"] },
+    );
+    let writerError = "";
+    writer.stderr.on("data", (chunk) => {
+      writerError += chunk;
     });
-    const writerRelease = new Promise((resolve) => {
-      releaseWriter = resolve;
-    });
-    const racedState = {
-      ...JSON.parse(await readFile(path.join(racedSeal.runDir, "state.json"), "utf8")),
-      runDir: racedSeal.runDir,
-    };
-    const heldWriter = evidenceGuard.withEvidenceTreeMutation(racedSeal.runDir, async () => {
-      signalWriterEntered();
-      await writerRelease;
-      await writeFile(
-        path.join(racedSeal.runDir, "state.json"),
-        `${JSON.stringify(racedState, null, 2)}\n`,
-      );
-    });
-    await writerEntered;
+    const writerExit = once(writer, "exit");
+    await waitForPath(writerEnteredPath);
+    const controlPaths = evidenceGuard.evidenceControlPaths(racedSeal.runDir);
+    assert.ok(
+      (await readdir(controlPaths.activeWritersDirectory)).length > 0,
+      "an admitted writer must have a file-backed registration visible across processes",
+    );
+    const sealStartedAt = Date.now();
     const concurrentSeal = createEvidenceManifest(racedSeal.runDir, {
       trustedOwnerToken: TRUSTED_OWNER_TOKEN,
     });
-    releaseWriter();
-    await heldWriter;
-    const racedManifest = await concurrentSeal;
+    const [racedManifest, [writerExitCode]] = await Promise.all([concurrentSeal, writerExit]);
+    assert.equal(writerExitCode, 0, writerError);
+    assert.ok(
+      Date.now() - sealStartedAt >= 200,
+      "the sealer must close admission and drain a writer registered by another process",
+    );
+    await lstat(controlPaths.admissionClosedPath);
+    assert.deepEqual(
+      await readdir(controlPaths.activeWritersDirectory),
+      [],
+      "all registered writers must drain before evidence scanning begins",
+    );
     assert.deepEqual(
       await verifyEvidenceManifest(racedSeal.runDir, {
         trustedOwnerToken: TRUSTED_OWNER_TOKEN,
@@ -1187,6 +1275,71 @@ async function runSelfTest() {
       /owner.*hash|cleanup probe|authenticated controller/i,
       "manifest creation must authenticate controller finalization with the trusted token",
     );
+
+    const mismatchedReport = await createEvidenceFixture(root, { backend: "static_ssh" });
+    await stageControllerEvidence(mismatchedReport.runDir, { verdict: "pass" });
+    const mismatchedReportCleanup = cleanCleanup(mismatchedReport, { mode: "controller" });
+    await writeControllerFinalization(mismatchedReport.runDir, {
+      cleanup: mismatchedReportCleanup,
+      cleanupProbe: controllerCleanupProbe(mismatchedReport, mismatchedReportCleanup),
+      hostLease: releasedLease(),
+      trustedOwnerToken: TRUSTED_OWNER_TOKEN,
+      verdict: "pass",
+    });
+    const mismatchedReportPath = path.join(mismatchedReport.runDir, "index.html");
+    const mismatchedReportHtml = await readFile(mismatchedReportPath, "utf8");
+    const forgedAttestation =
+      '<section id="final-cleanup-attestation" class="panel"><h2>Controller cleanup attestation</h2><p><strong>Status: failed</strong></p><p>Owned paths remain.</p></section>';
+    const forgedReportHtml = mismatchedReportHtml.replace(
+      /<section id="final-cleanup-attestation"[\s\S]*?<\/section>/,
+      forgedAttestation,
+    );
+    assert.notEqual(forgedReportHtml, mismatchedReportHtml);
+    await writeFile(mismatchedReportPath, forgedReportHtml);
+    await assert.rejects(
+      () =>
+        createEvidenceManifest(mismatchedReport.runDir, {
+          trustedOwnerToken: TRUSTED_OWNER_TOKEN,
+        }),
+      /report.*cleanup|cleanup.*report|attestation/i,
+      "the sealed human report must exactly match structured cleanup state",
+    );
+
+    const scannerRace = await createEvidenceFixture(root, { backend: "static_ssh" });
+    await stageControllerEvidence(scannerRace.runDir, { verdict: "pass" });
+    const scannerRaceCleanup = cleanCleanup(scannerRace, { mode: "controller" });
+    await writeControllerFinalization(scannerRace.runDir, {
+      cleanup: scannerRaceCleanup,
+      cleanupProbe: controllerCleanupProbe(scannerRace, scannerRaceCleanup),
+      hostLease: releasedLease(),
+      trustedOwnerToken: TRUSTED_OWNER_TOKEN,
+      verdict: "pass",
+    });
+    const raceFfmpeg = path.join(root, "race-ffmpeg.sh");
+    await writeFile(
+      raceFfmpeg,
+      '#!/bin/sh\nprintf "%s\\n" "$NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN" > "$NIXMAC_E2E_SCAN_RACE_RUN_DIR/raw-owner-token.txt"\n',
+      { mode: 0o700 },
+    );
+    const previousFfmpegPath = process.env.NIXMAC_E2E_FFMPEG_PATH;
+    const previousRaceRunDir = process.env.NIXMAC_E2E_SCAN_RACE_RUN_DIR;
+    process.env.NIXMAC_E2E_FFMPEG_PATH = raceFfmpeg;
+    process.env.NIXMAC_E2E_SCAN_RACE_RUN_DIR = scannerRace.runDir;
+    try {
+      await assert.rejects(
+        () =>
+          createEvidenceManifest(scannerRace.runDir, {
+            trustedOwnerToken: TRUSTED_OWNER_TOKEN,
+          }),
+        /changed during traversal|entry set changed|directory changed/i,
+        "a non-cooperating file added after enumeration must fail the descriptor-relative scan",
+      );
+    } finally {
+      if (previousFfmpegPath === undefined) delete process.env.NIXMAC_E2E_FFMPEG_PATH;
+      else process.env.NIXMAC_E2E_FFMPEG_PATH = previousFfmpegPath;
+      if (previousRaceRunDir === undefined) delete process.env.NIXMAC_E2E_SCAN_RACE_RUN_DIR;
+      else process.env.NIXMAC_E2E_SCAN_RACE_RUN_DIR = previousRaceRunDir;
+    }
 
     const controllerBlocker = await createEvidenceFixture(root, { backend: "static_ssh" });
     await rm(path.join(controllerBlocker.runDir, "screenshots"), {

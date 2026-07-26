@@ -6,8 +6,12 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { withEvidenceTreeMutation } from "./evidence-guard.mjs";
-import { assertCuratedSafeFrameVideoMetadata, safeFrameVideoPath } from "./report.mjs";
+import { withEvidenceTreeSeal } from "./evidence-guard.mjs";
+import {
+  assertCuratedSafeFrameVideoMetadata,
+  finalCleanupAttestationHtml,
+  safeFrameVideoPath,
+} from "./report.mjs";
 
 const MANIFEST_PATH = "manifest.json";
 const MAX_EVIDENCE_FILES = 512;
@@ -16,6 +20,23 @@ const MAX_EVIDENCE_FILE_BYTES = 256 * 1024 * 1024;
 const MAX_EVIDENCE_TOTAL_BYTES = 1024 * 1024 * 1024;
 const EVIDENCE_SCAN_DEADLINE_SECONDS = 180;
 const EVIDENCE_SCAN_MAX_OUTPUT_BYTES = 16 * 1024 * 1024;
+const FINAL_LEASE_WAIT_REASONS = new Set(["", "live-owner-wait-completed"]);
+const HOST_LEASE_FIELDS = new Set([
+  "version",
+  "acquired",
+  "released",
+  "repo",
+  "jobId",
+  "attempt",
+  "host",
+  "acquiredOwnerTokenHash",
+  "releasedOwnerTokenHash",
+  "acquiredAt",
+  "releasedAt",
+  "lastHeartbeatAt",
+  "waitReason",
+  "quarantineReason",
+]);
 const REQUIRED_FIXED_PATHS = Object.freeze([
   "artifact/source.json",
   "attempt.json",
@@ -39,6 +60,25 @@ function requireNonEmpty(value, label) {
     throw new Error(`${label} must be a non-empty string`);
   }
   return value;
+}
+
+function assertNoRawTrustedOwnerToken(value, trustedOwnerToken, seen = new WeakSet()) {
+  requireNonEmpty(trustedOwnerToken, "trusted owner token for authenticated controller evidence");
+  if (typeof value === "string") {
+    if (value.includes(trustedOwnerToken)) {
+      throw new Error("raw owner token must not be retained in authenticated controller evidence");
+    }
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  if (seen.has(value)) {
+    throw new Error("authenticated controller evidence must not contain cyclic values");
+  }
+  seen.add(value);
+  for (const item of Array.isArray(value) ? value : Object.values(value)) {
+    assertNoRawTrustedOwnerToken(item, trustedOwnerToken, seen);
+  }
+  seen.delete(value);
 }
 
 function validateRelativePath(relativePath) {
@@ -310,6 +350,13 @@ function requireStateCleanupMatches(state, cleanup) {
 
 function requireReleasedLease(hostLease, { identity, attempt, trustedOwnerToken }) {
   requireVersionOne(hostLease, "host lease sidecar");
+  assertNoRawTrustedOwnerToken(hostLease, trustedOwnerToken);
+  if (
+    Object.keys(hostLease).length !== HOST_LEASE_FIELDS.size ||
+    Object.keys(hostLease).some((field) => !HOST_LEASE_FIELDS.has(field))
+  ) {
+    throw new Error("host lease sidecar must contain only the exact persisted lease schema");
+  }
   const acquiredAt = Date.parse(hostLease.acquiredAt);
   const releasedAt = Date.parse(hostLease.releasedAt);
   const heartbeatAt = Date.parse(hostLease.lastHeartbeatAt);
@@ -331,6 +378,7 @@ function requireReleasedLease(hostLease, { identity, attempt, trustedOwnerToken 
     releasedAt < acquiredAt ||
     heartbeatAt < acquiredAt ||
     heartbeatAt > releasedAt ||
+    !FINAL_LEASE_WAIT_REASONS.has(hostLease.waitReason) ||
     hostLease.quarantineReason !== ""
   ) {
     throw new Error("static host lease does not prove owner-matched release");
@@ -714,8 +762,12 @@ async function readManifestInputs(scan, paths, { trustedOwnerToken = "" } = {}) 
   requireFinalCleanup(cleanup, { identity, artifact });
   requireStateCleanupMatches(state, cleanup);
   const report = scan.captured["index.html"];
-  if (!report.includes('id="final-cleanup-attestation"')) {
-    throw new Error("human report is missing the final cleanup attestation");
+  const expectedCleanupAttestation = finalCleanupAttestationHtml(state.cleanup);
+  if (
+    report.split('id="final-cleanup-attestation"').length !== 2 ||
+    !report.includes(expectedCleanupAttestation)
+  ) {
+    throw new Error("human report cleanup attestation does not exactly match structured state");
   }
   if (identity.captureMode !== "safe-frame") {
     throw new Error("CuaDriver captureMode must be safe-frame");
@@ -820,7 +872,7 @@ function validateManifestOptions(options) {
 
 export async function createEvidenceManifest(runDir, options = {}) {
   const validatedOptions = validateManifestOptions(options);
-  return withEvidenceTreeMutation(runDir, async () => {
+  return withEvidenceTreeSeal(runDir, async () => {
     const scan = scanEvidenceTree(runDir, "create");
     const manifest = await expectedManifest(scan, validatedOptions);
     await writeFile(path.join(runDir, MANIFEST_PATH), `${JSON.stringify(manifest, null, 2)}\n`, {
@@ -834,38 +886,40 @@ export async function createEvidenceManifest(runDir, options = {}) {
 
 export async function verifyEvidenceManifest(runDir, options = {}) {
   const validatedOptions = validateManifestOptions(options);
-  const scan = scanEvidenceTree(runDir, "verify");
-  let manifestSource;
-  try {
-    manifestSource = JSON.parse(scan.manifest);
-  } catch (error) {
-    throw new Error("required evidence file is invalid JSON: manifest.json", { cause: error });
-  }
-  const manifest = requireVersionOne(manifestSource, "evidence manifest");
-  if (!Array.isArray(manifest.files)) throw new Error("evidence manifest files must be an array");
-  const manifestPaths = validatePathList(manifest.files.map((entry) => entry?.path));
-  const treePaths = scan.files.map((entry) => entry.path);
-  if (JSON.stringify(manifestPaths) !== JSON.stringify([...manifestPaths].sort())) {
-    throw new Error("evidence manifest file paths are not in stable lexical order");
-  }
-  if (JSON.stringify(manifestPaths) !== JSON.stringify(treePaths)) {
-    throw new Error("evidence tree file set does not match immutable manifest");
-  }
-  const expected = await expectedManifest(scan, validatedOptions);
-  for (let index = 0; index < expected.files.length; index += 1) {
-    const actualRecord = manifest.files[index];
-    const expectedRecord = expected.files[index];
-    if (actualRecord?.sha256 !== expectedRecord.sha256) {
-      throw new Error(`evidence digest mismatch for ${expectedRecord.path}`);
+  return withEvidenceTreeSeal(runDir, async () => {
+    const scan = scanEvidenceTree(runDir, "verify");
+    let manifestSource;
+    try {
+      manifestSource = JSON.parse(scan.manifest);
+    } catch (error) {
+      throw new Error("required evidence file is invalid JSON: manifest.json", { cause: error });
     }
-    if (actualRecord?.bytes !== expectedRecord.bytes) {
-      throw new Error(`evidence byte count mismatch for ${expectedRecord.path}`);
+    const manifest = requireVersionOne(manifestSource, "evidence manifest");
+    if (!Array.isArray(manifest.files)) throw new Error("evidence manifest files must be an array");
+    const manifestPaths = validatePathList(manifest.files.map((entry) => entry?.path));
+    const treePaths = scan.files.map((entry) => entry.path);
+    if (JSON.stringify(manifestPaths) !== JSON.stringify([...manifestPaths].sort())) {
+      throw new Error("evidence manifest file paths are not in stable lexical order");
     }
-  }
-  if (JSON.stringify(manifest) !== JSON.stringify(expected)) {
-    throw new Error("evidence manifest metadata mismatch");
-  }
-  return manifest;
+    if (JSON.stringify(manifestPaths) !== JSON.stringify(treePaths)) {
+      throw new Error("evidence tree file set does not match immutable manifest");
+    }
+    const expected = await expectedManifest(scan, validatedOptions);
+    for (let index = 0; index < expected.files.length; index += 1) {
+      const actualRecord = manifest.files[index];
+      const expectedRecord = expected.files[index];
+      if (actualRecord?.sha256 !== expectedRecord.sha256) {
+        throw new Error(`evidence digest mismatch for ${expectedRecord.path}`);
+      }
+      if (actualRecord?.bytes !== expectedRecord.bytes) {
+        throw new Error(`evidence byte count mismatch for ${expectedRecord.path}`);
+      }
+    }
+    if (JSON.stringify(manifest) !== JSON.stringify(expected)) {
+      throw new Error("evidence manifest metadata mismatch");
+    }
+    return manifest;
+  });
 }
 
 function cliArg(args, flag) {
