@@ -10,6 +10,7 @@ import {
   readFile,
   readdir,
   realpath,
+  rename,
   rm,
   symlink,
   truncate,
@@ -22,6 +23,7 @@ import { pathToFileURL } from "node:url";
 import { hashCuaBundleTree } from "./drivers/cua-driver.mjs";
 import * as evidenceGuard from "./evidence-guard.mjs";
 import { createEvidenceManifest, verifyEvidenceManifest } from "./evidence-manifest.mjs";
+import * as evidenceManifest from "./evidence-manifest.mjs";
 import * as runMetadata from "./run-metadata.mjs";
 import {
   assertRunPreflight,
@@ -38,6 +40,7 @@ import {
 } from "./run-metadata.mjs";
 import { assertCuratedSafeFrameVideoMetadata, safeFrameVideoPath } from "./report.mjs";
 import { prepareSuiteDriver, renderSuiteErrorReport } from "./run-remote-cua.mjs";
+import { suiteContract } from "./suite-contract.mjs";
 import { addEvent, saveState } from "./state.mjs";
 
 const SHA_A = "a".repeat(40);
@@ -45,10 +48,31 @@ const SHA_B = "b".repeat(40);
 const DIGEST_A = "a".repeat(64);
 const DIGEST_B = "b".repeat(64);
 const DIGEST_C = "c".repeat(64);
+const ATTESTATION_NONCE = "n".repeat(64);
 const VALID_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAACXBIWXMAAAABAAAAAQBPJcTWAAAAFElEQVR4nGNkIBGwjGoY1TB8NQAAYgAAPn161xsAAAAASUVORK5CYII=";
 let fixtureSequence = 0;
 let validMp4Fixture = null;
+
+function validScenarioFixture() {
+  return Object.fromEntries(
+    suiteContract.requiredScenarioKeys.map((key) => [
+      key,
+      {
+        accessibilityRisk: "none",
+        accessibilityRiskReason: "The fixture has no accessibility-specific risk.",
+        assertionTypes: ["fixture"],
+        evidenceStrength: "strong",
+        evidenceStrengthReason: "The fixture supplies deterministic evidence.",
+        failureClass: "none",
+        failureClassReason: "The fixture scenario passed.",
+        label: key,
+        notes: ["Deterministic fixture scenario."],
+        status: key === "reportInspection" ? "not_required" : "pass",
+      },
+    ]),
+  );
+}
 
 async function waitForPath(filePath, timeoutMs = 5_000) {
   const deadline = Date.now() + timeoutMs;
@@ -116,6 +140,9 @@ function validPreflight(appBundlePath) {
     actionsRunId: "123456",
     actionsJobId: "789012",
     attemptNumber: 1,
+    attestationNonceDigest: `sha256:${createHash("sha256")
+      .update(ATTESTATION_NONCE)
+      .digest("hex")}`,
     runnerName: "mac-e2e-01",
     runnerBackend: "cilicon_tart",
     runnerImageDigest: `sha256:${DIGEST_A}`,
@@ -155,12 +182,16 @@ async function createEvidenceFixture(
   await mkdir(path.join(runDir, "video"), { recursive: true });
   await writeValidMediaFixtures(runDir);
   await writeFile(path.join(runDir, "texts", "launch.txt"), "safe text fixture\n");
-  await writeFile(path.join(runDir, "events.json"), '[{"type":"fixture"}]\n');
+  await writeFile(
+    path.join(runDir, "events.json"),
+    '[{"ts":"2026-07-26T00:00:00.000Z","type":"fixture"}]\n',
+  );
   await writeFile(
     path.join(runDir, "state.json"),
     `${JSON.stringify(
       {
         verdict: "pass",
+        scenarios: validScenarioFixture(),
         screenshots: [{ path: "screenshots/launch.png" }],
         textSnapshots: [{ path: "texts/launch.txt" }],
         video: {
@@ -297,6 +328,30 @@ function controllerCleanupProbe(fixture, cleanup) {
 }
 
 async function runSelfTest() {
+  assert.equal(
+    typeof evidenceManifest.createCanonicalEvidenceArchive,
+    "function",
+    "finalization must produce a canonical archive instead of claiming the mutable tree stays verified",
+  );
+  assert.equal(
+    typeof evidenceManifest.verifyCanonicalEvidenceArchive,
+    "function",
+    "canonical evidence must be verified independently from the mutable source tree",
+  );
+  const sharedCaseBytes = await readFile(
+    new URL("./fixtures/cases.json", import.meta.url),
+  );
+  assert.equal(
+    createHash("sha256").update(sharedCaseBytes).digest("hex"),
+    "ea493777018c7ff31cafc5f6834a4d172db04d0a2c07f72ae9977eda33e45293",
+    "the language-neutral verifier cases declaration must remain immutable",
+  );
+  const sharedCases = JSON.parse(sharedCaseBytes);
+  const requiredNodeCases = sharedCases.cases
+    .filter((item) => item.node_compatible)
+    .map((item) => item.name)
+    .sort();
+  const executedNodeCases = new Set();
   const canonicalJobId = `darkmatter/nixmac:${SHA_A}:computer-use-v1`;
   const identityEnv = {
     GITHUB_REPOSITORY: "darkmatter/nixmac",
@@ -309,6 +364,7 @@ async function runSelfTest() {
     NIXMAC_E2E_ACTIONS_RUN_ID: "123456",
     NIXMAC_E2E_ACTIONS_JOB_ID: "789012",
     NIXMAC_E2E_ATTEMPT: "1",
+    NIXMAC_E2E_ATTESTATION_NONCE: ATTESTATION_NONCE,
     NIXMAC_E2E_RUNNER_NAME: "mac-e2e-01",
     NIXMAC_E2E_RUNNER_BACKEND: "cilicon_tart",
     NIXMAC_E2E_RUNNER_IMAGE_DIGEST: `sha256:${DIGEST_A}`,
@@ -586,6 +642,7 @@ async function runSelfTest() {
         NIXMAC_E2E_ACTIONS_RUN_ID: "123456",
         NIXMAC_E2E_ACTIONS_JOB_ID: "789012",
         NIXMAC_E2E_ATTEMPT: "1",
+        NIXMAC_E2E_ATTESTATION_NONCE: ATTESTATION_NONCE,
         NIXMAC_E2E_RUNNER_NAME: "mac-e2e-01",
         NIXMAC_E2E_RUNNER_BACKEND: "cilicon_tart",
         NIXMAC_E2E_RUNNER_IMAGE_DIGEST: `sha256:${DIGEST_A}`,
@@ -794,10 +851,11 @@ async function runSelfTest() {
       /live cleanup probe|process still exists/i,
       "local finalization must independently reject a still-running owned process",
     );
-    const localManifest = await finalizeLocalEvidence(local.runDir, {
+    const localFinalization = await finalizeLocalEvidence(local.runDir, {
       cleanup: cleanCleanup(local),
       verdict: "pass",
     });
+    const { archive: localArchive, manifest: localManifest } = localFinalization;
     assert.equal(localManifest.version, 1);
     assert.deepEqual(
       localManifest.files.map((entry) => entry.path),
@@ -809,7 +867,24 @@ async function runSelfTest() {
       "manifest must bind every required file by non-empty size and SHA-256",
     );
     assert.equal(localManifest.cuaDriver.captureMode, "safe-frame");
-    assert.deepEqual(await verifyEvidenceManifest(local.runDir), localManifest);
+    assert.equal(localArchive.format, "zip");
+    assert.equal(path.dirname(localArchive.archivePath), path.dirname(local.runDir));
+    assert.equal(
+      localArchive.archivePath.startsWith(`${local.runDir}${path.sep}`),
+      false,
+      "canonical archive must be outside the mutable evidence root",
+    );
+    assert.match(localArchive.sha256, /^[0-9a-f]{64}$/);
+    assert.ok(localArchive.bytes > 0);
+    assert.equal(localArchive.digestPath, `${localArchive.archivePath}.sha256`);
+    assert.deepEqual(
+      await evidenceManifest.verifyCanonicalEvidenceArchive(localArchive.archivePath, {
+        digestPath: localArchive.digestPath,
+      }),
+      localFinalization,
+      "the exact canonical archive and digest must verify independently",
+    );
+    executedNodeCases.add("valid-ephemeral-safe-frame");
     const localAttempt = JSON.parse(
       await readFile(path.join(local.runDir, "attempt.json"), "utf8"),
     );
@@ -934,7 +1009,7 @@ async function runSelfTest() {
           terminated: true,
         },
       ];
-      const blockerManifest = await finalizeLocalEvidence(blocker.runDir, {
+      const blockerFinalization = await finalizeLocalEvidence(blocker.runDir, {
         cleanup: blockerCleanup,
         verdict: "inconclusive",
         capture: {
@@ -943,6 +1018,7 @@ async function runSelfTest() {
           reason: `${blockerCode} blocked execution before the UI lifecycle began`,
         },
       });
+      const blockerManifest = blockerFinalization.manifest;
       assert.deepEqual(
         await verifyEvidenceManifest(blocker.runDir),
         blockerManifest,
@@ -969,8 +1045,27 @@ async function runSelfTest() {
     await assert.rejects(
       () => verifyEvidenceManifest(local.runDir),
       /digest mismatch/i,
-      "verified evidence must be immutable",
+      "the mutable source tree must be described only as a point-in-time snapshot",
     );
+    assert.deepEqual(
+      await evidenceManifest.verifyCanonicalEvidenceArchive(localArchive.archivePath, {
+        digestPath: localArchive.digestPath,
+      }),
+      localFinalization,
+      "source mutation after archive creation must not change or poison the canonical result",
+    );
+    const corruptedArchiveBytes = await readFile(localArchive.archivePath);
+    corruptedArchiveBytes[Math.floor(corruptedArchiveBytes.length / 2)] ^= 0xff;
+    await writeFile(localArchive.archivePath, corruptedArchiveBytes);
+    await assert.rejects(
+      () =>
+        evidenceManifest.verifyCanonicalEvidenceArchive(localArchive.archivePath, {
+          digestPath: localArchive.digestPath,
+        }),
+      /digest|archive|ZIP|mismatch/i,
+      "the Node verifier must reject the language-neutral digest-mismatch case",
+    );
+    executedNodeCases.add("digest-mismatch");
 
     const controller = await createEvidenceFixture(root, { backend: "static_ssh" });
     await stageControllerEvidence(controller.runDir, { verdict: "pass" });
@@ -1169,6 +1264,11 @@ async function runSelfTest() {
       "function",
       "the writer/sealer protocol must expose its file-backed control paths for audit tests",
     );
+    assert.equal(
+      typeof evidenceGuard.evidenceControlPaths(racedSeal.runDir).staleOwnersDirectory,
+      "string",
+      "crashed owner recovery must retain an auditable stale-owner quarantine",
+    );
     const writerEnteredPath = path.join(root, "cross-process-writer-entered");
     const guardUrl = pathToFileURL(
       path.join(process.cwd(), "tests/e2e/computer-use/evidence-guard.mjs"),
@@ -1225,6 +1325,147 @@ async function runSelfTest() {
       racedManifest,
       "the sealer must wait for an in-flight writer and bind its completed write",
     );
+
+    const prepareStaticSealFixture = async () => {
+      const fixture = await createEvidenceFixture(root, { backend: "static_ssh" });
+      await stageControllerEvidence(fixture.runDir, { verdict: "pass" });
+      const cleanup = cleanCleanup(fixture, { mode: "controller" });
+      await writeControllerFinalization(fixture.runDir, {
+        cleanup,
+        cleanupProbe: controllerCleanupProbe(fixture, cleanup),
+        hostLease: releasedLease(),
+        trustedOwnerToken: TRUSTED_OWNER_TOKEN,
+        verdict: "pass",
+      });
+      return fixture;
+    };
+    const spawnCrashingOwner = async (fixture, operation) => {
+      const enteredPath = path.join(root, `${operation}-entered-${fixtureSequence}`);
+      const ownerScript =
+        operation === "writer"
+          ? `
+              import { writeFile } from "node:fs/promises";
+              import { withEvidenceTreeMutation } from ${JSON.stringify(guardUrl)};
+              const [runDir, enteredPath] = process.argv.slice(1);
+              await withEvidenceTreeMutation(runDir, async () => {
+                await writeFile(enteredPath, "entered\\n");
+                await new Promise(() => setInterval(() => {}, 1000));
+              });
+            `
+          : `
+              import { writeFile } from "node:fs/promises";
+              import { withEvidenceTreeSeal } from ${JSON.stringify(guardUrl)};
+              const [runDir, enteredPath] = process.argv.slice(1);
+              await withEvidenceTreeSeal(runDir, async () => {
+                await writeFile(enteredPath, "entered\\n");
+                await new Promise(() => setInterval(() => {}, 1000));
+              });
+            `;
+      const owner = spawn(
+        process.execPath,
+        ["--input-type=module", "--eval", ownerScript, fixture.runDir, enteredPath],
+        { stdio: ["ignore", "ignore", "pipe"] },
+      );
+      let ownerError = "";
+      owner.stderr.on("data", (chunk) => {
+        ownerError += chunk;
+      });
+      await waitForPath(enteredPath);
+      owner.kill("SIGKILL");
+      const [exitCode, signal] = await once(owner, "exit");
+      assert.equal(exitCode, null, ownerError);
+      assert.equal(signal, "SIGKILL", ownerError);
+      return evidenceGuard.evidenceControlPaths(fixture.runDir);
+    };
+
+    const crashedWriter = await prepareStaticSealFixture();
+    const crashedWriterPaths = await spawnCrashingOwner(crashedWriter, "writer");
+    const crashedWriterEntries = await readdir(crashedWriterPaths.activeWritersDirectory);
+    assert.equal(crashedWriterEntries.length, 1);
+    const crashedWriterRecord = JSON.parse(
+      await readFile(
+        path.join(crashedWriterPaths.activeWritersDirectory, crashedWriterEntries[0]),
+        "utf8",
+      ),
+    );
+    assert.equal(crashedWriterRecord.kind, "writer");
+    assert.equal(typeof crashedWriterRecord.pid, "number");
+    assert.match(crashedWriterRecord.processBirthMarker, /start/i);
+    assert.equal(typeof crashedWriterRecord.hostname, "string");
+    assert.equal(typeof crashedWriterRecord.bootMarker, "string");
+    assert.match(crashedWriterRecord.nonce, /^[0-9a-f-]{36}$/);
+    await createEvidenceManifest(crashedWriter.runDir, {
+      trustedOwnerToken: TRUSTED_OWNER_TOKEN,
+    });
+    assert.deepEqual(await readdir(crashedWriterPaths.activeWritersDirectory), []);
+    assert.ok(
+      (await readdir(crashedWriterPaths.staleOwnersDirectory)).some((entry) =>
+        entry.endsWith(".audit.json"),
+      ),
+      "a SIGKILL-stale writer must be atomically quarantined with an audit record",
+    );
+
+    const reusedPidWriter = await prepareStaticSealFixture();
+    const reusedPidPaths = await spawnCrashingOwner(reusedPidWriter, "writer");
+    const [reusedPidEntry] = await readdir(reusedPidPaths.activeWritersDirectory);
+    const reusedPidPath = path.join(reusedPidPaths.activeWritersDirectory, reusedPidEntry);
+    const reusedPidRecord = JSON.parse(await readFile(reusedPidPath, "utf8"));
+    reusedPidRecord.pid = process.pid;
+    reusedPidRecord.processBirthMarker = `reused-${reusedPidRecord.processBirthMarker}`;
+    await writeFile(reusedPidPath, `${JSON.stringify(reusedPidRecord)}\n`);
+    await rename(
+      reusedPidPath,
+      path.join(
+        reusedPidPaths.activeWritersDirectory,
+        `${reusedPidRecord.pid}-${reusedPidRecord.nonce}.json`,
+      ),
+    );
+    await createEvidenceManifest(reusedPidWriter.runDir, {
+      trustedOwnerToken: TRUSTED_OWNER_TOKEN,
+    });
+    const reusedAudits = (
+      await Promise.all(
+        (await readdir(reusedPidPaths.staleOwnersDirectory))
+          .filter((entry) => entry.endsWith(".audit.json"))
+          .map(async (entry) =>
+            JSON.parse(
+              await readFile(path.join(reusedPidPaths.staleOwnersDirectory, entry), "utf8"),
+            ),
+          ),
+      )
+    ).filter((audit) => audit.reason === "owner-pid-reused");
+    assert.equal(
+      reusedAudits.length,
+      1,
+      "a live reused PID with a different birth marker must be reclaimed deterministically",
+    );
+
+    const crashedSealer = await prepareStaticSealFixture();
+    const crashedSealerPaths = await spawnCrashingOwner(crashedSealer, "sealer");
+    await lstat(crashedSealerPaths.sealerLockPath);
+    await createEvidenceManifest(crashedSealer.runDir, {
+      trustedOwnerToken: TRUSTED_OWNER_TOKEN,
+    });
+    await assert.rejects(
+      () => lstat(crashedSealerPaths.sealerLockPath),
+      /ENOENT/,
+      "a SIGKILL-stale sealer lock must be reclaimed and released",
+    );
+    const sealerAudits = await Promise.all(
+      (await readdir(crashedSealerPaths.staleOwnersDirectory))
+        .filter((entry) => entry.endsWith(".audit.json"))
+        .map(async (entry) =>
+          JSON.parse(await readFile(path.join(crashedSealerPaths.staleOwnersDirectory, entry), "utf8")),
+        ),
+    );
+    assert.ok(
+      sealerAudits.some(
+        (audit) =>
+          audit.owner.kind === "sealer-lock" && audit.reason === "owner-process-dead",
+      ),
+      "a stale sealer recovery must retain the dead process identity and reason",
+    );
+
     await assert.rejects(
       () =>
         evidenceGuard.withEvidenceTreeMutation(racedSeal.runDir, async () => {
@@ -1275,6 +1516,7 @@ async function runSelfTest() {
       /owner.*hash|cleanup probe|authenticated controller/i,
       "manifest creation must authenticate controller finalization with the trusted token",
     );
+    executedNodeCases.add("static-owner-hash-mismatch");
 
     const mismatchedReport = await createEvidenceFixture(root, { backend: "static_ssh" });
     await stageControllerEvidence(mismatchedReport.runDir, { verdict: "pass" });
@@ -1605,6 +1847,21 @@ async function runSelfTest() {
       /absolute|canonical/i,
     );
 
+    const missingSafeFrame = await createEvidenceFixture(root);
+    await rm(
+      path.join(missingSafeFrame.runDir, "video", "computer-use-evidence.mp4"),
+    );
+    await assert.rejects(
+      () =>
+        finalizeLocalEvidence(missingSafeFrame.runDir, {
+          cleanup: cleanCleanup(missingSafeFrame),
+          verdict: "pass",
+        }),
+      /safe-frame|missing|video/i,
+      "the Node verifier must reject the language-neutral missing-safe-frame case",
+    );
+    executedNodeCases.add("missing-safe-frame");
+
     const rawVideo = await createEvidenceFixture(root);
     const rawState = JSON.parse(await readFile(path.join(rawVideo.runDir, "state.json"), "utf8"));
     rawState.video.path = "video/raw-whole-run.mp4";
@@ -1678,6 +1935,50 @@ async function runSelfTest() {
         }),
       /PNG|media|decode/i,
       "text with a .png suffix must not count as visual evidence",
+    );
+
+    const audioVideo = await createEvidenceFixture(root);
+    const audioVideoPath = path.join(audioVideo.runDir, "video", "computer-use-evidence.mp4");
+    const generatedAudioVideo = spawnSync(
+      "ffmpeg",
+      [
+        "-v",
+        "error",
+        "-loop",
+        "1",
+        "-i",
+        path.join(audioVideo.runDir, "screenshots", "launch.png"),
+        "-f",
+        "lavfi",
+        "-i",
+        "anullsrc=channel_layout=mono:sample_rate=8000",
+        "-t",
+        "0.1",
+        "-r",
+        "1",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:a",
+        "aac",
+        "-shortest",
+        "-y",
+        audioVideoPath,
+      ],
+      { encoding: "utf8", timeout: 10_000 },
+    );
+    assert.equal(
+      generatedAudioVideo.status,
+      0,
+      generatedAudioVideo.stderr || generatedAudioVideo.error?.message,
+    );
+    await assert.rejects(
+      () =>
+        finalizeLocalEvidence(audioVideo.runDir, {
+          cleanup: cleanCleanup(audioVideo),
+          verdict: "pass",
+        }),
+      /exactly one video stream|audio|non-video stream/i,
+      "the pinned ffprobe inventory must reject hidden audio or extra streams",
     );
 
     const corruptMp4 = await createEvidenceFixture(root);
@@ -1782,26 +2083,33 @@ async function runSelfTest() {
       },
     );
     assert.equal(metadataCli.status, 0, metadataCli.stderr || metadataCli.stdout);
-    for (const command of ["create", "verify"]) {
-      const result = spawnSync(
-        process.execPath,
-        [
-          path.join(process.cwd(), "tests/e2e/computer-use/evidence-manifest.mjs"),
-          command,
-          "--run-dir",
-          cliController.runDir,
-        ],
-        {
-          cwd: process.cwd(),
-          encoding: "utf8",
-          env: {
-            ...process.env,
-            NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN: TRUSTED_OWNER_TOKEN,
-          },
+    const cliArchive = evidenceManifest.canonicalEvidenceArchivePaths(
+      cliController.runDir,
+    ).archivePath;
+    const verifyCli = spawnSync(
+      process.execPath,
+      [
+        path.join(process.cwd(), "tests/e2e/computer-use/evidence-manifest.mjs"),
+        "verify",
+        "--archive",
+        cliArchive,
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN: TRUSTED_OWNER_TOKEN,
         },
-      );
-      assert.equal(result.status, 0, result.stderr || result.stdout);
-    }
+      },
+    );
+    assert.equal(verifyCli.status, 0, verifyCli.stderr || verifyCli.stdout);
+    executedNodeCases.add("valid-static-released-owner-lease");
+    assert.deepEqual(
+      [...executedNodeCases].sort(),
+      requiredNodeCases,
+      "the Node verifier must execute every node-compatible language-neutral case",
+    );
 
     console.log("Computer Use evidence manifest self-test passed.");
   } finally {
