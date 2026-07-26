@@ -17,6 +17,52 @@ Proof report must make uncertainty visible: missing proof, low-signal evidence,
 stale coverage, expired waivers, remote-infra blockers, and provider failures
 must fail or downgrade the run instead of being hidden behind a passing check.
 
+## Local CuaDriver Lane
+
+`run-cua-driver.mjs` is the on-Mac entrypoint for the scalable runner pool. It
+uses the same scenario suite as the remote Codex app-server lane, but launches
+and drives the exact staged app through the pinned CuaDriver CLI/app identity.
+It does not use SSH, SCP, a WebSocket, or attach to an existing CuaDriver
+daemon.
+
+The workflow must stage the tested bundle in a disposable directory whose
+basename exactly matches the evidence run directory basename. The app path must
+already be absolute, normalized, and canonical; shared `/Applications` paths
+are rejected. For example, an evidence directory ending in `run-123` may use
+the canonical staged path `/private/tmp/run-123/nixmac.app`.
+
+```bash
+NIXMAC_E2E_DISPOSABLE_CONFIG=true \
+NIXMAC_E2E_APP_ARTIFACT_SHA=<full-40-character-source-sha> \
+NIXMAC_E2E_APP_PATH=/private/tmp/run-123/nixmac.app \
+NIXMAC_COMPUTER_USE_APP=com.darkmatter.nixmac \
+NIXMAC_CUA_DRIVER_BINARY=/absolute/path/to/pinned/cua-driver \
+node tests/e2e/computer-use/run-cua-driver.mjs run \
+  --run-dir artifacts/computer-use-remote/run-123
+```
+
+The runner computes and records the staged bundle digest, verifies the bundle
+ID, calls `prepareTarget`, and then rechecks the same bundle identity/digest
+before the first visible-state capture.
+`prepareTarget` fails closed if another process for the bundle is already
+running and owns only the PID it launches. `NIXMAC_CUA_DRIVER_SOCKET` may name
+an absent, owned, run-specific socket. Omitting it lets CuaDriver choose a short
+system-temporary socket path; the entrypoint never enables non-owning attach
+mode. Remote SSH/SCP and Codex WebSocket environment variables are rejected
+rather than silently inherited.
+
+This deterministic contract test does not launch an app, daemon, browser, or
+permission prompt:
+
+```bash
+node tests/e2e/computer-use/run-cua-driver.mjs self-test
+```
+
+The local lane renders and publishes its report as immutable evidence, so the
+legacy browser report-copy/inspection scenario is not required there. Any
+future browser inspection must use an isolated non-personal browser profile on
+the same disposable runner.
+
 ## Remote Computer Use Lane
 
 This is the PR-ready lane. Start Codex app-server on the target Mac and tunnel

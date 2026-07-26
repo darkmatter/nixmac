@@ -2,7 +2,7 @@
 import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
 import { existsSync, statSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
@@ -164,6 +164,126 @@ function run(command, args, options = {}) {
     );
   }
   return result.stdout.trim();
+}
+
+async function readLocalAppBundleIdentity(appPath) {
+  const infoPlist = path.join(appPath, "Contents", "Info.plist");
+  const bundleId = run("/usr/bin/plutil", [
+    "-extract",
+    "CFBundleIdentifier",
+    "raw",
+    "-o",
+    "-",
+    infoPlist,
+  ]);
+  const { hashCuaBundleTree } = await import("./drivers/cua-driver.mjs");
+  return {
+    bundleId,
+    digestSha256: await hashCuaBundleTree(appPath),
+  };
+}
+
+export async function validateLocalCuaPreflight(
+  { appBundleId, runDir },
+  {
+    env = process.env,
+    canonicalPath = realpath,
+    readBundleIdentity = readLocalAppBundleIdentity,
+  } = {},
+) {
+  if (!path.isAbsolute(runDir) || path.normalize(runDir) !== runDir) {
+    throw new Error("local CuaDriver runDir must be an absolute normalized path");
+  }
+  if (env.NIXMAC_E2E_DISPOSABLE_CONFIG !== "true") {
+    throw new Error("local CuaDriver requires NIXMAC_E2E_DISPOSABLE_CONFIG=true");
+  }
+  const remoteTransportKeys = [
+    "NIXMAC_COMPUTER_USE_WS",
+    "NIXMAC_E2E_REMOTE_SSH_DEST",
+    "NIXMAC_E2E_SSH_KEY",
+    "NIXMAC_E2E_SSH_KNOWN_HOSTS",
+    "NIXMAC_E2E_REMOTE_REPORT_DIR",
+    "NIXMAC_E2E_REMOTE_CONFIG_DIR",
+    "NIXMAC_E2E_REMOTE_APP_PATH",
+  ].filter((key) => String(env[key] || "") !== "");
+  if (remoteTransportKeys.length > 0) {
+    throw new Error(
+      `local CuaDriver forbids remote transport environment: ${remoteTransportKeys.join(", ")}`,
+    );
+  }
+  const appArtifactSha = String(env.NIXMAC_E2E_APP_ARTIFACT_SHA || "");
+  if (!/^[0-9a-f]{40}$/.test(appArtifactSha)) {
+    throw new Error("NIXMAC_E2E_APP_ARTIFACT_SHA must be a full lowercase 40-character SHA");
+  }
+  const inputAppPath = String(env.NIXMAC_E2E_APP_PATH || "");
+  if (
+    !inputAppPath ||
+    !path.isAbsolute(inputAppPath) ||
+    path.normalize(inputAppPath) !== inputAppPath ||
+    !inputAppPath.endsWith(".app")
+  ) {
+    throw new Error("NIXMAC_E2E_APP_PATH must be an absolute normalized .app path");
+  }
+  const appPath = await canonicalPath(inputAppPath);
+  if (appPath !== inputAppPath) {
+    throw new Error(`NIXMAC_E2E_APP_PATH must be canonical: expected ${appPath}`);
+  }
+  if (appPath.startsWith("/Applications/") || appPath.startsWith("/System/Applications/")) {
+    throw new Error("NIXMAC_E2E_APP_PATH must not use a shared Applications path");
+  }
+  if (path.basename(path.dirname(appPath)) !== path.basename(runDir)) {
+    throw new Error(
+      "NIXMAC_E2E_APP_PATH must be staged in a run-specific directory named for the run directory",
+    );
+  }
+  const identity = await readBundleIdentity(appPath);
+  if (identity.bundleId !== appBundleId) {
+    throw new Error(
+      `staged app bundle ID mismatch: expected ${appBundleId}, got ${identity.bundleId || "missing"}`,
+    );
+  }
+  if (!/^[0-9a-f]{64}$/.test(identity.digestSha256 || "")) {
+    throw new Error("staged app bundle digest must be a lowercase SHA-256");
+  }
+  return Object.freeze({
+    appArtifactSha,
+    appBundleDigestSha256: identity.digestSha256,
+    appBundleId,
+    appPath,
+  });
+}
+
+export async function verifyLocalCuaPreflight(
+  preflight,
+  { readBundleIdentity = readLocalAppBundleIdentity } = {},
+) {
+  const identity = await readBundleIdentity(preflight.appPath);
+  if (identity.bundleId !== preflight.appBundleId) {
+    throw new Error("staged app bundle ID changed after target preparation");
+  }
+  if (identity.digestSha256 !== preflight.appBundleDigestSha256) {
+    throw new Error("staged app bundle digest changed after target preparation");
+  }
+  return preflight;
+}
+
+export async function prepareSuiteDriver(
+  driver,
+  { executionTopology, appBundleId, localPreflight = null },
+) {
+  await driver.connect();
+  if (executionTopology === "local-cua-driver") {
+    if (!localPreflight) throw new Error("local CuaDriver preflight identity is required");
+    await driver.prepareTarget({
+      appBundleId,
+      appPath: localPreflight.appPath,
+    });
+    return;
+  }
+  if (executionTopology !== "remote-codex-app-server") {
+    throw new Error(`unsupported Computer Use execution topology: ${executionTopology}`);
+  }
+  await driver.prepareTarget({ appBundleId });
 }
 
 function findQuestionInputEntry(text) {
@@ -450,7 +570,7 @@ function managedWaiverFor(surface) {
   return waiver;
 }
 
-function buildCoverageFreshness(state) {
+function buildCoverageFreshness() {
   const manifest = loadCoverageManifest();
   const surfaces = manifest.surfaces || [];
   const drift = [];
@@ -498,7 +618,7 @@ function buildCoverageFreshness(state) {
 }
 
 function updateMainCoverageFreshness(state) {
-  state.coverageFreshness = buildCoverageFreshness(state);
+  state.coverageFreshness = buildCoverageFreshness();
   const drift = state.coverageFreshness.drift || [];
   const waiverNote = state.coverageFreshness.waivers?.length
     ? ` Explicit waivers: ${state.coverageFreshness.waivers.map((item) => `${item.id} (${item.owner || "unowned"}, review by ${item.reviewBy || "unset"}): ${item.reason}`).join(" | ")}`
@@ -2086,7 +2206,7 @@ async function runQuestionAnswerEvolvedCase(driver, state, caseDef) {
     updateScenario(state, caseDef.scenarioKey, run.status, run.notes.join(" "));
     return cleanup.text;
   }
-  if (/error$/.test(questionWait.result)) {
+  if (questionWait.result.endsWith("error")) {
     run.status = "fail";
     run.notes.push(
       `Provider reached ${questionWait.result} before inline question could be answered.`,
@@ -2388,32 +2508,68 @@ async function render(state, { stateFileName = "state.json", recordEvent = true 
   if (recordEvent) await addEvent(state, "report.rendered", { path: "index.html", verdict });
 }
 
-async function runSuite(args) {
+export async function runSuiteWithDriver(args, { createDriver, executionTopology } = {}) {
   if (args.includes("--prompt") || process.env.NIXMAC_E2E_PROMPT) {
     throw new Error(
       "Custom prompts are not supported by this E2E runner; assertions are calibrated to the fixed bat/Homebrew prompt.",
     );
   }
   const options = {
-    ws: process.env.NIXMAC_COMPUTER_USE_WS || DEFAULT_WS,
     app: process.env.NIXMAC_COMPUTER_USE_APP || DEFAULT_APP,
     prompt: DEFAULT_PROMPT,
+    ...(executionTopology === "remote-codex-app-server"
+      ? { ws: process.env.NIXMAC_COMPUTER_USE_WS || DEFAULT_WS }
+      : {}),
   };
-  const runDir = argValue(args, "--run-dir", path.join(ARTIFACT_ROOT, timestampSlug()));
-  activeRunDir = runDir;
+  let runDir = argValue(args, "--run-dir", path.join(ARTIFACT_ROOT, timestampSlug()));
+  if (typeof createDriver !== "function") {
+    throw new TypeError("runSuiteWithDriver requires createDriver");
+  }
+  if (executionTopology !== "remote-codex-app-server" && executionTopology !== "local-cua-driver") {
+    throw new Error(`unsupported Computer Use execution topology: ${executionTopology}`);
+  }
   await mkdir(path.join(runDir, "screenshots"), { recursive: true });
   await mkdir(path.join(runDir, "texts"), { recursive: true });
+  if (executionTopology === "local-cua-driver") runDir = await realpath(runDir);
+  activeRunDir = runDir;
+  const localPreflight =
+    executionTopology === "local-cua-driver"
+      ? await validateLocalCuaPreflight({
+          appBundleId: options.app,
+          runDir,
+        })
+      : null;
   const state = await baseState(runDir, options);
+  state.executionTopology = executionTopology;
+  if (localPreflight) {
+    state.localApp = {
+      artifactSha: localPreflight.appArtifactSha,
+      bundleDigestSha256: localPreflight.appBundleDigestSha256,
+      bundleId: localPreflight.appBundleId,
+      path: localPreflight.appPath,
+    };
+  }
   await saveState(state);
   const computerUseStartedAt = nowIso();
 
-  const driver = validateRuntimeDriver(new CodexAppServerDriver(options.ws));
+  const driver = validateRuntimeDriver(
+    createDriver({
+      ...options,
+      runDir,
+    }),
+  );
   try {
-    await driver.connect();
-    await driver.prepareTarget({ appBundleId: options.app });
-    await prepareDisposableRemoteBaseline(state);
-    await maybeRelaunchRemote(state);
-    captureRemoteMetadata(state);
+    await prepareSuiteDriver(driver, {
+      executionTopology,
+      appBundleId: options.app,
+      localPreflight,
+    });
+    if (localPreflight) await verifyLocalCuaPreflight(localPreflight);
+    if (executionTopology === "remote-codex-app-server") {
+      await prepareDisposableRemoteBaseline(state);
+      await maybeRelaunchRemote(state);
+      captureRemoteMetadata(state);
+    }
 
     let text = await captureState(
       driver,
@@ -3619,6 +3775,14 @@ async function runSuite(args) {
       }
     }
 
+    if (executionTopology === "local-cua-driver") {
+      for (const screenshot of state.screenshots) {
+        if (screenshot.source === "Codex Computer Use get_app_state image") {
+          screenshot.source = "CuaDriver get_window_state image";
+        }
+      }
+    }
+
     const coreSurfaceLabels = new Set(state.screenshots.map((shot) => shot.label));
     const requiredVisualSurfaces = [
       "launch",
@@ -3645,7 +3809,9 @@ async function runSuite(args) {
     updateMainCoverageFreshness(state);
 
     state.cleanup.note =
-      "Remote app state was not restored by this runner. CI wrapper is responsible for remote app-support backup/restore; local artifacts are retained.";
+      executionTopology === "local-cua-driver"
+        ? "The local CuaDriver owns target-app and daemon cleanup; disposable config cleanup is finalized by the workflow."
+        : "Remote app state was not restored by this runner. CI wrapper is responsible for remote app-support backup/restore; local artifacts are retained.";
     addTimingPhase(state, {
       id: "computer-use-run",
       label: "Computer Use run",
@@ -3654,10 +3820,22 @@ async function runSuite(args) {
       status: "success",
       startedAt: computerUseStartedAt,
       endedAt: nowIso(),
-      note: "Connected to Codex app-server, exercised the calibrated nixmac Computer Use suite, and reached report generation.",
+      note:
+        executionTopology === "local-cua-driver"
+          ? "Connected to the local CuaDriver, exercised the calibrated nixmac Computer Use suite, and reached report generation."
+          : "Connected to Codex app-server, exercised the calibrated nixmac Computer Use suite, and reached report generation.",
     });
     await render(state);
-    await inspectReportWithComputerUse(driver, state);
+    if (executionTopology === "remote-codex-app-server") {
+      await inspectReportWithComputerUse(driver, state);
+    } else {
+      updateScenario(
+        state,
+        "reportInspection",
+        "not_required",
+        "The local CuaDriver lane validates and publishes the generated report as immutable evidence; it does not open a personal browser or copy the report over SSH.",
+      );
+    }
     refreshVisualProofQuality(state);
     updatePrSpecificCoverage(state);
     await render(state);
@@ -3672,6 +3850,13 @@ async function runSuite(args) {
   } finally {
     await driver.close();
   }
+}
+
+async function runSuite(args) {
+  return runSuiteWithDriver(args, {
+    createDriver: (options) => new CodexAppServerDriver(options.ws),
+    executionTopology: "remote-codex-app-server",
+  });
 }
 
 async function renderUnavailable(args) {
@@ -3765,8 +3950,13 @@ async function renderExisting(args) {
   console.log(path.join(runDir, "index.html"));
 }
 
-async function renderErrorReport(error, args) {
-  const note = `Computer Use remote runner failed before completing the suite: ${redact(error instanceof Error ? error.message : String(error))}`;
+export async function renderSuiteErrorReport(
+  error,
+  args,
+  { executionTopology = "remote-codex-app-server" } = {},
+) {
+  const lane = executionTopology === "local-cua-driver" ? "local CuaDriver" : "remote";
+  const note = `Computer Use ${lane} runner failed before completing the suite: ${redact(error instanceof Error ? error.message : String(error))}`;
   const runDir = argValue(args, "--run-dir", activeRunDir || "");
   const fallbackArgs = withRunDirArg(args, runDir);
   if (!runDir) {
@@ -4381,7 +4571,7 @@ async function runSelfTest() {
   const coverageFreshness = buildCoverageFreshness();
   assert.equal(
     coverageFreshness.candidateFiles,
-    943,
+    944,
     "coverage freshness should preserve the full shared PR-visible behavior universe",
   );
   const coverageManifest = loadCoverageManifest();
@@ -5788,7 +5978,7 @@ async function runSelfTest() {
   const previousActiveRunDir = activeRunDir;
   activeRunDir = crashRunDir;
   try {
-    await renderErrorReport(new Error("synthetic fallback crash"), []);
+    await renderSuiteErrorReport(new Error("synthetic fallback crash"), []);
   } finally {
     activeRunDir = previousActiveRunDir;
   }
@@ -5842,7 +6032,7 @@ async function main() {
         );
         if (command === "run") {
           try {
-            await renderErrorReport(error, args);
+            await renderSuiteErrorReport(error, args);
           } catch (reportError) {
             console.error(
               redact(
@@ -5858,4 +6048,4 @@ async function main() {
   );
 }
 
-await main();
+if (process.argv[1] && path.resolve(process.argv[1]) === THIS_FILE) await main();

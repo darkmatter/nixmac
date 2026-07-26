@@ -18,6 +18,38 @@ and PR author/reviewer have been identified from that policy section.
 When an owner is unclear, the release approver must name the accountable owner
 in the override or release record before treating Product Proof as satisfied.
 
+## Local CuaDriver Attempt
+
+Use the local CuaDriver entrypoint on static transition runners and ephemeral
+macOS workers. Before invoking it:
+
+1. Create a unique evidence run directory and a separate disposable staging
+   directory with the same basename.
+1. Extract one exact-SHA app artifact into that staging directory as
+   `nixmac.app`; resolve the resulting path to its canonical absolute path.
+1. Provision a per-run disposable nixmac config and set
+   `NIXMAC_E2E_DISPOSABLE_CONFIG=true`.
+1. Pass the full 40-character source SHA in
+   `NIXMAC_E2E_APP_ARTIFACT_SHA`, the canonical bundle path in
+   `NIXMAC_E2E_APP_PATH`, and the pinned CLI in
+   `NIXMAC_CUA_DRIVER_BINARY`.
+1. Clear all legacy remote SSH/SCP and Codex WebSocket environment variables;
+   the local preflight rejects them.
+1. Leave `NIXMAC_CUA_DRIVER_SOCKET` unset unless the workflow has reserved an
+   absent, owned, run-specific short socket path. Never pass an existing socket
+   and never attach to a daemon from another attempt.
+
+The runner verifies the staged bundle ID and digest before UI actions, prepares
+the exact target, rechecks the bundle identity/digest before its first state
+capture, refuses a pre-existing same-bundle process, and delegates target/daemon
+teardown only to the owning CuaDriver instance. A preflight, launch,
+target-binding, or cleanup error is a failed attempt; do not retry by killing
+an unowned process.
+
+The local lane does not call SSH/SCP, copy the report to another machine, or
+open a personal browser. If report inspection is later made binding, provision
+an isolated same-run browser profile and treat it as another owned resource.
+
 ## Daily Operator Check
 
 1. Inspect the latest local evidence summary:

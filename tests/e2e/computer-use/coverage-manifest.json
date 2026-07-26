@@ -486,6 +486,7 @@
         "tests/e2e/computer-use/report.mjs",
         "tests/e2e/computer-use/report.test.mjs",
         "tests/e2e/computer-use/run-adversarial.mjs",
+        "tests/e2e/computer-use/run-cua-driver.mjs",
         "tests/e2e/computer-use/run-local.mjs",
         "tests/e2e/computer-use/run-remote-cua.mjs",
         "tests/e2e/computer-use/scenario-catalog.mjs",

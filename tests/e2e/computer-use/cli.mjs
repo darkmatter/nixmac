@@ -24,6 +24,54 @@ Environment:
 `;
 }
 
+export function localCuaUsage({ defaultApp }) {
+  return `Usage:
+  node tests/e2e/computer-use/run-cua-driver.mjs run --run-dir <artifact-run-dir>
+  node tests/e2e/computer-use/run-cua-driver.mjs self-test
+
+Execution topology:
+  local-cua-driver (on-Mac only; no remote transport)
+
+Environment:
+  NIXMAC_COMPUTER_USE_APP       Bundle id (default ${defaultApp})
+  NIXMAC_CUA_DRIVER_BINARY      Pinned CuaDriver CLI executable (default cua-driver)
+  NIXMAC_CUA_DRIVER_SOCKET      Optional owned run-specific daemon socket
+  NIXMAC_E2E_DISPOSABLE_CONFIG Must be exactly true
+  NIXMAC_E2E_APP_ARTIFACT_SHA  Full lowercase 40-character source SHA
+  NIXMAC_E2E_APP_PATH          Exact canonical staged .app bundle path
+`;
+}
+
+export async function dispatchLocalCuaCommand(argv, handlers, options = {}) {
+  const [command, ...args] = argv;
+  const usage = options.usage ?? (() => {});
+  const exit =
+    options.exit ??
+    ((code) => {
+      process.exitCode = code;
+    });
+  const onError = options.onError ?? (() => {});
+  const handler = {
+    run: handlers.run,
+    "self-test": handlers.selfTest,
+  }[command];
+  if (!handler) {
+    usage();
+    const exitCode = command ? 1 : 0;
+    exit(exitCode);
+    return { command, args, exitCode };
+  }
+  try {
+    if (command === "self-test") await handler();
+    else await handler(args);
+    return { command, args, exitCode: 0 };
+  } catch (error) {
+    await onError(error, { command, args });
+    exit(1);
+    return { command, args, error, exitCode: 1 };
+  }
+}
+
 export async function dispatchRemoteCuaCommand(argv, handlers, options = {}) {
   const [command, ...args] = argv;
   const usage = options.usage ?? (() => {});
