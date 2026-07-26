@@ -8,7 +8,7 @@
 
 **Tech Stack:** Node.js ESM, CuaDriver CLI/MCP daemon, GitHub Actions and API, Python 3.11 Centaur workflows/tools, Tart/Cilicon, `unittest`, existing nixmac preservation/adversarial harnesses, `jq`, `ffmpeg`.
 
----
+______________________________________________________________________
 
 ## Repositories And Worktrees
 
@@ -27,6 +27,26 @@
 
 Do not add the unrelated `.beads/.gitignore` change present in the nixmac
 worktree to any commit.
+
+## Current Execution Baseline
+
+This plan remains the complete target, but execution is already in progress.
+Do not repeat completed steps literally:
+
+- Task 1 runtime-driver contract is complete through `468073685`.
+- Task 2 Codex transport wrapper is complete through `80ffde2a2`.
+- The inherited report-inspection baseline is repaired at `3cd27b39f`.
+- Coverage ownership/freshness is fail-closed through `2816f9403`.
+- The shared MacinCloud concurrency contract is structural, adversarially
+  tested across all three legacy workflows, and automatically gated on
+  `pull_request` and `merge_group` through `b90a8c8bb`.
+- Task 3, the driver-neutral `scenario-driver.mjs` extraction, is the next
+  planned feature slice after the remaining inherited workflow baseline is
+  green.
+
+The task bodies below remain the implementation and acceptance record.
+Completed tasks are retained for traceability; their commits and fresh test
+evidence, not unchecked historical TDD prose, are authoritative.
 
 ## File Map
 
@@ -62,6 +82,11 @@ worktree to any commit.
   attestation artifact.
 - `tests/e2e/computer-use/centaur-workflow-contract-self-test.mjs` — static
   workflow safety and artifact-binding assertions.
+- `ops/runner/macincloud-host-lease.sh` — atomic owner-token lease shared by
+  every legacy and Centaur job that drives the transition/DR MacinCloud host.
+- `tests/e2e/computer-use/remote-host-lease-contract-self-test.mjs` — proves
+  lease ordering, owner-only release, stale-owner quarantine, and automatic
+  wiring across all four Mac-driving jobs.
 - `ops/runner/cilicon-e2e-cycle-wrapper.sh` — host-side supervisor that gives
   each one-VM Cilicon cycle a unique host-owned mount and clone identity.
 - `ops/runner/cilicon-e2e-lifecycle-attestor.sh` — host-side VM-path/runner
@@ -101,12 +126,16 @@ worktree to any commit.
 ### Task 1: Define The Runtime Driver Contract
 
 **Files:**
+
 - Create: `tests/e2e/computer-use/drivers/runtime-contract.mjs`
+
 - Create: `tests/e2e/computer-use/drivers/driver-self-test.mjs`
+
 - Modify: `tests/e2e/computer-use/drivers/contract.mjs`
+
 - Modify: `tests/e2e/computer-use/run-remote-cua.mjs`
 
-- [ ] **Step 1: Write failing runtime-contract tests**
+- [x] **Step 1: Write failing runtime-contract tests**
 
 Test these exact requirements:
 
@@ -136,7 +165,7 @@ assert.deepEqual(state.target, {
 assert.throws(() => validateRuntimeDriver({}), /connect/);
 ```
 
-- [ ] **Step 2: Run the test and verify it fails**
+- [x] **Step 2: Run the test and verify it fails**
 
 Run:
 
@@ -146,7 +175,7 @@ node tests/e2e/computer-use/drivers/driver-self-test.mjs
 
 Expected: FAIL with `ERR_MODULE_NOT_FOUND` for `runtime-contract.mjs`.
 
-- [ ] **Step 3: Implement the normalized contract**
+- [x] **Step 3: Implement the normalized contract**
 
 Export:
 
@@ -198,13 +227,13 @@ export function validateRuntimeDriver(driver) {
 Codex transport because its workflow already launched the app. The CuaDriver
 transport launches the staged exact-SHA app and returns its pid/window target.
 
-- [ ] **Step 4: Add `cua-element-index` validation**
+- [x] **Step 4: Add `cua-element-index` validation**
 
 Require integer `elementIndex`, integer `pid`, integer `windowId`, and non-empty
 `snapshotId`. Keep existing built-in address kinds unchanged; register the new
 kind through the existing explicit adapter extension hook.
 
-- [ ] **Step 5: Run contract and existing runner self-tests**
+- [x] **Step 5: Run contract and existing runner self-tests**
 
 Run:
 
@@ -215,7 +244,7 @@ node tests/e2e/computer-use/run-remote-cua.mjs self-test
 
 Expected: both PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add tests/e2e/computer-use/drivers/runtime-contract.mjs \
@@ -228,11 +257,14 @@ git commit -m "test(e2e): define runtime driver contract"
 ### Task 2: Wrap The Existing Codex Transport
 
 **Files:**
+
 - Create: `tests/e2e/computer-use/drivers/codex-app-server.mjs`
+
 - Modify: `tests/e2e/computer-use/transport.mjs`
+
 - Modify: `tests/e2e/computer-use/drivers/driver-self-test.mjs`
 
-- [ ] **Step 1: Write a failing adapter test**
+- [x] **Step 1: Write a failing adapter test**
 
 Use the existing mock WebSocket and assert:
 
@@ -250,24 +282,31 @@ assert.equal(clicked.ok, true);
 driver.close();
 ```
 
-- [ ] **Step 2: Verify the test fails**
+- [x] **Step 2: Verify the test fails**
 
 Expected: `CodexAppServerDriver is not defined`.
 
-- [ ] **Step 3: Implement the wrapper**
+- [x] **Step 3: Implement the wrapper**
 
 `CodexAppServerDriver` must:
 
 - own an `AppServerClient`;
+
 - implement `prepareTarget` as a no-op assertion that an app bundle ID exists;
+
 - map `visibleState` to `get_app_state`;
+
 - map `click` to `click`;
+
 - map `setValue` to `set_value`;
+
 - normalize all responses through `runtime-contract.mjs`;
+
 - expose `codexAppServerDriverDescriptor`;
+
 - preserve the current initialize/thread policy exactly.
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run:
 
@@ -278,7 +317,7 @@ node tests/e2e/computer-use/run-remote-cua.mjs self-test
 
 Expected: PASS with the same JSON-RPC order assertions as before.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tests/e2e/computer-use/drivers/codex-app-server.mjs \
@@ -290,8 +329,11 @@ git commit -m "refactor(e2e): wrap Codex transport"
 ### Task 3: Extract Driver-Neutral Scenario Helpers
 
 **Files:**
+
 - Create: `tests/e2e/computer-use/scenario-driver.mjs`
+
 - Modify: `tests/e2e/computer-use/run-remote-cua.mjs`
+
 - Modify: `tests/e2e/computer-use/drivers/driver-self-test.mjs`
 
 - [ ] **Step 1: Write failing helper tests**
@@ -394,12 +436,19 @@ git commit -m "refactor(e2e): inject computer-use driver"
 ### Task 4: Implement The CuaDriver CLI Adapter
 
 **Files:**
+
 - Create: `tests/e2e/computer-use/drivers/cua-driver.mjs`
+
 - Create: `tests/e2e/computer-use/fixtures/cua-driver/list-apps.json`
+
 - Create: `tests/e2e/computer-use/fixtures/cua-driver/list-windows.json`
+
 - Create: `tests/e2e/computer-use/fixtures/cua-driver/window-state.json`
+
 - Create: `tests/e2e/computer-use/fixtures/cua-driver/action-success.json`
+
 - Create: `tests/e2e/computer-use/fixtures/cua-driver/action-error.json`
+
 - Modify: `tests/e2e/computer-use/drivers/driver-self-test.mjs`
 
 - [ ] **Step 1: Capture and sanitize real raw response fixtures**
@@ -413,15 +462,25 @@ fixture values. Do not include the remote host, usernames, keys, or secrets.
 Cover:
 
 - CLI argv uses no shell;
+
 - daemon socket is run-specific;
+
 - `prepareTarget` launches the staged app through `launch_app`;
+
 - returned bundle ID resolves to the expected running pid;
+
 - on-screen window selection is deterministic;
+
 - `get_window_state` text and image normalize correctly;
+
 - the snapshot ID changes after each visible-state call;
+
 - stale element addresses are rejected before a click;
+
 - click/set-value map to CuaDriver integer element indices;
+
 - `isError: true` maps to `ok: false`;
+
 - close calls `stop --socket` only for a daemon the adapter started.
 
 - [ ] **Step 3: Implement a process runner**
@@ -449,25 +508,25 @@ Parse only raw MCP result objects shaped as:
 `connect()` must:
 
 1. run `--version`;
-2. start `serve --socket <run-socket>`;
-3. poll `status --socket <run-socket>`;
-4. call `check_permissions`;
-5. fail unless Accessibility and Screen Recording are granted.
+1. start `serve --socket <run-socket>`;
+1. poll `status --socket <run-socket>`;
+1. call `check_permissions`;
+1. fail unless Accessibility and Screen Recording are granted.
 
 `prepareTarget({ appBundleId, appPath })` must:
 
 1. prove `appPath` exists and its bundle ID equals `appBundleId`;
-2. prove the workflow placed the exact staged bundle at the run-specific
+1. prove the workflow placed the exact staged bundle at the run-specific
    canonical app path and no other process for that bundle ID is running;
-3. call `launch_app` with the bundle ID;
-4. reject a returned pid of zero or a mismatched bundle ID;
-5. query the launched pid's executable path without AppleScript and require its
+1. call `launch_app` with the bundle ID;
+1. reject a returned pid of zero or a mismatched bundle ID;
+1. query the launched pid's executable path without AppleScript and require its
    canonical path to be inside `appPath/Contents/MacOS/`;
-6. recompute the running bundle digest and require it to equal the preflight
+1. recompute the running bundle digest and require it to equal the preflight
    digest;
-7. use returned windows or call `list_windows`;
-8. select one on-screen current-Space layer-0 window deterministically;
-9. retain pid/window/app-path identity for every later state/action.
+1. use returned windows or call `list_windows`;
+1. select one on-screen current-Space layer-0 window deterministically;
+1. retain pid/window/app-path identity for every later state/action.
 
 - [ ] **Step 5: Implement normalized UI methods**
 
@@ -511,10 +570,15 @@ git commit -m "feat(e2e): add CuaDriver adapter"
 ### Task 5: Add The On-Mac Runner
 
 **Files:**
+
 - Create: `tests/e2e/computer-use/run-cua-driver.mjs`
+
 - Modify: `tests/e2e/computer-use/run-remote-cua.mjs`
+
 - Modify: `tests/e2e/computer-use/cli.mjs`
+
 - Modify: `tests/e2e/computer-use/README.md`
+
 - Modify: `tests/e2e/computer-use/OPERATIONS.md`
 
 - [ ] **Step 1: Extract `runSuite` as an injected function**
@@ -550,13 +614,21 @@ executionTopology: "local-cua-driver",
 For local CuaDriver:
 
 - skip SSH baseline/report-copy helpers;
+
 - require `NIXMAC_E2E_DISPOSABLE_CONFIG=true`;
+
 - require `NIXMAC_E2E_APP_ARTIFACT_SHA`;
+
 - require `NIXMAC_E2E_APP_PATH`, verify its bundle ID/digest, and call
   `driver.prepareTarget(...)` before the first visible-state capture;
-- require the workflow to stop any existing process with the same bundle ID,
-  stage the tested bundle at a run-specific canonical path, and verify the
-  launched pid's executable path remains under that exact bundle;
+
+- fail closed if any pre-existing process has the same bundle ID; never kill a
+  process not launched by the current attempt;
+
+- stage the tested bundle at a run-specific canonical path, record the launched
+  pid, verify that pid's executable path remains under the exact bundle, and
+  permit cleanup to terminate only that recorded pid;
+
 - inspect the HTML report locally in a non-personal isolated browser only if
   report inspection remains a required scenario.
 
@@ -606,11 +678,17 @@ git commit -m "feat(e2e): add local CuaDriver runner"
 ### Task 6: Add A Fail-Closed Evidence Manifest
 
 **Files:**
+
 - Create: `tests/e2e/computer-use/evidence-manifest.mjs`
+
 - Create: `tests/e2e/computer-use/evidence-manifest-self-test.mjs`
+
 - Create: `tests/e2e/computer-use/run-metadata.mjs`
+
 - Modify: `tests/e2e/computer-use/run-remote-cua.mjs`
+
 - Modify: `tests/e2e/computer-use/run-cua-driver.mjs`
+
 - Modify: `tests/e2e/computer-use/report.mjs`
 
 - [ ] **Step 1: Write failing manifest tests**
@@ -618,14 +696,21 @@ git commit -m "feat(e2e): add local CuaDriver runner"
 Cover:
 
 - stable relative-path ordering;
+
 - SHA-256 for every required file;
+
 - refusal of absolute paths, `..`, symlinks, missing files, empty required
   files, duplicate paths, and digest mismatch;
+
 - required identity fields;
+
 - all required identity sidecars exist before manifest generation;
+
 - preflight refuses to begin UI actions if app, artifact, harness, suite,
   runner, image, or permission identity is missing;
+
 - cleanup and attempt sidecars are finalized before manifest generation;
+
 - video points only to the curated safe-frame reel.
 
 - [ ] **Step 2: Write identity sidecars before UI actions**
@@ -673,11 +758,16 @@ In `finally`, stop CuaDriver and the app, restore/remove owned paths, and write:
 
 ```text
 runner/cleanup.json
+runner/host-lease.json   # required for static_ssh
 attempt.json
 ```
 
 `runner/cleanup.json` contains attempted/restored/clean booleans, owned paths,
 remaining processes, and a failure reason. Never mark cleanup clean by default.
+For `static_ssh`, `runner/host-lease.json` records a hash of the owner token,
+acquired/released booleans, acquisition/release timestamps, the last heartbeat,
+and any wait/quarantine reason. It must prove owner-matched release before a
+static artifact can pass.
 
 - [ ] **Step 4: Define manifest version 1**
 
@@ -707,10 +797,12 @@ Support two explicit finalization modes:
 - `local-finalize` for an ephemeral on-Mac job: local cleanup is the complete
   cleanup boundary, so the runner writes cleanup, creates, and verifies the
   final manifest.
+
 - `controller-finalize` for `static_ssh`: the remote runner writes evidence and
   attempt data but no final `manifest.json`. After copy-back, the ARC controller
-  performs remote staging/config/process cleanup, writes the only final
-  `runner/cleanup.json` into the local evidence tree, then runs the trusted
+  performs remote staging/config/process cleanup, releases the host lease only
+  on an owner-token match, writes the only final `runner/cleanup.json` and
+  `runner/host-lease.json` into the local evidence tree, then runs the trusted
   `evidence-manifest.mjs create` and `verify` commands. Nothing may mutate the
   evidence tree after that verification except zip packaging.
 
@@ -743,47 +835,86 @@ git commit -m "feat(e2e): bind immutable evidence manifest"
 ### Task 7: Add The Centaur-Dispatch Workflow
 
 **Files:**
+
 - Create: `.github/workflows/computer-use-e2e-centaur.yml`
+
 - Create: `tests/e2e/computer-use/centaur-workflow-contract-self-test.mjs`
+
+- Create: `ops/runner/macincloud-host-lease.sh`
+
+- Create: `tests/e2e/computer-use/remote-host-lease-contract-self-test.mjs`
+
+- Modify: `.github/workflows/computer-use-e2e.yml`
+
+- Modify: `.github/workflows/peekaboo-e2e.yml`
+
+- Modify: `.github/workflows/e2e.yml`
+
+- Modify: `.github/workflows/build.yaml`
+
 - Modify: `tests/e2e/computer-use/workflow-contract-self-test.mjs`
+
 - Modify: `tests/e2e/computer-use/OPERATIONS.md`
 
-- [ ] **Step 1: Repair and freeze the inherited workflow contract**
+- [x] **Step 1: Repair and freeze the inherited workflow contract**
 
-Run the existing contract test before changing the new workflow:
+The inherited lock assertion was repaired, replaced with structural YAML
+parsing, expanded across the three current Mac-driving workflows, and wired
+into the existing automatic PR/merge-group validation job. The baseline is
+complete through `b90a8c8bb`.
 
-```bash
-node tests/e2e/computer-use/workflow-contract-self-test.mjs
-```
-
-Expected at the pinned base: FAIL because the ARC migration renamed the
-existing remote concurrency group from `computer-use-e2e-dxu-remote` to
-`nixmac-macincloud-e2e-remote` without updating the assertion. Update only
-that stale assertion, confirm the current workflow still has one remote lock,
-and rerun to PASS. This is a baseline repair, not a behavior change.
+Retain that shared GitHub group across the three legacy workflows as defense in
+depth. The new `static_ssh` job does not join it because GitHub keeps at most
+one pending group member and may replace older pending work. Cross-lane safety
+is added in this task through a separate atomic MacinCloud host lease honored
+by all four Mac-driving jobs and automatically contract-tested on PRs and
+merge-group candidates.
 
 - [ ] **Step 2: Write a failing workflow contract test**
 
 Assert:
 
 - trigger is `workflow_dispatch` only;
+
 - full SHA, logical job ID, build run ID, app artifact ID, and artifact digest
   inputs are required;
+
 - `run-name` contains the exact logical job ID and attempt;
+
 - permissions are least-privilege;
+
 - workflow definition comes from the default branch;
+
 - app artifact is downloaded by the pre-resolved artifact ID and verified
   against the supplied source run/SHA/digest;
+
+- primary and static backend jobs have mutually exclusive explicit `if:`
+  predicates derived only from the validated `backend` choice, so a skipped
+  backend cannot acquire runner capacity or a concurrency group;
+
 - primary job uses `[self-hosted, macOS, nixmac-e2e]`;
+
 - static fallback has a distinct Linux controller job on the dedicated
-  one-capacity `nixmac-e2e-static-controller` runner queue and does not use a
-  GitHub concurrency group;
+  one-capacity `nixmac-e2e-static-controller` runner queue and has no GitHub
+  concurrency group;
+
+- the three legacy Mac-driving jobs and the new static job invoke the same
+  host-lease helper before any Mac-side inventory, process, or UI action;
+
+- lease acquisition/release is owner-token checked, live foreign owners wait,
+  and stale/ambiguous owners quarantine rather than auto-steal;
+
 - static fallback performs strict SSH, before/after inventory, cleanup, and
   quarantine;
+
 - `run-cua-driver.mjs` is the UI entrypoint;
+
 - artifact upload uses the repository-standard `actions/upload-artifact@v7`;
+
 - a serialized report job publishes the verified report at a deterministic URL;
+
 - `if: always()` uploads diagnostics;
+
 - no PR comment, Buzz call, or raw video capture occurs in this workflow.
 
 - [ ] **Step 3: Verify the test fails**
@@ -819,19 +950,37 @@ The ephemeral job uses
 
 The static job has no `concurrency` key. It runs on a dedicated
 `nixmac-e2e-static-controller` Linux runner queue whose deployment is
-hard-limited to one runner. GitHub therefore queues every burst item instead of
-keeping only one pending item and cancelling the rest. Before enabling the
-static backend, provision and verify that one-capacity queue; a second online
-runner with the label is a fail-closed readiness error.
+hard-limited to one runner. GitHub therefore queues Centaur static bursts
+without the one-pending replacement semantics of a concurrency group.
+Centaur's ledger remains the delivery source of truth. Before enabling the
+static backend, provision the one-capacity queue and have the scoped
+`github_e2e.assert_static_controller_pool(...)` pre-dispatch check verify
+exactly one online runner with the label; the workflow's default
+`GITHUB_TOKEN` is not used for Administration-read inventory. A second online
+runner is a fail-closed readiness error.
+
+After the lease-enabled workflow definitions merge, query all three legacy
+workflows and drain every run started from a pre-lease workflow revision before
+the first Centaur `static_ssh` dispatch. Record the drained run IDs and lease
+revision in the readiness ledger; enabling static traffic while any pre-lease
+run is queued or active is prohibited.
 
 - [ ] **Step 5: Bind the trusted harness and tested app separately**
 
 - checkout the default-branch harness revision that contains the workflow;
+
 - download exactly `inputs.app_artifact_id` from `inputs.build_run_id`;
+
 - verify its GitHub metadata source SHA equals `inputs.merge_sha`;
+
 - verify the archive digest equals `inputs.app_artifact_digest`;
-- never execute scripts from the tested merge;
+
+- never execute code obtained from the tested app artifact or a tested-SHA
+  checkout; the trusted default-branch harness may include the already-reviewed
+  merge by design;
+
 - compute the extracted app-bundle digest;
+
 - write and assert every Task 6 preflight identity sidecar before UI work.
 
 - [ ] **Step 6: Implement both backend jobs**
@@ -842,20 +991,38 @@ runner with the label is a fail-closed readiness error.
 `static_ssh` runs on the dedicated one-capacity Linux controller queue and
 reuses the current workflow's strict known-hosts/key handling to:
 
-1. assert exactly one online runner has the
-   `nixmac-e2e-static-controller` label;
-2. stage the exact app archive and harness into unique run roots;
-3. inventory owned processes/paths before the run;
-4. invoke the on-Mac CuaDriver runner through SSH;
-5. copy evidence back;
-6. restore/remove owned state in `if: always()`;
-7. compare after inventory;
-8. write the controller-owned final `runner/cleanup.json` into the copied
+1. acquire the atomic MacinCloud host lease before any Mac-side inventory,
+   process, or UI action, using an owner token bound to repository, workflow
+   run, logical job, attempt, and nonce;
+1. write a bounded heartbeat while the lease is held; wait on a live foreign
+   owner, return `LEASE_BUSY` on bounded-wait expiry, and quarantine on stale,
+   ambiguous, or unverifiable ownership rather than stealing it;
+1. inventory owned processes/paths before the run and fail closed if a
+   pre-existing nixmac process exists;
+1. stage the exact app archive and harness into unique run roots;
+1. invoke the on-Mac CuaDriver runner through SSH;
+1. copy evidence back;
+1. restore/remove only attempt-owned state in `if: always()`;
+1. compare after inventory;
+1. release the lease only after cleanup and only when the owner token matches;
+1. write the controller-owned final `runner/cleanup.json` and
+   `runner/host-lease.json` into the copied
    evidence tree;
-9. create and verify the final manifest on the controller after cleanup;
-10. package the now-immutable tree without further mutation;
-11. create a quarantine marker and fail infrastructure readiness if cleanup is
-   not clean.
+1. create and verify the final manifest on the controller after cleanup and
+   lease release;
+1. package the now-immutable tree without further mutation;
+1. create a quarantine marker, set durable Centaur backend quarantine, and
+   fail infrastructure readiness if cleanup or lease ownership is not clean;
+   provider reimage or loss of the host marker never clears Centaur state.
+
+Document and test the recovery path in `OPERATIONS.md`.
+`macincloud-host-lease.sh recover` requires the exact observed lease digest and
+an operator reason, refuses recovery while any nixmac process or owning GitHub
+run is active, snapshots the old lease/quarantine metadata into an audit log,
+then clears only the validated lease directory and quarantine marker. A
+separate audited Centaur step clears durable backend quarantine only after the
+host recovery proof is attached. Recovery is never automatic and never a
+generic recursive delete.
 
 - [ ] **Step 7: Upload canonical evidence**
 
@@ -886,6 +1053,7 @@ Run:
 
 ```bash
 node tests/e2e/computer-use/centaur-workflow-contract-self-test.mjs
+node tests/e2e/computer-use/remote-host-lease-contract-self-test.mjs
 node tests/e2e/computer-use/workflow-contract-self-test.mjs
 actionlint .github/workflows/computer-use-e2e-centaur.yml
 ```
@@ -896,7 +1064,13 @@ Expected: PASS.
 
 ```bash
 git add .github/workflows/computer-use-e2e-centaur.yml \
+  .github/workflows/computer-use-e2e.yml \
+  .github/workflows/peekaboo-e2e.yml \
+  .github/workflows/e2e.yml \
+  .github/workflows/build.yaml \
+  ops/runner/macincloud-host-lease.sh \
   tests/e2e/computer-use/centaur-workflow-contract-self-test.mjs \
+  tests/e2e/computer-use/remote-host-lease-contract-self-test.mjs \
   tests/e2e/computer-use/workflow-contract-self-test.mjs \
   tests/e2e/computer-use/OPERATIONS.md
 git commit -m "ci(e2e): add Centaur-dispatch workflow"
@@ -915,12 +1089,19 @@ tested branch define the harness.
 ### Task 8: Add A Narrow GitHub E2E Tool
 
 **Files:**
+
 - Create: `/tmp/centaur-overlay-nixmac-e2e-production/tools/github_e2e/client.py`
+
 - Create: `/tmp/centaur-overlay-nixmac-e2e-production/tools/github_e2e/cli.py`
+
 - Create: `/tmp/centaur-overlay-nixmac-e2e-production/tools/github_e2e/__init__.py`
+
 - Create: `/tmp/centaur-overlay-nixmac-e2e-production/tools/github_e2e/evidence.py`
+
 - Create: `/tmp/centaur-overlay-nixmac-e2e-production/tools/github_e2e/fixtures/*`
+
 - Create: `/tmp/centaur-overlay-nixmac-e2e-production/tools/github_e2e/pyproject.toml`
+
 - Create: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/tests/test_github_e2e_tool.py`
 
 - [ ] **Step 1: Write failing client tests with a fake HTTP transport**
@@ -928,19 +1109,39 @@ tested branch define the harness.
 Test:
 
 - allow only `darkmatter/nixmac`;
+
 - allow only `.github/workflows/computer-use-e2e-centaur.yml`;
+
 - validate full lowercase SHA and bounded job ID;
-- find one successful `Build macOS App` run for the exact SHA and one exact app
-  artifact, returning run ID, artifact ID, and artifact digest;
+
+- list all successful `Build macOS App` runs for the exact SHA and select the
+  latest deterministically by `created_at`, then run ID;
+
+- within that selected run require one exact app artifact, returning run ID,
+  artifact ID, and non-null artifact digest;
+
+- classify a missing/null artifact digest as fail-closed infrastructure
+  failure rather than dispatching an empty digest;
+
 - dispatch with an explicit `ref=main`;
+
 - make dispatch replay-safe: search through a bounded visibility window for an
   existing run with the exact job ID, attempt, and nonce before dispatch;
+
 - after dispatch, resolve every exact match, choose the earliest `created_at`
   run as canonical, and cancel later duplicates;
+
 - inspect run/jobs without trusting workflow conclusion as test verdict;
+
 - list one exact artifact name and reject zero/multiple matches;
+
+- assert the dedicated static controller pool has exactly one online runner
+  with the allowlisted label before a `static_ssh` dispatch;
+
 - create/update one Check Run with the job ID as `external_id`;
+
 - download and independently verify the immutable evidence zip;
+
 - never expose injected authorization headers.
 
 - [ ] **Step 2: Implement the client**
@@ -948,11 +1149,13 @@ Test:
 Public methods:
 
 ```python
+list_merged_prs(...)
 ensure_workflow_run(...)
 find_exact_sha_app_artifact(...)
 find_workflow_run(...)
 get_workflow_run(...)
 list_jobs(...)
+assert_static_controller_pool(...)
 cancel_workflow_run(...)
 get_artifact(...)
 download_artifact(...)
@@ -963,7 +1166,9 @@ verify_evidence_archive(...)
 ```
 
 All requests use `api.github.com`, API version `2022-11-28`, bounded timeouts,
-and typed/validated dictionaries.
+the injected scoped token, rate-limit-aware backoff, and typed/validated
+dictionaries. Add an authenticated `list_merged_prs(...)` method so workflow
+code never performs unauthenticated GitHub pagination itself.
 
 - [ ] **Step 3: Implement the independent archive verifier**
 
@@ -971,11 +1176,22 @@ and typed/validated dictionaries.
 
 - rejects zip-slip paths, symlinks, duplicate entries, oversized files, and
   decompression bombs;
+
 - parses `manifest.json`;
+
 - enforces manifest version and identity schema;
+
 - hashes every listed file;
+
 - requires all identity sidecars and safe-frame video;
+
+- when `runner.backend == "static_ssh"`, requires
+  `runner/host-lease.json` and verifies acquisition, owner-token hash
+  consistency, heartbeat metadata, owner-matched release, and no quarantine
+  disposition;
+
 - returns only normalized verdict/counts/report path/failure class;
+
 - shares golden valid/invalid archives with the Node verifier so both
   implementations must accept/reject the same cases.
 
@@ -997,9 +1213,10 @@ secrets = [{
 ```
 
 The deployed credential needs Actions read/write, Checks write, Contents read,
-and repository Administration read on `darkmatter/nixmac`. Administration is
-read-only and is required solely to verify the dedicated self-hosted runner
-inventory and deregistration; no runner mutation is allowed by the tool.
+Pull requests read, and repository Administration read on
+`darkmatter/nixmac`. Administration is read-only and is required solely to
+verify the dedicated self-hosted runner inventory and deregistration; no
+runner mutation is allowed by the tool.
 
 - [ ] **Step 5: Run tests**
 
@@ -1021,8 +1238,11 @@ git commit -m "feat(e2e): add scoped GitHub Actions tool"
 ### Task 9: Make Reconciliation Lossless With The Child Ledger
 
 **Files:**
+
 - Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/workflow.py`
+
 - Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/tests/test_nixmac_e2e_merged_prs.py`
+
 - Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/README.md`
 
 - [ ] **Step 1: Write failing reconciliation tests**
@@ -1030,25 +1250,39 @@ git commit -m "feat(e2e): add scoped GitHub Actions tool"
 Cover:
 
 - schedule is every 15 minutes;
-- pagination reads every merged PR in the 30-day repair window;
+
+- authenticated pagination reads every merged PR in the 30-day repair window;
+
+- the workflow reaches GitHub only through the narrow `github_e2e` tool;
+
+- rate-limit exhaustion and repeated 403/429 responses back off, surface a
+  classified infrastructure alert, and do not advance delivery state;
+
 - automatic candidates must be at or after the deployed suite version's
   immutable `suite_activated_at` timestamp;
+
 - oldest merge dispatches first;
+
 - every candidate reaches `ctx.start_workflow`, even when more than the former
   `max_prs` cap merge between ticks;
+
 - child idempotency reports duplicates without starting a second execution;
+
 - malformed/future/unmerged rows remain excluded;
+
 - an outage older than 30 days requires an explicit private backfill rather
   than an implicit public replay.
+
 - changing `suite_version` cannot enqueue older merges from the repair window;
   those require an explicit private backfill.
 
 - [ ] **Step 2: Replace newest-N slicing**
 
-Paginate and return every valid candidate in the bounded repair window,
-oldest-first, then exclude merges before `suite_activated_at`. Remove the
-candidate slice entirely. Do not let already-created children consume or hide
-any candidate.
+Call the authenticated `github_e2e.list_merged_prs(...)` method. Paginate and
+return every valid candidate in the bounded repair window, oldest-first, then
+exclude merges before `suite_activated_at`. Remove the candidate slice
+entirely. Do not let already-created children consume or hide any candidate,
+and do not retain the coordinator's current unauthenticated direct fetch.
 
 - [ ] **Step 3: Use the existing durable child ledger**
 
@@ -1066,6 +1300,9 @@ range and keeps publication disabled.
 Set `suite_version` and `suite_activated_at` together in the deployed schedule
 input. The activation timestamp is fixed for that suite version and validated
 as ISO-8601 UTC; changing it after activation is a configuration error.
+Record GitHub rate-limit headers in structured, secret-free logs and use
+bounded exponential backoff with jitter; a rate-limit failure never advances a
+cursor or marks a candidate delivered.
 
 - [ ] **Step 4: Run tests**
 
@@ -1090,7 +1327,9 @@ git commit -m "fix(e2e): make merge detection lossless"
 ### Task 10: Implement Job And Attempt Reconciliation
 
 **Files:**
+
 - Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/workflow.py`
+
 - Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/tests/test_nixmac_e2e_merged_prs.py`
 
 - [ ] **Step 1: Write failing lifecycle tests**
@@ -1098,20 +1337,57 @@ git commit -m "fix(e2e): make merge detection lossless"
 Script fake contexts for:
 
 - no exact-SHA build artifact yet (`WAITING_ARTIFACT`, no E2E dispatch);
+
 - exact-SHA build artifact becomes ready;
+
+- multiple queued `static_ssh` jobs all remain represented in the durable
+  ledger while the one-capacity controller queue serializes execution;
+
+- a live foreign MacinCloud lease waits without consuming attempt or retry;
+
+- bounded wait expiry with a still-live foreign owner returns `LEASE_BUSY`,
+  records the completed dispatch as scheduling-only, increments the physical
+  dispatch number, mints a fresh nonce, leaves the logical job `QUEUED`, and
+  re-dispatches with backoff without consuming runtime retry;
+
+- `LEASE_BUSY` re-dispatch never reattaches to the completed busy run because
+  attempt/dispatch identity and nonce are both fresh;
+
+- a stale, ambiguous, or owner-mismatched lease quarantines the static backend
+  and produces infrastructure INCONCLUSIVE, never product failure;
+
 - first E2E dispatch with build run/artifact identity;
+
 - replay after GitHub accepted dispatch but before the Centaur checkpoint;
+
 - delayed run visibility followed by deterministic duplicate cancellation;
+
 - waiting on a queued Actions run;
+
 - successful run with missing artifact;
+
 - verified PASS artifact;
+
 - product FAIL with one confirmation attempt;
+
 - infrastructure failure with one fresh attempt;
+
 - terminal INCONCLUSIVE after retry;
-- cancellation;
+
+- GitHub-side cancellation after execution starts records attempt `ABORTED`
+  and follows the infrastructure retry path;
+
+- runner-lost cancellation records attempt `ABORTED`;
+
+- explicit operator cancellation of the logical Centaur job records terminal
+  `CANCELLED` with an audit reason and does not retry;
+
 - no supersession for merged-SHA jobs;
+
 - lifecycle attestation timeout;
+
 - report publisher missing the deterministic report URL;
+
 - replay after publication.
 
 - [ ] **Step 2: Add explicit job and attempt records**
@@ -1138,11 +1414,25 @@ The child result contains:
         "artifact_id": 789,
         "artifact_digest": "sha256:...",
         "failure_class": "",
+        "counts_against_retry": True,
         "attestation_nonce": "64-lowercase-hex-characters",
         "lifecycle_attestation": "destroyed",
     }],
 }
 ```
+
+Reserve terminal job state `CANCELLED` for an explicit operator action against
+the logical Centaur job. GitHub-side cancellation, runner loss, and provider
+cancellation are attempt-level `ABORTED` infrastructure outcomes; retry them
+within policy and resolve exhaustion as `INCONCLUSIVE`, never `CANCELLED`. A
+live foreign host lease is queue wait, not a runtime retry. If its bounded wait
+expires, classify the physical dispatch `LEASE_BUSY`, set
+`counts_against_retry=false`, allocate the next dispatch number and a fresh
+nonce, and requeue oldest-first with backoff. It never reuses the completed
+busy run's attempt/nonce identity or resolves the logical job terminally.
+Queue-age alerts escalate prolonged contention. A stale or unverifiable lease
+is fail-closed infrastructure quarantine and never permits Mac-side process or
+UI work.
 
 - [ ] **Step 3: Make every external effect a named durable step**
 
@@ -1219,14 +1509,23 @@ git commit -m "feat(e2e): reconcile durable test attempts"
 ### Task 11: Publish One Terminal Result
 
 **Files:**
+
 - Create: `/tmp/centaur-overlay-nixmac-e2e-production/tools/buzz_e2e_result/client.py`
+
 - Create: `/tmp/centaur-overlay-nixmac-e2e-production/tools/buzz_e2e_result/cli.py`
+
 - Create: `/tmp/centaur-overlay-nixmac-e2e-production/tools/buzz_e2e_result/__init__.py`
+
 - Create: `/tmp/centaur-overlay-nixmac-e2e-production/tools/buzz_e2e_result/pyproject.toml`
+
 - Create: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/tests/test_buzz_e2e_result_tool.py`
+
 - Create: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/buzz-result-workflow.yaml`
+
 - Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/workflow.py`
+
 - Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/tests/test_nixmac_e2e_merged_prs.py`
+
 - Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/README.md`
 
 - [ ] **Step 1: Write failing publication tests**
@@ -1234,11 +1533,23 @@ git commit -m "feat(e2e): reconcile durable test attempts"
 Require:
 
 - one Check Run keyed by logical job ID;
+
 - one Buzz message after terminal verification only;
+
 - no start/retry/heartbeat messages;
+
 - replay returns the stored publication;
+
+- replay after the Buzz POST succeeds but before the Centaur checkpoint does
+  not create a second message;
+
+- two POSTs with the same logical `job_id` return the same stored webhook
+  result;
+
 - manual/private backfills publish neither;
+
 - Buzz message is at most one concise line plus report URL;
+
 - no host, runner username, secret name, or raw failure payload appears.
 
 - [ ] **Step 2: Add a result-only Buzz method**
@@ -1267,6 +1578,12 @@ posts one message to `#nixmac-e2e` as Farhan's Ear. Give the Centaur tool a
 distinct injected `BUZZ_E2E_RESULT_WEBHOOK_SECRET` in
 `tools/buzz_e2e_result/pyproject.toml`; do not place two same-host/header
 secrets in one tool or reuse the legacy request webhook.
+
+The webhook keeps a durable idempotency record keyed by logical `job_id`.
+After the first successful post, a replay validates the same immutable payload
+and returns the stored result without posting again; a conflicting payload for
+the same key fails closed. This webhook-side boundary closes the crash window
+between a successful POST and Centaur step-checkpoint persistence.
 
 - [ ] **Step 3: Publish GitHub Check first, Buzz second**
 
@@ -1299,13 +1616,21 @@ git commit -m "feat(e2e): publish terminal test results"
 ### Task 12: Add The E2E Image Layer After PR #604 Lands
 
 **Files:**
+
 - Create: `ops/images/nixmac-e2e-runner-tahoe.pkr.hcl`
+
 - Create: `ops/runner/cilicon-e2e-cycle-wrapper.sh`
+
 - Create: `ops/runner/cilicon-e2e-lifecycle-attestor.sh`
+
 - Create: `ops/runner/com.darkmatter.nixmac-e2e-cycle.plist`
+
 - Create: `.github/workflows/cilicon-lifecycle-attestation.yml`
+
 - Create: `tests/e2e/computer-use/cilicon-lifecycle-contract-self-test.mjs`
+
 - Modify: `.github/workflows/macos-ci-image.yaml`
+
 - Modify: `tests/e2e/computer-use/OPERATIONS.md`
 
 - [ ] **Step 1: Rebase this branch on the main commit containing PR #604**
@@ -1317,13 +1642,20 @@ Do not cherry-pick or edit PR #604. Resolve only small, explicit conflicts.
 Verify:
 
 - base image reference is immutable;
+
 - CuaDriver artifact URL, checksum, CLI version, and app-bundle version are
   pinned;
+
 - no secrets enter Packer;
+
 - dedicated test user exists;
+
 - evidence root permissions are correct;
+
 - ffmpeg is present;
+
 - TCC checks fail closed;
+
 - secret scan runs before push.
 
 - [ ] **Step 3: Build the E2E layer**
@@ -1336,13 +1668,13 @@ full Xcode installation recipe.
 On a dedicated image builder:
 
 1. boot a fresh clone;
-2. verify logged-in Aqua session;
-3. verify Accessibility and Screen Recording;
-4. run CuaDriver smoke;
-5. stop and age/reboot the image;
-6. repeat permissions and smoke;
-7. destroy the clone;
-8. record image digest and proof.
+1. verify logged-in Aqua session;
+1. verify Accessibility and Screen Recording;
+1. run CuaDriver smoke;
+1. stop and age/reboot the image;
+1. repeat permissions and smoke;
+1. destroy the clone;
+1. record image digest and proof.
 
 - [ ] **Step 5: Implement host-side destruction attestation**
 
@@ -1357,13 +1689,13 @@ Each dedicated host runs the wrapper as
 cycle the wrapper:
 
 1. refuses to start when the quarantine sentinel exists;
-2. creates a unique host-owned cycle directory and `directoryMount`;
-3. snapshots Tart/Cilicon inventory, starts one Cilicon cycle with the pinned
+1. creates a unique host-owned cycle directory and `directoryMount`;
+1. snapshots Tart/Cilicon inventory, starts one Cilicon cycle with the pinned
    image/config, and resolves the one new clone path;
-4. records the clone path, runner name, image digest, and cycle ID outside the
+1. records the clone path, runner name, image digest, and cycle ID outside the
    guest;
-5. supervises Cilicon until the GitHub job exits; and
-6. invokes the attestor before permitting another cycle.
+1. supervises Cilicon until the GitHub job exits; and
+1. invokes the attestor before permitting another cycle.
 
 Before UI execution, the trusted workflow writes an
 `attestation-request.json` containing those exact values into a host-only
@@ -1374,13 +1706,13 @@ job ID, attempt, or nonce; they originate in the checkpointed Centaur attempt.
 After the GitHub job exits the host attestor must:
 
 1. wait for the ephemeral runner to deregister;
-2. wait for the exact VM clone path to disappear;
-3. verify no matching VM remains in the host inventory;
-4. emit a nonce-bound JSON attestation with host ID, image digest, job ID,
+1. wait for the exact VM clone path to disappear;
+1. verify no matching VM remains in the host inventory;
+1. emit a nonce-bound JSON attestation with host ID, image digest, job ID,
    attempt number, runner name, nonce, destroyed timestamp, and result;
-5. POST a scoped `repository_dispatch` event authenticated by a dedicated
+1. POST a scoped `repository_dispatch` event authenticated by a dedicated
    GitHub App;
-6. create `/var/db/nixmac-e2e-quarantined` and stop new E2E cycles if any check
+1. create `/var/db/nixmac-e2e-quarantined` and stop new E2E cycles if any check
    times out or fails.
 
 `cilicon-lifecycle-attestation.yml` validates the allowlisted event shape,
@@ -1417,10 +1749,15 @@ quarantine sentinel prevents the pool wrapper from starting another cycle.
 Expected:
 
 - exact-SHA app artifact;
+
 - on-Mac CuaDriver suite;
+
 - valid immutable evidence artifact;
+
 - verified safe-frame reel;
+
 - no public Check or Buzz message;
+
 - VM destroyed/deregistered with a downloaded, verified lifecycle artifact.
 
 - [ ] **Step 9: Commit**
@@ -1440,10 +1777,15 @@ git commit -m "ci(e2e): add dedicated Tart runner image"
 ### Task 13: Shadow Rollout And Promotion
 
 **Files:**
+
 - Modify: `tests/e2e/computer-use/OPERATIONS.md`
+
 - Create: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/observability.py`
+
 - Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/workflow.py`
+
 - Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/tests/test_nixmac_e2e_merged_prs.py`
+
 - Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/README.md`
 
 - [ ] **Step 1: Deploy with automatic publication disabled**
@@ -1464,12 +1806,14 @@ add one until Centaur exposes a typed, signature-validated inbound trigger.
 
 Implement a tested event schema in `observability.py` and emit
 queue/build-wait/provision/run/upload/verify/attestation/publication timings,
-reconciler heartbeats, oldest-job age, and classified failure counts through
-`ctx.log`. Configure the production deployment's alert sink for:
+static host-lease wait/acquire/release/quarantine events, reconciler
+heartbeats, oldest-job age, and classified failure counts through `ctx.log`.
+Configure the production deployment's alert sink for:
 
 - no successful reconciler for 30 minutes;
 - oldest queued or build-waiting job over 30 minutes;
 - repeated TCC/image failures;
+- stale, ambiguous, or owner-mismatched static host lease;
 - missing evidence/report;
 - cleanup, destruction, or attestation failure;
 - terminal job missing a configured publication.
@@ -1483,11 +1827,23 @@ hold publication/promotion; do not substitute Buzz heartbeat noise.
 Require:
 
 - zero missed merges;
+
 - zero duplicate jobs/publications;
+
 - zero identity/digest mismatches;
+
 - zero unclassified failures;
+
 - every result links to a verified artifact;
+
 - every ephemeral attempt has destruction/deregistration attestation;
+
+- an induced overlap between a legacy MacinCloud workflow and a Centaur
+  `static_ssh` job never drives the host concurrently: the atomic host lease
+  preserves the active owner, the waiter remains queued without consuming a
+  retry, owner-mismatch release fails, and neither lane kills a process it does
+  not own;
+
 - product failures remain product failures after confirmation.
 
 - [ ] **Step 4: Enable the GitHub Check**
@@ -1516,6 +1872,7 @@ node tests/e2e/computer-use/preservation-harness.mjs run
 node tests/e2e/computer-use/run-adversarial.mjs
 node tests/e2e/computer-use/workflow-contract-self-test.mjs
 node tests/e2e/computer-use/centaur-workflow-contract-self-test.mjs
+node tests/e2e/computer-use/remote-host-lease-contract-self-test.mjs
 node tests/e2e/computer-use/cilicon-lifecycle-contract-self-test.mjs
 actionlint .github/workflows/computer-use-e2e-centaur.yml
 actionlint .github/workflows/cilicon-lifecycle-attestation.yml

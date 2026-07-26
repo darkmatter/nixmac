@@ -25,9 +25,9 @@ This design reuses three foundations that already exist:
 
 1. The nixmac repository owns the scenario catalog, safety policy, state schema,
    evidence contract, report renderer, and final verdict.
-2. Centaur already provides durable steps, idempotent child workflows, and
+1. Centaur already provides durable steps, idempotent child workflows, and
    checkpointed external actions.
-3. Cooper's open PR #604 establishes a Tart/Cilicon macOS fleet, runner
+1. Cooper's open PR #604 establishes a Tart/Cilicon macOS fleet, runner
    selection, and a pinned custom-image pipeline.
 
 The missing critical path is a production CuaDriver adapter that implements the
@@ -218,19 +218,38 @@ attest(workflow_run_id, runner_name) -> lifecycle disposition
 The dedicated workflow accepts only a validated full SHA, logical job ID,
 attempt number, suite version, and backend policy. It checks out the harness
 from the trusted default branch, downloads the app artifact bound to the
-requested SHA, and runs the app under test from that artifact. Code from the
-tested merge is not allowed to redefine the workflow or evidence verifier used
-to judge itself.
+requested SHA, and runs the app under test from that artifact. Untrusted,
+unmerged code is not allowed to define the workflow or evidence verifier. In
+the merged-SHA lane, already-reviewed code on `main` participates in the
+harness by design; a future active-PR-head lane must retain the stricter
+trusted-harness separation.
 
 Runner backends are GitHub workflow execution modes:
 
 1. `cilicon_tart` — primary, runs directly on
    `[self-hosted, macOS, nixmac-e2e]`.
-2. `static_ssh` — transition/DR, runs a Linux control job on a dedicated
+1. `static_ssh` — transition/DR, runs a Linux control job on a dedicated
    one-capacity runner queue that stages and drives the secret-referenced
-   MacinCloud host. The queue, not a GitHub concurrency group, serializes work
-   without cancelling older pending attempts.
-3. `orka` — optional future GitHub runner backend if measurement supports it.
+   MacinCloud host. Centaur's ledger remains the source of delivery truth; the
+   one-capacity controller queue serializes every Centaur static job without a
+   GitHub concurrency group that can replace older pending work.
+1. `orka` — optional future GitHub runner backend if measurement supports it.
+
+Cross-lane host safety comes from a separate atomic lease on the MacinCloud
+host, not GitHub concurrency. Before any Mac-side inventory, process action,
+or UI action, all four Mac-driving jobs—the three legacy workflows and the new
+`static_ssh` job—must acquire the same run-owned lease directory through the
+shared host-lease helper. Acquisition uses atomic `mkdir`; owner identity and a
+heartbeat are written inside the lease; release succeeds only when the owner
+token matches. A live foreign lease waits with bounded polling. A stale,
+ambiguous, or unverifiable lease quarantines the host and fails infrastructure
+readiness; it is never stolen automatically. The current legacy GitHub
+concurrency group remains defense in depth for those workflows but is not the
+cross-lane authority. Only an explicit operator action against the logical
+Centaur job produces terminal `CANCELLED`. The static runner never kills a
+pre-existing nixmac process: preflight fails closed and retries or quarantines,
+and cleanup may terminate only the pid launched and recorded by the current
+attempt.
 
 GitHub/Cilicon, not Centaur, acquires and releases Tart VMs. Within the job, the
 harness proves runner/image identity and owned-path cleanup. After the job, a
@@ -248,29 +267,29 @@ The first production runtime is deterministic code. Phase 0 first extracts a
 real driver seam:
 
 1. move driver-neutral scenario orchestration out of `run-remote-cua.mjs` into
-   `scenario-runner.mjs`;
-2. wrap the current `AppServerClient` as the first injected driver without
+   `scenario-driver.mjs`;
+1. wrap the current `AppServerClient` as the first injected driver without
    changing behavior;
-3. keep `run-remote-cua.mjs` as the stable off-Mac SSH/WebSocket entrypoint;
-4. add `run-cua-driver.mjs` as an on-Mac entrypoint using a local Unix socket;
-5. prove the refactor with the existing preservation and adversarial harnesses
+1. keep `run-remote-cua.mjs` as the stable off-Mac SSH/WebSocket entrypoint;
+1. add `run-cua-driver.mjs` as an on-Mac entrypoint using a local Unix socket;
+1. prove the refactor with the existing preservation and adversarial harnesses
    before adding CuaDriver behavior.
 
 The on-Mac deterministic wrapper:
 
 1. validates job, artifact, image, and runner identities;
-2. creates a unique disposable config and evidence root;
-3. starts CuaDriver's daemon on a run-specific Unix socket;
-4. verifies Accessibility and Screen Recording;
-5. launches the exact-SHA nixmac app;
-6. passes a CuaDriver implementation of the canonical driver contract to the
+1. creates a unique disposable config and evidence root;
+1. starts CuaDriver's daemon on a run-specific Unix socket;
+1. verifies Accessibility and Screen Recording;
+1. launches the exact-SHA nixmac app;
+1. passes a CuaDriver implementation of the canonical driver contract to the
    extracted scenario runner;
-7. writes existing `state.json`, events, policy-safe screenshots, text
+1. writes existing `state.json`, events, policy-safe screenshots, text
    evidence, and the safe-frame evidence reel;
-8. renders the existing report;
-9. validates required artifacts and redaction;
-10. stops CuaDriver;
-11. verifies filesystem and Git cleanup postconditions.
+1. renders the existing report;
+1. validates required artifacts and redaction;
+1. stops CuaDriver;
+1. verifies filesystem and Git cleanup postconditions.
 
 A future bounded agent may help recover from UI ambiguity, but it must use the
 canonical scenario catalog and adapter and cannot author the final verdict.
@@ -371,6 +390,8 @@ Each attempt records:
 - normalized failure class;
 - evidence object prefix;
 - lifecycle attestation.
+- static-host lease acquisition, heartbeat, owner-matched release, and
+  quarantine disposition when `runner_backend=static_ssh`.
 
 ### Retry policy
 
@@ -383,7 +404,17 @@ Each attempt records:
   failing verdict.
 - Inconclusive evidence: retry once only when the missing proof is plausibly
   transient.
-- Cancellation: stop the attempt and upload partial diagnostic evidence.
+- `LEASE_BUSY` after a bounded wait on a still-live foreign owner: record the
+  completed dispatch as scheduling-only, increment the physical dispatch
+  number, mint a new nonce, leave the logical job `QUEUED`, and re-dispatch
+  oldest-first with backoff. It does not consume the runtime retry budget or
+  resolve the job terminally; queue-age alerts escalate prolonged contention.
+- GitHub-side, runner-side, or other external cancellation: stop the attempt,
+  upload partial diagnostic evidence, record the attempt as `ABORTED`, and
+  apply the infrastructure retry policy.
+- Explicit operator cancellation of the logical Centaur job: stop the current
+  attempt, upload partial diagnostics, and record terminal `CANCELLED` with an
+  audit reason.
 - Supersession: applies only to the future active-PR head lane; stop the attempt,
   upload diagnostics, and do not overwrite the newer head's terminal result.
 
@@ -392,7 +423,9 @@ return the already-published result. Automatic production detection enqueues
 only newly merged SHAs under the currently deployed suite version; a suite
 version bump does not backfill historical SHAs. Manual backfills default to
 `publication_mode=private` and do not create a second Buzz message or overwrite
-the production Check unless an operator explicitly requests republication.
+the production Check. Production v1 has no automated republication override;
+any exceptional correction is a separate audited operator procedure outside
+this workflow.
 
 ## Exact-SHA And Evidence Contract
 
@@ -419,6 +452,7 @@ video/computer-use-evidence.mp4
 runner/identity.json
 runner/permissions.json
 runner/cleanup.json
+runner/host-lease.json  # required when backend=static_ssh
 artifact/source.json
 attempt.json
 ```
@@ -426,6 +460,9 @@ attempt.json
 `manifest.json` binds every required file by SHA-256 and records the logical job
 and attempt identities. Publication fails closed if a required file is missing,
 unreadable, empty where prohibited, or has an unexpected digest.
+For `static_ssh`, both independent verifiers also require
+`runner/host-lease.json` to prove acquisition, owner-token hash consistency,
+heartbeat metadata, owner-matched release, and no quarantine disposition.
 
 The evidence bundle is uploaded with the repository-standard
 `actions/upload-artifact@v7` under a
@@ -446,8 +483,15 @@ segments proven secret-free and is diagnostic, not canonical gate evidence.
 
 MacinCloud is not certified as ephemeral. Its promotion gate is separate:
 
-- a dedicated Linux controller runner queue hard-limited to one, with no
-  GitHub concurrency group that can discard older pending attempts;
+- a durable Centaur ledger plus a dedicated Linux controller runner queue
+  hard-limited to one, with no static-job GitHub concurrency group that can
+  replace older pending work;
+- one shared atomic MacinCloud host lease acquired by every legacy and Centaur
+  Mac-driving job, with owner-token release, heartbeat, bounded waiting, and
+  fail-closed quarantine for stale or ambiguous ownership;
+- quarantine recorded both on the host and in Centaur's durable backend state;
+  provider reimage or loss of the host marker never clears controller-side
+  quarantine;
 - per-run Unix socket, config root, app staging root, and evidence root;
 - deterministic preflight and postflight cleanup;
 - before/after inventory for app processes and owned filesystem paths;
@@ -495,6 +539,11 @@ PASS — nixmac PR #<n> at <sha7> — <passed>/<total> scenarios — <report lin
 Failures and inconclusive results add one short reason. No start, retry,
 heartbeat, or status messages are posted.
 
+The result webhook also deduplicates durably by logical `job_id`. Replaying a
+successful POST after a Centaur checkpoint crash returns the stored result and
+does not post a second message; Centaur-side step idempotency alone is not the
+exactly-once boundary.
+
 The display identity may remain **Farhan's Ear**. Internal services, workflow
 names, principals, and idempotency keys use functional names.
 
@@ -508,8 +557,11 @@ losslessness or initial promotion.
 Reconciliation:
 
 - scheduled poll every 15 minutes;
+- use the scoped `NIXMAC_E2E_GITHUB_TOKEN` through the narrow `github_e2e`
+  tool; the workflow itself does not issue unauthenticated GitHub API calls;
 - paginate every merge in the bounded repair window instead of selecting only
-  the newest N;
+  the newest N, with bounded timeouts, rate-limit-aware backoff, and a
+  classified infrastructure alert when GitHub remains unavailable;
 - enqueue oldest-first;
 - the child-workflow idempotency key is the durable delivery ledger and
   prevents duplicates across scheduler runs;
@@ -548,6 +600,7 @@ Metrics:
 - failure class;
 - provider/image/CuaDriver version;
 - cleanup/destroy success;
+- static host-lease wait, acquisition, owner-matched release, and quarantine;
 - evidence verification success;
 - cost per attempt and per terminal job.
 
@@ -559,6 +612,7 @@ Alerts:
 - no reconciler success for 30 minutes;
 - oldest queued job above 30 minutes;
 - repeated TCC/permission failures on an image digest;
+- stale, ambiguous, or owner-mismatched static host lease;
 - runner destruction or static cleanup failure;
 - evidence upload/verification failure;
 - no terminal publication after a completed verified report.
