@@ -328,6 +328,11 @@ Directly spawning raw `cua-driver serve` outside `CuaDriver.app` is prohibited:
 upstream documents that mode as unsupported for stable macOS TCC attribution.
 Fixture metadata, the adapter, and the runner image bind the same pinned CLI
 version, app-bundle version/digest, and standalone app-owned launch mode.
+CuaDriver 0.12.6 `call` prints `structuredContent` JSON directly and supports
+`--socket` plus `--screenshot-out-file`; it does not expose the historical
+`--raw`, `--compact`, or `--no-daemon` flags. Nonzero process status/stderr is
+the current CLI error boundary. A raw MCP envelope may be unwrapped only as a
+bounded compatibility input for sanitized historical fixtures.
 
 Element addresses use a new reviewed `cua-element-index` kind scoped to
 `(pid, window_id, snapshot)`. The adapter must refresh visible state before

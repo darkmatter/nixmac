@@ -485,9 +485,12 @@ git commit -m "refactor(e2e): inject computer-use driver"
 
 - [ ] **Step 1: Capture and sanitize real raw response fixtures**
 
-Use the installed static-Mac CuaDriver with `--raw --compact --no-daemon`.
-Replace live pids, window IDs, paths, titles, and any user text with stable
-fixture values. Do not include the remote host, usernames, keys, or secrets.
+Use the pinned CuaDriver 0.12.6 `call <tool> <json> --socket <socket>` surface.
+That release does not support `--raw`, `--compact`, or `--no-daemon`: the CLI
+prints `structuredContent` JSON directly on success and exits nonzero with
+stderr on daemon/tool failure. Replace live pids, window IDs, paths, titles,
+and any user text with stable fixture values. Do not include the remote host,
+usernames, keys, or secrets.
 Record the exact CLI version, `CuaDriver.app` bundle version/digest, supported
 daemon launch mode, and fixture capture date in a sanitized fixture metadata
 file. The adapter and image qualification must use the same pinned release and
@@ -532,7 +535,9 @@ async function runCua(binary, args, { input, timeoutMs = 90_000 } = {}) {
 }
 ```
 
-Parse only raw MCP result objects shaped as:
+Parse the pinned CLI's direct structured JSON output. For compatibility with
+sanitized historical captures only, a bounded parser may also unwrap an exact
+raw MCP result object shaped as:
 
 ```js
 {
@@ -541,6 +546,11 @@ Parse only raw MCP result objects shaped as:
   isError: false,
 }
 ```
+
+Reject unknown envelopes, `isError: true`, missing/non-object
+`structuredContent`, trailing non-JSON output, or direct JSON that is not the
+expected tool-specific object. The process exit code/stderr remains the
+authority for current 0.12.6 CLI tool failures.
 
 - [ ] **Step 4: Implement connection and targeting**
 
@@ -582,8 +592,8 @@ stops another process.
 
 ```text
 call get_window_state
-{"pid":<pid>,"window_id":<windowId>,"screenshot_out_file":<tempPng>}
---raw --compact --socket <runSocket>
+{"pid":<pid>,"window_id":<windowId>}
+--screenshot-out-file <tempPng> --socket <runSocket>
 ```
 
 It returns text, base64-encoded PNG bytes read from `tempPng`, and:
