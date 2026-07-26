@@ -11,6 +11,21 @@ function normalizeStaticConcurrencyGroup(group) {
   return typeof group === "string" ? group.toLowerCase() : undefined;
 }
 
+function extractConcurrencyGroup(concurrency) {
+  if (typeof concurrency === "string") return concurrency;
+  if (concurrency && typeof concurrency === "object" && !Array.isArray(concurrency)) {
+    return concurrency.group;
+  }
+  return undefined;
+}
+
+function referencesRemoteMacConcurrencyGroup(group) {
+  const normalized = normalizeStaticConcurrencyGroup(group);
+  if (!normalized) return false;
+  if (normalized === REMOTE_MAC_CONCURRENCY_GROUP) return true;
+  return group.includes("${{") && normalized.includes(REMOTE_MAC_CONCURRENCY_GROUP);
+}
+
 function parseWorkflowYaml({ workflowName, source }) {
   assert.equal(typeof workflowName, "string", "workflowName must be a string");
   assert.ok(workflowName.trim(), "workflowName must not be blank");
@@ -115,17 +130,10 @@ export function assertRemoteMacConcurrencyContract({
 
   const workflow = parseWorkflowYaml({ workflowName, source });
   const workflowConcurrency = workflow.concurrency;
-  const workflowConcurrencyGroup =
-    typeof workflowConcurrency === "string"
-      ? workflowConcurrency
-      : workflowConcurrency &&
-          typeof workflowConcurrency === "object" &&
-          !Array.isArray(workflowConcurrency)
-        ? workflowConcurrency.group
-        : undefined;
-  assert.notEqual(
-    normalizeStaticConcurrencyGroup(workflowConcurrencyGroup),
-    REMOTE_MAC_CONCURRENCY_GROUP,
+  const workflowConcurrencyGroup = extractConcurrencyGroup(workflowConcurrency);
+  assert.equal(
+    referencesRemoteMacConcurrencyGroup(workflowConcurrencyGroup),
+    false,
     `${workflowName} must not reuse ${REMOTE_MAC_CONCURRENCY_GROUP} at workflow level; declared ${JSON.stringify(workflowConcurrencyGroup)}`,
   );
   if (forbidWorkflowLevelConcurrency) {
@@ -147,14 +155,15 @@ export function assertRemoteMacConcurrencyContract({
     `${workflowName} must define remote Mac job ${remoteJobId}`,
   );
   const concurrency = remoteJob.concurrency;
+  const remoteConcurrencyGroup = extractConcurrencyGroup(concurrency);
+  assert.equal(
+    remoteConcurrencyGroup,
+    REMOTE_MAC_CONCURRENCY_GROUP,
+    `${workflowName} job ${remoteJobId} concurrency.group must equal ${REMOTE_MAC_CONCURRENCY_GROUP}`,
+  );
   assert.ok(
     concurrency && typeof concurrency === "object" && !Array.isArray(concurrency),
     `${workflowName} job ${remoteJobId} must define job-level concurrency`,
-  );
-  assert.equal(
-    concurrency.group,
-    REMOTE_MAC_CONCURRENCY_GROUP,
-    `${workflowName} job ${remoteJobId} concurrency.group must equal ${REMOTE_MAC_CONCURRENCY_GROUP}`,
   );
   assert.equal(
     concurrency["cancel-in-progress"],
@@ -168,10 +177,7 @@ export function assertRemoteMacConcurrencyContract({
         job &&
         typeof job === "object" &&
         !Array.isArray(job) &&
-        job.concurrency &&
-        typeof job.concurrency === "object" &&
-        !Array.isArray(job.concurrency) &&
-        normalizeStaticConcurrencyGroup(job.concurrency.group) === REMOTE_MAC_CONCURRENCY_GROUP,
+        referencesRemoteMacConcurrencyGroup(extractConcurrencyGroup(job.concurrency)),
     )
     .map(([jobId]) => jobId);
   assert.equal(

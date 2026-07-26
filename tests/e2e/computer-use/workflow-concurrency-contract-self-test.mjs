@@ -9,6 +9,7 @@ import {
 } from "./workflow-concurrency-contract.mjs";
 
 const MIXED_CASE_REMOTE_MAC_CONCURRENCY_GROUP = "NixMac-MacInCloud-E2E-Remote";
+const MIXED_CASE_REMOTE_MAC_CONCURRENCY_EXPRESSION = "${{ 'NixMac-MacInCloud-E2E-Remote' }}";
 
 function workflowYaml({
   remoteGroup = REMOTE_MAC_CONCURRENCY_GROUP,
@@ -103,14 +104,40 @@ assert.throws(
     assertRemoteMacConcurrencyContract({
       workflowName: "duplicate-lock.yml",
       source: workflowYaml({
-        companionConcurrency: `    concurrency:
-      group: ${MIXED_CASE_REMOTE_MAC_CONCURRENCY_GROUP}
-      cancel-in-progress: false`,
+        companionConcurrency: `    concurrency: ${MIXED_CASE_REMOTE_MAC_CONCURRENCY_GROUP}`,
       }),
       remoteJobId: "remote-mac",
     }),
   /duplicate-lock\.yml must acquire nixmac-macincloud-e2e-remote exactly once in job remote-mac/,
   "a companion job must not acquire the shared remote lock",
+);
+
+assert.throws(
+  () =>
+    assertRemoteMacConcurrencyContract({
+      workflowName: "companion-object-expression.yml",
+      source: workflowYaml({
+        companionConcurrency: `    concurrency:
+      group: ${MIXED_CASE_REMOTE_MAC_CONCURRENCY_EXPRESSION}
+      cancel-in-progress: false`,
+      }),
+      remoteJobId: "remote-mac",
+    }),
+  /companion-object-expression\.yml must acquire nixmac-macincloud-e2e-remote exactly once in job remote-mac/,
+  "an object-form companion expression containing the canonical literal must fail closed",
+);
+
+assert.throws(
+  () =>
+    assertRemoteMacConcurrencyContract({
+      workflowName: "companion-scalar-expression.yml",
+      source: workflowYaml({
+        companionConcurrency: `    concurrency: ${MIXED_CASE_REMOTE_MAC_CONCURRENCY_EXPRESSION}`,
+      }),
+      remoteJobId: "remote-mac",
+    }),
+  /companion-scalar-expression\.yml must acquire nixmac-macincloud-e2e-remote exactly once in job remote-mac/,
+  "a scalar companion expression containing the canonical literal must fail closed",
 );
 
 assert.throws(
@@ -165,6 +192,34 @@ assert.throws(
     }),
   /workflow-level-scalar-lock\.yml must not reuse nixmac-macincloud-e2e-remote at workflow level/,
   "scalar workflow concurrency must not duplicate the remote job lock",
+);
+
+assert.throws(
+  () =>
+    assertRemoteMacConcurrencyContract({
+      workflowName: "workflow-object-expression.yml",
+      source: workflowYaml({
+        workflowConcurrency: `concurrency:
+  group: ${MIXED_CASE_REMOTE_MAC_CONCURRENCY_EXPRESSION}
+  cancel-in-progress: false`,
+      }),
+      remoteJobId: "remote-mac",
+    }),
+  /workflow-object-expression\.yml must not reuse nixmac-macincloud-e2e-remote at workflow level/,
+  "an object-form workflow expression containing the canonical literal must fail closed",
+);
+
+assert.throws(
+  () =>
+    assertRemoteMacConcurrencyContract({
+      workflowName: "workflow-scalar-expression.yml",
+      source: workflowYaml({
+        workflowConcurrency: `concurrency: ${MIXED_CASE_REMOTE_MAC_CONCURRENCY_EXPRESSION}`,
+      }),
+      remoteJobId: "remote-mac",
+    }),
+  /workflow-scalar-expression\.yml must not reuse nixmac-macincloud-e2e-remote at workflow level/,
+  "a scalar workflow expression containing the canonical literal must fail closed",
 );
 
 assert.throws(
