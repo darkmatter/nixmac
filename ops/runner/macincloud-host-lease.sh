@@ -127,6 +127,14 @@ require_sha256() {
     { echo "Observed lease digest must be a lowercase SHA-256" >&2; exit 64; }
 }
 
+base64_decode() {
+  if base64 --decode </dev/null >/dev/null 2>&1; then
+    base64 --decode
+  else
+    base64 -D
+  fi
+}
+
 require_connection
 readonly -a ssh_common=(
   -i "$ssh_key"
@@ -233,9 +241,16 @@ set -euo pipefail
 lease_root="$1"
 quarantine_file="$2"
 payload_b64="$3"
+base64_decode() {
+  if /usr/bin/base64 --decode </dev/null >/dev/null 2>&1; then
+    /usr/bin/base64 --decode
+  else
+    /usr/bin/base64 -D
+  fi
+}
 mkdir -p "$lease_root"
 tmp="${quarantine_file}.tmp.$$"
-printf '%s' "$payload_b64" | /usr/bin/base64 -D > "$tmp"
+printf '%s' "$payload_b64" | base64_decode > "$tmp"
 chmod 600 "$tmp"
 mv "$tmp" "$quarantine_file"
 REMOTE
@@ -246,6 +261,24 @@ github_run_status() {
   local owner_run_id="$2"
   GH_TOKEN="${GH_TOKEN:-${GITHUB_TOKEN:-}}" \
     gh api "repos/${owner_repo}/actions/runs/${owner_run_id}" --jq '.status'
+}
+
+github_run_status_with_retry() {
+  local owner_repo="$1"
+  local owner_run_id="$2"
+  local status=""
+  local retry_delay="${NIXMAC_E2E_LEASE_LIVENESS_RETRY_DELAY_SECONDS:-2}"
+  require_uint "NIXMAC_E2E_LEASE_LIVENESS_RETRY_DELAY_SECONDS" "$retry_delay"
+  for probe_attempt in 1 2 3; do
+    if status="$(github_run_status "$owner_repo" "$owner_run_id" 2>/dev/null)"; then
+      printf '%s\n' "$status"
+      return 0
+    fi
+    if ((probe_attempt < 3 && retry_delay > 0)); then
+      sleep "$retry_delay"
+    fi
+  done
+  return 1
 }
 
 acquire() {
@@ -294,6 +327,13 @@ quarantine_file="$3"
 owner_b64="$4"
 owner_token_sha256="$5"
 max_hold_seconds="$6"
+base64_decode() {
+  if /usr/bin/base64 --decode </dev/null >/dev/null 2>&1; then
+    /usr/bin/base64 --decode
+  else
+    /usr/bin/base64 -D
+  fi
+}
 mkdir -p "$lease_root"
 if [[ -f "$quarantine_file" ]]; then
   printf 'QUARANTINED\n'
@@ -303,7 +343,7 @@ if mkdir "$lease_dir" 2>/dev/null; then
   trap 'rm -f "$lease_dir/owner.json.tmp.$$"; rmdir "$lease_dir" 2>/dev/null || true' ERR
   acquired_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   printf '%s' "$owner_b64" |
-    /usr/bin/base64 -D |
+    base64_decode |
     jq -c --arg acquired_at "$acquired_at" '.created_at = $acquired_at' \
       > "$lease_dir/owner.json.tmp.$$"
   chmod 600 "$lease_dir/owner.json.tmp.$$"
@@ -373,7 +413,7 @@ REMOTE
       OCCUPIED)
         local encoded="${response#*$'\t'}"
         local existing_json
-        existing_json="$(printf '%s' "$encoded" | base64 --decode 2>/dev/null || true)"
+        existing_json="$(printf '%s' "$encoded" | base64_decode 2>/dev/null || true)"
         local existing_repo existing_run
         existing_repo="$(jq -r '.repository // ""' <<<"$existing_json" 2>/dev/null || true)"
         existing_run="$(jq -r '.run_id // ""' <<<"$existing_json" 2>/dev/null || true)"
@@ -384,9 +424,9 @@ REMOTE
           return 73
         fi
         local status
-        if ! status="$(github_run_status "$existing_repo" "$existing_run" 2>/dev/null)"; then
+        if ! status="$(github_run_status_with_retry "$existing_repo" "$existing_run")"; then
           remote_quarantine "owner-liveness-unverifiable" "${existing_repo}/actions/runs/${existing_run}"
-          echo "LEASE_QUARANTINED: owner liveness unavailable" >&2
+          echo "LEASE_QUARANTINED: owner liveness unavailable after bounded retries" >&2
           return 73
         fi
         case "$status" in
@@ -418,7 +458,8 @@ release() {
   require_owner
   local owner_token_sha256
   owner_token_sha256="$(token_digest)"
-  ssh_script "$lease_dir" "$quarantine_file" "$owner_token_sha256" <<'REMOTE'
+  release_once() {
+    ssh_script "$lease_dir" "$quarantine_file" "$owner_token_sha256" <<'REMOTE'
 set -euo pipefail
 lease_dir="$1"
 quarantine_file="$2"
@@ -473,6 +514,20 @@ fi
 released_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 printf 'LEASE_RELEASED\t%s\t%s\n' "$last_heartbeat_at" "$released_at"
 REMOTE
+  }
+
+  local release_output=""
+  for release_attempt in 1 2 3; do
+    if release_output="$(release_once)"; then
+      printf '%s\n' "$release_output"
+      return 0
+    fi
+    if ((release_attempt < 3)); then
+      sleep "$release_attempt"
+    fi
+  done
+  echo "LEASE_QUARANTINED: owner-matched release unavailable after bounded retries" >&2
+  return 73
 }
 
 recover() {
@@ -486,17 +541,17 @@ recover() {
   status_line="$(remote_status)"
   local state digest encoded
   IFS=$'\t' read -r state digest encoded <<<"$status_line"
-  [[ "$state" == "OCCUPIED" || "$state" == "AMBIGUOUS" ]] ||
-    { echo "Recovery requires an occupied or ambiguous lease; observed $state" >&2; exit 65; }
+  [[ "$state" == "OCCUPIED" || "$state" == "AMBIGUOUS" || "$state" == "QUARANTINED" ]] ||
+    { echo "Recovery requires an occupied, ambiguous, or marker-only quarantined lease; observed $state" >&2; exit 65; }
   [[ "$digest" == "$observed_lease_digest" ]] ||
     { echo "Observed lease digest changed; refusing recovery" >&2; exit 65; }
 
   if [[ "$state" == "OCCUPIED" ]]; then
     local owner_json owner_repo owner_run owner_status
-    owner_json="$(printf '%s' "$encoded" | base64 --decode)"
+    owner_json="$(printf '%s' "$encoded" | base64_decode)"
     owner_repo="$(jq -r '.repository // ""' <<<"$owner_json")"
     owner_run="$(jq -r '.run_id // ""' <<<"$owner_json")"
-    if ! owner_status="$(github_run_status "$owner_repo" "$owner_run" 2>/dev/null)"; then
+    if ! owner_status="$(github_run_status_with_retry "$owner_repo" "$owner_run")"; then
       echo "Owning GitHub run is unverifiable; refusing recovery" >&2
       exit 73
     fi
@@ -519,6 +574,13 @@ recovery_audit_root="$3"
 expected_digest="$4"
 reason_b64="$5"
 lease_state="$6"
+base64_decode() {
+  if /usr/bin/base64 --decode </dev/null >/dev/null 2>&1; then
+    /usr/bin/base64 --decode
+  else
+    /usr/bin/base64 -D
+  fi
+}
 canonical_lease_digest() {
   local directory="$1"
   (
@@ -547,6 +609,35 @@ canonical_lease_digest() {
     done
   ) | shasum -a 256 | awk '{print $1}'
 }
+if [[ "$lease_state" == "QUARANTINED" ]]; then
+  [[ ! -e "$lease_dir" && ! -L "$lease_dir" ]] ||
+    { echo "marker-only quarantine gained a lease directory" >&2; exit 65; }
+  [[ -f "$quarantine_file" && ! -L "$quarantine_file" ]] ||
+    { echo "quarantine metadata disappeared or became unsafe" >&2; exit 65; }
+  actual_digest="$(shasum -a 256 "$quarantine_file" | awk '{print $1}')"
+  [[ "$actual_digest" == "$expected_digest" ]] ||
+    { echo "quarantine digest changed during recovery" >&2; exit 65; }
+  if pgrep -f 'nixmac\.app/Contents/MacOS/nixmac|/Contents/MacOS/nixmac|[c]ua-driver|[C]uaDriver\.app/Contents/MacOS' >/dev/null; then
+    echo "nixmac or CuaDriver process active; refusing recovery" >&2
+    exit 73
+  fi
+  stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+  audit_dir="${recovery_audit_root}/${stamp}-${expected_digest}"
+  mkdir -p "$recovery_audit_root"
+  mkdir "$audit_dir"
+  cp "$quarantine_file" "$audit_dir/QUARANTINED.json"
+  chmod 600 "$audit_dir/QUARANTINED.json"
+  printf '%s' "$reason_b64" | base64_decode > "$audit_dir/operator-reason.txt"
+  printf '%s\n' "$lease_state" > "$audit_dir/lease-state.txt"
+  printf '%s\n' "$expected_digest" > "$audit_dir/observed-lease-digest.txt"
+  chmod 600 "$audit_dir"/*.txt
+  final_digest="$(shasum -a 256 "$quarantine_file" | awk '{print $1}')"
+  [[ "$final_digest" == "$expected_digest" ]] ||
+    { echo "quarantine digest changed before recovery delete" >&2; exit 65; }
+  rm -f -- "$quarantine_file"
+  printf 'LEASE_RECOVERED audit=%s\n' "$audit_dir"
+  exit 0
+fi
 if [[ "$lease_state" == "OCCUPIED" ]]; then
   [[ -f "$lease_dir/owner.json" ]] || { echo "owner metadata disappeared" >&2; exit 65; }
 else
@@ -593,7 +684,7 @@ if [[ -e "$quarantine_file" || -L "$quarantine_file" ]]; then
   cp "$quarantine_file" "$audit_dir/QUARANTINED.json"
   chmod 600 "$audit_dir/QUARANTINED.json"
 fi
-printf '%s' "$reason_b64" | /usr/bin/base64 -D > "$audit_dir/operator-reason.txt"
+printf '%s' "$reason_b64" | base64_decode > "$audit_dir/operator-reason.txt"
 printf '%s\n' "$lease_state" > "$audit_dir/lease-state.txt"
 printf '%s\n' "$expected_digest" > "$audit_dir/observed-lease-digest.txt"
 chmod 600 "$audit_dir"/*.txt

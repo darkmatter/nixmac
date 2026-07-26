@@ -15,7 +15,7 @@ on:
         type: boolean
         default: false
       e2e_merge_sha:
-        description: Exact lowercase merged SHA; dispatch ref must be this same SHA
+        description: Exact lowercase merged SHA; dispatch the deterministic backfill branch pointing at this SHA
         required: false
         type: string
         default: ""

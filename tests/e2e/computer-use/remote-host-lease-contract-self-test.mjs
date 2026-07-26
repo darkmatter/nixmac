@@ -22,7 +22,11 @@ assert.match(helper, /observed-lease-digest/, "recovery must require the observe
 assert.match(helper, /operator-reason/, "recovery must require an operator reason");
 assert.match(helper, /actions\/runs/, "owner liveness must come from the owning GitHub run");
 assert.match(helper, /pgrep.*nixmac/, "recovery must refuse while nixmac is active");
-assert.doesNotMatch(helper, /rm\s+-rf/, "lease recovery must never recursively delete");
+assert.doesNotMatch(
+  helper,
+  /\brm\s+[^\n]*(?:-[A-Za-z]*[rR][A-Za-z]*|--recursive)(?:\s|$)/,
+  "lease recovery must never recursively delete regardless of option ordering",
+);
 assert.match(
   helper,
   /NIXMAC_E2E_LEASE_TEST_MODE/,
@@ -38,6 +42,11 @@ const workflowContracts = [
 for (const [workflowName, jobId] of workflowContracts) {
   const source = readFileSync(path.join(repoRoot, workflowName), "utf8");
   const workflow = parseWorkflowYaml({ workflowName, source });
+  assert.equal(
+    workflow.permissions?.actions,
+    "read",
+    `${workflowName} must grant the lease liveness probe actions:read`,
+  );
   const job = workflow.jobs[jobId];
   assert.ok(job, `${workflowName} must define ${jobId}`);
   const text = JSON.stringify(job);
@@ -52,12 +61,14 @@ for (const [workflowName, jobId] of workflowContracts) {
   assert.ok(acquire >= 0, `${workflowName} must acquire the shared host lease`);
   assert.ok(release > acquire, `${workflowName} must release after acquisition`);
   assert.match(text, /if.*always\(\)/, `${workflowName} must release during finalization`);
-  if (firstMacActionCandidates.length) {
-    assert.ok(
-      acquire < Math.min(...firstMacActionCandidates),
-      `${workflowName} must acquire before any Mac-side inventory, process, or UI action`,
-    );
-  }
+  assert.ok(
+    firstMacActionCandidates.length > 0,
+    `${workflowName} must expose a recognized first Mac-side action marker`,
+  );
+  assert.ok(
+    acquire < Math.min(...firstMacActionCandidates),
+    `${workflowName} must acquire before any Mac-side inventory, process, or UI action`,
+  );
 }
 
 const fixtureRoot = mkdtempSync(path.join(os.tmpdir(), "nixmac-host-lease-contract-"));
@@ -85,9 +96,25 @@ exit 64
   writeFileSync(fakeSshKeygen, "#!/usr/bin/env bash\nexit 0\n");
   writeFileSync(
     fakeGh,
-    "#!/usr/bin/env bash\nprintf '%s\\n' \"${NIXMAC_E2E_FAKE_GH_STATUS:-in_progress}\"\n",
+    `#!/usr/bin/env bash
+set -euo pipefail
+count_file="\${NIXMAC_E2E_FAKE_GH_COUNT_FILE:-}"
+fail_until="\${NIXMAC_E2E_FAKE_GH_FAIL_UNTIL:-0}"
+if [[ -n "$count_file" ]]; then
+  count="$(cat "$count_file" 2>/dev/null || printf '0')"
+  count=$((count + 1))
+  printf '%s\\n' "$count" > "$count_file"
+  if ((count <= fail_until)); then
+    exit 1
+  fi
+fi
+printf '%s\\n' "\${NIXMAC_E2E_FAKE_GH_STATUS:-in_progress}"
+`,
   );
-  writeFileSync(fakePgrep, "#!/usr/bin/env bash\nexit 1\n");
+  writeFileSync(
+    fakePgrep,
+    '#!/usr/bin/env bash\n[[ "${NIXMAC_E2E_FAKE_PGREP_ACTIVE:-0}" == "1" ]]\n',
+  );
   chmodSync(fakeSsh, 0o700);
   chmodSync(fakeSshKeygen, 0o700);
   chmodSync(fakeGh, 0o700);
@@ -120,6 +147,7 @@ exit 64
     PATH: `${fakeBin}:${process.env.PATH}`,
     NIXMAC_E2E_LEASE_TEST_MODE: "1",
     NIXMAC_E2E_LEASE_ROOT: leaseRoot,
+    NIXMAC_E2E_LEASE_LIVENESS_RETRY_DELAY_SECONDS: "0",
   };
   const invoke = (command, ownerToken, extra = [], env = fixtureEnv) =>
     spawnSync("bash", [helperPath, command, ...commonArgs, "--owner-token", ownerToken, ...extra], {
@@ -150,6 +178,21 @@ exit 64
     "60",
   ]);
   assert.equal(idempotent.status, 0, idempotent.stderr);
+
+  const transientProbeCounter = path.join(fixtureRoot, "transient-probe-count");
+  const transientProbe = invoke(
+    "acquire",
+    "owner-b",
+    ["--wait-seconds", "0", "--poll-seconds", "1", "--max-hold-seconds", "60"],
+    {
+      ...fixtureEnv,
+      NIXMAC_E2E_FAKE_GH_COUNT_FILE: transientProbeCounter,
+      NIXMAC_E2E_FAKE_GH_FAIL_UNTIL: "2",
+    },
+  );
+  assert.equal(transientProbe.status, 75, transientProbe.stderr);
+  assert.match(transientProbe.stderr, /LEASE_BUSY/);
+  assert.equal(readFileSync(transientProbeCounter, "utf8").trim(), "3");
 
   const busy = invoke("acquire", "owner-b", [
     "--wait-seconds",
@@ -193,15 +236,30 @@ exit 64
   );
   assert.equal(stale.status, 73, stale.stderr);
   assert.match(stale.stderr, /LEASE_QUARANTINED/);
-  const occupied = invoke("status", "owner-b", [], terminalEnv);
-  assert.equal(occupied.status, 0, occupied.stderr);
-  const [, leaseDigest] = occupied.stdout.trim().split("\t");
-  assert.match(occupied.stdout, /^OCCUPIED\t/);
-  assert.match(leaseDigest, /^[0-9a-f]{64}$/);
+  const releasedQuarantinedOwner = invoke("release", "owner-a", [], terminalEnv);
+  assert.equal(releasedQuarantinedOwner.status, 0, releasedQuarantinedOwner.stderr);
+  const markerOnly = invoke("status", "owner-b", [], terminalEnv);
+  assert.equal(markerOnly.status, 0, markerOnly.stderr);
+  const [, quarantineDigest] = markerOnly.stdout.trim().split("\t");
+  assert.match(markerOnly.stdout, /^QUARANTINED\t/);
+  assert.match(quarantineDigest, /^[0-9a-f]{64}$/);
+  const refusedWhileActive = invoke(
+    "recover",
+    "owner-b",
+    ["--observed-lease-digest", quarantineDigest, "--operator-reason", "active process refusal"],
+    { ...terminalEnv, NIXMAC_E2E_FAKE_PGREP_ACTIVE: "1" },
+  );
+  assert.equal(refusedWhileActive.status, 73, refusedWhileActive.stderr);
+  assert.match(refusedWhileActive.stderr, /process active/i);
   const recovered = invoke(
     "recover",
     "owner-b",
-    ["--observed-lease-digest", leaseDigest, "--operator-reason", "contract fixture recovery"],
+    [
+      "--observed-lease-digest",
+      quarantineDigest,
+      "--operator-reason",
+      "marker quarantine recovery",
+    ],
     terminalEnv,
   );
   assert.equal(recovered.status, 0, recovered.stderr);

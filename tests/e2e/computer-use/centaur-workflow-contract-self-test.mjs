@@ -49,9 +49,7 @@ function runTerminalContractScenario({
   try {
     const outputPath = path.join(runRoot, "github-output");
     const summaryPath = path.join(runRoot, "github-summary");
-    const script = contractStep.run
-      .replaceAll("${{ inputs.backend }}", backend)
-      .replaceAll("${{ inputs.attempt }}", "2");
+    const script = contractStep.run;
     const result = spawnSync("bash", ["-s"], {
       encoding: "utf8",
       env: {
@@ -74,6 +72,8 @@ function runTerminalContractScenario({
         STATIC_ARTIFACT_DIGEST: staticArtifactDigest,
         STATIC_INFRA_DISPOSITION: staticInfraDisposition,
         REPORT_URL: reportUrl,
+        INPUT_ATTEMPT: "2",
+        INPUT_BACKEND: backend,
       },
       input: script,
     });
@@ -171,6 +171,25 @@ assert.deepEqual(primary.concurrency, {
   group: "computer-use-e2e-${{ needs.preflight.outputs.job_key }}",
   "cancel-in-progress": false,
 });
+for (const [job, stepName] of [
+  [preflight, "Verify ARC controller toolchain contract"],
+  [primary, "Verify ephemeral Mac toolchain contract"],
+  [staticJob, "Verify static controller toolchain contract"],
+  [publish, "Verify ARC publisher toolchain contract"],
+]) {
+  const toolchainStep = job.steps.find((step) => step.name === stepName);
+  assert.ok(toolchainStep, `${stepName} must exist`);
+  assert.match(toolchainStep.run, /command -v/);
+  assert.match(toolchainStep.run, /python3/);
+  assert.match(toolchainStep.run, /ffmpeg/);
+  assert.match(toolchainStep.run, /ffprobe/);
+}
+const staticMacToolchainStep = staticJob.steps.find(
+  (step) => step.name === "Verify static Mac toolchain contract",
+);
+assert.ok(staticMacToolchainStep);
+assert.match(staticMacToolchainStep.run, /StrictHostKeyChecking=yes/);
+assert.match(staticMacToolchainStep.run, /\/usr\/local\/bin\/cua-driver/);
 
 const preflightText = JSON.stringify(preflight);
 assert.match(preflightText, /actions\/checkout@v6/);
@@ -190,6 +209,9 @@ assert.match(preflightText, /app_artifact_digest/);
 assert.match(preflightText, /nixmac-macos-app-e2e/);
 assert.match(preflightText, /archive_download_url/);
 assert.match(preflightText, /workflow_run.*head_sha/);
+assert.match(preflightText, /\.github\/workflows\/build\.yaml/);
+assert.match(preflightText, /head_repository\.full_name/);
+assert.match(preflightText, /workflow_dispatch.*expected_backfill_branch/s);
 assert.match(
   preflightText,
   /JOB_ID.*GITHUB_REPOSITORY.*MERGE_SHA.*SUITE_VERSION/,
@@ -215,11 +237,6 @@ for (const [id, job] of Object.entries({ primary, static_ssh: staticJob })) {
   assert.doesNotMatch(text, /recording\.mp4|ffmpeg.*capture/, `${id} must not record raw video`);
   assert.match(
     text,
-    /NIXMAC_E2E_STRICT_VERDICT.*false/,
-    `${id} must preserve verified product-failure evidence instead of failing before upload`,
-  );
-  assert.match(
-    text,
     /NIXMAC_E2E_ATTESTATION_NONCE/,
     `${id} must pass the attempt nonce into evidence digest sealing`,
   );
@@ -230,6 +247,12 @@ for (const [id, job] of Object.entries({ primary, static_ssh: staticJob })) {
     `${id} must pin the all-stream media inventory verifier`,
   );
 }
+const primaryRunStep = primary.steps.find((step) => step.name === "Run exact app with CuaDriver");
+assert.equal(
+  primaryRunStep.env.NIXMAC_E2E_STRICT_VERDICT,
+  "false",
+  "primary must preserve verified product-failure evidence",
+);
 assert.doesNotMatch(
   source,
   /Upload (primary|static) diagnostics/,
@@ -294,6 +317,9 @@ assert.match(
 );
 assert.match(staticText, /macincloud-host-lease\.sh.*acquire/);
 assert.match(staticText, /macincloud-host-lease\.sh.*release/);
+assert.match(staticText, /\/private\/tmp\/nixmac-centaur-/);
+assert.match(staticText, /\/private\/tmp\/nx-cua-/);
+assert.doesNotMatch(staticText, /(?:^|["'= ])\/tmp\/(?:nixmac-centaur|nx-cua)-/);
 assert.match(staticText, /StrictHostKeyChecking=yes/);
 assert.match(staticText, /UserKnownHostsFile/);
 assert.match(staticText, /inventory-before\.json/);
@@ -351,9 +377,9 @@ assert.doesNotMatch(
   /artifact\/source\.json|controller-process-handoff\.json|manifest\.json/,
   "host cleanup and owner-token release must not depend on evidence prerequisites",
 );
-assert.match(
+assert.equal(
   sealStep.if,
-  /steps\.cleanup\.outputs\.host_clean == 'true'[\s\S]*steps\.copy-evidence\.outcome == 'success'/,
+  "always() && steps.cleanup.outputs.host_clean == 'true' && steps.copy-evidence.outcome == 'success'",
   "immutable evidence sealing must start only after host cleanup and evidence copy succeed",
 );
 assert.match(
@@ -430,7 +456,6 @@ assert.equal(
   "report publication must not use GitHub's one-pending replacement queue",
 );
 assert.match(publishText, /for attempt in 1 2 3 4 5/);
-assert.match(publishText, /git.*fetch.*gh-pages[\s\S]*git.*push/);
 assert.match(
   publishText,
   /computer-use-e2e\/jobs\/\$\{\{ needs\.preflight\.outputs\.job_key \}\}\/attempt-\$\{\{ inputs\.attempt \}\}/,
@@ -444,6 +469,19 @@ const publishStep = publish.steps.find(
   (step) => step.name === "Publish verified gh-pages report with optimistic retry",
 );
 assert.ok(publishStep);
+assert.match(
+  publishStep.run,
+  /^\s*if git -C "\$site_dir" push -q origin HEAD:gh-pages; then\s*$/m,
+  "publisher must update only gh-pages without force",
+);
+assert.deepEqual(
+  publishStep.run
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => /\bgit\b.*\bpush\b/.test(line)),
+  ['if git -C "$site_dir" push -q origin HEAD:gh-pages; then'],
+  "publisher must have exactly one non-force push target",
+);
 assert.ok(
   publishStep.run.indexOf("trap ") < publishStep.run.indexOf('cp -a "$run_dir/."'),
   "publisher cleanup must be armed before the first snapshot copy can fail",
@@ -499,7 +537,17 @@ const staticRunStep = staticJob.steps.find(
   (step) => step.name === "Run CuaDriver on leased static host",
 );
 assert.equal(staticRunStep.env.STATIC_IMAGE_DIGEST, "${{ vars.NIXMAC_E2E_STATIC_IMAGE_DIGEST }}");
-assert.match(staticRunStep.run, /\^sha256:\[0-9a-f\]\{64\}\$/);
+assert.equal(staticRunStep.env.NIXMAC_E2E_STRICT_VERDICT, "false");
+const staticRunCommands = staticRunStep.run
+  .split("\n")
+  .map((line) => line.trim())
+  .filter((line) => line && !line.startsWith("#"));
+assert.equal(staticRunCommands[0], "set -euo pipefail");
+assert.equal(
+  staticRunCommands[1],
+  '[[ "$STATIC_IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]',
+  "static image identity must fail closed before SSH or runner interpolation",
+);
 assert.match(staticRunStep.run, /static_image_digest_q=.*printf.*%q/);
 assert.match(
   staticRunStep.run,
@@ -533,10 +581,12 @@ const terminalContractStep = result.steps.find(
 );
 assert.equal(terminalContractStep.env.PREFLIGHT_RESULT, "${{ needs.preflight.result }}");
 assert.equal(terminalContractStep.env.INPUT_JOB_ID, "${{ inputs.job_id }}");
+assert.equal(terminalContractStep.env.INPUT_ATTEMPT, "${{ inputs.attempt }}");
+assert.equal(terminalContractStep.env.INPUT_BACKEND, "${{ inputs.backend }}");
 assert.doesNotMatch(
   terminalContractStep.run,
-  /\$\{\{ inputs\.job_id \}\}/,
-  "result scripting must not interpolate an unvalidated string input into bash",
+  /\$\{\{ inputs\.(?:job_id|attempt|backend) \}\}/,
+  "result scripting must route dispatch inputs through its environment boundary",
 );
 assert.match(
   terminalContractStep.run,
@@ -544,7 +594,7 @@ assert.match(
 );
 assert.match(
   terminalContractStep.run,
-  /inputs\.backend.*static_ssh[\s\S]*-z "\$STATIC_INFRA_DISPOSITION"[\s\S]*ABORTED_API_SYNTHESIS_REQUIRED/s,
+  /INPUT_BACKEND.*static_ssh[\s\S]*-z "\$STATIC_INFRA_DISPOSITION"[\s\S]*ABORTED_API_SYNTHESIS_REQUIRED/s,
 );
 assert.match(
   resultText,
@@ -593,6 +643,40 @@ for (const scenario of [
   assert.match(observed.outputs, /workflow_ok=false/);
 }
 
+const complete = runTerminalContractScenario({
+  name: "complete",
+  backend: "cilicon_tart",
+  primaryResult: "success",
+  reportResult: "success",
+  primaryArtifactId: "98765",
+  primaryArtifactDigest: `sha256:${"a".repeat(64)}`,
+  reportUrl: "https://example.invalid/report",
+});
+assert.equal(complete.contract.terminalStatus, "COMPLETE");
+assert.equal(complete.contract.requiresApiSynthesis, false);
+assert.match(complete.outputs, /workflow_ok=true/);
+
+const buildUnavailable = runTerminalContractScenario({
+  name: "build-unavailable",
+  backend: "cilicon_tart",
+  preflightResult: "success",
+  preflightReady: "false",
+  terminalStatus: "BUILD_UNAVAILABLE",
+});
+assert.equal(buildUnavailable.contract.terminalStatus, "BUILD_UNAVAILABLE");
+assert.equal(buildUnavailable.contract.requiresApiSynthesis, false);
+
+const preflightCancelled = runTerminalContractScenario({
+  name: "preflight-cancelled",
+  backend: "cilicon_tart",
+  preflightResult: "cancelled",
+  preflightReady: "",
+  terminalStatus: "",
+});
+assert.equal(preflightCancelled.contract.terminalStatus, "ABORTED");
+assert.equal(preflightCancelled.contract.infraDisposition, "ABORTED_API_SYNTHESIS_REQUIRED");
+assert.equal(preflightCancelled.contract.requiresApiSynthesis, true);
+
 assert.doesNotMatch(
   source,
   /pull_request_target|issue_comment|pull-requests:\s*write|issues:\s*write/,
@@ -607,6 +691,11 @@ assert.match(
   operations,
   /terminal-contract\.json[\s\S]*GitHub run\/job API[\s\S]*ABORTED/,
   "operations must define API-synthesized ABORTED when no runner-side contract can exist",
+);
+assert.match(
+  operations,
+  /automation\/nixmac-e2e-backfill\/<merged-sha>[\s\S]*branch or tag, not a raw commit SHA[\s\S]*delete only the exact deterministic branch/s,
+  "backfill operations must use and safely clean up a deterministic exact-SHA branch",
 );
 
 console.log("Centaur workflow contract self-test passed.");

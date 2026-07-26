@@ -24,7 +24,7 @@ export function pngSignalStats(filePath, crop = null) {
   const filters = [];
   if (crop) filters.push(`crop=${crop.w}:${crop.h}:${crop.x}:${crop.y}`);
   filters.push("signalstats", "metadata=print:file=-");
-  const result = tryRun("ffmpeg", [
+  const result = tryRun(process.env.NIXMAC_E2E_FFMPEG_PATH || "ffmpeg", [
     "-hide_banner",
     "-i",
     filePath,

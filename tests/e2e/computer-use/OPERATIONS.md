@@ -95,15 +95,27 @@ push. Centaur therefore uses the idempotent exact-SHA backfill in `build.yaml`:
 
 1. Query successful `Build macOS App` runs and non-expired
    `nixmac-macos-app-e2e` artifacts for the merged SHA.
-1. If none exists, dispatch `build.yaml` with `ref` set to that exact merged
-   SHA, `e2e_backfill=true`, and `e2e_merge_sha` set to the same SHA.
+1. If none exists, create the deterministic private branch
+   `automation/nixmac-e2e-backfill/<merged-sha>` at that exact merged SHA using
+   the Centaur GitHub App installation token. This is only valid for merges at
+   or after the E2E suite activation commit, so the target revision contains
+   the backfill workflow contract.
+1. Dispatch `build.yaml` with `ref` set to that deterministic branch,
+   `e2e_backfill=true`, and `e2e_merge_sha` set to the same SHA. GitHub's
+   workflow-dispatch API accepts a branch or tag, not a raw commit SHA.
 1. The workflow proves the SHA is in default-branch history. Same-SHA
    backfills serialize without cancellation and re-check for an already
    successful artifact before allocating the macOS builder. When a queued
    duplicate finds an existing artifact, the ARC job downloads it by exact
    run/artifact ID and republishes the same preserved app payload into the
-   newer run. Every successful backfill run therefore remains independently
+   newer run. Bind Centaur to the artifact ID and digest returned by the
+   successful run, since a republished artifact has its own GitHub archive
+   digest. Every successful backfill run therefore remains independently
    discoverable and has exactly one `nixmac-macos-app-e2e` artifact.
+1. After the build reaches a terminal state and Centaur has persisted its run,
+   artifact, and digest result, delete only the exact deterministic branch if
+   it still points to the requested merged SHA. A pre-existing or moved ref is
+   never overwritten or deleted.
 1. Poll for a bounded interval in Centaur. If no successful exact-SHA artifact
    appears, record `BUILD_UNAVAILABLE` and do not dispatch or retry a Mac job
    indefinitely.
@@ -117,6 +129,15 @@ controller before dispatch. The static controller acquires the host lease
 before inventory, staging, process, or UI work; only the owner token can release
 it. Live foreign owners wait for a bounded interval. Stale, ambiguous, or
 unverifiable ownership quarantines the host and is never stolen.
+
+The deployed runner images are an explicit toolchain contract, not a mutable
+host assumption. ARC controller/publisher images must provide `gh`, `git`,
+`jq`, `node`, `python3`, `ffmpeg`, `ffprobe`, `shasum`, and `unzip`; the
+ephemeral Mac image must provide `ditto`, `jq`, `node`, `python3`, `ffmpeg`,
+`ffprobe`, and `shasum`; the static controller adds `ssh`, `scp`, and `tar`.
+Each job probes its own contract before consuming evidence or mutating a Mac.
+The evidence producer and verifier both use the resolved
+`NIXMAC_E2E_FFMPEG_PATH`, so one attempt cannot silently switch binaries.
 
 Before enabling the first `static_ssh` dispatch after the lease workflow lands:
 
@@ -164,9 +185,11 @@ ops/runner/macincloud-host-lease.sh status \
   --known-hosts "$KNOWN_HOSTS"
 ```
 
-Copy the exact digest from the `OCCUPIED` or `AMBIGUOUS` status output. An
-ambiguous digest binds the bounded direct-file snapshot after its orphaned
-heartbeat is stopped. Recover only with an operator reason:
+Copy the exact digest from the `OCCUPIED`, `AMBIGUOUS`, or marker-only
+`QUARANTINED` status output. An ambiguous digest binds the bounded direct-file
+snapshot after its orphaned heartbeat is stopped; a marker-only digest binds
+the quarantine record left after an owner-matched release. Recover only with an
+operator reason:
 
 ```bash
 ops/runner/macincloud-host-lease.sh recover \
@@ -178,14 +201,14 @@ ops/runner/macincloud-host-lease.sh recover \
 ```
 
 For an occupied lease, recovery refuses a changed digest, an active owning
-GitHub run, or an unverifiable owner. Ambiguous recovery is allowed only through
-this explicit digest-and-reason path because owner metadata is absent by
-definition. Both modes refuse while nixmac or CuaDriver is active, snapshot
-every bounded regular lease file plus quarantine metadata into the recovery
-audit directory, and remove only the validated direct files; neither uses a
-generic recursive delete. Then attach that proof to a separate audited Centaur
-operation that clears durable backend quarantine. Reimaging the host or losing
-the host marker does not clear Centaur state.
+GitHub run, or an unverifiable owner. Ambiguous and marker-only recovery are
+allowed only through this explicit digest-and-reason path because live owner
+metadata is absent by definition. Every mode refuses while nixmac or CuaDriver
+is active, snapshots every bounded regular lease file plus quarantine metadata
+into the recovery audit directory, and removes only the validated direct files;
+none uses a generic recursive delete. Then attach that proof to a separate
+audited Centaur operation that clears durable backend quarantine. Reimaging the
+host or losing the host marker does not clear Centaur state.
 
 The canonical Actions artifact is retained for 90 days and exposes the artifact
 ID/digest to Centaur. The deterministic gh-pages report lives at

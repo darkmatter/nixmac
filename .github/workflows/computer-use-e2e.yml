@@ -770,7 +770,7 @@ jobs:
         run: |
           set -euo pipefail
           owner_token="$(
-            printf '%s' "${GITHUB_REPOSITORY}|${GITHUB_WORKFLOW}|${GITHUB_RUN_ID}|remote-computer-use|${GITHUB_RUN_ATTEMPT}" |
+            printf '%s' "${GITHUB_REPOSITORY}|${GITHUB_WORKFLOW}|${GITHUB_RUN_ID}|remote-computer-use" |
               shasum -a 256 |
               awk '{print $1}'
           )"
@@ -788,6 +788,7 @@ jobs:
             --wait-seconds 3600 \
             --poll-seconds 15 \
             --max-hold-seconds 10800
+          printf 'acquired\n' > "$RUNNER_TEMP/nixmac-host-lease-acquired"
           echo "acquired=true" >> "$GITHUB_OUTPUT"
 
       - name: Preflight remote Mac
@@ -1210,12 +1211,16 @@ jobs:
           exit "$cleanup_status"
 
       - name: Release shared MacinCloud host lease
-        if: always() && steps.host-lease.outputs.acquired == 'true'
+        if: always() && steps.host-lease.outcome != 'skipped'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          if [[ ! -f "$RUNNER_TEMP/nixmac-host-lease-acquired" ]]; then
+            echo "No locally confirmed host lease to release."
+            exit 0
+          fi
           owner_token="$(cat "$RUNNER_TEMP/nixmac-host-owner-token")"
           ops/runner/macincloud-host-lease.sh release \
             --ssh-dest "${REMOTE_USER}@${REMOTE_HOST}" \
@@ -1227,6 +1232,7 @@ jobs:
             --logical-job remote-computer-use \
             --attempt "$GITHUB_RUN_ATTEMPT" \
             --nonce "legacy-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          rm -f "$RUNNER_TEMP/nixmac-host-lease-acquired"
 
       - name: Refresh report timing metadata
         if: always()

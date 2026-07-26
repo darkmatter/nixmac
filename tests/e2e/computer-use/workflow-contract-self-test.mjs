@@ -78,6 +78,11 @@ assert.equal(
   "build workflow must accept the exact merged SHA",
 );
 assert.match(
+  buildDispatchInputs.e2e_merge_sha.description,
+  /deterministic backfill branch pointing at this SHA/,
+  "workflow dispatch must use a branch ref that resolves to the exact merged SHA",
+);
+assert.match(
   JSON.stringify(parsedBuildWorkflow.concurrency),
   /inputs\.e2e_merge_sha/,
   "exact-SHA backfills must serialize idempotently by merged SHA",

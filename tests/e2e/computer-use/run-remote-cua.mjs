@@ -1544,7 +1544,7 @@ async function maybeGenerateEvidenceVideo(state) {
     "utf8",
   );
 
-  const result = tryRun("ffmpeg", [
+  const result = tryRun(process.env.NIXMAC_E2E_FFMPEG_PATH || "ffmpeg", [
     "-y",
     "-hide_banner",
     "-loglevel",
