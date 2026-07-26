@@ -15,7 +15,25 @@ const AUTOMATIC_WORKFLOW_ENVIRONMENT = {
   CARGO_TERM_COLOR: "always",
   SOPS_AGE_KEY: "${{ secrets.SOPS_AGE_KEY }}",
 };
-const AUTOMATIC_CONTRACT_ENVIRONMENT = { NIXPKGS_ALLOW_UNFREE: 1 };
+const AUTOMATIC_CONTRACT_ENVIRONMENT = {
+  BASH_ENV: "",
+  ENV: "",
+  NIXPKGS_ALLOW_UNFREE: 1,
+  NODE_OPTIONS: "",
+};
+const TRUSTED_PREFLIGHT_STEPS = [
+  {
+    name: "Checkout repository",
+    uses: "actions/checkout@v6",
+  },
+  {
+    name: "Setup Nix and caches",
+    uses: "./.github/actions/setup-nix",
+    with: {
+      "darkmatter-cachix-auth-token": "${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}",
+    },
+  },
+];
 const GIT_HOOKS_STEP_NAME = "Run git hooks";
 const GIT_HOOKS_COMMAND = "prek run --all-files --show-diff-on-failure";
 
@@ -220,6 +238,21 @@ export function assertAutomaticConcurrencyValidationContract({
   assert.ok(
     job.steps.indexOf(contractStep) < job.steps.indexOf(gitHooksStep),
     `${workflowName} job ${jobId} must preserve the fail-fast git-hooks step`,
+  );
+  assert.deepEqual(
+    job.steps.slice(0, TRUSTED_PREFLIGHT_STEPS.length),
+    TRUSTED_PREFLIGHT_STEPS,
+    `${workflowName} job ${jobId} must preserve the exact trusted step sequence`,
+  );
+  assert.deepEqual(
+    job.steps.map((step) => step?.name),
+    [
+      ...TRUSTED_PREFLIGHT_STEPS.map((step) => step.name),
+      "Install devenv",
+      stepName,
+      GIT_HOOKS_STEP_NAME,
+    ],
+    `${workflowName} job ${jobId} must preserve the exact trusted step sequence`,
   );
 }
 

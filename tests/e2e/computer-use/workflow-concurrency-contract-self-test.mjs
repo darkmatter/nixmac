@@ -59,17 +59,29 @@ jobs:
   git-hooks:
     runs-on: arc
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Setup Nix and caches
+        uses: ./.github/actions/setup-nix
+        with:
+          darkmatter-cachix-auth-token: \${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
       - name: Install devenv
 ${installCommand}
       - name: Run Computer Use workflow contracts
         env:
+          BASH_ENV: ""
+          ENV: ""
           NIXPKGS_ALLOW_UNFREE: 1
+          NODE_OPTIONS: ""
         shell: /tmp/nixmac-devenv-cli/bin/devenv shell --impure -- bash -euo pipefail {0}
         run: |
 ${validationCommands}
       - name: Run git hooks
         env:
+          BASH_ENV: ""
+          ENV: ""
           NIXPKGS_ALLOW_UNFREE: 1
+          NODE_OPTIONS: ""
         shell: /tmp/nixmac-devenv-cli/bin/devenv shell --impure -- bash -euo pipefail {0}
         run: prek run --all-files --show-diff-on-failure
   build:
@@ -377,26 +389,23 @@ assert.throws(
   "automatic contract validation must require the installer before the contract step",
 );
 
-for (const [scope, mutation] of [
+for (const [scope, original, mutation] of [
   [
     "workflow-env",
+    "env:\n  CARGO_TERM_COLOR: always",
     "env:\n  NODE_OPTIONS: --require /tmp/exit0.js\n  CARGO_TERM_COLOR: always",
   ],
   [
     "job-env",
+    "  git-hooks:",
     "  git-hooks:\n    env:\n      NODE_OPTIONS: --require /tmp/exit0.js",
   ],
   [
     "step-env",
-    "        env:\n          NODE_OPTIONS: --require /tmp/exit0.js\n          NIXPKGS_ALLOW_UNFREE: 1",
+    '          NODE_OPTIONS: ""',
+    "          NODE_OPTIONS: --require /tmp/exit0.js",
   ],
 ]) {
-  const original =
-    scope === "workflow-env"
-      ? "env:\n  CARGO_TERM_COLOR: always"
-      : scope === "job-env"
-        ? "  git-hooks:"
-        : "        env:\n          NIXPKGS_ALLOW_UNFREE: 1";
   assert.throws(
     () =>
       assertAutomaticConcurrencyValidationContract({
@@ -425,13 +434,33 @@ assert.throws(
   "automatic contract validation must reject a strategy that can expand to no contract jobs",
 );
 
+assert.throws(
+  () =>
+    assertAutomaticConcurrencyValidationContract({
+      workflowName: "persisted-environment-bypass.yaml",
+      source: automaticWorkflowYaml().replace(
+        "      - name: Install devenv",
+        `      - name: Persist hostile environment
+        run: echo 'BASH_ENV=/tmp/exit-zero.sh' >> "$GITHUB_ENV"
+      - name: Install devenv`,
+      ),
+      jobId: "git-hooks",
+      stepName: "Run Computer Use workflow contracts",
+    }),
+  /persisted-environment-bypass\.yaml job git-hooks must preserve the exact trusted step sequence/,
+  "automatic contract validation must reject pre-gate environment persistence",
+);
+
 for (const [name, source] of [
   [
     "missing-prek-step",
     automaticWorkflowYaml().replace(
       `      - name: Run git hooks
         env:
+          BASH_ENV: ""
+          ENV: ""
           NIXPKGS_ALLOW_UNFREE: 1
+          NODE_OPTIONS: ""
         shell: /tmp/nixmac-devenv-cli/bin/devenv shell --impure -- bash -euo pipefail {0}
         run: prek run --all-files --show-diff-on-failure
 `,
