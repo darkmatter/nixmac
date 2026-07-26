@@ -165,7 +165,9 @@ import base64
 import hashlib
 import os
 import re
+import signal
 import stat
+import subprocess
 import sys
 
 lease_root, lease_dir, quarantine_file = sys.argv[1:]
@@ -243,6 +245,44 @@ def canonical_digest(directory_fd):
     return hashlib.sha256(records).hexdigest()
 
 
+def stop_validated_heartbeat(directory_fd):
+    try:
+        heartbeat_pid_fd, _ = open_regular_at(
+            directory_fd, "heartbeat.pid", "heartbeat pid"
+        )
+    except FileNotFoundError:
+        return
+    try:
+        raw_pid = read_bounded(heartbeat_pid_fd)
+    finally:
+        os.close(heartbeat_pid_fd)
+    try:
+        heartbeat_pid = int(raw_pid.decode("ascii").strip())
+    except (UnicodeDecodeError, ValueError):
+        return
+    if heartbeat_pid <= 1:
+        return
+    heartbeat_script = os.path.join(lease_dir, "heartbeat.sh")
+    try:
+        process = subprocess.run(
+            ["ps", "-p", str(heartbeat_pid), "-o", "command="],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise SystemExit(f"unable to validate orphan heartbeat: {error}")
+    if process.returncode != 0 or heartbeat_script not in process.stdout:
+        return
+    try:
+        os.kill(heartbeat_pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    except OSError as error:
+        raise SystemExit(f"unable to stop orphan heartbeat: {error}")
+
+
 root_fd = open_directory(lease_root, "lease root")
 if root_fd is None:
     print("FREE")
@@ -287,6 +327,7 @@ try:
         try:
             owner_json_fd, _ = open_regular_at(owner_fd, "owner.json", "owner metadata")
         except FileNotFoundError:
+            stop_validated_heartbeat(owner_fd)
             print("AMBIGUOUS", digest, "missing-owner-metadata", sep="\t")
             raise SystemExit(0)
         try:
@@ -442,11 +483,17 @@ base64_decode() {
     /usr/bin/base64 -D
   fi
 }
-if [[ -e "$lease_root" || -L "$lease_root" ]]; then
-  [[ -d "$lease_root" && ! -L "$lease_root" ]] || { printf 'UNSAFE\n'; exit 0; }
-else
-  mkdir "$lease_root"
+if [[ ! -e "$lease_root" && ! -L "$lease_root" ]]; then
+  if [[ "${NIXMAC_E2E_LEASE_TEST_MODE:-0}" == "1" &&
+    -n "${NIXMAC_E2E_LEASE_ROOT_CREATION_TEST_HOOK:-}" ]]; then
+    "$NIXMAC_E2E_LEASE_ROOT_CREATION_TEST_HOOK" "$lease_root"
+  fi
+  if ! mkdir "$lease_root" 2>/dev/null; then
+    [[ -d "$lease_root" && ! -L "$lease_root" ]] ||
+      { printf 'UNSAFE\n'; exit 0; }
+  fi
 fi
+[[ -d "$lease_root" && ! -L "$lease_root" ]] || { printf 'UNSAFE\n'; exit 0; }
 if [[ -e "$quarantine_file" || -L "$quarantine_file" ]]; then
   [[ -f "$quarantine_file" && ! -L "$quarantine_file" ]] ||
     { printf 'UNSAFE\n'; exit 0; }

@@ -22,6 +22,7 @@ const thisFile = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(thisFile), "../../..");
 const helperPath = path.join(repoRoot, "ops/runner/macincloud-host-lease.sh");
 const helper = readFileSync(helperPath, "utf8");
+const HELPER_TIMEOUT_MS = 30_000;
 
 execFileSync("bash", ["-n", helperPath]);
 assert.match(helper, /mkdir "\$lease_dir"/, "lease acquisition must use atomic mkdir");
@@ -169,7 +170,7 @@ printf '%s\\n' "\${NIXMAC_E2E_FAKE_GH_STATUS:-in_progress}"
     spawnSync("bash", [helperPath, command, ...commonArgs, "--owner-token", ownerToken, ...extra], {
       encoding: "utf8",
       env,
-      timeout: 10_000,
+      timeout: HELPER_TIMEOUT_MS,
     });
   const invokeWithOwnership = (command, ownerToken, ownershipArgs, extra = [], env = fixtureEnv) =>
     spawnSync(
@@ -178,7 +179,7 @@ printf '%s\\n' "\${NIXMAC_E2E_FAKE_GH_STATUS:-in_progress}"
       {
         encoding: "utf8",
         env,
-        timeout: 10_000,
+        timeout: HELPER_TIMEOUT_MS,
       },
     );
 
@@ -225,6 +226,33 @@ printf '%s\\n' "\${NIXMAC_E2E_FAKE_GH_STATUS:-in_progress}"
   const fileOwnerStatus = invoke("status", "owner-a");
   assert.notEqual(fileOwnerStatus.status, 0, "status must reject a non-directory owner");
   rmSync(leaseRoot, { recursive: true });
+
+  const rootCreationHook = path.join(
+    fixtureRoot,
+    "create-lease-root-during-acquire",
+  );
+  writeFileSync(
+    rootCreationHook,
+    '#!/usr/bin/env bash\nset -euo pipefail\nmkdir "$1"\n',
+  );
+  chmodSync(rootCreationHook, 0o700);
+  const racedRootAcquire = invoke(
+    "acquire",
+    "owner-a",
+    ["--wait-seconds", "0", "--poll-seconds", "1", "--max-hold-seconds", "60"],
+    {
+      ...fixtureEnv,
+      NIXMAC_E2E_LEASE_ROOT_CREATION_TEST_HOOK: rootCreationHook,
+    },
+  );
+  assert.equal(
+    racedRootAcquire.status,
+    0,
+    `acquire must tolerate a safe concurrent lease-root creator: ${racedRootAcquire.stderr}`,
+  );
+  assert.match(racedRootAcquire.stdout, /^LEASE_ACQUIRED\t/m);
+  const releasedAfterRootRace = invoke("release", "owner-a");
+  assert.equal(releasedAfterRootRace.status, 0, releasedAfterRootRace.stderr);
 
   const acquired = invoke("acquire", "owner-a", [
     "--wait-seconds",
@@ -495,6 +523,11 @@ cp -R "$lease_root/owner.original" "$lease_root/owner"
     "60",
   ]);
   assert.equal(acquiredForAmbiguousRecovery.status, 0, acquiredForAmbiguousRecovery.stderr);
+  const ambiguousHeartbeatPid = Number.parseInt(
+    readFileSync(path.join(leaseRoot, "owner", "heartbeat.pid"), "utf8").trim(),
+    10,
+  );
+  assert.ok(Number.isSafeInteger(ambiguousHeartbeatPid) && ambiguousHeartbeatPid > 1);
   unlinkSync(path.join(leaseRoot, "owner", "owner.json"));
   const ambiguous = invoke("status", "owner-d", [], terminalEnv);
   assert.equal(ambiguous.status, 0, ambiguous.stderr);
@@ -502,6 +535,25 @@ cp -R "$lease_root/owner.original" "$lease_root/owner"
     ambiguous.stdout,
     /^AMBIGUOUS\t[0-9a-f]{64}\tmissing-owner-metadata$/m,
     "ambiguous leases must expose an exact snapshot digest",
+  );
+  let heartbeatStillMatches = true;
+  for (let attempt = 0; attempt < 20 && heartbeatStillMatches; attempt += 1) {
+    const process = spawnSync(
+      "ps",
+      ["-p", String(ambiguousHeartbeatPid), "-o", "command="],
+      { encoding: "utf8" },
+    );
+    heartbeatStillMatches =
+      process.status === 0 &&
+      process.stdout.includes(path.join(leaseRoot, "owner", "heartbeat.sh"));
+    if (heartbeatStillMatches) {
+      spawnSync("sleep", ["0.05"]);
+    }
+  }
+  assert.equal(
+    heartbeatStillMatches,
+    false,
+    "status must stop a validated orphan heartbeat before reporting missing owner metadata",
   );
   const [, ambiguousDigest] = ambiguous.stdout.trim().split("\t");
   const recoveredAmbiguous = invoke(
