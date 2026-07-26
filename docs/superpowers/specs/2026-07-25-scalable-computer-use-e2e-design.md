@@ -345,17 +345,18 @@ requires `is_on_screen=true` and layer 0, rejects an explicit false
 `on_current_space`, prefers explicit true when a future release supplies it,
 and records when the pinned-version on-screen fallback was used.
 
-After `check_permissions`, the adapter canonicalizes the selected Unix socket
-and runs `/usr/sbin/lsof -nP -Fpcn -a -U <socket>`. Exactly one `cua-driver`
-PID must hold the exact canonical socket. The adapter derives that PID's
-executable through the OS, requires it inside the already verified
-`CuaDriver.app/Contents/MacOS`, and binds the PID plus executable before
-reverifying the enclosing bundle's identity, content digest, and Developer ID
-signature. `check_permissions.source` is corroboration only and must match the
-OS-derived executable. This proof is required in both owned-daemon and
-attach-to-existing modes because the name-based `open -a CuaDriver` launch
-contract and daemon self-attestation do not identify the process that answered
-the socket.
+After status becomes ready and before `check_permissions`, the adapter
+canonicalizes the selected Unix socket and runs
+`/usr/sbin/lsof -nP -Fpcn -a -U <socket>`. Exactly one `cua-driver` PID must
+hold the exact canonical socket. The adapter derives that PID's executable
+through the OS, requires it inside the already verified
+`CuaDriver.app/Contents/MacOS`, binds the PID plus executable, and reverifies
+the enclosing bundle's identity, content digest, and Developer ID signature.
+Only then may it call `check_permissions`; that RPC's `source` is corroboration
+only and must match the OS-derived executable. This proof is required in both
+owned-daemon and attach-to-existing modes because the name-based
+`open -a CuaDriver` launch contract and daemon self-attestation do not identify
+the process that answered the socket.
 
 Owned mode first proves its selected socket path is absent, launches the app,
 and only then binds the OS-derived owner. A caller must use the distinct
@@ -363,6 +364,16 @@ and only then binds the OS-derived owner. A caller must use the distinct
 owned sockets stay under the short system-temp `socketDirectory`; the
 potentially long artifact `runDir` is used for randomized screenshot scratch
 directories and never lengthens the macOS Unix-socket path.
+
+`close()` may send `stop --socket` only for an adapter-started daemon after
+re-resolving the socket listener and requiring its PID and canonical executable
+to match the bound signed peer. A missing listener while that process remains
+alive, an ambiguous listener, or a replacement listener fails closed without
+stopping anything and retains ownership for retry. A zero-exit `stop` is not
+teardown proof: bounded polling must confirm that the bound PID is absent or
+reused and that no listener still matches the bound peer. If both were already
+absent or reused before stop, cleanup is already complete. Otherwise lingering
+or ambiguous state retains ownership so a later `close()` can retry.
 
 Once `launch_app` returns a valid PID and bundle ID, the adapter immediately
 persists an owned-target record containing that PID, canonical staged app path,
@@ -396,9 +407,10 @@ fresh randomized 0700 directory under the run directory. The response is
 accepted only if the path remains the same inode and contains a nonzero fresh
 write. Screenshot decoding is pinned to qualified non-interlaced 8-bit RGB or
 RGBA PNGs and validates chunk bounds/order and CRC, sane IHDR dimensions, a
-hard decoded-byte ceiling before IDAT inflation, exact scanline length and
-filter bytes, IEND, and absence of trailing bytes. Failed scratch cleanup stays
-owned and is retried by `close()`.
+hard decoded-byte ceiling before IDAT inflation, complete consumption of the
+concatenated IDAT zlib stream, exact scanline length and filter bytes, IEND, and
+absence of bytes after IEND. Failed scratch cleanup stays owned and is retried
+by `close()`.
 
 These capabilities were verified against the installed static-Mac CuaDriver:
 `get_window_state` returns a native screenshot image in `som` mode,

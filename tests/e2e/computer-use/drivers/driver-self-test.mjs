@@ -1803,12 +1803,31 @@ assert.throws(
   /PLTE is not allowed/,
   "the qualified RGB/RGBA screenshot contract must reject unqualified palette metadata",
 );
+const validIdatLength = cuaScreenshotBytes.readUInt32BE(33);
+const idatWithTrailingBytesPng = Buffer.concat([
+  cuaScreenshotBytes.subarray(0, 33),
+  pngTestChunk(
+    "IDAT",
+    Buffer.concat([
+      cuaScreenshotBytes.subarray(41, 41 + validIdatLength),
+      Buffer.from([0xde, 0xad]),
+    ]),
+  ),
+  cuaScreenshotBytes.subarray(45 + validIdatLength),
+]);
+assert.throws(
+  () => validatePngScreenshot(idatWithTrailingBytesPng),
+  /trailing bytes after zlib stream/,
+  "IDAT bytes after a valid zlib end marker must be rejected",
+);
 
 function createCuaHarness({
   attachSocket = "",
   actionOutputs = {},
   competingRecord = null,
   daemonExecutable = "/Applications/CuaDriver.app/Contents/MacOS/cua-driver",
+  daemonExitChecksAfterStop = 0,
+  daemonListenerLingerChecksAfterStop = 0,
   daemonStopFailures = 0,
   driverIdentityOverrides = {},
   lsofOutput = "",
@@ -1830,7 +1849,16 @@ function createCuaHarness({
   const screenshotArtifactObservations = [];
   const sleeps = [];
   const control = {
+    daemonExecutable,
+    daemonExitChecksRemaining: daemonExitChecksAfterStop,
+    daemonListenerExecutable: daemonExecutable,
+    daemonListenerLingerChecksRemaining: daemonListenerLingerChecksAfterStop,
+    daemonListenerPid: 31337,
+    daemonListenerPresent: true,
+    daemonPid: 31337,
+    daemonRunning: true,
     daemonStopFailures,
+    daemonStopped: false,
     postKillExecutable: "",
     scratchCleanupFailures,
     targetExecutable: `${cuaTargetPath}/Contents/MacOS/nixmac`,
@@ -1846,11 +1874,23 @@ function createCuaHarness({
         return { stdout: "cua-driver 0.12.6\n", stderr: "" };
       }
       if (command === "/usr/bin/open") {
+        control.daemonRunning = true;
+        control.daemonListenerPresent = true;
+        control.daemonStopped = false;
         return { stdout: "", stderr: "" };
       }
       if (command === "/usr/sbin/lsof") {
+        if (lsofOutput) return { stdout: lsofOutput, stderr: "" };
+        if (control.daemonStopped && control.daemonListenerLingerChecksRemaining > 0) {
+          control.daemonListenerLingerChecksRemaining -= 1;
+          return {
+            stdout: `p${control.daemonPid}\nccua-driver\nf9u\nn${args.at(-1)}\n`,
+            stderr: "",
+          };
+        }
+        if (!control.daemonListenerPresent) return { stdout: "", stderr: "" };
         return {
-          stdout: lsofOutput || `p31337\nccua-driver\nf9u\nn${args.at(-1)}\n`,
+          stdout: `p${control.daemonListenerPid}\nccua-driver\nf9u\nn${args.at(-1)}\n`,
           stderr: "",
         };
       }
@@ -1874,6 +1914,9 @@ function createCuaHarness({
           control.daemonStopFailures -= 1;
           throw new Error("synthetic daemon stop failure");
         }
+        control.daemonStopped = true;
+        control.daemonRunning = false;
+        control.daemonListenerPresent = false;
         return { stdout: "stopped\n", stderr: "" };
       }
       if (args[0] !== "call") {
@@ -2001,7 +2044,19 @@ function createCuaHarness({
     },
     async queryPidExecutable(pid) {
       pidQueries.push(pid);
-      if (pid === 31337) return daemonExecutable;
+      if (pid === control.daemonPid) {
+        if (control.daemonRunning) return control.daemonExecutable;
+        if (control.daemonExitChecksRemaining > 0) {
+          control.daemonExitChecksRemaining -= 1;
+          return control.daemonExecutable;
+        }
+        const error = new Error("fixture daemon pid no longer exists");
+        error.code = "ESRCH";
+        throw error;
+      }
+      if (pid === control.daemonListenerPid && control.daemonListenerPresent) {
+        return control.daemonListenerExecutable;
+      }
       if (pid === 4242) {
         if (control.targetRunning) return control.targetExecutable;
         if (control.targetExitChecksRemaining > 0) {
@@ -2245,6 +2300,137 @@ await assert.rejects(
   () => ambiguousSocketOwnerHarness.driver.connect(),
   /exactly one CuaDriver listener PID/,
   "ambiguous Unix-socket ownership must fail closed",
+);
+
+const permissionFailureHarness = createCuaHarness({
+  toolOutputs: {
+    check_permissions: {
+      accessibility: false,
+      screen_recording: true,
+      screen_recording_capturable: null,
+      direct_capture_status: "not_checked",
+      source: {
+        attribution: "driver-daemon",
+        bundle_id: "com.trycua.driver",
+        executable: "/Applications/CuaDriver.app/Contents/MacOS/cua-driver",
+        responsible_ppid: 1,
+      },
+    },
+  },
+});
+await assert.rejects(
+  () => permissionFailureHarness.driver.connect(),
+  /requires Accessibility and Screen Recording permissions/,
+);
+const permissionFailureLsofIndex = permissionFailureHarness.commands.findIndex(
+  (entry) => entry.command === "/usr/sbin/lsof",
+);
+const permissionFailureCheckIndex = permissionFailureHarness.commands.findIndex(
+  (entry) =>
+    entry.command === "/opt/nixmac-e2e/bin/cua-driver" &&
+    entry.args[0] === "call" &&
+    entry.args[1] === "check_permissions",
+);
+assert.equal(
+  permissionFailureLsofIndex >= 0 && permissionFailureLsofIndex < permissionFailureCheckIndex,
+  true,
+  "connect must bind the OS-derived daemon peer before trusting permission self-reporting",
+);
+assert.equal(
+  permissionFailureHarness.commands.filter(
+    (entry) => entry.command === "/opt/nixmac-e2e/bin/cua-driver" && entry.args[0] === "stop",
+  ).length,
+  1,
+  "permission failure should clean the already-bound owned daemon",
+);
+
+const replacementListenerHarness = createCuaHarness();
+await replacementListenerHarness.driver.connect();
+replacementListenerHarness.control.daemonListenerPid = 31338;
+replacementListenerHarness.control.daemonListenerExecutable =
+  "/Applications/CuaDriver.app/Contents/MacOS/cua-driver";
+await assert.rejects(
+  () => replacementListenerHarness.driver.close(),
+  /socket listener changed before stop/,
+  "close must not stop a replacement listener",
+);
+assert.equal(
+  replacementListenerHarness.commands.some(
+    (entry) => entry.command === "/opt/nixmac-e2e/bin/cua-driver" && entry.args[0] === "stop",
+  ),
+  false,
+);
+assert.equal(replacementListenerHarness.driver.startedDaemon, true);
+replacementListenerHarness.control.daemonListenerPresent = false;
+replacementListenerHarness.control.daemonRunning = false;
+await replacementListenerHarness.driver.close();
+assert.equal(replacementListenerHarness.driver.startedDaemon, false);
+
+const missingLiveListenerHarness = createCuaHarness();
+await missingLiveListenerHarness.driver.connect();
+missingLiveListenerHarness.control.daemonListenerPresent = false;
+await assert.rejects(
+  () => missingLiveListenerHarness.driver.close(),
+  /bound daemon pid is still alive without its socket listener/,
+);
+assert.equal(
+  missingLiveListenerHarness.commands.some(
+    (entry) => entry.command === "/opt/nixmac-e2e/bin/cua-driver" && entry.args[0] === "stop",
+  ),
+  false,
+);
+missingLiveListenerHarness.control.daemonRunning = false;
+await missingLiveListenerHarness.driver.close();
+
+const lingeringDaemonHarness = createCuaHarness({
+  daemonExitChecksAfterStop: 20,
+  daemonListenerLingerChecksAfterStop: 20,
+});
+await lingeringDaemonHarness.driver.connect();
+await assert.rejects(
+  () => lingeringDaemonHarness.driver.close(),
+  /bound daemon did not terminate after 20 checks/,
+);
+assert.equal(lingeringDaemonHarness.driver.startedDaemon, true);
+assert.equal(
+  lingeringDaemonHarness.commands.filter(
+    (entry) => entry.command === "/opt/nixmac-e2e/bin/cua-driver" && entry.args[0] === "stop",
+  ).length,
+  1,
+);
+await lingeringDaemonHarness.driver.close();
+assert.equal(lingeringDaemonHarness.driver.startedDaemon, false);
+assert.equal(
+  lingeringDaemonHarness.commands.filter(
+    (entry) => entry.command === "/opt/nixmac-e2e/bin/cua-driver" && entry.args[0] === "stop",
+  ).length,
+  1,
+  "retry should recognize an already-absent bound daemon without another stop",
+);
+
+const confirmedDaemonExitHarness = createCuaHarness({
+  daemonExitChecksAfterStop: 2,
+});
+await confirmedDaemonExitHarness.driver.connect();
+await confirmedDaemonExitHarness.driver.close();
+assert.equal(
+  confirmedDaemonExitHarness.pidQueries.filter((pid) => pid === 31337).length,
+  5,
+  "zero-exit stop must poll the bound pid until it is confirmed absent",
+);
+assert.equal(confirmedDaemonExitHarness.driver.startedDaemon, false);
+
+const alreadyCleanedDaemonHarness = createCuaHarness();
+await alreadyCleanedDaemonHarness.driver.connect();
+alreadyCleanedDaemonHarness.control.daemonListenerPresent = false;
+alreadyCleanedDaemonHarness.control.daemonRunning = false;
+await alreadyCleanedDaemonHarness.driver.close();
+assert.equal(
+  alreadyCleanedDaemonHarness.commands.some(
+    (entry) => entry.command === "/opt/nixmac-e2e/bin/cua-driver" && entry.args[0] === "stop",
+  ),
+  false,
+  "an absent socket plus absent bound pid is already-cleaned evidence",
 );
 
 const configuredBundleHarness = createCuaHarness({
@@ -2526,10 +2712,20 @@ assert.equal(
   "close must terminate the exact target process owned by prepareTarget",
 );
 assert.equal(ownedHarness.control.targetRunning, false);
-assert.deepEqual(ownedHarness.commands.at(-1), {
+const ownedStopIndex = ownedHarness.commands.findIndex(
+  (entry) => entry.command === "/opt/nixmac-e2e/bin/cua-driver" && entry.args[0] === "stop",
+);
+assert.deepEqual(ownedHarness.commands[ownedStopIndex], {
   command: "/opt/nixmac-e2e/bin/cua-driver",
   args: ["stop", "--socket", ownedHarness.driver.socketPath],
 });
+assert.equal(
+  ownedHarness.commands
+    .slice(ownedStopIndex + 1)
+    .some((entry) => entry.command === "/usr/sbin/lsof"),
+  true,
+  "close must re-check the socket after a zero-exit stop",
+);
 
 const attachedHarness = createCuaHarness({
   attachSocket: "/tmp/nixmac-cua-existing.sock",

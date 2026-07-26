@@ -534,16 +534,20 @@ Cover:
   SIGTERM-to-SIGKILL escalation are deterministic;
 
 - OS-derived Unix-socket ownership rejects missing, ambiguous, or mismatched
-  daemon peers even when `check_permissions.source` self-attests correctly;
+  daemon peers before `check_permissions`, even when that RPC's `source`
+  self-attests correctly;
 
 - delayed target readiness, post-launch failure cleanup, PID reuse refusal,
-  post-kill exit confirmation, and target/daemon cleanup retries;
+  post-kill exit confirmation, pre-stop daemon peer replacement refusal,
+  post-stop PID-plus-listener confirmation, and target/daemon cleanup retries;
 
 - screenshot no-write, symlink, inode replacement, header-only PNG, corrupt
-  IDAT, valid PNG, and cleanup-retry paths;
+  IDAT, bytes after the zlib end marker, valid PNG, and cleanup-retry paths;
 
-- close calls `stop --socket` only for a daemon the adapter started and retains
-  each failed owned-resource cleanup independently for retry.
+- close calls `stop --socket` only after re-resolving the exact signed daemon
+  PID and executable the adapter started, clears ownership only after both that
+  process and listener are gone, and retains each failed owned-resource cleanup
+  independently for retry.
 
 - [ ] **Step 3: Implement a process runner**
 
@@ -589,26 +593,32 @@ stdout schema. The process exit code/stderr remains the authority for current
 1. start the standalone app-owned daemon with argv equivalent to
    `open -n -g -a CuaDriver --args serve --socket <run-socket>`;
 1. poll `status --socket <run-socket>`;
-1. call `check_permissions`;
-1. fail unless Accessibility and Screen Recording are granted;
 1. canonicalize the Unix socket and run
    `/usr/sbin/lsof -nP -Fpcn -a -U <socket>`;
 1. require exactly one `cua-driver` PID holding the exact canonical socket,
    resolve that PID's executable through the OS, and require the canonical
    executable inside the verified `CuaDriver.app/Contents/MacOS`;
+1. bind that daemon PID, executable, and socket, then reverify the enclosing
+   bundle's identity, digest, and Developer ID signature;
+1. call `check_permissions`;
+1. fail unless Accessibility and Screen Recording are granted;
 1. treat `check_permissions.source` only as corroboration, requiring its
-   canonical executable to match the OS-derived socket owner;
-1. bind the daemon PID and executable, then reverify the enclosing bundle's
-   identity, digest, and Developer ID signature.
+   canonical executable to match the OS-derived socket owner.
 
 Directly spawning raw `cua-driver serve` outside `CuaDriver.app` is prohibited:
 upstream documents that mode as unsupported for stable macOS TCC attribution.
 The static and ephemeral images grant Accessibility and Screen Recording to
 the pinned `CuaDriver.app` bundle identity. `close()` may stop only an
 app-owned daemon this adapter instance started; attach-to-existing mode never
-stops another process. Target, screenshot, and daemon cleanup are independent:
-state is cleared only after confirmed cleanup, failures are aggregated, and a
-later `close()` retries only the resources still owned.
+stops another process. Before `stop`, `close()` re-resolves the exact socket
+listener and requires its PID and executable to match the bound signed peer;
+a missing listener while that bound process remains alive or a replacement
+listener fails closed without sending `stop`. A zero-exit `stop` is not cleanup
+proof: bounded polling must show the bound PID absent or reused and no matching
+bound listener. An already absent listener plus absent or reused bound PID is
+already-cleaned evidence. Target, screenshot, and daemon cleanup are
+independent: state is cleared only after confirmed cleanup, failures are
+aggregated, and a later `close()` retries only the resources still owned.
 
 `prepareTarget({ appBundleId, appPath })` must:
 
@@ -655,9 +665,10 @@ Each capture uses a fresh randomized 0700 directory under `runDir` and an
 exclusive empty 0600 regular file. The adapter requires the same inode after
 the call, a nonzero fresh write, and a complete qualified non-interlaced 8-bit
 RGB/RGBA PNG: valid chunk bounds/order and CRC, sane IHDR, a hard decoded-byte
-ceiling before IDAT inflation, the expected scanline length, IEND, and no
-trailing bytes. It always attempts owned artifact cleanup and retains failed
-directory cleanup for `close()` retry.
+ceiling before IDAT inflation, complete consumption of the concatenated IDAT
+zlib stream, the expected scanline length, IEND, and no bytes after IEND. It
+always attempts owned artifact cleanup and retains failed directory cleanup
+for `close()` retry.
 
 `click()` and `setValue()` reject addresses whose target differs from the most
 recent snapshot and then invoke `click` or `set_value`.

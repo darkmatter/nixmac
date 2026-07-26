@@ -323,14 +323,20 @@ export function validatePngScreenshot(bytes) {
   ) {
     invalidPng(`decoded PNG size exceeds ${PNG_MAX_DECODED_BYTES} bytes`);
   }
-  let inflated;
+  const concatenatedIdat = Buffer.concat(idatChunks);
+  let inflateResult;
   try {
-    inflated = inflateSync(Buffer.concat(idatChunks), {
+    inflateResult = inflateSync(concatenatedIdat, {
+      info: true,
       maxOutputLength: expectedInflatedBytes + 1,
     });
   } catch (error) {
     invalidPng(`IDAT inflate failed: ${error.message}`);
   }
+  if (inflateResult.engine.bytesWritten !== concatenatedIdat.length) {
+    invalidPng("trailing bytes after zlib stream");
+  }
+  const inflated = inflateResult.buffer;
   if (inflated.length !== expectedInflatedBytes) {
     invalidPng("IDAT scanline length mismatch");
   }
@@ -924,6 +930,8 @@ export class CuaDriver {
       "attachSocket",
       "binary",
       "cliPath",
+      "daemonTeardownAttempts",
+      "daemonTeardownPollMs",
       "dependencies",
       "driverAppPath",
       "maxImageBytes",
@@ -992,6 +1000,8 @@ export class CuaDriver {
     this.metadata = options.metadata ?? pinnedCuaDriverMetadata;
     this.statusAttempts = options.statusAttempts ?? 20;
     this.statusPollMs = options.statusPollMs ?? 250;
+    this.daemonTeardownAttempts = options.daemonTeardownAttempts ?? 20;
+    this.daemonTeardownPollMs = options.daemonTeardownPollMs ?? 250;
     this.targetReadyAttempts = options.targetReadyAttempts ?? 20;
     this.targetReadyPollMs = options.targetReadyPollMs ?? 250;
     this.targetExitAttempts = options.targetExitAttempts ?? 20;
@@ -1016,6 +1026,8 @@ export class CuaDriver {
     };
     this.connected = false;
     this.startedDaemon = false;
+    this.daemonPeer = null;
+    this.canonicalDriverAppPath = "";
     this.ownedTarget = null;
     this.boundTarget = null;
     this.latestSnapshot = null;
@@ -1075,6 +1087,129 @@ export class CuaDriver {
     );
   }
 
+  async _resolveSocketListener({ allowMissing = false } = {}) {
+    let canonicalSocketPath = this.daemonPeer?.socketPath ?? "";
+    if (!canonicalSocketPath) {
+      try {
+        canonicalSocketPath = await this.dependencies.canonicalPath(this.socketPath);
+      } catch (error) {
+        if (allowMissing && error?.code === "ENOENT") return null;
+        throw error;
+      }
+      if (canonicalSocketPath !== this.socketPath) {
+        throw new Error(`CuaDriver socket path must be canonical: expected ${canonicalSocketPath}`);
+      }
+    }
+    let lsofResult;
+    try {
+      lsofResult = await this.processRunner.run("/usr/sbin/lsof", [
+        "-nP",
+        "-Fpcn",
+        "-a",
+        "-U",
+        canonicalSocketPath,
+      ]);
+    } catch (error) {
+      if (allowMissing && error instanceof CuaProcessError && error.code === 1) return null;
+      throw error;
+    }
+    if (allowMissing && lsofResult.stdout.trim() === "") return null;
+    const socketOwner = parseCuaSocketOwner(lsofResult.stdout, canonicalSocketPath);
+    const executable = await this.dependencies.canonicalPath(
+      await this.dependencies.queryPidExecutable(socketOwner.pid),
+    );
+    return Object.freeze({
+      executable,
+      pid: socketOwner.pid,
+      socketPath: canonicalSocketPath,
+    });
+  }
+
+  async _assertVerifiedDaemonPeer(peer) {
+    if (
+      !this.canonicalDriverAppPath ||
+      !pathIsWithin(peer.executable, path.join(this.canonicalDriverAppPath, "Contents", "MacOS"))
+    ) {
+      throw new Error("CuaDriver socket owner executable is outside the verified CuaDriver.app");
+    }
+    const identity = await this.dependencies.readBundleIdentity(this.canonicalDriverAppPath, {
+      requireDeveloperSigningIdentity: true,
+    });
+    this._assertPinnedDriverIdentity(identity);
+  }
+
+  async _daemonProcessState(peer = this.daemonPeer) {
+    try {
+      const executable = await this.dependencies.canonicalPath(
+        await this.dependencies.queryPidExecutable(peer.pid),
+      );
+      return Object.freeze({ exists: true, executable });
+    } catch (error) {
+      if (error?.code === "ESRCH") return Object.freeze({ exists: false, executable: "" });
+      throw error;
+    }
+  }
+
+  _clearDaemonOwnership() {
+    this.startedDaemon = false;
+    this.daemonPeer = null;
+  }
+
+  async _cleanupOwnedDaemon() {
+    if (!this.startedDaemon) return;
+    const boundPeer = this.daemonPeer;
+    if (!boundPeer) {
+      throw new Error("CuaDriver cannot stop an owned daemon without a bound OS-derived peer");
+    }
+    const currentListener = await this._resolveSocketListener({ allowMissing: true });
+    if (!currentListener) {
+      const processState = await this._daemonProcessState(boundPeer);
+      if (!processState.exists || processState.executable !== boundPeer.executable) {
+        this._clearDaemonOwnership();
+        return;
+      }
+      throw new Error("CuaDriver bound daemon pid is still alive without its socket listener");
+    }
+    if (
+      currentListener.pid !== boundPeer.pid ||
+      currentListener.executable !== boundPeer.executable
+    ) {
+      throw new Error("CuaDriver socket listener changed before stop");
+    }
+    await this._assertVerifiedDaemonPeer(currentListener);
+    await this._run(["stop", "--socket", boundPeer.socketPath]);
+
+    let lastProofError;
+    for (let attempt = 1; attempt <= this.daemonTeardownAttempts; attempt += 1) {
+      let listener;
+      let processState;
+      try {
+        listener = await this._resolveSocketListener({ allowMissing: true });
+        processState = await this._daemonProcessState(boundPeer);
+        lastProofError = null;
+      } catch (error) {
+        lastProofError = error;
+      }
+      if (!lastProofError) {
+        const sameListener =
+          listener?.pid === boundPeer.pid && listener?.executable === boundPeer.executable;
+        const sameProcess = processState.exists && processState.executable === boundPeer.executable;
+        if (!sameListener && !sameProcess) {
+          this._clearDaemonOwnership();
+          return;
+        }
+      }
+      if (attempt < this.daemonTeardownAttempts) {
+        await this.dependencies.sleep(this.daemonTeardownPollMs);
+      }
+    }
+    throw new Error(
+      `CuaDriver bound daemon did not terminate after ${this.daemonTeardownAttempts} checks${
+        lastProofError ? `: ${actionErrorText(lastProofError)}` : ""
+      }`,
+    );
+  }
+
   async connect() {
     if (this.connected) return;
     const versionResult = await this._run(["--version"]);
@@ -1084,9 +1219,9 @@ export class CuaDriver {
         `CuaDriver CLI version mismatch: expected ${this.metadata.cli.version_output}, got ${actualVersion}`,
       );
     }
-    const canonicalDriverAppPath = await this.dependencies.canonicalPath(this.driverAppPath);
-    requireAbsoluteCanonicalInput(this.driverAppPath, canonicalDriverAppPath);
-    const appIdentity = await this.dependencies.readBundleIdentity(canonicalDriverAppPath, {
+    this.canonicalDriverAppPath = await this.dependencies.canonicalPath(this.driverAppPath);
+    requireAbsoluteCanonicalInput(this.driverAppPath, this.canonicalDriverAppPath);
+    const appIdentity = await this.dependencies.readBundleIdentity(this.canonicalDriverAppPath, {
       requireDeveloperSigningIdentity: true,
     });
     this._assertPinnedDriverIdentity(appIdentity);
@@ -1112,6 +1247,9 @@ export class CuaDriver {
         this.startedDaemon = true;
       }
       await this._pollStatus();
+      const socketListener = await this._resolveSocketListener();
+      await this._assertVerifiedDaemonPeer(socketListener);
+      this.daemonPeer = socketListener;
       const permissions = await this._callStructured("check_permissions", {
         prompt: false,
       });
@@ -1126,24 +1264,6 @@ export class CuaDriver {
           "CuaDriver permissions must be attributed to the installed CuaDriver.app daemon",
         );
       }
-      const canonicalSocketPath = await this.dependencies.canonicalPath(this.socketPath);
-      if (canonicalSocketPath !== this.socketPath) {
-        throw new Error(`CuaDriver socket path must be canonical: expected ${canonicalSocketPath}`);
-      }
-      const lsofResult = await this.processRunner.run("/usr/sbin/lsof", [
-        "-nP",
-        "-Fpcn",
-        "-a",
-        "-U",
-        canonicalSocketPath,
-      ]);
-      const socketOwner = parseCuaSocketOwner(lsofResult.stdout, canonicalSocketPath);
-      const ownerExecutable = await this.dependencies.canonicalPath(
-        await this.dependencies.queryPidExecutable(socketOwner.pid),
-      );
-      if (!pathIsWithin(ownerExecutable, path.join(canonicalDriverAppPath, "Contents", "MacOS"))) {
-        throw new Error("CuaDriver socket owner executable is outside the verified CuaDriver.app");
-      }
       let sourceExecutable;
       try {
         sourceExecutable = await this.dependencies.canonicalPath(
@@ -1157,26 +1277,19 @@ export class CuaDriver {
           `CuaDriver permissions source executable could not be canonicalized: ${actionErrorText(error)}`,
         );
       }
-      if (sourceExecutable !== ownerExecutable) {
+      if (sourceExecutable !== socketListener.executable) {
         throw new Error(
           "CuaDriver permissions source executable does not match the OS-derived socket owner",
         );
       }
-      const reboundIdentity = await this.dependencies.readBundleIdentity(canonicalDriverAppPath, {
-        requireDeveloperSigningIdentity: true,
-      });
-      this._assertPinnedDriverIdentity(reboundIdentity);
-      this.daemonPeer = Object.freeze({
-        executable: ownerExecutable,
-        pid: socketOwner.pid,
-        socketPath: canonicalSocketPath,
-      });
       this.connected = true;
     } catch (error) {
       if (this.startedDaemon) {
         try {
           await this.close();
         } catch {}
+      } else if (this.attachMode) {
+        this.daemonPeer = null;
       }
       throw error;
     }
@@ -1647,9 +1760,7 @@ export class CuaDriver {
     }
     if (this.startedDaemon) {
       try {
-        await this._run(["stop", "--socket", this.socketPath]);
-        this.startedDaemon = false;
-        this.daemonPeer = null;
+        await this._cleanupOwnedDaemon();
       } catch (error) {
         failures.push(error);
       }
