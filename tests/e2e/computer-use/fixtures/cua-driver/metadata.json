@@ -1,0 +1,41 @@
+{
+  "app": {
+    "build_version": "0.12.6",
+    "bundle_id": "com.trycua.driver",
+    "code_signing_digest_sha256": "b6f9dd1b42520d5eefcffcc6de1a1125ace382ac8ccfbfd64225690b8891f7f6",
+    "content_tree_algorithm": "sha256(relativePosixPath NUL decimalSize NUL rawBytes NUL) for each regular file in sorted relative-path order",
+    "content_tree_sha256": "9b702de4f1591a59428f01e76eceab5a11552d19c26329eef75f0669ddc44da0",
+    "developer_id": "Cua AI, Inc. (YCK386LBJ7)",
+    "short_version": "0.12.6",
+    "team_identifier": "YCK386LBJ7"
+  },
+  "cli": {
+    "release_archive": "cua-driver-rs-v0.12.6-darwin-arm64.tar.gz",
+    "release_archive_sha256": "c64017d5878d022df34137082fb918ae0d4304e28890569ff14458f1a54fd361",
+    "release_published_at": "2026-07-24",
+    "release_tag": "cua-driver-rs-v0.12.6",
+    "version": "0.12.6",
+    "version_output": "cua-driver 0.12.6"
+  },
+  "daemon": {
+    "launch_argv": [
+      "/usr/bin/open",
+      "-n",
+      "-g",
+      "-a",
+      "CuaDriver",
+      "--args",
+      "serve",
+      "--socket",
+      "<run-socket>"
+    ],
+    "launch_mode": "app-owned-standalone",
+    "raw_binary_serve_supported_for_tcc": false
+  },
+  "fixtures": {
+    "capture_date": "2026-07-25",
+    "current_space_null_fallback": "For pinned 0.12.6 only, an on-screen layer-0 window with on_current_space null is eligible after explicit true candidates and is recorded as is_on_screen_fallback.",
+    "qualification": "sanitized historical CuaDriver 0.12.6 shapes plus official pinned-release source and artifact identity"
+  },
+  "schema_version": 1
+}

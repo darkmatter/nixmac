@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { EventEmitter } from "node:events";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   AppServerClient,
   clickResponseIndicatesFailure,
@@ -25,6 +27,17 @@ import {
   validateElementAddress,
 } from "./contract.mjs";
 import { CodexAppServerDriver, codexAppServerDriverDescriptor } from "./codex-app-server.mjs";
+import {
+  CuaDriver,
+  createCuaProcessRunner,
+  cuaDriverDescriptor,
+  hashCuaBundleTree,
+  normalizeCuaActionOutput,
+  parseCuaCliOutput,
+  parseCuaCodesignIdentity,
+  pinnedCuaDriverMetadata,
+  selectCuaWindow,
+} from "./cua-driver.mjs";
 
 const requiredMethods = ["connect", "prepareTarget", "visibleState", "click", "setValue", "close"];
 
@@ -1257,5 +1270,643 @@ for (const [method, request, expectedText, expectedIsError] of [
 assert.equal(codexAppServerDriverDescriptor.id, "codex-app-server-computer-use");
 codexDriver.close();
 assert.equal(codexDriver.client.ws.closed, true);
+
+const cuaFixtureDir = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../fixtures/cua-driver",
+);
+const [
+  cuaListAppsFixture,
+  cuaListWindowsFixture,
+  cuaWindowStateFixture,
+  cuaActionSuccessFixture,
+  cuaActionErrorFixture,
+  cuaMetadataFixture,
+] = await Promise.all(
+  [
+    "list-apps.json",
+    "list-windows.json",
+    "window-state.json",
+    "action-success.json",
+    "action-error.json",
+    "metadata.json",
+  ].map(async (fileName) => JSON.parse(await readFile(path.join(cuaFixtureDir, fileName), "utf8"))),
+);
+
+assert.deepEqual(pinnedCuaDriverMetadata, cuaMetadataFixture);
+assert.equal(pinnedCuaDriverMetadata.cli.version_output, "cua-driver 0.12.6");
+assert.equal(
+  pinnedCuaDriverMetadata.app.content_tree_sha256,
+  "9b702de4f1591a59428f01e76eceab5a11552d19c26329eef75f0669ddc44da0",
+);
+assert.equal(pinnedCuaDriverMetadata.daemon.launch_mode, "app-owned-standalone");
+assert.deepEqual(
+  parseCuaCodesignIdentity(`Executable=/Applications/CuaDriver.app/Contents/MacOS/cua-driver
+CandidateCDHashFull sha256=b6f9dd1b42520d5eefcffcc6de1a1125ace382ac8ccfbfd64225690b8891f7f6
+Authority=Developer ID Application: Cua AI, Inc. (YCK386LBJ7)
+Authority=Developer ID Certification Authority
+TeamIdentifier=YCK386LBJ7
+`),
+  {
+    codeSigningDigestSha256: "b6f9dd1b42520d5eefcffcc6de1a1125ace382ac8ccfbfd64225690b8891f7f6",
+    developerId: "Cua AI, Inc. (YCK386LBJ7)",
+    teamIdentifier: "YCK386LBJ7",
+  },
+);
+
+const cuaDigestFixtureDir = await mkdtemp(path.join(os.tmpdir(), "nixmac-cua-bundle-digest-"));
+try {
+  await mkdir(path.join(cuaDigestFixtureDir, "Contents", "MacOS"), {
+    recursive: true,
+  });
+  await writeFile(path.join(cuaDigestFixtureDir, "Contents", "Info.plist"), "info");
+  await writeFile(path.join(cuaDigestFixtureDir, "Contents", "MacOS", "cua-driver"), "binary");
+  assert.equal(
+    await hashCuaBundleTree(cuaDigestFixtureDir),
+    "1551c9dc7b53067f36e26c19c1ee2eb3c307b5cde1deaff10fc458030ec8542d",
+  );
+} finally {
+  await rm(cuaDigestFixtureDir, { recursive: true, force: true });
+}
+
+const processSpawnCalls = [];
+const processRunner = createCuaProcessRunner({
+  spawnImpl(command, args, options) {
+    processSpawnCalls.push({ command, args, options });
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter();
+    child.stdout.setEncoding = () => {};
+    child.stderr = new EventEmitter();
+    child.stderr.setEncoding = () => {};
+    child.kill = () => true;
+    queueMicrotask(() => {
+      child.stdout.emit("data", "cua-driver 0.12.6\n");
+      child.emit("close", 0, null);
+    });
+    return child;
+  },
+});
+assert.deepEqual(await processRunner.run("cua-driver", ["--version"]), {
+  stdout: "cua-driver 0.12.6\n",
+  stderr: "",
+});
+assert.equal(processSpawnCalls.length, 1);
+assert.equal(processSpawnCalls[0].command, "cua-driver");
+assert.deepEqual(processSpawnCalls[0].args, ["--version"]);
+assert.equal(processSpawnCalls[0].options.shell, false);
+assert.equal(processSpawnCalls[0].options.stdio[0], "ignore");
+
+assert.deepEqual(
+  parseCuaCliOutput(JSON.stringify(cuaListAppsFixture)).structured,
+  cuaListAppsFixture,
+  "pinned 0.12.6 direct structured stdout should parse without an MCP envelope",
+);
+assert.deepEqual(
+  normalizeCuaActionOutput(parseCuaCliOutput(JSON.stringify(cuaActionSuccessFixture))),
+  {
+    ok: true,
+    text: "Posted click to fixture pid 4242.",
+    isError: false,
+  },
+);
+assert.deepEqual(
+  normalizeCuaActionOutput(parseCuaCliOutput(JSON.stringify(cuaActionErrorFixture))),
+  {
+    ok: false,
+    text: "Element index 7 is stale. Capture a new window state.",
+    isError: true,
+  },
+);
+assert.deepEqual(
+  normalizeCuaActionOutput(
+    parseCuaCliOutput(
+      JSON.stringify({
+        content: [{ type: "text", text: "set_value was rejected" }],
+        structuredContent: { ok: false },
+        isError: false,
+      }),
+    ),
+  ),
+  {
+    ok: false,
+    text: "set_value was rejected",
+    isError: false,
+  },
+  "ok:false must fail set_value even when the MCP envelope does not set isError",
+);
+assert.deepEqual(
+  normalizeCuaActionOutput(parseCuaCliOutput(JSON.stringify({ ok: false, isError: false }))),
+  {
+    ok: false,
+    text: "",
+    isError: false,
+  },
+  "direct structured ok:false must remain a failure",
+);
+assert.deepEqual(
+  normalizeCuaActionOutput(parseCuaCliOutput(JSON.stringify({ ok: true, isError: true }))),
+  {
+    ok: false,
+    text: "",
+    isError: true,
+  },
+  "direct structured isError:true must remain a failure",
+);
+assert.throws(() => parseCuaCliOutput("{malformed"), /malformed CuaDriver output/);
+assert.throws(() => parseCuaCliOutput("x".repeat(65), { maxBytes: 64 }), /exceeds 64 bytes/);
+
+const explicitWindow = selectCuaWindow(cuaListWindowsFixture.windows, 4242, {
+  version: "0.12.6",
+});
+assert.equal(explicitWindow.window.window_id, 7002);
+assert.equal(explicitWindow.currentSpaceEvidence, "explicit");
+
+const nullFallbackWindow = selectCuaWindow(
+  [
+    {
+      ...cuaListWindowsFixture.windows[0],
+      window_id: 7011,
+      z_index: 60,
+    },
+    {
+      ...cuaListWindowsFixture.windows[0],
+      window_id: 7010,
+      z_index: 60,
+    },
+    {
+      ...cuaListWindowsFixture.windows[2],
+      window_id: 7009,
+      z_index: 100,
+    },
+  ],
+  4242,
+  { version: "0.12.6" },
+);
+assert.equal(
+  nullFallbackWindow.window.window_id,
+  7010,
+  "null current-Space fallback should break equal z-index ties by stable window id",
+);
+assert.equal(nullFallbackWindow.currentSpaceEvidence, "is_on_screen_fallback");
+assert.throws(
+  () =>
+    selectCuaWindow(
+      [
+        {
+          ...cuaListWindowsFixture.windows[0],
+          is_on_screen: false,
+          on_current_space: null,
+        },
+        cuaListWindowsFixture.windows[2],
+      ],
+      4242,
+      { version: "0.12.6" },
+    ),
+  /no eligible on-screen current-Space layer-0 window/,
+);
+assert.throws(
+  () =>
+    selectCuaWindow(
+      [
+        {
+          ...cuaListWindowsFixture.windows[0],
+          on_current_space: null,
+        },
+      ],
+      4242,
+      { version: "0.12.7" },
+    ),
+  /no eligible on-screen current-Space layer-0 window/,
+  "the null fallback must remain pinned to 0.12.6",
+);
+
+const cuaTargetBundleId = "com.darkmatter.nixmac.e2e";
+const cuaTargetPath = "/Applications/Nixmac E2E.app";
+const cuaTargetDigest = "a".repeat(64);
+const cuaScreenshotBytes = Buffer.from("89504e470d0a1a0a", "hex");
+
+function createCuaHarness({
+  attachSocket = "",
+  actionOutputs = {},
+  competingRecord = null,
+  driverIdentityOverrides = {},
+  screenshotBytes = cuaScreenshotBytes,
+} = {}) {
+  const commands = [];
+  const identityReads = [];
+  let launched = false;
+  const runner = {
+    async run(command, args) {
+      commands.push({ command, args: [...args] });
+      if (command === "/opt/nixmac-e2e/bin/cua-driver" && args[0] === "--version") {
+        return { stdout: "cua-driver 0.12.6\n", stderr: "" };
+      }
+      if (command === "/usr/bin/open") {
+        return { stdout: "", stderr: "" };
+      }
+      if (command !== "/opt/nixmac-e2e/bin/cua-driver") {
+        throw new Error(`Unexpected test command: ${command}`);
+      }
+      if (args[0] === "status") {
+        return { stdout: "running pid=31337\n", stderr: "" };
+      }
+      if (args[0] === "stop") {
+        return { stdout: "stopped\n", stderr: "" };
+      }
+      if (args[0] !== "call") {
+        throw new Error(`Unexpected CuaDriver argv: ${args.join(" ")}`);
+      }
+      const tool = args[1];
+      if (tool === "check_permissions") {
+        return {
+          stdout: JSON.stringify({
+            accessibility: true,
+            screen_recording: true,
+            screen_recording_capturable: null,
+            direct_capture_status: "not_checked",
+            source: {
+              attribution: "driver-daemon",
+              bundle_id: "com.trycua.driver",
+              executable: "/Applications/CuaDriver.app/Contents/MacOS/cua-driver",
+              responsible_ppid: 1,
+            },
+          }),
+          stderr: "",
+        };
+      }
+      if (tool === "list_apps") {
+        const fixture = structuredClone(cuaListAppsFixture);
+        if (!launched && competingRecord) fixture.apps.push(competingRecord);
+        if (launched) {
+          fixture.apps[0].pid = 4242;
+          fixture.apps[0].running = true;
+        }
+        return { stdout: JSON.stringify(fixture), stderr: "" };
+      }
+      if (tool === "launch_app") {
+        launched = true;
+        return {
+          stdout: JSON.stringify({
+            pid: 4242,
+            bundle_id: cuaTargetBundleId,
+            name: "Nixmac E2E",
+            windows: [],
+          }),
+          stderr: "",
+        };
+      }
+      if (tool === "list_windows") {
+        return { stdout: JSON.stringify(cuaListWindowsFixture), stderr: "" };
+      }
+      if (tool === "get_window_state") {
+        return { stdout: JSON.stringify(cuaWindowStateFixture), stderr: "" };
+      }
+      if (tool === "click" || tool === "set_value") {
+        return {
+          stdout: JSON.stringify(actionOutputs[tool] ?? cuaActionSuccessFixture),
+          stderr: "",
+        };
+      }
+      throw new Error(`Unexpected CuaDriver tool: ${tool}`);
+    },
+  };
+  const dependencies = {
+    async readBundleIdentity(appPath) {
+      identityReads.push(appPath);
+      if (appPath === "/Applications/CuaDriver.app") {
+        return {
+          bundleId: pinnedCuaDriverMetadata.app.bundle_id,
+          shortVersion: pinnedCuaDriverMetadata.app.short_version,
+          buildVersion: pinnedCuaDriverMetadata.app.build_version,
+          digestSha256: pinnedCuaDriverMetadata.app.content_tree_sha256,
+          codeSigningDigestSha256: pinnedCuaDriverMetadata.app.code_signing_digest_sha256,
+          developerId: pinnedCuaDriverMetadata.app.developer_id,
+          teamIdentifier: pinnedCuaDriverMetadata.app.team_identifier,
+          ...driverIdentityOverrides,
+        };
+      }
+      assert.equal(appPath, cuaTargetPath);
+      return {
+        bundleId: cuaTargetBundleId,
+        shortVersion: "0.32.1",
+        buildVersion: "0.32.1",
+        digestSha256: cuaTargetDigest,
+      };
+    },
+    async canonicalPath(appPath) {
+      return appPath;
+    },
+    async queryPidExecutable(pid) {
+      assert.equal(pid, 4242);
+      return `${cuaTargetPath}/Contents/MacOS/nixmac`;
+    },
+    async readFile() {
+      return screenshotBytes;
+    },
+    async removeFile() {},
+    async sleep() {},
+  };
+  const driver = new CuaDriver({
+    attachSocket,
+    cliPath: "/opt/nixmac-e2e/bin/cua-driver",
+    dependencies,
+    driverAppPath: "/Applications/CuaDriver.app",
+    processRunner: runner,
+    runId: attachSocket ? "attach-fixture" : "owned-fixture",
+    socketDirectory: "/tmp",
+  });
+  return { commands, driver, identityReads };
+}
+
+const socketDriverA = createCuaHarness().driver;
+const socketDriverB = new CuaDriver({
+  cliPath: "/opt/nixmac-e2e/bin/cua-driver",
+  dependencies: {},
+  processRunner: { async run() {} },
+  runId: "second-fixture",
+  socketDirectory: "/tmp",
+});
+assert.notEqual(socketDriverA.socketPath, socketDriverB.socketPath);
+assert.match(socketDriverA.socketPath, /owned-fixture/);
+assert.match(socketDriverB.socketPath, /second-fixture/);
+
+const ownedHarness = createCuaHarness();
+await ownedHarness.driver.connect();
+assert.deepEqual(ownedHarness.commands[0], {
+  command: "/opt/nixmac-e2e/bin/cua-driver",
+  args: ["--version"],
+});
+assert.deepEqual(
+  ownedHarness.commands.find((entry) => entry.command === "/usr/bin/open"),
+  {
+    command: "/usr/bin/open",
+    args: [
+      "-n",
+      "-g",
+      "-a",
+      "CuaDriver",
+      "--args",
+      "serve",
+      "--socket",
+      ownedHarness.driver.socketPath,
+    ],
+  },
+);
+assert.equal(
+  ownedHarness.commands.some(
+    (entry) => entry.command === "/opt/nixmac-e2e/bin/cua-driver" && entry.args[0] === "serve",
+  ),
+  false,
+  "the adapter must never directly spawn raw cua-driver serve",
+);
+assert.deepEqual(
+  ownedHarness.commands.find(
+    (entry) =>
+      entry.command === "/opt/nixmac-e2e/bin/cua-driver" &&
+      entry.args[0] === "call" &&
+      entry.args[1] === "check_permissions",
+  ).args,
+  [
+    "call",
+    "check_permissions",
+    JSON.stringify({ prompt: false }),
+    "--socket",
+    ownedHarness.driver.socketPath,
+  ],
+);
+assert.deepEqual(ownedHarness.identityReads, ["/Applications/CuaDriver.app"]);
+
+const wrongSignerHarness = createCuaHarness({
+  driverIdentityOverrides: { teamIdentifier: "WRONGTEAM" },
+});
+await assert.rejects(() => wrongSignerHarness.driver.connect(), /teamIdentifier mismatch/);
+assert.equal(
+  wrongSignerHarness.commands.some((entry) => entry.command === "/usr/bin/open"),
+  false,
+  "the daemon must not launch when the installed app signing identity is wrong",
+);
+
+const preparedTarget = await ownedHarness.driver.prepareTarget({
+  appBundleId: cuaTargetBundleId,
+  appPath: cuaTargetPath,
+});
+assert.equal(preparedTarget.pid, 4242);
+assert.equal(preparedTarget.windowId, 7002);
+assert.equal(preparedTarget.currentSpaceEvidence, "explicit");
+assert.deepEqual(
+  ownedHarness.commands.find(
+    (entry) =>
+      entry.command === "/opt/nixmac-e2e/bin/cua-driver" &&
+      entry.args[0] === "call" &&
+      entry.args[1] === "launch_app",
+  ).args,
+  [
+    "call",
+    "launch_app",
+    JSON.stringify({ bundle_id: cuaTargetBundleId }),
+    "--socket",
+    ownedHarness.driver.socketPath,
+  ],
+);
+assert.deepEqual(
+  ownedHarness.identityReads,
+  ["/Applications/CuaDriver.app", cuaTargetPath, cuaTargetPath],
+  "prepareTarget should hash the staged bundle before launch and again after binding its pid",
+);
+
+const cuaStateA = await ownedHarness.driver.visibleState({
+  app: cuaTargetBundleId,
+});
+const cuaStateB = await ownedHarness.driver.visibleState({
+  app: cuaTargetBundleId,
+});
+assert.equal(cuaStateA.text.includes("7 button Save changes"), true);
+assert.equal(cuaStateA.text.includes("8 text field Configuration value"), true);
+assert.equal(cuaStateA.text.includes("value=fixture value"), true);
+assert.equal(cuaStateA.imageBase64, cuaScreenshotBytes.toString("base64"));
+assert.equal(cuaStateA.target.pid, 4242);
+assert.equal(cuaStateA.target.windowId, 7002);
+assert.notEqual(cuaStateA.target.snapshotId, cuaStateB.target.snapshotId);
+assert.equal(cuaStateA.target.snapshotId, "4242:7002:1");
+assert.equal(cuaStateB.target.snapshotId, "4242:7002:2");
+assert.equal(cuaStateB.metadata.currentSpaceEvidence, "explicit");
+const getWindowStateCalls = ownedHarness.commands.filter(
+  (entry) =>
+    entry.command === "/opt/nixmac-e2e/bin/cua-driver" &&
+    entry.args[0] === "call" &&
+    entry.args[1] === "get_window_state",
+);
+assert.equal(getWindowStateCalls.length, 2);
+for (const [index, entry] of getWindowStateCalls.entries()) {
+  assert.deepEqual(entry.args, [
+    "call",
+    "get_window_state",
+    JSON.stringify({ pid: 4242, window_id: 7002 }),
+    "--screenshot-out-file",
+    `/tmp/nixmac-cua-owned-fixture-state-${index + 1}.png`,
+    "--socket",
+    ownedHarness.driver.socketPath,
+  ]);
+  assert.equal(entry.args.includes("--raw"), false);
+  assert.equal(entry.args.includes("--compact"), false);
+  assert.equal(entry.args.includes("--no-daemon"), false);
+}
+
+const staleCommandCount = ownedHarness.commands.length;
+await assert.rejects(
+  () =>
+    ownedHarness.driver.click({
+      app: cuaTargetBundleId,
+      elementIndex: "7",
+      elementAddress: {
+        kind: "cua-element-index",
+        elementIndex: 7,
+        ...cuaStateA.target,
+      },
+    }),
+  /stale CuaDriver element address/,
+);
+assert.equal(
+  ownedHarness.commands.length,
+  staleCommandCount,
+  "stale addresses must be rejected before invoking CuaDriver",
+);
+
+assert.deepEqual(
+  await ownedHarness.driver.click({
+    app: cuaTargetBundleId,
+    elementIndex: "7",
+    elementAddress: {
+      kind: "cua-element-index",
+      elementIndex: 7,
+      ...cuaStateB.target,
+    },
+  }),
+  {
+    ok: true,
+    text: "Posted click to fixture pid 4242.",
+    isError: false,
+  },
+);
+assert.deepEqual(
+  JSON.parse(
+    ownedHarness.commands.find(
+      (entry) =>
+        entry.command === "/opt/nixmac-e2e/bin/cua-driver" &&
+        entry.args[0] === "call" &&
+        entry.args[1] === "click",
+    ).args[2],
+  ),
+  {
+    pid: 4242,
+    window_id: 7002,
+    element_index: 7,
+    element_token: "s0042:7",
+  },
+);
+
+assert.deepEqual(
+  await ownedHarness.driver.setValue({
+    app: cuaTargetBundleId,
+    elementIndex: "8",
+    elementAddress: {
+      kind: "cua-element-index",
+      elementIndex: 8,
+      ...cuaStateB.target,
+    },
+    value: "updated fixture value",
+  }),
+  {
+    ok: true,
+    text: "Posted click to fixture pid 4242.",
+    isError: false,
+  },
+);
+assert.deepEqual(
+  JSON.parse(
+    ownedHarness.commands.find(
+      (entry) =>
+        entry.command === "/opt/nixmac-e2e/bin/cua-driver" &&
+        entry.args[0] === "call" &&
+        entry.args[1] === "set_value",
+    ).args[2],
+  ),
+  {
+    pid: 4242,
+    window_id: 7002,
+    element_index: 8,
+    element_token: "s0042:8",
+    value: "updated fixture value",
+  },
+);
+
+await ownedHarness.driver.close();
+assert.deepEqual(ownedHarness.commands.at(-1), {
+  command: "/opt/nixmac-e2e/bin/cua-driver",
+  args: ["stop", "--socket", ownedHarness.driver.socketPath],
+});
+
+const attachedHarness = createCuaHarness({
+  attachSocket: "/tmp/nixmac-cua-existing.sock",
+});
+await attachedHarness.driver.connect();
+await attachedHarness.driver.close();
+assert.equal(
+  attachedHarness.commands.some((entry) => entry.command === "/usr/bin/open"),
+  false,
+);
+assert.equal(
+  attachedHarness.commands.some((entry) => entry.args[0] === "stop"),
+  false,
+  "attach mode must never stop a daemon it did not start",
+);
+
+const competingHarness = createCuaHarness({
+  competingRecord: {
+    active: false,
+    bundle_id: cuaTargetBundleId,
+    kind: "desktop",
+    last_used: null,
+    launch_path: null,
+    name: "Nixmac E2E Competing Fixture",
+    pid: 5151,
+    running: true,
+    windows: [],
+  },
+});
+await competingHarness.driver.connect();
+await assert.rejects(
+  () =>
+    competingHarness.driver.prepareTarget({
+      appBundleId: cuaTargetBundleId,
+      appPath: cuaTargetPath,
+    }),
+  /competing .* process is already running/,
+);
+await competingHarness.driver.close();
+
+const invalidPngHarness = createCuaHarness({
+  screenshotBytes: Buffer.from("not-a-png"),
+});
+await invalidPngHarness.driver.connect();
+await invalidPngHarness.driver.prepareTarget({
+  appBundleId: cuaTargetBundleId,
+  appPath: cuaTargetPath,
+});
+await assert.rejects(
+  () => invalidPngHarness.driver.visibleState({ app: cuaTargetBundleId }),
+  /valid PNG/,
+);
+await invalidPngHarness.driver.close();
+
+assert.equal(cuaDriverDescriptor.id, "cua-driver");
+assert.equal(
+  validateDriverDescriptor(cuaDriverDescriptor, {
+    additionalAddressValidators: {
+      "cua-element-index": validateCuaElementIndexAddress,
+    },
+  }).ok,
+  true,
+);
 
 console.log("Computer Use runtime driver contract self-test passed.");

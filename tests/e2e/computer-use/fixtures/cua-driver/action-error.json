@@ -1,0 +1,13 @@
+{
+  "content": [
+    {
+      "text": "Element index 7 is stale. Capture a new window state.",
+      "type": "text"
+    }
+  ],
+  "isError": true,
+  "structuredContent": {
+    "ok": false,
+    "reason": "stale_element"
+  }
+}

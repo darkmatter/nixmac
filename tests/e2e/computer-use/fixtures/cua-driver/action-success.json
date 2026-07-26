@@ -1,0 +1,15 @@
+{
+  "content": [
+    {
+      "text": "Posted click to fixture pid 4242.",
+      "type": "text"
+    }
+  ],
+  "isError": false,
+  "structuredContent": {
+    "effect": "unverifiable",
+    "ok": true,
+    "path": "ax",
+    "verified": false
+  }
+}

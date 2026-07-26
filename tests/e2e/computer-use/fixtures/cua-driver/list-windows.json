@@ -1,0 +1,73 @@
+{
+  "current_space_id": null,
+  "windows": [
+    {
+      "app_name": "Nixmac E2E",
+      "bounds": {
+        "height": 720,
+        "width": 960,
+        "x": 40,
+        "y": 80
+      },
+      "is_on_screen": true,
+      "layer": 0,
+      "on_current_space": null,
+      "pid": 4242,
+      "space_ids": null,
+      "title": "Nixmac E2E Fixture",
+      "window_id": 7001,
+      "z_index": 90
+    },
+    {
+      "app_name": "Nixmac E2E",
+      "bounds": {
+        "height": 720,
+        "width": 960,
+        "x": 80,
+        "y": 120
+      },
+      "is_on_screen": true,
+      "layer": 0,
+      "on_current_space": true,
+      "pid": 4242,
+      "space_ids": [1],
+      "title": "Nixmac E2E Main Fixture",
+      "window_id": 7002,
+      "z_index": 40
+    },
+    {
+      "app_name": "Nixmac E2E",
+      "bounds": {
+        "height": 500,
+        "width": 500,
+        "x": 0,
+        "y": 900
+      },
+      "is_on_screen": false,
+      "layer": 0,
+      "on_current_space": false,
+      "pid": 4242,
+      "space_ids": [2],
+      "title": "Nixmac E2E Off-Space Fixture",
+      "window_id": 7003,
+      "z_index": 100
+    },
+    {
+      "app_name": "Nixmac E2E",
+      "bounds": {
+        "height": 24,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "is_on_screen": true,
+      "layer": 1,
+      "on_current_space": true,
+      "pid": 4242,
+      "space_ids": [1],
+      "title": "Nixmac E2E Overlay Fixture",
+      "window_id": 7004,
+      "z_index": 110
+    }
+  ]
+}
