@@ -33,9 +33,19 @@
     "raw_binary_serve_supported_for_tcc": false
   },
   "fixtures": {
-    "capture_date": "2026-07-25",
     "current_space_null_fallback": "For pinned 0.12.6 only, an on-screen layer-0 window with on_current_space null is eligible after explicit true candidates and is recorded as is_on_screen_fallback.",
-    "qualification": "sanitized historical CuaDriver 0.12.6 shapes plus official pinned-release source and artifact identity"
+    "new_live_capture_performed": false,
+    "provenance": {
+      "action-error.json": "synthetic historical-envelope rejection fixture derived from the pinned MCP result schema",
+      "action-success.json": "sanitized historical captured MCP envelope retained for compatibility; not current 0.12.6 CLI stdout",
+      "click-success.json": "source-derived direct structured click success fixture from pinned macOS 0.12.6",
+      "list-apps.json": "source-derived sanitized synthetic fixture from pinned macOS 0.12.6",
+      "list-windows.json": "source-derived sanitized synthetic fixture covering pinned null fallback and future explicit-current-space preference",
+      "set-value-success.txt": "source-derived direct plaintext set_value success fixture from pinned macOS 0.12.6",
+      "window-state.json": "source-derived sanitized synthetic fixture from pinned macOS 0.12.6"
+    },
+    "researched_at": "2026-07-25",
+    "source_release": "cua-driver-rs-v0.12.6"
   },
   "schema_version": 1
 }

@@ -170,14 +170,7 @@ evidence, not unchecked historical TDD prose, are authoritative.
 Test these exact requirements:
 
 ```js
-const requiredMethods = [
-  "connect",
-  "prepareTarget",
-  "visibleState",
-  "click",
-  "setValue",
-  "close",
-];
+const requiredMethods = ["connect", "prepareTarget", "visibleState", "click", "setValue", "close"];
 
 const state = normalizeVisibleState({
   text: "# Window\n[element_index 7] button Keep Changes",
@@ -245,9 +238,7 @@ export function normalizeActionResult({ ok, text = "", isError = false } = {}) {
 }
 
 export function validateRuntimeDriver(driver) {
-  const missing = runtimeDriverMethods.filter(
-    (method) => typeof driver?.[method] !== "function",
-  );
+  const missing = runtimeDriverMethods.filter((method) => typeof driver?.[method] !== "function");
   if (missing.length) throw new TypeError(`Runtime driver missing: ${missing.join(", ")}`);
   return driver;
 }
@@ -383,7 +374,9 @@ Use an in-memory fake driver:
 const fake = {
   states: [normalState],
   clicks: [],
-  async visibleState() { return this.states.shift(); },
+  async visibleState() {
+    return this.states.shift();
+  },
   async click(input) {
     this.clicks.push(input);
     return { ok: true, text: "clicked", isError: false };
@@ -421,9 +414,7 @@ const client = new AppServerClient(options.ws);
 with:
 
 ```js
-const driver = validateRuntimeDriver(
-  new CodexAppServerDriver(options.ws),
-);
+const driver = validateRuntimeDriver(new CodexAppServerDriver(options.ws));
 ```
 
 Pass `driver` through all extracted helpers and browser-report inspection.
@@ -475,6 +466,10 @@ git commit -m "refactor(e2e): inject computer-use driver"
 
 - Create: `tests/e2e/computer-use/fixtures/cua-driver/window-state.json`
 
+- Create: `tests/e2e/computer-use/fixtures/cua-driver/click-success.json`
+
+- Create: `tests/e2e/computer-use/fixtures/cua-driver/set-value-success.txt`
+
 - Create: `tests/e2e/computer-use/fixtures/cua-driver/action-success.json`
 
 - Create: `tests/e2e/computer-use/fixtures/cua-driver/action-error.json`
@@ -483,18 +478,22 @@ git commit -m "refactor(e2e): inject computer-use driver"
 
 - Modify: `tests/e2e/computer-use/drivers/driver-self-test.mjs`
 
-- [ ] **Step 1: Capture and sanitize real raw response fixtures**
+- [ ] **Step 1: Create provenance-labeled, source-grounded response fixtures**
 
 Use the pinned CuaDriver 0.12.6 `call <tool> <json> --socket <socket>` surface.
 That release does not support `--raw`, `--compact`, or `--no-daemon`: the CLI
-prints `structuredContent` JSON directly on success and exits nonzero with
-stderr on daemon/tool failure. Replace live pids, window IDs, paths, titles,
-and any user text with stable fixture values. Do not include the remote host,
-usernames, keys, or secrets.
+prints `structuredContent` JSON directly when present and otherwise prints
+successful text content; it exits nonzero with stderr on daemon/tool failure.
+Use distinct source-derived direct-click JSON and direct-`set_value` plaintext
+fixtures. Retain the sanitized historical raw MCP envelope separately for
+compatibility and do not relabel it as current CLI stdout. Replace pids, window
+IDs, paths, titles, and any user text with stable fixture values. Do not include
+the remote host, usernames, keys, or secrets, and do not claim a live capture
+when a fixture was derived from pinned source.
 Record the exact CLI version, `CuaDriver.app` bundle version/digest, supported
-daemon launch mode, and fixture capture date in a sanitized fixture metadata
-file. The adapter and image qualification must use the same pinned release and
-launch mode.
+daemon launch mode, research date, and per-fixture provenance in sanitized
+fixture metadata. The adapter and image qualification must use the same pinned
+release and launch mode.
 
 - [ ] **Step 2: Write failing adapter tests**
 
@@ -521,7 +520,18 @@ Cover:
 
 - click/set-value map to CuaDriver integer element indices;
 
-- `isError: true` maps to `ok: false`;
+- direct `click` requires exact structured success evidence and explicitly
+  soft-fails `effect:"suspected_noop"`;
+
+- direct plaintext is accepted only for pinned macOS `set_value`, only for
+  source-derived success families containing the requested integer element
+  index;
+
+- `isError: true`, empty objects, unknown envelopes, and semantic soft errors
+  map to failure;
+
+- stdout/stderr overflow, nonzero exit/stderr, and timeout
+  SIGTERM-to-SIGKILL escalation are deterministic;
 
 - close calls `stop --socket` only for a daemon the adapter started.
 
@@ -530,14 +540,17 @@ Cover:
 Use `spawn` with argv arrays:
 
 ```js
-async function runCua(binary, args, { input, timeoutMs = 90_000 } = {}) {
+async function runCua(binary, args, { timeoutMs = 90_000 } = {}) {
   // No shell. Collect bounded stdout/stderr. Kill on timeout.
 }
 ```
 
-Parse the pinned CLI's direct structured JSON output. For compatibility with
-sanitized historical captures only, a bounded parser may also unwrap an exact
-raw MCP result object shaped as:
+Parse direct structured JSON against the invoked tool's pinned schema. Pinned
+macOS 0.12.6 `set_value` is the only plaintext exception: accept only the
+source-defined successful text families bound to the requested
+`element_index`. `click` always requires its exact structured success schema.
+For compatibility with sanitized historical captures only, a bounded parser
+may also unwrap an exact raw MCP result object shaped as:
 
 ```js
 {
@@ -547,10 +560,13 @@ raw MCP result object shaped as:
 }
 ```
 
-Reject unknown envelopes, `isError: true`, missing/non-object
-`structuredContent`, trailing non-JSON output, or direct JSON that is not the
-expected tool-specific object. The process exit code/stderr remains the
-authority for current 0.12.6 CLI tool failures.
+Reject unknown or extended envelope/content keys, `isError: true`,
+missing/non-object `structuredContent`, trailing non-JSON output, empty
+objects, semantic soft errors, or direct JSON that is not the expected
+tool-specific object. Validate the historical envelope's structured payload
+against its own exact compatibility schema rather than the current direct
+stdout schema. The process exit code/stderr remains the authority for current
+0.12.6 CLI tool failures.
 
 - [ ] **Step 4: Implement connection and targeting**
 
@@ -562,7 +578,10 @@ authority for current 0.12.6 CLI tool failures.
    `open -n -g -a CuaDriver --args serve --socket <run-socket>`;
 1. poll `status --socket <run-socket>`;
 1. call `check_permissions`;
-1. fail unless Accessibility and Screen Recording are granted.
+1. fail unless Accessibility and Screen Recording are granted;
+1. canonicalize `check_permissions.source.executable`, require it inside the
+   verified `CuaDriver.app/Contents/MacOS`, and reverify the enclosing bundle's
+   identity, digest, and Developer ID signature.
 
 Directly spawning raw `cua-driver serve` outside `CuaDriver.app` is prohibited:
 upstream documents that mode as unsupported for stable macOS TCC attribution.
@@ -648,10 +667,7 @@ git commit -m "feat(e2e): add CuaDriver adapter"
 Export:
 
 ```js
-export async function runSuiteWithDriver(args, {
-  createDriver,
-  executionTopology,
-} = {}) {}
+export async function runSuiteWithDriver(args, { createDriver, executionTopology } = {}) {}
 ```
 
 The existing `run` command calls it with `CodexAppServerDriver` and

@@ -1279,6 +1279,7 @@ const [
   cuaListAppsFixture,
   cuaListWindowsFixture,
   cuaWindowStateFixture,
+  cuaClickSuccessFixture,
   cuaActionSuccessFixture,
   cuaActionErrorFixture,
   cuaMetadataFixture,
@@ -1287,11 +1288,15 @@ const [
     "list-apps.json",
     "list-windows.json",
     "window-state.json",
+    "click-success.json",
     "action-success.json",
     "action-error.json",
     "metadata.json",
   ].map(async (fileName) => JSON.parse(await readFile(path.join(cuaFixtureDir, fileName), "utf8"))),
 );
+const cuaSetValueSuccessFixture = (
+  await readFile(path.join(cuaFixtureDir, "set-value-success.txt"), "utf8")
+).trimEnd();
 
 assert.deepEqual(pinnedCuaDriverMetadata, cuaMetadataFixture);
 assert.equal(pinnedCuaDriverMetadata.cli.version_output, "cua-driver 0.12.6");
@@ -1300,6 +1305,12 @@ assert.equal(
   "9b702de4f1591a59428f01e76eceab5a11552d19c26329eef75f0669ddc44da0",
 );
 assert.equal(pinnedCuaDriverMetadata.daemon.launch_mode, "app-owned-standalone");
+assert.equal(pinnedCuaDriverMetadata.fixtures.new_live_capture_performed, false);
+assert.match(pinnedCuaDriverMetadata.fixtures.provenance["click-success.json"], /source-derived/);
+assert.match(
+  pinnedCuaDriverMetadata.fixtures.provenance["action-success.json"],
+  /sanitized historical captured MCP envelope/,
+);
 assert.deepEqual(
   parseCuaCodesignIdentity(`Executable=/Applications/CuaDriver.app/Contents/MacOS/cua-driver
 CandidateCDHashFull sha256=b6f9dd1b42520d5eefcffcc6de1a1125ace382ac8ccfbfd64225690b8891f7f6
@@ -1356,61 +1367,315 @@ assert.deepEqual(processSpawnCalls[0].args, ["--version"]);
 assert.equal(processSpawnCalls[0].options.shell, false);
 assert.equal(processSpawnCalls[0].options.stdio[0], "ignore");
 
+function fakeCuaChild({ onKill = () => {} } = {}) {
+  const child = new EventEmitter();
+  child.stdout = new EventEmitter();
+  child.stdout.setEncoding = () => {};
+  child.stderr = new EventEmitter();
+  child.stderr.setEncoding = () => {};
+  child.kill = (signal) => {
+    onKill(signal, child);
+    return true;
+  };
+  return child;
+}
+
+const stdoutOverflowSignals = [];
+const stdoutOverflowRunner = createCuaProcessRunner({
+  maxOutputBytes: 8,
+  spawnImpl() {
+    const child = fakeCuaChild({
+      onKill(signal, process) {
+        stdoutOverflowSignals.push(signal);
+        queueMicrotask(() => process.emit("close", null, signal));
+      },
+    });
+    queueMicrotask(() => child.stdout.emit("data", "123456789"));
+    return child;
+  },
+});
+await assert.rejects(
+  stdoutOverflowRunner.run("cua-driver", ["call", "list_apps", "{}"]),
+  /stdout exceeds 8 bytes/,
+);
+assert.deepEqual(stdoutOverflowSignals, ["SIGTERM"]);
+
+const stderrOverflowSignals = [];
+const stderrOverflowRunner = createCuaProcessRunner({
+  maxOutputBytes: 8,
+  spawnImpl() {
+    const child = fakeCuaChild({
+      onKill(signal, process) {
+        stderrOverflowSignals.push(signal);
+        queueMicrotask(() => process.emit("close", null, signal));
+      },
+    });
+    queueMicrotask(() => child.stderr.emit("data", "123456789"));
+    return child;
+  },
+});
+await assert.rejects(
+  stderrOverflowRunner.run("cua-driver", ["call", "list_apps", "{}"]),
+  /stderr exceeds 8 bytes/,
+);
+assert.deepEqual(stderrOverflowSignals, ["SIGTERM"]);
+
+const nonzeroRunner = createCuaProcessRunner({
+  spawnImpl() {
+    const child = fakeCuaChild();
+    queueMicrotask(() => {
+      child.stderr.emit("data", "daemon rejected fixture request\n");
+      child.emit("close", 23, null);
+    });
+    return child;
+  },
+});
+await assert.rejects(nonzeroRunner.run("cua-driver", ["call", "click", "{}"]), (error) => {
+  assert.equal(error.code, 23);
+  assert.equal(error.stderr, "daemon rejected fixture request\n");
+  return /exited with 23/.test(error.message);
+});
+
+const scheduledRunnerTimers = [];
+const cancelledRunnerTimers = [];
+const timeoutSignals = [];
+const timeoutRunner = createCuaProcessRunner({
+  timeoutMs: 90,
+  killGraceMs: 25,
+  scheduleTimeout(callback, delayMs) {
+    const handle = {
+      callback,
+      delayMs,
+      unref() {},
+    };
+    scheduledRunnerTimers.push(handle);
+    return handle;
+  },
+  cancelTimeout(handle) {
+    cancelledRunnerTimers.push(handle);
+  },
+  spawnImpl() {
+    return fakeCuaChild({
+      onKill(signal, child) {
+        timeoutSignals.push(signal);
+        if (signal === "SIGKILL") queueMicrotask(() => child.emit("close", null, signal));
+      },
+    });
+  },
+});
+const timedOutRun = timeoutRunner.run("cua-driver", ["call", "list_apps", "{}"]);
+assert.equal(scheduledRunnerTimers[0].delayMs, 90);
+scheduledRunnerTimers[0].callback();
+assert.deepEqual(timeoutSignals, ["SIGTERM"]);
+assert.equal(scheduledRunnerTimers[1].delayMs, 25);
+scheduledRunnerTimers[1].callback();
+await assert.rejects(timedOutRun, (error) => {
+  assert.equal(error.signal, "SIGKILL");
+  return /timed out after 90ms/.test(error.message);
+});
+assert.deepEqual(timeoutSignals, ["SIGTERM", "SIGKILL"]);
+assert.equal(cancelledRunnerTimers.includes(scheduledRunnerTimers[0]), true);
+assert.equal(cancelledRunnerTimers.includes(scheduledRunnerTimers[1]), true);
+
 assert.deepEqual(
   parseCuaCliOutput(JSON.stringify(cuaListAppsFixture)).structured,
   cuaListAppsFixture,
   "pinned 0.12.6 direct structured stdout should parse without an MCP envelope",
 );
 assert.deepEqual(
-  normalizeCuaActionOutput(parseCuaCliOutput(JSON.stringify(cuaActionSuccessFixture))),
+  normalizeCuaActionOutput(parseCuaCliOutput(JSON.stringify(cuaClickSuccessFixture)), {
+    tool: "click",
+    input: { element_index: 7 },
+  }),
+  {
+    ok: true,
+    text: "",
+    isError: false,
+  },
+  "click requires the pinned direct structured success schema",
+);
+assert.throws(
+  () =>
+    normalizeCuaActionOutput(
+      parseCuaCliOutput(JSON.stringify({ ...cuaClickSuccessFixture, ok: true })),
+      {
+        tool: "click",
+        input: { element_index: 7 },
+      },
+    ),
+  /click.*structured success evidence/,
+  "direct click output must not be widened to the historical envelope schema",
+);
+assert.deepEqual(
+  normalizeCuaActionOutput(parseCuaCliOutput(cuaSetValueSuccessFixture), {
+    tool: "set_value",
+    input: { element_index: 8 },
+  }),
+  {
+    ok: true,
+    text: cuaSetValueSuccessFixture,
+    isError: false,
+  },
+  "pinned macOS set_value accepts a source-derived plaintext success tied to its element index",
+);
+for (const sourceDerivedSetValueSuccess of [
+  "✅ Set AXValue on [8] AXSlider via AXIncrement/AXDecrement stepping.",
+  "✅ Selected 'Dark' in AXPopUpButton [8] \"Theme\" via AX child AXPress.",
+  "✅ Set select [8] 'Theme' to 'dark' via Safari JavaScript (DOM value: \"dark\").",
+  "✅ Set AXValue on [8] AXTextField.\n\n🔀 Action caused a different app to become frontmost.",
+]) {
+  assert.deepEqual(
+    normalizeCuaActionOutput(parseCuaCliOutput(sourceDerivedSetValueSuccess), {
+      tool: "set_value",
+      input: { element_index: 8 },
+    }),
+    {
+      ok: true,
+      text: sourceDerivedSetValueSuccess,
+      isError: false,
+    },
+    "every pinned macOS set_value source success family should remain allowlisted",
+  );
+}
+assert.deepEqual(
+  normalizeCuaActionOutput(parseCuaCliOutput(JSON.stringify(cuaActionSuccessFixture)), {
+    tool: "click",
+    input: { element_index: 7 },
+  }),
   {
     ok: true,
     text: "Posted click to fixture pid 4242.",
     isError: false,
   },
+  "the exact bounded historical MCP envelope remains compatible",
 );
-assert.deepEqual(
-  normalizeCuaActionOutput(parseCuaCliOutput(JSON.stringify(cuaActionErrorFixture))),
-  {
-    ok: false,
-    text: "Element index 7 is stale. Capture a new window state.",
-    isError: true,
-  },
-);
-assert.deepEqual(
-  normalizeCuaActionOutput(
-    parseCuaCliOutput(
-      JSON.stringify({
-        content: [{ type: "text", text: "set_value was rejected" }],
-        structuredContent: { ok: false },
-        isError: false,
-      }),
+assert.throws(
+  () =>
+    normalizeCuaActionOutput(
+      parseCuaCliOutput(
+        JSON.stringify({
+          ...cuaActionSuccessFixture,
+          structuredContent: cuaClickSuccessFixture,
+        }),
+      ),
+      {
+        tool: "click",
+        input: { element_index: 7 },
+      },
     ),
-  ),
-  {
-    ok: false,
-    text: "set_value was rejected",
-    isError: false,
-  },
-  "ok:false must fail set_value even when the MCP envelope does not set isError",
+  /click.*structured success evidence/,
+  "historical envelopes must retain their own exact structured schema",
 );
-assert.deepEqual(
-  normalizeCuaActionOutput(parseCuaCliOutput(JSON.stringify({ ok: false, isError: false }))),
-  {
-    ok: false,
-    text: "",
-    isError: false,
-  },
-  "direct structured ok:false must remain a failure",
+assert.throws(
+  () =>
+    normalizeCuaActionOutput(parseCuaCliOutput(JSON.stringify(cuaActionErrorFixture)), {
+      tool: "click",
+      input: { element_index: 7 },
+    }),
+  /isError:true/,
 );
-assert.deepEqual(
-  normalizeCuaActionOutput(parseCuaCliOutput(JSON.stringify({ ok: true, isError: true }))),
-  {
-    ok: false,
-    text: "",
-    isError: true,
-  },
-  "direct structured isError:true must remain a failure",
+assert.throws(
+  () =>
+    normalizeCuaActionOutput(
+      parseCuaCliOutput(
+        JSON.stringify({
+          content: [{ type: "text", text: "Historical compatibility click fixture succeeded." }],
+          structuredContent: cuaClickSuccessFixture,
+          isError: false,
+          extension: "not allowed",
+        }),
+      ),
+      { tool: "click", input: { element_index: 7 } },
+    ),
+  /unknown MCP envelope key/,
+);
+assert.throws(
+  () =>
+    normalizeCuaActionOutput(
+      parseCuaCliOutput(
+        JSON.stringify({
+          content: [
+            {
+              type: "text",
+              text: "Historical compatibility click fixture succeeded.",
+              extension: "not allowed",
+            },
+          ],
+          structuredContent: cuaClickSuccessFixture,
+          isError: false,
+        }),
+      ),
+      { tool: "click", input: { element_index: 7 } },
+    ),
+  /invalid MCP content/,
+);
+assert.throws(
+  () =>
+    normalizeCuaActionOutput(parseCuaCliOutput("{}"), {
+      tool: "click",
+      input: { element_index: 7 },
+    }),
+  /click.*structured success evidence/,
+);
+assert.throws(
+  () =>
+    normalizeCuaActionOutput(
+      parseCuaCliOutput(
+        JSON.stringify({
+          effect: "suspected_noop",
+          path: "ax",
+          verified: false,
+        }),
+      ),
+      { tool: "click", input: { element_index: 7 } },
+    ),
+  /suspected_noop.*semantic soft failure/,
+);
+assert.throws(
+  () =>
+    normalizeCuaActionOutput(parseCuaCliOutput("Clicked element [7]."), {
+      tool: "click",
+      input: { element_index: 7 },
+    }),
+  /click.*structured success evidence/,
+);
+assert.throws(
+  () =>
+    normalizeCuaActionOutput(parseCuaCliOutput(cuaSetValueSuccessFixture), {
+      tool: "set_value",
+      input: { element_index: 9 },
+    }),
+  /set_value.*success evidence/,
+);
+assert.throws(
+  () =>
+    normalizeCuaActionOutput(parseCuaCliOutput("set_value succeeded"), {
+      tool: "set_value",
+      input: { element_index: 8 },
+    }),
+  /set_value.*success evidence/,
+);
+assert.throws(
+  () =>
+    normalizeCuaActionOutput(parseCuaCliOutput(JSON.stringify(cuaClickSuccessFixture)), {
+      tool: "set_value",
+      input: { element_index: 8 },
+    }),
+  /set_value.*success evidence/,
+);
+assert.throws(
+  () =>
+    normalizeCuaActionOutput(
+      parseCuaCliOutput(
+        JSON.stringify({
+          content: [{ type: "text", text: "set_value was rejected" }],
+          structuredContent: { ok: false },
+          isError: false,
+        }),
+      ),
+      { tool: "set_value", input: { element_index: 8 } },
+    ),
+  /set_value.*success evidence/,
 );
 assert.throws(() => parseCuaCliOutput("{malformed"), /malformed CuaDriver output/);
 assert.throws(() => parseCuaCliOutput("x".repeat(65), { maxBytes: 64 }), /exceeds 64 bytes/);
@@ -1490,7 +1755,9 @@ function createCuaHarness({
   actionOutputs = {},
   competingRecord = null,
   driverIdentityOverrides = {},
+  permissionSourceExecutable = "/Applications/CuaDriver.app/Contents/MacOS/cua-driver",
   screenshotBytes = cuaScreenshotBytes,
+  toolOutputs = {},
 } = {}) {
   const commands = [];
   const identityReads = [];
@@ -1517,6 +1784,13 @@ function createCuaHarness({
         throw new Error(`Unexpected CuaDriver argv: ${args.join(" ")}`);
       }
       const tool = args[1];
+      if (Object.hasOwn(toolOutputs, tool)) {
+        const output = toolOutputs[tool];
+        return {
+          stdout: typeof output === "string" ? output : JSON.stringify(output),
+          stderr: "",
+        };
+      }
       if (tool === "check_permissions") {
         return {
           stdout: JSON.stringify({
@@ -1527,7 +1801,7 @@ function createCuaHarness({
             source: {
               attribution: "driver-daemon",
               bundle_id: "com.trycua.driver",
-              executable: "/Applications/CuaDriver.app/Contents/MacOS/cua-driver",
+              executable: permissionSourceExecutable,
               responsible_ppid: 1,
             },
           }),
@@ -1562,8 +1836,11 @@ function createCuaHarness({
         return { stdout: JSON.stringify(cuaWindowStateFixture), stderr: "" };
       }
       if (tool === "click" || tool === "set_value") {
+        const output =
+          actionOutputs[tool] ??
+          (tool === "click" ? cuaClickSuccessFixture : cuaSetValueSuccessFixture);
         return {
-          stdout: JSON.stringify(actionOutputs[tool] ?? cuaActionSuccessFixture),
+          stdout: typeof output === "string" ? output : JSON.stringify(output),
           stderr: "",
         };
       }
@@ -1674,7 +1951,11 @@ assert.deepEqual(
     ownedHarness.driver.socketPath,
   ],
 );
-assert.deepEqual(ownedHarness.identityReads, ["/Applications/CuaDriver.app"]);
+assert.deepEqual(
+  ownedHarness.identityReads,
+  ["/Applications/CuaDriver.app", "/Applications/CuaDriver.app"],
+  "connect should reverify the driver bundle after binding the permission source executable",
+);
 
 const wrongSignerHarness = createCuaHarness({
   driverIdentityOverrides: { teamIdentifier: "WRONGTEAM" },
@@ -1710,7 +1991,7 @@ assert.deepEqual(
 );
 assert.deepEqual(
   ownedHarness.identityReads,
-  ["/Applications/CuaDriver.app", cuaTargetPath, cuaTargetPath],
+  ["/Applications/CuaDriver.app", "/Applications/CuaDriver.app", cuaTargetPath, cuaTargetPath],
   "prepareTarget should hash the staged bundle before launch and again after binding its pid",
 );
 
@@ -1784,7 +2065,7 @@ assert.deepEqual(
   }),
   {
     ok: true,
-    text: "Posted click to fixture pid 4242.",
+    text: "",
     isError: false,
   },
 );
@@ -1818,7 +2099,7 @@ assert.deepEqual(
   }),
   {
     ok: true,
-    text: "Posted click to fixture pid 4242.",
+    text: cuaSetValueSuccessFixture,
     isError: false,
   },
 );
@@ -1860,6 +2141,95 @@ assert.equal(
   false,
   "attach mode must never stop a daemon it did not start",
 );
+
+const mismatchedAttachedHarness = createCuaHarness({
+  attachSocket: "/tmp/nixmac-cua-mismatched.sock",
+  permissionSourceExecutable: "/Applications/OtherDriver.app/Contents/MacOS/cua-driver",
+});
+await assert.rejects(
+  () => mismatchedAttachedHarness.driver.connect(),
+  /permissions source executable is outside the verified CuaDriver.app/,
+);
+assert.equal(
+  mismatchedAttachedHarness.commands.some((entry) => entry.command === "/usr/bin/open"),
+  false,
+  "attach mode must reject a mismatched daemon without launching another one",
+);
+assert.equal(
+  mismatchedAttachedHarness.commands.some((entry) => entry.args[0] === "stop"),
+  false,
+  "attach mode must not stop the mismatched daemon",
+);
+
+const malformedPermissionsHarness = createCuaHarness({
+  toolOutputs: { check_permissions: {} },
+});
+await assert.rejects(
+  () => malformedPermissionsHarness.driver.connect(),
+  /malformed CuaDriver check_permissions structured output/,
+);
+
+const malformedListAppsHarness = createCuaHarness({
+  toolOutputs: { list_apps: {} },
+});
+await malformedListAppsHarness.driver.connect();
+await assert.rejects(
+  () =>
+    malformedListAppsHarness.driver.prepareTarget({
+      appBundleId: cuaTargetBundleId,
+      appPath: cuaTargetPath,
+    }),
+  /malformed CuaDriver list_apps structured output/,
+);
+await malformedListAppsHarness.driver.close();
+
+const malformedLaunchHarness = createCuaHarness({
+  toolOutputs: { launch_app: {} },
+});
+await malformedLaunchHarness.driver.connect();
+await assert.rejects(
+  () =>
+    malformedLaunchHarness.driver.prepareTarget({
+      appBundleId: cuaTargetBundleId,
+      appPath: cuaTargetPath,
+    }),
+  /malformed CuaDriver launch_app structured output/,
+);
+await malformedLaunchHarness.driver.close();
+
+const malformedWindowsHarness = createCuaHarness({
+  toolOutputs: { list_windows: { windows: [{}] } },
+});
+await malformedWindowsHarness.driver.connect();
+await assert.rejects(
+  () =>
+    malformedWindowsHarness.driver.prepareTarget({
+      appBundleId: cuaTargetBundleId,
+      appPath: cuaTargetPath,
+    }),
+  /malformed CuaDriver list_windows structured output/,
+);
+await malformedWindowsHarness.driver.close();
+
+const malformedWindowStateHarness = createCuaHarness({
+  toolOutputs: {
+    get_window_state: {
+      elements: [],
+      pid: 4242,
+      window_id: 7002,
+    },
+  },
+});
+await malformedWindowStateHarness.driver.connect();
+await malformedWindowStateHarness.driver.prepareTarget({
+  appBundleId: cuaTargetBundleId,
+  appPath: cuaTargetPath,
+});
+await assert.rejects(
+  () => malformedWindowStateHarness.driver.visibleState({ app: cuaTargetBundleId }),
+  /malformed CuaDriver get_window_state structured output/,
+);
+await malformedWindowStateHarness.driver.close();
 
 const competingHarness = createCuaHarness({
   competingRecord: {

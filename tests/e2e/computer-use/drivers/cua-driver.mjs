@@ -93,6 +93,8 @@ export function createCuaProcessRunner({
   timeoutMs = DEFAULT_TIMEOUT_MS,
   maxOutputBytes = DEFAULT_MAX_OUTPUT_BYTES,
   killGraceMs = DEFAULT_KILL_GRACE_MS,
+  scheduleTimeout = setTimeout,
+  cancelTimeout = clearTimeout,
 } = {}) {
   return Object.freeze({
     run(command, args, options = {}) {
@@ -131,7 +133,7 @@ export function createCuaProcessRunner({
           try {
             child.kill("SIGTERM");
           } catch {}
-          forceKillTimer ??= setTimeout(() => {
+          forceKillTimer ??= scheduleTimeout(() => {
             try {
               child.kill("SIGKILL");
             } catch {}
@@ -166,7 +168,7 @@ export function createCuaProcessRunner({
         child.stdout?.on?.("data", (chunk) => append("stdout", chunk));
         child.stderr?.on?.("data", (chunk) => append("stderr", chunk));
 
-        const timeout = setTimeout(() => {
+        const timeout = scheduleTimeout(() => {
           if (terminalError) return;
           terminalError = new CuaProcessError(
             `CuaDriver process timed out after ${effectiveTimeoutMs}ms`,
@@ -177,13 +179,13 @@ export function createCuaProcessRunner({
         timeout.unref?.();
 
         child.once("error", (error) => {
-          clearTimeout(timeout);
-          if (forceKillTimer) clearTimeout(forceKillTimer);
+          cancelTimeout(timeout);
+          if (forceKillTimer) cancelTimeout(forceKillTimer);
           reject(error);
         });
         child.once("close", (code, signal) => {
-          clearTimeout(timeout);
-          if (forceKillTimer) clearTimeout(forceKillTimer);
+          cancelTimeout(timeout);
+          if (forceKillTimer) cancelTimeout(forceKillTimer);
           if (terminalError) {
             terminalError.code = code;
             terminalError.signal = signal;
@@ -216,7 +218,20 @@ function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+function hasExactKeys(value, required, optional = []) {
+  const actual = Object.keys(value).sort();
+  const requiredKeys = [...required].sort();
+  if (requiredKeys.some((key) => !Object.hasOwn(value, key))) return false;
+  const allowed = new Set([...required, ...optional]);
+  return actual.every((key) => allowed.has(key));
+}
+
 function validateEnvelope(value) {
+  for (const key of Object.keys(value)) {
+    if (!["content", "structuredContent", "isError"].includes(key)) {
+      throw new Error(`malformed CuaDriver output: unknown MCP envelope key ${key}`);
+    }
+  }
   if (!Array.isArray(value.content)) {
     throw new Error("malformed CuaDriver output: MCP content must be an array");
   }
@@ -227,12 +242,19 @@ function validateEnvelope(value) {
     throw new Error("malformed CuaDriver output: MCP structuredContent must be an object");
   }
   for (const [index, item] of value.content.entries()) {
-    if (!isPlainObject(item) || !["text", "image"].includes(item.type)) {
+    const validText =
+      isPlainObject(item) &&
+      item.type === "text" &&
+      hasExactKeys(item, ["type", "text"]) &&
+      typeof item.text === "string";
+    const validImage =
+      isPlainObject(item) &&
+      item.type === "image" &&
+      hasExactKeys(item, ["type", "data"], ["mimeType"]) &&
+      typeof item.data === "string" &&
+      (item.mimeType === undefined || typeof item.mimeType === "string");
+    if (!validText && !validImage) {
       throw new Error(`malformed CuaDriver output: invalid MCP content[${index}]`);
-    }
-    const payload = item.type === "text" ? item.text : item.data;
-    if (typeof payload !== "string") {
-      throw new Error(`malformed CuaDriver output: invalid MCP content[${index}] payload`);
     }
   }
 }
@@ -290,18 +312,66 @@ export function parseCuaCliOutput(output, { maxBytes = DEFAULT_MAX_OUTPUT_BYTES 
   });
 }
 
-export function normalizeCuaActionOutput(parsed) {
+function validateClickSuccess(structured, { historicalEnvelope = false } = {}) {
+  return (
+    isPlainObject(structured) &&
+    hasExactKeys(
+      structured,
+      historicalEnvelope ? ["effect", "ok", "path", "verified"] : ["effect", "path", "verified"],
+    ) &&
+    (!historicalEnvelope || structured.ok === true) &&
+    structured.effect === "unverifiable" &&
+    ["ax", "ax_fg", "cgevent", "cgevent_fg", "cgevent_hid"].includes(structured.path) &&
+    structured.verified === false
+  );
+}
+
+function setValueSuccessGrammar(elementIndex) {
+  const suffix =
+    "(?:\\n\\n(?:🪟 Action opened new window\\(s\\): [^\\r\\n]+\\.|🔀 Action caused a different app to become frontmost\\.))?";
+  const families = [
+    `✅ Set AXValue on \\[${elementIndex}\\] AX[A-Za-z0-9]+\\.`,
+    `✅ Set AXValue on \\[${elementIndex}\\] AX[A-Za-z0-9]+ via AXIncrement/AXDecrement stepping\\.`,
+    `✅ Selected '[^'\\r\\n]*' in AXPopUpButton \\[${elementIndex}\\] "[^"\\r\\n]*" via AX child AXPress\\.`,
+    `✅ Set select \\[${elementIndex}\\] '[^'\\r\\n]*' to '[^'\\r\\n]*' via Safari JavaScript \\(DOM value: "[^"\\r\\n]*"\\)\\.`,
+  ];
+  return new RegExp(`^(?:${families.join("|")})${suffix}$`);
+}
+
+export function normalizeCuaActionOutput(
+  parsed,
+  { tool, input, version = pinnedCuaDriverMetadata.cli.version } = {},
+) {
   if (!parsed || typeof parsed !== "object") {
     throw new TypeError("parsed CuaDriver action output is required");
   }
-  const structured = isPlainObject(parsed.structured) ? parsed.structured : {};
-  const isError = parsed.isError === true || structured.isError === true;
-  const text = parsed.text || (typeof structured.message === "string" ? structured.message : "");
-  return normalizeActionResult({
-    ok: !isError && structured.ok !== false,
-    text,
-    isError,
-  });
+  if (!["click", "set_value"].includes(tool)) {
+    throw new TypeError("CuaDriver action tool must be click or set_value");
+  }
+  if (!Number.isInteger(input?.element_index) || input.element_index < 0) {
+    throw new TypeError(`CuaDriver ${tool} requires an integer element_index`);
+  }
+  if (parsed.isError === true) {
+    throw new Error(`CuaDriver ${tool} historical envelope returned isError:true`);
+  }
+  if (tool === "click") {
+    if (parsed.structured?.effect === "suspected_noop") {
+      throw new Error("CuaDriver click reported suspected_noop semantic soft failure");
+    }
+    if (!validateClickSuccess(parsed.structured, { historicalEnvelope: parsed.envelope })) {
+      throw new Error("CuaDriver click lacks pinned structured success evidence");
+    }
+    return normalizeActionResult({ ok: true, text: parsed.text, isError: false });
+  }
+  if (
+    version !== PINNED_CURRENT_SPACE_FALLBACK_VERSION ||
+    parsed.envelope ||
+    parsed.structured !== null ||
+    !setValueSuccessGrammar(input.element_index).test(parsed.text)
+  ) {
+    throw new Error("CuaDriver set_value lacks pinned plaintext success evidence");
+  }
+  return normalizeActionResult({ ok: true, text: parsed.text, isError: false });
 }
 
 async function walkRegularFiles(root, directory = root, result = []) {
@@ -555,12 +625,107 @@ function normalizeElementsText(elements, treeMarkdown) {
   return treeMarkdown;
 }
 
+function hasValidPermissionSchema(value) {
+  return (
+    typeof value.accessibility === "boolean" &&
+    typeof value.screen_recording === "boolean" &&
+    isPlainObject(value.source) &&
+    typeof value.source.attribution === "string" &&
+    typeof value.source.bundle_id === "string" &&
+    typeof value.source.executable === "string"
+  );
+}
+
+function hasValidListAppsSchema(value) {
+  return (
+    Array.isArray(value.apps) &&
+    value.apps.every(
+      (app) =>
+        isPlainObject(app) &&
+        typeof app.bundle_id === "string" &&
+        Number.isInteger(app.pid) &&
+        app.pid >= 0 &&
+        typeof app.running === "boolean" &&
+        (app.launch_path === null ||
+          app.launch_path === undefined ||
+          typeof app.launch_path === "string"),
+    )
+  );
+}
+
+function hasValidLaunchAppSchema(value) {
+  return (
+    Number.isInteger(value.pid) &&
+    value.pid > 0 &&
+    typeof value.bundle_id === "string" &&
+    value.bundle_id !== ""
+  );
+}
+
+function hasValidListWindowsSchema(value) {
+  return (
+    Array.isArray(value.windows) &&
+    value.windows.every(
+      (window) =>
+        isPlainObject(window) &&
+        Number.isInteger(window.pid) &&
+        window.pid > 0 &&
+        Number.isInteger(window.window_id) &&
+        window.window_id > 0 &&
+        Number.isInteger(window.layer) &&
+        typeof window.is_on_screen === "boolean" &&
+        [true, false, null].includes(window.on_current_space) &&
+        Number.isFinite(window.z_index),
+    )
+  );
+}
+
+function hasValidWindowStateSchema(value) {
+  return (
+    Number.isInteger(value.pid) &&
+    value.pid > 0 &&
+    Number.isInteger(value.window_id) &&
+    value.window_id > 0 &&
+    typeof value.snapshot_id === "string" &&
+    value.snapshot_id !== "" &&
+    typeof value.tree_markdown === "string" &&
+    Array.isArray(value.elements) &&
+    value.elements.every(
+      (element) =>
+        isPlainObject(element) &&
+        Number.isInteger(element.element_index) &&
+        element.element_index >= 0 &&
+        typeof element.role === "string",
+    )
+  );
+}
+
+function hasValidStructuredToolSchema(tool, value) {
+  switch (tool) {
+    case "check_permissions":
+      return hasValidPermissionSchema(value);
+    case "list_apps":
+      return hasValidListAppsSchema(value);
+    case "launch_app":
+      return hasValidLaunchAppSchema(value);
+    case "list_windows":
+      return hasValidListWindowsSchema(value);
+    case "get_window_state":
+      return hasValidWindowStateSchema(value);
+    default:
+      return false;
+  }
+}
+
 function requireStructured(parsed, tool) {
   if (!isPlainObject(parsed.structured)) {
     throw new Error(`CuaDriver ${tool} did not return structured JSON`);
   }
   if (parsed.isError) {
     throw new Error(parsed.text || `CuaDriver ${tool} returned isError:true`);
+  }
+  if (!hasValidStructuredToolSchema(tool, parsed.structured)) {
+    throw new Error(`malformed CuaDriver ${tool} structured output`);
   }
   return parsed.structured;
 }
@@ -655,20 +820,9 @@ export class CuaDriver {
     );
   }
 
-  async connect() {
-    if (this.connected) return;
-    const versionResult = await this._run(["--version"]);
-    const actualVersion = versionResult.stdout.trim();
-    if (actualVersion !== this.metadata.cli.version_output) {
-      throw new Error(
-        `CuaDriver CLI version mismatch: expected ${this.metadata.cli.version_output}, got ${actualVersion}`,
-      );
-    }
-    const appIdentity = await this.dependencies.readBundleIdentity(this.driverAppPath, {
-      requireDeveloperSigningIdentity: true,
-    });
+  _assertPinnedDriverIdentity(identity) {
     assertIdentity(
-      appIdentity,
+      identity,
       {
         bundleId: this.metadata.app.bundle_id,
         shortVersion: this.metadata.app.short_version,
@@ -680,6 +834,23 @@ export class CuaDriver {
       },
       "CuaDriver.app",
     );
+  }
+
+  async connect() {
+    if (this.connected) return;
+    const versionResult = await this._run(["--version"]);
+    const actualVersion = versionResult.stdout.trim();
+    if (actualVersion !== this.metadata.cli.version_output) {
+      throw new Error(
+        `CuaDriver CLI version mismatch: expected ${this.metadata.cli.version_output}, got ${actualVersion}`,
+      );
+    }
+    const canonicalDriverAppPath = await this.dependencies.canonicalPath(this.driverAppPath);
+    requireAbsoluteCanonicalInput(this.driverAppPath, canonicalDriverAppPath);
+    const appIdentity = await this.dependencies.readBundleIdentity(canonicalDriverAppPath, {
+      requireDeveloperSigningIdentity: true,
+    });
+    this._assertPinnedDriverIdentity(appIdentity);
 
     try {
       if (!this.attachMode) {
@@ -710,6 +881,28 @@ export class CuaDriver {
           "CuaDriver permissions must be attributed to the installed CuaDriver.app daemon",
         );
       }
+      let sourceExecutable;
+      try {
+        sourceExecutable = await this.dependencies.canonicalPath(
+          requireNonEmptyString(
+            permissions.source?.executable,
+            "CuaDriver permissions source executable",
+          ),
+        );
+      } catch (error) {
+        throw new Error(
+          `CuaDriver permissions source executable could not be canonicalized: ${actionErrorText(error)}`,
+        );
+      }
+      if (!pathIsWithin(sourceExecutable, path.join(canonicalDriverAppPath, "Contents", "MacOS"))) {
+        throw new Error(
+          "CuaDriver permissions source executable is outside the verified CuaDriver.app",
+        );
+      }
+      const reboundIdentity = await this.dependencies.readBundleIdentity(canonicalDriverAppPath, {
+        requireDeveloperSigningIdentity: true,
+      });
+      this._assertPinnedDriverIdentity(reboundIdentity);
       this.connected = true;
     } catch (error) {
       if (this.startedDaemon) {
@@ -960,7 +1153,11 @@ export class CuaDriver {
     };
     if (elementToken) input.element_token = elementToken;
     try {
-      return normalizeCuaActionOutput(await this._call("click", input));
+      return normalizeCuaActionOutput(await this._call("click", input), {
+        tool: "click",
+        input,
+        version: this.metadata.cli.version,
+      });
     } catch (error) {
       return normalizeActionResult({
         ok: false,
@@ -983,7 +1180,11 @@ export class CuaDriver {
     if (elementToken) input.element_token = elementToken;
     input.value = request.value;
     try {
-      return normalizeCuaActionOutput(await this._call("set_value", input));
+      return normalizeCuaActionOutput(await this._call("set_value", input), {
+        tool: "set_value",
+        input,
+        version: this.metadata.cli.version,
+      });
     } catch (error) {
       return normalizeActionResult({
         ok: false,

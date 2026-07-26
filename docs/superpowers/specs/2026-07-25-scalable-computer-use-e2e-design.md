@@ -328,16 +328,30 @@ Directly spawning raw `cua-driver serve` outside `CuaDriver.app` is prohibited:
 upstream documents that mode as unsupported for stable macOS TCC attribution.
 Fixture metadata, the adapter, and the runner image bind the same pinned CLI
 version, app-bundle version/digest, and standalone app-owned launch mode.
-CuaDriver 0.12.6 `call` prints `structuredContent` JSON directly and supports
+CuaDriver 0.12.6 `call` prints `structuredContent` JSON directly when the tool
+provides it, otherwise it prints successful text content. It supports
 `--socket` plus `--screenshot-out-file`; it does not expose the historical
 `--raw`, `--compact`, or `--no-daemon` flags. Nonzero process status/stderr is
-the current CLI error boundary. A raw MCP envelope may be unwrapped only as a
-bounded compatibility input for sanitized historical fixtures.
+the current CLI error boundary. Direct JSON is validated against the invoked
+tool's pinned schema. Plaintext success is accepted only for pinned macOS
+`set_value`, using source-derived success grammars bound to the requested
+integer element index. `click` requires structured success evidence and treats
+`effect:"suspected_noop"` as a semantic soft failure. A raw MCP envelope may be
+unwrapped only as an exact, bounded compatibility input for sanitized
+historical fixtures and is validated against an envelope-specific tool schema.
 On macOS that pinned release also emits `on_current_space:null` and
 `space_ids:null` for every `list_windows` record. Window selection therefore
 requires `is_on_screen=true` and layer 0, rejects an explicit false
 `on_current_space`, prefers explicit true when a future release supplies it,
 and records when the pinned-version on-screen fallback was used.
+
+After `check_permissions`, the adapter canonicalizes
+`source.executable`, requires it to reside inside the already verified
+`CuaDriver.app/Contents/MacOS` directory, and reverifies that enclosing bundle's
+identity, content digest, and Developer ID signature. This executable proof is
+required in both owned-daemon and attach-to-existing modes because the
+name-based `open -a CuaDriver` launch contract alone does not identify the
+process that answered the socket.
 
 Element addresses use a new reviewed `cua-element-index` kind scoped to
 `(pid, window_id, snapshot)`. The adapter must refresh visible state before
