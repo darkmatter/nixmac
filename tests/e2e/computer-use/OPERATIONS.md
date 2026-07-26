@@ -70,6 +70,17 @@ artifact ID/digest, one attestation nonce, and one backend. It does not accept a
 harness ref. It never comments on a PR, calls Buzz, or records raw whole-session
 video.
 
+Both Mac jobs use the protected GitHub environment
+`nixmac-e2e-production`. Configure that environment's deployment branch policy
+to selected branches and allow only `main`; do not allow tags. Store the static
+host SSH key and known-hosts data in that environment, together with the
+expected host/user/local-hostname and pinned image-digest configuration. The
+workflow's default-branch condition is defense in depth: the protected
+environment is the enforcement boundary that prevents a non-main dispatch from
+receiving production Mac credentials. Live repository environment settings
+remain an external qualification requirement and must be checked before
+production promotion.
+
 The Linux preflight binds the default-branch harness and exact app separately.
 It queries the pre-resolved artifact ID, verifies its build run, source SHA,
 name, expiry, and archive digest, and downloads it once. The selected macOS
@@ -131,11 +142,16 @@ trusted lease owner token. The host-lease sidecar separately proves the same run
 identity, owner-matched acquisition/release hashes, and monotonic lease
 timestamps. Cleanup, inventory, or lease-release ambiguity creates both the
 durable Centaur backend quarantine and the host quarantine marker.
-Before failing lease acquisition, the controller writes
+Before checkout or any operation that can fail, the controller initializes
 `static-controller/terminal-disposition.json` and retains it in the diagnostics
-artifact. Its disposition is exactly one of `LEASE_ACQUIRED`, `LEASE_BUSY`,
-`LEASE_QUARANTINED`, or `INFRASTRUCTURE_FAILURE`; Centaur uses that durable
-record instead of parsing workflow logs.
+artifact with `CONTROLLER_STARTED`. Lease acquisition replaces that disposition
+with exactly one of `LEASE_ACQUIRED`, `LEASE_BUSY`, `LEASE_QUARANTINED`, or
+`INFRASTRUCTURE_FAILURE`; Centaur uses that durable record instead of parsing
+workflow logs. The result job always uploads a small `terminal-contract.json`.
+If cancellation, runner loss, or the absence of that terminal artifact prevents
+the workflow from writing its own final disposition, Task 10 must use the
+authenticated GitHub run/job API to synthesize the attempt as `ABORTED`. It
+must never infer a product failure or `CANCELLED` from missing evidence alone.
 
 ### Audited static-host recovery
 
@@ -178,6 +194,13 @@ mutable convenience copy, not canonical evidence. Before promotion to a
 required merge gate, copy verified evidence to versioned immutable object
 storage for at least 365 days and test restoration. Expired evidence must be
 reported as expired, not silently replaced by gh-pages.
+
+Each backend uploads exactly one manifest-bound canonical evidence root.
+Controller diagnostics and terminal contracts use separate artifacts and are
+not mixed into that root. The gh-pages publisher has no replace-pending
+concurrency queue: it fetches the latest branch and retries an optimistic
+commit/push race up to five times so every completed attempt gets a publication
+opportunity.
 
 ## Daily Operator Check
 
@@ -223,8 +246,9 @@ setup, or remote cleanup belongs in the serialized remote job.
 - The prepared app handoff artifact is retained for 3 days. Treat queues that
   approach that age as an operator incident; the remote job cannot safely consume
   an expired app artifact.
-- Keep report publishing serialized separately from the DXU lane unless the
-  `gh-pages` publisher adds explicit fetch/rebase/retry safety.
+- Keep report publication independent from the DXU lane. The Centaur publisher
+  fetches the latest `gh-pages` state and retries push races instead of using a
+  replace-pending concurrency queue.
 
 Track these locally or in the release issue before required-gate promotion:
 

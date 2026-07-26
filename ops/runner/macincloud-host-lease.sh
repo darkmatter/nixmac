@@ -152,6 +152,37 @@ set -euo pipefail
 lease_root="$1"
 lease_dir="$2"
 quarantine_file="$3"
+canonical_lease_digest() {
+  local directory="$1"
+  (
+    export LC_ALL=C
+    shopt -s nullglob dotglob
+    count=0
+    for entry in "$directory"/*; do
+      name="${entry##*/}"
+      [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]]
+      [[ -f "$entry" && ! -L "$entry" ]]
+      count=$((count + 1))
+      ((count <= 32))
+      if ! size="$(stat -f '%z' "$entry" 2>/dev/null)"; then
+        size="$(stat -c '%s' "$entry")"
+      fi
+      [[ "$size" =~ ^[0-9]+$ ]] && ((size <= 1048576))
+      case "$name" in
+        heartbeat|heartbeat.pid|heartbeat.log)
+          # These bounded runtime files change while a live owner holds the
+          # lease. Bind their presence/type while the immutable lease files
+          # and every unexpected recovery candidate remain content-bound.
+          printf '%s\t%s\tvolatile-runtime-file\n' "${#name}" "$name"
+          ;;
+        *)
+          digest="$(shasum -a 256 "$entry" | awk '{print $1}')"
+          printf '%s\t%s\t%s\t%s\n' "${#name}" "$name" "$size" "$digest"
+          ;;
+      esac
+    done
+  ) | shasum -a 256 | awk '{print $1}'
+}
 if [[ ! -d "$lease_dir" ]]; then
   if [[ -f "$quarantine_file" ]]; then
     quarantine_digest="$(shasum -a 256 "$quarantine_file" | awk '{print $1}')"
@@ -171,30 +202,12 @@ if [[ ! -f "$lease_dir/owner.json" ]]; then
       kill -TERM "$heartbeat_pid" 2>/dev/null || true
     fi
   fi
-  ambiguous_digest="$(
-    (
-      shopt -s nullglob dotglob
-      count=0
-      for entry in "$lease_dir"/*; do
-        name="${entry##*/}"
-        [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]]
-        [[ -f "$entry" && ! -L "$entry" ]]
-        count=$((count + 1))
-        ((count <= 32))
-        if ! size="$(stat -f '%z' "$entry" 2>/dev/null)"; then
-          size="$(stat -c '%s' "$entry")"
-        fi
-        [[ "$size" =~ ^[0-9]+$ ]] && ((size <= 1048576))
-        digest="$(shasum -a 256 "$entry" | awk '{print $1}')"
-        printf '%s\t%s\t%s\n' "${#name}" "$name" "$digest"
-      done
-    ) | shasum -a 256 | awk '{print $1}'
-  )"
+  ambiguous_digest="$(canonical_lease_digest "$lease_dir")"
   printf 'AMBIGUOUS\t%s\tmissing-owner-metadata\n' "$ambiguous_digest"
   exit 0
 fi
-owner_digest="$(shasum -a 256 "$lease_dir/owner.json" | awk '{print $1}')"
-printf 'OCCUPIED\t%s\t' "$owner_digest"
+lease_digest="$(canonical_lease_digest "$lease_dir")"
+printf 'OCCUPIED\t%s\t' "$lease_digest"
 base64 < "$lease_dir/owner.json" | tr -d '\n'
 printf '\n'
 REMOTE
@@ -506,9 +519,36 @@ recovery_audit_root="$3"
 expected_digest="$4"
 reason_b64="$5"
 lease_state="$6"
+canonical_lease_digest() {
+  local directory="$1"
+  (
+    export LC_ALL=C
+    shopt -s nullglob dotglob
+    count=0
+    for entry in "$directory"/*; do
+      name="${entry##*/}"
+      [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]]
+      [[ -f "$entry" && ! -L "$entry" ]]
+      count=$((count + 1))
+      ((count <= 32))
+      if ! size="$(stat -f '%z' "$entry" 2>/dev/null)"; then
+        size="$(stat -c '%s' "$entry")"
+      fi
+      [[ "$size" =~ ^[0-9]+$ ]] && ((size <= 1048576))
+      case "$name" in
+        heartbeat|heartbeat.pid|heartbeat.log)
+          printf '%s\t%s\tvolatile-runtime-file\n' "${#name}" "$name"
+          ;;
+        *)
+          digest="$(shasum -a 256 "$entry" | awk '{print $1}')"
+          printf '%s\t%s\t%s\t%s\n' "${#name}" "$name" "$size" "$digest"
+          ;;
+      esac
+    done
+  ) | shasum -a 256 | awk '{print $1}'
+}
 if [[ "$lease_state" == "OCCUPIED" ]]; then
   [[ -f "$lease_dir/owner.json" ]] || { echo "owner metadata disappeared" >&2; exit 65; }
-  actual_digest="$(shasum -a 256 "$lease_dir/owner.json" | awk '{print $1}')"
 else
   [[ "$lease_state" == "AMBIGUOUS" && ! -e "$lease_dir/owner.json" ]] ||
     { echo "ambiguous lease state changed during recovery" >&2; exit 65; }
@@ -519,26 +559,8 @@ else
       kill -TERM "$heartbeat_pid" 2>/dev/null || true
     fi
   fi
-  actual_digest="$(
-    (
-      shopt -s nullglob dotglob
-      count=0
-      for entry in "$lease_dir"/*; do
-        name="${entry##*/}"
-        [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]]
-        [[ -f "$entry" && ! -L "$entry" ]]
-        count=$((count + 1))
-        ((count <= 32))
-        if ! size="$(stat -f '%z' "$entry" 2>/dev/null)"; then
-          size="$(stat -c '%s' "$entry")"
-        fi
-        [[ "$size" =~ ^[0-9]+$ ]] && ((size <= 1048576))
-        digest="$(shasum -a 256 "$entry" | awk '{print $1}')"
-        printf '%s\t%s\t%s\n' "${#name}" "$name" "$digest"
-      done
-    ) | shasum -a 256 | awk '{print $1}'
-  )"
 fi
+actual_digest="$(canonical_lease_digest "$lease_dir")"
 [[ "$actual_digest" == "$expected_digest" ]] ||
   { echo "lease digest changed during recovery" >&2; exit 65; }
 if pgrep -f 'nixmac\.app/Contents/MacOS/nixmac|/Contents/MacOS/nixmac|[c]ua-driver|[C]uaDriver\.app/Contents/MacOS' >/dev/null; then
@@ -575,6 +597,9 @@ printf '%s' "$reason_b64" | /usr/bin/base64 -D > "$audit_dir/operator-reason.txt
 printf '%s\n' "$lease_state" > "$audit_dir/lease-state.txt"
 printf '%s\n' "$expected_digest" > "$audit_dir/observed-lease-digest.txt"
 chmod 600 "$audit_dir"/*.txt
+final_digest="$(canonical_lease_digest "$lease_dir")"
+[[ "$final_digest" == "$expected_digest" ]] ||
+  { echo "lease digest changed before recovery delete" >&2; exit 65; }
 if [[ -f "$lease_dir/heartbeat.pid" ]]; then
   heartbeat_pid="$(cat "$lease_dir/heartbeat.pid")"
   if [[ "$heartbeat_pid" =~ ^[0-9]+$ ]] &&

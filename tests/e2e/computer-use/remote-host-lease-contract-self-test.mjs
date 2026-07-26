@@ -236,12 +236,44 @@ exit 64
     "a partial release must retain owner metadata for audited recovery",
   );
   const [, recoverableOccupiedDigest] = recoverableOccupied.stdout.trim().split("\t");
-  const recoveredUnexpectedEntry = invoke(
+  writeFileSync(
+    path.join(leaseRoot, "owner", "unexpected-metadata"),
+    "mutated after observed digest\n",
+  );
+  const changedOccupied = invoke("status", "owner-c", [], terminalEnv);
+  const [, changedOccupiedDigest] = changedOccupied.stdout.trim().split("\t");
+  assert.notEqual(
+    changedOccupiedDigest,
+    recoverableOccupiedDigest,
+    "occupied lease digest must bind every bounded direct lease file",
+  );
+  writeFileSync(path.join(leaseRoot, "owner", "heartbeat"), "1700000000\n");
+  const heartbeatChanged = invoke("status", "owner-c", [], terminalEnv);
+  const [, heartbeatChangedDigest] = heartbeatChanged.stdout.trim().split("\t");
+  assert.equal(
+    heartbeatChangedDigest,
+    changedOccupiedDigest,
+    "runtime heartbeat churn must not invalidate an otherwise unchanged recovery snapshot",
+  );
+  const refusedChangedSnapshot = invoke(
     "recover",
     "owner-c",
     [
       "--observed-lease-digest",
       recoverableOccupiedDigest,
+      "--operator-reason",
+      "changed snapshot must fail",
+    ],
+    terminalEnv,
+  );
+  assert.equal(refusedChangedSnapshot.status, 65, refusedChangedSnapshot.stderr);
+  assert.match(refusedChangedSnapshot.stderr, /digest changed/i);
+  const recoveredUnexpectedEntry = invoke(
+    "recover",
+    "owner-c",
+    [
+      "--observed-lease-digest",
+      changedOccupiedDigest,
       "--operator-reason",
       "unexpected metadata recovery",
     ],
