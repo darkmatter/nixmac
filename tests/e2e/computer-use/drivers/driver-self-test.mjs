@@ -35,6 +35,17 @@ assert.deepEqual(state.target, {
   windowId: 202,
   snapshotId: "turn-1",
 });
+assert.equal(Object.isFrozen(state), true);
+assert.equal(Object.isFrozen(state.target), true);
+assert.equal(Object.isFrozen(state.metadata), true);
+assert.throws(
+  () => normalizeVisibleState({ text: 7 }),
+  /visible state text must be a string/,
+);
+assert.throws(
+  () => normalizeVisibleState({ imageBase64: 7 }),
+  /visible state imageBase64 must be a string/,
+);
 assert.throws(() => validateRuntimeDriver({}), /connect/);
 const driver = {
   connect() {},
@@ -46,16 +57,64 @@ const driver = {
 };
 assert.equal(validateRuntimeDriver(driver), driver);
 
-assert.deepEqual(normalizeActionResult({ ok: true, text: "clicked" }), {
+const actionResult = normalizeActionResult({ ok: true, text: "clicked" });
+assert.deepEqual(actionResult, {
   ok: true,
   text: "clicked",
   isError: false,
 });
+assert.equal(Object.isFrozen(actionResult), true);
 assert.deepEqual(normalizeActionResult({ ok: true, isError: true }), {
   ok: false,
   text: "",
   isError: true,
 });
+assert.deepEqual(normalizeActionResult(), {
+  ok: false,
+  text: "",
+  isError: false,
+});
+
+function assertUnknownAddressKind(kind, options) {
+  assert.deepEqual(validateElementAddress({ kind }, options), {
+    ok: false,
+    issues: [
+      {
+        code: "unknown_address_kind",
+        path: "kind",
+        message: `Unknown element address kind: ${kind}`,
+      },
+    ],
+    normalized: null,
+  });
+}
+
+assertUnknownAddressKind("constructor");
+assertUnknownAddressKind("toString");
+assertUnknownAddressKind("custom", {
+  additionalAddressValidators: { custom: true },
+});
+
+const explicitConstructorValidator = (address) => ({
+  ok: true,
+  issues: [],
+  normalized: { ...address, registered: true },
+});
+assert.deepEqual(
+  validateElementAddress(
+    { kind: "constructor" },
+    {
+      additionalAddressValidators: {
+        constructor: explicitConstructorValidator,
+      },
+    },
+  ),
+  {
+    ok: true,
+    issues: [],
+    normalized: { kind: "constructor", registered: true },
+  },
+);
 
 const cuaAddressValidators = {
   "cua-element-index": validateCuaElementIndexAddress,

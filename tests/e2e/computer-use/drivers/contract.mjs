@@ -179,9 +179,17 @@ export function validateElementAddress(address, { additionalAddressValidators = 
       normalized: null,
     };
   }
-  const validator =
-    builtInAddressValidators[address.kind] || additionalAddressValidators[address.kind];
-  if (!validator) {
+  const builtInValidator = Object.hasOwn(builtInAddressValidators, address.kind)
+    ? builtInAddressValidators[address.kind]
+    : null;
+  const additionalValidator =
+    additionalAddressValidators !== null &&
+    ["object", "function"].includes(typeof additionalAddressValidators) &&
+    Object.hasOwn(additionalAddressValidators, address.kind)
+      ? additionalAddressValidators[address.kind]
+      : null;
+  const validator = builtInValidator ?? additionalValidator;
+  if (typeof validator !== "function") {
     return {
       ok: false,
       issues: [
