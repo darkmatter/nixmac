@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "suiteVersion": "computer-use-v1",
+  "scenarioContractVersion": 2,
+  "requiredScenarioKeys": [
+    "buildBoundary",
+    "console",
+    "customizationSaveRollback",
+    "diff",
+    "discard",
+    "feedback",
+    "history",
+    "homebrewSaveRollback",
+    "launch",
+    "mainCoverageFreshness",
+    "prSpecificCoverage",
+    "reportInspection",
+    "reportIssue",
+    "review",
+    "rollbackCleanup",
+    "saveFlow",
+    "settingsAIModels",
+    "settingsAPIKeys",
+    "settingsGeneral",
+    "settingsPreferences",
+    "storybookPreview",
+    "suggestionCards",
+    "summary",
+    "typedIntent",
+    "updateBanner",
+    "visualCoverage",
+    "visualProofQuality"
+  ],
+  "optionalScenarioKeys": [
+    "adversarialOutOfBounds",
+    "evolvedScreenshotsDefaults",
+    "inlineQuestionAnswer"
+  ],
+  "scenarioFields": [
+    "accessibilityRisk",
+    "accessibilityRiskReason",
+    "assertionTypes",
+    "evidenceStrength",
+    "evidenceStrengthReason",
+    "failureClass",
+    "failureClassReason",
+    "label",
+    "notes",
+    "status"
+  ]
+}

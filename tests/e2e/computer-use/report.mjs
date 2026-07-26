@@ -38,6 +38,26 @@ export function finalCleanupAttestationHtml(cleanup) {
   return `<section id="final-cleanup-attestation" class="panel" data-cleanup-status="${status}"><h2>${heading}</h2><p><strong>Status: ${status}</strong></p><p>${escapeHtml(cleanup?.note || "")}</p></section>`;
 }
 
+export function finalResultAttestationHtml({ identity, attempt, counts, verdict }) {
+  const normalizedCounts = {
+    passed: counts?.passed ?? counts?.pass,
+    failed: counts?.failed ?? counts?.fail,
+    inconclusive: counts?.inconclusive,
+    not_required: counts?.not_required,
+  };
+  if (
+    !identity?.jobId ||
+    !identity?.scenarioCatalogDigest ||
+    !attempt?.actionsRunId ||
+    !Number.isInteger(attempt?.number) ||
+    !["pass", "fail", "inconclusive"].includes(verdict) ||
+    Object.values(normalizedCounts).some((value) => !Number.isInteger(value) || value < 0)
+  ) {
+    throw new Error("final result attestation input is incomplete");
+  }
+  return `<section id="final-result-attestation" class="panel" data-job-id="${escapeHtml(identity.jobId)}" data-actions-run-id="${escapeHtml(attempt.actionsRunId)}" data-attempt="${attempt.number}" data-verdict="${verdict}" data-scenario-catalog-digest="${escapeHtml(identity.scenarioCatalogDigest)}"><h2>Verified result attestation</h2><p><strong>Verdict: ${verdict}</strong></p><p>Scenarios: ${normalizedCounts.passed} passed, ${normalizedCounts.failed} failed, ${normalizedCounts.inconclusive} inconclusive, ${normalizedCounts.not_required} not required.</p></section>`;
+}
+
 function slugify(value) {
   return String(value || "")
     .toLowerCase()

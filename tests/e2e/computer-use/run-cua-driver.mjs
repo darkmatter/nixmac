@@ -354,6 +354,7 @@ async function runSelfTest() {
     NIXMAC_E2E_HARNESS_SHA: "d".repeat(40),
     NIXMAC_E2E_ACTIONS_RUN_ID: "123456",
     NIXMAC_E2E_ACTIONS_JOB_ID: "789012",
+    NIXMAC_E2E_ATTESTATION_NONCE: "d".repeat(64),
     NIXMAC_E2E_ATTEMPT: "1",
     NIXMAC_E2E_RUNNER_NAME: "mac-e2e-01",
     NIXMAC_E2E_RUNNER_BACKEND: "cilicon_tart",

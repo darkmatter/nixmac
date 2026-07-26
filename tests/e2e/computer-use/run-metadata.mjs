@@ -6,7 +6,12 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { withEvidenceTreeMutation } from "./evidence-guard.mjs";
-import { escapeReportHtml, finalCleanupAttestationHtml } from "./report.mjs";
+import {
+  escapeReportHtml,
+  finalCleanupAttestationHtml,
+  finalResultAttestationHtml,
+} from "./report.mjs";
+import { scenarioCatalogDigest, suiteContract } from "./suite-contract.mjs";
 
 const PREFLIGHT_FIELDS = Object.freeze([
   "jobId",
@@ -17,6 +22,7 @@ const PREFLIGHT_FIELDS = Object.freeze([
   "harnessSha",
   "actionsRunId",
   "actionsJobId",
+  "attestationNonceDigest",
   "attemptNumber",
   "runnerName",
   "runnerBackend",
@@ -82,6 +88,14 @@ function requirePositiveInteger(value, field) {
   return value;
 }
 
+function attestationNonceDigest(value) {
+  requireString(value, "attestation nonce");
+  if (!/^[A-Za-z0-9_-]{32,128}$/.test(value)) {
+    throw new Error("attestation nonce must contain 32-128 safe characters");
+  }
+  return `sha256:${createHash("sha256").update(value).digest("hex")}`;
+}
+
 function requireTrue(value, field) {
   if (value !== true) throw new Error(`${field} must be true`);
   return true;
@@ -122,6 +136,9 @@ function validatePreflightInput(input) {
     throw new Error("appArtifactSha must match mergeSha");
   }
   requireString(input.suiteVersion, "suiteVersion");
+  if (input.suiteVersion !== suiteContract.suiteVersion) {
+    throw new Error(`suiteVersion must be ${suiteContract.suiteVersion}`);
+  }
   const expectedJobId = canonicalJobId(input);
   if (input.jobId !== expectedJobId) {
     throw new Error(`jobId must match canonical job identity ${expectedJobId}`);
@@ -129,6 +146,9 @@ function validatePreflightInput(input) {
   requireGitSha(input.harnessSha, "harnessSha");
   requireString(input.actionsRunId, "actionsRunId");
   requireString(input.actionsJobId, "actionsJobId");
+  requireSha256(input.attestationNonceDigest, "attestationNonceDigest", {
+    prefix: "required",
+  });
   requirePositiveInteger(input.attemptNumber, "attemptNumber");
   requireString(input.runnerName, "runnerName");
   if (!BACKENDS.has(input.runnerBackend)) {
@@ -270,6 +290,7 @@ function preflightSidecars(input, { permissionsStatus = "granted" } = {}) {
       repo: input.repo,
       mergeSha: input.mergeSha,
       suiteVersion: input.suiteVersion,
+      scenarioCatalogDigest,
       harnessSha: input.harnessSha,
       runnerName: input.runnerName,
       runnerBackend: input.runnerBackend,
@@ -306,6 +327,7 @@ function preflightSidecars(input, { permissionsStatus = "granted" } = {}) {
       number: input.attemptNumber,
       actionsRunId: input.actionsRunId,
       actionsJobId: input.actionsJobId,
+      attestationNonceDigest: input.attestationNonceDigest,
       finalizationMode: input.finalizationMode,
       startedAt: input.startedAt,
       endedAt: null,
@@ -350,6 +372,7 @@ export function preflightInputFromEnvironment({
     harnessSha: env.NIXMAC_E2E_HARNESS_SHA || "",
     actionsRunId: env.NIXMAC_E2E_ACTIONS_RUN_ID || env.GITHUB_RUN_ID || "",
     actionsJobId: env.NIXMAC_E2E_ACTIONS_JOB_ID || "",
+    attestationNonceDigest: attestationNonceDigest(env.NIXMAC_E2E_ATTESTATION_NONCE || ""),
     attemptNumber: Number(env.NIXMAC_E2E_ATTEMPT || env.GITHUB_RUN_ATTEMPT || 0),
     runnerName: env.NIXMAC_E2E_RUNNER_NAME || env.RUNNER_NAME || "",
     runnerBackend: env.NIXMAC_E2E_RUNNER_BACKEND || "",
@@ -632,6 +655,7 @@ function mergePreflightSidecars(identity, permissions, artifact, attempt) {
     harnessSha: identity.harnessSha,
     actionsRunId: attempt.actionsRunId,
     actionsJobId: attempt.actionsJobId,
+    attestationNonceDigest: attempt.attestationNonceDigest,
     attemptNumber: attempt.number,
     runnerName: identity.runnerName,
     runnerBackend: identity.runnerBackend,
@@ -678,6 +702,9 @@ async function readAndValidateRunIdentity(
     ["attempt", attempt],
   ]) {
     if (sidecar.version !== 1) throw new Error(`${name} sidecar version must be 1`);
+  }
+  if (identity.scenarioCatalogDigest !== scenarioCatalogDigest) {
+    throw new Error("runner identity scenario catalog digest does not match the trusted contract");
   }
   if (
     permissions.status !== "granted" ||
@@ -1398,6 +1425,53 @@ async function writeFinalCleanupArtifacts(runDir, cleanup) {
   await writeTextAtomic(runDir, reportPath, nextReport);
 }
 
+async function writeFinalResultArtifacts(runDir) {
+  const [identity, attempt, state] = await Promise.all([
+    readJson(runDir, "runner/identity.json"),
+    readJson(runDir, "attempt.json"),
+    readJson(runDir, "state.json"),
+  ]);
+  if (
+    attempt.status !== "final" ||
+    attempt.finalized !== true ||
+    attempt.verdict !== state.verdict
+  ) {
+    throw new Error("final result attestation requires matching terminal attempt and state");
+  }
+  const counts = { passed: 0, failed: 0, inconclusive: 0, not_required: 0 };
+  const statusToCount = {
+    pass: "passed",
+    fail: "failed",
+    inconclusive: "inconclusive",
+    not_required: "not_required",
+  };
+  for (const scenario of Object.values(state.scenarios || {})) {
+    const countKey = statusToCount[scenario?.status];
+    if (!countKey) throw new Error("final result attestation found an invalid scenario status");
+    counts[countKey] += 1;
+  }
+  const reportPath = path.join(runDir, "index.html");
+  const report = await readFile(reportPath, "utf8");
+  if (report.includes('id="final-result-attestation"')) {
+    throw new Error("final result report attestation already exists");
+  }
+  const attestation = finalResultAttestationHtml({
+    identity,
+    attempt,
+    counts,
+    verdict: state.verdict,
+  });
+  const insertionPoint = report.includes("</body>")
+    ? "</body>"
+    : report.includes("</html>")
+      ? "</html>"
+      : "";
+  const nextReport = insertionPoint
+    ? report.replace(insertionPoint, `${attestation}\n${insertionPoint}`)
+    : `${report}\n${attestation}\n`;
+  await writeTextAtomic(runDir, reportPath, nextReport);
+}
+
 async function finalizeAttempt(
   runDir,
   { status, finalized, verdict, completeLifecycle = false, capture },
@@ -1470,12 +1544,18 @@ async function stageControllerEvidenceAdmitted(
 }
 
 async function sealEvidence(runDir, { trustedOwnerToken = "" } = {}) {
-  const { createEvidenceManifest, verifyEvidenceManifest } =
+  const { createCanonicalEvidenceArchive, verifyCanonicalEvidenceArchive } =
     await import("./evidence-manifest.mjs");
   const options = trustedOwnerToken ? { trustedOwnerToken } : {};
-  const manifest = await createEvidenceManifest(runDir, options);
-  await verifyEvidenceManifest(runDir, options);
-  return manifest;
+  const canonical = await createCanonicalEvidenceArchive(runDir, options);
+  const verified = await verifyCanonicalEvidenceArchive(canonical.archive.archivePath, {
+    digestPath: canonical.archive.digestPath,
+    ...options,
+  });
+  if (JSON.stringify(verified) !== JSON.stringify(canonical)) {
+    throw new Error("canonical evidence archive changed between creation and final verification");
+  }
+  return canonical;
 }
 
 export async function finalizeLocalEvidence(runDir, options, probes = {}) {
@@ -1518,6 +1598,7 @@ async function finalizeLocalEvidenceAdmitted(
     completeLifecycle: true,
     capture: normalizedCapture,
   });
+  await writeFinalResultArtifacts(runDir);
 }
 
 export async function writeRunCleanup(runDir, cleanup) {
@@ -1599,6 +1680,7 @@ async function writeControllerFinalizationAdmitted(
     completeLifecycle: true,
     capture: normalizedCapture,
   });
+  await writeFinalResultArtifacts(runDir);
   return {
     cleanup: await readJson(runDir, "runner/cleanup.json"),
     cleanupProbe: await readJson(runDir, "runner/cleanup-probe.json"),
@@ -1643,7 +1725,7 @@ async function main() {
     JSON.parse(await readFile(path.resolve(cleanupProbeFile), "utf8")),
     JSON.parse(await readFile(path.resolve(hostLeaseFile), "utf8")),
   ]);
-  await writeControllerFinalization(path.resolve(runDir), {
+  const canonical = await finalizeControllerEvidence(path.resolve(runDir), {
     cleanup,
     cleanupProbe,
     hostLease,
@@ -1653,8 +1735,11 @@ async function main() {
   console.log(
     JSON.stringify({
       finalized: true,
-      manifestCreated: false,
+      manifestCreated: true,
       runDir: path.resolve(runDir),
+      archivePath: canonical.archive.archivePath,
+      digestPath: canonical.archive.digestPath,
+      archiveSha256: canonical.archive.sha256,
     }),
   );
 }

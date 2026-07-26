@@ -1296,7 +1296,12 @@ function evidenceStrengthForScenario(state, key) {
 }
 
 function classifyScenarioResult(key, scenario) {
-  if (!scenario || scenario.status === "pass") return { class: "", reason: "" };
+  if (!scenario) {
+    return { class: "inconclusive", reason: "Scenario result was not recorded." };
+  }
+  if (scenario.status === "pass") {
+    return { class: "none", reason: "Scenario passed without a classified failure." };
+  }
   const note = scenario.notes?.join(" ") || "";
   if (/api key|credential|unauthorized|401|missing key|invalid key/i.test(note)) {
     return {
@@ -5685,7 +5690,7 @@ async function runSelfTest() {
   const coverageFreshness = buildCoverageFreshness();
   assert.equal(
     coverageFreshness.candidateFiles,
-    952,
+    956,
     "coverage freshness should preserve the full shared PR-visible behavior universe",
   );
   const coverageManifest = loadCoverageManifest();
