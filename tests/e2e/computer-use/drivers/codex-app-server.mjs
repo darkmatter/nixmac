@@ -47,10 +47,13 @@ export class CodexAppServerDriver {
   }
 
   async setValue({ app, elementIndex, value }) {
+    if (typeof value !== "string") {
+      throw new TypeError("Codex app-server setValue requires a string value");
+    }
     const response = await this.client.tool("set_value", {
       app,
       element_index: elementIndex,
-      value: String(value),
+      value,
     });
     const text = contentText(response);
     const isError = setValueResponseIndicatesFailure(response, text);

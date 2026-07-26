@@ -294,7 +294,12 @@ class MockWebSocket {
         };
       } else if (tool === "set_value") {
         result = {
-          content: [{ type: "text", text: "Set element 8 value" }],
+          content: [
+            {
+              type: "text",
+              text: `Set element ${args.element_index} value`,
+            },
+          ],
           structuredContent: null,
           isError: false,
         };
@@ -339,14 +344,24 @@ const codexClicked = await codexDriver.click({
   elementIndex: 7,
 });
 assert.equal(codexClicked.ok, true);
-const codexSetValue = await codexDriver.setValue({
+const codexSetEmptyValue = await codexDriver.setValue({
   app: "com.darkmatter.nixmac",
   elementIndex: 8,
-  value: 42,
+  value: "",
 });
-assert.deepEqual(codexSetValue, {
+assert.deepEqual(codexSetEmptyValue, {
   ok: true,
   text: "Set element 8 value",
+  isError: false,
+});
+const codexSetNonEmptyValue = await codexDriver.setValue({
+  app: "com.darkmatter.nixmac",
+  elementIndex: 9,
+  value: "updated value",
+});
+assert.deepEqual(codexSetNonEmptyValue, {
+  ok: true,
+  text: "Set element 9 value",
   isError: false,
 });
 assert.deepEqual(
@@ -354,6 +369,7 @@ assert.deepEqual(
   [
     "initialize",
     "thread/start",
+    "mcpServer/tool/call",
     "mcpServer/tool/call",
     "mcpServer/tool/call",
     "mcpServer/tool/call",
@@ -393,12 +409,52 @@ assert.deepEqual(
       arguments: {
         app: "com.darkmatter.nixmac",
         element_index: 8,
-        value: "42",
+        value: "",
+      },
+    },
+    {
+      server: "computer-use",
+      threadId: "thread-codex-driver",
+      tool: "set_value",
+      arguments: {
+        app: "com.darkmatter.nixmac",
+        element_index: 9,
+        value: "updated value",
       },
     },
   ],
   "Codex driver should preserve tool names, thread ID, and argument shapes",
 );
+
+for (const [label, request] of [
+  [
+    "missing",
+    { app: "com.darkmatter.nixmac", elementIndex: 10 },
+  ],
+  [
+    "null",
+    { app: "com.darkmatter.nixmac", elementIndex: 10, value: null },
+  ],
+  [
+    "non-string",
+    { app: "com.darkmatter.nixmac", elementIndex: 10, value: 42 },
+  ],
+]) {
+  const messageCountBeforeInvalidValue = codexMessages.length;
+  await assert.rejects(
+    () => codexDriver.setValue(request),
+    {
+      name: "TypeError",
+      message: "Codex app-server setValue requires a string value",
+    },
+    `Codex driver should reject a ${label} setValue value`,
+  );
+  assert.equal(
+    codexMessages.length,
+    messageCountBeforeInvalidValue,
+    `Codex driver should not send a tool call for a ${label} setValue value`,
+  );
+}
 
 for (const [method, request, expectedText] of [
   [
