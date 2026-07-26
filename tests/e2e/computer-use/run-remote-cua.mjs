@@ -9,6 +9,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { artifactFileIssue, artifactForLabel, pngDimensions } from "./artifact-utils.mjs";
 import { dispatchRemoteCuaCommand, remoteCuaUsage } from "./cli.mjs";
+import { buildManifestPrFocus } from "./coverage-focus.mjs";
 import {
   builtInElementAddressKinds,
   createDriverDescriptor,
@@ -312,60 +313,35 @@ function evolvedCaseStrategy(extraCases = enabledExtraEvolvedCases()) {
 
 function buildPrFocus() {
   const changedFiles = splitEnvList(process.env.NIXMAC_E2E_PR_CHANGED_FILES || "");
-  const userVisibleFiles = changedFiles.filter((file) =>
-    /^(apps\/native\/src\/(?:[^/]+\.(?:css|ts|tsx)|(?:components|hooks|stores|lib|styles)\/)|apps\/native\/src-tauri|tests\/e2e\/computer-use|\.github\/workflows\/computer-use-e2e\.yml)/.test(
-      file,
-    ),
-  );
-  const scenarioKeys = new Set();
-  for (const file of userVisibleFiles) {
-    if (/^apps\/native\/src\/[^/]+\.(?:css|ts|tsx)$/i.test(file)) {
-      scenarioKeys.add("launch");
-      scenarioKeys.add("visualCoverage");
-    }
-    if (/settings|prefs|api-keys|store|commands\.rs|store\.rs/i.test(file)) {
-      scenarioKeys.add("settingsGeneral");
-      scenarioKeys.add("settingsAIModels");
-      scenarioKeys.add("settingsAPIKeys");
-      scenarioKeys.add("settingsPreferences");
-    }
-    if (/system-defaults|apply_system_defaults|scanner\.rs/i.test(file)) {
-      scenarioKeys.add("customizationSaveRollback");
-    }
-    if (/homebrew-badge|use-homebrew-diff|mac\/homebrew\.rs/i.test(file)) {
-      scenarioKeys.add("homebrewSaveRollback");
-    }
-    if (
-      /evolve|use-apply|use-rollback|rebuild|merge|commit|history|rollback|git|finalize/i.test(file)
-    ) {
-      scenarioKeys.add("review");
-      scenarioKeys.add("summary");
-      scenarioKeys.add("diff");
-      scenarioKeys.add("buildBoundary");
-      scenarioKeys.add("saveFlow");
-      scenarioKeys.add("rollbackCleanup");
-      scenarioKeys.add("history");
-    }
-    if (/feedback|report-issue|console|history/i.test(file)) {
-      scenarioKeys.add("history");
-      scenarioKeys.add("console");
-      scenarioKeys.add("feedback");
-      scenarioKeys.add("reportIssue");
-    }
-    if (/tests\/e2e\/computer-use|computer-use-e2e\.yml/i.test(file)) {
-      scenarioKeys.add("visualProofQuality");
-      scenarioKeys.add("reportInspection");
-    }
-  }
+  const manifest = loadCoverageManifest();
+  const focus = buildManifestPrFocus({
+    changedFiles,
+    manifest,
+    specialScenarioKeysForFile(file) {
+      const scenarioKeys = [];
+      if (/^apps\/native\/src\/[^/]+\.(?:css|ts|tsx)$/i.test(file)) {
+        scenarioKeys.push("launch", "visualCoverage");
+      }
+      if (/^tests\/e2e\/computer-use\/|^\.github\/workflows\/computer-use-e2e\.yml$/i.test(file)) {
+        scenarioKeys.push("visualProofQuality", "reportInspection");
+      }
+      return scenarioKeys;
+    },
+    scenarioSuggestionForFile(file, matchedSurfaces) {
+      const waiver = matchedSurfaces.find((surface) => surface.waiver)?.waiver;
+      if (waiver?.exitCriteria) {
+        return `Add a dedicated Computer Use scenario for ${file}: ${waiver.exitCriteria}`;
+      }
+      return `Add or extend a Computer Use scenario that exercises ${file}, then map it in coverage-manifest.json.`;
+    },
+  });
   return {
     eventName: process.env.GITHUB_EVENT_NAME || process.env.NIXMAC_E2E_PR_EVENT || "",
     number: process.env.NIXMAC_E2E_PR_NUMBER || process.env.GITHUB_PR_NUMBER || "",
     title: process.env.NIXMAC_E2E_PR_TITLE || "",
     headRef: process.env.NIXMAC_E2E_PR_HEAD_REF || process.env.GITHUB_HEAD_REF || "",
     baseRef: process.env.NIXMAC_E2E_PR_BASE_REF || process.env.GITHUB_BASE_REF || "",
-    changedFiles,
-    userVisibleFiles,
-    scenarioKeys: [...scenarioKeys],
+    ...focus,
     configured: Boolean(
       process.env.NIXMAC_E2E_PR_NUMBER ||
       process.env.GITHUB_PR_NUMBER ||
@@ -5513,6 +5489,64 @@ async function runSelfTest() {
     [],
     "non-user-visible changed files must not create PR scenario mappings",
   );
+  const waiverOnlyFiles = [
+    "apps/native/src-tauri/src/storage/store.rs",
+    "apps/native/src-tauri/src/storage/credential_store.rs",
+    "apps/native/src-tauri/src/ai/providers/cli.rs",
+    "apps/native/src-tauri/src/ai/providers/ollama.rs",
+    "apps/native/src-tauri/src/commands/updater.rs",
+  ];
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = waiverOnlyFiles.join("\n");
+  const waiverOnlyPrFocus = buildPrFocus();
+  assert.deepEqual(
+    waiverOnlyPrFocus.scenarioKeys,
+    [],
+    "waiver-only source files must not inherit exercised scenario coverage",
+  );
+  assert.deepEqual(
+    waiverOnlyPrFocus.userVisibleFiles,
+    waiverOnlyFiles,
+    "waiver-only source files should remain visible to PR focus",
+  );
+  assert.deepEqual(
+    waiverOnlyPrFocus.unmappedUserVisibleFiles,
+    waiverOnlyFiles,
+    "waiver-only source files should remain explicit scenario debt",
+  );
+  assert.deepEqual(
+    [
+      ...new Set(
+        waiverOnlyPrFocus.matchedSurfaces
+          .filter((surface) => Boolean(surface.waiver))
+          .map((surface) => surface.id),
+      ),
+    ],
+    ["settings-unexercised", "alternate-ai-providers", "updater-runtime"],
+    "waiver-only source files should retain their manifest waiver ownership",
+  );
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = [
+    "apps/native/src/components/widget/settings/settings-dialog.tsx",
+    "apps/native/src-tauri/src/commands/system_defaults.rs",
+    "apps/native/src-tauri/src/commands/homebrew.rs",
+    "apps/native/src-tauri/src/summarize/build_prompt.rs",
+  ].join("\n");
+  const manifestClaimingPrFocus = buildPrFocus();
+  for (const scenarioKey of [
+    "settingsGeneral",
+    "settingsAIModels",
+    "settingsAPIKeys",
+    "settingsPreferences",
+    "customizationSaveRollback",
+    "homebrewSaveRollback",
+    "summary",
+    "saveFlow",
+  ]) {
+    assert.equal(
+      manifestClaimingPrFocus.scenarioKeys.includes(scenarioKey),
+      true,
+      `claiming manifest surfaces should continue to map ${scenarioKey}`,
+    );
+  }
   process.env.NIXMAC_E2E_PR_CHANGED_FILES =
     "apps/native/src/App.tsx\napps/native/src/index.css\napps/native/src/preview-indicator-window.tsx";
   const rootPrFocus = buildPrFocus();
@@ -5552,6 +5586,19 @@ async function runSelfTest() {
     false,
     "PR focus coverage must not require itself",
   );
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES =
+    ".github/workflows/computer-use-e2e.yml\ntests/e2e/computer-use/report.mjs";
+  const workflowAndReportPrFocus = buildPrFocus();
+  assert.equal(
+    workflowAndReportPrFocus.scenarioKeys.includes("visualProofQuality"),
+    true,
+    "Computer Use workflow and report changes should focus visual proof quality",
+  );
+  assert.equal(
+    workflowAndReportPrFocus.scenarioKeys.includes("reportInspection"),
+    true,
+    "Computer Use workflow and report changes should focus report inspection",
+  );
   if (previousChangedFiles === undefined) delete process.env.NIXMAC_E2E_PR_CHANGED_FILES;
   else process.env.NIXMAC_E2E_PR_CHANGED_FILES = previousChangedFiles;
 
@@ -5586,6 +5633,30 @@ async function runSelfTest() {
     prCoverageState.scenarios.prSpecificCoverage.status,
     "fail",
     "PR focus coverage should fail when a mapped scenario fails",
+  );
+  const waiverOnlyCoverageState = ensureCurrentSchema({
+    scenarios: {},
+    claims: [],
+    prFocus: { ...waiverOnlyPrFocus, configured: true },
+  });
+  for (const scenarioKey of [
+    "settingsGeneral",
+    "settingsAIModels",
+    "settingsAPIKeys",
+    "settingsPreferences",
+  ]) {
+    updateScenario(
+      waiverOnlyCoverageState,
+      scenarioKey,
+      "pass",
+      "Previously exercised Settings proof passed.",
+    );
+  }
+  updatePrSpecificCoverage(waiverOnlyCoverageState);
+  assert.equal(
+    waiverOnlyCoverageState.scenarios.prSpecificCoverage.status,
+    "inconclusive",
+    "waiver-only changes must not false-pass from unrelated previously exercised Settings proof",
   );
 
   const renderRunDir = path.join(os.tmpdir(), `nixmac-e2e-self-test-${Date.now()}`);
