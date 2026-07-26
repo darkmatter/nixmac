@@ -1,18 +1,12 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
-const COVERAGE_WALK_PRUNED_DIRECTORIES = new Set([
-  ".git",
-  ".next",
-  ".turbo",
-  "build",
-  "coverage",
-  "dist",
-  "node_modules",
-  "storybook-static",
-  "target",
-]);
-const COVERAGE_WALK_IGNORED_FILES = new Set([".DS_Store"]);
+const COVERAGE_IGNORED_PATH_PATTERNS = [
+  /(?:^|\/)\.git(?:\/|$)/,
+  /(?:^|\/)node_modules(?:\/|$)/,
+  /^apps\/native\/src-tauri\/target(?:\/|$)/,
+  /(?:^|\/)\.DS_Store$/,
+];
 
 export class CoverageManifestError extends Error {
   constructor(message, errors = []) {
@@ -26,8 +20,14 @@ export function matchesAnyPattern(value, patterns = []) {
   return patterns.some((pattern) => new RegExp(pattern).test(value));
 }
 
+export function isCoverageIgnoredPath(file) {
+  const normalized = String(file ?? "").replaceAll("\\", "/").replace(/^\.\//, "");
+  return COVERAGE_IGNORED_PATH_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
 export function isCoverageCandidateFile(manifest, file) {
   return (
+    !isCoverageIgnoredPath(file) &&
     matchesAnyPattern(file, manifest.candidateIncludes ?? []) &&
     !matchesAnyPattern(file, manifest.candidateExcludes ?? [])
   );
@@ -43,13 +43,11 @@ export function walkCoverageFiles(repoRoot, roots = []) {
     for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
       a.name.localeCompare(b.name),
     )) {
-      if (entry.isDirectory() && COVERAGE_WALK_PRUNED_DIRECTORIES.has(entry.name)) continue;
-      if (entry.isFile() && COVERAGE_WALK_IGNORED_FILES.has(entry.name)) continue;
       const fullPath = path.join(dir, entry.name);
+      const relativePath = path.relative(repoRoot, fullPath).replaceAll(path.sep, "/");
+      if (isCoverageIgnoredPath(relativePath)) continue;
       if (entry.isDirectory()) visit(fullPath);
-      else if (entry.isFile()) {
-        files.push(path.relative(repoRoot, fullPath).replaceAll(path.sep, "/"));
-      }
+      else if (entry.isFile()) files.push(relativePath);
     }
   };
   for (const root of roots) {

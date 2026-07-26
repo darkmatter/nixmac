@@ -125,26 +125,67 @@ export function coverageManifestSelfTest() {
       mkdirSync(path.dirname(fullPath), { recursive: true });
       writeFileSync(fullPath, "fixture");
     };
-    for (const file of [
+    const walkFixtureFiles = [
       "apps/native/src/features/untracked-adversarial.ts",
+      "apps/native/src/build/new-product-flow.ts",
+      "apps/native/src/dist/new-product-flow.ts",
+      "apps/native/src/coverage/new-product-flow.ts",
       "apps/native/src-tauri/prompts/untracked-adversarial.md",
       "apps/native/src/node_modules/pkg/ignored.ts",
-      "apps/native/src/target/ignored.ts",
-      "apps/native/src/dist/ignored.ts",
-      "apps/native/src/build/ignored.ts",
       "apps/native/src/.git/ignored.ts",
       "apps/native/src/.DS_Store",
       "apps/native/src-tauri/target/debug/ignored.rs",
-    ]) {
+    ];
+    for (const file of walkFixtureFiles) {
       writeWalkFixture(file);
     }
+    for (const file of [
+      "apps/native/src/build/new-product-flow.ts",
+      "apps/native/src/dist/new-product-flow.ts",
+      "apps/native/src/coverage/new-product-flow.ts",
+      "apps/native/src/features/untracked-adversarial.ts",
+      "apps/native/src-tauri/prompts/untracked-adversarial.md",
+    ]) {
+      assert.equal(
+        isCoverageCandidateFile(REAL_MANIFEST, file),
+        true,
+        `${file} should remain a fail-closed source candidate`,
+      );
+    }
+    for (const file of [
+      "apps/native/src/.DS_Store",
+      "apps/native/src/.git/ignored.ts",
+      "apps/native/src/node_modules/pkg/ignored.ts",
+      "apps/native/src-tauri/target/debug/ignored.rs",
+    ]) {
+      assert.equal(
+        isCoverageCandidateFile(REAL_MANIFEST, file),
+        false,
+        `${file} should be rejected by the shared generated/dependency path policy`,
+      );
+    }
+    const walkedFixtureFiles = walkCoverageFiles(walkRoot, [
+      "apps/native/src",
+      "apps/native/src-tauri",
+    ]);
+    const predicateFixtureFiles = walkFixtureFiles.filter((file) =>
+      isCoverageCandidateFile(REAL_MANIFEST, file),
+    );
     assert.deepEqual(
-      walkCoverageFiles(walkRoot, ["apps/native/src", "apps/native/src-tauri"]),
+      [...walkedFixtureFiles].sort(),
+      [...predicateFixtureFiles].sort(),
+      "coverage walking and direct PR classification should share one generated-path policy",
+    );
+    assert.deepEqual(
+      walkedFixtureFiles,
       [
+        "apps/native/src/build/new-product-flow.ts",
+        "apps/native/src/coverage/new-product-flow.ts",
+        "apps/native/src/dist/new-product-flow.ts",
         "apps/native/src/features/untracked-adversarial.ts",
         "apps/native/src-tauri/prompts/untracked-adversarial.md",
       ],
-      "coverage walking should prune generated/dependency trees while preserving untracked adversarial source files",
+      "coverage walking should retain source namespaces while pruning only explicit generated/dependency paths",
     );
   } finally {
     rmSync(walkRoot, { recursive: true, force: true });
