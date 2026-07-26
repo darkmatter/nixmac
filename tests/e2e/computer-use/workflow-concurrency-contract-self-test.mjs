@@ -384,6 +384,31 @@ assert.throws(
   "automatic contract validation must reject an installer shell that can skip the pinned command",
 );
 
+for (const [scope, original, mutation] of [
+  [
+    "workflow-defaults",
+    "jobs:",
+    "defaults:\n  run:\n    shell: bash -c 'exit 0' -- {0}\njobs:",
+  ],
+  [
+    "job-defaults",
+    "  git-hooks:",
+    "  git-hooks:\n    defaults:\n      run:\n        shell: bash -c 'exit 0' -- {0}",
+  ],
+]) {
+  assert.throws(
+    () =>
+      assertAutomaticConcurrencyValidationContract({
+        workflowName: `${scope}-bypass.yaml`,
+        source: automaticWorkflowYaml().replace(original, mutation),
+        jobId: "git-hooks",
+        stepName: "Run Computer Use workflow contracts",
+      }),
+    new RegExp(`${scope}-bypass\\.yaml .*must not declare defaults`),
+    `automatic contract validation must reject ${scope}`,
+  );
+}
+
 assert.throws(
   () => {
     const source = automaticWorkflowYaml();

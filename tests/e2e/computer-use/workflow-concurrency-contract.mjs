@@ -121,6 +121,11 @@ export function assertAutomaticConcurrencyValidationContract({
     AUTOMATIC_WORKFLOW_ENVIRONMENT,
     `${workflowName} automatic workflow environment must stay exact`,
   );
+  assert.equal(
+    Object.hasOwn(workflow, "defaults"),
+    false,
+    `${workflowName} must not declare defaults`,
+  );
 
   const jobs = workflow.jobs;
   assert.ok(
@@ -132,7 +137,7 @@ export function assertAutomaticConcurrencyValidationContract({
     job && typeof job === "object" && !Array.isArray(job),
     `${workflowName} must define automatic validation job ${jobId}`,
   );
-  for (const control of ["if", "continue-on-error", "needs", "strategy"]) {
+  for (const control of ["if", "continue-on-error", "needs", "strategy", "defaults"]) {
     assert.equal(
       Object.hasOwn(job, control),
       false,
