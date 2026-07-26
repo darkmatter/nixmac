@@ -4577,10 +4577,63 @@ async function runSelfTest() {
   );
   assert.equal(
     coverageFreshness.unmappedCandidateFiles.includes(
-      "apps/native/src-tauri/src/rebuild/darwin.rs",
+      "apps/native/src-tauri/src/commands/mod.rs",
     ),
     false,
-    "non-claiming source prefixes should still participate in candidate-file coverage",
+    "an isolated non-claiming source prefix should still participate in candidate-file coverage",
+  );
+  const coverageManifest = loadCoverageManifest();
+  const coverageOwnersFor = (file) =>
+    coverageManifest.surfaces
+      .filter((surface) =>
+        (surface.sourcePrefixes || []).some((prefix) =>
+          prefix.endsWith("/") ? file.startsWith(prefix) : file === prefix,
+        ),
+      )
+      .map((surface) => surface.id)
+      .sort();
+  assert.deepEqual(
+    coverageOwnersFor("apps/native/src-tauri/src/commands/mod.rs"),
+    ["internal-runtime-plumbing"],
+    "the isolated command registry should be owned only by the non-claiming plumbing surface",
+  );
+  assert.deepEqual(
+    coverageOwnersFor("apps/native/src/components/widget/settings/ai-models-tab.tsx"),
+    ["settings"],
+    "the AI Models tab should remain mapped to the exercised settings scenarios",
+  );
+  for (const file of [
+    "apps/native/src/components/widget/settings/account-tab.tsx",
+    "apps/native/src/components/widget/settings/permissions-tab.tsx",
+    "apps/native/src/components/widget/settings/tuning-tab.tsx",
+    "apps/native/src/components/widget/settings/developer-tab.tsx",
+    "apps/native/src/components/widget/settings/backup-restore-section.tsx",
+  ]) {
+    assert.deepEqual(
+      coverageOwnersFor(file),
+      ["settings-unexercised"],
+      `${file} should be waived without inheriting the exercised Settings-tab claim`,
+    );
+  }
+  assert.deepEqual(
+    coverageOwnersFor("apps/native/src-tauri/src/ai/providers/openai.rs"),
+    ["provider-review"],
+    "the configured OpenAI-compatible/OpenRouter provider path should remain mapped",
+  );
+  for (const file of [
+    "apps/native/src-tauri/src/ai/providers/cli.rs",
+    "apps/native/src-tauri/src/ai/providers/ollama.rs",
+  ]) {
+    assert.deepEqual(
+      coverageOwnersFor(file),
+      ["alternate-ai-providers"],
+      `${file} should be waived instead of inheriting the configured provider claim`,
+    );
+  }
+  assert.deepEqual(
+    coverageOwnersFor("apps/native/src-tauri/src/commands/updater.rs"),
+    ["updater-runtime"],
+    "the updater runtime should be waived because an absent banner currently passes",
   );
   const previousExtraCases = process.env.NIXMAC_E2E_EXTRA_EVOLVED_CASES;
   process.env.NIXMAC_E2E_EXTRA_EVOLVED_CASES = "inline-question-font";

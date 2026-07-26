@@ -3409,8 +3409,31 @@ async function runSelfTest() {
   );
   assert.deepEqual(
     prFocus.unmappedUserVisibleFiles,
-    ["apps/native/src/components/widget/new-visible-surface.tsx"],
-    "Peekaboo PR focus should surface unmapped user-visible files for scenario suggestions",
+    [
+      "apps/native/src-tauri/src/storage/store.rs",
+      "apps/native/src/components/widget/new-visible-surface.tsx",
+    ],
+    "Peekaboo PR focus should surface waived-without-scenario and unmapped user-visible files for scenario suggestions",
+  );
+  assert(
+    prFocus.matchedSurfaces.some(
+      (surface) => surface.id === "settings-unexercised" && Boolean(surface.waiver),
+    ),
+    "Peekaboo PR focus should identify waived Settings backends without claiming exercised tab coverage",
+  );
+  const waivedSettingsFocus = buildPeekabooPrFocus({
+    GITHUB_EVENT_NAME: "pull_request",
+    NIXMAC_E2E_PR_CHANGED_FILES: "apps/native/src-tauri/src/storage/store.rs",
+  });
+  assert.deepEqual(
+    waivedSettingsFocus.scenarioKeys,
+    [],
+    "a PR changing only an unexercised Settings backend should not inherit exercised tab scenarios",
+  );
+  assert.deepEqual(
+    waivedSettingsFocus.unmappedUserVisibleFiles,
+    ["apps/native/src-tauri/src/storage/store.rs"],
+    "an unexercised Settings backend should remain visible as explicit scenario debt",
   );
   assert(
     renderPeekabooPrFocus({

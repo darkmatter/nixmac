@@ -58,42 +58,80 @@
       "scenarioKeys": ["updateBanner"],
       "sourcePrefixes": [
         "apps/native/src/components/widget/layout/update-banner.tsx",
-        "apps/native/src/hooks/use-updater.ts",
-        "apps/native/src-tauri/src/commands/updater.rs"
+        "apps/native/src/hooks/use-updater.ts"
       ]
     },
     {
+      "id": "updater-runtime",
+      "label": "Updater checks, channel manifests, installation, and relaunch",
+      "scenarioKeys": [],
+      "sourcePrefixes": ["apps/native/src-tauri/src/commands/updater.rs"],
+      "waiver": {
+        "reason": "The update-banner scenario passes when no banner is present, so it does not deterministically exercise updater checks, download/install, channel selection, or relaunch.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "medium",
+        "exitCriteria": "Add a deterministic signed-update fixture that proves update detection, banner behavior, install, and relaunch for the supported release channels."
+      }
+    },
+    {
       "id": "settings",
-      "label": "Settings dialog and all settings tabs",
+      "label": "Settings dialog and exercised General, AI Models, API Keys, and Preferences tabs",
       "scenarioKeys": [
         "settingsGeneral",
         "settingsAIModels",
         "settingsAPIKeys",
         "settingsPreferences"
       ],
-      "coverageNote": "Storage files are mapped here because settings persistence, API-key settings, and debug-only E2E settings bypasses are exercised through the settings/product-proof scenarios. The OS keychain path is intentionally bypassed in E2E mode and still needs release/manual verification.",
+      "coverageNote": "The runner opens General, AI Models, API Keys, and Preferences and asserts their visible content. It does not mutate every control, and the OS credential path is intentionally bypassed in E2E mode.",
       "sourcePrefixes": [
         "apps/native/src/components/widget/settings/settings-dialog.tsx",
-        "apps/native/src/components/widget/settings/",
+        "apps/native/src/components/widget/settings/general-tab.tsx",
+        "apps/native/src/components/widget/settings/ai-models-tab.tsx",
+        "apps/native/src/components/widget/settings/api-keys-tab.tsx",
+        "apps/native/src/components/widget/settings/preferences-tab.tsx",
         "apps/native/src/components/widget/controls/directory-picker.tsx",
-        "apps/native/src/components/widget/controls/provider-icons/",
+        "apps/native/src/components/widget/controls/provider-icons/provider-icon.tsx",
         "apps/native/src/components/widget/badges/gitignore-badge.tsx",
         "apps/native/src/components/widget/controls/model-combobox.tsx",
         "apps/native/src/hooks/use-darwin-config.ts",
-        "apps/native/src-tauri/src/commands/account.rs",
-        "apps/native/src-tauri/src/commands/cli_tool.rs",
-        "apps/native/src-tauri/src/commands/dev_configs.rs",
-        "apps/native/src-tauri/src/commands/settings_io.rs",
         "apps/native/src-tauri/src/commands/ui_prefs.rs",
         "apps/native/src-tauri/src/state/preferences.rs",
-        "apps/native/src-tauri/src/state/ui_prefs.rs",
+        "apps/native/src-tauri/src/state/ui_prefs.rs"
+      ]
+    },
+    {
+      "id": "settings-unexercised",
+      "label": "Account, Permissions, Tuning, Developer, and settings import/export behavior",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src/components/widget/settings/account-tab.tsx",
+        "apps/native/src/components/widget/settings/permissions-tab.tsx",
+        "apps/native/src/components/widget/settings/tuning-tab.tsx",
+        "apps/native/src/components/widget/settings/developer-tab.tsx",
+        "apps/native/src/components/widget/settings/auto-config-field.tsx",
+        "apps/native/src/components/widget/settings/auto-tuning-section.tsx",
+        "apps/native/src/components/widget/settings/backup-restore-section.tsx",
+        "apps/native/src/components/widget/settings/overridable-flags.ts",
+        "apps/native/src-tauri/src/commands/account.rs",
+        "apps/native/src-tauri/src/commands/debug.rs",
+        "apps/native/src-tauri/src/commands/dev_configs.rs",
+        "apps/native/src-tauri/src/commands/settings_io.rs",
         "apps/native/src-tauri/src/storage/canonical_config.rs",
         "apps/native/src-tauri/src/storage/configurable_scope.rs",
-        "apps/native/src-tauri/src/storage/legacy_kv.rs",
-        "apps/native/src-tauri/src/storage/store.rs",
         "apps/native/src-tauri/src/storage/credential_store.rs",
-        "apps/native/src-tauri/src/storage/mod.rs"
-      ]
+        "apps/native/src-tauri/src/storage/legacy_kv.rs",
+        "apps/native/src-tauri/src/storage/store.rs"
+      ],
+      "waiver": {
+        "reason": "The current runner opens only General, AI Models, API Keys, and Preferences. It does not open Account, Permissions, Tuning, or Developer, and does not exercise settings backup/import, configurable tuning, account auth, or developer actions.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "high",
+        "exitCriteria": "Add deterministic Computer Use scenarios for each untested settings tab and its state-changing backend operations, including safe account, import/export, tuning, permissions, and developer fixtures."
+      }
     },
     {
       "id": "support-dialogs",
@@ -160,7 +198,13 @@
         "apps/native/src/hooks/use-prompt-history.ts",
         "apps/native/src/hooks/use-recommended-prompt.ts",
         "apps/native/src/hooks/use-summary.ts",
-        "apps/native/src-tauri/src/ai/",
+        "apps/native/src-tauri/src/ai/defaults.rs",
+        "apps/native/src-tauri/src/ai/log_summarizer.rs",
+        "apps/native/src-tauri/src/ai/mod.rs",
+        "apps/native/src-tauri/src/ai/model_capabilities.rs",
+        "apps/native/src-tauri/src/ai/provider_errors.rs",
+        "apps/native/src-tauri/src/ai/providers/mod.rs",
+        "apps/native/src-tauri/src/ai/providers/openai.rs",
         "apps/native/src-tauri/src/commands/evolve.rs",
         "apps/native/src-tauri/src/commands/evolve_state.rs",
         "apps/native/src-tauri/src/commands/editor.rs",
@@ -183,6 +227,24 @@
         "apps/native/src-tauri/src/evolve/mod.rs",
         "apps/native/src-tauri/src/evolve/tools.rs"
       ]
+    },
+    {
+      "id": "alternate-ai-providers",
+      "label": "CLI and Ollama provider execution variants",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src-tauri/src/ai/providers/cli.rs",
+        "apps/native/src-tauri/src/ai/providers/ollama.rs",
+        "apps/native/src-tauri/src/commands/cli_tool.rs"
+      ],
+      "waiver": {
+        "reason": "The current lane is pinned to the OpenAI-compatible/OpenRouter path. It renders provider controls but does not execute CLI-backed or Ollama provider requests or model discovery.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "high",
+        "exitCriteria": "Add deterministic provider-matrix cases for CLI and Ollama request execution, model discovery, failure handling, and cleanup."
+      }
     },
     {
       "id": "homebrew-badge",
@@ -252,11 +314,11 @@
       "coverageDisposition": "non-claiming",
       "coverageNote": "These implementation files stay visible in PR coverage matching, but they do not represent independently claimable user-facing scenarios.",
       "sourcePrefixes": [
-        "apps/native/src-tauri/src/commands/debug.rs",
         "apps/native/src-tauri/src/commands/helpers.rs",
         "apps/native/src-tauri/src/commands/mod.rs",
         "apps/native/src-tauri/src/state/completion_log.rs",
         "apps/native/src-tauri/src/state/mod.rs",
+        "apps/native/src-tauri/src/storage/mod.rs",
         "apps/native/src-tauri/src/system/mod.rs"
       ]
     },
