@@ -1,6 +1,6 @@
 # Scalable Computer Use E2E Design
 
-**Status:** Draft for cross-model review
+**Status:** Cross-model reviewed; implementation in progress; production disabled
 **Date:** 2026-07-25
 **Owners:** nixmac / Centaur
 **Decision:** Move the CuaDriver-based E2E lane from a Buzz-mediated request on a named Mac into a durable Centaur workflow backed by a dedicated, provider-neutral macOS runner pool.
@@ -30,9 +30,11 @@ This design reuses three foundations that already exist:
 1. Cooper's open PR #604 establishes a Tart/Cilicon macOS fleet, runner
    selection, and a pinned custom-image pipeline.
 
-The missing critical path is a production CuaDriver adapter that implements the
-existing in-repo driver contract. We should not create a second scenario runner
-or evidence format.
+At project start, the missing critical path was a production CuaDriver adapter
+that implemented the existing in-repo driver contract. The adapter, canonical
+evidence producer, static-host lease, and first Centaur/GitHub contracts now
+exist on the implementation branches, but remain unqualified for production.
+We should not create a second scenario runner or evidence format.
 
 The execution transport is GitHub Actions: Centaur dispatches and reconciles a
 dedicated workflow run, while GitHub and the Cilicon host loop own runner
@@ -70,6 +72,13 @@ requirements.
   ready.
 
 ## Current State
+
+This section records the **pre-project baseline on 2026-07-25**. As of the
+2026-07-26 reviewed implementation branch, Phase 0 is substantially present:
+`scenario-driver.mjs`, `drivers/cua-driver.mjs`, `run-cua-driver.mjs`, the
+canonical evidence workflow, and their contract/adversarial tests exist.
+Production remains disabled until the later phases and live qualification gates
+in this document pass.
 
 ### nixmac
 
@@ -197,8 +206,11 @@ the build fleet, with an E2E-specific layer containing:
 TCC grants are a release artifact, not an informal setup step. Each image build
 must test Accessibility and Screen Recording after first boot and after an aged
 boot. Grants belong to the pinned `CuaDriver.app` bundle identity, never a raw
-CLI executable. If grants cannot survive image cloning safely, a supported
-MDM/bootstrap mechanism becomes a prerequisite for pool promotion.
+CLI executable. MDM PPPC may manage Accessibility, but it cannot silently
+auto-grant Screen Recording. If grants do not survive image cloning, pool
+promotion requires a provider-supported, image-build pre-seed that passes both
+boot tests or an explicit standard-user approval bootstrap before image
+sealing. MDM alone is not an acceptable Screen Recording fallback.
 
 No running warm VM is required initially. Cache the image on each host and
 measure cold and cached boot times. Add warm capacity only if latency data
@@ -216,6 +228,14 @@ verify(job_id, archive) -> canonical verdict + manifest
 attest(workflow_run_id, runner_name) -> lifecycle disposition
 ```
 
+GitHub's `workflow_dispatch` response does not contain a workflow-run ID.
+Physical dispatch therefore uses crash-safe **ensure** semantics: every attempt
+mints an attestation nonce, embeds the logical job, attempt, and nonce in the
+run title, searches for exactly one matching allowlisted run before dispatch,
+and repeats the search after dispatch until the run is observable. A replay
+returns that run; multiple matches fail closed and are reconciled or cancelled
+explicitly.
+
 GitHub artifact downloads return a one-minute signed `302` URL outside
 `api.github.com`. The narrow client follows only one validated HTTPS redirect
 to an allowlisted GitHub Actions artifact/blob host, strips API authorization
@@ -224,10 +244,11 @@ other redirects. Centaur promotion is blocked until its capability/egress
 layer can express that behavior or a scoped server-side GitHub integration
 proxies the download safely.
 
-The dedicated workflow accepts only a validated full SHA, logical job ID,
-attempt number, suite version, and backend policy. It checks out the harness
-from the trusted default branch, downloads the app artifact bound to the
-requested SHA, and runs the app under test from that artifact. Untrusted,
+The dedicated workflow accepts only a validated immutable envelope: full SHA,
+logical job ID, attempt number, suite version, backend policy, attestation
+nonce, build run ID, app artifact ID, and app artifact digest. It checks out
+the harness from the trusted default branch, downloads the app artifact bound
+to the requested SHA, and runs the app under test from that artifact. Untrusted,
 unmerged code is not allowed to define the workflow or evidence verifier. In
 the merged-SHA lane, already-reviewed code on `main` participates in the
 harness by design; a future active-PR-head lane must retain the stricter
@@ -415,6 +436,11 @@ launch date, and invokes `terminate` on that same object. If that atomic
 identity cannot be proved, direct signaling is declined and controller
 quarantine remains required. Startup and cleanup errors are aggregated.
 
+These descriptor, inode, and process-identity checks are a robustness boundary
+against stale state, cross-run contamination, and accidental concurrent
+automation. They are not a security boundary against malicious code already
+running as the same macOS user.
+
 Before `launch_app`, the adapter resolves the staged bundle's exact main
 executable and snapshots its process instances. After either a successful
 response or an RPC error, it polls that executable and requires exactly one
@@ -505,6 +531,21 @@ darkmatter/nixmac:<full-merge-sha>:<suite-contract-version>
 Merged-SHA jobs are never superseded by a newer merge; every detected merge
 must reach a terminal result. `SUPERSEDED` is reserved for a future active-PR
 head lane, where a newer head SHA replaces an older queued or running head.
+
+Non-terminal waits are bounded and recorded durably:
+
+- `WAITING_ARTIFACT` waits at most 60 minutes for the exact-SHA build artifact.
+  A missing or expired artifact triggers one deterministic rebuild through the
+  allowlisted `automation/nixmac-e2e-backfill/<sha>` path. A failed rebuild or
+  second timeout becomes terminal `INCONCLUSIVE/BUILD_UNAVAILABLE`; it never
+  dispatches a Mac job.
+- lifecycle attestation waits at most 30 minutes after the Actions job reaches
+  a terminal state. A missing, mismatched, or unavailable attestation becomes
+  terminal `INCONCLUSIVE/LIFECYCLE_ATTESTATION_UNAVAILABLE`, quarantines the
+  image or host, and blocks PASS publication.
+- time budgets are configuration constants covered by workflow-contract tests;
+  a queue-age alert is diagnostic and never substitutes for the terminal
+  transition.
 
 ### Attempt states
 
@@ -663,6 +704,12 @@ Create or update one named Check Run for the merge SHA:
 nixmac / Computer Use E2E
 ```
 
+A dedicated GitHub App installation on `darkmatter/nixmac` owns the Check suite
+and receives only `checks:write` plus the minimum read permissions needed to
+bind the merge SHA and evidence link. A classic PAT is not an accepted
+publisher, and changing the App principal requires an explicit migration so
+one logical job cannot appear in multiple Check suites.
+
 The Check summary contains:
 
 - PASS, FAIL, or INCONCLUSIVE;
@@ -687,10 +734,14 @@ PASS — nixmac PR #<n> at <sha7> — <passed>/<total> scenarios — <report lin
 Failures and inconclusive results add one short reason. No start, retry,
 heartbeat, or status messages are posted.
 
-The result webhook also deduplicates durably by logical `job_id`. Replaying a
-successful POST after a Centaur checkpoint crash returns the stored result and
-does not post a second message; Centaur-side step idempotency alone is not the
-exactly-once boundary.
+Centaur owns a terminal publication service with a durable `job_id` receipt
+store. The Buzz result endpoint is a downstream adapter and must accept the
+same idempotency key, persist the resulting message receipt, and return the
+stored result on replay. Replaying after a Centaur checkpoint crash therefore
+does not post a second message; Centaur step idempotency or check-then-post
+logic alone is not the exactly-once boundary. If the Buzz adapter cannot
+provide that receiver-side contract, Buzz publication remains disabled and
+only the private verified result is retained.
 
 The display identity may remain **Farhan's Ear**. Internal services, workflow
 names, principals, and idempotency keys use functional names.
@@ -770,6 +821,13 @@ Alerts:
 - evidence upload/verification failure;
 - no terminal publication after a completed verified report.
 
+Production routes these alerts through a configured darkmatter Sentry/on-call
+path to the Centaur service owner; the deployment records and
+read-backs the concrete project, escalation destination, and runbook link.
+`#nixmac-e2e` remains terminal-result-only and is not the alert transport.
+Phase 1 qualification cannot start while an alert route is unset or its test
+notification has not been acknowledged.
+
 ## Service Objectives And Promotion Gates
 
 Initial absolute gates:
@@ -807,6 +865,12 @@ are green.
 
 ### Phase 1 — Durable Centaur job on static provider
 
+- Provision and read back the protected GitHub environment
+  `nixmac-e2e-production`, with a `main`-only deployment branch policy and only
+  the scoped runtime secrets used by the dedicated workflow.
+- Provision and verify exactly one online Linux controller runner carrying
+  `[self-hosted, linux, nixmac-e2e-static-controller]`; every static Centaur
+  job must pass through that one-capacity queue.
 - Replace Buzz dispatch with Centaur dispatch/reconciliation of a dedicated
   GitHub Actions workflow.
 - Add job/attempt state, artifact wait, evidence verification, and terminal
@@ -814,8 +878,9 @@ are green.
 - Use MacinCloud with the static certification contract.
 - Run shadow-only after merged PRs.
 
-Exit: ten consecutive jobs, no missed merges, no duplicate terminal messages,
-and cleanup contract green.
+Exit: protected-environment policy, controller-runner cardinality, and alert
+route are read back green; then ten consecutive jobs complete with no missed
+merges, no duplicate terminal messages, and the cleanup contract green.
 
 ### Phase 2 — Dedicated Tart/Cilicon pool
 
@@ -901,7 +966,8 @@ Owns:
 - backend policy and lifecycle-attestation reconciliation;
 - retry/cancel/supersession;
 - evidence verification;
-- GitHub/Buzz terminal publication.
+- a durable terminal publication service and receipt store;
+- GitHub/Buzz terminal publication adapters.
 
 ### PR #604 dependency
 
