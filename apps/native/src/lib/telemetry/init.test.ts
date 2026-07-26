@@ -73,31 +73,25 @@ afterEach(() => {
 });
 
 describe("initTelemetry", () => {
-  it("installs noop without prefs or provider work in the E2E profile", async () => {
+  it("returns noop without prefs, provider work, or installation in the E2E profile", async () => {
     const subject = await loadInitTelemetry({ e2e: true });
 
     await expect(subject.initTelemetry()).resolves.toBe(subject.noopProvider);
-    expect(subject.setTelemetryProvider).toHaveBeenCalledOnce();
-    expect(subject.setTelemetryProvider).toHaveBeenCalledWith(
-      subject.noopProvider,
-    );
+    expect(subject.setTelemetryProvider).not.toHaveBeenCalled();
     expect(subject.getPrefs).not.toHaveBeenCalled();
     expect(subject.createTelemetryProvider).not.toHaveBeenCalled();
   });
 
-  it("installs noop without prefs or provider work when the key is missing", async () => {
+  it("returns noop without prefs, provider work, or installation when the key is missing", async () => {
     const subject = await loadInitTelemetry({ key: "   " });
 
     await expect(subject.initTelemetry()).resolves.toBe(subject.noopProvider);
-    expect(subject.setTelemetryProvider).toHaveBeenCalledOnce();
-    expect(subject.setTelemetryProvider).toHaveBeenCalledWith(
-      subject.noopProvider,
-    );
+    expect(subject.setTelemetryProvider).not.toHaveBeenCalled();
     expect(subject.getPrefs).not.toHaveBeenCalled();
     expect(subject.createTelemetryProvider).not.toHaveBeenCalled();
   });
 
-  it("fails closed but still installs one provider when prefs cannot be read", async () => {
+  it("fails closed and returns one uninstalled provider when prefs cannot be read", async () => {
     const subject = await loadInitTelemetry({
       prefs: new Error("prefs unavailable"),
     });
@@ -114,8 +108,7 @@ describe("initTelemetry", () => {
       },
       false,
     );
-    expect(subject.setTelemetryProvider).toHaveBeenCalledOnce();
-    expect(subject.setTelemetryProvider).toHaveBeenCalledWith(subject.provider);
+    expect(subject.setTelemetryProvider).not.toHaveBeenCalled();
   });
 
   it.each([true, false])(
@@ -131,7 +124,7 @@ describe("initTelemetry", () => {
         expect.any(Object),
         enabled,
       );
-      expect(subject.setTelemetryProvider).toHaveBeenCalledOnce();
+      expect(subject.setTelemetryProvider).not.toHaveBeenCalled();
     },
   );
 });

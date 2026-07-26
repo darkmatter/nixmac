@@ -7,7 +7,7 @@ import {
 } from "@/lib/telemetry/bootstrap";
 import { initTelemetry } from "@/lib/telemetry/init";
 import { TelemetryContextProvider } from "@/lib/telemetry/context";
-import { getTelemetry } from "@/lib/telemetry/instance";
+import { getTelemetry, setTelemetryProvider } from "@/lib/telemetry/instance";
 import { queryClient } from "@/lib/orpc";
 import type { TelemetryProvider } from "@/lib/telemetry/types";
 import { AppErrorBoundary } from "@/components/widget/layout/AppErrorBoundary";
@@ -67,6 +67,7 @@ const bootstrap = async () => {
     await bootstrapWithTelemetry({
       initTelemetry,
       getTelemetry,
+      setTelemetry: setTelemetryProvider,
       render: renderApp,
       environment: nixmacEnvironment,
       onTelemetryError: (phase) => {

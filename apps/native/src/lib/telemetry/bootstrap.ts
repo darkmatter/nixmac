@@ -5,6 +5,7 @@ const TELEMETRY_INITIALIZATION_TIMEOUT_MS = 5_000;
 interface BootstrapWithTelemetryOptions {
   initTelemetry: () => Promise<TelemetryProvider>;
   getTelemetry: () => TelemetryProvider;
+  setTelemetry: (telemetry: TelemetryProvider) => void;
   render: (telemetry: TelemetryProvider) => void | Promise<void>;
   environment: string;
   onTelemetryError?: (phase: "initialize" | "capture", error: unknown) => void;
@@ -49,6 +50,7 @@ function notifyTelemetryError<TPhase extends string>(
 export async function bootstrapWithTelemetry({
   initTelemetry,
   getTelemetry,
+  setTelemetry,
   render,
   environment,
   onTelemetryError = () => {},
@@ -60,6 +62,7 @@ export async function bootstrapWithTelemetry({
     notifyTelemetryError(onTelemetryError, "initialize", error);
     telemetry = getTelemetry();
   }
+  setTelemetry(telemetry);
 
   try {
     telemetry.captureEvent({

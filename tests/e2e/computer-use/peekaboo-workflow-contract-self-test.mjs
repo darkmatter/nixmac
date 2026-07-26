@@ -37,6 +37,10 @@ const frontendTelemetrySanitizePath = path.join(
   repoRoot,
   "apps/native/src/lib/telemetry/sanitize.ts",
 );
+const frontendTelemetryInitPath = path.join(
+  repoRoot,
+  "apps/native/src/lib/telemetry/init.ts",
+);
 const frontendAppErrorBoundaryPath = path.join(
   repoRoot,
   "apps/native/src/components/widget/layout/AppErrorBoundary.tsx",
@@ -70,6 +74,7 @@ const frontendBootDiagnostics = readFileSync(frontendBootDiagnosticsPath, "utf8"
 const frontendDomSnapshots = readFileSync(frontendDomSnapshotsPath, "utf8");
 const frontendBootHarness = readFileSync(frontendBootHarnessPath, "utf8");
 const frontendTelemetrySanitize = readFileSync(frontendTelemetrySanitizePath, "utf8");
+const frontendTelemetryInit = readFileSync(frontendTelemetryInitPath, "utf8");
 const frontendAppErrorBoundary = readFileSync(frontendAppErrorBoundaryPath, "utf8");
 const frontendAppFatalFallback = readFileSync(frontendAppFatalFallbackPath, "utf8");
 const tauriApi = readFileSync(tauriApiPath, "utf8");
@@ -1040,13 +1045,18 @@ assert.match(
 );
 assert.match(
   frontendMain,
-  /const bootstrap = async \(\) => \{[\s\S]*?await bootstrapWithTelemetry\(\{[\s\S]*?initTelemetry,[\s\S]*?getTelemetry,[\s\S]*?render:\s*renderApp,[\s\S]*?environment:\s*nixmacEnvironment,[\s\S]*?onTelemetryError:/,
-  "Frontend bootstrap must route telemetry initialization and app launch capture through the fail-open bootstrap boundary before rendering",
+  /const bootstrap = async \(\) => \{[\s\S]*?await bootstrapWithTelemetry\(\{[\s\S]*?initTelemetry,[\s\S]*?getTelemetry,[\s\S]*?setTelemetry:\s*setTelemetryProvider,[\s\S]*?render:\s*renderApp,[\s\S]*?environment:\s*nixmacEnvironment,[\s\S]*?onTelemetryError:/,
+  "Frontend bootstrap must let the fail-open deadline winner install the same telemetry provider used for rendering",
+);
+assert.match(
+  frontendMain,
+  /import\s*\{\s*getTelemetry,\s*setTelemetryProvider\s*\}\s*from\s*"@\/lib\/telemetry\/instance"/,
+  "Frontend bootstrap must import the unified telemetry getter and deadline-winner installer",
 );
 assert.doesNotMatch(
-  frontendMain,
+  frontendTelemetryInit,
   /\bsetTelemetryProvider\b/,
-  "Frontend bootstrap must not install telemetry a second time after initTelemetry already installed it",
+  "Telemetry initialization must stay side-effect free so late completion cannot replace the bootstrap winner",
 );
 assert.match(
   frontendMain,

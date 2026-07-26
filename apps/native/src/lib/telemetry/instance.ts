@@ -4,8 +4,8 @@ import { noopProvider } from "./noop";
 /**
  * Module-level telemetry reference.
  *
- * Set by initTelemetry during bootstrap. This allows non-React code
- * (hooks, viewmodel functions, event handlers) to call telemetry
+ * Set by the bootstrap deadline winner. This allows non-React code (hooks,
+ * viewmodel functions, event handlers) to call the same provider React receives
  * without needing React context.
  *
  * The React context (useTelemetry) remains the primary access path

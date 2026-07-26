@@ -1,7 +1,6 @@
 import { tauriAPI } from "@/ipc/api";
 import { isE2eProfile, nixmacEnvironment, nixmacVersion, settings } from "@/lib/env";
 import { createTelemetryProvider } from "./provider";
-import { setTelemetryProvider } from "./instance";
 import { noopProvider } from "./noop";
 import type { TelemetryProvider } from "./types";
 
@@ -18,11 +17,11 @@ const E2E_MODE = isE2eProfile;
  * - E2E mode → noop (no telemetry, no PostHog).
  * - Build-time config from committed env profiles; PostHog key/host overridable via process env at build.
  * - Gated on the sendDiagnostics pref, fail-closed if prefs can't be read.
- * - Installs the provider via setTelemetryProvider() for non-React callers.
+ * Provider installation is owned by the bootstrap deadline winner so a late
+ * initialization cannot replace the provider already handed to React.
  */
 export async function initTelemetry(): Promise<TelemetryProvider> {
   if (E2E_MODE) {
-    setTelemetryProvider(noopProvider);
     return noopProvider;
   }
 
@@ -30,7 +29,6 @@ export async function initTelemetry(): Promise<TelemetryProvider> {
   const host = settings.posthogHost.trim();
 
   if (key.length === 0) {
-    setTelemetryProvider(noopProvider);
     return noopProvider;
   }
 
@@ -53,6 +51,5 @@ export async function initTelemetry(): Promise<TelemetryProvider> {
     sendDiagnostics,
   );
 
-  setTelemetryProvider(provider);
   return provider;
 }

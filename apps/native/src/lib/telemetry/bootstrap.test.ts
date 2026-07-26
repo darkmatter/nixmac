@@ -30,12 +30,21 @@ describe("bootstrapWithTelemetry", () => {
     vi.useFakeTimers();
     try {
       const fallback = provider();
+      const late = provider();
       const render = vi.fn<(telemetry: TelemetryProvider) => void>();
+      const setTelemetry = vi.fn<(telemetry: TelemetryProvider) => void>();
       const onTelemetryError =
         vi.fn<(phase: "initialize" | "capture", error: unknown) => void>();
+      let resolveInitialization:
+        | ((telemetry: TelemetryProvider) => void)
+        | undefined;
       const bootstrap = bootstrapWithTelemetry({
-        initTelemetry: () => new Promise<TelemetryProvider>(() => {}),
+        initTelemetry: () =>
+          new Promise<TelemetryProvider>((resolve) => {
+            resolveInitialization = resolve;
+          }),
         getTelemetry: () => fallback,
+        setTelemetry,
         render,
         environment: "test",
         onTelemetryError,
@@ -46,12 +55,18 @@ describe("bootstrapWithTelemetry", () => {
 
       expect(render).toHaveBeenCalledOnce();
       expect(render).toHaveBeenCalledWith(fallback);
+      expect(setTelemetry).toHaveBeenCalledOnce();
+      expect(setTelemetry).toHaveBeenCalledWith(fallback);
       expect(onTelemetryError).toHaveBeenCalledWith(
         "initialize",
         expect.objectContaining({
           message: "Telemetry initialization timed out after 5000ms",
         }),
       );
+
+      resolveInitialization?.(late);
+      await Promise.resolve();
+      expect(setTelemetry).toHaveBeenCalledOnce();
     } finally {
       vi.useRealTimers();
     }
@@ -68,6 +83,7 @@ describe("bootstrapWithTelemetry", () => {
         .fn<() => Promise<TelemetryProvider>>()
         .mockRejectedValue(new Error("init failed")),
       getTelemetry: () => fallback,
+      setTelemetry: vi.fn<(telemetry: TelemetryProvider) => void>(),
       render,
       environment: "test",
       onTelemetryError,
@@ -87,6 +103,7 @@ describe("bootstrapWithTelemetry", () => {
         .fn<() => Promise<TelemetryProvider>>()
         .mockRejectedValue(new Error("init failed")),
       getTelemetry: () => fallback,
+      setTelemetry: vi.fn<(telemetry: TelemetryProvider) => void>(),
       render,
       environment: "test",
       onTelemetryError: () => {
@@ -109,6 +126,7 @@ describe("bootstrapWithTelemetry", () => {
     await bootstrapWithTelemetry({
       initTelemetry: async () => telemetry,
       getTelemetry: () => provider(),
+      setTelemetry: vi.fn<(telemetry: TelemetryProvider) => void>(),
       render,
       environment: "test",
       onTelemetryError,
@@ -126,6 +144,7 @@ describe("bootstrapWithTelemetry", () => {
       bootstrapWithTelemetry({
         initTelemetry: async () => provider(),
         getTelemetry: () => provider(),
+        setTelemetry: vi.fn<(telemetry: TelemetryProvider) => void>(),
         render: () => {
           throw renderError;
         },
