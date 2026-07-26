@@ -2,7 +2,7 @@
 import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
 import { existsSync, statSync } from "node:fs";
-import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
+import { mkdir, readFile, realpath, rm, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
@@ -51,7 +51,15 @@ import {
   parseSignalStats,
   probeCropForImage,
 } from "./visual-proof.mjs";
-import { renderReportHtml } from "./report.mjs";
+import { renderReportHtml, safeFrameVideoPath } from "./report.mjs";
+import {
+  assertRunPreflight,
+  finalizeLocalEvidence,
+  preflightInputFromEnvironment,
+  stageControllerEvidence,
+  writeRunCleanup,
+  writeRunPreflight,
+} from "./run-metadata.mjs";
 import { createScenarioDriverHelpers } from "./scenario-driver.mjs";
 import { codexAppServerDriverDescriptor, elementEntries, findElement } from "./transport.mjs";
 import { containsUnmaskedSecret, redact } from "./redaction.mjs";
@@ -93,6 +101,7 @@ const ARTIFACT_ROOT = path.join(REPO_ROOT, "artifacts", "computer-use-remote");
 const COVERAGE_MANIFEST_PATH = path.join(TOOL_DIR, "coverage-manifest.json");
 
 let activeRunDir = "";
+let activeRunFinalization = null;
 
 const {
   captureState,
@@ -269,9 +278,10 @@ export async function verifyLocalCuaPreflight(
 
 export async function prepareSuiteDriver(
   driver,
-  { executionTopology, appBundleId, localPreflight = null },
+  { executionTopology, appBundleId, localPreflight = null, beforePrepareTarget = async () => {} },
 ) {
   await driver.connect();
+  await beforePrepareTarget();
   if (executionTopology === "local-cua-driver") {
     if (!localPreflight) throw new Error("local CuaDriver preflight identity is required");
     await driver.prepareTarget({
@@ -284,6 +294,33 @@ export async function prepareSuiteDriver(
     throw new Error(`unsupported Computer Use execution topology: ${executionTopology}`);
   }
   await driver.prepareTarget({ appBundleId });
+}
+
+export async function writeAndAssertLocalRunPreflight(
+  { driver, localPreflight, runDir },
+  {
+    env = process.env,
+    writePreflight = writeRunPreflight,
+    assertPreflight = assertRunPreflight,
+  } = {},
+) {
+  if (!driver?.metadata?.cli?.version || !driver?.metadata?.app?.short_version) {
+    throw new Error("connected CuaDriver pinned version metadata is required before UI");
+  }
+  if (driver.connected !== true) {
+    throw new Error("CuaDriver live permission probe must succeed before run preflight");
+  }
+  const input = preflightInputFromEnvironment({
+    env,
+    appBundlePath: localPreflight.appPath,
+    appBundleDigest: localPreflight.appBundleDigestSha256,
+    cuaDriverCliVersion: driver.metadata.cli.version,
+    cuaDriverAppVersion: driver.metadata.app.short_version,
+    accessibilityGranted: true,
+    screenRecordingGranted: true,
+  });
+  await writePreflight(runDir, input);
+  return assertPreflight(runDir);
 }
 
 function findQuestionInputEntry(text) {
@@ -1086,7 +1123,7 @@ async function maybeGenerateEvidenceVideo(state) {
 
   const videoDir = path.join(runDir, "video");
   const framesPath = path.join(videoDir, "frames.txt");
-  const videoPath = path.join(videoDir, "computer-use-evidence.mp4");
+  const videoPath = path.join(runDir, safeFrameVideoPath);
   await mkdir(videoDir, { recursive: true });
   const frameDuration = Number(process.env.NIXMAC_E2E_VIDEO_FRAME_DURATION_SECONDS || 1.1);
   const frameList = frames
@@ -1118,6 +1155,7 @@ async function maybeGenerateEvidenceVideo(state) {
     "+faststart",
     videoPath,
   ]);
+  await unlink(framesPath);
 
   if (!result.ok) {
     state.video = {
@@ -1140,6 +1178,7 @@ async function maybeGenerateEvidenceVideo(state) {
     : {
         status: "available",
         path: relativePath,
+        source: "curated-safe-frames",
         frames: frames.length,
         note: "Screenshot-compilation video generated from safe-to-store Computer Use frames.",
       };
@@ -2508,7 +2547,10 @@ async function render(state, { stateFileName = "state.json", recordEvent = true 
   if (recordEvent) await addEvent(state, "report.rendered", { path: "index.html", verdict });
 }
 
-export async function runSuiteWithDriver(args, { createDriver, executionTopology } = {}) {
+export async function runSuiteWithDriver(
+  args,
+  { createDriver, executionTopology, env = process.env } = {},
+) {
   if (args.includes("--prompt") || process.env.NIXMAC_E2E_PROMPT) {
     throw new Error(
       "Custom prompts are not supported by this E2E runner; assertions are calibrated to the fixed bat/Homebrew prompt.",
@@ -2558,11 +2600,30 @@ export async function runSuiteWithDriver(args, { createDriver, executionTopology
       runDir,
     }),
   );
+  let suiteCompleted = false;
+  let suiteFailure = null;
+  let closeFailure = null;
+  let trustedRunPreflight = null;
   try {
     await prepareSuiteDriver(driver, {
       executionTopology,
       appBundleId: options.app,
       localPreflight,
+      beforePrepareTarget:
+        executionTopology === "local-cua-driver"
+          ? async () => {
+              trustedRunPreflight = await writeAndAssertLocalRunPreflight(
+                {
+                  driver,
+                  localPreflight,
+                  runDir,
+                },
+                {
+                  env,
+                },
+              );
+            }
+          : undefined,
     });
     if (localPreflight) await verifyLocalCuaPreflight(localPreflight);
     if (executionTopology === "remote-codex-app-server") {
@@ -3840,15 +3901,113 @@ export async function runSuiteWithDriver(args, { createDriver, executionTopology
     updatePrSpecificCoverage(state);
     await render(state);
     await saveState(state);
-    console.log(path.join(state.runDir, "index.html"));
-    if (shouldFailProcessForVerdict(state)) {
-      console.error(
-        `Computer Use E2E verdict was ${state.verdict}; failing the check while preserving the evidence report.`,
-      );
-      process.exitCode = 1;
-    }
+    suiteCompleted = true;
+  } catch (error) {
+    suiteFailure = error;
   } finally {
-    await driver.close();
+    try {
+      await driver.close();
+    } catch (error) {
+      closeFailure = error;
+    }
+  }
+  if (executionTopology === "local-cua-driver") {
+    if (trustedRunPreflight) {
+      try {
+        await writeRunPreflight(runDir, trustedRunPreflight.input);
+        await assertRunPreflight(runDir);
+        await verifyLocalCuaPreflight(localPreflight);
+      } catch (error) {
+        suiteFailure = suiteFailure
+          ? new AggregateError(
+              [suiteFailure, error],
+              "Computer Use suite failed and final identity revalidation also failed",
+            )
+          : error;
+      }
+    }
+    const finalizationMode = env.NIXMAC_E2E_FINALIZATION_MODE;
+    if (finalizationMode === "local-finalize") {
+      const ownedPaths = [localPreflight.appPath];
+      if (typeof driver.socketPath === "string" && path.isAbsolute(driver.socketPath)) {
+        ownedPaths.push(driver.socketPath);
+      }
+      let cleanupFailure = closeFailure
+        ? `CuaDriver close failed: ${redact(
+            closeFailure instanceof Error ? closeFailure.message : String(closeFailure),
+          )}`
+        : "";
+      try {
+        await rm(localPreflight.appPath, { recursive: true, force: true });
+        if (existsSync(localPreflight.appPath)) {
+          throw new Error("staged app bundle still exists after exact owned-path removal");
+        }
+      } catch (error) {
+        const removalFailure = redact(error instanceof Error ? error.message : String(error));
+        cleanupFailure = [cleanupFailure, removalFailure].filter(Boolean).join("; ");
+      }
+      const cleanup = {
+        attempted: true,
+        restored: cleanupFailure === "",
+        clean: cleanupFailure === "",
+        ownedPaths,
+        remainingProcesses: closeFailure
+          ? [{ status: "unverified", reason: "CuaDriver close failed" }]
+          : [],
+        failureReason: cleanupFailure,
+      };
+      state.cleanup = {
+        attempted: cleanup.attempted,
+        restored: cleanup.restored,
+        clean: cleanup.clean,
+        note: cleanup.clean
+          ? "CuaDriver target/daemon shutdown and exact staged-app removal completed before evidence sealing."
+          : `Final cleanup failed: ${cleanup.failureReason}`,
+      };
+      await writeRunCleanup(runDir, cleanup);
+      activeRunFinalization = { cleanup, finalizationMode, runDir };
+      if (suiteCompleted && !suiteFailure && !closeFailure) {
+        await render(state);
+        await finalizeLocalEvidence(runDir, { cleanup, verdict: state.verdict });
+        activeRunFinalization = null;
+      }
+    } else if (finalizationMode === "controller-finalize") {
+      state.cleanup = {
+        attempted: true,
+        restored: false,
+        clean: false,
+        note: "CuaDriver target/daemon shutdown completed; static SSH staging/config cleanup and owner-matched host-lease release remain controller-owned.",
+      };
+      activeRunFinalization = {
+        cleanup: null,
+        finalizationMode,
+        runDir,
+        runnerCleanupFailure: closeFailure
+          ? redact(closeFailure instanceof Error ? closeFailure.message : String(closeFailure))
+          : "",
+      };
+      if (suiteCompleted && !suiteFailure && !closeFailure) {
+        await render(state);
+        await stageControllerEvidence(runDir, { verdict: state.verdict });
+        activeRunFinalization = null;
+      }
+    } else {
+      throw new Error(
+        "local CuaDriver requires NIXMAC_E2E_FINALIZATION_MODE=local-finalize or controller-finalize",
+      );
+    }
+  }
+  if (suiteFailure || closeFailure) {
+    const failures = [suiteFailure, closeFailure].filter(Boolean);
+    if (failures.length === 1) throw failures[0];
+    throw new AggregateError(failures, "Computer Use suite and exact cleanup both failed");
+  }
+  console.log(path.join(state.runDir, "index.html"));
+  if (shouldFailProcessForVerdict(state)) {
+    console.error(
+      `Computer Use E2E verdict was ${state.verdict}; failing the check while preserving the evidence report.`,
+    );
+    process.exitCode = 1;
   }
 }
 
@@ -3981,8 +4140,42 @@ export async function renderSuiteErrorReport(
     "fail",
     "Runner crashed before the report inspection step; fallback report was rendered from partial run evidence.",
   );
+  const finalization = activeRunFinalization?.runDir === runDir ? activeRunFinalization : null;
+  if (finalization?.finalizationMode === "local-finalize") {
+    existingState.cleanup = {
+      attempted: finalization.cleanup.attempted,
+      restored: finalization.cleanup.restored,
+      clean: finalization.cleanup.clean,
+      note: finalization.cleanup.clean
+        ? "CuaDriver target/daemon shutdown and exact staged-app removal completed after the runner failure."
+        : `Final cleanup failed after runner failure: ${finalization.cleanup.failureReason}`,
+    };
+  } else if (finalization?.finalizationMode === "controller-finalize") {
+    existingState.cleanup = {
+      attempted: true,
+      restored: false,
+      clean: false,
+      note: finalization.runnerCleanupFailure
+        ? `CuaDriver target/daemon shutdown failed and requires controller quarantine: ${finalization.runnerCleanupFailure}`
+        : "CuaDriver target/daemon shutdown completed after the runner failure; static cleanup and host-lease release remain controller-owned.",
+    };
+  }
   await addEvent(existingState, "runner.crash-fallback", { note });
   await render(existingState);
+  if (finalization) {
+    try {
+      if (finalization.finalizationMode === "local-finalize") {
+        await finalizeLocalEvidence(runDir, {
+          cleanup: finalization.cleanup,
+          verdict: existingState.verdict,
+        });
+      } else {
+        await stageControllerEvidence(runDir, { verdict: existingState.verdict });
+      }
+    } finally {
+      activeRunFinalization = null;
+    }
+  }
   console.log(path.join(runDir, "index.html"));
 }
 
@@ -4571,7 +4764,7 @@ async function runSelfTest() {
   const coverageFreshness = buildCoverageFreshness();
   assert.equal(
     coverageFreshness.candidateFiles,
-    944,
+    947,
     "coverage freshness should preserve the full shared PR-visible behavior universe",
   );
   const coverageManifest = loadCoverageManifest();

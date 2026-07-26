@@ -11,6 +11,7 @@ import {
   runSuiteWithDriver,
   validateLocalCuaPreflight,
   verifyLocalCuaPreflight,
+  writeAndAssertLocalRunPreflight,
 } from "./run-remote-cua.mjs";
 
 export function createLocalCuaDriver(options, { DriverClass = CuaDriver, env = process.env } = {}) {
@@ -36,6 +37,7 @@ export async function runLocalCuaSuite(
         env,
       }),
     executionTopology: "local-cua-driver",
+    env,
   });
 }
 
@@ -133,7 +135,11 @@ async function runSelfTest() {
   const suiteCalls = [];
   await runLocalCuaSuite(["--run-dir", "/tmp/local-run"], {
     runSuite: async (args, injected) => {
-      suiteCalls.push({ args, executionTopology: injected.executionTopology });
+      suiteCalls.push({
+        args,
+        env: injected.env,
+        executionTopology: injected.executionTopology,
+      });
       const created = injected.createDriver({
         app: "com.darkmatter.nixmac",
         runDir: "/tmp/local-run",
@@ -146,6 +152,7 @@ async function runSelfTest() {
   assert.deepEqual(suiteCalls, [
     {
       args: ["--run-dir", "/tmp/local-run"],
+      env: {},
       executionTopology: "local-cua-driver",
     },
     {
@@ -201,6 +208,89 @@ async function runSelfTest() {
       }),
     }),
     preflight,
+  );
+  const metadataEnv = {
+    NIXMAC_E2E_JOB_ID: "job-123",
+    NIXMAC_E2E_REPO: "darkmatter/nixmac",
+    NIXMAC_E2E_MERGE_SHA: artifactSha,
+    NIXMAC_E2E_SUITE_VERSION: "computer-use-v1",
+    NIXMAC_E2E_HARNESS_SHA: "d".repeat(40),
+    NIXMAC_E2E_ACTIONS_RUN_ID: "123456",
+    NIXMAC_E2E_ACTIONS_JOB_ID: "789012",
+    NIXMAC_E2E_ATTEMPT: "1",
+    NIXMAC_E2E_RUNNER_NAME: "mac-e2e-01",
+    NIXMAC_E2E_RUNNER_BACKEND: "cilicon_tart",
+    NIXMAC_E2E_RUNNER_IMAGE_DIGEST: `sha256:${"e".repeat(64)}`,
+    NIXMAC_E2E_BUILD_RUN_ID: "456789",
+    NIXMAC_E2E_ARTIFACT_ID: "987654",
+    NIXMAC_E2E_ARTIFACT_DIGEST: `sha256:${"f".repeat(64)}`,
+    NIXMAC_E2E_FINALIZATION_MODE: "local-finalize",
+  };
+  const writtenPreflights = [];
+  const assertedPreflights = [];
+  const connectedMetadataDriver = {
+    connected: true,
+    metadata: {
+      cli: { version: "0.12.6" },
+      app: { short_version: "0.12.6" },
+    },
+  };
+  await writeAndAssertLocalRunPreflight(
+    {
+      driver: connectedMetadataDriver,
+      localPreflight: preflight,
+      runDir,
+    },
+    {
+      env: metadataEnv,
+      writePreflight: async (targetRunDir, input) =>
+        writtenPreflights.push({ input, runDir: targetRunDir }),
+      assertPreflight: async (targetRunDir) => assertedPreflights.push(targetRunDir),
+    },
+  );
+  assert.equal(writtenPreflights[0].input.accessibilityGranted, true);
+  assert.equal(writtenPreflights[0].input.screenRecordingGranted, true);
+  assert.equal(writtenPreflights[0].input.appBundleDigest, "b".repeat(64));
+  assert.deepEqual(assertedPreflights, [runDir]);
+  let missingIdentityPrepareCalls = 0;
+  const missingIdentityDriver = {
+    connected: false,
+    metadata: connectedMetadataDriver.metadata,
+    async connect() {
+      this.connected = true;
+    },
+    async prepareTarget() {
+      missingIdentityPrepareCalls += 1;
+    },
+  };
+  const missingJobEnv = { ...metadataEnv };
+  delete missingJobEnv.NIXMAC_E2E_JOB_ID;
+  await assert.rejects(
+    () =>
+      prepareSuiteDriver(missingIdentityDriver, {
+        executionTopology: "local-cua-driver",
+        appBundleId: "com.darkmatter.nixmac",
+        localPreflight: preflight,
+        beforePrepareTarget: () =>
+          writeAndAssertLocalRunPreflight(
+            {
+              driver: missingIdentityDriver,
+              localPreflight: preflight,
+              runDir,
+            },
+            {
+              env: missingJobEnv,
+              writePreflight: async () => assert.fail("invalid identity must not write sidecars"),
+              assertPreflight: async () => assert.fail("invalid identity must not be asserted"),
+            },
+          ),
+      }),
+    /jobId/i,
+  );
+  assert.equal(
+    missingIdentityPrepareCalls,
+    0,
+    "missing workflow identity must fail before prepareTarget",
   );
   await assert.rejects(
     () =>

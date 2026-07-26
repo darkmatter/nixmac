@@ -5,6 +5,19 @@ import { failureTaxonomy } from "./schemas.mjs";
 import { redact } from "./redaction.mjs";
 import { formatDuration, sortedTimingPhases, timingTotals } from "./timing.mjs";
 
+export const safeFrameVideoPath = "video/computer-use-evidence.mp4";
+
+export function assertCuratedSafeFrameVideoMetadata(video) {
+  if (
+    video?.status !== "available" ||
+    video?.path !== safeFrameVideoPath ||
+    video?.source !== "curated-safe-frames"
+  ) {
+    throw new Error(`video must be the curated safe-frame reel at ${safeFrameVideoPath}`);
+  }
+  return video;
+}
+
 function escapeHtml(value) {
   return redact(value)
     .replaceAll("&", "&amp;")
