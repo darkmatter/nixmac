@@ -10,7 +10,7 @@ on:
       runner_pool:
         description: "Mac runner pool for manual verification"
         type: choice
-        options: [auto, self-hosted, depot]
+        options: [auto, self-hosted, custom, depot]
         default: auto
         required: true
   merge_group:
@@ -128,6 +128,12 @@ jobs:
           set -uo pipefail
           # depot-macos-14 (Sonoma) matches the self-hosted cilicon image
           # (macos-sonoma-xcode:16.1) most closely.
+          custom='["self-hosted","macOS","nixmac-custom"]'
+          if [ "$RUNNER_POOL" = "custom" ]; then
+            echo "runs-on=$custom" | tee -a "$GITHUB_OUTPUT"
+            echo "::notice::manual verification requested custom image"
+            exit 0
+          fi
           self_hosted='["self-hosted","macOS","nixmac-mac"]'
           depot='["depot-macos-14"]'
           if [ "$RUNNER_POOL" = "self-hosted" ]; then
