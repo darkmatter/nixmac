@@ -15,6 +15,7 @@ import {
   currentRunnerDriverCapabilityUse,
   driverCapabilityKeys,
   driverContractVersion,
+  validateCuaElementIndexAddress,
   validateDriverCapabilities,
   validateDriverDescriptor,
   validateElementAddress,
@@ -5157,6 +5158,49 @@ async function runSelfTest() {
     true,
     "driver contract should support explicit future address-kind extension by adapter chunk",
   );
+  const cuaAddressValidators = {
+    "cua-element-index": validateCuaElementIndexAddress,
+  };
+  const validCuaAddress = {
+    kind: "cua-element-index",
+    elementIndex: 7,
+    pid: 101,
+    windowId: 202,
+    snapshotId: "turn-1",
+  };
+  assert.deepEqual(
+    validateElementAddress(validCuaAddress, {
+      additionalAddressValidators: cuaAddressValidators,
+    }).normalized,
+    validCuaAddress,
+    "driver contract should normalize explicitly registered CuaDriver element indexes",
+  );
+  assert.equal(
+    validateElementAddress(validCuaAddress).ok,
+    false,
+    "CuaDriver element indexes should remain adapter-scoped",
+  );
+  for (const [field, value] of [
+    ["elementIndex", "7"],
+    ["pid", 101.5],
+    ["windowId", null],
+    ["snapshotId", "   "],
+  ]) {
+    const result = validateElementAddress(
+      { ...validCuaAddress, [field]: value },
+      { additionalAddressValidators: cuaAddressValidators },
+    );
+    assert.equal(
+      result.ok,
+      false,
+      `driver contract should reject invalid CuaDriver ${field}`,
+    );
+    assert.equal(
+      result.issues.some((entry) => entry.path === field),
+      true,
+      `driver contract should identify invalid CuaDriver ${field}`,
+    );
+  }
   assert.equal(
     validateDriverCapabilities({
       ...codexAppServerDriverDescriptor.capabilities,
