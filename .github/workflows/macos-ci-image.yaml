@@ -177,28 +177,37 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::Scanning provisioning-owned paths for secrets"
-          # Scan only files this recipe can create or modify. Do not recurse
-          # through the base image's /etc or /nix: Tahoe's pre-existing SSH
-          # material and package documentation are not image-owned secrets.
-          # The remote grep status is meaningful: 0 = matches, 1 = no
-          # matches, >1 = scanner/permission/I/O error.
-          PATTERNS='-----BEGIN (RSA |EC |OPENSSH |AGE )?PRIVATE KEY-----|SOPS_AGE_KEY=|ghp_[0-9a-f]{36}|gho_[0-9a-f]{36}|CACHIX_AUTH_TOKEN=|DARKMATTER_CACHIX_AUTH_TOKEN=|DEVELOPER_ID_APPLICATION=|TAURI_SIGNING_PRIVATE_KEY='
-
+          # Send a standalone script to the VM. Keeping the script separate
+          # avoids local shell expansion in the SSH command string.
+          cat > /tmp/scan-vm.sh <<'SCAN'
+          #!/bin/bash
+          set -eu
+          targets=""
+          for path in /Users/admin/.zprofile /Users/admin/.zshrc /Users/admin/.bash_profile /Users/runner/.zprofile /Users/runner/.zshrc /etc/paths.d/nixmac /etc/nix/nix.conf; do
+            if [ -e "$path" ]; then
+              targets="$targets $path"
+            fi
+          done
+          if [ -z "$targets" ]; then
+            echo "no scan targets" >&2
+            exit 2
+          fi
+          set +e
+          grep -rIloE -e '-----BEGIN (RSA |EC |OPENSSH |AGE )?PRIVATE KEY-----|SOPS_AGE_KEY=|ghp_[0-9a-f]{36}|gho_[0-9a-f]{36}|CACHIX_AUTH_TOKEN=|DARKMATTER_CACHIX_AUTH_TOKEN=|DEVELOPER_ID_APPLICATION=|TAURI_SIGNING_PRIVATE_KEY=' $targets
+          status=$?
+          if [ "$status" -gt 1 ]; then exit "$status"; fi
+          exit 0
+          SCAN
+          if ! SSH_PASSWORD=admin /tmp/ssh-vm.sh "admin@$TART_IP" \
+            'cat > /tmp/scan-vm.sh && chmod 700 /tmp/scan-vm.sh' < /tmp/scan-vm.sh; then
+            echo "::error::Could not upload secret scanner"
+            exit 1
+          fi
           if ! FOUND=$(SSH_PASSWORD=admin /tmp/ssh-vm.sh "admin@$TART_IP" \
-            "set -eu
-             for path in /Users/admin/.zprofile /Users/admin/.zshrc /Users/admin/.bash_profile /Users/admin/.config /Users/runner/.zprofile /Users/runner/.zshrc /Users/runner/.config /etc/paths.d/nixmac /etc/nix/nix.conf; do
-               if [ -e \\\"\\$path\\\" ]; then targets=\\\"\\$targets \\$path\\\"; fi
-             done
-             if [ -z \\\"\\$targets\\\" ]; then echo 'no scan targets' >&2; exit 2; fi
-             set +e
-             grep -rIloE '$PATTERNS' \\$targets
-             status=\\$?
-             if [ \\\"\\$status\\\" -gt 1 ]; then exit \\\"\\$status\\\"; fi
-             exit 0"); then
+            '/bin/bash /tmp/scan-vm.sh'); then
             echo "::error::Secret scanner failed (grep error, permission error, or I/O error); refusing to push"
             exit 1
           fi
-
           if [ -n "$FOUND" ]; then
             echo "::error::Secret patterns found in provisioning-owned paths:"
             echo "$FOUND"
