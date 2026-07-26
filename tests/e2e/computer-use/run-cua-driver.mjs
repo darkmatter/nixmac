@@ -569,12 +569,7 @@ async function runSelfTest() {
 
   const transportProbeRoot = await mkdtemp(path.join(os.tmpdir(), "nixmac-local-transport-probe-"));
   const transportRunDir = path.join(transportProbeRoot, "probe-run");
-  const transportAppInputPath = path.join(
-    transportProbeRoot,
-    "staging",
-    "probe-run",
-    "nixmac.app",
-  );
+  const transportAppInputPath = path.join(transportProbeRoot, "staging", "probe-run", "nixmac.app");
   await mkdir(path.join(transportAppInputPath, "Contents"), { recursive: true });
   const transportAppPath = await realpath(transportAppInputPath);
   const transportConfigPath = path.join(path.dirname(transportAppPath), "config");
@@ -1332,12 +1327,7 @@ async function runSelfTest() {
 
   const blockerProbeRoot = await mkdtemp(path.join(os.tmpdir(), "nixmac-smoke-blocker-"));
   const blockerRunDir = path.join(blockerProbeRoot, "blocked-run");
-  const blockerAppInputPath = path.join(
-    blockerProbeRoot,
-    "staging",
-    "blocked-run",
-    "nixmac.app",
-  );
+  const blockerAppInputPath = path.join(blockerProbeRoot, "staging", "blocked-run", "nixmac.app");
   await mkdir(path.join(blockerAppInputPath, "Contents"), { recursive: true });
   const blockerAppPath = await realpath(blockerAppInputPath);
   const blockerStagingPath = path.dirname(blockerAppPath);
