@@ -8,6 +8,8 @@ import {
   assertRemoteMacConcurrencyContracts,
 } from "./workflow-concurrency-contract.mjs";
 
+const MIXED_CASE_REMOTE_MAC_CONCURRENCY_GROUP = "NixMac-MacInCloud-E2E-Remote";
+
 function workflowYaml({
   remoteGroup = REMOTE_MAC_CONCURRENCY_GROUP,
   cancelInProgress = false,
@@ -88,10 +90,21 @@ assert.throws(
 assert.throws(
   () =>
     assertRemoteMacConcurrencyContract({
+      workflowName: "mixed-case-remote-job.yml",
+      source: workflowYaml({ remoteGroup: MIXED_CASE_REMOTE_MAC_CONCURRENCY_GROUP }),
+      remoteJobId: "remote-mac",
+    }),
+  /mixed-case-remote-job\.yml job remote-mac concurrency\.group must equal nixmac-macincloud-e2e-remote/,
+  "the intended remote job must declare the exact canonical lowercase group",
+);
+
+assert.throws(
+  () =>
+    assertRemoteMacConcurrencyContract({
       workflowName: "duplicate-lock.yml",
       source: workflowYaml({
         companionConcurrency: `    concurrency:
-      group: ${REMOTE_MAC_CONCURRENCY_GROUP}
+      group: ${MIXED_CASE_REMOTE_MAC_CONCURRENCY_GROUP}
       cancel-in-progress: false`,
       }),
       remoteJobId: "remote-mac",
@@ -132,7 +145,7 @@ assert.throws(
       workflowName: "workflow-level-shared-lock.yml",
       source: workflowYaml({
         workflowConcurrency: `concurrency:
-  group: ${REMOTE_MAC_CONCURRENCY_GROUP}
+  group: ${MIXED_CASE_REMOTE_MAC_CONCURRENCY_GROUP}
   cancel-in-progress: false`,
       }),
       remoteJobId: "remote-mac",
@@ -146,7 +159,7 @@ assert.throws(
     assertRemoteMacConcurrencyContract({
       workflowName: "workflow-level-scalar-lock.yml",
       source: workflowYaml({
-        workflowConcurrency: `concurrency: ${REMOTE_MAC_CONCURRENCY_GROUP}`,
+        workflowConcurrency: `concurrency: ${MIXED_CASE_REMOTE_MAC_CONCURRENCY_GROUP}`,
       }),
       remoteJobId: "remote-mac",
     }),

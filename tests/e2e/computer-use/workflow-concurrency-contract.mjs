@@ -7,6 +7,10 @@ const AUTOMATIC_CONTRACT_COMMANDS = [
   "node tests/e2e/computer-use/workflow-contract-self-test.mjs",
 ];
 
+function normalizeStaticConcurrencyGroup(group) {
+  return typeof group === "string" ? group.toLowerCase() : undefined;
+}
+
 function parseWorkflowYaml({ workflowName, source }) {
   assert.equal(typeof workflowName, "string", "workflowName must be a string");
   assert.ok(workflowName.trim(), "workflowName must not be blank");
@@ -120,9 +124,9 @@ export function assertRemoteMacConcurrencyContract({
         ? workflowConcurrency.group
         : undefined;
   assert.notEqual(
-    workflowConcurrencyGroup,
+    normalizeStaticConcurrencyGroup(workflowConcurrencyGroup),
     REMOTE_MAC_CONCURRENCY_GROUP,
-    `${workflowName} must not reuse ${REMOTE_MAC_CONCURRENCY_GROUP} at workflow level`,
+    `${workflowName} must not reuse ${REMOTE_MAC_CONCURRENCY_GROUP} at workflow level; declared ${JSON.stringify(workflowConcurrencyGroup)}`,
   );
   if (forbidWorkflowLevelConcurrency) {
     assert.equal(
@@ -167,7 +171,7 @@ export function assertRemoteMacConcurrencyContract({
         job.concurrency &&
         typeof job.concurrency === "object" &&
         !Array.isArray(job.concurrency) &&
-        job.concurrency.group === REMOTE_MAC_CONCURRENCY_GROUP,
+        normalizeStaticConcurrencyGroup(job.concurrency.group) === REMOTE_MAC_CONCURRENCY_GROUP,
     )
     .map(([jobId]) => jobId);
   assert.equal(
