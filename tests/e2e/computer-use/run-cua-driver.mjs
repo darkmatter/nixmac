@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { lstat, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -568,13 +569,22 @@ async function runSelfTest() {
 
   const transportProbeRoot = await mkdtemp(path.join(os.tmpdir(), "nixmac-local-transport-probe-"));
   const transportRunDir = path.join(transportProbeRoot, "probe-run");
-  const transportAppPath = path.join(transportProbeRoot, "staging", "probe-run", "nixmac.app");
-  await mkdir(path.join(transportAppPath, "Contents"), { recursive: true });
+  const transportAppInputPath = path.join(
+    transportProbeRoot,
+    "staging",
+    "probe-run",
+    "nixmac.app",
+  );
+  await mkdir(path.join(transportAppInputPath, "Contents"), { recursive: true });
+  const transportAppPath = await realpath(transportAppInputPath);
+  const transportConfigPath = path.join(path.dirname(transportAppPath), "config");
+  await mkdir(transportConfigPath, { recursive: true });
   await writeFile(
     path.join(transportAppPath, "Contents", "Info.plist"),
     "bounded local transport probe\n",
     "utf8",
   );
+  await writeFile(path.join(transportConfigPath, "flake.nix"), "transport config\n", "utf8");
   const transportAppDigest = await hashCuaBundleTree(transportAppPath);
   const transportCalls = [];
   const forbiddenTransport = (name) => () => {
@@ -590,8 +600,9 @@ async function runSelfTest() {
   let competingDriverClosed = 0;
   let allocatedSocketPath = "";
   class CompetingProcessDriver {
-    constructor(options) {
+    constructor(options, expectedAppPath = transportAppPath) {
       this.connected = false;
+      this.expectedAppPath = expectedAppPath;
       assert.equal(
         typeof options.socketPath,
         "string",
@@ -613,7 +624,7 @@ async function runSelfTest() {
     async prepareTarget(input) {
       assert.deepEqual(input, {
         appBundleId: "com.darkmatter.nixmac",
-        appPath: transportAppPath,
+        appPath: this.expectedAppPath,
       });
       throw new Error("competing com.darkmatter.nixmac process is already running with pid 4242");
     }
@@ -660,6 +671,13 @@ async function runSelfTest() {
     competingProcessError = error;
   }
   assert.match(competingProcessError?.message || "", /competing .* pid 4242/);
+  if (process.platform === "darwin") {
+    assert.notEqual(
+      transportRunDir,
+      await realpath(transportRunDir),
+      "the macOS fallback probe must exercise the /var to /private/var alias",
+    );
+  }
   await renderSuiteErrorReport(competingProcessError, ["--run-dir", transportRunDir], {
     env: transportEnv,
     executionTopology: "local-cua-driver",
@@ -727,6 +745,23 @@ async function runSelfTest() {
       { role: "daemon", status: "not_started" },
     ],
   );
+  assert.deepEqual(
+    transportCleanup.ownedPaths.map(({ kind, observedFinalState }) => ({
+      kind,
+      observedFinalState,
+    })),
+    [
+      { kind: "staging-parent", observedFinalState: "absent" },
+      { kind: "app-bundle", observedFinalState: "absent" },
+      { kind: "disposable-config", observedFinalState: "absent" },
+      { kind: "daemon-socket-directory", observedFinalState: "absent" },
+      { kind: "daemon-socket", observedFinalState: "absent" },
+    ],
+  );
+  assert.equal(existsSync(transportAppPath), false);
+  assert.equal(existsSync(transportConfigPath), false);
+  assert.equal(existsSync(path.dirname(transportAppPath)), false);
+  assert.equal(existsSync(path.dirname(allocatedSocketPath)), false);
   const transportManifest = await verifyEvidenceManifest(await realpath(transportRunDir));
   assert.equal(
     transportManifest.files.some(
@@ -748,6 +783,104 @@ async function runSelfTest() {
       `${name} transport boundary negative control must fail if invoked`,
     );
   }
+  assert.deepEqual(transportCalls, ["websocket", "browser-inspection", "scp", "ssh"]);
+
+  const relativeRunDir = path.join(transportProbeRoot, "relative-run");
+  const relativeRunDirArg = path.relative(process.cwd(), relativeRunDir);
+  assert.equal(path.isAbsolute(relativeRunDirArg), false);
+  const relativeAppInputPath = path.join(
+    transportProbeRoot,
+    "staging",
+    "relative-run",
+    "nixmac.app",
+  );
+  await mkdir(path.join(relativeAppInputPath, "Contents"), { recursive: true });
+  const relativeAppPath = await realpath(relativeAppInputPath);
+  const relativeConfigPath = path.join(path.dirname(relativeAppPath), "config");
+  await mkdir(relativeConfigPath, { recursive: true });
+  await writeFile(
+    path.join(relativeAppPath, "Contents", "Info.plist"),
+    "bounded relative fallback probe\n",
+    "utf8",
+  );
+  await writeFile(path.join(relativeConfigPath, "flake.nix"), "relative config\n", "utf8");
+  const relativeAppDigest = await hashCuaBundleTree(relativeAppPath);
+  const relativeEnv = {
+    ...transportEnv,
+    NIXMAC_E2E_APP_PATH: relativeAppPath,
+    NIXMAC_E2E_STAGING_PARENT: path.dirname(relativeAppPath),
+    NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: relativeConfigPath,
+  };
+  let relativeProcessError;
+  try {
+    await runSuiteWithDriver(["--run-dir", relativeRunDirArg], {
+      createDriver: (options) => new CompetingProcessDriver(options, relativeAppPath),
+      env: relativeEnv,
+      executionTopology: "local-cua-driver",
+      localPreflightDependencies: {
+        canonicalPath: async (value) => value,
+        readBundleIdentity: async () => ({
+          bundleId: "com.darkmatter.nixmac",
+          digestSha256: relativeAppDigest,
+        }),
+      },
+      runPreflightDependencies: {
+        resolvePreflight: async (input) => preflightInputFromEnvironment(input),
+      },
+      transportBoundaries,
+    });
+  } catch (error) {
+    relativeProcessError = error;
+  }
+  assert.match(relativeProcessError?.message || "", /competing .* pid 4242/);
+  await renderSuiteErrorReport(relativeProcessError, ["--run-dir", relativeRunDirArg], {
+    env: relativeEnv,
+    executionTopology: "local-cua-driver",
+  });
+  const relativeState = JSON.parse(await readFile(path.join(relativeRunDir, "state.json"), "utf8"));
+  const relativeAttempt = JSON.parse(
+    await readFile(path.join(relativeRunDir, "attempt.json"), "utf8"),
+  );
+  assert.deepEqual(
+    {
+      category: relativeState.runFailure?.category,
+      code: relativeState.runFailure?.code,
+      infrastructureBlocker: relativeState.runFailure?.infrastructureBlocker,
+      phase: relativeState.runFailure?.phase,
+    },
+    {
+      category: "infrastructure",
+      code: "competing_process",
+      infrastructureBlocker: true,
+      phase: "target_preparation",
+    },
+  );
+  assert.deepEqual(
+    {
+      finalized: relativeAttempt.finalized,
+      lifecycle: relativeAttempt.lifecycle.current,
+      status: relativeAttempt.status,
+      verdict: relativeAttempt.verdict,
+    },
+    {
+      finalized: true,
+      lifecycle: "ABORTED",
+      status: "final",
+      verdict: "inconclusive",
+    },
+    "relative fallback run directories must retain local finalization",
+  );
+  assert.equal(existsSync(relativeAppPath), false);
+  assert.equal(existsSync(relativeConfigPath), false);
+  assert.equal(existsSync(path.dirname(relativeAppPath)), false);
+  const relativeManifest = await verifyEvidenceManifest(await realpath(relativeRunDir));
+  assert.equal(
+    relativeManifest.files.some(
+      (file) => file.path.startsWith("screenshots/") || file.path.startsWith("video/"),
+    ),
+    false,
+    "a relative pre-UI blocker must seal without fabricated visual evidence",
+  );
   assert.deepEqual(transportCalls, ["websocket", "browser-inspection", "scp", "ssh"]);
 
   for (const blockerCase of [
@@ -1051,12 +1184,29 @@ async function runSelfTest() {
 
   const smokeProbeRoot = await mkdtemp(path.join(os.tmpdir(), "nixmac-local-smoke-probe-"));
   const smokeRunDir = path.join(smokeProbeRoot, "smoke-run");
-  const smokeAppPath = path.join(smokeProbeRoot, "staging", "smoke-run", "nixmac.app");
+  const smokeAppInputPath = path.join(smokeProbeRoot, "staging", "smoke-run", "nixmac.app");
+  await mkdir(path.join(smokeAppInputPath, "Contents"), { recursive: true });
+  const smokeAppPath = await realpath(smokeAppInputPath);
+  const smokeStagingPath = path.dirname(smokeAppPath);
+  const smokeConfigPath = path.join(smokeStagingPath, "config");
+  await mkdir(smokeConfigPath, { recursive: true });
+  await writeFile(
+    path.join(smokeAppPath, "Contents", "Info.plist"),
+    "bounded smoke pass fixture\n",
+    "utf8",
+  );
+  await writeFile(path.join(smokeConfigPath, "flake.nix"), "smoke config\n", "utf8");
+  const smokeAppDigest = await hashCuaBundleTree(smokeAppPath);
   const smokeCalls = [];
+  let smokeSocketPath = "";
   class SmokeDriver {
-    constructor() {
+    constructor(options) {
       this.screen = "launch";
       this.snapshot = 0;
+      this.socketPath = options.socketPath;
+      smokeSocketPath = options.socketPath;
+      assert.ok(Buffer.byteLength(this.socketPath, "utf8") <= 103);
+      assert.match(path.basename(path.dirname(this.socketPath)), /^nx-cua-/);
     }
     async connect() {
       smokeCalls.push("connect");
@@ -1098,18 +1248,18 @@ async function runSelfTest() {
     NIXMAC_E2E_APP_ARTIFACT_SHA: artifactSha,
     NIXMAC_E2E_APP_PATH: smokeAppPath,
     NIXMAC_E2E_DISPOSABLE_CONFIG: "true",
-    NIXMAC_E2E_STAGING_PARENT: path.dirname(smokeAppPath),
-    NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: path.join(path.dirname(smokeAppPath), "config"),
+    NIXMAC_E2E_STAGING_PARENT: smokeStagingPath,
+    NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: smokeConfigPath,
   };
   await runSmokeWithDriver(["--run-dir", smokeRunDir], {
-    createDriver: () => new SmokeDriver(),
+    createDriver: (options) => new SmokeDriver(options),
     env: smokeEnv,
     executionTopology: "local-cua-driver",
     localPreflightDependencies: {
       canonicalPath: async (value) => value,
       readBundleIdentity: async () => ({
         bundleId: "com.darkmatter.nixmac",
-        digestSha256: "b".repeat(64),
+        digestSha256: smokeAppDigest,
       }),
     },
     transportBoundaries,
@@ -1126,10 +1276,39 @@ async function runSelfTest() {
   assert.equal(Object.hasOwn(smokeState, "runFailure"), false);
   assert.deepEqual(smokeState.localApp, {
     artifactSha,
-    bundleDigestSha256: "b".repeat(64),
+    bundleDigestSha256: smokeAppDigest,
     bundleId: "com.darkmatter.nixmac",
     path: smokeAppPath,
   });
+  assert.equal(existsSync(smokeAppPath), false);
+  assert.equal(existsSync(smokeConfigPath), false);
+  assert.equal(existsSync(smokeStagingPath), false);
+  assert.equal(existsSync(path.dirname(smokeSocketPath)), false);
+  assert.deepEqual(
+    {
+      attempted: smokeState.cleanup.attempted,
+      clean: smokeState.cleanup.clean,
+      restored: smokeState.cleanup.restored,
+    },
+    {
+      attempted: true,
+      clean: true,
+      restored: true,
+    },
+  );
+  assert.deepEqual(
+    smokeState.cleanup.ownedPaths.map(({ kind, observedFinalState }) => ({
+      kind,
+      observedFinalState,
+    })),
+    [
+      { kind: "staging-parent", observedFinalState: "absent" },
+      { kind: "app-bundle", observedFinalState: "absent" },
+      { kind: "disposable-config", observedFinalState: "absent" },
+      { kind: "daemon-socket-directory", observedFinalState: "absent" },
+      { kind: "daemon-socket", observedFinalState: "absent" },
+    ],
+  );
   assert.deepEqual(smokeCalls, [
     "connect",
     [
@@ -1153,18 +1332,38 @@ async function runSelfTest() {
 
   const blockerProbeRoot = await mkdtemp(path.join(os.tmpdir(), "nixmac-smoke-blocker-"));
   const blockerRunDir = path.join(blockerProbeRoot, "blocked-run");
-  const blockerAppPath = path.join(blockerProbeRoot, "staging", "blocked-run", "nixmac.app");
+  const blockerAppInputPath = path.join(
+    blockerProbeRoot,
+    "staging",
+    "blocked-run",
+    "nixmac.app",
+  );
+  await mkdir(path.join(blockerAppInputPath, "Contents"), { recursive: true });
+  const blockerAppPath = await realpath(blockerAppInputPath);
+  const blockerStagingPath = path.dirname(blockerAppPath);
+  const blockerConfigPath = path.join(blockerStagingPath, "config");
+  await mkdir(blockerConfigPath, { recursive: true });
+  await writeFile(
+    path.join(blockerAppPath, "Contents", "Info.plist"),
+    "bounded smoke blocker fixture\n",
+    "utf8",
+  );
+  await writeFile(path.join(blockerConfigPath, "flake.nix"), "blocker config\n", "utf8");
+  const blockerAppDigest = await hashCuaBundleTree(blockerAppPath);
   const blockerEnv = {
     ...smokeEnv,
     NIXMAC_E2E_APP_PATH: blockerAppPath,
-    NIXMAC_E2E_STAGING_PARENT: path.dirname(blockerAppPath),
-    NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: path.join(path.dirname(blockerAppPath), "config"),
+    NIXMAC_E2E_STAGING_PARENT: blockerStagingPath,
+    NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: blockerConfigPath,
   };
+  let blockerSocketPath = "";
   let smokeBlockerError;
   try {
     await runSmokeWithDriver(["--run-dir", blockerRunDir], {
-      createDriver: () => ({
+      createDriver: (options) => ({
+        socketPath: options.socketPath,
         async connect() {
+          blockerSocketPath = options.socketPath;
           throw new Error("CuaDriver requires Accessibility and Screen Recording permissions");
         },
         async prepareTarget() {},
@@ -1181,7 +1380,7 @@ async function runSelfTest() {
         canonicalPath: async (value) => value,
         readBundleIdentity: async () => ({
           bundleId: "com.darkmatter.nixmac",
-          digestSha256: "b".repeat(64),
+          digestSha256: blockerAppDigest,
         }),
       },
       transportBoundaries,
@@ -1189,6 +1388,10 @@ async function runSelfTest() {
   } catch (error) {
     smokeBlockerError = error;
   }
+  assert.equal(existsSync(blockerAppPath), false);
+  assert.equal(existsSync(blockerConfigPath), false);
+  assert.equal(existsSync(blockerStagingPath), false);
+  assert.equal(existsSync(path.dirname(blockerSocketPath)), false);
   await renderSuiteErrorReport(smokeBlockerError, ["--run-dir", blockerRunDir], {
     env: blockerEnv,
     executionTopology: "local-cua-driver",
@@ -1200,6 +1403,31 @@ async function runSelfTest() {
   assert.equal(blockerState.smoke.outcome, "infrastructure_blocker");
   assert.equal(blockerState.scenarios.reportInspection.status, "not_required");
   assert.equal(blockerState.video.status, "not_required");
+  assert.deepEqual(
+    {
+      attempted: blockerState.cleanup.attempted,
+      clean: blockerState.cleanup.clean,
+      restored: blockerState.cleanup.restored,
+    },
+    {
+      attempted: true,
+      clean: true,
+      restored: true,
+    },
+  );
+  assert.deepEqual(
+    blockerState.cleanup.ownedPaths.map(({ kind, observedFinalState }) => ({
+      kind,
+      observedFinalState,
+    })),
+    [
+      { kind: "staging-parent", observedFinalState: "absent" },
+      { kind: "app-bundle", observedFinalState: "absent" },
+      { kind: "disposable-config", observedFinalState: "absent" },
+      { kind: "daemon-socket-directory", observedFinalState: "absent" },
+      { kind: "daemon-socket", observedFinalState: "absent" },
+    ],
+  );
   assert.deepEqual(
     {
       category: blockerState.runFailure.category,

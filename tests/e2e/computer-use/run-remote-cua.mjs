@@ -164,6 +164,11 @@ function withRunDirArg(args, runDir) {
   return [...args, "--run-dir", runDir];
 }
 
+async function canonicalFallbackRunDir(runDir) {
+  const absoluteRunDir = path.resolve(runDir);
+  return existsSync(absoluteRunDir) ? realpath(absoluteRunDir) : absoluteRunDir;
+}
+
 function timestampSlug(date = new Date()) {
   return date.toISOString().replace(/[:.]/g, "").replace("T", "T").replace("Z", "Z");
 }
@@ -433,6 +438,113 @@ function captureLifecycleForRun({ uiStarted, failure }) {
     status: "not_started",
     uiStarted: false,
     reason: reason || "the runner stopped before UI capture began",
+  };
+}
+
+async function cleanupAttestedLocalResources({
+  boundInput,
+  closeFailure = null,
+  driver,
+  ownedProcessSnapshots,
+  processSnapshotFailure = "",
+}) {
+  const cleanupStartedAt = nowIso();
+  const pathIdentities = [
+    ["staging-parent", boundInput.stagingParent],
+    ["app-bundle", boundInput.appBundlePath],
+    ["disposable-config", boundInput.disposableConfigPath],
+    ["daemon-socket-directory", boundInput.daemonSocketDirectory],
+    ["daemon-socket", boundInput.daemonSocketPath],
+  ];
+  let cleanupFailure = [
+    processSnapshotFailure,
+    closeFailure
+      ? `CuaDriver close failed: ${redact(
+          closeFailure instanceof Error ? closeFailure.message : String(closeFailure),
+        )}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("; ");
+  for (const ownedRoot of [boundInput.stagingParent, boundInput.daemonSocketDirectory]) {
+    try {
+      await rm(ownedRoot, { recursive: true, force: true });
+    } catch (error) {
+      cleanupFailure = [
+        cleanupFailure,
+        `failed to remove ${ownedRoot}: ${redact(
+          error instanceof Error ? error.message : String(error),
+        )}`,
+      ]
+        .filter(Boolean)
+        .join("; ");
+    }
+  }
+  const ownedPaths = pathIdentities.map(([kind, ownedPath]) => ({
+    kind,
+    path: ownedPath,
+    expectedFinalState: "absent",
+    observedFinalState:
+      typeof ownedPath === "string" && path.isAbsolute(ownedPath)
+        ? existsSync(ownedPath)
+          ? "present"
+          : "absent"
+        : "unverified",
+  }));
+  if (ownedPaths.some((ownedPath) => ownedPath.observedFinalState !== "absent")) {
+    cleanupFailure = [cleanupFailure, "one or more exactly owned paths remain after cleanup"]
+      .filter(Boolean)
+      .join("; ");
+  }
+  const processInstances = ownedProcessSnapshots.map((instance) => ({
+    ...instance,
+    terminated: instance.status === "not_started" || !closeFailure,
+  }));
+  const remainingProcesses = processInstances
+    .filter((instance) => !instance.terminated)
+    .map(({ role, pid, birthMarker, executable }) => ({
+      role,
+      pid,
+      birthMarker,
+      executable,
+    }));
+  return {
+    ownershipMode: "local-ephemeral",
+    attempted: true,
+    restored: cleanupFailure === "",
+    clean: cleanupFailure === "",
+    startedAt: cleanupStartedAt,
+    completedAt: nowIso(),
+    ownedPaths,
+    processInstances,
+    remainingProcesses,
+    failureReason: cleanupFailure,
+    lifecycle: {
+      driverCloseAttempted: driver !== null,
+      driverClosed: !closeFailure,
+      ownershipMatched: processSnapshotFailure === "",
+      pathsProbed: ownedPaths.every((ownedPath) => ownedPath.observedFinalState !== "unverified"),
+      processesProbed: !closeFailure && processSnapshotFailure === "",
+    },
+  };
+}
+
+function setLocalCleanupState(state, cleanup, { smoke = false } = {}) {
+  state.cleanup = {
+    ...cleanup,
+    ownedPaths: cleanup.ownedPaths.map((ownedPath) => ({ ...ownedPath })),
+    processInstances: cleanup.processInstances.map((processInstance) => ({
+      ...processInstance,
+    })),
+    remainingProcesses: cleanup.remainingProcesses.map((processInstance) => ({
+      ...processInstance,
+    })),
+    lifecycle: { ...cleanup.lifecycle },
+    note: cleanup.clean
+      ? smoke
+        ? "CuaDriver target/daemon shutdown and exact run-owned app, staging, config, and socket cleanup completed before smoke report rendering."
+        : "CuaDriver target/daemon shutdown and exact staged-app removal completed before evidence sealing."
+      : `Final cleanup failed: ${cleanup.failureReason}`,
   };
 }
 
@@ -4356,95 +4468,14 @@ export async function runSuiteWithDriver(
     const capture = captureLifecycleForRun({ uiStarted, failure: suiteFailure });
     const boundInput = trustedRunPreflight?.input || runProvisioning?.input || null;
     if (finalizationMode === "local-finalize" && boundInput) {
-      const cleanupStartedAt = nowIso();
-      const pathIdentities = [
-        ["staging-parent", boundInput.stagingParent],
-        ["app-bundle", boundInput.appBundlePath],
-        ["disposable-config", boundInput.disposableConfigPath],
-        ["daemon-socket-directory", boundInput.daemonSocketDirectory],
-        ["daemon-socket", boundInput.daemonSocketPath],
-      ];
-      let cleanupFailure = [
+      const cleanup = await cleanupAttestedLocalResources({
+        boundInput,
+        closeFailure,
+        driver,
+        ownedProcessSnapshots,
         processSnapshotFailure,
-        closeFailure
-          ? `CuaDriver close failed: ${redact(
-              closeFailure instanceof Error ? closeFailure.message : String(closeFailure),
-            )}`
-          : "",
-      ]
-        .filter(Boolean)
-        .join("; ");
-      for (const ownedRoot of [boundInput.stagingParent, boundInput.daemonSocketDirectory]) {
-        try {
-          await rm(ownedRoot, { recursive: true, force: true });
-        } catch (error) {
-          cleanupFailure = [
-            cleanupFailure,
-            `failed to remove ${ownedRoot}: ${redact(
-              error instanceof Error ? error.message : String(error),
-            )}`,
-          ]
-            .filter(Boolean)
-            .join("; ");
-        }
-      }
-      const ownedPaths = pathIdentities.map(([kind, ownedPath]) => ({
-        kind,
-        path: ownedPath,
-        expectedFinalState: "absent",
-        observedFinalState:
-          typeof ownedPath === "string" && path.isAbsolute(ownedPath)
-            ? existsSync(ownedPath)
-              ? "present"
-              : "absent"
-            : "unverified",
-      }));
-      if (ownedPaths.some((ownedPath) => ownedPath.observedFinalState !== "absent")) {
-        cleanupFailure = [cleanupFailure, "one or more exactly owned paths remain after cleanup"]
-          .filter(Boolean)
-          .join("; ");
-      }
-      const processInstances = ownedProcessSnapshots.map((instance) => ({
-        ...instance,
-        terminated: instance.status === "not_started" || !closeFailure,
-      }));
-      const remainingProcesses = processInstances
-        .filter((instance) => !instance.terminated)
-        .map(({ role, pid, birthMarker, executable }) => ({
-          role,
-          pid,
-          birthMarker,
-          executable,
-        }));
-      const cleanup = {
-        ownershipMode: "local-ephemeral",
-        attempted: true,
-        restored: cleanupFailure === "",
-        clean: cleanupFailure === "",
-        startedAt: cleanupStartedAt,
-        completedAt: nowIso(),
-        ownedPaths,
-        processInstances,
-        remainingProcesses,
-        failureReason: cleanupFailure,
-        lifecycle: {
-          driverCloseAttempted: driver !== null,
-          driverClosed: !closeFailure,
-          ownershipMatched: processSnapshotFailure === "",
-          pathsProbed: ownedPaths.every(
-            (ownedPath) => ownedPath.observedFinalState !== "unverified",
-          ),
-          processesProbed: !closeFailure && processSnapshotFailure === "",
-        },
-      };
-      state.cleanup = {
-        attempted: cleanup.attempted,
-        restored: cleanup.restored,
-        clean: cleanup.clean,
-        note: cleanup.clean
-          ? "CuaDriver target/daemon shutdown and exact staged-app removal completed before evidence sealing."
-          : `Final cleanup failed: ${cleanup.failureReason}`,
-      };
+      });
+      setLocalCleanupState(state, cleanup);
       try {
         await writeRunCleanup(runDir, cleanup);
         activeRunFinalization = { capture, cleanup, finalizationMode, runDir };
@@ -4586,14 +4617,26 @@ export async function runSmokeWithDriver(
   };
   await saveState(state);
 
-  const driver = validateRuntimeDriver(
-    createDriver({
-      ...options,
-      runDir,
-    }),
-  );
+  const socketEndpoint = await createOwnedCuaSocketEndpoint({
+    requestedPath: env.NIXMAC_CUA_DRIVER_SOCKET || "",
+  });
+  const boundInput = {
+    stagingParent: localPreflight.stagingParent,
+    appBundlePath: localPreflight.appPath,
+    disposableConfigPath: localPreflight.disposableConfigPath,
+    daemonSocketDirectory: socketEndpoint.directory,
+    daemonSocketPath: socketEndpoint.path,
+  };
+  let driver = null;
   let runError = null;
   try {
+    driver = validateRuntimeDriver(
+      createDriver({
+        ...options,
+        runDir,
+        socketPath: socketEndpoint.path,
+      }),
+    );
     await prepareSuiteDriver(driver, {
       executionTopology,
       appBundleId: options.app,
@@ -4652,17 +4695,32 @@ export async function runSmokeWithDriver(
     runError = error;
   }
 
-  let cleanupError = null;
-  try {
-    await driver.close();
-    state.cleanup = {
-      attempted: true,
-      restored: true,
-      note: "The exact smoke target and owned CuaDriver daemon were closed before report rendering.",
-    };
-  } catch (error) {
-    cleanupError = error;
+  const targetSnapshot = processCleanupSnapshot("target", driver?.ownedTarget);
+  const daemonSnapshot = processCleanupSnapshot("daemon", driver?.daemonPeer);
+  const ownedProcessSnapshots = [targetSnapshot.entry, daemonSnapshot.entry];
+  const processSnapshotFailure = [targetSnapshot.failure, daemonSnapshot.failure]
+    .filter(Boolean)
+    .join("; ");
+  let closeFailure = null;
+  if (driver) {
+    try {
+      await driver.close();
+    } catch (error) {
+      closeFailure = error;
+    }
   }
+  const cleanup = await cleanupAttestedLocalResources({
+    boundInput,
+    closeFailure,
+    driver,
+    ownedProcessSnapshots,
+    processSnapshotFailure,
+  });
+  setLocalCleanupState(state, cleanup, { smoke: true });
+  await saveState(state);
+  const cleanupError = cleanup.clean
+    ? null
+    : new Error(`CuaDriver smoke owned cleanup failed: ${cleanup.failureReason}`);
   if (runError && cleanupError) {
     throw new AggregateError(
       [runError, cleanupError],
@@ -4793,10 +4851,8 @@ export async function renderSuiteErrorReport(
 ) {
   const lane = executionTopology === "local-cua-driver" ? "local CuaDriver" : "remote";
   const note = `Computer Use ${lane} runner failed before completing the suite: ${redact(error instanceof Error ? error.message : String(error))}`;
-  let runDir = argValue(args, "--run-dir", activeRunDir || "");
-  if (runDir && executionTopology === "local-cua-driver") {
-    runDir = await realpath(runDir);
-  }
+  const cliRunDir = argValue(args, "--run-dir", "");
+  const runDir = cliRunDir ? await canonicalFallbackRunDir(cliRunDir) : activeRunDir;
   const fallbackArgs = withRunDirArg(args, runDir);
   if (!runDir) {
     await renderUnavailable([...fallbackArgs, "--note", note]);
