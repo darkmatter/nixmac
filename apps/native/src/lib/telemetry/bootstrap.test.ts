@@ -47,6 +47,26 @@ describe("bootstrapWithTelemetry", () => {
     expect(onTelemetryError).toHaveBeenCalledOnce();
   });
 
+  it("renders even when the initialization-error callback throws", async () => {
+    const fallback = provider();
+    const render = vi.fn<(telemetry: TelemetryProvider) => void>();
+
+    await bootstrapWithTelemetry({
+      initTelemetry: vi
+        .fn<() => Promise<TelemetryProvider>>()
+        .mockRejectedValue(new Error("init failed")),
+      getTelemetry: () => fallback,
+      render,
+      environment: "test",
+      onTelemetryError: () => {
+        throw new Error("callback failed");
+      },
+    });
+
+    expect(render).toHaveBeenCalledOnce();
+    expect(render).toHaveBeenCalledWith(fallback);
+  });
+
   it("still renders when app-launch telemetry capture throws", async () => {
     const telemetry = provider(() => {
       throw new Error("capture failed");
@@ -99,5 +119,22 @@ describe("bootstrapWithTelemetry", () => {
       }),
     ).not.toThrow();
     expect(onTelemetryError).toHaveBeenCalledOnce();
+  });
+
+  it("contains a throwing fatal-report callback", () => {
+    const telemetry = provider();
+    telemetry.captureError = () => {
+      throw new Error("reporting failed");
+    };
+
+    expect(() =>
+      captureBootstrapRenderError({
+        error: new Error("render failed"),
+        getTelemetry: () => telemetry,
+        onTelemetryError: () => {
+          throw new Error("callback failed");
+        },
+      }),
+    ).not.toThrow();
   });
 });

@@ -105,14 +105,20 @@ export function assertAutomaticConcurrencyValidationContract({
   );
   const run = matchingSteps[0].run;
   assert.equal(typeof run, "string", `${workflowName} job ${jobId} step ${stepName} must use run`);
-  const commandLines = run.split(/\r?\n/u).map((line) => line.trim());
-  for (const command of AUTOMATIC_CONTRACT_COMMANDS) {
-    assert.equal(
-      commandLines.includes(command),
-      true,
-      `${workflowName} job ${jobId} step ${stepName} must run ${command}`,
-    );
-  }
+  const commandLines = run
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  assert.deepEqual(
+    commandLines,
+    AUTOMATIC_CONTRACT_COMMANDS,
+    `${workflowName} job ${jobId} step ${stepName} must contain exactly the automatic contract commands`,
+  );
+  assert.equal(
+    matchingSteps[0].shell,
+    '"/tmp/nixmac-devenv-cli/bin/devenv" shell --impure -- bash -euo pipefail {0}',
+    `${workflowName} job ${jobId} step ${stepName} must run through the pinned devenv shell with fail-fast Bash`,
+  );
 }
 
 export function assertRemoteMacConcurrencyContract({

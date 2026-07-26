@@ -57,7 +57,7 @@ assertAutomaticConcurrencyValidationContract({
   workflowName: ".github/workflows/build.yaml",
   source: buildWorkflow,
   jobId: "git-hooks",
-  stepName: "Run git hooks and Computer Use workflow contracts",
+  stepName: "Run Computer Use workflow contracts",
 });
 
 assert.match(remote, /\n    needs: prepare\n/, "remote job must depend on prepare");

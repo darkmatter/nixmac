@@ -55,11 +55,10 @@ jobs:
   git-hooks:
     runs-on: arc
     steps:
-      - name: Run git hooks and Computer Use workflow contracts
+      - name: Run Computer Use workflow contracts
+        shell: '"/tmp/nixmac-devenv-cli/bin/devenv" shell --impure -- bash -euo pipefail {0}'
         run: |
-          set -euo pipefail
 ${validationCommands}
-          prek run --all-files --show-diff-on-failure
   build:
     runs-on: [self-hosted, macOS]
     steps:
@@ -251,7 +250,7 @@ assert.doesNotThrow(() =>
     workflowName: "build.yaml",
     source: automaticWorkflowYaml(),
     jobId: "git-hooks",
-    stepName: "Run git hooks and Computer Use workflow contracts",
+    stepName: "Run Computer Use workflow contracts",
   }),
 );
 
@@ -261,7 +260,7 @@ assert.throws(
       workflowName: "missing-merge-group.yaml",
       source: automaticWorkflowYaml({ triggers: "  pull_request:" }),
       jobId: "git-hooks",
-      stepName: "Run git hooks and Computer Use workflow contracts",
+      stepName: "Run Computer Use workflow contracts",
     }),
   /missing-merge-group\.yaml must run automatically on merge_group/,
 );
@@ -275,9 +274,9 @@ assert.throws(
           "          node tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs",
       }),
       jobId: "git-hooks",
-      stepName: "Run git hooks and Computer Use workflow contracts",
+      stepName: "Run Computer Use workflow contracts",
     }),
-  /drifted-wiring\.yaml job git-hooks step Run git hooks and Computer Use workflow contracts must run node tests\/e2e\/computer-use\/workflow-contract-self-test\.mjs/,
+  /drifted-wiring\.yaml job git-hooks step Run Computer Use workflow contracts must contain exactly the automatic contract commands/,
   "removing the real-workflow contract from automatic CI must fail",
 );
 
@@ -291,10 +290,28 @@ assert.throws(
           # node tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs`,
       }),
       jobId: "git-hooks",
-      stepName: "Run git hooks and Computer Use workflow contracts",
+      stepName: "Run Computer Use workflow contracts",
     }),
-  /comment-only-peekaboo-wiring\.yaml job git-hooks step Run git hooks and Computer Use workflow contracts must run node tests\/e2e\/computer-use\/peekaboo-workflow-contract-self-test\.mjs/,
+  /comment-only-peekaboo-wiring\.yaml job git-hooks step Run Computer Use workflow contracts must contain exactly the automatic contract commands/,
   "a commented Peekaboo contract command must not satisfy the automatic CI wiring contract",
+);
+
+assert.throws(
+  () =>
+    assertAutomaticConcurrencyValidationContract({
+      workflowName: "unreachable-contract-commands.yaml",
+      source: automaticWorkflowYaml({
+        validationCommands: `          if false; then
+          node tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs
+          node tests/e2e/computer-use/workflow-contract-self-test.mjs
+          node tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs
+          fi`,
+      }),
+      jobId: "git-hooks",
+      stepName: "Run Computer Use workflow contracts",
+    }),
+  /unreachable-contract-commands\.yaml job git-hooks step Run Computer Use workflow contracts must contain exactly the automatic contract commands/,
+  "shell control flow must not make the required automatic contract commands unreachable",
 );
 
 console.log("Computer Use workflow concurrency contract self-test passed.");

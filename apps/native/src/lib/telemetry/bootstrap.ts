@@ -8,6 +8,18 @@ interface BootstrapWithTelemetryOptions {
   onTelemetryError?: (phase: "initialize" | "capture", error: unknown) => void;
 }
 
+function notifyTelemetryError<TPhase extends string>(
+  callback: (phase: TPhase, error: unknown) => void,
+  phase: TPhase,
+  error: unknown,
+): void {
+  try {
+    callback(phase, error);
+  } catch {
+    // Diagnostics must never become an application availability dependency.
+  }
+}
+
 export async function bootstrapWithTelemetry({
   initTelemetry,
   getTelemetry,
@@ -19,7 +31,7 @@ export async function bootstrapWithTelemetry({
   try {
     telemetry = await initTelemetry();
   } catch (error) {
-    onTelemetryError("initialize", error);
+    notifyTelemetryError(onTelemetryError, "initialize", error);
     telemetry = getTelemetry();
   }
 
@@ -29,7 +41,7 @@ export async function bootstrapWithTelemetry({
       props: { environment },
     });
   } catch (error) {
-    onTelemetryError("capture", error);
+    notifyTelemetryError(onTelemetryError, "capture", error);
   }
 
   await render(telemetry);
@@ -51,6 +63,6 @@ export function captureBootstrapRenderError({
       name: "render-fatal",
     });
   } catch (reportingError) {
-    onTelemetryError("render-error", reportingError);
+    notifyTelemetryError(onTelemetryError, "render-error", reportingError);
   }
 }

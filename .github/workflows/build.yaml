@@ -40,18 +40,22 @@ jobs:
       # here (not just the cached profile): entering the shell is what
       # materializes the .pre-commit-config.yaml symlink that prek reads.
       - name: Install devenv
-        run: nix build github:cachix/devenv/v2.1.2 --out-link "$RUNNER_TEMP/devenv-cli"
+        run: nix build github:cachix/devenv/v2.1.2 --out-link /tmp/nixmac-devenv-cli
 
-      - name: Run git hooks and Computer Use workflow contracts
+      - name: Run Computer Use workflow contracts
         env:
           NIXPKGS_ALLOW_UNFREE: 1
+        shell: '"/tmp/nixmac-devenv-cli/bin/devenv" shell --impure -- bash -euo pipefail {0}'
         run: |
-          "$RUNNER_TEMP/devenv-cli/bin/devenv" shell --impure -- bash -euo pipefail -c '
-            node tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs
-            node tests/e2e/computer-use/workflow-contract-self-test.mjs
-            node tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs
-            prek run --all-files --show-diff-on-failure
-          '
+          node tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs
+          node tests/e2e/computer-use/workflow-contract-self-test.mjs
+          node tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs
+
+      - name: Run git hooks
+        env:
+          NIXPKGS_ALLOW_UNFREE: 1
+        shell: '"/tmp/nixmac-devenv-cli/bin/devenv" shell --impure -- bash -euo pipefail {0}'
+        run: prek run --all-files --show-diff-on-failure
 
   rust-tests:
     name: Rust Tests (Linux)
