@@ -62,7 +62,7 @@ jobs:
       - name: Checkout trusted default-branch harness
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.repository.default_branch }}
+          ref: ${{ github.sha }}
           persist-credentials: false
           fetch-depth: 1
 
@@ -299,7 +299,6 @@ jobs:
           NIXMAC_E2E_ARTIFACT_ATTESTATION_PATH="$run_root/attestations/artifact.json"
           NIXMAC_E2E_PYTHON_PATH="$(command -v python3)"
           NIXMAC_E2E_FFMPEG_PATH="$(command -v ffmpeg)"
-          NIXMAC_E2E_FFPROBE_PATH="$(command -v ffprobe)"
           export \
             NIXMAC_E2E_APP_PATH \
             NIXMAC_E2E_APP_BUNDLE_DIGEST \
@@ -309,8 +308,7 @@ jobs:
             NIXMAC_E2E_RUNNER_ATTESTATION_PATH \
             NIXMAC_E2E_ARTIFACT_ATTESTATION_PATH \
             NIXMAC_E2E_PYTHON_PATH \
-            NIXMAC_E2E_FFMPEG_PATH \
-            NIXMAC_E2E_FFPROBE_PATH
+            NIXMAC_E2E_FFMPEG_PATH
           node tests/e2e/computer-use/run-cua-driver.mjs run --run-dir "$run_root/evidence"
           node tests/e2e/computer-use/evidence-manifest.mjs verify --run-dir "$run_root/evidence"
           printf '%s\n' "$run_root/evidence" > "$RUNNER_TEMP/nixmac-centaur-evidence-path"
@@ -607,7 +605,6 @@ jobs:
              NIXMAC_CUA_DRIVER_SOCKET=$remote_socket_path_q \
              NIXMAC_E2E_CONTROLLER_PROCESS_HANDOFF_PATH=$remote_root_q/controller-process-handoff.json \
              NIXMAC_CUA_DRIVER_BINARY=/usr/local/bin/cua-driver \
-             NIXMAC_E2E_FFPROBE_PATH=/usr/local/bin/ffprobe \
              bash -se" <<'REMOTE'
           set -euo pipefail
           ditto -x -k \
@@ -1067,6 +1064,14 @@ jobs:
           run_dir="$(cat "$RUNNER_TEMP/verified-report-dir")"
           publish_path="computer-use-e2e/jobs/${{ needs.preflight.outputs.job_key }}/attempt-${{ inputs.attempt }}"
           snapshot_dir="$(mktemp -d)"
+          site_dir=""
+          askpass=""
+          cleanup_publish_temp() {
+            [[ -z "$site_dir" ]] || rm -rf -- "$site_dir"
+            rm -rf -- "$snapshot_dir"
+            [[ -z "$askpass" ]] || rm -f -- "$askpass"
+          }
+          trap cleanup_publish_temp EXIT
           cp -a "$run_dir/." "$snapshot_dir/"
           site_dir="$(mktemp -d)"
           askpass="$RUNNER_TEMP/nixmac-e2e-git-askpass"
@@ -1080,7 +1085,6 @@ jobs:
             'esac' \
             > "$askpass"
           chmod 700 "$askpass"
-          trap 'rm -rf "$site_dir" "$snapshot_dir"; rm -f "$askpass"' EXIT
           export GIT_ASKPASS="$askpass"
           export GIT_TERMINAL_PROMPT=0
           git -C "$site_dir" init -q
@@ -1157,8 +1161,15 @@ jobs:
           artifact_digest=""
           backend_result="skipped"
           infra_disposition="$STATIC_INFRA_DISPOSITION"
+          has_terminal_infra_disposition=false
           if [[ "${{ inputs.backend }}" == "cilicon_tart" ]]; then
             infra_disposition="NOT_APPLICABLE"
+          else
+            case "$infra_disposition" in
+              LEASE_BUSY|LEASE_QUARANTINED|INFRASTRUCTURE_FAILURE)
+                has_terminal_infra_disposition=true
+                ;;
+            esac
           fi
           if [[ "$PREFLIGHT_READY" != "true" ]]; then
             if [[ "$PREFLIGHT_RESULT" == "cancelled" ||
@@ -1185,7 +1196,9 @@ jobs:
               terminal_status="COMPLETE"
               workflow_ok=true
             elif [[ "$backend_result" == "cancelled" ||
-              ("$backend_result" == "failure" && -z "$artifact_id") ||
+              ("$backend_result" == "failure" &&
+                -z "$artifact_id" &&
+                "$has_terminal_infra_disposition" != "true") ||
               ("${{ inputs.backend }}" == "static_ssh" &&
                 ("$infra_disposition" == "CONTROLLER_STARTED" ||
                   -z "$STATIC_INFRA_DISPOSITION")) ]]; then

@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -20,6 +22,72 @@ const operations = readFileSync(
   path.join(repoRoot, "tests/e2e/computer-use/OPERATIONS.md"),
   "utf8",
 );
+const evidenceManifestSource = readFileSync(
+  path.join(repoRoot, "tests/e2e/computer-use/evidence-manifest.mjs"),
+  "utf8",
+);
+
+function runTerminalContractScenario({
+  name,
+  backend,
+  preflightResult = "success",
+  preflightReady = "true",
+  terminalStatus = "READY",
+  primaryResult = "skipped",
+  staticResult = "skipped",
+  reportResult = "skipped",
+  primaryArtifactId = "",
+  primaryArtifactDigest = "",
+  staticArtifactId = "",
+  staticArtifactDigest = "",
+  staticInfraDisposition = "",
+  reportUrl = "",
+}) {
+  const contractStep = workflow.jobs.result.steps.find((step) => step.id === "contract");
+  assert.ok(contractStep, "result job must expose its terminal contract writer");
+  const runRoot = mkdtempSync(path.join(os.tmpdir(), `nixmac-centaur-terminal-${name}-`));
+  try {
+    const outputPath = path.join(runRoot, "github-output");
+    const summaryPath = path.join(runRoot, "github-summary");
+    const script = contractStep.run
+      .replaceAll("${{ inputs.backend }}", backend)
+      .replaceAll("${{ inputs.attempt }}", "2");
+    const result = spawnSync("bash", ["-s"], {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        RUNNER_TEMP: runRoot,
+        GITHUB_OUTPUT: outputPath,
+        GITHUB_STEP_SUMMARY: summaryPath,
+        GITHUB_RUN_ID: "12345",
+        GITHUB_RUN_ATTEMPT: "1",
+        INPUT_JOB_ID: `darkmatter/nixmac:${"a".repeat(40)}:computer-use-v1`,
+        PREFLIGHT_RESULT: preflightResult,
+        PREFLIGHT_READY: preflightReady,
+        TERMINAL_STATUS: terminalStatus,
+        PRIMARY_RESULT: primaryResult,
+        STATIC_RESULT: staticResult,
+        REPORT_RESULT: reportResult,
+        PRIMARY_ARTIFACT_ID: primaryArtifactId,
+        PRIMARY_ARTIFACT_DIGEST: primaryArtifactDigest,
+        STATIC_ARTIFACT_ID: staticArtifactId,
+        STATIC_ARTIFACT_DIGEST: staticArtifactDigest,
+        STATIC_INFRA_DISPOSITION: staticInfraDisposition,
+        REPORT_URL: reportUrl,
+      },
+      input: script,
+    });
+    assert.equal(result.status, 0, `${name}: ${result.stderr || result.stdout}`);
+    return {
+      contract: JSON.parse(
+        readFileSync(path.join(runRoot, "nixmac-e2e-terminal/terminal-contract.json"), "utf8"),
+      ),
+      outputs: readFileSync(outputPath, "utf8"),
+    };
+  } finally {
+    rmSync(runRoot, { recursive: true, force: true });
+  }
+}
 
 assert.deepEqual(
   actionlintConfig["self-hosted-runner"].labels,
@@ -106,7 +174,14 @@ assert.deepEqual(primary.concurrency, {
 
 const preflightText = JSON.stringify(preflight);
 assert.match(preflightText, /actions\/checkout@v6/);
-assert.match(preflightText, /ref.*github\.event\.repository\.default_branch/);
+const preflightCheckout = preflight.steps.find(
+  (step) => step.name === "Checkout trusted default-branch harness",
+);
+assert.equal(
+  preflightCheckout.with.ref,
+  "${{ github.sha }}",
+  "the trusted harness must bind the API-observable workflow run head SHA",
+);
 assert.match(preflightText, /BUILD_UNAVAILABLE/);
 assert.match(preflightText, /app_artifact_id/);
 assert.match(preflightText, /build_run_id/);
@@ -150,12 +225,18 @@ for (const [id, job] of Object.entries({ primary, static_ssh: staticJob })) {
     /NIXMAC_E2E_ATTESTATION_NONCE/,
     `${id} must pass the attempt nonce into evidence digest sealing`,
   );
-  assert.match(
-    text,
-    /NIXMAC_E2E_FFPROBE_PATH/,
-    `${id} must pin ffprobe for all-stream evidence inspection`,
-  );
+  assert.match(text, /NIXMAC_E2E_FFMPEG_PATH/, `${id} must pin the media verifier in use`);
 }
+assert.doesNotMatch(
+  source,
+  /NIXMAC_E2E_FFPROBE_PATH/,
+  "the workflow must not claim to pin an unused ffprobe path",
+);
+assert.match(
+  evidenceManifestSource,
+  /process\.env\.NIXMAC_E2E_FFMPEG_PATH/,
+  "the workflow's explicit media verifier path must be consumed by the evidence scanner",
+);
 
 const staticText = JSON.stringify(staticJob);
 const initializeStep = staticJob.steps.find(
@@ -167,7 +248,9 @@ const checkoutStepIndex = staticJob.steps.findIndex(
 const initializeStepIndex = staticJob.steps.findIndex(
   (step) => step.name === "Initialize static terminal contract",
 );
-const leaseStep = staticJob.steps.find((step) => step.name === "Acquire shared MacinCloud host lease");
+const leaseStep = staticJob.steps.find(
+  (step) => step.name === "Acquire shared MacinCloud host lease",
+);
 const enforceLeaseStep = staticJob.steps.find(
   (step) => step.name === "Enforce classified host lease acquisition",
 );
@@ -236,9 +319,7 @@ const copyEvidenceStep = staticJob.steps.find(
 const cleanupStep = staticJob.steps.find(
   (step) => step.name === "Finalize static cleanup and release lease",
 );
-const sealStep = staticJob.steps.find(
-  (step) => step.name === "Seal immutable static evidence",
-);
+const sealStep = staticJob.steps.find((step) => step.name === "Seal immutable static evidence");
 const quarantineStep = staticJob.steps.find(
   (step) => step.name === "Quarantine unclean static backend",
 );
@@ -354,6 +435,18 @@ assert.doesNotMatch(
   "publisher must require one manifest at the canonical artifact root",
 );
 assert.match(publishText, /canonical\/manifest\.json/);
+const publishStep = publish.steps.find(
+  (step) => step.name === "Publish verified gh-pages report with optimistic retry",
+);
+assert.ok(publishStep);
+assert.ok(
+  publishStep.run.indexOf("trap ") < publishStep.run.indexOf('cp -a "$run_dir/."'),
+  "publisher cleanup must be armed before the first snapshot copy can fail",
+);
+assert.ok(
+  publishStep.run.indexOf("trap ") < publishStep.run.lastIndexOf('site_dir="$(mktemp -d)"'),
+  "publisher cleanup must be armed before allocating its second temporary directory",
+);
 
 const primaryCanonicalUpload = primary.steps.find(
   (step) => step.name === "Upload canonical verified evidence",
@@ -361,7 +454,10 @@ const primaryCanonicalUpload = primary.steps.find(
 const staticCanonicalUpload = staticJob.steps.find(
   (step) => step.name === "Upload canonical verified static evidence",
 );
-assert.equal(staticCanonicalUpload.with.path.trim(), "${{ runner.temp }}/static-controller/evidence/");
+assert.equal(
+  staticCanonicalUpload.with.path.trim(),
+  "${{ runner.temp }}/static-controller/evidence/",
+);
 assert.equal(
   primaryCanonicalUpload.with.path.trim(),
   "${{ runner.temp }}/nixmac-centaur-${{ github.run_id }}-${{ github.run_attempt }}/evidence/",
@@ -390,10 +486,7 @@ assert.match(
 const staticRunStep = staticJob.steps.find(
   (step) => step.name === "Run CuaDriver on leased static host",
 );
-assert.equal(
-  staticRunStep.env.STATIC_IMAGE_DIGEST,
-  "${{ vars.NIXMAC_E2E_STATIC_IMAGE_DIGEST }}",
-);
+assert.equal(staticRunStep.env.STATIC_IMAGE_DIGEST, "${{ vars.NIXMAC_E2E_STATIC_IMAGE_DIGEST }}");
 assert.match(staticRunStep.run, /\^sha256:\[0-9a-f\]\{64\}\$/);
 assert.match(staticRunStep.run, /static_image_digest_q=.*printf.*%q/);
 assert.match(
@@ -426,10 +519,7 @@ assert.match(resultText, /actions\/upload-artifact@v7/);
 const terminalContractStep = result.steps.find(
   (step) => step.name === "Write one terminal contract",
 );
-assert.equal(
-  terminalContractStep.env.PREFLIGHT_RESULT,
-  "${{ needs.preflight.result }}",
-);
+assert.equal(terminalContractStep.env.PREFLIGHT_RESULT, "${{ needs.preflight.result }}");
 assert.equal(terminalContractStep.env.INPUT_JOB_ID, "${{ inputs.job_id }}");
 assert.doesNotMatch(
   terminalContractStep.run,
@@ -449,6 +539,47 @@ assert.match(
   /cancelled[\s\S]*runner_lost[\s\S]*GitHub run\/job API/,
   "no-runner cancellation must have an explicit API-synthesized ABORTED contract",
 );
+
+for (const disposition of ["LEASE_BUSY", "LEASE_QUARANTINED", "INFRASTRUCTURE_FAILURE"]) {
+  const observed = runTerminalContractScenario({
+    name: disposition.toLowerCase(),
+    backend: "static_ssh",
+    staticResult: "failure",
+    staticInfraDisposition: disposition,
+  });
+  assert.equal(observed.contract.terminalStatus, "ABORTED");
+  assert.equal(
+    observed.contract.infraDisposition,
+    disposition,
+    `${disposition} must survive the terminal contract without reclassification`,
+  );
+  assert.equal(
+    observed.contract.requiresApiSynthesis,
+    false,
+    `${disposition} already has a workflow-owned terminal disposition`,
+  );
+  assert.match(observed.outputs, /workflow_ok=false/);
+}
+
+for (const scenario of [
+  {
+    name: "primary-cancelled",
+    backend: "cilicon_tart",
+    primaryResult: "cancelled",
+  },
+  {
+    name: "static-runner-lost",
+    backend: "static_ssh",
+    staticResult: "failure",
+    staticInfraDisposition: "CONTROLLER_STARTED",
+  },
+]) {
+  const observed = runTerminalContractScenario(scenario);
+  assert.equal(observed.contract.terminalStatus, "ABORTED");
+  assert.equal(observed.contract.infraDisposition, "ABORTED_API_SYNTHESIS_REQUIRED");
+  assert.equal(observed.contract.requiresApiSynthesis, true);
+  assert.match(observed.outputs, /workflow_ok=false/);
+}
 
 assert.doesNotMatch(
   source,
