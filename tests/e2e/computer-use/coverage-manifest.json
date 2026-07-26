@@ -491,6 +491,7 @@
         "tests/e2e/computer-use/fixtures/preservation/screenshots/60-after-history-restore.png",
         "tests/e2e/computer-use/fixtures/preservation/state.seed.json",
         "tests/e2e/computer-use/fixtures/suite-contract.v1.json",
+        "tests/e2e/computer-use/fixtures/terminal-contract.v1.json",
         "tests/e2e/computer-use/peekaboo-runner.mjs",
         "tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs",
         "tests/e2e/computer-use/preservation-harness.mjs",
