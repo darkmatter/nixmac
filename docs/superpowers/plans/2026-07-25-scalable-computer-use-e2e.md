@@ -583,7 +583,11 @@ stops another process.
 1. recompute the running bundle digest and require it to equal the preflight
    digest;
 1. use returned windows or call `list_windows`;
-1. select one on-screen current-Space layer-0 window deterministically;
+1. select one on-screen current-Space layer-0 window deterministically:
+   prefer explicit `on_current_space=true`, reject explicit false, and for
+   pinned macOS 0.12.6 only accept null as an `is_on_screen=true` fallback
+   because upstream emits null for every window; record which proof path was
+   used and break ties by frontmost `z_index`, then stable window ID;
 1. retain pid/window/app-path identity for every later state/action.
 
 - [ ] **Step 5: Implement normalized UI methods**

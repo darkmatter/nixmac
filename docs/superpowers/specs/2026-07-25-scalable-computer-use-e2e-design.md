@@ -333,6 +333,11 @@ CuaDriver 0.12.6 `call` prints `structuredContent` JSON directly and supports
 `--raw`, `--compact`, or `--no-daemon` flags. Nonzero process status/stderr is
 the current CLI error boundary. A raw MCP envelope may be unwrapped only as a
 bounded compatibility input for sanitized historical fixtures.
+On macOS that pinned release also emits `on_current_space:null` and
+`space_ids:null` for every `list_windows` record. Window selection therefore
+requires `is_on_screen=true` and layer 0, rejects an explicit false
+`on_current_space`, prefers explicit true when a future release supplies it,
+and records when the pinned-version on-screen fallback was used.
 
 Element addresses use a new reviewed `cua-element-index` kind scoped to
 `(pid, window_id, snapshot)`. The adapter must refresh visible state before
