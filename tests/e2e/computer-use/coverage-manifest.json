@@ -6,6 +6,7 @@
     "apps/native/src/components",
     "apps/native/src/components/widget",
     "apps/native/src/hooks",
+    "apps/native/src-tauri",
     "apps/native/src-tauri/src"
   ],
   "candidateIncludes": [
@@ -13,6 +14,9 @@
     "apps/native/src/components/preview-indicator/.*\\.tsx$",
     "apps/native/src/components/widget/.+\\.tsx$",
     "apps/native/src/hooks/use-(apply|rollback|evolve|git-operations|history|history-restore|rebuild-stream|updater|permissions|darwin-config)\\.ts$",
+    "apps/native/src/lib/.+\\.(?:ts|tsx)$",
+    "apps/native/src-tauri/(?:tauri\\.conf(?:\\.dev)?\\.json|Info\\.plist|entitlements\\.plist)$",
+    "apps/native/src-tauri/capabilities/.+\\.json$",
     "apps/native/src-tauri/src/(commands|rebuild|history|storage|ai|state|system|managed_edits|summarize)/.*\\.rs$",
     "apps/native/src-tauri/src/evolve/(mod|tools)\\.rs$"
   ],
@@ -53,12 +57,90 @@
         "apps/native/src/components/widget/layout/stepper.tsx",
         "apps/native/src/components/widget/layout/step-actions-header.tsx",
         "apps/native/src/components/widget/layout/get-started-message.tsx",
-        "apps/native/src/components/widget/badges/config-dir-badge.tsx",
-        "apps/native/src/components/widget/layout/error-message.tsx",
-        "apps/native/src/components/widget/layout/git-status-debug.tsx",
-        "apps/native/src/components/widget/notifications/uncommitted-changes-detected.tsx",
-        "apps/native/src/components/widget/notifications/unsummarized-changes-detected.tsx"
+        "apps/native/src/components/widget/badges/config-dir-badge.tsx"
       ]
+    },
+    {
+      "id": "native-auth-provider-runtime",
+      "label": "Native auth, deep-link, provider configuration, and key validation runtime",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src/lib/auth-deep-link.ts",
+        "apps/native/src/lib/auth.ts",
+        "apps/native/src/lib/orpc.ts",
+        "apps/native/src/lib/providers/ai-defaults.ts",
+        "apps/native/src/lib/providers/ai-models.ts",
+        "apps/native/src/lib/providers/ai-provider-migration.ts",
+        "apps/native/src/lib/providers/ai-provider-validation.ts",
+        "apps/native/src/lib/providers/api-key-verification.ts",
+        "apps/native/src/lib/providers/cli-providers-flag.ts"
+      ],
+      "waiver": {
+        "reason": "The current lane renders provider settings but does not complete authentication callbacks or deep links, migrate provider data, execute provider validation, or verify a real API key.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "high",
+        "exitCriteria": "Add deterministic auth callback, deep-link, provider migration and validation, and disposable API-key verification fixtures with explicit success, failure, redaction, and cleanup proof."
+      }
+    },
+    {
+      "id": "native-runtime-library",
+      "label": "Native boot, LSP, telemetry, persistence, grammar, and queue support runtime",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src/lib/boot-diagnostics.ts",
+        "apps/native/src/lib/constants.ts",
+        "apps/native/src/lib/dev-onboarding-reset.ts",
+        "apps/native/src/lib/env.ts",
+        "apps/native/src/lib/errors.ts",
+        "apps/native/src/lib/flags.ts",
+        "apps/native/src/lib/lsp-client.ts",
+        "apps/native/src/lib/lsp-monaco-bridge.ts",
+        "apps/native/src/lib/nix-grammar.ts",
+        "apps/native/src/lib/query-persist.ts",
+        "apps/native/src/lib/summarize-queue.ts",
+        "apps/native/src/lib/telemetry/context.tsx",
+        "apps/native/src/lib/telemetry/forwarding-processor.ts",
+        "apps/native/src/lib/telemetry/init.ts",
+        "apps/native/src/lib/telemetry/instance.ts",
+        "apps/native/src/lib/telemetry/noop.ts",
+        "apps/native/src/lib/telemetry/provider.ts",
+        "apps/native/src/lib/telemetry/sanitize.ts",
+        "apps/native/src/lib/telemetry/types.ts",
+        "apps/native/src/lib/telemetry/use-feature-flag.ts",
+        "apps/native/src/lib/utils.ts"
+      ],
+      "waiver": {
+        "reason": "Healthy-path screenshots do not deterministically assert boot diagnostics, LSP bridging, telemetry forwarding and sanitization, persisted queries, grammar helpers, or queue behavior.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "medium",
+        "exitCriteria": "Add deterministic fixtures and observable assertions for boot diagnostics, LSP, telemetry sanitization and forwarding, persisted query recovery, grammar handling, and summarize queue lifecycle."
+      }
+    },
+    {
+      "id": "desktop-security-config",
+      "label": "Tauri desktop window, protocol, capability, entitlement, and passkey configuration",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src-tauri/tauri.conf.json",
+        "apps/native/src-tauri/tauri.conf.dev.json",
+        "apps/native/src-tauri/Info.plist",
+        "apps/native/src-tauri/entitlements.plist",
+        "apps/native/src-tauri/capabilities/default.json",
+        "apps/native/src-tauri/capabilities/http.json",
+        "apps/native/src-tauri/capabilities/macos-passkey.json"
+      ],
+      "waiver": {
+        "reason": "The lane launches a staged app but does not verify production window and protocol policy, capability scopes, passkey permissions, or signed-app entitlements.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "high",
+        "exitCriteria": "Add schema and policy assertions plus signed-app Computer Use checks for production windows, protocols, capability scopes, passkey access, entitlements, and denied operations."
+      }
     },
     {
       "id": "updater-runtime",
@@ -270,13 +352,20 @@
     {
       "id": "inline-question-answer",
       "label": "Inline provider question and answer progression",
-      "scenarioKeys": ["inlineQuestionAnswer"],
+      "scenarioKeys": [],
       "sourcePrefixes": [
         "apps/native/src/components/widget/overlays/evolve-progress.tsx",
-        "apps/native/src-tauri/src/commands/evolve.rs",
         "apps/native/src-tauri/src/evolve/mod.rs",
         "apps/native/src-tauri/src/evolve/tools.rs"
-      ]
+      ],
+      "waiver": {
+        "reason": "Inline question and answer is an optional evolved calibration case, not a stable scenario executed by every production coverage run.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "medium",
+        "exitCriteria": "Promote inline question and answer into the stable shared scenario catalog and run it deterministically with question, answer, resume, result, and cleanup assertions."
+      }
     },
     {
       "id": "alternate-ai-providers",
@@ -410,6 +499,10 @@
       "sourcePrefixes": [
         "apps/native/src/components/widget/layout/AppErrorBoundary.tsx",
         "apps/native/src/components/widget/layout/AppFatalFallback.tsx",
+        "apps/native/src/components/widget/layout/error-message.tsx",
+        "apps/native/src/components/widget/layout/git-status-debug.tsx",
+        "apps/native/src/components/widget/notifications/uncommitted-changes-detected.tsx",
+        "apps/native/src/components/widget/notifications/unsummarized-changes-detected.tsx",
         "apps/native/src/components/widget/notifications/upstream-update-available.tsx",
         "apps/native/src/components/widget/overlays/etc-clobber-conflict-list.tsx",
         "apps/native/src/components/widget/overlays/etc-clobber-warning-dialog.tsx",
@@ -419,12 +512,12 @@
         "apps/native/src-tauri/src/system/etc_preflight.rs"
       ],
       "waiver": {
-        "reason": "The healthy-path remote lane does not deterministically induce fatal rendering, repair mode, drift notifications, upstream-update warnings, or activation preflight conflicts.",
+        "reason": "The healthy-path remote lane does not deterministically induce fatal rendering, git-status failures, uncommitted or unsummarized recovery notices, repair mode, drift notifications, upstream-update warnings, or activation preflight conflicts.",
         "owner": "nixmac-product-proof",
         "created": "2026-07-26",
         "reviewBy": "2026-08-15",
         "risk": "medium",
-        "exitCriteria": "Add deterministic fixtures and Computer Use cases for each fallback or warning state, including recovery and cleanup proof."
+        "exitCriteria": "Add deterministic fixtures and Computer Use cases for each error, dirty-state, fallback, or warning state, including recovery and cleanup proof."
       }
     },
     {

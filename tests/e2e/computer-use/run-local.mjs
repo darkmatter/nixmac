@@ -30,8 +30,8 @@ import { buildManifestPrFocus } from "./coverage-focus.mjs";
 import { loadCoverageManifestFile } from "./coverage-manifest.mjs";
 import { shellQuote } from "./remote-stage.mjs";
 import {
+  isStableCoverageScenarioKey,
   scenarioLabels as sharedScenarioLabels,
-  scenarioProofCatalog as sharedScenarioProofCatalog,
 } from "./scenario-catalog.mjs";
 
 const THIS_FILE = fileURLToPath(import.meta.url);
@@ -225,8 +225,7 @@ function splitPrEnvList(value = "") {
 
 function loadCoverageManifest() {
   return loadCoverageManifestFile(COVERAGE_MANIFEST_PATH, {
-    knownScenarioKey: (key) =>
-      Boolean(sharedScenarioLabels[key] || sharedScenarioProofCatalog[key]),
+    knownScenarioKey: isStableCoverageScenarioKey,
   });
 }
 
@@ -246,8 +245,7 @@ function buildPeekabooPrFocus(env = process.env, { loadManifest = loadCoverageMa
   const focus = buildManifestPrFocus({
     changedFiles,
     manifest,
-    knownScenarioKey: (key) =>
-      Boolean(sharedScenarioLabels[key] || sharedScenarioProofCatalog[key]),
+    knownScenarioKey: isStableCoverageScenarioKey,
     specialScenarioKeysForFile(file) {
       const scenarioKeys = [];
       if (/^tests\/e2e\/|^\.github\/workflows\/peekaboo-e2e\.yml/.test(file)) {
@@ -3229,6 +3227,11 @@ async function runSelfTest() {
     () => requireCoverageManifestForSetup({ loadManifest: failClosedManifestLoad }),
     /schema-invalid coverage manifest/,
     "Peekaboo setup should stop before side effects when manifest loading or validation fails",
+  );
+  assert.equal(
+    isStableCoverageScenarioKey("inlineQuestionAnswer"),
+    false,
+    "Peekaboo manifest validation should reject the same evolved-only keys as the remote runner",
   );
   // This is a one-way drift guard: run-local is a deliberate subset with a few
   // local-only scenario names, so it should not require every shared key.

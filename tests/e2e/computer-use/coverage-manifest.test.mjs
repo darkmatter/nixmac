@@ -8,6 +8,7 @@ import {
   validateCoverageManifest,
 } from "./coverage-manifest.mjs";
 import { buildManifestPrFocus } from "./coverage-focus.mjs";
+import { isStableCoverageScenarioKey } from "./scenario-catalog.mjs";
 
 function waiver() {
   return {
@@ -41,6 +42,14 @@ function baseManifest() {
         sourcePrefixes: ["app/preview.tsx"],
         waiver: waiver(),
       },
+      {
+        id: "non-claiming",
+        label: "Non-claiming plumbing",
+        scenarioKeys: [],
+        sourcePrefixes: ["app/internal.ts"],
+        coverageDisposition: "non-claiming",
+        coverageNote: "Synthetic internal plumbing.",
+      },
     ],
   };
 }
@@ -53,6 +62,24 @@ function validationErrors(manifest) {
 
 export function coverageManifestSelfTest() {
   assert.deepEqual(validationErrors(baseManifest()), []);
+  assert.equal(
+    isStableCoverageScenarioKey("launch"),
+    true,
+    "stable shared scenarios should be valid coverage-manifest keys",
+  );
+  assert.equal(
+    isStableCoverageScenarioKey("inlineQuestionAnswer"),
+    false,
+    "optional evolved-only scenarios should not be valid coverage-manifest keys",
+  );
+  const evolvedOnlyScenario = baseManifest();
+  evolvedOnlyScenario.surfaces[0].scenarioKeys = ["inlineQuestionAnswer"];
+  assert(
+    validateCoverageManifest(evolvedOnlyScenario, {
+      knownScenarioKey: isStableCoverageScenarioKey,
+    }).some((error) => error.includes("maps to unknown scenario inlineQuestionAnswer")),
+    "coverage-manifest validation should consistently reject evolved-only scenario keys",
+  );
   const ambiguousDirectoryPrefix = baseManifest();
   ambiguousDirectoryPrefix.surfaces = [ambiguousDirectoryPrefix.surfaces[0]];
   ambiguousDirectoryPrefix.surfaces[0].sourcePrefixes = ["app"];
@@ -108,6 +135,47 @@ export function coverageManifestSelfTest() {
     ["app/preview.tsx"],
     "an explicitly waived file should remain visible as debt",
   );
+  assert.deepEqual(
+    waivedSpecialFocus.waivedUserVisibleFiles,
+    ["app/preview.tsx"],
+    "PR focus should carry waived user-visible files as an explicit classification",
+  );
+
+  const classificationFocus = buildManifestPrFocus({
+    changedFiles: [
+      "app/main.tsx",
+      "app/preview.tsx",
+      "app/new-visible.tsx",
+      "app/internal.ts",
+    ],
+    manifest: baseManifest(),
+    knownScenarioKey: (key) => key === "launch",
+  });
+  assert.deepEqual(
+    classificationFocus.claimedUserVisibleFiles,
+    ["app/main.tsx"],
+    "PR focus should carry claimed user-visible files",
+  );
+  assert.deepEqual(
+    classificationFocus.waivedUserVisibleFiles,
+    ["app/preview.tsx"],
+    "PR focus should carry waived user-visible files",
+  );
+  assert.deepEqual(
+    classificationFocus.unmatchedUserVisibleFiles,
+    ["app/new-visible.tsx"],
+    "PR focus should distinguish unmatched user-visible files from managed waivers",
+  );
+  assert.deepEqual(
+    classificationFocus.nonClaimingUserVisibleFiles,
+    ["app/internal.ts"],
+    "PR focus should carry explicitly non-claiming user-visible files without debt",
+  );
+  assert.deepEqual(
+    classificationFocus.unmappedUserVisibleFiles,
+    ["app/preview.tsx", "app/new-visible.tsx"],
+    "only waived and unmatched user-visible files should create PR coverage debt",
+  );
 
   const duplicateIds = baseManifest();
   duplicateIds.surfaces[1].id = "claimed";
@@ -140,6 +208,28 @@ export function coverageManifestSelfTest() {
       error.includes("directory prefix app/waived/ requires an approval"),
     ),
     "waived directory prefixes should also require auditable approval metadata",
+  );
+  unapprovedWaivedDirectory.surfaces[1].directoryPrefixApprovals = [
+    {
+      prefix: "app/waived/",
+      owner: "self-test",
+      reason: "Synthetic managed waiver directory.",
+    },
+  ];
+  const newWaivedFileFocus = buildManifestPrFocus({
+    changedFiles: ["app/waived/new-visible-flow.tsx"],
+    manifest: unapprovedWaivedDirectory,
+    knownScenarioKey: (key) => key === "launch",
+  });
+  assert.deepEqual(
+    newWaivedFileFocus.waivedUserVisibleFiles,
+    ["app/waived/new-visible-flow.tsx"],
+    "a new file under an approved waiver directory should remain visible as waiver debt",
+  );
+  assert.deepEqual(
+    newWaivedFileFocus.unmappedUserVisibleFiles,
+    ["app/waived/new-visible-flow.tsx"],
+    "approved waiver directories must not silently turn new files into claimed coverage",
   );
 
   const broadClaimOverExactWaiver = baseManifest();

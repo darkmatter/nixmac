@@ -32,6 +32,7 @@ import {
   DEFAULT_PROMPT,
   EVOLVED_CASE_CATALOG,
   curatedProofKeys,
+  isStableCoverageScenarioKey,
   scenarioVisualContracts,
   scenarioAssertionTypeHints,
   scenarioGroups,
@@ -323,7 +324,7 @@ function buildPrFocus() {
   const focus = buildManifestPrFocus({
     changedFiles,
     manifest,
-    knownScenarioKey,
+    knownScenarioKey: isStableCoverageScenarioKey,
     specialScenarioKeysForFile(file) {
       const scenarioKeys = [];
       if (/^tests\/e2e\/computer-use\/|^\.github\/workflows\/computer-use-e2e\.yml$/i.test(file)) {
@@ -355,7 +356,9 @@ function buildPrFocus() {
 }
 
 function loadCoverageManifest() {
-  return loadCoverageManifestFile(COVERAGE_MANIFEST_PATH, { knownScenarioKey });
+  return loadCoverageManifestFile(COVERAGE_MANIFEST_PATH, {
+    knownScenarioKey: isStableCoverageScenarioKey,
+  });
 }
 
 function walkFiles(root) {
@@ -456,14 +459,6 @@ function managedWaiverFor(surface) {
   return waiver;
 }
 
-function knownScenarioKey(key) {
-  return Boolean(
-    scenarioLabels[key] ||
-    scenarioProofCatalog[key] ||
-    Object.values(EVOLVED_CASE_CATALOG).some((caseDef) => caseDef.scenarioKey === key),
-  );
-}
-
 function buildCoverageFreshness(state) {
   const manifest = loadCoverageManifest();
   const surfaces = manifest.surfaces || [];
@@ -474,7 +469,7 @@ function buildCoverageFreshness(state) {
 
   for (const surface of surfaces) {
     const scenarioKeys = surface.scenarioKeys || [];
-    const unknown = scenarioKeys.filter((key) => !knownScenarioKey(key));
+    const unknown = scenarioKeys.filter((key) => !isStableCoverageScenarioKey(key));
     const missingSources = (surface.sourcePrefixes || []).filter(
       (sourcePath) => !sourcePrefixExists(sourcePath),
     );
@@ -542,6 +537,13 @@ function updateMainCoverageFreshness(state) {
 }
 
 function updatePrSpecificCoverage(state) {
+  const debtFiles = [
+    ...new Set([
+      ...(state.prFocus?.waivedUserVisibleFiles ?? []),
+      ...(state.prFocus?.unmatchedUserVisibleFiles ?? []),
+      ...(state.prFocus?.unmappedUserVisibleFiles ?? []),
+    ]),
+  ];
   if (!state.prFocus?.configured) {
     updateScenario(
       state,
@@ -562,6 +564,22 @@ function updatePrSpecificCoverage(state) {
       "prSpecificCoverage",
       "pass",
       "Changed-file metadata did not infer user-visible app changes requiring a dedicated Computer Use focus pass.",
+    );
+  } else if (debtFiles.length) {
+    updateScenario(
+      state,
+      "prSpecificCoverage",
+      "inconclusive",
+      `PR-specific coverage remains incomplete because user-visible changed files are waived or unmatched: ${debtFiles.join(", ")}`,
+    );
+  } else if (
+    state.prFocus.nonClaimingUserVisibleFiles?.length === state.prFocus.userVisibleFiles.length
+  ) {
+    updateScenario(
+      state,
+      "prSpecificCoverage",
+      "pass",
+      `All user-visible changed files are explicitly classified as non-claiming runtime plumbing, so no dedicated Computer Use scenario is required: ${state.prFocus.nonClaimingUserVisibleFiles.join(", ")}`,
     );
   } else if (state.prFocus.scenarioKeys?.length) {
     const mappedScenarios = state.prFocus.scenarioKeys
@@ -4546,8 +4564,8 @@ async function runSelfTest() {
   const coverageFreshness = buildCoverageFreshness();
   assert.equal(
     coverageFreshness.candidateFiles,
-    264,
-    "coverage freshness should scan the full current user-visible candidate baseline, including root entrypoints",
+    301,
+    "coverage freshness should scan app entrypoints, native libraries, Rust behavior, and desktop security config",
   );
   assert.deepEqual(
     coverageFreshness.unmappedCandidateFiles,
@@ -4561,7 +4579,7 @@ async function runSelfTest() {
   );
   assert.equal(
     coverageFreshness.waivers.length,
-    9,
+    13,
     "the current explicit waiver baseline should remain auditable",
   );
   assert.deepEqual(
@@ -4569,7 +4587,7 @@ async function runSelfTest() {
       counts[item.risk] = (counts[item.risk] ?? 0) + 1;
       return counts;
     }, {}),
-    { medium: 5, high: 4 },
+    { medium: 7, high: 6 },
     "the current waiver risk distribution should remain explicit",
   );
   assert.equal(
@@ -4670,6 +4688,85 @@ async function runSelfTest() {
     ["evolve-mascot-indicator"],
     "the experimental mascot side-window entrypoint should not inherit main-window proof",
   );
+  for (const file of [
+    "apps/native/src/lib/auth-deep-link.ts",
+    "apps/native/src/lib/auth.ts",
+    "apps/native/src/lib/orpc.ts",
+    "apps/native/src/lib/providers/ai-defaults.ts",
+    "apps/native/src/lib/providers/ai-models.ts",
+    "apps/native/src/lib/providers/ai-provider-migration.ts",
+    "apps/native/src/lib/providers/ai-provider-validation.ts",
+    "apps/native/src/lib/providers/api-key-verification.ts",
+    "apps/native/src/lib/providers/cli-providers-flag.ts",
+  ]) {
+    assert.deepEqual(
+      coverageOwnersFor(file),
+      ["native-auth-provider-runtime"],
+      `${file} should have explicit managed waiver ownership`,
+    );
+  }
+  const nativeRuntimeLibraryFiles = [
+    "apps/native/src/lib/boot-diagnostics.ts",
+    "apps/native/src/lib/constants.ts",
+    "apps/native/src/lib/dev-onboarding-reset.ts",
+    "apps/native/src/lib/env.ts",
+    "apps/native/src/lib/errors.ts",
+    "apps/native/src/lib/flags.ts",
+    "apps/native/src/lib/lsp-client.ts",
+    "apps/native/src/lib/lsp-monaco-bridge.ts",
+    "apps/native/src/lib/nix-grammar.ts",
+    "apps/native/src/lib/query-persist.ts",
+    "apps/native/src/lib/summarize-queue.ts",
+    "apps/native/src/lib/telemetry/context.tsx",
+    "apps/native/src/lib/telemetry/forwarding-processor.ts",
+    "apps/native/src/lib/telemetry/init.ts",
+    "apps/native/src/lib/telemetry/instance.ts",
+    "apps/native/src/lib/telemetry/noop.ts",
+    "apps/native/src/lib/telemetry/provider.ts",
+    "apps/native/src/lib/telemetry/sanitize.ts",
+    "apps/native/src/lib/telemetry/types.ts",
+    "apps/native/src/lib/telemetry/use-feature-flag.ts",
+    "apps/native/src/lib/utils.ts",
+  ];
+  for (const file of nativeRuntimeLibraryFiles) {
+    assert.deepEqual(
+      coverageOwnersFor(file),
+      ["native-runtime-library"],
+      `${file} should have explicit managed waiver ownership`,
+    );
+  }
+  assert.equal(
+    nativeRuntimeLibraryFiles.length + 9,
+    30,
+    "the native library ownership audit should enumerate every current non-test source file",
+  );
+  for (const file of [
+    "apps/native/src-tauri/tauri.conf.json",
+    "apps/native/src-tauri/tauri.conf.dev.json",
+    "apps/native/src-tauri/Info.plist",
+    "apps/native/src-tauri/entitlements.plist",
+    "apps/native/src-tauri/capabilities/default.json",
+    "apps/native/src-tauri/capabilities/http.json",
+    "apps/native/src-tauri/capabilities/macos-passkey.json",
+  ]) {
+    assert.deepEqual(
+      coverageOwnersFor(file),
+      ["desktop-security-config"],
+      `${file} should be visible to freshness under a managed desktop-security waiver`,
+    );
+  }
+  for (const file of [
+    "apps/native/src/components/widget/layout/error-message.tsx",
+    "apps/native/src/components/widget/layout/git-status-debug.tsx",
+    "apps/native/src/components/widget/notifications/uncommitted-changes-detected.tsx",
+    "apps/native/src/components/widget/notifications/unsummarized-changes-detected.tsx",
+  ]) {
+    assert.deepEqual(
+      coverageOwnersFor(file),
+      ["recovery-and-activation-preflight"],
+      `${file} should be waived until its recovery state is deterministically asserted`,
+    );
+  }
   const previousExtraCases = process.env.NIXMAC_E2E_EXTRA_EVOLVED_CASES;
   process.env.NIXMAC_E2E_EXTRA_EVOLVED_CASES = "inline-question-font";
   assert.deepEqual(
@@ -4708,9 +4805,9 @@ async function runSelfTest() {
     "inline question scenario should expose question-answer assertion hint",
   );
   assert.equal(
-    knownScenarioKey("inlineQuestionAnswer"),
-    true,
-    "inline question should be a known optional scenario for coverage manifest mapping",
+    isStableCoverageScenarioKey("inlineQuestionAnswer"),
+    false,
+    "optional evolved cases should not become stable coverage-manifest claims",
   );
   const evolvedScenarioKeys = Object.values(EVOLVED_CASE_CATALOG)
     .map((caseDef) => caseDef.scenarioKey)
@@ -5715,6 +5812,42 @@ async function runSelfTest() {
     settingsMutationFiles,
     "mixed settings persistence and mutation modules should remain explicit waived debt",
   );
+  const restoredVisibilityFiles = [
+    "apps/native/src/lib/auth-deep-link.ts",
+    "apps/native/src/lib/telemetry/init.ts",
+    "apps/native/src-tauri/tauri.conf.json",
+    "apps/native/src-tauri/capabilities/default.json",
+  ];
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = restoredVisibilityFiles.join("\n");
+  const restoredVisibilityPrFocus = buildPrFocus();
+  assert.deepEqual(
+    restoredVisibilityPrFocus.userVisibleFiles,
+    restoredVisibilityFiles,
+    "native libraries and desktop security config should remain visible to PR focus",
+  );
+  assert.deepEqual(
+    restoredVisibilityPrFocus.waivedUserVisibleFiles,
+    restoredVisibilityFiles,
+    "unexercised native libraries and desktop config should remain explicit PR debt",
+  );
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES =
+    "apps/native/src/components/widget/settings/settings-dialog.tsx";
+  const claimedOnlyPrFocus = buildPrFocus();
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = [
+    "apps/native/src/components/widget/settings/settings-dialog.tsx",
+    "apps/native/src-tauri/src/storage/store.rs",
+  ].join("\n");
+  const claimedAndWaivedPrFocus = buildPrFocus();
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES =
+    "apps/native/src/components/widget/new-visible-surface.tsx";
+  const unmatchedOnlyPrFocus = buildPrFocus();
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = "apps/native/src-tauri/src/commands/mod.rs";
+  const nonClaimingOnlyPrFocus = buildPrFocus();
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = [
+    "apps/native/src/components/widget/settings/settings-dialog.tsx",
+    "apps/native/src-tauri/src/commands/mod.rs",
+  ].join("\n");
+  const claimedAndNonClaimingPrFocus = buildPrFocus();
   process.env.NIXMAC_E2E_PR_CHANGED_FILES = "tests/e2e/computer-use/run-remote-cua.mjs";
   const toolPrFocus = buildPrFocus();
   assert.equal(
@@ -5803,6 +5936,54 @@ async function runSelfTest() {
     waiverOnlyCoverageState.scenarios.prSpecificCoverage.status,
     "inconclusive",
     "waiver-only changes must not false-pass from unrelated previously exercised Settings proof",
+  );
+  const evaluatePrSpecificFocus = (focus, scenarioStatus = "pass") => {
+    const state = ensureCurrentSchema({
+      scenarios: {},
+      claims: [],
+      prFocus: { ...focus, configured: true },
+    });
+    for (const scenarioKey of focus.scenarioKeys ?? []) {
+      if (scenarioKey === "prSpecificCoverage") continue;
+      updateScenario(state, scenarioKey, scenarioStatus, `Synthetic ${scenarioStatus} proof.`);
+    }
+    updatePrSpecificCoverage(state);
+    return state.scenarios.prSpecificCoverage.status;
+  };
+  assert.equal(
+    evaluatePrSpecificFocus(claimedOnlyPrFocus),
+    "pass",
+    "claimed-only PR focus should pass when all mapped scenarios pass",
+  );
+  assert.equal(
+    evaluatePrSpecificFocus(waiverOnlyPrFocus),
+    "inconclusive",
+    "waived-only PR focus should remain inconclusive",
+  );
+  assert.equal(
+    evaluatePrSpecificFocus(claimedAndWaivedPrFocus),
+    "inconclusive",
+    "claimed and waived PR focus should remain inconclusive even when claimed scenarios pass",
+  );
+  assert.equal(
+    evaluatePrSpecificFocus(unmatchedOnlyPrFocus),
+    "inconclusive",
+    "an unmatched user-visible PR focus should remain inconclusive",
+  );
+  assert.equal(
+    evaluatePrSpecificFocus(nonClaimingOnlyPrFocus),
+    "pass",
+    "an explicitly non-claiming-only PR focus should be a passing no-op",
+  );
+  assert.equal(
+    evaluatePrSpecificFocus(claimedAndNonClaimingPrFocus),
+    "pass",
+    "claimed plus explicitly non-claiming PR focus should follow passing claimed scenarios",
+  );
+  assert.equal(
+    evaluatePrSpecificFocus(claimedAndNonClaimingPrFocus, "fail"),
+    "fail",
+    "claimed plus explicitly non-claiming PR focus should follow failing claimed scenarios",
   );
 
   const renderRunDir = path.join(os.tmpdir(), `nixmac-e2e-self-test-${Date.now()}`);
