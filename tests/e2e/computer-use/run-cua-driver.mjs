@@ -707,6 +707,7 @@ async function runSelfTest() {
     NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: path.join(path.dirname(transportAppPath), "config"),
   };
   let competingProcessError;
+  let transportPreflightDigestCalls = 0;
   try {
     await runSuiteWithDriver(["--run-dir", transportRunDir], {
       createDriver: (options) => {
@@ -723,6 +724,12 @@ async function runSelfTest() {
         }),
       },
       runPreflightDependencies: {
+        computeAppBundleDigest: async (appBundlePath) => {
+          transportPreflightDigestCalls += 1;
+          assert.equal(appBundlePath, transportAppPath);
+          return transportAppDigest;
+        },
+        probeExpectedAppBundleDigest: hashSelfTestBundleTree,
         resolvePreflight: async (input) => preflightInputFromEnvironment(input),
       },
       transportBoundaries,
@@ -730,6 +737,11 @@ async function runSelfTest() {
   } catch (error) {
     competingProcessError = error;
   }
+  assert.equal(
+    transportPreflightDigestCalls,
+    2,
+    "self-test digest injection must cover initial and final preflight attestation",
+  );
   assert.match(competingProcessError?.message || "", /competing .* pid 4242/);
   if (process.platform === "darwin") {
     assert.notEqual(
@@ -885,6 +897,8 @@ async function runSelfTest() {
         }),
       },
       runPreflightDependencies: {
+        computeAppBundleDigest: hashSelfTestBundleTree,
+        probeExpectedAppBundleDigest: hashSelfTestBundleTree,
         resolvePreflight: async (input) => preflightInputFromEnvironment(input),
       },
       transportBoundaries,
@@ -1020,6 +1034,8 @@ async function runSelfTest() {
           }),
         },
         runPreflightDependencies: {
+          computeAppBundleDigest: hashSelfTestBundleTree,
+          probeExpectedAppBundleDigest: hashSelfTestBundleTree,
           resolvePreflight: async (input) => preflightInputFromEnvironment(input),
         },
         transportBoundaries,
@@ -1109,6 +1125,8 @@ async function runSelfTest() {
         }),
       },
       runPreflightDependencies: {
+        computeAppBundleDigest: hashSelfTestBundleTree,
+        probeExpectedAppBundleDigest: hashSelfTestBundleTree,
         resolvePreflight: async (input) => preflightInputFromEnvironment(input),
       },
       transportBoundaries,
