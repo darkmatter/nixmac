@@ -287,8 +287,17 @@ printf '%s\\n' "\${NIXMAC_E2E_FAKE_GH_STATUS:-in_progress}"
   const ownerInitHook = path.join(fixtureRoot, "pause-owner-initialization");
   writeFileSync(ownerInitHook, "#!/usr/bin/env bash\nset -euo pipefail\nsleep 0.5\n");
   chmodSync(ownerInitHook, 0o700);
+  const hostileStatBin = path.join(fixtureRoot, "hostile-stat-bin");
+  mkdirSync(hostileStatBin);
+  const hostileStat = path.join(hostileStatBin, "stat");
+  writeFileSync(
+    hostileStat,
+    "#!/usr/bin/env bash\ndate +%s%N\nprintf 'changing failed probe output\\n'\nexit 1\n",
+  );
+  chmodSync(hostileStat, 0o700);
   const concurrentAcquireEnv = {
     ...fixtureEnv,
+    PATH: `${hostileStatBin}:${fixtureEnv.PATH}`,
     NIXMAC_E2E_LEASE_OWNER_INIT_TEST_HOOK: ownerInitHook,
   };
   const concurrentResults = await Promise.all([

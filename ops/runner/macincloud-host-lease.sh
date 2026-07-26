@@ -553,10 +553,10 @@ HEARTBEAT
 fi
 [[ -d "$lease_dir" && ! -L "$lease_dir" ]] || { printf 'UNSAFE\n'; exit 0; }
 directory_identity() {
-  if stat -f '%d:%i' "$1" 2>/dev/null; then
-    return
-  fi
-  stat -c '%d:%i' "$1" 2>/dev/null
+  case "$(/usr/bin/uname -s)" in
+    Darwin) /usr/bin/stat -f '%d:%i' "$1" 2>/dev/null ;;
+    *) /usr/bin/stat -c '%d:%i' "$1" 2>/dev/null ;;
+  esac
 }
 owner_identity="$(directory_identity "$lease_dir")" ||
   { printf 'UNSAFE\n'; exit 0; }
