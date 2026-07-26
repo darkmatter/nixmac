@@ -815,8 +815,13 @@ assert.match(
 );
 assert.match(
   nativeMain,
-  /run_on_main_thread\(move \|\| \{\n\s+e2e_request_webview_boot_probe\(&reload_window, "watchdog-before-reload"\);\n\s+if !claim_e2e_webview_watchdog_reload\(&reload_loaded, &reload_claimed\)[\s\S]*reload_window\.reload\(\)/,
-  "Watchdog reload closure must probe and consult the runtime one-shot guard on the main thread immediately before reload",
+  /run_on_main_thread\(move \|\| \{\n\s+e2e_request_webview_boot_probe\(&reload_window, "watchdog-before-reload"\);\n\s+match run_e2e_webview_watchdog_reload\(\n\s+&reload_loaded,\n\s+&reload_claimed,\n\s+\|\| reload_window\.reload\(\),/,
+  "Watchdog reload closure must route its sole reload callback through the behavior-tested one-shot operation",
+);
+assert.equal(
+  occurrenceCount(nativeMain, /\.reload\s*\(/),
+  1,
+  "Native app must expose exactly one direct WebView reload call, guarded by the watchdog helper",
 );
 assert.match(
   nativeSecrets,

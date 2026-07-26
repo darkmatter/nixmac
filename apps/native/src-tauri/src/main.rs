@@ -80,14 +80,26 @@ fn e2e_webview_watchdog_enabled() -> bool {
     cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_WEBVIEW_WATCHDOG")
 }
 
-fn claim_e2e_webview_watchdog_reload(loaded: &AtomicBool, reload_claimed: &AtomicBool) -> bool {
+fn run_e2e_webview_watchdog_reload<E, F>(
+    loaded: &AtomicBool,
+    reload_claimed: &AtomicBool,
+    reload: F,
+) -> Option<Result<(), E>>
+where
+    F: FnOnce() -> Result<(), E>,
+{
     if loaded.load(Ordering::SeqCst) {
-        return false;
+        return None;
     }
 
-    reload_claimed
+    if reload_claimed
         .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-        .is_ok()
+        .is_err()
+    {
+        return None;
+    }
+
+    Some(reload())
 }
 
 #[cfg(debug_assertions)]
@@ -1002,19 +1014,21 @@ use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectStat
                     let reload_claimed = Arc::clone(&watchdog_reload_claimed);
                     if let Err(err) = watchdog_window.run_on_main_thread(move || {
                         e2e_request_webview_boot_probe(&reload_window, "watchdog-before-reload");
-                        if !claim_e2e_webview_watchdog_reload(&reload_loaded, &reload_claimed) {
-                            log::debug!(
+                        match run_e2e_webview_watchdog_reload(
+                            &reload_loaded,
+                            &reload_claimed,
+                            || reload_window.reload(),
+                        ) {
+                            None => log::debug!(
                                 "main webview E2E load watchdog reload already satisfied or claimed"
-                            );
-                            return;
-                        }
-                        if let Err(reload_err) = reload_window.reload() {
-                            log::error!(
+                            ),
+                            Some(Err(reload_err)) => log::error!(
                                 "main webview E2E load watchdog reload failed: {}",
                                 reload_err
-                            );
-                        } else {
-                            log::warn!("main webview E2E load watchdog reload requested");
+                            ),
+                            Some(Ok(())) => {
+                                log::warn!("main webview E2E load watchdog reload requested");
+                            }
                         }
                     }) {
                         log::error!(
@@ -1095,23 +1109,77 @@ use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectStat
 #[cfg(test)]
 mod e2e_webview_watchdog_tests {
     use super::*;
+    use std::cell::Cell;
 
     #[test]
-    fn loaded_webview_does_not_claim_reload() {
+    fn loaded_webview_does_not_invoke_reload() {
         let loaded = AtomicBool::new(true);
         let claimed = AtomicBool::new(false);
+        let reload_calls = Cell::new(0);
 
-        assert!(!claim_e2e_webview_watchdog_reload(&loaded, &claimed));
+        let result = run_e2e_webview_watchdog_reload(&loaded, &claimed, || {
+            reload_calls.set(reload_calls.get() + 1);
+            Ok::<(), &'static str>(())
+        });
+
+        assert_eq!(result, None);
+        assert_eq!(reload_calls.get(), 0);
         assert!(!claimed.load(Ordering::SeqCst));
     }
 
     #[test]
-    fn stalled_webview_claims_reload_once() {
+    fn stalled_webview_invokes_reload_once() {
         let loaded = AtomicBool::new(false);
         let claimed = AtomicBool::new(false);
+        let reload_calls = Cell::new(0);
 
-        assert!(claim_e2e_webview_watchdog_reload(&loaded, &claimed));
-        assert!(!claim_e2e_webview_watchdog_reload(&loaded, &claimed));
+        let result = run_e2e_webview_watchdog_reload(&loaded, &claimed, || {
+            reload_calls.set(reload_calls.get() + 1);
+            Ok::<(), &'static str>(())
+        });
+
+        assert_eq!(result, Some(Ok(())));
+        assert_eq!(reload_calls.get(), 1);
+    }
+
+    #[test]
+    fn repeated_watchdog_calls_invoke_reload_only_once() {
+        let loaded = AtomicBool::new(false);
+        let claimed = AtomicBool::new(false);
+        let reload_calls = Cell::new(0);
+
+        let first = run_e2e_webview_watchdog_reload(&loaded, &claimed, || {
+            reload_calls.set(reload_calls.get() + 1);
+            Ok::<(), &'static str>(())
+        });
+        let second = run_e2e_webview_watchdog_reload(&loaded, &claimed, || {
+            reload_calls.set(reload_calls.get() + 1);
+            Ok::<(), &'static str>(())
+        });
+
+        assert_eq!(first, Some(Ok(())));
+        assert_eq!(second, None);
+        assert_eq!(reload_calls.get(), 1);
+    }
+
+    #[test]
+    fn reload_error_is_returned_without_allowing_a_second_attempt() {
+        let loaded = AtomicBool::new(false);
+        let claimed = AtomicBool::new(false);
+        let reload_calls = Cell::new(0);
+
+        let first = run_e2e_webview_watchdog_reload(&loaded, &claimed, || {
+            reload_calls.set(reload_calls.get() + 1);
+            Err::<(), &'static str>("reload failed")
+        });
+        let second = run_e2e_webview_watchdog_reload(&loaded, &claimed, || {
+            reload_calls.set(reload_calls.get() + 1);
+            Ok::<(), &'static str>(())
+        });
+
+        assert_eq!(first, Some(Err("reload failed")));
+        assert_eq!(second, None);
+        assert_eq!(reload_calls.get(), 1);
     }
 }
 
