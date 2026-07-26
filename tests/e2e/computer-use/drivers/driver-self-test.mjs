@@ -271,7 +271,12 @@ class MockWebSocket {
         };
       } else if (tool === "click") {
         result = {
-          content: [{ type: "text", text: "Clicked element 7" }],
+          content: [
+            {
+              type: "text",
+              text: `Clicked element ${args.element_index}`,
+            },
+          ],
           structuredContent: null,
           isError: false,
         };
@@ -336,32 +341,48 @@ await assert.rejects(
 );
 await codexDriver.connect();
 await codexDriver.prepareTarget({ appBundleId: "com.darkmatter.nixmac" });
+let getAppStateTimeout;
+const codexClientTool = codexDriver.client.tool.bind(codexDriver.client);
+codexDriver.client.tool = (tool, args, timeout) => {
+  if (tool === "get_app_state") getAppStateTimeout = timeout;
+  return codexClientTool(tool, args, timeout);
+};
 const codexState = await codexDriver.visibleState({ app: "com.darkmatter.nixmac" });
 assert.equal(codexState.text, "mock AX");
 assert.equal(codexState.imageBase64, "mock-image");
-const codexClicked = await codexDriver.click({
+assert.equal(
+  getAppStateTimeout,
+  90_000,
+  "Codex driver should preserve the existing 90-second state-capture timeout",
+);
+const codexClickedWithStringIndex = await codexDriver.click({
   app: "com.darkmatter.nixmac",
-  elementIndex: 7,
+  elementIndex: "7",
 });
-assert.equal(codexClicked.ok, true);
-const codexSetEmptyValue = await codexDriver.setValue({
+assert.equal(codexClickedWithStringIndex.ok, true);
+const codexClickedWithIntegerIndex = await codexDriver.click({
   app: "com.darkmatter.nixmac",
   elementIndex: 8,
+});
+assert.equal(codexClickedWithIntegerIndex.ok, true);
+const codexSetEmptyValue = await codexDriver.setValue({
+  app: "com.darkmatter.nixmac",
+  elementIndex: "9",
   value: "",
 });
 assert.deepEqual(codexSetEmptyValue, {
   ok: true,
-  text: "Set element 8 value",
+  text: "Set element 9 value",
   isError: false,
 });
 const codexSetNonEmptyValue = await codexDriver.setValue({
   app: "com.darkmatter.nixmac",
-  elementIndex: 9,
+  elementIndex: 10,
   value: "updated value",
 });
 assert.deepEqual(codexSetNonEmptyValue, {
   ok: true,
-  text: "Set element 9 value",
+  text: "Set element 10 value",
   isError: false,
 });
 assert.deepEqual(
@@ -369,6 +390,7 @@ assert.deepEqual(
   [
     "initialize",
     "thread/start",
+    "mcpServer/tool/call",
     "mcpServer/tool/call",
     "mcpServer/tool/call",
     "mcpServer/tool/call",
@@ -400,7 +422,13 @@ assert.deepEqual(
       server: "computer-use",
       threadId: "thread-codex-driver",
       tool: "click",
-      arguments: { app: "com.darkmatter.nixmac", element_index: 7 },
+      arguments: { app: "com.darkmatter.nixmac", element_index: "7" },
+    },
+    {
+      server: "computer-use",
+      threadId: "thread-codex-driver",
+      tool: "click",
+      arguments: { app: "com.darkmatter.nixmac", element_index: 8 },
     },
     {
       server: "computer-use",
@@ -408,7 +436,7 @@ assert.deepEqual(
       tool: "set_value",
       arguments: {
         app: "com.darkmatter.nixmac",
-        element_index: 8,
+        element_index: "9",
         value: "",
       },
     },
@@ -418,13 +446,77 @@ assert.deepEqual(
       tool: "set_value",
       arguments: {
         app: "com.darkmatter.nixmac",
-        element_index: 9,
+        element_index: 10,
         value: "updated value",
       },
     },
   ],
   "Codex driver should preserve tool names, thread ID, and argument shapes",
 );
+
+for (const [method, validArguments] of [
+  ["visibleState", {}],
+  ["click", { elementIndex: "11" }],
+  ["setValue", { elementIndex: "11", value: "valid" }],
+]) {
+  for (const [label, appArguments] of [
+    ["missing", {}],
+    ["blank", { app: "   " }],
+    ["invalid", { app: 42 }],
+  ]) {
+    const messageCountBeforeInvalidApp = codexMessages.length;
+    await assert.rejects(
+      () => codexDriver[method]({ ...validArguments, ...appArguments }),
+      {
+        name: "TypeError",
+        message: "Codex app-server requires app to be a non-empty string",
+      },
+      `Codex driver ${method} should reject a ${label} app`,
+    );
+    assert.equal(
+      codexMessages.length,
+      messageCountBeforeInvalidApp,
+      `Codex driver ${method} should not send a tool call for a ${label} app`,
+    );
+  }
+}
+
+for (const [method, validArguments] of [
+  ["click", {}],
+  ["setValue", { value: "valid" }],
+]) {
+  for (const [label, indexArguments] of [
+    ["missing", {}],
+    ["blank", { elementIndex: "" }],
+    ["non-digit", { elementIndex: "seven" }],
+    ["fractional", { elementIndex: 1.5 }],
+    ["negative", { elementIndex: -1 }],
+    ["null", { elementIndex: null }],
+    ["digit-like object", { elementIndex: { toString: () => "7" } }],
+    ["boxed string", { elementIndex: Object("7") }],
+    ["bigint", { elementIndex: 7n }],
+  ]) {
+    const messageCountBeforeInvalidIndex = codexMessages.length;
+    await assert.rejects(
+      () =>
+        codexDriver[method]({
+          app: "com.darkmatter.nixmac",
+          ...validArguments,
+          ...indexArguments,
+        }),
+      {
+        name: "TypeError",
+        message: `Codex app-server ${method} requires a valid Codex elementIndex`,
+      },
+      `Codex driver ${method} should reject a ${label} element index`,
+    );
+    assert.equal(
+      codexMessages.length,
+      messageCountBeforeInvalidIndex,
+      `Codex driver ${method} should not send a tool call for a ${label} element index`,
+    );
+  }
+}
 
 for (const [label, request] of [
   [
@@ -456,32 +548,36 @@ for (const [label, request] of [
   );
 }
 
-for (const [method, request, expectedText] of [
+for (const [method, request, expectedText, expectedIsError] of [
   [
     "click",
     { app: "com.darkmatter.nixmac", elementIndex: 91 },
     "Error: stale element index 91",
+    false,
   ],
   [
     "click",
     { app: "com.darkmatter.nixmac", elementIndex: 92 },
     "Synthetic click tool error",
+    true,
   ],
   [
     "setValue",
     { app: "com.darkmatter.nixmac", elementIndex: 93, value: "ignored" },
     "Error: set_value element index 93 not found",
+    false,
   ],
   [
     "setValue",
     { app: "com.darkmatter.nixmac", elementIndex: 94, value: "ignored" },
     "Synthetic set_value tool error",
+    true,
   ],
 ]) {
   assert.deepEqual(await codexDriver[method](request), {
     ok: false,
     text: expectedText,
-    isError: true,
+    isError: expectedIsError,
   });
 }
 
