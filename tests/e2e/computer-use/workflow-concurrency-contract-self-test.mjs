@@ -56,7 +56,7 @@ jobs:
     runs-on: arc
     steps:
       - name: Run Computer Use workflow contracts
-        shell: '"/tmp/nixmac-devenv-cli/bin/devenv" shell --impure -- bash -euo pipefail {0}'
+        shell: /tmp/nixmac-devenv-cli/bin/devenv shell --impure -- bash -euo pipefail {0}
         run: |
 ${validationCommands}
   build:
@@ -313,5 +313,45 @@ assert.throws(
   /unreachable-contract-commands\.yaml job git-hooks step Run Computer Use workflow contracts must contain exactly the automatic contract commands/,
   "shell control flow must not make the required automatic contract commands unreachable",
 );
+
+for (const [control, mutation] of [
+  ["if", "    if: false\n    runs-on: arc"],
+  ["continue-on-error", "    continue-on-error: true\n    runs-on: arc"],
+  ["needs", "    needs: build\n    runs-on: arc"],
+]) {
+  assert.throws(
+    () =>
+      assertAutomaticConcurrencyValidationContract({
+        workflowName: `job-${control}-bypass.yaml`,
+        source: automaticWorkflowYaml().replace("    runs-on: arc", mutation),
+        jobId: "git-hooks",
+        stepName: "Run Computer Use workflow contracts",
+      }),
+    new RegExp(`job-${control}-bypass\\.yaml job git-hooks must not declare ${control}`),
+    `automatic contract job must reject ${control}`,
+  );
+}
+
+for (const [control, declaration] of [
+  ["if", "        if: false"],
+  ["continue-on-error", "        continue-on-error: true"],
+]) {
+  assert.throws(
+    () =>
+      assertAutomaticConcurrencyValidationContract({
+        workflowName: `step-${control}-bypass.yaml`,
+        source: automaticWorkflowYaml().replace(
+          "        run: |",
+          `${declaration}\n        run: |`,
+        ),
+        jobId: "git-hooks",
+        stepName: "Run Computer Use workflow contracts",
+      }),
+    new RegExp(
+      `step-${control}-bypass\\.yaml job git-hooks step Run Computer Use workflow contracts must not declare ${control}`,
+    ),
+    `automatic contract step must reject ${control}`,
+  );
+}
 
 console.log("Computer Use workflow concurrency contract self-test passed.");

@@ -94,6 +94,13 @@ export function assertAutomaticConcurrencyValidationContract({
     job && typeof job === "object" && !Array.isArray(job),
     `${workflowName} must define automatic validation job ${jobId}`,
   );
+  for (const control of ["if", "continue-on-error", "needs"]) {
+    assert.equal(
+      Object.hasOwn(job, control),
+      false,
+      `${workflowName} job ${jobId} must not declare ${control}`,
+    );
+  }
   assert.equal(job["runs-on"], "arc", `${workflowName} job ${jobId} must run on arc`);
   assert.ok(Array.isArray(job.steps), `${workflowName} job ${jobId} steps must be an array`);
 
@@ -103,7 +110,15 @@ export function assertAutomaticConcurrencyValidationContract({
     1,
     `${workflowName} job ${jobId} must define exactly one ${stepName} step`,
   );
-  const run = matchingSteps[0].run;
+  const contractStep = matchingSteps[0];
+  for (const control of ["if", "continue-on-error"]) {
+    assert.equal(
+      Object.hasOwn(contractStep, control),
+      false,
+      `${workflowName} job ${jobId} step ${stepName} must not declare ${control}`,
+    );
+  }
+  const run = contractStep.run;
   assert.equal(typeof run, "string", `${workflowName} job ${jobId} step ${stepName} must use run`);
   const commandLines = run
     .split(/\r?\n/u)
@@ -115,8 +130,8 @@ export function assertAutomaticConcurrencyValidationContract({
     `${workflowName} job ${jobId} step ${stepName} must contain exactly the automatic contract commands`,
   );
   assert.equal(
-    matchingSteps[0].shell,
-    '"/tmp/nixmac-devenv-cli/bin/devenv" shell --impure -- bash -euo pipefail {0}',
+    contractStep.shell,
+    "/tmp/nixmac-devenv-cli/bin/devenv shell --impure -- bash -euo pipefail {0}",
     `${workflowName} job ${jobId} step ${stepName} must run through the pinned devenv shell with fail-fast Bash`,
   );
 }

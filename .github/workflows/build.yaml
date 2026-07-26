@@ -45,7 +45,7 @@ jobs:
       - name: Run Computer Use workflow contracts
         env:
           NIXPKGS_ALLOW_UNFREE: 1
-        shell: '"/tmp/nixmac-devenv-cli/bin/devenv" shell --impure -- bash -euo pipefail {0}'
+        shell: /tmp/nixmac-devenv-cli/bin/devenv shell --impure -- bash -euo pipefail {0}
         run: |
           node tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs
           node tests/e2e/computer-use/workflow-contract-self-test.mjs
@@ -54,7 +54,7 @@ jobs:
       - name: Run git hooks
         env:
           NIXPKGS_ALLOW_UNFREE: 1
-        shell: '"/tmp/nixmac-devenv-cli/bin/devenv" shell --impure -- bash -euo pipefail {0}'
+        shell: /tmp/nixmac-devenv-cli/bin/devenv shell --impure -- bash -euo pipefail {0}
         run: prek run --all-files --show-diff-on-failure
 
   rust-tests:
