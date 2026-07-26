@@ -1,16 +1,29 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  realpath,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { hashCuaBundleTree } from "./drivers/cua-driver.mjs";
 import { createEvidenceManifest, verifyEvidenceManifest } from "./evidence-manifest.mjs";
 import {
   assertRunPreflight,
   finalizeControllerEvidence,
   finalizeLocalEvidence,
   preflightInputFromEnvironment,
+  resolveRunPreflightIdentity,
   stageControllerEvidence,
   writeControllerFinalization,
+  writeRunCleanup,
   writeRunPreflight,
 } from "./run-metadata.mjs";
 import { assertCuratedSafeFrameVideoMetadata, safeFrameVideoPath } from "./report.mjs";
@@ -24,10 +37,13 @@ const DIGEST_C = "c".repeat(64);
 let fixtureSequence = 0;
 
 function validPreflight(appBundlePath) {
+  const jobId = `darkmatter/nixmac:${SHA_A}:computer-use-v1`;
+  const stagingParent = path.dirname(appBundlePath);
   return {
-    jobId: "job-123",
+    jobId,
     repo: "darkmatter/nixmac",
     mergeSha: SHA_A,
+    appArtifactSha: SHA_A,
     suiteVersion: "computer-use-v1",
     harnessSha: SHA_B,
     actionsRunId: "123456",
@@ -39,23 +55,33 @@ function validPreflight(appBundlePath) {
     buildRunId: "456789",
     artifactId: "987654",
     artifactDigest: `sha256:${DIGEST_B}`,
+    stagingParent,
     appBundlePath,
     appBundleDigest: DIGEST_C,
+    disposableConfigPath: path.join(stagingParent, "config"),
+    daemonSocketPath: path.join(stagingParent, "cua-driver.sock"),
     cuaDriverCliVersion: "0.12.6",
     cuaDriverAppVersion: "0.12.6",
     captureMode: "safe-frame",
     finalizationMode: "local-finalize",
     accessibilityGranted: true,
     screenRecordingGranted: true,
+    startedAt: "2026-07-26T00:00:00.000Z",
+    evidencePrefix: `computer-use-e2e/jobs/${encodeURIComponent(jobId)}/attempt-1/`,
   };
 }
 
-async function createEvidenceFixture(root, { backend = "cilicon_tart" } = {}) {
+async function createEvidenceFixture(
+  root,
+  { backend = "cilicon_tart", writePreflight = true } = {},
+) {
   fixtureSequence += 1;
   const runDir = path.join(root, `run-${fixtureSequence}-${backend}`);
-  const appBundlePath = path.join(root, `nixmac-${fixtureSequence}-${backend}.app`);
+  const stagingParent = path.join(root, `staging-${fixtureSequence}-${backend}`);
+  const appBundlePath = path.join(stagingParent, "nixmac.app");
   await mkdir(path.join(appBundlePath, "Contents"), { recursive: true });
   await writeFile(path.join(appBundlePath, "Contents", "Info.plist"), "fixture app\n");
+  await mkdir(path.join(stagingParent, "config"), { recursive: true });
   await mkdir(path.join(runDir, "screenshots"), { recursive: true });
   await mkdir(path.join(runDir, "texts"), { recursive: true });
   await mkdir(path.join(runDir, "video"), { recursive: true });
@@ -86,26 +112,83 @@ async function createEvidenceFixture(root, { backend = "cilicon_tart" } = {}) {
     runnerBackend: backend,
     finalizationMode: backend === "static_ssh" ? "controller-finalize" : "local-finalize",
   };
-  await writeRunPreflight(runDir, input);
+  if (writePreflight) await writeRunPreflight(runDir, input);
   return { appBundlePath, input, runDir };
 }
 
-function cleanCleanup() {
+function cleanCleanup(fixture, { mode = "local" } = {}) {
+  const stagingParent = fixture.input.stagingParent;
+  const pathKind = mode === "local" ? "staging-parent" : "remote-staging";
   return {
+    ownershipMode: mode === "local" ? "local-ephemeral" : "controller-static",
     attempted: true,
     restored: true,
     clean: true,
-    ownedPaths: ["/private/tmp/nixmac-e2e-job-123"],
+    startedAt: "2026-07-26T00:04:00.000Z",
+    completedAt: "2026-07-26T00:05:00.000Z",
+    ownedPaths: [
+      {
+        kind: pathKind,
+        path: stagingParent,
+        expectedFinalState: "absent",
+        observedFinalState: "absent",
+      },
+      {
+        kind: "app-bundle",
+        path: fixture.input.appBundlePath,
+        expectedFinalState: "absent",
+        observedFinalState: "absent",
+      },
+      {
+        kind: mode === "local" ? "disposable-config" : "remote-config",
+        path: fixture.input.disposableConfigPath,
+        expectedFinalState: "absent",
+        observedFinalState: "absent",
+      },
+      {
+        kind: "daemon-socket",
+        path: fixture.input.daemonSocketPath,
+        expectedFinalState: "absent",
+        observedFinalState: "absent",
+      },
+    ],
+    processInstances: [
+      {
+        role: "target",
+        status: "owned",
+        pid: 123,
+        birthMarker: "100.000001",
+        executable: path.join(fixture.input.appBundlePath, "Contents", "MacOS", "nixmac"),
+        terminated: true,
+      },
+      {
+        role: "daemon",
+        status: "owned",
+        pid: 456,
+        birthMarker: "100.000002",
+        executable: "/Applications/CuaDriver.app/Contents/MacOS/cua-driver",
+        terminated: true,
+      },
+    ],
     remainingProcesses: [],
     failureReason: "",
+    lifecycle: {
+      driverCloseAttempted: true,
+      driverClosed: true,
+      ownershipMatched: true,
+      pathsProbed: true,
+      processesProbed: true,
+    },
   };
 }
 
+const TRUSTED_OWNER_TOKEN = "trusted-owner-token-job-123";
+
 function releasedLease() {
+  const ownerHash = createHash("sha256").update(TRUSTED_OWNER_TOKEN).digest("hex");
   return {
-    ownerTokenHash: DIGEST_A,
-    acquired: true,
-    released: true,
+    acquiredOwnerTokenHash: ownerHash,
+    releasedOwnerTokenHash: ownerHash,
     acquiredAt: "2026-07-26T00:00:00.000Z",
     releasedAt: "2026-07-26T00:05:00.000Z",
     lastHeartbeatAt: "2026-07-26T00:04:30.000Z",
@@ -115,6 +198,144 @@ function releasedLease() {
 }
 
 async function runSelfTest() {
+  const canonicalJobId = `darkmatter/nixmac:${SHA_A}:computer-use-v1`;
+  const identityEnv = {
+    GITHUB_REPOSITORY: "darkmatter/nixmac",
+    NIXMAC_E2E_JOB_ID: canonicalJobId,
+    NIXMAC_E2E_REPO: "darkmatter/nixmac",
+    NIXMAC_E2E_MERGE_SHA: SHA_A,
+    NIXMAC_E2E_SUITE_VERSION: "computer-use-v1",
+    NIXMAC_E2E_HARNESS_SHA: SHA_B,
+    NIXMAC_E2E_APP_ARTIFACT_SHA: SHA_A,
+    NIXMAC_E2E_ACTIONS_RUN_ID: "123456",
+    NIXMAC_E2E_ACTIONS_JOB_ID: "789012",
+    NIXMAC_E2E_ATTEMPT: "1",
+    NIXMAC_E2E_RUNNER_NAME: "mac-e2e-01",
+    NIXMAC_E2E_RUNNER_BACKEND: "cilicon_tart",
+    NIXMAC_E2E_RUNNER_IMAGE_DIGEST: `sha256:${DIGEST_A}`,
+    NIXMAC_E2E_BUILD_RUN_ID: "456789",
+    NIXMAC_E2E_ARTIFACT_ID: "987654",
+    NIXMAC_E2E_ARTIFACT_DIGEST: `sha256:${DIGEST_B}`,
+    NIXMAC_E2E_FINALIZATION_MODE: "local-finalize",
+    NIXMAC_E2E_ATTEMPT_STARTED_AT: "2026-07-26T00:00:00.000Z",
+    NIXMAC_E2E_STAGING_PARENT: "/private/tmp/nixmac-e2e-staging/job-123",
+    NIXMAC_E2E_DISPOSABLE_CONFIG_PATH:
+      "/private/tmp/nixmac-e2e-staging/job-123/config",
+    NIXMAC_E2E_DAEMON_SOCKET_PATH:
+      "/private/tmp/nixmac-e2e-staging/job-123/cua-driver.sock",
+  };
+  const resolvedIdentity = await resolveRunPreflightIdentity(
+    {
+      env: identityEnv,
+      appBundlePath: "/private/tmp/nixmac-e2e-staging/job-123/nixmac.app",
+      appBundleDigest: DIGEST_C,
+      cuaDriverCliVersion: "0.12.6",
+      cuaDriverAppVersion: "0.12.6",
+      accessibilityGranted: true,
+      screenRecordingGranted: true,
+    },
+    {
+      probeHarnessSha: async () => SHA_B,
+      probeRunnerIdentity: async () => ({
+        name: "mac-e2e-01",
+        backend: "cilicon_tart",
+        imageDigest: `sha256:${DIGEST_A}`,
+      }),
+      probeArtifactIdentity: async () => ({
+        artifactId: "987654",
+        artifactDigest: `sha256:${DIGEST_B}`,
+        buildRunId: "456789",
+        mergeSha: SHA_A,
+        appBundleDigest: DIGEST_C,
+        verified: true,
+      }),
+    },
+  );
+  assert.equal(resolvedIdentity.jobId, canonicalJobId);
+  assert.equal(resolvedIdentity.appArtifactSha, resolvedIdentity.mergeSha);
+  for (const [label, mutateEnv, mutateProbe, expected] of [
+    ["canonical job", { NIXMAC_E2E_JOB_ID: "job-123" }, {}, /canonical jobId/i],
+    [
+      "repository",
+      {
+        NIXMAC_E2E_REPO: "other/nixmac",
+        NIXMAC_E2E_JOB_ID: `other/nixmac:${SHA_A}:computer-use-v1`,
+      },
+      {},
+      /repository/i,
+    ],
+    ["app artifact SHA", { NIXMAC_E2E_APP_ARTIFACT_SHA: SHA_B }, {}, /artifact SHA/i],
+    ["harness", {}, { harnessSha: SHA_A }, /harness SHA/i],
+    ["runner name", {}, { runnerName: "other-runner" }, /runner name/i],
+    ["runner backend", {}, { runnerBackend: "static_ssh" }, /runner backend/i],
+    ["runner image", {}, { runnerImageDigest: `sha256:${DIGEST_C}` }, /runner image/i],
+    ["artifact ID", {}, { artifactId: "other-artifact" }, /artifact ID/i],
+    [
+      "artifact digest",
+      {},
+      { artifactDigest: `sha256:${DIGEST_C}` },
+      /artifact digest/i,
+    ],
+    [
+      "verified app bundle digest",
+      {},
+      { appBundleDigest: DIGEST_A },
+      /verified app bundle digest/i,
+    ],
+  ]) {
+    let prepareCalls = 0;
+    const runnerProbe = {
+      name: mutateProbe.runnerName || "mac-e2e-01",
+      backend: mutateProbe.runnerBackend || "cilicon_tart",
+      imageDigest: mutateProbe.runnerImageDigest || `sha256:${DIGEST_A}`,
+    };
+    const artifactProbe = {
+      artifactId: mutateProbe.artifactId || "987654",
+      artifactDigest: mutateProbe.artifactDigest || `sha256:${DIGEST_B}`,
+      buildRunId: "456789",
+      mergeSha: SHA_A,
+      appBundleDigest: mutateProbe.appBundleDigest || DIGEST_C,
+      verified: true,
+    };
+    await assert.rejects(
+      () =>
+        prepareSuiteDriver(
+          {
+            async connect() {},
+            async prepareTarget() {
+              prepareCalls += 1;
+            },
+          },
+          {
+            executionTopology: "local-cua-driver",
+            appBundleId: "com.darkmatter.nixmac",
+            localPreflight: {
+              appPath: "/private/tmp/nixmac-e2e-staging/job-123/nixmac.app",
+            },
+            beforePrepareTarget: () =>
+              resolveRunPreflightIdentity(
+                {
+                  env: { ...identityEnv, ...mutateEnv },
+                  appBundlePath: "/private/tmp/nixmac-e2e-staging/job-123/nixmac.app",
+                  appBundleDigest: DIGEST_C,
+                  cuaDriverCliVersion: "0.12.6",
+                  cuaDriverAppVersion: "0.12.6",
+                  accessibilityGranted: true,
+                  screenRecordingGranted: true,
+                },
+                {
+                  probeHarnessSha: async () => mutateProbe.harnessSha || SHA_B,
+                  probeRunnerIdentity: async () => runnerProbe,
+                  probeArtifactIdentity: async () => artifactProbe,
+                },
+              ),
+          },
+        ),
+      expected,
+      label,
+    );
+    assert.equal(prepareCalls, 0, `${label} mismatch must not prepare UI`);
+  }
   assert.equal(safeFrameVideoPath, "video/computer-use-evidence.mp4");
   assert.deepEqual(
     assertCuratedSafeFrameVideoMetadata({
@@ -137,7 +358,7 @@ async function runSelfTest() {
       }),
     /curated safe-frame/i,
   );
-  const root = await mkdtemp(path.join(os.tmpdir(), "nixmac-evidence-manifest-"));
+  const root = await realpath(await mkdtemp(path.join(os.tmpdir(), "nixmac-evidence-manifest-")));
   try {
     const valid = await createEvidenceFixture(root);
     const asserted = await assertRunPreflight(valid.runDir, {
@@ -224,9 +445,10 @@ async function runSelfTest() {
 
     const envInput = preflightInputFromEnvironment({
       env: {
-        NIXMAC_E2E_JOB_ID: "job-123",
+        NIXMAC_E2E_JOB_ID: valid.input.jobId,
         NIXMAC_E2E_REPO: "darkmatter/nixmac",
         NIXMAC_E2E_MERGE_SHA: SHA_A,
+        NIXMAC_E2E_APP_ARTIFACT_SHA: SHA_A,
         NIXMAC_E2E_SUITE_VERSION: "computer-use-v1",
         NIXMAC_E2E_HARNESS_SHA: SHA_B,
         NIXMAC_E2E_ACTIONS_RUN_ID: "123456",
@@ -239,6 +461,10 @@ async function runSelfTest() {
         NIXMAC_E2E_ARTIFACT_ID: "987654",
         NIXMAC_E2E_ARTIFACT_DIGEST: `sha256:${DIGEST_B}`,
         NIXMAC_E2E_FINALIZATION_MODE: "local-finalize",
+        NIXMAC_E2E_STAGING_PARENT: valid.input.stagingParent,
+        NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: valid.input.disposableConfigPath,
+        NIXMAC_E2E_DAEMON_SOCKET_PATH: valid.input.daemonSocketPath,
+        NIXMAC_E2E_ATTEMPT_STARTED_AT: valid.input.startedAt,
       },
       appBundlePath: valid.appBundlePath,
       appBundleDigest: DIGEST_C,
@@ -258,9 +484,160 @@ async function runSelfTest() {
       /app bundle digest mismatch/i,
     );
 
+    const realDigestFixture = await createEvidenceFixture(root, { writePreflight: false });
+    const realBundleDigest = await hashCuaBundleTree(realDigestFixture.appBundlePath);
+    await writeRunPreflight(realDigestFixture.runDir, {
+      ...realDigestFixture.input,
+      appBundleDigest: realBundleDigest,
+    });
+    const realDigestPreflight = await assertRunPreflight(realDigestFixture.runDir);
+    assert.equal(
+      realDigestPreflight.app.appBundleDigest,
+      realBundleDigest,
+      "production preflight must recompute the real app bundle tree digest",
+    );
+    await assert.rejects(
+      () =>
+        writeRunPreflight(realDigestFixture.runDir, {
+          ...realDigestFixture.input,
+          appBundleDigest: realBundleDigest,
+        }),
+      /already bound|identity\\.json/i,
+      "run identity must become immutable as soon as preflight sidecars are written",
+    );
+
+    for (const relativePath of [
+      "runner/identity.json",
+      "runner/permissions.json",
+      "artifact/source.json",
+      "attempt.json",
+    ]) {
+      for (const mode of ["missing", "corrupt"]) {
+        const fixture = await createEvidenceFixture(root);
+        if (mode === "missing") {
+          await rm(path.join(fixture.runDir, relativePath));
+        } else {
+          await writeFile(path.join(fixture.runDir, relativePath), "{not-json\n");
+        }
+        let prepareCalls = 0;
+        await assert.rejects(
+          () =>
+            prepareSuiteDriver(
+              {
+                async connect() {},
+                async prepareTarget() {
+                  prepareCalls += 1;
+                },
+              },
+              {
+                executionTopology: "local-cua-driver",
+                appBundleId: "com.darkmatter.nixmac",
+                localPreflight: { appPath: fixture.appBundlePath },
+                beforePrepareTarget: () =>
+                  assertRunPreflight(fixture.runDir, {
+                    computeAppBundleDigest: async () => DIGEST_C,
+                  }),
+              },
+            ),
+          /missing|invalid JSON/i,
+          `${relativePath} ${mode}`,
+        );
+        assert.equal(
+          prepareCalls,
+          0,
+          `${relativePath} ${mode} must fail before prepareTarget`,
+        );
+      }
+    }
+
+    for (const [label, mutate, expected] of [
+      ["owned paths", (cleanup) => (cleanup.ownedPaths = []), /ownedPaths|owned paths/i],
+      [
+        "missing config ownership",
+        (cleanup) =>
+          (cleanup.ownedPaths = cleanup.ownedPaths.filter(
+            (entry) => entry.kind !== "disposable-config",
+          )),
+        /disposable-config|ownedPaths|owned paths/i,
+      ],
+      [
+        "path still present",
+        (cleanup) => (cleanup.ownedPaths[0].observedFinalState = "present"),
+        /observedFinalState|absent/i,
+      ],
+      [
+        "target process missing",
+        (cleanup) =>
+          (cleanup.processInstances = cleanup.processInstances.filter(
+            (entry) => entry.role !== "target",
+          )),
+        /target|process/i,
+      ],
+      [
+        "daemon process alive",
+        (cleanup) => (cleanup.processInstances[1].terminated = false),
+        /terminated|process/i,
+      ],
+      [
+        "remaining process",
+        (cleanup) => cleanup.remainingProcesses.push({ pid: 999 }),
+        /remainingProcesses|clean/i,
+      ],
+      [
+        "wrong ownership lane",
+        (cleanup) => (cleanup.ownershipMode = "controller-static"),
+        /ownershipMode|local/i,
+      ],
+      [
+        "unproven lifecycle",
+        (cleanup) => (cleanup.lifecycle.pathsProbed = false),
+        /pathsProbed|lifecycle/i,
+      ],
+      [
+        "nonmonotonic cleanup timestamps",
+        (cleanup) => (cleanup.completedAt = "2026-07-25T23:59:00.000Z"),
+        /timestamp|completedAt/i,
+      ],
+      [
+        "cleanup failure",
+        (cleanup) => (cleanup.failureReason = "removal failed"),
+        /failureReason|clean/i,
+      ],
+    ]) {
+      const fixture = await createEvidenceFixture(root);
+      const cleanup = structuredClone(cleanCleanup(fixture));
+      mutate(cleanup);
+      await assert.rejects(
+        () => finalizeLocalEvidence(fixture.runDir, { cleanup, verdict: "pass" }),
+        expected,
+        label,
+      );
+    }
+
+    const invalidCapture = await createEvidenceFixture(root);
+    await assert.rejects(
+      () =>
+        finalizeLocalEvidence(invalidCapture.runDir, {
+          cleanup: cleanCleanup(invalidCapture),
+          verdict: "inconclusive",
+          capture: { status: "not_started", uiStarted: false, reason: "" },
+        }),
+      /capture|reason|UI never started/i,
+    );
+    await assert.rejects(
+      () => readFile(path.join(invalidCapture.runDir, "runner", "cleanup.json"), "utf8"),
+      /ENOENT/,
+      "invalid final capture must be rejected before any finalization sidecar is written",
+    );
+    const invalidCaptureAttempt = JSON.parse(
+      await readFile(path.join(invalidCapture.runDir, "attempt.json"), "utf8"),
+    );
+    assert.equal(invalidCaptureAttempt.status, "preflight");
+    assert.equal(invalidCaptureAttempt.finalized, false);
+
     const local = await createEvidenceFixture(root);
     const localManifest = await finalizeLocalEvidence(local.runDir, {
-      cleanup: cleanCleanup(),
+      cleanup: cleanCleanup(local),
       verdict: "pass",
     });
     assert.equal(localManifest.version, 1);
@@ -275,12 +652,34 @@ async function runSelfTest() {
     );
     assert.equal(localManifest.cuaDriver.captureMode, "safe-frame");
     assert.deepEqual(await verifyEvidenceManifest(local.runDir), localManifest);
+    const localAttempt = JSON.parse(
+      await readFile(path.join(local.runDir, "attempt.json"), "utf8"),
+    );
+    assert.equal(localAttempt.startedAt, local.input.startedAt);
+    assert.ok(Number.isFinite(Date.parse(localAttempt.endedAt)));
+    assert.equal(localAttempt.failureClass, "none");
+    assert.equal(localAttempt.evidencePrefix, local.input.evidencePrefix);
+    assert.deepEqual(localAttempt.lifecycle, {
+      identityBound: true,
+      uiPreparationAuthorized: true,
+      uiStarted: true,
+      driverClosed: true,
+      cleanupFinalized: true,
+      evidenceReady: true,
+    });
+    for (const [label, mutate] of [
+      ["preflight writer", () => writeRunPreflight(local.runDir, local.input)],
+      ["cleanup writer", () => writeRunCleanup(local.runDir, cleanCleanup(local))],
+      ["controller staging writer", () => stageControllerEvidence(local.runDir, { verdict: "pass" })],
+    ]) {
+      await assert.rejects(mutate, /immutable|already exists/i, label);
+    }
     await assert.rejects(
       () =>
         finalizeLocalEvidence(local.runDir, {
           cleanup: {
-            ...cleanCleanup(),
-            ownedPaths: ["/private/tmp/must-not-mutate-sealed-evidence"],
+            ...cleanCleanup(local),
+            ownedPaths: [],
           },
           verdict: "pass",
         }),
@@ -289,8 +688,78 @@ async function runSelfTest() {
     assert.deepEqual(
       await verifyEvidenceManifest(local.runDir),
       localManifest,
-      "a repeated finalization attempt must not mutate an already sealed tree",
+      "every post-seal writer refusal must leave the manifest valid",
     );
+
+    for (const blockerCode of ["local_preflight", "permissions", "competing_process"]) {
+      const blocker = await createEvidenceFixture(root);
+      await rm(path.join(blocker.runDir, "screenshots"), { recursive: true, force: true });
+      await rm(path.join(blocker.runDir, "video"), { recursive: true, force: true });
+      const blockerState = JSON.parse(
+        await readFile(path.join(blocker.runDir, "state.json"), "utf8"),
+      );
+      blockerState.verdict = "inconclusive";
+      blockerState.screenshots = [];
+      blockerState.video = {
+        status: "not_started",
+        note: "UI capture never began because a classified infrastructure blocker stopped the run.",
+      };
+      blockerState.runFailure = {
+        category: "infrastructure",
+        code: blockerCode,
+        infrastructureBlocker: true,
+        phase:
+          blockerCode === "local_preflight"
+            ? "preflight"
+            : blockerCode === "permissions"
+              ? "permissions"
+              : "target_preparation",
+      };
+      await writeFile(
+        path.join(blocker.runDir, "state.json"),
+        `${JSON.stringify(blockerState, null, 2)}\n`,
+      );
+      const blockerCleanup = cleanCleanup(blocker);
+      blockerCleanup.processInstances = [
+        {
+          role: "target",
+          status: "not_started",
+          pid: null,
+          birthMarker: null,
+          executable: null,
+          terminated: true,
+        },
+        {
+          role: "daemon",
+          status: "not_started",
+          pid: null,
+          birthMarker: null,
+          executable: null,
+          terminated: true,
+        },
+      ];
+      const blockerManifest = await finalizeLocalEvidence(blocker.runDir, {
+        cleanup: blockerCleanup,
+        verdict: "inconclusive",
+        capture: {
+          status: "not_started",
+          uiStarted: false,
+          reason: `${blockerCode} blocked execution before the UI lifecycle began`,
+        },
+      });
+      assert.deepEqual(
+        await verifyEvidenceManifest(blocker.runDir),
+        blockerManifest,
+        `${blockerCode} pre-UI blocker evidence must create and verify without visual files`,
+      );
+      assert.equal(
+        blockerManifest.files.some(
+          (file) => file.path.startsWith("screenshots/") || file.path.startsWith("video/"),
+        ),
+        false,
+        `${blockerCode} must not fabricate visual proof`,
+      );
+    }
 
     await writeFile(path.join(local.runDir, "texts", "launch.txt"), "mutated evidence\n");
     await assert.rejects(
@@ -312,10 +781,20 @@ async function runSelfTest() {
       "controller-finalized evidence must not seal before controller cleanup",
     );
     await writeControllerFinalization(controller.runDir, {
-      cleanup: cleanCleanup(),
+      cleanup: cleanCleanup(controller, { mode: "controller" }),
       hostLease: releasedLease(),
+      trustedOwnerToken: TRUSTED_OWNER_TOKEN,
       verdict: "pass",
     });
+    const persistedLease = await readFile(
+      path.join(controller.runDir, "runner", "host-lease.json"),
+      "utf8",
+    );
+    assert.doesNotMatch(
+      persistedLease,
+      new RegExp(TRUSTED_OWNER_TOKEN),
+      "raw owner token must never be retained in evidence",
+    );
     await assert.rejects(
       () => readFile(path.join(controller.runDir, "manifest.json"), "utf8"),
       /ENOENT/,
@@ -325,57 +804,207 @@ async function runSelfTest() {
     await verifyEvidenceManifest(controller.runDir);
     assert.equal(controllerManifest.runner.backend, "static_ssh");
     assert.deepEqual(await verifyEvidenceManifest(controller.runDir), controllerManifest);
+    for (const [label, mutate] of [
+      [
+        "controller finalization writer",
+        () =>
+          writeControllerFinalization(controller.runDir, {
+            cleanup: cleanCleanup(controller, { mode: "controller" }),
+            hostLease: releasedLease(),
+            trustedOwnerToken: TRUSTED_OWNER_TOKEN,
+            verdict: "pass",
+          }),
+      ],
+      [
+        "controller finalization sealer",
+        () =>
+          finalizeControllerEvidence(controller.runDir, {
+            cleanup: cleanCleanup(controller, { mode: "controller" }),
+            hostLease: releasedLease(),
+            trustedOwnerToken: TRUSTED_OWNER_TOKEN,
+            verdict: "pass",
+          }),
+      ],
+    ]) {
+      await assert.rejects(mutate, /immutable|already exists/i, label);
+    }
+
+    const controllerBlocker = await createEvidenceFixture(root, { backend: "static_ssh" });
+    await rm(path.join(controllerBlocker.runDir, "screenshots"), {
+      recursive: true,
+      force: true,
+    });
+    await rm(path.join(controllerBlocker.runDir, "video"), { recursive: true, force: true });
+    const controllerBlockerState = JSON.parse(
+      await readFile(path.join(controllerBlocker.runDir, "state.json"), "utf8"),
+    );
+    controllerBlockerState.verdict = "inconclusive";
+    controllerBlockerState.screenshots = [];
+    controllerBlockerState.video = {
+      status: "not_available",
+      note: "The static runner was blocked before UI capture began.",
+    };
+    await writeFile(
+      path.join(controllerBlocker.runDir, "state.json"),
+      `${JSON.stringify(controllerBlockerState, null, 2)}\n`,
+    );
+    const controllerBlockerCapture = {
+      status: "not_available",
+      uiStarted: false,
+      reason: "static runner preflight blocked the UI lifecycle",
+    };
+    await stageControllerEvidence(controllerBlocker.runDir, {
+      capture: controllerBlockerCapture,
+      verdict: "inconclusive",
+    });
+    const controllerBlockerCleanup = cleanCleanup(controllerBlocker, {
+      mode: "controller",
+    });
+    controllerBlockerCleanup.processInstances = controllerBlockerCleanup.processInstances.map(
+      ({ role }) => ({
+        role,
+        status: "not_started",
+        pid: null,
+        birthMarker: null,
+        executable: null,
+        terminated: true,
+      }),
+    );
+    await writeControllerFinalization(controllerBlocker.runDir, {
+      cleanup: controllerBlockerCleanup,
+      hostLease: releasedLease(),
+      trustedOwnerToken: TRUSTED_OWNER_TOKEN,
+      verdict: "inconclusive",
+    });
+    const controllerBlockerManifest = await createEvidenceManifest(controllerBlocker.runDir);
+    assert.deepEqual(
+      await verifyEvidenceManifest(controllerBlocker.runDir),
+      controllerBlockerManifest,
+      "controller finalization must preserve staged pre-UI capture lifecycle",
+    );
 
     const badLease = await createEvidenceFixture(root, { backend: "static_ssh" });
     await stageControllerEvidence(badLease.runDir, { verdict: "pass" });
     await assert.rejects(
       () =>
         finalizeControllerEvidence(badLease.runDir, {
-          cleanup: cleanCleanup(),
-          hostLease: { ...releasedLease(), released: false },
+          cleanup: cleanCleanup(badLease, { mode: "controller" }),
+          hostLease: {
+            ...releasedLease(),
+            releasedOwnerTokenHash: DIGEST_A,
+          },
+          trustedOwnerToken: TRUSTED_OWNER_TOKEN,
           verdict: "pass",
         }),
       /owner-matched release|released/i,
     );
 
-    const pathFixture = await createEvidenceFixture(root);
-    for (const [label, paths, expected] of [
-      ["absolute", ["/tmp/escape"], /relative/i],
-      ["parent", ["../escape"], /parent|relative/i],
-      ["duplicate", ["state.json", "state.json"], /duplicate/i],
-      ["missing", ["state.json", "missing.json"], /missing/i],
+    for (const [label, mutate, expected] of [
+      [
+        "zero owner hash",
+        (lease) => {
+          lease.acquiredOwnerTokenHash = "0".repeat(64);
+          lease.releasedOwnerTokenHash = "0".repeat(64);
+        },
+        /zero|owner.*hash/i,
+      ],
+      [
+        "acquire release mismatch",
+        (lease) => (lease.releasedOwnerTokenHash = DIGEST_A),
+        /owner-matched release|hash/i,
+      ],
+      ["trusted token mismatch", () => {}, /trusted owner token|hash/i],
     ]) {
+      const fixture = await createEvidenceFixture(root, { backend: "static_ssh" });
+      await stageControllerEvidence(fixture.runDir, { verdict: "pass" });
+      const lease = structuredClone(releasedLease());
+      mutate(lease);
       await assert.rejects(
         () =>
-          createEvidenceManifest(pathFixture.runDir, {
-            requiredPaths: paths,
+          finalizeControllerEvidence(fixture.runDir, {
+            cleanup: cleanCleanup(fixture, { mode: "controller" }),
+            hostLease: lease,
+            trustedOwnerToken:
+              label === "trusted token mismatch" ? "wrong-owner-token" : TRUSTED_OWNER_TOKEN,
+            verdict: "pass",
           }),
         expected,
         label,
       );
     }
 
-    const emptyFixture = await createEvidenceFixture(root);
-    await writeFile(path.join(emptyFixture.runDir, "empty.txt"), "");
+    const localHostLease = await createEvidenceFixture(root);
+    await mkdir(path.join(localHostLease.runDir, "runner"), { recursive: true });
+    await writeFile(
+      path.join(localHostLease.runDir, "runner", "host-lease.json"),
+      `${JSON.stringify({ version: 1, ...releasedLease() })}\n`,
+    );
     await assert.rejects(
       () =>
-        createEvidenceManifest(emptyFixture.runDir, {
-          requiredPaths: ["empty.txt"],
+        finalizeLocalEvidence(localHostLease.runDir, {
+          cleanup: cleanCleanup(localHostLease),
+          verdict: "pass",
         }),
-      /empty/i,
+      /host-lease|local/i,
     );
+
+    const controllerWithLocalCleanup = await createEvidenceFixture(root, {
+      backend: "static_ssh",
+    });
+    await stageControllerEvidence(controllerWithLocalCleanup.runDir, { verdict: "pass" });
+    await assert.rejects(
+      () =>
+        finalizeControllerEvidence(controllerWithLocalCleanup.runDir, {
+          cleanup: cleanCleanup(controllerWithLocalCleanup),
+          hostLease: releasedLease(),
+          trustedOwnerToken: TRUSTED_OWNER_TOKEN,
+          verdict: "pass",
+        }),
+      /ownershipMode|controller/i,
+    );
+
+    const pathFixture = await createEvidenceFixture(root);
+    await assert.rejects(
+      () =>
+        createEvidenceManifest(pathFixture.runDir, {
+          requiredPaths: ["state.json"],
+        }),
+      /options|requiredPaths|full evidence tree/i,
+      "requiredPaths shortcut must be forbidden",
+    );
+
+    const emptyFixture = await createEvidenceFixture(root);
+    await writeFile(path.join(emptyFixture.runDir, "empty.txt"), "");
+    await assert.rejects(() => createEvidenceManifest(emptyFixture.runDir), /empty/i);
 
     const symlinkFixture = await createEvidenceFixture(root);
     await symlink(
       path.join(symlinkFixture.runDir, "state.json"),
       path.join(symlinkFixture.runDir, "state-link.json"),
     );
+    await assert.rejects(() => createEvidenceManifest(symlinkFixture.runDir), /symlink/i);
+
+    const rootSymlinkFixture = await createEvidenceFixture(root);
+    const rootSymlink = path.join(root, "run-root-symlink");
+    await symlink(rootSymlinkFixture.runDir, rootSymlink);
+    await assert.rejects(() => createEvidenceManifest(rootSymlink), /canonical|symlink/i);
+
+    const realAncestor = path.join(root, "real-ancestor");
+    await mkdir(realAncestor);
+    const ancestorFixture = await createEvidenceFixture(realAncestor);
+    const ancestorSymlink = path.join(root, "ancestor-symlink");
+    await symlink(realAncestor, ancestorSymlink);
     await assert.rejects(
       () =>
-        createEvidenceManifest(symlinkFixture.runDir, {
-          requiredPaths: ["state-link.json"],
-        }),
-      /symlink/i,
+        createEvidenceManifest(
+          path.join(ancestorSymlink, path.basename(ancestorFixture.runDir)),
+        ),
+      /canonical|symlink/i,
+    );
+
+    await assert.rejects(
+      () => createEvidenceManifest(path.relative(process.cwd(), pathFixture.runDir)),
+      /absolute|canonical/i,
     );
 
     const rawVideo = await createEvidenceFixture(root);
@@ -388,23 +1017,109 @@ async function runSelfTest() {
     );
     await writeFile(path.join(rawVideo.runDir, "video", "raw-whole-run.mp4"), "raw video\n");
     await finalizeLocalEvidence(rawVideo.runDir, {
-      cleanup: cleanCleanup(),
+      cleanup: cleanCleanup(rawVideo),
       verdict: "pass",
     }).then(
       () => assert.fail("raw whole-run video must be rejected"),
       (error) => assert.match(error.message, /curated safe-frame/i),
     );
 
+    const extraVideoFile = await createEvidenceFixture(root);
+    await writeFile(path.join(extraVideoFile.runDir, "video", "frames.txt"), "unsafe extra\n");
+    await assert.rejects(
+      () =>
+        finalizeLocalEvidence(extraVideoFile.runDir, {
+          cleanup: cleanCleanup(extraVideoFile),
+          verdict: "pass",
+        }),
+      /only.*computer-use-evidence\\.mp4|video directory/i,
+    );
+
+    const extraScreenshot = await createEvidenceFixture(root);
+    await writeFile(
+      path.join(extraScreenshot.runDir, "screenshots", "untracked.png"),
+      "untracked visual\n",
+    );
+    await assert.rejects(
+      () =>
+        finalizeLocalEvidence(extraScreenshot.runDir, {
+          cleanup: cleanCleanup(extraScreenshot),
+          verdict: "pass",
+        }),
+      /unreferenced visual files|untracked\\.png/i,
+    );
+
+    for (const extension of ["mp4", "mov", "m4v", "webm", "mkv", "avi", "mpeg", "mpg"]) {
+      const fixture = await createEvidenceFixture(root);
+      await writeFile(path.join(fixture.runDir, `raw-session.${extension}`), "raw video\n");
+      await assert.rejects(
+        () =>
+          finalizeLocalEvidence(fixture.runDir, {
+            cleanup: cleanCleanup(fixture),
+            verdict: "pass",
+          }),
+        /raw whole-run video|forbidden video/i,
+        extension,
+      );
+    }
+
     const missingSidecar = await createEvidenceFixture(root);
     await rm(path.join(missingSidecar.runDir, "runner", "permissions.json"));
     await assert.rejects(
       () =>
         finalizeLocalEvidence(missingSidecar.runDir, {
-          cleanup: cleanCleanup(),
+          cleanup: cleanCleanup(missingSidecar),
           verdict: "pass",
         }),
       /permissions\\.json|missing/i,
     );
+
+    const cliController = await createEvidenceFixture(root, { backend: "static_ssh" });
+    await stageControllerEvidence(cliController.runDir, { verdict: "pass" });
+    const cleanupFile = path.join(root, "controller-cleanup.json");
+    const leaseFile = path.join(root, "controller-lease.json");
+    await writeFile(
+      cleanupFile,
+      `${JSON.stringify(cleanCleanup(cliController, { mode: "controller" }))}\n`,
+    );
+    await writeFile(leaseFile, `${JSON.stringify(releasedLease())}\n`);
+    const metadataCli = spawnSync(
+      process.execPath,
+      [
+        path.join(process.cwd(), "tests/e2e/computer-use/run-metadata.mjs"),
+        "finalize-controller",
+        "--run-dir",
+        cliController.runDir,
+        "--cleanup-file",
+        cleanupFile,
+        "--host-lease-file",
+        leaseFile,
+        "--verdict",
+        "pass",
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN: TRUSTED_OWNER_TOKEN,
+        },
+      },
+    );
+    assert.equal(metadataCli.status, 0, metadataCli.stderr || metadataCli.stdout);
+    for (const command of ["create", "verify"]) {
+      const result = spawnSync(
+        process.execPath,
+        [
+          path.join(process.cwd(), "tests/e2e/computer-use/evidence-manifest.mjs"),
+          command,
+          "--run-dir",
+          cliController.runDir,
+        ],
+        { cwd: process.cwd(), encoding: "utf8" },
+      );
+      assert.equal(result.status, 0, result.stderr || result.stdout);
+    }
 
     console.log("Computer Use evidence manifest self-test passed.");
   } finally {

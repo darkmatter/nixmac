@@ -55,7 +55,7 @@ import { renderReportHtml, safeFrameVideoPath } from "./report.mjs";
 import {
   assertRunPreflight,
   finalizeLocalEvidence,
-  preflightInputFromEnvironment,
+  resolveRunPreflightIdentity,
   stageControllerEvidence,
   writeRunCleanup,
   writeRunPreflight,
@@ -245,6 +245,42 @@ export async function validateLocalCuaPreflight(
       "NIXMAC_E2E_APP_PATH must be staged in a run-specific directory named for the run directory",
     );
   }
+  const inputStagingParent = String(env.NIXMAC_E2E_STAGING_PARENT || "");
+  if (
+    !inputStagingParent ||
+    !path.isAbsolute(inputStagingParent) ||
+    path.normalize(inputStagingParent) !== inputStagingParent
+  ) {
+    throw new Error("NIXMAC_E2E_STAGING_PARENT must be an absolute normalized path");
+  }
+  const stagingParent = await canonicalPath(inputStagingParent);
+  if (stagingParent !== inputStagingParent || stagingParent !== path.dirname(appPath)) {
+    throw new Error("NIXMAC_E2E_STAGING_PARENT must be canonical and directly own the app");
+  }
+  const inputDisposableConfigPath = String(
+    env.NIXMAC_E2E_DISPOSABLE_CONFIG_PATH || "",
+  );
+  if (
+    !inputDisposableConfigPath ||
+    !path.isAbsolute(inputDisposableConfigPath) ||
+    path.normalize(inputDisposableConfigPath) !== inputDisposableConfigPath
+  ) {
+    throw new Error(
+      "NIXMAC_E2E_DISPOSABLE_CONFIG_PATH must be an absolute normalized path",
+    );
+  }
+  const disposableConfigPath = await canonicalPath(inputDisposableConfigPath);
+  const configRelative = path.relative(stagingParent, disposableConfigPath);
+  if (
+    disposableConfigPath !== inputDisposableConfigPath ||
+    configRelative === "" ||
+    configRelative.startsWith("..") ||
+    path.isAbsolute(configRelative)
+  ) {
+    throw new Error(
+      "NIXMAC_E2E_DISPOSABLE_CONFIG_PATH must be canonical and owned by staging parent",
+    );
+  }
   const identity = await readBundleIdentity(appPath);
   if (identity.bundleId !== appBundleId) {
     throw new Error(
@@ -259,6 +295,8 @@ export async function validateLocalCuaPreflight(
     appBundleDigestSha256: identity.digestSha256,
     appBundleId,
     appPath,
+    disposableConfigPath,
+    stagingParent,
   });
 }
 
@@ -296,10 +334,75 @@ export async function prepareSuiteDriver(
   await driver.prepareTarget({ appBundleId });
 }
 
+function processCleanupSnapshot(role, instance) {
+  if (instance == null) {
+    return {
+      entry: {
+        role,
+        status: "not_started",
+        pid: null,
+        birthMarker: null,
+        executable: null,
+        terminated: true,
+      },
+      failure: "",
+    };
+  }
+  if (
+    Number.isSafeInteger(instance.pid) &&
+    instance.pid > 0 &&
+    typeof instance.birthMarker === "string" &&
+    instance.birthMarker !== "" &&
+    typeof instance.executable === "string" &&
+    path.isAbsolute(instance.executable) &&
+    path.normalize(instance.executable) === instance.executable
+  ) {
+    return {
+      entry: {
+        role,
+        status: "owned",
+        pid: instance.pid,
+        birthMarker: instance.birthMarker,
+        executable: instance.executable,
+        terminated: false,
+      },
+      failure: "",
+    };
+  }
+  return {
+    entry: {
+      role,
+      status: "not_started",
+      pid: null,
+      birthMarker: null,
+      executable: null,
+      terminated: true,
+    },
+    failure: `${role} process identity was present but could not be attested exactly`,
+  };
+}
+
+function captureLifecycleForRun({ uiStarted, failure }) {
+  if (uiStarted) return { status: "available", uiStarted: true, reason: "" };
+  const reason = redact(
+    failure instanceof Error
+      ? failure.message
+      : failure
+        ? String(failure)
+        : "the runner stopped before UI capture began",
+  );
+  return {
+    status: "not_started",
+    uiStarted: false,
+    reason: reason || "the runner stopped before UI capture began",
+  };
+}
+
 export async function writeAndAssertLocalRunPreflight(
   { driver, localPreflight, runDir },
   {
     env = process.env,
+    resolvePreflight = resolveRunPreflightIdentity,
     writePreflight = writeRunPreflight,
     assertPreflight = assertRunPreflight,
   } = {},
@@ -310,8 +413,21 @@ export async function writeAndAssertLocalRunPreflight(
   if (driver.connected !== true) {
     throw new Error("CuaDriver live permission probe must succeed before run preflight");
   }
-  const input = preflightInputFromEnvironment({
-    env,
+  if (
+    typeof driver.socketPath !== "string" ||
+    !path.isAbsolute(driver.socketPath) ||
+    path.normalize(driver.socketPath) !== driver.socketPath
+  ) {
+    throw new Error("connected CuaDriver canonical daemon socket path is required before UI");
+  }
+  const input = await resolvePreflight({
+    env: {
+      ...env,
+      NIXMAC_E2E_STAGING_PARENT: localPreflight.stagingParent,
+      NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: localPreflight.disposableConfigPath,
+      NIXMAC_E2E_DAEMON_SOCKET_PATH: driver.socketPath,
+    },
+    repoRoot: REPO_ROOT,
     appBundlePath: localPreflight.appPath,
     appBundleDigest: localPreflight.appBundleDigestSha256,
     cuaDriverCliVersion: driver.metadata.cli.version,
@@ -2723,6 +2839,7 @@ export async function runSuiteWithDriver(
     env = process.env,
     executionTopology,
     localPreflightDependencies = {},
+    runPreflightDependencies = {},
     transportBoundaries = {},
   } = {},
 ) {
@@ -2786,6 +2903,9 @@ export async function runSuiteWithDriver(
   let suiteFailure = null;
   let closeFailure = null;
   let trustedRunPreflight = null;
+  let uiStarted = false;
+  let ownedProcessSnapshots = [];
+  let processSnapshotFailure = "";
   try {
     await prepareSuiteDriver(driver, {
       executionTopology,
@@ -2802,6 +2922,7 @@ export async function runSuiteWithDriver(
                 },
                 {
                   env,
+                  ...runPreflightDependencies,
                 },
               );
             }
@@ -2816,6 +2937,7 @@ export async function runSuiteWithDriver(
       captureRemoteMetadata(state, transportBoundaries);
     }
 
+    uiStarted = true;
     let text = await captureState(
       driver,
       state,
@@ -4084,6 +4206,12 @@ export async function runSuiteWithDriver(
   } catch (error) {
     suiteFailure = error;
   } finally {
+    const targetSnapshot = processCleanupSnapshot("target", driver.ownedTarget);
+    const daemonSnapshot = processCleanupSnapshot("daemon", driver.daemonPeer);
+    ownedProcessSnapshots = [targetSnapshot.entry, daemonSnapshot.entry];
+    processSnapshotFailure = [targetSnapshot.failure, daemonSnapshot.failure]
+      .filter(Boolean)
+      .join("; ");
     try {
       await driver.close();
     } catch (error) {
@@ -4093,7 +4221,6 @@ export async function runSuiteWithDriver(
   if (executionTopology === "local-cua-driver") {
     if (trustedRunPreflight) {
       try {
-        await writeRunPreflight(runDir, trustedRunPreflight.input);
         await assertRunPreflight(runDir);
         await verifyLocalCuaPreflight(localPreflight, localPreflightDependencies);
       } catch (error) {
@@ -4106,34 +4233,85 @@ export async function runSuiteWithDriver(
       }
     }
     const finalizationMode = env.NIXMAC_E2E_FINALIZATION_MODE;
+    const capture = captureLifecycleForRun({ uiStarted, failure: suiteFailure });
     if (finalizationMode === "local-finalize") {
-      const ownedPaths = [localPreflight.appPath];
-      if (typeof driver.socketPath === "string" && path.isAbsolute(driver.socketPath)) {
-        ownedPaths.push(driver.socketPath);
-      }
-      let cleanupFailure = closeFailure
-        ? `CuaDriver close failed: ${redact(
-            closeFailure instanceof Error ? closeFailure.message : String(closeFailure),
-          )}`
-        : "";
-      try {
-        await rm(localPreflight.appPath, { recursive: true, force: true });
-        if (existsSync(localPreflight.appPath)) {
-          throw new Error("staged app bundle still exists after exact owned-path removal");
+      const cleanupStartedAt = nowIso();
+      const pathIdentities = [
+        ["staging-parent", localPreflight.stagingParent],
+        ["app-bundle", localPreflight.appPath],
+        ["disposable-config", localPreflight.disposableConfigPath],
+        ["daemon-socket", trustedRunPreflight?.input?.daemonSocketPath || driver.socketPath],
+      ];
+      let cleanupFailure = [
+        processSnapshotFailure,
+        closeFailure
+          ? `CuaDriver close failed: ${redact(
+              closeFailure instanceof Error ? closeFailure.message : String(closeFailure),
+            )}`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("; ");
+      if (!closeFailure && !processSnapshotFailure) {
+        try {
+          await rm(localPreflight.stagingParent, { recursive: true, force: true });
+        } catch (error) {
+          cleanupFailure = [
+            cleanupFailure,
+            redact(error instanceof Error ? error.message : String(error)),
+          ]
+            .filter(Boolean)
+            .join("; ");
         }
-      } catch (error) {
-        const removalFailure = redact(error instanceof Error ? error.message : String(error));
-        cleanupFailure = [cleanupFailure, removalFailure].filter(Boolean).join("; ");
       }
+      const ownedPaths = pathIdentities.map(([kind, ownedPath]) => ({
+        kind,
+        path: ownedPath,
+        expectedFinalState: "absent",
+        observedFinalState:
+          typeof ownedPath === "string" && path.isAbsolute(ownedPath)
+            ? existsSync(ownedPath)
+              ? "present"
+              : "absent"
+            : "unverified",
+      }));
+      if (ownedPaths.some((ownedPath) => ownedPath.observedFinalState !== "absent")) {
+        cleanupFailure = [cleanupFailure, "one or more exactly owned paths remain after cleanup"]
+          .filter(Boolean)
+          .join("; ");
+      }
+      const processInstances = ownedProcessSnapshots.map((instance) => ({
+        ...instance,
+        terminated: instance.status === "not_started" || !closeFailure,
+      }));
+      const remainingProcesses = processInstances
+        .filter((instance) => !instance.terminated)
+        .map(({ role, pid, birthMarker, executable }) => ({
+          role,
+          pid,
+          birthMarker,
+          executable,
+        }));
       const cleanup = {
+        ownershipMode: "local-ephemeral",
         attempted: true,
         restored: cleanupFailure === "",
         clean: cleanupFailure === "",
+        startedAt: cleanupStartedAt,
+        completedAt: nowIso(),
         ownedPaths,
-        remainingProcesses: closeFailure
-          ? [{ status: "unverified", reason: "CuaDriver close failed" }]
-          : [],
+        processInstances,
+        remainingProcesses,
         failureReason: cleanupFailure,
+        lifecycle: {
+          driverCloseAttempted: true,
+          driverClosed: !closeFailure,
+          ownershipMatched: processSnapshotFailure === "",
+          pathsProbed: ownedPaths.every(
+            (ownedPath) => ownedPath.observedFinalState !== "unverified",
+          ),
+          processesProbed: !closeFailure && processSnapshotFailure === "",
+        },
       };
       state.cleanup = {
         attempted: cleanup.attempted,
@@ -4144,10 +4322,10 @@ export async function runSuiteWithDriver(
           : `Final cleanup failed: ${cleanup.failureReason}`,
       };
       await writeRunCleanup(runDir, cleanup);
-      activeRunFinalization = { cleanup, finalizationMode, runDir };
+      activeRunFinalization = { capture, cleanup, finalizationMode, runDir };
       if (suiteCompleted && !suiteFailure && !closeFailure) {
         await render(state);
-        await finalizeLocalEvidence(runDir, { cleanup, verdict: state.verdict });
+        await finalizeLocalEvidence(runDir, { capture, cleanup, verdict: state.verdict });
         activeRunFinalization = null;
       }
     } else if (finalizationMode === "controller-finalize") {
@@ -4159,6 +4337,7 @@ export async function runSuiteWithDriver(
       };
       activeRunFinalization = {
         cleanup: null,
+        capture,
         finalizationMode,
         runDir,
         runnerCleanupFailure: closeFailure
@@ -4167,7 +4346,7 @@ export async function runSuiteWithDriver(
       };
       if (suiteCompleted && !suiteFailure && !closeFailure) {
         await render(state);
-        await stageControllerEvidence(runDir, { verdict: state.verdict });
+        await stageControllerEvidence(runDir, { capture, verdict: state.verdict });
         activeRunFinalization = null;
       }
     } else {
@@ -4468,7 +4647,10 @@ export async function renderSuiteErrorReport(
 ) {
   const lane = executionTopology === "local-cua-driver" ? "local CuaDriver" : "remote";
   const note = `Computer Use ${lane} runner failed before completing the suite: ${redact(error instanceof Error ? error.message : String(error))}`;
-  const runDir = argValue(args, "--run-dir", activeRunDir || "");
+  let runDir = argValue(args, "--run-dir", activeRunDir || "");
+  if (runDir && executionTopology === "local-cua-driver") {
+    runDir = await realpath(runDir);
+  }
   const fallbackArgs = withRunDirArg(args, runDir);
   if (!runDir) {
     await renderUnavailable([...fallbackArgs, "--note", note]);
@@ -4542,19 +4724,49 @@ export async function renderSuiteErrorReport(
     };
   }
   await addEvent(existingState, "runner.crash-fallback", { note });
+  if (finalization?.capture?.uiStarted === false) {
+    const blockerTextPath = path.join(runDir, "texts", "pre-ui-blocker.txt");
+    await writeFile(
+      blockerTextPath,
+      `${note}\nCapture status: ${finalization.capture.status}\nReason: ${finalization.capture.reason}\n`,
+      "utf8",
+    );
+    existingState.screenshots = [];
+    existingState.textSnapshots = [
+      {
+        label: "Pre-UI infrastructure blocker",
+        path: "texts/pre-ui-blocker.txt",
+        capturedAt: nowIso(),
+        note: "Deterministic text evidence retained because the UI lifecycle never began.",
+      },
+    ];
+  }
   await render(existingState, {
-    generateVideo: existingState.suiteMode !== "smoke",
+    generateVideo:
+      existingState.suiteMode !== "smoke" && finalization?.capture?.uiStarted !== false,
     updateStorybook: existingState.suiteMode !== "smoke",
   });
+  if (finalization?.capture?.uiStarted === false) {
+    existingState.video = {
+      status: finalization.capture.status,
+      note:
+        "No screenshot or video was created because the lifecycle proves the UI never began.",
+    };
+    await saveState(existingState);
+  }
   if (finalization) {
     try {
       if (finalization.finalizationMode === "local-finalize") {
         await finalizeLocalEvidence(runDir, {
+          capture: finalization.capture,
           cleanup: finalization.cleanup,
           verdict: existingState.verdict,
         });
       } else {
-        await stageControllerEvidence(runDir, { verdict: existingState.verdict });
+        await stageControllerEvidence(runDir, {
+          capture: finalization.capture,
+          verdict: existingState.verdict,
+        });
       }
     } finally {
       activeRunFinalization = null;

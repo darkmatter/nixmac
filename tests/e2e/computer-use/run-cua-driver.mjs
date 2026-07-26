@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { dispatchLocalCuaCommand, localCuaUsage } from "./cli.mjs";
 import { CuaDriver, hashCuaBundleTree } from "./drivers/cua-driver.mjs";
+import { verifyEvidenceManifest } from "./evidence-manifest.mjs";
 import { redact } from "./redaction.mjs";
+import { preflightInputFromEnvironment } from "./run-metadata.mjs";
 import {
   classifySuiteFailure,
   prepareSuiteDriver,
@@ -207,6 +209,7 @@ async function runSelfTest() {
   const artifactSha = "a".repeat(40);
   const runDir = "/tmp/nixmac-e2e-run-123";
   const appPath = "/tmp/nixmac-e2e-run-123/nixmac.app";
+  const disposableConfigPath = "/tmp/nixmac-e2e-run-123/config";
   const preflight = await validateLocalCuaPreflight(
     {
       appBundleId: "com.darkmatter.nixmac",
@@ -217,6 +220,8 @@ async function runSelfTest() {
         NIXMAC_E2E_DISPOSABLE_CONFIG: "true",
         NIXMAC_E2E_APP_ARTIFACT_SHA: artifactSha,
         NIXMAC_E2E_APP_PATH: appPath,
+        NIXMAC_E2E_STAGING_PARENT: runDir,
+        NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: disposableConfigPath,
       },
       canonicalPath: async (value) => value,
       readBundleIdentity: async () => ({
@@ -230,6 +235,8 @@ async function runSelfTest() {
     appBundleDigestSha256: "b".repeat(64),
     appBundleId: "com.darkmatter.nixmac",
     appPath,
+    disposableConfigPath,
+    stagingParent: runDir,
   });
   await assert.rejects(
     () =>
@@ -251,9 +258,11 @@ async function runSelfTest() {
     preflight,
   );
   const metadataEnv = {
-    NIXMAC_E2E_JOB_ID: "job-123",
+    NIXMAC_E2E_JOB_ID: `darkmatter/nixmac:${artifactSha}:computer-use-v1`,
     NIXMAC_E2E_REPO: "darkmatter/nixmac",
+    GITHUB_REPOSITORY: "darkmatter/nixmac",
     NIXMAC_E2E_MERGE_SHA: artifactSha,
+    NIXMAC_E2E_APP_ARTIFACT_SHA: artifactSha,
     NIXMAC_E2E_SUITE_VERSION: "computer-use-v1",
     NIXMAC_E2E_HARNESS_SHA: "d".repeat(40),
     NIXMAC_E2E_ACTIONS_RUN_ID: "123456",
@@ -266,11 +275,13 @@ async function runSelfTest() {
     NIXMAC_E2E_ARTIFACT_ID: "987654",
     NIXMAC_E2E_ARTIFACT_DIGEST: `sha256:${"f".repeat(64)}`,
     NIXMAC_E2E_FINALIZATION_MODE: "local-finalize",
+    NIXMAC_E2E_ATTEMPT_STARTED_AT: "2026-07-26T00:00:00.000Z",
   };
   const writtenPreflights = [];
   const assertedPreflights = [];
   const connectedMetadataDriver = {
     connected: true,
+    socketPath: "/tmp/nixmac-e2e-run-123/cua-driver.sock",
     metadata: {
       cli: { version: "0.12.6" },
       app: { short_version: "0.12.6" },
@@ -284,6 +295,7 @@ async function runSelfTest() {
     },
     {
       env: metadataEnv,
+      resolvePreflight: async (input) => preflightInputFromEnvironment(input),
       writePreflight: async (targetRunDir, input) =>
         writtenPreflights.push({ input, runDir: targetRunDir }),
       assertPreflight: async (targetRunDir) => assertedPreflights.push(targetRunDir),
@@ -296,6 +308,7 @@ async function runSelfTest() {
   let missingIdentityPrepareCalls = 0;
   const missingIdentityDriver = {
     connected: false,
+    socketPath: connectedMetadataDriver.socketPath,
     metadata: connectedMetadataDriver.metadata,
     async connect() {
       this.connected = true;
@@ -321,6 +334,7 @@ async function runSelfTest() {
             },
             {
               env: missingJobEnv,
+              resolvePreflight: async (input) => preflightInputFromEnvironment(input),
               writePreflight: async () => assert.fail("invalid identity must not write sidecars"),
               assertPreflight: async () => assert.fail("invalid identity must not be asserted"),
             },
@@ -408,6 +422,8 @@ async function runSelfTest() {
               NIXMAC_E2E_DISPOSABLE_CONFIG: "true",
               NIXMAC_E2E_APP_ARTIFACT_SHA: artifactSha,
               NIXMAC_E2E_APP_PATH: appPath,
+              NIXMAC_E2E_STAGING_PARENT: runDir,
+              NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: disposableConfigPath,
               ...envOverride,
             },
             canonicalPath: async (value) => value,
@@ -433,6 +449,8 @@ async function runSelfTest() {
             NIXMAC_E2E_DISPOSABLE_CONFIG: "true",
             NIXMAC_E2E_APP_ARTIFACT_SHA: artifactSha,
             NIXMAC_E2E_APP_PATH: appPath,
+            NIXMAC_E2E_STAGING_PARENT: runDir,
+            NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: disposableConfigPath,
           },
           canonicalPath: async () => "/private/tmp/nixmac-e2e-run-123/nixmac.app",
           readBundleIdentity: async () => ({
@@ -455,6 +473,8 @@ async function runSelfTest() {
             NIXMAC_E2E_DISPOSABLE_CONFIG: "true",
             NIXMAC_E2E_APP_ARTIFACT_SHA: artifactSha,
             NIXMAC_E2E_APP_PATH: appPath,
+            NIXMAC_E2E_STAGING_PARENT: runDir,
+            NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: disposableConfigPath,
           },
           canonicalPath: async (value) => value,
           readBundleIdentity: async () => ({
@@ -550,6 +570,7 @@ async function runSelfTest() {
   class CompetingProcessDriver {
     constructor() {
       this.connected = false;
+      this.socketPath = path.join(path.dirname(transportAppPath), "cua-driver.sock");
       this.metadata = {
         app: { short_version: "0.12.6" },
         cli: { version: "0.12.6" },
@@ -580,6 +601,11 @@ async function runSelfTest() {
     NIXMAC_E2E_APP_ARTIFACT_SHA: artifactSha,
     NIXMAC_E2E_APP_PATH: transportAppPath,
     NIXMAC_E2E_DISPOSABLE_CONFIG: "true",
+    NIXMAC_E2E_STAGING_PARENT: path.dirname(transportAppPath),
+    NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: path.join(
+      path.dirname(transportAppPath),
+      "config",
+    ),
   };
   let competingProcessError;
   try {
@@ -596,6 +622,9 @@ async function runSelfTest() {
           bundleId: "com.darkmatter.nixmac",
           digestSha256: transportAppDigest,
         }),
+      },
+      runPreflightDependencies: {
+        resolvePreflight: async (input) => preflightInputFromEnvironment(input),
       },
       transportBoundaries,
     });
@@ -633,6 +662,44 @@ async function runSelfTest() {
     },
   );
   assert.equal(competingDriverClosed, 1);
+  const transportAttempt = JSON.parse(
+    await readFile(path.join(transportRunDir, "attempt.json"), "utf8"),
+  );
+  const transportCleanup = JSON.parse(
+    await readFile(path.join(transportRunDir, "runner", "cleanup.json"), "utf8"),
+  );
+  assert.deepEqual(transportAttempt.capture, {
+    status: "not_started",
+    uiStarted: false,
+    reason: "competing com.darkmatter.nixmac process is already running with pid 4242",
+  });
+  assert.equal(transportAttempt.lifecycle.uiStarted, false);
+  assert.equal(transportAttempt.lifecycle.driverClosed, true);
+  assert.equal(transportAttempt.lifecycle.cleanupFinalized, true);
+  assert.equal(
+    transportAttempt.failureClass,
+    "infrastructure",
+    "a classified competing-process blocker must not be normalized as a product failure",
+  );
+  assert.ok(
+    Date.parse(transportCleanup.completedAt) <= Date.parse(transportAttempt.endedAt),
+    "cleanup must complete before the attempt is finalized",
+  );
+  assert.deepEqual(
+    transportCleanup.processInstances.map(({ role, status }) => ({ role, status })),
+    [
+      { role: "target", status: "not_started" },
+      { role: "daemon", status: "not_started" },
+    ],
+  );
+  const transportManifest = await verifyEvidenceManifest(await realpath(transportRunDir));
+  assert.equal(
+    transportManifest.files.some(
+      (file) => file.path.startsWith("screenshots/") || file.path.startsWith("video/"),
+    ),
+    false,
+    "a pre-UI competing-process blocker must seal without fabricated visual evidence",
+  );
   assert.deepEqual(transportCalls, []);
   for (const [name, boundary] of [
     ["websocket", websocketBoundary],
@@ -662,6 +729,7 @@ async function runSelfTest() {
     await runSuiteWithDriver(["--run-dir", combinedRunDir], {
       createDriver: () => ({
         connected: true,
+        socketPath: path.join(path.dirname(combinedAppPath), "cua-driver.sock"),
         metadata: {
           app: { short_version: "0.12.6" },
           cli: { version: "0.12.6" },
@@ -684,6 +752,11 @@ async function runSelfTest() {
       env: {
         ...transportEnv,
         NIXMAC_E2E_APP_PATH: combinedAppPath,
+        NIXMAC_E2E_STAGING_PARENT: path.dirname(combinedAppPath),
+        NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: path.join(
+          path.dirname(combinedAppPath),
+          "config",
+        ),
       },
       executionTopology: "local-cua-driver",
       localPreflightDependencies: {
@@ -692,6 +765,9 @@ async function runSelfTest() {
           bundleId: "com.darkmatter.nixmac",
           digestSha256: combinedAppDigest,
         }),
+      },
+      runPreflightDependencies: {
+        resolvePreflight: async (input) => preflightInputFromEnvironment(input),
       },
       transportBoundaries,
     });
@@ -873,6 +949,8 @@ async function runSelfTest() {
     NIXMAC_E2E_APP_ARTIFACT_SHA: artifactSha,
     NIXMAC_E2E_APP_PATH: smokeAppPath,
     NIXMAC_E2E_DISPOSABLE_CONFIG: "true",
+    NIXMAC_E2E_STAGING_PARENT: path.dirname(smokeAppPath),
+    NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: path.join(path.dirname(smokeAppPath), "config"),
   };
   await runSmokeWithDriver(["--run-dir", smokeRunDir], {
     createDriver: () => new SmokeDriver(),
@@ -930,6 +1008,8 @@ async function runSelfTest() {
   const blockerEnv = {
     ...smokeEnv,
     NIXMAC_E2E_APP_PATH: blockerAppPath,
+    NIXMAC_E2E_STAGING_PARENT: path.dirname(blockerAppPath),
+    NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: path.join(path.dirname(blockerAppPath), "config"),
   };
   let smokeBlockerError;
   try {

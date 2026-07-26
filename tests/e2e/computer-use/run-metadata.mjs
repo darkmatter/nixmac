@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { lstat, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -9,6 +10,7 @@ const PREFLIGHT_FIELDS = Object.freeze([
   "jobId",
   "repo",
   "mergeSha",
+  "appArtifactSha",
   "suiteVersion",
   "harnessSha",
   "actionsRunId",
@@ -20,19 +22,32 @@ const PREFLIGHT_FIELDS = Object.freeze([
   "buildRunId",
   "artifactId",
   "artifactDigest",
+  "stagingParent",
   "appBundlePath",
   "appBundleDigest",
+  "disposableConfigPath",
+  "daemonSocketPath",
   "cuaDriverCliVersion",
   "cuaDriverAppVersion",
   "captureMode",
   "finalizationMode",
   "accessibilityGranted",
   "screenRecordingGranted",
+  "startedAt",
+  "evidencePrefix",
 ]);
 
 const BACKENDS = new Set(["cilicon_tart", "static_ssh"]);
 const FINALIZATION_MODES = new Set(["local-finalize", "controller-finalize"]);
 const SAFE_CAPTURE_MODE = "safe-frame";
+
+function canonicalJobId({ repo, mergeSha, suiteVersion }) {
+  return `${repo}:${mergeSha}:${suiteVersion}`;
+}
+
+function canonicalEvidencePrefix({ jobId, attemptNumber }) {
+  return `computer-use-e2e/jobs/${encodeURIComponent(jobId)}/attempt-${attemptNumber}/`;
+}
 
 function requireString(value, field) {
   if (typeof value !== "string" || value.trim() === "") {
@@ -69,6 +84,15 @@ function requireTrue(value, field) {
   return true;
 }
 
+function requireIsoTimestamp(value, field) {
+  requireString(value, field);
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed) || new Date(parsed).toISOString() !== value) {
+    throw new Error(`${field} must be a canonical ISO timestamp`);
+  }
+  return value;
+}
+
 function requireAbsoluteNormalizedPath(value, field) {
   requireString(value, field);
   if (!path.isAbsolute(value) || path.normalize(value) !== value) {
@@ -90,7 +114,15 @@ function validatePreflightInput(input) {
     throw new Error("repo must be an owner/name repository identity");
   }
   requireGitSha(input.mergeSha, "mergeSha");
+  requireGitSha(input.appArtifactSha, "appArtifactSha");
+  if (input.appArtifactSha !== input.mergeSha) {
+    throw new Error("appArtifactSha must match mergeSha");
+  }
   requireString(input.suiteVersion, "suiteVersion");
+  const expectedJobId = canonicalJobId(input);
+  if (input.jobId !== expectedJobId) {
+    throw new Error(`jobId must match canonical job identity ${expectedJobId}`);
+  }
   requireGitSha(input.harnessSha, "harnessSha");
   requireString(input.actionsRunId, "actionsRunId");
   requireString(input.actionsJobId, "actionsJobId");
@@ -103,6 +135,10 @@ function validatePreflightInput(input) {
   requireString(input.buildRunId, "buildRunId");
   requireString(input.artifactId, "artifactId");
   requireSha256(input.artifactDigest, "artifactDigest", { prefix: "required" });
+  requireAbsoluteNormalizedPath(input.stagingParent, "stagingParent");
+  if (input.stagingParent === path.parse(input.stagingParent).root) {
+    throw new Error("stagingParent must not be a filesystem root");
+  }
   requireAbsoluteNormalizedPath(input.appBundlePath, "appBundlePath");
   if (!input.appBundlePath.endsWith(".app")) {
     throw new Error("appBundlePath must identify an .app bundle");
@@ -113,7 +149,20 @@ function validatePreflightInput(input) {
   ) {
     throw new Error("appBundlePath must be a run-specific staged app, not a shared app");
   }
+  if (path.dirname(input.appBundlePath) !== input.stagingParent) {
+    throw new Error("appBundlePath must be owned directly by stagingParent");
+  }
   requireSha256(input.appBundleDigest, "appBundleDigest", { prefix: "forbidden" });
+  for (const [field, value] of [
+    ["disposableConfigPath", input.disposableConfigPath],
+    ["daemonSocketPath", input.daemonSocketPath],
+  ]) {
+    requireAbsoluteNormalizedPath(value, field);
+    const relative = path.relative(input.stagingParent, value);
+    if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) {
+      throw new Error(`${field} must be uniquely owned beneath stagingParent`);
+    }
+  }
   requireString(input.cuaDriverCliVersion, "cuaDriverCliVersion");
   requireString(input.cuaDriverAppVersion, "cuaDriverAppVersion");
   if (input.captureMode !== SAFE_CAPTURE_MODE) {
@@ -132,6 +181,14 @@ function validatePreflightInput(input) {
   }
   requireTrue(input.accessibilityGranted, "accessibilityGranted");
   requireTrue(input.screenRecordingGranted, "screenRecordingGranted");
+  requireIsoTimestamp(input.startedAt, "startedAt");
+  const expectedPrefix = canonicalEvidencePrefix({
+    jobId: input.jobId,
+    attemptNumber: input.attemptNumber,
+  });
+  if (input.evidencePrefix !== expectedPrefix) {
+    throw new Error(`evidencePrefix must match canonical attempt prefix ${expectedPrefix}`);
+  }
   return Object.freeze({ ...input });
 }
 
@@ -170,6 +227,22 @@ async function assertEvidenceUnsealed(runDir) {
   }
 }
 
+async function assertPreflightSidecarsAbsent(runDir) {
+  for (const relativePath of [
+    "runner/identity.json",
+    "runner/permissions.json",
+    "artifact/source.json",
+    "attempt.json",
+  ]) {
+    try {
+      await lstat(path.join(runDir, relativePath));
+      throw new Error(`run preflight is already bound: ${relativePath}`);
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+  }
+}
+
 function preflightSidecars(input) {
   return {
     "runner/identity.json": {
@@ -197,8 +270,12 @@ function preflightSidecars(input) {
       buildRunId: input.buildRunId,
       artifactId: input.artifactId,
       artifactDigest: input.artifactDigest,
+      appArtifactSha: input.appArtifactSha,
+      stagingParent: input.stagingParent,
       appBundlePath: input.appBundlePath,
       appBundleDigest: input.appBundleDigest,
+      disposableConfigPath: input.disposableConfigPath,
+      daemonSocketPath: input.daemonSocketPath,
     },
     "attempt.json": {
       version: 1,
@@ -207,9 +284,26 @@ function preflightSidecars(input) {
       actionsRunId: input.actionsRunId,
       actionsJobId: input.actionsJobId,
       finalizationMode: input.finalizationMode,
+      startedAt: input.startedAt,
+      endedAt: null,
+      failureClass: null,
+      evidencePrefix: input.evidencePrefix,
+      capture: {
+        status: "not_started",
+        uiStarted: false,
+        reason: "",
+      },
       status: "preflight",
       finalized: false,
       verdict: null,
+      lifecycle: {
+        identityBound: true,
+        uiPreparationAuthorized: true,
+        uiStarted: false,
+        driverClosed: false,
+        cleanupFinalized: false,
+        evidenceReady: false,
+      },
     },
   };
 }
@@ -227,6 +321,7 @@ export function preflightInputFromEnvironment({
     jobId: env.NIXMAC_E2E_JOB_ID || "",
     repo: env.NIXMAC_E2E_REPO || env.GITHUB_REPOSITORY || "",
     mergeSha: env.NIXMAC_E2E_MERGE_SHA || "",
+    appArtifactSha: env.NIXMAC_E2E_APP_ARTIFACT_SHA || "",
     suiteVersion: env.NIXMAC_E2E_SUITE_VERSION || "",
     harnessSha: env.NIXMAC_E2E_HARNESS_SHA || "",
     actionsRunId: env.NIXMAC_E2E_ACTIONS_RUN_ID || env.GITHUB_RUN_ID || "",
@@ -238,20 +333,168 @@ export function preflightInputFromEnvironment({
     buildRunId: env.NIXMAC_E2E_BUILD_RUN_ID || "",
     artifactId: env.NIXMAC_E2E_ARTIFACT_ID || "",
     artifactDigest: env.NIXMAC_E2E_ARTIFACT_DIGEST || "",
+    stagingParent: env.NIXMAC_E2E_STAGING_PARENT || path.dirname(appBundlePath || "/"),
     appBundlePath,
     appBundleDigest,
+    disposableConfigPath: env.NIXMAC_E2E_DISPOSABLE_CONFIG_PATH || "",
+    daemonSocketPath: env.NIXMAC_E2E_DAEMON_SOCKET_PATH || "",
     cuaDriverCliVersion,
     cuaDriverAppVersion,
     captureMode: SAFE_CAPTURE_MODE,
     finalizationMode: env.NIXMAC_E2E_FINALIZATION_MODE || "",
     accessibilityGranted,
     screenRecordingGranted,
+    startedAt: env.NIXMAC_E2E_ATTEMPT_STARTED_AT || "",
+    evidencePrefix: canonicalEvidencePrefix({
+      jobId: env.NIXMAC_E2E_JOB_ID || "",
+      attemptNumber: Number(env.NIXMAC_E2E_ATTEMPT || env.GITHUB_RUN_ATTEMPT || 0),
+    }),
+  });
+}
+
+async function readTrustedAttestation(filePath, label) {
+  requireAbsoluteNormalizedPath(filePath, `${label} path`);
+  const stats = await lstat(filePath);
+  if (!stats.isFile() || stats.isSymbolicLink()) {
+    throw new Error(`${label} must be a direct regular file`);
+  }
+  const source = await readFile(filePath, "utf8");
+  if (source.trim() === "") throw new Error(`${label} must not be empty`);
+  const value = JSON.parse(source);
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${label} must contain a JSON object`);
+  }
+  return value;
+}
+
+async function defaultProbeHarnessSha({ repoRoot }) {
+  const result = spawnSync("git", ["-C", repoRoot, "rev-parse", "HEAD"], {
+    encoding: "utf8",
+  });
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(`trusted harness SHA probe failed: ${result.stderr || result.stdout}`);
+  }
+  return result.stdout.trim();
+}
+
+async function defaultProbeRunnerIdentity({ env }) {
+  return readTrustedAttestation(
+    env.NIXMAC_E2E_RUNNER_ATTESTATION_PATH || "",
+    "runner identity attestation",
+  );
+}
+
+async function defaultProbeArtifactIdentity({ env }) {
+  return readTrustedAttestation(
+    env.NIXMAC_E2E_ARTIFACT_ATTESTATION_PATH || "",
+    "artifact verification attestation",
+  );
+}
+
+export async function resolveRunPreflightIdentity(
+  {
+    env = process.env,
+    repoRoot = process.cwd(),
+    appBundlePath,
+    appBundleDigest,
+    cuaDriverCliVersion,
+    cuaDriverAppVersion,
+    accessibilityGranted,
+    screenRecordingGranted,
+  },
+  {
+    probeHarnessSha = defaultProbeHarnessSha,
+    probeRunnerIdentity = defaultProbeRunnerIdentity,
+    probeArtifactIdentity = defaultProbeArtifactIdentity,
+  } = {},
+) {
+  const repo = requireString(env.NIXMAC_E2E_REPO || "", "repo");
+  const mergeSha = requireGitSha(env.NIXMAC_E2E_MERGE_SHA || "", "mergeSha");
+  const suiteVersion = requireString(env.NIXMAC_E2E_SUITE_VERSION || "", "suiteVersion");
+  const jobId = requireString(env.NIXMAC_E2E_JOB_ID || "", "jobId");
+  const expectedJobId = canonicalJobId({ repo, mergeSha, suiteVersion });
+  if (jobId !== expectedJobId) {
+    throw new Error(`canonical jobId mismatch: expected ${expectedJobId}, got ${jobId}`);
+  }
+  if ((env.GITHUB_REPOSITORY || "") !== repo) {
+    throw new Error("repository identity does not match live GITHUB_REPOSITORY");
+  }
+  const appArtifactSha = requireGitSha(
+    env.NIXMAC_E2E_APP_ARTIFACT_SHA || "",
+    "app artifact SHA",
+  );
+  if (appArtifactSha !== mergeSha) {
+    throw new Error("app artifact SHA does not match merge SHA");
+  }
+  const suppliedHarnessSha = requireGitSha(
+    env.NIXMAC_E2E_HARNESS_SHA || "",
+    "harnessSha",
+  );
+  const liveHarnessSha = requireGitSha(
+    await probeHarnessSha({ env, repoRoot }),
+    "live harness SHA",
+  );
+  if (liveHarnessSha !== suppliedHarnessSha) {
+    throw new Error("trusted live harness SHA does not match supplied harness SHA");
+  }
+  const runner = await probeRunnerIdentity({ env, repoRoot });
+  for (const [label, expected, actual] of [
+    ["runner name", env.NIXMAC_E2E_RUNNER_NAME, runner?.name],
+    ["runner backend", env.NIXMAC_E2E_RUNNER_BACKEND, runner?.backend],
+    ["runner image", env.NIXMAC_E2E_RUNNER_IMAGE_DIGEST, runner?.imageDigest],
+  ]) {
+    if (requireString(actual || "", `live ${label}`) !== requireString(expected || "", label)) {
+      throw new Error(`${label} does not match live attested identity`);
+    }
+  }
+  const artifact = await probeArtifactIdentity({ env, repoRoot });
+  if (artifact?.verified !== true) {
+    throw new Error("artifact identity was not independently verified");
+  }
+  for (const [label, expected, actual] of [
+    ["artifact ID", env.NIXMAC_E2E_ARTIFACT_ID, artifact?.artifactId],
+    ["artifact digest", env.NIXMAC_E2E_ARTIFACT_DIGEST, artifact?.artifactDigest],
+    ["artifact build run", env.NIXMAC_E2E_BUILD_RUN_ID, artifact?.buildRunId],
+    ["artifact merge SHA", mergeSha, artifact?.mergeSha],
+    ["verified app bundle digest", appBundleDigest, artifact?.appBundleDigest],
+  ]) {
+    if (requireString(actual || "", `verified ${label}`) !== requireString(expected || "", label)) {
+      throw new Error(`${label} does not match independently verified artifact identity`);
+    }
+  }
+  const base = preflightInputFromEnvironment({
+    env,
+    appBundlePath,
+    appBundleDigest,
+    cuaDriverCliVersion,
+    cuaDriverAppVersion,
+    accessibilityGranted,
+    screenRecordingGranted,
+  });
+  const startedAt = requireString(
+    env.NIXMAC_E2E_ATTEMPT_STARTED_AT || "",
+    "attempt startedAt",
+  );
+  if (!Number.isFinite(Date.parse(startedAt))) {
+    throw new Error("attempt startedAt must be an ISO timestamp");
+  }
+  return Object.freeze({
+    ...base,
+    appArtifactSha,
+    startedAt,
+    evidencePrefix: canonicalEvidencePrefix({
+      jobId,
+      attemptNumber: base.attemptNumber,
+    }),
   });
 }
 
 export async function writeRunPreflight(runDir, rawInput) {
   requireAbsoluteNormalizedPath(runDir, "runDir");
+  await assertEvidenceUnsealed(runDir);
   const input = validatePreflightInput(rawInput);
+  await assertPreflightSidecarsAbsent(runDir);
   const sidecars = preflightSidecars(input);
   for (const [relativePath, value] of Object.entries(sidecars)) {
     await writeJsonAtomic(path.join(runDir, relativePath), value);
@@ -264,6 +507,7 @@ function mergePreflightSidecars(identity, permissions, artifact, attempt) {
     jobId: identity.jobId,
     repo: identity.repo,
     mergeSha: identity.mergeSha,
+    appArtifactSha: artifact.appArtifactSha,
     suiteVersion: identity.suiteVersion,
     harnessSha: identity.harnessSha,
     actionsRunId: attempt.actionsRunId,
@@ -275,14 +519,19 @@ function mergePreflightSidecars(identity, permissions, artifact, attempt) {
     buildRunId: artifact.buildRunId,
     artifactId: artifact.artifactId,
     artifactDigest: artifact.artifactDigest,
+    stagingParent: artifact.stagingParent,
     appBundlePath: artifact.appBundlePath,
     appBundleDigest: artifact.appBundleDigest,
+    disposableConfigPath: artifact.disposableConfigPath,
+    daemonSocketPath: artifact.daemonSocketPath,
     cuaDriverCliVersion: identity.cuaDriverCliVersion,
     cuaDriverAppVersion: identity.cuaDriverAppVersion,
     captureMode: identity.captureMode,
     finalizationMode: identity.finalizationMode,
     accessibilityGranted: permissions.accessibilityGranted,
     screenRecordingGranted: permissions.screenRecordingGranted,
+    startedAt: attempt.startedAt,
+    evidencePrefix: attempt.evidencePrefix,
   };
 }
 
@@ -319,6 +568,25 @@ export async function assertRunPreflight(
   if (attempt.status !== "preflight" || attempt.finalized !== false || attempt.verdict !== null) {
     throw new Error("attempt sidecar must be in unfinalized preflight state before UI");
   }
+  if (
+    attempt.endedAt !== null ||
+    attempt.failureClass !== null ||
+    JSON.stringify(attempt.capture) !==
+      JSON.stringify({ status: "not_started", uiStarted: false, reason: "" }) ||
+    attempt.startedAt !== input.startedAt ||
+    attempt.evidencePrefix !== input.evidencePrefix ||
+    JSON.stringify(attempt.lifecycle) !==
+      JSON.stringify({
+        identityBound: true,
+        uiPreparationAuthorized: true,
+        uiStarted: false,
+        driverClosed: false,
+        cleanupFinalized: false,
+        evidenceReady: false,
+      })
+  ) {
+    throw new Error("attempt sidecar must contain the complete preflight lifecycle identity");
+  }
   const actualBundleDigest = await computeAppBundleDigest(input.appBundlePath);
   if (actualBundleDigest !== input.appBundleDigest) {
     throw new Error(
@@ -345,22 +613,119 @@ function validateVerdict(value) {
   return value;
 }
 
-function validateCleanup(cleanup) {
+function validateCleanup(cleanup, { identity, artifact }) {
   if (!cleanup || typeof cleanup !== "object" || Array.isArray(cleanup)) {
     throw new Error("cleanup must be an object");
+  }
+  const expectedOwnershipMode =
+    identity.runnerBackend === "static_ssh" ? "controller-static" : "local-ephemeral";
+  if (cleanup.ownershipMode !== expectedOwnershipMode) {
+    throw new Error(`cleanup.ownershipMode must be ${expectedOwnershipMode}`);
   }
   for (const field of ["attempted", "restored", "clean"]) {
     if (typeof cleanup[field] !== "boolean") throw new Error(`cleanup.${field} must be boolean`);
   }
-  if (!Array.isArray(cleanup.ownedPaths)) throw new Error("cleanup.ownedPaths must be an array");
+  requireIsoTimestamp(cleanup.startedAt, "cleanup.startedAt");
+  requireIsoTimestamp(cleanup.completedAt, "cleanup.completedAt");
+  if (Date.parse(cleanup.completedAt) < Date.parse(cleanup.startedAt)) {
+    throw new Error("cleanup timestamps must be monotonic");
+  }
+  if (!Array.isArray(cleanup.ownedPaths) || cleanup.ownedPaths.length === 0) {
+    throw new Error("cleanup.ownedPaths must be a non-empty exact ownership array");
+  }
+  const expectedPathKinds =
+    expectedOwnershipMode === "local-ephemeral"
+      ? new Map([
+          ["staging-parent", artifact.stagingParent],
+          ["app-bundle", artifact.appBundlePath],
+          ["disposable-config", artifact.disposableConfigPath],
+          ["daemon-socket", artifact.daemonSocketPath],
+        ])
+      : new Map([
+          ["remote-staging", artifact.stagingParent],
+          ["app-bundle", artifact.appBundlePath],
+          ["remote-config", artifact.disposableConfigPath],
+          ["daemon-socket", artifact.daemonSocketPath],
+        ]);
+  if (cleanup.ownedPaths.length !== expectedPathKinds.size) {
+    throw new Error("cleanup.ownedPaths must prove every exact owned path");
+  }
   const seen = new Set();
   for (const ownedPath of cleanup.ownedPaths) {
-    requireAbsoluteNormalizedPath(ownedPath, "cleanup owned path");
-    if (ownedPath === path.parse(ownedPath).root) {
+    if (!ownedPath || typeof ownedPath !== "object" || Array.isArray(ownedPath)) {
+      throw new Error("cleanup owned path must be an attestation object");
+    }
+    requireString(ownedPath.kind, "cleanup owned path kind");
+    requireAbsoluteNormalizedPath(ownedPath.path, "cleanup owned path");
+    if (ownedPath.path === path.parse(ownedPath.path).root) {
       throw new Error("cleanup owned path must not be a filesystem root");
     }
-    if (seen.has(ownedPath)) throw new Error(`duplicate cleanup owned path: ${ownedPath}`);
-    seen.add(ownedPath);
+    if (seen.has(ownedPath.kind)) {
+      throw new Error(`duplicate cleanup owned path kind: ${ownedPath.kind}`);
+    }
+    seen.add(ownedPath.kind);
+    if (
+      expectedPathKinds.get(ownedPath.kind) !== ownedPath.path ||
+      ownedPath.expectedFinalState !== "absent" ||
+      !["absent", "present", "unverified"].includes(ownedPath.observedFinalState)
+    ) {
+      throw new Error(
+        `cleanup owned path ${ownedPath.kind} must match identity and record a final probe state`,
+      );
+    }
+  }
+  for (const kind of expectedPathKinds.keys()) {
+    if (!seen.has(kind)) throw new Error(`cleanup owned paths missing ${kind}`);
+  }
+  if (!Array.isArray(cleanup.processInstances) || cleanup.processInstances.length !== 2) {
+    throw new Error("cleanup.processInstances must prove exact target and daemon processes");
+  }
+  const processRoles = new Set();
+  for (const processInstance of cleanup.processInstances) {
+    if (!processInstance || typeof processInstance !== "object") {
+      throw new Error("cleanup process instance must be an object");
+    }
+    if (!["target", "daemon"].includes(processInstance.role)) {
+      throw new Error("cleanup process role must be target or daemon");
+    }
+    if (processRoles.has(processInstance.role)) {
+      throw new Error(`duplicate cleanup process role: ${processInstance.role}`);
+    }
+    processRoles.add(processInstance.role);
+    if (!["owned", "not_started"].includes(processInstance.status)) {
+      throw new Error(`cleanup ${processInstance.role} status must be owned or not_started`);
+    }
+    if (processInstance.status === "owned") {
+      requirePositiveInteger(processInstance.pid, `cleanup ${processInstance.role} pid`);
+      requireString(
+        processInstance.birthMarker,
+        `cleanup ${processInstance.role} birthMarker`,
+      );
+      requireAbsoluteNormalizedPath(
+        processInstance.executable,
+        `cleanup ${processInstance.role} executable`,
+      );
+      if (
+        processInstance.role === "target" &&
+        !processInstance.executable.startsWith(`${artifact.appBundlePath}${path.sep}`)
+      ) {
+        throw new Error("cleanup target executable must belong to the staged app bundle");
+      }
+    } else if (
+      processInstance.pid !== null ||
+      processInstance.birthMarker !== null ||
+      processInstance.executable !== null
+    ) {
+      throw new Error(
+        `cleanup ${processInstance.role} not_started process must not fabricate an identity`,
+      );
+    }
+    if (typeof processInstance.terminated !== "boolean") {
+      throw new Error(`cleanup ${processInstance.role} terminated must be boolean`);
+    }
+  }
+  for (const role of ["target", "daemon"]) {
+    if (!processRoles.has(role)) throw new Error(`cleanup process instances missing ${role}`);
   }
   if (!Array.isArray(cleanup.remainingProcesses)) {
     throw new Error("cleanup.remainingProcesses must be an array");
@@ -368,14 +733,33 @@ function validateCleanup(cleanup) {
   if (typeof cleanup.failureReason !== "string") {
     throw new Error("cleanup.failureReason must be a string");
   }
+  if (!cleanup.lifecycle || typeof cleanup.lifecycle !== "object") {
+    throw new Error("cleanup.lifecycle must be an object");
+  }
+  for (const field of [
+    "driverCloseAttempted",
+    "driverClosed",
+    "ownershipMatched",
+    "pathsProbed",
+    "processesProbed",
+  ]) {
+    if (typeof cleanup.lifecycle[field] !== "boolean") {
+      throw new Error(`cleanup.lifecycle.${field} must be boolean`);
+    }
+  }
   return {
     version: 1,
+    ownershipMode: cleanup.ownershipMode,
     attempted: cleanup.attempted,
     restored: cleanup.restored,
     clean: cleanup.clean,
-    ownedPaths: [...cleanup.ownedPaths],
+    startedAt: cleanup.startedAt,
+    completedAt: cleanup.completedAt,
+    ownedPaths: cleanup.ownedPaths.map((entry) => ({ ...entry })),
+    processInstances: cleanup.processInstances.map((entry) => ({ ...entry })),
     remainingProcesses: [...cleanup.remainingProcesses],
     failureReason: cleanup.failureReason,
+    lifecycle: { ...cleanup.lifecycle },
   };
 }
 
@@ -389,17 +773,64 @@ function assertCleanupClean(cleanup) {
   ) {
     throw new Error("cleanup sidecar must prove attempted, restored, clean final cleanup");
   }
+  for (const ownedPath of cleanup.ownedPaths) {
+    if (ownedPath.observedFinalState !== "absent") {
+      throw new Error(
+        `cleanup sidecar must prove ${ownedPath.kind} observedFinalState is absent`,
+      );
+    }
+  }
+  for (const processInstance of cleanup.processInstances) {
+    if (processInstance.terminated !== true) {
+      throw new Error(
+        `cleanup sidecar must prove ${processInstance.role} process is terminated`,
+      );
+    }
+  }
+  for (const field of [
+    "driverCloseAttempted",
+    "driverClosed",
+    "ownershipMatched",
+    "pathsProbed",
+    "processesProbed",
+  ]) {
+    if (cleanup.lifecycle[field] !== true) {
+      throw new Error(`cleanup sidecar lifecycle.${field} must be true`);
+    }
+  }
 }
 
-function validateHostLease(hostLease) {
+function validateHostLease(hostLease, { trustedOwnerToken }) {
   if (!hostLease || typeof hostLease !== "object" || Array.isArray(hostLease)) {
     throw new Error("host lease must be an object");
   }
-  requireSha256(hostLease.ownerTokenHash, "hostLease.ownerTokenHash", {
-    prefix: "forbidden",
-  });
-  if (hostLease.acquired !== true || hostLease.released !== true) {
-    throw new Error("static host lease must prove acquired and owner-matched released state");
+  if (Object.keys(hostLease).some((field) => /raw.*token|ownerToken$/i.test(field))) {
+    throw new Error("raw owner token must not be stored in host lease evidence");
+  }
+  const acquiredOwnerTokenHash = requireSha256(
+    hostLease.acquiredOwnerTokenHash,
+    "hostLease.acquiredOwnerTokenHash",
+    { prefix: "forbidden" },
+  );
+  const releasedOwnerTokenHash = requireSha256(
+    hostLease.releasedOwnerTokenHash,
+    "hostLease.releasedOwnerTokenHash",
+    { prefix: "forbidden" },
+  );
+  if (
+    acquiredOwnerTokenHash === "0".repeat(64) ||
+    releasedOwnerTokenHash === "0".repeat(64)
+  ) {
+    throw new Error("static host lease owner hashes must not be zero");
+  }
+  const trustedOwnerTokenHash = hashOwnerToken(trustedOwnerToken);
+  if (
+    acquiredOwnerTokenHash !== releasedOwnerTokenHash ||
+    acquiredOwnerTokenHash !== trustedOwnerTokenHash
+  ) {
+    throw new Error(
+      "static host lease must prove owner-matched release against trusted owner token hash",
+    );
   }
   for (const field of ["acquiredAt", "releasedAt", "lastHeartbeatAt"]) {
     requireString(hostLease[field], `hostLease.${field}`);
@@ -422,19 +853,78 @@ function validateHostLease(hostLease) {
   return { version: 1, ...hostLease };
 }
 
-async function finalizeAttempt(runDir, { status, finalized, verdict }) {
+function failureClassForVerdict(verdict) {
+  return verdict === "pass" ? "none" : verdict === "fail" ? "product" : "infrastructure";
+}
+
+function validateCapture(capture) {
+  if (!capture || typeof capture !== "object" || Array.isArray(capture)) {
+    throw new Error("capture lifecycle must be an object");
+  }
+  if (!["available", "not_started", "not_available"].includes(capture.status)) {
+    throw new Error("capture status must be available, not_started, or not_available");
+  }
+  if (typeof capture.uiStarted !== "boolean" || typeof capture.reason !== "string") {
+    throw new Error("capture lifecycle must contain uiStarted and reason");
+  }
+  if (capture.status === "available") {
+    if (capture.uiStarted !== true || capture.reason !== "") {
+      throw new Error("available capture must prove UI started and have no failure reason");
+    }
+  } else if (capture.uiStarted !== false || capture.reason.trim() === "") {
+    throw new Error(
+      "unavailable capture requires a reason and lifecycle proof that UI never started",
+    );
+  }
+  return { status: capture.status, uiStarted: capture.uiStarted, reason: capture.reason };
+}
+
+function resolveFinalCapture(attempt, capture) {
+  return validateCapture(
+    capture ??
+      (attempt.status === "awaiting-controller"
+        ? attempt.capture
+        : { status: "available", uiStarted: true, reason: "" }),
+  );
+}
+
+async function finalizeAttempt(
+  runDir,
+  {
+    status,
+    finalized,
+    verdict,
+    completeLifecycle = false,
+    capture,
+  },
+) {
   const attempt = await readJson(runDir, "attempt.json");
+  const normalizedVerdict = validateVerdict(verdict);
+  const normalizedCapture = resolveFinalCapture(attempt, capture);
   const next = {
     ...attempt,
     status,
     finalized,
-    verdict: validateVerdict(verdict),
+    verdict: normalizedVerdict,
+    failureClass: failureClassForVerdict(normalizedVerdict),
+    endedAt: completeLifecycle ? new Date().toISOString() : null,
+    capture: normalizedCapture,
+    lifecycle: {
+      ...attempt.lifecycle,
+      uiStarted: normalizedCapture.uiStarted,
+      driverClosed: true,
+      cleanupFinalized: completeLifecycle,
+      evidenceReady: completeLifecycle,
+    },
   };
   await writeJsonAtomic(path.join(runDir, "attempt.json"), next);
   return next;
 }
 
-export async function stageControllerEvidence(runDir, { verdict }) {
+export async function stageControllerEvidence(
+  runDir,
+  { verdict, capture = { status: "available", uiStarted: true, reason: "" } },
+) {
   await assertEvidenceUnsealed(runDir);
   const identity = await readJson(runDir, "runner/identity.json");
   if (
@@ -447,6 +937,8 @@ export async function stageControllerEvidence(runDir, { verdict }) {
     status: "awaiting-controller",
     finalized: false,
     verdict,
+    completeLifecycle: false,
+    capture,
   });
 }
 
@@ -458,45 +950,112 @@ async function sealEvidence(runDir) {
   return manifest;
 }
 
-export async function finalizeLocalEvidence(runDir, { cleanup, verdict }) {
+export async function finalizeLocalEvidence(
+  runDir,
+  {
+    cleanup,
+    verdict,
+    capture = { status: "available", uiStarted: true, reason: "" },
+  },
+) {
   await assertEvidenceUnsealed(runDir);
-  const identity = await readJson(runDir, "runner/identity.json");
+  const [identity, artifact, attempt] = await Promise.all([
+    readJson(runDir, "runner/identity.json"),
+    readJson(runDir, "artifact/source.json"),
+    readJson(runDir, "attempt.json"),
+  ]);
   if (identity.runnerBackend === "static_ssh" || identity.finalizationMode !== "local-finalize") {
     throw new Error("local finalization requires a non-static local-finalize identity");
   }
-  const normalizedCleanup = validateCleanup(cleanup);
-  await writeJsonAtomic(path.join(runDir, "runner", "cleanup.json"), normalizedCleanup);
-  await finalizeAttempt(runDir, { status: "final", finalized: true, verdict });
+  try {
+    await lstat(path.join(runDir, "runner", "host-lease.json"));
+    throw new Error("local finalization forbids runner/host-lease.json");
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+  const normalizedCleanup = validateCleanup(cleanup, { identity, artifact });
   assertCleanupClean(normalizedCleanup);
+  const normalizedCapture = resolveFinalCapture(attempt, capture);
+  await writeJsonAtomic(path.join(runDir, "runner", "cleanup.json"), normalizedCleanup);
+  await finalizeAttempt(runDir, {
+    status: "final",
+    finalized: true,
+    verdict,
+    completeLifecycle: true,
+    capture: normalizedCapture,
+  });
   return sealEvidence(runDir);
 }
 
 export async function writeRunCleanup(runDir, cleanup) {
-  const normalizedCleanup = validateCleanup(cleanup);
+  await assertEvidenceUnsealed(runDir);
+  const [identity, artifact] = await Promise.all([
+    readJson(runDir, "runner/identity.json"),
+    readJson(runDir, "artifact/source.json"),
+  ]);
+  const normalizedCleanup = validateCleanup(cleanup, { identity, artifact });
   await writeJsonAtomic(path.join(runDir, "runner", "cleanup.json"), normalizedCleanup);
   return normalizedCleanup;
 }
 
-export async function finalizeControllerEvidence(runDir, { cleanup, hostLease, verdict }) {
-  await writeControllerFinalization(runDir, { cleanup, hostLease, verdict });
+export async function finalizeControllerEvidence(
+  runDir,
+  {
+    cleanup,
+    hostLease,
+    trustedOwnerToken,
+    verdict,
+    capture,
+  },
+) {
+  await writeControllerFinalization(runDir, {
+    cleanup,
+    hostLease,
+    trustedOwnerToken,
+    verdict,
+    capture,
+  });
   return sealEvidence(runDir);
 }
 
-export async function writeControllerFinalization(runDir, { cleanup, hostLease, verdict }) {
+export async function writeControllerFinalization(
+  runDir,
+  {
+    cleanup,
+    hostLease,
+    trustedOwnerToken,
+    verdict,
+    capture,
+  },
+) {
   await assertEvidenceUnsealed(runDir);
-  const identity = await readJson(runDir, "runner/identity.json");
+  const [identity, artifact, attempt] = await Promise.all([
+    readJson(runDir, "runner/identity.json"),
+    readJson(runDir, "artifact/source.json"),
+    readJson(runDir, "attempt.json"),
+  ]);
   if (
     identity.runnerBackend !== "static_ssh" ||
     identity.finalizationMode !== "controller-finalize"
   ) {
     throw new Error("controller finalization requires static_ssh controller-finalize identity");
   }
-  await writeJsonAtomic(path.join(runDir, "runner", "cleanup.json"), validateCleanup(cleanup));
+  const normalizedCleanup = validateCleanup(cleanup, { identity, artifact });
+  assertCleanupClean(normalizedCleanup);
+  const normalizedLease = validateHostLease(hostLease, { trustedOwnerToken });
+  const normalizedCapture = resolveFinalCapture(attempt, capture);
+  await writeJsonAtomic(path.join(runDir, "runner", "cleanup.json"), normalizedCleanup);
   await writeJsonAtomic(
     path.join(runDir, "runner", "host-lease.json"),
-    validateHostLease(hostLease),
+    normalizedLease,
   );
-  await finalizeAttempt(runDir, { status: "final", finalized: true, verdict });
+  await finalizeAttempt(runDir, {
+    status: "final",
+    finalized: true,
+    verdict,
+    completeLifecycle: true,
+    capture: normalizedCapture,
+  });
   return {
     cleanup: await readJson(runDir, "runner/cleanup.json"),
     hostLease: await readJson(runDir, "runner/host-lease.json"),
@@ -527,9 +1086,14 @@ async function main() {
   const cleanupFile = cliArg(args, "--cleanup-file");
   const hostLeaseFile = cliArg(args, "--host-lease-file");
   const verdict = cliArg(args, "--verdict");
+  const trustedOwnerToken = process.env.NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN || "";
   if (!runDir || !cleanupFile || !hostLeaseFile || !verdict) {
     throw new Error("finalize-controller requires run, cleanup, host-lease, and verdict inputs");
   }
+  requireString(
+    trustedOwnerToken,
+    "NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN trusted owner token",
+  );
   const [cleanup, hostLease] = await Promise.all([
     JSON.parse(await readFile(path.resolve(cleanupFile), "utf8")),
     JSON.parse(await readFile(path.resolve(hostLeaseFile), "utf8")),
@@ -537,6 +1101,7 @@ async function main() {
   await writeControllerFinalization(path.resolve(runDir), {
     cleanup,
     hostLease,
+    trustedOwnerToken,
     verdict,
   });
   console.log(

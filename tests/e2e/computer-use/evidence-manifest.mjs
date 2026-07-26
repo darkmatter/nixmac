@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
-import { lstat, open, readFile, readdir, writeFile } from "node:fs/promises";
+import { lstat, open, readFile, readdir, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -67,6 +67,24 @@ function validatePathList(paths) {
   });
 }
 
+async function assertCanonicalRunRoot(runDir) {
+  requireNonEmpty(runDir, "evidence run root");
+  if (!path.isAbsolute(runDir) || path.normalize(runDir) !== runDir) {
+    throw new Error("evidence run root must be an absolute normalized path");
+  }
+  const stats = await lstat(runDir);
+  if (stats.isSymbolicLink() || !stats.isDirectory()) {
+    throw new Error("evidence run root must be a direct directory, not a symlink");
+  }
+  const canonical = await realpath(runDir);
+  if (canonical !== runDir) {
+    throw new Error(
+      `evidence run root and every ancestor must be canonical without symlinks: ${runDir}`,
+    );
+  }
+  return runDir;
+}
+
 async function readRequiredJson(runDir, relativePath) {
   const absolutePath = path.join(runDir, relativePath);
   let source;
@@ -86,6 +104,9 @@ async function readRequiredJson(runDir, relativePath) {
 async function listEvidenceFiles(runDir) {
   const files = [];
   async function walk(directory, relativeDirectory = "") {
+    if ((await realpath(directory)) !== directory) {
+      throw new Error(`evidence directory must be canonical without symlinks: ${directory}`);
+    }
     const entries = await readdir(directory, { withFileTypes: true });
     entries.sort((left, right) => left.name.localeCompare(right.name, "en"));
     for (const entry of entries) {
@@ -172,7 +193,15 @@ function requireVersionOne(value, label) {
   return value;
 }
 
-function requireFinalCleanup(cleanup) {
+function requireCanonicalAbsolutePath(value, label) {
+  requireNonEmpty(value, label);
+  if (!path.isAbsolute(value) || path.normalize(value) !== value) {
+    throw new Error(`${label} must be an absolute normalized path`);
+  }
+  return value;
+}
+
+function requireFinalCleanup(cleanup, { identity, artifact }) {
   requireVersionOne(cleanup, "cleanup sidecar");
   if (
     cleanup.attempted !== true ||
@@ -184,6 +213,102 @@ function requireFinalCleanup(cleanup) {
   ) {
     throw new Error("cleanup sidecar is not finalized clean");
   }
+  const ownershipMode =
+    identity.runnerBackend === "static_ssh" ? "controller-static" : "local-ephemeral";
+  if (cleanup.ownershipMode !== ownershipMode) {
+    throw new Error(`cleanup sidecar ownershipMode must be ${ownershipMode}`);
+  }
+  const startedAt = Date.parse(cleanup.startedAt);
+  const completedAt = Date.parse(cleanup.completedAt);
+  if (!Number.isFinite(startedAt) || !Number.isFinite(completedAt) || completedAt < startedAt) {
+    throw new Error("cleanup sidecar timestamps are invalid");
+  }
+  const expectedPaths =
+    ownershipMode === "local-ephemeral"
+      ? new Map([
+          ["staging-parent", artifact.stagingParent],
+          ["app-bundle", artifact.appBundlePath],
+          ["disposable-config", artifact.disposableConfigPath],
+          ["daemon-socket", artifact.daemonSocketPath],
+        ])
+      : new Map([
+          ["remote-staging", artifact.stagingParent],
+          ["app-bundle", artifact.appBundlePath],
+          ["remote-config", artifact.disposableConfigPath],
+          ["daemon-socket", artifact.daemonSocketPath],
+        ]);
+  if (!Array.isArray(cleanup.ownedPaths) || cleanup.ownedPaths.length !== expectedPaths.size) {
+    throw new Error("cleanup sidecar must contain every exact owned path");
+  }
+  const seenPaths = new Set();
+  for (const ownedPath of cleanup.ownedPaths) {
+    if (
+      !ownedPath ||
+      expectedPaths.get(ownedPath.kind) !== ownedPath.path ||
+      ownedPath.expectedFinalState !== "absent" ||
+      ownedPath.observedFinalState !== "absent"
+    ) {
+      throw new Error("cleanup sidecar owned path does not prove exact absence");
+    }
+    requireCanonicalAbsolutePath(ownedPath.path, "cleanup owned path");
+    if (seenPaths.has(ownedPath.kind)) throw new Error("cleanup sidecar owned path is duplicated");
+    seenPaths.add(ownedPath.kind);
+  }
+  if (
+    !Array.isArray(cleanup.processInstances) ||
+    cleanup.processInstances.length !== 2
+  ) {
+    throw new Error("cleanup sidecar must contain exact target and daemon process instances");
+  }
+  const roles = new Set();
+  for (const processInstance of cleanup.processInstances) {
+    if (
+      !["target", "daemon"].includes(processInstance?.role) ||
+      !["owned", "not_started"].includes(processInstance?.status) ||
+      processInstance.terminated !== true
+    ) {
+      throw new Error("cleanup sidecar process instance is incomplete or not terminated");
+    }
+    if (processInstance.status === "owned") {
+      if (
+        !Number.isSafeInteger(processInstance.pid) ||
+        processInstance.pid <= 0 ||
+        typeof processInstance.birthMarker !== "string" ||
+        processInstance.birthMarker === ""
+      ) {
+        throw new Error("cleanup sidecar owned process identity is incomplete");
+      }
+      requireCanonicalAbsolutePath(processInstance.executable, "cleanup process executable");
+      if (
+        processInstance.role === "target" &&
+        !processInstance.executable.startsWith(`${artifact.appBundlePath}${path.sep}`)
+      ) {
+        throw new Error("cleanup target executable is outside the staged app bundle");
+      }
+    } else if (
+      processInstance.pid !== null ||
+      processInstance.birthMarker !== null ||
+      processInstance.executable !== null
+    ) {
+      throw new Error("cleanup not_started process must not fabricate an identity");
+    }
+    if (roles.has(processInstance.role)) throw new Error("cleanup sidecar process role duplicated");
+    roles.add(processInstance.role);
+  }
+  if (!roles.has("target") || !roles.has("daemon")) {
+    throw new Error("cleanup sidecar must contain target and daemon process roles");
+  }
+  for (const field of [
+    "driverCloseAttempted",
+    "driverClosed",
+    "ownershipMatched",
+    "pathsProbed",
+    "processesProbed",
+  ]) {
+    if (cleanup.lifecycle?.[field] !== true) {
+      throw new Error(`cleanup sidecar lifecycle.${field} must be true`);
+    }
+  }
 }
 
 function requireReleasedLease(hostLease) {
@@ -191,10 +316,12 @@ function requireReleasedLease(hostLease) {
   const acquiredAt = Date.parse(hostLease.acquiredAt);
   const releasedAt = Date.parse(hostLease.releasedAt);
   const heartbeatAt = Date.parse(hostLease.lastHeartbeatAt);
+  const acquiredOwnerTokenHash = hostLease.acquiredOwnerTokenHash || "";
+  const releasedOwnerTokenHash = hostLease.releasedOwnerTokenHash || "";
   if (
-    !/^[0-9a-f]{64}$/.test(hostLease.ownerTokenHash || "") ||
-    hostLease.acquired !== true ||
-    hostLease.released !== true ||
+    !/^[0-9a-f]{64}$/.test(acquiredOwnerTokenHash) ||
+    acquiredOwnerTokenHash === "0".repeat(64) ||
+    acquiredOwnerTokenHash !== releasedOwnerTokenHash ||
     !Number.isFinite(acquiredAt) ||
     !Number.isFinite(releasedAt) ||
     !Number.isFinite(heartbeatAt) ||
@@ -207,14 +334,63 @@ function requireReleasedLease(hostLease) {
   }
 }
 
-function validateSafeFrameVideo(state, paths) {
+function validateSafeFrameEvidence(state, paths, attempt) {
   requireObject(state, "state");
-  assertCuratedSafeFrameVideoMetadata(state.video);
-  if (!paths.includes(safeFrameVideoPath)) {
-    throw new Error(`curated safe-frame video is missing: ${safeFrameVideoPath}`);
+  requireObject(attempt.capture, "attempt capture");
+  const capture = attempt.capture;
+  if (
+    !["available", "not_started", "not_available"].includes(capture.status) ||
+    typeof capture.uiStarted !== "boolean" ||
+    typeof capture.reason !== "string"
+  ) {
+    throw new Error("attempt capture lifecycle is invalid");
+  }
+  const visualPaths = paths.filter(
+    (relativePath) =>
+      relativePath.startsWith("screenshots/") ||
+      relativePath.startsWith("video/") ||
+      /\.(?:png|jpe?g|gif|webp|heic|tiff?|bmp|mp4|mov|m4v|webm|mkv|avi|mpeg|mpg)$/i.test(
+        relativePath,
+      ),
+  );
+  if (capture.uiStarted === false) {
+    if (
+      !["not_started", "not_available"].includes(capture.status) ||
+      capture.reason.trim() === "" ||
+      attempt.lifecycle?.uiStarted !== false
+    ) {
+      throw new Error(
+        "pre-UI evidence requires an explicit unavailable capture reason and lifecycle proof",
+      );
+    }
+    if (visualPaths.length !== 0 || !Array.isArray(state.screenshots) || state.screenshots.length) {
+      throw new Error("pre-UI evidence must retain zero visual files and zero screenshots");
+    }
+    if (
+      !state.video ||
+      !["not_started", "not_available"].includes(state.video.status) ||
+      Object.hasOwn(state.video, "path")
+    ) {
+      throw new Error("pre-UI state video must explicitly be not_started or not_available");
+    }
+  } else {
+    if (
+      capture.status !== "available" ||
+      capture.reason !== "" ||
+      attempt.lifecycle?.uiStarted !== true
+    ) {
+      throw new Error("UI-started evidence must declare available capture lifecycle");
+    }
+    assertCuratedSafeFrameVideoMetadata(state.video);
+    if (!paths.includes(safeFrameVideoPath)) {
+      throw new Error(`curated safe-frame video is missing: ${safeFrameVideoPath}`);
+    }
+    if (!Array.isArray(state.screenshots) || state.screenshots.length === 0) {
+      throw new Error("state screenshots must contain retained safe evidence");
+    }
   }
   for (const [field, prefix] of [
-    ["screenshots", "screenshots/"],
+    ...(capture.uiStarted ? [["screenshots", "screenshots/"]] : []),
     ["textSnapshots", "texts/"],
   ]) {
     if (!Array.isArray(state[field]) || state[field].length === 0) {
@@ -232,13 +408,39 @@ function validateSafeFrameVideo(state, paths) {
       seen.add(artifactPath);
     }
   }
+  if (capture.uiStarted) {
+    const referencedScreenshots = new Set(
+      state.screenshots.map((artifact) => validateRelativePath(artifact.path)),
+    );
+    const retainedImages = paths.filter((relativePath) =>
+      /\.(?:png|jpe?g|gif|webp|heic|tiff?|bmp)$/i.test(relativePath),
+    );
+    const unreferencedImages = retainedImages.filter(
+      (relativePath) => !referencedScreenshots.has(relativePath),
+    );
+    if (unreferencedImages.length > 0) {
+      throw new Error(
+        `unreferenced visual files are forbidden in sealed evidence: ${unreferencedImages.join(", ")}`,
+      );
+    }
+  }
+  const extraVideoDirectoryFiles = paths.filter(
+    (relativePath) =>
+      relativePath.startsWith("video/") && relativePath !== safeFrameVideoPath,
+  );
+  if (extraVideoDirectoryFiles.length > 0) {
+    throw new Error(
+      `video directory may contain only ${safeFrameVideoPath}: ${extraVideoDirectoryFiles.join(", ")}`,
+    );
+  }
   const nonCuratedVideos = paths.filter(
     (relativePath) =>
-      /\.(?:mp4|mov|m4v)$/i.test(relativePath) && relativePath !== safeFrameVideoPath,
+      /\.(?:mp4|mov|m4v|webm|mkv|avi|mpeg|mpg)$/i.test(relativePath) &&
+      relativePath !== safeFrameVideoPath,
   );
   if (nonCuratedVideos.length > 0) {
     throw new Error(
-      `raw whole-run video is forbidden; only curated safe-frame video may be retained: ${nonCuratedVideos.join(", ")}`,
+      `forbidden video artifact; only curated safe-frame video may be retained: ${nonCuratedVideos.join(", ")}`,
     );
   }
 }
@@ -281,22 +483,45 @@ async function readManifestInputs(runDir, paths) {
     ["artifact.buildRunId", artifact.buildRunId],
     ["artifact.artifactId", artifact.artifactId],
     ["artifact.artifactDigest", artifact.artifactDigest],
+    ["artifact.appArtifactSha", artifact.appArtifactSha],
+    ["artifact.stagingParent", artifact.stagingParent],
     ["artifact.appBundlePath", artifact.appBundlePath],
     ["artifact.appBundleDigest", artifact.appBundleDigest],
+    ["artifact.disposableConfigPath", artifact.disposableConfigPath],
+    ["artifact.daemonSocketPath", artifact.daemonSocketPath],
     ["attempt.jobId", attempt.jobId],
     ["attempt.actionsRunId", attempt.actionsRunId],
     ["attempt.actionsJobId", attempt.actionsJobId],
+    ["attempt.startedAt", attempt.startedAt],
+    ["attempt.endedAt", attempt.endedAt],
+    ["attempt.failureClass", attempt.failureClass],
+    ["attempt.evidencePrefix", attempt.evidencePrefix],
   ]) {
     requireNonEmpty(value, field);
   }
   if (
     !/^[0-9a-f]{40}$/.test(identity.mergeSha) ||
+    artifact.appArtifactSha !== identity.mergeSha ||
     !/^[0-9a-f]{40}$/.test(identity.harnessSha) ||
     !/^sha256:[0-9a-f]{64}$/.test(identity.runnerImageDigest) ||
     !/^sha256:[0-9a-f]{64}$/.test(artifact.artifactDigest) ||
     !/^[0-9a-f]{64}$/.test(artifact.appBundleDigest)
   ) {
     throw new Error("identity sidecars contain malformed immutable digests");
+  }
+  const canonicalJobId = `${identity.repo}:${identity.mergeSha}:${identity.suiteVersion}`;
+  if (identity.jobId !== canonicalJobId) {
+    throw new Error("runner identity jobId does not match canonical identity");
+  }
+  const expectedEvidencePrefix =
+    `computer-use-e2e/jobs/${encodeURIComponent(identity.jobId)}/attempt-${attempt.number}/`;
+  if (attempt.evidencePrefix !== expectedEvidencePrefix) {
+    throw new Error("attempt evidencePrefix does not match canonical identity");
+  }
+  const startedAt = Date.parse(attempt.startedAt);
+  const endedAt = Date.parse(attempt.endedAt);
+  if (!Number.isFinite(startedAt) || !Number.isFinite(endedAt) || endedAt < startedAt) {
+    throw new Error("attempt lifecycle timestamps are invalid");
   }
   if (permissions.accessibilityGranted !== true || permissions.screenRecordingGranted !== true) {
     throw new Error("permission identity sidecar must prove Accessibility and Screen Recording");
@@ -315,14 +540,31 @@ async function readManifestInputs(runDir, paths) {
   if (!["pass", "fail", "inconclusive"].includes(attempt.verdict)) {
     throw new Error("attempt verdict is invalid");
   }
+  const expectedFailureClass =
+    attempt.verdict === "pass"
+      ? "none"
+      : attempt.verdict === "fail"
+        ? "product"
+        : "infrastructure";
+  if (
+    attempt.failureClass !== expectedFailureClass ||
+    attempt.lifecycle?.identityBound !== true ||
+    attempt.lifecycle?.uiPreparationAuthorized !== true ||
+    attempt.lifecycle?.uiStarted !== attempt.capture?.uiStarted ||
+    attempt.lifecycle?.driverClosed !== true ||
+    attempt.lifecycle?.cleanupFinalized !== true ||
+    attempt.lifecycle?.evidenceReady !== true
+  ) {
+    throw new Error("attempt lifecycle or normalized failureClass is incomplete");
+  }
   if (state.verdict !== attempt.verdict) {
     throw new Error("state verdict does not match finalized attempt verdict");
   }
-  requireFinalCleanup(cleanup);
+  requireFinalCleanup(cleanup, { identity, artifact });
   if (identity.captureMode !== "safe-frame") {
     throw new Error("CuaDriver captureMode must be safe-frame");
   }
-  validateSafeFrameVideo(state, paths);
+  validateSafeFrameEvidence(state, paths, attempt);
   if (identity.runnerBackend === "static_ssh") {
     if (
       identity.finalizationMode !== "controller-finalize" ||
@@ -331,8 +573,13 @@ async function readManifestInputs(runDir, paths) {
       throw new Error("static_ssh requires controller-finalize and runner/host-lease.json");
     }
     requireReleasedLease(await readRequiredJson(runDir, "runner/host-lease.json"));
-  } else if (identity.finalizationMode !== "local-finalize") {
-    throw new Error("non-static runner requires local-finalize");
+  } else {
+    if (identity.finalizationMode !== "local-finalize") {
+      throw new Error("non-static runner requires local-finalize");
+    }
+    if (paths.includes("runner/host-lease.json")) {
+      throw new Error("local-finalize evidence forbids runner/host-lease.json");
+    }
   }
   return { artifact, attempt, identity, state };
 }
@@ -357,6 +604,7 @@ async function expectedManifest(runDir, paths) {
     },
     harness: { sha: identity.harnessSha },
     app: {
+      artifactSha: artifact.appArtifactSha,
       artifactId: artifact.artifactId,
       artifactDigest: artifact.artifactDigest,
       bundleDigest: artifact.appBundleDigest,
@@ -376,12 +624,14 @@ async function expectedManifest(runDir, paths) {
   };
 }
 
-export async function createEvidenceManifest(runDir, { requiredPaths = null } = {}) {
-  const absoluteRunDir = path.resolve(runDir);
-  const paths =
-    requiredPaths === null
-      ? await listEvidenceFiles(absoluteRunDir)
-      : validatePathList(requiredPaths);
+export async function createEvidenceManifest(runDir, options = {}) {
+  if (!options || typeof options !== "object" || Object.keys(options).length !== 0) {
+    throw new Error(
+      "createEvidenceManifest accepts no path-selection options; it always binds the full evidence tree",
+    );
+  }
+  const absoluteRunDir = await assertCanonicalRunRoot(runDir);
+  const paths = await listEvidenceFiles(absoluteRunDir);
   for (const relativePath of paths) await fileRecord(absoluteRunDir, relativePath);
   const manifestPath = path.join(absoluteRunDir, MANIFEST_PATH);
   try {
@@ -400,7 +650,7 @@ export async function createEvidenceManifest(runDir, { requiredPaths = null } = 
 }
 
 export async function verifyEvidenceManifest(runDir) {
-  const absoluteRunDir = path.resolve(runDir);
+  const absoluteRunDir = await assertCanonicalRunRoot(runDir);
   const manifest = requireVersionOne(
     await readRequiredJson(absoluteRunDir, MANIFEST_PATH),
     "evidence manifest",
