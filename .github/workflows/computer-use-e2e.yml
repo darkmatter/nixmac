@@ -145,6 +145,8 @@ jobs:
       - name: Validate runner syntax
         run: |
           node --check tests/e2e/computer-use/run-remote-cua.mjs
+          node --check tests/e2e/computer-use/drivers/driver-self-test.mjs
+          node tests/e2e/computer-use/drivers/driver-self-test.mjs
           node --check tests/e2e/computer-use/check-remote.mjs
           node --check tests/e2e/computer-use/check-stale-run.mjs
           node --check tests/e2e/computer-use/storybook-preview.mjs

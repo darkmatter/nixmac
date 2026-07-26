@@ -36,6 +36,15 @@ assert.deepEqual(state.target, {
   snapshotId: "turn-1",
 });
 assert.throws(() => validateRuntimeDriver({}), /connect/);
+const driver = {
+  connect() {},
+  prepareTarget() {},
+  visibleState() {},
+  click() {},
+  setValue() {},
+  close() {},
+};
+assert.equal(validateRuntimeDriver(driver), driver);
 
 assert.deepEqual(normalizeActionResult({ ok: true, text: "clicked" }), {
   ok: true,
