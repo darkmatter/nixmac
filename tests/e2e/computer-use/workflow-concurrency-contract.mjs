@@ -111,10 +111,20 @@ export function assertAutomaticConcurrencyValidationContract({
     true,
     `${workflowName} must run automatically on pull_request`,
   );
+  assert.deepEqual(
+    triggers.pull_request,
+    { branches: ["main"] },
+    `${workflowName} pull_request trigger must target main without path filters`,
+  );
   assert.equal(
     Object.hasOwn(triggers, "merge_group"),
     true,
     `${workflowName} must run automatically on merge_group`,
+  );
+  assert.equal(
+    triggers.merge_group,
+    null,
+    `${workflowName} merge_group trigger must stay unconditional`,
   );
   assert.deepEqual(
     workflow.env,
@@ -137,7 +147,15 @@ export function assertAutomaticConcurrencyValidationContract({
     job && typeof job === "object" && !Array.isArray(job),
     `${workflowName} must define automatic validation job ${jobId}`,
   );
-  for (const control of ["if", "continue-on-error", "needs", "strategy", "defaults"]) {
+  for (const control of [
+    "if",
+    "continue-on-error",
+    "needs",
+    "strategy",
+    "defaults",
+    "container",
+    "services",
+  ]) {
     assert.equal(
       Object.hasOwn(job, control),
       false,

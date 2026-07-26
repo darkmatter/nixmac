@@ -42,6 +42,7 @@ ${companionConcurrency}
 
 function automaticWorkflowYaml({
   triggers = `  pull_request:
+    branches: [main]
   merge_group:`,
   installCommand = "        run: nix build github:cachix/devenv/v2.1.2 --out-link /tmp/nixmac-devenv-cli",
   validationCommands = `          node tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs
@@ -89,6 +90,12 @@ ${validationCommands}
     steps:
       - run: echo build
 `;
+}
+
+function replaceLast(source, search, replacement) {
+  const index = source.lastIndexOf(search);
+  assert.notEqual(index, -1, `expected fixture to contain ${JSON.stringify(search)}`);
+  return `${source.slice(0, index)}${replacement}${source.slice(index + search.length)}`;
 }
 
 assert.doesNotThrow(() =>
@@ -283,11 +290,30 @@ assert.throws(
   () =>
     assertAutomaticConcurrencyValidationContract({
       workflowName: "missing-merge-group.yaml",
-      source: automaticWorkflowYaml({ triggers: "  pull_request:" }),
+      source: automaticWorkflowYaml({
+        triggers: "  pull_request:\n    branches: [main]",
+      }),
       jobId: "git-hooks",
       stepName: "Run Computer Use workflow contracts",
     }),
   /missing-merge-group\.yaml must run automatically on merge_group/,
+);
+
+assert.throws(
+  () =>
+    assertAutomaticConcurrencyValidationContract({
+      workflowName: "filtered-pull-request.yaml",
+      source: automaticWorkflowYaml({
+        triggers: `  pull_request:
+    branches: [main]
+    paths-ignore: ["**"]
+  merge_group:`,
+      }),
+      jobId: "git-hooks",
+      stepName: "Run Computer Use workflow contracts",
+    }),
+  /filtered-pull-request\.yaml pull_request trigger must target main without path filters/,
+  "automatic contract validation must reject pull-request filters that suppress the required check",
 );
 
 assert.throws(
@@ -410,6 +436,22 @@ for (const [scope, original, mutation] of [
 }
 
 assert.throws(
+  () =>
+    assertAutomaticConcurrencyValidationContract({
+      workflowName: "git-hooks-step-env-bypass.yaml",
+      source: replaceLast(
+        automaticWorkflowYaml(),
+        '          NODE_OPTIONS: ""',
+        "          NODE_OPTIONS: --require /tmp/exit0.js",
+      ),
+      jobId: "git-hooks",
+      stepName: "Run Computer Use workflow contracts",
+    }),
+  /git-hooks-step-env-bypass\.yaml job git-hooks must preserve the fail-fast git-hooks step/,
+  "automatic contract validation must reject git-hooks step environment injection",
+);
+
+assert.throws(
   () => {
     const source = automaticWorkflowYaml();
     const installStep = `      - name: Install devenv
@@ -473,6 +515,31 @@ assert.throws(
   /job-strategy-bypass\.yaml job git-hooks must not declare strategy/,
   "automatic contract validation must reject a strategy that can expand to no contract jobs",
 );
+
+for (const [control, declaration] of [
+  ["container", "    container: ghcr.io/example/fake-devenv:latest"],
+  [
+    "services",
+    `    services:
+      fake:
+        image: ghcr.io/example/fake-devenv:latest`,
+  ],
+]) {
+  assert.throws(
+    () =>
+      assertAutomaticConcurrencyValidationContract({
+        workflowName: `job-${control}-bypass.yaml`,
+        source: automaticWorkflowYaml().replace(
+          "  git-hooks:",
+          `  git-hooks:\n${declaration}`,
+        ),
+        jobId: "git-hooks",
+        stepName: "Run Computer Use workflow contracts",
+      }),
+    new RegExp(`job-${control}-bypass\\.yaml job git-hooks must not declare ${control}`),
+    `automatic contract validation must reject job ${control}`,
+  );
+}
 
 assert.throws(
   () =>
