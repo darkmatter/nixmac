@@ -43,6 +43,14 @@ on:
         options:
           - cilicon_tart
           - static_ssh
+      qualification_tier:
+        description: Shadow collection or production publication qualification
+        required: true
+        default: production
+        type: choice
+        options:
+          - shadow
+          - production
 
 permissions:
   contents: read
@@ -58,6 +66,7 @@ jobs:
       terminal_status: ${{ steps.classify.outputs.terminal_status }}
       harness_sha: ${{ steps.bind.outputs.harness_sha }}
       job_key: ${{ steps.bind.outputs.job_key }}
+      provider_ready: ${{ steps.classify.outputs.provider_ready }}
     steps:
       - name: Checkout trusted default-branch harness
         uses: actions/checkout@v6
@@ -99,6 +108,37 @@ jobs:
           [[ "$APP_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]
           [[ "$APP_ARTIFACT_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
           [[ "$ATTESTATION_NONCE" =~ ^[A-Za-z0-9_-]{32,128}$ ]]
+
+      - name: Validate trusted Cilicon provider contract
+        id: provider
+        continue-on-error: true
+        shell: bash
+        env:
+          BACKEND: ${{ inputs.backend }}
+          QUALIFICATION_TIER: ${{ inputs.qualification_tier }}
+          REPOSITORY_PROMOTION_STATE: ${{ vars.NIXMAC_E2E_CILICON_PROMOTION_STATE }}
+        run: |
+          set -euo pipefail
+          if [[ "$BACKEND" == "static_ssh" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync } from "node:fs";
+          import { validateRuntimeProviderGate } from "./ops/runner/cilicon-e2e-contract.mjs";
+
+          const contract = JSON.parse(
+            readFileSync("ops/images/nixmac-e2e-runner.contract.json", "utf8"),
+          );
+          const gate = validateRuntimeProviderGate(contract, {
+            requestedTier: process.env.QUALIFICATION_TIER,
+            repositoryPromotionState: process.env.REPOSITORY_PROMOTION_STATE,
+          });
+          appendFileSync(
+            process.env.GITHUB_OUTPUT,
+            `ready=true\nactivation_state=${gate.activationState}\n`,
+          );
+          NODE
 
       - name: Resolve and verify exact app artifact
         id: artifact
@@ -224,11 +264,17 @@ jobs:
         shell: bash
         run: |
           status="$(cat "$RUNNER_TEMP/centaur-preflight/terminal-status" 2>/dev/null || printf 'PREFLIGHT_INVALID')"
-          if [[ "$status" == "READY" && "${{ steps.bind.outcome }}" == "success" ]]; then
+          provider_ready="${{ steps.provider.outputs.ready }}"
+          echo "provider_ready=${provider_ready:-false}" >> "$GITHUB_OUTPUT"
+          if [[ "$status" == "READY" &&
+            "${{ steps.bind.outcome }}" == "success" &&
+            "$provider_ready" == "true" ]]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
             echo "terminal_status=READY" >> "$GITHUB_OUTPUT"
           else
-            if [[ "$status" == "READY" ]]; then
+            if [[ "$provider_ready" != "true" ]]; then
+              status="PROVIDER_NOT_QUALIFIED"
+            elif [[ "$status" == "READY" ]]; then
               status="ARTIFACT_INVALID"
             fi
             echo "ready=false" >> "$GITHUB_OUTPUT"
@@ -247,7 +293,7 @@ jobs:
   primary:
     name: Ephemeral CuaDriver E2E
     needs: preflight
-    if: needs.preflight.outputs.ready == 'true' && inputs.backend == 'cilicon_tart' && vars.NIXMAC_E2E_CILICON_PROMOTION_STATE == 'qualified-v1' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    if: needs.preflight.outputs.ready == 'true' && needs.preflight.outputs.provider_ready == 'true' && inputs.backend == 'cilicon_tart' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: [self-hosted, macOS, nixmac-e2e]
     environment: nixmac-e2e-production
     timeout-minutes: 120
@@ -275,8 +321,79 @@ jobs:
           done
           canonical_temp="$(cd "$RUNNER_TEMP" && pwd -P)"
           [[ -d "$canonical_temp" && "$canonical_temp" == /* ]]
-          [[ "${{ vars.NIXMAC_E2E_CILICON_IMAGE_DIGEST }}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          [[ -r /var/db/nixmac-e2e/runtime-observation.json ]]
           [[ -x /usr/local/bin/cua-driver ]]
+
+      - name: Verify signed host and runtime identity
+        id: runtime_identity
+        shell: bash
+        env:
+          EXPECTED_RUNNER_NAME: ${{ runner.name }}
+        run: |
+          set -euo pipefail
+          observed_at="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
+          OBSERVED_AT="$observed_at" node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync } from "node:fs";
+          import { verifyRuntimeObservation } from "./ops/runner/cilicon-e2e-contract.mjs";
+
+          const contract = JSON.parse(
+            readFileSync("ops/images/nixmac-e2e-runner.contract.json", "utf8"),
+          );
+          const observationPath = contract.qualification.attestor.runtimeObservationPath;
+          const observation = JSON.parse(readFileSync(observationPath, "utf8"));
+          const verified = verifyRuntimeObservation(contract, observation, {
+            observedAt: process.env.OBSERVED_AT,
+          });
+          if (verified.runnerName !== process.env.EXPECTED_RUNNER_NAME) {
+            throw new Error("signed runtime runner name does not match GitHub runner identity");
+          }
+          appendFileSync(
+            process.env.GITHUB_OUTPUT,
+            [
+              `image_digest=${verified.imageDigest}`,
+              `host_id=${verified.hostId}`,
+              `cycle_id=${verified.cycleId}`,
+              `clone_path=${verified.clonePath}`,
+              "",
+            ].join("\n"),
+          );
+          NODE
+
+          observation="/var/db/nixmac-e2e/runtime-observation.json"
+          app_path="$(jq -r '.cuaDriver.appPath' "$observation")"
+          executable="$(jq -r '.cuaDriver.appExecutable' "$observation")"
+          expected_executable_digest="$(jq -r '.cuaDriver.executableDigest' "$observation")"
+          expected_bundle_digest="$(jq -r '.cuaDriver.appBundleDigest' "$observation")"
+          expected_bundle_id="$(jq -r '.cuaDriver.bundleId' "$observation")"
+          expected_signing_identity="$(jq -r '.cuaDriver.signingIdentity' "$observation")"
+          expected_team_id="$(jq -r '.cuaDriver.teamId' "$observation")"
+          actual_executable_digest="sha256:$(shasum -a 256 "$executable" | awk '{print $1}')"
+          actual_bundle_digest="$(
+            node --input-type=module - "$app_path" <<'NODE'
+          import { hashCuaBundleTree } from "./tests/e2e/computer-use/drivers/cua-driver.mjs";
+          process.stdout.write(`sha256:${await hashCuaBundleTree(process.argv[2])}`);
+          NODE
+          )"
+          actual_bundle_id="$(
+            /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' \
+              "$app_path/Contents/Info.plist"
+          )"
+          actual_signing_identity="$(
+            codesign -d --verbose=4 "$app_path" 2>&1 |
+              sed -n 's/^Authority=//p' |
+              sed -n '1p'
+          )"
+          actual_team_id="$(
+            codesign -d --verbose=4 "$app_path" 2>&1 |
+              sed -n 's/^TeamIdentifier=//p' |
+              sed -n '1p'
+          )"
+          codesign --verify --deep --strict "$app_path"
+          [[ "$actual_executable_digest" == "$expected_executable_digest" ]]
+          [[ "$actual_bundle_digest" == "$expected_bundle_digest" ]]
+          [[ "$actual_bundle_id" == "$expected_bundle_id" ]]
+          [[ "$actual_signing_identity" == "$expected_signing_identity" ]]
+          [[ "$actual_team_id" == "$expected_team_id" ]]
 
       - name: Download verified app handoff
         uses: actions/download-artifact@v7
@@ -301,7 +418,7 @@ jobs:
           NIXMAC_E2E_ATTESTATION_NONCE: ${{ inputs.attestation_nonce }}
           NIXMAC_E2E_RUNNER_NAME: ${{ runner.name }}
           NIXMAC_E2E_RUNNER_BACKEND: cilicon_tart
-          NIXMAC_E2E_RUNNER_IMAGE_DIGEST: ${{ vars.NIXMAC_E2E_CILICON_IMAGE_DIGEST }}
+          NIXMAC_E2E_RUNNER_IMAGE_DIGEST: ${{ steps.runtime_identity.outputs.image_digest }}
           NIXMAC_E2E_BUILD_RUN_ID: ${{ inputs.build_run_id }}
           NIXMAC_E2E_ARTIFACT_ID: ${{ inputs.app_artifact_id }}
           NIXMAC_E2E_ARTIFACT_DIGEST: ${{ inputs.app_artifact_digest }}
@@ -1152,6 +1269,7 @@ jobs:
 
       - name: Publish verified gh-pages report with optimistic retry
         id: publish
+        if: inputs.backend == 'static_ssh' || inputs.qualification_tier == 'production'
         shell: bash
         run: |
           set -euo pipefail
@@ -1244,6 +1362,7 @@ jobs:
           INPUT_JOB_ID: ${{ inputs.job_id }}
           INPUT_ATTEMPT: ${{ inputs.attempt }}
           INPUT_BACKEND: ${{ inputs.backend }}
+          QUALIFICATION_TIER: ${{ inputs.qualification_tier }}
         run: |
           set -euo pipefail
           contract_dir="$RUNNER_TEMP/nixmac-e2e-terminal"
@@ -1308,6 +1427,7 @@ jobs:
             --arg jobId "$INPUT_JOB_ID" \
             --argjson attempt "$INPUT_ATTEMPT" \
             --arg backend "$INPUT_BACKEND" \
+            --arg qualificationTier "$QUALIFICATION_TIER" \
             --arg workflowRunId "$GITHUB_RUN_ID" \
             --arg workflowRunAttempt "$GITHUB_RUN_ATTEMPT" \
             --arg terminalStatus "$terminal_status" \
@@ -1324,6 +1444,7 @@ jobs:
               jobId:$jobId,
               attempt:$attempt,
               backend:$backend,
+              qualificationTier:$qualificationTier,
               workflowRunId:$workflowRunId,
               workflowRunAttempt:$workflowRunAttempt,
               terminalStatus:$terminalStatus,

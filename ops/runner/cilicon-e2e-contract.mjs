@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { createHash } from "node:crypto";
+import { createHash, createPublicKey, verify as verifySignature } from "node:crypto";
 import path from "node:path";
 
 const SHA256 = /^sha256:[0-9a-f]{64}$/;
@@ -8,7 +8,12 @@ const FULL_GIT_SHA = /^[0-9a-f]{40}$/;
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$/;
 const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const BUNDLE_ID = /^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
-const PROMOTION_STATE = "qualified-v1";
+const SHADOW_PROMOTION_STATE = "shadow-qualified-v1";
+const PRODUCTION_PROMOTION_STATE = "production-qualified-v1";
+const QUALIFIED_STATES = Object.freeze([
+  SHADOW_PROMOTION_STATE,
+  PRODUCTION_PROMOTION_STATE,
+]);
 const PROMOTION_VARIABLE = "NIXMAC_E2E_CILICON_PROMOTION_STATE";
 const REQUIRED_LABELS = Object.freeze(["self-hosted", "macOS", "nixmac-e2e"]);
 const REQUIRED_TCC_SERVICES = Object.freeze(["accessibility", "screenRecording"]);
@@ -30,10 +35,19 @@ const WORKFLOW_KNOWN_FIELDS = Object.freeze([
   "attestationNonce",
   "githubRunId",
   "githubRunAttempt",
+]);
+const RUNTIME_OBSERVED_FIELDS = Object.freeze([
   "runnerName",
   "runnerImageDigest",
+  "attestationPolicy.expectedHostId",
+  "hostEcho.cycleId",
+  "hostEcho.clonePath",
 ]);
-const HOST_ECHO_FIELDS = Object.freeze(["hostEcho.cycleId", "hostEcho.clonePath"]);
+const CONTRACT_KNOWN_FIELDS = Object.freeze([
+  "attestationPolicy.attestorKeyId",
+  "attestationPolicy.sinkRepository",
+  "attestationPolicy.sinkRef",
+]);
 
 function fail(message) {
   throw new Error(message);
@@ -99,6 +113,46 @@ function canonicalTimestamp(value, field) {
   return value;
 }
 
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function sha256(value) {
+  return `sha256:${createHash("sha256").update(value).digest("hex")}`;
+}
+
+function verifyEd25519(payload, signature, publicKeyPem, field) {
+  string(signature, field, { pattern: /^[A-Za-z0-9+/]+={0,2}$/ });
+  let publicKey;
+  try {
+    publicKey = createPublicKey(publicKeyPem);
+  } catch {
+    fail("qualification.attestor.publicKeyPem must be a valid public key");
+  }
+  if (publicKey.asymmetricKeyType !== "ed25519") {
+    fail("qualification.attestor.publicKeyPem must be an Ed25519 public key");
+  }
+  let accepted = false;
+  try {
+    accepted = verifySignature(
+      null,
+      Buffer.from(payload),
+      publicKey,
+      Buffer.from(signature, "base64"),
+    );
+  } catch {
+    accepted = false;
+  }
+  if (!accepted) fail(`${field} is invalid`);
+}
+
 function absoluteNormalizedPath(value, field) {
   string(value, field);
   if (!path.isAbsolute(value) || path.normalize(value) !== value) {
@@ -143,8 +197,10 @@ export function requiredDedicatedHosts({ peakJobsPerHour, p95CycleMinutes }) {
 
 function validateActivation(activation) {
   exactKeys(activation, ["state", "promotionVariable", "blockers"], "activation");
-  if (!["disabled", PROMOTION_STATE].includes(activation.state)) {
-    fail(`activation.state must be disabled or ${PROMOTION_STATE}`);
+  if (!["disabled", ...QUALIFIED_STATES].includes(activation.state)) {
+    fail(
+      `activation.state must be disabled, ${SHADOW_PROMOTION_STATE}, or ${PRODUCTION_PROMOTION_STATE}`,
+    );
   }
   exactKeys(
     activation.promotionVariable,
@@ -157,15 +213,19 @@ function validateActivation(activation) {
   if (activation.promotionVariable.scope !== "repository") {
     fail("activation promotion variable must be repository-scoped");
   }
-  if (activation.promotionVariable.requiredValue !== PROMOTION_STATE) {
-    fail(`activation promotion value must be ${PROMOTION_STATE}`);
+  if (
+    !QUALIFIED_STATES.includes(activation.promotionVariable.requiredValue) ||
+    (activation.state !== "disabled" &&
+      activation.promotionVariable.requiredValue !== activation.state)
+  ) {
+    fail("activation promotion value must exactly match the qualified activation state");
   }
   if (!Array.isArray(activation.blockers)) {
     fail("activation.blockers must be an array");
   }
   if (activation.state === "disabled")
     uniqueNonemptyStrings(activation.blockers, "activation.blockers");
-  if (activation.state === PROMOTION_STATE && activation.blockers.length !== 0) {
+  if (QUALIFIED_STATES.includes(activation.state) && activation.blockers.length !== 0) {
     fail("qualified activation must not retain blockers");
   }
 }
@@ -246,10 +306,13 @@ function validateCuaDriver(cuaDriver) {
     [
       "artifactUrl",
       "artifactDigest",
+      "executableDigest",
+      "appBundleDigest",
       "cliVersion",
       "appVersion",
       "bundleId",
       "signingIdentity",
+      "teamId",
       "appPath",
       "appExecutable",
       "cliSymlink",
@@ -273,6 +336,12 @@ function validateCuaDriver(cuaDriver) {
   string(cuaDriver.artifactDigest, "qualification.cuaDriver.artifactDigest", {
     pattern: SHA256,
   });
+  string(cuaDriver.executableDigest, "qualification.cuaDriver.executableDigest", {
+    pattern: SHA256,
+  });
+  string(cuaDriver.appBundleDigest, "qualification.cuaDriver.appBundleDigest", {
+    pattern: SHA256,
+  });
   string(cuaDriver.cliVersion, "qualification.cuaDriver.cliVersion", {
     pattern: /^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/,
   });
@@ -286,6 +355,9 @@ function validateCuaDriver(cuaDriver) {
     pattern: BUNDLE_ID,
   });
   string(cuaDriver.signingIdentity, "qualification.cuaDriver.signingIdentity");
+  string(cuaDriver.teamId, "qualification.cuaDriver.teamId", {
+    pattern: /^[A-Z0-9]{10}$/,
+  });
   absoluteNormalizedPath(cuaDriver.appPath, "qualification.cuaDriver.appPath");
   if (!cuaDriver.appPath.endsWith("/CuaDriver.app")) {
     fail("qualification.cuaDriver.appPath must identify CuaDriver.app");
@@ -306,14 +378,15 @@ function validateTcc(tcc, cuaDriver) {
   exactKeys(tcc, ["target", "services", "firstBoot", "agedBoot"], "qualification.tcc");
   exactKeys(
     tcc.target,
-    ["kind", "appPath", "bundleId", "signingIdentity"],
+    ["kind", "appPath", "bundleId", "signingIdentity", "teamId"],
     "qualification.tcc.target",
   );
   if (tcc.target.kind !== "app-bundle") fail("TCC target must be an app-bundle");
   if (
     tcc.target.appPath !== cuaDriver.appPath ||
     tcc.target.bundleId !== cuaDriver.bundleId ||
-    tcc.target.signingIdentity !== cuaDriver.signingIdentity
+    tcc.target.signingIdentity !== cuaDriver.signingIdentity ||
+    tcc.target.teamId !== cuaDriver.teamId
   ) {
     fail("TCC target must exactly match the pinned CuaDriver.app identity");
   }
@@ -340,6 +413,48 @@ function validateTools(tools) {
   for (const tool of REQUIRED_TOOLS) requiredTrue(tools[tool], `qualification.tools.${tool}`);
 }
 
+function validateAttestor(attestor) {
+  exactKeys(
+    attestor,
+    [
+      "algorithm",
+      "keyId",
+      "publicKeyPem",
+      "runtimeObservationPath",
+      "maxObservationAgeSeconds",
+    ],
+    "qualification.attestor",
+  );
+  if (attestor.algorithm !== "ed25519") {
+    fail("qualification.attestor.algorithm must be ed25519");
+  }
+  string(attestor.keyId, "qualification.attestor.keyId", { pattern: SAFE_ID });
+  string(attestor.publicKeyPem, "qualification.attestor.publicKeyPem");
+  let publicKey;
+  try {
+    publicKey = createPublicKey(attestor.publicKeyPem);
+  } catch {
+    fail("qualification.attestor.publicKeyPem must be a valid public key");
+  }
+  if (publicKey.asymmetricKeyType !== "ed25519") {
+    fail("qualification.attestor.publicKeyPem must be an Ed25519 public key");
+  }
+  absoluteNormalizedPath(
+    attestor.runtimeObservationPath,
+    "qualification.attestor.runtimeObservationPath",
+  );
+  if (attestor.runtimeObservationPath !== "/var/db/nixmac-e2e/runtime-observation.json") {
+    fail("qualification.attestor.runtimeObservationPath must use the protected host mount");
+  }
+  positiveInteger(
+    attestor.maxObservationAgeSeconds,
+    "qualification.attestor.maxObservationAgeSeconds",
+  );
+  if (attestor.maxObservationAgeSeconds > 3600) {
+    fail("qualification.attestor.maxObservationAgeSeconds must not exceed one hour");
+  }
+}
+
 function validateLifecycleConfig(lifecycle) {
   exactKeys(
     lifecycle,
@@ -347,6 +462,9 @@ function validateLifecycleConfig(lifecycle) {
       "mountPath",
       "quarantineSentinel",
       "sinkRepository",
+      "sinkRef",
+      "sinkPathPrefix",
+      "requiredStatusCheck",
       "sinkCredential",
       "inventoryCredential",
       "oneVmPerAttempt",
@@ -365,6 +483,21 @@ function validateLifecycleConfig(lifecycle) {
   if (lifecycle.sinkRepository !== "darkmatter/nixmac-e2e-attestations") {
     fail("qualification.lifecycle.sinkRepository must use the protected attestation sink");
   }
+  if (lifecycle.sinkRef !== "refs/heads/main") {
+    fail("qualification.lifecycle.sinkRef must use the protected main branch");
+  }
+  string(lifecycle.sinkPathPrefix, "qualification.lifecycle.sinkPathPrefix", {
+    pattern: /^[A-Za-z0-9][A-Za-z0-9._/-]*\/$/,
+  });
+  if (
+    lifecycle.sinkPathPrefix.startsWith("/") ||
+    lifecycle.sinkPathPrefix.includes("..")
+  ) {
+    fail("qualification.lifecycle.sinkPathPrefix must be a safe repository path prefix");
+  }
+  string(lifecycle.requiredStatusCheck, "qualification.lifecycle.requiredStatusCheck", {
+    pattern: SAFE_ID,
+  });
   exactKeys(
     lifecycle.sinkCredential,
     ["appId", "installationId", "repository", "permissions"],
@@ -448,7 +581,16 @@ function validateCapacity(capacity) {
 function validateQualification(qualification) {
   exactKeys(
     qualification,
-    ["image", "cuaDriver", "testUser", "tools", "tcc", "lifecycle", "capacity"],
+    [
+      "image",
+      "cuaDriver",
+      "testUser",
+      "tools",
+      "tcc",
+      "attestor",
+      "lifecycle",
+      "capacity",
+    ],
     "qualification",
   );
   validateImage(qualification.image);
@@ -462,6 +604,7 @@ function validateQualification(qualification) {
   }
   validateTools(qualification.tools);
   validateTcc(qualification.tcc, qualification.cuaDriver);
+  validateAttestor(qualification.attestor);
   validateLifecycleConfig(qualification.lifecycle);
   validateCapacity(qualification.capacity);
 }
@@ -469,7 +612,7 @@ function validateQualification(qualification) {
 export function validateProviderContract(contract) {
   object(contract, "contract");
   const expected =
-    contract.activation?.state === PROMOTION_STATE
+    QUALIFIED_STATES.includes(contract.activation?.state)
       ? [
           "version",
           "activation",
@@ -499,8 +642,206 @@ export function validateProviderContract(contract) {
   ) {
     fail("requiredQualifiedFields must contain unique qualification paths");
   }
-  if (contract.activation.state === PROMOTION_STATE) validateQualification(contract.qualification);
+  if (QUALIFIED_STATES.includes(contract.activation.state)) {
+    validateQualification(contract.qualification);
+  }
   return structuredClone(contract);
+}
+
+export function validateRuntimeProviderGate(
+  contractInput,
+  { requestedTier, repositoryPromotionState },
+) {
+  const contract = validateProviderContract(contractInput);
+  if (!["shadow", "production"].includes(requestedTier)) {
+    fail("requestedTier must be shadow or production");
+  }
+  if (contract.activation.state === "disabled") {
+    fail("the checked-in provider contract is disabled");
+  }
+  if (
+    requestedTier === "production" &&
+    contract.activation.state !== PRODUCTION_PROMOTION_STATE
+  ) {
+    fail("production execution requires a production-qualified checked-in contract");
+  }
+  if (repositoryPromotionState !== contract.activation.state) {
+    fail("repository promotion state must exactly match the checked-in provider contract");
+  }
+  const imageDigest = contract.qualification.image.reference.split("@")[1];
+  return Object.freeze({
+    accepted: true,
+    activationState: contract.activation.state,
+    requestedTier,
+    imageDigest,
+    runtimeObservationPath: contract.qualification.attestor.runtimeObservationPath,
+    attestorKeyId: contract.qualification.attestor.keyId,
+  });
+}
+
+export function runtimeObservationSigningPayload(observationInput) {
+  const observation = structuredClone(observationInput);
+  if (observation?.provenance && typeof observation.provenance === "object") {
+    delete observation.provenance.signature;
+  }
+  return canonicalJson(observation);
+}
+
+export function verifyRuntimeObservation(
+  contractInput,
+  observation,
+  { observedAt },
+) {
+  const contract = validateProviderContract(contractInput);
+  if (contract.activation.state === "disabled") {
+    fail("the checked-in provider contract is disabled");
+  }
+  exactKeys(
+    observation,
+    ["version", "observedAt", "host", "image", "cuaDriver", "tcc", "provenance"],
+    "runtimeObservation",
+  );
+  if (observation.version !== 1) fail("runtimeObservation.version must be 1");
+  canonicalTimestamp(observation.observedAt, "runtimeObservation.observedAt");
+  canonicalTimestamp(observedAt, "observedAt");
+  exactKeys(
+    observation.host,
+    ["hostId", "cycleId", "clonePath", "runnerName"],
+    "runtimeObservation.host",
+  );
+  string(observation.host.hostId, "runtimeObservation.host.hostId", { pattern: SAFE_ID });
+  string(observation.host.cycleId, "runtimeObservation.host.cycleId", { pattern: SAFE_ID });
+  absoluteNormalizedPath(
+    observation.host.clonePath,
+    "runtimeObservation.host.clonePath",
+  );
+  string(observation.host.runnerName, "runtimeObservation.host.runnerName", {
+    pattern: SAFE_ID,
+  });
+  exactKeys(observation.image, ["reference", "digest"], "runtimeObservation.image");
+  immutableReference(observation.image.reference, "runtimeObservation.image.reference");
+  string(observation.image.digest, "runtimeObservation.image.digest", { pattern: SHA256 });
+  exactKeys(
+    observation.cuaDriver,
+    [
+      "artifactDigest",
+      "executableDigest",
+      "appBundleDigest",
+      "cliVersion",
+      "appVersion",
+      "bundleId",
+      "signingIdentity",
+      "teamId",
+      "appPath",
+      "appExecutable",
+      "cliSymlink",
+    ],
+    "runtimeObservation.cuaDriver",
+  );
+  for (const field of ["artifactDigest", "executableDigest", "appBundleDigest"]) {
+    string(observation.cuaDriver[field], `runtimeObservation.cuaDriver.${field}`, {
+      pattern: SHA256,
+    });
+  }
+  for (const field of [
+    "cliVersion",
+    "appVersion",
+    "bundleId",
+    "signingIdentity",
+    "teamId",
+    "appPath",
+    "appExecutable",
+    "cliSymlink",
+  ]) {
+    string(observation.cuaDriver[field], `runtimeObservation.cuaDriver.${field}`);
+  }
+  exactKeys(
+    observation.tcc,
+    [
+      "target",
+      "services",
+      "aquaSession",
+      "accessibilityGranted",
+      "screenRecordingGranted",
+      "smokePassed",
+    ],
+    "runtimeObservation.tcc",
+  );
+  exactKeys(
+    observation.tcc.target,
+    ["kind", "appPath", "bundleId", "signingIdentity", "teamId"],
+    "runtimeObservation.tcc.target",
+  );
+  exactStringArray(
+    observation.tcc.services,
+    REQUIRED_TCC_SERVICES,
+    "runtimeObservation.tcc.services",
+  );
+  for (const field of [
+    "aquaSession",
+    "accessibilityGranted",
+    "screenRecordingGranted",
+    "smokePassed",
+  ]) {
+    requiredTrue(observation.tcc[field], `runtimeObservation.tcc.${field}`);
+  }
+  exactKeys(
+    observation.provenance,
+    ["algorithm", "attestorKeyId", "signature"],
+    "runtimeObservation.provenance",
+  );
+  if (
+    observation.provenance.algorithm !== contract.qualification.attestor.algorithm ||
+    observation.provenance.attestorKeyId !== contract.qualification.attestor.keyId
+  ) {
+    fail("runtime observation attestor provenance must match the qualified contract");
+  }
+  verifyEd25519(
+    runtimeObservationSigningPayload(observation),
+    observation.provenance.signature,
+    contract.qualification.attestor.publicKeyPem,
+    "runtime observation signature",
+  );
+
+  const observedImageDigest = observation.image.reference.split("@")[1];
+  if (
+    observation.image.reference !== contract.qualification.image.reference ||
+    observation.image.digest !== observedImageDigest
+  ) {
+    fail("runtime image identity must exactly match the qualified immutable image");
+  }
+  const expectedCuaDriver = contract.qualification.cuaDriver;
+  for (const field of Object.keys(observation.cuaDriver)) {
+    if (observation.cuaDriver[field] !== expectedCuaDriver[field]) {
+      fail("runtime CuaDriver identity must exactly match the qualified identity");
+    }
+  }
+  const expectedTcc = contract.qualification.tcc;
+  if (
+    canonicalJson(observation.tcc.target) !== canonicalJson(expectedTcc.target) ||
+    canonicalJson(observation.tcc.services) !== canonicalJson(expectedTcc.services)
+  ) {
+    fail("runtime TCC identity must exactly match the qualified CuaDriver app");
+  }
+  const observationTime = Date.parse(observation.observedAt);
+  const verificationTime = Date.parse(observedAt);
+  if (
+    observationTime > verificationTime ||
+    verificationTime - observationTime >
+      contract.qualification.attestor.maxObservationAgeSeconds * 1000
+  ) {
+    fail("runtime observation is stale or from the future");
+  }
+  return Object.freeze({
+    accepted: true,
+    hostId: observation.host.hostId,
+    cycleId: observation.host.cycleId,
+    clonePath: observation.host.clonePath,
+    runnerName: observation.host.runnerName,
+    imageDigest: observation.image.digest,
+    attestorKeyId: observation.provenance.attestorKeyId,
+    observedAt: observation.observedAt,
+  });
 }
 
 function validateHostEcho(hostEcho) {
@@ -525,6 +866,7 @@ export function validateLifecycleRequest(request) {
       "runnerName",
       "runnerImageDigest",
       "requestedAt",
+      "attestationPolicy",
       "fieldProvenance",
       "hostEcho",
     ],
@@ -549,16 +891,42 @@ export function validateLifecycleRequest(request) {
     pattern: SHA256,
   });
   canonicalTimestamp(request.requestedAt, "request.requestedAt");
-  exactKeys(request.fieldProvenance, ["workflowKnown", "hostEcho"], "request.fieldProvenance");
+  exactKeys(
+    request.attestationPolicy,
+    ["expectedHostId", "attestorKeyId", "sinkRepository", "sinkRef"],
+    "request.attestationPolicy",
+  );
+  string(request.attestationPolicy.expectedHostId, "request.attestationPolicy.expectedHostId", {
+    pattern: SAFE_ID,
+  });
+  string(request.attestationPolicy.attestorKeyId, "request.attestationPolicy.attestorKeyId", {
+    pattern: SAFE_ID,
+  });
+  string(request.attestationPolicy.sinkRepository, "request.attestationPolicy.sinkRepository", {
+    pattern: REPOSITORY,
+  });
+  if (request.attestationPolicy.sinkRef !== "refs/heads/main") {
+    fail("request.attestationPolicy.sinkRef must be refs/heads/main");
+  }
+  exactKeys(
+    request.fieldProvenance,
+    ["workflowKnown", "runtimeObserved", "contractKnown"],
+    "request.fieldProvenance",
+  );
   exactStringArray(
     request.fieldProvenance.workflowKnown,
     WORKFLOW_KNOWN_FIELDS,
     "request.fieldProvenance.workflowKnown",
   );
   exactStringArray(
-    request.fieldProvenance.hostEcho,
-    HOST_ECHO_FIELDS,
-    "request.fieldProvenance.hostEcho",
+    request.fieldProvenance.runtimeObserved,
+    RUNTIME_OBSERVED_FIELDS,
+    "request.fieldProvenance.runtimeObserved",
+  );
+  exactStringArray(
+    request.fieldProvenance.contractKnown,
+    CONTRACT_KNOWN_FIELDS,
+    "request.fieldProvenance.contractKnown",
   );
   validateHostEcho(request.hostEcho);
   return structuredClone(request);
@@ -576,6 +944,12 @@ function attestationIdentity(attestation) {
     githubRunAttempt: attestation.githubRunAttempt,
     runnerName: attestation.runnerName,
     runnerImageDigest: attestation.runnerImageDigest,
+    attestationPolicy: {
+      expectedHostId: attestation.hostId,
+      attestorKeyId: attestation.provenance.attestorKeyId,
+      sinkRepository: attestation.provenance.sinkRepository,
+      sinkRef: attestation.provenance.sinkRef,
+    },
     hostEcho: {
       cycleId: attestation.cycleId,
       clonePath: attestation.clonePath,
@@ -595,6 +969,7 @@ function requestIdentity(request) {
     githubRunAttempt: request.githubRunAttempt,
     runnerName: request.runnerName,
     runnerImageDigest: request.runnerImageDigest,
+    attestationPolicy: request.attestationPolicy,
     hostEcho: request.hostEcho,
   };
 }
@@ -605,12 +980,57 @@ function lifecycleKey(request) {
     .digest("hex");
 }
 
+export function lifecycleAttestationPath(requestInput, contractInput) {
+  const request = validateLifecycleRequest(requestInput);
+  const contract = validateProviderContract(contractInput);
+  if (contract.activation.state === "disabled") {
+    fail("the checked-in provider contract is disabled");
+  }
+  return `${contract.qualification.lifecycle.sinkPathPrefix}${lifecycleKey(request)}.json`;
+}
+
+function lifecycleAttestationCore(attestationInput) {
+  const attestation = structuredClone(attestationInput);
+  delete attestation.provenance;
+  return attestation;
+}
+
+export function lifecycleAttestationBlobDigest(attestation) {
+  return sha256(canonicalJson(lifecycleAttestationCore(attestation)));
+}
+
+export function lifecycleAttestationSigningPayload(attestationInput) {
+  const attestation = structuredClone(attestationInput);
+  if (attestation?.provenance && typeof attestation.provenance === "object") {
+    delete attestation.provenance.signature;
+  }
+  return canonicalJson(attestation);
+}
+
 export function verifyLifecycleAttestation(
   requestInput,
   attestation,
-  { consumedKeys = new Set(), maxAgeSeconds = 4 * 60 * 60 } = {},
+  {
+    contract: contractInput,
+    consumptionLedger,
+    observedAt,
+    sourceObservation,
+  } = {},
 ) {
   const request = validateLifecycleRequest(requestInput);
+  if (!contractInput) fail("a trusted qualified provider contract is required");
+  const contract = validateProviderContract(contractInput);
+  if (contract.activation.state === "disabled") {
+    fail("the checked-in provider contract is disabled");
+  }
+  if (
+    !consumptionLedger ||
+    consumptionLedger.kind !== "durable-lifecycle-consumption-v1" ||
+    typeof consumptionLedger.consume !== "function"
+  ) {
+    fail("a durable consumption ledger is required");
+  }
+  canonicalTimestamp(observedAt, "observedAt");
   exactKeys(
     attestation,
     [
@@ -634,6 +1054,7 @@ export function verifyLifecycleAttestation(
       "clonePathAbsent",
       "matchingClonePaths",
       "quarantine",
+      "provenance",
     ],
     "attestation",
   );
@@ -656,22 +1077,163 @@ export function verifyLifecycleAttestation(
   if (typeof attestation.quarantine.reason !== "string") {
     fail("attestation.quarantine.reason must be a string");
   }
+  exactKeys(
+    attestation.provenance,
+    [
+      "algorithm",
+      "attestorKeyId",
+      "sinkRepository",
+      "sinkRef",
+      "sinkPath",
+      "blobDigest",
+      "signature",
+    ],
+    "attestation.provenance",
+  );
+  string(attestation.provenance.attestorKeyId, "attestation.provenance.attestorKeyId", {
+    pattern: SAFE_ID,
+  });
+  string(attestation.provenance.sinkRepository, "attestation.provenance.sinkRepository", {
+    pattern: REPOSITORY,
+  });
+  string(attestation.provenance.sinkPath, "attestation.provenance.sinkPath");
+  string(attestation.provenance.blobDigest, "attestation.provenance.blobDigest", {
+    pattern: SHA256,
+  });
 
+  if (
+    attestation.provenance.attestorKeyId !== request.attestationPolicy.attestorKeyId
+  ) {
+    fail("attestor provenance must exactly match the trusted lifecycle request");
+  }
+  if (
+    attestation.provenance.sinkRepository !==
+      request.attestationPolicy.sinkRepository ||
+    attestation.provenance.sinkRef !== request.attestationPolicy.sinkRef
+  ) {
+    fail("protected sink provenance must exactly match the trusted lifecycle request");
+  }
   if (
     JSON.stringify(attestationIdentity(attestation)) !== JSON.stringify(requestIdentity(request))
   ) {
     fail("attestation identity must exactly match the trusted lifecycle request");
   }
+  if (attestation.hostId !== request.attestationPolicy.expectedHostId) {
+    fail("attestation identity must exactly match the trusted lifecycle request host");
+  }
 
-  positiveNumber(maxAgeSeconds, "maxAgeSeconds");
+  const attestor = contract.qualification.attestor;
+  const lifecycle = contract.qualification.lifecycle;
+  if (
+    request.attestationPolicy.attestorKeyId !== attestor.keyId ||
+    attestation.provenance.attestorKeyId !== attestor.keyId ||
+    attestation.provenance.algorithm !== attestor.algorithm
+  ) {
+    fail("attestor provenance must exactly match the trusted qualified contract");
+  }
+  const expectedSinkPath = lifecycleAttestationPath(request, contract);
+  if (
+    request.attestationPolicy.sinkRepository !== lifecycle.sinkRepository ||
+    request.attestationPolicy.sinkRef !== lifecycle.sinkRef ||
+    attestation.provenance.sinkRepository !== lifecycle.sinkRepository ||
+    attestation.provenance.sinkRef !== lifecycle.sinkRef ||
+    attestation.provenance.sinkPath !== expectedSinkPath
+  ) {
+    fail("protected sink provenance must exactly match the trusted lifecycle request");
+  }
+  const expectedBlobDigest = lifecycleAttestationBlobDigest(attestation);
+  if (attestation.provenance.blobDigest !== expectedBlobDigest) {
+    fail("attestation blob digest does not match the signed lifecycle payload");
+  }
+  verifyEd25519(
+    lifecycleAttestationSigningPayload(attestation),
+    attestation.provenance.signature,
+    attestor.publicKeyPem,
+    "lifecycle attestation signature",
+  );
+
+  exactKeys(
+    sourceObservation,
+    [
+      "repository",
+      "ref",
+      "path",
+      "commit",
+      "blobDigest",
+      "fetchedAt",
+      "authenticatedBy",
+      "branchProtectionVerified",
+      "requiredStatusChecks",
+    ],
+    "sourceObservation",
+  );
+  string(sourceObservation.repository, "sourceObservation.repository", {
+    pattern: REPOSITORY,
+  });
+  string(sourceObservation.path, "sourceObservation.path");
+  string(sourceObservation.commit, "sourceObservation.commit", {
+    pattern: FULL_GIT_SHA,
+  });
+  string(sourceObservation.blobDigest, "sourceObservation.blobDigest", {
+    pattern: SHA256,
+  });
+  canonicalTimestamp(sourceObservation.fetchedAt, "sourceObservation.fetchedAt");
+  exactKeys(
+    sourceObservation.authenticatedBy,
+    ["appId", "installationId"],
+    "sourceObservation.authenticatedBy",
+  );
+  positiveInteger(sourceObservation.authenticatedBy.appId, "sourceObservation.authenticatedBy.appId");
+  positiveInteger(
+    sourceObservation.authenticatedBy.installationId,
+    "sourceObservation.authenticatedBy.installationId",
+  );
+  requiredTrue(
+    sourceObservation.branchProtectionVerified,
+    "sourceObservation.branchProtectionVerified",
+  );
+  if (
+    !Array.isArray(sourceObservation.requiredStatusChecks) ||
+    sourceObservation.requiredStatusChecks.length !== 1 ||
+    sourceObservation.requiredStatusChecks[0] !== lifecycle.requiredStatusCheck
+  ) {
+    fail("sourceObservation must prove the required protected-sink status check");
+  }
+  if (
+    sourceObservation.repository !== attestation.provenance.sinkRepository ||
+    sourceObservation.ref !== attestation.provenance.sinkRef ||
+    sourceObservation.path !== attestation.provenance.sinkPath ||
+    sourceObservation.blobDigest !== attestation.provenance.blobDigest ||
+    sourceObservation.authenticatedBy.appId !== lifecycle.sinkCredential.appId ||
+    sourceObservation.authenticatedBy.installationId !==
+      lifecycle.sinkCredential.installationId
+  ) {
+    fail("protected sink provenance must be independently authenticated");
+  }
+
+  const maxAgeSeconds = 4 * 60 * 60;
   const requestedAt = Date.parse(request.requestedAt);
   const attestedAt = Date.parse(attestation.attestedAt);
   if (attestedAt < requestedAt || attestedAt - requestedAt > maxAgeSeconds * 1000) {
     fail("attestation timestamp is stale or precedes the request");
   }
+  const verificationTime = Date.parse(observedAt);
+  const fetchedAt = Date.parse(sourceObservation.fetchedAt);
+  if (
+    attestedAt > verificationTime ||
+    verificationTime - attestedAt > maxAgeSeconds * 1000
+  ) {
+    fail("attestation observation time is stale or precedes the attestation");
+  }
+  if (
+    fetchedAt < attestedAt ||
+    fetchedAt > verificationTime ||
+    verificationTime - fetchedAt > 5 * 60 * 1000
+  ) {
+    fail("protected sink observation is stale or has an invalid timestamp");
+  }
 
   const key = lifecycleKey(request);
-  if (consumedKeys.has(key)) fail("lifecycle attestation is replayed");
 
   if (attestation.result === "destroyed") {
     if (
@@ -689,6 +1251,16 @@ export function verifyLifecycleAttestation(
       fail("quarantined attestation requires a host marker and non-empty reason");
     }
   }
+
+  const consumed = consumptionLedger.consume(
+    key,
+    Object.freeze({
+      observedAt,
+      sinkCommit: sourceObservation.commit,
+      blobDigest: sourceObservation.blobDigest,
+    }),
+  );
+  if (consumed !== true) fail("lifecycle attestation is replayed");
 
   return Object.freeze({
     accepted: true,
@@ -808,7 +1380,7 @@ export function evaluatePromotion(metrics) {
   ratio(metrics.startsWithin15Minutes, metrics.startsWithCapacity, "startsWithin15Minutes");
   ratio(metrics.infrastructureInconclusive, metrics.jobs, "infrastructureInconclusive");
 
-  const blockers = [];
+  const shadowBlockers = [];
   const zeroGate = [
     ["missingMergedPrs", "missing merged PRs"],
     ["duplicateTerminalPublications", "duplicate terminal publications"],
@@ -819,16 +1391,16 @@ export function evaluatePromotion(metrics) {
     ["attestationFailures", "attestation failures"],
   ];
   for (const [field, label] of zeroGate) {
-    if (metrics[field] !== 0) blockers.push(`${label} must be zero`);
+    if (metrics[field] !== 0) shadowBlockers.push(`${label} must be zero`);
   }
   if (metrics.publishedResults !== metrics.verifiedReports) {
-    blockers.push("every published result must link to a verified report");
+    shadowBlockers.push("every published result must link to a verified report");
   }
   const quarantinedAttempts = metrics.attempts.filter(
     (attempt) => attempt.result === "quarantined",
   ).length;
   if (quarantinedAttempts > 0) {
-    blockers.push(
+    shadowBlockers.push(
       "quarantined attempts count as destruction failures during absolute qualification",
     );
   }
@@ -846,20 +1418,25 @@ export function evaluatePromotion(metrics) {
     );
   const consecutiveSuccessful = consecutive === -1 ? metrics.qualificationJobs.length : consecutive;
   if (consecutiveSuccessful < 10) {
-    blockers.push("ten consecutive destroyed exact-SHA qualification jobs are required");
+    shadowBlockers.push("ten consecutive destroyed exact-SHA qualification jobs are required");
   }
 
   const percentageWindowOpen = metrics.jobs >= 50 || metrics.observationDays >= 30;
+  const productionBlockers = [...shadowBlockers];
   if (percentageWindowOpen) {
     const terminalRate = ratio(metrics.terminalWithoutHuman, metrics.jobs, "terminalWithoutHuman");
-    if (terminalRate < 0.98) blockers.push("terminal-without-human rate must be at least 98%");
+    if (terminalRate < 0.98) {
+      productionBlockers.push("terminal-without-human rate must be at least 98%");
+    }
     const startRate = ratio(
       metrics.startsWithin15Minutes,
       metrics.startsWithCapacity,
       "startsWithin15Minutes",
     );
     if (metrics.startsWithCapacity === 0 || startRate < 0.95) {
-      blockers.push("start-within-15-minutes rate must be at least 95% when capacity exists");
+      productionBlockers.push(
+        "start-within-15-minutes rate must be at least 95% when capacity exists",
+      );
     }
     const inconclusiveRate = ratio(
       metrics.infrastructureInconclusive,
@@ -867,24 +1444,33 @@ export function evaluatePromotion(metrics) {
       "infrastructureInconclusive",
     );
     if (inconclusiveRate >= 0.02) {
-      blockers.push("infrastructure-inconclusive rate must be below 2%");
+      productionBlockers.push("infrastructure-inconclusive rate must be below 2%");
     }
+  } else {
+    productionBlockers.push(
+      "production qualification requires at least 50 jobs or 30 days of observation",
+    );
   }
 
   return Object.freeze({
-    ready: blockers.length === 0,
-    blockers: Object.freeze(blockers),
+    shadowReady: shadowBlockers.length === 0,
+    productionReady: productionBlockers.length === 0,
+    shadowBlockers: Object.freeze(shadowBlockers),
+    productionBlockers: Object.freeze(productionBlockers),
     consecutiveSuccessful,
     percentageWindowOpen,
   });
 }
 
 export const ciliconE2eContractConstants = Object.freeze({
-  promotionState: PROMOTION_STATE,
+  shadowPromotionState: SHADOW_PROMOTION_STATE,
+  productionPromotionState: PRODUCTION_PROMOTION_STATE,
+  qualifiedStates: QUALIFIED_STATES,
   promotionVariable: PROMOTION_VARIABLE,
   requiredLabels: REQUIRED_LABELS,
   requiredTccServices: REQUIRED_TCC_SERVICES,
   requiredTools: REQUIRED_TOOLS,
   workflowKnownFields: WORKFLOW_KNOWN_FIELDS,
-  hostEchoFields: HOST_ECHO_FIELDS,
+  runtimeObservedFields: RUNTIME_OBSERVED_FIELDS,
+  contractKnownFields: CONTRACT_KNOWN_FIELDS,
 });

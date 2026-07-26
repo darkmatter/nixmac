@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
+import { generateKeyPairSync, sign } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,10 +9,16 @@ import { fileURLToPath } from "node:url";
 import {
   ciliconE2eContractConstants,
   evaluatePromotion,
+  lifecycleAttestationBlobDigest,
+  lifecycleAttestationPath,
+  lifecycleAttestationSigningPayload,
   requiredDedicatedHosts,
+  runtimeObservationSigningPayload,
   validateLifecycleRequest,
   validateProviderContract,
+  validateRuntimeProviderGate,
   verifyLifecycleAttestation,
+  verifyRuntimeObservation,
 } from "../../../ops/runner/cilicon-e2e-contract.mjs";
 import { parseWorkflowYaml } from "./workflow-concurrency-contract.mjs";
 
@@ -22,6 +29,9 @@ const workflowPath = path.join(repoRoot, ".github/workflows/computer-use-e2e-cen
 const operationsPath = path.join(repoRoot, "tests/e2e/computer-use/OPERATIONS.md");
 
 const clone = (value) => structuredClone(value);
+const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+const publicKeyPem = publicKey.export({ type: "spki", format: "pem" });
+const signPayload = (payload) => sign(null, Buffer.from(payload), privateKey).toString("base64");
 const checkedInContract = JSON.parse(readFileSync(contractPath, "utf8"));
 const validatedDisabled = validateProviderContract(checkedInContract);
 
@@ -35,7 +45,8 @@ assert.ok(validatedDisabled.activation.blockers.includes("PR_604_NOT_MERGED"));
 assert.throws(
   () => {
     const improperlyEnabled = clone(checkedInContract);
-    improperlyEnabled.activation.state = "qualified-v1";
+    improperlyEnabled.activation.state = "production-qualified-v1";
+    improperlyEnabled.activation.promotionVariable.requiredValue = "production-qualified-v1";
     improperlyEnabled.activation.blockers = [];
     validateProviderContract(improperlyEnabled);
   },
@@ -47,7 +58,11 @@ function qualifiedContract() {
   const contract = clone(checkedInContract);
   contract.activation = {
     ...contract.activation,
-    state: "qualified-v1",
+    state: "production-qualified-v1",
+    promotionVariable: {
+      ...contract.activation.promotionVariable,
+      requiredValue: "production-qualified-v1",
+    },
     blockers: [],
   };
   contract.qualification = {
@@ -63,10 +78,13 @@ function qualifiedContract() {
     cuaDriver: {
       artifactUrl: "https://example.invalid/cuadriver/releases/0.12.6/CuaDriver.zip",
       artifactDigest: `sha256:${"c".repeat(64)}`,
+      executableDigest: `sha256:${"d".repeat(64)}`,
+      appBundleDigest: `sha256:${"e".repeat(64)}`,
       cliVersion: "0.12.6",
       appVersion: "0.12.6",
       bundleId: "com.example.CuaDriver",
       signingIdentity: "Developer ID Application: CuaDriver Example (ABCDE12345)",
+      teamId: "ABCDE12345",
       appPath: "/Applications/CuaDriver.app",
       appExecutable: "/Applications/CuaDriver.app/Contents/MacOS/cua-driver",
       cliSymlink: "/usr/local/bin/cua-driver",
@@ -85,6 +103,7 @@ function qualifiedContract() {
         appPath: "/Applications/CuaDriver.app",
         bundleId: "com.example.CuaDriver",
         signingIdentity: "Developer ID Application: CuaDriver Example (ABCDE12345)",
+        teamId: "ABCDE12345",
       },
       services: ["accessibility", "screenRecording"],
       firstBoot: {
@@ -100,10 +119,20 @@ function qualifiedContract() {
         smokePassed: true,
       },
     },
+    attestor: {
+      algorithm: "ed25519",
+      keyId: "nixmac-e2e-attestor-2026-07",
+      publicKeyPem,
+      runtimeObservationPath: "/var/db/nixmac-e2e/runtime-observation.json",
+      maxObservationAgeSeconds: 900,
+    },
     lifecycle: {
       mountPath: "/var/db/nixmac-e2e/cycles",
       quarantineSentinel: "/var/db/nixmac-e2e-quarantined",
       sinkRepository: "darkmatter/nixmac-e2e-attestations",
+      sinkRef: "refs/heads/main",
+      sinkPathPrefix: "lifecycle/",
+      requiredStatusCheck: "verify-lifecycle-attestation",
       sinkCredential: {
         appId: 1001,
         installationId: 101,
@@ -135,7 +164,53 @@ function qualifiedContract() {
 
 assert.equal(requiredDedicatedHosts({ peakJobsPerHour: 4, p95CycleMinutes: 30 }), 4);
 const qualified = qualifiedContract();
-assert.equal(validateProviderContract(qualified).activation.state, "qualified-v1");
+assert.equal(
+  validateProviderContract(qualified).activation.state,
+  "production-qualified-v1",
+);
+assert.equal(
+  validateRuntimeProviderGate(qualified, {
+    requestedTier: "production",
+    repositoryPromotionState: "production-qualified-v1",
+  }).imageDigest,
+  `sha256:${"a".repeat(64)}`,
+);
+assert.throws(
+  () =>
+    validateRuntimeProviderGate(checkedInContract, {
+      requestedTier: "production",
+      repositoryPromotionState: "production-qualified-v1",
+    }),
+  /disabled/,
+  "a mutable repository variable must not bypass the checked-in disabled contract",
+);
+assert.throws(
+  () =>
+    validateRuntimeProviderGate(qualified, {
+      requestedTier: "production",
+      repositoryPromotionState: "shadow-qualified-v1",
+    }),
+  /repository promotion state/,
+);
+const shadowQualified = qualifiedContract();
+shadowQualified.activation.state = "shadow-qualified-v1";
+shadowQualified.activation.promotionVariable.requiredValue = "shadow-qualified-v1";
+assert.equal(
+  validateRuntimeProviderGate(shadowQualified, {
+    requestedTier: "shadow",
+    repositoryPromotionState: "shadow-qualified-v1",
+  }).activationState,
+  "shadow-qualified-v1",
+);
+assert.throws(
+  () =>
+    validateRuntimeProviderGate(shadowQualified, {
+      requestedTier: "production",
+      repositoryPromotionState: "shadow-qualified-v1",
+    }),
+  /production-qualified/,
+  "shadow qualification must never authorize production execution",
+);
 
 function providerMutation(name, mutate, message) {
   const candidate = qualifiedContract();
@@ -259,6 +334,124 @@ providerMutation(
   /must be true/,
 );
 
+function runtimeObservation() {
+  const value = {
+    version: 1,
+    observedAt: "2026-07-26T18:05:00.000Z",
+    host: {
+      hostId: "cilicon-host-01",
+      cycleId: "cycle-99",
+      clonePath: "/Users/Shared/Cilicon/vms/cycle-99",
+      runnerName: "nixmac-e2e-host01-cycle99",
+    },
+    image: {
+      reference: qualified.qualification.image.reference,
+      digest: `sha256:${"a".repeat(64)}`,
+    },
+    cuaDriver: {
+      artifactDigest: qualified.qualification.cuaDriver.artifactDigest,
+      executableDigest: qualified.qualification.cuaDriver.executableDigest,
+      appBundleDigest: qualified.qualification.cuaDriver.appBundleDigest,
+      cliVersion: qualified.qualification.cuaDriver.cliVersion,
+      appVersion: qualified.qualification.cuaDriver.appVersion,
+      bundleId: qualified.qualification.cuaDriver.bundleId,
+      signingIdentity: qualified.qualification.cuaDriver.signingIdentity,
+      teamId: qualified.qualification.cuaDriver.teamId,
+      appPath: qualified.qualification.cuaDriver.appPath,
+      appExecutable: qualified.qualification.cuaDriver.appExecutable,
+      cliSymlink: qualified.qualification.cuaDriver.cliSymlink,
+    },
+    tcc: {
+      target: clone(qualified.qualification.tcc.target),
+      services: [...qualified.qualification.tcc.services],
+      aquaSession: true,
+      accessibilityGranted: true,
+      screenRecordingGranted: true,
+      smokePassed: true,
+    },
+    provenance: {
+      algorithm: "ed25519",
+      attestorKeyId: qualified.qualification.attestor.keyId,
+      signature: "",
+    },
+  };
+  value.provenance.signature = signPayload(runtimeObservationSigningPayload(value));
+  return value;
+}
+
+const observedRuntime = verifyRuntimeObservation(qualified, runtimeObservation(), {
+  observedAt: "2026-07-26T18:06:00.000Z",
+});
+assert.equal(observedRuntime.imageDigest, `sha256:${"a".repeat(64)}`);
+assert.equal(observedRuntime.hostId, "cilicon-host-01");
+
+function runtimeMutation(name, mutate, message, { resign = true } = {}) {
+  const candidate = runtimeObservation();
+  mutate(candidate);
+  if (resign) {
+    candidate.provenance.signature = signPayload(runtimeObservationSigningPayload(candidate));
+  }
+  assert.throws(
+    () =>
+      verifyRuntimeObservation(qualified, candidate, {
+        observedAt: "2026-07-26T18:06:00.000Z",
+      }),
+    message,
+    name,
+  );
+}
+
+runtimeMutation(
+  "signed but wrong image digest",
+  (value) => {
+    value.image.digest = `sha256:${"f".repeat(64)}`;
+  },
+  /image identity/,
+);
+runtimeMutation(
+  "signed but wrong executable hash",
+  (value) => {
+    value.cuaDriver.executableDigest = `sha256:${"f".repeat(64)}`;
+  },
+  /CuaDriver identity/,
+);
+runtimeMutation(
+  "signed but wrong code-signing identity",
+  (value) => {
+    value.cuaDriver.signingIdentity = "Developer ID Application: Forged (ZZZZZ99999)";
+  },
+  /CuaDriver identity/,
+);
+runtimeMutation(
+  "signed but wrong Team ID",
+  (value) => {
+    value.cuaDriver.teamId = "ZZZZZ99999";
+  },
+  /CuaDriver identity/,
+);
+runtimeMutation(
+  "signed but wrong TCC target",
+  (value) => {
+    value.tcc.target.bundleId = "com.example.OtherDriver";
+  },
+  /TCC identity/,
+);
+runtimeMutation(
+  "stale host observation",
+  (value) => {
+    value.observedAt = "2026-07-26T17:00:00.000Z";
+  },
+  /runtime observation is stale/,
+);
+runtimeMutation(
+  "tampered signed observation",
+  (value) => {
+    value.host.hostId = "cilicon-host-evil";
+  },
+  /signature is invalid/,
+  { resign: false },
+);
+
 function lifecycleRequest() {
   return {
     version: 1,
@@ -273,9 +466,16 @@ function lifecycleRequest() {
     runnerName: "nixmac-e2e-host01-cycle99",
     runnerImageDigest: `sha256:${"a".repeat(64)}`,
     requestedAt: "2026-07-26T18:00:00.000Z",
+    attestationPolicy: {
+      expectedHostId: "cilicon-host-01",
+      attestorKeyId: qualified.qualification.attestor.keyId,
+      sinkRepository: qualified.qualification.lifecycle.sinkRepository,
+      sinkRef: qualified.qualification.lifecycle.sinkRef,
+    },
     fieldProvenance: {
       workflowKnown: [...ciliconE2eContractConstants.workflowKnownFields],
-      hostEcho: [...ciliconE2eContractConstants.hostEchoFields],
+      runtimeObserved: [...ciliconE2eContractConstants.runtimeObservedFields],
+      contractKnown: [...ciliconE2eContractConstants.contractKnownFields],
     },
     hostEcho: {
       cycleId: "cycle-99",
@@ -285,10 +485,16 @@ function lifecycleRequest() {
 }
 
 const request = validateLifecycleRequest(lifecycleRequest());
-assert.deepEqual(request.fieldProvenance.hostEcho, ["hostEcho.cycleId", "hostEcho.clonePath"]);
+assert.deepEqual(request.fieldProvenance.runtimeObserved, [
+  "runnerName",
+  "runnerImageDigest",
+  "attestationPolicy.expectedHostId",
+  "hostEcho.cycleId",
+  "hostEcho.clonePath",
+]);
 
 function destroyedAttestation(requestInput = lifecycleRequest()) {
-  return {
+  const value = {
     version: 1,
     result: "destroyed",
     repo: requestInput.repo,
@@ -312,10 +518,61 @@ function destroyedAttestation(requestInput = lifecycleRequest()) {
       marked: false,
       reason: "",
     },
+    provenance: {
+      algorithm: "ed25519",
+      attestorKeyId: requestInput.attestationPolicy.attestorKeyId,
+      sinkRepository: requestInput.attestationPolicy.sinkRepository,
+      sinkRef: requestInput.attestationPolicy.sinkRef,
+      sinkPath: lifecycleAttestationPath(requestInput, qualified),
+      blobDigest: "",
+      signature: "",
+    },
+  };
+  value.provenance.blobDigest = lifecycleAttestationBlobDigest(value);
+  value.provenance.signature = signPayload(lifecycleAttestationSigningPayload(value));
+  return value;
+}
+
+function durableLedger() {
+  const consumed = new Map();
+  return {
+    kind: "durable-lifecycle-consumption-v1",
+    consume(key, record) {
+      if (consumed.has(key)) return false;
+      consumed.set(key, record);
+      return true;
+    },
   };
 }
 
-const destroyed = verifyLifecycleAttestation(lifecycleRequest(), destroyedAttestation());
+function sourceObservation(attestation) {
+  return {
+    repository: attestation.provenance.sinkRepository,
+    ref: attestation.provenance.sinkRef,
+    path: attestation.provenance.sinkPath,
+    commit: "f".repeat(40),
+    blobDigest: attestation.provenance.blobDigest,
+    fetchedAt: "2026-07-26T18:31:00.000Z",
+    authenticatedBy: {
+      appId: qualified.qualification.lifecycle.sinkCredential.appId,
+      installationId: qualified.qualification.lifecycle.sinkCredential.installationId,
+    },
+    branchProtectionVerified: true,
+    requiredStatusChecks: [qualified.qualification.lifecycle.requiredStatusCheck],
+  };
+}
+
+function verifyLifecycle(requestInput, attestation, overrides = {}) {
+  return verifyLifecycleAttestation(requestInput, attestation, {
+    contract: qualified,
+    consumptionLedger: durableLedger(),
+    observedAt: "2026-07-26T18:31:00.000Z",
+    sourceObservation: sourceObservation(attestation),
+    ...overrides,
+  });
+}
+
+const destroyed = verifyLifecycle(lifecycleRequest(), destroyedAttestation());
 assert.equal(destroyed.disposition, "destroyed");
 assert.equal(destroyed.promotionEligible, true);
 assert.equal(destroyed.containmentVerified, true);
@@ -324,8 +581,13 @@ function attestationMutation(name, mutate, message) {
   const candidateRequest = lifecycleRequest();
   const candidateAttestation = destroyedAttestation(candidateRequest);
   mutate(candidateRequest, candidateAttestation);
+  candidateAttestation.provenance.blobDigest =
+    lifecycleAttestationBlobDigest(candidateAttestation);
+  candidateAttestation.provenance.signature = signPayload(
+    lifecycleAttestationSigningPayload(candidateAttestation),
+  );
   assert.throws(
-    () => verifyLifecycleAttestation(candidateRequest, candidateAttestation),
+    () => verifyLifecycle(candidateRequest, candidateAttestation),
     message,
     name,
   );
@@ -340,6 +602,7 @@ for (const [name, field, value] of [
   ["mismatched image", "runnerImageDigest", `sha256:${"f".repeat(64)}`],
   ["mismatched cycle", "cycleId", "cycle-other"],
   ["mismatched clone", "clonePath", "/Users/Shared/Cilicon/vms/cycle-other"],
+  ["mismatched host", "hostId", "cilicon-host-other"],
 ]) {
   attestationMutation(
     name,
@@ -396,23 +659,83 @@ quarantineAttestation.quarantine = {
   marked: true,
   reason: "runner deregistration timed out; host admission stopped",
 };
-const quarantined = verifyLifecycleAttestation(quarantineRequest, quarantineAttestation);
+quarantineAttestation.provenance.blobDigest =
+  lifecycleAttestationBlobDigest(quarantineAttestation);
+quarantineAttestation.provenance.signature = signPayload(
+  lifecycleAttestationSigningPayload(quarantineAttestation),
+);
+const quarantined = verifyLifecycle(quarantineRequest, quarantineAttestation);
 assert.equal(quarantined.disposition, "quarantined");
 assert.equal(quarantined.promotionEligible, false);
 assert.equal(quarantined.containmentVerified, true);
 
 const unmarkedQuarantine = clone(quarantineAttestation);
 unmarkedQuarantine.quarantine.marked = false;
+unmarkedQuarantine.provenance.blobDigest =
+  lifecycleAttestationBlobDigest(unmarkedQuarantine);
+unmarkedQuarantine.provenance.signature = signPayload(
+  lifecycleAttestationSigningPayload(unmarkedQuarantine),
+);
 assert.throws(
-  () => verifyLifecycleAttestation(quarantineRequest, unmarkedQuarantine),
+  () => verifyLifecycle(quarantineRequest, unmarkedQuarantine),
   /requires a host marker/,
+);
+const sharedLedger = durableLedger();
+const replayRequest = lifecycleRequest();
+const replayAttestation = destroyedAttestation(replayRequest);
+verifyLifecycle(replayRequest, replayAttestation, { consumptionLedger: sharedLedger });
+assert.throws(
+  () =>
+    verifyLifecycle(replayRequest, replayAttestation, {
+      consumptionLedger: sharedLedger,
+    }),
+  /replayed/,
 );
 assert.throws(
   () =>
     verifyLifecycleAttestation(lifecycleRequest(), destroyedAttestation(), {
-      consumedKeys: new Set([destroyed.lifecycleKey]),
+      contract: qualified,
+      observedAt: "2026-07-26T18:31:00.000Z",
+      sourceObservation: sourceObservation(destroyedAttestation()),
     }),
-  /replayed/,
+  /durable consumption ledger is required/,
+);
+assert.throws(
+  () =>
+    verifyLifecycle(lifecycleRequest(), destroyedAttestation(), {
+      observedAt: "2026-07-26T23:00:00.000Z",
+    }),
+  /observation time is stale/,
+);
+const wrongSinkAttestation = destroyedAttestation();
+const wrongSinkSource = sourceObservation(wrongSinkAttestation);
+wrongSinkSource.repository = "darkmatter/unprotected-attestations";
+assert.throws(
+  () =>
+    verifyLifecycle(lifecycleRequest(), wrongSinkAttestation, {
+      sourceObservation: wrongSinkSource,
+    }),
+  /protected sink provenance/,
+);
+const unprotectedSinkAttestation = destroyedAttestation();
+const unprotectedSinkSource = sourceObservation(unprotectedSinkAttestation);
+unprotectedSinkSource.requiredStatusChecks = [];
+assert.throws(
+  () =>
+    verifyLifecycle(lifecycleRequest(), unprotectedSinkAttestation, {
+      sourceObservation: unprotectedSinkSource,
+    }),
+  /required protected-sink status check/,
+);
+const wrongAttestor = destroyedAttestation();
+wrongAttestor.provenance.attestorKeyId = "unknown-attestor";
+wrongAttestor.provenance.blobDigest = lifecycleAttestationBlobDigest(wrongAttestor);
+wrongAttestor.provenance.signature = signPayload(
+  lifecycleAttestationSigningPayload(wrongAttestor),
+);
+assert.throws(
+  () => verifyLifecycle(lifecycleRequest(), wrongAttestor),
+  /attestor provenance/,
 );
 
 function successfulJob(index) {
@@ -456,9 +779,17 @@ function promotionMetrics() {
 }
 
 const absoluteReady = evaluatePromotion(promotionMetrics());
-assert.equal(absoluteReady.ready, true);
+assert.equal(absoluteReady.shadowReady, true);
+assert.equal(
+  absoluteReady.productionReady,
+  false,
+  "ten jobs opens shadow qualification, never production",
+);
 assert.equal(absoluteReady.consecutiveSuccessful, 10);
 assert.equal(absoluteReady.percentageWindowOpen, false);
+assert.ok(
+  absoluteReady.productionBlockers.some((blocker) => blocker.includes("50 jobs or 30 days")),
+);
 
 const retryInflation = promotionMetrics();
 retryInflation.jobs = 1;
@@ -473,7 +804,8 @@ retryInflation.terminalWithoutHuman = 1;
 retryInflation.startsWithin15Minutes = 1;
 retryInflation.startsWithCapacity = 1;
 const retryInflationBlocked = evaluatePromotion(retryInflation);
-assert.equal(retryInflationBlocked.ready, false);
+assert.equal(retryInflationBlocked.shadowReady, false);
+assert.equal(retryInflationBlocked.productionReady, false);
 assert.equal(
   retryInflationBlocked.consecutiveSuccessful,
   1,
@@ -493,9 +825,14 @@ quarantinedMetrics.attempts.push({
 });
 quarantinedMetrics.jobs += 1;
 const quarantineBlocked = evaluatePromotion(quarantinedMetrics);
-assert.equal(quarantineBlocked.ready, false);
+assert.equal(quarantineBlocked.shadowReady, false);
+assert.equal(quarantineBlocked.productionReady, false);
 assert.equal(quarantineBlocked.consecutiveSuccessful, 0);
-assert.ok(quarantineBlocked.blockers.some((blocker) => blocker.includes("destruction failures")));
+assert.ok(
+  quarantineBlocked.shadowBlockers.some((blocker) =>
+    blocker.includes("destruction failures"),
+  ),
+);
 
 const percentageMetrics = promotionMetrics();
 percentageMetrics.observationDays = 30;
@@ -513,13 +850,14 @@ percentageMetrics.terminalWithoutHuman = 49;
 percentageMetrics.startsWithin15Minutes = 48;
 percentageMetrics.startsWithCapacity = 50;
 const percentageReady = evaluatePromotion(percentageMetrics);
-assert.equal(percentageReady.ready, true);
+assert.equal(percentageReady.shadowReady, true);
+assert.equal(percentageReady.productionReady, true);
 assert.equal(percentageReady.percentageWindowOpen, true);
 
 const boundaryFailure = clone(percentageMetrics);
 boundaryFailure.infrastructureInconclusive = 1;
 assert.equal(
-  evaluatePromotion(boundaryFailure).ready,
+  evaluatePromotion(boundaryFailure).productionReady,
   false,
   "exactly 2% infrastructure-inconclusive must fail the fewer-than-2% gate",
 );
@@ -532,7 +870,7 @@ const workflow = parseWorkflowYaml({
 const primary = workflow.jobs.primary;
 assert.equal(
   primary.if,
-  "needs.preflight.outputs.ready == 'true' && inputs.backend == 'cilicon_tart' && vars.NIXMAC_E2E_CILICON_PROMOTION_STATE == 'qualified-v1' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)",
+  "needs.preflight.outputs.ready == 'true' && needs.preflight.outputs.provider_ready == 'true' && inputs.backend == 'cilicon_tart' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)",
 );
 assert.deepEqual(primary["runs-on"], ["self-hosted", "macOS", "nixmac-e2e"]);
 assert.equal(primary.environment, "nixmac-e2e-production");
@@ -541,9 +879,17 @@ const toolchainStep = primary.steps.find(
 );
 assert.match(
   toolchainStep.run,
-  /NIXMAC_E2E_CILICON_IMAGE_DIGEST.*sha256:\[0-9a-f\]\{64\}/,
-  "the gated pool must still reject a mutable or missing image identity",
+  /runtime-observation\.json/,
+  "the gated pool must verify a host-attested runtime observation",
 );
+assert.doesNotMatch(
+  workflowSource,
+  /NIXMAC_E2E_CILICON_IMAGE_DIGEST/,
+  "the runner identity must come from an observed signed runtime fact, not a configuration echo",
+);
+assert.match(workflowSource, /verifyRuntimeObservation/);
+assert.match(workflowSource, /validateRuntimeProviderGate/);
+assert.match(workflowSource, /TeamIdentifier/);
 
 const operations = readFileSync(operationsPath, "utf8");
 assert.match(operations, /Tart\/Cilicon lane is disabled/i);
@@ -551,5 +897,8 @@ assert.match(operations, /PR #604[\s\S]*not on `main`/i);
 assert.match(operations, /repository-level[\s\S]*NIXMAC_E2E_CILICON_PROMOTION_STATE/);
 assert.match(operations, /code review and local tests cannot qualify/i);
 assert.match(operations, /one host\s+quarantined/i);
+assert.match(operations, /shadow-qualified-v1[\s\S]*production-qualified-v1/i);
+assert.match(operations, /runtime-observation\.json[\s\S]*Ed25519/i);
+assert.match(operations, /durable[\s\S]*consumption ledger/i);
 
 console.log("Cilicon E2E lifecycle contract self-test passed.");

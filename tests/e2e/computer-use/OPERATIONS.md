@@ -144,19 +144,26 @@ The evidence producer and verifier both use the resolved
 The ephemeral Tart/Cilicon lane is disabled. As observed on 2026-07-26, PR #604
 is still open and its image workflow and Packer template are not on `main`.
 `ops/images/nixmac-e2e-runner.contract.json` records this dependency boundary
-without inventing image or CuaDriver pins. The `primary` job additionally
-requires the repository-level Actions variable
-`NIXMAC_E2E_CILICON_PROMOTION_STATE=qualified-v1`; an absent value keeps the job
-skipped.
+without inventing image or CuaDriver pins. Before allocating the ephemeral job,
+the ARC preflight validates that trusted checked-in contract and requires its
+activation state to exactly match the repository-level Actions variable
+`NIXMAC_E2E_CILICON_PROMOTION_STATE`. A variable cannot enable a disabled or
+incomplete checked-in contract.
 
-The variable must be repository-level because environment-scoped variables are
-not available while GitHub evaluates a job-level `if`. Treat repository and
+The variable must be repository-level because the ARC preflight evaluates it
+before a protected-environment Mac job can be allocated. Treat repository and
 organization Actions-variable write access as part of the production control
 plane: audit who can change it, check that an organization-level value cannot
 unexpectedly supply it, and retain the protected `nixmac-e2e-production`
-environment as the independent main-only credential boundary. GitHub expression
-string comparison is case-insensitive, so do not use capitalization as an
-authorization property.
+environment as the independent main-only credential boundary.
+
+There are two non-interchangeable qualified states. Ten consecutive absolute-
+gate jobs can set `shadow-qualified-v1` and authorize only dispatches with
+`qualification_tier=shadow`. Shadow runs collect private qualification evidence;
+they do not authorize production publication. Only the 50-job-or-30-day
+percentage window can set `production-qualified-v1` and authorize
+`qualification_tier=production`. The checked-in contract, requested tier, and
+repository variable must all agree.
 
 After PR #604 lands, activate the lane only through this sequence:
 
@@ -164,8 +171,16 @@ After PR #604 lands, activate the lane only through this sequence:
    Tahoe-base, GHCR, isolated-builder, Xcode-verification, and secret-scan
    primitives. Do not copy or fork the full Xcode recipe.
 1. Publish and consume the E2E image only by immutable `@sha256` reference.
-   Pin the CuaDriver artifact URL and digest, CLI/app version, bundle ID,
-   signing identity, app path, app-owned executable, and CLI symlink.
+   Pin the CuaDriver artifact, executable, and app-tree digests, CLI/app version,
+   bundle ID, signing identity, Team ID, app path, app-owned executable, and CLI
+   symlink.
+   On every VM boot, the host attestor writes
+   `/var/db/nixmac-e2e/runtime-observation.json`. The workflow verifies its
+   Ed25519 signature and freshness, binds the actually observed image digest,
+   host/cycle/runner, CuaDriver hashes/signature/bundle identity, and TCC target,
+   then independently hashes and code-sign verifies the installed app. The
+   CuaDriver adapter's live permission probe remains the final TCC admission
+   check.
 1. Build without repository credentials, provider keys, signing keys, or user
    data. Use a dedicated non-personal test user and verify every required
    media/report tool.
@@ -174,17 +189,23 @@ After PR #604 lands, activate the lane only through this sequence:
    pinned `CuaDriver.app` identity, never the raw CLI. If grants do not survive
    cloning, require a supported MDM/bootstrap mechanism before promotion.
 1. Deploy a dedicated capacity-one host cycle wrapper and lifecycle attestor.
-   Every attempt gets one fresh VM. The trusted workflow writes its job,
-   Centaur attempt, nonce, GitHub run and run-attempt, runner, and intended
-   image identity into the host-only lifecycle mount. Cycle ID and exact clone
-   path are host-injected echo fields; equality proves continuity, not an
-   independent guest observation.
+   Every attempt gets one fresh VM. The trusted workflow supplies the job,
+   Centaur attempt, nonce, GitHub run/run-attempt, and qualified attestor/sink
+   policy. The verified host observation supplies the actual runner, image
+   digest, host ID, cycle ID, and exact clone path. The lifecycle request records
+   those sources separately before asking the host to destroy that exact cycle.
 1. The host must wait for the exact runner to deregister and the exact clone to
    disappear, reject a second matching clone, and emit one nonce-bound
    `destroyed` attestation. On any timeout or ambiguity it instead creates
    `/var/db/nixmac-e2e-quarantined`, stops new cycles, and emits a
    `quarantined` attestation with the reason and marker. A quarantine proves
    containment, not successful teardown or promotion eligibility.
+   Lifecycle acceptance also requires the request's expected host and cycle,
+   the qualified Ed25519 attestor, and an independently authenticated
+   repository/ref/path/commit/blob read from the protected sink. Centaur must
+   atomically consume that lifecycle key through its durable consumption ledger;
+   an omitted ledger, replay, stale attestation, or stale sink observation is a
+   hard failure.
 1. Create the protected, secret-free
    `darkmatter/nixmac-e2e-attestations` sink. Give the host one sink-only GitHub
    App identity with only Contents write on that sink and no installation on

@@ -42,6 +42,7 @@ function runTerminalContractScenario({
   staticArtifactDigest = "",
   staticInfraDisposition = "",
   reportUrl = "",
+  qualificationTier = "production",
 }) {
   const contractStep = workflow.jobs.result.steps.find((step) => step.id === "contract");
   assert.ok(contractStep, "result job must expose its terminal contract writer");
@@ -74,6 +75,7 @@ function runTerminalContractScenario({
         REPORT_URL: reportUrl,
         INPUT_ATTEMPT: "2",
         INPUT_BACKEND: backend,
+        QUALIFICATION_TIER: qualificationTier,
       },
       input: script,
     });
@@ -112,12 +114,15 @@ const requiredInputs = [
   "app_artifact_digest",
   "attestation_nonce",
   "backend",
+  "qualification_tier",
 ];
 assert.deepEqual(Object.keys(dispatch.inputs), requiredInputs, "dispatch inputs must stay exact");
 for (const input of requiredInputs) {
   assert.equal(dispatch.inputs[input].required, true, `${input} must be required`);
 }
 assert.deepEqual(dispatch.inputs.backend.options, ["cilicon_tart", "static_ssh"]);
+assert.deepEqual(dispatch.inputs.qualification_tier.options, ["shadow", "production"]);
+assert.equal(dispatch.inputs.qualification_tier.default, "production");
 assert.match(workflow["run-name"], /inputs\.job_id/);
 assert.match(workflow["run-name"], /inputs\.attempt/);
 assert.match(workflow["run-name"], /inputs\.attestation_nonce/);
@@ -143,8 +148,8 @@ for (const [id, job] of Object.entries({
 assert.equal(preflight["runs-on"], "arc");
 assert.equal(
   primary.if,
-  "needs.preflight.outputs.ready == 'true' && inputs.backend == 'cilicon_tart' && vars.NIXMAC_E2E_CILICON_PROMOTION_STATE == 'qualified-v1' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)",
-  "the ephemeral pool must remain disabled until its repository-level qualification gate is set",
+  "needs.preflight.outputs.ready == 'true' && needs.preflight.outputs.provider_ready == 'true' && inputs.backend == 'cilicon_tart' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)",
+  "the ephemeral pool must remain disabled until trusted preflight validates the checked-in contract and repository gate",
 );
 assert.equal(
   staticJob.if,
@@ -185,6 +190,34 @@ for (const [job, stepName] of [
   assert.match(toolchainStep.run, /ffmpeg/);
   assert.match(toolchainStep.run, /ffprobe/);
 }
+
+const providerContractStep = preflight.steps.find(
+  (step) => step.name === "Validate trusted Cilicon provider contract",
+);
+assert.ok(providerContractStep, "preflight must validate the checked-in provider contract");
+assert.match(providerContractStep.run, /validateRuntimeProviderGate/);
+assert.equal(preflight.outputs.provider_ready, "${{ steps.classify.outputs.provider_ready }}");
+
+const runtimeIdentityStep = primary.steps.find(
+  (step) => step.name === "Verify signed host and runtime identity",
+);
+assert.ok(runtimeIdentityStep, "the ephemeral runner must verify independently observed identity");
+assert.match(runtimeIdentityStep.run, /verifyRuntimeObservation/);
+assert.match(runtimeIdentityStep.run, /runtime-observation\.json/);
+assert.doesNotMatch(
+  source,
+  /NIXMAC_E2E_CILICON_IMAGE_DIGEST/,
+  "configured image variables must not masquerade as observed runtime identity",
+);
+const publicReportStep = publish.steps.find(
+  (step) => step.name === "Publish verified gh-pages report with optimistic retry",
+);
+assert.equal(
+  publicReportStep.if,
+  "inputs.backend == 'static_ssh' || inputs.qualification_tier == 'production'",
+  "shadow qualification must not mutate the public report branch",
+);
+assert.match(source, /qualificationTier/);
 const staticMacToolchainStep = staticJob.steps.find(
   (step) => step.name === "Verify static Mac toolchain contract",
 );
@@ -584,6 +617,10 @@ assert.equal(terminalContractStep.env.PREFLIGHT_RESULT, "${{ needs.preflight.res
 assert.equal(terminalContractStep.env.INPUT_JOB_ID, "${{ inputs.job_id }}");
 assert.equal(terminalContractStep.env.INPUT_ATTEMPT, "${{ inputs.attempt }}");
 assert.equal(terminalContractStep.env.INPUT_BACKEND, "${{ inputs.backend }}");
+assert.equal(
+  terminalContractStep.env.QUALIFICATION_TIER,
+  "${{ inputs.qualification_tier }}",
+);
 assert.doesNotMatch(
   terminalContractStep.run,
   /\$\{\{ inputs\.(?:job_id|attempt|backend) \}\}/,
@@ -656,6 +693,20 @@ const complete = runTerminalContractScenario({
 assert.equal(complete.contract.terminalStatus, "COMPLETE");
 assert.equal(complete.contract.requiresApiSynthesis, false);
 assert.match(complete.outputs, /workflow_ok=true/);
+
+const shadowComplete = runTerminalContractScenario({
+  name: "shadow-complete",
+  backend: "cilicon_tart",
+  qualificationTier: "shadow",
+  primaryResult: "success",
+  reportResult: "success",
+  primaryArtifactId: "98766",
+  primaryArtifactDigest: `sha256:${"b".repeat(64)}`,
+});
+assert.equal(shadowComplete.contract.terminalStatus, "COMPLETE");
+assert.equal(shadowComplete.contract.qualificationTier, "shadow");
+assert.equal(shadowComplete.contract.reportUrl, "");
+assert.match(shadowComplete.outputs, /workflow_ok=true/);
 
 const buildUnavailable = runTerminalContractScenario({
   name: "build-unavailable",

@@ -5,7 +5,7 @@
     "promotionVariable": {
       "name": "NIXMAC_E2E_CILICON_PROMOTION_STATE",
       "scope": "repository",
-      "requiredValue": "qualified-v1"
+      "requiredValue": "production-qualified-v1"
     },
     "blockers": [
       "PR_604_NOT_MERGED",
@@ -49,16 +49,20 @@
     "qualification.image.sourceTemplate",
     "qualification.cuaDriver.artifactUrl",
     "qualification.cuaDriver.artifactDigest",
+    "qualification.cuaDriver.executableDigest",
+    "qualification.cuaDriver.appBundleDigest",
     "qualification.cuaDriver.cliVersion",
     "qualification.cuaDriver.appVersion",
     "qualification.cuaDriver.bundleId",
     "qualification.cuaDriver.signingIdentity",
+    "qualification.cuaDriver.teamId",
     "qualification.cuaDriver.appPath",
     "qualification.cuaDriver.appExecutable",
     "qualification.cuaDriver.cliSymlink",
     "qualification.testUser.username",
     "qualification.tools",
     "qualification.tcc",
+    "qualification.attestor",
     "qualification.lifecycle",
     "qualification.capacity"
   ]
