@@ -319,6 +319,29 @@ try {
     true,
   );
 
+  const clickCountBeforeUnownedObservation = fake.clicks.length;
+  assert.equal(
+    await scenario.clickElementIndex(
+      fake,
+      scenarioState,
+      String(snapshotBObservation),
+      "7",
+      "Unowned observation",
+    ),
+    false,
+    "plain or forged text must not retain a captured state's action authority",
+  );
+  assert.equal(fake.clicks.length, clickCountBeforeUnownedObservation);
+  assert.equal(
+    events.some(
+      (event) =>
+        event.type === "computer-use.click.failed" &&
+        event.data.label === "Unowned observation" &&
+        /require the observation that produced the element lookup/i.test(event.data.error),
+    ),
+    true,
+  );
+
   fake.click = async () => {
     throw new Error("synthetic driver exception");
   };
@@ -337,6 +360,88 @@ try {
     ),
     true,
   );
+
+  fake.setValue = async function setValue(input) {
+    this.setValues.push(input);
+    return {
+      ok: false,
+      text: "synthetic set-value rejection",
+      isError: true,
+    };
+  };
+  assert.equal(
+    await scenario.setValueElementIndex(
+      fake,
+      scenarioState,
+      snapshotBObservation,
+      "7",
+      "Set-value rejection",
+      "ignored",
+    ),
+    false,
+  );
+  assert.equal(
+    events.some(
+      (event) =>
+        event.type === "computer-use.set_value.failed" &&
+        event.data.label === "Set-value rejection" &&
+        event.data.response === "synthetic set-value rejection" &&
+        event.data.isError === true,
+    ),
+    true,
+  );
+
+  fake.setValue = async () => {
+    throw new Error("synthetic set-value exception");
+  };
+  assert.equal(
+    await scenario.setValueElementIndex(
+      fake,
+      scenarioState,
+      snapshotBObservation,
+      "7",
+      "Set-value exception",
+      "ignored",
+    ),
+    false,
+  );
+  assert.equal(
+    events.some(
+      (event) =>
+        event.type === "computer-use.set_value.failed" &&
+        event.data.label === "Set-value exception" &&
+        event.data.error === "synthetic set-value exception",
+    ),
+    true,
+  );
+
+  fake.setValue = async function setValue(input) {
+    this.setValues.push(input);
+    return { ok: true, text: "set", isError: false };
+  };
+  const setValueCountBeforeUnownedObservation = fake.setValues.length;
+  assert.equal(
+    await scenario.setValueElementIndex(
+      fake,
+      scenarioState,
+      String(snapshotBObservation),
+      "7",
+      "Unowned set-value observation",
+      "ignored",
+    ),
+    false,
+  );
+  assert.equal(fake.setValues.length, setValueCountBeforeUnownedObservation);
+  assert.equal(
+    events.some(
+      (event) =>
+        event.type === "computer-use.set_value.failed" &&
+        event.data.label === "Unowned set-value observation" &&
+        /require the observation that produced the element lookup/i.test(event.data.error),
+    ),
+    true,
+  );
+
   assert.equal(
     await scenario.clickByPattern(fake, scenarioState, snapshotBObservation, "Missing control", [
       /button Missing/i,
