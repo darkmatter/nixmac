@@ -152,6 +152,8 @@ jobs:
           node --check tests/e2e/computer-use/storybook-preview.mjs
           node tests/e2e/computer-use/storybook-preview.mjs self-test
           node --check tests/e2e/computer-use/workflow-contract-self-test.mjs
+          node tests/e2e/computer-use/coverage-manifest.test.mjs
+          node tests/e2e/computer-use/report.test.mjs
           node tests/e2e/computer-use/run-remote-cua.mjs self-test
           node tests/e2e/computer-use/check-stale-run.mjs self-test
           node tests/e2e/computer-use/workflow-contract-self-test.mjs

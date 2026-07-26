@@ -3,22 +3,23 @@
   "description": "Baseline user-visible nixmac surfaces that must stay mapped to Computer Use E2E scenarios or explicit waivers.",
   "candidateRoots": [
     "apps/native/src",
-    "apps/native/src/components",
-    "apps/native/src/components/widget",
-    "apps/native/src/hooks",
     "apps/native/src-tauri",
-    "apps/native/src-tauri/src"
+    "apps/native/templates",
+    "tests/e2e",
+    ".github/workflows"
   ],
   "candidateIncludes": [
-    "apps/native/src/[^/]+\\.(?:css|ts|tsx)$",
-    "apps/native/src/components/preview-indicator/.*\\.tsx$",
-    "apps/native/src/components/widget/.+\\.tsx$",
-    "apps/native/src/hooks/use-(apply|rollback|evolve|git-operations|history|history-restore|rebuild-stream|updater|permissions|darwin-config)\\.ts$",
-    "apps/native/src/lib/.+\\.(?:ts|tsx)$",
-    "apps/native/src-tauri/(?:tauri\\.conf(?:\\.dev)?\\.json|Info\\.plist|entitlements\\.plist)$",
-    "apps/native/src-tauri/capabilities/.+\\.json$",
-    "apps/native/src-tauri/src/(commands|rebuild|history|storage|ai|state|system|managed_edits|summarize)/.*\\.rs$",
-    "apps/native/src-tauri/src/evolve/(mod|tools)\\.rs$"
+    "^apps/native/src/[^/]+\\.(?:css|ts|tsx)$",
+    "^apps/native/src/components/",
+    "^apps/native/src/hooks/",
+    "^apps/native/src/(?:ipc/preferences\\.ts|viewmodel/preferences\\.ts)$",
+    "^apps/native/src/lib/.+\\.(?:ts|tsx)$",
+    "^apps/native/src-tauri/(?:tauri\\.conf(?:\\.dev)?\\.json|Info\\.plist|entitlements\\.plist)$",
+    "^apps/native/src-tauri/capabilities/.+\\.json$",
+    "^apps/native/src-tauri/src/",
+    "^apps/native/templates/",
+    "^tests/e2e/",
+    "^\\.github/workflows/.+e2e.*\\.ya?ml$"
   ],
   "candidateExcludes": [
     "\\.stories\\.tsx$",
@@ -32,6 +33,368 @@
   ],
   "surfaces": [
     {
+      "id": "native-runtime-unexercised",
+      "label": "Native runtime subsystems without deterministic Computer Use assertions",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src-tauri/src/bin/",
+        "apps/native/src-tauri/src/bootstrap/",
+        "apps/native/src-tauri/src/db/",
+        "apps/native/src-tauri/src/docs/",
+        "apps/native/src-tauri/src/editor/",
+        "apps/native/src-tauri/src/env/",
+        "apps/native/src-tauri/src/git/",
+        "apps/native/src-tauri/src/http_client/",
+        "apps/native/src-tauri/src/observable/",
+        "apps/native/src-tauri/src/orpc/",
+        "apps/native/src-tauri/src/privileged_helper/",
+        "apps/native/src-tauri/src/shared_types/",
+        "apps/native/src-tauri/src/sync/",
+        "apps/native/src-tauri/src/telemetry/",
+        "apps/native/src-tauri/src/updater_pin/",
+        "apps/native/src-tauri/src/evolve/providers/",
+        "apps/native/src-tauri/src/evolve/tools/",
+        "apps/native/src-tauri/src/cli.rs",
+        "apps/native/src-tauri/src/e2e_runtime.rs",
+        "apps/native/src-tauri/src/env_keys.rs",
+        "apps/native/src-tauri/src/evolve/age.rs",
+        "apps/native/src-tauri/src/evolve/chat_memory.rs",
+        "apps/native/src-tauri/src/evolve/config.rs",
+        "apps/native/src-tauri/src/evolve/config_dir_context.rs",
+        "apps/native/src-tauri/src/evolve/ensure_secret.rs",
+        "apps/native/src-tauri/src/evolve/file_ops.rs",
+        "apps/native/src-tauri/src/evolve/gitignore.rs",
+        "apps/native/src-tauri/src/evolve/lifecycle.rs",
+        "apps/native/src-tauri/src/evolve/messages.rs",
+        "apps/native/src-tauri/src/evolve/nix_file_editor.rs",
+        "apps/native/src-tauri/src/evolve/search_code.rs",
+        "apps/native/src-tauri/src/evolve/search_docs.rs",
+        "apps/native/src-tauri/src/evolve/search_packages.rs",
+        "apps/native/src-tauri/src/evolve/session_control.rs",
+        "apps/native/src-tauri/src/evolve/sops.rs",
+        "apps/native/src-tauri/src/evolve/types.rs",
+        "apps/native/src-tauri/src/evolve/utils.rs",
+        "apps/native/src-tauri/src/panic_handler.rs",
+        "apps/native/src-tauri/src/peek.rs",
+        "apps/native/src-tauri/src/schema_gen.rs",
+        "apps/native/src-tauri/src/shared_types.rs",
+        "apps/native/src-tauri/src/sqlite_types.rs",
+        "apps/native/src-tauri/src/statistics.rs",
+        "apps/native/src-tauri/src/tray_icon.rs",
+        "apps/native/src-tauri/src/types.rs",
+        "apps/native/src-tauri/src/utils.rs"
+      ],
+      "directoryPrefixApprovals": [
+        {
+          "prefix": "apps/native/src-tauri/src/bin/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single native-helper executable namespace; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/bootstrap/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single bootstrap subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/db/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single persistence subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/docs/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single generated and static docs subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/editor/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single native editor integration subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/env/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single environment-discovery subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/git/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single native Git subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/http_client/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single HTTP client subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/observable/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single observable persistence subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/orpc/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single native RPC bridge namespace; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/privileged_helper/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single privileged-helper subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/shared_types/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single native shared-type namespace; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/sync/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single remote-sync subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/telemetry/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single native telemetry subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/updater_pin/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single updater-pin subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/evolve/providers/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single Evolve provider adapter namespace; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/evolve/tools/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single Evolve tool implementation namespace; changes remain explicit waiver debt."
+        }
+      ],
+      "waiver": {
+        "reason": "The current lane reaches portions of these native subsystems indirectly, but does not isolate their success, failure, persistence, security, and recovery contracts with deterministic assertions.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "high",
+        "exitCriteria": "Split these namespaces into behavior-specific surfaces as deterministic scenarios are added, with direct assertions for persistence, privileged operations, sync, RPC, provider tools, and recovery paths."
+      }
+    },
+    {
+      "id": "ui-runtime-unexercised",
+      "label": "UI components and hooks without deterministic scenario assertions",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src/components/nix-editor/",
+        "apps/native/src/components/nixmac-mascot/",
+        "apps/native/src/components/button-glow.tsx",
+        "apps/native/src/components/tabs-content-1.tsx",
+        "apps/native/src/components/widget/controls/provider-icons/ollama.svg",
+        "apps/native/src/components/widget/controls/provider-icons/openai.svg",
+        "apps/native/src/components/widget/controls/provider-icons/openrouter.svg",
+        "apps/native/src/components/widget/index.ts",
+        "apps/native/src/components/widget/promptinput/prompt-suggestions-variant.ts",
+        "apps/native/src/components/widget/promptinput/starter-prompt-icons.ts",
+        "apps/native/src/components/widget/promptinput/starter-prompts.json",
+        "apps/native/src/components/widget/promptinput/starter-prompts.ts",
+        "apps/native/src/components/widget/promptinput/trending-feed-data.ts",
+        "apps/native/src/components/widget/promptinput/use-typewriter-placeholder.ts",
+        "apps/native/src/components/widget/repair/lib.ts",
+        "apps/native/src/components/widget/steps/index.ts",
+        "apps/native/src/components/widget/utils.ts",
+        "apps/native/src/hooks/use-confirm.ts",
+        "apps/native/src/hooks/use-current-step.ts",
+        "apps/native/src/hooks/use-diagnostics-notice.ts",
+        "apps/native/src/hooks/use-display-path.ts",
+        "apps/native/src/hooks/use-evolve-mascot.ts",
+        "apps/native/src/hooks/use-feedback-on-recovery.ts",
+        "apps/native/src/hooks/use-fix-with-ai.ts",
+        "apps/native/src/hooks/use-flake-exists.ts",
+        "apps/native/src/hooks/use-history-card.ts",
+        "apps/native/src/hooks/use-import-config.ts",
+        "apps/native/src/hooks/use-launchd-items.ts",
+        "apps/native/src/hooks/use-lazy-history-summarize.ts",
+        "apps/native/src/hooks/use-onboarding-progress.ts",
+        "apps/native/src/hooks/use-panic-handler.ts",
+        "apps/native/src/hooks/use-system-defaults-scan.ts",
+        "apps/native/src/hooks/use-this-hostname.ts",
+        "apps/native/src/hooks/use-throttle.ts",
+        "apps/native/src/hooks/use-tray-events.ts",
+        "apps/native/src/hooks/use-widget-initialization.ts"
+      ],
+      "directoryPrefixApprovals": [
+        {
+          "prefix": "apps/native/src/components/nix-editor/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single editor component namespace; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src/components/nixmac-mascot/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single mascot component and asset namespace; changes remain explicit waiver debt."
+        }
+      ],
+      "waiver": {
+        "reason": "These UI helpers, assets, and hooks are present in the product tree but the current lane does not bind their individual interaction, recovery, or rendering contracts.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "medium",
+        "exitCriteria": "Map each helper to an exercised product scenario or remove it from the user-visible candidate universe with a reviewed non-claiming rationale."
+      }
+    },
+    {
+      "id": "configuration-templates-unexercised",
+      "label": "Bundled configuration templates without per-template activation proof",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/templates/base/",
+        "apps/native/templates/minimal/",
+        "apps/native/templates/nix-darwin-determinate/",
+        "apps/native/templates/nixos-unified/",
+        "apps/native/templates/README.md"
+      ],
+      "directoryPrefixApprovals": [
+        {
+          "prefix": "apps/native/templates/base/",
+          "owner": "nixmac-product-proof",
+          "reason": "The checked-in base template is one activation surface; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/templates/minimal/",
+          "owner": "nixmac-product-proof",
+          "reason": "The checked-in minimal template is one activation surface; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/templates/nix-darwin-determinate/",
+          "owner": "nixmac-product-proof",
+          "reason": "The checked-in Determinate template is one activation surface; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/templates/nixos-unified/",
+          "owner": "nixmac-product-proof",
+          "reason": "The checked-in unified template is one activation surface; changes remain explicit waiver debt."
+        }
+      ],
+      "waiver": {
+        "reason": "The disposable-config lane proves an existing configuration edit, not creation and activation of every bundled template across supported hosts.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "high",
+        "exitCriteria": "Add isolated template-instantiation and activation checks for each supported template, including generated paths, secrets placeholders, Homebrew modules, and cleanup."
+      }
+    },
+    {
+      "id": "computer-use-proof-system",
+      "label": "Computer Use runner, evidence model, preservation fixtures, report, and workflow",
+      "scenarioKeys": ["visualProofQuality", "reportInspection"],
+      "coverageNote": "Each listed file is executed, consumed, or validated by the checked-in workflow and preservation suite; paths are exact so a new proof-system file remains unmapped until reviewed.",
+      "sourcePrefixes": [
+        ".github/workflows/computer-use-e2e.yml",
+        "tests/e2e/computer-use/artifact-utils.mjs",
+        "tests/e2e/computer-use/check-remote.mjs",
+        "tests/e2e/computer-use/check-stale-run.mjs",
+        "tests/e2e/computer-use/cli.mjs",
+        "tests/e2e/computer-use/coverage-focus.mjs",
+        "tests/e2e/computer-use/coverage-manifest.json",
+        "tests/e2e/computer-use/coverage-manifest.mjs",
+        "tests/e2e/computer-use/coverage-manifest.test.mjs",
+        "tests/e2e/computer-use/drivers/codex-app-server.mjs",
+        "tests/e2e/computer-use/drivers/contract.mjs",
+        "tests/e2e/computer-use/drivers/driver-self-test.mjs",
+        "tests/e2e/computer-use/drivers/runtime-contract.mjs",
+        "tests/e2e/computer-use/fixtures/preservation/README.md",
+        "tests/e2e/computer-use/fixtures/preservation/expected-artifact-links.json",
+        "tests/e2e/computer-use/fixtures/preservation/expected-report-signature.json",
+        "tests/e2e/computer-use/fixtures/preservation/expected-scenario-contracts.json",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/01-launch.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/02-settings-general.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/03-settings-ai-models.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/05-settings-preferences.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/07-history.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/11-feedback.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/13-report-issue.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/41-suggestion-card.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/42-typed-intent.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/47-provider-progress-05.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/52-review-summary.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/53-review-diff.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/54-build-boundary.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/56-step-3-ready.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/59-history-restore-preview.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/59-report-inspection-Safari.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/60-after-history-restore.png",
+        "tests/e2e/computer-use/fixtures/preservation/state.seed.json",
+        "tests/e2e/computer-use/peekaboo-runner.mjs",
+        "tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs",
+        "tests/e2e/computer-use/preservation-harness.mjs",
+        "tests/e2e/computer-use/process-utils.mjs",
+        "tests/e2e/computer-use/redaction.mjs",
+        "tests/e2e/computer-use/remote-stage.mjs",
+        "tests/e2e/computer-use/report.mjs",
+        "tests/e2e/computer-use/report.test.mjs",
+        "tests/e2e/computer-use/run-adversarial.mjs",
+        "tests/e2e/computer-use/run-local.mjs",
+        "tests/e2e/computer-use/run-remote-cua.mjs",
+        "tests/e2e/computer-use/scenario-catalog.mjs",
+        "tests/e2e/computer-use/schemas.mjs",
+        "tests/e2e/computer-use/state.mjs",
+        "tests/e2e/computer-use/storybook-preview.mjs",
+        "tests/e2e/computer-use/summarize-runs.mjs",
+        "tests/e2e/computer-use/timing.mjs",
+        "tests/e2e/computer-use/transport.mjs",
+        "tests/e2e/computer-use/visual-proof.mjs",
+        "tests/e2e/computer-use/workflow-contract-self-test.mjs",
+        "tests/e2e/computer-use/workflow-timing.mjs"
+      ]
+    },
+    {
+      "id": "other-e2e-infrastructure",
+      "label": "Separate shell E2E lane and non-executable Computer Use documentation",
+      "scenarioKeys": [],
+      "coverageDisposition": "non-claiming",
+      "coverageNote": "These files are tracked in the shared candidate universe but are not executed as independent evidence claims by the Computer Use workflow.",
+      "sourcePrefixes": [
+        "tests/e2e/adapters/",
+        "tests/e2e/fixtures/",
+        "tests/e2e/lib/",
+        "tests/e2e/scenarios/",
+        ".github/workflows/peekaboo-e2e.yml",
+        ".github/workflows/e2e.yml",
+        "tests/e2e/.shellcheckrc",
+        "tests/e2e/README.md",
+        "tests/e2e/ci-runner.sh",
+        "tests/e2e/run.sh",
+        "tests/e2e/setup-runner.sh",
+        "tests/e2e/computer-use/ARCHITECTURE.md",
+        "tests/e2e/computer-use/OPERATIONS.md",
+        "tests/e2e/computer-use/README.md"
+      ],
+      "directoryPrefixApprovals": [
+        {
+          "prefix": "tests/e2e/adapters/",
+          "owner": "nixmac-product-proof",
+          "reason": "A separate shell E2E adapter namespace with no Computer Use evidence claim."
+        },
+        {
+          "prefix": "tests/e2e/fixtures/",
+          "owner": "nixmac-product-proof",
+          "reason": "A separate shell E2E fixture namespace with no Computer Use evidence claim."
+        },
+        {
+          "prefix": "tests/e2e/lib/",
+          "owner": "nixmac-product-proof",
+          "reason": "A separate shell E2E library namespace with no Computer Use evidence claim."
+        },
+        {
+          "prefix": "tests/e2e/scenarios/",
+          "owner": "nixmac-product-proof",
+          "reason": "A separate shell E2E scenario namespace with no Computer Use evidence claim."
+        }
+      ]
+    },
+    {
       "id": "e2e-harness-rust",
       "label": "Debug-only E2E harness hooks",
       "scenarioKeys": [],
@@ -40,6 +403,16 @@
       "sourcePrefixes": [
         "apps/native/src-tauri/src/main.rs",
         "apps/native/src-tauri/src/rebuild/darwin.rs"
+      ]
+    },
+    {
+      "id": "native-runtime-documentation",
+      "label": "Native runtime developer documentation",
+      "scenarioKeys": [],
+      "coverageDisposition": "non-claiming",
+      "coverageNote": "Developer-only documentation is tracked in the preserved PR-visible universe but does not claim product behavior.",
+      "sourcePrefixes": [
+        "apps/native/src-tauri/src/README.md"
       ]
     },
     {

@@ -1,17 +1,11 @@
 import {
   assertValidCoverageManifest,
-  changedFileMatchesSurface,
   classifyCoverageFile,
-  matchesAnyPattern,
+  isCoverageCandidateFile,
 } from "./coverage-manifest.mjs";
 
 export function isLikelyUserVisiblePrFile(file, manifest) {
-  if (matchesAnyPattern(file, manifest.candidateExcludes ?? [])) return false;
-  if (matchesAnyPattern(file, manifest.candidateIncludes ?? [])) return true;
-  if (manifest.surfaces?.some((surface) => changedFileMatchesSurface(file, surface))) return true;
-  return /^(apps\/native\/src\/[^/]+\.(?:css|ts|tsx)|apps\/native\/src\/components\/|apps\/native\/src\/hooks\/|apps\/native\/src-tauri\/src\/|apps\/native\/templates\/|tests\/e2e\/|\.github\/workflows\/(?:peekaboo-e2e|computer-use-e2e)\.yml)/.test(
-    file,
-  );
+  return isCoverageCandidateFile(manifest, file);
 }
 
 function matchedSurfaceRow(file, surface) {

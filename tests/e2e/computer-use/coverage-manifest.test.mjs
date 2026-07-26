@@ -1,14 +1,26 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   classifyCoverageFile,
+  isCoverageCandidateFile,
   loadCoverageManifestFile,
   parseCoverageManifest,
   sourcePrefixMatches,
   validateCoverageManifest,
 } from "./coverage-manifest.mjs";
 import { buildManifestPrFocus } from "./coverage-focus.mjs";
+import { isLikelyUserVisiblePrFile } from "./coverage-focus.mjs";
 import { isStableCoverageScenarioKey } from "./scenario-catalog.mjs";
+
+const TEST_DIR = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(TEST_DIR, "../../..");
+const REAL_MANIFEST = JSON.parse(
+  readFileSync(path.join(TEST_DIR, "coverage-manifest.json"), "utf8"),
+);
 
 function waiver() {
   return {
@@ -62,6 +74,52 @@ function validationErrors(manifest) {
 
 export function coverageManifestSelfTest() {
   assert.deepEqual(validationErrors(baseManifest()), []);
+  const repoFiles = execFileSync("git", ["ls-files"], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+  })
+    .split("\n")
+    .filter(Boolean);
+  const prVisibleRepoFiles = repoFiles.filter((file) =>
+    isLikelyUserVisiblePrFile(file, REAL_MANIFEST),
+  );
+  const freshnessCandidateRepoFiles = repoFiles.filter(
+    (file) => isCoverageCandidateFile(REAL_MANIFEST, file),
+  );
+  assert.deepEqual(
+    prVisibleRepoFiles,
+    freshnessCandidateRepoFiles,
+    "PR-visible repo files and main freshness candidates should be the same universe",
+  );
+  for (const file of [
+    "apps/native/src/new-visible-feature.tsx",
+    "apps/native/src/components/new-visible-subdir/new-visible-feature.tsx",
+    "apps/native/src/hooks/use-new-visible-feature.ts",
+    "apps/native/src-tauri/src/new_visible_feature.rs",
+    "apps/native/src-tauri/src/new_subsystem/new_visible_feature.rs",
+    "apps/native/src-tauri/src/evolve/new_visible_feature.rs",
+    "apps/native/src-tauri/capabilities/new-visible-capability.json",
+    "apps/native/templates/new-visible-template/flake.nix",
+    "tests/e2e/new-visible-flow.sh",
+    "tests/e2e/computer-use/new-proof-signal.mjs",
+    ".github/workflows/new-visible-e2e.yml",
+  ]) {
+    assert.equal(
+      isCoverageCandidateFile(REAL_MANIFEST, file),
+      true,
+      `${file} should enter the shared PR/freshness candidate universe`,
+    );
+    const focus = buildManifestPrFocus({
+      changedFiles: [file],
+      manifest: REAL_MANIFEST,
+      knownScenarioKey: isStableCoverageScenarioKey,
+    });
+    assert.deepEqual(
+      focus.unmatchedUserVisibleFiles,
+      [file],
+      `${file} should fail closed as unmapped until it receives explicit ownership`,
+    );
+  }
   assert.equal(
     isStableCoverageScenarioKey("launch"),
     true,

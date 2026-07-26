@@ -12,6 +12,23 @@ export function matchesAnyPattern(value, patterns = []) {
   return patterns.some((pattern) => new RegExp(pattern).test(value));
 }
 
+export function isCoverageCandidateFile(manifest, file) {
+  return (
+    matchesAnyPattern(file, manifest.candidateIncludes ?? []) &&
+    !matchesAnyPattern(file, manifest.candidateExcludes ?? [])
+  );
+}
+
+export function coverageCandidateFiles(manifest, files = []) {
+  return [...new Set(files.filter((file) => isCoverageCandidateFile(manifest, file)))].sort();
+}
+
+export function unmappedCoverageCandidateFiles(manifest, files = []) {
+  return coverageCandidateFiles(manifest, files).filter(
+    (file) => !manifest.surfaces?.some((surface) => changedFileMatchesSurface(file, surface)),
+  );
+}
+
 export function sourcePrefixMatches(file, sourcePrefix) {
   const normalizedFile = String(file ?? "").replaceAll("\\", "/");
   const normalizedPrefix = String(sourcePrefix ?? "").replaceAll("\\", "/");

@@ -9,12 +9,12 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { artifactFileIssue, artifactForLabel, pngDimensions } from "./artifact-utils.mjs";
 import { dispatchRemoteCuaCommand, remoteCuaUsage } from "./cli.mjs";
-import { buildManifestPrFocus } from "./coverage-focus.mjs";
+import { buildManifestPrFocus, isLikelyUserVisiblePrFile } from "./coverage-focus.mjs";
 import {
   changedFileMatchesSurface,
+  coverageCandidateFiles,
   loadCoverageManifestFile,
-  matchesAnyPattern,
-  sourcePrefixMatches,
+  unmappedCoverageCandidateFiles,
 } from "./coverage-manifest.mjs";
 import {
   builtInElementAddressKinds,
@@ -325,13 +325,6 @@ function buildPrFocus() {
     changedFiles,
     manifest,
     knownScenarioKey: isStableCoverageScenarioKey,
-    specialScenarioKeysForFile(file) {
-      const scenarioKeys = [];
-      if (/^tests\/e2e\/computer-use\/|^\.github\/workflows\/computer-use-e2e\.yml$/i.test(file)) {
-        scenarioKeys.push("visualProofQuality", "reportInspection");
-      }
-      return scenarioKeys;
-    },
     scenarioSuggestionForFile(file, matchedSurfaces) {
       const waiver = matchedSurfaces.find((surface) => surface.waiver)?.waiver;
       if (waiver?.exitCriteria) {
@@ -462,7 +455,6 @@ function managedWaiverFor(surface) {
 function buildCoverageFreshness(state) {
   const manifest = loadCoverageManifest();
   const surfaces = manifest.surfaces || [];
-  const coveredPrefixes = surfaces.flatMap((surface) => surface.sourcePrefixes || []);
   const drift = [];
   const waivers = [];
   let mapped = 0;
@@ -491,16 +483,9 @@ function buildCoverageFreshness(state) {
     if (scenarioKeys.length) mapped += 1;
   }
 
-  const candidates = [
-    ...new Set((manifest.candidateRoots || []).flatMap((root) => walkFiles(root))),
-  ].filter(
-    (file) =>
-      matchesAnyPattern(file, manifest.candidateIncludes) &&
-      !matchesAnyPattern(file, manifest.candidateExcludes),
-  );
-  const unmappedCandidateFiles = candidates.filter(
-    (file) => !coveredPrefixes.some((prefix) => sourcePrefixMatches(file, prefix)),
-  );
+  const files = (manifest.candidateRoots || []).flatMap((root) => walkFiles(root));
+  const candidates = coverageCandidateFiles(manifest, files);
+  const unmappedCandidateFiles = unmappedCoverageCandidateFiles(manifest, files);
   if (unmappedCandidateFiles.length)
     drift.push(`Unmapped user-visible candidate files: ${unmappedCandidateFiles.join(", ")}`);
 
@@ -511,6 +496,7 @@ function buildCoverageFreshness(state) {
     mappedSurfaces: mapped,
     waivedSurfaces: waivers.length,
     candidateFiles: candidates.length,
+    candidateFilePaths: candidates,
     unmappedCandidateFiles,
     waivers,
     drift,
@@ -4564,8 +4550,21 @@ async function runSelfTest() {
   const coverageFreshness = buildCoverageFreshness();
   assert.equal(
     coverageFreshness.candidateFiles,
-    301,
-    "coverage freshness should scan app entrypoints, native libraries, Rust behavior, and desktop security config",
+    746,
+    "coverage freshness should preserve the full shared PR-visible behavior universe",
+  );
+  const coverageManifest = loadCoverageManifest();
+  const filesUnderCandidateRoots = [
+    ...new Set(
+      coverageManifest.candidateRoots.flatMap((root) => walkFiles(root)),
+    ),
+  ];
+  assert.deepEqual(
+    coverageFreshness.candidateFilePaths,
+    filesUnderCandidateRoots
+      .filter((file) => isLikelyUserVisiblePrFile(file, coverageManifest))
+      .sort(),
+    "PR focus and freshness should classify the same files with the same shared predicate",
   );
   assert.deepEqual(
     coverageFreshness.unmappedCandidateFiles,
@@ -4579,7 +4578,7 @@ async function runSelfTest() {
   );
   assert.equal(
     coverageFreshness.waivers.length,
-    13,
+    16,
     "the current explicit waiver baseline should remain auditable",
   );
   assert.deepEqual(
@@ -4587,7 +4586,7 @@ async function runSelfTest() {
       counts[item.risk] = (counts[item.risk] ?? 0) + 1;
       return counts;
     }, {}),
-    { medium: 7, high: 6 },
+    { medium: 8, high: 8 },
     "the current waiver risk distribution should remain explicit",
   );
   assert.equal(
@@ -4604,7 +4603,6 @@ async function runSelfTest() {
     false,
     "an isolated non-claiming source prefix should still participate in candidate-file coverage",
   );
-  const coverageManifest = loadCoverageManifest();
   const coverageOwnersFor = (file) =>
     coverageManifest.surfaces
       .filter((surface) => changedFileMatchesSurface(file, surface))
@@ -5864,6 +5862,14 @@ async function runSelfTest() {
     toolPrFocus.scenarioKeys.includes("prSpecificCoverage"),
     false,
     "PR focus coverage must not require itself",
+  );
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES =
+    "tests/e2e/computer-use/new-proof-signal.mjs";
+  const unownedProofSystemPrFocus = buildPrFocus();
+  assert.deepEqual(
+    unownedProofSystemPrFocus.unmatchedUserVisibleFiles,
+    ["tests/e2e/computer-use/new-proof-signal.mjs"],
+    "new Computer Use proof-system files should fail closed until explicitly owned",
   );
   process.env.NIXMAC_E2E_PR_CHANGED_FILES =
     ".github/workflows/computer-use-e2e.yml\ntests/e2e/computer-use/report.mjs";
