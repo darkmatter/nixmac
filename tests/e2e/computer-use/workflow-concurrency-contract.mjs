@@ -9,6 +9,10 @@ const AUTOMATIC_CONTRACT_COMMANDS = [
 ];
 const PINNED_DEVENV_INSTALL_COMMAND =
   "nix build github:cachix/devenv/v2.1.2 --out-link /tmp/nixmac-devenv-cli";
+const PINNED_DEVENV_INSTALL_STEP = {
+  name: "Install devenv",
+  run: PINNED_DEVENV_INSTALL_COMMAND,
+};
 const PINNED_DEVENV_SHELL =
   "/tmp/nixmac-devenv-cli/bin/devenv shell --impure -- bash -euo pipefail {0}";
 const AUTOMATIC_WORKFLOW_ENVIRONMENT = {
@@ -164,21 +168,9 @@ export function assertAutomaticConcurrencyValidationContract({
     `${workflowName} job ${jobId} must preserve the fail-fast git-hooks step`,
   );
   const gitHooksStep = gitHooksSteps[0];
-  for (const control of ["if", "continue-on-error"]) {
-    assert.equal(
-      Object.hasOwn(installStep, control),
-      false,
-      `${workflowName} job ${jobId} must install the pinned devenv CLI before running the contracts`,
-    );
-  }
-  assert.equal(
-    Object.hasOwn(installStep, "env"),
-    false,
-    `${workflowName} job ${jobId} installer environment must stay empty`,
-  );
-  assert.equal(
-    installStep.run,
-    PINNED_DEVENV_INSTALL_COMMAND,
+  assert.deepEqual(
+    installStep,
+    PINNED_DEVENV_INSTALL_STEP,
     `${workflowName} job ${jobId} must install the pinned devenv CLI before running the contracts`,
   );
   assert.ok(

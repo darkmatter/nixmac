@@ -370,6 +370,21 @@ assert.throws(
 );
 
 assert.throws(
+  () =>
+    assertAutomaticConcurrencyValidationContract({
+      workflowName: "custom-shell-devenv-installer.yaml",
+      source: automaticWorkflowYaml().replace(
+        "      - name: Install devenv",
+        "      - name: Install devenv\n        shell: bash -c 'exit 0' -- {0}",
+      ),
+      jobId: "git-hooks",
+      stepName: "Run Computer Use workflow contracts",
+    }),
+  /custom-shell-devenv-installer\.yaml job git-hooks must install the pinned devenv CLI before running the contracts/,
+  "automatic contract validation must reject an installer shell that can skip the pinned command",
+);
+
+assert.throws(
   () => {
     const source = automaticWorkflowYaml();
     const installStep = `      - name: Install devenv
