@@ -123,6 +123,7 @@ build {
       # Delete the .xip before copying to avoid peak disk = .xip + expanded + copy.
       "rm -f /tmp/Xcode-artifact.${var.xcode_artifact_type}",
       "if [ -d /tmp/xcode-expanded/Xcode.app ]; then sudo mv /tmp/xcode-expanded/Xcode.app /Applications/Xcode.app; fi",
+      "for xcode_app in /Applications/Xcode_*.app; do if [ -d \"$xcode_app\" ]; then sudo mv \"$xcode_app\" /Applications/Xcode.app; break; fi; done",
       "test -x /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild",
       "sudo xcode-select -s /Applications/Xcode.app/Contents/Developer",
       "sudo xcodebuild -license accept",
