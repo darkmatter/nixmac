@@ -535,8 +535,9 @@ Cover:
 - every pinned direct response rejects unknown keys at both the top level and
   every nested source/app/window/bounds/element object;
 
-- stdout/stderr overflow, nonzero exit/stderr, and timeout
-  SIGTERM-to-SIGKILL escalation are deterministic;
+- stdout/stderr overflow, nonzero exit/stderr, and timeout whole-process-group
+  SIGTERM-to-SIGKILL escalation are deterministic, including a descendant
+  that holds inherited pipes after the leader stops producing events;
 
 - OS-derived Unix-socket ownership rejects missing, ambiguous, or mismatched
   daemon peers before `check_permissions`, even when that RPC's `source`
@@ -544,13 +545,20 @@ Cover:
 
 - launch produces exactly one new daemon process instance, persists its PID,
   high-resolution birth time, and executable before post-launch verification,
-  validates that provisional instance before any status probe, and brackets
-  every RPC by that same instance and socket device/inode;
+  binds its `NSRunningApplication` executable/launch date, validates that
+  provisional instance before any status probe, reconciles the snapshots even
+  when `open` errors after launch acceptance, and brackets every RPC by that
+  same instance and socket device/inode;
 
 - delayed target readiness, post-launch failure cleanup, same-app PID reuse
-  refusal, post-kill exit confirmation, pre-stop daemon peer replacement
-  refusal, post-stop PID-plus-listener-plus-socket confirmation, and
-  target/daemon cleanup retries;
+  refusal, atomic application-instance swap refusal, post-termination exit
+  confirmation, pre-stop daemon peer replacement refusal, post-stop
+  PID-plus-listener-plus-socket confirmation, and target/daemon cleanup retries;
+
+- streamed deterministic bundle hashing rejects symlinks, excess file counts,
+  excess per-file or total bytes, and oversized sparse files; full bundle
+  attestation is cached per exact process for normal UI polls, then refreshed
+  at teardown and failure diagnosis, including mutation probes;
 
 - inline screenshot MIME/base64 validation, encoded and decoded limits,
   same-UID filesystem-substitution rejection, header-only PNG, corrupt IDAT,
@@ -568,7 +576,8 @@ Use `spawn` with argv arrays:
 
 ```js
 async function runCua(binary, args, { timeoutMs = 90_000 } = {}) {
-  // No shell. Collect bounded stdout/stderr. Kill on timeout.
+  // No shell. Collect bounded output in a dedicated POSIX process group.
+  // Close pipes, terminate the group, and reject by timeout plus kill grace.
 }
 ```
 
@@ -610,8 +619,13 @@ stdout schema. The process exit code/stderr remains the authority for current
    bytes, then snapshot process instances for the verified daemon executable;
 1. start the standalone app-owned daemon with exact argv
    `open -n -g <verified-app-path> --args serve --socket <run-socket>`;
+1. regardless of whether `open` succeeds or errors, reconcile the pre-launch
+   snapshot with a post-call snapshot; retain one unique candidate, but
+   aggregate launch and cleanup uncertainty for zero or multiple candidates;
 1. require exactly one new signed daemon PID/birth-time/executable instance
    before polling `status --socket <run-socket>`;
+1. bind that instance to one `NSRunningApplication` executable and
+   microsecond launch date while bracketing the lookup with `libproc`;
 1. canonicalize the Unix socket and run
    `/usr/sbin/lsof -nP -Fpcn -a -U <socket>`;
 1. require exactly one `cua-driver` PID holding the exact canonical socket,
@@ -631,12 +645,17 @@ The static and ephemeral images grant Accessibility and Screen Recording to
 the pinned `CuaDriver.app` bundle identity. Until upstream supplies an
 authenticated transport, the adapter supports owned-only fallback. Before and
 after every `call` RPC it re-proves the exact socket device/inode, listener
-PID/birth-time/executable, and signed bundle; output from an in-flight rebind
-is discarded. `close()` may stop only the exact daemon process instance this
-adapter started. A missing listener while that instance remains alive or any
-replacement listener/socket fails closed without deleting or stopping the
-replacement. A zero-exit `stop` is not cleanup proof: bounded polling must show
-no listener, the exact process absent or reused, and the socket path absent.
+PID/birth-time/executable against the full bundle attestation cached for that
+exact process; output from an in-flight rebind is discarded. Full hashing and
+codesign verification recur at clean teardown and any operation/continuity
+failure. `close()` may stop only the exact daemon process instance this adapter
+started. Provisional cleanup uses a single JXA lookup that verifies executable
+and launch date and calls `terminate` on that same `NSRunningApplication`
+object; it never falls back to PID-only signaling. A missing listener while
+that instance remains alive or any replacement listener/socket fails closed
+without deleting or stopping the replacement. A zero-exit `stop` is not
+cleanup proof: bounded polling must show no listener, the exact process absent
+or reused, and the socket path absent.
 The adapter never unlinks a residual socket path because `lstat` plus `unlink`
 cannot atomically exclude a same-UID replacement. A stale path remains an
 owned cleanup failure for Task 6 controller quarantine or ephemeral-host
@@ -669,11 +688,12 @@ disposal. Startup and cleanup failures are aggregated.
 1. retain pid/birth-time/executable/window/app-path identity and re-prove the
    process instance before and after every visible-state, click, and set-value
    RPC, discarding output if it changed in flight;
-1. on later preparation failure or close, compare the current PID,
-   birth-time, and executable directly with the provisionally owned instance
-   before `/bin/kill -KILL <pid>`, then poll until that exact instance is
-   absent or reused; never signal a replacement and never clear ownership on
-   signal success alone.
+1. on later preparation failure or close, refresh the full bundle attestation,
+   compare the current PID/birth-time/executable with the provisionally owned
+   instance, then atomically verify executable plus launch date and invoke
+   `forceTerminate` on that same `NSRunningApplication` object; poll until the
+   exact instance is absent or reused, never signal a replacement, and never
+   clear ownership on termination-request success alone.
 
 - [x] **Step 5: Implement normalized UI methods**
 

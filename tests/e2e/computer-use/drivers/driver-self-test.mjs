@@ -1,7 +1,16 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import { lstat, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  lstat,
+  mkdir,
+  mkdtemp,
+  open,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -1351,6 +1360,60 @@ try {
   await rm(cuaDigestFixtureDir, { recursive: true, force: true });
 }
 
+const cuaDigestBoundsFixtureDir = await mkdtemp(
+  path.join(os.tmpdir(), "nixmac-cua-bundle-bounds-"),
+);
+try {
+  await writeFile(path.join(cuaDigestBoundsFixtureDir, "a"), "1234");
+  await writeFile(path.join(cuaDigestBoundsFixtureDir, "b"), "5678");
+  await assert.rejects(
+    hashCuaBundleTree(cuaDigestBoundsFixtureDir, { maxFiles: 1 }),
+    /file count exceeds 1/,
+  );
+  await assert.rejects(
+    hashCuaBundleTree(cuaDigestBoundsFixtureDir, { maxTotalBytes: 7 }),
+    /total bytes exceed 7/,
+  );
+
+  const sparsePath = path.join(cuaDigestBoundsFixtureDir, "sparse");
+  const sparseFile = await open(sparsePath, "w");
+  try {
+    await sparseFile.truncate(1_048_577);
+  } finally {
+    await sparseFile.close();
+  }
+  const sparseStartedAt = Date.now();
+  await assert.rejects(
+    hashCuaBundleTree(cuaDigestBoundsFixtureDir, {
+      maxFileBytes: 1_048_576,
+      maxTotalBytes: 4_194_304,
+    }),
+    /file bytes exceed 1048576/,
+  );
+  assert.ok(Date.now() - sparseStartedAt < 1_000, "sparse-file bounds must fail before reading");
+
+  await rm(sparsePath);
+  await writeFile(path.join(cuaDigestBoundsFixtureDir, "large"), Buffer.alloc(2 * 1_048_576, 0x61));
+  const firstLargeDigest = await hashCuaBundleTree(cuaDigestBoundsFixtureDir, {
+    maxFileBytes: 3 * 1_048_576,
+    maxTotalBytes: 3 * 1_048_576,
+  });
+  const secondLargeDigest = await hashCuaBundleTree(cuaDigestBoundsFixtureDir, {
+    maxFileBytes: 3 * 1_048_576,
+    maxTotalBytes: 3 * 1_048_576,
+  });
+  assert.equal(firstLargeDigest, secondLargeDigest, "streamed bundle hashing must be deterministic");
+
+  const symlinkPath = path.join(cuaDigestBoundsFixtureDir, "linked");
+  await symlink("a", symlinkPath);
+  await assert.rejects(
+    hashCuaBundleTree(cuaDigestBoundsFixtureDir),
+    /rejects non-regular entry/,
+  );
+} finally {
+  await rm(cuaDigestBoundsFixtureDir, { recursive: true, force: true });
+}
+
 const processSpawnCalls = [];
 const processRunner = createCuaProcessRunner({
   spawnImpl(command, args, options) {
@@ -1377,59 +1440,66 @@ assert.equal(processSpawnCalls[0].command, "cua-driver");
 assert.deepEqual(processSpawnCalls[0].args, ["--version"]);
 assert.equal(processSpawnCalls[0].options.shell, false);
 assert.equal(processSpawnCalls[0].options.stdio[0], "ignore");
+assert.equal(processSpawnCalls[0].options.detached, true);
 
-function fakeCuaChild({ onKill = () => {} } = {}) {
+let nextFakeCuaPid = 51_000;
+function fakeCuaChild() {
   const child = new EventEmitter();
+  child.pid = nextFakeCuaPid++;
   child.stdout = new EventEmitter();
   child.stdout.setEncoding = () => {};
+  child.stdout.destroy = () => {};
   child.stderr = new EventEmitter();
   child.stderr.setEncoding = () => {};
-  child.kill = (signal) => {
-    onKill(signal, child);
-    return true;
-  };
+  child.stderr.destroy = () => {};
   return child;
 }
 
 const stdoutOverflowSignals = [];
+let stdoutOverflowChild;
 const stdoutOverflowRunner = createCuaProcessRunner({
   maxOutputBytes: 8,
+  signalProcessGroup(pid, signal) {
+    stdoutOverflowSignals.push({ pid, signal });
+    queueMicrotask(() => stdoutOverflowChild.emit("close", null, signal));
+  },
   spawnImpl() {
-    const child = fakeCuaChild({
-      onKill(signal, process) {
-        stdoutOverflowSignals.push(signal);
-        queueMicrotask(() => process.emit("close", null, signal));
-      },
-    });
-    queueMicrotask(() => child.stdout.emit("data", "123456789"));
-    return child;
+    stdoutOverflowChild = fakeCuaChild();
+    queueMicrotask(() => stdoutOverflowChild.stdout.emit("data", "123456789"));
+    return stdoutOverflowChild;
   },
 });
 await assert.rejects(
   stdoutOverflowRunner.run("cua-driver", ["call", "list_apps", "{}"]),
   /stdout exceeds 8 bytes/,
 );
-assert.deepEqual(stdoutOverflowSignals, ["SIGTERM"]);
+assert.deepEqual(stdoutOverflowSignals, [
+  { pid: stdoutOverflowChild.pid, signal: "SIGTERM" },
+  { pid: stdoutOverflowChild.pid, signal: "SIGKILL" },
+]);
 
 const stderrOverflowSignals = [];
+let stderrOverflowChild;
 const stderrOverflowRunner = createCuaProcessRunner({
   maxOutputBytes: 8,
+  signalProcessGroup(pid, signal) {
+    stderrOverflowSignals.push({ pid, signal });
+    queueMicrotask(() => stderrOverflowChild.emit("close", null, signal));
+  },
   spawnImpl() {
-    const child = fakeCuaChild({
-      onKill(signal, process) {
-        stderrOverflowSignals.push(signal);
-        queueMicrotask(() => process.emit("close", null, signal));
-      },
-    });
-    queueMicrotask(() => child.stderr.emit("data", "123456789"));
-    return child;
+    stderrOverflowChild = fakeCuaChild();
+    queueMicrotask(() => stderrOverflowChild.stderr.emit("data", "123456789"));
+    return stderrOverflowChild;
   },
 });
 await assert.rejects(
   stderrOverflowRunner.run("cua-driver", ["call", "list_apps", "{}"]),
   /stderr exceeds 8 bytes/,
 );
-assert.deepEqual(stderrOverflowSignals, ["SIGTERM"]);
+assert.deepEqual(stderrOverflowSignals, [
+  { pid: stderrOverflowChild.pid, signal: "SIGTERM" },
+  { pid: stderrOverflowChild.pid, signal: "SIGKILL" },
+]);
 
 const nonzeroRunner = createCuaProcessRunner({
   spawnImpl() {
@@ -1450,9 +1520,13 @@ await assert.rejects(nonzeroRunner.run("cua-driver", ["call", "click", "{}"]), (
 const scheduledRunnerTimers = [];
 const cancelledRunnerTimers = [];
 const timeoutSignals = [];
+let timeoutChild;
 const timeoutRunner = createCuaProcessRunner({
   timeoutMs: 90,
   killGraceMs: 25,
+  signalProcessGroup(pid, signal) {
+    timeoutSignals.push({ pid, signal });
+  },
   scheduleTimeout(callback, delayMs) {
     const handle = {
       callback,
@@ -1466,27 +1540,52 @@ const timeoutRunner = createCuaProcessRunner({
     cancelledRunnerTimers.push(handle);
   },
   spawnImpl() {
-    return fakeCuaChild({
-      onKill(signal, child) {
-        timeoutSignals.push(signal);
-        if (signal === "SIGKILL") queueMicrotask(() => child.emit("close", null, signal));
-      },
-    });
+    timeoutChild = fakeCuaChild();
+    return timeoutChild;
   },
 });
 const timedOutRun = timeoutRunner.run("cua-driver", ["call", "list_apps", "{}"]);
 assert.equal(scheduledRunnerTimers[0].delayMs, 90);
 scheduledRunnerTimers[0].callback();
-assert.deepEqual(timeoutSignals, ["SIGTERM"]);
+assert.deepEqual(timeoutSignals, [{ pid: timeoutChild.pid, signal: "SIGTERM" }]);
 assert.equal(scheduledRunnerTimers[1].delayMs, 25);
 scheduledRunnerTimers[1].callback();
 await assert.rejects(timedOutRun, (error) => {
   assert.equal(error.signal, "SIGKILL");
   return /timed out after 90ms/.test(error.message);
 });
-assert.deepEqual(timeoutSignals, ["SIGTERM", "SIGKILL"]);
+assert.deepEqual(timeoutSignals, [
+  { pid: timeoutChild.pid, signal: "SIGTERM" },
+  { pid: timeoutChild.pid, signal: "SIGKILL" },
+]);
 assert.equal(cancelledRunnerTimers.includes(scheduledRunnerTimers[0]), true);
 assert.equal(cancelledRunnerTimers.includes(scheduledRunnerTimers[1]), true);
+timeoutChild.emit("close", null, "SIGKILL");
+
+const descendantPipeRunner = createCuaProcessRunner({
+  timeoutMs: 75,
+  killGraceMs: 100,
+});
+const descendantPipeStartedAt = Date.now();
+await assert.rejects(
+  descendantPipeRunner.run(process.execPath, [
+    "-e",
+    `
+      const { spawn } = require("node:child_process");
+      process.on("SIGTERM", () => {});
+      spawn(process.execPath, [
+        "-e",
+        "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)",
+      ], { stdio: ["ignore", 1, 2] });
+      setInterval(() => {}, 1000);
+    `,
+  ]),
+  /timed out after 75ms/,
+);
+assert.ok(
+  Date.now() - descendantPipeStartedAt < 1_500,
+  "a TERM-resistant descendant holding inherited pipes must not defeat the runner deadline",
+);
 
 assert.deepEqual(
   parseCuaCliOutput(JSON.stringify(cuaListAppsFixture)).structured,
@@ -1878,12 +1977,15 @@ function createCuaHarness({
   daemonListenerExecutable = daemonExecutable,
   daemonListenerLingerChecksAfterStop = 0,
   daemonListenerPid = 31337,
+  daemonReplacementBeforeTermination = false,
   daemonStopFailures = 0,
   driverIdentityOverrides = {},
   duringStatus = null,
   duringTool = {},
   extraNewDaemonInstance = null,
   lsofOutput = "",
+  openCreatesDaemon = true,
+  openFailuresAfterLaunch = 0,
   permissionSourceExecutable = "/Applications/CuaDriver.app/Contents/MacOS/cua-driver",
   replacementListenerAfterStop = false,
   replacementSocketAfterStop = false,
@@ -1896,9 +1998,11 @@ function createCuaHarness({
   targetCanonicalFailuresAfterLaunch = 0,
   targetExitChecksAfterKill = 0,
   targetIdentityFailuresAfterLaunch = 0,
+  targetIdentityOverrides = {},
   targetKillFailures = 0,
   targetQueryFailuresAfterLaunch = 0,
   targetReplacementAfterQueryFailure = false,
+  targetReplacementBeforeTermination = false,
   toolStructuredMutators = {},
   windowReadyAfter = 0,
   toolOutputs = {},
@@ -1907,6 +2011,8 @@ function createCuaHarness({
   const commands = [];
   const commandOptions = [];
   const events = [];
+  const applicationInspections = [];
+  const applicationTerminations = [];
   const identityReads = [];
   const listedProcessExecutables = [];
   const pidQueries = [];
@@ -1927,9 +2033,12 @@ function createCuaHarness({
     daemonListenerPid,
     daemonListenerPresent: false,
     daemonPid: 31337,
+    daemonReplacementBeforeTermination,
     daemonRunning: false,
     daemonStopFailures,
     daemonStopped: false,
+    openFailuresAfterLaunch,
+    openCreatesDaemon,
     postKillExecutable: "",
     replacementListenerAfterStop,
     replacementSocketAfterStop,
@@ -1942,13 +2051,16 @@ function createCuaHarness({
     launchAppRpcFailures,
     targetBirthSec: 1_785_000_100,
     targetBirthUsec,
+    targetCanonicalCount: 0,
     targetCanonicalFailuresAfterLaunch,
     targetExecutable: `${cuaTargetPath}/Contents/MacOS/nixmac`,
     targetExitChecksRemaining: targetExitChecksAfterKill,
     targetIdentityFailuresAfterLaunch,
     targetKillFailures,
+    targetQueryCount: 0,
     targetQueryFailuresAfterLaunch,
     targetReplacementAfterQueryFailure,
+    targetReplacementBeforeTermination,
     targetRunning: false,
   };
   let listWindowsCalls = 0;
@@ -1961,10 +2073,15 @@ function createCuaHarness({
         return { stdout: "cua-driver 0.12.6\n", stderr: "" };
       }
       if (command === "/usr/bin/open") {
-        control.daemonRunning = true;
-        control.daemonListenerPresent = control.socketAppearsOnOpen;
-        control.socketPresent = control.socketAppearsOnOpen;
+        control.daemonRunning = control.openCreatesDaemon;
+        control.daemonListenerPresent =
+          control.openCreatesDaemon && control.socketAppearsOnOpen;
+        control.socketPresent = control.openCreatesDaemon && control.socketAppearsOnOpen;
         control.daemonStopped = false;
+        if (control.openFailuresAfterLaunch > 0) {
+          control.openFailuresAfterLaunch -= 1;
+          throw new Error("synthetic open failure after launch acceptance");
+        }
         return { stdout: "", stderr: "" };
       }
       if (command === "/usr/sbin/lsof") {
@@ -1981,26 +2098,6 @@ function createCuaHarness({
           stdout: `p${control.daemonListenerPid}\nccua-driver\nf9u\nn${args.at(-1)}\n`,
           stderr: "",
         };
-      }
-      if (command === "/bin/kill") {
-        if (args[1] === String(control.daemonPid)) {
-          assert.equal(args[0], "-TERM");
-          if (control.daemonKillFailures > 0) {
-            control.daemonKillFailures -= 1;
-            throw new Error("synthetic daemon kill failure");
-          }
-          control.daemonRunning = false;
-          control.daemonListenerPresent = false;
-          control.socketPresent = false;
-          return { stdout: "", stderr: "" };
-        }
-        assert.deepEqual(args, ["-KILL", "4242"]);
-        if (control.targetKillFailures > 0) {
-          control.targetKillFailures -= 1;
-          throw new Error("synthetic target kill failure");
-        }
-        control.targetRunning = false;
-        return { stdout: "", stderr: "" };
       }
       if (command !== "/opt/nixmac-e2e/bin/cua-driver") {
         throw new Error(`Unexpected test command: ${command}`);
@@ -2131,6 +2228,62 @@ function createCuaHarness({
     },
   };
   const dependencies = {
+    async inspectApplicationInstance(instance) {
+      applicationInspections.push({ ...instance });
+      const isDaemon = instance.pid === control.daemonPid;
+      return {
+        executable: isDaemon ? control.daemonExecutable : control.targetExecutable,
+        launchDateMicros: isDaemon
+          ? control.daemonBirthSec * 1_000_000 + control.daemonBirthUsec
+          : control.targetBirthSec * 1_000_000 + control.targetBirthUsec,
+        pid: instance.pid,
+      };
+    },
+    async terminateApplicationInstance(instance, { force }) {
+      applicationTerminations.push({ force, instance: { ...instance } });
+      const isDaemon = instance.pid === control.daemonPid;
+      if (isDaemon) {
+        if (control.daemonReplacementBeforeTermination) {
+          control.daemonReplacementBeforeTermination = false;
+          control.daemonBirthUsec += 1;
+        }
+        if (control.daemonKillFailures > 0) {
+          control.daemonKillFailures -= 1;
+          throw new Error("synthetic daemon application termination failure");
+        }
+        const expectedLaunchDateMicros =
+          control.daemonBirthSec * 1_000_000 + control.daemonBirthUsec;
+        if (
+          instance.applicationExecutable !== control.daemonExecutable ||
+          instance.applicationLaunchDateMicros !== expectedLaunchDateMicros
+        ) {
+          throw new Error("CuaDriver application instance changed before termination");
+        }
+        control.daemonRunning = false;
+        control.daemonListenerPresent = false;
+        control.socketPresent = false;
+        return;
+      }
+      assert.equal(instance.pid, 4242);
+      if (control.targetReplacementBeforeTermination) {
+        control.targetReplacementBeforeTermination = false;
+        control.targetBirthUsec += 1;
+      }
+      if (control.targetKillFailures > 0) {
+        control.targetKillFailures -= 1;
+        throw new Error("synthetic target application termination failure");
+      }
+      const expectedLaunchDateMicros =
+        control.targetBirthSec * 1_000_000 + control.targetBirthUsec;
+      if (
+        instance.applicationExecutable !== control.targetExecutable ||
+        instance.applicationLaunchDateMicros !== expectedLaunchDateMicros
+      ) {
+        throw new Error("CuaDriver application instance changed before termination");
+      }
+      assert.equal(force, true);
+      control.targetRunning = false;
+    },
     async lstat(filePath) {
       try {
         return await lstat(filePath);
@@ -2194,6 +2347,7 @@ function createCuaHarness({
         shortVersion: "0.32.1",
         buildVersion: "0.32.1",
         digestSha256: cuaTargetDigest,
+        ...targetIdentityOverrides,
       };
     },
     async canonicalPath(appPath) {
@@ -2207,11 +2361,16 @@ function createCuaHarness({
       }
       if (
         appPath === control.targetExecutable &&
-        control.targetRunning &&
-        control.targetCanonicalFailuresAfterLaunch > 0
+        control.targetRunning
       ) {
-        control.targetCanonicalFailuresAfterLaunch -= 1;
-        throw new Error("synthetic post-launch target canonicalization failure");
+        control.targetCanonicalCount += 1;
+        if (
+          control.targetCanonicalCount > 3 &&
+          control.targetCanonicalFailuresAfterLaunch > 0
+        ) {
+          control.targetCanonicalFailuresAfterLaunch -= 1;
+          throw new Error("synthetic post-launch target canonicalization failure");
+        }
       }
       return appPath;
     },
@@ -2290,7 +2449,8 @@ function createCuaHarness({
       }
       if (pid === 4242) {
         if (control.targetRunning) {
-          if (control.targetQueryFailuresAfterLaunch > 0) {
+          control.targetQueryCount += 1;
+          if (control.targetQueryCount > 2 && control.targetQueryFailuresAfterLaunch > 0) {
             control.targetQueryFailuresAfterLaunch -= 1;
             if (control.targetReplacementAfterQueryFailure) {
               control.targetBirthUsec += 1;
@@ -2383,6 +2543,8 @@ function createCuaHarness({
     ...driverOptions,
   });
   return {
+    applicationInspections,
+    applicationTerminations,
     commandOptions,
     commands,
     control,
@@ -2604,8 +2766,8 @@ assert.deepEqual(
 );
 assert.equal(
   ownedHarness.identityReads.filter((entry) => entry === "/Applications/CuaDriver.app").length,
-  5,
-  "connect must verify the bundle initially, for provisional/socket binding, and around the permission RPC",
+  2,
+  "connect must perform preflight and exact-process bind attestation without rehashing per RPC",
 );
 
 const fakeSelfAttestationHarness = createCuaHarness({
@@ -2800,8 +2962,8 @@ assert.equal(
 );
 assert.equal(
   confirmedDaemonExitHarness.processInstanceQueries.filter((pid) => pid === 31337).length,
-  8,
-  "zero-exit stop must poll the exact bound process instance until it is confirmed absent",
+  10,
+  "application binding and zero-exit stop must use exact process-instance checks",
 );
 assert.equal(confirmedDaemonExitHarness.driver.startedDaemon, false);
 
@@ -2872,13 +3034,90 @@ await assert.rejects(
   /daemon did not become ready/,
 );
 assert.equal(
-  readinessFailureCleanupHarness.commands.some(
-    (entry) =>
-      entry.command === "/bin/kill" && entry.args[0] === "-TERM" && entry.args[1] === "31337",
-  ),
-  true,
+  readinessFailureCleanupHarness.applicationTerminations.length,
+  1,
   "readiness failure must terminate the exact provisional daemon instance",
 );
+assert.equal(readinessFailureCleanupHarness.applicationTerminations[0].force, false);
+
+const openFailureAfterLaunchHarness = createCuaHarness({
+  openFailuresAfterLaunch: 1,
+  socketAppearsOnOpen: false,
+  driverOptions: { statusAttempts: 1 },
+});
+await assert.rejects(
+  () => openFailureAfterLaunchHarness.driver.connect(),
+  /synthetic open failure after launch acceptance/,
+  "an open error must still reconcile the before/after daemon snapshots",
+);
+assert.equal(openFailureAfterLaunchHarness.control.daemonRunning, false);
+assert.equal(openFailureAfterLaunchHarness.applicationTerminations.length, 1);
+assert.equal(openFailureAfterLaunchHarness.applicationTerminations[0].force, false);
+assert.equal(
+  openFailureAfterLaunchHarness.commands.some((entry) => entry.command === "/bin/kill"),
+  false,
+  "reconciled open errors must not fall back to PID-only signaling",
+);
+
+const openFailureWithoutCandidateHarness = createCuaHarness({
+  openCreatesDaemon: false,
+  openFailuresAfterLaunch: 1,
+  driverOptions: { statusAttempts: 1 },
+});
+await assert.rejects(
+  () => openFailureWithoutCandidateHarness.driver.connect(),
+  (error) => {
+    assert.equal(error instanceof AggregateError, true);
+    assert.equal(error.errors[0] instanceof AggregateError, true);
+    assert.match(error.errors[0].message, /launch ownership is uncertain/);
+    assert.match(error.errors[0].errors[0].message, /open failure after launch acceptance/);
+    assert.match(error.errors[0].errors[1].message, /exactly one new daemon process instance/);
+    assert.match(error.errors[1].message, /without a bound OS-derived peer/);
+    return true;
+  },
+  "zero post-open candidates must preserve launch uncertainty and cleanup uncertainty",
+);
+
+const openFailureWithAmbiguousCandidatesHarness = createCuaHarness({
+  openFailuresAfterLaunch: 1,
+  extraNewDaemonInstance: {
+    birthMarker: "1785000000.000102",
+    executable: "/Applications/CuaDriver.app/Contents/MacOS/cua-driver",
+    pid: 31339,
+    startSec: 1_785_000_000,
+    startUsec: 102,
+  },
+  driverOptions: { statusAttempts: 1 },
+});
+await assert.rejects(
+  () => openFailureWithAmbiguousCandidatesHarness.driver.connect(),
+  (error) => {
+    assert.equal(error instanceof AggregateError, true);
+    assert.equal(error.errors[0] instanceof AggregateError, true);
+    assert.match(error.errors[0].message, /launch ownership is uncertain/);
+    assert.match(error.errors[0].errors[1].message, /multiple new daemon process instances/);
+    assert.match(error.errors[1].message, /without a bound OS-derived peer/);
+    return true;
+  },
+  "ambiguous post-open candidates must be retained for controller quarantine",
+);
+assert.equal(openFailureWithAmbiguousCandidatesHarness.applicationTerminations.length, 0);
+
+const daemonSwapBeforeTerminationHarness = createCuaHarness({
+  daemonReplacementBeforeTermination: true,
+  socketAppearsOnOpen: false,
+  statusFailures: 1,
+  driverOptions: { statusAttempts: 1 },
+});
+await assert.rejects(
+  () => daemonSwapBeforeTerminationHarness.driver.connect(),
+  /application instance changed before termination/,
+  "atomic application-instance termination must reject a daemon PID swap after libproc proof",
+);
+assert.equal(daemonSwapBeforeTerminationHarness.control.daemonRunning, true);
+assert.equal(daemonSwapBeforeTerminationHarness.applicationTerminations.length, 1);
+daemonSwapBeforeTerminationHarness.control.daemonRunning = false;
+await daemonSwapBeforeTerminationHarness.driver.close();
 
 const daemonVerificationFailureHarness = createCuaHarness({
   daemonIdentityFailuresAfterLaunch: 1,
@@ -2890,10 +3129,7 @@ await assert.rejects(
   "the unique daemon candidate must become provisionally owned before signature verification",
 );
 assert.equal(
-  daemonVerificationFailureHarness.commands.filter(
-    (entry) =>
-      entry.command === "/bin/kill" && entry.args[0] === "-TERM" && entry.args[1] === "31337",
-  ).length,
+  daemonVerificationFailureHarness.applicationTerminations.length,
   1,
   "post-launch daemon verification failure must clean the exact captured instance",
 );
@@ -2907,12 +3143,9 @@ await assert.rejects(
   /synthetic post-launch daemon canonicalization failure/,
 );
 assert.equal(
-  daemonCanonicalizationFailureHarness.commands.filter(
-    (entry) =>
-      entry.command === "/bin/kill" && entry.args[0] === "-TERM" && entry.args[1] === "31337",
-  ).length,
-  1,
-  "daemon cleanup must not depend on canonicalization that failed after provisional capture",
+  daemonCanonicalizationFailureHarness.applicationTerminations.length,
+  0,
+  "cleanup must decline signaling when canonicalization prevented application-instance binding",
 );
 
 const daemonVerificationAndCleanupFailureHarness = createCuaHarness({
@@ -2926,7 +3159,7 @@ await assert.rejects(
     assert.equal(error instanceof AggregateError, true);
     assert.match(error.message, /startup failed and exact daemon cleanup failed/);
     assert.match(error.errors[0].message, /post-launch daemon signature failure/);
-    assert.match(error.errors[1].message, /synthetic daemon kill failure/);
+    assert.match(error.errors[1].message, /synthetic daemon application termination failure/);
     return true;
   },
   "daemon verification and exact cleanup failures must both remain visible",
@@ -2944,7 +3177,7 @@ await assert.rejects(
     assert.equal(error instanceof AggregateError, true);
     assert.match(error.message, /startup failed and exact daemon cleanup failed/);
     assert.match(error.errors[0].message, /daemon did not become ready/);
-    assert.match(error.errors[1].message, /synthetic daemon kill failure/);
+    assert.match(error.errors[1].message, /synthetic daemon application termination failure/);
     return true;
   },
 );
@@ -3014,8 +3247,8 @@ assert.equal(
 );
 assert.equal(
   confirmedExitHarness.processInstanceQueries.filter((pid) => pid === 4242).length,
-  6,
-  "post-capture validation, readiness, pre-kill, and exit polling must use high-resolution process-instance proof",
+  8,
+  "application binding, validation, readiness, and exit polling must use high-resolution process-instance proof",
 );
 assert.equal(
   confirmedExitHarness.listedProcessExecutables.filter(
@@ -3043,7 +3276,7 @@ await assert.rejects(
   /target did not become ready/,
 );
 assert.equal(
-  postLaunchFailureHarness.commands.filter((entry) => entry.command === "/bin/kill").length,
+  postLaunchFailureHarness.applicationTerminations.length,
   1,
   "a target owned from launch response must be cleaned after later prepare failure",
 );
@@ -3079,10 +3312,7 @@ for (const [name, options, expectedError] of [
     `${name} failure after launch must remain inside the owned-target cleanup boundary`,
   );
   assert.equal(
-    orphanBoundaryHarness.commands.filter(
-      (entry) =>
-        entry.command === "/bin/kill" && entry.args[0] === "-KILL" && entry.args[1] === "4242",
-    ).length,
+    orphanBoundaryHarness.applicationTerminations.length,
     1,
     `${name} failure must clean the uniquely launched target instance`,
   );
@@ -3104,11 +3334,8 @@ await assert.rejects(
   /synthetic post-launch target process query failure/,
 );
 assert.equal(
-  targetReplacementDuringValidationHarness.commands.some(
-    (entry) =>
-      entry.command === "/bin/kill" && entry.args[0] === "-KILL" && entry.args[1] === "4242",
-  ),
-  false,
+  targetReplacementDuringValidationHarness.applicationTerminations.length,
+  0,
   "cleanup must never kill a replacement that reused the provisionally owned target PID",
 );
 targetReplacementDuringValidationHarness.control.targetRunning = false;
@@ -3128,10 +3355,7 @@ await assert.rejects(
   "a launch RPC error must still poll for and own a uniquely created target",
 );
 assert.equal(
-  launchRpcOrphanBoundaryHarness.commands.filter(
-    (entry) =>
-      entry.command === "/bin/kill" && entry.args[0] === "-KILL" && entry.args[1] === "4242",
-  ).length,
+  launchRpcOrphanBoundaryHarness.applicationTerminations.length,
   1,
 );
 assert.equal(launchRpcOrphanBoundaryHarness.control.targetRunning, false);
@@ -3161,8 +3385,8 @@ assert.deepEqual(
 );
 assert.equal(
   ownedHarness.identityReads.filter((entry) => entry === cuaTargetPath).length,
-  3,
-  "prepareTarget should hash before launch, after provisional capture, and during readiness proof",
+  2,
+  "prepareTarget should hash before launch and at exact-process bind, then cache the attestation",
 );
 assert.equal(
   ownedHarness.processInstanceQueries.includes(4242),
@@ -3187,6 +3411,16 @@ assert.notEqual(cuaStateA.target.snapshotId, cuaStateB.target.snapshotId);
 assert.equal(cuaStateA.target.snapshotId, "4242:7002:1");
 assert.equal(cuaStateB.target.snapshotId, "4242:7002:2");
 assert.equal(cuaStateB.metadata.currentSpaceEvidence, "explicit");
+assert.equal(
+  ownedHarness.identityReads.filter((entry) => entry === "/Applications/CuaDriver.app").length,
+  2,
+  "successful UI polling must use the exact-process attestation cache",
+);
+assert.equal(
+  ownedHarness.identityReads.filter((entry) => entry === cuaTargetPath).length,
+  2,
+  "successful UI polling must not rehash the target bundle",
+);
 const getWindowStateCalls = ownedHarness.commands.filter(
   (entry) =>
     entry.command === "/opt/nixmac-e2e/bin/cua-driver" &&
@@ -3311,7 +3545,17 @@ assert.deepEqual(
 
 await ownedHarness.driver.close();
 assert.equal(
-  ownedHarness.commands.filter((entry) => entry.command === "/bin/kill").length,
+  ownedHarness.identityReads.filter((entry) => entry === "/Applications/CuaDriver.app").length,
+  3,
+  "clean daemon teardown must refresh the full bundle attestation",
+);
+assert.equal(
+  ownedHarness.identityReads.filter((entry) => entry === cuaTargetPath).length,
+  3,
+  "clean target teardown must refresh the full bundle attestation",
+);
+assert.equal(
+  ownedHarness.applicationTerminations.length,
   1,
   "close must terminate the exact target process owned by prepareTarget",
 );
@@ -3340,12 +3584,111 @@ await sameAppReusedPidHarness.driver.prepareTarget({
 sameAppReusedPidHarness.control.targetBirthUsec += 1;
 await sameAppReusedPidHarness.driver.close();
 assert.equal(
-  sameAppReusedPidHarness.commands.some(
-    (entry) => entry.command === "/bin/kill" && entry.args[1] === "4242",
-  ),
-  false,
+  sameAppReusedPidHarness.applicationTerminations.length,
+  0,
   "cleanup must never kill a same-app process that reused the owned pid",
 );
+
+const targetSwapBeforeTerminationHarness = createCuaHarness({
+  targetReplacementBeforeTermination: true,
+});
+await targetSwapBeforeTerminationHarness.driver.connect();
+await targetSwapBeforeTerminationHarness.driver.prepareTarget({
+  appBundleId: cuaTargetBundleId,
+  appPath: cuaTargetPath,
+});
+await assert.rejects(
+  () => targetSwapBeforeTerminationHarness.driver.close(),
+  /application instance changed before termination/,
+  "atomic application-instance termination must reject a target PID swap after libproc proof",
+);
+assert.equal(targetSwapBeforeTerminationHarness.control.targetRunning, true);
+assert.equal(targetSwapBeforeTerminationHarness.applicationTerminations.length, 1);
+await targetSwapBeforeTerminationHarness.driver.close();
+assert.equal(
+  targetSwapBeforeTerminationHarness.applicationTerminations.length,
+  1,
+  "a retry must recognize the replacement and decline another termination request",
+);
+
+const daemonMutationOverrides = {};
+const daemonMutationAtTeardownHarness = createCuaHarness({
+  driverIdentityOverrides: daemonMutationOverrides,
+});
+await daemonMutationAtTeardownHarness.driver.connect();
+daemonMutationOverrides.digestSha256 = "0".repeat(64);
+await assert.rejects(
+  () => daemonMutationAtTeardownHarness.driver.close(),
+  /CuaDriver\.app digestSha256 mismatch/,
+  "clean daemon teardown must detect bundle mutation before stop",
+);
+assert.equal(
+  daemonMutationAtTeardownHarness.commands.some(
+    (entry) => entry.command === "/opt/nixmac-e2e/bin/cua-driver" && entry.args[0] === "stop",
+  ),
+  false,
+);
+delete daemonMutationOverrides.digestSha256;
+await daemonMutationAtTeardownHarness.driver.close();
+
+const targetMutationOverrides = {};
+const targetMutationAtTeardownHarness = createCuaHarness({
+  targetIdentityOverrides: targetMutationOverrides,
+});
+await targetMutationAtTeardownHarness.driver.connect();
+await targetMutationAtTeardownHarness.driver.prepareTarget({
+  appBundleId: cuaTargetBundleId,
+  appPath: cuaTargetPath,
+});
+targetMutationOverrides.digestSha256 = "0".repeat(64);
+await assert.rejects(
+  () => targetMutationAtTeardownHarness.driver.close(),
+  /owned target identity changed/,
+  "clean target teardown must detect bundle mutation before termination",
+);
+assert.equal(targetMutationAtTeardownHarness.applicationTerminations.length, 0);
+delete targetMutationOverrides.digestSha256;
+await targetMutationAtTeardownHarness.driver.close();
+assert.equal(targetMutationAtTeardownHarness.applicationTerminations.length, 1);
+
+const targetMutationOnFailureOverrides = {};
+const targetMutationOnFailureHarness = createCuaHarness({
+  targetIdentityOverrides: targetMutationOnFailureOverrides,
+  duringTool: {
+    click() {
+      targetMutationOnFailureOverrides.digestSha256 = "0".repeat(64);
+      throw new Error("synthetic click transport failure");
+    },
+  },
+});
+await targetMutationOnFailureHarness.driver.connect();
+await targetMutationOnFailureHarness.driver.prepareTarget({
+  appBundleId: cuaTargetBundleId,
+  appPath: cuaTargetPath,
+});
+const targetMutationOnFailureState = await targetMutationOnFailureHarness.driver.visibleState({
+  app: cuaTargetBundleId,
+});
+const targetIdentityReadsBeforeFailure = targetMutationOnFailureHarness.identityReads.filter(
+  (entry) => entry === cuaTargetPath,
+).length;
+const targetMutationFailureResult = await targetMutationOnFailureHarness.driver.click({
+  app: cuaTargetBundleId,
+  elementAddress: {
+    kind: "cua-element-index",
+    elementIndex: 7,
+    ...targetMutationOnFailureState.target,
+  },
+});
+assert.equal(targetMutationFailureResult.ok, false);
+assert.match(targetMutationFailureResult.text, /target failure attestation failed/);
+assert.equal(
+  targetMutationOnFailureHarness.identityReads.filter((entry) => entry === cuaTargetPath).length,
+  targetIdentityReadsBeforeFailure + 1,
+  "an RPC failure must refresh target bundle evidence for diagnosis",
+);
+delete targetMutationOnFailureOverrides.digestSha256;
+await targetMutationOnFailureHarness.driver.close();
 
 const targetKillRetryHarness = createCuaHarness({ targetKillFailures: 1 });
 await targetKillRetryHarness.driver.connect();
@@ -3353,9 +3696,12 @@ await targetKillRetryHarness.driver.prepareTarget({
   appBundleId: cuaTargetBundleId,
   appPath: cuaTargetPath,
 });
-await assert.rejects(() => targetKillRetryHarness.driver.close(), /synthetic target kill failure/);
+await assert.rejects(
+  () => targetKillRetryHarness.driver.close(),
+  /synthetic target application termination failure/,
+);
 assert.equal(
-  targetKillRetryHarness.commands.filter((entry) => entry.command === "/bin/kill").length,
+  targetKillRetryHarness.applicationTerminations.length,
   1,
 );
 assert.equal(
@@ -3367,7 +3713,7 @@ assert.equal(
 );
 await targetKillRetryHarness.driver.close();
 assert.equal(
-  targetKillRetryHarness.commands.filter((entry) => entry.command === "/bin/kill").length,
+  targetKillRetryHarness.applicationTerminations.length,
   2,
   "failed target cleanup must retain ownership for a second close retry",
 );
@@ -3395,7 +3741,7 @@ await assert.rejects(
 targetExitTimeoutHarness.control.targetExitChecksRemaining = 0;
 await targetExitTimeoutHarness.driver.close();
 assert.equal(
-  targetExitTimeoutHarness.commands.filter((entry) => entry.command === "/bin/kill").length,
+  targetExitTimeoutHarness.applicationTerminations.length,
   1,
   "a retry should clear retained ownership once the exact pid is confirmed absent",
 );

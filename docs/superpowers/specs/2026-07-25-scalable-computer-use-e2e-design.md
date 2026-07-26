@@ -355,9 +355,13 @@ path, never `open -a`. Before launch, the adapter snapshots process instances
 for the verified daemon executable. Exactly one new PID,
 microsecond-resolution birth time, and executable must appear and become the
 provisionally owned instance before canonical-path, bundle-digest, or signature
-verification. That provisional instance must validate before the first status
-probe. A later verification/readiness failure can therefore terminate only
-the captured instance; cleanup failure is aggregated with startup failure.
+verification. It also binds the corresponding `NSRunningApplication`
+executable and high-resolution launch date while bracketing that lookup with
+the `libproc` identity. That provisional instance must validate before the
+first status probe. Because `/usr/bin/open` can report an error after launch
+acceptance, the adapter always reconciles the before/after snapshots; a unique
+candidate is retained for exact cleanup, while zero or multiple candidates
+preserve explicit launch uncertainty and aggregate cleanup uncertainty.
 
 After status becomes ready and before `check_permissions`, the adapter
 canonicalizes the selected Unix socket, captures its device/inode, and runs
@@ -376,10 +380,13 @@ peer credentials, and its caller-selected `session_id` is lifecycle state, not
 authentication. Attach-to-existing mode is therefore disabled. Owned mode
 first proves its socket path is absent, launches the app, and only then binds
 the OS-derived owner. Before and after every `call` RPC, the adapter re-proves
-the exact socket device/inode, listener PID/birth-time/executable, and signed
-bundle. If any proof changes in flight, the response is discarded. Generated
-owned sockets stay under the short system-temp `socketDirectory`; their
-absolute UTF-8 path is capped at 103 bytes.
+the exact socket device/inode and listener PID/birth-time/executable against
+the full bundle attestation cached for that exact process instance. Full
+bundle hashing and codesign verification run at bind, clean teardown, and
+operation/continuity failure diagnosis, rather than on every UI poll. If any
+proof changes in flight, the response is discarded. Generated owned sockets
+stay under the short system-temp `socketDirectory`; their absolute UTF-8 path
+is capped at 103 bytes.
 
 `close()` may send `stop --socket` only for the exact adapter-started process
 instance after re-proving the socket inode and listener identity. A missing
@@ -392,7 +399,11 @@ socket: `lstat` and `unlink` cannot form an atomic compare-and-delete, so a
 same-UID process could replace the path between those operations. Any stale
 socket remains an owned cleanup failure for Task 6 controller quarantine or
 ephemeral-host disposal. Startup failures terminate only an unambiguous exact
-provisional instance; startup and cleanup errors are aggregated.
+provisional instance. Provisional cleanup never sends a PID-only signal: one
+JXA operation obtains an `NSRunningApplication`, verifies its executable and
+launch date, and invokes `terminate` on that same object. If that atomic
+identity cannot be proved, direct signaling is declined and controller
+quarantine remains required. Startup and cleanup errors are aggregated.
 
 Before `launch_app`, the adapter resolves the staged bundle's exact main
 executable and snapshots its process instances. After either a successful
@@ -406,12 +417,13 @@ visible-state, click, and set-value RPC re-proves the process instance before
 and after the request and discards an in-flight response if it changed. Any
 later preparation failure and every `close()` attempt compare the current PID,
 birth time, and executable directly with the provisionally owned instance
-before signaling it. This cleanup boundary deliberately does not depend on a
-canonicalization or signature check that may itself have caused preparation to
-fail. Same-app PID reuse receives no action and is never killed. After
-`/bin/kill -KILL`, ownership is cleared only when the exact instance is absent
-or reused. Target and daemon cleanup failures are aggregated but retained
-independently so later `close()` calls retry only unfinished cleanup.
+and refresh the full bundle attestation. Target cleanup also uses one atomic
+JXA lookup/identity-check/`forceTerminate` call on the captured
+`NSRunningApplication` object. Same-app PID reuse receives no action, and an
+instance that cannot be atomically matched is never signaled. Ownership is
+cleared only when the exact instance is absent or reused. Target and daemon
+cleanup failures are aggregated but retained independently so later `close()`
+calls retry only unfinished cleanup.
 
 Element addresses use a new reviewed `cua-element-index` kind scoped to
 `(pid, window_id, snapshot)`. The adapter must refresh visible state before
@@ -430,6 +442,14 @@ scenario runner. It must expose:
 - teardown status.
 
 Filesystem screenshot paths are rejected, including same-UID substitution.
+Bundle-tree hashing walks in deterministic order, streams regular-file bytes,
+rejects symlinks and other non-regular entries, and enforces explicit file
+count, per-file byte, and total-byte ceilings before large or sparse files can
+consume unbounded resources. The subprocess runner creates a dedicated POSIX
+process group; timeout or output overflow closes its pipes, signals the group
+with `SIGTERM`, escalates the group with `SIGKILL`, and rejects at the bounded
+timeout-plus-grace deadline even if a descendant holds inherited pipes and no
+`close` event arrives.
 The subprocess stdout cap is the maximum canonical base64 size plus 1 MiB of
 JSON overhead; both encoded and decoded image sizes are bounded. Screenshot
 decoding is pinned to qualified non-interlaced 8-bit RGB or RGBA PNGs and
