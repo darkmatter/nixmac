@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -89,6 +90,7 @@ for (const [workflowName, jobId] of workflowContracts) {
 }
 
 const fixtureRoot = mkdtempSync(path.join(os.tmpdir(), "nixmac-host-lease-contract-"));
+let uncooperativeHeartbeat;
 try {
   const fakeBin = path.join(fixtureRoot, "bin");
   execFileSync("mkdir", ["-p", fakeBin]);
@@ -182,6 +184,33 @@ printf '%s\\n' "\${NIXMAC_E2E_FAKE_GH_STATUS:-in_progress}"
         timeout: HELPER_TIMEOUT_MS,
       },
     );
+  const invokeAsync = (command, ownerToken, extra = [], env = fixtureEnv) =>
+    new Promise((resolve, reject) => {
+      const child = spawn(
+        "bash",
+        [helperPath, command, ...commonArgs, "--owner-token", ownerToken, ...extra],
+        { env, stdio: ["ignore", "pipe", "pipe"] },
+      );
+      let stdout = "";
+      let stderr = "";
+      child.stdout.setEncoding("utf8");
+      child.stderr.setEncoding("utf8");
+      child.stdout.on("data", (chunk) => {
+        stdout += chunk;
+      });
+      child.stderr.on("data", (chunk) => {
+        stderr += chunk;
+      });
+      const timeout = setTimeout(() => {
+        child.kill("SIGKILL");
+        reject(new Error(`lease helper timed out after ${HELPER_TIMEOUT_MS} ms`));
+      }, HELPER_TIMEOUT_MS);
+      child.once("error", reject);
+      child.once("close", (status, signal) => {
+        clearTimeout(timeout);
+        resolve({ status, signal, stdout, stderr });
+      });
+    });
 
   const unrelatedTarget = path.join(fixtureRoot, "unrelated-target");
   const unrelatedSentinel = path.join(unrelatedTarget, "sentinel");
@@ -253,6 +282,50 @@ printf '%s\\n' "\${NIXMAC_E2E_FAKE_GH_STATUS:-in_progress}"
   assert.match(racedRootAcquire.stdout, /^LEASE_ACQUIRED\t/m);
   const releasedAfterRootRace = invoke("release", "owner-a");
   assert.equal(releasedAfterRootRace.status, 0, releasedAfterRootRace.stderr);
+  rmSync(leaseRoot, { recursive: true });
+
+  const ownerInitHook = path.join(fixtureRoot, "pause-owner-initialization");
+  writeFileSync(ownerInitHook, "#!/usr/bin/env bash\nset -euo pipefail\nsleep 0.5\n");
+  chmodSync(ownerInitHook, 0o700);
+  const concurrentAcquireEnv = {
+    ...fixtureEnv,
+    NIXMAC_E2E_LEASE_OWNER_INIT_TEST_HOOK: ownerInitHook,
+  };
+  const concurrentResults = await Promise.all([
+    invokeAsync(
+      "acquire",
+      "owner-a",
+      ["--wait-seconds", "0", "--poll-seconds", "1", "--max-hold-seconds", "60"],
+      concurrentAcquireEnv,
+    ),
+    invokeAsync(
+      "acquire",
+      "owner-b",
+      ["--wait-seconds", "0", "--poll-seconds", "1", "--max-hold-seconds", "60"],
+      concurrentAcquireEnv,
+    ),
+  ]);
+  const acquiredResults = concurrentResults.filter((result) => result.status === 0);
+  const busyResults = concurrentResults.filter((result) => result.status === 75);
+  assert.equal(
+    acquiredResults.length,
+    1,
+    `exactly one simultaneous cold acquire must win: ${JSON.stringify(concurrentResults)}`,
+  );
+  assert.equal(
+    busyResults.length,
+    1,
+    `the losing simultaneous cold acquire must be busy, not quarantined: ${JSON.stringify(concurrentResults)}`,
+  );
+  assert.match(busyResults[0].stderr, /LEASE_BUSY/);
+  assert.equal(
+    existsSync(path.join(leaseRoot, "QUARANTINED.json")),
+    false,
+    "normal concurrent cold acquisition must not quarantine the host",
+  );
+  const winningToken = concurrentResults[0].status === 0 ? "owner-a" : "owner-b";
+  const releasedConcurrentWinner = invoke("release", winningToken);
+  assert.equal(releasedConcurrentWinner.status, 0, releasedConcurrentWinner.stderr);
 
   const acquired = invoke("acquire", "owner-a", [
     "--wait-seconds",
@@ -514,46 +587,55 @@ cp -R "$lease_root/owner.original" "$lease_root/owner"
   );
   assert.equal(recoveredUnexpectedEntry.status, 0, recoveredUnexpectedEntry.stderr);
 
-  const acquiredForAmbiguousRecovery = invoke("acquire", "owner-d", [
-    "--wait-seconds",
-    "0",
-    "--poll-seconds",
-    "1",
-    "--max-hold-seconds",
-    "60",
-  ]);
-  assert.equal(acquiredForAmbiguousRecovery.status, 0, acquiredForAmbiguousRecovery.stderr);
-  const ambiguousHeartbeatPid = Number.parseInt(
-    readFileSync(path.join(leaseRoot, "owner", "heartbeat.pid"), "utf8").trim(),
-    10,
+  const ambiguousOwner = path.join(leaseRoot, "owner");
+  mkdirSync(ambiguousOwner);
+  const uncooperativeHeartbeatPath = path.join(ambiguousOwner, "heartbeat.sh");
+  const uncooperativeReadyPath = path.join(fixtureRoot, "uncooperative-heartbeat-ready");
+  writeFileSync(
+    uncooperativeHeartbeatPath,
+    "#!/usr/bin/env bash\nset -euo pipefail\ntrap '' TERM\nprintf 'ready\\n' > \"$1\"\nwhile true; do sleep 1; done\n",
   );
-  assert.ok(Number.isSafeInteger(ambiguousHeartbeatPid) && ambiguousHeartbeatPid > 1);
-  unlinkSync(path.join(leaseRoot, "owner", "owner.json"));
+  chmodSync(uncooperativeHeartbeatPath, 0o700);
+  writeFileSync(path.join(ambiguousOwner, "heartbeat"), "1700000000\n");
+  writeFileSync(path.join(ambiguousOwner, "heartbeat.log"), "");
+  uncooperativeHeartbeat = spawn("bash", [uncooperativeHeartbeatPath, uncooperativeReadyPath], {
+    stdio: "ignore",
+  });
+  assert.ok(uncooperativeHeartbeat.pid > 1);
+  writeFileSync(path.join(ambiguousOwner, "heartbeat.pid"), `${uncooperativeHeartbeat.pid}\n`);
+  for (let attempt = 0; attempt < 100 && !existsSync(uncooperativeReadyPath); attempt += 1) {
+    spawnSync("sleep", ["0.02"]);
+  }
+  assert.equal(
+    existsSync(uncooperativeReadyPath),
+    true,
+    "uncooperative heartbeat fixture must install its TERM trap before status",
+  );
+  const refusedAmbiguous = invoke("status", "owner-d", [], terminalEnv);
+  assert.notEqual(
+    refusedAmbiguous.status,
+    0,
+    "status must fail closed when a validated orphan heartbeat ignores SIGTERM",
+  );
+  assert.doesNotMatch(
+    refusedAmbiguous.stdout,
+    /^AMBIGUOUS\t/m,
+    "status must not report a recoverable ambiguous lease while its heartbeat is alive",
+  );
+  assert.match(refusedAmbiguous.stderr, /orphan heartbeat did not stop/i);
+  const uncooperativeExit = new Promise((resolve) => {
+    uncooperativeHeartbeat.once("close", resolve);
+  });
+  uncooperativeHeartbeat.kill("SIGKILL");
+  await uncooperativeExit;
+  uncooperativeHeartbeat = undefined;
+
   const ambiguous = invoke("status", "owner-d", [], terminalEnv);
   assert.equal(ambiguous.status, 0, ambiguous.stderr);
   assert.match(
     ambiguous.stdout,
     /^AMBIGUOUS\t[0-9a-f]{64}\tmissing-owner-metadata$/m,
     "ambiguous leases must expose an exact snapshot digest",
-  );
-  let heartbeatStillMatches = true;
-  for (let attempt = 0; attempt < 20 && heartbeatStillMatches; attempt += 1) {
-    const process = spawnSync(
-      "ps",
-      ["-p", String(ambiguousHeartbeatPid), "-o", "command="],
-      { encoding: "utf8" },
-    );
-    heartbeatStillMatches =
-      process.status === 0 &&
-      process.stdout.includes(path.join(leaseRoot, "owner", "heartbeat.sh"));
-    if (heartbeatStillMatches) {
-      spawnSync("sleep", ["0.05"]);
-    }
-  }
-  assert.equal(
-    heartbeatStillMatches,
-    false,
-    "status must stop a validated orphan heartbeat before reporting missing owner metadata",
   );
   const [, ambiguousDigest] = ambiguous.stdout.trim().split("\t");
   const recoveredAmbiguous = invoke(
@@ -569,7 +651,21 @@ cp -R "$lease_root/owner.original" "$lease_root/owner"
   );
   assert.equal(recoveredAmbiguous.status, 0, recoveredAmbiguous.stderr);
   assert.match(recoveredAmbiguous.stdout, /LEASE_RECOVERED/);
+  const reacquiredAfterAmbiguous = invoke("acquire", "owner-d", [
+    "--wait-seconds",
+    "0",
+    "--poll-seconds",
+    "1",
+    "--max-hold-seconds",
+    "60",
+  ]);
+  assert.equal(reacquiredAfterAmbiguous.status, 0, reacquiredAfterAmbiguous.stderr);
+  const releasedAfterAmbiguous = invoke("release", "owner-d");
+  assert.equal(releasedAfterAmbiguous.status, 0, releasedAfterAmbiguous.stderr);
 } finally {
+  if (uncooperativeHeartbeat) {
+    uncooperativeHeartbeat.kill("SIGKILL");
+  }
   rmSync(fixtureRoot, { recursive: true, force: true });
 }
 

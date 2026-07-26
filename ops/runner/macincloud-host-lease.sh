@@ -169,6 +169,7 @@ import signal
 import stat
 import subprocess
 import sys
+import time
 
 lease_root, lease_dir, quarantine_file = sys.argv[1:]
 SAFE_NAME = re.compile(r"^[A-Za-z0-9._-]+$")
@@ -245,6 +246,21 @@ def canonical_digest(directory_fd):
     return hashlib.sha256(records).hexdigest()
 
 
+def heartbeat_process_matches(heartbeat_pid):
+    heartbeat_script = os.path.join(lease_dir, "heartbeat.sh")
+    try:
+        process = subprocess.run(
+            ["/bin/ps", "-p", str(heartbeat_pid), "-o", "command="],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise SystemExit(f"unable to validate orphan heartbeat: {error}")
+    return process.returncode == 0 and heartbeat_script in process.stdout
+
+
 def stop_validated_heartbeat(directory_fd):
     try:
         heartbeat_pid_fd, _ = open_regular_at(
@@ -262,18 +278,7 @@ def stop_validated_heartbeat(directory_fd):
         return
     if heartbeat_pid <= 1:
         return
-    heartbeat_script = os.path.join(lease_dir, "heartbeat.sh")
-    try:
-        process = subprocess.run(
-            ["ps", "-p", str(heartbeat_pid), "-o", "command="],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=2,
-        )
-    except (OSError, subprocess.TimeoutExpired) as error:
-        raise SystemExit(f"unable to validate orphan heartbeat: {error}")
-    if process.returncode != 0 or heartbeat_script not in process.stdout:
+    if not heartbeat_process_matches(heartbeat_pid):
         return
     try:
         os.kill(heartbeat_pid, signal.SIGTERM)
@@ -281,6 +286,12 @@ def stop_validated_heartbeat(directory_fd):
         pass
     except OSError as error:
         raise SystemExit(f"unable to stop orphan heartbeat: {error}")
+    deadline = time.monotonic() + 2
+    while time.monotonic() < deadline:
+        if not heartbeat_process_matches(heartbeat_pid):
+            return
+        time.sleep(0.05)
+    raise SystemExit("orphan heartbeat did not stop after SIGTERM")
 
 
 root_fd = open_directory(lease_root, "lease root")
@@ -505,6 +516,10 @@ if [[ -e "$lease_dir" || -L "$lease_dir" ]]; then
 fi
 if mkdir "$lease_dir" 2>/dev/null; then
   trap 'rm -f "$lease_dir/owner.json.tmp.$$"; rmdir "$lease_dir" 2>/dev/null || true' ERR
+  if [[ "${NIXMAC_E2E_LEASE_TEST_MODE:-0}" == "1" &&
+    -n "${NIXMAC_E2E_LEASE_OWNER_INIT_TEST_HOOK:-}" ]]; then
+    "$NIXMAC_E2E_LEASE_OWNER_INIT_TEST_HOOK" "$lease_dir"
+  fi
   acquired_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   printf '%s' "$owner_b64" |
     base64_decode |
@@ -537,13 +552,36 @@ HEARTBEAT
   exit 0
 fi
 [[ -d "$lease_dir" && ! -L "$lease_dir" ]] || { printf 'UNSAFE\n'; exit 0; }
-if [[ -e "$lease_dir/owner.json" || -L "$lease_dir/owner.json" ]]; then
-  [[ -f "$lease_dir/owner.json" && ! -L "$lease_dir/owner.json" ]] ||
-    { printf 'UNSAFE\n'; exit 0; }
-else
-  printf 'AMBIGUOUS\n'
+directory_identity() {
+  if stat -f '%d:%i' "$1" 2>/dev/null; then
+    return
+  fi
+  stat -c '%d:%i' "$1" 2>/dev/null
+}
+owner_identity="$(directory_identity "$lease_dir")" ||
+  { printf 'UNSAFE\n'; exit 0; }
+initialization_deadline=$((SECONDS + 5))
+while [[ ! -e "$lease_dir/owner.json" && ! -L "$lease_dir/owner.json" ]]; do
+  current_identity="$(directory_identity "$lease_dir")" ||
+    { printf 'RETRY\n'; exit 0; }
+  if [[ "$current_identity" != "$owner_identity" ]]; then
+    printf 'RETRY\n'
+    exit 0
+  fi
+  if ((SECONDS >= initialization_deadline)); then
+    printf 'AMBIGUOUS\n'
+    exit 0
+  fi
+  sleep 0.1
+done
+current_identity="$(directory_identity "$lease_dir")" ||
+  { printf 'RETRY\n'; exit 0; }
+if [[ "$current_identity" != "$owner_identity" ]]; then
+  printf 'RETRY\n'
   exit 0
 fi
+[[ -f "$lease_dir/owner.json" && ! -L "$lease_dir/owner.json" ]] ||
+  { printf 'UNSAFE\n'; exit 0; }
 existing_json="$(cat "$lease_dir/owner.json")"
 desired_json="$(printf '%s' "$owner_b64" | base64_decode)"
 if ! jq -e '
@@ -625,6 +663,13 @@ REMOTE
         remote_quarantine "ambiguous-lease-owner" "lease directory exists without verifiable metadata"
         echo "LEASE_QUARANTINED: ambiguous owner metadata" >&2
         return 73
+        ;;
+      RETRY)
+        if ((SECONDS >= deadline)); then
+          echo "LEASE_BUSY: owner initialization changed; retry later" >&2
+          return 75
+        fi
+        sleep 1
         ;;
       UNSAFE)
         echo "LEASE_QUARANTINED: unsafe lease filesystem boundary" >&2
