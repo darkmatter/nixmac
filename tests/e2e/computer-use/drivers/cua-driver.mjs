@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { lstat, readFile, realpath } from "node:fs/promises";
+import { constants as fsConstants } from "node:fs";
+import { access, lstat, readFile, realpath } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,6 +21,7 @@ const DEFAULT_KILL_GRACE_MS = 1_000;
 const DEFAULT_BUNDLE_MAX_FILES = 10_000;
 const DEFAULT_BUNDLE_MAX_FILE_BYTES = 1_073_741_824;
 const DEFAULT_BUNDLE_MAX_TOTAL_BYTES = 4_294_967_296;
+const MACOS_SYSTEM_PYTHON = "/usr/bin/python3";
 const PINNED_CURRENT_SPACE_FALLBACK_VERSION = "0.12.6";
 const PINNED_METADATA_PATH = fileURLToPath(
   new URL("../fixtures/cua-driver/metadata.json", import.meta.url),
@@ -909,64 +911,86 @@ function requireBundleBound(value, label) {
   return value;
 }
 
-export async function hashCuaBundleTree(appPath, options = {}) {
-  const root = requireNonEmptyString(appPath, "bundle path");
-  if (!isPlainObject(options)) throw new TypeError("bundle digest options must be an object");
-  const unknownOptions = Object.keys(options).filter(
-    (key) => !["maxFiles", "maxFileBytes", "maxTotalBytes"].includes(key),
-  );
-  if (unknownOptions.length > 0) {
-    throw new TypeError(`unknown bundle digest option(s): ${unknownOptions.join(", ")}`);
+export function createCuaBundleTreeHasher({
+  preflightPython = (executable) => access(executable, fsConstants.X_OK),
+  createProcessRunner = createCuaProcessRunner,
+} = {}) {
+  if (typeof preflightPython !== "function") {
+    throw new TypeError("bundle digest preflightPython must be a function");
   }
-  const bounds = Object.freeze({
-    maxFiles: requireBundleBound(
-      options.maxFiles ?? DEFAULT_BUNDLE_MAX_FILES,
-      "bundle maxFiles",
-    ),
-    maxFileBytes: requireBundleBound(
-      options.maxFileBytes ?? DEFAULT_BUNDLE_MAX_FILE_BYTES,
-      "bundle maxFileBytes",
-    ),
-    maxTotalBytes: requireBundleBound(
-      options.maxTotalBytes ?? DEFAULT_BUNDLE_MAX_TOTAL_BYTES,
-      "bundle maxTotalBytes",
-    ),
-  });
-  const runner = createCuaProcessRunner({
+  if (typeof createProcessRunner !== "function") {
+    throw new TypeError("bundle digest createProcessRunner must be a function");
+  }
+  const runner = createProcessRunner({
     timeoutMs: 120_000,
-    maxOutputBytes: 8_192,
+    maxOutputBytes: 65_536,
   });
-  const result = await runner.run("/usr/bin/python3", [
-    "-c",
-    MACOS_BUNDLE_HASH_SCRIPT,
-    root,
-    String(bounds.maxFiles),
-    String(bounds.maxFileBytes),
-    String(bounds.maxTotalBytes),
-  ]);
-  let decoded;
-  try {
-    decoded = JSON.parse(result.stdout);
-  } catch {
-    throw new Error("CuaDriver bundle digest helper returned malformed JSON");
-  }
-  if (
-    !isPlainObject(decoded) ||
-    !hasExactKeys(decoded, decoded.ok === true ? ["digest", "ok"] : ["error", "ok"])
-  ) {
-    throw new Error("CuaDriver bundle digest helper returned malformed JSON");
-  }
-  if (decoded.ok !== true) {
-    throw new Error(
-      typeof decoded.error === "string" && decoded.error !== ""
-        ? decoded.error
-        : "CuaDriver bundle digest helper failed without an error",
+  return async function hashBundleTree(appPath, options = {}) {
+    const root = requireNonEmptyString(appPath, "bundle path");
+    if (!isPlainObject(options)) throw new TypeError("bundle digest options must be an object");
+    const unknownOptions = Object.keys(options).filter(
+      (key) => !["maxFiles", "maxFileBytes", "maxTotalBytes"].includes(key),
     );
-  }
-  if (typeof decoded.digest !== "string" || !/^[0-9a-f]{64}$/.test(decoded.digest)) {
-    throw new Error("CuaDriver bundle digest helper returned malformed JSON");
-  }
-  return decoded.digest;
+    if (unknownOptions.length > 0) {
+      throw new TypeError(`unknown bundle digest option(s): ${unknownOptions.join(", ")}`);
+    }
+    const bounds = Object.freeze({
+      maxFiles: requireBundleBound(options.maxFiles ?? DEFAULT_BUNDLE_MAX_FILES, "bundle maxFiles"),
+      maxFileBytes: requireBundleBound(
+        options.maxFileBytes ?? DEFAULT_BUNDLE_MAX_FILE_BYTES,
+        "bundle maxFileBytes",
+      ),
+      maxTotalBytes: requireBundleBound(
+        options.maxTotalBytes ?? DEFAULT_BUNDLE_MAX_TOTAL_BYTES,
+        "bundle maxTotalBytes",
+      ),
+    });
+    try {
+      await preflightPython(MACOS_SYSTEM_PYTHON);
+    } catch (error) {
+      throw new Error(
+        `CuaDriver bundle hashing requires executable macOS system Python at ${MACOS_SYSTEM_PYTHON}`,
+        { cause: error },
+      );
+    }
+    const result = await runner.run(MACOS_SYSTEM_PYTHON, [
+      "-c",
+      MACOS_BUNDLE_HASH_SCRIPT,
+      root,
+      String(bounds.maxFiles),
+      String(bounds.maxFileBytes),
+      String(bounds.maxTotalBytes),
+    ]);
+    let decoded;
+    try {
+      decoded = JSON.parse(result.stdout);
+    } catch {
+      throw new Error("CuaDriver bundle digest helper returned malformed JSON");
+    }
+    if (
+      !isPlainObject(decoded) ||
+      !hasExactKeys(decoded, decoded.ok === true ? ["digest", "ok"] : ["error", "ok"])
+    ) {
+      throw new Error("CuaDriver bundle digest helper returned malformed JSON");
+    }
+    if (decoded.ok !== true) {
+      throw new Error(
+        typeof decoded.error === "string" && decoded.error !== ""
+          ? decoded.error
+          : "CuaDriver bundle digest helper failed without an error",
+      );
+    }
+    if (typeof decoded.digest !== "string" || !/^[0-9a-f]{64}$/.test(decoded.digest)) {
+      throw new Error("CuaDriver bundle digest helper returned malformed JSON");
+    }
+    return decoded.digest;
+  };
+}
+
+const defaultBundleTreeHasher = createCuaBundleTreeHasher();
+
+export async function hashCuaBundleTree(appPath, options = {}) {
+  return defaultBundleTreeHasher(appPath, options);
 }
 
 export function parseCuaCodesignIdentity(output) {
@@ -1886,7 +1910,11 @@ export class CuaDriver {
     }
     if (failureAttestationError) {
       throw new AggregateError(
-        [operationError, ...(postconditionError ? [postconditionError] : []), failureAttestationError],
+        [
+          operationError,
+          ...(postconditionError ? [postconditionError] : []),
+          failureAttestationError,
+        ],
         `CuaDriver ${tool} failed and daemon failure attestation failed`,
       );
     }
@@ -1932,7 +1960,11 @@ export class CuaDriver {
     }
     if (failureAttestationError) {
       throw new AggregateError(
-        [operationError, ...(postconditionError ? [postconditionError] : []), failureAttestationError],
+        [
+          operationError,
+          ...(postconditionError ? [postconditionError] : []),
+          failureAttestationError,
+        ],
         `CuaDriver ${tool} failed and target failure attestation failed`,
       );
     }
@@ -2060,7 +2092,10 @@ export class CuaDriver {
       requireDeveloperSigningIdentity: true,
     });
     this._assertPinnedDriverIdentity(identity);
-    this.daemonAttestation = Object.freeze({ identity: Object.freeze({ ...identity }), processKey: key });
+    this.daemonAttestation = Object.freeze({
+      identity: Object.freeze({ ...identity }),
+      processKey: key,
+    });
   }
 
   async _daemonProcessState(peer = this.daemonPeer) {

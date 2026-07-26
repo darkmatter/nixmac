@@ -144,9 +144,14 @@ jobs:
 
       - name: Validate runner syntax
         run: |
+          cd "$GITHUB_WORKSPACE"
           node --check tests/e2e/computer-use/run-remote-cua.mjs
           node --check tests/e2e/computer-use/drivers/driver-self-test.mjs
           node tests/e2e/computer-use/drivers/driver-self-test.mjs
+          node --check tests/e2e/computer-use/run-cua-driver.mjs
+          node tests/e2e/computer-use/run-cua-driver.mjs self-test
+          node --check tests/e2e/computer-use/evidence-manifest-self-test.mjs
+          node tests/e2e/computer-use/evidence-manifest-self-test.mjs
           node --check tests/e2e/computer-use/check-remote.mjs
           node --check tests/e2e/computer-use/check-stale-run.mjs
           node --check tests/e2e/computer-use/storybook-preview.mjs

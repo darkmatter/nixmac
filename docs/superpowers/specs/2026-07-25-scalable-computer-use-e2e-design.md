@@ -388,6 +388,16 @@ proof changes in flight, the response is discarded. Generated owned sockets
 stay under the short system-temp `socketDirectory`; their absolute UTF-8 path
 is capped at 103 bytes.
 
+Production bundle hashing has one explicit macOS runtime prerequisite:
+Apple's executable system Python shim at `/usr/bin/python3`. The adapter
+preflights that exact path and fails before helper spawn with a clear
+prerequisite error when unavailable. Linux/ARC CI does not install or invoke
+that shim: it runs the portable mocked digest-contract tests, local-runner
+self-test, and evidence-manifest self-test from the repository root. Live
+descriptor traversal and the `renameatx_np` directory-swap probe are
+Darwin-only; swap-helper readiness rejects child error/close, bounds stderr,
+and has a hard deadline.
+
 `close()` may send `stop --socket` only for the exact adapter-started process
 instance after re-proving the socket inode and listener identity. A missing
 listener while that process remains alive, an ambiguous listener, or a

@@ -511,12 +511,16 @@ async function runSelfTest() {
     );
 
     const realDigestFixture = await createEvidenceFixture(root, { writePreflight: false });
-    const realBundleDigest = await hashCuaBundleTree(realDigestFixture.appBundlePath);
+    const computeSelfTestBundleDigest =
+      process.platform === "darwin" ? hashCuaBundleTree : async () => DIGEST_C;
+    const realBundleDigest = await computeSelfTestBundleDigest(realDigestFixture.appBundlePath);
     await writeRunPreflight(realDigestFixture.runDir, {
       ...realDigestFixture.input,
       appBundleDigest: realBundleDigest,
     });
-    const realDigestPreflight = await assertRunPreflight(realDigestFixture.runDir);
+    const realDigestPreflight = await assertRunPreflight(realDigestFixture.runDir, {
+      computeAppBundleDigest: computeSelfTestBundleDigest,
+    });
     assert.equal(
       realDigestPreflight.app.appBundleDigest,
       realBundleDigest,

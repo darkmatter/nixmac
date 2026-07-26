@@ -65,6 +65,10 @@ export async function runLocalCuaSmoke(
 }
 
 async function runSelfTest() {
+  const hashSelfTestBundleTree =
+    process.platform === "darwin"
+      ? hashCuaBundleTree
+      : async () => "1551c9dc7b53067f36e26c19c1ee2eb3c307b5cde1deaff10fc458030ec8542d";
   assert.match(localCuaUsage({ defaultApp: "com.darkmatter.nixmac" }), /local-cua-driver/);
   assert.match(
     localCuaUsage({ defaultApp: "com.darkmatter.nixmac" }),
@@ -580,7 +584,7 @@ async function runSelfTest() {
     "utf8",
   );
   await writeFile(path.join(transportConfigPath, "flake.nix"), "transport config\n", "utf8");
-  const transportAppDigest = await hashCuaBundleTree(transportAppPath);
+  const transportAppDigest = await hashSelfTestBundleTree(transportAppPath);
   const transportCalls = [];
   const forbiddenTransport = (name) => () => {
     transportCalls.push(name);
@@ -799,7 +803,7 @@ async function runSelfTest() {
     "utf8",
   );
   await writeFile(path.join(relativeConfigPath, "flake.nix"), "relative config\n", "utf8");
-  const relativeAppDigest = await hashCuaBundleTree(relativeAppPath);
+  const relativeAppDigest = await hashSelfTestBundleTree(relativeAppPath);
   const relativeEnv = {
     ...transportEnv,
     NIXMAC_E2E_APP_PATH: relativeAppPath,
@@ -909,7 +913,7 @@ async function runSelfTest() {
       `${blockerCase.name} full-run blocker\n`,
       "utf8",
     );
-    const blockerDigest = await hashCuaBundleTree(blockerAppPath);
+    const blockerDigest = await hashSelfTestBundleTree(blockerAppPath);
     let connectCalls = 0;
     class FullRunBlockerDriver {
       constructor(options) {
@@ -1003,7 +1007,7 @@ async function runSelfTest() {
     "bounded combined-failure probe\n",
     "utf8",
   );
-  const combinedAppDigest = await hashCuaBundleTree(combinedAppPath);
+  const combinedAppDigest = await hashSelfTestBundleTree(combinedAppPath);
   let combinedRunError;
   try {
     await runSuiteWithDriver(["--run-dir", combinedRunDir], {
@@ -1191,7 +1195,7 @@ async function runSelfTest() {
     "utf8",
   );
   await writeFile(path.join(smokeConfigPath, "flake.nix"), "smoke config\n", "utf8");
-  const smokeAppDigest = await hashCuaBundleTree(smokeAppPath);
+  const smokeAppDigest = await hashSelfTestBundleTree(smokeAppPath);
   const smokeCalls = [];
   let smokeSocketPath = "";
   class SmokeDriver {
@@ -1339,7 +1343,7 @@ async function runSelfTest() {
     "utf8",
   );
   await writeFile(path.join(blockerConfigPath, "flake.nix"), "blocker config\n", "utf8");
-  const blockerAppDigest = await hashCuaBundleTree(blockerAppPath);
+  const blockerAppDigest = await hashSelfTestBundleTree(blockerAppPath);
   const blockerEnv = {
     ...smokeEnv,
     NIXMAC_E2E_APP_PATH: blockerAppPath,

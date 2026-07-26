@@ -22,7 +22,7 @@ merges.
 
 **Tech Stack:** Node.js ESM, CuaDriver CLI/MCP daemon, GitHub Actions and API, Python 3.11 Centaur workflows/tools, Tart/Cilicon, `unittest`, existing nixmac preservation/adversarial harnesses, `jq`, `ffmpeg`.
 
-______________________________________________________________________
+---
 
 ## Repositories And Worktrees
 
@@ -562,7 +562,10 @@ Cover:
   device/inode across rename/replacement probes; the bounded helper preserves
   the existing digest contract, while full bundle attestation is cached per
   exact process for normal UI polls and refreshed at teardown and failure
-  diagnosis;
+  diagnosis. Production hashing explicitly requires the executable macOS
+  system Python shim at `/usr/bin/python3` and fails before spawning when that
+  prerequisite is absent. Portable Linux/ARC validation uses mocked digest
+  contracts; only Darwin runs the live bundle and `renameatx_np` probes;
 
 - inline screenshot MIME/base64 validation, encoded and decoded limits,
   same-UID filesystem-substitution rejection, header-only PNG, corrupt IDAT,
@@ -734,10 +737,15 @@ Run:
 
 ```bash
 node tests/e2e/computer-use/drivers/driver-self-test.mjs
+node tests/e2e/computer-use/run-cua-driver.mjs self-test
+node tests/e2e/computer-use/evidence-manifest-self-test.mjs
 node tests/e2e/computer-use/run-remote-cua.mjs self-test
 ```
 
-Expected: PASS without a remote Mac.
+Expected: PASS without a remote Mac. The Linux/ARC prepare job runs the first
+three commands from the repository root without installing macOS system
+Python; Darwin additionally exercises the live descriptor-bound hash and
+directory-swap probes.
 
 - [x] **Step 7: Commit**
 

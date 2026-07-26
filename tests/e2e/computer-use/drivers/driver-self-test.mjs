@@ -40,6 +40,7 @@ import {
 import { CodexAppServerDriver, codexAppServerDriverDescriptor } from "./codex-app-server.mjs";
 import {
   CuaDriver,
+  createCuaBundleTreeHasher,
   createCuaProcessRunner,
   cuaDriverDescriptor,
   hashCuaBundleTree,
@@ -1347,136 +1348,353 @@ TeamIdentifier=YCK386LBJ7
   },
 );
 
-const cuaDigestFixtureDir = await mkdtemp(path.join(os.tmpdir(), "nixmac-cua-bundle-digest-"));
-try {
-  await mkdir(path.join(cuaDigestFixtureDir, "Contents", "MacOS"), {
-    recursive: true,
-  });
-  await writeFile(path.join(cuaDigestFixtureDir, "Contents", "Info.plist"), "info");
-  await writeFile(path.join(cuaDigestFixtureDir, "Contents", "MacOS", "cua-driver"), "binary");
-  assert.equal(
-    await hashCuaBundleTree(cuaDigestFixtureDir),
-    "1551c9dc7b53067f36e26c19c1ee2eb3c307b5cde1deaff10fc458030ec8542d",
-  );
-} finally {
-  await rm(cuaDigestFixtureDir, { recursive: true, force: true });
-}
-
-const cuaDigestBoundsFixtureDir = await mkdtemp(
-  path.join(os.tmpdir(), "nixmac-cua-bundle-bounds-"),
+assert.equal(
+  typeof createCuaBundleTreeHasher,
+  "function",
+  "portable tests require an injectable bundle-hash wrapper",
 );
-const cuaDigestRootSymlink = `${cuaDigestBoundsFixtureDir}-symlink`;
-const cuaDigestRootFile = `${cuaDigestBoundsFixtureDir}-file`;
-try {
-  await writeFile(path.join(cuaDigestBoundsFixtureDir, "a"), "1234");
-  await writeFile(path.join(cuaDigestBoundsFixtureDir, "b"), "5678");
-  await symlink(cuaDigestBoundsFixtureDir, cuaDigestRootSymlink);
-  await assert.rejects(
-    hashCuaBundleTree(cuaDigestRootSymlink),
-    /bundle root must be a non-symlink directory/,
-  );
-  await writeFile(cuaDigestRootFile, "not a bundle");
-  await assert.rejects(
-    hashCuaBundleTree(cuaDigestRootFile),
-    /bundle root must be a non-symlink directory/,
-  );
-  await assert.rejects(
-    hashCuaBundleTree(cuaDigestBoundsFixtureDir, { maxFiles: 1 }),
-    /file count exceeds 1/,
-  );
-  await assert.rejects(
-    hashCuaBundleTree(cuaDigestBoundsFixtureDir, { maxTotalBytes: 7 }),
-    /total bytes exceed 7/,
-  );
-
-  const sparsePath = path.join(cuaDigestBoundsFixtureDir, "sparse");
-  const sparseFile = await open(sparsePath, "w");
-  try {
-    await sparseFile.truncate(1_048_577);
-  } finally {
-    await sparseFile.close();
-  }
-  const sparseStartedAt = Date.now();
-  await assert.rejects(
-    hashCuaBundleTree(cuaDigestBoundsFixtureDir, {
-      maxFileBytes: 1_048_576,
-      maxTotalBytes: 4_194_304,
+const mockedBundleHashCalls = [];
+let mockedBundleHashRunnerOptions;
+const mockedBundleHashResults = [
+  {
+    stdout: JSON.stringify({
+      digest: "1551c9dc7b53067f36e26c19c1ee2eb3c307b5cde1deaff10fc458030ec8542d",
+      ok: true,
     }),
-    /file bytes exceed 1048576/,
-  );
-  assert.ok(Date.now() - sparseStartedAt < 1_000, "sparse-file bounds must fail before reading");
+  },
+  {
+    stdout: JSON.stringify({
+      digest: "not-a-sha256",
+      ok: true,
+    }),
+  },
+];
+const portableBundleHasher = createCuaBundleTreeHasher({
+  async preflightPython(executable) {
+    assert.equal(executable, "/usr/bin/python3");
+  },
+  createProcessRunner(options) {
+    mockedBundleHashRunnerOptions = options;
+    return {
+      async run(command, args) {
+        mockedBundleHashCalls.push({ args, command });
+        return mockedBundleHashResults.shift();
+      },
+    };
+  },
+});
+assert.equal(
+  await portableBundleHasher("/portable/CuaDriver.app", {
+    maxFileBytes: 200,
+    maxFiles: 100,
+    maxTotalBytes: 300,
+  }),
+  "1551c9dc7b53067f36e26c19c1ee2eb3c307b5cde1deaff10fc458030ec8542d",
+);
+assert.deepEqual(mockedBundleHashRunnerOptions, {
+  maxOutputBytes: 65_536,
+  timeoutMs: 120_000,
+});
+assert.equal(mockedBundleHashCalls[0].command, "/usr/bin/python3");
+assert.deepEqual(mockedBundleHashCalls[0].args.slice(2), [
+  "/portable/CuaDriver.app",
+  "100",
+  "200",
+  "300",
+]);
+assert.match(
+  mockedBundleHashCalls[0].args[1],
+  /digest\.update\(relative_path\.encode\("utf-8"\)\)/,
+  "the portable wrapper must retain the pinned relative-path digest framing",
+);
+await assert.rejects(
+  portableBundleHasher("/portable/CuaDriver.app"),
+  /bundle digest helper returned malformed JSON/,
+);
 
-  await rm(sparsePath);
-  await writeFile(path.join(cuaDigestBoundsFixtureDir, "large"), Buffer.alloc(2 * 1_048_576, 0x61));
-  const firstLargeDigest = await hashCuaBundleTree(cuaDigestBoundsFixtureDir, {
-    maxFileBytes: 3 * 1_048_576,
-    maxTotalBytes: 3 * 1_048_576,
+let missingPythonRunnerCalls = 0;
+const missingPythonHasher = createCuaBundleTreeHasher({
+  async preflightPython() {
+    const error = new Error("spawn /usr/bin/python3 ENOENT");
+    error.code = "ENOENT";
+    throw error;
+  },
+  createProcessRunner() {
+    return {
+      async run() {
+        missingPythonRunnerCalls += 1;
+        throw new Error("bundle helper must not run");
+      },
+    };
+  },
+});
+await assert.rejects(
+  missingPythonHasher("/portable/CuaDriver.app"),
+  /bundle hashing requires executable macOS system Python at \/usr\/bin\/python3/,
+);
+assert.equal(missingPythonRunnerCalls, 0, "missing Python must fail before spawning the helper");
+
+function waitForSwapProbeReady(child, { timeoutMs = 5_000, maxStderrBytes = 8_192 } = {}) {
+  assert.ok(Number.isInteger(timeoutMs) && timeoutMs > 0);
+  assert.ok(Number.isInteger(maxStderrBytes) && maxStderrBytes > 0);
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let stdout = "";
+    let stderr = "";
+    let stderrBytes = 0;
+    let stderrTruncated = false;
+    const timer = setTimeout(() => {
+      finish(
+        reject,
+        new Error(
+          `bundle hash swap probe readiness timed out after ${timeoutMs}ms; stderr: ${
+            stderr || "<empty>"
+          }${stderrTruncated ? " [truncated]" : ""}`,
+        ),
+      );
+    }, timeoutMs);
+    const cleanup = () => {
+      clearTimeout(timer);
+      child.removeListener("error", onError);
+      child.removeListener("close", onClose);
+      child.stdout.removeListener("data", onStdout);
+      child.stderr.removeListener("data", onStderr);
+    };
+    const finish = (callback, value) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      callback(value);
+    };
+    const onError = (error) => {
+      finish(reject, new Error(`bundle hash swap probe failed before readiness: ${error.message}`));
+    };
+    const onClose = (code, signal) => {
+      const status = code === null ? `signal ${signal ?? "unknown"}` : `code ${String(code)}`;
+      finish(
+        reject,
+        new Error(
+          `bundle hash swap probe exited before readiness with ${status}; stderr: ${
+            stderr || "<empty>"
+          }${stderrTruncated ? " [truncated]" : ""}`,
+        ),
+      );
+    };
+    const onStdout = (chunk) => {
+      stdout = `${stdout}${String(chunk)}`.slice(-1_024);
+      if (/(?:^|\n)ready(?:\r?\n|$)/.test(stdout)) finish(resolve);
+    };
+    const onStderr = (chunk) => {
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk));
+      const remaining = maxStderrBytes - stderrBytes;
+      if (remaining <= 0) {
+        stderrTruncated = true;
+        return;
+      }
+      const accepted = buffer.subarray(0, remaining);
+      stderr += accepted.toString("utf8");
+      stderrBytes += accepted.byteLength;
+      if (accepted.byteLength < buffer.byteLength) stderrTruncated = true;
+    };
+    child.once("error", onError);
+    child.once("close", onClose);
+    child.stdout.on("data", onStdout);
+    child.stderr.on("data", onStderr);
   });
-  const secondLargeDigest = await hashCuaBundleTree(cuaDigestBoundsFixtureDir, {
-    maxFileBytes: 3 * 1_048_576,
-    maxTotalBytes: 3 * 1_048_576,
-  });
-  assert.equal(firstLargeDigest, secondLargeDigest, "streamed bundle hashing must be deterministic");
-
-  const symlinkPath = path.join(cuaDigestBoundsFixtureDir, "linked");
-  await symlink("a", symlinkPath);
-  await assert.rejects(
-    hashCuaBundleTree(cuaDigestBoundsFixtureDir),
-    /rejects non-regular entry/,
-  );
-  await rm(symlinkPath);
-
-  const nestedDirectory = path.join(cuaDigestBoundsFixtureDir, "nested-directory");
-  await mkdir(nestedDirectory);
-  await writeFile(path.join(nestedDirectory, "file"), "nested");
-  const directorySymlinkPath = path.join(cuaDigestBoundsFixtureDir, "linked-directory");
-  await symlink("nested-directory", directorySymlinkPath);
-  await assert.rejects(
-    hashCuaBundleTree(cuaDigestBoundsFixtureDir),
-    /rejects non-regular entry/,
-    "a child directory symlink must never be traversed",
-  );
-} finally {
-  await rm(cuaDigestRootFile, { force: true });
-  await rm(cuaDigestRootSymlink, { force: true });
-  await rm(cuaDigestBoundsFixtureDir, { recursive: true, force: true });
 }
 
-async function populateBundleDirectory(directory, fileCount, contents) {
-  await mkdir(directory, { recursive: true });
-  for (let offset = 0; offset < fileCount; offset += 100) {
-    await Promise.all(
-      Array.from({ length: Math.min(100, fileCount - offset) }, (_, index) =>
-        writeFile(path.join(directory, `file-${String(offset + index).padStart(5, "0")}`), contents),
-      ),
-    );
+async function stopSwapProbe(child, closed, stopPath, { timeoutMs = 5_000 } = {}) {
+  await writeFile(stopPath, "stop");
+  let timer;
+  try {
+    await Promise.race([
+      closed,
+      new Promise((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`bundle hash swap probe did not close after ${timeoutMs}ms`)),
+          timeoutMs,
+        );
+      }),
+    ]);
+  } catch (error) {
+    child.kill("SIGKILL");
+    throw error;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
-const cuaDigestSwapParent = await mkdtemp(path.join(os.tmpdir(), "nixmac-cua-bundle-swap-"));
-try {
-  const swapRoot = path.join(cuaDigestSwapParent, "Bundle.app");
-  const originalDirectory = path.join(swapRoot, "Contents");
-  const replacementDirectory = path.join(cuaDigestSwapParent, "replacement");
-  const swapTemporaryDirectory = path.join(cuaDigestSwapParent, "swap-temporary");
-  const swapperStopPath = path.join(cuaDigestSwapParent, "stop-swapper");
-  await populateBundleDirectory(originalDirectory, 50, "");
-  await populateBundleDirectory(replacementDirectory, 50, "replacement");
+assert.equal(
+  typeof waitForSwapProbeReady,
+  "function",
+  "the swap probe needs bounded close-aware readiness",
+);
+const earlyExitSwapper = new EventEmitter();
+earlyExitSwapper.stdout = new EventEmitter();
+earlyExitSwapper.stdout.setEncoding = () => {};
+earlyExitSwapper.stderr = new EventEmitter();
+earlyExitSwapper.stderr.setEncoding = () => {};
+queueMicrotask(() => {
+  earlyExitSwapper.stderr.emit("data", `synthetic renameatx_np failure ${"x".repeat(9_000)}`);
+  earlyExitSwapper.emit("close", 72, null);
+});
+await assert.rejects(waitForSwapProbeReady(earlyExitSwapper, { timeoutMs: 1_000 }), (error) => {
+  assert.match(
+    error.message,
+    /swap probe exited before readiness.*code 72.*synthetic renameatx_np failure/s,
+  );
+  assert.match(error.message, /\[truncated\]$/);
+  assert.ok(Buffer.byteLength(error.message) < 8_500, "swap helper stderr must stay bounded");
+  return true;
+});
+const silentSwapper = new EventEmitter();
+silentSwapper.stdout = new EventEmitter();
+silentSwapper.stdout.setEncoding = () => {};
+silentSwapper.stderr = new EventEmitter();
+silentSwapper.stderr.setEncoding = () => {};
+await assert.rejects(
+  waitForSwapProbeReady(silentSwapper, { timeoutMs: 20 }),
+  /swap probe readiness timed out after 20ms/,
+);
 
-  const originalDigest = await hashCuaBundleTree(swapRoot);
-  await rename(originalDirectory, swapTemporaryDirectory);
-  await rename(replacementDirectory, originalDirectory);
-  await rename(swapTemporaryDirectory, replacementDirectory);
-  const replacementDigest = await hashCuaBundleTree(swapRoot);
-  await rename(originalDirectory, swapTemporaryDirectory);
-  await rename(replacementDirectory, originalDirectory);
-  await rename(swapTemporaryDirectory, replacementDirectory);
+if (process.platform === "darwin") {
+  const cuaDigestFixtureDir = await mkdtemp(path.join(os.tmpdir(), "nixmac-cua-bundle-digest-"));
+  try {
+    await mkdir(path.join(cuaDigestFixtureDir, "Contents", "MacOS"), {
+      recursive: true,
+    });
+    await writeFile(path.join(cuaDigestFixtureDir, "Contents", "Info.plist"), "info");
+    await writeFile(path.join(cuaDigestFixtureDir, "Contents", "MacOS", "cua-driver"), "binary");
+    assert.equal(
+      await hashCuaBundleTree(cuaDigestFixtureDir),
+      "1551c9dc7b53067f36e26c19c1ee2eb3c307b5cde1deaff10fc458030ec8542d",
+    );
+  } finally {
+    await rm(cuaDigestFixtureDir, { recursive: true, force: true });
+  }
 
-  const swapper = spawn(
-    "/usr/bin/python3",
-    [
-      "-c",
-      String.raw`
+  const cuaDigestBoundsFixtureDir = await mkdtemp(
+    path.join(os.tmpdir(), "nixmac-cua-bundle-bounds-"),
+  );
+  const cuaDigestRootSymlink = `${cuaDigestBoundsFixtureDir}-symlink`;
+  const cuaDigestRootFile = `${cuaDigestBoundsFixtureDir}-file`;
+  try {
+    await writeFile(path.join(cuaDigestBoundsFixtureDir, "a"), "1234");
+    await writeFile(path.join(cuaDigestBoundsFixtureDir, "b"), "5678");
+    await symlink(cuaDigestBoundsFixtureDir, cuaDigestRootSymlink);
+    await assert.rejects(
+      hashCuaBundleTree(cuaDigestRootSymlink),
+      /bundle root must be a non-symlink directory/,
+    );
+    await writeFile(cuaDigestRootFile, "not a bundle");
+    await assert.rejects(
+      hashCuaBundleTree(cuaDigestRootFile),
+      /bundle root must be a non-symlink directory/,
+    );
+    await assert.rejects(
+      hashCuaBundleTree(cuaDigestBoundsFixtureDir, { maxFiles: 1 }),
+      /file count exceeds 1/,
+    );
+    await assert.rejects(
+      hashCuaBundleTree(cuaDigestBoundsFixtureDir, { maxTotalBytes: 7 }),
+      /total bytes exceed 7/,
+    );
+
+    const sparsePath = path.join(cuaDigestBoundsFixtureDir, "sparse");
+    const sparseFile = await open(sparsePath, "w");
+    try {
+      await sparseFile.truncate(1_048_577);
+    } finally {
+      await sparseFile.close();
+    }
+    const sparseStartedAt = Date.now();
+    await assert.rejects(
+      hashCuaBundleTree(cuaDigestBoundsFixtureDir, {
+        maxFileBytes: 1_048_576,
+        maxTotalBytes: 4_194_304,
+      }),
+      /file bytes exceed 1048576/,
+    );
+    assert.ok(Date.now() - sparseStartedAt < 1_000, "sparse-file bounds must fail before reading");
+
+    await rm(sparsePath);
+    await writeFile(
+      path.join(cuaDigestBoundsFixtureDir, "large"),
+      Buffer.alloc(2 * 1_048_576, 0x61),
+    );
+    const firstLargeDigest = await hashCuaBundleTree(cuaDigestBoundsFixtureDir, {
+      maxFileBytes: 3 * 1_048_576,
+      maxTotalBytes: 3 * 1_048_576,
+    });
+    const secondLargeDigest = await hashCuaBundleTree(cuaDigestBoundsFixtureDir, {
+      maxFileBytes: 3 * 1_048_576,
+      maxTotalBytes: 3 * 1_048_576,
+    });
+    assert.equal(
+      firstLargeDigest,
+      secondLargeDigest,
+      "streamed bundle hashing must be deterministic",
+    );
+
+    const symlinkPath = path.join(cuaDigestBoundsFixtureDir, "linked");
+    await symlink("a", symlinkPath);
+    await assert.rejects(hashCuaBundleTree(cuaDigestBoundsFixtureDir), /rejects non-regular entry/);
+    await rm(symlinkPath);
+
+    const nestedDirectory = path.join(cuaDigestBoundsFixtureDir, "nested-directory");
+    await mkdir(nestedDirectory);
+    await writeFile(path.join(nestedDirectory, "file"), "nested");
+    const directorySymlinkPath = path.join(cuaDigestBoundsFixtureDir, "linked-directory");
+    await symlink("nested-directory", directorySymlinkPath);
+    await assert.rejects(
+      hashCuaBundleTree(cuaDigestBoundsFixtureDir),
+      /rejects non-regular entry/,
+      "a child directory symlink must never be traversed",
+    );
+  } finally {
+    await rm(cuaDigestRootFile, { force: true });
+    await rm(cuaDigestRootSymlink, { force: true });
+    await rm(cuaDigestBoundsFixtureDir, { recursive: true, force: true });
+  }
+
+  async function populateBundleDirectory(directory, fileCount, contents) {
+    await mkdir(directory, { recursive: true });
+    for (let offset = 0; offset < fileCount; offset += 100) {
+      await Promise.all(
+        Array.from({ length: Math.min(100, fileCount - offset) }, (_, index) =>
+          writeFile(
+            path.join(directory, `file-${String(offset + index).padStart(5, "0")}`),
+            contents,
+          ),
+        ),
+      );
+    }
+  }
+
+  const cuaDigestSwapParent = await mkdtemp(path.join(os.tmpdir(), "nixmac-cua-bundle-swap-"));
+  try {
+    const swapRoot = path.join(cuaDigestSwapParent, "Bundle.app");
+    const originalDirectory = path.join(swapRoot, "Contents");
+    const replacementDirectory = path.join(cuaDigestSwapParent, "replacement");
+    const swapTemporaryDirectory = path.join(cuaDigestSwapParent, "swap-temporary");
+    const swapperStopPath = path.join(cuaDigestSwapParent, "stop-swapper");
+    await populateBundleDirectory(originalDirectory, 50, "");
+    await populateBundleDirectory(replacementDirectory, 50, "replacement");
+
+    const originalDigest = await hashCuaBundleTree(swapRoot);
+    await rename(originalDirectory, swapTemporaryDirectory);
+    await rename(replacementDirectory, originalDirectory);
+    await rename(swapTemporaryDirectory, replacementDirectory);
+    const replacementDigest = await hashCuaBundleTree(swapRoot);
+    await rename(originalDirectory, swapTemporaryDirectory);
+    await rename(replacementDirectory, originalDirectory);
+    await rename(swapTemporaryDirectory, replacementDirectory);
+
+    const swapper = spawn(
+      "/usr/bin/python3",
+      [
+        "-c",
+        String.raw`
 import ctypes
 import os
 import sys
@@ -1494,48 +1712,54 @@ while not os.path.exists(stop_path):
         raise OSError(ctypes.get_errno(), "renameatx_np")
     time.sleep(0.02)
 `,
-      originalDirectory,
-      replacementDirectory,
-      swapperStopPath,
-    ],
-    { stdio: ["ignore", "pipe", "inherit"] },
-  );
-  await new Promise((resolve, reject) => {
-    swapper.once("error", reject);
-    swapper.stdout.once("data", resolve);
-  });
-  const digestDuringSwap = hashCuaBundleTree(swapRoot);
-  let swapProbeTimer;
-  const swapResult = await Promise.race([
-    digestDuringSwap.then(
-      (digest) => ({ digest }),
-      (error) => ({ error }),
-    ),
-    new Promise((resolve) => {
-      swapProbeTimer = setTimeout(
-        () => resolve({ error: new Error("bundle hash swap probe timed out") }),
-        10_000,
+        originalDirectory,
+        replacementDirectory,
+        swapperStopPath,
+      ],
+      { stdio: ["ignore", "pipe", "pipe"] },
+    );
+    const swapperClosed = new Promise((resolve) => swapper.once("close", resolve));
+    try {
+      await waitForSwapProbeReady(swapper);
+    } catch (error) {
+      try {
+        await stopSwapProbe(swapper, swapperClosed, swapperStopPath);
+      } catch (cleanupError) {
+        throw new AggregateError([error, cleanupError], "bundle hash swap probe setup failed");
+      }
+      throw error;
+    }
+    const digestDuringSwap = hashCuaBundleTree(swapRoot);
+    let swapProbeTimer;
+    const swapResult = await Promise.race([
+      digestDuringSwap.then(
+        (digest) => ({ digest }),
+        (error) => ({ error }),
+      ),
+      new Promise((resolve) => {
+        swapProbeTimer = setTimeout(
+          () => resolve({ error: new Error("bundle hash swap probe timed out") }),
+          10_000,
+        );
+      }),
+    ]);
+    clearTimeout(swapProbeTimer);
+    await stopSwapProbe(swapper, swapperClosed, swapperStopPath);
+    if (swapResult.error) {
+      assert.match(
+        swapResult.error.message,
+        /bundle directory changed during traversal/,
+        "directory replacement must be diagnosed from a descriptor-bound identity mismatch",
       );
-    }),
-  ]);
-  clearTimeout(swapProbeTimer);
-  const swapperClosed = new Promise((resolve) => swapper.once("close", resolve));
-  await writeFile(swapperStopPath, "stop");
-  await swapperClosed;
-  if (swapResult.error) {
-    assert.match(
-      swapResult.error.message,
-      /bundle directory changed during traversal/,
-      "directory replacement must be diagnosed from a descriptor-bound identity mismatch",
-    );
-  } else {
-    assert.ok(
-      [originalDigest, replacementDigest].includes(swapResult.digest),
-      "a successful hash may read only the originally descriptor-bound directory tree",
-    );
+    } else {
+      assert.ok(
+        [originalDigest, replacementDigest].includes(swapResult.digest),
+        "a successful hash may read only the originally descriptor-bound directory tree",
+      );
+    }
+  } finally {
+    await rm(cuaDigestSwapParent, { recursive: true, force: true });
   }
-} finally {
-  await rm(cuaDigestSwapParent, { recursive: true, force: true });
 }
 
 const processSpawnCalls = [];
@@ -2198,8 +2422,7 @@ function createCuaHarness({
       }
       if (command === "/usr/bin/open") {
         control.daemonRunning = control.openCreatesDaemon;
-        control.daemonListenerPresent =
-          control.openCreatesDaemon && control.socketAppearsOnOpen;
+        control.daemonListenerPresent = control.openCreatesDaemon && control.socketAppearsOnOpen;
         control.socketPresent = control.openCreatesDaemon && control.socketAppearsOnOpen;
         control.daemonStopped = false;
         if (control.openFailuresAfterLaunch > 0) {
@@ -2397,8 +2620,7 @@ function createCuaHarness({
         control.targetKillFailures -= 1;
         throw new Error("synthetic target application termination failure");
       }
-      const expectedLaunchDateMicros =
-        control.targetBirthSec * 1_000_000 + control.targetBirthUsec;
+      const expectedLaunchDateMicros = control.targetBirthSec * 1_000_000 + control.targetBirthUsec;
       if (
         instance.applicationExecutable !== control.targetExecutable ||
         instance.applicationLaunchDateMicros !== expectedLaunchDateMicros
@@ -2483,15 +2705,9 @@ function createCuaHarness({
         control.daemonCanonicalFailuresAfterLaunch -= 1;
         throw new Error("synthetic post-launch daemon canonicalization failure");
       }
-      if (
-        appPath === control.targetExecutable &&
-        control.targetRunning
-      ) {
+      if (appPath === control.targetExecutable && control.targetRunning) {
         control.targetCanonicalCount += 1;
-        if (
-          control.targetCanonicalCount > 3 &&
-          control.targetCanonicalFailuresAfterLaunch > 0
-        ) {
+        if (control.targetCanonicalCount > 3 && control.targetCanonicalFailuresAfterLaunch > 0) {
           control.targetCanonicalFailuresAfterLaunch -= 1;
           throw new Error("synthetic post-launch target canonicalization failure");
         }
@@ -3478,10 +3694,7 @@ await assert.rejects(
   /synthetic launch_app transport failure after process creation/,
   "a launch RPC error must still poll for and own a uniquely created target",
 );
-assert.equal(
-  launchRpcOrphanBoundaryHarness.applicationTerminations.length,
-  1,
-);
+assert.equal(launchRpcOrphanBoundaryHarness.applicationTerminations.length, 1);
 assert.equal(launchRpcOrphanBoundaryHarness.control.targetRunning, false);
 await launchRpcOrphanBoundaryHarness.driver.close();
 
@@ -3824,10 +4037,7 @@ await assert.rejects(
   () => targetKillRetryHarness.driver.close(),
   /synthetic target application termination failure/,
 );
-assert.equal(
-  targetKillRetryHarness.applicationTerminations.length,
-  1,
-);
+assert.equal(targetKillRetryHarness.applicationTerminations.length, 1);
 assert.equal(
   targetKillRetryHarness.commands.filter(
     (entry) => entry.command === "/opt/nixmac-e2e/bin/cua-driver" && entry.args[0] === "stop",

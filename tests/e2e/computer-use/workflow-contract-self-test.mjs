@@ -115,6 +115,11 @@ assert.equal(
 );
 assert.equal(/\n\s+ssh\s/.test(prepare), false, "prepare must not open SSH sessions");
 assert.equal(/\n\s+scp\s/.test(prepare), false, "prepare must not copy to the remote Mac");
+assert.match(
+  prepare,
+  /name: Validate runner syntax[\s\S]*cd "\$GITHUB_WORKSPACE"[\s\S]*node tests\/e2e\/computer-use\/drivers\/driver-self-test\.mjs[\s\S]*node tests\/e2e\/computer-use\/run-cua-driver\.mjs self-test[\s\S]*node tests\/e2e\/computer-use\/evidence-manifest-self-test\.mjs/,
+  "the Linux prepare job must run driver, local runner, and evidence self-tests from the repository root",
+);
 
 const staleRecheckIndex = remote.indexOf("Check stale queued PR run before remote work");
 const remotePrFocusIndex = remote.indexOf("Capture PR focus metadata for remote run");
