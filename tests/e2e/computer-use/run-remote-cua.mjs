@@ -5690,7 +5690,7 @@ async function runSelfTest() {
   const coverageFreshness = buildCoverageFreshness();
   assert.equal(
     coverageFreshness.candidateFiles,
-    957,
+    959,
     "coverage freshness should preserve the full shared PR-visible behavior universe",
   );
   const coverageManifest = loadCoverageManifest();

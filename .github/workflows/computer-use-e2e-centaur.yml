@@ -395,6 +395,90 @@ jobs:
           [[ "$actual_signing_identity" == "$expected_signing_identity" ]]
           [[ "$actual_team_id" == "$expected_team_id" ]]
 
+      - name: Persist trusted lifecycle request
+        id: lifecycle_request
+        shell: bash
+        env:
+          INPUT_REPO: ${{ github.repository }}
+          INPUT_JOB_ID: ${{ inputs.job_id }}
+          INPUT_MERGE_SHA: ${{ inputs.merge_sha }}
+          INPUT_SUITE_VERSION: ${{ inputs.suite_version }}
+          INPUT_ATTEMPT: ${{ inputs.attempt }}
+          INPUT_ATTESTATION_NONCE: ${{ inputs.attestation_nonce }}
+          EXPECTED_RUNNER_NAME: ${{ runner.name }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/nixmac-lifecycle-request"
+          node --input-type=module <<'NODE'
+          import {
+            closeSync,
+            lstatSync,
+            openSync,
+            readFileSync,
+            realpathSync,
+            writeFileSync,
+          } from "node:fs";
+          import path from "node:path";
+          import {
+            createLifecycleRequest,
+            verifyRuntimeObservation,
+          } from "./ops/runner/cilicon-e2e-contract.mjs";
+
+          const contract = JSON.parse(
+            readFileSync("ops/images/nixmac-e2e-runner.contract.json", "utf8"),
+          );
+          const observationPath = contract.qualification.attestor.runtimeObservationPath;
+          const observation = JSON.parse(readFileSync(observationPath, "utf8"));
+          const requestedAt = new Date().toISOString();
+          const runtime = verifyRuntimeObservation(contract, observation, {
+            observedAt: requestedAt,
+          });
+          if (runtime.runnerName !== process.env.EXPECTED_RUNNER_NAME) {
+            throw new Error("signed runtime runner name does not match GitHub runner identity");
+          }
+          const request = createLifecycleRequest(contract, {
+            workflow: {
+              repo: process.env.INPUT_REPO,
+              jobId: process.env.INPUT_JOB_ID,
+              mergeSha: process.env.INPUT_MERGE_SHA,
+              suiteVersion: process.env.INPUT_SUITE_VERSION,
+              attempt: Number(process.env.INPUT_ATTEMPT),
+              attestationNonce: process.env.INPUT_ATTESTATION_NONCE,
+              githubRunId: Number(process.env.GITHUB_RUN_ID),
+              githubRunAttempt: Number(process.env.GITHUB_RUN_ATTEMPT),
+            },
+            runtime,
+            requestedAt,
+          });
+          const mountPath = contract.qualification.lifecycle.mountPath;
+          const mount = lstatSync(mountPath);
+          if (!mount.isDirectory() || mount.isSymbolicLink() || realpathSync(mountPath) !== mountPath) {
+            throw new Error("lifecycle request mount must be a canonical host directory");
+          }
+          const serialized = `${JSON.stringify(request, null, 2)}\n`;
+          const hostRequestPath = path.join(mountPath, "attestation-request.json");
+          const descriptor = openSync(hostRequestPath, "wx", 0o600);
+          try {
+            writeFileSync(descriptor, serialized);
+          } finally {
+            closeSync(descriptor);
+          }
+          const artifactPath = path.join(
+            process.env.RUNNER_TEMP,
+            "nixmac-lifecycle-request",
+            "attestation-request.json",
+          );
+          writeFileSync(artifactPath, serialized, { flag: "wx", mode: 0o600 });
+          NODE
+
+      - name: Upload trusted lifecycle request
+        uses: actions/upload-artifact@v7
+        with:
+          name: nixmac-e2e-lifecycle-request-${{ needs.preflight.outputs.job_key }}-attempt-${{ inputs.attempt }}
+          path: ${{ runner.temp }}/nixmac-lifecycle-request/attestation-request.json
+          if-no-files-found: error
+          retention-days: 90
+
       - name: Download verified app handoff
         uses: actions/download-artifact@v7
         with:
@@ -480,6 +564,11 @@ jobs:
             NIXMAC_E2E_PYTHON_PATH \
             NIXMAC_E2E_FFMPEG_PATH \
             NIXMAC_E2E_FFPROBE_PATH
+          [[ "$NIXMAC_CUA_DRIVER_BINARY" == "/usr/local/bin/cua-driver" ]]
+          node ops/runner/cua-driver-install-contract.mjs verify \
+            --contract ops/images/nixmac-e2e-runner.contract.json \
+            --observation /var/db/nixmac-e2e/runtime-observation.json \
+            --runner-name "$NIXMAC_E2E_RUNNER_NAME"
           node tests/e2e/computer-use/run-cua-driver.mjs run --run-dir "$run_root/evidence"
           archive="$run_root/evidence.canonical.zip"
           node tests/e2e/computer-use/evidence-manifest.mjs verify --archive "$archive"
@@ -1192,10 +1281,100 @@ jobs:
             "$RUNNER_TEMP/nixmac-host-lease-acquired"
           rmdir "$RUNNER_TEMP/nixmac-ssh" 2>/dev/null || true
 
+  lifecycle_consumer:
+    name: Consume protected ephemeral lifecycle attestation
+    needs: [preflight, primary]
+    if: always() && inputs.backend == 'cilicon_tart' && needs.preflight.outputs.ready == 'true' && needs.primary.result != 'skipped' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: arc
+    environment: nixmac-e2e-production
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      consumed: ${{ steps.consume.outputs.consumed }}
+      disposition: ${{ steps.consume.outputs.disposition }}
+      lifecycle_key: ${{ steps.consume.outputs.lifecycle_key }}
+    steps:
+      - name: Checkout trusted lifecycle consumer
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.preflight.outputs.harness_sha }}
+          persist-credentials: false
+
+      - name: Verify lifecycle consumer toolchain contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tool in jq node; do
+            resolved="$(command -v "$tool")"
+            [[ -x "$resolved" ]]
+          done
+
+      - name: Download trusted lifecycle request
+        uses: actions/download-artifact@v7
+        with:
+          name: nixmac-e2e-lifecycle-request-${{ needs.preflight.outputs.job_key }}-attempt-${{ inputs.attempt }}
+          path: ${{ runner.temp }}/lifecycle-consumption
+
+      - name: Consume protected lifecycle attestation exactly once
+        id: consume
+        shell: bash
+        env:
+          NIXMAC_E2E_LIFECYCLE_READER_PRIVATE_KEY: ${{ secrets.NIXMAC_E2E_LIFECYCLE_READER_PRIVATE_KEY }}
+          NIXMAC_E2E_LIFECYCLE_STORE_URL: ${{ secrets.NIXMAC_E2E_LIFECYCLE_STORE_URL }}
+          NIXMAC_E2E_LIFECYCLE_STORE_TOKEN: ${{ secrets.NIXMAC_E2E_LIFECYCLE_STORE_TOKEN }}
+        run: |
+          set -euo pipefail
+          output_dir="$RUNNER_TEMP/lifecycle-consumption"
+          request="$output_dir/attestation-request.json"
+          [[ -s "$request" && ! -L "$request" ]]
+          consumed=false
+          error_file="$output_dir/consume-error.log"
+          for poll in $(seq 1 30); do
+            if node ops/runner/cilicon-lifecycle-consumer.mjs consume \
+              --contract ops/images/nixmac-e2e-runner.contract.json \
+              --request "$request" \
+              --output-dir "$output_dir" 2>"$error_file"; then
+              consumed=true
+              rm -f "$error_file"
+              break
+            fi
+            if ! grep -Eq 'GitHub GET /repos/.*/contents/.* returned HTTP 404$' "$error_file"; then
+              cat "$error_file" >&2
+              exit 1
+            fi
+            if [[ "$poll" -lt 30 ]]; then
+              sleep 20
+            fi
+          done
+          [[ "$consumed" == "true" ]]
+          result="$output_dir/lifecycle-consumption.json"
+          jq -e '.accepted == true and .consumed == true' "$result" >/dev/null
+          disposition="$(jq -er '.disposition' "$result")"
+          lifecycle_key="$(jq -er '.lifecycleKey' "$result")"
+          [[ "$disposition" == "destroyed" || "$disposition" == "quarantined" ]]
+          [[ "$lifecycle_key" =~ ^[0-9a-f]{64}$ ]]
+          {
+            echo "consumed=true"
+            echo "disposition=$disposition"
+            echo "lifecycle_key=$lifecycle_key"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload immutable lifecycle consumption artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nixmac-e2e-lifecycle-${{ needs.preflight.outputs.job_key }}-attempt-${{ inputs.attempt }}
+          path: ${{ runner.temp }}/lifecycle-consumption/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 90
+
   publish_report:
     name: Publish verified deterministic report
-    needs: [preflight, primary, static_ssh]
-    if: always() && needs.preflight.outputs.ready == 'true' && (needs.primary.result == 'success' || needs.static_ssh.result == 'success')
+    needs: [preflight, primary, static_ssh, lifecycle_consumer]
+    if: always() && needs.preflight.outputs.ready == 'true' && ((inputs.backend == 'static_ssh' && needs.static_ssh.result == 'success') || (inputs.backend == 'cilicon_tart' && needs.primary.result == 'success' && needs.lifecycle_consumer.result == 'success' && needs.lifecycle_consumer.outputs.consumed == 'true' && needs.lifecycle_consumer.outputs.disposition == 'destroyed'))
     runs-on: arc
     timeout-minutes: 20
     permissions:
@@ -1338,7 +1517,7 @@ jobs:
 
   result:
     name: Terminal Centaur result
-    needs: [preflight, primary, static_ssh, publish_report]
+    needs: [preflight, primary, static_ssh, lifecycle_consumer, publish_report]
     if: always()
     runs-on: arc
     timeout-minutes: 5
@@ -1358,6 +1537,10 @@ jobs:
           STATIC_ARTIFACT_ID: ${{ needs.static_ssh.outputs.artifact_id }}
           STATIC_ARTIFACT_DIGEST: ${{ needs.static_ssh.outputs.artifact_digest }}
           STATIC_INFRA_DISPOSITION: ${{ needs.static_ssh.outputs.infra_disposition }}
+          LIFECYCLE_RESULT: ${{ needs.lifecycle_consumer.result }}
+          LIFECYCLE_DISPOSITION: ${{ needs.lifecycle_consumer.outputs.disposition }}
+          LIFECYCLE_CONSUMED: ${{ needs.lifecycle_consumer.outputs.consumed }}
+          LIFECYCLE_KEY: ${{ needs.lifecycle_consumer.outputs.lifecycle_key }}
           REPORT_URL: ${{ needs.publish_report.outputs.report_url }}
           INPUT_JOB_ID: ${{ inputs.job_id }}
           INPUT_ATTEMPT: ${{ inputs.attempt }}
@@ -1376,9 +1559,29 @@ jobs:
           artifact_digest=""
           backend_result="skipped"
           infra_disposition="$STATIC_INFRA_DISPOSITION"
+          lifecycle_required=false
+          lifecycle_consumed=false
+          lifecycle_ok=true
+          if [[ "$LIFECYCLE_CONSUMED" == "true" ]]; then
+            lifecycle_consumed=true
+          fi
           has_terminal_infra_disposition=false
           if [[ "$INPUT_BACKEND" == "cilicon_tart" ]]; then
-            infra_disposition="NOT_APPLICABLE"
+            lifecycle_required=true
+            lifecycle_ok=false
+            if [[ "$LIFECYCLE_RESULT" == "success" &&
+              "$LIFECYCLE_CONSUMED" == "true" &&
+              "$LIFECYCLE_DISPOSITION" == "destroyed" &&
+              "$LIFECYCLE_KEY" =~ ^[0-9a-f]{64}$ ]]; then
+              lifecycle_ok=true
+              infra_disposition="LIFECYCLE_DESTROYED"
+            elif [[ "$LIFECYCLE_RESULT" == "success" &&
+              "$LIFECYCLE_CONSUMED" == "true" &&
+              "$LIFECYCLE_DISPOSITION" == "quarantined" ]]; then
+              infra_disposition="LIFECYCLE_QUARANTINED"
+            else
+              infra_disposition="LIFECYCLE_UNVERIFIED"
+            fi
           else
             case "$infra_disposition" in
               LEASE_BUSY|LEASE_QUARANTINED|INFRASTRUCTURE_FAILURE)
@@ -1406,6 +1609,7 @@ jobs:
             fi
             if [[ "$backend_result" == "success" &&
               "$REPORT_RESULT" == "success" &&
+              "$lifecycle_ok" == "true" &&
               "$artifact_id" =~ ^[0-9]+$ &&
               "$artifact_digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
               terminal_status="COMPLETE"
@@ -1434,11 +1638,16 @@ jobs:
             --arg backendResult "$backend_result" \
             --arg reportResult "$REPORT_RESULT" \
             --arg infraDisposition "$infra_disposition" \
+            --arg lifecycleResult "$LIFECYCLE_RESULT" \
+            --arg lifecycleDisposition "$LIFECYCLE_DISPOSITION" \
+            --arg lifecycleKey "$LIFECYCLE_KEY" \
             --arg artifactId "$artifact_id" \
             --arg artifactDigest "$artifact_digest" \
             --arg reportUrl "$REPORT_URL" \
             --arg observedAt "$observed_at" \
             --argjson requiresApiSynthesis "$requires_api_synthesis" \
+            --argjson lifecycleRequired "$lifecycle_required" \
+            --argjson lifecycleConsumed "$lifecycle_consumed" \
             '{
               schemaVersion:1,
               jobId:$jobId,
@@ -1451,6 +1660,13 @@ jobs:
               backendResult:$backendResult,
               reportResult:$reportResult,
               infraDisposition:$infraDisposition,
+              lifecycle:{
+                required:$lifecycleRequired,
+                result:$lifecycleResult,
+                consumed:$lifecycleConsumed,
+                disposition:$lifecycleDisposition,
+                key:$lifecycleKey
+              },
               artifactId:$artifactId,
               artifactDigest:$artifactDigest,
               reportUrl:$reportUrl,

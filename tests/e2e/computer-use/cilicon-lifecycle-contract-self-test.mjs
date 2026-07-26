@@ -8,6 +8,8 @@ import { fileURLToPath } from "node:url";
 
 import {
   ciliconE2eContractConstants,
+  completeLifecycleConsumption,
+  createLifecycleRequest,
   evaluatePromotion,
   lifecycleAttestationBlobDigest,
   lifecycleAttestationPath,
@@ -18,14 +20,17 @@ import {
   validateProviderContract,
   validateRuntimeProviderGate,
   verifyLifecycleAttestation,
+  verifyLifecycleAttestationCandidate,
   verifyRuntimeObservation,
 } from "../../../ops/runner/cilicon-e2e-contract.mjs";
+import { consumeLifecycleFromProtectedSink } from "../../../ops/runner/cilicon-lifecycle-consumer.mjs";
 import { parseWorkflowYaml } from "./workflow-concurrency-contract.mjs";
 
 const thisFile = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(thisFile), "../../..");
 const contractPath = path.join(repoRoot, "ops/images/nixmac-e2e-runner.contract.json");
 const workflowPath = path.join(repoRoot, ".github/workflows/computer-use-e2e-centaur.yml");
+const buildWorkflowPath = path.join(repoRoot, ".github/workflows/build.yaml");
 const operationsPath = path.join(repoRoot, "tests/e2e/computer-use/OPERATIONS.md");
 
 const clone = (value) => structuredClone(value);
@@ -42,6 +47,12 @@ assert.equal(
   "a job-level if gate cannot consume environment-scoped variables",
 );
 assert.ok(validatedDisabled.activation.blockers.includes("PR_604_NOT_MERGED"));
+assert.ok(validatedDisabled.activation.blockers.includes("LIFECYCLE_CONSUMER_APP_NOT_PROVISIONED"));
+assert.ok(
+  validatedDisabled.activation.blockers.includes(
+    "DURABLE_LIFECYCLE_CONSUMPTION_STORE_NOT_PROVISIONED",
+  ),
+);
 assert.throws(
   () => {
     const improperlyEnabled = clone(checkedInContract);
@@ -141,6 +152,16 @@ function qualifiedContract() {
           contents: "write",
         },
       },
+      consumerCredential: {
+        appId: 3003,
+        installationId: 303,
+        repository: "darkmatter/nixmac-e2e-attestations",
+        permissions: {
+          administration: "read",
+          checks: "read",
+          contents: "read",
+        },
+      },
       inventoryCredential: {
         appId: 2002,
         installationId: 202,
@@ -164,10 +185,7 @@ function qualifiedContract() {
 
 assert.equal(requiredDedicatedHosts({ peakJobsPerHour: 4, p95CycleMinutes: 30 }), 4);
 const qualified = qualifiedContract();
-assert.equal(
-  validateProviderContract(qualified).activation.state,
-  "production-qualified-v1",
-);
+assert.equal(validateProviderContract(qualified).activation.state, "production-qualified-v1");
 assert.equal(
   validateRuntimeProviderGate(qualified, {
     requestedTier: "production",
@@ -291,6 +309,21 @@ providerMutation(
   /Apps and installations must be distinct/,
 );
 providerMutation(
+  "consumer reuses the host writer identity",
+  (value) => {
+    value.qualification.lifecycle.consumerCredential.appId =
+      value.qualification.lifecycle.sinkCredential.appId;
+  },
+  /writer, consumer, and inventory Apps and installations must be distinct/,
+);
+providerMutation(
+  "under-privileged lifecycle consumer",
+  (value) => {
+    value.qualification.lifecycle.consumerCredential.permissions.checks = "write";
+  },
+  /consumer credential must have exact read permissions/,
+);
+providerMutation(
   "over-privileged sink GitHub App",
   (value) => {
     value.qualification.lifecycle.sinkCredential.permissions.actions = "write";
@@ -384,6 +417,22 @@ const observedRuntime = verifyRuntimeObservation(qualified, runtimeObservation()
 });
 assert.equal(observedRuntime.imageDigest, `sha256:${"a".repeat(64)}`);
 assert.equal(observedRuntime.hostId, "cilicon-host-01");
+
+const createdRequest = createLifecycleRequest(qualified, {
+  workflow: {
+    repo: "darkmatter/nixmac",
+    jobId: `darkmatter/nixmac:${"d".repeat(40)}:computer-use-v1`,
+    mergeSha: "d".repeat(40),
+    suiteVersion: "computer-use-v1",
+    attempt: 2,
+    attestationNonce: "nonce_".padEnd(64, "x"),
+    githubRunId: 123456789,
+    githubRunAttempt: 3,
+  },
+  runtime: observedRuntime,
+  requestedAt: "2026-07-26T18:00:00.000Z",
+});
+assert.deepEqual(createdRequest, lifecycleRequest());
 
 function runtimeMutation(name, mutate, message, { resign = true } = {}) {
   const candidate = runtimeObservation();
@@ -551,13 +600,15 @@ function sourceObservation(attestation) {
     ref: attestation.provenance.sinkRef,
     path: attestation.provenance.sinkPath,
     commit: "f".repeat(40),
+    blobSha: "b".repeat(40),
     blobDigest: attestation.provenance.blobDigest,
     fetchedAt: "2026-07-26T18:31:00.000Z",
     authenticatedBy: {
-      appId: qualified.qualification.lifecycle.sinkCredential.appId,
-      installationId: qualified.qualification.lifecycle.sinkCredential.installationId,
+      appId: qualified.qualification.lifecycle.consumerCredential.appId,
+      installationId: qualified.qualification.lifecycle.consumerCredential.installationId,
     },
     branchProtectionVerified: true,
+    readbackVerified: true,
     requiredStatusChecks: [qualified.qualification.lifecycle.requiredStatusCheck],
   };
 }
@@ -572,6 +623,71 @@ function verifyLifecycle(requestInput, attestation, overrides = {}) {
   });
 }
 
+const lifecycleCandidate = verifyLifecycleAttestationCandidate(
+  lifecycleRequest(),
+  destroyedAttestation(),
+  {
+    contract: qualified,
+    observedAt: "2026-07-26T18:31:00.000Z",
+    sourceObservation: sourceObservation(destroyedAttestation()),
+  },
+);
+assert.match(lifecycleCandidate.lifecycleKey, /^[0-9a-f]{64}$/);
+assert.equal(lifecycleCandidate.disposition, "destroyed");
+assert.equal(completeLifecycleConsumption(lifecycleCandidate, true).promotionEligible, true);
+assert.throws(() => completeLifecycleConsumption(lifecycleCandidate, false), /replayed/);
+
+const productionConsumption = await consumeLifecycleFromProtectedSink({
+  request: lifecycleRequest(),
+  contract: qualified,
+  observedAt: "2026-07-26T18:31:00.000Z",
+  sinkClient: {
+    kind: "authenticated-github-protected-sink-v1",
+    async fetchAttestation() {
+      const attestation = destroyedAttestation();
+      return {
+        attestation,
+        sourceObservation: sourceObservation(attestation),
+      };
+    },
+  },
+  storageAdapter: {
+    kind: "durable-lifecycle-consumption-v1",
+    async consume(key, record) {
+      assert.match(key, /^[0-9a-f]{64}$/);
+      assert.equal(record.sinkCommit, "f".repeat(40));
+      return true;
+    },
+  },
+});
+assert.equal(productionConsumption.consumed, true);
+assert.equal(productionConsumption.disposition, "destroyed");
+await assert.rejects(
+  () =>
+    consumeLifecycleFromProtectedSink({
+      request: lifecycleRequest(),
+      contract: qualified,
+      observedAt: "2026-07-26T18:31:00.000Z",
+      sinkClient: {
+        kind: "authenticated-github-protected-sink-v1",
+        async fetchAttestation() {
+          const attestation = destroyedAttestation();
+          return {
+            attestation,
+            sourceObservation: sourceObservation(attestation),
+          };
+        },
+      },
+      storageAdapter: {
+        kind: "durable-lifecycle-consumption-v1",
+        async consume() {
+          return false;
+        },
+      },
+    }),
+  /replayed/,
+);
+
 const destroyed = verifyLifecycle(lifecycleRequest(), destroyedAttestation());
 assert.equal(destroyed.disposition, "destroyed");
 assert.equal(destroyed.promotionEligible, true);
@@ -581,16 +697,11 @@ function attestationMutation(name, mutate, message) {
   const candidateRequest = lifecycleRequest();
   const candidateAttestation = destroyedAttestation(candidateRequest);
   mutate(candidateRequest, candidateAttestation);
-  candidateAttestation.provenance.blobDigest =
-    lifecycleAttestationBlobDigest(candidateAttestation);
+  candidateAttestation.provenance.blobDigest = lifecycleAttestationBlobDigest(candidateAttestation);
   candidateAttestation.provenance.signature = signPayload(
     lifecycleAttestationSigningPayload(candidateAttestation),
   );
-  assert.throws(
-    () => verifyLifecycle(candidateRequest, candidateAttestation),
-    message,
-    name,
-  );
+  assert.throws(() => verifyLifecycle(candidateRequest, candidateAttestation), message, name);
 }
 
 for (const [name, field, value] of [
@@ -659,8 +770,7 @@ quarantineAttestation.quarantine = {
   marked: true,
   reason: "runner deregistration timed out; host admission stopped",
 };
-quarantineAttestation.provenance.blobDigest =
-  lifecycleAttestationBlobDigest(quarantineAttestation);
+quarantineAttestation.provenance.blobDigest = lifecycleAttestationBlobDigest(quarantineAttestation);
 quarantineAttestation.provenance.signature = signPayload(
   lifecycleAttestationSigningPayload(quarantineAttestation),
 );
@@ -671,8 +781,7 @@ assert.equal(quarantined.containmentVerified, true);
 
 const unmarkedQuarantine = clone(quarantineAttestation);
 unmarkedQuarantine.quarantine.marked = false;
-unmarkedQuarantine.provenance.blobDigest =
-  lifecycleAttestationBlobDigest(unmarkedQuarantine);
+unmarkedQuarantine.provenance.blobDigest = lifecycleAttestationBlobDigest(unmarkedQuarantine);
 unmarkedQuarantine.provenance.signature = signPayload(
   lifecycleAttestationSigningPayload(unmarkedQuarantine),
 );
@@ -730,13 +839,8 @@ assert.throws(
 const wrongAttestor = destroyedAttestation();
 wrongAttestor.provenance.attestorKeyId = "unknown-attestor";
 wrongAttestor.provenance.blobDigest = lifecycleAttestationBlobDigest(wrongAttestor);
-wrongAttestor.provenance.signature = signPayload(
-  lifecycleAttestationSigningPayload(wrongAttestor),
-);
-assert.throws(
-  () => verifyLifecycle(lifecycleRequest(), wrongAttestor),
-  /attestor provenance/,
-);
+wrongAttestor.provenance.signature = signPayload(lifecycleAttestationSigningPayload(wrongAttestor));
+assert.throws(() => verifyLifecycle(lifecycleRequest(), wrongAttestor), /attestor provenance/);
 
 function successfulJob(index) {
   const mergeSha = index.toString(16).padStart(40, "0");
@@ -829,9 +933,7 @@ assert.equal(quarantineBlocked.shadowReady, false);
 assert.equal(quarantineBlocked.productionReady, false);
 assert.equal(quarantineBlocked.consecutiveSuccessful, 0);
 assert.ok(
-  quarantineBlocked.shadowBlockers.some((blocker) =>
-    blocker.includes("destruction failures"),
-  ),
+  quarantineBlocked.shadowBlockers.some((blocker) => blocker.includes("destruction failures")),
 );
 
 const percentageMetrics = promotionMetrics();
@@ -900,5 +1002,8 @@ assert.match(operations, /one host\s+quarantined/i);
 assert.match(operations, /shadow-qualified-v1[\s\S]*production-qualified-v1/i);
 assert.match(operations, /runtime-observation\.json[\s\S]*Ed25519/i);
 assert.match(operations, /durable[\s\S]*consumption ledger/i);
+const buildWorkflowSource = readFileSync(buildWorkflowPath, "utf8");
+assert.match(buildWorkflowSource, /cilicon-lifecycle-consumer-self-test\.mjs/);
+assert.match(buildWorkflowSource, /cua-driver-install-contract-self-test\.mjs/);
 
 console.log("Cilicon E2E lifecycle contract self-test passed.");

@@ -10,10 +10,7 @@ const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const BUNDLE_ID = /^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
 const SHADOW_PROMOTION_STATE = "shadow-qualified-v1";
 const PRODUCTION_PROMOTION_STATE = "production-qualified-v1";
-const QUALIFIED_STATES = Object.freeze([
-  SHADOW_PROMOTION_STATE,
-  PRODUCTION_PROMOTION_STATE,
-]);
+const QUALIFIED_STATES = Object.freeze([SHADOW_PROMOTION_STATE, PRODUCTION_PROMOTION_STATE]);
 const PROMOTION_VARIABLE = "NIXMAC_E2E_CILICON_PROMOTION_STATE";
 const REQUIRED_LABELS = Object.freeze(["self-hosted", "macOS", "nixmac-e2e"]);
 const REQUIRED_TCC_SERVICES = Object.freeze(["accessibility", "screenRecording"]);
@@ -416,13 +413,7 @@ function validateTools(tools) {
 function validateAttestor(attestor) {
   exactKeys(
     attestor,
-    [
-      "algorithm",
-      "keyId",
-      "publicKeyPem",
-      "runtimeObservationPath",
-      "maxObservationAgeSeconds",
-    ],
+    ["algorithm", "keyId", "publicKeyPem", "runtimeObservationPath", "maxObservationAgeSeconds"],
     "qualification.attestor",
   );
   if (attestor.algorithm !== "ed25519") {
@@ -466,6 +457,7 @@ function validateLifecycleConfig(lifecycle) {
       "sinkPathPrefix",
       "requiredStatusCheck",
       "sinkCredential",
+      "consumerCredential",
       "inventoryCredential",
       "oneVmPerAttempt",
       "capacityOnePerHost",
@@ -489,10 +481,7 @@ function validateLifecycleConfig(lifecycle) {
   string(lifecycle.sinkPathPrefix, "qualification.lifecycle.sinkPathPrefix", {
     pattern: /^[A-Za-z0-9][A-Za-z0-9._/-]*\/$/,
   });
-  if (
-    lifecycle.sinkPathPrefix.startsWith("/") ||
-    lifecycle.sinkPathPrefix.includes("..")
-  ) {
+  if (lifecycle.sinkPathPrefix.startsWith("/") || lifecycle.sinkPathPrefix.includes("..")) {
     fail("qualification.lifecycle.sinkPathPrefix must be a safe repository path prefix");
   }
   string(lifecycle.requiredStatusCheck, "qualification.lifecycle.requiredStatusCheck", {
@@ -520,6 +509,32 @@ function validateLifecycleConfig(lifecycle) {
     fail("sink credential must have only Contents write on the attestation sink");
   }
   exactKeys(
+    lifecycle.consumerCredential,
+    ["appId", "installationId", "repository", "permissions"],
+    "qualification.lifecycle.consumerCredential",
+  );
+  exactKeys(
+    lifecycle.consumerCredential.permissions,
+    ["administration", "checks", "contents"],
+    "qualification.lifecycle.consumerCredential.permissions",
+  );
+  positiveInteger(
+    lifecycle.consumerCredential.appId,
+    "qualification.lifecycle.consumerCredential.appId",
+  );
+  positiveInteger(
+    lifecycle.consumerCredential.installationId,
+    "qualification.lifecycle.consumerCredential.installationId",
+  );
+  if (
+    lifecycle.consumerCredential.repository !== lifecycle.sinkRepository ||
+    lifecycle.consumerCredential.permissions.administration !== "read" ||
+    lifecycle.consumerCredential.permissions.checks !== "read" ||
+    lifecycle.consumerCredential.permissions.contents !== "read"
+  ) {
+    fail("consumer credential must have exact read permissions on the attestation sink");
+  }
+  exactKeys(
     lifecycle.inventoryCredential,
     ["appId", "installationId", "repository", "permissions"],
     "qualification.lifecycle.inventoryCredential",
@@ -543,11 +558,18 @@ function validateLifecycleConfig(lifecycle) {
   ) {
     fail("inventory credential must have only Administration read on darkmatter/nixmac");
   }
-  if (
-    lifecycle.sinkCredential.appId === lifecycle.inventoryCredential.appId ||
-    lifecycle.sinkCredential.installationId === lifecycle.inventoryCredential.installationId
-  ) {
-    fail("sink-write and inventory-read GitHub Apps and installations must be distinct");
+  const appIds = [
+    lifecycle.sinkCredential.appId,
+    lifecycle.consumerCredential.appId,
+    lifecycle.inventoryCredential.appId,
+  ];
+  const installationIds = [
+    lifecycle.sinkCredential.installationId,
+    lifecycle.consumerCredential.installationId,
+    lifecycle.inventoryCredential.installationId,
+  ];
+  if (new Set(appIds).size !== 3 || new Set(installationIds).size !== 3) {
+    fail("writer, consumer, and inventory Apps and installations must be distinct");
   }
   requiredTrue(lifecycle.oneVmPerAttempt, "qualification.lifecycle.oneVmPerAttempt");
   requiredTrue(lifecycle.capacityOnePerHost, "qualification.lifecycle.capacityOnePerHost");
@@ -581,16 +603,7 @@ function validateCapacity(capacity) {
 function validateQualification(qualification) {
   exactKeys(
     qualification,
-    [
-      "image",
-      "cuaDriver",
-      "testUser",
-      "tools",
-      "tcc",
-      "attestor",
-      "lifecycle",
-      "capacity",
-    ],
+    ["image", "cuaDriver", "testUser", "tools", "tcc", "attestor", "lifecycle", "capacity"],
     "qualification",
   );
   validateImage(qualification.image);
@@ -611,17 +624,9 @@ function validateQualification(qualification) {
 
 export function validateProviderContract(contract) {
   object(contract, "contract");
-  const expected =
-    QUALIFIED_STATES.includes(contract.activation?.state)
-      ? [
-          "version",
-          "activation",
-          "upstream",
-          "provider",
-          "requiredQualifiedFields",
-          "qualification",
-        ]
-      : ["version", "activation", "upstream", "provider", "requiredQualifiedFields"];
+  const expected = QUALIFIED_STATES.includes(contract.activation?.state)
+    ? ["version", "activation", "upstream", "provider", "requiredQualifiedFields", "qualification"]
+    : ["version", "activation", "upstream", "provider", "requiredQualifiedFields"];
   exactKeys(contract, expected, "contract");
   if (contract.version !== 1) fail("contract.version must be 1");
   validateActivation(contract.activation);
@@ -659,10 +664,7 @@ export function validateRuntimeProviderGate(
   if (contract.activation.state === "disabled") {
     fail("the checked-in provider contract is disabled");
   }
-  if (
-    requestedTier === "production" &&
-    contract.activation.state !== PRODUCTION_PROMOTION_STATE
-  ) {
+  if (requestedTier === "production" && contract.activation.state !== PRODUCTION_PROMOTION_STATE) {
     fail("production execution requires a production-qualified checked-in contract");
   }
   if (repositoryPromotionState !== contract.activation.state) {
@@ -687,11 +689,7 @@ export function runtimeObservationSigningPayload(observationInput) {
   return canonicalJson(observation);
 }
 
-export function verifyRuntimeObservation(
-  contractInput,
-  observation,
-  { observedAt },
-) {
+export function verifyRuntimeObservation(contractInput, observation, { observedAt }) {
   const contract = validateProviderContract(contractInput);
   if (contract.activation.state === "disabled") {
     fail("the checked-in provider contract is disabled");
@@ -711,10 +709,7 @@ export function verifyRuntimeObservation(
   );
   string(observation.host.hostId, "runtimeObservation.host.hostId", { pattern: SAFE_ID });
   string(observation.host.cycleId, "runtimeObservation.host.cycleId", { pattern: SAFE_ID });
-  absoluteNormalizedPath(
-    observation.host.clonePath,
-    "runtimeObservation.host.clonePath",
-  );
+  absoluteNormalizedPath(observation.host.clonePath, "runtimeObservation.host.clonePath");
   string(observation.host.runnerName, "runtimeObservation.host.runnerName", {
     pattern: SAFE_ID,
   });
@@ -841,6 +836,67 @@ export function verifyRuntimeObservation(
     imageDigest: observation.image.digest,
     attestorKeyId: observation.provenance.attestorKeyId,
     observedAt: observation.observedAt,
+  });
+}
+
+export function createLifecycleRequest(contractInput, { workflow, runtime, requestedAt }) {
+  const contract = validateProviderContract(contractInput);
+  if (contract.activation.state === "disabled") {
+    fail("the checked-in provider contract is disabled");
+  }
+  exactKeys(
+    workflow,
+    [
+      "repo",
+      "jobId",
+      "mergeSha",
+      "suiteVersion",
+      "attempt",
+      "attestationNonce",
+      "githubRunId",
+      "githubRunAttempt",
+    ],
+    "workflow",
+  );
+  exactKeys(
+    runtime,
+    [
+      "accepted",
+      "hostId",
+      "cycleId",
+      "clonePath",
+      "runnerName",
+      "imageDigest",
+      "attestorKeyId",
+      "observedAt",
+    ],
+    "runtime",
+  );
+  requiredTrue(runtime.accepted, "runtime.accepted");
+  if (runtime.attestorKeyId !== contract.qualification.attestor.keyId) {
+    fail("runtime attestor must match the qualified lifecycle contract");
+  }
+  return validateLifecycleRequest({
+    version: 1,
+    ...workflow,
+    runnerName: runtime.runnerName,
+    runnerImageDigest: runtime.imageDigest,
+    requestedAt,
+    attestationPolicy: {
+      expectedHostId: runtime.hostId,
+      attestorKeyId: contract.qualification.attestor.keyId,
+      sinkRepository: contract.qualification.lifecycle.sinkRepository,
+      sinkRef: contract.qualification.lifecycle.sinkRef,
+    },
+    fieldProvenance: {
+      workflowKnown: [...WORKFLOW_KNOWN_FIELDS],
+      runtimeObserved: [...RUNTIME_OBSERVED_FIELDS],
+      contractKnown: [...CONTRACT_KNOWN_FIELDS],
+    },
+    hostEcho: {
+      cycleId: runtime.cycleId,
+      clonePath: runtime.clonePath,
+    },
   });
 }
 
@@ -1007,28 +1063,16 @@ export function lifecycleAttestationSigningPayload(attestationInput) {
   return canonicalJson(attestation);
 }
 
-export function verifyLifecycleAttestation(
+export function verifyLifecycleAttestationCandidate(
   requestInput,
   attestation,
-  {
-    contract: contractInput,
-    consumptionLedger,
-    observedAt,
-    sourceObservation,
-  } = {},
+  { contract: contractInput, observedAt, sourceObservation } = {},
 ) {
   const request = validateLifecycleRequest(requestInput);
   if (!contractInput) fail("a trusted qualified provider contract is required");
   const contract = validateProviderContract(contractInput);
   if (contract.activation.state === "disabled") {
     fail("the checked-in provider contract is disabled");
-  }
-  if (
-    !consumptionLedger ||
-    consumptionLedger.kind !== "durable-lifecycle-consumption-v1" ||
-    typeof consumptionLedger.consume !== "function"
-  ) {
-    fail("a durable consumption ledger is required");
   }
   canonicalTimestamp(observedAt, "observedAt");
   exactKeys(
@@ -1101,14 +1145,11 @@ export function verifyLifecycleAttestation(
     pattern: SHA256,
   });
 
-  if (
-    attestation.provenance.attestorKeyId !== request.attestationPolicy.attestorKeyId
-  ) {
+  if (attestation.provenance.attestorKeyId !== request.attestationPolicy.attestorKeyId) {
     fail("attestor provenance must exactly match the trusted lifecycle request");
   }
   if (
-    attestation.provenance.sinkRepository !==
-      request.attestationPolicy.sinkRepository ||
+    attestation.provenance.sinkRepository !== request.attestationPolicy.sinkRepository ||
     attestation.provenance.sinkRef !== request.attestationPolicy.sinkRef
   ) {
     fail("protected sink provenance must exactly match the trusted lifecycle request");
@@ -1159,10 +1200,12 @@ export function verifyLifecycleAttestation(
       "ref",
       "path",
       "commit",
+      "blobSha",
       "blobDigest",
       "fetchedAt",
       "authenticatedBy",
       "branchProtectionVerified",
+      "readbackVerified",
       "requiredStatusChecks",
     ],
     "sourceObservation",
@@ -1174,6 +1217,9 @@ export function verifyLifecycleAttestation(
   string(sourceObservation.commit, "sourceObservation.commit", {
     pattern: FULL_GIT_SHA,
   });
+  string(sourceObservation.blobSha, "sourceObservation.blobSha", {
+    pattern: FULL_GIT_SHA,
+  });
   string(sourceObservation.blobDigest, "sourceObservation.blobDigest", {
     pattern: SHA256,
   });
@@ -1183,7 +1229,10 @@ export function verifyLifecycleAttestation(
     ["appId", "installationId"],
     "sourceObservation.authenticatedBy",
   );
-  positiveInteger(sourceObservation.authenticatedBy.appId, "sourceObservation.authenticatedBy.appId");
+  positiveInteger(
+    sourceObservation.authenticatedBy.appId,
+    "sourceObservation.authenticatedBy.appId",
+  );
   positiveInteger(
     sourceObservation.authenticatedBy.installationId,
     "sourceObservation.authenticatedBy.installationId",
@@ -1192,6 +1241,7 @@ export function verifyLifecycleAttestation(
     sourceObservation.branchProtectionVerified,
     "sourceObservation.branchProtectionVerified",
   );
+  requiredTrue(sourceObservation.readbackVerified, "sourceObservation.readbackVerified");
   if (
     !Array.isArray(sourceObservation.requiredStatusChecks) ||
     sourceObservation.requiredStatusChecks.length !== 1 ||
@@ -1204,9 +1254,8 @@ export function verifyLifecycleAttestation(
     sourceObservation.ref !== attestation.provenance.sinkRef ||
     sourceObservation.path !== attestation.provenance.sinkPath ||
     sourceObservation.blobDigest !== attestation.provenance.blobDigest ||
-    sourceObservation.authenticatedBy.appId !== lifecycle.sinkCredential.appId ||
-    sourceObservation.authenticatedBy.installationId !==
-      lifecycle.sinkCredential.installationId
+    sourceObservation.authenticatedBy.appId !== lifecycle.consumerCredential.appId ||
+    sourceObservation.authenticatedBy.installationId !== lifecycle.consumerCredential.installationId
   ) {
     fail("protected sink provenance must be independently authenticated");
   }
@@ -1219,10 +1268,7 @@ export function verifyLifecycleAttestation(
   }
   const verificationTime = Date.parse(observedAt);
   const fetchedAt = Date.parse(sourceObservation.fetchedAt);
-  if (
-    attestedAt > verificationTime ||
-    verificationTime - attestedAt > maxAgeSeconds * 1000
-  ) {
+  if (attestedAt > verificationTime || verificationTime - attestedAt > maxAgeSeconds * 1000) {
     fail("attestation observation time is stale or precedes the attestation");
   }
   if (
@@ -1252,16 +1298,6 @@ export function verifyLifecycleAttestation(
     }
   }
 
-  const consumed = consumptionLedger.consume(
-    key,
-    Object.freeze({
-      observedAt,
-      sinkCommit: sourceObservation.commit,
-      blobDigest: sourceObservation.blobDigest,
-    }),
-  );
-  if (consumed !== true) fail("lifecycle attestation is replayed");
-
   return Object.freeze({
     accepted: true,
     lifecycleKey: key,
@@ -1269,7 +1305,55 @@ export function verifyLifecycleAttestation(
     promotionEligible: attestation.result === "destroyed",
     containmentVerified:
       attestation.result === "destroyed" || attestation.quarantine.marked === true,
+    consumptionRecord: Object.freeze({
+      observedAt,
+      sinkCommit: sourceObservation.commit,
+      blobDigest: sourceObservation.blobDigest,
+    }),
   });
+}
+
+export function completeLifecycleConsumption(candidate, consumed) {
+  if (
+    !candidate ||
+    candidate.accepted !== true ||
+    typeof candidate.lifecycleKey !== "string" ||
+    !["destroyed", "quarantined"].includes(candidate.disposition)
+  ) {
+    fail("a verified lifecycle candidate is required");
+  }
+  if (consumed !== true) fail("lifecycle attestation is replayed");
+  return Object.freeze({
+    accepted: true,
+    consumed: true,
+    lifecycleKey: candidate.lifecycleKey,
+    disposition: candidate.disposition,
+    promotionEligible: candidate.promotionEligible,
+    containmentVerified: candidate.containmentVerified,
+  });
+}
+
+export function verifyLifecycleAttestation(
+  requestInput,
+  attestation,
+  { contract: contractInput, consumptionLedger, observedAt, sourceObservation } = {},
+) {
+  if (
+    !consumptionLedger ||
+    consumptionLedger.kind !== "durable-lifecycle-consumption-v1" ||
+    typeof consumptionLedger.consume !== "function"
+  ) {
+    fail("a durable consumption ledger is required");
+  }
+  const candidate = verifyLifecycleAttestationCandidate(requestInput, attestation, {
+    contract: contractInput,
+    observedAt,
+    sourceObservation,
+  });
+  return completeLifecycleConsumption(
+    candidate,
+    consumptionLedger.consume(candidate.lifecycleKey, candidate.consumptionRecord),
+  );
 }
 
 function ratio(numerator, denominator, field) {

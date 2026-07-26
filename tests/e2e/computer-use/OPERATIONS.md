@@ -178,7 +178,11 @@ After PR #604 lands, activate the lane only through this sequence:
    `/var/db/nixmac-e2e/runtime-observation.json`. The workflow verifies its
    Ed25519 signature and freshness, binds the actually observed image digest,
    host/cycle/runner, CuaDriver hashes/signature/bundle identity, and TCC target,
-   then independently hashes and code-sign verifies the installed app. The
+   then independently hashes and code-sign verifies the installed app.
+   Immediately before UI execution, the workflow also requires
+   `/usr/local/bin/cua-driver` to be a symlink whose realpath is exactly the
+   signed `appExecutable`, and hashes the followed target against the signed
+   `executableDigest`. The
    CuaDriver adapter's live permission probe remains the final TCC admission
    check.
 1. Build without repository credentials, provider keys, signing keys, or user
@@ -206,6 +210,19 @@ After PR #604 lands, activate the lane only through this sequence:
    atomically consume that lifecycle key through its durable consumption ledger;
    an omitted ledger, replay, stale attestation, or stale sink observation is a
    hard failure.
+   The trusted Mac job constructs the request from immutable dispatch fields and
+   the verified signed host observation, writes it once into the canonical
+   host-mounted cycle directory, and uploads the same request as a 90-day Actions
+   artifact. After that Mac job exits, the ARC lifecycle consumer downloads the
+   request, authenticates as the dedicated sink-reader GitHub App, resolves the
+   protected `main` ref to one commit, verifies the configured required status
+   check, reads the exact path and Git blob back, and only then verifies the
+   lifecycle signature and freshness. It atomically creates a consumption
+   receipt through the HTTPS durable-storage adapter with `If-None-Match: *` and
+   requires an exact durable readback before returning `destroyed` or
+   `quarantined`. Production report publication and terminal `COMPLETE` require
+   a consumed `destroyed` result; missing lifecycle data, store failure, and
+   quarantine remain fail-closed.
 1. Create the protected, secret-free
    `darkmatter/nixmac-e2e-attestations` sink. Give the host one sink-only GitHub
    App identity with only Contents write on that sink and no installation on
@@ -213,6 +230,14 @@ After PR #604 lands, activate the lane only through this sequence:
    Administration read on `darkmatter/nixmac` to check runner inventory. Record
    both App and installation IDs. Never place either private key in the VM image
    or repository.
+   Provision a third, distinct lifecycle-consumer App on the sink with exactly
+   Administration read, Checks read, and Contents read. Store its private key as
+   the protected-environment secret
+   `NIXMAC_E2E_LIFECYCLE_READER_PRIVATE_KEY`. Configure
+   `NIXMAC_E2E_LIFECYCLE_STORE_URL` and
+   `NIXMAC_E2E_LIFECYCLE_STORE_TOKEN` for the durable atomic-consumption service.
+   The checked-in contract remains disabled while that App or store is absent;
+   neither the workflow nor a test-only in-memory ledger is production storage.
 1. Register only `[self-hosted, macOS,nixmac-e2e]`; do not share the build
    fleet's `nixmac-mac` lease domain. Prove one complete VM cycle, runner
    deregistration, exact clone destruction, wrapper restart recovery,

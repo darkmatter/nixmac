@@ -41,6 +41,10 @@ function runTerminalContractScenario({
   staticArtifactId = "",
   staticArtifactDigest = "",
   staticInfraDisposition = "",
+  lifecycleResult = "skipped",
+  lifecycleDisposition = "",
+  lifecycleConsumed = "false",
+  lifecycleKey = "",
   reportUrl = "",
   qualificationTier = "production",
 }) {
@@ -72,6 +76,10 @@ function runTerminalContractScenario({
         STATIC_ARTIFACT_ID: staticArtifactId,
         STATIC_ARTIFACT_DIGEST: staticArtifactDigest,
         STATIC_INFRA_DISPOSITION: staticInfraDisposition,
+        LIFECYCLE_RESULT: lifecycleResult,
+        LIFECYCLE_DISPOSITION: lifecycleDisposition,
+        LIFECYCLE_CONSUMED: lifecycleConsumed,
+        LIFECYCLE_KEY: lifecycleKey,
         REPORT_URL: reportUrl,
         INPUT_ATTEMPT: "2",
         INPUT_BACKEND: backend,
@@ -133,12 +141,14 @@ const jobs = workflow.jobs;
 const preflight = jobs.preflight;
 const primary = jobs.primary;
 const staticJob = jobs.static_ssh;
+const lifecycle = jobs.lifecycle_consumer;
 const publish = jobs.publish_report;
 const result = jobs.result;
 for (const [id, job] of Object.entries({
   preflight,
   primary,
   static_ssh: staticJob,
+  lifecycle_consumer: lifecycle,
   publish,
   result,
 })) {
@@ -166,6 +176,29 @@ assert.equal(
   staticJob.environment,
   "nixmac-e2e-production",
   "the static Mac backend and its secrets must be gated by the main-only production environment",
+);
+assert.equal(
+  lifecycle.environment,
+  "nixmac-e2e-production",
+  "the lifecycle consumer credentials must remain behind the main-only production environment",
+);
+assert.deepEqual(
+  lifecycle.needs,
+  ["preflight", "primary"],
+  "the lifecycle consumer must run only after the ephemeral VM job exits",
+);
+assert.equal(lifecycle.outputs.consumed, "${{ steps.consume.outputs.consumed }}");
+assert.equal(lifecycle.outputs.disposition, "${{ steps.consume.outputs.disposition }}");
+assert.match(JSON.stringify(lifecycle), /cilicon-lifecycle-consumer\.mjs/);
+assert.match(JSON.stringify(lifecycle), /lifecycle-request/);
+assert.match(JSON.stringify(lifecycle), /LIFECYCLE_READER_PRIVATE_KEY/);
+assert.match(JSON.stringify(lifecycle), /LIFECYCLE_STORE_URL/);
+assert.match(JSON.stringify(lifecycle), /LIFECYCLE_STORE_TOKEN/);
+assert.deepEqual(publish.needs, ["preflight", "primary", "static_ssh", "lifecycle_consumer"]);
+assert.match(
+  publish.if,
+  /needs\.lifecycle_consumer\.outputs\.consumed == 'true'[\s\S]*needs\.lifecycle_consumer\.outputs\.disposition == 'destroyed'/,
+  "ephemeral report publication must require a consumed destroyed lifecycle attestation",
 );
 assert.equal(Object.hasOwn(staticJob, "concurrency"), false);
 assert.equal(
@@ -287,6 +320,13 @@ assert.equal(
   "false",
   "primary must preserve verified product-failure evidence",
 );
+assert.match(
+  primaryRunStep.run,
+  /cua-driver-install-contract\.mjs[\s\S]*run-cua-driver\.mjs run/,
+  "the symlink target and followed digest must be verified immediately before UI execution",
+);
+assert.match(primaryRunStep.run, /\/usr\/local\/bin\/cua-driver/);
+assert.match(primaryRunStep.run, /runtime-observation\.json/);
 assert.doesNotMatch(
   source,
   /Upload (primary|static) diagnostics/,
@@ -617,10 +657,7 @@ assert.equal(terminalContractStep.env.PREFLIGHT_RESULT, "${{ needs.preflight.res
 assert.equal(terminalContractStep.env.INPUT_JOB_ID, "${{ inputs.job_id }}");
 assert.equal(terminalContractStep.env.INPUT_ATTEMPT, "${{ inputs.attempt }}");
 assert.equal(terminalContractStep.env.INPUT_BACKEND, "${{ inputs.backend }}");
-assert.equal(
-  terminalContractStep.env.QUALIFICATION_TIER,
-  "${{ inputs.qualification_tier }}",
-);
+assert.equal(terminalContractStep.env.QUALIFICATION_TIER, "${{ inputs.qualification_tier }}");
 assert.doesNotMatch(
   terminalContractStep.run,
   /\$\{\{ inputs\.(?:job_id|attempt|backend) \}\}/,
@@ -688,6 +725,10 @@ const complete = runTerminalContractScenario({
   reportResult: "success",
   primaryArtifactId: "98765",
   primaryArtifactDigest: `sha256:${"a".repeat(64)}`,
+  lifecycleResult: "success",
+  lifecycleDisposition: "destroyed",
+  lifecycleConsumed: "true",
+  lifecycleKey: "c".repeat(64),
   reportUrl: "https://example.invalid/report",
 });
 assert.equal(complete.contract.terminalStatus, "COMPLETE");
@@ -702,11 +743,44 @@ const shadowComplete = runTerminalContractScenario({
   reportResult: "success",
   primaryArtifactId: "98766",
   primaryArtifactDigest: `sha256:${"b".repeat(64)}`,
+  lifecycleResult: "success",
+  lifecycleDisposition: "destroyed",
+  lifecycleConsumed: "true",
+  lifecycleKey: "d".repeat(64),
 });
 assert.equal(shadowComplete.contract.terminalStatus, "COMPLETE");
 assert.equal(shadowComplete.contract.qualificationTier, "shadow");
 assert.equal(shadowComplete.contract.reportUrl, "");
 assert.match(shadowComplete.outputs, /workflow_ok=true/);
+
+const missingLifecycle = runTerminalContractScenario({
+  name: "missing-lifecycle",
+  backend: "cilicon_tart",
+  primaryResult: "success",
+  reportResult: "success",
+  primaryArtifactId: "98767",
+  primaryArtifactDigest: `sha256:${"c".repeat(64)}`,
+  reportUrl: "https://example.invalid/unsafe-report",
+});
+assert.equal(missingLifecycle.contract.terminalStatus, "ABORTED");
+assert.equal(missingLifecycle.contract.infraDisposition, "LIFECYCLE_UNVERIFIED");
+assert.match(missingLifecycle.outputs, /workflow_ok=false/);
+
+const quarantinedLifecycle = runTerminalContractScenario({
+  name: "quarantined-lifecycle",
+  backend: "cilicon_tart",
+  primaryResult: "success",
+  reportResult: "skipped",
+  primaryArtifactId: "98768",
+  primaryArtifactDigest: `sha256:${"d".repeat(64)}`,
+  lifecycleResult: "success",
+  lifecycleDisposition: "quarantined",
+  lifecycleConsumed: "true",
+  lifecycleKey: "e".repeat(64),
+});
+assert.equal(quarantinedLifecycle.contract.terminalStatus, "ABORTED");
+assert.equal(quarantinedLifecycle.contract.infraDisposition, "LIFECYCLE_QUARANTINED");
+assert.match(quarantinedLifecycle.outputs, /workflow_ok=false/);
 
 const buildUnavailable = runTerminalContractScenario({
   name: "build-unavailable",
