@@ -475,7 +475,7 @@ acquire() {
   owner_b64="$(printf '%s' "$owner_json" | base64 | tr -d '\n')"
   local deadline=$((SECONDS + wait_seconds))
   local transport_failures=0
-  local transport_deadline=$((SECONDS + 5))
+  local transport_deadline=0
 
   while true; do
     local response
@@ -675,6 +675,9 @@ fi
 REMOTE
     )"; then
       ((transport_failures += 1))
+      if ((transport_failures == 1)); then
+        transport_deadline=$((SECONDS + 5))
+      fi
       if ((transport_failures >= 3 || SECONDS >= transport_deadline)); then
         echo "LEASE_TRANSPORT_UNAVAILABLE: acquire probe failed after bounded retries" >&2
         return 76
@@ -683,6 +686,7 @@ REMOTE
       continue
     fi
     transport_failures=0
+    transport_deadline=0
 
     case "${response%%$'\t'*}" in
       ACQUIRED)
@@ -870,19 +874,44 @@ if ! jq -e \
   echo "LEASE_QUARANTINED: owner metadata mismatch during release" >&2
   exit 73
 fi
-[[ -f "$lease_dir/heartbeat" ]] ||
-  { echo "LEASE_QUARANTINED: final heartbeat missing during release" >&2; exit 73; }
-last_heartbeat_epoch="$(cat "$lease_dir/heartbeat")"
-[[ "$last_heartbeat_epoch" =~ ^[0-9]+$ ]] ||
-  { echo "LEASE_QUARANTINED: final heartbeat invalid during release" >&2; exit 73; }
-if ! last_heartbeat_at="$(date -u -d "@$last_heartbeat_epoch" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)"; then
-  last_heartbeat_at="$(/bin/date -u -r "$last_heartbeat_epoch" +%Y-%m-%dT%H:%M:%SZ)"
+for required in heartbeat heartbeat.pid heartbeat.sh heartbeat.log; do
+  [[ -f "$lease_dir/$required" && ! -L "$lease_dir/$required" ]] ||
+    { echo "LEASE_QUARANTINED: unsafe or missing lease metadata $required" >&2; exit 73; }
+done
+heartbeat_pid="$(cat "$lease_dir/heartbeat.pid")"
+[[ "$heartbeat_pid" =~ ^[0-9]+$ ]] ||
+  { echo "LEASE_QUARANTINED: heartbeat PID is invalid during release" >&2; exit 73; }
+heartbeat_command="$(/bin/ps -p "$heartbeat_pid" -o command= 2>/dev/null || true)"
+if [[ "$heartbeat_command" == *"$lease_dir/heartbeat.sh"* ]]; then
+  if [[ "${NIXMAC_E2E_LEASE_TEST_MODE:-0}" == "1" &&
+    -n "${NIXMAC_E2E_LEASE_RELEASE_BEFORE_STOP_TEST_HOOK:-}" ]]; then
+    "$NIXMAC_E2E_LEASE_RELEASE_BEFORE_STOP_TEST_HOOK" "$lease_dir" "$heartbeat_pid"
+  fi
+  kill -TERM "$heartbeat_pid" 2>/dev/null || true
+  heartbeat_stop_deadline=$((SECONDS + 2))
+  while true; do
+    heartbeat_command="$(/bin/ps -p "$heartbeat_pid" -o command= 2>/dev/null || true)"
+    [[ "$heartbeat_command" == *"$lease_dir/heartbeat.sh"* ]] || break
+    if ((SECONDS >= heartbeat_stop_deadline)); then
+      echo "LEASE_QUARANTINED: heartbeat did not stop during release" >&2
+      exit 73
+    fi
+    sleep 0.05
+  done
 fi
+heartbeat_tmp="$lease_dir/heartbeat.tmp.$heartbeat_pid"
 shopt -s nullglob dotglob
 for entry in "$lease_dir"/*; do
   name="${entry##*/}"
   case "$name" in
     owner.json|heartbeat|heartbeat.pid|heartbeat.sh|heartbeat.log) ;;
+    "heartbeat.tmp.$heartbeat_pid")
+      [[ -f "$entry" && ! -L "$entry" ]] ||
+        { echo "LEASE_QUARANTINED: unsafe heartbeat temporary file" >&2; exit 73; }
+      heartbeat_tmp_size="$(wc -c < "$entry" | tr -d '[:space:]')"
+      [[ "$heartbeat_tmp_size" =~ ^[0-9]+$ ]] && ((heartbeat_tmp_size <= 32)) ||
+        { echo "LEASE_QUARANTINED: invalid heartbeat temporary file" >&2; exit 73; }
+      ;;
     *)
       echo "LEASE_QUARANTINED: unexpected lease metadata $name" >&2
       exit 73
@@ -891,29 +920,27 @@ for entry in "$lease_dir"/*; do
   [[ -f "$entry" && ! -L "$entry" ]] ||
     { echo "LEASE_QUARANTINED: unsafe lease metadata $name" >&2; exit 73; }
 done
-if [[ -f "$lease_dir/heartbeat.pid" ]]; then
-  heartbeat_pid="$(cat "$lease_dir/heartbeat.pid")"
-  heartbeat_command=""
-  if [[ "$heartbeat_pid" =~ ^[0-9]+$ ]]; then
-    heartbeat_command="$(/bin/ps -p "$heartbeat_pid" -o command= 2>/dev/null || true)"
-  fi
-  if [[ "$heartbeat_command" == *"$lease_dir/heartbeat.sh"* ]]; then
-    kill -TERM "$heartbeat_pid" 2>/dev/null || true
-    heartbeat_stop_deadline=$((SECONDS + 2))
-    while true; do
-      heartbeat_command="$(/bin/ps -p "$heartbeat_pid" -o command= 2>/dev/null || true)"
-      [[ "$heartbeat_command" == *"$lease_dir/heartbeat.sh"* ]] || break
-      if ((SECONDS >= heartbeat_stop_deadline)); then
-        echo "LEASE_QUARANTINED: heartbeat did not stop during release" >&2
-        exit 73
-      fi
-      sleep 0.05
-    done
-  fi
+rm -f "$heartbeat_tmp"
+last_heartbeat_epoch="$(cat "$lease_dir/heartbeat")"
+[[ "$last_heartbeat_epoch" =~ ^[0-9]+$ ]] ||
+  { echo "LEASE_QUARANTINED: final heartbeat invalid during release" >&2; exit 73; }
+if ! last_heartbeat_at="$(date -u -d "@$last_heartbeat_epoch" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)"; then
+  last_heartbeat_at="$(/bin/date -u -r "$last_heartbeat_epoch" +%Y-%m-%dT%H:%M:%SZ)"
 fi
 rm -f "$lease_dir/heartbeat.pid" "$lease_dir/heartbeat" \
-  "$lease_dir/heartbeat.sh" "$lease_dir/heartbeat.log" "$lease_dir/owner.json"
+  "$lease_dir/heartbeat.sh" "$lease_dir/heartbeat.log"
+remaining_entries=("$lease_dir"/*)
+if ((${#remaining_entries[@]} != 1)) ||
+  [[ "${remaining_entries[0]##*/}" != "owner.json" ]]; then
+  echo "LEASE_QUARANTINED: unexpected files remain before owner release" >&2
+  exit 73
+fi
+owner_snapshot="$(cat "$lease_dir/owner.json")"
+rm -f "$lease_dir/owner.json"
 if ! rmdir "$lease_dir"; then
+  if [[ -d "$lease_dir" && ! -e "$lease_dir/owner.json" ]]; then
+    (umask 077; printf '%s\n' "$owner_snapshot" > "$lease_dir/owner.json")
+  fi
   echo "LEASE_QUARANTINED: unexpected files remain during release" >&2
   exit 73
 fi

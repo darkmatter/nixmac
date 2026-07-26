@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "jobId": "darkmatter/nixmac:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:computer-use-v1",
+  "attempt": 2,
+  "backend": "static_ssh",
+  "qualificationTier": "production",
+  "workflowRunId": "12345",
+  "workflowRunAttempt": "1",
+  "terminalStatus": "COMPLETE",
+  "backendResult": "success",
+  "reportResult": "success",
+  "infraDisposition": "LEASE_ACQUIRED",
+  "lifecycle": {
+    "required": false,
+    "result": "skipped",
+    "consumed": false,
+    "disposition": "",
+    "key": ""
+  },
+  "artifactId": "98765",
+  "artifactDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "reportUrl": "https://darkmatter.github.io/nixmac/computer-use-e2e/jobs/darkmatter%2Fnixmac%3Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa%3Acomputer-use-v1/attempt-2/index.html",
+  "observedAt": "2026-07-26T00:00:00.000Z",
+  "requiresApiSynthesis": false,
+  "noRunnerContract": {
+    "triggers": [
+      "cancelled",
+      "runner_lost",
+      "terminal artifact absent"
+    ],
+    "authority": "GitHub run/job API",
+    "synthesizedAttemptStatus": "ABORTED"
+  }
+}

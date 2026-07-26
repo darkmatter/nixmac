@@ -26,6 +26,15 @@ const evidenceManifestSource = readFileSync(
   path.join(repoRoot, "tests/e2e/computer-use/evidence-manifest.mjs"),
   "utf8",
 );
+const terminalContractFixture = JSON.parse(
+  readFileSync(
+    path.join(
+      repoRoot,
+      "tests/e2e/computer-use/fixtures/terminal-contract.v1.json",
+    ),
+    "utf8",
+  ),
+);
 
 function runTerminalContractScenario({
   name,
@@ -735,12 +744,31 @@ assert.equal(complete.contract.terminalStatus, "COMPLETE");
 assert.equal(complete.contract.requiresApiSynthesis, false);
 assert.match(complete.outputs, /workflow_ok=true/);
 
+const staticComplete = runTerminalContractScenario({
+  name: "static-frozen-contract",
+  backend: "static_ssh",
+  staticResult: "success",
+  reportResult: "success",
+  staticArtifactId: "98765",
+  staticArtifactDigest: `sha256:${"a".repeat(64)}`,
+  staticInfraDisposition: "LEASE_ACQUIRED",
+  reportUrl: terminalContractFixture.reportUrl,
+});
+assert.deepEqual(
+  {
+    ...staticComplete.contract,
+    observedAt: terminalContractFixture.observedAt,
+  },
+  terminalContractFixture,
+  "the producer must emit the frozen cross-repo terminal contract",
+);
+
 const shadowComplete = runTerminalContractScenario({
   name: "shadow-complete",
   backend: "cilicon_tart",
   qualificationTier: "shadow",
   primaryResult: "success",
-  reportResult: "success",
+  reportResult: "skipped",
   primaryArtifactId: "98766",
   primaryArtifactDigest: `sha256:${"b".repeat(64)}`,
   lifecycleResult: "success",

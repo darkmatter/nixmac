@@ -1374,7 +1374,7 @@ jobs:
   publish_report:
     name: Publish verified deterministic report
     needs: [preflight, primary, static_ssh, lifecycle_consumer]
-    if: always() && needs.preflight.outputs.ready == 'true' && ((inputs.backend == 'static_ssh' && needs.static_ssh.result == 'success') || (inputs.backend == 'cilicon_tart' && needs.primary.result == 'success' && needs.lifecycle_consumer.result == 'success' && needs.lifecycle_consumer.outputs.consumed == 'true' && needs.lifecycle_consumer.outputs.disposition == 'destroyed'))
+    if: always() && inputs.qualification_tier == 'production' && needs.preflight.outputs.ready == 'true' && ((inputs.backend == 'static_ssh' && needs.static_ssh.result == 'success') || (inputs.backend == 'cilicon_tart' && needs.primary.result == 'success' && needs.lifecycle_consumer.result == 'success' && needs.lifecycle_consumer.outputs.consumed == 'true' && needs.lifecycle_consumer.outputs.disposition == 'destroyed'))
     runs-on: arc
     timeout-minutes: 20
     permissions:
@@ -1607,8 +1607,15 @@ jobs:
               artifact_id="$STATIC_ARTIFACT_ID"
               artifact_digest="$STATIC_ARTIFACT_DIGEST"
             fi
+            report_ok=false
+            if [[ "$QUALIFICATION_TIER" == "production" &&
+              "$REPORT_RESULT" == "success" ]] ||
+              [[ "$QUALIFICATION_TIER" == "shadow" &&
+                "$REPORT_RESULT" == "skipped" ]]; then
+              report_ok=true
+            fi
             if [[ "$backend_result" == "success" &&
-              "$REPORT_RESULT" == "success" &&
+              "$report_ok" == "true" &&
               "$lifecycle_ok" == "true" &&
               "$artifact_id" =~ ^[0-9]+$ &&
               "$artifact_digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then

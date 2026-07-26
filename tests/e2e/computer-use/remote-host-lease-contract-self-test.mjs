@@ -105,11 +105,12 @@ try {
 set -euo pipefail
 count_file="\${NIXMAC_E2E_FAKE_SSH_COUNT_FILE:-}"
 fail_until="\${NIXMAC_E2E_FAKE_SSH_FAIL_UNTIL:-0}"
+fail_on="\${NIXMAC_E2E_FAKE_SSH_FAIL_ON:-0}"
 if [[ -n "$count_file" ]]; then
   count="$(cat "$count_file" 2>/dev/null || printf '0')"
   count=$((count + 1))
   printf '%s\\n' "$count" > "$count_file"
-  if ((count <= fail_until)); then
+  if ((count <= fail_until || count == fail_on)); then
     exit 255
   fi
 fi
@@ -450,6 +451,33 @@ sleep 0.5
     false,
     "a transient SSH failure must not quarantine the host",
   );
+  const lateTransportCounter = path.join(fixtureRoot, "late-transient-ssh-count");
+  const lateTransport = invoke(
+    "acquire",
+    "owner-b",
+    ["--wait-seconds", "7", "--poll-seconds", "6", "--max-hold-seconds", "60"],
+    {
+      ...fixtureEnv,
+      NIXMAC_E2E_FAKE_SSH_COUNT_FILE: lateTransportCounter,
+      NIXMAC_E2E_FAKE_SSH_FAIL_ON: "2",
+    },
+  );
+  assert.equal(
+    lateTransport.status,
+    75,
+    `a late transient SSH failure must receive a fresh bounded retry window: ${lateTransport.stderr}`,
+  );
+  assert.match(lateTransport.stderr, /LEASE_BUSY/);
+  assert.equal(
+    Number.parseInt(readFileSync(lateTransportCounter, "utf8"), 10),
+    3,
+    "a late transient SSH failure must be followed by a successful owner probe",
+  );
+  assert.equal(
+    existsSync(path.join(leaseRoot, "QUARANTINED.json")),
+    false,
+    "a late transient SSH failure must not quarantine the host",
+  );
 
   const rerunArgs = commonArgs.map((value, index, values) => {
     if (values[index - 1] === "--attempt") return "2";
@@ -528,7 +556,16 @@ stderr=${recoveredRerun.stderr}`,
 
   const wrongRelease = invoke("release", "owner-b");
   assert.equal(wrongRelease.status, 73, wrongRelease.stderr);
-  const released = invoke("release", "owner-a");
+  const releaseTempHook = path.join(fixtureRoot, "write-heartbeat-temp-before-stop");
+  writeFileSync(
+    releaseTempHook,
+    "#!/usr/bin/env bash\nset -euo pipefail\nprintf '1700000000\\n' > \"$1/heartbeat.tmp.$2\"\n",
+  );
+  chmodSync(releaseTempHook, 0o700);
+  const released = invoke("release", "owner-a", [], {
+    ...fixtureEnv,
+    NIXMAC_E2E_LEASE_RELEASE_BEFORE_STOP_TEST_HOOK: releaseTempHook,
+  });
   assert.equal(released.status, 0, released.stderr);
   assert.match(
     released.stdout,
