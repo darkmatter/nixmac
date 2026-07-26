@@ -533,7 +533,17 @@ Cover:
 - stdout/stderr overflow, nonzero exit/stderr, and timeout
   SIGTERM-to-SIGKILL escalation are deterministic;
 
-- close calls `stop --socket` only for a daemon the adapter started.
+- OS-derived Unix-socket ownership rejects missing, ambiguous, or mismatched
+  daemon peers even when `check_permissions.source` self-attests correctly;
+
+- delayed target readiness, post-launch failure cleanup, PID reuse refusal,
+  post-kill exit confirmation, and target/daemon cleanup retries;
+
+- screenshot no-write, symlink, inode replacement, header-only PNG, corrupt
+  IDAT, valid PNG, and cleanup-retry paths;
+
+- close calls `stop --socket` only for a daemon the adapter started and retains
+  each failed owned-resource cleanup independently for retry.
 
 - [ ] **Step 3: Implement a process runner**
 
@@ -574,13 +584,21 @@ stdout schema. The process exit code/stderr remains the authority for current
 
 1. run `--version`, read the installed `CuaDriver.app` bundle version, and
    require both to match the pinned fixture/image identity;
+1. in owned mode, require the selected socket path to be absent before launch;
+   only `attachSocket` may intentionally name an existing socket;
 1. start the standalone app-owned daemon with argv equivalent to
    `open -n -g -a CuaDriver --args serve --socket <run-socket>`;
 1. poll `status --socket <run-socket>`;
 1. call `check_permissions`;
 1. fail unless Accessibility and Screen Recording are granted;
-1. canonicalize `check_permissions.source.executable`, require it inside the
-   verified `CuaDriver.app/Contents/MacOS`, and reverify the enclosing bundle's
+1. canonicalize the Unix socket and run
+   `/usr/sbin/lsof -nP -Fpcn -a -U <socket>`;
+1. require exactly one `cua-driver` PID holding the exact canonical socket,
+   resolve that PID's executable through the OS, and require the canonical
+   executable inside the verified `CuaDriver.app/Contents/MacOS`;
+1. treat `check_permissions.source` only as corroboration, requiring its
+   canonical executable to match the OS-derived socket owner;
+1. bind the daemon PID and executable, then reverify the enclosing bundle's
    identity, digest, and Developer ID signature.
 
 Directly spawning raw `cua-driver serve` outside `CuaDriver.app` is prohibited:
@@ -588,7 +606,9 @@ upstream documents that mode as unsupported for stable macOS TCC attribution.
 The static and ephemeral images grant Accessibility and Screen Recording to
 the pinned `CuaDriver.app` bundle identity. `close()` may stop only an
 app-owned daemon this adapter instance started; attach-to-existing mode never
-stops another process.
+stops another process. Target, screenshot, and daemon cleanup are independent:
+state is cleared only after confirmed cleanup, failures are aggregated, and a
+later `close()` retries only the resources still owned.
 
 `prepareTarget({ appBundleId, appPath })` must:
 
@@ -597,17 +617,23 @@ stops another process.
    canonical app path and no other process for that bundle ID is running;
 1. call `launch_app` with the bundle ID;
 1. reject a returned pid of zero or a mismatched bundle ID;
+1. persist ownership of that pid plus the exact app path and digest immediately
+   after the valid launch response;
 1. query the launched pid's executable path without AppleScript and require its
    canonical path to be inside `appPath/Contents/MacOS/`;
 1. recompute the running bundle digest and require it to equal the preflight
    digest;
-1. use returned windows or call `list_windows`;
+1. poll `list_apps` and `list_windows` under a bounded readiness deadline;
 1. select one on-screen current-Space layer-0 window deterministically:
    prefer explicit `on_current_space=true`, reject explicit false, and for
    pinned macOS 0.12.6 only accept null as an `is_on_screen=true` fallback
    because upstream emits null for every window; record which proof path was
    used and break ties by frontmost `z_index`, then stable window ID;
-1. retain pid/window/app-path identity for every later state/action.
+1. retain pid/window/app-path identity for every later state/action;
+1. on later preparation failure or close, re-prove the owned PID's current
+   executable and exact bundle identity before `/bin/kill -KILL <pid>`, then
+   poll until the PID is absent or demonstrably reused; never clear ownership
+   on signal success alone.
 
 - [ ] **Step 5: Implement normalized UI methods**
 
@@ -624,6 +650,14 @@ It returns text, base64-encoded PNG bytes read from `tempPng`, and:
 ```js
 { pid, windowId, snapshotId: `${pid}:${windowId}:${turnId}` }
 ```
+
+Each capture uses a fresh randomized 0700 directory under `runDir` and an
+exclusive empty 0600 regular file. The adapter requires the same inode after
+the call, a nonzero fresh write, and a complete qualified non-interlaced 8-bit
+RGB/RGBA PNG: valid chunk bounds/order and CRC, sane IHDR, a hard decoded-byte
+ceiling before IDAT inflation, the expected scanline length, IEND, and no
+trailing bytes. It always attempts owned artifact cleanup and retains failed
+directory cleanup for `close()` retry.
 
 `click()` and `setValue()` reject addresses whose target differs from the most
 recent snapshot and then invoke `click` or `set_value`.
@@ -686,6 +720,15 @@ createDriver: (options) => new CuaDriver({
 }),
 executionTopology: "local-cua-driver",
 ```
+
+`binary` is the CLI executable, `socketPath` is an owned daemon socket,
+`appBundleId` is the default target bundle, and `runDir` owns screenshot
+scratch paths. When `socketPath` is omitted, the owned socket remains under the
+short `socketDirectory`/system-temp path rather than the potentially long
+artifact `runDir`, respecting macOS Unix-socket path limits. `attachSocket`
+remains the explicit, non-owning existing-socket mode. The constructor rejects
+unknown and conflicting options instead of silently ignoring entrypoint
+configuration.
 
 - [ ] **Step 3: Make topology-specific steps explicit**
 

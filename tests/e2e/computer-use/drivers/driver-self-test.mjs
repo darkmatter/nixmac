@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readFile, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -37,6 +38,7 @@ import {
   parseCuaCodesignIdentity,
   pinnedCuaDriverMetadata,
   selectCuaWindow,
+  validatePngScreenshot,
 } from "./cua-driver.mjs";
 
 const requiredMethods = ["connect", "prepareTarget", "visibleState", "click", "setValue", "close"];
@@ -1748,20 +1750,95 @@ assert.throws(
 const cuaTargetBundleId = "com.darkmatter.nixmac.e2e";
 const cuaTargetPath = "/Applications/Nixmac E2E.app";
 const cuaTargetDigest = "a".repeat(64);
-const cuaScreenshotBytes = Buffer.from("89504e470d0a1a0a", "hex");
+const cuaScreenshotBytes = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==",
+  "base64",
+);
+const cuaRuntimeFixtureDir = await mkdtemp(path.join(os.tmpdir(), "nixmac-cua-runtime-"));
+const pngTestCrcTable = Uint32Array.from({ length: 256 }, (_, value) => {
+  let crc = value;
+  for (let bit = 0; bit < 8; bit += 1) {
+    crc = (crc & 1) === 1 ? 0xedb88320 ^ (crc >>> 1) : crc >>> 1;
+  }
+  return crc >>> 0;
+});
+function pngTestCrc32(bytes) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc = pngTestCrcTable[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+function pngTestChunk(type, data = Buffer.alloc(0)) {
+  const typeBytes = Buffer.from(type, "ascii");
+  const chunk = Buffer.alloc(12 + data.length);
+  chunk.writeUInt32BE(data.length, 0);
+  typeBytes.copy(chunk, 4);
+  data.copy(chunk, 8);
+  chunk.writeUInt32BE(pngTestCrc32(Buffer.concat([typeBytes, data])), 8 + data.length);
+  return chunk;
+}
+const decompressionBombPng = Buffer.from(cuaScreenshotBytes);
+decompressionBombPng.writeUInt32BE(8192, 16);
+decompressionBombPng.writeUInt32BE(4096, 20);
+decompressionBombPng.writeUInt32BE(pngTestCrc32(decompressionBombPng.subarray(12, 29)), 29);
+assert.throws(
+  () => validatePngScreenshot(decompressionBombPng),
+  /decoded PNG size exceeds/,
+  "decoded screenshot bytes must be bounded before IDAT inflation",
+);
+const unknownCriticalChunkPng = Buffer.concat([
+  cuaScreenshotBytes.subarray(0, 33),
+  pngTestChunk("ABCD"),
+  cuaScreenshotBytes.subarray(33),
+]);
+assert.throws(() => validatePngScreenshot(unknownCriticalChunkPng), /unknown critical PNG chunk/);
+const paletteChunkPng = Buffer.concat([
+  cuaScreenshotBytes.subarray(0, 33),
+  pngTestChunk("PLTE", Buffer.from([0, 0, 0])),
+  cuaScreenshotBytes.subarray(33),
+]);
+assert.throws(
+  () => validatePngScreenshot(paletteChunkPng),
+  /PLTE is not allowed/,
+  "the qualified RGB/RGBA screenshot contract must reject unqualified palette metadata",
+);
 
 function createCuaHarness({
   attachSocket = "",
   actionOutputs = {},
   competingRecord = null,
+  daemonExecutable = "/Applications/CuaDriver.app/Contents/MacOS/cua-driver",
+  daemonStopFailures = 0,
   driverIdentityOverrides = {},
+  lsofOutput = "",
   permissionSourceExecutable = "/Applications/CuaDriver.app/Contents/MacOS/cua-driver",
+  openScreenshotFailure = false,
   screenshotBytes = cuaScreenshotBytes,
+  scratchCleanupFailures = 0,
+  screenshotMode = "write",
+  targetExitChecksAfterKill = 0,
+  targetKillFailures = 0,
+  windowReadyAfter = 0,
   toolOutputs = {},
+  driverOptions = {},
 } = {}) {
   const commands = [];
   const identityReads = [];
-  let launched = false;
+  const pidQueries = [];
+  const scratchCleanupAttempts = [];
+  const screenshotArtifactObservations = [];
+  const sleeps = [];
+  const control = {
+    daemonStopFailures,
+    postKillExecutable: "",
+    scratchCleanupFailures,
+    targetExecutable: `${cuaTargetPath}/Contents/MacOS/nixmac`,
+    targetExitChecksRemaining: targetExitChecksAfterKill,
+    targetKillFailures,
+    targetRunning: false,
+  };
+  let listWindowsCalls = 0;
   const runner = {
     async run(command, args) {
       commands.push({ command, args: [...args] });
@@ -1771,6 +1848,21 @@ function createCuaHarness({
       if (command === "/usr/bin/open") {
         return { stdout: "", stderr: "" };
       }
+      if (command === "/usr/sbin/lsof") {
+        return {
+          stdout: lsofOutput || `p31337\nccua-driver\nf9u\nn${args.at(-1)}\n`,
+          stderr: "",
+        };
+      }
+      if (command === "/bin/kill") {
+        assert.deepEqual(args, ["-KILL", "4242"]);
+        if (control.targetKillFailures > 0) {
+          control.targetKillFailures -= 1;
+          throw new Error("synthetic target kill failure");
+        }
+        control.targetRunning = false;
+        return { stdout: "", stderr: "" };
+      }
       if (command !== "/opt/nixmac-e2e/bin/cua-driver") {
         throw new Error(`Unexpected test command: ${command}`);
       }
@@ -1778,6 +1870,10 @@ function createCuaHarness({
         return { stdout: "running pid=31337\n", stderr: "" };
       }
       if (args[0] === "stop") {
+        if (control.daemonStopFailures > 0) {
+          control.daemonStopFailures -= 1;
+          throw new Error("synthetic daemon stop failure");
+        }
         return { stdout: "stopped\n", stderr: "" };
       }
       if (args[0] !== "call") {
@@ -1810,15 +1906,15 @@ function createCuaHarness({
       }
       if (tool === "list_apps") {
         const fixture = structuredClone(cuaListAppsFixture);
-        if (!launched && competingRecord) fixture.apps.push(competingRecord);
-        if (launched) {
+        if (!control.targetRunning && competingRecord) fixture.apps.push(competingRecord);
+        if (control.targetRunning) {
           fixture.apps[0].pid = 4242;
           fixture.apps[0].running = true;
         }
         return { stdout: JSON.stringify(fixture), stderr: "" };
       }
       if (tool === "launch_app") {
-        launched = true;
+        control.targetRunning = true;
         return {
           stdout: JSON.stringify({
             pid: 4242,
@@ -1830,9 +1926,39 @@ function createCuaHarness({
         };
       }
       if (tool === "list_windows") {
+        listWindowsCalls += 1;
+        if (listWindowsCalls <= windowReadyAfter) {
+          return { stdout: JSON.stringify({ windows: [] }), stderr: "" };
+        }
         return { stdout: JSON.stringify(cuaListWindowsFixture), stderr: "" };
       }
       if (tool === "get_window_state") {
+        const screenshotFlag = args.indexOf("--screenshot-out-file");
+        const screenshotPath = screenshotFlag >= 0 ? args[screenshotFlag + 1] : "";
+        if (screenshotPath) {
+          const [directoryStats, fileStats] = await Promise.all([
+            lstat(path.dirname(screenshotPath)),
+            lstat(screenshotPath),
+          ]);
+          screenshotArtifactObservations.push({
+            directoryMode: directoryStats.mode & 0o777,
+            fileMode: fileStats.mode & 0o777,
+            fileSize: fileStats.size,
+            isDirectory: directoryStats.isDirectory(),
+            isRegularFile: fileStats.isFile(),
+          });
+        }
+        if (screenshotPath && screenshotMode === "write") {
+          await writeFile(screenshotPath, screenshotBytes);
+        } else if (screenshotPath && screenshotMode === "replace-inode") {
+          await unlink(screenshotPath);
+          await writeFile(screenshotPath, screenshotBytes, { mode: 0o600 });
+        } else if (screenshotPath && screenshotMode === "symlink") {
+          const targetPath = path.join(cuaRuntimeFixtureDir, `symlink-target-${randomUUID()}.png`);
+          await writeFile(targetPath, screenshotBytes, { mode: 0o600 });
+          await unlink(screenshotPath);
+          await symlink(targetPath, screenshotPath);
+        }
         return { stdout: JSON.stringify(cuaWindowStateFixture), stderr: "" };
       }
       if (tool === "click" || tool === "set_value") {
@@ -1874,14 +2000,39 @@ function createCuaHarness({
       return appPath;
     },
     async queryPidExecutable(pid) {
-      assert.equal(pid, 4242);
-      return `${cuaTargetPath}/Contents/MacOS/nixmac`;
+      pidQueries.push(pid);
+      if (pid === 31337) return daemonExecutable;
+      if (pid === 4242) {
+        if (control.targetRunning) return control.targetExecutable;
+        if (control.targetExitChecksRemaining > 0) {
+          control.targetExitChecksRemaining -= 1;
+          return control.targetExecutable;
+        }
+        if (control.postKillExecutable) return control.postKillExecutable;
+        const error = new Error("fixture pid no longer exists");
+        error.code = "ESRCH";
+        throw error;
+      }
+      throw new Error(`Unexpected fixture pid: ${pid}`);
     },
-    async readFile() {
-      return screenshotBytes;
+    async removeDirectory(directory) {
+      scratchCleanupAttempts.push(directory);
+      if (control.scratchCleanupFailures > 0) {
+        control.scratchCleanupFailures -= 1;
+        throw new Error("synthetic screenshot cleanup failure");
+      }
+      await rm(directory, { force: true, recursive: true });
     },
-    async removeFile() {},
-    async sleep() {},
+    ...(openScreenshotFailure
+      ? {
+          async openExclusiveFile() {
+            throw new Error("synthetic exclusive screenshot open failure");
+          },
+        }
+      : {}),
+    async sleep(delayMs) {
+      sleeps.push(delayMs);
+    },
   };
   const driver = new CuaDriver({
     attachSocket,
@@ -1889,11 +2040,106 @@ function createCuaHarness({
     dependencies,
     driverAppPath: "/Applications/CuaDriver.app",
     processRunner: runner,
+    runDir: cuaRuntimeFixtureDir,
     runId: attachSocket ? "attach-fixture" : "owned-fixture",
-    socketDirectory: "/tmp",
+    socketDirectory: cuaRuntimeFixtureDir,
+    ...driverOptions,
   });
-  return { commands, driver, identityReads };
+  return {
+    commands,
+    control,
+    driver,
+    identityReads,
+    pidQueries,
+    scratchCleanupAttempts,
+    screenshotArtifactObservations,
+    sleeps,
+  };
 }
+
+const task5SampleOptions = {
+  app: cuaTargetBundleId,
+  runDir: cuaRuntimeFixtureDir,
+};
+const task5SampleDriver = new CuaDriver({
+  binary: "/opt/nixmac-e2e/bin/cua-driver",
+  socketPath: path.join(cuaRuntimeFixtureDir, "task5-owned.sock"),
+  appBundleId: task5SampleOptions.app,
+  runDir: task5SampleOptions.runDir,
+  dependencies: {},
+  processRunner: { async run() {} },
+});
+assert.equal(task5SampleDriver.cliPath, "/opt/nixmac-e2e/bin/cua-driver");
+assert.equal(task5SampleDriver.socketPath, path.join(cuaRuntimeFixtureDir, "task5-owned.sock"));
+assert.equal(task5SampleDriver.attachMode, false);
+assert.equal(task5SampleDriver.configuredAppBundleId, cuaTargetBundleId);
+assert.equal(task5SampleDriver.runDir, cuaRuntimeFixtureDir);
+const task5GeneratedSocketDriver = new CuaDriver({
+  binary: "/opt/nixmac-e2e/bin/cua-driver",
+  socketPath: undefined,
+  appBundleId: task5SampleOptions.app,
+  runDir: task5SampleOptions.runDir,
+  dependencies: {},
+  processRunner: { async run() {} },
+  runId: "task5-generated",
+});
+assert.equal(
+  task5GeneratedSocketDriver.socketPath,
+  path.join(os.tmpdir(), "nixmac-cua-task5-generated.sock"),
+);
+assert.equal(task5GeneratedSocketDriver.attachMode, false);
+const longTask5RunDir = path.join(cuaRuntimeFixtureDir, "attempt-artifacts", "a".repeat(180));
+const longRunDirDriver = new CuaDriver({
+  binary: "/opt/nixmac-e2e/bin/cua-driver",
+  appBundleId: task5SampleOptions.app,
+  runDir: longTask5RunDir,
+  dependencies: {},
+  processRunner: { async run() {} },
+  runId: "short-socket",
+});
+assert.equal(longRunDirDriver.runDir, longTask5RunDir);
+assert.equal(longRunDirDriver.socketPath, path.join(os.tmpdir(), "nixmac-cua-short-socket.sock"));
+assert.equal(
+  longRunDirDriver.socketPath.length < 104,
+  true,
+  "long artifact run directories must not lengthen the default macOS Unix socket path",
+);
+const task5AttachDriver = new CuaDriver({
+  binary: "/opt/nixmac-e2e/bin/cua-driver",
+  attachSocket: path.join(cuaRuntimeFixtureDir, "task5-attached.sock"),
+  appBundleId: task5SampleOptions.app,
+  runDir: task5SampleOptions.runDir,
+  dependencies: {},
+  processRunner: { async run() {} },
+});
+assert.equal(task5AttachDriver.socketPath, path.join(cuaRuntimeFixtureDir, "task5-attached.sock"));
+assert.equal(task5AttachDriver.attachMode, true);
+assert.throws(
+  () => new CuaDriver({ unexpectedTask5Option: true }),
+  /unknown CuaDriver option.*unexpectedTask5Option/,
+);
+assert.throws(
+  () => new CuaDriver({ binary: "cua-driver", cliPath: "cua-driver" }),
+  /binary conflicts with cliPath/,
+);
+assert.throws(
+  () =>
+    new CuaDriver({
+      attachSocket: "/tmp/cua-attached.sock",
+      socketPath: "/tmp/cua-owned.sock",
+    }),
+  /attachSocket conflicts with owned socketPath/,
+);
+const separateScratchAndSocketDriver = new CuaDriver({
+  runDir: "/tmp/attempt-artifacts",
+  socketDirectory: "/tmp/cua-sockets",
+  runId: "separate",
+});
+assert.equal(separateScratchAndSocketDriver.runDir, "/tmp/attempt-artifacts");
+assert.equal(
+  separateScratchAndSocketDriver.socketPath,
+  "/tmp/cua-sockets/nixmac-cua-separate.sock",
+);
 
 const socketDriverA = createCuaHarness().driver;
 const socketDriverB = new CuaDriver({
@@ -1907,8 +2153,30 @@ assert.notEqual(socketDriverA.socketPath, socketDriverB.socketPath);
 assert.match(socketDriverA.socketPath, /owned-fixture/);
 assert.match(socketDriverB.socketPath, /second-fixture/);
 
+const preexistingOwnedSocketHarness = createCuaHarness();
+await writeFile(preexistingOwnedSocketHarness.driver.socketPath, "occupied", { mode: 0o600 });
+await assert.rejects(
+  () => preexistingOwnedSocketHarness.driver.connect(),
+  /owned socket path already exists/,
+  "owned mode must never adopt a preexisting socket",
+);
+assert.equal(
+  preexistingOwnedSocketHarness.commands.some((entry) => entry.command === "/usr/bin/open"),
+  false,
+  "owned socket collision must fail before daemon launch",
+);
+await rm(preexistingOwnedSocketHarness.driver.socketPath, { force: true });
+
 const ownedHarness = createCuaHarness();
 await ownedHarness.driver.connect();
+assert.deepEqual(
+  ownedHarness.commands.find((entry) => entry.command === "/usr/sbin/lsof"),
+  {
+    command: "/usr/sbin/lsof",
+    args: ["-nP", "-Fpcn", "-a", "-U", ownedHarness.driver.socketPath],
+  },
+  "connect must derive the exact Unix-socket owner from macOS",
+);
 assert.deepEqual(ownedHarness.commands[0], {
   command: "/opt/nixmac-e2e/bin/cua-driver",
   args: ["--version"],
@@ -1957,6 +2225,49 @@ assert.deepEqual(
   "connect should reverify the driver bundle after binding the permission source executable",
 );
 
+const fakeSelfAttestationHarness = createCuaHarness({
+  attachSocket: "/tmp/nixmac-cua-self-attested.sock",
+  daemonExecutable: "/Applications/OtherDriver.app/Contents/MacOS/cua-driver",
+});
+await assert.rejects(
+  () => fakeSelfAttestationHarness.driver.connect(),
+  /socket owner executable is outside the verified CuaDriver.app/,
+  "check_permissions self-attestation must not substitute for OS-derived peer identity",
+);
+
+const ambiguousSocketOwnerHarness = createCuaHarness({
+  attachSocket: "/tmp/nixmac-cua-ambiguous.sock",
+  lsofOutput:
+    "p31337\nccua-driver\nf9u\nn/tmp/nixmac-cua-ambiguous.sock\n" +
+    "p31338\nccua-driver\nf8u\nn/tmp/nixmac-cua-ambiguous.sock\n",
+});
+await assert.rejects(
+  () => ambiguousSocketOwnerHarness.driver.connect(),
+  /exactly one CuaDriver listener PID/,
+  "ambiguous Unix-socket ownership must fail closed",
+);
+
+const configuredBundleHarness = createCuaHarness({
+  driverOptions: { appBundleId: cuaTargetBundleId },
+});
+await configuredBundleHarness.driver.connect();
+await configuredBundleHarness.driver.prepareTarget({ appPath: cuaTargetPath });
+await configuredBundleHarness.driver.close();
+
+const conflictingBundleHarness = createCuaHarness({
+  driverOptions: { appBundleId: cuaTargetBundleId },
+});
+await conflictingBundleHarness.driver.connect();
+await assert.rejects(
+  () =>
+    conflictingBundleHarness.driver.prepareTarget({
+      appBundleId: "com.darkmatter.other",
+      appPath: cuaTargetPath,
+    }),
+  /appBundleId conflicts with configured/,
+);
+await conflictingBundleHarness.driver.close();
+
 const wrongSignerHarness = createCuaHarness({
   driverIdentityOverrides: { teamIdentifier: "WRONGTEAM" },
 });
@@ -1966,6 +2277,64 @@ assert.equal(
   false,
   "the daemon must not launch when the installed app signing identity is wrong",
 );
+
+const delayedWindowHarness = createCuaHarness({ windowReadyAfter: 2 });
+await delayedWindowHarness.driver.connect();
+const delayedWindowTarget = await delayedWindowHarness.driver.prepareTarget({
+  appBundleId: cuaTargetBundleId,
+  appPath: cuaTargetPath,
+});
+assert.equal(delayedWindowTarget.windowId, 7002);
+assert.equal(
+  delayedWindowHarness.commands.filter(
+    (entry) =>
+      entry.command === "/opt/nixmac-e2e/bin/cua-driver" &&
+      entry.args[0] === "call" &&
+      entry.args[1] === "list_windows",
+  ).length,
+  3,
+  "prepareTarget should poll until the launched app exposes an eligible window",
+);
+assert.deepEqual(delayedWindowHarness.sleeps, [250, 250]);
+await delayedWindowHarness.driver.close();
+
+const confirmedExitHarness = createCuaHarness({ targetExitChecksAfterKill: 2 });
+await confirmedExitHarness.driver.connect();
+await confirmedExitHarness.driver.prepareTarget({
+  appBundleId: cuaTargetBundleId,
+  appPath: cuaTargetPath,
+});
+await confirmedExitHarness.driver.close();
+assert.equal(
+  confirmedExitHarness.pidQueries.filter((pid) => pid === 4242).length,
+  5,
+  "cleanup should prove identity before kill and poll until the owned pid exits",
+);
+assert.deepEqual(
+  confirmedExitHarness.sleeps,
+  [250, 250],
+  "target exit polling should use the bounded readiness interval",
+);
+
+const postLaunchFailureHarness = createCuaHarness({
+  toolOutputs: { list_windows: { windows: [] } },
+});
+await postLaunchFailureHarness.driver.connect();
+await assert.rejects(
+  () =>
+    postLaunchFailureHarness.driver.prepareTarget({
+      appBundleId: cuaTargetBundleId,
+      appPath: cuaTargetPath,
+    }),
+  /target did not become ready/,
+);
+assert.equal(
+  postLaunchFailureHarness.commands.filter((entry) => entry.command === "/bin/kill").length,
+  1,
+  "a target owned from launch response must be cleaned after later prepare failure",
+);
+assert.equal(postLaunchFailureHarness.control.targetRunning, false);
+await postLaunchFailureHarness.driver.close();
 
 const preparedTarget = await ownedHarness.driver.prepareTarget({
   appBundleId: cuaTargetBundleId,
@@ -2018,20 +2387,49 @@ const getWindowStateCalls = ownedHarness.commands.filter(
     entry.args[1] === "get_window_state",
 );
 assert.equal(getWindowStateCalls.length, 2);
-for (const [index, entry] of getWindowStateCalls.entries()) {
-  assert.deepEqual(entry.args, [
+for (const entry of getWindowStateCalls) {
+  assert.deepEqual(entry.args.slice(0, 4), [
     "call",
     "get_window_state",
     JSON.stringify({ pid: 4242, window_id: 7002 }),
     "--screenshot-out-file",
-    `/tmp/nixmac-cua-owned-fixture-state-${index + 1}.png`,
-    "--socket",
-    ownedHarness.driver.socketPath,
   ]);
+  assert.match(
+    entry.args[4],
+    new RegExp(
+      `^${cuaRuntimeFixtureDir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/nixmac-cua-owned-fixture-state-[^/]+/screenshot\\.png$`,
+    ),
+  );
+  assert.deepEqual(entry.args.slice(5), ["--socket", ownedHarness.driver.socketPath]);
   assert.equal(entry.args.includes("--raw"), false);
   assert.equal(entry.args.includes("--compact"), false);
   assert.equal(entry.args.includes("--no-daemon"), false);
 }
+assert.notEqual(
+  getWindowStateCalls[0].args[4],
+  getWindowStateCalls[1].args[4],
+  "every visibleState call must use a fresh randomized screenshot artifact",
+);
+assert.deepEqual(
+  ownedHarness.screenshotArtifactObservations,
+  [
+    {
+      directoryMode: 0o700,
+      fileMode: 0o600,
+      fileSize: 0,
+      isDirectory: true,
+      isRegularFile: true,
+    },
+    {
+      directoryMode: 0o700,
+      fileMode: 0o600,
+      fileSize: 0,
+      isDirectory: true,
+      isRegularFile: true,
+    },
+  ],
+  "the CuaDriver call must receive a private directory and exclusive empty regular file",
+);
 
 const staleCommandCount = ownedHarness.commands.length;
 await assert.rejects(
@@ -2122,6 +2520,12 @@ assert.deepEqual(
 );
 
 await ownedHarness.driver.close();
+assert.equal(
+  ownedHarness.commands.filter((entry) => entry.command === "/bin/kill").length,
+  1,
+  "close must terminate the exact target process owned by prepareTarget",
+);
+assert.equal(ownedHarness.control.targetRunning, false);
 assert.deepEqual(ownedHarness.commands.at(-1), {
   command: "/opt/nixmac-e2e/bin/cua-driver",
   args: ["stop", "--socket", ownedHarness.driver.socketPath],
@@ -2142,13 +2546,106 @@ assert.equal(
   "attach mode must never stop a daemon it did not start",
 );
 
+const reusedPidHarness = createCuaHarness();
+await reusedPidHarness.driver.connect();
+await reusedPidHarness.driver.prepareTarget({
+  appBundleId: cuaTargetBundleId,
+  appPath: cuaTargetPath,
+});
+reusedPidHarness.control.targetExecutable = "/Applications/Other.app/Contents/MacOS/other";
+await assert.rejects(
+  () => reusedPidHarness.driver.close(),
+  (error) => {
+    assert.equal(error instanceof AggregateError, true);
+    assert.match(error.errors[0].message, /refusing cleanup.*executable is outside/);
+    return true;
+  },
+);
+assert.equal(
+  reusedPidHarness.commands.some((entry) => entry.command === "/bin/kill"),
+  false,
+  "cleanup must refuse a PID whose current executable no longer belongs to the owned bundle",
+);
+reusedPidHarness.control.targetExecutable = `${cuaTargetPath}/Contents/MacOS/nixmac`;
+await reusedPidHarness.driver.close();
+assert.equal(
+  reusedPidHarness.commands.filter((entry) => entry.command === "/bin/kill").length,
+  1,
+  "a refused owned target cleanup must remain retryable",
+);
+
+const targetKillRetryHarness = createCuaHarness({ targetKillFailures: 1 });
+await targetKillRetryHarness.driver.connect();
+await targetKillRetryHarness.driver.prepareTarget({
+  appBundleId: cuaTargetBundleId,
+  appPath: cuaTargetPath,
+});
+await assert.rejects(() => targetKillRetryHarness.driver.close(), /synthetic target kill failure/);
+assert.equal(
+  targetKillRetryHarness.commands.filter((entry) => entry.command === "/bin/kill").length,
+  1,
+);
+assert.equal(
+  targetKillRetryHarness.commands.filter(
+    (entry) => entry.command === "/opt/nixmac-e2e/bin/cua-driver" && entry.args[0] === "stop",
+  ).length,
+  1,
+  "daemon cleanup must proceed independently when target cleanup fails",
+);
+await targetKillRetryHarness.driver.close();
+assert.equal(
+  targetKillRetryHarness.commands.filter((entry) => entry.command === "/bin/kill").length,
+  2,
+  "failed target cleanup must retain ownership for a second close retry",
+);
+assert.equal(
+  targetKillRetryHarness.commands.filter(
+    (entry) => entry.command === "/opt/nixmac-e2e/bin/cua-driver" && entry.args[0] === "stop",
+  ).length,
+  1,
+  "confirmed daemon cleanup must not be repeated",
+);
+
+const targetExitTimeoutHarness = createCuaHarness({
+  targetExitChecksAfterKill: 3,
+  driverOptions: { targetExitAttempts: 2 },
+});
+await targetExitTimeoutHarness.driver.connect();
+await targetExitTimeoutHarness.driver.prepareTarget({
+  appBundleId: cuaTargetBundleId,
+  appPath: cuaTargetPath,
+});
+await assert.rejects(
+  () => targetExitTimeoutHarness.driver.close(),
+  /owned target pid 4242 did not exit after 2 checks/,
+);
+targetExitTimeoutHarness.control.targetExitChecksRemaining = 0;
+await targetExitTimeoutHarness.driver.close();
+assert.equal(
+  targetExitTimeoutHarness.commands.filter((entry) => entry.command === "/bin/kill").length,
+  1,
+  "a retry should clear retained ownership once the exact pid is confirmed absent",
+);
+
+const daemonStopRetryHarness = createCuaHarness({ daemonStopFailures: 1 });
+await daemonStopRetryHarness.driver.connect();
+await assert.rejects(() => daemonStopRetryHarness.driver.close(), /synthetic daemon stop failure/);
+await daemonStopRetryHarness.driver.close();
+assert.equal(
+  daemonStopRetryHarness.commands.filter(
+    (entry) => entry.command === "/opt/nixmac-e2e/bin/cua-driver" && entry.args[0] === "stop",
+  ).length,
+  2,
+  "failed owned-daemon cleanup must remain retryable",
+);
+
 const mismatchedAttachedHarness = createCuaHarness({
   attachSocket: "/tmp/nixmac-cua-mismatched.sock",
   permissionSourceExecutable: "/Applications/OtherDriver.app/Contents/MacOS/cua-driver",
 });
 await assert.rejects(
   () => mismatchedAttachedHarness.driver.connect(),
-  /permissions source executable is outside the verified CuaDriver.app/,
+  /permissions source executable does not match the OS-derived socket owner/,
 );
 assert.equal(
   mismatchedAttachedHarness.commands.some((entry) => entry.command === "/usr/bin/open"),
@@ -2269,6 +2766,114 @@ await assert.rejects(
 );
 await invalidPngHarness.driver.close();
 
+const symlinkScreenshotHarness = createCuaHarness({ screenshotMode: "symlink" });
+await symlinkScreenshotHarness.driver.connect();
+await symlinkScreenshotHarness.driver.prepareTarget({
+  appBundleId: cuaTargetBundleId,
+  appPath: cuaTargetPath,
+});
+await assert.rejects(
+  () => symlinkScreenshotHarness.driver.visibleState({ app: cuaTargetBundleId }),
+  /screenshot artifact inode changed/,
+);
+await symlinkScreenshotHarness.driver.close();
+
+const replacedScreenshotHarness = createCuaHarness({ screenshotMode: "replace-inode" });
+await replacedScreenshotHarness.driver.connect();
+await replacedScreenshotHarness.driver.prepareTarget({
+  appBundleId: cuaTargetBundleId,
+  appPath: cuaTargetPath,
+});
+await assert.rejects(
+  () => replacedScreenshotHarness.driver.visibleState({ app: cuaTargetBundleId }),
+  /screenshot artifact inode changed/,
+);
+await replacedScreenshotHarness.driver.close();
+
+const headerOnlyPngHarness = createCuaHarness({
+  screenshotBytes: Buffer.from("89504e470d0a1a0a", "hex"),
+});
+await headerOnlyPngHarness.driver.connect();
+await headerOnlyPngHarness.driver.prepareTarget({
+  appBundleId: cuaTargetBundleId,
+  appPath: cuaTargetPath,
+});
+await assert.rejects(
+  () => headerOnlyPngHarness.driver.visibleState({ app: cuaTargetBundleId }),
+  /valid PNG/,
+  "a PNG signature without complete chunks is not screenshot evidence",
+);
+await headerOnlyPngHarness.driver.close();
+
+const corruptIdatPng = Buffer.from(cuaScreenshotBytes);
+corruptIdatPng[44] ^= 0xff;
+const corruptIdatHarness = createCuaHarness({ screenshotBytes: corruptIdatPng });
+await corruptIdatHarness.driver.connect();
+await corruptIdatHarness.driver.prepareTarget({
+  appBundleId: cuaTargetBundleId,
+  appPath: cuaTargetPath,
+});
+await assert.rejects(
+  () => corruptIdatHarness.driver.visibleState({ app: cuaTargetBundleId }),
+  /valid PNG/,
+  "corrupt IDAT payloads must not become screenshot evidence",
+);
+await corruptIdatHarness.driver.close();
+
+const staleScreenshotHarness = createCuaHarness({ screenshotMode: "no-write" });
+await staleScreenshotHarness.driver.connect();
+await staleScreenshotHarness.driver.prepareTarget({
+  appBundleId: cuaTargetBundleId,
+  appPath: cuaTargetPath,
+});
+const predictableStaleScreenshot = path.join(
+  cuaRuntimeFixtureDir,
+  "nixmac-cua-owned-fixture-state-1.png",
+);
+await writeFile(predictableStaleScreenshot, cuaScreenshotBytes, { mode: 0o600 });
+await assert.rejects(
+  () => staleScreenshotHarness.driver.visibleState({ app: cuaTargetBundleId }),
+  /fresh screenshot write/,
+  "a preexisting predictable screenshot must not satisfy a no-write CuaDriver call",
+);
+await rm(predictableStaleScreenshot, { force: true });
+await staleScreenshotHarness.driver.close();
+
+const screenshotCleanupRetryHarness = createCuaHarness({ scratchCleanupFailures: 1 });
+await screenshotCleanupRetryHarness.driver.connect();
+await screenshotCleanupRetryHarness.driver.prepareTarget({
+  appBundleId: cuaTargetBundleId,
+  appPath: cuaTargetPath,
+});
+await assert.rejects(
+  () => screenshotCleanupRetryHarness.driver.visibleState({ app: cuaTargetBundleId }),
+  /synthetic screenshot cleanup failure/,
+);
+assert.equal(screenshotCleanupRetryHarness.scratchCleanupAttempts.length, 1);
+await screenshotCleanupRetryHarness.driver.close();
+assert.equal(
+  screenshotCleanupRetryHarness.scratchCleanupAttempts.length,
+  2,
+  "close must retry cleanup of an owned screenshot directory",
+);
+
+const screenshotOpenFailureHarness = createCuaHarness({ openScreenshotFailure: true });
+await screenshotOpenFailureHarness.driver.connect();
+await screenshotOpenFailureHarness.driver.prepareTarget({
+  appBundleId: cuaTargetBundleId,
+  appPath: cuaTargetPath,
+});
+await assert.rejects(
+  () => screenshotOpenFailureHarness.driver.visibleState({ app: cuaTargetBundleId }),
+  /synthetic exclusive screenshot open failure/,
+);
+assert.equal(
+  screenshotOpenFailureHarness.scratchCleanupAttempts.length,
+  1,
+  "artifact setup failure must immediately clean its owned private directory",
+);
+await screenshotOpenFailureHarness.driver.close();
+
 assert.equal(cuaDriverDescriptor.id, "cua-driver");
 assert.equal(
   validateDriverDescriptor(cuaDriverDescriptor, {
@@ -2279,4 +2884,5 @@ assert.equal(
   true,
 );
 
+await rm(cuaRuntimeFixtureDir, { force: true, recursive: true });
 console.log("Computer Use runtime driver contract self-test passed.");

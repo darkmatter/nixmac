@@ -345,13 +345,34 @@ requires `is_on_screen=true` and layer 0, rejects an explicit false
 `on_current_space`, prefers explicit true when a future release supplies it,
 and records when the pinned-version on-screen fallback was used.
 
-After `check_permissions`, the adapter canonicalizes
-`source.executable`, requires it to reside inside the already verified
-`CuaDriver.app/Contents/MacOS` directory, and reverifies that enclosing bundle's
-identity, content digest, and Developer ID signature. This executable proof is
-required in both owned-daemon and attach-to-existing modes because the
-name-based `open -a CuaDriver` launch contract alone does not identify the
-process that answered the socket.
+After `check_permissions`, the adapter canonicalizes the selected Unix socket
+and runs `/usr/sbin/lsof -nP -Fpcn -a -U <socket>`. Exactly one `cua-driver`
+PID must hold the exact canonical socket. The adapter derives that PID's
+executable through the OS, requires it inside the already verified
+`CuaDriver.app/Contents/MacOS`, and binds the PID plus executable before
+reverifying the enclosing bundle's identity, content digest, and Developer ID
+signature. `check_permissions.source` is corroboration only and must match the
+OS-derived executable. This proof is required in both owned-daemon and
+attach-to-existing modes because the name-based `open -a CuaDriver` launch
+contract and daemon self-attestation do not identify the process that answered
+the socket.
+
+Owned mode first proves its selected socket path is absent, launches the app,
+and only then binds the OS-derived owner. A caller must use the distinct
+`attachSocket` option to intentionally connect to an existing socket. Generated
+owned sockets stay under the short system-temp `socketDirectory`; the
+potentially long artifact `runDir` is used for randomized screenshot scratch
+directories and never lengthens the macOS Unix-socket path.
+
+Once `launch_app` returns a valid PID and bundle ID, the adapter immediately
+persists an owned-target record containing that PID, canonical staged app path,
+and digest. It polls `list_apps` and `list_windows` under a bounded readiness
+deadline. Any later preparation failure and every `close()` attempt re-prove
+that PID's current executable and exact bundle identity before signaling it.
+After `/bin/kill -KILL`, ownership is cleared only when the PID is absent or is
+demonstrably reused by a different executable. Target, screenshot, and daemon
+cleanup failures are aggregated but retained independently so later `close()`
+calls retry only unfinished cleanup.
 
 Element addresses use a new reviewed `cua-element-index` kind scoped to
 `(pid, window_id, snapshot)`. The adapter must refresh visible state before
@@ -369,6 +390,15 @@ scenario runner. It must expose:
 - normalized action success/failure;
 - driver/version/capture metadata;
 - teardown status.
+
+Every `screenshot_out_file` is an exclusive empty 0600 regular file inside a
+fresh randomized 0700 directory under the run directory. The response is
+accepted only if the path remains the same inode and contains a nonzero fresh
+write. Screenshot decoding is pinned to qualified non-interlaced 8-bit RGB or
+RGBA PNGs and validates chunk bounds/order and CRC, sane IHDR dimensions, a
+hard decoded-byte ceiling before IDAT inflation, exact scanline length and
+filter bytes, IEND, and absence of trailing bytes. Failed scratch cleanup stays
+owned and is retried by `close()`.
 
 These capabilities were verified against the installed static-Mac CuaDriver:
 `get_window_state` returns a native screenshot image in `som` mode,
