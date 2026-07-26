@@ -139,6 +139,93 @@ Each job probes its own contract before consuming evidence or mutating a Mac.
 The evidence producer and verifier both use the resolved
 `NIXMAC_E2E_FFMPEG_PATH`, so one attempt cannot silently switch binaries.
 
+### Tart/Cilicon activation gate
+
+The ephemeral Tart/Cilicon lane is disabled. As observed on 2026-07-26, PR #604
+is still open and its image workflow and Packer template are not on `main`.
+`ops/images/nixmac-e2e-runner.contract.json` records this dependency boundary
+without inventing image or CuaDriver pins. The `primary` job additionally
+requires the repository-level Actions variable
+`NIXMAC_E2E_CILICON_PROMOTION_STATE=qualified-v1`; an absent value keeps the job
+skipped.
+
+The variable must be repository-level because environment-scoped variables are
+not available while GitHub evaluates a job-level `if`. Treat repository and
+organization Actions-variable write access as part of the production control
+plane: audit who can change it, check that an organization-level value cannot
+unexpectedly supply it, and retain the protected `nixmac-e2e-production`
+environment as the independent main-only credential boundary. GitHub expression
+string comparison is case-insensitive, so do not use capitalization as an
+authorization property.
+
+After PR #604 lands, activate the lane only through this sequence:
+
+1. Derive a small E2E image layer from #604's Packer, Tart, pinned Cirrus
+   Tahoe-base, GHCR, isolated-builder, Xcode-verification, and secret-scan
+   primitives. Do not copy or fork the full Xcode recipe.
+1. Publish and consume the E2E image only by immutable `@sha256` reference.
+   Pin the CuaDriver artifact URL and digest, CLI/app version, bundle ID,
+   signing identity, app path, app-owned executable, and CLI symlink.
+1. Build without repository credentials, provider keys, signing keys, or user
+   data. Use a dedicated non-personal test user and verify every required
+   media/report tool.
+1. On both first boot and an aged reboot, prove a logged-in Aqua session,
+   Accessibility, Screen Recording, and CuaDriver smoke. TCC must target the
+   pinned `CuaDriver.app` identity, never the raw CLI. If grants do not survive
+   cloning, require a supported MDM/bootstrap mechanism before promotion.
+1. Deploy a dedicated capacity-one host cycle wrapper and lifecycle attestor.
+   Every attempt gets one fresh VM. The trusted workflow writes its job,
+   Centaur attempt, nonce, GitHub run and run-attempt, runner, and intended
+   image identity into the host-only lifecycle mount. Cycle ID and exact clone
+   path are host-injected echo fields; equality proves continuity, not an
+   independent guest observation.
+1. The host must wait for the exact runner to deregister and the exact clone to
+   disappear, reject a second matching clone, and emit one nonce-bound
+   `destroyed` attestation. On any timeout or ambiguity it instead creates
+   `/var/db/nixmac-e2e-quarantined`, stops new cycles, and emits a
+   `quarantined` attestation with the reason and marker. A quarantine proves
+   containment, not successful teardown or promotion eligibility.
+1. Create the protected, secret-free
+   `darkmatter/nixmac-e2e-attestations` sink. Give the host one sink-only GitHub
+   App identity with only Contents write on that sink and no installation on
+   `darkmatter/nixmac`. Use a different GitHub App identity with only
+   Administration read on `darkmatter/nixmac` to check runner inventory. Record
+   both App and installation IDs. Never place either private key in the VM image
+   or repository.
+1. Register only `[self-hosted, macOS,nixmac-e2e]`; do not share the build
+   fleet's `nixmac-mac` lease domain. Prove one complete VM cycle, runner
+   deregistration, exact clone destruction, wrapper restart recovery,
+   two-cycle serialization, and quarantine admission blocking.
+1. Run private shadow traffic with no Check or Buzz publication. Centaur must
+   consume each sink attestation once and must not publish PASS until canonical
+   evidence and lifecycle identity both verify.
+1. Meet the absolute gates: no missed merges, duplicate terminal publications,
+   identity/digest mismatches, unclassified failures, cleanup failures,
+   destruction failures, or attestation failures; every publication has a
+   verified report; and the latest ten exact-SHA product-passing jobs are
+   consecutive destroyed attempts. A quarantine resets this streak and counts
+   as a teardown failure during absolute qualification.
+1. After at least 50 jobs or 30 days, also prove 98% terminal without human
+   intervention, 95% starting within 15 minutes when capacity exists, fewer
+   than 2% infrastructure-inconclusive, and 100% of attempts destroyed or
+   explicitly quarantined. Only then set the repository promotion variable.
+
+Size the dedicated pool from observed arrivals and cycle time:
+
+```text
+dedicated_hosts >= max(
+  2,
+  ceil(peak_jobs_per_hour * p95_cycle_minutes / 60 * 1.5) + 1
+)
+```
+
+Promotion also requires p95 start latency under 15 minutes with one host
+quarantined. Rollback selects the last qualified immutable image digest; it
+never falls back to a mutable tag. Code review and local tests cannot qualify
+the external image, TCC grants, host teardown, GitHub App permissions, sink
+protection, runner inventory, or measured capacity, so they must not be used as
+production-readiness evidence.
+
 Before enabling the first `static_ssh` dispatch after the lease workflow lands:
 
 1. Query all queued and active runs of `computer-use-e2e.yml`,

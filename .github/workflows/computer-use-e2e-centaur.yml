@@ -247,7 +247,7 @@ jobs:
   primary:
     name: Ephemeral CuaDriver E2E
     needs: preflight
-    if: needs.preflight.outputs.ready == 'true' && inputs.backend == 'cilicon_tart' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    if: needs.preflight.outputs.ready == 'true' && inputs.backend == 'cilicon_tart' && vars.NIXMAC_E2E_CILICON_PROMOTION_STATE == 'qualified-v1' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: [self-hosted, macOS, nixmac-e2e]
     environment: nixmac-e2e-production
     timeout-minutes: 120

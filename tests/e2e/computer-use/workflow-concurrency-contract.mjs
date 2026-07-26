@@ -7,6 +7,7 @@ const AUTOMATIC_CONTRACT_COMMANDS = [
   "node tests/e2e/computer-use/workflow-contract-self-test.mjs",
   "node tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs",
   "node tests/e2e/computer-use/centaur-workflow-contract-self-test.mjs",
+  "node tests/e2e/computer-use/cilicon-lifecycle-contract-self-test.mjs",
   "node tests/e2e/computer-use/remote-host-lease-contract-self-test.mjs",
   "node tests/e2e/computer-use/drivers/driver-self-test.mjs",
   "node tests/e2e/computer-use/verification-contract-self-test.mjs",

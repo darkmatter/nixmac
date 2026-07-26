@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "activation": {
+    "state": "disabled",
+    "promotionVariable": {
+      "name": "NIXMAC_E2E_CILICON_PROMOTION_STATE",
+      "scope": "repository",
+      "requiredValue": "qualified-v1"
+    },
+    "blockers": [
+      "PR_604_NOT_MERGED",
+      "E2E_IMAGE_NOT_PUBLISHED_BY_IMMUTABLE_DIGEST",
+      "CUADRIVER_IDENTITY_NOT_PINNED",
+      "FIRST_AND_AGED_BOOT_TCC_NOT_QUALIFIED",
+      "HOST_CYCLE_AND_ATTESTOR_NOT_DEPLOYED",
+      "ATTESTATION_SINK_NOT_PROTECTED",
+      "SEPARATE_SINK_AND_INVENTORY_APPS_NOT_PROVISIONED",
+      "DEDICATED_POOL_NOT_QUALIFIED",
+      "PROMOTION_OBSERVATION_GATES_NOT_MET"
+    ]
+  },
+  "upstream": {
+    "repository": "darkmatter/nixmac",
+    "pullRequest": 604,
+    "requiredPaths": [
+      ".github/workflows/macos-ci-image.yaml",
+      "ops/images/nixmac-runner-tahoe.pkr.hcl"
+    ],
+    "reuseConventions": [
+      "packer-tart",
+      "pinned-cirrus-tahoe-base",
+      "ghcr-publication",
+      "isolated-image-builder",
+      "xcode-boot-verification",
+      "pre-push-secret-scan"
+    ]
+  },
+  "provider": {
+    "backend": "cilicon_tart",
+    "labels": ["self-hosted", "macOS", "nixmac-e2e"],
+    "oneVmPerAttempt": true,
+    "capacityOnePerHost": true,
+    "sharedWithBuildFleet": false
+  },
+  "requiredQualifiedFields": [
+    "qualification.image.reference",
+    "qualification.image.baseReference",
+    "qualification.image.sourceWorkflow",
+    "qualification.image.sourceTemplate",
+    "qualification.cuaDriver.artifactUrl",
+    "qualification.cuaDriver.artifactDigest",
+    "qualification.cuaDriver.cliVersion",
+    "qualification.cuaDriver.appVersion",
+    "qualification.cuaDriver.bundleId",
+    "qualification.cuaDriver.signingIdentity",
+    "qualification.cuaDriver.appPath",
+    "qualification.cuaDriver.appExecutable",
+    "qualification.cuaDriver.cliSymlink",
+    "qualification.testUser.username",
+    "qualification.tools",
+    "qualification.tcc",
+    "qualification.lifecycle",
+    "qualification.capacity"
+  ]
+}

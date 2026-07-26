@@ -143,7 +143,8 @@ for (const [id, job] of Object.entries({
 assert.equal(preflight["runs-on"], "arc");
 assert.equal(
   primary.if,
-  "needs.preflight.outputs.ready == 'true' && inputs.backend == 'cilicon_tart' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)",
+  "needs.preflight.outputs.ready == 'true' && inputs.backend == 'cilicon_tart' && vars.NIXMAC_E2E_CILICON_PROMOTION_STATE == 'qualified-v1' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)",
+  "the ephemeral pool must remain disabled until its repository-level qualification gate is set",
 );
 assert.equal(
   staticJob.if,
