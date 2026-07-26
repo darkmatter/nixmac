@@ -26,7 +26,7 @@ function referencesRemoteMacConcurrencyGroup(group) {
   return group.includes("${{") && normalized.includes(REMOTE_MAC_CONCURRENCY_GROUP);
 }
 
-function parseWorkflowYaml({ workflowName, source }) {
+export function parseWorkflowYaml({ workflowName, source }) {
   assert.equal(typeof workflowName, "string", "workflowName must be a string");
   assert.ok(workflowName.trim(), "workflowName must not be blank");
   assert.equal(typeof source, "string", `${workflowName} source must be a string`);

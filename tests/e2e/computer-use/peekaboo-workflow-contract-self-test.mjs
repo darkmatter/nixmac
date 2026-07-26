@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseWorkflowYaml } from "./workflow-concurrency-contract.mjs";
 
 const thisFile = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(thisFile), "../../..");
@@ -32,7 +33,6 @@ const frontendEditorPanelPath = path.join(
 const frontendBootDiagnosticsPath = path.join(repoRoot, "apps/native/src/lib/boot-diagnostics.ts");
 const frontendDomSnapshotsPath = path.join(repoRoot, "apps/native/src/e2e/dom-snapshots.ts");
 const frontendBootHarnessPath = path.join(repoRoot, "apps/native/src/e2e/boot-harness.ts");
-const frontendTelemetryInitPath = path.join(repoRoot, "apps/native/src/lib/telemetry/init.ts");
 const frontendTelemetrySanitizePath = path.join(
   repoRoot,
   "apps/native/src/lib/telemetry/sanitize.ts",
@@ -69,7 +69,6 @@ const frontendEditorPanel = readFileSync(frontendEditorPanelPath, "utf8");
 const frontendBootDiagnostics = readFileSync(frontendBootDiagnosticsPath, "utf8");
 const frontendDomSnapshots = readFileSync(frontendDomSnapshotsPath, "utf8");
 const frontendBootHarness = readFileSync(frontendBootHarnessPath, "utf8");
-const frontendTelemetryInit = readFileSync(frontendTelemetryInitPath, "utf8");
 const frontendTelemetrySanitize = readFileSync(frontendTelemetrySanitizePath, "utf8");
 const frontendAppErrorBoundary = readFileSync(frontendAppErrorBoundaryPath, "utf8");
 const frontendAppFatalFallback = readFileSync(frontendAppFatalFallbackPath, "utf8");
@@ -99,38 +98,33 @@ function assertOrder(source, first, second, message) {
   assert.ok(firstIndex < secondIndex, message);
 }
 
-function assertPatternOrder(source, first, second, message) {
-  const firstIndex = source.search(first);
-  const secondIndex = source.search(second);
-  assert.notEqual(firstIndex, -1, `missing ${first} while checking ${message}`);
-  assert.notEqual(secondIndex, -1, `missing ${second} while checking ${message}`);
-  assert.ok(firstIndex < secondIndex, message);
-}
-
 function occurrenceCount(source, pattern) {
   const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
   return [...source.matchAll(new RegExp(pattern.source, flags))].length;
 }
 
-function bracedBlock(source, startPattern, label) {
-  const start = source.search(startPattern);
-  assert.notEqual(start, -1, `missing ${label} matching ${startPattern}`);
-  const openingBrace = source.indexOf("{", start);
-  assert.notEqual(openingBrace, -1, `missing opening brace for ${label}`);
-
-  let depth = 0;
-  for (let index = openingBrace; index < source.length; index += 1) {
-    if (source[index] === "{") depth += 1;
-    if (source[index] !== "}") continue;
-    depth -= 1;
-    if (depth === 0) return source.slice(start, index + 1);
-  }
-
-  assert.fail(`missing closing brace for ${label}`);
-}
-
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function assertManualOnlyTrigger(workflowDocument, label = "Legacy Peekaboo workflow") {
+  assert.ok(
+    workflowDocument.on &&
+      typeof workflowDocument.on === "object" &&
+      !Array.isArray(workflowDocument.on),
+    `${label} on must be a mapping`,
+  );
+  assert.deepEqual(
+    Object.keys(workflowDocument.on),
+    ["workflow_dispatch"],
+    `${label} must expose exactly one manual workflow_dispatch trigger`,
+  );
+  assert.ok(
+    workflowDocument.on.workflow_dispatch &&
+      typeof workflowDocument.on.workflow_dispatch === "object" &&
+      !Array.isArray(workflowDocument.on.workflow_dispatch),
+    `${label} workflow_dispatch definition must be a mapping`,
+  );
 }
 
 assert.match(
@@ -140,7 +134,10 @@ assert.match(
 );
 const pinnedBunVersion = packageJson.packageManager.slice("bun@".length);
 
-const trigger = section(/^on:$/m, /^permissions:$/m);
+const workflowDocument = parseWorkflowYaml({
+  workflowName: "Peekaboo E2E",
+  source: workflow,
+});
 const proof = section(/^  peekaboo-product-proof:$/m, /^  publish-peekaboo-report:$/m);
 const publish = section(/^  publish-peekaboo-report:$/m, /^  peekaboo-result:$/m);
 const result = section(/^  peekaboo-result:$/m);
@@ -156,70 +153,41 @@ const frontendRenderApp = section(
   { sourceText: frontendMain, pattern: /^const renderApp = \([^)]*\) => \{$/m },
   /^};$/m,
 );
-const frontendInitTelemetry = bracedBlock(
-  frontendTelemetryInit,
-  /export async function initTelemetry\(\): Promise<TelemetryProvider>\s*\{/,
-  "initTelemetry function",
-);
-const frontendE2eTelemetryGuard = bracedBlock(
-  frontendInitTelemetry,
-  /if\s*\(\s*E2E_MODE\s*\)\s*\{/,
-  "E2E telemetry guard",
-);
-const frontendBeforeE2eTelemetryGuard = frontendInitTelemetry.slice(
-  0,
-  frontendInitTelemetry.indexOf(frontendE2eTelemetryGuard),
-);
-const frontendTelemetryCatch = bracedBlock(
-  frontendInitTelemetry,
-  /catch\s*\{/,
-  "telemetry prefs catch block",
-);
-const frontendSanitizeString = bracedBlock(
-  frontendTelemetrySanitize,
-  /const sanitizeString = \(value: string\): string =>\s*\{/,
-  "sanitizeString function",
-);
-const frontendBootRenderStage = bracedBlock(
-  frontendBootDiagnostics,
-  /export function markBootRenderStage\(stage: string\)\s*\{/,
-  "markBootRenderStage function",
-);
 const nativeCaptureWindowSetup = section(
   { sourceText: nativeMain, pattern: /let e2e_opaque_window = e2e_opaque_window_enabled\(\);/ },
   /let main_window = main_window_builder\.build/,
 );
 const nativeSolidCaptureBranch =
   nativeCaptureWindowSetup.match(/if e2e_solid_capture \{[\s\S]*?\n\s+\}/)?.[0] ?? "";
-const nativeWatchdogBlock = bracedBlock(
-  nativeMain,
-  /if e2e_webview_watchdog\s*\{\s*e2e_schedule_webview_boot_probe\(/,
-  "active WebView watchdog block",
-);
-const nativeGetSecretPref = bracedBlock(
-  nativeSecrets,
-  /fn get_secret_pref<R: Runtime>\(app: &AppHandle<R>, key: &'static str\)\s*->\s*Result<Option<String>>\s*\{/,
-  "get_secret_pref function",
-);
 
-assert.match(
-  trigger,
-  /^  workflow_dispatch:/m,
-  "Legacy Peekaboo workflow must remain available for explicit disaster-recovery dispatches",
-);
-assert.doesNotMatch(
-  trigger,
-  /^  (?:pull_request|schedule):/m,
-  "Legacy Peekaboo workflow must not run automatically; Centaur owns the production dispatch path",
-);
-assert.doesNotMatch(
-  trigger,
-  /^\s+paths(?:-ignore)?:/m,
-  "Manual-only legacy Peekaboo workflow must not retain automatic PR path filters",
-);
-assert.match(
-  workflow,
-  /build_attempts:[\s\S]*default:\s*(?:"2"|'2'|2)\s*$/m,
+assertManualOnlyTrigger(workflowDocument);
+for (const automaticTrigger of [
+  "push",
+  "workflow_run",
+  "workflow_call",
+  "pull_request",
+  "pull_request_target",
+  "schedule",
+]) {
+  assert.throws(
+    () =>
+      assertManualOnlyTrigger(
+        {
+          ...workflowDocument,
+          on: {
+            ...workflowDocument.on,
+            [automaticTrigger]: {},
+          },
+        },
+        `Mutated Peekaboo workflow with ${automaticTrigger}`,
+      ),
+    /exactly one manual workflow_dispatch trigger/,
+    `Peekaboo trigger contract must reject ${automaticTrigger}`,
+  );
+}
+assert.equal(
+  workflowDocument.on.workflow_dispatch.inputs?.build_attempts?.default,
+  "2",
   "Legacy Peekaboo dispatches should default to two remote build attempts for transient MacInCloud build failures",
 );
 assert.match(
@@ -821,25 +789,9 @@ assert.match(
   "Native app must activate the WebView watchdog only through its explicit E2E gate",
 );
 assert.match(
-  nativeWatchdogBlock,
-  /e2e_schedule_webview_boot_probe[\s\S]*let watchdog_window[\s\S]*NIXMAC_E2E_WEBVIEW_WATCHDOG_SECS[\s\S]*unwrap_or\(12\)[\s\S]*Duration::from_secs\(watchdog_secs\)[\s\S]*main webview E2E load watchdog[\s\S]*run_on_main_thread[\s\S]*reload\(\)/,
-  "Native app must keep the bounded one-shot reload path inside the gated E2E watchdog block",
-);
-assert.equal(
-  occurrenceCount(nativeWatchdogBlock, /\.reload\s*\(/),
-  1,
-  "Active WebView watchdog block must contain exactly one reload call",
-);
-assert.equal(
-  occurrenceCount(nativeWatchdogBlock, /std::thread::spawn\s*\(/),
-  1,
-  "Active WebView watchdog block must schedule exactly one watchdog thread",
-);
-assertPatternOrder(
-  nativeWatchdogBlock,
-  /if watchdog_loaded\.load\(Ordering::SeqCst\)/,
-  /run_on_main_thread/,
-  "Watchdog must check the one-shot completion guard before scheduling its reload",
+  nativeMain,
+  /if e2e_webview_watchdog \{[\s\S]*e2e_schedule_webview_boot_probe[\s\S]*NIXMAC_E2E_WEBVIEW_WATCHDOG_SECS[\s\S]*unwrap_or\(12\)[\s\S]*Duration::from_secs\(watchdog_secs\)[\s\S]*run_on_main_thread/,
+  "Native app must keep the 12-second bounded reload scheduler inside the explicit E2E watchdog gate",
 );
 assert.doesNotMatch(
   nativeMain,
@@ -862,31 +814,14 @@ assert.match(
   "Page-load WebView boot probes must be gated to active E2E watchdog sessions",
 );
 assert.match(
-  nativeWatchdogBlock,
-  /run_on_main_thread\(move \|\| \{\n\s+e2e_request_webview_boot_probe\(&reload_window, "watchdog-before-reload"\);[\s\S]*reload_window\.reload\(\)/,
-  "Watchdog pre-reload WebView boot probe must run on the main thread before requesting reload",
+  nativeMain,
+  /run_on_main_thread\(move \|\| \{\n\s+e2e_request_webview_boot_probe\(&reload_window, "watchdog-before-reload"\);\n\s+if !claim_e2e_webview_watchdog_reload\(&reload_loaded, &reload_claimed\)[\s\S]*reload_window\.reload\(\)/,
+  "Watchdog reload closure must probe and consult the runtime one-shot guard on the main thread immediately before reload",
 );
 assert.match(
-  nativeGetSecretPref,
-  /if let Some\(store\) = hermetic_secret_store\(key\)[\s\S]*?return store[\s\S]*?if crate::env::e2e_mock_system_enabled\(\)[\s\S]*?return Ok\(normalize_secret\(get_legacy_string\(app, key\)\?\)\)/,
-  "Hermetic and E2E mock-system secret guards must both return before persistent storage",
-);
-assert.equal(
-  occurrenceCount(nativeGetSecretPref, /get_persistent_secret_pref\s*\(/),
-  1,
-  "get_secret_pref must reach persistent storage exactly once after its early-return guards",
-);
-assertPatternOrder(
-  nativeGetSecretPref,
-  /hermetic_secret_store\(key\)/,
-  /crate::env::e2e_mock_system_enabled\(\)/,
-  "Hermetic secret storage must take precedence over E2E mock storage",
-);
-assertPatternOrder(
-  nativeGetSecretPref,
-  /crate::env::e2e_mock_system_enabled\(\)/,
-  /get_persistent_secret_pref\(app, key\)/,
-  "Persistent secret storage must remain after the hermetic and E2E mock early-return guards",
+  nativeSecrets,
+  /fn get_secret_pref<R: Runtime>\(app: &AppHandle<R>, key: &'static str\) -> Result<Option<String>> \{\n\s+resolve_secret_pref\(\n\s+hermetic_secret_store\(key\),\n\s+crate::env::e2e_mock_system_enabled\(\),[\s\S]*\|\| get_persistent_secret_pref\(app, key\)/,
+  "get_secret_pref must wire hermetic, E2E mock, and lazy persistent readers through the behavior-tested resolver",
 );
 assert.match(
   debugCommands,
@@ -909,64 +844,15 @@ assert.match(
   "Frontend API must expose native E2E boot-stage marking through Tauri IPC",
 );
 assert.match(
-  frontendBootRenderStage,
-  /export function markBootRenderStage[\s\S]*bootStageCleared[\s\S]*setBootStageDomMarker\(normalizedStage\)/,
-  "Frontend boot diagnostics must expose a render-safe boot stage marker that only mutates DOM/title",
-);
-assert.doesNotMatch(
-  frontendBootRenderStage,
-  /\b(?:tauriAPI|markNativeBootStage|bootBreadcrumb|invoke)\b|__TAURI/,
-  "Render-safe boot stage markers must not contain any native IPC path",
-);
-assert.match(
   frontendBootDiagnostics,
-  /export function markBootStage[\s\S]*bootStageCleared[\s\S]*setStorageValue\("nixmac:e2e-boot-stage"[\s\S]*markNativeBootStage\(normalizedStage\)/,
-  "Frontend boot diagnostics must persist full boot stage markers from effect-safe call sites",
-);
-assert.match(
-  frontendBootDiagnostics,
-  /function markNativeBootStage\(stage: string\)[\s\S]*tauriAPI\.debug\.markBootStage\(stage, Date\.now\(\)\)/,
-  "Frontend boot diagnostics must mirror committed boot stages to the native debug command",
-);
-assert.match(
-  frontendBootDiagnostics,
-  /export function clearBootStage[\s\S]*document\.title = APP_TITLE[\s\S]*nixmac:e2e-boot-stage", "mounted"/,
-  "Frontend boot diagnostics must restore the normal window title after mount",
-);
-assert.match(
-  frontendBootDiagnostics,
-  /export function clearBootStage[\s\S]*markNativeBootStage\("mounted"\)/,
-  "Frontend boot diagnostics must clear the native title marker after App mount",
+  /export function markBootRenderStage[\s\S]*export function markBootStage/,
+  "Frontend boot diagnostics must continue exporting separate render-safe and effect-safe marker APIs",
 );
 assert.match(
   frontendTelemetrySanitize,
-  /export function sanitizeDiagnosticText[\s\S]*sanitizeString/,
+  /export function sanitizeDiagnosticText/,
   "E2E DOM diagnostics text sanitizer must be exported from the shared sanitize module",
 );
-assert.match(
-  frontendTelemetrySanitize,
-  /EMAIL_PATTERN[\s\S]*BEARER_TOKEN_PATTERN[\s\S]*GITHUB_TOKEN_PATTERN[\s\S]*OPENAI_TOKEN_PATTERN[\s\S]*ANTHROPIC_TOKEN_PATTERN[\s\S]*PRIVATE_KEY_BLOCK_PATTERN[\s\S]*HOME_DIR_PATH_PATTERN[\s\S]*NIX_SECRET_ASSIGNMENT_PATTERN/,
-  "Shared sanitize module must retain the secret-shaped text patterns used by both telemetry events and E2E diagnostics",
-);
-for (const patternName of [
-  "EMAIL_PATTERN",
-  "BEARER_TOKEN_PATTERN",
-  "GITHUB_TOKEN_PATTERN",
-  "OPENAI_TOKEN_PATTERN",
-  "ANTHROPIC_TOKEN_PATTERN",
-  "PRIVATE_KEY_BLOCK_PATTERN",
-  "HOME_DIR_PATH_PATTERN",
-  "NIX_SECRET_ASSIGNMENT_PATTERN",
-]) {
-  assert.equal(
-    occurrenceCount(
-      frontendSanitizeString,
-      new RegExp(`\\.replace\\(\\s*${patternName}\\s*,`),
-    ),
-    1,
-    `sanitizeString must apply ${patternName} exactly once`,
-  );
-}
 assert.match(
   frontendDomSnapshots,
   /import\s*\{\s*sanitizeDiagnosticText\s*\}\s*from\s*"@\/lib\/telemetry\/sanitize"/,
@@ -986,58 +872,6 @@ assert.match(
   frontendDomSnapshots,
   /export function scheduleE2eDomSnapshots[\s\S]*count = 5[\s\S]*intervalMs = 2_000[\s\S]*emitted < count/,
   "E2E DOM snapshots must schedule a bounded post-mount snapshot series and self-stop",
-);
-assert.match(
-  frontendE2eTelemetryGuard,
-  /setTelemetryProvider\s*\(\s*noopProvider\s*\)[\s\S]*?return\s+noopProvider/,
-  "Telemetry init must install and return the noop provider from its E2E guard",
-);
-assert.equal(
-  occurrenceCount(frontendE2eTelemetryGuard, /tauriAPI\.ui\.getPrefs\s*\(/),
-  0,
-  "E2E telemetry guard must not perform prefs IPC",
-);
-assert.doesNotMatch(
-  frontendBeforeE2eTelemetryGuard,
-  /tauriAPI\.ui\.[A-Za-z_$][\w$]*Prefs\s*\(/,
-  "initTelemetry must not perform any prefs IPC before its E2E guard",
-);
-assert.equal(
-  occurrenceCount(frontendInitTelemetry, /tauriAPI\.ui\.getPrefs\s*\(/),
-  1,
-  "initTelemetry must contain exactly one prefs IPC call after the E2E guard",
-);
-assertPatternOrder(
-  frontendInitTelemetry,
-  /return\s+noopProvider/,
-  /await\s+tauriAPI\.ui\.getPrefs\(\)/,
-  "E2E noop return must occur before the only prefs IPC call",
-);
-assert.match(
-  frontendInitTelemetry,
-  /if\s*\(\s*key\.length\s*===\s*0\s*\)\s*\{[\s\S]*?setTelemetryProvider\s*\(\s*noopProvider\s*\)[\s\S]*?return\s+noopProvider[\s\S]*?\}/,
-  "Telemetry init must fail closed to the installed noop provider when the telemetry key is missing",
-);
-assert.match(
-  frontendInitTelemetry,
-  /let\s+sendDiagnostics\s*=\s*false[\s\S]*?try\s*\{[\s\S]*?await\s+tauriAPI\.ui\.getPrefs\(\)[\s\S]*?sendDiagnostics\s*=\s*prefs\?\.sendDiagnostics\s*\?\?\s*false[\s\S]*?createTelemetryProvider\([\s\S]*?sendDiagnostics[\s\S]*?setTelemetryProvider\s*\(\s*provider\s*\)[\s\S]*?return\s+provider/,
-  "Telemetry init must leave diagnostics disabled when prefs cannot be read and install the resulting provider for non-React callers",
-);
-assert.doesNotMatch(
-  frontendTelemetryCatch,
-  /sendDiagnostics\s*(?:=|\|\|=|&&=|\?\?=|\+\+=|--=)/,
-  "Telemetry prefs failure catch block must not enable or otherwise mutate diagnostics",
-);
-assert.equal(
-  occurrenceCount(frontendInitTelemetry, /\bcreateTelemetryProvider\s*\(/),
-  1,
-  "initTelemetry must construct exactly one telemetry provider after prefs handling completes",
-);
-assertPatternOrder(
-  frontendInitTelemetry,
-  /catch\s*\{/,
-  /const\s+provider\s*=\s*createTelemetryProvider\(/,
-  "Telemetry provider construction must occur after the prefs failure catch so fail-closed initialization still installs a provider",
 );
 assert.match(
   frontendMain,

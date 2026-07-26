@@ -80,6 +80,16 @@ fn e2e_webview_watchdog_enabled() -> bool {
     cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_WEBVIEW_WATCHDOG")
 }
 
+fn claim_e2e_webview_watchdog_reload(loaded: &AtomicBool, reload_claimed: &AtomicBool) -> bool {
+    if loaded.load(Ordering::SeqCst) {
+        return false;
+    }
+
+    reload_claimed
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_ok()
+}
+
 #[cfg(debug_assertions)]
 fn e2e_request_webview_boot_probe(window: &WebviewWindow, label: &'static str) {
     let label_json =
@@ -829,6 +839,7 @@ fn run_gui_mode(
             }
             let main_webview_loaded = Arc::new(AtomicBool::new(false));
             let main_webview_loaded_for_page_load = Arc::clone(&main_webview_loaded);
+            let e2e_webview_watchdog_reload_claimed = Arc::new(AtomicBool::new(false));
             let e2e_page_load_boot_probe = e2e_webview_watchdog;
 
             let mut main_window_builder =
@@ -969,6 +980,8 @@ use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectStat
                 );
                 let watchdog_window = main_window.clone();
                 let watchdog_loaded = Arc::clone(&main_webview_loaded);
+                let watchdog_reload_claimed =
+                    Arc::clone(&e2e_webview_watchdog_reload_claimed);
                 let watchdog_secs =
                     crate::e2e_runtime::value("NIXMAC_E2E_WEBVIEW_WATCHDOG_SECS")
                         .and_then(|value| value.parse::<u64>().ok())
@@ -985,8 +998,16 @@ use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectStat
                         "main webview E2E load watchdog did not observe PageLoadEvent::Finished; reloading main webview"
                     );
                     let reload_window = watchdog_window.clone();
+                    let reload_loaded = Arc::clone(&watchdog_loaded);
+                    let reload_claimed = Arc::clone(&watchdog_reload_claimed);
                     if let Err(err) = watchdog_window.run_on_main_thread(move || {
                         e2e_request_webview_boot_probe(&reload_window, "watchdog-before-reload");
+                        if !claim_e2e_webview_watchdog_reload(&reload_loaded, &reload_claimed) {
+                            log::debug!(
+                                "main webview E2E load watchdog reload already satisfied or claimed"
+                            );
+                            return;
+                        }
                         if let Err(reload_err) = reload_window.reload() {
                             log::error!(
                                 "main webview E2E load watchdog reload failed: {}",
@@ -1069,6 +1090,29 @@ use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectStat
                     }
             }
         });
+}
+
+#[cfg(test)]
+mod e2e_webview_watchdog_tests {
+    use super::*;
+
+    #[test]
+    fn loaded_webview_does_not_claim_reload() {
+        let loaded = AtomicBool::new(true);
+        let claimed = AtomicBool::new(false);
+
+        assert!(!claim_e2e_webview_watchdog_reload(&loaded, &claimed));
+        assert!(!claimed.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn stalled_webview_claims_reload_once() {
+        let loaded = AtomicBool::new(false);
+        let claimed = AtomicBool::new(false);
+
+        assert!(claim_e2e_webview_watchdog_reload(&loaded, &claimed));
+        assert!(!claim_e2e_webview_watchdog_reload(&loaded, &claimed));
+    }
 }
 
 #[cfg(test)]

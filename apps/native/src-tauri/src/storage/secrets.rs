@@ -139,19 +139,40 @@ fn hermetic_secret_store(key: &str) -> Option<FileStore> {
         .map(|dir| FileStore::new(dir.join("secrets").join(sanitize_dev_cache_segment(key))))
 }
 
+fn resolve_secret_pref<H, HG, EG, PG>(
+    hermetic_source: Option<H>,
+    e2e_mock_enabled: bool,
+    read_hermetic: HG,
+    read_e2e: EG,
+    read_persistent: PG,
+) -> Result<Option<String>>
+where
+    HG: FnOnce(H) -> Result<Option<String>>,
+    EG: FnOnce() -> Result<Option<String>>,
+    PG: FnOnce() -> Result<Option<String>>,
+{
+    if let Some(source) = hermetic_source {
+        return read_hermetic(source);
+    }
+    if e2e_mock_enabled {
+        return read_e2e();
+    }
+    read_persistent()
+}
+
 fn get_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> Result<Option<String>> {
-    if let Some(store) = hermetic_secret_store(key) {
-        return store
-            .get()
-            .map(normalize_secret)
-            .map_err(anyhow::Error::from);
-    }
-
-    if crate::env::e2e_mock_system_enabled() {
-        return Ok(normalize_secret(get_legacy_string(app, key)?));
-    }
-
-    get_persistent_secret_pref(app, key)
+    resolve_secret_pref(
+        hermetic_secret_store(key),
+        crate::env::e2e_mock_system_enabled(),
+        |store| {
+            store
+                .get()
+                .map(normalize_secret)
+                .map_err(anyhow::Error::from)
+        },
+        || Ok(normalize_secret(get_legacy_string(app, key)?)),
+        || get_persistent_secret_pref(app, key),
+    )
 }
 
 fn set_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str, value: &str) -> Result<()> {
@@ -303,6 +324,71 @@ mod tests {
 
         assert_eq!(result.as_deref(), Some("store-secret"));
         assert!(fallback_called.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn hermetic_secret_resolution_never_reads_e2e_or_persistent_storage() {
+        let e2e_called = AtomicBool::new(false);
+        let persistent_called = AtomicBool::new(false);
+
+        let result = resolve_secret_pref(
+            Some("hermetic-secret"),
+            true,
+            |value| Ok(Some(value.to_string())),
+            || {
+                e2e_called.store(true, Ordering::SeqCst);
+                Ok(Some("e2e-secret".to_string()))
+            },
+            || {
+                persistent_called.store(true, Ordering::SeqCst);
+                Ok(Some("persistent-secret".to_string()))
+            },
+        )
+        .unwrap();
+
+        assert_eq!(result.as_deref(), Some("hermetic-secret"));
+        assert!(!e2e_called.load(Ordering::SeqCst));
+        assert!(!persistent_called.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn e2e_secret_resolution_never_reads_persistent_storage() {
+        let persistent_called = AtomicBool::new(false);
+
+        let result = resolve_secret_pref(
+            None::<&str>,
+            true,
+            |value| Ok(Some(value.to_string())),
+            || Ok(Some("e2e-secret".to_string())),
+            || {
+                persistent_called.store(true, Ordering::SeqCst);
+                Ok(Some("persistent-secret".to_string()))
+            },
+        )
+        .unwrap();
+
+        assert_eq!(result.as_deref(), Some("e2e-secret"));
+        assert!(!persistent_called.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn normal_secret_resolution_reads_persistent_storage() {
+        let persistent_called = AtomicBool::new(false);
+
+        let result = resolve_secret_pref(
+            None::<&str>,
+            false,
+            |value| Ok(Some(value.to_string())),
+            || Ok(Some("e2e-secret".to_string())),
+            || {
+                persistent_called.store(true, Ordering::SeqCst);
+                Ok(Some("persistent-secret".to_string()))
+            },
+        )
+        .unwrap();
+
+        assert_eq!(result.as_deref(), Some("persistent-secret"));
+        assert!(persistent_called.load(Ordering::SeqCst));
     }
 
     #[test]
