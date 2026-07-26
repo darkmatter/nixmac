@@ -1,7 +1,17 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,7 +31,8 @@ assert.match(helper, /LEASE_QUARANTINED/, "stale or ambiguous owners must quaran
 assert.match(helper, /observed-lease-digest/, "recovery must require the observed lease digest");
 assert.match(helper, /operator-reason/, "recovery must require an operator reason");
 assert.match(helper, /actions\/runs/, "owner liveness must come from the owning GitHub run");
-assert.match(helper, /pgrep.*nixmac/, "recovery must refuse while nixmac is active");
+assert.match(helper, /\["pgrep", "-f", pattern\]/, "recovery must probe remote processes");
+assert.match(helper, /nixmac.*CuaDriver/s, "recovery must refuse while nixmac is active");
 assert.doesNotMatch(
   helper,
   /\brm\s+[^\n]*(?:-[A-Za-z]*[rR][A-Za-z]*|--recursive)(?:\s|$)/,
@@ -68,6 +79,11 @@ for (const [workflowName, jobId] of workflowContracts) {
   assert.ok(
     acquire < Math.min(...firstMacActionCandidates),
     `${workflowName} must acquire before any Mac-side inventory, process, or UI action`,
+  );
+  assert.match(
+    text,
+    /owner_token.*attempt|owner_token.*GITHUB_RUN_ATTEMPT|GITHUB_RUN_ATTEMPT.*nonce|inputs\.attempt.*attestation_nonce/i,
+    `${workflowName} owner tokens must bind the attempt and nonce`,
   );
 }
 
@@ -153,7 +169,62 @@ printf '%s\\n' "\${NIXMAC_E2E_FAKE_GH_STATUS:-in_progress}"
     spawnSync("bash", [helperPath, command, ...commonArgs, "--owner-token", ownerToken, ...extra], {
       encoding: "utf8",
       env,
+      timeout: 10_000,
     });
+  const invokeWithOwnership = (command, ownerToken, ownershipArgs, extra = [], env = fixtureEnv) =>
+    spawnSync(
+      "bash",
+      [helperPath, command, ...ownershipArgs, "--owner-token", ownerToken, ...extra],
+      {
+        encoding: "utf8",
+        env,
+        timeout: 10_000,
+      },
+    );
+
+  const unrelatedTarget = path.join(fixtureRoot, "unrelated-target");
+  const unrelatedSentinel = path.join(unrelatedTarget, "sentinel");
+  mkdirSync(unrelatedTarget);
+  writeFileSync(unrelatedSentinel, "must remain untouched\n");
+  symlinkSync(unrelatedTarget, leaseRoot);
+  const symlinkRootStatus = invoke("status", "owner-a");
+  assert.notEqual(symlinkRootStatus.status, 0, "status must reject a symlink lease root");
+  const symlinkRootAcquire = invoke("acquire", "owner-a", [
+    "--wait-seconds",
+    "0",
+    "--poll-seconds",
+    "1",
+    "--max-hold-seconds",
+    "60",
+  ]);
+  assert.equal(symlinkRootAcquire.status, 73, symlinkRootAcquire.stderr);
+  assert.equal(readFileSync(unrelatedSentinel, "utf8"), "must remain untouched\n");
+  unlinkSync(leaseRoot);
+
+  writeFileSync(leaseRoot, "not a directory\n");
+  const fileRootStatus = invoke("status", "owner-a");
+  assert.notEqual(fileRootStatus.status, 0, "status must reject a non-directory lease root");
+  rmSync(leaseRoot);
+
+  mkdirSync(leaseRoot);
+  symlinkSync(unrelatedTarget, path.join(leaseRoot, "owner"));
+  const symlinkOwnerStatus = invoke("status", "owner-a");
+  assert.notEqual(symlinkOwnerStatus.status, 0, "status must reject a symlink owner directory");
+  const symlinkOwnerAcquire = invoke("acquire", "owner-a", [
+    "--wait-seconds",
+    "0",
+    "--poll-seconds",
+    "1",
+    "--max-hold-seconds",
+    "60",
+  ]);
+  assert.equal(symlinkOwnerAcquire.status, 73, symlinkOwnerAcquire.stderr);
+  assert.equal(readFileSync(unrelatedSentinel, "utf8"), "must remain untouched\n");
+  unlinkSync(path.join(leaseRoot, "owner"));
+  writeFileSync(path.join(leaseRoot, "owner"), "not a directory\n");
+  const fileOwnerStatus = invoke("status", "owner-a");
+  assert.notEqual(fileOwnerStatus.status, 0, "status must reject a non-directory owner");
+  rmSync(leaseRoot, { recursive: true });
 
   const acquired = invoke("acquire", "owner-a", [
     "--wait-seconds",
@@ -178,6 +249,55 @@ printf '%s\\n' "\${NIXMAC_E2E_FAKE_GH_STATUS:-in_progress}"
     "60",
   ]);
   assert.equal(idempotent.status, 0, idempotent.stderr);
+
+  const rerunArgs = commonArgs.map((value, index, values) => {
+    if (values[index - 1] === "--attempt") return "2";
+    if (values[index - 1] === "--nonce") {
+      return "fixture-rerun-nonce-012345678901234567890123456789";
+    }
+    return value;
+  });
+  const rerun = invokeWithOwnership("acquire", "owner-a", rerunArgs, [
+    "--wait-seconds",
+    "3600",
+    "--poll-seconds",
+    "1",
+    "--max-hold-seconds",
+    "60",
+  ]);
+  assert.equal(rerun.status, 73, rerun.stderr);
+  assert.match(
+    rerun.stderr,
+    /stale attempt retained for audited recovery/i,
+    "a new attempt of the same logical run must quarantine immediately instead of inheriting or waiting",
+  );
+  const rerunStatus = invokeWithOwnership("status", "owner-a", rerunArgs);
+  assert.equal(rerunStatus.status, 0, rerunStatus.stderr);
+  assert.match(rerunStatus.stdout, /^OCCUPIED\t[0-9a-f]{64}\t/);
+  const [, rerunDigest] = rerunStatus.stdout.trim().split("\t");
+  const recoveredRerun = invokeWithOwnership("recover", "owner-a", rerunArgs, [
+    "--observed-lease-digest",
+    rerunDigest,
+    "--operator-reason",
+    "same-run attempt rollover",
+  ]);
+  assert.equal(
+    recoveredRerun.status,
+    0,
+    `stale-attempt recovery must not treat the shared GitHub run as a live prior attempt:
+status=${rerunStatus.stdout}
+stderr=${recoveredRerun.stderr}`,
+  );
+  assert.match(recoveredRerun.stdout, /LEASE_RECOVERED/);
+  const reacquiredAfterRerun = invoke("acquire", "owner-a", [
+    "--wait-seconds",
+    "0",
+    "--poll-seconds",
+    "1",
+    "--max-hold-seconds",
+    "60",
+  ]);
+  assert.equal(reacquiredAfterRerun.status, 0, reacquiredAfterRerun.stderr);
 
   const transientProbeCounter = path.join(fixtureRoot, "transient-probe-count");
   const transientProbe = invoke(
@@ -319,6 +439,40 @@ printf '%s\\n' "\${NIXMAC_E2E_FAKE_GH_STATUS:-in_progress}"
   );
   assert.equal(refusedChangedSnapshot.status, 65, refusedChangedSnapshot.stderr);
   assert.match(refusedChangedSnapshot.stderr, /digest changed/i);
+  const inodeSwapHook = path.join(fixtureRoot, "swap-owner-inode");
+  writeFileSync(
+    inodeSwapHook,
+    `#!/usr/bin/env bash
+set -euo pipefail
+lease_root="$1"
+mv "$lease_root/owner" "$lease_root/owner.original"
+cp -R "$lease_root/owner.original" "$lease_root/owner"
+`,
+  );
+  chmodSync(inodeSwapHook, 0o700);
+  const refusedInodeSwap = invoke(
+    "recover",
+    "owner-c",
+    ["--observed-lease-digest", changedOccupiedDigest, "--operator-reason", "inode swap must fail"],
+    {
+      ...terminalEnv,
+      NIXMAC_E2E_LEASE_RECOVERY_TEST_HOOK: inodeSwapHook,
+    },
+  );
+  assert.equal(refusedInodeSwap.status, 65, refusedInodeSwap.stderr);
+  assert.match(refusedInodeSwap.stderr, /identity changed during recovery/i);
+  assert.equal(
+    readFileSync(path.join(leaseRoot, "owner", "unexpected-metadata"), "utf8"),
+    "mutated after observed digest\n",
+    "recovery must not erase an inode-swapped replacement",
+  );
+  assert.equal(
+    readFileSync(path.join(leaseRoot, "owner.original", "unexpected-metadata"), "utf8"),
+    "mutated after observed digest\n",
+    "recovery must retain the originally opened owner directory",
+  );
+  rmSync(path.join(leaseRoot, "owner"), { recursive: true });
+  renameSync(path.join(leaseRoot, "owner.original"), path.join(leaseRoot, "owner"));
   const recoveredUnexpectedEntry = invoke(
     "recover",
     "owner-c",

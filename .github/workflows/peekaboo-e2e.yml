@@ -173,8 +173,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          nonce="legacy-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           owner_token="$(
-            printf '%s' "${GITHUB_REPOSITORY}|${GITHUB_WORKFLOW}|${GITHUB_RUN_ID}|peekaboo-product-proof" |
+            printf '%s' "${GITHUB_REPOSITORY}|${GITHUB_WORKFLOW}|${GITHUB_RUN_ID}|peekaboo-product-proof|${GITHUB_RUN_ATTEMPT}|${nonce}" |
               shasum -a 256 |
               awk '{print $1}'
           )"
@@ -188,7 +189,7 @@ jobs:
             --run-id "$GITHUB_RUN_ID" \
             --logical-job peekaboo-product-proof \
             --attempt "$GITHUB_RUN_ATTEMPT" \
-            --nonce "legacy-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            --nonce "$nonce" \
             --wait-seconds 3600 \
             --poll-seconds 15 \
             --max-hold-seconds 10800
@@ -323,6 +324,7 @@ jobs:
           )
           remote_cmd="cd $(printf '%q' "$PEEKABOO_REPO_DIR") && ${remote_env_parts[*]} $(printf '%q' "$PEEKABOO_NODE") tests/e2e/computer-use/run-local.mjs run-peekaboo-suite --allow-cleanup"
           set +e
+          # shellcheck disable=SC2029
           ssh "${ssh_common[@]}" "$SSH_DEST" "$remote_cmd" 2>&1 | tee artifacts/peekaboo-e2e-report/peekaboo-run.log
           run_status="${PIPESTATUS[0]}"
           set -e

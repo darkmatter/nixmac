@@ -769,8 +769,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          nonce="legacy-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           owner_token="$(
-            printf '%s' "${GITHUB_REPOSITORY}|${GITHUB_WORKFLOW}|${GITHUB_RUN_ID}|remote-computer-use" |
+            printf '%s' "${GITHUB_REPOSITORY}|${GITHUB_WORKFLOW}|${GITHUB_RUN_ID}|remote-computer-use|${GITHUB_RUN_ATTEMPT}|${nonce}" |
               shasum -a 256 |
               awk '{print $1}'
           )"
@@ -784,7 +785,7 @@ jobs:
             --run-id "$GITHUB_RUN_ID" \
             --logical-job remote-computer-use \
             --attempt "$GITHUB_RUN_ATTEMPT" \
-            --nonce "legacy-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            --nonce "$nonce" \
             --wait-seconds 3600 \
             --poll-seconds 15 \
             --max-hold-seconds 10800

@@ -160,64 +160,163 @@ set -euo pipefail
 lease_root="$1"
 lease_dir="$2"
 quarantine_file="$3"
-canonical_lease_digest() {
-  local directory="$1"
-  (
-    export LC_ALL=C
-    shopt -s nullglob dotglob
-    count=0
-    for entry in "$directory"/*; do
-      name="${entry##*/}"
-      [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]]
-      [[ -f "$entry" && ! -L "$entry" ]]
-      count=$((count + 1))
-      ((count <= 32))
-      if ! size="$(stat -f '%z' "$entry" 2>/dev/null)"; then
-        size="$(stat -c '%s' "$entry")"
-      fi
-      [[ "$size" =~ ^[0-9]+$ ]] && ((size <= 1048576))
-      case "$name" in
-        heartbeat|heartbeat.pid|heartbeat.log)
-          # These bounded runtime files change while a live owner holds the
-          # lease. Bind their presence/type while the immutable lease files
-          # and every unexpected recovery candidate remain content-bound.
-          printf '%s\t%s\tvolatile-runtime-file\n' "${#name}" "$name"
-          ;;
-        *)
-          digest="$(shasum -a 256 "$entry" | awk '{print $1}')"
-          printf '%s\t%s\t%s\t%s\n' "${#name}" "$name" "$size" "$digest"
-          ;;
-      esac
-    done
-  ) | shasum -a 256 | awk '{print $1}'
-}
-if [[ ! -d "$lease_dir" ]]; then
-  if [[ -f "$quarantine_file" ]]; then
-    quarantine_digest="$(shasum -a 256 "$quarantine_file" | awk '{print $1}')"
-    printf 'QUARANTINED\t%s\t' "$quarantine_digest"
-    base64 < "$quarantine_file" | tr -d '\n'
-    printf '\n'
-    exit 0
-  fi
-  printf 'FREE\n'
-  exit 0
-fi
-if [[ ! -f "$lease_dir/owner.json" ]]; then
-  if [[ -f "$lease_dir/heartbeat.pid" ]]; then
-    heartbeat_pid="$(cat "$lease_dir/heartbeat.pid" 2>/dev/null || true)"
-    if [[ "$heartbeat_pid" =~ ^[0-9]+$ ]] &&
-      ps -p "$heartbeat_pid" -o command= 2>/dev/null | grep -Fq "$lease_dir/heartbeat.sh"; then
-      kill -TERM "$heartbeat_pid" 2>/dev/null || true
-    fi
-  fi
-  ambiguous_digest="$(canonical_lease_digest "$lease_dir")"
-  printf 'AMBIGUOUS\t%s\tmissing-owner-metadata\n' "$ambiguous_digest"
-  exit 0
-fi
-lease_digest="$(canonical_lease_digest "$lease_dir")"
-printf 'OCCUPIED\t%s\t' "$lease_digest"
-base64 < "$lease_dir/owner.json" | tr -d '\n'
-printf '\n'
+python3 - "$lease_root" "$lease_dir" "$quarantine_file" <<'PY'
+import base64
+import hashlib
+import os
+import re
+import stat
+import sys
+
+lease_root, lease_dir, quarantine_file = sys.argv[1:]
+SAFE_NAME = re.compile(r"^[A-Za-z0-9._-]+$")
+VOLATILE = {"heartbeat", "heartbeat.pid", "heartbeat.log"}
+OPEN_FLAGS = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+DIR_FLAGS = OPEN_FLAGS | getattr(os, "O_DIRECTORY", 0)
+
+
+def open_directory(path, label):
+    try:
+        fd = os.open(path, DIR_FLAGS)
+    except FileNotFoundError:
+        return None
+    except OSError as error:
+        raise SystemExit(f"unsafe {label}: {error}")
+    metadata = os.fstat(fd)
+    if not stat.S_ISDIR(metadata.st_mode):
+        os.close(fd)
+        raise SystemExit(f"unsafe {label}: not a directory")
+    named = os.lstat(path)
+    if stat.S_ISLNK(named.st_mode) or (named.st_dev, named.st_ino) != (
+        metadata.st_dev,
+        metadata.st_ino,
+    ):
+        os.close(fd)
+        raise SystemExit(f"unsafe {label}: path identity mismatch")
+    return fd
+
+
+def open_regular_at(directory_fd, name, label):
+    named = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+    if not stat.S_ISREG(named.st_mode):
+        raise SystemExit(f"unsafe {label}: not a regular file")
+    if named.st_size > 1_048_576:
+        raise SystemExit(f"unsafe {label}: file exceeds size limit")
+    fd = os.open(name, OPEN_FLAGS, dir_fd=directory_fd)
+    opened = os.fstat(fd)
+    if (named.st_dev, named.st_ino) != (opened.st_dev, opened.st_ino):
+        os.close(fd)
+        raise SystemExit(f"unsafe {label}: file identity mismatch")
+    return fd, opened
+
+
+def read_bounded(fd):
+    os.lseek(fd, 0, os.SEEK_SET)
+    payload = b""
+    while len(payload) <= 1_048_576:
+        chunk = os.read(fd, min(65_536, 1_048_577 - len(payload)))
+        if not chunk:
+            return payload
+        payload += chunk
+    raise SystemExit("lease metadata exceeds size limit")
+
+
+def canonical_digest(directory_fd):
+    names = sorted(os.listdir(directory_fd))
+    if len(names) > 32:
+        raise SystemExit("lease directory exceeds entry limit")
+    records = bytearray()
+    for name in names:
+        if not SAFE_NAME.fullmatch(name):
+            raise SystemExit(f"unsafe lease entry name: {name}")
+        fd, metadata = open_regular_at(directory_fd, name, f"lease entry {name}")
+        try:
+            if name in VOLATILE:
+                records.extend(f"{len(name)}\t{name}\tvolatile-runtime-file\n".encode())
+            else:
+                digest = hashlib.sha256(read_bounded(fd)).hexdigest()
+                records.extend(
+                    f"{len(name)}\t{name}\t{metadata.st_size}\t{digest}\n".encode()
+                )
+        finally:
+            os.close(fd)
+    return hashlib.sha256(records).hexdigest()
+
+
+root_fd = open_directory(lease_root, "lease root")
+if root_fd is None:
+    print("FREE")
+    raise SystemExit(0)
+try:
+    owner_name = os.path.basename(lease_dir)
+    quarantine_name = os.path.basename(quarantine_file)
+    try:
+        owner_fd = os.open(owner_name, DIR_FLAGS, dir_fd=root_fd)
+    except FileNotFoundError:
+        owner_fd = None
+    except OSError as error:
+        raise SystemExit(f"unsafe lease owner directory: {error}")
+    if owner_fd is None:
+        try:
+            quarantine_fd, _ = open_regular_at(
+                root_fd, quarantine_name, "quarantine metadata"
+            )
+        except FileNotFoundError:
+            print("FREE")
+        else:
+            try:
+                payload = read_bounded(quarantine_fd)
+            finally:
+                os.close(quarantine_fd)
+            print(
+                "QUARANTINED",
+                hashlib.sha256(payload).hexdigest(),
+                base64.b64encode(payload).decode(),
+                sep="\t",
+            )
+        raise SystemExit(0)
+    try:
+        owner_stat = os.fstat(owner_fd)
+        named_owner = os.stat(owner_name, dir_fd=root_fd, follow_symlinks=False)
+        if not stat.S_ISDIR(named_owner.st_mode) or (
+            named_owner.st_dev,
+            named_owner.st_ino,
+        ) != (owner_stat.st_dev, owner_stat.st_ino):
+            raise SystemExit("unsafe lease owner directory: path identity mismatch")
+        digest = canonical_digest(owner_fd)
+        try:
+            owner_json_fd, _ = open_regular_at(owner_fd, "owner.json", "owner metadata")
+        except FileNotFoundError:
+            print("AMBIGUOUS", digest, "missing-owner-metadata", sep="\t")
+            raise SystemExit(0)
+        try:
+            owner_payload = read_bounded(owner_json_fd)
+        finally:
+            os.close(owner_json_fd)
+        quarantine_payload = b""
+        try:
+            quarantine_fd, _ = open_regular_at(
+                root_fd, quarantine_name, "quarantine metadata"
+            )
+        except FileNotFoundError:
+            pass
+        else:
+            try:
+                quarantine_payload = read_bounded(quarantine_fd)
+            finally:
+                os.close(quarantine_fd)
+        print(
+            "OCCUPIED",
+            digest,
+            base64.b64encode(owner_payload).decode(),
+            base64.b64encode(quarantine_payload).decode(),
+            sep="\t",
+        )
+    finally:
+        os.close(owner_fd)
+finally:
+    os.close(root_fd)
+PY
 REMOTE
 }
 
@@ -248,7 +347,16 @@ base64_decode() {
     /usr/bin/base64 -D
   fi
 }
-mkdir -p "$lease_root"
+if [[ -e "$lease_root" || -L "$lease_root" ]]; then
+  [[ -d "$lease_root" && ! -L "$lease_root" ]] ||
+    { echo "unsafe lease root" >&2; exit 65; }
+else
+  mkdir "$lease_root"
+fi
+if [[ -e "$quarantine_file" || -L "$quarantine_file" ]]; then
+  [[ -f "$quarantine_file" && ! -L "$quarantine_file" ]] ||
+    { echo "unsafe quarantine metadata" >&2; exit 65; }
+fi
 tmp="${quarantine_file}.tmp.$$"
 printf '%s' "$payload_b64" | base64_decode > "$tmp"
 chmod 600 "$tmp"
@@ -334,10 +442,19 @@ base64_decode() {
     /usr/bin/base64 -D
   fi
 }
-mkdir -p "$lease_root"
-if [[ -f "$quarantine_file" ]]; then
+if [[ -e "$lease_root" || -L "$lease_root" ]]; then
+  [[ -d "$lease_root" && ! -L "$lease_root" ]] || { printf 'UNSAFE\n'; exit 0; }
+else
+  mkdir "$lease_root"
+fi
+if [[ -e "$quarantine_file" || -L "$quarantine_file" ]]; then
+  [[ -f "$quarantine_file" && ! -L "$quarantine_file" ]] ||
+    { printf 'UNSAFE\n'; exit 0; }
   printf 'QUARANTINED\n'
   exit 0
+fi
+if [[ -e "$lease_dir" || -L "$lease_dir" ]]; then
+  [[ -d "$lease_dir" && ! -L "$lease_dir" ]] || { printf 'UNSAFE\n'; exit 0; }
 fi
 if mkdir "$lease_dir" 2>/dev/null; then
   trap 'rm -f "$lease_dir/owner.json.tmp.$$"; rmdir "$lease_dir" 2>/dev/null || true' ERR
@@ -372,17 +489,69 @@ HEARTBEAT
   printf 'ACQUIRED\t%s\n' "$acquired_at"
   exit 0
 fi
-if [[ ! -f "$lease_dir/owner.json" ]]; then
+[[ -d "$lease_dir" && ! -L "$lease_dir" ]] || { printf 'UNSAFE\n'; exit 0; }
+if [[ -e "$lease_dir/owner.json" || -L "$lease_dir/owner.json" ]]; then
+  [[ -f "$lease_dir/owner.json" && ! -L "$lease_dir/owner.json" ]] ||
+    { printf 'UNSAFE\n'; exit 0; }
+else
   printf 'AMBIGUOUS\n'
   exit 0
 fi
-existing="$(jq -r '.owner_token_sha256 // ""' "$lease_dir/owner.json" 2>/dev/null || true)"
-if [[ "$existing" == "$owner_token_sha256" ]]; then
+existing_json="$(cat "$lease_dir/owner.json")"
+desired_json="$(printf '%s' "$owner_b64" | base64_decode)"
+if ! jq -e '
+  .schemaVersion == 1 and
+  (.owner_token_sha256 | type == "string") and
+  (.repository | type == "string") and
+  (.run_id | type == "string") and
+  (.logical_job | type == "string") and
+  (.attempt | type == "string") and
+  (.nonce | type == "string") and
+  (.created_at | type == "string")
+' >/dev/null 2>&1 <<<"$existing_json"; then
+  printf 'UNVERIFIABLE\t'
+  base64 < "$lease_dir/owner.json" | tr -d '\n'
+  printf '\n'
+  exit 0
+fi
+same_binding="$(
+  jq -nr \
+    --argjson existing "$existing_json" \
+    --argjson desired "$desired_json" \
+    '[
+      "schemaVersion",
+      "owner_token_sha256",
+      "repository",
+      "run_id",
+      "logical_job",
+      "attempt",
+      "nonce"
+    ] | all(. as $key | $existing[$key] == $desired[$key])'
+)"
+stale_logical_attempt="$(
+  jq -nr \
+    --argjson existing "$existing_json" \
+    --argjson desired "$desired_json" \
+    '$existing.repository == $desired.repository and
+     $existing.run_id == $desired.run_id and
+     $existing.logical_job == $desired.logical_job and
+     ($existing.attempt != $desired.attempt or $existing.nonce != $desired.nonce)'
+)"
+existing_token="$(jq -r '.owner_token_sha256' <<<"$existing_json")"
+if [[ "$same_binding" == "true" ]]; then
   date -u +%s > "$lease_dir/heartbeat.tmp.$$"
   mv "$lease_dir/heartbeat.tmp.$$" "$lease_dir/heartbeat"
   acquired_at="$(jq -er '.created_at' "$lease_dir/owner.json")"
   [[ "$acquired_at" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]
   printf 'ACQUIRED\t%s\n' "$acquired_at"
+elif [[ "$stale_logical_attempt" == "true" ]]; then
+  printf 'STALE_ATTEMPT\t'
+  base64 < "$lease_dir/owner.json" | tr -d '\n'
+  printf '\n'
+elif [[ "$existing_token" == "$owner_token_sha256" ]]; then
+  printf 'OWNER_BINDING_MISMATCH\t'
+  base64 < "$lease_dir/owner.json" | tr -d '\n'
+  printf '\n'
 else
   printf 'OCCUPIED\t'
   base64 < "$lease_dir/owner.json" | tr -d '\n'
@@ -408,6 +577,66 @@ REMOTE
       AMBIGUOUS)
         remote_quarantine "ambiguous-lease-owner" "lease directory exists without verifiable metadata"
         echo "LEASE_QUARANTINED: ambiguous owner metadata" >&2
+        return 73
+        ;;
+      UNSAFE)
+        echo "LEASE_QUARANTINED: unsafe lease filesystem boundary" >&2
+        return 73
+        ;;
+      UNVERIFIABLE)
+        local unverifiable_encoded="${response#*$'\t'}"
+        local unverifiable_json
+        unverifiable_json="$(printf '%s' "$unverifiable_encoded" | base64_decode 2>/dev/null || true)"
+        remote_quarantine "unverifiable-lease-owner" "$unverifiable_json"
+        echo "LEASE_QUARANTINED: unverifiable owner" >&2
+        return 73
+        ;;
+      STALE_ATTEMPT)
+        local stale_encoded="${response#*$'\t'}"
+        local stale_json stale_repo stale_run stale_job stale_attempt stale_nonce
+        stale_json="$(printf '%s' "$stale_encoded" | base64_decode 2>/dev/null || true)"
+        stale_repo="$(jq -r '.repository // ""' <<<"$stale_json" 2>/dev/null || true)"
+        stale_run="$(jq -r '.run_id // ""' <<<"$stale_json" 2>/dev/null || true)"
+        stale_job="$(jq -r '.logical_job // ""' <<<"$stale_json" 2>/dev/null || true)"
+        stale_attempt="$(jq -r '.attempt // ""' <<<"$stale_json" 2>/dev/null || true)"
+        stale_nonce="$(jq -r '.nonce // ""' <<<"$stale_json" 2>/dev/null || true)"
+        if [[ "$stale_repo" != "$repository" || "$stale_run" != "$run_id" ||
+          "$stale_job" != "$logical_job" || ! "$stale_attempt" =~ ^[0-9]+$ ||
+          -z "$stale_nonce" ]]; then
+          remote_quarantine "unverifiable-lease-owner" "$stale_json"
+          echo "LEASE_QUARANTINED: unverifiable stale attempt" >&2
+          return 73
+        fi
+        local stale_detail
+        stale_detail="$(
+          jq -cn \
+            --arg repository "$repository" \
+            --arg run_id "$run_id" \
+            --arg logical_job "$logical_job" \
+            --arg old_attempt "$stale_attempt" \
+            --arg old_nonce "$stale_nonce" \
+            --arg requested_attempt "$attempt" \
+            --arg requested_nonce "$nonce" \
+            '{
+              repository:$repository,
+              run_id:$run_id,
+              logical_job:$logical_job,
+              old_attempt:$old_attempt,
+              old_nonce:$old_nonce,
+              requested_attempt:$requested_attempt,
+              requested_nonce:$requested_nonce
+            }'
+        )"
+        remote_quarantine "stale-attempt-lease-owner" "$stale_detail"
+        echo "LEASE_QUARANTINED: stale attempt retained for audited recovery" >&2
+        return 73
+        ;;
+      OWNER_BINDING_MISMATCH)
+        local mismatch_encoded="${response#*$'\t'}"
+        local mismatch_json
+        mismatch_json="$(printf '%s' "$mismatch_encoded" | base64_decode 2>/dev/null || true)"
+        remote_quarantine "owner-binding-mismatch" "$mismatch_json"
+        echo "LEASE_QUARANTINED: owner token metadata binding mismatch" >&2
         return 73
         ;;
       OCCUPIED)
@@ -459,22 +688,55 @@ release() {
   local owner_token_sha256
   owner_token_sha256="$(token_digest)"
   release_once() {
-    ssh_script "$lease_dir" "$quarantine_file" "$owner_token_sha256" <<'REMOTE'
+    ssh_script "$lease_root" "$lease_dir" "$quarantine_file" "$owner_token_sha256" \
+      "$repository" "$run_id" "$logical_job" "$attempt" "$nonce" <<'REMOTE'
 set -euo pipefail
-lease_dir="$1"
-quarantine_file="$2"
-owner_token_sha256="$3"
-if [[ ! -d "$lease_dir" ]]; then
+lease_root="$1"
+lease_dir="$2"
+quarantine_file="$3"
+owner_token_sha256="$4"
+repository="$5"
+run_id="$6"
+logical_job="$7"
+attempt="$8"
+nonce="$9"
+if [[ -e "$lease_root" || -L "$lease_root" ]]; then
+  [[ -d "$lease_root" && ! -L "$lease_root" ]] ||
+    { echo "LEASE_QUARANTINED: unsafe lease root during release" >&2; exit 73; }
+else
   printf 'LEASE_ALREADY_RELEASED\n'
   exit 0
 fi
-if [[ ! -f "$lease_dir/owner.json" ]]; then
+if [[ -e "$lease_dir" || -L "$lease_dir" ]]; then
+  [[ -d "$lease_dir" && ! -L "$lease_dir" ]] ||
+    { echo "LEASE_QUARANTINED: unsafe owner directory during release" >&2; exit 73; }
+else
+  printf 'LEASE_ALREADY_RELEASED\n'
+  exit 0
+fi
+if [[ -e "$lease_dir/owner.json" || -L "$lease_dir/owner.json" ]]; then
+  [[ -f "$lease_dir/owner.json" && ! -L "$lease_dir/owner.json" ]] ||
+    { echo "LEASE_QUARANTINED: unsafe owner metadata during release" >&2; exit 73; }
+else
   echo "LEASE_QUARANTINED: owner metadata missing during release" >&2
   exit 73
 fi
-actual="$(jq -r '.owner_token_sha256 // ""' "$lease_dir/owner.json")"
-if [[ "$actual" != "$owner_token_sha256" ]]; then
-  echo "LEASE_QUARANTINED: owner token mismatch during release" >&2
+if ! jq -e \
+  --arg owner_token_sha256 "$owner_token_sha256" \
+  --arg repository "$repository" \
+  --arg run_id "$run_id" \
+  --arg logical_job "$logical_job" \
+  --arg attempt "$attempt" \
+  --arg nonce "$nonce" \
+  '.schemaVersion == 1 and
+   .owner_token_sha256 == $owner_token_sha256 and
+   .repository == $repository and
+   .run_id == $run_id and
+   .logical_job == $logical_job and
+   .attempt == $attempt and
+   .nonce == $nonce' \
+  "$lease_dir/owner.json" >/dev/null; then
+  echo "LEASE_QUARANTINED: owner metadata mismatch during release" >&2
   exit 73
 fi
 [[ -f "$lease_dir/heartbeat" ]] ||
@@ -539,8 +801,8 @@ recover() {
 
   local status_line
   status_line="$(remote_status)"
-  local state digest encoded
-  IFS=$'\t' read -r state digest encoded <<<"$status_line"
+  local state digest encoded quarantine_encoded
+  IFS=$'\t' read -r state digest encoded quarantine_encoded <<<"$status_line"
   [[ "$state" == "OCCUPIED" || "$state" == "AMBIGUOUS" || "$state" == "QUARANTINED" ]] ||
     { echo "Recovery requires an occupied, ambiguous, or marker-only quarantined lease; observed $state" >&2; exit 65; }
   [[ "$digest" == "$observed_lease_digest" ]] ||
@@ -557,154 +819,415 @@ recover() {
     fi
     case "$owner_status" in
       queued|in_progress|requested|waiting|pending)
-        echo "Owning GitHub run is active; refusing recovery" >&2
-        exit 73
+        local quarantine_json quarantine_reason_value quarantine_detail
+        quarantine_json="$(printf '%s' "$quarantine_encoded" | base64_decode 2>/dev/null || true)"
+        quarantine_reason_value="$(
+          jq -r '.reason // ""' <<<"$quarantine_json" 2>/dev/null || true
+        )"
+        quarantine_detail="$(
+          jq -r '.detail // ""' <<<"$quarantine_json" 2>/dev/null || true
+        )"
+        if [[ "$quarantine_reason_value" != "stale-attempt-lease-owner" ]] ||
+          ! jq -e \
+            --arg repository "$(jq -r '.repository // ""' <<<"$owner_json")" \
+            --arg run_id "$(jq -r '.run_id // ""' <<<"$owner_json")" \
+            --arg logical_job "$(jq -r '.logical_job // ""' <<<"$owner_json")" \
+            --arg old_attempt "$(jq -r '.attempt // ""' <<<"$owner_json")" \
+            --arg old_nonce "$(jq -r '.nonce // ""' <<<"$owner_json")" \
+            '.repository == $repository and
+             .run_id == $run_id and
+             .logical_job == $logical_job and
+             .old_attempt == $old_attempt and
+             .old_nonce == $old_nonce and
+             (.requested_attempt | type == "string") and
+             (.requested_attempt | test("^[0-9]+$")) and
+             .requested_attempt != .old_attempt and
+             (.requested_nonce | type == "string") and
+             (.requested_nonce | length > 0) and
+             .requested_nonce != .old_nonce' \
+            >/dev/null 2>&1 <<<"$quarantine_detail"; then
+          echo "Owning GitHub run is active; refusing recovery" >&2
+          exit 73
+        fi
         ;;
     esac
   fi
 
+  local recovery_test_hook=""
+  if [[ "${NIXMAC_E2E_LEASE_TEST_MODE:-}" == "1" &&
+    -n "${NIXMAC_E2E_LEASE_RECOVERY_TEST_HOOK:-}" ]]; then
+    recovery_test_hook="$NIXMAC_E2E_LEASE_RECOVERY_TEST_HOOK"
+    local fixture_root="${lease_root%/remote-lease}"
+    [[ "$recovery_test_hook" == "$fixture_root"/* &&
+      -f "$recovery_test_hook" && ! -L "$recovery_test_hook" &&
+      -x "$recovery_test_hook" ]] ||
+      { echo "Invalid isolated recovery test hook" >&2; exit 64; }
+  fi
+
   local reason_b64
   reason_b64="$(printf '%s' "$operator_reason" | base64 | tr -d '\n')"
-  ssh_script "$lease_dir" "$quarantine_file" "$recovery_audit_root" \
-    "$observed_lease_digest" "$reason_b64" "$state" <<'REMOTE'
+  ssh_script "$lease_root" "$lease_dir" "$quarantine_file" "$recovery_audit_root" \
+    "$observed_lease_digest" "$reason_b64" "$state" "$recovery_test_hook" <<'REMOTE'
 set -euo pipefail
-lease_dir="$1"
-quarantine_file="$2"
-recovery_audit_root="$3"
-expected_digest="$4"
-reason_b64="$5"
-lease_state="$6"
-base64_decode() {
-  if /usr/bin/base64 --decode </dev/null >/dev/null 2>&1; then
-    /usr/bin/base64 --decode
-  else
-    /usr/bin/base64 -D
-  fi
-}
-canonical_lease_digest() {
-  local directory="$1"
-  (
-    export LC_ALL=C
-    shopt -s nullglob dotglob
-    count=0
-    for entry in "$directory"/*; do
-      name="${entry##*/}"
-      [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]]
-      [[ -f "$entry" && ! -L "$entry" ]]
-      count=$((count + 1))
-      ((count <= 32))
-      if ! size="$(stat -f '%z' "$entry" 2>/dev/null)"; then
-        size="$(stat -c '%s' "$entry")"
-      fi
-      [[ "$size" =~ ^[0-9]+$ ]] && ((size <= 1048576))
-      case "$name" in
-        heartbeat|heartbeat.pid|heartbeat.log)
-          printf '%s\t%s\tvolatile-runtime-file\n' "${#name}" "$name"
-          ;;
-        *)
-          digest="$(shasum -a 256 "$entry" | awk '{print $1}')"
-          printf '%s\t%s\t%s\t%s\n' "${#name}" "$name" "$size" "$digest"
-          ;;
-      esac
-    done
-  ) | shasum -a 256 | awk '{print $1}'
-}
-if [[ "$lease_state" == "QUARANTINED" ]]; then
-  [[ ! -e "$lease_dir" && ! -L "$lease_dir" ]] ||
-    { echo "marker-only quarantine gained a lease directory" >&2; exit 65; }
-  [[ -f "$quarantine_file" && ! -L "$quarantine_file" ]] ||
-    { echo "quarantine metadata disappeared or became unsafe" >&2; exit 65; }
-  actual_digest="$(shasum -a 256 "$quarantine_file" | awk '{print $1}')"
-  [[ "$actual_digest" == "$expected_digest" ]] ||
-    { echo "quarantine digest changed during recovery" >&2; exit 65; }
-  if pgrep -f 'nixmac\.app/Contents/MacOS/nixmac|/Contents/MacOS/nixmac|[c]ua-driver|[C]uaDriver\.app/Contents/MacOS' >/dev/null; then
-    echo "nixmac or CuaDriver process active; refusing recovery" >&2
-    exit 73
-  fi
-  stamp="$(date -u +%Y%m%dT%H%M%SZ)"
-  audit_dir="${recovery_audit_root}/${stamp}-${expected_digest}"
-  mkdir -p "$recovery_audit_root"
-  mkdir "$audit_dir"
-  cp "$quarantine_file" "$audit_dir/QUARANTINED.json"
-  chmod 600 "$audit_dir/QUARANTINED.json"
-  printf '%s' "$reason_b64" | base64_decode > "$audit_dir/operator-reason.txt"
-  printf '%s\n' "$lease_state" > "$audit_dir/lease-state.txt"
-  printf '%s\n' "$expected_digest" > "$audit_dir/observed-lease-digest.txt"
-  chmod 600 "$audit_dir"/*.txt
-  final_digest="$(shasum -a 256 "$quarantine_file" | awk '{print $1}')"
-  [[ "$final_digest" == "$expected_digest" ]] ||
-    { echo "quarantine digest changed before recovery delete" >&2; exit 65; }
-  rm -f -- "$quarantine_file"
-  printf 'LEASE_RECOVERED audit=%s\n' "$audit_dir"
-  exit 0
-fi
-if [[ "$lease_state" == "OCCUPIED" ]]; then
-  [[ -f "$lease_dir/owner.json" ]] || { echo "owner metadata disappeared" >&2; exit 65; }
-else
-  [[ "$lease_state" == "AMBIGUOUS" && ! -e "$lease_dir/owner.json" ]] ||
-    { echo "ambiguous lease state changed during recovery" >&2; exit 65; }
-  if [[ -f "$lease_dir/heartbeat.pid" ]]; then
-    heartbeat_pid="$(cat "$lease_dir/heartbeat.pid" 2>/dev/null || true)"
-    if [[ "$heartbeat_pid" =~ ^[0-9]+$ ]] &&
-      ps -p "$heartbeat_pid" -o command= 2>/dev/null | grep -Fq "$lease_dir/heartbeat.sh"; then
-      kill -TERM "$heartbeat_pid" 2>/dev/null || true
-    fi
-  fi
-fi
-actual_digest="$(canonical_lease_digest "$lease_dir")"
-[[ "$actual_digest" == "$expected_digest" ]] ||
-  { echo "lease digest changed during recovery" >&2; exit 65; }
-if pgrep -f 'nixmac\.app/Contents/MacOS/nixmac|/Contents/MacOS/nixmac|[c]ua-driver|[C]uaDriver\.app/Contents/MacOS' >/dev/null; then
-  echo "nixmac or CuaDriver process active; refusing recovery" >&2
-  exit 73
-fi
-stamp="$(date -u +%Y%m%dT%H%M%SZ)"
-audit_dir="${recovery_audit_root}/${stamp}-${expected_digest}"
-mkdir -p "$recovery_audit_root"
-mkdir "$audit_dir"
-mkdir "$audit_dir/lease"
-shopt -s nullglob dotglob
-count=0
-for entry in "$lease_dir"/*; do
-  name="${entry##*/}"
-  [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]]
-  [[ -f "$entry" && ! -L "$entry" ]]
-  count=$((count + 1))
-  ((count <= 32))
-  if ! size="$(stat -f '%z' "$entry" 2>/dev/null)"; then
-    size="$(stat -c '%s' "$entry")"
-  fi
-  [[ "$size" =~ ^[0-9]+$ ]] && ((size <= 1048576))
-  cp "$entry" "$audit_dir/lease/$name"
-  chmod 600 "$audit_dir/lease/$name"
-done
-if [[ -e "$quarantine_file" || -L "$quarantine_file" ]]; then
-  [[ -f "$quarantine_file" && ! -L "$quarantine_file" ]] ||
-    { echo "unsafe quarantine metadata; refusing recovery" >&2; exit 65; }
-  cp "$quarantine_file" "$audit_dir/QUARANTINED.json"
-  chmod 600 "$audit_dir/QUARANTINED.json"
-fi
-printf '%s' "$reason_b64" | base64_decode > "$audit_dir/operator-reason.txt"
-printf '%s\n' "$lease_state" > "$audit_dir/lease-state.txt"
-printf '%s\n' "$expected_digest" > "$audit_dir/observed-lease-digest.txt"
-chmod 600 "$audit_dir"/*.txt
-final_digest="$(canonical_lease_digest "$lease_dir")"
-[[ "$final_digest" == "$expected_digest" ]] ||
-  { echo "lease digest changed before recovery delete" >&2; exit 65; }
-if [[ -f "$lease_dir/heartbeat.pid" ]]; then
-  heartbeat_pid="$(cat "$lease_dir/heartbeat.pid")"
-  if [[ "$heartbeat_pid" =~ ^[0-9]+$ ]] &&
-    ps -p "$heartbeat_pid" -o command= 2>/dev/null | grep -Fq "$lease_dir/heartbeat.sh"; then
-    kill -TERM "$heartbeat_pid" 2>/dev/null || true
-  fi
-fi
-for entry in "$lease_dir"/*; do
-  [[ -f "$entry" && ! -L "$entry" ]]
-  rm -f -- "$entry"
-done
-rmdir "$lease_dir"
-rm -f "$quarantine_file"
-printf 'LEASE_RECOVERED audit=%s\n' "$audit_dir"
+lease_root="$1"
+lease_dir="$2"
+quarantine_file="$3"
+recovery_audit_root="$4"
+expected_digest="$5"
+reason_b64="$6"
+lease_state="$7"
+recovery_test_hook="$8"
+python3 - "$lease_root" "$lease_dir" "$quarantine_file" "$recovery_audit_root" \
+  "$expected_digest" "$reason_b64" "$lease_state" "$recovery_test_hook" <<'PY'
+import base64
+import datetime
+import hashlib
+import os
+import re
+import stat
+import subprocess
+import sys
+
+(
+    lease_root,
+    lease_dir,
+    quarantine_file,
+    recovery_audit_root,
+    expected_digest,
+    reason_b64,
+    lease_state,
+    recovery_test_hook,
+) = sys.argv[1:]
+SAFE_NAME = re.compile(r"^[A-Za-z0-9._-]+$")
+VOLATILE = {"heartbeat", "heartbeat.pid", "heartbeat.log"}
+OPEN_FLAGS = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+DIR_FLAGS = OPEN_FLAGS | getattr(os, "O_DIRECTORY", 0)
+
+
+def fail(message, code=65):
+    print(message, file=sys.stderr)
+    raise SystemExit(code)
+
+
+def open_directory(path, label):
+    try:
+        fd = os.open(path, DIR_FLAGS)
+    except OSError as error:
+        fail(f"unsafe {label}: {error}")
+    opened = os.fstat(fd)
+    try:
+        named = os.lstat(path)
+    except OSError as error:
+        os.close(fd)
+        fail(f"unsafe {label}: {error}")
+    if (
+        not stat.S_ISDIR(opened.st_mode)
+        or stat.S_ISLNK(named.st_mode)
+        or (named.st_dev, named.st_ino) != (opened.st_dev, opened.st_ino)
+    ):
+        os.close(fd)
+        fail(f"unsafe {label}: path identity mismatch")
+    return fd
+
+
+def open_directory_at(parent_fd, name, label):
+    try:
+        fd = os.open(name, DIR_FLAGS, dir_fd=parent_fd)
+    except OSError as error:
+        fail(f"unsafe {label}: {error}")
+    opened = os.fstat(fd)
+    named = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+    if (
+        not stat.S_ISDIR(named.st_mode)
+        or (named.st_dev, named.st_ino) != (opened.st_dev, opened.st_ino)
+    ):
+        os.close(fd)
+        fail(f"unsafe {label}: path identity mismatch")
+    return fd, opened
+
+
+def open_regular_at(parent_fd, name, label, required=True):
+    try:
+        named = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        if required:
+            fail(f"{label} disappeared")
+        return None, None
+    if not stat.S_ISREG(named.st_mode) or named.st_size > 1_048_576:
+        fail(f"unsafe {label}")
+    try:
+        fd = os.open(name, OPEN_FLAGS, dir_fd=parent_fd)
+    except OSError as error:
+        fail(f"unsafe {label}: {error}")
+    opened = os.fstat(fd)
+    if (named.st_dev, named.st_ino) != (opened.st_dev, opened.st_ino):
+        os.close(fd)
+        fail(f"unsafe {label}: file identity mismatch")
+    return fd, opened
+
+
+def read_bounded(fd):
+    os.lseek(fd, 0, os.SEEK_SET)
+    payload = bytearray()
+    while len(payload) <= 1_048_576:
+        chunk = os.read(fd, min(65_536, 1_048_577 - len(payload)))
+        if not chunk:
+            return bytes(payload)
+        payload.extend(chunk)
+    fail("lease metadata exceeds size limit")
+
+
+def canonical_digest(directory_fd):
+    names = sorted(os.listdir(directory_fd))
+    if len(names) > 32:
+        fail("lease directory exceeds entry limit")
+    records = bytearray()
+    for name in names:
+        if not SAFE_NAME.fullmatch(name):
+            fail(f"unsafe lease entry name: {name}")
+        fd, metadata = open_regular_at(directory_fd, name, f"lease entry {name}")
+        try:
+            if name in VOLATILE:
+                records.extend(f"{len(name)}\t{name}\tvolatile-runtime-file\n".encode())
+            else:
+                digest = hashlib.sha256(read_bounded(fd)).hexdigest()
+                records.extend(
+                    f"{len(name)}\t{name}\t{metadata.st_size}\t{digest}\n".encode()
+                )
+        finally:
+            os.close(fd)
+    return hashlib.sha256(records).hexdigest()
+
+
+def assert_named_identity(parent_fd, name, held_stat, label):
+    try:
+        named = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+    except OSError as error:
+        fail(f"{label} identity changed: {error}")
+    if (named.st_dev, named.st_ino) != (held_stat.st_dev, held_stat.st_ino):
+        fail(f"{label} identity changed during recovery")
+
+
+def assert_path_identity(path, held_stat, label):
+    try:
+        named = os.lstat(path)
+    except OSError as error:
+        fail(f"{label} identity changed: {error}")
+    if (
+        stat.S_ISLNK(named.st_mode)
+        or (named.st_dev, named.st_ino) != (held_stat.st_dev, held_stat.st_ino)
+    ):
+        fail(f"{label} identity changed during recovery")
+
+
+def ensure_audit_root():
+    try:
+        os.mkdir(recovery_audit_root, 0o700)
+    except FileExistsError:
+        pass
+    return open_directory(recovery_audit_root, "recovery audit root")
+
+
+def write_new_file(parent_fd, name, payload):
+    flags = (
+        os.O_WRONLY
+        | os.O_CREAT
+        | os.O_EXCL
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    fd = os.open(name, flags, 0o600, dir_fd=parent_fd)
+    try:
+        view = memoryview(payload)
+        while view:
+            written = os.write(fd, view)
+            view = view[written:]
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def reserve_audit_directory(audit_root_fd):
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stem = f"{stamp}-{expected_digest}"
+    for suffix in range(1000):
+        name = stem if suffix == 0 else f"{stem}-{suffix}"
+        try:
+            os.mkdir(name, 0o700, dir_fd=audit_root_fd)
+        except FileExistsError:
+            continue
+        audit_fd, _ = open_directory_at(audit_root_fd, name, "recovery audit directory")
+        return name, audit_fd
+    fail("unable to reserve unique recovery audit directory")
+
+
+def process_is_active():
+    pattern = (
+        r"nixmac\.app/Contents/MacOS/nixmac|/Contents/MacOS/nixmac|"
+        r"[c]ua-driver|[C]uaDriver\.app/Contents/MacOS"
+    )
+    return subprocess.run(
+        ["pgrep", "-f", pattern],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    ).returncode == 0
+
+
+root_fd = open_directory(lease_root, "lease root")
+root_stat = os.fstat(root_fd)
+owner_fd = None
+quarantine_fd = None
+audit_root_fd = None
+audit_fd = None
+try:
+    owner_name = os.path.basename(lease_dir)
+    quarantine_name = os.path.basename(quarantine_file)
+    if lease_state == "QUARANTINED":
+        try:
+            os.stat(owner_name, dir_fd=root_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            pass
+        else:
+            fail("marker-only quarantine gained a lease directory")
+        quarantine_fd, quarantine_stat = open_regular_at(
+            root_fd, quarantine_name, "quarantine metadata"
+        )
+        initial_quarantine = read_bounded(quarantine_fd)
+        if hashlib.sha256(initial_quarantine).hexdigest() != expected_digest:
+            fail("quarantine digest changed during recovery")
+    else:
+        owner_fd, owner_stat = open_directory_at(
+            root_fd, owner_name, "lease owner directory"
+        )
+        if canonical_digest(owner_fd) != expected_digest:
+            fail("lease digest changed during recovery")
+        owner_json_fd, _ = open_regular_at(
+            owner_fd, "owner.json", "owner metadata", required=lease_state == "OCCUPIED"
+        )
+        if owner_json_fd is not None:
+            os.close(owner_json_fd)
+        elif lease_state != "AMBIGUOUS":
+            fail("owner metadata disappeared")
+        quarantine_fd, quarantine_stat = open_regular_at(
+            root_fd, quarantine_name, "quarantine metadata", required=False
+        )
+        initial_quarantine = (
+            read_bounded(quarantine_fd) if quarantine_fd is not None else None
+        )
+
+    if process_is_active():
+        fail("nixmac or CuaDriver process active; refusing recovery", 73)
+
+    if recovery_test_hook:
+        subprocess.run([recovery_test_hook, lease_root], check=True)
+
+    audit_root_fd = ensure_audit_root()
+    audit_name, audit_fd = reserve_audit_directory(audit_root_fd)
+    write_new_file(
+        audit_fd, "operator-reason.txt", base64.b64decode(reason_b64, validate=True)
+    )
+    write_new_file(audit_fd, "lease-state.txt", f"{lease_state}\n".encode())
+    write_new_file(
+        audit_fd, "observed-lease-digest.txt", f"{expected_digest}\n".encode()
+    )
+    assert_path_identity(lease_root, root_stat, "lease root")
+
+    if lease_state == "QUARANTINED":
+        assert_named_identity(
+            root_fd, quarantine_name, quarantine_stat, "quarantine metadata"
+        )
+        if hashlib.sha256(read_bounded(quarantine_fd)).hexdigest() != expected_digest:
+            fail("quarantine digest changed before recovery move")
+        os.rename(
+            quarantine_name,
+            "QUARANTINED.json",
+            src_dir_fd=root_fd,
+            dst_dir_fd=audit_fd,
+        )
+        moved = os.stat("QUARANTINED.json", dir_fd=audit_fd, follow_symlinks=False)
+        if (moved.st_dev, moved.st_ino) != (
+            quarantine_stat.st_dev,
+            quarantine_stat.st_ino,
+        ):
+            try:
+                os.stat(quarantine_name, dir_fd=root_fd, follow_symlinks=False)
+            except FileNotFoundError:
+                os.rename(
+                    "QUARANTINED.json",
+                    quarantine_name,
+                    src_dir_fd=audit_fd,
+                    dst_dir_fd=root_fd,
+                )
+            fail("quarantine identity changed during recovery move")
+        if hashlib.sha256(read_bounded(quarantine_fd)).hexdigest() != expected_digest:
+            try:
+                os.rename(
+                    "QUARANTINED.json",
+                    quarantine_name,
+                    src_dir_fd=audit_fd,
+                    dst_dir_fd=root_fd,
+                )
+            finally:
+                fail("quarantine digest changed during recovery move")
+    else:
+        assert_named_identity(root_fd, owner_name, owner_stat, "lease owner directory")
+        if canonical_digest(owner_fd) != expected_digest:
+            fail("lease digest changed before recovery move")
+        os.rename(owner_name, "lease", src_dir_fd=root_fd, dst_dir_fd=audit_fd)
+        moved = os.stat("lease", dir_fd=audit_fd, follow_symlinks=False)
+        if (moved.st_dev, moved.st_ino) != (owner_stat.st_dev, owner_stat.st_ino):
+            try:
+                os.stat(owner_name, dir_fd=root_fd, follow_symlinks=False)
+            except FileNotFoundError:
+                os.rename("lease", owner_name, src_dir_fd=audit_fd, dst_dir_fd=root_fd)
+            fail("lease owner identity changed during recovery move")
+        if canonical_digest(owner_fd) != expected_digest:
+            try:
+                os.stat(owner_name, dir_fd=root_fd, follow_symlinks=False)
+            except FileNotFoundError:
+                os.rename("lease", owner_name, src_dir_fd=audit_fd, dst_dir_fd=root_fd)
+            fail("lease digest changed during recovery move")
+        if quarantine_fd is not None:
+            assert_named_identity(
+                root_fd, quarantine_name, quarantine_stat, "quarantine metadata"
+            )
+            if read_bounded(quarantine_fd) != initial_quarantine:
+                fail("quarantine metadata changed before recovery move")
+            os.rename(
+                quarantine_name,
+                "QUARANTINED.json",
+                src_dir_fd=root_fd,
+                dst_dir_fd=audit_fd,
+            )
+            moved_quarantine = os.stat(
+                "QUARANTINED.json", dir_fd=audit_fd, follow_symlinks=False
+            )
+            if (moved_quarantine.st_dev, moved_quarantine.st_ino) != (
+                quarantine_stat.st_dev,
+                quarantine_stat.st_ino,
+            ):
+                try:
+                    os.stat(quarantine_name, dir_fd=root_fd, follow_symlinks=False)
+                except FileNotFoundError:
+                    os.rename(
+                        "QUARANTINED.json",
+                        quarantine_name,
+                        src_dir_fd=audit_fd,
+                        dst_dir_fd=root_fd,
+                    )
+                fail("quarantine identity changed during recovery move")
+
+    audit_path = os.path.join(recovery_audit_root, audit_name)
+    print(f"LEASE_RECOVERED audit={audit_path}")
+finally:
+    for fd in (audit_fd, audit_root_fd, quarantine_fd, owner_fd, root_fd):
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+PY
 REMOTE
 }
 
