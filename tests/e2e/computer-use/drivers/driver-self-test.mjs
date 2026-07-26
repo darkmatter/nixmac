@@ -3,7 +3,14 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { findElement } from "../transport.mjs";
+import {
+  AppServerClient,
+  clickResponseIndicatesFailure,
+  contentImage,
+  contentText,
+  findElement,
+  setValueResponseIndicatesFailure,
+} from "../transport.mjs";
 import { createScenarioDriverHelpers } from "../scenario-driver.mjs";
 import {
   normalizeActionResult,
@@ -59,6 +66,7 @@ const scenarioRunDir = await mkdtemp(path.join(os.tmpdir(), "nixmac-scenario-dri
 try {
   const events = [];
   const narratives = [];
+  const delays = [];
   let saveCount = 0;
   const scenario = createScenarioDriverHelpers({
     addEvent: async (_state, type, data) => events.push({ type, data }),
@@ -71,6 +79,7 @@ try {
     pngDimensions: () => ({ width: 2, height: 3 }),
     findElement,
     screenshotSource: "Codex Computer Use get_app_state image",
+    sleep: async (delayMs) => delays.push(delayMs),
   });
   const scenarioState = {
     app: "com.darkmatter.nixmac",
@@ -95,6 +104,38 @@ try {
         text: "1 button Save\n2 text entry area Prompt",
         imageBase64: Buffer.from("normal-image").toString("base64"),
         target,
+      },
+      {
+        text: "1 button Codex Save",
+        imageBase64: "",
+        target: null,
+      },
+      {
+        text: "7 button Snapshot A",
+        imageBase64: "",
+        target: {
+          pid: 101,
+          windowId: 202,
+          snapshotId: "101:202:turn-a",
+        },
+      },
+      {
+        text: "7 button Snapshot B",
+        imageBase64: "",
+        target: {
+          pid: 101,
+          windowId: 202,
+          snapshotId: "101:202:turn-b",
+        },
+      },
+      {
+        text: "8 button Malformed target",
+        imageBase64: "",
+        target: {
+          pid: "101",
+          windowId: 202,
+          snapshotId: "101:202:turn-malformed",
+        },
       },
     ],
     clicks: [],
@@ -186,7 +227,10 @@ try {
   assert.deepEqual(narratives, ["Captured API keys.", "Captured normal state."]);
 
   fake.click = async () => ({ ok: false, text: "stale element", isError: false });
-  assert.equal(await scenario.clickElementIndex(fake, scenarioState, "1", "Stale Save"), false);
+  assert.equal(
+    await scenario.clickElementIndex(fake, scenarioState, normalText, "1", "Stale Save"),
+    false,
+  );
   assert.equal(
     events.some(
       (event) =>
@@ -196,6 +240,145 @@ try {
     ),
     true,
   );
+
+  fake.click = async function click(input) {
+    this.clicks.push(input);
+    return { ok: true, text: "clicked", isError: false };
+  };
+  const codexObservation = await scenario.captureState(
+    fake,
+    scenarioState,
+    "codex-state",
+    "Captured Codex fallback state.",
+  );
+  assert.equal(
+    await scenario.clickByPattern(fake, scenarioState, codexObservation, "Codex Save", [
+      /button Codex Save/i,
+    ]),
+    true,
+  );
+  assert.deepEqual(fake.clicks.at(-1).elementAddress, {
+    kind: "codex-index",
+    index: "1",
+  });
+
+  const snapshotAObservation = await scenario.captureState(
+    fake,
+    scenarioState,
+    "snapshot-a",
+    "Captured snapshot A.",
+  );
+  const snapshotBObservation = await scenario.captureState(
+    fake,
+    scenarioState,
+    "snapshot-b",
+    "Captured snapshot B.",
+  );
+  assert.equal(
+    await scenario.clickByPattern(fake, scenarioState, snapshotAObservation, "Snapshot A", [
+      /button Snapshot A/i,
+    ]),
+    true,
+    "actions should remain bound to the observation used for element lookup",
+  );
+  assert.equal(
+    fake.clicks.at(-1).elementAddress.snapshotId,
+    "101:202:turn-a",
+    "an older observation must never be rebound to a newer snapshot",
+  );
+  assert.equal(
+    await scenario.clickByPattern(fake, scenarioState, snapshotBObservation, "Snapshot B", [
+      /button Snapshot B/i,
+    ]),
+    true,
+  );
+  assert.equal(fake.clicks.at(-1).elementAddress.snapshotId, "101:202:turn-b");
+
+  const malformedObservation = await scenario.captureState(
+    fake,
+    scenarioState,
+    "malformed-target",
+    "Captured malformed target metadata.",
+  );
+  const clickCountBeforeMalformedTarget = fake.clicks.length;
+  assert.equal(
+    await scenario.clickByPattern(fake, scenarioState, malformedObservation, "Malformed target", [
+      /button Malformed target/i,
+    ]),
+    false,
+    "malformed target metadata should fail the action through evidence semantics",
+  );
+  assert.equal(fake.clicks.length, clickCountBeforeMalformedTarget);
+  assert.equal(
+    events.some(
+      (event) =>
+        event.type === "computer-use.click.failed" &&
+        event.data.label === "Malformed target" &&
+        /cannot resolve an element address/i.test(event.data.error),
+    ),
+    true,
+  );
+
+  fake.click = async () => {
+    throw new Error("synthetic driver exception");
+  };
+  assert.equal(
+    await scenario.clickByPattern(fake, scenarioState, snapshotBObservation, "Driver exception", [
+      /button Snapshot B/i,
+    ]),
+    false,
+  );
+  assert.equal(
+    events.some(
+      (event) =>
+        event.type === "computer-use.click.failed" &&
+        event.data.label === "Driver exception" &&
+        event.data.error === "synthetic driver exception",
+    ),
+    true,
+  );
+  assert.equal(
+    await scenario.clickByPattern(fake, scenarioState, snapshotBObservation, "Missing control", [
+      /button Missing/i,
+    ]),
+    false,
+  );
+  assert.equal(
+    events.some(
+      (event) =>
+        event.type === "computer-use.click.skipped" && event.data.label === "Missing control",
+    ),
+    true,
+  );
+
+  const retryFake = {
+    states: [
+      {
+        text: "Error: procNotFound",
+        imageBase64: "",
+        target: null,
+      },
+      {
+        text: "1 text Running",
+        imageBase64: "",
+        target: null,
+      },
+    ],
+    visibleStateCalls: 0,
+    async visibleState() {
+      this.visibleStateCalls += 1;
+      return this.states.shift();
+    },
+  };
+  const retryObservation = await scenario.captureState(
+    retryFake,
+    scenarioState,
+    "retry-state",
+    "Retried process lookup.",
+  );
+  assert.equal(String(retryObservation), "1 text Running");
+  assert.equal(retryFake.visibleStateCalls, 2);
+  assert.equal(delays.at(-1), 1500);
 
   const pollingFake = {
     states: [
@@ -215,15 +398,252 @@ try {
     (text) => (/Ready/.test(text) ? "ready" : ""),
     { attempts: 2, delayMs: 0 },
   );
-  assert.deepEqual(waitResult, {
-    ok: true,
-    text: "1 text Ready",
-    result: "ready",
-  });
+  assert.equal(waitResult.ok, true);
+  assert.equal(String(waitResult.text), "1 text Ready");
+  assert.equal(waitResult.result, "ready");
   assert.equal(pollingFake.visibleStateCalls, 2);
+
+  const exhaustedFake = {
+    states: [
+      { text: "1 text Still loading", imageBase64: "", target: null },
+      { text: "1 text Still loading", imageBase64: "", target: null },
+    ],
+    async visibleState() {
+      return this.states.shift();
+    },
+  };
+  const exhaustedResult = await scenario.waitFor(
+    exhaustedFake,
+    scenarioState,
+    "never-ready",
+    () => false,
+    { attempts: 2, delayMs: 25 },
+  );
+  assert.equal(exhaustedResult.ok, false);
+  assert.equal(String(exhaustedResult.text), "1 text Still loading");
+  assert.deepEqual(delays.slice(-2), [25, 25]);
 } finally {
   await rm(scenarioRunDir, { recursive: true, force: true });
 }
+
+assert.equal(
+  contentText({
+    result: {
+      content: [
+        { type: "image", data: "png" },
+        { type: "text", text: "state text" },
+      ],
+    },
+  }),
+  "state text",
+  "contentText should extract the first text response payload",
+);
+assert.equal(
+  contentText({ result: { content: [] } }),
+  "",
+  "contentText should return an empty string for missing text payloads",
+);
+assert.equal(
+  contentImage({
+    result: {
+      content: [
+        { type: "text", text: "state text" },
+        { type: "image", data: "png" },
+      ],
+    },
+  }),
+  "png",
+  "contentImage should extract the first image response payload",
+);
+
+const transportMessages = [];
+class TransportMockWebSocket {
+  constructor(url) {
+    this.url = url;
+    setTimeout(() => this.onopen?.(), 0);
+  }
+
+  send(payload) {
+    const message = JSON.parse(payload);
+    transportMessages.push(message);
+    const result = message.method === "thread/start" ? { thread: { id: "thread-transport" } } : {};
+    setTimeout(
+      () =>
+        this.onmessage?.({
+          data: JSON.stringify({ id: message.id, result }),
+        }),
+      0,
+    );
+  }
+
+  close() {
+    this.closed = true;
+  }
+}
+
+const appServerClient = new AppServerClient("ws://mock", {
+  WebSocketImpl: TransportMockWebSocket,
+});
+await appServerClient.connect();
+assert.equal(
+  appServerClient.threadId,
+  "thread-transport",
+  "AppServerClient should store the started thread id",
+);
+await appServerClient.tool("click", { app: "com.darkmatter.nixmac", element_index: "7" }, 1000);
+assert.deepEqual(
+  transportMessages.map((message) => message.method),
+  ["initialize", "thread/start", "mcpServer/tool/call"],
+  "AppServerClient should preserve initialize, thread start, and tool-call request order",
+);
+assert.deepEqual(
+  transportMessages[1].params,
+  {
+    cwd: "/tmp",
+    model: "gpt-5.4-mini",
+    approvalPolicy: "never",
+    sandbox: "danger-full-access",
+    ephemeral: true,
+  },
+  "AppServerClient should preserve Codex app-server thread policy",
+);
+assert.deepEqual(
+  transportMessages[2].params,
+  {
+    server: "computer-use",
+    threadId: "thread-transport",
+    tool: "click",
+    arguments: {
+      app: "com.darkmatter.nixmac",
+      element_index: "7",
+    },
+  },
+  "AppServerClient should preserve Computer Use tool-call shape",
+);
+appServerClient.close();
+
+class MockToolErrorWebSocket {
+  constructor() {
+    setTimeout(() => this.onopen?.(), 0);
+  }
+
+  send(payload) {
+    const message = JSON.parse(payload);
+    const result =
+      message.method === "thread/start" ? { thread: { id: "thread-transport-error" } } : {};
+    const response =
+      message.method === "mcpServer/tool/call"
+        ? {
+            id: message.id,
+            error: { message: "synthetic tool failure" },
+          }
+        : { id: message.id, result };
+    setTimeout(() => this.onmessage?.({ data: JSON.stringify(response) }), 0);
+  }
+
+  close() {}
+}
+
+const toolErrorClient = new AppServerClient("ws://mock-tool-error", {
+  WebSocketImpl: MockToolErrorWebSocket,
+});
+await toolErrorClient.connect();
+await assert.rejects(
+  () => toolErrorClient.tool("click", { app: "com.darkmatter.nixmac", element_index: "7" }, 1000),
+  /synthetic tool failure/,
+  "AppServerClient should reject JSON-RPC error responses",
+);
+toolErrorClient.close();
+
+const timeoutClient = new AppServerClient("ws://mock-timeout");
+timeoutClient.ws = { send() {}, close() {} };
+await assert.rejects(
+  () => timeoutClient.request("never/replies", {}, 1),
+  /Timed out waiting for never\/replies/,
+  "AppServerClient should reject timed-out requests",
+);
+timeoutClient.close();
+
+assert.equal(
+  clickResponseIndicatesFailure({
+    result: {
+      isError: true,
+      content: [{ type: "text", text: "Tool returned an error." }],
+    },
+  }),
+  true,
+  "MCP isError should fail click",
+);
+assert.equal(
+  clickResponseIndicatesFailure({
+    result: {
+      content: [
+        {
+          type: "text",
+          text: "App state includes button Report Error and Console Error logs.",
+        },
+      ],
+    },
+  }),
+  false,
+  "ordinary app-state Error text should not fail click",
+);
+assert.equal(
+  clickResponseIndicatesFailure({
+    result: {
+      content: [{ type: "text", text: "Error: stale element index 7" }],
+    },
+  }),
+  true,
+  "stale element sentinel should fail click",
+);
+assert.equal(
+  clickResponseIndicatesFailure({
+    result: {
+      content: [{ type: "text", text: "Element index 7 not clickable" }],
+    },
+  }),
+  true,
+  "not-clickable element sentinel should fail click",
+);
+assert.equal(
+  setValueResponseIndicatesFailure({
+    result: {
+      isError: true,
+      content: [{ type: "text", text: "Tool returned an error." }],
+    },
+  }),
+  true,
+  "MCP isError should fail set_value",
+);
+assert.equal(
+  setValueResponseIndicatesFailure({
+    result: {
+      content: [
+        {
+          type: "text",
+          text: "App state includes Value: Add the bat command line tool.",
+        },
+      ],
+    },
+  }),
+  false,
+  "ordinary set_value app-state text should not fail input",
+);
+assert.equal(
+  setValueResponseIndicatesFailure({
+    result: {
+      content: [
+        {
+          type: "text",
+          text: "Error: set_value element index 18 not found",
+        },
+      ],
+    },
+  }),
+  true,
+  "set_value element sentinel should fail input",
+);
 
 const actionResult = normalizeActionResult({ ok: true, text: "clicked" });
 assert.deepEqual(actionResult, {

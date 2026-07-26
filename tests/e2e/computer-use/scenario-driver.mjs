@@ -29,7 +29,9 @@ function safeArtifactLabel(label) {
   return label.replace(/[^a-zA-Z0-9._-]+/g, "-");
 }
 
-function elementAddressForState(elementIndex, visibleState) {
+class ScenarioObservation extends String {}
+
+function elementAddressForVisibleState(elementIndex, visibleState) {
   const target = visibleState?.target;
   if (!target) {
     return {
@@ -67,8 +69,28 @@ export function createScenarioDriverHelpers(dependencies) {
     pngDimensions,
     findElement,
     screenshotSource = "Computer Use visibleState image",
+    sleep: wait = sleep,
   } = requireDependencies(dependencies);
-  const latestVisibleState = new WeakMap();
+  if (typeof wait !== "function") {
+    throw new TypeError("Scenario driver sleep dependency must be a function");
+  }
+  const visibleStateByObservation = new WeakMap();
+
+  function observationFor(text, visibleState) {
+    const observation = new ScenarioObservation(text);
+    visibleStateByObservation.set(observation, visibleState);
+    return Object.freeze(observation);
+  }
+
+  function visibleStateFor(observation) {
+    const visibleState = visibleStateByObservation.get(observation);
+    if (!visibleState) {
+      throw new TypeError(
+        "Scenario driver actions require the observation that produced the element lookup",
+      );
+    }
+    return visibleState;
+  }
 
   async function captureState(driver, state, label, note = "") {
     let visible = await driver.visibleState({ app: state.app });
@@ -79,12 +101,11 @@ export function createScenarioDriverHelpers(dependencies) {
       attempt < 8 && /procNotFound|no eligible process|not running|timed out/i.test(text);
       attempt += 1
     ) {
-      await sleep(1500);
+      await wait(1500);
       visible = await driver.visibleState({ app: state.app });
       rawText = visible.text;
       text = redact(rawText);
     }
-    latestVisibleState.set(state, visible);
 
     const image = visible.imageBase64;
     const safeLabel = safeArtifactLabel(label);
@@ -130,13 +151,16 @@ export function createScenarioDriverHelpers(dependencies) {
     if (note) await addNarrative(state, note);
     await addEvent(state, "computer-use.capture", { label, note: redact(note) });
     await saveState(state);
-    return text;
+    return observationFor(text, visible);
   }
 
-  async function clickElementIndex(driver, state, elementIndex, label, note = "") {
-    const elementAddress = elementAddressForState(elementIndex, latestVisibleState.get(state));
+  async function clickElementIndex(driver, state, observation, elementIndex, label, note = "") {
     let result;
     try {
+      const elementAddress = elementAddressForVisibleState(
+        elementIndex,
+        visibleStateFor(observation),
+      );
       result = await driver.click({
         app: state.app,
         elementIndex,
@@ -180,13 +204,16 @@ export function createScenarioDriverHelpers(dependencies) {
       });
       return false;
     }
-    return clickElementIndex(driver, state, elementIndex, label, note);
+    return clickElementIndex(driver, state, text, elementIndex, label, note);
   }
 
-  async function setValueElementIndex(driver, state, elementIndex, label, value) {
-    const elementAddress = elementAddressForState(elementIndex, latestVisibleState.get(state));
+  async function setValueElementIndex(driver, state, observation, elementIndex, label, value) {
     let result;
     try {
+      const elementAddress = elementAddressForVisibleState(
+        elementIndex,
+        visibleStateFor(observation),
+      );
       result = await driver.setValue({
         app: state.app,
         elementIndex,
@@ -228,13 +255,13 @@ export function createScenarioDriverHelpers(dependencies) {
       });
       return false;
     }
-    return setValueElementIndex(driver, state, elementIndex, label, value);
+    return setValueElementIndex(driver, state, text, elementIndex, label, value);
   }
 
   async function waitFor(driver, state, label, predicate, { attempts = 10, delayMs = 1500 } = {}) {
     let lastText = "";
     for (let index = 0; index < attempts; index += 1) {
-      await sleep(delayMs);
+      await wait(delayMs);
       lastText = await captureState(
         driver,
         state,

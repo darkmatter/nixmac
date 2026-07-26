@@ -53,16 +53,7 @@ import {
 } from "./visual-proof.mjs";
 import { renderReportHtml } from "./report.mjs";
 import { createScenarioDriverHelpers } from "./scenario-driver.mjs";
-import {
-  AppServerClient,
-  clickResponseIndicatesFailure,
-  codexAppServerDriverDescriptor,
-  contentImage,
-  contentText,
-  elementEntries,
-  findElement,
-  setValueResponseIndicatesFailure,
-} from "./transport.mjs";
+import { codexAppServerDriverDescriptor, elementEntries, findElement } from "./transport.mjs";
 import { containsUnmaskedSecret, redact } from "./redaction.mjs";
 import {
   addEvent,
@@ -2117,6 +2108,7 @@ async function runQuestionAnswerEvolvedCase(driver, state, caseDef) {
       ? await clickElementIndex(
           driver,
           state,
+          text,
           choice.index,
           `Question choice ${caseDef.id}`,
           `Answer inline question for ${caseDef.label} via choice: ${choice.label}.`,
@@ -2128,6 +2120,7 @@ async function runQuestionAnswerEvolvedCase(driver, state, caseDef) {
       ? await setValueElementIndex(
           driver,
           state,
+          text,
           input.index,
           `Question answer ${caseDef.id}`,
           caseDef.answer,
@@ -2145,6 +2138,7 @@ async function runQuestionAnswerEvolvedCase(driver, state, caseDef) {
         ? await clickElementIndex(
             driver,
             state,
+            text,
             submit.index,
             `Submit question answer ${caseDef.id}`,
             `Submit inline question answer for ${caseDef.label}.`,
@@ -4805,121 +4799,6 @@ async function runSelfTest() {
     ],
     "elementEntries should parse indexed AX text lines",
   );
-  assert.equal(
-    contentText({
-      result: {
-        content: [
-          { type: "image", data: "png" },
-          { type: "text", text: "state text" },
-        ],
-      },
-    }),
-    "state text",
-    "contentText should extract the first text response payload",
-  );
-  assert.equal(
-    contentText({ result: { content: [] } }),
-    "",
-    "contentText should return an empty string for missing text payloads",
-  );
-  assert.equal(
-    contentImage({
-      result: {
-        content: [
-          { type: "text", text: "state text" },
-          { type: "image", data: "png" },
-        ],
-      },
-    }),
-    "png",
-    "contentImage should extract the first image response payload",
-  );
-  const sentMessages = [];
-  class MockWebSocket {
-    constructor(url) {
-      this.url = url;
-      setTimeout(() => this.onopen?.(), 0);
-    }
-
-    send(payload) {
-      const message = JSON.parse(payload);
-      sentMessages.push(message);
-      const result = message.method === "thread/start" ? { thread: { id: "thread-123" } } : {};
-      setTimeout(() => this.onmessage?.({ data: JSON.stringify({ id: message.id, result }) }), 0);
-    }
-
-    close() {
-      this.closed = true;
-    }
-  }
-  const appServerClient = new AppServerClient("ws://mock", { WebSocketImpl: MockWebSocket });
-  await appServerClient.connect();
-  assert.equal(
-    appServerClient.threadId,
-    "thread-123",
-    "AppServerClient should store the started thread id",
-  );
-  await appServerClient.tool("click", { app: "com.darkmatter.nixmac", element_index: "7" }, 1000);
-  assert.deepEqual(
-    sentMessages.map((message) => message.method),
-    ["initialize", "thread/start", "mcpServer/tool/call"],
-    "AppServerClient should preserve initialize, thread start, and tool-call request order",
-  );
-  assert.deepEqual(
-    sentMessages[1].params,
-    {
-      cwd: "/tmp",
-      model: "gpt-5.4-mini",
-      approvalPolicy: "never",
-      sandbox: "danger-full-access",
-      ephemeral: true,
-    },
-    "AppServerClient should preserve Codex app-server thread policy",
-  );
-  assert.deepEqual(
-    sentMessages[2].params,
-    {
-      server: "computer-use",
-      threadId: "thread-123",
-      tool: "click",
-      arguments: { app: "com.darkmatter.nixmac", element_index: "7" },
-    },
-    "AppServerClient should preserve Computer Use tool-call shape",
-  );
-  appServerClient.close();
-  class MockToolErrorWebSocket {
-    constructor() {
-      setTimeout(() => this.onopen?.(), 0);
-    }
-
-    send(payload) {
-      const message = JSON.parse(payload);
-      const result = message.method === "thread/start" ? { thread: { id: "thread-456" } } : {};
-      const response =
-        message.method === "mcpServer/tool/call"
-          ? { id: message.id, error: { message: "synthetic tool failure" } }
-          : { id: message.id, result };
-      setTimeout(() => this.onmessage?.({ data: JSON.stringify(response) }), 0);
-    }
-
-    close() {}
-  }
-  const toolErrorClient = new AppServerClient("ws://mock-tool-error", {
-    WebSocketImpl: MockToolErrorWebSocket,
-  });
-  await toolErrorClient.connect();
-  await assert.rejects(
-    () => toolErrorClient.tool("click", { app: "com.darkmatter.nixmac", element_index: "7" }, 1000),
-    /synthetic tool failure/,
-    "AppServerClient should reject JSON-RPC error responses",
-  );
-  const timeoutClient = new AppServerClient("ws://mock-timeout");
-  timeoutClient.ws = { send() {} };
-  await assert.rejects(
-    () => timeoutClient.request("never/replies", {}, 1),
-    /Timed out waiting for never\/replies/,
-    "AppServerClient should reject timed-out requests",
-  );
 
   const dispatched = [];
   const dispatchExits = [];
@@ -5085,63 +4964,6 @@ async function runSelfTest() {
   );
   assert.equal(dispatchExits.at(-1), 1, "CLI dispatcher should exit 1 after handler errors");
 
-  assert.equal(
-    clickResponseIndicatesFailure({
-      result: { isError: true, content: [{ type: "text", text: "Tool returned an error." }] },
-    }),
-    true,
-    "MCP isError should fail click",
-  );
-  assert.equal(
-    clickResponseIndicatesFailure({
-      result: {
-        content: [
-          { type: "text", text: "App state includes button Report Error and Console Error logs." },
-        ],
-      },
-    }),
-    false,
-    "ordinary app-state Error text should not fail click",
-  );
-  assert.equal(
-    clickResponseIndicatesFailure({
-      result: { content: [{ type: "text", text: "Error: stale element index 7" }] },
-    }),
-    true,
-    "stale element sentinel should fail click",
-  );
-  assert.equal(
-    clickResponseIndicatesFailure({
-      result: { content: [{ type: "text", text: "Element index 7 not clickable" }] },
-    }),
-    true,
-    "not-clickable element sentinel should fail click",
-  );
-  assert.equal(
-    setValueResponseIndicatesFailure({
-      result: { isError: true, content: [{ type: "text", text: "Tool returned an error." }] },
-    }),
-    true,
-    "MCP isError should fail set_value",
-  );
-  assert.equal(
-    setValueResponseIndicatesFailure({
-      result: {
-        content: [
-          { type: "text", text: "App state includes Value: Add the bat command line tool." },
-        ],
-      },
-    }),
-    false,
-    "ordinary set_value app-state text should not fail input",
-  );
-  assert.equal(
-    setValueResponseIndicatesFailure({
-      result: { content: [{ type: "text", text: "Error: set_value element index 18 not found" }] },
-    }),
-    true,
-    "set_value element sentinel should fail input",
-  );
   assert.deepEqual(
     builtInElementAddressKinds,
     ["codex-index", "text-pattern"],
