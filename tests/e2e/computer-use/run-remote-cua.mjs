@@ -511,7 +511,11 @@ function buildCoverageFreshness(state) {
       drift.push(`${surface.id} maps to unknown scenarios: ${unknown.join(", ")}`);
     if (missingSources.length)
       drift.push(`${surface.id} references missing source paths: ${missingSources.join(", ")}`);
-    if (!scenarioKeys.length && !surface.waiver)
+    if (
+      !scenarioKeys.length &&
+      !surface.waiver &&
+      surface.coverageDisposition !== "non-claiming"
+    )
       drift.push(`${surface.id} has no scenario mapping and no waiver.`);
     if (scenarioKeys.length) mapped += 1;
   }
@@ -4562,6 +4566,21 @@ async function runSelfTest() {
     sourcePrefixExists("apps/native/src/components/widget/__missing__/"),
     false,
     "coverage freshness should reject missing directory prefixes",
+  );
+  const coverageFreshness = buildCoverageFreshness();
+  assert.equal(
+    coverageFreshness.drift.some((item) =>
+      item.includes("e2e-harness-rust has no scenario mapping and no waiver"),
+    ),
+    false,
+    "coverage freshness should preserve an explicitly non-claiming surface without requiring a scenario or waiver",
+  );
+  assert.equal(
+    coverageFreshness.unmappedCandidateFiles.includes(
+      "apps/native/src-tauri/src/rebuild/darwin.rs",
+    ),
+    false,
+    "non-claiming source prefixes should still participate in candidate-file coverage",
   );
   const previousExtraCases = process.env.NIXMAC_E2E_EXTRA_EVOLVED_CASES;
   process.env.NIXMAC_E2E_EXTRA_EVOLVED_CASES = "inline-question-font";
