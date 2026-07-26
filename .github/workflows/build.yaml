@@ -8,10 +8,21 @@ on:
     branches: [main]
   merge_group:
   workflow_dispatch:
+    inputs:
+      e2e_backfill:
+        description: Resolve or build the exact merged SHA for Computer Use E2E
+        required: false
+        type: boolean
+        default: false
+      e2e_merge_sha:
+        description: Exact lowercase merged SHA; dispatch ref must be this same SHA
+        required: false
+        type: string
+        default: ""
 
 concurrency:
-  group: build-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: build-${{ inputs.e2e_merge_sha || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -53,6 +64,12 @@ jobs:
           node tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs
           node tests/e2e/computer-use/workflow-contract-self-test.mjs
           node tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs
+          node tests/e2e/computer-use/centaur-workflow-contract-self-test.mjs
+          node tests/e2e/computer-use/remote-host-lease-contract-self-test.mjs
+          node tests/e2e/computer-use/drivers/driver-self-test.mjs
+          node tests/e2e/computer-use/evidence-manifest-self-test.mjs
+          node tests/e2e/computer-use/run-cua-driver.mjs self-test
+          node tests/e2e/computer-use/run-remote-cua.mjs self-test
 
       - name: Run git hooks
         env:
@@ -62,6 +79,74 @@ jobs:
           NODE_OPTIONS: ""
         shell: /tmp/nixmac-devenv-cli/bin/devenv shell --impure -- bash -euo pipefail {0}
         run: prek run --all-files --show-diff-on-failure
+
+  resolve-e2e-backfill:
+    name: Resolve exact-SHA E2E build backfill
+    runs-on: arc
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      build_needed: ${{ steps.resolve.outputs.build_needed }}
+      existing_build_run_id: ${{ steps.resolve.outputs.existing_build_run_id }}
+      existing_artifact_id: ${{ steps.resolve.outputs.existing_artifact_id }}
+      existing_artifact_digest: ${{ steps.resolve.outputs.existing_artifact_digest }}
+    steps:
+      - name: Checkout dispatched revision
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve idempotent exact-SHA build
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          E2E_BACKFILL: ${{ inputs.e2e_backfill || false }}
+          E2E_MERGE_SHA: ${{ inputs.e2e_merge_sha || '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "build_needed=true"
+            echo "existing_build_run_id="
+            echo "existing_artifact_id="
+            echo "existing_artifact_digest="
+          } >> "$GITHUB_OUTPUT"
+          if [[ "$E2E_BACKFILL" != "true" ]]; then
+            exit 0
+          fi
+          [[ "$E2E_MERGE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_SHA" == "$E2E_MERGE_SHA" ]]
+          git fetch --no-tags origin \
+            "+refs/heads/${{ github.event.repository.default_branch }}:refs/remotes/origin/${{ github.event.repository.default_branch }}"
+          git merge-base --is-ancestor "$E2E_MERGE_SHA" \
+            "origin/${{ github.event.repository.default_branch }}"
+
+          runs="$(
+            gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/workflows/build.yaml/runs" \
+              -f head_sha="$E2E_MERGE_SHA" \
+              -f status=success \
+              -f per_page=100
+          )"
+          while IFS= read -r prior_run_id; do
+            [[ -n "$prior_run_id" ]] || continue
+            artifacts="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${prior_run_id}/artifacts?per_page=100")"
+            artifact="$(
+              jq -c '.artifacts | map(select(.name == "nixmac-macos-app-e2e" and .expired == false)) | sort_by(.created_at) | reverse | .[0] // empty' \
+                <<<"$artifacts"
+            )"
+            [[ -n "$artifact" ]] || continue
+            {
+              echo "build_needed=false"
+              echo "existing_build_run_id=$prior_run_id"
+              echo "existing_artifact_id=$(jq -r '.id' <<<"$artifact")"
+              echo "existing_artifact_digest=$(jq -r '.digest // ""' <<<"$artifact")"
+            } >> "$GITHUB_OUTPUT"
+            echo "Exact-SHA E2E app artifact already exists; Mac build is idempotently skipped."
+            exit 0
+          done < <(jq -r '.workflow_runs | map(select(.conclusion == "success")) | sort_by(.created_at) | reverse | .[].id' <<<"$runs")
 
   rust-tests:
     name: Rust Tests (Linux)
@@ -104,7 +189,8 @@ jobs:
         env:
           NIXMAC_ENV: production
   build:
-    needs: rust-tests
+    needs: [rust-tests, resolve-e2e-backfill]
+    if: needs.rust-tests.result == 'success' && needs.resolve-e2e-backfill.outputs.build_needed == 'true'
     runs-on: [self-hosted, macOS]
     permissions:
       contents: write
@@ -342,6 +428,16 @@ jobs:
           name: nixmac-macos-dmg
           path: target/release/bundle/dmg/*.dmg
           if-no-files-found: warn
+      - name: Package metadata-preserving app archive for E2E
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_path="$(find target/release/bundle/macos -name '*.app' -type d | sed -n '1p')"
+          [[ -n "$app_path" ]]
+          rm -f target/release/bundle/macos/nixmac-macos-app-preserved.zip
+          ditto -c -k --sequesterRsrc --keepParent \
+            "$app_path" \
+            target/release/bundle/macos/nixmac-macos-app-preserved.zip
       - name: Upload app bundle artifact
         uses: actions/upload-artifact@v7
         with:
@@ -349,6 +445,13 @@ jobs:
           path: target/release/bundle/macos/*.app
           if-no-files-found: warn
           include-hidden-files: true
+      - name: Upload metadata-preserving E2E app artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: nixmac-macos-app-e2e
+          path: target/release/bundle/macos/nixmac-macos-app-preserved.zip
+          if-no-files-found: error
+          retention-days: 90
       # Create GitHub Release for tag pushes only. The stable channel only
       # updates when a release is created in GitHub (via a pushed v* tag);
       # main pushes land on the develop channel. Skipped for test tags

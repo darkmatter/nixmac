@@ -166,6 +166,34 @@ jobs:
             echo "ssh_dest=$remote_user@$remote_host"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Acquire shared MacinCloud host lease
+        id: host-lease
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          owner_token="$(
+            printf '%s' "${GITHUB_REPOSITORY}|${GITHUB_WORKFLOW}|${GITHUB_RUN_ID}|peekaboo-product-proof|${GITHUB_RUN_ATTEMPT}" |
+              shasum -a 256 |
+              awk '{print $1}'
+          )"
+          printf '%s' "$owner_token" > "$RUNNER_TEMP/nixmac-host-owner-token"
+          ops/runner/macincloud-host-lease.sh acquire \
+            --ssh-dest "${{ steps.ssh.outputs.ssh_dest }}" \
+            --ssh-key ~/.ssh/nixmac-peekaboo-e2e \
+            --known-hosts ~/.ssh/known_hosts \
+            --owner-token "$owner_token" \
+            --repository "$GITHUB_REPOSITORY" \
+            --run-id "$GITHUB_RUN_ID" \
+            --logical-job peekaboo-product-proof \
+            --attempt "$GITHUB_RUN_ATTEMPT" \
+            --nonce "legacy-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            --wait-seconds 3600 \
+            --poll-seconds 15 \
+            --max-hold-seconds 10800
+          echo "acquired=true" >> "$GITHUB_OUTPUT"
+
       - name: Checkout PR head and build debug app on MacInCloud
         id: remote-build
         shell: bash
@@ -359,6 +387,25 @@ jobs:
             echo "report_dir=$report_dir"
             echo "rsync_status=$rsync_status"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Release shared MacinCloud host lease
+        if: always() && steps.host-lease.outputs.acquired == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          owner_token="$(cat "$RUNNER_TEMP/nixmac-host-owner-token")"
+          ops/runner/macincloud-host-lease.sh release \
+            --ssh-dest "${{ steps.ssh.outputs.ssh_dest }}" \
+            --ssh-key ~/.ssh/nixmac-peekaboo-e2e \
+            --known-hosts ~/.ssh/known_hosts \
+            --owner-token "$owner_token" \
+            --repository "$GITHUB_REPOSITORY" \
+            --run-id "$GITHUB_RUN_ID" \
+            --logical-job peekaboo-product-proof \
+            --attempt "$GITHUB_RUN_ATTEMPT" \
+            --nonce "legacy-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
       - name: Drop MacInCloud SSH key before local report processing
         if: always()

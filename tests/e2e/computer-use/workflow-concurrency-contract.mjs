@@ -6,6 +6,12 @@ const AUTOMATIC_CONTRACT_COMMANDS = [
   "node tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs",
   "node tests/e2e/computer-use/workflow-contract-self-test.mjs",
   "node tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs",
+  "node tests/e2e/computer-use/centaur-workflow-contract-self-test.mjs",
+  "node tests/e2e/computer-use/remote-host-lease-contract-self-test.mjs",
+  "node tests/e2e/computer-use/drivers/driver-self-test.mjs",
+  "node tests/e2e/computer-use/evidence-manifest-self-test.mjs",
+  "node tests/e2e/computer-use/run-cua-driver.mjs self-test",
+  "node tests/e2e/computer-use/run-remote-cua.mjs self-test",
 ];
 const PINNED_DEVENV_INSTALL_COMMAND =
   "nix build github:cachix/devenv/v2.1.2 --out-link /tmp/nixmac-devenv-cli";

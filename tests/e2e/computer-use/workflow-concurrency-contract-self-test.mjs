@@ -47,7 +47,13 @@ function automaticWorkflowYaml({
   installCommand = "        run: nix build github:cachix/devenv/v2.1.2 --out-link /tmp/nixmac-devenv-cli",
   validationCommands = `          node tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs
           node tests/e2e/computer-use/workflow-contract-self-test.mjs
-          node tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs`,
+          node tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs
+          node tests/e2e/computer-use/centaur-workflow-contract-self-test.mjs
+          node tests/e2e/computer-use/remote-host-lease-contract-self-test.mjs
+          node tests/e2e/computer-use/drivers/driver-self-test.mjs
+          node tests/e2e/computer-use/evidence-manifest-self-test.mjs
+          node tests/e2e/computer-use/run-cua-driver.mjs self-test
+          node tests/e2e/computer-use/run-remote-cua.mjs self-test`,
 } = {}) {
   return `
 name: Automatic validation
@@ -411,11 +417,7 @@ assert.throws(
 );
 
 for (const [scope, original, mutation] of [
-  [
-    "workflow-defaults",
-    "jobs:",
-    "defaults:\n  run:\n    shell: bash -c 'exit 0' -- {0}\njobs:",
-  ],
+  ["workflow-defaults", "jobs:", "defaults:\n  run:\n    shell: bash -c 'exit 0' -- {0}\njobs:"],
   [
     "job-defaults",
     "  git-hooks:",
@@ -459,10 +461,7 @@ assert.throws(
 `;
     assertAutomaticConcurrencyValidationContract({
       workflowName: "late-devenv-installer.yaml",
-      source: source.replace(installStep, "").replace(
-        "  build:",
-        `${installStep}  build:`,
-      ),
+      source: source.replace(installStep, "").replace("  build:", `${installStep}  build:`),
       jobId: "git-hooks",
       stepName: "Run Computer Use workflow contracts",
     });
@@ -482,11 +481,7 @@ for (const [scope, original, mutation] of [
     "  git-hooks:",
     "  git-hooks:\n    env:\n      NODE_OPTIONS: --require /tmp/exit0.js",
   ],
-  [
-    "step-env",
-    '          NODE_OPTIONS: ""',
-    "          NODE_OPTIONS: --require /tmp/exit0.js",
-  ],
+  ["step-env", '          NODE_OPTIONS: ""', "          NODE_OPTIONS: --require /tmp/exit0.js"],
 ]) {
   assert.throws(
     () =>
@@ -529,10 +524,7 @@ for (const [control, declaration] of [
     () =>
       assertAutomaticConcurrencyValidationContract({
         workflowName: `job-${control}-bypass.yaml`,
-        source: automaticWorkflowYaml().replace(
-          "  git-hooks:",
-          `  git-hooks:\n${declaration}`,
-        ),
+        source: automaticWorkflowYaml().replace("  git-hooks:", `  git-hooks:\n${declaration}`),
         jobId: "git-hooks",
         stepName: "Run Computer Use workflow contracts",
       }),
@@ -621,10 +613,7 @@ for (const [control, declaration] of [
     () =>
       assertAutomaticConcurrencyValidationContract({
         workflowName: `step-${control}-bypass.yaml`,
-        source: automaticWorkflowYaml().replace(
-          "        run: |",
-          `${declaration}\n        run: |`,
-        ),
+        source: automaticWorkflowYaml().replace("        run: |", `${declaration}\n        run: |`),
         jobId: "git-hooks",
         stepName: "Run Computer Use workflow contracts",
       }),

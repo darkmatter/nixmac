@@ -761,6 +761,35 @@ jobs:
           ssh-keygen -F "$REMOTE_HOST" -f ~/.ssh/known_hosts >/dev/null
           echo "::add-mask::$OPENROUTER_API_KEY"
 
+      - name: Acquire shared MacinCloud host lease
+        id: host-lease
+        if: steps.stale-run.outputs.stale != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          owner_token="$(
+            printf '%s' "${GITHUB_REPOSITORY}|${GITHUB_WORKFLOW}|${GITHUB_RUN_ID}|remote-computer-use|${GITHUB_RUN_ATTEMPT}" |
+              shasum -a 256 |
+              awk '{print $1}'
+          )"
+          printf '%s' "$owner_token" > "$RUNNER_TEMP/nixmac-host-owner-token"
+          ops/runner/macincloud-host-lease.sh acquire \
+            --ssh-dest "${REMOTE_USER}@${REMOTE_HOST}" \
+            --ssh-key ~/.ssh/nixmac-e2e \
+            --known-hosts ~/.ssh/known_hosts \
+            --owner-token "$owner_token" \
+            --repository "$GITHUB_REPOSITORY" \
+            --run-id "$GITHUB_RUN_ID" \
+            --logical-job remote-computer-use \
+            --attempt "$GITHUB_RUN_ATTEMPT" \
+            --nonce "legacy-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            --wait-seconds 3600 \
+            --poll-seconds 15 \
+            --max-hold-seconds 10800
+          echo "acquired=true" >> "$GITHUB_OUTPUT"
+
       - name: Preflight remote Mac
         if: steps.stale-run.outputs.stale != 'true'
         shell: bash
@@ -1179,6 +1208,25 @@ jobs:
             --status "$([[ "$cleanup_status" -eq 0 ]] && echo success || echo failure)" \
             --note "Remote cleanup exited with status $cleanup_status."
           exit "$cleanup_status"
+
+      - name: Release shared MacinCloud host lease
+        if: always() && steps.host-lease.outputs.acquired == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          owner_token="$(cat "$RUNNER_TEMP/nixmac-host-owner-token")"
+          ops/runner/macincloud-host-lease.sh release \
+            --ssh-dest "${REMOTE_USER}@${REMOTE_HOST}" \
+            --ssh-key ~/.ssh/nixmac-e2e \
+            --known-hosts ~/.ssh/known_hosts \
+            --owner-token "$owner_token" \
+            --repository "$GITHUB_REPOSITORY" \
+            --run-id "$GITHUB_RUN_ID" \
+            --logical-job remote-computer-use \
+            --attempt "$GITHUB_RUN_ATTEMPT" \
+            --nonce "legacy-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
       - name: Refresh report timing metadata
         if: always()

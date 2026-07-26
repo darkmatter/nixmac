@@ -61,6 +61,111 @@ node tests/e2e/computer-use/run-cua-driver.mjs smoke --run-dir \
 Retain the generated PASS or structured infrastructure-blocker report. Smoke
 mode does not generate video or publish anything to Buzz or GitHub.
 
+## Centaur Dispatch Service
+
+Centaur dispatches `.github/workflows/computer-use-e2e-centaur.yml` only from
+the repository default branch. The workflow accepts one full merged SHA, one
+durable logical job/attempt, one suite version, one pre-resolved build run and
+artifact ID/digest, one attestation nonce, and one backend. It does not accept a
+harness ref. It never comments on a PR, calls Buzz, or records raw whole-session
+video.
+
+The Linux preflight binds the default-branch harness and exact app separately.
+It queries the pre-resolved artifact ID, verifies its build run, source SHA,
+name, expiry, and archive digest, and downloads it once. The selected macOS
+runner independently hashes the extracted app bundle with the canonical
+CuaDriver tree hash before execution. This bounded controller step runs before
+either macOS job can be allocated. Missing or expired build evidence terminates
+as `BUILD_UNAVAILABLE`; identity or digest mismatches terminate as
+`ARTIFACT_INVALID`.
+
+Main pushes can overlap and the normal build concurrency may cancel an older
+push. Centaur therefore uses the idempotent exact-SHA backfill in `build.yaml`:
+
+1. Query successful `Build macOS App` runs and non-expired
+   `nixmac-macos-app-e2e` artifacts for the merged SHA.
+1. If none exists, dispatch `build.yaml` with `ref` set to that exact merged
+   SHA, `e2e_backfill=true`, and `e2e_merge_sha` set to the same SHA.
+1. The workflow proves the SHA is in default-branch history. Same-SHA
+   backfills serialize without cancellation and re-check for an already
+   successful artifact before allocating the macOS builder.
+1. Poll for a bounded interval in Centaur. If no successful exact-SHA artifact
+   appears, record `BUILD_UNAVAILABLE` and do not dispatch or retry a Mac job
+   indefinitely.
+
+`cilicon_tart` runs on the ephemeral
+`[self-hosted, macOS, nixmac-e2e]` pool. `static_ssh` is the transition/DR lane:
+it runs on the one-capacity
+`[self-hosted, linux, nixmac-e2e-static-controller]` queue and deliberately has
+no GitHub concurrency group. Centaur must verify exactly one online static
+controller before dispatch. The static controller acquires the host lease
+before inventory, staging, process, or UI work; only the owner token can release
+it. Live foreign owners wait for a bounded interval. Stale, ambiguous, or
+unverifiable ownership quarantines the host and is never stolen.
+
+Before enabling the first `static_ssh` dispatch after the lease workflow lands:
+
+1. Query all queued and active runs of `computer-use-e2e.yml`,
+   `peekaboo-e2e.yml`, and `e2e.yml`.
+1. Drain every run whose workflow revision predates the shared-lease revision.
+1. Record the drained run IDs and lease revision in the readiness ledger.
+1. Refuse static traffic while any pre-lease run remains queued or active.
+
+The static controller inventories the host before and after, stages only unique
+attempt-owned paths, copies evidence back, removes only those paths, releases
+the lease, writes the authoritative cleanup and host-lease sidecars, and then
+creates and verifies the manifest. Nothing mutates the evidence tree after
+manifest verification. Task 6's single attempt writer records
+`PROVISIONING → READY → RUNNING → UPLOADING → VERIFYING`, followed by exactly
+one of `SUCCEEDED`, `FAILED`, or `ABORTED`; the workflow does not maintain a
+second lifecycle. The canonical cleanup sidecar proves every exact path and
+target/daemon process disposition; the remote runner transfers those exact
+process identities in an attempt-owned handoff outside the evidence tree before
+the controller removes staging. The controller cleanup-probe HMAC binds the
+normalized cleanup digest to repository, job, attempt, and host using the
+trusted lease owner token. The host-lease sidecar separately proves the same run
+identity, owner-matched acquisition/release hashes, and monotonic lease
+timestamps. Cleanup, inventory, or lease-release ambiguity creates both the
+durable Centaur backend quarantine and the host quarantine marker.
+
+### Audited static-host recovery
+
+Recovery is manual and two-phase. First inspect the host lease:
+
+```bash
+ops/runner/macincloud-host-lease.sh status \
+  --ssh-dest "$REMOTE_USER@$REMOTE_HOST" \
+  --ssh-key "$SSH_KEY" \
+  --known-hosts "$KNOWN_HOSTS"
+```
+
+Copy the exact occupied lease digest from that output. Recover only with an
+operator reason:
+
+```bash
+ops/runner/macincloud-host-lease.sh recover \
+  --ssh-dest "$REMOTE_USER@$REMOTE_HOST" \
+  --ssh-key "$SSH_KEY" \
+  --known-hosts "$KNOWN_HOSTS" \
+  --observed-lease-digest "$LEASE_DIGEST" \
+  --operator-reason "ticket and verified recovery reason"
+```
+
+Recovery refuses a changed digest, an active owning GitHub run, an unverifiable
+owner, or any nixmac process. It snapshots exact lease/quarantine metadata into
+the recovery audit directory and removes only known lease files; it never uses a
+generic recursive delete. Then attach that proof to a separate audited Centaur
+operation that clears durable backend quarantine. Reimaging the host or losing
+the host marker does not clear Centaur state.
+
+The canonical Actions artifact is retained for 90 days and exposes the artifact
+ID/digest to Centaur. The deterministic gh-pages report lives at
+`computer-use-e2e/jobs/<url-encoded-job-id>/attempt-<attempt>/`, but it is a
+mutable convenience copy, not canonical evidence. Before promotion to a
+required merge gate, copy verified evidence to versioned immutable object
+storage for at least 365 days and test restoration. Expired evidence must be
+reported as expired, not silently replaced by gh-pages.
+
 ## Daily Operator Check
 
 1. Inspect the latest local evidence summary:

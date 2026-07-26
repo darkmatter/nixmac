@@ -19,6 +19,7 @@ import {
   runSuiteWithDriver,
   validateLocalCuaPreflight,
   verifyLocalCuaPreflight,
+  writeControllerProcessHandoff,
   writeAndAssertLocalRunPreflight,
 } from "./run-remote-cua.mjs";
 
@@ -69,6 +70,66 @@ async function runSelfTest() {
     process.platform === "darwin"
       ? hashCuaBundleTree
       : async () => "1551c9dc7b53067f36e26c19c1ee2eb3c307b5cde1deaff10fc458030ec8542d";
+  const controllerHandoffRoot = await mkdtemp(path.join(os.tmpdir(), "nixmac-controller-handoff-"));
+  const controllerRunDir = path.join(controllerHandoffRoot, "evidence");
+  const controllerHandoffPath = path.join(controllerHandoffRoot, "process-handoff.json");
+  await mkdir(controllerRunDir, { recursive: true });
+  await writeControllerProcessHandoff({
+    closeFailure: null,
+    processSnapshotFailure: "",
+    processInstances: [
+      {
+        role: "target",
+        status: "owned",
+        pid: 123,
+        birthMarker: "100.000001",
+        executable: "/tmp/staging/nixmac.app/Contents/MacOS/nixmac",
+        terminated: false,
+      },
+      {
+        role: "daemon",
+        status: "owned",
+        pid: 456,
+        birthMarker: "100.000002",
+        executable: "/Applications/CuaDriver.app/Contents/MacOS/cua-driver",
+        terminated: false,
+      },
+    ],
+    runDir: controllerRunDir,
+    targetPath: controllerHandoffPath,
+  });
+  const controllerHandoff = JSON.parse(await readFile(controllerHandoffPath, "utf8"));
+  assert.equal(controllerHandoff.generatedBy, "remote-runner");
+  assert.deepEqual(
+    controllerHandoff.processInstances.map(({ role, status, terminated }) => ({
+      role,
+      status,
+      terminated,
+    })),
+    [
+      { role: "target", status: "owned", terminated: true },
+      { role: "daemon", status: "owned", terminated: true },
+    ],
+  );
+  assert.deepEqual(controllerHandoff.lifecycle, {
+    driverCloseAttempted: true,
+    driverClosed: true,
+    ownershipMatched: true,
+    processesProbed: true,
+  });
+  await assert.rejects(
+    () =>
+      writeControllerProcessHandoff({
+        closeFailure: null,
+        processSnapshotFailure: "",
+        processInstances: controllerHandoff.processInstances,
+        runDir: controllerRunDir,
+        targetPath: path.join(controllerRunDir, "forbidden-handoff.json"),
+      }),
+    /outside the evidence tree/,
+  );
+  await rm(controllerHandoffRoot, { force: true, recursive: true });
+
   assert.match(localCuaUsage({ defaultApp: "com.darkmatter.nixmac" }), /local-cua-driver/);
   assert.match(
     localCuaUsage({ defaultApp: "com.darkmatter.nixmac" }),

@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import {
   assertAutomaticConcurrencyValidationContract,
   assertRemoteMacConcurrencyContracts,
+  parseWorkflowYaml,
 } from "./workflow-concurrency-contract.mjs";
 
 const thisFile = fileURLToPath(import.meta.url);
@@ -19,6 +20,10 @@ const peekabooWorkflow = readFileSync(
 );
 const legacyE2eWorkflow = readFileSync(path.join(repoRoot, ".github/workflows/e2e.yml"), "utf8");
 const buildWorkflow = readFileSync(path.join(repoRoot, ".github/workflows/build.yaml"), "utf8");
+const parsedBuildWorkflow = parseWorkflowYaml({
+  workflowName: ".github/workflows/build.yaml",
+  source: buildWorkflow,
+});
 
 function section(startPattern, endPattern = null) {
   const start = workflow.search(startPattern);
@@ -59,6 +64,59 @@ assertAutomaticConcurrencyValidationContract({
   jobId: "git-hooks",
   stepName: "Run Computer Use workflow contracts",
 });
+
+const buildDispatchInputs = parsedBuildWorkflow.on.workflow_dispatch.inputs;
+assert.equal(
+  buildDispatchInputs.e2e_backfill.type,
+  "boolean",
+  "build workflow must expose an explicit E2E backfill mode",
+);
+assert.equal(buildDispatchInputs.e2e_backfill.default, false);
+assert.equal(
+  buildDispatchInputs.e2e_merge_sha.type,
+  "string",
+  "build workflow must accept the exact merged SHA",
+);
+assert.match(
+  JSON.stringify(parsedBuildWorkflow.concurrency),
+  /inputs\.e2e_merge_sha/,
+  "exact-SHA backfills must serialize idempotently by merged SHA",
+);
+assert.match(
+  JSON.stringify(parsedBuildWorkflow.jobs["resolve-e2e-backfill"]),
+  /merge-base.*--is-ancestor/,
+  "backfill must prove the exact SHA belongs to default-branch history",
+);
+assert.match(
+  JSON.stringify(parsedBuildWorkflow.jobs["resolve-e2e-backfill"]),
+  /nixmac-macos-app-e2e/,
+  "backfill must reuse only the metadata-preserving exact-SHA E2E artifact",
+);
+assert.match(
+  JSON.stringify(parsedBuildWorkflow.jobs["resolve-e2e-backfill"]),
+  /build_needed/,
+  "backfill resolver must expose the idempotent build decision",
+);
+assert.match(
+  JSON.stringify(parsedBuildWorkflow.jobs.build),
+  /needs\.resolve-e2e-backfill\.outputs\.build_needed/,
+  "macOS build capacity must be skipped when an exact artifact already exists",
+);
+assert.match(
+  JSON.stringify(parsedBuildWorkflow.jobs.build),
+  /nixmac-macos-app-preserved\.zip/,
+  "build artifact must include a macOS-preserving app archive for E2E transport",
+);
+assert.match(
+  JSON.stringify(parsedBuildWorkflow.jobs.build),
+  /name.*nixmac-macos-app-e2e/,
+  "metadata-preserving app transport must use a distinct versioned artifact contract",
+);
+assert.match(
+  JSON.stringify(parsedBuildWorkflow.jobs.build),
+  /ditto -c -k --sequesterRsrc --keepParent/,
+  "app archive must preserve macOS bundle metadata",
+);
 
 assert.match(remote, /\n    needs: prepare\n/, "remote job must depend on prepare");
 assert.match(

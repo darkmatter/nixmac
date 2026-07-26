@@ -425,6 +425,93 @@ function processCleanupSnapshot(role, instance) {
   };
 }
 
+export async function writeControllerProcessHandoff({
+  closeFailure,
+  driverCloseAttempted = true,
+  processInstances,
+  processSnapshotFailure,
+  runDir,
+  targetPath,
+}) {
+  if (
+    typeof targetPath !== "string" ||
+    !path.isAbsolute(targetPath) ||
+    path.normalize(targetPath) !== targetPath
+  ) {
+    throw new Error("controller process handoff path must be absolute and normalized");
+  }
+  if (typeof runDir !== "string" || !path.isAbsolute(runDir) || path.normalize(runDir) !== runDir) {
+    throw new Error("controller process handoff runDir must be absolute and normalized");
+  }
+  const relativeToEvidence = path.relative(runDir, targetPath);
+  if (
+    relativeToEvidence === "" ||
+    (!relativeToEvidence.startsWith(`..${path.sep}`) && relativeToEvidence !== "..")
+  ) {
+    throw new Error("controller process handoff must stay outside the evidence tree");
+  }
+  if (!Array.isArray(processInstances) || processInstances.length !== 2) {
+    throw new Error("controller process handoff requires exact target and daemon snapshots");
+  }
+  const byRole = new Map(processInstances.map((instance) => [instance?.role, instance]));
+  const normalizedInstances = ["target", "daemon"].map((role) => {
+    const instance = byRole.get(role);
+    if (
+      !instance ||
+      !["owned", "not_started"].includes(instance.status) ||
+      typeof instance.terminated !== "boolean"
+    ) {
+      throw new Error(`controller process handoff requires a valid ${role} snapshot`);
+    }
+    if (
+      instance.status === "owned" &&
+      (!Number.isSafeInteger(instance.pid) ||
+        instance.pid <= 0 ||
+        typeof instance.birthMarker !== "string" ||
+        instance.birthMarker === "" ||
+        typeof instance.executable !== "string" ||
+        !path.isAbsolute(instance.executable) ||
+        path.normalize(instance.executable) !== instance.executable)
+    ) {
+      throw new Error(`controller process handoff ${role} identity is invalid`);
+    }
+    if (
+      instance.status === "not_started" &&
+      (instance.pid !== null || instance.birthMarker !== null || instance.executable !== null)
+    ) {
+      throw new Error(`controller process handoff ${role} not_started identity is invalid`);
+    }
+    return {
+      role,
+      status: instance.status,
+      pid: instance.pid,
+      birthMarker: instance.birthMarker,
+      executable: instance.executable,
+      terminated: instance.status === "not_started" || !closeFailure,
+    };
+  });
+  const lifecycle = {
+    driverCloseAttempted,
+    driverClosed: driverCloseAttempted && !closeFailure,
+    ownershipMatched: processSnapshotFailure === "",
+    processesProbed: !closeFailure && processSnapshotFailure === "",
+  };
+  await writeFile(
+    targetPath,
+    `${JSON.stringify(
+      {
+        version: 1,
+        generatedBy: "remote-runner",
+        processInstances: normalizedInstances,
+        lifecycle,
+      },
+      null,
+      2,
+    )}\n`,
+    { encoding: "utf8", flag: "wx", mode: 0o600 },
+  );
+}
+
 function captureLifecycleForRun({ uiStarted, failure }) {
   if (uiStarted) return { status: "available", uiStarted: true, reason: "" };
   const reason = redact(
@@ -4493,6 +4580,15 @@ export async function runSuiteWithDriver(
           : error;
       }
     } else if (finalizationMode === "controller-finalize" && boundInput) {
+      const processHandoffPath = env.NIXMAC_E2E_CONTROLLER_PROCESS_HANDOFF_PATH || "";
+      await writeControllerProcessHandoff({
+        closeFailure,
+        driverCloseAttempted: driver !== null,
+        processInstances: ownedProcessSnapshots,
+        processSnapshotFailure,
+        runDir,
+        targetPath: processHandoffPath,
+      });
       state.cleanup = {
         attempted: true,
         restored: false,
@@ -5562,7 +5658,7 @@ async function runSelfTest() {
   const coverageFreshness = buildCoverageFreshness();
   assert.equal(
     coverageFreshness.candidateFiles,
-    948,
+    951,
     "coverage freshness should preserve the full shared PR-visible behavior universe",
   );
   const coverageManifest = loadCoverageManifest();

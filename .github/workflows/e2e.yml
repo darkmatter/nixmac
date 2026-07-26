@@ -192,6 +192,33 @@ jobs:
 
           ssh-keyscan -H "$MAC_E2E_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
 
+      - name: Acquire shared MacinCloud host lease
+        id: host-lease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          owner_token="$(
+            printf '%s' "${GITHUB_REPOSITORY}|${GITHUB_WORKFLOW}|${GITHUB_RUN_ID}|e2e-test-${{ matrix.scenario }}|${GITHUB_RUN_ATTEMPT}" |
+              shasum -a 256 |
+              awk '{print $1}'
+          )"
+          printf '%s' "$owner_token" > "$RUNNER_TEMP/nixmac-host-owner-token"
+          ops/runner/macincloud-host-lease.sh acquire \
+            --ssh-dest "${MAC_E2E_USER}@${MAC_E2E_HOST}" \
+            --ssh-key ~/.ssh/e2e_key \
+            --known-hosts ~/.ssh/known_hosts \
+            --owner-token "$owner_token" \
+            --repository "$GITHUB_REPOSITORY" \
+            --run-id "$GITHUB_RUN_ID" \
+            --logical-job "e2e-test-${{ matrix.scenario }}" \
+            --attempt "$GITHUB_RUN_ATTEMPT" \
+            --nonce "legacy-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.scenario }}" \
+            --wait-seconds 3600 \
+            --poll-seconds 15 \
+            --max-hold-seconds 10800
+          echo "acquired=true" >> "$GITHUB_OUTPUT"
+
       - name: "Run E2E: ${{ matrix.scenario }}"
         env:
           SCENARIO: ${{ matrix.scenario }}
@@ -278,6 +305,24 @@ jobs:
 
           echo ""
           echo "📹 Video and screenshots in workflow artifacts."
+
+      - name: Release shared MacinCloud host lease
+        if: always() && steps.host-lease.outputs.acquired == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          owner_token="$(cat "$RUNNER_TEMP/nixmac-host-owner-token")"
+          ops/runner/macincloud-host-lease.sh release \
+            --ssh-dest "${MAC_E2E_USER}@${MAC_E2E_HOST}" \
+            --ssh-key ~/.ssh/e2e_key \
+            --known-hosts ~/.ssh/known_hosts \
+            --owner-token "$owner_token" \
+            --repository "$GITHUB_REPOSITORY" \
+            --run-id "$GITHUB_RUN_ID" \
+            --logical-job "e2e-test-${{ matrix.scenario }}" \
+            --attempt "$GITHUB_RUN_ATTEMPT" \
+            --nonce "legacy-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.scenario }}"
 
       - name: Cleanup
         if: always()

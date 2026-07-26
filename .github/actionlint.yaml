@@ -1,0 +1,7 @@
+self-hosted-runner:
+  labels:
+    - arc
+    - nixmac-e2e
+    - nixmac-e2e-static-controller
+
+config-variables: null
