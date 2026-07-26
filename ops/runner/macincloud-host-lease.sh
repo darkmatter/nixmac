@@ -474,10 +474,12 @@ acquire() {
   local owner_b64
   owner_b64="$(printf '%s' "$owner_json" | base64 | tr -d '\n')"
   local deadline=$((SECONDS + wait_seconds))
+  local transport_failures=0
+  local transport_deadline=$((SECONDS + 5))
 
   while true; do
     local response
-    response="$(
+    if ! response="$(
       ssh_script "$lease_root" "$lease_dir" "$quarantine_file" "$owner_b64" \
         "$owner_token_sha256" "$max_hold_seconds" <<'REMOTE'
 set -euo pipefail
@@ -511,9 +513,16 @@ if [[ -e "$quarantine_file" || -L "$quarantine_file" ]]; then
   printf 'QUARANTINED\n'
   exit 0
 fi
-if [[ -e "$lease_dir" || -L "$lease_dir" ]]; then
-  [[ -d "$lease_dir" && ! -L "$lease_dir" ]] || { printf 'UNSAFE\n'; exit 0; }
-fi
+lease_dir_state() {
+  if [[ -d "$lease_dir" && ! -L "$lease_dir" ]]; then
+    printf 'DIRECTORY\n'
+  elif [[ ! -e "$lease_dir" && ! -L "$lease_dir" ]]; then
+    printf 'ABSENT\n'
+  else
+    printf 'UNSAFE\n'
+  fi
+}
+[[ "$(lease_dir_state)" != "UNSAFE" ]] || { printf 'UNSAFE\n'; exit 0; }
 if mkdir "$lease_dir" 2>/dev/null; then
   trap 'rm -f "$lease_dir/owner.json.tmp.$$"; rmdir "$lease_dir" 2>/dev/null || true' ERR
   if [[ "${NIXMAC_E2E_LEASE_TEST_MODE:-0}" == "1" &&
@@ -551,15 +560,29 @@ HEARTBEAT
   printf 'ACQUIRED\t%s\n' "$acquired_at"
   exit 0
 fi
-[[ -d "$lease_dir" && ! -L "$lease_dir" ]] || { printf 'UNSAFE\n'; exit 0; }
+if [[ "${NIXMAC_E2E_LEASE_TEST_MODE:-0}" == "1" &&
+  -n "${NIXMAC_E2E_LEASE_POST_MKDIR_FAILURE_TEST_HOOK:-}" ]]; then
+  "$NIXMAC_E2E_LEASE_POST_MKDIR_FAILURE_TEST_HOOK" "$lease_dir"
+fi
+case "$(lease_dir_state)" in
+  DIRECTORY) ;;
+  ABSENT) printf 'RETRY\n'; exit 0 ;;
+  *) printf 'UNSAFE\n'; exit 0 ;;
+esac
 directory_identity() {
   case "$(/usr/bin/uname -s)" in
     Darwin) /usr/bin/stat -f '%d:%i' "$1" 2>/dev/null ;;
     *) /usr/bin/stat -c '%d:%i' "$1" 2>/dev/null ;;
   esac
 }
-owner_identity="$(directory_identity "$lease_dir")" ||
-  { printf 'UNSAFE\n'; exit 0; }
+if ! owner_identity="$(directory_identity "$lease_dir")"; then
+  if [[ "$(lease_dir_state)" == "ABSENT" ]]; then
+    printf 'RETRY\n'
+  else
+    printf 'UNSAFE\n'
+  fi
+  exit 0
+fi
 initialization_deadline=$((SECONDS + 5))
 while [[ ! -e "$lease_dir/owner.json" && ! -L "$lease_dir/owner.json" ]]; do
   current_identity="$(directory_identity "$lease_dir")" ||
@@ -580,8 +603,15 @@ if [[ "$current_identity" != "$owner_identity" ]]; then
   printf 'RETRY\n'
   exit 0
 fi
-[[ -f "$lease_dir/owner.json" && ! -L "$lease_dir/owner.json" ]] ||
-  { printf 'UNSAFE\n'; exit 0; }
+if [[ -f "$lease_dir/owner.json" && ! -L "$lease_dir/owner.json" ]]; then
+  :
+elif [[ "$(lease_dir_state)" == "ABSENT" ]]; then
+  printf 'RETRY\n'
+  exit 0
+else
+  printf 'UNSAFE\n'
+  exit 0
+fi
 existing_json="$(cat "$lease_dir/owner.json")"
 desired_json="$(printf '%s' "$owner_b64" | base64_decode)"
 if ! jq -e '
@@ -643,7 +673,16 @@ else
   printf '\n'
 fi
 REMOTE
-    )"
+    )"; then
+      ((transport_failures += 1))
+      if ((transport_failures >= 3 || SECONDS >= transport_deadline)); then
+        echo "LEASE_TRANSPORT_UNAVAILABLE: acquire probe failed after bounded retries" >&2
+        return 76
+      fi
+      sleep "$transport_failures"
+      continue
+    fi
+    transport_failures=0
 
     case "${response%%$'\t'*}" in
       ACQUIRED)
@@ -854,9 +893,22 @@ for entry in "$lease_dir"/*; do
 done
 if [[ -f "$lease_dir/heartbeat.pid" ]]; then
   heartbeat_pid="$(cat "$lease_dir/heartbeat.pid")"
-  if [[ "$heartbeat_pid" =~ ^[0-9]+$ ]] &&
-    ps -p "$heartbeat_pid" -o command= 2>/dev/null | grep -Fq "$lease_dir/heartbeat.sh"; then
+  heartbeat_command=""
+  if [[ "$heartbeat_pid" =~ ^[0-9]+$ ]]; then
+    heartbeat_command="$(/bin/ps -p "$heartbeat_pid" -o command= 2>/dev/null || true)"
+  fi
+  if [[ "$heartbeat_command" == *"$lease_dir/heartbeat.sh"* ]]; then
     kill -TERM "$heartbeat_pid" 2>/dev/null || true
+    heartbeat_stop_deadline=$((SECONDS + 2))
+    while true; do
+      heartbeat_command="$(/bin/ps -p "$heartbeat_pid" -o command= 2>/dev/null || true)"
+      [[ "$heartbeat_command" == *"$lease_dir/heartbeat.sh"* ]] || break
+      if ((SECONDS >= heartbeat_stop_deadline)); then
+        echo "LEASE_QUARANTINED: heartbeat did not stop during release" >&2
+        exit 73
+      fi
+      sleep 0.05
+    done
   fi
 fi
 rm -f "$lease_dir/heartbeat.pid" "$lease_dir/heartbeat" \

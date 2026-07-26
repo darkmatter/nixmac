@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   chmodSync,
   existsSync,
@@ -102,6 +103,16 @@ try {
     fakeSsh,
     `#!/usr/bin/env bash
 set -euo pipefail
+count_file="\${NIXMAC_E2E_FAKE_SSH_COUNT_FILE:-}"
+fail_until="\${NIXMAC_E2E_FAKE_SSH_FAIL_UNTIL:-0}"
+if [[ -n "$count_file" ]]; then
+  count="$(cat "$count_file" 2>/dev/null || printf '0')"
+  count=$((count + 1))
+  printf '%s\\n' "$count" > "$count_file"
+  if ((count <= fail_until)); then
+    exit 255
+  fi
+fi
 while (($#)); do
   case "$1" in
     -i|-o) shift 2 ;;
@@ -336,6 +347,58 @@ printf '%s\\n' "\${NIXMAC_E2E_FAKE_GH_STATUS:-in_progress}"
   const releasedConcurrentWinner = invoke("release", winningToken);
   assert.equal(releasedConcurrentWinner.status, 0, releasedConcurrentWinner.stderr);
 
+  const handoverOwner = invoke("acquire", "owner-a", [
+    "--wait-seconds",
+    "0",
+    "--poll-seconds",
+    "1",
+    "--max-hold-seconds",
+    "60",
+  ]);
+  assert.equal(handoverOwner.status, 0, handoverOwner.stderr);
+  const handoverReady = path.join(fixtureRoot, "handover-loser-ready");
+  const handoverHook = path.join(fixtureRoot, "pause-after-failed-owner-mkdir");
+  writeFileSync(
+    handoverHook,
+    `#!/usr/bin/env bash
+set -euo pipefail
+printf 'ready\\n' > "${handoverReady}"
+sleep 0.5
+`,
+  );
+  chmodSync(handoverHook, 0o700);
+  const handoverContenderPromise = invokeAsync(
+    "acquire",
+    "owner-b",
+    ["--wait-seconds", "3", "--poll-seconds", "1", "--max-hold-seconds", "60"],
+    {
+      ...fixtureEnv,
+      NIXMAC_E2E_LEASE_POST_MKDIR_FAILURE_TEST_HOOK: handoverHook,
+    },
+  );
+  for (let attempt = 0; attempt < 100 && !existsSync(handoverReady); attempt += 1) {
+    spawnSync("sleep", ["0.02"]);
+  }
+  assert.equal(existsSync(handoverReady), true, "handover contender must reach the race hook");
+  const handoverRelease = invoke("release", "owner-a");
+  assert.equal(handoverRelease.status, 0, handoverRelease.stderr);
+  const handoverContender = await handoverContenderPromise;
+  assert.equal(
+    handoverContender.status,
+    0,
+    `benign release during a failed mkdir probe must retry, not quarantine: ${JSON.stringify(
+      handoverContender,
+    )}`,
+  );
+  assert.match(handoverContender.stdout, /^LEASE_ACQUIRED\t/m);
+  assert.equal(
+    existsSync(path.join(leaseRoot, "QUARANTINED.json")),
+    false,
+    "a benign release/acquire handover must not quarantine the host",
+  );
+  const handoverContenderRelease = invoke("release", "owner-b");
+  assert.equal(handoverContenderRelease.status, 0, handoverContenderRelease.stderr);
+
   const acquired = invoke("acquire", "owner-a", [
     "--wait-seconds",
     "0",
@@ -359,6 +422,34 @@ printf '%s\\n' "\${NIXMAC_E2E_FAKE_GH_STATUS:-in_progress}"
     "60",
   ]);
   assert.equal(idempotent.status, 0, idempotent.stderr);
+
+  const transientTransportCounter = path.join(fixtureRoot, "transient-ssh-count");
+  const transientTransport = invoke(
+    "acquire",
+    "owner-b",
+    ["--wait-seconds", "0", "--poll-seconds", "1", "--max-hold-seconds", "60"],
+    {
+      ...fixtureEnv,
+      NIXMAC_E2E_FAKE_SSH_COUNT_FILE: transientTransportCounter,
+      NIXMAC_E2E_FAKE_SSH_FAIL_UNTIL: "1",
+    },
+  );
+  assert.equal(
+    transientTransport.status,
+    75,
+    `one transient SSH failure must be retried before reporting the live owner: ${transientTransport.stderr}`,
+  );
+  assert.match(transientTransport.stderr, /LEASE_BUSY/);
+  assert.equal(
+    Number.parseInt(readFileSync(transientTransportCounter, "utf8"), 10),
+    2,
+    "transient SSH recovery must perform one later successful probe",
+  );
+  assert.equal(
+    existsSync(path.join(leaseRoot, "QUARANTINED.json")),
+    false,
+    "a transient SSH failure must not quarantine the host",
+  );
 
   const rerunArgs = commonArgs.map((value, index, values) => {
     if (values[index - 1] === "--attempt") return "2";
@@ -445,6 +536,150 @@ stderr=${recoveredRerun.stderr}`,
     "owner-matched release must return the final heartbeat and remote release time",
   );
 
+  const acquiredForUnavailableLiveness = invoke("acquire", "owner-a", [
+    "--wait-seconds",
+    "0",
+    "--poll-seconds",
+    "1",
+    "--max-hold-seconds",
+    "60",
+  ]);
+  assert.equal(acquiredForUnavailableLiveness.status, 0, acquiredForUnavailableLiveness.stderr);
+  const unavailableLivenessCounter = path.join(fixtureRoot, "unavailable-liveness-count");
+  const unavailableLiveness = invoke(
+    "acquire",
+    "owner-b",
+    ["--wait-seconds", "0", "--poll-seconds", "1", "--max-hold-seconds", "60"],
+    {
+      ...fixtureEnv,
+      NIXMAC_E2E_FAKE_GH_COUNT_FILE: unavailableLivenessCounter,
+      NIXMAC_E2E_FAKE_GH_FAIL_UNTIL: "3",
+    },
+  );
+  assert.equal(unavailableLiveness.status, 73, unavailableLiveness.stderr);
+  assert.match(unavailableLiveness.stderr, /owner liveness unavailable after bounded retries/i);
+  assert.equal(readFileSync(unavailableLivenessCounter, "utf8").trim(), "3");
+  const refusedByLivenessMarker = invoke("acquire", "owner-b", [
+    "--wait-seconds",
+    "0",
+    "--poll-seconds",
+    "1",
+    "--max-hold-seconds",
+    "60",
+  ]);
+  assert.equal(refusedByLivenessMarker.status, 73, refusedByLivenessMarker.stderr);
+  assert.match(refusedByLivenessMarker.stderr, /host is quarantined/i);
+  const releasedUnavailableLivenessOwner = invoke("release", "owner-a");
+  assert.equal(releasedUnavailableLivenessOwner.status, 0, releasedUnavailableLivenessOwner.stderr);
+  const unavailableLivenessStatus = invoke("status", "owner-b");
+  assert.equal(unavailableLivenessStatus.status, 0, unavailableLivenessStatus.stderr);
+  assert.match(unavailableLivenessStatus.stdout, /^QUARANTINED\t[0-9a-f]{64}\t/m);
+  const [, unavailableLivenessDigest] = unavailableLivenessStatus.stdout.trim().split("\t");
+  const recoveredUnavailableLiveness = invoke("recover", "owner-b", [
+    "--observed-lease-digest",
+    unavailableLivenessDigest,
+    "--operator-reason",
+    "bounded liveness outage fixture recovery",
+  ]);
+  assert.equal(recoveredUnavailableLiveness.status, 0, recoveredUnavailableLiveness.stderr);
+  assert.match(recoveredUnavailableLiveness.stdout, /LEASE_RECOVERED/);
+
+  const invalidOwnerLeaseRoot = path.join(
+    fixtureRoot,
+    "nixmac-host-lease-contract-invalid-owner",
+    "remote-lease",
+  );
+  mkdirSync(path.join(invalidOwnerLeaseRoot, "owner"), { recursive: true });
+  writeFileSync(path.join(invalidOwnerLeaseRoot, "owner", "owner.json"), "{}\n");
+  const invalidOwnerEnv = {
+    ...fixtureEnv,
+    NIXMAC_E2E_LEASE_ROOT: invalidOwnerLeaseRoot,
+  };
+  const invalidOwnerAcquire = invoke(
+    "acquire",
+    "owner-b",
+    ["--wait-seconds", "0", "--poll-seconds", "1", "--max-hold-seconds", "60"],
+    invalidOwnerEnv,
+  );
+  assert.equal(invalidOwnerAcquire.status, 73, invalidOwnerAcquire.stderr);
+  assert.match(invalidOwnerAcquire.stderr, /unverifiable owner/i);
+  assert.equal(
+    JSON.parse(readFileSync(path.join(invalidOwnerLeaseRoot, "QUARANTINED.json"), "utf8")).reason,
+    "unverifiable-lease-owner",
+  );
+  const invalidOwnerMarkerRefusal = invoke(
+    "acquire",
+    "owner-b",
+    ["--wait-seconds", "0", "--poll-seconds", "1", "--max-hold-seconds", "60"],
+    invalidOwnerEnv,
+  );
+  assert.equal(invalidOwnerMarkerRefusal.status, 73, invalidOwnerMarkerRefusal.stderr);
+  assert.match(invalidOwnerMarkerRefusal.stderr, /host is quarantined/i);
+  rmSync(invalidOwnerLeaseRoot, { recursive: true });
+
+  const bindingMismatchLeaseRoot = path.join(
+    fixtureRoot,
+    "nixmac-host-lease-contract-binding-mismatch",
+    "remote-lease",
+  );
+  mkdirSync(path.join(bindingMismatchLeaseRoot, "owner"), { recursive: true });
+  writeFileSync(
+    path.join(bindingMismatchLeaseRoot, "owner", "owner.json"),
+    `${JSON.stringify({
+      schemaVersion: 1,
+      owner_token_sha256: createHash("sha256").update("owner-a").digest("hex"),
+      repository: "darkmatter/nixmac",
+      run_id: "123",
+      logical_job: "different-job",
+      attempt: "1",
+      nonce: "fixture-nonce-012345678901234567890123456789",
+      created_at: "2026-07-26T00:00:00Z",
+    })}\n`,
+  );
+  const bindingMismatchEnv = {
+    ...fixtureEnv,
+    NIXMAC_E2E_LEASE_ROOT: bindingMismatchLeaseRoot,
+  };
+  const bindingMismatchAcquire = invoke(
+    "acquire",
+    "owner-a",
+    ["--wait-seconds", "0", "--poll-seconds", "1", "--max-hold-seconds", "60"],
+    bindingMismatchEnv,
+  );
+  assert.equal(bindingMismatchAcquire.status, 73, bindingMismatchAcquire.stderr);
+  assert.match(bindingMismatchAcquire.stderr, /owner token metadata binding mismatch/i);
+  assert.equal(
+    JSON.parse(readFileSync(path.join(bindingMismatchLeaseRoot, "QUARANTINED.json"), "utf8"))
+      .reason,
+    "owner-binding-mismatch",
+  );
+  rmSync(bindingMismatchLeaseRoot, { recursive: true });
+
+  const ambiguousAcquireLeaseRoot = path.join(
+    fixtureRoot,
+    "nixmac-host-lease-contract-ambiguous-acquire",
+    "remote-lease",
+  );
+  mkdirSync(path.join(ambiguousAcquireLeaseRoot, "owner"), { recursive: true });
+  const ambiguousAcquireEnv = {
+    ...fixtureEnv,
+    NIXMAC_E2E_LEASE_ROOT: ambiguousAcquireLeaseRoot,
+  };
+  const ambiguousAcquire = invoke(
+    "acquire",
+    "owner-b",
+    ["--wait-seconds", "0", "--poll-seconds", "1", "--max-hold-seconds", "60"],
+    ambiguousAcquireEnv,
+  );
+  assert.equal(ambiguousAcquire.status, 73, ambiguousAcquire.stderr);
+  assert.match(ambiguousAcquire.stderr, /ambiguous owner metadata/i);
+  assert.equal(
+    JSON.parse(readFileSync(path.join(ambiguousAcquireLeaseRoot, "QUARANTINED.json"), "utf8"))
+      .reason,
+    "ambiguous-lease-owner",
+  );
+  rmSync(ambiguousAcquireLeaseRoot, { recursive: true });
+
   const reacquired = invoke("acquire", "owner-a", [
     "--wait-seconds",
     "0",
@@ -497,6 +732,62 @@ stderr=${recoveredRerun.stderr}`,
   const free = invoke("status", "owner-b", [], terminalEnv);
   assert.equal(free.status, 0, free.stderr);
   assert.match(free.stdout, /^FREE$/m);
+
+  const acquiredForReleaseHeartbeat = invoke("acquire", "owner-c", [
+    "--wait-seconds",
+    "0",
+    "--poll-seconds",
+    "1",
+    "--max-hold-seconds",
+    "60",
+  ]);
+  assert.equal(acquiredForReleaseHeartbeat.status, 0, acquiredForReleaseHeartbeat.stderr);
+  const releaseHeartbeatDir = path.join(leaseRoot, "owner");
+  const originalHeartbeatPid = Number.parseInt(
+    readFileSync(path.join(releaseHeartbeatDir, "heartbeat.pid"), "utf8"),
+    10,
+  );
+  process.kill(originalHeartbeatPid, "SIGTERM");
+  const releaseHeartbeatPath = path.join(releaseHeartbeatDir, "heartbeat.sh");
+  const releaseHeartbeatReady = path.join(fixtureRoot, "release-heartbeat-ready");
+  writeFileSync(
+    releaseHeartbeatPath,
+    "#!/usr/bin/env bash\nset -euo pipefail\ntrap '' TERM\nprintf 'ready\\n' > \"$1\"\nwhile true; do sleep 1; done\n",
+  );
+  chmodSync(releaseHeartbeatPath, 0o700);
+  uncooperativeHeartbeat = spawn("bash", [releaseHeartbeatPath, releaseHeartbeatReady], {
+    stdio: "ignore",
+  });
+  assert.ok(uncooperativeHeartbeat.pid > 1);
+  writeFileSync(
+    path.join(releaseHeartbeatDir, "heartbeat.pid"),
+    `${uncooperativeHeartbeat.pid}\n`,
+  );
+  for (let attempt = 0; attempt < 100 && !existsSync(releaseHeartbeatReady); attempt += 1) {
+    spawnSync("sleep", ["0.02"]);
+  }
+  assert.equal(
+    existsSync(releaseHeartbeatReady),
+    true,
+    "release heartbeat fixture must install its TERM trap before release",
+  );
+  const refusedUncooperativeRelease = invoke("release", "owner-c");
+  assert.equal(refusedUncooperativeRelease.status, 73, refusedUncooperativeRelease.stderr);
+  assert.match(refusedUncooperativeRelease.stderr, /heartbeat did not stop during release/i);
+  assert.equal(
+    existsSync(path.join(releaseHeartbeatDir, "owner.json")),
+    true,
+    "release must retain ownership evidence while the heartbeat is still alive",
+  );
+  const releaseHeartbeatExit = new Promise((resolve) => {
+    uncooperativeHeartbeat.once("close", resolve);
+  });
+  uncooperativeHeartbeat.kill("SIGKILL");
+  await releaseHeartbeatExit;
+  uncooperativeHeartbeat = undefined;
+  const releasedAfterHeartbeatStop = invoke("release", "owner-c");
+  assert.equal(releasedAfterHeartbeatStop.status, 0, releasedAfterHeartbeatStop.stderr);
+  assert.match(releasedAfterHeartbeatStop.stdout, /^LEASE_RELEASED\t/m);
 
   const acquiredForUnexpectedEntry = invoke("acquire", "owner-c", [
     "--wait-seconds",
