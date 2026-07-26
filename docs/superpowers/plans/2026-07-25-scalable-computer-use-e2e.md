@@ -2,9 +2,23 @@
 
 > **For agentic workers:** REQUIRED: Use superpowers:dm-subagent-driven-development (if subagents available) or superpowers:dm-executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the Buzz-mediated, single-Mac CuaDriver request with a quiet, durable Centaur workflow that dispatches an exact-SHA GitHub Actions run onto a dedicated macOS E2E pool and publishes only a verified terminal result.
+**Goal:** Replace the Buzz-mediated, single-Mac CuaDriver request with a quiet,
+durable Centaur workflow that dispatches an exact-SHA GitHub Actions run onto
+a horizontally scalable macOS E2E pool and publishes only a verified terminal
+result.
 
-**Architecture:** The nixmac repository remains the source of test truth: it gains a real driver seam, a CuaDriver adapter, an on-Mac runner, and a signed-by-digest evidence manifest. Centaur detects/reconciles merged PRs, dispatches and watches a dedicated GitHub Actions workflow, downloads and verifies the immutable Actions artifact, applies retry policy, and publishes one terminal GitHub Check and Buzz message. GitHub/Cilicon owns ephemeral Tart VM scheduling; the current MacinCloud lane remains the single-concurrency transition/DR backend until the PR #604-derived E2E image and pool qualify.
+**Architecture:** The nixmac repository remains the source of test truth: it
+gains a real driver seam, a CuaDriver adapter, an on-Mac runner, and a
+signed-by-digest evidence manifest. Centaur first detects/reconciles merged PRs
+in post-merge shadow/advisory mode, dispatches and watches a dedicated GitHub
+Actions workflow, downloads and verifies the immutable Actions artifact,
+applies retry policy, and publishes one terminal GitHub Check and Buzz message.
+GitHub/Cilicon owns ephemeral Tart VM scheduling; the current MacinCloud lane
+remains the single-concurrency transition/DR backend until the PR #604-derived
+E2E image and pool qualify. A required merge-queue gate is a separate
+promotion after the ephemeral pool, evidence retention, and candidate-code
+isolation are qualified; the initial production release never claims to block
+merges.
 
 **Tech Stack:** Node.js ESM, CuaDriver CLI/MCP daemon, GitHub Actions and API, Python 3.11 Centaur workflows/tools, Tart/Cilicon, `unittest`, existing nixmac preservation/adversarial harnesses, `jq`, `ffmpeg`.
 
@@ -19,11 +33,19 @@ ______________________________________________________________________
 - nixmac base:
   `origin/main` at `2e0a987b800e45d7444057e1ad54d1d570b8ac41`
 - Centaur overlay worktree:
-  `/tmp/centaur-overlay-nixmac-e2e-production`
+  `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production`
 - Centaur overlay branch:
   `codex/nixmac-e2e-production-foundation`
 - Centaur overlay base:
   `origin/main` at `b10ff0cf551a757d43cd0c319f7bf5e4dfd6e61f`
+- lifecycle-attestation sink worktree, provisioned before Task 12:
+  `/Users/farhankhalaf/Code/nixmac-e2e-attestations`
+- lifecycle-attestation sink repository:
+  `darkmatter/nixmac-e2e-attestations`
+
+Before Task 8, move the existing overlay worktree out of `/tmp` with
+`git worktree move` and verify the parent repository registration. Do not
+leave a multi-week implementation or unpushed commits in a volatile temp path.
 
 Do not add the unrelated `.beads/.gitignore` change present in the nixmac
 worktree to any commit.
@@ -40,9 +62,11 @@ Do not repeat completed steps literally:
 - The shared MacinCloud concurrency contract is structural, adversarially
   tested across all three legacy workflows, and automatically gated on
   `pull_request` and `merge_group` through `b90a8c8bb`.
-- Task 3, the driver-neutral `scenario-driver.mjs` extraction, is the next
-  planned feature slice after the remaining inherited workflow baseline is
-  green.
+- Task 3, the driver-neutral `scenario-driver.mjs` extraction, is complete at
+  `660e6be47`, with state/action binding hardening at `14f706c5a` and explicit
+  authority-failure mutation coverage at `b1895b446`.
+- Task 4, the pinned CuaDriver CLI/app-bundle adapter, is the next planned
+  feature slice.
 
 The task bodies below remain the implementation and acceptance record.
 Completed tasks are retained for traceability; their commits and fresh test
@@ -77,11 +101,17 @@ evidence, not unchecked historical TDD prose, are authoritative.
   post-run cleanup/attempt records consumed by the manifest.
 - `.github/workflows/computer-use-e2e-centaur.yml` — manual API-dispatch
   workflow for one trusted harness revision and one exact-SHA app artifact.
-- `.github/workflows/cilicon-lifecycle-attestation.yml` — accepts a
-  host-authenticated post-destruction event and preserves a queryable
-  attestation artifact.
+- `.github/workflows/computer-use-e2e-merge-gate.yml` — later
+  default-branch-owned `merge_group` entrypoint; absent from the initial
+  post-merge rollout and enabled only after Task 13 promotion.
+- `darkmatter/nixmac-e2e-attestations/.github/workflows/cilicon-lifecycle-attestation.yml`
+  — protected, secret-free sink workflow that accepts a host-authenticated
+  post-destruction event and preserves a queryable attestation artifact
+  outside the nixmac repository.
 - `tests/e2e/computer-use/centaur-workflow-contract-self-test.mjs` — static
   workflow safety and artifact-binding assertions.
+- `tests/e2e/computer-use/merge-gate-contract-self-test.mjs` — proves the later
+  required check is merge-group-SHA bound, ephemeral-only, and fail-closed.
 - `ops/runner/macincloud-host-lease.sh` — atomic owner-token lease shared by
   every legacy and Centaur job that drives the transition/DR MacinCloud host.
 - `tests/e2e/computer-use/remote-host-lease-contract-self-test.mjs` — proves
@@ -336,7 +366,7 @@ git commit -m "refactor(e2e): wrap Codex transport"
 
 - Modify: `tests/e2e/computer-use/drivers/driver-self-test.mjs`
 
-- [ ] **Step 1: Write failing helper tests**
+- [x] **Step 1: Write failing helper tests**
 
 Test:
 
@@ -361,11 +391,11 @@ const fake = {
 };
 ```
 
-- [ ] **Step 2: Verify the new test fails**
+- [x] **Step 2: Verify the new test fails**
 
 Expected: missing `scenario-driver.mjs`.
 
-- [ ] **Step 3: Move the helpers without behavior changes**
+- [x] **Step 3: Move the helpers without behavior changes**
 
 Move and dependency-inject:
 
@@ -380,7 +410,7 @@ The module accepts callbacks for `addEvent`, `saveState`, `addNarrative`,
 `redact`, `containsUnmaskedSecret`, and `pngDimensions` so it remains
 deterministic and does not create circular imports.
 
-- [ ] **Step 4: Inject the Codex driver**
+- [x] **Step 4: Inject the Codex driver**
 
 Replace:
 
@@ -398,7 +428,7 @@ const driver = validateRuntimeDriver(
 
 Pass `driver` through all extracted helpers and browser-report inspection.
 
-- [ ] **Step 5: Verify no raw `client.tool` calls remain in scenario code**
+- [x] **Step 5: Verify no raw `client.tool` calls remain in scenario code**
 
 Run:
 
@@ -410,7 +440,7 @@ rg -n 'client\.tool|new AppServerClient' \
 
 Expected: no matches.
 
-- [ ] **Step 6: Run preservation gates**
+- [x] **Step 6: Run preservation gates**
 
 Run:
 
@@ -422,7 +452,7 @@ node tests/e2e/computer-use/run-adversarial.mjs
 
 Expected: all PASS; preservation signatures unchanged.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add tests/e2e/computer-use/scenario-driver.mjs \
@@ -449,6 +479,8 @@ git commit -m "refactor(e2e): inject computer-use driver"
 
 - Create: `tests/e2e/computer-use/fixtures/cua-driver/action-error.json`
 
+- Create: `tests/e2e/computer-use/fixtures/cua-driver/metadata.json`
+
 - Modify: `tests/e2e/computer-use/drivers/driver-self-test.mjs`
 
 - [ ] **Step 1: Capture and sanitize real raw response fixtures**
@@ -456,6 +488,10 @@ git commit -m "refactor(e2e): inject computer-use driver"
 Use the installed static-Mac CuaDriver with `--raw --compact --no-daemon`.
 Replace live pids, window IDs, paths, titles, and any user text with stable
 fixture values. Do not include the remote host, usernames, keys, or secrets.
+Record the exact CLI version, `CuaDriver.app` bundle version/digest, supported
+daemon launch mode, and fixture capture date in a sanitized fixture metadata
+file. The adapter and image qualification must use the same pinned release and
+launch mode.
 
 - [ ] **Step 2: Write failing adapter tests**
 
@@ -464,6 +500,9 @@ Cover:
 - CLI argv uses no shell;
 
 - daemon socket is run-specific;
+
+- the daemon is launched through the installed `CuaDriver.app` responsibility
+  chain, never by directly spawning raw `cua-driver serve`;
 
 - `prepareTarget` launches the staged app through `launch_app`;
 
@@ -507,11 +546,20 @@ Parse only raw MCP result objects shaped as:
 
 `connect()` must:
 
-1. run `--version`;
-1. start `serve --socket <run-socket>`;
+1. run `--version`, read the installed `CuaDriver.app` bundle version, and
+   require both to match the pinned fixture/image identity;
+1. start the standalone app-owned daemon with argv equivalent to
+   `open -n -g -a CuaDriver --args serve --socket <run-socket>`;
 1. poll `status --socket <run-socket>`;
 1. call `check_permissions`;
 1. fail unless Accessibility and Screen Recording are granted.
+
+Directly spawning raw `cua-driver serve` outside `CuaDriver.app` is prohibited:
+upstream documents that mode as unsupported for stable macOS TCC attribution.
+The static and ephemeral images grant Accessibility and Screen Recording to
+the pinned `CuaDriver.app` bundle identity. `close()` may stop only an
+app-owned daemon this adapter instance started; attach-to-existing mode never
+stops another process.
 
 `prepareTarget({ appBundleId, appPath })` must:
 
@@ -959,6 +1007,23 @@ exactly one online runner with the label; the workflow's default
 `GITHUB_TOKEN` is not used for Administration-read inventory. A second online
 runner is a fail-closed readiness error.
 
+The one-capacity static queue is a transition/DR lane, not the scale target.
+Centaur keeps jobs in its own durable queue until the controller is expected
+to start them within GitHub's 24-hour self-hosted-runner queue limit; it does
+not churn expired GitHub runs. Record arrival rate, p50/p95 end-to-end cycle
+time, queue age, and backend utilization from the first shadow job. Before
+making Cilicon primary, size capacity to:
+
+```text
+dedicated_hosts >= max(
+  2,
+  ceil(peak_jobs_per_hour * p95_cycle_minutes / 60 * 1.5) + 1
+)
+```
+
+The `1.5` factor absorbs bursts and the `+1` is host-failure headroom. Promotion
+still requires p95 start latency under 15 minutes with one host quarantined.
+
 After the lease-enabled workflow definitions merge, query all three legacy
 workflows and drain every run started from a pre-lease workflow revision before
 the first Centaur `static_ssh` dispatch. Record the drained run IDs and lease
@@ -1035,6 +1100,15 @@ nixmac-computer-use-e2e-<job-id>-attempt-<attempt>
 Set an explicit retention period and surface artifact ID/digest in job outputs
 where GitHub exposes them.
 
+Use `retention-days: 90` for the initial post-merge service and record
+`evidence_expires_at` in the Check, Buzz result, and Centaur ledger. The
+Actions artifact is canonical only inside that declared window. Before a
+required merge gate is enabled, promote each independently verified zip to
+versioned immutable object storage with at least 365 days of retention, record
+its URI/version/digest in Centaur, and verify a restore path. A stale Check must
+say that evidence expired; the mutable gh-pages copy never silently becomes
+canonical.
+
 - [ ] **Step 8: Publish the verified report**
 
 After manifest verification, a Linux/ARC job downloads the artifact and uses
@@ -1090,19 +1164,19 @@ tested branch define the harness.
 
 **Files:**
 
-- Create: `/tmp/centaur-overlay-nixmac-e2e-production/tools/github_e2e/client.py`
+- Create: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/tools/github_e2e/client.py`
 
-- Create: `/tmp/centaur-overlay-nixmac-e2e-production/tools/github_e2e/cli.py`
+- Create: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/tools/github_e2e/cli.py`
 
-- Create: `/tmp/centaur-overlay-nixmac-e2e-production/tools/github_e2e/__init__.py`
+- Create: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/tools/github_e2e/__init__.py`
 
-- Create: `/tmp/centaur-overlay-nixmac-e2e-production/tools/github_e2e/evidence.py`
+- Create: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/tools/github_e2e/evidence.py`
 
-- Create: `/tmp/centaur-overlay-nixmac-e2e-production/tools/github_e2e/fixtures/*`
+- Create: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/tools/github_e2e/fixtures/*`
 
-- Create: `/tmp/centaur-overlay-nixmac-e2e-production/tools/github_e2e/pyproject.toml`
+- Create: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/tools/github_e2e/pyproject.toml`
 
-- Create: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/tests/test_github_e2e_tool.py`
+- Create: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/workflows/tests/test_github_e2e_tool.py`
 
 - [ ] **Step 1: Write failing client tests with a fake HTTP transport**
 
@@ -1141,6 +1215,10 @@ Test:
 - create/update one Check Run with the job ID as `external_id`;
 
 - download and independently verify the immutable evidence zip;
+
+- follow only the validated GitHub artifact redirect, drop the API
+  `Authorization` header on the redirected request, refresh an expired
+  one-minute URL once, and reject off-allowlist hosts or redirect chains;
 
 - never expose injected authorization headers.
 
@@ -1212,6 +1290,17 @@ secrets = [{
 }]
 ```
 
+The Actions artifact endpoint returns a short-lived `302` download URL on a
+GitHub-controlled artifact/blob domain. The HTTP client must follow exactly
+one validated HTTPS redirect, strip `Authorization` before leaving
+`api.github.com`, enforce the documented GitHub Actions artifact-host suffixes,
+and reject every other redirect. Extend the Centaur capability declaration
+with the provider-supported form of those artifact hosts. If the platform
+cannot safely express that allowlist, route the download through a scoped
+server-side GitHub integration instead; do not weaken global egress policy.
+An integration test against a real private artifact must prove redirect,
+header stripping, one-minute URL refresh, and retry behavior before Task 10.
+
 The deployed credential needs Actions read/write, Checks write, Contents read,
 Pull requests read, and repository Administration read on
 `darkmatter/nixmac`. Administration is read-only and is required solely to
@@ -1239,11 +1328,11 @@ git commit -m "feat(e2e): add scoped GitHub Actions tool"
 
 **Files:**
 
-- Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/workflow.py`
+- Modify: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/workflow.py`
 
-- Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/tests/test_nixmac_e2e_merged_prs.py`
+- Modify: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/workflows/tests/test_nixmac_e2e_merged_prs.py`
 
-- Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/README.md`
+- Modify: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/README.md`
 
 - [ ] **Step 1: Write failing reconciliation tests**
 
@@ -1328,9 +1417,9 @@ git commit -m "fix(e2e): make merge detection lossless"
 
 **Files:**
 
-- Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/workflow.py`
+- Modify: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/workflow.py`
 
-- Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/tests/test_nixmac_e2e_merged_prs.py`
+- Modify: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/workflows/tests/test_nixmac_e2e_merged_prs.py`
 
 - [ ] **Step 1: Write failing lifecycle tests**
 
@@ -1369,6 +1458,12 @@ Script fake contexts for:
 - verified PASS artifact;
 
 - product FAIL with one confirmation attempt;
+
+- product FAIL followed by confirmation PASS remains terminal FAIL with
+  `failure_class=FLAKY_PRODUCT`;
+
+- product FAIL followed by confirmation FAIL remains terminal FAIL with
+  `failure_class=CONFIRMED_PRODUCT_FAIL`;
 
 - infrastructure failure with one fresh attempt;
 
@@ -1478,6 +1573,11 @@ gh-pages report URL from Task 7 before publication. Map:
 
 - valid `state.verdict=pass` + lifecycle attested -> PASS;
 - valid product fail -> FAIL;
+- initial product fail + confirmation pass -> FAIL with
+  `failure_class=FLAKY_PRODUCT`; a nondeterministic product/UI contract is a
+  product defect and retry never erases the first verified failure;
+- initial product fail + confirmation fail -> FAIL with
+  `failure_class=CONFIRMED_PRODUCT_FAIL`;
 - harness/provider/credential/runner failures -> retry or INCONCLUSIVE;
 - missing/invalid artifact -> infrastructure failure, never PASS.
 
@@ -1510,23 +1610,23 @@ git commit -m "feat(e2e): reconcile durable test attempts"
 
 **Files:**
 
-- Create: `/tmp/centaur-overlay-nixmac-e2e-production/tools/buzz_e2e_result/client.py`
+- Create: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/tools/buzz_e2e_result/client.py`
 
-- Create: `/tmp/centaur-overlay-nixmac-e2e-production/tools/buzz_e2e_result/cli.py`
+- Create: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/tools/buzz_e2e_result/cli.py`
 
-- Create: `/tmp/centaur-overlay-nixmac-e2e-production/tools/buzz_e2e_result/__init__.py`
+- Create: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/tools/buzz_e2e_result/__init__.py`
 
-- Create: `/tmp/centaur-overlay-nixmac-e2e-production/tools/buzz_e2e_result/pyproject.toml`
+- Create: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/tools/buzz_e2e_result/pyproject.toml`
 
-- Create: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/tests/test_buzz_e2e_result_tool.py`
+- Create: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/workflows/tests/test_buzz_e2e_result_tool.py`
 
-- Create: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/buzz-result-workflow.yaml`
+- Create: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/buzz-result-workflow.yaml`
 
-- Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/workflow.py`
+- Modify: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/workflow.py`
 
-- Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/tests/test_nixmac_e2e_merged_prs.py`
+- Modify: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/workflows/tests/test_nixmac_e2e_merged_prs.py`
 
-- Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/README.md`
+- Modify: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/README.md`
 
 - [ ] **Step 1: Write failing publication tests**
 
@@ -1625,7 +1725,8 @@ git commit -m "feat(e2e): publish terminal test results"
 
 - Create: `ops/runner/com.darkmatter.nixmac-e2e-cycle.plist`
 
-- Create: `.github/workflows/cilicon-lifecycle-attestation.yml`
+- Create in the dedicated `darkmatter/nixmac-e2e-attestations` sink repository:
+  `.github/workflows/cilicon-lifecycle-attestation.yml`
 
 - Create: `tests/e2e/computer-use/cilicon-lifecycle-contract-self-test.mjs`
 
@@ -1643,8 +1744,8 @@ Verify:
 
 - base image reference is immutable;
 
-- CuaDriver artifact URL, checksum, CLI version, and app-bundle version are
-  pinned;
+- CuaDriver artifact URL, checksum, CLI version, app-bundle version, bundle ID,
+  code-signing identity, and supported standalone launch mode are pinned;
 
 - no secrets enter Packer;
 
@@ -1654,7 +1755,9 @@ Verify:
 
 - ffmpeg is present;
 
-- TCC checks fail closed;
+- Accessibility and Screen Recording are granted to the pinned
+  `CuaDriver.app` bundle identity, never to a raw CLI executable, and TCC
+  checks fail closed;
 
 - secret scan runs before push.
 
@@ -1669,8 +1772,9 @@ On a dedicated image builder:
 
 1. boot a fresh clone;
 1. verify logged-in Aqua session;
-1. verify Accessibility and Screen Recording;
-1. run CuaDriver smoke;
+1. verify Accessibility and Screen Recording belong to the pinned
+   `CuaDriver.app` identity;
+1. launch the app-owned daemon and run CuaDriver smoke;
 1. stop and age/reboot the image;
 1. repeat permissions and smoke;
 1. destroy the clone;
@@ -1710,24 +1814,39 @@ After the GitHub job exits the host attestor must:
 1. verify no matching VM remains in the host inventory;
 1. emit a nonce-bound JSON attestation with host ID, image digest, job ID,
    attempt number, runner name, nonce, destroyed timestamp, and result;
-1. POST a scoped `repository_dispatch` event authenticated by a dedicated
-   GitHub App;
+1. POST a scoped `repository_dispatch` event to the dedicated
+   `darkmatter/nixmac-e2e-attestations` sink repository with a GitHub App
+   installed only on that sink;
 1. create `/var/db/nixmac-e2e-quarantined` and stop new E2E cycles if any check
    times out or fails.
 
-`cilicon-lifecycle-attestation.yml` validates the allowlisted event shape,
+The protected, secret-free sink workflow
+`cilicon-lifecycle-attestation.yml` validates the allowlisted event shape and
 writes an immutable artifact named
 `nixmac-e2e-lifecycle-<job-id>-attempt-<attempt>`, and exposes a `run-name`
 Centaur can resolve. The workflow preserves the nonce but does not decide
 whether it is expected; Centaur compares it with the checkpointed attempt
 record and consumes it once. The workflow never runs repository code from the
-tested SHA.
+tested SHA. Centaur reads the sink repository with its control-plane
+credential and treats the sink artifact as input to the same independent
+nonce/job/attempt/image verification.
 
-Provision the dedicated GitHub App before private qualification. It may emit
-only the lifecycle `repository_dispatch` event and read the E2E runner
-inventory. Record its installation ID and injected secret names in
-`OPERATIONS.md`; never put keys in the image or repository. If the app or
-required repository Administration-read permission is unavailable, hold
+Provision two deliberately separate credentials before private qualification:
+
+1. a sink-only GitHub App with Contents write on
+   `darkmatter/nixmac-e2e-attestations`, used only to emit the lifecycle
+   `repository_dispatch`; it has no installation or permission on
+   `darkmatter/nixmac`;
+1. an inventory-only GitHub App with repository Administration read on
+   `darkmatter/nixmac`, used only to prove runner deregistration; it has no
+   Contents, Actions, or Checks write permission.
+
+GitHub cannot scope `repository_dispatch` more narrowly than Contents write,
+so the plan never places that grant on an E2E host for `darkmatter/nixmac`.
+The sink repository holds no secrets, has protected default branch/workflow
+files, and contains no code that can mutate nixmac. Record both installation
+IDs and injected secret names in `OPERATIONS.md`; never put keys in the guest
+image or repository. If either app or permission split is unavailable, hold
 ephemeral promotion and continue with the static transition lane.
 
 - [ ] **Step 6: Write lifecycle contract tests**
@@ -1767,11 +1886,15 @@ git add ops/images/nixmac-e2e-runner-tahoe.pkr.hcl \
   ops/runner/cilicon-e2e-cycle-wrapper.sh \
   ops/runner/cilicon-e2e-lifecycle-attestor.sh \
   ops/runner/com.darkmatter.nixmac-e2e-cycle.plist \
-  .github/workflows/cilicon-lifecycle-attestation.yml \
   .github/workflows/macos-ci-image.yaml \
   tests/e2e/computer-use/cilicon-lifecycle-contract-self-test.mjs \
   tests/e2e/computer-use/OPERATIONS.md
 git commit -m "ci(e2e): add dedicated Tart runner image"
+
+git -C /Users/farhankhalaf/Code/nixmac-e2e-attestations add \
+  .github/workflows/cilicon-lifecycle-attestation.yml
+git -C /Users/farhankhalaf/Code/nixmac-e2e-attestations commit \
+  -m "ci: accept scoped nixmac lifecycle attestations"
 ```
 
 ### Task 13: Shadow Rollout And Promotion
@@ -1780,13 +1903,18 @@ git commit -m "ci(e2e): add dedicated Tart runner image"
 
 - Modify: `tests/e2e/computer-use/OPERATIONS.md`
 
-- Create: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/observability.py`
+- Create during Step 7 only: `.github/workflows/computer-use-e2e-merge-gate.yml`
 
-- Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/workflow.py`
+- Create during Step 7 only:
+  `tests/e2e/computer-use/merge-gate-contract-self-test.mjs`
 
-- Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/tests/test_nixmac_e2e_merged_prs.py`
+- Create: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/observability.py`
 
-- Modify: `/tmp/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/README.md`
+- Modify: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/workflow.py`
+
+- Modify: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/workflows/tests/test_nixmac_e2e_merged_prs.py`
+
+- Modify: `/Users/farhankhalaf/Code/centaur-overlay-nixmac-e2e-production/workflows/nixmac_e2e_merged_prs/README.md`
 
 - [ ] **Step 1: Deploy with automatic publication disabled**
 
@@ -1844,11 +1972,13 @@ Require:
   retry, owner-mismatch release fails, and neither lane kills a process it does
   not own;
 
-- product failures remain product failures after confirmation.
+- product FAIL then PASS is published as FAIL/`FLAKY_PRODUCT`, while product
+  FAIL then FAIL is published as FAIL/`CONFIRMED_PRODUCT_FAIL`.
 
 - [ ] **Step 4: Enable the GitHub Check**
 
-Keep it non-required. Observe at least 50 jobs or 30 days.
+Keep it explicitly non-required and post-merge. Observe at least 50 jobs or
+30 days. This is the initial production scope, not a merge gate.
 
 - [ ] **Step 5: Enable one terminal Buzz result**
 
@@ -1859,7 +1989,34 @@ Post only PASS/FAIL/INCONCLUSIVE with counts and the verified report URL.
 Retain the current workflow as manual rollback. Do not delete it during
 qualification.
 
-- [ ] **Step 7: Run final verification**
+- [ ] **Step 7: Qualify a separate required merge-queue gate**
+
+Do not start this promotion until Step 4's observation window is green,
+Cilicon is primary with the capacity formula satisfied under one-host
+quarantine, and immutable 365-day evidence storage is live. The static backend
+is prohibited for required checks.
+
+Add a default-branch-owned `merge_group` entrypoint that binds the candidate
+merge-group SHA to the exact Build artifact and dispatches the same trusted
+harness onto a freshly cloned ephemeral VM. It must:
+
+- publish the required Check on the merge-group SHA, never the already-merged
+  PR SHA;
+- run no workflow or harness code from the candidate artifact;
+- expose no long-lived repository/provider credential to the guest;
+- destroy or quarantine the VM before the Check becomes terminal;
+- treat PASS as the only merge-satisfying conclusion;
+- block on product FAIL, `FLAKY_PRODUCT`, INCONCLUSIVE, missing evidence, or
+  missing destruction attestation;
+- run non-required against merge groups for at least 20 candidates with zero
+  false PASS, duplicate publication, identity mismatch, or unclassified
+  outcome before branch-protection promotion.
+
+Record the required-check name and branch-protection/ruleset change in the
+readiness ledger. Until this step is complete, describe the service only as
+post-merge verification-and-detect, not a required merge gate.
+
+- [ ] **Step 8: Run final verification**
 
 nixmac:
 
@@ -1874,8 +2031,11 @@ node tests/e2e/computer-use/workflow-contract-self-test.mjs
 node tests/e2e/computer-use/centaur-workflow-contract-self-test.mjs
 node tests/e2e/computer-use/remote-host-lease-contract-self-test.mjs
 node tests/e2e/computer-use/cilicon-lifecycle-contract-self-test.mjs
+node tests/e2e/computer-use/merge-gate-contract-self-test.mjs
 actionlint .github/workflows/computer-use-e2e-centaur.yml
-actionlint .github/workflows/cilicon-lifecycle-attestation.yml
+actionlint .github/workflows/computer-use-e2e-merge-gate.yml
+actionlint \
+  /Users/farhankhalaf/Code/nixmac-e2e-attestations/.github/workflows/cilicon-lifecycle-attestation.yml
 ```
 
 Centaur overlay:
@@ -1889,7 +2049,7 @@ python -m unittest \
 
 Expected: all PASS.
 
-- [ ] **Step 8: Produce the final readiness ledger**
+- [ ] **Step 9: Produce the final readiness ledger**
 
 For every design requirement, record:
 

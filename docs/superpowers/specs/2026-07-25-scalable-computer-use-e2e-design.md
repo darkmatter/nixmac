@@ -196,8 +196,9 @@ the build fleet, with an E2E-specific layer containing:
 
 TCC grants are a release artifact, not an informal setup step. Each image build
 must test Accessibility and Screen Recording after first boot and after an aged
-boot. If grants cannot survive image cloning safely, a supported MDM/bootstrap
-mechanism becomes a prerequisite for pool promotion.
+boot. Grants belong to the pinned `CuaDriver.app` bundle identity, never a raw
+CLI executable. If grants cannot survive image cloning safely, a supported
+MDM/bootstrap mechanism becomes a prerequisite for pool promotion.
 
 No running warm VM is required initially. Cache the image on each host and
 measure cold and cached boot times. Add warm capacity only if latency data
@@ -214,6 +215,14 @@ collect(workflow_run_id, artifact_name) -> artifact ID + digest + archive
 verify(job_id, archive) -> canonical verdict + manifest
 attest(workflow_run_id, runner_name) -> lifecycle disposition
 ```
+
+GitHub artifact downloads return a one-minute signed `302` URL outside
+`api.github.com`. The narrow client follows only one validated HTTPS redirect
+to an allowlisted GitHub Actions artifact/blob host, strips API authorization
+before the redirected request, refreshes an expired URL once, and rejects all
+other redirects. Centaur promotion is blocked until its capability/egress
+layer can express that behavior or a scoped server-side GitHub integration
+proxies the download safely.
 
 The dedicated workflow accepts only a validated full SHA, logical job ID,
 attempt number, suite version, and backend policy. It checks out the harness
@@ -304,7 +313,7 @@ tests/e2e/computer-use/drivers/cua-driver.mjs
 
 The adapter targets the current CuaDriver CLI/daemon:
 
-- `serve --socket <run-socket>`
+- `open -n -g -a CuaDriver --args serve --socket <run-socket>`
 - `call check_permissions`
 - `call launch_app`
 - `call list_windows`
@@ -314,6 +323,11 @@ The adapter targets the current CuaDriver CLI/daemon:
 - `call set_recording`
 - `call get_recording_state`
 - `stop --socket <run-socket>`
+
+Directly spawning raw `cua-driver serve` outside `CuaDriver.app` is prohibited:
+upstream documents that mode as unsupported for stable macOS TCC attribution.
+Fixture metadata, the adapter, and the runner image bind the same pinned CLI
+version, app-bundle version/digest, and standalone app-owned launch mode.
 
 Element addresses use a new reviewed `cua-element-index` kind scoped to
 `(pid, window_id, snapshot)`. The adapter must refresh visible state before
@@ -400,8 +414,9 @@ Each attempt records:
 - CuaDriver daemon/TCC failure: retry once after health classification, then
   quarantine the image/host if repeated.
 - Provider/credential failure: do not report product failure.
-- Product failure: optionally confirm once on a fresh runner, then preserve the
-  failing verdict.
+- Product failure: confirm once on a fresh runner, but preserve the first
+  verified failure. FAIL then PASS is terminal FAIL/`FLAKY_PRODUCT`; FAIL then
+  FAIL is terminal FAIL/`CONFIRMED_PRODUCT_FAIL`.
 - Inconclusive evidence: retry once only when the missing proof is plausibly
   transient.
 - `LEASE_BUSY` after a bounded wait on a still-live foreign owner: record the
@@ -472,6 +487,12 @@ control plane downloads and verifies that immutable archive independently
 before publishing the result. The existing report publisher may copy the
 verified `index.html` tree to its reviewer-facing site, but that mutable site is
 not the canonical evidence object.
+
+Initial post-merge artifacts use an explicit 90-day retention window and every
+publication records the expiry timestamp. Before any required merge gate,
+verified archives are promoted to versioned immutable object storage with at
+least 365 days of retention. The mutable report site never becomes canonical
+after the Actions artifact expires.
 
 The required `computer-use-evidence.mp4` remains the current curated reel built
 only from policy-safe screenshots. Raw whole-run video is not required and must
@@ -585,6 +606,11 @@ This eliminates the current burst-loss behavior where selecting only the newest
 - The Cilicon host loop destroys the ephemeral runner after the attempt; failed
   deregistration or destruction attestation quarantines the host and fails
   infrastructure readiness.
+- Host destruction events go to a protected, secret-free
+  `darkmatter/nixmac-e2e-attestations` sink repository. The sink-only
+  `repository_dispatch` app is not installed on nixmac; a separate
+  Administration-read app checks nixmac runner inventory. No host credential
+  can write nixmac repository contents.
 
 ## Observability
 
@@ -687,9 +713,33 @@ Exit: 50 jobs or 30 days meet percentage SLOs.
 - Evaluate Orka only if the existing fleet cannot meet target isolation,
   recovery, or operational load.
 
+Size capacity from observed peak arrivals and p95 cycle time:
+
+```text
+dedicated_hosts >= max(
+  2,
+  ceil(peak_jobs_per_hour * p95_cycle_minutes / 60 * 1.5) + 1
+)
+```
+
+Promotion requires p95 start latency under 15 minutes with one host
+quarantined. The static MacinCloud lane remains transition/DR capacity and is
+never the horizontal scale target.
+
 Orka constraints must be modeled explicitly: Apple Silicon supports at most two
 running macOS VMs per physical node, and provider burst capacity is not
 reactive autoscaling.
+
+### Phase 5 — Optional required merge-queue gate
+
+The first production release remains post-merge and non-required. A later
+default-branch-owned `merge_group` entrypoint may become required only after
+the ephemeral pool, capacity headroom, one-host quarantine behavior,
+candidate-code isolation, and 365-day immutable evidence retention qualify. It
+runs only on fresh ephemeral VMs, reports on the merge-group SHA, and treats
+PASS as the only merge-satisfying conclusion; product FAIL,
+`FLAKY_PRODUCT`, INCONCLUSIVE, missing evidence, or missing destruction
+attestation all block.
 
 ## Rollback
 
