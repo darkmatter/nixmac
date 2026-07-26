@@ -5,6 +5,7 @@ export const REMOTE_MAC_CONCURRENCY_GROUP = "nixmac-macincloud-e2e-remote";
 const AUTOMATIC_CONTRACT_COMMANDS = [
   "node tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs",
   "node tests/e2e/computer-use/workflow-contract-self-test.mjs",
+  "node tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs",
 ];
 
 function normalizeStaticConcurrencyGroup(group) {

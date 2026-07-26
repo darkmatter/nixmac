@@ -1040,8 +1040,8 @@ assert.match(
 );
 assert.match(
   frontendMain,
-  /const bootstrap = async \(\) => \{[\s\S]*?const telemetry = await initTelemetry\(\)[\s\S]*?telemetry\.captureEvent\(\{[\s\S]*?name:\s*"app_launched"[\s\S]*?renderApp\(\s*telemetry\s*\)/,
-  "Frontend bootstrap must await the installed unified telemetry provider, record app launch, and pass it into renderApp",
+  /const bootstrap = async \(\) => \{[\s\S]*?await bootstrapWithTelemetry\(\{[\s\S]*?initTelemetry,[\s\S]*?getTelemetry,[\s\S]*?render:\s*renderApp,[\s\S]*?environment:\s*nixmacEnvironment,[\s\S]*?onTelemetryError:/,
+  "Frontend bootstrap must route telemetry initialization and app launch capture through the fail-open bootstrap boundary before rendering",
 );
 assert.doesNotMatch(
   frontendMain,
@@ -1050,8 +1050,8 @@ assert.doesNotMatch(
 );
 assert.match(
   frontendMain,
-  /catch\s*\(\s*error\s*\)\s*\{[\s\S]*?markBootStage\("react-render-fatal"\)[\s\S]*?getTelemetry\(\)\.captureError\([\s\S]*?name:\s*"render-fatal"[\s\S]*?root\.render\(<AppFatalFallback/,
-  "Frontend bootstrap must capture synchronous render-fatal errors through the installed telemetry provider before rendering the fatal fallback",
+  /catch\s*\(\s*error\s*\)\s*\{[\s\S]*?markBootStage\("react-render-fatal"\)[\s\S]*?captureBootstrapRenderError\(\{[\s\S]*?error,[\s\S]*?getTelemetry,[\s\S]*?root\.render\(<AppFatalFallback/,
+  "Frontend bootstrap must report synchronous render-fatal errors through the fail-open telemetry boundary before rendering the fatal fallback",
 );
 assert.match(
   frontendAppErrorBoundary,
@@ -1068,16 +1068,15 @@ assert.match(
   /import\s*\{\s*initTelemetry\s*\}\s*from\s*"@\/lib\/telemetry\/init"/,
   "Frontend main must consume initialization from the unified telemetry module",
 );
-assertOrder(
+assert.match(
   frontendMain,
-  "const telemetry = await initTelemetry();",
-  "renderApp(telemetry);",
-  "Frontend boot must await telemetry initialization before rendering so the error boundary has the active provider",
+  /import\s*\{[^}]*\bbootstrapWithTelemetry\b[^}]*\bcaptureBootstrapRenderError\b[^}]*\}\s*from\s*"@\/lib\/telemetry\/bootstrap"/,
+  "Frontend main must consume the fail-open telemetry bootstrap boundary",
 );
 assertOrder(
   frontendMain,
   'import("@/e2e/boot-harness")',
-  "renderApp(telemetry);",
+  "await bootstrapWithTelemetry({",
   "Frontend boot must queue the harness dynamic import before rendering so the heartbeat-stop listener runs in time for the App mount event",
 );
 assert.doesNotMatch(

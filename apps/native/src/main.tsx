@@ -1,6 +1,10 @@
 import { AppFatalFallback } from "@/components/widget/layout/AppFatalFallback";
 import { markBootStage } from "@/lib/boot-diagnostics";
 import { isE2eProfile, nixmacEnvironment } from "@/lib/env";
+import {
+  bootstrapWithTelemetry,
+  captureBootstrapRenderError,
+} from "@/lib/telemetry/bootstrap";
 import { initTelemetry } from "@/lib/telemetry/init";
 import { TelemetryContextProvider } from "@/lib/telemetry/context";
 import { getTelemetry } from "@/lib/telemetry/instance";
@@ -59,21 +63,24 @@ const renderApp = (telemetry: TelemetryProvider) => {
 };
 
 const bootstrap = async () => {
-  // In E2E_MODE, initTelemetry returns a noop provider synchronously.
-  const telemetry = await initTelemetry();
-  telemetry.captureEvent({
-    name: "app_launched",
-    props: {
-      environment: nixmacEnvironment,
-    },
-  });
-
   try {
-    renderApp(telemetry);
+    await bootstrapWithTelemetry({
+      initTelemetry,
+      getTelemetry,
+      render: renderApp,
+      environment: nixmacEnvironment,
+      onTelemetryError: (phase) => {
+        console.warn(`Telemetry ${phase} failed; continuing with app bootstrap.`);
+      },
+    });
   } catch (error) {
     markBootStage("react-render-fatal");
-    getTelemetry().captureError(error instanceof Error ? error : new Error(String(error)), {
-      name: "render-fatal",
+    captureBootstrapRenderError({
+      error,
+      getTelemetry,
+      onTelemetryError: () => {
+        console.warn("Telemetry render-error reporting failed; showing fatal fallback.");
+      },
     });
     root.render(<AppFatalFallback error={error instanceof Error ? error : null} />);
   }

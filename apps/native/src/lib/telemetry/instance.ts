@@ -4,7 +4,7 @@ import { noopProvider } from "./noop";
 /**
  * Module-level telemetry reference.
  *
- * Set once during bootstrap (main.tsx). This allows non-React code
+ * Set by initTelemetry during bootstrap. This allows non-React code
  * (hooks, viewmodel functions, event handlers) to call telemetry
  * without needing React context.
  *

@@ -44,7 +44,8 @@ function automaticWorkflowYaml({
   triggers = `  pull_request:
   merge_group:`,
   validationCommands = `          node tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs
-          node tests/e2e/computer-use/workflow-contract-self-test.mjs`,
+          node tests/e2e/computer-use/workflow-contract-self-test.mjs
+          node tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs`,
 } = {}) {
   return `
 name: Automatic validation
@@ -278,6 +279,22 @@ assert.throws(
     }),
   /drifted-wiring\.yaml job git-hooks step Run git hooks and Computer Use workflow contracts must run node tests\/e2e\/computer-use\/workflow-contract-self-test\.mjs/,
   "removing the real-workflow contract from automatic CI must fail",
+);
+
+assert.throws(
+  () =>
+    assertAutomaticConcurrencyValidationContract({
+      workflowName: "comment-only-peekaboo-wiring.yaml",
+      source: automaticWorkflowYaml({
+        validationCommands: `          node tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs
+          node tests/e2e/computer-use/workflow-contract-self-test.mjs
+          # node tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs`,
+      }),
+      jobId: "git-hooks",
+      stepName: "Run git hooks and Computer Use workflow contracts",
+    }),
+  /comment-only-peekaboo-wiring\.yaml job git-hooks step Run git hooks and Computer Use workflow contracts must run node tests\/e2e\/computer-use\/peekaboo-workflow-contract-self-test\.mjs/,
+  "a commented Peekaboo contract command must not satisfy the automatic CI wiring contract",
 );
 
 console.log("Computer Use workflow concurrency contract self-test passed.");

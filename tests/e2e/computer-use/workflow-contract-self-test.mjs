@@ -59,11 +59,6 @@ assertAutomaticConcurrencyValidationContract({
   jobId: "git-hooks",
   stepName: "Run git hooks and Computer Use workflow contracts",
 });
-assert.match(
-  buildWorkflow,
-  /node tests\/e2e\/computer-use\/peekaboo-workflow-contract-self-test\.mjs/,
-  "Automatic CI must run the legacy Peekaboo structural contract so it cannot silently rot between manual dispatches",
-);
 
 assert.match(remote, /\n    needs: prepare\n/, "remote job must depend on prepare");
 assert.match(
