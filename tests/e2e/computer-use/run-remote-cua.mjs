@@ -5872,6 +5872,14 @@ async function runSelfTest() {
     "new Computer Use proof-system files should fail closed until explicitly owned",
   );
   process.env.NIXMAC_E2E_PR_CHANGED_FILES =
+    "tests/e2e/computer-use/new-proof.test.ts";
+  const unownedProofCollisionPrFocus = buildPrFocus();
+  assert.deepEqual(
+    unownedProofCollisionPrFocus.unmatchedUserVisibleFiles,
+    ["tests/e2e/computer-use/new-proof.test.ts"],
+    "source-oriented test exclusions must not suppress Computer Use proof-system debt",
+  );
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES =
     ".github/workflows/computer-use-e2e.yml\ntests/e2e/computer-use/report.mjs";
   const workflowAndReportPrFocus = buildPrFocus();
   assert.equal(

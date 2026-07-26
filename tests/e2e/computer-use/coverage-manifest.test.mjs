@@ -102,6 +102,10 @@ export function coverageManifestSelfTest() {
     "apps/native/templates/new-visible-template/flake.nix",
     "tests/e2e/new-visible-flow.sh",
     "tests/e2e/computer-use/new-proof-signal.mjs",
+    "tests/e2e/computer-use/new-proof.test.ts",
+    "tests/e2e/computer-use/new-proof.test.tsx",
+    "tests/e2e/computer-use/__snapshots__/new-proof.json",
+    "apps/native/templates/new-template/components/ui/module.nix",
     ".github/workflows/new-visible-e2e.yml",
   ]) {
     assert.equal(
@@ -118,6 +122,28 @@ export function coverageManifestSelfTest() {
       focus.unmatchedUserVisibleFiles,
       [file],
       `${file} should fail closed as unmapped until it receives explicit ownership`,
+    );
+  }
+  for (const file of [
+    "apps/native/src/components/widget/new-proof.test.ts",
+    "apps/native/src/components/widget/new-proof.test.tsx",
+    "apps/native/src/components/widget/__snapshots__/new-proof.json",
+    "apps/native/src/components/ui/new-proof.tsx",
+  ]) {
+    assert.equal(
+      isCoverageCandidateFile(REAL_MANIFEST, file),
+      false,
+      `${file} should retain the intentional app-source exclusion`,
+    );
+    const focus = buildManifestPrFocus({
+      changedFiles: [file],
+      manifest: REAL_MANIFEST,
+      knownScenarioKey: isStableCoverageScenarioKey,
+    });
+    assert.deepEqual(
+      focus.userVisibleFiles,
+      [],
+      `${file} should remain outside PR/freshness behavior coverage`,
     );
   }
   assert.equal(

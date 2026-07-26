@@ -246,13 +246,6 @@ function buildPeekabooPrFocus(env = process.env, { loadManifest = loadCoverageMa
     changedFiles,
     manifest,
     knownScenarioKey: isStableCoverageScenarioKey,
-    specialScenarioKeysForFile(file) {
-      const scenarioKeys = [];
-      if (/^tests\/e2e\/|^\.github\/workflows\/peekaboo-e2e\.yml/.test(file)) {
-        scenarioKeys.push("visualProofQuality", "reportInspection");
-      }
-      return scenarioKeys;
-    },
     scenarioSuggestionForFile,
   });
 
@@ -3353,6 +3346,15 @@ async function runSelfTest() {
   assert(
     prFocus.scenarioKeys.includes("reportInspection"),
     "Peekaboo PR focus should map runner/report changes to report inspection",
+  );
+  const unownedProofCollisionFocus = buildPeekabooPrFocus({
+    GITHUB_EVENT_NAME: "pull_request",
+    NIXMAC_E2E_PR_CHANGED_FILES: "tests/e2e/computer-use/new-proof.test.ts",
+  });
+  assert.deepEqual(
+    unownedProofCollisionFocus.unmatchedUserVisibleFiles,
+    ["tests/e2e/computer-use/new-proof.test.ts"],
+    "new proof-system test files should remain PR-visible debt until explicitly owned",
   );
   assert(
     prFocus.matchedSurfaces.some(

@@ -22,14 +22,14 @@
     "^\\.github/workflows/.+e2e.*\\.ya?ml$"
   ],
   "candidateExcludes": [
-    "\\.stories\\.tsx$",
-    "\\.test\\.(?:ts|tsx)$",
-    "\\.d\\.ts$",
-    "__snapshots__/",
-    "components/ui/",
-    "components/styles/",
-    "components/kibo-ui/",
-    "apps/native/src/components/widget/layout/debug-overlay\\.tsx$"
+    "^apps/native/src/.*\\.stories\\.tsx$",
+    "^apps/native/src/.*\\.test\\.(?:ts|tsx)$",
+    "^apps/native/src/.*\\.d\\.ts$",
+    "^apps/native/src/.*/__snapshots__/",
+    "^apps/native/src/components/ui/",
+    "^apps/native/src/components/styles/",
+    "^apps/native/src/components/kibo-ui/",
+    "^apps/native/src/components/widget/layout/debug-overlay\\.tsx$"
   ],
   "surfaces": [
     {
