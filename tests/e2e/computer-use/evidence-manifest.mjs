@@ -1,13 +1,21 @@
 #!/usr/bin/env node
-import { createHash } from "node:crypto";
-import { constants } from "node:fs";
-import { lstat, open, readFile, readdir, realpath, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { createHash, createHmac } from "node:crypto";
+import { existsSync } from "node:fs";
+import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { withEvidenceTreeMutation } from "./evidence-guard.mjs";
 import { assertCuratedSafeFrameVideoMetadata, safeFrameVideoPath } from "./report.mjs";
 
 const MANIFEST_PATH = "manifest.json";
+const MAX_EVIDENCE_FILES = 512;
+const MAX_EVIDENCE_ENTRIES = 1024;
+const MAX_EVIDENCE_FILE_BYTES = 256 * 1024 * 1024;
+const MAX_EVIDENCE_TOTAL_BYTES = 1024 * 1024 * 1024;
+const EVIDENCE_SCAN_DEADLINE_SECONDS = 180;
+const EVIDENCE_SCAN_MAX_OUTPUT_BYTES = 16 * 1024 * 1024;
 const REQUIRED_FIXED_PATHS = Object.freeze([
   "artifact/source.json",
   "attempt.json",
@@ -67,31 +75,96 @@ function validatePathList(paths) {
   });
 }
 
-async function assertCanonicalRunRoot(runDir) {
+function fixedExecutable(candidates, label, configuredPath = "") {
+  if (configuredPath) {
+    if (
+      !path.isAbsolute(configuredPath) ||
+      path.normalize(configuredPath) !== configuredPath ||
+      !existsSync(configuredPath)
+    ) {
+      throw new Error(`${label} configured path must be an existing absolute normalized path`);
+    }
+    return configuredPath;
+  }
+  const executable = candidates.find((candidate) => existsSync(candidate));
+  if (!executable) {
+    throw new Error(`${label} is required for bounded evidence validation`);
+  }
+  return executable;
+}
+
+function scanEvidenceTree(runDir, mode) {
   requireNonEmpty(runDir, "evidence run root");
   if (!path.isAbsolute(runDir) || path.normalize(runDir) !== runDir) {
     throw new Error("evidence run root must be an absolute normalized path");
   }
-  const stats = await lstat(runDir);
-  if (stats.isSymbolicLink() || !stats.isDirectory()) {
-    throw new Error("evidence run root must be a direct directory, not a symlink");
+  const python = fixedExecutable(
+    ["/usr/bin/python3", "/opt/homebrew/bin/python3", "/usr/local/bin/python3"],
+    "python3",
+    process.env.NIXMAC_E2E_PYTHON_PATH || "",
+  );
+  const ffmpeg = fixedExecutable(
+    ["/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/usr/bin/ffmpeg"],
+    "ffmpeg",
+    process.env.NIXMAC_E2E_FFMPEG_PATH || "",
+  );
+  const scannerPath = fileURLToPath(new URL("./evidence-scan.py", import.meta.url));
+  const result = spawnSync(
+    python,
+    [
+      scannerPath,
+      "--run-dir",
+      runDir,
+      "--mode",
+      mode,
+      "--ffmpeg",
+      ffmpeg,
+      "--max-files",
+      String(MAX_EVIDENCE_FILES),
+      "--max-entries",
+      String(MAX_EVIDENCE_ENTRIES),
+      "--max-file-bytes",
+      String(MAX_EVIDENCE_FILE_BYTES),
+      "--max-total-bytes",
+      String(MAX_EVIDENCE_TOTAL_BYTES),
+      "--deadline-seconds",
+      String(EVIDENCE_SCAN_DEADLINE_SECONDS),
+    ],
+    {
+      encoding: "utf8",
+      timeout: (EVIDENCE_SCAN_DEADLINE_SECONDS + 5) * 1000,
+      maxBuffer: EVIDENCE_SCAN_MAX_OUTPUT_BYTES,
+    },
+  );
+  if (result.status !== 0) {
+    const detail = (result.stderr || result.error?.message || "unknown scanner failure")
+      .trim()
+      .slice(0, 8192);
+    throw new Error(`bounded descriptor-relative evidence scan failed: ${detail}`);
   }
-  const canonical = await realpath(runDir);
-  if (canonical !== runDir) {
-    throw new Error(
-      `evidence run root and every ancestor must be canonical without symlinks: ${runDir}`,
-    );
+  let scan;
+  try {
+    scan = JSON.parse(result.stdout);
+  } catch (error) {
+    throw new Error("bounded evidence scanner returned invalid JSON", { cause: error });
   }
-  return runDir;
+  if (
+    !Array.isArray(scan.files) ||
+    !scan.captured ||
+    typeof scan.captured !== "object" ||
+    scan.files.length !== scan.fileCount ||
+    !Number.isSafeInteger(scan.totalBytes) ||
+    scan.totalBytes <= 0
+  ) {
+    throw new Error("bounded evidence scanner returned an invalid result");
+  }
+  return scan;
 }
 
-async function readRequiredJson(runDir, relativePath) {
-  const absolutePath = path.join(runDir, relativePath);
-  let source;
-  try {
-    source = await readFile(absolutePath, "utf8");
-  } catch (error) {
-    throw new Error(`required evidence file is missing: ${relativePath}`, { cause: error });
+function readRequiredJson(scan, relativePath) {
+  const source = scan.captured[relativePath];
+  if (typeof source !== "string") {
+    throw new Error(`required evidence file is missing: ${relativePath}`);
   }
   if (source.trim() === "") throw new Error(`required evidence file is empty: ${relativePath}`);
   try {
@@ -99,92 +172,6 @@ async function readRequiredJson(runDir, relativePath) {
   } catch (error) {
     throw new Error(`required evidence file is invalid JSON: ${relativePath}`, { cause: error });
   }
-}
-
-async function listEvidenceFiles(runDir) {
-  const files = [];
-  async function walk(directory, relativeDirectory = "") {
-    if ((await realpath(directory)) !== directory) {
-      throw new Error(`evidence directory must be canonical without symlinks: ${directory}`);
-    }
-    const entries = await readdir(directory, { withFileTypes: true });
-    entries.sort((left, right) => left.name.localeCompare(right.name, "en"));
-    for (const entry of entries) {
-      const relativePath = relativeDirectory ? `${relativeDirectory}/${entry.name}` : entry.name;
-      validateRelativePath(relativePath);
-      if (relativePath === MANIFEST_PATH) continue;
-      const absolutePath = path.join(runDir, ...relativePath.split("/"));
-      const stats = await lstat(absolutePath);
-      if (stats.isSymbolicLink()) {
-        throw new Error(`evidence tree must not contain symlink: ${relativePath}`);
-      }
-      if (stats.isDirectory()) {
-        await walk(absolutePath, relativePath);
-      } else if (stats.isFile()) {
-        files.push(relativePath);
-      } else {
-        throw new Error(`evidence tree contains unsupported filesystem entry: ${relativePath}`);
-      }
-    }
-  }
-  await walk(runDir);
-  return files.sort();
-}
-
-async function fileRecord(runDir, relativePath) {
-  validateRelativePath(relativePath);
-  const absolutePath = path.join(runDir, ...relativePath.split("/"));
-  let stats;
-  try {
-    stats = await lstat(absolutePath);
-  } catch (error) {
-    throw new Error(`required evidence file is missing: ${relativePath}`, { cause: error });
-  }
-  if (stats.isSymbolicLink())
-    throw new Error(`required evidence file is a symlink: ${relativePath}`);
-  if (!stats.isFile()) throw new Error(`required evidence path is not a file: ${relativePath}`);
-  if (stats.size <= 0) throw new Error(`required evidence file is empty: ${relativePath}`);
-  let handle;
-  try {
-    handle = await open(absolutePath, constants.O_RDONLY | constants.O_NOFOLLOW);
-  } catch (error) {
-    throw new Error(
-      `required evidence file could not be opened without following symlinks: ${relativePath}`,
-      {
-        cause: error,
-      },
-    );
-  }
-  let bytes;
-  let openedStats;
-  try {
-    openedStats = await handle.stat();
-    if (
-      !openedStats.isFile() ||
-      openedStats.dev !== stats.dev ||
-      openedStats.ino !== stats.ino ||
-      openedStats.size !== stats.size
-    ) {
-      throw new Error(`required evidence file changed while opening: ${relativePath}`);
-    }
-    bytes = await handle.readFile();
-  } finally {
-    await handle.close();
-  }
-  const finalStats = await lstat(absolutePath);
-  if (
-    finalStats.isSymbolicLink() ||
-    finalStats.dev !== openedStats.dev ||
-    finalStats.ino !== openedStats.ino ||
-    finalStats.size !== bytes.length
-  ) {
-    throw new Error(`required evidence file changed while hashing: ${relativePath}`);
-  }
-  return {
-    path: relativePath,
-    sha256: createHash("sha256").update(bytes).digest("hex"),
-    bytes: bytes.length,
-  };
 }
 
 function requireVersionOne(value, label) {
@@ -310,7 +297,18 @@ function requireFinalCleanup(cleanup, { identity, artifact }) {
   }
 }
 
-function requireReleasedLease(hostLease, { identity, attempt }) {
+function requireStateCleanupMatches(state, cleanup) {
+  const expectedNote =
+    cleanup.ownershipMode === "controller-static"
+      ? "Controller cleanup attestation: owner-matched host release is clean; exact owned paths are absent and owned processes are terminated."
+      : "Local cleanup attestation: exact run-owned paths are absent and owned processes are terminated.";
+  const expected = { ...cleanup, note: expectedNote };
+  if (JSON.stringify(state.cleanup) !== JSON.stringify(expected)) {
+    throw new Error("state cleanup does not match the trusted final cleanup sidecar");
+  }
+}
+
+function requireReleasedLease(hostLease, { identity, attempt, trustedOwnerToken }) {
   requireVersionOne(hostLease, "host lease sidecar");
   const acquiredAt = Date.parse(hostLease.acquiredAt);
   const releasedAt = Date.parse(hostLease.releasedAt);
@@ -337,11 +335,31 @@ function requireReleasedLease(hostLease, { identity, attempt }) {
   ) {
     throw new Error("static host lease does not prove owner-matched release");
   }
+  requireNonEmpty(trustedOwnerToken, "trusted owner token for authenticated controller evidence");
+  const trustedOwnerTokenHash = createHash("sha256").update(trustedOwnerToken).digest("hex");
+  if (acquiredOwnerTokenHash !== trustedOwnerTokenHash) {
+    throw new Error("static host lease owner hash does not match the trusted owner token");
+  }
 }
 
-function requireControllerCleanupProbe(cleanupProbe, { cleanup, identity, attempt }) {
+function requireControllerCleanupProbe(
+  cleanupProbe,
+  { cleanup, identity, attempt, trustedOwnerToken },
+) {
   requireVersionOne(cleanupProbe, "controller cleanup probe sidecar");
   const cleanupDigest = createHash("sha256").update(JSON.stringify(cleanup)).digest("hex");
+  requireNonEmpty(trustedOwnerToken, "trusted owner token for authenticated controller evidence");
+  const binding = JSON.stringify({
+    version: 1,
+    repo: identity.repo,
+    jobId: identity.jobId,
+    attempt: attempt.number,
+    host: identity.runnerName,
+    cleanupDigest,
+  });
+  const expectedOwnerTokenHmac = createHmac("sha256", trustedOwnerToken)
+    .update(binding)
+    .digest("hex");
   if (
     cleanupProbe.generatedBy !== "controller" ||
     cleanupProbe.repo !== identity.repo ||
@@ -349,10 +367,11 @@ function requireControllerCleanupProbe(cleanupProbe, { cleanup, identity, attemp
     cleanupProbe.attempt !== attempt.number ||
     cleanupProbe.host !== identity.runnerName ||
     cleanupProbe.cleanupDigest !== cleanupDigest ||
-    !/^[0-9a-f]{64}$/.test(cleanupProbe.ownerTokenHmac || "") ||
-    cleanupProbe.ownerTokenHmac === "0".repeat(64)
+    cleanupProbe.ownerTokenHmac !== expectedOwnerTokenHmac
   ) {
-    throw new Error("controller cleanup probe sidecar is not bound to cleanup and run identity");
+    throw new Error(
+      "controller cleanup probe sidecar is not authenticated by the trusted owner token",
+    );
   }
 }
 
@@ -554,19 +573,19 @@ function validateSafeFrameEvidence(state, paths, attempt) {
   }
 }
 
-async function readManifestInputs(runDir, paths) {
+async function readManifestInputs(scan, paths, { trustedOwnerToken = "" } = {}) {
   for (const requiredPath of REQUIRED_FIXED_PATHS) {
     if (!paths.includes(requiredPath)) {
       throw new Error(`required evidence file is missing from manifest input: ${requiredPath}`);
     }
   }
   const [identity, permissions, artifact, attempt, cleanup, state] = await Promise.all([
-    readRequiredJson(runDir, "runner/identity.json"),
-    readRequiredJson(runDir, "runner/permissions.json"),
-    readRequiredJson(runDir, "artifact/source.json"),
-    readRequiredJson(runDir, "attempt.json"),
-    readRequiredJson(runDir, "runner/cleanup.json"),
-    readRequiredJson(runDir, "state.json"),
+    readRequiredJson(scan, "runner/identity.json"),
+    readRequiredJson(scan, "runner/permissions.json"),
+    readRequiredJson(scan, "artifact/source.json"),
+    readRequiredJson(scan, "attempt.json"),
+    readRequiredJson(scan, "runner/cleanup.json"),
+    readRequiredJson(scan, "state.json"),
   ]);
   for (const [label, sidecar] of [
     ["runner identity", identity],
@@ -689,7 +708,15 @@ async function readManifestInputs(runDir, paths) {
   if (state.verdict !== attempt.verdict) {
     throw new Error("state verdict does not match finalized attempt verdict");
   }
+  if (attempt.verdict === "pass" && state.runFailure !== null && state.runFailure !== undefined) {
+    throw new Error("PASS is forbidden whenever state.runFailure exists");
+  }
   requireFinalCleanup(cleanup, { identity, artifact });
+  requireStateCleanupMatches(state, cleanup);
+  const report = scan.captured["index.html"];
+  if (!report.includes('id="final-cleanup-attestation"')) {
+    throw new Error("human report is missing the final cleanup attestation");
+  }
   if (identity.captureMode !== "safe-frame") {
     throw new Error("CuaDriver captureMode must be safe-frame");
   }
@@ -702,14 +729,16 @@ async function readManifestInputs(runDir, paths) {
     ) {
       throw new Error("static_ssh requires controller-finalize and runner/host-lease.json");
     }
-    requireReleasedLease(await readRequiredJson(runDir, "runner/host-lease.json"), {
+    requireReleasedLease(await readRequiredJson(scan, "runner/host-lease.json"), {
       identity,
       attempt,
+      trustedOwnerToken,
     });
-    requireControllerCleanupProbe(await readRequiredJson(runDir, "runner/cleanup-probe.json"), {
+    requireControllerCleanupProbe(await readRequiredJson(scan, "runner/cleanup-probe.json"), {
       cleanup,
       identity,
       attempt,
+      trustedOwnerToken,
     });
   } else {
     if (identity.finalizationMode !== "local-finalize") {
@@ -722,11 +751,18 @@ async function readManifestInputs(runDir, paths) {
   return { artifact, attempt, identity, state };
 }
 
-async function expectedManifest(runDir, paths) {
+async function expectedManifest(scan, options = {}) {
+  const paths = scan.files.map((record) => record.path);
   const stablePaths = validatePathList(paths).sort();
-  const { artifact, attempt, identity, state } = await readManifestInputs(runDir, stablePaths);
-  const files = [];
-  for (const relativePath of stablePaths) files.push(await fileRecord(runDir, relativePath));
+  const { artifact, attempt, identity, state } = await readManifestInputs(
+    scan,
+    stablePaths,
+    options,
+  );
+  if (JSON.stringify(paths) !== JSON.stringify(stablePaths)) {
+    throw new Error("descriptor-relative scanner returned unstable evidence ordering");
+  }
+  const files = scan.files;
   return {
     version: 1,
     job: {
@@ -763,47 +799,59 @@ async function expectedManifest(runDir, paths) {
   };
 }
 
-export async function createEvidenceManifest(runDir, options = {}) {
-  if (!options || typeof options !== "object" || Object.keys(options).length !== 0) {
+function validateManifestOptions(options) {
+  if (
+    !options ||
+    typeof options !== "object" ||
+    Object.keys(options).some((key) => key !== "trustedOwnerToken")
+  ) {
     throw new Error(
-      "createEvidenceManifest accepts no path-selection options; it always binds the full evidence tree",
+      "manifest operations accept only trustedOwnerToken; path-selection options are forbidden",
     );
   }
-  const absoluteRunDir = await assertCanonicalRunRoot(runDir);
-  const paths = await listEvidenceFiles(absoluteRunDir);
-  for (const relativePath of paths) await fileRecord(absoluteRunDir, relativePath);
-  const manifestPath = path.join(absoluteRunDir, MANIFEST_PATH);
-  try {
-    await lstat(manifestPath);
-    throw new Error("manifest.json already exists; verified evidence is immutable");
-  } catch (error) {
-    if (error?.code !== "ENOENT") throw error;
+  if (
+    Object.hasOwn(options, "trustedOwnerToken") &&
+    (typeof options.trustedOwnerToken !== "string" || options.trustedOwnerToken.trim() === "")
+  ) {
+    throw new Error("trustedOwnerToken must be a non-empty string when provided");
   }
-  const manifest = await expectedManifest(absoluteRunDir, paths);
-  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, {
-    encoding: "utf8",
-    flag: "wx",
-    mode: 0o600,
-  });
-  return manifest;
+  return { trustedOwnerToken: options.trustedOwnerToken || "" };
 }
 
-export async function verifyEvidenceManifest(runDir) {
-  const absoluteRunDir = await assertCanonicalRunRoot(runDir);
-  const manifest = requireVersionOne(
-    await readRequiredJson(absoluteRunDir, MANIFEST_PATH),
-    "evidence manifest",
-  );
+export async function createEvidenceManifest(runDir, options = {}) {
+  const validatedOptions = validateManifestOptions(options);
+  return withEvidenceTreeMutation(runDir, async () => {
+    const scan = scanEvidenceTree(runDir, "create");
+    const manifest = await expectedManifest(scan, validatedOptions);
+    await writeFile(path.join(runDir, MANIFEST_PATH), `${JSON.stringify(manifest, null, 2)}\n`, {
+      encoding: "utf8",
+      flag: "wx",
+      mode: 0o600,
+    });
+    return manifest;
+  });
+}
+
+export async function verifyEvidenceManifest(runDir, options = {}) {
+  const validatedOptions = validateManifestOptions(options);
+  const scan = scanEvidenceTree(runDir, "verify");
+  let manifestSource;
+  try {
+    manifestSource = JSON.parse(scan.manifest);
+  } catch (error) {
+    throw new Error("required evidence file is invalid JSON: manifest.json", { cause: error });
+  }
+  const manifest = requireVersionOne(manifestSource, "evidence manifest");
   if (!Array.isArray(manifest.files)) throw new Error("evidence manifest files must be an array");
   const manifestPaths = validatePathList(manifest.files.map((entry) => entry?.path));
-  const treePaths = await listEvidenceFiles(absoluteRunDir);
+  const treePaths = scan.files.map((entry) => entry.path);
   if (JSON.stringify(manifestPaths) !== JSON.stringify([...manifestPaths].sort())) {
     throw new Error("evidence manifest file paths are not in stable lexical order");
   }
   if (JSON.stringify(manifestPaths) !== JSON.stringify(treePaths)) {
     throw new Error("evidence tree file set does not match immutable manifest");
   }
-  const expected = await expectedManifest(absoluteRunDir, treePaths);
+  const expected = await expectedManifest(scan, validatedOptions);
   for (let index = 0; index < expected.files.length; index += 1) {
     const actualRecord = manifest.files[index];
     const expectedRecord = expected.files[index];
@@ -837,8 +885,16 @@ async function main() {
   }
   const result =
     command === "create"
-      ? await createEvidenceManifest(runDir)
-      : await verifyEvidenceManifest(runDir);
+      ? await createEvidenceManifest(runDir, {
+          ...(process.env.NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN
+            ? { trustedOwnerToken: process.env.NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN }
+            : {}),
+        })
+      : await verifyEvidenceManifest(runDir, {
+          ...(process.env.NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN
+            ? { trustedOwnerToken: process.env.NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN }
+            : {}),
+        });
   console.log(
     JSON.stringify({
       manifest: path.join(path.resolve(runDir), MANIFEST_PATH),

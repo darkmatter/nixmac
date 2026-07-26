@@ -1,5 +1,5 @@
 import path from "node:path";
-import { assertEvidenceTreeMutable } from "./evidence-guard.mjs";
+import { withEvidenceTreeMutation } from "./evidence-guard.mjs";
 import process from "node:process";
 import { existsSync, readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
@@ -226,6 +226,12 @@ export function verdictFor(state) {
     .map((item) => item.status)
     .filter((status) => status !== "not_required");
   if (statuses.includes("fail")) return "fail";
+  if (state.runFailure) {
+    return state.runFailure.infrastructureBlocker === true ||
+      state.runFailure.category === "infrastructure"
+      ? "inconclusive"
+      : "fail";
+  }
   if (statuses.includes("inconclusive")) return "inconclusive";
   return "pass";
 }
@@ -236,22 +242,24 @@ export function shouldFailProcessForVerdict(state, env = process.env) {
 }
 
 export async function saveState(state) {
-  await assertEvidenceTreeMutable(state.runDir);
-  await writeFile(
-    path.join(state.runDir, "state.json"),
-    `${JSON.stringify(state, null, 2)}\n`,
-    "utf8",
-  );
+  await withEvidenceTreeMutation(state.runDir, async () => {
+    await writeFile(
+      path.join(state.runDir, "state.json"),
+      `${JSON.stringify(state, null, 2)}\n`,
+      "utf8",
+    );
+  });
 }
 
 export async function addEvent(state, type, detail = {}) {
-  await assertEvidenceTreeMutable(state.runDir);
-  state.events.push({ ts: new Date().toISOString(), type, ...detail });
-  await writeFile(
-    path.join(state.runDir, "events.json"),
-    `${JSON.stringify(state.events, null, 2)}\n`,
-    "utf8",
-  );
+  await withEvidenceTreeMutation(state.runDir, async () => {
+    state.events.push({ ts: new Date().toISOString(), type, ...detail });
+    await writeFile(
+      path.join(state.runDir, "events.json"),
+      `${JSON.stringify(state.events, null, 2)}\n`,
+      "utf8",
+    );
+  });
 }
 
 export function addTimingPhase(state, phase) {

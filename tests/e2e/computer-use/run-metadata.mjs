@@ -5,7 +5,7 @@ import { lstat, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { assertEvidenceTreeMutable } from "./evidence-guard.mjs";
+import { assertEvidenceTreeMutable, withEvidenceTreeMutation } from "./evidence-guard.mjs";
 
 const PREFLIGHT_FIELDS = Object.freeze([
   "jobId",
@@ -204,14 +204,25 @@ function validatePreflightInput(input) {
   return Object.freeze({ ...input });
 }
 
-async function writeJsonAtomic(filePath, value) {
-  await mkdir(path.dirname(filePath), { recursive: true, mode: 0o700 });
-  const temporaryPath = `${filePath}.tmp-${process.pid}-${Date.now()}`;
-  await writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, {
-    encoding: "utf8",
-    mode: 0o600,
+async function writeJsonAtomic(runDir, filePath, value) {
+  await withEvidenceTreeMutation(runDir, async () => {
+    await mkdir(path.dirname(filePath), { recursive: true, mode: 0o700 });
+    const temporaryPath = `${filePath}.tmp-${process.pid}-${Date.now()}`;
+    await writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, {
+      encoding: "utf8",
+      mode: 0o600,
+    });
+    await rename(temporaryPath, filePath);
   });
-  await rename(temporaryPath, filePath);
+}
+
+async function writeTextAtomic(runDir, filePath, value) {
+  await withEvidenceTreeMutation(runDir, async () => {
+    await mkdir(path.dirname(filePath), { recursive: true, mode: 0o700 });
+    const temporaryPath = `${filePath}.tmp-${process.pid}-${Date.now()}`;
+    await writeFile(temporaryPath, value, { encoding: "utf8", mode: 0o600 });
+    await rename(temporaryPath, filePath);
+  });
 }
 
 async function readJson(runDir, relativePath) {
@@ -501,7 +512,7 @@ export async function writeRunProvisioning(runDir, rawInput) {
   await assertPreflightSidecarsAbsent(runDir);
   const sidecars = preflightSidecars(input, { permissionsStatus: "pending" });
   for (const [relativePath, value] of Object.entries(sidecars)) {
-    await writeJsonAtomic(path.join(runDir, relativePath), value);
+    await writeJsonAtomic(runDir, path.join(runDir, relativePath), value);
   }
   return sidecars;
 }
@@ -556,8 +567,8 @@ export async function recordRunPermissions(
       mergePreflightSidecars(identity, nextPermissions, artifact, nextAttempt),
     );
   }
-  await writeJsonAtomic(path.join(runDir, "runner", "permissions.json"), nextPermissions);
-  await writeJsonAtomic(path.join(runDir, "attempt.json"), nextAttempt);
+  await writeJsonAtomic(runDir, path.join(runDir, "runner", "permissions.json"), nextPermissions);
+  await writeJsonAtomic(runDir, path.join(runDir, "attempt.json"), nextAttempt);
   return Object.freeze({ permissions: nextPermissions, attempt: nextAttempt });
 }
 
@@ -573,7 +584,7 @@ export async function transitionRunAttempt(runDir, state, { at = new Date().toIS
     ...attempt,
     lifecycle: transitionAttemptLifecycle(attempt.lifecycle, [state], at),
   };
-  await writeJsonAtomic(path.join(runDir, "attempt.json"), next);
+  await writeJsonAtomic(runDir, path.join(runDir, "attempt.json"), next);
   return Object.freeze(next);
 }
 
@@ -627,7 +638,7 @@ function mergePreflightSidecars(identity, permissions, artifact, attempt) {
   };
 }
 
-export async function assertRunPreflight(
+async function readAndValidateRunIdentity(
   runDir,
   {
     computeAppBundleDigest = async (appBundlePath) => {
@@ -666,6 +677,32 @@ export async function assertRunPreflight(
   if (attempt.finalizationMode !== identity.finalizationMode) {
     throw new Error("attempt finalizationMode does not match identity");
   }
+  const actualBundleDigest = await computeAppBundleDigest(input.appBundlePath);
+  if (actualBundleDigest !== input.appBundleDigest) {
+    throw new Error(
+      `app bundle digest mismatch: expected ${input.appBundleDigest}, got ${actualBundleDigest}`,
+    );
+  }
+  return { identity, permissions, artifact, attempt, input };
+}
+
+function validatedIdentityResult({ identity, permissions, artifact, attempt, input }) {
+  return Object.freeze({
+    identity,
+    permissions,
+    artifact,
+    attempt,
+    input,
+    app: Object.freeze({
+      appBundlePath: input.appBundlePath,
+      appBundleDigest: input.appBundleDigest,
+    }),
+  });
+}
+
+export async function assertRunPreflight(runDir, options = {}) {
+  const result = await readAndValidateRunIdentity(runDir, options);
+  const { attempt, input, permissions } = result;
   if (attempt.status !== "preflight" || attempt.finalized !== false || attempt.verdict !== null) {
     throw new Error("attempt sidecar must be in unfinalized preflight state before UI");
   }
@@ -686,23 +723,42 @@ export async function assertRunPreflight(
   ) {
     throw new Error("attempt sidecar must contain the complete preflight lifecycle identity");
   }
-  const actualBundleDigest = await computeAppBundleDigest(input.appBundlePath);
-  if (actualBundleDigest !== input.appBundleDigest) {
+  return validatedIdentityResult(result);
+}
+
+export async function assertRunPostRunIdentity(runDir, options = {}) {
+  const result = await readAndValidateRunIdentity(runDir, options);
+  const { attempt, input, permissions } = result;
+  if (
+    attempt.status !== "preflight" ||
+    attempt.finalized !== false ||
+    attempt.verdict !== null ||
+    attempt.endedAt !== null ||
+    attempt.failureClass !== null ||
+    JSON.stringify(attempt.capture) !==
+      JSON.stringify({ status: "not_started", uiStarted: false, reason: "" }) ||
+    attempt.startedAt !== input.startedAt ||
+    attempt.evidencePrefix !== input.evidencePrefix
+  ) {
+    throw new Error("post-run identity must remain unfinalized before evidence finalization");
+  }
+  const lifecycle = validateAttemptLifecycle(attempt.lifecycle);
+  const states = lifecycle.history.map((transition) => transition.state);
+  const allowedStates = [
+    ["PROVISIONING", "READY"],
+    ["PROVISIONING", "READY", "RUNNING"],
+    ["PROVISIONING", "READY", "RUNNING", "UPLOADING"],
+  ];
+  if (
+    !allowedStates.some((allowed) => JSON.stringify(allowed) === JSON.stringify(states)) ||
+    lifecycle.history[0]?.at !== input.startedAt ||
+    lifecycle.history[1]?.at !== permissions.probedAt
+  ) {
     throw new Error(
-      `app bundle digest mismatch: expected ${input.appBundleDigest}, got ${actualBundleDigest}`,
+      "post-run identity lifecycle must be the exact READY, RUNNING, or UPLOADING progression",
     );
   }
-  return Object.freeze({
-    identity,
-    permissions,
-    artifact,
-    attempt,
-    input,
-    app: Object.freeze({
-      appBundlePath: input.appBundlePath,
-      appBundleDigest: input.appBundleDigest,
-    }),
-  });
+  return validatedIdentityResult(result);
 }
 
 function validateVerdict(value) {
@@ -979,8 +1035,29 @@ function validateHostLease(hostLease, { identity, attempt, trustedOwnerToken }) 
   if (!hostLease || typeof hostLease !== "object" || Array.isArray(hostLease)) {
     throw new Error("host lease must be an object");
   }
-  if (Object.keys(hostLease).some((field) => /raw.*token|ownerToken$/i.test(field))) {
-    throw new Error("raw owner token must not be stored in host lease evidence");
+  const allowedFields = new Set([
+    "version",
+    "acquired",
+    "released",
+    "repo",
+    "jobId",
+    "attempt",
+    "host",
+    "acquiredOwnerTokenHash",
+    "releasedOwnerTokenHash",
+    "acquiredAt",
+    "releasedAt",
+    "lastHeartbeatAt",
+    "waitReason",
+    "quarantineReason",
+  ]);
+  for (const field of Object.keys(hostLease)) {
+    if (allowedFields.has(field)) continue;
+    const normalizedField = field.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (normalizedField.includes("token")) {
+      throw new Error("raw owner token must not be stored in host lease evidence");
+    }
+    throw new Error(`host lease contains unexpected field: ${field}`);
   }
   if (hostLease.acquired !== true || hostLease.released !== true) {
     throw new Error("static host lease must explicitly prove acquired and released");
@@ -1209,6 +1286,73 @@ function resolveFinalCapture(attempt, capture) {
   );
 }
 
+function cleanupStateForReport(cleanup) {
+  const controllerOwned = cleanup.ownershipMode === "controller-static";
+  return {
+    ...structuredClone(cleanup),
+    note: controllerOwned
+      ? "Controller cleanup attestation: owner-matched host release is clean; exact owned paths are absent and owned processes are terminated."
+      : "Local cleanup attestation: exact run-owned paths are absent and owned processes are terminated.",
+  };
+}
+
+function escapeReportText(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+async function writeFinalCleanupArtifacts(runDir, cleanup) {
+  const state = await readJson(runDir, "state.json");
+  const previousCleanupNote = typeof state.cleanup?.note === "string" ? state.cleanup.note : "";
+  state.cleanup = cleanupStateForReport(cleanup);
+  await writeJsonAtomic(runDir, path.join(runDir, "state.json"), state);
+
+  const reportPath = path.join(runDir, "index.html");
+  const report = await readFile(reportPath, "utf8");
+  const marker = '<section id="final-cleanup-attestation"';
+  if (report.includes(marker)) {
+    throw new Error("final cleanup report attestation already exists");
+  }
+  const heading =
+    cleanup.ownershipMode === "controller-static"
+      ? "Controller cleanup attestation"
+      : "Local cleanup attestation";
+  const attestation = `<section id="final-cleanup-attestation" class="panel"><h2>${heading}</h2><p>${escapeReportText(state.cleanup.note)}</p></section>`;
+  let updatedReport = previousCleanupNote
+    ? report.replaceAll(escapeReportText(previousCleanupNote), escapeReportText(state.cleanup.note))
+    : report;
+  const cleanupNoteIndex = updatedReport.indexOf(escapeReportText(state.cleanup.note));
+  const signalStart =
+    cleanupNoteIndex === -1
+      ? -1
+      : updatedReport.lastIndexOf('<div class="signal signal-', cleanupNoteIndex);
+  const signalEnd = signalStart === -1 ? -1 : updatedReport.indexOf("</div>", cleanupNoteIndex);
+  if (
+    signalStart !== -1 &&
+    signalEnd !== -1 &&
+    updatedReport.slice(signalStart, signalEnd).includes("<strong>Remote restore</strong>")
+  ) {
+    const replacement = `<div class="signal signal-pass"><span class="verdict pass">pass</span><strong>Remote restore</strong><small>${escapeReportText(state.cleanup.note)}</small></div>`;
+    updatedReport =
+      updatedReport.slice(0, signalStart) +
+      replacement +
+      updatedReport.slice(signalEnd + "</div>".length);
+  }
+  const insertionPoint = report.includes("</body>")
+    ? "</body>"
+    : report.includes("</html>")
+      ? "</html>"
+      : "";
+  const nextReport = insertionPoint
+    ? updatedReport.replace(insertionPoint, `${attestation}\n${insertionPoint}`)
+    : `${updatedReport}\n${attestation}\n`;
+  await writeTextAtomic(runDir, reportPath, nextReport);
+}
+
 async function finalizeAttempt(
   runDir,
   { status, finalized, verdict, completeLifecycle = false, capture },
@@ -1252,7 +1396,7 @@ async function finalizeAttempt(
     capture: normalizedCapture,
     lifecycle,
   };
-  await writeJsonAtomic(path.join(runDir, "attempt.json"), next);
+  await writeJsonAtomic(runDir, path.join(runDir, "attempt.json"), next);
   return next;
 }
 
@@ -1277,11 +1421,12 @@ export async function stageControllerEvidence(
   });
 }
 
-async function sealEvidence(runDir) {
+async function sealEvidence(runDir, { trustedOwnerToken = "" } = {}) {
   const { createEvidenceManifest, verifyEvidenceManifest } =
     await import("./evidence-manifest.mjs");
-  const manifest = await createEvidenceManifest(runDir);
-  await verifyEvidenceManifest(runDir);
+  const options = trustedOwnerToken ? { trustedOwnerToken } : {};
+  const manifest = await createEvidenceManifest(runDir, options);
+  await verifyEvidenceManifest(runDir, options);
   return manifest;
 }
 
@@ -1310,7 +1455,8 @@ export async function finalizeLocalEvidence(
   const probedCleanup = await independentlyProbeLocalCleanup(normalizedCleanup, probes);
   assertCleanupClean(probedCleanup);
   const normalizedCapture = resolveFinalCapture(attempt, capture);
-  await writeJsonAtomic(path.join(runDir, "runner", "cleanup.json"), probedCleanup);
+  await writeJsonAtomic(runDir, path.join(runDir, "runner", "cleanup.json"), probedCleanup);
+  await writeFinalCleanupArtifacts(runDir, probedCleanup);
   await finalizeAttempt(runDir, {
     status: "final",
     finalized: true,
@@ -1328,7 +1474,7 @@ export async function writeRunCleanup(runDir, cleanup) {
     readJson(runDir, "artifact/source.json"),
   ]);
   const normalizedCleanup = validateCleanup(cleanup, { identity, artifact });
-  await writeJsonAtomic(path.join(runDir, "runner", "cleanup.json"), normalizedCleanup);
+  await writeJsonAtomic(runDir, path.join(runDir, "runner", "cleanup.json"), normalizedCleanup);
   return normalizedCleanup;
 }
 
@@ -1344,7 +1490,7 @@ export async function finalizeControllerEvidence(
     verdict,
     capture,
   });
-  return sealEvidence(runDir);
+  return sealEvidence(runDir, { trustedOwnerToken });
 }
 
 export async function writeControllerFinalization(
@@ -1377,9 +1523,14 @@ export async function writeControllerFinalization(
     trustedOwnerToken,
   });
   const normalizedCapture = resolveFinalCapture(attempt, capture);
-  await writeJsonAtomic(path.join(runDir, "runner", "cleanup.json"), normalizedCleanup);
-  await writeJsonAtomic(path.join(runDir, "runner", "host-lease.json"), normalizedLease);
-  await writeJsonAtomic(path.join(runDir, "runner", "cleanup-probe.json"), normalizedCleanupProbe);
+  await writeJsonAtomic(runDir, path.join(runDir, "runner", "cleanup.json"), normalizedCleanup);
+  await writeJsonAtomic(runDir, path.join(runDir, "runner", "host-lease.json"), normalizedLease);
+  await writeJsonAtomic(
+    runDir,
+    path.join(runDir, "runner", "cleanup-probe.json"),
+    normalizedCleanupProbe,
+  );
+  await writeFinalCleanupArtifacts(runDir, normalizedCleanup);
   await finalizeAttempt(runDir, {
     status: "final",
     finalized: true,

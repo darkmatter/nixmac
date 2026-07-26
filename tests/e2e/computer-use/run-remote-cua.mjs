@@ -54,6 +54,7 @@ import {
 } from "./visual-proof.mjs";
 import { renderReportHtml, safeFrameVideoPath } from "./report.mjs";
 import {
+  assertRunPostRunIdentity,
   assertRunPreflight,
   finalizeLocalEvidence,
   recordRunPermissions,
@@ -3168,6 +3169,9 @@ export async function runSuiteWithDriver(
   let uiStarted = false;
   let ownedProcessSnapshots = [];
   let processSnapshotFailure = "";
+  const runPreflightAssertionDependencies = {
+    computeAppBundleDigest: runPreflightDependencies.computeAppBundleDigest,
+  };
   try {
     if (executionTopology === "local-cua-driver") {
       socketEndpoint = await createOwnedCuaSocketEndpoint({
@@ -3211,7 +3215,7 @@ export async function runSuiteWithDriver(
         accessibilityGranted: true,
         screenRecordingGranted: true,
       });
-      trustedRunPreflight = await assertRunPreflight(runDir);
+      trustedRunPreflight = await assertRunPreflight(runDir, runPreflightAssertionDependencies);
       await driver.prepareTarget({
         appBundleId: options.app,
         appPath: localPreflight.appPath,
@@ -4540,7 +4544,7 @@ export async function runSuiteWithDriver(
   if (executionTopology === "local-cua-driver") {
     if (trustedRunPreflight) {
       try {
-        await assertRunPreflight(runDir);
+        await assertRunPostRunIdentity(runDir, runPreflightAssertionDependencies);
         await verifyLocalCuaPreflight(localPreflight, localPreflightDependencies);
       } catch (error) {
         suiteFailure = suiteFailure
@@ -5658,7 +5662,7 @@ async function runSelfTest() {
   const coverageFreshness = buildCoverageFreshness();
   assert.equal(
     coverageFreshness.candidateFiles,
-    951,
+    952,
     "coverage freshness should preserve the full shared PR-visible behavior universe",
   );
   const coverageManifest = loadCoverageManifest();
