@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 
 export const REMOTE_MAC_CONCURRENCY_GROUP = "nixmac-macincloud-e2e-remote";
+const AUTOMATIC_CONTRACT_COMMANDS = [
+  "node tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs",
+  "node tests/e2e/computer-use/workflow-contract-self-test.mjs",
+];
 
 function parseWorkflowYaml({ workflowName, source }) {
   assert.equal(typeof workflowName, "string", "workflowName must be a string");
@@ -37,6 +41,60 @@ function parseWorkflowYaml({ workflowName, source }) {
   return workflow;
 }
 
+export function assertAutomaticConcurrencyValidationContract({
+  workflowName,
+  source,
+  jobId,
+  stepName,
+}) {
+  const workflow = parseWorkflowYaml({ workflowName, source });
+  const triggers = workflow.on;
+  assert.ok(
+    triggers && typeof triggers === "object" && !Array.isArray(triggers),
+    `${workflowName} on must be a mapping`,
+  );
+  assert.equal(
+    Object.hasOwn(triggers, "pull_request"),
+    true,
+    `${workflowName} must run automatically on pull_request`,
+  );
+  assert.equal(
+    Object.hasOwn(triggers, "merge_group"),
+    true,
+    `${workflowName} must run automatically on merge_group`,
+  );
+
+  const jobs = workflow.jobs;
+  assert.ok(
+    jobs && typeof jobs === "object" && !Array.isArray(jobs),
+    `${workflowName} jobs must be a mapping`,
+  );
+  const job = jobs[jobId];
+  assert.ok(
+    job && typeof job === "object" && !Array.isArray(job),
+    `${workflowName} must define automatic validation job ${jobId}`,
+  );
+  assert.equal(job["runs-on"], "arc", `${workflowName} job ${jobId} must run on arc`);
+  assert.ok(Array.isArray(job.steps), `${workflowName} job ${jobId} steps must be an array`);
+
+  const matchingSteps = job.steps.filter((step) => step?.name === stepName);
+  assert.equal(
+    matchingSteps.length,
+    1,
+    `${workflowName} job ${jobId} must define exactly one ${stepName} step`,
+  );
+  const run = matchingSteps[0].run;
+  assert.equal(typeof run, "string", `${workflowName} job ${jobId} step ${stepName} must use run`);
+  const commandLines = run.split(/\r?\n/u).map((line) => line.trim());
+  for (const command of AUTOMATIC_CONTRACT_COMMANDS) {
+    assert.equal(
+      commandLines.includes(command),
+      true,
+      `${workflowName} job ${jobId} step ${stepName} must run ${command}`,
+    );
+  }
+}
+
 export function assertRemoteMacConcurrencyContract({
   workflowName,
   source,
@@ -52,6 +110,20 @@ export function assertRemoteMacConcurrencyContract({
   );
 
   const workflow = parseWorkflowYaml({ workflowName, source });
+  const workflowConcurrency = workflow.concurrency;
+  const workflowConcurrencyGroup =
+    typeof workflowConcurrency === "string"
+      ? workflowConcurrency
+      : workflowConcurrency &&
+          typeof workflowConcurrency === "object" &&
+          !Array.isArray(workflowConcurrency)
+        ? workflowConcurrency.group
+        : undefined;
+  assert.notEqual(
+    workflowConcurrencyGroup,
+    REMOTE_MAC_CONCURRENCY_GROUP,
+    `${workflowName} must not reuse ${REMOTE_MAC_CONCURRENCY_GROUP} at workflow level`,
+  );
   if (forbidWorkflowLevelConcurrency) {
     assert.equal(
       Object.hasOwn(workflow, "concurrency"),

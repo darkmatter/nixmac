@@ -42,12 +42,15 @@ jobs:
       - name: Install devenv
         run: nix build github:cachix/devenv/v2.1.2 --out-link "$RUNNER_TEMP/devenv-cli"
 
-      - name: Run git hooks on all files
+      - name: Run git hooks and Computer Use workflow contracts
         env:
           NIXPKGS_ALLOW_UNFREE: 1
         run: |
-          "$RUNNER_TEMP/devenv-cli/bin/devenv" shell --impure -- \
+          "$RUNNER_TEMP/devenv-cli/bin/devenv" shell --impure -- bash -euo pipefail -c '
+            node tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs
+            node tests/e2e/computer-use/workflow-contract-self-test.mjs
             prek run --all-files --show-diff-on-failure
+          '
 
   rust-tests:
     name: Rust Tests (Linux)

@@ -4,7 +4,10 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { assertRemoteMacConcurrencyContracts } from "./workflow-concurrency-contract.mjs";
+import {
+  assertAutomaticConcurrencyValidationContract,
+  assertRemoteMacConcurrencyContracts,
+} from "./workflow-concurrency-contract.mjs";
 
 const thisFile = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(thisFile), "../../..");
@@ -15,6 +18,7 @@ const peekabooWorkflow = readFileSync(
   "utf8",
 );
 const legacyE2eWorkflow = readFileSync(path.join(repoRoot, ".github/workflows/e2e.yml"), "utf8");
+const buildWorkflow = readFileSync(path.join(repoRoot, ".github/workflows/build.yaml"), "utf8");
 
 function section(startPattern, endPattern = null) {
   const start = workflow.search(startPattern);
@@ -49,6 +53,12 @@ assertRemoteMacConcurrencyContracts([
     remoteJobId: "e2e-test",
   },
 ]);
+assertAutomaticConcurrencyValidationContract({
+  workflowName: ".github/workflows/build.yaml",
+  source: buildWorkflow,
+  jobId: "git-hooks",
+  stepName: "Run git hooks and Computer Use workflow contracts",
+});
 
 assert.match(remote, /\n    needs: prepare\n/, "remote job must depend on prepare");
 assert.match(

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   REMOTE_MAC_CONCURRENCY_GROUP,
+  assertAutomaticConcurrencyValidationContract,
   assertRemoteMacConcurrencyContract,
   assertRemoteMacConcurrencyContracts,
 } from "./workflow-concurrency-contract.mjs";
@@ -33,6 +34,32 @@ ${companionConcurrency}
       - run: |
           echo companion
           ${decoy}
+`;
+}
+
+function automaticWorkflowYaml({
+  triggers = `  pull_request:
+  merge_group:`,
+  validationCommands = `          node tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs
+          node tests/e2e/computer-use/workflow-contract-self-test.mjs`,
+} = {}) {
+  return `
+name: Automatic validation
+"on":
+${triggers}
+jobs:
+  git-hooks:
+    runs-on: arc
+    steps:
+      - name: Run git hooks and Computer Use workflow contracts
+        run: |
+          set -euo pipefail
+${validationCommands}
+          prek run --all-files --show-diff-on-failure
+  build:
+    runs-on: [self-hosted, macOS]
+    steps:
+      - run: echo build
 `;
 }
 
@@ -101,6 +128,34 @@ assert.throws(
 
 assert.throws(
   () =>
+    assertRemoteMacConcurrencyContract({
+      workflowName: "workflow-level-shared-lock.yml",
+      source: workflowYaml({
+        workflowConcurrency: `concurrency:
+  group: ${REMOTE_MAC_CONCURRENCY_GROUP}
+  cancel-in-progress: false`,
+      }),
+      remoteJobId: "remote-mac",
+    }),
+  /workflow-level-shared-lock\.yml must not reuse nixmac-macincloud-e2e-remote at workflow level/,
+  "workflow-level concurrency must not duplicate or self-conflict with the remote job lock",
+);
+
+assert.throws(
+  () =>
+    assertRemoteMacConcurrencyContract({
+      workflowName: "workflow-level-scalar-lock.yml",
+      source: workflowYaml({
+        workflowConcurrency: `concurrency: ${REMOTE_MAC_CONCURRENCY_GROUP}`,
+      }),
+      remoteJobId: "remote-mac",
+    }),
+  /workflow-level-scalar-lock\.yml must not reuse nixmac-macincloud-e2e-remote at workflow level/,
+  "scalar workflow concurrency must not duplicate the remote job lock",
+);
+
+assert.throws(
+  () =>
     assertRemoteMacConcurrencyContracts([
       {
         workflowName: "computer-use-e2e.yml",
@@ -120,6 +175,41 @@ assert.throws(
     ]),
   /e2e\.yml job remote-mac concurrency\.group must equal nixmac-macincloud-e2e-remote/,
   "one workflow diverging from the shared lock must fail the suite",
+);
+
+assert.doesNotThrow(() =>
+  assertAutomaticConcurrencyValidationContract({
+    workflowName: "build.yaml",
+    source: automaticWorkflowYaml(),
+    jobId: "git-hooks",
+    stepName: "Run git hooks and Computer Use workflow contracts",
+  }),
+);
+
+assert.throws(
+  () =>
+    assertAutomaticConcurrencyValidationContract({
+      workflowName: "missing-merge-group.yaml",
+      source: automaticWorkflowYaml({ triggers: "  pull_request:" }),
+      jobId: "git-hooks",
+      stepName: "Run git hooks and Computer Use workflow contracts",
+    }),
+  /missing-merge-group\.yaml must run automatically on merge_group/,
+);
+
+assert.throws(
+  () =>
+    assertAutomaticConcurrencyValidationContract({
+      workflowName: "drifted-wiring.yaml",
+      source: automaticWorkflowYaml({
+        validationCommands:
+          "          node tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs",
+      }),
+      jobId: "git-hooks",
+      stepName: "Run git hooks and Computer Use workflow contracts",
+    }),
+  /drifted-wiring\.yaml job git-hooks step Run git hooks and Computer Use workflow contracts must run node tests\/e2e\/computer-use\/workflow-contract-self-test\.mjs/,
+  "removing the real-workflow contract from automatic CI must fail",
 );
 
 console.log("Computer Use workflow concurrency contract self-test passed.");
