@@ -82,9 +82,7 @@
       "id": "native-app-icons-unexercised",
       "label": "Bundled desktop and mobile application icon resources",
       "scenarioKeys": [],
-      "sourcePrefixes": [
-        "apps/native/src-tauri/icons/"
-      ],
+      "sourcePrefixes": ["apps/native/src-tauri/icons/"],
       "directoryPrefixApprovals": [
         {
           "prefix": "apps/native/src-tauri/icons/",
@@ -482,6 +480,7 @@
         "tests/e2e/computer-use/run-local.mjs",
         "tests/e2e/computer-use/run-remote-cua.mjs",
         "tests/e2e/computer-use/scenario-catalog.mjs",
+        "tests/e2e/computer-use/scenario-driver.mjs",
         "tests/e2e/computer-use/schemas.mjs",
         "tests/e2e/computer-use/state.mjs",
         "tests/e2e/computer-use/storybook-preview.mjs",
@@ -557,9 +556,7 @@
       "scenarioKeys": [],
       "coverageDisposition": "non-claiming",
       "coverageNote": "Developer-only documentation is tracked in the preserved PR-visible universe but does not claim product behavior.",
-      "sourcePrefixes": [
-        "apps/native/src-tauri/src/README.md"
-      ]
+      "sourcePrefixes": ["apps/native/src-tauri/src/README.md"]
     },
     {
       "id": "app-shell",
@@ -619,6 +616,7 @@
         "apps/native/src/lib/nix-grammar.ts",
         "apps/native/src/lib/query-persist.ts",
         "apps/native/src/lib/summarize-queue.ts",
+        "apps/native/src/lib/telemetry/bootstrap.ts",
         "apps/native/src/lib/telemetry/context.tsx",
         "apps/native/src/lib/telemetry/forwarding-processor.ts",
         "apps/native/src/lib/telemetry/init.ts",

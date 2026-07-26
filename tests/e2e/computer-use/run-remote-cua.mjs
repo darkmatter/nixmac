@@ -28,6 +28,8 @@ import {
   validateDriverDescriptor,
   validateElementAddress,
 } from "./drivers/contract.mjs";
+import { CodexAppServerDriver } from "./drivers/codex-app-server.mjs";
+import { validateRuntimeDriver } from "./drivers/runtime-contract.mjs";
 import { tryRun } from "./process-utils.mjs";
 import {
   DEFAULT_PROMPT,
@@ -50,6 +52,7 @@ import {
   probeCropForImage,
 } from "./visual-proof.mjs";
 import { renderReportHtml } from "./report.mjs";
+import { createScenarioDriverHelpers } from "./scenario-driver.mjs";
 import {
   AppServerClient,
   clickResponseIndicatesFailure,
@@ -99,6 +102,24 @@ const ARTIFACT_ROOT = path.join(REPO_ROOT, "artifacts", "computer-use-remote");
 const COVERAGE_MANIFEST_PATH = path.join(TOOL_DIR, "coverage-manifest.json");
 
 let activeRunDir = "";
+
+const {
+  captureState,
+  clickByPattern,
+  clickElementIndex,
+  setValueByPattern,
+  setValueElementIndex,
+  waitFor,
+} = createScenarioDriverHelpers({
+  addEvent,
+  saveState,
+  addNarrative,
+  redact,
+  containsUnmaskedSecret,
+  pngDimensions,
+  findElement,
+  screenshotSource: "Codex Computer Use get_app_state image",
+});
 
 function usage() {
   console.log(remoteCuaUsage({ defaultWs: DEFAULT_WS, defaultApp: DEFAULT_APP }));
@@ -460,11 +481,7 @@ function buildCoverageFreshness(state) {
       drift.push(`${surface.id} maps to unknown scenarios: ${unknown.join(", ")}`);
     if (missingSources.length)
       drift.push(`${surface.id} references missing source paths: ${missingSources.join(", ")}`);
-    if (
-      !scenarioKeys.length &&
-      !surface.waiver &&
-      surface.coverageDisposition !== "non-claiming"
-    )
+    if (!scenarioKeys.length && !surface.waiver && surface.coverageDisposition !== "non-claiming")
       drift.push(`${surface.id} has no scenario mapping and no waiver.`);
     if (scenarioKeys.length) mapped += 1;
   }
@@ -1096,173 +1113,6 @@ async function baseState(runDir, options) {
   });
 }
 
-async function captureState(client, state, label, note = "") {
-  let response = await client.tool("get_app_state", { app: state.app }, 90000);
-  let rawText = contentText(response);
-  let text = redact(rawText);
-  for (
-    let attempt = 0;
-    attempt < 8 && /procNotFound|no eligible process|not running|timed out/i.test(text);
-    attempt += 1
-  ) {
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    response = await client.tool("get_app_state", { app: state.app }, 90000);
-    rawText = contentText(response);
-    text = redact(rawText);
-  }
-  const image = contentImage(response);
-  const safeLabel = label.replace(/[^a-zA-Z0-9._-]+/g, "-");
-  const ordinal = String(state.textSnapshots.length + 1).padStart(2, "0");
-  const textPath = path.join(state.runDir, "texts", `${ordinal}-${safeLabel}.txt`);
-  await writeFile(textPath, `${text}\n`, "utf8");
-  state.textSnapshots.push({
-    label,
-    path: path.relative(state.runDir, textPath),
-    capturedAt: new Date().toISOString(),
-    note: redact(note),
-  });
-  const apiKeysHasUnmaskedSecret = /api-keys/i.test(label) && containsUnmaskedSecret(rawText);
-  if (apiKeysHasUnmaskedSecret) {
-    state.secretMaskingViolations.push(
-      `${label} raw accessibility text contained an unmasked key-like secret; screenshot omitted.`,
-    );
-  }
-  const sensitiveImage = /console/i.test(label) || apiKeysHasUnmaskedSecret;
-  if (image && !sensitiveImage) {
-    const pngPath = path.join(state.runDir, "screenshots", `${ordinal}-${safeLabel}.png`);
-    await writeFile(pngPath, Buffer.from(image, "base64"));
-    const dimensions = pngDimensions(pngPath);
-    state.screenshots.push({
-      label,
-      path: path.relative(state.runDir, pngPath),
-      capturedAt: new Date().toISOString(),
-      note: redact(note),
-      source: "Codex Computer Use get_app_state image",
-      ...(dimensions ? { imageSize: dimensions } : {}),
-    });
-  } else if (image && sensitiveImage) {
-    await addEvent(state, "computer-use.screenshot-omitted", {
-      label,
-      reason: /api-keys/i.test(label)
-        ? "API Keys image omitted because raw accessibility text contained an unmasked key-like secret; redacted text snapshot retained."
-        : "Sensitive view image omitted from screenshot artifacts; redacted accessibility text snapshot retained.",
-    });
-  }
-  if (note) addNarrative(state, note);
-  await addEvent(state, "computer-use.capture", { label, note: redact(note) });
-  await saveState(state);
-  return text;
-}
-
-async function clickByPattern(client, state, text, label, patterns, note = "") {
-  const elementIndex = findElement(text, patterns);
-  if (!elementIndex) {
-    await addEvent(state, "computer-use.click.skipped", {
-      label,
-      note: `No element found for ${label}`,
-    });
-    return false;
-  }
-  return clickElementIndex(client, state, elementIndex, label, note);
-}
-
-async function clickElementIndex(client, state, elementIndex, label, note = "") {
-  let response;
-  try {
-    response = await client.tool("click", { app: state.app, element_index: elementIndex }, 60000);
-  } catch (error) {
-    await addEvent(state, "computer-use.click.failed", {
-      label,
-      elementIndex,
-      error: redact(error instanceof Error ? error.message : String(error)).slice(0, 800),
-      note,
-    });
-    return false;
-  }
-  const rawResponseText = contentText(response);
-  const responseText = redact(rawResponseText);
-  if (clickResponseIndicatesFailure(response, rawResponseText)) {
-    await addEvent(state, "computer-use.click.failed", {
-      label,
-      elementIndex,
-      response: responseText.slice(0, 800),
-      isError: response?.result?.isError === true,
-      note,
-    });
-    return false;
-  }
-  await addEvent(state, "computer-use.click", {
-    label,
-    elementIndex,
-    response: responseText.slice(0, 800),
-    note,
-  });
-  return true;
-}
-
-async function setValueByPattern(client, state, text, label, patterns, value) {
-  const elementIndex = findElement(text, patterns);
-  if (!elementIndex) {
-    await addEvent(state, "computer-use.set_value.skipped", {
-      label,
-      note: `No element found for ${label}`,
-    });
-    return false;
-  }
-  return setValueElementIndex(client, state, elementIndex, label, value);
-}
-
-async function setValueElementIndex(client, state, elementIndex, label, value) {
-  let response;
-  try {
-    response = await client.tool(
-      "set_value",
-      { app: state.app, element_index: elementIndex, value },
-      60000,
-    );
-  } catch (error) {
-    await addEvent(state, "computer-use.set_value.failed", {
-      label,
-      elementIndex,
-      error: redact(error instanceof Error ? error.message : String(error)).slice(0, 800),
-    });
-    return false;
-  }
-  const rawResponseText = contentText(response);
-  const responseText = redact(rawResponseText);
-  if (setValueResponseIndicatesFailure(response, rawResponseText)) {
-    await addEvent(state, "computer-use.set_value.failed", {
-      label,
-      elementIndex,
-      response: responseText.slice(0, 800),
-      isError: response?.result?.isError === true,
-    });
-    return false;
-  }
-  await addEvent(state, "computer-use.set_value", {
-    label,
-    elementIndex,
-    response: responseText.slice(0, 800),
-  });
-  return true;
-}
-
-async function waitFor(client, state, label, predicate, { attempts = 10, delayMs = 1500 } = {}) {
-  let lastText = "";
-  for (let i = 0; i < attempts; i += 1) {
-    await new Promise((resolve) => setTimeout(resolve, delayMs));
-    lastText = await captureState(
-      client,
-      state,
-      `${label}-${String(i + 1).padStart(2, "0")}`,
-      `Polling ${label}.`,
-    );
-    const result = predicate(lastText);
-    if (result) return { ok: true, text: lastText, result };
-  }
-  return { ok: false, text: lastText };
-}
-
 async function maybeRelaunchRemote(state) {
   if (process.env.NIXMAC_E2E_SKIP_RELAUNCH === "true") {
     await addEvent(state, "remote.relaunch.skipped", {
@@ -1283,7 +1133,7 @@ async function maybeRelaunchRemote(state) {
   });
 }
 
-async function inspectReportWithComputerUse(client, state) {
+async function inspectReportWithComputerUse(driver, state) {
   const dest = process.env.NIXMAC_E2E_REMOTE_SSH_DEST;
   const remoteParent =
     process.env.NIXMAC_E2E_REMOTE_REPORT_DIR || "/tmp/nixmac-computer-use-reports";
@@ -1333,15 +1183,15 @@ async function inspectReportWithComputerUse(client, state) {
   const browserApps = ["com.google.Chrome", "Safari", "com.apple.Safari"];
   for (const app of browserApps) {
     try {
-      const response = await client.tool("get_app_state", { app }, 60000);
-      const text = redact(contentText(response));
+      const visible = await driver.visibleState({ app });
+      const text = redact(visible.text);
       if (
         /nixmac Computer Use|Scenario Checklist|Claims vs Evidence|Failures \/ Open Issues/i.test(
           text,
         )
       ) {
         const label = `report-inspection-${app.replace(/[^a-zA-Z0-9._-]+/g, "-")}`;
-        const image = contentImage(response);
+        const image = visible.imageBase64;
         const textOrdinal = String(state.textSnapshots.length + 1).padStart(2, "0");
         const textPath = path.join(state.runDir, "texts", `${textOrdinal}-${label}.txt`);
         await writeFile(textPath, `${text}\n`, "utf8");
@@ -1484,9 +1334,9 @@ function evidenceMatches(text, patterns = []) {
   return patterns.filter((pattern) => pattern.test(text)).length;
 }
 
-async function cleanupReviewOnlyCase(client, state, text, caseDef) {
+async function cleanupReviewOnlyCase(driver, state, text, caseDef) {
   const discardOpened = await clickByPattern(
-    client,
+    driver,
     state,
     text,
     `Discard ${caseDef.id}`,
@@ -1495,7 +1345,7 @@ async function cleanupReviewOnlyCase(client, state, text, caseDef) {
   );
   if (discardOpened) {
     text = await captureState(
-      client,
+      driver,
       state,
       `evolved-${caseDef.id}-discard-boundary`,
       `Computer Use opened Discard for ${caseDef.label}.`,
@@ -1504,7 +1354,7 @@ async function cleanupReviewOnlyCase(client, state, text, caseDef) {
       state.safety?.disposableConfig === true && state.safety?.discardConfirmEnabled === true;
     if (canConfirmDiscard) {
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         `Confirm discard ${caseDef.id}`,
@@ -1518,7 +1368,7 @@ async function cleanupReviewOnlyCase(client, state, text, caseDef) {
         { attempts: 20, delayMs: 1000 },
       );
       text = await captureState(
-        client,
+        driver,
         state,
         `evolved-${caseDef.id}-after-discard`,
         `Computer Use cleaned up ${caseDef.label}.`,
@@ -1526,7 +1376,7 @@ async function cleanupReviewOnlyCase(client, state, text, caseDef) {
       return { ok: cleaned.ok, text, method: "discard" };
     }
     await clickByPattern(
-      client,
+      driver,
       state,
       text,
       `Cancel discard ${caseDef.id}`,
@@ -1537,7 +1387,7 @@ async function cleanupReviewOnlyCase(client, state, text, caseDef) {
   const restored = await restoreRemoteBaseline(state, `evolved-${caseDef.id}`);
   await maybeRelaunchRemote(state);
   text = await captureState(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-after-discard`,
     `Computer Use relaunched after external cleanup for ${caseDef.label}.`,
@@ -1545,10 +1395,10 @@ async function cleanupReviewOnlyCase(client, state, text, caseDef) {
   return { ok: restored.ok, text, method: "external-restore" };
 }
 
-async function restoreManagedEditViaHistory(client, state, text, labels) {
+async function restoreManagedEditViaHistory(driver, state, text, labels) {
   if (
     await clickByPattern(
-      client,
+      driver,
       state,
       text,
       `${labels.name} History after commit`,
@@ -1557,14 +1407,14 @@ async function restoreManagedEditViaHistory(client, state, text, labels) {
     )
   ) {
     text = await captureState(
-      client,
+      driver,
       state,
       `${labels.prefix}-history-before-restore`,
       `Computer Use opened History after ${labels.name} commit.`,
     );
     if (
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         `${labels.name} restore previous commit`,
@@ -1573,14 +1423,14 @@ async function restoreManagedEditViaHistory(client, state, text, labels) {
       )
     ) {
       text = await captureState(
-        client,
+        driver,
         state,
         `${labels.prefix}-history-restore-preview`,
         `Computer Use previewed History restore after ${labels.name}.`,
       );
       if (
         await clickByPattern(
-          client,
+          driver,
           state,
           text,
           `${labels.name} confirm restore`,
@@ -1598,7 +1448,7 @@ async function restoreManagedEditViaHistory(client, state, text, labels) {
           },
         );
         text = await captureState(
-          client,
+          driver,
           state,
           `${labels.prefix}-after-history-restore`,
           `Computer Use completed History restore cleanup after ${labels.name}.`,
@@ -1612,11 +1462,11 @@ async function restoreManagedEditViaHistory(client, state, text, labels) {
   return { ok: false, text, method: "history-restore", reason: "history-unreachable" };
 }
 
-async function externallyRestoreManagedEdit(client, state, labels) {
+async function externallyRestoreManagedEdit(driver, state, labels) {
   const restored = await restoreRemoteBaseline(state, labels.prefix);
   await maybeRelaunchRemote(state);
   const text = await captureState(
-    client,
+    driver,
     state,
     `${labels.prefix}-external-restore`,
     `Computer Use relaunched after external cleanup for ${labels.name}.`,
@@ -1624,13 +1474,13 @@ async function externallyRestoreManagedEdit(client, state, labels) {
   return { ok: restored.ok, text, method: "external-restore", snapshot: restored.snapshot };
 }
 
-async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
+async function buildCommitAndRestoreManagedEdit(driver, state, text, labels) {
   const canConfirmBuild =
     state.safety?.disposableConfig === true &&
     state.safety?.buildConfirmEnabled === true &&
     state.remoteConfig?.baselinePrepared === true;
   const buildClicked = await clickByPattern(
-    client,
+    driver,
     state,
     text,
     `${labels.name} Build & Test`,
@@ -1638,7 +1488,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
     `Click Build & Test for ${labels.name}.`,
   );
   if (!buildClicked) {
-    const cleanup = await externallyRestoreManagedEdit(client, state, labels);
+    const cleanup = await externallyRestoreManagedEdit(driver, state, labels);
     return {
       ok: false,
       text: cleanup.text,
@@ -1647,7 +1497,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
   }
 
   text = await captureState(
-    client,
+    driver,
     state,
     `${labels.prefix}-build-boundary`,
     `Computer Use clicked Build & Test for ${labels.name}.`,
@@ -1655,14 +1505,14 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
   const boundary = /Confirm|Are you sure|Cancel/i.test(text);
   if (!boundary || !canConfirmBuild) {
     await clickByPattern(
-      client,
+      driver,
       state,
       text,
       `${labels.name} cancel build boundary`,
       [/Cancel/i, /Close/i, /^button ×/i, /^button X/i],
       `Cancel Build & Test boundary for ${labels.name}.`,
     );
-    const cleanup = await externallyRestoreManagedEdit(client, state, labels);
+    const cleanup = await externallyRestoreManagedEdit(driver, state, labels);
     return {
       ok: false,
       text: cleanup.text,
@@ -1673,7 +1523,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
   }
 
   const buildConfirmed = await clickByPattern(
-    client,
+    driver,
     state,
     text,
     `${labels.name} confirm build boundary`,
@@ -1681,7 +1531,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
     `Confirm Build & Test for ${labels.name} in proven disposable state.`,
   );
   if (!buildConfirmed) {
-    const cleanup = await externallyRestoreManagedEdit(client, state, labels);
+    const cleanup = await externallyRestoreManagedEdit(driver, state, labels);
     return {
       ok: false,
       text: cleanup.text,
@@ -1691,7 +1541,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
 
   let pamSymlinkHangSeen = 0;
   const step3 = await waitFor(
-    client,
+    driver,
     state,
     `${labels.prefix}-build-to-step-3`,
     (candidate) => {
@@ -1724,7 +1574,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
   );
   text = step3.text;
   if (step3.result !== "step-3") {
-    const cleanup = await externallyRestoreManagedEdit(client, state, labels);
+    const cleanup = await externallyRestoreManagedEdit(driver, state, labels);
     const reason =
       step3.result || (buildAppearsActive(text) ? "build-still-active" : "step-3-timeout");
     return {
@@ -1735,14 +1585,14 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
   }
 
   text = await captureState(
-    client,
+    driver,
     state,
     `${labels.prefix}-step-3-ready`,
     `Computer Use reached Step 3 after ${labels.name} Build & Test.`,
   );
   if (/button \(disabled\) Commit/i.test(text)) {
     const commitReady = await waitFor(
-      client,
+      driver,
       state,
       `${labels.prefix}-commit-ready`,
       (candidate) =>
@@ -1759,7 +1609,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
 
   if (
     !(await clickByPattern(
-      client,
+      driver,
       state,
       text,
       `${labels.name} commit changes`,
@@ -1767,7 +1617,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
       `Commit Step 3 changes for ${labels.name}.`,
     ))
   ) {
-    const cleanup = await externallyRestoreManagedEdit(client, state, labels);
+    const cleanup = await externallyRestoreManagedEdit(driver, state, labels);
     return {
       ok: false,
       text: cleanup.text,
@@ -1792,13 +1642,13 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
     },
   );
   text = await captureState(
-    client,
+    driver,
     state,
     `${labels.prefix}-after-commit`,
     `Computer Use committed ${labels.name} changes.`,
   );
   if (!committed.ok) {
-    const cleanup = await externallyRestoreManagedEdit(client, state, labels);
+    const cleanup = await externallyRestoreManagedEdit(driver, state, labels);
     return {
       ok: false,
       text: cleanup.text,
@@ -1806,11 +1656,11 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
     };
   }
 
-  const rollback = await restoreManagedEditViaHistory(client, state, text, labels);
+  const rollback = await restoreManagedEditViaHistory(driver, state, text, labels);
   if (rollback.ok) {
     await maybeRelaunchRemote(state);
     text = await captureState(
-      client,
+      driver,
       state,
       `${labels.prefix}-after-rollback-home`,
       `Computer Use returned to the prompt surface after ${labels.name} rollback cleanup.`,
@@ -1822,7 +1672,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
     };
   }
 
-  const cleanup = await externallyRestoreManagedEdit(client, state, labels);
+  const cleanup = await externallyRestoreManagedEdit(driver, state, labels);
   return {
     ok: cleanup.ok,
     text: cleanup.text,
@@ -1832,10 +1682,10 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
   };
 }
 
-async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey, config) {
+async function runConditionalBadgeSaveScenario(driver, state, text, scenarioKey, config) {
   if (!hasAny(text, config.badgePatterns)) {
     text = await captureState(
-      client,
+      driver,
       state,
       `${config.prefix}-absent`,
       `Computer Use checked for ${config.name}; no matching chip was visible.`,
@@ -1851,7 +1701,7 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
 
   if (
     !(await clickByPattern(
-      client,
+      driver,
       state,
       text,
       `${config.name} chip`,
@@ -1869,14 +1719,14 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
   }
 
   text = await captureState(
-    client,
+    driver,
     state,
     `${config.prefix}-popover`,
     `Computer Use opened ${config.name} Add to config popover.`,
   );
   if (
     !(await clickByPattern(
-      client,
+      driver,
       state,
       text,
       `${config.name} Add to config`,
@@ -1894,7 +1744,7 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
   }
 
   const applyWait = await waitFor(
-    client,
+    driver,
     state,
     `${config.prefix}-apply`,
     (candidate) => {
@@ -1914,7 +1764,7 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
   );
   text = applyWait.text;
   if (applyWait.result !== "review") {
-    const cleanup = await externallyRestoreManagedEdit(client, state, {
+    const cleanup = await externallyRestoreManagedEdit(driver, state, {
       name: config.name,
       prefix: config.prefix,
     });
@@ -1928,12 +1778,12 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
   }
 
   text = await captureState(
-    client,
+    driver,
     state,
     `${config.prefix}-apply`,
     `Computer Use reached review/build state after applying ${config.name} to config.`,
   );
-  const result = await buildCommitAndRestoreManagedEdit(client, state, text, {
+  const result = await buildCommitAndRestoreManagedEdit(driver, state, text, {
     name: config.name,
     prefix: config.prefix,
   });
@@ -1942,7 +1792,7 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
   return result.text;
 }
 
-async function runReviewOnlyEvolvedCase(client, state, caseDef) {
+async function runReviewOnlyEvolvedCase(driver, state, caseDef) {
   state.scenarios[caseDef.scenarioKey] ||= {
     label: `Optional evolved case: ${caseDef.label}`,
     status: "inconclusive",
@@ -1964,13 +1814,13 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
   });
   await maybeRelaunchRemote(state);
   let text = await captureState(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-home`,
     `Computer Use started optional evolved case: ${caseDef.label}.`,
   );
   const inputSet = await setValueByPattern(
-    client,
+    driver,
     state,
     text,
     `Prompt input ${caseDef.id}`,
@@ -1978,7 +1828,7 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
     caseDef.prompt,
   );
   text = await captureState(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-typed`,
     `Computer Use entered optional evolved prompt: ${caseDef.label}.`,
@@ -1990,7 +1840,7 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
     return text;
   }
   const submitted = await clickByPattern(
-    client,
+    driver,
     state,
     text,
     `Send ${caseDef.id}`,
@@ -2004,7 +1854,7 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
     return text;
   }
   const wait = await waitFor(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-provider-progress`,
     (candidate) => {
@@ -2045,7 +1895,7 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
   let evidenceText = text;
   if (
     await clickByPattern(
-      client,
+      driver,
       state,
       text,
       `Summary ${caseDef.id}`,
@@ -2054,7 +1904,7 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
     )
   ) {
     text = await captureState(
-      client,
+      driver,
       state,
       `evolved-${caseDef.id}-summary`,
       `Computer Use opened Summary for ${caseDef.label}.`,
@@ -2063,7 +1913,7 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
   }
   if (
     await clickByPattern(
-      client,
+      driver,
       state,
       text,
       `Diff ${caseDef.id}`,
@@ -2072,7 +1922,7 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
     )
   ) {
     text = await captureState(
-      client,
+      driver,
       state,
       `evolved-${caseDef.id}-diff`,
       `Computer Use opened Diff for ${caseDef.label}.`,
@@ -2080,7 +1930,7 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
     evidenceText += `\n${text}`;
   }
   const matches = evidenceMatches(evidenceText, caseDef.expectedEvidence);
-  const cleanup = await cleanupReviewOnlyCase(client, state, text, caseDef);
+  const cleanup = await cleanupReviewOnlyCase(driver, state, text, caseDef);
   run.status = matches >= 2 && cleanup.ok ? "pass" : matches >= 2 ? "inconclusive" : "fail";
   run.notes.push(
     matches >= 2
@@ -2097,10 +1947,10 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
   return cleanup.text;
 }
 
-async function stopGeneratingIfVisible(client, state, text, label) {
+async function stopGeneratingIfVisible(driver, state, text, label) {
   if (!/button Stop/i.test(text)) return { clicked: false, text };
   const clicked = await clickByPattern(
-    client,
+    driver,
     state,
     text,
     `Stop ${label}`,
@@ -2109,7 +1959,7 @@ async function stopGeneratingIfVisible(client, state, text, label) {
   );
   if (!clicked) return { clicked: false, text };
   const nextText = await captureState(
-    client,
+    driver,
     state,
     `evolved-${label}-after-stop`,
     `Computer Use clicked Stop for stalled optional evolved case: ${label}.`,
@@ -2117,13 +1967,13 @@ async function stopGeneratingIfVisible(client, state, text, label) {
   return { clicked: true, text: nextText };
 }
 
-async function cleanupQuestionAnswerCase(client, state, text, caseDef) {
-  const stopped = await stopGeneratingIfVisible(client, state, text, caseDef.id);
+async function cleanupQuestionAnswerCase(driver, state, text, caseDef) {
+  const stopped = await stopGeneratingIfVisible(driver, state, text, caseDef.id);
   const restored = await restoreRemoteBaseline(state, `evolved-${caseDef.id}`);
   await maybeRelaunchRemote(state);
   const reason = restored.ok ? "" : ` Restore reason: ${restored.reason || "unknown"}.`;
   const nextText = await captureState(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-after-discard`,
     `Computer Use relaunched after cleanup for ${caseDef.label}.${reason}`,
@@ -2136,7 +1986,7 @@ async function cleanupQuestionAnswerCase(client, state, text, caseDef) {
   };
 }
 
-async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
+async function runQuestionAnswerEvolvedCase(driver, state, caseDef) {
   state.scenarios[caseDef.scenarioKey] ||= {
     label: `Optional evolved case: ${caseDef.label}`,
     status: "inconclusive",
@@ -2158,13 +2008,13 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
   });
   await maybeRelaunchRemote(state);
   let text = await captureState(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-home`,
     `Computer Use started optional evolved case: ${caseDef.label}.`,
   );
   const inputSet = await setValueByPattern(
-    client,
+    driver,
     state,
     text,
     `Prompt input ${caseDef.id}`,
@@ -2172,7 +2022,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     caseDef.prompt,
   );
   text = await captureState(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-typed`,
     `Computer Use entered optional evolved prompt: ${caseDef.label}.`,
@@ -2184,7 +2034,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     return text;
   }
   const submitted = await clickByPattern(
-    client,
+    driver,
     state,
     text,
     `Send ${caseDef.id}`,
@@ -2199,7 +2049,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
   }
 
   const questionWait = await waitFor(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-question`,
     (candidate) => {
@@ -2236,7 +2086,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
         ? "Provider reached Review without showing the inline question UI, so this run did not exercise ask_user."
         : "Question UI did not appear before the question polling window ended.",
     );
-    const cleanup = await cleanupQuestionAnswerCase(client, state, text, caseDef);
+    const cleanup = await cleanupQuestionAnswerCase(driver, state, text, caseDef);
     run.notes.push(
       cleanup.ok
         ? `Cleanup succeeded via ${cleanup.method}.`
@@ -2255,7 +2105,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
   }
 
   text = await captureState(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-question`,
     `Computer Use observed inline question UI for ${caseDef.label}.`,
@@ -2265,7 +2115,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     const choice = findQuestionChoiceEntry(text, caseDef.questionChoicePatterns || []);
     answered = choice
       ? await clickElementIndex(
-          client,
+          driver,
           state,
           choice.index,
           `Question choice ${caseDef.id}`,
@@ -2276,7 +2126,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     const input = findQuestionInputEntry(text);
     answered = input
       ? await setValueElementIndex(
-          client,
+          driver,
           state,
           input.index,
           `Question answer ${caseDef.id}`,
@@ -2284,7 +2134,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
         )
       : false;
     text = await captureState(
-      client,
+      driver,
       state,
       `evolved-${caseDef.id}-answer-typed`,
       `Computer Use typed inline question answer for ${caseDef.label}.`,
@@ -2293,7 +2143,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     answered =
       answered && submit
         ? await clickElementIndex(
-            client,
+            driver,
             state,
             submit.index,
             `Submit question answer ${caseDef.id}`,
@@ -2306,7 +2156,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     run.notes.push(
       "Inline question UI appeared, but Computer Use could not answer it through a question-scoped control.",
     );
-    const cleanup = await cleanupQuestionAnswerCase(client, state, text, caseDef);
+    const cleanup = await cleanupQuestionAnswerCase(driver, state, text, caseDef);
     run.notes.push(
       cleanup.ok
         ? `Cleanup succeeded via ${cleanup.method}.`
@@ -2317,7 +2167,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
   }
 
   const answerWait = await waitFor(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-answered`,
     (candidate) => {
@@ -2335,14 +2185,14 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     },
   );
   text = await captureState(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-answered`,
     `Computer Use submitted inline question answer for ${caseDef.label}.`,
   );
 
   const reviewWait = await waitFor(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-provider-progress`,
     (candidate) => {
@@ -2378,7 +2228,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
         ? `Provider reached ${reviewWait.result} after answer.`
         : "Review did not appear after inline question answer before the polling window ended.",
     );
-    const cleanup = await cleanupQuestionAnswerCase(client, state, text, caseDef);
+    const cleanup = await cleanupQuestionAnswerCase(driver, state, text, caseDef);
     run.notes.push(
       cleanup.ok
         ? `Cleanup succeeded via ${cleanup.method}.`
@@ -2391,7 +2241,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
   let evidenceText = text;
   if (
     await clickByPattern(
-      client,
+      driver,
       state,
       text,
       `Summary ${caseDef.id}`,
@@ -2400,7 +2250,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     )
   ) {
     text = await captureState(
-      client,
+      driver,
       state,
       `evolved-${caseDef.id}-summary`,
       `Computer Use opened Summary for ${caseDef.label}.`,
@@ -2409,7 +2259,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
   }
   if (
     await clickByPattern(
-      client,
+      driver,
       state,
       text,
       `Diff ${caseDef.id}`,
@@ -2418,7 +2268,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     )
   ) {
     text = await captureState(
-      client,
+      driver,
       state,
       `evolved-${caseDef.id}-diff`,
       `Computer Use opened Diff for ${caseDef.label}.`,
@@ -2426,7 +2276,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     evidenceText += `\n${text}`;
   }
   const matches = evidenceMatches(evidenceText, caseDef.expectedEvidence);
-  const cleanup = await cleanupReviewOnlyCase(client, state, text, caseDef);
+  const cleanup = await cleanupReviewOnlyCase(driver, state, text, caseDef);
   run.status = matches >= 2 && cleanup.ok ? "pass" : matches >= 2 ? "inconclusive" : "fail";
   run.notes.push(
     matches >= 2
@@ -2563,15 +2413,16 @@ async function runSuite(args) {
   await saveState(state);
   const computerUseStartedAt = nowIso();
 
-  const client = new AppServerClient(options.ws);
+  const driver = validateRuntimeDriver(new CodexAppServerDriver(options.ws));
   try {
-    await client.connect();
+    await driver.connect();
+    await driver.prepareTarget({ appBundleId: options.app });
     await prepareDisposableRemoteBaseline(state);
     await maybeRelaunchRemote(state);
     captureRemoteMetadata(state);
 
     let text = await captureState(
-      client,
+      driver,
       state,
       "launch",
       "Computer Use observed the nixmac window at launch.",
@@ -2602,7 +2453,7 @@ async function runSuite(args) {
 
     const updateDismissButtonPresent = Boolean(findElement(text, [/button Dismiss/i]));
     const updateDismissed = await clickByPattern(
-      client,
+      driver,
       state,
       text,
       "Dismiss update banner",
@@ -2611,7 +2462,7 @@ async function runSuite(args) {
     );
     if (updateDismissed) {
       text = await captureState(
-        client,
+        driver,
         state,
         "after-dismiss",
         "Computer Use clicked a visible Dismiss button.",
@@ -2639,14 +2490,14 @@ async function runSuite(args) {
     }
 
     const settingsOpened = await clickByPattern(
-      client,
+      driver,
       state,
       text,
       "Settings",
       [/button Settings/i],
       "Open Settings.",
     );
-    text = await captureState(client, state, "settings-general", "Computer Use opened Settings.");
+    text = await captureState(driver, state, "settings-general", "Computer Use opened Settings.");
     if (settingsOpened && hasSettingsGeneralEvidence(text)) {
       updateScenario(
         state,
@@ -2665,7 +2516,7 @@ async function runSuite(args) {
 
     if (
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "AI Models tab",
@@ -2674,7 +2525,7 @@ async function runSuite(args) {
       )
     ) {
       text = await captureState(
-        client,
+        driver,
         state,
         "settings-ai-models",
         "Computer Use opened AI Models settings.",
@@ -2699,7 +2550,7 @@ async function runSuite(args) {
 
     if (
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "API Keys tab",
@@ -2708,7 +2559,7 @@ async function runSuite(args) {
       )
     ) {
       const apiWait = await waitFor(
-        client,
+        driver,
         state,
         "settings-api-keys",
         (candidate) => (hasSettingsAPIKeysEvidence(candidate) ? "rendered" : null),
@@ -2735,13 +2586,13 @@ async function runSuite(args) {
     if (state.scenarios.settingsAPIKeys.status === "fail") {
       await maybeRelaunchRemote(state);
       text = await captureState(
-        client,
+        driver,
         state,
         "recover-after-api-keys",
         "Relaunched after API Keys blank-screen reproduction so the rest of the suite could continue.",
       );
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Settings after recovery",
@@ -2749,7 +2600,7 @@ async function runSuite(args) {
         "Reopen Settings after recovery.",
       );
       text = await captureState(
-        client,
+        driver,
         state,
         "settings-after-recovery",
         "Computer Use reopened Settings after recovery.",
@@ -2758,7 +2609,7 @@ async function runSuite(args) {
 
     if (
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Preferences tab",
@@ -2767,7 +2618,7 @@ async function runSuite(args) {
       )
     ) {
       text = await captureState(
-        client,
+        driver,
         state,
         "settings-preferences",
         "Computer Use opened Preferences settings.",
@@ -2791,7 +2642,7 @@ async function runSuite(args) {
     }
 
     await clickByPattern(
-      client,
+      driver,
       state,
       text,
       "Close settings",
@@ -2799,16 +2650,16 @@ async function runSuite(args) {
       "Close Settings.",
     );
     text = await captureState(
-      client,
+      driver,
       state,
       "home-after-settings",
       "Computer Use returned to the main app surface after Settings coverage.",
     );
 
     if (
-      await clickByPattern(client, state, text, "History", [/button History/i], "Open My History.")
+      await clickByPattern(driver, state, text, "History", [/button History/i], "Open My History.")
     ) {
-      text = await captureState(client, state, "history", "Computer Use opened History.");
+      text = await captureState(driver, state, "history", "Computer Use opened History.");
       updateScenario(
         state,
         "history",
@@ -2818,7 +2669,7 @@ async function runSuite(args) {
           : "History did not visibly render expected content.",
       );
       const closedHistory = await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Close history",
@@ -2827,7 +2678,7 @@ async function runSuite(args) {
       );
       if (!closedHistory && /heading History/i.test(text)) {
         await clickByPattern(
-          client,
+          driver,
           state,
           text,
           "Toggle history closed",
@@ -2836,15 +2687,15 @@ async function runSuite(args) {
         );
       }
       text = await captureState(
-        client,
+        driver,
         state,
         "home-after-history",
         "Computer Use returned home after History.",
       );
     }
 
-    if (await clickByPattern(client, state, text, "Console", [/Console/i], "Open Console.")) {
-      text = await captureState(client, state, "console", "Computer Use opened Console.");
+    if (await clickByPattern(driver, state, text, "Console", [/Console/i], "Open Console.")) {
+      text = await captureState(driver, state, "console", "Computer Use opened Console.");
       updateScenario(
         state,
         "console",
@@ -2854,7 +2705,7 @@ async function runSuite(args) {
           : "Console did not visibly render expected content.",
       );
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Close console",
@@ -2862,7 +2713,7 @@ async function runSuite(args) {
         "Close Console.",
       );
       text = await captureState(
-        client,
+        driver,
         state,
         "home-after-console",
         "Computer Use returned home after Console.",
@@ -2878,7 +2729,7 @@ async function runSuite(args) {
 
     if (
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Give feedback",
@@ -2886,7 +2737,7 @@ async function runSuite(args) {
         "Open Give Feedback.",
       )
     ) {
-      text = await captureState(client, state, "feedback", "Computer Use opened Give Feedback.");
+      text = await captureState(driver, state, "feedback", "Computer Use opened Give Feedback.");
       updateScenario(
         state,
         "feedback",
@@ -2896,7 +2747,7 @@ async function runSuite(args) {
           : "Feedback dialog did not visibly render.",
       );
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Cancel feedback",
@@ -2904,7 +2755,7 @@ async function runSuite(args) {
         "Cancel Give Feedback.",
       );
       text = await captureState(
-        client,
+        driver,
         state,
         "home-after-feedback",
         "Computer Use returned home after Feedback.",
@@ -2913,7 +2764,7 @@ async function runSuite(args) {
 
     if (
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Report Issue",
@@ -2921,7 +2772,7 @@ async function runSuite(args) {
         "Open Report Issue.",
       )
     ) {
-      text = await captureState(client, state, "report-issue", "Computer Use opened Report Issue.");
+      text = await captureState(driver, state, "report-issue", "Computer Use opened Report Issue.");
       updateScenario(
         state,
         "reportIssue",
@@ -2931,7 +2782,7 @@ async function runSuite(args) {
           : "Report Issue did not visibly render.",
       );
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Cancel report issue",
@@ -2939,7 +2790,7 @@ async function runSuite(args) {
         "Cancel Report Issue.",
       );
       text = await captureState(
-        client,
+        driver,
         state,
         "home-after-report-issue",
         "Computer Use returned home after Report Issue.",
@@ -2953,14 +2804,14 @@ async function runSuite(args) {
       );
     }
 
-    text = await runConditionalBadgeSaveScenario(client, state, text, "homebrewSaveRollback", {
+    text = await runConditionalBadgeSaveScenario(driver, state, text, "homebrewSaveRollback", {
       name: "Untracked Homebrew items",
       prefix: "homebrew",
       badgePatterns: [/untracked Homebrew/i],
       absentNoun: "Homebrew items",
     });
 
-    text = await runConditionalBadgeSaveScenario(client, state, text, "customizationSaveRollback", {
+    text = await runConditionalBadgeSaveScenario(driver, state, text, "customizationSaveRollback", {
       name: "Untracked customizations",
       prefix: "customization",
       badgePatterns: [/untracked settings?/i],
@@ -2970,7 +2821,7 @@ async function runSuite(args) {
     const suggestionVisible = hasAny(text, [/Install vim/i, /Add Rectangle/i, /Finder path bar/i]);
     const suggestionClicked = suggestionVisible
       ? await clickByPattern(
-          client,
+          driver,
           state,
           text,
           "Suggestion card",
@@ -2979,7 +2830,7 @@ async function runSuite(args) {
         )
       : false;
     text = await captureState(
-      client,
+      driver,
       state,
       "suggestion-card",
       "Computer Use checked home suggestion cards.",
@@ -2996,7 +2847,7 @@ async function runSuite(args) {
     );
 
     const inputSet = await setValueByPattern(
-      client,
+      driver,
       state,
       text,
       "Prompt input",
@@ -3004,7 +2855,7 @@ async function runSuite(args) {
       options.prompt,
     );
     text = await captureState(
-      client,
+      driver,
       state,
       "typed-intent",
       "Computer Use set a real prompt in the app prompt field.",
@@ -3028,7 +2879,7 @@ async function runSuite(args) {
     if (
       inputSet &&
       (await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Send prompt",
@@ -3037,7 +2888,7 @@ async function runSuite(args) {
       ))
     ) {
       const wait = await waitFor(
-        client,
+        driver,
         state,
         "provider-progress",
         (candidate) => {
@@ -3120,7 +2971,7 @@ async function runSuite(args) {
 
     if (state.scenarios.review.status === "pass") {
       const summaryClicked = await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Summary tab",
@@ -3129,7 +2980,7 @@ async function runSuite(args) {
       );
       if (summaryClicked) {
         text = await captureState(
-          client,
+          driver,
           state,
           "review-summary",
           "Computer Use opened Summary after Review.",
@@ -3153,7 +3004,7 @@ async function runSuite(args) {
         );
       }
       const diffClicked = await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Diff tab",
@@ -3162,7 +3013,7 @@ async function runSuite(args) {
       );
       if (diffClicked) {
         text = await captureState(
-          client,
+          driver,
           state,
           "review-diff",
           "Computer Use opened Diff after Review.",
@@ -3188,7 +3039,7 @@ async function runSuite(args) {
         );
       }
       const buildClicked = await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Build & Test",
@@ -3197,7 +3048,7 @@ async function runSuite(args) {
       );
       if (buildClicked) {
         text = await captureState(
-          client,
+          driver,
           state,
           "build-boundary",
           "Computer Use clicked Build & Test to verify the destructive boundary.",
@@ -3218,7 +3069,7 @@ async function runSuite(args) {
           state.remoteConfig?.baselinePrepared === true;
         if (boundary && canConfirmBuild) {
           const buildConfirmed = await clickByPattern(
-            client,
+            driver,
             state,
             text,
             "Confirm build boundary",
@@ -3231,7 +3082,7 @@ async function runSuite(args) {
             );
             let pamSymlinkHangSeen = 0;
             const step3 = await waitFor(
-              client,
+              driver,
               state,
               "build-to-step-3",
               (candidate) => {
@@ -3265,14 +3116,14 @@ async function runSuite(args) {
             text = step3.text;
             if (step3.result === "step-3") {
               text = await captureState(
-                client,
+                driver,
                 state,
                 "step-3-ready",
                 "Computer Use reached Step 3 after Build & Test.",
               );
               if (/button \(disabled\) Commit/i.test(text)) {
                 const commitReady = await waitFor(
-                  client,
+                  driver,
                   state,
                   "commit-ready",
                   (candidate) =>
@@ -3289,7 +3140,7 @@ async function runSuite(args) {
               }
               if (
                 await clickByPattern(
-                  client,
+                  driver,
                   state,
                   text,
                   "Commit changes",
@@ -3313,7 +3164,7 @@ async function runSuite(args) {
                   },
                 );
                 text = await captureState(
-                  client,
+                  driver,
                   state,
                   "after-commit",
                   "Computer Use committed Step 3 changes.",
@@ -3442,7 +3293,7 @@ async function runSuite(args) {
             baselinePrepared: Boolean(state.remoteConfig?.baselinePrepared),
           });
           await clickByPattern(
-            client,
+            driver,
             state,
             text,
             "Cancel build boundary",
@@ -3450,7 +3301,7 @@ async function runSuite(args) {
             "Cancel Build & Test boundary.",
           );
           text = await captureState(
-            client,
+            driver,
             state,
             "after-build-cancel",
             "Computer Use cancelled the Build & Test boundary.",
@@ -3492,7 +3343,7 @@ async function runSuite(args) {
       if (state.scenarios.saveFlow.status === "pass") {
         if (
           await clickByPattern(
-            client,
+            driver,
             state,
             text,
             "History after commit",
@@ -3501,14 +3352,14 @@ async function runSuite(args) {
           )
         ) {
           text = await captureState(
-            client,
+            driver,
             state,
             "history-before-restore",
             "Computer Use opened History after Step 3 commit.",
           );
           if (
             await clickByPattern(
-              client,
+              driver,
               state,
               text,
               "Restore previous commit",
@@ -3517,14 +3368,14 @@ async function runSuite(args) {
             )
           ) {
             text = await captureState(
-              client,
+              driver,
               state,
               "history-restore-preview",
               "Computer Use previewed History restore.",
             );
             if (
               await clickByPattern(
-                client,
+                driver,
                 state,
                 text,
                 "Confirm restore",
@@ -3546,7 +3397,7 @@ async function runSuite(args) {
                 },
               );
               text = await captureState(
-                client,
+                driver,
                 state,
                 "after-history-restore",
                 "Computer Use completed History restore cleanup.",
@@ -3627,7 +3478,7 @@ async function runSuite(args) {
         );
       } else if (
         await clickByPattern(
-          client,
+          driver,
           state,
           text,
           "Discard",
@@ -3636,7 +3487,7 @@ async function runSuite(args) {
         )
       ) {
         text = await captureState(
-          client,
+          driver,
           state,
           "discard-boundary",
           "Computer Use opened Discard confirmation.",
@@ -3650,7 +3501,7 @@ async function runSuite(args) {
         let exitedDiscard = false;
         if (canConfirmDiscard) {
           exitedDiscard = await clickByPattern(
-            client,
+            driver,
             state,
             text,
             "Confirm discard",
@@ -3667,7 +3518,7 @@ async function runSuite(args) {
         }
         if (!exitedDiscard)
           await clickByPattern(
-            client,
+            driver,
             state,
             text,
             "Cancel discard",
@@ -3675,7 +3526,7 @@ async function runSuite(args) {
             "Exit Discard dialog without confirming.",
           );
         text = await captureState(
-          client,
+          driver,
           state,
           "after-discard",
           "Computer Use exited Discard flow.",
@@ -3765,7 +3616,7 @@ async function runSuite(args) {
     for (const caseDef of enabledExtraEvolvedCases()) {
       const executor = evolvedCaseExecutorForMode(caseDef.mode);
       if (executor) {
-        text = await executor(client, state, caseDef);
+        text = await executor(driver, state, caseDef);
       } else {
         await addEvent(state, "evolved-case.skipped", {
           id: caseDef.id,
@@ -3812,7 +3663,7 @@ async function runSuite(args) {
       note: "Connected to Codex app-server, exercised the calibrated nixmac Computer Use suite, and reached report generation.",
     });
     await render(state);
-    await inspectReportWithComputerUse(client, state);
+    await inspectReportWithComputerUse(driver, state);
     refreshVisualProofQuality(state);
     updatePrSpecificCoverage(state);
     await render(state);
@@ -3825,7 +3676,7 @@ async function runSuite(args) {
       process.exitCode = 1;
     }
   } finally {
-    client.close();
+    await driver.close();
   }
 }
 
@@ -4536,7 +4387,7 @@ async function runSelfTest() {
   const coverageFreshness = buildCoverageFreshness();
   assert.equal(
     coverageFreshness.candidateFiles,
-    932,
+    934,
     "coverage freshness should preserve the full shared PR-visible behavior universe",
   );
   const coverageManifest = loadCoverageManifest();
@@ -4581,9 +4432,7 @@ async function runSelfTest() {
     "coverage freshness should preserve an explicitly non-claiming surface without requiring a scenario or waiver",
   );
   assert.equal(
-    coverageFreshness.unmappedCandidateFiles.includes(
-      "apps/native/src-tauri/src/commands/mod.rs",
-    ),
+    coverageFreshness.unmappedCandidateFiles.includes("apps/native/src-tauri/src/commands/mod.rs"),
     false,
     "an isolated non-claiming source prefix should still participate in candidate-file coverage",
   );
@@ -5376,11 +5225,7 @@ async function runSelfTest() {
       { ...validCuaAddress, [field]: value },
       { additionalAddressValidators: cuaAddressValidators },
     );
-    assert.equal(
-      result.ok,
-      false,
-      `driver contract should reject invalid CuaDriver ${field}`,
-    );
+    assert.equal(result.ok, false, `driver contract should reject invalid CuaDriver ${field}`);
     assert.equal(
       result.issues.some((entry) => entry.path === field),
       true,
@@ -5847,16 +5692,14 @@ async function runSelfTest() {
     false,
     "PR focus coverage must not require itself",
   );
-  process.env.NIXMAC_E2E_PR_CHANGED_FILES =
-    "tests/e2e/computer-use/new-proof-signal.mjs";
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = "tests/e2e/computer-use/new-proof-signal.mjs";
   const unownedProofSystemPrFocus = buildPrFocus();
   assert.deepEqual(
     unownedProofSystemPrFocus.unmatchedUserVisibleFiles,
     ["tests/e2e/computer-use/new-proof-signal.mjs"],
     "new Computer Use proof-system files should fail closed until explicitly owned",
   );
-  process.env.NIXMAC_E2E_PR_CHANGED_FILES =
-    "tests/e2e/computer-use/new-proof.test.ts";
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = "tests/e2e/computer-use/new-proof.test.ts";
   const unownedProofCollisionPrFocus = buildPrFocus();
   assert.deepEqual(
     unownedProofCollisionPrFocus.unmatchedUserVisibleFiles,

@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { findElement } from "../transport.mjs";
+import { createScenarioDriverHelpers } from "../scenario-driver.mjs";
 import {
   normalizeActionResult,
   normalizeVisibleState,
@@ -12,19 +17,9 @@ import {
   validateDriverDescriptor,
   validateElementAddress,
 } from "./contract.mjs";
-import {
-  CodexAppServerDriver,
-  codexAppServerDriverDescriptor,
-} from "./codex-app-server.mjs";
+import { CodexAppServerDriver, codexAppServerDriverDescriptor } from "./codex-app-server.mjs";
 
-const requiredMethods = [
-  "connect",
-  "prepareTarget",
-  "visibleState",
-  "click",
-  "setValue",
-  "close",
-];
+const requiredMethods = ["connect", "prepareTarget", "visibleState", "click", "setValue", "close"];
 
 assert.deepEqual(runtimeDriverMethods, requiredMethods);
 
@@ -44,10 +39,7 @@ assert.deepEqual(state.target, {
 assert.equal(Object.isFrozen(state), true);
 assert.equal(Object.isFrozen(state.target), true);
 assert.equal(Object.isFrozen(state.metadata), true);
-assert.throws(
-  () => normalizeVisibleState({ text: 7 }),
-  /visible state text must be a string/,
-);
+assert.throws(() => normalizeVisibleState({ text: 7 }), /visible state text must be a string/);
 assert.throws(
   () => normalizeVisibleState({ imageBase64: 7 }),
   /visible state imageBase64 must be a string/,
@@ -62,6 +54,176 @@ const driver = {
   close() {},
 };
 assert.equal(validateRuntimeDriver(driver), driver);
+
+const scenarioRunDir = await mkdtemp(path.join(os.tmpdir(), "nixmac-scenario-driver-"));
+try {
+  const events = [];
+  const narratives = [];
+  let saveCount = 0;
+  const scenario = createScenarioDriverHelpers({
+    addEvent: async (_state, type, data) => events.push({ type, data }),
+    saveState: async () => {
+      saveCount += 1;
+    },
+    addNarrative: (_state, note) => narratives.push(note),
+    redact: (value) => String(value ?? "").replaceAll("sk-secret", "[REDACTED]"),
+    containsUnmaskedSecret: (value) => String(value ?? "").includes("sk-secret"),
+    pngDimensions: () => ({ width: 2, height: 3 }),
+    findElement,
+    screenshotSource: "Codex Computer Use get_app_state image",
+  });
+  const scenarioState = {
+    app: "com.darkmatter.nixmac",
+    runDir: scenarioRunDir,
+    textSnapshots: [],
+    screenshots: [],
+    secretMaskingViolations: [],
+  };
+  const target = {
+    pid: 101,
+    windowId: 202,
+    snapshotId: "101:202:turn-1",
+  };
+  const fake = {
+    states: [
+      {
+        text: "1 text API key sk-secret",
+        imageBase64: Buffer.from("sensitive-image").toString("base64"),
+        target: null,
+      },
+      {
+        text: "1 button Save\n2 text entry area Prompt",
+        imageBase64: Buffer.from("normal-image").toString("base64"),
+        target,
+      },
+    ],
+    clicks: [],
+    setValues: [],
+    async visibleState() {
+      return this.states.shift();
+    },
+    async click(input) {
+      this.clicks.push(input);
+      return { ok: true, text: "clicked", isError: false };
+    },
+    async setValue(input) {
+      this.setValues.push(input);
+      return { ok: true, text: "set", isError: false };
+    },
+  };
+
+  const sensitiveText = await scenario.captureState(
+    fake,
+    scenarioState,
+    "settings-api-keys",
+    "Captured API keys.",
+  );
+  assert.equal(sensitiveText.includes("sk-secret"), false);
+  assert.equal(scenarioState.textSnapshots.length, 1);
+  assert.equal(scenarioState.screenshots.length, 0);
+  assert.equal(scenarioState.secretMaskingViolations.length, 1);
+  assert.equal(
+    events.some((event) => event.type === "computer-use.screenshot-omitted"),
+    true,
+  );
+  assert.equal(
+    (
+      await readFile(path.join(scenarioRunDir, scenarioState.textSnapshots[0].path), "utf8")
+    ).includes("[REDACTED]"),
+    true,
+  );
+
+  const normalText = await scenario.captureState(
+    fake,
+    scenarioState,
+    "normal-state",
+    "Captured normal state.",
+  );
+  assert.equal(normalText.includes("button Save"), true);
+  assert.equal(scenarioState.textSnapshots.length, 2);
+  assert.equal(scenarioState.screenshots.length, 1);
+  assert.deepEqual(scenarioState.screenshots[0].imageSize, {
+    width: 2,
+    height: 3,
+  });
+
+  assert.equal(
+    await scenario.clickByPattern(fake, scenarioState, normalText, "Save", [/button Save/i]),
+    true,
+  );
+  assert.deepEqual(fake.clicks[0], {
+    app: "com.darkmatter.nixmac",
+    elementIndex: "1",
+    elementAddress: {
+      kind: "cua-element-index",
+      elementIndex: 1,
+      ...target,
+    },
+  });
+
+  assert.equal(
+    await scenario.setValueByPattern(
+      fake,
+      scenarioState,
+      normalText,
+      "Prompt",
+      [/text entry area Prompt/i],
+      "new value",
+    ),
+    true,
+  );
+  assert.deepEqual(fake.setValues[0], {
+    app: "com.darkmatter.nixmac",
+    elementIndex: "2",
+    elementAddress: {
+      kind: "cua-element-index",
+      elementIndex: 2,
+      ...target,
+    },
+    value: "new value",
+  });
+  assert.equal(saveCount, 2);
+  assert.deepEqual(narratives, ["Captured API keys.", "Captured normal state."]);
+
+  fake.click = async () => ({ ok: false, text: "stale element", isError: false });
+  assert.equal(await scenario.clickElementIndex(fake, scenarioState, "1", "Stale Save"), false);
+  assert.equal(
+    events.some(
+      (event) =>
+        event.type === "computer-use.click.failed" &&
+        event.data.label === "Stale Save" &&
+        event.data.response === "stale element",
+    ),
+    true,
+  );
+
+  const pollingFake = {
+    states: [
+      { text: "1 text Loading", imageBase64: "", target: null },
+      { text: "1 text Ready", imageBase64: "", target: null },
+    ],
+    visibleStateCalls: 0,
+    async visibleState() {
+      this.visibleStateCalls += 1;
+      return this.states.shift();
+    },
+  };
+  const waitResult = await scenario.waitFor(
+    pollingFake,
+    scenarioState,
+    "ready",
+    (text) => (/Ready/.test(text) ? "ready" : ""),
+    { attempts: 2, delayMs: 0 },
+  );
+  assert.deepEqual(waitResult, {
+    ok: true,
+    text: "1 text Ready",
+    result: "ready",
+  });
+  assert.equal(pollingFake.visibleStateCalls, 2);
+} finally {
+  await rm(scenarioRunDir, { recursive: true, force: true });
+}
 
 const actionResult = normalizeActionResult({ ok: true, text: "clicked" });
 assert.deepEqual(actionResult, {
@@ -519,18 +681,9 @@ for (const [method, validArguments] of [
 }
 
 for (const [label, request] of [
-  [
-    "missing",
-    { app: "com.darkmatter.nixmac", elementIndex: 10 },
-  ],
-  [
-    "null",
-    { app: "com.darkmatter.nixmac", elementIndex: 10, value: null },
-  ],
-  [
-    "non-string",
-    { app: "com.darkmatter.nixmac", elementIndex: 10, value: 42 },
-  ],
+  ["missing", { app: "com.darkmatter.nixmac", elementIndex: 10 }],
+  ["null", { app: "com.darkmatter.nixmac", elementIndex: 10, value: null }],
+  ["non-string", { app: "com.darkmatter.nixmac", elementIndex: 10, value: 42 }],
 ]) {
   const messageCountBeforeInvalidValue = codexMessages.length;
   await assert.rejects(
@@ -555,12 +708,7 @@ for (const [method, request, expectedText, expectedIsError] of [
     "Error: stale element index 91",
     false,
   ],
-  [
-    "click",
-    { app: "com.darkmatter.nixmac", elementIndex: 92 },
-    "Synthetic click tool error",
-    true,
-  ],
+  ["click", { app: "com.darkmatter.nixmac", elementIndex: 92 }, "Synthetic click tool error", true],
   [
     "setValue",
     { app: "com.darkmatter.nixmac", elementIndex: 93, value: "ignored" },
@@ -581,10 +729,7 @@ for (const [method, request, expectedText, expectedIsError] of [
   });
 }
 
-assert.equal(
-  codexAppServerDriverDescriptor.id,
-  "codex-app-server-computer-use",
-);
+assert.equal(codexAppServerDriverDescriptor.id, "codex-app-server-computer-use");
 codexDriver.close();
 assert.equal(codexDriver.client.ws.closed, true);
 

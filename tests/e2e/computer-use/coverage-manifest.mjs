@@ -4,6 +4,7 @@ import path from "node:path";
 const COVERAGE_IGNORED_PATH_PATTERNS = [
   /(?:^|\/)\.git(?:\/|$)/,
   /(?:^|\/)node_modules(?:\/|$)/,
+  /^apps\/native\/src-tauri\/gen(?:\/|$)/,
   /^apps\/native\/src-tauri\/target(?:\/|$)/,
   /(?:^|\/)\.DS_Store$/,
 ];
@@ -21,7 +22,9 @@ export function matchesAnyPattern(value, patterns = []) {
 }
 
 export function isCoverageIgnoredPath(file) {
-  const normalized = String(file ?? "").replaceAll("\\", "/").replace(/^\.\//, "");
+  const normalized = String(file ?? "")
+    .replaceAll("\\", "/")
+    .replace(/^\.\//, "");
   return COVERAGE_IGNORED_PATH_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
@@ -96,11 +99,7 @@ function overlapPrefix(left, right) {
 }
 
 function approvalKey(approval) {
-  return [
-    approval?.claimSurfaceId,
-    approval?.waiverSurfaceId,
-    approval?.prefix,
-  ].join("\u0000");
+  return [approval?.claimSurfaceId, approval?.waiverSurfaceId, approval?.prefix].join("\u0000");
 }
 
 function overlapApprovalFor(manifest, file, claimSurface, waiverSurface) {
@@ -121,7 +120,10 @@ export function validateCoverageManifest(manifest, { knownScenarioKey = () => tr
     errors.push("description must be a non-empty string");
   }
   for (const field of ["candidateRoots", "candidateIncludes", "candidateExcludes"]) {
-    if (!Array.isArray(manifest[field]) || manifest[field].some((value) => typeof value !== "string")) {
+    if (
+      !Array.isArray(manifest[field]) ||
+      manifest[field].some((value) => typeof value !== "string")
+    ) {
       errors.push(`${field} must be an array of strings`);
     }
   }
@@ -205,7 +207,9 @@ export function validateCoverageManifest(manifest, { knownScenarioKey = () => tr
       errors.push(`${surface.id || context} has unsupported coverageDisposition`);
     }
     if (!scenarioKeys.length && !surface.waiver && surface.coverageDisposition !== "non-claiming") {
-      errors.push(`${surface.id || context} has no scenario mapping, waiver, or non-claiming disposition`);
+      errors.push(
+        `${surface.id || context} has no scenario mapping, waiver, or non-claiming disposition`,
+      );
     }
     if (surface.waiver) {
       if (!isObject(surface.waiver)) {
@@ -222,10 +226,7 @@ export function validateCoverageManifest(manifest, { knownScenarioKey = () => tr
         if (surface.waiver.reviewBy && !validDateOnly(surface.waiver.reviewBy)) {
           errors.push(`${surface.id || context}.waiver.reviewBy must be a valid YYYY-MM-DD date`);
         }
-        if (
-          surface.waiver.risk &&
-          !["low", "medium", "high"].includes(surface.waiver.risk)
-        ) {
+        if (surface.waiver.risk && !["low", "medium", "high"].includes(surface.waiver.risk)) {
           errors.push(`${surface.id || context}.waiver.risk must be low, medium, or high`);
         }
       }
@@ -236,8 +237,9 @@ export function validateCoverageManifest(manifest, { knownScenarioKey = () => tr
       errors.push(`${surface.id || context}.directoryPrefixApprovals must be an array`);
     }
     const approvedPrefixes = new Set();
-    for (const [approvalIndex, approval] of (
-      Array.isArray(directoryApprovals) ? directoryApprovals : []
+    for (const [approvalIndex, approval] of (Array.isArray(directoryApprovals)
+      ? directoryApprovals
+      : []
     ).entries()) {
       const approvalContext = `${surface.id || context}.directoryPrefixApprovals[${approvalIndex}]`;
       if (!isObject(approval)) {
@@ -271,8 +273,9 @@ export function validateCoverageManifest(manifest, { knownScenarioKey = () => tr
     errors.push("ownershipOverlapApprovals must be an array");
   }
   const approvalKeys = new Set();
-  for (const [index, approval] of (
-    Array.isArray(overlapApprovals) ? overlapApprovals : []
+  for (const [index, approval] of (Array.isArray(overlapApprovals)
+    ? overlapApprovals
+    : []
   ).entries()) {
     const context = `ownershipOverlapApprovals[${index}]`;
     if (!isObject(approval)) {

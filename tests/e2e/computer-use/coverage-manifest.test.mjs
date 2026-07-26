@@ -1,13 +1,7 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import {
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -110,8 +104,8 @@ export function coverageManifestSelfTest() {
   const prVisibleRepoFiles = repoFiles.filter((file) =>
     isLikelyUserVisiblePrFile(file, REAL_MANIFEST),
   );
-  const freshnessCandidateRepoFiles = repoFiles.filter(
-    (file) => isCoverageCandidateFile(REAL_MANIFEST, file),
+  const freshnessCandidateRepoFiles = repoFiles.filter((file) =>
+    isCoverageCandidateFile(REAL_MANIFEST, file),
   );
   assert.deepEqual(
     prVisibleRepoFiles,
@@ -135,6 +129,7 @@ export function coverageManifestSelfTest() {
       "apps/native/src/.git/ignored.ts",
       "apps/native/src/.DS_Store",
       "apps/native/src-tauri/target/debug/ignored.rs",
+      "apps/native/src-tauri/gen/schemas/ignored.json",
     ];
     for (const file of walkFixtureFiles) {
       writeWalkFixture(file);
@@ -156,6 +151,7 @@ export function coverageManifestSelfTest() {
       "apps/native/src/.DS_Store",
       "apps/native/src/.git/ignored.ts",
       "apps/native/src/node_modules/pkg/ignored.ts",
+      "apps/native/src-tauri/gen/schemas/ignored.json",
       "apps/native/src-tauri/target/debug/ignored.rs",
     ]) {
       assert.equal(
@@ -433,12 +429,7 @@ export function coverageManifestSelfTest() {
   );
 
   const classificationFocus = buildManifestPrFocus({
-    changedFiles: [
-      "app/main.tsx",
-      "app/preview.tsx",
-      "app/new-visible.tsx",
-      "app/internal.ts",
-    ],
+    changedFiles: ["app/main.tsx", "app/preview.tsx", "app/new-visible.tsx", "app/internal.ts"],
     manifest: baseManifest(),
     knownScenarioKey: (key) => key === "launch",
   });
@@ -559,10 +550,7 @@ export function coverageManifestSelfTest() {
     },
   ];
   assert.deepEqual(validationErrors(broadClaimOverExactWaiver), []);
-  const approvedClassification = classifyCoverageFile(
-    broadClaimOverExactWaiver,
-    "app/preview.tsx",
-  );
+  const approvedClassification = classifyCoverageFile(broadClaimOverExactWaiver, "app/preview.tsx");
   assert.deepEqual(
     approvedClassification.scenarioKeys,
     ["launch"],
