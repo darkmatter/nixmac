@@ -1028,6 +1028,11 @@ assert.doesNotMatch(
   /sendDiagnostics\s*(?:=|\|\|=|&&=|\?\?=|\+\+=|--=)/,
   "Telemetry prefs failure catch block must not enable or otherwise mutate diagnostics",
 );
+assert.equal(
+  occurrenceCount(frontendInitTelemetry, /\bcreateTelemetryProvider\s*\(/),
+  1,
+  "initTelemetry must construct exactly one telemetry provider after prefs handling completes",
+);
 assertPatternOrder(
   frontendInitTelemetry,
   /catch\s*\{/,
