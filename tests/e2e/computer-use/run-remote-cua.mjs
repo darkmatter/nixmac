@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -10,6 +10,12 @@ import { fileURLToPath } from "node:url";
 import { artifactFileIssue, artifactForLabel, pngDimensions } from "./artifact-utils.mjs";
 import { dispatchRemoteCuaCommand, remoteCuaUsage } from "./cli.mjs";
 import { buildManifestPrFocus } from "./coverage-focus.mjs";
+import {
+  changedFileMatchesSurface,
+  loadCoverageManifestFile,
+  matchesAnyPattern,
+  sourcePrefixMatches,
+} from "./coverage-manifest.mjs";
 import {
   builtInElementAddressKinds,
   createDriverDescriptor,
@@ -317,11 +323,9 @@ function buildPrFocus() {
   const focus = buildManifestPrFocus({
     changedFiles,
     manifest,
+    knownScenarioKey,
     specialScenarioKeysForFile(file) {
       const scenarioKeys = [];
-      if (/^apps\/native\/src\/[^/]+\.(?:css|ts|tsx)$/i.test(file)) {
-        scenarioKeys.push("launch", "visualCoverage");
-      }
       if (/^tests\/e2e\/computer-use\/|^\.github\/workflows\/computer-use-e2e\.yml$/i.test(file)) {
         scenarioKeys.push("visualProofQuality", "reportInspection");
       }
@@ -351,7 +355,7 @@ function buildPrFocus() {
 }
 
 function loadCoverageManifest() {
-  return JSON.parse(readFileSync(COVERAGE_MANIFEST_PATH, "utf8"));
+  return loadCoverageManifestFile(COVERAGE_MANIFEST_PATH, { knownScenarioKey });
 }
 
 function walkFiles(root) {
@@ -367,10 +371,6 @@ function walkFiles(root) {
   };
   visit(fullRoot);
   return files;
-}
-
-function matchesAny(value, patterns = []) {
-  return patterns.some((pattern) => new RegExp(pattern).test(value));
 }
 
 function sourcePrefixExists(sourcePath) {
@@ -500,13 +500,11 @@ function buildCoverageFreshness(state) {
     ...new Set((manifest.candidateRoots || []).flatMap((root) => walkFiles(root))),
   ].filter(
     (file) =>
-      matchesAny(file, manifest.candidateIncludes) && !matchesAny(file, manifest.candidateExcludes),
+      matchesAnyPattern(file, manifest.candidateIncludes) &&
+      !matchesAnyPattern(file, manifest.candidateExcludes),
   );
   const unmappedCandidateFiles = candidates.filter(
-    (file) =>
-      !coveredPrefixes.some((prefix) =>
-        prefix.endsWith("/") ? file.startsWith(prefix) : file === prefix,
-      ),
+    (file) => !coveredPrefixes.some((prefix) => sourcePrefixMatches(file, prefix)),
   );
   if (unmappedCandidateFiles.length)
     drift.push(`Unmapped user-visible candidate files: ${unmappedCandidateFiles.join(", ")}`);
@@ -3964,6 +3962,8 @@ async function renderErrorReport(error, args) {
 }
 
 async function runSelfTest() {
+  const { coverageManifestSelfTest } = await import("./coverage-manifest.test.mjs");
+  coverageManifestSelfTest();
   const launchText = `
     5 button History
     6 button Give feedback
@@ -4545,6 +4545,34 @@ async function runSelfTest() {
   );
   const coverageFreshness = buildCoverageFreshness();
   assert.equal(
+    coverageFreshness.candidateFiles,
+    264,
+    "coverage freshness should scan the full current user-visible candidate baseline, including root entrypoints",
+  );
+  assert.deepEqual(
+    coverageFreshness.unmappedCandidateFiles,
+    [],
+    "every current candidate should have explicit manifest ownership",
+  );
+  assert.deepEqual(
+    coverageFreshness.drift,
+    [],
+    "the checked-in manifest should have no schema, ownership, waiver, or source drift",
+  );
+  assert.equal(
+    coverageFreshness.waivers.length,
+    9,
+    "the current explicit waiver baseline should remain auditable",
+  );
+  assert.deepEqual(
+    coverageFreshness.waivers.reduce((counts, item) => {
+      counts[item.risk] = (counts[item.risk] ?? 0) + 1;
+      return counts;
+    }, {}),
+    { medium: 5, high: 4 },
+    "the current waiver risk distribution should remain explicit",
+  );
+  assert.equal(
     coverageFreshness.drift.some((item) =>
       item.includes("e2e-harness-rust has no scenario mapping and no waiver"),
     ),
@@ -4561,11 +4589,7 @@ async function runSelfTest() {
   const coverageManifest = loadCoverageManifest();
   const coverageOwnersFor = (file) =>
     coverageManifest.surfaces
-      .filter((surface) =>
-        (surface.sourcePrefixes || []).some((prefix) =>
-          prefix.endsWith("/") ? file.startsWith(prefix) : file === prefix,
-        ),
-      )
+      .filter((surface) => changedFileMatchesSurface(file, surface))
       .map((surface) => surface.id)
       .sort();
   assert.deepEqual(
@@ -4578,6 +4602,21 @@ async function runSelfTest() {
     ["settings"],
     "the AI Models tab should remain mapped to the exercised settings scenarios",
   );
+  for (const file of [
+    "apps/native/src/hooks/use-darwin-config.ts",
+    "apps/native/src/hooks/use-prefs.ts",
+    "apps/native/src/ipc/preferences.ts",
+    "apps/native/src/viewmodel/preferences.ts",
+    "apps/native/src-tauri/src/commands/ui_prefs.rs",
+    "apps/native/src-tauri/src/state/preferences.rs",
+    "apps/native/src-tauri/src/state/ui_prefs.rs",
+  ]) {
+    assert.deepEqual(
+      coverageOwnersFor(file),
+      ["settings-unexercised"],
+      `${file} should be waived because rendered tabs do not exercise its state-changing behavior`,
+    );
+  }
   for (const file of [
     "apps/native/src/components/widget/settings/account-tab.tsx",
     "apps/native/src/components/widget/settings/permissions-tab.tsx",
@@ -4610,6 +4649,26 @@ async function runSelfTest() {
     coverageOwnersFor("apps/native/src-tauri/src/commands/updater.rs"),
     ["updater-runtime"],
     "the updater runtime should be waived because an absent banner currently passes",
+  );
+  for (const file of [
+    "apps/native/src/components/widget/layout/update-banner.tsx",
+    "apps/native/src/hooks/use-updater.ts",
+  ]) {
+    assert.deepEqual(
+      coverageOwnersFor(file),
+      ["updater-runtime"],
+      `${file} should share the updater-runtime waiver until update behavior is deterministic`,
+    );
+  }
+  assert.deepEqual(
+    coverageOwnersFor("apps/native/src/preview-indicator-window.tsx"),
+    ["preview-indicator"],
+    "the preview side-window entrypoint should share the preview-indicator waiver",
+  );
+  assert.deepEqual(
+    coverageOwnersFor("apps/native/src/evolve-mascot-window.tsx"),
+    ["evolve-mascot-indicator"],
+    "the experimental mascot side-window entrypoint should not inherit main-window proof",
   );
   const previousExtraCases = process.env.NIXMAC_E2E_EXTRA_EVOLVED_CASES;
   process.env.NIXMAC_E2E_EXTRA_EVOLVED_CASES = "inline-question-font";
@@ -5547,17 +5606,19 @@ async function runSelfTest() {
       `claiming manifest surfaces should continue to map ${scenarioKey}`,
     );
   }
-  process.env.NIXMAC_E2E_PR_CHANGED_FILES =
-    "apps/native/src/App.tsx\napps/native/src/index.css\napps/native/src/preview-indicator-window.tsx";
+  const mainAppRootFiles = [
+    "apps/native/src/App.css",
+    "apps/native/src/App.tsx",
+    "apps/native/src/index.css",
+    "apps/native/src/main.tsx",
+    "apps/native/src/router.tsx",
+  ];
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = mainAppRootFiles.join("\n");
   const rootPrFocus = buildPrFocus();
   assert.deepEqual(
     rootPrFocus.userVisibleFiles,
-    [
-      "apps/native/src/App.tsx",
-      "apps/native/src/index.css",
-      "apps/native/src/preview-indicator-window.tsx",
-    ],
-    "PR focus should infer root-level native app source files as user-visible",
+    mainAppRootFiles,
+    "PR focus should infer exact main-app root files as user-visible",
   );
   assert.equal(
     rootPrFocus.scenarioKeys.includes("launch"),
@@ -5567,7 +5628,92 @@ async function runSelfTest() {
   assert.equal(
     rootPrFocus.scenarioKeys.includes("visualCoverage"),
     true,
-    "root-level native app source changes should focus visual coverage",
+    "exact main-app root changes should focus visual coverage",
+  );
+  assert(
+    rootPrFocus.matchedSurfaces.every((surface) => surface.id === "app-shell"),
+    "exact main-app root files should be manifest-owned by app-shell",
+  );
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = "apps/native/src/preview-indicator-window.tsx";
+  const previewEntrypointPrFocus = buildPrFocus();
+  assert.deepEqual(
+    previewEntrypointPrFocus.scenarioKeys,
+    [],
+    "the preview side-window entrypoint must not inherit main-window launch or visual proof",
+  );
+  assert.deepEqual(
+    previewEntrypointPrFocus.unmappedUserVisibleFiles,
+    ["apps/native/src/preview-indicator-window.tsx"],
+    "the preview side-window entrypoint should remain explicit waived scenario debt",
+  );
+  assert.equal(
+    previewEntrypointPrFocus.matchedSurfaces.some(
+      (surface) => surface.id === "preview-indicator" && Boolean(surface.waiver),
+    ),
+    true,
+    "the preview side-window entrypoint should retain its waiver ownership",
+  );
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = "apps/native/src/evolve-mascot-window.tsx";
+  const mascotEntrypointPrFocus = buildPrFocus();
+  assert.deepEqual(
+    mascotEntrypointPrFocus.scenarioKeys,
+    [],
+    "other side-window entrypoints must not inherit main-window launch or visual proof",
+  );
+  assert.deepEqual(
+    mascotEntrypointPrFocus.unmappedUserVisibleFiles,
+    ["apps/native/src/evolve-mascot-window.tsx"],
+    "the experimental mascot side window should remain explicit waived debt",
+  );
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = "apps/native/src/new-side-window.tsx";
+  const newSideWindowPrFocus = buildPrFocus();
+  assert.deepEqual(
+    newSideWindowPrFocus.scenarioKeys,
+    [],
+    "a new root side-window entrypoint must fail closed instead of inheriting app-shell proof",
+  );
+  assert.deepEqual(
+    newSideWindowPrFocus.unmappedUserVisibleFiles,
+    ["apps/native/src/new-side-window.tsx"],
+    "a new root side-window entrypoint should require explicit manifest ownership",
+  );
+  const updaterFocusFiles = [
+    "apps/native/src/components/widget/layout/update-banner.tsx",
+    "apps/native/src/hooks/use-updater.ts",
+    "apps/native/src-tauri/src/commands/updater.rs",
+  ];
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = updaterFocusFiles.join("\n");
+  const updaterPrFocus = buildPrFocus();
+  assert.deepEqual(
+    updaterPrFocus.scenarioKeys,
+    [],
+    "updater source changes must not inherit the optional absent-banner scenario",
+  );
+  assert.deepEqual(
+    updaterPrFocus.unmappedUserVisibleFiles,
+    updaterFocusFiles,
+    "updater source changes should remain explicit waived scenario debt",
+  );
+  const settingsMutationFiles = [
+    "apps/native/src/hooks/use-darwin-config.ts",
+    "apps/native/src/hooks/use-prefs.ts",
+    "apps/native/src/ipc/preferences.ts",
+    "apps/native/src/viewmodel/preferences.ts",
+    "apps/native/src-tauri/src/commands/ui_prefs.rs",
+    "apps/native/src-tauri/src/state/preferences.rs",
+    "apps/native/src-tauri/src/state/ui_prefs.rs",
+  ];
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = settingsMutationFiles.join("\n");
+  const settingsMutationPrFocus = buildPrFocus();
+  assert.deepEqual(
+    settingsMutationPrFocus.scenarioKeys,
+    [],
+    "mixed settings persistence and mutation modules must not inherit render-only tab proof",
+  );
+  assert.deepEqual(
+    settingsMutationPrFocus.unmappedUserVisibleFiles,
+    settingsMutationFiles,
+    "mixed settings persistence and mutation modules should remain explicit waived debt",
   );
   process.env.NIXMAC_E2E_PR_CHANGED_FILES = "tests/e2e/computer-use/run-remote-cua.mjs";
   const toolPrFocus = buildPrFocus();

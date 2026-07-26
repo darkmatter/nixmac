@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
 import {
   access,
   cp,
@@ -28,8 +27,12 @@ import {
   runPeekabooScenario,
 } from "./peekaboo-runner.mjs";
 import { buildManifestPrFocus } from "./coverage-focus.mjs";
+import { loadCoverageManifestFile } from "./coverage-manifest.mjs";
 import { shellQuote } from "./remote-stage.mjs";
-import { scenarioLabels as sharedScenarioLabels } from "./scenario-catalog.mjs";
+import {
+  scenarioLabels as sharedScenarioLabels,
+  scenarioProofCatalog as sharedScenarioProofCatalog,
+} from "./scenario-catalog.mjs";
 
 const THIS_FILE = fileURLToPath(import.meta.url);
 const TOOL_DIR = path.dirname(THIS_FILE);
@@ -221,16 +224,10 @@ function splitPrEnvList(value = "") {
 }
 
 function loadCoverageManifest() {
-  try {
-    return JSON.parse(readFileSync(COVERAGE_MANIFEST_PATH, "utf8"));
-  } catch (error) {
-    return {
-      surfaces: [],
-      candidateIncludes: [],
-      candidateExcludes: [],
-      loadError: error instanceof Error ? error.message : String(error),
-    };
-  }
+  return loadCoverageManifestFile(COVERAGE_MANIFEST_PATH, {
+    knownScenarioKey: (key) =>
+      Boolean(sharedScenarioLabels[key] || sharedScenarioProofCatalog[key]),
+  });
 }
 
 function scenarioSuggestionForFile(file, matchedSurfaces = []) {
@@ -243,19 +240,18 @@ function scenarioSuggestionForFile(file, matchedSurfaces = []) {
   return `Add or extend a Peekaboo scenario that exercises ${file}, then map it in coverage-manifest.json.`;
 }
 
-function buildPeekabooPrFocus(env = process.env) {
-  const manifest = loadCoverageManifest();
+function buildPeekabooPrFocus(env = process.env, { loadManifest = loadCoverageManifest } = {}) {
+  const manifest = loadManifest();
   const changedFiles = splitPrEnvList(env.NIXMAC_E2E_PR_CHANGED_FILES || "");
   const focus = buildManifestPrFocus({
     changedFiles,
     manifest,
+    knownScenarioKey: (key) =>
+      Boolean(sharedScenarioLabels[key] || sharedScenarioProofCatalog[key]),
     specialScenarioKeysForFile(file) {
       const scenarioKeys = [];
       if (/^tests\/e2e\/|^\.github\/workflows\/peekaboo-e2e\.yml/.test(file)) {
         scenarioKeys.push("visualProofQuality", "reportInspection");
-      }
-      if (/^apps\/native\/src\/[^/]+\.(?:css|ts|tsx)$/i.test(file)) {
-        scenarioKeys.push("launch", "visualCoverage");
       }
       return scenarioKeys;
     },
@@ -269,11 +265,14 @@ function buildPeekabooPrFocus(env = process.env) {
     headRef: env.NIXMAC_E2E_PR_HEAD_REF || env.GITHUB_HEAD_REF || "",
     baseRef: env.NIXMAC_E2E_PR_BASE_REF || env.GITHUB_BASE_REF || "",
     ...focus,
-    manifestLoadError: manifest.loadError ?? null,
     configured: Boolean(
       env.NIXMAC_E2E_PR_NUMBER || env.GITHUB_PR_NUMBER || env.GITHUB_EVENT_NAME === "pull_request",
     ),
   };
+}
+
+function requireCoverageManifestForSetup({ loadManifest = loadCoverageManifest } = {}) {
+  return loadManifest();
 }
 const PR75_COMPUTER_USE_BASELINE = Object.freeze({
   source: "artifacts/pr-75-computer-use-baseline/index.html",
@@ -739,6 +738,7 @@ function createInitialState({
 }
 
 async function setup({ mode = "deterministic" } = {}) {
+  requireCoverageManifestForSetup();
   const isReal = mode === "real";
   const artifactRoot = isReal ? REAL_ARTIFACT_ROOT : ARTIFACT_ROOT;
   const backupRoot = isReal ? REAL_BACKUP_ROOT : BACKUP_ROOT;
@@ -856,6 +856,7 @@ async function setup({ mode = "deterministic" } = {}) {
 }
 
 async function createPeekabooRunState({ scenario, noRecord, noCleanup, allowDestructive }) {
+  requireCoverageManifestForSetup();
   await mkdir(ARTIFACT_ROOT, { recursive: true });
   await assertNoUnrestoredRun();
   const startedAt = new Date();
@@ -1939,7 +1940,6 @@ function renderPeekabooPrFocus(state) {
       <div class="metric"><strong>User-visible files</strong><span>${escapeHtml(String(pr.userVisibleFiles?.length ?? 0))}</span><small>Inferred from coverage-manifest.json plus app/test/workflow heuristics.</small></div>
       <div class="metric"><strong>Mapped scenarios</strong><span>${escapeHtml(String(pr.scenarioKeys?.length ?? 0))}</span><small>Used to focus reviewer attention on changed surfaces.</small></div>
     </div>
-    ${pr.manifestLoadError ? `<p class="warning"><strong>Manifest load error:</strong> ${escapeHtml(pr.manifestLoadError)}</p>` : ""}
     <h3>Mapped PR Surfaces</h3>
     <div class="table-scroll"><table>
       <thead><tr><th>Changed File</th><th>Surface</th><th>Scenario Focus</th><th>Coverage Note</th></tr></thead>
@@ -3215,6 +3215,21 @@ function runVisualAnnotationGallerySelfTest() {
 }
 
 async function runSelfTest() {
+  const { coverageManifestSelfTest } = await import("./coverage-manifest.test.mjs");
+  coverageManifestSelfTest();
+  const failClosedManifestLoad = () => {
+    throw new Error("synthetic schema-invalid coverage manifest");
+  };
+  assert.throws(
+    () => buildPeekabooPrFocus({}, { loadManifest: failClosedManifestLoad }),
+    /schema-invalid coverage manifest/,
+    "Peekaboo PR focus should fail closed when manifest loading or validation fails",
+  );
+  assert.throws(
+    () => requireCoverageManifestForSetup({ loadManifest: failClosedManifestLoad }),
+    /schema-invalid coverage manifest/,
+    "Peekaboo setup should stop before side effects when manifest loading or validation fails",
+  );
   // This is a one-way drift guard: run-local is a deliberate subset with a few
   // local-only scenario names, so it should not require every shared key.
   const unexpectedLocalKeys = Object.keys(scenarioLabels).filter(

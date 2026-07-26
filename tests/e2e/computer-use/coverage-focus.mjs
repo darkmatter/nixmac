@@ -1,22 +1,9 @@
-export function matchesAnyPattern(value, patterns = []) {
-  return patterns.some((pattern) => new RegExp(pattern).test(value));
-}
-
-export function sourcePrefixMatches(file, sourcePrefix) {
-  const normalizedFile = String(file ?? "").replaceAll("\\", "/");
-  const normalizedPrefix = String(sourcePrefix ?? "").replaceAll("\\", "/");
-  if (!normalizedPrefix) return false;
-  if (normalizedPrefix.endsWith("/")) return normalizedFile.startsWith(normalizedPrefix);
-  return (
-    normalizedFile === normalizedPrefix || normalizedFile.startsWith(`${normalizedPrefix}/`)
-  );
-}
-
-export function changedFileMatchesSurface(file, surface) {
-  return (surface.sourcePrefixes ?? []).some((sourcePrefix) =>
-    sourcePrefixMatches(file, sourcePrefix),
-  );
-}
+import {
+  assertValidCoverageManifest,
+  changedFileMatchesSurface,
+  classifyCoverageFile,
+  matchesAnyPattern,
+} from "./coverage-manifest.mjs";
 
 export function isLikelyUserVisiblePrFile(file, manifest) {
   if (matchesAnyPattern(file, manifest.candidateExcludes ?? [])) return false;
@@ -42,9 +29,11 @@ function matchedSurfaceRow(file, surface) {
 export function buildManifestPrFocus({
   changedFiles,
   manifest,
+  knownScenarioKey,
   specialScenarioKeysForFile = () => [],
   scenarioSuggestionForFile = () => null,
 }) {
+  assertValidCoverageManifest(manifest, { knownScenarioKey });
   const scenarioKeys = new Set();
   const userVisibleFiles = [];
   const unmappedUserVisibleFiles = [];
@@ -52,13 +41,12 @@ export function buildManifestPrFocus({
   const matchedSurfaces = [];
 
   for (const file of changedFiles) {
-    const fileSurfaces = (manifest.surfaces ?? []).filter((surface) =>
-      changedFileMatchesSurface(file, surface),
-    );
-    const mappedKeys = fileSurfaces
-      .flatMap((surface) => surface.scenarioKeys ?? [])
-      .filter(Boolean);
-    const specialScenarioKeys = specialScenarioKeysForFile(file).filter(Boolean);
+    const classification = classifyCoverageFile(manifest, file);
+    const fileSurfaces = classification.surfaces;
+    const mappedKeys = classification.scenarioKeys;
+    const specialScenarioKeys = fileSurfaces.length
+      ? []
+      : specialScenarioKeysForFile(file).filter(Boolean);
     for (const key of [...mappedKeys, ...specialScenarioKeys]) scenarioKeys.add(key);
     if (!isLikelyUserVisiblePrFile(file, manifest)) continue;
 
@@ -67,7 +55,10 @@ export function buildManifestPrFocus({
     const nonClaimingOnly =
       fileSurfaces.length > 0 &&
       fileSurfaces.every((surface) => surface.coverageDisposition === "non-claiming");
-    if (!mappedKeys.length && !specialScenarioKeys.length && !nonClaimingOnly) {
+    if (
+      (classification.waiverDebt ||
+        (!mappedKeys.length && !specialScenarioKeys.length && !nonClaimingOnly))
+    ) {
       unmappedUserVisibleFiles.push(file);
       const suggestion = scenarioSuggestionForFile(file, fileSurfaces);
       if (suggestion) scenarioSuggestions.push(suggestion);

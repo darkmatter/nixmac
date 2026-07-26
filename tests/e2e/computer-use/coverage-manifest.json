@@ -2,12 +2,14 @@
   "version": 1,
   "description": "Baseline user-visible nixmac surfaces that must stay mapped to Computer Use E2E scenarios or explicit waivers.",
   "candidateRoots": [
+    "apps/native/src",
     "apps/native/src/components",
     "apps/native/src/components/widget",
     "apps/native/src/hooks",
     "apps/native/src-tauri/src"
   ],
   "candidateIncludes": [
+    "apps/native/src/[^/]+\\.(?:css|ts|tsx)$",
     "apps/native/src/components/preview-indicator/.*\\.tsx$",
     "apps/native/src/components/widget/.+\\.tsx$",
     "apps/native/src/hooks/use-(apply|rollback|evolve|git-operations|history|history-restore|rebuild-stream|updater|permissions|darwin-config)\\.ts$",
@@ -16,7 +18,8 @@
   ],
   "candidateExcludes": [
     "\\.stories\\.tsx$",
-    "\\.test\\.tsx$",
+    "\\.test\\.(?:ts|tsx)$",
+    "\\.d\\.ts$",
     "__snapshots__/",
     "components/ui/",
     "components/styles/",
@@ -38,8 +41,13 @@
     {
       "id": "app-shell",
       "label": "App shell, header controls, stepper, prompt start state",
-      "scenarioKeys": ["launch", "typedIntent"],
+      "scenarioKeys": ["launch", "typedIntent", "visualCoverage"],
       "sourcePrefixes": [
+        "apps/native/src/App.css",
+        "apps/native/src/App.tsx",
+        "apps/native/src/index.css",
+        "apps/native/src/main.tsx",
+        "apps/native/src/router.tsx",
         "apps/native/src/components/widget/widget.tsx",
         "apps/native/src/components/widget/layout/header.tsx",
         "apps/native/src/components/widget/layout/stepper.tsx",
@@ -53,26 +61,21 @@
       ]
     },
     {
-      "id": "update-banner",
-      "label": "Update banner non-blocking behavior",
-      "scenarioKeys": ["updateBanner"],
-      "sourcePrefixes": [
-        "apps/native/src/components/widget/layout/update-banner.tsx",
-        "apps/native/src/hooks/use-updater.ts"
-      ]
-    },
-    {
       "id": "updater-runtime",
       "label": "Updater checks, channel manifests, installation, and relaunch",
       "scenarioKeys": [],
-      "sourcePrefixes": ["apps/native/src-tauri/src/commands/updater.rs"],
+      "sourcePrefixes": [
+        "apps/native/src/components/widget/layout/update-banner.tsx",
+        "apps/native/src/hooks/use-updater.ts",
+        "apps/native/src-tauri/src/commands/updater.rs"
+      ],
       "waiver": {
         "reason": "The update-banner scenario passes when no banner is present, so it does not deterministically exercise updater checks, download/install, channel selection, or relaunch.",
         "owner": "nixmac-product-proof",
         "created": "2026-07-26",
         "reviewBy": "2026-08-15",
         "risk": "medium",
-        "exitCriteria": "Add a deterministic signed-update fixture that proves update detection, banner behavior, install, and relaunch for the supported release channels."
+        "exitCriteria": "Add a deterministic signed-update fixture that proves update detection, banner behavior, install, relaunch, and error handling for the supported release channels."
       }
     },
     {
@@ -84,7 +87,7 @@
         "settingsAPIKeys",
         "settingsPreferences"
       ],
-      "coverageNote": "The runner opens General, AI Models, API Keys, and Preferences and asserts their visible content. It does not mutate every control, and the OS credential path is intentionally bypassed in E2E mode.",
+      "coverageNote": "The runner claims rendered UI paths only: it opens General, AI Models, API Keys, and Preferences and asserts their visible content. Shared persistence and mutation modules are waiver-owned because the scenario does not exercise their state changes, and the OS credential path is intentionally bypassed in E2E mode.",
       "sourcePrefixes": [
         "apps/native/src/components/widget/settings/settings-dialog.tsx",
         "apps/native/src/components/widget/settings/general-tab.tsx",
@@ -94,11 +97,7 @@
         "apps/native/src/components/widget/controls/directory-picker.tsx",
         "apps/native/src/components/widget/controls/provider-icons/provider-icon.tsx",
         "apps/native/src/components/widget/badges/gitignore-badge.tsx",
-        "apps/native/src/components/widget/controls/model-combobox.tsx",
-        "apps/native/src/hooks/use-darwin-config.ts",
-        "apps/native/src-tauri/src/commands/ui_prefs.rs",
-        "apps/native/src-tauri/src/state/preferences.rs",
-        "apps/native/src-tauri/src/state/ui_prefs.rs"
+        "apps/native/src/components/widget/controls/model-combobox.tsx"
       ]
     },
     {
@@ -114,10 +113,17 @@
         "apps/native/src/components/widget/settings/auto-tuning-section.tsx",
         "apps/native/src/components/widget/settings/backup-restore-section.tsx",
         "apps/native/src/components/widget/settings/overridable-flags.ts",
+        "apps/native/src/hooks/use-darwin-config.ts",
+        "apps/native/src/hooks/use-prefs.ts",
+        "apps/native/src/ipc/preferences.ts",
+        "apps/native/src/viewmodel/preferences.ts",
         "apps/native/src-tauri/src/commands/account.rs",
         "apps/native/src-tauri/src/commands/debug.rs",
         "apps/native/src-tauri/src/commands/dev_configs.rs",
         "apps/native/src-tauri/src/commands/settings_io.rs",
+        "apps/native/src-tauri/src/commands/ui_prefs.rs",
+        "apps/native/src-tauri/src/state/preferences.rs",
+        "apps/native/src-tauri/src/state/ui_prefs.rs",
         "apps/native/src-tauri/src/storage/canonical_config.rs",
         "apps/native/src-tauri/src/storage/configurable_scope.rs",
         "apps/native/src-tauri/src/storage/credential_store.rs",
@@ -151,12 +157,29 @@
       "sourcePrefixes": [
         "apps/native/src/components/widget/history/analyze-history-button.tsx",
         "apps/native/src/components/widget/history/analyze-history-item-button.tsx",
-        "apps/native/src/components/widget/history/",
+        "apps/native/src/components/widget/history/change-badges.tsx",
+        "apps/native/src/components/widget/history/discard-uncommitted-dialog.tsx",
+        "apps/native/src/components/widget/history/history-confirm-restore-button.tsx",
+        "apps/native/src/components/widget/history/history-day-label.tsx",
+        "apps/native/src/components/widget/history/history-header.tsx",
+        "apps/native/src/components/widget/history/history-item-card-header.tsx",
+        "apps/native/src/components/widget/history/history-item-card.tsx",
+        "apps/native/src/components/widget/history/history-item-expanded-detail.tsx",
+        "apps/native/src/components/widget/history/history-item-meta.tsx",
+        "apps/native/src/components/widget/history/history-restore-item-button.tsx",
+        "apps/native/src/components/widget/history/timeline-connector.tsx",
         "apps/native/src/components/widget/steps/history-step.tsx",
         "apps/native/src/hooks/use-history.ts",
         "apps/native/src/hooks/use-history-restore.ts",
         "apps/native/src-tauri/src/history/",
         "apps/native/src-tauri/src/rebuild/finalize_restore.rs"
+      ],
+      "directoryPrefixApprovals": [
+        {
+          "prefix": "apps/native/src-tauri/src/history/",
+          "owner": "nixmac-product-proof",
+          "reason": "This Rust namespace exclusively implements the History list and restore flow exercised by the History scenario."
+        }
       ]
     },
     {
@@ -214,7 +237,34 @@
         "apps/native/src-tauri/src/state/git_state.rs",
         "apps/native/src-tauri/src/state/session_log.rs",
         "apps/native/src-tauri/src/state/watcher.rs",
-        "apps/native/src-tauri/src/summarize/"
+        "apps/native/src-tauri/src/summarize/build_prompt.rs",
+        "apps/native/src-tauri/src/summarize/find_existing.rs",
+        "apps/native/src-tauri/src/summarize/group_existing.rs",
+        "apps/native/src-tauri/src/summarize/mod.rs",
+        "apps/native/src-tauri/src/summarize/model_calls.rs",
+        "apps/native/src-tauri/src/summarize/pipelines/commit_message.rs",
+        "apps/native/src-tauri/src/summarize/pipelines/history.rs",
+        "apps/native/src-tauri/src/summarize/pipelines/mod.rs",
+        "apps/native/src-tauri/src/summarize/pipelines/whole_diff.rs",
+        "apps/native/src-tauri/src/summarize/sumlog.rs",
+        "apps/native/src-tauri/src/summarize/token_budgets.rs"
+      ],
+      "directoryPrefixApprovals": [
+        {
+          "prefix": "apps/native/src/components/widget/drift/",
+          "owner": "nixmac-product-proof",
+          "reason": "This component namespace exclusively renders drift findings within the provider Review flow."
+        },
+        {
+          "prefix": "apps/native/src/components/widget/filesystem/",
+          "owner": "nixmac-product-proof",
+          "reason": "This component namespace exclusively renders filesystem findings within the provider Review flow."
+        },
+        {
+          "prefix": "apps/native/src/components/widget/summaries/",
+          "owner": "nixmac-product-proof",
+          "reason": "This component namespace exclusively renders Summary and Diff output exercised by the provider Review flow."
+        }
       ]
     },
     {
@@ -287,7 +337,12 @@
         "apps/native/src/hooks/use-apply.ts",
         "apps/native/src/hooks/use-rebuild-stream.ts",
         "apps/native/src/hooks/use-rollback.ts",
-        "apps/native/src-tauri/src/rebuild/",
+        "apps/native/src-tauri/src/rebuild/darwin.rs",
+        "apps/native/src-tauri/src/rebuild/finalize_apply.rs",
+        "apps/native/src-tauri/src/rebuild/finalize_restore.rs",
+        "apps/native/src-tauri/src/rebuild/mod.rs",
+        "apps/native/src-tauri/src/rebuild/out_link.rs",
+        "apps/native/src-tauri/src/rebuild/rollback.rs",
         "apps/native/src-tauri/src/state/build_state.rs",
         "apps/native/src-tauri/src/state/rebuild_status.rs",
         "apps/native/src-tauri/src/commands/rollback.rs"
@@ -417,10 +472,25 @@
       }
     },
     {
+      "id": "evolve-mascot-indicator",
+      "label": "Experimental evolve mascot side-window indicator",
+      "scenarioKeys": [],
+      "sourcePrefixes": ["apps/native/src/evolve-mascot-window.tsx"],
+      "waiver": {
+        "reason": "The experimental evolve mascot has its own transparent side window and is not activated or inspected by the current main-window Computer Use lane.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "medium",
+        "exitCriteria": "Add a deterministic evolve-state fixture that activates the mascot side window and captures visibility, animation, positioning, and cleanup proof."
+      }
+    },
+    {
       "id": "preview-indicator",
       "label": "Preview indicator floating commit/revert UI",
       "scenarioKeys": [],
       "sourcePrefixes": [
+        "apps/native/src/preview-indicator-window.tsx",
         "apps/native/src/components/preview-indicator/preview-indicator.tsx",
         "apps/native/src/hooks/use-preview-indicator.ts",
         "apps/native/src-tauri/src/commands/apply.rs",
