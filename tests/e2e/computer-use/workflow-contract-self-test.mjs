@@ -4,10 +4,17 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { assertRemoteMacConcurrencyContracts } from "./workflow-concurrency-contract.mjs";
+
 const thisFile = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(thisFile), "../../..");
 const workflowPath = path.join(repoRoot, ".github/workflows/computer-use-e2e.yml");
 const workflow = readFileSync(workflowPath, "utf8");
+const peekabooWorkflow = readFileSync(
+  path.join(repoRoot, ".github/workflows/peekaboo-e2e.yml"),
+  "utf8",
+);
+const legacyE2eWorkflow = readFileSync(path.join(repoRoot, ".github/workflows/e2e.yml"), "utf8");
 
 function section(startPattern, endPattern = null) {
   const start = workflow.search(startPattern);
@@ -24,11 +31,24 @@ const remote = section(/^  remote-computer-use:$/m, /^  publish-report:$/m);
 const publish = section(/^  publish-report:$/m, /^  e2e-result:$/m);
 const result = section(/^  e2e-result:$/m);
 
-assert.equal(
-  /^concurrency:/m.test(workflow),
-  false,
-  "workflow must not serialize prepare under top-level concurrency",
-);
+assertRemoteMacConcurrencyContracts([
+  {
+    workflowName: ".github/workflows/computer-use-e2e.yml",
+    source: workflow,
+    remoteJobId: "remote-computer-use",
+    forbidWorkflowLevelConcurrency: true,
+  },
+  {
+    workflowName: ".github/workflows/peekaboo-e2e.yml",
+    source: peekabooWorkflow,
+    remoteJobId: "peekaboo-product-proof",
+  },
+  {
+    workflowName: ".github/workflows/e2e.yml",
+    source: legacyE2eWorkflow,
+    remoteJobId: "e2e-test",
+  },
+]);
 
 assert.match(remote, /\n    needs: prepare\n/, "remote job must depend on prepare");
 assert.match(
@@ -65,16 +85,6 @@ assert.match(
   publish,
   /STORYBOOK_PLAN_PATH: artifacts\/computer-use-storybook-plan\/storybook-preview\.json/,
   "publish comment must read Storybook metadata from the downloaded plan artifact",
-);
-assert.match(
-  remote,
-  /concurrency:\n\s+group: nixmac-macincloud-e2e-remote\n\s+cancel-in-progress: false/,
-  "remote job must keep the shared MacInCloud singleton lock without canceling queued work",
-);
-assert.equal(
-  workflow.match(/group: nixmac-macincloud-e2e-remote/g)?.length ?? 0,
-  1,
-  "workflow must acquire the shared MacInCloud singleton lock exactly once",
 );
 assert.match(
   publish,

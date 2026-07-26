@@ -489,6 +489,8 @@
         "tests/e2e/computer-use/timing.mjs",
         "tests/e2e/computer-use/transport.mjs",
         "tests/e2e/computer-use/visual-proof.mjs",
+        "tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs",
+        "tests/e2e/computer-use/workflow-concurrency-contract.mjs",
         "tests/e2e/computer-use/workflow-contract-self-test.mjs",
         "tests/e2e/computer-use/workflow-timing.mjs"
       ]

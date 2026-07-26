@@ -205,10 +205,19 @@ The workflow is split into prepare, remote, publish, and final-result jobs.
 Prepare handles GitHub-hosted validation, PR metadata, stale/no-secret
 no-touch reports, and PR-built app artifact packaging without holding the DXU
 remote-machine lane. The remote job is still serialized through
-`computer-use-e2e-dxu-remote`; do not make that concurrency per PR while the
-suite depends on a singleton interactive Mac, because overlapping runs can race
-on app state, launchd environment, Authorization Services policy, and the Codex
-app-server port.
+`nixmac-macincloud-e2e-remote`; do not make that concurrency per PR while the
+suite depends on a singleton interactive Mac, because overlapping active jobs
+can race on app state, launchd environment, Authorization Services policy, and
+the Codex app-server port. This job-level lock protects the shared host from
+overlap, and `cancel-in-progress: false` preserves the job that is already
+running. It is not a lossless FIFO: GitHub concurrency keeps at most one
+pending job in a group, may replace an older pending job with a newer one, and
+does not guarantee ordering.
+
+The production `static_ssh` transition/DR backend therefore must not use this
+GitHub concurrency group as its durable queue. Its lossless serialization is
+owned by Centaur reconciliation plus the dedicated one-capacity
+`nixmac-e2e-static-controller` runner queue described in the production plan.
 
 Before this becomes broad required branch protection, the operator policy must
 skip stale non-tip commits after queueing so one noisy PR cannot burn the
@@ -381,9 +390,9 @@ gate, the workflow renders a build-gate unavailable report and fails before
 remote setup; generic setup-failure reports are reserved for failures after this
 gate passes.
 The default gate is intentionally fast (`1` attempt) while this workflow is
-serialized by the DXU remote concurrency group: a fresh PR push can therefore
-produce a build-gate unavailable report before `build.yaml` finishes. Re-run the
-workflow after the same-head build succeeds, or use workflow dispatch
+protected by the `nixmac-macincloud-e2e-remote` host lock: a fresh PR push can
+therefore produce a build-gate unavailable report before `build.yaml` finishes.
+Re-run the workflow after the same-head build succeeds, or use workflow dispatch
 `build_artifact_attempts` / repo variable `NIXMAC_E2E_BUILD_ARTIFACT_ATTEMPTS`
 when the operator intentionally wants the gate to wait longer before remote
 setup.
