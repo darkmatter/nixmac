@@ -19,7 +19,7 @@
     "^apps/native/src-tauri/src/",
     "^apps/native/templates/",
     "^tests/e2e/",
-    "^\\.github/workflows/.+e2e.*\\.ya?ml$"
+    "^\\.github/workflows/.*e2e.*\\.ya?ml$"
   ],
   "candidateExcludes": [
     "^apps/native/src/.*\\.stories\\.tsx$",

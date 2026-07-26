@@ -91,6 +91,47 @@ export function coverageManifestSelfTest() {
     freshnessCandidateRepoFiles,
     "PR-visible repo files and main freshness candidates should be the same universe",
   );
+  const exactE2eWorkflow = ".github/workflows/e2e.yml";
+  assert(
+    classifyCoverageFile(REAL_MANIFEST, exactE2eWorkflow).surfaces.some(
+      (surface) => surface.id === "other-e2e-infrastructure",
+    ),
+    "the exact e2e workflow should retain explicit manifest ownership",
+  );
+  for (const file of [
+    exactE2eWorkflow,
+    ".github/workflows/e2e-smoke.yml",
+    ".github/workflows/computer-use-e2e.yml",
+    ".github/workflows/release-e2e-check.yaml",
+  ]) {
+    assert.equal(
+      isCoverageCandidateFile(REAL_MANIFEST, file),
+      true,
+      `${file} should enter the intended E2E workflow candidate universe`,
+    );
+  }
+  const exactE2eWorkflowFocus = buildManifestPrFocus({
+    changedFiles: [exactE2eWorkflow],
+    manifest: REAL_MANIFEST,
+    knownScenarioKey: isStableCoverageScenarioKey,
+  });
+  assert.deepEqual(
+    exactE2eWorkflowFocus.nonClaimingUserVisibleFiles,
+    [exactE2eWorkflow],
+    "the owned exact e2e workflow should remain PR-visible as non-claiming infrastructure",
+  );
+  for (const file of [
+    ".github/workflows/release.yml",
+    ".github/workflows/pre-2e.yml",
+    ".github/actions/e2e.yml",
+    ".github/workflows/e2e.txt",
+  ]) {
+    assert.equal(
+      isCoverageCandidateFile(REAL_MANIFEST, file),
+      false,
+      `${file} should remain outside the intended E2E workflow universe`,
+    );
+  }
   for (const file of [
     "apps/native/src/new-visible-feature.tsx",
     "apps/native/src/components/new-visible-subdir/new-visible-feature.tsx",

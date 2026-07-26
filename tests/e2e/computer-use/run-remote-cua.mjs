@@ -4550,7 +4550,7 @@ async function runSelfTest() {
   const coverageFreshness = buildCoverageFreshness();
   assert.equal(
     coverageFreshness.candidateFiles,
-    746,
+    747,
     "coverage freshness should preserve the full shared PR-visible behavior universe",
   );
   const coverageManifest = loadCoverageManifest();
@@ -5891,6 +5891,13 @@ async function runSelfTest() {
     workflowAndReportPrFocus.scenarioKeys.includes("reportInspection"),
     true,
     "Computer Use workflow and report changes should focus report inspection",
+  );
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = ".github/workflows/e2e.yml";
+  const exactE2eWorkflowPrFocus = buildPrFocus();
+  assert.deepEqual(
+    exactE2eWorkflowPrFocus.nonClaimingUserVisibleFiles,
+    [".github/workflows/e2e.yml"],
+    "the exact e2e workflow should remain visible with its explicit non-claiming ownership",
   );
   if (previousChangedFiles === undefined) delete process.env.NIXMAC_E2E_PR_CHANGED_FILES;
   else process.env.NIXMAC_E2E_PR_CHANGED_FILES = previousChangedFiles;
