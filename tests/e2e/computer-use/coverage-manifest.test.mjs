@@ -1,7 +1,14 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -11,6 +18,7 @@ import {
   parseCoverageManifest,
   sourcePrefixMatches,
   validateCoverageManifest,
+  walkCoverageFiles,
 } from "./coverage-manifest.mjs";
 import { buildManifestPrFocus } from "./coverage-focus.mjs";
 import { isLikelyUserVisiblePrFile } from "./coverage-focus.mjs";
@@ -72,6 +80,25 @@ function validationErrors(manifest) {
   });
 }
 
+function withoutCoverageOwnership(manifest, file) {
+  const copy = structuredClone(manifest);
+  copy.surfaces = copy.surfaces
+    .map((surface) => {
+      const sourcePrefixes = surface.sourcePrefixes.filter(
+        (sourcePrefix) => !sourcePrefixMatches(file, sourcePrefix),
+      );
+      return {
+        ...surface,
+        sourcePrefixes,
+        directoryPrefixApprovals: surface.directoryPrefixApprovals?.filter((approval) =>
+          sourcePrefixes.includes(approval.prefix),
+        ),
+      };
+    })
+    .filter((surface) => surface.sourcePrefixes.length);
+  return copy;
+}
+
 export function coverageManifestSelfTest() {
   assert.deepEqual(validationErrors(baseManifest()), []);
   const repoFiles = execFileSync("git", ["ls-files"], {
@@ -91,6 +118,37 @@ export function coverageManifestSelfTest() {
     freshnessCandidateRepoFiles,
     "PR-visible repo files and main freshness candidates should be the same universe",
   );
+  const walkRoot = mkdtempSync(path.join(os.tmpdir(), "nixmac-coverage-walk-"));
+  try {
+    const writeWalkFixture = (relativePath) => {
+      const fullPath = path.join(walkRoot, relativePath);
+      mkdirSync(path.dirname(fullPath), { recursive: true });
+      writeFileSync(fullPath, "fixture");
+    };
+    for (const file of [
+      "apps/native/src/features/untracked-adversarial.ts",
+      "apps/native/src-tauri/prompts/untracked-adversarial.md",
+      "apps/native/src/node_modules/pkg/ignored.ts",
+      "apps/native/src/target/ignored.ts",
+      "apps/native/src/dist/ignored.ts",
+      "apps/native/src/build/ignored.ts",
+      "apps/native/src/.git/ignored.ts",
+      "apps/native/src/.DS_Store",
+      "apps/native/src-tauri/target/debug/ignored.rs",
+    ]) {
+      writeWalkFixture(file);
+    }
+    assert.deepEqual(
+      walkCoverageFiles(walkRoot, ["apps/native/src", "apps/native/src-tauri"]),
+      [
+        "apps/native/src/features/untracked-adversarial.ts",
+        "apps/native/src-tauri/prompts/untracked-adversarial.md",
+      ],
+      "coverage walking should prune generated/dependency trees while preserving untracked adversarial source files",
+    );
+  } finally {
+    rmSync(walkRoot, { recursive: true, force: true });
+  }
   const exactE2eWorkflow = ".github/workflows/e2e.yml";
   assert(
     classifyCoverageFile(REAL_MANIFEST, exactE2eWorkflow).surfaces.some(
@@ -134,11 +192,16 @@ export function coverageManifestSelfTest() {
   }
   for (const file of [
     "apps/native/src/new-visible-feature.tsx",
+    "apps/native/src/features/x.ts",
+    "apps/native/src/stores/x.ts",
     "apps/native/src/components/new-visible-subdir/new-visible-feature.tsx",
     "apps/native/src/hooks/use-new-visible-feature.ts",
     "apps/native/src-tauri/src/new_visible_feature.rs",
     "apps/native/src-tauri/src/new_subsystem/new_visible_feature.rs",
     "apps/native/src-tauri/src/evolve/new_visible_feature.rs",
+    "apps/native/src-tauri/new-subsystem/x.rs",
+    "apps/native/src-tauri/prompts/new.md",
+    "apps/native/src-tauri/migrations/new.sql",
     "apps/native/src-tauri/capabilities/new-visible-capability.json",
     "apps/native/templates/new-visible-template/flake.nix",
     "tests/e2e/new-visible-flow.sh",
@@ -166,6 +229,47 @@ export function coverageManifestSelfTest() {
     );
   }
   for (const file of [
+    "apps/native/src/viewmodel/evolution.ts",
+    "apps/native/src/ipc/api.ts",
+    "apps/native/src/types/feedback.ts",
+    "apps/native/src/utils/error-test-helpers.ts",
+    "apps/native/src/themes/minted.json",
+    "apps/native/src/e2e/boot-harness.ts",
+    "apps/native/src/assets/react.svg",
+    "apps/native/src/peek-icon.html",
+    "apps/native/src/stories/Button.tsx",
+    "apps/native/src-tauri/Cargo.toml",
+    "apps/native/src-tauri/build.rs",
+    "apps/native/src-tauri/configurable/src/lib.rs",
+    "apps/native/src-tauri/examples/specta_gen_ts.rs",
+    "apps/native/src-tauri/icons/icon.png",
+    "apps/native/src-tauri/migrations/01-initial/up.sql",
+    "apps/native/src-tauri/prompts/system.md",
+    "apps/native/src-tauri/resources/schemas/settings.schema.json",
+    "apps/native/src-tauri/scripts/tauri-dev.sh",
+    "apps/native/src-tauri/tests/fixtures/searches/empty.json",
+  ]) {
+    assert.equal(
+      isCoverageCandidateFile(REAL_MANIFEST, file),
+      true,
+      `${file} should be a current fail-closed native-root candidate`,
+    );
+    assert(
+      classifyCoverageFile(REAL_MANIFEST, file).surfaces.length > 0,
+      `${file} should have explicit checked-in ownership`,
+    );
+    const focusWithoutOwnership = buildManifestPrFocus({
+      changedFiles: [file],
+      manifest: withoutCoverageOwnership(REAL_MANIFEST, file),
+      knownScenarioKey: isStableCoverageScenarioKey,
+    });
+    assert.deepEqual(
+      focusWithoutOwnership.unmatchedUserVisibleFiles,
+      [file],
+      `${file} should become unmatched debt when its explicit ownership is removed`,
+    );
+  }
+  for (const file of [
     "apps/native/src/components/widget/new-proof.test.ts",
     "apps/native/src/components/widget/new-proof.test.tsx",
     "apps/native/src/components/widget/__snapshots__/new-proof.json",
@@ -185,6 +289,27 @@ export function coverageManifestSelfTest() {
       focus.userVisibleFiles,
       [],
       `${file} should remain outside PR/freshness behavior coverage`,
+    );
+  }
+  for (const file of [
+    "apps/native/src-tauri/new-proof.test.ts",
+    "apps/native/src-tauri/__snapshots__/new-proof.json",
+    "apps/native/src-tauri/components/ui/module.rs",
+  ]) {
+    assert.equal(
+      isCoverageCandidateFile(REAL_MANIFEST, file),
+      true,
+      `${file} should not inherit app-source-only exclusions`,
+    );
+    const focus = buildManifestPrFocus({
+      changedFiles: [file],
+      manifest: REAL_MANIFEST,
+      knownScenarioKey: isStableCoverageScenarioKey,
+    });
+    assert.deepEqual(
+      focus.unmatchedUserVisibleFiles,
+      [file],
+      `${file} should remain unmatched outside explicitly owned source support`,
     );
   }
   assert.equal(

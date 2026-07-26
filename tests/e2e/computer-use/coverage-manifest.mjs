@@ -1,4 +1,18 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import path from "node:path";
+
+const COVERAGE_WALK_PRUNED_DIRECTORIES = new Set([
+  ".git",
+  ".next",
+  ".turbo",
+  "build",
+  "coverage",
+  "dist",
+  "node_modules",
+  "storybook-static",
+  "target",
+]);
+const COVERAGE_WALK_IGNORED_FILES = new Set([".DS_Store"]);
 
 export class CoverageManifestError extends Error {
   constructor(message, errors = []) {
@@ -21,6 +35,28 @@ export function isCoverageCandidateFile(manifest, file) {
 
 export function coverageCandidateFiles(manifest, files = []) {
   return [...new Set(files.filter((file) => isCoverageCandidateFile(manifest, file)))].sort();
+}
+
+export function walkCoverageFiles(repoRoot, roots = []) {
+  const files = [];
+  const visit = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    )) {
+      if (entry.isDirectory() && COVERAGE_WALK_PRUNED_DIRECTORIES.has(entry.name)) continue;
+      if (entry.isFile() && COVERAGE_WALK_IGNORED_FILES.has(entry.name)) continue;
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) visit(fullPath);
+      else if (entry.isFile()) {
+        files.push(path.relative(repoRoot, fullPath).replaceAll(path.sep, "/"));
+      }
+    }
+  };
+  for (const root of roots) {
+    const fullRoot = path.resolve(repoRoot, root);
+    if (existsSync(fullRoot)) visit(fullRoot);
+  }
+  return files;
 }
 
 export function unmappedCoverageCandidateFiles(manifest, files = []) {

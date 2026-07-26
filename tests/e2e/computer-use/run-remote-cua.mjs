@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -15,6 +15,7 @@ import {
   coverageCandidateFiles,
   loadCoverageManifestFile,
   unmappedCoverageCandidateFiles,
+  walkCoverageFiles,
 } from "./coverage-manifest.mjs";
 import {
   builtInElementAddressKinds,
@@ -354,21 +355,6 @@ function loadCoverageManifest() {
   });
 }
 
-function walkFiles(root) {
-  const fullRoot = path.join(REPO_ROOT, root);
-  if (!existsSync(fullRoot)) return [];
-  const files = [];
-  const visit = (dir) => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) visit(full);
-      else if (entry.isFile()) files.push(path.relative(REPO_ROOT, full).replaceAll(path.sep, "/"));
-    }
-  };
-  visit(fullRoot);
-  return files;
-}
-
 function sourcePrefixExists(sourcePath) {
   const fullPath = path.join(REPO_ROOT, sourcePath);
   if (!existsSync(fullPath)) return false;
@@ -483,7 +469,7 @@ function buildCoverageFreshness(state) {
     if (scenarioKeys.length) mapped += 1;
   }
 
-  const files = (manifest.candidateRoots || []).flatMap((root) => walkFiles(root));
+  const files = walkCoverageFiles(REPO_ROOT, manifest.candidateRoots || []);
   const candidates = coverageCandidateFiles(manifest, files);
   const unmappedCandidateFiles = unmappedCoverageCandidateFiles(manifest, files);
   if (unmappedCandidateFiles.length)
@@ -4550,14 +4536,12 @@ async function runSelfTest() {
   const coverageFreshness = buildCoverageFreshness();
   assert.equal(
     coverageFreshness.candidateFiles,
-    747,
+    930,
     "coverage freshness should preserve the full shared PR-visible behavior universe",
   );
   const coverageManifest = loadCoverageManifest();
   const filesUnderCandidateRoots = [
-    ...new Set(
-      coverageManifest.candidateRoots.flatMap((root) => walkFiles(root)),
-    ),
+    ...new Set(walkCoverageFiles(REPO_ROOT, coverageManifest.candidateRoots)),
   ];
   assert.deepEqual(
     coverageFreshness.candidateFilePaths,
@@ -4578,7 +4562,7 @@ async function runSelfTest() {
   );
   assert.equal(
     coverageFreshness.waivers.length,
-    16,
+    20,
     "the current explicit waiver baseline should remain auditable",
   );
   assert.deepEqual(
@@ -4586,7 +4570,7 @@ async function runSelfTest() {
       counts[item.risk] = (counts[item.risk] ?? 0) + 1;
       return counts;
     }, {}),
-    { medium: 8, high: 8 },
+    { medium: 9, high: 11 },
     "the current waiver risk distribution should remain explicit",
   );
   assert.equal(

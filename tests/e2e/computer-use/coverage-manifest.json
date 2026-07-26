@@ -9,14 +9,8 @@
     ".github/workflows"
   ],
   "candidateIncludes": [
-    "^apps/native/src/[^/]+\\.(?:css|ts|tsx)$",
-    "^apps/native/src/components/",
-    "^apps/native/src/hooks/",
-    "^apps/native/src/(?:ipc/preferences\\.ts|viewmodel/preferences\\.ts)$",
-    "^apps/native/src/lib/.+\\.(?:ts|tsx)$",
-    "^apps/native/src-tauri/(?:tauri\\.conf(?:\\.dev)?\\.json|Info\\.plist|entitlements\\.plist)$",
-    "^apps/native/src-tauri/capabilities/.+\\.json$",
-    "^apps/native/src-tauri/src/",
+    "^apps/native/src/",
+    "^apps/native/src-tauri/",
     "^apps/native/templates/",
     "^tests/e2e/",
     "^\\.github/workflows/.*e2e.*\\.ya?ml$"
@@ -32,6 +26,156 @@
     "^apps/native/src/components/widget/layout/debug-overlay\\.tsx$"
   ],
   "surfaces": [
+    {
+      "id": "native-build-contract-unexercised",
+      "label": "Native package, build script, and configurable macro build contracts",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src-tauri/Cargo.toml",
+        "apps/native/src-tauri/build.rs",
+        "apps/native/src-tauri/configurable-derive/Cargo.toml",
+        "apps/native/src-tauri/configurable-derive/src/attrs.rs",
+        "apps/native/src-tauri/configurable-derive/src/codegen.rs",
+        "apps/native/src-tauri/configurable-derive/src/fields.rs",
+        "apps/native/src-tauri/configurable-derive/src/lib.rs",
+        "apps/native/src-tauri/configurable-derive/src/strings.rs",
+        "apps/native/src-tauri/configurable-derive/src/types.rs",
+        "apps/native/src-tauri/configurable/Cargo.toml",
+        "apps/native/src-tauri/configurable/src/lib.rs"
+      ],
+      "waiver": {
+        "reason": "The exact-SHA artifact proves these inputs compile, but the Computer Use lane does not deterministically assert dependency feature selection, build-script output, or configurable macro semantics.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "high",
+        "exitCriteria": "Add exact-SHA build-contract evidence for dependency features and generated outputs plus focused configurable macro expansion and runtime behavior tests."
+      }
+    },
+    {
+      "id": "native-data-resources-unexercised",
+      "label": "Native migrations, AI system prompt, schemas, docs data, and launchd resources",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src-tauri/migrations/01-initial/up.sql",
+        "apps/native/src-tauri/migrations/02-restore-commits/up.sql",
+        "apps/native/src-tauri/migrations/03-drop-queued-summaries/up.sql",
+        "apps/native/src-tauri/prompts/system.md",
+        "apps/native/src-tauri/resources/gitleaks.toml",
+        "apps/native/src-tauri/resources/home-manager-docs.json",
+        "apps/native/src-tauri/resources/launchd/com.darkmatter.nixmac.helper.plist",
+        "apps/native/src-tauri/resources/launchd/com.darkmatter.nixmac.sync-agent.plist",
+        "apps/native/src-tauri/resources/nix-darwin-docs.json",
+        "apps/native/src-tauri/resources/schemas/env.schema.json",
+        "apps/native/src-tauri/resources/schemas/settings.schema.json"
+      ],
+      "waiver": {
+        "reason": "The current lane may consume these resources indirectly, but it does not isolate migration transitions, prompt semantics, bundled documentation, launchd payloads, secret-scanning policy, or schema compatibility.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "high",
+        "exitCriteria": "Add migration-upgrade fixtures, prompt contract assertions, bundled resource integrity checks, launchd installation validation, and schema compatibility tests."
+      }
+    },
+    {
+      "id": "native-app-icons-unexercised",
+      "label": "Bundled desktop and mobile application icon resources",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src-tauri/icons/"
+      ],
+      "directoryPrefixApprovals": [
+        {
+          "prefix": "apps/native/src-tauri/icons/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single application-icon resource namespace; every change remains explicit waiver debt."
+        }
+      ],
+      "waiver": {
+        "reason": "The staged app launches, but the current evidence does not deterministically inspect packaged icon variants, installer artwork, platform icon sets, or dark/light rendering.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "medium",
+        "exitCriteria": "Add package-level resource inventory checks and visual assertions for the supported macOS icon, installer, and appearance variants."
+      }
+    },
+    {
+      "id": "frontend-runtime-unexercised",
+      "label": "Frontend IPC, view-model, theme, asset, and auxiliary window resources",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src/assets/react.svg",
+        "apps/native/src/ipc/api.ts",
+        "apps/native/src/ipc/orpc-bindings.ts",
+        "apps/native/src/ipc/sqlite.ts",
+        "apps/native/src/ipc/types.ts",
+        "apps/native/src/peek-icon.html",
+        "apps/native/src/themes/minted.json",
+        "apps/native/src/viewmodel/_helpers.ts",
+        "apps/native/src/viewmodel/change-map.ts",
+        "apps/native/src/viewmodel/evolution.ts",
+        "apps/native/src/viewmodel/evolve.ts",
+        "apps/native/src/viewmodel/git.ts",
+        "apps/native/src/viewmodel/history.ts",
+        "apps/native/src/viewmodel/index.ts",
+        "apps/native/src/viewmodel/log-triggers.ts",
+        "apps/native/src/viewmodel/nix-install.ts",
+        "apps/native/src/viewmodel/onboarding-state.ts",
+        "apps/native/src/viewmodel/permissions.ts",
+        "apps/native/src/viewmodel/prompt-history.ts",
+        "apps/native/src/viewmodel/rebuild.ts"
+      ],
+      "waiver": {
+        "reason": "Current scenarios traverse portions of this frontend runtime, but do not bind each IPC adapter, state transition, theme payload, auxiliary window resource, or asset to deterministic assertions.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "high",
+        "exitCriteria": "Map each runtime module to focused state-transition and IPC assertions, add theme and auxiliary-window visual checks, and remove unused starter assets."
+      }
+    },
+    {
+      "id": "native-source-support",
+      "label": "Developer documentation, Storybook examples, E2E harness, type-only files, test helpers, scripts, examples, and fixtures",
+      "scenarioKeys": [],
+      "coverageDisposition": "non-claiming",
+      "coverageNote": "These exact support files and single-purpose support namespaces are tracked for PR visibility but do not independently claim product behavior.",
+      "sourcePrefixes": [
+        "apps/native/src/README.md",
+        "apps/native/src/e2e/",
+        "apps/native/src/stories/",
+        "apps/native/src/types/feedback.ts",
+        "apps/native/src/types/preferences.ts",
+        "apps/native/src/types/rebuild.ts",
+        "apps/native/src/types/widget.ts",
+        "apps/native/src/utils/error-test-helpers.ts",
+        "apps/native/src/utils/test-fixtures.ts",
+        "apps/native/src/utils/widget-test-helpers.ts",
+        "apps/native/src-tauri/examples/specta_gen_ts.rs",
+        "apps/native/src-tauri/scripts/clear-logs.sh",
+        "apps/native/src-tauri/scripts/tauri-dev.sh",
+        "apps/native/src-tauri/tests/"
+      ],
+      "directoryPrefixApprovals": [
+        {
+          "prefix": "apps/native/src/e2e/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single internal frontend E2E harness namespace with no independent product claim."
+        },
+        {
+          "prefix": "apps/native/src/stories/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single Storybook example and asset namespace with no independent Computer Use product claim."
+        },
+        {
+          "prefix": "apps/native/src-tauri/tests/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single native test-fixture namespace with no independent Computer Use product claim."
+        }
+      ]
+    },
     {
       "id": "native-runtime-unexercised",
       "label": "Native runtime subsystems without deterministic Computer Use assertions",
