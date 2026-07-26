@@ -140,7 +140,7 @@ build {
   # compaction-sensitive VM data here; measure the resulting Tart image first.
   provisioner "shell" {
     inline = [
-      "sudo rm -rf /private/var/folders/* /tmp/* /var/tmp/*",
+      "sudo rm -rf /private/var/folders/* /tmp/* /var/tmp/* || true",
     ]
   }
 }
