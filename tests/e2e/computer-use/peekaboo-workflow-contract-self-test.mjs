@@ -1050,6 +1050,11 @@ assert.match(
 );
 assert.match(
   frontendMain,
+  /onTelemetryError:\s*\(\s*phase,\s*error\s*\)\s*=>\s*\{[\s\S]*?console\.warn\([\s\S]*?error\s*\)/,
+  "Frontend bootstrap diagnostics must preserve the telemetry error detail for field debugging",
+);
+assert.match(
+  frontendMain,
   /import\s*\{\s*getTelemetry,\s*setTelemetryProvider\s*\}\s*from\s*"@\/lib\/telemetry\/instance"/,
   "Frontend bootstrap must import the unified telemetry getter and deadline-winner installer",
 );

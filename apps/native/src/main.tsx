@@ -70,8 +70,8 @@ const bootstrap = async () => {
       setTelemetry: setTelemetryProvider,
       render: renderApp,
       environment: nixmacEnvironment,
-      onTelemetryError: (phase) => {
-        console.warn(`Telemetry ${phase} failed; continuing with app bootstrap.`);
+      onTelemetryError: (phase, error) => {
+        console.warn(`Telemetry ${phase} failed; continuing with app bootstrap.`, error);
       },
     });
   } catch (error) {
@@ -79,8 +79,11 @@ const bootstrap = async () => {
     captureBootstrapRenderError({
       error,
       getTelemetry,
-      onTelemetryError: () => {
-        console.warn("Telemetry render-error reporting failed; showing fatal fallback.");
+      onTelemetryError: (_phase, reportingError) => {
+        console.warn(
+          "Telemetry render-error reporting failed; showing fatal fallback.",
+          reportingError,
+        );
       },
     });
     root.render(<AppFatalFallback error={error instanceof Error ? error : null} />);

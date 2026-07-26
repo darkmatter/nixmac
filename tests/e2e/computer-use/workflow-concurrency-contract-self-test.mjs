@@ -52,6 +52,9 @@ function automaticWorkflowYaml({
 name: Automatic validation
 "on":
 ${triggers}
+env:
+  CARGO_TERM_COLOR: always
+  SOPS_AGE_KEY: \${{ secrets.SOPS_AGE_KEY }}
 jobs:
   git-hooks:
     runs-on: arc
@@ -59,9 +62,16 @@ jobs:
       - name: Install devenv
 ${installCommand}
       - name: Run Computer Use workflow contracts
+        env:
+          NIXPKGS_ALLOW_UNFREE: 1
         shell: /tmp/nixmac-devenv-cli/bin/devenv shell --impure -- bash -euo pipefail {0}
         run: |
 ${validationCommands}
+      - name: Run git hooks
+        env:
+          NIXPKGS_ALLOW_UNFREE: 1
+        shell: /tmp/nixmac-devenv-cli/bin/devenv shell --impure -- bash -euo pipefail {0}
+        run: prek run --all-files --show-diff-on-failure
   build:
     runs-on: [self-hosted, macOS]
     steps:
@@ -366,6 +376,88 @@ assert.throws(
   /late-devenv-installer\.yaml job git-hooks must install the pinned devenv CLI before running the contracts/,
   "automatic contract validation must require the installer before the contract step",
 );
+
+for (const [scope, mutation] of [
+  [
+    "workflow-env",
+    "env:\n  NODE_OPTIONS: --require /tmp/exit0.js\n  CARGO_TERM_COLOR: always",
+  ],
+  [
+    "job-env",
+    "  git-hooks:\n    env:\n      NODE_OPTIONS: --require /tmp/exit0.js",
+  ],
+  [
+    "step-env",
+    "        env:\n          NODE_OPTIONS: --require /tmp/exit0.js\n          NIXPKGS_ALLOW_UNFREE: 1",
+  ],
+]) {
+  const original =
+    scope === "workflow-env"
+      ? "env:\n  CARGO_TERM_COLOR: always"
+      : scope === "job-env"
+        ? "  git-hooks:"
+        : "        env:\n          NIXPKGS_ALLOW_UNFREE: 1";
+  assert.throws(
+    () =>
+      assertAutomaticConcurrencyValidationContract({
+        workflowName: `${scope}-bypass.yaml`,
+        source: automaticWorkflowYaml().replace(original, mutation),
+        jobId: "git-hooks",
+        stepName: "Run Computer Use workflow contracts",
+      }),
+    new RegExp(`${scope}-bypass\\.yaml .*environment`),
+    `automatic contract validation must reject ${scope} command injection`,
+  );
+}
+
+assert.throws(
+  () =>
+    assertAutomaticConcurrencyValidationContract({
+      workflowName: "job-strategy-bypass.yaml",
+      source: automaticWorkflowYaml().replace(
+        "  git-hooks:",
+        "  git-hooks:\n    strategy:\n      matrix:\n        include: []",
+      ),
+      jobId: "git-hooks",
+      stepName: "Run Computer Use workflow contracts",
+    }),
+  /job-strategy-bypass\.yaml job git-hooks must not declare strategy/,
+  "automatic contract validation must reject a strategy that can expand to no contract jobs",
+);
+
+for (const [name, source] of [
+  [
+    "missing-prek-step",
+    automaticWorkflowYaml().replace(
+      `      - name: Run git hooks
+        env:
+          NIXPKGS_ALLOW_UNFREE: 1
+        shell: /tmp/nixmac-devenv-cli/bin/devenv shell --impure -- bash -euo pipefail {0}
+        run: prek run --all-files --show-diff-on-failure
+`,
+      "",
+    ),
+  ],
+  [
+    "drifted-prek-command",
+    automaticWorkflowYaml().replace(
+      "        run: prek run --all-files --show-diff-on-failure",
+      "        run: prek run",
+    ),
+  ],
+]) {
+  assert.throws(
+    () =>
+      assertAutomaticConcurrencyValidationContract({
+        workflowName: `${name}.yaml`,
+        source,
+        jobId: "git-hooks",
+        stepName: "Run Computer Use workflow contracts",
+      }),
+    new RegExp(`${name}\\.yaml job git-hooks must preserve the fail-fast git-hooks step`),
+    `automatic contract validation must reject ${name}`,
+  );
+}
 
 for (const [control, mutation] of [
   ["if", "    if: false\n    runs-on: arc"],

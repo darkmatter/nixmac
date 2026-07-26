@@ -9,6 +9,15 @@ const AUTOMATIC_CONTRACT_COMMANDS = [
 ];
 const PINNED_DEVENV_INSTALL_COMMAND =
   "nix build github:cachix/devenv/v2.1.2 --out-link /tmp/nixmac-devenv-cli";
+const PINNED_DEVENV_SHELL =
+  "/tmp/nixmac-devenv-cli/bin/devenv shell --impure -- bash -euo pipefail {0}";
+const AUTOMATIC_WORKFLOW_ENVIRONMENT = {
+  CARGO_TERM_COLOR: "always",
+  SOPS_AGE_KEY: "${{ secrets.SOPS_AGE_KEY }}",
+};
+const AUTOMATIC_CONTRACT_ENVIRONMENT = { NIXPKGS_ALLOW_UNFREE: 1 };
+const GIT_HOOKS_STEP_NAME = "Run git hooks";
+const GIT_HOOKS_COMMAND = "prek run --all-files --show-diff-on-failure";
 
 function normalizeStaticConcurrencyGroup(group) {
   return typeof group === "string" ? group.toLowerCase() : undefined;
@@ -85,6 +94,11 @@ export function assertAutomaticConcurrencyValidationContract({
     true,
     `${workflowName} must run automatically on merge_group`,
   );
+  assert.deepEqual(
+    workflow.env,
+    AUTOMATIC_WORKFLOW_ENVIRONMENT,
+    `${workflowName} automatic workflow environment must stay exact`,
+  );
 
   const jobs = workflow.jobs;
   assert.ok(
@@ -96,18 +110,24 @@ export function assertAutomaticConcurrencyValidationContract({
     job && typeof job === "object" && !Array.isArray(job),
     `${workflowName} must define automatic validation job ${jobId}`,
   );
-  for (const control of ["if", "continue-on-error", "needs"]) {
+  for (const control of ["if", "continue-on-error", "needs", "strategy"]) {
     assert.equal(
       Object.hasOwn(job, control),
       false,
       `${workflowName} job ${jobId} must not declare ${control}`,
     );
   }
+  assert.equal(
+    Object.hasOwn(job, "env"),
+    false,
+    `${workflowName} job ${jobId} environment must stay empty`,
+  );
   assert.equal(job["runs-on"], "arc", `${workflowName} job ${jobId} must run on arc`);
   assert.ok(Array.isArray(job.steps), `${workflowName} job ${jobId} steps must be an array`);
 
   const installSteps = job.steps.filter((step) => step?.name === "Install devenv");
   const matchingSteps = job.steps.filter((step) => step?.name === stepName);
+  const gitHooksSteps = job.steps.filter((step) => step?.name === GIT_HOOKS_STEP_NAME);
   assert.equal(
     installSteps.length,
     1,
@@ -120,6 +140,12 @@ export function assertAutomaticConcurrencyValidationContract({
   );
   const installStep = installSteps[0];
   const contractStep = matchingSteps[0];
+  assert.equal(
+    gitHooksSteps.length,
+    1,
+    `${workflowName} job ${jobId} must preserve the fail-fast git-hooks step`,
+  );
+  const gitHooksStep = gitHooksSteps[0];
   for (const control of ["if", "continue-on-error"]) {
     assert.equal(
       Object.hasOwn(installStep, control),
@@ -127,6 +153,11 @@ export function assertAutomaticConcurrencyValidationContract({
       `${workflowName} job ${jobId} must install the pinned devenv CLI before running the contracts`,
     );
   }
+  assert.equal(
+    Object.hasOwn(installStep, "env"),
+    false,
+    `${workflowName} job ${jobId} installer environment must stay empty`,
+  );
   assert.equal(
     installStep.run,
     PINNED_DEVENV_INSTALL_COMMAND,
@@ -143,6 +174,11 @@ export function assertAutomaticConcurrencyValidationContract({
       `${workflowName} job ${jobId} step ${stepName} must not declare ${control}`,
     );
   }
+  assert.deepEqual(
+    contractStep.env,
+    AUTOMATIC_CONTRACT_ENVIRONMENT,
+    `${workflowName} job ${jobId} step ${stepName} environment must stay exact`,
+  );
   const run = contractStep.run;
   assert.equal(typeof run, "string", `${workflowName} job ${jobId} step ${stepName} must use run`);
   const commandLines = run
@@ -156,8 +192,34 @@ export function assertAutomaticConcurrencyValidationContract({
   );
   assert.equal(
     contractStep.shell,
-    "/tmp/nixmac-devenv-cli/bin/devenv shell --impure -- bash -euo pipefail {0}",
+    PINNED_DEVENV_SHELL,
     `${workflowName} job ${jobId} step ${stepName} must run through the pinned devenv shell with fail-fast Bash`,
+  );
+  for (const control of ["if", "continue-on-error"]) {
+    assert.equal(
+      Object.hasOwn(gitHooksStep, control),
+      false,
+      `${workflowName} job ${jobId} must preserve the fail-fast git-hooks step`,
+    );
+  }
+  assert.deepEqual(
+    gitHooksStep.env,
+    AUTOMATIC_CONTRACT_ENVIRONMENT,
+    `${workflowName} job ${jobId} must preserve the fail-fast git-hooks step`,
+  );
+  assert.equal(
+    gitHooksStep.shell,
+    PINNED_DEVENV_SHELL,
+    `${workflowName} job ${jobId} must preserve the fail-fast git-hooks step`,
+  );
+  assert.equal(
+    gitHooksStep.run,
+    GIT_HOOKS_COMMAND,
+    `${workflowName} job ${jobId} must preserve the fail-fast git-hooks step`,
+  );
+  assert.ok(
+    job.steps.indexOf(contractStep) < job.steps.indexOf(gitHooksStep),
+    `${workflowName} job ${jobId} must preserve the fail-fast git-hooks step`,
   );
 }
 
