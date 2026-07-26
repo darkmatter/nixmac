@@ -98,9 +98,92 @@ function assertOrder(source, first, second, message) {
   assert.ok(firstIndex < secondIndex, message);
 }
 
-function occurrenceCount(source, pattern) {
-  const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
-  return [...source.matchAll(new RegExp(pattern.source, flags))].length;
+function maskRustCommentsAndStrings(source) {
+  const masked = [...source];
+  const mask = (index) => {
+    if (source[index] !== "\n") masked[index] = " ";
+  };
+
+  for (let index = 0; index < source.length; ) {
+    if (source.startsWith("//", index)) {
+      while (index < source.length && source[index] !== "\n") {
+        mask(index);
+        index += 1;
+      }
+      continue;
+    }
+
+    if (source.startsWith("/*", index)) {
+      let depth = 0;
+      while (index < source.length) {
+        if (source.startsWith("/*", index)) {
+          mask(index);
+          mask(index + 1);
+          depth += 1;
+          index += 2;
+          continue;
+        }
+        if (source.startsWith("*/", index)) {
+          mask(index);
+          mask(index + 1);
+          depth -= 1;
+          index += 2;
+          if (depth === 0) break;
+          continue;
+        }
+        mask(index);
+        index += 1;
+      }
+      continue;
+    }
+
+    const rawString = source.slice(index).match(/^r(#+)?"/u);
+    if (rawString) {
+      const hashes = rawString[1] ?? "";
+      const terminator = `"${hashes}`;
+      for (let offset = 0; offset < rawString[0].length; offset += 1) mask(index + offset);
+      index += rawString[0].length;
+      while (index < source.length && !source.startsWith(terminator, index)) {
+        mask(index);
+        index += 1;
+      }
+      for (let offset = 0; offset < terminator.length; offset += 1) mask(index + offset);
+      index += terminator.length;
+      continue;
+    }
+
+    if (source[index] === '"') {
+      mask(index);
+      index += 1;
+      while (index < source.length) {
+        if (source[index] === "\\") {
+          mask(index);
+          mask(index + 1);
+          index += 2;
+          continue;
+        }
+        const closingQuote = source[index] === '"';
+        mask(index);
+        index += 1;
+        if (closingQuote) break;
+      }
+      continue;
+    }
+
+    index += 1;
+  }
+
+  return masked.join("");
+}
+
+function rustCallSites(source, functionName) {
+  const code = maskRustCommentsAndStrings(source);
+  const callPattern = new RegExp(`\\b${escapeRegExp(functionName)}\\s*\\(`, "gu");
+  return [...code.matchAll(callPattern)].map((match) => {
+    const lineStart = source.lastIndexOf("\n", match.index) + 1;
+    const lineEnd = source.indexOf("\n", match.index);
+    return source.slice(lineStart, lineEnd === -1 ? source.length : lineEnd).trim();
+  });
 }
 
 function escapeRegExp(value) {
@@ -126,6 +209,28 @@ function assertManualOnlyTrigger(workflowDocument, label = "Legacy Peekaboo work
     `${label} workflow_dispatch definition must be a mapping`,
   );
 }
+
+assert.deepEqual(
+  rustCallSites(
+    `
+// ignored.reload()
+let normal = "reload()";
+let raw = r#"WebviewWindow::reload(&window)"#;
+Some(reload())
+window.reload()
+WebviewWindow::reload(&window)
+<WebviewWindow as Reload>::reload(&window)
+`,
+    "reload",
+  ),
+  [
+    "Some(reload())",
+    "window.reload()",
+    "WebviewWindow::reload(&window)",
+    "<WebviewWindow as Reload>::reload(&window)",
+  ],
+  "Rust reload call scanner must detect callback, method, and associated-function syntax while ignoring comments and strings",
+);
 
 assert.match(
   packageJson.packageManager,
@@ -818,10 +923,10 @@ assert.match(
   /run_on_main_thread\(move \|\| \{\n\s+e2e_request_webview_boot_probe\(&reload_window, "watchdog-before-reload"\);\n\s+match run_e2e_webview_watchdog_reload\(\n\s+&reload_loaded,\n\s+&reload_claimed,\n\s+\|\| reload_window\.reload\(\),/,
   "Watchdog reload closure must route its sole reload callback through the behavior-tested one-shot operation",
 );
-assert.equal(
-  occurrenceCount(nativeMain, /\.reload\s*\(/),
-  1,
-  "Native app must expose exactly one direct WebView reload call, guarded by the watchdog helper",
+assert.deepEqual(
+  rustCallSites(nativeMain, "reload"),
+  ["Some(reload())", "|| reload_window.reload(),"],
+  "Native app reload calls must remain limited to the guarded callback helper and its sole watchdog invocation",
 );
 assert.match(
   nativeSecrets,
