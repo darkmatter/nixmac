@@ -1,7 +1,6 @@
 import { spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { constants as fsConstants } from "node:fs";
-import { lstat, open, opendir, readFile, realpath } from "node:fs/promises";
+import { lstat, readFile, realpath } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -167,6 +166,233 @@ function run(argv) {
     pid: current.pid,
   });
 }
+`;
+const MACOS_BUNDLE_HASH_SCRIPT = String.raw`
+import hashlib
+import json
+import os
+import stat
+import sys
+
+root = sys.argv[1]
+max_files = int(sys.argv[2])
+max_file_bytes = int(sys.argv[3])
+max_total_bytes = int(sys.argv[4])
+directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+file_flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC
+
+class BundleHashError(Exception):
+    pass
+
+def javascript_sort_key(value):
+    return value.encode("utf-16-be", "surrogatepass")
+
+def display_path(relative_path):
+    return os.path.join(root, *relative_path.split("/"))
+
+def same_directory(left, right):
+    return (
+        stat.S_ISDIR(right.st_mode)
+        and left.st_dev == right.st_dev
+        and left.st_ino == right.st_ino
+    )
+
+def same_file(left, right):
+    return (
+        stat.S_ISREG(right.st_mode)
+        and left.st_dev == right.st_dev
+        and left.st_ino == right.st_ino
+        and left.st_size == right.st_size
+        and left.st_mtime_ns == right.st_mtime_ns
+    )
+
+def open_directory(name, parent_fd, expected, relative_path):
+    try:
+        descriptor = os.open(name, directory_flags, dir_fd=parent_fd)
+    except OSError as error:
+        raise BundleHashError(
+            f"CuaDriver bundle directory changed during traversal: {display_path(relative_path)}"
+        ) from error
+    opened = os.fstat(descriptor)
+    if not same_directory(expected, opened):
+        os.close(descriptor)
+        raise BundleHashError(
+            f"CuaDriver bundle directory changed during traversal: {display_path(relative_path)}"
+        )
+    return descriptor
+
+def hash_bundle():
+    try:
+        root_fd = os.open(root, directory_flags)
+    except OSError as error:
+        raise BundleHashError(
+            f"CuaDriver bundle root must be a non-symlink directory: {root}"
+        ) from error
+    try:
+        root_stat = os.fstat(root_fd)
+        if not stat.S_ISDIR(root_stat.st_mode):
+            raise BundleHashError(
+                f"CuaDriver bundle root must be a non-symlink directory: {root}"
+            )
+
+        directories = {"": root_stat}
+        files = []
+        state = {"entries": 0, "total_bytes": 0}
+
+        def scan_directory(directory_fd, relative_directory):
+            try:
+                names = []
+                with os.scandir(directory_fd) as entries:
+                    for entry in entries:
+                        state["entries"] += 1
+                        if state["entries"] > max_files:
+                            raise BundleHashError(
+                                f"CuaDriver bundle file count exceeds {max_files}"
+                            )
+                        names.append(entry.name)
+                names.sort(key=javascript_sort_key)
+            except OSError as error:
+                raise BundleHashError(
+                    f"CuaDriver bundle directory changed during traversal: "
+                    f"{display_path(relative_directory)}"
+                ) from error
+            for name in names:
+                relative_path = (
+                    f"{relative_directory}/{name}" if relative_directory else name
+                )
+                try:
+                    observed = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+                except OSError as error:
+                    raise BundleHashError(
+                        f"CuaDriver bundle entry changed during traversal: "
+                        f"{display_path(relative_path)}"
+                    ) from error
+                if stat.S_ISDIR(observed.st_mode):
+                    child_fd = open_directory(
+                        name,
+                        directory_fd,
+                        observed,
+                        relative_path,
+                    )
+                    directories[relative_path] = os.fstat(child_fd)
+                    try:
+                        scan_directory(child_fd, relative_path)
+                    finally:
+                        os.close(child_fd)
+                    continue
+                if not stat.S_ISREG(observed.st_mode):
+                    raise BundleHashError(
+                        f"CuaDriver bundle digest rejects non-regular entry: "
+                        f"{display_path(relative_path)}"
+                    )
+                try:
+                    file_fd = os.open(name, file_flags, dir_fd=directory_fd)
+                except OSError as error:
+                    raise BundleHashError(
+                        f"CuaDriver bundle file changed before hashing: "
+                        f"{display_path(relative_path)}"
+                    ) from error
+                try:
+                    opened = os.fstat(file_fd)
+                    if not same_file(observed, opened):
+                        raise BundleHashError(
+                            f"CuaDriver bundle file changed before hashing: "
+                            f"{display_path(relative_path)}"
+                        )
+                finally:
+                    os.close(file_fd)
+                if observed.st_size > max_file_bytes:
+                    raise BundleHashError(
+                        f"CuaDriver bundle file bytes exceed {max_file_bytes}: "
+                        f"{display_path(relative_path)}"
+                    )
+                state["total_bytes"] += observed.st_size
+                if state["total_bytes"] > max_total_bytes:
+                    raise BundleHashError(
+                        f"CuaDriver bundle total bytes exceed {max_total_bytes}"
+                    )
+                files.append((relative_path, observed))
+
+        scan_directory(root_fd, "")
+        if not files:
+            raise BundleHashError(f"bundle has no regular files: {root}")
+        files.sort(key=lambda item: javascript_sort_key(item[0]))
+
+        digest = hashlib.sha256()
+        for relative_path, expected_file in files:
+            components = relative_path.split("/")
+            parent_fd = os.dup(root_fd)
+            current_relative = ""
+            try:
+                for component in components[:-1]:
+                    current_relative = (
+                        f"{current_relative}/{component}" if current_relative else component
+                    )
+                    expected_directory = directories[current_relative]
+                    next_fd = open_directory(
+                        component,
+                        parent_fd,
+                        expected_directory,
+                        current_relative,
+                    )
+                    os.close(parent_fd)
+                    parent_fd = next_fd
+                try:
+                    file_fd = os.open(components[-1], file_flags, dir_fd=parent_fd)
+                except OSError as error:
+                    raise BundleHashError(
+                        f"CuaDriver bundle file changed before hashing: "
+                        f"{display_path(relative_path)}"
+                    ) from error
+                try:
+                    opened_file = os.fstat(file_fd)
+                    if not same_file(expected_file, opened_file):
+                        raise BundleHashError(
+                            f"CuaDriver bundle file changed before hashing: "
+                            f"{display_path(relative_path)}"
+                        )
+                    digest.update(relative_path.encode("utf-8"))
+                    digest.update(b"\0")
+                    digest.update(str(expected_file.st_size).encode("ascii"))
+                    digest.update(b"\0")
+                    streamed_bytes = 0
+                    while True:
+                        chunk = os.read(file_fd, 1024 * 1024)
+                        if not chunk:
+                            break
+                        streamed_bytes += len(chunk)
+                        if (
+                            streamed_bytes > expected_file.st_size
+                            or streamed_bytes > max_file_bytes
+                        ):
+                            raise BundleHashError(
+                                f"CuaDriver bundle file changed or exceeded bounds: "
+                                f"{display_path(relative_path)}"
+                            )
+                        digest.update(chunk)
+                    final_file = os.fstat(file_fd)
+                    if (
+                        streamed_bytes != expected_file.st_size
+                        or not same_file(opened_file, final_file)
+                    ):
+                        raise BundleHashError(
+                            f"CuaDriver bundle file changed while hashing: "
+                            f"{display_path(relative_path)}"
+                        )
+                    digest.update(b"\0")
+                finally:
+                    os.close(file_fd)
+            finally:
+                os.close(parent_fd)
+        return digest.hexdigest()
+    finally:
+        os.close(root_fd)
+
+try:
+    value = {"digest": hash_bundle(), "ok": True}
+except (BundleHashError, OSError, UnicodeError, ValueError) as error:
+    value = {"error": str(error), "ok": False}
+print(json.dumps(value, separators=(",", ":")))
 `;
 const PNG_CRC_TABLE = Uint32Array.from({ length: 256 }, (_, value) => {
   let crc = value;
@@ -676,51 +902,6 @@ export function normalizeCuaActionOutput(
   return normalizeActionResult({ ok: true, text: parsed.text, isError: false });
 }
 
-async function walkRegularFiles(root, directory, bounds, state, result) {
-  const entries = [];
-  const handle = await opendir(directory);
-  for await (const entry of handle) {
-    state.entries += 1;
-    if (state.entries > bounds.maxFiles) {
-      throw new Error(`CuaDriver bundle file count exceeds ${bounds.maxFiles}`);
-    }
-    entries.push(entry);
-  }
-  entries.sort((left, right) =>
-    left.name < right.name ? -1 : left.name > right.name ? 1 : 0,
-  );
-  for (const entry of entries) {
-    const absolutePath = path.join(directory, entry.name);
-    if (entry.isDirectory()) {
-      await walkRegularFiles(root, absolutePath, bounds, state, result);
-      continue;
-    }
-    if (!entry.isFile()) {
-      throw new Error(`CuaDriver bundle digest rejects non-regular entry: ${absolutePath}`);
-    }
-    const stats = await lstat(absolutePath);
-    if (!stats.isFile()) {
-      throw new Error(`CuaDriver bundle digest rejects non-regular entry: ${absolutePath}`);
-    }
-    if (stats.size > bounds.maxFileBytes) {
-      throw new Error(`CuaDriver bundle file bytes exceed ${bounds.maxFileBytes}: ${absolutePath}`);
-    }
-    state.totalBytes += stats.size;
-    if (state.totalBytes > bounds.maxTotalBytes) {
-      throw new Error(`CuaDriver bundle total bytes exceed ${bounds.maxTotalBytes}`);
-    }
-    result.push({
-      absolutePath,
-      dev: stats.dev,
-      ino: stats.ino,
-      mtimeMs: stats.mtimeMs,
-      relativePath: path.relative(root, absolutePath).split(path.sep).join("/"),
-      size: stats.size,
-    });
-  }
-  return result;
-}
-
 function requireBundleBound(value, label) {
   if (!Number.isSafeInteger(value) || value <= 0) {
     throw new TypeError(`${label} must be a positive safe integer`);
@@ -751,64 +932,41 @@ export async function hashCuaBundleTree(appPath, options = {}) {
       "bundle maxTotalBytes",
     ),
   });
-  const files = await walkRegularFiles(
+  const runner = createCuaProcessRunner({
+    timeoutMs: 120_000,
+    maxOutputBytes: 8_192,
+  });
+  const result = await runner.run("/usr/bin/python3", [
+    "-c",
+    MACOS_BUNDLE_HASH_SCRIPT,
     root,
-    root,
-    bounds,
-    { entries: 0, totalBytes: 0 },
-    [],
-  );
-  files.sort((left, right) =>
-    left.relativePath < right.relativePath ? -1 : left.relativePath > right.relativePath ? 1 : 0,
-  );
-  if (files.length === 0) throw new Error(`bundle has no regular files: ${root}`);
-  const hash = createHash("sha256");
-  for (const file of files) {
-    hash.update(file.relativePath);
-    hash.update("\0");
-    hash.update(String(file.size));
-    hash.update("\0");
-    let streamedBytes = 0;
-    const handle = await open(
-      file.absolutePath,
-      fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW,
-    );
-    try {
-      const openedStats = await handle.stat();
-      if (
-        !openedStats.isFile() ||
-        openedStats.dev !== file.dev ||
-        openedStats.ino !== file.ino ||
-        openedStats.size !== file.size ||
-        openedStats.mtimeMs !== file.mtimeMs
-      ) {
-        throw new Error(`CuaDriver bundle file changed before hashing: ${file.absolutePath}`);
-      }
-      for await (const chunk of handle.createReadStream({ autoClose: false })) {
-        streamedBytes += chunk.length;
-        if (streamedBytes > file.size || streamedBytes > bounds.maxFileBytes) {
-          throw new Error(`CuaDriver bundle file changed or exceeded bounds: ${file.absolutePath}`);
-        }
-        hash.update(chunk);
-      }
-      const finalStats = await handle.stat();
-      if (
-        finalStats.dev !== openedStats.dev ||
-        finalStats.ino !== openedStats.ino ||
-        finalStats.size !== openedStats.size ||
-        finalStats.mtimeMs !== openedStats.mtimeMs
-      ) {
-        throw new Error(`CuaDriver bundle file changed while hashing: ${file.absolutePath}`);
-      }
-    } finally {
-      await handle.close();
-    }
-    if (streamedBytes !== file.size) {
-      throw new Error(`CuaDriver bundle file changed while hashing: ${file.absolutePath}`);
-    }
-    hash.update("\0");
+    String(bounds.maxFiles),
+    String(bounds.maxFileBytes),
+    String(bounds.maxTotalBytes),
+  ]);
+  let decoded;
+  try {
+    decoded = JSON.parse(result.stdout);
+  } catch {
+    throw new Error("CuaDriver bundle digest helper returned malformed JSON");
   }
-  return hash.digest("hex");
+  if (
+    !isPlainObject(decoded) ||
+    !hasExactKeys(decoded, decoded.ok === true ? ["digest", "ok"] : ["error", "ok"])
+  ) {
+    throw new Error("CuaDriver bundle digest helper returned malformed JSON");
+  }
+  if (decoded.ok !== true) {
+    throw new Error(
+      typeof decoded.error === "string" && decoded.error !== ""
+        ? decoded.error
+        : "CuaDriver bundle digest helper failed without an error",
+    );
+  }
+  if (typeof decoded.digest !== "string" || !/^[0-9a-f]{64}$/.test(decoded.digest)) {
+    throw new Error("CuaDriver bundle digest helper returned malformed JSON");
+  }
+  return decoded.digest;
 }
 
 export function parseCuaCodesignIdentity(output) {

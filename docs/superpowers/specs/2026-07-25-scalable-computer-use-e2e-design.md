@@ -442,10 +442,14 @@ scenario runner. It must expose:
 - teardown status.
 
 Filesystem screenshot paths are rejected, including same-UID substitution.
-Bundle-tree hashing walks in deterministic order, streams regular-file bytes,
-rejects symlinks and other non-regular entries, and enforces explicit file
-count, per-file byte, and total-byte ceilings before large or sparse files can
-consume unbounded resources. The subprocess runner creates a dedicated POSIX
+Bundle-tree hashing opens a non-symlink directory root and traverses only
+descriptor-relative, `O_NOFOLLOW`-opened directories and files. It verifies
+device/inode identity whenever a directory component is reopened, so a
+same-UID rename or replacement can fail closed but cannot redirect the hash.
+The helper preserves deterministic relative-path ordering, streams regular
+file bytes, rejects symlinks and other non-regular entries, and enforces
+explicit file-count, per-file-byte, total-byte, stdout, and deadline ceilings.
+The subprocess runner creates a dedicated POSIX
 process group; timeout or output overflow closes its pipes, signals the group
 with `SIGTERM`, escalates the group with `SIGKILL`, and rejects at the bounded
 timeout-plus-grace deadline even if a descendant holds inherited pipes and no

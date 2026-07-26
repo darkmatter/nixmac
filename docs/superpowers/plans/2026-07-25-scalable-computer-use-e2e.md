@@ -555,10 +555,14 @@ Cover:
   confirmation, pre-stop daemon peer replacement refusal, post-stop
   PID-plus-listener-plus-socket confirmation, and target/daemon cleanup retries;
 
-- streamed deterministic bundle hashing rejects symlinks, excess file counts,
-  excess per-file or total bytes, and oversized sparse files; full bundle
-  attestation is cached per exact process for normal UI polls, then refreshed
-  at teardown and failure diagnosis, including mutation probes;
+- streamed deterministic bundle hashing rejects a symlink/non-directory root,
+  child symlinks, excess file counts, excess per-file or total bytes, and
+  oversized sparse files; traversal and reads are descriptor-relative with
+  `O_NOFOLLOW`, and every reopened directory component must retain its
+  device/inode across rename/replacement probes; the bounded helper preserves
+  the existing digest contract, while full bundle attestation is cached per
+  exact process for normal UI polls and refreshed at teardown and failure
+  diagnosis;
 
 - inline screenshot MIME/base64 validation, encoded and decoded limits,
   same-UID filesystem-substitution rejection, header-only PNG, corrupt IDAT,

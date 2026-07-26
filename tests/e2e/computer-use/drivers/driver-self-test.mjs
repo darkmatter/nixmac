@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import {
   lstat,
@@ -7,6 +8,7 @@ import {
   mkdtemp,
   open,
   readFile,
+  rename,
   rm,
   symlink,
   writeFile,
@@ -1363,9 +1365,21 @@ try {
 const cuaDigestBoundsFixtureDir = await mkdtemp(
   path.join(os.tmpdir(), "nixmac-cua-bundle-bounds-"),
 );
+const cuaDigestRootSymlink = `${cuaDigestBoundsFixtureDir}-symlink`;
+const cuaDigestRootFile = `${cuaDigestBoundsFixtureDir}-file`;
 try {
   await writeFile(path.join(cuaDigestBoundsFixtureDir, "a"), "1234");
   await writeFile(path.join(cuaDigestBoundsFixtureDir, "b"), "5678");
+  await symlink(cuaDigestBoundsFixtureDir, cuaDigestRootSymlink);
+  await assert.rejects(
+    hashCuaBundleTree(cuaDigestRootSymlink),
+    /bundle root must be a non-symlink directory/,
+  );
+  await writeFile(cuaDigestRootFile, "not a bundle");
+  await assert.rejects(
+    hashCuaBundleTree(cuaDigestRootFile),
+    /bundle root must be a non-symlink directory/,
+  );
   await assert.rejects(
     hashCuaBundleTree(cuaDigestBoundsFixtureDir, { maxFiles: 1 }),
     /file count exceeds 1/,
@@ -1410,8 +1424,118 @@ try {
     hashCuaBundleTree(cuaDigestBoundsFixtureDir),
     /rejects non-regular entry/,
   );
+  await rm(symlinkPath);
+
+  const nestedDirectory = path.join(cuaDigestBoundsFixtureDir, "nested-directory");
+  await mkdir(nestedDirectory);
+  await writeFile(path.join(nestedDirectory, "file"), "nested");
+  const directorySymlinkPath = path.join(cuaDigestBoundsFixtureDir, "linked-directory");
+  await symlink("nested-directory", directorySymlinkPath);
+  await assert.rejects(
+    hashCuaBundleTree(cuaDigestBoundsFixtureDir),
+    /rejects non-regular entry/,
+    "a child directory symlink must never be traversed",
+  );
 } finally {
+  await rm(cuaDigestRootFile, { force: true });
+  await rm(cuaDigestRootSymlink, { force: true });
   await rm(cuaDigestBoundsFixtureDir, { recursive: true, force: true });
+}
+
+async function populateBundleDirectory(directory, fileCount, contents) {
+  await mkdir(directory, { recursive: true });
+  for (let offset = 0; offset < fileCount; offset += 100) {
+    await Promise.all(
+      Array.from({ length: Math.min(100, fileCount - offset) }, (_, index) =>
+        writeFile(path.join(directory, `file-${String(offset + index).padStart(5, "0")}`), contents),
+      ),
+    );
+  }
+}
+
+const cuaDigestSwapParent = await mkdtemp(path.join(os.tmpdir(), "nixmac-cua-bundle-swap-"));
+try {
+  const swapRoot = path.join(cuaDigestSwapParent, "Bundle.app");
+  const originalDirectory = path.join(swapRoot, "Contents");
+  const replacementDirectory = path.join(cuaDigestSwapParent, "replacement");
+  const swapTemporaryDirectory = path.join(cuaDigestSwapParent, "swap-temporary");
+  const swapperStopPath = path.join(cuaDigestSwapParent, "stop-swapper");
+  await populateBundleDirectory(originalDirectory, 50, "");
+  await populateBundleDirectory(replacementDirectory, 50, "replacement");
+
+  const originalDigest = await hashCuaBundleTree(swapRoot);
+  await rename(originalDirectory, swapTemporaryDirectory);
+  await rename(replacementDirectory, originalDirectory);
+  await rename(swapTemporaryDirectory, replacementDirectory);
+  const replacementDigest = await hashCuaBundleTree(swapRoot);
+  await rename(originalDirectory, swapTemporaryDirectory);
+  await rename(replacementDirectory, originalDirectory);
+  await rename(swapTemporaryDirectory, replacementDirectory);
+
+  const swapper = spawn(
+    "/usr/bin/python3",
+    [
+      "-c",
+      String.raw`
+import ctypes
+import os
+import sys
+import time
+
+libc = ctypes.CDLL("/usr/lib/libSystem.B.dylib", use_errno=True)
+rename_swap = 0x00000002
+at_fdcwd = -2
+left = sys.argv[1].encode()
+right = sys.argv[2].encode()
+stop_path = sys.argv[3]
+print("ready", flush=True)
+while not os.path.exists(stop_path):
+    if libc.renameatx_np(at_fdcwd, left, at_fdcwd, right, rename_swap) != 0:
+        raise OSError(ctypes.get_errno(), "renameatx_np")
+    time.sleep(0.02)
+`,
+      originalDirectory,
+      replacementDirectory,
+      swapperStopPath,
+    ],
+    { stdio: ["ignore", "pipe", "inherit"] },
+  );
+  await new Promise((resolve, reject) => {
+    swapper.once("error", reject);
+    swapper.stdout.once("data", resolve);
+  });
+  const digestDuringSwap = hashCuaBundleTree(swapRoot);
+  let swapProbeTimer;
+  const swapResult = await Promise.race([
+    digestDuringSwap.then(
+      (digest) => ({ digest }),
+      (error) => ({ error }),
+    ),
+    new Promise((resolve) => {
+      swapProbeTimer = setTimeout(
+        () => resolve({ error: new Error("bundle hash swap probe timed out") }),
+        10_000,
+      );
+    }),
+  ]);
+  clearTimeout(swapProbeTimer);
+  const swapperClosed = new Promise((resolve) => swapper.once("close", resolve));
+  await writeFile(swapperStopPath, "stop");
+  await swapperClosed;
+  if (swapResult.error) {
+    assert.match(
+      swapResult.error.message,
+      /bundle directory changed during traversal/,
+      "directory replacement must be diagnosed from a descriptor-bound identity mismatch",
+    );
+  } else {
+    assert.ok(
+      [originalDigest, replacementDigest].includes(swapResult.digest),
+      "a successful hash may read only the originally descriptor-bound directory tree",
+    );
+  }
+} finally {
+  await rm(cuaDigestSwapParent, { recursive: true, force: true });
 }
 
 const processSpawnCalls = [];
