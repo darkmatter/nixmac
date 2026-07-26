@@ -58,6 +58,21 @@ permission prompt:
 node tests/e2e/computer-use/run-cua-driver.mjs self-test
 ```
 
+Use the bounded runner-readiness smoke before enabling a worker:
+
+```bash
+NIXMAC_E2E_DISPOSABLE_CONFIG=true \
+NIXMAC_E2E_APP_ARTIFACT_SHA=<full-40-character-source-sha> \
+NIXMAC_E2E_APP_PATH=/private/tmp/run-123/nixmac.app \
+NIXMAC_CUA_DRIVER_BINARY=/absolute/path/to/pinned/cua-driver \
+node tests/e2e/computer-use/run-cua-driver.mjs smoke --run-dir \
+  artifacts/computer-use-remote/run-123
+```
+
+`smoke` is limited to launch, Settings General, owned cleanup, and local report
+rendering. It retains either a PASS report or a structured classified blocker.
+It does not generate video, inspect a browser, or publish to Buzz or GitHub.
+
 The local lane renders and publishes its report as immutable evidence, so the
 legacy browser report-copy/inspection scenario is not required there. Any
 future browser inspection must use an isolated non-personal browser profile on

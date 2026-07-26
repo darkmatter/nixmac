@@ -50,6 +50,17 @@ The local lane does not call SSH/SCP, copy the report to another machine, or
 open a personal browser. If report inspection is later made binding, provision
 an isolated same-run browser profile and treat it as another owned resource.
 
+Before admitting a new worker, run the bounded launch, Settings, and report
+smoke with the same preflight environment described above:
+
+```bash
+node tests/e2e/computer-use/run-cua-driver.mjs smoke --run-dir \
+  artifacts/computer-use-remote/<run-id>
+```
+
+Retain the generated PASS or structured infrastructure-blocker report. Smoke
+mode does not generate video or publish anything to Buzz or GitHub.
+
 ## Daily Operator Check
 
 1. Inspect the latest local evidence summary:

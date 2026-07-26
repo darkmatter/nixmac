@@ -1251,7 +1251,7 @@ function annotationGeometryIssues(state) {
   return issues;
 }
 
-async function baseState(runDir, options) {
+async function baseState(runDir, options, { env = process.env } = {}) {
   return createBaseState(runDir, options, {
     tryRun,
     repoRoot: REPO_ROOT,
@@ -1259,11 +1259,158 @@ async function baseState(runDir, options) {
     scenarioLabels,
     evolvedCaseStrategy,
     buildPrFocus,
-    env: process.env,
+    env,
   });
 }
 
-async function maybeRelaunchRemote(state) {
+function markLocalReportInspectionNotRequired(state) {
+  updateScenario(
+    state,
+    "reportInspection",
+    "not_required",
+    "The local CuaDriver lane validates and publishes the generated report as immutable evidence; it does not open a personal browser or copy the report over SSH.",
+  );
+}
+
+function classifySingleSuiteFailure(error, { executionTopology = "remote-codex-app-server" } = {}) {
+  const message = redact(error instanceof Error ? error.message : String(error));
+  const local = executionTopology === "local-cua-driver";
+  if (local && /competing .* process .* running/i.test(message)) {
+    return Object.freeze({
+      schemaVersion: 1,
+      executionTopology,
+      phase: "target_preparation",
+      category: "infrastructure",
+      code: "competing_process",
+      infrastructureBlocker: true,
+      summary: message,
+    });
+  }
+  if (local && /Accessibility|Screen Recording|permission/i.test(message)) {
+    return Object.freeze({
+      schemaVersion: 1,
+      executionTopology,
+      phase: "permissions",
+      category: "infrastructure",
+      code: "macos_permissions",
+      infrastructureBlocker: true,
+      summary: message,
+    });
+  }
+  if (
+    local &&
+    /local CuaDriver|NIXMAC_E2E_|staged app|shared Applications path|run-specific directory/i.test(
+      message,
+    )
+  ) {
+    return Object.freeze({
+      schemaVersion: 1,
+      executionTopology,
+      phase: "preflight",
+      category: "infrastructure",
+      code: "local_preflight",
+      infrastructureBlocker: true,
+      summary: message,
+    });
+  }
+  if (
+    local &&
+    /cleanup|close|terminate|did not exit|listener remains|socket .* cleanup/i.test(message)
+  ) {
+    return Object.freeze({
+      schemaVersion: 1,
+      executionTopology,
+      phase: "cleanup",
+      category: "infrastructure",
+      code: "owned_resource_cleanup",
+      infrastructureBlocker: true,
+      summary: message,
+    });
+  }
+  if (
+    local &&
+    /nixmac app|app window|app UI|UI state|did not render|wrong content|not visible|visual mismatch/i.test(
+      message,
+    )
+  ) {
+    return Object.freeze({
+      schemaVersion: 1,
+      executionTopology,
+      phase: "runtime",
+      category: "product",
+      code: "app_behavior",
+      infrastructureBlocker: false,
+      summary: message,
+    });
+  }
+  if (
+    local &&
+    /CuaDriver (?:CLI|app|daemon|socket|launch|connect)|codesign|code signing|bundle identity/i.test(
+      message,
+    )
+  ) {
+    return Object.freeze({
+      schemaVersion: 1,
+      executionTopology,
+      phase: "runtime",
+      category: "infrastructure",
+      code: "local_runtime",
+      infrastructureBlocker: true,
+      summary: message,
+    });
+  }
+  if (/report|render|artifact|screenshot|runner/i.test(message)) {
+    return Object.freeze({
+      schemaVersion: 1,
+      executionTopology,
+      phase: "reporting",
+      category: "harness",
+      code: "harness_failure",
+      infrastructureBlocker: false,
+      summary: message,
+    });
+  }
+  return Object.freeze({
+    schemaVersion: 1,
+    executionTopology,
+    phase: "runtime",
+    category: "harness",
+    code: "runtime_failure",
+    infrastructureBlocker: false,
+    summary: message,
+  });
+}
+
+export function classifySuiteFailure(
+  error,
+  { executionTopology = "remote-codex-app-server" } = {},
+) {
+  if (!(error instanceof AggregateError) || error.errors.length === 0) {
+    return classifySingleSuiteFailure(error, { executionTopology });
+  }
+  const issues = error.errors.flatMap((item) => {
+    const classified = classifySuiteFailure(item, { executionTopology });
+    return classified.issues || [classified];
+  });
+  const infrastructureBlocker = issues.some((issue) => issue.infrastructureBlocker);
+  const category = infrastructureBlocker
+    ? "infrastructure"
+    : issues.some((issue) => issue.category === "product")
+      ? "product"
+      : "harness";
+  return Object.freeze({
+    schemaVersion: 1,
+    executionTopology,
+    phase: "multiple",
+    category,
+    code: "multiple_failures",
+    infrastructureBlocker,
+    summary: redact(error.message || "Multiple Computer Use suite failures"),
+    issues: Object.freeze(issues),
+  });
+}
+
+async function maybeRelaunchRemote(state, { ssh: sshBoundary = ssh } = {}) {
   if (process.env.NIXMAC_E2E_SKIP_RELAUNCH === "true") {
     await addEvent(state, "remote.relaunch.skipped", {
       reason: "NIXMAC_E2E_SKIP_RELAUNCH=true; caller is responsible for launching nixmac.",
@@ -1273,7 +1420,7 @@ async function maybeRelaunchRemote(state) {
   const dest = process.env.NIXMAC_E2E_REMOTE_SSH_DEST;
   if (!dest) return;
   const remoteAppPath = remoteAppPathFromEnv();
-  const result = ssh(
+  const result = sshBoundary(
     `osascript -e 'tell application id "com.darkmatter.nixmac" to quit' >/dev/null 2>&1 || true; sleep 1; open -n ${shellQuote(remoteAppPath)} || true; sleep 5`,
   );
   await addEvent(state, "remote.relaunch", {
@@ -1283,7 +1430,11 @@ async function maybeRelaunchRemote(state) {
   });
 }
 
-async function inspectReportWithComputerUse(driver, state) {
+async function inspectReportWithComputerUse(
+  driver,
+  state,
+  { scpToRemote: scpBoundary = scpToRemote, ssh: sshBoundary = ssh } = {},
+) {
   const dest = process.env.NIXMAC_E2E_REMOTE_SSH_DEST;
   const remoteParent =
     process.env.NIXMAC_E2E_REMOTE_REPORT_DIR || "/tmp/nixmac-computer-use-reports";
@@ -1298,7 +1449,7 @@ async function inspectReportWithComputerUse(driver, state) {
     return;
   }
 
-  const mkdirResult = ssh(
+  const mkdirResult = sshBoundary(
     `rm -rf ${shellQuote(remoteDir)} && mkdir -p ${shellQuote(remoteParent)}`,
   );
   if (!mkdirResult.ok) {
@@ -1310,7 +1461,7 @@ async function inspectReportWithComputerUse(driver, state) {
     );
     return;
   }
-  const copyResult = scpToRemote(state.runDir, remoteParent);
+  const copyResult = scpBoundary(state.runDir, remoteParent);
   if (!copyResult.ok) {
     updateScenario(
       state,
@@ -1321,7 +1472,7 @@ async function inspectReportWithComputerUse(driver, state) {
     return;
   }
   const remoteIndex = `${remoteDir}/index.html`;
-  const openResult = ssh(
+  const openResult = sshBoundary(
     `open -a "Google Chrome" ${shellQuote(`file://${remoteIndex}`)} || open ${shellQuote(`file://${remoteIndex}`)}; sleep 2`,
   );
   await addEvent(state, "report.remote-open", {
@@ -1394,8 +1545,11 @@ async function inspectReportWithComputerUse(driver, state) {
   );
 }
 
-function captureRemoteMetadata(state) {
-  const { metadata, error } = readRemoteMetadata();
+function captureRemoteMetadata(
+  state,
+  { readRemoteMetadata: metadataBoundary = readRemoteMetadata } = {},
+) {
+  const { metadata, error } = metadataBoundary();
   if (!metadata) {
     state.remoteMetadataError = redact(error || "Remote metadata command failed.");
     return;
@@ -2452,7 +2606,7 @@ function evolvedCaseExecutorForMode(mode) {
   return null;
 }
 
-async function prepareDisposableRemoteBaseline(state) {
+async function prepareDisposableRemoteBaseline(state, { ssh: sshBoundary = ssh } = {}) {
   const canConfirmBuild =
     state.safety?.disposableConfig === true && state.safety?.buildConfirmEnabled === true;
   if (!canConfirmBuild) {
@@ -2474,7 +2628,7 @@ async function prepareDisposableRemoteBaseline(state) {
   await addRemoteGitEvent(state, "remote.git.initial", initial);
   if (!initial.ok) return null;
 
-  const markerResult = ssh(
+  const markerResult = sshBoundary(
     [
       `cd ${shellQuote(configDir)}`,
       'git config user.name "nixmac E2E"',
@@ -2509,10 +2663,18 @@ async function prepareDisposableRemoteBaseline(state) {
   return baseline;
 }
 
-async function render(state, { stateFileName = "state.json", recordEvent = true } = {}) {
+async function render(
+  state,
+  {
+    generateVideo = true,
+    recordEvent = true,
+    stateFileName = "state.json",
+    updateStorybook = true,
+  } = {},
+) {
   const renderStartedAt = nowIso();
   ensureCurrentSchema(state);
-  updateStorybookPreviewCoverage(state);
+  if (updateStorybook) updateStorybookPreviewCoverage(state);
   const verdict = verdictFor(state);
   state.verdict = verdict;
   updateV2Contracts(state);
@@ -2521,7 +2683,14 @@ async function render(state, { stateFileName = "state.json", recordEvent = true 
     status: scenario.status,
     evidence: scenario.notes.join(" ") || "See proof artifacts and coverage gaps.",
   }));
-  await maybeGenerateEvidenceVideo(state);
+  if (generateVideo) {
+    await maybeGenerateEvidenceVideo(state);
+  } else {
+    state.video = {
+      status: "not_required",
+      note: "The bounded smoke command retains screenshots and text evidence without generating video.",
+    };
+  }
   const html = await renderReportHtml(state, { proofForScenario });
   await writeFile(path.join(state.runDir, "index.html"), html, "utf8");
   addTimingPhase(state, {
@@ -2549,18 +2718,24 @@ async function render(state, { stateFileName = "state.json", recordEvent = true 
 
 export async function runSuiteWithDriver(
   args,
-  { createDriver, executionTopology, env = process.env } = {},
+  {
+    createDriver,
+    env = process.env,
+    executionTopology,
+    localPreflightDependencies = {},
+    transportBoundaries = {},
+  } = {},
 ) {
-  if (args.includes("--prompt") || process.env.NIXMAC_E2E_PROMPT) {
+  if (args.includes("--prompt") || env.NIXMAC_E2E_PROMPT) {
     throw new Error(
       "Custom prompts are not supported by this E2E runner; assertions are calibrated to the fixed bat/Homebrew prompt.",
     );
   }
   const options = {
-    app: process.env.NIXMAC_COMPUTER_USE_APP || DEFAULT_APP,
+    app: env.NIXMAC_COMPUTER_USE_APP || DEFAULT_APP,
     prompt: DEFAULT_PROMPT,
     ...(executionTopology === "remote-codex-app-server"
-      ? { ws: process.env.NIXMAC_COMPUTER_USE_WS || DEFAULT_WS }
+      ? { ws: env.NIXMAC_COMPUTER_USE_WS || DEFAULT_WS }
       : {}),
   };
   let runDir = argValue(args, "--run-dir", path.join(ARTIFACT_ROOT, timestampSlug()));
@@ -2576,13 +2751,20 @@ export async function runSuiteWithDriver(
   activeRunDir = runDir;
   const localPreflight =
     executionTopology === "local-cua-driver"
-      ? await validateLocalCuaPreflight({
-          appBundleId: options.app,
-          runDir,
-        })
+      ? await validateLocalCuaPreflight(
+          {
+            appBundleId: options.app,
+            runDir,
+          },
+          {
+            env,
+            ...localPreflightDependencies,
+          },
+        )
       : null;
-  const state = await baseState(runDir, options);
+  const state = await baseState(runDir, options, { env });
   state.executionTopology = executionTopology;
+  if (executionTopology === "local-cua-driver") markLocalReportInspectionNotRequired(state);
   if (localPreflight) {
     state.localApp = {
       artifactSha: localPreflight.appArtifactSha,
@@ -2625,11 +2807,13 @@ export async function runSuiteWithDriver(
             }
           : undefined,
     });
-    if (localPreflight) await verifyLocalCuaPreflight(localPreflight);
+    if (localPreflight) {
+      await verifyLocalCuaPreflight(localPreflight, localPreflightDependencies);
+    }
     if (executionTopology === "remote-codex-app-server") {
-      await prepareDisposableRemoteBaseline(state);
-      await maybeRelaunchRemote(state);
-      captureRemoteMetadata(state);
+      await prepareDisposableRemoteBaseline(state, transportBoundaries);
+      await maybeRelaunchRemote(state, transportBoundaries);
+      captureRemoteMetadata(state, transportBoundaries);
     }
 
     let text = await captureState(
@@ -3888,14 +4072,9 @@ export async function runSuiteWithDriver(
     });
     await render(state);
     if (executionTopology === "remote-codex-app-server") {
-      await inspectReportWithComputerUse(driver, state);
-    } else {
-      updateScenario(
-        state,
-        "reportInspection",
-        "not_required",
-        "The local CuaDriver lane validates and publishes the generated report as immutable evidence; it does not open a personal browser or copy the report over SSH.",
-      );
+      const inspectReport =
+        transportBoundaries.inspectReportWithComputerUse || inspectReportWithComputerUse;
+      await inspectReport(driver, state, transportBoundaries);
     }
     refreshVisualProofQuality(state);
     updatePrSpecificCoverage(state);
@@ -3916,7 +4095,7 @@ export async function runSuiteWithDriver(
       try {
         await writeRunPreflight(runDir, trustedRunPreflight.input);
         await assertRunPreflight(runDir);
-        await verifyLocalCuaPreflight(localPreflight);
+        await verifyLocalCuaPreflight(localPreflight, localPreflightDependencies);
       } catch (error) {
         suiteFailure = suiteFailure
           ? new AggregateError(
@@ -4003,12 +4182,185 @@ export async function runSuiteWithDriver(
     throw new AggregateError(failures, "Computer Use suite and exact cleanup both failed");
   }
   console.log(path.join(state.runDir, "index.html"));
-  if (shouldFailProcessForVerdict(state)) {
+  if (shouldFailProcessForVerdict(state, env)) {
     console.error(
       `Computer Use E2E verdict was ${state.verdict}; failing the check while preserving the evidence report.`,
     );
     process.exitCode = 1;
   }
+}
+
+export async function runSmokeWithDriver(
+  args,
+  {
+    createDriver,
+    env = process.env,
+    executionTopology = "local-cua-driver",
+    localPreflightDependencies = {},
+  } = {},
+) {
+  if (executionTopology !== "local-cua-driver") {
+    throw new Error("CuaDriver smoke supports only the local-cua-driver topology");
+  }
+  if (args.includes("--prompt") || env.NIXMAC_E2E_PROMPT) {
+    throw new Error("CuaDriver smoke does not accept a custom prompt");
+  }
+  if (typeof createDriver !== "function") {
+    throw new TypeError("runSmokeWithDriver requires createDriver");
+  }
+
+  const options = {
+    app: env.NIXMAC_COMPUTER_USE_APP || DEFAULT_APP,
+    prompt: DEFAULT_PROMPT,
+  };
+  let runDir = argValue(args, "--run-dir", path.join(ARTIFACT_ROOT, timestampSlug()));
+  await mkdir(path.join(runDir, "screenshots"), { recursive: true });
+  await mkdir(path.join(runDir, "texts"), { recursive: true });
+  runDir = await realpath(runDir);
+  activeRunDir = runDir;
+  const localPreflight = await validateLocalCuaPreflight(
+    {
+      appBundleId: options.app,
+      runDir,
+    },
+    {
+      env,
+      ...localPreflightDependencies,
+    },
+  );
+  const state = await baseState(runDir, options, { env });
+  state.executionTopology = executionTopology;
+  state.suiteMode = "smoke";
+  state.smoke = {
+    schemaVersion: 1,
+    contract: "launch-settings-report",
+    bounded: true,
+    publishesExternally: false,
+  };
+  for (const key of Object.keys(state.scenarios)) {
+    updateScenario(
+      state,
+      key,
+      "not_required",
+      "The bounded smoke command covers only launch, Settings General, and local report rendering.",
+    );
+  }
+  updateScenario(state, "launch", "inconclusive", "Smoke launch has not run yet.");
+  updateScenario(
+    state,
+    "settingsGeneral",
+    "inconclusive",
+    "Smoke Settings General has not run yet.",
+  );
+  markLocalReportInspectionNotRequired(state);
+  state.localApp = {
+    artifactSha: localPreflight.appArtifactSha,
+    bundleDigestSha256: localPreflight.appBundleDigestSha256,
+    bundleId: localPreflight.appBundleId,
+    path: localPreflight.appPath,
+  };
+  await saveState(state);
+
+  const driver = validateRuntimeDriver(
+    createDriver({
+      ...options,
+      runDir,
+    }),
+  );
+  let runError = null;
+  try {
+    await prepareSuiteDriver(driver, {
+      executionTopology,
+      appBundleId: options.app,
+      localPreflight,
+    });
+    await verifyLocalCuaPreflight(localPreflight, localPreflightDependencies);
+    let text = await captureState(
+      driver,
+      state,
+      "launch",
+      "CuaDriver smoke observed the exact staged nixmac app at launch.",
+    );
+    const launchPassed = /nixmac/i.test(text) && /button Settings/i.test(text);
+    updateScenario(
+      state,
+      "launch",
+      launchPassed ? "pass" : "fail",
+      launchPassed
+        ? "The exact staged app launched and exposed the Settings control."
+        : "The exact staged app did not expose the expected launch shell and Settings control.",
+    );
+
+    const settingsOpened = await clickByPattern(
+      driver,
+      state,
+      text,
+      "Smoke Settings",
+      [/button Settings/i],
+      "Open Settings for the bounded smoke check.",
+    );
+    if (settingsOpened) {
+      text = await captureState(
+        driver,
+        state,
+        "settings-general",
+        "CuaDriver smoke opened Settings General.",
+      );
+    }
+    const settingsPassed = settingsOpened && hasSettingsGeneralEvidence(text);
+    updateScenario(
+      state,
+      "settingsGeneral",
+      settingsPassed ? "pass" : "fail",
+      settingsPassed
+        ? "Settings General rendered the expected configuration controls."
+        : "Settings General did not render the expected configuration controls.",
+    );
+    if (!launchPassed || !settingsPassed) {
+      const productFailure = new Error(
+        "nixmac app UI did not satisfy the bounded launch and Settings smoke contract",
+      );
+      state.runFailure = classifySuiteFailure(productFailure, { executionTopology });
+      state.failures.push(state.runFailure.summary);
+    }
+  } catch (error) {
+    runError = error;
+  }
+
+  let cleanupError = null;
+  try {
+    await driver.close();
+    state.cleanup = {
+      attempted: true,
+      restored: true,
+      note: "The exact smoke target and owned CuaDriver daemon were closed before report rendering.",
+    };
+  } catch (error) {
+    cleanupError = error;
+  }
+  if (runError && cleanupError) {
+    throw new AggregateError(
+      [runError, cleanupError],
+      `CuaDriver smoke failed and cleanup failed: ${runError.message}; ${cleanupError.message}`,
+    );
+  }
+  if (cleanupError) throw cleanupError;
+  if (runError) throw runError;
+
+  for (const screenshot of state.screenshots) {
+    if (screenshot.source === "Codex Computer Use get_app_state image") {
+      screenshot.source = "CuaDriver get_window_state image";
+    }
+  }
+  state.smoke.outcome = state.runFailure ? `${state.runFailure.category}_failure` : "pass";
+  await render(state, {
+    generateVideo: false,
+    updateStorybook: false,
+  });
+  await saveState(state);
+  console.log(path.join(state.runDir, "index.html"));
+  if (shouldFailProcessForVerdict(state, env)) process.exitCode = 1;
+  return state;
 }
 
 async function runSuite(args) {
@@ -4112,7 +4464,7 @@ async function renderExisting(args) {
 export async function renderSuiteErrorReport(
   error,
   args,
-  { executionTopology = "remote-codex-app-server" } = {},
+  { env = process.env, executionTopology = "remote-codex-app-server", suiteMode = "full" } = {},
 ) {
   const lane = executionTopology === "local-cua-driver" ? "local CuaDriver" : "remote";
   const note = `Computer Use ${lane} runner failed before completing the suite: ${redact(error instanceof Error ? error.message : String(error))}`;
@@ -4125,21 +4477,50 @@ export async function renderSuiteErrorReport(
 
   await mkdir(path.join(runDir, "screenshots"), { recursive: true });
   await mkdir(path.join(runDir, "texts"), { recursive: true });
-  const existingState = await loadExistingRunState(runDir);
+  let existingState = await loadExistingRunState(runDir);
   if (!existingState) {
-    await renderUnavailable([...fallbackArgs, "--note", note]);
-    return;
+    if (executionTopology !== "local-cua-driver") {
+      await renderUnavailable([...fallbackArgs, "--note", note]);
+      return;
+    }
+    existingState = await baseState(
+      runDir,
+      {
+        app: env.NIXMAC_COMPUTER_USE_APP || DEFAULT_APP,
+        prompt: DEFAULT_PROMPT,
+      },
+      { env },
+    );
+    existingState.executionTopology = executionTopology;
   }
 
   await mergeWorkflowTimingsFromArgs(existingState, args);
+  existingState.executionTopology = executionTopology;
+  if (suiteMode === "smoke") existingState.suiteMode = "smoke";
+  existingState.runFailure = classifySuiteFailure(error, { executionTopology });
+  if (suiteMode === "smoke") {
+    existingState.smoke ||= {
+      schemaVersion: 1,
+      contract: "launch-settings-report",
+      bounded: true,
+      publishesExternally: false,
+    };
+    existingState.smoke.outcome = existingState.runFailure.infrastructureBlocker
+      ? "infrastructure_blocker"
+      : `${existingState.runFailure.category}_failure`;
+  }
+  if (executionTopology === "local-cua-driver") {
+    markLocalReportInspectionNotRequired(existingState);
+  } else {
+    updateScenario(
+      existingState,
+      "reportInspection",
+      "fail",
+      "Runner crashed before the report inspection step; fallback report was rendered from partial run evidence.",
+    );
+  }
   addNarrative(existingState, note);
   existingState.failures.push(note);
-  updateScenario(
-    existingState,
-    "reportInspection",
-    "fail",
-    "Runner crashed before the report inspection step; fallback report was rendered from partial run evidence.",
-  );
   const finalization = activeRunFinalization?.runDir === runDir ? activeRunFinalization : null;
   if (finalization?.finalizationMode === "local-finalize") {
     existingState.cleanup = {
@@ -4161,7 +4542,10 @@ export async function renderSuiteErrorReport(
     };
   }
   await addEvent(existingState, "runner.crash-fallback", { note });
-  await render(existingState);
+  await render(existingState, {
+    generateVideo: existingState.suiteMode !== "smoke",
+    updateStorybook: existingState.suiteMode !== "smoke",
+  });
   if (finalization) {
     try {
       if (finalization.finalizationMode === "local-finalize") {

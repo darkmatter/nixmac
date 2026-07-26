@@ -27,6 +27,7 @@ Environment:
 export function localCuaUsage({ defaultApp }) {
   return `Usage:
   node tests/e2e/computer-use/run-cua-driver.mjs run --run-dir <artifact-run-dir>
+  node tests/e2e/computer-use/run-cua-driver.mjs smoke --run-dir <artifact-run-dir>
   node tests/e2e/computer-use/run-cua-driver.mjs self-test
 
 Execution topology:
@@ -54,6 +55,7 @@ export async function dispatchLocalCuaCommand(argv, handlers, options = {}) {
   const handler = {
     run: handlers.run,
     "self-test": handlers.selfTest,
+    smoke: handlers.smoke,
   }[command];
   if (!handler) {
     usage();
