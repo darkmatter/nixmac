@@ -7,6 +7,8 @@ const AUTOMATIC_CONTRACT_COMMANDS = [
   "node tests/e2e/computer-use/workflow-contract-self-test.mjs",
   "node tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs",
 ];
+const PINNED_DEVENV_INSTALL_COMMAND =
+  "nix build github:cachix/devenv/v2.1.2 --out-link /tmp/nixmac-devenv-cli";
 
 function normalizeStaticConcurrencyGroup(group) {
   return typeof group === "string" ? group.toLowerCase() : undefined;
@@ -104,13 +106,36 @@ export function assertAutomaticConcurrencyValidationContract({
   assert.equal(job["runs-on"], "arc", `${workflowName} job ${jobId} must run on arc`);
   assert.ok(Array.isArray(job.steps), `${workflowName} job ${jobId} steps must be an array`);
 
+  const installSteps = job.steps.filter((step) => step?.name === "Install devenv");
   const matchingSteps = job.steps.filter((step) => step?.name === stepName);
+  assert.equal(
+    installSteps.length,
+    1,
+    `${workflowName} job ${jobId} must install the pinned devenv CLI before running the contracts`,
+  );
   assert.equal(
     matchingSteps.length,
     1,
     `${workflowName} job ${jobId} must define exactly one ${stepName} step`,
   );
+  const installStep = installSteps[0];
   const contractStep = matchingSteps[0];
+  for (const control of ["if", "continue-on-error"]) {
+    assert.equal(
+      Object.hasOwn(installStep, control),
+      false,
+      `${workflowName} job ${jobId} must install the pinned devenv CLI before running the contracts`,
+    );
+  }
+  assert.equal(
+    installStep.run,
+    PINNED_DEVENV_INSTALL_COMMAND,
+    `${workflowName} job ${jobId} must install the pinned devenv CLI before running the contracts`,
+  );
+  assert.ok(
+    job.steps.indexOf(installStep) < job.steps.indexOf(contractStep),
+    `${workflowName} job ${jobId} must install the pinned devenv CLI before running the contracts`,
+  );
   for (const control of ["if", "continue-on-error"]) {
     assert.equal(
       Object.hasOwn(contractStep, control),

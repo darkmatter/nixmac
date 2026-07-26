@@ -43,6 +43,7 @@ ${companionConcurrency}
 function automaticWorkflowYaml({
   triggers = `  pull_request:
   merge_group:`,
+  installCommand = "        run: nix build github:cachix/devenv/v2.1.2 --out-link /tmp/nixmac-devenv-cli",
   validationCommands = `          node tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs
           node tests/e2e/computer-use/workflow-contract-self-test.mjs
           node tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs`,
@@ -55,6 +56,8 @@ jobs:
   git-hooks:
     runs-on: arc
     steps:
+      - name: Install devenv
+${installCommand}
       - name: Run Computer Use workflow contracts
         shell: /tmp/nixmac-devenv-cli/bin/devenv shell --impure -- bash -euo pipefail {0}
         run: |
@@ -312,6 +315,56 @@ assert.throws(
     }),
   /unreachable-contract-commands\.yaml job git-hooks step Run Computer Use workflow contracts must contain exactly the automatic contract commands/,
   "shell control flow must not make the required automatic contract commands unreachable",
+);
+
+assert.throws(
+  () =>
+    assertAutomaticConcurrencyValidationContract({
+      workflowName: "unpinned-devenv-installer.yaml",
+      source: automaticWorkflowYaml({
+        installCommand:
+          "        run: nix build github:cachix/devenv/latest --out-link /tmp/nixmac-devenv-cli",
+      }),
+      jobId: "git-hooks",
+      stepName: "Run Computer Use workflow contracts",
+    }),
+  /unpinned-devenv-installer\.yaml job git-hooks must install the pinned devenv CLI before running the contracts/,
+  "automatic contract validation must bind the devenv installer version",
+);
+
+assert.throws(
+  () =>
+    assertAutomaticConcurrencyValidationContract({
+      workflowName: "disabled-devenv-installer.yaml",
+      source: automaticWorkflowYaml().replace(
+        "      - name: Install devenv",
+        "      - name: Install devenv\n        if: false",
+      ),
+      jobId: "git-hooks",
+      stepName: "Run Computer Use workflow contracts",
+    }),
+  /disabled-devenv-installer\.yaml job git-hooks must install the pinned devenv CLI before running the contracts/,
+  "automatic contract validation must reject a disabled devenv installer",
+);
+
+assert.throws(
+  () => {
+    const source = automaticWorkflowYaml();
+    const installStep = `      - name: Install devenv
+        run: nix build github:cachix/devenv/v2.1.2 --out-link /tmp/nixmac-devenv-cli
+`;
+    assertAutomaticConcurrencyValidationContract({
+      workflowName: "late-devenv-installer.yaml",
+      source: source.replace(installStep, "").replace(
+        "  build:",
+        `${installStep}  build:`,
+      ),
+      jobId: "git-hooks",
+      stepName: "Run Computer Use workflow contracts",
+    });
+  },
+  /late-devenv-installer\.yaml job git-hooks must install the pinned devenv CLI before running the contracts/,
+  "automatic contract validation must require the installer before the contract step",
 );
 
 for (const [control, mutation] of [

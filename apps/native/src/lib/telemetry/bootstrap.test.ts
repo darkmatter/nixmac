@@ -26,6 +26,37 @@ function provider(
 }
 
 describe("bootstrapWithTelemetry", () => {
+  it("renders with the current provider when telemetry initialization never settles", async () => {
+    vi.useFakeTimers();
+    try {
+      const fallback = provider();
+      const render = vi.fn<(telemetry: TelemetryProvider) => void>();
+      const onTelemetryError =
+        vi.fn<(phase: "initialize" | "capture", error: unknown) => void>();
+      const bootstrap = bootstrapWithTelemetry({
+        initTelemetry: () => new Promise<TelemetryProvider>(() => {}),
+        getTelemetry: () => fallback,
+        render,
+        environment: "test",
+        onTelemetryError,
+      });
+
+      await vi.advanceTimersByTimeAsync(5_000);
+      await bootstrap;
+
+      expect(render).toHaveBeenCalledOnce();
+      expect(render).toHaveBeenCalledWith(fallback);
+      expect(onTelemetryError).toHaveBeenCalledWith(
+        "initialize",
+        expect.objectContaining({
+          message: "Telemetry initialization timed out after 5000ms",
+        }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("renders with the current provider when telemetry initialization rejects", async () => {
     const fallback = provider();
     const render = vi.fn<(telemetry: TelemetryProvider) => void>();

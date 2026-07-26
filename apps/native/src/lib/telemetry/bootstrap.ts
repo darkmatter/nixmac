@@ -1,11 +1,37 @@
 import type { TelemetryProvider } from "./types";
 
+const TELEMETRY_INITIALIZATION_TIMEOUT_MS = 5_000;
+
 interface BootstrapWithTelemetryOptions {
   initTelemetry: () => Promise<TelemetryProvider>;
   getTelemetry: () => TelemetryProvider;
   render: (telemetry: TelemetryProvider) => void | Promise<void>;
   environment: string;
   onTelemetryError?: (phase: "initialize" | "capture", error: unknown) => void;
+}
+
+async function initializeTelemetryWithDeadline(
+  initTelemetry: () => Promise<TelemetryProvider>,
+): Promise<TelemetryProvider> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const initialization = Promise.resolve().then(initTelemetry);
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timeout = setTimeout(() => {
+      reject(
+        new Error(
+          `Telemetry initialization timed out after ${TELEMETRY_INITIALIZATION_TIMEOUT_MS}ms`,
+        ),
+      );
+    }, TELEMETRY_INITIALIZATION_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([initialization, deadline]);
+  } finally {
+    if (timeout !== undefined) {
+      clearTimeout(timeout);
+    }
+  }
 }
 
 function notifyTelemetryError<TPhase extends string>(
@@ -29,7 +55,7 @@ export async function bootstrapWithTelemetry({
 }: BootstrapWithTelemetryOptions): Promise<void> {
   let telemetry: TelemetryProvider;
   try {
-    telemetry = await initTelemetry();
+    telemetry = await initializeTelemetryWithDeadline(initTelemetry);
   } catch (error) {
     notifyTelemetryError(onTelemetryError, "initialize", error);
     telemetry = getTelemetry();
