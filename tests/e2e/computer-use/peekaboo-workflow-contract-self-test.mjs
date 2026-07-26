@@ -176,10 +176,10 @@ function maskRustCommentsAndStrings(source) {
   return masked.join("");
 }
 
-function rustCallSites(source, functionName) {
+function rustIdentifierSites(source, identifier) {
   const code = maskRustCommentsAndStrings(source);
-  const callPattern = new RegExp(`\\b${escapeRegExp(functionName)}\\s*\\(`, "gu");
-  return [...code.matchAll(callPattern)].map((match) => {
+  const identifierPattern = new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "gu");
+  return [...code.matchAll(identifierPattern)].map((match) => {
     const lineStart = source.lastIndexOf("\n", match.index) + 1;
     const lineEnd = source.indexOf("\n", match.index);
     return source.slice(lineStart, lineEnd === -1 ? source.length : lineEnd).trim();
@@ -211,25 +211,30 @@ function assertManualOnlyTrigger(workflowDocument, label = "Legacy Peekaboo work
 }
 
 assert.deepEqual(
-  rustCallSites(
+  rustIdentifierSites(
     `
 // ignored.reload()
+/* reload */
 let normal = "reload()";
 let raw = r#"WebviewWindow::reload(&window)"#;
+let byte = b"reload";
+let rawByte = br##"reload"##;
+reload: F,
 Some(reload())
 window.reload()
-WebviewWindow::reload(&window)
-<WebviewWindow as Reload>::reload(&window)
+let alias = WebviewWindow::reload;
+let reference = &WebviewWindow::reload;
 `,
     "reload",
   ),
   [
+    "reload: F,",
     "Some(reload())",
     "window.reload()",
-    "WebviewWindow::reload(&window)",
-    "<WebviewWindow as Reload>::reload(&window)",
+    "let alias = WebviewWindow::reload;",
+    "let reference = &WebviewWindow::reload;",
   ],
-  "Rust reload call scanner must detect callback, method, and associated-function syntax while ignoring comments and strings",
+  "Rust reload identifier scanner must detect callback, method, alias, and reference syntax while ignoring comments and strings",
 );
 
 assert.match(
@@ -924,9 +929,9 @@ assert.match(
   "Watchdog reload closure must route its sole reload callback through the behavior-tested one-shot operation",
 );
 assert.deepEqual(
-  rustCallSites(nativeMain, "reload"),
-  ["Some(reload())", "|| reload_window.reload(),"],
-  "Native app reload calls must remain limited to the guarded callback helper and its sole watchdog invocation",
+  rustIdentifierSites(nativeMain, "reload"),
+  ["reload: F,", "Some(reload())", "|| reload_window.reload(),"],
+  "Native app reload identifiers must remain limited to the guarded callback helper and its sole watchdog invocation",
 );
 assert.match(
   nativeSecrets,
