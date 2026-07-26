@@ -3,7 +3,7 @@ import { markBootStage } from "@/lib/boot-diagnostics";
 import { isE2eProfile, nixmacEnvironment } from "@/lib/env";
 import { initTelemetry } from "@/lib/telemetry/init";
 import { TelemetryContextProvider } from "@/lib/telemetry/context";
-import { getTelemetry, setTelemetryProvider } from "@/lib/telemetry/instance";
+import { getTelemetry } from "@/lib/telemetry/instance";
 import { queryClient } from "@/lib/orpc";
 import type { TelemetryProvider } from "@/lib/telemetry/types";
 import { AppErrorBoundary } from "@/components/widget/layout/AppErrorBoundary";
@@ -61,7 +61,6 @@ const renderApp = (telemetry: TelemetryProvider) => {
 const bootstrap = async () => {
   // In E2E_MODE, initTelemetry returns a noop provider synchronously.
   const telemetry = await initTelemetry();
-  setTelemetryProvider(telemetry);
   telemetry.captureEvent({
     name: "app_launched",
     props: {

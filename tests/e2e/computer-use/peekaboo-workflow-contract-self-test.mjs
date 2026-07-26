@@ -1040,8 +1040,13 @@ assert.match(
 );
 assert.match(
   frontendMain,
-  /const bootstrap = async \(\) => \{[\s\S]*?const telemetry = await initTelemetry\(\)[\s\S]*?setTelemetryProvider\(\s*telemetry\s*\)[\s\S]*?telemetry\.captureEvent\(\{[\s\S]*?name:\s*"app_launched"[\s\S]*?renderApp\(\s*telemetry\s*\)/,
-  "Frontend bootstrap must await unified telemetry, install it, record app launch, and pass it into renderApp",
+  /const bootstrap = async \(\) => \{[\s\S]*?const telemetry = await initTelemetry\(\)[\s\S]*?telemetry\.captureEvent\(\{[\s\S]*?name:\s*"app_launched"[\s\S]*?renderApp\(\s*telemetry\s*\)/,
+  "Frontend bootstrap must await the installed unified telemetry provider, record app launch, and pass it into renderApp",
+);
+assert.doesNotMatch(
+  frontendMain,
+  /\bsetTelemetryProvider\b/,
+  "Frontend bootstrap must not install telemetry a second time after initTelemetry already installed it",
 );
 assert.match(
   frontendMain,
