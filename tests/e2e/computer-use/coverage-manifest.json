@@ -387,6 +387,13 @@
         "apps/native/src-tauri/src/system/re2_ascii.rs",
         "apps/native/src-tauri/src/system/secret_scanner.rs"
       ],
+      "directoryPrefixApprovals": [
+        {
+          "prefix": "apps/native/src/components/widget/secrets/",
+          "owner": "nixmac-product-proof",
+          "reason": "This component namespace exclusively implements the currently waived Secrets management surface."
+        }
+      ],
       "waiver": {
         "reason": "The current Computer Use lane does not open or mutate the Secrets management UI, so reveal, rotation, recipient, and secret-scanning behavior is not covered.",
         "owner": "nixmac-product-proof",
@@ -445,6 +452,13 @@
         "apps/native/src-tauri/src/system/nix.rs",
         "apps/native/src-tauri/src/system/permissions.rs",
         "apps/native/src-tauri/src/commands/permissions.rs"
+      ],
+      "directoryPrefixApprovals": [
+        {
+          "prefix": "apps/native/src/components/widget/onboarding/",
+          "owner": "nixmac-product-proof",
+          "reason": "This component namespace exclusively implements the currently waived first-run onboarding surface."
+        }
       ],
       "waiver": {
         "reason": "Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage.",

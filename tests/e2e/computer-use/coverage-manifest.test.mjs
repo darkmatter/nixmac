@@ -4,6 +4,7 @@ import {
   classifyCoverageFile,
   loadCoverageManifestFile,
   parseCoverageManifest,
+  sourcePrefixMatches,
   validateCoverageManifest,
 } from "./coverage-manifest.mjs";
 import { buildManifestPrFocus } from "./coverage-focus.mjs";
@@ -52,6 +53,45 @@ function validationErrors(manifest) {
 
 export function coverageManifestSelfTest() {
   assert.deepEqual(validationErrors(baseManifest()), []);
+  const ambiguousDirectoryPrefix = baseManifest();
+  ambiguousDirectoryPrefix.surfaces = [ambiguousDirectoryPrefix.surfaces[0]];
+  ambiguousDirectoryPrefix.surfaces[0].sourcePrefixes = ["app"];
+  assert(
+    validationErrors(ambiguousDirectoryPrefix).some((error) =>
+      error.includes("directory-like sourcePrefix app must end with /"),
+    ),
+    "extensionless directory-like source prefixes should be rejected as non-canonical",
+  );
+  assert.equal(
+    sourcePrefixMatches("app/new-unreviewed-feature.tsx", "app"),
+    false,
+    "a non-trailing source prefix should match only the exact file",
+  );
+  assert.deepEqual(
+    classifyCoverageFile(ambiguousDirectoryPrefix, "app/new-unreviewed-feature.tsx").scenarioKeys,
+    [],
+    "an ambiguous non-trailing prefix must not classify descendants as covered",
+  );
+  assert.throws(
+    () =>
+      buildManifestPrFocus({
+        changedFiles: ["app/new-unreviewed-feature.tsx"],
+        manifest: ambiguousDirectoryPrefix,
+        knownScenarioKey: (key) => key === "launch",
+      }),
+    /directory-like sourcePrefix app must end with \//,
+    "PR focus should fail closed on a non-canonical directory prefix",
+  );
+  assert.equal(
+    sourcePrefixMatches("app\\main.tsx", "app/main.tsx"),
+    true,
+    "exact file matching should retain Windows separator normalization",
+  );
+  assert.equal(
+    sourcePrefixMatches("app\\feature\\new.tsx", "app/feature/"),
+    true,
+    "canonical directory matching should retain Windows separator normalization",
+  );
   const waivedSpecialFocus = buildManifestPrFocus({
     changedFiles: ["app/preview.tsx"],
     manifest: baseManifest(),
@@ -89,9 +129,17 @@ export function coverageManifestSelfTest() {
   unapprovedClaimingDirectory.surfaces[0].sourcePrefixes = ["app/"];
   assert(
     validationErrors(unapprovedClaimingDirectory).some((error) =>
-      error.includes("claiming directory prefix app/ requires an approval"),
+      error.includes("directory prefix app/ requires an approval"),
     ),
-    "claiming directory prefixes should require auditable approval metadata",
+    "directory prefixes should require auditable approval metadata",
+  );
+  const unapprovedWaivedDirectory = baseManifest();
+  unapprovedWaivedDirectory.surfaces[1].sourcePrefixes = ["app/waived/"];
+  assert(
+    validationErrors(unapprovedWaivedDirectory).some((error) =>
+      error.includes("directory prefix app/waived/ requires an approval"),
+    ),
+    "waived directory prefixes should also require auditable approval metadata",
   );
 
   const broadClaimOverExactWaiver = baseManifest();

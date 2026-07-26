@@ -17,9 +17,7 @@ export function sourcePrefixMatches(file, sourcePrefix) {
   const normalizedPrefix = String(sourcePrefix ?? "").replaceAll("\\", "/");
   if (!normalizedPrefix) return false;
   if (normalizedPrefix.endsWith("/")) return normalizedFile.startsWith(normalizedPrefix);
-  return (
-    normalizedFile === normalizedPrefix || normalizedFile.startsWith(`${normalizedPrefix}/`)
-  );
+  return normalizedFile === normalizedPrefix;
 }
 
 export function changedFileMatchesSurface(file, surface) {
@@ -138,6 +136,17 @@ export function validateCoverageManifest(manifest, { knownScenarioKey = () => tr
     if (new Set(sourcePrefixes).size !== sourcePrefixes.length) {
       errors.push(`${surface.id || context} has duplicate sourcePrefixes`);
     }
+    for (const sourcePrefix of sourcePrefixes) {
+      if (sourcePrefix.includes("\\")) {
+        errors.push(`${surface.id || context} sourcePrefix ${sourcePrefix} must use / separators`);
+      }
+      const basename = sourcePrefix.split("/").filter(Boolean).at(-1) ?? "";
+      if (!sourcePrefix.endsWith("/") && !basename.includes(".")) {
+        errors.push(
+          `${surface.id || context} directory-like sourcePrefix ${sourcePrefix} must end with /`,
+        );
+      }
+    }
     if (scenarioKeys.length && surface.waiver) {
       errors.push(`${surface.id || context} cannot have both scenarioKeys and a waiver`);
     }
@@ -197,13 +206,11 @@ export function validateCoverageManifest(manifest, { knownScenarioKey = () => tr
         errors.push(`${approvalContext}.prefix must reference a directory sourcePrefix`);
       }
     }
-    if (scenarioKeys.length) {
-      for (const sourcePrefix of sourcePrefixes.filter((prefix) => prefix.endsWith("/"))) {
-        if (!approvedPrefixes.has(sourcePrefix)) {
-          errors.push(
-            `${surface.id || context} claiming directory prefix ${sourcePrefix} requires an approval`,
-          );
-        }
+    for (const sourcePrefix of sourcePrefixes.filter((prefix) => prefix.endsWith("/"))) {
+      if (!approvedPrefixes.has(sourcePrefix)) {
+        errors.push(
+          `${surface.id || context} directory prefix ${sourcePrefix} requires an approval`,
+        );
       }
     }
   }
