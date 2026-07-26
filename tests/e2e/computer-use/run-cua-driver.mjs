@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
@@ -11,6 +11,7 @@ import { redact } from "./redaction.mjs";
 import { preflightInputFromEnvironment } from "./run-metadata.mjs";
 import {
   classifySuiteFailure,
+  createOwnedCuaSocketEndpoint,
   prepareSuiteDriver,
   renderSuiteErrorReport,
   runSmokeWithDriver,
@@ -26,8 +27,8 @@ export function createLocalCuaDriver(options, { DriverClass = CuaDriver, env = p
     binary: env.NIXMAC_CUA_DRIVER_BINARY || "cua-driver",
     runDir: options.runDir,
   };
-  if (env.NIXMAC_CUA_DRIVER_SOCKET) {
-    driverOptions.socketPath = env.NIXMAC_CUA_DRIVER_SOCKET;
+  if (options.socketPath || env.NIXMAC_CUA_DRIVER_SOCKET) {
+    driverOptions.socketPath = options.socketPath || env.NIXMAC_CUA_DRIVER_SOCKET;
   }
   return new DriverClass(driverOptions);
 }
@@ -164,6 +165,7 @@ async function runSelfTest() {
     {
       app: "com.darkmatter.nixmac",
       runDir: "/tmp/local-run",
+      socketPath: "/tmp/nx-cua-owned-123/d.sock",
     },
     {
       DriverClass: FakeCuaDriver,
@@ -174,7 +176,26 @@ async function runSelfTest() {
     appBundleId: "com.darkmatter.nixmac",
     binary: "cua-driver",
     runDir: "/tmp/local-run",
+    socketPath: "/tmp/nx-cua-owned-123/d.sock",
   });
+  const explicitSocketDirectory = path.join(
+    await realpath(os.tmpdir()),
+    `nx-cua-explicit-${process.pid}-${Date.now()}`,
+  );
+  const explicitSocketPath = path.join(explicitSocketDirectory, "owned.sock");
+  const explicitSocketEndpoint = await createOwnedCuaSocketEndpoint({
+    requestedPath: explicitSocketPath,
+  });
+  assert.deepEqual(explicitSocketEndpoint, {
+    directory: explicitSocketDirectory,
+    path: explicitSocketPath,
+  });
+  await assert.rejects(
+    () => createOwnedCuaSocketEndpoint({ requestedPath: explicitSocketPath }),
+    /must not already exist/,
+    "an explicit socket endpoint must remain uniquely owned",
+  );
+  await rm(explicitSocketDirectory, { force: true, recursive: true });
   const suiteCalls = [];
   await runLocalCuaSuite(["--run-dir", "/tmp/local-run"], {
     runSuite: async (args, injected) => {
@@ -281,7 +302,7 @@ async function runSelfTest() {
   const assertedPreflights = [];
   const connectedMetadataDriver = {
     connected: true,
-    socketPath: "/tmp/nixmac-e2e-run-123/cua-driver.sock",
+    socketPath: "/tmp/nx-cua-run-123/d.sock",
     metadata: {
       cli: { version: "0.12.6" },
       app: { short_version: "0.12.6" },
@@ -567,10 +588,20 @@ async function runSelfTest() {
     ssh: forbiddenTransport("ssh"),
   };
   let competingDriverClosed = 0;
+  let allocatedSocketPath = "";
   class CompetingProcessDriver {
-    constructor() {
+    constructor(options) {
       this.connected = false;
-      this.socketPath = path.join(path.dirname(transportAppPath), "cua-driver.sock");
+      assert.equal(
+        typeof options.socketPath,
+        "string",
+        "local run must allocate its owned socket before constructing CuaDriver",
+      );
+      assert.ok(Buffer.byteLength(options.socketPath, "utf8") <= 103);
+      assert.match(path.basename(path.dirname(options.socketPath)), /^nx-cua-/);
+      assert.notEqual(path.dirname(options.socketPath), path.dirname(transportAppPath));
+      allocatedSocketPath = options.socketPath;
+      this.socketPath = options.socketPath;
       this.metadata = {
         app: { short_version: "0.12.6" },
         cli: { version: "0.12.6" },
@@ -602,17 +633,14 @@ async function runSelfTest() {
     NIXMAC_E2E_APP_PATH: transportAppPath,
     NIXMAC_E2E_DISPOSABLE_CONFIG: "true",
     NIXMAC_E2E_STAGING_PARENT: path.dirname(transportAppPath),
-    NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: path.join(
-      path.dirname(transportAppPath),
-      "config",
-    ),
+    NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: path.join(path.dirname(transportAppPath), "config"),
   };
   let competingProcessError;
   try {
     await runSuiteWithDriver(["--run-dir", transportRunDir], {
       createDriver: (options) => {
         if (options.ws !== undefined) websocketBoundary(options.ws);
-        return new CompetingProcessDriver();
+        return new CompetingProcessDriver(options);
       },
       env: transportEnv,
       executionTopology: "local-cua-driver",
@@ -662,6 +690,11 @@ async function runSelfTest() {
     },
   );
   assert.equal(competingDriverClosed, 1);
+  await assert.rejects(
+    () => lstat(path.dirname(allocatedSocketPath)),
+    /ENOENT/,
+    "owned socket directory must be absent after cleanup",
+  );
   const transportAttempt = JSON.parse(
     await readFile(path.join(transportRunDir, "attempt.json"), "utf8"),
   );
@@ -673,9 +706,11 @@ async function runSelfTest() {
     uiStarted: false,
     reason: "competing com.darkmatter.nixmac process is already running with pid 4242",
   });
-  assert.equal(transportAttempt.lifecycle.uiStarted, false);
-  assert.equal(transportAttempt.lifecycle.driverClosed, true);
-  assert.equal(transportAttempt.lifecycle.cleanupFinalized, true);
+  assert.equal(transportAttempt.lifecycle.current, "ABORTED");
+  assert.deepEqual(
+    transportAttempt.lifecycle.history.map((transition) => transition.state),
+    ["PROVISIONING", "READY", "ABORTED"],
+  );
   assert.equal(
     transportAttempt.failureClass,
     "infrastructure",
@@ -715,6 +750,123 @@ async function runSelfTest() {
   }
   assert.deepEqual(transportCalls, ["websocket", "browser-inspection", "scp", "ssh"]);
 
+  for (const blockerCase of [
+    {
+      name: "local-preflight",
+      expectedCode: "local_preflight",
+      expectedPermissionStatus: "pending",
+      expectedLifecycle: ["PROVISIONING", "ABORTED"],
+      env: { NIXMAC_E2E_DISPOSABLE_CONFIG: "false" },
+      connectError: null,
+    },
+    {
+      name: "permissions",
+      expectedCode: "macos_permissions",
+      expectedPermissionStatus: "denied",
+      expectedLifecycle: ["PROVISIONING", "ABORTED"],
+      env: {},
+      connectError: new Error("CuaDriver requires Accessibility and Screen Recording permissions"),
+    },
+  ]) {
+    const blockerRunDir = path.join(transportProbeRoot, `${blockerCase.name}-full-run`);
+    const blockerAppPath = path.join(
+      transportProbeRoot,
+      "staging",
+      `${blockerCase.name}-full-run`,
+      "nixmac.app",
+    );
+    await mkdir(path.join(blockerAppPath, "Contents"), { recursive: true });
+    await writeFile(
+      path.join(blockerAppPath, "Contents", "Info.plist"),
+      `${blockerCase.name} full-run blocker\n`,
+      "utf8",
+    );
+    const blockerDigest = await hashCuaBundleTree(blockerAppPath);
+    let connectCalls = 0;
+    class FullRunBlockerDriver {
+      constructor(options) {
+        this.socketPath = options.socketPath;
+        this.metadata = {
+          app: { short_version: "0.12.6" },
+          cli: { version: "0.12.6" },
+        };
+      }
+      async connect() {
+        connectCalls += 1;
+        if (blockerCase.connectError) throw blockerCase.connectError;
+      }
+      async prepareTarget() {
+        throw new Error(`${blockerCase.name} blocker must not prepare the target`);
+      }
+      async visibleState() {
+        throw new Error(`${blockerCase.name} blocker must not capture UI state`);
+      }
+      async click() {}
+      async setValue() {}
+      async close() {}
+    }
+    const blockerEnv = {
+      ...transportEnv,
+      NIXMAC_E2E_APP_PATH: blockerAppPath,
+      NIXMAC_E2E_APP_BUNDLE_DIGEST: blockerDigest,
+      NIXMAC_E2E_STAGING_PARENT: path.dirname(blockerAppPath),
+      NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: path.join(path.dirname(blockerAppPath), "config"),
+      ...blockerCase.env,
+    };
+    let blockerError;
+    try {
+      await runSuiteWithDriver(["--run-dir", blockerRunDir], {
+        createDriver: (options) => new FullRunBlockerDriver(options),
+        env: blockerEnv,
+        executionTopology: "local-cua-driver",
+        localPreflightDependencies: {
+          canonicalPath: async (value) => value,
+          readBundleIdentity: async () => ({
+            bundleId: "com.darkmatter.nixmac",
+            digestSha256: blockerDigest,
+          }),
+        },
+        runPreflightDependencies: {
+          resolvePreflight: async (input) => preflightInputFromEnvironment(input),
+        },
+        transportBoundaries,
+      });
+    } catch (error) {
+      blockerError = error;
+    }
+    assert.ok(blockerError, `${blockerCase.name} full-run blocker must reject`);
+    await renderSuiteErrorReport(blockerError, ["--run-dir", blockerRunDir], {
+      env: blockerEnv,
+      executionTopology: "local-cua-driver",
+    });
+    const blockerState = JSON.parse(await readFile(path.join(blockerRunDir, "state.json"), "utf8"));
+    const blockerPermissions = JSON.parse(
+      await readFile(path.join(blockerRunDir, "runner", "permissions.json"), "utf8"),
+    );
+    const blockerAttempt = JSON.parse(
+      await readFile(path.join(blockerRunDir, "attempt.json"), "utf8"),
+    );
+    assert.equal(blockerState.runFailure.code, blockerCase.expectedCode);
+    assert.equal(blockerPermissions.status, blockerCase.expectedPermissionStatus);
+    assert.deepEqual(
+      blockerAttempt.lifecycle.history.map((transition) => transition.state),
+      blockerCase.expectedLifecycle,
+    );
+    assert.equal(
+      connectCalls,
+      blockerCase.name === "permissions" ? 1 : 0,
+      `${blockerCase.name} connect boundary`,
+    );
+    const blockerManifest = await verifyEvidenceManifest(await realpath(blockerRunDir));
+    assert.equal(
+      blockerManifest.files.some(
+        (file) => file.path.startsWith("screenshots/") || file.path.startsWith("video/"),
+      ),
+      false,
+      `${blockerCase.name} blocker must seal without fabricated visual evidence`,
+    );
+  }
+
   const combinedRunDir = path.join(transportProbeRoot, "combined-run");
   const combinedAppPath = path.join(transportProbeRoot, "staging", "combined-run", "nixmac.app");
   await mkdir(path.join(combinedAppPath, "Contents"), { recursive: true });
@@ -729,7 +881,7 @@ async function runSelfTest() {
     await runSuiteWithDriver(["--run-dir", combinedRunDir], {
       createDriver: () => ({
         connected: true,
-        socketPath: path.join(path.dirname(combinedAppPath), "cua-driver.sock"),
+        socketPath: "/private/tmp/nx-cua-combined-probe/d.sock",
         metadata: {
           app: { short_version: "0.12.6" },
           cli: { version: "0.12.6" },
@@ -753,10 +905,7 @@ async function runSelfTest() {
         ...transportEnv,
         NIXMAC_E2E_APP_PATH: combinedAppPath,
         NIXMAC_E2E_STAGING_PARENT: path.dirname(combinedAppPath),
-        NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: path.join(
-          path.dirname(combinedAppPath),
-          "config",
-        ),
+        NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: path.join(path.dirname(combinedAppPath), "config"),
       },
       executionTopology: "local-cua-driver",
       localPreflightDependencies: {

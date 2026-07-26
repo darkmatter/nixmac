@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { assertEvidenceTreeMutable } from "./evidence-guard.mjs";
 
 const REQUIRED_DEPENDENCIES = [
   "addEvent",
@@ -93,6 +94,7 @@ export function createScenarioDriverHelpers(dependencies) {
   }
 
   async function captureState(driver, state, label, note = "") {
+    await assertEvidenceTreeMutable(state.runDir);
     let visible = await driver.visibleState({ app: state.app });
     let rawText = visible.text;
     let text = redact(rawText);

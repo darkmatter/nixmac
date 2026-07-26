@@ -1,4 +1,5 @@
 import path from "node:path";
+import { assertEvidenceTreeMutable } from "./evidence-guard.mjs";
 import process from "node:process";
 import { existsSync, readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
@@ -235,6 +236,7 @@ export function shouldFailProcessForVerdict(state, env = process.env) {
 }
 
 export async function saveState(state) {
+  await assertEvidenceTreeMutable(state.runDir);
   await writeFile(
     path.join(state.runDir, "state.json"),
     `${JSON.stringify(state, null, 2)}\n`,
@@ -243,6 +245,7 @@ export async function saveState(state) {
 }
 
 export async function addEvent(state, type, detail = {}) {
+  await assertEvidenceTreeMutable(state.runDir);
   state.events.push({ ts: new Date().toISOString(), type, ...detail });
   await writeFile(
     path.join(state.runDir, "events.json"),

@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { lstat, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { assertEvidenceTreeMutable } from "./evidence-guard.mjs";
 
 const PREFLIGHT_FIELDS = Object.freeze([
   "jobId",
@@ -26,6 +27,7 @@ const PREFLIGHT_FIELDS = Object.freeze([
   "appBundlePath",
   "appBundleDigest",
   "disposableConfigPath",
+  "daemonSocketDirectory",
   "daemonSocketPath",
   "cuaDriverCliVersion",
   "cuaDriverAppVersion",
@@ -153,15 +155,25 @@ function validatePreflightInput(input) {
     throw new Error("appBundlePath must be owned directly by stagingParent");
   }
   requireSha256(input.appBundleDigest, "appBundleDigest", { prefix: "forbidden" });
-  for (const [field, value] of [
-    ["disposableConfigPath", input.disposableConfigPath],
-    ["daemonSocketPath", input.daemonSocketPath],
-  ]) {
-    requireAbsoluteNormalizedPath(value, field);
-    const relative = path.relative(input.stagingParent, value);
-    if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) {
-      throw new Error(`${field} must be uniquely owned beneath stagingParent`);
-    }
+  requireAbsoluteNormalizedPath(input.disposableConfigPath, "disposableConfigPath");
+  const configRelative = path.relative(input.stagingParent, input.disposableConfigPath);
+  if (configRelative === "" || configRelative.startsWith("..") || path.isAbsolute(configRelative)) {
+    throw new Error("disposableConfigPath must be uniquely owned beneath stagingParent");
+  }
+  requireAbsoluteNormalizedPath(input.daemonSocketDirectory, "daemonSocketDirectory");
+  requireAbsoluteNormalizedPath(input.daemonSocketPath, "daemonSocketPath");
+  if (
+    input.daemonSocketDirectory === path.parse(input.daemonSocketDirectory).root ||
+    path.dirname(input.daemonSocketPath) !== input.daemonSocketDirectory ||
+    input.daemonSocketDirectory === input.stagingParent ||
+    !path.basename(input.daemonSocketDirectory).startsWith("nx-cua-")
+  ) {
+    throw new Error(
+      "daemon socket must use a separate uniquely owned nx-cua system-temp directory",
+    );
+  }
+  if (Buffer.byteLength(input.daemonSocketPath, "utf8") > 103) {
+    throw new Error("daemonSocketPath exceeds the Unix socket 103-byte limit");
   }
   requireString(input.cuaDriverCliVersion, "cuaDriverCliVersion");
   requireString(input.cuaDriverAppVersion, "cuaDriverAppVersion");
@@ -218,15 +230,6 @@ async function readJson(runDir, relativePath) {
   }
 }
 
-async function assertEvidenceUnsealed(runDir) {
-  try {
-    await lstat(path.join(runDir, "manifest.json"));
-    throw new Error("manifest.json already exists; verified evidence is immutable");
-  } catch (error) {
-    if (error?.code !== "ENOENT") throw error;
-  }
-}
-
 async function assertPreflightSidecarsAbsent(runDir) {
   for (const relativePath of [
     "runner/identity.json",
@@ -243,7 +246,11 @@ async function assertPreflightSidecarsAbsent(runDir) {
   }
 }
 
-function preflightSidecars(input) {
+function preflightSidecars(input, { permissionsStatus = "granted" } = {}) {
+  if (!["pending", "granted"].includes(permissionsStatus)) {
+    throw new Error("initial permissions status must be pending or granted");
+  }
+  const permissionsGranted = permissionsStatus === "granted";
   return {
     "runner/identity.json": {
       version: 1,
@@ -262,8 +269,11 @@ function preflightSidecars(input) {
     },
     "runner/permissions.json": {
       version: 1,
-      accessibilityGranted: input.accessibilityGranted,
-      screenRecordingGranted: input.screenRecordingGranted,
+      status: permissionsStatus,
+      accessibilityGranted: permissionsGranted ? input.accessibilityGranted : null,
+      screenRecordingGranted: permissionsGranted ? input.screenRecordingGranted : null,
+      probedAt: permissionsGranted ? input.startedAt : null,
+      reason: permissionsGranted ? "" : "awaiting live CuaDriver permission probe",
     },
     "artifact/source.json": {
       version: 1,
@@ -275,6 +285,7 @@ function preflightSidecars(input) {
       appBundlePath: input.appBundlePath,
       appBundleDigest: input.appBundleDigest,
       disposableConfigPath: input.disposableConfigPath,
+      daemonSocketDirectory: input.daemonSocketDirectory,
       daemonSocketPath: input.daemonSocketPath,
     },
     "attempt.json": {
@@ -297,12 +308,13 @@ function preflightSidecars(input) {
       finalized: false,
       verdict: null,
       lifecycle: {
-        identityBound: true,
-        uiPreparationAuthorized: true,
-        uiStarted: false,
-        driverClosed: false,
-        cleanupFinalized: false,
-        evidenceReady: false,
+        current: permissionsGranted ? "READY" : "PROVISIONING",
+        history: permissionsGranted
+          ? [
+              { state: "PROVISIONING", at: input.startedAt },
+              { state: "READY", at: input.startedAt },
+            ]
+          : [{ state: "PROVISIONING", at: input.startedAt }],
       },
     },
   };
@@ -337,6 +349,7 @@ export function preflightInputFromEnvironment({
     appBundlePath,
     appBundleDigest,
     disposableConfigPath: env.NIXMAC_E2E_DISPOSABLE_CONFIG_PATH || "",
+    daemonSocketDirectory: env.NIXMAC_E2E_DAEMON_SOCKET_DIRECTORY || "",
     daemonSocketPath: env.NIXMAC_E2E_DAEMON_SOCKET_PATH || "",
     cuaDriverCliVersion,
     cuaDriverAppVersion,
@@ -420,17 +433,11 @@ export async function resolveRunPreflightIdentity(
   if ((env.GITHUB_REPOSITORY || "") !== repo) {
     throw new Error("repository identity does not match live GITHUB_REPOSITORY");
   }
-  const appArtifactSha = requireGitSha(
-    env.NIXMAC_E2E_APP_ARTIFACT_SHA || "",
-    "app artifact SHA",
-  );
+  const appArtifactSha = requireGitSha(env.NIXMAC_E2E_APP_ARTIFACT_SHA || "", "app artifact SHA");
   if (appArtifactSha !== mergeSha) {
     throw new Error("app artifact SHA does not match merge SHA");
   }
-  const suppliedHarnessSha = requireGitSha(
-    env.NIXMAC_E2E_HARNESS_SHA || "",
-    "harnessSha",
-  );
+  const suppliedHarnessSha = requireGitSha(env.NIXMAC_E2E_HARNESS_SHA || "", "harnessSha");
   const liveHarnessSha = requireGitSha(
     await probeHarnessSha({ env, repoRoot }),
     "live harness SHA",
@@ -472,10 +479,7 @@ export async function resolveRunPreflightIdentity(
     accessibilityGranted,
     screenRecordingGranted,
   });
-  const startedAt = requireString(
-    env.NIXMAC_E2E_ATTEMPT_STARTED_AT || "",
-    "attempt startedAt",
-  );
+  const startedAt = requireString(env.NIXMAC_E2E_ATTEMPT_STARTED_AT || "", "attempt startedAt");
   if (!Number.isFinite(Date.parse(startedAt))) {
     throw new Error("attempt startedAt must be an ISO timestamp");
   }
@@ -490,16 +494,103 @@ export async function resolveRunPreflightIdentity(
   });
 }
 
-export async function writeRunPreflight(runDir, rawInput) {
+export async function writeRunProvisioning(runDir, rawInput) {
   requireAbsoluteNormalizedPath(runDir, "runDir");
-  await assertEvidenceUnsealed(runDir);
+  await assertEvidenceTreeMutable(runDir);
   const input = validatePreflightInput(rawInput);
   await assertPreflightSidecarsAbsent(runDir);
-  const sidecars = preflightSidecars(input);
+  const sidecars = preflightSidecars(input, { permissionsStatus: "pending" });
   for (const [relativePath, value] of Object.entries(sidecars)) {
     await writeJsonAtomic(path.join(runDir, relativePath), value);
   }
   return sidecars;
+}
+
+export async function recordRunPermissions(
+  runDir,
+  {
+    accessibilityGranted,
+    screenRecordingGranted,
+    reason = "",
+    probedAt = new Date().toISOString(),
+  },
+) {
+  requireAbsoluteNormalizedPath(runDir, "runDir");
+  await assertEvidenceTreeMutable(runDir);
+  if (typeof accessibilityGranted !== "boolean" || typeof screenRecordingGranted !== "boolean") {
+    throw new Error("permission probe results must be boolean");
+  }
+  if (typeof reason !== "string") throw new Error("permission probe reason must be a string");
+  requireIsoTimestamp(probedAt, "permission probe timestamp");
+  const [identity, permissions, artifact, attempt] = await Promise.all([
+    readJson(runDir, "runner/identity.json"),
+    readJson(runDir, "runner/permissions.json"),
+    readJson(runDir, "artifact/source.json"),
+    readJson(runDir, "attempt.json"),
+  ]);
+  if (
+    permissions.status !== "pending" ||
+    permissions.accessibilityGranted !== null ||
+    permissions.screenRecordingGranted !== null ||
+    attempt.lifecycle?.current !== "PROVISIONING"
+  ) {
+    throw new Error("permission probe may only complete a pending PROVISIONING attempt");
+  }
+  const granted = accessibilityGranted && screenRecordingGranted;
+  const nextPermissions = {
+    version: 1,
+    status: granted ? "granted" : "denied",
+    accessibilityGranted,
+    screenRecordingGranted,
+    probedAt,
+    reason: granted ? "" : requireString(reason, "denied permission reason"),
+  };
+  const nextAttempt = {
+    ...attempt,
+    lifecycle: granted
+      ? transitionAttemptLifecycle(attempt.lifecycle, ["READY"], probedAt)
+      : validateAttemptLifecycle(attempt.lifecycle),
+  };
+  if (granted) {
+    validatePreflightInput(
+      mergePreflightSidecars(identity, nextPermissions, artifact, nextAttempt),
+    );
+  }
+  await writeJsonAtomic(path.join(runDir, "runner", "permissions.json"), nextPermissions);
+  await writeJsonAtomic(path.join(runDir, "attempt.json"), nextAttempt);
+  return Object.freeze({ permissions: nextPermissions, attempt: nextAttempt });
+}
+
+export async function transitionRunAttempt(runDir, state, { at = new Date().toISOString() } = {}) {
+  requireAbsoluteNormalizedPath(runDir, "runDir");
+  await assertEvidenceTreeMutable(runDir);
+  requireIsoTimestamp(at, "attempt lifecycle transition timestamp");
+  if (!Object.hasOwn(ATTEMPT_TRANSITIONS, state)) {
+    throw new Error(`unknown attempt lifecycle state: ${state}`);
+  }
+  const attempt = await readJson(runDir, "attempt.json");
+  const next = {
+    ...attempt,
+    lifecycle: transitionAttemptLifecycle(attempt.lifecycle, [state], at),
+  };
+  await writeJsonAtomic(path.join(runDir, "attempt.json"), next);
+  return Object.freeze(next);
+}
+
+export async function writeRunPreflight(runDir, rawInput) {
+  const input = validatePreflightInput(rawInput);
+  await writeRunProvisioning(runDir, input);
+  await recordRunPermissions(runDir, {
+    accessibilityGranted: input.accessibilityGranted,
+    screenRecordingGranted: input.screenRecordingGranted,
+    probedAt: input.startedAt,
+  });
+  return {
+    "runner/identity.json": await readJson(runDir, "runner/identity.json"),
+    "runner/permissions.json": await readJson(runDir, "runner/permissions.json"),
+    "artifact/source.json": await readJson(runDir, "artifact/source.json"),
+    "attempt.json": await readJson(runDir, "attempt.json"),
+  };
 }
 
 function mergePreflightSidecars(identity, permissions, artifact, attempt) {
@@ -523,6 +614,7 @@ function mergePreflightSidecars(identity, permissions, artifact, attempt) {
     appBundlePath: artifact.appBundlePath,
     appBundleDigest: artifact.appBundleDigest,
     disposableConfigPath: artifact.disposableConfigPath,
+    daemonSocketDirectory: artifact.daemonSocketDirectory,
     daemonSocketPath: artifact.daemonSocketPath,
     cuaDriverCliVersion: identity.cuaDriverCliVersion,
     cuaDriverAppVersion: identity.cuaDriverAppVersion,
@@ -558,6 +650,15 @@ export async function assertRunPreflight(
   ]) {
     if (sidecar.version !== 1) throw new Error(`${name} sidecar version must be 1`);
   }
+  if (
+    permissions.status !== "granted" ||
+    permissions.accessibilityGranted !== true ||
+    permissions.screenRecordingGranted !== true ||
+    permissions.reason !== "" ||
+    !Number.isFinite(Date.parse(permissions.probedAt))
+  ) {
+    throw new Error("runner permission sidecar must prove a granted live permission probe");
+  }
   const input = validatePreflightInput(
     mergePreflightSidecars(identity, permissions, artifact, attempt),
   );
@@ -575,15 +676,13 @@ export async function assertRunPreflight(
       JSON.stringify({ status: "not_started", uiStarted: false, reason: "" }) ||
     attempt.startedAt !== input.startedAt ||
     attempt.evidencePrefix !== input.evidencePrefix ||
-    JSON.stringify(attempt.lifecycle) !==
-      JSON.stringify({
-        identityBound: true,
-        uiPreparationAuthorized: true,
-        uiStarted: false,
-        driverClosed: false,
-        cleanupFinalized: false,
-        evidenceReady: false,
-      })
+    attempt.lifecycle?.current !== "READY" ||
+    attempt.lifecycle?.history?.length !== 2 ||
+    attempt.lifecycle.history[0]?.state !== "PROVISIONING" ||
+    attempt.lifecycle.history[0]?.at !== input.startedAt ||
+    attempt.lifecycle.history[1]?.state !== "READY" ||
+    attempt.lifecycle.history[1]?.at !== permissions.probedAt ||
+    Date.parse(attempt.lifecycle.history[1].at) < Date.parse(input.startedAt)
   ) {
     throw new Error("attempt sidecar must contain the complete preflight lifecycle identity");
   }
@@ -639,12 +738,14 @@ function validateCleanup(cleanup, { identity, artifact }) {
           ["staging-parent", artifact.stagingParent],
           ["app-bundle", artifact.appBundlePath],
           ["disposable-config", artifact.disposableConfigPath],
+          ["daemon-socket-directory", artifact.daemonSocketDirectory],
           ["daemon-socket", artifact.daemonSocketPath],
         ])
       : new Map([
           ["remote-staging", artifact.stagingParent],
           ["app-bundle", artifact.appBundlePath],
           ["remote-config", artifact.disposableConfigPath],
+          ["daemon-socket-directory", artifact.daemonSocketDirectory],
           ["daemon-socket", artifact.daemonSocketPath],
         ]);
   if (cleanup.ownedPaths.length !== expectedPathKinds.size) {
@@ -697,10 +798,7 @@ function validateCleanup(cleanup, { identity, artifact }) {
     }
     if (processInstance.status === "owned") {
       requirePositiveInteger(processInstance.pid, `cleanup ${processInstance.role} pid`);
-      requireString(
-        processInstance.birthMarker,
-        `cleanup ${processInstance.role} birthMarker`,
-      );
+      requireString(processInstance.birthMarker, `cleanup ${processInstance.role} birthMarker`);
       requireAbsoluteNormalizedPath(
         processInstance.executable,
         `cleanup ${processInstance.role} executable`,
@@ -775,16 +873,12 @@ function assertCleanupClean(cleanup) {
   }
   for (const ownedPath of cleanup.ownedPaths) {
     if (ownedPath.observedFinalState !== "absent") {
-      throw new Error(
-        `cleanup sidecar must prove ${ownedPath.kind} observedFinalState is absent`,
-      );
+      throw new Error(`cleanup sidecar must prove ${ownedPath.kind} observedFinalState is absent`);
     }
   }
   for (const processInstance of cleanup.processInstances) {
     if (processInstance.terminated !== true) {
-      throw new Error(
-        `cleanup sidecar must prove ${processInstance.role} process is terminated`,
-      );
+      throw new Error(`cleanup sidecar must prove ${processInstance.role} process is terminated`);
     }
   }
   for (const field of [
@@ -800,12 +894,106 @@ function assertCleanupClean(cleanup) {
   }
 }
 
-function validateHostLease(hostLease, { trustedOwnerToken }) {
+async function defaultPathExists(ownedPath) {
+  try {
+    await lstat(ownedPath);
+    return true;
+  } catch (error) {
+    if (error?.code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+async function defaultProcessExists(processInstance) {
+  try {
+    process.kill(processInstance.pid, 0);
+    return true;
+  } catch (error) {
+    if (error?.code === "ESRCH") return false;
+    if (error?.code === "EPERM") return true;
+    throw error;
+  }
+}
+
+async function independentlyProbeLocalCleanup(
+  cleanup,
+  { pathExists = defaultPathExists, processExists = defaultProcessExists } = {},
+) {
+  if (typeof pathExists !== "function" || typeof processExists !== "function") {
+    throw new Error("local cleanup probes must be functions");
+  }
+  const pathExistence = await Promise.all(
+    cleanup.ownedPaths.map((ownedPath) => pathExists(ownedPath.path)),
+  );
+  const processExistence = await Promise.all(
+    cleanup.processInstances.map((processInstance) =>
+      processInstance.status === "owned" ? processExists(processInstance) : false,
+    ),
+  );
+  const ownedPaths = cleanup.ownedPaths.map((ownedPath, index) => ({
+    ...ownedPath,
+    observedFinalState: pathExistence[index] ? "present" : "absent",
+  }));
+  const processInstances = cleanup.processInstances.map((processInstance, index) => ({
+    ...processInstance,
+    terminated: !processExistence[index],
+  }));
+  const remainingProcesses = processInstances
+    .filter((processInstance) => processInstance.terminated !== true)
+    .map((processInstance) => ({
+      role: processInstance.role,
+      pid: processInstance.pid,
+      birthMarker: processInstance.birthMarker,
+      executable: processInstance.executable,
+    }));
+  const presentPaths = ownedPaths.filter((ownedPath) => ownedPath.observedFinalState !== "absent");
+  const probed = {
+    ...cleanup,
+    clean: presentPaths.length === 0 && remainingProcesses.length === 0,
+    ownedPaths,
+    processInstances,
+    remainingProcesses,
+    failureReason:
+      presentPaths.length > 0 || remainingProcesses.length > 0
+        ? [
+            ...presentPaths.map((ownedPath) => `path still exists: ${ownedPath.path}`),
+            ...remainingProcesses.map(
+              (processInstance) =>
+                `process still exists: ${processInstance.role} pid=${processInstance.pid}`,
+            ),
+          ].join("; ")
+        : "",
+    lifecycle: {
+      ...cleanup.lifecycle,
+      pathsProbed: true,
+      processesProbed: true,
+    },
+  };
+  if (!probed.clean) {
+    throw new Error(`live cleanup probe failed: ${probed.failureReason}`);
+  }
+  return probed;
+}
+
+function validateHostLease(hostLease, { identity, attempt, trustedOwnerToken }) {
   if (!hostLease || typeof hostLease !== "object" || Array.isArray(hostLease)) {
     throw new Error("host lease must be an object");
   }
   if (Object.keys(hostLease).some((field) => /raw.*token|ownerToken$/i.test(field))) {
     throw new Error("raw owner token must not be stored in host lease evidence");
+  }
+  if (hostLease.acquired !== true || hostLease.released !== true) {
+    throw new Error("static host lease must explicitly prove acquired and released");
+  }
+  for (const [field, expected] of [
+    ["repo", identity.repo],
+    ["jobId", identity.jobId],
+    ["attempt", attempt.number],
+    ["host", identity.runnerName],
+  ]) {
+    if (hostLease[field] !== expected) {
+      throw new Error(`static host lease ${field} does not match the bound run identity`);
+    }
   }
   const acquiredOwnerTokenHash = requireSha256(
     hostLease.acquiredOwnerTokenHash,
@@ -817,10 +1005,7 @@ function validateHostLease(hostLease, { trustedOwnerToken }) {
     "hostLease.releasedOwnerTokenHash",
     { prefix: "forbidden" },
   );
-  if (
-    acquiredOwnerTokenHash === "0".repeat(64) ||
-    releasedOwnerTokenHash === "0".repeat(64)
-  ) {
+  if (acquiredOwnerTokenHash === "0".repeat(64) || releasedOwnerTokenHash === "0".repeat(64)) {
     throw new Error("static host lease owner hashes must not be zero");
   }
   const trustedOwnerTokenHash = hashOwnerToken(trustedOwnerToken);
@@ -853,8 +1038,144 @@ function validateHostLease(hostLease, { trustedOwnerToken }) {
   return { version: 1, ...hostLease };
 }
 
+function cleanupObservationDigest(cleanup) {
+  return createHash("sha256").update(JSON.stringify(cleanup)).digest("hex");
+}
+
+function controllerProbeBinding({ cleanupDigest, repo, jobId, attempt, host }) {
+  return JSON.stringify({
+    version: 1,
+    repo,
+    jobId,
+    attempt,
+    host,
+    cleanupDigest,
+  });
+}
+
+export function createControllerCleanupProbe({
+  cleanup,
+  repo,
+  jobId,
+  attempt,
+  host,
+  trustedOwnerToken,
+}) {
+  requireString(repo, "controller cleanup probe repo");
+  requireString(jobId, "controller cleanup probe jobId");
+  requirePositiveInteger(attempt, "controller cleanup probe attempt");
+  requireString(host, "controller cleanup probe host");
+  requireString(trustedOwnerToken, "controller cleanup probe trusted owner token");
+  const cleanupDigest = cleanupObservationDigest(cleanup);
+  const binding = controllerProbeBinding({ cleanupDigest, repo, jobId, attempt, host });
+  return {
+    version: 1,
+    generatedBy: "controller",
+    repo,
+    jobId,
+    attempt,
+    host,
+    cleanupDigest,
+    ownerTokenHmac: createHmac("sha256", trustedOwnerToken).update(binding).digest("hex"),
+  };
+}
+
+function validateControllerCleanupProbe(
+  cleanupProbe,
+  { cleanup, identity, attempt, trustedOwnerToken },
+) {
+  if (!cleanupProbe || typeof cleanupProbe !== "object" || Array.isArray(cleanupProbe)) {
+    throw new Error("controller cleanup probe attestation is required");
+  }
+  const expected = createControllerCleanupProbe({
+    cleanup,
+    repo: identity.repo,
+    jobId: identity.jobId,
+    attempt: attempt.number,
+    host: identity.runnerName,
+    trustedOwnerToken,
+  });
+  if (
+    cleanupProbe.version !== 1 ||
+    cleanupProbe.generatedBy !== "controller" ||
+    JSON.stringify(cleanupProbe) !== JSON.stringify(expected)
+  ) {
+    throw new Error("controller cleanup probe attestation does not match trusted observations");
+  }
+  return expected;
+}
+
 function failureClassForVerdict(verdict) {
   return verdict === "pass" ? "none" : verdict === "fail" ? "product" : "infrastructure";
+}
+
+const ATTEMPT_TRANSITIONS = Object.freeze({
+  PROVISIONING: new Set(["READY", "ABORTED"]),
+  READY: new Set(["RUNNING", "ABORTED"]),
+  RUNNING: new Set(["UPLOADING", "ABORTED"]),
+  UPLOADING: new Set(["VERIFYING", "ABORTED"]),
+  VERIFYING: new Set(["SUCCEEDED", "FAILED", "ABORTED"]),
+  SUCCEEDED: new Set(),
+  FAILED: new Set(),
+  ABORTED: new Set(),
+});
+
+function validateAttemptLifecycle(lifecycle) {
+  if (
+    !lifecycle ||
+    typeof lifecycle !== "object" ||
+    !Array.isArray(lifecycle.history) ||
+    lifecycle.history.length === 0
+  ) {
+    throw new Error("attempt lifecycle history is required");
+  }
+  let previous = null;
+  let previousAt = -Infinity;
+  for (const [index, transition] of lifecycle.history.entries()) {
+    if (!transition || !Object.hasOwn(ATTEMPT_TRANSITIONS, transition.state)) {
+      throw new Error(`attempt lifecycle transition ${index} has an invalid state`);
+    }
+    requireIsoTimestamp(transition.at, `attempt lifecycle transition ${index} timestamp`);
+    const timestamp = Date.parse(transition.at);
+    if (timestamp < previousAt) {
+      throw new Error("attempt lifecycle transition timestamps must be monotonic");
+    }
+    if (previous === null) {
+      if (transition.state !== "PROVISIONING") {
+        throw new Error("attempt lifecycle must begin at PROVISIONING");
+      }
+    } else if (!ATTEMPT_TRANSITIONS[previous].has(transition.state)) {
+      throw new Error(`illegal attempt lifecycle transition ${previous} -> ${transition.state}`);
+    }
+    previous = transition.state;
+    previousAt = timestamp;
+  }
+  if (lifecycle.current !== previous) {
+    throw new Error("attempt lifecycle current state must match its final history transition");
+  }
+  return {
+    current: lifecycle.current,
+    history: lifecycle.history.map((transition) => ({ ...transition })),
+  };
+}
+
+function transitionAttemptLifecycle(lifecycle, states, at = new Date().toISOString()) {
+  const normalized = validateAttemptLifecycle(lifecycle);
+  for (const state of states) {
+    const current = normalized.current;
+    if (!ATTEMPT_TRANSITIONS[current]?.has(state)) {
+      throw new Error(`illegal attempt lifecycle transition ${current} -> ${state}`);
+    }
+    const previousAt = normalized.history.at(-1).at;
+    const transitionAt = Date.parse(at) >= Date.parse(previousAt) ? at : previousAt;
+    normalized.history.push({ state, at: transitionAt });
+    normalized.current = state;
+  }
+  return normalized;
+}
+
+function terminalStateForVerdict(verdict) {
+  return verdict === "pass" ? "SUCCEEDED" : verdict === "fail" ? "FAILED" : "ABORTED";
 }
 
 function validateCapture(capture) {
@@ -890,17 +1211,37 @@ function resolveFinalCapture(attempt, capture) {
 
 async function finalizeAttempt(
   runDir,
-  {
-    status,
-    finalized,
-    verdict,
-    completeLifecycle = false,
-    capture,
-  },
+  { status, finalized, verdict, completeLifecycle = false, capture },
 ) {
   const attempt = await readJson(runDir, "attempt.json");
   const normalizedVerdict = validateVerdict(verdict);
   const normalizedCapture = resolveFinalCapture(attempt, capture);
+  let lifecycle = validateAttemptLifecycle(attempt.lifecycle);
+  if (completeLifecycle) {
+    if (normalizedCapture.uiStarted) {
+      if (lifecycle.current === "READY") {
+        lifecycle = transitionAttemptLifecycle(lifecycle, ["RUNNING"]);
+      }
+      if (lifecycle.current === "RUNNING") {
+        lifecycle = transitionAttemptLifecycle(lifecycle, ["UPLOADING"]);
+      }
+      if (lifecycle.current === "UPLOADING") {
+        lifecycle = transitionAttemptLifecycle(lifecycle, ["VERIFYING"]);
+      }
+      lifecycle = transitionAttemptLifecycle(lifecycle, [
+        terminalStateForVerdict(normalizedVerdict),
+      ]);
+    } else {
+      lifecycle = transitionAttemptLifecycle(lifecycle, ["ABORTED"]);
+    }
+  } else if (normalizedCapture.uiStarted) {
+    if (lifecycle.current === "READY") {
+      lifecycle = transitionAttemptLifecycle(lifecycle, ["RUNNING"]);
+    }
+    if (lifecycle.current === "RUNNING") {
+      lifecycle = transitionAttemptLifecycle(lifecycle, ["UPLOADING"]);
+    }
+  }
   const next = {
     ...attempt,
     status,
@@ -909,13 +1250,7 @@ async function finalizeAttempt(
     failureClass: failureClassForVerdict(normalizedVerdict),
     endedAt: completeLifecycle ? new Date().toISOString() : null,
     capture: normalizedCapture,
-    lifecycle: {
-      ...attempt.lifecycle,
-      uiStarted: normalizedCapture.uiStarted,
-      driverClosed: true,
-      cleanupFinalized: completeLifecycle,
-      evidenceReady: completeLifecycle,
-    },
+    lifecycle,
   };
   await writeJsonAtomic(path.join(runDir, "attempt.json"), next);
   return next;
@@ -925,7 +1260,7 @@ export async function stageControllerEvidence(
   runDir,
   { verdict, capture = { status: "available", uiStarted: true, reason: "" } },
 ) {
-  await assertEvidenceUnsealed(runDir);
+  await assertEvidenceTreeMutable(runDir);
   const identity = await readJson(runDir, "runner/identity.json");
   if (
     identity.runnerBackend !== "static_ssh" ||
@@ -952,13 +1287,10 @@ async function sealEvidence(runDir) {
 
 export async function finalizeLocalEvidence(
   runDir,
-  {
-    cleanup,
-    verdict,
-    capture = { status: "available", uiStarted: true, reason: "" },
-  },
+  { cleanup, verdict, capture = { status: "available", uiStarted: true, reason: "" } },
+  probes = {},
 ) {
-  await assertEvidenceUnsealed(runDir);
+  await assertEvidenceTreeMutable(runDir);
   const [identity, artifact, attempt] = await Promise.all([
     readJson(runDir, "runner/identity.json"),
     readJson(runDir, "artifact/source.json"),
@@ -975,8 +1307,10 @@ export async function finalizeLocalEvidence(
   }
   const normalizedCleanup = validateCleanup(cleanup, { identity, artifact });
   assertCleanupClean(normalizedCleanup);
+  const probedCleanup = await independentlyProbeLocalCleanup(normalizedCleanup, probes);
+  assertCleanupClean(probedCleanup);
   const normalizedCapture = resolveFinalCapture(attempt, capture);
-  await writeJsonAtomic(path.join(runDir, "runner", "cleanup.json"), normalizedCleanup);
+  await writeJsonAtomic(path.join(runDir, "runner", "cleanup.json"), probedCleanup);
   await finalizeAttempt(runDir, {
     status: "final",
     finalized: true,
@@ -988,7 +1322,7 @@ export async function finalizeLocalEvidence(
 }
 
 export async function writeRunCleanup(runDir, cleanup) {
-  await assertEvidenceUnsealed(runDir);
+  await assertEvidenceTreeMutable(runDir);
   const [identity, artifact] = await Promise.all([
     readJson(runDir, "runner/identity.json"),
     readJson(runDir, "artifact/source.json"),
@@ -1000,16 +1334,11 @@ export async function writeRunCleanup(runDir, cleanup) {
 
 export async function finalizeControllerEvidence(
   runDir,
-  {
-    cleanup,
-    hostLease,
-    trustedOwnerToken,
-    verdict,
-    capture,
-  },
+  { cleanup, cleanupProbe, hostLease, trustedOwnerToken, verdict, capture },
 ) {
   await writeControllerFinalization(runDir, {
     cleanup,
+    cleanupProbe,
     hostLease,
     trustedOwnerToken,
     verdict,
@@ -1020,15 +1349,9 @@ export async function finalizeControllerEvidence(
 
 export async function writeControllerFinalization(
   runDir,
-  {
-    cleanup,
-    hostLease,
-    trustedOwnerToken,
-    verdict,
-    capture,
-  },
+  { cleanup, cleanupProbe, hostLease, trustedOwnerToken, verdict, capture },
 ) {
-  await assertEvidenceUnsealed(runDir);
+  await assertEvidenceTreeMutable(runDir);
   const [identity, artifact, attempt] = await Promise.all([
     readJson(runDir, "runner/identity.json"),
     readJson(runDir, "artifact/source.json"),
@@ -1042,13 +1365,21 @@ export async function writeControllerFinalization(
   }
   const normalizedCleanup = validateCleanup(cleanup, { identity, artifact });
   assertCleanupClean(normalizedCleanup);
-  const normalizedLease = validateHostLease(hostLease, { trustedOwnerToken });
+  const normalizedLease = validateHostLease(hostLease, {
+    identity,
+    attempt,
+    trustedOwnerToken,
+  });
+  const normalizedCleanupProbe = validateControllerCleanupProbe(cleanupProbe, {
+    cleanup: normalizedCleanup,
+    identity,
+    attempt,
+    trustedOwnerToken,
+  });
   const normalizedCapture = resolveFinalCapture(attempt, capture);
   await writeJsonAtomic(path.join(runDir, "runner", "cleanup.json"), normalizedCleanup);
-  await writeJsonAtomic(
-    path.join(runDir, "runner", "host-lease.json"),
-    normalizedLease,
-  );
+  await writeJsonAtomic(path.join(runDir, "runner", "host-lease.json"), normalizedLease);
+  await writeJsonAtomic(path.join(runDir, "runner", "cleanup-probe.json"), normalizedCleanupProbe);
   await finalizeAttempt(runDir, {
     status: "final",
     finalized: true,
@@ -1058,6 +1389,7 @@ export async function writeControllerFinalization(
   });
   return {
     cleanup: await readJson(runDir, "runner/cleanup.json"),
+    cleanupProbe: await readJson(runDir, "runner/cleanup-probe.json"),
     hostLease: await readJson(runDir, "runner/host-lease.json"),
     attempt: await readJson(runDir, "attempt.json"),
   };
@@ -1077,29 +1409,31 @@ async function main() {
   const [command, ...args] = process.argv.slice(2);
   if (command !== "finalize-controller") {
     console.error(
-      "Usage: node tests/e2e/computer-use/run-metadata.mjs finalize-controller --run-dir <path> --cleanup-file <path> --host-lease-file <path> --verdict <pass|fail|inconclusive>",
+      "Usage: node tests/e2e/computer-use/run-metadata.mjs finalize-controller --run-dir <path> --cleanup-file <path> --cleanup-probe-file <path> --host-lease-file <path> --verdict <pass|fail|inconclusive>",
     );
     process.exitCode = 64;
     return;
   }
   const runDir = cliArg(args, "--run-dir");
   const cleanupFile = cliArg(args, "--cleanup-file");
+  const cleanupProbeFile = cliArg(args, "--cleanup-probe-file");
   const hostLeaseFile = cliArg(args, "--host-lease-file");
   const verdict = cliArg(args, "--verdict");
   const trustedOwnerToken = process.env.NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN || "";
-  if (!runDir || !cleanupFile || !hostLeaseFile || !verdict) {
-    throw new Error("finalize-controller requires run, cleanup, host-lease, and verdict inputs");
+  if (!runDir || !cleanupFile || !cleanupProbeFile || !hostLeaseFile || !verdict) {
+    throw new Error(
+      "finalize-controller requires run, cleanup, cleanup-probe, host-lease, and verdict inputs",
+    );
   }
-  requireString(
-    trustedOwnerToken,
-    "NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN trusted owner token",
-  );
-  const [cleanup, hostLease] = await Promise.all([
+  requireString(trustedOwnerToken, "NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN trusted owner token");
+  const [cleanup, cleanupProbe, hostLease] = await Promise.all([
     JSON.parse(await readFile(path.resolve(cleanupFile), "utf8")),
+    JSON.parse(await readFile(path.resolve(cleanupProbeFile), "utf8")),
     JSON.parse(await readFile(path.resolve(hostLeaseFile), "utf8")),
   ]);
   await writeControllerFinalization(path.resolve(runDir), {
     cleanup,
+    cleanupProbe,
     hostLease,
     trustedOwnerToken,
     verdict,

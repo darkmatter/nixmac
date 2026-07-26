@@ -229,12 +229,14 @@ function requireFinalCleanup(cleanup, { identity, artifact }) {
           ["staging-parent", artifact.stagingParent],
           ["app-bundle", artifact.appBundlePath],
           ["disposable-config", artifact.disposableConfigPath],
+          ["daemon-socket-directory", artifact.daemonSocketDirectory],
           ["daemon-socket", artifact.daemonSocketPath],
         ])
       : new Map([
           ["remote-staging", artifact.stagingParent],
           ["app-bundle", artifact.appBundlePath],
           ["remote-config", artifact.disposableConfigPath],
+          ["daemon-socket-directory", artifact.daemonSocketDirectory],
           ["daemon-socket", artifact.daemonSocketPath],
         ]);
   if (!Array.isArray(cleanup.ownedPaths) || cleanup.ownedPaths.length !== expectedPaths.size) {
@@ -254,10 +256,7 @@ function requireFinalCleanup(cleanup, { identity, artifact }) {
     if (seenPaths.has(ownedPath.kind)) throw new Error("cleanup sidecar owned path is duplicated");
     seenPaths.add(ownedPath.kind);
   }
-  if (
-    !Array.isArray(cleanup.processInstances) ||
-    cleanup.processInstances.length !== 2
-  ) {
+  if (!Array.isArray(cleanup.processInstances) || cleanup.processInstances.length !== 2) {
     throw new Error("cleanup sidecar must contain exact target and daemon process instances");
   }
   const roles = new Set();
@@ -311,7 +310,7 @@ function requireFinalCleanup(cleanup, { identity, artifact }) {
   }
 }
 
-function requireReleasedLease(hostLease) {
+function requireReleasedLease(hostLease, { identity, attempt }) {
   requireVersionOne(hostLease, "host lease sidecar");
   const acquiredAt = Date.parse(hostLease.acquiredAt);
   const releasedAt = Date.parse(hostLease.releasedAt);
@@ -322,6 +321,12 @@ function requireReleasedLease(hostLease) {
     !/^[0-9a-f]{64}$/.test(acquiredOwnerTokenHash) ||
     acquiredOwnerTokenHash === "0".repeat(64) ||
     acquiredOwnerTokenHash !== releasedOwnerTokenHash ||
+    hostLease.acquired !== true ||
+    hostLease.released !== true ||
+    hostLease.repo !== identity.repo ||
+    hostLease.jobId !== identity.jobId ||
+    hostLease.attempt !== attempt.number ||
+    hostLease.host !== identity.runnerName ||
     !Number.isFinite(acquiredAt) ||
     !Number.isFinite(releasedAt) ||
     !Number.isFinite(heartbeatAt) ||
@@ -332,6 +337,81 @@ function requireReleasedLease(hostLease) {
   ) {
     throw new Error("static host lease does not prove owner-matched release");
   }
+}
+
+function requireControllerCleanupProbe(cleanupProbe, { cleanup, identity, attempt }) {
+  requireVersionOne(cleanupProbe, "controller cleanup probe sidecar");
+  const cleanupDigest = createHash("sha256").update(JSON.stringify(cleanup)).digest("hex");
+  if (
+    cleanupProbe.generatedBy !== "controller" ||
+    cleanupProbe.repo !== identity.repo ||
+    cleanupProbe.jobId !== identity.jobId ||
+    cleanupProbe.attempt !== attempt.number ||
+    cleanupProbe.host !== identity.runnerName ||
+    cleanupProbe.cleanupDigest !== cleanupDigest ||
+    !/^[0-9a-f]{64}$/.test(cleanupProbe.ownerTokenHmac || "") ||
+    cleanupProbe.ownerTokenHmac === "0".repeat(64)
+  ) {
+    throw new Error("controller cleanup probe sidecar is not bound to cleanup and run identity");
+  }
+}
+
+const ATTEMPT_TRANSITIONS = Object.freeze({
+  PROVISIONING: new Set(["READY", "ABORTED"]),
+  READY: new Set(["RUNNING", "ABORTED"]),
+  RUNNING: new Set(["UPLOADING", "ABORTED"]),
+  UPLOADING: new Set(["VERIFYING", "ABORTED"]),
+  VERIFYING: new Set(["SUCCEEDED", "FAILED", "ABORTED"]),
+  SUCCEEDED: new Set(),
+  FAILED: new Set(),
+  ABORTED: new Set(),
+});
+
+function requireFinalAttemptLifecycle(attempt) {
+  const lifecycle = requireObject(attempt.lifecycle, "attempt lifecycle");
+  if (!Array.isArray(lifecycle.history) || lifecycle.history.length < 2) {
+    throw new Error("attempt lifecycle history is incomplete");
+  }
+  let previousState = null;
+  let previousAt = -Infinity;
+  for (const [index, transition] of lifecycle.history.entries()) {
+    if (!transition || !Object.hasOwn(ATTEMPT_TRANSITIONS, transition.state)) {
+      throw new Error(`attempt lifecycle transition ${index} has an invalid state`);
+    }
+    const timestamp = Date.parse(transition.at);
+    if (!Number.isFinite(timestamp) || timestamp < previousAt) {
+      throw new Error("attempt lifecycle transition timestamps are invalid or nonmonotonic");
+    }
+    if (previousState === null) {
+      if (transition.state !== "PROVISIONING") {
+        throw new Error("attempt lifecycle must begin at PROVISIONING");
+      }
+    } else if (!ATTEMPT_TRANSITIONS[previousState].has(transition.state)) {
+      throw new Error(
+        `illegal attempt lifecycle transition ${previousState} -> ${transition.state}`,
+      );
+    }
+    previousState = transition.state;
+    previousAt = timestamp;
+  }
+  if (lifecycle.current !== previousState) {
+    throw new Error("attempt lifecycle current state does not match transition history");
+  }
+  const expectedTerminal =
+    attempt.verdict === "pass" ? "SUCCEEDED" : attempt.verdict === "fail" ? "FAILED" : "ABORTED";
+  if (lifecycle.current !== expectedTerminal) {
+    throw new Error(
+      `attempt lifecycle terminal state ${lifecycle.current} does not match verdict ${attempt.verdict}`,
+    );
+  }
+  const states = lifecycle.history.map((transition) => transition.state);
+  if (expectedTerminal !== "ABORTED") {
+    const expectedPrefix = ["PROVISIONING", "READY", "RUNNING", "UPLOADING", "VERIFYING"];
+    if (JSON.stringify(states.slice(0, -1)) !== JSON.stringify(expectedPrefix)) {
+      throw new Error("completed attempt lifecycle is missing a required state transition");
+    }
+  }
+  return lifecycle;
 }
 
 function validateSafeFrameEvidence(state, paths, attempt) {
@@ -353,11 +433,14 @@ function validateSafeFrameEvidence(state, paths, attempt) {
         relativePath,
       ),
   );
+  const lifecycleStates = Array.isArray(attempt.lifecycle?.history)
+    ? attempt.lifecycle.history.map((transition) => transition.state)
+    : [];
   if (capture.uiStarted === false) {
     if (
       !["not_started", "not_available"].includes(capture.status) ||
       capture.reason.trim() === "" ||
-      attempt.lifecycle?.uiStarted !== false
+      lifecycleStates.includes("RUNNING")
     ) {
       throw new Error(
         "pre-UI evidence requires an explicit unavailable capture reason and lifecycle proof",
@@ -377,7 +460,7 @@ function validateSafeFrameEvidence(state, paths, attempt) {
     if (
       capture.status !== "available" ||
       capture.reason !== "" ||
-      attempt.lifecycle?.uiStarted !== true
+      !lifecycleStates.includes("RUNNING")
     ) {
       throw new Error("UI-started evidence must declare available capture lifecycle");
     }
@@ -402,6 +485,10 @@ function validateSafeFrameEvidence(state, paths, attempt) {
       if (!artifactPath.startsWith(prefix) || !paths.includes(artifactPath)) {
         throw new Error(`state ${field} references missing or unsafe evidence: ${artifactPath}`);
       }
+      const expectedExtension = field === "screenshots" ? ".png" : ".txt";
+      if (path.extname(artifactPath).toLowerCase() !== expectedExtension) {
+        throw new Error(`state ${field} evidence must use ${expectedExtension}: ${artifactPath}`);
+      }
       if (seen.has(artifactPath)) {
         throw new Error(`state ${field} contains duplicate evidence path: ${artifactPath}`);
       }
@@ -423,10 +510,14 @@ function validateSafeFrameEvidence(state, paths, attempt) {
         `unreferenced visual files are forbidden in sealed evidence: ${unreferencedImages.join(", ")}`,
       );
     }
+  } else if (
+    state.textSnapshots.length !== 1 ||
+    state.textSnapshots[0]?.path !== "texts/pre-ui-blocker.txt"
+  ) {
+    throw new Error("pre-UI evidence may retain only texts/pre-ui-blocker.txt");
   }
   const extraVideoDirectoryFiles = paths.filter(
-    (relativePath) =>
-      relativePath.startsWith("video/") && relativePath !== safeFrameVideoPath,
+    (relativePath) => relativePath.startsWith("video/") && relativePath !== safeFrameVideoPath,
   );
   if (extraVideoDirectoryFiles.length > 0) {
     throw new Error(
@@ -441,6 +532,24 @@ function validateSafeFrameEvidence(state, paths, attempt) {
   if (nonCuratedVideos.length > 0) {
     throw new Error(
       `forbidden video artifact; only curated safe-frame video may be retained: ${nonCuratedVideos.join(", ")}`,
+    );
+  }
+  const allowedPaths = new Set(REQUIRED_FIXED_PATHS);
+  for (const artifact of state.textSnapshots) allowedPaths.add(artifact.path);
+  if (capture.uiStarted) {
+    for (const artifact of state.screenshots) allowedPaths.add(artifact.path);
+    allowedPaths.add(safeFrameVideoPath);
+  }
+  if (paths.includes("runner/host-lease.json")) {
+    allowedPaths.add("runner/host-lease.json");
+  }
+  if (paths.includes("runner/cleanup-probe.json")) {
+    allowedPaths.add("runner/cleanup-probe.json");
+  }
+  const forbiddenPaths = paths.filter((relativePath) => !allowedPaths.has(relativePath));
+  if (forbiddenPaths.length > 0) {
+    throw new Error(
+      `evidence tree contains files outside the explicit allowlist: ${forbiddenPaths.join(", ")}`,
     );
   }
 }
@@ -488,6 +597,7 @@ async function readManifestInputs(runDir, paths) {
     ["artifact.appBundlePath", artifact.appBundlePath],
     ["artifact.appBundleDigest", artifact.appBundleDigest],
     ["artifact.disposableConfigPath", artifact.disposableConfigPath],
+    ["artifact.daemonSocketDirectory", artifact.daemonSocketDirectory],
     ["artifact.daemonSocketPath", artifact.daemonSocketPath],
     ["attempt.jobId", attempt.jobId],
     ["attempt.actionsRunId", attempt.actionsRunId],
@@ -513,8 +623,7 @@ async function readManifestInputs(runDir, paths) {
   if (identity.jobId !== canonicalJobId) {
     throw new Error("runner identity jobId does not match canonical identity");
   }
-  const expectedEvidencePrefix =
-    `computer-use-e2e/jobs/${encodeURIComponent(identity.jobId)}/attempt-${attempt.number}/`;
+  const expectedEvidencePrefix = `computer-use-e2e/jobs/${encodeURIComponent(identity.jobId)}/attempt-${attempt.number}/`;
   if (attempt.evidencePrefix !== expectedEvidencePrefix) {
     throw new Error("attempt evidencePrefix does not match canonical identity");
   }
@@ -523,8 +632,29 @@ async function readManifestInputs(runDir, paths) {
   if (!Number.isFinite(startedAt) || !Number.isFinite(endedAt) || endedAt < startedAt) {
     throw new Error("attempt lifecycle timestamps are invalid");
   }
-  if (permissions.accessibilityGranted !== true || permissions.screenRecordingGranted !== true) {
-    throw new Error("permission identity sidecar must prove Accessibility and Screen Recording");
+  const permissionsGranted =
+    permissions.status === "granted" &&
+    permissions.accessibilityGranted === true &&
+    permissions.screenRecordingGranted === true &&
+    permissions.reason === "" &&
+    Number.isFinite(Date.parse(permissions.probedAt));
+  const permissionsDenied =
+    permissions.status === "denied" &&
+    typeof permissions.accessibilityGranted === "boolean" &&
+    typeof permissions.screenRecordingGranted === "boolean" &&
+    (!permissions.accessibilityGranted || !permissions.screenRecordingGranted) &&
+    typeof permissions.reason === "string" &&
+    permissions.reason.trim() !== "" &&
+    Number.isFinite(Date.parse(permissions.probedAt));
+  const permissionsPending =
+    permissions.status === "pending" &&
+    permissions.accessibilityGranted === null &&
+    permissions.screenRecordingGranted === null &&
+    permissions.probedAt === null &&
+    typeof permissions.reason === "string" &&
+    permissions.reason.trim() !== "";
+  if (!permissionsGranted && !permissionsDenied && !permissionsPending) {
+    throw new Error("permission identity sidecar contains an invalid live-probe state");
   }
   if (
     attempt.jobId !== identity.jobId ||
@@ -541,21 +671,20 @@ async function readManifestInputs(runDir, paths) {
     throw new Error("attempt verdict is invalid");
   }
   const expectedFailureClass =
-    attempt.verdict === "pass"
-      ? "none"
-      : attempt.verdict === "fail"
-        ? "product"
-        : "infrastructure";
-  if (
-    attempt.failureClass !== expectedFailureClass ||
-    attempt.lifecycle?.identityBound !== true ||
-    attempt.lifecycle?.uiPreparationAuthorized !== true ||
-    attempt.lifecycle?.uiStarted !== attempt.capture?.uiStarted ||
-    attempt.lifecycle?.driverClosed !== true ||
-    attempt.lifecycle?.cleanupFinalized !== true ||
-    attempt.lifecycle?.evidenceReady !== true
-  ) {
-    throw new Error("attempt lifecycle or normalized failureClass is incomplete");
+    attempt.verdict === "pass" ? "none" : attempt.verdict === "fail" ? "product" : "infrastructure";
+  if (attempt.failureClass !== expectedFailureClass) {
+    throw new Error("attempt normalized failureClass is incomplete");
+  }
+  requireFinalAttemptLifecycle(attempt);
+  const lifecycleStates = attempt.lifecycle.history.map((transition) => transition.state);
+  if (permissionsGranted !== lifecycleStates.includes("READY")) {
+    throw new Error("permission probe status does not match the READY lifecycle transition");
+  }
+  if (attempt.lifecycle.current !== "ABORTED" && !permissionsGranted) {
+    throw new Error("a completed UI attempt requires granted Accessibility and Screen Recording");
+  }
+  if (attempt.capture?.uiStarted === true && !permissionsGranted) {
+    throw new Error("UI evidence is forbidden without granted Accessibility and Screen Recording");
   }
   if (state.verdict !== attempt.verdict) {
     throw new Error("state verdict does not match finalized attempt verdict");
@@ -568,17 +697,26 @@ async function readManifestInputs(runDir, paths) {
   if (identity.runnerBackend === "static_ssh") {
     if (
       identity.finalizationMode !== "controller-finalize" ||
-      !paths.includes("runner/host-lease.json")
+      !paths.includes("runner/host-lease.json") ||
+      !paths.includes("runner/cleanup-probe.json")
     ) {
       throw new Error("static_ssh requires controller-finalize and runner/host-lease.json");
     }
-    requireReleasedLease(await readRequiredJson(runDir, "runner/host-lease.json"));
+    requireReleasedLease(await readRequiredJson(runDir, "runner/host-lease.json"), {
+      identity,
+      attempt,
+    });
+    requireControllerCleanupProbe(await readRequiredJson(runDir, "runner/cleanup-probe.json"), {
+      cleanup,
+      identity,
+      attempt,
+    });
   } else {
     if (identity.finalizationMode !== "local-finalize") {
       throw new Error("non-static runner requires local-finalize");
     }
-    if (paths.includes("runner/host-lease.json")) {
-      throw new Error("local-finalize evidence forbids runner/host-lease.json");
+    if (paths.includes("runner/host-lease.json") || paths.includes("runner/cleanup-probe.json")) {
+      throw new Error("local-finalize evidence forbids controller lease/probe sidecars");
     }
   }
   return { artifact, attempt, identity, state };
@@ -601,6 +739,7 @@ async function expectedManifest(runDir, paths) {
       number: attempt.number,
       actionsRunId: attempt.actionsRunId,
       actionsJobId: attempt.actionsJobId,
+      lifecycle: attempt.lifecycle,
     },
     harness: { sha: identity.harnessSha },
     app: {

@@ -2,12 +2,13 @@
 import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
 import { existsSync, statSync } from "node:fs";
-import { mkdir, readFile, realpath, rm, unlink, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readFile, realpath, rm, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { artifactFileIssue, artifactForLabel, pngDimensions } from "./artifact-utils.mjs";
+import { assertEvidenceTreeMutable } from "./evidence-guard.mjs";
 import { dispatchRemoteCuaCommand, remoteCuaUsage } from "./cli.mjs";
 import { buildManifestPrFocus, isLikelyUserVisiblePrFile } from "./coverage-focus.mjs";
 import {
@@ -55,10 +56,13 @@ import { renderReportHtml, safeFrameVideoPath } from "./report.mjs";
 import {
   assertRunPreflight,
   finalizeLocalEvidence,
+  recordRunPermissions,
   resolveRunPreflightIdentity,
   stageControllerEvidence,
+  transitionRunAttempt,
   writeRunCleanup,
   writeRunPreflight,
+  writeRunProvisioning,
 } from "./run-metadata.mjs";
 import { createScenarioDriverHelpers } from "./scenario-driver.mjs";
 import { codexAppServerDriverDescriptor, elementEntries, findElement } from "./transport.mjs";
@@ -257,17 +261,13 @@ export async function validateLocalCuaPreflight(
   if (stagingParent !== inputStagingParent || stagingParent !== path.dirname(appPath)) {
     throw new Error("NIXMAC_E2E_STAGING_PARENT must be canonical and directly own the app");
   }
-  const inputDisposableConfigPath = String(
-    env.NIXMAC_E2E_DISPOSABLE_CONFIG_PATH || "",
-  );
+  const inputDisposableConfigPath = String(env.NIXMAC_E2E_DISPOSABLE_CONFIG_PATH || "");
   if (
     !inputDisposableConfigPath ||
     !path.isAbsolute(inputDisposableConfigPath) ||
     path.normalize(inputDisposableConfigPath) !== inputDisposableConfigPath
   ) {
-    throw new Error(
-      "NIXMAC_E2E_DISPOSABLE_CONFIG_PATH must be an absolute normalized path",
-    );
+    throw new Error("NIXMAC_E2E_DISPOSABLE_CONFIG_PATH must be an absolute normalized path");
   }
   const disposableConfigPath = await canonicalPath(inputDisposableConfigPath);
   const configRelative = path.relative(stagingParent, disposableConfigPath);
@@ -312,6 +312,44 @@ export async function verifyLocalCuaPreflight(
     throw new Error("staged app bundle digest changed after target preparation");
   }
   return preflight;
+}
+
+export async function createOwnedCuaSocketEndpoint({
+  requestedPath = "",
+  temporaryRoot = "",
+} = {}) {
+  let directory;
+  let socketPath;
+  if (requestedPath) {
+    if (
+      !path.isAbsolute(requestedPath) ||
+      path.normalize(requestedPath) !== requestedPath ||
+      Buffer.byteLength(requestedPath, "utf8") > 103
+    ) {
+      throw new Error("NIXMAC_CUA_DRIVER_SOCKET must be an absolute short Unix socket path");
+    }
+    directory = path.dirname(requestedPath);
+    if (!path.basename(directory).startsWith("nx-cua-")) {
+      throw new Error("explicit CuaDriver socket must use a unique nx-cua-* directory");
+    }
+    try {
+      await lstat(directory);
+      throw new Error("explicit CuaDriver socket directory must not already exist");
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+    await mkdir(directory, { recursive: false, mode: 0o700 });
+    socketPath = requestedPath;
+  } else {
+    const root = temporaryRoot || (await realpath(os.tmpdir()));
+    directory = await realpath(await mkdtemp(path.join(root, "nx-cua-")));
+    socketPath = path.join(directory, "d.sock");
+  }
+  if (Buffer.byteLength(socketPath, "utf8") > 103) {
+    await rm(directory, { recursive: true, force: true });
+    throw new Error("allocated CuaDriver Unix socket path exceeds 103 UTF-8 bytes");
+  }
+  return Object.freeze({ directory, path: socketPath });
 }
 
 export async function prepareSuiteDriver(
@@ -425,6 +463,7 @@ export async function writeAndAssertLocalRunPreflight(
       ...env,
       NIXMAC_E2E_STAGING_PARENT: localPreflight.stagingParent,
       NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: localPreflight.disposableConfigPath,
+      NIXMAC_E2E_DAEMON_SOCKET_DIRECTORY: path.dirname(driver.socketPath),
       NIXMAC_E2E_DAEMON_SOCKET_PATH: driver.socketPath,
     },
     repoRoot: REPO_ROOT,
@@ -437,6 +476,52 @@ export async function writeAndAssertLocalRunPreflight(
   });
   await writePreflight(runDir, input);
   return assertPreflight(runDir);
+}
+
+export async function writeLocalRunProvisioning(
+  { driver, runDir, socketEndpoint },
+  {
+    env = process.env,
+    resolvePreflight = resolveRunPreflightIdentity,
+    writeProvisioning = writeRunProvisioning,
+    probeExpectedAppBundleDigest = async (appBundlePath) => {
+      const { hashCuaBundleTree } = await import("./drivers/cua-driver.mjs");
+      return hashCuaBundleTree(appBundlePath);
+    },
+  } = {},
+) {
+  if (!driver?.metadata?.cli?.version || !driver?.metadata?.app?.short_version) {
+    throw new Error("pinned CuaDriver version metadata is required before provisioning");
+  }
+  if (
+    !socketEndpoint ||
+    typeof socketEndpoint.directory !== "string" ||
+    typeof socketEndpoint.path !== "string"
+  ) {
+    throw new Error("owned CuaDriver socket endpoint is required before provisioning");
+  }
+  const appBundlePath = env.NIXMAC_E2E_APP_PATH || "";
+  const appBundleDigest =
+    env.NIXMAC_E2E_APP_BUNDLE_DIGEST || (await probeExpectedAppBundleDigest(appBundlePath));
+  const input = await resolvePreflight({
+    env: {
+      ...env,
+      NIXMAC_E2E_STAGING_PARENT: env.NIXMAC_E2E_STAGING_PARENT || path.dirname(appBundlePath),
+      NIXMAC_E2E_DISPOSABLE_CONFIG_PATH:
+        env.NIXMAC_E2E_DISPOSABLE_CONFIG_PATH || path.join(path.dirname(appBundlePath), "config"),
+      NIXMAC_E2E_DAEMON_SOCKET_DIRECTORY: socketEndpoint.directory,
+      NIXMAC_E2E_DAEMON_SOCKET_PATH: socketEndpoint.path,
+    },
+    repoRoot: REPO_ROOT,
+    appBundlePath,
+    appBundleDigest,
+    cuaDriverCliVersion: driver.metadata.cli.version,
+    cuaDriverAppVersion: driver.metadata.app.short_version,
+    accessibilityGranted: true,
+    screenRecordingGranted: true,
+  });
+  await writeProvisioning(runDir, input);
+  return Object.freeze({ input });
 }
 
 function findQuestionInputEntry(text) {
@@ -2788,6 +2873,7 @@ async function render(
     updateStorybook = true,
   } = {},
 ) {
+  await assertEvidenceTreeMutable(state.runDir);
   const renderStartedAt = nowIso();
   ensureCurrentSchema(state);
   if (updateStorybook) updateStorybookPreviewCoverage(state);
@@ -2866,39 +2952,16 @@ export async function runSuiteWithDriver(
   await mkdir(path.join(runDir, "texts"), { recursive: true });
   if (executionTopology === "local-cua-driver") runDir = await realpath(runDir);
   activeRunDir = runDir;
-  const localPreflight =
-    executionTopology === "local-cua-driver"
-      ? await validateLocalCuaPreflight(
-          {
-            appBundleId: options.app,
-            runDir,
-          },
-          {
-            env,
-            ...localPreflightDependencies,
-          },
-        )
-      : null;
   const state = await baseState(runDir, options, { env });
   state.executionTopology = executionTopology;
   if (executionTopology === "local-cua-driver") markLocalReportInspectionNotRequired(state);
-  if (localPreflight) {
-    state.localApp = {
-      artifactSha: localPreflight.appArtifactSha,
-      bundleDigestSha256: localPreflight.appBundleDigestSha256,
-      bundleId: localPreflight.appBundleId,
-      path: localPreflight.appPath,
-    };
-  }
   await saveState(state);
   const computerUseStartedAt = nowIso();
 
-  const driver = validateRuntimeDriver(
-    createDriver({
-      ...options,
-      runDir,
-    }),
-  );
+  let socketEndpoint = null;
+  let localPreflight = null;
+  let driver = null;
+  let runProvisioning = null;
   let suiteCompleted = false;
   let suiteFailure = null;
   let closeFailure = null;
@@ -2907,27 +2970,61 @@ export async function runSuiteWithDriver(
   let ownedProcessSnapshots = [];
   let processSnapshotFailure = "";
   try {
-    await prepareSuiteDriver(driver, {
-      executionTopology,
-      appBundleId: options.app,
-      localPreflight,
-      beforePrepareTarget:
-        executionTopology === "local-cua-driver"
-          ? async () => {
-              trustedRunPreflight = await writeAndAssertLocalRunPreflight(
-                {
-                  driver,
-                  localPreflight,
-                  runDir,
-                },
-                {
-                  env,
-                  ...runPreflightDependencies,
-                },
-              );
-            }
-          : undefined,
-    });
+    if (executionTopology === "local-cua-driver") {
+      socketEndpoint = await createOwnedCuaSocketEndpoint({
+        requestedPath: env.NIXMAC_CUA_DRIVER_SOCKET || "",
+      });
+    }
+    driver = validateRuntimeDriver(
+      createDriver({
+        ...options,
+        runDir,
+        ...(socketEndpoint ? { socketPath: socketEndpoint.path } : {}),
+      }),
+    );
+    if (executionTopology === "local-cua-driver") {
+      runProvisioning = await writeLocalRunProvisioning(
+        { driver, runDir, socketEndpoint },
+        {
+          env,
+          ...runPreflightDependencies,
+        },
+      );
+      localPreflight = await validateLocalCuaPreflight(
+        {
+          appBundleId: options.app,
+          runDir,
+        },
+        {
+          env,
+          ...localPreflightDependencies,
+        },
+      );
+      state.localApp = {
+        artifactSha: localPreflight.appArtifactSha,
+        bundleDigestSha256: localPreflight.appBundleDigestSha256,
+        bundleId: localPreflight.appBundleId,
+        path: localPreflight.appPath,
+      };
+      await saveState(state);
+      await driver.connect();
+      await recordRunPermissions(runDir, {
+        accessibilityGranted: true,
+        screenRecordingGranted: true,
+      });
+      trustedRunPreflight = await assertRunPreflight(runDir);
+      await driver.prepareTarget({
+        appBundleId: options.app,
+        appPath: localPreflight.appPath,
+      });
+      await transitionRunAttempt(runDir, "RUNNING");
+    } else {
+      await prepareSuiteDriver(driver, {
+        executionTopology,
+        appBundleId: options.app,
+        localPreflight,
+      });
+    }
     if (localPreflight) {
       await verifyLocalCuaPreflight(localPreflight, localPreflightDependencies);
     }
@@ -4192,6 +4289,9 @@ export async function runSuiteWithDriver(
           ? "Connected to the local CuaDriver, exercised the calibrated nixmac Computer Use suite, and reached report generation."
           : "Connected to Codex app-server, exercised the calibrated nixmac Computer Use suite, and reached report generation.",
     });
+    if (executionTopology === "local-cua-driver") {
+      await transitionRunAttempt(runDir, "UPLOADING");
+    }
     await render(state);
     if (executionTopology === "remote-codex-app-server") {
       const inspectReport =
@@ -4205,17 +4305,37 @@ export async function runSuiteWithDriver(
     suiteCompleted = true;
   } catch (error) {
     suiteFailure = error;
+    if (
+      executionTopology === "local-cua-driver" &&
+      runProvisioning &&
+      classifySuiteFailure(error, { executionTopology }).code === "macos_permissions"
+    ) {
+      try {
+        await recordRunPermissions(runDir, {
+          accessibilityGranted: false,
+          screenRecordingGranted: false,
+          reason: redact(error instanceof Error ? error.message : String(error)),
+        });
+      } catch (permissionError) {
+        suiteFailure = new AggregateError(
+          [error, permissionError],
+          "Computer Use permission probe failed and its denial sidecar could not be recorded",
+        );
+      }
+    }
   } finally {
-    const targetSnapshot = processCleanupSnapshot("target", driver.ownedTarget);
-    const daemonSnapshot = processCleanupSnapshot("daemon", driver.daemonPeer);
+    const targetSnapshot = processCleanupSnapshot("target", driver?.ownedTarget);
+    const daemonSnapshot = processCleanupSnapshot("daemon", driver?.daemonPeer);
     ownedProcessSnapshots = [targetSnapshot.entry, daemonSnapshot.entry];
     processSnapshotFailure = [targetSnapshot.failure, daemonSnapshot.failure]
       .filter(Boolean)
       .join("; ");
-    try {
-      await driver.close();
-    } catch (error) {
-      closeFailure = error;
+    if (driver) {
+      try {
+        await driver.close();
+      } catch (error) {
+        closeFailure = error;
+      }
     }
   }
   if (executionTopology === "local-cua-driver") {
@@ -4234,13 +4354,15 @@ export async function runSuiteWithDriver(
     }
     const finalizationMode = env.NIXMAC_E2E_FINALIZATION_MODE;
     const capture = captureLifecycleForRun({ uiStarted, failure: suiteFailure });
-    if (finalizationMode === "local-finalize") {
+    const boundInput = trustedRunPreflight?.input || runProvisioning?.input || null;
+    if (finalizationMode === "local-finalize" && boundInput) {
       const cleanupStartedAt = nowIso();
       const pathIdentities = [
-        ["staging-parent", localPreflight.stagingParent],
-        ["app-bundle", localPreflight.appPath],
-        ["disposable-config", localPreflight.disposableConfigPath],
-        ["daemon-socket", trustedRunPreflight?.input?.daemonSocketPath || driver.socketPath],
+        ["staging-parent", boundInput.stagingParent],
+        ["app-bundle", boundInput.appBundlePath],
+        ["disposable-config", boundInput.disposableConfigPath],
+        ["daemon-socket-directory", boundInput.daemonSocketDirectory],
+        ["daemon-socket", boundInput.daemonSocketPath],
       ];
       let cleanupFailure = [
         processSnapshotFailure,
@@ -4252,13 +4374,15 @@ export async function runSuiteWithDriver(
       ]
         .filter(Boolean)
         .join("; ");
-      if (!closeFailure && !processSnapshotFailure) {
+      for (const ownedRoot of [boundInput.stagingParent, boundInput.daemonSocketDirectory]) {
         try {
-          await rm(localPreflight.stagingParent, { recursive: true, force: true });
+          await rm(ownedRoot, { recursive: true, force: true });
         } catch (error) {
           cleanupFailure = [
             cleanupFailure,
-            redact(error instanceof Error ? error.message : String(error)),
+            `failed to remove ${ownedRoot}: ${redact(
+              error instanceof Error ? error.message : String(error),
+            )}`,
           ]
             .filter(Boolean)
             .join("; ");
@@ -4304,7 +4428,7 @@ export async function runSuiteWithDriver(
         remainingProcesses,
         failureReason: cleanupFailure,
         lifecycle: {
-          driverCloseAttempted: true,
+          driverCloseAttempted: driver !== null,
           driverClosed: !closeFailure,
           ownershipMatched: processSnapshotFailure === "",
           pathsProbed: ownedPaths.every(
@@ -4321,14 +4445,23 @@ export async function runSuiteWithDriver(
           ? "CuaDriver target/daemon shutdown and exact staged-app removal completed before evidence sealing."
           : `Final cleanup failed: ${cleanup.failureReason}`,
       };
-      await writeRunCleanup(runDir, cleanup);
-      activeRunFinalization = { capture, cleanup, finalizationMode, runDir };
-      if (suiteCompleted && !suiteFailure && !closeFailure) {
-        await render(state);
-        await finalizeLocalEvidence(runDir, { capture, cleanup, verdict: state.verdict });
-        activeRunFinalization = null;
+      try {
+        await writeRunCleanup(runDir, cleanup);
+        activeRunFinalization = { capture, cleanup, finalizationMode, runDir };
+        if (suiteCompleted && !suiteFailure && !closeFailure) {
+          await render(state);
+          await finalizeLocalEvidence(runDir, { capture, cleanup, verdict: state.verdict });
+          activeRunFinalization = null;
+        }
+      } catch (error) {
+        suiteFailure = suiteFailure
+          ? new AggregateError(
+              [suiteFailure, error],
+              "Computer Use suite failed and evidence finalization also failed",
+            )
+          : error;
       }
-    } else if (finalizationMode === "controller-finalize") {
+    } else if (finalizationMode === "controller-finalize" && boundInput) {
       state.cleanup = {
         attempted: true,
         restored: false,
@@ -4349,10 +4482,23 @@ export async function runSuiteWithDriver(
         await stageControllerEvidence(runDir, { capture, verdict: state.verdict });
         activeRunFinalization = null;
       }
-    } else {
+    } else if (boundInput) {
       throw new Error(
         "local CuaDriver requires NIXMAC_E2E_FINALIZATION_MODE=local-finalize or controller-finalize",
       );
+    } else {
+      if (socketEndpoint) {
+        try {
+          await rm(socketEndpoint.directory, { recursive: true, force: true });
+        } catch (error) {
+          suiteFailure = suiteFailure
+            ? new AggregateError(
+                [suiteFailure, error],
+                "Computer Use setup failed and socket cleanup also failed",
+              )
+            : error;
+        }
+      }
     }
   }
   if (suiteFailure || closeFailure) {
@@ -4656,6 +4802,7 @@ export async function renderSuiteErrorReport(
     await renderUnavailable([...fallbackArgs, "--note", note]);
     return;
   }
+  await assertEvidenceTreeMutable(runDir);
 
   await mkdir(path.join(runDir, "screenshots"), { recursive: true });
   await mkdir(path.join(runDir, "texts"), { recursive: true });
@@ -4749,8 +4896,7 @@ export async function renderSuiteErrorReport(
   if (finalization?.capture?.uiStarted === false) {
     existingState.video = {
       status: finalization.capture.status,
-      note:
-        "No screenshot or video was created because the lifecycle proves the UI never began.",
+      note: "No screenshot or video was created because the lifecycle proves the UI never began.",
     };
     await saveState(existingState);
   }
@@ -5360,7 +5506,7 @@ async function runSelfTest() {
   const coverageFreshness = buildCoverageFreshness();
   assert.equal(
     coverageFreshness.candidateFiles,
-    947,
+    948,
     "coverage freshness should preserve the full shared PR-visible behavior universe",
   );
   const coverageManifest = loadCoverageManifest();

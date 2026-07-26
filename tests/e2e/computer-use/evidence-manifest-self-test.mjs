@@ -2,23 +2,16 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import {
-  mkdtemp,
-  mkdir,
-  readFile,
-  realpath,
-  rm,
-  symlink,
-  writeFile,
-} from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { hashCuaBundleTree } from "./drivers/cua-driver.mjs";
 import { createEvidenceManifest, verifyEvidenceManifest } from "./evidence-manifest.mjs";
 import {
   assertRunPreflight,
+  createControllerCleanupProbe,
   finalizeControllerEvidence,
-  finalizeLocalEvidence,
+  finalizeLocalEvidence as finalizeLocalEvidenceProduction,
   preflightInputFromEnvironment,
   resolveRunPreflightIdentity,
   stageControllerEvidence,
@@ -27,7 +20,8 @@ import {
   writeRunPreflight,
 } from "./run-metadata.mjs";
 import { assertCuratedSafeFrameVideoMetadata, safeFrameVideoPath } from "./report.mjs";
-import { prepareSuiteDriver } from "./run-remote-cua.mjs";
+import { prepareSuiteDriver, renderSuiteErrorReport } from "./run-remote-cua.mjs";
+import { addEvent, saveState } from "./state.mjs";
 
 const SHA_A = "a".repeat(40);
 const SHA_B = "b".repeat(40);
@@ -39,6 +33,10 @@ let fixtureSequence = 0;
 function validPreflight(appBundlePath) {
   const jobId = `darkmatter/nixmac:${SHA_A}:computer-use-v1`;
   const stagingParent = path.dirname(appBundlePath);
+  const daemonSocketDirectory = path.join(
+    path.dirname(stagingParent),
+    `nx-cua-${path.basename(stagingParent)}`,
+  );
   return {
     jobId,
     repo: "darkmatter/nixmac",
@@ -59,7 +57,8 @@ function validPreflight(appBundlePath) {
     appBundlePath,
     appBundleDigest: DIGEST_C,
     disposableConfigPath: path.join(stagingParent, "config"),
-    daemonSocketPath: path.join(stagingParent, "cua-driver.sock"),
+    daemonSocketDirectory,
+    daemonSocketPath: path.join(daemonSocketDirectory, "d.sock"),
     cuaDriverCliVersion: "0.12.6",
     cuaDriverAppVersion: "0.12.6",
     captureMode: "safe-frame",
@@ -109,6 +108,8 @@ async function createEvidenceFixture(
   await writeFile(path.join(runDir, "index.html"), "<html>fixture report</html>\n");
   const input = {
     ...validPreflight(appBundlePath),
+    daemonSocketDirectory: `/private/tmp/nx-cua-fixture-${fixtureSequence}`,
+    daemonSocketPath: `/private/tmp/nx-cua-fixture-${fixtureSequence}/d.sock`,
     runnerBackend: backend,
     finalizationMode: backend === "static_ssh" ? "controller-finalize" : "local-finalize",
   };
@@ -142,6 +143,12 @@ function cleanCleanup(fixture, { mode = "local" } = {}) {
       {
         kind: mode === "local" ? "disposable-config" : "remote-config",
         path: fixture.input.disposableConfigPath,
+        expectedFinalState: "absent",
+        observedFinalState: "absent",
+      },
+      {
+        kind: "daemon-socket-directory",
+        path: fixture.input.daemonSocketDirectory,
         expectedFinalState: "absent",
         observedFinalState: "absent",
       },
@@ -182,11 +189,24 @@ function cleanCleanup(fixture, { mode = "local" } = {}) {
   };
 }
 
+function finalizeLocalEvidence(runDir, options) {
+  return finalizeLocalEvidenceProduction(runDir, options, {
+    pathExists: async () => false,
+    processExists: async () => false,
+  });
+}
+
 const TRUSTED_OWNER_TOKEN = "trusted-owner-token-job-123";
 
 function releasedLease() {
   const ownerHash = createHash("sha256").update(TRUSTED_OWNER_TOKEN).digest("hex");
   return {
+    acquired: true,
+    released: true,
+    repo: "darkmatter/nixmac",
+    jobId: `darkmatter/nixmac:${SHA_A}:computer-use-v1`,
+    attempt: 1,
+    host: "mac-e2e-01",
     acquiredOwnerTokenHash: ownerHash,
     releasedOwnerTokenHash: ownerHash,
     acquiredAt: "2026-07-26T00:00:00.000Z",
@@ -195,6 +215,17 @@ function releasedLease() {
     waitReason: "",
     quarantineReason: "",
   };
+}
+
+function controllerCleanupProbe(fixture, cleanup) {
+  return createControllerCleanupProbe({
+    cleanup: { version: 1, ...cleanup },
+    repo: fixture.input.repo,
+    jobId: fixture.input.jobId,
+    attempt: fixture.input.attemptNumber,
+    host: fixture.input.runnerName,
+    trustedOwnerToken: TRUSTED_OWNER_TOKEN,
+  });
 }
 
 async function runSelfTest() {
@@ -219,10 +250,9 @@ async function runSelfTest() {
     NIXMAC_E2E_FINALIZATION_MODE: "local-finalize",
     NIXMAC_E2E_ATTEMPT_STARTED_AT: "2026-07-26T00:00:00.000Z",
     NIXMAC_E2E_STAGING_PARENT: "/private/tmp/nixmac-e2e-staging/job-123",
-    NIXMAC_E2E_DISPOSABLE_CONFIG_PATH:
-      "/private/tmp/nixmac-e2e-staging/job-123/config",
-    NIXMAC_E2E_DAEMON_SOCKET_PATH:
-      "/private/tmp/nixmac-e2e-staging/job-123/cua-driver.sock",
+    NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: "/private/tmp/nixmac-e2e-staging/job-123/config",
+    NIXMAC_E2E_DAEMON_SOCKET_DIRECTORY: "/private/tmp/nx-cua-job-123",
+    NIXMAC_E2E_DAEMON_SOCKET_PATH: "/private/tmp/nx-cua-job-123/d.sock",
   };
   const resolvedIdentity = await resolveRunPreflightIdentity(
     {
@@ -270,12 +300,7 @@ async function runSelfTest() {
     ["runner backend", {}, { runnerBackend: "static_ssh" }, /runner backend/i],
     ["runner image", {}, { runnerImageDigest: `sha256:${DIGEST_C}` }, /runner image/i],
     ["artifact ID", {}, { artifactId: "other-artifact" }, /artifact ID/i],
-    [
-      "artifact digest",
-      {},
-      { artifactDigest: `sha256:${DIGEST_C}` },
-      /artifact digest/i,
-    ],
+    ["artifact digest", {}, { artifactDigest: `sha256:${DIGEST_C}` }, /artifact digest/i],
     [
       "verified app bundle digest",
       {},
@@ -463,6 +488,7 @@ async function runSelfTest() {
         NIXMAC_E2E_FINALIZATION_MODE: "local-finalize",
         NIXMAC_E2E_STAGING_PARENT: valid.input.stagingParent,
         NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: valid.input.disposableConfigPath,
+        NIXMAC_E2E_DAEMON_SOCKET_DIRECTORY: valid.input.daemonSocketDirectory,
         NIXMAC_E2E_DAEMON_SOCKET_PATH: valid.input.daemonSocketPath,
         NIXMAC_E2E_ATTEMPT_STARTED_AT: valid.input.startedAt,
       },
@@ -542,11 +568,7 @@ async function runSelfTest() {
           /missing|invalid JSON/i,
           `${relativePath} ${mode}`,
         );
-        assert.equal(
-          prepareCalls,
-          0,
-          `${relativePath} ${mode} must fail before prepareTarget`,
-        );
+        assert.equal(prepareCalls, 0, `${relativePath} ${mode} must fail before prepareTarget`);
       }
     }
 
@@ -636,6 +658,31 @@ async function runSelfTest() {
     assert.equal(invalidCaptureAttempt.finalized, false);
 
     const local = await createEvidenceFixture(root);
+    await assert.rejects(
+      () =>
+        finalizeLocalEvidenceProduction(local.runDir, {
+          cleanup: cleanCleanup(local),
+          verdict: "pass",
+        }),
+      /live cleanup probe|still exists|present/i,
+      "local finalization must independently reject a still-present owned path",
+    );
+    await assert.rejects(
+      () =>
+        finalizeLocalEvidenceProduction(
+          local.runDir,
+          {
+            cleanup: cleanCleanup(local),
+            verdict: "pass",
+          },
+          {
+            pathExists: async () => false,
+            processExists: async (processInstance) => processInstance.role === "daemon",
+          },
+        ),
+      /live cleanup probe|process still exists/i,
+      "local finalization must independently reject a still-running owned process",
+    );
     const localManifest = await finalizeLocalEvidence(local.runDir, {
       cleanup: cleanCleanup(local),
       verdict: "pass",
@@ -659,18 +706,26 @@ async function runSelfTest() {
     assert.ok(Number.isFinite(Date.parse(localAttempt.endedAt)));
     assert.equal(localAttempt.failureClass, "none");
     assert.equal(localAttempt.evidencePrefix, local.input.evidencePrefix);
-    assert.deepEqual(localAttempt.lifecycle, {
-      identityBound: true,
-      uiPreparationAuthorized: true,
-      uiStarted: true,
-      driverClosed: true,
-      cleanupFinalized: true,
-      evidenceReady: true,
-    });
+    assert.equal(localAttempt.lifecycle.current, "SUCCEEDED");
+    assert.deepEqual(
+      localAttempt.lifecycle.history.map((transition) => transition.state),
+      ["PROVISIONING", "READY", "RUNNING", "UPLOADING", "VERIFYING", "SUCCEEDED"],
+    );
+    assert.ok(
+      localAttempt.lifecycle.history.every(
+        (transition, index, history) =>
+          Number.isFinite(Date.parse(transition.at)) &&
+          (index === 0 || Date.parse(transition.at) >= Date.parse(history[index - 1].at)),
+      ),
+      "attempt lifecycle transitions must have monotonic canonical timestamps",
+    );
     for (const [label, mutate] of [
       ["preflight writer", () => writeRunPreflight(local.runDir, local.input)],
       ["cleanup writer", () => writeRunCleanup(local.runDir, cleanCleanup(local))],
-      ["controller staging writer", () => stageControllerEvidence(local.runDir, { verdict: "pass" })],
+      [
+        "controller staging writer",
+        () => stageControllerEvidence(local.runDir, { verdict: "pass" }),
+      ],
     ]) {
       await assert.rejects(mutate, /immutable|already exists/i, label);
     }
@@ -690,6 +745,28 @@ async function runSelfTest() {
       localManifest,
       "every post-seal writer refusal must leave the manifest valid",
     );
+    const sealedState = {
+      ...JSON.parse(await readFile(path.join(local.runDir, "state.json"), "utf8")),
+      runDir: local.runDir,
+    };
+    for (const [label, mutate] of [
+      ["state writer", () => saveState(sealedState)],
+      ["event writer", () => addEvent(sealedState, "post-seal-event", { forbidden: true })],
+      [
+        "crash fallback renderer",
+        () =>
+          renderSuiteErrorReport(new Error("post-seal crash"), ["--run-dir", local.runDir], {
+            executionTopology: "local-cua-driver",
+          }),
+      ],
+    ]) {
+      await assert.rejects(mutate, /manifest\\.json|immutable|sealed/i, label);
+      assert.deepEqual(
+        await verifyEvidenceManifest(local.runDir),
+        localManifest,
+        `${label} refusal must leave verified evidence unchanged`,
+      );
+    }
 
     for (const blockerCode of ["local_preflight", "permissions", "competing_process"]) {
       const blocker = await createEvidenceFixture(root);
@@ -700,6 +777,14 @@ async function runSelfTest() {
       );
       blockerState.verdict = "inconclusive";
       blockerState.screenshots = [];
+      await rm(path.join(blocker.runDir, "texts", "launch.txt"));
+      await writeFile(
+        path.join(blocker.runDir, "texts", "pre-ui-blocker.txt"),
+        `${blockerCode} blocked before UI\n`,
+      );
+      blockerState.textSnapshots = [
+        { path: "texts/pre-ui-blocker.txt", label: "Pre-UI infrastructure blocker" },
+      ];
       blockerState.video = {
         status: "not_started",
         note: "UI capture never began because a classified infrastructure blocker stopped the run.",
@@ -759,6 +844,14 @@ async function runSelfTest() {
         false,
         `${blockerCode} must not fabricate visual proof`,
       );
+      const blockerAttempt = JSON.parse(
+        await readFile(path.join(blocker.runDir, "attempt.json"), "utf8"),
+      );
+      assert.equal(blockerAttempt.lifecycle.current, "ABORTED");
+      assert.deepEqual(
+        blockerAttempt.lifecycle.history.map((transition) => transition.state),
+        ["PROVISIONING", "READY", "ABORTED"],
+      );
     }
 
     await writeFile(path.join(local.runDir, "texts", "launch.txt"), "mutated evidence\n");
@@ -771,6 +864,33 @@ async function runSelfTest() {
     const controller = await createEvidenceFixture(root, { backend: "static_ssh" });
     await stageControllerEvidence(controller.runDir, { verdict: "pass" });
     await assert.rejects(
+      () =>
+        writeControllerFinalization(controller.runDir, {
+          cleanup: cleanCleanup(controller, { mode: "controller" }),
+          hostLease: releasedLease(),
+          trustedOwnerToken: TRUSTED_OWNER_TOKEN,
+          verdict: "pass",
+        }),
+      /controller.*probe|probe attestation/i,
+      "controller cleanup strings without an independently bound probe must never finalize",
+    );
+    const rejectedControllerCleanup = cleanCleanup(controller, { mode: "controller" });
+    await assert.rejects(
+      () =>
+        writeControllerFinalization(controller.runDir, {
+          cleanup: rejectedControllerCleanup,
+          cleanupProbe: {
+            ...controllerCleanupProbe(controller, rejectedControllerCleanup),
+            ownerTokenHmac: "0".repeat(64),
+          },
+          hostLease: releasedLease(),
+          trustedOwnerToken: TRUSTED_OWNER_TOKEN,
+          verdict: "pass",
+        }),
+      /probe attestation|trusted observations/i,
+      "controller finalization must reject a forged cleanup-probe HMAC",
+    );
+    await assert.rejects(
       () => readFile(path.join(controller.runDir, "manifest.json"), "utf8"),
       /ENOENT/,
       "remote static runner must not create manifest.json",
@@ -780,8 +900,10 @@ async function runSelfTest() {
       /cleanup|finalized/i,
       "controller-finalized evidence must not seal before controller cleanup",
     );
+    const controllerCleanup = cleanCleanup(controller, { mode: "controller" });
     await writeControllerFinalization(controller.runDir, {
-      cleanup: cleanCleanup(controller, { mode: "controller" }),
+      cleanup: controllerCleanup,
+      cleanupProbe: controllerCleanupProbe(controller, controllerCleanup),
       hostLease: releasedLease(),
       trustedOwnerToken: TRUSTED_OWNER_TOKEN,
       verdict: "pass",
@@ -809,7 +931,8 @@ async function runSelfTest() {
         "controller finalization writer",
         () =>
           writeControllerFinalization(controller.runDir, {
-            cleanup: cleanCleanup(controller, { mode: "controller" }),
+            cleanup: controllerCleanup,
+            cleanupProbe: controllerCleanupProbe(controller, controllerCleanup),
             hostLease: releasedLease(),
             trustedOwnerToken: TRUSTED_OWNER_TOKEN,
             verdict: "pass",
@@ -819,7 +942,8 @@ async function runSelfTest() {
         "controller finalization sealer",
         () =>
           finalizeControllerEvidence(controller.runDir, {
-            cleanup: cleanCleanup(controller, { mode: "controller" }),
+            cleanup: controllerCleanup,
+            cleanupProbe: controllerCleanupProbe(controller, controllerCleanup),
             hostLease: releasedLease(),
             trustedOwnerToken: TRUSTED_OWNER_TOKEN,
             verdict: "pass",
@@ -840,6 +964,14 @@ async function runSelfTest() {
     );
     controllerBlockerState.verdict = "inconclusive";
     controllerBlockerState.screenshots = [];
+    await rm(path.join(controllerBlocker.runDir, "texts", "launch.txt"));
+    await writeFile(
+      path.join(controllerBlocker.runDir, "texts", "pre-ui-blocker.txt"),
+      "static controller blocked before UI\n",
+    );
+    controllerBlockerState.textSnapshots = [
+      { path: "texts/pre-ui-blocker.txt", label: "Pre-UI infrastructure blocker" },
+    ];
     controllerBlockerState.video = {
       status: "not_available",
       note: "The static runner was blocked before UI capture began.",
@@ -872,6 +1004,7 @@ async function runSelfTest() {
     );
     await writeControllerFinalization(controllerBlocker.runDir, {
       cleanup: controllerBlockerCleanup,
+      cleanupProbe: controllerCleanupProbe(controllerBlocker, controllerBlockerCleanup),
       hostLease: releasedLease(),
       trustedOwnerToken: TRUSTED_OWNER_TOKEN,
       verdict: "inconclusive",
@@ -885,10 +1018,12 @@ async function runSelfTest() {
 
     const badLease = await createEvidenceFixture(root, { backend: "static_ssh" });
     await stageControllerEvidence(badLease.runDir, { verdict: "pass" });
+    const badLeaseCleanup = cleanCleanup(badLease, { mode: "controller" });
     await assert.rejects(
       () =>
         finalizeControllerEvidence(badLease.runDir, {
-          cleanup: cleanCleanup(badLease, { mode: "controller" }),
+          cleanup: badLeaseCleanup,
+          cleanupProbe: controllerCleanupProbe(badLease, badLeaseCleanup),
           hostLease: {
             ...releasedLease(),
             releasedOwnerTokenHash: DIGEST_A,
@@ -900,6 +1035,12 @@ async function runSelfTest() {
     );
 
     for (const [label, mutate, expected] of [
+      ["not acquired", (lease) => (lease.acquired = false), /acquired and released/i],
+      ["not released", (lease) => (lease.released = false), /acquired and released/i],
+      ["repository mismatch", (lease) => (lease.repo = "other/repo"), /repo.*bound/i],
+      ["job mismatch", (lease) => (lease.jobId = "other/job"), /jobId.*bound/i],
+      ["attempt mismatch", (lease) => (lease.attempt = 2), /attempt.*bound/i],
+      ["host mismatch", (lease) => (lease.host = "mac-e2e-02"), /host.*bound/i],
       [
         "zero owner hash",
         (lease) => {
@@ -919,10 +1060,12 @@ async function runSelfTest() {
       await stageControllerEvidence(fixture.runDir, { verdict: "pass" });
       const lease = structuredClone(releasedLease());
       mutate(lease);
+      const cleanup = cleanCleanup(fixture, { mode: "controller" });
       await assert.rejects(
         () =>
           finalizeControllerEvidence(fixture.runDir, {
-            cleanup: cleanCleanup(fixture, { mode: "controller" }),
+            cleanup,
+            cleanupProbe: controllerCleanupProbe(fixture, cleanup),
             hostLease: lease,
             trustedOwnerToken:
               label === "trusted token mismatch" ? "wrong-owner-token" : TRUSTED_OWNER_TOKEN,
@@ -952,10 +1095,15 @@ async function runSelfTest() {
       backend: "static_ssh",
     });
     await stageControllerEvidence(controllerWithLocalCleanup.runDir, { verdict: "pass" });
+    const invalidControllerCleanup = cleanCleanup(controllerWithLocalCleanup);
     await assert.rejects(
       () =>
         finalizeControllerEvidence(controllerWithLocalCleanup.runDir, {
-          cleanup: cleanCleanup(controllerWithLocalCleanup),
+          cleanup: invalidControllerCleanup,
+          cleanupProbe: controllerCleanupProbe(
+            controllerWithLocalCleanup,
+            invalidControllerCleanup,
+          ),
           hostLease: releasedLease(),
           trustedOwnerToken: TRUSTED_OWNER_TOKEN,
           verdict: "pass",
@@ -996,9 +1144,7 @@ async function runSelfTest() {
     await symlink(realAncestor, ancestorSymlink);
     await assert.rejects(
       () =>
-        createEvidenceManifest(
-          path.join(ancestorSymlink, path.basename(ancestorFixture.runDir)),
-        ),
+        createEvidenceManifest(path.join(ancestorSymlink, path.basename(ancestorFixture.runDir))),
       /canonical|symlink/i,
     );
 
@@ -1049,6 +1195,27 @@ async function runSelfTest() {
       /unreferenced visual files|untracked\\.png/i,
     );
 
+    for (const relativePath of [
+      "screenshots/untracked.avif",
+      "screenshots/untracked.svg",
+      "untracked.pdf",
+      "raw-evidence.bin",
+      "notes.md",
+    ]) {
+      const fixture = await createEvidenceFixture(root);
+      await mkdir(path.dirname(path.join(fixture.runDir, relativePath)), { recursive: true });
+      await writeFile(path.join(fixture.runDir, relativePath), "unreferenced evidence\n");
+      await assert.rejects(
+        () =>
+          finalizeLocalEvidence(fixture.runDir, {
+            cleanup: cleanCleanup(fixture),
+            verdict: "pass",
+          }),
+        /allowlist|unreferenced|forbidden evidence/i,
+        relativePath,
+      );
+    }
+
     for (const extension of ["mp4", "mov", "m4v", "webm", "mkv", "avi", "mpeg", "mpg"]) {
       const fixture = await createEvidenceFixture(root);
       await writeFile(path.join(fixture.runDir, `raw-session.${extension}`), "raw video\n");
@@ -1077,10 +1244,13 @@ async function runSelfTest() {
     const cliController = await createEvidenceFixture(root, { backend: "static_ssh" });
     await stageControllerEvidence(cliController.runDir, { verdict: "pass" });
     const cleanupFile = path.join(root, "controller-cleanup.json");
+    const cleanupProbeFile = path.join(root, "controller-cleanup-probe.json");
     const leaseFile = path.join(root, "controller-lease.json");
+    const cliCleanup = cleanCleanup(cliController, { mode: "controller" });
+    await writeFile(cleanupFile, `${JSON.stringify(cliCleanup)}\n`);
     await writeFile(
-      cleanupFile,
-      `${JSON.stringify(cleanCleanup(cliController, { mode: "controller" }))}\n`,
+      cleanupProbeFile,
+      `${JSON.stringify(controllerCleanupProbe(cliController, cliCleanup))}\n`,
     );
     await writeFile(leaseFile, `${JSON.stringify(releasedLease())}\n`);
     const metadataCli = spawnSync(
@@ -1092,6 +1262,8 @@ async function runSelfTest() {
         cliController.runDir,
         "--cleanup-file",
         cleanupFile,
+        "--cleanup-probe-file",
+        cleanupProbeFile,
         "--host-lease-file",
         leaseFile,
         "--verdict",
