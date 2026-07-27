@@ -1448,7 +1448,6 @@ jobs:
 
       - name: Publish verified gh-pages report with optimistic retry
         id: publish
-        if: inputs.backend == 'static_ssh' || inputs.qualification_tier == 'production'
         shell: bash
         run: |
           set -euo pipefail

@@ -899,13 +899,15 @@ if [[ "$heartbeat_command" == *"$lease_dir/heartbeat.sh"* ]]; then
     sleep 0.05
   done
 fi
-heartbeat_tmp="$lease_dir/heartbeat.tmp.$heartbeat_pid"
 shopt -s nullglob dotglob
 for entry in "$lease_dir"/*; do
   name="${entry##*/}"
   case "$name" in
     owner.json|heartbeat|heartbeat.pid|heartbeat.sh|heartbeat.log) ;;
-    "heartbeat.tmp.$heartbeat_pid")
+    heartbeat.tmp.*)
+      heartbeat_tmp_suffix="${name#heartbeat.tmp.}"
+      [[ "$heartbeat_tmp_suffix" =~ ^[0-9]+$ ]] ||
+        { echo "LEASE_QUARANTINED: invalid heartbeat temporary file name" >&2; exit 73; }
       [[ -f "$entry" && ! -L "$entry" ]] ||
         { echo "LEASE_QUARANTINED: unsafe heartbeat temporary file" >&2; exit 73; }
       heartbeat_tmp_size="$(wc -c < "$entry" | tr -d '[:space:]')"
@@ -920,7 +922,9 @@ for entry in "$lease_dir"/*; do
   [[ -f "$entry" && ! -L "$entry" ]] ||
     { echo "LEASE_QUARANTINED: unsafe lease metadata $name" >&2; exit 73; }
 done
-rm -f "$heartbeat_tmp"
+for entry in "$lease_dir"/heartbeat.tmp.*; do
+  rm -f "$entry"
+done
 last_heartbeat_epoch="$(cat "$lease_dir/heartbeat")"
 [[ "$last_heartbeat_epoch" =~ ^[0-9]+$ ]] ||
   { echo "LEASE_QUARANTINED: final heartbeat invalid during release" >&2; exit 73; }

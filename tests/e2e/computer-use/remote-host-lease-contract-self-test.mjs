@@ -559,7 +559,7 @@ stderr=${recoveredRerun.stderr}`,
   const releaseTempHook = path.join(fixtureRoot, "write-heartbeat-temp-before-stop");
   writeFileSync(
     releaseTempHook,
-    "#!/usr/bin/env bash\nset -euo pipefail\nprintf '1700000000\\n' > \"$1/heartbeat.tmp.$2\"\n",
+    "#!/usr/bin/env bash\nset -euo pipefail\nprintf '1700000000\\n' > \"$1/heartbeat.tmp.$2\"\nprintf '1700000000\\n' > \"$1/heartbeat.tmp.424242\"\n",
   );
   chmodSync(releaseTempHook, 0o700);
   const released = invoke("release", "owner-a", [], {

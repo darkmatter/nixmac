@@ -256,7 +256,12 @@ const publicReportStep = publish.steps.find(
 );
 assert.equal(
   publicReportStep.if,
-  "inputs.backend == 'static_ssh' || inputs.qualification_tier == 'production'",
+  undefined,
+  "publication eligibility belongs on the job so every publication step shares the same gate",
+);
+assert.equal(
+  publish.if,
+  "always() && inputs.qualification_tier == 'production' && needs.preflight.outputs.ready == 'true' && ((inputs.backend == 'static_ssh' && needs.static_ssh.result == 'success') || (inputs.backend == 'cilicon_tart' && needs.primary.result == 'success' && needs.lifecycle_consumer.result == 'success' && needs.lifecycle_consumer.outputs.consumed == 'true' && needs.lifecycle_consumer.outputs.disposition == 'destroyed'))",
   "shadow qualification must not mutate the public report branch",
 );
 assert.match(source, /qualificationTier/);
