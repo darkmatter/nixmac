@@ -255,6 +255,10 @@ pub trait AiProvider: Send + Sync {
     }
 
     fn model_name(&self) -> String;
+
+    /// Override the per-request completion budget. Used when context pressure
+    /// shrinks the remaining window so we do not request more tokens than fit.
+    fn set_max_output_tokens(&self, _max_output_tokens: u32) {}
 }
 
 /// Errors returned by AI providers in the evolve subsystem.

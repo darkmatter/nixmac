@@ -1,0 +1,23 @@
+[package]
+name = "pi-walker"
+version = "17.1.2"
+edition = "2024"
+license = "MIT"
+authors = ["Can Boluk"]
+repository = "https://github.com/can1357/oh-my-pi"
+description = "Reusable platform directory traversal primitives (vendored from oh-my-pi)"
+
+# Vendored: do not inherit nixmac workspace deny-level clippy.
+
+[dependencies]
+dashmap = "6.1"
+globset = "0.4"
+ignore = "0.4"
+parking_lot = "0.12.5"
+rayon = "1.12"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Wdk_Storage_FileSystem"] }

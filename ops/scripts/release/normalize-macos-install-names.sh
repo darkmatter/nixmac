@@ -28,6 +28,11 @@ MOUNTS_FILE="$TMP_DIR/mounts"
 REWRITES_FILE="$TMP_DIR/rewrites"
 touch "$MOUNTS_FILE" "$REWRITES_FILE"
 
+on_error() {
+	echo "ERROR: command failed at line $1 (exit status $?)" >&2
+}
+trap 'on_error ${LINENO}' ERR
+
 detach_with_retry() {
 	local mount="$1"
 
@@ -187,7 +192,7 @@ sign_app_if_certificate_available() {
 		exit 2
 	fi
 
-	identity=$(security find-identity -v -p codesigning "$keychain_path" | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+	identity=$(security find-identity -v -p codesigning "$keychain_path" 2>/dev/null | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)".*/\1/' || true)
 	if [ -z "$identity" ]; then
 		echo "ERROR: No Developer ID Application identity found in keychain" >&2
 		security find-identity -v -p codesigning "$keychain_path" >&2
