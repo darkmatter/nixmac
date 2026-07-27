@@ -36,13 +36,31 @@ assert.match(helper, /operator-reason/, "recovery must require an operator reaso
 assert.match(helper, /actions\/runs/, "owner liveness must come from the owning GitHub run");
 assert.match(helper, /\["pgrep", "-f", pattern\]/, "recovery must probe remote processes");
 assert.match(helper, /nixmac.*CuaDriver/s, "recovery must refuse while nixmac is active");
-const heartbeatPsInvocations = [...helper.matchAll(/\/bin\/ps[^\n]*/g)].map(
-  (match) => match[0],
+assert.equal(
+  [...helper.matchAll(/\b(?:ps_path|heartbeat_ps_path)\s*=\s*["']\/bin\/ps["']/g)].length,
+  2,
+  "both heartbeat process probes must default to the remote macOS /bin/ps",
 );
-assert.equal(heartbeatPsInvocations.length, 3, "all heartbeat ps invocations must be audited");
-for (const invocation of heartbeatPsInvocations) {
-  assert.match(invocation, /(?:\/bin\/ps -ww|\/bin\/ps", "-ww")/, invocation);
-}
+assert.equal(
+  [...helper.matchAll(/\/bin\/ps/g)].length,
+  2,
+  "all production /bin/ps references must flow through the two audited probe paths",
+);
+assert.match(
+  helper,
+  /NIXMAC_E2E_LEASE_TEST_MODE[\s\S]*NIXMAC_E2E_LEASE_PS_PATH/,
+  "process-probe injection must be isolated behind lease test mode",
+);
+assert.match(
+  helper,
+  /process\.returncode == 1[\s\S]*process probe failed with status/,
+  "the status path must distinguish a missing PID from a broken process probe",
+);
+assert.match(
+  helper,
+  /heartbeat process probe (?:is unavailable|failed) during release/,
+  "release must fail closed when the heartbeat process probe is unavailable",
+);
 assert.doesNotMatch(
   helper,
   /\brm\s+[^\n]*(?:-[A-Za-z]*[rR][A-Za-z]*|--recursive)(?:\s|$)/,
@@ -106,6 +124,8 @@ try {
   const fakeSshKeygen = path.join(fakeBin, "ssh-keygen");
   const fakeGh = path.join(fakeBin, "gh");
   const fakePgrep = path.join(fakeBin, "pgrep");
+  const fakePs = path.join(fakeBin, "ps");
+  const failingPs = path.join(fakeBin, "ps-fail");
   writeFileSync(
     fakeSsh,
     `#!/usr/bin/env bash
@@ -153,10 +173,33 @@ printf '%s\\n' "\${NIXMAC_E2E_FAKE_GH_STATUS:-in_progress}"
     fakePgrep,
     '#!/usr/bin/env bash\n[[ "${NIXMAC_E2E_FAKE_PGREP_ACTIVE:-0}" == "1" ]]\n',
   );
+  writeFileSync(
+    fakePs,
+    `#!/usr/bin/env bash
+set -euo pipefail
+if [[ -x /bin/ps ]] && /bin/ps -ww -p "$$" -o command= >/dev/null 2>&1; then
+  exec /bin/ps "$@"
+fi
+pid=""
+while (($#)); do
+  case "$1" in
+    -p) pid="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+[[ "$pid" =~ ^[0-9]+$ ]] || exit 2
+[[ -r "/proc/$pid/cmdline" ]] || exit 1
+tr '\\0' ' ' < "/proc/$pid/cmdline"
+printf '\\n'
+`,
+  );
+  writeFileSync(failingPs, "#!/usr/bin/env bash\nexit 127\n");
   chmodSync(fakeSsh, 0o700);
   chmodSync(fakeSshKeygen, 0o700);
   chmodSync(fakeGh, 0o700);
   chmodSync(fakePgrep, 0o700);
+  chmodSync(fakePs, 0o700);
+  chmodSync(failingPs, 0o700);
   const sshKey = path.join(fixtureRoot, "key");
   const knownHosts = path.join(fixtureRoot, "known_hosts");
   writeFileSync(sshKey, "fixture-key\n");
@@ -184,6 +227,7 @@ printf '%s\\n' "\${NIXMAC_E2E_FAKE_GH_STATUS:-in_progress}"
     ...process.env,
     PATH: `${fakeBin}:${process.env.PATH}`,
     NIXMAC_E2E_LEASE_TEST_MODE: "1",
+    NIXMAC_E2E_LEASE_PS_PATH: fakePs,
     NIXMAC_E2E_LEASE_ROOT: leaseRoot,
     NIXMAC_E2E_LEASE_LIVENESS_RETRY_DELAY_SECONDS: "0",
   };
@@ -275,14 +319,8 @@ printf '%s\\n' "\${NIXMAC_E2E_FAKE_GH_STATUS:-in_progress}"
   assert.notEqual(fileOwnerStatus.status, 0, "status must reject a non-directory owner");
   rmSync(leaseRoot, { recursive: true });
 
-  const rootCreationHook = path.join(
-    fixtureRoot,
-    "create-lease-root-during-acquire",
-  );
-  writeFileSync(
-    rootCreationHook,
-    '#!/usr/bin/env bash\nset -euo pipefail\nmkdir "$1"\n',
-  );
+  const rootCreationHook = path.join(fixtureRoot, "create-lease-root-during-acquire");
+  writeFileSync(rootCreationHook, '#!/usr/bin/env bash\nset -euo pipefail\nmkdir "$1"\n');
   chmodSync(rootCreationHook, 0o700);
   const racedRootAcquire = invoke(
     "acquire",
@@ -580,6 +618,28 @@ stderr=${recoveredRerun.stderr}`,
     "owner-matched release must return the final heartbeat and remote release time",
   );
 
+  const acquiredForFailedProbe = invoke("acquire", "owner-a", [
+    "--wait-seconds",
+    "0",
+    "--poll-seconds",
+    "1",
+    "--max-hold-seconds",
+    "60",
+  ]);
+  assert.equal(acquiredForFailedProbe.status, 0, acquiredForFailedProbe.stderr);
+  const refusedWithoutProcessProbe = invoke("release", "owner-a", [], {
+    ...fixtureEnv,
+    NIXMAC_E2E_LEASE_PS_PATH: failingPs,
+  });
+  assert.equal(
+    refusedWithoutProcessProbe.status,
+    73,
+    "release must quarantine instead of succeeding when heartbeat liveness cannot be probed",
+  );
+  assert.match(refusedWithoutProcessProbe.stderr, /heartbeat process probe failed during release/);
+  const releasedAfterProbeRecovery = invoke("release", "owner-a");
+  assert.equal(releasedAfterProbeRecovery.status, 0, releasedAfterProbeRecovery.stderr);
+
   let releaseResidueScenarioIndex = 0;
   const releaseWithAdversarialResidue = (hookBody, expectedError) => {
     releaseResidueScenarioIndex += 1;
@@ -642,10 +702,7 @@ stderr=${recoveredRerun.stderr}`,
     `head -c 64 /dev/zero > "$1/heartbeat.tmp.888"`,
     /invalid heartbeat temporary file/,
   );
-  releaseWithAdversarialResidue(
-    `mkdir "$1/heartbeat.tmp.999"`,
-    /unsafe heartbeat temporary file/,
-  );
+  releaseWithAdversarialResidue(`mkdir "$1/heartbeat.tmp.999"`, /unsafe heartbeat temporary file/);
 
   const acquiredForUnavailableLiveness = invoke("acquire", "owner-a", [
     "--wait-seconds",
@@ -870,10 +927,7 @@ stderr=${recoveredRerun.stderr}`,
     stdio: "ignore",
   });
   assert.ok(uncooperativeHeartbeat.pid > 1);
-  writeFileSync(
-    path.join(releaseHeartbeatDir, "heartbeat.pid"),
-    `${uncooperativeHeartbeat.pid}\n`,
-  );
+  writeFileSync(path.join(releaseHeartbeatDir, "heartbeat.pid"), `${uncooperativeHeartbeat.pid}\n`);
   for (let attempt = 0; attempt < 100 && !existsSync(releaseHeartbeatReady); attempt += 1) {
     spawnSync("sleep", ["0.02"]);
   }

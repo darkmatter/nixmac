@@ -114,6 +114,11 @@ if [ "$1" != "find-identity" ]; then
 	exit 2
 fi
 
+if [ "${SECURITY_IDENTITIES_AVAILABLE:-1}" = "0" ]; then
+	printf '%s\n' "     0 valid identities found"
+	exit 0
+fi
+
 printf '%s\n' '  1) ABCDEF1234567890 "Developer ID Application: Test Signing (TEAMID)"'
 SH
 chmod +x "$FAKE_BIN/security"
@@ -257,6 +262,22 @@ fi
 if ! grep -F -- "--sign -" "$CODESIGN_LOG" >/dev/null; then
 	echo "expected fallback signing to use an ad-hoc identity" >&2
 	cat "$CODESIGN_LOG" >&2
+	exit 1
+fi
+
+make_app "$TMP_DIR/EmptyIdentity.app" empty-identity
+RUNNER_TEMP="$TMP_DIR/runner-with-empty-identity"
+mkdir -p "$RUNNER_TEMP"
+touch "$RUNNER_TEMP/app-signing.keychain-db"
+if SECURITY_IDENTITIES_AVAILABLE=0 RUNNER_TEMP="$RUNNER_TEMP" PATH="$FAKE_BIN:$PATH" \
+	"$SCRIPT" "$TMP_DIR/EmptyIdentity.app" >"$TMP_DIR/empty-identity.out" 2>&1; then
+	echo "expected a present keychain without a Developer ID identity to fail closed" >&2
+	exit 1
+fi
+if ! grep -F "No Developer ID Application identity found in keychain" \
+	"$TMP_DIR/empty-identity.out" >/dev/null; then
+	echo "expected a clear missing Developer ID identity diagnostic" >&2
+	cat "$TMP_DIR/empty-identity.out" >&2
 	exit 1
 fi
 

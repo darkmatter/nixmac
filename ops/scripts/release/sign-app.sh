@@ -15,7 +15,11 @@ fi
 echo "Signing $APP_PATH..."
 
 KEYCHAIN_PATH="${RUNNER_TEMP}/app-signing.keychain-db"
-IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+IDENTITY=$(
+	security find-identity -v -p codesigning "$KEYCHAIN_PATH" |
+		sed -n 's/.*"\(Developer ID Application[^"]*\)".*/\1/p' |
+		sed -n '1p'
+)
 
 if [ -z "$IDENTITY" ]; then
 	echo "ERROR: No Developer ID Application identity found in keychain"

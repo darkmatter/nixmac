@@ -187,7 +187,11 @@ sign_app_if_certificate_available() {
 		exit 2
 	fi
 
-	identity=$(security find-identity -v -p codesigning "$keychain_path" | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+	identity=$(
+		security find-identity -v -p codesigning "$keychain_path" |
+			sed -n 's/.*"\(Developer ID Application[^"]*\)".*/\1/p' |
+			sed -n '1p'
+	)
 	if [ -z "$identity" ]; then
 		echo "ERROR: No Developer ID Application identity found in keychain" >&2
 		security find-identity -v -p codesigning "$keychain_path" >&2
