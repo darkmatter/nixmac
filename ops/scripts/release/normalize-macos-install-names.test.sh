@@ -148,7 +148,9 @@ case "$1" in
 			echo "missing hdiutil convert output" >&2
 			exit 2
 		fi
-		touch "$output"
+		# The normalizer sizes the RW image from its apparent (stat) size, so
+		# the fake conversion output claims 200000KB without allocating it.
+		dd if=/dev/zero of="$output" bs=1 count=0 seek=204800000 2>/dev/null
 		;;
 	attach)
 		mount_point=""
@@ -176,21 +178,6 @@ esac
 SH
 chmod +x "$FAKE_BIN/hdiutil"
 
-cat >"$FAKE_BIN/du" <<'SH'
-#!/usr/bin/env bash
-set -euo pipefail
-
-case "${!#}" in
-	*.rw.dmg)
-		printf '200000\t%s\n' "${!#}"
-		;;
-	*)
-		/usr/bin/du "$@"
-		;;
-esac
-SH
-chmod +x "$FAKE_BIN/du"
-
 make_app() {
 	local app="$1"
 	local executable_name="$2"
@@ -207,9 +194,16 @@ add_helper_bins() {
 	done
 }
 
+# The normalizer's output is captured, so dump it when a run fails: under
+# set -e a bare failure would kill the test with no message while the EXIT
+# trap deletes the only copy of the error.
 run_normalizer() {
 	local target="$1"
-	PATH="$FAKE_BIN:$PATH" "$SCRIPT" "$target" >"$TMP_DIR/normalizer.out" 2>&1
+	if ! PATH="$FAKE_BIN:$PATH" "$SCRIPT" "$target" >"$TMP_DIR/normalizer.out" 2>&1; then
+		echo "normalizer failed for $target:" >&2
+		cat "$TMP_DIR/normalizer.out" >&2
+		exit 1
+	fi
 }
 
 make_app "$TMP_DIR/Clean.app" clean
@@ -251,10 +245,14 @@ ABS_TAR_PATH="$(cd "$TMP_DIR" && pwd -P)/nixmac.app.tar.gz"
 RUNNER_TEMP="$TMP_DIR/runner"
 mkdir -p "$RUNNER_TEMP"
 touch "$RUNNER_TEMP/app-signing.keychain-db"
-(
+if ! (
 	cd "$TMP_DIR"
 	RUNNER_TEMP="$RUNNER_TEMP" TAURI_SIGNING_PRIVATE_KEY=test PATH="$FAKE_BIN:$PATH" "$SCRIPT" "nixmac.app.tar.gz" >"$TMP_DIR/tarball-normalizer.out" 2>&1
-)
+); then
+	echo "normalizer failed for the updater tarball:" >&2
+	cat "$TMP_DIR/tarball-normalizer.out" >&2
+	exit 1
+fi
 
 if ! grep -F -- "-change /nix/store/example-libiconv-109.100.2/lib/libiconv.2.dylib /usr/lib/libiconv.2.dylib" "$INSTALL_NAME_TOOL_LOG" >/dev/null; then
 	echo "expected updater tarball app to be normalized" >&2
@@ -326,7 +324,11 @@ if ! grep -F -- "--sign -" "$CODESIGN_LOG" >/dev/null; then
 fi
 
 touch "$TMP_DIR/nixmac.dmg"
-RUNNER_TEMP="$TMP_DIR/dmg-runner" PATH="$FAKE_BIN:$PATH" "$SCRIPT" "$TMP_DIR/nixmac.dmg" >"$TMP_DIR/dmg-normalizer.out" 2>&1
+if ! RUNNER_TEMP="$TMP_DIR/dmg-runner" PATH="$FAKE_BIN:$PATH" "$SCRIPT" "$TMP_DIR/nixmac.dmg" >"$TMP_DIR/dmg-normalizer.out" 2>&1; then
+	echo "normalizer failed for the DMG:" >&2
+	cat "$TMP_DIR/dmg-normalizer.out" >&2
+	exit 1
+fi
 
 if ! grep -F "attach -readonly" "$HDIUTIL_LOG" >/dev/null; then
 	echo "expected DMG sizing inspection to mount read-only" >&2
