@@ -250,7 +250,7 @@ def heartbeat_process_matches(heartbeat_pid):
     heartbeat_script = os.path.join(lease_dir, "heartbeat.sh")
     try:
         process = subprocess.run(
-            ["/bin/ps", "-p", str(heartbeat_pid), "-o", "command="],
+            ["/bin/ps", "-ww", "-p", str(heartbeat_pid), "-o", "command="],
             check=False,
             capture_output=True,
             text=True,
@@ -881,7 +881,7 @@ done
 heartbeat_pid="$(cat "$lease_dir/heartbeat.pid")"
 [[ "$heartbeat_pid" =~ ^[0-9]+$ ]] ||
   { echo "LEASE_QUARANTINED: heartbeat PID is invalid during release" >&2; exit 73; }
-heartbeat_command="$(/bin/ps -p "$heartbeat_pid" -o command= 2>/dev/null || true)"
+heartbeat_command="$(/bin/ps -ww -p "$heartbeat_pid" -o command= 2>/dev/null || true)"
 if [[ "$heartbeat_command" == *"$lease_dir/heartbeat.sh"* ]]; then
   if [[ "${NIXMAC_E2E_LEASE_TEST_MODE:-0}" == "1" &&
     -n "${NIXMAC_E2E_LEASE_RELEASE_BEFORE_STOP_TEST_HOOK:-}" ]]; then
@@ -890,7 +890,7 @@ if [[ "$heartbeat_command" == *"$lease_dir/heartbeat.sh"* ]]; then
   kill -TERM "$heartbeat_pid" 2>/dev/null || true
   heartbeat_stop_deadline=$((SECONDS + 2))
   while true; do
-    heartbeat_command="$(/bin/ps -p "$heartbeat_pid" -o command= 2>/dev/null || true)"
+    heartbeat_command="$(/bin/ps -ww -p "$heartbeat_pid" -o command= 2>/dev/null || true)"
     [[ "$heartbeat_command" == *"$lease_dir/heartbeat.sh"* ]] || break
     if ((SECONDS >= heartbeat_stop_deadline)); then
       echo "LEASE_QUARANTINED: heartbeat did not stop during release" >&2

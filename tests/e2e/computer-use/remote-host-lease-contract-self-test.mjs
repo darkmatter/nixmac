@@ -36,6 +36,13 @@ assert.match(helper, /operator-reason/, "recovery must require an operator reaso
 assert.match(helper, /actions\/runs/, "owner liveness must come from the owning GitHub run");
 assert.match(helper, /\["pgrep", "-f", pattern\]/, "recovery must probe remote processes");
 assert.match(helper, /nixmac.*CuaDriver/s, "recovery must refuse while nixmac is active");
+const heartbeatPsInvocations = [...helper.matchAll(/\/bin\/ps[^\n]*/g)].map(
+  (match) => match[0],
+);
+assert.equal(heartbeatPsInvocations.length, 3, "all heartbeat ps invocations must be audited");
+for (const invocation of heartbeatPsInvocations) {
+  assert.match(invocation, /(?:\/bin\/ps -ww|\/bin\/ps", "-ww")/, invocation);
+}
 assert.doesNotMatch(
   helper,
   /\brm\s+[^\n]*(?:-[A-Za-z]*[rR][A-Za-z]*|--recursive)(?:\s|$)/,
@@ -578,6 +585,7 @@ stderr=${recoveredRerun.stderr}`,
     releaseResidueScenarioIndex += 1;
     const scenarioLeaseRoot = path.join(
       fixtureRoot,
+      `long-heartbeat-command-${"x".repeat(180)}`,
       `nixmac-host-lease-contract-release-residue-${releaseResidueScenarioIndex}`,
       "remote-lease",
     );
