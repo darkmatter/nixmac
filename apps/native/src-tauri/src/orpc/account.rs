@@ -1,4 +1,4 @@
-//! nixmac account authentication and sync server configuration.
+//! nixmac account authentication (Better Auth device API key).
 
 use super::{OrpcCtx, helpers::internal_err};
 use crate::commands::account as cmd;
@@ -36,22 +36,10 @@ struct VerifyOtpInput {
     name: String,
 }
 
-#[derive(Debug, Deserialize, Serialize, Type)]
-#[serde(rename_all = "camelCase")]
-struct SetServerUrlInput {
-    url: String,
-}
-
 async fn status(ctx: OrpcCtx, _input: ()) -> Result<AuthStatus, ORPCError> {
     cmd::account_status(ctx.app)
         .await
         .map_err(|e| internal_err("account.status", e))
-}
-
-async fn sign_in(ctx: OrpcCtx, input: SignInInput) -> Result<AuthStatus, ORPCError> {
-    cmd::account_sign_in(ctx.app, input.email, input.password)
-        .await
-        .map_err(|e| internal_err("account.signIn", e))
 }
 
 async fn sign_in_web(ctx: OrpcCtx, input: SignInInput) -> Result<AuthStatus, ORPCError> {
@@ -84,21 +72,11 @@ async fn sign_out(ctx: OrpcCtx, _input: ()) -> Result<AuthStatus, ORPCError> {
         .map_err(|e| internal_err("account.signOut", e))
 }
 
-async fn set_server_url(ctx: OrpcCtx, input: SetServerUrlInput) -> Result<AuthStatus, ORPCError> {
-    cmd::account_set_server_url(ctx.app, input.url)
-        .await
-        .map_err(|e| internal_err("account.setServerUrl", e))
-}
-
 pub fn routes() -> Router<OrpcCtx> {
     router! {
         "status" => os::<OrpcCtx>()
             .output(orpc_specta::specta::<AuthStatus>())
             .handler(status),
-        "signIn" => os::<OrpcCtx>()
-            .input(orpc_specta::specta::<SignInInput>())
-            .output(orpc_specta::specta::<AuthStatus>())
-            .handler(sign_in),
         "signInWeb" => os::<OrpcCtx>()
             .input(orpc_specta::specta::<SignInInput>())
             .output(orpc_specta::specta::<AuthStatus>())
@@ -117,9 +95,5 @@ pub fn routes() -> Router<OrpcCtx> {
         "signOut" => os::<OrpcCtx>()
             .output(orpc_specta::specta::<AuthStatus>())
             .handler(sign_out),
-        "setServerUrl" => os::<OrpcCtx>()
-            .input(orpc_specta::specta::<SetServerUrlInput>())
-            .output(orpc_specta::specta::<AuthStatus>())
-            .handler(set_server_url),
     }
 }

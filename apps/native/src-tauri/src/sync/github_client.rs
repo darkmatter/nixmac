@@ -1,7 +1,6 @@
 //! HTTP client for the server-brokered GitHub App endpoints.
 //!
-//! Unlike [`super::client::SyncClient`] (HMAC against the sync server), these
-//! endpoints live on the nixmac **web origin** and authenticate with a
+//! These endpoints live on the nixmac **web origin** and authenticate with a
 //! per-device Better Auth API key (`nixmac_…`) sent as `x-api-key`. The desktop
 //! never holds the GitHub App key or a long-lived token; the server brokers the
 //! install and mints short-lived, repo-scoped clone tokens.

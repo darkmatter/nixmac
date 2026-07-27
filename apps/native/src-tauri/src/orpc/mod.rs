@@ -32,7 +32,6 @@ mod prompt_history;
 mod scanner;
 mod settings;
 mod summarized_changes;
-mod sync;
 mod system;
 mod updater;
 
@@ -61,7 +60,6 @@ pub fn build_router() -> Router<OrpcCtx> {
         .nest("scanner", scanner::routes())
         .nest("billing", billing::routes())
         .nest("system", system::routes())
-        .nest("sync", sync::routes())
         .nest("feedback", feedback::routes())
         .nest("settings", settings::routes())
         .nest("devConfigs", dev_configs::routes())

@@ -77,25 +77,17 @@ email: string }
 
 /**
  * Snapshot of the desktop client's authentication state, returned by
- * `account_status`. The HMAC secret is never included.
+ * `account_status`. The device API key is never included.
  */
 export type AuthStatus = { 
 /**
- * Whether a usable account credential is stored on this device.
+ * Whether a usable device API key is stored on this device.
  */
 signedIn: boolean; 
 /**
- * The signed-in account, when `signed_in` is true.
+ * The signed-in account, when `signed_in` is true and metadata is present.
  */
 account: AuthAccount | null; 
-/**
- * Public credential/key identifier sent in the `Authorization` header.
- */
-keyId: string | null; 
-/**
- * Base URL of the sync server this device is configured to talk to.
- */
-serverUrl: string; 
 /**
  * Whether this device can call server-brokered GitHub endpoints (has a
  * minted Better Auth api-key for the web origin).
@@ -2096,44 +2088,6 @@ changes: SummarizedChange[];
  * Change hashes expected in the set but missing from the database.
  */
 missedHashes: string[] }
-
-/**
- * Remote sync state for the current account, returned by `sync_status`.
- */
-export type SyncRemoteStatus = { 
-/**
- * Whether the server has a stored configuration snapshot for this account.
- */
-configured: boolean; 
-/**
- * Commit hash of the latest snapshot the server holds, if any.
- */
-headCommitHash: string | null; 
-/**
- * Unix timestamp (seconds) of the latest server-side snapshot, if any.
- */
-updatedAt: number | null; 
-/**
- * Number of devices currently registered to the account.
- */
-deviceCount: number }
-
-/**
- * Result of a `sync_push` or `sync_pull` operation.
- */
-export type SyncResult = { 
-/**
- * Whether the operation succeeded end-to-end.
- */
-ok: boolean; 
-/**
- * Commit hash that is now current after the operation, when known.
- */
-headCommitHash: string | null; 
-/**
- * Human-readable status detail for display in the UI.
- */
-message: string }
 
 /**
  * A single macOS system default that differs from the factory value.
