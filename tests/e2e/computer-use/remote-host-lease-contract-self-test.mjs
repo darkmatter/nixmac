@@ -573,6 +573,72 @@ stderr=${recoveredRerun.stderr}`,
     "owner-matched release must return the final heartbeat and remote release time",
   );
 
+  let releaseResidueScenarioIndex = 0;
+  const releaseWithAdversarialResidue = (hookBody, expectedError) => {
+    releaseResidueScenarioIndex += 1;
+    const scenarioLeaseRoot = path.join(
+      fixtureRoot,
+      `nixmac-host-lease-contract-release-residue-${releaseResidueScenarioIndex}`,
+      "remote-lease",
+    );
+    mkdirSync(scenarioLeaseRoot, { recursive: true });
+    const scenarioEnv = {
+      ...fixtureEnv,
+      NIXMAC_E2E_LEASE_ROOT: scenarioLeaseRoot,
+    };
+    const scenarioAcquire = invoke(
+      "acquire",
+      "owner-a",
+      ["--wait-seconds", "0", "--poll-seconds", "1", "--max-hold-seconds", "60"],
+      scenarioEnv,
+    );
+    assert.equal(
+      scenarioAcquire.status,
+      0,
+      `release residue scenario ${releaseResidueScenarioIndex} acquisition failed: ${scenarioAcquire.stderr}`,
+    );
+    const scenarioHook = path.join(
+      fixtureRoot,
+      `write-adversarial-release-residue-${releaseResidueScenarioIndex}`,
+    );
+    writeFileSync(scenarioHook, `#!/usr/bin/env bash\nset -euo pipefail\n${hookBody}\n`);
+    chmodSync(scenarioHook, 0o700);
+    const scenarioRelease = invoke("release", "owner-a", [], {
+      ...scenarioEnv,
+      NIXMAC_E2E_LEASE_RELEASE_BEFORE_STOP_TEST_HOOK: scenarioHook,
+    });
+    assert.equal(
+      scenarioRelease.status,
+      73,
+      `release residue scenario ${releaseResidueScenarioIndex} must quarantine: ${scenarioRelease.stderr}`,
+    );
+    assert.match(scenarioRelease.stderr, expectedError);
+  };
+
+  releaseWithAdversarialResidue(
+    `printf 'invalid\n' > "$1/heartbeat.tmp.not-a-pid"`,
+    /invalid heartbeat temporary file name/,
+  );
+  const heartbeatSymlinkTarget = path.join(fixtureRoot, "heartbeat-symlink-target");
+  writeFileSync(heartbeatSymlinkTarget, "must remain untouched\n");
+  releaseWithAdversarialResidue(
+    `ln -s ${JSON.stringify(heartbeatSymlinkTarget)} "$1/heartbeat.tmp.777"`,
+    /unsafe heartbeat temporary file/,
+  );
+  assert.equal(
+    readFileSync(heartbeatSymlinkTarget, "utf8"),
+    "must remain untouched\n",
+    "release quarantine must not follow or alter a heartbeat residue symlink target",
+  );
+  releaseWithAdversarialResidue(
+    `head -c 64 /dev/zero > "$1/heartbeat.tmp.888"`,
+    /invalid heartbeat temporary file/,
+  );
+  releaseWithAdversarialResidue(
+    `mkdir "$1/heartbeat.tmp.999"`,
+    /unsafe heartbeat temporary file/,
+  );
+
   const acquiredForUnavailableLiveness = invoke("acquire", "owner-a", [
     "--wait-seconds",
     "0",
