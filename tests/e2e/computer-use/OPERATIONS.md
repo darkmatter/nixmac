@@ -152,12 +152,28 @@ incomplete checked-in contract.
 
 The first production topology is a horizontally scalable pool of dedicated,
 full-admin cloud Apple-silicon hosts running the capacity-one Tart/Cilicon
-contract. MacStadium bare-metal IaaS is the default provider direction because
-it preserves host-controlled runtime and destruction attestation while leaving
-an Orka migration path; a MacinCloud dedicated host is acceptable as an
-alternative only if it passes the same root access, stable host
-identity, networking, reimage, and support requirements. MBP-23, personal Macs,
-and the shared build fleet are not production capacity.
+contract. The first paid qualification spike uses one AWS EC2 Mac Dedicated
+Host because it is the fastest serious way to test Tart, Cilicon, TCC, and
+host-rooted destruction without committing to a permanent provider. Production
+provider selection remains open until AWS EC2 Mac, MacStadium bare-metal IaaS,
+and an Orka-native backend have comparable lifecycle evidence, capacity data,
+and real quotes. MacinCloud pay-as-you-go is ineligible because it lacks the
+required administrative control; a dedicated plan is viable only if it passes
+the same root access, stable host identity, networking, reimage, and support
+requirements. MBP-23, personal Macs, and the shared build fleet are not
+production capacity.
+
+Before allocating the AWS spike, prefer an established account, request the
+Mac Dedicated Host quota first, and confirm capacity and price. Start with
+`mac2-m2.metal`; declare `mac2-m2pro.metal`, `mac-m4.metal`, and a second
+qualified region as fallbacks rather than waiting inside a paid window. Use an
+AWS-vended Tahoe image on at least 300 GB of encrypted gp3 storage provisioned
+for 10,000 IOPS and 400 MiB/s. Budget one interactive first-login pass to
+complete Setup Assistant, approve Local Network Privacy, and prove the
+dedicated service user's auto-login and Aqua session after reboot. Do not use
+stop, terminate, and relaunch as routine mid-window recovery because
+Apple-silicon host scrubbing can consume hours; prefer in-place repair,
+reclone, and reboot.
 
 Orka is not a thin adapter over this substrate. The checked-in image is Tart
 format, the lifecycle trust root is a customer-controlled host process, and the
@@ -187,7 +203,20 @@ After PR #604 lands, activate the lane only through this sequence:
 1. Derive a small E2E image layer from #604's Packer, Tart, pinned Cirrus
    Tahoe-base, GHCR, isolated-builder, Xcode-verification, and secret-scan
    primitives. Do not copy or fork the full Xcode recipe.
-1. Publish and consume the E2E image only by immutable `@sha256` reference.
+1. Publish the E2E image as a private package and consume it only by immutable
+   `@sha256` reference. At installation and image rotation, a short-lived
+   classic PAT scoped only to `read:packages` may authenticate one host-side
+   `tart pull` through stdin; GitHub Container Registry CLI authentication does
+   not accept a GitHub App installation token. Give the PAT a short expiration.
+   Do not persist it or give it to Cilicon. After the pull, prove an
+   unauthenticated clone from the complete digest cache and configure Cilicon
+   against the direct local cache bundle, not an OCI URL. GitHub Container
+   Registry creates new packages private by default and does not permit a
+   public package to become private again, so the image workflow refuses to
+   push when the namespace permits anonymous tag reads and proves the published
+   digest still denies anonymous manifest reads immediately after publishing.
+   The authenticated digest pull that follows independently proves authorized
+   access.
    Pin the CuaDriver artifact, executable, and app-tree digests, CLI/app version,
    bundle ID, signing identity, Team ID, app path, app-owned executable, and CLI
    symlink.
@@ -376,25 +405,32 @@ sudo bash ops/runner/install-cilicon-e2e-host.sh \
   --attestor-key <host-ed25519-private-key.pem> \
   --runner-key <runner-provisioner-app.pem> \
   --inventory-key <inventory-read-app.pem> \
-  --sink-key <sink-write-app.pem>
+  --sink-key <sink-write-app.pem> \
+  --registry-username <classic-pat-owner> \
+  --registry-token-file <temporary-root-owned-0600-token-file>
 ```
 
 The installer verifies that the Ed25519 private key matches the contract,
 requires three RSA GitHub App keys, proves the digest-pinned GHCR image is
-anonymously pullable, prewarms the service user's complete Tart OCI cache before
-starting the first cycle, checksum-pins Cilicon 2.4.2, compiles the exact-PID normal
+private, accepts its short-lived package-read token only from a root-owned
+`0600` file, prewarms the service user's complete Tart OCI cache, and proves
+that the immutable cached bundle is usable without credentials before starting
+the first cycle. It checksum-pins Cilicon 2.4.2, compiles the exact-PID normal
 termination helper with the Apple toolchain, installs capacity-one launchd
-state with an absolute Node path, gives credentials only to the non-personal
-service user, bounds retained cycle history and logs, and starts the LaunchAgent
-only inside that user's logged-in Aqua session. Cilicon 2.4.2 cannot
-authenticate OCI pulls, so the secret-free runner image package must remain
-public. Never copy host credentials into the Tart image.
+state with an absolute Node path and direct local image-cache root, gives
+long-lived credentials only to the non-personal service user, bounds retained
+cycle history and logs, and starts the LaunchAgent only inside that user's
+logged-in Aqua session. Cilicon receives a local bundle path and never receives
+registry credentials. Delete the caller-owned temporary token file immediately
+after installation. Never copy host credentials into the Tart image.
 
-Before signing a provider commitment, record real quotes and compare dedicated
-Tart/Cilicon, Orka, and GitHub-hosted arm64 runners. GitHub-hosted runners remain
-useful for builds and cheap smoke tests, but the authoritative Product Proof
-lane still requires a qualified immutable image, persistent TCC identity, and
-independent destruction proof. As a seed workload on 2026-07-27,
+Treat the one-host AWS run as qualification evidence, not a provider
+commitment. Before choosing production capacity, record real quotes and compare
+AWS EC2 Mac, MacStadium bare metal, an Orka-native backend, and GitHub-hosted
+arm64 runners. GitHub-hosted runners remain useful for builds and cheap smoke
+tests, but the authoritative Product Proof lane still requires a qualified
+immutable image, persistent TCC identity, and independent destruction proof.
+As a seed workload on 2026-07-27,
 `origin/main` showed 99 PR-shaped commits over 30 days and a 90-day burst peak
 of eight in one hour; replace that snapshot with Centaur arrival telemetry.
 

@@ -503,6 +503,62 @@ jobs:
             exit 1
           fi
 
+      - name: Require unused or private E2E package namespace
+        shell: bash
+        run: |
+          set -euo pipefail
+          repository="$E2E_IMAGE_NAME"
+          token_response="$RUNNER_TEMP/nixmac-e2e-anonymous-token.json"
+          token_status="$(
+            curl --silent --show-error --location --retry 3 \
+              --proto '=https' --tlsv1.2 \
+              --get --data-urlencode "scope=repository:${repository}:pull" \
+              -o "$token_response" \
+              -w '%{http_code}' \
+              "https://ghcr.io/token"
+          )"
+          case "$token_status" in
+            401|403|404)
+              echo "E2E package namespace is unused or denies anonymous reads."
+              exit 0
+              ;;
+            200) ;;
+            *)
+              echo "::error::Could not test anonymous E2E registry access (token HTTP $token_status)"
+              cat "$token_response" >&2
+              exit 1
+              ;;
+          esac
+          anonymous_token="$(
+            /usr/bin/python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])' \
+              < "$token_response"
+          )"
+          test -n "$anonymous_token"
+          response="$RUNNER_TEMP/nixmac-e2e-anonymous-tags.json"
+          manifest_status="$(
+            curl --silent --show-error --location --retry 3 \
+              --proto '=https' --tlsv1.2 \
+              -H "Authorization: Bearer $anonymous_token" \
+              -H 'Accept: application/json' \
+              -o "$response" \
+              -w '%{http_code}' \
+              "https://ghcr.io/v2/${repository}/tags/list?n=1"
+          )"
+          case "$manifest_status" in
+            401|403|404)
+              echo "E2E package namespace is unused or denies anonymous reads."
+              ;;
+            200)
+              echo "::error::Existing E2E package namespace permits anonymous reads; refusing to publish"
+              exit 1
+              ;;
+            *)
+              echo "::error::Could not prove E2E package namespace privacy (HTTP $manifest_status)"
+              cat "$response" >&2
+              exit 1
+              ;;
+          esac
+
       - name: Push E2E candidate image
         id: push-e2e
         shell: bash
@@ -517,6 +573,7 @@ jobs:
             "$image:$tag" \
             --label "org.opencontainers.image.revision=$GITHUB_SHA" \
             --label "org.opencontainers.image.created=$built_at" \
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
             --label "io.darkmatter.nixmac.base-image=$QUALIFIED_BASE_IMAGE" \
             --label "io.darkmatter.nixmac.cua-driver-version=0.12.6"
           digest="$(oras manifest fetch --descriptor "$image:$tag" | jq -r '.digest // empty')"
@@ -527,37 +584,65 @@ jobs:
             echo "built_at=$built_at"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Prove anonymous immutable E2E pull
+      - name: Prove published E2E digest denies anonymous reads
         shell: bash
         env:
           E2E_PUBLISHED_DIGEST: ${{ steps.push-e2e.outputs.digest }}
         run: |
           set -euo pipefail
           repository="$E2E_IMAGE_NAME"
-          token="$(
-            curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+          token_response="$RUNNER_TEMP/nixmac-e2e-anonymous-token-after-push.json"
+          token_status="$(
+            curl --silent --show-error --location --retry 3 \
+              --proto '=https' --tlsv1.2 \
               --get --data-urlencode "scope=repository:${repository}:pull" \
-              "https://ghcr.io/token" |
-              jq -er '.token'
+              -o "$token_response" \
+              -w '%{http_code}' \
+              "https://ghcr.io/token"
           )"
-          headers="$RUNNER_TEMP/nixmac-e2e-anonymous-manifest.headers"
-          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
-            -H "Authorization: Bearer $token" \
-            -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json' \
-            -D "$headers" \
-            -o /dev/null \
-            "https://ghcr.io/v2/${repository}/manifests/${E2E_PUBLISHED_DIGEST}"
-          observed="$(
-            awk 'BEGIN{IGNORECASE=1} /^docker-content-digest:/ {gsub("\\r","",$2); print $2}' \
-              "$headers" |
-              tail -1
+          case "$token_status" in
+            401|403|404)
+              echo "Published E2E digest denies anonymous reads."
+              exit 0
+              ;;
+            200) ;;
+            *)
+              echo "::error::Could not test published E2E registry access (token HTTP $token_status)"
+              cat "$token_response" >&2
+              exit 1
+              ;;
+          esac
+          anonymous_token="$(
+            /usr/bin/python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])' \
+              < "$token_response"
           )"
-          if [ "$observed" != "$E2E_PUBLISHED_DIGEST" ]; then
-            echo "::error::Cilicon requires the secret-free E2E package to be public and digest-stable"
-            exit 1
-          fi
+          test -n "$anonymous_token"
+          response="$RUNNER_TEMP/nixmac-e2e-anonymous-manifest.json"
+          manifest_status="$(
+            curl --silent --show-error --location --retry 3 \
+              --proto '=https' --tlsv1.2 \
+              -H "Authorization: Bearer $anonymous_token" \
+              -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json' \
+              -o "$response" \
+              -w '%{http_code}' \
+              "https://ghcr.io/v2/${repository}/manifests/${E2E_PUBLISHED_DIGEST}"
+          )"
+          case "$manifest_status" in
+            401|403|404)
+              echo "Published E2E digest denies anonymous reads."
+              ;;
+            200)
+              echo "::error::Published E2E digest permits anonymous reads"
+              exit 1
+              ;;
+            *)
+              echo "::error::Could not prove published E2E digest privacy (HTTP $manifest_status)"
+              cat "$response" >&2
+              exit 1
+              ;;
+          esac
 
-      - name: Pull E2E image by immutable digest
+      - name: Pull private E2E image by immutable digest
         shell: bash
         env:
           E2E_PUBLISHED_IMAGE: ${{ steps.push-e2e.outputs.image }}

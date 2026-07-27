@@ -15,6 +15,7 @@ RUNNER_APP_ID="${NIXMAC_E2E_RUNNER_APP_ID:-}"
 SSH_USERNAME="${NIXMAC_E2E_SSH_USERNAME:-nixmac_e2e}"
 SSH_PASSWORD="${NIXMAC_E2E_SSH_PASSWORD:-nixmac-e2e-local-only}"
 HOST_ROOT="${NIXMAC_E2E_HOST_ROOT:-/private/var/db/nixmac-e2e-host}"
+IMAGE_CACHE_ROOT="${NIXMAC_E2E_IMAGE_CACHE_ROOT:-}"
 CYCLES_ROOT="$HOST_ROOT/cycles"
 HISTORY_ROOT="$HOST_ROOT/history"
 CLONES_ROOT="${NIXMAC_E2E_CLONES_ROOT:-/Users/Shared/Cilicon/vms}"
@@ -546,10 +547,17 @@ new_cycle() {
     --runner-name "$runner_name" \
     --runner-app-id "$RUNNER_APP_ID" \
     --runner-private-key-path "$RUNNER_PRIVATE_KEY" \
+    --image-cache-root "$IMAGE_CACHE_ROOT" \
     --ssh-username "$SSH_USERNAME" \
     --ssh-password "$SSH_PASSWORD"
 
-  "$CILICON_BINARY" -config-path "$config" >"$cycle_dir/cilicon.log" 2>&1 &
+  # Cilicon 2.4.2 strips the leading slash from local source paths before
+  # resolving them against its cwd. Keep cwd fixed at / so the preseeded
+  # absolute cache bundle remains absolute during launchd and manual recovery.
+  (
+    cd /
+    "$CILICON_BINARY" -config-path "$config"
+  ) >"$cycle_dir/cilicon.log" 2>&1 &
   pid=$!
   printf '%s\n' "$pid" > "$cycle_dir/cilicon.pid"
   log "started one Cilicon cycle $cycle_id as pid $pid"

@@ -10,6 +10,7 @@ import {
   verify as verifySignature,
 } from "node:crypto";
 import {
+  lstat,
   mkdir,
   readFile,
   realpath,
@@ -165,10 +166,54 @@ function yamlScalar(value) {
   return JSON.stringify(value);
 }
 
-function imageForCilicon(reference) {
+function imageCachePathForCilicon(reference, imageCacheRoot) {
   const match = /^(ghcr\.io\/[a-z0-9._/-]+)@(sha256:[0-9a-f]{64})$/.exec(reference);
   if (!match) fail("qualified image reference is not immutable GHCR");
-  return `oci://${match[1]}:${match[2]}`;
+  absoluteNormalized(imageCacheRoot, "imageCacheRoot");
+  return path.join(imageCacheRoot, match[1], match[2]);
+}
+
+export async function validateCachedImageBundle(reference, imageCacheRoot) {
+  const cachePath = imageCachePathForCilicon(reference, imageCacheRoot);
+  let cacheInfo;
+  try {
+    cacheInfo = await lstat(cachePath);
+  } catch {
+    fail(`preseeded image cache is missing: ${cachePath}`);
+  }
+  if (!cacheInfo.isDirectory() || cacheInfo.isSymbolicLink()) {
+    fail("preseeded image cache must be a direct directory");
+  }
+  if ((await realpath(cachePath)) !== cachePath) {
+    fail("preseeded image cache must be canonical and symlink-free");
+  }
+  for (const name of ["config.json", "disk.img", "manifest.json", "nvram.bin"]) {
+    const filePath = path.join(cachePath, name);
+    let fileInfo;
+    try {
+      fileInfo = await lstat(filePath);
+    } catch {
+      fail(`preseeded image cache is incomplete: ${name}`);
+    }
+    if (!fileInfo.isFile() || fileInfo.isSymbolicLink() || fileInfo.size <= 0) {
+      fail(`preseeded image cache file is invalid: ${name}`);
+    }
+  }
+  for (const marker of ["UNFINISHED", ".unfinished"]) {
+    try {
+      await lstat(path.join(cachePath, marker));
+      fail(`preseeded image cache is unfinished: ${marker}`);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message === `preseeded image cache is unfinished: ${marker}`
+      ) {
+        throw error;
+      }
+      if (!error || typeof error !== "object" || error.code !== "ENOENT") throw error;
+    }
+  }
+  return cachePath;
 }
 
 function validateCycleIdentity({ hostId, cycleId, clonePath, runnerName, cycleDir }) {
@@ -186,6 +231,7 @@ function renderCiliconConfig({
   state,
   runnerAppId,
   runnerPrivateKeyPath,
+  imageCacheRoot,
   sshUsername,
   sshPassword,
 }) {
@@ -241,7 +287,9 @@ function renderCiliconConfig({
     "while :; do /bin/sleep 3600; done",
   ].join("; ");
   return [
-    `source: ${yamlScalar(imageForCilicon(contract.qualification.image.reference))}`,
+    `source: ${yamlScalar(
+      imageCachePathForCilicon(contract.qualification.image.reference, imageCacheRoot),
+    )}`,
     `vmClonePath: ${yamlScalar(state.clonePath)}`,
     `runnerName: ${yamlScalar(state.runnerName)}`,
     "retryDelay: 600",
@@ -300,6 +348,7 @@ export async function prepareCycle({
   runnerName,
   runnerAppId,
   runnerPrivateKeyPath,
+  imageCacheRoot,
   sshUsername,
   sshPassword,
   now = () => new Date(),
@@ -309,6 +358,7 @@ export async function prepareCycle({
   validateCycleIdentity({ hostId, cycleId, clonePath, runnerName, cycleDir });
   const resolvedCycleDir = await realpath(cycleDir);
   if (resolvedCycleDir !== cycleDir) fail("cycleDir must be canonical and symlink-free");
+  await validateCachedImageBundle(contract.qualification.image.reference, imageCacheRoot);
   await mkdir(path.join(cycleDir, "exchange"), { recursive: true, mode: 0o700 });
   const createdAt = now().toISOString();
   verifyImageAdmission(contract, { admittedAt: createdAt });
@@ -329,6 +379,7 @@ export async function prepareCycle({
     state,
     runnerAppId: Number(runnerAppId),
     runnerPrivateKeyPath,
+    imageCacheRoot,
     sshUsername,
     sshPassword,
   });
@@ -1239,10 +1290,20 @@ export async function attestLifecycle({
 
 async function selfTest() {
   assert.equal(
-    imageForCilicon(`ghcr.io/darkmatter/nixmac-e2e-runner@sha256:${"a".repeat(64)}`),
-    `oci://ghcr.io/darkmatter/nixmac-e2e-runner:sha256:${"a".repeat(64)}`,
+    imageCachePathForCilicon(
+      `ghcr.io/darkmatter/nixmac-e2e-runner@sha256:${"a".repeat(64)}`,
+      "/Users/nixmac_e2e/.tart/cache/OCIs",
+    ),
+    `/Users/nixmac_e2e/.tart/cache/OCIs/ghcr.io/darkmatter/nixmac-e2e-runner/sha256:${"a".repeat(64)}`,
   );
-  assert.throws(() => imageForCilicon("ghcr.io/darkmatter/nixmac-e2e-runner:latest"), /immutable/);
+  assert.throws(
+    () =>
+      imageCachePathForCilicon(
+        "ghcr.io/darkmatter/nixmac-e2e-runner:latest",
+        "/Users/nixmac_e2e/.tart/cache/OCIs",
+      ),
+    /immutable/,
+  );
   assert.throws(
     () =>
       validateCycleIdentity({
@@ -1295,6 +1356,7 @@ async function main(argv) {
       "runner-name",
       "runner-app-id",
       "runner-private-key-path",
+      "image-cache-root",
       "ssh-username",
       "ssh-password",
     ]);
@@ -1309,6 +1371,7 @@ async function main(argv) {
       runnerName: values["runner-name"],
       runnerAppId: values["runner-app-id"],
       runnerPrivateKeyPath: values["runner-private-key-path"],
+      imageCacheRoot: values["image-cache-root"],
       sshUsername: values["ssh-username"],
       sshPassword: values["ssh-password"],
     });

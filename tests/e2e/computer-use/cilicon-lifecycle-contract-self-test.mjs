@@ -9,7 +9,9 @@ import {
   mkdtemp,
   readFile,
   realpath,
+  rename,
   rm,
+  symlink,
   writeFile,
 } from "node:fs/promises";
 import os from "node:os";
@@ -41,6 +43,7 @@ import {
   prepareCycle,
   retireIdleRunner,
   signRuntimeObservation,
+  validateCachedImageBundle,
   waitForLocalCloneAbsence,
   waitForRunnerDeregistration,
 } from "../../../ops/runner/cilicon-e2e-host.mjs";
@@ -1185,7 +1188,15 @@ assert.match(operations, /one host\s+quarantined/i);
 assert.match(operations, /shadow-qualified-v1[\s\S]*production-qualified-v1/i);
 assert.match(operations, /runtime-observation\.json[\s\S]*Ed25519/i);
 assert.match(operations, /durable[\s\S]*consumption ledger/i);
-assert.match(operations, /MacStadium bare-metal IaaS[\s\S]*Orka is not a thin adapter/i);
+assert.match(
+  operations,
+  /first paid qualification spike uses one AWS EC2 Mac[\s\S]*MacStadium bare-metal IaaS[\s\S]*Orka is not a thin adapter/i,
+);
+assert.match(operations, /300 GB[\s\S]*10,000 IOPS[\s\S]*400 MiB\/s/i);
+assert.match(
+  operations,
+  /short-lived[\s\S]*classic PAT scoped only to `read:packages`[\s\S]*direct local cache bundle/i,
+);
 assert.match(operations, /cannot silently grant Screen Recording/i);
 assert.match(operations, /maximum qualified age of[\s\S]*seven days/i);
 assert.match(operations, /qualified execution slots/i);
@@ -1285,6 +1296,11 @@ assert.match(cycleWrapper, /check-image-admission/);
 assert.match(cycleWrapper, /check-cycle-admission/);
 assert.match(cycleWrapper, /wait-clone-absent/);
 assert.match(cycleWrapper, /retire-idle-runner/);
+assert.match(
+  cycleWrapper,
+  /\(\s*cd \/\s*"\$CILICON_BINARY" -config-path "\$config"\s*\)/,
+  "Cilicon 2.4.2 local paths require a deterministic root cwd",
+);
 assert.match(cycleWrapper, /DRAIN_SENTINEL/);
 assert.match(cycleWrapper, /PENDING_DRAIN_CLEANUP/);
 assert.match(cycleWrapper, /drain_idle_cycle/);
@@ -1354,9 +1370,13 @@ const hostInstaller = readFileSync(hostInstallerPath, "utf8");
 assert.match(hostInstaller, /visudo -cf/);
 assert.match(hostInstaller, /launchctl bootstrap/);
 assert.match(hostInstaller, /attestor private key does not match/);
-assert.match(hostInstaller, /ghcr\.io\/token/);
-assert.match(hostInstaller, /docker-content-digest/);
+assert.match(hostInstaller, /registry-token-file/);
+assert.match(hostInstaller, /TART_REGISTRY_PASSWORD/);
+assert.match(hostInstaller, /tart pull "\$image_reference"/);
 assert.match(hostInstaller, /tart clone "\$image_reference"/);
+assert.match(hostInstaller, /NIXMAC_E2E_IMAGE_CACHE_ROOT/);
+assert.match(hostInstaller, /UNFINISHED/);
+assert.doesNotMatch(hostInstaller, /ghcr\.io\/token/);
 assert.match(hostInstaller, /swiftc -O/);
 assert.match(hostInstaller, /%s %s:staff 640 10 10240 \* J\\n/);
 assert.doesNotMatch(hostInstaller, /%s\\\\t640/);
@@ -1373,8 +1393,14 @@ assert.match(imageWorkflowSource, /e2e_image_digest/);
 assert.match(imageWorkflowSource, /first boot/i);
 assert.match(imageWorkflowSource, /second cold boot/i);
 assert.match(imageWorkflowSource, /secret scan/i);
-assert.match(imageWorkflowSource, /Prove anonymous immutable E2E pull/);
-assert.match(imageWorkflowSource, /docker-content-digest/);
+assert.match(imageWorkflowSource, /Require unused or private E2E package namespace/);
+assert.match(imageWorkflowSource, /Existing E2E package namespace permits anonymous reads/);
+assert.match(imageWorkflowSource, /Prove published E2E digest denies anonymous reads/);
+assert.match(imageWorkflowSource, /Published E2E digest permits anonymous reads/);
+assert.match(imageWorkflowSource, /tags\/list\?n=1/);
+assert.doesNotMatch(imageWorkflowSource, /gh api.*packages/);
+assert.match(imageWorkflowSource, /Pull private E2E image by immutable digest/);
+assert.doesNotMatch(imageWorkflowSource, /Prove anonymous immutable E2E pull/);
 assert.match(
   imageWorkflowSource,
   /secret scan[\s\S]*push/i,
@@ -1401,6 +1427,14 @@ try {
   const hostConfigPath = path.join(hostCycleRoot, "cycle-1", "cilicon.yml");
   const hostCycleDir = path.dirname(hostStatePath);
   const hostClonePath = path.join(hostCycleRoot, "clones", "cycle-1");
+  const hostImageCacheRoot = path.join(hostCycleRoot, "image-cache");
+  const hostImageCachePath = path.join(
+    hostImageCacheRoot,
+    "ghcr.io",
+    "darkmatter",
+    "nixmac-e2e-runner",
+    `sha256:${"a".repeat(64)}`,
+  );
   const hostRunnerKeyPath = path.join(hostCycleRoot, "runner.pem");
   const hostAttestorKeyPath = path.join(hostCycleRoot, "attestor.pem");
   const hostInventoryKeyPath = path.join(hostCycleRoot, "inventory.pem");
@@ -1416,6 +1450,60 @@ try {
   const hostQuarantinePath = path.join(hostCycleRoot, "quarantined.json");
   await mkdir(hostCycleDir, { recursive: true });
   await mkdir(path.dirname(hostClonePath), { recursive: true });
+  await mkdir(hostImageCachePath, { recursive: true });
+  for (const name of ["config.json", "disk.img", "manifest.json", "nvram.bin"]) {
+    await writeFile(path.join(hostImageCachePath, name), `${name}\n`);
+  }
+  const qualifiedImageReference = qualified.qualification.image.reference;
+  assert.equal(
+    await validateCachedImageBundle(qualifiedImageReference, hostImageCacheRoot),
+    hostImageCachePath,
+  );
+  await assert.rejects(
+    validateCachedImageBundle(qualifiedImageReference, "relative/image-cache"),
+    /imageCacheRoot must be.*absolute/,
+  );
+  await assert.rejects(
+    validateCachedImageBundle(
+      qualifiedImageReference,
+      path.join(hostCycleRoot, "missing-image-cache"),
+    ),
+    /preseeded image cache is missing/,
+  );
+  const manifestFixture = path.join(hostImageCachePath, "manifest.json");
+  await rm(manifestFixture);
+  await assert.rejects(
+    validateCachedImageBundle(qualifiedImageReference, hostImageCacheRoot),
+    /preseeded image cache is incomplete: manifest\.json/,
+  );
+  await writeFile(manifestFixture, "manifest.json\n");
+  const diskFixture = path.join(hostImageCachePath, "disk.img");
+  const diskSymlinkTarget = path.join(hostCycleRoot, "symlinked-disk.img");
+  await rm(diskFixture);
+  await writeFile(diskSymlinkTarget, "disk fixture\n");
+  await symlink(diskSymlinkTarget, diskFixture);
+  await assert.rejects(
+    validateCachedImageBundle(qualifiedImageReference, hostImageCacheRoot),
+    /preseeded image cache file is invalid: disk\.img/,
+  );
+  await rm(diskFixture);
+  await writeFile(diskFixture, "disk.img\n");
+  const unfinishedFixture = path.join(hostImageCachePath, "UNFINISHED");
+  await writeFile(unfinishedFixture, "partial\n");
+  await assert.rejects(
+    validateCachedImageBundle(qualifiedImageReference, hostImageCacheRoot),
+    /preseeded image cache is unfinished: UNFINISHED/,
+  );
+  await rm(unfinishedFixture);
+  const realImageCachePath = `${hostImageCachePath}.real`;
+  await rename(hostImageCachePath, realImageCachePath);
+  await symlink(realImageCachePath, hostImageCachePath);
+  await assert.rejects(
+    validateCachedImageBundle(qualifiedImageReference, hostImageCacheRoot),
+    /preseeded image cache must be a direct directory/,
+  );
+  await rm(hostImageCachePath);
+  await rename(realImageCachePath, hostImageCachePath);
   await writeFile(hostContractPath, `${JSON.stringify(qualified, null, 2)}\n`);
   await writeFile(hostRunnerKeyPath, "runner fixture\n");
   await writeFile(hostAttestorKeyPath, privateKey.export({ type: "pkcs8", format: "pem" }));
@@ -1440,10 +1528,16 @@ try {
     runnerName: "cilicon-host-01-cycle-1",
     runnerAppId: "4004",
     runnerPrivateKeyPath: hostRunnerKeyPath,
+    imageCacheRoot: hostImageCacheRoot,
     sshUsername: "nixmac_e2e",
     sshPassword: "fixture-only",
     now: () => new Date("2026-07-26T18:00:00.000Z"),
   });
+  assert.match(
+    await readFile(hostConfigPath, "utf8"),
+    new RegExp(`source: ${JSON.stringify(hostImageCachePath).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
+    "Cilicon must clone from the preseeded local digest bundle",
+  );
   assert.equal(
     (
       await checkCycleAdmission({
@@ -1568,7 +1662,11 @@ try {
     assert.deepEqual(cloneAbsence.matchingClonePaths, []);
   }
   const renderedConfig = await readFile(hostConfigPath, "utf8");
-  assert.match(renderedConfig, /oci:\/\/ghcr\.io\/darkmatter\/nixmac-e2e-runner:sha256:/);
+  assert.match(
+    renderedConfig,
+    new RegExp(hostImageCachePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+  );
+  assert.doesNotMatch(renderedConfig, /oci:\/\//);
   assert.match(renderedConfig, /runtime-probe\.json/);
   assert.match(renderedConfig, /runtime-observation\.json/);
   assert.match(renderedConfig, /guestFolder: "nixmac-e2e"/);

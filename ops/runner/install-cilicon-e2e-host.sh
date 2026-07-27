@@ -11,10 +11,12 @@ ATTESTOR_KEY=""
 RUNNER_KEY=""
 INVENTORY_KEY=""
 SINK_KEY=""
+REGISTRY_USERNAME=""
+REGISTRY_TOKEN_FILE=""
 NODE_BINARY="/opt/homebrew/bin/node"
 
 usage() {
-  echo "usage: sudo install-cilicon-e2e-host.sh --service-user USER --runner-app-id ID --host-id ID --contract FILE --attestor-key FILE --runner-key FILE --inventory-key FILE --sink-key FILE" >&2
+  echo "usage: sudo install-cilicon-e2e-host.sh --service-user USER --runner-app-id ID --host-id ID --contract FILE --attestor-key FILE --runner-key FILE --inventory-key FILE --sink-key FILE --registry-username USER --registry-token-file FILE" >&2
 }
 
 while [ "$#" -gt 0 ]; do
@@ -27,6 +29,8 @@ while [ "$#" -gt 0 ]; do
     --runner-key) RUNNER_KEY="$2"; shift 2 ;;
     --inventory-key) INVENTORY_KEY="$2"; shift 2 ;;
     --sink-key) SINK_KEY="$2"; shift 2 ;;
+    --registry-username) REGISTRY_USERNAME="$2"; shift 2 ;;
+    --registry-token-file) REGISTRY_TOKEN_FILE="$2"; shift 2 ;;
     *) usage; exit 64 ;;
   esac
 done
@@ -38,13 +42,19 @@ fi
 [[ "$SERVICE_USER" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]]
 [[ "$RUNNER_APP_ID" =~ ^[1-9][0-9]*$ ]]
 [[ "$HOST_ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]]
+[[ "$REGISTRY_USERNAME" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]]
 service_uid="$(id -u "$SERVICE_USER")"
 service_home="$(dscl . -read "/Users/$SERVICE_USER" NFSHomeDirectory | sed 's/^NFSHomeDirectory: //')"
 test -d "$service_home"
 test -x /opt/homebrew/bin/tart
-for file in "$CONTRACT" "$ATTESTOR_KEY" "$RUNNER_KEY" "$INVENTORY_KEY" "$SINK_KEY"; do
+for file in "$CONTRACT" "$ATTESTOR_KEY" "$RUNNER_KEY" "$INVENTORY_KEY" "$SINK_KEY" "$REGISTRY_TOKEN_FILE"; do
   test -f "$file" && test ! -L "$file"
 done
+token_owner="$(/usr/bin/stat -f '%u' "$REGISTRY_TOKEN_FILE")"
+token_mode="$(/usr/bin/stat -f '%Lp' "$REGISTRY_TOKEN_FILE")"
+test "$token_owner" -eq 0
+test "$token_mode" = "600"
+test -s "$REGISTRY_TOKEN_FILE"
 for command in python3 plutil visudo xcrun; do
   command -v "$command" >/dev/null
 done
@@ -90,8 +100,10 @@ for (const file of rsaPaths) {
 }
 NODE
 
-# Cilicon 2.4.2 has no registry-credential field. Production activation
-# therefore requires the immutable runner image to be anonymously pullable.
+# Cilicon 2.4.2 has no registry-credential field. Authenticate only this
+# one-time Tart pull through stdin, then configure Cilicon against the complete
+# local digest cache. The token is never placed in argv, the Tart image, the
+# launchd environment, or the long-lived host credential directory.
 image_reference="$(
   "$NODE_BINARY" --input-type=module - "$CONTRACT" <<'NODE'
 import { readFileSync } from "node:fs";
@@ -105,38 +117,32 @@ if [[ ! "$image_reference" =~ ^ghcr\.io/([^@]+)@(sha256:[0-9a-f]{64})$ ]]; then
 fi
 image_repository="${BASH_REMATCH[1]}"
 image_digest="${BASH_REMATCH[2]}"
-anonymous_token="$(
-  /usr/bin/curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
-    --get --data-urlencode "scope=repository:${image_repository}:pull" \
-    "https://ghcr.io/token" |
-    /usr/bin/python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])'
-)"
-manifest_headers="$(mktemp /private/tmp/nixmac-e2e-ghcr.XXXXXX.headers)"
 prewarm_vm="nixmac-e2e-prewarm-$(/usr/bin/uuidgen | tr '[:upper:]' '[:lower:]')"
 cleanup_install() {
-  rm -f "$manifest_headers"
   if [ -n "$prewarm_vm" ]; then
     /usr/bin/sudo -u "$SERVICE_USER" /usr/bin/env HOME="$service_home" \
       /opt/homebrew/bin/tart delete "$prewarm_vm" >/dev/null 2>&1 || true
   fi
 }
 trap cleanup_install EXIT
-/usr/bin/curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
-  -H "Authorization: Bearer $anonymous_token" \
-  -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json' \
-  -D "$manifest_headers" \
-  -o /dev/null \
-  "https://ghcr.io/v2/${image_repository}/manifests/${image_digest}"
-observed_digest="$(
-  /usr/bin/awk 'BEGIN{IGNORECASE=1} /^docker-content-digest:/ {gsub("\\r","",$2); print $2}' \
-    "$manifest_headers" |
-    /usr/bin/tail -1
-)"
-test "$observed_digest" = "$image_digest"
 
-# Tart and Cilicon share the service user's ~/.tart/cache/OCIs layout. Pull the
-# complete immutable image before launchd starts the first cycle, then delete
-# only the temporary local clone while retaining the verified OCI cache.
+# The service shell reads the short-lived package token from stdin. Tart
+# supports these environment variables without persisting them to Keychain.
+# shellcheck disable=SC2024 # Root must open the root-only token file before sudo changes user.
+/usr/bin/sudo -H -u "$SERVICE_USER" /bin/bash -c '
+  set -euo pipefail
+  registry_username="$1"
+  image_reference="$2"
+  IFS= read -r TART_REGISTRY_PASSWORD || test -n "$TART_REGISTRY_PASSWORD"
+  test -n "$TART_REGISTRY_PASSWORD"
+  export TART_REGISTRY_USERNAME="$registry_username"
+  export TART_REGISTRY_PASSWORD
+  exec /opt/homebrew/bin/tart pull "$image_reference"
+' _ "$REGISTRY_USERNAME" "$image_reference" < "$REGISTRY_TOKEN_FILE"
+
+# Tart and Cilicon share the service user's ~/.tart/cache/OCIs layout. This
+# clone runs without registry credentials and proves the complete digest cache
+# is sufficient before launchd starts the first cycle.
 /usr/bin/sudo -u "$SERVICE_USER" /usr/bin/env HOME="$service_home" \
   /opt/homebrew/bin/tart clone "$image_reference" "$prewarm_vm"
 cache_path="$service_home/.tart/cache/OCIs/ghcr.io/$image_repository/$image_digest"
@@ -144,7 +150,9 @@ test -d "$cache_path" && test ! -L "$cache_path"
 for cache_file in config.json disk.img manifest.json nvram.bin; do
   test -s "$cache_path/$cache_file" && test ! -L "$cache_path/$cache_file"
 done
-test ! -e "$cache_path/.unfinished"
+for unfinished_marker in UNFINISHED .unfinished; do
+  test ! -e "$cache_path/$unfinished_marker"
+done
 /usr/bin/sudo -u "$SERVICE_USER" /usr/bin/env HOME="$service_home" \
   /opt/homebrew/bin/tart delete "$prewarm_vm"
 prewarm_vm=""
@@ -241,6 +249,9 @@ cp "$SCRIPT_DIR/com.darkmatter.nixmac-e2e-cycle.plist" "$temporary_plist"
   "$temporary_plist"
 /usr/libexec/PlistBuddy \
   -c "Add :EnvironmentVariables:NIXMAC_E2E_NODE_BINARY string $NODE_BINARY" \
+  "$temporary_plist"
+/usr/libexec/PlistBuddy \
+  -c "Add :EnvironmentVariables:NIXMAC_E2E_IMAGE_CACHE_ROOT string $service_home/.tart/cache/OCIs" \
   "$temporary_plist"
 plutil -lint "$temporary_plist"
 target_plist="$launch_agents/com.darkmatter.nixmac-e2e-cycle.plist"
