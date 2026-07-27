@@ -260,7 +260,11 @@ normalize_dmg() {
 
 	detach_with_retry "$mount_point"
 
-	current_kb=$(du -k "$rw_dmg" | awk '{print $1}')
+	# Use the DMG's apparent (logical) size, not host-allocated blocks.
+	# du -k on a sparse UDRW image measures allocated sectors on the host
+	# filesystem, not the DMG's internal logical capacity. stat gives the
+	# apparent size which tracks what hdiutil resize operates on.
+	current_kb=$(stat -f "%z" "$rw_dmg" | awk '{printf "%d", ($1 + 1023) / 1024}')
 	resized_kb=$((current_kb + largest_file_kb + 65536))
 	echo "Growing RW DMG to ${resized_kb}KB (${largest_file_kb}KB largest file + 64MB overhead)"
 	hdiutil resize -size "${resized_kb}k" "$rw_dmg" >/dev/null
