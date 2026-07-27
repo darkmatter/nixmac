@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       mode:
-        description: "Host operation: provision or preflight"
+        description: "Host operation: provision, configure-network, or preflight"
         type: string
         required: true
 
@@ -23,7 +23,7 @@ jobs:
           MODE: ${{ inputs.mode }}
         run: |
           case "$MODE" in
-            provision|preflight) ;;
+            provision|configure-network|preflight) ;;
             *)
               echo "::error::Unsupported image-builder host operation: $MODE"
               exit 1
@@ -37,6 +37,11 @@ jobs:
         if: inputs.mode == 'provision'
         shell: bash
         run: bash ops/images/provision-image-builder.sh
+
+      - name: Configure image-builder networking
+        if: inputs.mode == 'configure-network'
+        shell: bash
+        run: bash ops/images/configure-image-builder-network.sh
 
       - name: Preflight image builder
         if: inputs.mode == 'preflight'

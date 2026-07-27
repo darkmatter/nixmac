@@ -21,6 +21,19 @@ const provisionScript = readFileSync(
   path.join(repoRoot, "ops/images/provision-image-builder.sh"),
   "utf8",
 );
+const configureNetworkScript = readFileSync(
+  path.join(repoRoot, "ops/images/configure-image-builder-network.sh"),
+  "utf8",
+);
+const connectivityScript = readFileSync(
+  path.join(repoRoot, "ops/images/check-base-image-connectivity.sh"),
+  "utf8",
+);
+const sshVmScript = readFileSync(path.join(repoRoot, "ops/images/ssh-vm.sh"), "utf8");
+const sudoersPolicy = readFileSync(
+  path.join(repoRoot, "ops/images/sudoers.d/nixmac-image-builder-network"),
+  "utf8",
+);
 const packerTemplate = readFileSync(
   path.join(repoRoot, "ops/images/nixmac-runner-tahoe.pkr.hcl"),
   "utf8",
@@ -80,6 +93,9 @@ assert.ok(
 for (const [label, script] of [
   ["image-builder preflight", preflightScript],
   ["image-builder provision", provisionScript],
+  ["image-builder network configuration", configureNetworkScript],
+  ["base-image connectivity", connectivityScript],
+  ["VM SSH helper", sshVmScript],
 ]) {
   const result = spawnSync("bash", ["-n"], { input: script, encoding: "utf8" });
   assert.equal(result.status, 0, `${label} script must pass bash -n:\n${result.stderr}`);
@@ -94,6 +110,11 @@ assert.match(
   workflow,
   /Provision image tooling[\s\S]*bash ops\/images\/provision-image-builder\.sh/,
   "image workflow must provision its host through the pinned shared script",
+);
+assert.match(
+  buildWorkflow,
+  /devenv" shell --impure --[\s\S]*bash -euo pipefail -c '[\s\S]*prek run --all-files --show-diff-on-failure[\s\S]*node tests\/e2e\/computer-use\/macos-ci-image-contract-self-test\.mjs[\s\S]*'/,
+  "Linux git hooks and the macOS image contract must both execute inside the pinned devenv shell",
 );
 assert.match(
   provisionScript,
@@ -112,7 +133,6 @@ assert.match(
 );
 for (const [label, artifact] of [
   ["builder provision script", provisionScript],
-  ["builder preflight script", preflightScript],
   ["builder host workflow", hostWorkflow],
 ]) {
   assert.doesNotMatch(
@@ -121,6 +141,45 @@ for (const [label, artifact] of [
     `${label} must not require administrator access or a package manager`,
   );
 }
+const preflightSudoLines = preflightScript
+  .split("\n")
+  .filter((line) => /\bsudo\s+-n\b/.test(line))
+  .map((line) => line.trim());
+assert.deepEqual(
+  preflightSudoLines,
+  ["if ! sudo -n /usr/bin/defaults export com.apple.network.local-network - |"],
+  "preflight may use only the one argv-fixed read-only Local Network policy export",
+);
+assert.doesNotMatch(
+  preflightScript,
+  /\bdefaults\s+write\b|\/sbin\/shutdown/,
+  "preflight must never mutate preferences or schedule a reboot",
+);
+assert.doesNotMatch(
+  configureNetworkScript,
+  /\bsudo\b(?!\s+-n\b)/,
+  "network configuration must use noninteractive sudo only",
+);
+assert.doesNotMatch(
+  configureNetworkScript,
+  /sudo\s+-n\s+(?:\/bin\/)?(?:ba)?sh\b|NOPASSWD:\s*ALL\s*$/m,
+  "network configuration must neither open a root shell nor accept blanket passwordless sudo",
+);
+assert.equal(
+  [...configureNetworkScript.matchAll(/^require_sudo_command /gm)].length,
+  6,
+  "network configuration must preflight exactly the six argv-scoped privileged commands",
+);
+assert.match(
+  sudoersPolicy,
+  /User_Alias NIXMAC_IMAGE_BUILDER = __RUNNER_USER__[\s\S]*\/usr\/bin\/defaults export com\.apple\.network\.local-network -[\s\S]*\/usr\/bin\/defaults read \/Library\/Preferences\/com\.apple\.loginwindow autoLoginUser[\s\S]*\/usr\/bin\/fdesetup status[\s\S]*AllowedEthernetLocalNetworkAddresses -array 10\.0\.0\.0\/8 172\.16\.0\.0\/12 192\.168\.0\.0\/16[\s\S]*AllowedWiFiLocalNetworkAddresses -array 10\.0\.0\.0\/8 172\.16\.0\.0\/12 192\.168\.0\.0\/16[\s\S]*\/sbin\/shutdown -r \+2/,
+  "sudoers template must enumerate only the fixed policy read, recovery checks, exact writes, and delayed reboot",
+);
+assert.doesNotMatch(
+  sudoersPolicy,
+  /NOPASSWD:\s*ALL(?:\s|$)/,
+  "sudoers template must never grant blanket passwordless root",
+);
 assert.match(
   workflow,
   /Validate Xcode artifact[\s\S]*shasum -a 256 "\$XCODE_ARTIFACT"[\s\S]*digest" != "\$EXPECTED_XCODE_ARTIFACT_SHA256"/,
@@ -133,12 +192,12 @@ assert.match(
 );
 assert.match(
   buildWorkflow,
-  /image-builder-provision:[\s\S]*uses: \.\/\.github\/workflows\/macos-ci-image-builder-host\.yaml[\s\S]*mode: provision[\s\S]*image-builder-preflight:[\s\S]*uses: \.\/\.github\/workflows\/macos-ci-image-builder-host\.yaml[\s\S]*mode: preflight/,
-  "registered build workflow must expose secret-capped builder provision and preflight modes",
+  /image-builder-provision:[\s\S]*mode: provision[\s\S]*image-builder-network-config:[\s\S]*mode: configure-network[\s\S]*image-builder-preflight:[\s\S]*mode: preflight/,
+  "registered build workflow must expose secret-capped provision, network configuration, and preflight modes",
 );
 assert.match(
   hostWorkflow,
-  /workflow_call:[\s\S]*runs-on: \[self-hosted, macOS, nixmac-image-builder\][\s\S]*provision-image-builder\.sh[\s\S]*preflight-image-builder\.sh/,
+  /workflow_call:[\s\S]*runs-on: \[self-hosted, macOS, nixmac-image-builder\][\s\S]*provision\|configure-network\|preflight[\s\S]*provision-image-builder\.sh[\s\S]*configure-image-builder-network\.sh[\s\S]*preflight-image-builder\.sh/,
   "reusable host workflow must own all dedicated builder execution",
 );
 assert.doesNotMatch(
@@ -151,10 +210,98 @@ assert.doesNotMatch(
   /secrets\.|SOPS_AGE_KEY/,
   "dedicated builder host workflow must remain free of repository-secret references",
 );
+assert.doesNotMatch(
+  `${workflow}\n${provisionScript}\n${preflightScript}`,
+  /configure-image-builder-network\.sh/,
+  "the privileged network configuration script must be reachable only through the explicit host-maintenance mode",
+);
+assert.match(
+  configureNetworkScript,
+  /actions\.runner\.\*\.plist[\s\S]*launchctl print "gui\/\$RUNNER_UID\/\$runner_label"[\s\S]*autoLoginUser[\s\S]*FileVault is Off\.[\s\S]*persist_pending_marker[\s\S]*defaults write "\$POLICY_DOMAIN" "\$ETHERNET_KEY"[\s\S]*defaults write "\$POLICY_DOMAIN" "\$WIFI_KEY"[\s\S]*shutdown -r \+2/,
+  "network mutation must follow loaded-runner, auto-login, FileVault, persistent marker, exact writes, and delayed-reboot ordering",
+);
+assert.ok(
+  configureNetworkScript.indexOf("persist_pending_marker\nsudo -n /usr/bin/defaults write") >= 0,
+  "a durable pending marker must be persisted before the first privileged policy write",
+);
+assert.match(
+  configureNetworkScript,
+  /policy_is_exact "\$before_plist"[\s\S]*observed_marker[\s\S]*Already configured exactly with an observed activation reboot; no reboot scheduled\.[\s\S]*exit 0/,
+  "an exact policy may skip reboot only when prior activation-reboot evidence exists",
+);
+assert.match(
+  configureNetworkScript,
+  /policy_is_exact "\$before_plist"[\s\S]*pending_marker[\s\S]*boot_epoch" -le "\$previous_boot_epoch"[\s\S]*shutdown -r \+2/,
+  "an exact policy with an unobserved pending reboot must reschedule that reboot safely",
+);
+assert.match(
+  configureNetworkScript,
+  /if \[ -f "\$observed_marker" \][\s\S]*exit 0[\s\S]*persist_pending_marker[\s\S]*no activation-reboot evidence exists[\s\S]*shutdown -r \+2/,
+  "an exact markerless policy must create evidence and schedule an activation reboot",
+);
+assert.match(
+  configureNetworkScript,
+  /observed_boot_epoch -integer 0[\s\S]*observed_at_utc -string pending/,
+  "pending markers must contain replaceable observation placeholders",
+);
+for (const [label, script] of [
+  ["network configuration", configureNetworkScript],
+  ["preflight", preflightScript],
+]) {
+  assert.ok(
+    script.includes("sed -E 's/^\\{ sec = ([0-9]+).*/\\1/'"),
+    `${label} must parse kern.boottime from the anchored sec field`,
+  );
+  assert.doesNotMatch(
+    script,
+    /sed -E 's\/\.\*sec = /,
+    `${label} must not greedily capture the usec field`,
+  );
+}
+const bootEpochParse = spawnSync("sed", ["-E", "s/^\\{ sec = ([0-9]+).*/\\1/"], {
+  input: "{ sec = 1784165738, usec = 675906 } Mon Jul 27\n",
+  encoding: "utf8",
+});
+assert.equal(bootEpochParse.status, 0, "boot epoch canary must execute");
+assert.equal(
+  bootEpochParse.stdout.trim(),
+  "1784165738",
+  "boot epoch canary must select sec rather than usec",
+);
+assert.match(
+  configureNetworkScript,
+  /tart stop nixmac-runner-tahoe[\s\S]*tart delete nixmac-runner-tahoe/,
+  "the maintenance summary must include stranded-VM recovery",
+);
 assert.match(
   preflightScript,
-  /RUNNER_TOOL_CACHE[\s\S]*export PATH="\$bin_dir:\$PATH"[\s\S]*sysctl -n kern\.hv_support[\s\S]*Apple virtualization support is unavailable[\s\S]*uname -m[\s\S]*Apple Silicon image builder/,
-  "builder preflight must recover pinned user-space tools and fail closed when the host cannot support Tart",
+  /RUNNER_TOOL_CACHE[\s\S]*export PATH="\$bin_dir:\$PATH"[\s\S]*kern\.boottime[\s\S]*case "\$boot_epoch" in[\s\S]*Could not resolve current kern\.boottime epoch[\s\S]*hw\.ncpu[\s\S]*hw\.memsize/,
+  "builder preflight must recover tools and log host capacity plus boot identity",
+);
+assert.match(
+  preflightScript,
+  /sysctl -n kern\.hv_support[\s\S]*Apple virtualization support is unavailable[\s\S]*uname -m[\s\S]*Apple Silicon image builder/,
+  "builder preflight must fail closed when the host cannot support Tart",
+);
+assert.match(
+  preflightScript,
+  /defaults export com\.apple\.network\.local-network -[\s\S]*AllowedEthernetLocalNetworkAddresses[\s\S]*AllowedWiFiLocalNetworkAddresses[\s\S]*image-builder-network-config/,
+  "preflight must validate the exact Local Network policy and prove a pending maintenance reboot occurred",
+);
+assert.match(
+  preflightScript,
+  /network-config-reboot-pending\.json[\s\S]*network-config-reboot-observed\.json[\s\S]*previous_boot_epoch[\s\S]*boot_epoch" -le "\$previous_boot_epoch"[\s\S]*mv "\$pending_marker" "\$observed_marker"/,
+  "preflight must bind a pending network change to a later observed boot",
+);
+assert.match(
+  preflightScript,
+  /plutil -replace observed_boot_epoch[\s\S]*plutil -replace observed_at_utc/,
+  "preflight marker observation must be idempotently recoverable after interruption",
+);
+assert.match(
+  preflightScript,
+  /elif \[ -f "\$observed_marker" \][\s\S]*observed_boot_epoch[\s\S]*-le "\$observed_previous_epoch"[\s\S]*no activation-reboot evidence/,
+  "preflight must reject missing or invalid activation-reboot evidence",
 );
 assert.match(
   preflightScript,
@@ -178,8 +325,8 @@ assert.match(
 );
 assert.match(
   buildWorkflow,
-  /group: build-\$\{\{ github\.event\.pull_request\.number \|\| github\.ref \}\}-\$\{\{ inputs\.runner_pool == 'image-builder-provision' && 'image-provision' \|\| inputs\.runner_pool == 'image-builder-preflight' && 'image-preflight' \|\| inputs\.runner_pool == 'image-builder' && 'image-build' \|\| 'product' \}\}/,
-  "image provision, preflight, builds, and product builds must use separate concurrency groups",
+  /group: build-\$\{\{ github\.event\.pull_request\.number \|\| github\.ref \}\}-\$\{\{ inputs\.runner_pool == 'image-builder-network-config' && 'image-network-config' \|\| inputs\.runner_pool == 'image-builder-provision' && 'image-provision' \|\| inputs\.runner_pool == 'image-builder-preflight' && 'image-preflight' \|\| inputs\.runner_pool == 'image-builder' && 'image-build' \|\| 'product' \}\}/,
+  "network maintenance, provision, preflight, image builds, and product builds must use separate concurrency groups",
 );
 assert.match(
   buildWorkflow,
@@ -199,7 +346,7 @@ assert.match(
 assert.equal(
   [
     ...buildWorkflow.matchAll(
-      /if: inputs\.runner_pool != 'image-builder' && inputs\.runner_pool != 'image-builder-preflight' && inputs\.runner_pool != 'image-builder-provision'/g,
+      /if: inputs\.runner_pool != 'image-builder' && inputs\.runner_pool != 'image-builder-preflight' && inputs\.runner_pool != 'image-builder-provision' && inputs\.runner_pool != 'image-builder-network-config'/g,
     ),
   ].length,
   3,
@@ -209,6 +356,57 @@ assert.equal(
   [...workflow.matchAll(/tart run --no-graphics "\$VM_NAME"/g)].length,
   2,
   "both image verification VMs must boot headlessly",
+);
+assert.equal(
+  [...connectivityScript.matchAll(/tart run --no-graphics "\$VM_NAME"/g)].length,
+  1,
+  "the pre-Packer base connectivity VM must boot headlessly",
+);
+assert.match(
+  connectivityScript,
+  /tart exec "\$VM_NAME" \/usr\/bin\/true[\s\S]*tart ip "\$VM_NAME"[\s\S]*tart ip --resolver=arp "\$VM_NAME"/,
+  "base connectivity gate must discriminate guest-agent, DHCP, and ARP readiness",
+);
+assert.match(
+  connectivityScript,
+  /\/usr\/bin\/nc -v -G 2 -z "\$vm_ip" 22/,
+  "TCP diagnostics must request verbose netcat output before classifying the failure",
+);
+for (const classification of [
+  "connection-refused",
+  "timeout-or-no-route",
+  "authentication-failed",
+  "log show --last 5m",
+]) {
+  assert.ok(
+    connectivityScript.includes(classification),
+    `base connectivity diagnostics must include ${classification}`,
+  );
+}
+assert.match(
+  connectivityScript,
+  /Process ancestry:[\s\S]*actions\.runner\.\*\.plist[\s\S]*bridge100[\s\S]*ARP table/,
+  "base connectivity failure must capture bounded host runner and network context",
+);
+assert.match(
+  connectivityScript,
+  /cleanup\(\)[\s\S]*tart stop "\$VM_NAME"[\s\S]*kill "\$vm_pid"[\s\S]*tart delete "\$VM_NAME"[\s\S]*trap cleanup EXIT/,
+  "base connectivity gate must always stop its process and delete its dedicated VM",
+);
+assert.ok(
+  workflow.indexOf("Qualify base-image connectivity") >= 0 &&
+    workflow.indexOf("Qualify base-image connectivity") < workflow.indexOf("- name: Build image"),
+  "base connectivity must be proven before Packer is allowed to build",
+);
+assert.match(
+  sshVmScript,
+  /SSH_PASSWORD is required[\s\S]*SSH_ASKPASS_REQUIRE=force[\s\S]*PreferredAuthentications=password[\s\S]*PubkeyAuthentication=no/,
+  "one tracked password-only SSH_ASKPASS helper must serve every VM qualification path",
+);
+assert.doesNotMatch(
+  workflow,
+  /\/tmp\/ssh-vm\.sh|cat > .*ssh-vm/,
+  "workflow must not synthesize or depend on an untracked SSH helper",
 );
 assert.match(
   workflow,
@@ -293,6 +491,11 @@ assert.match(
   workflow,
   /BASE_IMAGE_DIGEST: sha256:[0-9a-f]{64}[\s\S]*-var "base_image_digest=\$BASE_IMAGE_DIGEST"[\s\S]*macos-tahoe-base@\$BASE_IMAGE_DIGEST/,
   "one workflow value must drive Packer and the published base-image summary",
+);
+assert.match(
+  connectivityScript,
+  /BASE_IMAGE_DIGEST must be an immutable sha256 digest[\s\S]*ghcr\.io\/cirruslabs\/macos-tahoe-base@\$BASE_IMAGE_DIGEST/,
+  "the pre-Packer gate must clone the same immutable base digest supplied to Packer",
 );
 assert.match(
   packerTemplate,

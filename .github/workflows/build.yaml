@@ -16,6 +16,7 @@ on:
             self-hosted,
             custom,
             depot,
+            image-builder-network-config,
             image-builder-provision,
             image-builder-preflight,
             image-builder,
@@ -39,7 +40,7 @@ on:
   merge_group:
 
 concurrency:
-  group: build-${{ github.event.pull_request.number || github.ref }}-${{ inputs.runner_pool == 'image-builder-provision' && 'image-provision' || inputs.runner_pool == 'image-builder-preflight' && 'image-preflight' || inputs.runner_pool == 'image-builder' && 'image-build' || 'product' }}
+  group: build-${{ github.event.pull_request.number || github.ref }}-${{ inputs.runner_pool == 'image-builder-network-config' && 'image-network-config' || inputs.runner_pool == 'image-builder-provision' && 'image-provision' || inputs.runner_pool == 'image-builder-preflight' && 'image-preflight' || inputs.runner_pool == 'image-builder' && 'image-build' || 'product' }}
   cancel-in-progress: true
 
 env:
@@ -58,6 +59,15 @@ jobs:
     uses: ./.github/workflows/macos-ci-image-builder-host.yaml
     with:
       mode: provision
+
+  image-builder-network-config:
+    name: Configure macOS image-builder networking
+    if: inputs.runner_pool == 'image-builder-network-config'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/macos-ci-image-builder-host.yaml
+    with:
+      mode: configure-network
 
   image-builder-preflight:
     name: Inspect macOS image builder
@@ -86,7 +96,7 @@ jobs:
   # never blocks rust-tests/build from running.
   git-hooks:
     name: Git Hooks
-    if: inputs.runner_pool != 'image-builder' && inputs.runner_pool != 'image-builder-preflight' && inputs.runner_pool != 'image-builder-provision'
+    if: inputs.runner_pool != 'image-builder' && inputs.runner_pool != 'image-builder-preflight' && inputs.runner_pool != 'image-builder-provision' && inputs.runner_pool != 'image-builder-network-config'
     runs-on: arc
     timeout-minutes: 30
     permissions:
@@ -111,12 +121,14 @@ jobs:
           NIXPKGS_ALLOW_UNFREE: 1
         run: |
           "$RUNNER_TEMP/devenv-cli/bin/devenv" shell --impure -- \
-            prek run --all-files --show-diff-on-failure
-          node tests/e2e/computer-use/macos-ci-image-contract-self-test.mjs
+            bash -euo pipefail -c '
+              prek run --all-files --show-diff-on-failure
+              node tests/e2e/computer-use/macos-ci-image-contract-self-test.mjs
+            '
 
   rust-tests:
     name: Rust Tests (Linux)
-    if: inputs.runner_pool != 'image-builder' && inputs.runner_pool != 'image-builder-preflight' && inputs.runner_pool != 'image-builder-provision'
+    if: inputs.runner_pool != 'image-builder' && inputs.runner_pool != 'image-builder-preflight' && inputs.runner_pool != 'image-builder-provision' && inputs.runner_pool != 'image-builder-network-config'
     runs-on: arc
     permissions:
       contents: read
@@ -166,7 +178,7 @@ jobs:
   # the build on self-hosted, same as before this job existed.
   pick-mac-runner:
     name: Pick mac runner pool
-    if: inputs.runner_pool != 'image-builder' && inputs.runner_pool != 'image-builder-preflight' && inputs.runner_pool != 'image-builder-provision'
+    if: inputs.runner_pool != 'image-builder' && inputs.runner_pool != 'image-builder-preflight' && inputs.runner_pool != 'image-builder-provision' && inputs.runner_pool != 'image-builder-network-config'
     needs: rust-tests
     runs-on: arc
     timeout-minutes: 5

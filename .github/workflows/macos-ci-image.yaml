@@ -155,6 +155,10 @@ jobs:
           fi
           echo "sha256=$digest" >> "$GITHUB_OUTPUT"
 
+      - name: Qualify base-image connectivity
+        shell: bash
+        run: bash ops/images/check-base-image-connectivity.sh
+
       - name: Build image
         id: build
         shell: bash
@@ -187,7 +191,7 @@ jobs:
 
           # Wait up to 5 min for the VM to get an IP.
           TART_IP=""
-          for i in $(seq 1 60); do
+          for _ in $(seq 1 60); do
             TART_IP=$(tart ip "$VM_NAME" 2>/dev/null || true)
             if [ -n "$TART_IP" ]; then break; fi
             sleep 5
@@ -200,40 +204,22 @@ jobs:
             exit 1
           fi
           echo "VM IP: $TART_IP"
-          # The dedicated builder has OpenSSH but not necessarily sshpass.
-          # SSH_ASKPASS keeps the password out of argv and preserves only
-          # remote stdout for command substitutions such as FOUND=$(...).
-          cat > /tmp/ssh-vm.sh <<'SSHVM'
-          #!/bin/bash
-          set -euo pipefail
-          host="$1"
-          shift
-          askpass="$(mktemp)"
-          trap 'rm -f "$askpass"' EXIT
-          printf '#!/bin/sh\nprintf "%%s\\n" "$SSH_PASSWORD"\n' > "$askpass"
-          chmod 700 "$askpass"
-          exec env DISPLAY=:0 SSH_ASKPASS="$askpass" SSH_ASKPASS_REQUIRE=force \
-            ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            -o ConnectTimeout=5 -o PreferredAuthentications=password \
-            -o PubkeyAuthentication=no "$host" "$@"
-          SSHVM
-          chmod 700 /tmp/ssh-vm.sh
 
           # Wait for SSH to be available.
-          for i in $(seq 1 30); do
-            if SSH_PASSWORD=admin /tmp/ssh-vm.sh "admin@$TART_IP" true 2>/dev/null; then
+          for _ in $(seq 1 30); do
+            if env SSH_PASSWORD=admin bash ops/images/ssh-vm.sh "admin@$TART_IP" true 2>/dev/null; then
               break
             fi
             sleep 5
           done
 
-          if ! SSH_PASSWORD=admin /tmp/ssh-vm.sh "admin@$TART_IP" true 2>/dev/null; then
+          if ! env SSH_PASSWORD=admin bash ops/images/ssh-vm.sh "admin@$TART_IP" true 2>/dev/null; then
             kill "$TART_PID" 2>/dev/null || true
             tart stop "$VM_NAME" 2>/dev/null || true
             exit 1
           fi
           echo "::group::Verifying Xcode after VM start"
-          if ! SSH_PASSWORD=admin /tmp/ssh-vm.sh "admin@$TART_IP" \
+          if ! env SSH_PASSWORD=admin bash ops/images/ssh-vm.sh "admin@$TART_IP" \
             'set -eu; test -x /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild; xcodebuild -version; xcrun --sdk macosx --show-sdk-path'; then
             exit 1
           fi
@@ -261,12 +247,12 @@ jobs:
           if [ "$status" -gt 1 ]; then exit "$status"; fi
           exit 0
           SCAN
-          if ! SSH_PASSWORD=admin /tmp/ssh-vm.sh "admin@$TART_IP" \
+          if ! env SSH_PASSWORD=admin bash ops/images/ssh-vm.sh "admin@$TART_IP" \
             'cat > /tmp/scan-vm.sh && chmod 700 /tmp/scan-vm.sh' < /tmp/scan-vm.sh; then
             echo "::error::Could not upload secret scanner"
             exit 1
           fi
-          if ! FOUND=$(SSH_PASSWORD=admin /tmp/ssh-vm.sh "admin@$TART_IP" \
+          if ! FOUND=$(env SSH_PASSWORD=admin bash ops/images/ssh-vm.sh "admin@$TART_IP" \
             '/bin/bash /tmp/scan-vm.sh'); then
             echo "::error::Secret scanner failed (grep error, permission error, or I/O error); refusing to push"
             exit 1
@@ -352,7 +338,7 @@ jobs:
           fi
 
           for _ in $(seq 1 30); do
-            if SSH_PASSWORD=admin /tmp/ssh-vm.sh "admin@$VM_IP" true 2>/dev/null; then
+            if env SSH_PASSWORD=admin bash ops/images/ssh-vm.sh "admin@$VM_IP" true 2>/dev/null; then
               break
             fi
             sleep 5
@@ -377,7 +363,7 @@ jobs:
           xcodebuild -version
           xcrun --sdk macosx --show-sdk-path
           QUALIFY
-          if ! SSH_PASSWORD=admin /tmp/ssh-vm.sh "admin@$VM_IP" \
+          if ! env SSH_PASSWORD=admin bash ops/images/ssh-vm.sh "admin@$VM_IP" \
             '/bin/bash -s' < /tmp/qualify-published-vm.sh; then
             echo "::error::Published image failed its digest-qualified boot proof"
             exit 1
