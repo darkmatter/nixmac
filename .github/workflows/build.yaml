@@ -118,6 +118,24 @@ jobs:
         with:
           darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
 
+      # Release-script tests (signing, install-name normalization, DMG
+      # portability). Nothing else executes these test harnesses, so without
+      # this step a stale or broken test goes unnoticed while the scripts it
+      # guards keep changing. Runs before the expensive build steps.
+      #
+      # Runs with the devenv profile prepended to PATH (setup-devenv above) —
+      # the same environment as the release normalize/sign steps below, GNU
+      # coreutils shadowing included. Reproduce locally with:
+      #   devenv shell -- bash ops/scripts/release/<name>.test.sh
+      - name: Release script tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          for test in ops/scripts/release/*.test.sh; do
+            echo "==> $test"
+            bash "$test"
+          done
+
       - name: Setup Xcode Swift toolchain
         uses: ./.github/actions/setup-xcode
 

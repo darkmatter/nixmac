@@ -22,6 +22,7 @@ FAKE_BIN="$TMP_DIR/bin"
 INSTALL_NAME_TOOL_LOG="$TMP_DIR/install-name-tool.log"
 TAURI_SIGNER_LOG="$TMP_DIR/tauri-signer.log"
 CODESIGN_LOG="$TMP_DIR/codesign.log"
+HDIUTIL_LOG="$TMP_DIR/hdiutil.log"
 TAURI_SHIM="$SCRIPT_DIR/../../../apps/native/node_modules/.bin/tauri"
 TAURI_BIN_DIR=$(dirname "$TAURI_SHIM")
 TAURI_NODE_MODULES_DIR=$(dirname "$TAURI_BIN_DIR")
@@ -33,6 +34,7 @@ touch "$INSTALL_NAME_TOOL_LOG"
 export INSTALL_NAME_TOOL_LOG
 export TAURI_SIGNER_LOG
 export CODESIGN_LOG
+export HDIUTIL_LOG
 
 if [ ! -x "$TAURI_SHIM" ]; then
 	if [ ! -d "$TAURI_NODE_MODULES_DIR" ]; then
@@ -126,6 +128,56 @@ printf '%s\n' "$*" >>"$CODESIGN_LOG"
 SH
 chmod +x "$FAKE_BIN/codesign"
 
+cat >"$FAKE_BIN/hdiutil" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf '%s\n' "$*" >>"$HDIUTIL_LOG"
+
+case "$1" in
+	convert)
+		output=""
+		while [ "$#" -gt 0 ]; do
+			if [ "$1" = "-o" ]; then
+				output="$2"
+				break
+			fi
+			shift
+		done
+		if [ -z "$output" ]; then
+			echo "missing hdiutil convert output" >&2
+			exit 2
+		fi
+		# The normalizer sizes the RW image from its apparent (stat) size, so
+		# the fake conversion output claims 200000KB without allocating it.
+		dd if=/dev/zero of="$output" bs=1 count=0 seek=204800000 2>/dev/null
+		;;
+	attach)
+		mount_point=""
+		while [ "$#" -gt 0 ]; do
+			if [ "$1" = "-mountpoint" ]; then
+				mount_point="$2"
+				break
+			fi
+			shift
+		done
+		if [ -z "$mount_point" ]; then
+			echo "missing hdiutil attach mount point" >&2
+			exit 2
+		fi
+		mkdir -p "$mount_point/NixIconvDmg.app/Contents/MacOS"
+		dd if=/dev/zero of="$mount_point/NixIconvDmg.app/Contents/MacOS/nix-iconv-dmg" bs=1 count=0 seek=157286400 2>/dev/null
+		;;
+	detach | resize)
+		;;
+	*)
+		echo "unexpected hdiutil invocation: $*" >&2
+		exit 2
+		;;
+esac
+SH
+chmod +x "$FAKE_BIN/hdiutil"
+
 make_app() {
 	local app="$1"
 	local executable_name="$2"
@@ -142,9 +194,16 @@ add_helper_bins() {
 	done
 }
 
+# The normalizer's output is captured, so dump it when a run fails: under
+# set -e a bare failure would kill the test with no message while the EXIT
+# trap deletes the only copy of the error.
 run_normalizer() {
 	local target="$1"
-	PATH="$FAKE_BIN:$PATH" "$SCRIPT" "$target" >"$TMP_DIR/normalizer.out" 2>&1
+	if ! PATH="$FAKE_BIN:$PATH" "$SCRIPT" "$target" >"$TMP_DIR/normalizer.out" 2>&1; then
+		echo "normalizer failed for $target:" >&2
+		cat "$TMP_DIR/normalizer.out" >&2
+		exit 1
+	fi
 }
 
 make_app "$TMP_DIR/Clean.app" clean
@@ -186,10 +245,14 @@ ABS_TAR_PATH="$(cd "$TMP_DIR" && pwd -P)/nixmac.app.tar.gz"
 RUNNER_TEMP="$TMP_DIR/runner"
 mkdir -p "$RUNNER_TEMP"
 touch "$RUNNER_TEMP/app-signing.keychain-db"
-(
+if ! (
 	cd "$TMP_DIR"
 	RUNNER_TEMP="$RUNNER_TEMP" TAURI_SIGNING_PRIVATE_KEY=test PATH="$FAKE_BIN:$PATH" "$SCRIPT" "nixmac.app.tar.gz" >"$TMP_DIR/tarball-normalizer.out" 2>&1
-)
+); then
+	echo "normalizer failed for the updater tarball:" >&2
+	cat "$TMP_DIR/tarball-normalizer.out" >&2
+	exit 1
+fi
 
 if ! grep -F -- "-change /nix/store/example-libiconv-109.100.2/lib/libiconv.2.dylib /usr/lib/libiconv.2.dylib" "$INSTALL_NAME_TOOL_LOG" >/dev/null; then
 	echo "expected updater tarball app to be normalized" >&2
@@ -257,6 +320,37 @@ fi
 if ! grep -F -- "--sign -" "$CODESIGN_LOG" >/dev/null; then
 	echo "expected fallback signing to use an ad-hoc identity" >&2
 	cat "$CODESIGN_LOG" >&2
+	exit 1
+fi
+
+touch "$TMP_DIR/nixmac.dmg"
+if ! RUNNER_TEMP="$TMP_DIR/dmg-runner" PATH="$FAKE_BIN:$PATH" "$SCRIPT" "$TMP_DIR/nixmac.dmg" >"$TMP_DIR/dmg-normalizer.out" 2>&1; then
+	echo "normalizer failed for the DMG:" >&2
+	cat "$TMP_DIR/dmg-normalizer.out" >&2
+	exit 1
+fi
+
+if ! grep -F "attach -readonly" "$HDIUTIL_LOG" >/dev/null; then
+	echo "expected DMG sizing inspection to mount read-only" >&2
+	cat "$HDIUTIL_LOG" >&2
+	exit 1
+fi
+
+if ! grep -F "resize -size 419136k" "$HDIUTIL_LOG" >/dev/null; then
+	echo "expected DMG resize to include its largest file plus 64MB overhead" >&2
+	cat "$HDIUTIL_LOG" >&2
+	exit 1
+fi
+
+READONLY_ATTACH_LINE=$(grep -n -F "attach -readonly" "$HDIUTIL_LOG" | head -1 | cut -d: -f1)
+FIRST_DETACH_LINE=$(grep -n -F "detach " "$HDIUTIL_LOG" | head -1 | cut -d: -f1)
+RESIZE_LINE=$(grep -n -F "resize -size 419136k" "$HDIUTIL_LOG" | head -1 | cut -d: -f1)
+READWRITE_ATTACH_LINE=$(grep -n -F "attach -readwrite" "$HDIUTIL_LOG" | head -1 | cut -d: -f1)
+if ! ((READONLY_ATTACH_LINE < FIRST_DETACH_LINE &&
+	FIRST_DETACH_LINE < RESIZE_LINE &&
+	RESIZE_LINE < READWRITE_ATTACH_LINE)); then
+	echo "expected read-only inspect, detach, resize, then read-write attach ordering" >&2
+	cat "$HDIUTIL_LOG" >&2
 	exit 1
 fi
 
