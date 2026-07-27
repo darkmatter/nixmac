@@ -46,6 +46,7 @@ export function Stepper() {
     step === "setup" ||
     step === "permissions" ||
     step === "nix-setup" ||
+    step === "secrets" ||
     step === "history" ||
     step === "filesystem"
   ) {

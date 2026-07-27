@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { SecretRecipient, SecretsVault } from "./types";
+import { SecretRecipient, SecretsVault } from "@/ipc/orpc-bindings";
 
 type Method = "paste" | "github" | "ssh" | "local" | "hardware";
 
@@ -176,7 +176,8 @@ export function AddRecipientDialog({
       device: derived.device,
       publicKey: derived.publicKey,
       fingerprint: mockFingerprint(derived.publicKey),
-      inRepo: true,
+      inUse: true,
+      isThisHost: false,
     });
   };
 

@@ -33,6 +33,7 @@ mod privileged_helper;
 mod rebuild;
 #[cfg(any(test, feature = "codegen"))]
 mod schema_gen;
+mod secrets;
 mod shared_types;
 mod sqlite_types;
 mod state;

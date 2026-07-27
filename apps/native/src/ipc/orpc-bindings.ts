@@ -349,6 +349,8 @@ displayName: string;
  */
 description?: string | null; fields: ConfigFieldSchema[] }
 
+export type DecryptSecretInput = { secretId: string }
+
 export type EnumVariant = { value: string; label: string }
 
 /**
@@ -1653,6 +1655,11 @@ errorMessage: string | null;
 systemUntouched: boolean | null }
 
 /**
+ * Kind of recipient used for managing secrets.
+ */
+export type RecipientKind = "host" | "user"
+
+/**
  * A recommended prompt based on the user's current macOS settings.
  */
 export type RecommendedPrompt = { 
@@ -1682,6 +1689,20 @@ rollbackStorePath: string | null;
  * Changeset id associated with the rollback target.
  */
 rollbackChangesetId: number | null }
+
+/**
+ * Secret backend used for managing secrets.
+ */
+export type SecretBackend = "sops" | "agenix"
+
+/**
+ * One encrypted secret entry managed in the nix config repo.
+ */
+export type SecretEntry = { id: string; name: string; backend: SecretBackend; file: string; recipientIds: string[]; sopsKey: string | null }
+
+export type SecretRecipient = { id: string; label: string; kind: RecipientKind; device: string; fingerprint: string; publicKey: string; inUse: boolean; isThisHost: boolean }
+
+export type SecretsVault = { hostId: string; entries: SecretEntry[]; recipients: SecretRecipient[] }
 
 export type SemanticChangeGroup = { 
 /**
@@ -2059,6 +2080,10 @@ export type Procedures = {
     applyDefaults: Client<Record<never, never>, ApplyDefaultsInput, ConfigEditApplyResult, Error>
     getRecommendedPrompt: Client<Record<never, never>, void, RecommendedPrompt | null, Error>
     scanDefaults: Client<Record<never, never>, void, SystemDefaultsScan, Error>
+  }
+  secrets: {
+    decryptSecret: Client<Record<never, never>, DecryptSecretInput, string, Error>
+    getVault: Client<Record<never, never>, void, SecretsVault, Error>
   }
   settings: {
     export: Client<Record<never, never>, ExportInput, ExportResult | null, Error>

@@ -363,6 +363,10 @@ export const orpcHandlers: Record<string, OrpcHandler> = {
   },
   "summarizedChanges.summarizeCurrent": async () => baseSemanticChangeMap(),
   "summarizedChanges.generateCommitMessage": async () => "feat: update mac defaults",
+  "secrets.getVault": async () => {
+    const { MOCK_VAULT } = await import("@/components/widget/secrets/mock-data");
+    return MOCK_VAULT;
+  },
   "updater.checkUpdate": async () => null,
   "updater.installUpdate": async () => undefined,
   "updater.installVersion": async () => undefined,

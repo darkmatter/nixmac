@@ -88,9 +88,9 @@ export const AddRecipient = meta.story({
 });
 
 /**
- * Secret detail for a secret this host can decrypt: metadata, the
- * reveal-gated value (confirmation dialog → plaintext), and per-recipient
- * decrypt status.
+ * Secret detail for a secret this host can decrypt: backend-provided encrypted
+ * metadata and per-recipient decrypt status. Plaintext is not part of the
+ * vault contract.
  */
 export const SecretDetail = meta.story({
   render: () => framed({ initialView: { kind: "detail", secretId: "github-token" } }),

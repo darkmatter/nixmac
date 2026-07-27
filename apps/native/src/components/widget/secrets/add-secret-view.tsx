@@ -63,7 +63,7 @@ export function AddSecretView({
   onSubmit: (request: ApplyRequest) => void;
   onBack: () => void;
 }) {
-  const committedRecipients = vault.recipients.filter((r) => r.inRepo);
+  const committedRecipients = vault.recipients.filter((r) => r.inUse);
 
   const [name, setName] = useState("");
   const [value, setValue] = useState("");

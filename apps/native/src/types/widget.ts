@@ -10,5 +10,6 @@ export type WidgetStep =
   | "commit"
   | "manualEvolve"
   | "manualCommit"
+  | "secrets"
   | "history"
   | "filesystem";

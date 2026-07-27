@@ -1981,6 +1981,11 @@ errorMessage: string | null;
 systemUntouched: boolean | null }
 
 /**
+ * Kind of recipient used for managing secrets.
+ */
+export type RecipientKind = "host" | "user"
+
+/**
  * A recommended prompt based on the user's current macOS settings.
  */
 export type RecommendedPrompt = { 
@@ -2027,6 +2032,18 @@ backtrace: string | null;
  * UTC timestamp when the panic was captured.
  */
 timestamp: string }
+
+/**
+ * Secret backend used for managing secrets.
+ */
+export type SecretBackend = "sops" | "agenix"
+
+/**
+ * One encrypted secret entry managed in the nix config repo.
+ */
+export type SecretEntry = { id: string; name: string; backend: SecretBackend; file: string; recipientIds: string[]; sopsKey: string | null }
+
+export type SecretRecipient = { id: string; label: string; kind: RecipientKind; device: string; fingerprint: string; publicKey: string; inUse: boolean; isThisHost: boolean }
 
 export type SemanticChangeGroup = { 
 /**

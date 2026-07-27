@@ -210,6 +210,7 @@ describe("computeCurrentStep — diff gating", () => {
       isBootstrapping: false,
       showHistory: false,
       showFilesystem: false,
+      showSecretsManagement: false,
       evolveState: null as EvolveState | null,
       activeStepOverride: null as EvolveStep | null,
       hasChanges: false,
@@ -261,6 +262,10 @@ describe("computeCurrentStep — diff gating", () => {
 
   it("keeps earlier gates ahead of the diff check", () => {
     expect(computeCurrentStep(readyState({ showHistory: true }))).toBe("history");
+  });
+
+  it("routes to secrets management when requested", () => {
+    expect(computeCurrentStep(readyState({ showSecretsManagement: true }))).toBe("secrets");
   });
 
   describe("permissions gate", () => {

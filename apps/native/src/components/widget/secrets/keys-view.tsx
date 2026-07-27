@@ -3,7 +3,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CopyIconButton, InRepoBadge, RecipientKindIcon, ThisHostChip } from "./shared";
-import type { SecretsVault } from "./types";
+import { SecretsVault } from "@/ipc/orpc-bindings";
 
 /**
  * The keys & recipients tab: every age public key known to the repo, and
@@ -19,7 +19,7 @@ export function KeysView({
   onAddRecipient: () => void;
 }) {
   const opensLabel = (recipientId: string) => {
-    const count = vault.secrets.filter((s) => s.recipientIds.includes(recipientId)).length;
+    const count = vault.entries.filter((s) => s.recipientIds.includes(recipientId)).length;
     return `Opens ${count} ${count === 1 ? "secret" : "secrets"}`;
   };
 
@@ -33,7 +33,8 @@ export function KeysView({
             recipient must be committed to the repo before it can decrypt anything.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={onAddRecipient}>
+        {/* TODO: show this again when the add-recipient flow is implemented. */}
+        <Button variant="outline" size="sm" onClick={onAddRecipient} className="hidden">
           <Plus aria-hidden="true" />
           Add recipient key
         </Button>
@@ -72,7 +73,7 @@ export function KeysView({
             <span className="whitespace-nowrap text-[11.5px] text-muted-foreground">
               {opensLabel(recipient.id)}
             </span>
-            <InRepoBadge inRepo={recipient.inRepo} />
+            <InRepoBadge inRepo={recipient.inUse} />
           </div>
         ))}
       </div>

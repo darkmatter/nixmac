@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { filesystemViewEnabled } from "@/lib/flags";
 import { cn } from "@/lib/utils";
-import { Clock, FolderTree, Settings, MessageSquarePlus } from "lucide-react";
+import { Clock, FolderTree, KeyRound, Settings, MessageSquarePlus } from "lucide-react";
 import { APP_NAME } from "../../../../shared/constants";
 import { uiActions, useUiState, viewModelActions } from "@nixmac/state";
 import { nav } from "@/router";
@@ -11,6 +11,7 @@ import { computeCurrentStep } from "@/components/widget/utils";
 export function Header() {
   const showHistory = useUiState((s) => s.showHistory);
   const showFilesystem = useUiState((s) => s.showFilesystem);
+  const showSecretsManagement = useUiState((s) => s.showSecretsManagement);
   const isProcessing = useUiState((s) => s.isProcessing);
   const isGenerating = useUiState((s) => s.isGenerating);
   const [isPulsing, setIsPulsing] = useState(false);
@@ -29,6 +30,7 @@ export function Header() {
         permissionsChecked: viewModel.permissionsHydrated,
         evolveState: viewModel.evolve,
         showHistory: state.showHistory,
+        showSecretsManagement: state.showSecretsManagement,
         showFilesystem: state.showFilesystem,
         isBootstrapping: state.isBootstrapping,
         activeStepOverride: state.activeStepOverride,
@@ -67,6 +69,7 @@ export function Header() {
               const next = !showFilesystem;
               uiActions.setShowFilesystem(next);
               if (next && showHistory) uiActions.setShowHistory(false);
+              if (next && showSecretsManagement) uiActions.setShowSecretsManagement(false);
             }}
             aria-label="Filesystem"
             title="Filesystem"
@@ -74,6 +77,26 @@ export function Header() {
             <FolderTree className="h-4 w-4" />
           </Button>
         )}
+        <Button
+          className={cn(
+            "h-6 w-6 p-0 mr-[2px]",
+            showSecretsManagement &&
+              "border border-teal-500/50 text-teal-400 hover:text-teal-300 hover:border-teal-500/70",
+          )}
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            if (isProcessing || isGenerating) return;
+            const next = !showSecretsManagement;
+            uiActions.setShowSecretsManagement(next);
+            if (next && showHistory) uiActions.setShowHistory(false);
+            if (next && showFilesystem) uiActions.setShowFilesystem(false);
+          }}
+          aria-label="Secrets management"
+          title="Secrets management"
+        >
+          <KeyRound className="h-4 w-4" />
+        </Button>
         <Button
           className={cn(
             "h-6 w-6 p-0 mr-[2px]",
@@ -87,6 +110,7 @@ export function Header() {
             const next = !showHistory;
             uiActions.setShowHistory(next);
             if (next && showFilesystem) uiActions.setShowFilesystem(false);
+            if (next && showSecretsManagement) uiActions.setShowSecretsManagement(false);
           }}
           aria-label="History"
           title="History"

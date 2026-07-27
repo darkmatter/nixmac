@@ -6,14 +6,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { ViewHeader } from "./shared";
-import { type ApplyRequest, backendLabel, type SecretsVault } from "./types";
+import { type ApplyRequest, backendLabel,} from "./types";
+import { SecretsVault } from "@/ipc/orpc-bindings";
 
 function buildRotateRequest(vault: SecretsVault, selectedIds: string[], freshValue: boolean): ApplyRequest {
   return {
     origin: "rotate",
     title: "Re-encrypt & commit",
     subtitle: `Re-key ${selectedIds.length} secrets`,
-    files: vault.secrets
+    files: vault.entries
       .filter((s) => selectedIds.includes(s.id))
       .map((s) => ({ path: s.file, note: "· re-encrypted", mark: "~" as const })),
     diffFile: "secrets/",
@@ -40,7 +41,7 @@ export function RotateView({
   onSubmit: (request: ApplyRequest) => void;
   onBack: () => void;
 }) {
-  const [selectedIds, setSelectedIds] = useState<string[]>(vault.secrets.map((s) => s.id));
+  const [selectedIds, setSelectedIds] = useState<string[]>(vault.entries.map((s) => s.id));
   const [freshValue, setFreshValue] = useState(false);
 
   const toggle = (id: string) =>
@@ -55,7 +56,7 @@ export function RotateView({
       </p>
 
       <div className="flex flex-col gap-1.5">
-        {vault.secrets.map((secret) => {
+        {vault.entries.map((secret) => {
           const checked = selectedIds.includes(secret.id);
           const recipientCount = secret.recipientIds.length;
           return (

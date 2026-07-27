@@ -2,11 +2,21 @@ import { viewModelActions } from "@nixmac/state";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { orpcHandlers } from "../.storybook/mocks/tauri-runtime";
+import type { SecretsVault } from "./ipc/orpc-bindings";
 import type { GitState, GitStatus } from "./ipc/types";
 
 describe("Storybook Tauri oRPC mocks", () => {
   afterEach(() => {
     viewModelActions.reset();
+  });
+
+  it("returns a secrets vault matching the generated contract", async () => {
+    const vault = (await orpcHandlers["secrets.getVault"]?.(undefined)) as
+      | SecretsVault
+      | undefined;
+
+    expect(vault?.entries.length).toBeGreaterThan(0);
+    expect(vault?.recipients.some((recipient) => recipient.id === vault.hostId)).toBe(true);
   });
 
   it("handles editor.readFile for the nix editor", async () => {

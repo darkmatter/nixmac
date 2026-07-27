@@ -10,36 +10,44 @@ import { useUiState, useViewModel } from "@nixmac/state";
  * flags from UiState.
  */
 export function useCurrentStep(): WidgetStep {
-  const evolveState = useViewModel((state) => state.evolve);
-  const configDir = useViewModel((state) => state.preferences?.configDir ?? "");
-  const host = useViewModel((state) => state.preferences?.hostAttr ?? "");
-  const hosts = useViewModel((state) => state.hosts);
-  const permissionsState = useViewModel((state) => state.permissions);
-  const permissionsChecked = useViewModel((state) => state.permissionsHydrated);
-  const nixInstalled = useViewModel((state) => state.nixInstall?.installed ?? null);
-  const darwinRebuildAvailable = useViewModel(
-    (state) => state.nixInstall?.darwinRebuildAvailable ?? null,
-  );
-  const showHistory = useUiState((state) => state.showHistory);
-  const showFilesystem = useUiState((state) => state.showFilesystem);
-  const isBootstrapping = useUiState((state) => state.isBootstrapping);
-  const activeStepOverride = useUiState((state) => state.activeStepOverride);
-  const hasChanges = useViewModel((state) => (state.git?.changes.length ?? 0) > 0);
-  const rebuildNeeded = useViewModel((state) => state.build.rebuildNeeded);
-  return computeCurrentStep({
-    nixInstalled,
-    darwinRebuildAvailable,
-    configDir,
-    host,
-    hosts,
-    permissionsState,
-    permissionsChecked,
-    evolveState,
-    showHistory,
-    showFilesystem,
-    isBootstrapping,
-    activeStepOverride,
-    hasChanges,
-    rebuildNeeded,
-  });
+	const evolveState = useViewModel((state) => state.evolve);
+	const configDir = useViewModel((state) => state.preferences?.configDir ?? "");
+	const host = useViewModel((state) => state.preferences?.hostAttr ?? "");
+	const hosts = useViewModel((state) => state.hosts);
+	const permissionsState = useViewModel((state) => state.permissions);
+	const permissionsChecked = useViewModel((state) => state.permissionsHydrated);
+	const nixInstalled = useViewModel(
+		(state) => state.nixInstall?.installed ?? null,
+	);
+	const darwinRebuildAvailable = useViewModel(
+		(state) => state.nixInstall?.darwinRebuildAvailable ?? null,
+	);
+	const showHistory = useUiState((state) => state.showHistory);
+	const showFilesystem = useUiState((state) => state.showFilesystem);
+	const showSecretsManagement = useUiState(
+		(state) => state.showSecretsManagement,
+	);
+	const isBootstrapping = useUiState((state) => state.isBootstrapping);
+	const activeStepOverride = useUiState((state) => state.activeStepOverride);
+	const hasChanges = useViewModel(
+		(state) => (state.git?.changes.length ?? 0) > 0,
+	);
+	const rebuildNeeded = useViewModel((state) => state.build.rebuildNeeded);
+	return computeCurrentStep({
+		nixInstalled,
+		darwinRebuildAvailable,
+		configDir,
+		host,
+		hosts,
+		permissionsState,
+		permissionsChecked,
+		evolveState,
+		showHistory,
+		showFilesystem,
+		showSecretsManagement,
+		isBootstrapping,
+		activeStepOverride,
+		hasChanges,
+		rebuildNeeded,
+	});
 }
