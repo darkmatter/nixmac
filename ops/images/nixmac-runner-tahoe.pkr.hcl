@@ -136,18 +136,16 @@ build {
     ]
   }
 
-  # Install the tart-guest-agent so Cilicon can inject SSH keys and
-  # manage the VM lifecycle. Without it, Cilicon's key-based SSH auth
-  # fails because the VM has no authorized_keys entry.
+  # Cilicon 2.4.2's Citadel/SwiftNIO SSH library fails against OpenSSH 10.2
+  # when ETM-only MACs are negotiated. Restrict the server to non-ETM MACs
+  # so Cilicon's SSH client can complete the handshake. See upstream
+  # swift-nio-ssh issue #243 for the algorithm negotiation failure.
   provisioner "shell" {
     inline = [
       "set -euo pipefail",
-      "curl -fsSL https://github.com/cirruslabs/tart-guest-agent/releases/latest/download/tart-guest-agent-macos.tar.gz -o /tmp/tart-guest-agent.tar.gz || echo 'guest-agent download failed, continuing'",
-      "test -f /tmp/tart-guest-agent.tar.gz && sudo tar -xzf /tmp/tart-guest-agent.tar.gz -C / || true",
-      "rm -f /tmp/tart-guest-agent.tar.gz",
-      # Ensure SSH key auth directory exists for Cilicon key injection.
-      "mkdir -p /Users/admin/.ssh && chmod 700 /Users/admin/.ssh",
-      "touch /Users/admin/.ssh/authorized_keys && chmod 644 /Users/admin/.ssh/authorized_keys",
+      "sudo mkdir -p /etc/ssh/sshd_config.d",
+      "echo 'MACs hmac-sha2-256,hmac-sha2-512' | sudo tee /etc/ssh/sshd_config.d/99-cilicon-compat.conf",
+      "sudo sshd -t",
     ]
   }
 
