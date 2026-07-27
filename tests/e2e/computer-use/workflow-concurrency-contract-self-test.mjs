@@ -45,7 +45,14 @@ function automaticWorkflowYaml({
     branches: [main]
   merge_group:`,
   installCommand = "        run: nix build github:cachix/devenv/v2.1.2 --out-link /tmp/nixmac-devenv-cli",
-  validationCommands = `          node tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs
+  validationCommands = `          NIXMAC_E2E_PYTHON_PATH="$(command -v python3)"
+          NIXMAC_E2E_FFMPEG_PATH="$(command -v ffmpeg)"
+          NIXMAC_E2E_FFPROBE_PATH="$(command -v ffprobe)"
+          export \\
+            NIXMAC_E2E_PYTHON_PATH \\
+            NIXMAC_E2E_FFMPEG_PATH \\
+            NIXMAC_E2E_FFPROBE_PATH
+          node tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs
           node tests/e2e/computer-use/workflow-contract-self-test.mjs
           node tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs
           node tests/e2e/computer-use/centaur-workflow-contract-self-test.mjs
@@ -294,6 +301,21 @@ assert.doesNotThrow(() =>
     jobId: "git-hooks",
     stepName: "Run Computer Use workflow contracts",
   }),
+);
+
+assert.throws(
+  () =>
+    assertAutomaticConcurrencyValidationContract({
+      workflowName: "missing-media-tool-wiring.yaml",
+      source: automaticWorkflowYaml().replace(
+        '          NIXMAC_E2E_FFMPEG_PATH="$(command -v ffmpeg)"\n',
+        "",
+      ),
+      jobId: "git-hooks",
+      stepName: "Run Computer Use workflow contracts",
+    }),
+  /missing-media-tool-wiring\.yaml job git-hooks step Run Computer Use workflow contracts must contain exactly the automatic contract commands/,
+  "automatic validation must bind the fail-closed evidence scanner to the Nix ffmpeg",
 );
 
 assert.throws(

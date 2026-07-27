@@ -58,6 +58,7 @@ lib.mkIf (!config.container.isBuilding) {
     pkgs.git
     pkgs.gh
     pkgs.libiconv
+    pkgs.ffmpeg-headless
     pkgs.starship
     pkgs.nixfmt
     pkgs.uv

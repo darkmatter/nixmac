@@ -3,6 +3,13 @@ import { spawnSync } from "node:child_process";
 
 export const REMOTE_MAC_CONCURRENCY_GROUP = "nixmac-macincloud-e2e-remote";
 const AUTOMATIC_CONTRACT_COMMANDS = [
+  'NIXMAC_E2E_PYTHON_PATH="$(command -v python3)"',
+  'NIXMAC_E2E_FFMPEG_PATH="$(command -v ffmpeg)"',
+  'NIXMAC_E2E_FFPROBE_PATH="$(command -v ffprobe)"',
+  "export \\",
+  "NIXMAC_E2E_PYTHON_PATH \\",
+  "NIXMAC_E2E_FFMPEG_PATH \\",
+  "NIXMAC_E2E_FFPROBE_PATH",
   "node tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs",
   "node tests/e2e/computer-use/workflow-contract-self-test.mjs",
   "node tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs",

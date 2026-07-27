@@ -61,6 +61,13 @@ jobs:
           NODE_OPTIONS: ""
         shell: /tmp/nixmac-devenv-cli/bin/devenv shell --impure -- bash -euo pipefail {0}
         run: |
+          NIXMAC_E2E_PYTHON_PATH="$(command -v python3)"
+          NIXMAC_E2E_FFMPEG_PATH="$(command -v ffmpeg)"
+          NIXMAC_E2E_FFPROBE_PATH="$(command -v ffprobe)"
+          export \
+            NIXMAC_E2E_PYTHON_PATH \
+            NIXMAC_E2E_FFMPEG_PATH \
+            NIXMAC_E2E_FFPROBE_PATH
           node tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs
           node tests/e2e/computer-use/workflow-contract-self-test.mjs
           node tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs
