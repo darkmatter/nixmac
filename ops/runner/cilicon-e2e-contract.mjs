@@ -464,6 +464,7 @@ function validateLifecycleConfig(lifecycle) {
       "sinkRef",
       "sinkPathPrefix",
       "requiredStatusCheck",
+      "requiredStatusCheckAppId",
       "sinkCredential",
       "consumerCredential",
       "inventoryCredential",
@@ -483,8 +484,8 @@ function validateLifecycleConfig(lifecycle) {
   if (lifecycle.sinkRepository !== "darkmatter/nixmac-e2e-attestations") {
     fail("qualification.lifecycle.sinkRepository must use the protected attestation sink");
   }
-  if (lifecycle.sinkRef !== "refs/heads/main") {
-    fail("qualification.lifecycle.sinkRef must use the protected main branch");
+  if (lifecycle.sinkRef !== "refs/heads/attestations") {
+    fail("qualification.lifecycle.sinkRef must use the protected attestation branch");
   }
   string(lifecycle.sinkPathPrefix, "qualification.lifecycle.sinkPathPrefix", {
     pattern: /^[A-Za-z0-9][A-Za-z0-9._/-]*\/$/,
@@ -495,6 +496,10 @@ function validateLifecycleConfig(lifecycle) {
   string(lifecycle.requiredStatusCheck, "qualification.lifecycle.requiredStatusCheck", {
     pattern: SAFE_ID,
   });
+  positiveInteger(
+    lifecycle.requiredStatusCheckAppId,
+    "qualification.lifecycle.requiredStatusCheckAppId",
+  );
   exactKeys(
     lifecycle.sinkCredential,
     ["appId", "installationId", "repository", "permissions"],
@@ -502,7 +507,7 @@ function validateLifecycleConfig(lifecycle) {
   );
   exactKeys(
     lifecycle.sinkCredential.permissions,
-    ["contents"],
+    ["actions", "contents"],
     "qualification.lifecycle.sinkCredential.permissions",
   );
   positiveInteger(lifecycle.sinkCredential.appId, "qualification.lifecycle.sinkCredential.appId");
@@ -512,9 +517,10 @@ function validateLifecycleConfig(lifecycle) {
   );
   if (
     lifecycle.sinkCredential.repository !== lifecycle.sinkRepository ||
-    lifecycle.sinkCredential.permissions.contents !== "write"
+    lifecycle.sinkCredential.permissions.actions !== "write" ||
+    lifecycle.sinkCredential.permissions.contents !== "read"
   ) {
-    fail("sink credential must have only Contents write on the attestation sink");
+    fail("sink dispatcher credential must have only Actions write and Contents read");
   }
   exactKeys(
     lifecycle.consumerCredential,
@@ -567,6 +573,7 @@ function validateLifecycleConfig(lifecycle) {
     fail("inventory credential must have only Administration read on darkmatter/nixmac");
   }
   const appIds = [
+    lifecycle.requiredStatusCheckAppId,
     lifecycle.sinkCredential.appId,
     lifecycle.consumerCredential.appId,
     lifecycle.inventoryCredential.appId,
@@ -576,8 +583,8 @@ function validateLifecycleConfig(lifecycle) {
     lifecycle.consumerCredential.installationId,
     lifecycle.inventoryCredential.installationId,
   ];
-  if (new Set(appIds).size !== 3 || new Set(installationIds).size !== 3) {
-    fail("writer, consumer, and inventory Apps and installations must be distinct");
+  if (new Set(appIds).size !== 4 || new Set(installationIds).size !== 3) {
+    fail("writer, dispatcher, consumer, and inventory Apps must be distinct");
   }
   requiredTrue(lifecycle.oneVmPerAttempt, "qualification.lifecycle.oneVmPerAttempt");
   requiredTrue(lifecycle.capacityOnePerHost, "qualification.lifecycle.capacityOnePerHost");
@@ -1006,8 +1013,8 @@ export function validateLifecycleRequest(request) {
   string(request.attestationPolicy.sinkRepository, "request.attestationPolicy.sinkRepository", {
     pattern: REPOSITORY,
   });
-  if (request.attestationPolicy.sinkRef !== "refs/heads/main") {
-    fail("request.attestationPolicy.sinkRef must be refs/heads/main");
+  if (request.attestationPolicy.sinkRef !== "refs/heads/attestations") {
+    fail("request.attestationPolicy.sinkRef must be refs/heads/attestations");
   }
   exactKeys(
     request.fieldProvenance,
@@ -1252,6 +1259,7 @@ export function verifyLifecycleAttestationCandidate(
       "branchProtectionVerified",
       "readbackVerified",
       "requiredStatusChecks",
+      "requiredStatusCheckAppId",
     ],
     "sourceObservation",
   );
@@ -1290,9 +1298,10 @@ export function verifyLifecycleAttestationCandidate(
   if (
     !Array.isArray(sourceObservation.requiredStatusChecks) ||
     sourceObservation.requiredStatusChecks.length !== 1 ||
-    sourceObservation.requiredStatusChecks[0] !== lifecycle.requiredStatusCheck
+    sourceObservation.requiredStatusChecks[0] !== lifecycle.requiredStatusCheck ||
+    sourceObservation.requiredStatusCheckAppId !== lifecycle.requiredStatusCheckAppId
   ) {
-    fail("sourceObservation must prove the required protected-sink status check");
+    fail("sourceObservation must prove the required protected-sink status check and pinned App");
   }
   if (
     sourceObservation.repository !== attestation.provenance.sinkRepository ||

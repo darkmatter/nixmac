@@ -13,10 +13,11 @@ GRACEFUL_QUIT_HELPER="${NIXMAC_E2E_GRACEFUL_QUIT_HELPER:-/usr/local/libexec/cili
 
 # The host tool authenticates with two deliberately separate identities:
 # NIXMAC_E2E_INVENTORY_APP_ID is Administration read on darkmatter/nixmac;
-# NIXMAC_E2E_SINK_APP_ID is Contents write on the protected sink only.
+# NIXMAC_E2E_SINK_APP_ID is Actions write plus Contents read on the protected
+# sink. A different writer App exists only in the sink's protected environment.
 # It polls /actions/runners until exact runner deregistration, proves the exact
 # clone absent twice, signs lifecycleAttestationSigningPayload, computes
-# lifecycleAttestationPath, and emits repository_dispatch. Any ambiguity
+# lifecycleAttestationPath, and dispatches the trusted sink workflow. Any ambiguity
 # quarantines the host before another cycle can start.
 
 parse_args() {

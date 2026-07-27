@@ -205,18 +205,27 @@ export class GitHubProtectedSinkClient {
     return tokenResponse.token;
   }
 
-  async fetchAttestation({ repository, ref, path, requiredStatusCheck }) {
+  async fetchAttestation({
+    repository,
+    ref,
+    path,
+    requiredStatusCheck,
+    requiredStatusCheckAppId,
+  }) {
     if (repository !== this.repository) {
       fail("protected sink repository does not match the scoped GitHub App");
     }
-    if (ref !== "refs/heads/main") fail("protected sink ref must be refs/heads/main");
+    if (ref !== "refs/heads/attestations") {
+      fail("protected sink ref must be refs/heads/attestations");
+    }
     nonempty(path, "protected sink path");
     if (path.startsWith("/") || path.includes("..")) {
       fail("protected sink path must be repository-relative and traversal-free");
     }
     nonempty(requiredStatusCheck, "requiredStatusCheck");
+    positiveInteger(requiredStatusCheckAppId, "requiredStatusCheckAppId");
     const token = await this._installationToken();
-    const branch = "main";
+    const branch = "attestations";
     const refResult = await this._request(`/repos/${repository}/git/ref/heads/${branch}`, {
       token,
     });
@@ -240,16 +249,24 @@ export class GitHubProtectedSinkClient {
     if (
       protection?.required_status_checks?.strict !== true ||
       protection?.enforce_admins?.enabled !== true ||
+      protection?.required_linear_history?.enabled !== true ||
+      protection?.allow_force_pushes?.enabled !== false ||
+      protection?.allow_deletions?.enabled !== false ||
       !Array.isArray(contexts) ||
       !contexts.includes(requiredStatusCheck) ||
       !Array.isArray(checks) ||
       requiredCheckPolicies.length !== 1 ||
-      !Number.isSafeInteger(requiredCheckPolicies[0]?.app_id) ||
-      requiredCheckPolicies[0].app_id <= 0
+      requiredCheckPolicies[0]?.app_id !== requiredStatusCheckAppId ||
+      !Array.isArray(protection?.restrictions?.users) ||
+      protection.restrictions.users.length !== 0 ||
+      !Array.isArray(protection?.restrictions?.teams) ||
+      protection.restrictions.teams.length !== 0 ||
+      !Array.isArray(protection?.restrictions?.apps) ||
+      protection.restrictions.apps.length !== 1 ||
+      protection.restrictions.apps[0]?.id !== requiredStatusCheckAppId
     ) {
       fail("protected sink branch protection or required status policy is invalid");
     }
-    const requiredCheckAppId = requiredCheckPolicies[0].app_id;
     const checkRuns = await this._request(`/repos/${repository}/commits/${commit}/check-runs`, {
       token,
     });
@@ -261,7 +278,7 @@ export class GitHubProtectedSinkClient {
           check?.head_sha === commit &&
           check?.status === "completed" &&
           check?.conclusion === "success" &&
-          check?.app?.id === requiredCheckAppId,
+          check?.app?.id === requiredStatusCheckAppId,
       )
     ) {
       fail("protected sink commit lacks the required status check App identity");
@@ -318,6 +335,7 @@ export class GitHubProtectedSinkClient {
         branchProtectionVerified: true,
         readbackVerified: true,
         requiredStatusChecks: [requiredStatusCheck],
+        requiredStatusCheckAppId,
       },
     };
   }
@@ -446,6 +464,8 @@ export async function consumeLifecycleFromProtectedSink({
     ref: request.attestationPolicy.sinkRef,
     path,
     requiredStatusCheck: contract.qualification.lifecycle.requiredStatusCheck,
+    requiredStatusCheckAppId:
+      contract.qualification.lifecycle.requiredStatusCheckAppId,
   });
   const verificationTime = observedAt ?? new Date().toISOString();
   const candidate = verifyLifecycleAttestationCandidate(request, fetched.attestation, {
@@ -507,6 +527,7 @@ async function main(argv) {
     ref: request.attestationPolicy.sinkRef,
     path: pathInSink,
     requiredStatusCheck: lifecycle.requiredStatusCheck,
+    requiredStatusCheckAppId: lifecycle.requiredStatusCheckAppId,
   });
   const observedAt = new Date().toISOString();
   const candidate = verifyLifecycleAttestationCandidate(request, fetched.attestation, {

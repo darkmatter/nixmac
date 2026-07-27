@@ -1073,6 +1073,9 @@ async function dispatchAndConfirmAttestation({
   now,
   sleep,
 }) {
+  if (attestation.provenance.sinkRef !== "refs/heads/attestations") {
+    fail("lifecycle attestation must target the protected attestation branch");
+  }
   const encodedPath = attestation.provenance.sinkPath
     .split("/")
     .map((segment) => encodeURIComponent(segment))
@@ -1099,15 +1102,22 @@ async function dispatchAndConfirmAttestation({
     }
     if (now().getTime() >= nextDispatchAt) {
       try {
+        const serializedAttestation = JSON.stringify(attestation);
+        if (Buffer.byteLength(serializedAttestation) > 60 * 1024) {
+          fail("lifecycle attestation exceeds the workflow-dispatch input limit");
+        }
         await githubJson({
           fetchImpl,
           apiBaseUrl,
-          endpoint: `/repos/${sinkCredential.repository}/dispatches`,
+          endpoint: `/repos/${sinkCredential.repository}/actions/workflows/cilicon-lifecycle-attestation.yml/dispatches`,
           token,
           method: "POST",
           body: {
-            event_type: "cilicon_lifecycle_attestation",
-            client_payload: { attestation },
+            ref: "main",
+            inputs: {
+              sink_path: attestation.provenance.sinkPath,
+              attestation: serializedAttestation,
+            },
           },
           expected: [204],
         });
@@ -1124,7 +1134,7 @@ async function dispatchAndConfirmAttestation({
       persisted = await githubJson({
         fetchImpl,
         apiBaseUrl,
-        endpoint: `/repos/${sinkCredential.repository}/contents/${encodedPath}?ref=main`,
+        endpoint: `/repos/${sinkCredential.repository}/contents/${encodedPath}?ref=attestations`,
         token,
         expected: [200, 404],
         includeStatus: true,
@@ -1331,7 +1341,7 @@ async function selfTest() {
       expectedHostId: "host-1",
       attestorKeyId: "key-1",
       sinkRepository: "darkmatter/sink",
-      sinkRef: "refs/heads/main",
+      sinkRef: "refs/heads/attestations",
     },
   };
   assert.match(

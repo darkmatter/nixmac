@@ -270,29 +270,71 @@ After PR #604 lands, activate the lane only through this sequence:
    host-mounted cycle directory, and uploads the same request as a 90-day Actions
    artifact. After that Mac job exits, the ARC lifecycle consumer downloads the
    request, authenticates as the dedicated sink-reader GitHub App, resolves the
-   protected `main` ref to one commit, verifies the configured required status
-   check, reads the exact path and Git blob back, and only then verifies the
-   lifecycle signature and freshness. It atomically creates a consumption
+   protected `attestations` data ref to one commit, verifies the configured
+   writer-App status check, reads the exact path and Git blob back, and only then
+   verifies the lifecycle signature and freshness. It atomically creates a consumption
    receipt through the HTTPS durable-storage adapter with `If-None-Match: *` and
    requires an exact durable readback before returning `destroyed` or
    `quarantined`. Production report publication and terminal `COMPLETE` require
    a consumed `destroyed` result; missing lifecycle data, store failure, and
    quarantine remain fail-closed.
 1. Create the protected, secret-free
-   `darkmatter/nixmac-e2e-attestations` sink. Give the host one sink-only GitHub
-   App identity with only Contents write on that sink and no installation on
-   `darkmatter/nixmac`. Use a different GitHub App identity with only
-   Administration read on `darkmatter/nixmac` to check runner inventory. Record
-   both App and installation IDs. Never place either private key in the VM image
-   or repository.
-   Provision a third, distinct lifecycle-consumer App on the sink with exactly
+   `darkmatter/nixmac-e2e-attestations` sink as a **private** repository whose
+   default branch is `main`. Seed `main` from the reviewed sink worktree before
+   enabling any protection, then create the data branch once from that exact
+   commit:
+
+   ```bash
+   GH_TOKEN=<one-time-repository-admin-token> \
+     node scripts/bootstrap-attestations-branch.mjs bootstrap \
+       --repository darkmatter/nixmac-e2e-attestations
+   ```
+
+   The bootstrap is idempotent only while `attestations` still equals `main`
+   and refuses to reset a branch that has advanced. Create the protected
+   environment `nixmac-e2e-attestation-writer` explicitly before adding any
+   secret; restrict deployments to `main` only so GitHub cannot silently
+   auto-create an unrestricted environment. Set repository variables
+   `NIXMAC_E2E_ATTESTOR_PUBLIC_KEY_B64`, `NIXMAC_E2E_ATTESTOR_KEY_ID`,
+   `NIXMAC_E2E_SINK_WRITER_APP_ID`, and
+   `NIXMAC_E2E_SINK_WRITER_INSTALLATION_ID`, then add only
+   `NIXMAC_E2E_SINK_WRITER_PRIVATE_KEY_B64` as the environment secret.
+
+   Protect `main` with required pull requests, at least one approving
+   CODEOWNER review, stale-review dismissal, conversation resolution, no force
+   pushes or deletion, and the GitHub-Actions-owned `verify-sink-code` check.
+   Protect `attestations` with linear history, enforced administrator rules, no
+   force pushes or deletion, pushes restricted to the writer App, and the
+   `verify-lifecycle-attestation` check pinned to that writer App ID. The writer
+   has no bypass or push grant on `main`. Apply these rules only after the
+   initial `main` seed and `attestations` bootstrap have both been read back.
+
+   Give the host one sink-dispatch
+   GitHub App identity with exactly Actions write and Contents read on that sink
+   and no installation on `darkmatter/nixmac`. It may dispatch the verifier and
+   confirm one persisted path, but it cannot mutate the sink. Store a different
+   writer App with exactly Contents write and Checks write only in the sink's
+   main-only protected environment. Record that writer App ID as
+   `qualification.lifecycle.requiredStatusCheckAppId`; the consumer rejects a
+   branch policy or check run from any other App.
+   Use a third GitHub App identity with only Administration read on
+   `darkmatter/nixmac` to check runner inventory.
+   Provision a fourth, distinct lifecycle-consumer App on the sink with exactly
    Administration read, Checks read, and Contents read. Store its private key as
    the protected-environment secret
    `NIXMAC_E2E_LIFECYCLE_READER_PRIVATE_KEY`. Configure
    `NIXMAC_E2E_LIFECYCLE_STORE_URL` and
    `NIXMAC_E2E_LIFECYCLE_STORE_TOKEN` for the durable atomic-consumption service.
-   The checked-in contract remains disabled while that App or store is absent;
-   neither the workflow nor a test-only in-memory ledger is production storage.
+   Keep the host's fifth runner-provisioner App, with Administration write on
+   `darkmatter/nixmac`, distinct from all of those identities. Create a sixth
+   verdict-publisher App with exactly Checks write and Contents read on
+   `darkmatter/nixmac`; only Centaur's protected secret store may hold its key.
+   Pin the authoritative `Computer Use E2E` Check to that App ID and slug.
+   Record all six App and installation IDs. Never place private keys in the VM
+   image or repository, and never expose the verdict-publisher key to a host,
+   guest, or Actions job.
+   The checked-in contract remains disabled while an App or the durable store is
+   absent; neither the workflow nor a test-only in-memory ledger is production storage.
 1. Register only `[self-hosted, macOS,nixmac-e2e]`; do not share the build
    fleet's `nixmac-mac` lease domain. Prove one complete VM cycle, runner
    deregistration, exact clone destruction, wrapper restart recovery,
@@ -376,22 +418,26 @@ the provider contract is `disabled`:
   sudo-authorized, root-owned `nixmac-e2e-mark-quarantine` helper accepts bounded
   JSON and can write only `/var/db/nixmac-e2e-quarantined`.
 - The separate `darkmatter/nixmac-e2e-attestations` repository owns the
-  dispatch receiver and signature verifier. A lifecycle identity maps to one
-  immutable `lifecycle/<sha256>.json` path. Exact replay is idempotent; different
-  bytes at the same path fail. Per-lifecycle concurrency permits unrelated
-  attestations to progress independently. Each receiver creates a Git blob,
-  tree, and commit without moving `main`, reads the exact bytes back, attaches
-  the required `verify-lifecycle-attestation` GitHub Actions check to that
-  exact commit, and only then fast-forwards protected `main`. The host does not
-  retire a cycle after the dispatch HTTP response: it polls protected `main`
-  for byte-identical content, redispatches replay-safely until confirmed, and
+  workflow-dispatch receiver and signature verifier on protected `main`. A
+  lifecycle identity maps to one immutable `lifecycle/<sha256>.json` path on the
+  separate protected `attestations` data branch. Exact replay is idempotent;
+  different bytes at the same path fail. Per-lifecycle concurrency permits
+  unrelated attestations to progress independently. Each receiver creates a Git
+  blob, tree, and commit without moving `attestations`, reads the exact bytes
+  back, attaches `verify-lifecycle-attestation` from the dedicated writer App to
+  that exact commit, and only then fast-forwards protected `attestations`. The
+  host does not retire a cycle after the dispatch HTTP response: it polls the
+  protected data branch for byte-identical content, redispatches replay-safely until confirmed, and
   uses bounded API retries so a transient fast-forward race cannot silently
   drop an attestation. The receiver also rebuilds and retries its compare-and-
-  swap commit against a newer `main`, so cross-path concurrency does not depend
-  only on host redispatch. Non-404 lookup failures are fatal rather than
-  treated as absence. Pull requests verify only added lifecycle records, or the most
-  recently committed bounded window when verifier code changes; daily
-  scheduled and explicit manual audits verify all immutable history.
+  swap commit against a newer `attestations` head, so cross-path concurrency
+  does not depend only on host redispatch. Non-404 lookup failures are fatal
+  rather than treated as absence. Pull requests cannot add lifecycle files to
+  the code branch and verify a bounded recent window from the data branch;
+  daily scheduled and explicit manual audits verify all immutable history.
+  Those audits use a separately authenticated checkout of the private data
+  branch, require exactly one root and zero merge commits, and reject every
+  post-bootstrap change that is not an added canonical lifecycle path.
 
 Install a qualified dedicated host only after its contract contains real
 image, key, App, sink, TCC, and capacity facts:
@@ -405,13 +451,13 @@ sudo bash ops/runner/install-cilicon-e2e-host.sh \
   --attestor-key <host-ed25519-private-key.pem> \
   --runner-key <runner-provisioner-app.pem> \
   --inventory-key <inventory-read-app.pem> \
-  --sink-key <sink-write-app.pem> \
+  --sink-key <sink-dispatch-app.pem> \
   --registry-username <classic-pat-owner> \
   --registry-token-file <temporary-root-owned-0600-token-file>
 ```
 
 The installer verifies that the Ed25519 private key matches the contract,
-requires three RSA GitHub App keys, proves the digest-pinned GHCR image is
+requires three host-side RSA GitHub App keys, proves the digest-pinned GHCR image is
 private, accepts its short-lived package-read token only from a root-owned
 `0600` file, prewarms the service user's complete Tart OCI cache, and proves
 that the immutable cached bundle is usable without credentials before starting

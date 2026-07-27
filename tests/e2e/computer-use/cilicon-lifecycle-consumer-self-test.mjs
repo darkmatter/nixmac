@@ -23,6 +23,22 @@ const encodedAttestation = Buffer.from(`${JSON.stringify(attestation)}\n`).toStr
 const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const privateKeyPem = privateKey.export({ type: "pkcs8", format: "pem" });
 const githubCalls = [];
+const branchProtection = {
+  required_status_checks: {
+    strict: true,
+    contexts: ["verify-lifecycle-attestation"],
+    checks: [{ context: "verify-lifecycle-attestation", app_id: 4004 }],
+  },
+  enforce_admins: { enabled: true },
+  required_linear_history: { enabled: true },
+  allow_force_pushes: { enabled: false },
+  allow_deletions: { enabled: false },
+  restrictions: {
+    users: [],
+    teams: [],
+    apps: [{ id: 4004, slug: "nixmac-e2e-sink-writer" }],
+  },
+};
 
 const githubFetch = async (url, options = {}) => {
   githubCalls.push({ url: String(url), options });
@@ -51,18 +67,14 @@ const githubFetch = async (url, options = {}) => {
     );
   }
   assert.equal(options.headers.authorization, "Bearer installation-token");
-  if (parsed.pathname.endsWith("/git/ref/heads/main")) {
-    return json({ ref: "refs/heads/main", object: { type: "commit", sha: commit } });
-  }
-  if (parsed.pathname.endsWith("/branches/main/protection")) {
+  if (parsed.pathname.endsWith("/git/ref/heads/attestations")) {
     return json({
-      required_status_checks: {
-        strict: true,
-        contexts: ["verify-lifecycle-attestation"],
-        checks: [{ context: "verify-lifecycle-attestation", app_id: 3003 }],
-      },
-      enforce_admins: { enabled: true },
+      ref: "refs/heads/attestations",
+      object: { type: "commit", sha: commit },
     });
+  }
+  if (parsed.pathname.endsWith("/branches/attestations/protection")) {
+    return json(branchProtection);
   }
   if (parsed.pathname.endsWith(`/commits/${commit}/check-runs`)) {
     return json({
@@ -72,7 +84,7 @@ const githubFetch = async (url, options = {}) => {
           head_sha: commit,
           status: "completed",
           conclusion: "success",
-          app: { id: 3003 },
+          app: { id: 4004 },
         },
       ],
     });
@@ -107,14 +119,15 @@ const sink = new GitHubProtectedSinkClient({
 });
 const fetched = await sink.fetchAttestation({
   repository,
-  ref: "refs/heads/main",
+  ref: "refs/heads/attestations",
   path: sinkPath,
   requiredStatusCheck: "verify-lifecycle-attestation",
+  requiredStatusCheckAppId: 4004,
 });
 assert.deepEqual(fetched.attestation, attestation);
 assert.deepEqual(fetched.sourceObservation, {
   repository,
-  ref: "refs/heads/main",
+  ref: "refs/heads/attestations",
   path: sinkPath,
   commit,
   blobSha,
@@ -127,6 +140,7 @@ assert.deepEqual(fetched.sourceObservation, {
   branchProtectionVerified: true,
   readbackVerified: true,
   requiredStatusChecks: ["verify-lifecycle-attestation"],
+  requiredStatusCheckAppId: 4004,
 });
 assert.match(githubCalls[0].options.headers.authorization, /^Bearer eyJ/);
 assert.equal(githubCalls[0].options.redirect, "error");
@@ -139,6 +153,59 @@ assert.deepEqual(JSON.parse(githubCalls[1].options.body), {
     contents: "read",
   },
 });
+
+for (const [name, mutate] of [
+  [
+    "mutable writer App policy",
+    (value) => {
+      value.required_status_checks.checks[0].app_id = 9999;
+    },
+  ],
+  [
+    "force pushes enabled",
+    (value) => {
+      value.allow_force_pushes.enabled = true;
+    },
+  ],
+  [
+    "unrestricted push identity",
+    (value) => {
+      value.restrictions.apps = [];
+    },
+  ],
+]) {
+  const invalidProtectionFetch = async (url, options = {}) => {
+    const parsed = new URL(url);
+    if (parsed.pathname.endsWith("/branches/attestations/protection")) {
+      const value = structuredClone(branchProtection);
+      mutate(value);
+      return new Response(JSON.stringify(value), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return githubFetch(url, options);
+  };
+  const invalidProtectionSink = new GitHubProtectedSinkClient({
+    appId: 3003,
+    installationId: 303,
+    privateKeyPem,
+    repository,
+    fetchImpl: invalidProtectionFetch,
+    now: () => new Date("2026-07-26T18:31:00.000Z"),
+  });
+  await assert.rejects(
+    invalidProtectionSink.fetchAttestation({
+      repository,
+      ref: "refs/heads/attestations",
+      path: sinkPath,
+      requiredStatusCheck: "verify-lifecycle-attestation",
+      requiredStatusCheckAppId: 4004,
+    }),
+    /branch protection or required status policy/,
+    name,
+  );
+}
 
 const mismatchedCheckFetch = async (url, options = {}) => {
   const parsed = new URL(url);
@@ -175,9 +242,10 @@ await assert.rejects(
   () =>
     mismatchedCheckSink.fetchAttestation({
       repository,
-      ref: "refs/heads/main",
+      ref: "refs/heads/attestations",
       path: sinkPath,
       requiredStatusCheck: "verify-lifecycle-attestation",
+      requiredStatusCheckAppId: 4004,
     }),
   /required status check App identity/,
 );

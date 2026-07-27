@@ -208,15 +208,17 @@ function qualifiedContract() {
       mountPath: "/var/db/nixmac-e2e/cycles",
       quarantineSentinel: "/var/db/nixmac-e2e-quarantined",
       sinkRepository: "darkmatter/nixmac-e2e-attestations",
-      sinkRef: "refs/heads/main",
+      sinkRef: "refs/heads/attestations",
       sinkPathPrefix: "lifecycle/",
       requiredStatusCheck: "verify-lifecycle-attestation",
+      requiredStatusCheckAppId: 4004,
       sinkCredential: {
         appId: 1001,
         installationId: 101,
         repository: "darkmatter/nixmac-e2e-attestations",
         permissions: {
-          contents: "write",
+          actions: "write",
+          contents: "read",
         },
       },
       consumerCredential: {
@@ -380,15 +382,23 @@ providerMutation(
     value.qualification.lifecycle.inventoryCredential.appId =
       value.qualification.lifecycle.sinkCredential.appId;
   },
-  /Apps and installations must be distinct/,
+  /writer, dispatcher, consumer, and inventory Apps must be distinct/,
 );
 providerMutation(
-  "consumer reuses the host writer identity",
+  "writer App reuses the host dispatcher identity",
+  (value) => {
+    value.qualification.lifecycle.requiredStatusCheckAppId =
+      value.qualification.lifecycle.sinkCredential.appId;
+  },
+  /writer, dispatcher, consumer, and inventory Apps must be distinct/,
+);
+providerMutation(
+  "consumer reuses the host dispatcher identity",
   (value) => {
     value.qualification.lifecycle.consumerCredential.appId =
       value.qualification.lifecycle.sinkCredential.appId;
   },
-  /writer, consumer, and inventory Apps and installations must be distinct/,
+  /writer, dispatcher, consumer, and inventory Apps must be distinct/,
 );
 providerMutation(
   "under-privileged lifecycle consumer",
@@ -400,9 +410,9 @@ providerMutation(
 providerMutation(
   "over-privileged sink GitHub App",
   (value) => {
-    value.qualification.lifecycle.sinkCredential.permissions.actions = "write";
+    value.qualification.lifecycle.sinkCredential.permissions.contents = "write";
   },
-  /permissions keys must be exactly/,
+  /sink dispatcher credential must have only Actions write and Contents read/,
 );
 providerMutation(
   "inventory credential installed on sink",
@@ -755,6 +765,8 @@ function sourceObservation(attestation) {
     branchProtectionVerified: true,
     readbackVerified: true,
     requiredStatusChecks: [qualified.qualification.lifecycle.requiredStatusCheck],
+    requiredStatusCheckAppId:
+      qualified.qualification.lifecycle.requiredStatusCheckAppId,
   };
 }
 
@@ -1341,7 +1353,7 @@ assert.match(lifecycleAttestor, /NIXMAC_E2E_INVENTORY_APP_ID/);
 assert.match(lifecycleAttestor, /NIXMAC_E2E_SINK_APP_ID/);
 assert.match(lifecycleAttestor, /refusing to contain non-owned process/);
 assert.match(attestorSources, /\/actions\/runners/);
-assert.match(attestorSources, /repository_dispatch/);
+assert.match(attestorSources, /actions\/workflows\/cilicon-lifecycle-attestation\.yml\/dispatches/);
 assert.match(attestorSources, /protected sink confirmation/);
 assert.match(attestorSources, /attempt <= 5/);
 assert.match(attestorSources, /lifecycleAttestationSigningPayload/);
@@ -1802,23 +1814,27 @@ try {
     if (parsed.pathname === "/app/installations/101/access_tokens") {
       assert.deepEqual(body, {
         repositories: ["nixmac-e2e-attestations"],
-        permissions: { contents: "write" },
+        permissions: { actions: "write", contents: "read" },
       });
       return jsonResponse(
         {
           token: "sink-token",
           expires_at: "2026-07-26T19:00:00.000Z",
-          permissions: { contents: "write" },
+          permissions: { actions: "write", contents: "read" },
           repositories: [{ full_name: "darkmatter/nixmac-e2e-attestations" }],
         },
         201,
       );
     }
-    if (parsed.pathname === "/repos/darkmatter/nixmac-e2e-attestations/dispatches") {
+    if (
+      parsed.pathname ===
+      "/repos/darkmatter/nixmac-e2e-attestations/actions/workflows/cilicon-lifecycle-attestation.yml/dispatches"
+    ) {
       sinkDispatches += 1;
       assert.equal(options.headers.authorization, "Bearer sink-token");
-      assert.equal(body.event_type, "cilicon_lifecycle_attestation");
-      persistedSinkAttestation = body.client_payload.attestation;
+      assert.equal(body.ref, "main");
+      persistedSinkAttestation = JSON.parse(body.inputs.attestation);
+      assert.equal(body.inputs.sink_path, persistedSinkAttestation.provenance.sinkPath);
       return new Response(null, { status: 204 });
     }
     if (
@@ -1916,7 +1932,7 @@ try {
   assert.equal(
     sinkDispatches - dispatchesBeforeConfirmationRetry,
     2,
-    "the host must re-dispatch until protected main confirms the exact attestation",
+    "the host must re-dispatch until the protected attestation branch confirms the exact attestation",
   );
 
   let timeoutClock = Date.parse("2026-07-26T18:32:00.000Z");
