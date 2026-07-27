@@ -23,6 +23,30 @@ name: macOS CI Image
 # =============================================================================
 
 on:
+  workflow_call:
+    inputs:
+      xcode_artifact:
+        description: "Absolute path to approved Xcode 26.x .xip/.pkg on the builder"
+        required: true
+        type: string
+      xcode_artifact_type:
+        description: "Xcode artifact extension"
+        required: true
+        type: string
+      xcode_artifact_sha256:
+        description: "Approved Xcode artifact SHA-256"
+        required: true
+        type: string
+    outputs:
+      image:
+        description: "Digest-qualified published image"
+        value: ${{ jobs.build.outputs.image }}
+      digest:
+        description: "Published OCI manifest digest"
+        value: ${{ jobs.build.outputs.digest }}
+      xcode_artifact_sha256:
+        description: "Approved Xcode artifact SHA-256"
+        value: ${{ jobs.build.outputs.xcode_artifact_sha256 }}
   workflow_dispatch:
     inputs:
       xcode_artifact:
@@ -35,6 +59,10 @@ on:
         type: choice
         options: [xip, pkg]
         default: xip
+      xcode_artifact_sha256:
+        description: "Approved Xcode artifact SHA-256"
+        required: true
+        type: string
 # Re-enable after the image-builder host is prepared:
 # on:
 #   push:
@@ -64,6 +92,7 @@ permissions:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository_owner }}/nixmac-runner
+  BASE_IMAGE_DIGEST: sha256:a8e1c8305758643f513fdccdd829c2243687c60791083dea42f73f0b7aeb435c
 
 jobs:
   build:
@@ -71,32 +100,60 @@ jobs:
     # Dedicated image-builder host only; never use production nixmac-mac
     # runners. The Xcode artifact is supplied at manual dispatch time.
     runs-on: [self-hosted, macOS, nixmac-image-builder]
-    timeout-minutes: 90
+    timeout-minutes: 180
     outputs:
       image: ${{ steps.push.outputs.image }}
       digest: ${{ steps.push.outputs.digest }}
+      xcode_artifact_sha256: ${{ steps.xcode-artifact.outputs.sha256 }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Install image tooling (if missing)
+      - name: Provision image tooling
         shell: bash
-        run: |
-          if ! command -v packer &>/dev/null; then
-            brew install hashicorp/tap/packer
-          fi
-          if ! command -v oras &>/dev/null; then
-            brew install oras
-          fi
-          packer version
-          oras version
-
+        run: bash ops/images/provision-image-builder.sh
 
       - name: Initialize Packer plugins
         shell: bash
         run: |
           cd ops/images
           packer init nixmac-runner-tahoe.pkr.hcl
+
+      - name: Validate Xcode artifact
+        id: xcode-artifact
+        shell: bash
+        env:
+          XCODE_ARTIFACT: ${{ inputs.xcode_artifact }}
+          XCODE_ARTIFACT_TYPE: ${{ inputs.xcode_artifact_type }}
+          EXPECTED_XCODE_ARTIFACT_SHA256: ${{ inputs.xcode_artifact_sha256 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$XCODE_ARTIFACT" ]; then
+            echo "::error::xcode_artifact is required for image builds"
+            exit 1
+          fi
+          case "$XCODE_ARTIFACT_TYPE" in
+            xip|pkg) ;;
+            *)
+              echo "::error::unsupported Xcode artifact type: $XCODE_ARTIFACT_TYPE"
+              exit 1
+              ;;
+          esac
+          test -f "$XCODE_ARTIFACT"
+          digest="$(shasum -a 256 "$XCODE_ARTIFACT" | awk '{print $1}')"
+          if [[ ! "$digest" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "::error::could not resolve Xcode artifact SHA-256"
+            exit 1
+          fi
+          if [[ ! "$EXPECTED_XCODE_ARTIFACT_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "::error::xcode_artifact_sha256 must be a lowercase SHA-256"
+            exit 1
+          fi
+          if [ "$digest" != "$EXPECTED_XCODE_ARTIFACT_SHA256" ]; then
+            echo "::error::Xcode artifact does not match the approved SHA-256"
+            exit 1
+          fi
+          echo "sha256=$digest" >> "$GITHUB_OUTPUT"
 
       - name: Build image
         id: build
@@ -108,6 +165,7 @@ jobs:
           cd ops/images
           test -f "$XCODE_ARTIFACT"
           packer build \
+            -var "base_image_digest=$BASE_IMAGE_DIGEST" \
             -var "xcode_artifact=$XCODE_ARTIFACT" \
             -var "xcode_artifact_type=$XCODE_ARTIFACT_TYPE" \
             nixmac-runner-tahoe.pkr.hcl
@@ -124,7 +182,7 @@ jobs:
 
           echo "::group::Starting VM for secret scan"
           # Packer leaves the VM stopped; start it in the background.
-          tart run "$VM_NAME" &>/tmp/tart-scan-run.log &
+          tart run --no-graphics "$VM_NAME" &>/tmp/tart-scan-run.log &
           TART_PID=$!
 
           # Wait up to 5 min for the VM to get an IP.
@@ -198,7 +256,7 @@ jobs:
             exit 2
           fi
           set +e
-          grep -rIloE -e '-----BEGIN (RSA |EC |OPENSSH |AGE )?PRIVATE KEY-----|SOPS_AGE_KEY=|ghp_[0-9a-f]{36}|gho_[0-9a-f]{36}|CACHIX_AUTH_TOKEN=|DARKMATTER_CACHIX_AUTH_TOKEN=|DEVELOPER_ID_APPLICATION=|TAURI_SIGNING_PRIVATE_KEY=' $targets
+          grep -rIloE -e '-----BEGIN (RSA |EC |OPENSSH |AGE )?PRIVATE KEY-----|SOPS_AGE_KEY=|gh[opsur]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|CACHIX_AUTH_TOKEN=|DARKMATTER_CACHIX_AUTH_TOKEN=|DEVELOPER_ID_APPLICATION=|TAURI_SIGNING_PRIVATE_KEY=' $targets
           status=$?
           if [ "$status" -gt 1 ]; then exit "$status"; fi
           exit 0
@@ -226,7 +284,7 @@ jobs:
         shell: bash
         run: |
           tart stop nixmac-runner-tahoe 2>/dev/null || true
-          pkill -f "tart run nixmac-runner-tahoe" 2>/dev/null || true
+          pkill -f "tart run.*nixmac-runner-tahoe" 2>/dev/null || true
 
       - name: Log in to GHCR
         shell: bash
@@ -236,17 +294,20 @@ jobs:
           echo "$GH_TOKEN" | tart login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           echo "$GH_TOKEN" | oras login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
 
-      - name: Push image
+      - name: Push candidate image
         id: push
         shell: bash
+        env:
+          XCODE_ARTIFACT_SHA256: ${{ steps.xcode-artifact.outputs.sha256 }}
         run: |
           set -euo pipefail
 
-          IMAGE="ghcr.io/darkmatter/nixmac-runner"
+          IMAGE="$REGISTRY/$IMAGE_NAME"
           TAG="$(date +%Y%m%d)-${GITHUB_SHA:0:7}"
           tart push nixmac-runner-tahoe \
-            "$IMAGE:tahoe" \
-            "$IMAGE:$TAG"
+            "$IMAGE:$TAG" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "io.darkmatter.nixmac.xcode-artifact-sha256=$XCODE_ARTIFACT_SHA256"
 
           DIGEST="$(oras manifest fetch --descriptor "$IMAGE:$TAG" | jq -r '.digest // empty')"
           if [[ ! "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
@@ -254,14 +315,98 @@ jobs:
             exit 1
           fi
 
-          TAHOE_DIGEST="$(oras manifest fetch --descriptor "$IMAGE:tahoe" | jq -r '.digest // empty')"
-          if [ "$TAHOE_DIGEST" != "$DIGEST" ]; then
-            echo "::error::Published tags resolve to different manifests"
+          echo "image=$IMAGE@$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
+      - name: Pull and boot published image by digest
+        shell: bash
+        env:
+          PUBLISHED_IMAGE: ${{ steps.push.outputs.image }}
+        run: |
+          set -euo pipefail
+          VM_NAME="nixmac-runner-registry-qualification"
+          VM_PID=""
+          cleanup() {
+            tart stop "$VM_NAME" 2>/dev/null || true
+            if [ -n "$VM_PID" ]; then
+              kill "$VM_PID" 2>/dev/null || true
+              wait "$VM_PID" 2>/dev/null || true
+            fi
+          }
+          trap cleanup EXIT
+
+          tart delete "$VM_NAME" 2>/dev/null || true
+          tart clone "$PUBLISHED_IMAGE" "$VM_NAME"
+          tart run --no-graphics "$VM_NAME" &>/tmp/tart-registry-qualification.log &
+          VM_PID=$!
+
+          VM_IP=""
+          for _ in $(seq 1 60); do
+            VM_IP=$(tart ip "$VM_NAME" 2>/dev/null || true)
+            if [ -n "$VM_IP" ]; then break; fi
+            sleep 5
+          done
+          if [ -z "$VM_IP" ]; then
+            echo "::error::Published image did not obtain an IP"
             exit 1
           fi
 
-          echo "image=$IMAGE@$DIGEST" >> "$GITHUB_OUTPUT"
-          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          for _ in $(seq 1 30); do
+            if SSH_PASSWORD=admin /tmp/ssh-vm.sh "admin@$VM_IP" true 2>/dev/null; then
+              break
+            fi
+            sleep 5
+          done
+          cat > /tmp/qualify-published-vm.sh <<'QUALIFY'
+          #!/bin/bash
+          set -euo pipefail
+          test -x /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild
+          test -x /opt/homebrew/bin/tart-guest-agent
+          test -f /Library/LaunchDaemons/org.cirruslabs.tart-guest-daemon.plist
+          test -f /Library/LaunchAgents/org.cirruslabs.tart-guest-agent.plist
+          grep -Fx 'MACs hmac-sha2-256,hmac-sha2-512' \
+            /etc/ssh/sshd_config.d/99-cilicon-compat.conf
+          version="$(xcodebuild -version | sed -n '1p')"
+          case "$version" in
+            "Xcode 26"*) ;;
+            *)
+              echo "unexpected $version" >&2
+              exit 1
+              ;;
+          esac
+          xcodebuild -version
+          xcrun --sdk macosx --show-sdk-path
+          QUALIFY
+          if ! SSH_PASSWORD=admin /tmp/ssh-vm.sh "admin@$VM_IP" \
+            '/bin/bash -s' < /tmp/qualify-published-vm.sh; then
+            echo "::error::Published image failed its digest-qualified boot proof"
+            exit 1
+          fi
+
+      - name: Promote qualified image
+        shell: bash
+        env:
+          PUBLISHED_IMAGE: ${{ steps.push.outputs.image }}
+          PUBLISHED_DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          set -euo pipefail
+          IMAGE="$REGISTRY/$IMAGE_NAME"
+          oras tag "$PUBLISHED_IMAGE" tahoe
+          promoted_digest="$(
+            oras manifest fetch --descriptor "$IMAGE:tahoe" |
+              jq -r '.digest // empty'
+          )"
+          if [ "$promoted_digest" != "$PUBLISHED_DIGEST" ]; then
+            echo "::error::Stable tag does not resolve to the qualified digest"
+            exit 1
+          fi
+
+      - name: Clean up registry qualification VM
+        if: always()
+        shell: bash
+        run: |
+          tart stop nixmac-runner-registry-qualification 2>/dev/null || true
+          tart delete nixmac-runner-registry-qualification 2>/dev/null || true
 
       - name: Clean up local VM
         if: always()
@@ -278,5 +423,6 @@ jobs:
             echo "**Image:** \`${{ steps.push.outputs.image }}\`"
             echo "**Digest:** \`${{ steps.push.outputs.digest }}\`"
             echo "**Xcode artifact:** \`${{ inputs.xcode_artifact_type }}\`"
-            echo "**Base:** \`ghcr.io/cirruslabs/macos-tahoe-base@sha256:a8e1c8305758643f513fdccdd829c2243687c60791083dea42f73f0b7aeb435c\`"
+            echo "**Xcode artifact SHA-256:** \`${{ steps.xcode-artifact.outputs.sha256 }}\`"
+            echo "**Base:** \`ghcr.io/cirruslabs/macos-tahoe-base@$BASE_IMAGE_DIGEST\`"
           } >> "$GITHUB_STEP_SUMMARY"

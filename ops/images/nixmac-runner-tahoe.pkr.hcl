@@ -22,13 +22,13 @@ variable "image_name" {
 }
 
 variable "cpu_count" {
-  type        = number
-  default     = 8
+  type    = number
+  default = 8
 }
 
 variable "memory_gb" {
-  type        = number
-  default     = 16
+  type    = number
+  default = 16
 }
 
 variable "disk_size_gb" {
@@ -45,13 +45,18 @@ variable "base_image_tag" {
 }
 
 variable "base_image_digest" {
-  type    = string
-  # Manifest digest resolved 2026-07-25 for macos-tahoe-base:latest.
-  default = "sha256:a8e1c8305758643f513fdccdd829c2243687c60791083dea42f73f0b7aeb435c"
+  type        = string
+  default     = ""
+  description = "Required immutable manifest digest for the documented base tag."
+
+  validation {
+    condition     = can(regex("^sha256:[0-9a-f]{64}$", var.base_image_digest))
+    error_message = "Base image digest must be a sha256 manifest digest."
+  }
 }
 
- # Required local path on the dedicated image-builder host. This is supplied
- # by the operator; it is not stored in the repository or in image layers.
+# Required local path on the dedicated image-builder host. This is supplied
+# by the operator; it is not stored in the repository or in image layers.
 variable "xcode_artifact" {
   type        = string
   default     = ""
@@ -146,6 +151,18 @@ build {
       "sudo mkdir -p /etc/ssh/sshd_config.d",
       "echo 'MACs hmac-sha2-256,hmac-sha2-512' | sudo tee /etc/ssh/sshd_config.d/99-cilicon-compat.conf",
       "sudo sshd -t",
+    ]
+  }
+
+  # The pinned Cirrus base installs and configures Tart's guest agent. Verify
+  # that invariant instead of downloading a floating release or silently
+  # publishing an image without the expected host/guest integration.
+  provisioner "shell" {
+    inline = [
+      "set -euo pipefail",
+      "test -x /opt/homebrew/bin/tart-guest-agent",
+      "test -f /Library/LaunchDaemons/org.cirruslabs.tart-guest-daemon.plist",
+      "test -f /Library/LaunchAgents/org.cirruslabs.tart-guest-agent.plist",
     ]
   }
 
