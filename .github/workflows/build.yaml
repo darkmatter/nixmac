@@ -42,17 +42,18 @@ jobs:
         with:
           darkmatter-cachix-auth-token: ${{ secrets.DARKMATTER_CACHIX_AUTH_TOKEN }}
 
-      # Entering the flake-parts devenv shell materializes the
-      # .pre-commit-config.yaml symlink that prek reads.
+      # Pinned to match .github/actions/setup-devenv. The devenv CLI is needed
+      # here (not just the cached profile): entering the shell is what
+      # materializes the .pre-commit-config.yaml symlink that prek reads.
+      - name: Install devenv
+        run: nix build github:cachix/devenv/v2.1.2 --out-link "$RUNNER_TEMP/devenv-cli"
+
       - name: Run git hooks on all files
         env:
           NIXPKGS_ALLOW_UNFREE: 1
         run: |
-          mkdir -p .devenv
-          printf %s "$PWD" > .devenv/root
-          nix develop . --no-pure-eval \
-            --override-input devenv-root "file+file://$PWD/.devenv/root" \
-            -c prek run --all-files --show-diff-on-failure
+          "$RUNNER_TEMP/devenv-cli/bin/devenv" shell --impure -- \
+            prek run --all-files --show-diff-on-failure
 
   rust-tests:
     name: Rust Tests (Linux)
@@ -126,8 +127,8 @@ jobs:
           RUNNER_POOL: ${{ inputs.runner_pool || 'auto' }}
         run: |
           set -uo pipefail
-          # depot-macos-14 (Sonoma) matches the self-hosted cilicon image
-          # (macos-sonoma-xcode:16.1) most closely.
+          # Keep the fallback on Sonoma to match the self-hosted pool.
+          # setup-xcode pins Xcode 16.1 instead of this image's 15.4 default.
           custom='["self-hosted","macOS","nixmac-custom"]'
           if [ "$RUNNER_POOL" = "custom" ]; then
             echo "runs-on=$custom" | tee -a "$GITHUB_OUTPUT"
@@ -194,6 +195,11 @@ jobs:
 
       - name: Setup Xcode Swift toolchain
         uses: ./.github/actions/setup-xcode
+        with:
+          # Keep release artifacts reproducible across the self-hosted and
+          # Depot pools. The custom image lane intentionally validates its
+          # own newer Xcode and therefore leaves the preference unset.
+          preferred-version: ${{ inputs.runner_pool != 'custom' && '16.1' || '' }}
 
       # Rust (pinned stable rustc/cargo) comes from the devenv profile above.
       # Do NOT add dtolnay/rust-toolchain here: it installs rustup into the
@@ -415,7 +421,8 @@ jobs:
       # matching `-test.N` so we can exercise the full signing/notarization +
       # DMG swap path on a disposable tag without publishing a public release.
       - name: Create Release
-        if: steps.release-version.outputs.mode == 'tag' &&
+        if: (github.event_name != 'workflow_dispatch' || inputs.runner_pool != 'custom') &&
+          steps.release-version.outputs.mode == 'tag' &&
           !contains(steps.release-version.outputs.tag, '-test.')
         uses: softprops/action-gh-release@v2
         with:
@@ -432,7 +439,8 @@ jobs:
       # signing/notarization + DMG swap path on a disposable tag without
       # overwriting latest.json on the updater CDN.
       - name: Upload to R2
-        if: (steps.release-version.outputs.mode == 'tag' ||
+        if: (github.event_name != 'workflow_dispatch' || inputs.runner_pool != 'custom') &&
+          (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'develop') &&
           !contains(steps.release-version.outputs.tag, '-test.')
         shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
@@ -448,7 +456,8 @@ jobs:
       # Linear releases track what actually shipped. Skipped for `-test.N` tags
       # to match the GitHub Release / R2 upload skip.
       - name: Sync release to Linear
-        if: steps.release-version.outputs.mode == 'tag' &&
+        if: (github.event_name != 'workflow_dispatch' || inputs.runner_pool != 'custom') &&
+          steps.release-version.outputs.mode == 'tag' &&
           !contains(steps.release-version.outputs.tag, '-test.')
         uses: linear/linear-release-action@v0
         with:

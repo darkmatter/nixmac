@@ -1,30 +1,65 @@
 name: "Setup Xcode Swift toolchain"
 description: "Prefer Xcode Swift/SPM over devenv Swift on macOS."
 
+inputs:
+  preferred-version:
+    description: "Exact Xcode version to select when present and require from the selected toolchain."
+    required: false
+    default: ""
+
 runs:
   using: "composite"
   steps:
     - name: Configure Xcode swift toolchain
       if: runner.os == 'macOS'
       shell: bash
+      env:
+        PREFERRED_XCODE_VERSION: ${{ inputs.preferred-version }}
       run: |
         set -euo pipefail
+
+        preferred_version="$PREFERRED_XCODE_VERSION"
+        if [ -n "$preferred_version" ] && [[ ! "$preferred_version" =~ ^[0-9]+(\.[0-9]+){1,2}$ ]]; then
+          echo "::error::invalid preferred Xcode version: $preferred_version"
+          exit 1
+        fi
 
         developer_dir="$(env -u DEVELOPER_DIR /usr/bin/xcode-select -p 2>/dev/null || true)"
         if [ -z "$developer_dir" ]; then
           developer_dir="/Applications/Xcode.app/Contents/Developer"
         fi
 
-        swift_bin="$developer_dir/Toolchains/XcodeDefault.xctoolchain/usr/bin"
-        if [ -x "$swift_bin/swift" ]; then
-          echo "DEVELOPER_DIR=$developer_dir" >> "$GITHUB_ENV"
-          sdk_root="$(env -u SDKROOT DEVELOPER_DIR="$developer_dir" /usr/bin/xcrun --sdk macosx --show-sdk-path 2>/dev/null || true)"
-          if [ -n "$sdk_root" ]; then
-            echo "SDKROOT=$sdk_root" >> "$GITHUB_ENV"
-          fi
-          # GITHUB_PATH prepends — adding after devenv profile bin means
-          # Xcode's swift takes precedence over devenv's standalone swift,
-          # which lacks swift-build (SPM) required by swift-rs.
-          echo "$swift_bin" >> "$GITHUB_PATH"
-          unset NIX_SWIFTFLAGS_COMPILE NIX_SWIFTFLAGS_LINK 2>/dev/null || true
+        preferred_dir="/Applications/Xcode_${preferred_version}.app/Contents/Developer"
+        if [ -n "$preferred_version" ] && [ -x "$preferred_dir/usr/bin/xcodebuild" ]; then
+          developer_dir="$preferred_dir"
         fi
+
+        swift_bin="$developer_dir/Toolchains/XcodeDefault.xctoolchain/usr/bin"
+        default_dir="/Applications/Xcode.app/Contents/Developer"
+        if [ ! -x "$swift_bin/swift" ] && [ -x "$default_dir/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift" ]; then
+          developer_dir="$default_dir"
+          swift_bin="$developer_dir/Toolchains/XcodeDefault.xctoolchain/usr/bin"
+        fi
+        if [ ! -x "$swift_bin/swift" ]; then
+          echo "::error::selected Xcode has no Swift toolchain: $developer_dir"
+          exit 1
+        fi
+
+        xcode_version="$(DEVELOPER_DIR="$developer_dir" /usr/bin/xcodebuild -version | sed -n '1s/^Xcode //p')"
+        if [ -n "$preferred_version" ] && [ "$xcode_version" != "$preferred_version" ]; then
+          echo "::error::required Xcode $preferred_version, selected ${xcode_version:-unknown} at $developer_dir"
+          exit 1
+        fi
+
+        echo "Selected Xcode $xcode_version at $developer_dir"
+        "$swift_bin/swift" --version
+        echo "DEVELOPER_DIR=$developer_dir" >> "$GITHUB_ENV"
+        sdk_root="$(env -u SDKROOT DEVELOPER_DIR="$developer_dir" /usr/bin/xcrun --sdk macosx --show-sdk-path 2>/dev/null || true)"
+        if [ -n "$sdk_root" ]; then
+          echo "SDKROOT=$sdk_root" >> "$GITHUB_ENV"
+        fi
+        # GITHUB_PATH prepends — adding after devenv profile bin means
+        # Xcode's swift takes precedence over devenv's standalone swift,
+        # which lacks swift-build (SPM) required by swift-rs.
+        echo "$swift_bin" >> "$GITHUB_PATH"
+        unset NIX_SWIFTFLAGS_COMPILE NIX_SWIFTFLAGS_LINK 2>/dev/null || true

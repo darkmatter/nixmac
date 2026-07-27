@@ -35,6 +35,13 @@ runs:
       with:
         extra-conf: ${{ inputs.extra-nix-conf }}
 
+    - name: Export runner user for Cachix
+      shell: bash
+      run: |
+        if [ -z "${USER:-}" ]; then
+          echo "USER=$(id -un)" >> "$GITHUB_ENV"
+        fi
+
     # continue-on-error on the cachix steps: some persistent self-hosted
     # runners have a Nix install whose runner user is not in trusted-users,
     # so `cachix use` cannot add substituters and exits 1. Degrading to
