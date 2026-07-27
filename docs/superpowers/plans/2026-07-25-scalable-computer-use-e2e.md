@@ -22,7 +22,7 @@ merges.
 
 **Tech Stack:** Node.js ESM, CuaDriver CLI/MCP daemon, GitHub Actions and API, Python 3.11 Centaur workflows/tools, Tart/Cilicon, `unittest`, existing nixmac preservation/adversarial harnesses, `jq`, `ffmpeg`.
 
----
+______________________________________________________________________
 
 ## Repositories And Worktrees
 
