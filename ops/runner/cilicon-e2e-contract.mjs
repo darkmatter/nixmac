@@ -8,6 +8,7 @@ const FULL_GIT_SHA = /^[0-9a-f]{40}$/;
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$/;
 const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const BUNDLE_ID = /^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
+const IMAGE_CLOCK_SKEW_MS = 5 * 60 * 1000;
 const SHADOW_PROMOTION_STATE = "shadow-qualified-v1";
 const PRODUCTION_PROMOTION_STATE = "production-qualified-v1";
 const QUALIFIED_STATES = Object.freeze([SHADOW_PROMOTION_STATE, PRODUCTION_PROMOTION_STATE]);
@@ -278,6 +279,8 @@ function validateImage(image) {
       "baseReference",
       "sourceWorkflow",
       "sourceTemplate",
+      "builtAt",
+      "maxAgeSeconds",
       "digestVerified",
       "secretScanPassed",
       "containsSecrets",
@@ -289,8 +292,13 @@ function validateImage(image) {
   if (image.sourceWorkflow !== ".github/workflows/macos-ci-image.yaml") {
     fail("qualification.image.sourceWorkflow must reuse PR #604's image workflow");
   }
-  if (image.sourceTemplate !== "ops/images/nixmac-runner-tahoe.pkr.hcl") {
-    fail("qualification.image.sourceTemplate must reuse PR #604's Packer template");
+  if (image.sourceTemplate !== "ops/images/nixmac-e2e-runner-tahoe.pkr.hcl") {
+    fail("qualification.image.sourceTemplate must identify the qualified E2E Packer template");
+  }
+  canonicalTimestamp(image.builtAt, "qualification.image.builtAt");
+  positiveInteger(image.maxAgeSeconds, "qualification.image.maxAgeSeconds");
+  if (image.maxAgeSeconds > 7 * 24 * 60 * 60) {
+    fail("qualification.image.maxAgeSeconds must not exceed seven days");
   }
   requiredTrue(image.digestVerified, "qualification.image.digestVerified");
   requiredTrue(image.secretScanPassed, "qualification.image.secretScanPassed");
@@ -689,6 +697,30 @@ export function runtimeObservationSigningPayload(observationInput) {
   return canonicalJson(observation);
 }
 
+export function verifyImageAdmission(contractInput, { admittedAt }) {
+  const contract = validateProviderContract(contractInput);
+  if (contract.activation.state === "disabled") {
+    fail("the checked-in provider contract is disabled");
+  }
+  canonicalTimestamp(admittedAt, "admittedAt");
+  const admissionTime = Date.parse(admittedAt);
+  const imageBuiltAt = Date.parse(contract.qualification.image.builtAt);
+  if (imageBuiltAt > admissionTime + IMAGE_CLOCK_SKEW_MS) {
+    fail("qualified runner image is from the future");
+  }
+  if (
+    admissionTime - imageBuiltAt >
+    contract.qualification.image.maxAgeSeconds * 1000
+  ) {
+    fail("qualified runner image is stale");
+  }
+  return Object.freeze({
+    accepted: true,
+    admittedAt,
+    imageDigest: contract.qualification.image.reference.split("@")[1],
+  });
+}
+
 export function verifyRuntimeObservation(contractInput, observation, { observedAt }) {
   const contract = validateProviderContract(contractInput);
   if (contract.activation.state === "disabled") {
@@ -713,9 +745,14 @@ export function verifyRuntimeObservation(contractInput, observation, { observedA
   string(observation.host.runnerName, "runtimeObservation.host.runnerName", {
     pattern: SAFE_ID,
   });
-  exactKeys(observation.image, ["reference", "digest"], "runtimeObservation.image");
+  exactKeys(
+    observation.image,
+    ["reference", "digest", "admittedAt"],
+    "runtimeObservation.image",
+  );
   immutableReference(observation.image.reference, "runtimeObservation.image.reference");
   string(observation.image.digest, "runtimeObservation.image.digest", { pattern: SHA256 });
+  canonicalTimestamp(observation.image.admittedAt, "runtimeObservation.image.admittedAt");
   exactKeys(
     observation.cuaDriver,
     [
@@ -820,6 +857,14 @@ export function verifyRuntimeObservation(contractInput, observation, { observedA
   }
   const observationTime = Date.parse(observation.observedAt);
   const verificationTime = Date.parse(observedAt);
+  const admissionTime = Date.parse(observation.image.admittedAt);
+  verifyImageAdmission(contract, { admittedAt: observation.image.admittedAt });
+  if (
+    admissionTime > verificationTime + IMAGE_CLOCK_SKEW_MS ||
+    observationTime < admissionTime - IMAGE_CLOCK_SKEW_MS
+  ) {
+    fail("runtime image admission timestamp is inconsistent");
+  }
   if (
     observationTime > verificationTime ||
     verificationTime - observationTime >
@@ -1032,7 +1077,7 @@ function requestIdentity(request) {
 
 function lifecycleKey(request) {
   return createHash("sha256")
-    .update(JSON.stringify(requestIdentity(request)))
+    .update(canonicalJson(requestIdentity(request)))
     .digest("hex");
 }
 
@@ -1155,7 +1200,7 @@ export function verifyLifecycleAttestationCandidate(
     fail("protected sink provenance must exactly match the trusted lifecycle request");
   }
   if (
-    JSON.stringify(attestationIdentity(attestation)) !== JSON.stringify(requestIdentity(request))
+    canonicalJson(attestationIdentity(attestation)) !== canonicalJson(requestIdentity(request))
   ) {
     fail("attestation identity must exactly match the trusted lifecycle request");
   }

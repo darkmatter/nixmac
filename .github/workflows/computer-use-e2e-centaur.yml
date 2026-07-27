@@ -395,7 +395,7 @@ jobs:
           [[ "$actual_signing_identity" == "$expected_signing_identity" ]]
           [[ "$actual_team_id" == "$expected_team_id" ]]
 
-      - name: Persist trusted lifecycle request
+      - name: Prepare trusted lifecycle request
         id: lifecycle_request
         shell: bash
         env:
@@ -410,14 +410,7 @@ jobs:
           set -euo pipefail
           install -d -m 700 "$RUNNER_TEMP/nixmac-lifecycle-request"
           node --input-type=module <<'NODE'
-          import {
-            closeSync,
-            lstatSync,
-            openSync,
-            readFileSync,
-            realpathSync,
-            writeFileSync,
-          } from "node:fs";
+          import { readFileSync, writeFileSync } from "node:fs";
           import path from "node:path";
           import {
             createLifecycleRequest,
@@ -450,19 +443,7 @@ jobs:
             runtime,
             requestedAt,
           });
-          const mountPath = contract.qualification.lifecycle.mountPath;
-          const mount = lstatSync(mountPath);
-          if (!mount.isDirectory() || mount.isSymbolicLink() || realpathSync(mountPath) !== mountPath) {
-            throw new Error("lifecycle request mount must be a canonical host directory");
-          }
           const serialized = `${JSON.stringify(request, null, 2)}\n`;
-          const hostRequestPath = path.join(mountPath, "attestation-request.json");
-          const descriptor = openSync(hostRequestPath, "wx", 0o600);
-          try {
-            writeFileSync(descriptor, serialized);
-          } finally {
-            closeSync(descriptor);
-          }
           const artifactPath = path.join(
             process.env.RUNNER_TEMP,
             "nixmac-lifecycle-request",
@@ -470,14 +451,6 @@ jobs:
           );
           writeFileSync(artifactPath, serialized, { flag: "wx", mode: 0o600 });
           NODE
-
-      - name: Upload trusted lifecycle request
-        uses: actions/upload-artifact@v7
-        with:
-          name: nixmac-e2e-lifecycle-request-${{ needs.preflight.outputs.job_key }}-attempt-${{ inputs.attempt }}
-          path: ${{ runner.temp }}/nixmac-lifecycle-request/attestation-request.json
-          if-no-files-found: error
-          retention-days: 90
 
       - name: Download verified app handoff
         uses: actions/download-artifact@v7
@@ -586,6 +559,57 @@ jobs:
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 90
+
+      - name: Upload trusted lifecycle request
+        id: lifecycle_request_upload
+        if: always() && steps.lifecycle_request.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: nixmac-e2e-lifecycle-request-${{ needs.preflight.outputs.job_key }}-attempt-${{ inputs.attempt }}
+          path: ${{ runner.temp }}/nixmac-lifecycle-request/attestation-request.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish lifecycle teardown request to host
+        if: always() && steps.lifecycle_request.outcome == 'success' && steps.lifecycle_request_upload.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {
+            closeSync,
+            lstatSync,
+            openSync,
+            readFileSync,
+            realpathSync,
+            writeFileSync,
+          } from "node:fs";
+          import path from "node:path";
+          import { validateLifecycleRequest } from "./ops/runner/cilicon-e2e-contract.mjs";
+
+          const contract = JSON.parse(
+            readFileSync("ops/images/nixmac-e2e-runner.contract.json", "utf8"),
+          );
+          const requestPath = path.join(
+            process.env.RUNNER_TEMP,
+            "nixmac-lifecycle-request",
+            "attestation-request.json",
+          );
+          const serialized = readFileSync(requestPath, "utf8");
+          validateLifecycleRequest(JSON.parse(serialized));
+          const mountPath = contract.qualification.lifecycle.mountPath;
+          const mount = lstatSync(mountPath);
+          if (!mount.isDirectory() || mount.isSymbolicLink() || realpathSync(mountPath) !== mountPath) {
+            throw new Error("lifecycle request mount must be a canonical host directory");
+          }
+          const hostRequestPath = path.join(mountPath, "attestation-request.json");
+          const descriptor = openSync(hostRequestPath, "wx", 0o600);
+          try {
+            writeFileSync(descriptor, serialized);
+          } finally {
+            closeSync(descriptor);
+          }
+          NODE
 
   static_ssh:
     name: Static transition CuaDriver E2E
@@ -1324,11 +1348,37 @@ jobs:
           NIXMAC_E2E_LIFECYCLE_READER_PRIVATE_KEY: ${{ secrets.NIXMAC_E2E_LIFECYCLE_READER_PRIVATE_KEY }}
           NIXMAC_E2E_LIFECYCLE_STORE_URL: ${{ secrets.NIXMAC_E2E_LIFECYCLE_STORE_URL }}
           NIXMAC_E2E_LIFECYCLE_STORE_TOKEN: ${{ secrets.NIXMAC_E2E_LIFECYCLE_STORE_TOKEN }}
+          EXPECTED_REPOSITORY: ${{ github.repository }}
+          EXPECTED_JOB_ID: ${{ inputs.job_id }}
+          EXPECTED_MERGE_SHA: ${{ inputs.merge_sha }}
+          EXPECTED_SUITE_VERSION: ${{ inputs.suite_version }}
+          EXPECTED_ATTEMPT: ${{ inputs.attempt }}
+          EXPECTED_ATTESTATION_NONCE: ${{ inputs.attestation_nonce }}
+          EXPECTED_GITHUB_RUN_ID: ${{ github.run_id }}
+          EXPECTED_GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
           set -euo pipefail
           output_dir="$RUNNER_TEMP/lifecycle-consumption"
           request="$output_dir/attestation-request.json"
           [[ -s "$request" && ! -L "$request" ]]
+          jq -e \
+            --arg repo "$EXPECTED_REPOSITORY" \
+            --arg job_id "$EXPECTED_JOB_ID" \
+            --arg merge_sha "$EXPECTED_MERGE_SHA" \
+            --arg suite_version "$EXPECTED_SUITE_VERSION" \
+            --arg nonce "$EXPECTED_ATTESTATION_NONCE" \
+            --argjson attempt "$EXPECTED_ATTEMPT" \
+            --argjson run_id "$EXPECTED_GITHUB_RUN_ID" \
+            --argjson run_attempt "$EXPECTED_GITHUB_RUN_ATTEMPT" \
+            '.repo == $repo and
+             .jobId == $job_id and
+             .mergeSha == $merge_sha and
+             .suiteVersion == $suite_version and
+             .attempt == $attempt and
+             .attestationNonce == $nonce and
+             .githubRunId == $run_id and
+             .githubRunAttempt == $run_attempt' \
+            "$request" >/dev/null
           consumed=false
           error_file="$output_dir/consume-error.log"
           for poll in $(seq 1 30); do
@@ -1560,7 +1610,7 @@ jobs:
           infra_disposition="$STATIC_INFRA_DISPOSITION"
           lifecycle_required=false
           lifecycle_consumed=false
-          lifecycle_ok=true
+          lifecycle_ok=false
           if [[ "$LIFECYCLE_CONSUMED" == "true" ]]; then
             lifecycle_consumed=true
           fi
@@ -1581,12 +1631,15 @@ jobs:
             else
               infra_disposition="LIFECYCLE_UNVERIFIED"
             fi
-          else
+          elif [[ "$INPUT_BACKEND" == "static_ssh" ]]; then
+            lifecycle_ok=true
             case "$infra_disposition" in
               LEASE_BUSY|LEASE_QUARANTINED|INFRASTRUCTURE_FAILURE)
                 has_terminal_infra_disposition=true
                 ;;
             esac
+          else
+            infra_disposition="LIFECYCLE_UNVERIFIED"
           fi
           if [[ "$PREFLIGHT_READY" != "true" ]]; then
             if [[ "$PREFLIGHT_RESULT" == "cancelled" ||

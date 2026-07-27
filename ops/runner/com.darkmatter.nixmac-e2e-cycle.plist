@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.darkmatter.nixmac-e2e-cycle</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/libexec/cilicon-e2e-cycle-wrapper.sh</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>NIXMAC_E2E_HOST_ROOT</key>
+    <string>/private/var/db/nixmac-e2e-host</string>
+    <key>NIXMAC_E2E_CONTRACT_PATH</key>
+    <string>/Library/Application Support/darkmatter/nixmac-e2e-runner.contract.json</string>
+    <key>NIXMAC_E2E_ATTESTOR_SIGNING_KEY</key>
+    <string>/Library/Application Support/darkmatter/credentials/e2e-attestor-ed25519.pem</string>
+    <key>NIXMAC_E2E_RUNNER_PRIVATE_KEY</key>
+    <string>/Library/Application Support/darkmatter/credentials/e2e-runner-app.pem</string>
+    <key>NIXMAC_E2E_INVENTORY_PRIVATE_KEY</key>
+    <string>/Library/Application Support/darkmatter/credentials/e2e-inventory-app.pem</string>
+    <key>NIXMAC_E2E_SINK_PRIVATE_KEY</key>
+    <string>/Library/Application Support/darkmatter/credentials/e2e-sink-app.pem</string>
+    <key>NIXMAC_E2E_QUARANTINE_HELPER</key>
+    <string>/usr/local/libexec/nixmac-e2e-mark-quarantine</string>
+  </dict>
+  <key>KeepAlive</key>
+  <true/>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>StandardOutPath</key>
+  <string>/Users/Shared/nixmac-e2e-host/logs/cycle.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/Shared/nixmac-e2e-host/logs/cycle.error.log</string>
+</dict>
+</plist>

@@ -1,8 +1,18 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { generateKeyPairSync, sign } from "node:crypto";
 import { readFileSync } from "node:fs";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  realpath,
+  rm,
+  writeFile,
+} from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -19,11 +29,21 @@ import {
   validateLifecycleRequest,
   validateProviderContract,
   validateRuntimeProviderGate,
+  verifyImageAdmission,
   verifyLifecycleAttestation,
   verifyLifecycleAttestationCandidate,
   verifyRuntimeObservation,
 } from "../../../ops/runner/cilicon-e2e-contract.mjs";
 import { consumeLifecycleFromProtectedSink } from "../../../ops/runner/cilicon-lifecycle-consumer.mjs";
+import {
+  attestLifecycle,
+  checkCycleAdmission,
+  prepareCycle,
+  retireIdleRunner,
+  signRuntimeObservation,
+  waitForLocalCloneAbsence,
+  waitForRunnerDeregistration,
+} from "../../../ops/runner/cilicon-e2e-host.mjs";
 import { parseWorkflowYaml } from "./workflow-concurrency-contract.mjs";
 
 const thisFile = fileURLToPath(import.meta.url);
@@ -31,7 +51,44 @@ const repoRoot = path.resolve(path.dirname(thisFile), "../../..");
 const contractPath = path.join(repoRoot, "ops/images/nixmac-e2e-runner.contract.json");
 const workflowPath = path.join(repoRoot, ".github/workflows/computer-use-e2e-centaur.yml");
 const buildWorkflowPath = path.join(repoRoot, ".github/workflows/build.yaml");
+const imageWorkflowPath = path.join(repoRoot, ".github/workflows/macos-ci-image.yaml");
 const operationsPath = path.join(repoRoot, "tests/e2e/computer-use/OPERATIONS.md");
+const e2eImageTemplatePath = path.join(
+  repoRoot,
+  "ops/images/nixmac-e2e-runner-tahoe.pkr.hcl",
+);
+const e2eImageProvisionerPath = path.join(
+  repoRoot,
+  "ops/images/provision-nixmac-e2e-runner.sh",
+);
+const e2eImageQualifierPath = path.join(
+  repoRoot,
+  "ops/images/qualify-nixmac-e2e-runner.sh",
+);
+const e2eImageRefresherPath = path.join(
+  repoRoot,
+  "ops/images/refresh-nixmac-e2e-runner.sh",
+);
+const hostControllerPath = path.join(repoRoot, "ops/runner/cilicon-e2e-host.mjs");
+const cycleWrapperPath = path.join(repoRoot, "ops/runner/cilicon-e2e-cycle-wrapper.sh");
+const lifecycleAttestorPath = path.join(
+  repoRoot,
+  "ops/runner/cilicon-e2e-lifecycle-attestor.sh",
+);
+const gracefulQuitPath = path.join(
+  repoRoot,
+  "ops/runner/cilicon-e2e-graceful-quit.swift",
+);
+const cycleLaunchdPath = path.join(
+  repoRoot,
+  "ops/runner/com.darkmatter.nixmac-e2e-cycle.plist",
+);
+const hostInstallerPath = path.join(repoRoot, "ops/runner/install-cilicon-e2e-host.sh");
+const ciliconInstallerPath = path.join(repoRoot, "ops/runner/install-cilicon-v2.4.2.sh");
+const quarantineHelperPath = path.join(
+  repoRoot,
+  "ops/runner/nixmac-e2e-mark-quarantine.sh",
+);
 
 const clone = (value) => structuredClone(value);
 const { publicKey, privateKey } = generateKeyPairSync("ed25519");
@@ -52,6 +109,11 @@ assert.ok(
   validatedDisabled.activation.blockers.includes(
     "DURABLE_LIFECYCLE_CONSUMPTION_STORE_NOT_PROVISIONED",
   ),
+);
+assert.ok(
+  validatedDisabled.requiredQualifiedFields.includes("qualification.image.builtAt") &&
+    validatedDisabled.requiredQualifiedFields.includes("qualification.image.maxAgeSeconds"),
+  "qualified contracts must bind and expire the immutable image build",
 );
 assert.throws(
   () => {
@@ -81,7 +143,9 @@ function qualifiedContract() {
       reference: `ghcr.io/darkmatter/nixmac-e2e-runner@sha256:${"a".repeat(64)}`,
       baseReference: `ghcr.io/cirruslabs/macos-tahoe-base@sha256:${"b".repeat(64)}`,
       sourceWorkflow: ".github/workflows/macos-ci-image.yaml",
-      sourceTemplate: "ops/images/nixmac-runner-tahoe.pkr.hcl",
+      sourceTemplate: "ops/images/nixmac-e2e-runner-tahoe.pkr.hcl",
+      builtAt: "2026-07-26T12:00:00.000Z",
+      maxAgeSeconds: 7 * 24 * 60 * 60,
       digestVerified: true,
       secretScanPassed: true,
       containsSecrets: false,
@@ -244,6 +308,13 @@ providerMutation(
   /immutable GHCR/,
 );
 providerMutation(
+  "over-age image policy",
+  (value) => {
+    value.qualification.image.maxAgeSeconds = 8 * 24 * 60 * 60;
+  },
+  /must not exceed seven days/,
+);
+providerMutation(
   "floating CuaDriver artifact",
   (value) => {
     value.qualification.cuaDriver.artifactUrl =
@@ -380,6 +451,7 @@ function runtimeObservation() {
     image: {
       reference: qualified.qualification.image.reference,
       digest: `sha256:${"a".repeat(64)}`,
+      admittedAt: "2026-07-26T18:00:00.000Z",
     },
     cuaDriver: {
       artifactDigest: qualified.qualification.cuaDriver.artifactDigest,
@@ -488,9 +560,52 @@ runtimeMutation(
 runtimeMutation(
   "stale host observation",
   (value) => {
+    value.image.admittedAt = "2026-07-26T16:59:00.000Z";
     value.observedAt = "2026-07-26T17:00:00.000Z";
   },
   /runtime observation is stale/,
+);
+{
+  const expiredImageObservation = runtimeObservation();
+  expiredImageObservation.image.admittedAt = "2026-08-03T12:00:01.000Z";
+  expiredImageObservation.observedAt = "2026-08-03T12:00:01.000Z";
+  expiredImageObservation.provenance.signature = signPayload(
+    runtimeObservationSigningPayload(expiredImageObservation),
+  );
+  assert.throws(
+    () =>
+      verifyRuntimeObservation(qualified, expiredImageObservation, {
+        observedAt: "2026-08-03T12:00:01.000Z",
+      }),
+    /qualified runner image is stale/,
+    "an expired image must fail even with a fresh signed host observation",
+  );
+}
+assert.equal(
+  verifyImageAdmission(qualified, {
+    admittedAt: "2026-08-02T11:59:59.000Z",
+  }).accepted,
+  true,
+);
+assert.throws(
+  () =>
+    verifyImageAdmission(qualified, {
+      admittedAt: "2026-08-03T12:00:01.000Z",
+    }),
+  /image is stale/,
+);
+assert.equal(
+  verifyImageAdmission(qualified, {
+    admittedAt: "2026-07-26T11:55:00.000Z",
+  }).accepted,
+  true,
+);
+assert.throws(
+  () =>
+    verifyImageAdmission(qualified, {
+      admittedAt: "2026-07-26T11:54:59.000Z",
+    }),
+  /image is from the future/,
 );
 runtimeMutation(
   "tampered signed observation",
@@ -541,6 +656,33 @@ assert.deepEqual(request.fieldProvenance.runtimeObserved, [
   "hostEcho.cycleId",
   "hostEcho.clonePath",
 ]);
+for (const [name, mutate, message] of [
+  [
+    "non-canonical request job id",
+    (value) => {
+      value.jobId = "darkmatter/nixmac:wrong:computer-use-v1";
+    },
+    /jobId/,
+  ],
+  [
+    "short request nonce",
+    (value) => {
+      value.attestationNonce = "short";
+    },
+    /attestationNonce/,
+  ],
+  [
+    "unprotected sink ref",
+    (value) => {
+      value.attestationPolicy.sinkRef = "refs/heads/other";
+    },
+    /sinkRef/,
+  ],
+]) {
+  const candidate = lifecycleRequest();
+  mutate(candidate);
+  assert.throws(() => validateLifecycleRequest(candidate), message, name);
+}
 
 function destroyedAttestation(requestInput = lifecycleRequest()) {
   const value = {
@@ -692,6 +834,47 @@ const destroyed = verifyLifecycle(lifecycleRequest(), destroyedAttestation());
 assert.equal(destroyed.disposition, "destroyed");
 assert.equal(destroyed.promotionEligible, true);
 assert.equal(destroyed.containmentVerified, true);
+
+{
+  const tamperedSignature = destroyedAttestation();
+  tamperedSignature.provenance.signature = Buffer.alloc(64, 7).toString("base64");
+  assert.throws(
+    () =>
+      verifyLifecycleAttestationCandidate(lifecycleRequest(), tamperedSignature, {
+        contract: qualified,
+        observedAt: "2026-07-26T18:31:00.000Z",
+        sourceObservation: sourceObservation(tamperedSignature),
+      }),
+    /signature is invalid/,
+  );
+}
+{
+  const tamperedBlobDigest = destroyedAttestation();
+  tamperedBlobDigest.provenance.blobDigest = `sha256:${"f".repeat(64)}`;
+  assert.throws(
+    () =>
+      verifyLifecycleAttestationCandidate(lifecycleRequest(), tamperedBlobDigest, {
+        contract: qualified,
+        observedAt: "2026-07-26T18:31:00.000Z",
+        sourceObservation: sourceObservation(tamperedBlobDigest),
+      }),
+    /blob digest does not match/,
+  );
+}
+{
+  const attestation = destroyedAttestation();
+  const mismatchedSource = sourceObservation(attestation);
+  mismatchedSource.blobDigest = `sha256:${"f".repeat(64)}`;
+  assert.throws(
+    () =>
+      verifyLifecycleAttestationCandidate(lifecycleRequest(), attestation, {
+        contract: qualified,
+        observedAt: "2026-07-26T18:31:00.000Z",
+        sourceObservation: mismatchedSource,
+      }),
+    /protected sink provenance/,
+  );
+}
 
 function attestationMutation(name, mutate, message) {
   const candidateRequest = lifecycleRequest();
@@ -1002,8 +1185,697 @@ assert.match(operations, /one host\s+quarantined/i);
 assert.match(operations, /shadow-qualified-v1[\s\S]*production-qualified-v1/i);
 assert.match(operations, /runtime-observation\.json[\s\S]*Ed25519/i);
 assert.match(operations, /durable[\s\S]*consumption ledger/i);
+assert.match(operations, /MacStadium bare-metal IaaS[\s\S]*Orka is not a thin adapter/i);
+assert.match(operations, /cannot silently grant Screen Recording/i);
+assert.match(operations, /maximum qualified age of[\s\S]*seven days/i);
+assert.match(operations, /qualified execution slots/i);
+assert.match(operations, /Cilicon Image and Host Rotation[\s\S]*nixmac-e2e-drain/i);
 const buildWorkflowSource = readFileSync(buildWorkflowPath, "utf8");
 assert.match(buildWorkflowSource, /cilicon-lifecycle-consumer-self-test\.mjs/);
 assert.match(buildWorkflowSource, /cua-driver-install-contract-self-test\.mjs/);
+
+const e2eImageTemplate = readFileSync(e2eImageTemplatePath, "utf8");
+const e2eImageProvisioner = readFileSync(e2eImageProvisionerPath, "utf8");
+const e2eImageQualifier = readFileSync(e2eImageQualifierPath, "utf8");
+const e2eImageRefresher = readFileSync(e2eImageRefresherPath, "utf8");
+const e2eImageSources = [
+  e2eImageTemplate,
+  e2eImageProvisioner,
+  e2eImageQualifier,
+  e2eImageRefresher,
+].join("\n");
+assert.match(e2eImageTemplate, /source_image/);
+assert.match(e2eImageTemplate, /source_image_digest/);
+assert.match(e2eImageSources, /cua-driver-rs-v0\.12\.6/);
+assert.match(e2eImageSources, /c64017d5878d022df34137082fb918ae0d4304e28890569ff14458f1a54fd361/);
+assert.match(e2eImageSources, /eae725a09e0cdbda4bb37058a0393b86f7c97b5dda3769a10b1d79269ba8b334/);
+assert.match(e2eImageSources, /9b702de4f1591a59428f01e76eceab5a11552d19c26329eef75f0669ddc44da0/);
+assert.match(e2eImageSources, /com\.trycua\.driver/);
+assert.match(e2eImageSources, /YCK386LBJ7/);
+assert.match(e2eImageSources, /nixmac_e2e/);
+assert.match(e2eImageSources, /\/Applications\/CuaDriver\.app/);
+assert.match(e2eImageSources, /\/usr\/local\/bin\/cua-driver/);
+assert.match(e2eImageSources, /Accessibility/);
+assert.match(e2eImageSources, /ScreenCapture/);
+assert.match(e2eImageSources, /\/Library\/Application Support\/com\.apple\.TCC\/TCC\.db/);
+assert.doesNotMatch(e2eImageSources, /CREATE TABLE IF NOT EXISTS access/);
+assert.match(e2eImageSources, /\/etc\/paths\.d\/nixmac-e2e-homebrew/);
+assert.match(e2eImageSources, /screenLock off/);
+assert.match(e2eImageSources, /ffmpeg/);
+assert.match(e2eImageTemplate, /refresh-nixmac-e2e-runner\.sh/);
+assert.match(e2eImageRefresher, /Runner\.Worker/);
+assert.match(e2eImageRefresher, /runtime-probe\.refresh\.json/);
+assert.match(e2eImageRefresher, /observedAt == \$expected/);
+assert.doesNotMatch(e2eImageProvisioner, /\/tmp\/\*/);
+assert.doesNotMatch(
+  e2eImageTemplate,
+  /(?:github|sink|inventory).*(?:token|private.?key|secret)/i,
+  "the immutable VM image must not accept runtime credentials",
+);
+for (const imageScript of [
+  e2eImageProvisionerPath,
+  e2eImageQualifierPath,
+  e2eImageRefresherPath,
+]) {
+  const syntax = spawnSync("/bin/bash", ["-n", imageScript], { encoding: "utf8" });
+  assert.equal(syntax.status, 0, `${path.basename(imageScript)} must parse: ${syntax.stderr}`);
+}
+
+const hostControllerTest = spawnSync(process.execPath, [hostControllerPath, "self-test"], {
+  encoding: "utf8",
+});
+assert.equal(hostControllerTest.status, 0, hostControllerTest.stderr);
+assert.match(readFileSync(hostControllerPath, "utf8"), /runtime-probe\.json/);
+assert.match(readFileSync(hostControllerPath, "utf8"), /two|absentSamples >= 2/);
+
+for (const scriptPath of [cycleWrapperPath, lifecycleAttestorPath]) {
+  const syntax = spawnSync("/bin/bash", ["-n", scriptPath], { encoding: "utf8" });
+  assert.equal(
+    syntax.status,
+    0,
+    `${path.basename(scriptPath)} must parse as bash: ${syntax.stderr}`,
+  );
+  const selfTest = spawnSync("/bin/bash", [scriptPath, "--self-test"], {
+    encoding: "utf8",
+    env: { ...process.env, NIXMAC_E2E_SELF_TEST: "1" },
+  });
+  assert.equal(
+    selfTest.status,
+    0,
+    `${path.basename(scriptPath)} self-test failed:\n${selfTest.stdout}\n${selfTest.stderr}`,
+  );
+}
+for (const scriptPath of [hostInstallerPath, ciliconInstallerPath, quarantineHelperPath]) {
+  const syntax = spawnSync("/bin/bash", ["-n", scriptPath], { encoding: "utf8" });
+  assert.equal(syntax.status, 0, `${path.basename(scriptPath)} must parse: ${syntax.stderr}`);
+}
+
+const cycleWrapper = readFileSync(cycleWrapperPath, "utf8");
+const hostController = readFileSync(hostControllerPath, "utf8");
+const cycleHostSources = `${cycleWrapper}\n${hostController}`;
+assert.match(cycleWrapper, /\/private\/var\/db\/nixmac-e2e-host/);
+assert.doesNotMatch(cycleWrapper, /REQUEST_TIMEOUT_SECONDS/);
+assert.match(cycleWrapper, /wait_for_request_with_runtime_refresh/);
+assert.match(cycleWrapper, /FINISHED_WITHOUT_REQUEST_GRACE_SECONDS/);
+assert.match(cycleWrapper, /runner-finished\.json/);
+assert.match(cycleWrapper, /nixmac-e2e-quarantined/);
+assert.match(cycleWrapper, /mkdir.*LOCK_DIR/);
+assert.match(cycleWrapper, /reclaimed stale capacity-one cycle lock/);
+assert.match(cycleWrapper, /check-image-admission/);
+assert.match(cycleWrapper, /check-cycle-admission/);
+assert.match(cycleWrapper, /wait-clone-absent/);
+assert.match(cycleWrapper, /retire-idle-runner/);
+assert.match(cycleWrapper, /DRAIN_SENTINEL/);
+assert.match(cycleWrapper, /PENDING_DRAIN_CLEANUP/);
+assert.match(cycleWrapper, /drain_idle_cycle/);
+assert.match(
+  cycleWrapper,
+  /wait-clone-absent[\s\S]*?\|\|[\s\S]*?return 76/,
+  "drain clone-absence proof must fail closed even when drain_idle_cycle is called from an OR-list",
+);
+assert.match(
+  cycleWrapper,
+  /if ! \/usr\/bin\/python3[\s\S]*?drained-cycle\.json[\s\S]*?then[\s\S]*?return 76/,
+  "drain evidence persistence must fail closed even when drain_idle_cycle is called from an OR-list",
+);
+assert.match(cycleHostSources, /runner-busy\.json/);
+assert.match(cycleHostSources, /directoryMounts/);
+assert.match(cycleHostSources, /vmClonePath/);
+assert.match(cycleHostSources, /runnerName/);
+assert.match(cycleWrapper, /attestation-request\.json/);
+assert.match(cycleWrapper, /claimed-attestation-request\.json/);
+assert.match(cycleWrapper, /runtime-observation\.json/);
+assert.match(cycleHostSources, /runner-finished\.json/);
+assert.match(cycleHostSources, /postRun/);
+assert.match(cycleHostSources, /while :; do \/bin\/sleep 3600/);
+assert.match(cycleHostSources, /wait-runner-absent/);
+assert.match(cycleHostSources, /runtime-refresh-failed/);
+assert.match(cycleHostSources, /vm-generation-/);
+assert.match(cycleWrapper, /vm_generation_is_unique/);
+assert.match(cycleHostSources, /runner-finished\.json/);
+assert.match(cycleHostSources, /delay: 900/);
+assert.match(cycleWrapper, /cilicon-e2e-lifecycle-attestor\.sh/);
+assert.match(cycleWrapper, /ambiguous/i);
+assert.match(cycleWrapper, /owned_cilicon_process/);
+assert.match(cycleWrapper, /ps -p "\$pid" -o command=/);
+
+const lifecycleAttestor = readFileSync(lifecycleAttestorPath, "utf8");
+const attestorSources = `${lifecycleAttestor}\n${hostController}`;
+assert.match(lifecycleAttestor, /NIXMAC_E2E_INVENTORY_APP_ID/);
+assert.match(lifecycleAttestor, /NIXMAC_E2E_SINK_APP_ID/);
+assert.match(lifecycleAttestor, /refusing to contain non-owned process/);
+assert.match(attestorSources, /\/actions\/runners/);
+assert.match(attestorSources, /repository_dispatch/);
+assert.match(attestorSources, /protected sink confirmation/);
+assert.match(attestorSources, /attempt <= 5/);
+assert.match(attestorSources, /lifecycleAttestationSigningPayload/);
+assert.match(attestorSources, /lifecycleAttestationPath/);
+assert.match(lifecycleAttestor, /runner.*deregistr/i);
+assert.match(lifecycleAttestor, /clone.*absent/i);
+assert.match(lifecycleAttestor, /quarantin/i);
+assert.doesNotMatch(lifecycleAttestor, /kill -TERM/);
+const gracefulQuit = readFileSync(gracefulQuitPath, "utf8");
+assert.match(gracefulQuit, /NSRunningApplication/);
+assert.match(gracefulQuit, /application\.terminate\(\)/);
+assert.match(gracefulQuit, /matching\.count == 1/);
+
+const cycleLaunchdSource = readFileSync(cycleLaunchdPath, "utf8");
+const plistLint = spawnSync("/usr/bin/plutil", ["-lint", cycleLaunchdPath], {
+  encoding: "utf8",
+});
+assert.equal(plistLint.status, 0, plistLint.stderr);
+assert.match(cycleLaunchdSource, /com\.darkmatter\.nixmac-e2e-cycle/);
+assert.match(cycleLaunchdSource, /cilicon-e2e-cycle-wrapper\.sh/);
+assert.match(cycleLaunchdSource, /KeepAlive/);
+assert.match(cycleLaunchdSource, /ThrottleInterval/);
+assert.match(cycleLaunchdSource, /\/opt\/homebrew\/bin/);
+assert.match(cycleLaunchdSource, /\/private\/var\/db\/nixmac-e2e-host/);
+const hostInstaller = readFileSync(hostInstallerPath, "utf8");
+assert.match(hostInstaller, /visudo -cf/);
+assert.match(hostInstaller, /launchctl bootstrap/);
+assert.match(hostInstaller, /attestor private key does not match/);
+assert.match(hostInstaller, /ghcr\.io\/token/);
+assert.match(hostInstaller, /docker-content-digest/);
+assert.match(hostInstaller, /tart clone "\$image_reference"/);
+assert.match(hostInstaller, /swiftc -O/);
+assert.match(hostInstaller, /%s %s:staff 640 10 10240 \* J\\n/);
+assert.doesNotMatch(hostInstaller, /%s\\\\t640/);
+const ciliconInstaller = readFileSync(ciliconInstallerPath, "utf8");
+assert.match(ciliconInstaller, /v2\.4\.2/);
+assert.match(ciliconInstaller, /b4886bc74d6c4a802b24ef3bc40afa894d8cc13e9c25a912fdc6940a1a79a17c/);
+const quarantineHelper = readFileSync(quarantineHelperPath, "utf8");
+assert.match(quarantineHelper, /SENTINEL="\/var\/db\/nixmac-e2e-quarantined"/);
+assert.doesNotMatch(quarantineHelper, /\$\{?SENTINEL:-/);
+
+const imageWorkflowSource = readFileSync(imageWorkflowPath, "utf8");
+assert.match(imageWorkflowSource, /nixmac-e2e-runner-tahoe\.pkr\.hcl/);
+assert.match(imageWorkflowSource, /e2e_image_digest/);
+assert.match(imageWorkflowSource, /first boot/i);
+assert.match(imageWorkflowSource, /second cold boot/i);
+assert.match(imageWorkflowSource, /secret scan/i);
+assert.match(imageWorkflowSource, /Prove anonymous immutable E2E pull/);
+assert.match(imageWorkflowSource, /docker-content-digest/);
+assert.match(
+  imageWorkflowSource,
+  /secret scan[\s\S]*push/i,
+  "the E2E image must pass its secret scan before any registry push",
+);
+const primaryStepNames = primary.steps.map((step) => step.name);
+assert.ok(
+  primaryStepNames.indexOf("Run exact app with CuaDriver") <
+    primaryStepNames.indexOf("Upload trusted lifecycle request"),
+  "the test must finish before its lifecycle request is uploaded",
+);
+assert.ok(
+  primaryStepNames.indexOf("Upload trusted lifecycle request") <
+    primaryStepNames.indexOf("Publish lifecycle teardown request to host"),
+  "the teardown signal must be the final action after durable request upload",
+);
+
+const hostCycleRoot = await realpath(
+  await mkdtemp(path.join(os.tmpdir(), "nixmac-cilicon-host-cycle-")),
+);
+try {
+  const hostContractPath = path.join(hostCycleRoot, "contract.json");
+  const hostStatePath = path.join(hostCycleRoot, "cycle-1", "host-state.json");
+  const hostConfigPath = path.join(hostCycleRoot, "cycle-1", "cilicon.yml");
+  const hostCycleDir = path.dirname(hostStatePath);
+  const hostClonePath = path.join(hostCycleRoot, "clones", "cycle-1");
+  const hostRunnerKeyPath = path.join(hostCycleRoot, "runner.pem");
+  const hostAttestorKeyPath = path.join(hostCycleRoot, "attestor.pem");
+  const hostInventoryKeyPath = path.join(hostCycleRoot, "inventory.pem");
+  const hostSinkKeyPath = path.join(hostCycleRoot, "sink.pem");
+  const hostProbePath = path.join(hostCycleDir, "exchange", "runtime-probe.json");
+  const hostObservationPath = path.join(
+    hostCycleDir,
+    "exchange",
+    "runtime-observation.json",
+  );
+  const hostRequestPath = path.join(hostCycleDir, "claimed-attestation-request.json");
+  const hostAttestationPath = path.join(hostCycleDir, "lifecycle-attestation.json");
+  const hostQuarantinePath = path.join(hostCycleRoot, "quarantined.json");
+  await mkdir(hostCycleDir, { recursive: true });
+  await mkdir(path.dirname(hostClonePath), { recursive: true });
+  await writeFile(hostContractPath, `${JSON.stringify(qualified, null, 2)}\n`);
+  await writeFile(hostRunnerKeyPath, "runner fixture\n");
+  await writeFile(hostAttestorKeyPath, privateKey.export({ type: "pkcs8", format: "pem" }));
+  const inventoryKeys = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const sinkKeys = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  await writeFile(
+    hostInventoryKeyPath,
+    inventoryKeys.privateKey.export({ type: "pkcs8", format: "pem" }),
+  );
+  await writeFile(
+    hostSinkKeyPath,
+    sinkKeys.privateKey.export({ type: "pkcs8", format: "pem" }),
+  );
+  await prepareCycle({
+    contractPath: hostContractPath,
+    statePath: hostStatePath,
+    configPath: hostConfigPath,
+    cycleDir: hostCycleDir,
+    hostId: "cilicon-host-01",
+    cycleId: "cycle-1",
+    clonePath: hostClonePath,
+    runnerName: "cilicon-host-01-cycle-1",
+    runnerAppId: "4004",
+    runnerPrivateKeyPath: hostRunnerKeyPath,
+    sshUsername: "nixmac_e2e",
+    sshPassword: "fixture-only",
+    now: () => new Date("2026-07-26T18:00:00.000Z"),
+  });
+  assert.equal(
+    (
+      await checkCycleAdmission({
+        contractPath: hostContractPath,
+        statePath: hostStatePath,
+        now: () => new Date("2026-07-26T18:01:00.000Z"),
+      })
+    ).accepted,
+    true,
+  );
+  {
+    let runnerDeleted = false;
+    let runnerBusy = true;
+    let runnerClock = Date.parse("2026-07-26T18:01:00.000Z");
+    const runnerAppPrivateKey = inventoryKeys.privateKey.export({
+      type: "pkcs8",
+      format: "pem",
+    });
+    const runnerFetch = async (url, options = {}) => {
+      const parsed = new URL(url);
+      if (parsed.pathname === "/repos/darkmatter/nixmac/installation") {
+        return new Response(
+          JSON.stringify({
+            id: 3003,
+            app_id: 4004,
+            repository_selection: "selected",
+          }),
+          { status: 200 },
+        );
+      }
+      if (parsed.pathname === "/app/installations/3003") {
+        return new Response(
+          JSON.stringify({
+            id: 3003,
+            app_id: 4004,
+            repository_selection: "selected",
+          }),
+          { status: 200 },
+        );
+      }
+      if (parsed.pathname === "/app/installations/3003/access_tokens") {
+        return new Response(
+          JSON.stringify({
+            token: "runner-token",
+            expires_at: "2026-07-26T19:00:00.000Z",
+            permissions: { administration: "write" },
+            repositories: [{ full_name: "darkmatter/nixmac" }],
+          }),
+          { status: 201 },
+        );
+      }
+      if (
+        parsed.pathname === "/repos/darkmatter/nixmac/actions/runners" &&
+        options.method !== "DELETE"
+      ) {
+        const runners = runnerDeleted
+          ? []
+          : [
+              {
+                id: 77,
+                name: "cilicon-host-01-cycle-1",
+                busy: runnerBusy,
+                status: "online",
+              },
+            ];
+        return new Response(JSON.stringify({ total_count: runners.length, runners }), {
+          status: 200,
+        });
+      }
+      if (
+        parsed.pathname === "/repos/darkmatter/nixmac/actions/runners/77" &&
+        options.method === "DELETE"
+      ) {
+        runnerDeleted = true;
+        return new Response(null, { status: 204 });
+      }
+      throw new Error(`unexpected runner retirement request: ${options.method ?? "GET"} ${url}`);
+    };
+    const busyRetirement = await retireIdleRunner({
+      contract: qualified,
+      state: JSON.parse(await readFile(hostStatePath, "utf8")),
+      runnerAppId: 4004,
+      runnerPrivateKeyPem: runnerAppPrivateKey,
+      fetchImpl: runnerFetch,
+      apiBaseUrl: "https://api.github.test",
+      sleep: async (milliseconds) => {
+        runnerClock += milliseconds;
+      },
+      now: () => new Date(runnerClock),
+    });
+    assert.equal(busyRetirement.retired, false);
+    assert.equal(busyRetirement.busy, true);
+    runnerBusy = false;
+    const retired = await retireIdleRunner({
+      contract: qualified,
+      state: JSON.parse(await readFile(hostStatePath, "utf8")),
+      runnerAppId: 4004,
+      runnerPrivateKeyPem: runnerAppPrivateKey,
+      fetchImpl: runnerFetch,
+      apiBaseUrl: "https://api.github.test",
+      sleep: async (milliseconds) => {
+        runnerClock += milliseconds;
+      },
+      now: () => new Date(runnerClock),
+    });
+    assert.equal(retired.retired, true);
+    assert.equal(retired.alreadyAbsent, false);
+    assert.equal(runnerDeleted, true);
+  }
+  {
+    let cloneAbsenceClock = 0;
+    const cloneAbsence = await waitForLocalCloneAbsence({
+      state: JSON.parse(await readFile(hostStatePath, "utf8")),
+      timeoutMs: 10_000,
+      pollMs: 1,
+      sleep: async () => {
+        cloneAbsenceClock += 1;
+      },
+      now: () => new Date(cloneAbsenceClock),
+    });
+    assert.equal(cloneAbsence.clonePathAbsent, true);
+    assert.deepEqual(cloneAbsence.matchingClonePaths, []);
+  }
+  const renderedConfig = await readFile(hostConfigPath, "utf8");
+  assert.match(renderedConfig, /oci:\/\/ghcr\.io\/darkmatter\/nixmac-e2e-runner:sha256:/);
+  assert.match(renderedConfig, /runtime-probe\.json/);
+  assert.match(renderedConfig, /runtime-observation\.json/);
+  assert.match(renderedConfig, /guestFolder: "nixmac-e2e"/);
+  const probeCuaDriver = Object.fromEntries(
+    [
+      "artifactDigest",
+      "executableDigest",
+      "appBundleDigest",
+      "cliVersion",
+      "appVersion",
+      "bundleId",
+      "signingIdentity",
+      "teamId",
+      "appPath",
+      "appExecutable",
+      "cliSymlink",
+    ].map((field) => [field, qualified.qualification.cuaDriver[field]]),
+  );
+  await writeFile(
+    hostProbePath,
+    `${JSON.stringify(
+      {
+        version: 1,
+        observedAt: "2026-07-26T18:00:01.000Z",
+        cuaDriver: probeCuaDriver,
+        tcc: {
+          target: qualified.qualification.tcc.target,
+          services: qualified.qualification.tcc.services,
+          aquaSession: true,
+          accessibilityGranted: true,
+          screenRecordingGranted: true,
+          smokePassed: true,
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  const hostObservation = await signRuntimeObservation({
+    contractPath: hostContractPath,
+    statePath: hostStatePath,
+    probePath: hostProbePath,
+    signingKeyPath: hostAttestorKeyPath,
+    outputPath: hostObservationPath,
+    now: () => new Date("2026-07-26T18:00:02.000Z"),
+  });
+  const hostRuntime = verifyRuntimeObservation(qualified, hostObservation, {
+    observedAt: "2026-07-26T18:00:02.000Z",
+  });
+  const hostRequest = createLifecycleRequest(qualified, {
+    workflow: {
+      repo: "darkmatter/nixmac",
+      jobId: `darkmatter/nixmac:${"d".repeat(40)}:computer-use-v1`,
+      mergeSha: "d".repeat(40),
+      suiteVersion: "computer-use-v1",
+      attempt: 2,
+      attestationNonce: "nonce_".padEnd(64, "x"),
+      githubRunId: 123456789,
+      githubRunAttempt: 3,
+    },
+    runtime: hostRuntime,
+    requestedAt: "2026-07-26T18:10:00.000Z",
+  });
+  const reorderedHostRequest = structuredClone(hostRequest);
+  reorderedHostRequest.attestationPolicy = {
+    sinkRef: hostRequest.attestationPolicy.sinkRef,
+    sinkRepository: hostRequest.attestationPolicy.sinkRepository,
+    attestorKeyId: hostRequest.attestationPolicy.attestorKeyId,
+    expectedHostId: hostRequest.attestationPolicy.expectedHostId,
+  };
+  reorderedHostRequest.hostEcho = {
+    clonePath: hostRequest.hostEcho.clonePath,
+    cycleId: hostRequest.hostEcho.cycleId,
+  };
+  assert.equal(
+    lifecycleAttestationPath(reorderedHostRequest, qualified),
+    lifecycleAttestationPath(hostRequest, qualified),
+    "lifecycle identity hashing must not depend on JSON key insertion order",
+  );
+  const reorderedAttestation = destroyedAttestation(reorderedHostRequest);
+  assert.doesNotThrow(() =>
+    verifyLifecycleAttestationCandidate(reorderedHostRequest, reorderedAttestation, {
+      contract: qualified,
+      observedAt: "2026-07-26T18:31:00.000Z",
+      sourceObservation: sourceObservation(reorderedAttestation),
+    }),
+  );
+  await writeFile(hostRequestPath, `${JSON.stringify(hostRequest, null, 2)}\n`);
+
+  let inventoryRequests = 0;
+  let inventoryTransientFailures = 0;
+  let sinkDispatches = 0;
+  let persistedSinkAttestation = null;
+  let sinkConfirmationMisses = 0;
+  const jsonResponse = (value, status = 200) =>
+    new Response(JSON.stringify(value), {
+      status,
+      headers: { "content-type": "application/json" },
+    });
+  const exactGithubFetch = async (url, options) => {
+    const parsed = new URL(url);
+    const body = options.body ? JSON.parse(options.body) : undefined;
+    if (parsed.pathname === "/app/installations/202") {
+      return jsonResponse({ id: 202, app_id: 2002, repository_selection: "selected" });
+    }
+    if (parsed.pathname === "/app/installations/202/access_tokens") {
+      assert.deepEqual(body, {
+        repositories: ["nixmac"],
+        permissions: { administration: "read" },
+      });
+      return jsonResponse(
+        {
+          token: "inventory-token",
+          expires_at: "2026-07-26T19:00:00.000Z",
+          permissions: { administration: "read" },
+          repositories: [{ full_name: "darkmatter/nixmac" }],
+        },
+        201,
+      );
+    }
+    if (parsed.pathname === "/repos/darkmatter/nixmac/actions/runners") {
+      if (inventoryTransientFailures > 0) {
+        inventoryTransientFailures -= 1;
+        return jsonResponse({ message: "temporary outage" }, 503);
+      }
+      inventoryRequests += 1;
+      assert.equal(options.headers.authorization, "Bearer inventory-token");
+      return jsonResponse({ total_count: 0, runners: [] });
+    }
+    if (parsed.pathname === "/app/installations/101") {
+      return jsonResponse({ id: 101, app_id: 1001, repository_selection: "selected" });
+    }
+    if (parsed.pathname === "/app/installations/101/access_tokens") {
+      assert.deepEqual(body, {
+        repositories: ["nixmac-e2e-attestations"],
+        permissions: { contents: "write" },
+      });
+      return jsonResponse(
+        {
+          token: "sink-token",
+          expires_at: "2026-07-26T19:00:00.000Z",
+          permissions: { contents: "write" },
+          repositories: [{ full_name: "darkmatter/nixmac-e2e-attestations" }],
+        },
+        201,
+      );
+    }
+    if (parsed.pathname === "/repos/darkmatter/nixmac-e2e-attestations/dispatches") {
+      sinkDispatches += 1;
+      assert.equal(options.headers.authorization, "Bearer sink-token");
+      assert.equal(body.event_type, "cilicon_lifecycle_attestation");
+      persistedSinkAttestation = body.client_payload.attestation;
+      return new Response(null, { status: 204 });
+    }
+    if (
+      parsed.pathname.startsWith(
+        "/repos/darkmatter/nixmac-e2e-attestations/contents/lifecycle/",
+      )
+    ) {
+      if (sinkConfirmationMisses > 0) {
+        sinkConfirmationMisses -= 1;
+        return jsonResponse({ message: "not persisted yet" }, 404);
+      }
+      assert.ok(persistedSinkAttestation);
+      return jsonResponse({
+        type: "file",
+        path: persistedSinkAttestation.provenance.sinkPath,
+        encoding: "base64",
+        content: Buffer.from(
+          `${JSON.stringify(persistedSinkAttestation, null, 2)}\n`,
+        ).toString("base64"),
+      });
+    }
+    throw new Error(`unexpected GitHub request ${options.method} ${parsed.pathname}${parsed.search}`);
+  };
+  inventoryTransientFailures = 1;
+  const deregistration = await waitForRunnerDeregistration({
+    state: JSON.parse(await readFile(hostStatePath, "utf8")),
+    inventoryCredential: qualified.qualification.lifecycle.inventoryCredential,
+    inventoryPrivateKeyPem: await readFile(hostInventoryKeyPath, "utf8"),
+    fetchImpl: exactGithubFetch,
+    apiBaseUrl: "https://api.github.com",
+    timeoutMs: 10,
+    pollMs: 1,
+    sleep: async () => {},
+    now: () => new Date("2026-07-26T18:29:00.000Z"),
+  });
+  assert.deepEqual(deregistration, { runnerDeregistered: true, samples: 2 });
+  assert.equal(inventoryRequests, 2);
+  inventoryRequests = 0;
+  const destroyed = await attestLifecycle({
+    contractPath: hostContractPath,
+    statePath: hostStatePath,
+    requestPath: hostRequestPath,
+    signingKeyPath: hostAttestorKeyPath,
+    inventoryPrivateKeyPath: hostInventoryKeyPath,
+    sinkPrivateKeyPath: hostSinkKeyPath,
+    outputPath: hostAttestationPath,
+    quarantineSentinel: hostQuarantinePath,
+    fetchImpl: exactGithubFetch,
+    sleep: async () => {},
+    now: () => new Date("2026-07-26T18:30:00.000Z"),
+  });
+  assert.equal(destroyed.result, "destroyed");
+  assert.equal(inventoryRequests, 2, "clone and runner absence require two observations");
+  assert.equal(sinkDispatches, 1);
+
+  await attestLifecycle({
+    contractPath: hostContractPath,
+    statePath: hostStatePath,
+    requestPath: hostRequestPath,
+    signingKeyPath: hostAttestorKeyPath,
+    inventoryPrivateKeyPath: hostInventoryKeyPath,
+    sinkPrivateKeyPath: hostSinkKeyPath,
+    outputPath: hostAttestationPath,
+    quarantineSentinel: hostQuarantinePath,
+    fetchImpl: exactGithubFetch,
+    sleep: async () => {},
+    now: () => new Date("2026-07-26T18:31:00.000Z"),
+  });
+  assert.equal(inventoryRequests, 2, "restart must reuse the exact persisted attestation");
+  assert.equal(sinkDispatches, 2, "restart may idempotently replay the exact sink dispatch");
+
+  let forcedClock = Date.parse("2026-07-26T18:31:30.000Z");
+  sinkConfirmationMisses = 4;
+  const dispatchesBeforeConfirmationRetry = sinkDispatches;
+  const forcedQuarantine = await attestLifecycle({
+    contractPath: hostContractPath,
+    statePath: hostStatePath,
+    requestPath: hostRequestPath,
+    signingKeyPath: hostAttestorKeyPath,
+    inventoryPrivateKeyPath: hostInventoryKeyPath,
+    sinkPrivateKeyPath: hostSinkKeyPath,
+    outputPath: path.join(hostCycleDir, "forced-quarantine-attestation.json"),
+    quarantineSentinel: hostQuarantinePath,
+    forcedQuarantineReason: "normal Cilicon termination was not proved",
+    fetchImpl: exactGithubFetch,
+    sleep: async (milliseconds) => {
+      forcedClock += milliseconds;
+    },
+    now: () => new Date(forcedClock),
+  });
+  assert.equal(forcedQuarantine.result, "quarantined");
+  assert.equal(forcedQuarantine.runnerDeregistered, true);
+  assert.equal(forcedQuarantine.clonePathAbsent, true);
+  assert.match(forcedQuarantine.quarantine.reason, /termination was not proved/);
+  assert.equal(
+    sinkDispatches - dispatchesBeforeConfirmationRetry,
+    2,
+    "the host must re-dispatch until protected main confirms the exact attestation",
+  );
+
+  let timeoutClock = Date.parse("2026-07-26T18:32:00.000Z");
+  const runnerNeverDeregisteredFetch = async (url, options) => {
+    const parsed = new URL(url);
+    if (parsed.pathname === "/repos/darkmatter/nixmac/actions/runners") {
+      return jsonResponse({
+        total_count: 1,
+        runners: [{ name: "cilicon-host-01-cycle-1" }],
+      });
+    }
+    return exactGithubFetch(url, options);
+  };
+  const timedOut = await attestLifecycle({
+    contractPath: hostContractPath,
+    statePath: hostStatePath,
+    requestPath: hostRequestPath,
+    signingKeyPath: hostAttestorKeyPath,
+    inventoryPrivateKeyPath: hostInventoryKeyPath,
+    sinkPrivateKeyPath: hostSinkKeyPath,
+    outputPath: path.join(hostCycleDir, "timeout-attestation.json"),
+    quarantineSentinel: hostQuarantinePath,
+    fetchImpl: runnerNeverDeregisteredFetch,
+    timeoutMs: 2,
+    pollMs: 1,
+    sleep: async (milliseconds) => {
+      timeoutClock += milliseconds;
+    },
+    now: () => new Date(timeoutClock),
+  });
+  assert.equal(timedOut.result, "quarantined");
+  assert.equal(timedOut.runnerDeregistered, false);
+  assert.match(timedOut.quarantine.reason, /timed out/);
+  assert.equal(JSON.parse(await readFile(hostQuarantinePath, "utf8")).cycleId, "cycle-1");
+
+  const mismatchedRequestPath = path.join(hostCycleDir, "mismatched-request.json");
+  const mismatchedRequest = structuredClone(hostRequest);
+  mismatchedRequest.runnerName = "forged-runner";
+  await writeFile(mismatchedRequestPath, `${JSON.stringify(mismatchedRequest)}\n`);
+  await assert.rejects(
+    () =>
+      attestLifecycle({
+        contractPath: hostContractPath,
+        statePath: hostStatePath,
+        requestPath: mismatchedRequestPath,
+        signingKeyPath: hostAttestorKeyPath,
+        inventoryPrivateKeyPath: hostInventoryKeyPath,
+        sinkPrivateKeyPath: hostSinkKeyPath,
+        outputPath: path.join(hostCycleDir, "forged-attestation.json"),
+        quarantineSentinel: hostQuarantinePath,
+        fetchImpl: exactGithubFetch,
+      }),
+    /host cycle/,
+    "a guest cannot redirect a host attestation to a forged runner identity",
+  );
+} finally {
+  await rm(hostCycleRoot, { recursive: true, force: true });
+}
 
 console.log("Cilicon E2E lifecycle contract self-test passed.");

@@ -47,6 +47,15 @@ on:
       xcode_artifact_sha256:
         description: "Approved Xcode artifact SHA-256"
         value: ${{ jobs.build.outputs.xcode_artifact_sha256 }}
+      e2e_image:
+        description: "Digest-qualified Computer Use E2E image"
+        value: ${{ jobs.build.outputs.e2e_image }}
+      e2e_image_digest:
+        description: "Computer Use E2E OCI manifest digest"
+        value: ${{ jobs.build.outputs.e2e_image_digest }}
+      e2e_image_built_at:
+        description: "Canonical UTC build timestamp for E2E image age admission"
+        value: ${{ jobs.build.outputs.e2e_image_built_at }}
   workflow_dispatch:
     inputs:
       xcode_artifact:
@@ -92,6 +101,7 @@ permissions:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository_owner }}/nixmac-runner
+  E2E_IMAGE_NAME: ${{ github.repository_owner }}/nixmac-e2e-runner
   BASE_IMAGE_DIGEST: sha256:a8e1c8305758643f513fdccdd829c2243687c60791083dea42f73f0b7aeb435c
 
 jobs:
@@ -100,11 +110,14 @@ jobs:
     # Dedicated image-builder host only; never use production nixmac-mac
     # runners. The Xcode artifact is supplied at manual dispatch time.
     runs-on: [self-hosted, macOS, nixmac-image-builder]
-    timeout-minutes: 180
+    timeout-minutes: 300
     outputs:
       image: ${{ steps.push.outputs.image }}
       digest: ${{ steps.push.outputs.digest }}
       xcode_artifact_sha256: ${{ steps.xcode-artifact.outputs.sha256 }}
+      e2e_image: ${{ steps.push-e2e.outputs.image }}
+      e2e_image_digest: ${{ steps.push-e2e.outputs.digest }}
+      e2e_image_built_at: ${{ steps.push-e2e.outputs.built_at }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -387,6 +400,204 @@ jobs:
             exit 1
           fi
 
+      - name: Initialize E2E Packer layer
+        shell: bash
+        run: |
+          cd ops/images
+          packer init nixmac-e2e-runner-tahoe.pkr.hcl
+
+      - name: Build immutable Computer Use E2E layer
+        shell: bash
+        env:
+          QUALIFIED_BASE_IMAGE: ${{ steps.push.outputs.image }}
+        run: |
+          set -euo pipefail
+          base_digest="${QUALIFIED_BASE_IMAGE##*@}"
+          base_repository="${QUALIFIED_BASE_IMAGE%@*}"
+          [[ "$base_repository" =~ ^ghcr\.io/[a-z0-9._/-]+$ ]]
+          [[ "$base_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          cd ops/images
+          packer build \
+            -var "source_image=$base_repository" \
+            -var "source_image_digest=$base_digest" \
+            nixmac-e2e-runner-tahoe.pkr.hcl
+
+      - name: First boot E2E qualification
+        shell: bash
+        run: |
+          bash ops/images/run-e2e-image-qualification.sh \
+            nixmac-e2e-runner-tahoe \
+            "first boot"
+
+      - name: E2E secret scan (pre-push gate)
+        shell: bash
+        run: |
+          set -euo pipefail
+          VM_NAME="nixmac-e2e-runner-tahoe"
+          VM_PID=""
+          cleanup() {
+            tart stop "$VM_NAME" 2>/dev/null || true
+            if [ -n "$VM_PID" ]; then
+              kill "$VM_PID" 2>/dev/null || true
+              wait "$VM_PID" 2>/dev/null || true
+            fi
+          }
+          trap cleanup EXIT
+          tart run --no-graphics "$VM_NAME" >/tmp/tart-e2e-secret-scan.log 2>&1 &
+          VM_PID=$!
+          VM_IP=""
+          for _ in $(seq 1 90); do
+            VM_IP="$(tart ip "$VM_NAME" 2>/dev/null || true)"
+            if [ -n "$VM_IP" ]; then break; fi
+            kill -0 "$VM_PID" 2>/dev/null
+            sleep 5
+          done
+          [ -n "$VM_IP" ]
+          for _ in $(seq 1 60); do
+            if env SSH_PASSWORD=nixmac-e2e-local-only bash ops/images/ssh-vm.sh \
+              "nixmac_e2e@$VM_IP" true 2>/dev/null; then
+              break
+            fi
+            sleep 5
+          done
+          cat > /tmp/scan-e2e-vm.sh <<'SCAN'
+          #!/bin/bash
+          set -euo pipefail
+          targets=(
+            "/Users/nixmac_e2e/.zprofile"
+            "/Users/nixmac_e2e/.zshrc"
+            "/Users/nixmac_e2e/.bash_profile"
+            "/var/db/nixmac-e2e"
+            "/usr/local/libexec/qualify-nixmac-e2e-runner"
+          )
+          existing=()
+          for target in "${targets[@]}"; do
+            if [ -e "$target" ]; then existing+=("$target"); fi
+          done
+          if [ "${#existing[@]}" -eq 0 ]; then
+            echo "no E2E provisioning paths were available to scan" >&2
+            exit 2
+          fi
+          set +e
+          found="$(
+            grep -rIloE \
+              -e '-----BEGIN (RSA |EC |OPENSSH |AGE )?PRIVATE KEY-----|SOPS_AGE_KEY=|gh[opsur]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|CACHIX_AUTH_TOKEN=|DEVELOPER_ID_APPLICATION=|TAURI_SIGNING_PRIVATE_KEY=' \
+              "${existing[@]}"
+          )"
+          status=$?
+          set -e
+          if [ "$status" -gt 1 ]; then exit "$status"; fi
+          if [ -n "$found" ]; then
+            echo "$found"
+            exit 3
+          fi
+          SCAN
+          env SSH_PASSWORD=nixmac-e2e-local-only bash ops/images/ssh-vm.sh \
+            "nixmac_e2e@$VM_IP" \
+            'cat > /tmp/scan-e2e-vm.sh && chmod 700 /tmp/scan-e2e-vm.sh' \
+            < /tmp/scan-e2e-vm.sh
+          if ! env SSH_PASSWORD=nixmac-e2e-local-only bash ops/images/ssh-vm.sh \
+            "nixmac_e2e@$VM_IP" \
+            '/bin/bash /tmp/scan-e2e-vm.sh'; then
+            echo "::error::E2E secret scan failed; refusing registry push"
+            exit 1
+          fi
+
+      - name: Push E2E candidate image
+        id: push-e2e
+        shell: bash
+        env:
+          QUALIFIED_BASE_IMAGE: ${{ steps.push.outputs.image }}
+        run: |
+          set -euo pipefail
+          image="$REGISTRY/$E2E_IMAGE_NAME"
+          tag="$(date +%Y%m%d)-${GITHUB_SHA:0:7}"
+          built_at="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
+          tart push nixmac-e2e-runner-tahoe \
+            "$image:$tag" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "org.opencontainers.image.created=$built_at" \
+            --label "io.darkmatter.nixmac.base-image=$QUALIFIED_BASE_IMAGE" \
+            --label "io.darkmatter.nixmac.cua-driver-version=0.12.6"
+          digest="$(oras manifest fetch --descriptor "$image:$tag" | jq -r '.digest // empty')"
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          {
+            echo "image=$image@$digest"
+            echo "digest=$digest"
+            echo "built_at=$built_at"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Prove anonymous immutable E2E pull
+        shell: bash
+        env:
+          E2E_PUBLISHED_DIGEST: ${{ steps.push-e2e.outputs.digest }}
+        run: |
+          set -euo pipefail
+          repository="$E2E_IMAGE_NAME"
+          token="$(
+            curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+              --get --data-urlencode "scope=repository:${repository}:pull" \
+              "https://ghcr.io/token" |
+              jq -er '.token'
+          )"
+          headers="$RUNNER_TEMP/nixmac-e2e-anonymous-manifest.headers"
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+            -H "Authorization: Bearer $token" \
+            -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json' \
+            -D "$headers" \
+            -o /dev/null \
+            "https://ghcr.io/v2/${repository}/manifests/${E2E_PUBLISHED_DIGEST}"
+          observed="$(
+            awk 'BEGIN{IGNORECASE=1} /^docker-content-digest:/ {gsub("\\r","",$2); print $2}' \
+              "$headers" |
+              tail -1
+          )"
+          if [ "$observed" != "$E2E_PUBLISHED_DIGEST" ]; then
+            echo "::error::Cilicon requires the secret-free E2E package to be public and digest-stable"
+            exit 1
+          fi
+
+      - name: Pull E2E image by immutable digest
+        shell: bash
+        env:
+          E2E_PUBLISHED_IMAGE: ${{ steps.push-e2e.outputs.image }}
+        run: |
+          set -euo pipefail
+          tart delete nixmac-e2e-runner-aged-qualification 2>/dev/null || true
+          tart clone "$E2E_PUBLISHED_IMAGE" nixmac-e2e-runner-aged-qualification
+
+      - name: Wait before second cold boot
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Exercise persistence across a cold, non-immediate second boot.
+          sleep 900
+
+      - name: Second cold boot E2E qualification
+        shell: bash
+        run: |
+          bash ops/images/run-e2e-image-qualification.sh \
+            nixmac-e2e-runner-aged-qualification \
+            "second cold boot"
+
+      - name: Promote qualified E2E image
+        shell: bash
+        env:
+          E2E_PUBLISHED_IMAGE: ${{ steps.push-e2e.outputs.image }}
+          E2E_PUBLISHED_DIGEST: ${{ steps.push-e2e.outputs.digest }}
+        run: |
+          set -euo pipefail
+          image="$REGISTRY/$E2E_IMAGE_NAME"
+          oras tag "$E2E_PUBLISHED_IMAGE" tahoe
+          promoted_digest="$(
+            oras manifest fetch --descriptor "$image:tahoe" |
+              jq -r '.digest // empty'
+          )"
+          if [ "$promoted_digest" != "$E2E_PUBLISHED_DIGEST" ]; then
+            echo "::error::E2E stable tag does not resolve to the qualified digest"
+            exit 1
+          fi
+
       - name: Clean up registry qualification VM
         if: always()
         shell: bash
@@ -399,6 +610,8 @@ jobs:
         shell: bash
         run: |
           tart delete nixmac-runner-tahoe 2>/dev/null || true
+          tart delete nixmac-e2e-runner-tahoe 2>/dev/null || true
+          tart delete nixmac-e2e-runner-aged-qualification 2>/dev/null || true
 
       - name: Summary
         shell: bash
@@ -411,4 +624,8 @@ jobs:
             echo "**Xcode artifact:** \`${{ inputs.xcode_artifact_type }}\`"
             echo "**Xcode artifact SHA-256:** \`${{ steps.xcode-artifact.outputs.sha256 }}\`"
             echo "**Base:** \`ghcr.io/cirruslabs/macos-tahoe-base@$BASE_IMAGE_DIGEST\`"
+            echo "**E2E image:** \`${{ steps.push-e2e.outputs.image }}\`"
+            echo "**E2E digest:** \`${{ steps.push-e2e.outputs.digest }}\`"
+            echo "**E2E built at:** \`${{ steps.push-e2e.outputs.built_at }}\`"
+            echo "**E2E qualification:** first boot + second cold boot, app-owned TCC smoke"
           } >> "$GITHUB_STEP_SUMMARY"

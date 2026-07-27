@@ -49,6 +49,8 @@
     "qualification.image.baseReference",
     "qualification.image.sourceWorkflow",
     "qualification.image.sourceTemplate",
+    "qualification.image.builtAt",
+    "qualification.image.maxAgeSeconds",
     "qualification.cuaDriver.artifactUrl",
     "qualification.cuaDriver.artifactDigest",
     "qualification.cuaDriver.executableDigest",

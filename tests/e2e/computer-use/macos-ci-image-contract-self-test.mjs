@@ -366,8 +366,13 @@ assert.equal(
 );
 assert.equal(
   [...workflow.matchAll(/tart run --no-graphics "\$VM_NAME"/g)].length,
-  2,
-  "both image verification VMs must boot headlessly",
+  3,
+  "base scan, registry qualification, and E2E scan VMs must boot headlessly",
+);
+assert.match(
+  workflow,
+  /e2e_image_built_at:[\s\S]*steps\.push-e2e\.outputs\.built_at[\s\S]*org\.opencontainers\.image\.created=\$built_at[\s\S]*built_at=\$built_at/,
+  "the qualified image output must bind a canonical build timestamp for age admission",
 );
 assert.equal(
   [...connectivityScript.matchAll(/tart run --no-graphics "\$VM_NAME"/g)].length,

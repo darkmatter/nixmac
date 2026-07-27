@@ -176,6 +176,11 @@ assert.equal(
 );
 assert.deepEqual(primary["runs-on"], ["self-hosted", "macOS", "nixmac-e2e"]);
 assert.deepEqual(staticJob["runs-on"], ["self-hosted", "linux", "nixmac-e2e-static-controller"]);
+assert.equal(lifecycle["runs-on"], "arc");
+assert.equal(
+  lifecycle.if,
+  "always() && inputs.backend == 'cilicon_tart' && needs.preflight.outputs.ready == 'true' && needs.primary.result != 'skipped' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)",
+);
 assert.equal(
   primary.environment,
   "nixmac-e2e-production",
@@ -203,12 +208,57 @@ assert.match(JSON.stringify(lifecycle), /lifecycle-request/);
 assert.match(JSON.stringify(lifecycle), /LIFECYCLE_READER_PRIVATE_KEY/);
 assert.match(JSON.stringify(lifecycle), /LIFECYCLE_STORE_URL/);
 assert.match(JSON.stringify(lifecycle), /LIFECYCLE_STORE_TOKEN/);
+const lifecycleConsumeStep = lifecycle.steps.find(
+  (step) => step.name === "Consume protected lifecycle attestation exactly once",
+);
+assert.ok(lifecycleConsumeStep, "the lifecycle consumer must bind the workflow request");
+assert.deepEqual(
+  {
+    EXPECTED_REPOSITORY: lifecycleConsumeStep.env.EXPECTED_REPOSITORY,
+    EXPECTED_JOB_ID: lifecycleConsumeStep.env.EXPECTED_JOB_ID,
+    EXPECTED_MERGE_SHA: lifecycleConsumeStep.env.EXPECTED_MERGE_SHA,
+    EXPECTED_SUITE_VERSION: lifecycleConsumeStep.env.EXPECTED_SUITE_VERSION,
+    EXPECTED_ATTEMPT: lifecycleConsumeStep.env.EXPECTED_ATTEMPT,
+    EXPECTED_ATTESTATION_NONCE: lifecycleConsumeStep.env.EXPECTED_ATTESTATION_NONCE,
+    EXPECTED_GITHUB_RUN_ID: lifecycleConsumeStep.env.EXPECTED_GITHUB_RUN_ID,
+    EXPECTED_GITHUB_RUN_ATTEMPT: lifecycleConsumeStep.env.EXPECTED_GITHUB_RUN_ATTEMPT,
+  },
+  {
+    EXPECTED_REPOSITORY: "${{ github.repository }}",
+    EXPECTED_JOB_ID: "${{ inputs.job_id }}",
+    EXPECTED_MERGE_SHA: "${{ inputs.merge_sha }}",
+    EXPECTED_SUITE_VERSION: "${{ inputs.suite_version }}",
+    EXPECTED_ATTEMPT: "${{ inputs.attempt }}",
+    EXPECTED_ATTESTATION_NONCE: "${{ inputs.attestation_nonce }}",
+    EXPECTED_GITHUB_RUN_ID: "${{ github.run_id }}",
+    EXPECTED_GITHUB_RUN_ATTEMPT: "${{ github.run_attempt }}",
+  },
+  "all eight lifecycle identity fields must be bound to trusted workflow context",
+);
+for (const comparison of [
+  ".repo == $repo",
+  ".jobId == $job_id",
+  ".mergeSha == $merge_sha",
+  ".suiteVersion == $suite_version",
+  ".attempt == $attempt",
+  ".attestationNonce == $nonce",
+  ".githubRunId == $run_id",
+  ".githubRunAttempt == $run_attempt",
+]) {
+  assert.match(
+    lifecycleConsumeStep.run,
+    new RegExp(comparison.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+    `lifecycle request must verify ${comparison}`,
+  );
+}
 assert.deepEqual(publish.needs, ["preflight", "primary", "static_ssh", "lifecycle_consumer"]);
 assert.match(
   publish.if,
   /needs\.lifecycle_consumer\.outputs\.consumed == 'true'[\s\S]*needs\.lifecycle_consumer\.outputs\.disposition == 'destroyed'/,
   "ephemeral report publication must require a consumed destroyed lifecycle attestation",
 );
+assert.match(JSON.stringify(result), /lifecycle_ok=false/);
+assert.match(JSON.stringify(result), /lifecycle_ok=true/);
 assert.equal(Object.hasOwn(staticJob, "concurrency"), false);
 assert.equal(
   staticJob.outputs.infra_disposition,
@@ -785,6 +835,20 @@ assert.equal(shadowComplete.contract.terminalStatus, "COMPLETE");
 assert.equal(shadowComplete.contract.qualificationTier, "shadow");
 assert.equal(shadowComplete.contract.reportUrl, "");
 assert.match(shadowComplete.outputs, /workflow_ok=true/);
+
+const unknownBackend = runTerminalContractScenario({
+  name: "unknown-backend",
+  backend: "hypothetical_v2",
+  staticResult: "success",
+  reportResult: "success",
+  staticArtifactId: "98767",
+  staticArtifactDigest: `sha256:${"c".repeat(64)}`,
+  staticInfraDisposition: "LEASE_ACQUIRED",
+  reportUrl: "https://example.invalid/unknown-backend",
+});
+assert.equal(unknownBackend.contract.terminalStatus, "ABORTED");
+assert.equal(unknownBackend.contract.infraDisposition, "LIFECYCLE_UNVERIFIED");
+assert.match(unknownBackend.outputs, /workflow_ok=false/);
 
 const missingLifecycle = runTerminalContractScenario({
   name: "missing-lifecycle",

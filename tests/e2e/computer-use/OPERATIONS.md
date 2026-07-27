@@ -150,6 +150,23 @@ activation state to exactly match the repository-level Actions variable
 `NIXMAC_E2E_CILICON_PROMOTION_STATE`. A variable cannot enable a disabled or
 incomplete checked-in contract.
 
+The first production topology is a horizontally scalable pool of dedicated,
+full-admin cloud Apple-silicon hosts running the capacity-one Tart/Cilicon
+contract. MacStadium bare-metal IaaS is the default provider direction because
+it preserves host-controlled runtime and destruction attestation while leaving
+an Orka migration path; a MacinCloud dedicated host is acceptable as an
+alternative only if it passes the same root access, stable host
+identity, networking, reimage, and support requirements. MBP-23, personal Macs,
+and the shared build fleet are not production capacity.
+
+Orka is not a thin adapter over this substrate. The checked-in image is Tart
+format, the lifecycle trust root is a customer-controlled host process, and the
+current runner registration model is label based. An Orka backend therefore
+needs an Orka-native image pipeline, runner scale-set controller, and
+API-rooted observation/destruction proof. Test those assumptions with Orka
+Desktop before provider commitment, then qualify Orka as a separate future
+backend rather than weakening the Cilicon contract.
+
 The variable must be repository-level because the ARC preflight evaluates it
 before a protected-environment Mac job can be allocated. Treat repository and
 organization Actions-variable write access as part of the production control
@@ -174,7 +191,12 @@ After PR #604 lands, activate the lane only through this sequence:
    Pin the CuaDriver artifact, executable, and app-tree digests, CLI/app version,
    bundle ID, signing identity, Team ID, app path, app-owned executable, and CLI
    symlink.
-   On every VM boot, the host attestor writes
+   Record the image build timestamp and enforce a maximum qualified age of
+   seven days. Rebuilding does not waive cold-boot, aged-boot, TCC, or smoke
+   qualification. Image age is fixed at cycle admission, with five minutes of
+   clock-skew tolerance; an expired image pauses new cycles without
+   quarantining a healthy host, while an already-admitted cycle may finish. On
+   every VM boot, the host attestor writes
    `/var/db/nixmac-e2e/runtime-observation.json`. The workflow verifies its
    Ed25519 signature and freshness, binds the actually observed image digest,
    host/cycle/runner, CuaDriver hashes/signature/bundle identity, and TCC target,
@@ -190,8 +212,12 @@ After PR #604 lands, activate the lane only through this sequence:
    media/report tool.
 1. On both first boot and an aged reboot, prove a logged-in Aqua session,
    Accessibility, Screen Recording, and CuaDriver smoke. TCC must target the
-   pinned `CuaDriver.app` identity, never the raw CLI. If grants do not survive
-   cloning, require a supported MDM/bootstrap mechanism before promotion.
+   pinned `CuaDriver.app` identity, never the raw CLI. PPPC/MDM may grant
+   Accessibility, but it cannot silently grant Screen Recording; it can only
+   permit a standard user to approve it. The provider/image combination must
+   therefore prove that a one-time user-approved golden-image grant or the
+   explicitly qualified system-TCC bootstrap survives cloning. If neither
+   survives reliably, that provider/image combination is ineligible.
 1. Deploy a dedicated capacity-one host cycle wrapper and lifecycle attestor.
    Every attempt gets one fresh VM. The trusted workflow supplies the job,
    Centaur attempt, nonce, GitHub run/run-attempt, and qualified attestor/sink
@@ -256,14 +282,137 @@ After PR #604 lands, activate the lane only through this sequence:
    than 2% infrastructure-inconclusive, and 100% of attempts destroyed or
    explicitly quarantined. Only then set the repository promotion variable.
 
-Size the dedicated pool from observed arrivals and cycle time:
+### Implemented Cilicon substrate
+
+The checked-in substrate for the sequence above is intentionally dormant while
+the provider contract is `disabled`:
+
+- `ops/images/nixmac-e2e-runner-tahoe.pkr.hcl` derives from the immutable
+  digest produced by the existing Xcode image job. It installs the pinned
+  CuaDriver 0.12.6 app, a dedicated `nixmac_e2e` user, required media tools,
+  system-database app-bundle TCC grants, Homebrew login/launchd paths, completed
+  Setup Assistant state, disabled screen lock, and the live boot qualifier. The
+   image workflow runs the app-owned permission smoke on a first boot, scans
+   before push, pulls by digest, waits fifteen minutes cold, and repeats the
+   smoke on a second cold boot before moving the stable tag. Multi-day aging is
+   an external scheduled qualification, not something this build claims to
+   prove.
+- `ops/runner/cilicon-e2e-cycle-wrapper.sh` holds one atomic lock per host,
+  creates one canonical `/private/var/db` cycle directory and exact clone path,
+  renders a digest-pinned Cilicon config, and refuses a second cycle until
+  lifecycle attestation completes. A boot-persistent stale lock is reclaimed
+  only when its recorded PID is not an owned live wrapper. On restart the
+  wrapper resumes the one unambiguous cycle; any stale probe, failed resume, or
+  multiple active directories quarantines the host.
+- The immutable guest runs the baked qualifier before GitHub runner
+  provisioning and writes `runtime-probe.json` to a narrow guest-writable
+  exchange mount. Host state, Cilicon config, PID, logs, claimed requests, and
+  signed lifecycle output remain outside that mount. The host
+  validates those live app/TCC facts, adds the actual host/cycle/runner/image
+  identity, signs `runtime-observation.json`, and only then lets the runner
+  start. While idle, the guest reruns the live qualifier every fifteen minutes;
+  the host signs each changed probe and the guest atomically installs the
+  matching observation. Idleness never quarantines a healthy host, while a
+  failed refresh blocks liveness and fails closed. A fresh `runner-busy.json`
+  marker prevents image rotation from touching an executing job. An idle cycle
+  whose image expires, whose deployed contract changes, or whose host has
+   `/var/db/nixmac-e2e-drain` is terminated normally, its clone absence is proved
+  twice, and it is archived as drained without creating a quarantine. Before
+  termination, the runner-provisioner App atomically verifies that the exact
+  runner is idle, deletes its registration, and proves it absent twice so no job
+  can race the drain.
+- The Mac job prepares its nonce-bound lifecycle request before testing, but
+  does not signal teardown then. It first runs the test and uploads evidence,
+  uploads the request for the independent ARC consumer, and publishes
+  `attestation-request.json` into the host mount as its final step. This ordering
+  prevents the host from destroying the VM before its durable request exists.
+- Cilicon's `postRun` begins only after the Actions runner exits. It writes a
+  cycle/runner-bound `runner-finished.json` marker and deliberately keeps the
+  VM alive. A valid marker without a lifecycle request has a bounded
+  fifteen-minute grace; after that the host fails closed instead of silently
+  leaking capacity. Each VM boot also writes a unique generation marker, and a
+  second generation under the same cycle identity is rejected.
+  `ops/runner/cilicon-e2e-lifecycle-attestor.sh` then observes the
+  exact runner absent twice before a root-built AppKit helper asks the exact
+  Cilicon PID and exact config command to terminate normally. PID reuse or a
+  mismatched command is quarantined and never killed. The liveness probe remains
+  satisfied by the runner-finished marker while `postRun` blocks, preventing
+  Cilicon from re-registering the runner during teardown. Normal termination
+  triggers Cilicon's own clone cleanup;
+  the host separately requires the exact clone namespace empty twice before it
+  signs and dispatches an immutable `destroyed` payload. Timeout, forced
+  containment, or ambiguity produces `quarantined`. Restart after a successful
+  local write replays the byte-identical payload rather than resigning it.
+- The GUI service account cannot write arbitrary `/var/db` paths. A narrowly
+  sudo-authorized, root-owned `nixmac-e2e-mark-quarantine` helper accepts bounded
+  JSON and can write only `/var/db/nixmac-e2e-quarantined`.
+- The separate `darkmatter/nixmac-e2e-attestations` repository owns the
+  dispatch receiver and signature verifier. A lifecycle identity maps to one
+  immutable `lifecycle/<sha256>.json` path. Exact replay is idempotent; different
+  bytes at the same path fail. Per-lifecycle concurrency permits unrelated
+  attestations to progress independently. Each receiver creates a Git blob,
+  tree, and commit without moving `main`, reads the exact bytes back, attaches
+  the required `verify-lifecycle-attestation` GitHub Actions check to that
+  exact commit, and only then fast-forwards protected `main`. The host does not
+  retire a cycle after the dispatch HTTP response: it polls protected `main`
+  for byte-identical content, redispatches replay-safely until confirmed, and
+  uses bounded API retries so a transient fast-forward race cannot silently
+  drop an attestation. The receiver also rebuilds and retries its compare-and-
+  swap commit against a newer `main`, so cross-path concurrency does not depend
+  only on host redispatch. Non-404 lookup failures are fatal rather than
+  treated as absence. Pull requests verify only added lifecycle records, or the most
+  recently committed bounded window when verifier code changes; daily
+  scheduled and explicit manual audits verify all immutable history.
+
+Install a qualified dedicated host only after its contract contains real
+image, key, App, sink, TCC, and capacity facts:
+
+```bash
+sudo bash ops/runner/install-cilicon-e2e-host.sh \
+  --service-user <dedicated-aqua-user> \
+  --runner-app-id <runner-provisioner-app-id> \
+  --host-id <stable-host-id> \
+  --contract <qualified-contract.json> \
+  --attestor-key <host-ed25519-private-key.pem> \
+  --runner-key <runner-provisioner-app.pem> \
+  --inventory-key <inventory-read-app.pem> \
+  --sink-key <sink-write-app.pem>
+```
+
+The installer verifies that the Ed25519 private key matches the contract,
+requires three RSA GitHub App keys, proves the digest-pinned GHCR image is
+anonymously pullable, prewarms the service user's complete Tart OCI cache before
+starting the first cycle, checksum-pins Cilicon 2.4.2, compiles the exact-PID normal
+termination helper with the Apple toolchain, installs capacity-one launchd
+state with an absolute Node path, gives credentials only to the non-personal
+service user, bounds retained cycle history and logs, and starts the LaunchAgent
+only inside that user's logged-in Aqua session. Cilicon 2.4.2 cannot
+authenticate OCI pulls, so the secret-free runner image package must remain
+public. Never copy host credentials into the Tart image.
+
+Before signing a provider commitment, record real quotes and compare dedicated
+Tart/Cilicon, Orka, and GitHub-hosted arm64 runners. GitHub-hosted runners remain
+useful for builds and cheap smoke tests, but the authoritative Product Proof
+lane still requires a qualified immutable image, persistent TCC identity, and
+independent destruction proof. As a seed workload on 2026-07-27,
+`origin/main` showed 99 PR-shaped commits over 30 days and a 90-day burst peak
+of eight in one hour; replace that snapshot with Centaur arrival telemetry.
+
+Size the dedicated pool in qualified execution slots, then convert slots to
+hosts:
 
 ```text
-dedicated_hosts >= max(
-  2,
-  ceil(peak_jobs_per_hour * p95_cycle_minutes / 60 * 1.5) + 1
-)
+required_slots =
+  ceil(peak_jobs_per_hour * p95_cycle_minutes / 60 * 1.5)
+
+dedicated_hosts =
+  max(2, ceil(required_slots / qualified_slots_per_host) + 1)
 ```
+
+The current Cilicon safety contract has
+`qualified_slots_per_host = 1`. A future Orka backend may qualify up to two
+VMs per node only after proving Computer Use timing and state isolation under
+that concurrency.
 
 Promotion also requires p95 start latency under 15 minutes with one host
 quarantined. Rollback selects the last qualified immutable image digest; it
@@ -358,6 +507,12 @@ concurrency queue: it fetches the latest branch and retries an optimistic
 commit/push race up to five times so every completed attempt gets a publication
 opportunity.
 
+After private shadow qualification, Centaur may publish exactly one terminal
+message per durable job to `#nixmac-e2e`: merged SHA, PASS/FAIL/INFRA,
+scenario count, duration, and the stable report link. GitHub Check remains the
+authoritative verdict. Intermediate state, retries, and host-health chatter do
+not go to Buzz.
+
 ## Daily Operator Check
 
 1. Inspect the latest local evidence summary:
@@ -414,7 +569,35 @@ Track these locally or in the release issue before required-gate promotion:
 - cleanup failures;
 - host identity mismatch or app-server unavailable incidents.
 
-## Host Rotation
+## Cilicon Image and Host Rotation
+
+Rotate the dedicated Cilicon fleet before the qualified image reaches seven
+days:
+
+1. Build, publish, and externally qualify the replacement digest. Do not update
+   a host contract while its `runner-busy.json` marker is fresh.
+1. Create root-owned `/var/db/nixmac-e2e-drain` on every host. Busy cycles finish
+   their normal attested teardown; idle cycles terminate Cilicon normally,
+   prove the exact clone namespace absent twice, and write
+   `drained-cycle.json` without quarantining the host.
+1. Wait until every host has no active cycle and the wrapper reports that drain
+   admission is active. Verify the wrapper already deleted each exact idle
+   runner registration with the runner-provisioner App and proved it absent
+   twice; then remove the host-only `pending-drain-cleanup.json` marker. The
+   wrapper will not register a replacement runner while that cleanup marker
+   exists.
+1. Install the newly qualified contract/image digest, prewarm its Tart cache,
+   then remove the drain sentinel. The wrapper refuses stale image admission and
+   starts one new cycle only after the replacement contract is valid.
+1. Prove one full destroyed attempt per host before returning the pool to
+   production traffic. A failed graceful drain or ambiguous clone absence is a
+   quarantine, not an automatic bypass.
+
+The same sequence rotates or replaces a cloud host. The fleet controller should
+replace a quarantined host rather than treating manual SSH repair as normal
+capacity management.
+
+## Static Host Rotation
 
 Host rotation is required when DXU is reassigned, replaced, compromised, or too
 noisy for reliable Product Proof.
@@ -488,6 +671,8 @@ home.
 
 Weekly:
 
+- rebuild and requalify the immutable runner image before its seven-day maximum
+  age; a stale image fails admission rather than extending itself;
 - run `summarize-runs.mjs` and record the real workflow streak, latest SHA
   clean count, no-touch count, and evidence volume;
 - review waivers in `coverage-manifest.json` for expired review dates;
