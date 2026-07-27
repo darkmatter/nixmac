@@ -16,8 +16,6 @@ type AuthStatus = {
 type AccountStatus = {
   signedIn: boolean;
   account: { id: string; email: string } | null;
-  keyId: string | null;
-  serverUrl: string;
   githubReady: boolean;
   webAccount: { id: string; email: string } | null;
 };
@@ -139,8 +137,6 @@ describe("InferenceSetup", () => {
     mocks.status.mockResolvedValue({
       signedIn: false,
       account: null,
-      keyId: null,
-      serverUrl: "https://sync.nixmac.app",
       githubReady: false,
       webAccount: null,
     });
@@ -276,8 +272,6 @@ describe("InferenceSetup", () => {
     mocks.status.mockResolvedValue({
       signedIn: false,
       account: null,
-      keyId: null,
-      serverUrl: "https://sync.nixmac.app",
       githubReady: true,
       webAccount: { id: "acct_1", email: "ada@example.com" },
     });
@@ -293,8 +287,6 @@ describe("InferenceSetup", () => {
     mocks.status.mockResolvedValue({
       signedIn: false,
       account: null,
-      keyId: null,
-      serverUrl: "https://sync.nixmac.app",
       githubReady: true,
       webAccount: { id: "acct_1", email: "ada@example.com" },
     });
@@ -331,8 +323,6 @@ describe("InferenceSetup", () => {
     mocks.status.mockResolvedValue({
       signedIn: false,
       account: null,
-      keyId: null,
-      serverUrl: "https://sync.nixmac.app",
       githubReady: true,
       webAccount: { id: "acct_1", email: "ada@example.com" },
     });
@@ -368,8 +358,6 @@ describe("InferenceSetup", () => {
     mocks.status.mockResolvedValue({
       signedIn: false,
       account: null,
-      keyId: null,
-      serverUrl: "https://sync.nixmac.app",
       githubReady: true,
       webAccount: { id: "acct_1", email: "ada@example.com" },
     });
@@ -407,8 +395,6 @@ describe("InferenceSetup", () => {
     mocks.status.mockResolvedValue({
       signedIn: false,
       account: null,
-      keyId: null,
-      serverUrl: "https://sync.nixmac.app",
       githubReady: true,
       webAccount: { id: "acct_1", email: "ada@example.com" },
     });

@@ -106,6 +106,7 @@ where
     let content = std::fs::read_to_string(&full_path).with_context(|| fail("read"))?;
     let new_content = edit(&content).with_context(|| fail("edit"))?;
     std::fs::write(&full_path, new_content).with_context(|| fail("write"))?;
+    invalidate_walk_cache(&full_path);
 
     Ok(())
 }
@@ -387,6 +388,7 @@ pub fn apply_file_edits(
             }
             validate_file_content(&edit.path, &edit.replace)?;
             std::fs::write(&full_path, &edit.replace)?;
+            invalidate_walk_cache(&full_path);
             return Ok(());
         }
 
@@ -401,6 +403,7 @@ pub fn apply_file_edits(
         }
         validate_file_content(&edit.path, &edit.replace)?;
         std::fs::write(&full_path, &edit.replace)?;
+        invalidate_walk_cache(&full_path);
     } else {
         rewrite_existing_file_in_dir(
             base,
@@ -433,6 +436,11 @@ pub fn apply_file_edits(
     }
 
     Ok(())
+}
+
+/// Drop pi-walker scan-cache entries that cover `path` after an edit.
+fn invalidate_walk_cache(path: &Path) {
+    pi_walker::invalidate_path(path);
 }
 
 fn reject_gitignored_edit_path(

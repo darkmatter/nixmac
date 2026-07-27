@@ -28,6 +28,11 @@ MOUNTS_FILE="$TMP_DIR/mounts"
 REWRITES_FILE="$TMP_DIR/rewrites"
 touch "$MOUNTS_FILE" "$REWRITES_FILE"
 
+on_error() {
+	echo "ERROR: command failed at line $1 (exit status $?)" >&2
+}
+trap 'on_error ${LINENO}' ERR
+
 detach_with_retry() {
 	local mount="$1"
 
@@ -187,7 +192,7 @@ sign_app_if_certificate_available() {
 		exit 2
 	fi
 
-	identity=$(security find-identity -v -p codesigning "$keychain_path" | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+	identity=$(security find-identity -v -p codesigning "$keychain_path" 2>/dev/null | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)".*/\1/' || true)
 	if [ -z "$identity" ]; then
 		echo "ERROR: No Developer ID Application identity found in keychain" >&2
 		security find-identity -v -p codesigning "$keychain_path" >&2
@@ -212,6 +217,10 @@ normalize_dmg() {
 	local normalized_dmg
 	local app_count
 	local current_kb
+	local file
+	local file_bytes
+	local file_kb
+	local largest_file_kb
 	local resized_kb
 
 	mount_point="$TMP_DIR/mnt-$(basename "$dmg_path" .dmg)"
@@ -232,14 +241,11 @@ normalize_dmg() {
 	hdiutil convert "$dmg_path" -format UDRW -o "$rw_dmg" >/dev/null
 
 	# install_name_tool writes a temporary replacement next to each Mach-O file.
-	# Tauri's compressed DMG can be exactly full, so grow the RW image before
-	# mounting it or the in-place rewrite can fail with "No space left on device".
-	current_kb=$(du -k "$rw_dmg" | awk '{print $1}')
-	resized_kb=$((current_kb + 102400))
-	hdiutil resize -size "${resized_kb}k" "$rw_dmg" >/dev/null
-
+	# Tauri's compressed DMG can be exactly full. Inspect it read-only first,
+	# then add enough filesystem headroom for a temporary copy of its largest
+	# file plus metadata/signing overhead.
 	mkdir -p "$mount_point"
-	hdiutil attach -readwrite -nobrowse -noautoopen -mountpoint "$mount_point" "$rw_dmg" >/dev/null
+	hdiutil attach -readonly -nobrowse -noautoopen -mountpoint "$mount_point" "$rw_dmg" >/dev/null
 	printf '%s\n' "$mount_point" >>"$MOUNTS_FILE"
 
 	app_count=$(find "$mount_point" -maxdepth 2 -name "*.app" -type d | wc -l | tr -d '[:space:]')
@@ -247,6 +253,30 @@ normalize_dmg() {
 		echo "ERROR: no .app bundle found in $dmg_path" >&2
 		exit 2
 	fi
+
+	largest_file_kb=0
+	while IFS= read -r -d '' file; do
+		file_bytes=$(wc -c <"$file" | tr -d '[:space:]')
+		file_kb=$(((file_bytes + 1023) / 1024))
+		if [ "$file_kb" -gt "$largest_file_kb" ]; then
+			largest_file_kb="$file_kb"
+		fi
+	done < <(find "$mount_point" -type f -print0)
+
+	detach_with_retry "$mount_point"
+
+	# Use the DMG's apparent (logical) size, not host-allocated blocks.
+	# du -k on a sparse UDRW image measures allocated sectors on the host
+	# filesystem, not the DMG's internal logical capacity. stat gives the
+	# apparent size which tracks what hdiutil resize operates on. Pin the
+	# system BSD stat: devenv shells put GNU coreutils first on PATH, and
+	# GNU stat reads -f as --file-system and errors out.
+	current_kb=$(/usr/bin/stat -f "%z" "$rw_dmg" | awk '{printf "%d", ($1 + 1023) / 1024}')
+	resized_kb=$((current_kb + largest_file_kb + 65536))
+	echo "Growing RW DMG to ${resized_kb}KB (${largest_file_kb}KB largest file + 64MB overhead)"
+	hdiutil resize -size "${resized_kb}k" "$rw_dmg" >/dev/null
+
+	hdiutil attach -readwrite -nobrowse -noautoopen -mountpoint "$mount_point" "$rw_dmg" >/dev/null
 
 	while IFS= read -r app_path; do
 		normalize_app "$app_path"

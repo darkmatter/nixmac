@@ -22,12 +22,13 @@ use async_trait::async_trait;
 use futures_util::StreamExt;
 use log::{info, warn};
 use reqwest::StatusCode;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 pub struct OpenAIProvider {
     client: Client<OpenAIConfig>,
     model: String,
     chat_completions_url: String,
-    max_output_tokens: u32,
+    max_output_tokens: AtomicU32,
 
     record_chat_logs: bool,
 }
@@ -45,7 +46,7 @@ impl OpenAIProvider {
             client,
             model,
             chat_completions_url,
-            max_output_tokens,
+            max_output_tokens: AtomicU32::new(max_output_tokens),
             record_chat_logs,
         }
     }
@@ -76,7 +77,7 @@ impl OpenAIProvider {
             request_builder.temperature(0.2);
         }
 
-        request_builder.max_completion_tokens(self.max_output_tokens);
+        request_builder.max_completion_tokens(self.max_output_tokens.load(Ordering::Relaxed));
 
         request_builder
             .build()
@@ -176,6 +177,11 @@ fn format_elapsed(start: std::time::Instant) -> String {
 impl AiProvider for OpenAIProvider {
     fn model_name(&self) -> String {
         self.model.clone()
+    }
+
+    fn set_max_output_tokens(&self, max_output_tokens: u32) {
+        self.max_output_tokens
+            .store(max_output_tokens.max(1), Ordering::Relaxed);
     }
 
     fn supports_streaming(&self) -> bool {
