@@ -136,6 +136,21 @@ build {
     ]
   }
 
+  # Install the tart-guest-agent so Cilicon can inject SSH keys and
+  # manage the VM lifecycle. Without it, Cilicon's key-based SSH auth
+  # fails because the VM has no authorized_keys entry.
+  provisioner "shell" {
+    inline = [
+      "set -euo pipefail",
+      "curl -fsSL https://github.com/cirruslabs/tart-guest-agent/releases/latest/download/tart-guest-agent-macos.tar.gz -o /tmp/tart-guest-agent.tar.gz || echo 'guest-agent download failed, continuing'",
+      "test -f /tmp/tart-guest-agent.tar.gz && sudo tar -xzf /tmp/tart-guest-agent.tar.gz -C / || true",
+      "rm -f /tmp/tart-guest-agent.tar.gz",
+      # Ensure SSH key auth directory exists for Cilicon key injection.
+      "mkdir -p /Users/admin/.ssh && chmod 700 /Users/admin/.ssh",
+      "touch /Users/admin/.ssh/authorized_keys && chmod 644 /Users/admin/.ssh/authorized_keys",
+    ]
+  }
+
   # Remove installer residue. Do not attempt to delete Xcode platforms or
   # compaction-sensitive VM data here; measure the resulting Tart image first.
   provisioner "shell" {
