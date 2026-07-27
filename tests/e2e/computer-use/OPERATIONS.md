@@ -73,6 +73,64 @@ Track these locally or in the release issue before required-gate promotion:
 - cleanup failures;
 - host identity mismatch or app-server unavailable incidents.
 
+## Bounded CuaDriver Smoke
+
+For transport or harness triage against an existing artifact run directory:
+
+```bash
+node tests/e2e/computer-use/run-cua-driver.mjs smoke --run-dir <artifact-run-dir>
+```
+
+The bounded smoke must launch the exact app, reach Settings General, and render
+the local report. Use the full scenario suite for product qualification.
+
+## Centaur Merged-SHA Lane
+
+`.github/workflows/computer-use-e2e-centaur.yml` is the post-merge production
+entrypoint. Centaur owns scheduling, bounded retries, and terminal-result
+consumption. The nixmac workflow owns exact-artifact verification, Mac
+execution, cleanup, evidence sealing, private publication, and one terminal
+contract.
+
+The current backend is the static Mac transition lane:
+
+- a successful push to `main` publishes `nixmac-macos-app-e2e` from
+  `.github/workflows/build.yaml`;
+- Centaur resolves the build run, artifact ID, and GitHub artifact digest for
+  that exact merged SHA before dispatch;
+- the workflow rejects artifacts not produced by a `main` push in this
+  repository and does not create branches or request rebuilds;
+- the Linux controller acquires the owner-token-bound MacinCloud lease before
+  SSH, app staging, or CuaDriver work;
+- cleanup and owner-matched lease release must succeed before evidence is
+  sealed;
+- production evidence is written to the private immutable evidence store;
+- the terminal contract is always uploaded as
+  `nixmac-computer-use-e2e-terminal-<job>-attempt-<n>`.
+
+Required configuration:
+
+- runner labels `arc` and `nixmac-e2e-static-controller`;
+- a protected `nixmac-e2e-production` environment limited to the default
+  branch;
+- `NIXMAC_E2E_REMOTE_HOST`, `NIXMAC_E2E_REMOTE_USER`,
+  `NIXMAC_E2E_REMOTE_SSH_KEY`, and `NIXMAC_E2E_REMOTE_KNOWN_HOSTS` secrets;
+- `NIXMAC_E2E_STATIC_IMAGE_DIGEST` set to the independently qualified static
+  host image digest;
+- a protected `nixmac-e2e-evidence-writer` environment with the R2 endpoint,
+  access key, secret key, and retention configuration consumed by
+  `publish-private-evidence.mjs`.
+
+`BUILD_UNAVAILABLE` is a terminal preflight result, not permission to rebuild
+or substitute another artifact. Cancellation or runner loss without a
+workflow-owned terminal artifact must be synthesized by Centaur from the
+GitHub run/job API as `ABORTED`.
+
+This transition lane serializes access through the host lease. A pooled
+ephemeral Mac provider should be introduced in a separate provider-owned
+change; it must preserve this artifact, evidence, cleanup, and terminal
+contract rather than changing the coordinator protocol.
+
 ## Host Rotation
 
 Host rotation is required when DXU is reassigned, replaced, compromised, or too

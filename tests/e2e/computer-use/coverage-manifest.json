@@ -2,28 +2,574 @@
   "version": 1,
   "description": "Baseline user-visible nixmac surfaces that must stay mapped to Computer Use E2E scenarios or explicit waivers.",
   "candidateRoots": [
-    "apps/native/src/components",
-    "apps/native/src/components/widget",
-    "apps/native/src/hooks",
-    "apps/native/src-tauri/src"
+    "apps/native/src",
+    "apps/native/src-tauri",
+    "apps/native/templates",
+    "tests/e2e",
+    ".github/workflows"
   ],
   "candidateIncludes": [
-    "apps/native/src/components/preview-indicator/.*\\.tsx$",
-    "apps/native/src/components/widget/.+\\.tsx$",
-    "apps/native/src/hooks/use-(apply|rollback|evolve|git-operations|history|history-restore|rebuild-stream|updater|permissions|darwin-config)\\.ts$",
-    "apps/native/src-tauri/src/(commands|rebuild|history|storage|ai|state|system|managed_edits|summarize)/.*\\.rs$",
-    "apps/native/src-tauri/src/evolve/(mod|tools)\\.rs$"
+    "^apps/native/src/",
+    "^apps/native/src-tauri/",
+    "^apps/native/templates/",
+    "^tests/e2e/",
+    "^\\.github/workflows/.*e2e.*\\.ya?ml$"
   ],
   "candidateExcludes": [
-    "\\.stories\\.tsx$",
-    "\\.test\\.tsx$",
-    "__snapshots__/",
-    "components/ui/",
-    "components/styles/",
-    "components/kibo-ui/",
-    "apps/native/src/components/widget/layout/debug-overlay\\.tsx$"
+    "^apps/native/src/.*\\.stories\\.tsx$",
+    "^apps/native/src/.*\\.test\\.(?:ts|tsx)$",
+    "^apps/native/src/.*\\.d\\.ts$",
+    "^apps/native/src/.*/__snapshots__/",
+    "^apps/native/src/components/ui/",
+    "^apps/native/src/components/styles/",
+    "^apps/native/src/components/kibo-ui/",
+    "^apps/native/src/components/widget/layout/debug-overlay\\.tsx$"
   ],
   "surfaces": [
+    {
+      "id": "native-build-contract-unexercised",
+      "label": "Native package, build script, and configurable macro build contracts",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src-tauri/Cargo.toml",
+        "apps/native/src-tauri/build.rs",
+        "apps/native/src-tauri/configurable-derive/Cargo.toml",
+        "apps/native/src-tauri/configurable-derive/src/attrs.rs",
+        "apps/native/src-tauri/configurable-derive/src/codegen.rs",
+        "apps/native/src-tauri/configurable-derive/src/fields.rs",
+        "apps/native/src-tauri/configurable-derive/src/lib.rs",
+        "apps/native/src-tauri/configurable-derive/src/strings.rs",
+        "apps/native/src-tauri/configurable-derive/src/types.rs",
+        "apps/native/src-tauri/configurable/Cargo.toml",
+        "apps/native/src-tauri/configurable/src/lib.rs"
+      ],
+      "waiver": {
+        "reason": "The exact-SHA artifact proves these inputs compile, but the Computer Use lane does not deterministically assert dependency feature selection, build-script output, or configurable macro semantics.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "high",
+        "exitCriteria": "Add exact-SHA build-contract evidence for dependency features and generated outputs plus focused configurable macro expansion and runtime behavior tests."
+      }
+    },
+    {
+      "id": "native-data-resources-unexercised",
+      "label": "Native migrations, AI system prompt, schemas, docs data, and launchd resources",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src-tauri/migrations/01-initial/up.sql",
+        "apps/native/src-tauri/migrations/02-restore-commits/up.sql",
+        "apps/native/src-tauri/migrations/03-drop-queued-summaries/up.sql",
+        "apps/native/src-tauri/prompts/system.md",
+        "apps/native/src-tauri/resources/gitleaks.toml",
+        "apps/native/src-tauri/resources/home-manager-docs.json",
+        "apps/native/src-tauri/resources/launchd/com.darkmatter.nixmac.helper.plist",
+        "apps/native/src-tauri/resources/launchd/com.darkmatter.nixmac.sync-agent.plist",
+        "apps/native/src-tauri/resources/nix-darwin-docs.json",
+        "apps/native/src-tauri/resources/schemas/env.schema.json",
+        "apps/native/src-tauri/resources/schemas/settings.schema.json"
+      ],
+      "waiver": {
+        "reason": "The current lane may consume these resources indirectly, but it does not isolate migration transitions, prompt semantics, bundled documentation, launchd payloads, secret-scanning policy, or schema compatibility.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "high",
+        "exitCriteria": "Add migration-upgrade fixtures, prompt contract assertions, bundled resource integrity checks, launchd installation validation, and schema compatibility tests."
+      }
+    },
+    {
+      "id": "native-app-icons-unexercised",
+      "label": "Bundled desktop and mobile application icon resources",
+      "scenarioKeys": [],
+      "sourcePrefixes": ["apps/native/src-tauri/icons/"],
+      "directoryPrefixApprovals": [
+        {
+          "prefix": "apps/native/src-tauri/icons/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single application-icon resource namespace; every change remains explicit waiver debt."
+        }
+      ],
+      "waiver": {
+        "reason": "The staged app launches, but the current evidence does not deterministically inspect packaged icon variants, installer artwork, platform icon sets, or dark/light rendering.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "medium",
+        "exitCriteria": "Add package-level resource inventory checks and visual assertions for the supported macOS icon, installer, and appearance variants."
+      }
+    },
+    {
+      "id": "frontend-runtime-unexercised",
+      "label": "Frontend IPC, view-model, theme, asset, and auxiliary window resources",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src/assets/react.svg",
+        "apps/native/src/ipc/api.ts",
+        "apps/native/src/ipc/orpc-bindings.ts",
+        "apps/native/src/ipc/sqlite.ts",
+        "apps/native/src/ipc/types.ts",
+        "apps/native/src/peek-icon.html",
+        "apps/native/src/themes/minted.json",
+        "apps/native/src/viewmodel/_helpers.ts",
+        "apps/native/src/viewmodel/change-map.ts",
+        "apps/native/src/viewmodel/evolution.ts",
+        "apps/native/src/viewmodel/evolve.ts",
+        "apps/native/src/viewmodel/git.ts",
+        "apps/native/src/viewmodel/history.ts",
+        "apps/native/src/viewmodel/index.ts",
+        "apps/native/src/viewmodel/log-triggers.ts",
+        "apps/native/src/viewmodel/nix-install.ts",
+        "apps/native/src/viewmodel/onboarding-state.ts",
+        "apps/native/src/viewmodel/permissions.ts",
+        "apps/native/src/viewmodel/prompt-history.ts",
+        "apps/native/src/viewmodel/rebuild.ts"
+      ],
+      "waiver": {
+        "reason": "Current scenarios traverse portions of this frontend runtime, but do not bind each IPC adapter, state transition, theme payload, auxiliary window resource, or asset to deterministic assertions.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "high",
+        "exitCriteria": "Map each runtime module to focused state-transition and IPC assertions, add theme and auxiliary-window visual checks, and remove unused starter assets."
+      }
+    },
+    {
+      "id": "native-source-support",
+      "label": "Developer documentation, Storybook examples, E2E harness, type-only files, test helpers, scripts, examples, and fixtures",
+      "scenarioKeys": [],
+      "coverageDisposition": "non-claiming",
+      "coverageNote": "These exact support files and single-purpose support namespaces are tracked for PR visibility but do not independently claim product behavior.",
+      "sourcePrefixes": [
+        "apps/native/src/README.md",
+        "apps/native/src/e2e/",
+        "apps/native/src/stories/",
+        "apps/native/src/types/feedback.ts",
+        "apps/native/src/types/preferences.ts",
+        "apps/native/src/types/rebuild.ts",
+        "apps/native/src/types/widget.ts",
+        "apps/native/src/utils/error-test-helpers.ts",
+        "apps/native/src/utils/test-fixtures.ts",
+        "apps/native/src/utils/widget-test-helpers.ts",
+        "apps/native/src-tauri/examples/specta_gen_ts.rs",
+        "apps/native/src-tauri/scripts/clear-logs.sh",
+        "apps/native/src-tauri/scripts/tauri-dev.sh",
+        "apps/native/src-tauri/tests/"
+      ],
+      "directoryPrefixApprovals": [
+        {
+          "prefix": "apps/native/src/e2e/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single internal frontend E2E harness namespace with no independent product claim."
+        },
+        {
+          "prefix": "apps/native/src/stories/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single Storybook example and asset namespace with no independent Computer Use product claim."
+        },
+        {
+          "prefix": "apps/native/src-tauri/tests/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single native test-fixture namespace with no independent Computer Use product claim."
+        }
+      ]
+    },
+    {
+      "id": "native-runtime-unexercised",
+      "label": "Native runtime subsystems without deterministic Computer Use assertions",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src-tauri/src/bin/",
+        "apps/native/src-tauri/src/bootstrap/",
+        "apps/native/src-tauri/src/db/",
+        "apps/native/src-tauri/src/docs/",
+        "apps/native/src-tauri/src/editor/",
+        "apps/native/src-tauri/src/env/",
+        "apps/native/src-tauri/src/git/",
+        "apps/native/src-tauri/src/http_client/",
+        "apps/native/src-tauri/src/observable/",
+        "apps/native/src-tauri/src/orpc/",
+        "apps/native/src-tauri/src/privileged_helper/",
+        "apps/native/src-tauri/src/shared_types/",
+        "apps/native/src-tauri/src/sync/",
+        "apps/native/src-tauri/src/telemetry/",
+        "apps/native/src-tauri/src/updater_pin/",
+        "apps/native/src-tauri/src/evolve/providers/",
+        "apps/native/src-tauri/src/evolve/tools/",
+        "apps/native/src-tauri/src/cli.rs",
+        "apps/native/src-tauri/src/e2e_runtime.rs",
+        "apps/native/src-tauri/src/env_keys.rs",
+        "apps/native/src-tauri/src/evolve/age.rs",
+        "apps/native/src-tauri/src/evolve/chat_memory.rs",
+        "apps/native/src-tauri/src/evolve/config.rs",
+        "apps/native/src-tauri/src/evolve/config_dir_context.rs",
+        "apps/native/src-tauri/src/evolve/context_budget.rs",
+        "apps/native/src-tauri/src/evolve/ensure_secret.rs",
+        "apps/native/src-tauri/src/evolve/file_ops.rs",
+        "apps/native/src-tauri/src/evolve/gitignore.rs",
+        "apps/native/src-tauri/src/evolve/isolation.rs",
+        "apps/native/src-tauri/src/evolve/lifecycle.rs",
+        "apps/native/src-tauri/src/evolve/messages.rs",
+        "apps/native/src-tauri/src/evolve/nix_file_editor.rs",
+        "apps/native/src-tauri/src/evolve/search_code.rs",
+        "apps/native/src-tauri/src/evolve/search_docs.rs",
+        "apps/native/src-tauri/src/evolve/search_packages.rs",
+        "apps/native/src-tauri/src/evolve/session_control.rs",
+        "apps/native/src-tauri/src/evolve/sops.rs",
+        "apps/native/src-tauri/src/evolve/types.rs",
+        "apps/native/src-tauri/src/evolve/utils.rs",
+        "apps/native/src-tauri/src/panic_handler.rs",
+        "apps/native/src-tauri/src/peek.rs",
+        "apps/native/src-tauri/src/schema_gen.rs",
+        "apps/native/src-tauri/src/shared_types.rs",
+        "apps/native/src-tauri/src/sqlite_types.rs",
+        "apps/native/src-tauri/src/statistics.rs",
+        "apps/native/src-tauri/src/tray_icon.rs",
+        "apps/native/src-tauri/src/types.rs",
+        "apps/native/src-tauri/src/utils.rs"
+      ],
+      "directoryPrefixApprovals": [
+        {
+          "prefix": "apps/native/src-tauri/src/bin/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single native-helper executable namespace; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/bootstrap/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single bootstrap subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/db/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single persistence subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/docs/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single generated and static docs subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/editor/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single native editor integration subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/env/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single environment-discovery subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/git/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single native Git subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/http_client/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single HTTP client subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/observable/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single observable persistence subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/orpc/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single native RPC bridge namespace; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/privileged_helper/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single privileged-helper subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/shared_types/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single native shared-type namespace; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/sync/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single remote-sync subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/telemetry/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single native telemetry subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/updater_pin/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single updater-pin subsystem; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/evolve/providers/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single Evolve provider adapter namespace; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src-tauri/src/evolve/tools/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single Evolve tool implementation namespace; changes remain explicit waiver debt."
+        }
+      ],
+      "waiver": {
+        "reason": "The current lane reaches portions of these native subsystems indirectly, but does not isolate their success, failure, persistence, security, and recovery contracts with deterministic assertions.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "high",
+        "exitCriteria": "Split these namespaces into behavior-specific surfaces as deterministic scenarios are added, with direct assertions for persistence, privileged operations, sync, RPC, provider tools, and recovery paths."
+      }
+    },
+    {
+      "id": "ui-runtime-unexercised",
+      "label": "UI components and hooks without deterministic scenario assertions",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src/components/nix-editor/",
+        "apps/native/src/components/nixmac-mascot/",
+        "apps/native/src/components/button-glow.tsx",
+        "apps/native/src/components/tabs-content-1.tsx",
+        "apps/native/src/components/widget/controls/provider-icons/ollama.svg",
+        "apps/native/src/components/widget/controls/provider-icons/openai.svg",
+        "apps/native/src/components/widget/controls/provider-icons/openrouter.svg",
+        "apps/native/src/components/widget/index.ts",
+        "apps/native/src/components/widget/promptinput/prompt-suggestions-variant.ts",
+        "apps/native/src/components/widget/promptinput/starter-prompt-icons.ts",
+        "apps/native/src/components/widget/promptinput/starter-prompts.json",
+        "apps/native/src/components/widget/promptinput/starter-prompts.ts",
+        "apps/native/src/components/widget/promptinput/trending-feed-data.ts",
+        "apps/native/src/components/widget/promptinput/use-typewriter-placeholder.ts",
+        "apps/native/src/components/widget/repair/lib.ts",
+        "apps/native/src/components/widget/steps/index.ts",
+        "apps/native/src/components/widget/utils.ts",
+        "apps/native/src/hooks/use-confirm.ts",
+        "apps/native/src/hooks/use-current-step.ts",
+        "apps/native/src/hooks/use-diagnostics-notice.ts",
+        "apps/native/src/hooks/use-display-path.ts",
+        "apps/native/src/hooks/use-evolve-mascot.ts",
+        "apps/native/src/hooks/use-feedback-on-recovery.ts",
+        "apps/native/src/hooks/use-fix-with-ai.ts",
+        "apps/native/src/hooks/use-flake-exists.ts",
+        "apps/native/src/hooks/use-history-card.ts",
+        "apps/native/src/hooks/use-import-config.ts",
+        "apps/native/src/hooks/use-launchd-items.ts",
+        "apps/native/src/hooks/use-lazy-history-summarize.ts",
+        "apps/native/src/hooks/use-onboarding-progress.ts",
+        "apps/native/src/hooks/use-panic-handler.ts",
+        "apps/native/src/hooks/use-system-defaults-scan.ts",
+        "apps/native/src/hooks/use-this-hostname.ts",
+        "apps/native/src/hooks/use-throttle.ts",
+        "apps/native/src/hooks/use-tray-events.ts",
+        "apps/native/src/hooks/use-widget-initialization.ts"
+      ],
+      "directoryPrefixApprovals": [
+        {
+          "prefix": "apps/native/src/components/nix-editor/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single editor component namespace; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/src/components/nixmac-mascot/",
+          "owner": "nixmac-product-proof",
+          "reason": "A single mascot component and asset namespace; changes remain explicit waiver debt."
+        }
+      ],
+      "waiver": {
+        "reason": "These UI helpers, assets, and hooks are present in the product tree but the current lane does not bind their individual interaction, recovery, or rendering contracts.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "medium",
+        "exitCriteria": "Map each helper to an exercised product scenario or remove it from the user-visible candidate universe with a reviewed non-claiming rationale."
+      }
+    },
+    {
+      "id": "configuration-templates-unexercised",
+      "label": "Bundled configuration templates without per-template activation proof",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/templates/base/",
+        "apps/native/templates/minimal/",
+        "apps/native/templates/nix-darwin-determinate/",
+        "apps/native/templates/nixos-unified/",
+        "apps/native/templates/README.md"
+      ],
+      "directoryPrefixApprovals": [
+        {
+          "prefix": "apps/native/templates/base/",
+          "owner": "nixmac-product-proof",
+          "reason": "The checked-in base template is one activation surface; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/templates/minimal/",
+          "owner": "nixmac-product-proof",
+          "reason": "The checked-in minimal template is one activation surface; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/templates/nix-darwin-determinate/",
+          "owner": "nixmac-product-proof",
+          "reason": "The checked-in Determinate template is one activation surface; changes remain explicit waiver debt."
+        },
+        {
+          "prefix": "apps/native/templates/nixos-unified/",
+          "owner": "nixmac-product-proof",
+          "reason": "The checked-in unified template is one activation surface; changes remain explicit waiver debt."
+        }
+      ],
+      "waiver": {
+        "reason": "The disposable-config lane proves an existing configuration edit, not creation and activation of every bundled template across supported hosts.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "high",
+        "exitCriteria": "Add isolated template-instantiation and activation checks for each supported template, including generated paths, secrets placeholders, Homebrew modules, and cleanup."
+      }
+    },
+    {
+      "id": "computer-use-proof-system",
+      "label": "Computer Use runner, evidence model, preservation fixtures, report, and workflow",
+      "scenarioKeys": ["visualProofQuality", "reportInspection"],
+      "coverageNote": "Each listed file is executed, consumed, or validated by the checked-in workflow and preservation suite; paths are exact so a new proof-system file remains unmapped until reviewed.",
+      "sourcePrefixes": [
+        ".github/workflows/computer-use-e2e.yml",
+        ".github/workflows/computer-use-e2e-centaur.yml",
+        "ops/runner/macincloud-host-lease-recover.py",
+        "ops/runner/macincloud-host-lease.sh",
+        "ops/runner/macincloud-host-lease-status.py",
+        "ops/scripts/e2e/publish-private-evidence.mjs",
+        "tests/e2e/computer-use/artifact-utils.mjs",
+        "tests/e2e/computer-use/check-remote.mjs",
+        "tests/e2e/computer-use/check-stale-run.mjs",
+        "tests/e2e/computer-use/cli.mjs",
+        "tests/e2e/computer-use/centaur-workflow-contract-self-test.mjs",
+        "tests/e2e/computer-use/coverage-focus.mjs",
+        "tests/e2e/computer-use/coverage-manifest.json",
+        "tests/e2e/computer-use/coverage-manifest.mjs",
+        "tests/e2e/computer-use/coverage-manifest.test.mjs",
+        "tests/e2e/computer-use/drivers/codex-app-server.mjs",
+        "tests/e2e/computer-use/drivers/contract.mjs",
+        "tests/e2e/computer-use/drivers/cua-driver.mjs",
+        "tests/e2e/computer-use/drivers/driver-self-test.mjs",
+        "tests/e2e/computer-use/drivers/runtime-contract.mjs",
+        "tests/e2e/computer-use/evidence-guard.mjs",
+        "tests/e2e/computer-use/evidence-scan.py",
+        "tests/e2e/computer-use/evidence-manifest.mjs",
+        "tests/e2e/computer-use/evidence-manifest-self-test.mjs",
+        "tests/e2e/computer-use/fixtures/cases.json",
+        "tests/e2e/computer-use/fixtures/cua-driver/action-error.json",
+        "tests/e2e/computer-use/fixtures/cua-driver/action-success.json",
+        "tests/e2e/computer-use/fixtures/cua-driver/click-success.json",
+        "tests/e2e/computer-use/fixtures/cua-driver/list-apps.json",
+        "tests/e2e/computer-use/fixtures/cua-driver/list-windows.json",
+        "tests/e2e/computer-use/fixtures/cua-driver/metadata.json",
+        "tests/e2e/computer-use/fixtures/cua-driver/set-value-success.txt",
+        "tests/e2e/computer-use/fixtures/cua-driver/window-state.json",
+        "tests/e2e/computer-use/fixtures/preservation/README.md",
+        "tests/e2e/computer-use/fixtures/preservation/expected-artifact-links.json",
+        "tests/e2e/computer-use/fixtures/preservation/expected-report-signature.json",
+        "tests/e2e/computer-use/fixtures/preservation/expected-scenario-contracts.json",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/01-launch.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/02-settings-general.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/03-settings-ai-models.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/05-settings-preferences.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/07-history.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/11-feedback.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/13-report-issue.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/41-suggestion-card.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/42-typed-intent.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/47-provider-progress-05.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/52-review-summary.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/53-review-diff.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/54-build-boundary.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/56-step-3-ready.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/59-history-restore-preview.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/59-report-inspection-Safari.png",
+        "tests/e2e/computer-use/fixtures/preservation/screenshots/60-after-history-restore.png",
+        "tests/e2e/computer-use/fixtures/preservation/state.seed.json",
+        "tests/e2e/computer-use/fixtures/suite-contract.v1.json",
+        "tests/e2e/computer-use/fixtures/terminal-contract.v2.json",
+        "tests/e2e/computer-use/peekaboo-runner.mjs",
+        "tests/e2e/computer-use/peekaboo-workflow-contract-self-test.mjs",
+        "tests/e2e/computer-use/private-evidence-storage-self-test.mjs",
+        "tests/e2e/computer-use/preservation-harness.mjs",
+        "tests/e2e/computer-use/process-utils.mjs",
+        "tests/e2e/computer-use/redaction.mjs",
+        "tests/e2e/computer-use/remote-host-lease-contract-self-test.mjs",
+        "tests/e2e/computer-use/remote-stage.mjs",
+        "tests/e2e/computer-use/report.mjs",
+        "tests/e2e/computer-use/report.test.mjs",
+        "tests/e2e/computer-use/run-adversarial.mjs",
+        "tests/e2e/computer-use/run-cua-driver.mjs",
+        "tests/e2e/computer-use/run-local.mjs",
+        "tests/e2e/computer-use/run-metadata.mjs",
+        "tests/e2e/computer-use/run-remote-cua.mjs",
+        "tests/e2e/computer-use/run-workflow-contracts.sh",
+        "tests/e2e/computer-use/scenario-catalog.mjs",
+        "tests/e2e/computer-use/scenario-driver.mjs",
+        "tests/e2e/computer-use/schemas.mjs",
+        "tests/e2e/computer-use/state.mjs",
+        "tests/e2e/computer-use/storybook-preview.mjs",
+        "tests/e2e/computer-use/suite-contract.mjs",
+        "tests/e2e/computer-use/summarize-runs.mjs",
+        "tests/e2e/computer-use/timing.mjs",
+        "tests/e2e/computer-use/transport.mjs",
+        "tests/e2e/computer-use/visual-proof.mjs",
+        "tests/e2e/computer-use/verification-contract-self-test.mjs",
+        "tests/e2e/computer-use/workflow-concurrency-contract-self-test.mjs",
+        "tests/e2e/computer-use/workflow-concurrency-contract.mjs",
+        "tests/e2e/computer-use/workflow-contract-self-test.mjs",
+        "tests/e2e/computer-use/workflow-timing.mjs"
+      ]
+    },
+    {
+      "id": "other-e2e-infrastructure",
+      "label": "Separate shell E2E lane and non-executable Computer Use documentation",
+      "scenarioKeys": [],
+      "coverageDisposition": "non-claiming",
+      "coverageNote": "These files are tracked in the shared candidate universe but are not executed as independent evidence claims by the Computer Use workflow.",
+      "sourcePrefixes": [
+        "tests/e2e/adapters/",
+        "tests/e2e/fixtures/",
+        "tests/e2e/lib/",
+        "tests/e2e/scenarios/",
+        ".github/workflows/peekaboo-e2e.yml",
+        ".github/workflows/e2e.yml",
+        "tests/e2e/.shellcheckrc",
+        "tests/e2e/README.md",
+        "tests/e2e/ci-runner.sh",
+        "tests/e2e/run.sh",
+        "tests/e2e/setup-runner.sh",
+        "tests/e2e/computer-use/ARCHITECTURE.md",
+        "tests/e2e/computer-use/OPERATIONS.md",
+        "tests/e2e/computer-use/README.md"
+      ],
+      "directoryPrefixApprovals": [
+        {
+          "prefix": "tests/e2e/adapters/",
+          "owner": "nixmac-product-proof",
+          "reason": "A separate shell E2E adapter namespace with no Computer Use evidence claim."
+        },
+        {
+          "prefix": "tests/e2e/fixtures/",
+          "owner": "nixmac-product-proof",
+          "reason": "A separate shell E2E fixture namespace with no Computer Use evidence claim."
+        },
+        {
+          "prefix": "tests/e2e/lib/",
+          "owner": "nixmac-product-proof",
+          "reason": "A separate shell E2E library namespace with no Computer Use evidence claim."
+        },
+        {
+          "prefix": "tests/e2e/scenarios/",
+          "owner": "nixmac-product-proof",
+          "reason": "A separate shell E2E scenario namespace with no Computer Use evidence claim."
+        }
+      ]
+    },
     {
       "id": "e2e-harness-rust",
       "label": "Debug-only E2E harness hooks",
@@ -36,52 +582,191 @@
       ]
     },
     {
+      "id": "native-runtime-documentation",
+      "label": "Native runtime developer documentation",
+      "scenarioKeys": [],
+      "coverageDisposition": "non-claiming",
+      "coverageNote": "Developer-only documentation is tracked in the preserved PR-visible universe but does not claim product behavior.",
+      "sourcePrefixes": ["apps/native/src-tauri/src/README.md"]
+    },
+    {
       "id": "app-shell",
       "label": "App shell, header controls, stepper, prompt start state",
-      "scenarioKeys": ["launch", "typedIntent"],
+      "scenarioKeys": ["launch", "typedIntent", "visualCoverage"],
       "sourcePrefixes": [
+        "apps/native/src/App.css",
+        "apps/native/src/App.tsx",
+        "apps/native/src/index.css",
+        "apps/native/src/main.tsx",
+        "apps/native/src/router.tsx",
         "apps/native/src/components/widget/widget.tsx",
         "apps/native/src/components/widget/layout/header.tsx",
         "apps/native/src/components/widget/layout/stepper.tsx",
         "apps/native/src/components/widget/layout/step-actions-header.tsx",
         "apps/native/src/components/widget/layout/get-started-message.tsx",
-        "apps/native/src/components/widget/badges/config-dir-badge.tsx",
-        "apps/native/src/components/widget/layout/error-message.tsx",
-        "apps/native/src/components/widget/layout/git-status-debug.tsx",
-        "apps/native/src/components/widget/notifications/uncommitted-changes-detected.tsx",
-        "apps/native/src/components/widget/notifications/unsummarized-changes-detected.tsx"
+        "apps/native/src/components/widget/badges/config-dir-badge.tsx"
       ]
     },
     {
-      "id": "update-banner",
-      "label": "Update banner non-blocking behavior",
-      "scenarioKeys": ["updateBanner"],
+      "id": "native-auth-provider-runtime",
+      "label": "Native auth, deep-link, provider configuration, and key validation runtime",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src/lib/auth-deep-link.ts",
+        "apps/native/src/lib/auth.ts",
+        "apps/native/src/lib/orpc.ts",
+        "apps/native/src/lib/providers/ai-defaults.ts",
+        "apps/native/src/lib/providers/ai-models.ts",
+        "apps/native/src/lib/providers/ai-provider-migration.ts",
+        "apps/native/src/lib/providers/ai-provider-validation.ts",
+        "apps/native/src/lib/providers/api-key-verification.ts",
+        "apps/native/src/lib/providers/cli-providers-flag.ts"
+      ],
+      "waiver": {
+        "reason": "The current lane renders provider settings but does not complete authentication callbacks or deep links, migrate provider data, execute provider validation, or verify a real API key.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "high",
+        "exitCriteria": "Add deterministic auth callback, deep-link, provider migration and validation, and disposable API-key verification fixtures with explicit success, failure, redaction, and cleanup proof."
+      }
+    },
+    {
+      "id": "native-runtime-library",
+      "label": "Native boot, LSP, telemetry, persistence, grammar, and queue support runtime",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src/lib/boot-diagnostics.ts",
+        "apps/native/src/lib/constants.ts",
+        "apps/native/src/lib/dev-onboarding-reset.ts",
+        "apps/native/src/lib/env.ts",
+        "apps/native/src/lib/errors.ts",
+        "apps/native/src/lib/flags.ts",
+        "apps/native/src/lib/lsp-client.ts",
+        "apps/native/src/lib/lsp-monaco-bridge.ts",
+        "apps/native/src/lib/nix-grammar.ts",
+        "apps/native/src/lib/query-persist.ts",
+        "apps/native/src/lib/summarize-queue.ts",
+        "apps/native/src/lib/telemetry/context.tsx",
+        "apps/native/src/lib/telemetry/forwarding-processor.ts",
+        "apps/native/src/lib/telemetry/init.ts",
+        "apps/native/src/lib/telemetry/instance.ts",
+        "apps/native/src/lib/telemetry/noop.ts",
+        "apps/native/src/lib/telemetry/provider.ts",
+        "apps/native/src/lib/telemetry/sanitize.ts",
+        "apps/native/src/lib/telemetry/types.ts",
+        "apps/native/src/lib/telemetry/use-feature-flag.ts",
+        "apps/native/src/lib/utils.ts"
+      ],
+      "waiver": {
+        "reason": "Healthy-path screenshots do not deterministically assert boot diagnostics, LSP bridging, telemetry forwarding and sanitization, persisted queries, grammar helpers, or queue behavior.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "medium",
+        "exitCriteria": "Add deterministic fixtures and observable assertions for boot diagnostics, LSP, telemetry sanitization and forwarding, persisted query recovery, grammar handling, and summarize queue lifecycle."
+      }
+    },
+    {
+      "id": "desktop-security-config",
+      "label": "Tauri desktop window, protocol, capability, entitlement, and passkey configuration",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src-tauri/tauri.conf.json",
+        "apps/native/src-tauri/tauri.conf.dev.json",
+        "apps/native/src-tauri/Info.plist",
+        "apps/native/src-tauri/entitlements.plist",
+        "apps/native/src-tauri/capabilities/default.json",
+        "apps/native/src-tauri/capabilities/http.json",
+        "apps/native/src-tauri/capabilities/macos-passkey.json"
+      ],
+      "waiver": {
+        "reason": "The lane launches a staged app but does not verify production window and protocol policy, capability scopes, passkey permissions, or signed-app entitlements.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "high",
+        "exitCriteria": "Add schema and policy assertions plus signed-app Computer Use checks for production windows, protocols, capability scopes, passkey access, entitlements, and denied operations."
+      }
+    },
+    {
+      "id": "updater-runtime",
+      "label": "Updater checks, channel manifests, installation, and relaunch",
+      "scenarioKeys": [],
       "sourcePrefixes": [
         "apps/native/src/components/widget/layout/update-banner.tsx",
-        "apps/native/src/hooks/use-updater.ts"
-      ]
+        "apps/native/src/hooks/use-updater.ts",
+        "apps/native/src-tauri/src/commands/updater.rs"
+      ],
+      "waiver": {
+        "reason": "The update-banner scenario passes when no banner is present, so it does not deterministically exercise updater checks, download/install, channel selection, or relaunch.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "medium",
+        "exitCriteria": "Add a deterministic signed-update fixture that proves update detection, banner behavior, install, relaunch, and error handling for the supported release channels."
+      }
     },
     {
       "id": "settings",
-      "label": "Settings dialog and all settings tabs",
+      "label": "Settings dialog and exercised General, AI Models, API Keys, and Preferences tabs",
       "scenarioKeys": [
         "settingsGeneral",
         "settingsAIModels",
         "settingsAPIKeys",
         "settingsPreferences"
       ],
-      "coverageNote": "Storage files are mapped here because settings persistence, API-key settings, and debug-only E2E settings bypasses are exercised through the settings/product-proof scenarios. The OS keychain path is intentionally bypassed in E2E mode and still needs release/manual verification.",
+      "coverageNote": "The runner claims rendered UI paths only: it opens General, AI Models, API Keys, and Preferences and asserts their visible content. Shared persistence and mutation modules are waiver-owned because the scenario does not exercise their state changes, and the OS credential path is intentionally bypassed in E2E mode.",
       "sourcePrefixes": [
         "apps/native/src/components/widget/settings/settings-dialog.tsx",
-        "apps/native/src/components/widget/settings/",
+        "apps/native/src/components/widget/settings/general-tab.tsx",
+        "apps/native/src/components/widget/settings/ai-models-tab.tsx",
+        "apps/native/src/components/widget/settings/api-keys-tab.tsx",
+        "apps/native/src/components/widget/settings/preferences-tab.tsx",
         "apps/native/src/components/widget/controls/directory-picker.tsx",
+        "apps/native/src/components/widget/controls/provider-icons/provider-icon.tsx",
         "apps/native/src/components/widget/badges/gitignore-badge.tsx",
-        "apps/native/src/components/widget/controls/model-combobox.tsx",
-        "apps/native/src/hooks/use-darwin-config.ts",
-        "apps/native/src-tauri/src/storage/store.rs",
-        "apps/native/src-tauri/src/storage/credential_store.rs",
-        "apps/native/src-tauri/src/storage/mod.rs"
+        "apps/native/src/components/widget/controls/model-combobox.tsx"
       ]
+    },
+    {
+      "id": "settings-unexercised",
+      "label": "Account, Permissions, Tuning, Developer, and settings import/export behavior",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src/components/widget/settings/account-tab.tsx",
+        "apps/native/src/components/widget/settings/permissions-tab.tsx",
+        "apps/native/src/components/widget/settings/tuning-tab.tsx",
+        "apps/native/src/components/widget/settings/developer-tab.tsx",
+        "apps/native/src/components/widget/settings/auto-config-field.tsx",
+        "apps/native/src/components/widget/settings/auto-tuning-section.tsx",
+        "apps/native/src/components/widget/settings/backup-restore-section.tsx",
+        "apps/native/src/components/widget/settings/overridable-flags.ts",
+        "apps/native/src/hooks/use-darwin-config.ts",
+        "apps/native/src/hooks/use-prefs.ts",
+        "apps/native/src/ipc/preferences.ts",
+        "apps/native/src/viewmodel/preferences.ts",
+        "apps/native/src-tauri/src/commands/account.rs",
+        "apps/native/src-tauri/src/commands/debug.rs",
+        "apps/native/src-tauri/src/commands/dev_configs.rs",
+        "apps/native/src-tauri/src/commands/settings_io.rs",
+        "apps/native/src-tauri/src/commands/ui_prefs.rs",
+        "apps/native/src-tauri/src/state/preferences.rs",
+        "apps/native/src-tauri/src/state/ui_prefs.rs",
+        "apps/native/src-tauri/src/storage/canonical_config.rs",
+        "apps/native/src-tauri/src/storage/configurable_scope.rs",
+        "apps/native/src-tauri/src/storage/credential_store.rs",
+        "apps/native/src-tauri/src/storage/legacy_kv.rs",
+        "apps/native/src-tauri/src/storage/store.rs"
+      ],
+      "waiver": {
+        "reason": "The current runner opens only General, AI Models, API Keys, and Preferences. It does not open Account, Permissions, Tuning, or Developer, and does not exercise settings backup/import, configurable tuning, account auth, or developer actions.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "high",
+        "exitCriteria": "Add deterministic Computer Use scenarios for each untested settings tab and its state-changing backend operations, including safe account, import/export, tuning, permissions, and developer fixtures."
+      }
     },
     {
       "id": "support-dialogs",
@@ -101,12 +786,29 @@
       "sourcePrefixes": [
         "apps/native/src/components/widget/history/analyze-history-button.tsx",
         "apps/native/src/components/widget/history/analyze-history-item-button.tsx",
-        "apps/native/src/components/widget/history/",
+        "apps/native/src/components/widget/history/change-badges.tsx",
+        "apps/native/src/components/widget/history/discard-uncommitted-dialog.tsx",
+        "apps/native/src/components/widget/history/history-confirm-restore-button.tsx",
+        "apps/native/src/components/widget/history/history-day-label.tsx",
+        "apps/native/src/components/widget/history/history-header.tsx",
+        "apps/native/src/components/widget/history/history-item-card-header.tsx",
+        "apps/native/src/components/widget/history/history-item-card.tsx",
+        "apps/native/src/components/widget/history/history-item-expanded-detail.tsx",
+        "apps/native/src/components/widget/history/history-item-meta.tsx",
+        "apps/native/src/components/widget/history/history-restore-item-button.tsx",
+        "apps/native/src/components/widget/history/timeline-connector.tsx",
         "apps/native/src/components/widget/steps/history-step.tsx",
         "apps/native/src/hooks/use-history.ts",
         "apps/native/src/hooks/use-history-restore.ts",
-        "apps/native/src-tauri/src/history/get_history.rs",
+        "apps/native/src-tauri/src/history/",
         "apps/native/src-tauri/src/rebuild/finalize_restore.rs"
+      ],
+      "directoryPrefixApprovals": [
+        {
+          "prefix": "apps/native/src-tauri/src/history/",
+          "owner": "nixmac-product-proof",
+          "reason": "This Rust namespace exclusively implements the History list and restore flow exercised by the History scenario."
+        }
       ]
     },
     {
@@ -121,38 +823,114 @@
       "scenarioKeys": ["suggestionCards", "typedIntent", "review", "summary", "diff"],
       "sourcePrefixes": [
         "apps/native/src/components/widget/badges/badge-list.tsx",
-        "apps/native/src/components/widget/promptinput/begin-evolve-warning.tsx",
+        "apps/native/src/components/widget/badges/base-commit-badge.tsx",
+        "apps/native/src/components/widget/badges/change-badge.tsx",
+        "apps/native/src/components/widget/badges/commit-hash-badge.tsx",
+        "apps/native/src/components/widget/badges/current-item-badge.tsx",
+        "apps/native/src/components/widget/badges/external-badge.tsx",
+        "apps/native/src/components/widget/badges/file-count-badge.tsx",
+        "apps/native/src/components/widget/badges/filename-badge.tsx",
+        "apps/native/src/components/widget/badges/time-badge.tsx",
         "apps/native/src/components/widget/promptinput/conversational-response.tsx",
         "apps/native/src/components/widget/promptinput/mac-recommendation-chip.tsx",
         "apps/native/src/components/widget/promptinput/prompt-history-badge.tsx",
         "apps/native/src/components/widget/promptinput/prompt-input.tsx",
         "apps/native/src/components/widget/promptinput/prompt-input-section.tsx",
+        "apps/native/src/components/widget/promptinput/spotlight-ticker.tsx",
+        "apps/native/src/components/widget/promptinput/trending-feed.tsx",
+        "apps/native/src/components/widget/drift/",
+        "apps/native/src/components/widget/filesystem/",
+        "apps/native/src/components/widget/overlays/config-edit-overlay-panel.tsx",
+        "apps/native/src/components/widget/overlays/editor-panel.tsx",
+        "apps/native/src/components/widget/overlays/evolve-overlay-panel.tsx",
         "apps/native/src/components/widget/steps/begin-step.tsx",
-        "apps/native/src/components/widget/steps/evolve-step.tsx",
-        "apps/native/src/components/widget/steps/manual-evolve-step.tsx",
+        "apps/native/src/components/widget/steps/review-step.tsx",
         "apps/native/src/components/widget/summaries/",
         "apps/native/src/hooks/use-evolve.ts",
         "apps/native/src/hooks/use-prompt-history.ts",
         "apps/native/src/hooks/use-recommended-prompt.ts",
         "apps/native/src/hooks/use-summary.ts",
+        "apps/native/src-tauri/src/ai/defaults.rs",
+        "apps/native/src-tauri/src/ai/log_summarizer.rs",
+        "apps/native/src-tauri/src/ai/mod.rs",
+        "apps/native/src-tauri/src/ai/model_capabilities.rs",
+        "apps/native/src-tauri/src/ai/provider_errors.rs",
+        "apps/native/src-tauri/src/ai/providers/mod.rs",
+        "apps/native/src-tauri/src/ai/providers/openai.rs",
         "apps/native/src-tauri/src/commands/evolve.rs",
         "apps/native/src-tauri/src/commands/evolve_state.rs",
+        "apps/native/src-tauri/src/commands/editor.rs",
         "apps/native/src-tauri/src/commands/summarize.rs",
-        "apps/native/src-tauri/src/ai/provider_errors.rs",
+        "apps/native/src-tauri/src/state/change_map.rs",
         "apps/native/src-tauri/src/state/evolve_state.rs",
-        "apps/native/src-tauri/src/summarize/"
+        "apps/native/src-tauri/src/state/git_state.rs",
+        "apps/native/src-tauri/src/state/session_log.rs",
+        "apps/native/src-tauri/src/state/watcher.rs",
+        "apps/native/src-tauri/src/summarize/build_prompt.rs",
+        "apps/native/src-tauri/src/summarize/find_existing.rs",
+        "apps/native/src-tauri/src/summarize/group_existing.rs",
+        "apps/native/src-tauri/src/summarize/mod.rs",
+        "apps/native/src-tauri/src/summarize/model_calls.rs",
+        "apps/native/src-tauri/src/summarize/pipelines/commit_message.rs",
+        "apps/native/src-tauri/src/summarize/pipelines/history.rs",
+        "apps/native/src-tauri/src/summarize/pipelines/mod.rs",
+        "apps/native/src-tauri/src/summarize/pipelines/whole_diff.rs",
+        "apps/native/src-tauri/src/summarize/sumlog.rs",
+        "apps/native/src-tauri/src/summarize/token_budgets.rs"
+      ],
+      "directoryPrefixApprovals": [
+        {
+          "prefix": "apps/native/src/components/widget/drift/",
+          "owner": "nixmac-product-proof",
+          "reason": "This component namespace exclusively renders drift findings within the provider Review flow."
+        },
+        {
+          "prefix": "apps/native/src/components/widget/filesystem/",
+          "owner": "nixmac-product-proof",
+          "reason": "This component namespace exclusively renders filesystem findings within the provider Review flow."
+        },
+        {
+          "prefix": "apps/native/src/components/widget/summaries/",
+          "owner": "nixmac-product-proof",
+          "reason": "This component namespace exclusively renders Summary and Diff output exercised by the provider Review flow."
+        }
       ]
     },
     {
       "id": "inline-question-answer",
       "label": "Inline provider question and answer progression",
-      "scenarioKeys": ["inlineQuestionAnswer"],
+      "scenarioKeys": [],
       "sourcePrefixes": [
         "apps/native/src/components/widget/overlays/evolve-progress.tsx",
-        "apps/native/src-tauri/src/commands/evolve.rs",
         "apps/native/src-tauri/src/evolve/mod.rs",
         "apps/native/src-tauri/src/evolve/tools.rs"
-      ]
+      ],
+      "waiver": {
+        "reason": "Inline question and answer is an optional evolved calibration case, not a stable scenario executed by every production coverage run.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "medium",
+        "exitCriteria": "Promote inline question and answer into the stable shared scenario catalog and run it deterministically with question, answer, resume, result, and cleanup assertions."
+      }
+    },
+    {
+      "id": "alternate-ai-providers",
+      "label": "CLI and Ollama provider execution variants",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src-tauri/src/ai/providers/cli.rs",
+        "apps/native/src-tauri/src/ai/providers/ollama.rs",
+        "apps/native/src-tauri/src/commands/cli_tool.rs"
+      ],
+      "waiver": {
+        "reason": "The current lane is pinned to the OpenAI-compatible/OpenRouter path. It renders provider controls but does not execute CLI-backed or Ollama provider requests or model discovery.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "high",
+        "exitCriteria": "Add deterministic provider-matrix cases for CLI and Ollama request execution, model discovery, failure handling, and cleanup."
+      }
     },
     {
       "id": "homebrew-badge",
@@ -162,7 +940,10 @@
         "apps/native/src/components/widget/promptinput/homebrew-badge.tsx",
         "apps/native/src/hooks/use-homebrew-diff.ts",
         "apps/native/src-tauri/src/commands/homebrew.rs",
-        "apps/native/src-tauri/src/managed_edits/homebrew_adopt.rs"
+        "apps/native/src-tauri/src/managed_edits/homebrew_adopt.rs",
+        "apps/native/src-tauri/src/managed_edits/managed_edit.rs",
+        "apps/native/src-tauri/src/managed_edits/mod.rs",
+        "apps/native/src-tauri/src/system/nix_ast_lists.rs"
       ]
     },
     {
@@ -186,14 +967,20 @@
         "apps/native/src/components/widget/controls/confirm-button.tsx",
         "apps/native/src/components/widget/controls/confirmation-dialog.tsx",
         "apps/native/src/components/widget/notifications/external-build-detected.tsx",
-        "apps/native/src/components/widget/steps/evolve-step.tsx",
+        "apps/native/src/components/widget/overlays/rebuild-overlay-panel.tsx",
         "apps/native/src/components/widget/steps/commit-step.tsx",
         "apps/native/src/components/widget/history/discard-uncommitted-dialog.tsx",
         "apps/native/src/hooks/use-apply.ts",
         "apps/native/src/hooks/use-rebuild-stream.ts",
         "apps/native/src/hooks/use-rollback.ts",
+        "apps/native/src-tauri/src/rebuild/darwin.rs",
         "apps/native/src-tauri/src/rebuild/finalize_apply.rs",
+        "apps/native/src-tauri/src/rebuild/finalize_restore.rs",
+        "apps/native/src-tauri/src/rebuild/mod.rs",
+        "apps/native/src-tauri/src/rebuild/out_link.rs",
         "apps/native/src-tauri/src/rebuild/rollback.rs",
+        "apps/native/src-tauri/src/state/build_state.rs",
+        "apps/native/src-tauri/src/state/rebuild_status.rs",
         "apps/native/src-tauri/src/commands/rollback.rs"
       ]
     },
@@ -204,7 +991,7 @@
       "sourcePrefixes": [
         "apps/native/src/components/widget/controls/commit-message.tsx",
         "apps/native/src/components/widget/layout/merge-section.tsx",
-        "apps/native/src/components/widget/steps/manual-commit-step.tsx",
+        "apps/native/src/components/widget/steps/commit-step.tsx",
         "apps/native/src/hooks/use-git-operations.ts",
         "apps/native/src-tauri/src/commands/git.rs",
         "apps/native/src-tauri/src/commands/summarize.rs",
@@ -212,25 +999,112 @@
       ]
     },
     {
+      "id": "internal-runtime-plumbing",
+      "label": "Internal runtime registries, helpers, and completion logging",
+      "scenarioKeys": [],
+      "coverageDisposition": "non-claiming",
+      "coverageNote": "These implementation files stay visible in PR coverage matching, but they do not represent independently claimable user-facing scenarios.",
+      "sourcePrefixes": [
+        "apps/native/src-tauri/src/commands/helpers.rs",
+        "apps/native/src-tauri/src/commands/mod.rs",
+        "apps/native/src-tauri/src/state/completion_log.rs",
+        "apps/native/src-tauri/src/state/mod.rs",
+        "apps/native/src-tauri/src/storage/mod.rs",
+        "apps/native/src-tauri/src/system/mod.rs"
+      ]
+    },
+    {
+      "id": "secrets-management",
+      "label": "Secrets management, reveal, rotation, and recipient flows",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src/components/widget/secrets/",
+        "apps/native/src-tauri/src/storage/secrets.rs",
+        "apps/native/src-tauri/src/system/re2_ascii.rs",
+        "apps/native/src-tauri/src/system/secret_scanner.rs"
+      ],
+      "directoryPrefixApprovals": [
+        {
+          "prefix": "apps/native/src/components/widget/secrets/",
+          "owner": "nixmac-product-proof",
+          "reason": "This component namespace exclusively implements the currently waived Secrets management surface."
+        }
+      ],
+      "waiver": {
+        "reason": "The current Computer Use lane does not open or mutate the Secrets management UI, so reveal, rotation, recipient, and secret-scanning behavior is not covered.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "high",
+        "exitCriteria": "Add a disposable-vault Computer Use scenario that covers create, reveal/redaction, recipient changes, rotation, and cleanup without persisting secret material."
+      }
+    },
+    {
+      "id": "recovery-and-activation-preflight",
+      "label": "Error fallbacks, recovery, drift alerts, and activation preflight warnings",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src/components/widget/layout/AppErrorBoundary.tsx",
+        "apps/native/src/components/widget/layout/AppFatalFallback.tsx",
+        "apps/native/src/components/widget/layout/error-message.tsx",
+        "apps/native/src/components/widget/layout/git-status-debug.tsx",
+        "apps/native/src/components/widget/notifications/uncommitted-changes-detected.tsx",
+        "apps/native/src/components/widget/notifications/unsummarized-changes-detected.tsx",
+        "apps/native/src/components/widget/notifications/upstream-update-available.tsx",
+        "apps/native/src/components/widget/overlays/etc-clobber-conflict-list.tsx",
+        "apps/native/src/components/widget/overlays/etc-clobber-warning-dialog.tsx",
+        "apps/native/src/components/widget/repair/repair.tsx",
+        "apps/native/src-tauri/src/state/drift_notifications.rs",
+        "apps/native/src-tauri/src/system/app_management_preflight.rs",
+        "apps/native/src-tauri/src/system/etc_preflight.rs"
+      ],
+      "waiver": {
+        "reason": "The healthy-path remote lane does not deterministically induce fatal rendering, git-status failures, uncommitted or unsummarized recovery notices, repair mode, drift notifications, upstream-update warnings, or activation preflight conflicts.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "medium",
+        "exitCriteria": "Add deterministic fixtures and Computer Use cases for each error, dirty-state, fallback, or warning state, including recovery and cleanup proof."
+      }
+    },
+    {
       "id": "onboarding-permissions",
       "label": "First-run permissions and nix setup/onboarding",
       "scenarioKeys": [],
       "sourcePrefixes": [
         "apps/native/src/components/widget/controls/bootstrap-config.tsx",
+        "apps/native/src/components/widget/controls/flake-dir-chooser.tsx",
+        "apps/native/src/components/widget/controls/repo-import.tsx",
+        "apps/native/src/components/widget/controls/repo-ref-input.tsx",
         "apps/native/src/components/widget/layout/step-content-wrapper.tsx",
-        "apps/native/src/components/widget/steps/nix-setup-step.tsx",
-        "apps/native/src/components/widget/steps/permissions-step.tsx",
-        "apps/native/src/components/widget/steps/setup-step.tsx",
+        "apps/native/src/components/widget/onboarding/",
+        "apps/native/src/components/widget/permissions/permissions-panel.tsx",
         "apps/native/src/hooks/use-permissions.ts",
         "apps/native/src/hooks/use-nix-install.ts",
+        "apps/native/src-tauri/src/commands/config.rs",
+        "apps/native/src-tauri/src/commands/onboarding.rs",
+        "apps/native/src-tauri/src/commands/launchd.rs",
+        "apps/native/src-tauri/src/state/nix_install_state.rs",
+        "apps/native/src-tauri/src/state/onboarding.rs",
+        "apps/native/src-tauri/src/state/permissions_state.rs",
+        "apps/native/src-tauri/src/system/install_location.rs",
+        "apps/native/src-tauri/src/system/launchd_scanner.rs",
+        "apps/native/src-tauri/src/system/nix.rs",
         "apps/native/src-tauri/src/system/permissions.rs",
         "apps/native/src-tauri/src/commands/permissions.rs"
+      ],
+      "directoryPrefixApprovals": [
+        {
+          "prefix": "apps/native/src/components/widget/onboarding/",
+          "owner": "nixmac-product-proof",
+          "reason": "This component namespace exclusively implements the currently waived first-run onboarding surface."
+        }
       ],
       "waiver": {
         "reason": "Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage.",
         "owner": "nixmac-product-proof",
         "created": "2026-05-02",
-        "reviewBy": "2026-06-15",
+        "reviewBy": "2026-08-15",
         "risk": "high",
         "exitCriteria": "Add a clean-profile Computer Use scenario that starts from first launch, proves permissions/onboarding/nix setup surfaces, and records a passing report on the remote Mac."
       }
@@ -246,9 +1120,23 @@
         "reason": "The DXU remote lane disables sudo_local in the disposable fixture because unattended MacinCloud AppleScript activation can hang while creating /etc/pam.d/sudo_local. This is an explicit CI fixture waiver, not proof that the production sudo_local path works.",
         "owner": "nixmac-product-proof",
         "created": "2026-05-02",
-        "reviewBy": "2026-06-15",
+        "reviewBy": "2026-08-15",
         "risk": "medium",
         "exitCriteria": "Add a dedicated sudo_local activation lane or an accepted manual release proof that exercises the production sudo_local path outside the DXU unattended fixture."
+      }
+    },
+    {
+      "id": "evolve-mascot-indicator",
+      "label": "Experimental evolve mascot side-window indicator",
+      "scenarioKeys": [],
+      "sourcePrefixes": ["apps/native/src/evolve-mascot-window.tsx"],
+      "waiver": {
+        "reason": "The experimental evolve mascot has its own transparent side window and is not activated or inspected by the current main-window Computer Use lane.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-07-26",
+        "reviewBy": "2026-08-15",
+        "risk": "medium",
+        "exitCriteria": "Add a deterministic evolve-state fixture that activates the mascot side window and captures visibility, animation, positioning, and cleanup proof."
       }
     },
     {
@@ -256,15 +1144,17 @@
       "label": "Preview indicator floating commit/revert UI",
       "scenarioKeys": [],
       "sourcePrefixes": [
+        "apps/native/src/preview-indicator-window.tsx",
         "apps/native/src/components/preview-indicator/preview-indicator.tsx",
         "apps/native/src/hooks/use-preview-indicator.ts",
-        "apps/native/src-tauri/src/commands/apply.rs"
+        "apps/native/src-tauri/src/commands/apply.rs",
+        "apps/native/src-tauri/src/commands/peek.rs"
       ],
       "waiver": {
         "reason": "Not yet in the remote major-feature lane; needs either a deterministic preview-state setup or a real workflow that activates it.",
         "owner": "nixmac-product-proof",
         "created": "2026-05-02",
-        "reviewBy": "2026-06-15",
+        "reviewBy": "2026-08-15",
         "risk": "medium",
         "exitCriteria": "Add a deterministic preview-state setup or real workflow that activates the preview indicator and proves commit/revert behavior through Computer Use."
       }

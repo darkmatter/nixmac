@@ -651,6 +651,10 @@ export const scenarioProofCatalog = freezeDeep({
   },
 });
 
+export function isStableCoverageScenarioKey(key) {
+  return Object.hasOwn(scenarioLabels, key);
+}
+
 export const scenarioAssertionTypeHints = freezeDeep({
   launch: ["accessibility_text", "visual_heuristic"],
   updateBanner: ["accessibility_text", "action_result"],

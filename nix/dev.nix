@@ -58,6 +58,7 @@ lib.mkIf (!config.container.isBuilding) {
     pkgs.git
     pkgs.gh
     pkgs.libiconv
+    pkgs.ffmpeg-headless
     pkgs.starship
     pkgs.nixfmt
     pkgs.uv
@@ -256,6 +257,13 @@ lib.mkIf (!config.container.isBuilding) {
   treefmt.config = {
     # The commit hook runs treefmt repo-wide; enabling more formatters here
     # expands pre-commit cost and can surface unrelated formatting drift.
+    settings.excludes = [
+      ".devenv/**"
+      ".direnv/**"
+      "node_modules/**"
+      "result/**"
+      "target/**"
+    ];
     programs.rustfmt.enable = true;
     programs.yamlfmt.enable = false;
     programs.mdformat.enable = true;
@@ -275,7 +283,7 @@ lib.mkIf (!config.container.isBuilding) {
 
     hooks.shellcheck.enable = true;
     excludes = [
-      "^.*\/?(\.git|\.direnv|\.devenv|\.vscode|\.idea|\.DS_Store|\.env|\.envrc|\.github).*$"
+      "^.*\/?(\.git|\.direnv|\.devenv|\.vscode|\.idea|\.DS_Store|\.env|\.envrc|\.github|node_modules|target|result).*$"
     ];
   };
 }

@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "description": "Language-neutral cases for the Python and Node evidence verifiers.",
+  "cases": [
+    {
+      "name": "valid-ephemeral-safe-frame",
+      "archive": "valid-ephemeral-safe-frame.zip",
+      "expected": "accept",
+      "node_compatible": true
+    },
+    {
+      "name": "valid-static-released-owner-lease",
+      "archive": "valid-static-released-owner-lease.zip",
+      "expected": "accept",
+      "attestation_nonce": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "trusted_owner_token": "489badaf23624b6aeada374a70dc17b6a014cd0ecce8563b0ae5abf2c9d4bcfa",
+      "node_compatible": true
+    },
+    {
+      "name": "digest-mismatch",
+      "archive": "digest-mismatch.zip",
+      "expected": "reject",
+      "node_compatible": true
+    },
+    {
+      "name": "zip-slip",
+      "archive": "zip-slip.zip",
+      "expected": "reject",
+      "node_compatible": false
+    },
+    {
+      "name": "symlink",
+      "archive": "symlink.zip",
+      "expected": "reject",
+      "node_compatible": false
+    },
+    {
+      "name": "duplicate-entry",
+      "archive": "duplicate-entry.zip",
+      "expected": "reject",
+      "node_compatible": false
+    },
+    {
+      "name": "missing-safe-frame",
+      "archive": "missing-safe-frame.zip",
+      "expected": "reject",
+      "node_compatible": true
+    },
+    {
+      "name": "static-owner-hash-mismatch",
+      "archive": "static-owner-hash-mismatch.zip",
+      "expected": "reject",
+      "attestation_nonce": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "trusted_owner_token": "489badaf23624b6aeada374a70dc17b6a014cd0ecce8563b0ae5abf2c9d4bcfa",
+      "node_compatible": true
+    }
+  ]
+}

@@ -122,10 +122,67 @@ function validateTextPatternAddress(address) {
   };
 }
 
+export function validateCuaElementIndexAddress(address) {
+  const issues = [];
+  for (const field of ["elementIndex", "pid", "windowId"]) {
+    if (!Number.isInteger(address[field])) {
+      issues.push(
+        issue(
+          "invalid_cua_element_index",
+          field,
+          `cua-element-index addresses require an integer ${field}.`,
+        ),
+      );
+    }
+  }
+  if (typeof address.snapshotId !== "string" || address.snapshotId.trim() === "") {
+    issues.push(
+      issue(
+        "invalid_cua_element_index",
+        "snapshotId",
+        "cua-element-index addresses require a non-empty snapshotId.",
+      ),
+    );
+  }
+  return {
+    ok: issues.length === 0,
+    issues,
+    normalized: issues.length
+      ? null
+      : {
+          kind: "cua-element-index",
+          elementIndex: address.elementIndex,
+          pid: address.pid,
+          windowId: address.windowId,
+          snapshotId: address.snapshotId,
+        },
+  };
+}
+
 const builtInAddressValidators = Object.freeze({
   "codex-index": validateCodexIndexAddress,
   "text-pattern": validateTextPatternAddress,
 });
+
+function canContainAddressValidators(registry) {
+  return (
+    registry !== null &&
+    (typeof registry === "object" || typeof registry === "function")
+  );
+}
+
+function ownAddressValidator(registry, kind) {
+  if (!canContainAddressValidators(registry) || !Object.hasOwn(registry, kind)) return null;
+  const validator = registry[kind];
+  return typeof validator === "function" ? validator : null;
+}
+
+function addressValidatorForKind(kind, additionalAddressValidators) {
+  return (
+    ownAddressValidator(builtInAddressValidators, kind) ??
+    ownAddressValidator(additionalAddressValidators, kind)
+  );
+}
 
 export function validateElementAddress(address, { additionalAddressValidators = {} } = {}) {
   if (!isPlainObject(address)) {
@@ -142,8 +199,7 @@ export function validateElementAddress(address, { additionalAddressValidators = 
       normalized: null,
     };
   }
-  const validator =
-    builtInAddressValidators[address.kind] || additionalAddressValidators[address.kind];
+  const validator = addressValidatorForKind(address.kind, additionalAddressValidators);
   if (!validator) {
     return {
       ok: false,
@@ -224,12 +280,8 @@ export function validateDriverDescriptor(descriptor, { additionalAddressValidato
       ),
     );
   } else {
-    const knownKinds = new Set([
-      ...builtInElementAddressKinds,
-      ...Object.keys(additionalAddressValidators),
-    ]);
     for (const [index, kind] of descriptor.addressKinds.entries()) {
-      if (!knownKinds.has(kind))
+      if (!addressValidatorForKind(kind, additionalAddressValidators))
         issues.push(
           issue(
             "unknown_address_kind",

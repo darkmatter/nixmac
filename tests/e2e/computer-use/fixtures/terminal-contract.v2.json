@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 2,
+  "jobId": "darkmatter/nixmac:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:computer-use-v1",
+  "attempt": 2,
+  "backend": "static_ssh",
+  "qualificationTier": "production",
+  "workflowRunId": "12345",
+  "workflowRunAttempt": "1",
+  "terminalStatus": "COMPLETE",
+  "backendResult": "success",
+  "reportResult": "success",
+  "infraDisposition": "LEASE_ACQUIRED",
+  "lifecycle": {
+    "required": false,
+    "result": "not_required",
+    "consumed": false,
+    "disposition": "not_required",
+    "key": ""
+  },
+  "artifactId": "98765",
+  "artifactDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "reportUrl": "https://e2e-evidence.nixmac.com/v1/jobs/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/computer-use-v1/attempt-2/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/report/index.html",
+  "evidenceStorage": {
+    "provider": "cloudflare-r2",
+    "bucket": "nixmac-e2e-evidence",
+    "receipt": {
+      "key": "v1/jobs/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/computer-use-v1/attempt-2/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/storage-receipt.json",
+      "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    "archive": {
+      "key": "v1/jobs/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/computer-use-v1/attempt-2/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/evidence.canonical.zip",
+      "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "bytes": 123456
+    },
+    "report": {
+      "url": "https://e2e-evidence.nixmac.com/v1/jobs/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/computer-use-v1/attempt-2/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/report/index.html",
+      "manifestKey": "v1/jobs/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/computer-use-v1/attempt-2/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/report/viewer-manifest.json",
+      "manifestDigest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    "evidenceExpiresAt": "2027-07-27T12:34:56.789Z"
+  },
+  "observedAt": "2026-07-26T00:00:00.000Z",
+  "requiresApiSynthesis": false,
+  "noRunnerContract": {
+    "triggers": [
+      "cancelled",
+      "runner_lost",
+      "terminal artifact absent"
+    ],
+    "authority": "GitHub run/job API",
+    "synthesizedAttemptStatus": "ABORTED"
+  }
+}

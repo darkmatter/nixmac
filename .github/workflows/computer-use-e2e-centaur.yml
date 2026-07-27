@@ -1,0 +1,1301 @@
+name: Computer Use E2E (Centaur)
+run-name: nixmac-e2e / ${{ inputs.job_id }} / attempt ${{ inputs.attempt }} / nonce ${{ inputs.attestation_nonce }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      merge_sha:
+        description: Exact merged commit under test
+        required: true
+        type: string
+      job_id:
+        description: Durable Centaur logical job ID
+        required: true
+        type: string
+      attempt:
+        description: Durable Centaur attempt number
+        required: true
+        type: number
+      suite_version:
+        description: Versioned scenario suite
+        required: true
+        type: string
+      build_run_id:
+        description: Pre-resolved exact-SHA build workflow run ID
+        required: true
+        type: string
+      app_artifact_id:
+        description: Pre-resolved nixmac-macos-app-e2e artifact ID
+        required: true
+        type: string
+      app_artifact_digest:
+        description: GitHub artifact SHA-256 digest
+        required: true
+        type: string
+      attestation_nonce:
+        description: Unique unguessable attempt nonce
+        required: true
+        type: string
+      backend:
+        description: Qualified static macOS execution backend
+        required: true
+        type: choice
+        options:
+          - static_ssh
+      qualification_tier:
+        description: Shadow collection or production publication qualification
+        required: true
+        default: production
+        type: choice
+        options:
+          - shadow
+          - production
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  preflight:
+    name: Bind trusted harness and exact app artifact
+    runs-on: arc
+    timeout-minutes: 15
+    outputs:
+      ready: ${{ steps.classify.outputs.ready }}
+      terminal_status: ${{ steps.classify.outputs.terminal_status }}
+      harness_sha: ${{ steps.bind.outputs.harness_sha }}
+      job_key: ${{ steps.bind.outputs.job_key }}
+    steps:
+      - name: Checkout trusted default-branch harness
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Verify ARC controller toolchain contract
+        id: toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tool in gh jq node python3 ffmpeg ffprobe shasum unzip; do
+            resolved="$(command -v "$tool")"
+            [[ -x "$resolved" ]]
+          done
+          python3 --version
+          ffmpeg -version | sed -n '1p'
+          ffprobe -version | sed -n '1p'
+
+      - name: Validate immutable dispatch inputs
+        id: inputs
+        shell: bash
+        env:
+          MERGE_SHA: ${{ inputs.merge_sha }}
+          JOB_ID: ${{ inputs.job_id }}
+          ATTEMPT: ${{ inputs.attempt }}
+          SUITE_VERSION: ${{ inputs.suite_version }}
+          BUILD_RUN_ID: ${{ inputs.build_run_id }}
+          APP_ARTIFACT_ID: ${{ inputs.app_artifact_id }}
+          APP_ARTIFACT_DIGEST: ${{ inputs.app_artifact_digest }}
+          ATTESTATION_NONCE: ${{ inputs.attestation_nonce }}
+        run: |
+          set -euo pipefail
+          [[ "$MERGE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$SUITE_VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]]
+          [[ "$JOB_ID" == "${GITHUB_REPOSITORY}:${MERGE_SHA}:${SUITE_VERSION}" ]]
+          [[ "$ATTEMPT" =~ ^[1-9][0-9]*$ ]]
+          [[ "$BUILD_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$APP_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$APP_ARTIFACT_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          [[ "$ATTESTATION_NONCE" =~ ^[A-Za-z0-9_-]{32,128}$ ]]
+
+      - name: Resolve and verify exact app artifact
+        id: artifact
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MERGE_SHA: ${{ inputs.merge_sha }}
+          BUILD_RUN_ID: ${{ inputs.build_run_id }}
+          APP_ARTIFACT_ID: ${{ inputs.app_artifact_id }}
+          APP_ARTIFACT_DIGEST: ${{ inputs.app_artifact_digest }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/centaur-preflight"
+          status_file="$RUNNER_TEMP/centaur-preflight/terminal-status"
+          printf 'BUILD_UNAVAILABLE\n' > "$status_file"
+
+          if ! artifact_json="$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${APP_ARTIFACT_ID}"
+          )"; then
+            echo "BUILD_UNAVAILABLE: artifact metadata was not available within bounded preflight."
+            exit 78
+          fi
+          artifact_run_id="$(jq -r '.workflow_run.id // ""' <<<"$artifact_json")"
+          workflow_run_head_sha="$(jq -r '.workflow_run.head_sha // ""' <<<"$artifact_json")"
+          artifact_digest="$(jq -r '.digest // ""' <<<"$artifact_json")"
+          archive_download_url="$(jq -r '.archive_download_url // ""' <<<"$artifact_json")"
+          artifact_name="$(jq -r '.name // ""' <<<"$artifact_json")"
+          expired="$(jq -r '.expired // true' <<<"$artifact_json")"
+          if ! workflow_run_json="$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${BUILD_RUN_ID}"
+          )"; then
+            echo "BUILD_UNAVAILABLE: producing workflow metadata was not available within bounded preflight."
+            exit 78
+          fi
+          producing_workflow_path="$(jq -r '.path // ""' <<<"$workflow_run_json")"
+          producing_event="$(jq -r '.event // ""' <<<"$workflow_run_json")"
+          producing_head_sha="$(jq -r '.head_sha // ""' <<<"$workflow_run_json")"
+          producing_head_branch="$(jq -r '.head_branch // ""' <<<"$workflow_run_json")"
+          producing_repo="$(jq -r '.head_repository.full_name // ""' <<<"$workflow_run_json")"
+
+          if [[ "$artifact_run_id" != "$BUILD_RUN_ID" ||
+            "$workflow_run_head_sha" != "$MERGE_SHA" ||
+            "$producing_workflow_path" != ".github/workflows/build.yaml" ||
+            "$producing_event" != "push" ||
+            "$producing_head_branch" != "$DEFAULT_BRANCH" ||
+            "$producing_head_sha" != "$MERGE_SHA" ||
+            "$producing_repo" != "$GITHUB_REPOSITORY" ||
+            "$artifact_name" != "nixmac-macos-app-e2e" ||
+            "$expired" != "false" ||
+            -z "$archive_download_url" ]]; then
+            printf 'ARTIFACT_INVALID\n' > "$status_file"
+            echo "ARTIFACT_INVALID: artifact metadata does not bind its trusted build workflow, repository, source SHA, name, and expiry."
+            exit 65
+          fi
+          if [[ -n "$artifact_digest" && "$artifact_digest" != "$APP_ARTIFACT_DIGEST" ]]; then
+            printf 'ARTIFACT_INVALID\n' > "$status_file"
+            echo "ARTIFACT_INVALID: GitHub artifact digest differs from dispatch digest."
+            exit 65
+          fi
+
+          archive="$RUNNER_TEMP/centaur-preflight/nixmac-macos-app.zip"
+          if ! gh api "$archive_download_url" > "$archive"; then
+            echo "BUILD_UNAVAILABLE: exact artifact download was unavailable."
+            exit 78
+          fi
+          actual_digest="sha256:$(shasum -a 256 "$archive" | awk '{print $1}')"
+          if [[ "$actual_digest" != "$APP_ARTIFACT_DIGEST" ]]; then
+            printf 'ARTIFACT_INVALID\n' > "$status_file"
+            echo "ARTIFACT_INVALID: downloaded archive digest mismatch."
+            exit 65
+          fi
+          if unzip -Z1 "$archive" | grep -Eq '(^/|(^|/)\.\.(/|$)|\\)'; then
+            printf 'ARTIFACT_INVALID\n' > "$status_file"
+            echo "ARTIFACT_INVALID: archive contains an unsafe path."
+            exit 65
+          fi
+          printf 'READY\n' > "$status_file"
+
+      - name: Bind harness and bundle identity
+        id: bind
+        if: steps.artifact.outcome == 'success'
+        shell: bash
+        env:
+          APP_ARTIFACT_DIGEST: ${{ inputs.app_artifact_digest }}
+          JOB_ID: ${{ inputs.job_id }}
+        run: |
+          set -euo pipefail
+          preflight="$RUNNER_TEMP/centaur-preflight"
+          mkdir -p "$preflight/extracted"
+          unzip -q "$preflight/nixmac-macos-app.zip" -d "$preflight/extracted"
+          preserved_archive="$preflight/extracted/nixmac-macos-app-preserved.zip"
+          [[ -s "$preserved_archive" ]]
+          if unzip -Z1 "$preserved_archive" | grep -Eq '(^/|(^|/)\.\.(/|$)|\\)'; then
+            echo "ARTIFACT_INVALID: preserved app archive contains an unsafe path." >&2
+            exit 65
+          fi
+          harness_sha="$(git rev-parse HEAD)"
+          job_key="$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]))' "$JOB_ID")"
+          [[ -n "$job_key" && "$job_key" != */* ]]
+          echo "harness_sha=$harness_sha" >> "$GITHUB_OUTPUT"
+          echo "job_key=$job_key" >> "$GITHUB_OUTPUT"
+          jq -n \
+            --arg merge_sha "${{ inputs.merge_sha }}" \
+            --arg build_run_id "${{ inputs.build_run_id }}" \
+            --arg artifact_id "${{ inputs.app_artifact_id }}" \
+            --arg artifact_digest "$APP_ARTIFACT_DIGEST" \
+            --arg harness_sha "$harness_sha" \
+            '{version:1,mergeSha:$merge_sha,buildRunId:$build_run_id,artifactId:$artifact_id,artifactDigest:$artifact_digest,harnessSha:$harness_sha,bundleDigestAuthority:"runner-preflight"}' \
+            > "$preflight/source-binding.json"
+
+      - name: Classify bounded preflight
+        id: classify
+        if: always()
+        shell: bash
+        run: |
+          status="$(cat "$RUNNER_TEMP/centaur-preflight/terminal-status" 2>/dev/null || printf 'PREFLIGHT_INVALID')"
+          toolchain_outcome="${{ steps.toolchain.outcome }}"
+          inputs_outcome="${{ steps.inputs.outcome }}"
+          artifact_outcome="${{ steps.artifact.outcome }}"
+          bind_outcome="${{ steps.bind.outcome }}"
+          if [[ "$toolchain_outcome" == "cancelled" ||
+            "$inputs_outcome" == "cancelled" ||
+            "$artifact_outcome" == "cancelled" ||
+            "$bind_outcome" == "cancelled" ]]; then
+            status="PREFLIGHT_INVALID"
+          elif [[ "$toolchain_outcome" != "success" ||
+            "$inputs_outcome" != "success" ]]; then
+            status="PREFLIGHT_INVALID"
+          elif [[ "$artifact_outcome" != "success" ]]; then
+            if [[ "$status" == "READY" ]]; then
+              status="ARTIFACT_INVALID"
+            fi
+          elif [[ "$bind_outcome" != "success" ]]; then
+            status="ARTIFACT_INVALID"
+          fi
+          if [[ "$status" == "READY" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "terminal_status=READY" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "terminal_status=$status" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload verified app handoff and preflight diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: centaur-e2e-preflight-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/centaur-preflight/
+          if-no-files-found: error
+          retention-days: 7
+
+  static_ssh:
+    name: Static transition CuaDriver E2E
+    needs: preflight
+    if: needs.preflight.outputs.ready == 'true' && inputs.backend == 'static_ssh' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: [self-hosted, linux, nixmac-e2e-static-controller]
+    environment: nixmac-e2e-production
+    timeout-minutes: 180
+    outputs:
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
+      artifact_digest: ${{ steps.upload.outputs.artifact-digest }}
+      artifact_url: ${{ steps.upload.outputs.artifact-url }}
+      infra_disposition: ${{ steps.lease.outputs.disposition || steps.initialize.outputs.disposition }}
+    env:
+      REMOTE_HOST: ${{ secrets.NIXMAC_E2E_REMOTE_HOST }}
+      REMOTE_USER: ${{ secrets.NIXMAC_E2E_REMOTE_USER }}
+      REMOTE_SSH_KEY: ${{ secrets.NIXMAC_E2E_REMOTE_SSH_KEY }}
+      REMOTE_KNOWN_HOSTS: ${{ secrets.NIXMAC_E2E_REMOTE_KNOWN_HOSTS }}
+    steps:
+      - name: Initialize static terminal contract
+        id: initialize
+        shell: bash
+        run: |
+          set -euo pipefail
+          controller="$RUNNER_TEMP/static-controller"
+          install -d -m 700 "$controller"
+          observed_at="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
+          jq -n \
+            --arg observedAt "$observed_at" \
+            '{
+              schemaVersion:1,
+              disposition:"CONTROLLER_STARTED",
+              exitCode:0,
+              acquired:false,
+              acquiredAt:"",
+              observedAt:$observedAt
+            }' \
+            > "$controller/terminal-disposition.json"
+          echo "disposition=CONTROLLER_STARTED" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout trusted default-branch harness
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.preflight.outputs.harness_sha }}
+          persist-credentials: false
+
+      - name: Verify static controller toolchain contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tool in gh jq node python3 ffmpeg ffprobe shasum ssh scp tar; do
+            resolved="$(command -v "$tool")"
+            [[ -x "$resolved" ]]
+          done
+          [[ "${{ vars.NIXMAC_E2E_STATIC_IMAGE_DIGEST }}" =~ ^sha256:[0-9a-f]{64}$ ]]
+
+      - name: Download verified app handoff
+        uses: actions/download-artifact@v7
+        with:
+          name: centaur-e2e-preflight-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/centaur-preflight
+
+      - name: Prepare strict SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "$REMOTE_HOST" && -n "$REMOTE_USER" && -n "$REMOTE_SSH_KEY" && -n "$REMOTE_KNOWN_HOSTS" ]]
+          install -d -m 700 "$RUNNER_TEMP/nixmac-ssh"
+          printf '%s\n' "$REMOTE_SSH_KEY" > "$RUNNER_TEMP/nixmac-ssh/key"
+          printf '%s\n' "$REMOTE_KNOWN_HOSTS" > "$RUNNER_TEMP/nixmac-ssh/known_hosts"
+          chmod 600 "$RUNNER_TEMP/nixmac-ssh/key"
+          chmod 644 "$RUNNER_TEMP/nixmac-ssh/known_hosts"
+          ssh-keygen -F "$REMOTE_HOST" -f "$RUNNER_TEMP/nixmac-ssh/known_hosts" >/dev/null
+
+      - name: Acquire shared MacinCloud host lease
+        id: lease
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          controller="$RUNNER_TEMP/static-controller"
+          disposition_file="$controller/terminal-disposition.json"
+          lease_error="$controller/lease-acquire.stderr"
+          mkdir -p "$controller"
+          owner_token="$(
+            printf '%s' "${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${{ inputs.job_id }}|${{ inputs.attempt }}|${{ inputs.attestation_nonce }}" |
+              shasum -a 256 |
+              awk '{print $1}'
+          )"
+          install -m 600 /dev/null "$RUNNER_TEMP/nixmac-host-owner-token"
+          printf '%s' "$owner_token" > "$RUNNER_TEMP/nixmac-host-owner-token"
+          set +e
+          lease_output="$(
+            ops/runner/macincloud-host-lease.sh acquire \
+              --ssh-dest "${REMOTE_USER}@${REMOTE_HOST}" \
+              --ssh-key "$RUNNER_TEMP/nixmac-ssh/key" \
+              --known-hosts "$RUNNER_TEMP/nixmac-ssh/known_hosts" \
+              --owner-token "$owner_token" \
+              --repository "$GITHUB_REPOSITORY" \
+              --run-id "$GITHUB_RUN_ID" \
+              --logical-job "${{ inputs.job_id }}" \
+              --attempt "${{ inputs.attempt }}" \
+              --nonce "${{ inputs.attestation_nonce }}" \
+              --wait-seconds 3600 \
+              --poll-seconds 15 \
+              --max-hold-seconds 10800 \
+              2>"$lease_error"
+          )"
+          lease_exit=$?
+          set -e
+
+          acquired=false
+          acquired_at=""
+          disposition="INFRASTRUCTURE_FAILURE"
+          if [[ "$lease_exit" == "0" ]]; then
+            IFS=$'\t' read -r lease_state acquired_at owner_binding <<<"$lease_output"
+            if [[ "$lease_state" == "LEASE_ACQUIRED" &&
+              "$acquired_at" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ &&
+              "$owner_binding" =~ ^owner_token_sha256=[0-9a-f]{64}$ ]]; then
+              acquired=true
+              disposition="LEASE_ACQUIRED"
+              printf 'acquired\n' > "$RUNNER_TEMP/nixmac-host-lease-acquired"
+            fi
+          elif grep -Fq "LEASE_BUSY:" "$lease_error"; then
+            disposition="LEASE_BUSY"
+          elif grep -Fq "LEASE_QUARANTINED:" "$lease_error"; then
+            disposition="LEASE_QUARANTINED"
+          fi
+          observed_at="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
+          jq -n \
+            --arg disposition "$disposition" \
+            --argjson exitCode "$lease_exit" \
+            --argjson acquired "$acquired" \
+            --arg acquiredAt "$acquired_at" \
+            --arg observedAt "$observed_at" \
+            '{
+              schemaVersion:1,
+              disposition:$disposition,
+              exitCode:$exitCode,
+              acquired:$acquired,
+              acquiredAt:$acquiredAt,
+              observedAt:$observedAt
+            }' \
+            > "$disposition_file.tmp"
+          mv "$disposition_file.tmp" "$disposition_file"
+          rm -f "$lease_error"
+          {
+            echo "acquired=$acquired"
+            echo "acquired_at=$acquired_at"
+            echo "disposition=$disposition"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Enforce classified host lease acquisition
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          disposition_file="$RUNNER_TEMP/static-controller/terminal-disposition.json"
+          disposition="$(
+            jq -er '
+              select(
+                .schemaVersion == 1 and
+                (.acquired | type == "boolean") and
+                (.exitCode | type == "number")
+              ) |
+              .disposition
+            ' "$disposition_file"
+          )"
+          case "$disposition" in
+            LEASE_ACQUIRED) exit 0 ;;
+            LEASE_BUSY) exit 75 ;;
+            LEASE_QUARANTINED) exit 73 ;;
+            INFRASTRUCTURE_FAILURE) exit 74 ;;
+            *) exit 65 ;;
+          esac
+
+      - name: Reserve attempt-owned static paths
+        id: static-paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_root="/private/tmp/nixmac-centaur-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          remote_socket_dir="/private/tmp/nx-cua-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          remote_socket_path="$remote_socket_dir/d.sock"
+          [[ "$remote_root" =~ ^/private/tmp/nixmac-centaur-[A-Za-z0-9._-]+$ ]]
+          [[ "$remote_socket_dir" =~ ^/private/tmp/nx-cua-[A-Za-z0-9._-]+$ ]]
+          {
+            echo "remote_root=$remote_root"
+            echo "remote_socket_dir=$remote_socket_dir"
+            echo "remote_socket_path=$remote_socket_path"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Inventory static host before staging
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/static-controller"
+          ssh_common=(-i "$RUNNER_TEMP/nixmac-ssh/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/nixmac-ssh/known_hosts")
+          ssh "${ssh_common[@]}" "${REMOTE_USER}@${REMOTE_HOST}" \
+            'jq -n --arg hostname "$(scutil --get LocalHostName)" --argjson nixmacPids "$(pgrep -x nixmac 2>/dev/null | jq -Rsc '\''split("\n") | map(select(length > 0) | tonumber)'\'')" --argjson cuaDriverPids "$(pgrep -f '\''[c]ua-driver|[C]uaDriver.app/Contents/MacOS'\'' 2>/dev/null | jq -Rsc '\''split("\n") | map(select(length > 0) | tonumber)'\'')" '\''{hostname:$hostname,nixmacPids:$nixmacPids,cuaDriverPids:$cuaDriverPids}'\''' \
+            > "$RUNNER_TEMP/static-controller/inventory-before.json"
+          jq -e '(.nixmacPids | length == 0) and (.cuaDriverPids | length == 0)' \
+            "$RUNNER_TEMP/static-controller/inventory-before.json"
+
+      - name: Verify static Mac toolchain contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh_common=(-i "$RUNNER_TEMP/nixmac-ssh/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/nixmac-ssh/known_hosts")
+          ssh "${ssh_common[@]}" "${REMOTE_USER}@${REMOTE_HOST}" bash -s <<'REMOTE'
+          set -euo pipefail
+          for tool in ditto jq node python3 ffmpeg ffprobe shasum; do
+            resolved="$(command -v "$tool")"
+            [[ -x "$resolved" ]]
+          done
+          [[ -x /usr/local/bin/cua-driver ]]
+          REMOTE
+
+      - name: Stage exact app and trusted harness
+        id: stage
+        shell: bash
+        env:
+          REMOTE_ROOT: ${{ steps.static-paths.outputs.remote_root }}
+        run: |
+          set -euo pipefail
+          [[ "$REMOTE_ROOT" =~ ^/private/tmp/nixmac-centaur-[A-Za-z0-9._-]+$ ]]
+          echo "remote_root=$REMOTE_ROOT" >> "$GITHUB_OUTPUT"
+          tar -czf "$RUNNER_TEMP/static-controller/trusted-harness.tar.gz" tests/e2e/computer-use
+          ssh_common=(-i "$RUNNER_TEMP/nixmac-ssh/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/nixmac-ssh/known_hosts")
+          ssh "${ssh_common[@]}" "${REMOTE_USER}@${REMOTE_HOST}" bash -s -- "$REMOTE_ROOT" <<'REMOTE'
+          set -euo pipefail
+          remote_root="$1"
+          [[ "$remote_root" =~ ^/private/tmp/nixmac-centaur-[A-Za-z0-9._-]+$ ]]
+          install -d -m 700 \
+            "$remote_root/staging/evidence/config" \
+            "$remote_root/harness" \
+            "$remote_root/evidence" \
+            "$remote_root/backup"
+          support="$HOME/Library/Application Support/com.darkmatter.nixmac"
+          if [[ -d "$support" ]]; then
+            ditto "$support" "$remote_root/backup/app-support"
+            printf 'existed\n' > "$remote_root/backup/app-support.state"
+          else
+            printf 'absent\n' > "$remote_root/backup/app-support.state"
+          fi
+          REMOTE
+          scp "${ssh_common[@]}" \
+            "$RUNNER_TEMP/centaur-preflight/extracted/nixmac-macos-app-preserved.zip" \
+            "$RUNNER_TEMP/static-controller/trusted-harness.tar.gz" \
+            "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_ROOT}/"
+
+      - name: Run CuaDriver on leased static host
+        shell: bash
+        env:
+          REMOTE_ROOT: ${{ steps.stage.outputs.remote_root }}
+          REMOTE_SOCKET_PATH: ${{ steps.static-paths.outputs.remote_socket_path }}
+          STATIC_IMAGE_DIGEST: ${{ vars.NIXMAC_E2E_STATIC_IMAGE_DIGEST }}
+          NIXMAC_E2E_STRICT_VERDICT: "false"
+        run: |
+          set -euo pipefail
+          [[ "$STATIC_IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          ssh_common=(-i "$RUNNER_TEMP/nixmac-ssh/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/nixmac-ssh/known_hosts")
+          remote_root_q="$(printf '%q' "$REMOTE_ROOT")"
+          remote_socket_path_q="$(printf '%q' "$REMOTE_SOCKET_PATH")"
+          remote_runner_name="$(jq -er '.hostname' "$RUNNER_TEMP/static-controller/inventory-before.json")"
+          remote_runner_name_q="$(printf '%q' "$remote_runner_name")"
+          static_image_digest_q="$(printf '%q' "$STATIC_IMAGE_DIGEST")"
+          strict_verdict_q="$(printf '%q' "$NIXMAC_E2E_STRICT_VERDICT")"
+          attempt_started_at="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
+          # shellcheck disable=SC2029
+          ssh "${ssh_common[@]}" "${REMOTE_USER}@${REMOTE_HOST}" \
+            "REMOTE_ROOT=$remote_root_q \
+             NIXMAC_E2E_DISPOSABLE_CONFIG=true \
+             NIXMAC_E2E_APP_ARTIFACT_SHA=${{ inputs.merge_sha }} \
+             NIXMAC_E2E_JOB_ID=${{ inputs.job_id }} \
+             NIXMAC_E2E_REPO=${GITHUB_REPOSITORY} \
+             NIXMAC_E2E_MERGE_SHA=${{ inputs.merge_sha }} \
+             NIXMAC_E2E_SUITE_VERSION=${{ inputs.suite_version }} \
+             NIXMAC_E2E_HARNESS_SHA=${{ needs.preflight.outputs.harness_sha }} \
+             NIXMAC_E2E_ACTIONS_RUN_ID=${GITHUB_RUN_ID} \
+             NIXMAC_E2E_ACTIONS_JOB_ID=static_ssh \
+             NIXMAC_E2E_ATTEMPT=${{ inputs.attempt }} \
+             NIXMAC_E2E_ATTESTATION_NONCE=${{ inputs.attestation_nonce }} \
+             NIXMAC_E2E_ATTEMPT_STARTED_AT=$attempt_started_at \
+             NIXMAC_E2E_RUNNER_NAME=$remote_runner_name_q \
+             NIXMAC_E2E_RUNNER_BACKEND=static_ssh \
+             NIXMAC_E2E_RUNNER_IMAGE_DIGEST=$static_image_digest_q \
+             NIXMAC_E2E_BUILD_RUN_ID=${{ inputs.build_run_id }} \
+             NIXMAC_E2E_ARTIFACT_ID=${{ inputs.app_artifact_id }} \
+             NIXMAC_E2E_ARTIFACT_DIGEST=${{ inputs.app_artifact_digest }} \
+             NIXMAC_E2E_FINALIZATION_MODE=controller-finalize \
+             NIXMAC_E2E_STRICT_VERDICT=$strict_verdict_q \
+             NIXMAC_CUA_DRIVER_SOCKET=$remote_socket_path_q \
+             NIXMAC_E2E_CONTROLLER_PROCESS_HANDOFF_PATH=$remote_root_q/controller-process-handoff.json \
+             NIXMAC_CUA_DRIVER_BINARY=/usr/local/bin/cua-driver \
+             bash -se" <<'REMOTE'
+          set -euo pipefail
+          ditto -x -k \
+            "$REMOTE_ROOT/nixmac-macos-app-preserved.zip" \
+            "$REMOTE_ROOT/staging/evidence"
+          tar -xzf "$REMOTE_ROOT/trusted-harness.tar.gz" -C "$REMOTE_ROOT/harness"
+          app_path="$(find "$REMOTE_ROOT/staging/evidence" -type d -name '*.app' -prune | sed -n '1p')"
+          [[ -n "$app_path" ]]
+          bundle_digest="$(
+            cd "$REMOTE_ROOT/harness"
+            node --input-type=module - "$app_path" <<'NODE'
+          import { hashCuaBundleTree } from "./tests/e2e/computer-use/drivers/cua-driver.mjs";
+          process.stdout.write(await hashCuaBundleTree(process.argv[2]));
+          NODE
+          )"
+          [[ "$bundle_digest" =~ ^[0-9a-f]{64}$ ]]
+          install -d -m 700 "$REMOTE_ROOT/attestations"
+          jq -n \
+            --arg name "$NIXMAC_E2E_RUNNER_NAME" \
+            --arg backend "$NIXMAC_E2E_RUNNER_BACKEND" \
+            --arg imageDigest "$NIXMAC_E2E_RUNNER_IMAGE_DIGEST" \
+            '{name:$name,backend:$backend,imageDigest:$imageDigest}' \
+            > "$REMOTE_ROOT/attestations/runner.json"
+          jq -n \
+            --arg artifactId "$NIXMAC_E2E_ARTIFACT_ID" \
+            --arg artifactDigest "$NIXMAC_E2E_ARTIFACT_DIGEST" \
+            --arg buildRunId "$NIXMAC_E2E_BUILD_RUN_ID" \
+            --arg mergeSha "$NIXMAC_E2E_MERGE_SHA" \
+            --arg appBundleDigest "$bundle_digest" \
+            '{verified:true,artifactId:$artifactId,artifactDigest:$artifactDigest,buildRunId:$buildRunId,mergeSha:$mergeSha,appBundleDigest:$appBundleDigest}' \
+            > "$REMOTE_ROOT/attestations/artifact.json"
+          NIXMAC_E2E_APP_PATH="$app_path"
+          NIXMAC_E2E_APP_BUNDLE_DIGEST="$bundle_digest"
+          NIXMAC_E2E_STAGING_PARENT="$REMOTE_ROOT/staging/evidence"
+          NIXMAC_E2E_DISPOSABLE_CONFIG_PATH="$REMOTE_ROOT/staging/evidence/config"
+          NIXMAC_E2E_RUNNER_ATTESTATION_PATH="$REMOTE_ROOT/attestations/runner.json"
+          NIXMAC_E2E_ARTIFACT_ATTESTATION_PATH="$REMOTE_ROOT/attestations/artifact.json"
+          export \
+            NIXMAC_E2E_APP_PATH \
+            NIXMAC_E2E_APP_BUNDLE_DIGEST \
+            NIXMAC_E2E_STAGING_PARENT \
+            NIXMAC_E2E_DISPOSABLE_CONFIG_PATH \
+            NIXMAC_E2E_RUNNER_ATTESTATION_PATH \
+            NIXMAC_E2E_ARTIFACT_ATTESTATION_PATH
+          cd "$REMOTE_ROOT/harness"
+          node tests/e2e/computer-use/run-cua-driver.mjs run --run-dir "$REMOTE_ROOT/evidence"
+          REMOTE
+
+      - name: Copy static evidence to controller
+        id: copy-evidence
+        if: always() && steps.stage.outputs.remote_root != ''
+        shell: bash
+        env:
+          REMOTE_ROOT: ${{ steps.stage.outputs.remote_root }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/static-controller/evidence"
+          scp -r \
+            -i "$RUNNER_TEMP/nixmac-ssh/key" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$RUNNER_TEMP/nixmac-ssh/known_hosts" \
+            "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_ROOT}/evidence/." \
+            "$RUNNER_TEMP/static-controller/evidence/"
+          scp \
+            -i "$RUNNER_TEMP/nixmac-ssh/key" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$RUNNER_TEMP/nixmac-ssh/known_hosts" \
+            "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_ROOT}/controller-process-handoff.json" \
+            "$RUNNER_TEMP/static-controller/controller-process-handoff.json"
+
+      - name: Finalize static cleanup and release lease
+        id: cleanup
+        if: always()
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REMOTE_ROOT: /private/tmp/nixmac-centaur-${{ github.run_id }}-${{ github.run_attempt }}
+          REMOTE_SOCKET_DIR: /private/tmp/nx-cua-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          controller="$RUNNER_TEMP/static-controller"
+          echo "host_clean=false" >> "$GITHUB_OUTPUT"
+          if [[ ! -f "$RUNNER_TEMP/nixmac-host-lease-acquired" ]]; then
+            echo "host_clean=true" >> "$GITHUB_OUTPUT"
+            echo "No locally confirmed host lease to clean or release."
+            exit 0
+          fi
+          [[ "$REMOTE_ROOT" =~ ^/private/tmp/nixmac-centaur-[A-Za-z0-9._-]+$ ]]
+          [[ "$REMOTE_SOCKET_DIR" =~ ^/private/tmp/nx-cua-[A-Za-z0-9._-]+$ ]]
+          cleanup_started_at="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
+          ssh_common=(-i "$RUNNER_TEMP/nixmac-ssh/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/nixmac-ssh/known_hosts")
+          cleanup_clean=false
+          if ssh "${ssh_common[@]}" "${REMOTE_USER}@${REMOTE_HOST}" bash -s -- \
+            "$REMOTE_ROOT" "$REMOTE_SOCKET_DIR" <<'REMOTE'
+          set -euo pipefail
+          root="$1"
+          socket_dir="$2"
+          [[ "$root" =~ ^/private/tmp/nixmac-centaur-[A-Za-z0-9._-]+$ ]]
+          [[ "$socket_dir" =~ ^/private/tmp/nx-cua-[A-Za-z0-9._-]+$ ]]
+          if pgrep -x nixmac >/dev/null 2>&1 ||
+            pgrep -f '[c]ua-driver|[C]uaDriver.app/Contents/MacOS' >/dev/null 2>&1; then
+            echo "owned or ambiguous UI processes remain; refusing path cleanup" >&2
+            exit 73
+          fi
+          if [[ -e "$root" || -L "$root" ]]; then
+            [[ -d "$root" && ! -L "$root" ]]
+            state_file="$root/backup/app-support.state"
+            if [[ -f "$state_file" && ! -L "$state_file" ]]; then
+              state="$(cat "$state_file")"
+              support="$HOME/Library/Application Support/com.darkmatter.nixmac"
+              if [[ -e "$support" || -L "$support" ]]; then
+                [[ -d "$support" && ! -L "$support" ]]
+                find "$support" -depth -mindepth 1 -delete
+                rmdir "$support"
+              fi
+              case "$state" in
+                existed)
+                  [[ -d "$root/backup/app-support" && ! -L "$root/backup/app-support" ]]
+                  install -d -m 700 "$(dirname "$support")"
+                  ditto "$root/backup/app-support" "$support"
+                  ;;
+                absent) ;;
+                *) echo "invalid app-support.state: $state" >&2; exit 65 ;;
+              esac
+              if [[ -e "$socket_dir" || -L "$socket_dir" ]]; then
+                [[ -d "$socket_dir" && ! -L "$socket_dir" ]]
+                find "$socket_dir" -depth -mindepth 1 -delete
+                rmdir "$socket_dir"
+              fi
+            else
+              [[ ! -e "$socket_dir" && ! -L "$socket_dir" ]]
+            fi
+            find "$root" -depth -mindepth 1 -delete
+            rmdir "$root"
+          else
+            [[ ! -e "$socket_dir" && ! -L "$socket_dir" ]]
+          fi
+          [[ ! -e "$root" && ! -L "$root" ]]
+          [[ ! -e "$socket_dir" && ! -L "$socket_dir" ]]
+          REMOTE
+          then
+            cleanup_clean=true
+          fi
+          ssh "${ssh_common[@]}" "${REMOTE_USER}@${REMOTE_HOST}" \
+            'jq -n --arg hostname "$(scutil --get LocalHostName)" --argjson nixmacPids "$(pgrep -x nixmac 2>/dev/null | jq -Rsc '\''split("\n") | map(select(length > 0) | tonumber)'\'')" --argjson cuaDriverPids "$(pgrep -f '\''[c]ua-driver|[C]uaDriver.app/Contents/MacOS'\'' 2>/dev/null | jq -Rsc '\''split("\n") | map(select(length > 0) | tonumber)'\'')" '\''{hostname:$hostname,nixmacPids:$nixmacPids,cuaDriverPids:$cuaDriverPids}'\''' \
+            > "$controller/inventory-after.json"
+          jq -e '(.nixmacPids | length == 0) and (.cuaDriverPids | length == 0)' \
+            "$controller/inventory-after.json"
+          if [[ -s "$controller/inventory-before.json" ]]; then
+            diff -u "$controller/inventory-before.json" "$controller/inventory-after.json"
+          fi
+          [[ "$cleanup_clean" == "true" ]]
+
+          owner_token="$(cat "$RUNNER_TEMP/nixmac-host-owner-token")"
+          release_result="$(
+            ops/runner/macincloud-host-lease.sh release \
+              --ssh-dest "${REMOTE_USER}@${REMOTE_HOST}" \
+              --ssh-key "$RUNNER_TEMP/nixmac-ssh/key" \
+              --known-hosts "$RUNNER_TEMP/nixmac-ssh/known_hosts" \
+              --owner-token "$owner_token" \
+              --repository "$GITHUB_REPOSITORY" \
+              --run-id "$GITHUB_RUN_ID" \
+              --logical-job "${{ inputs.job_id }}" \
+              --attempt "${{ inputs.attempt }}" \
+              --nonce "${{ inputs.attestation_nonce }}"
+          )"
+          IFS=$'\t' read -r release_state last_heartbeat_at released_at <<<"$release_result"
+          [[ "$release_state" == "LEASE_RELEASED" ]]
+          [[ "$last_heartbeat_at" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]
+          [[ "$released_at" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]
+          rm -f "$RUNNER_TEMP/nixmac-host-lease-acquired"
+          mkdir -p "$controller/finalization"
+          cleanup_completed_at="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
+          host="$(jq -er '.hostname' "$controller/inventory-after.json")"
+          jq -n \
+            --arg startedAt "$cleanup_started_at" \
+            --arg completedAt "$cleanup_completed_at" \
+            --arg host "$host" \
+            --arg lastHeartbeatAt "$last_heartbeat_at" \
+            --arg releasedAt "$released_at" \
+            '{
+              schemaVersion:1,
+              clean:true,
+              startedAt:$startedAt,
+              completedAt:$completedAt,
+              host:$host,
+              lastHeartbeatAt:$lastHeartbeatAt,
+              releasedAt:$releasedAt
+            }' \
+            > "$controller/finalization/cleanup-result.json"
+          {
+            echo "host_clean=true"
+            echo "cleanup_started_at=$cleanup_started_at"
+            echo "cleanup_completed_at=$cleanup_completed_at"
+            echo "host=$host"
+            echo "last_heartbeat_at=$last_heartbeat_at"
+            echo "released_at=$released_at"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Seal immutable static evidence
+        id: seal
+        if: always() && steps.cleanup.outputs.host_clean == 'true' && steps.copy-evidence.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        env:
+          REMOTE_ROOT: ${{ steps.static-paths.outputs.remote_root }}
+          REMOTE_SOCKET_DIR: ${{ steps.static-paths.outputs.remote_socket_dir }}
+          REMOTE_SOCKET_PATH: ${{ steps.static-paths.outputs.remote_socket_path }}
+        run: |
+          set -euo pipefail
+          controller="$RUNNER_TEMP/static-controller"
+          evidence="$controller/evidence"
+          process_handoff="$controller/controller-process-handoff.json"
+          artifact_source="$evidence/artifact/source.json"
+          cleanup_result="$controller/finalization/cleanup-result.json"
+          [[ -s "$artifact_source" && -s "$process_handoff" && -s "$cleanup_result" ]]
+          jq -e '
+            .version == 1 and
+            .generatedBy == "remote-runner" and
+            (.processInstances | length == 2) and
+            ([.processInstances[].role] | sort == ["daemon", "target"]) and
+            ([.processInstances[].terminated] | all(. == true)) and
+            .lifecycle.driverCloseAttempted == true and
+            .lifecycle.driverClosed == true and
+            .lifecycle.ownershipMatched == true and
+            .lifecycle.processesProbed == true
+          ' "$process_handoff"
+          staging_parent="$(jq -er '.stagingParent' "$artifact_source")"
+          app_bundle_path="$(jq -er '.appBundlePath' "$artifact_source")"
+          config_path="$(jq -er '.disposableConfigPath' "$artifact_source")"
+          socket_directory="$(jq -er '.daemonSocketDirectory' "$artifact_source")"
+          socket_path="$(jq -er '.daemonSocketPath' "$artifact_source")"
+          [[ "$staging_parent" == "$REMOTE_ROOT/staging/evidence" ]]
+          [[ "$(dirname "$app_bundle_path")" == "$staging_parent" ]]
+          [[ "$app_bundle_path" == *.app ]]
+          [[ "$config_path" == "$staging_parent/config" ]]
+          [[ "$socket_directory" == "$REMOTE_SOCKET_DIR" ]]
+          [[ "$socket_path" == "$REMOTE_SOCKET_PATH" ]]
+          owner_token="$(cat "$RUNNER_TEMP/nixmac-host-owner-token")"
+          cleanup_started_at="$(jq -er '.startedAt' "$cleanup_result")"
+          cleanup_completed_at="$(jq -er '.completedAt' "$cleanup_result")"
+          host="$(jq -er '.host' "$cleanup_result")"
+          last_heartbeat_at="$(jq -er '.lastHeartbeatAt' "$cleanup_result")"
+          released_at="$(jq -er '.releasedAt' "$cleanup_result")"
+          jq -n \
+            --arg startedAt "$cleanup_started_at" \
+            --arg completedAt "$cleanup_completed_at" \
+            --arg stagingParent "$staging_parent" \
+            --arg appBundlePath "$app_bundle_path" \
+            --arg configPath "$config_path" \
+            --arg socketDirectory "$socket_directory" \
+            --arg socketPath "$socket_path" \
+            --slurpfile processHandoff "$process_handoff" \
+            '{
+              version:1,
+              ownershipMode:"controller-static",
+              attempted:true,
+              restored:true,
+              clean:true,
+              startedAt:$startedAt,
+              completedAt:$completedAt,
+              ownedPaths:[
+                {kind:"remote-staging",path:$stagingParent,expectedFinalState:"absent",observedFinalState:"absent"},
+                {kind:"app-bundle",path:$appBundlePath,expectedFinalState:"absent",observedFinalState:"absent"},
+                {kind:"remote-config",path:$configPath,expectedFinalState:"absent",observedFinalState:"absent"},
+                {kind:"daemon-socket-directory",path:$socketDirectory,expectedFinalState:"absent",observedFinalState:"absent"},
+                {kind:"daemon-socket",path:$socketPath,expectedFinalState:"absent",observedFinalState:"absent"}
+              ],
+              processInstances:$processHandoff[0].processInstances,
+              remainingProcesses:[],
+              failureReason:"",
+              lifecycle:{
+                driverCloseAttempted:$processHandoff[0].lifecycle.driverCloseAttempted,
+                driverClosed:$processHandoff[0].lifecycle.driverClosed,
+                ownershipMatched:$processHandoff[0].lifecycle.ownershipMatched,
+                pathsProbed:true,
+                processesProbed:$processHandoff[0].lifecycle.processesProbed
+              }
+            }' \
+            > "$controller/finalization/cleanup.json"
+          owner_hash="$(printf '%s' "$owner_token" | shasum -a 256 | awk '{print $1}')"
+          jq -n \
+            --arg repo "$GITHUB_REPOSITORY" \
+            --arg jobId "${{ inputs.job_id }}" \
+            --argjson attempt "${{ inputs.attempt }}" \
+            --arg host "$host" \
+            --arg acquiredOwnerTokenHash "$owner_hash" \
+            --arg releasedOwnerTokenHash "$owner_hash" \
+            --arg acquiredAt "${{ steps.lease.outputs.acquired_at || '1970-01-01T00:00:00Z' }}" \
+            --arg releasedAt "$released_at" \
+            --arg lastHeartbeatAt "$last_heartbeat_at" \
+            '{
+              version:1,
+              acquired:true,
+              released:true,
+              repo:$repo,
+              jobId:$jobId,
+              attempt:$attempt,
+              host:$host,
+              acquiredOwnerTokenHash:$acquiredOwnerTokenHash,
+              releasedOwnerTokenHash:$releasedOwnerTokenHash,
+              acquiredAt:$acquiredAt,
+              releasedAt:$releasedAt,
+              lastHeartbeatAt:$lastHeartbeatAt,
+              waitReason:"",
+              quarantineReason:""
+            }' \
+            > "$controller/finalization/host-lease.json"
+          NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN="$owner_token" \
+            node --input-type=module - \
+              "$controller/finalization/cleanup.json" \
+              "$controller/finalization/cleanup-probe.json" \
+              "$GITHUB_REPOSITORY" \
+              "${{ inputs.job_id }}" \
+              "${{ inputs.attempt }}" \
+              "$host" <<'NODE'
+          import { readFile, writeFile } from "node:fs/promises";
+          import { createControllerCleanupProbe } from "./tests/e2e/computer-use/run-metadata.mjs";
+          const [cleanupFile, probeFile, repo, jobId, attemptText, host] = process.argv.slice(2);
+          const cleanup = JSON.parse(await readFile(cleanupFile, "utf8"));
+          const cleanupProbe = createControllerCleanupProbe({
+            cleanup,
+            repo,
+            jobId,
+            attempt: Number(attemptText),
+            host,
+            trustedOwnerToken: process.env.NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN,
+          });
+          await writeFile(probeFile, `${JSON.stringify(cleanupProbe, null, 2)}\n`, {
+            mode: 0o600,
+          });
+          NODE
+          verdict="$(jq -r '.verdict' "$evidence/state.json")"
+          python_path="$(command -v python3)"
+          ffmpeg_path="$(command -v ffmpeg)"
+          ffprobe_path="$(command -v ffprobe)"
+          NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN="$owner_token" \
+            NIXMAC_E2E_PYTHON_PATH="$python_path" \
+            NIXMAC_E2E_FFMPEG_PATH="$ffmpeg_path" \
+            NIXMAC_E2E_FFPROBE_PATH="$ffprobe_path" \
+            node tests/e2e/computer-use/run-metadata.mjs finalize-controller \
+              --run-dir "$evidence" \
+              --cleanup-file "$controller/finalization/cleanup.json" \
+              --cleanup-probe-file "$controller/finalization/cleanup-probe.json" \
+              --host-lease-file "$controller/finalization/host-lease.json" \
+              --verdict "$verdict"
+          archive="$controller/evidence.canonical.zip"
+          NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN="$owner_token" \
+            NIXMAC_E2E_PYTHON_PATH="$python_path" \
+            NIXMAC_E2E_FFMPEG_PATH="$ffmpeg_path" \
+            NIXMAC_E2E_FFPROBE_PATH="$ffprobe_path" \
+            node tests/e2e/computer-use/evidence-manifest.mjs verify --archive "$archive"
+
+      - name: Quarantine unclean static backend
+        if: always() && steps.cleanup.outputs.host_clean != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f "$RUNNER_TEMP/nixmac-host-lease-acquired" ]]; then
+            echo "No locally confirmed host lease remains to quarantine."
+            exit 0
+          fi
+          ops/runner/macincloud-host-lease.sh quarantine \
+            --ssh-dest "${REMOTE_USER}@${REMOTE_HOST}" \
+            --ssh-key "$RUNNER_TEMP/nixmac-ssh/key" \
+            --known-hosts "$RUNNER_TEMP/nixmac-ssh/known_hosts" \
+            --reason "Centaur static attempt ${{ inputs.job_id }}/${{ inputs.attempt }} failed cleanup or owner-token release"
+          echo "Static backend quarantine also requires a durable audited Centaur quarantine record." >&2
+          exit 73
+
+      - name: Upload canonical verified static evidence
+        id: upload
+        if: steps.seal.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: nixmac-computer-use-e2e-${{ needs.preflight.outputs.job_key }}-attempt-${{ inputs.attempt }}
+          path: |
+            ${{ runner.temp }}/static-controller/evidence.canonical.zip
+            ${{ runner.temp }}/static-controller/evidence.canonical.zip.sha256
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 90
+
+      - name: Remove static controller credentials
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f \
+            "$RUNNER_TEMP/nixmac-ssh/key" \
+            "$RUNNER_TEMP/nixmac-ssh/known_hosts" \
+            "$RUNNER_TEMP/nixmac-host-owner-token" \
+            "$RUNNER_TEMP/nixmac-host-lease-acquired"
+          rmdir "$RUNNER_TEMP/nixmac-ssh" 2>/dev/null || true
+
+  publish_report:
+    name: Seal verified evidence in private immutable storage
+    needs: [preflight, static_ssh]
+    if: always() && inputs.qualification_tier == 'production' && needs.preflight.outputs.ready == 'true' && needs.static_ssh.result == 'success'
+    runs-on: arc
+    environment: nixmac-e2e-evidence-writer
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      report_url: ${{ steps.publish.outputs.report_url }}
+      storage_receipt_key: ${{ steps.publish.outputs.storage_receipt_key }}
+      storage_receipt_digest: ${{ steps.publish.outputs.storage_receipt_digest }}
+      storage_bucket: ${{ steps.publish.outputs.storage_bucket }}
+      storage_archive_key: ${{ steps.publish.outputs.storage_archive_key }}
+      storage_archive_digest: ${{ steps.publish.outputs.storage_archive_digest }}
+      storage_archive_bytes: ${{ steps.publish.outputs.storage_archive_bytes }}
+      storage_manifest_key: ${{ steps.publish.outputs.storage_manifest_key }}
+      storage_manifest_digest: ${{ steps.publish.outputs.storage_manifest_digest }}
+      evidence_expires_at: ${{ steps.publish.outputs.evidence_expires_at }}
+    steps:
+      - name: Checkout trusted publisher
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.preflight.outputs.harness_sha }}
+          persist-credentials: false
+
+      - name: Verify ARC publisher toolchain contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tool in jq node python3 ffmpeg ffprobe shasum; do
+            resolved="$(command -v "$tool")"
+            [[ -x "$resolved" ]]
+          done
+
+      - name: Download canonical evidence
+        uses: actions/download-artifact@v7
+        with:
+          name: nixmac-computer-use-e2e-${{ needs.preflight.outputs.job_key }}-attempt-${{ inputs.attempt }}
+          path: ${{ runner.temp }}/canonical
+
+      - name: Verify manifest before publication
+        shell: bash
+        env:
+          INPUT_JOB_ID: ${{ inputs.job_id }}
+          INPUT_ATTEMPT: ${{ inputs.attempt }}
+          INPUT_BACKEND: ${{ inputs.backend }}
+          ATTESTATION_NONCE: ${{ inputs.attestation_nonce }}
+        run: |
+          set -euo pipefail
+          mapfile -t archives < <(
+            find "$RUNNER_TEMP/canonical" -maxdepth 1 -type f -name '*.canonical.zip' -print |
+              sort
+          )
+          [[ ${#archives[@]} -eq 1 ]]
+          archive="${archives[0]}"
+          [[ -f "$archive.sha256" && ! -L "$archive.sha256" ]]
+          python_path="$(command -v python3)"
+          ffmpeg_path="$(command -v ffmpeg)"
+          ffprobe_path="$(command -v ffprobe)"
+          verify_env=(
+            "NIXMAC_E2E_PYTHON_PATH=$python_path"
+            "NIXMAC_E2E_FFMPEG_PATH=$ffmpeg_path"
+            "NIXMAC_E2E_FFPROBE_PATH=$ffprobe_path"
+          )
+          if [[ "$INPUT_BACKEND" == "static_ssh" ]]; then
+            owner_token="$(
+              printf '%s' \
+                "${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${INPUT_JOB_ID}|${INPUT_ATTEMPT}|${ATTESTATION_NONCE}" |
+                shasum -a 256 |
+                awk '{print $1}'
+            )"
+            [[ "$owner_token" =~ ^[0-9a-f]{64}$ ]]
+            verify_env+=("NIXMAC_E2E_HOST_LEASE_OWNER_TOKEN=$owner_token")
+          fi
+          run_dir="$RUNNER_TEMP/verified-report"
+          [[ ! -e "$run_dir" && ! -L "$run_dir" ]]
+          env "${verify_env[@]}" \
+            node tests/e2e/computer-use/evidence-manifest.mjs materialize \
+              --archive "$archive" \
+              --out "$run_dir"
+          printf '%s\n' "$run_dir" > "$RUNNER_TEMP/verified-report-dir"
+
+      - name: Publish immutable private evidence and read back receipt
+        id: publish
+        shell: bash
+        env:
+          INPUT_BACKEND: ${{ inputs.backend }}
+          STATIC_ARTIFACT_ID: ${{ needs.static_ssh.outputs.artifact_id }}
+          STATIC_ARTIFACT_DIGEST: ${{ needs.static_ssh.outputs.artifact_digest }}
+          E2E_EVIDENCE_R2_BUCKET: ${{ vars.NIXMAC_E2E_EVIDENCE_R2_BUCKET }}
+          E2E_EVIDENCE_LOCK_RULE_ID: ${{ vars.NIXMAC_E2E_EVIDENCE_LOCK_RULE_ID }}
+          E2E_EVIDENCE_RETENTION_DAYS: ${{ vars.NIXMAC_E2E_EVIDENCE_RETENTION_DAYS }}
+          E2E_EVIDENCE_VIEWER_ORIGIN: ${{ vars.NIXMAC_E2E_EVIDENCE_VIEWER_ORIGIN }}
+          E2E_EVIDENCE_R2_ENDPOINT: ${{ vars.NIXMAC_E2E_EVIDENCE_R2_ENDPOINT }}
+          E2E_EVIDENCE_R2_ACCESS_KEY_ID: ${{ secrets.NIXMAC_E2E_EVIDENCE_R2_ACCESS_KEY_ID }}
+          E2E_EVIDENCE_R2_SECRET_ACCESS_KEY: ${{ secrets.NIXMAC_E2E_EVIDENCE_R2_SECRET_ACCESS_KEY }}
+        run: |
+          set -euo pipefail
+          run_dir="$(cat "$RUNNER_TEMP/verified-report-dir")"
+          mapfile -t archives < <(
+            find "$RUNNER_TEMP/canonical" -maxdepth 1 -type f -name '*.canonical.zip' -print |
+              sort
+          )
+          [[ ${#archives[@]} -eq 1 ]]
+          archive="${archives[0]}"
+          artifact_id="$STATIC_ARTIFACT_ID"
+          artifact_digest="$STATIC_ARTIFACT_DIGEST"
+          [[ "$artifact_id" =~ ^[0-9]+$ ]]
+          [[ "$artifact_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          node ops/scripts/e2e/publish-private-evidence.mjs publish \
+            --archive "$archive" \
+            --archive-digest "$archive.sha256" \
+            --report-dir "$run_dir" \
+            --job-id "${{ inputs.job_id }}" \
+            --attempt "${{ inputs.attempt }}" \
+            --backend "$INPUT_BACKEND" \
+            --artifact-id "$artifact_id" \
+            --artifact-digest "$artifact_digest" \
+            --output "$GITHUB_OUTPUT"
+          report_url="$(sed -n 's/^report_url=//p' "$GITHUB_OUTPUT")"
+          [[ "$report_url" == https://e2e-evidence.nixmac.com/*/report/index.html ]]
+          printf 'Private verified report: %s\n' "$report_url" >> "$GITHUB_STEP_SUMMARY"
+
+  result:
+    name: Terminal Centaur result
+    needs: [preflight, static_ssh, publish_report]
+    if: always()
+    runs-on: arc
+    timeout-minutes: 5
+    steps:
+      - name: Write one terminal contract
+        id: contract
+        shell: bash
+        env:
+          PREFLIGHT_RESULT: ${{ needs.preflight.result }}
+          PREFLIGHT_READY: ${{ needs.preflight.outputs.ready }}
+          TERMINAL_STATUS: ${{ needs.preflight.outputs.terminal_status }}
+          STATIC_RESULT: ${{ needs.static_ssh.result }}
+          REPORT_RESULT: ${{ needs.publish_report.result }}
+          STATIC_ARTIFACT_ID: ${{ needs.static_ssh.outputs.artifact_id }}
+          STATIC_ARTIFACT_DIGEST: ${{ needs.static_ssh.outputs.artifact_digest }}
+          STATIC_INFRA_DISPOSITION: ${{ needs.static_ssh.outputs.infra_disposition }}
+          REPORT_URL: ${{ needs.publish_report.outputs.report_url }}
+          STORAGE_RECEIPT_KEY: ${{ needs.publish_report.outputs.storage_receipt_key }}
+          STORAGE_RECEIPT_DIGEST: ${{ needs.publish_report.outputs.storage_receipt_digest }}
+          STORAGE_BUCKET: ${{ needs.publish_report.outputs.storage_bucket }}
+          STORAGE_ARCHIVE_KEY: ${{ needs.publish_report.outputs.storage_archive_key }}
+          STORAGE_ARCHIVE_DIGEST: ${{ needs.publish_report.outputs.storage_archive_digest }}
+          STORAGE_ARCHIVE_BYTES: ${{ needs.publish_report.outputs.storage_archive_bytes }}
+          STORAGE_MANIFEST_KEY: ${{ needs.publish_report.outputs.storage_manifest_key }}
+          STORAGE_MANIFEST_DIGEST: ${{ needs.publish_report.outputs.storage_manifest_digest }}
+          EVIDENCE_EXPIRES_AT: ${{ needs.publish_report.outputs.evidence_expires_at }}
+          INPUT_JOB_ID: ${{ inputs.job_id }}
+          INPUT_ATTEMPT: ${{ inputs.attempt }}
+          INPUT_BACKEND: ${{ inputs.backend }}
+          QUALIFICATION_TIER: ${{ inputs.qualification_tier }}
+        run: |
+          set -euo pipefail
+          contract_dir="$RUNNER_TEMP/nixmac-e2e-terminal"
+          install -d -m 700 "$contract_dir"
+          job_key="$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]))' "$INPUT_JOB_ID")"
+          artifact_name="nixmac-computer-use-e2e-terminal-${job_key}-attempt-${INPUT_ATTEMPT}"
+          workflow_ok=false
+          terminal_status="ABORTED"
+          requires_api_synthesis=false
+          artifact_id=""
+          artifact_digest=""
+          backend_result="skipped"
+          infra_disposition="$STATIC_INFRA_DISPOSITION"
+          lifecycle_required=false
+          lifecycle_consumed=false
+          lifecycle_ok=true
+          lifecycle_result="not_required"
+          lifecycle_disposition="not_required"
+          lifecycle_key=""
+          has_terminal_infra_disposition=false
+          evidence_storage="null"
+          [[ "$INPUT_BACKEND" == "static_ssh" ]]
+          case "$infra_disposition" in
+            LEASE_BUSY|LEASE_QUARANTINED|INFRASTRUCTURE_FAILURE)
+              has_terminal_infra_disposition=true
+              ;;
+          esac
+          if [[ "$PREFLIGHT_READY" != "true" ]]; then
+            if [[ "$PREFLIGHT_RESULT" == "cancelled" ||
+              ("$PREFLIGHT_RESULT" == "failure" && -z "$TERMINAL_STATUS") ]]; then
+              infra_disposition="ABORTED_API_SYNTHESIS_REQUIRED"
+              requires_api_synthesis=true
+            else
+              terminal_status="${TERMINAL_STATUS:-BUILD_UNAVAILABLE}"
+            fi
+          else
+            backend_result="$STATIC_RESULT"
+            artifact_id="$STATIC_ARTIFACT_ID"
+            artifact_digest="$STATIC_ARTIFACT_DIGEST"
+            report_ok=false
+            if [[ "$QUALIFICATION_TIER" == "production" &&
+              "$REPORT_RESULT" == "success" &&
+              "$STORAGE_BUCKET" == "nixmac-e2e-evidence" &&
+              "$REPORT_URL" == https://e2e-evidence.nixmac.com/*/report/index.html &&
+              "$STORAGE_RECEIPT_KEY" == v1/*/storage-receipt.json &&
+              "$STORAGE_RECEIPT_DIGEST" =~ ^sha256:[0-9a-f]{64}$ &&
+              "$STORAGE_ARCHIVE_KEY" == v1/*/evidence.canonical.zip &&
+              "$STORAGE_ARCHIVE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ &&
+              "$STORAGE_ARCHIVE_BYTES" =~ ^[1-9][0-9]*$ &&
+              "$STORAGE_MANIFEST_KEY" == v1/*/report/viewer-manifest.json &&
+              "$STORAGE_MANIFEST_DIGEST" =~ ^sha256:[0-9a-f]{64}$ &&
+              "$EVIDENCE_EXPIRES_AT" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$ ]]; then
+              report_ok=true
+              evidence_storage="$(
+                jq -cn \
+                  --arg provider "cloudflare-r2" \
+                  --arg bucket "$STORAGE_BUCKET" \
+                  --arg receiptKey "$STORAGE_RECEIPT_KEY" \
+                  --arg receiptDigest "$STORAGE_RECEIPT_DIGEST" \
+                  --arg archiveKey "$STORAGE_ARCHIVE_KEY" \
+                  --arg archiveDigest "$STORAGE_ARCHIVE_DIGEST" \
+                  --argjson archiveBytes "$STORAGE_ARCHIVE_BYTES" \
+                  --arg reportUrl "$REPORT_URL" \
+                  --arg manifestKey "$STORAGE_MANIFEST_KEY" \
+                  --arg manifestDigest "$STORAGE_MANIFEST_DIGEST" \
+                  --arg evidenceExpiresAt "$EVIDENCE_EXPIRES_AT" \
+                  '{
+                    provider:$provider,
+                    bucket:$bucket,
+                    receipt:{key:$receiptKey,digest:$receiptDigest},
+                    archive:{key:$archiveKey,digest:$archiveDigest,bytes:$archiveBytes},
+                    report:{
+                      url:$reportUrl,
+                      manifestKey:$manifestKey,
+                      manifestDigest:$manifestDigest
+                    },
+                    evidenceExpiresAt:$evidenceExpiresAt
+                  }'
+              )"
+            elif [[ "$QUALIFICATION_TIER" == "shadow" &&
+              "$REPORT_RESULT" == "skipped" &&
+              -z "$REPORT_URL" &&
+              -z "$STORAGE_RECEIPT_KEY" ]]; then
+              report_ok=true
+            fi
+            if [[ "$backend_result" == "success" &&
+              "$report_ok" == "true" &&
+              "$lifecycle_ok" == "true" &&
+              "$artifact_id" =~ ^[0-9]+$ &&
+              "$artifact_digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              terminal_status="COMPLETE"
+              workflow_ok=true
+            elif [[ "$backend_result" == "cancelled" ||
+              ("$backend_result" == "failure" &&
+                -z "$artifact_id" &&
+                "$has_terminal_infra_disposition" != "true") ||
+              ("$infra_disposition" == "CONTROLLER_STARTED" ||
+                -z "$STATIC_INFRA_DISPOSITION") ]]; then
+              infra_disposition="ABORTED_API_SYNTHESIS_REQUIRED"
+              requires_api_synthesis=true
+            fi
+          fi
+
+          observed_at="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
+          jq -n \
+            --arg jobId "$INPUT_JOB_ID" \
+            --argjson attempt "$INPUT_ATTEMPT" \
+            --arg backend "$INPUT_BACKEND" \
+            --arg qualificationTier "$QUALIFICATION_TIER" \
+            --arg workflowRunId "$GITHUB_RUN_ID" \
+            --arg workflowRunAttempt "$GITHUB_RUN_ATTEMPT" \
+            --arg terminalStatus "$terminal_status" \
+            --arg backendResult "$backend_result" \
+            --arg reportResult "$REPORT_RESULT" \
+            --arg infraDisposition "$infra_disposition" \
+            --arg lifecycleResult "$lifecycle_result" \
+            --arg lifecycleDisposition "$lifecycle_disposition" \
+            --arg lifecycleKey "$lifecycle_key" \
+            --arg artifactId "$artifact_id" \
+            --arg artifactDigest "$artifact_digest" \
+            --arg reportUrl "$REPORT_URL" \
+            --arg observedAt "$observed_at" \
+            --argjson evidenceStorage "$evidence_storage" \
+            --argjson requiresApiSynthesis "$requires_api_synthesis" \
+            --argjson lifecycleRequired "$lifecycle_required" \
+            --argjson lifecycleConsumed "$lifecycle_consumed" \
+            '{
+              schemaVersion:2,
+              jobId:$jobId,
+              attempt:$attempt,
+              backend:$backend,
+              qualificationTier:$qualificationTier,
+              workflowRunId:$workflowRunId,
+              workflowRunAttempt:$workflowRunAttempt,
+              terminalStatus:$terminalStatus,
+              backendResult:$backendResult,
+              reportResult:$reportResult,
+              infraDisposition:$infraDisposition,
+              lifecycle:{
+                required:$lifecycleRequired,
+                result:$lifecycleResult,
+                consumed:$lifecycleConsumed,
+                disposition:$lifecycleDisposition,
+                key:$lifecycleKey
+              },
+              artifactId:$artifactId,
+              artifactDigest:$artifactDigest,
+              reportUrl:$reportUrl,
+              evidenceStorage:$evidenceStorage,
+              observedAt:$observedAt,
+              requiresApiSynthesis:$requiresApiSynthesis,
+              noRunnerContract:{
+                triggers:["cancelled","runner_lost","terminal artifact absent"],
+                authority:"GitHub run/job API",
+                synthesizedAttemptStatus:"ABORTED"
+              }
+            }' \
+            > "$contract_dir/terminal-contract.json"
+          {
+            echo "terminal_status=$terminal_status"
+            echo "infra-disposition=$infra_disposition"
+            echo "artifact-id=$artifact_id"
+            echo "artifact-digest=$artifact_digest"
+            echo "retention-days=90"
+            echo "report-url=$REPORT_URL"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          {
+            echo "artifact_name=$artifact_name"
+            echo "workflow_ok=$workflow_ok"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload terminal contract
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.contract.outputs.artifact_name }}
+          path: ${{ runner.temp }}/nixmac-e2e-terminal/terminal-contract.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Enforce terminal workflow outcome
+        if: always() && steps.contract.outputs.workflow_ok != 'true'
+        shell: bash
+        run: exit 1

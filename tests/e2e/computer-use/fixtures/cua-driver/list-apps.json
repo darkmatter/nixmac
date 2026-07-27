@@ -1,0 +1,15 @@
+{
+  "apps": [
+    {
+      "active": false,
+      "bundle_id": "com.darkmatter.nixmac.e2e",
+      "kind": "desktop",
+      "last_used": "2026-07-25T00:00:00Z",
+      "launch_path": "/Applications/Nixmac E2E.app",
+      "name": "Nixmac E2E",
+      "pid": 0,
+      "running": false,
+      "windows": []
+    }
+  ]
+}

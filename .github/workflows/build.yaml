@@ -42,6 +42,17 @@ jobs:
       - name: Install devenv
         run: nix build github:cachix/devenv/v2.1.2 --out-link "$RUNNER_TEMP/devenv-cli"
 
+      - name: Run Computer Use workflow contracts
+        env:
+          BASH_ENV: ""
+          ENV: ""
+          NIXPKGS_ALLOW_UNFREE: 1
+          NODE_OPTIONS: ""
+        shell: bash
+        run: >-
+          "$RUNNER_TEMP/devenv-cli/bin/devenv" shell --impure --
+          bash -euo pipefail tests/e2e/computer-use/run-workflow-contracts.sh
+
       - name: Run git hooks on all files
         env:
           NIXPKGS_ALLOW_UNFREE: 1
@@ -353,6 +364,27 @@ jobs:
           path: target/release/bundle/macos/*.app
           if-no-files-found: warn
           include-hidden-files: true
+      - name: Package metadata-preserving E2E app artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          APP_PATH: ${{ steps.artifacts.outputs.app_path }}
+        run: |
+          set -euo pipefail
+          [[ -n "$APP_PATH" && -d "$APP_PATH" && ! -L "$APP_PATH" ]]
+          archive="$RUNNER_TEMP/nixmac-macos-app-preserved.zip"
+          [[ ! -e "$archive" && ! -L "$archive" ]]
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$archive"
+          [[ -s "$archive" && ! -L "$archive" ]]
+      - name: Upload metadata-preserving E2E app artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: nixmac-macos-app-e2e
+          path: ${{ runner.temp }}/nixmac-macos-app-preserved.zip
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 90
       # Create GitHub Release for tag pushes only. The stable channel only
       # updates when a release is created in GitHub (via a pushed v* tag);
       # main pushes land on the develop channel. Skipped for test tags

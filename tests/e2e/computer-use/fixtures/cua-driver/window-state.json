@@ -1,0 +1,60 @@
+{
+  "_note": "Prefer elements; tree_markdown remains for compatibility.",
+  "element_count": 3,
+  "elements": [
+    {
+      "depth": 0,
+      "element_index": 0,
+      "element_token": "s0042:0",
+      "frame": {
+        "h": 720,
+        "w": 960,
+        "x": 80,
+        "y": 120
+      },
+      "label": "Nixmac E2E Fixture",
+      "role": "AXWindow"
+    },
+    {
+      "depth": 1,
+      "element_index": 7,
+      "element_token": "s0042:7",
+      "enabled": true,
+      "frame": {
+        "h": 28,
+        "w": 130,
+        "x": 690,
+        "y": 620
+      },
+      "label": "Save changes",
+      "parent_index": 0,
+      "role": "AXButton",
+      "selected": false
+    },
+    {
+      "depth": 1,
+      "element_index": 8,
+      "element_token": "s0042:8",
+      "enabled": true,
+      "frame": {
+        "h": 32,
+        "w": 320,
+        "x": 220,
+        "y": 320
+      },
+      "label": "Configuration value",
+      "parent_index": 0,
+      "role": "AXTextField",
+      "selected": false,
+      "value": "fixture value"
+    }
+  ],
+  "pid": 4242,
+  "screenshot_height": 720,
+  "screenshot_mime_type": "image/png",
+  "screenshot_png_b64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==",
+  "screenshot_width": 960,
+  "snapshot_id": "s0042",
+  "tree_markdown": "- [0] AXWindow \"Nixmac E2E Fixture\"\n  - [7] AXButton \"Save changes\"\n  - [8] AXTextField \"Configuration value\" value=\"fixture value\"",
+  "window_id": 7002
+}

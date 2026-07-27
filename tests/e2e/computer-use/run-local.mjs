@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
 import {
   access,
   cp,
@@ -27,8 +26,13 @@ import {
   peekabooRunnerSelfTest,
   runPeekabooScenario,
 } from "./peekaboo-runner.mjs";
+import { buildManifestPrFocus } from "./coverage-focus.mjs";
+import { loadCoverageManifestFile } from "./coverage-manifest.mjs";
 import { shellQuote } from "./remote-stage.mjs";
-import { scenarioLabels as sharedScenarioLabels } from "./scenario-catalog.mjs";
+import {
+  isStableCoverageScenarioKey,
+  scenarioLabels as sharedScenarioLabels,
+} from "./scenario-catalog.mjs";
 
 const THIS_FILE = fileURLToPath(import.meta.url);
 const TOOL_DIR = path.dirname(THIS_FILE);
@@ -220,42 +224,9 @@ function splitPrEnvList(value = "") {
 }
 
 function loadCoverageManifest() {
-  try {
-    return JSON.parse(readFileSync(COVERAGE_MANIFEST_PATH, "utf8"));
-  } catch (error) {
-    return {
-      surfaces: [],
-      candidateIncludes: [],
-      candidateExcludes: [],
-      loadError: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
-function matchesAnyPattern(value, patterns = []) {
-  return patterns.some((pattern) => new RegExp(pattern).test(value));
-}
-
-function sourcePrefixMatches(file, sourcePrefix) {
-  const normalizedPrefix = String(sourcePrefix ?? "").replaceAll(path.sep, "/");
-  if (!normalizedPrefix) return false;
-  if (normalizedPrefix.endsWith("/")) return file.startsWith(normalizedPrefix);
-  return file === normalizedPrefix || file.startsWith(`${normalizedPrefix}/`);
-}
-
-function changedFileMatchesSurface(file, surface) {
-  return (surface.sourcePrefixes ?? []).some((sourcePrefix) =>
-    sourcePrefixMatches(file, sourcePrefix),
-  );
-}
-
-function isLikelyUserVisiblePrFile(file, manifest) {
-  if (matchesAnyPattern(file, manifest.candidateExcludes ?? [])) return false;
-  if (matchesAnyPattern(file, manifest.candidateIncludes ?? [])) return true;
-  if (manifest.surfaces?.some((surface) => changedFileMatchesSurface(file, surface))) return true;
-  return /^(apps\/native\/src\/(?:App|main|index|style|.*\.css)|apps\/native\/src\/components\/|apps\/native\/src\/hooks\/|apps\/native\/src-tauri\/src\/|apps\/native\/templates\/|tests\/e2e\/|\.github\/workflows\/peekaboo-e2e\.yml)/.test(
-    file,
-  );
+  return loadCoverageManifestFile(COVERAGE_MANIFEST_PATH, {
+    knownScenarioKey: isStableCoverageScenarioKey,
+  });
 }
 
 function scenarioSuggestionForFile(file, matchedSurfaces = []) {
@@ -268,58 +239,15 @@ function scenarioSuggestionForFile(file, matchedSurfaces = []) {
   return `Add or extend a Peekaboo scenario that exercises ${file}, then map it in coverage-manifest.json.`;
 }
 
-function buildPeekabooPrFocus(env = process.env) {
-  const manifest = loadCoverageManifest();
+function buildPeekabooPrFocus(env = process.env, { loadManifest = loadCoverageManifest } = {}) {
+  const manifest = loadManifest();
   const changedFiles = splitPrEnvList(env.NIXMAC_E2E_PR_CHANGED_FILES || "");
-  const scenarioKeys = new Set();
-  const userVisibleFiles = [];
-  const unmappedUserVisibleFiles = [];
-  const scenarioSuggestions = [];
-  const matchedSurfaceRows = [];
-
-  for (const file of changedFiles) {
-    const matchedSurfaces = (manifest.surfaces ?? []).filter((surface) =>
-      changedFileMatchesSurface(file, surface),
-    );
-    const mappedKeys = matchedSurfaces
-      .flatMap((surface) => surface.scenarioKeys ?? [])
-      .filter(Boolean);
-    for (const key of mappedKeys) scenarioKeys.add(key);
-    if (/^tests\/e2e\/|^\.github\/workflows\/peekaboo-e2e\.yml/.test(file)) {
-      scenarioKeys.add("visualProofQuality");
-      scenarioKeys.add("reportInspection");
-    }
-    if (/^apps\/native\/src\/[^/]+\.(?:css|ts|tsx)$/i.test(file)) {
-      scenarioKeys.add("launch");
-      scenarioKeys.add("visualCoverage");
-    }
-    if (!isLikelyUserVisiblePrFile(file, manifest)) continue;
-    userVisibleFiles.push(file);
-    if (matchedSurfaces.length) {
-      matchedSurfaceRows.push(
-        ...matchedSurfaces.map((surface) => ({
-          file,
-          id: surface.id,
-          label: surface.label,
-          scenarioKeys: surface.scenarioKeys ?? [],
-          waiver: surface.waiver ?? null,
-          coverageDisposition: surface.coverageDisposition ?? null,
-          coverageNote: surface.coverageNote ?? null,
-        })),
-      );
-    }
-    const nonClaimingOnly = matchedSurfaces.some(
-      (surface) => surface.coverageDisposition === "non-claiming",
-    );
-    if (
-      !mappedKeys.length &&
-      !nonClaimingOnly &&
-      !/^tests\/e2e\/|^\.github\/workflows\/peekaboo-e2e\.yml/.test(file)
-    ) {
-      unmappedUserVisibleFiles.push(file);
-      scenarioSuggestions.push(scenarioSuggestionForFile(file, matchedSurfaces));
-    }
-  }
+  const focus = buildManifestPrFocus({
+    changedFiles,
+    manifest,
+    knownScenarioKey: isStableCoverageScenarioKey,
+    scenarioSuggestionForFile,
+  });
 
   return {
     eventName: env.GITHUB_EVENT_NAME || env.NIXMAC_E2E_PR_EVENT || "",
@@ -327,17 +255,15 @@ function buildPeekabooPrFocus(env = process.env) {
     title: env.NIXMAC_E2E_PR_TITLE || "",
     headRef: env.NIXMAC_E2E_PR_HEAD_REF || env.GITHUB_HEAD_REF || "",
     baseRef: env.NIXMAC_E2E_PR_BASE_REF || env.GITHUB_BASE_REF || "",
-    changedFiles,
-    userVisibleFiles,
-    scenarioKeys: [...scenarioKeys],
-    matchedSurfaces: matchedSurfaceRows,
-    unmappedUserVisibleFiles,
-    scenarioSuggestions: [...new Set(scenarioSuggestions)],
-    manifestLoadError: manifest.loadError ?? null,
+    ...focus,
     configured: Boolean(
       env.NIXMAC_E2E_PR_NUMBER || env.GITHUB_PR_NUMBER || env.GITHUB_EVENT_NAME === "pull_request",
     ),
   };
+}
+
+function requireCoverageManifestForSetup({ loadManifest = loadCoverageManifest } = {}) {
+  return loadManifest();
 }
 const PR75_COMPUTER_USE_BASELINE = Object.freeze({
   source: "artifacts/pr-75-computer-use-baseline/index.html",
@@ -803,6 +729,7 @@ function createInitialState({
 }
 
 async function setup({ mode = "deterministic" } = {}) {
+  requireCoverageManifestForSetup();
   const isReal = mode === "real";
   const artifactRoot = isReal ? REAL_ARTIFACT_ROOT : ARTIFACT_ROOT;
   const backupRoot = isReal ? REAL_BACKUP_ROOT : BACKUP_ROOT;
@@ -920,6 +847,7 @@ async function setup({ mode = "deterministic" } = {}) {
 }
 
 async function createPeekabooRunState({ scenario, noRecord, noCleanup, allowDestructive }) {
+  requireCoverageManifestForSetup();
   await mkdir(ARTIFACT_ROOT, { recursive: true });
   await assertNoUnrestoredRun();
   const startedAt = new Date();
@@ -1601,6 +1529,7 @@ function verdictFor(state) {
   const statuses = Object.values(state.scenarios).map((scenarioState) => scenarioState.status);
   if (statuses.includes("fail")) return "fail";
   if (statuses.includes("inconclusive")) return "inconclusive";
+  if (!statuses.includes("pass")) return "inconclusive";
   if (
     (state.mode === "peekaboo" || state.mode === "peekaboo-suite") &&
     requiredComputerUseCoverage(state).missingRequiredKeys.length > 0
@@ -2003,7 +1932,6 @@ function renderPeekabooPrFocus(state) {
       <div class="metric"><strong>User-visible files</strong><span>${escapeHtml(String(pr.userVisibleFiles?.length ?? 0))}</span><small>Inferred from coverage-manifest.json plus app/test/workflow heuristics.</small></div>
       <div class="metric"><strong>Mapped scenarios</strong><span>${escapeHtml(String(pr.scenarioKeys?.length ?? 0))}</span><small>Used to focus reviewer attention on changed surfaces.</small></div>
     </div>
-    ${pr.manifestLoadError ? `<p class="warning"><strong>Manifest load error:</strong> ${escapeHtml(pr.manifestLoadError)}</p>` : ""}
     <h3>Mapped PR Surfaces</h3>
     <div class="table-scroll"><table>
       <thead><tr><th>Changed File</th><th>Surface</th><th>Scenario Focus</th><th>Coverage Note</th></tr></thead>
@@ -3279,6 +3207,26 @@ function runVisualAnnotationGallerySelfTest() {
 }
 
 async function runSelfTest() {
+  const { coverageManifestSelfTest } = await import("./coverage-manifest.test.mjs");
+  coverageManifestSelfTest();
+  const failClosedManifestLoad = () => {
+    throw new Error("synthetic schema-invalid coverage manifest");
+  };
+  assert.throws(
+    () => buildPeekabooPrFocus({}, { loadManifest: failClosedManifestLoad }),
+    /schema-invalid coverage manifest/,
+    "Peekaboo PR focus should fail closed when manifest loading or validation fails",
+  );
+  assert.throws(
+    () => requireCoverageManifestForSetup({ loadManifest: failClosedManifestLoad }),
+    /schema-invalid coverage manifest/,
+    "Peekaboo setup should stop before side effects when manifest loading or validation fails",
+  );
+  assert.equal(
+    isStableCoverageScenarioKey("inlineQuestionAnswer"),
+    false,
+    "Peekaboo manifest validation should reject the same evolved-only keys as the remote runner",
+  );
   // This is a one-way drift guard: run-local is a deliberate subset with a few
   // local-only scenario names, so it should not require every shared key.
   const unexpectedLocalKeys = Object.keys(scenarioLabels).filter(
@@ -3320,6 +3268,15 @@ async function runSelfTest() {
     }),
     "inconclusive",
     "Peekaboo suite verdict should downgrade when required Computer Use parity keys are missing",
+  );
+  assert.equal(
+    verdictFor({
+      mode: "peekaboo-suite",
+      scenarios: { launch: { status: "not_required" } },
+      peekaboo: { coverageMap: { phaseCoverage: [] } },
+    }),
+    "inconclusive",
+    "A report with no exercised scenario must not render pass",
   );
   {
     const allRequiredCoverageState = {
@@ -3400,6 +3357,15 @@ async function runSelfTest() {
     prFocus.scenarioKeys.includes("reportInspection"),
     "Peekaboo PR focus should map runner/report changes to report inspection",
   );
+  const unownedProofCollisionFocus = buildPeekabooPrFocus({
+    GITHUB_EVENT_NAME: "pull_request",
+    NIXMAC_E2E_PR_CHANGED_FILES: "tests/e2e/computer-use/new-proof.test.ts",
+  });
+  assert.deepEqual(
+    unownedProofCollisionFocus.unmatchedUserVisibleFiles,
+    ["tests/e2e/computer-use/new-proof.test.ts"],
+    "new proof-system test files should remain PR-visible debt until explicitly owned",
+  );
   assert(
     prFocus.matchedSurfaces.some(
       (surface) =>
@@ -3409,8 +3375,31 @@ async function runSelfTest() {
   );
   assert.deepEqual(
     prFocus.unmappedUserVisibleFiles,
-    ["apps/native/src/components/widget/new-visible-surface.tsx"],
-    "Peekaboo PR focus should surface unmapped user-visible files for scenario suggestions",
+    [
+      "apps/native/src-tauri/src/storage/store.rs",
+      "apps/native/src/components/widget/new-visible-surface.tsx",
+    ],
+    "Peekaboo PR focus should surface waived-without-scenario and unmapped user-visible files for scenario suggestions",
+  );
+  assert(
+    prFocus.matchedSurfaces.some(
+      (surface) => surface.id === "settings-unexercised" && Boolean(surface.waiver),
+    ),
+    "Peekaboo PR focus should identify waived Settings backends without claiming exercised tab coverage",
+  );
+  const waivedSettingsFocus = buildPeekabooPrFocus({
+    GITHUB_EVENT_NAME: "pull_request",
+    NIXMAC_E2E_PR_CHANGED_FILES: "apps/native/src-tauri/src/storage/store.rs",
+  });
+  assert.deepEqual(
+    waivedSettingsFocus.scenarioKeys,
+    [],
+    "a PR changing only an unexercised Settings backend should not inherit exercised tab scenarios",
+  );
+  assert.deepEqual(
+    waivedSettingsFocus.unmappedUserVisibleFiles,
+    ["apps/native/src-tauri/src/storage/store.rs"],
+    "an unexercised Settings backend should remain visible as explicit scenario debt",
   );
   assert(
     renderPeekabooPrFocus({

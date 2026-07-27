@@ -1,29 +1,42 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { existsSync, statSync } from "node:fs";
+import { lstat, mkdir, mkdtemp, readFile, realpath, rm, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { artifactFileIssue, artifactForLabel, pngDimensions } from "./artifact-utils.mjs";
+import { withEvidenceTreeMutation } from "./evidence-guard.mjs";
 import { dispatchRemoteCuaCommand, remoteCuaUsage } from "./cli.mjs";
+import { buildManifestPrFocus, isLikelyUserVisiblePrFile } from "./coverage-focus.mjs";
+import {
+  changedFileMatchesSurface,
+  coverageCandidateFiles,
+  loadCoverageManifestFile,
+  unmappedCoverageCandidateFiles,
+  walkCoverageFiles,
+} from "./coverage-manifest.mjs";
 import {
   builtInElementAddressKinds,
   createDriverDescriptor,
   currentRunnerDriverCapabilityUse,
   driverCapabilityKeys,
   driverContractVersion,
+  validateCuaElementIndexAddress,
   validateDriverCapabilities,
   validateDriverDescriptor,
   validateElementAddress,
 } from "./drivers/contract.mjs";
+import { CodexAppServerDriver } from "./drivers/codex-app-server.mjs";
+import { validateRuntimeDriver } from "./drivers/runtime-contract.mjs";
 import { tryRun } from "./process-utils.mjs";
 import {
   DEFAULT_PROMPT,
   EVOLVED_CASE_CATALOG,
   curatedProofKeys,
+  isStableCoverageScenarioKey,
   scenarioVisualContracts,
   scenarioAssertionTypeHints,
   scenarioGroups,
@@ -39,17 +52,21 @@ import {
   parseSignalStats,
   probeCropForImage,
 } from "./visual-proof.mjs";
-import { renderReportHtml } from "./report.mjs";
+import { renderReportHtml, safeFrameVideoPath } from "./report.mjs";
 import {
-  AppServerClient,
-  clickResponseIndicatesFailure,
-  codexAppServerDriverDescriptor,
-  contentImage,
-  contentText,
-  elementEntries,
-  findElement,
-  setValueResponseIndicatesFailure,
-} from "./transport.mjs";
+  assertRunPostRunIdentity,
+  assertRunPreflight,
+  finalizeLocalEvidence,
+  recordRunPermissions,
+  resolveRunPreflightIdentity,
+  stageControllerEvidence,
+  transitionRunAttempt,
+  writeRunCleanup,
+  writeRunPreflight,
+  writeRunProvisioning,
+} from "./run-metadata.mjs";
+import { createScenarioDriverHelpers } from "./scenario-driver.mjs";
+import { codexAppServerDriverDescriptor, elementEntries, findElement } from "./transport.mjs";
 import { containsUnmaskedSecret, redact } from "./redaction.mjs";
 import {
   addEvent,
@@ -89,6 +106,25 @@ const ARTIFACT_ROOT = path.join(REPO_ROOT, "artifacts", "computer-use-remote");
 const COVERAGE_MANIFEST_PATH = path.join(TOOL_DIR, "coverage-manifest.json");
 
 let activeRunDir = "";
+let activeRunFinalization = null;
+
+const {
+  captureState,
+  clickByPattern,
+  clickElementIndex,
+  setValueByPattern,
+  setValueElementIndex,
+  waitFor,
+} = createScenarioDriverHelpers({
+  addEvent,
+  saveState,
+  addNarrative,
+  redact,
+  containsUnmaskedSecret,
+  pngDimensions,
+  findElement,
+  screenshotSource: "Codex Computer Use get_app_state image",
+});
 
 function usage() {
   console.log(remoteCuaUsage({ defaultWs: DEFAULT_WS, defaultApp: DEFAULT_APP }));
@@ -129,6 +165,11 @@ function withRunDirArg(args, runDir) {
   return [...args, "--run-dir", runDir];
 }
 
+async function canonicalFallbackRunDir(runDir) {
+  const absoluteRunDir = path.resolve(runDir);
+  return existsSync(absoluteRunDir) ? realpath(absoluteRunDir) : absoluteRunDir;
+}
+
 function timestampSlug(date = new Date()) {
   return date.toISOString().replace(/[:.]/g, "").replace("T", "T").replace("Z", "Z");
 }
@@ -142,6 +183,545 @@ function run(command, args, options = {}) {
     );
   }
   return result.stdout.trim();
+}
+
+async function readLocalAppBundleIdentity(appPath) {
+  const infoPlist = path.join(appPath, "Contents", "Info.plist");
+  const bundleId = run("/usr/bin/plutil", [
+    "-extract",
+    "CFBundleIdentifier",
+    "raw",
+    "-o",
+    "-",
+    infoPlist,
+  ]);
+  const { hashCuaBundleTree } = await import("./drivers/cua-driver.mjs");
+  return {
+    bundleId,
+    digestSha256: await hashCuaBundleTree(appPath),
+  };
+}
+
+export async function validateLocalCuaPreflight(
+  { appBundleId, runDir },
+  {
+    env = process.env,
+    canonicalPath = realpath,
+    readBundleIdentity = readLocalAppBundleIdentity,
+  } = {},
+) {
+  if (!path.isAbsolute(runDir) || path.normalize(runDir) !== runDir) {
+    throw new Error("local CuaDriver runDir must be an absolute normalized path");
+  }
+  if (env.NIXMAC_E2E_DISPOSABLE_CONFIG !== "true") {
+    throw new Error("local CuaDriver requires NIXMAC_E2E_DISPOSABLE_CONFIG=true");
+  }
+  const remoteTransportKeys = [
+    "NIXMAC_COMPUTER_USE_WS",
+    "NIXMAC_E2E_REMOTE_SSH_DEST",
+    "NIXMAC_E2E_SSH_KEY",
+    "NIXMAC_E2E_SSH_KNOWN_HOSTS",
+    "NIXMAC_E2E_REMOTE_REPORT_DIR",
+    "NIXMAC_E2E_REMOTE_CONFIG_DIR",
+    "NIXMAC_E2E_REMOTE_APP_PATH",
+  ].filter((key) => String(env[key] || "") !== "");
+  if (remoteTransportKeys.length > 0) {
+    throw new Error(
+      `local CuaDriver forbids remote transport environment: ${remoteTransportKeys.join(", ")}`,
+    );
+  }
+  const appArtifactSha = String(env.NIXMAC_E2E_APP_ARTIFACT_SHA || "");
+  if (!/^[0-9a-f]{40}$/.test(appArtifactSha)) {
+    throw new Error("NIXMAC_E2E_APP_ARTIFACT_SHA must be a full lowercase 40-character SHA");
+  }
+  const inputAppPath = String(env.NIXMAC_E2E_APP_PATH || "");
+  if (
+    !inputAppPath ||
+    !path.isAbsolute(inputAppPath) ||
+    path.normalize(inputAppPath) !== inputAppPath ||
+    !inputAppPath.endsWith(".app")
+  ) {
+    throw new Error("NIXMAC_E2E_APP_PATH must be an absolute normalized .app path");
+  }
+  const appPath = await canonicalPath(inputAppPath);
+  if (appPath !== inputAppPath) {
+    throw new Error(`NIXMAC_E2E_APP_PATH must be canonical: expected ${appPath}`);
+  }
+  if (appPath.startsWith("/Applications/") || appPath.startsWith("/System/Applications/")) {
+    throw new Error("NIXMAC_E2E_APP_PATH must not use a shared Applications path");
+  }
+  if (path.basename(path.dirname(appPath)) !== path.basename(runDir)) {
+    throw new Error(
+      "NIXMAC_E2E_APP_PATH must be staged in a run-specific directory named for the run directory",
+    );
+  }
+  const inputStagingParent = String(env.NIXMAC_E2E_STAGING_PARENT || "");
+  if (
+    !inputStagingParent ||
+    !path.isAbsolute(inputStagingParent) ||
+    path.normalize(inputStagingParent) !== inputStagingParent
+  ) {
+    throw new Error("NIXMAC_E2E_STAGING_PARENT must be an absolute normalized path");
+  }
+  const stagingParent = await canonicalPath(inputStagingParent);
+  if (stagingParent !== inputStagingParent || stagingParent !== path.dirname(appPath)) {
+    throw new Error("NIXMAC_E2E_STAGING_PARENT must be canonical and directly own the app");
+  }
+  const inputDisposableConfigPath = String(env.NIXMAC_E2E_DISPOSABLE_CONFIG_PATH || "");
+  if (
+    !inputDisposableConfigPath ||
+    !path.isAbsolute(inputDisposableConfigPath) ||
+    path.normalize(inputDisposableConfigPath) !== inputDisposableConfigPath
+  ) {
+    throw new Error("NIXMAC_E2E_DISPOSABLE_CONFIG_PATH must be an absolute normalized path");
+  }
+  const disposableConfigPath = await canonicalPath(inputDisposableConfigPath);
+  const configRelative = path.relative(stagingParent, disposableConfigPath);
+  if (
+    disposableConfigPath !== inputDisposableConfigPath ||
+    configRelative === "" ||
+    configRelative.startsWith("..") ||
+    path.isAbsolute(configRelative)
+  ) {
+    throw new Error(
+      "NIXMAC_E2E_DISPOSABLE_CONFIG_PATH must be canonical and owned by staging parent",
+    );
+  }
+  const identity = await readBundleIdentity(appPath);
+  if (identity.bundleId !== appBundleId) {
+    throw new Error(
+      `staged app bundle ID mismatch: expected ${appBundleId}, got ${identity.bundleId || "missing"}`,
+    );
+  }
+  if (!/^[0-9a-f]{64}$/.test(identity.digestSha256 || "")) {
+    throw new Error("staged app bundle digest must be a lowercase SHA-256");
+  }
+  return Object.freeze({
+    appArtifactSha,
+    appBundleDigestSha256: identity.digestSha256,
+    appBundleId,
+    appPath,
+    disposableConfigPath,
+    stagingParent,
+  });
+}
+
+export async function verifyLocalCuaPreflight(
+  preflight,
+  { readBundleIdentity = readLocalAppBundleIdentity } = {},
+) {
+  const identity = await readBundleIdentity(preflight.appPath);
+  if (identity.bundleId !== preflight.appBundleId) {
+    throw new Error("staged app bundle ID changed after target preparation");
+  }
+  if (identity.digestSha256 !== preflight.appBundleDigestSha256) {
+    throw new Error("staged app bundle digest changed after target preparation");
+  }
+  return preflight;
+}
+
+export async function createOwnedCuaSocketEndpoint({
+  requestedPath = "",
+  temporaryRoot = "",
+} = {}) {
+  let directory;
+  let socketPath;
+  if (requestedPath) {
+    if (
+      !path.isAbsolute(requestedPath) ||
+      path.normalize(requestedPath) !== requestedPath ||
+      Buffer.byteLength(requestedPath, "utf8") > 103
+    ) {
+      throw new Error("NIXMAC_CUA_DRIVER_SOCKET must be an absolute short Unix socket path");
+    }
+    directory = path.dirname(requestedPath);
+    if (!path.basename(directory).startsWith("nx-cua-")) {
+      throw new Error("explicit CuaDriver socket must use a unique nx-cua-* directory");
+    }
+    try {
+      await lstat(directory);
+      throw new Error("explicit CuaDriver socket directory must not already exist");
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+    await mkdir(directory, { recursive: false, mode: 0o700 });
+    socketPath = requestedPath;
+  } else {
+    const root = temporaryRoot || (await realpath(os.tmpdir()));
+    directory = await realpath(await mkdtemp(path.join(root, "nx-cua-")));
+    socketPath = path.join(directory, "d.sock");
+  }
+  if (Buffer.byteLength(socketPath, "utf8") > 103) {
+    await rm(directory, { recursive: true, force: true });
+    throw new Error("allocated CuaDriver Unix socket path exceeds 103 UTF-8 bytes");
+  }
+  return Object.freeze({ directory, path: socketPath });
+}
+
+export async function prepareSuiteDriver(
+  driver,
+  { executionTopology, appBundleId, localPreflight = null, beforePrepareTarget = async () => {} },
+) {
+  await driver.connect();
+  await beforePrepareTarget();
+  if (executionTopology === "local-cua-driver") {
+    if (!localPreflight) throw new Error("local CuaDriver preflight identity is required");
+    await driver.prepareTarget({
+      appBundleId,
+      appPath: localPreflight.appPath,
+    });
+    return;
+  }
+  if (executionTopology !== "remote-codex-app-server") {
+    throw new Error(`unsupported Computer Use execution topology: ${executionTopology}`);
+  }
+  await driver.prepareTarget({ appBundleId });
+}
+
+function processCleanupSnapshot(role, instance) {
+  if (instance == null) {
+    return {
+      entry: {
+        role,
+        status: "not_started",
+        pid: null,
+        birthMarker: null,
+        executable: null,
+        terminated: true,
+      },
+      failure: "",
+    };
+  }
+  if (
+    Number.isSafeInteger(instance.pid) &&
+    instance.pid > 0 &&
+    typeof instance.birthMarker === "string" &&
+    instance.birthMarker !== "" &&
+    typeof instance.executable === "string" &&
+    path.isAbsolute(instance.executable) &&
+    path.normalize(instance.executable) === instance.executable
+  ) {
+    return {
+      entry: {
+        role,
+        status: "owned",
+        pid: instance.pid,
+        birthMarker: instance.birthMarker,
+        executable: instance.executable,
+        terminated: false,
+      },
+      failure: "",
+    };
+  }
+  return {
+    entry: {
+      role,
+      status: "not_started",
+      pid: null,
+      birthMarker: null,
+      executable: null,
+      terminated: true,
+    },
+    failure: `${role} process identity was present but could not be attested exactly`,
+  };
+}
+
+export async function writeControllerProcessHandoff({
+  closeFailure,
+  driverCloseAttempted = true,
+  processInstances,
+  processSnapshotFailure,
+  runDir,
+  targetPath,
+}) {
+  if (
+    typeof targetPath !== "string" ||
+    !path.isAbsolute(targetPath) ||
+    path.normalize(targetPath) !== targetPath
+  ) {
+    throw new Error("controller process handoff path must be absolute and normalized");
+  }
+  if (typeof runDir !== "string" || !path.isAbsolute(runDir) || path.normalize(runDir) !== runDir) {
+    throw new Error("controller process handoff runDir must be absolute and normalized");
+  }
+  const relativeToEvidence = path.relative(runDir, targetPath);
+  if (
+    relativeToEvidence === "" ||
+    (!relativeToEvidence.startsWith(`..${path.sep}`) && relativeToEvidence !== "..")
+  ) {
+    throw new Error("controller process handoff must stay outside the evidence tree");
+  }
+  if (!Array.isArray(processInstances) || processInstances.length !== 2) {
+    throw new Error("controller process handoff requires exact target and daemon snapshots");
+  }
+  const byRole = new Map(processInstances.map((instance) => [instance?.role, instance]));
+  const normalizedInstances = ["target", "daemon"].map((role) => {
+    const instance = byRole.get(role);
+    if (
+      !instance ||
+      !["owned", "not_started"].includes(instance.status) ||
+      typeof instance.terminated !== "boolean"
+    ) {
+      throw new Error(`controller process handoff requires a valid ${role} snapshot`);
+    }
+    if (
+      instance.status === "owned" &&
+      (!Number.isSafeInteger(instance.pid) ||
+        instance.pid <= 0 ||
+        typeof instance.birthMarker !== "string" ||
+        instance.birthMarker === "" ||
+        typeof instance.executable !== "string" ||
+        !path.isAbsolute(instance.executable) ||
+        path.normalize(instance.executable) !== instance.executable)
+    ) {
+      throw new Error(`controller process handoff ${role} identity is invalid`);
+    }
+    if (
+      instance.status === "not_started" &&
+      (instance.pid !== null || instance.birthMarker !== null || instance.executable !== null)
+    ) {
+      throw new Error(`controller process handoff ${role} not_started identity is invalid`);
+    }
+    return {
+      role,
+      status: instance.status,
+      pid: instance.pid,
+      birthMarker: instance.birthMarker,
+      executable: instance.executable,
+      terminated: instance.status === "not_started" || !closeFailure,
+    };
+  });
+  const lifecycle = {
+    driverCloseAttempted,
+    driverClosed: driverCloseAttempted && !closeFailure,
+    ownershipMatched: processSnapshotFailure === "",
+    processesProbed: !closeFailure && processSnapshotFailure === "",
+  };
+  await writeFile(
+    targetPath,
+    `${JSON.stringify(
+      {
+        version: 1,
+        generatedBy: "remote-runner",
+        processInstances: normalizedInstances,
+        lifecycle,
+      },
+      null,
+      2,
+    )}\n`,
+    { encoding: "utf8", flag: "wx", mode: 0o600 },
+  );
+}
+
+function captureLifecycleForRun({ uiStarted, failure }) {
+  if (uiStarted) return { status: "available", uiStarted: true, reason: "" };
+  const reason = redact(
+    failure instanceof Error
+      ? failure.message
+      : failure
+        ? String(failure)
+        : "the runner stopped before UI capture began",
+  );
+  return {
+    status: "not_started",
+    uiStarted: false,
+    reason: reason || "the runner stopped before UI capture began",
+  };
+}
+
+async function cleanupAttestedLocalResources({
+  boundInput,
+  closeFailure = null,
+  driver,
+  ownedProcessSnapshots,
+  processSnapshotFailure = "",
+}) {
+  const cleanupStartedAt = nowIso();
+  const pathIdentities = [
+    ["staging-parent", boundInput.stagingParent],
+    ["app-bundle", boundInput.appBundlePath],
+    ["disposable-config", boundInput.disposableConfigPath],
+    ["daemon-socket-directory", boundInput.daemonSocketDirectory],
+    ["daemon-socket", boundInput.daemonSocketPath],
+  ];
+  let cleanupFailure = [
+    processSnapshotFailure,
+    closeFailure
+      ? `CuaDriver close failed: ${redact(
+          closeFailure instanceof Error ? closeFailure.message : String(closeFailure),
+        )}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("; ");
+  for (const ownedRoot of [boundInput.stagingParent, boundInput.daemonSocketDirectory]) {
+    try {
+      await rm(ownedRoot, { recursive: true, force: true });
+    } catch (error) {
+      cleanupFailure = [
+        cleanupFailure,
+        `failed to remove ${ownedRoot}: ${redact(
+          error instanceof Error ? error.message : String(error),
+        )}`,
+      ]
+        .filter(Boolean)
+        .join("; ");
+    }
+  }
+  const ownedPaths = pathIdentities.map(([kind, ownedPath]) => ({
+    kind,
+    path: ownedPath,
+    expectedFinalState: "absent",
+    observedFinalState:
+      typeof ownedPath === "string" && path.isAbsolute(ownedPath)
+        ? existsSync(ownedPath)
+          ? "present"
+          : "absent"
+        : "unverified",
+  }));
+  if (ownedPaths.some((ownedPath) => ownedPath.observedFinalState !== "absent")) {
+    cleanupFailure = [cleanupFailure, "one or more exactly owned paths remain after cleanup"]
+      .filter(Boolean)
+      .join("; ");
+  }
+  const processInstances = ownedProcessSnapshots.map((instance) => ({
+    ...instance,
+    terminated: instance.status === "not_started" || !closeFailure,
+  }));
+  const remainingProcesses = processInstances
+    .filter((instance) => !instance.terminated)
+    .map(({ role, pid, birthMarker, executable }) => ({
+      role,
+      pid,
+      birthMarker,
+      executable,
+    }));
+  return {
+    ownershipMode: "local-ephemeral",
+    attempted: true,
+    restored: cleanupFailure === "",
+    clean: cleanupFailure === "",
+    startedAt: cleanupStartedAt,
+    completedAt: nowIso(),
+    ownedPaths,
+    processInstances,
+    remainingProcesses,
+    failureReason: cleanupFailure,
+    lifecycle: {
+      driverCloseAttempted: driver !== null,
+      driverClosed: !closeFailure,
+      ownershipMatched: processSnapshotFailure === "",
+      pathsProbed: ownedPaths.every((ownedPath) => ownedPath.observedFinalState !== "unverified"),
+      processesProbed: !closeFailure && processSnapshotFailure === "",
+    },
+  };
+}
+
+function setLocalCleanupState(state, cleanup, { smoke = false } = {}) {
+  state.cleanup = {
+    ...cleanup,
+    ownedPaths: cleanup.ownedPaths.map((ownedPath) => ({ ...ownedPath })),
+    processInstances: cleanup.processInstances.map((processInstance) => ({
+      ...processInstance,
+    })),
+    remainingProcesses: cleanup.remainingProcesses.map((processInstance) => ({
+      ...processInstance,
+    })),
+    lifecycle: { ...cleanup.lifecycle },
+    note: cleanup.clean
+      ? smoke
+        ? "CuaDriver target/daemon shutdown and exact run-owned app, staging, config, and socket cleanup completed before smoke report rendering."
+        : "CuaDriver target/daemon shutdown and exact staged-app removal completed before evidence sealing."
+      : `Final cleanup failed: ${cleanup.failureReason}`,
+  };
+}
+
+export async function writeAndAssertLocalRunPreflight(
+  { driver, localPreflight, runDir },
+  {
+    env = process.env,
+    resolvePreflight = resolveRunPreflightIdentity,
+    writePreflight = writeRunPreflight,
+    assertPreflight = assertRunPreflight,
+  } = {},
+) {
+  if (!driver?.metadata?.cli?.version || !driver?.metadata?.app?.short_version) {
+    throw new Error("connected CuaDriver pinned version metadata is required before UI");
+  }
+  if (driver.connected !== true) {
+    throw new Error("CuaDriver live permission probe must succeed before run preflight");
+  }
+  if (
+    typeof driver.socketPath !== "string" ||
+    !path.isAbsolute(driver.socketPath) ||
+    path.normalize(driver.socketPath) !== driver.socketPath
+  ) {
+    throw new Error("connected CuaDriver canonical daemon socket path is required before UI");
+  }
+  const input = await resolvePreflight({
+    env: {
+      ...env,
+      NIXMAC_E2E_STAGING_PARENT: localPreflight.stagingParent,
+      NIXMAC_E2E_DISPOSABLE_CONFIG_PATH: localPreflight.disposableConfigPath,
+      NIXMAC_E2E_DAEMON_SOCKET_DIRECTORY: path.dirname(driver.socketPath),
+      NIXMAC_E2E_DAEMON_SOCKET_PATH: driver.socketPath,
+    },
+    repoRoot: REPO_ROOT,
+    appBundlePath: localPreflight.appPath,
+    appBundleDigest: localPreflight.appBundleDigestSha256,
+    cuaDriverCliVersion: driver.metadata.cli.version,
+    cuaDriverAppVersion: driver.metadata.app.short_version,
+    accessibilityGranted: true,
+    screenRecordingGranted: true,
+  });
+  await writePreflight(runDir, input);
+  return assertPreflight(runDir);
+}
+
+export async function writeLocalRunProvisioning(
+  { driver, runDir, socketEndpoint },
+  {
+    env = process.env,
+    resolvePreflight = resolveRunPreflightIdentity,
+    writeProvisioning = writeRunProvisioning,
+    probeExpectedAppBundleDigest = async (appBundlePath) => {
+      const { hashCuaBundleTree } = await import("./drivers/cua-driver.mjs");
+      return hashCuaBundleTree(appBundlePath);
+    },
+  } = {},
+) {
+  if (!driver?.metadata?.cli?.version || !driver?.metadata?.app?.short_version) {
+    throw new Error("pinned CuaDriver version metadata is required before provisioning");
+  }
+  if (
+    !socketEndpoint ||
+    typeof socketEndpoint.directory !== "string" ||
+    typeof socketEndpoint.path !== "string"
+  ) {
+    throw new Error("owned CuaDriver socket endpoint is required before provisioning");
+  }
+  const appBundlePath = env.NIXMAC_E2E_APP_PATH || "";
+  const appBundleDigest =
+    env.NIXMAC_E2E_APP_BUNDLE_DIGEST || (await probeExpectedAppBundleDigest(appBundlePath));
+  const input = await resolvePreflight({
+    env: {
+      ...env,
+      NIXMAC_E2E_STAGING_PARENT: env.NIXMAC_E2E_STAGING_PARENT || path.dirname(appBundlePath),
+      NIXMAC_E2E_DISPOSABLE_CONFIG_PATH:
+        env.NIXMAC_E2E_DISPOSABLE_CONFIG_PATH || path.join(path.dirname(appBundlePath), "config"),
+      NIXMAC_E2E_DAEMON_SOCKET_DIRECTORY: socketEndpoint.directory,
+      NIXMAC_E2E_DAEMON_SOCKET_PATH: socketEndpoint.path,
+    },
+    repoRoot: REPO_ROOT,
+    appBundlePath,
+    appBundleDigest,
+    cuaDriverCliVersion: driver.metadata.cli.version,
+    cuaDriverAppVersion: driver.metadata.app.short_version,
+    accessibilityGranted: true,
+    screenRecordingGranted: true,
+  });
+  await writeProvisioning(runDir, input);
+  return Object.freeze({ input });
 }
 
 function findQuestionInputEntry(text) {
@@ -311,60 +891,26 @@ function evolvedCaseStrategy(extraCases = enabledExtraEvolvedCases()) {
 
 function buildPrFocus() {
   const changedFiles = splitEnvList(process.env.NIXMAC_E2E_PR_CHANGED_FILES || "");
-  const userVisibleFiles = changedFiles.filter((file) =>
-    /^(apps\/native\/src\/(?:[^/]+\.(?:css|ts|tsx)|(?:components|hooks|stores|lib|styles)\/)|apps\/native\/src-tauri|tests\/e2e\/computer-use|\.github\/workflows\/computer-use-e2e\.yml)/.test(
-      file,
-    ),
-  );
-  const scenarioKeys = new Set();
-  for (const file of userVisibleFiles) {
-    if (/^apps\/native\/src\/[^/]+\.(?:css|ts|tsx)$/i.test(file)) {
-      scenarioKeys.add("launch");
-      scenarioKeys.add("visualCoverage");
-    }
-    if (/settings|prefs|api-keys|store|commands\.rs|store\.rs/i.test(file)) {
-      scenarioKeys.add("settingsGeneral");
-      scenarioKeys.add("settingsAIModels");
-      scenarioKeys.add("settingsAPIKeys");
-      scenarioKeys.add("settingsPreferences");
-    }
-    if (/system-defaults|apply_system_defaults|scanner\.rs/i.test(file)) {
-      scenarioKeys.add("customizationSaveRollback");
-    }
-    if (/homebrew-badge|use-homebrew-diff|mac\/homebrew\.rs/i.test(file)) {
-      scenarioKeys.add("homebrewSaveRollback");
-    }
-    if (
-      /evolve|use-apply|use-rollback|rebuild|merge|commit|history|rollback|git|finalize/i.test(file)
-    ) {
-      scenarioKeys.add("review");
-      scenarioKeys.add("summary");
-      scenarioKeys.add("diff");
-      scenarioKeys.add("buildBoundary");
-      scenarioKeys.add("saveFlow");
-      scenarioKeys.add("rollbackCleanup");
-      scenarioKeys.add("history");
-    }
-    if (/feedback|report-issue|console|history/i.test(file)) {
-      scenarioKeys.add("history");
-      scenarioKeys.add("console");
-      scenarioKeys.add("feedback");
-      scenarioKeys.add("reportIssue");
-    }
-    if (/tests\/e2e\/computer-use|computer-use-e2e\.yml/i.test(file)) {
-      scenarioKeys.add("visualProofQuality");
-      scenarioKeys.add("reportInspection");
-    }
-  }
+  const manifest = loadCoverageManifest();
+  const focus = buildManifestPrFocus({
+    changedFiles,
+    manifest,
+    knownScenarioKey: isStableCoverageScenarioKey,
+    scenarioSuggestionForFile(file, matchedSurfaces) {
+      const waiver = matchedSurfaces.find((surface) => surface.waiver)?.waiver;
+      if (waiver?.exitCriteria) {
+        return `Add a dedicated Computer Use scenario for ${file}: ${waiver.exitCriteria}`;
+      }
+      return `Add or extend a Computer Use scenario that exercises ${file}, then map it in coverage-manifest.json.`;
+    },
+  });
   return {
     eventName: process.env.GITHUB_EVENT_NAME || process.env.NIXMAC_E2E_PR_EVENT || "",
     number: process.env.NIXMAC_E2E_PR_NUMBER || process.env.GITHUB_PR_NUMBER || "",
     title: process.env.NIXMAC_E2E_PR_TITLE || "",
     headRef: process.env.NIXMAC_E2E_PR_HEAD_REF || process.env.GITHUB_HEAD_REF || "",
     baseRef: process.env.NIXMAC_E2E_PR_BASE_REF || process.env.GITHUB_BASE_REF || "",
-    changedFiles,
-    userVisibleFiles,
-    scenarioKeys: [...scenarioKeys],
+    ...focus,
     configured: Boolean(
       process.env.NIXMAC_E2E_PR_NUMBER ||
       process.env.GITHUB_PR_NUMBER ||
@@ -374,26 +920,9 @@ function buildPrFocus() {
 }
 
 function loadCoverageManifest() {
-  return JSON.parse(readFileSync(COVERAGE_MANIFEST_PATH, "utf8"));
-}
-
-function walkFiles(root) {
-  const fullRoot = path.join(REPO_ROOT, root);
-  if (!existsSync(fullRoot)) return [];
-  const files = [];
-  const visit = (dir) => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) visit(full);
-      else if (entry.isFile()) files.push(path.relative(REPO_ROOT, full).replaceAll(path.sep, "/"));
-    }
-  };
-  visit(fullRoot);
-  return files;
-}
-
-function matchesAny(value, patterns = []) {
-  return patterns.some((pattern) => new RegExp(pattern).test(value));
+  return loadCoverageManifestFile(COVERAGE_MANIFEST_PATH, {
+    knownScenarioKey: isStableCoverageScenarioKey,
+  });
 }
 
 function sourcePrefixExists(sourcePath) {
@@ -479,25 +1008,16 @@ function managedWaiverFor(surface) {
   return waiver;
 }
 
-function knownScenarioKey(key) {
-  return Boolean(
-    scenarioLabels[key] ||
-    scenarioProofCatalog[key] ||
-    Object.values(EVOLVED_CASE_CATALOG).some((caseDef) => caseDef.scenarioKey === key),
-  );
-}
-
-function buildCoverageFreshness(state) {
+function buildCoverageFreshness() {
   const manifest = loadCoverageManifest();
   const surfaces = manifest.surfaces || [];
-  const coveredPrefixes = surfaces.flatMap((surface) => surface.sourcePrefixes || []);
   const drift = [];
   const waivers = [];
   let mapped = 0;
 
   for (const surface of surfaces) {
     const scenarioKeys = surface.scenarioKeys || [];
-    const unknown = scenarioKeys.filter((key) => !knownScenarioKey(key));
+    const unknown = scenarioKeys.filter((key) => !isStableCoverageScenarioKey(key));
     const missingSources = (surface.sourcePrefixes || []).filter(
       (sourcePath) => !sourcePrefixExists(sourcePath),
     );
@@ -510,23 +1030,14 @@ function buildCoverageFreshness(state) {
       drift.push(`${surface.id} maps to unknown scenarios: ${unknown.join(", ")}`);
     if (missingSources.length)
       drift.push(`${surface.id} references missing source paths: ${missingSources.join(", ")}`);
-    if (!scenarioKeys.length && !surface.waiver)
+    if (!scenarioKeys.length && !surface.waiver && surface.coverageDisposition !== "non-claiming")
       drift.push(`${surface.id} has no scenario mapping and no waiver.`);
     if (scenarioKeys.length) mapped += 1;
   }
 
-  const candidates = [
-    ...new Set((manifest.candidateRoots || []).flatMap((root) => walkFiles(root))),
-  ].filter(
-    (file) =>
-      matchesAny(file, manifest.candidateIncludes) && !matchesAny(file, manifest.candidateExcludes),
-  );
-  const unmappedCandidateFiles = candidates.filter(
-    (file) =>
-      !coveredPrefixes.some((prefix) =>
-        prefix.endsWith("/") ? file.startsWith(prefix) : file === prefix,
-      ),
-  );
+  const files = walkCoverageFiles(REPO_ROOT, manifest.candidateRoots || []);
+  const candidates = coverageCandidateFiles(manifest, files);
+  const unmappedCandidateFiles = unmappedCoverageCandidateFiles(manifest, files);
   if (unmappedCandidateFiles.length)
     drift.push(`Unmapped user-visible candidate files: ${unmappedCandidateFiles.join(", ")}`);
 
@@ -537,6 +1048,7 @@ function buildCoverageFreshness(state) {
     mappedSurfaces: mapped,
     waivedSurfaces: waivers.length,
     candidateFiles: candidates.length,
+    candidateFilePaths: candidates,
     unmappedCandidateFiles,
     waivers,
     drift,
@@ -544,7 +1056,7 @@ function buildCoverageFreshness(state) {
 }
 
 function updateMainCoverageFreshness(state) {
-  state.coverageFreshness = buildCoverageFreshness(state);
+  state.coverageFreshness = buildCoverageFreshness();
   const drift = state.coverageFreshness.drift || [];
   const waiverNote = state.coverageFreshness.waivers?.length
     ? ` Explicit waivers: ${state.coverageFreshness.waivers.map((item) => `${item.id} (${item.owner || "unowned"}, review by ${item.reviewBy || "unset"}): ${item.reason}`).join(" | ")}`
@@ -563,6 +1075,13 @@ function updateMainCoverageFreshness(state) {
 }
 
 function updatePrSpecificCoverage(state) {
+  const debtFiles = [
+    ...new Set([
+      ...(state.prFocus?.waivedUserVisibleFiles ?? []),
+      ...(state.prFocus?.unmatchedUserVisibleFiles ?? []),
+      ...(state.prFocus?.unmappedUserVisibleFiles ?? []),
+    ]),
+  ];
   if (!state.prFocus?.configured) {
     updateScenario(
       state,
@@ -583,6 +1102,22 @@ function updatePrSpecificCoverage(state) {
       "prSpecificCoverage",
       "pass",
       "Changed-file metadata did not infer user-visible app changes requiring a dedicated Computer Use focus pass.",
+    );
+  } else if (debtFiles.length) {
+    updateScenario(
+      state,
+      "prSpecificCoverage",
+      "inconclusive",
+      `PR-specific coverage remains incomplete because user-visible changed files are waived or unmatched: ${debtFiles.join(", ")}`,
+    );
+  } else if (
+    state.prFocus.nonClaimingUserVisibleFiles?.length === state.prFocus.userVisibleFiles.length
+  ) {
+    updateScenario(
+      state,
+      "prSpecificCoverage",
+      "pass",
+      `All user-visible changed files are explicitly classified as non-claiming runtime plumbing, so no dedicated Computer Use scenario is required: ${state.prFocus.nonClaimingUserVisibleFiles.join(", ")}`,
     );
   } else if (state.prFocus.scenarioKeys?.length) {
     const mappedScenarios = state.prFocus.scenarioKeys
@@ -761,7 +1296,12 @@ function evidenceStrengthForScenario(state, key) {
 }
 
 function classifyScenarioResult(key, scenario) {
-  if (!scenario || scenario.status === "pass") return { class: "", reason: "" };
+  if (!scenario) {
+    return { class: "inconclusive", reason: "Scenario result was not recorded." };
+  }
+  if (scenario.status === "pass") {
+    return { class: "none", reason: "Scenario passed without a classified failure." };
+  }
   const note = scenario.notes?.join(" ") || "";
   if (/api key|credential|unauthorized|401|missing key|invalid key/i.test(note)) {
     return {
@@ -989,7 +1529,7 @@ async function maybeGenerateEvidenceVideo(state) {
 
   const videoDir = path.join(runDir, "video");
   const framesPath = path.join(videoDir, "frames.txt");
-  const videoPath = path.join(videoDir, "computer-use-evidence.mp4");
+  const videoPath = path.join(runDir, safeFrameVideoPath);
   await mkdir(videoDir, { recursive: true });
   const frameDuration = Number(process.env.NIXMAC_E2E_VIDEO_FRAME_DURATION_SECONDS || 1.1);
   const frameList = frames
@@ -1004,7 +1544,7 @@ async function maybeGenerateEvidenceVideo(state) {
     "utf8",
   );
 
-  const result = tryRun("ffmpeg", [
+  const result = tryRun(process.env.NIXMAC_E2E_FFMPEG_PATH || "ffmpeg", [
     "-y",
     "-hide_banner",
     "-loglevel",
@@ -1021,6 +1561,7 @@ async function maybeGenerateEvidenceVideo(state) {
     "+faststart",
     videoPath,
   ]);
+  await unlink(framesPath);
 
   if (!result.ok) {
     state.video = {
@@ -1043,6 +1584,7 @@ async function maybeGenerateEvidenceVideo(state) {
     : {
         status: "available",
         path: relativePath,
+        source: "curated-safe-frames",
         frames: frames.length,
         note: "Screenshot-compilation video generated from safe-to-store Computer Use frames.",
       };
@@ -1115,7 +1657,7 @@ function annotationGeometryIssues(state) {
   return issues;
 }
 
-async function baseState(runDir, options) {
+async function baseState(runDir, options, { env = process.env } = {}) {
   return createBaseState(runDir, options, {
     tryRun,
     repoRoot: REPO_ROOT,
@@ -1123,178 +1665,158 @@ async function baseState(runDir, options) {
     scenarioLabels,
     evolvedCaseStrategy,
     buildPrFocus,
-    env: process.env,
+    env,
   });
 }
 
-async function captureState(client, state, label, note = "") {
-  let response = await client.tool("get_app_state", { app: state.app }, 90000);
-  let rawText = contentText(response);
-  let text = redact(rawText);
-  for (
-    let attempt = 0;
-    attempt < 8 && /procNotFound|no eligible process|not running|timed out/i.test(text);
-    attempt += 1
+function markLocalReportInspectionNotRequired(state) {
+  updateScenario(
+    state,
+    "reportInspection",
+    "not_required",
+    "The local CuaDriver lane validates and publishes the generated report as immutable evidence; it does not open a personal browser or copy the report over SSH.",
+  );
+}
+
+function classifySingleSuiteFailure(error, { executionTopology = "remote-codex-app-server" } = {}) {
+  const message = redact(error instanceof Error ? error.message : String(error));
+  const local = executionTopology === "local-cua-driver";
+  if (local && /competing .* process .* running/i.test(message)) {
+    return Object.freeze({
+      schemaVersion: 1,
+      executionTopology,
+      phase: "target_preparation",
+      category: "infrastructure",
+      code: "competing_process",
+      infrastructureBlocker: true,
+      summary: message,
+    });
+  }
+  if (local && /Accessibility|Screen Recording|permission/i.test(message)) {
+    return Object.freeze({
+      schemaVersion: 1,
+      executionTopology,
+      phase: "permissions",
+      category: "infrastructure",
+      code: "macos_permissions",
+      infrastructureBlocker: true,
+      summary: message,
+    });
+  }
+  if (
+    local &&
+    /local CuaDriver|NIXMAC_E2E_|staged app|shared Applications path|run-specific directory/i.test(
+      message,
+    )
   ) {
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    response = await client.tool("get_app_state", { app: state.app }, 90000);
-    rawText = contentText(response);
-    text = redact(rawText);
+    return Object.freeze({
+      schemaVersion: 1,
+      executionTopology,
+      phase: "preflight",
+      category: "infrastructure",
+      code: "local_preflight",
+      infrastructureBlocker: true,
+      summary: message,
+    });
   }
-  const image = contentImage(response);
-  const safeLabel = label.replace(/[^a-zA-Z0-9._-]+/g, "-");
-  const ordinal = String(state.textSnapshots.length + 1).padStart(2, "0");
-  const textPath = path.join(state.runDir, "texts", `${ordinal}-${safeLabel}.txt`);
-  await writeFile(textPath, `${text}\n`, "utf8");
-  state.textSnapshots.push({
-    label,
-    path: path.relative(state.runDir, textPath),
-    capturedAt: new Date().toISOString(),
-    note: redact(note),
+  if (
+    local &&
+    /cleanup|close|terminate|did not exit|listener remains|socket .* cleanup/i.test(message)
+  ) {
+    return Object.freeze({
+      schemaVersion: 1,
+      executionTopology,
+      phase: "cleanup",
+      category: "infrastructure",
+      code: "owned_resource_cleanup",
+      infrastructureBlocker: true,
+      summary: message,
+    });
+  }
+  if (
+    local &&
+    /nixmac app|app window|app UI|UI state|did not render|wrong content|not visible|visual mismatch/i.test(
+      message,
+    )
+  ) {
+    return Object.freeze({
+      schemaVersion: 1,
+      executionTopology,
+      phase: "runtime",
+      category: "product",
+      code: "app_behavior",
+      infrastructureBlocker: false,
+      summary: message,
+    });
+  }
+  if (
+    local &&
+    /CuaDriver (?:CLI|app|daemon|socket|launch|connect)|codesign|code signing|bundle identity/i.test(
+      message,
+    )
+  ) {
+    return Object.freeze({
+      schemaVersion: 1,
+      executionTopology,
+      phase: "runtime",
+      category: "infrastructure",
+      code: "local_runtime",
+      infrastructureBlocker: true,
+      summary: message,
+    });
+  }
+  if (/report|render|artifact|screenshot|runner/i.test(message)) {
+    return Object.freeze({
+      schemaVersion: 1,
+      executionTopology,
+      phase: "reporting",
+      category: "harness",
+      code: "harness_failure",
+      infrastructureBlocker: false,
+      summary: message,
+    });
+  }
+  return Object.freeze({
+    schemaVersion: 1,
+    executionTopology,
+    phase: "runtime",
+    category: "harness",
+    code: "runtime_failure",
+    infrastructureBlocker: false,
+    summary: message,
   });
-  const apiKeysHasUnmaskedSecret = /api-keys/i.test(label) && containsUnmaskedSecret(rawText);
-  if (apiKeysHasUnmaskedSecret) {
-    state.secretMaskingViolations.push(
-      `${label} raw accessibility text contained an unmasked key-like secret; screenshot omitted.`,
-    );
-  }
-  const sensitiveImage = /console/i.test(label) || apiKeysHasUnmaskedSecret;
-  if (image && !sensitiveImage) {
-    const pngPath = path.join(state.runDir, "screenshots", `${ordinal}-${safeLabel}.png`);
-    await writeFile(pngPath, Buffer.from(image, "base64"));
-    const dimensions = pngDimensions(pngPath);
-    state.screenshots.push({
-      label,
-      path: path.relative(state.runDir, pngPath),
-      capturedAt: new Date().toISOString(),
-      note: redact(note),
-      source: "Codex Computer Use get_app_state image",
-      ...(dimensions ? { imageSize: dimensions } : {}),
-    });
-  } else if (image && sensitiveImage) {
-    await addEvent(state, "computer-use.screenshot-omitted", {
-      label,
-      reason: /api-keys/i.test(label)
-        ? "API Keys image omitted because raw accessibility text contained an unmasked key-like secret; redacted text snapshot retained."
-        : "Sensitive view image omitted from screenshot artifacts; redacted accessibility text snapshot retained.",
-    });
-  }
-  if (note) addNarrative(state, note);
-  await addEvent(state, "computer-use.capture", { label, note: redact(note) });
-  await saveState(state);
-  return text;
 }
 
-async function clickByPattern(client, state, text, label, patterns, note = "") {
-  const elementIndex = findElement(text, patterns);
-  if (!elementIndex) {
-    await addEvent(state, "computer-use.click.skipped", {
-      label,
-      note: `No element found for ${label}`,
-    });
-    return false;
+export function classifySuiteFailure(
+  error,
+  { executionTopology = "remote-codex-app-server" } = {},
+) {
+  if (!(error instanceof AggregateError) || error.errors.length === 0) {
+    return classifySingleSuiteFailure(error, { executionTopology });
   }
-  return clickElementIndex(client, state, elementIndex, label, note);
-}
-
-async function clickElementIndex(client, state, elementIndex, label, note = "") {
-  let response;
-  try {
-    response = await client.tool("click", { app: state.app, element_index: elementIndex }, 60000);
-  } catch (error) {
-    await addEvent(state, "computer-use.click.failed", {
-      label,
-      elementIndex,
-      error: redact(error instanceof Error ? error.message : String(error)).slice(0, 800),
-      note,
-    });
-    return false;
-  }
-  const rawResponseText = contentText(response);
-  const responseText = redact(rawResponseText);
-  if (clickResponseIndicatesFailure(response, rawResponseText)) {
-    await addEvent(state, "computer-use.click.failed", {
-      label,
-      elementIndex,
-      response: responseText.slice(0, 800),
-      isError: response?.result?.isError === true,
-      note,
-    });
-    return false;
-  }
-  await addEvent(state, "computer-use.click", {
-    label,
-    elementIndex,
-    response: responseText.slice(0, 800),
-    note,
+  const issues = error.errors.flatMap((item) => {
+    const classified = classifySuiteFailure(item, { executionTopology });
+    return classified.issues || [classified];
   });
-  return true;
-}
-
-async function setValueByPattern(client, state, text, label, patterns, value) {
-  const elementIndex = findElement(text, patterns);
-  if (!elementIndex) {
-    await addEvent(state, "computer-use.set_value.skipped", {
-      label,
-      note: `No element found for ${label}`,
-    });
-    return false;
-  }
-  return setValueElementIndex(client, state, elementIndex, label, value);
-}
-
-async function setValueElementIndex(client, state, elementIndex, label, value) {
-  let response;
-  try {
-    response = await client.tool(
-      "set_value",
-      { app: state.app, element_index: elementIndex, value },
-      60000,
-    );
-  } catch (error) {
-    await addEvent(state, "computer-use.set_value.failed", {
-      label,
-      elementIndex,
-      error: redact(error instanceof Error ? error.message : String(error)).slice(0, 800),
-    });
-    return false;
-  }
-  const rawResponseText = contentText(response);
-  const responseText = redact(rawResponseText);
-  if (setValueResponseIndicatesFailure(response, rawResponseText)) {
-    await addEvent(state, "computer-use.set_value.failed", {
-      label,
-      elementIndex,
-      response: responseText.slice(0, 800),
-      isError: response?.result?.isError === true,
-    });
-    return false;
-  }
-  await addEvent(state, "computer-use.set_value", {
-    label,
-    elementIndex,
-    response: responseText.slice(0, 800),
+  const infrastructureBlocker = issues.some((issue) => issue.infrastructureBlocker);
+  const category = infrastructureBlocker
+    ? "infrastructure"
+    : issues.some((issue) => issue.category === "product")
+      ? "product"
+      : "harness";
+  return Object.freeze({
+    schemaVersion: 1,
+    executionTopology,
+    phase: "multiple",
+    category,
+    code: "multiple_failures",
+    infrastructureBlocker,
+    summary: redact(error.message || "Multiple Computer Use suite failures"),
+    issues: Object.freeze(issues),
   });
-  return true;
 }
 
-async function waitFor(client, state, label, predicate, { attempts = 10, delayMs = 1500 } = {}) {
-  let lastText = "";
-  for (let i = 0; i < attempts; i += 1) {
-    await new Promise((resolve) => setTimeout(resolve, delayMs));
-    lastText = await captureState(
-      client,
-      state,
-      `${label}-${String(i + 1).padStart(2, "0")}`,
-      `Polling ${label}.`,
-    );
-    const result = predicate(lastText);
-    if (result) return { ok: true, text: lastText, result };
-  }
-  return { ok: false, text: lastText };
-}
-
-async function maybeRelaunchRemote(state) {
+async function maybeRelaunchRemote(state, { ssh: sshBoundary = ssh } = {}) {
   if (process.env.NIXMAC_E2E_SKIP_RELAUNCH === "true") {
     await addEvent(state, "remote.relaunch.skipped", {
       reason: "NIXMAC_E2E_SKIP_RELAUNCH=true; caller is responsible for launching nixmac.",
@@ -1304,7 +1826,7 @@ async function maybeRelaunchRemote(state) {
   const dest = process.env.NIXMAC_E2E_REMOTE_SSH_DEST;
   if (!dest) return;
   const remoteAppPath = remoteAppPathFromEnv();
-  const result = ssh(
+  const result = sshBoundary(
     `osascript -e 'tell application id "com.darkmatter.nixmac" to quit' >/dev/null 2>&1 || true; sleep 1; open -n ${shellQuote(remoteAppPath)} || true; sleep 5`,
   );
   await addEvent(state, "remote.relaunch", {
@@ -1314,7 +1836,17 @@ async function maybeRelaunchRemote(state) {
   });
 }
 
-async function inspectReportWithComputerUse(client, state) {
+async function inspectReportWithComputerUse(driver, state, boundaries = {}) {
+  return withEvidenceTreeMutation(state.runDir, () =>
+    inspectReportWithComputerUseAdmitted(driver, state, boundaries),
+  );
+}
+
+async function inspectReportWithComputerUseAdmitted(
+  driver,
+  state,
+  { scpToRemote: scpBoundary = scpToRemote, ssh: sshBoundary = ssh } = {},
+) {
   const dest = process.env.NIXMAC_E2E_REMOTE_SSH_DEST;
   const remoteParent =
     process.env.NIXMAC_E2E_REMOTE_REPORT_DIR || "/tmp/nixmac-computer-use-reports";
@@ -1329,7 +1861,7 @@ async function inspectReportWithComputerUse(client, state) {
     return;
   }
 
-  const mkdirResult = ssh(
+  const mkdirResult = sshBoundary(
     `rm -rf ${shellQuote(remoteDir)} && mkdir -p ${shellQuote(remoteParent)}`,
   );
   if (!mkdirResult.ok) {
@@ -1341,7 +1873,7 @@ async function inspectReportWithComputerUse(client, state) {
     );
     return;
   }
-  const copyResult = scpToRemote(state.runDir, remoteParent);
+  const copyResult = scpBoundary(state.runDir, remoteParent);
   if (!copyResult.ok) {
     updateScenario(
       state,
@@ -1352,7 +1884,7 @@ async function inspectReportWithComputerUse(client, state) {
     return;
   }
   const remoteIndex = `${remoteDir}/index.html`;
-  const openResult = ssh(
+  const openResult = sshBoundary(
     `open -a "Google Chrome" ${shellQuote(`file://${remoteIndex}`)} || open ${shellQuote(`file://${remoteIndex}`)}; sleep 2`,
   );
   await addEvent(state, "report.remote-open", {
@@ -1364,15 +1896,15 @@ async function inspectReportWithComputerUse(client, state) {
   const browserApps = ["com.google.Chrome", "Safari", "com.apple.Safari"];
   for (const app of browserApps) {
     try {
-      const response = await client.tool("get_app_state", { app }, 60000);
-      const text = redact(contentText(response));
+      const visible = await driver.visibleState({ app });
+      const text = redact(visible.text);
       if (
         /nixmac Computer Use|Scenario Checklist|Claims vs Evidence|Failures \/ Open Issues/i.test(
           text,
         )
       ) {
         const label = `report-inspection-${app.replace(/[^a-zA-Z0-9._-]+/g, "-")}`;
-        const image = contentImage(response);
+        const image = visible.imageBase64;
         const textOrdinal = String(state.textSnapshots.length + 1).padStart(2, "0");
         const textPath = path.join(state.runDir, "texts", `${textOrdinal}-${label}.txt`);
         await writeFile(textPath, `${text}\n`, "utf8");
@@ -1425,8 +1957,11 @@ async function inspectReportWithComputerUse(client, state) {
   );
 }
 
-function captureRemoteMetadata(state) {
-  const { metadata, error } = readRemoteMetadata();
+function captureRemoteMetadata(
+  state,
+  { readRemoteMetadata: metadataBoundary = readRemoteMetadata } = {},
+) {
+  const { metadata, error } = metadataBoundary();
   if (!metadata) {
     state.remoteMetadataError = redact(error || "Remote metadata command failed.");
     return;
@@ -1515,9 +2050,9 @@ function evidenceMatches(text, patterns = []) {
   return patterns.filter((pattern) => pattern.test(text)).length;
 }
 
-async function cleanupReviewOnlyCase(client, state, text, caseDef) {
+async function cleanupReviewOnlyCase(driver, state, text, caseDef) {
   const discardOpened = await clickByPattern(
-    client,
+    driver,
     state,
     text,
     `Discard ${caseDef.id}`,
@@ -1526,7 +2061,7 @@ async function cleanupReviewOnlyCase(client, state, text, caseDef) {
   );
   if (discardOpened) {
     text = await captureState(
-      client,
+      driver,
       state,
       `evolved-${caseDef.id}-discard-boundary`,
       `Computer Use opened Discard for ${caseDef.label}.`,
@@ -1535,7 +2070,7 @@ async function cleanupReviewOnlyCase(client, state, text, caseDef) {
       state.safety?.disposableConfig === true && state.safety?.discardConfirmEnabled === true;
     if (canConfirmDiscard) {
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         `Confirm discard ${caseDef.id}`,
@@ -1549,7 +2084,7 @@ async function cleanupReviewOnlyCase(client, state, text, caseDef) {
         { attempts: 20, delayMs: 1000 },
       );
       text = await captureState(
-        client,
+        driver,
         state,
         `evolved-${caseDef.id}-after-discard`,
         `Computer Use cleaned up ${caseDef.label}.`,
@@ -1557,7 +2092,7 @@ async function cleanupReviewOnlyCase(client, state, text, caseDef) {
       return { ok: cleaned.ok, text, method: "discard" };
     }
     await clickByPattern(
-      client,
+      driver,
       state,
       text,
       `Cancel discard ${caseDef.id}`,
@@ -1568,7 +2103,7 @@ async function cleanupReviewOnlyCase(client, state, text, caseDef) {
   const restored = await restoreRemoteBaseline(state, `evolved-${caseDef.id}`);
   await maybeRelaunchRemote(state);
   text = await captureState(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-after-discard`,
     `Computer Use relaunched after external cleanup for ${caseDef.label}.`,
@@ -1576,10 +2111,10 @@ async function cleanupReviewOnlyCase(client, state, text, caseDef) {
   return { ok: restored.ok, text, method: "external-restore" };
 }
 
-async function restoreManagedEditViaHistory(client, state, text, labels) {
+async function restoreManagedEditViaHistory(driver, state, text, labels) {
   if (
     await clickByPattern(
-      client,
+      driver,
       state,
       text,
       `${labels.name} History after commit`,
@@ -1588,14 +2123,14 @@ async function restoreManagedEditViaHistory(client, state, text, labels) {
     )
   ) {
     text = await captureState(
-      client,
+      driver,
       state,
       `${labels.prefix}-history-before-restore`,
       `Computer Use opened History after ${labels.name} commit.`,
     );
     if (
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         `${labels.name} restore previous commit`,
@@ -1604,14 +2139,14 @@ async function restoreManagedEditViaHistory(client, state, text, labels) {
       )
     ) {
       text = await captureState(
-        client,
+        driver,
         state,
         `${labels.prefix}-history-restore-preview`,
         `Computer Use previewed History restore after ${labels.name}.`,
       );
       if (
         await clickByPattern(
-          client,
+          driver,
           state,
           text,
           `${labels.name} confirm restore`,
@@ -1629,7 +2164,7 @@ async function restoreManagedEditViaHistory(client, state, text, labels) {
           },
         );
         text = await captureState(
-          client,
+          driver,
           state,
           `${labels.prefix}-after-history-restore`,
           `Computer Use completed History restore cleanup after ${labels.name}.`,
@@ -1643,11 +2178,11 @@ async function restoreManagedEditViaHistory(client, state, text, labels) {
   return { ok: false, text, method: "history-restore", reason: "history-unreachable" };
 }
 
-async function externallyRestoreManagedEdit(client, state, labels) {
+async function externallyRestoreManagedEdit(driver, state, labels) {
   const restored = await restoreRemoteBaseline(state, labels.prefix);
   await maybeRelaunchRemote(state);
   const text = await captureState(
-    client,
+    driver,
     state,
     `${labels.prefix}-external-restore`,
     `Computer Use relaunched after external cleanup for ${labels.name}.`,
@@ -1655,13 +2190,13 @@ async function externallyRestoreManagedEdit(client, state, labels) {
   return { ok: restored.ok, text, method: "external-restore", snapshot: restored.snapshot };
 }
 
-async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
+async function buildCommitAndRestoreManagedEdit(driver, state, text, labels) {
   const canConfirmBuild =
     state.safety?.disposableConfig === true &&
     state.safety?.buildConfirmEnabled === true &&
     state.remoteConfig?.baselinePrepared === true;
   const buildClicked = await clickByPattern(
-    client,
+    driver,
     state,
     text,
     `${labels.name} Build & Test`,
@@ -1669,7 +2204,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
     `Click Build & Test for ${labels.name}.`,
   );
   if (!buildClicked) {
-    const cleanup = await externallyRestoreManagedEdit(client, state, labels);
+    const cleanup = await externallyRestoreManagedEdit(driver, state, labels);
     return {
       ok: false,
       text: cleanup.text,
@@ -1678,7 +2213,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
   }
 
   text = await captureState(
-    client,
+    driver,
     state,
     `${labels.prefix}-build-boundary`,
     `Computer Use clicked Build & Test for ${labels.name}.`,
@@ -1686,14 +2221,14 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
   const boundary = /Confirm|Are you sure|Cancel/i.test(text);
   if (!boundary || !canConfirmBuild) {
     await clickByPattern(
-      client,
+      driver,
       state,
       text,
       `${labels.name} cancel build boundary`,
       [/Cancel/i, /Close/i, /^button ×/i, /^button X/i],
       `Cancel Build & Test boundary for ${labels.name}.`,
     );
-    const cleanup = await externallyRestoreManagedEdit(client, state, labels);
+    const cleanup = await externallyRestoreManagedEdit(driver, state, labels);
     return {
       ok: false,
       text: cleanup.text,
@@ -1704,7 +2239,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
   }
 
   const buildConfirmed = await clickByPattern(
-    client,
+    driver,
     state,
     text,
     `${labels.name} confirm build boundary`,
@@ -1712,7 +2247,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
     `Confirm Build & Test for ${labels.name} in proven disposable state.`,
   );
   if (!buildConfirmed) {
-    const cleanup = await externallyRestoreManagedEdit(client, state, labels);
+    const cleanup = await externallyRestoreManagedEdit(driver, state, labels);
     return {
       ok: false,
       text: cleanup.text,
@@ -1722,7 +2257,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
 
   let pamSymlinkHangSeen = 0;
   const step3 = await waitFor(
-    client,
+    driver,
     state,
     `${labels.prefix}-build-to-step-3`,
     (candidate) => {
@@ -1755,7 +2290,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
   );
   text = step3.text;
   if (step3.result !== "step-3") {
-    const cleanup = await externallyRestoreManagedEdit(client, state, labels);
+    const cleanup = await externallyRestoreManagedEdit(driver, state, labels);
     const reason =
       step3.result || (buildAppearsActive(text) ? "build-still-active" : "step-3-timeout");
     return {
@@ -1766,14 +2301,14 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
   }
 
   text = await captureState(
-    client,
+    driver,
     state,
     `${labels.prefix}-step-3-ready`,
     `Computer Use reached Step 3 after ${labels.name} Build & Test.`,
   );
   if (/button \(disabled\) Commit/i.test(text)) {
     const commitReady = await waitFor(
-      client,
+      driver,
       state,
       `${labels.prefix}-commit-ready`,
       (candidate) =>
@@ -1790,7 +2325,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
 
   if (
     !(await clickByPattern(
-      client,
+      driver,
       state,
       text,
       `${labels.name} commit changes`,
@@ -1798,7 +2333,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
       `Commit Step 3 changes for ${labels.name}.`,
     ))
   ) {
-    const cleanup = await externallyRestoreManagedEdit(client, state, labels);
+    const cleanup = await externallyRestoreManagedEdit(driver, state, labels);
     return {
       ok: false,
       text: cleanup.text,
@@ -1823,13 +2358,13 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
     },
   );
   text = await captureState(
-    client,
+    driver,
     state,
     `${labels.prefix}-after-commit`,
     `Computer Use committed ${labels.name} changes.`,
   );
   if (!committed.ok) {
-    const cleanup = await externallyRestoreManagedEdit(client, state, labels);
+    const cleanup = await externallyRestoreManagedEdit(driver, state, labels);
     return {
       ok: false,
       text: cleanup.text,
@@ -1837,11 +2372,11 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
     };
   }
 
-  const rollback = await restoreManagedEditViaHistory(client, state, text, labels);
+  const rollback = await restoreManagedEditViaHistory(driver, state, text, labels);
   if (rollback.ok) {
     await maybeRelaunchRemote(state);
     text = await captureState(
-      client,
+      driver,
       state,
       `${labels.prefix}-after-rollback-home`,
       `Computer Use returned to the prompt surface after ${labels.name} rollback cleanup.`,
@@ -1853,7 +2388,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
     };
   }
 
-  const cleanup = await externallyRestoreManagedEdit(client, state, labels);
+  const cleanup = await externallyRestoreManagedEdit(driver, state, labels);
   return {
     ok: cleanup.ok,
     text: cleanup.text,
@@ -1863,10 +2398,10 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
   };
 }
 
-async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey, config) {
+async function runConditionalBadgeSaveScenario(driver, state, text, scenarioKey, config) {
   if (!hasAny(text, config.badgePatterns)) {
     text = await captureState(
-      client,
+      driver,
       state,
       `${config.prefix}-absent`,
       `Computer Use checked for ${config.name}; no matching chip was visible.`,
@@ -1882,7 +2417,7 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
 
   if (
     !(await clickByPattern(
-      client,
+      driver,
       state,
       text,
       `${config.name} chip`,
@@ -1900,14 +2435,14 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
   }
 
   text = await captureState(
-    client,
+    driver,
     state,
     `${config.prefix}-popover`,
     `Computer Use opened ${config.name} Add to config popover.`,
   );
   if (
     !(await clickByPattern(
-      client,
+      driver,
       state,
       text,
       `${config.name} Add to config`,
@@ -1925,7 +2460,7 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
   }
 
   const applyWait = await waitFor(
-    client,
+    driver,
     state,
     `${config.prefix}-apply`,
     (candidate) => {
@@ -1945,7 +2480,7 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
   );
   text = applyWait.text;
   if (applyWait.result !== "review") {
-    const cleanup = await externallyRestoreManagedEdit(client, state, {
+    const cleanup = await externallyRestoreManagedEdit(driver, state, {
       name: config.name,
       prefix: config.prefix,
     });
@@ -1959,12 +2494,12 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
   }
 
   text = await captureState(
-    client,
+    driver,
     state,
     `${config.prefix}-apply`,
     `Computer Use reached review/build state after applying ${config.name} to config.`,
   );
-  const result = await buildCommitAndRestoreManagedEdit(client, state, text, {
+  const result = await buildCommitAndRestoreManagedEdit(driver, state, text, {
     name: config.name,
     prefix: config.prefix,
   });
@@ -1973,7 +2508,7 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
   return result.text;
 }
 
-async function runReviewOnlyEvolvedCase(client, state, caseDef) {
+async function runReviewOnlyEvolvedCase(driver, state, caseDef) {
   state.scenarios[caseDef.scenarioKey] ||= {
     label: `Optional evolved case: ${caseDef.label}`,
     status: "inconclusive",
@@ -1995,13 +2530,13 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
   });
   await maybeRelaunchRemote(state);
   let text = await captureState(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-home`,
     `Computer Use started optional evolved case: ${caseDef.label}.`,
   );
   const inputSet = await setValueByPattern(
-    client,
+    driver,
     state,
     text,
     `Prompt input ${caseDef.id}`,
@@ -2009,7 +2544,7 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
     caseDef.prompt,
   );
   text = await captureState(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-typed`,
     `Computer Use entered optional evolved prompt: ${caseDef.label}.`,
@@ -2021,7 +2556,7 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
     return text;
   }
   const submitted = await clickByPattern(
-    client,
+    driver,
     state,
     text,
     `Send ${caseDef.id}`,
@@ -2035,7 +2570,7 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
     return text;
   }
   const wait = await waitFor(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-provider-progress`,
     (candidate) => {
@@ -2076,7 +2611,7 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
   let evidenceText = text;
   if (
     await clickByPattern(
-      client,
+      driver,
       state,
       text,
       `Summary ${caseDef.id}`,
@@ -2085,7 +2620,7 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
     )
   ) {
     text = await captureState(
-      client,
+      driver,
       state,
       `evolved-${caseDef.id}-summary`,
       `Computer Use opened Summary for ${caseDef.label}.`,
@@ -2094,7 +2629,7 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
   }
   if (
     await clickByPattern(
-      client,
+      driver,
       state,
       text,
       `Diff ${caseDef.id}`,
@@ -2103,7 +2638,7 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
     )
   ) {
     text = await captureState(
-      client,
+      driver,
       state,
       `evolved-${caseDef.id}-diff`,
       `Computer Use opened Diff for ${caseDef.label}.`,
@@ -2111,7 +2646,7 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
     evidenceText += `\n${text}`;
   }
   const matches = evidenceMatches(evidenceText, caseDef.expectedEvidence);
-  const cleanup = await cleanupReviewOnlyCase(client, state, text, caseDef);
+  const cleanup = await cleanupReviewOnlyCase(driver, state, text, caseDef);
   run.status = matches >= 2 && cleanup.ok ? "pass" : matches >= 2 ? "inconclusive" : "fail";
   run.notes.push(
     matches >= 2
@@ -2128,10 +2663,10 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
   return cleanup.text;
 }
 
-async function stopGeneratingIfVisible(client, state, text, label) {
+async function stopGeneratingIfVisible(driver, state, text, label) {
   if (!/button Stop/i.test(text)) return { clicked: false, text };
   const clicked = await clickByPattern(
-    client,
+    driver,
     state,
     text,
     `Stop ${label}`,
@@ -2140,7 +2675,7 @@ async function stopGeneratingIfVisible(client, state, text, label) {
   );
   if (!clicked) return { clicked: false, text };
   const nextText = await captureState(
-    client,
+    driver,
     state,
     `evolved-${label}-after-stop`,
     `Computer Use clicked Stop for stalled optional evolved case: ${label}.`,
@@ -2148,13 +2683,13 @@ async function stopGeneratingIfVisible(client, state, text, label) {
   return { clicked: true, text: nextText };
 }
 
-async function cleanupQuestionAnswerCase(client, state, text, caseDef) {
-  const stopped = await stopGeneratingIfVisible(client, state, text, caseDef.id);
+async function cleanupQuestionAnswerCase(driver, state, text, caseDef) {
+  const stopped = await stopGeneratingIfVisible(driver, state, text, caseDef.id);
   const restored = await restoreRemoteBaseline(state, `evolved-${caseDef.id}`);
   await maybeRelaunchRemote(state);
   const reason = restored.ok ? "" : ` Restore reason: ${restored.reason || "unknown"}.`;
   const nextText = await captureState(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-after-discard`,
     `Computer Use relaunched after cleanup for ${caseDef.label}.${reason}`,
@@ -2167,7 +2702,7 @@ async function cleanupQuestionAnswerCase(client, state, text, caseDef) {
   };
 }
 
-async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
+async function runQuestionAnswerEvolvedCase(driver, state, caseDef) {
   state.scenarios[caseDef.scenarioKey] ||= {
     label: `Optional evolved case: ${caseDef.label}`,
     status: "inconclusive",
@@ -2189,13 +2724,13 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
   });
   await maybeRelaunchRemote(state);
   let text = await captureState(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-home`,
     `Computer Use started optional evolved case: ${caseDef.label}.`,
   );
   const inputSet = await setValueByPattern(
-    client,
+    driver,
     state,
     text,
     `Prompt input ${caseDef.id}`,
@@ -2203,7 +2738,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     caseDef.prompt,
   );
   text = await captureState(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-typed`,
     `Computer Use entered optional evolved prompt: ${caseDef.label}.`,
@@ -2215,7 +2750,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     return text;
   }
   const submitted = await clickByPattern(
-    client,
+    driver,
     state,
     text,
     `Send ${caseDef.id}`,
@@ -2230,7 +2765,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
   }
 
   const questionWait = await waitFor(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-question`,
     (candidate) => {
@@ -2267,7 +2802,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
         ? "Provider reached Review without showing the inline question UI, so this run did not exercise ask_user."
         : "Question UI did not appear before the question polling window ended.",
     );
-    const cleanup = await cleanupQuestionAnswerCase(client, state, text, caseDef);
+    const cleanup = await cleanupQuestionAnswerCase(driver, state, text, caseDef);
     run.notes.push(
       cleanup.ok
         ? `Cleanup succeeded via ${cleanup.method}.`
@@ -2276,7 +2811,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     updateScenario(state, caseDef.scenarioKey, run.status, run.notes.join(" "));
     return cleanup.text;
   }
-  if (/error$/.test(questionWait.result)) {
+  if (questionWait.result.endsWith("error")) {
     run.status = "fail";
     run.notes.push(
       `Provider reached ${questionWait.result} before inline question could be answered.`,
@@ -2286,7 +2821,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
   }
 
   text = await captureState(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-question`,
     `Computer Use observed inline question UI for ${caseDef.label}.`,
@@ -2296,8 +2831,9 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     const choice = findQuestionChoiceEntry(text, caseDef.questionChoicePatterns || []);
     answered = choice
       ? await clickElementIndex(
-          client,
+          driver,
           state,
+          text,
           choice.index,
           `Question choice ${caseDef.id}`,
           `Answer inline question for ${caseDef.label} via choice: ${choice.label}.`,
@@ -2307,15 +2843,16 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     const input = findQuestionInputEntry(text);
     answered = input
       ? await setValueElementIndex(
-          client,
+          driver,
           state,
+          text,
           input.index,
           `Question answer ${caseDef.id}`,
           caseDef.answer,
         )
       : false;
     text = await captureState(
-      client,
+      driver,
       state,
       `evolved-${caseDef.id}-answer-typed`,
       `Computer Use typed inline question answer for ${caseDef.label}.`,
@@ -2324,8 +2861,9 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     answered =
       answered && submit
         ? await clickElementIndex(
-            client,
+            driver,
             state,
+            text,
             submit.index,
             `Submit question answer ${caseDef.id}`,
             `Submit inline question answer for ${caseDef.label}.`,
@@ -2337,7 +2875,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     run.notes.push(
       "Inline question UI appeared, but Computer Use could not answer it through a question-scoped control.",
     );
-    const cleanup = await cleanupQuestionAnswerCase(client, state, text, caseDef);
+    const cleanup = await cleanupQuestionAnswerCase(driver, state, text, caseDef);
     run.notes.push(
       cleanup.ok
         ? `Cleanup succeeded via ${cleanup.method}.`
@@ -2348,7 +2886,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
   }
 
   const answerWait = await waitFor(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-answered`,
     (candidate) => {
@@ -2366,14 +2904,14 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     },
   );
   text = await captureState(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-answered`,
     `Computer Use submitted inline question answer for ${caseDef.label}.`,
   );
 
   const reviewWait = await waitFor(
-    client,
+    driver,
     state,
     `evolved-${caseDef.id}-provider-progress`,
     (candidate) => {
@@ -2409,7 +2947,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
         ? `Provider reached ${reviewWait.result} after answer.`
         : "Review did not appear after inline question answer before the polling window ended.",
     );
-    const cleanup = await cleanupQuestionAnswerCase(client, state, text, caseDef);
+    const cleanup = await cleanupQuestionAnswerCase(driver, state, text, caseDef);
     run.notes.push(
       cleanup.ok
         ? `Cleanup succeeded via ${cleanup.method}.`
@@ -2422,7 +2960,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
   let evidenceText = text;
   if (
     await clickByPattern(
-      client,
+      driver,
       state,
       text,
       `Summary ${caseDef.id}`,
@@ -2431,7 +2969,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     )
   ) {
     text = await captureState(
-      client,
+      driver,
       state,
       `evolved-${caseDef.id}-summary`,
       `Computer Use opened Summary for ${caseDef.label}.`,
@@ -2440,7 +2978,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
   }
   if (
     await clickByPattern(
-      client,
+      driver,
       state,
       text,
       `Diff ${caseDef.id}`,
@@ -2449,7 +2987,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     )
   ) {
     text = await captureState(
-      client,
+      driver,
       state,
       `evolved-${caseDef.id}-diff`,
       `Computer Use opened Diff for ${caseDef.label}.`,
@@ -2457,7 +2995,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
     evidenceText += `\n${text}`;
   }
   const matches = evidenceMatches(evidenceText, caseDef.expectedEvidence);
-  const cleanup = await cleanupReviewOnlyCase(client, state, text, caseDef);
+  const cleanup = await cleanupReviewOnlyCase(driver, state, text, caseDef);
   run.status = matches >= 2 && cleanup.ok ? "pass" : matches >= 2 ? "inconclusive" : "fail";
   run.notes.push(
     matches >= 2
@@ -2480,7 +3018,7 @@ function evolvedCaseExecutorForMode(mode) {
   return null;
 }
 
-async function prepareDisposableRemoteBaseline(state) {
+async function prepareDisposableRemoteBaseline(state, { ssh: sshBoundary = ssh } = {}) {
   const canConfirmBuild =
     state.safety?.disposableConfig === true && state.safety?.buildConfirmEnabled === true;
   if (!canConfirmBuild) {
@@ -2502,7 +3040,7 @@ async function prepareDisposableRemoteBaseline(state) {
   await addRemoteGitEvent(state, "remote.git.initial", initial);
   if (!initial.ok) return null;
 
-  const markerResult = ssh(
+  const markerResult = sshBoundary(
     [
       `cd ${shellQuote(configDir)}`,
       'git config user.name "nixmac E2E"',
@@ -2537,10 +3075,22 @@ async function prepareDisposableRemoteBaseline(state) {
   return baseline;
 }
 
-async function render(state, { stateFileName = "state.json", recordEvent = true } = {}) {
+async function render(state, options = {}) {
+  return withEvidenceTreeMutation(state.runDir, () => renderAdmitted(state, options));
+}
+
+async function renderAdmitted(
+  state,
+  {
+    generateVideo = true,
+    recordEvent = true,
+    stateFileName = "state.json",
+    updateStorybook = true,
+  } = {},
+) {
   const renderStartedAt = nowIso();
   ensureCurrentSchema(state);
-  updateStorybookPreviewCoverage(state);
+  if (updateStorybook) updateStorybookPreviewCoverage(state);
   const verdict = verdictFor(state);
   state.verdict = verdict;
   updateV2Contracts(state);
@@ -2549,7 +3099,14 @@ async function render(state, { stateFileName = "state.json", recordEvent = true 
     status: scenario.status,
     evidence: scenario.notes.join(" ") || "See proof artifacts and coverage gaps.",
   }));
-  await maybeGenerateEvidenceVideo(state);
+  if (generateVideo) {
+    await maybeGenerateEvidenceVideo(state);
+  } else {
+    state.video = {
+      status: "not_required",
+      note: "The bounded smoke command retains screenshots and text evidence without generating video.",
+    };
+  }
   const html = await renderReportHtml(state, { proofForScenario });
   await writeFile(path.join(state.runDir, "index.html"), html, "utf8");
   addTimingPhase(state, {
@@ -2575,34 +3132,130 @@ async function render(state, { stateFileName = "state.json", recordEvent = true 
   if (recordEvent) await addEvent(state, "report.rendered", { path: "index.html", verdict });
 }
 
-async function runSuite(args) {
-  if (args.includes("--prompt") || process.env.NIXMAC_E2E_PROMPT) {
+export async function runSuiteWithDriver(
+  args,
+  {
+    createDriver,
+    env = process.env,
+    executionTopology,
+    localPreflightDependencies = {},
+    runPreflightDependencies = {},
+    transportBoundaries = {},
+  } = {},
+) {
+  if (args.includes("--prompt") || env.NIXMAC_E2E_PROMPT) {
     throw new Error(
       "Custom prompts are not supported by this E2E runner; assertions are calibrated to the fixed bat/Homebrew prompt.",
     );
   }
   const options = {
-    ws: process.env.NIXMAC_COMPUTER_USE_WS || DEFAULT_WS,
-    app: process.env.NIXMAC_COMPUTER_USE_APP || DEFAULT_APP,
+    app: env.NIXMAC_COMPUTER_USE_APP || DEFAULT_APP,
     prompt: DEFAULT_PROMPT,
+    ...(executionTopology === "remote-codex-app-server"
+      ? { ws: env.NIXMAC_COMPUTER_USE_WS || DEFAULT_WS }
+      : {}),
   };
-  const runDir = argValue(args, "--run-dir", path.join(ARTIFACT_ROOT, timestampSlug()));
+  let runDir = path.resolve(argValue(args, "--run-dir", path.join(ARTIFACT_ROOT, timestampSlug())));
+  if (typeof createDriver !== "function") {
+    throw new TypeError("runSuiteWithDriver requires createDriver");
+  }
+  if (executionTopology !== "remote-codex-app-server" && executionTopology !== "local-cua-driver") {
+    throw new Error(`unsupported Computer Use execution topology: ${executionTopology}`);
+  }
+  await withEvidenceTreeMutation(runDir, async () => {
+    await mkdir(path.join(runDir, "screenshots"), { recursive: true });
+    await mkdir(path.join(runDir, "texts"), { recursive: true });
+  });
+  if (executionTopology === "local-cua-driver") runDir = await realpath(runDir);
   activeRunDir = runDir;
-  await mkdir(path.join(runDir, "screenshots"), { recursive: true });
-  await mkdir(path.join(runDir, "texts"), { recursive: true });
-  const state = await baseState(runDir, options);
+  const state = await baseState(runDir, options, { env });
+  state.executionTopology = executionTopology;
+  if (executionTopology === "local-cua-driver") markLocalReportInspectionNotRequired(state);
   await saveState(state);
   const computerUseStartedAt = nowIso();
 
-  const client = new AppServerClient(options.ws);
+  let socketEndpoint = null;
+  let localPreflight = null;
+  let driver = null;
+  let runProvisioning = null;
+  let suiteCompleted = false;
+  let suiteFailure = null;
+  let closeFailure = null;
+  let trustedRunPreflight = null;
+  let uiStarted = false;
+  let ownedProcessSnapshots = [];
+  let processSnapshotFailure = "";
+  const runPreflightAssertionDependencies = {
+    computeAppBundleDigest: runPreflightDependencies.computeAppBundleDigest,
+  };
   try {
-    await client.connect();
-    await prepareDisposableRemoteBaseline(state);
-    await maybeRelaunchRemote(state);
-    captureRemoteMetadata(state);
+    if (executionTopology === "local-cua-driver") {
+      socketEndpoint = await createOwnedCuaSocketEndpoint({
+        requestedPath: env.NIXMAC_CUA_DRIVER_SOCKET || "",
+      });
+    }
+    driver = validateRuntimeDriver(
+      createDriver({
+        ...options,
+        runDir,
+        ...(socketEndpoint ? { socketPath: socketEndpoint.path } : {}),
+      }),
+    );
+    if (executionTopology === "local-cua-driver") {
+      runProvisioning = await writeLocalRunProvisioning(
+        { driver, runDir, socketEndpoint },
+        {
+          env,
+          ...runPreflightDependencies,
+        },
+      );
+      localPreflight = await validateLocalCuaPreflight(
+        {
+          appBundleId: options.app,
+          runDir,
+        },
+        {
+          env,
+          ...localPreflightDependencies,
+        },
+      );
+      state.localApp = {
+        artifactSha: localPreflight.appArtifactSha,
+        bundleDigestSha256: localPreflight.appBundleDigestSha256,
+        bundleId: localPreflight.appBundleId,
+        path: localPreflight.appPath,
+      };
+      await saveState(state);
+      await driver.connect();
+      await recordRunPermissions(runDir, {
+        accessibilityGranted: true,
+        screenRecordingGranted: true,
+      });
+      trustedRunPreflight = await assertRunPreflight(runDir, runPreflightAssertionDependencies);
+      await driver.prepareTarget({
+        appBundleId: options.app,
+        appPath: localPreflight.appPath,
+      });
+      await transitionRunAttempt(runDir, "RUNNING");
+    } else {
+      await prepareSuiteDriver(driver, {
+        executionTopology,
+        appBundleId: options.app,
+        localPreflight,
+      });
+    }
+    if (localPreflight) {
+      await verifyLocalCuaPreflight(localPreflight, localPreflightDependencies);
+    }
+    if (executionTopology === "remote-codex-app-server") {
+      await prepareDisposableRemoteBaseline(state, transportBoundaries);
+      await maybeRelaunchRemote(state, transportBoundaries);
+      captureRemoteMetadata(state, transportBoundaries);
+    }
 
+    uiStarted = true;
     let text = await captureState(
-      client,
+      driver,
       state,
       "launch",
       "Computer Use observed the nixmac window at launch.",
@@ -2633,7 +3286,7 @@ async function runSuite(args) {
 
     const updateDismissButtonPresent = Boolean(findElement(text, [/button Dismiss/i]));
     const updateDismissed = await clickByPattern(
-      client,
+      driver,
       state,
       text,
       "Dismiss update banner",
@@ -2642,7 +3295,7 @@ async function runSuite(args) {
     );
     if (updateDismissed) {
       text = await captureState(
-        client,
+        driver,
         state,
         "after-dismiss",
         "Computer Use clicked a visible Dismiss button.",
@@ -2670,14 +3323,14 @@ async function runSuite(args) {
     }
 
     const settingsOpened = await clickByPattern(
-      client,
+      driver,
       state,
       text,
       "Settings",
       [/button Settings/i],
       "Open Settings.",
     );
-    text = await captureState(client, state, "settings-general", "Computer Use opened Settings.");
+    text = await captureState(driver, state, "settings-general", "Computer Use opened Settings.");
     if (settingsOpened && hasSettingsGeneralEvidence(text)) {
       updateScenario(
         state,
@@ -2696,7 +3349,7 @@ async function runSuite(args) {
 
     if (
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "AI Models tab",
@@ -2705,7 +3358,7 @@ async function runSuite(args) {
       )
     ) {
       text = await captureState(
-        client,
+        driver,
         state,
         "settings-ai-models",
         "Computer Use opened AI Models settings.",
@@ -2730,7 +3383,7 @@ async function runSuite(args) {
 
     if (
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "API Keys tab",
@@ -2739,7 +3392,7 @@ async function runSuite(args) {
       )
     ) {
       const apiWait = await waitFor(
-        client,
+        driver,
         state,
         "settings-api-keys",
         (candidate) => (hasSettingsAPIKeysEvidence(candidate) ? "rendered" : null),
@@ -2766,13 +3419,13 @@ async function runSuite(args) {
     if (state.scenarios.settingsAPIKeys.status === "fail") {
       await maybeRelaunchRemote(state);
       text = await captureState(
-        client,
+        driver,
         state,
         "recover-after-api-keys",
         "Relaunched after API Keys blank-screen reproduction so the rest of the suite could continue.",
       );
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Settings after recovery",
@@ -2780,7 +3433,7 @@ async function runSuite(args) {
         "Reopen Settings after recovery.",
       );
       text = await captureState(
-        client,
+        driver,
         state,
         "settings-after-recovery",
         "Computer Use reopened Settings after recovery.",
@@ -2789,7 +3442,7 @@ async function runSuite(args) {
 
     if (
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Preferences tab",
@@ -2798,7 +3451,7 @@ async function runSuite(args) {
       )
     ) {
       text = await captureState(
-        client,
+        driver,
         state,
         "settings-preferences",
         "Computer Use opened Preferences settings.",
@@ -2822,7 +3475,7 @@ async function runSuite(args) {
     }
 
     await clickByPattern(
-      client,
+      driver,
       state,
       text,
       "Close settings",
@@ -2830,16 +3483,16 @@ async function runSuite(args) {
       "Close Settings.",
     );
     text = await captureState(
-      client,
+      driver,
       state,
       "home-after-settings",
       "Computer Use returned to the main app surface after Settings coverage.",
     );
 
     if (
-      await clickByPattern(client, state, text, "History", [/button History/i], "Open My History.")
+      await clickByPattern(driver, state, text, "History", [/button History/i], "Open My History.")
     ) {
-      text = await captureState(client, state, "history", "Computer Use opened History.");
+      text = await captureState(driver, state, "history", "Computer Use opened History.");
       updateScenario(
         state,
         "history",
@@ -2849,7 +3502,7 @@ async function runSuite(args) {
           : "History did not visibly render expected content.",
       );
       const closedHistory = await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Close history",
@@ -2858,7 +3511,7 @@ async function runSuite(args) {
       );
       if (!closedHistory && /heading History/i.test(text)) {
         await clickByPattern(
-          client,
+          driver,
           state,
           text,
           "Toggle history closed",
@@ -2867,15 +3520,15 @@ async function runSuite(args) {
         );
       }
       text = await captureState(
-        client,
+        driver,
         state,
         "home-after-history",
         "Computer Use returned home after History.",
       );
     }
 
-    if (await clickByPattern(client, state, text, "Console", [/Console/i], "Open Console.")) {
-      text = await captureState(client, state, "console", "Computer Use opened Console.");
+    if (await clickByPattern(driver, state, text, "Console", [/Console/i], "Open Console.")) {
+      text = await captureState(driver, state, "console", "Computer Use opened Console.");
       updateScenario(
         state,
         "console",
@@ -2885,7 +3538,7 @@ async function runSuite(args) {
           : "Console did not visibly render expected content.",
       );
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Close console",
@@ -2893,7 +3546,7 @@ async function runSuite(args) {
         "Close Console.",
       );
       text = await captureState(
-        client,
+        driver,
         state,
         "home-after-console",
         "Computer Use returned home after Console.",
@@ -2909,7 +3562,7 @@ async function runSuite(args) {
 
     if (
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Give feedback",
@@ -2917,7 +3570,7 @@ async function runSuite(args) {
         "Open Give Feedback.",
       )
     ) {
-      text = await captureState(client, state, "feedback", "Computer Use opened Give Feedback.");
+      text = await captureState(driver, state, "feedback", "Computer Use opened Give Feedback.");
       updateScenario(
         state,
         "feedback",
@@ -2927,7 +3580,7 @@ async function runSuite(args) {
           : "Feedback dialog did not visibly render.",
       );
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Cancel feedback",
@@ -2935,7 +3588,7 @@ async function runSuite(args) {
         "Cancel Give Feedback.",
       );
       text = await captureState(
-        client,
+        driver,
         state,
         "home-after-feedback",
         "Computer Use returned home after Feedback.",
@@ -2944,7 +3597,7 @@ async function runSuite(args) {
 
     if (
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Report Issue",
@@ -2952,7 +3605,7 @@ async function runSuite(args) {
         "Open Report Issue.",
       )
     ) {
-      text = await captureState(client, state, "report-issue", "Computer Use opened Report Issue.");
+      text = await captureState(driver, state, "report-issue", "Computer Use opened Report Issue.");
       updateScenario(
         state,
         "reportIssue",
@@ -2962,7 +3615,7 @@ async function runSuite(args) {
           : "Report Issue did not visibly render.",
       );
       await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Cancel report issue",
@@ -2970,7 +3623,7 @@ async function runSuite(args) {
         "Cancel Report Issue.",
       );
       text = await captureState(
-        client,
+        driver,
         state,
         "home-after-report-issue",
         "Computer Use returned home after Report Issue.",
@@ -2984,14 +3637,14 @@ async function runSuite(args) {
       );
     }
 
-    text = await runConditionalBadgeSaveScenario(client, state, text, "homebrewSaveRollback", {
+    text = await runConditionalBadgeSaveScenario(driver, state, text, "homebrewSaveRollback", {
       name: "Untracked Homebrew items",
       prefix: "homebrew",
       badgePatterns: [/untracked Homebrew/i],
       absentNoun: "Homebrew items",
     });
 
-    text = await runConditionalBadgeSaveScenario(client, state, text, "customizationSaveRollback", {
+    text = await runConditionalBadgeSaveScenario(driver, state, text, "customizationSaveRollback", {
       name: "Untracked customizations",
       prefix: "customization",
       badgePatterns: [/untracked settings?/i],
@@ -3001,7 +3654,7 @@ async function runSuite(args) {
     const suggestionVisible = hasAny(text, [/Install vim/i, /Add Rectangle/i, /Finder path bar/i]);
     const suggestionClicked = suggestionVisible
       ? await clickByPattern(
-          client,
+          driver,
           state,
           text,
           "Suggestion card",
@@ -3010,7 +3663,7 @@ async function runSuite(args) {
         )
       : false;
     text = await captureState(
-      client,
+      driver,
       state,
       "suggestion-card",
       "Computer Use checked home suggestion cards.",
@@ -3027,7 +3680,7 @@ async function runSuite(args) {
     );
 
     const inputSet = await setValueByPattern(
-      client,
+      driver,
       state,
       text,
       "Prompt input",
@@ -3035,7 +3688,7 @@ async function runSuite(args) {
       options.prompt,
     );
     text = await captureState(
-      client,
+      driver,
       state,
       "typed-intent",
       "Computer Use set a real prompt in the app prompt field.",
@@ -3059,7 +3712,7 @@ async function runSuite(args) {
     if (
       inputSet &&
       (await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Send prompt",
@@ -3068,7 +3721,7 @@ async function runSuite(args) {
       ))
     ) {
       const wait = await waitFor(
-        client,
+        driver,
         state,
         "provider-progress",
         (candidate) => {
@@ -3151,7 +3804,7 @@ async function runSuite(args) {
 
     if (state.scenarios.review.status === "pass") {
       const summaryClicked = await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Summary tab",
@@ -3160,7 +3813,7 @@ async function runSuite(args) {
       );
       if (summaryClicked) {
         text = await captureState(
-          client,
+          driver,
           state,
           "review-summary",
           "Computer Use opened Summary after Review.",
@@ -3184,7 +3837,7 @@ async function runSuite(args) {
         );
       }
       const diffClicked = await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Diff tab",
@@ -3193,7 +3846,7 @@ async function runSuite(args) {
       );
       if (diffClicked) {
         text = await captureState(
-          client,
+          driver,
           state,
           "review-diff",
           "Computer Use opened Diff after Review.",
@@ -3219,7 +3872,7 @@ async function runSuite(args) {
         );
       }
       const buildClicked = await clickByPattern(
-        client,
+        driver,
         state,
         text,
         "Build & Test",
@@ -3228,7 +3881,7 @@ async function runSuite(args) {
       );
       if (buildClicked) {
         text = await captureState(
-          client,
+          driver,
           state,
           "build-boundary",
           "Computer Use clicked Build & Test to verify the destructive boundary.",
@@ -3249,7 +3902,7 @@ async function runSuite(args) {
           state.remoteConfig?.baselinePrepared === true;
         if (boundary && canConfirmBuild) {
           const buildConfirmed = await clickByPattern(
-            client,
+            driver,
             state,
             text,
             "Confirm build boundary",
@@ -3262,7 +3915,7 @@ async function runSuite(args) {
             );
             let pamSymlinkHangSeen = 0;
             const step3 = await waitFor(
-              client,
+              driver,
               state,
               "build-to-step-3",
               (candidate) => {
@@ -3296,14 +3949,14 @@ async function runSuite(args) {
             text = step3.text;
             if (step3.result === "step-3") {
               text = await captureState(
-                client,
+                driver,
                 state,
                 "step-3-ready",
                 "Computer Use reached Step 3 after Build & Test.",
               );
               if (/button \(disabled\) Commit/i.test(text)) {
                 const commitReady = await waitFor(
-                  client,
+                  driver,
                   state,
                   "commit-ready",
                   (candidate) =>
@@ -3320,7 +3973,7 @@ async function runSuite(args) {
               }
               if (
                 await clickByPattern(
-                  client,
+                  driver,
                   state,
                   text,
                   "Commit changes",
@@ -3344,7 +3997,7 @@ async function runSuite(args) {
                   },
                 );
                 text = await captureState(
-                  client,
+                  driver,
                   state,
                   "after-commit",
                   "Computer Use committed Step 3 changes.",
@@ -3473,7 +4126,7 @@ async function runSuite(args) {
             baselinePrepared: Boolean(state.remoteConfig?.baselinePrepared),
           });
           await clickByPattern(
-            client,
+            driver,
             state,
             text,
             "Cancel build boundary",
@@ -3481,7 +4134,7 @@ async function runSuite(args) {
             "Cancel Build & Test boundary.",
           );
           text = await captureState(
-            client,
+            driver,
             state,
             "after-build-cancel",
             "Computer Use cancelled the Build & Test boundary.",
@@ -3523,7 +4176,7 @@ async function runSuite(args) {
       if (state.scenarios.saveFlow.status === "pass") {
         if (
           await clickByPattern(
-            client,
+            driver,
             state,
             text,
             "History after commit",
@@ -3532,14 +4185,14 @@ async function runSuite(args) {
           )
         ) {
           text = await captureState(
-            client,
+            driver,
             state,
             "history-before-restore",
             "Computer Use opened History after Step 3 commit.",
           );
           if (
             await clickByPattern(
-              client,
+              driver,
               state,
               text,
               "Restore previous commit",
@@ -3548,14 +4201,14 @@ async function runSuite(args) {
             )
           ) {
             text = await captureState(
-              client,
+              driver,
               state,
               "history-restore-preview",
               "Computer Use previewed History restore.",
             );
             if (
               await clickByPattern(
-                client,
+                driver,
                 state,
                 text,
                 "Confirm restore",
@@ -3577,7 +4230,7 @@ async function runSuite(args) {
                 },
               );
               text = await captureState(
-                client,
+                driver,
                 state,
                 "after-history-restore",
                 "Computer Use completed History restore cleanup.",
@@ -3658,7 +4311,7 @@ async function runSuite(args) {
         );
       } else if (
         await clickByPattern(
-          client,
+          driver,
           state,
           text,
           "Discard",
@@ -3667,7 +4320,7 @@ async function runSuite(args) {
         )
       ) {
         text = await captureState(
-          client,
+          driver,
           state,
           "discard-boundary",
           "Computer Use opened Discard confirmation.",
@@ -3681,7 +4334,7 @@ async function runSuite(args) {
         let exitedDiscard = false;
         if (canConfirmDiscard) {
           exitedDiscard = await clickByPattern(
-            client,
+            driver,
             state,
             text,
             "Confirm discard",
@@ -3698,7 +4351,7 @@ async function runSuite(args) {
         }
         if (!exitedDiscard)
           await clickByPattern(
-            client,
+            driver,
             state,
             text,
             "Cancel discard",
@@ -3706,7 +4359,7 @@ async function runSuite(args) {
             "Exit Discard dialog without confirming.",
           );
         text = await captureState(
-          client,
+          driver,
           state,
           "after-discard",
           "Computer Use exited Discard flow.",
@@ -3796,12 +4449,20 @@ async function runSuite(args) {
     for (const caseDef of enabledExtraEvolvedCases()) {
       const executor = evolvedCaseExecutorForMode(caseDef.mode);
       if (executor) {
-        text = await executor(client, state, caseDef);
+        text = await executor(driver, state, caseDef);
       } else {
         await addEvent(state, "evolved-case.skipped", {
           id: caseDef.id,
           reason: `Mode ${caseDef.mode} is not executed by the default remote runner.`,
         });
+      }
+    }
+
+    if (executionTopology === "local-cua-driver") {
+      for (const screenshot of state.screenshots) {
+        if (screenshot.source === "Codex Computer Use get_app_state image") {
+          screenshot.source = "CuaDriver get_window_state image";
+        }
       }
     }
 
@@ -3831,7 +4492,9 @@ async function runSuite(args) {
     updateMainCoverageFreshness(state);
 
     state.cleanup.note =
-      "Remote app state was not restored by this runner. CI wrapper is responsible for remote app-support backup/restore; local artifacts are retained.";
+      executionTopology === "local-cua-driver"
+        ? "The local CuaDriver owns target-app and daemon cleanup; disposable config cleanup is finalized by the workflow."
+        : "Remote app state was not restored by this runner. CI wrapper is responsible for remote app-support backup/restore; local artifacts are retained.";
     addTimingPhase(state, {
       id: "computer-use-run",
       label: "Computer Use run",
@@ -3840,31 +4503,383 @@ async function runSuite(args) {
       status: "success",
       startedAt: computerUseStartedAt,
       endedAt: nowIso(),
-      note: "Connected to Codex app-server, exercised the calibrated nixmac Computer Use suite, and reached report generation.",
+      note:
+        executionTopology === "local-cua-driver"
+          ? "Connected to the local CuaDriver, exercised the calibrated nixmac Computer Use suite, and reached report generation."
+          : "Connected to Codex app-server, exercised the calibrated nixmac Computer Use suite, and reached report generation.",
     });
+    if (executionTopology === "local-cua-driver") {
+      await transitionRunAttempt(runDir, "UPLOADING");
+    }
     await render(state);
-    await inspectReportWithComputerUse(client, state);
+    if (executionTopology === "remote-codex-app-server") {
+      const inspectReport =
+        transportBoundaries.inspectReportWithComputerUse || inspectReportWithComputerUse;
+      await inspectReport(driver, state, transportBoundaries);
+    }
     refreshVisualProofQuality(state);
     updatePrSpecificCoverage(state);
     await render(state);
     await saveState(state);
-    console.log(path.join(state.runDir, "index.html"));
-    if (shouldFailProcessForVerdict(state)) {
-      console.error(
-        `Computer Use E2E verdict was ${state.verdict}; failing the check while preserving the evidence report.`,
-      );
-      process.exitCode = 1;
+    suiteCompleted = true;
+  } catch (error) {
+    suiteFailure = error;
+    if (
+      executionTopology === "local-cua-driver" &&
+      runProvisioning &&
+      classifySuiteFailure(error, { executionTopology }).code === "macos_permissions"
+    ) {
+      try {
+        await recordRunPermissions(runDir, {
+          accessibilityGranted: false,
+          screenRecordingGranted: false,
+          reason: redact(error instanceof Error ? error.message : String(error)),
+        });
+      } catch (permissionError) {
+        suiteFailure = new AggregateError(
+          [error, permissionError],
+          "Computer Use permission probe failed and its denial sidecar could not be recorded",
+        );
+      }
     }
   } finally {
-    client.close();
+    const targetSnapshot = processCleanupSnapshot("target", driver?.ownedTarget);
+    const daemonSnapshot = processCleanupSnapshot("daemon", driver?.daemonPeer);
+    ownedProcessSnapshots = [targetSnapshot.entry, daemonSnapshot.entry];
+    processSnapshotFailure = [targetSnapshot.failure, daemonSnapshot.failure]
+      .filter(Boolean)
+      .join("; ");
+    if (driver) {
+      try {
+        await driver.close();
+      } catch (error) {
+        closeFailure = error;
+      }
+    }
   }
+  if (executionTopology === "local-cua-driver") {
+    if (trustedRunPreflight) {
+      try {
+        await assertRunPostRunIdentity(runDir, runPreflightAssertionDependencies);
+        await verifyLocalCuaPreflight(localPreflight, localPreflightDependencies);
+      } catch (error) {
+        suiteFailure = suiteFailure
+          ? new AggregateError(
+              [suiteFailure, error],
+              "Computer Use suite failed and final identity revalidation also failed",
+            )
+          : error;
+      }
+    }
+    const finalizationMode = env.NIXMAC_E2E_FINALIZATION_MODE;
+    const capture = captureLifecycleForRun({ uiStarted, failure: suiteFailure });
+    const boundInput = trustedRunPreflight?.input || runProvisioning?.input || null;
+    if (finalizationMode === "local-finalize" && boundInput) {
+      const cleanup = await cleanupAttestedLocalResources({
+        boundInput,
+        closeFailure,
+        driver,
+        ownedProcessSnapshots,
+        processSnapshotFailure,
+      });
+      setLocalCleanupState(state, cleanup);
+      try {
+        await writeRunCleanup(runDir, cleanup);
+        activeRunFinalization = { capture, cleanup, finalizationMode, runDir };
+        if (suiteCompleted && !suiteFailure && !closeFailure) {
+          await render(state);
+          await finalizeLocalEvidence(runDir, { capture, cleanup, verdict: state.verdict });
+          activeRunFinalization = null;
+        }
+      } catch (error) {
+        suiteFailure = suiteFailure
+          ? new AggregateError(
+              [suiteFailure, error],
+              "Computer Use suite failed and evidence finalization also failed",
+            )
+          : error;
+      }
+    } else if (finalizationMode === "controller-finalize" && boundInput) {
+      const processHandoffPath = env.NIXMAC_E2E_CONTROLLER_PROCESS_HANDOFF_PATH || "";
+      await writeControllerProcessHandoff({
+        closeFailure,
+        driverCloseAttempted: driver !== null,
+        processInstances: ownedProcessSnapshots,
+        processSnapshotFailure,
+        runDir,
+        targetPath: processHandoffPath,
+      });
+      state.cleanup = {
+        attempted: true,
+        restored: false,
+        clean: false,
+        note: "CuaDriver target/daemon shutdown completed; static SSH staging/config cleanup and owner-matched host-lease release remain controller-owned.",
+      };
+      activeRunFinalization = {
+        cleanup: null,
+        capture,
+        finalizationMode,
+        runDir,
+        runnerCleanupFailure: closeFailure
+          ? redact(closeFailure instanceof Error ? closeFailure.message : String(closeFailure))
+          : "",
+      };
+      if (suiteCompleted && !suiteFailure && !closeFailure) {
+        await render(state);
+        await stageControllerEvidence(runDir, { capture, verdict: state.verdict });
+        activeRunFinalization = null;
+      }
+    } else if (boundInput) {
+      throw new Error(
+        "local CuaDriver requires NIXMAC_E2E_FINALIZATION_MODE=local-finalize or controller-finalize",
+      );
+    } else {
+      if (socketEndpoint) {
+        try {
+          await rm(socketEndpoint.directory, { recursive: true, force: true });
+        } catch (error) {
+          suiteFailure = suiteFailure
+            ? new AggregateError(
+                [suiteFailure, error],
+                "Computer Use setup failed and socket cleanup also failed",
+              )
+            : error;
+        }
+      }
+    }
+  }
+  if (suiteFailure || closeFailure) {
+    const failures = [suiteFailure, closeFailure].filter(Boolean);
+    if (failures.length === 1) throw failures[0];
+    throw new AggregateError(failures, "Computer Use suite and exact cleanup both failed");
+  }
+  console.log(path.join(state.runDir, "index.html"));
+  if (shouldFailProcessForVerdict(state, env)) {
+    console.error(
+      `Computer Use E2E verdict was ${state.verdict}; failing the check while preserving the evidence report.`,
+    );
+    process.exitCode = 1;
+  }
+}
+
+export async function runSmokeWithDriver(
+  args,
+  {
+    createDriver,
+    env = process.env,
+    executionTopology = "local-cua-driver",
+    localPreflightDependencies = {},
+  } = {},
+) {
+  if (executionTopology !== "local-cua-driver") {
+    throw new Error("CuaDriver smoke supports only the local-cua-driver topology");
+  }
+  if (args.includes("--prompt") || env.NIXMAC_E2E_PROMPT) {
+    throw new Error("CuaDriver smoke does not accept a custom prompt");
+  }
+  if (typeof createDriver !== "function") {
+    throw new TypeError("runSmokeWithDriver requires createDriver");
+  }
+
+  const options = {
+    app: env.NIXMAC_COMPUTER_USE_APP || DEFAULT_APP,
+    prompt: DEFAULT_PROMPT,
+  };
+  let runDir = path.resolve(argValue(args, "--run-dir", path.join(ARTIFACT_ROOT, timestampSlug())));
+  await withEvidenceTreeMutation(runDir, async () => {
+    await mkdir(path.join(runDir, "screenshots"), { recursive: true });
+    await mkdir(path.join(runDir, "texts"), { recursive: true });
+  });
+  runDir = await realpath(runDir);
+  activeRunDir = runDir;
+  const localPreflight = await validateLocalCuaPreflight(
+    {
+      appBundleId: options.app,
+      runDir,
+    },
+    {
+      env,
+      ...localPreflightDependencies,
+    },
+  );
+  const state = await baseState(runDir, options, { env });
+  state.executionTopology = executionTopology;
+  state.suiteMode = "smoke";
+  state.smoke = {
+    schemaVersion: 1,
+    contract: "launch-settings-report",
+    bounded: true,
+    publishesExternally: false,
+  };
+  for (const key of Object.keys(state.scenarios)) {
+    updateScenario(
+      state,
+      key,
+      "not_required",
+      "The bounded smoke command covers only launch, Settings General, and local report rendering.",
+    );
+  }
+  updateScenario(state, "launch", "inconclusive", "Smoke launch has not run yet.");
+  updateScenario(
+    state,
+    "settingsGeneral",
+    "inconclusive",
+    "Smoke Settings General has not run yet.",
+  );
+  markLocalReportInspectionNotRequired(state);
+  state.localApp = {
+    artifactSha: localPreflight.appArtifactSha,
+    bundleDigestSha256: localPreflight.appBundleDigestSha256,
+    bundleId: localPreflight.appBundleId,
+    path: localPreflight.appPath,
+  };
+  await saveState(state);
+
+  const socketEndpoint = await createOwnedCuaSocketEndpoint({
+    requestedPath: env.NIXMAC_CUA_DRIVER_SOCKET || "",
+  });
+  const boundInput = {
+    stagingParent: localPreflight.stagingParent,
+    appBundlePath: localPreflight.appPath,
+    disposableConfigPath: localPreflight.disposableConfigPath,
+    daemonSocketDirectory: socketEndpoint.directory,
+    daemonSocketPath: socketEndpoint.path,
+  };
+  let driver = null;
+  let runError = null;
+  try {
+    driver = validateRuntimeDriver(
+      createDriver({
+        ...options,
+        runDir,
+        socketPath: socketEndpoint.path,
+      }),
+    );
+    await prepareSuiteDriver(driver, {
+      executionTopology,
+      appBundleId: options.app,
+      localPreflight,
+    });
+    await verifyLocalCuaPreflight(localPreflight, localPreflightDependencies);
+    let text = await captureState(
+      driver,
+      state,
+      "launch",
+      "CuaDriver smoke observed the exact staged nixmac app at launch.",
+    );
+    const launchPassed = /nixmac/i.test(text) && /button Settings/i.test(text);
+    updateScenario(
+      state,
+      "launch",
+      launchPassed ? "pass" : "fail",
+      launchPassed
+        ? "The exact staged app launched and exposed the Settings control."
+        : "The exact staged app did not expose the expected launch shell and Settings control.",
+    );
+
+    const settingsOpened = await clickByPattern(
+      driver,
+      state,
+      text,
+      "Smoke Settings",
+      [/button Settings/i],
+      "Open Settings for the bounded smoke check.",
+    );
+    if (settingsOpened) {
+      text = await captureState(
+        driver,
+        state,
+        "settings-general",
+        "CuaDriver smoke opened Settings General.",
+      );
+    }
+    const settingsPassed = settingsOpened && hasSettingsGeneralEvidence(text);
+    updateScenario(
+      state,
+      "settingsGeneral",
+      settingsPassed ? "pass" : "fail",
+      settingsPassed
+        ? "Settings General rendered the expected configuration controls."
+        : "Settings General did not render the expected configuration controls.",
+    );
+    if (!launchPassed || !settingsPassed) {
+      const productFailure = new Error(
+        "nixmac app UI did not satisfy the bounded launch and Settings smoke contract",
+      );
+      state.runFailure = classifySuiteFailure(productFailure, { executionTopology });
+      state.failures.push(state.runFailure.summary);
+    }
+  } catch (error) {
+    runError = error;
+  }
+
+  const targetSnapshot = processCleanupSnapshot("target", driver?.ownedTarget);
+  const daemonSnapshot = processCleanupSnapshot("daemon", driver?.daemonPeer);
+  const ownedProcessSnapshots = [targetSnapshot.entry, daemonSnapshot.entry];
+  const processSnapshotFailure = [targetSnapshot.failure, daemonSnapshot.failure]
+    .filter(Boolean)
+    .join("; ");
+  let closeFailure = null;
+  if (driver) {
+    try {
+      await driver.close();
+    } catch (error) {
+      closeFailure = error;
+    }
+  }
+  const cleanup = await cleanupAttestedLocalResources({
+    boundInput,
+    closeFailure,
+    driver,
+    ownedProcessSnapshots,
+    processSnapshotFailure,
+  });
+  setLocalCleanupState(state, cleanup, { smoke: true });
+  await saveState(state);
+  const cleanupError = cleanup.clean
+    ? null
+    : new Error(`CuaDriver smoke owned cleanup failed: ${cleanup.failureReason}`);
+  if (runError && cleanupError) {
+    throw new AggregateError(
+      [runError, cleanupError],
+      `CuaDriver smoke failed and cleanup failed: ${runError.message}; ${cleanupError.message}`,
+    );
+  }
+  if (cleanupError) throw cleanupError;
+  if (runError) throw runError;
+
+  for (const screenshot of state.screenshots) {
+    if (screenshot.source === "Codex Computer Use get_app_state image") {
+      screenshot.source = "CuaDriver get_window_state image";
+    }
+  }
+  state.smoke.outcome = state.runFailure ? `${state.runFailure.category}_failure` : "pass";
+  await render(state, {
+    generateVideo: false,
+    updateStorybook: false,
+  });
+  await saveState(state);
+  console.log(path.join(state.runDir, "index.html"));
+  if (shouldFailProcessForVerdict(state, env)) process.exitCode = 1;
+  return state;
+}
+
+async function runSuite(args) {
+  return runSuiteWithDriver(args, {
+    createDriver: (options) => new CodexAppServerDriver(options.ws),
+    executionTopology: "remote-codex-app-server",
+  });
 }
 
 async function renderUnavailable(args) {
   const note = argValue(args, "--note", "Computer Use remote runner was not available.");
-  const runDir = argValue(args, "--run-dir", path.join(ARTIFACT_ROOT, timestampSlug()));
-  await mkdir(path.join(runDir, "screenshots"), { recursive: true });
-  await mkdir(path.join(runDir, "texts"), { recursive: true });
+  const runDir = path.resolve(
+    argValue(args, "--run-dir", path.join(ARTIFACT_ROOT, timestampSlug())),
+  );
+  await withEvidenceTreeMutation(runDir, async () => {
+    await mkdir(path.join(runDir, "screenshots"), { recursive: true });
+    await mkdir(path.join(runDir, "texts"), { recursive: true });
+  });
   const state = await baseState(runDir, {
     ws: process.env.NIXMAC_COMPUTER_USE_WS || DEFAULT_WS,
     app: process.env.NIXMAC_COMPUTER_USE_APP || DEFAULT_APP,
@@ -3884,9 +4899,13 @@ async function renderStorybookOnly(args) {
     "--note",
     "Native Computer Use skipped because the PR is UI-only and has Storybook preview evidence.",
   );
-  const runDir = argValue(args, "--run-dir", path.join(ARTIFACT_ROOT, timestampSlug()));
-  await mkdir(path.join(runDir, "screenshots"), { recursive: true });
-  await mkdir(path.join(runDir, "texts"), { recursive: true });
+  const runDir = path.resolve(
+    argValue(args, "--run-dir", path.join(ARTIFACT_ROOT, timestampSlug())),
+  );
+  await withEvidenceTreeMutation(runDir, async () => {
+    await mkdir(path.join(runDir, "screenshots"), { recursive: true });
+    await mkdir(path.join(runDir, "texts"), { recursive: true });
+  });
   const state = await baseState(runDir, {
     ws: process.env.NIXMAC_COMPUTER_USE_WS || DEFAULT_WS,
     app: process.env.NIXMAC_COMPUTER_USE_APP || DEFAULT_APP,
@@ -3951,38 +4970,144 @@ async function renderExisting(args) {
   console.log(path.join(runDir, "index.html"));
 }
 
-async function renderErrorReport(error, args) {
-  const note = `Computer Use remote runner failed before completing the suite: ${redact(error instanceof Error ? error.message : String(error))}`;
-  const runDir = argValue(args, "--run-dir", activeRunDir || "");
+export async function renderSuiteErrorReport(
+  error,
+  args,
+  { env = process.env, executionTopology = "remote-codex-app-server", suiteMode = "full" } = {},
+) {
+  const lane = executionTopology === "local-cua-driver" ? "local CuaDriver" : "remote";
+  const note = `Computer Use ${lane} runner failed before completing the suite: ${redact(error instanceof Error ? error.message : String(error))}`;
+  const cliRunDir = argValue(args, "--run-dir", "");
+  const runDir = cliRunDir ? await canonicalFallbackRunDir(cliRunDir) : activeRunDir;
   const fallbackArgs = withRunDirArg(args, runDir);
   if (!runDir) {
     await renderUnavailable([...fallbackArgs, "--note", note]);
     return;
   }
-
-  await mkdir(path.join(runDir, "screenshots"), { recursive: true });
-  await mkdir(path.join(runDir, "texts"), { recursive: true });
-  const existingState = await loadExistingRunState(runDir);
+  await withEvidenceTreeMutation(runDir, async () => {
+    await mkdir(path.join(runDir, "screenshots"), { recursive: true });
+    await mkdir(path.join(runDir, "texts"), { recursive: true });
+  });
+  let existingState = await loadExistingRunState(runDir);
   if (!existingState) {
-    await renderUnavailable([...fallbackArgs, "--note", note]);
-    return;
+    if (executionTopology !== "local-cua-driver") {
+      await renderUnavailable([...fallbackArgs, "--note", note]);
+      return;
+    }
+    existingState = await baseState(
+      runDir,
+      {
+        app: env.NIXMAC_COMPUTER_USE_APP || DEFAULT_APP,
+        prompt: DEFAULT_PROMPT,
+      },
+      { env },
+    );
+    existingState.executionTopology = executionTopology;
   }
 
   await mergeWorkflowTimingsFromArgs(existingState, args);
+  existingState.executionTopology = executionTopology;
+  if (suiteMode === "smoke") existingState.suiteMode = "smoke";
+  existingState.runFailure = classifySuiteFailure(error, { executionTopology });
+  if (suiteMode === "smoke") {
+    existingState.smoke ||= {
+      schemaVersion: 1,
+      contract: "launch-settings-report",
+      bounded: true,
+      publishesExternally: false,
+    };
+    existingState.smoke.outcome = existingState.runFailure.infrastructureBlocker
+      ? "infrastructure_blocker"
+      : `${existingState.runFailure.category}_failure`;
+  }
+  if (executionTopology === "local-cua-driver") {
+    markLocalReportInspectionNotRequired(existingState);
+  } else {
+    updateScenario(
+      existingState,
+      "reportInspection",
+      "fail",
+      "Runner crashed before the report inspection step; fallback report was rendered from partial run evidence.",
+    );
+  }
   addNarrative(existingState, note);
   existingState.failures.push(note);
-  updateScenario(
-    existingState,
-    "reportInspection",
-    "fail",
-    "Runner crashed before the report inspection step; fallback report was rendered from partial run evidence.",
-  );
+  const finalization = activeRunFinalization?.runDir === runDir ? activeRunFinalization : null;
+  if (finalization?.finalizationMode === "local-finalize") {
+    existingState.cleanup = {
+      attempted: finalization.cleanup.attempted,
+      restored: finalization.cleanup.restored,
+      clean: finalization.cleanup.clean,
+      note: finalization.cleanup.clean
+        ? "CuaDriver target/daemon shutdown and exact staged-app removal completed after the runner failure."
+        : `Final cleanup failed after runner failure: ${finalization.cleanup.failureReason}`,
+    };
+  } else if (finalization?.finalizationMode === "controller-finalize") {
+    existingState.cleanup = {
+      attempted: true,
+      restored: false,
+      clean: false,
+      note: finalization.runnerCleanupFailure
+        ? `CuaDriver target/daemon shutdown failed and requires controller quarantine: ${finalization.runnerCleanupFailure}`
+        : "CuaDriver target/daemon shutdown completed after the runner failure; static cleanup and host-lease release remain controller-owned.",
+    };
+  }
   await addEvent(existingState, "runner.crash-fallback", { note });
-  await render(existingState);
+  if (finalization?.capture?.uiStarted === false) {
+    const blockerTextPath = path.join(runDir, "texts", "pre-ui-blocker.txt");
+    await withEvidenceTreeMutation(runDir, async () => {
+      await writeFile(
+        blockerTextPath,
+        `${note}\nCapture status: ${finalization.capture.status}\nReason: ${finalization.capture.reason}\n`,
+        "utf8",
+      );
+    });
+    existingState.screenshots = [];
+    existingState.textSnapshots = [
+      {
+        label: "Pre-UI infrastructure blocker",
+        path: "texts/pre-ui-blocker.txt",
+        capturedAt: nowIso(),
+        note: "Deterministic text evidence retained because the UI lifecycle never began.",
+      },
+    ];
+  }
+  await render(existingState, {
+    generateVideo:
+      existingState.suiteMode !== "smoke" && finalization?.capture?.uiStarted !== false,
+    updateStorybook: existingState.suiteMode !== "smoke",
+  });
+  if (finalization?.capture?.uiStarted === false) {
+    existingState.video = {
+      status: finalization.capture.status,
+      note: "No screenshot or video was created because the lifecycle proves the UI never began.",
+    };
+    await saveState(existingState);
+  }
+  if (finalization) {
+    try {
+      if (finalization.finalizationMode === "local-finalize") {
+        await finalizeLocalEvidence(runDir, {
+          capture: finalization.capture,
+          cleanup: finalization.cleanup,
+          verdict: existingState.verdict,
+        });
+      } else {
+        await stageControllerEvidence(runDir, {
+          capture: finalization.capture,
+          verdict: existingState.verdict,
+        });
+      }
+    } finally {
+      activeRunFinalization = null;
+    }
+  }
   console.log(path.join(runDir, "index.html"));
 }
 
 async function runSelfTest() {
+  const { coverageManifestSelfTest } = await import("./coverage-manifest.test.mjs");
+  coverageManifestSelfTest();
   const launchText = `
     5 button History
     6 button Give feedback
@@ -4107,6 +5232,13 @@ async function runSelfTest() {
     }),
     "pass",
     "verdictFor should ignore explicitly not-required scenarios",
+  );
+  assert.equal(
+    verdictFor({
+      scenarios: { storybookPreview: { status: "not_required" } },
+    }),
+    "inconclusive",
+    "verdictFor should not pass when no scenario was exercised",
   );
   assert.equal(
     shouldFailProcessForVerdict({ verdict: "fail" }, {}),
@@ -4562,6 +5694,220 @@ async function runSelfTest() {
     false,
     "coverage freshness should reject missing directory prefixes",
   );
+  const coverageFreshness = buildCoverageFreshness();
+  assert.equal(
+    coverageFreshness.candidateFiles,
+    960,
+    "coverage freshness should preserve the full shared PR-visible behavior universe",
+  );
+  const coverageManifest = loadCoverageManifest();
+  const filesUnderCandidateRoots = [
+    ...new Set(walkCoverageFiles(REPO_ROOT, coverageManifest.candidateRoots)),
+  ];
+  assert.deepEqual(
+    coverageFreshness.candidateFilePaths,
+    filesUnderCandidateRoots
+      .filter((file) => isLikelyUserVisiblePrFile(file, coverageManifest))
+      .sort(),
+    "PR focus and freshness should classify the same files with the same shared predicate",
+  );
+  assert.deepEqual(
+    coverageFreshness.unmappedCandidateFiles,
+    [],
+    "every current candidate should have explicit manifest ownership",
+  );
+  assert.deepEqual(
+    coverageFreshness.drift,
+    [],
+    "the checked-in manifest should have no schema, ownership, waiver, or source drift",
+  );
+  assert.equal(
+    coverageFreshness.waivers.length,
+    20,
+    "the current explicit waiver baseline should remain auditable",
+  );
+  assert.deepEqual(
+    coverageFreshness.waivers.reduce((counts, item) => {
+      counts[item.risk] = (counts[item.risk] ?? 0) + 1;
+      return counts;
+    }, {}),
+    { medium: 9, high: 11 },
+    "the current waiver risk distribution should remain explicit",
+  );
+  assert.equal(
+    coverageFreshness.drift.some((item) =>
+      item.includes("e2e-harness-rust has no scenario mapping and no waiver"),
+    ),
+    false,
+    "coverage freshness should preserve an explicitly non-claiming surface without requiring a scenario or waiver",
+  );
+  assert.equal(
+    coverageFreshness.unmappedCandidateFiles.includes("apps/native/src-tauri/src/commands/mod.rs"),
+    false,
+    "an isolated non-claiming source prefix should still participate in candidate-file coverage",
+  );
+  const coverageOwnersFor = (file) =>
+    coverageManifest.surfaces
+      .filter((surface) => changedFileMatchesSurface(file, surface))
+      .map((surface) => surface.id)
+      .sort();
+  assert.deepEqual(
+    coverageOwnersFor("apps/native/src-tauri/src/commands/mod.rs"),
+    ["internal-runtime-plumbing"],
+    "the isolated command registry should be owned only by the non-claiming plumbing surface",
+  );
+  assert.deepEqual(
+    coverageOwnersFor("apps/native/src/components/widget/settings/ai-models-tab.tsx"),
+    ["settings"],
+    "the AI Models tab should remain mapped to the exercised settings scenarios",
+  );
+  for (const file of [
+    "apps/native/src/hooks/use-darwin-config.ts",
+    "apps/native/src/hooks/use-prefs.ts",
+    "apps/native/src/ipc/preferences.ts",
+    "apps/native/src/viewmodel/preferences.ts",
+    "apps/native/src-tauri/src/commands/ui_prefs.rs",
+    "apps/native/src-tauri/src/state/preferences.rs",
+    "apps/native/src-tauri/src/state/ui_prefs.rs",
+  ]) {
+    assert.deepEqual(
+      coverageOwnersFor(file),
+      ["settings-unexercised"],
+      `${file} should be waived because rendered tabs do not exercise its state-changing behavior`,
+    );
+  }
+  for (const file of [
+    "apps/native/src/components/widget/settings/account-tab.tsx",
+    "apps/native/src/components/widget/settings/permissions-tab.tsx",
+    "apps/native/src/components/widget/settings/tuning-tab.tsx",
+    "apps/native/src/components/widget/settings/developer-tab.tsx",
+    "apps/native/src/components/widget/settings/backup-restore-section.tsx",
+  ]) {
+    assert.deepEqual(
+      coverageOwnersFor(file),
+      ["settings-unexercised"],
+      `${file} should be waived without inheriting the exercised Settings-tab claim`,
+    );
+  }
+  assert.deepEqual(
+    coverageOwnersFor("apps/native/src-tauri/src/ai/providers/openai.rs"),
+    ["provider-review"],
+    "the configured OpenAI-compatible/OpenRouter provider path should remain mapped",
+  );
+  for (const file of [
+    "apps/native/src-tauri/src/ai/providers/cli.rs",
+    "apps/native/src-tauri/src/ai/providers/ollama.rs",
+  ]) {
+    assert.deepEqual(
+      coverageOwnersFor(file),
+      ["alternate-ai-providers"],
+      `${file} should be waived instead of inheriting the configured provider claim`,
+    );
+  }
+  assert.deepEqual(
+    coverageOwnersFor("apps/native/src-tauri/src/commands/updater.rs"),
+    ["updater-runtime"],
+    "the updater runtime should be waived because an absent banner currently passes",
+  );
+  for (const file of [
+    "apps/native/src/components/widget/layout/update-banner.tsx",
+    "apps/native/src/hooks/use-updater.ts",
+  ]) {
+    assert.deepEqual(
+      coverageOwnersFor(file),
+      ["updater-runtime"],
+      `${file} should share the updater-runtime waiver until update behavior is deterministic`,
+    );
+  }
+  assert.deepEqual(
+    coverageOwnersFor("apps/native/src/preview-indicator-window.tsx"),
+    ["preview-indicator"],
+    "the preview side-window entrypoint should share the preview-indicator waiver",
+  );
+  assert.deepEqual(
+    coverageOwnersFor("apps/native/src/evolve-mascot-window.tsx"),
+    ["evolve-mascot-indicator"],
+    "the experimental mascot side-window entrypoint should not inherit main-window proof",
+  );
+  for (const file of [
+    "apps/native/src/lib/auth-deep-link.ts",
+    "apps/native/src/lib/auth.ts",
+    "apps/native/src/lib/orpc.ts",
+    "apps/native/src/lib/providers/ai-defaults.ts",
+    "apps/native/src/lib/providers/ai-models.ts",
+    "apps/native/src/lib/providers/ai-provider-migration.ts",
+    "apps/native/src/lib/providers/ai-provider-validation.ts",
+    "apps/native/src/lib/providers/api-key-verification.ts",
+    "apps/native/src/lib/providers/cli-providers-flag.ts",
+  ]) {
+    assert.deepEqual(
+      coverageOwnersFor(file),
+      ["native-auth-provider-runtime"],
+      `${file} should have explicit managed waiver ownership`,
+    );
+  }
+  const nativeRuntimeLibraryFiles = [
+    "apps/native/src/lib/boot-diagnostics.ts",
+    "apps/native/src/lib/constants.ts",
+    "apps/native/src/lib/dev-onboarding-reset.ts",
+    "apps/native/src/lib/env.ts",
+    "apps/native/src/lib/errors.ts",
+    "apps/native/src/lib/flags.ts",
+    "apps/native/src/lib/lsp-client.ts",
+    "apps/native/src/lib/lsp-monaco-bridge.ts",
+    "apps/native/src/lib/nix-grammar.ts",
+    "apps/native/src/lib/query-persist.ts",
+    "apps/native/src/lib/summarize-queue.ts",
+    "apps/native/src/lib/telemetry/context.tsx",
+    "apps/native/src/lib/telemetry/forwarding-processor.ts",
+    "apps/native/src/lib/telemetry/init.ts",
+    "apps/native/src/lib/telemetry/instance.ts",
+    "apps/native/src/lib/telemetry/noop.ts",
+    "apps/native/src/lib/telemetry/provider.ts",
+    "apps/native/src/lib/telemetry/sanitize.ts",
+    "apps/native/src/lib/telemetry/types.ts",
+    "apps/native/src/lib/telemetry/use-feature-flag.ts",
+    "apps/native/src/lib/utils.ts",
+  ];
+  for (const file of nativeRuntimeLibraryFiles) {
+    assert.deepEqual(
+      coverageOwnersFor(file),
+      ["native-runtime-library"],
+      `${file} should have explicit managed waiver ownership`,
+    );
+  }
+  assert.equal(
+    nativeRuntimeLibraryFiles.length + 9,
+    30,
+    "the native library ownership audit should enumerate every current non-test source file",
+  );
+  for (const file of [
+    "apps/native/src-tauri/tauri.conf.json",
+    "apps/native/src-tauri/tauri.conf.dev.json",
+    "apps/native/src-tauri/Info.plist",
+    "apps/native/src-tauri/entitlements.plist",
+    "apps/native/src-tauri/capabilities/default.json",
+    "apps/native/src-tauri/capabilities/http.json",
+    "apps/native/src-tauri/capabilities/macos-passkey.json",
+  ]) {
+    assert.deepEqual(
+      coverageOwnersFor(file),
+      ["desktop-security-config"],
+      `${file} should be visible to freshness under a managed desktop-security waiver`,
+    );
+  }
+  for (const file of [
+    "apps/native/src/components/widget/layout/error-message.tsx",
+    "apps/native/src/components/widget/layout/git-status-debug.tsx",
+    "apps/native/src/components/widget/notifications/uncommitted-changes-detected.tsx",
+    "apps/native/src/components/widget/notifications/unsummarized-changes-detected.tsx",
+  ]) {
+    assert.deepEqual(
+      coverageOwnersFor(file),
+      ["recovery-and-activation-preflight"],
+      `${file} should be waived until its recovery state is deterministically asserted`,
+    );
+  }
   const previousExtraCases = process.env.NIXMAC_E2E_EXTRA_EVOLVED_CASES;
   process.env.NIXMAC_E2E_EXTRA_EVOLVED_CASES = "inline-question-font";
   assert.deepEqual(
@@ -4600,9 +5946,9 @@ async function runSelfTest() {
     "inline question scenario should expose question-answer assertion hint",
   );
   assert.equal(
-    knownScenarioKey("inlineQuestionAnswer"),
-    true,
-    "inline question should be a known optional scenario for coverage manifest mapping",
+    isStableCoverageScenarioKey("inlineQuestionAnswer"),
+    false,
+    "optional evolved cases should not become stable coverage-manifest claims",
   );
   const evolvedScenarioKeys = Object.values(EVOLVED_CASE_CATALOG)
     .map((caseDef) => caseDef.scenarioKey)
@@ -4769,121 +6115,6 @@ async function runSelfTest() {
     ],
     "elementEntries should parse indexed AX text lines",
   );
-  assert.equal(
-    contentText({
-      result: {
-        content: [
-          { type: "image", data: "png" },
-          { type: "text", text: "state text" },
-        ],
-      },
-    }),
-    "state text",
-    "contentText should extract the first text response payload",
-  );
-  assert.equal(
-    contentText({ result: { content: [] } }),
-    "",
-    "contentText should return an empty string for missing text payloads",
-  );
-  assert.equal(
-    contentImage({
-      result: {
-        content: [
-          { type: "text", text: "state text" },
-          { type: "image", data: "png" },
-        ],
-      },
-    }),
-    "png",
-    "contentImage should extract the first image response payload",
-  );
-  const sentMessages = [];
-  class MockWebSocket {
-    constructor(url) {
-      this.url = url;
-      setTimeout(() => this.onopen?.(), 0);
-    }
-
-    send(payload) {
-      const message = JSON.parse(payload);
-      sentMessages.push(message);
-      const result = message.method === "thread/start" ? { thread: { id: "thread-123" } } : {};
-      setTimeout(() => this.onmessage?.({ data: JSON.stringify({ id: message.id, result }) }), 0);
-    }
-
-    close() {
-      this.closed = true;
-    }
-  }
-  const appServerClient = new AppServerClient("ws://mock", { WebSocketImpl: MockWebSocket });
-  await appServerClient.connect();
-  assert.equal(
-    appServerClient.threadId,
-    "thread-123",
-    "AppServerClient should store the started thread id",
-  );
-  await appServerClient.tool("click", { app: "com.darkmatter.nixmac", element_index: "7" }, 1000);
-  assert.deepEqual(
-    sentMessages.map((message) => message.method),
-    ["initialize", "thread/start", "mcpServer/tool/call"],
-    "AppServerClient should preserve initialize, thread start, and tool-call request order",
-  );
-  assert.deepEqual(
-    sentMessages[1].params,
-    {
-      cwd: "/tmp",
-      model: "gpt-5.4-mini",
-      approvalPolicy: "never",
-      sandbox: "danger-full-access",
-      ephemeral: true,
-    },
-    "AppServerClient should preserve Codex app-server thread policy",
-  );
-  assert.deepEqual(
-    sentMessages[2].params,
-    {
-      server: "computer-use",
-      threadId: "thread-123",
-      tool: "click",
-      arguments: { app: "com.darkmatter.nixmac", element_index: "7" },
-    },
-    "AppServerClient should preserve Computer Use tool-call shape",
-  );
-  appServerClient.close();
-  class MockToolErrorWebSocket {
-    constructor() {
-      setTimeout(() => this.onopen?.(), 0);
-    }
-
-    send(payload) {
-      const message = JSON.parse(payload);
-      const result = message.method === "thread/start" ? { thread: { id: "thread-456" } } : {};
-      const response =
-        message.method === "mcpServer/tool/call"
-          ? { id: message.id, error: { message: "synthetic tool failure" } }
-          : { id: message.id, result };
-      setTimeout(() => this.onmessage?.({ data: JSON.stringify(response) }), 0);
-    }
-
-    close() {}
-  }
-  const toolErrorClient = new AppServerClient("ws://mock-tool-error", {
-    WebSocketImpl: MockToolErrorWebSocket,
-  });
-  await toolErrorClient.connect();
-  await assert.rejects(
-    () => toolErrorClient.tool("click", { app: "com.darkmatter.nixmac", element_index: "7" }, 1000),
-    /synthetic tool failure/,
-    "AppServerClient should reject JSON-RPC error responses",
-  );
-  const timeoutClient = new AppServerClient("ws://mock-timeout");
-  timeoutClient.ws = { send() {} };
-  await assert.rejects(
-    () => timeoutClient.request("never/replies", {}, 1),
-    /Timed out waiting for never\/replies/,
-    "AppServerClient should reject timed-out requests",
-  );
 
   const dispatched = [];
   const dispatchExits = [];
@@ -5049,63 +6280,6 @@ async function runSelfTest() {
   );
   assert.equal(dispatchExits.at(-1), 1, "CLI dispatcher should exit 1 after handler errors");
 
-  assert.equal(
-    clickResponseIndicatesFailure({
-      result: { isError: true, content: [{ type: "text", text: "Tool returned an error." }] },
-    }),
-    true,
-    "MCP isError should fail click",
-  );
-  assert.equal(
-    clickResponseIndicatesFailure({
-      result: {
-        content: [
-          { type: "text", text: "App state includes button Report Error and Console Error logs." },
-        ],
-      },
-    }),
-    false,
-    "ordinary app-state Error text should not fail click",
-  );
-  assert.equal(
-    clickResponseIndicatesFailure({
-      result: { content: [{ type: "text", text: "Error: stale element index 7" }] },
-    }),
-    true,
-    "stale element sentinel should fail click",
-  );
-  assert.equal(
-    clickResponseIndicatesFailure({
-      result: { content: [{ type: "text", text: "Element index 7 not clickable" }] },
-    }),
-    true,
-    "not-clickable element sentinel should fail click",
-  );
-  assert.equal(
-    setValueResponseIndicatesFailure({
-      result: { isError: true, content: [{ type: "text", text: "Tool returned an error." }] },
-    }),
-    true,
-    "MCP isError should fail set_value",
-  );
-  assert.equal(
-    setValueResponseIndicatesFailure({
-      result: {
-        content: [
-          { type: "text", text: "App state includes Value: Add the bat command line tool." },
-        ],
-      },
-    }),
-    false,
-    "ordinary set_value app-state text should not fail input",
-  );
-  assert.equal(
-    setValueResponseIndicatesFailure({
-      result: { content: [{ type: "text", text: "Error: set_value element index 18 not found" }] },
-    }),
-    true,
-    "set_value element sentinel should fail input",
-  );
   assert.deepEqual(
     builtInElementAddressKinds,
     ["codex-index", "text-pattern"],
@@ -5157,6 +6331,45 @@ async function runSelfTest() {
     true,
     "driver contract should support explicit future address-kind extension by adapter chunk",
   );
+  const cuaAddressValidators = {
+    "cua-element-index": validateCuaElementIndexAddress,
+  };
+  const validCuaAddress = {
+    kind: "cua-element-index",
+    elementIndex: 7,
+    pid: 101,
+    windowId: 202,
+    snapshotId: "turn-1",
+  };
+  assert.deepEqual(
+    validateElementAddress(validCuaAddress, {
+      additionalAddressValidators: cuaAddressValidators,
+    }).normalized,
+    validCuaAddress,
+    "driver contract should normalize explicitly registered CuaDriver element indexes",
+  );
+  assert.equal(
+    validateElementAddress(validCuaAddress).ok,
+    false,
+    "CuaDriver element indexes should remain adapter-scoped",
+  );
+  for (const [field, value] of [
+    ["elementIndex", "7"],
+    ["pid", 101.5],
+    ["windowId", null],
+    ["snapshotId", "   "],
+  ]) {
+    const result = validateElementAddress(
+      { ...validCuaAddress, [field]: value },
+      { additionalAddressValidators: cuaAddressValidators },
+    );
+    assert.equal(result.ok, false, `driver contract should reject invalid CuaDriver ${field}`);
+    assert.equal(
+      result.issues.some((entry) => entry.path === field),
+      true,
+      `driver contract should identify invalid CuaDriver ${field}`,
+    );
+  }
   assert.equal(
     validateDriverCapabilities({
       ...codexAppServerDriverDescriptor.capabilities,
@@ -5397,17 +6610,77 @@ async function runSelfTest() {
     [],
     "non-user-visible changed files must not create PR scenario mappings",
   );
-  process.env.NIXMAC_E2E_PR_CHANGED_FILES =
-    "apps/native/src/App.tsx\napps/native/src/index.css\napps/native/src/preview-indicator-window.tsx";
+  const waiverOnlyFiles = [
+    "apps/native/src-tauri/src/storage/store.rs",
+    "apps/native/src-tauri/src/storage/credential_store.rs",
+    "apps/native/src-tauri/src/ai/providers/cli.rs",
+    "apps/native/src-tauri/src/ai/providers/ollama.rs",
+    "apps/native/src-tauri/src/commands/updater.rs",
+  ];
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = waiverOnlyFiles.join("\n");
+  const waiverOnlyPrFocus = buildPrFocus();
+  assert.deepEqual(
+    waiverOnlyPrFocus.scenarioKeys,
+    [],
+    "waiver-only source files must not inherit exercised scenario coverage",
+  );
+  assert.deepEqual(
+    waiverOnlyPrFocus.userVisibleFiles,
+    waiverOnlyFiles,
+    "waiver-only source files should remain visible to PR focus",
+  );
+  assert.deepEqual(
+    waiverOnlyPrFocus.unmappedUserVisibleFiles,
+    waiverOnlyFiles,
+    "waiver-only source files should remain explicit scenario debt",
+  );
+  assert.deepEqual(
+    [
+      ...new Set(
+        waiverOnlyPrFocus.matchedSurfaces
+          .filter((surface) => Boolean(surface.waiver))
+          .map((surface) => surface.id),
+      ),
+    ],
+    ["settings-unexercised", "alternate-ai-providers", "updater-runtime"],
+    "waiver-only source files should retain their manifest waiver ownership",
+  );
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = [
+    "apps/native/src/components/widget/settings/settings-dialog.tsx",
+    "apps/native/src-tauri/src/commands/system_defaults.rs",
+    "apps/native/src-tauri/src/commands/homebrew.rs",
+    "apps/native/src-tauri/src/summarize/build_prompt.rs",
+  ].join("\n");
+  const manifestClaimingPrFocus = buildPrFocus();
+  for (const scenarioKey of [
+    "settingsGeneral",
+    "settingsAIModels",
+    "settingsAPIKeys",
+    "settingsPreferences",
+    "customizationSaveRollback",
+    "homebrewSaveRollback",
+    "summary",
+    "saveFlow",
+  ]) {
+    assert.equal(
+      manifestClaimingPrFocus.scenarioKeys.includes(scenarioKey),
+      true,
+      `claiming manifest surfaces should continue to map ${scenarioKey}`,
+    );
+  }
+  const mainAppRootFiles = [
+    "apps/native/src/App.css",
+    "apps/native/src/App.tsx",
+    "apps/native/src/index.css",
+    "apps/native/src/main.tsx",
+    "apps/native/src/router.tsx",
+  ];
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = mainAppRootFiles.join("\n");
   const rootPrFocus = buildPrFocus();
   assert.deepEqual(
     rootPrFocus.userVisibleFiles,
-    [
-      "apps/native/src/App.tsx",
-      "apps/native/src/index.css",
-      "apps/native/src/preview-indicator-window.tsx",
-    ],
-    "PR focus should infer root-level native app source files as user-visible",
+    mainAppRootFiles,
+    "PR focus should infer exact main-app root files as user-visible",
   );
   assert.equal(
     rootPrFocus.scenarioKeys.includes("launch"),
@@ -5417,8 +6690,129 @@ async function runSelfTest() {
   assert.equal(
     rootPrFocus.scenarioKeys.includes("visualCoverage"),
     true,
-    "root-level native app source changes should focus visual coverage",
+    "exact main-app root changes should focus visual coverage",
   );
+  assert(
+    rootPrFocus.matchedSurfaces.every((surface) => surface.id === "app-shell"),
+    "exact main-app root files should be manifest-owned by app-shell",
+  );
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = "apps/native/src/preview-indicator-window.tsx";
+  const previewEntrypointPrFocus = buildPrFocus();
+  assert.deepEqual(
+    previewEntrypointPrFocus.scenarioKeys,
+    [],
+    "the preview side-window entrypoint must not inherit main-window launch or visual proof",
+  );
+  assert.deepEqual(
+    previewEntrypointPrFocus.unmappedUserVisibleFiles,
+    ["apps/native/src/preview-indicator-window.tsx"],
+    "the preview side-window entrypoint should remain explicit waived scenario debt",
+  );
+  assert.equal(
+    previewEntrypointPrFocus.matchedSurfaces.some(
+      (surface) => surface.id === "preview-indicator" && Boolean(surface.waiver),
+    ),
+    true,
+    "the preview side-window entrypoint should retain its waiver ownership",
+  );
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = "apps/native/src/evolve-mascot-window.tsx";
+  const mascotEntrypointPrFocus = buildPrFocus();
+  assert.deepEqual(
+    mascotEntrypointPrFocus.scenarioKeys,
+    [],
+    "other side-window entrypoints must not inherit main-window launch or visual proof",
+  );
+  assert.deepEqual(
+    mascotEntrypointPrFocus.unmappedUserVisibleFiles,
+    ["apps/native/src/evolve-mascot-window.tsx"],
+    "the experimental mascot side window should remain explicit waived debt",
+  );
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = "apps/native/src/new-side-window.tsx";
+  const newSideWindowPrFocus = buildPrFocus();
+  assert.deepEqual(
+    newSideWindowPrFocus.scenarioKeys,
+    [],
+    "a new root side-window entrypoint must fail closed instead of inheriting app-shell proof",
+  );
+  assert.deepEqual(
+    newSideWindowPrFocus.unmappedUserVisibleFiles,
+    ["apps/native/src/new-side-window.tsx"],
+    "a new root side-window entrypoint should require explicit manifest ownership",
+  );
+  const updaterFocusFiles = [
+    "apps/native/src/components/widget/layout/update-banner.tsx",
+    "apps/native/src/hooks/use-updater.ts",
+    "apps/native/src-tauri/src/commands/updater.rs",
+  ];
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = updaterFocusFiles.join("\n");
+  const updaterPrFocus = buildPrFocus();
+  assert.deepEqual(
+    updaterPrFocus.scenarioKeys,
+    [],
+    "updater source changes must not inherit the optional absent-banner scenario",
+  );
+  assert.deepEqual(
+    updaterPrFocus.unmappedUserVisibleFiles,
+    updaterFocusFiles,
+    "updater source changes should remain explicit waived scenario debt",
+  );
+  const settingsMutationFiles = [
+    "apps/native/src/hooks/use-darwin-config.ts",
+    "apps/native/src/hooks/use-prefs.ts",
+    "apps/native/src/ipc/preferences.ts",
+    "apps/native/src/viewmodel/preferences.ts",
+    "apps/native/src-tauri/src/commands/ui_prefs.rs",
+    "apps/native/src-tauri/src/state/preferences.rs",
+    "apps/native/src-tauri/src/state/ui_prefs.rs",
+  ];
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = settingsMutationFiles.join("\n");
+  const settingsMutationPrFocus = buildPrFocus();
+  assert.deepEqual(
+    settingsMutationPrFocus.scenarioKeys,
+    [],
+    "mixed settings persistence and mutation modules must not inherit render-only tab proof",
+  );
+  assert.deepEqual(
+    settingsMutationPrFocus.unmappedUserVisibleFiles,
+    settingsMutationFiles,
+    "mixed settings persistence and mutation modules should remain explicit waived debt",
+  );
+  const restoredVisibilityFiles = [
+    "apps/native/src/lib/auth-deep-link.ts",
+    "apps/native/src/lib/telemetry/init.ts",
+    "apps/native/src-tauri/tauri.conf.json",
+    "apps/native/src-tauri/capabilities/default.json",
+  ];
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = restoredVisibilityFiles.join("\n");
+  const restoredVisibilityPrFocus = buildPrFocus();
+  assert.deepEqual(
+    restoredVisibilityPrFocus.userVisibleFiles,
+    restoredVisibilityFiles,
+    "native libraries and desktop security config should remain visible to PR focus",
+  );
+  assert.deepEqual(
+    restoredVisibilityPrFocus.waivedUserVisibleFiles,
+    restoredVisibilityFiles,
+    "unexercised native libraries and desktop config should remain explicit PR debt",
+  );
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES =
+    "apps/native/src/components/widget/settings/settings-dialog.tsx";
+  const claimedOnlyPrFocus = buildPrFocus();
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = [
+    "apps/native/src/components/widget/settings/settings-dialog.tsx",
+    "apps/native/src-tauri/src/storage/store.rs",
+  ].join("\n");
+  const claimedAndWaivedPrFocus = buildPrFocus();
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES =
+    "apps/native/src/components/widget/new-visible-surface.tsx";
+  const unmatchedOnlyPrFocus = buildPrFocus();
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = "apps/native/src-tauri/src/commands/mod.rs";
+  const nonClaimingOnlyPrFocus = buildPrFocus();
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = [
+    "apps/native/src/components/widget/settings/settings-dialog.tsx",
+    "apps/native/src-tauri/src/commands/mod.rs",
+  ].join("\n");
+  const claimedAndNonClaimingPrFocus = buildPrFocus();
   process.env.NIXMAC_E2E_PR_CHANGED_FILES = "tests/e2e/computer-use/run-remote-cua.mjs";
   const toolPrFocus = buildPrFocus();
   assert.equal(
@@ -5435,6 +6829,40 @@ async function runSelfTest() {
     toolPrFocus.scenarioKeys.includes("prSpecificCoverage"),
     false,
     "PR focus coverage must not require itself",
+  );
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = "tests/e2e/computer-use/new-proof-signal.mjs";
+  const unownedProofSystemPrFocus = buildPrFocus();
+  assert.deepEqual(
+    unownedProofSystemPrFocus.unmatchedUserVisibleFiles,
+    ["tests/e2e/computer-use/new-proof-signal.mjs"],
+    "new Computer Use proof-system files should fail closed until explicitly owned",
+  );
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = "tests/e2e/computer-use/new-proof.test.ts";
+  const unownedProofCollisionPrFocus = buildPrFocus();
+  assert.deepEqual(
+    unownedProofCollisionPrFocus.unmatchedUserVisibleFiles,
+    ["tests/e2e/computer-use/new-proof.test.ts"],
+    "source-oriented test exclusions must not suppress Computer Use proof-system debt",
+  );
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES =
+    ".github/workflows/computer-use-e2e.yml\ntests/e2e/computer-use/report.mjs";
+  const workflowAndReportPrFocus = buildPrFocus();
+  assert.equal(
+    workflowAndReportPrFocus.scenarioKeys.includes("visualProofQuality"),
+    true,
+    "Computer Use workflow and report changes should focus visual proof quality",
+  );
+  assert.equal(
+    workflowAndReportPrFocus.scenarioKeys.includes("reportInspection"),
+    true,
+    "Computer Use workflow and report changes should focus report inspection",
+  );
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = ".github/workflows/e2e.yml";
+  const exactE2eWorkflowPrFocus = buildPrFocus();
+  assert.deepEqual(
+    exactE2eWorkflowPrFocus.nonClaimingUserVisibleFiles,
+    [".github/workflows/e2e.yml"],
+    "the exact e2e workflow should remain visible with its explicit non-claiming ownership",
   );
   if (previousChangedFiles === undefined) delete process.env.NIXMAC_E2E_PR_CHANGED_FILES;
   else process.env.NIXMAC_E2E_PR_CHANGED_FILES = previousChangedFiles;
@@ -5470,6 +6898,78 @@ async function runSelfTest() {
     prCoverageState.scenarios.prSpecificCoverage.status,
     "fail",
     "PR focus coverage should fail when a mapped scenario fails",
+  );
+  const waiverOnlyCoverageState = ensureCurrentSchema({
+    scenarios: {},
+    claims: [],
+    prFocus: { ...waiverOnlyPrFocus, configured: true },
+  });
+  for (const scenarioKey of [
+    "settingsGeneral",
+    "settingsAIModels",
+    "settingsAPIKeys",
+    "settingsPreferences",
+  ]) {
+    updateScenario(
+      waiverOnlyCoverageState,
+      scenarioKey,
+      "pass",
+      "Previously exercised Settings proof passed.",
+    );
+  }
+  updatePrSpecificCoverage(waiverOnlyCoverageState);
+  assert.equal(
+    waiverOnlyCoverageState.scenarios.prSpecificCoverage.status,
+    "inconclusive",
+    "waiver-only changes must not false-pass from unrelated previously exercised Settings proof",
+  );
+  const evaluatePrSpecificFocus = (focus, scenarioStatus = "pass") => {
+    const state = ensureCurrentSchema({
+      scenarios: {},
+      claims: [],
+      prFocus: { ...focus, configured: true },
+    });
+    for (const scenarioKey of focus.scenarioKeys ?? []) {
+      if (scenarioKey === "prSpecificCoverage") continue;
+      updateScenario(state, scenarioKey, scenarioStatus, `Synthetic ${scenarioStatus} proof.`);
+    }
+    updatePrSpecificCoverage(state);
+    return state.scenarios.prSpecificCoverage.status;
+  };
+  assert.equal(
+    evaluatePrSpecificFocus(claimedOnlyPrFocus),
+    "pass",
+    "claimed-only PR focus should pass when all mapped scenarios pass",
+  );
+  assert.equal(
+    evaluatePrSpecificFocus(waiverOnlyPrFocus),
+    "inconclusive",
+    "waived-only PR focus should remain inconclusive",
+  );
+  assert.equal(
+    evaluatePrSpecificFocus(claimedAndWaivedPrFocus),
+    "inconclusive",
+    "claimed and waived PR focus should remain inconclusive even when claimed scenarios pass",
+  );
+  assert.equal(
+    evaluatePrSpecificFocus(unmatchedOnlyPrFocus),
+    "inconclusive",
+    "an unmatched user-visible PR focus should remain inconclusive",
+  );
+  assert.equal(
+    evaluatePrSpecificFocus(nonClaimingOnlyPrFocus),
+    "pass",
+    "an explicitly non-claiming-only PR focus should be a passing no-op",
+  );
+  assert.equal(
+    evaluatePrSpecificFocus(claimedAndNonClaimingPrFocus),
+    "pass",
+    "claimed plus explicitly non-claiming PR focus should follow passing claimed scenarios",
+  );
+  assert.equal(
+    evaluatePrSpecificFocus(claimedAndNonClaimingPrFocus, "fail"),
+    "fail",
+    "claimed plus explicitly non-claiming PR focus should follow failing claimed scenarios",
   );
 
   const renderRunDir = path.join(os.tmpdir(), `nixmac-e2e-self-test-${Date.now()}`);
@@ -5604,7 +7104,7 @@ async function runSelfTest() {
   const previousActiveRunDir = activeRunDir;
   activeRunDir = crashRunDir;
   try {
-    await renderErrorReport(new Error("synthetic fallback crash"), []);
+    await renderSuiteErrorReport(new Error("synthetic fallback crash"), []);
   } finally {
     activeRunDir = previousActiveRunDir;
   }
@@ -5658,7 +7158,7 @@ async function main() {
         );
         if (command === "run") {
           try {
-            await renderErrorReport(error, args);
+            await renderSuiteErrorReport(error, args);
           } catch (reportError) {
             console.error(
               redact(
@@ -5674,4 +7174,4 @@ async function main() {
   );
 }
 
-await main();
+if (process.argv[1] && path.resolve(process.argv[1]) === THIS_FILE) await main();

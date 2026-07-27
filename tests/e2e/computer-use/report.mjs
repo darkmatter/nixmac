@@ -5,6 +5,19 @@ import { failureTaxonomy } from "./schemas.mjs";
 import { redact } from "./redaction.mjs";
 import { formatDuration, sortedTimingPhases, timingTotals } from "./timing.mjs";
 
+export const safeFrameVideoPath = "video/computer-use-evidence.mp4";
+
+export function assertCuratedSafeFrameVideoMetadata(video) {
+  if (
+    video?.status !== "available" ||
+    video?.path !== safeFrameVideoPath ||
+    video?.source !== "curated-safe-frames"
+  ) {
+    throw new Error(`video must be the curated safe-frame reel at ${safeFrameVideoPath}`);
+  }
+  return video;
+}
+
 function escapeHtml(value) {
   return redact(value)
     .replaceAll("&", "&amp;")
@@ -12,6 +25,37 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+export function escapeReportHtml(value) {
+  return escapeHtml(value);
+}
+
+export function finalCleanupAttestationHtml(cleanup) {
+  const controllerOwned = cleanup?.ownershipMode === "controller-static";
+  const heading = controllerOwned ? "Controller cleanup attestation" : "Local cleanup attestation";
+  const status = cleanup?.clean === true ? "clean" : "not-clean";
+  return `<section id="final-cleanup-attestation" class="panel" data-cleanup-status="${status}"><h2>${heading}</h2><p><strong>Status: ${status}</strong></p><p>${escapeHtml(cleanup?.note || "")}</p></section>`;
+}
+
+export function finalResultAttestationHtml({ identity, attempt, counts, verdict }) {
+  const normalizedCounts = {
+    passed: counts?.passed ?? counts?.pass,
+    failed: counts?.failed ?? counts?.fail,
+    inconclusive: counts?.inconclusive,
+    not_required: counts?.not_required,
+  };
+  if (
+    !identity?.jobId ||
+    !identity?.scenarioCatalogDigest ||
+    !attempt?.actionsRunId ||
+    !Number.isInteger(attempt?.number) ||
+    !["pass", "fail", "inconclusive"].includes(verdict) ||
+    Object.values(normalizedCounts).some((value) => !Number.isInteger(value) || value < 0)
+  ) {
+    throw new Error("final result attestation input is incomplete");
+  }
+  return `<section id="final-result-attestation" class="panel" data-job-id="${escapeHtml(identity.jobId)}" data-actions-run-id="${escapeHtml(attempt.actionsRunId)}" data-attempt="${attempt.number}" data-verdict="${verdict}" data-scenario-catalog-digest="${escapeHtml(identity.scenarioCatalogDigest)}"><h2>Verified result attestation</h2><p><strong>Verdict: ${verdict}</strong></p><p>Scenarios: ${normalizedCounts.passed} passed, ${normalizedCounts.failed} failed, ${normalizedCounts.inconclusive} inconclusive, ${normalizedCounts.not_required} not required.</p></section>`;
 }
 
 function slugify(value) {
@@ -137,33 +181,59 @@ function knownLimitCount(state) {
 
 function prSurfaceSummary(state) {
   const pr = state.prFocus || { configured: false, userVisibleFiles: [], scenarioKeys: [] };
+  const status = state.scenarios?.prSpecificCoverage?.status || "inconclusive";
+  const coverageDebtFiles = [
+    ...new Set([
+      ...(pr.waivedUserVisibleFiles ?? []),
+      ...(pr.unmatchedUserVisibleFiles ?? []),
+      ...(pr.unmappedUserVisibleFiles ?? []),
+    ]),
+  ];
   if (!pr.configured) {
     return {
       label: "No PR context",
       detail:
         "No PR metadata was provided, so this run proves baseline product behavior without PR-specific changed-file mapping.",
-      status: "inconclusive",
+      status,
     };
   }
   if (!pr.userVisibleFiles?.length) {
     return {
-      label: "Docs/infra or unmapped surface",
+      label: "No user-visible PR changes",
       detail:
-        "Changed-file metadata did not infer a user-visible app surface; baseline regression coverage still ran.",
-      status: "pass",
+        "Changed-file metadata did not identify a user-visible behavior candidate; baseline regression coverage still ran.",
+      status,
     };
   }
-  if (!pr.scenarioKeys?.length) {
+  if (coverageDebtFiles.length) {
     return {
-      label: "User-visible, unmapped",
-      detail: `${pr.userVisibleFiles.length} user-visible changed file(s) were inferred, but no dedicated Computer Use scenario mapping exists yet.`,
-      status: "inconclusive",
+      label: pr.scenarioKeys?.length
+        ? "Mapped PR with coverage debt"
+        : "User-visible coverage debt",
+      detail: `${coverageDebtFiles.length} user-visible changed file(s) have explicit waiver or unmatched coverage debt${pr.scenarioKeys?.length ? ` while ${pr.scenarioKeys.length} scenario(s) remain mapped` : ""}.`,
+      status,
     };
   }
+  if (
+    pr.nonClaimingUserVisibleFiles?.length &&
+    pr.nonClaimingUserVisibleFiles.length === pr.userVisibleFiles.length
+  ) {
+    return {
+      label: "Explicitly non-claiming PR",
+      detail: `${pr.nonClaimingUserVisibleFiles.length} changed file(s) are intentionally classified as tracked internal plumbing without a user-facing scenario claim.`,
+      status,
+    };
+  }
+  if (!pr.scenarioKeys?.length)
+    return {
+      label: "User-visible coverage debt",
+      detail: `${pr.userVisibleFiles.length} user-visible changed file(s) have no dedicated Computer Use scenario mapping.`,
+      status,
+    };
   return {
     label: "Mapped user-visible PR",
     detail: `${pr.userVisibleFiles.length} user-visible changed file(s) mapped to ${pr.scenarioKeys.length} scenario(s).`,
-    status: state.scenarios.prSpecificCoverage?.status || "inconclusive",
+    status,
   };
 }
 
@@ -329,6 +399,17 @@ function renderPrFocus(state) {
         .map((key) => `<li>${escapeHtml(state.scenarios?.[key]?.label || key)}</li>`)
         .join("\n")
     : "<li>No dedicated scenario mapping inferred from changed files.</li>";
+  const fileList = (files, empty) =>
+    files?.length
+      ? files.map((file) => `<li><code>${escapeHtml(file)}</code></li>`).join("\n")
+      : `<li>${escapeHtml(empty)}</li>`;
+  const coverageDebtFiles = [
+    ...new Set([
+      ...(pr.waivedUserVisibleFiles ?? []),
+      ...(pr.unmatchedUserVisibleFiles ?? []),
+      ...(pr.unmappedUserVisibleFiles ?? []),
+    ]),
+  ];
   return `<section class="panel">
     <p><strong>PR:</strong> ${escapeHtml(pr.number || "not provided")} ${pr.title ? `- ${escapeHtml(pr.title)}` : ""}</p>
     <p><strong>Refs:</strong> ${escapeHtml(pr.baseRef || "base ?")} ← ${escapeHtml(pr.headRef || "head ?")}</p>
@@ -336,6 +417,10 @@ function renderPrFocus(state) {
     <ul>${userVisible}</ul>
     <h3>Mapped Scenario Focus</h3>
     <ul>${scenarios}</ul>
+    <h3>Coverage debt files</h3>
+    <ul>${fileList(coverageDebtFiles, "No waiver or unmatched coverage debt.")}</ul>
+    <h3>Explicitly non-claiming files</h3>
+    <ul>${fileList(pr.nonClaimingUserVisibleFiles, "No explicitly non-claiming changed files.")}</ul>
     <details>
       <summary>Full changed-file list (${escapeHtml(String(pr.changedFiles?.length || 0))})</summary>
       <ul>${changed}</ul>
@@ -382,9 +467,7 @@ function renderPriorityTriage(state, proofForScenario) {
 
 function renderPrPriority(state, proofForScenario) {
   const pr = state.prFocus || { configured: false, scenarioKeys: [] };
-  if (!pr.configured)
-    return `<h2 id="pull-request-focus">Pull Request Focus</h2>${renderPrFocus(state)}`;
-  const keys = pr.scenarioKeys?.length ? pr.scenarioKeys : ["prSpecificCoverage"];
+  const keys = [...new Set(["prSpecificCoverage", ...(pr.scenarioKeys ?? [])])];
   const evidenceRows = keys
     .filter((key) => state.scenarios[key])
     .map((key) => ({ key, ...state.scenarios[key] }))

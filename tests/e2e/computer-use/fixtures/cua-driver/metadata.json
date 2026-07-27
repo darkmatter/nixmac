@@ -1,0 +1,54 @@
+{
+  "app": {
+    "build_version": "0.12.6",
+    "bundle_id": "com.trycua.driver",
+    "code_signing_digest_sha256": "b6f9dd1b42520d5eefcffcc6de1a1125ace382ac8ccfbfd64225690b8891f7f6",
+    "content_tree_algorithm": "sha256(relativePosixPath NUL decimalSize NUL rawBytes NUL) for each regular file in sorted relative-path order",
+    "content_tree_sha256": "9b702de4f1591a59428f01e76eceab5a11552d19c26329eef75f0669ddc44da0",
+    "developer_id": "Cua AI, Inc. (YCK386LBJ7)",
+    "short_version": "0.12.6",
+    "team_identifier": "YCK386LBJ7"
+  },
+  "cli": {
+    "code_signing_digest_sha256": "b0c0ca9c84e2400ae757710bef868a13ac709a07cb6e598b9f71a3a3c613a6b8",
+    "developer_id": "Cua AI, Inc. (YCK386LBJ7)",
+    "release_archive": "cua-driver-rs-v0.12.6-darwin-arm64.tar.gz",
+    "release_archive_sha256": "c64017d5878d022df34137082fb918ae0d4304e28890569ff14458f1a54fd361",
+    "release_published_at": "2026-07-24",
+    "release_tag": "cua-driver-rs-v0.12.6",
+    "sha256": "3ee06efc14bb4ec501a4a8d8963514150684332f0281cc224c51b3dba3ef76ea",
+    "team_identifier": "YCK386LBJ7",
+    "version": "0.12.6",
+    "version_output": "cua-driver 0.12.6"
+  },
+  "daemon": {
+    "launch_argv": [
+      "/usr/bin/open",
+      "-n",
+      "-g",
+      "<verified-app-bundle-path>",
+      "--args",
+      "serve",
+      "--socket",
+      "<run-socket>"
+    ],
+    "launch_mode": "app-owned-standalone",
+    "raw_binary_serve_supported_for_tcc": false
+  },
+  "fixtures": {
+    "current_space_null_fallback": "For pinned 0.12.6 only, an on-screen layer-0 window with on_current_space null is eligible after explicit true candidates and is recorded as is_on_screen_fallback.",
+    "new_live_capture_performed": false,
+    "provenance": {
+      "action-error.json": "synthetic historical-envelope rejection fixture derived from the pinned MCP result schema",
+      "action-success.json": "sanitized historical captured MCP envelope retained for compatibility; not current 0.12.6 CLI stdout",
+      "click-success.json": "source-derived direct structured click success fixture from pinned macOS 0.12.6",
+      "list-apps.json": "source-derived sanitized synthetic fixture from pinned macOS 0.12.6",
+      "list-windows.json": "source-derived sanitized synthetic fixture covering pinned null fallback and future explicit-current-space preference",
+      "set-value-success.txt": "source-derived direct plaintext set_value success fixture from pinned macOS 0.12.6",
+      "window-state.json": "source-derived sanitized synthetic fixture from pinned macOS 0.12.6"
+    },
+    "researched_at": "2026-07-25",
+    "source_release": "cua-driver-rs-v0.12.6"
+  },
+  "schema_version": 1
+}

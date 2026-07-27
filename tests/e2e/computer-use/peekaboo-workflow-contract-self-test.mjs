@@ -3,9 +3,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseWorkflowYaml } from "./workflow-concurrency-contract.mjs";
 
 const thisFile = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(thisFile), "../../..");
+const packageJsonPath = path.join(repoRoot, "package.json");
 const workflowPath = path.join(repoRoot, ".github/workflows/peekaboo-e2e.yml");
 const productProofPath = path.join(repoRoot, "tests/e2e/lib/nixmac_product_proof.sh");
 const peekabooShellPath = path.join(repoRoot, "tests/e2e/lib/peekaboo.sh");
@@ -16,8 +18,11 @@ const peekabooRunnerPath = path.join(repoRoot, "tests/e2e/computer-use/peekaboo-
 const permissionsPath = path.join(repoRoot, "apps/native/src-tauri/src/system/permissions.rs");
 const e2eRuntimePath = path.join(repoRoot, "apps/native/src-tauri/src/e2e_runtime.rs");
 const nativeMainPath = path.join(repoRoot, "apps/native/src-tauri/src/main.rs");
+const nativeEnvConfigPath = path.join(repoRoot, "apps/native/src-tauri/src/env/config.rs");
+const nativeEnvModulePath = path.join(repoRoot, "apps/native/src-tauri/src/env/mod.rs");
+const nativeEnvSourcesPath = path.join(repoRoot, "apps/native/src-tauri/src/env/sources.rs");
 const debugCommandsPath = path.join(repoRoot, "apps/native/src-tauri/src/commands/debug.rs");
-const nativeStorePath = path.join(repoRoot, "apps/native/src-tauri/src/storage/store.rs");
+const nativeSecretsPath = path.join(repoRoot, "apps/native/src-tauri/src/storage/secrets.rs");
 const frontendMainPath = path.join(repoRoot, "apps/native/src/main.tsx");
 const frontendAppPath = path.join(repoRoot, "apps/native/src/App.tsx");
 const frontendWidgetPath = path.join(repoRoot, "apps/native/src/components/widget/widget.tsx");
@@ -28,13 +33,24 @@ const frontendEditorPanelPath = path.join(
 const frontendBootDiagnosticsPath = path.join(repoRoot, "apps/native/src/lib/boot-diagnostics.ts");
 const frontendDomSnapshotsPath = path.join(repoRoot, "apps/native/src/e2e/dom-snapshots.ts");
 const frontendBootHarnessPath = path.join(repoRoot, "apps/native/src/e2e/boot-harness.ts");
-const frontendSentryInitPath = path.join(repoRoot, "apps/native/src/lib/sentry/init.ts");
-const frontendSentrySanitizePath = path.join(repoRoot, "apps/native/src/lib/sentry/sanitize.ts");
+const frontendTelemetrySanitizePath = path.join(
+  repoRoot,
+  "apps/native/src/lib/telemetry/sanitize.ts",
+);
+const frontendTelemetryInitPath = path.join(
+  repoRoot,
+  "apps/native/src/lib/telemetry/init.ts",
+);
+const frontendAppErrorBoundaryPath = path.join(
+  repoRoot,
+  "apps/native/src/components/widget/layout/AppErrorBoundary.tsx",
+);
 const frontendAppFatalFallbackPath = path.join(
   repoRoot,
   "apps/native/src/components/widget/layout/AppFatalFallback.tsx",
 );
 const tauriApiPath = path.join(repoRoot, "apps/native/src/ipc/api.ts");
+const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
 const workflow = readFileSync(workflowPath, "utf8");
 const productProof = readFileSync(productProofPath, "utf8");
 const peekabooShell = readFileSync(peekabooShellPath, "utf8");
@@ -45,8 +61,11 @@ const peekabooRunner = readFileSync(peekabooRunnerPath, "utf8");
 const permissions = readFileSync(permissionsPath, "utf8");
 const e2eRuntime = readFileSync(e2eRuntimePath, "utf8");
 const nativeMain = readFileSync(nativeMainPath, "utf8");
+const nativeEnvConfig = readFileSync(nativeEnvConfigPath, "utf8");
+const nativeEnvModule = readFileSync(nativeEnvModulePath, "utf8");
+const nativeEnvSources = readFileSync(nativeEnvSourcesPath, "utf8");
 const debugCommands = readFileSync(debugCommandsPath, "utf8");
-const nativeStore = readFileSync(nativeStorePath, "utf8");
+const nativeSecrets = readFileSync(nativeSecretsPath, "utf8");
 const frontendMain = readFileSync(frontendMainPath, "utf8");
 const frontendApp = readFileSync(frontendAppPath, "utf8");
 const frontendWidget = readFileSync(frontendWidgetPath, "utf8");
@@ -54,8 +73,9 @@ const frontendEditorPanel = readFileSync(frontendEditorPanelPath, "utf8");
 const frontendBootDiagnostics = readFileSync(frontendBootDiagnosticsPath, "utf8");
 const frontendDomSnapshots = readFileSync(frontendDomSnapshotsPath, "utf8");
 const frontendBootHarness = readFileSync(frontendBootHarnessPath, "utf8");
-const frontendSentryInit = readFileSync(frontendSentryInitPath, "utf8");
-const frontendSentrySanitize = readFileSync(frontendSentrySanitizePath, "utf8");
+const frontendTelemetrySanitize = readFileSync(frontendTelemetrySanitizePath, "utf8");
+const frontendTelemetryInit = readFileSync(frontendTelemetryInitPath, "utf8");
+const frontendAppErrorBoundary = readFileSync(frontendAppErrorBoundaryPath, "utf8");
 const frontendAppFatalFallback = readFileSync(frontendAppFatalFallbackPath, "utf8");
 const tauriApi = readFileSync(tauriApiPath, "utf8");
 
@@ -83,7 +103,156 @@ function assertOrder(source, first, second, message) {
   assert.ok(firstIndex < secondIndex, message);
 }
 
-const trigger = section(/^on:$/m, /^permissions:$/m);
+function maskRustCommentsAndStrings(source) {
+  const masked = [...source];
+  const mask = (index) => {
+    if (source[index] !== "\n") masked[index] = " ";
+  };
+
+  for (let index = 0; index < source.length; ) {
+    if (source.startsWith("//", index)) {
+      while (index < source.length && source[index] !== "\n") {
+        mask(index);
+        index += 1;
+      }
+      continue;
+    }
+
+    if (source.startsWith("/*", index)) {
+      let depth = 0;
+      while (index < source.length) {
+        if (source.startsWith("/*", index)) {
+          mask(index);
+          mask(index + 1);
+          depth += 1;
+          index += 2;
+          continue;
+        }
+        if (source.startsWith("*/", index)) {
+          mask(index);
+          mask(index + 1);
+          depth -= 1;
+          index += 2;
+          if (depth === 0) break;
+          continue;
+        }
+        mask(index);
+        index += 1;
+      }
+      continue;
+    }
+
+    const rawString = source.slice(index).match(/^r(#+)?"/u);
+    if (rawString) {
+      const hashes = rawString[1] ?? "";
+      const terminator = `"${hashes}`;
+      for (let offset = 0; offset < rawString[0].length; offset += 1) mask(index + offset);
+      index += rawString[0].length;
+      while (index < source.length && !source.startsWith(terminator, index)) {
+        mask(index);
+        index += 1;
+      }
+      for (let offset = 0; offset < terminator.length; offset += 1) mask(index + offset);
+      index += terminator.length;
+      continue;
+    }
+
+    if (source[index] === '"') {
+      mask(index);
+      index += 1;
+      while (index < source.length) {
+        if (source[index] === "\\") {
+          mask(index);
+          mask(index + 1);
+          index += 2;
+          continue;
+        }
+        const closingQuote = source[index] === '"';
+        mask(index);
+        index += 1;
+        if (closingQuote) break;
+      }
+      continue;
+    }
+
+    index += 1;
+  }
+
+  return masked.join("");
+}
+
+function rustIdentifierSites(source, identifier) {
+  const code = maskRustCommentsAndStrings(source);
+  const identifierPattern = new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "gu");
+  return [...code.matchAll(identifierPattern)].map((match) => {
+    const lineStart = source.lastIndexOf("\n", match.index) + 1;
+    const lineEnd = source.indexOf("\n", match.index);
+    return source.slice(lineStart, lineEnd === -1 ? source.length : lineEnd).trim();
+  });
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function assertManualOnlyTrigger(workflowDocument, label = "Legacy Peekaboo workflow") {
+  assert.ok(
+    workflowDocument.on &&
+      typeof workflowDocument.on === "object" &&
+      !Array.isArray(workflowDocument.on),
+    `${label} on must be a mapping`,
+  );
+  assert.deepEqual(
+    Object.keys(workflowDocument.on),
+    ["workflow_dispatch"],
+    `${label} must expose exactly one manual workflow_dispatch trigger`,
+  );
+  assert.ok(
+    workflowDocument.on.workflow_dispatch &&
+      typeof workflowDocument.on.workflow_dispatch === "object" &&
+      !Array.isArray(workflowDocument.on.workflow_dispatch),
+    `${label} workflow_dispatch definition must be a mapping`,
+  );
+}
+
+assert.deepEqual(
+  rustIdentifierSites(
+    `
+// ignored.reload()
+/* reload */
+let normal = "reload()";
+let raw = r#"WebviewWindow::reload(&window)"#;
+let byte = b"reload";
+let rawByte = br##"reload"##;
+reload: F,
+Some(reload())
+window.reload()
+let alias = WebviewWindow::reload;
+let reference = &WebviewWindow::reload;
+`,
+    "reload",
+  ),
+  [
+    "reload: F,",
+    "Some(reload())",
+    "window.reload()",
+    "let alias = WebviewWindow::reload;",
+    "let reference = &WebviewWindow::reload;",
+  ],
+  "Rust reload identifier scanner must detect callback, method, alias, and reference syntax while ignoring comments and strings",
+);
+
+assert.match(
+  packageJson.packageManager,
+  /^bun@\d+\.\d+\.\d+$/,
+  "Root packageManager must declare the Bun version used by remote E2E builds",
+);
+const pinnedBunVersion = packageJson.packageManager.slice("bun@".length);
+
+const workflowDocument = parseWorkflowYaml({
+  workflowName: "Peekaboo E2E",
+  source: workflow,
+});
 const proof = section(/^  peekaboo-product-proof:$/m, /^  publish-peekaboo-report:$/m);
 const publish = section(/^  publish-peekaboo-report:$/m, /^  peekaboo-result:$/m);
 const result = section(/^  peekaboo-result:$/m);
@@ -96,7 +265,7 @@ const cleanup = section(
   /^}$/m,
 );
 const frontendRenderApp = section(
-  { sourceText: frontendMain, pattern: /^const renderApp = \(\) => \{$/m },
+  { sourceText: frontendMain, pattern: /^const renderApp = \([^)]*\) => \{$/m },
   /^};$/m,
 );
 const nativeCaptureWindowSetup = section(
@@ -106,20 +275,35 @@ const nativeCaptureWindowSetup = section(
 const nativeSolidCaptureBranch =
   nativeCaptureWindowSetup.match(/if e2e_solid_capture \{[\s\S]*?\n\s+\}/)?.[0] ?? "";
 
-assert.doesNotMatch(
-  trigger,
-  /^\s+branches:/m,
-  "Peekaboo workflow must run for stacked PR bases, not only main",
-);
-assert.match(
-  trigger,
-  /'package\.json'[\s\S]*'bun\.lock'[\s\S]*'Cargo\.toml'[\s\S]*'Cargo\.lock'[\s\S]*'flake\.nix'[\s\S]*'flake\.lock'[\s\S]*'devenv\.nix'[\s\S]*'devenv\.lock'/,
-  "Peekaboo workflow must run for root dependency, Nix, and devenv manifest/lockfile changes that affect the native app build",
-);
-assert.match(
-  workflow,
-  /build_attempts:[\s\S]*default: '2'/,
-  "Peekaboo PR runs should default to two remote build attempts for transient MacInCloud build failures",
+assertManualOnlyTrigger(workflowDocument);
+for (const automaticTrigger of [
+  "push",
+  "workflow_run",
+  "workflow_call",
+  "pull_request",
+  "pull_request_target",
+  "schedule",
+]) {
+  assert.throws(
+    () =>
+      assertManualOnlyTrigger(
+        {
+          ...workflowDocument,
+          on: {
+            ...workflowDocument.on,
+            [automaticTrigger]: {},
+          },
+        },
+        `Mutated Peekaboo workflow with ${automaticTrigger}`,
+      ),
+    /exactly one manual workflow_dispatch trigger/,
+    `Peekaboo trigger contract must reject ${automaticTrigger}`,
+  );
+}
+assert.equal(
+  workflowDocument.on.workflow_dispatch.inputs?.build_attempts?.default,
+  "2",
+  "Legacy Peekaboo dispatches should default to two remote build attempts for transient MacInCloud build failures",
 );
 assert.match(
   workflow,
@@ -239,8 +423,10 @@ assert.match(
 );
 assert.match(
   proof,
-  /command -v bun[\s\S]*bun-v1\.3\.2[\s\S]*bun --version/,
-  "remote build must bootstrap the pinned Bun version when MacInCloud does not have bun on PATH",
+  new RegExp(
+    `command -v bun[\\s\\S]*bun-v${escapeRegExp(pinnedBunVersion)}[\\s\\S]*bun --version`,
+  ),
+  "remote build must bootstrap the root-pinned Bun version when MacInCloud does not have bun on PATH",
 );
 assert.match(
   proof,
@@ -644,8 +830,23 @@ assert.match(
 );
 assert.match(
   nativeMain,
-  /crate::e2e_runtime::value\("NIXMAC_LOGFILE"\)/,
-  "Native app logging must read NIXMAC_LOGFILE through the E2E runtime file when launched via LaunchServices",
+  /crate::env::logfile\(\)/,
+  "Native app logging must read NIXMAC_LOGFILE through the typed env accessor",
+);
+assert.match(
+  nativeEnvConfig,
+  /env_var\s*=\s*"NIXMAC_LOGFILE"[\s\S]*pub logfile:\s*String/,
+  "Typed native env configuration must retain the NIXMAC_LOGFILE field",
+);
+assert.match(
+  nativeEnvModule,
+  /pub fn logfile\(\)\s*->\s*Option<String>\s*\{[\s\S]*?settings\(None\)\.logfile[\s\S]*?\}/,
+  "Native logfile accessor must resolve the typed environment settings",
+);
+assert.match(
+  nativeEnvSources,
+  /pub fn trimmed_env\(name:\s*&str\)[\s\S]*?crate::e2e_runtime::value\(name\)[\s\S]*?std::env::var\(name\)/,
+  "Typed env resolution must retain E2E runtime-file precedence for LaunchServices launches",
 );
 assert.match(
   nativeMain,
@@ -699,8 +900,18 @@ assert.match(
 );
 assert.match(
   nativeMain,
-  /let e2e_webview_watchdog = e2e_webview_watchdog_enabled\(\) \|\| e2e_opaque_window[\s\S]*if e2e_webview_watchdog \{[\s\S]*let watchdog_window[\s\S]*NIXMAC_E2E_WEBVIEW_WATCHDOG_SECS[\s\S]*unwrap_or\(12\)[\s\S]*Duration::from_secs\(watchdog_secs\)[\s\S]*main webview E2E load watchdog[\s\S]*run_on_main_thread[\s\S]*reload\(\)/,
-  "Native app must run the E2E-only main WebView load watchdog independently of opaque capture and request one reload when page load stalls",
+  /let e2e_webview_watchdog = e2e_webview_watchdog_enabled\(\);/,
+  "Native app must activate the WebView watchdog only through its explicit E2E gate",
+);
+assert.match(
+  nativeMain,
+  /if e2e_webview_watchdog \{[\s\S]*e2e_schedule_webview_boot_probe[\s\S]*NIXMAC_E2E_WEBVIEW_WATCHDOG_SECS[\s\S]*unwrap_or\(12\)[\s\S]*Duration::from_secs\(watchdog_secs\)[\s\S]*run_on_main_thread/,
+  "Native app must keep the 12-second bounded reload scheduler inside the explicit E2E watchdog gate",
+);
+assert.doesNotMatch(
+  nativeMain,
+  /let e2e_webview_watchdog = [^;]*(?:e2e_opaque_window|e2e_solid_capture)/,
+  "Native WebView watchdog activation must not be coupled to visual capture modes",
 );
 assert.match(
   nativeMain,
@@ -719,13 +930,18 @@ assert.match(
 );
 assert.match(
   nativeMain,
-  /run_on_main_thread\(move \|\| \{\n\s+e2e_request_webview_boot_probe\(&reload_window, "watchdog-before-reload"\);[\s\S]*reload_window\.reload\(\)/,
-  "Watchdog pre-reload WebView boot probe must run on the main thread before requesting reload",
+  /run_on_main_thread\(move \|\| \{\n\s+e2e_request_webview_boot_probe\(&reload_window, "watchdog-before-reload"\);\n\s+if let Err\(reload_err\) = reload_window\.reload\(\)/,
+  "Watchdog reload must probe the WebView immediately before its sole main-thread reload request",
+);
+assert.deepEqual(
+  rustIdentifierSites(nativeMain, "reload"),
+  ["if let Err(reload_err) = reload_window.reload() {"],
+  "Native app reload identifiers must remain limited to the sole watchdog invocation",
 );
 assert.match(
-  nativeStore,
-  /fn get_secret_pref[\s\S]*if e2e_mock_system_enabled\(\) \{[\s\S]*return get_string_pref_raw\(app, key\);[\s\S]*get_with_lazy_migration/,
-  "E2E mock-system mode must bypass keychain reads in UI preference secret lookups",
+  nativeSecrets,
+  /fn get_secret_pref<R: Runtime>\(app: &AppHandle<R>, key: &'static str\) -> Result<Option<String>> \{[\s\S]*if let Some\(store\) = hermetic_secret_store\(key\)[\s\S]*if crate::env::e2e_mock_system_enabled\(\)[\s\S]*get_persistent_secret_pref\(app, key\)/,
+  "get_secret_pref must preserve hermetic, E2E mock, and persistent-reader precedence",
 );
 assert.match(
   debugCommands,
@@ -749,48 +965,18 @@ assert.match(
 );
 assert.match(
   frontendBootDiagnostics,
-  /export function markBootRenderStage[\s\S]*bootStageCleared[\s\S]*setBootStageDomMarker\(normalizedStage\)/,
-  "Frontend boot diagnostics must expose a render-safe boot stage marker that only mutates DOM/title",
-);
-assert.doesNotMatch(
-  frontendBootDiagnostics,
-  /export function markBootRenderStage[\s\S]*markNativeBootStage/,
-  "Render-safe boot stage markers must not invoke native IPC",
+  /export function markBootRenderStage[\s\S]*export function markBootStage/,
+  "Frontend boot diagnostics must continue exporting separate render-safe and effect-safe marker APIs",
 );
 assert.match(
-  frontendBootDiagnostics,
-  /export function markBootStage[\s\S]*bootStageCleared[\s\S]*setStorageValue\("nixmac:e2e-boot-stage"[\s\S]*markNativeBootStage\(normalizedStage\)/,
-  "Frontend boot diagnostics must persist full boot stage markers from effect-safe call sites",
-);
-assert.match(
-  frontendBootDiagnostics,
-  /function markNativeBootStage\(stage: string\)[\s\S]*tauriAPI\.debug\.markBootStage\(stage, Date\.now\(\)\)/,
-  "Frontend boot diagnostics must mirror committed boot stages to the native debug command",
-);
-assert.match(
-  frontendBootDiagnostics,
-  /export function clearBootStage[\s\S]*document\.title = APP_TITLE[\s\S]*nixmac:e2e-boot-stage", "mounted"/,
-  "Frontend boot diagnostics must restore the normal window title after mount",
-);
-assert.match(
-  frontendBootDiagnostics,
-  /export function clearBootStage[\s\S]*markNativeBootStage\("mounted"\)/,
-  "Frontend boot diagnostics must clear the native title marker after App mount",
-);
-assert.match(
-  frontendSentrySanitize,
-  /export function sanitizeDiagnosticText[\s\S]*sanitizeString/,
+  frontendTelemetrySanitize,
+  /export function sanitizeDiagnosticText/,
   "E2E DOM diagnostics text sanitizer must be exported from the shared sanitize module",
 );
 assert.match(
-  frontendSentrySanitize,
-  /EMAIL_PATTERN[\s\S]*BEARER_TOKEN_PATTERN[\s\S]*OPENAI_TOKEN_PATTERN[\s\S]*HOME_DIR_PATH_PATTERN/,
-  "Shared sanitize module must apply the secret-shaped text patterns used by both Sentry events and E2E diagnostics",
-);
-assert.match(
   frontendDomSnapshots,
-  /import \{ sanitizeDiagnosticText \} from "@\/lib\/sentry\/sanitize"/,
-  "E2E DOM snapshots must consume sanitization from the shared sentry/sanitize module rather than a duplicate regex set",
+  /import\s*\{\s*sanitizeDiagnosticText\s*\}\s*from\s*"@\/lib\/telemetry\/sanitize"/,
+  "E2E DOM snapshots must consume sanitization from the shared telemetry/sanitize module rather than a duplicate regex set",
 );
 assert.match(
   frontendDomSnapshots,
@@ -808,19 +994,14 @@ assert.match(
   "E2E DOM snapshots must schedule a bounded post-mount snapshot series and self-stop",
 );
 assert.match(
-  frontendSentryInit,
-  /PREFS_BOOT_TIMEOUT_MS = 8000[\s\S]*ui_get_prefs invoke start[\s\S]*success after timeout[\s\S]*Promise\.race\(\[prefsPromise, timeoutPromise\]\)/,
-  "Sentry init module must log prefs IPC progress with clear after-timeout labels",
-);
-assert.match(
   frontendMain,
   /markBootStage\("main-loaded"\)[\s\S]*markBootStage\("root-found"\)[\s\S]*markBootStage\("react-render-start"\)[\s\S]*markBootStage\("react-render-scheduled"\)/,
   "Frontend boot must synchronously mark module, root, and render-scheduling stages",
 );
 assert.match(
   frontendApp,
-  /markBootStage\("app-render"\)[\s\S]*markBootStage\("app-effect"\)[\s\S]*clearBootStage\(\)/,
-  "App must synchronously mark render/effect stages and clear the E2E title marker after mount",
+  /useEffect\(\(\) => \{[\s\S]*markBootStage\("app-effect"\)[\s\S]*bootBreadcrumb\("App mounted"\)[\s\S]*window\.dispatchEvent\(new Event\("nixmac:app-mounted"\)\)[\s\S]*telemetry\.captureEvent\(\{ name: "app_ready"[\s\S]*clearBootStage\(\)/,
+  "App must mark the committed mount stage, emit the mounted event and app-ready telemetry, then clear the E2E title marker",
 );
 assert.match(
   frontendWidget,
@@ -829,7 +1010,7 @@ assert.match(
 );
 assert.match(
   frontendEditorPanel,
-  /const LazyNixEditor = lazy\(async \(\) => \{[\s\S]*import\("@\/components\/kibo-ui\/nix-editor"\)[\s\S]*default: module\.NixEditor/,
+  /const LazyNixEditor = lazy\(async \(\) => \{[\s\S]*import\("@\/components\/nix-editor"\)[\s\S]*default: module\.NixEditor/,
   "EditorPanel must lazy-load the Monaco-backed Nix editor only when a file is opened",
 );
 assert.doesNotMatch(
@@ -843,13 +1024,8 @@ assert.match(
   "E2E boot harness must emit bounded heartbeat breadcrumbs until App mounted and record when the bound is reached",
 );
 assert.match(
-  frontendSentryInit,
-  /isE2eProfile[\s\S]*Sentry init skipped for E2E boot[\s\S]*return;/,
-  "Sentry init module must use the build-time E2E mode flag to skip boot-time Sentry prefs IPC without adding another IPC gate",
-);
-assert.match(
   frontendMain,
-  /isE2eProfile[\s\S]*void import\("@\/e2e\/boot-harness"\)[\s\S]*attachBootHarness\(\{ rootElement \}\)/,
+  /if\s*\(\s*isE2eProfile\s*\)\s*\{[\s\S]*?import\("@\/e2e\/boot-harness"\)[\s\S]*?attachBootHarness\(\{\s*rootElement\s*\}\)/,
   "Frontend main must conditionally dynamic-import the E2E boot harness so it is tree-shaken from production builds",
 );
 assert.match(
@@ -864,50 +1040,53 @@ assert.match(
 );
 assert.match(
   frontendMain,
-  /const renderApp = \(\) => \{[\s\S]*markBootStage\("react-render-start"\)[\s\S]*Sentry\.ErrorBoundary[\s\S]*<App \/>[\s\S]*markBootStage\("react-render-scheduled"\)/,
-  "Frontend boot must render the app inside an error boundary, bracketed by the render-start and render-scheduled boot stages",
-);
-assert.match(
-  frontendSentryInit,
-  /startSentryInitOnce[\s\S]*render-error[\s\S]*render-fatal[\s\S]*Sentry init start requested[\s\S]*scheduleAfterPostMountFrame[\s\S]*initializeSentryAfterPostMountFrame\(\)/,
-  "Sentry init module must start preference-backed Sentry initialization only after App mounted, render error, render fatal, or the mount-timeout fallback requests it",
-);
-assert.match(
-  frontendSentryInit,
-  /export function captureRenderError[\s\S]*startSentryInitOnce\(reason\)[\s\S]*Sentry\.captureException\(error\)/,
-  "Sentry init module must export captureRenderError that lazily initializes Sentry and then captures the render error",
-);
-assert.match(
-  frontendSentryInit,
-  /SENTRY_MOUNT_TIMEOUT_MS = 5000[\s\S]*window\.setTimeout\(\(\) => \{[\s\S]*startSentryInitOnce\("mount-timeout"\)[\s\S]*SENTRY_MOUNT_TIMEOUT_MS/,
-  "Sentry init module must retain a production mount-timeout Sentry fallback for failed-render sessions without a long early-boot observability gap",
-);
-assert.match(
-  frontendSentryInit,
-  /export function attachSentry[\s\S]*window\.addEventListener\(\s*"nixmac:app-mounted"[\s\S]*startSentryInitOnce\("app-mounted"\)/,
-  "Sentry init module must register the app-mounted Sentry init trigger inside attachSentry",
+  /const renderApp = \(telemetry:\s*TelemetryProvider\) => \{[\s\S]*markBootStage\("react-render-start"\)[\s\S]*<AppErrorBoundary[\s\S]*<TelemetryContextProvider\s+value=\{telemetry\}>[\s\S]*<App \/>[\s\S]*markBootStage\("react-render-scheduled"\)/,
+  "Frontend boot must render the app inside AppErrorBoundary with telemetry context, bracketed by the render boot stages",
 );
 assert.match(
   frontendMain,
-  /import \{ attachSentry, captureRenderError \} from "@\/lib\/sentry\/init"/,
-  "Frontend main must consume Sentry attach + capture from the extracted module",
+  /const bootstrap = async \(\) => \{[\s\S]*const telemetry = await initTelemetry\(\);[\s\S]*setTelemetryProvider\(telemetry\);[\s\S]*telemetry\.captureEvent\([\s\S]*renderApp\(telemetry\)/,
+  "Frontend bootstrap must install and render with the same initialized telemetry provider",
 );
-assertOrder(
+assert.match(
   frontendMain,
-  "await attachSentry();",
-  "renderApp();",
-  "Frontend boot must await attachSentry before rendering so production blocks render on prefs+Sentry init (closing the pre-init render-error window)",
+  /import\s*\{\s*getTelemetry,\s*setTelemetryProvider\s*\}\s*from\s*"@\/lib\/telemetry\/instance"/,
+  "Frontend bootstrap must import the unified telemetry getter and installer",
 );
-assertOrder(
+assert.match(
+  frontendTelemetryInit,
+  /setTelemetryProvider\((?:noopProvider|provider)\)/,
+  "Telemetry initialization must install the provider chosen for the current diagnostics policy",
+);
+assert.match(
   frontendMain,
-  'import("@/e2e/boot-harness")',
-  "renderApp();",
-  "Frontend boot must queue the harness dynamic import before rendering so the heartbeat-stop listener runs in time for the App mount event",
+  /catch\s*\(\s*error\s*\)\s*\{[\s\S]*?markBootStage\("react-render-fatal"\)[\s\S]*?getTelemetry\(\)\.captureError\([\s\S]*?name:\s*"render-fatal"[\s\S]*?root\.render\(<AppFatalFallback/,
+  "Frontend bootstrap must report synchronous render-fatal errors through telemetry before rendering the fatal fallback",
+);
+assert.match(
+  frontendAppErrorBoundary,
+  /componentDidCatch\(\s*error:\s*Error[\s\S]*?getTelemetry\(\)\.captureError\(\s*error,\s*\{\s*name:\s*"render-error"\s*\}\s*\)/,
+  "AppErrorBoundary must capture React render errors through the installed telemetry provider",
+);
+assert.match(
+  frontendAppErrorBoundary,
+  /if\s*\(\s*error\s*\)\s*\{[\s\S]*?return\s+this\.props\.fallback\s*\?\s*this\.props\.fallback\(\s*error\s*\)\s*:\s*<AppFatalFallback/,
+  "AppErrorBoundary must render the supplied fallback for React render errors",
+);
+assert.match(
+  frontendMain,
+  /import\s*\{\s*initTelemetry\s*\}\s*from\s*"@\/lib\/telemetry\/init"/,
+  "Frontend main must consume initialization from the unified telemetry module",
+);
+assert.match(
+  frontendMain,
+  /if\s*\(\s*isE2eProfile\s*\)\s*\{[\s\S]*import\("@\/e2e\/boot-harness"\)[\s\S]*const bootstrap = async/,
+  "Frontend boot must queue the E2E harness import before starting telemetry bootstrap",
 );
 assert.doesNotMatch(
   frontendMain,
-  /renderApp\(\);\s*void initializeSentry/,
-  "Frontend boot must not directly initialize preference-backed Sentry immediately after first render",
+  /@\/lib\/sentry|attachSentry|initializeSentry|Sentry\./,
+  "Frontend boot must not depend on the deleted Sentry attach/init path after the unified telemetry migration",
 );
 assert.doesNotMatch(
   frontendRenderApp,
@@ -936,7 +1115,7 @@ assert.match(
 );
 assert.match(
   runnerShell,
-  /E2E_TERMINAL_CLEANUP_MODE=kill recording_close_terminal_windows/,
+  /E2E_TERMINAL_CLEANUP_MODE=["']?kill["']?\s+recording_close_terminal_windows/,
   "Runner preflight must kill stale recorder Terminal windows before each scenario",
 );
 assert.match(
@@ -986,7 +1165,7 @@ assert.match(
 );
 assert.match(
   runLocal,
-  /function getNixmacWindowInfo\(\)[\s\S]*set windowTitle to \(name of window 1\) as text[\s\S]*on error[\s\S]*set windowTitle to ""[\s\S]*return \{ region, title: titleLines\.join\('\\n'\)\.trim\(\) \}/,
+  /function getNixmacWindowInfo\(\)[\s\S]*set windowTitle to \(name of window 1\) as text[\s\S]*on error[\s\S]*set windowTitle to ""[\s\S]*return \{ region, title: titleLines\.join\(["']\\n["']\)\.trim\(\) \}/,
   "Peekaboo screenshot capture must persist the Accessibility window title as an automated boot-stage consumer without failing on missing titles",
 );
 assert.match(

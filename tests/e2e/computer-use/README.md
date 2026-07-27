@@ -164,6 +164,31 @@ tests/e2e/computer-use/coverage-manifest.json
 The manifest is evaluated during report rendering and appears near the top of
 the HTML report as Main Coverage Freshness.
 
+## Bounded CuaDriver Smoke
+
+Use the checked-in smoke command against an existing artifact run directory:
+
+```bash
+node tests/e2e/computer-use/run-cua-driver.mjs smoke --run-dir <artifact-run-dir>
+```
+
+The bounded smoke contract must launch the exact app, reach Settings General,
+and render the local report. It is a transport and harness check, not a
+substitute for the full scenario suite.
+
+## Post-Merge Centaur Workflow
+
+`.github/workflows/computer-use-e2e-centaur.yml` is the merged-SHA workflow
+contract. It accepts only immutable job, build, artifact, digest, nonce, and
+suite inputs from Centaur. Its current `static_ssh` backend is a transition lane
+that leases the shared MacinCloud host, drives the exact app through CuaDriver,
+restores the host, seals canonical evidence, publishes the verified report to
+private storage, and emits one terminal contract for Centaur to consume.
+
+This workflow does not post PR comments or team messages, create branches, or
+request rebuilds. See `OPERATIONS.md` for configuration, failure ownership, and
+the provider-independent scale-out boundary.
+
 ## PR Workflow
 
 `.github/workflows/computer-use-e2e.yml` triggers on every pull request and
