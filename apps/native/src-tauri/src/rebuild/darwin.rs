@@ -786,9 +786,6 @@ fn run_activate_with_path(
         // SAFETY: `getuid` is thread-safe, has no preconditions, and cannot fail.
         uid: unsafe { libc::getuid() },
         activate_path: real_activate,
-        ssh_auth_sock: std::env::var("SSH_AUTH_SOCK")
-            .ok()
-            .filter(|sock| !sock.is_empty()),
     };
     let exe = std::env::current_exe()
         .map_err(|e| anyhow::anyhow!("Failed to resolve current executable: {}", e))?;
