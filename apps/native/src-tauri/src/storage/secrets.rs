@@ -270,14 +270,7 @@ pub fn get_env_openrouter_provider_credential() -> Option<(String, &'static str)
     crate::env::openrouter_api_key().map(|key| (key, OPENROUTER_BASE_URL))
 }
 
-pub fn get_sync_secret<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
-    get_secret_pref(app, SYNC_SECRET_KEYCHAIN_KEY)
-}
-
-pub fn set_sync_secret<R: Runtime>(app: &AppHandle<R>, secret: &str) -> Result<()> {
-    set_secret_pref(app, SYNC_SECRET_KEYCHAIN_KEY, secret)
-}
-
+/// Deletes the retired HMAC sync secret if present (upgrade cleanup only).
 pub fn delete_sync_secret<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
     delete_secret_pref(app, SYNC_SECRET_KEYCHAIN_KEY)
 }

@@ -64,9 +64,6 @@ export const tauriAPI = {
   account: {
     /** @deprecated Use `client.account.status()` or `orpc.account.status` from `@/lib/orpc`. */
     status: () => client.account.status(),
-    /** @deprecated Use `client.account.signIn()` or `orpc.account.signIn` from `@/lib/orpc`. */
-    signIn: (email: string, password: string) =>
-      client.account.signIn({ email, password }),
     /** @deprecated Use `client.account.signInWeb()` or `orpc.account.signInWeb` from `@/lib/orpc`. */
     signInWeb: (email: string, password: string) =>
       client.account.signInWeb({ email, password }),
@@ -80,16 +77,6 @@ export const tauriAPI = {
       client.account.verifyOtp({ email, otp, name }),
     /** @deprecated Use `client.account.signOut()` or `orpc.account.signOut` from `@/lib/orpc`. */
     signOut: () => client.account.signOut(),
-    /** @deprecated Use `client.account.setServerUrl()` or `orpc.account.setServerUrl` from `@/lib/orpc`. */
-    setServerUrl: (url: string) => client.account.setServerUrl({ url }),
-  },
-  sync: {
-    /** @deprecated Use `client.sync.status()` or `orpc.sync.status` from `@/lib/orpc`. */
-    status: () => client.sync.status(),
-    /** @deprecated Use `client.sync.push()` or `orpc.sync.push` from `@/lib/orpc`. */
-    push: () => client.sync.push(),
-    /** @deprecated Use `client.sync.pull()` or `orpc.sync.pull` from `@/lib/orpc`. */
-    pull: () => client.sync.pull(),
   },
   git: {
     /** @deprecated Use `client.git.state()` or `orpc.git.state` from `@/lib/orpc`. */

@@ -1,0 +1,49 @@
+name: macOS CI Image Builder Host
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        description: "Host operation: provision, configure-network, or preflight"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    name: Image builder ${{ inputs.mode }}
+    runs-on: [self-hosted, macOS, nixmac-image-builder]
+    timeout-minutes: 30
+    steps:
+      - name: Validate operation
+        shell: bash
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          case "$MODE" in
+            provision|configure-network|preflight) ;;
+            *)
+              echo "::error::Unsupported image-builder host operation: $MODE"
+              exit 1
+              ;;
+          esac
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Provision image builder
+        if: inputs.mode == 'provision'
+        shell: bash
+        run: bash ops/images/provision-image-builder.sh
+
+      - name: Configure image-builder networking
+        if: inputs.mode == 'configure-network'
+        shell: bash
+        run: bash ops/images/configure-image-builder-network.sh
+
+      - name: Preflight image builder
+        if: inputs.mode == 'preflight'
+        shell: bash
+        run: bash ops/images/preflight-image-builder.sh

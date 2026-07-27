@@ -6,7 +6,6 @@ on:
       - "v*"
   pull_request:
     branches: [main]
-  merge_group:
   workflow_dispatch:
     inputs:
       e2e_backfill:
@@ -19,21 +18,96 @@ on:
         required: false
         type: string
         default: ""
+      runner_pool:
+        description: "Mac runner pool for manual verification"
+        type: choice
+        options:
+          [
+            auto,
+            self-hosted,
+            custom,
+            depot,
+            image-builder-network-config,
+            image-builder-provision,
+            image-builder-preflight,
+            image-builder,
+          ]
+        default: auto
+        required: true
+      xcode_artifact:
+        description: "Builder-local Xcode .xip/.pkg path (image-builder only)"
+        type: string
+        required: false
+      xcode_artifact_type:
+        description: "Builder-local Xcode artifact type (image-builder only)"
+        type: choice
+        options: [xip, pkg]
+        default: xip
+        required: false
+      xcode_artifact_sha256:
+        description: "Approved Xcode artifact SHA-256 (image-builder only)"
+        type: string
+        required: false
+  merge_group:
 
 concurrency:
-  group: build-${{ inputs.e2e_merge_sha || github.event.pull_request.number || github.ref }}
+  group: build-${{ inputs.e2e_merge_sha || github.event.pull_request.number || github.ref }}-${{ inputs.runner_pool == 'image-builder-network-config' && 'image-network-config' || inputs.runner_pool == 'image-builder-provision' && 'image-provision' || inputs.runner_pool == 'image-builder-preflight' && 'image-preflight' || inputs.runner_pool == 'image-builder' && 'image-build' || 'product' }}
   cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 env:
   CARGO_TERM_COLOR: always
   SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 jobs:
+  # The macOS image workflow is not registered for workflow_dispatch until it
+  # exists on the default branch. Route its pre-merge qualification through
+  # this already-registered workflow so PR #604 can prove the image before
+  # merge without enabling any scheduled or default-branch consumer.
+  image-builder-provision:
+    name: Provision macOS image builder
+    if: inputs.runner_pool == 'image-builder-provision'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/macos-ci-image-builder-host.yaml
+    with:
+      mode: provision
+
+  image-builder-network-config:
+    name: Configure macOS image-builder networking
+    if: inputs.runner_pool == 'image-builder-network-config'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/macos-ci-image-builder-host.yaml
+    with:
+      mode: configure-network
+
+  image-builder-preflight:
+    name: Inspect macOS image builder
+    if: inputs.runner_pool == 'image-builder-preflight'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/macos-ci-image-builder-host.yaml
+    with:
+      mode: preflight
+
+  build-macos-image:
+    name: Build and qualify macOS CI image
+    if: inputs.runner_pool == 'image-builder'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/macos-ci-image.yaml
+    with:
+      xcode_artifact: ${{ inputs.xcode_artifact }}
+      xcode_artifact_type: ${{ inputs.xcode_artifact_type }}
+      xcode_artifact_sha256: ${{ inputs.xcode_artifact_sha256 }}
+
   # Run the repo's git-hooks (treefmt, shellcheck) across the whole tree so a
   # commit made with hooks skipped/broken still gets flagged. Intentionally
   # not in any `needs` chain: a failure shows up as a red check on the PR but
   # never blocks rust-tests/build from running.
   git-hooks:
     name: Git Hooks
+    if: inputs.runner_pool != 'image-builder' && inputs.runner_pool != 'image-builder-preflight' && inputs.runner_pool != 'image-builder-provision' && inputs.runner_pool != 'image-builder-network-config'
     runs-on: arc
     timeout-minutes: 30
     permissions:
@@ -81,6 +155,7 @@ jobs:
           node tests/e2e/computer-use/evidence-manifest-self-test.mjs
           node tests/e2e/computer-use/run-cua-driver.mjs self-test
           node tests/e2e/computer-use/run-remote-cua.mjs self-test
+          node tests/e2e/computer-use/macos-ci-image-contract-self-test.mjs
 
       - name: Run git hooks
         env:
@@ -93,6 +168,7 @@ jobs:
 
   resolve-e2e-backfill:
     name: Resolve exact-SHA E2E build backfill
+    if: inputs.runner_pool != 'image-builder' && inputs.runner_pool != 'image-builder-preflight' && inputs.runner_pool != 'image-builder-provision' && inputs.runner_pool != 'image-builder-network-config'
     runs-on: arc
     timeout-minutes: 10
     permissions:
@@ -203,6 +279,7 @@ jobs:
 
   rust-tests:
     name: Rust Tests (Linux)
+    if: inputs.runner_pool != 'image-builder' && inputs.runner_pool != 'image-builder-preflight' && inputs.runner_pool != 'image-builder-provision' && inputs.runner_pool != 'image-builder-network-config'
     runs-on: arc
     permissions:
       contents: read
@@ -241,10 +318,83 @@ jobs:
         run: cargo test --manifest-path src-tauri/Cargo.toml
         env:
           NIXMAC_ENV: production
-  build:
+
+  # Decide whether the mac build lands on the dedicated self-hosted mac fleet
+  # or on a Depot macOS runner. Prefer self-hosted (flat monthly cost); fall
+  # back to Depot (per-minute) when no fleet runner is online AND idle. The
+  # fleet is identified by the custom `nixmac-mac` label so that unrelated
+  # org mac runners (private groups this public repo can't route to, or
+  # future Depot mac runners) never count as available capacity. Runs only
+  # after rust-tests so the pool decision is seconds (not a full rust-test
+  # duration) stale at dispatch; a runner claimed in that window just queues
+  # the build on self-hosted, same as before this job existed.
+  pick-mac-runner:
+    name: Pick mac runner pool
+    if: inputs.runner_pool != 'image-builder' && inputs.runner_pool != 'image-builder-preflight' && inputs.runner_pool != 'image-builder-provision' && inputs.runner_pool != 'image-builder-network-config' && needs.rust-tests.result == 'success' && needs.resolve-e2e-backfill.outputs.build_needed == 'true'
     needs: [rust-tests, resolve-e2e-backfill]
-    if: needs.rust-tests.result == 'success' && needs.resolve-e2e-backfill.outputs.build_needed == 'true'
-    runs-on: [self-hosted, macOS]
+    runs-on: arc
+    timeout-minutes: 5
+    outputs:
+      runs-on: ${{ steps.pick.outputs.runs-on }}
+    steps:
+      - name: Mint org token
+        id: bot-token
+        if: inputs.runner_pool == '' || inputs.runner_pool == 'auto'
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.DARKMATTER_APP_ID }}
+          private-key: ${{ secrets.DARKMATTER_APP_PRIVATE_KEY }}
+      - name: Pick pool
+        id: pick
+        shell: bash
+        env:
+          GH_TOKEN: ${{ steps.bot-token.outputs.token }}
+          RUNNER_POOL: ${{ inputs.runner_pool || 'auto' }}
+        run: |
+          set -uo pipefail
+          # Keep the fallback on Sonoma to match the self-hosted pool.
+          # setup-xcode pins Xcode 16.1 instead of this image's 15.4 default.
+          custom='["self-hosted","macOS","nixmac-custom"]'
+          if [ "$RUNNER_POOL" = "custom" ]; then
+            echo "runs-on=$custom" | tee -a "$GITHUB_OUTPUT"
+            echo "::notice::manual verification requested custom image"
+            exit 0
+          fi
+          # Capability labels make a host eligible only when its installed
+          # toolchain satisfies the same pin enforced below. A generic online
+          # macOS label is not proof that the host can build this repository.
+          self_hosted='["self-hosted","macOS","nixmac-mac","xcode-16.1"]'
+          depot='["depot-macos-14"]'
+          if [ "$RUNNER_POOL" = "self-hosted" ]; then
+            echo "runs-on=$self_hosted" | tee -a "$GITHUB_OUTPUT"
+            echo "::notice::manual verification requested self-hosted"
+            exit 0
+          fi
+          if [ "$RUNNER_POOL" = "depot" ]; then
+            echo "runs-on=$depot" | tee -a "$GITHUB_OUTPUT"
+            echo "::notice::manual verification requested Depot"
+            exit 0
+          fi
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::org app token unavailable; refusing to guess runner availability"
+            exit 1
+          fi
+          if idle=$(gh api --paginate orgs/darkmatter/actions/runners --jq '.runners[] | select((([.labels[].name] | index("nixmac-mac")) != null) and (([.labels[].name] | index("xcode-16.1")) != null) and .status == "online" and .busy == false) | .name' 2>/dev/null); then
+            n=$(printf '%s\n' "$idle" | grep -c . || true)
+            if [ "$n" -gt 0 ]; then
+              echo "runs-on=$self_hosted" | tee -a "$GITHUB_OUTPUT"
+              echo "idle self-hosted mac runners: $n"
+            else
+              echo "runs-on=$depot" | tee -a "$GITHUB_OUTPUT"
+              echo "::notice::no idle self-hosted mac runners; routing to $depot"
+            fi
+          else
+            echo "::error::org runner API failed; refusing to guess runner availability"
+            exit 1
+          fi
+  build:
+    needs: pick-mac-runner
+    runs-on: ${{ fromJSON(needs.pick-mac-runner.outputs.runs-on) }}
     permissions:
       contents: write
     steps:
@@ -273,6 +423,11 @@ jobs:
 
       - name: Setup Xcode Swift toolchain
         uses: ./.github/actions/setup-xcode
+        with:
+          # Keep release artifacts reproducible across the self-hosted and
+          # Depot pools. The custom image lane intentionally validates its
+          # own newer Xcode and therefore leaves the preference unset.
+          preferred-version: ${{ inputs.runner_pool != 'custom' && '16.1' || '' }}
 
       # Rust (pinned stable rustc/cargo) comes from the devenv profile above.
       # Do NOT add dtolnay/rust-toolchain here: it installs rustup into the
@@ -511,7 +666,8 @@ jobs:
       # matching `-test.N` so we can exercise the full signing/notarization +
       # DMG swap path on a disposable tag without publishing a public release.
       - name: Create Release
-        if: steps.release-version.outputs.mode == 'tag' &&
+        if: (github.event_name != 'workflow_dispatch' || inputs.runner_pool != 'custom') &&
+          steps.release-version.outputs.mode == 'tag' &&
           !contains(steps.release-version.outputs.tag, '-test.')
         uses: softprops/action-gh-release@v2
         with:
@@ -528,7 +684,8 @@ jobs:
       # signing/notarization + DMG swap path on a disposable tag without
       # overwriting latest.json on the updater CDN.
       - name: Upload to R2
-        if: (steps.release-version.outputs.mode == 'tag' ||
+        if: (github.event_name != 'workflow_dispatch' || inputs.runner_pool != 'custom') &&
+          (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'develop') &&
           !contains(steps.release-version.outputs.tag, '-test.')
         shell: 'sops exec-env ops/secrets/secrets.sops.json "bash -e {0}"'
@@ -544,7 +701,8 @@ jobs:
       # Linear releases track what actually shipped. Skipped for `-test.N` tags
       # to match the GitHub Release / R2 upload skip.
       - name: Sync release to Linear
-        if: steps.release-version.outputs.mode == 'tag' &&
+        if: (github.event_name != 'workflow_dispatch' || inputs.runner_pool != 'custom') &&
+          steps.release-version.outputs.mode == 'tag' &&
           !contains(steps.release-version.outputs.tag, '-test.')
         uses: linear/linear-release-action@v0
         with:

@@ -110,8 +110,8 @@ function runTerminalContractScenario({
 
 assert.deepEqual(
   actionlintConfig["self-hosted-runner"].labels,
-  ["arc", "nixmac-e2e", "nixmac-e2e-static-controller"],
-  "actionlint must recognize only the trusted custom queues used by this workflow",
+  ["arc", "nixmac-e2e", "nixmac-e2e-static-controller", "nixmac-image-builder"],
+  "actionlint must recognize only the trusted custom queues used by Computer Use workflows",
 );
 
 assert.deepEqual(

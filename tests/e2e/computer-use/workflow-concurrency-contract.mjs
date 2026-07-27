@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 
 export const REMOTE_MAC_CONCURRENCY_GROUP = "nixmac-macincloud-e2e-remote";
+export const IMAGE_BUILDER_MODE_SUPPRESSION =
+  "inputs.runner_pool != 'image-builder' && inputs.runner_pool != 'image-builder-preflight' && inputs.runner_pool != 'image-builder-provision' && inputs.runner_pool != 'image-builder-network-config'";
 const AUTOMATIC_CONTRACT_COMMANDS = [
   'NIXMAC_E2E_PYTHON_PATH="$(command -v python3)"',
   'NIXMAC_E2E_FFMPEG_PATH="$(command -v ffmpeg)"',
@@ -23,6 +25,7 @@ const AUTOMATIC_CONTRACT_COMMANDS = [
   "node tests/e2e/computer-use/evidence-manifest-self-test.mjs",
   "node tests/e2e/computer-use/run-cua-driver.mjs self-test",
   "node tests/e2e/computer-use/run-remote-cua.mjs self-test",
+  "node tests/e2e/computer-use/macos-ci-image-contract-self-test.mjs",
 ];
 const PINNED_DEVENV_INSTALL_COMMAND =
   "nix build github:cachix/devenv/v2.1.2 --out-link /tmp/nixmac-devenv-cli";
@@ -165,7 +168,6 @@ export function assertAutomaticConcurrencyValidationContract({
     `${workflowName} must define automatic validation job ${jobId}`,
   );
   for (const control of [
-    "if",
     "continue-on-error",
     "needs",
     "strategy",
@@ -179,6 +181,11 @@ export function assertAutomaticConcurrencyValidationContract({
       `${workflowName} job ${jobId} must not declare ${control}`,
     );
   }
+  assert.equal(
+    job.if,
+    IMAGE_BUILDER_MODE_SUPPRESSION,
+    `${workflowName} job ${jobId} must use the exact image-builder mode suppression`,
+  );
   assert.equal(
     Object.hasOwn(job, "env"),
     false,

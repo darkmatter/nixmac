@@ -1,0 +1,21 @@
+# One-time root-installed policy for a dedicated nixmac image builder.
+# Replace __RUNNER_USER__ with the local Actions runner account, validate with
+# visudo -cf, then install as mode 0440 in /etc/sudoers.d/.
+#
+# The defaults writes intentionally relax macOS Local Network privacy for all
+# host processes reaching RFC1918 space. Never install this policy on a
+# general-purpose workstation.
+
+User_Alias NIXMAC_IMAGE_BUILDER = __RUNNER_USER__
+
+Cmnd_Alias NIXMAC_IMAGE_BUILDER_NETWORK_READ = \
+    /usr/bin/defaults export com.apple.network.local-network -, \
+    /usr/bin/defaults read /Library/Preferences/com.apple.loginwindow autoLoginUser, \
+    /usr/bin/fdesetup status
+
+Cmnd_Alias NIXMAC_IMAGE_BUILDER_NETWORK_WRITE = \
+    /usr/bin/defaults write com.apple.network.local-network AllowedEthernetLocalNetworkAddresses -array 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16, \
+    /usr/bin/defaults write com.apple.network.local-network AllowedWiFiLocalNetworkAddresses -array 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16, \
+    /sbin/shutdown -r +2
+
+NIXMAC_IMAGE_BUILDER ALL=(root) NOPASSWD: NIXMAC_IMAGE_BUILDER_NETWORK_READ, NIXMAC_IMAGE_BUILDER_NETWORK_WRITE

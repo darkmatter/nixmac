@@ -15,24 +15,24 @@ use tauri::{AppHandle, Runtime};
 pub use crate::storage::legacy_kv::get_json as get_json_pref;
 pub use crate::storage::legacy_kv::{get_store, set_json as set_json_pref};
 pub use crate::storage::secrets::{
-    delete_device_api_key, delete_sync_secret, get_device_api_key,
-    get_effective_openai_compatible_api_key, get_effective_openai_provider_credential,
-    get_effective_openrouter_provider_credential, get_env_openai_provider_credential,
-    get_env_openrouter_provider_credential, get_sync_secret, set_device_api_key,
-    set_openai_api_key, set_openrouter_api_key, set_sync_secret,
+    delete_device_api_key, get_device_api_key, get_effective_openai_compatible_api_key,
+    get_effective_openai_provider_credential, get_effective_openrouter_provider_credential,
+    get_env_openai_provider_credential, get_env_openrouter_provider_credential, set_device_api_key,
+    set_openai_api_key, set_openrouter_api_key,
 };
 
 pub const DEFAULT_MAX_ITERATIONS: usize = 25;
 pub const DEFAULT_MAX_OUTPUT_TOKENS: usize = 32_768;
 pub const DEFAULT_MAX_TOKEN_BUDGET: u32 = 750_000;
 
-pub const SYNC_SERVER_URL_KEY: &str = "syncServerUrl";
-pub const SYNC_ACCOUNT_ID_KEY: &str = "syncAccountId";
-pub const SYNC_ACCOUNT_EMAIL_KEY: &str = "syncAccountEmail";
-pub const SYNC_KEY_ID_KEY: &str = "syncKeyId";
 pub const WEB_ACCOUNT_ID_KEY: &str = "webAccountId";
 pub const WEB_ACCOUNT_EMAIL_KEY: &str = "webAccountEmail";
-pub const DEFAULT_SYNC_BASE_URL: &str = "https://sync.nixmac.app";
+
+// Retired HMAC sync credential keys — wiped on sign-out for upgrades.
+const LEGACY_SYNC_SERVER_URL_KEY: &str = "syncServerUrl";
+const LEGACY_SYNC_ACCOUNT_ID_KEY: &str = "syncAccountId";
+const LEGACY_SYNC_ACCOUNT_EMAIL_KEY: &str = "syncAccountEmail";
+const LEGACY_SYNC_KEY_ID_KEY: &str = "syncKeyId";
 
 pub const PROMPT_HISTORY_CHANGED_EVENT: &str = "prompt_history_changed";
 
@@ -117,61 +117,8 @@ pub fn set_evolve_metadata<R: Runtime>(app: &AppHandle<R>, metadata: &str) -> Re
 }
 
 // =============================================================================
-// nixmac Account + non-GitHub Sync (legacy KV metadata; secrets in keychain)
+// nixmac Account (web metadata in legacy KV; device API key in keychain)
 // =============================================================================
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SyncAccountMeta {
-    pub account_id: String,
-    pub email: String,
-    pub key_id: String,
-}
-
-pub fn get_sync_server_url<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
-    if let Some(url) = crate::env::e2e_override(crate::env::keys::NIXMAC_E2E_SYNC_SERVER_URL) {
-        return Ok(url);
-    }
-    Ok(
-        crate::storage::legacy_kv::get_legacy_string(app, SYNC_SERVER_URL_KEY)?
-            .unwrap_or_else(|| DEFAULT_SYNC_BASE_URL.to_string()),
-    )
-}
-
-pub fn set_sync_server_url<R: Runtime>(app: &AppHandle<R>, url: &str) -> Result<()> {
-    crate::storage::legacy_kv::set_legacy_string(
-        app,
-        SYNC_SERVER_URL_KEY,
-        url.trim_end_matches('/'),
-    )
-}
-
-pub fn get_sync_account<R: Runtime>(app: &AppHandle<R>) -> Result<Option<SyncAccountMeta>> {
-    let account_id = crate::storage::legacy_kv::get_legacy_string(app, SYNC_ACCOUNT_ID_KEY)?;
-    let email = crate::storage::legacy_kv::get_legacy_string(app, SYNC_ACCOUNT_EMAIL_KEY)?;
-    let key_id = crate::storage::legacy_kv::get_legacy_string(app, SYNC_KEY_ID_KEY)?;
-    match (account_id, email, key_id) {
-        (Some(account_id), Some(email), Some(key_id)) => Ok(Some(SyncAccountMeta {
-            account_id,
-            email,
-            key_id,
-        })),
-        _ => Ok(None),
-    }
-}
-
-pub fn set_sync_account<R: Runtime>(app: &AppHandle<R>, meta: &SyncAccountMeta) -> Result<()> {
-    crate::storage::legacy_kv::set_legacy_string(app, SYNC_ACCOUNT_ID_KEY, &meta.account_id)?;
-    crate::storage::legacy_kv::set_legacy_string(app, SYNC_ACCOUNT_EMAIL_KEY, &meta.email)?;
-    crate::storage::legacy_kv::set_legacy_string(app, SYNC_KEY_ID_KEY, &meta.key_id)?;
-    Ok(())
-}
-
-pub fn delete_sync_account<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
-    crate::storage::legacy_kv::delete_legacy_key(app, SYNC_ACCOUNT_ID_KEY)?;
-    crate::storage::legacy_kv::delete_legacy_key(app, SYNC_ACCOUNT_EMAIL_KEY)?;
-    crate::storage::legacy_kv::delete_legacy_key(app, SYNC_KEY_ID_KEY)?;
-    Ok(())
-}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WebAccountMeta {
@@ -197,6 +144,16 @@ pub fn set_web_account<R: Runtime>(app: &AppHandle<R>, meta: &WebAccountMeta) ->
 pub fn delete_web_account<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
     crate::storage::legacy_kv::delete_legacy_key(app, WEB_ACCOUNT_ID_KEY)?;
     crate::storage::legacy_kv::delete_legacy_key(app, WEB_ACCOUNT_EMAIL_KEY)?;
+    Ok(())
+}
+
+/// Best-effort wipe of retired HMAC sync credentials from older app versions.
+pub fn wipe_legacy_sync_credentials<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
+    crate::storage::secrets::delete_sync_secret(app)?;
+    crate::storage::legacy_kv::delete_legacy_key(app, LEGACY_SYNC_SERVER_URL_KEY)?;
+    crate::storage::legacy_kv::delete_legacy_key(app, LEGACY_SYNC_ACCOUNT_ID_KEY)?;
+    crate::storage::legacy_kv::delete_legacy_key(app, LEGACY_SYNC_ACCOUNT_EMAIL_KEY)?;
+    crate::storage::legacy_kv::delete_legacy_key(app, LEGACY_SYNC_KEY_ID_KEY)?;
     Ok(())
 }
 

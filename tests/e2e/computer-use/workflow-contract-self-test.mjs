@@ -103,9 +103,9 @@ assert.match(
   "backfill resolver must expose the idempotent build decision",
 );
 assert.match(
-  JSON.stringify(parsedBuildWorkflow.jobs.build),
+  JSON.stringify(parsedBuildWorkflow.jobs["pick-mac-runner"]),
   /needs\.resolve-e2e-backfill\.outputs\.build_needed/,
-  "macOS build capacity must be skipped when an exact artifact already exists",
+  "macOS runner selection and build capacity must be skipped when an exact artifact already exists",
 );
 const reuseBackfillJob = parsedBuildWorkflow.jobs["reuse-e2e-backfill"];
 assert.ok(

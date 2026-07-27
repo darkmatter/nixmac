@@ -38,7 +38,6 @@ pub mod names {
 
     pub const NIXMAC_E2E_MOCK_SYSTEM: &str = "NIXMAC_E2E_MOCK_SYSTEM";
     pub const NIXMAC_E2E_WEB_SERVER_URL: &str = "NIXMAC_E2E_WEB_SERVER_URL";
-    pub const NIXMAC_E2E_SYNC_SERVER_URL: &str = "NIXMAC_E2E_SYNC_SERVER_URL";
     pub const NIXMAC_E2E_CONFIG_DIR: &str = "NIXMAC_E2E_CONFIG_DIR";
     pub const NIXMAC_E2E_HOST_ATTR: &str = "NIXMAC_E2E_HOST_ATTR";
 

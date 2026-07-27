@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 
 import {
+  IMAGE_BUILDER_MODE_SUPPRESSION,
   REMOTE_MAC_CONCURRENCY_GROUP,
   assertAutomaticConcurrencyValidationContract,
   assertRemoteMacConcurrencyContract,
@@ -64,7 +65,8 @@ function automaticWorkflowYaml({
           node tests/e2e/computer-use/verification-contract-self-test.mjs
           node tests/e2e/computer-use/evidence-manifest-self-test.mjs
           node tests/e2e/computer-use/run-cua-driver.mjs self-test
-          node tests/e2e/computer-use/run-remote-cua.mjs self-test`,
+          node tests/e2e/computer-use/run-remote-cua.mjs self-test
+          node tests/e2e/computer-use/macos-ci-image-contract-self-test.mjs`,
 } = {}) {
   return `
 name: Automatic validation
@@ -75,6 +77,7 @@ env:
   SOPS_AGE_KEY: \${{ secrets.SOPS_AGE_KEY }}
 jobs:
   git-hooks:
+    if: ${IMAGE_BUILDER_MODE_SUPPRESSION}
     runs-on: arc
     steps:
       - name: Checkout repository
@@ -613,8 +616,22 @@ for (const [name, source] of [
   );
 }
 
+assert.throws(
+  () =>
+    assertAutomaticConcurrencyValidationContract({
+      workflowName: "job-if-bypass.yaml",
+      source: automaticWorkflowYaml().replace(
+        `    if: ${IMAGE_BUILDER_MODE_SUPPRESSION}`,
+        "    if: false",
+      ),
+      jobId: "git-hooks",
+      stepName: "Run Computer Use workflow contracts",
+    }),
+  /job-if-bypass\.yaml job git-hooks must use the exact image-builder mode suppression/,
+  "automatic contract job must reject an altered image-builder mode suppression",
+);
+
 for (const [control, mutation] of [
-  ["if", "    if: false\n    runs-on: arc"],
   ["continue-on-error", "    continue-on-error: true\n    runs-on: arc"],
   ["needs", "    needs: build\n    runs-on: arc"],
 ]) {

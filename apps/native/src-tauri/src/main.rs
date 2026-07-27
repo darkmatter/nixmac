@@ -584,18 +584,13 @@ fn run_gui_mode(
         .invoke_handler(tauri::generate_handler![
             // Configuration — see `orpc::config`, `orpc::flake`, `orpc::path`, `orpc::github::import`            commands::config::config_get,
             // GitHub App connection (server-brokered) — see `orpc::github`
-            // nixmac account + non-GitHub sync
+            // nixmac account (Better Auth device API key)
             commands::account::account_status,
-            commands::account::account_sign_in,
             commands::account::account_sign_in_web,
             commands::account::account_sign_up_web,
             commands::account::account_send_otp,
             commands::account::account_verify_otp,
             commands::account::account_sign_out,
-            commands::account::account_set_server_url,
-            commands::account::sync_status,
-            commands::account::sync_push,
-            commands::account::sync_pull,
             // Feedback
             commands::feedback::feedback_gather_metadata,
             commands::feedback::feedback_submit,
