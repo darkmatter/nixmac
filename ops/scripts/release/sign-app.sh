@@ -14,12 +14,17 @@ fi
 
 echo "Signing $APP_PATH..."
 
-KEYCHAIN_PATH="${RUNNER_TEMP}/app-signing.keychain-db"
-IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+# Unscoped lookup: scoped find-identity to the temp keychain returns 0 on Macly
+# even when the leaf + intermediate are both present there. import-certificate.sh
+# already put the temp keychain first on the user search list.
+IDENTITY=$(
+	security find-identity -v -p codesigning 2>/dev/null \
+		| awk -F'"' '/Developer ID Application/ { print $2; exit }'
+)
 
 if [ -z "$IDENTITY" ]; then
-	echo "ERROR: No Developer ID Application identity found in keychain"
-	security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+	echo "ERROR: No Developer ID Application identity found in keychain search list" >&2
+	security find-identity -v -p codesigning >&2 || true
 	exit 1
 fi
 

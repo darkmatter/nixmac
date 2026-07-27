@@ -25,6 +25,12 @@ if [ "$1" != "find-identity" ]; then
 	exit 2
 fi
 
+# Unscoped lookup: last arg must be the policy, not a keychain path.
+if [ "${!#}" != "codesigning" ]; then
+	echo "expected unscoped find-identity, got: $*" >&2
+	exit 2
+fi
+
 printf '%s\n' '  1) ABCDEF1234567890 "Developer ID Application: Test Signing (TEAMID)"'
 SH
 chmod +x "$FAKE_BIN/security"
@@ -52,6 +58,12 @@ fi
 
 if ! grep -F -- "--entitlements apps/native/src-tauri/entitlements.plist" "$CODESIGN_LOG" >/dev/null; then
 	echo "expected sign-app to sign app with entitlements" >&2
+	cat "$CODESIGN_LOG" >&2
+	exit 1
+fi
+
+if ! grep -F -- '--sign Developer ID Application: Test Signing (TEAMID)' "$CODESIGN_LOG" >/dev/null; then
+	echo "expected sign-app to sign with Developer ID Application identity name" >&2
 	cat "$CODESIGN_LOG" >&2
 	exit 1
 fi

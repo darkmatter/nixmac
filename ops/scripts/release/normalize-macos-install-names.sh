@@ -192,10 +192,18 @@ sign_app_if_certificate_available() {
 		exit 2
 	fi
 
-	identity=$(security find-identity -v -p codesigning "$keychain_path" 2>/dev/null | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)".*/\1/' || true)
+	# Unscoped lookup: scoped find-identity to $keychain_path returns 0 on Macly
+	# even when leaf + intermediate are both in that keychain. import-certificate.sh
+	# already put the temp keychain first on the user search list.
+	# awk (not grepheal) so multiple matching identities cannot SIGPIPE under pipefail,
+	# and empty output is a normal empty string rather than a pipeline failure.
+	identity=$(
+		security find-identity -v -p codesigning 2>/dev/null \
+			| awk -F'"' '/Developer ID Application/ { print $2; exit }'
+	)
 	if [ -z "$identity" ]; then
-		echo "ERROR: No Developer ID Application identity found in keychain" >&2
-		security find-identity -v -p codesigning "$keychain_path" >&2
+		echo "ERROR: No Developer ID Application identity found in keychain search list" >&2
+		security find-identity -v -p codesigning >&2 || true
 		exit 1
 	fi
 
@@ -209,6 +217,7 @@ sign_app_if_certificate_available() {
 	echo "Verifying normalized app signature: $app_path"
 	codesign --verify --deep --strict --verbose=4 "$app_path"
 }
+
 
 normalize_dmg() {
 	local dmg_path="$1"
