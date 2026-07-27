@@ -13,6 +13,12 @@
 # SECURITY: all inputs except the supplied Xcode artifact are public. No
 # SOPS_AGE_KEY, Cachix auth, Apple signing keys, or API keys are provisioned.
 # The workflow scans provisioning-owned text paths before pushing.
+#
+# HOST OPS: each Cilicon host must grant Cilicon Local Network privacy
+# access (System Settings → Privacy & Security → Local Network). Without
+# it Cilicon cannot open TCP to the guest and reports "SSH not ready"
+# even when OpenSSH password auth works from Terminal. Do not restrict
+# guest sshd MACs as a workaround.
 # =============================================================================
 
 variable "image_name" {
@@ -141,18 +147,8 @@ build {
     ]
   }
 
-  # Cilicon 2.4.2's Citadel/SwiftNIO SSH library fails against OpenSSH 10.2
-  # when ETM-only MACs are negotiated. Restrict the server to non-ETM MACs
-  # so Cilicon's SSH client can complete the handshake. See upstream
-  # swift-nio-ssh issue #243 for the algorithm negotiation failure.
-  provisioner "shell" {
-    inline = [
-      "set -euo pipefail",
-      "sudo mkdir -p /etc/ssh/sshd_config.d",
-      "echo 'MACs hmac-sha2-256,hmac-sha2-512' | sudo tee /etc/ssh/sshd_config.d/99-cilicon-compat.conf",
-      "sudo sshd -t",
-    ]
-  }
+  # Host requirement (documented in the file header): Cilicon Local Network
+  # privacy access on each Macly host. No guest sshd MAC restriction.
 
   # The pinned Cirrus base installs and configures Tart's guest agent. Verify
   # that invariant instead of downloading a floating release or silently
