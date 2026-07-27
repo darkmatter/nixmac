@@ -54,6 +54,7 @@ jobs:
         run: |
           "$RUNNER_TEMP/devenv-cli/bin/devenv" shell --impure -- \
             prek run --all-files --show-diff-on-failure
+          node tests/e2e/computer-use/macos-ci-image-contract-self-test.mjs
 
   rust-tests:
     name: Rust Tests (Linux)

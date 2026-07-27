@@ -13,9 +13,9 @@ name: macOS CI Image
  # Base reference is pinned by digest in ops/images/nixmac-runner-tahoe.pkr.hcl;
  # this workflow does not resolve floating image tags at build time.
 # Triggers:
-#   - Manual dispatch only until a dedicated image-builder host is online.
-#   - After a prepared host with verified capacity carries the
-#     `nixmac-image-builder` label, re-enable push/schedule triggers.
+#   - Manual dispatch until this workflow completes one qualified image build.
+#   - After the dedicated builder's capacity and registry round-trip are
+#     verified, re-enable push/schedule triggers.
 #
 # SECURITY: The Packer template uses public inputs only (no secrets). A
 # secret-scan step runs before push and fails the build if any known secret
@@ -73,19 +73,23 @@ jobs:
     runs-on: [self-hosted, macOS, nixmac-image-builder]
     timeout-minutes: 90
     outputs:
-      image: ${{ steps.meta.outputs.tags }}
+      image: ${{ steps.push.outputs.image }}
       digest: ${{ steps.push.outputs.digest }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Install Packer (if missing)
+      - name: Install image tooling (if missing)
         shell: bash
         run: |
           if ! command -v packer &>/dev/null; then
             brew install hashicorp/tap/packer
           fi
+          if ! command -v oras &>/dev/null; then
+            brew install oras
+          fi
           packer version
+          oras version
 
 
       - name: Initialize Packer plugins
@@ -160,6 +164,7 @@ jobs:
           # Wait for SSH to be available.
           for i in $(seq 1 30); do
             if SSH_PASSWORD=admin /tmp/ssh-vm.sh "admin@$TART_IP" true 2>/dev/null; then
+              break
             fi
             sleep 5
           done
@@ -229,17 +234,34 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "$GH_TOKEN" | tart login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          echo "$GH_TOKEN" | oras login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
 
       - name: Push image
         id: push
         shell: bash
         run: |
+          set -euo pipefail
+
+          IMAGE="ghcr.io/darkmatter/nixmac-runner"
+          TAG="$(date +%Y%m%d)-${GITHUB_SHA:0:7}"
           tart push nixmac-runner-tahoe \
-            ghcr.io/darkmatter/nixmac-runner:tahoe
-          # Also tag with date+sha for traceability
-          TAG="$(date +%Y%m%d)-$(echo $GITHUB_SHA | cut -c1-7)"
-          tart push nixmac-runner-tahoe \
-            ghcr.io/darkmatter/nixmac-runner:$TAG
+            "$IMAGE:tahoe" \
+            "$IMAGE:$TAG"
+
+          DIGEST="$(oras manifest fetch --descriptor "$IMAGE:$TAG" | jq -r '.digest // empty')"
+          if [[ ! "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Registry returned an invalid manifest digest: $DIGEST"
+            exit 1
+          fi
+
+          TAHOE_DIGEST="$(oras manifest fetch --descriptor "$IMAGE:tahoe" | jq -r '.digest // empty')"
+          if [ "$TAHOE_DIGEST" != "$DIGEST" ]; then
+            echo "::error::Published tags resolve to different manifests"
+            exit 1
+          fi
+
+          echo "image=$IMAGE@$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
 
       - name: Clean up local VM
         if: always()
@@ -253,7 +275,8 @@ jobs:
           {
             echo "## macOS CI Image Published"
             echo ""
-            echo "**Image:** \`ghcr.io/darkmatter/nixmac-runner:tahoe\`"
+            echo "**Image:** \`${{ steps.push.outputs.image }}\`"
+            echo "**Digest:** \`${{ steps.push.outputs.digest }}\`"
             echo "**Xcode artifact:** \`${{ inputs.xcode_artifact_type }}\`"
             echo "**Base:** \`ghcr.io/cirruslabs/macos-tahoe-base@sha256:a8e1c8305758643f513fdccdd829c2243687c60791083dea42f73f0b7aeb435c\`"
           } >> "$GITHUB_STEP_SUMMARY"
