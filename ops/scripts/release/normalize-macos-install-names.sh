@@ -178,7 +178,7 @@ sign_app_if_certificate_available() {
 		echo "No code-signing keychain found; ad-hoc signing normalized app: $app_path"
 		sign_nested_helpers "$app_path" "-"
 		codesign --force --deep --sign - "$app_path"
-		codesign --verify --deep --strict --verbose=4 "$app_path" || echo "WARNING: ad-hoc codesign --verify failed; continuing" >&2
+		codesign --verify --deep --strict --verbose=4 "$app_path"
 		return
 	fi
 
@@ -202,9 +202,7 @@ sign_app_if_certificate_available() {
 		"$app_path"
 
 	echo "Verifying normalized app signature: $app_path"
-	codesign --verify --deep --strict --verbose=4 "$app_path" || {
-		echo "WARNING: codesign --verify failed after re-signing; the later Sign app bundle step will re-sign and verify" >&2
-	}
+	codesign --verify --deep --strict --verbose=4 "$app_path"
 }
 
 normalize_dmg() {
