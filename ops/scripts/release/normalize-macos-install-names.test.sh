@@ -176,20 +176,25 @@ esac
 SH
 chmod +x "$FAKE_BIN/hdiutil"
 
-cat >"$FAKE_BIN/du" <<'SH'
+cat >"$FAKE_BIN/stat" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
 
-case "${!#}" in
-	*.rw.dmg)
-		printf '200000\t%s\n' "${!#}"
-		;;
-	*)
-		/usr/bin/du "$@"
-		;;
-esac
+# Script uses: stat -f "%z" "$rw_dmg"
+# Return apparent logical size in bytes for the fake UDRW image.
+if [ "${1:-}" = "-f" ] && [ "${2:-}" = "%z" ]; then
+	case "${3:-}" in
+		*.rw.dmg)
+			# 200000 KiB apparent size (matches previous du fake)
+			printf '204800000\n'
+			exit 0
+			;;
+	esac
+fi
+
+exec /usr/bin/stat "$@"
 SH
-chmod +x "$FAKE_BIN/du"
+chmod +x "$FAKE_BIN/stat"
 
 make_app() {
 	local app="$1"
