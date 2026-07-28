@@ -90,8 +90,8 @@ fn run_once() -> anyhow::Result<()> {
     }
 
     let activate_path = store_path.join("activate");
-    let request = privileged_helper::protocol::current_user_activation_request(&activate_path)?;
-    let response = privileged_helper::client::activate_store_path(request)?;
+    let request = privileged_helper::protocol::activation_request(&activate_path)?;
+    let response = privileged_helper::client::activate_store_path(&request)?;
     if !response.ok {
         // Leave the out-link in place: it keeps the built closure GC-rooted
         // for the next attempt, and that attempt's --out-link replaces it.
