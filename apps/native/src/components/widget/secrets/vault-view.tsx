@@ -8,7 +8,7 @@ import {
   secretPathDisplay,
 } from "./types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { SecretsVault } from "@/ipc/orpc-bindings";
+import type { SecretsVault } from "@/ipc/orpc-bindings";
 
 /**
  * The vault tab: answers "which key is this host, is it registered, what can
