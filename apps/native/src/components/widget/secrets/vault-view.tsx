@@ -33,7 +33,7 @@ export function VaultView({
     }
   })();
 
-  const hostLabel = vault.hostId;
+  const hostLabel = host?.label ?? vault.hostId;
   const hostDevice = host?.device ?? "";
   const hostPublicKey = host?.publicKey ?? "Unknown";
   const hostFingerprint = host?.fingerprint ?? "Unknown";
