@@ -184,7 +184,9 @@ pub enum HelperOp {
 /// responses only through them. `helper_build_version` is diagnostic (for
 /// support and telemetry): release versions are not unique across rebuilds,
 /// so the update and trust decisions belong to the signature checks and the
-/// version gate, never to this string.
+/// version gate, never to this string. There is no stderr field: the
+/// activation runs with stderr merged into stdout (`2>&1`), so `stdout` is
+/// the whole interleaved log, and helper-level failures use `error`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct HelperResponse {
@@ -193,7 +195,6 @@ pub struct HelperResponse {
     pub ok: bool,
     pub code: i32,
     pub stdout: String,
-    pub stderr: String,
     pub error: Option<String>,
 }
 
@@ -203,17 +204,14 @@ pub const HELPER_WARNING_PREFIX: &str = "nixmac-helper: warning:";
 
 impl HelperResponse {
     /// Human-readable failure detail: the explicit error when present, else
-    /// stderr, else the tail of stdout — the helper merges the activation's
-    /// stderr into stdout (`2>&1`), so on a plain nonzero exit the detail
-    /// lives there. Used by the sync-agent binary (this file is `include!`d
-    /// there), hence dead code in targets that report through other paths.
+    /// the tail of stdout — the helper merges the activation's stderr into
+    /// stdout (`2>&1`), so on a plain nonzero exit the detail lives there.
+    /// Used by the sync-agent binary (this file is `include!`d there), hence
+    /// dead code in targets that report through other paths.
     #[allow(dead_code)]
     pub fn failure_detail(&self) -> String {
         if let Some(error) = self.error.as_deref().filter(|error| !error.is_empty()) {
             return error.to_string();
-        }
-        if !self.stderr.is_empty() {
-            return self.stderr.clone();
         }
         let lines: Vec<&str> = self
             .stdout
@@ -245,8 +243,7 @@ impl HelperResponse {
 
     /// Base constructor the other constructors delegate to; also used
     /// directly for a finished activation command, where `ok` mirrors the
-    /// exit status. stderr stays empty in every case: the activation merges
-    /// its stderr into stdout (`2>&1`), and the other responses have none.
+    /// exit status and `stdout` is the merged activation log.
     pub fn from_exit(ok: bool, code: i32, stdout: String) -> Self {
         Self {
             protocol_version: HELPER_PROTOCOL_VERSION,
@@ -254,7 +251,6 @@ impl HelperResponse {
             ok,
             code,
             stdout,
-            stderr: String::new(),
             error: None,
         }
     }
@@ -721,25 +717,20 @@ mod tests {
         assert!(HelperResponse::parse(&with_extra).is_err());
     }
 
-    fn response(stdout: &str, stderr: &str, error: Option<&str>) -> HelperResponse {
+    fn response(stdout: &str, error: Option<&str>) -> HelperResponse {
         HelperResponse {
-            stderr: stderr.to_string(),
             error: error.map(String::from),
             ..HelperResponse::from_exit(false, 1, stdout.to_string())
         }
     }
 
     #[test]
-    fn failure_detail_prefers_error_then_stderr_then_stdout_tail() {
-        assert_eq!(
-            response("out", "err", Some("boom")).failure_detail(),
-            "boom"
-        );
-        assert_eq!(response("out", "err", None).failure_detail(), "err");
+    fn failure_detail_prefers_error_then_stdout_tail() {
+        assert_eq!(response("out", Some("boom")).failure_detail(), "boom");
         // The helper merges activation stderr into stdout, so a plain nonzero
         // exit must still produce a detail.
         assert_eq!(
-            response("activation exploded\n", "", None).failure_detail(),
+            response("activation exploded\n", None).failure_detail(),
             "activation exploded"
         );
     }
@@ -747,7 +738,7 @@ mod tests {
     #[test]
     fn failure_detail_returns_stdout_tail_only() {
         let lines: Vec<String> = (1..=30).map(|n| format!("line {n}")).collect();
-        let detail = response(&lines.join("\n"), "", None).failure_detail();
+        let detail = response(&lines.join("\n"), None).failure_detail();
 
         assert!(detail.starts_with("line 11"));
         assert!(detail.ends_with("line 30"));
@@ -758,7 +749,7 @@ mod tests {
         let stdout = format!(
             "activated\n{HELPER_WARNING_PREFIX} failed to update system profile\nplain line"
         );
-        let with_warning = response(&stdout, "", None);
+        let with_warning = response(&stdout, None);
 
         assert_eq!(
             with_warning.warnings(),
@@ -766,11 +757,7 @@ mod tests {
                 "{HELPER_WARNING_PREFIX} failed to update system profile"
             )]
         );
-        assert!(
-            response("no warnings here\n", "", None)
-                .warnings()
-                .is_empty()
-        );
+        assert!(response("no warnings here\n", None).warnings().is_empty());
     }
 
     #[test]
