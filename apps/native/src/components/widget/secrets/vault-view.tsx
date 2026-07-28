@@ -76,7 +76,7 @@ export function VaultView({
             <div className="mb-1.5 text-[11px] text-muted-foreground">This host's public key</div>
             <div className="flex items-center gap-1.5">
               <code className="truncate font-mono text-foreground text-xs">{hostPublicKey}</code>
-              {hostPublicKey ? (
+              {host?.publicKey ? (
                 <CopyIconButton label="Copy public key" onCopy={() => onCopy(hostPublicKey)} />
               ) : null}
             </div>
