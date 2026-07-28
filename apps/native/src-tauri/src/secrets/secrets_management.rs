@@ -506,6 +506,7 @@ fn unique_recipient_id(base: &str, used_ids: &mut HashSet<String>) -> String {
 
 /// Load secrets from the sops backend by executing a nix eval to evaluate the secrets in the repo.
 fn load_sops_secrets(host_attr: &str, config_dir: &str) -> Result<Vec<SecretEntry>, String> {
+    let safe_host_attr = crate::commands::helpers::get_safe_hostname(host_attr);
     let secrets_map = eval_backend_secrets_map(
         host_attr,
         config_dir,
@@ -513,7 +514,7 @@ fn load_sops_secrets(host_attr: &str, config_dir: &str) -> Result<Vec<SecretEntr
         format!(
             r#"
             let
-                cfg = (builtins.getFlake (toString ./.)).darwinConfigurations.{host_attr}.config;
+                cfg = (builtins.getFlake (toString ./.)).darwinConfigurations.{safe_host_attr}.config;
             in
                 if cfg ? sops && cfg.sops ? secrets then
                     builtins.mapAttrs (_: secret: {{
@@ -538,6 +539,7 @@ fn load_sops_secrets(host_attr: &str, config_dir: &str) -> Result<Vec<SecretEntr
 
 /// Load secrets from the agenix backend by executing a nix eval to evaluate the secrets in the repo.
 fn load_agenix_secrets(host_attr: &str, config_dir: &str) -> Result<Vec<SecretEntry>, String> {
+    let safe_host_attr = crate::commands::helpers::get_safe_hostname(host_attr);
     let secrets_map = eval_backend_secrets_map(
         host_attr,
         config_dir,
@@ -545,7 +547,7 @@ fn load_agenix_secrets(host_attr: &str, config_dir: &str) -> Result<Vec<SecretEn
         format!(
             r#"
             let
-                cfg = (builtins.getFlake (toString ./.)).darwinConfigurations.{host_attr}.config;
+                cfg = (builtins.getFlake (toString ./.)).darwinConfigurations.{safe_host_attr}.config;
             in
                 if cfg ? age && cfg.age ? secrets then
                     builtins.mapAttrs (_: secret: {{
@@ -620,9 +622,8 @@ fn required_secret_field<'a>(
 /// Load the secret identities from the nix config repo by executing a nix eval to evaluate the identities in the repo.
 /// This is used to determine which SSH host key is used by sops, and to convert it to an age public key for use in the secrets vault.
 fn load_secret_identities(host_attr: &str, config_dir: &str) -> Result<SecretIdentities, String> {
-    let host_attr = serde_json::to_string(host_attr)
-        .map_err(|e| format!("Failed to encode host attribute: {e}"))?;
-    let flake_attr = format!(".#darwinConfigurations.{host_attr}.config");
+    let safe_host_attr = crate::commands::helpers::get_safe_hostname(host_attr);
+    let flake_attr = format!(".#darwinConfigurations.{safe_host_attr}.config");
 
     let output = nix_command(config_dir)
         .args([

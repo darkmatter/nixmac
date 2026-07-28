@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { client } from "@/lib/orpc";
 import { RecipientKindIcon, ViewHeader } from "./shared";
 import { backendLabel, canHostDecrypt, } from "./types";
-import { SecretEntry, SecretsVault } from "@/ipc/orpc-bindings";
+import type { SecretEntry, SecretsVault } from "@/ipc/orpc-bindings";
 
 /**
  * One secret's encrypted metadata and recipient access.

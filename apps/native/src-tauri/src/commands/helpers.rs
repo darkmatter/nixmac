@@ -65,3 +65,8 @@ pub(super) fn get_hostname_and_config_dir(
 
     Ok((hostname, config_dir))
 }
+
+/// Returns a JSON-encoded string of the hostname, suitable for passing to nix commands.
+pub fn get_safe_hostname(hostname: &str) -> String {
+    serde_json::to_string(&hostname).unwrap_or_default()
+}
