@@ -3,7 +3,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CopyIconButton, InRepoBadge, RecipientKindIcon, ThisHostChip } from "./shared";
-import { SecretsVault } from "@/ipc/orpc-bindings";
+import type { SecretsVault } from "@/ipc/orpc-bindings";
 
 /**
  * The keys & recipients tab: every age public key known to the repo, and
