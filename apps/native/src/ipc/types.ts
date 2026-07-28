@@ -1983,7 +1983,7 @@ systemUntouched: boolean | null }
 /**
  * Kind of recipient used for managing secrets.
  */
-export type RecipientKind = "host" | "user"
+export type RecipientKind = "host" | "user" | "unknown"
 
 /**
  * A recommended prompt based on the user's current macOS settings.

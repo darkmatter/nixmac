@@ -2,7 +2,13 @@ import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CopyIconButton, InRepoBadge, RecipientKindIcon, ThisHostChip } from "./shared";
+import {
+  CopyIconButton,
+  InRepoBadge,
+  RecipientKindIcon,
+  recipientKindLabel,
+  ThisHostChip,
+} from "./shared";
 import type { SecretsVault } from "@/ipc/orpc-bindings";
 
 /**
@@ -28,7 +34,7 @@ export function KeysView({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="font-semibold text-base">Keys &amp; recipients</h2>
-          <p className="mt-1 max-w-[560px] text-[13px] text-muted-foreground">
+          <p className="mt-1 max-w-140 text-[13px] text-muted-foreground">
             Every recipient here is an age public key that can be granted access to a secret. A
             recipient must be committed to the repo before it can decrypt anything.
           </p>
@@ -45,35 +51,46 @@ export function KeysView({
           <div
             key={recipient.id}
             className={cn(
-              "flex items-center gap-3.5 rounded-[11px] border px-4 py-3",
+              "rounded-[11px] border p-3",
               recipient.isThisHost ? "border-brand/35 bg-brand/5" : "border-border bg-muted/20",
             )}
           >
-            <span className="inline-flex size-8.5 items-center justify-center rounded-[9px] bg-muted text-foreground">
-              <RecipientKindIcon kind={recipient.kind} className="size-4.5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="font-medium font-mono text-sm">{recipient.label}</span>
-                {recipient.isThisHost && <ThisHostChip />}
-                <span className="text-[11px] text-muted-foreground">
-                  {recipient.kind === "host" ? "Host key" : "User key"}
-                </span>
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-stretch sm:gap-3">
+              <div className="min-w-0 flex-1 rounded-[10px] border border-border bg-muted/25 px-3 py-2.5">
+                <div className="flex items-center gap-2.5">
+                  <span className="inline-flex size-8.5 shrink-0 items-center justify-center rounded-[9px] bg-muted text-foreground">
+                    <RecipientKindIcon kind={recipient.kind} className="size-4.5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="min-w-0 truncate font-medium font-mono text-sm">
+                      {recipient.label}
+                    </div>
+                    <div className="mt-0.5 flex min-w-0 items-center gap-2">
+                      {recipient.isThisHost && <ThisHostChip />}
+                      <span className="truncate text-[11px] text-muted-foreground">
+                        {recipientKindLabel(recipient.kind)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-1.5 flex items-center gap-1.5">
+                  <code className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-muted-foreground">
+                    {recipient.publicKey}
+                  </code>
+                  <CopyIconButton
+                    label={`Copy ${recipient.label} public key`}
+                    onCopy={() => onCopy(recipient.publicKey)}
+                  />
+                </div>
               </div>
-              <div className="mt-1 flex items-center gap-1.5">
-                <code className="max-w-[340px] truncate font-mono text-[11.5px] text-muted-foreground">
-                  {recipient.publicKey}
-                </code>
-                <CopyIconButton
-                  label={`Copy ${recipient.label} public key`}
-                  onCopy={() => onCopy(recipient.publicKey)}
-                />
+
+              <div className="flex shrink-0 flex-col items-center justify-center gap-1.5 rounded-[10px] border border-border bg-muted/25 px-3 py-2.5 text-center sm:min-w-40">
+                <span className="text-[11.5px] text-muted-foreground">
+                  {opensLabel(recipient.id)}
+                </span>
+                <InRepoBadge inRepo={recipient.inUse} />
               </div>
             </div>
-            <span className="whitespace-nowrap text-[11.5px] text-muted-foreground">
-              {opensLabel(recipient.id)}
-            </span>
-            <InRepoBadge inRepo={recipient.inUse} />
           </div>
         ))}
       </div>

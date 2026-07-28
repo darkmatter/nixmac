@@ -19,6 +19,7 @@ pub enum RecipientKind {
     #[default]
     Host,
     User,
+    Unknown,
 }
 
 /// One encrypted secret entry managed in the nix config repo.

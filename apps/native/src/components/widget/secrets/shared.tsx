@@ -1,8 +1,8 @@
-import { ArrowLeft, Check, Copy, Lock, Monitor, TriangleAlert, User } from "lucide-react";
+import { ArrowLeft, Check, Copy, KeyRound, Lock, Monitor, TriangleAlert, User } from "lucide-react";
 import type { ReactNode } from "react";
 
+import type { RecipientKind } from "@/ipc/orpc-bindings";
 import { cn } from "@/lib/utils";
-import type { RecipientKind } from "./types";
 
 export function RecipientKindIcon({
   kind,
@@ -11,8 +11,14 @@ export function RecipientKindIcon({
   kind: RecipientKind;
   className?: string;
 }) {
-  const Icon = kind === "host" ? Monitor : User;
+  const Icon = kind === "host" ? Monitor : kind === "user" ? User : KeyRound;
   return <Icon className={cn("size-4", className)} aria-hidden="true" />;
+}
+
+export function recipientKindLabel(kind: RecipientKind): string {
+  if (kind === "host") return "Host key";
+  if (kind === "user") return "User key";
+  return "Unclassified key";
 }
 
 export function ThisHostChip({ className }: { className?: string }) {

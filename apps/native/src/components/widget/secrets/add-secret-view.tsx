@@ -5,15 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import type { SecretBackend, SecretsVault } from "@/ipc/orpc-bindings";
 import { cn } from "@/lib/utils";
-import { RecipientKindIcon, ViewHeader } from "./shared";
-import {
-  type ApplyRequest,
-  backendLabel,
-  type SecretBackend,
-  type SecretsVault,
-  slugifySecretName,
-} from "./types";
+import { recipientKindLabel, RecipientKindIcon, ViewHeader } from "./shared";
+import { type ApplyRequest, backendLabel, slugifySecretName } from "./types";
 
 function buildAddRequest(slug: string, backend: SecretBackend, recipientLabels: string[]): ApplyRequest {
   if (backend === "agenix") {
@@ -211,7 +206,7 @@ export function AddSecretView({
                 <span className="font-medium font-mono text-[13px]">{recipient.label}</span>
                 {locked && <span className="text-[10.5px] text-brand">required — this host</span>}
                 <span className="ml-auto text-[11px] text-muted-foreground">
-                  {recipient.kind === "host" ? "Host key" : "User key"}
+                  {recipientKindLabel(recipient.kind)}
                 </span>
               </div>
             );
