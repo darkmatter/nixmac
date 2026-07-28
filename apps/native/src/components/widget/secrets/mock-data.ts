@@ -1,4 +1,4 @@
-import { SecretsVault } from "@/ipc/orpc-bindings";
+import type { SecretsVault } from "@/ipc/orpc-bindings";
 
 /**
  * Demo fixture for Storybook — mirrors the reference design's data. No value
