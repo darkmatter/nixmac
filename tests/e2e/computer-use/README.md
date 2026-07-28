@@ -175,13 +175,16 @@ notifications.
 
 Centaur/Buzz terminal runs use the smaller
 `.github/workflows/publish-computer-use-e2e-report.yml` delivery lane after
-CuaDriver has already produced a terminal result on a Mac runner. The evidence
-directory must contain `terminal-result.v1.json`, 1-3 PR-focused scenarios,
-curated PNG screenshots, and one canonical H.264/yuv420p MP4. The dispatch pins
-the exact tested app SHA and a separate exact report-tool SHA. The renderer
-confines evidence paths to the declared evidence root, verifies hashes and
-media, and produces one self-contained `index.html`; the publisher places it
-on the existing `gh-pages` branch without writing a PR comment.
+CuaDriver has already produced a terminal result on the configured remote Mac.
+The evidence directory must contain `terminal-result.v1.json`, 1-3 PR-focused
+scenarios, curated PNG screenshots, and one canonical H.264/yuv420p MP4. The
+dispatch pins the exact tested app SHA and a separate exact report-tool SHA.
+Using the same repository-scoped SSH secrets as the established Computer Use
+workflow, an `arc` runner fetches only the manifest-referenced evidence files.
+The renderer confines evidence paths to that staged directory, verifies hashes
+and media, and produces one self-contained `index.html`; the publisher places
+only that public page on the existing `gh-pages` branch without writing a PR
+comment. The private normalized manifest is not published.
 
 Validate the renderer contract locally with:
 

@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       evidence_dir:
-        description: "Absolute evidence directory on the Mac runner"
+        description: "Absolute evidence directory on the configured remote Mac"
         required: true
         type: string
       expected_sha:
@@ -32,12 +32,15 @@ permissions:
 jobs:
   render:
     name: Validate and render terminal evidence
-    runs-on: [self-hosted, macOS, ARM64, nixmac-image-builder]
-    timeout-minutes: 15
+    runs-on: arc
+    timeout-minutes: 30
     outputs:
       verdict: ${{ steps.validate.outputs.verdict }}
     env:
-      EVIDENCE_ROOT: ${{ vars.NIXMAC_E2E_EVIDENCE_ROOT || '/Users/cloud/nixmac-e2e-evidence' }}
+      REMOTE_HOST: ${{ secrets.NIXMAC_E2E_REMOTE_HOST }}
+      REMOTE_USER: ${{ secrets.NIXMAC_E2E_REMOTE_USER }}
+      REMOTE_SSH_KEY: ${{ secrets.NIXMAC_E2E_REMOTE_SSH_KEY }}
+      REMOTE_KNOWN_HOSTS: ${{ secrets.NIXMAC_E2E_REMOTE_KNOWN_HOSTS }}
     steps:
       - name: Checkout pinned report tool
         uses: actions/checkout@v6
@@ -45,7 +48,44 @@ jobs:
           ref: ${{ inputs.report_tool_sha }}
           fetch-depth: 1
 
-      - name: Validate dispatch identity and evidence boundary
+      - name: Prepare evidence transport and media validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          [[ -n "$REMOTE_HOST" ]] || missing+=("NIXMAC_E2E_REMOTE_HOST")
+          [[ -n "$REMOTE_USER" ]] || missing+=("NIXMAC_E2E_REMOTE_USER")
+          [[ -n "$REMOTE_SSH_KEY" ]] || missing+=("NIXMAC_E2E_REMOTE_SSH_KEY")
+          [[ -n "$REMOTE_KNOWN_HOSTS" ]] || missing+=("NIXMAC_E2E_REMOTE_KNOWN_HOSTS")
+          if [[ "${#missing[@]}" -ne 0 ]]; then
+            echo "Missing remote evidence secrets: ${missing[*]}" >&2
+            exit 1
+          fi
+          [[ "$REMOTE_USER" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || {
+            echo "Configured remote user has an invalid format" >&2
+            exit 1
+          }
+
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          for command_name in git jq node realpath scp ssh ffprobe; do
+            command -v "$command_name" >/dev/null || {
+              echo "Required report command is unavailable: $command_name" >&2
+              exit 1
+            }
+          done
+
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$REMOTE_SSH_KEY" > "$HOME/.ssh/nixmac-e2e"
+          chmod 600 "$HOME/.ssh/nixmac-e2e"
+          printf '%s\n' "$REMOTE_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 644 "$HOME/.ssh/known_hosts"
+          ssh-keygen -F "$REMOTE_HOST" -f "$HOME/.ssh/known_hosts" >/dev/null || {
+            echo "Configured known_hosts does not contain the remote evidence host" >&2
+            exit 1
+          }
+
+      - name: Fetch, validate, and render terminal evidence
         id: validate
         shell: bash
         env:
@@ -68,7 +108,7 @@ jobs:
             echo "pull_request must be a positive integer" >&2
             exit 1
           }
-          [[ "$REQUEST_ID" =~ ^[a-z0-9][a-z0-9._-]{0,79}$ ]] || {
+          [[ "$REQUEST_ID" =~ ^[a-z0-9][a-z0-9._:-]{0,79}$ ]] || {
             echo "request_id has an invalid format" >&2
             exit 1
           }
@@ -79,30 +119,35 @@ jobs:
             exit 1
           }
 
-          evidence_root_real="$(realpath "$EVIDENCE_ROOT")"
-          evidence_dir_real="$(realpath "$EVIDENCE_DIR_INPUT")"
-          expected_prefix="${evidence_root_real}/${EXPECTED_SHA}/"
-          [[ "$evidence_dir_real" == "$expected_prefix"* ]] || {
+          expected_prefix="/Users/${REMOTE_USER}/nixmac-e2e-evidence/${EXPECTED_SHA}/"
+          [[ "$EVIDENCE_DIR_INPUT" == "$expected_prefix"* ]] || {
             echo "Evidence directory is outside the exact-SHA evidence boundary" >&2
             exit 1
           }
-          relative_run="${evidence_dir_real#"$expected_prefix"}"
-          [[ -n "$relative_run" && "$relative_run" != */* ]] || {
+          relative_run="${EVIDENCE_DIR_INPUT#"$expected_prefix"}"
+          [[ "$relative_run" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{6}Z$ ]] || {
             echo "Evidence directory must be one run directly beneath the exact SHA" >&2
             exit 1
           }
 
-          manifest="$evidence_dir_real/terminal-result.v1.json"
-          [[ -f "$manifest" ]] || {
-            echo "Missing terminal result manifest: $manifest" >&2
-            exit 1
-          }
+          ssh_common=(
+            -i "$HOME/.ssh/nixmac-e2e"
+            -o BatchMode=yes
+            -o StrictHostKeyChecking=yes
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts"
+          )
+          ssh_dest="${REMOTE_USER}@${REMOTE_HOST}"
+          local_evidence="$RUNNER_TEMP/terminal-evidence-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          mkdir -p "$local_evidence"
+          remote_manifest="${EVIDENCE_DIR_INPUT}/terminal-result.v1.json"
+          scp "${ssh_common[@]}" -- "$ssh_dest:$remote_manifest" "$local_evidence/terminal-result.remote.json"
+
           jq -e \
             --arg sha "$EXPECTED_SHA" \
             --argjson pr "$PR_NUMBER" \
             --arg request "$REQUEST_ID" \
             --arg tool "$REPORT_TOOL_SHA" \
-            --arg evidence "$evidence_dir_real" \
+            --arg evidence "$EVIDENCE_DIR_INPUT" \
             '.schemaVersion == "nixmac.e2e.terminal-result.v1"
               and .testedArtifact.headSha == $sha
               and .request.pullRequest.number == $pr
@@ -110,24 +155,50 @@ jobs:
               and .reportTool.repository == "darkmatter/nixmac"
               and .reportTool.sha == $tool
               and .evidence.root == $evidence' \
-            "$manifest" >/dev/null
+            "$local_evidence/terminal-result.remote.json" >/dev/null
 
-          mkdir -p artifacts/terminal-report
+          mapfile -t evidence_paths < <(
+            jq -r '[.evidence.screenshots[].path, .evidence.video.path] | .[]' \
+              "$local_evidence/terminal-result.remote.json"
+          )
+          if [[ "${#evidence_paths[@]}" -lt 3 || "${#evidence_paths[@]}" -gt 7 ]]; then
+            echo "Manifest must reference two to six screenshots and one video" >&2
+            exit 1
+          fi
+          for relative_path in "${evidence_paths[@]}"; do
+            [[ "$relative_path" =~ ^[A-Za-z0-9._/-]+$ ]] &&
+              [[ "$relative_path" != /* ]] &&
+              [[ "/$relative_path/" != *"/../"* ]] &&
+              [[ "/$relative_path/" != *"/./"* ]] || {
+                echo "Unsafe evidence path in manifest: $relative_path" >&2
+                exit 1
+              }
+            mkdir -p "$local_evidence/$(dirname "$relative_path")"
+            scp "${ssh_common[@]}" -- \
+              "$ssh_dest:${EVIDENCE_DIR_INPUT}/${relative_path}" \
+              "$local_evidence/$relative_path"
+          done
+
+          manifest="$local_evidence/terminal-result.v1.json"
+          jq --arg evidence "$local_evidence" '.evidence.root = $evidence' \
+            "$local_evidence/terminal-result.remote.json" > "$manifest"
+
+          mkdir -p artifacts/terminal-report-private artifacts/terminal-report-public
           node tests/e2e/computer-use/terminal-report.mjs render \
             --input "$manifest" \
-            --output-dir artifacts/terminal-report
+            --output-dir artifacts/terminal-report-private
+          cp artifacts/terminal-report-private/index.html artifacts/terminal-report-public/index.html
 
-          verdict="$(jq -r '.verdict' artifacts/terminal-report/terminal-result.normalized.json)"
+          verdict="$(jq -r '.verdict' artifacts/terminal-report-private/terminal-result.normalized.json)"
           {
             echo "verdict=$verdict"
-            echo "evidence_dir=$evidence_dir_real"
           } >> "$GITHUB_OUTPUT"
 
       - name: Upload self-contained report
         uses: actions/upload-artifact@v7
         with:
           name: computer-use-terminal-report
-          path: artifacts/terminal-report/
+          path: artifacts/terminal-report-public/
           if-no-files-found: error
           retention-days: 30
 
@@ -167,14 +238,14 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: computer-use-terminal-report
-          path: artifacts/terminal-report
+          path: artifacts/terminal-report-public
 
       - name: Publish report
         id: publish-report
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          REPORT_DIR: artifacts/terminal-report
+          REPORT_DIR: artifacts/terminal-report-public
           REPORT_PREFIX: computer-use-e2e/terminal/pr-${{ inputs.pull_request }}
           PUBLISH_PATH: computer-use-e2e/terminal/pr-${{ inputs.pull_request }}/run-${{ github.run_id }}-${{ github.run_attempt }}
           LATEST_PATH: computer-use-e2e/terminal/pr-${{ inputs.pull_request }}/latest

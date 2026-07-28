@@ -19,14 +19,15 @@ import { redact } from "./redaction.mjs";
 const execFileAsync = promisify(execFile);
 const SCHEMA_VERSION = "nixmac.e2e.terminal-result.v1";
 const MAX_SCREENSHOTS = 6;
-const MAX_SCREENSHOT_BYTES = 8 * 1024 * 1024;
-const MAX_SCREENSHOT_TOTAL_BYTES = 24 * 1024 * 1024;
+const MAX_SCREENSHOT_BYTES = 4 * 1024 * 1024;
+const MAX_SCREENSHOT_TOTAL_BYTES = 12 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 15 * 1024 * 1024;
 const MAX_HTML_BYTES = 42 * 1024 * 1024;
 const STATUSES = new Set(["pass", "fail", "inconclusive"]);
 const SHA256_RE = /^[a-f0-9]{64}$/;
 const GIT_SHA_RE = /^[a-f0-9]{40}$/;
 const SAFE_ID_RE = /^[a-z0-9][a-z0-9._-]{0,79}$/;
+const REQUEST_ID_RE = /^[a-z0-9][a-z0-9._:-]{0,79}$/;
 
 function fail(message) {
   throw new Error(message);
@@ -177,14 +178,14 @@ function validateOutcome(result) {
   const allStatuses = [...scenarioStatuses, ...assertionStatuses];
   const hasFail = allStatuses.includes("fail");
   const hasInconclusive = allStatuses.includes("inconclusive");
-  if (result.verdict === "pass" && (hasFail || hasInconclusive)) {
-    fail("a pass verdict requires every scenario and assertion to pass");
+  if (hasFail && result.verdict !== "fail") {
+    fail("a failed scenario or assertion requires a fail verdict");
   }
-  if (result.verdict === "fail" && !hasFail) {
-    fail("a fail verdict requires at least one failed scenario or assertion");
+  if (!hasFail && hasInconclusive && result.verdict !== "inconclusive") {
+    fail("an inconclusive scenario or assertion requires an inconclusive verdict");
   }
-  if (result.verdict === "inconclusive" && !hasInconclusive) {
-    fail("an inconclusive verdict requires at least one inconclusive scenario or assertion");
+  if (!hasFail && !hasInconclusive && result.verdict !== "pass") {
+    fail("all-passing scenarios and assertions require a pass verdict");
   }
 }
 
@@ -195,7 +196,7 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
     fail(`schemaVersion must be ${SCHEMA_VERSION}`);
   }
 
-  requireString(result.request?.id, "request.id", { pattern: SAFE_ID_RE, max: 80 });
+  requireString(result.request?.id, "request.id", { pattern: REQUEST_ID_RE, max: 80 });
   if (result.request?.repository !== "darkmatter/nixmac") {
     fail("request.repository must be darkmatter/nixmac");
   }
@@ -222,7 +223,10 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
     fail("reportTool.repository must be darkmatter/nixmac");
   }
   requireString(result.reportTool?.sha, "reportTool.sha", { pattern: GIT_SHA_RE });
-  requireString(result.runner?.host, "runner.host", { max: 200 });
+  requireString(result.runner?.label, "runner.label", { max: 200 });
+  if (result.runner?.host !== undefined) {
+    requireString(result.runner.host, "runner.host", { max: 200 });
+  }
   requireString(result.runner?.macosVersion, "runner.macosVersion", { max: 100 });
   requireString(result.runner?.cuaDriverVersion, "runner.cuaDriverVersion", { max: 100 });
   requireArray(result.runner?.sockets, "runner.sockets", { min: 1, max: 8 }).forEach(
@@ -441,7 +445,7 @@ export function renderTerminalReportHtml(result) {
       <div><dt>Application</dt><dd>${escapeHtml(artifact.appVersion)}</dd></div>
     </dl></section>
     <section class="panel"><dl>
-      <div><dt>Runner</dt><dd>${escapeHtml(result.runner.host)} · macOS ${escapeHtml(result.runner.macosVersion)}</dd></div>
+      <div><dt>Runner</dt><dd>${escapeHtml(result.runner.label)} · macOS ${escapeHtml(result.runner.macosVersion)}</dd></div>
       <div><dt>CuaDriver</dt><dd>${escapeHtml(result.runner.cuaDriverVersion)} · ${result.runner.sockets.map((item) => `<code>${escapeHtml(item)}</code>`).join(" · ")}</dd></div>
       <div><dt>Report tool pin</dt><dd><code>${escapeHtml(result.reportTool.repository)}@${result.reportTool.sha}</code></dd></div>
       <div><dt>Request</dt><dd><code>${escapeHtml(result.request.id)}</code></dd></div>
@@ -518,7 +522,7 @@ async function selfTest() {
   const manifest = {
     schemaVersion: SCHEMA_VERSION,
     request: {
-      id: "self-test",
+      id: `nixmac-e2e:${"a".repeat(40)}`,
       repository: "darkmatter/nixmac",
       pullRequest: {
         number: 607,
@@ -539,7 +543,7 @@ async function selfTest() {
     },
     reportTool: { repository: "darkmatter/nixmac", sha: "d".repeat(40) },
     runner: {
-      host: "test-runner",
+      label: "test Mac runner",
       macosVersion: "15.0",
       cuaDriverVersion: "test",
       sockets: ["/tmp/cua.sock"],
@@ -609,9 +613,21 @@ async function selfTest() {
   try {
     await loadTerminalResult(manifestPath, { probe: false });
   } catch (error) {
-    rejected = error.message.includes("pass verdict requires");
+    rejected = error.message.includes("requires an inconclusive verdict");
   }
   if (!rejected) fail("self-test expected inconsistent verdict to be rejected");
+
+  const downgraded = structuredClone(manifest);
+  downgraded.verdict = "inconclusive";
+  downgraded.scenarios[0].status = "fail";
+  await writeFile(manifestPath, `${JSON.stringify(downgraded, null, 2)}\n`);
+  rejected = false;
+  try {
+    await loadTerminalResult(manifestPath, { probe: false });
+  } catch (error) {
+    rejected = error.message.includes("requires a fail verdict");
+  }
+  if (!rejected) fail("self-test expected a failed result downgrade to be rejected");
   process.stdout.write("terminal-report self-test passed\n");
 }
 
