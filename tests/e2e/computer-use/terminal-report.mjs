@@ -416,7 +416,7 @@ export function renderTerminalReportHtml(result) {
     .video { padding:14px; border:1px solid var(--line); border-radius:16px; background:#05070a; } video { display:block; width:100%; max-height:720px; border-radius:10px; background:#000; } .video figcaption { padding:12px 4px 2px; display:grid; grid-template-columns:1fr auto; gap:8px; }
     .shots { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; } figure { margin:0; } .shots figure { padding:10px; border:1px solid var(--line); border-radius:14px; background:var(--panel); } img { display:block; width:100%; border-radius:9px; background:#000; } figcaption span, figcaption code { display:block; margin-top:5px; font-size:12px; color:var(--muted); }
     .integrity { overflow-x:auto; } table { width:100%; border-collapse:collapse; min-width:680px; } th,td { text-align:left; border-top:1px solid var(--line); padding:11px 8px; vertical-align:top; } th { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em; } footer { margin-top:42px; color:var(--muted); font-size:12px; }
-    @media (max-width:760px) { main { width:min(100% - 20px, 1180px); padding-top:18px; } .hero { padding:20px; } .hero-top { display:block; } .hero-top > .badge { margin-top:8px; } .metrics, .grid, .shots { grid-template-columns:1fr; } .video figcaption { grid-template-columns:1fr; } }
+    @media (max-width:820px) { main { width:min(100% - 20px, 1180px); padding-top:18px; } .hero { padding:20px; } .hero-top { display:block; } .hero-top > .badge { margin-top:8px; } .metrics, .grid, .shots { grid-template-columns:1fr; } .video figcaption { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
