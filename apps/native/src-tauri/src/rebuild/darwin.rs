@@ -877,7 +877,10 @@ fn try_activate_with_helper(activate_path: &str) -> Option<Result<ActivateResult
                 success: response.ok,
                 code: response.code,
                 stdout: response.stdout,
-                stderr: response.error.unwrap_or(response.stderr),
+                // The response has no stderr: the activation log arrives
+                // merged into stdout, so only a helper-level error belongs
+                // in the stderr slot consumers show for failures.
+                stderr: response.error.unwrap_or_default(),
             }))
         }
         Err(error) => {
