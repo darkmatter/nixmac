@@ -1,7 +1,8 @@
 use crate::privileged_helper::peer_auth::{self, PeerIdentity};
 use crate::privileged_helper::protocol::{
     ActivateStorePathRequest, HELPER_SOCKET_DIR, HELPER_SOCKET_PATH, HELPER_WARNING_PREFIX,
-    HelperRequest, HelperResponse, UNAUTHORIZED_CLIENT_ERROR, validate_canonical_activate_path,
+    HelperOp, HelperRequest, HelperResponse, UNAUTHORIZED_CLIENT_ERROR,
+    validate_canonical_activate_path,
 };
 use anyhow::{Context, Result, anyhow, bail};
 use std::fs;
@@ -15,8 +16,8 @@ use std::process::Command;
 const MAX_REQUEST_BYTES: u64 = 64 * 1024;
 
 /// Fixed PATH for the privileged activation: root-owned system and Nix
-/// profile directories only. The requester's `nix_path` never reaches root
-/// command lookup.
+/// profile directories only. The protocol has no field for a requester to
+/// offer a PATH, so nothing requester-supplied reaches root command lookup.
 const ACTIVATION_PATH_ENV: &str =
     "/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/usr/bin:/bin:/usr/sbin:/sbin";
 const SYSTEM_PROFILE: &str = "/nix/var/nix/profiles/system";
@@ -86,19 +87,24 @@ fn handle_stream(mut stream: UnixStream) -> Result<()> {
     // body is touched: an unauthorized peer must never reach the reader or
     // the JSON parser.
     let response = match authorize_peer(&stream) {
-        Ok(peer) => match read_request(stream.try_clone()?) {
-            Ok(request) => match authorize_request(&peer, &request) {
-                Ok(()) => handle_request(&peer, request),
-                Err(error) => HelperResponse::error(-1, error.to_string()),
-            },
-            Err(error) => HelperResponse::error(-1, error.to_string()),
-        },
+        Ok(peer) => respond_authorized(&peer, &stream)?,
         Err(error) => HelperResponse::error(-1, format!("{UNAUTHORIZED_CLIENT_ERROR}: {error:#}")),
     };
     serde_json::to_writer(&mut stream, &response)?;
     stream.write_all(b"\n")?;
     stream.flush()?;
     Ok(())
+}
+
+/// Post-authorization request handling: only a request that clears the
+/// version gate reaches an operation handler; anything else — version skew,
+/// a v1 shape, unknown fields, framing violations — becomes a versioned
+/// protocol-error response without an operation being derived.
+fn respond_authorized(peer: &PeerIdentity, stream: &UnixStream) -> Result<HelperResponse> {
+    Ok(match read_request(stream.try_clone()?) {
+        Ok(op) => handle_request(peer, op),
+        Err(error) => HelperResponse::error(-1, error.to_string()),
+    })
 }
 
 fn authorize_peer(stream: &UnixStream) -> Result<PeerIdentity> {
@@ -123,7 +129,11 @@ fn check_peer_policy(peer_euid: u32, console_uid: Option<u32>) -> Result<()> {
     Ok(())
 }
 
-fn read_request(stream: impl Read) -> Result<HelperRequest> {
+/// Reads one framed request and returns the operation only if the sender
+/// speaks this daemon's protocol version. A version mismatch and an
+/// unrecognized field are both hard errors here, so no operation is derived
+/// from a request the daemon does not fully understand.
+fn read_request(stream: impl Read) -> Result<HelperOp> {
     let mut line = String::new();
     BufReader::new(stream)
         .take(MAX_REQUEST_BYTES)
@@ -131,13 +141,13 @@ fn read_request(stream: impl Read) -> Result<HelperRequest> {
     if !line.ends_with('\n') && line.len() as u64 >= MAX_REQUEST_BYTES {
         bail!("request exceeds {MAX_REQUEST_BYTES} bytes");
     }
-    Ok(serde_json::from_str(&line)?)
+    HelperRequest::parse(&line)
 }
 
-fn handle_request(peer: &PeerIdentity, request: HelperRequest) -> HelperResponse {
-    match request {
-        HelperRequest::Status => HelperResponse::ok("nixmac helper ready"),
-        HelperRequest::ActivateStorePath { request } => match activate_store_path(peer, &request) {
+fn handle_request(peer: &PeerIdentity, op: HelperOp) -> HelperResponse {
+    match op {
+        HelperOp::Status => HelperResponse::ok("nixmac helper ready"),
+        HelperOp::ActivateStorePath(request) => match activate_store_path(peer, &request) {
             Ok(response) => response,
             Err(error) => HelperResponse::error(-1, error.to_string()),
         },
@@ -149,10 +159,7 @@ fn activate_store_path(
     request: &ActivateStorePathRequest,
 ) -> Result<HelperResponse> {
     let activate_path = canonical_activation_target(&request.activate_path)?;
-    // Account values are derived from the socket peer credentials; the
-    // request's `user_name`/`user_id`/`home` are never trusted here.
-    let account = user_account(peer.euid)?;
-    let argv = activation_argv(peer.euid, &account, &activate_path);
+    let argv = activation_argv_for_peer(peer, &activate_path)?;
     let (status, mut stdout) = run_activation_command(&argv)?;
 
     // Profile maintenance runs only after a successful activation and is
@@ -164,13 +171,11 @@ fn activate_store_path(
         }
     }
 
-    Ok(HelperResponse {
-        ok: status.success(),
-        code: status.code().unwrap_or(-1),
+    Ok(HelperResponse::from_exit(
+        status.success(),
+        status.code().unwrap_or(-1),
         stdout,
-        stderr: String::new(),
-        error: None,
-    })
+    ))
 }
 
 /// Resolves and authorizes the activation target at the privileged boundary,
@@ -307,6 +312,16 @@ pub(crate) fn activation_argv(uid: u32, account: &UserAccount, activate_path: &s
     ]
 }
 
+/// The privileged command for one authenticated peer. Every
+/// requester-derived input comes from the peer's socket credentials: the
+/// account is looked up by the authenticated uid — the protocol has no field
+/// to override it — and that uid, name, and home populate the activation
+/// argv and environment.
+fn activation_argv_for_peer(peer: &PeerIdentity, activate_path: &str) -> Result<Vec<String>> {
+    let account = user_account(peer.euid)?;
+    Ok(activation_argv(peer.euid, &account, activate_path))
+}
+
 pub(crate) fn post_activation_maintenance(activate_path: &str) -> Vec<String> {
     let mut warnings = Vec::new();
     if let Err(error) = set_system_profile(activate_path) {
@@ -339,22 +354,6 @@ fn set_system_profile(activate_path: &str) -> Result<()> {
     Ok(())
 }
 
-/// Request-level cross-check, after the peer itself is already authorized:
-/// activation must be requested for the peer's own uid.
-fn authorize_request(peer: &PeerIdentity, request: &HelperRequest) -> Result<()> {
-    if let HelperRequest::ActivateStorePath { request } = request
-        && peer.euid != request.user_id
-    {
-        bail!(
-            "activation peer uid {} does not match requested uid {}",
-            peer.euid,
-            request.user_id
-        );
-    }
-
-    Ok(())
-}
-
 pub(crate) struct UserAccount {
     name: String,
     home: String,
@@ -384,16 +383,8 @@ pub(crate) fn user_account(_uid: u32) -> Result<UserAccount> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn request(path: &str) -> ActivateStorePathRequest {
-        ActivateStorePathRequest {
-            activate_path: path.to_string(),
-            user_name: "alice".to_string(),
-            user_id: 501,
-            home: "/Users/alice".to_string(),
-            nix_path: "/tmp/attacker-bin:/usr/bin".to_string(),
-        }
-    }
+    #[cfg(target_os = "macos")]
+    use crate::privileged_helper::protocol::HELPER_PROTOCOL_VERSION;
 
     fn account() -> UserAccount {
         UserAccount {
@@ -414,11 +405,10 @@ mod tests {
         assert_eq!(&argv[1..3], ["asuser", "501"]);
         assert_eq!(&argv[3..5], ["/usr/bin/env", "-i"]);
         assert!(argv.contains(&format!("PATH={ACTIVATION_PATH_ENV}")));
-        // Account values come from the peer lookup, not the request.
+        // Account values come from the peer lookup. The protocol no longer
+        // has fields for a client to claim these with.
         assert!(argv.contains(&"HOME=/Users/peer-alice".to_string()));
         assert!(argv.contains(&"USER=peer-alice".to_string()));
-        assert!(!argv.iter().any(|arg| arg.contains("/tmp/attacker-bin")));
-        assert!(!argv.iter().any(|arg| arg.contains("/Users/alice")));
         assert_eq!(
             argv.last().map(String::as_str),
             Some("/nix/store/abc123-darwin-system-25.05.20260629/activate")
@@ -447,10 +437,12 @@ mod tests {
         // A status request never inspects the peer; any real identity works.
         let (stream, _other_end) = UnixStream::pair().expect("socketpair");
         let peer = peer_auth::peer_identity(&stream).expect("peer identity");
-        let response = handle_request(&peer, HelperRequest::Status);
+        let response = handle_request(&peer, HelperOp::Status);
 
         assert!(response.ok);
         assert_eq!(response.code, 0);
+        assert_eq!(response.protocol_version, HELPER_PROTOCOL_VERSION);
+        assert!(!response.helper_build_version.is_empty());
     }
 
     #[test]
@@ -583,11 +575,82 @@ mod tests {
         assert!(canonical_activation_target("/nix/store/no-such-item-c1-test/activate").is_err());
     }
 
-    #[test]
-    fn read_request_parses_status_request() {
-        let request = read_request(&b"{\"op\":\"status\"}\n"[..]).expect("parse status");
+    fn framed(request: &HelperRequest) -> Vec<u8> {
+        let mut body = serde_json::to_vec(request).expect("serialize request");
+        body.push(b'\n');
+        body
+    }
 
-        assert_eq!(request, HelperRequest::Status);
+    #[cfg(target_os = "macos")]
+    fn authorized_response_to(body: &[u8]) -> HelperResponse {
+        let (client, server) = UnixStream::pair().expect("socketpair");
+        let peer = peer_auth::peer_identity(&server).expect("peer identity");
+        (&client).write_all(body).expect("write request");
+
+        respond_authorized(&peer, &server).expect("responds")
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn authorized_current_version_request_crosses_the_gate_to_the_handler() {
+        let response = authorized_response_to(&framed(&HelperRequest::new(HelperOp::Status)));
+
+        assert!(response.ok);
+        assert_eq!(response.stdout, "nixmac helper ready");
+        assert_eq!(response.protocol_version, HELPER_PROTOCOL_VERSION);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn version_rejection_becomes_a_versioned_protocol_error_without_a_handler() {
+        // Missing, lower, and higher versions, each on a body the version
+        // gate must stop. `ok: false` on the status shape proves the status
+        // handler never ran (it would answer ok "ready"); the skew
+        // classification on the others — whose operations are invalid or
+        // carry the v1 claimed fields — proves the gate rejected them before
+        // any operation shape was interpreted, let alone executed.
+        for body in [
+            // Missing: v1 status, no version field at all.
+            "{\"op\":\"status\"}\n".to_string(),
+            // Missing: v1 activation carrying the claimed identity/PATH fields.
+            r#"{"op":"activateStorePath","request":{"activatePath":"/nix/store/abc-darwin-system/activate","userName":"alice","userId":501,"home":"/Users/alice","nixPath":"/tmp/attacker-bin"}}
+"#
+            .to_string(),
+            // Lower and higher versions on deliberately invalid operations.
+            "{\"protocolVersion\":1,\"op\":\"selfDestruct\"}\n".to_string(),
+            format!(
+                "{{\"protocolVersion\":{},\"op\":\"selfDestruct\"}}\n",
+                HELPER_PROTOCOL_VERSION + 1
+            ),
+        ] {
+            let response = authorized_response_to(body.as_bytes());
+
+            assert!(!response.ok);
+            assert_eq!(response.protocol_version, HELPER_PROTOCOL_VERSION);
+            assert!(!response.helper_build_version.is_empty());
+            assert!(response.reports_protocol_skew());
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn activation_argv_derives_from_the_authenticated_peer_account() {
+        // The peer identity of a socketpair end is this test process, so the
+        // argv must carry this process's uid and its user-database account —
+        // the lookup keys on the authenticated uid and nothing else.
+        let (stream, _other_end) = UnixStream::pair().expect("socketpair");
+        let peer = peer_auth::peer_identity(&stream).expect("peer identity");
+        let me = nix::unistd::User::from_uid(nix::unistd::Uid::from_raw(peer.euid))
+            .expect("user lookup")
+            .expect("account exists");
+
+        let argv = activation_argv_for_peer(&peer, "/nix/store/abc-darwin-system/activate")
+            .expect("argv for peer");
+
+        assert_eq!(argv[1], "asuser");
+        assert_eq!(argv[2], peer.euid.to_string());
+        assert!(argv.contains(&format!("USER={}", me.name)));
+        assert!(argv.contains(&format!("HOME={}", me.dir.display())));
     }
 
     #[test]
@@ -619,13 +682,12 @@ mod tests {
             .expect("handler thread")
             .expect("stream handled");
 
-        let response: HelperResponse = serde_json::from_str(&reply).expect("response json");
+        // Authorization errors are versioned responses like every other:
+        // the strict client-side parse must accept the reply.
+        let response = HelperResponse::parse(&reply).expect("versioned response");
         assert!(!response.ok);
-        assert!(
-            response
-                .error
-                .expect("error message")
-                .contains(UNAUTHORIZED_CLIENT_ERROR)
-        );
+        assert_eq!(response.protocol_version, HELPER_PROTOCOL_VERSION);
+        assert!(!response.helper_build_version.is_empty());
+        assert!(response.reports_unauthorized_client());
     }
 }

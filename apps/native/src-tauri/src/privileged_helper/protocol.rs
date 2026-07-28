@@ -13,10 +13,26 @@ pub const HELPER_SOCKET_PATH: &str = "/var/run/nixmac/helper.sock";
 #[allow(dead_code)]
 pub const HELPER_SOCKET_DIR: &str = "/var/run/nixmac";
 /// Prefix of the daemon's response when the connecting peer fails
-/// authorization. The app matches on it to fall back to the interactive
-/// osascript path instead of surfacing a hard error (unsigned dev builds
-/// land here by design).
+/// authorization. The app matches on it — only through
+/// `HelperResponse::reports_unauthorized_client`, which requires it as a
+/// prefix — to fall back to the interactive osascript path instead of
+/// surfacing a hard error (unsigned dev builds land here by design).
 pub const UNAUTHORIZED_CLIENT_ERROR: &str = "unauthorized helper client";
+/// Wire marker for protocol-version skew: the prefix of `ProtocolSkew`'s
+/// display form, and therefore of the daemon's response `error` string when
+/// a request's version is missing or wrong. Classification cannot cross the
+/// JSON boundary, so a *daemon-reported* skew is detected from this marker —
+/// only through `HelperResponse::reports_protocol_skew`, which requires it
+/// as a prefix. For client-side failures use `is_protocol_skew`, never
+/// display text. Kept distinct from `UNAUTHORIZED_CLIENT_ERROR` so a
+/// version-skewed helper/app pairing is distinguishable from a rejected
+/// client.
+pub const UNSUPPORTED_PROTOCOL_ERROR: &str = "unsupported helper protocol version";
+/// Wire protocol the daemon and its clients speak. Version 2 dropped every
+/// claimed-identity field: the daemon derives the account from the socket
+/// peer's credentials, so there is nothing left for a client to assert about
+/// itself.
+pub const HELPER_PROTOCOL_VERSION: u32 = 2;
 const DEFAULT_SYNC_AGENT_INTERVAL_SECONDS: u32 = 900;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq, Eq)]
@@ -28,7 +44,9 @@ pub struct HelperServiceStatus {
     pub authorized: bool,
     pub socket_available: bool,
     /// The daemon answered an authenticated status round-trip: the client
-    /// validated the daemon's signature and the daemon accepted this client.
+    /// validated the daemon's signature, the daemon accepted this client,
+    /// and both sides proved they speak the same protocol version. A
+    /// protocol-error response never sets this.
     pub responding: bool,
     pub detail: Option<String>,
 }
@@ -47,14 +65,15 @@ impl HelperServiceStatus {
     }
 }
 
+/// The activation target, and nothing else. Account name, uid, and home come
+/// from the socket peer's credentials, and the privileged `PATH` is fixed, so
+/// a client has nothing left to claim. Unknown fields are rejected rather
+/// than ignored: a v1 client's `userName`/`userId`/`home`/`nixPath` must fail
+/// loudly, never look like it was honored.
 #[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ActivateStorePathRequest {
     pub activate_path: String,
-    pub user_name: String,
-    pub user_id: u32,
-    pub home: String,
-    pub nix_path: String,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Type, PartialEq, Eq)]
@@ -67,16 +86,110 @@ pub struct SyncAgentLaunchConfig {
     pub start_interval_seconds: Option<u32>,
 }
 
+/// Everything a client puts on the socket. The version is outside the
+/// operation so it can be checked before the operation is acted on.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(tag = "op", rename_all = "camelCase")]
-pub enum HelperRequest {
-    Status,
-    ActivateStorePath { request: ActivateStorePathRequest },
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct HelperRequest {
+    pub protocol_version: u32,
+    pub op: HelperOp,
 }
 
+impl HelperRequest {
+    pub fn new(op: HelperOp) -> Self {
+        Self {
+            protocol_version: HELPER_PROTOCOL_VERSION,
+            op,
+        }
+    }
+
+    /// Daemon-side gate: no operation is derived until the sender is known
+    /// to speak this daemon's protocol. The version is probed before the
+    /// strict parse so an alien shape is reported as version skew rather
+    /// than as whichever unfamiliar field serde trips over first.
+    pub fn parse(line: &str) -> Result<HelperOp> {
+        check_wire_version(line)?;
+        let request: Self = serde_json::from_str(line)?;
+        Ok(request.op)
+    }
+}
+
+/// Classified protocol-version skew. This is the error type behind every
+/// version-gate rejection, so consumers detect skew structurally with
+/// `is_protocol_skew` instead of parsing display text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ProtocolSkew {
+    /// Version the other side sent; `None` when the shape carried no
+    /// version at all (the v1 wire).
+    pub peer_version: Option<u32>,
+}
+
+impl std::fmt::Display for ProtocolSkew {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.peer_version {
+            Some(version) => write!(
+                f,
+                "{UNSUPPORTED_PROTOCOL_ERROR} {version} (this build speaks {HELPER_PROTOCOL_VERSION})"
+            ),
+            None => write!(
+                f,
+                "{UNSUPPORTED_PROTOCOL_ERROR}: no protocolVersion field (this build speaks {HELPER_PROTOCOL_VERSION})"
+            ),
+        }
+    }
+}
+
+impl std::error::Error for ProtocolSkew {}
+
+/// True when `error` is (or wraps) a version-gate `ProtocolSkew`. This is
+/// the client-side classification callers act on — the display text is not
+/// part of the contract.
+pub fn is_protocol_skew(error: &anyhow::Error) -> bool {
+    error
+        .chain()
+        .any(|cause| cause.downcast_ref::<ProtocolSkew>().is_some())
+}
+
+/// Reads only `protocolVersion` out of one wire line and requires it to be
+/// exactly this build's version. The probe deliberately ignores every other
+/// field: its job is to decide whether the rest of the shape may be
+/// interpreted at all, so it must parse shapes this build otherwise rejects
+/// (v1 carried no version field at all).
+fn check_wire_version(line: &str) -> Result<()> {
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct VersionProbe {
+        protocol_version: Option<u32>,
+    }
+
+    match serde_json::from_str::<VersionProbe>(line)?.protocol_version {
+        Some(HELPER_PROTOCOL_VERSION) => Ok(()),
+        peer_version => Err(ProtocolSkew { peer_version }.into()),
+    }
+}
+
+/// Externally tagged: serde honors `deny_unknown_fields` on a plain payload
+/// struct, but ignores it on the variants of an internally tagged enum, and
+/// rejecting unknown fields is the point of this shape.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub enum HelperOp {
+    Status,
+    ActivateStorePath(ActivateStorePathRequest),
+}
+
+/// Everything the daemon puts back on the socket. Every response — status,
+/// activation success or failure, and protocol errors alike — carries the
+/// version, because the constructors below stamp it and the daemon builds
+/// responses only through them. `helper_build_version` is diagnostic (for
+/// support and telemetry): release versions are not unique across rebuilds,
+/// so the update and trust decisions belong to the signature checks and the
+/// version gate, never to this string.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct HelperResponse {
+    pub protocol_version: u32,
+    pub helper_build_version: String,
     pub ok: bool,
     pub code: i32,
     pub stdout: String,
@@ -120,23 +233,62 @@ impl HelperResponse {
     }
 
     pub fn ok(stdout: impl Into<String>) -> Self {
+        Self::from_exit(true, 0, stdout.into())
+    }
+
+    pub fn error(code: i32, error: impl Into<String>) -> Self {
         Self {
-            ok: true,
-            code: 0,
-            stdout: stdout.into(),
+            error: Some(error.into()),
+            ..Self::from_exit(false, code, String::new())
+        }
+    }
+
+    /// Base constructor the other constructors delegate to; also used
+    /// directly for a finished activation command, where `ok` mirrors the
+    /// exit status. stderr stays empty in every case: the activation merges
+    /// its stderr into stdout (`2>&1`), and the other responses have none.
+    pub fn from_exit(ok: bool, code: i32, stdout: String) -> Self {
+        Self {
+            protocol_version: HELPER_PROTOCOL_VERSION,
+            helper_build_version: env!("NIXMAC_VERSION").to_string(),
+            ok,
+            code,
+            stdout,
             stderr: String::new(),
             error: None,
         }
     }
 
-    pub fn error(code: i32, error: impl Into<String>) -> Self {
-        Self {
-            ok: false,
-            code,
-            stdout: String::new(),
-            stderr: String::new(),
-            error: Some(error.into()),
-        }
+    /// Client-side gate, mirroring `HelperRequest::parse`: the version is
+    /// checked before `ok`, output, or error fields exist to be read, and a
+    /// missing or different version fails as a classified `ProtocolSkew`.
+    /// How to recover — reconciling the installed helper, or an interactive
+    /// fallback — is the caller's policy, not this layer's contract.
+    pub fn parse(line: &str) -> Result<Self> {
+        check_wire_version(line)?;
+        Ok(serde_json::from_str(line)?)
+    }
+
+    /// True when this daemon-reported response is the version gate's own
+    /// rejection. The marker is required as a prefix — the daemon puts the
+    /// classification first in `error` — so an unrelated failure that merely
+    /// mentions the marker text deeper in its message never classifies as
+    /// skew.
+    pub fn reports_protocol_skew(&self) -> bool {
+        self.reports_marker(UNSUPPORTED_PROTOCOL_ERROR)
+    }
+
+    /// True when this daemon-reported response is the daemon refusing the
+    /// connecting peer. Prefix-matched for the same reason as
+    /// `reports_protocol_skew`.
+    pub fn reports_unauthorized_client(&self) -> bool {
+        self.reports_marker(UNAUTHORIZED_CLIENT_ERROR)
+    }
+
+    fn reports_marker(&self, marker: &str) -> bool {
+        self.error
+            .as_deref()
+            .is_some_and(|error| error.starts_with(marker))
     }
 }
 
@@ -176,31 +328,26 @@ pub fn canonicalize_activate_path(path: impl AsRef<Path>) -> Result<PathBuf> {
     validate_canonical_activate_path(&canonical)
 }
 
-pub fn current_user_activation_request(activate_path: &Path) -> Result<ActivateStorePathRequest> {
+/// A ready-to-send activation envelope. Opaque on purpose: `activation_request`
+/// is the only constructor, so the client's activation entry point cannot be
+/// handed a status operation or a hand-assembled envelope with a different
+/// version or a non-canonicalized target.
+#[derive(Debug, Clone)]
+pub struct ActivationRequest(pub(crate) HelperRequest);
+
+/// Builds the versioned activation envelope for the current process.
+/// Resolving the path here is a convenience so an obviously wrong target
+/// fails before a round trip; the daemon canonicalizes and revalidates
+/// independently, and treats nothing in this request as trusted beyond the
+/// path it re-derives.
+pub fn activation_request(activate_path: &Path) -> Result<ActivationRequest> {
     let canonical = canonicalize_activate_path(activate_path)?;
-    let user_name = whoami::username().unwrap_or_else(|_| "root".to_string());
-    let user_id = current_user_id();
-    let home = std::env::var("HOME").unwrap_or_default();
-    let nix_path = crate::system::nix::get_nix_path();
 
-    Ok(ActivateStorePathRequest {
-        activate_path: canonical.to_string_lossy().into_owned(),
-        user_name,
-        user_id,
-        home,
-        nix_path,
-    })
-}
-
-#[cfg(unix)]
-fn current_user_id() -> u32 {
-    // SAFETY: `getuid` is thread-safe, has no preconditions, and cannot fail.
-    unsafe { libc::getuid() }
-}
-
-#[cfg(not(unix))]
-fn current_user_id() -> u32 {
-    0
+    Ok(ActivationRequest(HelperRequest::new(
+        HelperOp::ActivateStorePath(ActivateStorePathRequest {
+            activate_path: canonical.to_string_lossy().into_owned(),
+        }),
+    )))
 }
 
 #[allow(dead_code)]
@@ -354,21 +501,231 @@ mod tests {
     }
 
     #[test]
-    fn activation_request_json_ignores_removed_fields() {
-        // Wire compat with apps that still send canonicalLinkTarget or
-        // sshAuthSock: unknown fields are ignored on deserialization.
-        let json = r#"{"activatePath":"/nix/store/abc-darwin-system/activate","userName":"alice","userId":501,"home":"/Users/alice","sshAuthSock":"/tmp/ssh.sock","nixPath":"/bin","canonicalLinkTarget":"/Users/alice/.darwin"}"#;
-        let request: ActivateStorePathRequest = serde_json::from_str(json).expect("deserializes");
-        assert_eq!(request.user_id, 501);
+    fn request_round_trips_at_the_current_version() {
+        for op in [
+            HelperOp::Status,
+            HelperOp::ActivateStorePath(ActivateStorePathRequest {
+                activate_path: "/nix/store/abc-darwin-system/activate".to_string(),
+            }),
+        ] {
+            let wire = serde_json::to_string(&HelperRequest::new(op.clone())).expect("serializes");
+
+            assert!(wire.contains(&format!("\"protocolVersion\":{HELPER_PROTOCOL_VERSION}")));
+            assert_eq!(HelperRequest::parse(&wire).expect("parses"), op);
+        }
+    }
+
+    #[test]
+    fn request_rejects_other_protocol_versions_before_reading_the_shape() {
+        // The operation is deliberately invalid: getting the skew
+        // classification rather than an unknown-variant parse error proves
+        // the version gate wins before the rest of the shape is interpreted.
+        for version in [1, 3, 99] {
+            let json = format!("{{\"protocolVersion\":{version},\"op\":\"selfDestruct\"}}");
+            let error = HelperRequest::parse(&json).expect_err("version must be rejected");
+
+            assert!(is_protocol_skew(&error));
+            assert_eq!(
+                error.downcast_ref::<ProtocolSkew>(),
+                Some(&ProtocolSkew {
+                    peer_version: Some(version)
+                })
+            );
+        }
+    }
+
+    #[test]
+    fn activation_request_rejects_claimed_identity_fields() {
+        // A v1 body at the current version: the claimed account values and
+        // requester PATH are a hard parse error now, so they can never look
+        // like they were honored.
+        let json = format!(
+            r#"{{"protocolVersion":{HELPER_PROTOCOL_VERSION},"op":{{"activateStorePath":{{"activatePath":"/nix/store/abc-darwin-system/activate","userName":"alice","userId":501,"home":"/Users/alice","nixPath":"/tmp/attacker-bin"}}}}}}"#
+        );
+
+        assert!(HelperRequest::parse(&json).is_err());
+    }
+
+    #[test]
+    fn request_rejects_unknown_envelope_fields() {
+        let json = format!(
+            r#"{{"protocolVersion":{HELPER_PROTOCOL_VERSION},"op":"status","userId":501}}"#
+        );
+
+        assert!(HelperRequest::parse(&json).is_err());
+    }
+
+    #[test]
+    fn request_rejects_the_v1_wire_shape_as_protocol_skew() {
+        // v1 tagged the operation inline and carried no version at all. Both
+        // v1 shapes must be rejected, and classified as version skew rather
+        // than a shape error, before any operation is derived.
+        for v1 in [
+            r#"{"op":"status"}"#,
+            r#"{"op":"activateStorePath","request":{"activatePath":"/nix/store/abc-darwin-system/activate","userName":"alice","userId":501,"home":"/Users/alice","nixPath":"/bin"}}"#,
+        ] {
+            let error = HelperRequest::parse(v1).expect_err("v1 shape must be rejected");
+
+            assert_eq!(
+                error.downcast_ref::<ProtocolSkew>(),
+                Some(&ProtocolSkew { peer_version: None })
+            );
+        }
+    }
+
+    /// The exact request parser the deployed v1 daemon uses, vendored as a
+    /// minimal fixture for the opposite temporal direction of the break.
+    #[derive(Deserialize)]
+    #[serde(tag = "op", rename_all = "camelCase")]
+    enum V1HelperRequest {
+        Status,
+        ActivateStorePath {
+            // Deserialized into but never read, like the payload fields.
+            #[allow(dead_code)]
+            request: V1ActivateStorePathRequest,
+        },
+    }
+
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    #[allow(dead_code)]
+    struct V1ActivateStorePathRequest {
+        activate_path: String,
+        user_name: String,
+        user_id: u32,
+        home: String,
+        nix_path: String,
+    }
+
+    #[test]
+    fn v1_daemon_parser_cannot_derive_an_activation_from_a_v2_request() {
+        // No-double-apply defense: if a still-resident v1 root daemon could
+        // parse a v2 activation request, it would execute the activation and
+        // answer with a versionless v1 response — which the v2 app rejects
+        // as skew, so any recovery it then attempts would re-run an
+        // already-finished activation. The v2 activation envelope must
+        // therefore be unparseable by the exact v1 request enum.
+        let activation = serde_json::to_string(&HelperRequest::new(HelperOp::ActivateStorePath(
+            ActivateStorePathRequest {
+                activate_path: "/nix/store/abc-darwin-system/activate".to_string(),
+            },
+        )))
+        .expect("serializes");
+
+        assert!(serde_json::from_str::<V1HelperRequest>(&activation).is_err());
+
+        // The v1 daemon does parse a v2 *status* request (its internally
+        // tagged enum ignores the unfamiliar protocolVersion field). That is
+        // the accepted read-only asymmetry — pinned here so an envelope
+        // change that alters it is revisited deliberately.
+        let status =
+            serde_json::to_string(&HelperRequest::new(HelperOp::Status)).expect("serializes");
+
+        assert!(matches!(
+            serde_json::from_str::<V1HelperRequest>(&status),
+            Ok(V1HelperRequest::Status)
+        ));
+    }
+
+    #[test]
+    fn every_response_shape_serializes_the_current_version() {
+        // Status, activation success, activation failure, and protocol-error
+        // responses: all carry the version and the diagnostic build version.
+        for response in [
+            HelperResponse::ok("nixmac helper ready"),
+            HelperResponse::from_exit(true, 0, "activated".to_string()),
+            HelperResponse::from_exit(false, 2, "activation exploded".to_string()),
+            HelperResponse::error(-1, format!("{UNSUPPORTED_PROTOCOL_ERROR} 1")),
+        ] {
+            assert!(!response.helper_build_version.is_empty());
+            let wire = serde_json::to_string(&response).expect("serializes");
+
+            assert!(wire.contains(&format!("\"protocolVersion\":{HELPER_PROTOCOL_VERSION}")));
+            assert!(wire.contains("\"helperBuildVersion\""));
+            assert_eq!(HelperResponse::parse(&wire).expect("parses"), response);
+        }
+    }
+
+    #[test]
+    fn response_parse_rejects_the_exact_v1_status_response() {
+        // What an installed v1 helper answers a status probe with. It must
+        // fail before ok/stdout/error are readable, classified as protocol
+        // skew for the caller's recovery policy to act on.
+        let v1 = r#"{"ok":true,"code":0,"stdout":"nixmac helper ready","stderr":"","error":null}"#;
+
+        let error = HelperResponse::parse(v1).expect_err("v1 response must be rejected");
+
+        assert!(is_protocol_skew(&error));
+        assert_eq!(
+            error.downcast_ref::<ProtocolSkew>(),
+            Some(&ProtocolSkew { peer_version: None })
+        );
+    }
+
+    #[test]
+    fn response_parse_rejects_other_protocol_versions_before_reading_the_shape() {
+        // The rest of the shape is deliberately invalid (missing required
+        // fields, an unknown one instead): getting the skew classification
+        // rather than a field-level parse error proves the version gate wins
+        // before any response field is interpreted.
+        for version in [1, 3, 99] {
+            let json = format!(r#"{{"protocolVersion":{version},"bogus":true}}"#);
+
+            let error = HelperResponse::parse(&json).expect_err("version must be rejected");
+
+            assert!(is_protocol_skew(&error));
+            assert_eq!(
+                error.downcast_ref::<ProtocolSkew>(),
+                Some(&ProtocolSkew {
+                    peer_version: Some(version)
+                })
+            );
+        }
+    }
+
+    #[test]
+    fn daemon_markers_classify_only_as_prefixes() {
+        let skew = HelperResponse::error(
+            -1,
+            ProtocolSkew {
+                peer_version: Some(1),
+            }
+            .to_string(),
+        );
+        assert!(skew.reports_protocol_skew());
+        assert!(!skew.reports_unauthorized_client());
+
+        let refused =
+            HelperResponse::error(-1, format!("{UNAUTHORIZED_CLIENT_ERROR}: bad signature"));
+        assert!(refused.reports_unauthorized_client());
+        assert!(!refused.reports_protocol_skew());
+
+        // An unrelated failure that merely mentions a marker deeper in its
+        // message must not classify.
+        let unrelated = HelperResponse::error(
+            1,
+            format!(
+                "activation failed: log mentioned '{UNSUPPORTED_PROTOCOL_ERROR}' and '{UNAUTHORIZED_CLIENT_ERROR}'"
+            ),
+        );
+        assert!(!unrelated.reports_protocol_skew());
+        assert!(!unrelated.reports_unauthorized_client());
+        assert!(!HelperResponse::ok("nixmac helper ready").reports_protocol_skew());
+    }
+
+    #[test]
+    fn response_parse_rejects_unknown_fields() {
+        let wire = serde_json::to_string(&HelperResponse::ok("ready")).expect("serializes");
+        let with_extra = wire.replacen('{', r#"{"sshAuthSock":"/tmp/ssh.sock","#, 1);
+
+        assert!(HelperResponse::parse(&with_extra).is_err());
     }
 
     fn response(stdout: &str, stderr: &str, error: Option<&str>) -> HelperResponse {
         HelperResponse {
-            ok: false,
-            code: 1,
-            stdout: stdout.to_string(),
             stderr: stderr.to_string(),
             error: error.map(String::from),
+            ..HelperResponse::from_exit(false, 1, stdout.to_string())
         }
     }
 
