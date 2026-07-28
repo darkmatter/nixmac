@@ -10,7 +10,6 @@ use std::collections::HashMap;
 use std::ffi::OsString;
 use std::io::{self, Write};
 use std::path::{Component, Path, PathBuf};
-use std::process::Command;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
@@ -47,23 +46,6 @@ pub fn execute_search_code(
     let visible = gitignore
         .map(|checker| checker.visible_files())
         .transpose()?;
-
-    let mut cmd = Command::new("rg");
-    cmd.args([
-        "--json",
-        "--color=never", // Disable color to simplify output parsing.
-        "--text",        // Treat all files as text to avoid binary file issues.
-        pattern,
-    ]);
-    // Do not pass --max-count here: that flag caps matches *per file*, so the
-    // total output could still far exceed MAX_SEARCH_RESULTS across many files.
-    // The global cap is enforced in format_rg_json_matches instead.
-
-    // Exclude common ignored directories from ripgrep results by adding
-    // negative glob patterns (e.g. `!.git/**/*`).
-    for d in get_always_ignored_dirs() {
-        cmd.arg("--glob").arg(format!("!{}/**/*", d));
-    }
 
     if let Some(fp) = file_pattern {
         let fp_path = Path::new(fp);
