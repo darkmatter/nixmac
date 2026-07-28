@@ -1,0 +1,204 @@
+name: Publish Computer Use E2E Terminal Report
+run-name: Publish E2E report · PR #${{ inputs.pull_request }} · ${{ inputs.request_id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      evidence_dir:
+        description: "Absolute evidence directory on the Mac runner"
+        required: true
+        type: string
+      expected_sha:
+        description: "Exact 40-character nixmac app SHA exercised by CuaDriver"
+        required: true
+        type: string
+      pull_request:
+        description: "Pull request number"
+        required: true
+        type: string
+      request_id:
+        description: "Buzz/Centaur request ID"
+        required: true
+        type: string
+      report_tool_sha:
+        description: "Exact nixmac SHA containing the report renderer to execute"
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  render:
+    name: Validate and render terminal evidence
+    runs-on: [self-hosted, macOS, ARM64, nixmac-image-builder]
+    timeout-minutes: 15
+    outputs:
+      verdict: ${{ steps.validate.outputs.verdict }}
+    env:
+      EVIDENCE_ROOT: ${{ vars.NIXMAC_E2E_EVIDENCE_ROOT || '/Users/cloud/nixmac-e2e-evidence' }}
+    steps:
+      - name: Checkout pinned report tool
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.report_tool_sha }}
+          fetch-depth: 1
+
+      - name: Validate dispatch identity and evidence boundary
+        id: validate
+        shell: bash
+        env:
+          EVIDENCE_DIR_INPUT: ${{ inputs.evidence_dir }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          PR_NUMBER: ${{ inputs.pull_request }}
+          REQUEST_ID: ${{ inputs.request_id }}
+          REPORT_TOOL_SHA: ${{ inputs.report_tool_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[a-f0-9]{40}$ ]] || {
+            echo "expected_sha must be a full lowercase git SHA" >&2
+            exit 1
+          }
+          [[ "$REPORT_TOOL_SHA" =~ ^[a-f0-9]{40}$ ]] || {
+            echo "report_tool_sha must be a full lowercase git SHA" >&2
+            exit 1
+          }
+          [[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]] || {
+            echo "pull_request must be a positive integer" >&2
+            exit 1
+          }
+          [[ "$REQUEST_ID" =~ ^[a-z0-9][a-z0-9._-]{0,79}$ ]] || {
+            echo "request_id has an invalid format" >&2
+            exit 1
+          }
+
+          checked_out_sha="$(git rev-parse HEAD)"
+          [[ "$checked_out_sha" == "$REPORT_TOOL_SHA" ]] || {
+            echo "Pinned report tool mismatch: expected $REPORT_TOOL_SHA, got $checked_out_sha" >&2
+            exit 1
+          }
+
+          evidence_root_real="$(realpath "$EVIDENCE_ROOT")"
+          evidence_dir_real="$(realpath "$EVIDENCE_DIR_INPUT")"
+          expected_prefix="${evidence_root_real}/${EXPECTED_SHA}/"
+          [[ "$evidence_dir_real" == "$expected_prefix"* ]] || {
+            echo "Evidence directory is outside the exact-SHA evidence boundary" >&2
+            exit 1
+          }
+          relative_run="${evidence_dir_real#"$expected_prefix"}"
+          [[ -n "$relative_run" && "$relative_run" != */* ]] || {
+            echo "Evidence directory must be one run directly beneath the exact SHA" >&2
+            exit 1
+          }
+
+          manifest="$evidence_dir_real/terminal-result.v1.json"
+          [[ -f "$manifest" ]] || {
+            echo "Missing terminal result manifest: $manifest" >&2
+            exit 1
+          }
+          jq -e \
+            --arg sha "$EXPECTED_SHA" \
+            --argjson pr "$PR_NUMBER" \
+            --arg request "$REQUEST_ID" \
+            --arg tool "$REPORT_TOOL_SHA" \
+            --arg evidence "$evidence_dir_real" \
+            '.schemaVersion == "nixmac.e2e.terminal-result.v1"
+              and .testedArtifact.headSha == $sha
+              and .request.pullRequest.number == $pr
+              and .request.id == $request
+              and .reportTool.repository == "darkmatter/nixmac"
+              and .reportTool.sha == $tool
+              and .evidence.root == $evidence' \
+            "$manifest" >/dev/null
+
+          mkdir -p artifacts/terminal-report
+          node tests/e2e/computer-use/terminal-report.mjs render \
+            --input "$manifest" \
+            --output-dir artifacts/terminal-report
+
+          verdict="$(jq -r '.verdict' artifacts/terminal-report/terminal-result.normalized.json)"
+          {
+            echo "verdict=$verdict"
+            echo "evidence_dir=$evidence_dir_real"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload self-contained report
+        uses: actions/upload-artifact@v7
+        with:
+          name: computer-use-terminal-report
+          path: artifacts/terminal-report/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Summarize validated product result
+        shell: bash
+        env:
+          VERDICT: ${{ steps.validate.outputs.verdict }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          PR_NUMBER: ${{ inputs.pull_request }}
+        run: |
+          {
+            echo "## Computer Use terminal result"
+            echo
+            echo "- Product verdict: \`$VERDICT\`"
+            echo "- Pull request: #$PR_NUMBER"
+            echo "- Exact tested SHA: \`$EXPECTED_SHA\`"
+            echo "- Report publication: pending in the separate publish job"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  publish:
+    name: Publish terminal report
+    needs: render
+    if: always() && needs.render.result == 'success'
+    runs-on: arc
+    timeout-minutes: 15
+    concurrency:
+      group: computer-use-e2e-gh-pages-publish
+      cancel-in-progress: false
+    steps:
+      - name: Checkout pinned report tool
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.report_tool_sha }}
+          fetch-depth: 1
+
+      - name: Download self-contained report
+        uses: actions/download-artifact@v7
+        with:
+          name: computer-use-terminal-report
+          path: artifacts/terminal-report
+
+      - name: Publish report
+        id: publish-report
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPORT_DIR: artifacts/terminal-report
+          REPORT_PREFIX: computer-use-e2e/terminal/pr-${{ inputs.pull_request }}
+          PUBLISH_PATH: computer-use-e2e/terminal/pr-${{ inputs.pull_request }}/run-${{ github.run_id }}-${{ github.run_attempt }}
+          LATEST_PATH: computer-use-e2e/terminal/pr-${{ inputs.pull_request }}/latest
+          INDEX_URL: https://darkmatter.github.io/nixmac/computer-use-e2e/terminal/pr-${{ inputs.pull_request }}/run-${{ github.run_id }}-${{ github.run_attempt }}/index.html
+          LATEST_INDEX_URL: https://darkmatter.github.io/nixmac/computer-use-e2e/terminal/pr-${{ inputs.pull_request }}/latest/index.html
+          RUN_ASSET_BASE_URL: https://darkmatter.github.io/nixmac/computer-use-e2e/terminal/pr-${{ inputs.pull_request }}/run-${{ github.run_id }}-${{ github.run_attempt }}/
+          RETENTION_KEEP_RUNS: "20"
+          PR_NUMBER: ${{ inputs.pull_request }}
+        run: ops/scripts/e2e/publish-report.sh
+
+      - name: Summarize publication result
+        shell: bash
+        env:
+          PRODUCT_VERDICT: ${{ needs.render.outputs.verdict }}
+          INDEX_URL: ${{ steps.publish-report.outputs.index_url }}
+          LATEST_INDEX_URL: ${{ steps.publish-report.outputs.latest_index_url }}
+        run: |
+          {
+            echo "## Published Computer Use report"
+            echo
+            echo "- Product verdict: \`$PRODUCT_VERDICT\`"
+            echo "- Report status: \`published\`"
+            echo "- Immutable report: $INDEX_URL"
+            echo "- Latest alias: $LATEST_INDEX_URL"
+            echo
+            echo "A report publication failure fails this delivery job only; it does not rewrite the validated product verdict."
+          } >> "$GITHUB_STEP_SUMMARY"

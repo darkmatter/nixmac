@@ -173,6 +173,27 @@ the verdict, counts, public hosted `index.html`, Actions run, and artifact
 backup. The workflow does not send Slack or other team
 notifications.
 
+Centaur/Buzz terminal runs use the smaller
+`.github/workflows/publish-computer-use-e2e-report.yml` delivery lane after
+CuaDriver has already produced a terminal result on a Mac runner. The evidence
+directory must contain `terminal-result.v1.json`, 1-3 PR-focused scenarios,
+curated PNG screenshots, and one canonical H.264/yuv420p MP4. The dispatch pins
+the exact tested app SHA and a separate exact report-tool SHA. The renderer
+confines evidence paths to the declared evidence root, verifies hashes and
+media, and produces one self-contained `index.html`; the publisher places it
+on the existing `gh-pages` branch without writing a PR comment.
+
+Validate the renderer contract locally with:
+
+```bash
+node tests/e2e/computer-use/terminal-report.mjs self-test
+```
+
+The terminal report's product verdict comes only from its declared scenarios
+and assertions. Render or publication errors are delivery failures and must be
+reported separately; they never rewrite a proven product PASS, FAIL, or
+INCONCLUSIVE result.
+
 For PRs that touch component/story files under `apps/native/src/components/**`,
 the prepare job also builds Storybook, uploads the static preview, and publishes
 it next to the Product Proof report under `storybook/`. The report's Storybook
@@ -187,10 +208,10 @@ story; helper/style advisory gaps are listed without creating noisy false-red
 native gates.
 
 The V1 public report URL uses `htmlpreview.github.io` to render the HTML stored
-on the public `gh-pages` report branch. The repository Pages API currently
-returns `404`, so first-party GitHub Pages hosting is not configured for this
-repo. If Pages is enabled later, the report URL can move to the first-party
-Pages URL without changing the runner output format.
+on the public `gh-pages` report branch. First-party GitHub Pages is now enabled
+at `https://darkmatter.github.io/nixmac/`; new terminal-result reports use that
+first-party host directly. Existing full-suite report links remain compatible
+with the HTML Preview shim.
 
 The workflow keeps the `latest` report plus the 20 newest immutable `run-*`
 directories for each PR/manual report prefix on `gh-pages`. GitHub Actions
