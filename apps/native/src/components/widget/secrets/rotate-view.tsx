@@ -6,8 +6,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { ViewHeader } from "./shared";
-import { type ApplyRequest, backendLabel,} from "./types";
-import { SecretsVault } from "@/ipc/orpc-bindings";
+import { backendLabel, type ApplyRequest } from "./types";
+import type { SecretsVault } from "@/ipc/orpc-bindings";
 
 function buildRotateRequest(vault: SecretsVault, selectedIds: string[], freshValue: boolean): ApplyRequest {
   return {
