@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { SecretRecipient, SecretsVault } from "@/ipc/orpc-bindings";
+import type { SecretRecipient, SecretsVault } from "@/ipc/orpc-bindings";
 
 type Method = "paste" | "github" | "ssh" | "local" | "hardware";
 
