@@ -182,12 +182,12 @@ pub fn load_secrets_vault(host_attr: &str, config_dir: &str) -> Result<SecretsVa
     // TODO: Preserve backend/load failures as non-fatal diagnostics on SecretsVault
     // instead of silently defaulting to empty vectors. The UI cannot currently
     // distinguish "no secrets" from "failed to load secrets".
-    let sops_secrets = load_sops_secrets(host_attr, config_dir).unwrap_or_default();
-    let agenix_secrets = load_agenix_secrets(host_attr, config_dir).unwrap_or_default();
+    let sops_secrets = load_sops_secrets(host_attr, config_dir)?;
+    let agenix_secrets = load_agenix_secrets(host_attr, config_dir)?;
     let mut entries = sops_secrets;
     entries.extend(agenix_secrets);
 
-    let recipients = load_recipients(host_attr, config_dir).unwrap_or_default();
+    let recipients = load_recipients(host_attr, config_dir)?;
 
     apply_recipients_to_secrets(&mut entries, &recipients)?;
 
