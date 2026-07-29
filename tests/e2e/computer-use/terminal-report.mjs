@@ -636,6 +636,7 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
   }
   validateProviderTrace(providerTraceBuffer);
   const screenshots = [];
+  const screenshotPaths = new Set();
   let screenshotBytes = 0;
   for (const [index, screenshot] of requireArray(
     result.evidence?.screenshots,
@@ -647,6 +648,10 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
     requireString(screenshot.note, `${name}.note`, { max: 1_000 });
     requireString(screenshot.sha256, `${name}.sha256`, { pattern: SHA256_RE });
     const file = await confinedFile(root, screenshot.path, `${name}.path`);
+    if (screenshotPaths.has(file.absolutePath)) {
+      fail("evidence.screenshots must use distinct file paths");
+    }
+    screenshotPaths.add(file.absolutePath);
     if (file.size > MAX_SCREENSHOT_BYTES)
       fail(`${name} exceeds ${formatBytes(MAX_SCREENSHOT_BYTES)}`);
     screenshotBytes += file.size;
@@ -1300,6 +1305,14 @@ async function selfTest() {
       candidate.evidence.screenshots[0].sha256 = sha256(truncatedPng);
     },
     "is not a complete PNG",
+  );
+  await expectRejected(
+    "duplicate screenshot path",
+    (candidate) => {
+      candidate.evidence.screenshots[1].path = candidate.evidence.screenshots[0].path;
+      candidate.evidence.screenshots[1].sha256 = candidate.evidence.screenshots[0].sha256;
+    },
+    "evidence.screenshots must use distinct file paths",
   );
   const corruptPng = Buffer.from(png);
   corruptPng[50] ^= 0xff;

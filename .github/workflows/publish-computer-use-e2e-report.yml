@@ -89,7 +89,7 @@ jobs:
 
           sudo apt-get update
           sudo apt-get install -y ffmpeg
-          for command_name in git jq node realpath scp ssh ffprobe ffmpeg; do
+          for command_name in git jq node realpath scp ssh ffprobe ffmpeg sha256sum unzip; do
             command -v "$command_name" >/dev/null || {
               echo "Required report command is unavailable: $command_name" >&2
               exit 1
@@ -110,6 +110,7 @@ jobs:
         id: validate
         shell: bash
         env:
+          GH_TOKEN: ${{ github.token }}
           EVIDENCE_DIR_INPUT: ${{ inputs.evidence_dir }}
           EXPECTED_SHA: ${{ inputs.expected_sha }}
           PR_NUMBER: ${{ inputs.pull_request }}
@@ -186,6 +187,48 @@ jobs:
               and .presentation.firstMeaningfulActionSeconds <= 15
               and .presentation.terminalStateVisibleSeconds >= 3' \
             "$local_evidence/terminal-result.remote.json" >/dev/null
+
+          actions_run_id="$(jq -r '.testedArtifact.actionsRunId' "$local_evidence/terminal-result.remote.json")"
+          artifact_id="$(jq -r '.testedArtifact.artifactId' "$local_evidence/terminal-result.remote.json")"
+          artifact_name="$(jq -r '.testedArtifact.artifactName' "$local_evidence/terminal-result.remote.json")"
+          expected_archive_sha="$(jq -r '.testedArtifact.archiveSha256' "$local_evidence/terminal-result.remote.json")"
+          expected_app_sha="$(jq -r '.testedArtifact.appSha256' "$local_evidence/terminal-result.remote.json")"
+          run_json="$RUNNER_TEMP/tested-actions-run.json"
+          artifact_json="$RUNNER_TEMP/tested-actions-artifact.json"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${actions_run_id}" > "$run_json"
+          jq -e --arg sha "$EXPECTED_SHA" \
+            '.head_sha == $sha and .repository.full_name == "darkmatter/nixmac"' \
+            "$run_json" >/dev/null || {
+              echo "Declared Actions run does not belong to the exact tested repository/SHA" >&2
+              exit 1
+            }
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}" > "$artifact_json"
+          jq -e --argjson run "$actions_run_id" --arg name "$artifact_name" \
+            '.workflow_run.id == $run and .name == $name and .expired == false' \
+            "$artifact_json" >/dev/null || {
+              echo "Declared artifact does not belong to the declared Actions run/name" >&2
+              exit 1
+            }
+          artifact_zip="$RUNNER_TEMP/tested-actions-artifact.zip"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > "$artifact_zip"
+          [[ "$(sha256sum "$artifact_zip" | cut -d' ' -f1)" == "$expected_archive_sha" ]] || {
+            echo "Downloaded Actions artifact archive SHA-256 does not match the manifest" >&2
+            exit 1
+          }
+          artifact_extract="$RUNNER_TEMP/tested-actions-artifact"
+          mkdir -p "$artifact_extract"
+          unzip -q "$artifact_zip" -d "$artifact_extract"
+          mapfile -t app_binaries < <(
+            find "$artifact_extract" -type f -path '*/nixmac.app/Contents/MacOS/nixmac'
+          )
+          [[ "${#app_binaries[@]}" -eq 1 ]] || {
+            echo "Downloaded Actions artifact must contain exactly one nixmac app binary" >&2
+            exit 1
+          }
+          [[ "$(sha256sum "${app_binaries[0]}" | cut -d' ' -f1)" == "$expected_app_sha" ]] || {
+            echo "Downloaded nixmac app SHA-256 does not match the manifest" >&2
+            exit 1
+          }
 
           mapfile -t evidence_paths < <(
             jq -r \

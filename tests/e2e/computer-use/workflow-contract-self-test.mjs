@@ -55,6 +55,11 @@ assert.match(
 );
 assert.match(
   terminalWorkflow,
+  /actions\/runs\/\$\{actions_run_id\}[\s\S]*actions\/artifacts\/\$\{artifact_id\}[\s\S]*actions\/artifacts\/\$\{artifact_id\}\/zip[\s\S]*expected_archive_sha[\s\S]*expected_app_sha/,
+  "terminal renderer must independently verify the declared run, artifact, archive, and app",
+);
+assert.match(
+  terminalWorkflow,
   /git merge-base --is-ancestor "\$REPORT_TOOL_SHA" "\$trusted_main_sha"/,
   "terminal renderer must prove the requested tool revision belongs to protected main",
 );
