@@ -2,17 +2,11 @@
 
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import {
-  mkdir,
-  mkdtemp,
-  readFile,
-  realpath,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import { inflateSync } from "node:zlib";
 
 import { redact } from "./redaction.mjs";
 
@@ -21,6 +15,9 @@ const SCHEMA_VERSION = "nixmac.e2e.terminal-result.v2";
 const MAX_SCREENSHOTS = 6;
 const MAX_SCREENSHOT_BYTES = 4 * 1024 * 1024;
 const MAX_SCREENSHOT_TOTAL_BYTES = 12 * 1024 * 1024;
+const MAX_SCREENSHOT_DIMENSION = 8_192;
+const MAX_SCREENSHOT_PIXELS = 40_000_000;
+const MAX_SCREENSHOT_DECODED_BYTES = 64 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 15 * 1024 * 1024;
 const MAX_PROVIDER_TRACE_BYTES = 1024 * 1024;
 const MAX_SEMANTIC_AUDIT_BYTES = 256 * 1024;
@@ -101,6 +98,22 @@ function sha256(buffer) {
   return createHash("sha256").update(buffer).digest("hex");
 }
 
+const CRC32_TABLE = Array.from({ length: 256 }, (_, index) => {
+  let value = index;
+  for (let bit = 0; bit < 8; bit += 1) {
+    value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+  }
+  return value >>> 0;
+});
+
+function crc32(buffer) {
+  let value = 0xffffffff;
+  for (const byte of buffer) {
+    value = CRC32_TABLE[(value ^ byte) & 0xff] ^ (value >>> 8);
+  }
+  return (value ^ 0xffffffff) >>> 0;
+}
+
 function safeDataUri(value, mime) {
   const prefix = `data:${mime};base64,`;
   if (!value.startsWith(prefix) || !/^[A-Za-z0-9+/=]+$/.test(value.slice(prefix.length))) {
@@ -145,8 +158,119 @@ async function confinedFile(root, relativePath, name) {
 
 function validatePng(buffer, name) {
   const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
-  if (buffer.length < 24 || !buffer.subarray(0, 8).equals(signature)) fail(`${name} is not a PNG`);
-  return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+  if (buffer.length < 45 || !buffer.subarray(0, 8).equals(signature)) {
+    fail(`${name} is not a complete PNG`);
+  }
+
+  let offset = signature.length;
+  let width;
+  let height;
+  let bitDepth;
+  let colorType;
+  let chunkCount = 0;
+  let sawIdat = false;
+  let endedIdat = false;
+  let sawIend = false;
+  let sawPlte = false;
+  const idatChunks = [];
+
+  while (offset < buffer.length) {
+    if (buffer.length - offset < 12) fail(`${name} has a truncated PNG chunk`);
+    const length = buffer.readUInt32BE(offset);
+    const dataStart = offset + 8;
+    const dataEnd = dataStart + length;
+    const chunkEnd = dataEnd + 4;
+    if (chunkEnd > buffer.length) fail(`${name} has a truncated PNG chunk`);
+
+    const typeBuffer = buffer.subarray(offset + 4, offset + 8);
+    const type = typeBuffer.toString("ascii");
+    if (!/^[A-Za-z]{4}$/.test(type)) fail(`${name} has an invalid PNG chunk type`);
+    const expectedCrc = buffer.readUInt32BE(dataEnd);
+    const actualCrc = crc32(buffer.subarray(offset + 4, dataEnd));
+    if (actualCrc !== expectedCrc) fail(`${name} has an invalid PNG chunk checksum`);
+
+    if (chunkCount === 0 && type !== "IHDR") fail(`${name} must begin with a PNG IHDR chunk`);
+    if (type === "IHDR") {
+      if (chunkCount !== 0 || length !== 13 || width !== undefined) {
+        fail(`${name} has an invalid PNG IHDR chunk`);
+      }
+      width = buffer.readUInt32BE(dataStart);
+      height = buffer.readUInt32BE(dataStart + 4);
+      bitDepth = buffer[dataStart + 8];
+      colorType = buffer[dataStart + 9];
+      const validDepths = {
+        0: new Set([1, 2, 4, 8, 16]),
+        2: new Set([8, 16]),
+        3: new Set([1, 2, 4, 8]),
+        4: new Set([8, 16]),
+        6: new Set([8, 16]),
+      };
+      if (
+        !width ||
+        !height ||
+        width > MAX_SCREENSHOT_DIMENSION ||
+        height > MAX_SCREENSHOT_DIMENSION ||
+        width * height > MAX_SCREENSHOT_PIXELS
+      ) {
+        fail(`${name} dimensions are outside the supported range`);
+      }
+      if (
+        !validDepths[colorType]?.has(bitDepth) ||
+        buffer[dataStart + 10] !== 0 ||
+        buffer[dataStart + 11] !== 0 ||
+        buffer[dataStart + 12] !== 0
+      ) {
+        fail(`${name} has unsupported PNG image parameters`);
+      }
+    } else if (type === "PLTE") {
+      if (sawPlte || sawIdat || length === 0 || length > 768 || length % 3 !== 0) {
+        fail(`${name} has an invalid PNG palette`);
+      }
+      sawPlte = true;
+    } else if (type === "IDAT") {
+      if (endedIdat || sawIend) fail(`${name} has PNG image data out of order`);
+      sawIdat = true;
+      idatChunks.push(buffer.subarray(dataStart, dataEnd));
+    } else if (type === "IEND") {
+      if (length !== 0 || !sawIdat || sawIend || chunkEnd !== buffer.length) {
+        fail(`${name} has an invalid PNG IEND chunk`);
+      }
+      sawIend = true;
+    } else {
+      if (sawIdat) endedIdat = true;
+      if ((typeBuffer[0] & 0x20) === 0) fail(`${name} has an unknown critical PNG chunk`);
+    }
+
+    chunkCount += 1;
+    offset = chunkEnd;
+  }
+  if (!sawIend || width === undefined || height === undefined) {
+    fail(`${name} is not a complete PNG`);
+  }
+  if (colorType === 3 && !sawPlte) fail(`${name} indexed PNG is missing its palette`);
+  if ([0, 4].includes(colorType) && sawPlte) {
+    fail(`${name} grayscale PNG must not contain a palette`);
+  }
+
+  const channels = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 }[colorType];
+  const rowBytes = Math.ceil((width * channels * bitDepth) / 8);
+  const decodedBytes = height * (rowBytes + 1);
+  if (decodedBytes > MAX_SCREENSHOT_DECODED_BYTES) {
+    fail(`${name} decoded image exceeds ${formatBytes(MAX_SCREENSHOT_DECODED_BYTES)}`);
+  }
+  let decoded;
+  try {
+    decoded = inflateSync(Buffer.concat(idatChunks), {
+      maxOutputLength: decodedBytes + 1,
+    });
+  } catch {
+    fail(`${name} could not be fully decoded`);
+  }
+  if (decoded.length !== decodedBytes) fail(`${name} has an invalid decoded PNG size`);
+  for (let row = 0; row < height; row += 1) {
+    if (decoded[row * (rowBytes + 1)] > 4) fail(`${name} has an invalid PNG row filter`);
+  }
+  return { width, height };
 }
 
 function validateMp4Header(buffer, name) {
@@ -198,7 +322,9 @@ async function probeVideo(filePath) {
       if (error?.code !== "ENOENT") throw error;
     }
   }
-  throw new Error(`ffprobe is required to validate the evidence video: ${lastError?.message || "not found"}`);
+  throw new Error(
+    `ffprobe is required to validate the evidence video: ${lastError?.message || "not found"}`,
+  );
 }
 
 async function decodeVideo(filePath) {
@@ -286,6 +412,10 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
     pattern: /^https:\/\/github\.com\/darkmatter\/nixmac\/pull\/\d+$/,
     max: 200,
   });
+  const expectedPullRequestUrl = `https://github.com/darkmatter/nixmac/pull/${result.request.pullRequest.number}`;
+  if (result.request.pullRequest.url !== expectedPullRequestUrl) {
+    fail("request.pullRequest.url must match request.pullRequest.number");
+  }
   requireStatus(result.verdict, "verdict");
   requireString(result.summary, "summary", { max: 1_000 });
   requireString(result.testedArtifact?.headSha, "testedArtifact.headSha", { pattern: GIT_SHA_RE });
@@ -331,7 +461,9 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
     requireEnum(scenario.intent, `${prefix}.intent`, INTENTS);
     requireBoolean(scenario.coversChangedBehavior, `${prefix}.coversChangedBehavior`);
     requireString(scenario.changedBehavior, `${prefix}.changedBehavior`, { max: 1_000 });
-    requireString(scenario.declaredPostcondition, `${prefix}.declaredPostcondition`, { max: 1_000 });
+    requireString(scenario.declaredPostcondition, `${prefix}.declaredPostcondition`, {
+      max: 1_000,
+    });
     requireArray(scenario.preconditions, `${prefix}.preconditions`, { min: 1, max: 12 }).forEach(
       (precondition, preconditionIndex) => {
         requireString(
@@ -339,10 +471,7 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
           `${prefix}.preconditions[${preconditionIndex}].description`,
           { max: 1_000 },
         );
-        requireStatus(
-          precondition.status,
-          `${prefix}.preconditions[${preconditionIndex}].status`,
-        );
+        requireStatus(precondition.status, `${prefix}.preconditions[${preconditionIndex}].status`);
         requireString(
           precondition.evidence,
           `${prefix}.preconditions[${preconditionIndex}].evidence`,
@@ -360,9 +489,13 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
     requireStatus(scenario.status, `${prefix}.status`);
     requireArray(scenario.assertions, `${prefix}.assertions`, { min: 1, max: 12 }).forEach(
       (assertion, assertionIndex) => {
-        requireString(assertion.description, `${prefix}.assertions[${assertionIndex}].description`, {
-          max: 1_000,
-        });
+        requireString(
+          assertion.description,
+          `${prefix}.assertions[${assertionIndex}].description`,
+          {
+            max: 1_000,
+          },
+        );
         requireStatus(assertion.status, `${prefix}.assertions[${assertionIndex}].status`);
         requireString(assertion.evidence, `${prefix}.assertions[${assertionIndex}].evidence`, {
           max: 2_000,
@@ -386,16 +519,12 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
     "presentation.terminalStateVisibleSeconds",
   );
   requireString(result.presentation?.note, "presentation.note", { max: 1_000 });
-  requireString(
-    result.presentation?.semanticAudit?.path,
-    "presentation.semanticAudit.path",
-    { max: 1_000 },
-  );
-  requireString(
-    result.presentation?.semanticAudit?.sha256,
-    "presentation.semanticAudit.sha256",
-    { pattern: SHA256_RE },
-  );
+  requireString(result.presentation?.semanticAudit?.path, "presentation.semanticAudit.path", {
+    max: 1_000,
+  });
+  requireString(result.presentation?.semanticAudit?.sha256, "presentation.semanticAudit.sha256", {
+    pattern: SHA256_RE,
+  });
   requireString(
     result.presentation?.semanticAudit?.reviewer,
     "presentation.semanticAudit.reviewer",
@@ -412,9 +541,7 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
       fail("presentation.terminalStateVisible must be true when presentation.status is pass");
     }
     if (result.presentation.terminalStateVisibleSeconds < MIN_TERMINAL_VISIBLE_SECONDS) {
-      fail(
-        `presentation.terminalStateVisibleSeconds must be >= ${MIN_TERMINAL_VISIBLE_SECONDS}`,
-      );
+      fail(`presentation.terminalStateVisibleSeconds must be >= ${MIN_TERMINAL_VISIBLE_SECONDS}`);
     }
   }
 
@@ -444,7 +571,8 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
     requireString(screenshot.note, `${name}.note`, { max: 1_000 });
     requireString(screenshot.sha256, `${name}.sha256`, { pattern: SHA256_RE });
     const file = await confinedFile(root, screenshot.path, `${name}.path`);
-    if (file.size > MAX_SCREENSHOT_BYTES) fail(`${name} exceeds ${formatBytes(MAX_SCREENSHOT_BYTES)}`);
+    if (file.size > MAX_SCREENSHOT_BYTES)
+      fail(`${name} exceeds ${formatBytes(MAX_SCREENSHOT_BYTES)}`);
     screenshotBytes += file.size;
     const buffer = await readFile(file.absolutePath);
     if (sha256(buffer) !== screenshot.sha256) fail(`${name} SHA-256 does not match`);
@@ -465,7 +593,8 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
   requireString(video?.note, "evidence.video.note", { max: 1_000 });
   requireString(video?.sha256, "evidence.video.sha256", { pattern: SHA256_RE });
   const videoFile = await confinedFile(root, video.path, "evidence.video.path");
-  if (videoFile.size > MAX_VIDEO_BYTES) fail(`evidence.video exceeds ${formatBytes(MAX_VIDEO_BYTES)}`);
+  if (videoFile.size > MAX_VIDEO_BYTES)
+    fail(`evidence.video exceeds ${formatBytes(MAX_VIDEO_BYTES)}`);
   const videoBuffer = await readFile(videoFile.absolutePath);
   if (sha256(videoBuffer) !== video.sha256) fail("evidence.video SHA-256 does not match");
   validateMp4Header(videoBuffer, "evidence.video");
@@ -511,9 +640,7 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
     "presentation.semanticAudit.path",
   );
   if (semanticAuditFile.size > MAX_SEMANTIC_AUDIT_BYTES) {
-    fail(
-      `presentation.semanticAudit exceeds ${formatBytes(MAX_SEMANTIC_AUDIT_BYTES)}`,
-    );
+    fail(`presentation.semanticAudit exceeds ${formatBytes(MAX_SEMANTIC_AUDIT_BYTES)}`);
   }
   const semanticAuditBuffer = await readFile(semanticAuditFile.absolutePath);
   if (sha256(semanticAuditBuffer) !== result.presentation.semanticAudit.sha256) {
@@ -535,31 +662,20 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
     fail("presentation.semanticAudit status must match presentation.status");
   }
   if (
-    semanticAudit.firstMeaningfulActionSeconds !==
-    result.presentation.firstMeaningfulActionSeconds
+    semanticAudit.firstMeaningfulActionSeconds !== result.presentation.firstMeaningfulActionSeconds
   ) {
-    fail(
-      "presentation.semanticAudit firstMeaningfulActionSeconds must match presentation",
-    );
+    fail("presentation.semanticAudit firstMeaningfulActionSeconds must match presentation");
   }
-  if (
-    semanticAudit.watchedStartToFinish !==
-    result.presentation.watchedStartToFinish
-  ) {
+  if (semanticAudit.watchedStartToFinish !== result.presentation.watchedStartToFinish) {
     fail("presentation.semanticAudit watchedStartToFinish must match presentation");
   }
-  if (
-    semanticAudit.terminalStateVisible !== result.presentation.terminalStateVisible
-  ) {
+  if (semanticAudit.terminalStateVisible !== result.presentation.terminalStateVisible) {
     fail("presentation.semanticAudit terminalStateVisible must match presentation");
   }
   if (
-    semanticAudit.terminalStateVisibleSeconds !==
-    result.presentation.terminalStateVisibleSeconds
+    semanticAudit.terminalStateVisibleSeconds !== result.presentation.terminalStateVisibleSeconds
   ) {
-    fail(
-      "presentation.semanticAudit terminalStateVisibleSeconds must match presentation",
-    );
+    fail("presentation.semanticAudit terminalStateVisibleSeconds must match presentation");
   }
 
   requireStatus(result.cleanup?.status, "cleanup.status");
@@ -608,13 +724,42 @@ function verdictLabel(verdict) {
 export function deriveResultLabel(result) {
   if (result.verdict === "fail") return "FAIL";
   if (result.verdict === "inconclusive") return "INCONCLUSIVE";
-  const changedScenarios = result.scenarios.filter(
-    (scenario) => scenario.coversChangedBehavior,
-  );
+  const changedScenarios = result.scenarios.filter((scenario) => scenario.coversChangedBehavior);
   if (changedScenarios.some((scenario) => scenario.intent === "positive-flow")) {
     return "POSITIVE FLOW PASS";
   }
   return "EXPECTED REFUSAL VERIFIED";
+}
+
+function normalizedTerminalResult(result) {
+  return {
+    ...result,
+    resultLabel: deriveResultLabel(result),
+    evidence: {
+      root: result.evidence.root,
+      screenshots: result.evidence.screenshots.map(({ dataUri: _dataUri, ...item }) => item),
+      video: (({ dataUri: _dataUri, ...item }) => item)(result.evidence.video),
+    },
+  };
+}
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value)
+      .filter(([, item]) => item !== undefined)
+      .sort(([left], [right]) => left.localeCompare(right));
+    return `{${entries
+      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+export function terminalResultIdentity(result) {
+  const normalized = normalizedTerminalResult(result);
+  const { root: _stagingRoot, ...evidence } = normalized.evidence;
+  return sha256(Buffer.from(canonicalJson({ ...normalized, evidence })));
 }
 
 function renderScenario(scenario) {
@@ -664,18 +809,7 @@ export function renderTerminalReportHtml(result) {
     ? `<ul>${result.knownLimits.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
     : "<p>No known limits were recorded for the declared scenarios.</p>";
   const generatedAt = new Date().toISOString();
-  const reportHashSeed = JSON.stringify({
-    schemaVersion: result.schemaVersion,
-    requestId: result.request.id,
-    headSha: artifact.headSha,
-    verdict: result.verdict,
-    resultLabel,
-    providerTraceHash: result.provider.trace.sha256,
-    semanticAuditHash: result.presentation.semanticAudit.sha256,
-    screenshotHashes: result.evidence.screenshots.map((item) => item.sha256),
-    videoHash: video.sha256,
-  });
-  const evidenceSetHash = sha256(Buffer.from(reportHashSeed));
+  const evidenceSetHash = terminalResultIdentity(result);
 
   return `<!doctype html>
 <html lang="en">
@@ -778,23 +912,18 @@ async function renderCommand(input, outputDir, { probe = true } = {}) {
   }
   await mkdir(outputDir, { recursive: true });
   await writeFile(path.join(outputDir, "index.html"), html);
-  const normalized = {
-    ...result,
-    resultLabel: deriveResultLabel(result),
-    evidence: {
-      root: result.evidence.root,
-      screenshots: result.evidence.screenshots.map(({ dataUri: _dataUri, ...item }) => item),
-      video: (({ dataUri: _dataUri, ...item }) => item)(result.evidence.video),
-    },
-  };
-  await writeFile(path.join(outputDir, "terminal-result.normalized.json"), `${JSON.stringify(normalized, null, 2)}\n`);
+  const normalized = normalizedTerminalResult(result);
+  await writeFile(
+    path.join(outputDir, "terminal-result.normalized.json"),
+    `${JSON.stringify(normalized, null, 2)}\n`,
+  );
   return { html, normalized };
 }
 
 async function selfTest() {
   const dir = await mkdtemp(path.join(os.tmpdir(), "nixmac-terminal-report-"));
   const png = Buffer.from(
-    "iVBORw0KGgoAAAANSUhEUgAAAUAAAAHgCAIAAAC6s0uzAAAAC0lEQVR42u3BAQ0AAADCoPdPbQ43oAAAAAAAAAAAAAAAAAAAAAAAfg0GGAABvRr9AAAAAElFTkSuQmCC",
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
     "base64",
   );
   const mp4 = Buffer.concat([
@@ -933,10 +1062,7 @@ async function selfTest() {
     },
   };
   const contractFixture = JSON.parse(
-    await readFile(
-      new URL("./fixtures/terminal-result-v2.contract.json", import.meta.url),
-      "utf8",
-    ),
+    await readFile(new URL("./fixtures/terminal-result-v2.contract.json", import.meta.url), "utf8"),
   );
   contractFixture.evidence = structuredClone(manifest.evidence);
   contractFixture.provider.trace = structuredClone(manifest.provider.trace);
@@ -960,6 +1086,16 @@ async function selfTest() {
     "Product verdict is derived only",
   ]) {
     if (!html.includes(needle)) fail(`self-test output is missing ${needle}`);
+  }
+  const changedClaim = structuredClone(manifest);
+  changedClaim.scenarios[0].assertions[0].evidence = "A materially different claim.";
+  if (terminalResultIdentity(manifest) === terminalResultIdentity(changedClaim)) {
+    fail("self-test expected every normalized manifest claim to affect report identity");
+  }
+  const relocatedEvidence = structuredClone(manifest);
+  relocatedEvidence.evidence.root = "/another/staging/root";
+  if (terminalResultIdentity(manifest) !== terminalResultIdentity(relocatedEvidence)) {
+    fail("self-test expected the report identity to ignore its staging root");
   }
   const invalid = structuredClone(manifest);
   invalid.verdict = "pass";
@@ -1057,6 +1193,34 @@ async function selfTest() {
     if (!didReject) fail(`self-test expected ${name} to be rejected`);
   };
 
+  await expectRejected(
+    "mismatched pull request URL",
+    (candidate) => {
+      candidate.request.pullRequest.url = "https://github.com/darkmatter/nixmac/pull/608";
+    },
+    "request.pullRequest.url must match request.pullRequest.number",
+  );
+  const truncatedPng = png.subarray(0, 24);
+  await writeFile(path.join(dir, "proof-truncated.png"), truncatedPng);
+  await expectRejected(
+    "truncated screenshot",
+    (candidate) => {
+      candidate.evidence.screenshots[0].path = "proof-truncated.png";
+      candidate.evidence.screenshots[0].sha256 = sha256(truncatedPng);
+    },
+    "is not a complete PNG",
+  );
+  const corruptPng = Buffer.from(png);
+  corruptPng[50] ^= 0xff;
+  await writeFile(path.join(dir, "proof-corrupt.png"), corruptPng);
+  await expectRejected(
+    "screenshot with invalid chunk checksum",
+    (candidate) => {
+      candidate.evidence.screenshots[0].path = "proof-corrupt.png";
+      candidate.evidence.screenshots[0].sha256 = sha256(corruptPng);
+    },
+    "invalid PNG chunk checksum",
+  );
   await expectRejected(
     "missing coversChangedBehavior",
     (candidate) => delete candidate.scenarios[0].coversChangedBehavior,
