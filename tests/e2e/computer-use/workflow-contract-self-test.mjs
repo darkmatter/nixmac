@@ -89,6 +89,11 @@ assert.match(
 );
 assert.match(
   terminalWorkflow,
+  /remote_manifest_size="\$\(remote_file_size "\$remote_manifest"\)"[\s\S]*evidence_specs[\s\S]*remote_evidence_size="\$\(remote_file_size "\$remote_evidence_path"\)"[\s\S]*total_evidence_bytes <= 31457280[\s\S]*scp/,
+  "terminal publisher must bound each remote file and the aggregate evidence set before transfer",
+);
+assert.match(
+  terminalWorkflow,
   /\[\[ "\$REPORT_TOOL_SHA" == "\$trusted_main_sha" \]\]/,
   "terminal renderer must execute only the current protected main revision",
 );

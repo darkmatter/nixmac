@@ -190,9 +190,26 @@ jobs:
             -o UserKnownHostsFile="$HOME/.ssh/known_hosts"
           )
           ssh_dest="${REMOTE_USER}@${REMOTE_HOST}"
+          remote_file_size() {
+            local remote_path="$1"
+            local remote_command
+            local size
+            printf -v remote_command 'stat -f %%z %q' "$remote_path"
+            size="$(ssh "${ssh_common[@]}" -- "$ssh_dest" "$remote_command")"
+            [[ "$size" =~ ^[0-9]+$ ]] || {
+              echo "Remote evidence size is not a non-negative integer: $remote_path" >&2
+              return 1
+            }
+            printf '%s\n' "$size"
+          }
           local_evidence="$RUNNER_TEMP/terminal-evidence-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           mkdir -p "$local_evidence"
           remote_manifest="${EVIDENCE_DIR_INPUT}/terminal-result.v2.json"
+          remote_manifest_size="$(remote_file_size "$remote_manifest")"
+          (( remote_manifest_size <= 262144 )) || {
+            echo "Remote terminal-result.v2.json exceeds 256 KiB" >&2
+            exit 1
+          }
           scp "${ssh_common[@]}" -- "$ssh_dest:$remote_manifest" "$local_evidence/terminal-result.remote.json"
 
           jq -e \
@@ -294,6 +311,11 @@ jobs:
             "$verified_app_version"
           ssh "${ssh_common[@]}" -- "$ssh_dest" "$runtime_attestation_command" \
             < ops/scripts/e2e/capture-runtime-attestation.sh
+          runtime_attestation_size="$(remote_file_size "$runtime_attestation_remote")"
+          (( runtime_attestation_size <= 65536 )) || {
+            echo "Publisher-produced runtime attestation exceeds 64 KiB" >&2
+            exit 1
+          }
           scp "${ssh_common[@]}" -- \
             "$ssh_dest:$runtime_attestation_remote" \
             "$local_evidence/$runtime_attestation_relative"
@@ -313,16 +335,24 @@ jobs:
             "$local_evidence/terminal-result.remote.json" > "$enriched_manifest"
           mv "$enriched_manifest" "$local_evidence/terminal-result.remote.json"
 
-          mapfile -t evidence_paths < <(
+          mapfile -t evidence_specs < <(
             jq -r \
-              '[.testedArtifact.runtimeAttestation.path, .evidence.screenshots[].path, .evidence.video.path, .provider.trace.path, .presentation.semanticAudit.path] | .[]' \
+              '[
+                {path: .testedArtifact.runtimeAttestation.path, max: 65536},
+                (.evidence.screenshots[] | {path, max: 4194304}),
+                {path: .evidence.video.path, max: 15728640},
+                {path: .provider.trace.path, max: 1048576},
+                {path: .presentation.semanticAudit.path, max: 262144}
+              ] | .[] | [.path, .max] | @tsv' \
               "$local_evidence/terminal-result.remote.json"
           )
-          if [[ "${#evidence_paths[@]}" -lt 6 || "${#evidence_paths[@]}" -gt 10 ]]; then
+          if [[ "${#evidence_specs[@]}" -lt 6 || "${#evidence_specs[@]}" -gt 10 ]]; then
             echo "Manifest must reference one runtime attestation, two to six screenshots, one video, one provider trace, and one semantic audit" >&2
             exit 1
           fi
-          for relative_path in "${evidence_paths[@]}"; do
+          total_evidence_bytes=0
+          for evidence_spec in "${evidence_specs[@]}"; do
+            IFS=$'\t' read -r relative_path max_bytes <<< "$evidence_spec"
             [[ "$relative_path" =~ ^[A-Za-z0-9._/-]+$ ]] &&
               [[ "$relative_path" != /* ]] &&
               [[ "/$relative_path/" != *"/../"* ]] &&
@@ -330,9 +360,20 @@ jobs:
                 echo "Unsafe evidence path in manifest: $relative_path" >&2
                 exit 1
               }
+            remote_evidence_path="${EVIDENCE_DIR_INPUT}/${relative_path}"
+            remote_evidence_size="$(remote_file_size "$remote_evidence_path")"
+            (( remote_evidence_size <= max_bytes )) || {
+              echo "Remote evidence exceeds its transfer limit: $relative_path" >&2
+              exit 1
+            }
+            total_evidence_bytes=$((total_evidence_bytes + remote_evidence_size))
+            (( total_evidence_bytes <= 31457280 )) || {
+              echo "Remote evidence set exceeds the 30 MiB transfer limit" >&2
+              exit 1
+            }
             mkdir -p "$local_evidence/$(dirname "$relative_path")"
             scp "${ssh_common[@]}" -- \
-              "$ssh_dest:${EVIDENCE_DIR_INPUT}/${relative_path}" \
+              "$ssh_dest:$remote_evidence_path" \
               "$local_evidence/$relative_path"
           done
 
