@@ -23,6 +23,9 @@ const MAX_PROVIDER_TRACE_BYTES = 1024 * 1024;
 const MAX_SEMANTIC_AUDIT_BYTES = 256 * 1024;
 const MAX_RUNTIME_ATTESTATION_BYTES = 64 * 1024;
 const MAX_HTML_BYTES = 42 * 1024 * 1024;
+const MAX_VIDEO_DURATION_SECONDS = 120;
+const REVIEW_SAMPLE_INTERVAL_SECONDS = 0.5;
+const REVIEW_CONTACT_SHEET_FRAME_COUNT = 12;
 const STATUSES = new Set(["pass", "fail", "inconclusive"]);
 const INTENTS = new Set(["positive-flow", "expected-refusal"]);
 const PROVIDER_KINDS = new Set(["scripted-mock", "real"]);
@@ -35,8 +38,9 @@ const SHA256_RE = /^[a-f0-9]{64}$/;
 const GIT_SHA_RE = /^[a-f0-9]{40}$/;
 const SAFE_ID_RE = /^[a-z0-9][a-z0-9._-]{0,79}$/;
 const REQUEST_ID_RE = /^[a-z0-9][a-z0-9._:-]{0,79}$/;
+const TOOL_CALL_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const RUNTIME_ATTESTATION_SCHEMA = "nixmac.e2e.runtime-attestation.v1";
-const SEMANTIC_AUDIT_SCHEMA = "nixmac.e2e.semantic-audit.v3";
+const SEMANTIC_AUDIT_SCHEMA = "nixmac.e2e.semantic-audit.v4";
 const SEMANTIC_AUDIT_REVIEWER = "GitHub Actions protected vision review";
 const SEMANTIC_AUDIT_REVIEWER_KIND = "github-actions-protected-vision-review";
 
@@ -104,6 +108,10 @@ function validateProviderTrace(buffer, expectedCorrelation) {
     requireString(record.event, `provider.trace line ${index + 1} event`, { max: 100 });
     if (record.event === "tool_request" || record.event === "tool_response") {
       requireString(record.tool, `provider.trace line ${index + 1} tool`, { max: 200 });
+      requireString(record.callId, `provider.trace line ${index + 1} callId`, {
+        pattern: TOOL_CALL_ID_RE,
+        max: 128,
+      });
     }
     if (record.event === "tool_response") {
       requireEnum(
@@ -135,26 +143,36 @@ function validateProviderTrace(buffer, expectedCorrelation) {
     fail("provider.trace must start with one request and end with one response");
   }
   const pendingToolRequests = new Map();
+  const seenToolCallIds = new Set();
   let matchedToolResponse = false;
   for (const [index, record] of records.entries()) {
     if (record.event === "tool_request") {
-      pendingToolRequests.set(record.tool, (pendingToolRequests.get(record.tool) ?? 0) + 1);
+      if (seenToolCallIds.has(record.callId)) {
+        fail(`provider.trace line ${index + 1} tool_request callId must be unique`);
+      }
+      seenToolCallIds.add(record.callId);
+      pendingToolRequests.set(record.callId, record.tool);
     }
     if (record.event === "tool_response") {
-      const pending = pendingToolRequests.get(record.tool) ?? 0;
-      if (pending === 0) {
+      const requestedTool = pendingToolRequests.get(record.callId);
+      if (!requestedTool) {
         fail(
-          `provider.trace line ${index + 1} tool_response must match a preceding tool_request`,
+          `provider.trace line ${index + 1} tool_response callId must match a preceding tool_request`,
         );
       }
-      pendingToolRequests.set(record.tool, pending - 1);
+      if (requestedTool !== record.tool) {
+        fail(
+          `provider.trace line ${index + 1} tool_response tool must match its callId request`,
+        );
+      }
+      pendingToolRequests.delete(record.callId);
       matchedToolResponse = true;
     }
   }
   if (!matchedToolResponse) {
     fail("provider.trace must include a tool_response matching a tool_request");
   }
-  if ([...pendingToolRequests.values()].some((pending) => pending !== 0)) {
+  if (pendingToolRequests.size !== 0) {
     fail("provider.trace must not contain unanswered tool_request records");
   }
   for (const [index, record] of records.entries()) {
@@ -688,9 +706,37 @@ export async function loadTerminalResult(
   );
   if (
     result.presentation.semanticAudit.reviewedFrameCount < 5 ||
-    result.presentation.semanticAudit.reviewedFrameCount > 30
+    result.presentation.semanticAudit.reviewedFrameCount > 240
   ) {
-    fail("presentation.semanticAudit.reviewedFrameCount must be between 5 and 30");
+    fail("presentation.semanticAudit.reviewedFrameCount must be between 5 and 240");
+  }
+  requireInteger(
+    result.presentation.semanticAudit.reviewedContactSheetCount,
+    "presentation.semanticAudit.reviewedContactSheetCount",
+  );
+  if (result.presentation.semanticAudit.reviewedContactSheetCount > 20) {
+    fail("presentation.semanticAudit.reviewedContactSheetCount must be at most 20");
+  }
+  requireInteger(
+    result.presentation.semanticAudit.reviewedScreenshotCount,
+    "presentation.semanticAudit.reviewedScreenshotCount",
+  );
+  if (result.presentation.semanticAudit.reviewedScreenshotCount > MAX_SCREENSHOTS) {
+    fail(
+      `presentation.semanticAudit.reviewedScreenshotCount must be at most ${MAX_SCREENSHOTS}`,
+    );
+  }
+  requireNonNegativeNumber(
+    result.presentation.semanticAudit.reviewSampleIntervalSeconds,
+    "presentation.semanticAudit.reviewSampleIntervalSeconds",
+  );
+  if (
+    result.presentation.semanticAudit.reviewSampleIntervalSeconds !==
+    REVIEW_SAMPLE_INTERVAL_SECONDS
+  ) {
+    fail(
+      `presentation.semanticAudit.reviewSampleIntervalSeconds must be ${REVIEW_SAMPLE_INTERVAL_SECONDS}`,
+    );
   }
   if (result.presentation.status === "pass") {
     if (result.presentation.firstMeaningfulActionSeconds > MAX_FIRST_ACTION_SECONDS) {
@@ -869,9 +915,11 @@ export async function loadTerminalResult(
   if (
     !Number.isFinite(videoProbe.durationSeconds) ||
     videoProbe.durationSeconds <= 0 ||
-    videoProbe.durationSeconds > 600
+    videoProbe.durationSeconds > MAX_VIDEO_DURATION_SECONDS
   ) {
-    fail("evidence.video duration must be between 0 and 600 seconds");
+    fail(
+      `evidence.video duration must be between 0 and ${MAX_VIDEO_DURATION_SECONDS} seconds`,
+    );
   }
   if (result.presentation.firstMeaningfulActionSeconds > videoProbe.durationSeconds) {
     fail("presentation.firstMeaningfulActionSeconds must not exceed evidence.video duration");
@@ -885,6 +933,27 @@ export async function loadTerminalResult(
     videoProbe.durationSeconds
   ) {
     fail("presentation action and terminal-state intervals must fit within evidence.video duration");
+  }
+  const expectedReviewedFrameCount = Math.max(
+    1,
+    Math.ceil(videoProbe.durationSeconds / REVIEW_SAMPLE_INTERVAL_SECONDS),
+  );
+  if (result.presentation.semanticAudit.reviewedFrameCount !== expectedReviewedFrameCount) {
+    fail("presentation.semanticAudit reviewedFrameCount must cover the full video at 2 Hz");
+  }
+  if (
+    result.presentation.semanticAudit.reviewedContactSheetCount !==
+    Math.ceil(expectedReviewedFrameCount / REVIEW_CONTACT_SHEET_FRAME_COUNT)
+  ) {
+    fail(
+      "presentation.semanticAudit reviewedContactSheetCount must cover every reviewed frame",
+    );
+  }
+  if (
+    result.presentation.semanticAudit.reviewedScreenshotCount !==
+    result.evidence.screenshots.length
+  ) {
+    fail("presentation.semanticAudit reviewedScreenshotCount must cover every screenshot");
   }
   if (
     !Number.isSafeInteger(videoProbe.width) ||
@@ -939,6 +1008,9 @@ export async function loadTerminalResult(
     "reviewRunAttempt",
     "reviewModel",
     "reviewedFrameCount",
+    "reviewedContactSheetCount",
+    "reviewedScreenshotCount",
+    "reviewSampleIntervalSeconds",
   ]) {
     if (semanticAudit[field] !== result.presentation.semanticAudit[field]) {
       fail(`presentation.semanticAudit ${field} must match its artifact`);
@@ -1267,10 +1339,16 @@ async function selfTest() {
   const providerTrace = Buffer.from(
     [
       { event: "request", ...providerCorrelation },
-      { event: "tool_request", tool: "ensure_secret", ...providerCorrelation },
+      {
+        event: "tool_request",
+        tool: "ensure_secret",
+        callId: "call-1",
+        ...providerCorrelation,
+      },
       {
         event: "tool_response",
         tool: "ensure_secret",
+        callId: "call-1",
         status: "success",
         ...providerCorrelation,
       },
@@ -1285,12 +1363,15 @@ async function selfTest() {
     reviewer: SEMANTIC_AUDIT_REVIEWER,
     reviewerKind: SEMANTIC_AUDIT_REVIEWER_KIND,
     reviewScope:
-      "Independent protected vision inspection of the decoded full-video timeline and curated screenshots",
+      "Independent protected vision inspection of dense 2 Hz full-video contact sheets and curated screenshots",
     reviewToolSha: "d".repeat(40),
     reviewRunId: 123,
     reviewRunAttempt: 1,
     reviewModel: "openai/gpt-4.1",
-    reviewedFrameCount: 12,
+    reviewedFrameCount: 10,
+    reviewedContactSheetCount: 1,
+    reviewedScreenshotCount: 2,
+    reviewSampleIntervalSeconds: 0.5,
   };
   const semanticAudit = Buffer.from(
     `${JSON.stringify({
@@ -1773,9 +1854,8 @@ async function selfTest() {
   const mismatchedProviderTrace = Buffer.from(
     [
       { event: "request" },
-      { event: "tool_request", tool: "ensure_secret" },
-      { event: "tool_response", tool: "edit_file", status: "success" },
-      { event: "tool_request", tool: "edit_file" },
+      { event: "tool_request", tool: "ensure_secret", callId: "call-1" },
+      { event: "tool_response", tool: "edit_file", callId: "call-1", status: "success" },
       { event: "response" },
     ]
       .map((record) => JSON.stringify(record))
@@ -1790,14 +1870,19 @@ async function selfTest() {
         sha256: sha256(mismatchedProviderTrace),
       };
     },
-    "provider.trace line 3 tool_response must match a preceding tool_request",
+    "provider.trace line 3 tool_response tool must match its callId request",
   );
   const unansweredProviderTrace = Buffer.from(
     [
       { event: "request" },
-      { event: "tool_request", tool: "ensure_secret" },
-      { event: "tool_request", tool: "edit_file" },
-      { event: "tool_response", tool: "ensure_secret", status: "success" },
+      { event: "tool_request", tool: "ensure_secret", callId: "call-1" },
+      { event: "tool_request", tool: "edit_file", callId: "call-2" },
+      {
+        event: "tool_response",
+        tool: "ensure_secret",
+        callId: "call-1",
+        status: "success",
+      },
       { event: "response" },
     ]
       .map((record) => JSON.stringify(record))
@@ -1814,11 +1899,83 @@ async function selfTest() {
     },
     "provider.trace must not contain unanswered tool_request records",
   );
+  const reusedToolResponseTrace = Buffer.from(
+    [
+      { event: "request" },
+      { event: "tool_request", tool: "ensure_secret", callId: "call-1" },
+      { event: "tool_request", tool: "ensure_secret", callId: "call-2" },
+      {
+        event: "tool_response",
+        tool: "ensure_secret",
+        callId: "call-1",
+        status: "success",
+      },
+      {
+        event: "tool_response",
+        tool: "ensure_secret",
+        callId: "call-1",
+        status: "success",
+      },
+      { event: "response" },
+    ]
+      .map((record) => JSON.stringify(record))
+      .join("\n") + "\n",
+  );
+  await writeFile(
+    path.join(dir, "provider-trace-reused-response.jsonl"),
+    reusedToolResponseTrace,
+  );
+  await expectRejected(
+    "reused provider tool response",
+    (candidate) => {
+      candidate.provider.trace = {
+        path: "provider-trace-reused-response.jsonl",
+        sha256: sha256(reusedToolResponseTrace),
+      };
+    },
+    "provider.trace line 5 tool_response callId must match a preceding tool_request",
+  );
+  const reusedToolRequestTrace = Buffer.from(
+    [
+      { event: "request" },
+      { event: "tool_request", tool: "ensure_secret", callId: "call-1" },
+      {
+        event: "tool_response",
+        tool: "ensure_secret",
+        callId: "call-1",
+        status: "success",
+      },
+      { event: "tool_request", tool: "ensure_secret", callId: "call-1" },
+      {
+        event: "tool_response",
+        tool: "ensure_secret",
+        callId: "call-1",
+        status: "success",
+      },
+      { event: "response" },
+    ]
+      .map((record) => JSON.stringify(record))
+      .join("\n") + "\n",
+  );
+  await writeFile(
+    path.join(dir, "provider-trace-reused-request.jsonl"),
+    reusedToolRequestTrace,
+  );
+  await expectRejected(
+    "reused provider tool request ID",
+    (candidate) => {
+      candidate.provider.trace = {
+        path: "provider-trace-reused-request.jsonl",
+        sha256: sha256(reusedToolRequestTrace),
+      };
+    },
+    "provider.trace line 4 tool_request callId must be unique",
+  );
   const missingToolStatusTrace = Buffer.from(
     [
       { event: "request" },
-      { event: "tool_request", tool: "ensure_secret" },
-      { event: "tool_response", tool: "ensure_secret" },
+      { event: "tool_request", tool: "ensure_secret", callId: "call-1" },
+      { event: "tool_response", tool: "ensure_secret", callId: "call-1" },
       { event: "response" },
     ]
       .map((record) => JSON.stringify(record))
@@ -1838,10 +1995,16 @@ async function selfTest() {
   const failedToolTrace = Buffer.from(
     [
       { event: "request", ...providerCorrelation },
-      { event: "tool_request", tool: "ensure_secret", ...providerCorrelation },
+      {
+        event: "tool_request",
+        tool: "ensure_secret",
+        callId: "call-1",
+        ...providerCorrelation,
+      },
       {
         event: "tool_response",
         tool: "ensure_secret",
+        callId: "call-1",
         status: "error",
         ...providerCorrelation,
       },
@@ -1864,10 +2027,16 @@ async function selfTest() {
   const staleProviderTrace = Buffer.from(
     [
       { event: "request", ...providerCorrelation, requestId: "nixmac-e2e:stale" },
-      { event: "tool_request", tool: "ensure_secret", ...providerCorrelation },
+      {
+        event: "tool_request",
+        tool: "ensure_secret",
+        callId: "call-1",
+        ...providerCorrelation,
+      },
       {
         event: "tool_response",
         tool: "ensure_secret",
+        callId: "call-1",
         status: "success",
         ...providerCorrelation,
       },
@@ -1970,9 +2139,14 @@ async function selfTest() {
     fail("self-test expected unrelated positive coverage not to qualify the result");
   }
 
+  const correctionAuditIdentity = {
+    ...semanticAuditIdentity,
+    reviewedFrameCount: 150,
+    reviewedContactSheetCount: 13,
+  };
   const failedAudit = Buffer.from(
     `${JSON.stringify({
-      ...semanticAuditIdentity,
+      ...correctionAuditIdentity,
       videoSha256: sha256(mp4),
       status: "fail",
       firstMeaningfulActionSeconds: 53,
@@ -1995,7 +2169,7 @@ async function selfTest() {
     semanticAudit: {
       path: "semantic-video-audit-failed.json",
       sha256: sha256(failedAudit),
-      ...semanticAuditIdentity,
+      ...correctionAuditIdentity,
     },
   };
   await writeFile(manifestPath, `${JSON.stringify(correction, null, 2)}\n`);

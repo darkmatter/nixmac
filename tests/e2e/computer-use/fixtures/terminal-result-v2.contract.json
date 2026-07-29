@@ -131,12 +131,15 @@
       "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
       "reviewer": "GitHub Actions protected vision review",
       "reviewerKind": "github-actions-protected-vision-review",
-      "reviewScope": "Independent protected vision inspection of the decoded full-video timeline and curated screenshots",
+      "reviewScope": "Independent protected vision inspection of dense 2 Hz full-video contact sheets and curated screenshots",
       "reviewToolSha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
       "reviewRunId": 123,
       "reviewRunAttempt": 1,
       "reviewModel": "openai/gpt-4.1",
-      "reviewedFrameCount": 12
+      "reviewedFrameCount": 60,
+      "reviewedContactSheetCount": 5,
+      "reviewedScreenshotCount": 2,
+      "reviewSampleIntervalSeconds": 0.5
     }
   },
   "knownLimits": [

@@ -140,8 +140,8 @@ assert.match(
 );
 assert.match(
   trustedVideoAuditScript,
-  /reviewTimes[\s\S]*ffmpeg[\s\S]*image_url[\s\S]*openrouter\.ai/,
-  "trusted video audit must decode, inspect the full timeline, and fail closed on semantic uncertainty",
+  /MAX_REVIEW_VIDEO_SECONDS = 120[\s\S]*TIMELINE_SAMPLE_RATE = 2[\s\S]*fps=.*TIMELINE_SAMPLE_RATE[\s\S]*tile=.*CONTACT_SHEET_COLUMNS[\s\S]*image_url[\s\S]*openrouter\.ai/,
+  "trusted video audit must densely inspect the bounded full timeline and fail closed on semantic uncertainty",
 );
 assert.match(
   trustedVideoAuditScript,

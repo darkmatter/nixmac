@@ -199,8 +199,9 @@ upgrade either label. The provider block discloses whether the run used a real
 or scripted provider; the deterministic demo lane uses a `scripted-mock`
 loopback provider and binds its redacted trace into the report evidence set.
 The trace must be UTF-8 JSONL with ordered `request`, `tool_request`,
-`tool_response`, and `response` object records, and matching tool records must
-name the same non-empty tool. Every `tool_response` must declare `status` as
+`tool_response`, and `response` object records. Every tool invocation must have
+a unique non-empty `callId`, and each response must match both the `callId` and
+tool name of its request. Every `tool_response` must declare `status` as
 `success` or `error`; a pass verdict is rejected if any tool response is not
 successful. Every trace record must also repeat the terminal result's exact
 `requestId`, `headSha`, `providerKind`, `endpointClass`, `providerLabel`, and
@@ -210,10 +211,11 @@ Automated publication requires `presentation.status=pass`, first meaningful
 visual action within 15 seconds, complete start-to-finish review, and at least
 three seconds of visible terminal state. The remote producer supplies those
 presentation observations but cannot choose or write the final audit. The
-protected publisher fully decodes the video and sends timestamped frames across
-the full timeline plus curated screenshots to the repository-pinned vision
-model. It fails closed unless that independent review sees the changed behavior,
-a coherent timeline, and the terminal state, then generates the hash-bound
+protected publisher fully decodes videos of at most two minutes and sends dense
+2 Hz chronological contact sheets covering the full timeline plus curated
+screenshots to the repository-pinned vision model. It fails closed unless that
+independent review inspects every contact-sheet cell and sees the changed
+behavior, a coherent timeline, and the terminal state, then generates the hash-bound
 audit with its GitHub run identity and protected report-tool SHA.
 Media validation enumerates every stream, requires exactly one
 H.264/yuv420p video stream with no audio or extra streams, and fully decodes the

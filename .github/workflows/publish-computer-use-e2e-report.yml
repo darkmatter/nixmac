@@ -455,7 +455,10 @@ jobs:
                 reviewRunId: $audit[0].reviewRunId,
                 reviewRunAttempt: $audit[0].reviewRunAttempt,
                 reviewModel: $audit[0].reviewModel,
-                reviewedFrameCount: $audit[0].reviewedFrameCount
+                reviewedFrameCount: $audit[0].reviewedFrameCount,
+                reviewedContactSheetCount: $audit[0].reviewedContactSheetCount,
+                reviewedScreenshotCount: $audit[0].reviewedScreenshotCount,
+                reviewSampleIntervalSeconds: $audit[0].reviewSampleIntervalSeconds
               }' \
             "$local_evidence/terminal-result.remote.json" > "$enriched_manifest"
           mv "$enriched_manifest" "$local_evidence/terminal-result.remote.json"

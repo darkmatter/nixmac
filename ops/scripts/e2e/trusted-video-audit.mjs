@@ -2,15 +2,21 @@
 
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
-const AUDIT_SCHEMA = "nixmac.e2e.semantic-audit.v3";
+const AUDIT_SCHEMA = "nixmac.e2e.semantic-audit.v4";
 const REVIEWER = "GitHub Actions protected vision review";
 const REVIEWER_KIND = "github-actions-protected-vision-review";
+const MAX_REVIEW_VIDEO_SECONDS = 120;
+const TIMELINE_SAMPLE_RATE = 2;
+const TIMELINE_SAMPLE_INTERVAL_SECONDS = 1 / TIMELINE_SAMPLE_RATE;
+const CONTACT_SHEET_COLUMNS = 3;
+const CONTACT_SHEET_ROWS = 4;
+const CONTACT_SHEET_FRAME_COUNT = CONTACT_SHEET_COLUMNS * CONTACT_SHEET_ROWS;
 
 function fail(message) {
   throw new Error(message);
@@ -74,49 +80,52 @@ async function videoDuration(videoPath) {
     "default=noprint_wrappers=1:nokey=1",
     videoPath,
   ]);
-  return requireFiniteNumber(Number(stdout.trim()), "video duration", { min: 0.01, max: 600 });
+  return requireFiniteNumber(Number(stdout.trim()), "video duration", {
+    min: 0.01,
+    max: MAX_REVIEW_VIDEO_SECONDS,
+  });
 }
 
-function reviewTimes(durationSeconds) {
-  const candidates = [0];
-  for (let second = 1; second <= Math.min(15, durationSeconds); second += 3) {
-    candidates.push(second);
-  }
-  for (let fraction = 0.1; fraction < 1; fraction += 0.1) {
-    candidates.push(durationSeconds * fraction);
-  }
-  for (const offset of [9, 6, 3, 1]) {
-    candidates.push(Math.max(0, durationSeconds - offset));
-  }
-  return [
-    ...new Set(
-      candidates
-        .filter((second) => second < durationSeconds)
-        .map((second) => Math.round(second * 10) / 10),
-    ),
-  ].sort((left, right) => left - right);
+function expectedTimelineFrameCount(durationSeconds) {
+  return Math.max(1, Math.ceil(durationSeconds * TIMELINE_SAMPLE_RATE));
 }
 
 async function extractReviewImages(videoPath, screenshotPaths, durationSeconds, outputDir) {
   const images = [];
-  for (const [index, second] of reviewTimes(durationSeconds).entries()) {
-    const output = path.join(outputDir, `video-${String(index).padStart(2, "0")}.jpg`);
-    await execFileAsync("ffmpeg", [
-      "-v",
-      "error",
-      "-ss",
-      second.toFixed(1),
-      "-i",
-      videoPath,
-      "-frames:v",
-      "1",
-      "-vf",
-      "scale=512:-2",
-      "-q:v",
-      "5",
-      output,
-    ]);
-    images.push({ label: `Video frame at ${second.toFixed(1)} seconds`, path: output });
+  const expectedFrameCount = expectedTimelineFrameCount(durationSeconds);
+  const expectedContactSheetCount = Math.ceil(expectedFrameCount / CONTACT_SHEET_FRAME_COUNT);
+  await execFileAsync("ffmpeg", [
+    "-v",
+    "error",
+    "-i",
+    videoPath,
+    "-vf",
+    [
+      `fps=${TIMELINE_SAMPLE_RATE}:start_time=0:round=down`,
+      "scale=384:-2:flags=lanczos",
+      `tile=${CONTACT_SHEET_COLUMNS}x${CONTACT_SHEET_ROWS}:padding=4:margin=4`,
+    ].join(","),
+    "-q:v",
+    "5",
+    path.join(outputDir, "timeline-%03d.jpg"),
+  ]);
+  const contactSheets = (await readdir(outputDir))
+    .filter((entry) => /^timeline-\d{3}\.jpg$/.test(entry))
+    .sort();
+  if (contactSheets.length !== expectedContactSheetCount) {
+    fail(
+      `trusted timeline extraction produced ${contactSheets.length} contact sheets; expected ${expectedContactSheetCount}`,
+    );
+  }
+  for (const [index, entry] of contactSheets.entries()) {
+    const firstFrame = index * CONTACT_SHEET_FRAME_COUNT + 1;
+    const lastFrame = Math.min(expectedFrameCount, firstFrame + CONTACT_SHEET_FRAME_COUNT - 1);
+    images.push({
+      label:
+        `Dense video timeline contact sheet ${index + 1}/${contactSheets.length}: ` +
+        `chronological ${TIMELINE_SAMPLE_RATE} Hz samples ${firstFrame}-${lastFrame}`,
+      path: path.join(outputDir, entry),
+    });
   }
   for (const [index, screenshotPath] of screenshotPaths.entries()) {
     const output = path.join(outputDir, `screenshot-${String(index).padStart(2, "0")}.jpg`);
@@ -135,7 +144,12 @@ async function extractReviewImages(videoPath, screenshotPaths, durationSeconds, 
     ]);
     images.push({ label: `Curated evidence screenshot ${index + 1}`, path: output });
   }
-  return images;
+  return {
+    images,
+    reviewedFrameCount: expectedFrameCount,
+    reviewedContactSheetCount: contactSheets.length,
+    reviewedScreenshotCount: screenshotPaths.length,
+  };
 }
 
 async function imageContent(images) {
@@ -161,7 +175,9 @@ async function requestDecision({ apiKey, model, manifest, images, durationSecond
   }));
   const prompt = [
     "You are the independent presentation-quality reviewer for a macOS UI E2E run.",
-    "Inspect every supplied frame in chronological order. Fail closed if frames are unrelated,",
+    `The contact sheets cover the full video at ${TIMELINE_SAMPLE_RATE} frames per second ` +
+      `(maximum ${TIMELINE_SAMPLE_INTERVAL_SECONDS.toFixed(1)} seconds between samples).`,
+    "Inspect every cell of every contact sheet in chronological order. Fail closed if frames are unrelated,",
     "the changed behavior is not visible, the timeline is incoherent, or the terminal state is absent.",
     `Video duration: ${durationSeconds.toFixed(3)} seconds.`,
     `Scenarios: ${JSON.stringify(scenarioSummary)}`,
@@ -259,15 +275,23 @@ async function review({ manifestPath, evidenceRoot, outputPath, model, apiKey })
   const durationSeconds = await videoDuration(videoPath);
   const temporary = await mkdtemp(path.join(os.tmpdir(), "nixmac-video-audit-"));
   try {
-    const images = await extractReviewImages(
+    const reviewEvidence = await extractReviewImages(
       videoPath,
       screenshotPaths,
       durationSeconds,
       temporary,
     );
-    if (images.length < 5 || images.length > 30) fail("unexpected trusted review frame count");
+    if (reviewEvidence.images.length < 2 || reviewEvidence.images.length > 30) {
+      fail("unexpected trusted review image count");
+    }
     const decision = validateDecision(
-      await requestDecision({ apiKey, model, manifest, images, durationSeconds }),
+      await requestDecision({
+        apiKey,
+        model,
+        manifest,
+        images: reviewEvidence.images,
+        durationSeconds,
+      }),
       durationSeconds,
     );
     const audit = {
@@ -275,12 +299,15 @@ async function review({ manifestPath, evidenceRoot, outputPath, model, apiKey })
       reviewer: REVIEWER,
       reviewerKind: REVIEWER_KIND,
       reviewScope:
-        "Independent protected vision inspection of the decoded full-video timeline and curated screenshots",
+        "Independent protected vision inspection of dense 2 Hz full-video contact sheets and curated screenshots",
       reviewToolSha: process.env.REPORT_TOOL_SHA,
       reviewRunId: Number(process.env.GITHUB_RUN_ID),
       reviewRunAttempt: Number(process.env.GITHUB_RUN_ATTEMPT),
       reviewModel: model,
-      reviewedFrameCount: images.length,
+      reviewedFrameCount: reviewEvidence.reviewedFrameCount,
+      reviewedContactSheetCount: reviewEvidence.reviewedContactSheetCount,
+      reviewedScreenshotCount: reviewEvidence.reviewedScreenshotCount,
+      reviewSampleIntervalSeconds: TIMELINE_SAMPLE_INTERVAL_SECONDS,
       videoSha256: manifest.evidence.video.sha256,
       status: "pass",
       firstMeaningfulActionSeconds: decision.firstMeaningfulActionSeconds,
@@ -298,7 +325,7 @@ async function review({ manifestPath, evidenceRoot, outputPath, model, apiKey })
   }
 }
 
-function selfTest() {
+async function selfTest() {
   const pass = validateDecision(
     {
       verdict: "pass",
@@ -330,11 +357,42 @@ function selfTest() {
     rejected = true;
   }
   if (!rejected) fail("decision self-test accepted missing changed behavior");
+  if (expectedTimelineFrameCount(0.1) !== 1) fail("short-video frame count is invalid");
+  if (expectedTimelineFrameCount(MAX_REVIEW_VIDEO_SECONDS) !== 240) {
+    fail("maximum-video frame count is invalid");
+  }
+  const temporary = await mkdtemp(path.join(os.tmpdir(), "nixmac-video-audit-self-test-"));
+  try {
+    const videoPath = path.join(temporary, "timeline.mp4");
+    await execFileAsync("ffmpeg", [
+      "-v",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc2=size=640x360:rate=30:duration=13.2",
+      "-c:v",
+      "libx264",
+      "-pix_fmt",
+      "yuv420p",
+      videoPath,
+    ]);
+    const evidence = await extractReviewImages(videoPath, [], 13.2, temporary);
+    if (
+      evidence.reviewedFrameCount !== 27 ||
+      evidence.reviewedContactSheetCount !== 3 ||
+      evidence.images.length !== 3
+    ) {
+      fail("dense timeline extraction self-test produced unexpected coverage");
+    }
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
 }
 
 async function main() {
   if (process.argv[2] === "--self-test") {
-    selfTest();
+    await selfTest();
     console.log("trusted video audit self-test passed");
     return;
   }
