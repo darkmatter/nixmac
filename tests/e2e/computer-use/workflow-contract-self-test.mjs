@@ -61,8 +61,8 @@ assert.match(
 );
 assert.match(
   terminalWorkflow,
-  /LATEST_ORDER: \$\{\{ github\.run_id \}\}:\$\{\{ github\.run_attempt \}\}[\s\S]*LATEST_GUARD_EXPECTED_SHA: \$\{\{ inputs\.expected_sha \}\}/,
-  "terminal publisher must order latest updates and recheck the PR head inside retries",
+  /LATEST_ORDER: \$\{\{ github\.run_id \}\}:\$\{\{ github\.run_attempt \}\}[\s\S]*LATEST_GUARD_EXPECTED_SHA: \$\{\{ inputs\.expected_sha \}\}[\s\S]*LATEST_GUARD_REFERENCE: \$\{\{ steps\.latest\.outputs\.reference \}\}/,
+  "terminal publisher must order latest updates and recheck the selected PR reference inside retries",
 );
 
 assert.match(remote, /\n    needs: prepare\n/, "remote job must depend on prepare");
@@ -118,8 +118,13 @@ assert.match(
 );
 assert.match(
   publish,
-  /LATEST_ORDER: \$\{\{ github\.run_id \}\}:\$\{\{ github\.run_attempt \}\}[\s\S]*LATEST_GUARD_EXPECTED_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/,
+  /LATEST_ORDER: \$\{\{ github\.run_id \}\}:\$\{\{ github\.run_attempt \}\}[\s\S]*LATEST_GUARD_EXPECTED_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}[\s\S]*LATEST_GUARD_REFERENCE: head\.sha/,
   "full publisher must order latest updates and recheck the PR head inside retries",
+);
+assert.match(
+  publish,
+  /name: Comment evidence report on pull request\n\s+if: [^\n]*steps\.publish-report\.outputs\.latest_updated == 'true'/,
+  "only the run that owns latest may update the shared PR report comment",
 );
 
 assert.equal(/Preflight remote Mac/.test(prepare), false, "prepare must not run remote readiness");
