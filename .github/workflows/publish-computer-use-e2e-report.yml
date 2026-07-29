@@ -316,7 +316,6 @@ jobs:
           PY
           )"
           runtime_attestation_relative="runtime-attestation.json"
-          runtime_attestation_remote="${EVIDENCE_DIR_INPUT}/${runtime_attestation_relative}"
           runtime_app_path="${EVIDENCE_DIR_INPUT}/runtime/nixmac.app"
           attestation_tools_tar="$RUNNER_TEMP/runtime-attestation-tools.tar"
           tar -cf "$attestation_tools_tar" \
@@ -327,23 +326,24 @@ jobs:
           printf -v runtime_attestation_command \
             'bash -c %q -- %q %q %q %q %q %q' \
             "$runtime_attestation_runner" \
-            "$runtime_attestation_remote" \
+            "-" \
             "$runtime_app_path" \
             "$REPORT_TOOL_SHA" \
             "$expected_app_sha" \
             "$official_bundle_sha" \
             "$verified_app_version"
           ssh "${ssh_common[@]}" -- "$ssh_dest" "$runtime_attestation_command" \
-            < "$attestation_tools_tar"
-          runtime_attestation_size="$(remote_file_size "$runtime_attestation_remote")"
-          (( runtime_attestation_size <= 65536 )) || {
-            echo "Publisher-produced runtime attestation exceeds 64 KiB" >&2
+            < "$attestation_tools_tar" |
+            python3 ops/scripts/e2e/bounded-stream-copy.py \
+              "$local_evidence/$runtime_attestation_relative" \
+              65536
+          runtime_attestation_size="$(
+            wc -c < "$local_evidence/$runtime_attestation_relative"
+          )"
+          (( runtime_attestation_size > 0 && runtime_attestation_size <= 65536 )) || {
+            echo "Publisher-produced runtime attestation must be non-empty and at most 64 KiB" >&2
             exit 1
           }
-          bounded_remote_copy \
-            "$runtime_attestation_remote" \
-            "$local_evidence/$runtime_attestation_relative" \
-            65536
           runtime_attestation_sha="$(
             sha256sum "$local_evidence/$runtime_attestation_relative" | cut -d' ' -f1
           )"
@@ -365,7 +365,6 @@ jobs:
           mapfile -t evidence_specs < <(
             jq -r \
               '[
-                {path: .testedArtifact.runtimeAttestation.path, max: 65536},
                 (.evidence.screenshots[] | {path, max: 4194304}),
                 {path: .evidence.video.path, max: 15728640},
                 {path: .provider.trace.path, max: 1048576},
@@ -373,11 +372,11 @@ jobs:
               ] | .[] | [.path, .max] | @tsv' \
               "$local_evidence/terminal-result.remote.json"
           )
-          if [[ "${#evidence_specs[@]}" -lt 6 || "${#evidence_specs[@]}" -gt 10 ]]; then
+          if [[ "${#evidence_specs[@]}" -lt 5 || "${#evidence_specs[@]}" -gt 9 ]]; then
             echo "Manifest must reference one runtime attestation, two to six screenshots, one video, one provider trace, and one semantic audit" >&2
             exit 1
           fi
-          total_evidence_bytes=0
+          total_evidence_bytes="$runtime_attestation_size"
           for evidence_spec in "${evidence_specs[@]}"; do
             IFS=$'\t' read -r relative_path max_bytes <<< "$evidence_spec"
             [[ "$relative_path" =~ ^[A-Za-z0-9._/-]+$ ]] &&

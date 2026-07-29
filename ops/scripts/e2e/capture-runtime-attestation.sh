@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ "$#" -ne 6 ]]; then
-	echo "Usage: $0 <output.json> <nixmac.app path> <report-tool SHA> <expected executable SHA-256> <expected bundle SHA-256> <expected app version>" >&2
+	echo "Usage: $0 <output.json or -> <nixmac.app path> <report-tool SHA> <expected executable SHA-256> <expected bundle SHA-256> <expected app version>" >&2
 	exit 2
 fi
 
@@ -15,8 +15,8 @@ expected_app_version="$6"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 canonical_digest_tool="$script_dir/canonical-app-digest.py"
 
-[[ "$output_path" == /* ]] || {
-	echo "Runtime attestation output path must be absolute" >&2
+[[ "$output_path" == "-" || "$output_path" == /* ]] || {
+	echo "Runtime attestation output path must be absolute or - for stdout" >&2
 	exit 2
 }
 [[ "$app_path" == /* && -d "$app_path" ]] || {
@@ -167,11 +167,15 @@ payload = {
     "captureToolSha": report_tool_sha,
 }
 
-os.makedirs(os.path.dirname(output_path), exist_ok=True)
-temporary_path = f"{output_path}.tmp.{os.getpid()}"
-descriptor = os.open(temporary_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-    json.dump(payload, handle, indent=2, sort_keys=True)
-    handle.write("\n")
-os.replace(temporary_path, output_path)
+serialized = f"{json.dumps(payload, indent=2, sort_keys=True)}\n"
+if output_path == "-":
+    sys.stdout.write(serialized)
+    sys.stdout.flush()
+else:
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    temporary_path = f"{output_path}.tmp.{os.getpid()}"
+    descriptor = os.open(temporary_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+        handle.write(serialized)
+    os.replace(temporary_path, output_path)
 PY

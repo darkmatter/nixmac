@@ -75,7 +75,7 @@ function requireStatus(value, name) {
   return value;
 }
 
-function validateProviderTrace(buffer) {
+function validateProviderTrace(buffer, expectedCorrelation) {
   let text;
   try {
     text = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
@@ -153,6 +153,14 @@ function validateProviderTrace(buffer) {
   }
   if ([...pendingToolRequests.values()].some((pending) => pending !== 0)) {
     fail("provider.trace must not contain unanswered tool_request records");
+  }
+  for (const [index, record] of records.entries()) {
+    for (const [field, expected] of Object.entries(expectedCorrelation)) {
+      requireString(record[field], `provider.trace line ${index + 1} ${field}`, { max: 300 });
+      if (record[field] !== expected) {
+        fail(`provider.trace line ${index + 1} ${field} must match the terminal result`);
+      }
+    }
   }
   return records;
 }
@@ -733,7 +741,14 @@ export async function loadTerminalResult(
   if (sha256(providerTraceBuffer) !== result.provider.trace.sha256) {
     fail("provider.trace SHA-256 does not match");
   }
-  const providerTraceRecords = validateProviderTrace(providerTraceBuffer);
+  const providerTraceRecords = validateProviderTrace(providerTraceBuffer, {
+    requestId: result.request.id,
+    headSha: result.testedArtifact.headSha,
+    providerKind: result.provider.kind,
+    endpointClass: result.provider.endpointClass,
+    providerLabel: result.provider.label,
+    model: result.provider.model,
+  });
   if (
     result.verdict === "pass" &&
     providerTraceRecords.some(
@@ -1164,12 +1179,25 @@ async function selfTest() {
   await writeFile(path.join(dir, "proof.png"), png);
   await writeFile(path.join(dir, "proof-after.png"), png);
   await writeFile(path.join(dir, "proof.mp4"), mp4);
+  const providerCorrelation = {
+    requestId: `nixmac-e2e:${"a".repeat(40)}`,
+    headSha: "a".repeat(40),
+    providerKind: "scripted-mock",
+    endpointClass: "loopback",
+    providerLabel: "Deterministic OpenAI-compatible loopback mock",
+    model: "nixmac-e2e-scripted",
+  };
   const providerTrace = Buffer.from(
     [
-      { event: "request" },
-      { event: "tool_request", tool: "ensure_secret" },
-      { event: "tool_response", tool: "ensure_secret", status: "success" },
-      { event: "response" },
+      { event: "request", ...providerCorrelation },
+      { event: "tool_request", tool: "ensure_secret", ...providerCorrelation },
+      {
+        event: "tool_response",
+        tool: "ensure_secret",
+        status: "success",
+        ...providerCorrelation,
+      },
+      { event: "response", ...providerCorrelation },
     ]
       .map((record) => JSON.stringify(record))
       .join("\n") + "\n",
@@ -1718,10 +1746,15 @@ async function selfTest() {
   );
   const failedToolTrace = Buffer.from(
     [
-      { event: "request" },
-      { event: "tool_request", tool: "ensure_secret" },
-      { event: "tool_response", tool: "ensure_secret", status: "error" },
-      { event: "response" },
+      { event: "request", ...providerCorrelation },
+      { event: "tool_request", tool: "ensure_secret", ...providerCorrelation },
+      {
+        event: "tool_response",
+        tool: "ensure_secret",
+        status: "error",
+        ...providerCorrelation,
+      },
+      { event: "response", ...providerCorrelation },
     ]
       .map((record) => JSON.stringify(record))
       .join("\n") + "\n",
@@ -1736,6 +1769,32 @@ async function selfTest() {
       };
     },
     "pass verdict requires every provider tool_response status to be success",
+  );
+  const staleProviderTrace = Buffer.from(
+    [
+      { event: "request", ...providerCorrelation, requestId: "nixmac-e2e:stale" },
+      { event: "tool_request", tool: "ensure_secret", ...providerCorrelation },
+      {
+        event: "tool_response",
+        tool: "ensure_secret",
+        status: "success",
+        ...providerCorrelation,
+      },
+      { event: "response", ...providerCorrelation },
+    ]
+      .map((record) => JSON.stringify(record))
+      .join("\n") + "\n",
+  );
+  await writeFile(path.join(dir, "provider-trace-stale.jsonl"), staleProviderTrace);
+  await expectRejected(
+    "provider trace from another request",
+    (candidate) => {
+      candidate.provider.trace = {
+        path: "provider-trace-stale.jsonl",
+        sha256: sha256(staleProviderTrace),
+      };
+    },
+    "provider.trace line 1 requestId must match the terminal result",
   );
   await expectRejected(
     "semantic audit hash mismatch",

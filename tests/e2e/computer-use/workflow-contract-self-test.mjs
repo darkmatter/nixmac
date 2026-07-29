@@ -85,8 +85,8 @@ assert.match(
 );
 assert.match(
   terminalWorkflow,
-  /\.testedArtifact\.runtimeAttestation\.path[\s\S]*one runtime attestation/,
-  "terminal renderer must retrieve the live-process runtime attestation with the other evidence",
+  /capture-runtime-attestation\.sh[\s\S]*"-"[\s\S]*< "\$attestation_tools_tar" \|[\s\S]*bounded-stream-copy\.py[\s\S]*runtime_attestation_size/,
+  "terminal renderer must capture the trusted runtime attestation directly from SSH stdout",
 );
 assert.match(
   runtimeAttestationScript,
@@ -95,7 +95,7 @@ assert.match(
 );
 assert.match(
   terminalWorkflow,
-  /canonical-app-digest\.py "\$app_bundle_dir"[\s\S]*tar -cf "\$attestation_tools_tar"[\s\S]*canonical-app-digest\.py[\s\S]*capture-runtime-attestation\.sh[\s\S]*< "\$attestation_tools_tar"[\s\S]*\.testedArtifact\.appBundleSha256 = \$bundle_sha/,
+  /canonical-app-digest\.py "\$app_bundle_dir"[\s\S]*tar -cf "\$attestation_tools_tar"[\s\S]*canonical-app-digest\.py[\s\S]*capture-runtime-attestation\.sh[\s\S]*< "\$attestation_tools_tar" \|[\s\S]*\.testedArtifact\.appBundleSha256 = \$bundle_sha/,
   "protected publisher must stream both trusted attestation tools and inject the verified bundle digest",
 );
 assert.match(

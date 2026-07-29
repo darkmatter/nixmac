@@ -200,7 +200,9 @@ The trace must be UTF-8 JSONL with ordered `request`, `tool_request`,
 `tool_response`, and `response` object records, and matching tool records must
 name the same non-empty tool. Every `tool_response` must declare `status` as
 `success` or `error`; a pass verdict is rejected if any tool response is not
-successful.
+successful. Every trace record must also repeat the terminal result's exact
+`requestId`, `headSha`, `providerKind`, `endpointClass`, `providerLabel`, and
+`model`; traces from another request or run are rejected.
 
 Automated publication requires `presentation.status=pass`, first meaningful
 visual action within 15 seconds, complete start-to-finish review, and at least
