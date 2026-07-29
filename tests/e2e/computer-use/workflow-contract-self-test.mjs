@@ -8,6 +8,11 @@ const thisFile = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(thisFile), "../../..");
 const workflowPath = path.join(repoRoot, ".github/workflows/computer-use-e2e.yml");
 const workflow = readFileSync(workflowPath, "utf8");
+const terminalWorkflowPath = path.join(
+  repoRoot,
+  ".github/workflows/publish-computer-use-e2e-report.yml",
+);
+const terminalWorkflow = readFileSync(terminalWorkflowPath, "utf8");
 
 function section(startPattern, endPattern = null) {
   const start = workflow.search(startPattern);
@@ -28,6 +33,31 @@ assert.equal(
   /^concurrency:/m.test(workflow),
   false,
   "workflow must not serialize prepare under top-level concurrency",
+);
+assert.match(
+  terminalWorkflow,
+  /permissions:\n\s+actions: read\n\s+contents: read\n\s+pull-requests: read/,
+  "terminal renderer must not receive a write-capable repository token",
+);
+assert.doesNotMatch(
+  terminalWorkflow,
+  /ref: \$\{\{ inputs\.report_tool_sha \}\}/,
+  "terminal workflow must not directly checkout caller-controlled executable code",
+);
+assert.match(
+  terminalWorkflow,
+  /name: Checkout protected report tool[\s\S]*ref: main[\s\S]*fetch-depth: 0[\s\S]*persist-credentials: false/,
+  "terminal renderer must start from protected main without persisted credentials",
+);
+assert.match(
+  terminalWorkflow,
+  /git merge-base --is-ancestor "\$REPORT_TOOL_SHA" "\$trusted_main_sha"/,
+  "terminal renderer must prove the requested tool revision belongs to protected main",
+);
+assert.match(
+  terminalWorkflow,
+  /publish:[\s\S]*permissions:\n\s+actions: read\n\s+contents: write\n\s+pull-requests: read[\s\S]*name: Checkout protected publisher[\s\S]*ref: main[\s\S]*persist-credentials: false/,
+  "only the protected publisher job may receive contents write",
 );
 
 assert.match(remote, /\n    needs: prepare\n/, "remote job must depend on prepare");

@@ -27,7 +27,7 @@ on:
 
 permissions:
   actions: read
-  contents: write
+  contents: read
   pull-requests: read
 
 jobs:
@@ -44,11 +44,30 @@ jobs:
       REMOTE_SSH_KEY: ${{ secrets.NIXMAC_E2E_REMOTE_SSH_KEY }}
       REMOTE_KNOWN_HOSTS: ${{ secrets.NIXMAC_E2E_REMOTE_KNOWN_HOSTS }}
     steps:
-      - name: Checkout pinned report tool
+      - name: Checkout protected report tool
         uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.report_tool_sha }}
-          fetch-depth: 1
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify and select trusted report tool revision
+        shell: bash
+        env:
+          REPORT_TOOL_SHA: ${{ inputs.report_tool_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$REPORT_TOOL_SHA" =~ ^[a-f0-9]{40}$ ]] || {
+            echo "report_tool_sha must be a full lowercase git SHA" >&2
+            exit 1
+          }
+          trusted_main_sha="$(git rev-parse HEAD)"
+          git merge-base --is-ancestor "$REPORT_TOOL_SHA" "$trusted_main_sha" || {
+            echo "report_tool_sha must belong to the protected main branch" >&2
+            exit 1
+          }
+          git checkout -q --detach "$REPORT_TOOL_SHA"
+          [[ "$(git rev-parse HEAD)" == "$REPORT_TOOL_SHA" ]]
 
       - name: Prepare evidence transport and media validation
         shell: bash
@@ -240,12 +259,17 @@ jobs:
     if: always() && needs.render.result == 'success'
     runs-on: arc
     timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: read
     steps:
-      - name: Checkout pinned report tool
+      - name: Checkout protected publisher
         uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.report_tool_sha }}
+          ref: main
           fetch-depth: 1
+          persist-credentials: false
 
       - name: Download self-contained report
         uses: actions/download-artifact@v7
