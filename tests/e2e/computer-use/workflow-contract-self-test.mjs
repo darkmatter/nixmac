@@ -164,6 +164,11 @@ assert.match(
   "trusted video audit must strip screenshot metadata before review",
 );
 assert.match(
+  trustedVideoAuditScript,
+  /createReviewedScreenshot[\s\S]*validatePng\(sourceBuffer[\s\S]*execFileAsync\("ffmpeg"/,
+  "trusted video audit must bound PNG decoding before invoking ffmpeg",
+);
+assert.match(
   terminalWorkflow,
   /publisher-reviewed-screenshot-[\s\S]*\.evidence\.screenshots = \[[\s\S]*reviewedScreenshots/,
   "terminal publisher must embed only sanitized reviewed screenshots",

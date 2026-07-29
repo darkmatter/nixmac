@@ -7,6 +7,8 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 
+import { validatePng } from "../../../tests/e2e/computer-use/terminal-report.mjs";
+
 const execFileAsync = promisify(execFile);
 const AUDIT_SCHEMA = "nixmac.e2e.semantic-audit.v6";
 const REVIEWER = "GitHub Actions protected vision review";
@@ -254,6 +256,8 @@ async function createReviewedPublicVideo(sourceVideoPath, publicVideoPath) {
 }
 
 async function createReviewedScreenshot(sourcePath, outputPath, temporaryPath) {
+  const sourceBuffer = await readFile(sourcePath);
+  validatePng(sourceBuffer, "trusted source screenshot");
   await execFileAsync("ffmpeg", [
     "-v",
     "error",
@@ -268,9 +272,10 @@ async function createReviewedScreenshot(sourcePath, outputPath, temporaryPath) {
   ]);
   const sanitized = stripPngAncillaryMetadata(await readFile(temporaryPath));
   if (sanitized.length > 4 * 1024 * 1024) fail("reviewed screenshot exceeds 4 MiB");
+  validatePng(sanitized, "trusted sanitized screenshot");
   await writeFile(outputPath, sanitized, { flag: "wx" });
   return {
-    sourceSha256: sha256(await readFile(sourcePath)),
+    sourceSha256: sha256(sourceBuffer),
     sha256: sha256(sanitized),
   };
 }

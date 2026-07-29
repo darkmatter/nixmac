@@ -271,7 +271,7 @@ async function confinedFile(root, relativePath, name) {
   return { absolutePath: candidate, size: fileStat.size };
 }
 
-function validatePng(buffer, name) {
+export function validatePng(buffer, name) {
   const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
   if (buffer.length < 45 || !buffer.subarray(0, 8).equals(signature)) {
     fail(`${name} is not a complete PNG`);
