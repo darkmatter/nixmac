@@ -83,6 +83,11 @@ assert.match(
   /--jq 'if \.merged then \.merge_commit_sha else \.head\.sha end'/,
   "publisher retries must select the live merged or open PR reference on every attempt",
 );
+assert.match(
+  publisherScript,
+  /local current_report="\$site_dir\/\$\{PUBLISH_PATH:\?\}"[\s\S]*\[\[ "\$candidate_report" == "\$current_report" \]\] && continue[\s\S]*tail -n \+"\$retention_keep_runs"/,
+  "report retention must preserve the immutable report currently being published while counting it toward the limit",
+);
 
 assert.match(remote, /\n    needs: prepare\n/, "remote job must depend on prepare");
 assert.match(

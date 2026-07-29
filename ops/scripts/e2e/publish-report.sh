@@ -141,9 +141,16 @@ publish_attempt() {
 	fi
 
 	if [[ -n "${REPORT_PREFIX:-}" && -d "$site_dir/$REPORT_PREFIX" ]]; then
+		local current_report="$site_dir/${PUBLISH_PATH:?}"
 		find "$site_dir/$REPORT_PREFIX" -mindepth 1 -maxdepth 1 -type d -name 'run-*' |
+			while IFS= read -r candidate_report; do
+				# The immutable report being published counts toward retention,
+				# even when retrying an older run after newer reports exist.
+				[[ "$candidate_report" == "$current_report" ]] && continue
+				printf '%s\n' "$candidate_report"
+			done |
 			sort -r |
-			tail -n +"$((retention_keep_runs + 1))" |
+			tail -n +"$retention_keep_runs" |
 			while IFS= read -r old_report; do
 				rm -rf "$old_report" || exit
 			done || return
