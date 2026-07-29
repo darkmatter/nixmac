@@ -307,6 +307,10 @@ jobs:
           RETENTION_KEEP_RUNS: "20"
           PR_NUMBER: ${{ inputs.pull_request }}
           UPDATE_LATEST: ${{ steps.latest.outputs.update_latest }}
+          LATEST_ORDER: ${{ github.run_id }}:${{ github.run_attempt }}
+          LATEST_GUARD_REPOSITORY: ${{ github.repository }}
+          LATEST_GUARD_PR: ${{ inputs.pull_request }}
+          LATEST_GUARD_EXPECTED_SHA: ${{ inputs.expected_sha }}
         run: ops/scripts/e2e/publish-report.sh
 
       - name: Summarize publication result

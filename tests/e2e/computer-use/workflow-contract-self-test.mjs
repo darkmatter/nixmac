@@ -59,6 +59,11 @@ assert.match(
   /publish:[\s\S]*permissions:\n\s+actions: read\n\s+contents: write\n\s+pull-requests: read[\s\S]*name: Checkout protected publisher[\s\S]*ref: main[\s\S]*persist-credentials: false/,
   "only the protected publisher job may receive contents write",
 );
+assert.match(
+  terminalWorkflow,
+  /LATEST_ORDER: \$\{\{ github\.run_id \}\}:\$\{\{ github\.run_attempt \}\}[\s\S]*LATEST_GUARD_EXPECTED_SHA: \$\{\{ inputs\.expected_sha \}\}/,
+  "terminal publisher must order latest updates and recheck the PR head inside retries",
+);
 
 assert.match(remote, /\n    needs: prepare\n/, "remote job must depend on prepare");
 assert.match(
@@ -110,6 +115,11 @@ assert.match(
   publish,
   /run: ops\/scripts\/e2e\/publish-report\.sh/,
   "publish job must use the retrying shared GitHub Pages publisher",
+);
+assert.match(
+  publish,
+  /LATEST_ORDER: \$\{\{ github\.run_id \}\}:\$\{\{ github\.run_attempt \}\}[\s\S]*LATEST_GUARD_EXPECTED_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/,
+  "full publisher must order latest updates and recheck the PR head inside retries",
 );
 
 assert.equal(/Preflight remote Mac/.test(prepare), false, "prepare must not run remote readiness");

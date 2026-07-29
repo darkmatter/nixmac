@@ -1304,6 +1304,10 @@ jobs:
           RETENTION_KEEP_RUNS: "20"
           PR_NUMBER: ${{ github.event.pull_request.number }}
           STORYBOOK_DIR: artifacts/computer-use-storybook/storybook-static
+          LATEST_ORDER: ${{ github.run_id }}:${{ github.run_attempt }}
+          LATEST_GUARD_REPOSITORY: ${{ github.repository }}
+          LATEST_GUARD_PR: ${{ github.event.pull_request.number }}
+          LATEST_GUARD_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
         run: ops/scripts/e2e/publish-report.sh
 
       - name: Comment evidence report on pull request
