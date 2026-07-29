@@ -479,7 +479,10 @@ function validateOutcome(result) {
   }
 }
 
-export async function loadTerminalResult(inputPath, { probe = true } = {}) {
+export async function loadTerminalResult(
+  inputPath,
+  { probe = true, verifiedAppVersion } = {},
+) {
   const inputReal = await realpath(inputPath);
   const result = JSON.parse(await readFile(inputReal, "utf8"));
   if (result.schemaVersion !== SCHEMA_VERSION) {
@@ -507,6 +510,14 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
   requireInteger(result.testedArtifact?.artifactId, "testedArtifact.artifactId");
   requireString(result.testedArtifact?.artifactName, "testedArtifact.artifactName", { max: 200 });
   requireString(result.testedArtifact?.appVersion, "testedArtifact.appVersion", { max: 100 });
+  if (verifiedAppVersion !== undefined) {
+    requireString(verifiedAppVersion, "verifiedAppVersion", { max: 100 });
+    if (result.testedArtifact.appVersion !== verifiedAppVersion) {
+      fail(
+        `testedArtifact.appVersion must match the downloaded app bundle (${verifiedAppVersion})`,
+      );
+    }
+  }
   requireString(result.testedArtifact?.archiveSha256, "testedArtifact.archiveSha256", {
     pattern: SHA256_RE,
   });
@@ -1008,8 +1019,12 @@ export function renderTerminalReportHtml(result) {
 </html>`;
 }
 
-async function renderCommand(input, outputDir, { probe = true } = {}) {
-  const result = await loadTerminalResult(input, { probe });
+async function renderCommand(
+  input,
+  outputDir,
+  { probe = true, verifiedAppVersion } = {},
+) {
+  const result = await loadTerminalResult(input, { probe, verifiedAppVersion });
   const html = renderTerminalReportHtml(result);
   if (Buffer.byteLength(html) > MAX_HTML_BYTES) {
     fail(`rendered report exceeds ${formatBytes(MAX_HTML_BYTES)}`);
@@ -1190,8 +1205,23 @@ async function selfTest() {
 
   const manifestPath = path.join(dir, "terminal-result.v2.json");
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  let versionRejected = false;
+  try {
+    await loadTerminalResult(manifestPath, {
+      probe: false,
+      verifiedAppVersion: "9.9.9-mismatched",
+    });
+  } catch (error) {
+    versionRejected = error.message.includes("must match the downloaded app bundle");
+  }
+  if (!versionRejected) {
+    fail("self-test expected a mismatched downloaded app version to be rejected");
+  }
   const outputDir = path.join(dir, "report");
-  const { html } = await renderCommand(manifestPath, outputDir, { probe: false });
+  const { html } = await renderCommand(manifestPath, outputDir, {
+    probe: false,
+    verifiedAppVersion: manifest.testedArtifact.appVersion,
+  });
   for (const needle of [
     SCHEMA_VERSION,
     "data:image/png;base64,",
@@ -1694,7 +1724,7 @@ async function selfTest() {
 
 function usage() {
   return `Usage:
-  node tests/e2e/computer-use/terminal-report.mjs render --input <manifest.json> --output-dir <dir>
+  node tests/e2e/computer-use/terminal-report.mjs render --input <manifest.json> --output-dir <dir> --verified-app-version <version>
   node tests/e2e/computer-use/terminal-report.mjs self-test
 `;
 }
@@ -1714,7 +1744,8 @@ async function main() {
   };
   const input = value("--input");
   const outputDir = value("--output-dir");
-  const { normalized } = await renderCommand(input, outputDir);
+  const verifiedAppVersion = value("--verified-app-version");
+  const { normalized } = await renderCommand(input, outputDir, { verifiedAppVersion });
   process.stdout.write(
     `${JSON.stringify({
       ok: true,

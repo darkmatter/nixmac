@@ -233,6 +233,24 @@ jobs:
             echo "Downloaded nixmac app SHA-256 does not match the manifest" >&2
             exit 1
           }
+          app_contents_dir="$(dirname "$(dirname "${app_binaries[0]}")")"
+          app_plist="$app_contents_dir/Info.plist"
+          [[ -f "$app_plist" ]] || {
+            echo "Downloaded nixmac app is missing Contents/Info.plist" >&2
+            exit 1
+          }
+          verified_app_version="$(
+            python3 - "$app_plist" <<'PY'
+          import plistlib
+          import sys
+
+          with open(sys.argv[1], "rb") as handle:
+              version = plistlib.load(handle).get("CFBundleShortVersionString")
+          if not isinstance(version, str) or not version.strip():
+              raise SystemExit("Downloaded nixmac app has no CFBundleShortVersionString")
+          print(version)
+          PY
+          )"
 
           mapfile -t evidence_paths < <(
             jq -r \
@@ -264,7 +282,8 @@ jobs:
           mkdir -p artifacts/terminal-report-private artifacts/terminal-report-public
           node tests/e2e/computer-use/terminal-report.mjs render \
             --input "$manifest" \
-            --output-dir artifacts/terminal-report-private
+            --output-dir artifacts/terminal-report-private \
+            --verified-app-version "$verified_app_version"
           cp artifacts/terminal-report-private/index.html artifacts/terminal-report-public/index.html
 
           verdict="$(jq -r '.verdict' artifacts/terminal-report-private/terminal-result.normalized.json)"

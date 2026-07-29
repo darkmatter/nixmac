@@ -60,6 +60,11 @@ assert.match(
 );
 assert.match(
   terminalWorkflow,
+  /CFBundleShortVersionString[\s\S]*--verified-app-version "\$verified_app_version"/,
+  "terminal renderer must bind the displayed app version to the downloaded app bundle",
+);
+assert.match(
+  terminalWorkflow,
   /\[\[ "\$REPORT_TOOL_SHA" == "\$trusted_main_sha" \]\]/,
   "terminal renderer must execute only the current protected main revision",
 );
