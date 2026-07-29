@@ -19,6 +19,7 @@
     "appVersion": "0.32.0",
     "archiveSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "appSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "appBundleSha256": "8888888888888888888888888888888888888888888888888888888888888888",
     "runtimeAttestation": {
       "path": "runtime-attestation.json",
       "sha256": "abababababababababababababababababababababababababababababababab"

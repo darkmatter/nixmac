@@ -282,6 +282,10 @@ jobs:
             exit 1
           }
           app_contents_dir="$(dirname "$(dirname "${app_binaries[0]}")")"
+          app_bundle_dir="$(dirname "$app_contents_dir")"
+          official_bundle_sha="$(
+            python3 ops/scripts/e2e/canonical-app-digest.py "$app_bundle_dir"
+          )"
           app_plist="$app_contents_dir/Info.plist"
           [[ -f "$app_plist" ]] || {
             echo "Downloaded nixmac app is missing Contents/Info.plist" >&2
@@ -302,12 +306,24 @@ jobs:
           runtime_attestation_relative="runtime-attestation.json"
           runtime_attestation_remote="${EVIDENCE_DIR_INPUT}/${runtime_attestation_relative}"
           runtime_app_path="${EVIDENCE_DIR_INPUT}/runtime/nixmac.app"
+          printf -v remote_bundle_digest_command \
+            '/usr/bin/python3 - %q' \
+            "$runtime_app_path"
+          remote_bundle_sha="$(
+            ssh "${ssh_common[@]}" -- "$ssh_dest" "$remote_bundle_digest_command" \
+              < ops/scripts/e2e/canonical-app-digest.py
+          )"
+          [[ "$remote_bundle_sha" == "$official_bundle_sha" ]] || {
+            echo "Remote staged app bundle digest does not match the official artifact" >&2
+            exit 1
+          }
           printf -v runtime_attestation_command \
-            'bash -s -- %q %q %q %q %q' \
+            'bash -s -- %q %q %q %q %q %q' \
             "$runtime_attestation_remote" \
             "$runtime_app_path" \
             "$REPORT_TOOL_SHA" \
             "$expected_app_sha" \
+            "$official_bundle_sha" \
             "$verified_app_version"
           ssh "${ssh_common[@]}" -- "$ssh_dest" "$runtime_attestation_command" \
             < ops/scripts/e2e/capture-runtime-attestation.sh
@@ -329,8 +345,10 @@ jobs:
           jq \
             --arg path "$runtime_attestation_relative" \
             --arg sha "$runtime_attestation_sha" \
+            --arg bundle_sha "$official_bundle_sha" \
             --arg completed "$runtime_attestation_captured_at" \
             '.testedArtifact.runtimeAttestation = {path: $path, sha256: $sha}
+              | .testedArtifact.appBundleSha256 = $bundle_sha
               | .timestamps.completedAt = $completed' \
             "$local_evidence/terminal-result.remote.json" > "$enriched_manifest"
           mv "$enriched_manifest" "$local_evidence/terminal-result.remote.json"

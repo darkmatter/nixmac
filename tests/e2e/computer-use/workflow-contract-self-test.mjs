@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,6 +22,11 @@ const runtimeAttestationScript = readFileSync(
   path.join(repoRoot, "ops/scripts/e2e/capture-runtime-attestation.sh"),
   "utf8",
 );
+const canonicalAppDigestPath = path.join(
+  repoRoot,
+  "ops/scripts/e2e/canonical-app-digest.py",
+);
+execFileSync("python3", [canonicalAppDigestPath, "--self-test"], { stdio: "pipe" });
 
 function section(startPattern, endPattern = null) {
   const start = workflow.search(startPattern);
@@ -79,13 +85,13 @@ assert.match(
 );
 assert.match(
   runtimeAttestationScript,
-  /proc_pidpath[\s\S]*\/usr\/sbin\/lsof[\s\S]*loaded image does not match the staged executable vnode[\s\S]*executable hash does not match the official artifact[\s\S]*captureToolSha/,
-  "runtime attestation must bind the live loaded vnode and hash to the official staged app",
+  /proc_pidpath[\s\S]*\/usr\/sbin\/lsof[\s\S]*loaded image does not match the staged executable vnode[\s\S]*executable hash does not match the official artifact[\s\S]*codesign[\s\S]*captureToolSha/,
+  "runtime attestation must bind the live loaded vnode, hash, and signing seal to the official staged app",
 );
 assert.match(
   terminalWorkflow,
-  /ssh "\$\{ssh_common\[@\]\}" -- "\$ssh_dest" "\$runtime_attestation_command"[\s\S]*< ops\/scripts\/e2e\/capture-runtime-attestation\.sh[\s\S]*\.testedArtifact\.runtimeAttestation = \{path: \$path, sha256: \$sha\}/,
-  "protected publisher must stream the trusted capture script and inject its attestation",
+  /canonical-app-digest\.py "\$app_bundle_dir"[\s\S]*< ops\/scripts\/e2e\/canonical-app-digest\.py[\s\S]*remote_bundle_sha" == "\$official_bundle_sha"[\s\S]*< ops\/scripts\/e2e\/capture-runtime-attestation\.sh[\s\S]*\.testedArtifact\.appBundleSha256 = \$bundle_sha/,
+  "protected publisher must compare canonical complete-bundle digests before injecting attestation",
 );
 assert.match(
   terminalWorkflow,

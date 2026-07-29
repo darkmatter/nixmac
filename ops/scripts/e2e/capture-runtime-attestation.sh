@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ "$#" -ne 5 ]]; then
-	echo "Usage: $0 <output.json> <nixmac.app path> <report-tool SHA> <expected executable SHA-256> <expected app version>" >&2
+if [[ "$#" -ne 6 ]]; then
+	echo "Usage: $0 <output.json> <nixmac.app path> <report-tool SHA> <expected executable SHA-256> <expected bundle SHA-256> <expected app version>" >&2
 	exit 2
 fi
 
@@ -10,7 +10,8 @@ output_path="$1"
 app_path="$2"
 report_tool_sha="$3"
 expected_executable_sha="$4"
-expected_app_version="$5"
+expected_bundle_sha="$5"
+expected_app_version="$6"
 
 [[ "$output_path" == /* ]] || {
 	echo "Runtime attestation output path must be absolute" >&2
@@ -28,6 +29,10 @@ expected_app_version="$5"
 	echo "expected executable SHA-256 must be lowercase hexadecimal" >&2
 	exit 2
 }
+[[ "$expected_bundle_sha" =~ ^[a-f0-9]{64}$ ]] || {
+	echo "expected bundle SHA-256 must be lowercase hexadecimal" >&2
+	exit 2
+}
 [[ -n "$expected_app_version" ]] || {
 	echo "expected app version must be non-empty" >&2
 	exit 2
@@ -38,6 +43,7 @@ expected_app_version="$5"
 	"$app_path" \
 	"$report_tool_sha" \
 	"$expected_executable_sha" \
+	"$expected_bundle_sha" \
 	"$expected_app_version" <<'PY'
 import ctypes
 import datetime
@@ -53,6 +59,7 @@ import sys
     app_path,
     report_tool_sha,
     expected_executable_sha,
+    expected_bundle_sha,
     expected_app_version,
 ) = sys.argv[1:]
 plist_path = os.path.join(app_path, "Contents", "Info.plist")
@@ -120,6 +127,13 @@ with open(expected_realpath, "rb") as handle:
 executable_sha256 = digest.hexdigest()
 if executable_sha256 != expected_executable_sha:
     raise SystemExit("Running nixmac executable hash does not match the official artifact")
+codesign = subprocess.run(
+    ["codesign", "--verify", "--deep", "--strict", "--verbose=2", app_path],
+    capture_output=True,
+    text=True,
+)
+if codesign.returncode != 0:
+    raise SystemExit("Running nixmac app failed deep code-signature verification")
 
 payload = {
     "schemaVersion": "nixmac.e2e.runtime-attestation.v1",
@@ -132,6 +146,8 @@ payload = {
     "bundlePath": os.path.realpath(app_path),
     "processExecutable": os.path.realpath(process_executable),
     "executableSha256": executable_sha256,
+    "bundleSha256": expected_bundle_sha,
+    "codesignVerified": True,
     "loadedExecutableInode": expected_inode,
     "captureToolSha": report_tool_sha,
 }

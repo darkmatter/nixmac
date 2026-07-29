@@ -526,6 +526,9 @@ export async function loadTerminalResult(
   requireString(result.testedArtifact?.appSha256, "testedArtifact.appSha256", {
     pattern: SHA256_RE,
   });
+  requireString(result.testedArtifact?.appBundleSha256, "testedArtifact.appBundleSha256", {
+    pattern: SHA256_RE,
+  });
   requireString(
     result.testedArtifact?.runtimeAttestation?.path,
     "testedArtifact.runtimeAttestation.path",
@@ -689,6 +692,12 @@ export async function loadTerminalResult(
   requireString(runtimeAttestation.executableSha256, "runtimeAttestation.executableSha256", {
     pattern: SHA256_RE,
   });
+  requireString(runtimeAttestation.bundleSha256, "runtimeAttestation.bundleSha256", {
+    pattern: SHA256_RE,
+  });
+  if (runtimeAttestation.codesignVerified !== true) {
+    fail("runtimeAttestation.codesignVerified must be true");
+  }
   requireInteger(
     runtimeAttestation.loadedExecutableInode,
     "runtimeAttestation.loadedExecutableInode",
@@ -698,6 +707,9 @@ export async function loadTerminalResult(
   });
   if (runtimeAttestation.executableSha256 !== result.testedArtifact.appSha256) {
     fail("runtimeAttestation executable SHA-256 must match the downloaded app");
+  }
+  if (runtimeAttestation.bundleSha256 !== result.testedArtifact.appBundleSha256) {
+    fail("runtimeAttestation bundle SHA-256 must match the downloaded app bundle");
   }
   if (runtimeAttestation.appVersion !== result.testedArtifact.appVersion) {
     fail("runtimeAttestation app version must match testedArtifact.appVersion");
@@ -894,6 +906,8 @@ export async function loadTerminalResult(
         bundleIdentifier: runtimeAttestation.bundleIdentifier,
         appVersion: runtimeAttestation.appVersion,
         executableSha256: runtimeAttestation.executableSha256,
+        bundleSha256: runtimeAttestation.bundleSha256,
+        codesignVerified: runtimeAttestation.codesignVerified,
         loadedExecutableInode: runtimeAttestation.loadedExecutableInode,
         captureToolSha: runtimeAttestation.captureToolSha,
         size: runtimeAttestationFile.size,
@@ -1095,7 +1109,8 @@ export function renderTerminalReportHtml(result) {
   <section class="panel integrity">
     <table><thead><tr><th>Artifact</th><th>SHA-256</th><th>Size</th></tr></thead><tbody>
       <tr><td>Downloaded build archive</td><td><code>${artifact.archiveSha256}</code></td><td>source identity</td></tr>
-      <tr><td>Staged nixmac.app</td><td><code>${artifact.appSha256}</code></td><td>source identity</td></tr>
+      <tr><td>nixmac main executable</td><td><code>${artifact.appSha256}</code></td><td>source identity</td></tr>
+      <tr><td>Complete staged nixmac.app</td><td><code>${artifact.appBundleSha256}</code></td><td>canonical bundle identity</td></tr>
       <tr><td>Live exercised process attestation</td><td><code>${artifact.runtimeAttestation.sha256}</code></td><td>${escapeHtml(formatBytes(artifact.runtimeAttestation.size))}</td></tr>
       ${result.evidence.screenshots.map((shot) => `<tr><td>${escapeHtml(shot.label)}</td><td><code>${shot.sha256}</code></td><td>${escapeHtml(formatBytes(shot.size))}</td></tr>`).join("")}
       <tr><td>${escapeHtml(video.label)}</td><td><code>${video.sha256}</code></td><td>${escapeHtml(formatBytes(video.size))}</td></tr>
@@ -1182,6 +1197,8 @@ async function selfTest() {
       bundlePath: "/private/tmp/nixmac.app",
       processExecutable: "/private/tmp/nixmac.app/Contents/MacOS/nixmac",
       executableSha256: "c".repeat(64),
+      bundleSha256: "8".repeat(64),
+      codesignVerified: true,
       loadedExecutableInode: 12345,
       captureToolSha: "d".repeat(40),
     })}\n`,
@@ -1218,6 +1235,7 @@ async function selfTest() {
       appVersion: "0.0.0-test",
       archiveSha256: "b".repeat(64),
       appSha256: "c".repeat(64),
+      appBundleSha256: "8".repeat(64),
       runtimeAttestation: {
         path: "runtime-attestation.json",
         sha256: sha256(runtimeAttestation),
@@ -1469,6 +1487,13 @@ async function selfTest() {
       candidate.testedArtifact.appSha256 = "a".repeat(64);
     },
     "runtimeAttestation executable SHA-256 must match the downloaded app",
+  );
+  await expectRejected(
+    "runtime bundle hash mismatch",
+    (candidate) => {
+      candidate.testedArtifact.appBundleSha256 = "7".repeat(64);
+    },
+    "runtimeAttestation bundle SHA-256 must match the downloaded app bundle",
   );
   const truncatedPng = png.subarray(0, 24);
   await writeFile(path.join(dir, "proof-truncated.png"), truncatedPng);
