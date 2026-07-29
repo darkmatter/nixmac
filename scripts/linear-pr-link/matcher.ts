@@ -205,8 +205,11 @@ function failResult(
 export function stripNonPolicyText(text: string): string {
   const withoutBlocks = text
     .replace(/<!--[\s\S]*?(?:-->|$)/g, "")
+    .replace(/<code\b[^>]*>[\s\S]*?(?:<\/code\s*>|$)/gi, "\n")
+    .replace(/<pre\b[^>]*>[\s\S]*?(?:<\/pre\s*>|$)/gi, "\n")
     .replace(/```[\s\S]*?(?:```|$)/g, "")
-    .replace(/~~~[\s\S]*?(?:~~~|$)/g, "");
+    .replace(/~~~[\s\S]*?(?:~~~|$)/g, "")
+    .replace(/^(?: {4,}| {0,3}\t).*$/gm, "");
   return stripInlineCodeSpans(withoutBlocks);
 }
 

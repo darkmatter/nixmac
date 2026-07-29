@@ -49,6 +49,24 @@ describe("stripNonPolicyText", () => {
       "Document ",
     );
   });
+
+  test("removes indented Markdown code blocks", () => {
+    expect(stripNonPolicyText("Visible\n    Related to ENG-123\nDone")).toBe(
+      "Visible\n\nDone",
+    );
+    expect(stripNonPolicyText("Visible\n\tRelated to ENG-123\nDone")).toBe(
+      "Visible\n\nDone",
+    );
+  });
+
+  test("removes HTML code elements", () => {
+    expect(
+      stripNonPolicyText(
+        'Document <code class="example">Related to ENG-123</code> syntax',
+      ),
+    ).toBe("Document \n syntax");
+    expect(stripNonPolicyText("<pre>Related to ENG-123</pre>")).toBe("\n");
+  });
 });
 
 describe("parseExemption", () => {
@@ -255,6 +273,17 @@ describe("evaluateLinearLink — failure paths", () => {
       "```\nRelated to ENG-99",
       "<!-- Related to ENG-99",
       "`Related to ENG-99",
+    ]) {
+      expect(evaluateLinearLink({ ...base, body }).policySatisfied).toBe(false);
+    }
+  });
+
+  test("indented and HTML code cannot link", () => {
+    for (const body of [
+      "    Related to ENG-99",
+      "\tRelated to ENG-99",
+      "<code>Related to ENG-99</code>",
+      "<pre>Related to ENG-99</pre>",
     ]) {
       expect(evaluateLinearLink({ ...base, body }).policySatisfied).toBe(false);
     }
