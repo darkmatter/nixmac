@@ -113,14 +113,24 @@ function validateProviderTrace(buffer) {
   if (eventIndexes.some((index, position) => position > 0 && index <= eventIndexes[position - 1])) {
     fail("provider.trace events must be ordered request, tool_request, tool_response, response");
   }
-  const requestedTools = new Set(
-    records.filter((record) => record.event === "tool_request").map((record) => record.tool),
-  );
-  if (
-    !records.some(
-      (record) => record.event === "tool_response" && requestedTools.has(record.tool),
-    )
-  ) {
+  const pendingToolRequests = new Map();
+  let matchedToolResponse = false;
+  for (const [index, record] of records.entries()) {
+    if (record.event === "tool_request") {
+      pendingToolRequests.set(record.tool, (pendingToolRequests.get(record.tool) ?? 0) + 1);
+    }
+    if (record.event === "tool_response") {
+      const pending = pendingToolRequests.get(record.tool) ?? 0;
+      if (pending === 0) {
+        fail(
+          `provider.trace line ${index + 1} tool_response must match a preceding tool_request`,
+        );
+      }
+      pendingToolRequests.set(record.tool, pending - 1);
+      matchedToolResponse = true;
+    }
+  }
+  if (!matchedToolResponse) {
     fail("provider.trace must include a tool_response matching a tool_request");
   }
 }
@@ -1415,6 +1425,7 @@ async function selfTest() {
       { event: "request" },
       { event: "tool_request", tool: "ensure_secret" },
       { event: "tool_response", tool: "edit_file" },
+      { event: "tool_request", tool: "edit_file" },
       { event: "response" },
     ]
       .map((record) => JSON.stringify(record))
@@ -1429,7 +1440,7 @@ async function selfTest() {
         sha256: sha256(mismatchedProviderTrace),
       };
     },
-    "provider.trace must include a tool_response matching a tool_request",
+    "provider.trace line 3 tool_response must match a preceding tool_request",
   );
   await expectRejected(
     "semantic audit hash mismatch",
