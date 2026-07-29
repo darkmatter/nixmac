@@ -206,11 +206,46 @@ export function stripNonPolicyText(text: string): string {
   const withoutBlocks = text
     .replace(/<!--[\s\S]*?(?:-->|$)/g, "")
     .replace(/<code\b[^>]*>[\s\S]*?(?:<\/code\s*>|$)/gi, "\n")
-    .replace(/<pre\b[^>]*>[\s\S]*?(?:<\/pre\s*>|$)/gi, "\n")
-    .replace(/```[\s\S]*?(?:```|$)/g, "")
-    .replace(/~~~[\s\S]*?(?:~~~|$)/g, "")
-    .replace(/^(?: {4,}| {0,3}\t).*$/gm, "");
-  return stripInlineCodeSpans(withoutBlocks);
+    .replace(/<pre\b[^>]*>[\s\S]*?(?:<\/pre\s*>|$)/gi, "\n");
+  return stripInlineCodeSpans(stripMarkdownCodeBlocks(withoutBlocks));
+}
+
+function stripMarkdownCodeBlocks(text: string): string {
+  const lines = text.split(/\r?\n/);
+  let fence: { marker: string; length: number } | null = null;
+
+  return lines
+    .map((line) => {
+      if (fence) {
+        const candidate = line.match(/^ {0,3}([`~]{3,})([ \t]*)$/);
+        const markerRun = candidate?.[1] ?? "";
+        if (
+          markerRun[0] === fence.marker &&
+          [...markerRun].every((marker) => marker === fence.marker) &&
+          markerRun.length >= fence.length
+        ) {
+          fence = null;
+        }
+        return "";
+      }
+
+      if (/^(?: {4,}| {0,3}\t)/.test(line)) {
+        return "";
+      }
+
+      const opener = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+      if (opener?.[1]) {
+        const marker = opener[1][0];
+        const info = opener[2] ?? "";
+        if (marker === "~" || !info.includes("`")) {
+          fence = { marker, length: opener[1].length };
+          return "";
+        }
+      }
+
+      return line;
+    })
+    .join("\n");
 }
 
 function stripInlineCodeSpans(text: string): string {
@@ -228,12 +263,24 @@ function stripInlineCodeSpans(text: string): string {
     while (text[delimiterEnd] === "`") {
       delimiterEnd += 1;
     }
-    const delimiter = text.slice(opener, delimiterEnd);
-    const closer = text.indexOf(delimiter, delimiterEnd);
-    if (closer === -1) {
+    const delimiterLength = delimiterEnd - opener;
+    let closer = delimiterEnd;
+    let matchedCloser = -1;
+    while ((closer = text.indexOf("`", closer)) !== -1) {
+      let closerEnd = closer;
+      while (text[closerEnd] === "`") {
+        closerEnd += 1;
+      }
+      if (closerEnd - closer === delimiterLength) {
+        matchedCloser = closerEnd;
+        break;
+      }
+      closer = closerEnd;
+    }
+    if (matchedCloser === -1) {
       return visible;
     }
-    cursor = closer + delimiter.length;
+    cursor = matchedCloser;
   }
 
   return visible;

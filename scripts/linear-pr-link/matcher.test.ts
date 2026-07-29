@@ -22,8 +22,20 @@ describe("stripNonPolicyText", () => {
 
   test("removes fenced code blocks", () => {
     expect(stripNonPolicyText("a\n```\nRelated to ENG-1\n```\nb")).toBe(
-      "a\n\nb",
+      "a\n\n\n\nb",
     );
+  });
+
+  test("requires a closing fence at least as long as its opener", () => {
+    expect(
+      stripNonPolicyText("Visible\n````\n```\nRelated to ENG-123\n````\nDone"),
+    ).toBe("Visible\n\n\n\n\nDone");
+  });
+
+  test("does not close a fence with mixed marker characters", () => {
+    expect(
+      stripNonPolicyText("Visible\n```\n```~\nRelated to ENG-123\n```\nDone"),
+    ).toBe("Visible\n\n\n\n\nDone");
   });
 
   test("removes inline code spans", () => {
@@ -32,9 +44,18 @@ describe("stripNonPolicyText", () => {
     );
   });
 
+  test("requires an inline code closer of the same length", () => {
+    expect(
+      stripNonPolicyText("Document ````` Related to ENG-123 `` syntax"),
+    ).toBe("Document ");
+    expect(
+      stripNonPolicyText("Document `` ``` Related to ENG-123 `` syntax"),
+    ).toBe("Document  syntax");
+  });
+
   test("removes unterminated fenced code through end of body", () => {
     expect(stripNonPolicyText("Visible\n```\nRelated to ENG-123")).toBe(
-      "Visible\n",
+      "Visible\n\n",
     );
   });
 
@@ -287,6 +308,14 @@ describe("evaluateLinearLink — failure paths", () => {
     ]) {
       expect(evaluateLinearLink({ ...base, body }).policySatisfied).toBe(false);
     }
+  });
+
+  test("a shorter nested fence cannot expose a link", () => {
+    const r = evaluateLinearLink({
+      ...base,
+      body: "````\n```\nRelated to ENG-99\n````",
+    });
+    expect(r.policySatisfied).toBe(false);
   });
 
   test("#trivial is not an exemption", () => {
