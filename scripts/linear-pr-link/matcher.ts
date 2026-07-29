@@ -142,10 +142,16 @@ export function evaluateLinearLink(input: LinearLinkInput): LinearLinkResult {
     // fall through; still may have a real link
   }
 
-  const skippedIds = uniqueIds(findAll(UNLINK_RE, bodyVisible, normalizeUnlink));
-  const titleIds = uniqueIds(findAll(CANONICAL_ID_RE, title, normalizeCanonical));
+  const skippedIds = uniqueIds(
+    findAll(UNLINK_RE, bodyVisible, normalizeUnlink),
+  );
+  const titleIds = uniqueIds(
+    findAll(CANONICAL_ID_RE, title, normalizeCanonical),
+  );
   const branchIds = uniqueIds(findBranchIds(branch));
-  const bodyMagicIds = uniqueIds(findAll(MAGIC_LINK_RE, bodyVisible, normalizeMagic));
+  const bodyMagicIds = uniqueIds(
+    findAll(MAGIC_LINK_RE, bodyVisible, normalizeMagic),
+  );
 
   const linked = uniqueIds([...titleIds, ...branchIds, ...bodyMagicIds]).filter(
     (id) => !skippedIds.includes(id),
@@ -195,12 +201,39 @@ function failResult(
   };
 }
 
-/** Strip HTML comments and fenced code blocks so templates/snippets cannot satisfy the gate. */
+/** Strip hidden/code Markdown so templates and examples cannot satisfy the gate. */
 export function stripNonPolicyText(text: string): string {
-  return text
-    .replace(/<!--[\s\S]*?-->/g, "")
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/~~~[\s\S]*?~~~/g, "");
+  const withoutBlocks = text
+    .replace(/<!--[\s\S]*?(?:-->|$)/g, "")
+    .replace(/```[\s\S]*?(?:```|$)/g, "")
+    .replace(/~~~[\s\S]*?(?:~~~|$)/g, "");
+  return stripInlineCodeSpans(withoutBlocks);
+}
+
+function stripInlineCodeSpans(text: string): string {
+  let visible = "";
+  let cursor = 0;
+
+  while (cursor < text.length) {
+    const opener = text.indexOf("`", cursor);
+    if (opener === -1) {
+      return visible + text.slice(cursor);
+    }
+    visible += text.slice(cursor, opener);
+
+    let delimiterEnd = opener;
+    while (text[delimiterEnd] === "`") {
+      delimiterEnd += 1;
+    }
+    const delimiter = text.slice(opener, delimiterEnd);
+    const closer = text.indexOf(delimiter, delimiterEnd);
+    if (closer === -1) {
+      return visible;
+    }
+    cursor = closer + delimiter.length;
+  }
+
+  return visible;
 }
 
 export function parseExemption(bodyVisible: string): string | null {

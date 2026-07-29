@@ -21,7 +21,33 @@ describe("stripNonPolicyText", () => {
   });
 
   test("removes fenced code blocks", () => {
-    expect(stripNonPolicyText("a\n```\nRelated to ENG-1\n```\nb")).toBe("a\n\nb");
+    expect(stripNonPolicyText("a\n```\nRelated to ENG-1\n```\nb")).toBe(
+      "a\n\nb",
+    );
+  });
+
+  test("removes inline code spans", () => {
+    expect(stripNonPolicyText("Document `Related to ENG-123` syntax")).toBe(
+      "Document  syntax",
+    );
+  });
+
+  test("removes unterminated fenced code through end of body", () => {
+    expect(stripNonPolicyText("Visible\n```\nRelated to ENG-123")).toBe(
+      "Visible\n",
+    );
+  });
+
+  test("removes unterminated HTML comments through end of body", () => {
+    expect(stripNonPolicyText("Visible\n<!-- Related to ENG-123")).toBe(
+      "Visible\n",
+    );
+  });
+
+  test("removes unterminated inline code through end of body", () => {
+    expect(stripNonPolicyText("Document `Related to ENG-123")).toBe(
+      "Document ",
+    );
   });
 });
 
@@ -214,6 +240,24 @@ describe("evaluateLinearLink — failure paths", () => {
       body: "```\nRelated to ENG-99\n```\n",
     });
     expect(r.policySatisfied).toBe(false);
+  });
+
+  test("inline code cannot link", () => {
+    const r = evaluateLinearLink({
+      ...base,
+      body: "Document `Related to ENG-99` syntax",
+    });
+    expect(r.policySatisfied).toBe(false);
+  });
+
+  test("unterminated hidden blocks cannot link", () => {
+    for (const body of [
+      "```\nRelated to ENG-99",
+      "<!-- Related to ENG-99",
+      "`Related to ENG-99",
+    ]) {
+      expect(evaluateLinearLink({ ...base, body }).policySatisfied).toBe(false);
+    }
   });
 
   test("#trivial is not an exemption", () => {
