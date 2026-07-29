@@ -180,8 +180,10 @@ The evidence directory must contain `terminal-result.v2.json`, 1-3 PR-focused
 scenarios, curated PNG screenshots, one canonical H.264/yuv420p MP4, a provider
 trace, a protected-tool runtime attestation for the still-running exercised
 app, and a semantic video-audit JSON artifact. The attestation resolves the
-live process executable, hashes it, and must match the independently downloaded
-official artifact before publication. Every scenario declares
+live process executable and loaded vnode from a run-unique bundle. The
+publisher streams the trusted capture script from protected `main`; its
+hash/version must match the independently downloaded official artifact before
+publication. Every scenario declares
 `intent` (`positive-flow` or `expected-refusal`),
 `coversChangedBehavior`, preconditions, a terminal state, assertions, and its
 status. A report is rejected when no scenario covers changed behavior.

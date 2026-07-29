@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ "$#" -ne 3 ]]; then
-	echo "Usage: $0 <output.json> <nixmac.app path> <report-tool SHA>" >&2
+if [[ "$#" -ne 5 ]]; then
+	echo "Usage: $0 <output.json> <nixmac.app path> <report-tool SHA> <expected executable SHA-256> <expected app version>" >&2
 	exit 2
 fi
 
 output_path="$1"
 app_path="$2"
 report_tool_sha="$3"
+expected_executable_sha="$4"
+expected_app_version="$5"
 
 [[ "$output_path" == /* ]] || {
 	echo "Runtime attestation output path must be absolute" >&2
@@ -22,8 +24,21 @@ report_tool_sha="$3"
 	echo "report-tool SHA must be a full lowercase git SHA" >&2
 	exit 2
 }
+[[ "$expected_executable_sha" =~ ^[a-f0-9]{64}$ ]] || {
+	echo "expected executable SHA-256 must be lowercase hexadecimal" >&2
+	exit 2
+}
+[[ -n "$expected_app_version" ]] || {
+	echo "expected app version must be non-empty" >&2
+	exit 2
+}
 
-/usr/bin/python3 - "$output_path" "$app_path" "$report_tool_sha" <<'PY'
+/usr/bin/python3 - \
+	"$output_path" \
+	"$app_path" \
+	"$report_tool_sha" \
+	"$expected_executable_sha" \
+	"$expected_app_version" <<'PY'
 import ctypes
 import datetime
 import hashlib
@@ -33,7 +48,13 @@ import plistlib
 import subprocess
 import sys
 
-output_path, app_path, report_tool_sha = sys.argv[1:]
+(
+    output_path,
+    app_path,
+    report_tool_sha,
+    expected_executable_sha,
+    expected_app_version,
+) = sys.argv[1:]
 plist_path = os.path.join(app_path, "Contents", "Info.plist")
 with open(plist_path, "rb") as handle:
     info = plistlib.load(handle)
@@ -45,6 +66,8 @@ if bundle_id != "com.darkmatter.nixmac":
     raise SystemExit("Staged app has the wrong bundle identifier")
 if not isinstance(app_version, str) or not app_version.strip():
     raise SystemExit("Staged app has no CFBundleShortVersionString")
+if app_version != expected_app_version:
+    raise SystemExit("Running nixmac app version does not match the official artifact")
 if not isinstance(executable_name, str) or not executable_name.strip():
     raise SystemExit("Staged app has no CFBundleExecutable")
 
@@ -69,10 +92,34 @@ expected_executable = os.path.join(app_path, "Contents", "MacOS", executable_nam
 if os.path.realpath(process_executable) != os.path.realpath(expected_executable):
     raise SystemExit("Running nixmac process does not use the staged app executable")
 
+loaded_image = subprocess.run(
+    ["/usr/sbin/lsof", "-a", "-p", str(pid), "-d", "txt", "-F", "in"],
+    check=True,
+    capture_output=True,
+    text=True,
+)
+loaded_inodes = {
+    int(line[1:])
+    for line in loaded_image.stdout.splitlines()
+    if line.startswith("i") and line[1:].isdigit()
+}
+loaded_paths = {
+    line[1:].removesuffix(" (deleted)")
+    for line in loaded_image.stdout.splitlines()
+    if line.startswith("n")
+}
+expected_realpath = os.path.realpath(expected_executable)
+expected_inode = os.stat(expected_realpath).st_ino
+if expected_realpath not in loaded_paths or expected_inode not in loaded_inodes:
+    raise SystemExit("Running nixmac loaded image does not match the staged executable vnode")
+
 digest = hashlib.sha256()
-with open(process_executable, "rb") as handle:
+with open(expected_realpath, "rb") as handle:
     for chunk in iter(lambda: handle.read(1024 * 1024), b""):
         digest.update(chunk)
+executable_sha256 = digest.hexdigest()
+if executable_sha256 != expected_executable_sha:
+    raise SystemExit("Running nixmac executable hash does not match the official artifact")
 
 payload = {
     "schemaVersion": "nixmac.e2e.runtime-attestation.v1",
@@ -84,7 +131,8 @@ payload = {
     "appVersion": app_version,
     "bundlePath": os.path.realpath(app_path),
     "processExecutable": os.path.realpath(process_executable),
-    "executableSha256": digest.hexdigest(),
+    "executableSha256": executable_sha256,
+    "loadedExecutableInode": expected_inode,
     "captureToolSha": report_tool_sha,
 }
 

@@ -689,6 +689,10 @@ export async function loadTerminalResult(
   requireString(runtimeAttestation.executableSha256, "runtimeAttestation.executableSha256", {
     pattern: SHA256_RE,
   });
+  requireInteger(
+    runtimeAttestation.loadedExecutableInode,
+    "runtimeAttestation.loadedExecutableInode",
+  );
   requireString(runtimeAttestation.captureToolSha, "runtimeAttestation.captureToolSha", {
     pattern: GIT_SHA_RE,
   });
@@ -890,6 +894,7 @@ export async function loadTerminalResult(
         bundleIdentifier: runtimeAttestation.bundleIdentifier,
         appVersion: runtimeAttestation.appVersion,
         executableSha256: runtimeAttestation.executableSha256,
+        loadedExecutableInode: runtimeAttestation.loadedExecutableInode,
         captureToolSha: runtimeAttestation.captureToolSha,
         size: runtimeAttestationFile.size,
       },
@@ -1177,6 +1182,7 @@ async function selfTest() {
       bundlePath: "/private/tmp/nixmac.app",
       processExecutable: "/private/tmp/nixmac.app/Contents/MacOS/nixmac",
       executableSha256: "c".repeat(64),
+      loadedExecutableInode: 12345,
       captureToolSha: "d".repeat(40),
     })}\n`,
   );

@@ -79,8 +79,13 @@ assert.match(
 );
 assert.match(
   runtimeAttestationScript,
-  /proc_pidpath[\s\S]*Running nixmac process does not use the staged app executable[\s\S]*executableSha256[\s\S]*captureToolSha/,
-  "runtime attestation must resolve and hash the live staged process with the protected capture-tool pin",
+  /proc_pidpath[\s\S]*\/usr\/sbin\/lsof[\s\S]*loaded image does not match the staged executable vnode[\s\S]*executable hash does not match the official artifact[\s\S]*captureToolSha/,
+  "runtime attestation must bind the live loaded vnode and hash to the official staged app",
+);
+assert.match(
+  terminalWorkflow,
+  /ssh "\$\{ssh_common\[@\]\}" -- "\$ssh_dest" "\$runtime_attestation_command"[\s\S]*< ops\/scripts\/e2e\/capture-runtime-attestation\.sh[\s\S]*\.testedArtifact\.runtimeAttestation = \{path: \$path, sha256: \$sha\}/,
+  "protected publisher must stream the trusted capture script and inject its attestation",
 );
 assert.match(
   terminalWorkflow,

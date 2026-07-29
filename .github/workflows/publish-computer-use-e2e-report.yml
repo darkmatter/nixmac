@@ -282,6 +282,36 @@ jobs:
           print(version)
           PY
           )"
+          runtime_attestation_relative="runtime-attestation.json"
+          runtime_attestation_remote="${EVIDENCE_DIR_INPUT}/${runtime_attestation_relative}"
+          runtime_app_path="${EVIDENCE_DIR_INPUT}/runtime/nixmac.app"
+          printf -v runtime_attestation_command \
+            'bash -s -- %q %q %q %q %q' \
+            "$runtime_attestation_remote" \
+            "$runtime_app_path" \
+            "$REPORT_TOOL_SHA" \
+            "$expected_app_sha" \
+            "$verified_app_version"
+          ssh "${ssh_common[@]}" -- "$ssh_dest" "$runtime_attestation_command" \
+            < ops/scripts/e2e/capture-runtime-attestation.sh
+          scp "${ssh_common[@]}" -- \
+            "$ssh_dest:$runtime_attestation_remote" \
+            "$local_evidence/$runtime_attestation_relative"
+          runtime_attestation_sha="$(
+            sha256sum "$local_evidence/$runtime_attestation_relative" | cut -d' ' -f1
+          )"
+          runtime_attestation_captured_at="$(
+            jq -r '.capturedAt' "$local_evidence/$runtime_attestation_relative"
+          )"
+          enriched_manifest="$local_evidence/terminal-result.enriched.json"
+          jq \
+            --arg path "$runtime_attestation_relative" \
+            --arg sha "$runtime_attestation_sha" \
+            --arg completed "$runtime_attestation_captured_at" \
+            '.testedArtifact.runtimeAttestation = {path: $path, sha256: $sha}
+              | .timestamps.completedAt = $completed' \
+            "$local_evidence/terminal-result.remote.json" > "$enriched_manifest"
+          mv "$enriched_manifest" "$local_evidence/terminal-result.remote.json"
 
           mapfile -t evidence_paths < <(
             jq -r \
