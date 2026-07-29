@@ -707,6 +707,10 @@ export async function loadTerminalResult(
     fail("runtimeAttestation.codesignVerified must be true");
   }
   requireInteger(
+    runtimeAttestation.loadedExecutableDevice,
+    "runtimeAttestation.loadedExecutableDevice",
+  );
+  requireInteger(
     runtimeAttestation.loadedExecutableInode,
     "runtimeAttestation.loadedExecutableInode",
   );
@@ -1227,6 +1231,7 @@ async function selfTest() {
       executableSha256: "c".repeat(64),
       bundleSha256: "8".repeat(64),
       codesignVerified: true,
+      loadedExecutableDevice: 16777220,
       loadedExecutableInode: 12345,
       captureToolSha: "d".repeat(40),
     })}\n`,

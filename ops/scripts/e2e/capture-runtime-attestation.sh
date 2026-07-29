@@ -109,24 +109,45 @@ if os.path.realpath(process_executable) != os.path.realpath(expected_executable)
     raise SystemExit("Running nixmac process does not use the staged app executable")
 
 loaded_image = subprocess.run(
-    ["/usr/sbin/lsof", "-a", "-p", str(pid), "-d", "txt", "-F", "in"],
+    ["/usr/sbin/lsof", "-a", "-p", str(pid), "-d", "txt", "-F", "fDin"],
     check=True,
     capture_output=True,
     text=True,
 )
-loaded_inodes = {
-    int(line[1:])
-    for line in loaded_image.stdout.splitlines()
-    if line.startswith("i") and line[1:].isdigit()
-}
-loaded_paths = {
-    line[1:].removesuffix(" (deleted)")
-    for line in loaded_image.stdout.splitlines()
-    if line.startswith("n")
-}
+loaded_records = []
+loaded_record = None
+for line in loaded_image.stdout.splitlines():
+    if line.startswith("f"):
+        if loaded_record is not None:
+            loaded_records.append(loaded_record)
+        loaded_record = {"descriptor": line[1:]}
+        continue
+    if loaded_record is None:
+        continue
+    if line.startswith("D"):
+        raw_device = line[1:]
+        try:
+            loaded_record["device"] = int(raw_device, 0)
+        except ValueError:
+            loaded_record["device"] = int(raw_device, 16)
+    elif line.startswith("i") and line[1:].isdigit():
+        loaded_record["inode"] = int(line[1:])
+    elif line.startswith("n"):
+        loaded_record["path"] = line[1:].removesuffix(" (deleted)")
+if loaded_record is not None:
+    loaded_records.append(loaded_record)
+
 expected_realpath = os.path.realpath(expected_executable)
-expected_inode = os.stat(expected_realpath).st_ino
-if expected_realpath not in loaded_paths or expected_inode not in loaded_inodes:
+expected_metadata = os.stat(expected_realpath)
+expected_device = expected_metadata.st_dev
+expected_inode = expected_metadata.st_ino
+loaded_record_matches = any(
+    os.path.normpath(record.get("path", "")) == expected_realpath
+    and record.get("device") == expected_device
+    and record.get("inode") == expected_inode
+    for record in loaded_records
+)
+if not loaded_record_matches:
     raise SystemExit("Running nixmac loaded image does not match the staged executable vnode")
 
 digest = hashlib.sha256()
@@ -163,6 +184,7 @@ payload = {
     "executableSha256": executable_sha256,
     "bundleSha256": bundle_sha256,
     "codesignVerified": True,
+    "loadedExecutableDevice": expected_device,
     "loadedExecutableInode": expected_inode,
     "captureToolSha": report_tool_sha,
 }

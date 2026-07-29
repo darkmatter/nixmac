@@ -11,7 +11,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-SCHEMA = b"nixmac.app.canonical.v1"
+SCHEMA = b"nixmac.app.canonical.v2"
 
 
 def add_field(digest, value: bytes) -> None:
@@ -48,7 +48,6 @@ def app_digest(root: Path) -> str:
                         file_digest.update(chunk)
                 add_field(digest, b"file")
                 add_field(digest, relative_bytes)
-                add_field(digest, str(mode & 0o111).encode("ascii"))
                 add_field(digest, str(metadata.st_size).encode("ascii"))
                 add_field(digest, file_digest.digest())
             else:
@@ -76,8 +75,8 @@ def self_test() -> None:
             raise AssertionError("canonical app digest must include file contents")
         executable.write_bytes(b"one")
         executable.chmod(0o644)
-        if app_digest(root) == original:
-            raise AssertionError("canonical app digest must include executable mode")
+        if app_digest(root) != original:
+            raise AssertionError("canonical app digest must ignore transport-lost file modes")
         executable.chmod(0o755)
         link.unlink()
         link.symlink_to("../MacOS/other")

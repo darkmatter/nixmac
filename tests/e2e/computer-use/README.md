@@ -182,9 +182,11 @@ trace, a protected-tool runtime attestation for the still-running exercised
 app, and a semantic video-audit JSON artifact. The attestation resolves the
 live process executable and loaded vnode from a run-unique bundle. The
 publisher streams the trusted capture script from protected `main`; its
-main-executable hash, canonical complete-bundle digest, app version, and deep
-code-signing seal must match the independently downloaded official artifact
-before publication. Every scenario declares
+main-executable hash, transport-stable canonical complete-bundle digest, app
+version, and deep code-signing seal must match the independently downloaded
+official artifact before publication. The bundle digest covers paths, entry
+types, file contents, and symlink targets while excluding permission bits that
+GitHub artifact transport does not preserve. Every scenario declares
 `intent` (`positive-flow` or `expected-refusal`),
 `coversChangedBehavior`, preconditions, a terminal state, assertions, and its
 status. A report is rejected when no scenario covers changed behavior.

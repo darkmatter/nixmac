@@ -26,6 +26,7 @@ const canonicalAppDigestPath = path.join(
   repoRoot,
   "ops/scripts/e2e/canonical-app-digest.py",
 );
+const canonicalAppDigestScript = readFileSync(canonicalAppDigestPath, "utf8");
 execFileSync("python3", [canonicalAppDigestPath, "--self-test"], { stdio: "pipe" });
 execFileSync(
   "python3",
@@ -90,8 +91,13 @@ assert.match(
 );
 assert.match(
   runtimeAttestationScript,
-  /proc_pidpath[\s\S]*\/usr\/sbin\/lsof[\s\S]*loaded image does not match the staged executable vnode[\s\S]*executable hash does not match the official artifact[\s\S]*canonical_digest\.app_digest[\s\S]*bundle digest does not match the official artifact[\s\S]*codesign[\s\S]*captureToolSha/,
+  /proc_pidpath[\s\S]*\/usr\/sbin\/lsof[\s\S]*"-F", "fDin"[\s\S]*record\.get\("path"[\s\S]*record\.get\("device"\)[\s\S]*record\.get\("inode"\)[\s\S]*loaded image does not match the staged executable vnode[\s\S]*executable hash does not match the official artifact[\s\S]*canonical_digest\.app_digest[\s\S]*bundle digest does not match the official artifact[\s\S]*codesign[\s\S]*captureToolSha/,
   "runtime attestation must atomically bind the live vnode, executable, complete bundle, and signing seal",
+);
+assert.match(
+  canonicalAppDigestScript,
+  /nixmac\.app\.canonical\.v2[\s\S]*executable\.chmod\(0o644\)[\s\S]*app_digest\(root\) != original[\s\S]*ignore transport-lost file modes/,
+  "canonical app digest must ignore permission bits lost by Actions artifact transport",
 );
 assert.match(
   terminalWorkflow,
