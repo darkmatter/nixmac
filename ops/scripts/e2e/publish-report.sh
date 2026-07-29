@@ -98,7 +98,7 @@ for attempt in {1..8}; do
 		published=true
 		break
 	fi
-	echo "GitHub Pages changed during publication; retrying from the latest branch (attempt $attempt of 8)." >&2
+	echo "Report publication attempt failed; retrying from the latest gh-pages branch (attempt $attempt of 8)." >&2
 	sleep "$attempt"
 done
 if [[ "$published" != "true" ]]; then
