@@ -150,6 +150,16 @@ assert.match(
 );
 assert.match(
   trustedVideoAuditScript,
+  /decision\.sensitiveContentVisible !== false[\s\S]*passwords, API keys, tokens/,
+  "trusted video audit must fail closed on credential-like content",
+);
+assert.match(
+  terminalWorkflow,
+  /publisher-reviewed-video\.mp4[\s\S]*trusted-video-audit\.mjs[\s\S]*public_video_sha[\s\S]*\.evidence\.video\.path = \$video_path[\s\S]*sensitiveContentVisible/,
+  "terminal publisher must embed only the exact sensitivity-reviewed public video",
+);
+assert.match(
+  trustedVideoAuditScript,
   /github-actions-protected-vision-review/,
   "trusted video audit must identify the protected vision reviewer",
 );

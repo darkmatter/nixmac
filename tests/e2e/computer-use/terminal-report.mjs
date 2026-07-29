@@ -40,7 +40,7 @@ const SAFE_ID_RE = /^[a-z0-9][a-z0-9._-]{0,79}$/;
 const REQUEST_ID_RE = /^[a-z0-9][a-z0-9._:-]{0,79}$/;
 const TOOL_CALL_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const RUNTIME_ATTESTATION_SCHEMA = "nixmac.e2e.runtime-attestation.v1";
-const SEMANTIC_AUDIT_SCHEMA = "nixmac.e2e.semantic-audit.v4";
+const SEMANTIC_AUDIT_SCHEMA = "nixmac.e2e.semantic-audit.v5";
 const SEMANTIC_AUDIT_REVIEWER = "GitHub Actions protected vision review";
 const SEMANTIC_AUDIT_REVIEWER_KIND = "github-actions-protected-vision-review";
 
@@ -738,6 +738,18 @@ export async function loadTerminalResult(
       `presentation.semanticAudit.reviewSampleIntervalSeconds must be ${REVIEW_SAMPLE_INTERVAL_SECONDS}`,
     );
   }
+  requireString(
+    result.presentation.semanticAudit.sourceVideoSha256,
+    "presentation.semanticAudit.sourceVideoSha256",
+    { pattern: SHA256_RE },
+  );
+  requireBoolean(
+    result.presentation.semanticAudit.sensitiveContentVisible,
+    "presentation.semanticAudit.sensitiveContentVisible",
+  );
+  if (result.presentation.semanticAudit.sensitiveContentVisible) {
+    fail("presentation.semanticAudit must reject sensitive content before publication");
+  }
   if (result.presentation.status === "pass") {
     if (result.presentation.firstMeaningfulActionSeconds > MAX_FIRST_ACTION_SECONDS) {
       fail(`presentation.firstMeaningfulActionSeconds must be <= ${MAX_FIRST_ACTION_SECONDS}`);
@@ -1011,6 +1023,8 @@ export async function loadTerminalResult(
     "reviewedContactSheetCount",
     "reviewedScreenshotCount",
     "reviewSampleIntervalSeconds",
+    "sourceVideoSha256",
+    "sensitiveContentVisible",
   ]) {
     if (semanticAudit[field] !== result.presentation.semanticAudit[field]) {
       fail(`presentation.semanticAudit ${field} must match its artifact`);
@@ -1363,7 +1377,7 @@ async function selfTest() {
     reviewer: SEMANTIC_AUDIT_REVIEWER,
     reviewerKind: SEMANTIC_AUDIT_REVIEWER_KIND,
     reviewScope:
-      "Independent protected vision inspection of dense 2 Hz full-video contact sheets and curated screenshots",
+      "Independent protected sensitivity and semantic inspection of the exact 2 Hz public video and curated screenshots",
     reviewToolSha: "d".repeat(40),
     reviewRunId: 123,
     reviewRunAttempt: 1,
@@ -1372,6 +1386,8 @@ async function selfTest() {
     reviewedContactSheetCount: 1,
     reviewedScreenshotCount: 2,
     reviewSampleIntervalSeconds: 0.5,
+    sourceVideoSha256: sha256(mp4),
+    sensitiveContentVisible: false,
   };
   const semanticAudit = Buffer.from(
     `${JSON.stringify({
@@ -2062,6 +2078,13 @@ async function selfTest() {
       candidate.presentation.semanticAudit.sha256 = "f".repeat(64);
     },
     "presentation.semanticAudit SHA-256 does not match",
+  );
+  await expectRejected(
+    "sensitive content audit",
+    (candidate) => {
+      candidate.presentation.semanticAudit.sensitiveContentVisible = true;
+    },
+    "presentation.semanticAudit must reject sensitive content before publication",
   );
   const contradictoryAudit = Buffer.from(
     `${JSON.stringify({

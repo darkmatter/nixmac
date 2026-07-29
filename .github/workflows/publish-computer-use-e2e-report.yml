@@ -419,11 +419,24 @@ jobs:
 
           semantic_audit_relative="publisher-semantic-video-audit.json"
           semantic_audit_path="$local_evidence/$semantic_audit_relative"
+          public_video_relative="publisher-reviewed-video.mp4"
+          public_video_path="$local_evidence/$public_video_relative"
           node ops/scripts/e2e/trusted-video-audit.mjs \
             "$local_evidence/terminal-result.remote.json" \
             "$local_evidence" \
             "$semantic_audit_path" \
+            "$public_video_path" \
             "$OPENROUTER_MODEL"
+          public_video_size="$(wc -c < "$public_video_path")"
+          (( public_video_size > 0 && public_video_size <= 15728640 )) || {
+            echo "Publisher-reviewed public video must be non-empty and at most 15 MiB" >&2
+            exit 1
+          }
+          public_video_sha="$(sha256sum "$public_video_path" | cut -d' ' -f1)"
+          [[ "$(jq -r '.videoSha256' "$semantic_audit_path")" == "$public_video_sha" ]] || {
+            echo "Publisher semantic audit must bind the exact public video" >&2
+            exit 1
+          }
           semantic_audit_size="$(wc -c < "$semantic_audit_path")"
           (( semantic_audit_size > 0 && semantic_audit_size <= 262144 )) || {
             echo "Publisher semantic audit must be non-empty and at most 256 KiB" >&2
@@ -439,8 +452,12 @@ jobs:
           jq \
             --arg path "$semantic_audit_relative" \
             --arg sha "$semantic_audit_sha" \
+            --arg video_path "$public_video_relative" \
+            --arg video_sha "$public_video_sha" \
             --slurpfile audit "$semantic_audit_path" \
-            '.presentation.status = $audit[0].status
+            '.evidence.video.path = $video_path
+              | .evidence.video.sha256 = $video_sha
+              | .presentation.status = $audit[0].status
               | .presentation.firstMeaningfulActionSeconds = $audit[0].firstMeaningfulActionSeconds
               | .presentation.watchedStartToFinish = $audit[0].watchedStartToFinish
               | .presentation.terminalStateVisible = $audit[0].terminalStateVisible
@@ -458,7 +475,9 @@ jobs:
                 reviewedFrameCount: $audit[0].reviewedFrameCount,
                 reviewedContactSheetCount: $audit[0].reviewedContactSheetCount,
                 reviewedScreenshotCount: $audit[0].reviewedScreenshotCount,
-                reviewSampleIntervalSeconds: $audit[0].reviewSampleIntervalSeconds
+                reviewSampleIntervalSeconds: $audit[0].reviewSampleIntervalSeconds,
+                sourceVideoSha256: $audit[0].sourceVideoSha256,
+                sensitiveContentVisible: $audit[0].sensitiveContentVisible
               }' \
             "$local_evidence/terminal-result.remote.json" > "$enriched_manifest"
           mv "$enriched_manifest" "$local_evidence/terminal-result.remote.json"

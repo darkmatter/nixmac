@@ -8,7 +8,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
-const AUDIT_SCHEMA = "nixmac.e2e.semantic-audit.v4";
+const AUDIT_SCHEMA = "nixmac.e2e.semantic-audit.v5";
 const REVIEWER = "GitHub Actions protected vision review";
 const REVIEWER_KIND = "github-actions-protected-vision-review";
 const MAX_REVIEW_VIDEO_SECONDS = 120;
@@ -43,9 +43,12 @@ function validateDecision(decision, durationSeconds) {
   if (
     decision.changedBehaviorVisible !== true ||
     decision.timelineCoherent !== true ||
-    decision.terminalStateVisible !== true
+    decision.terminalStateVisible !== true ||
+    decision.sensitiveContentVisible !== false
   ) {
-    fail(`trusted vision review could not verify the required semantics: ${decision.rationale}`);
+    fail(
+      `trusted vision review could not verify safe publication and the required semantics: ${decision.rationale}`,
+    );
   }
   const firstMeaningfulActionSeconds = requireFiniteNumber(
     decision.firstMeaningfulActionSeconds,
@@ -90,19 +93,42 @@ function expectedTimelineFrameCount(durationSeconds) {
   return Math.max(1, Math.ceil(durationSeconds * TIMELINE_SAMPLE_RATE));
 }
 
-async function extractReviewImages(videoPath, screenshotPaths, durationSeconds, outputDir) {
+async function videoFrameCount(videoPath) {
+  const { stdout } = await execFileAsync("ffprobe", [
+    "-v",
+    "error",
+    "-count_frames",
+    "-select_streams",
+    "v:0",
+    "-show_entries",
+    "stream=nb_read_frames",
+    "-of",
+    "default=noprint_wrappers=1:nokey=1",
+    videoPath,
+  ]);
+  const count = requireFiniteNumber(Number(stdout.trim()), "reviewed video frame count", {
+    min: 1,
+    max: MAX_REVIEW_VIDEO_SECONDS * TIMELINE_SAMPLE_RATE,
+  });
+  if (!Number.isSafeInteger(count)) fail("reviewed video frame count must be an integer");
+  return count;
+}
+
+async function extractReviewImages(videoPath, screenshotPaths, reviewedFrameCount, outputDir) {
   const images = [];
-  const expectedFrameCount = expectedTimelineFrameCount(durationSeconds);
-  const expectedContactSheetCount = Math.ceil(expectedFrameCount / CONTACT_SHEET_FRAME_COUNT);
+  const expectedContactSheetCount = Math.ceil(
+    reviewedFrameCount / CONTACT_SHEET_FRAME_COUNT,
+  );
   await execFileAsync("ffmpeg", [
     "-v",
     "error",
+    "-n",
     "-i",
     videoPath,
     "-vf",
     [
       `fps=${TIMELINE_SAMPLE_RATE}:start_time=0:round=down`,
-      "scale=384:-2:flags=lanczos",
+      "scale=512:-2:flags=lanczos",
       `tile=${CONTACT_SHEET_COLUMNS}x${CONTACT_SHEET_ROWS}:padding=4:margin=4`,
     ].join(","),
     "-q:v",
@@ -119,48 +145,87 @@ async function extractReviewImages(videoPath, screenshotPaths, durationSeconds, 
   }
   for (const [index, entry] of contactSheets.entries()) {
     const firstFrame = index * CONTACT_SHEET_FRAME_COUNT + 1;
-    const lastFrame = Math.min(expectedFrameCount, firstFrame + CONTACT_SHEET_FRAME_COUNT - 1);
+    const lastFrame = Math.min(
+      reviewedFrameCount,
+      firstFrame + CONTACT_SHEET_FRAME_COUNT - 1,
+    );
     images.push({
       label:
         `Dense video timeline contact sheet ${index + 1}/${contactSheets.length}: ` +
         `chronological ${TIMELINE_SAMPLE_RATE} Hz samples ${firstFrame}-${lastFrame}`,
       path: path.join(outputDir, entry),
+      mime: "image/jpeg",
+      maxBytes: 2 * 1024 * 1024,
     });
   }
   for (const [index, screenshotPath] of screenshotPaths.entries()) {
-    const output = path.join(outputDir, `screenshot-${String(index).padStart(2, "0")}.jpg`);
-    await execFileAsync("ffmpeg", [
-      "-v",
-      "error",
-      "-i",
-      screenshotPath,
-      "-frames:v",
-      "1",
-      "-vf",
-      "scale=768:-2",
-      "-q:v",
-      "5",
-      output,
-    ]);
-    images.push({ label: `Curated evidence screenshot ${index + 1}`, path: output });
+    images.push({
+      label: `Exact curated evidence screenshot ${index + 1}`,
+      path: screenshotPath,
+      mime: "image/png",
+      maxBytes: 4 * 1024 * 1024,
+    });
   }
   return {
     images,
-    reviewedFrameCount: expectedFrameCount,
+    reviewedFrameCount,
     reviewedContactSheetCount: contactSheets.length,
     reviewedScreenshotCount: screenshotPaths.length,
   };
+}
+
+async function createReviewedPublicVideo(sourceVideoPath, publicVideoPath) {
+  await execFileAsync("ffmpeg", [
+    "-v",
+    "error",
+    "-n",
+    "-i",
+    sourceVideoPath,
+    "-map",
+    "0:v:0",
+    "-an",
+    "-vf",
+    `fps=${TIMELINE_SAMPLE_RATE}:start_time=0:round=down,pad=ceil(iw/2)*2:ceil(ih/2)*2`,
+    "-c:v",
+    "libx264",
+    "-preset",
+    "slow",
+    "-crf",
+    "20",
+    "-pix_fmt",
+    "yuv420p",
+    "-fflags",
+    "+bitexact",
+    "-flags:v",
+    "+bitexact",
+    "-map_metadata",
+    "-1",
+    "-movflags",
+    "+faststart",
+    publicVideoPath,
+  ]);
+  await execFileAsync("ffmpeg", [
+    "-v",
+    "error",
+    "-i",
+    publicVideoPath,
+    "-map",
+    "0:v:0",
+    "-f",
+    "null",
+    "-",
+  ]);
 }
 
 async function imageContent(images) {
   const content = [];
   for (const image of images) {
     const buffer = await readFile(image.path);
-    if (buffer.length > 2 * 1024 * 1024) fail(`review image is too large: ${image.label}`);
+    if (buffer.length > image.maxBytes) fail(`review image is too large: ${image.label}`);
     content.push({ type: "text", text: image.label });
     content.push({
       type: "image_url",
-      image_url: { url: `data:image/jpeg;base64,${buffer.toString("base64")}` },
+      image_url: { url: `data:${image.mime};base64,${buffer.toString("base64")}` },
     });
   }
   return content;
@@ -179,6 +244,8 @@ async function requestDecision({ apiKey, model, manifest, images, durationSecond
       `(maximum ${TIMELINE_SAMPLE_INTERVAL_SECONDS.toFixed(1)} seconds between samples).`,
     "Inspect every cell of every contact sheet in chronological order. Fail closed if frames are unrelated,",
     "the changed behavior is not visible, the timeline is incoherent, or the terminal state is absent.",
+    "Also inspect every cell and curated screenshot for passwords, API keys, tokens, private keys,",
+    "recovery codes, authentication cookies, or other credential-like content. Treat uncertainty as sensitive.",
     `Video duration: ${durationSeconds.toFixed(3)} seconds.`,
     `Scenarios: ${JSON.stringify(scenarioSummary)}`,
     "Estimate the first meaningful UI action time and how long the final terminal state stays visible.",
@@ -192,6 +259,7 @@ async function requestDecision({ apiKey, model, manifest, images, durationSecond
       changedBehaviorVisible: { type: "boolean" },
       timelineCoherent: { type: "boolean" },
       terminalStateVisible: { type: "boolean" },
+      sensitiveContentVisible: { type: "boolean" },
       firstMeaningfulActionSeconds: { type: "number" },
       terminalStateVisibleSeconds: { type: "number" },
       rationale: { type: "string" },
@@ -201,6 +269,7 @@ async function requestDecision({ apiKey, model, manifest, images, durationSecond
       "changedBehaviorVisible",
       "timelineCoherent",
       "terminalStateVisible",
+      "sensitiveContentVisible",
       "firstMeaningfulActionSeconds",
       "terminalStateVisibleSeconds",
       "rationale",
@@ -242,7 +311,14 @@ async function requestDecision({ apiKey, model, manifest, images, durationSecond
   }
 }
 
-async function review({ manifestPath, evidenceRoot, outputPath, model, apiKey }) {
+async function review({
+  manifestPath,
+  evidenceRoot,
+  outputPath,
+  publicVideoPath,
+  model,
+  apiKey,
+}) {
   if (!apiKey || !model) fail("trusted vision review credentials/model are unavailable");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   const root = await realpath(evidenceRoot);
@@ -257,8 +333,9 @@ async function review({ manifestPath, evidenceRoot, outputPath, model, apiKey })
   const screenshotPaths = await Promise.all(
     manifest.evidence.screenshots.map((screenshot) => confined(screenshot.path)),
   );
-  const videoBuffer = await readFile(videoPath);
-  if (sha256(videoBuffer) !== manifest.evidence.video.sha256) {
+  const sourceVideoBuffer = await readFile(videoPath);
+  const sourceVideoSha256 = sha256(sourceVideoBuffer);
+  if (sourceVideoSha256 !== manifest.evidence.video.sha256) {
     fail("trusted vision review video hash does not match the manifest");
   }
   await execFileAsync("ffmpeg", [
@@ -272,13 +349,22 @@ async function review({ manifestPath, evidenceRoot, outputPath, model, apiKey })
     "null",
     "-",
   ]);
-  const durationSeconds = await videoDuration(videoPath);
+  await videoDuration(videoPath);
+  const publicVideoParent = await realpath(path.dirname(publicVideoPath));
+  if (publicVideoParent !== root && !publicVideoParent.startsWith(`${root}${path.sep}`)) {
+    fail("reviewed public video output must stay inside the local evidence root");
+  }
+  await createReviewedPublicVideo(videoPath, publicVideoPath);
+  const durationSeconds = await videoDuration(publicVideoPath);
+  const reviewedFrameCount = await videoFrameCount(publicVideoPath);
+  const publicVideoBuffer = await readFile(publicVideoPath);
+  const publicVideoSha256 = sha256(publicVideoBuffer);
   const temporary = await mkdtemp(path.join(os.tmpdir(), "nixmac-video-audit-"));
   try {
     const reviewEvidence = await extractReviewImages(
-      videoPath,
+      publicVideoPath,
       screenshotPaths,
-      durationSeconds,
+      reviewedFrameCount,
       temporary,
     );
     if (reviewEvidence.images.length < 2 || reviewEvidence.images.length > 30) {
@@ -299,7 +385,7 @@ async function review({ manifestPath, evidenceRoot, outputPath, model, apiKey })
       reviewer: REVIEWER,
       reviewerKind: REVIEWER_KIND,
       reviewScope:
-        "Independent protected vision inspection of dense 2 Hz full-video contact sheets and curated screenshots",
+        "Independent protected sensitivity and semantic inspection of the exact 2 Hz public video and curated screenshots",
       reviewToolSha: process.env.REPORT_TOOL_SHA,
       reviewRunId: Number(process.env.GITHUB_RUN_ID),
       reviewRunAttempt: Number(process.env.GITHUB_RUN_ATTEMPT),
@@ -308,12 +394,14 @@ async function review({ manifestPath, evidenceRoot, outputPath, model, apiKey })
       reviewedContactSheetCount: reviewEvidence.reviewedContactSheetCount,
       reviewedScreenshotCount: reviewEvidence.reviewedScreenshotCount,
       reviewSampleIntervalSeconds: TIMELINE_SAMPLE_INTERVAL_SECONDS,
-      videoSha256: manifest.evidence.video.sha256,
+      sourceVideoSha256,
+      videoSha256: publicVideoSha256,
       status: "pass",
       firstMeaningfulActionSeconds: decision.firstMeaningfulActionSeconds,
       watchedStartToFinish: true,
       terminalStateVisible: true,
       terminalStateVisibleSeconds: decision.terminalStateVisibleSeconds,
+      sensitiveContentVisible: false,
       rationale: decision.rationale,
     };
     if (!/^[a-f0-9]{40}$/.test(audit.reviewToolSha ?? "")) fail("invalid report-tool SHA");
@@ -332,6 +420,7 @@ async function selfTest() {
       changedBehaviorVisible: true,
       timelineCoherent: true,
       terminalStateVisible: true,
+      sensitiveContentVisible: false,
       firstMeaningfulActionSeconds: 4,
       terminalStateVisibleSeconds: 3,
       rationale: "The expected transition and stable terminal state are visible.",
@@ -347,6 +436,7 @@ async function selfTest() {
         changedBehaviorVisible: false,
         timelineCoherent: true,
         terminalStateVisible: true,
+        sensitiveContentVisible: false,
         firstMeaningfulActionSeconds: 1,
         terminalStateVisibleSeconds: 3,
         rationale: "Changed behavior is absent.",
@@ -357,6 +447,25 @@ async function selfTest() {
     rejected = true;
   }
   if (!rejected) fail("decision self-test accepted missing changed behavior");
+  rejected = false;
+  try {
+    validateDecision(
+      {
+        verdict: "pass",
+        changedBehaviorVisible: true,
+        timelineCoherent: true,
+        terminalStateVisible: true,
+        sensitiveContentVisible: true,
+        firstMeaningfulActionSeconds: 1,
+        terminalStateVisibleSeconds: 3,
+        rationale: "A credential is visible.",
+      },
+      10,
+    );
+  } catch {
+    rejected = true;
+  }
+  if (!rejected) fail("decision self-test accepted sensitive content");
   if (expectedTimelineFrameCount(0.1) !== 1) fail("short-video frame count is invalid");
   if (expectedTimelineFrameCount(MAX_REVIEW_VIDEO_SECONDS) !== 240) {
     fail("maximum-video frame count is invalid");
@@ -377,9 +486,19 @@ async function selfTest() {
       "yuv420p",
       videoPath,
     ]);
-    const evidence = await extractReviewImages(videoPath, [], 13.2, temporary);
+    const publicVideoPath = path.join(temporary, "reviewed.mp4");
+    await createReviewedPublicVideo(videoPath, publicVideoPath);
+    const publicDuration = await videoDuration(publicVideoPath);
+    const reviewedFrameCount = await videoFrameCount(publicVideoPath);
+    const evidence = await extractReviewImages(
+      publicVideoPath,
+      [],
+      reviewedFrameCount,
+      temporary,
+    );
     if (
-      evidence.reviewedFrameCount !== 27 ||
+      publicDuration !== 13 ||
+      evidence.reviewedFrameCount !== 26 ||
       evidence.reviewedContactSheetCount !== 3 ||
       evidence.images.length !== 3
     ) {
@@ -396,14 +515,17 @@ async function main() {
     console.log("trusted video audit self-test passed");
     return;
   }
-  if (process.argv.length !== 6) {
-    fail(`Usage: ${process.argv[1]} <manifest.json> <evidence-root> <output.json> <model>`);
+  if (process.argv.length !== 7) {
+    fail(
+      `Usage: ${process.argv[1]} <manifest.json> <evidence-root> <audit-output.json> <public-video.mp4> <model>`,
+    );
   }
   await review({
     manifestPath: process.argv[2],
     evidenceRoot: process.argv[3],
     outputPath: process.argv[4],
-    model: process.argv[5],
+    publicVideoPath: process.argv[5],
+    model: process.argv[6],
     apiKey: process.env.OPENROUTER_API_KEY,
   });
 }
