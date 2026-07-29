@@ -192,7 +192,9 @@ or scripted provider; the deterministic demo lane uses a `scripted-mock`
 loopback provider and binds its redacted trace into the report evidence set.
 The trace must be UTF-8 JSONL with ordered `request`, `tool_request`,
 `tool_response`, and `response` object records, and matching tool records must
-name the same non-empty tool.
+name the same non-empty tool. Every `tool_response` must declare `status` as
+`success` or `error`; a pass verdict is rejected if any tool response is not
+successful.
 
 Automated publication requires `presentation.status=pass`, first meaningful
 visual action within 15 seconds, complete start-to-finish review, and at least

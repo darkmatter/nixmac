@@ -27,6 +27,7 @@ const INTENTS = new Set(["positive-flow", "expected-refusal"]);
 const PROVIDER_KINDS = new Set(["scripted-mock", "real"]);
 const ENDPOINT_CLASSES = new Set(["loopback", "remote"]);
 const REQUIRED_PROVIDER_TRACE_EVENTS = ["request", "tool_request", "tool_response", "response"];
+const TOOL_RESPONSE_STATUSES = new Set(["success", "error"]);
 const MAX_FIRST_ACTION_SECONDS = 15;
 const MIN_TERMINAL_VISIBLE_SECONDS = 3;
 const SHA256_RE = /^[a-f0-9]{64}$/;
@@ -99,6 +100,13 @@ function validateProviderTrace(buffer) {
     if (record.event === "tool_request" || record.event === "tool_response") {
       requireString(record.tool, `provider.trace line ${index + 1} tool`, { max: 200 });
     }
+    if (record.event === "tool_response") {
+      requireEnum(
+        record.status,
+        `provider.trace line ${index + 1} status`,
+        TOOL_RESPONSE_STATUSES,
+      );
+    }
     return record;
   });
 
@@ -144,6 +152,7 @@ function validateProviderTrace(buffer) {
   if ([...pendingToolRequests.values()].some((pending) => pending !== 0)) {
     fail("provider.trace must not contain unanswered tool_request records");
   }
+  return records;
 }
 
 function requireArray(value, name, { min = 0, max = 100 } = {}) {
@@ -634,7 +643,15 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
   if (sha256(providerTraceBuffer) !== result.provider.trace.sha256) {
     fail("provider.trace SHA-256 does not match");
   }
-  validateProviderTrace(providerTraceBuffer);
+  const providerTraceRecords = validateProviderTrace(providerTraceBuffer);
+  if (
+    result.verdict === "pass" &&
+    providerTraceRecords.some(
+      (record) => record.event === "tool_response" && record.status !== "success",
+    )
+  ) {
+    fail("pass verdict requires every provider tool_response status to be success");
+  }
   const screenshots = [];
   const screenshotPaths = new Set();
   let screenshotBytes = 0;
@@ -1025,7 +1042,7 @@ async function selfTest() {
     [
       { event: "request" },
       { event: "tool_request", tool: "ensure_secret" },
-      { event: "tool_response", tool: "ensure_secret" },
+      { event: "tool_response", tool: "ensure_secret", status: "success" },
       { event: "response" },
     ]
       .map((record) => JSON.stringify(record))
@@ -1448,7 +1465,7 @@ async function selfTest() {
     [
       { event: "request" },
       { event: "tool_request", tool: "ensure_secret" },
-      { event: "tool_response", tool: "edit_file" },
+      { event: "tool_response", tool: "edit_file", status: "success" },
       { event: "tool_request", tool: "edit_file" },
       { event: "response" },
     ]
@@ -1471,7 +1488,7 @@ async function selfTest() {
       { event: "request" },
       { event: "tool_request", tool: "ensure_secret" },
       { event: "tool_request", tool: "edit_file" },
-      { event: "tool_response", tool: "ensure_secret" },
+      { event: "tool_response", tool: "ensure_secret", status: "success" },
       { event: "response" },
     ]
       .map((record) => JSON.stringify(record))
@@ -1487,6 +1504,48 @@ async function selfTest() {
       };
     },
     "provider.trace must not contain unanswered tool_request records",
+  );
+  const missingToolStatusTrace = Buffer.from(
+    [
+      { event: "request" },
+      { event: "tool_request", tool: "ensure_secret" },
+      { event: "tool_response", tool: "ensure_secret" },
+      { event: "response" },
+    ]
+      .map((record) => JSON.stringify(record))
+      .join("\n") + "\n",
+  );
+  await writeFile(path.join(dir, "provider-trace-missing-tool-status.jsonl"), missingToolStatusTrace);
+  await expectRejected(
+    "provider trace missing tool response status",
+    (candidate) => {
+      candidate.provider.trace = {
+        path: "provider-trace-missing-tool-status.jsonl",
+        sha256: sha256(missingToolStatusTrace),
+      };
+    },
+    "provider.trace line 3 status",
+  );
+  const failedToolTrace = Buffer.from(
+    [
+      { event: "request" },
+      { event: "tool_request", tool: "ensure_secret" },
+      { event: "tool_response", tool: "ensure_secret", status: "error" },
+      { event: "response" },
+    ]
+      .map((record) => JSON.stringify(record))
+      .join("\n") + "\n",
+  );
+  await writeFile(path.join(dir, "provider-trace-failed-tool.jsonl"), failedToolTrace);
+  await expectRejected(
+    "pass verdict with failed tool response",
+    (candidate) => {
+      candidate.provider.trace = {
+        path: "provider-trace-failed-tool.jsonl",
+        sha256: sha256(failedToolTrace),
+      };
+    },
+    "pass verdict requires every provider tool_response status to be success",
   );
   await expectRejected(
     "semantic audit hash mismatch",
