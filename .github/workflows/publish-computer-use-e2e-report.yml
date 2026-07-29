@@ -89,7 +89,7 @@ jobs:
 
           sudo apt-get update
           sudo apt-get install -y ffmpeg
-          for command_name in git jq node realpath scp ssh ffprobe ffmpeg sha256sum unzip; do
+          for command_name in git jq node realpath ssh ffprobe ffmpeg sha256sum unzip; do
             command -v "$command_name" >/dev/null || {
               echo "Required report command is unavailable: $command_name" >&2
               exit 1
@@ -202,6 +202,15 @@ jobs:
             }
             printf '%s\n' "$size"
           }
+          bounded_remote_copy() {
+            local remote_path="$1"
+            local destination="$2"
+            local max_bytes="$3"
+            local remote_command
+            printf -v remote_command 'cat %q' "$remote_path"
+            ssh "${ssh_common[@]}" -- "$ssh_dest" "$remote_command" |
+              python3 ops/scripts/e2e/bounded-stream-copy.py "$destination" "$max_bytes"
+          }
           local_evidence="$RUNNER_TEMP/terminal-evidence-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           mkdir -p "$local_evidence"
           remote_manifest="${EVIDENCE_DIR_INPUT}/terminal-result.v2.json"
@@ -210,7 +219,10 @@ jobs:
             echo "Remote terminal-result.v2.json exceeds 256 KiB" >&2
             exit 1
           }
-          scp "${ssh_common[@]}" -- "$ssh_dest:$remote_manifest" "$local_evidence/terminal-result.remote.json"
+          bounded_remote_copy \
+            "$remote_manifest" \
+            "$local_evidence/terminal-result.remote.json" \
+            262144
 
           jq -e \
             --arg sha "$EXPECTED_SHA" \
@@ -306,19 +318,15 @@ jobs:
           runtime_attestation_relative="runtime-attestation.json"
           runtime_attestation_remote="${EVIDENCE_DIR_INPUT}/${runtime_attestation_relative}"
           runtime_app_path="${EVIDENCE_DIR_INPUT}/runtime/nixmac.app"
-          printf -v remote_bundle_digest_command \
-            '/usr/bin/python3 - %q' \
-            "$runtime_app_path"
-          remote_bundle_sha="$(
-            ssh "${ssh_common[@]}" -- "$ssh_dest" "$remote_bundle_digest_command" \
-              < ops/scripts/e2e/canonical-app-digest.py
-          )"
-          [[ "$remote_bundle_sha" == "$official_bundle_sha" ]] || {
-            echo "Remote staged app bundle digest does not match the official artifact" >&2
-            exit 1
-          }
+          attestation_tools_tar="$RUNNER_TEMP/runtime-attestation-tools.tar"
+          tar -cf "$attestation_tools_tar" \
+            -C ops/scripts/e2e \
+            canonical-app-digest.py \
+            capture-runtime-attestation.sh
+          runtime_attestation_runner="set -euo pipefail; tools_dir=\$(mktemp -d /tmp/nixmac-attestation.XXXXXX); trap 'rm -rf \"\$tools_dir\"' EXIT; tar -xf - -C \"\$tools_dir\"; bash \"\$tools_dir/capture-runtime-attestation.sh\" \"\$@\""
           printf -v runtime_attestation_command \
-            'bash -s -- %q %q %q %q %q %q' \
+            'bash -c %q -- %q %q %q %q %q %q' \
+            "$runtime_attestation_runner" \
             "$runtime_attestation_remote" \
             "$runtime_app_path" \
             "$REPORT_TOOL_SHA" \
@@ -326,15 +334,16 @@ jobs:
             "$official_bundle_sha" \
             "$verified_app_version"
           ssh "${ssh_common[@]}" -- "$ssh_dest" "$runtime_attestation_command" \
-            < ops/scripts/e2e/capture-runtime-attestation.sh
+            < "$attestation_tools_tar"
           runtime_attestation_size="$(remote_file_size "$runtime_attestation_remote")"
           (( runtime_attestation_size <= 65536 )) || {
             echo "Publisher-produced runtime attestation exceeds 64 KiB" >&2
             exit 1
           }
-          scp "${ssh_common[@]}" -- \
-            "$ssh_dest:$runtime_attestation_remote" \
-            "$local_evidence/$runtime_attestation_relative"
+          bounded_remote_copy \
+            "$runtime_attestation_remote" \
+            "$local_evidence/$runtime_attestation_relative" \
+            65536
           runtime_attestation_sha="$(
             sha256sum "$local_evidence/$runtime_attestation_relative" | cut -d' ' -f1
           )"
@@ -390,9 +399,10 @@ jobs:
               exit 1
             }
             mkdir -p "$local_evidence/$(dirname "$relative_path")"
-            scp "${ssh_common[@]}" -- \
-              "$ssh_dest:$remote_evidence_path" \
-              "$local_evidence/$relative_path"
+            bounded_remote_copy \
+              "$remote_evidence_path" \
+              "$local_evidence/$relative_path" \
+              "$max_bytes"
           done
 
           manifest="$local_evidence/terminal-result.v2.json"

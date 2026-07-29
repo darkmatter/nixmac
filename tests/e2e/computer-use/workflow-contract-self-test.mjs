@@ -27,6 +27,11 @@ const canonicalAppDigestPath = path.join(
   "ops/scripts/e2e/canonical-app-digest.py",
 );
 execFileSync("python3", [canonicalAppDigestPath, "--self-test"], { stdio: "pipe" });
+execFileSync(
+  "python3",
+  [path.join(repoRoot, "ops/scripts/e2e/bounded-stream-copy.py"), "--self-test"],
+  { stdio: "pipe" },
+);
 
 function section(startPattern, endPattern = null) {
   const start = workflow.search(startPattern);
@@ -85,18 +90,23 @@ assert.match(
 );
 assert.match(
   runtimeAttestationScript,
-  /proc_pidpath[\s\S]*\/usr\/sbin\/lsof[\s\S]*loaded image does not match the staged executable vnode[\s\S]*executable hash does not match the official artifact[\s\S]*codesign[\s\S]*captureToolSha/,
-  "runtime attestation must bind the live loaded vnode, hash, and signing seal to the official staged app",
+  /proc_pidpath[\s\S]*\/usr\/sbin\/lsof[\s\S]*loaded image does not match the staged executable vnode[\s\S]*executable hash does not match the official artifact[\s\S]*canonical_digest\.app_digest[\s\S]*bundle digest does not match the official artifact[\s\S]*codesign[\s\S]*captureToolSha/,
+  "runtime attestation must atomically bind the live vnode, executable, complete bundle, and signing seal",
 );
 assert.match(
   terminalWorkflow,
-  /canonical-app-digest\.py "\$app_bundle_dir"[\s\S]*< ops\/scripts\/e2e\/canonical-app-digest\.py[\s\S]*remote_bundle_sha" == "\$official_bundle_sha"[\s\S]*< ops\/scripts\/e2e\/capture-runtime-attestation\.sh[\s\S]*\.testedArtifact\.appBundleSha256 = \$bundle_sha/,
-  "protected publisher must compare canonical complete-bundle digests before injecting attestation",
+  /canonical-app-digest\.py "\$app_bundle_dir"[\s\S]*tar -cf "\$attestation_tools_tar"[\s\S]*canonical-app-digest\.py[\s\S]*capture-runtime-attestation\.sh[\s\S]*< "\$attestation_tools_tar"[\s\S]*\.testedArtifact\.appBundleSha256 = \$bundle_sha/,
+  "protected publisher must stream both trusted attestation tools and inject the verified bundle digest",
 );
 assert.match(
   terminalWorkflow,
-  /remote_manifest_size="\$\(remote_file_size "\$remote_manifest"\)"[\s\S]*evidence_specs[\s\S]*remote_evidence_size="\$\(remote_file_size "\$remote_evidence_path"\)"[\s\S]*total_evidence_bytes <= 31457280[\s\S]*scp/,
-  "terminal publisher must bound each remote file and the aggregate evidence set before transfer",
+  /bounded_remote_copy\(\)[\s\S]*bounded-stream-copy\.py[\s\S]*bounded_remote_copy[\s\S]*remote_manifest[\s\S]*evidence_specs[\s\S]*remote_evidence_size[\s\S]*total_evidence_bytes <= 31457280[\s\S]*bounded_remote_copy/,
+  "terminal publisher must cap bytes received for each remote file and the aggregate evidence set",
+);
+assert.doesNotMatch(
+  terminalWorkflow,
+  /\n\s+scp\s/,
+  "terminal publisher must not use unbounded scp for remote evidence",
 );
 assert.match(
   terminalWorkflow,

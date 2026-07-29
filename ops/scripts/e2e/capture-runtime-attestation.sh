@@ -12,6 +12,8 @@ report_tool_sha="$3"
 expected_executable_sha="$4"
 expected_bundle_sha="$5"
 expected_app_version="$6"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+canonical_digest_tool="$script_dir/canonical-app-digest.py"
 
 [[ "$output_path" == /* ]] || {
 	echo "Runtime attestation output path must be absolute" >&2
@@ -37,6 +39,10 @@ expected_app_version="$6"
 	echo "expected app version must be non-empty" >&2
 	exit 2
 }
+[[ -f "$canonical_digest_tool" ]] || {
+	echo "trusted canonical app digest helper is missing" >&2
+	exit 2
+}
 
 /usr/bin/python3 - \
 	"$output_path" \
@@ -44,10 +50,12 @@ expected_app_version="$6"
 	"$report_tool_sha" \
 	"$expected_executable_sha" \
 	"$expected_bundle_sha" \
-	"$expected_app_version" <<'PY'
+	"$expected_app_version" \
+	"$canonical_digest_tool" <<'PY'
 import ctypes
 import datetime
 import hashlib
+import importlib.util
 import json
 import os
 import plistlib
@@ -61,6 +69,7 @@ import sys
     expected_executable_sha,
     expected_bundle_sha,
     expected_app_version,
+    canonical_digest_tool,
 ) = sys.argv[1:]
 plist_path = os.path.join(app_path, "Contents", "Info.plist")
 with open(plist_path, "rb") as handle:
@@ -127,6 +136,12 @@ with open(expected_realpath, "rb") as handle:
 executable_sha256 = digest.hexdigest()
 if executable_sha256 != expected_executable_sha:
     raise SystemExit("Running nixmac executable hash does not match the official artifact")
+spec = importlib.util.spec_from_file_location("nixmac_canonical_app_digest", canonical_digest_tool)
+canonical_digest = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(canonical_digest)
+bundle_sha256 = canonical_digest.app_digest(canonical_digest.Path(app_path))
+if bundle_sha256 != expected_bundle_sha:
+    raise SystemExit("Running nixmac bundle digest does not match the official artifact")
 codesign = subprocess.run(
     ["codesign", "--verify", "--deep", "--strict", "--verbose=2", app_path],
     capture_output=True,
@@ -146,7 +161,7 @@ payload = {
     "bundlePath": os.path.realpath(app_path),
     "processExecutable": os.path.realpath(process_executable),
     "executableSha256": executable_sha256,
-    "bundleSha256": expected_bundle_sha,
+    "bundleSha256": bundle_sha256,
     "codesignVerified": True,
     "loadedExecutableInode": expected_inode,
     "captureToolSha": report_tool_sha,
