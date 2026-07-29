@@ -18,8 +18,10 @@ set -euo pipefail
 #   INDEX_URL, LATEST_INDEX_URL - Pre-computed URLs
 #   PR_NUMBER          - For commit message
 #   UPDATE_LATEST      - Whether to replace the latest alias (default: true)
+#   STORYBOOK_DIR      - Storybook static site to publish beneath the report
 
 update_latest="${UPDATE_LATEST:-true}"
+retention_keep_runs="${RETENTION_KEEP_RUNS:-20}"
 case "$update_latest" in
 true | false) ;;
 *)
@@ -27,48 +29,81 @@ true | false) ;;
 	exit 1
 	;;
 esac
-
-site_dir="$(mktemp -d)"
-git -C "$site_dir" init -q
-git -C "$site_dir" config user.name "github-actions[bot]"
-git -C "$site_dir" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-git -C "$site_dir" remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-
-if git -C "$site_dir" fetch --depth=1 origin gh-pages; then
-	git -C "$site_dir" checkout -q -B gh-pages FETCH_HEAD
-else
-	git -C "$site_dir" checkout -q --orphan gh-pages
+if [[ ! "$retention_keep_runs" =~ ^[1-9][0-9]*$ ]]; then
+	echo "RETENTION_KEEP_RUNS must be a positive integer" >&2
+	exit 1
 fi
 
-mkdir -p "$site_dir/${PUBLISH_PATH:?}"
-rm -rf "$site_dir/${PUBLISH_PATH:?}"
-mkdir -p "$site_dir/${PUBLISH_PATH:?}"
-cp -a "$REPORT_DIR"/. "$site_dir/${PUBLISH_PATH:?}"/
+storybook_published=false
 
-RUN_ASSET_BASE_URL="$RUN_ASSET_BASE_URL" perl -0pi -e 's#<head>#<head>\n<base href="$ENV{RUN_ASSET_BASE_URL}">#' "$site_dir/${PUBLISH_PATH:?}/index.html"
-if [[ "$update_latest" == "true" ]]; then
-	rm -rf "$site_dir/${LATEST_PATH:?}"
-	mkdir -p "$site_dir/${LATEST_PATH:?}"
-	cp -a "$REPORT_DIR"/. "$site_dir/${LATEST_PATH:?}"/
-	RUN_ASSET_BASE_URL="$RUN_ASSET_BASE_URL" perl -0pi -e 's#<head>#<head>\n<base href="$ENV{RUN_ASSET_BASE_URL}">#' "$site_dir/${LATEST_PATH:?}/index.html"
-fi
+publish_attempt() {
+	local site_dir
+	site_dir="$(mktemp -d)" || return
+	git -C "$site_dir" init -q || return
+	git -C "$site_dir" config user.name "github-actions[bot]" || return
+	git -C "$site_dir" config user.email "41898282+github-actions[bot]@users.noreply.github.com" || return
+	git -C "$site_dir" remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" || return
 
-if [[ -n "${REPORT_PREFIX:-}" && -d "$site_dir/$REPORT_PREFIX" ]]; then
-	find "$site_dir/$REPORT_PREFIX" -mindepth 1 -maxdepth 1 -type d -name 'run-*' |
-		sort -r |
-		tail -n +"$((RETENTION_KEEP_RUNS + 1))" |
-		while IFS= read -r old_report; do
-			rm -rf "$old_report"
-		done
-fi
+	if git -C "$site_dir" fetch --depth=1 origin gh-pages; then
+		git -C "$site_dir" checkout -q -B gh-pages FETCH_HEAD || return
+	else
+		git -C "$site_dir" checkout -q --orphan gh-pages || return
+	fi
 
-touch "$site_dir/.nojekyll"
-git -C "$site_dir" add -A .nojekyll "$REPORT_PREFIX"
-if git -C "$site_dir" diff --cached --quiet; then
-	echo "No GitHub Pages report changes to publish."
-else
-	git -C "$site_dir" commit -q -m "Publish Computer Use E2E report for PR #${PR_NUMBER:-0} run ${GITHUB_RUN_ID:-0}"
+	rm -rf "$site_dir/${PUBLISH_PATH:?}" || return
+	mkdir -p "$site_dir/${PUBLISH_PATH:?}" || return
+	cp -a "$REPORT_DIR"/. "$site_dir/${PUBLISH_PATH:?}"/ || return
+
+	RUN_ASSET_BASE_URL="$RUN_ASSET_BASE_URL" perl -0pi -e 's#<head>#<head>\n<base href="$ENV{RUN_ASSET_BASE_URL}">#' "$site_dir/${PUBLISH_PATH:?}/index.html" || return
+	if [[ "$update_latest" == "true" ]]; then
+		rm -rf "$site_dir/${LATEST_PATH:?}" || return
+		mkdir -p "$site_dir/${LATEST_PATH:?}" || return
+		cp -a "$REPORT_DIR"/. "$site_dir/${LATEST_PATH:?}"/ || return
+		RUN_ASSET_BASE_URL="$RUN_ASSET_BASE_URL" perl -0pi -e 's#<head>#<head>\n<base href="$ENV{RUN_ASSET_BASE_URL}">#' "$site_dir/${LATEST_PATH:?}/index.html" || return
+	fi
+
+	if [[ -n "${STORYBOOK_DIR:-}" && -d "$STORYBOOK_DIR" ]]; then
+		rm -rf "$site_dir/${PUBLISH_PATH:?}/storybook" || return
+		cp -a "$STORYBOOK_DIR" "$site_dir/${PUBLISH_PATH:?}/storybook" || return
+		if [[ "$update_latest" == "true" ]]; then
+			rm -rf "$site_dir/${LATEST_PATH:?}/storybook" || return
+			cp -a "$STORYBOOK_DIR" "$site_dir/${LATEST_PATH:?}/storybook" || return
+		fi
+		storybook_published=true
+	fi
+
+	if [[ -n "${REPORT_PREFIX:-}" && -d "$site_dir/$REPORT_PREFIX" ]]; then
+		find "$site_dir/$REPORT_PREFIX" -mindepth 1 -maxdepth 1 -type d -name 'run-*' |
+			sort -r |
+			tail -n +"$((retention_keep_runs + 1))" |
+			while IFS= read -r old_report; do
+				rm -rf "$old_report" || exit
+			done || return
+	fi
+
+	touch "$site_dir/.nojekyll" || return
+	git -C "$site_dir" add -A .nojekyll "$REPORT_PREFIX" || return
+	if git -C "$site_dir" diff --cached --quiet; then
+		echo "No GitHub Pages report changes to publish."
+		return 0
+	fi
+
+	git -C "$site_dir" commit -q -m "Publish Computer Use E2E report for PR #${PR_NUMBER:-0} run ${GITHUB_RUN_ID:-0}" || return
 	git -C "$site_dir" push -q origin gh-pages
+}
+
+published=false
+for attempt in {1..8}; do
+	if publish_attempt; then
+		published=true
+		break
+	fi
+	echo "GitHub Pages changed during publication; retrying from the latest branch (attempt $attempt of 8)." >&2
+	sleep "$attempt"
+done
+if [[ "$published" != "true" ]]; then
+	echo "Unable to publish the report after 8 attempts." >&2
+	exit 1
 fi
 
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
@@ -80,5 +115,8 @@ if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
 			echo "latest_index_url="
 		fi
 		echo "latest_updated=$update_latest"
+		if [[ "$storybook_published" == "true" ]]; then
+			echo "storybook_index_url=${RUN_ASSET_BASE_URL}storybook/index.html"
+		fi
 	} >>"$GITHUB_OUTPUT"
 fi

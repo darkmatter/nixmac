@@ -68,13 +68,18 @@ assert.match(
 );
 assert.match(
   remote,
-  /concurrency:\n\s+group: computer-use-e2e-dxu-remote\n\s+cancel-in-progress: false/,
+  /concurrency:\n\s+group: nixmac-macincloud-e2e-remote\n\s+cancel-in-progress: false/,
   "remote job must keep the singleton DXU lock",
+);
+assert.doesNotMatch(
+  publish,
+  /concurrency:\n\s+group: computer-use-e2e-gh-pages-publish\n\s+cancel-in-progress: false/,
+  "publish job must not use lossy Actions concurrency for report publication",
 );
 assert.match(
   publish,
-  /concurrency:\n\s+group: computer-use-e2e-gh-pages-publish\n\s+cancel-in-progress: false/,
-  "publish job must serialize gh-pages writes",
+  /run: ops\/scripts\/e2e\/publish-report\.sh/,
+  "publish job must use the retrying shared GitHub Pages publisher",
 );
 
 assert.equal(/Preflight remote Mac/.test(prepare), false, "prepare must not run remote readiness");
@@ -177,15 +182,15 @@ assert.doesNotMatch(
   "non-UI skipped remote jobs must not hard fail solely because the remote lane did not run",
 );
 
-assert.match(
+assert.doesNotMatch(
   publish,
   /git -C "\$site_dir" fetch --depth=1 origin gh-pages/,
-  "publisher must fetch gh-pages under the serialized publish lane",
+  "publish job must not duplicate GitHub Pages fetch logic",
 );
-assert.match(
+assert.doesNotMatch(
   publish,
   /git -C "\$site_dir" push -q origin gh-pages/,
-  "publisher must push gh-pages only from the serialized publish lane",
+  "publish job must not duplicate GitHub Pages push logic",
 );
 
 console.log("Computer Use workflow contract self-test passed.");
