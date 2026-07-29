@@ -33,6 +33,11 @@ execFileSync(
   [path.join(repoRoot, "ops/scripts/e2e/bounded-stream-copy.py"), "--self-test"],
   { stdio: "pipe" },
 );
+execFileSync(
+  "python3",
+  [path.join(repoRoot, "ops/scripts/e2e/safe-extract-zip.py"), "--self-test"],
+  { stdio: "pipe" },
+);
 
 function section(startPattern, endPattern = null) {
   const start = workflow.search(startPattern);
@@ -76,6 +81,11 @@ assert.match(
 );
 assert.match(
   terminalWorkflow,
+  /\.size_in_bytes[\s\S]*artifact_archive_limit[\s\S]*safe-extract-zip\.py[\s\S]*artifact_expansion_limit[\s\S]*20000[\s\S]*536870912/,
+  "terminal renderer must bound the official artifact archive and safe extraction",
+);
+assert.match(
+  terminalWorkflow,
   /CFBundleShortVersionString[\s\S]*--verified-app-version "\$verified_app_version"/,
   "terminal renderer must bind the displayed app version to the downloaded app bundle",
 );
@@ -113,6 +123,11 @@ assert.doesNotMatch(
   terminalWorkflow,
   /\n\s+scp\s/,
   "terminal publisher must not use unbounded scp for remote evidence",
+);
+assert.match(
+  terminalWorkflow,
+  /publisher-semantic-video-audit\.json[\s\S]*github-actions-protected-publisher[\s\S]*reviewToolSha[\s\S]*GITHUB_RUN_ID[\s\S]*\.presentation\.semanticAudit =/,
+  "protected publisher must generate and authenticate the final semantic audit",
 );
 assert.match(
   terminalWorkflow,

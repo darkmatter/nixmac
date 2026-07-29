@@ -129,7 +129,12 @@
     "semanticAudit": {
       "path": "semantic-video-audit.json",
       "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
-      "reviewer": "Codex visual audit"
+      "reviewer": "GitHub Actions protected publisher",
+      "reviewerKind": "github-actions-protected-publisher",
+      "reviewScope": "Protected structural validation of hash-bound media, full decode, and declared timing consistency",
+      "reviewToolSha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "reviewRunId": 123,
+      "reviewRunAttempt": 1
     }
   },
   "knownLimits": [

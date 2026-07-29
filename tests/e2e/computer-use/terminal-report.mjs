@@ -36,6 +36,9 @@ const GIT_SHA_RE = /^[a-f0-9]{40}$/;
 const SAFE_ID_RE = /^[a-z0-9][a-z0-9._-]{0,79}$/;
 const REQUEST_ID_RE = /^[a-z0-9][a-z0-9._:-]{0,79}$/;
 const RUNTIME_ATTESTATION_SCHEMA = "nixmac.e2e.runtime-attestation.v1";
+const SEMANTIC_AUDIT_SCHEMA = "nixmac.e2e.semantic-audit.v2";
+const SEMANTIC_AUDIT_REVIEWER = "GitHub Actions protected publisher";
+const SEMANTIC_AUDIT_REVIEWER_KIND = "github-actions-protected-publisher";
 
 function fail(message) {
   throw new Error(message);
@@ -648,6 +651,32 @@ export async function loadTerminalResult(
     "presentation.semanticAudit.reviewer",
     { max: 200 },
   );
+  if (result.presentation.semanticAudit.reviewer !== SEMANTIC_AUDIT_REVIEWER) {
+    fail(`presentation.semanticAudit.reviewer must be ${SEMANTIC_AUDIT_REVIEWER}`);
+  }
+  if (result.presentation.semanticAudit.reviewerKind !== SEMANTIC_AUDIT_REVIEWER_KIND) {
+    fail(
+      `presentation.semanticAudit.reviewerKind must be ${SEMANTIC_AUDIT_REVIEWER_KIND}`,
+    );
+  }
+  requireString(
+    result.presentation.semanticAudit.reviewScope,
+    "presentation.semanticAudit.reviewScope",
+    { max: 500 },
+  );
+  requireString(
+    result.presentation.semanticAudit.reviewToolSha,
+    "presentation.semanticAudit.reviewToolSha",
+    { pattern: GIT_SHA_RE },
+  );
+  requireInteger(
+    result.presentation.semanticAudit.reviewRunId,
+    "presentation.semanticAudit.reviewRunId",
+  );
+  requireInteger(
+    result.presentation.semanticAudit.reviewRunAttempt,
+    "presentation.semanticAudit.reviewRunAttempt",
+  );
   if (result.presentation.status === "pass") {
     if (result.presentation.firstMeaningfulActionSeconds > MAX_FIRST_ACTION_SECONDS) {
       fail(`presentation.firstMeaningfulActionSeconds must be <= ${MAX_FIRST_ACTION_SECONDS}`);
@@ -872,11 +901,34 @@ export async function loadTerminalResult(
   } catch {
     fail("presentation.semanticAudit must be valid JSON");
   }
+  if (semanticAudit.schemaVersion !== SEMANTIC_AUDIT_SCHEMA) {
+    fail(`presentation.semanticAudit schemaVersion must be ${SEMANTIC_AUDIT_SCHEMA}`);
+  }
+  if (
+    semanticAudit.reviewer !== SEMANTIC_AUDIT_REVIEWER ||
+    semanticAudit.reviewerKind !== SEMANTIC_AUDIT_REVIEWER_KIND
+  ) {
+    fail("presentation.semanticAudit must be produced by the protected publisher");
+  }
   if (semanticAudit.videoSha256 !== video.sha256) {
     fail("presentation.semanticAudit videoSha256 must match evidence.video.sha256");
   }
   if (semanticAudit.reviewer !== result.presentation.semanticAudit.reviewer) {
     fail("presentation.semanticAudit reviewer must match its artifact");
+  }
+  for (const field of [
+    "reviewerKind",
+    "reviewScope",
+    "reviewToolSha",
+    "reviewRunId",
+    "reviewRunAttempt",
+  ]) {
+    if (semanticAudit[field] !== result.presentation.semanticAudit[field]) {
+      fail(`presentation.semanticAudit ${field} must match its artifact`);
+    }
+  }
+  if (semanticAudit.reviewToolSha !== result.reportTool.sha) {
+    fail("presentation.semanticAudit reviewToolSha must match reportTool.sha");
   }
   if (semanticAudit.status !== result.presentation.status) {
     fail("presentation.semanticAudit status must match presentation.status");
@@ -927,6 +979,7 @@ export async function loadTerminalResult(
         executableSha256: runtimeAttestation.executableSha256,
         bundleSha256: runtimeAttestation.bundleSha256,
         codesignVerified: runtimeAttestation.codesignVerified,
+        loadedExecutableDevice: runtimeAttestation.loadedExecutableDevice,
         loadedExecutableInode: runtimeAttestation.loadedExecutableInode,
         captureToolSha: runtimeAttestation.captureToolSha,
         size: runtimeAttestationFile.size,
@@ -1207,10 +1260,20 @@ async function selfTest() {
       .join("\n") + "\n",
   );
   await writeFile(path.join(dir, "provider-trace.jsonl"), providerTrace);
+  const semanticAuditIdentity = {
+    schemaVersion: SEMANTIC_AUDIT_SCHEMA,
+    reviewer: SEMANTIC_AUDIT_REVIEWER,
+    reviewerKind: SEMANTIC_AUDIT_REVIEWER_KIND,
+    reviewScope:
+      "Protected structural validation of hash-bound media, full decode, and declared timing consistency",
+    reviewToolSha: "d".repeat(40),
+    reviewRunId: 123,
+    reviewRunAttempt: 1,
+  };
   const semanticAudit = Buffer.from(
     `${JSON.stringify({
+      ...semanticAuditIdentity,
       videoSha256: sha256(mp4),
-      reviewer: "Codex visual audit",
       status: "pass",
       firstMeaningfulActionSeconds: 1,
       watchedStartToFinish: true,
@@ -1345,7 +1408,7 @@ async function selfTest() {
       semanticAudit: {
         path: "semantic-video-audit.json",
         sha256: sha256(semanticAudit),
-        reviewer: "Codex visual audit",
+        ...semanticAuditIdentity,
       },
     },
     knownLimits: [],
@@ -1810,8 +1873,8 @@ async function selfTest() {
   );
   const contradictoryAudit = Buffer.from(
     `${JSON.stringify({
+      ...semanticAuditIdentity,
       videoSha256: sha256(mp4),
-      reviewer: "Codex visual audit",
       status: "pass",
       firstMeaningfulActionSeconds: 53,
       watchedStartToFinish: false,
@@ -1824,9 +1887,9 @@ async function selfTest() {
     "contradictory semantic audit",
     (candidate) => {
       candidate.presentation.semanticAudit = {
+        ...candidate.presentation.semanticAudit,
         path: "semantic-video-audit-contradictory.json",
         sha256: sha256(contradictoryAudit),
-        reviewer: "Codex visual audit",
       };
     },
     "firstMeaningfulActionSeconds must match presentation",
@@ -1837,9 +1900,9 @@ async function selfTest() {
     "oversized semantic audit",
     (candidate) => {
       candidate.presentation.semanticAudit = {
+        ...candidate.presentation.semanticAudit,
         path: "semantic-video-audit-oversized.json",
         sha256: sha256(oversizedSemanticAudit),
-        reviewer: "Codex visual audit",
       };
     },
     "presentation.semanticAudit exceeds",
@@ -1885,8 +1948,8 @@ async function selfTest() {
 
   const failedAudit = Buffer.from(
     `${JSON.stringify({
+      ...semanticAuditIdentity,
       videoSha256: sha256(mp4),
-      reviewer: "Codex visual audit",
       status: "fail",
       firstMeaningfulActionSeconds: 53,
       watchedStartToFinish: true,
@@ -1907,7 +1970,7 @@ async function selfTest() {
     semanticAudit: {
       path: "semantic-video-audit-failed.json",
       sha256: sha256(failedAudit),
-      reviewer: "Codex visual audit",
+      ...semanticAuditIdentity,
     },
   };
   await writeFile(manifestPath, `${JSON.stringify(correction, null, 2)}\n`);
