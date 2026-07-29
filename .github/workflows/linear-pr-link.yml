@@ -1,0 +1,46 @@
+name: Linear PR link
+
+# Lightweight required-ready gate: every non-draft PR must reference a Linear
+# issue (ENG-*/LAB-*) via title, branch, or magic-word body directive.
+# Policy lives in scripts/linear-pr-link/matcher.ts (shared with Danger).
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
+      - reopened
+      - ready_for_review
+      - converted_to_draft
+  merge_group:
+
+concurrency:
+  group: linear-pr-link-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  linear-pr-link:
+    name: linear-pr-link
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Unit tests (matcher)
+        run: bun test scripts/linear-pr-link/matcher.test.ts
+
+      - name: Evaluate PR Linear link
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: bun scripts/linear-pr-link/check.ts
