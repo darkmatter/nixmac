@@ -67,14 +67,17 @@ const BRANCH_ID_RE = new RegExp(
 const MAGIC_WORD_ALT = MAGIC_WORDS.map(escapeRegExp).join("|");
 const UNLINK_WORD_ALT = UNLINK_WORDS.map(escapeRegExp).join("|");
 
-/** Magic word + canonical ID, or magic word + linear.app URL containing the ID. */
+/**
+ * Magic word + canonical ID, or magic word + linear.app URL containing the ID.
+ * Separator is horizontal whitespace only — IDs on a later line do not count.
+ */
 const MAGIC_LINK_RE = new RegExp(
-  `\\b(?:${MAGIC_WORD_ALT})\\s+(?:(?:${TEAM_ALT})-(\\d+)|https?://linear\\.app/[^\\s]*?/(?:issue|issues)/(?:${TEAM_ALT})-(\\d+)(?:\\b|/|\\?))`,
+  `\\b(?:${MAGIC_WORD_ALT})[ \\t]+(?:(?:${TEAM_ALT})-(\\d+)|https?://linear\\.app/[^\\s\\n]*?/(?:issue|issues)/(?:${TEAM_ALT})-(\\d+)(?:\\b|/|\\?))`,
   "gi",
 );
 
 const UNLINK_RE = new RegExp(
-  `\\b(?:${UNLINK_WORD_ALT})\\s+(?:${TEAM_ALT})-(\\d+)\\b`,
+  `\\b(?:${UNLINK_WORD_ALT})[ \\t]+(?:${TEAM_ALT})-(\\d+)\\b`,
   "gi",
 );
 

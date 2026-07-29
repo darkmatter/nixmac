@@ -4,9 +4,10 @@
 
 ## Linear
 
-Related to ENG-___
+Related to ENG-\_\_\_
 
 <!-- Prefer: Related to ENG-N (non-closing). Use Fixes ENG-N only if this PR fully completes the issue. -->
+
 <!-- Intentionally untracked? Add a visible body line: #no-linear: short reason -->
 
 ## Test Plan

@@ -2,7 +2,14 @@ name: Danger
 
 on:
   pull_request:
-    types: [opened, edited, synchronize, reopened, ready_for_review]
+    types:
+      - opened
+      - edited
+      - synchronize
+      - reopened
+      - ready_for_review
+      # Re-run when a ready PR converts back to draft so Linear fail → warn softens.
+      - converted_to_draft
 
 concurrency:
   group: danger-${{ github.event.pull_request.number || github.ref }}

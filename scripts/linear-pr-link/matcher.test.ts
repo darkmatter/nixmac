@@ -82,6 +82,14 @@ describe("evaluateLinearLink — success paths", () => {
     expect(r.matchedIds).toContain("ENG-1");
   });
 
+  test("body magic word and ID on separate lines does not link", () => {
+    const r = evaluateLinearLink({
+      ...base,
+      body: "Related to\n\nENG-123\n",
+    });
+    expect(r.policySatisfied).toBe(false);
+  });
+
   test("body Fixed ENG-1", () => {
     const r = evaluateLinearLink({ ...base, body: "Fixed ENG-9" });
     expect(r.policySatisfied).toBe(true);
