@@ -65,6 +65,11 @@ assert.match(
 );
 assert.match(
   terminalWorkflow,
+  /pulls\/\$\{PR_NUMBER\}[\s\S]*pulls\/\$\{PR_NUMBER\}\/commits\?per_page=100[\s\S]*commits\/\$\{EXPECTED_SHA\}\/pulls\?per_page=100[\s\S]*expected_sha is not associated with the declared pull request/,
+  "terminal renderer must bind the tested SHA to the declared pull request while allowing stale PR commits",
+);
+assert.match(
+  terminalWorkflow,
   /\[\[ "\$REPORT_TOOL_SHA" == "\$trusted_main_sha" \]\]/,
   "terminal renderer must execute only the current protected main revision",
 );

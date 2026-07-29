@@ -738,6 +738,13 @@ export async function loadTerminalResult(
     fail("presentation.terminalStateVisibleSeconds must not exceed evidence.video duration");
   }
   if (
+    result.presentation.firstMeaningfulActionSeconds +
+      result.presentation.terminalStateVisibleSeconds >
+    videoProbe.durationSeconds
+  ) {
+    fail("presentation action and terminal-state intervals must fit within evidence.video duration");
+  }
+  if (
     !Number.isSafeInteger(videoProbe.width) ||
     !Number.isSafeInteger(videoProbe.height) ||
     videoProbe.width < 320 ||
@@ -1430,6 +1437,14 @@ async function selfTest() {
     "presentation.terminalStateVisibleSeconds must not exceed evidence.video duration",
   );
   await expectRejected(
+    "impossible presentation intervals",
+    (candidate) => {
+      candidate.presentation.firstMeaningfulActionSeconds = 3;
+      candidate.evidence.video.durationSeconds = 5;
+    },
+    "presentation action and terminal-state intervals must fit within evidence.video duration",
+  );
+  await expectRejected(
     "missing provider disclosure",
     (candidate) => delete candidate.provider.kind,
     "provider.kind",
@@ -1673,7 +1688,7 @@ async function selfTest() {
   await writeFile(path.join(dir, "semantic-video-audit-failed.json"), failedAudit);
   const correction = structuredClone(expectedRefusal);
   correction.scenarios = [correction.scenarios[0]];
-  correction.evidence.video.durationSeconds = 60;
+  correction.evidence.video.durationSeconds = 75;
   correction.presentation = {
     ...correction.presentation,
     status: "fail",

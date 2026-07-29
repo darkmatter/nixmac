@@ -152,6 +152,37 @@ jobs:
             exit 1
           }
 
+          declared_pr="$RUNNER_TEMP/declared-pr-${PR_NUMBER}.json"
+          gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" > "$declared_pr"
+          pr_head_sha="$(jq -r '.head.sha' "$declared_pr")"
+          pr_merge_sha="$(jq -r '.merge_commit_sha // empty' "$declared_pr")"
+          expected_sha_belongs_to_pr=false
+          if [[ "$EXPECTED_SHA" == "$pr_head_sha" || "$EXPECTED_SHA" == "$pr_merge_sha" ]]; then
+            expected_sha_belongs_to_pr=true
+          else
+            declared_pr_commits="$RUNNER_TEMP/declared-pr-${PR_NUMBER}-commits.json"
+            gh api --paginate --slurp \
+              "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/commits?per_page=100" \
+              > "$declared_pr_commits"
+            if jq -e --arg sha "$EXPECTED_SHA" 'any(.[][]; .sha == $sha)' \
+              "$declared_pr_commits" >/dev/null; then
+              expected_sha_belongs_to_pr=true
+            else
+              associated_pulls="$RUNNER_TEMP/expected-sha-associated-pulls.json"
+              gh api -H "Accept: application/vnd.github+json" \
+                "repos/${GITHUB_REPOSITORY}/commits/${EXPECTED_SHA}/pulls?per_page=100" \
+                > "$associated_pulls"
+              if jq -e --argjson pr "$PR_NUMBER" 'any(.[]; .number == $pr)' \
+                "$associated_pulls" >/dev/null; then
+                expected_sha_belongs_to_pr=true
+              fi
+            fi
+          fi
+          [[ "$expected_sha_belongs_to_pr" == "true" ]] || {
+            echo "expected_sha is not associated with the declared pull request" >&2
+            exit 1
+          }
+
           ssh_common=(
             -i "$HOME/.ssh/nixmac-e2e"
             -o BatchMode=yes
