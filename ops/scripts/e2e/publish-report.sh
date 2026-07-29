@@ -17,6 +17,16 @@ set -euo pipefail
 #   GITHUB_RUN_ID      - For commit message
 #   INDEX_URL, LATEST_INDEX_URL - Pre-computed URLs
 #   PR_NUMBER          - For commit message
+#   UPDATE_LATEST      - Whether to replace the latest alias (default: true)
+
+update_latest="${UPDATE_LATEST:-true}"
+case "$update_latest" in
+true | false) ;;
+*)
+	echo "UPDATE_LATEST must be true or false" >&2
+	exit 1
+	;;
+esac
 
 site_dir="$(mktemp -d)"
 git -C "$site_dir" init -q
@@ -30,14 +40,18 @@ else
 	git -C "$site_dir" checkout -q --orphan gh-pages
 fi
 
-mkdir -p "$site_dir/${PUBLISH_PATH:?}" "$site_dir/${LATEST_PATH:?}"
-rm -rf "$site_dir/${PUBLISH_PATH:?}" "$site_dir/${LATEST_PATH:?}"
-mkdir -p "$site_dir/${PUBLISH_PATH:?}" "$site_dir/${LATEST_PATH:?}"
+mkdir -p "$site_dir/${PUBLISH_PATH:?}"
+rm -rf "$site_dir/${PUBLISH_PATH:?}"
+mkdir -p "$site_dir/${PUBLISH_PATH:?}"
 cp -a "$REPORT_DIR"/. "$site_dir/${PUBLISH_PATH:?}"/
-cp -a "$REPORT_DIR"/. "$site_dir/${LATEST_PATH:?}"/
 
 RUN_ASSET_BASE_URL="$RUN_ASSET_BASE_URL" perl -0pi -e 's#<head>#<head>\n<base href="$ENV{RUN_ASSET_BASE_URL}">#' "$site_dir/${PUBLISH_PATH:?}/index.html"
-RUN_ASSET_BASE_URL="$RUN_ASSET_BASE_URL" perl -0pi -e 's#<head>#<head>\n<base href="$ENV{RUN_ASSET_BASE_URL}">#' "$site_dir/${LATEST_PATH:?}/index.html"
+if [[ "$update_latest" == "true" ]]; then
+	rm -rf "$site_dir/${LATEST_PATH:?}"
+	mkdir -p "$site_dir/${LATEST_PATH:?}"
+	cp -a "$REPORT_DIR"/. "$site_dir/${LATEST_PATH:?}"/
+	RUN_ASSET_BASE_URL="$RUN_ASSET_BASE_URL" perl -0pi -e 's#<head>#<head>\n<base href="$ENV{RUN_ASSET_BASE_URL}">#' "$site_dir/${LATEST_PATH:?}/index.html"
+fi
 
 if [[ -n "${REPORT_PREFIX:-}" && -d "$site_dir/$REPORT_PREFIX" ]]; then
 	find "$site_dir/$REPORT_PREFIX" -mindepth 1 -maxdepth 1 -type d -name 'run-*' |
@@ -60,6 +74,11 @@ fi
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
 	{
 		echo "index_url=${INDEX_URL:-}"
-		echo "latest_index_url=${LATEST_INDEX_URL:-}"
+		if [[ "$update_latest" == "true" ]]; then
+			echo "latest_index_url=${LATEST_INDEX_URL:-}"
+		else
+			echo "latest_index_url="
+		fi
+		echo "latest_updated=$update_latest"
 	} >>"$GITHUB_OUTPUT"
 fi

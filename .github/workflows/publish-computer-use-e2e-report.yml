@@ -28,6 +28,7 @@ on:
 permissions:
   actions: read
   contents: write
+  pull-requests: read
 
 jobs:
   render:
@@ -240,6 +241,21 @@ jobs:
           name: computer-use-terminal-report
           path: artifacts/terminal-report-public
 
+      - name: Check whether the tested SHA is still current
+        id: latest
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          PR_NUMBER: ${{ inputs.pull_request }}
+        run: |
+          set -euo pipefail
+          pull_request_json="$RUNNER_TEMP/pull-request-${PR_NUMBER}.json"
+          gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" > "$pull_request_json"
+          node tests/e2e/computer-use/latest-report-eligibility.mjs check \
+            --input "$pull_request_json" \
+            --expected-sha "$EXPECTED_SHA"
+
       - name: Publish report
         id: publish-report
         shell: bash
@@ -254,6 +270,7 @@ jobs:
           RUN_ASSET_BASE_URL: https://darkmatter.github.io/nixmac/computer-use-e2e/terminal/pr-${{ inputs.pull_request }}/run-${{ github.run_id }}-${{ github.run_attempt }}/
           RETENTION_KEEP_RUNS: "20"
           PR_NUMBER: ${{ inputs.pull_request }}
+          UPDATE_LATEST: ${{ steps.latest.outputs.update_latest }}
         run: ops/scripts/e2e/publish-report.sh
 
       - name: Summarize publication result
@@ -262,6 +279,7 @@ jobs:
           PRODUCT_VERDICT: ${{ needs.render.outputs.verdict }}
           INDEX_URL: ${{ steps.publish-report.outputs.index_url }}
           LATEST_INDEX_URL: ${{ steps.publish-report.outputs.latest_index_url }}
+          LATEST_UPDATED: ${{ steps.publish-report.outputs.latest_updated }}
         run: |
           {
             echo "## Published Computer Use report"
@@ -269,7 +287,11 @@ jobs:
             echo "- Product verdict: \`$PRODUCT_VERDICT\`"
             echo "- Report status: \`published\`"
             echo "- Immutable report: $INDEX_URL"
-            echo "- Latest alias: $LATEST_INDEX_URL"
+            if [[ "$LATEST_UPDATED" == "true" ]]; then
+              echo "- Latest alias: $LATEST_INDEX_URL"
+            else
+              echo "- Latest alias: not updated because the tested SHA is no longer current"
+            fi
             echo
             echo "A report publication failure fails this delivery job only; it does not rewrite the validated product verdict."
           } >> "$GITHUB_STEP_SUMMARY"

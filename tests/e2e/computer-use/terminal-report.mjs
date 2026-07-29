@@ -171,6 +171,18 @@ async function probeVideo(filePath) {
 }
 
 function validateOutcome(result) {
+  for (const scenario of result.scenarios) {
+    const assertionStatuses = scenario.assertions.map((assertion) => assertion.status);
+    const expectedStatus = assertionStatuses.includes("fail")
+      ? "fail"
+      : assertionStatuses.includes("inconclusive")
+        ? "inconclusive"
+        : "pass";
+    if (scenario.status !== expectedStatus) {
+      fail(`scenario "${scenario.id}" status must be ${expectedStatus} to match its assertions`);
+    }
+  }
+
   const scenarioStatuses = result.scenarios.map((scenario) => scenario.status);
   const assertionStatuses = result.scenarios.flatMap((scenario) =>
     scenario.assertions.map((assertion) => assertion.status),
@@ -608,6 +620,7 @@ async function selfTest() {
   const invalid = structuredClone(manifest);
   invalid.verdict = "pass";
   invalid.scenarios[0].status = "inconclusive";
+  invalid.scenarios[0].assertions[0].status = "inconclusive";
   await writeFile(manifestPath, `${JSON.stringify(invalid, null, 2)}\n`);
   let rejected = false;
   try {
@@ -620,6 +633,7 @@ async function selfTest() {
   const downgraded = structuredClone(manifest);
   downgraded.verdict = "inconclusive";
   downgraded.scenarios[0].status = "fail";
+  downgraded.scenarios[0].assertions[0].status = "fail";
   await writeFile(manifestPath, `${JSON.stringify(downgraded, null, 2)}\n`);
   rejected = false;
   try {
@@ -628,6 +642,52 @@ async function selfTest() {
     rejected = error.message.includes("requires a fail verdict");
   }
   if (!rejected) fail("self-test expected a failed result downgrade to be rejected");
+
+  for (const testCase of [
+    {
+      name: "pass scenario with failed assertion",
+      scenarioStatus: "pass",
+      assertionStatus: "fail",
+      verdict: "fail",
+      expectedStatus: "fail",
+    },
+    {
+      name: "pass scenario with inconclusive assertion",
+      scenarioStatus: "pass",
+      assertionStatus: "inconclusive",
+      verdict: "inconclusive",
+      expectedStatus: "inconclusive",
+    },
+    {
+      name: "failed scenario with passing assertions",
+      scenarioStatus: "fail",
+      assertionStatus: "pass",
+      verdict: "fail",
+      expectedStatus: "pass",
+    },
+    {
+      name: "inconclusive scenario with passing assertions",
+      scenarioStatus: "inconclusive",
+      assertionStatus: "pass",
+      verdict: "inconclusive",
+      expectedStatus: "pass",
+    },
+  ]) {
+    const contradictory = structuredClone(manifest);
+    contradictory.verdict = testCase.verdict;
+    contradictory.scenarios[0].status = testCase.scenarioStatus;
+    contradictory.scenarios[0].assertions[0].status = testCase.assertionStatus;
+    await writeFile(manifestPath, `${JSON.stringify(contradictory, null, 2)}\n`);
+    rejected = false;
+    try {
+      await loadTerminalResult(manifestPath, { probe: false });
+    } catch (error) {
+      rejected = error.message.includes(
+        `status must be ${testCase.expectedStatus} to match its assertions`,
+      );
+    }
+    if (!rejected) fail(`self-test expected ${testCase.name} to be rejected`);
+  }
   process.stdout.write("terminal-report self-test passed\n");
 }
 
