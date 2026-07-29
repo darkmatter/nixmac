@@ -17,13 +17,18 @@ import { promisify } from "node:util";
 import { redact } from "./redaction.mjs";
 
 const execFileAsync = promisify(execFile);
-const SCHEMA_VERSION = "nixmac.e2e.terminal-result.v1";
+const SCHEMA_VERSION = "nixmac.e2e.terminal-result.v2";
 const MAX_SCREENSHOTS = 6;
 const MAX_SCREENSHOT_BYTES = 4 * 1024 * 1024;
 const MAX_SCREENSHOT_TOTAL_BYTES = 12 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 15 * 1024 * 1024;
 const MAX_HTML_BYTES = 42 * 1024 * 1024;
 const STATUSES = new Set(["pass", "fail", "inconclusive"]);
+const INTENTS = new Set(["positive-flow", "expected-refusal"]);
+const PROVIDER_KINDS = new Set(["scripted-mock", "real"]);
+const ENDPOINT_CLASSES = new Set(["loopback", "remote"]);
+const MAX_FIRST_ACTION_SECONDS = 15;
+const MIN_TERMINAL_VISIBLE_SECONDS = 3;
 const SHA256_RE = /^[a-f0-9]{64}$/;
 const GIT_SHA_RE = /^[a-f0-9]{40}$/;
 const SAFE_ID_RE = /^[a-z0-9][a-z0-9._-]{0,79}$/;
@@ -42,6 +47,23 @@ function requireString(value, name, { pattern, max = 2_000 } = {}) {
 
 function requireInteger(value, name) {
   if (!Number.isSafeInteger(value) || value < 1) fail(`${name} must be a positive integer`);
+  return value;
+}
+
+function requireNonNegativeNumber(value, name) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    fail(`${name} must be a non-negative number`);
+  }
+  return value;
+}
+
+function requireBoolean(value, name) {
+  if (typeof value !== "boolean") fail(`${name} must be a boolean`);
+  return value;
+}
+
+function requireEnum(value, name, allowed) {
+  if (!allowed.has(value)) fail(`${name} has an unsupported value`);
   return value;
 }
 
@@ -131,6 +153,23 @@ function validateMp4Header(buffer, name) {
   }
 }
 
+function videoProbeFromFfprobe(parsed) {
+  const streams = parsed.streams ?? [];
+  if (streams.length !== 1 || streams[0]?.codec_type !== "video") {
+    fail("evidence.video must contain exactly one video stream and no audio or extra streams");
+  }
+  const stream = streams[0];
+  return {
+    codec: stream.codec_name,
+    width: stream.width,
+    height: stream.height,
+    pixelFormat: stream.pix_fmt,
+    durationSeconds: Number(parsed.format?.duration),
+    streamCount: streams.length,
+    audioStreamCount: streams.filter((item) => item.codec_type === "audio").length,
+  };
+}
+
 async function probeVideo(filePath) {
   const candidates = [
     process.env.FFPROBE_BIN,
@@ -144,24 +183,14 @@ async function probeVideo(filePath) {
       const { stdout } = await execFileAsync(candidate, [
         "-v",
         "error",
-        "-select_streams",
-        "v:0",
         "-show_entries",
-        "stream=codec_name,width,height,pix_fmt:format=duration",
+        "stream=index,codec_type,codec_name,width,height,pix_fmt:format=duration",
         "-of",
         "json",
         filePath,
       ]);
       const parsed = JSON.parse(stdout);
-      const stream = parsed.streams?.[0];
-      if (!stream) fail("ffprobe did not find a video stream");
-      return {
-        codec: stream.codec_name,
-        width: stream.width,
-        height: stream.height,
-        pixelFormat: stream.pix_fmt,
-        durationSeconds: Number(parsed.format?.duration),
-      };
+      return videoProbeFromFfprobe(parsed);
     } catch (error) {
       lastError = error;
       if (error?.code !== "ENOENT") throw error;
@@ -170,34 +199,60 @@ async function probeVideo(filePath) {
   throw new Error(`ffprobe is required to validate the evidence video: ${lastError?.message || "not found"}`);
 }
 
+async function decodeVideo(filePath) {
+  const candidates = [
+    process.env.FFMPEG_BIN,
+    "/opt/homebrew/bin/ffmpeg",
+    "/usr/local/bin/ffmpeg",
+    "ffmpeg",
+  ].filter(Boolean);
+  let lastError;
+  for (const candidate of candidates) {
+    try {
+      await execFileAsync(candidate, ["-v", "error", "-i", filePath, "-f", "null", "-"]);
+      return;
+    } catch (error) {
+      lastError = error;
+      if (error?.code !== "ENOENT") {
+        fail(`evidence.video failed full decode: ${error?.stderr || error?.message}`);
+      }
+    }
+  }
+  fail(`ffmpeg is required to decode the evidence video: ${lastError?.message || "not found"}`);
+}
+
+function dominantStatus(statuses) {
+  if (statuses.includes("fail")) return "fail";
+  if (statuses.includes("inconclusive")) return "inconclusive";
+  return "pass";
+}
+
 function validateOutcome(result) {
   for (const scenario of result.scenarios) {
-    const assertionStatuses = scenario.assertions.map((assertion) => assertion.status);
-    const expectedStatus = assertionStatuses.includes("fail")
-      ? "fail"
-      : assertionStatuses.includes("inconclusive")
-        ? "inconclusive"
-        : "pass";
+    const componentStatuses = [
+      ...scenario.preconditions.map((precondition) => precondition.status),
+      scenario.terminalState.status,
+      ...scenario.assertions.map((assertion) => assertion.status),
+    ];
+    const expectedStatus = dominantStatus(componentStatuses);
     if (scenario.status !== expectedStatus) {
-      fail(`scenario "${scenario.id}" status must be ${expectedStatus} to match its assertions`);
+      fail(`scenario "${scenario.id}" status must be ${expectedStatus} to match its evidence`);
     }
   }
 
   const scenarioStatuses = result.scenarios.map((scenario) => scenario.status);
-  const assertionStatuses = result.scenarios.flatMap((scenario) =>
-    scenario.assertions.map((assertion) => assertion.status),
-  );
-  const allStatuses = [...scenarioStatuses, ...assertionStatuses];
-  const hasFail = allStatuses.includes("fail");
-  const hasInconclusive = allStatuses.includes("inconclusive");
-  if (hasFail && result.verdict !== "fail") {
-    fail("a failed scenario or assertion requires a fail verdict");
-  }
-  if (!hasFail && hasInconclusive && result.verdict !== "inconclusive") {
-    fail("an inconclusive scenario or assertion requires an inconclusive verdict");
-  }
-  if (!hasFail && !hasInconclusive && result.verdict !== "pass") {
-    fail("all-passing scenarios and assertions require a pass verdict");
+  const componentStatuses = result.scenarios.flatMap((scenario) => [
+    ...scenario.preconditions.map((precondition) => precondition.status),
+    scenario.terminalState.status,
+    ...scenario.assertions.map((assertion) => assertion.status),
+  ]);
+  const expectedVerdict = dominantStatus([
+    ...scenarioStatuses,
+    ...componentStatuses,
+    result.cleanup.status,
+  ]);
+  if (result.verdict !== expectedVerdict) {
+    fail(`${expectedVerdict} evidence requires verdict to be ${expectedVerdict}`);
   }
 }
 
@@ -235,6 +290,14 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
     fail("reportTool.repository must be darkmatter/nixmac");
   }
   requireString(result.reportTool?.sha, "reportTool.sha", { pattern: GIT_SHA_RE });
+  requireEnum(result.provider?.kind, "provider.kind", PROVIDER_KINDS);
+  requireEnum(result.provider?.endpointClass, "provider.endpointClass", ENDPOINT_CLASSES);
+  requireString(result.provider?.label, "provider.label", { max: 200 });
+  requireString(result.provider?.model, "provider.model", { max: 200 });
+  requireString(result.provider?.trace?.path, "provider.trace.path", { max: 1_000 });
+  requireString(result.provider?.trace?.sha256, "provider.trace.sha256", {
+    pattern: SHA256_RE,
+  });
   requireString(result.runner?.label, "runner.label", { max: 200 });
   if (result.runner?.host !== undefined) {
     requireString(result.runner.host, "runner.host", { max: 200 });
@@ -252,8 +315,35 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
     if (ids.has(scenario.id)) fail(`${prefix}.id must be unique`);
     ids.add(scenario.id);
     requireString(scenario.title, `${prefix}.title`, { max: 200 });
+    requireEnum(scenario.intent, `${prefix}.intent`, INTENTS);
+    requireBoolean(scenario.coversChangedBehavior, `${prefix}.coversChangedBehavior`);
     requireString(scenario.changedBehavior, `${prefix}.changedBehavior`, { max: 1_000 });
     requireString(scenario.declaredPostcondition, `${prefix}.declaredPostcondition`, { max: 1_000 });
+    requireArray(scenario.preconditions, `${prefix}.preconditions`, { min: 1, max: 12 }).forEach(
+      (precondition, preconditionIndex) => {
+        requireString(
+          precondition.description,
+          `${prefix}.preconditions[${preconditionIndex}].description`,
+          { max: 1_000 },
+        );
+        requireStatus(
+          precondition.status,
+          `${prefix}.preconditions[${preconditionIndex}].status`,
+        );
+        requireString(
+          precondition.evidence,
+          `${prefix}.preconditions[${preconditionIndex}].evidence`,
+          { max: 2_000 },
+        );
+      },
+    );
+    requireString(scenario.terminalState?.description, `${prefix}.terminalState.description`, {
+      max: 1_000,
+    });
+    requireStatus(scenario.terminalState?.status, `${prefix}.terminalState.status`);
+    requireString(scenario.terminalState?.evidence, `${prefix}.terminalState.evidence`, {
+      max: 2_000,
+    });
     requireStatus(scenario.status, `${prefix}.status`);
     requireArray(scenario.assertions, `${prefix}.assertions`, { min: 1, max: 12 }).forEach(
       (assertion, assertionIndex) => {
@@ -267,10 +357,65 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
       },
     );
   });
-  validateOutcome(result);
+  if (!result.scenarios.some((scenario) => scenario.coversChangedBehavior)) {
+    fail("at least one scenario must cover changed behavior");
+  }
+
+  requireStatus(result.presentation?.status, "presentation.status");
+  requireNonNegativeNumber(
+    result.presentation?.firstMeaningfulActionSeconds,
+    "presentation.firstMeaningfulActionSeconds",
+  );
+  requireBoolean(result.presentation?.watchedStartToFinish, "presentation.watchedStartToFinish");
+  requireBoolean(result.presentation?.terminalStateVisible, "presentation.terminalStateVisible");
+  requireNonNegativeNumber(
+    result.presentation?.terminalStateVisibleSeconds,
+    "presentation.terminalStateVisibleSeconds",
+  );
+  requireString(result.presentation?.note, "presentation.note", { max: 1_000 });
+  requireString(
+    result.presentation?.semanticAudit?.path,
+    "presentation.semanticAudit.path",
+    { max: 1_000 },
+  );
+  requireString(
+    result.presentation?.semanticAudit?.sha256,
+    "presentation.semanticAudit.sha256",
+    { pattern: SHA256_RE },
+  );
+  requireString(
+    result.presentation?.semanticAudit?.reviewer,
+    "presentation.semanticAudit.reviewer",
+    { max: 200 },
+  );
+  if (result.presentation.status === "pass") {
+    if (result.presentation.firstMeaningfulActionSeconds > MAX_FIRST_ACTION_SECONDS) {
+      fail(`presentation.firstMeaningfulActionSeconds must be <= ${MAX_FIRST_ACTION_SECONDS}`);
+    }
+    if (!result.presentation.watchedStartToFinish) {
+      fail("presentation.watchedStartToFinish must be true when presentation.status is pass");
+    }
+    if (!result.presentation.terminalStateVisible) {
+      fail("presentation.terminalStateVisible must be true when presentation.status is pass");
+    }
+    if (result.presentation.terminalStateVisibleSeconds < MIN_TERMINAL_VISIBLE_SECONDS) {
+      fail(
+        `presentation.terminalStateVisibleSeconds must be >= ${MIN_TERMINAL_VISIBLE_SECONDS}`,
+      );
+    }
+  }
 
   requireString(result.evidence?.root, "evidence.root", { max: 1_000 });
   const root = await realpath(result.evidence.root);
+  const providerTraceFile = await confinedFile(
+    root,
+    result.provider.trace.path,
+    "provider.trace.path",
+  );
+  const providerTraceBuffer = await readFile(providerTraceFile.absolutePath);
+  if (sha256(providerTraceBuffer) !== result.provider.trace.sha256) {
+    fail("provider.trace SHA-256 does not match");
+  }
   const screenshots = [];
   let screenshotBytes = 0;
   for (const [index, screenshot] of requireArray(
@@ -316,7 +461,12 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
         height: video.height,
         pixelFormat: video.pixelFormat,
         durationSeconds: video.durationSeconds,
+        streamCount: video.streamCount,
+        audioStreamCount: video.audioStreamCount,
       };
+  if (videoProbe.streamCount !== 1 || videoProbe.audioStreamCount !== 0) {
+    fail("evidence.video must contain exactly one video stream and no audio or extra streams");
+  }
   if (videoProbe.codec !== "h264" || videoProbe.pixelFormat !== "yuv420p") {
     fail("evidence.video must be H.264 with yuv420p pixel format");
   }
@@ -337,12 +487,36 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
   ) {
     fail("evidence.video dimensions are outside the supported range");
   }
+  if (probe) await decodeVideo(videoFile.absolutePath);
+
+  const semanticAuditFile = await confinedFile(
+    root,
+    result.presentation.semanticAudit.path,
+    "presentation.semanticAudit.path",
+  );
+  const semanticAuditBuffer = await readFile(semanticAuditFile.absolutePath);
+  if (sha256(semanticAuditBuffer) !== result.presentation.semanticAudit.sha256) {
+    fail("presentation.semanticAudit SHA-256 does not match");
+  }
+  let semanticAudit;
+  try {
+    semanticAudit = JSON.parse(semanticAuditBuffer.toString("utf8"));
+  } catch {
+    fail("presentation.semanticAudit must be valid JSON");
+  }
+  if (semanticAudit.videoSha256 !== video.sha256) {
+    fail("presentation.semanticAudit videoSha256 must match evidence.video.sha256");
+  }
+  if (semanticAudit.reviewer !== result.presentation.semanticAudit.reviewer) {
+    fail("presentation.semanticAudit reviewer must match its artifact");
+  }
+  if (semanticAudit.status !== result.presentation.status) {
+    fail("presentation.semanticAudit status must match presentation.status");
+  }
 
   requireStatus(result.cleanup?.status, "cleanup.status");
   requireString(result.cleanup?.note, "cleanup.note", { max: 1_000 });
-  if (result.verdict === "pass" && result.cleanup.status !== "pass") {
-    fail("a pass verdict requires cleanup.status to be pass");
-  }
+  validateOutcome(result);
   requireArray(result.knownLimits, "knownLimits", { min: 0, max: 12 }).forEach((limit, index) =>
     requireString(limit, `knownLimits[${index}]`, { max: 1_000 }),
   );
@@ -352,6 +526,20 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
 
   return {
     ...result,
+    provider: {
+      ...result.provider,
+      trace: {
+        ...result.provider.trace,
+        size: providerTraceFile.size,
+      },
+    },
+    presentation: {
+      ...result.presentation,
+      semanticAudit: {
+        ...result.presentation.semanticAudit,
+        size: semanticAuditFile.size,
+      },
+    },
     evidence: {
       root,
       screenshots,
@@ -369,7 +557,27 @@ function verdictLabel(verdict) {
   return { pass: "PASS", fail: "FAIL", inconclusive: "INCONCLUSIVE" }[verdict];
 }
 
+export function deriveResultLabel(result) {
+  if (result.verdict === "fail") return "FAIL";
+  if (result.verdict === "inconclusive") return "INCONCLUSIVE";
+  const changedScenarios = result.scenarios.filter(
+    (scenario) => scenario.coversChangedBehavior,
+  );
+  if (changedScenarios.some((scenario) => scenario.intent === "positive-flow")) {
+    return "POSITIVE FLOW PASS";
+  }
+  return "EXPECTED REFUSAL VERIFIED";
+}
+
 function renderScenario(scenario) {
+  const preconditions = scenario.preconditions
+    .map(
+      (precondition) => `<li class="assertion">
+        <span class="badge ${escapeHtml(precondition.status)}">${escapeHtml(verdictLabel(precondition.status))}</span>
+        <div><strong>${escapeHtml(precondition.description)}</strong><small>${escapeHtml(precondition.evidence)}</small></div>
+      </li>`,
+    )
+    .join("");
   const assertions = scenario.assertions
     .map(
       (assertion) => `<li class="assertion">
@@ -379,8 +587,10 @@ function renderScenario(scenario) {
     )
     .join("");
   return `<article class="scenario">
-    <header><div><small>PR-focused scenario</small><h3>${escapeHtml(scenario.title)}</h3></div><span class="badge ${escapeHtml(scenario.status)}">${escapeHtml(verdictLabel(scenario.status))}</span></header>
-    <dl><div><dt>Changed behavior</dt><dd>${escapeHtml(scenario.changedBehavior)}</dd></div><div><dt>Declared postcondition</dt><dd>${escapeHtml(scenario.declaredPostcondition)}</dd></div></dl>
+    <header><div><small>${escapeHtml(scenario.intent)} · ${scenario.coversChangedBehavior ? "changed behavior" : "supporting coverage"}</small><h3>${escapeHtml(scenario.title)}</h3></div><span class="badge ${escapeHtml(scenario.status)}">${escapeHtml(verdictLabel(scenario.status))}</span></header>
+    <dl><div><dt>Changed behavior</dt><dd>${escapeHtml(scenario.changedBehavior)}</dd></div><div><dt>Declared postcondition</dt><dd>${escapeHtml(scenario.declaredPostcondition)}</dd></div><div><dt>Terminal state</dt><dd><strong>${escapeHtml(scenario.terminalState.description)}</strong><br>${escapeHtml(scenario.terminalState.evidence)}</dd></div></dl>
+    <h4>Preconditions</h4><ul class="assertions">${preconditions}</ul>
+    <h4>Assertions</h4>
     <ul class="assertions">${assertions}</ul>
   </article>`;
 }
@@ -389,6 +599,11 @@ export function renderTerminalReportHtml(result) {
   const pr = result.request.pullRequest;
   const artifact = result.testedArtifact;
   const video = result.evidence.video;
+  const resultLabel = deriveResultLabel(result);
+  const presentationFailed = result.presentation.status !== "pass";
+  const changedScenarioCount = result.scenarios.filter(
+    (scenario) => scenario.coversChangedBehavior,
+  ).length;
   const screenshots = result.evidence.screenshots
     .map(
       (shot) => `<figure>
@@ -406,6 +621,9 @@ export function renderTerminalReportHtml(result) {
     requestId: result.request.id,
     headSha: artifact.headSha,
     verdict: result.verdict,
+    resultLabel,
+    providerTraceHash: result.provider.trace.sha256,
+    semanticAuditHash: result.presentation.semanticAudit.sha256,
     screenshotHashes: result.evidence.screenshots.map((item) => item.sha256),
     videoHash: video.sha256,
   });
@@ -418,7 +636,7 @@ export function renderTerminalReportHtml(result) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="nixmac-e2e-schema" content="${SCHEMA_VERSION}">
   <meta name="nixmac-e2e-evidence-set-sha256" content="${evidenceSetHash}">
-  <title>nixmac E2E · PR #${pr.number} · ${verdictLabel(result.verdict)}</title>
+  <title>nixmac E2E · PR #${pr.number} · ${escapeHtml(resultLabel)}</title>
   <style>
     :root { color-scheme: dark; font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; --bg:#0c0f14; --panel:#131821; --line:#293241; --muted:#9ba8b8; --text:#eef3f9; --blue:#84c5ff; }
     * { box-sizing:border-box; } html { background:var(--bg); scroll-behavior:smooth; } body { margin:0; color:var(--text); background:radial-gradient(circle at 70% -20%, #193250 0, transparent 38rem), var(--bg); }
@@ -426,6 +644,7 @@ export function renderTerminalReportHtml(result) {
     p, dd, li { line-height:1.55; color:#c8d1dc; } code { color:#b9dcff; overflow-wrap:anywhere; } small { display:block; color:var(--muted); } .eyebrow { color:var(--blue); text-transform:uppercase; letter-spacing:.12em; font-weight:800; font-size:12px; }
     .hero { padding:28px; border:1px solid #35506c; border-radius:20px; background:linear-gradient(145deg, rgba(27,38,53,.97), rgba(14,18,25,.97)); box-shadow:0 24px 80px rgba(0,0,0,.3); } .hero-top { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; } .summary-copy { max-width:800px; font-size:17px; }
     .badge { display:inline-flex; align-items:center; justify-content:center; min-width:76px; padding:7px 11px; border-radius:999px; font-size:12px; font-weight:900; letter-spacing:.05em; white-space:nowrap; } .pass { color:#9af0bd; background:#123c2a; border:1px solid #266b4a; } .fail { color:#ffb1ae; background:#481d1e; border:1px solid #7a3434; } .inconclusive { color:#ffda84; background:#463612; border:1px solid #766023; }
+    .warning { margin-top:18px; padding:16px; border:1px solid #8c5b20; border-radius:12px; background:#3a280f; color:#ffe0a0; } h4 { margin:20px 0 4px; }
     .metrics { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:10px; margin-top:22px; } .metric, .panel, .scenario { border:1px solid var(--line); border-radius:14px; background:rgba(19,24,33,.94); } .metric { padding:14px; } .metric strong { display:block; margin-top:5px; font-size:18px; }
     .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; } .panel { padding:18px; min-width:0; } .panel h2 { margin-top:0; } dl { margin:0; } dl > div { padding:10px 0; border-top:1px solid var(--line); } dl > div:first-child { border-top:0; padding-top:0; } dt { color:var(--muted); font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; } dd { margin:4px 0 0; }
     .scenario { padding:20px; margin-top:12px; } .scenario header { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; } .assertions { list-style:none; padding:0; margin:18px 0 0; } .assertion { display:grid; grid-template-columns:auto 1fr; align-items:start; gap:12px; padding:12px 0; border-top:1px solid var(--line); } .assertion small { margin-top:4px; line-height:1.45; }
@@ -438,10 +657,12 @@ export function renderTerminalReportHtml(result) {
 <body>
 <main>
   <section class="hero">
-    <div class="hero-top"><div><span class="eyebrow">nixmac · Computer Use E2E</span><h1>PR #${pr.number}: ${escapeHtml(pr.title)}</h1></div><span class="badge ${result.verdict}">${verdictLabel(result.verdict)}</span></div>
+    <div class="hero-top"><div><span class="eyebrow">nixmac · Computer Use E2E</span><h1>PR #${pr.number}: ${escapeHtml(pr.title)}</h1></div><span class="badge ${result.verdict}">${escapeHtml(resultLabel)}</span></div>
     <p class="summary-copy">${escapeHtml(result.summary)}</p>
+    ${resultLabel === "EXPECTED REFUSAL VERIFIED" ? '<p class="warning"><strong>Positive flow not exercised.</strong> This result verifies the declared refusal/guardrail only.</p>' : ""}
+    ${presentationFailed ? `<p class="warning"><strong>PRESENTATION QUALITY FAILED.</strong> ${escapeHtml(result.presentation.note)}</p>` : ""}
     <div class="metrics">
-      <div class="metric"><small>Scenarios</small><strong>${result.scenarios.length} / ${result.scenarios.length} exercised</strong></div>
+      <div class="metric"><small>Changed-behavior coverage</small><strong>${changedScenarioCount} scenario${changedScenarioCount === 1 ? "" : "s"}</strong></div>
       <div class="metric"><small>Exact app</small><strong>${escapeHtml(artifact.appVersion)}</strong></div>
       <div class="metric"><small>Screenshots</small><strong>${result.evidence.screenshots.length} curated</strong></div>
       <div class="metric"><small>Video</small><strong>${escapeHtml(formatDuration(video.durationSeconds))}</strong></div>
@@ -461,6 +682,8 @@ export function renderTerminalReportHtml(result) {
       <div><dt>CuaDriver</dt><dd>${escapeHtml(result.runner.cuaDriverVersion)} · ${result.runner.sockets.map((item) => `<code>${escapeHtml(item)}</code>`).join(" · ")}</dd></div>
       <div><dt>Report tool pin</dt><dd><code>${escapeHtml(result.reportTool.repository)}@${result.reportTool.sha}</code></dd></div>
       <div><dt>Request</dt><dd><code>${escapeHtml(result.request.id)}</code></dd></div>
+      <div><dt>Provider</dt><dd><strong>${escapeHtml(result.provider.label)}</strong><br><code>${escapeHtml(result.provider.kind)} · ${escapeHtml(result.provider.endpointClass)} · ${escapeHtml(result.provider.model)}</code></dd></div>
+      <div><dt>Presentation audit</dt><dd><span class="badge ${escapeHtml(result.presentation.status)}">${escapeHtml(verdictLabel(result.presentation.status))}</span> · first action ${escapeHtml(String(result.presentation.firstMeaningfulActionSeconds))}s · terminal visible ${escapeHtml(String(result.presentation.terminalStateVisibleSeconds))}s<br>${escapeHtml(result.presentation.note)}</dd></div>
     </dl></section>
   </div>
 
@@ -483,6 +706,8 @@ export function renderTerminalReportHtml(result) {
       <tr><td>Staged nixmac.app</td><td><code>${artifact.appSha256}</code></td><td>source identity</td></tr>
       ${result.evidence.screenshots.map((shot) => `<tr><td>${escapeHtml(shot.label)}</td><td><code>${shot.sha256}</code></td><td>${escapeHtml(formatBytes(shot.size))}</td></tr>`).join("")}
       <tr><td>${escapeHtml(video.label)}</td><td><code>${video.sha256}</code></td><td>${escapeHtml(formatBytes(video.size))}</td></tr>
+      <tr><td>Provider trace</td><td><code>${result.provider.trace.sha256}</code></td><td>${escapeHtml(formatBytes(result.provider.trace.size))}</td></tr>
+      <tr><td>Semantic video audit</td><td><code>${result.presentation.semanticAudit.sha256}</code></td><td>${escapeHtml(formatBytes(result.presentation.semanticAudit.size))}</td></tr>
       <tr><td>Evidence set</td><td><code>${evidenceSetHash}</code></td><td>manifest identity</td></tr>
     </tbody></table>
   </section>
@@ -507,6 +732,7 @@ async function renderCommand(input, outputDir, { probe = true } = {}) {
   await writeFile(path.join(outputDir, "index.html"), html);
   const normalized = {
     ...result,
+    resultLabel: deriveResultLabel(result),
     evidence: {
       root: result.evidence.root,
       screenshots: result.evidence.screenshots.map(({ dataUri: _dataUri, ...item }) => item),
@@ -531,8 +757,29 @@ async function selfTest() {
   await writeFile(path.join(dir, "proof.png"), png);
   await writeFile(path.join(dir, "proof-after.png"), png);
   await writeFile(path.join(dir, "proof.mp4"), mp4);
+  const providerTrace = Buffer.from('{"event":"tool_request","tool":"ensure_secret"}\n');
+  await writeFile(path.join(dir, "provider-trace.jsonl"), providerTrace);
+  const semanticAudit = Buffer.from(
+    `${JSON.stringify({
+      videoSha256: sha256(mp4),
+      reviewer: "Codex visual audit",
+      status: "pass",
+      watchedStartToFinish: true,
+    })}\n`,
+  );
+  await writeFile(path.join(dir, "semantic-video-audit.json"), semanticAudit);
   const manifest = {
     schemaVersion: SCHEMA_VERSION,
+    provider: {
+      kind: "scripted-mock",
+      endpointClass: "loopback",
+      label: "Deterministic OpenAI-compatible loopback mock",
+      model: "nixmac-e2e-scripted",
+      trace: {
+        path: "provider-trace.jsonl",
+        sha256: sha256(providerTrace),
+      },
+    },
     request: {
       id: `nixmac-e2e:${"a".repeat(40)}`,
       repository: "darkmatter/nixmac",
@@ -564,8 +811,22 @@ async function selfTest() {
       {
         id: "self-test",
         title: "Self test",
+        intent: "positive-flow",
+        coversChangedBehavior: true,
         changedBehavior: "Exercise the adapter.",
         declaredPostcondition: "The report renders.",
+        preconditions: [
+          {
+            description: "Disposable fixture is clean",
+            status: "pass",
+            evidence: "Fixture state recorded.",
+          },
+        ],
+        terminalState: {
+          description: "Review is visible with the expected pending diff",
+          status: "pass",
+          evidence: "AX, screenshot, and Git diff agree.",
+        },
         status: "pass",
         assertions: [{ description: "Rendered", status: "pass", evidence: "Self-test output." }],
       },
@@ -596,6 +857,21 @@ async function selfTest() {
         height: 800,
         pixelFormat: "yuv420p",
         durationSeconds: 1,
+        streamCount: 1,
+        audioStreamCount: 0,
+      },
+    },
+    presentation: {
+      status: "pass",
+      firstMeaningfulActionSeconds: 1,
+      watchedStartToFinish: true,
+      terminalStateVisible: true,
+      terminalStateVisibleSeconds: 3,
+      note: "Semantic video audit passed.",
+      semanticAudit: {
+        path: "semantic-video-audit.json",
+        sha256: sha256(semanticAudit),
+        reviewer: "Codex visual audit",
       },
     },
     knownLimits: [],
@@ -605,7 +881,26 @@ async function selfTest() {
       completedAt: "2026-01-01T00:00:01Z",
     },
   };
-  const manifestPath = path.join(dir, "terminal-result.v1.json");
+  const contractFixture = JSON.parse(
+    await readFile(
+      new URL("./fixtures/terminal-result-v2.contract.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  contractFixture.evidence = structuredClone(manifest.evidence);
+  contractFixture.provider.trace = structuredClone(manifest.provider.trace);
+  contractFixture.presentation.semanticAudit = structuredClone(
+    manifest.presentation.semanticAudit,
+  );
+  const contractPath = path.join(dir, "terminal-result-v2.contract.json");
+  await writeFile(contractPath, `${JSON.stringify(contractFixture, null, 2)}\n`);
+  const contractResult = await loadTerminalResult(contractPath, { probe: false });
+  const contractHtml = renderTerminalReportHtml(contractResult);
+  if (!contractHtml.includes("POSITIVE FLOW PASS")) {
+    fail("canonical v2 fixture did not render POSITIVE FLOW PASS");
+  }
+
+  const manifestPath = path.join(dir, "terminal-result.v2.json");
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   const outputDir = path.join(dir, "report");
   const { html } = await renderCommand(manifestPath, outputDir, { probe: false });
@@ -626,9 +921,20 @@ async function selfTest() {
   try {
     await loadTerminalResult(manifestPath, { probe: false });
   } catch (error) {
-    rejected = error.message.includes("requires an inconclusive verdict");
+    rejected = error.message.includes("inconclusive evidence requires verdict to be inconclusive");
   }
   if (!rejected) fail("self-test expected inconsistent verdict to be rejected");
+
+  const missingIntent = structuredClone(manifest);
+  delete missingIntent.scenarios[0].intent;
+  await writeFile(manifestPath, `${JSON.stringify(missingIntent, null, 2)}\n`);
+  rejected = false;
+  try {
+    await loadTerminalResult(manifestPath, { probe: false });
+  } catch (error) {
+    rejected = error.message.includes("scenarios[0].intent");
+  }
+  if (!rejected) fail("self-test expected missing scenario intent to be rejected");
 
   const downgraded = structuredClone(manifest);
   downgraded.verdict = "inconclusive";
@@ -639,7 +945,7 @@ async function selfTest() {
   try {
     await loadTerminalResult(manifestPath, { probe: false });
   } catch (error) {
-    rejected = error.message.includes("requires a fail verdict");
+    rejected = error.message.includes("fail evidence requires verdict to be fail");
   }
   if (!rejected) fail("self-test expected a failed result downgrade to be rejected");
 
@@ -683,11 +989,182 @@ async function selfTest() {
       await loadTerminalResult(manifestPath, { probe: false });
     } catch (error) {
       rejected = error.message.includes(
-        `status must be ${testCase.expectedStatus} to match its assertions`,
+        `status must be ${testCase.expectedStatus} to match its evidence`,
       );
     }
     if (!rejected) fail(`self-test expected ${testCase.name} to be rejected`);
   }
+
+  const expectRejected = async (name, mutation, expectedMessage) => {
+    const candidate = structuredClone(manifest);
+    mutation(candidate);
+    await writeFile(manifestPath, `${JSON.stringify(candidate, null, 2)}\n`);
+    let didReject = false;
+    try {
+      await loadTerminalResult(manifestPath, { probe: false });
+    } catch (error) {
+      didReject = error.message.includes(expectedMessage);
+    }
+    if (!didReject) fail(`self-test expected ${name} to be rejected`);
+  };
+
+  await expectRejected(
+    "missing coversChangedBehavior",
+    (candidate) => delete candidate.scenarios[0].coversChangedBehavior,
+    "scenarios[0].coversChangedBehavior",
+  );
+  await expectRejected(
+    "missing preconditions",
+    (candidate) => delete candidate.scenarios[0].preconditions,
+    "scenarios[0].preconditions",
+  );
+  await expectRejected(
+    "missing terminal state",
+    (candidate) => delete candidate.scenarios[0].terminalState,
+    "scenarios[0].terminalState.description",
+  );
+  await expectRejected(
+    "no changed-behavior scenario",
+    (candidate) => {
+      candidate.scenarios[0].coversChangedBehavior = false;
+    },
+    "at least one scenario must cover changed behavior",
+  );
+  await expectRejected(
+    "late first action",
+    (candidate) => {
+      candidate.presentation.firstMeaningfulActionSeconds = 16;
+    },
+    "presentation.firstMeaningfulActionSeconds must be <= 15",
+  );
+  await expectRejected(
+    "unwatched video",
+    (candidate) => {
+      candidate.presentation.watchedStartToFinish = false;
+    },
+    "presentation.watchedStartToFinish must be true",
+  );
+  await expectRejected(
+    "short terminal hold",
+    (candidate) => {
+      candidate.presentation.terminalStateVisibleSeconds = 2;
+    },
+    "presentation.terminalStateVisibleSeconds must be >= 3",
+  );
+  await expectRejected(
+    "missing provider disclosure",
+    (candidate) => delete candidate.provider.kind,
+    "provider.kind",
+  );
+  await expectRejected(
+    "provider trace hash mismatch",
+    (candidate) => {
+      candidate.provider.trace.sha256 = "f".repeat(64);
+    },
+    "provider.trace SHA-256 does not match",
+  );
+  await expectRejected(
+    "semantic audit hash mismatch",
+    (candidate) => {
+      candidate.presentation.semanticAudit.sha256 = "f".repeat(64);
+    },
+    "presentation.semanticAudit SHA-256 does not match",
+  );
+  await expectRejected(
+    "audio stream",
+    (candidate) => {
+      candidate.evidence.video.streamCount = 2;
+      candidate.evidence.video.audioStreamCount = 1;
+    },
+    "exactly one video stream",
+  );
+  await expectRejected(
+    "failed cleanup with pass verdict",
+    (candidate) => {
+      candidate.cleanup.status = "fail";
+    },
+    "fail evidence requires verdict to be fail",
+  );
+
+  const expectedRefusal = structuredClone(manifest);
+  expectedRefusal.scenarios[0].intent = "expected-refusal";
+  expectedRefusal.scenarios[0].title = "Safe refusal";
+  expectedRefusal.scenarios[0].terminalState.description = "Safe refusal visible";
+  expectedRefusal.scenarios.push({
+    ...structuredClone(expectedRefusal.scenarios[0]),
+    id: "supporting-positive",
+    title: "Supporting positive coverage",
+    intent: "positive-flow",
+    coversChangedBehavior: false,
+  });
+  await writeFile(manifestPath, `${JSON.stringify(expectedRefusal, null, 2)}\n`);
+  const expectedRefusalResult = await loadTerminalResult(manifestPath, { probe: false });
+  const expectedRefusalHtml = renderTerminalReportHtml(expectedRefusalResult);
+  for (const needle of ["EXPECTED REFUSAL VERIFIED", "Positive flow not exercised"]) {
+    if (!expectedRefusalHtml.includes(needle)) {
+      fail(`self-test expected-refusal output is missing ${needle}`);
+    }
+  }
+  if (expectedRefusalHtml.includes("POSITIVE FLOW PASS")) {
+    fail("self-test expected unrelated positive coverage not to qualify the result");
+  }
+
+  const failedAudit = Buffer.from(
+    `${JSON.stringify({
+      videoSha256: sha256(mp4),
+      reviewer: "Codex visual audit",
+      status: "fail",
+      watchedStartToFinish: true,
+    })}\n`,
+  );
+  await writeFile(path.join(dir, "semantic-video-audit-failed.json"), failedAudit);
+  const correction = structuredClone(expectedRefusal);
+  correction.scenarios = [correction.scenarios[0]];
+  correction.presentation = {
+    ...correction.presentation,
+    status: "fail",
+    firstMeaningfulActionSeconds: 53,
+    terminalStateVisibleSeconds: 15,
+    note: "The 53-second idle prefix is not demo quality.",
+    semanticAudit: {
+      path: "semantic-video-audit-failed.json",
+      sha256: sha256(failedAudit),
+      reviewer: "Codex visual audit",
+    },
+  };
+  await writeFile(manifestPath, `${JSON.stringify(correction, null, 2)}\n`);
+  const correctionResult = await loadTerminalResult(manifestPath, { probe: false });
+  const correctionHtml = renderTerminalReportHtml(correctionResult);
+  if (!correctionHtml.includes("PRESENTATION QUALITY FAILED")) {
+    fail("self-test correction output is missing presentation failure warning");
+  }
+
+  for (const streams of [
+    [
+      { codec_type: "video", codec_name: "h264" },
+      { codec_type: "audio", codec_name: "aac" },
+    ],
+    [
+      { codec_type: "video", codec_name: "h264" },
+      { codec_type: "video", codec_name: "h264" },
+    ],
+  ]) {
+    rejected = false;
+    try {
+      videoProbeFromFfprobe({ streams, format: { duration: "1" } });
+    } catch (error) {
+      rejected = error.message.includes("exactly one video stream");
+    }
+    if (!rejected) fail("self-test expected extra media streams to be rejected");
+  }
+
+  rejected = false;
+  try {
+    await decodeVideo(path.join(dir, "proof.mp4"));
+  } catch (error) {
+    rejected = error.message.includes("failed full decode");
+  }
+  if (!rejected) fail("self-test expected corrupt video decode to be rejected");
   process.stdout.write("terminal-report self-test passed\n");
 }
 
@@ -718,6 +1195,7 @@ async function main() {
     `${JSON.stringify({
       ok: true,
       verdict: normalized.verdict,
+      resultLabel: normalized.resultLabel,
       headSha: normalized.testedArtifact.headSha,
       outputDir: path.resolve(outputDir),
     })}\n`,

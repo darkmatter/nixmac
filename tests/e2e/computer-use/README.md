@@ -176,9 +176,31 @@ notifications.
 Centaur/Buzz terminal runs use the smaller
 `.github/workflows/publish-computer-use-e2e-report.yml` delivery lane after
 CuaDriver has already produced a terminal result on the configured remote Mac.
-The evidence directory must contain `terminal-result.v1.json`, 1-3 PR-focused
-scenarios, curated PNG screenshots, and one canonical H.264/yuv420p MP4. The
-dispatch pins the exact tested app SHA and a separate exact report-tool SHA.
+The evidence directory must contain `terminal-result.v2.json`, 1-3 PR-focused
+scenarios, curated PNG screenshots, one canonical H.264/yuv420p MP4, a provider
+trace, and a semantic video-audit JSON artifact. Every scenario declares
+`intent` (`positive-flow` or `expected-refusal`),
+`coversChangedBehavior`, preconditions, a terminal state, assertions, and its
+status. A report is rejected when no scenario covers changed behavior.
+
+A passing positive flow that covers changed behavior renders
+`POSITIVE FLOW PASS`. A passing changed-behavior refusal renders
+`EXPECTED REFUSAL VERIFIED` and explicitly says the positive flow was not
+exercised. Supporting scenarios that do not cover changed behavior cannot
+upgrade either label. The provider block discloses whether the run used a real
+or scripted provider; the deterministic demo lane uses a `scripted-mock`
+loopback provider and binds its redacted trace into the report evidence set.
+
+Automated publication requires `presentation.status=pass`, first meaningful
+visual action within 15 seconds, complete start-to-finish review, and at least
+three seconds of visible terminal state. The semantic audit is hash-bound to
+the canonical video and reviewer identity. Media validation enumerates every
+stream, requires exactly one H.264/yuv420p video stream with no audio or extra
+streams, and fully decodes the file with ffmpeg. A presentation failure never
+changes the product result, but the automated publisher fails closed instead
+of shipping bad evidence.
+
+The dispatch pins the exact tested app SHA and a separate exact report-tool SHA.
 Using the same repository-scoped SSH secrets as the established Computer Use
 workflow, an `arc` runner fetches only the manifest-referenced evidence files.
 The renderer confines evidence paths to that staged directory, verifies hashes
@@ -192,10 +214,11 @@ Validate the renderer contract locally with:
 node tests/e2e/computer-use/terminal-report.mjs self-test
 ```
 
-The terminal report's product verdict comes only from its declared scenarios
-and assertions. Render or publication errors are delivery failures and must be
-reported separately; they never rewrite a proven product PASS, FAIL, or
-INCONCLUSIVE result.
+The terminal report's product verdict comes only from its declared scenario
+preconditions, terminal states, assertions, cleanup, and intent-qualified
+changed-behavior coverage. Render, presentation, or publication errors are
+delivery failures and must be reported separately; they never rewrite a proven
+product result.
 
 For PRs that touch component/story files under `apps/native/src/components/**`,
 the prepare job also builds Storybook, uploads the static preview, and publishes

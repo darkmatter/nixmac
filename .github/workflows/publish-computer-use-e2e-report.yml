@@ -37,6 +37,7 @@ jobs:
     timeout-minutes: 30
     outputs:
       verdict: ${{ steps.validate.outputs.verdict }}
+      result_label: ${{ steps.validate.outputs.result_label }}
     env:
       REMOTE_HOST: ${{ secrets.NIXMAC_E2E_REMOTE_HOST }}
       REMOTE_USER: ${{ secrets.NIXMAC_E2E_REMOTE_USER }}
@@ -69,7 +70,7 @@ jobs:
 
           sudo apt-get update
           sudo apt-get install -y ffmpeg
-          for command_name in git jq node realpath scp ssh ffprobe; do
+          for command_name in git jq node realpath scp ssh ffprobe ffmpeg; do
             command -v "$command_name" >/dev/null || {
               echo "Required report command is unavailable: $command_name" >&2
               exit 1
@@ -140,7 +141,7 @@ jobs:
           ssh_dest="${REMOTE_USER}@${REMOTE_HOST}"
           local_evidence="$RUNNER_TEMP/terminal-evidence-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           mkdir -p "$local_evidence"
-          remote_manifest="${EVIDENCE_DIR_INPUT}/terminal-result.v1.json"
+          remote_manifest="${EVIDENCE_DIR_INPUT}/terminal-result.v2.json"
           scp "${ssh_common[@]}" -- "$ssh_dest:$remote_manifest" "$local_evidence/terminal-result.remote.json"
 
           jq -e \
@@ -149,21 +150,31 @@ jobs:
             --arg request "$REQUEST_ID" \
             --arg tool "$REPORT_TOOL_SHA" \
             --arg evidence "$EVIDENCE_DIR_INPUT" \
-            '.schemaVersion == "nixmac.e2e.terminal-result.v1"
+            '.schemaVersion == "nixmac.e2e.terminal-result.v2"
               and .testedArtifact.headSha == $sha
               and .request.pullRequest.number == $pr
               and .request.id == $request
               and .reportTool.repository == "darkmatter/nixmac"
               and .reportTool.sha == $tool
-              and .evidence.root == $evidence' \
+              and .evidence.root == $evidence
+              and (.provider.kind == "scripted-mock" or .provider.kind == "real")
+              and (.provider.endpointClass == "loopback" or .provider.endpointClass == "remote")
+              and (.provider.label | type == "string" and length > 0)
+              and (.provider.model | type == "string" and length > 0)
+              and .presentation.status == "pass"
+              and .presentation.watchedStartToFinish == true
+              and .presentation.terminalStateVisible == true
+              and .presentation.firstMeaningfulActionSeconds <= 15
+              and .presentation.terminalStateVisibleSeconds >= 3' \
             "$local_evidence/terminal-result.remote.json" >/dev/null
 
           mapfile -t evidence_paths < <(
-            jq -r '[.evidence.screenshots[].path, .evidence.video.path] | .[]' \
+            jq -r \
+              '[.evidence.screenshots[].path, .evidence.video.path, .provider.trace.path, .presentation.semanticAudit.path] | .[]' \
               "$local_evidence/terminal-result.remote.json"
           )
-          if [[ "${#evidence_paths[@]}" -lt 3 || "${#evidence_paths[@]}" -gt 7 ]]; then
-            echo "Manifest must reference two to six screenshots and one video" >&2
+          if [[ "${#evidence_paths[@]}" -lt 5 || "${#evidence_paths[@]}" -gt 9 ]]; then
+            echo "Manifest must reference two to six screenshots, one video, one provider trace, and one semantic audit" >&2
             exit 1
           fi
           for relative_path in "${evidence_paths[@]}"; do
@@ -180,7 +191,7 @@ jobs:
               "$local_evidence/$relative_path"
           done
 
-          manifest="$local_evidence/terminal-result.v1.json"
+          manifest="$local_evidence/terminal-result.v2.json"
           jq --arg evidence "$local_evidence" '.evidence.root = $evidence' \
             "$local_evidence/terminal-result.remote.json" > "$manifest"
 
@@ -191,8 +202,10 @@ jobs:
           cp artifacts/terminal-report-private/index.html artifacts/terminal-report-public/index.html
 
           verdict="$(jq -r '.verdict' artifacts/terminal-report-private/terminal-result.normalized.json)"
+          result_label="$(jq -r '.resultLabel' artifacts/terminal-report-private/terminal-result.normalized.json)"
           {
             echo "verdict=$verdict"
+            echo "result_label=$result_label"
           } >> "$GITHUB_OUTPUT"
 
       - name: Upload self-contained report
@@ -207,13 +220,15 @@ jobs:
         shell: bash
         env:
           VERDICT: ${{ steps.validate.outputs.verdict }}
+          RESULT_LABEL: ${{ steps.validate.outputs.result_label }}
           EXPECTED_SHA: ${{ inputs.expected_sha }}
           PR_NUMBER: ${{ inputs.pull_request }}
         run: |
           {
             echo "## Computer Use terminal result"
             echo
-            echo "- Product verdict: \`$VERDICT\`"
+            echo "- Product result: \`$RESULT_LABEL\`"
+            echo "- Raw verdict: \`$VERDICT\`"
             echo "- Pull request: #$PR_NUMBER"
             echo "- Exact tested SHA: \`$EXPECTED_SHA\`"
             echo "- Report publication: pending in the separate publish job"
@@ -274,6 +289,7 @@ jobs:
         shell: bash
         env:
           PRODUCT_VERDICT: ${{ needs.render.outputs.verdict }}
+          RESULT_LABEL: ${{ needs.render.outputs.result_label }}
           INDEX_URL: ${{ steps.publish-report.outputs.index_url }}
           LATEST_INDEX_URL: ${{ steps.publish-report.outputs.latest_index_url }}
           LATEST_UPDATED: ${{ steps.publish-report.outputs.latest_updated }}
@@ -281,9 +297,10 @@ jobs:
           {
             echo "## Published Computer Use report"
             echo
-            echo "- Product verdict: \`$PRODUCT_VERDICT\`"
+            echo "- Product result: \`$RESULT_LABEL\`"
+            echo "- Raw verdict: \`$PRODUCT_VERDICT\`"
             echo "- Report status: \`published\`"
-            echo "- Immutable report: $INDEX_URL"
+            echo "- Content-identified report (retention-bounded): $INDEX_URL"
             if [[ "$LATEST_UPDATED" == "true" ]]; then
               echo "- Latest alias: $LATEST_INDEX_URL"
             else
