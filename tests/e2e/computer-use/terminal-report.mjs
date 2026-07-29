@@ -22,6 +22,8 @@ const MAX_SCREENSHOTS = 6;
 const MAX_SCREENSHOT_BYTES = 4 * 1024 * 1024;
 const MAX_SCREENSHOT_TOTAL_BYTES = 12 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 15 * 1024 * 1024;
+const MAX_PROVIDER_TRACE_BYTES = 1024 * 1024;
+const MAX_SEMANTIC_AUDIT_BYTES = 256 * 1024;
 const MAX_HTML_BYTES = 42 * 1024 * 1024;
 const STATUSES = new Set(["pass", "fail", "inconclusive"]);
 const INTENTS = new Set(["positive-flow", "expected-refusal"]);
@@ -209,7 +211,18 @@ async function decodeVideo(filePath) {
   let lastError;
   for (const candidate of candidates) {
     try {
-      await execFileAsync(candidate, ["-v", "error", "-i", filePath, "-f", "null", "-"]);
+      await execFileAsync(candidate, [
+        "-v",
+        "error",
+        "-xerror",
+        "-err_detect",
+        "explode",
+        "-i",
+        filePath,
+        "-f",
+        "null",
+        "-",
+      ]);
       return;
     } catch (error) {
       lastError = error;
@@ -412,6 +425,9 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
     result.provider.trace.path,
     "provider.trace.path",
   );
+  if (providerTraceFile.size > MAX_PROVIDER_TRACE_BYTES) {
+    fail(`provider.trace exceeds ${formatBytes(MAX_PROVIDER_TRACE_BYTES)}`);
+  }
   const providerTraceBuffer = await readFile(providerTraceFile.absolutePath);
   if (sha256(providerTraceBuffer) !== result.provider.trace.sha256) {
     fail("provider.trace SHA-256 does not match");
@@ -494,6 +510,11 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
     result.presentation.semanticAudit.path,
     "presentation.semanticAudit.path",
   );
+  if (semanticAuditFile.size > MAX_SEMANTIC_AUDIT_BYTES) {
+    fail(
+      `presentation.semanticAudit exceeds ${formatBytes(MAX_SEMANTIC_AUDIT_BYTES)}`,
+    );
+  }
   const semanticAuditBuffer = await readFile(semanticAuditFile.absolutePath);
   if (sha256(semanticAuditBuffer) !== result.presentation.semanticAudit.sha256) {
     fail("presentation.semanticAudit SHA-256 does not match");
@@ -512,6 +533,33 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
   }
   if (semanticAudit.status !== result.presentation.status) {
     fail("presentation.semanticAudit status must match presentation.status");
+  }
+  if (
+    semanticAudit.firstMeaningfulActionSeconds !==
+    result.presentation.firstMeaningfulActionSeconds
+  ) {
+    fail(
+      "presentation.semanticAudit firstMeaningfulActionSeconds must match presentation",
+    );
+  }
+  if (
+    semanticAudit.watchedStartToFinish !==
+    result.presentation.watchedStartToFinish
+  ) {
+    fail("presentation.semanticAudit watchedStartToFinish must match presentation");
+  }
+  if (
+    semanticAudit.terminalStateVisible !== result.presentation.terminalStateVisible
+  ) {
+    fail("presentation.semanticAudit terminalStateVisible must match presentation");
+  }
+  if (
+    semanticAudit.terminalStateVisibleSeconds !==
+    result.presentation.terminalStateVisibleSeconds
+  ) {
+    fail(
+      "presentation.semanticAudit terminalStateVisibleSeconds must match presentation",
+    );
   }
 
   requireStatus(result.cleanup?.status, "cleanup.status");
@@ -764,7 +812,10 @@ async function selfTest() {
       videoSha256: sha256(mp4),
       reviewer: "Codex visual audit",
       status: "pass",
+      firstMeaningfulActionSeconds: 1,
       watchedStartToFinish: true,
+      terminalStateVisible: true,
+      terminalStateVisibleSeconds: 3,
     })}\n`,
   );
   await writeFile(path.join(dir, "semantic-video-audit.json"), semanticAudit);
@@ -889,9 +940,7 @@ async function selfTest() {
   );
   contractFixture.evidence = structuredClone(manifest.evidence);
   contractFixture.provider.trace = structuredClone(manifest.provider.trace);
-  contractFixture.presentation.semanticAudit = structuredClone(
-    manifest.presentation.semanticAudit,
-  );
+  contractFixture.presentation = structuredClone(manifest.presentation);
   const contractPath = path.join(dir, "terminal-result-v2.contract.json");
   await writeFile(contractPath, `${JSON.stringify(contractFixture, null, 2)}\n`);
   const contractResult = await loadTerminalResult(contractPath, { probe: false });
@@ -1056,6 +1105,18 @@ async function selfTest() {
     (candidate) => delete candidate.provider.kind,
     "provider.kind",
   );
+  const oversizedProviderTrace = Buffer.alloc(MAX_PROVIDER_TRACE_BYTES + 1);
+  await writeFile(path.join(dir, "provider-trace-oversized.jsonl"), oversizedProviderTrace);
+  await expectRejected(
+    "oversized provider trace",
+    (candidate) => {
+      candidate.provider.trace = {
+        path: "provider-trace-oversized.jsonl",
+        sha256: sha256(oversizedProviderTrace),
+      };
+    },
+    "provider.trace exceeds",
+  );
   await expectRejected(
     "provider trace hash mismatch",
     (candidate) => {
@@ -1069,6 +1130,42 @@ async function selfTest() {
       candidate.presentation.semanticAudit.sha256 = "f".repeat(64);
     },
     "presentation.semanticAudit SHA-256 does not match",
+  );
+  const contradictoryAudit = Buffer.from(
+    `${JSON.stringify({
+      videoSha256: sha256(mp4),
+      reviewer: "Codex visual audit",
+      status: "pass",
+      firstMeaningfulActionSeconds: 53,
+      watchedStartToFinish: false,
+      terminalStateVisible: false,
+      terminalStateVisibleSeconds: 0,
+    })}\n`,
+  );
+  await writeFile(path.join(dir, "semantic-video-audit-contradictory.json"), contradictoryAudit);
+  await expectRejected(
+    "contradictory semantic audit",
+    (candidate) => {
+      candidate.presentation.semanticAudit = {
+        path: "semantic-video-audit-contradictory.json",
+        sha256: sha256(contradictoryAudit),
+        reviewer: "Codex visual audit",
+      };
+    },
+    "firstMeaningfulActionSeconds must match presentation",
+  );
+  const oversizedSemanticAudit = Buffer.alloc(MAX_SEMANTIC_AUDIT_BYTES + 1);
+  await writeFile(path.join(dir, "semantic-video-audit-oversized.json"), oversizedSemanticAudit);
+  await expectRejected(
+    "oversized semantic audit",
+    (candidate) => {
+      candidate.presentation.semanticAudit = {
+        path: "semantic-video-audit-oversized.json",
+        sha256: sha256(oversizedSemanticAudit),
+        reviewer: "Codex visual audit",
+      };
+    },
+    "presentation.semanticAudit exceeds",
   );
   await expectRejected(
     "audio stream",
@@ -1114,7 +1211,10 @@ async function selfTest() {
       videoSha256: sha256(mp4),
       reviewer: "Codex visual audit",
       status: "fail",
+      firstMeaningfulActionSeconds: 53,
       watchedStartToFinish: true,
+      terminalStateVisible: true,
+      terminalStateVisibleSeconds: 15,
     })}\n`,
   );
   await writeFile(path.join(dir, "semantic-video-audit-failed.json"), failedAudit);
