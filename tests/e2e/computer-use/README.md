@@ -210,8 +210,11 @@ Automated publication requires `presentation.status=pass`, first meaningful
 visual action within 15 seconds, complete start-to-finish review, and at least
 three seconds of visible terminal state. The remote producer supplies those
 presentation observations but cannot choose or write the final audit. The
-protected publisher generates the hash-bound audit with its GitHub run identity
-and protected report-tool SHA, then validates the canonical video against it.
+protected publisher fully decodes the video and sends timestamped frames across
+the full timeline plus curated screenshots to the repository-pinned vision
+model. It fails closed unless that independent review sees the changed behavior,
+a coherent timeline, and the terminal state, then generates the hash-bound
+audit with its GitHub run identity and protected report-tool SHA.
 Media validation enumerates every stream, requires exactly one
 H.264/yuv420p video stream with no audio or extra streams, and fully decodes the
 file with ffmpeg. A presentation failure never changes the product result, but

@@ -22,6 +22,10 @@ const runtimeAttestationScript = readFileSync(
   path.join(repoRoot, "ops/scripts/e2e/capture-runtime-attestation.sh"),
   "utf8",
 );
+const trustedVideoAuditScript = readFileSync(
+  path.join(repoRoot, "ops/scripts/e2e/trusted-video-audit.mjs"),
+  "utf8",
+);
 const canonicalAppDigestPath = path.join(
   repoRoot,
   "ops/scripts/e2e/canonical-app-digest.py",
@@ -36,6 +40,11 @@ execFileSync(
 execFileSync(
   "python3",
   [path.join(repoRoot, "ops/scripts/e2e/safe-extract-zip.py"), "--self-test"],
+  { stdio: "pipe" },
+);
+execFileSync(
+  "node",
+  [path.join(repoRoot, "ops/scripts/e2e/trusted-video-audit.mjs"), "--self-test"],
   { stdio: "pipe" },
 );
 
@@ -126,8 +135,23 @@ assert.doesNotMatch(
 );
 assert.match(
   terminalWorkflow,
-  /publisher-semantic-video-audit\.json[\s\S]*github-actions-protected-publisher[\s\S]*reviewToolSha[\s\S]*GITHUB_RUN_ID[\s\S]*\.presentation\.semanticAudit =/,
-  "protected publisher must generate and authenticate the final semantic audit",
+  /OPENROUTER_API_KEY[\s\S]*OPENROUTER_MODEL[\s\S]*trusted-video-audit\.mjs[\s\S]*--slurpfile audit[\s\S]*\.presentation\.semanticAudit =/,
+  "protected publisher must run trusted vision review and inject its final semantic audit",
+);
+assert.match(
+  trustedVideoAuditScript,
+  /reviewTimes[\s\S]*ffmpeg[\s\S]*image_url[\s\S]*openrouter\.ai/,
+  "trusted video audit must decode, inspect the full timeline, and fail closed on semantic uncertainty",
+);
+assert.match(
+  trustedVideoAuditScript,
+  /changedBehaviorVisible[\s\S]*timelineCoherent[\s\S]*terminalStateVisible/,
+  "trusted video audit must require changed behavior, timeline coherence, and terminal state",
+);
+assert.match(
+  trustedVideoAuditScript,
+  /github-actions-protected-vision-review/,
+  "trusted video audit must identify the protected vision reviewer",
 );
 assert.match(
   terminalWorkflow,

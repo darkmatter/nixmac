@@ -36,9 +36,9 @@ const GIT_SHA_RE = /^[a-f0-9]{40}$/;
 const SAFE_ID_RE = /^[a-z0-9][a-z0-9._-]{0,79}$/;
 const REQUEST_ID_RE = /^[a-z0-9][a-z0-9._:-]{0,79}$/;
 const RUNTIME_ATTESTATION_SCHEMA = "nixmac.e2e.runtime-attestation.v1";
-const SEMANTIC_AUDIT_SCHEMA = "nixmac.e2e.semantic-audit.v2";
-const SEMANTIC_AUDIT_REVIEWER = "GitHub Actions protected publisher";
-const SEMANTIC_AUDIT_REVIEWER_KIND = "github-actions-protected-publisher";
+const SEMANTIC_AUDIT_SCHEMA = "nixmac.e2e.semantic-audit.v3";
+const SEMANTIC_AUDIT_REVIEWER = "GitHub Actions protected vision review";
+const SEMANTIC_AUDIT_REVIEWER_KIND = "github-actions-protected-vision-review";
 
 function fail(message) {
   throw new Error(message);
@@ -677,6 +677,21 @@ export async function loadTerminalResult(
     result.presentation.semanticAudit.reviewRunAttempt,
     "presentation.semanticAudit.reviewRunAttempt",
   );
+  requireString(
+    result.presentation.semanticAudit.reviewModel,
+    "presentation.semanticAudit.reviewModel",
+    { max: 200 },
+  );
+  requireInteger(
+    result.presentation.semanticAudit.reviewedFrameCount,
+    "presentation.semanticAudit.reviewedFrameCount",
+  );
+  if (
+    result.presentation.semanticAudit.reviewedFrameCount < 5 ||
+    result.presentation.semanticAudit.reviewedFrameCount > 30
+  ) {
+    fail("presentation.semanticAudit.reviewedFrameCount must be between 5 and 30");
+  }
   if (result.presentation.status === "pass") {
     if (result.presentation.firstMeaningfulActionSeconds > MAX_FIRST_ACTION_SECONDS) {
       fail(`presentation.firstMeaningfulActionSeconds must be <= ${MAX_FIRST_ACTION_SECONDS}`);
@@ -922,6 +937,8 @@ export async function loadTerminalResult(
     "reviewToolSha",
     "reviewRunId",
     "reviewRunAttempt",
+    "reviewModel",
+    "reviewedFrameCount",
   ]) {
     if (semanticAudit[field] !== result.presentation.semanticAudit[field]) {
       fail(`presentation.semanticAudit ${field} must match its artifact`);
@@ -930,6 +947,9 @@ export async function loadTerminalResult(
   if (semanticAudit.reviewToolSha !== result.reportTool.sha) {
     fail("presentation.semanticAudit reviewToolSha must match reportTool.sha");
   }
+  requireString(semanticAudit.rationale, "presentation.semanticAudit rationale", {
+    max: 2_000,
+  });
   if (semanticAudit.status !== result.presentation.status) {
     fail("presentation.semanticAudit status must match presentation.status");
   }
@@ -1265,10 +1285,12 @@ async function selfTest() {
     reviewer: SEMANTIC_AUDIT_REVIEWER,
     reviewerKind: SEMANTIC_AUDIT_REVIEWER_KIND,
     reviewScope:
-      "Protected structural validation of hash-bound media, full decode, and declared timing consistency",
+      "Independent protected vision inspection of the decoded full-video timeline and curated screenshots",
     reviewToolSha: "d".repeat(40),
     reviewRunId: 123,
     reviewRunAttempt: 1,
+    reviewModel: "openai/gpt-4.1",
+    reviewedFrameCount: 12,
   };
   const semanticAudit = Buffer.from(
     `${JSON.stringify({
@@ -1279,6 +1301,7 @@ async function selfTest() {
       watchedStartToFinish: true,
       terminalStateVisible: true,
       terminalStateVisibleSeconds: 3,
+      rationale: "The changed behavior and stable terminal state are visible.",
     })}\n`,
   );
   await writeFile(path.join(dir, "semantic-video-audit.json"), semanticAudit);
@@ -1880,6 +1903,7 @@ async function selfTest() {
       watchedStartToFinish: false,
       terminalStateVisible: false,
       terminalStateVisibleSeconds: 0,
+      rationale: "The audit contradicts the presentation fields.",
     })}\n`,
   );
   await writeFile(path.join(dir, "semantic-video-audit-contradictory.json"), contradictoryAudit);
@@ -1955,6 +1979,7 @@ async function selfTest() {
       watchedStartToFinish: true,
       terminalStateVisible: true,
       terminalStateVisibleSeconds: 15,
+      rationale: "The presentation has a long idle prefix.",
     })}\n`,
   );
   await writeFile(path.join(dir, "semantic-video-audit-failed.json"), failedAudit);

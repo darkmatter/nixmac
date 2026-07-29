@@ -116,6 +116,8 @@ jobs:
           PR_NUMBER: ${{ inputs.pull_request }}
           REQUEST_ID: ${{ inputs.request_id }}
           REPORT_TOOL_SHA: ${{ inputs.report_tool_sha }}
+          OPENROUTER_API_KEY: ${{ secrets.NIXMAC_E2E_OPENROUTER_API_KEY }}
+          OPENROUTER_MODEL: ${{ vars.NIXMAC_E2E_OPENROUTER_MODEL }}
         run: |
           set -euo pipefail
           [[ "$EXPECTED_SHA" =~ ^[a-f0-9]{40}$ ]] || {
@@ -240,12 +242,7 @@ jobs:
               and (.provider.kind == "scripted-mock" or .provider.kind == "real")
               and (.provider.endpointClass == "loopback" or .provider.endpointClass == "remote")
               and (.provider.label | type == "string" and length > 0)
-              and (.provider.model | type == "string" and length > 0)
-              and .presentation.status == "pass"
-              and .presentation.watchedStartToFinish == true
-              and .presentation.terminalStateVisible == true
-              and .presentation.firstMeaningfulActionSeconds <= 15
-              and .presentation.terminalStateVisibleSeconds >= 3' \
+              and (.provider.model | type == "string" and length > 0)' \
             "$local_evidence/terminal-result.remote.json" >/dev/null
 
           actions_run_id="$(jq -r '.testedArtifact.actionsRunId' "$local_evidence/terminal-result.remote.json")"
@@ -422,30 +419,11 @@ jobs:
 
           semantic_audit_relative="publisher-semantic-video-audit.json"
           semantic_audit_path="$local_evidence/$semantic_audit_relative"
-          semantic_audit_reviewer="GitHub Actions protected publisher"
-          semantic_audit_scope="Protected structural validation of hash-bound media, full decode, and declared timing consistency"
-          jq \
-            --arg reviewer "$semantic_audit_reviewer" \
-            --arg scope "$semantic_audit_scope" \
-            --arg tool "$REPORT_TOOL_SHA" \
-            --argjson run_id "$GITHUB_RUN_ID" \
-            --argjson run_attempt "$GITHUB_RUN_ATTEMPT" \
-            '{
-              schemaVersion: "nixmac.e2e.semantic-audit.v2",
-              reviewer: $reviewer,
-              reviewerKind: "github-actions-protected-publisher",
-              reviewScope: $scope,
-              reviewToolSha: $tool,
-              reviewRunId: $run_id,
-              reviewRunAttempt: $run_attempt,
-              videoSha256: .evidence.video.sha256,
-              status: .presentation.status,
-              firstMeaningfulActionSeconds: .presentation.firstMeaningfulActionSeconds,
-              watchedStartToFinish: .presentation.watchedStartToFinish,
-              terminalStateVisible: .presentation.terminalStateVisible,
-              terminalStateVisibleSeconds: .presentation.terminalStateVisibleSeconds
-            }' \
-            "$local_evidence/terminal-result.remote.json" > "$semantic_audit_path"
+          node ops/scripts/e2e/trusted-video-audit.mjs \
+            "$local_evidence/terminal-result.remote.json" \
+            "$local_evidence" \
+            "$semantic_audit_path" \
+            "$OPENROUTER_MODEL"
           semantic_audit_size="$(wc -c < "$semantic_audit_path")"
           (( semantic_audit_size > 0 && semantic_audit_size <= 262144 )) || {
             echo "Publisher semantic audit must be non-empty and at most 256 KiB" >&2
@@ -461,21 +439,24 @@ jobs:
           jq \
             --arg path "$semantic_audit_relative" \
             --arg sha "$semantic_audit_sha" \
-            --arg reviewer "$semantic_audit_reviewer" \
-            --arg scope "$semantic_audit_scope" \
-            --arg tool "$REPORT_TOOL_SHA" \
-            --argjson run_id "$GITHUB_RUN_ID" \
-            --argjson run_attempt "$GITHUB_RUN_ATTEMPT" \
-            '.presentation.semanticAudit = {
-              path: $path,
-              sha256: $sha,
-              reviewer: $reviewer,
-              reviewerKind: "github-actions-protected-publisher",
-              reviewScope: $scope,
-              reviewToolSha: $tool,
-              reviewRunId: $run_id,
-              reviewRunAttempt: $run_attempt
-            }' \
+            --slurpfile audit "$semantic_audit_path" \
+            '.presentation.status = $audit[0].status
+              | .presentation.firstMeaningfulActionSeconds = $audit[0].firstMeaningfulActionSeconds
+              | .presentation.watchedStartToFinish = $audit[0].watchedStartToFinish
+              | .presentation.terminalStateVisible = $audit[0].terminalStateVisible
+              | .presentation.terminalStateVisibleSeconds = $audit[0].terminalStateVisibleSeconds
+              | .presentation.semanticAudit = {
+                path: $path,
+                sha256: $sha,
+                reviewer: $audit[0].reviewer,
+                reviewerKind: $audit[0].reviewerKind,
+                reviewScope: $audit[0].reviewScope,
+                reviewToolSha: $audit[0].reviewToolSha,
+                reviewRunId: $audit[0].reviewRunId,
+                reviewRunAttempt: $audit[0].reviewRunAttempt,
+                reviewModel: $audit[0].reviewModel,
+                reviewedFrameCount: $audit[0].reviewedFrameCount
+              }' \
             "$local_evidence/terminal-result.remote.json" > "$enriched_manifest"
           mv "$enriched_manifest" "$local_evidence/terminal-result.remote.json"
 
