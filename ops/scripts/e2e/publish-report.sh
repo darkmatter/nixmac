@@ -149,7 +149,7 @@ publish_attempt() {
 				[[ "$candidate_report" == "$current_report" ]] && continue
 				printf '%s\n' "$candidate_report"
 			done |
-			sort -r |
+			sort -Vr |
 			tail -n +"$retention_keep_runs" |
 			while IFS= read -r old_report; do
 				rm -rf "$old_report" || exit

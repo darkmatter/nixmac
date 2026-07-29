@@ -90,8 +90,8 @@ assert.match(
 );
 assert.match(
   publisherScript,
-  /local current_report="\$site_dir\/\$\{PUBLISH_PATH:\?\}"[\s\S]*\[\[ "\$candidate_report" == "\$current_report" \]\] && continue[\s\S]*tail -n \+"\$retention_keep_runs"/,
-  "report retention must preserve the immutable report currently being published while counting it toward the limit",
+  /local current_report="\$site_dir\/\$\{PUBLISH_PATH:\?\}"[\s\S]*\[\[ "\$candidate_report" == "\$current_report" \]\] && continue[\s\S]*sort -Vr[\s\S]*tail -n \+"\$retention_keep_runs"/,
+  "report retention must preserve the current immutable report and naturally order numeric run and attempt IDs",
 );
 
 assert.match(remote, /\n    needs: prepare\n/, "remote job must depend on prepare");
