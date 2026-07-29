@@ -19,10 +19,9 @@ set -euo pipefail
 #   PR_NUMBER          - For commit message
 #   UPDATE_LATEST      - Whether to replace the latest alias (default: true)
 #   LATEST_ORDER       - Monotonic GitHub run ID and attempt, e.g. 12345:1
-#   LATEST_GUARD_REPOSITORY, LATEST_GUARD_PR, LATEST_GUARD_EXPECTED_SHA,
-#   LATEST_GUARD_REFERENCE
+#   LATEST_GUARD_REPOSITORY, LATEST_GUARD_PR, LATEST_GUARD_EXPECTED_SHA
 #                     - Optional all-or-none PR reference guard, rechecked per attempt.
-#                       Reference must be head.sha or merge_commit_sha.
+#                       Uses merge_commit_sha after merge and head.sha otherwise.
 #   STORYBOOK_DIR      - Storybook static site to publish beneath the report
 
 update_latest="${UPDATE_LATEST:-true}"
@@ -47,7 +46,6 @@ latest_guard_values=(
 	"${LATEST_GUARD_REPOSITORY:-}"
 	"${LATEST_GUARD_PR:-}"
 	"${LATEST_GUARD_EXPECTED_SHA:-}"
-	"${LATEST_GUARD_REFERENCE:-}"
 )
 latest_guard_count=0
 for value in "${latest_guard_values[@]}"; do
@@ -55,32 +53,21 @@ for value in "${latest_guard_values[@]}"; do
 		latest_guard_count=$((latest_guard_count + 1))
 	fi
 done
-if [[ "$latest_guard_count" != "0" && "$latest_guard_count" != "4" ]]; then
-	echo "LATEST_GUARD_REPOSITORY, LATEST_GUARD_PR, LATEST_GUARD_EXPECTED_SHA, and LATEST_GUARD_REFERENCE must be set together" >&2
+if [[ "$latest_guard_count" != "0" && "$latest_guard_count" != "3" ]]; then
+	echo "LATEST_GUARD_REPOSITORY, LATEST_GUARD_PR, and LATEST_GUARD_EXPECTED_SHA must be set together" >&2
 	exit 1
-fi
-if [[ "$latest_guard_count" == "4" ]]; then
-	case "$LATEST_GUARD_REFERENCE" in
-	head.sha | merge_commit_sha) ;;
-	*)
-		echo "LATEST_GUARD_REFERENCE must be head.sha or merge_commit_sha" >&2
-		exit 1
-		;;
-	esac
 fi
 
 storybook_published=false
 
 latest_update_allowed() {
 	local site_dir="$1"
-	if [[ "$latest_guard_count" == "4" ]]; then
+	if [[ "$latest_guard_count" == "3" ]]; then
 		local current_sha
-		local reference_filter
-		case "$LATEST_GUARD_REFERENCE" in
-		head.sha) reference_filter=".head.sha" ;;
-		merge_commit_sha) reference_filter=".merge_commit_sha" ;;
-		esac
-		if ! current_sha="$(gh api "repos/${LATEST_GUARD_REPOSITORY}/pulls/${LATEST_GUARD_PR}" --jq "$reference_filter" 2>/dev/null)"; then
+		if ! current_sha="$(
+			gh api "repos/${LATEST_GUARD_REPOSITORY}/pulls/${LATEST_GUARD_PR}" \
+				--jq 'if .merged then .merge_commit_sha else .head.sha end' 2>/dev/null
+		)"; then
 			echo "Unable to recheck the PR reference; preserving the immutable report without updating latest." >&2
 			return 1
 		fi

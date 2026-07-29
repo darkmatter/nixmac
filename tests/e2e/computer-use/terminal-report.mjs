@@ -113,6 +113,14 @@ function validateProviderTrace(buffer) {
   if (eventIndexes.some((index, position) => position > 0 && index <= eventIndexes[position - 1])) {
     fail("provider.trace events must be ordered request, tool_request, tool_response, response");
   }
+  if (
+    records[0].event !== "request" ||
+    records.at(-1).event !== "response" ||
+    records.filter((record) => record.event === "request").length !== 1 ||
+    records.filter((record) => record.event === "response").length !== 1
+  ) {
+    fail("provider.trace must start with one request and end with one response");
+  }
   const pendingToolRequests = new Map();
   let matchedToolResponse = false;
   for (const [index, record] of records.entries()) {
@@ -132,6 +140,9 @@ function validateProviderTrace(buffer) {
   }
   if (!matchedToolResponse) {
     fail("provider.trace must include a tool_response matching a tool_request");
+  }
+  if ([...pendingToolRequests.values()].some((pending) => pending !== 0)) {
+    fail("provider.trace must not contain unanswered tool_request records");
   }
 }
 
@@ -1441,6 +1452,28 @@ async function selfTest() {
       };
     },
     "provider.trace line 3 tool_response must match a preceding tool_request",
+  );
+  const unansweredProviderTrace = Buffer.from(
+    [
+      { event: "request" },
+      { event: "tool_request", tool: "ensure_secret" },
+      { event: "tool_request", tool: "edit_file" },
+      { event: "tool_response", tool: "ensure_secret" },
+      { event: "response" },
+    ]
+      .map((record) => JSON.stringify(record))
+      .join("\n") + "\n",
+  );
+  await writeFile(path.join(dir, "provider-trace-unanswered.jsonl"), unansweredProviderTrace);
+  await expectRejected(
+    "unanswered provider trace tool request",
+    (candidate) => {
+      candidate.provider.trace = {
+        path: "provider-trace-unanswered.jsonl",
+        sha256: sha256(unansweredProviderTrace),
+      };
+    },
+    "provider.trace must not contain unanswered tool_request records",
   );
   await expectRejected(
     "semantic audit hash mismatch",

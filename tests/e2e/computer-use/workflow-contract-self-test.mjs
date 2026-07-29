@@ -13,6 +13,10 @@ const terminalWorkflowPath = path.join(
   ".github/workflows/publish-computer-use-e2e-report.yml",
 );
 const terminalWorkflow = readFileSync(terminalWorkflowPath, "utf8");
+const publisherScript = readFileSync(
+  path.join(repoRoot, "ops/scripts/e2e/publish-report.sh"),
+  "utf8",
+);
 
 function section(startPattern, endPattern = null) {
   const start = workflow.search(startPattern);
@@ -61,8 +65,13 @@ assert.match(
 );
 assert.match(
   terminalWorkflow,
-  /LATEST_ORDER: \$\{\{ github\.run_id \}\}:\$\{\{ github\.run_attempt \}\}[\s\S]*LATEST_GUARD_EXPECTED_SHA: \$\{\{ inputs\.expected_sha \}\}[\s\S]*LATEST_GUARD_REFERENCE: \$\{\{ steps\.latest\.outputs\.reference \}\}/,
-  "terminal publisher must order latest updates and recheck the selected PR reference inside retries",
+  /LATEST_ORDER: \$\{\{ github\.run_id \}\}:\$\{\{ github\.run_attempt \}\}[\s\S]*LATEST_GUARD_EXPECTED_SHA: \$\{\{ inputs\.expected_sha \}\}/,
+  "terminal publisher must order latest updates and recheck the live PR reference inside retries",
+);
+assert.match(
+  publisherScript,
+  /--jq 'if \.merged then \.merge_commit_sha else \.head\.sha end'/,
+  "publisher retries must select the live merged or open PR reference on every attempt",
 );
 
 assert.match(remote, /\n    needs: prepare\n/, "remote job must depend on prepare");
@@ -118,7 +127,7 @@ assert.match(
 );
 assert.match(
   publish,
-  /LATEST_ORDER: \$\{\{ github\.run_id \}\}:\$\{\{ github\.run_attempt \}\}[\s\S]*LATEST_GUARD_EXPECTED_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}[\s\S]*LATEST_GUARD_REFERENCE: head\.sha/,
+  /LATEST_ORDER: \$\{\{ github\.run_id \}\}:\$\{\{ github\.run_attempt \}\}[\s\S]*LATEST_GUARD_EXPECTED_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/,
   "full publisher must order latest updates and recheck the PR head inside retries",
 );
 assert.match(

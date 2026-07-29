@@ -1308,7 +1308,6 @@ jobs:
           LATEST_GUARD_REPOSITORY: ${{ github.repository }}
           LATEST_GUARD_PR: ${{ github.event.pull_request.number }}
           LATEST_GUARD_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
-          LATEST_GUARD_REFERENCE: head.sha
         run: ops/scripts/e2e/publish-report.sh
 
       - name: Comment evidence report on pull request

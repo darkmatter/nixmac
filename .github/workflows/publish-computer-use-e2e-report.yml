@@ -311,7 +311,6 @@ jobs:
           LATEST_GUARD_REPOSITORY: ${{ github.repository }}
           LATEST_GUARD_PR: ${{ inputs.pull_request }}
           LATEST_GUARD_EXPECTED_SHA: ${{ inputs.expected_sha }}
-          LATEST_GUARD_REFERENCE: ${{ steps.latest.outputs.reference }}
         run: ops/scripts/e2e/publish-report.sh
 
       - name: Summarize publication result
