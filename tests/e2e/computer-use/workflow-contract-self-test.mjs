@@ -155,6 +155,21 @@ assert.match(
 );
 assert.match(
   terminalWorkflow,
+  /apt-get install -y ffmpeg tesseract-ocr[\s\S]*command_name in[\s\S]*tesseract/,
+  "protected publisher must install the local OCR scanner",
+);
+assert.match(
+  trustedVideoAuditScript,
+  /await locallyScanSensitiveMedia\(locallyScannedImages\)[\s\S]*await requestDecision/,
+  "trusted video audit must scan media locally before any vision-provider request",
+);
+assert.match(
+  trustedVideoAuditScript,
+  /role: "system"[\s\S]*content: policy[\s\S]*role: "user"[\s\S]*evidenceDescription/,
+  "trusted video audit must isolate immutable policy from untrusted producer evidence",
+);
+assert.match(
+  terminalWorkflow,
   /publisher-reviewed-video\.mp4[\s\S]*trusted-video-audit\.mjs[\s\S]*public_video_sha[\s\S]*\.evidence\.video\.path = \$video_path[\s\S]*sensitiveContentVisible/,
   "terminal publisher must embed only the exact sensitivity-reviewed public video",
 );

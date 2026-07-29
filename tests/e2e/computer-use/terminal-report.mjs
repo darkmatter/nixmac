@@ -40,9 +40,11 @@ const SAFE_ID_RE = /^[a-z0-9][a-z0-9._-]{0,79}$/;
 const REQUEST_ID_RE = /^[a-z0-9][a-z0-9._:-]{0,79}$/;
 const TOOL_CALL_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const RUNTIME_ATTESTATION_SCHEMA = "nixmac.e2e.runtime-attestation.v1";
-const SEMANTIC_AUDIT_SCHEMA = "nixmac.e2e.semantic-audit.v6";
+const SEMANTIC_AUDIT_SCHEMA = "nixmac.e2e.semantic-audit.v7";
 const SEMANTIC_AUDIT_REVIEWER = "GitHub Actions protected vision review";
 const SEMANTIC_AUDIT_REVIEWER_KIND = "github-actions-protected-vision-review";
+const SEMANTIC_AUDIT_POLICY = "nixmac.e2e.vision-review-policy.v1";
+const SEMANTIC_AUDIT_LOCAL_SCANNER = "tesseract-pattern-v1";
 
 function fail(message) {
   throw new Error(message);
@@ -700,6 +702,21 @@ export async function loadTerminalResult(
     "presentation.semanticAudit.reviewModel",
     { max: 200 },
   );
+  if (result.presentation.semanticAudit.reviewPolicyVersion !== SEMANTIC_AUDIT_POLICY) {
+    fail(`presentation.semanticAudit.reviewPolicyVersion must be ${SEMANTIC_AUDIT_POLICY}`);
+  }
+  if (
+    result.presentation.semanticAudit.localSensitivityScanner !==
+    SEMANTIC_AUDIT_LOCAL_SCANNER
+  ) {
+    fail(
+      `presentation.semanticAudit.localSensitivityScanner must be ${SEMANTIC_AUDIT_LOCAL_SCANNER}`,
+    );
+  }
+  requireInteger(
+    result.presentation.semanticAudit.localSensitivityScanImageCount,
+    "presentation.semanticAudit.localSensitivityScanImageCount",
+  );
   requireInteger(
     result.presentation.semanticAudit.reviewedFrameCount,
     "presentation.semanticAudit.reviewedFrameCount",
@@ -968,6 +985,13 @@ export async function loadTerminalResult(
     fail("presentation.semanticAudit reviewedScreenshotCount must cover every screenshot");
   }
   if (
+    result.presentation.semanticAudit.localSensitivityScanImageCount !==
+    result.presentation.semanticAudit.reviewedFrameCount +
+      result.presentation.semanticAudit.reviewedScreenshotCount
+  ) {
+    fail("presentation.semanticAudit local sensitivity scan must cover every public image");
+  }
+  if (
     !Number.isSafeInteger(videoProbe.width) ||
     !Number.isSafeInteger(videoProbe.height) ||
     videoProbe.width < 320 ||
@@ -1050,6 +1074,9 @@ export async function loadTerminalResult(
     "reviewRunId",
     "reviewRunAttempt",
     "reviewModel",
+    "reviewPolicyVersion",
+    "localSensitivityScanner",
+    "localSensitivityScanImageCount",
     "reviewedFrameCount",
     "reviewedContactSheetCount",
     "reviewedScreenshotCount",
@@ -1413,6 +1440,9 @@ async function selfTest() {
     reviewRunId: 123,
     reviewRunAttempt: 1,
     reviewModel: "openai/gpt-4.1",
+    reviewPolicyVersion: SEMANTIC_AUDIT_POLICY,
+    localSensitivityScanner: SEMANTIC_AUDIT_LOCAL_SCANNER,
+    localSensitivityScanImageCount: 12,
     reviewedFrameCount: 10,
     reviewedContactSheetCount: 1,
     reviewedScreenshotCount: 2,
@@ -2203,6 +2233,7 @@ async function selfTest() {
     ...semanticAuditIdentity,
     reviewedFrameCount: 150,
     reviewedContactSheetCount: 13,
+    localSensitivityScanImageCount: 152,
   };
   const failedAudit = Buffer.from(
     `${JSON.stringify({

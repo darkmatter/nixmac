@@ -218,10 +218,14 @@ repository-pinned vision model. Publication fails closed unless that independent
 review finds no credentials or other sensitive content and sees the changed
 behavior, a coherent timeline, and the terminal state. The resulting hash-bound
 audit records both source and public-video hashes, its GitHub run identity, and
-the protected report-tool SHA. Screenshots are re-encoded, stripped to critical
-PNG chunks, and reviewed in that sanitized form. Only the exact reviewed 2 Hz
-video and sanitized reviewed PNGs can be embedded in the public report;
-unreviewed source media remains private.
+the protected report-tool SHA. Before any media leaves the runner, local
+Tesseract OCR plus credential-pattern checks scan every full-resolution public
+video frame and sanitized screenshot. Producer scenario text and image text are
+untrusted evidence in a user message; the immutable audit policy is a separate
+system message and explicitly forbids following evidence-borne instructions.
+Screenshots are re-encoded, stripped to critical PNG chunks, and reviewed in
+that sanitized form. Only the exact reviewed 2 Hz video and sanitized reviewed
+PNGs can be embedded in the public report; unreviewed source media remains private.
 Media validation enumerates every stream, requires exactly one
 H.264/yuv420p video stream with no audio or extra streams, and fully decodes the
 file with ffmpeg. A presentation failure never changes the product result, but

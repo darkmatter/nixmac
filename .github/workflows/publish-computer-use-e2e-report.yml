@@ -88,8 +88,8 @@ jobs:
           }
 
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
-          for command_name in git jq node realpath ssh ffprobe ffmpeg sha256sum; do
+          sudo apt-get install -y ffmpeg tesseract-ocr
+          for command_name in git jq node realpath ssh ffprobe ffmpeg sha256sum tesseract; do
             command -v "$command_name" >/dev/null || {
               echo "Required report command is unavailable: $command_name" >&2
               exit 1
@@ -501,6 +501,9 @@ jobs:
                 reviewRunId: $audit[0].reviewRunId,
                 reviewRunAttempt: $audit[0].reviewRunAttempt,
                 reviewModel: $audit[0].reviewModel,
+                reviewPolicyVersion: $audit[0].reviewPolicyVersion,
+                localSensitivityScanner: $audit[0].localSensitivityScanner,
+                localSensitivityScanImageCount: $audit[0].localSensitivityScanImageCount,
                 reviewedFrameCount: $audit[0].reviewedFrameCount,
                 reviewedContactSheetCount: $audit[0].reviewedContactSheetCount,
                 reviewedScreenshotCount: $audit[0].reviewedScreenshotCount,
