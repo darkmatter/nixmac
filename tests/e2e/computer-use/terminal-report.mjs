@@ -40,7 +40,7 @@ const SAFE_ID_RE = /^[a-z0-9][a-z0-9._-]{0,79}$/;
 const REQUEST_ID_RE = /^[a-z0-9][a-z0-9._:-]{0,79}$/;
 const TOOL_CALL_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const RUNTIME_ATTESTATION_SCHEMA = "nixmac.e2e.runtime-attestation.v1";
-const SEMANTIC_AUDIT_SCHEMA = "nixmac.e2e.semantic-audit.v5";
+const SEMANTIC_AUDIT_SCHEMA = "nixmac.e2e.semantic-audit.v6";
 const SEMANTIC_AUDIT_REVIEWER = "GitHub Actions protected vision review";
 const SEMANTIC_AUDIT_REVIEWER_KIND = "github-actions-protected-vision-review";
 
@@ -1009,6 +1009,37 @@ export async function loadTerminalResult(
   if (semanticAudit.videoSha256 !== video.sha256) {
     fail("presentation.semanticAudit videoSha256 must match evidence.video.sha256");
   }
+  const reviewedScreenshots = requireArray(
+    semanticAudit.reviewedScreenshots,
+    "presentation.semanticAudit reviewedScreenshots",
+    { min: 2, max: MAX_SCREENSHOTS },
+  );
+  if (reviewedScreenshots.length !== screenshots.length) {
+    fail("presentation.semanticAudit must review every published screenshot");
+  }
+  for (const [index, reviewedScreenshot] of reviewedScreenshots.entries()) {
+    requireString(
+      reviewedScreenshot.sourceSha256,
+      `presentation.semanticAudit reviewedScreenshots[${index}].sourceSha256`,
+      { pattern: SHA256_RE },
+    );
+    requireString(
+      reviewedScreenshot.sha256,
+      `presentation.semanticAudit reviewedScreenshots[${index}].sha256`,
+      { pattern: SHA256_RE },
+    );
+    requireString(
+      reviewedScreenshot.path,
+      `presentation.semanticAudit reviewedScreenshots[${index}].path`,
+      { max: 1_000 },
+    );
+    if (
+      reviewedScreenshot.path !== result.evidence.screenshots[index].path ||
+      reviewedScreenshot.sha256 !== result.evidence.screenshots[index].sha256
+    ) {
+      fail("presentation.semanticAudit must bind every published screenshot");
+    }
+  }
   if (semanticAudit.reviewer !== result.presentation.semanticAudit.reviewer) {
     fail("presentation.semanticAudit reviewer must match its artifact");
   }
@@ -1377,7 +1408,7 @@ async function selfTest() {
     reviewer: SEMANTIC_AUDIT_REVIEWER,
     reviewerKind: SEMANTIC_AUDIT_REVIEWER_KIND,
     reviewScope:
-      "Independent protected sensitivity and semantic inspection of the exact 2 Hz public video and curated screenshots",
+      "Independent protected sensitivity and semantic inspection of the exact 2 Hz public video and sanitized curated screenshots",
     reviewToolSha: "d".repeat(40),
     reviewRunId: 123,
     reviewRunAttempt: 1,
@@ -1389,9 +1420,14 @@ async function selfTest() {
     sourceVideoSha256: sha256(mp4),
     sensitiveContentVisible: false,
   };
+  const reviewedScreenshots = [
+    { path: "proof.png", sourceSha256: sha256(png), sha256: sha256(png) },
+    { path: "proof-after.png", sourceSha256: sha256(png), sha256: sha256(png) },
+  ];
   const semanticAudit = Buffer.from(
     `${JSON.stringify({
       ...semanticAuditIdentity,
+      reviewedScreenshots,
       videoSha256: sha256(mp4),
       status: "pass",
       firstMeaningfulActionSeconds: 1,
@@ -2089,6 +2125,7 @@ async function selfTest() {
   const contradictoryAudit = Buffer.from(
     `${JSON.stringify({
       ...semanticAuditIdentity,
+      reviewedScreenshots,
       videoSha256: sha256(mp4),
       status: "pass",
       firstMeaningfulActionSeconds: 53,
@@ -2170,6 +2207,7 @@ async function selfTest() {
   const failedAudit = Buffer.from(
     `${JSON.stringify({
       ...correctionAuditIdentity,
+      reviewedScreenshots,
       videoSha256: sha256(mp4),
       status: "fail",
       firstMeaningfulActionSeconds: 53,

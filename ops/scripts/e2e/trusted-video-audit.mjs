@@ -8,7 +8,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
-const AUDIT_SCHEMA = "nixmac.e2e.semantic-audit.v5";
+const AUDIT_SCHEMA = "nixmac.e2e.semantic-audit.v6";
 const REVIEWER = "GitHub Actions protected vision review";
 const REVIEWER_KIND = "github-actions-protected-vision-review";
 const MAX_REVIEW_VIDEO_SECONDS = 120;
@@ -24,6 +24,42 @@ function fail(message) {
 
 function sha256(buffer) {
   return createHash("sha256").update(buffer).digest("hex");
+}
+
+function stripPngAncillaryMetadata(buffer) {
+  const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  if (buffer.length < signature.length || !buffer.subarray(0, 8).equals(signature)) {
+    fail("reviewed screenshot is not a PNG");
+  }
+  const chunks = [signature];
+  let offset = signature.length;
+  let sawHeader = false;
+  let sawImageData = false;
+  let sawEnd = false;
+  while (offset < buffer.length) {
+    if (offset + 12 > buffer.length) fail("reviewed screenshot has a truncated PNG chunk");
+    const length = buffer.readUInt32BE(offset);
+    const end = offset + 12 + length;
+    if (end > buffer.length) fail("reviewed screenshot has an oversized PNG chunk");
+    const type = buffer.subarray(offset + 4, offset + 8).toString("ascii");
+    if (!/^[A-Za-z]{4}$/.test(type)) fail("reviewed screenshot has an invalid PNG chunk");
+    if (!sawHeader && type !== "IHDR") fail("reviewed screenshot must start with IHDR");
+    if (type === "IHDR") {
+      if (sawHeader) fail("reviewed screenshot contains duplicate IHDR");
+      sawHeader = true;
+    }
+    if (type === "IDAT") sawImageData = true;
+    if (type[0] === type[0].toUpperCase()) chunks.push(buffer.subarray(offset, end));
+    offset = end;
+    if (type === "IEND") {
+      sawEnd = true;
+      break;
+    }
+  }
+  if (!sawHeader || !sawImageData || !sawEnd || offset !== buffer.length) {
+    fail("reviewed screenshot is not a complete PNG");
+  }
+  return Buffer.concat(chunks);
 }
 
 function requireFiniteNumber(value, name, { min = 0, max = Number.MAX_VALUE } = {}) {
@@ -217,6 +253,28 @@ async function createReviewedPublicVideo(sourceVideoPath, publicVideoPath) {
   ]);
 }
 
+async function createReviewedScreenshot(sourcePath, outputPath, temporaryPath) {
+  await execFileAsync("ffmpeg", [
+    "-v",
+    "error",
+    "-n",
+    "-i",
+    sourcePath,
+    "-frames:v",
+    "1",
+    "-map_metadata",
+    "-1",
+    temporaryPath,
+  ]);
+  const sanitized = stripPngAncillaryMetadata(await readFile(temporaryPath));
+  if (sanitized.length > 4 * 1024 * 1024) fail("reviewed screenshot exceeds 4 MiB");
+  await writeFile(outputPath, sanitized, { flag: "wx" });
+  return {
+    sourceSha256: sha256(await readFile(sourcePath)),
+    sha256: sha256(sanitized),
+  };
+}
+
 async function imageContent(images) {
   const content = [];
   for (const image of images) {
@@ -333,6 +391,11 @@ async function review({
   const screenshotPaths = await Promise.all(
     manifest.evidence.screenshots.map((screenshot) => confined(screenshot.path)),
   );
+  for (const [index, screenshotPath] of screenshotPaths.entries()) {
+    if (sha256(await readFile(screenshotPath)) !== manifest.evidence.screenshots[index].sha256) {
+      fail(`trusted vision review screenshot ${index + 1} hash does not match the manifest`);
+    }
+  }
   const sourceVideoBuffer = await readFile(videoPath);
   const sourceVideoSha256 = sha256(sourceVideoBuffer);
   if (sourceVideoSha256 !== manifest.evidence.video.sha256) {
@@ -361,9 +424,20 @@ async function review({
   const publicVideoSha256 = sha256(publicVideoBuffer);
   const temporary = await mkdtemp(path.join(os.tmpdir(), "nixmac-video-audit-"));
   try {
+    const reviewedScreenshots = [];
+    for (const [index, screenshotPath] of screenshotPaths.entries()) {
+      const filename = `publisher-reviewed-screenshot-${String(index + 1).padStart(2, "0")}.png`;
+      const reviewedPath = path.join(root, filename);
+      const identity = await createReviewedScreenshot(
+        screenshotPath,
+        reviewedPath,
+        path.join(temporary, `screenshot-${String(index + 1).padStart(2, "0")}.png`),
+      );
+      reviewedScreenshots.push({ path: filename, ...identity });
+    }
     const reviewEvidence = await extractReviewImages(
       publicVideoPath,
-      screenshotPaths,
+      reviewedScreenshots.map((screenshot) => path.join(root, screenshot.path)),
       reviewedFrameCount,
       temporary,
     );
@@ -385,7 +459,7 @@ async function review({
       reviewer: REVIEWER,
       reviewerKind: REVIEWER_KIND,
       reviewScope:
-        "Independent protected sensitivity and semantic inspection of the exact 2 Hz public video and curated screenshots",
+        "Independent protected sensitivity and semantic inspection of the exact 2 Hz public video and sanitized curated screenshots",
       reviewToolSha: process.env.REPORT_TOOL_SHA,
       reviewRunId: Number(process.env.GITHUB_RUN_ID),
       reviewRunAttempt: Number(process.env.GITHUB_RUN_ATTEMPT),
@@ -393,6 +467,7 @@ async function review({
       reviewedFrameCount: reviewEvidence.reviewedFrameCount,
       reviewedContactSheetCount: reviewEvidence.reviewedContactSheetCount,
       reviewedScreenshotCount: reviewEvidence.reviewedScreenshotCount,
+      reviewedScreenshots,
       reviewSampleIntervalSeconds: TIMELINE_SAMPLE_INTERVAL_SECONDS,
       sourceVideoSha256,
       videoSha256: publicVideoSha256,
@@ -466,6 +541,29 @@ async function selfTest() {
     rejected = true;
   }
   if (!rejected) fail("decision self-test accepted sensitive content");
+  const secretTextChunk = Buffer.concat([
+    Buffer.from([0, 0, 0, 21]),
+    Buffer.from("tEXt"),
+    Buffer.from("token\0sk-secret-value"),
+    Buffer.alloc(4),
+  ]);
+  const minimalPng = Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    Buffer.from([0, 0, 0, 0]),
+    Buffer.from("IHDR"),
+    Buffer.alloc(4),
+    Buffer.from([0, 0, 0, 0]),
+    Buffer.from("IDAT"),
+    Buffer.alloc(4),
+    secretTextChunk,
+    Buffer.from([0, 0, 0, 0]),
+    Buffer.from("IEND"),
+    Buffer.alloc(4),
+  ]);
+  const strippedPng = stripPngAncillaryMetadata(minimalPng);
+  if (strippedPng.includes(Buffer.from("sk-secret-value"))) {
+    fail("PNG metadata self-test retained a secret");
+  }
   if (expectedTimelineFrameCount(0.1) !== 1) fail("short-video frame count is invalid");
   if (expectedTimelineFrameCount(MAX_REVIEW_VIDEO_SECONDS) !== 240) {
     fail("maximum-video frame count is invalid");
@@ -486,6 +584,25 @@ async function selfTest() {
       "yuv420p",
       videoPath,
     ]);
+    const sourceScreenshotPath = path.join(temporary, "source-screenshot.png");
+    await execFileAsync("ffmpeg", [
+      "-v",
+      "error",
+      "-i",
+      videoPath,
+      "-frames:v",
+      "1",
+      sourceScreenshotPath,
+    ]);
+    const reviewedScreenshotPath = path.join(temporary, "reviewed-screenshot.png");
+    const reviewedScreenshot = await createReviewedScreenshot(
+      sourceScreenshotPath,
+      reviewedScreenshotPath,
+      path.join(temporary, "reviewed-screenshot-intermediate.png"),
+    );
+    if (reviewedScreenshot.sha256 !== sha256(await readFile(reviewedScreenshotPath))) {
+      fail("reviewed screenshot self-test changed its final hash");
+    }
     const publicVideoPath = path.join(temporary, "reviewed.mp4");
     await createReviewedPublicVideo(videoPath, publicVideoPath);
     const publicDuration = await videoDuration(publicVideoPath);

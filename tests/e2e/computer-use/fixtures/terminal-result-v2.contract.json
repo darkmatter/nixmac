@@ -131,7 +131,7 @@
       "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
       "reviewer": "GitHub Actions protected vision review",
       "reviewerKind": "github-actions-protected-vision-review",
-      "reviewScope": "Independent protected sensitivity and semantic inspection of the exact 2 Hz public video and curated screenshots",
+      "reviewScope": "Independent protected sensitivity and semantic inspection of the exact 2 Hz public video and sanitized curated screenshots",
       "reviewToolSha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
       "reviewRunId": 123,
       "reviewRunAttempt": 1,

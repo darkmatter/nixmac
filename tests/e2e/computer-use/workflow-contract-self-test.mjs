@@ -160,6 +160,16 @@ assert.match(
 );
 assert.match(
   trustedVideoAuditScript,
+  /stripPngAncillaryMetadata[\s\S]*createReviewedScreenshot[\s\S]*reviewedScreenshots/,
+  "trusted video audit must strip screenshot metadata before review",
+);
+assert.match(
+  terminalWorkflow,
+  /publisher-reviewed-screenshot-[\s\S]*\.evidence\.screenshots = \[[\s\S]*reviewedScreenshots/,
+  "terminal publisher must embed only sanitized reviewed screenshots",
+);
+assert.match(
+  trustedVideoAuditScript,
   /github-actions-protected-vision-review/,
   "trusted video audit must identify the protected vision reviewer",
 );

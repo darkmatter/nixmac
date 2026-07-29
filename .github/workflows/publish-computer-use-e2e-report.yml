@@ -437,6 +437,27 @@ jobs:
             echo "Publisher semantic audit must bind the exact public video" >&2
             exit 1
           }
+          while IFS=$'\t' read -r screenshot_path screenshot_sha; do
+            [[ "$screenshot_path" =~ ^publisher-reviewed-screenshot-[0-9]{2}\.png$ ]] || {
+              echo "Publisher semantic audit returned an unsafe screenshot path" >&2
+              exit 1
+            }
+            reviewed_screenshot="$local_evidence/$screenshot_path"
+            [[ -f "$reviewed_screenshot" ]] || {
+              echo "Publisher-reviewed screenshot is missing: $screenshot_path" >&2
+              exit 1
+            }
+            (( $(wc -c < "$reviewed_screenshot") <= 4194304 )) || {
+              echo "Publisher-reviewed screenshot exceeds 4 MiB: $screenshot_path" >&2
+              exit 1
+            }
+            [[ "$(sha256sum "$reviewed_screenshot" | cut -d' ' -f1)" == "$screenshot_sha" ]] || {
+              echo "Publisher semantic audit screenshot hash mismatch: $screenshot_path" >&2
+              exit 1
+            }
+          done < <(
+            jq -r '.reviewedScreenshots[] | [.path, .sha256] | @tsv' "$semantic_audit_path"
+          )
           semantic_audit_size="$(wc -c < "$semantic_audit_path")"
           (( semantic_audit_size > 0 && semantic_audit_size <= 262144 )) || {
             echo "Publisher semantic audit must be non-empty and at most 256 KiB" >&2
@@ -457,6 +478,14 @@ jobs:
             --slurpfile audit "$semantic_audit_path" \
             '.evidence.video.path = $video_path
               | .evidence.video.sha256 = $video_sha
+              | .evidence.screenshots = [
+                  .evidence.screenshots as $source
+                  | range(0; $source | length) as $index
+                  | $source[$index] + {
+                      path: $audit[0].reviewedScreenshots[$index].path,
+                      sha256: $audit[0].reviewedScreenshots[$index].sha256
+                    }
+                ]
               | .presentation.status = $audit[0].status
               | .presentation.firstMeaningfulActionSeconds = $audit[0].firstMeaningfulActionSeconds
               | .presentation.watchedStartToFinish = $audit[0].watchedStartToFinish
