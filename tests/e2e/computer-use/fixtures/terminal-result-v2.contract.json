@@ -18,7 +18,11 @@
     "artifactName": "nixmac-macos-app",
     "appVersion": "0.32.0",
     "archiveSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "appSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    "appSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "runtimeAttestation": {
+      "path": "runtime-attestation.json",
+      "sha256": "abababababababababababababababababababababababababababababababab"
+    }
   },
   "reportTool": {
     "repository": "darkmatter/nixmac",

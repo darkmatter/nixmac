@@ -17,6 +17,10 @@ const publisherScript = readFileSync(
   path.join(repoRoot, "ops/scripts/e2e/publish-report.sh"),
   "utf8",
 );
+const runtimeAttestationScript = readFileSync(
+  path.join(repoRoot, "ops/scripts/e2e/capture-runtime-attestation.sh"),
+  "utf8",
+);
 
 function section(startPattern, endPattern = null) {
   const start = workflow.search(startPattern);
@@ -67,6 +71,16 @@ assert.match(
   terminalWorkflow,
   /pulls\/\$\{PR_NUMBER\}[\s\S]*pulls\/\$\{PR_NUMBER\}\/commits\?per_page=100[\s\S]*commits\/\$\{EXPECTED_SHA\}\/pulls\?per_page=100[\s\S]*expected_sha is not associated with the declared pull request/,
   "terminal renderer must bind the tested SHA to the declared pull request while allowing stale PR commits",
+);
+assert.match(
+  terminalWorkflow,
+  /\.testedArtifact\.runtimeAttestation\.path[\s\S]*one runtime attestation/,
+  "terminal renderer must retrieve the live-process runtime attestation with the other evidence",
+);
+assert.match(
+  runtimeAttestationScript,
+  /proc_pidpath[\s\S]*Running nixmac process does not use the staged app executable[\s\S]*executableSha256[\s\S]*captureToolSha/,
+  "runtime attestation must resolve and hash the live staged process with the protected capture-tool pin",
 );
 assert.match(
   terminalWorkflow,

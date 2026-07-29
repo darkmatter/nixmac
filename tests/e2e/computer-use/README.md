@@ -178,7 +178,10 @@ Centaur/Buzz terminal runs use the smaller
 CuaDriver has already produced a terminal result on the configured remote Mac.
 The evidence directory must contain `terminal-result.v2.json`, 1-3 PR-focused
 scenarios, curated PNG screenshots, one canonical H.264/yuv420p MP4, a provider
-trace, and a semantic video-audit JSON artifact. Every scenario declares
+trace, a protected-tool runtime attestation for the still-running exercised
+app, and a semantic video-audit JSON artifact. The attestation resolves the
+live process executable, hashes it, and must match the independently downloaded
+official artifact before publication. Every scenario declares
 `intent` (`positive-flow` or `expected-refusal`),
 `coversChangedBehavior`, preconditions, a terminal state, assertions, and its
 status. A report is rejected when no scenario covers changed behavior.

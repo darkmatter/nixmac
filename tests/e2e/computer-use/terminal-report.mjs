@@ -21,6 +21,7 @@ const MAX_SCREENSHOT_DECODED_BYTES = 64 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 15 * 1024 * 1024;
 const MAX_PROVIDER_TRACE_BYTES = 1024 * 1024;
 const MAX_SEMANTIC_AUDIT_BYTES = 256 * 1024;
+const MAX_RUNTIME_ATTESTATION_BYTES = 64 * 1024;
 const MAX_HTML_BYTES = 42 * 1024 * 1024;
 const STATUSES = new Set(["pass", "fail", "inconclusive"]);
 const INTENTS = new Set(["positive-flow", "expected-refusal"]);
@@ -34,6 +35,7 @@ const SHA256_RE = /^[a-f0-9]{64}$/;
 const GIT_SHA_RE = /^[a-f0-9]{40}$/;
 const SAFE_ID_RE = /^[a-z0-9][a-z0-9._-]{0,79}$/;
 const REQUEST_ID_RE = /^[a-z0-9][a-z0-9._:-]{0,79}$/;
+const RUNTIME_ATTESTATION_SCHEMA = "nixmac.e2e.runtime-attestation.v1";
 
 function fail(message) {
   throw new Error(message);
@@ -524,6 +526,16 @@ export async function loadTerminalResult(
   requireString(result.testedArtifact?.appSha256, "testedArtifact.appSha256", {
     pattern: SHA256_RE,
   });
+  requireString(
+    result.testedArtifact?.runtimeAttestation?.path,
+    "testedArtifact.runtimeAttestation.path",
+    { max: 1_000 },
+  );
+  requireString(
+    result.testedArtifact?.runtimeAttestation?.sha256,
+    "testedArtifact.runtimeAttestation.sha256",
+    { pattern: SHA256_RE },
+  );
   if (result.reportTool?.repository !== "darkmatter/nixmac") {
     fail("reportTool.repository must be darkmatter/nixmac");
   }
@@ -642,6 +654,57 @@ export async function loadTerminalResult(
 
   requireString(result.evidence?.root, "evidence.root", { max: 1_000 });
   const root = await realpath(result.evidence.root);
+  const runtimeAttestationFile = await confinedFile(
+    root,
+    result.testedArtifact.runtimeAttestation.path,
+    "testedArtifact.runtimeAttestation.path",
+  );
+  if (runtimeAttestationFile.size > MAX_RUNTIME_ATTESTATION_BYTES) {
+    fail(
+      `testedArtifact.runtimeAttestation exceeds ${formatBytes(MAX_RUNTIME_ATTESTATION_BYTES)}`,
+    );
+  }
+  const runtimeAttestationBuffer = await readFile(runtimeAttestationFile.absolutePath);
+  if (sha256(runtimeAttestationBuffer) !== result.testedArtifact.runtimeAttestation.sha256) {
+    fail("testedArtifact.runtimeAttestation SHA-256 does not match");
+  }
+  let runtimeAttestation;
+  try {
+    runtimeAttestation = JSON.parse(runtimeAttestationBuffer.toString("utf8"));
+  } catch {
+    fail("testedArtifact.runtimeAttestation must be valid JSON");
+  }
+  if (runtimeAttestation.schemaVersion !== RUNTIME_ATTESTATION_SCHEMA) {
+    fail(`testedArtifact.runtimeAttestation schemaVersion must be ${RUNTIME_ATTESTATION_SCHEMA}`);
+  }
+  requireInteger(runtimeAttestation.processId, "runtimeAttestation.processId");
+  if (runtimeAttestation.bundleIdentifier !== "com.darkmatter.nixmac") {
+    fail("runtimeAttestation.bundleIdentifier must be com.darkmatter.nixmac");
+  }
+  requireString(runtimeAttestation.appVersion, "runtimeAttestation.appVersion", { max: 100 });
+  requireString(runtimeAttestation.bundlePath, "runtimeAttestation.bundlePath", { max: 1_000 });
+  requireString(runtimeAttestation.processExecutable, "runtimeAttestation.processExecutable", {
+    max: 1_000,
+  });
+  requireString(runtimeAttestation.executableSha256, "runtimeAttestation.executableSha256", {
+    pattern: SHA256_RE,
+  });
+  requireString(runtimeAttestation.captureToolSha, "runtimeAttestation.captureToolSha", {
+    pattern: GIT_SHA_RE,
+  });
+  if (runtimeAttestation.executableSha256 !== result.testedArtifact.appSha256) {
+    fail("runtimeAttestation executable SHA-256 must match the downloaded app");
+  }
+  if (runtimeAttestation.appVersion !== result.testedArtifact.appVersion) {
+    fail("runtimeAttestation app version must match testedArtifact.appVersion");
+  }
+  if (runtimeAttestation.captureToolSha !== result.reportTool.sha) {
+    fail("runtimeAttestation capture tool SHA must match reportTool.sha");
+  }
+  const runtimeAttestationCapturedAt = parseIso(
+    runtimeAttestation.capturedAt,
+    "runtimeAttestation.capturedAt",
+  );
   const providerTraceFile = await confinedFile(
     root,
     result.provider.trace.path,
@@ -809,9 +872,28 @@ export async function loadTerminalResult(
   const startedAt = parseIso(result.timestamps?.startedAt, "timestamps.startedAt");
   const completedAt = parseIso(result.timestamps?.completedAt, "timestamps.completedAt");
   if (completedAt < startedAt) fail("timestamps.completedAt must not precede timestamps.startedAt");
+  if (
+    runtimeAttestationCapturedAt < startedAt ||
+    runtimeAttestationCapturedAt > completedAt
+  ) {
+    fail("runtimeAttestation.capturedAt must fall within the declared run timestamps");
+  }
 
   return {
     ...result,
+    testedArtifact: {
+      ...result.testedArtifact,
+      runtimeAttestation: {
+        ...result.testedArtifact.runtimeAttestation,
+        capturedAt: runtimeAttestation.capturedAt,
+        processId: runtimeAttestation.processId,
+        bundleIdentifier: runtimeAttestation.bundleIdentifier,
+        appVersion: runtimeAttestation.appVersion,
+        executableSha256: runtimeAttestation.executableSha256,
+        captureToolSha: runtimeAttestation.captureToolSha,
+        size: runtimeAttestationFile.size,
+      },
+    },
     provider: {
       ...result.provider,
       trace: {
@@ -980,6 +1062,7 @@ export function renderTerminalReportHtml(result) {
       <div><dt>Tested head SHA</dt><dd><code>${artifact.headSha}</code></dd></div>
       <div><dt>GitHub Actions source</dt><dd><a href="https://github.com/darkmatter/nixmac/actions/runs/${artifact.actionsRunId}">run ${artifact.actionsRunId}</a> · artifact ${artifact.artifactId} (${escapeHtml(artifact.artifactName)})</dd></div>
       <div><dt>Application</dt><dd>${escapeHtml(artifact.appVersion)}</dd></div>
+      <div><dt>Live process attestation</dt><dd>PID ${artifact.runtimeAttestation.processId} · captured ${escapeHtml(artifact.runtimeAttestation.capturedAt)}</dd></div>
     </dl></section>
     <section class="panel"><dl>
       <div><dt>Runner</dt><dd>${escapeHtml(result.runner.label)} · macOS ${escapeHtml(result.runner.macosVersion)}</dd></div>
@@ -1008,6 +1091,7 @@ export function renderTerminalReportHtml(result) {
     <table><thead><tr><th>Artifact</th><th>SHA-256</th><th>Size</th></tr></thead><tbody>
       <tr><td>Downloaded build archive</td><td><code>${artifact.archiveSha256}</code></td><td>source identity</td></tr>
       <tr><td>Staged nixmac.app</td><td><code>${artifact.appSha256}</code></td><td>source identity</td></tr>
+      <tr><td>Live exercised process attestation</td><td><code>${artifact.runtimeAttestation.sha256}</code></td><td>${escapeHtml(formatBytes(artifact.runtimeAttestation.size))}</td></tr>
       ${result.evidence.screenshots.map((shot) => `<tr><td>${escapeHtml(shot.label)}</td><td><code>${shot.sha256}</code></td><td>${escapeHtml(formatBytes(shot.size))}</td></tr>`).join("")}
       <tr><td>${escapeHtml(video.label)}</td><td><code>${video.sha256}</code></td><td>${escapeHtml(formatBytes(video.size))}</td></tr>
       <tr><td>Provider trace</td><td><code>${result.provider.trace.sha256}</code></td><td>${escapeHtml(formatBytes(result.provider.trace.size))}</td></tr>
@@ -1083,6 +1167,20 @@ async function selfTest() {
     })}\n`,
   );
   await writeFile(path.join(dir, "semantic-video-audit.json"), semanticAudit);
+  const runtimeAttestation = Buffer.from(
+    `${JSON.stringify({
+      schemaVersion: RUNTIME_ATTESTATION_SCHEMA,
+      capturedAt: "2026-01-01T00:00:00Z",
+      processId: 42,
+      bundleIdentifier: "com.darkmatter.nixmac",
+      appVersion: "0.0.0-test",
+      bundlePath: "/private/tmp/nixmac.app",
+      processExecutable: "/private/tmp/nixmac.app/Contents/MacOS/nixmac",
+      executableSha256: "c".repeat(64),
+      captureToolSha: "d".repeat(40),
+    })}\n`,
+  );
+  await writeFile(path.join(dir, "runtime-attestation.json"), runtimeAttestation);
   const manifest = {
     schemaVersion: SCHEMA_VERSION,
     provider: {
@@ -1114,6 +1212,10 @@ async function selfTest() {
       appVersion: "0.0.0-test",
       archiveSha256: "b".repeat(64),
       appSha256: "c".repeat(64),
+      runtimeAttestation: {
+        path: "runtime-attestation.json",
+        sha256: sha256(runtimeAttestation),
+      },
     },
     reportTool: { repository: "darkmatter/nixmac", sha: "d".repeat(40) },
     runner: {
@@ -1202,6 +1304,11 @@ async function selfTest() {
   contractFixture.evidence = structuredClone(manifest.evidence);
   contractFixture.provider.trace = structuredClone(manifest.provider.trace);
   contractFixture.presentation = structuredClone(manifest.presentation);
+  contractFixture.timestamps = structuredClone(manifest.timestamps);
+  contractFixture.testedArtifact.appVersion = manifest.testedArtifact.appVersion;
+  contractFixture.testedArtifact.runtimeAttestation = structuredClone(
+    manifest.testedArtifact.runtimeAttestation,
+  );
   const contractPath = path.join(dir, "terminal-result-v2.contract.json");
   await writeFile(contractPath, `${JSON.stringify(contractFixture, null, 2)}\n`);
   const contractResult = await loadTerminalResult(contractPath, { probe: false });
@@ -1349,6 +1456,13 @@ async function selfTest() {
       candidate.request.pullRequest.url = "https://github.com/darkmatter/nixmac/pull/608";
     },
     "request.pullRequest.url must match request.pullRequest.number",
+  );
+  await expectRejected(
+    "runtime app hash mismatch",
+    (candidate) => {
+      candidate.testedArtifact.appSha256 = "a".repeat(64);
+    },
+    "runtimeAttestation executable SHA-256 must match the downloaded app",
   );
   const truncatedPng = png.subarray(0, 24);
   await writeFile(path.join(dir, "proof-truncated.png"), truncatedPng);

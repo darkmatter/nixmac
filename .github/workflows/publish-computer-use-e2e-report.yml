@@ -285,11 +285,11 @@ jobs:
 
           mapfile -t evidence_paths < <(
             jq -r \
-              '[.evidence.screenshots[].path, .evidence.video.path, .provider.trace.path, .presentation.semanticAudit.path] | .[]' \
+              '[.testedArtifact.runtimeAttestation.path, .evidence.screenshots[].path, .evidence.video.path, .provider.trace.path, .presentation.semanticAudit.path] | .[]' \
               "$local_evidence/terminal-result.remote.json"
           )
-          if [[ "${#evidence_paths[@]}" -lt 5 || "${#evidence_paths[@]}" -gt 9 ]]; then
-            echo "Manifest must reference two to six screenshots, one video, one provider trace, and one semantic audit" >&2
+          if [[ "${#evidence_paths[@]}" -lt 6 || "${#evidence_paths[@]}" -gt 10 ]]; then
+            echo "Manifest must reference one runtime attestation, two to six screenshots, one video, one provider trace, and one semantic audit" >&2
             exit 1
           fi
           for relative_path in "${evidence_paths[@]}"; do
