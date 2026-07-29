@@ -1,0 +1,186 @@
+{
+  "schemaVersion": "nixmac.e2e.terminal-result.v2",
+  "request": {
+    "id": "nixmac-e2e:7b86ba7e49332b7f0a06ef33764c311575723f1f",
+    "repository": "darkmatter/nixmac",
+    "pullRequest": {
+      "number": 607,
+      "title": "fix: reject env-provided `SOPS_AGE_KEY_FILE` paths that don't exist instead of creating keys there",
+      "url": "https://github.com/darkmatter/nixmac/pull/607"
+    }
+  },
+  "verdict": "pass",
+  "summary": "The exact PR #607 merge artifact reused an existing external age identity, created an encrypted SOPS secret, and reached Review with only the declared pending files.",
+  "testedArtifact": {
+    "headSha": "7b86ba7e49332b7f0a06ef33764c311575723f1f",
+    "actionsRunId": 30301331803,
+    "artifactId": 8667154076,
+    "artifactName": "nixmac-macos-app",
+    "appVersion": "0.32.2-develop.2175",
+    "archiveSha256": "a62f5ad1b97e13c073949572e214f1cafa8468d0988991ce5b1c42b2c51cf137",
+    "appSha256": "5f02eb4511b0f276f0f0f0ea63b39ed9382e4f1f53af8b8500e93a835232fafc"
+  },
+  "reportTool": {
+    "repository": "darkmatter/nixmac",
+    "sha": "2ab186b8d7b9dff2f801724dc51dc4ba9acb8025"
+  },
+  "provider": {
+    "kind": "scripted-mock",
+    "endpointClass": "loopback",
+    "label": "Deterministic OpenAI-compatible loopback provider",
+    "model": "nixmac-e2e-scripted",
+    "trace": {
+      "path": "provider-trace.jsonl",
+      "sha256": "141936c7f14b1934984c48e9edb6011c05fd507ab4a3a98d222569579a991f16",
+      "size": 923
+    }
+  },
+  "runner": {
+    "label": "Disposable Tart macOS VM",
+    "host": "redacted",
+    "macosVersion": "26.4",
+    "cuaDriverVersion": "0.13.1",
+    "sockets": [
+      "/Users/admin/Library/Caches/cua-driver/cua-driver.sock"
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "existing-age-key-positive-flow",
+      "title": "Create a SOPS secret with an existing external age identity",
+      "intent": "positive-flow",
+      "coversChangedBehavior": true,
+      "changedBehavior": "An explicit absolute SOPS_AGE_KEY_FILE is reused without creating or overwriting the existing identity.",
+      "declaredPostcondition": "Review is visible; .sops.yaml and encrypted secrets/qa_valid_key.yaml are the only pending Git paths; the sensitive secret diff is intentionally omitted from the UI.",
+      "preconditions": [
+        {
+          "description": "The exact merged PR artifact is staged and identified",
+          "status": "pass",
+          "evidence": "GitHub Actions run 30301331803 artifact 8667154076, archive SHA-256, app binary SHA-256, process path, and app version agree."
+        },
+        {
+          "description": "The deterministic fixture starts clean",
+          "status": "pass",
+          "evidence": "Fixture commit a84c83749b88fb00ef2c7f424d326d58cc91b371 was cloned from the hash-bound bundle with an empty pre-run Git status."
+        },
+        {
+          "description": "The age identity exists outside the repository",
+          "status": "pass",
+          "evidence": "The absolute external identity path and pre-run SHA-256 were recorded without exposing private key contents."
+        }
+      ],
+      "terminalState": {
+        "description": "Review is visible with the expected safe summary and Build & Test boundary",
+        "status": "pass",
+        "evidence": "CuaDriver screenshots and continuous video show Review, .sops.yaml, the secret summary, and an enabled Build & Test button with no error state."
+      },
+      "status": "pass",
+      "assertions": [
+        {
+          "description": "CuaDriver completed prompt entry and Send actuation",
+          "status": "pass",
+          "evidence": "The trajectory contains the prompt click, all 60 typed characters, Send click, and terminal Review screenshots."
+        },
+        {
+          "description": "ensure_secret returned a successful provider tool result",
+          "status": "pass",
+          "evidence": "The normalized provider trace contains an ordered ensure_secret tool request and matching status=success response; the app log records State: Generated."
+        },
+        {
+          "description": "Only the declared repository paths changed",
+          "status": "pass",
+          "evidence": "Git status is exactly ?? .sops.yaml and ?? secrets/qa_valid_key.yaml."
+        },
+        {
+          "description": "The secret is encrypted and decrypts with the existing identity",
+          "status": "pass",
+          "evidence": "The file contains SOPS metadata and ENC data, no plaintext placeholder, and decrypts to the synthetic test placeholder only with the external identity."
+        },
+        {
+          "description": "The external age identity was not modified or copied into the repository",
+          "status": "pass",
+          "evidence": "Pre/post identity SHA-256 values match byte-for-byte and no AGE-SECRET-KEY material exists under the fixture."
+        },
+        {
+          "description": "The continuous evidence is presentation-complete",
+          "status": "pass",
+          "evidence": "The 19-second H.264/yuv420p video fully decodes, begins meaningful prompt entry by 3 seconds, reaches Review, and holds Review for at least 9 encoded seconds."
+        }
+      ]
+    }
+  ],
+  "evidence": {
+    "root": "/private/tmp/nixmac-pr607-positive.Oyfl2d/run-20260729T051741Z/report-evidence",
+    "screenshots": [
+      {
+        "path": "screenshots/before.png",
+        "label": "Before",
+        "note": "Clean Describe state after CuaDriver preflight typed and cleared a sentinel.",
+        "sha256": "18ae95c9449003125c27b157f906501a58413bf666d4263c2c58b246e3a68151",
+        "width": 1568,
+        "height": 1335,
+        "size": 219570
+      },
+      {
+        "path": "screenshots/prompt.png",
+        "label": "Prompt entered",
+        "note": "The complete positive-flow request is visible before Send.",
+        "sha256": "67c1a847f508e796c4e7ce75aafa9ba56391d3e9a0ec448280d7bf2fe07646be",
+        "width": 1600,
+        "height": 1362,
+        "size": 146041
+      },
+      {
+        "path": "screenshots/review.png",
+        "label": "Review",
+        "note": "Terminal Review state with the safe .sops.yaml summary and Build & Test boundary.",
+        "sha256": "22c59f44192d809f761c99d0700e256a76daf57a94dbe4c00ca4f84bc8f35625",
+        "width": 1568,
+        "height": 1335,
+        "size": 276885
+      }
+    ],
+    "video": {
+      "path": "video/qualification.mp4",
+      "label": "Continuous positive-flow evidence",
+      "note": "Continuous CuaDriver evidence from prompt entry through a nine-second Review hold.",
+      "sha256": "6912755963c6007aec9ff6ae2f7f7283775f42290c29afb200c3730525c18fad",
+      "codec": "h264",
+      "width": 1024,
+      "height": 768,
+      "pixelFormat": "yuv420p",
+      "durationSeconds": 19,
+      "streamCount": 1,
+      "audioStreamCount": 0,
+      "size": 1443345
+    }
+  },
+  "presentation": {
+    "status": "pass",
+    "firstMeaningfulActionSeconds": 3,
+    "watchedStartToFinish": true,
+    "terminalStateVisible": true,
+    "terminalStateVisibleSeconds": 9,
+    "note": "One-second visual sampling and full media decode confirm a prompt-to-Review flow with no idle prefix, modal, notification, unrelated foreground window, or incomplete terminal state.",
+    "semanticAudit": {
+      "path": "semantic-video-audit.json",
+      "sha256": "b367899321151bdd05c0573ab66728e52826a18f25c069002e56bae516b23cbf",
+      "reviewer": "Codex visual audit",
+      "size": 971
+    }
+  },
+  "knownLimits": [
+    "The disclosed deterministic scripted provider proves UI, tool, and filesystem behavior; it does not evaluate live-model quality.",
+    "This is a manual disposable-Tart qualification using the pre-merge terminal reporter at report-tool SHA 2ab186b8d7b9dff2f801724dc51dc4ba9acb8025, not yet an unattended Centaur production run.",
+    "The editor enters a synthetic non-secret placeholder; no real secret value is used or published."
+  ],
+  "cleanup": {
+    "status": "pass",
+    "note": "Recording and CuaDriver session stopped; Build & Test and Keep Changes were not invoked; no user or production config was touched. The isolated VM Review state is intentionally retained for the demo."
+  },
+  "timestamps": {
+    "startedAt": "2026-07-29T05:19:39Z",
+    "completedAt": "2026-07-29T05:19:58Z"
+  },
+  "resultLabel": "POSITIVE FLOW PASS"
+}
