@@ -62,8 +62,8 @@ jobs:
             exit 1
           }
           trusted_main_sha="$(git rev-parse HEAD)"
-          git merge-base --is-ancestor "$REPORT_TOOL_SHA" "$trusted_main_sha" || {
-            echo "report_tool_sha must belong to the protected main branch" >&2
+          [[ "$REPORT_TOOL_SHA" == "$trusted_main_sha" ]] || {
+            echo "report_tool_sha must equal the current protected main revision" >&2
             exit 1
           }
           git checkout -q --detach "$REPORT_TOOL_SHA"
@@ -197,9 +197,13 @@ jobs:
           artifact_json="$RUNNER_TEMP/tested-actions-artifact.json"
           gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${actions_run_id}" > "$run_json"
           jq -e --arg sha "$EXPECTED_SHA" \
-            '.head_sha == $sha and .repository.full_name == "darkmatter/nixmac"' \
+            '.head_sha == $sha
+              and .repository.full_name == "darkmatter/nixmac"
+              and .path == ".github/workflows/build.yaml"
+              and .status == "completed"
+              and .conclusion == "success"' \
             "$run_json" >/dev/null || {
-              echo "Declared Actions run does not belong to the exact tested repository/SHA" >&2
+              echo "Declared Actions run is not the successful official build for the exact repository/SHA" >&2
               exit 1
             }
           gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}" > "$artifact_json"
