@@ -26,6 +26,7 @@ const STATUSES = new Set(["pass", "fail", "inconclusive"]);
 const INTENTS = new Set(["positive-flow", "expected-refusal"]);
 const PROVIDER_KINDS = new Set(["scripted-mock", "real"]);
 const ENDPOINT_CLASSES = new Set(["loopback", "remote"]);
+const REQUIRED_PROVIDER_TRACE_EVENTS = ["request", "tool_request", "tool_response", "response"];
 const MAX_FIRST_ACTION_SECONDS = 15;
 const MIN_TERMINAL_VISIBLE_SECONDS = 3;
 const SHA256_RE = /^[a-f0-9]{64}$/;
@@ -69,6 +70,59 @@ function requireEnum(value, name, allowed) {
 function requireStatus(value, name) {
   if (!STATUSES.has(value)) fail(`${name} must be pass, fail, or inconclusive`);
   return value;
+}
+
+function validateProviderTrace(buffer) {
+  let text;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+  } catch {
+    fail("provider.trace must be valid UTF-8 JSONL");
+  }
+  const lines = text.split(/\r?\n/);
+  if (lines.at(-1) === "") lines.pop();
+  if (lines.length === 0 || lines.some((line) => !line.trim())) {
+    fail("provider.trace must contain non-empty JSONL records");
+  }
+
+  const records = lines.map((line, index) => {
+    let record;
+    try {
+      record = JSON.parse(line);
+    } catch {
+      fail(`provider.trace line ${index + 1} must be valid JSON`);
+    }
+    if (!record || typeof record !== "object" || Array.isArray(record)) {
+      fail(`provider.trace line ${index + 1} must be a JSON object`);
+    }
+    requireString(record.event, `provider.trace line ${index + 1} event`, { max: 100 });
+    if (record.event === "tool_request" || record.event === "tool_response") {
+      requireString(record.tool, `provider.trace line ${index + 1} tool`, { max: 200 });
+    }
+    return record;
+  });
+
+  const eventIndexes = REQUIRED_PROVIDER_TRACE_EVENTS.map((event) =>
+    records.findIndex((record) => record.event === event),
+  );
+  if (eventIndexes.some((index) => index === -1)) {
+    fail(
+      `provider.trace must include ${REQUIRED_PROVIDER_TRACE_EVENTS.join(", ")} event records`,
+    );
+  }
+  if (eventIndexes.some((index, position) => position > 0 && index <= eventIndexes[position - 1])) {
+    fail("provider.trace events must be ordered request, tool_request, tool_response, response");
+  }
+  const requestedTools = new Set(
+    records.filter((record) => record.event === "tool_request").map((record) => record.tool),
+  );
+  if (
+    !records.some(
+      (record) => record.event === "tool_response" && requestedTools.has(record.tool),
+    )
+  ) {
+    fail("provider.trace must include a tool_response matching a tool_request");
+  }
 }
 
 function requireArray(value, name, { min = 0, max = 100 } = {}) {
@@ -559,6 +613,7 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
   if (sha256(providerTraceBuffer) !== result.provider.trace.sha256) {
     fail("provider.trace SHA-256 does not match");
   }
+  validateProviderTrace(providerTraceBuffer);
   const screenshots = [];
   let screenshotBytes = 0;
   for (const [index, screenshot] of requireArray(
@@ -621,6 +676,12 @@ export async function loadTerminalResult(inputPath, { probe = true } = {}) {
     videoProbe.durationSeconds > 600
   ) {
     fail("evidence.video duration must be between 0 and 600 seconds");
+  }
+  if (result.presentation.firstMeaningfulActionSeconds > videoProbe.durationSeconds) {
+    fail("presentation.firstMeaningfulActionSeconds must not exceed evidence.video duration");
+  }
+  if (result.presentation.terminalStateVisibleSeconds > videoProbe.durationSeconds) {
+    fail("presentation.terminalStateVisibleSeconds must not exceed evidence.video duration");
   }
   if (
     !Number.isSafeInteger(videoProbe.width) ||
@@ -934,7 +995,16 @@ async function selfTest() {
   await writeFile(path.join(dir, "proof.png"), png);
   await writeFile(path.join(dir, "proof-after.png"), png);
   await writeFile(path.join(dir, "proof.mp4"), mp4);
-  const providerTrace = Buffer.from('{"event":"tool_request","tool":"ensure_secret"}\n');
+  const providerTrace = Buffer.from(
+    [
+      { event: "request" },
+      { event: "tool_request", tool: "ensure_secret" },
+      { event: "tool_response", tool: "ensure_secret" },
+      { event: "response" },
+    ]
+      .map((record) => JSON.stringify(record))
+      .join("\n") + "\n",
+  );
   await writeFile(path.join(dir, "provider-trace.jsonl"), providerTrace);
   const semanticAudit = Buffer.from(
     `${JSON.stringify({
@@ -1036,7 +1106,7 @@ async function selfTest() {
         width: 800,
         height: 800,
         pixelFormat: "yuv420p",
-        durationSeconds: 1,
+        durationSeconds: 5,
         streamCount: 1,
         audioStreamCount: 0,
       },
@@ -1265,6 +1335,20 @@ async function selfTest() {
     "presentation.terminalStateVisibleSeconds must be >= 3",
   );
   await expectRejected(
+    "first action beyond video duration",
+    (candidate) => {
+      candidate.evidence.video.durationSeconds = 0.5;
+    },
+    "presentation.firstMeaningfulActionSeconds must not exceed evidence.video duration",
+  );
+  await expectRejected(
+    "terminal hold beyond video duration",
+    (candidate) => {
+      candidate.evidence.video.durationSeconds = 2;
+    },
+    "presentation.terminalStateVisibleSeconds must not exceed evidence.video duration",
+  );
+  await expectRejected(
     "missing provider disclosure",
     (candidate) => delete candidate.provider.kind,
     "provider.kind",
@@ -1287,6 +1371,65 @@ async function selfTest() {
       candidate.provider.trace.sha256 = "f".repeat(64);
     },
     "provider.trace SHA-256 does not match",
+  );
+  const malformedProviderTrace = Buffer.from("not-json\n");
+  await writeFile(path.join(dir, "provider-trace-malformed.jsonl"), malformedProviderTrace);
+  await expectRejected(
+    "malformed provider trace",
+    (candidate) => {
+      candidate.provider.trace = {
+        path: "provider-trace-malformed.jsonl",
+        sha256: sha256(malformedProviderTrace),
+      };
+    },
+    "provider.trace line 1 must be valid JSON",
+  );
+  const emptyProviderTrace = Buffer.alloc(0);
+  await writeFile(path.join(dir, "provider-trace-empty.jsonl"), emptyProviderTrace);
+  await expectRejected(
+    "empty provider trace",
+    (candidate) => {
+      candidate.provider.trace = {
+        path: "provider-trace-empty.jsonl",
+        sha256: sha256(emptyProviderTrace),
+      };
+    },
+    "provider.trace must contain non-empty JSONL records",
+  );
+  const incompleteProviderTrace = Buffer.from(
+    '{"event":"request"}\n{"event":"response"}\n',
+  );
+  await writeFile(path.join(dir, "provider-trace-incomplete.jsonl"), incompleteProviderTrace);
+  await expectRejected(
+    "incomplete provider trace",
+    (candidate) => {
+      candidate.provider.trace = {
+        path: "provider-trace-incomplete.jsonl",
+        sha256: sha256(incompleteProviderTrace),
+      };
+    },
+    "provider.trace must include request, tool_request, tool_response, response",
+  );
+  const mismatchedProviderTrace = Buffer.from(
+    [
+      { event: "request" },
+      { event: "tool_request", tool: "ensure_secret" },
+      { event: "tool_response", tool: "edit_file" },
+      { event: "response" },
+    ]
+      .map((record) => JSON.stringify(record))
+      .join("\n") + "\n",
+  );
+  await writeFile(path.join(dir, "provider-trace-mismatched.jsonl"), mismatchedProviderTrace);
+  await expectRejected(
+    "mismatched provider trace tool",
+    (candidate) => {
+      candidate.provider.trace = {
+        path: "provider-trace-mismatched.jsonl",
+        sha256: sha256(mismatchedProviderTrace),
+      };
+    },
+    "provider.trace must include a tool_response matching a tool_request",
   );
   await expectRejected(
     "semantic audit hash mismatch",
@@ -1384,6 +1527,7 @@ async function selfTest() {
   await writeFile(path.join(dir, "semantic-video-audit-failed.json"), failedAudit);
   const correction = structuredClone(expectedRefusal);
   correction.scenarios = [correction.scenarios[0]];
+  correction.evidence.video.durationSeconds = 60;
   correction.presentation = {
     ...correction.presentation,
     status: "fail",
