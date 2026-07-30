@@ -5,6 +5,7 @@ import {
   backendLabel,
   canHostDecrypt,
   hostRecipient,
+  recipientKeyLabel,
   secretPathDisplay,
 } from "./types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -37,7 +38,8 @@ export function VaultView({
   const hostDevice = host?.device ?? "";
   const hostPublicKey = host?.publicKey ?? "Unknown";
   const hostFingerprint = host?.fingerprint ?? "Unknown";
-  const hostRegistered = !!host && host.inUse;
+  const hostRegistrations = host?.registrations ?? [];
+  const hostRegistered = hostRegistrations.length > 0;
   const registeredLabel = hostRegistered ? "Yes" : "No";
   const openCount = vault.entries.filter((s) => canHostDecrypt(s, vault.hostId)).length;
 
@@ -67,7 +69,7 @@ export function VaultView({
             <span className="text-muted-foreground text-xs">{hostDevice}</span>
           </div>
           <span className="inline-flex items-center rounded-md border border-border px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
-            age identity
+            {host ? recipientKeyLabel(host) : "Unknown key"}
           </span>
         </div>
 
@@ -97,14 +99,22 @@ export function VaultView({
                 {registeredLabel}
               </span>
             )}
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              <code className="rounded bg-muted px-1 font-mono text-[10.5px] text-muted-foreground">
-                secrets.nix
-              </code>
-              <code className="rounded bg-muted px-1 font-mono text-[10.5px] text-muted-foreground">
-                .sops.yaml
-              </code>
-            </div>
+            {hostRegistrations.length > 0 ? (
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {hostRegistrations.map((registration) => (
+                  <Tooltip key={`${registration.backend}:${registration.file}`}>
+                    <TooltipTrigger asChild>
+                      <code className="rounded bg-muted px-1 font-mono text-[10.5px] text-muted-foreground">
+                        {registration.file}
+                      </code>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="font-mono text-[11px]">
+                      {backendLabel(registration.backend)} recipient registration
+                    </TooltipContent>
+                  </Tooltip>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           <div className="rounded-[10px] border border-border bg-muted/20 px-3 py-2.5">

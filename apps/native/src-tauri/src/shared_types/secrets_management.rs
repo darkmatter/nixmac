@@ -22,6 +22,43 @@ pub enum RecipientKind {
     Unknown,
 }
 
+/// Public-key format used by a secret recipient.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum RecipientKeyType {
+    Age,
+    Ssh,
+    Pgp,
+    #[default]
+    Unknown,
+}
+
+/// Where the recipient's key material originates.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum RecipientSource {
+    SshHostKey,
+    SshIdentity,
+    AgeKeyFile,
+    Pasted,
+    Github,
+    Yubikey,
+    SecureEnclave,
+    Repository,
+    #[default]
+    Unknown,
+}
+
+/// A repository configuration source that registers a recipient.
+/// Keeping the backend alongside the path matters because the same public key
+/// can be registered independently for SOPS and agenix.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RecipientRegistration {
+    pub backend: SecretBackend,
+    pub file: String,
+}
+
 /// One encrypted secret entry managed in the nix config repo.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -43,9 +80,13 @@ pub struct SecretRecipient {
     pub device: String,
     pub fingerprint: String,
     pub public_key: String,
+    pub key_type: RecipientKeyType,
+    pub source: RecipientSource,
 
     // A recipient must be committed to the repo before it can decrypt secrets.
     pub in_use: bool,
+
+    pub registrations: Vec<RecipientRegistration>,
 
     pub is_this_host: bool,
 }

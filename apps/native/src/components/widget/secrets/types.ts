@@ -41,6 +41,34 @@ export function backendLabel(backend: SecretBackend): string {
 	return backend === "agenix" ? "agenix" : "sops-nix";
 }
 
+export function recipientKeyLabel(recipient: SecretRecipient): string {
+	const keyType =
+		recipient.keyType === "pgp"
+			? "PGP"
+			: recipient.keyType === "ssh"
+				? "SSH"
+				: recipient.keyType === "age"
+					? "age"
+					: "key";
+
+	switch (recipient.source) {
+		case "sshHostKey":
+			return `SSH host key → ${keyType}`;
+		case "sshIdentity":
+			return `SSH identity → ${keyType}`;
+		case "github":
+			return `GitHub SSH key → ${keyType}`;
+		case "ageKeyFile":
+			return "age key file";
+		case "yubikey":
+			return `YubiKey → ${keyType}`;
+		case "secureEnclave":
+			return `Secure Enclave → ${keyType}`;
+		default:
+			return `${keyType} recipient`;
+	}
+}
+
 export function secretPathDisplay(secret: SecretEntry): string {
 	return secret.backend === "sops" && secret.sopsKey
 		? `${secret.file}  ›  ${secret.sopsKey}`

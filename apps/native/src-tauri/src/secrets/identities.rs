@@ -21,8 +21,13 @@ cfg:
         (path:
           !(builtins.elem path (map (key: key.path) hostKeys)))
         sopsPaths;
-  }
+}
 "#;
+
+// TODO(agenix-read): Project `cfg.age.identityPaths` alongside the SOPS
+// identities above. Preserve both the raw SSH public key and its ssh-to-age
+// recipient as aliases of the same local identity so an agenix `publicKeys`
+// rule written in either format resolves to the correct recipient.
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -140,7 +145,7 @@ mod tests {
         RecipientIdentity, SecretIdentities, identities_for_recipient,
         normalize_age_or_ssh_identity, normalize_pgp_fingerprint,
     };
-    use crate::shared_types::{RecipientKind, SecretRecipient};
+    use crate::shared_types::{RecipientKeyType, RecipientKind, RecipientSource, SecretRecipient};
     use std::collections::HashSet;
 
     fn recipient(public_key: &str) -> SecretRecipient {
@@ -151,7 +156,10 @@ mod tests {
             device: "test".into(),
             fingerprint: String::new(),
             public_key: public_key.into(),
+            key_type: RecipientKeyType::Unknown,
+            source: RecipientSource::Unknown,
             in_use: true,
+            registrations: Vec::new(),
             is_this_host: false,
         }
     }

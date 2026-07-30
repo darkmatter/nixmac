@@ -1981,9 +1981,26 @@ errorMessage: string | null;
 systemUntouched: boolean | null }
 
 /**
+ * Public-key format used by a secret recipient.
+ */
+export type RecipientKeyType = "age" | "ssh" | "pgp" | "unknown"
+
+/**
  * Kind of recipient used for managing secrets.
  */
 export type RecipientKind = "host" | "user" | "unknown"
+
+/**
+ * A repository configuration source that registers a recipient.
+ * Keeping the backend alongside the path matters because the same public key
+ * can be registered independently for SOPS and agenix.
+ */
+export type RecipientRegistration = { backend: SecretBackend; file: string }
+
+/**
+ * Where the recipient's key material originates.
+ */
+export type RecipientSource = "sshHostKey" | "sshIdentity" | "ageKeyFile" | "pasted" | "github" | "yubikey" | "secureEnclave" | "repository" | "unknown"
 
 /**
  * A recommended prompt based on the user's current macOS settings.
@@ -2043,7 +2060,7 @@ export type SecretBackend = "sops" | "agenix"
  */
 export type SecretEntry = { id: string; name: string; backend: SecretBackend; file: string; recipientIds: string[]; sopsKey: string | null }
 
-export type SecretRecipient = { id: string; label: string; kind: RecipientKind; device: string; fingerprint: string; publicKey: string; inUse: boolean; isThisHost: boolean }
+export type SecretRecipient = { id: string; label: string; kind: RecipientKind; device: string; fingerprint: string; publicKey: string; keyType: RecipientKeyType; source: RecipientSource; inUse: boolean; registrations: RecipientRegistration[]; isThisHost: boolean }
 
 export type SemanticChangeGroup = { 
 /**

@@ -13,7 +13,10 @@ use crate::{
         HostKey, RecipientIdentity, SecretIdentities, identities_for_recipient,
         load_secret_identities, normalize_age_or_ssh_identity, normalize_pgp_fingerprint,
     },
-    shared_types::{RecipientKind, SecretBackend, SecretEntry, SecretRecipient},
+    shared_types::{
+        RecipientKeyType, RecipientKind, RecipientRegistration, RecipientSource, SecretBackend,
+        SecretEntry, SecretRecipient,
+    },
     system::nix::nix_command,
 };
 
@@ -46,6 +49,7 @@ type RecipientInventory = HashMap<PathBuf, HashSet<RecipientIdentity>>;
 struct ConfigRecipient {
     public_key: String,
     anchor: Option<String>,
+    registration_file: String,
 }
 
 /// Populate each secret with the known recipients that can decrypt its source.
@@ -53,9 +57,11 @@ pub(crate) fn apply_recipients_to_secrets(
     entries: &mut [SecretEntry],
     recipients: &[SecretRecipient],
 ) -> Result<(), String> {
-    // The current agenix eval exposes only cfg.age.secrets.<name>.file. It does
-    // not expose the recipients from the agenix rules inventory, and those
-    // recipients cannot be inferred from .age ciphertext.
+    // TODO(agenix-read): Discover the configured classic agenix rules file
+    // (with conventional `secrets.nix` fallbacks), evaluate it with Nix rather
+    // than parsing Nix source, and map each rule's `publicKeys` to the matching
+    // evaluated `cfg.age.secrets.<name>.file`. Feed that map into the existing
+    // `RecipientInventory` path below.
     let agenix_inventory = RecipientInventory::new();
     apply_recipients_to_secrets_with(
         entries,
@@ -190,6 +196,11 @@ pub(crate) fn load_recipients(
     )?;
     let config_recipients = load_sops_config_recipients(Path::new(config_dir))?;
 
+    // TODO(agenix-read): Merge recipients found by the evaluated agenix rules
+    // inventory here as well. Mark them in use and attach an
+    // `RecipientRegistration { backend: Agenix, file: <rules path> }`, while
+    // deduplicating them against local and SOPS recipients by all known public
+    // identity aliases rather than only the displayed public key.
     Ok(merge_config_recipients(local_recipients, config_recipients))
 }
 
@@ -209,8 +220,17 @@ fn load_sops_config_recipients(config_dir: &Path) -> Result<Vec<ConfigRecipient>
     };
     let source = fs::read_to_string(&config_path)
         .map_err(|error| format!("Failed to read {}: {error}", config_path.display()))?;
-    parse_sops_config_recipients(&source)
-        .map_err(|error| format!("Failed to parse {}: {error}", config_path.display()))
+    let registration_file = config_path
+        .strip_prefix(config_dir)
+        .unwrap_or(&config_path)
+        .to_string_lossy()
+        .into_owned();
+    let mut recipients = parse_sops_config_recipients(&source)
+        .map_err(|error| format!("Failed to parse {}: {error}", config_path.display()))?;
+    for recipient in &mut recipients {
+        recipient.registration_file.clone_from(&registration_file);
+    }
+    Ok(recipients)
 }
 
 /// Parse the SOPS config YAML to extract the public recipients, preserving anchor names for friendly labels.
@@ -240,6 +260,8 @@ fn parse_sops_config_recipients(source: &str) -> Result<Vec<ConfigRecipient>, St
             Some(ConfigRecipient {
                 anchor: anchor_names.get(&canonical).cloned(),
                 public_key: canonical,
+                // The loader replaces this with the actual config filename.
+                registration_file: ".sops.yaml".to_string(),
             })
         })
         .collect())
@@ -322,6 +344,7 @@ fn merge_config_recipients(
 ) -> Vec<SecretRecipient> {
     for recipient in &mut local_recipients {
         recipient.in_use = false;
+        recipient.registrations.clear();
     }
 
     let mut used_ids: HashSet<String> = local_recipients
@@ -335,6 +358,10 @@ fn merge_config_recipients(
             .find(|local| local.public_key == config_recipient.public_key)
         {
             local.in_use = true;
+            local.registrations.push(RecipientRegistration {
+                backend: SecretBackend::Sops,
+                file: config_recipient.registration_file.clone(),
+            });
             if !local.is_this_host {
                 used_ids.remove(&local.id);
                 let label = config_recipient
@@ -357,22 +384,30 @@ fn merge_config_recipients(
             .as_deref()
             .unwrap_or(&config_recipient.public_key);
         let id = unique_recipient_id(label, &mut used_ids);
-        local_recipients.push(recipient(
-            &id,
-            label,
-            // An age recipient alone does not reveal whether it belongs to a
-            // host, a person, a hardware token, or something else.
-            RecipientKind::Unknown,
-            if config_recipient.anchor.is_some() {
-                ".sops.yaml named recipient"
-            } else {
-                ".sops.yaml recipient"
-            },
-            &config_recipient.public_key,
-            "",
-            true,
-            false,
-        ));
+        local_recipients.push(
+            recipient(
+                &id,
+                label,
+                // An age recipient alone does not reveal whether it belongs to a
+                // host, a person, a hardware token, or something else.
+                RecipientKind::Unknown,
+                if config_recipient.anchor.is_some() {
+                    ".sops.yaml named recipient"
+                } else {
+                    ".sops.yaml recipient"
+                },
+                &config_recipient.public_key,
+                "",
+                recipient_key_type(&config_recipient.public_key),
+                RecipientSource::Repository,
+                true,
+                false,
+            )
+            .with_registration(RecipientRegistration {
+                backend: SecretBackend::Sops,
+                file: config_recipient.registration_file,
+            }),
+        );
     }
 
     local_recipients
@@ -433,6 +468,8 @@ where
             &format!("This Mac · {}", host_key.key_type),
             &age_public_key,
             &key_fingerprint,
+            RecipientKeyType::Age,
+            RecipientSource::SshHostKey,
             true,
             true,
         ));
@@ -461,6 +498,8 @@ where
             "SSH identity · ssh-to-age",
             &age_public_key,
             &key_fingerprint,
+            RecipientKeyType::Age,
+            RecipientSource::SshIdentity,
             true,
             false,
         ));
@@ -603,6 +642,8 @@ fn recipient(
     device: &str,
     public_key: &str,
     fingerprint: &str,
+    key_type: RecipientKeyType,
+    source: RecipientSource,
     in_use: bool,
     is_this_host: bool,
 ) -> SecretRecipient {
@@ -613,8 +654,36 @@ fn recipient(
         device: device.into(),
         fingerprint: fingerprint.into(),
         public_key: public_key.into(),
+        key_type,
+        source,
         in_use,
+        registrations: Vec::new(),
         is_this_host,
+    }
+}
+
+/// Determine the key type of a recipient based on its public key.
+fn recipient_key_type(public_key: &str) -> RecipientKeyType {
+    if normalize_pgp_fingerprint(public_key).is_some() {
+        return RecipientKeyType::Pgp;
+    }
+    match normalize_age_or_ssh_identity(public_key) {
+        Some(RecipientIdentity::Ssh(_)) => RecipientKeyType::Ssh,
+        Some(RecipientIdentity::Age(_)) => RecipientKeyType::Age,
+        Some(RecipientIdentity::Pgp(_)) => RecipientKeyType::Pgp,
+        None => RecipientKeyType::Unknown,
+    }
+}
+
+/// Helper trait to add a registration to a SecretRecipient.
+trait WithRegistration {
+    fn with_registration(self, registration: RecipientRegistration) -> Self;
+}
+
+impl WithRegistration for SecretRecipient {
+    fn with_registration(mut self, registration: RecipientRegistration) -> Self {
+        self.registrations.push(registration);
+        self
     }
 }
 
@@ -624,11 +693,15 @@ mod tests {
         ConfigRecipient, RecipientInventory, apply_recipients_to_secrets,
         apply_recipients_to_secrets_with, load_sops_config_recipients, materialize_recipients,
         merge_config_recipients, parse_sops_config_recipients, parse_sops_recipient_metadata,
-        recipient, ssh_public_key_fingerprint, ssh_public_key_to_age, unique_recipient_id,
+        recipient, recipient_key_type, ssh_public_key_fingerprint, ssh_public_key_to_age,
+        unique_recipient_id,
     };
     use crate::{
         secrets::identities::{HostKey, RecipientIdentity, SecretIdentities},
-        shared_types::{RecipientKind, SecretBackend, SecretEntry, SecretRecipient},
+        shared_types::{
+            RecipientKeyType, RecipientKind, RecipientRegistration, RecipientSource, SecretBackend,
+            SecretEntry, SecretRecipient,
+        },
     };
     use std::{
         collections::{HashMap, HashSet},
@@ -646,6 +719,8 @@ mod tests {
             "test",
             public_key,
             "",
+            recipient_key_type(public_key),
+            RecipientSource::Repository,
             true,
             false,
         )
@@ -722,8 +797,12 @@ mod tests {
         assert_eq!(recipients.len(), 3);
         assert_eq!(recipients[0].id, "Test-Mac");
         assert_eq!(recipients[0].kind, RecipientKind::Host);
+        assert_eq!(recipients[0].key_type, RecipientKeyType::Age);
+        assert_eq!(recipients[0].source, RecipientSource::SshHostKey);
         assert!(recipients[0].is_this_host);
         assert_eq!(recipients[1].id, "id_ed25519");
+        assert_eq!(recipients[1].key_type, RecipientKeyType::Age);
+        assert_eq!(recipients[1].source, RecipientSource::SshIdentity);
         assert_eq!(recipients[2].id, "id_ed25519-2");
         assert_eq!(
             recipients[1].fingerprint,
@@ -846,14 +925,17 @@ creation_rules:
                 ConfigRecipient {
                     public_key: "age1server".into(),
                     anchor: Some("build_server".into()),
+                    registration_file: ".sops.yaml".into(),
                 },
                 ConfigRecipient {
                     public_key: "ssh-ed25519 AAAAoperator".into(),
                     anchor: Some("operator".into()),
+                    registration_file: ".sops.yaml".into(),
                 },
                 ConfigRecipient {
                     public_key: "age1raw".into(),
                     anchor: None,
+                    registration_file: ".sops.yaml".into(),
                 },
             ]
         );
@@ -871,6 +953,7 @@ creation_rules:
             [ConfigRecipient {
                 public_key: "age1alice".into(),
                 anchor: Some("alice".into()),
+                registration_file: ".sops.yaml".into(),
             }]
         );
     }
@@ -897,6 +980,7 @@ creation_rules:
 
         let recipients = load_sops_config_recipients(dir.path()).expect("load config");
         assert_eq!(recipients[0].public_key, "age1preferred");
+        assert_eq!(recipients[0].registration_file, ".sops.yaml");
     }
 
     #[test]
@@ -909,6 +993,8 @@ creation_rules:
                 "This Mac",
                 "age1local",
                 "SHA256:local",
+                RecipientKeyType::Age,
+                RecipientSource::SshHostKey,
                 true,
                 true,
             ),
@@ -919,6 +1005,8 @@ creation_rules:
                 "SSH identity",
                 "age1operator",
                 "SHA256:operator",
+                RecipientKeyType::Age,
+                RecipientSource::SshIdentity,
                 true,
                 false,
             ),
@@ -935,6 +1023,13 @@ creation_rules:
         assert_eq!(recipients[0].label, "my-host");
         assert!(recipients[0].is_this_host);
         assert!(recipients[0].in_use);
+        assert_eq!(
+            recipients[0].registrations,
+            [RecipientRegistration {
+                backend: SecretBackend::Sops,
+                file: ".sops.yaml".into(),
+            }]
+        );
         assert_eq!(recipients[1].id, "cooper");
         assert_eq!(recipients[1].label, "cooper");
         assert_eq!(recipients[2].kind, RecipientKind::Unknown);
