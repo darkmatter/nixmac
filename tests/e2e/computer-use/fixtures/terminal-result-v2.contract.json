@@ -1,0 +1,161 @@
+{
+  "schemaVersion": "nixmac.e2e.terminal-result.v2",
+  "request": {
+    "id": "nixmac-e2e:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "repository": "darkmatter/nixmac",
+    "pullRequest": {
+      "number": 607,
+      "title": "Validate existing SOPS age identity",
+      "url": "https://github.com/darkmatter/nixmac/pull/607"
+    }
+  },
+  "verdict": "pass",
+  "summary": "The existing-age-key positive flow reached Review with the expected encrypted pending changes.",
+  "testedArtifact": {
+    "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "actionsRunId": 30301331803,
+    "artifactId": 8667154076,
+    "artifactName": "nixmac-macos-app",
+    "appVersion": "0.32.0",
+    "archiveSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "appSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "appBundleSha256": "8888888888888888888888888888888888888888888888888888888888888888",
+    "runtimeAttestation": {
+      "path": "runtime-attestation.json",
+      "sha256": "abababababababababababababababababababababababababababababababab"
+    }
+  },
+  "reportTool": {
+    "repository": "darkmatter/nixmac",
+    "sha": "dddddddddddddddddddddddddddddddddddddddd"
+  },
+  "provider": {
+    "kind": "scripted-mock",
+    "endpointClass": "loopback",
+    "label": "Deterministic OpenAI-compatible loopback mock",
+    "model": "nixmac-e2e-scripted",
+    "trace": {
+      "path": "provider-trace.jsonl",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  },
+  "runner": {
+    "label": "MacInCloud E2E runner",
+    "host": "redacted",
+    "macosVersion": "15.5",
+    "cuaDriverVersion": "cua-driver",
+    "sockets": [
+      "/tmp/cua-ax12.sock",
+      "/tmp/cua-screen12.sock"
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "existing-age-key-positive-flow",
+      "title": "Use an existing external age identity",
+      "intent": "positive-flow",
+      "coversChangedBehavior": true,
+      "changedBehavior": "An explicit absolute SOPS_AGE_KEY_FILE is accepted without creating or overwriting it.",
+      "declaredPostcondition": "Review is visible with only .sops.yaml and encrypted secrets/qa_valid_key.yaml pending.",
+      "preconditions": [
+        {
+          "description": "Synthetic fixture is clean and target files are absent",
+          "status": "pass",
+          "evidence": "HEAD, origin, status, and file absence recorded before launch."
+        },
+        {
+          "description": "External age identity exists outside the repository",
+          "status": "pass",
+          "evidence": "Absolute path and pre-run SHA-256 recorded without exposing key contents."
+        }
+      ],
+      "terminalState": {
+        "description": "Review is visible with the expected pending diff",
+        "status": "pass",
+        "evidence": "AX text, final screenshot, provider/tool traces, and Git diff agree."
+      },
+      "status": "pass",
+      "assertions": [
+        {
+          "description": "ensure_secret completed without a provider or tool error",
+          "status": "pass",
+          "evidence": "Provider trace requested ensure_secret and app trace recorded successful execution."
+        },
+        {
+          "description": "The external identity was not modified",
+          "status": "pass",
+          "evidence": "Pre/post SHA-256 values match."
+        }
+      ]
+    }
+  ],
+  "evidence": {
+    "root": "/absolute/evidence/root",
+    "screenshots": [
+      {
+        "path": "screenshots/before.png",
+        "label": "Before",
+        "note": "Clean fixture before the first action.",
+        "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      {
+        "path": "screenshots/review.png",
+        "label": "Review",
+        "note": "Terminal Review state with expected pending changes.",
+        "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    ],
+    "video": {
+      "path": "video/qualification.mp4",
+      "label": "Continuous positive-flow evidence",
+      "note": "Continuous action from prompt entry through Review.",
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "codec": "h264",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuv420p",
+      "durationSeconds": 30,
+      "streamCount": 1,
+      "audioStreamCount": 0
+    }
+  },
+  "presentation": {
+    "status": "pass",
+    "firstMeaningfulActionSeconds": 1,
+    "watchedStartToFinish": true,
+    "terminalStateVisible": true,
+    "terminalStateVisibleSeconds": 4,
+    "note": "Complete semantic playback audit passed.",
+    "semanticAudit": {
+      "path": "semantic-video-audit.json",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "reviewer": "GitHub Actions protected vision review",
+      "reviewerKind": "github-actions-protected-vision-review",
+      "reviewScope": "Independent protected sensitivity and semantic inspection of the exact 2 Hz public video and sanitized curated screenshots",
+      "reviewToolSha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "reviewRunId": 123,
+      "reviewRunAttempt": 1,
+      "reviewModel": "openai/gpt-4.1",
+      "reviewPolicyVersion": "nixmac.e2e.vision-review-policy.v1",
+      "localSensitivityScanner": "tesseract-pattern-v1",
+      "localSensitivityScanImageCount": 62,
+      "reviewedFrameCount": 60,
+      "reviewedContactSheetCount": 5,
+      "reviewedScreenshotCount": 2,
+      "reviewSampleIntervalSeconds": 0.5,
+      "sourceVideoSha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "sensitiveContentVisible": false
+    }
+  },
+  "knownLimits": [
+    "The disclosed deterministic scripted provider proves UI, tool, and filesystem behavior; it does not evaluate live model quality."
+  ],
+  "cleanup": {
+    "status": "pass",
+    "note": "Preferences restored, temporary state removed, app closed, and owned lease released."
+  },
+  "timestamps": {
+    "startedAt": "2026-07-28T00:00:00Z",
+    "completedAt": "2026-07-28T00:00:30Z"
+  }
+}

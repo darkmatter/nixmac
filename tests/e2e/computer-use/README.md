@@ -173,6 +173,84 @@ the verdict, counts, public hosted `index.html`, Actions run, and artifact
 backup. The workflow does not send Slack or other team
 notifications.
 
+Centaur/Buzz terminal runs use the smaller
+`.github/workflows/publish-computer-use-e2e-report.yml` delivery lane after
+CuaDriver has already produced a terminal result on the configured remote Mac.
+The evidence directory must contain `terminal-result.v2.json`, 1-3 PR-focused
+scenarios, curated PNG screenshots, one canonical H.264/yuv420p MP4, a provider
+trace, a protected-tool runtime attestation for the still-running exercised
+app, and a semantic video-audit JSON artifact. The attestation resolves the
+live process executable and loaded vnode from a run-unique bundle. The
+publisher streams the trusted capture script from protected `main`; its
+main-executable hash, transport-stable canonical complete-bundle digest, app
+version, and deep code-signing seal must match the independently downloaded
+official artifact before publication. The bundle digest covers paths, entry
+types, file contents, and symlink targets while excluding permission bits that
+GitHub artifact transport does not preserve. Every scenario declares
+`intent` (`positive-flow` or `expected-refusal`),
+`coversChangedBehavior`, preconditions, a terminal state, assertions, and its
+status. A report is rejected when no scenario covers changed behavior.
+
+A passing positive flow that covers changed behavior renders
+`POSITIVE FLOW PASS`. A passing changed-behavior refusal renders
+`EXPECTED REFUSAL VERIFIED` and explicitly says the positive flow was not
+exercised. Supporting scenarios that do not cover changed behavior cannot
+upgrade either label. The provider block discloses whether the run used a real
+or scripted provider; the deterministic demo lane uses a `scripted-mock`
+loopback provider and binds its redacted trace into the report evidence set.
+The trace must be UTF-8 JSONL with ordered `request`, `tool_request`,
+`tool_response`, and `response` object records. Every tool invocation must have
+a unique non-empty `callId`, and each response must match both the `callId` and
+tool name of its request. Every `tool_response` must declare `status` as
+`success` or `error`; a pass verdict is rejected if any tool response is not
+successful. Every trace record must also repeat the terminal result's exact
+`requestId`, `headSha`, `providerKind`, `endpointClass`, `providerLabel`, and
+`model`; traces from another request or run are rejected.
+
+Automated publication requires `presentation.status=pass`, first meaningful
+visual action within 15 seconds, complete start-to-finish review, and at least
+three seconds of visible terminal state. The remote producer supplies those
+presentation observations but cannot choose or write the final audit. The
+protected publisher fully decodes videos of at most two minutes and creates the
+exact 2 Hz video that can be published. It sends chronological contact sheets
+covering every public-video frame plus every curated screenshot to the
+repository-pinned vision model. Publication fails closed unless that independent
+review finds no credentials or other sensitive content and sees the changed
+behavior, a coherent timeline, and the terminal state. The resulting hash-bound
+audit records both source and public-video hashes, its GitHub run identity, and
+the protected report-tool SHA. Before any media leaves the runner, local
+Tesseract OCR plus credential-pattern checks scan every full-resolution public
+video frame and sanitized screenshot. Producer scenario text and image text are
+untrusted evidence in a user message; the immutable audit policy is a separate
+system message and explicitly forbids following evidence-borne instructions.
+Screenshots are re-encoded, stripped to critical PNG chunks, and reviewed in
+that sanitized form. Only the exact reviewed 2 Hz video and sanitized reviewed
+PNGs can be embedded in the public report; unreviewed source media remains private.
+Media validation enumerates every stream, requires exactly one
+H.264/yuv420p video stream with no audio or extra streams, and fully decodes the
+file with ffmpeg. A presentation failure never changes the product result, but
+the automated publisher fails closed instead of shipping bad evidence.
+
+The dispatch pins the exact tested app SHA and a separate exact report-tool SHA.
+Using the same repository-scoped SSH secrets as the established Computer Use
+workflow, an `arc` runner fetches only the manifest-referenced evidence files.
+The renderer confines evidence paths to that staged directory, verifies hashes
+and media, and produces one self-contained `index.html`; the publisher places
+only that public page on the existing `gh-pages` branch without writing a PR
+comment. The private normalized manifest is not published.
+
+Validate the renderer contract locally with:
+
+```bash
+node tests/e2e/computer-use/terminal-report.mjs self-test
+```
+
+The terminal report's product verdict comes only from its declared scenario
+preconditions, terminal states, assertions, cleanup, and intent-qualified
+changed-behavior coverage. Render, presentation, or publication errors are
+delivery failures and must be reported separately; they never rewrite a proven
+product result.
+
 For PRs that touch component/story files under `apps/native/src/components/**`,
 the prepare job also builds Storybook, uploads the static preview, and publishes
 it next to the Product Proof report under `storybook/`. The report's Storybook
@@ -187,10 +265,10 @@ story; helper/style advisory gaps are listed without creating noisy false-red
 native gates.
 
 The V1 public report URL uses `htmlpreview.github.io` to render the HTML stored
-on the public `gh-pages` report branch. The repository Pages API currently
-returns `404`, so first-party GitHub Pages hosting is not configured for this
-repo. If Pages is enabled later, the report URL can move to the first-party
-Pages URL without changing the runner output format.
+on the public `gh-pages` report branch. First-party GitHub Pages is now enabled
+at `https://darkmatter.github.io/nixmac/`; new terminal-result reports use that
+first-party host directly. Existing full-suite report links remain compatible
+with the HTML Preview shim.
 
 The workflow keeps the `latest` report plus the 20 newest immutable `run-*`
 directories for each PR/manual report prefix on `gh-pages`. GitHub Actions

@@ -1265,9 +1265,6 @@ jobs:
     if: always() && (needs.prepare.outputs.has_report == 'true' || needs.remote-computer-use.outputs.has_report == 'true')
     runs-on: arc
     timeout-minutes: 20
-    concurrency:
-      group: computer-use-e2e-gh-pages-publish
-      cancel-in-progress: false
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -1305,54 +1302,16 @@ jobs:
           LATEST_INDEX_URL: ${{ needs.remote-computer-use.outputs.latest_index_url || needs.prepare.outputs.latest_index_url }}
           RUN_ASSET_BASE_URL: https://cdn.jsdelivr.net/gh/${{ github.repository }}@gh-pages/${{ needs.remote-computer-use.outputs.publish_path || needs.prepare.outputs.publish_path }}/
           RETENTION_KEEP_RUNS: "20"
-        run: |
-          set -euo pipefail
-          site_dir="$(mktemp -d)"
-          git -C "$site_dir" init -q
-          git -C "$site_dir" config user.name "github-actions[bot]"
-          git -C "$site_dir" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git -C "$site_dir" remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          if git -C "$site_dir" fetch --depth=1 origin gh-pages; then
-            git -C "$site_dir" checkout -q -B gh-pages FETCH_HEAD
-          else
-            git -C "$site_dir" checkout -q --orphan gh-pages
-          fi
-          mkdir -p "$site_dir/${PUBLISH_PATH:?}" "$site_dir/${LATEST_PATH:?}"
-          rm -rf "$site_dir/${PUBLISH_PATH:?}" "$site_dir/${LATEST_PATH:?}"
-          mkdir -p "$site_dir/${PUBLISH_PATH:?}" "$site_dir/${LATEST_PATH:?}"
-          cp -a "$REPORT_DIR"/. "$site_dir/${PUBLISH_PATH:?}"/
-          cp -a "$REPORT_DIR"/. "$site_dir/${LATEST_PATH:?}"/
-          if [[ -d artifacts/computer-use-storybook/storybook-static ]]; then
-            rm -rf "$site_dir/${PUBLISH_PATH:?}/storybook" "$site_dir/${LATEST_PATH:?}/storybook"
-            cp -a artifacts/computer-use-storybook/storybook-static "$site_dir/${PUBLISH_PATH:?}/storybook"
-            cp -a artifacts/computer-use-storybook/storybook-static "$site_dir/${LATEST_PATH:?}/storybook"
-            echo "storybook_index_url=${RUN_ASSET_BASE_URL}storybook/index.html" >> "$GITHUB_OUTPUT"
-          fi
-          RUN_ASSET_BASE_URL="$RUN_ASSET_BASE_URL" perl -0pi -e 's#<head>#<head>\n<base href="$ENV{RUN_ASSET_BASE_URL}">#' "$site_dir/${PUBLISH_PATH:?}/index.html"
-          RUN_ASSET_BASE_URL="$RUN_ASSET_BASE_URL" perl -0pi -e 's#<head>#<head>\n<base href="$ENV{RUN_ASSET_BASE_URL}">#' "$site_dir/${LATEST_PATH:?}/index.html"
-          if [[ -n "${REPORT_PREFIX:-}" && -d "$site_dir/$REPORT_PREFIX" ]]; then
-            find "$site_dir/$REPORT_PREFIX" -mindepth 1 -maxdepth 1 -type d -name 'run-*' \
-              | sort -r \
-              | tail -n +"$((RETENTION_KEEP_RUNS + 1))" \
-              | while IFS= read -r old_report; do
-                  rm -rf "$old_report"
-                done
-          fi
-          touch "$site_dir/.nojekyll"
-          git -C "$site_dir" add -A .nojekyll "$REPORT_PREFIX"
-          if git -C "$site_dir" diff --cached --quiet; then
-            echo "No GitHub Pages report changes to publish."
-          else
-            git -C "$site_dir" commit -q -m "Publish Computer Use E2E report for PR #${{ github.event.pull_request.number }} run ${GITHUB_RUN_ID}"
-            git -C "$site_dir" push -q origin gh-pages
-          fi
-          {
-            echo "index_url=$INDEX_URL"
-            echo "latest_index_url=$LATEST_INDEX_URL"
-          } >> "$GITHUB_OUTPUT"
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          STORYBOOK_DIR: artifacts/computer-use-storybook/storybook-static
+          LATEST_ORDER: ${{ github.run_id }}:${{ github.run_attempt }}
+          LATEST_GUARD_REPOSITORY: ${{ github.repository }}
+          LATEST_GUARD_PR: ${{ github.event.pull_request.number }}
+          LATEST_GUARD_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: ops/scripts/e2e/publish-report.sh
 
       - name: Comment evidence report on pull request
-        if: steps.publish-report.outcome == 'success' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: steps.publish-report.outcome == 'success' && steps.publish-report.outputs.latest_updated == 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
