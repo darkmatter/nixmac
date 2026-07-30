@@ -210,6 +210,7 @@ pub(crate) fn load_recipients(
 /// anchor names are presentation syntax and are not retained by serde_yaml. Read
 /// both views: the parsed document supplies the actual recipients, while a small
 /// source scan recovers optional friendly names such as `&build-server`.
+/// If this doesn't make sense, see the unit tests.
 fn load_sops_config_recipients(config_dir: &Path) -> Result<Vec<ConfigRecipient>, String> {
     let config_path = if config_dir.join(".sops.yaml").exists() {
         config_dir.join(".sops.yaml")
@@ -520,6 +521,8 @@ fn validate_public_key_path(private_key_path: &str, public_key_path: &str) -> Re
     ensure_public_key_path(public_key_path)
 }
 
+/// Ensure that the public-key path is a regular file with a `.pub` extension and not a symlink.
+/// This is a security measure to help prevent accidental exposure of private key material.
 fn ensure_public_key_path(public_key_path: &str) -> Result<(), String> {
     if Path::new(public_key_path)
         .extension()
@@ -551,6 +554,7 @@ fn ensure_public_key_path(public_key_path: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Generate a unique recipient ID based on a base string and a set of used IDs.
 fn unique_recipient_id(base: &str, used_ids: &mut HashSet<String>) -> String {
     let id = base.trim();
     let id = if id.is_empty() {
