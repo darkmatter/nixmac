@@ -139,6 +139,22 @@ window-vibrancy = "0.6"
 core-foundation = "0.10"
 security-framework = "3"
 nix = { version = "0.31", features = ["socket", "user"] }
+# Named `errSecCS*` / `errSecCertificate*` / `CSSMERR_TP_*` status values,
+# generated from the Security.framework headers, for the privileged-helper peer
+# auth status table. A name that does not exist fails the build, where a
+# hand-transcribed number was silently wrong — and a wrong number there can
+# classify a peer nobody could judge as invalid, which authorizes removal.
+#
+# macOS-gated because it cannot build off Apple: 0.3.2 declares `mod generated`
+# with no cfg and an unconditional `#[link(name = "Security", kind =
+# "framework")]`, which rustc rejects with E0455 on other targets. The status
+# table it feeds is therefore macOS-only too, and so are that table's tests —
+# they run on the macOS runner, which executes `cargo test` alongside clippy.
+objc2-security = { version = "0.3.2", default-features = false, features = [
+  "CSCommon",
+  "SecBase",
+  "cssmerr",
+] }
 
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.31", features = ["user"] }

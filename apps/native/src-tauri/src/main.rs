@@ -11,6 +11,10 @@
 // are declared by their parent `mod.rs` files so rust-analyzer resolves them via Cargo.
 mod ai;
 mod bootstrap;
+// Consumed by `build.rs` via include!; declared here so its resolution table
+// stays under `cargo test`.
+#[allow(dead_code)]
+mod build_id;
 mod cli;
 mod commands;
 mod db;

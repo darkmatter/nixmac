@@ -1,3 +1,4 @@
+use crate::privileged_helper::peer_auth::ClientKind;
 use anyhow::{Result, anyhow, bail};
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -12,27 +13,11 @@ pub const SYNC_AGENT_PLIST_NAME: &str = "com.darkmatter.nixmac.sync-agent.plist"
 pub const HELPER_SOCKET_PATH: &str = "/var/run/nixmac/helper.sock";
 #[allow(dead_code)]
 pub const HELPER_SOCKET_DIR: &str = "/var/run/nixmac";
-/// Prefix of the daemon's response when the connecting peer fails
-/// authorization. The app matches on it — only through
-/// `HelperResponse::reports_unauthorized_client`, which requires it as a
-/// prefix — to fall back to the interactive osascript path instead of
-/// surfacing a hard error (unsigned dev builds land here by design).
-pub const UNAUTHORIZED_CLIENT_ERROR: &str = "unauthorized helper client";
-/// Wire marker for protocol-version skew: the prefix of `ProtocolSkew`'s
-/// display form, and therefore of the daemon's response `error` string when
-/// a request's version is missing or wrong. Classification cannot cross the
-/// JSON boundary, so a *daemon-reported* skew is detected from this marker —
-/// only through `HelperResponse::reports_protocol_skew`, which requires it
-/// as a prefix. For client-side failures use `is_protocol_skew`, never
-/// display text. Kept distinct from `UNAUTHORIZED_CLIENT_ERROR` so a
-/// version-skewed helper/app pairing is distinguishable from a rejected
-/// client.
-pub const UNSUPPORTED_PROTOCOL_ERROR: &str = "unsupported helper protocol version";
-/// Wire protocol the daemon and its clients speak. Version 2 dropped every
-/// claimed-identity field: the daemon derives the account from the socket
-/// peer's credentials, so there is nothing left for a client to assert about
-/// itself.
-pub const HELPER_PROTOCOL_VERSION: u32 = 2;
+/// Build identity compiled into this binary (`build.rs` embeds it for the GUI,
+/// helper, and sync-agent targets alike). It identifies a build and nothing
+/// else: the only operation performed on it is exact string equality, so no
+/// syntax is required or checked — not here, and not on any peer's value.
+pub const BUILD_ID: &str = env!("NIXMAC_BUILD_ID");
 const DEFAULT_SYNC_AGENT_INTERVAL_SECONDS: u32 = 900;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq, Eq)]
@@ -43,10 +28,10 @@ pub struct HelperServiceStatus {
     pub registered: bool,
     pub authorized: bool,
     pub socket_available: bool,
-    /// The daemon answered an authenticated status round-trip: the client
-    /// validated the daemon's signature, the daemon accepted this client,
-    /// and both sides proved they speak the same protocol version. A
-    /// protocol-error response never sets this.
+    /// The daemon answered an authenticated `Status` round-trip naming a
+    /// state: the client validated the daemon's signature and the daemon
+    /// accepted this client. A typed refusal or an unparseable reply never
+    /// sets this.
     pub responding: bool,
     pub detail: Option<String>,
 }
@@ -65,136 +50,122 @@ impl HelperServiceStatus {
     }
 }
 
-/// The activation target, and nothing else. Account name, uid, and home come
-/// from the socket peer's credentials, and the privileged `PATH` is fixed, so
-/// a client has nothing left to claim. Unknown fields are rejected rather
-/// than ignored: a v1 client's `userName`/`userId`/`home`/`nixPath` must fail
-/// loudly, never look like it was honored.
-#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq, Eq)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ActivateStorePathRequest {
-    pub activate_path: String,
-}
+// ---------------------------------------------------------------------------
+// Requests.
+//
+// Three request shapes, tagged by `kind`, and the set is closed forever. A
+// request either parses completely or is not understood: there is no envelope
+// to read separately from a body, and no version field — a receiver that
+// cannot parse a request cannot serve it either way.
+//
+// `Status` and `Retire` are the cross-build control language and are frozen
+// forever: a new GUI must be able to ask an older installed helper what it is
+// and to retire it. `TryActivate` only ever succeeds between binaries of the
+// same build (it carries a build ID that must equal the helper's), so its
+// shape may evolve freely.
+// ---------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Type, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct SyncAgentLaunchConfig {
-    pub config_dir: Option<String>,
-    pub host_attr: Option<String>,
-    pub sync_pull: bool,
-    pub unattended_apply: bool,
-    pub start_interval_seconds: Option<u32>,
-}
-
-/// Everything a client puts on the socket. The version is outside the
-/// operation so it can be checked before the operation is acted on.
+/// The `TryActivate` activation body: the client-generated request ID and the
+/// activation script path. NOT frozen. Unknown fields are rejected so a field
+/// this build does not honor can never look like it was.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct HelperRequest {
-    pub protocol_version: u32,
-    pub op: HelperOp,
+pub struct TryActivateBody {
+    pub request_id: String,
+    pub script_path: String,
+}
+
+/// Everything a client may put on the socket. `Status` and `Retire` are
+/// kind-only: they carry no build ID because they are exactly the requests
+/// that must work across builds. FROZEN — the `kind` tags and the two
+/// kind-only shapes may never change, and no kind may ever be added.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum HelperRequest {
+    Status,
+    Retire,
+    /// The sender's build ID plus its activation body. The helper compares the
+    /// ID after parsing the whole request, as a race guard on an exchange that
+    /// is only ever same-build.
+    #[serde(rename_all = "camelCase")]
+    TryActivate {
+        build_id: String,
+        body: TryActivateBody,
+    },
 }
 
 impl HelperRequest {
-    pub fn new(op: HelperOp) -> Self {
-        Self {
-            protocol_version: HELPER_PROTOCOL_VERSION,
-            op,
-        }
+    /// Serializes one request line, without the trailing newline the caller
+    /// appends.
+    pub fn encode(&self) -> String {
+        serde_json::to_string(self).expect("helper request serializes")
     }
 
-    /// Daemon-side gate: no operation is derived until the sender is known
-    /// to speak this daemon's protocol. The version is probed before the
-    /// strict parse so an alien shape is reported as version skew rather
-    /// than as whichever unfamiliar field serde trips over first.
-    pub fn parse(line: &str) -> Result<HelperOp> {
-        check_wire_version(line)?;
-        let request: Self = serde_json::from_str(line)?;
-        Ok(request.op)
+    /// Reads one wire line. `None` means the request is not understood — not
+    /// JSON, an unknown kind, or a malformed activation body — which the
+    /// helper answers with the frozen request-not-understood refusal. Unknown
+    /// fields on a known kind are ignored, so a future build's `Status` still
+    /// reads as `Status`.
+    pub fn parse(line: &str) -> Option<Self> {
+        serde_json::from_str(line).ok()
     }
 }
 
-/// Classified protocol-version skew. This is the error type behind every
-/// version-gate rejection, so consumers detect skew structurally with
-/// `is_protocol_skew` instead of parsing display text.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ProtocolSkew {
-    /// Version the other side sent; `None` when the shape carried no
-    /// version at all (the v1 wire).
-    pub peer_version: Option<u32>,
+// ---------------------------------------------------------------------------
+// Replies.
+// ---------------------------------------------------------------------------
+
+/// The four helper states, named verbatim in `Status` replies so every
+/// caller can distinguish them. Part of the frozen surface.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum HelperStateName {
+    Idle,
+    Activating,
+    /// An activation is still running and retirement is latched: this helper
+    /// will never start another one.
+    Retiring,
+    Retired,
 }
 
-impl std::fmt::Display for ProtocolSkew {
+impl std::fmt::Display for HelperStateName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.peer_version {
-            Some(version) => write!(
-                f,
-                "{UNSUPPORTED_PROTOCOL_ERROR} {version} (this build speaks {HELPER_PROTOCOL_VERSION})"
-            ),
-            None => write!(
-                f,
-                "{UNSUPPORTED_PROTOCOL_ERROR}: no protocolVersion field (this build speaks {HELPER_PROTOCOL_VERSION})"
-            ),
-        }
+        f.write_str(match self {
+            HelperStateName::Idle => "idle",
+            HelperStateName::Activating => "activating",
+            HelperStateName::Retiring => "retiring",
+            HelperStateName::Retired => "retired",
+        })
     }
 }
 
-impl std::error::Error for ProtocolSkew {}
-
-/// True when `error` is (or wraps) a version-gate `ProtocolSkew`. This is
-/// the client-side classification callers act on — the display text is not
-/// part of the contract.
-pub fn is_protocol_skew(error: &anyhow::Error) -> bool {
-    error
-        .chain()
-        .any(|cause| cause.downcast_ref::<ProtocolSkew>().is_some())
-}
-
-/// Reads only `protocolVersion` out of one wire line and requires it to be
-/// exactly this build's version. The probe deliberately ignores every other
-/// field: its job is to decide whether the rest of the shape may be
-/// interpreted at all, so it must parse shapes this build otherwise rejects
-/// (v1 carried no version field at all).
-fn check_wire_version(line: &str) -> Result<()> {
-    #[derive(Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    struct VersionProbe {
-        protocol_version: Option<u32>,
-    }
-
-    match serde_json::from_str::<VersionProbe>(line)?.protocol_version {
-        Some(HELPER_PROTOCOL_VERSION) => Ok(()),
-        peer_version => Err(ProtocolSkew { peer_version }.into()),
-    }
-}
-
-/// Externally tagged: serde honors `deny_unknown_fields` on a plain payload
-/// struct, but ignores it on the variants of an internally tagged enum, and
-/// rejecting unknown fields is the point of this shape.
+/// X: the in-flight activation's identity — the client-generated request ID
+/// and script path from the `TryActivate` body, plus the submitting client's
+/// kind, which the helper stamps from its own validation of that client,
+/// never from the body. Informational only; no decision branches on these
+/// fields. Its representation inside `Status` and `Busy(X)` replies is part
+/// of the frozen surface.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub enum HelperOp {
-    Status,
-    ActivateStorePath(ActivateStorePathRequest),
+pub struct ActivationInfo {
+    pub request_id: String,
+    pub script_path: String,
+    pub client_kind: ClientKind,
 }
 
-/// Everything the daemon puts back on the socket. Every response — status,
-/// activation success or failure, and protocol errors alike — carries the
-/// version, because the constructors below stamp it and the daemon builds
-/// responses only through them. `helper_build_version` is diagnostic (for
-/// support and telemetry): release versions are not unique across rebuilds,
-/// so the update and trust decisions belong to the signature checks and the
-/// version gate, never to this string. There is no stderr field: the
-/// activation runs with stderr merged into stdout (`2>&1`), so `stdout` is
-/// the whole interleaved log, and helper-level failures use `error`.
+/// A finished activation's result, sent on the same connection when the
+/// activation completes; within this protocol it is the only way to learn an
+/// activation's outcome. NOT frozen — it never crosses builds. There is no
+/// stderr field: the activation runs with stderr merged into stdout, so
+/// `stdout` is the whole interleaved log and helper-level failures use
+/// `error`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct HelperResponse {
-    pub protocol_version: u32,
-    pub helper_build_version: String,
+#[serde(rename_all = "camelCase")]
+pub struct ActivationResult {
     pub ok: bool,
     pub code: i32,
     pub stdout: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
 
@@ -202,12 +173,12 @@ pub struct HelperResponse {
 /// the (merged) stdout, so consumers can surface them.
 pub const HELPER_WARNING_PREFIX: &str = "nixmac-helper: warning:";
 
-impl HelperResponse {
+impl ActivationResult {
     /// Human-readable failure detail: the explicit error when present, else
     /// the tail of stdout — the helper merges the activation's stderr into
-    /// stdout (`2>&1`), so on a plain nonzero exit the detail lives there.
-    /// Used by the sync-agent binary (this file is `include!`d there), hence
-    /// dead code in targets that report through other paths.
+    /// stdout, so on a plain nonzero exit the detail lives there. Used by the
+    /// sync-agent binary (this file is `include!`d there), hence dead code in
+    /// targets that report through other paths.
     #[allow(dead_code)]
     pub fn failure_detail(&self) -> String {
         if let Some(error) = self.error.as_deref().filter(|error| !error.is_empty()) {
@@ -229,62 +200,127 @@ impl HelperResponse {
             .filter(|line| line.starts_with(HELPER_WARNING_PREFIX))
             .collect()
     }
+}
 
-    pub fn ok(stdout: impl Into<String>) -> Self {
-        Self::from_exit(true, 0, stdout.into())
+/// Everything the helper puts back on the socket, tagged by `reply`.
+///
+/// Frozen forever: the `Status` reply (including X's representation), the
+/// `Retired` and `Busy(X)` replies, and the three typed refusals
+/// (`BuildMismatch`, `CallerNotPermitted`, `RequestNotUnderstood`). The
+/// `ActivationResult` reply is NOT frozen — it never crosses builds.
+///
+/// Refusals are typed wire shapes; nothing classifies a reply from display
+/// strings.
+///
+/// The `reply` tag of every frozen variant below may NEVER be renamed or
+/// removed: a new GUI must be able to parse the replies of the older installed
+/// helper it is replacing, and that is the direction every upgrade depends on.
+///
+/// Adding a variant is a separate question, and the reply table answers it:
+/// each request already has a fixed set of permitted replies, so a new variant
+/// may not be sent in answer to `Status` or `Retire` regardless of whether
+/// older clients could parse it. A genuinely new reply belongs on an unfrozen
+/// exchange (today, only `TryActivate`'s result).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "reply", rename_all = "camelCase")]
+pub enum HelperReply {
+    /// State named verbatim, the helper's build ID, and X while an activation
+    /// runs. This is the cross-build discovery exchange: the build ID is read
+    /// whatever it contains, empty included — an empty ID is simply unequal to
+    /// this build's, never a reason to reject the reply.
+    #[serde(rename_all = "camelCase")]
+    Status {
+        state: HelperStateName,
+        helper_build_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        activation: Option<ActivationInfo>,
+    },
+    /// To `Retire`: the helper is in the `Retired` state NOW — the
+    /// safe-to-unregister signal for a running helper. To `TryActivate`: this
+    /// helper will never start the caller's activation (permanent for this
+    /// process); `activation` carries X while a retirement-latched activation
+    /// is still finishing.
+    Retired {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        activation: Option<ActivationInfo>,
+    },
+    /// To `TryActivate`: an activation is running; transient. To `Retire`:
+    /// retirement is latched, X still running — not safe to unregister yet.
+    Busy { activation: ActivationInfo },
+    /// The completion-time result of an admitted `TryActivate`.
+    ActivationResult(ActivationResult),
+    /// Typed refusal: the `TryActivate` sender's build ID is not exactly the
+    /// helper's. The helper must be upgraded or disabled — this is a refusal,
+    /// never permission to activate some other way.
+    #[serde(rename_all = "camelCase")]
+    BuildMismatch { helper_build_id: String },
+    /// Typed refusal: the authenticated caller may not make this request (the
+    /// sync agent may only send `TryActivate`).
+    CallerNotPermitted,
+    /// Typed refusal: the request did not parse — not JSON, an unknown kind,
+    /// or a malformed activation body.
+    RequestNotUnderstood,
+}
+
+impl HelperReply {
+    pub fn encode(&self) -> String {
+        serde_json::to_string(self).expect("helper reply serializes")
     }
 
-    pub fn error(code: i32, error: impl Into<String>) -> Self {
-        Self {
-            error: Some(error.into()),
-            ..Self::from_exit(false, code, String::new())
-        }
-    }
-
-    /// Base constructor the other constructors delegate to; also used
-    /// directly for a finished activation command, where `ok` mirrors the
-    /// exit status and `stdout` is the merged activation log.
-    pub fn from_exit(ok: bool, code: i32, stdout: String) -> Self {
-        Self {
-            protocol_version: HELPER_PROTOCOL_VERSION,
-            helper_build_version: env!("NIXMAC_VERSION").to_string(),
-            ok,
-            code,
-            stdout,
-            error: None,
-        }
-    }
-
-    /// Client-side gate, mirroring `HelperRequest::parse`: the version is
-    /// checked before `ok`, output, or error fields exist to be read, and a
-    /// missing or different version fails as a classified `ProtocolSkew`.
-    /// How to recover — reconciling the installed helper, or an interactive
-    /// fallback — is the caller's policy, not this layer's contract.
+    /// Client-side parse. A reply that does not parse is treated as a
+    /// refusal by every caller: do not activate, do not mutate, report and
+    /// defer.
     pub fn parse(line: &str) -> Result<Self> {
-        check_wire_version(line)?;
-        Ok(serde_json::from_str(line)?)
+        let reply: Self = serde_json::from_str(line)?;
+        if let HelperReply::Status {
+            state, activation, ..
+        } = &reply
+        {
+            let activation_required = matches!(
+                state,
+                HelperStateName::Activating | HelperStateName::Retiring
+            );
+            if activation_required != activation.is_some() {
+                bail!("Status state {state} carries an invalid activation payload");
+            }
+        }
+        Ok(reply)
     }
 
-    /// True when this daemon-reported response is the version gate's own
-    /// rejection. The marker is required as a prefix — the daemon puts the
-    /// classification first in `error` — so an unrelated failure that merely
-    /// mentions the marker text deeper in its message never classifies as
-    /// skew.
-    pub fn reports_protocol_skew(&self) -> bool {
-        self.reports_marker(UNSUPPORTED_PROTOCOL_ERROR)
-    }
-
-    /// True when this daemon-reported response is the daemon refusing the
-    /// connecting peer. Prefix-matched for the same reason as
-    /// `reports_protocol_skew`.
-    pub fn reports_unauthorized_client(&self) -> bool {
-        self.reports_marker(UNAUTHORIZED_CLIENT_ERROR)
-    }
-
-    fn reports_marker(&self, marker: &str) -> bool {
-        self.error
-            .as_deref()
-            .is_some_and(|error| error.starts_with(marker))
+    /// One-line human description for reports and logs. Display only —
+    /// classification always goes through the typed variants, never through
+    /// this text.
+    #[allow(dead_code)]
+    pub fn summary(&self) -> String {
+        match self {
+            HelperReply::Status {
+                state,
+                helper_build_id,
+                ..
+            } => format!("helper is {state} at build {helper_build_id}"),
+            HelperReply::Retired { .. } => {
+                "the helper is retired and will never start another activation".to_string()
+            }
+            HelperReply::Busy { activation } => format!(
+                "the helper is running an activation ({} submitted by the {})",
+                activation.script_path, activation.client_kind
+            ),
+            HelperReply::ActivationResult(result) if result.ok => {
+                "activation completed".to_string()
+            }
+            HelperReply::ActivationResult(result) => {
+                format!("activation failed (exit code {})", result.code)
+            }
+            HelperReply::BuildMismatch { helper_build_id } => format!(
+                "the installed helper is from a different nixmac build (build {helper_build_id})"
+            ),
+            HelperReply::CallerNotPermitted => {
+                "the helper does not permit this caller to make that request".to_string()
+            }
+            HelperReply::RequestNotUnderstood => {
+                "the helper did not understand the request".to_string()
+            }
+        }
     }
 }
 
@@ -324,26 +360,24 @@ pub fn canonicalize_activate_path(path: impl AsRef<Path>) -> Result<PathBuf> {
     validate_canonical_activate_path(&canonical)
 }
 
-/// A ready-to-send activation envelope. Opaque on purpose: `activation_request`
+/// A ready-to-send activation body. Opaque on purpose: `activation_request`
 /// is the only constructor, so the client's activation entry point cannot be
-/// handed a status operation or a hand-assembled envelope with a different
-/// version or a non-canonicalized target.
+/// handed a hand-assembled body with a non-canonicalized target.
 #[derive(Debug, Clone)]
-pub struct ActivationRequest(pub(crate) HelperRequest);
+pub struct ActivationRequest(pub(crate) TryActivateBody);
 
-/// Builds the versioned activation envelope for the current process.
-/// Resolving the path here is a convenience so an obviously wrong target
-/// fails before a round trip; the daemon canonicalizes and revalidates
-/// independently, and treats nothing in this request as trusted beyond the
-/// path it re-derives.
+/// Builds the `TryActivate` body for the current process, with a fresh
+/// client-generated request ID. Resolving the path here is a convenience so
+/// an obviously wrong target fails before a round trip; the helper
+/// canonicalizes and revalidates independently, and treats nothing in this
+/// request as trusted beyond the path it re-derives.
 pub fn activation_request(activate_path: &Path) -> Result<ActivationRequest> {
     let canonical = canonicalize_activate_path(activate_path)?;
 
-    Ok(ActivationRequest(HelperRequest::new(
-        HelperOp::ActivateStorePath(ActivateStorePathRequest {
-            activate_path: canonical.to_string_lossy().into_owned(),
-        }),
-    )))
+    Ok(ActivationRequest(TryActivateBody {
+        request_id: uuid::Uuid::new_v4().to_string(),
+        script_path: canonical.to_string_lossy().into_owned(),
+    }))
 }
 
 #[allow(dead_code)]
@@ -374,6 +408,16 @@ pub fn helper_launch_daemon_plist() -> String {
 </plist>
 "#
     )
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Type, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncAgentLaunchConfig {
+    pub config_dir: Option<String>,
+    pub host_attr: Option<String>,
+    pub sync_pull: bool,
+    pub unattended_apply: bool,
+    pub start_interval_seconds: Option<u32>,
 }
 
 pub fn sync_agent_plist(program_path: &str, config: Option<&SyncAgentLaunchConfig>) -> String {
@@ -458,6 +502,346 @@ fn escape_xml(value: &str) -> String {
 mod tests {
     use super::*;
 
+    const BUILD_A: &str = "build-a";
+    const BUILD_B: &str = "build-b";
+    const SCRIPT: &str = "/nix/store/abc-darwin-system/activate";
+
+    fn activation_info(kind: ClientKind) -> ActivationInfo {
+        ActivationInfo {
+            request_id: "req-1".to_string(),
+            script_path: SCRIPT.to_string(),
+            client_kind: kind,
+        }
+    }
+
+    fn try_activate(build_id: &str) -> HelperRequest {
+        HelperRequest::TryActivate {
+            build_id: build_id.to_string(),
+            body: TryActivateBody {
+                request_id: "req-1".to_string(),
+                script_path: SCRIPT.to_string(),
+            },
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Frozen-surface golden fixtures.
+    //
+    // The frozen surface is the cross-build control language and nothing
+    // else: `Status`, `Retire`, their replies, and the typed refusals. Each
+    // fixture below says exactly which bytes may never change. `TryActivate`
+    // and its result are explicitly unfrozen and covered by ordinary
+    // round-trip tests further down.
+    // ------------------------------------------------------------------
+
+    #[test]
+    fn frozen_control_requests() {
+        // FROZEN SURFACE — these two fixtures may never change. They carry no
+        // build ID and no version: they are exactly the requests that must
+        // work when the peer is from another build.
+        for (request, fixture) in [
+            (HelperRequest::Status, r#"{"kind":"status"}"#),
+            (HelperRequest::Retire, r#"{"kind":"retire"}"#),
+        ] {
+            assert_eq!(request.encode(), fixture);
+            assert_eq!(HelperRequest::parse(fixture).expect("parses"), request);
+        }
+    }
+
+    #[test]
+    fn frozen_framing_is_one_newline_terminated_json_line() {
+        // FROZEN SURFACE — the framing may never change. Every exchange on
+        // this socket is one newline-terminated JSON line in each direction,
+        // and both sides read exactly one newline-delimited frame. Switching
+        // to length-prefixed or multi-line framing would break every
+        // cross-build exchange while leaving the shape fixtures above
+        // passing, so it is pinned here rather than only in the behavioral
+        // socket tests.
+        let request = HelperRequest::Status.encode();
+        let reply = HelperReply::Retired { activation: None }.encode();
+
+        // Encoders emit exactly one line and never the terminator itself —
+        // the caller appends it, so a terminator here would frame two lines.
+        for encoded in [&request, &reply] {
+            assert!(!encoded.contains('\n'), "encoded {encoded:?} spans lines");
+        }
+
+        // What actually goes on the wire, byte for byte.
+        assert_eq!(format!("{request}\n"), "{\"kind\":\"status\"}\n");
+        assert_eq!(format!("{reply}\n"), "{\"reply\":\"retired\"}\n");
+    }
+
+    #[test]
+    fn frozen_status_reply_per_state() {
+        // FROZEN SURFACE — one fixture per state; none may ever change.
+        let cases = [
+            (
+                HelperReply::Status {
+                    state: HelperStateName::Idle,
+                    helper_build_id: BUILD_A.to_string(),
+                    activation: None,
+                },
+                format!(r#"{{"reply":"status","state":"idle","helperBuildId":"{BUILD_A}"}}"#),
+            ),
+            (
+                HelperReply::Status {
+                    state: HelperStateName::Activating,
+                    helper_build_id: BUILD_A.to_string(),
+                    activation: Some(activation_info(ClientKind::Gui)),
+                },
+                format!(
+                    r#"{{"reply":"status","state":"activating","helperBuildId":"{BUILD_A}","activation":{{"requestId":"req-1","scriptPath":"{SCRIPT}","clientKind":"gui"}}}}"#
+                ),
+            ),
+            (
+                HelperReply::Status {
+                    state: HelperStateName::Retiring,
+                    helper_build_id: BUILD_A.to_string(),
+                    activation: Some(activation_info(ClientKind::SyncAgent)),
+                },
+                format!(
+                    r#"{{"reply":"status","state":"retiring","helperBuildId":"{BUILD_A}","activation":{{"requestId":"req-1","scriptPath":"{SCRIPT}","clientKind":"syncAgent"}}}}"#
+                ),
+            ),
+            (
+                HelperReply::Status {
+                    state: HelperStateName::Retired,
+                    helper_build_id: BUILD_A.to_string(),
+                    activation: None,
+                },
+                format!(r#"{{"reply":"status","state":"retired","helperBuildId":"{BUILD_A}"}}"#),
+            ),
+        ];
+
+        for (reply, fixture) in cases {
+            assert_eq!(reply.encode(), fixture);
+            assert_eq!(HelperReply::parse(&fixture).expect("parses"), reply);
+        }
+    }
+
+    #[test]
+    fn frozen_retire_replies_including_busy_with_activation_info() {
+        // FROZEN SURFACE — the complete Retire replies; may never change.
+        let retired = HelperReply::Retired { activation: None };
+        assert_eq!(retired.encode(), r#"{"reply":"retired"}"#);
+        assert_eq!(
+            HelperReply::parse(r#"{"reply":"retired"}"#).expect("parses"),
+            retired
+        );
+
+        let busy = HelperReply::Busy {
+            activation: activation_info(ClientKind::Gui),
+        };
+        let busy_fixture = r#"{"reply":"busy","activation":{"requestId":"req-1","scriptPath":"/nix/store/abc-darwin-system/activate","clientKind":"gui"}}"#;
+        assert_eq!(busy.encode(), busy_fixture);
+        assert_eq!(HelperReply::parse(busy_fixture).expect("parses"), busy);
+    }
+
+    #[test]
+    fn frozen_typed_refusals() {
+        // FROZEN SURFACE — the three typed refusals; may never change.
+        let build_mismatch = HelperReply::BuildMismatch {
+            helper_build_id: BUILD_B.to_string(),
+        };
+        let build_mismatch_fixture =
+            format!(r#"{{"reply":"buildMismatch","helperBuildId":"{BUILD_B}"}}"#);
+        assert_eq!(build_mismatch.encode(), build_mismatch_fixture);
+        assert_eq!(
+            HelperReply::parse(&build_mismatch_fixture).expect("parses"),
+            build_mismatch
+        );
+
+        assert_eq!(
+            HelperReply::CallerNotPermitted.encode(),
+            r#"{"reply":"callerNotPermitted"}"#
+        );
+        assert_eq!(
+            HelperReply::parse(r#"{"reply":"callerNotPermitted"}"#).expect("parses"),
+            HelperReply::CallerNotPermitted
+        );
+
+        assert_eq!(
+            HelperReply::RequestNotUnderstood.encode(),
+            r#"{"reply":"requestNotUnderstood"}"#
+        );
+        assert_eq!(
+            HelperReply::parse(r#"{"reply":"requestNotUnderstood"}"#).expect("parses"),
+            HelperReply::RequestNotUnderstood
+        );
+    }
+
+    // ------------------------------------------------------------------
+    // Request and reply semantics beyond the golden bytes.
+    // ------------------------------------------------------------------
+
+    #[test]
+    fn try_activate_round_trips_with_its_build_id_and_body() {
+        // Unfrozen: an ordinary round trip, not a byte fixture.
+        let request = try_activate(BUILD_A);
+        let encoded = request.encode();
+
+        assert_eq!(HelperRequest::parse(&encoded).expect("parses"), request);
+        match HelperRequest::parse(&encoded).expect("parses") {
+            HelperRequest::TryActivate { build_id, body } => {
+                assert_eq!(build_id, BUILD_A);
+                assert_eq!(body.script_path, SCRIPT);
+            }
+            other => panic!("unexpected request: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn an_unknown_kind_is_not_understood() {
+        // The kind set is closed forever; anything else is a request no
+        // receiver may serve.
+        assert!(HelperRequest::parse(r#"{"kind":"selfDestruct"}"#).is_none());
+    }
+
+    #[test]
+    fn a_control_request_from_another_build_still_reads_as_itself() {
+        // Cross-build tolerance in the direction that matters: an older or
+        // newer build's Status/Retire — including fields this build knows
+        // nothing about — must still be recognized, because these are the
+        // requests that discover and retire a helper that is not this build.
+        assert_eq!(
+            HelperRequest::parse(r#"{"kind":"status","somethingNew":true}"#).expect("parses"),
+            HelperRequest::Status
+        );
+        assert_eq!(
+            HelperRequest::parse(r#"{"kind":"retire","somethingNew":{"nested":1}}"#)
+                .expect("parses"),
+            HelperRequest::Retire
+        );
+    }
+
+    #[test]
+    fn shipped_pre_build_id_wire_shapes_are_not_understood() {
+        // The shapes previous releases put on this socket carry no kind
+        // field; they must never be misread as a request.
+        for line in [
+            r#"{"op":"status"}"#,
+            r#"{"protocolVersion":2,"op":"status"}"#,
+            r#"{"protocolVersion":2,"op":{"activateStorePath":{"activatePath":"/nix/store/abc-darwin-system/activate"}}}"#,
+            "not json at all",
+            "",
+        ] {
+            assert!(HelperRequest::parse(line).is_none(), "line: {line:?}");
+        }
+    }
+
+    #[test]
+    fn a_malformed_try_activate_is_not_understood() {
+        // A missing body, a body field this build does not honor, and a
+        // missing build ID all fail the one parse — there is no partially
+        // readable request to act on.
+        for line in [
+            r#"{"kind":"tryActivate","buildId":"build-a"}"#,
+            r#"{"kind":"tryActivate","body":{"requestId":"req-1","scriptPath":"/nix/store/abc-darwin-system/activate"}}"#,
+            r#"{"kind":"tryActivate","buildId":"build-a","body":{"requestId":"req-1","scriptPath":"/nix/store/abc-darwin-system/activate","nixPath":"/tmp/attacker-bin"}}"#,
+            r#"{"kind":"tryActivate","buildId":"build-a","body":{"somethingElse":1}}"#,
+        ] {
+            assert!(HelperRequest::parse(line).is_none(), "line: {line:?}");
+        }
+    }
+
+    #[test]
+    fn a_peer_build_id_is_read_whatever_it_contains() {
+        // Build IDs are compared, never validated: every string is a readable
+        // ID, the empty string included. An empty peer ID is simply unequal to
+        // this build's non-empty one — rejecting the request or reply that
+        // carries it would instead make the mismatch unreportable.
+        for build_id in ["", " ", "0123456", "not-a-commit", "\u{1f600}"] {
+            let request = try_activate(build_id);
+            assert_eq!(
+                HelperRequest::parse(&request.encode()).expect("parses"),
+                request
+            );
+
+            let status = HelperReply::Status {
+                state: HelperStateName::Idle,
+                helper_build_id: build_id.to_string(),
+                activation: None,
+            };
+            assert_eq!(
+                HelperReply::parse(&status.encode()).expect("parses"),
+                status
+            );
+
+            let mismatch = HelperReply::BuildMismatch {
+                helper_build_id: build_id.to_string(),
+            };
+            assert_eq!(
+                HelperReply::parse(&mismatch.encode()).expect("parses"),
+                mismatch
+            );
+        }
+    }
+
+    #[test]
+    fn reply_parse_tolerates_unknown_fields_and_rejects_unknown_tags() {
+        // Frozen replies from other builds must keep parsing even if a
+        // diagnostic field is ever (wrongly) added; an unknown reply tag is
+        // an unparseable reply, which every client treats as a refusal.
+        let with_extra = format!(
+            r#"{{"reply":"status","state":"idle","helperBuildId":"{BUILD_A}","note":"diagnostic"}}"#
+        );
+        assert!(matches!(
+            HelperReply::parse(&with_extra).expect("parses"),
+            HelperReply::Status {
+                state: HelperStateName::Idle,
+                ..
+            }
+        ));
+
+        assert!(HelperReply::parse(r#"{"reply":"shutdown"}"#).is_err());
+        assert!(HelperReply::parse(r#"{"ok":true,"code":0,"stdout":"ready"}"#).is_err());
+        assert!(HelperReply::parse("").is_err());
+    }
+
+    #[test]
+    fn status_reply_rejects_state_activation_mismatches() {
+        let impossible = [
+            HelperReply::Status {
+                state: HelperStateName::Idle,
+                helper_build_id: BUILD_A.to_string(),
+                activation: Some(activation_info(ClientKind::Gui)),
+            },
+            HelperReply::Status {
+                state: HelperStateName::Activating,
+                helper_build_id: BUILD_A.to_string(),
+                activation: None,
+            },
+            HelperReply::Status {
+                state: HelperStateName::Retiring,
+                helper_build_id: BUILD_A.to_string(),
+                activation: None,
+            },
+            HelperReply::Status {
+                state: HelperStateName::Retired,
+                helper_build_id: BUILD_A.to_string(),
+                activation: Some(activation_info(ClientKind::SyncAgent)),
+            },
+        ];
+
+        for reply in impossible {
+            let wire = reply.encode();
+            assert!(
+                HelperReply::parse(&wire).is_err(),
+                "impossible Status parsed: {wire}"
+            );
+        }
+    }
+
+    #[test]
+    fn activation_request_canonicalizes_and_generates_request_ids() {
+        // Non-store paths fail before any round trip.
+        assert!(activation_request(Path::new("/tmp/result/activate")).is_err());
+    }
+
+    // ------------------------------------------------------------------
+    // Path validation (unchanged behavior).
+    // ------------------------------------------------------------------
+
     #[test]
     fn validate_accepts_direct_nix_store_activate_path() {
         let path = validate_canonical_activate_path(
@@ -497,249 +881,24 @@ mod tests {
     }
 
     #[test]
-    fn request_round_trips_at_the_current_version() {
-        for op in [
-            HelperOp::Status,
-            HelperOp::ActivateStorePath(ActivateStorePathRequest {
-                activate_path: "/nix/store/abc-darwin-system/activate".to_string(),
-            }),
-        ] {
-            let wire = serde_json::to_string(&HelperRequest::new(op.clone())).expect("serializes");
-
-            assert!(wire.contains(&format!("\"protocolVersion\":{HELPER_PROTOCOL_VERSION}")));
-            assert_eq!(HelperRequest::parse(&wire).expect("parses"), op);
-        }
-    }
-
-    #[test]
-    fn request_rejects_other_protocol_versions_before_reading_the_shape() {
-        // The operation is deliberately invalid: getting the skew
-        // classification rather than an unknown-variant parse error proves
-        // the version gate wins before the rest of the shape is interpreted.
-        for version in [1, 3, 99] {
-            let json = format!("{{\"protocolVersion\":{version},\"op\":\"selfDestruct\"}}");
-            let error = HelperRequest::parse(&json).expect_err("version must be rejected");
-
-            assert!(is_protocol_skew(&error));
-            assert_eq!(
-                error.downcast_ref::<ProtocolSkew>(),
-                Some(&ProtocolSkew {
-                    peer_version: Some(version)
-                })
-            );
-        }
-    }
-
-    #[test]
-    fn activation_request_rejects_claimed_identity_fields() {
-        // A v1 body at the current version: the claimed account values and
-        // requester PATH are a hard parse error now, so they can never look
-        // like they were honored.
-        let json = format!(
-            r#"{{"protocolVersion":{HELPER_PROTOCOL_VERSION},"op":{{"activateStorePath":{{"activatePath":"/nix/store/abc-darwin-system/activate","userName":"alice","userId":501,"home":"/Users/alice","nixPath":"/tmp/attacker-bin"}}}}}}"#
-        );
-
-        assert!(HelperRequest::parse(&json).is_err());
-    }
-
-    #[test]
-    fn request_rejects_unknown_envelope_fields() {
-        let json = format!(
-            r#"{{"protocolVersion":{HELPER_PROTOCOL_VERSION},"op":"status","userId":501}}"#
-        );
-
-        assert!(HelperRequest::parse(&json).is_err());
-    }
-
-    #[test]
-    fn request_rejects_the_v1_wire_shape_as_protocol_skew() {
-        // v1 tagged the operation inline and carried no version at all. Both
-        // v1 shapes must be rejected, and classified as version skew rather
-        // than a shape error, before any operation is derived.
-        for v1 in [
-            r#"{"op":"status"}"#,
-            r#"{"op":"activateStorePath","request":{"activatePath":"/nix/store/abc-darwin-system/activate","userName":"alice","userId":501,"home":"/Users/alice","nixPath":"/bin"}}"#,
-        ] {
-            let error = HelperRequest::parse(v1).expect_err("v1 shape must be rejected");
-
-            assert_eq!(
-                error.downcast_ref::<ProtocolSkew>(),
-                Some(&ProtocolSkew { peer_version: None })
-            );
-        }
-    }
-
-    /// The exact request parser the deployed v1 daemon uses, vendored as a
-    /// minimal fixture for the opposite temporal direction of the break.
-    #[derive(Deserialize)]
-    #[serde(tag = "op", rename_all = "camelCase")]
-    enum V1HelperRequest {
-        Status,
-        ActivateStorePath {
-            // Deserialized into but never read, like the payload fields.
-            #[allow(dead_code)]
-            request: V1ActivateStorePathRequest,
-        },
-    }
-
-    #[derive(Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    #[allow(dead_code)]
-    struct V1ActivateStorePathRequest {
-        activate_path: String,
-        user_name: String,
-        user_id: u32,
-        home: String,
-        nix_path: String,
-    }
-
-    #[test]
-    fn v1_daemon_parser_cannot_derive_an_activation_from_a_v2_request() {
-        // No-double-apply defense: if a still-resident v1 root daemon could
-        // parse a v2 activation request, it would execute the activation and
-        // answer with a versionless v1 response — which the v2 app rejects
-        // as skew, so any recovery it then attempts would re-run an
-        // already-finished activation. The v2 activation envelope must
-        // therefore be unparseable by the exact v1 request enum.
-        let activation = serde_json::to_string(&HelperRequest::new(HelperOp::ActivateStorePath(
-            ActivateStorePathRequest {
-                activate_path: "/nix/store/abc-darwin-system/activate".to_string(),
-            },
-        )))
-        .expect("serializes");
-
-        assert!(serde_json::from_str::<V1HelperRequest>(&activation).is_err());
-
-        // The v1 daemon does parse a v2 *status* request (its internally
-        // tagged enum ignores the unfamiliar protocolVersion field). That is
-        // the accepted read-only asymmetry — pinned here so an envelope
-        // change that alters it is revisited deliberately.
-        let status =
-            serde_json::to_string(&HelperRequest::new(HelperOp::Status)).expect("serializes");
-
-        assert!(matches!(
-            serde_json::from_str::<V1HelperRequest>(&status),
-            Ok(V1HelperRequest::Status)
-        ));
-    }
-
-    #[test]
-    fn every_response_shape_serializes_the_current_version() {
-        // Status, activation success, activation failure, and protocol-error
-        // responses: all carry the version and the diagnostic build version.
-        for response in [
-            HelperResponse::ok("nixmac helper ready"),
-            HelperResponse::from_exit(true, 0, "activated".to_string()),
-            HelperResponse::from_exit(false, 2, "activation exploded".to_string()),
-            HelperResponse::error(-1, format!("{UNSUPPORTED_PROTOCOL_ERROR} 1")),
-        ] {
-            assert!(!response.helper_build_version.is_empty());
-            let wire = serde_json::to_string(&response).expect("serializes");
-
-            assert!(wire.contains(&format!("\"protocolVersion\":{HELPER_PROTOCOL_VERSION}")));
-            assert!(wire.contains("\"helperBuildVersion\""));
-            assert_eq!(HelperResponse::parse(&wire).expect("parses"), response);
-        }
-    }
-
-    #[test]
-    fn response_parse_rejects_the_exact_v1_status_response() {
-        // What an installed v1 helper answers a status probe with. It must
-        // fail before ok/stdout/error are readable, classified as protocol
-        // skew for the caller's recovery policy to act on.
-        let v1 = r#"{"ok":true,"code":0,"stdout":"nixmac helper ready","stderr":"","error":null}"#;
-
-        let error = HelperResponse::parse(v1).expect_err("v1 response must be rejected");
-
-        assert!(is_protocol_skew(&error));
-        assert_eq!(
-            error.downcast_ref::<ProtocolSkew>(),
-            Some(&ProtocolSkew { peer_version: None })
-        );
-    }
-
-    #[test]
-    fn response_parse_rejects_other_protocol_versions_before_reading_the_shape() {
-        // The rest of the shape is deliberately invalid (missing required
-        // fields, an unknown one instead): getting the skew classification
-        // rather than a field-level parse error proves the version gate wins
-        // before any response field is interpreted.
-        for version in [1, 3, 99] {
-            let json = format!(r#"{{"protocolVersion":{version},"bogus":true}}"#);
-
-            let error = HelperResponse::parse(&json).expect_err("version must be rejected");
-
-            assert!(is_protocol_skew(&error));
-            assert_eq!(
-                error.downcast_ref::<ProtocolSkew>(),
-                Some(&ProtocolSkew {
-                    peer_version: Some(version)
-                })
-            );
-        }
-    }
-
-    #[test]
-    fn daemon_markers_classify_only_as_prefixes() {
-        let skew = HelperResponse::error(
-            -1,
-            ProtocolSkew {
-                peer_version: Some(1),
-            }
-            .to_string(),
-        );
-        assert!(skew.reports_protocol_skew());
-        assert!(!skew.reports_unauthorized_client());
-
-        let refused =
-            HelperResponse::error(-1, format!("{UNAUTHORIZED_CLIENT_ERROR}: bad signature"));
-        assert!(refused.reports_unauthorized_client());
-        assert!(!refused.reports_protocol_skew());
-
-        // An unrelated failure that merely mentions a marker deeper in its
-        // message must not classify.
-        let unrelated = HelperResponse::error(
-            1,
-            format!(
-                "activation failed: log mentioned '{UNSUPPORTED_PROTOCOL_ERROR}' and '{UNAUTHORIZED_CLIENT_ERROR}'"
-            ),
-        );
-        assert!(!unrelated.reports_protocol_skew());
-        assert!(!unrelated.reports_unauthorized_client());
-        assert!(!HelperResponse::ok("nixmac helper ready").reports_protocol_skew());
-    }
-
-    #[test]
-    fn response_parse_rejects_unknown_fields() {
-        let wire = serde_json::to_string(&HelperResponse::ok("ready")).expect("serializes");
-        let with_extra = wire.replacen('{', r#"{"sshAuthSock":"/tmp/ssh.sock","#, 1);
-
-        assert!(HelperResponse::parse(&with_extra).is_err());
-    }
-
-    fn response(stdout: &str, error: Option<&str>) -> HelperResponse {
-        HelperResponse {
-            error: error.map(String::from),
-            ..HelperResponse::from_exit(false, 1, stdout.to_string())
-        }
-    }
-
-    #[test]
     fn failure_detail_prefers_error_then_stdout_tail() {
-        assert_eq!(response("out", Some("boom")).failure_detail(), "boom");
+        let failed = |stdout: &str, error: Option<&str>| ActivationResult {
+            ok: false,
+            code: 1,
+            stdout: stdout.to_string(),
+            error: error.map(String::from),
+        };
+
+        assert_eq!(failed("out", Some("boom")).failure_detail(), "boom");
         // The helper merges activation stderr into stdout, so a plain nonzero
         // exit must still produce a detail.
         assert_eq!(
-            response("activation exploded\n", None).failure_detail(),
+            failed("activation exploded\n", None).failure_detail(),
             "activation exploded"
         );
-    }
 
-    #[test]
-    fn failure_detail_returns_stdout_tail_only() {
         let lines: Vec<String> = (1..=30).map(|n| format!("line {n}")).collect();
-        let detail = response(&lines.join("\n"), None).failure_detail();
-
+        let detail = failed(&lines.join("\n"), None).failure_detail();
         assert!(detail.starts_with("line 11"));
         assert!(detail.ends_with("line 30"));
     }
@@ -749,7 +908,12 @@ mod tests {
         let stdout = format!(
             "activated\n{HELPER_WARNING_PREFIX} failed to update system profile\nplain line"
         );
-        let with_warning = response(&stdout, None);
+        let with_warning = ActivationResult {
+            ok: true,
+            code: 0,
+            stdout,
+            error: None,
+        };
 
         assert_eq!(
             with_warning.warnings(),
@@ -757,7 +921,6 @@ mod tests {
                 "{HELPER_WARNING_PREFIX} failed to update system profile"
             )]
         );
-        assert!(response("no warnings here\n", None).warnings().is_empty());
     }
 
     #[test]
