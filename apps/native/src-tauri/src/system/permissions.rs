@@ -639,8 +639,8 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
 }
 
 /// Wait for a freshly registered helper daemon to come up and answer a
-/// status round-trip. launchd starts it asynchronously after approval, so the
-/// socket appears a moment after `register()` returns.
+/// `Status` round-trip. launchd starts it asynchronously after approval, so
+/// the socket appears a moment after `register()` returns.
 fn await_helper_ready() -> Result<()> {
     const ATTEMPTS: u32 = 10;
     const RETRY_DELAY: std::time::Duration = std::time::Duration::from_millis(300);
@@ -653,19 +653,25 @@ fn await_helper_ready() -> Result<()> {
         if !crate::privileged_helper::client::socket_available() {
             continue;
         }
-        match crate::privileged_helper::client::status() {
-            Ok(response) if response.ok => return Ok(()),
-            Ok(response) => {
-                last_error = anyhow::anyhow!(
-                    response
-                        .error
-                        .unwrap_or_else(|| "helper returned an error".to_string())
-                );
-            }
+        match probe_helper_status() {
+            Ok(()) => return Ok(()),
             Err(error) => last_error = error,
         }
     }
     Err(last_error)
+}
+
+/// One authenticated `Status` round-trip, reduced to ok-or-why-not. A reply
+/// naming a state is the helper working; a typed refusal, an unparseable
+/// reply, and every exchange failure are reported as-is.
+fn probe_helper_status() -> Result<()> {
+    match crate::privileged_helper::client::status() {
+        Ok(exchange) => match exchange.reply {
+            crate::privileged_helper::protocol::HelperReply::Status { .. } => Ok(()),
+            reply => Err(anyhow::anyhow!("{}", reply.summary())),
+        },
+        Err(error) => Err(anyhow::anyhow!("{error}")),
+    }
 }
 
 /// One authenticated status round-trip to an already-installed helper
@@ -684,20 +690,32 @@ fn probe_installed_helper() -> (PermissionStatus, Option<String>) {
         );
     }
     match crate::privileged_helper::client::status() {
-        Ok(response) if response.ok => (PermissionStatus::Granted, None),
-        Ok(response) => (
+        Ok(exchange) => match exchange.reply {
+            crate::privileged_helper::protocol::HelperReply::Status { .. } => {
+                (PermissionStatus::Granted, None)
+            }
+            reply => (
+                PermissionStatus::Pending,
+                Some(format!(
+                    "The helper is running but did not answer a status probe: {}. {INSTALL_FROM_APPLICATIONS}",
+                    reply.summary()
+                )),
+            ),
+        },
+        // A close before any reply is deliberately ambiguous: the helper sends
+        // it both for a client it will not serve and for a connection dropped
+        // at its concurrency cap, and a helper that died mid-exchange looks
+        // the same. Report all of that, not just the refusal.
+        Err(crate::privileged_helper::client::HelperClientError::ClosedBeforeReply) => (
             PermissionStatus::Pending,
             Some(format!(
-                "The helper is running but refused this app: {}. {INSTALL_FROM_APPLICATIONS}",
-                response
-                    .error
-                    .unwrap_or_else(|| "unknown error".to_string())
+                "The helper closed the connection without answering: it declined this app, is busy with other connections, or stopped. {INSTALL_FROM_APPLICATIONS}"
             )),
         ),
         Err(error) => (
             PermissionStatus::Pending,
             Some(format!(
-                "The helper did not answer a status probe: {error:#}. {INSTALL_FROM_APPLICATIONS}"
+                "The helper did not answer a status probe: {error}. {INSTALL_FROM_APPLICATIONS}"
             )),
         ),
     }
@@ -742,20 +760,31 @@ fn check_privileged_helper() -> (PermissionStatus, Option<String>) {
         );
     }
     match crate::privileged_helper::client::status() {
-        Ok(response) if response.ok => (PermissionStatus::Granted, None),
-        Ok(response) => (
+        Ok(exchange) => match exchange.reply {
+            crate::privileged_helper::protocol::HelperReply::Status { .. } => {
+                (PermissionStatus::Granted, None)
+            }
+            reply => (
+                PermissionStatus::Pending,
+                Some(format!(
+                    "The helper is registered but did not answer a status probe: {}. Unattended sync will fall back to password prompts until a matching signed build talks to it.",
+                    reply.summary()
+                )),
+            ),
+        },
+        // Ambiguous by design, as above: declined client, connection cap, or a
+        // helper that stopped all close the same way.
+        Err(crate::privileged_helper::client::HelperClientError::ClosedBeforeReply) => (
             PermissionStatus::Pending,
-            Some(format!(
-                "The helper is running but refused this app: {}. Unattended sync will fall back to password prompts until a matching signed build talks to it.",
-                response
-                    .error
-                    .unwrap_or_else(|| "unknown error".to_string())
-            )),
+            Some(
+                "The helper closed the connection without answering: it declined this app, is busy with other connections, or stopped. Unattended sync will fall back to password prompts until a matching signed build talks to it."
+                    .to_string(),
+            ),
         ),
         Err(error) => (
             PermissionStatus::Pending,
             Some(format!(
-                "The helper is registered but did not answer a status probe: {error:#}."
+                "The helper is registered but did not answer a status probe: {error}."
             )),
         ),
     }
