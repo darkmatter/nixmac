@@ -830,11 +830,14 @@ fn try_activate_with_helper(activate_path: &str) -> Option<Result<ActivateResult
     if !status.authorized || !status.socket_available {
         return None;
     }
-    // `responding` is the authenticated status round-trip `helper_service`
-    // already performed. Requiring it here is what keeps a version-skewed
-    // daemon from failing the apply: a daemon predating this app's protocol
-    // cannot answer the probe, so the osascript path takes over instead of
-    // the activation request coming back as an unparseable request.
+    // `responding` is the authenticated `Status` round-trip
+    // `helper_service::status` already performed. Requiring it here is what
+    // keeps a helper from a previous release from failing the apply: it cannot
+    // answer this build's probe with a reply this build parses, so the
+    // osascript path takes over instead of the activation request coming back
+    // refused. This is transitional: the contract forbids a `Status` preflight
+    // from gating activation dispatch, and the wiring change that replaces this
+    // whole function with the Apply decision tables removes it.
     if !status.responding {
         info!(
             "[darwin] privileged helper did not answer an authenticated status probe; falling back to osascript: {}",
@@ -853,72 +856,80 @@ fn try_activate_with_helper(activate_path: &str) -> Option<Result<ActivateResult
     };
 
     match helper_client::activate_store_path(&request) {
-        Ok(response) => {
-            // A live daemon that refuses this peer means the running build is
-            // not signed as an approved client (unsigned dev build, or a
-            // helper/app version skew). A daemon that does not speak this
-            // app's protocol version is the same situation with a different
-            // cause: an older helper still resident from a previous install.
-            // Falling back to the interactive prompt keeps the apply working
-            // in both cases until the installed helper is replaced by a
-            // current one.
-            if !response.ok
-                && (response.reports_protocol_skew() || response.reports_unauthorized_client())
-            {
-                info!(
-                    "[darwin] privileged helper rejected this client; falling back to osascript: {}",
-                    response.error.unwrap_or_default()
-                );
-                return None;
-            }
-
-            Some(Ok(ActivateResult {
-                success: response.ok,
-                code: response.code,
-                stdout: response.stdout,
-                // The response has no stderr: the activation log arrives
+        Ok(exchange) => match exchange.reply {
+            helper_protocol::HelperReply::ActivationResult(result) => Some(Ok(ActivateResult {
+                success: result.ok,
+                code: result.code,
+                stdout: result.stdout,
+                // The result has no stderr: the activation log arrives
                 // merged into stdout, so only a helper-level error belongs
                 // in the stderr slot consumers show for failures.
-                stderr: response.error.unwrap_or_default(),
-            }))
-        }
-        Err(error) => {
-            let error_text = format!("{error:#}");
-            if error_text.contains("failed to connect to /var/run/nixmac/helper.sock") {
-                info!(
-                    "[darwin] privileged helper socket was stale; falling back to osascript: {error:#}"
-                );
-                return None;
-            }
-            if error_text.contains(crate::privileged_helper::peer_auth::HELPER_VALIDATION_FAILED) {
-                warn!(
-                    "[darwin] process at helper socket failed signature validation; falling back to osascript: {error:#}"
-                );
-                return None;
-            }
-            // The client rejects a response whose protocol version is
-            // missing or different before reading its fields, so version
-            // skew surfaces here as a classified error rather than a
-            // response. A skewed daemon cannot have run the activation — it
-            // could not have parsed the request — so falling back is safe
-            // until the installed helper is replaced by a current one.
-            if helper_protocol::is_protocol_skew(&error) {
-                info!(
-                    "[darwin] privileged helper speaks a different protocol version; falling back to osascript: {error:#}"
-                );
-                return None;
-            }
-
-            Some(Ok(ActivateResult {
+                stderr: result.error.unwrap_or_default(),
+            })),
+            // Every other reply means the helper did not start this
+            // activation: report rather than silently substituting the
+            // password path. No typed refusal is permission to activate some
+            // other way — a build mismatch says the installed helper must be
+            // upgraded or disabled, and a request-not-understood (which an
+            // alien peer could answer with) says even less. Do not "fix" any
+            // of these into a password-path fallback.
+            reply => Some(Ok(ActivateResult {
                 success: false,
                 code: -1,
                 stdout: String::new(),
                 stderr: format!(
-                    "Privileged helper activation did not return a response: {error:#}. Activation may still be running; nixmac did not fall back to the password prompt."
+                    "Privileged helper did not start the activation: {}. nixmac did not fall back to the password prompt.",
+                    reply.summary()
                 ),
-            }))
+            })),
+        },
+        Err(error) if helper_error_allows_password_fallback(&error) => {
+            // These failures happen before the client writes any request
+            // bytes, so this flow knows it did not dispatch an activation.
+            match &error {
+                helper_client::HelperClientError::Unreachable(_) => info!(
+                    "[darwin] privileged helper socket was stale; falling back to osascript: {error}"
+                ),
+                helper_client::HelperClientError::AuthenticationFailed(_) => warn!(
+                    "[darwin] process at helper socket failed signature validation; falling back to osascript: {error}"
+                ),
+                // Whatever the gate admits is by definition pre-dispatch; log
+                // it rather than panicking inside a privileged apply if that
+                // list ever grows.
+                _ => info!("[darwin] falling back to osascript: {error}"),
+            }
+            None
         }
+        // Once the activation exchange starts writing, a close, malformed
+        // reply, or other I/O failure cannot prove that the helper did not
+        // run the request. The outcome is unknown; this flow stops without
+        // compensating through the administrator-password path.
+        Err(error) => Some(Ok(ActivateResult {
+            success: false,
+            code: -1,
+            stdout: String::new(),
+            stderr: format!(
+                "Privileged helper activation did not return a trustworthy result: {error}. Activation may have completed or may still be running; nixmac did not fall back to the password prompt."
+            ),
+        })),
     }
+}
+
+/// Only failures proven to precede all request bytes may select the
+/// administrator-password fallback. Every other exchange error follows the
+/// contract's unknown-outcome rule.
+///
+/// Transitional, like the status-probe gate above: the contract decides
+/// password eligibility before dispatch from reconciled service state and lets
+/// no helper-exchange error select it — including this authentication failure,
+/// which is where unsigned development builds land today. The wiring change
+/// that brings in the Apply decision tables removes this function.
+fn helper_error_allows_password_fallback(error: &helper_client::HelperClientError) -> bool {
+    matches!(
+        error,
+        helper_client::HelperClientError::Unreachable(_)
+            | helper_client::HelperClientError::AuthenticationFailed(_)
+    )
 }
 
 /// Handle activation failures and determine the appropriate error response.
@@ -1361,6 +1372,7 @@ fn run_darwin_rebuild(
 mod activation_safety_tests {
     use super::{
         ActivateResult, activation_failure_left_system_untouched, classify_activate_error,
+        helper_error_allows_password_fallback,
     };
 
     fn failed_activation(stdout: &str, stderr: &str) -> ActivateResult {
@@ -1404,5 +1416,29 @@ mod activation_safety_tests {
             "authorization_denied"
         ));
         assert!(!activation_failure_left_system_untouched("generic_error"));
+    }
+
+    #[test]
+    fn only_proven_pre_dispatch_helper_errors_allow_password_fallback() {
+        use crate::privileged_helper::client::HelperClientError;
+
+        let unreachable = HelperClientError::Unreachable(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "no listener",
+        ));
+        let authentication = HelperClientError::AuthenticationFailed(anyhow::anyhow!("wrong peer"));
+        assert!(helper_error_allows_password_fallback(&unreachable));
+        assert!(helper_error_allows_password_fallback(&authentication));
+
+        let mid_exchange = HelperClientError::Io(std::io::Error::new(
+            std::io::ErrorKind::ConnectionReset,
+            "result lost",
+        ));
+        let malformed = HelperClientError::UnparseableReply("future shape".to_string());
+        assert!(!helper_error_allows_password_fallback(
+            &HelperClientError::ClosedBeforeReply
+        ));
+        assert!(!helper_error_allows_password_fallback(&mid_exchange));
+        assert!(!helper_error_allows_password_fallback(&malformed));
     }
 }
