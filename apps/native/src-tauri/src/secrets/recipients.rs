@@ -43,6 +43,7 @@ struct SopsPgpRecipient {
     fp: String,
 }
 
+/// A mapping from the source file path of a secret to the set of public recipient identities that can decrypt it.
 type RecipientInventory = HashMap<PathBuf, HashSet<RecipientIdentity>>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -441,6 +442,7 @@ where
     let mut public_keys = HashSet::new();
     let mut recipient_ids = HashSet::new();
 
+    // 1. Materialize the host's SOPS SSH identities into age recipients.
     for (index, host_key) in used_host_keys.into_iter().enumerate() {
         validate_public_key_path(&host_key.path, &host_key.public_key_path)?;
         log::debug!(
@@ -476,6 +478,7 @@ where
         ));
     }
 
+    // 2. Materialize the other SOPS SSH identities into age recipients.
     for identity_path in &identities.other_sops_identities {
         let public_key_path = format!("{identity_path}.pub");
         validate_public_key_path(identity_path, &public_key_path)?;
