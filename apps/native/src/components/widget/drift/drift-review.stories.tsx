@@ -4,6 +4,7 @@ import type { Change, SemanticChangeMap } from "@/ipc/types";
 import { makeGlobalPreferences } from "@/utils/test-fixtures";
 import { viewModelActions } from "@nixmac/state";
 import { useEffect } from "react";
+import { DriftReviewActions } from "./drift-review-actions";
 import { DriftReview } from "./drift-review";
 
 // Mock Tauri API for Storybook (buildCheck etc. resolve to a no-op).
@@ -154,6 +155,8 @@ function setup({
         rebuildNeeded,
       },
     });
+    // Story setup intentionally hydrates the store once per story.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -217,4 +220,27 @@ export const SingleChange = meta.story({
       changes: [makeChange(1, "flake.nix", EDITED_DIFF)],
       changeMap: { groups: [], singles: [], unsummarizedHashes: ["hash-1"] },
     }),
+});
+
+/**
+ * Manual drift while the pre-build check is still running: both halves of the
+ * build control stay disabled and the checking state remains visible.
+ */
+export const CheckingBuild = meta.story({
+  render: () => (
+    <div className="w-[640px]">
+      <DriftReviewActions
+        buildChecking
+        buildCheckFailed={false}
+        buildReady={false}
+        isApplyBusy={false}
+        isManualDrift
+        onApply={() => {}}
+        onBackToPrompt={() => {}}
+        onRefineWithAi={() => {}}
+        onRequestDiscard={() => {}}
+        rebuildRunning={false}
+      />
+    </div>
+  ),
 });
