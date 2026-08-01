@@ -434,10 +434,11 @@ pub fn stop_monitoring() {
 // Preview Indicator Window
 // =============================================================================
 
-/// Size of the preview indicator window
-const PREVIEW_INDICATOR_WIDTH: f64 = 300.0;
+/// Size of the preview indicator window. This deliberately hugs the compact
+/// badge rather than reserving an invisible banner-sized click target.
+const PREVIEW_INDICATOR_WIDTH: f64 = 144.0;
 const PREVIEW_INDICATOR_HEIGHT: f64 = 80.0;
-const PREVIEW_INDICATOR_MARGIN: f64 = 20.0; // Large margin to ensure it's visible on screen
+const PREVIEW_INDICATOR_MARGIN: f64 = 16.0;
 
 /// Cache of the current preview indicator state (for late-mounting windows)
 static PREVIEW_INDICATOR_STATE: Lazy<Mutex<PreviewIndicatorState>> = Lazy::new(|| {
@@ -471,8 +472,16 @@ pub fn get_preview_indicator_state() -> PreviewIndicatorState {
     }
 }
 
-/// Creates the preview indicator window (call once during setup)
+/// Creates the preview indicator window (call once during setup).
+///
+/// The window stays hidden until the preview-indicator React tree has a
+/// visible state to render. A transparent native window still receives mouse
+/// events, so it must never be left onscreen without its compact badge.
 pub fn create_preview_indicator_window<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
+    if app.get_webview_window("preview-indicator").is_some() {
+        return Ok(());
+    }
+
     let monitor = get_rightmost_monitor(app)?;
 
     // Convert to logical pixels for positioning (monitor dimensions are in physical pixels)
@@ -511,7 +520,8 @@ pub fn create_preview_indicator_window<R: Runtime>(app: &AppHandle<R>) -> Result
     .decorations(false)
     .transparent(true)
     .always_on_top(true)
-    .visible(true) // Start hidden
+    .focused(false)
+    .visible(false) // Show only after preview-indicator content becomes visible.
     .visible_on_all_workspaces(true)
     .skip_taskbar(true)
     .build()
@@ -558,6 +568,12 @@ pub fn create_preview_indicator_window<R: Runtime>(app: &AppHandle<R>) -> Result
 
 /// Shows the preview indicator window
 pub fn show_preview_indicator<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
+    if !get_preview_indicator_state().visible {
+        // The transparent webview would block the underlying application even
+        // though React renders no indicator. Keep it hidden in that case.
+        return hide_preview_indicator(app);
+    }
+
     if let Some(window) = app.get_webview_window("preview-indicator") {
         // Reposition in case monitor setup changed
         let monitor = get_rightmost_monitor(app)?;
@@ -605,9 +621,9 @@ pub fn update_preview_indicator<R: Runtime>(
     app: &AppHandle<R>,
     state: PreviewIndicatorState,
 ) -> Result<(), String> {
-    // Track whether there are uncommitted changes
-    let has_changes = state.files_changed > 0;
-    set_has_uncommitted_changes(has_changes);
+    // Keep the native window lifecycle tied to the same predicate the React
+    // window uses to render the indicator.
+    set_has_uncommitted_changes(state.visible);
 
     // Cache the state for late-mounting windows
     match PREVIEW_INDICATOR_STATE.lock() {
