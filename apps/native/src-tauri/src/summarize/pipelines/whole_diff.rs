@@ -1,5 +1,6 @@
 //! Whole-diff pipeline — one model call on the full diff, producing one or
-//! more group summaries (each covering a subset of the changed files).
+//! more semantic group descriptions (each covering a subset of the individual
+//! changes).
 
 use std::collections::HashMap;
 
@@ -11,30 +12,35 @@ use crate::sqlite_types::Change;
 use crate::summarize::model_calls::ChangesetSummaryItem;
 use crate::summarize::{build_prompt, sumlog as dbg};
 
+/// A summary and the hashes of the live changes it covers.
+struct SummaryAssignment {
+    summary: String,
+    hashes: Vec<String>,
+}
+
 const WHOLE_DIFF_SYSTEM_PROMPT: &str = r#"
-You are a git commit message generator.
+You are a git change reviewer.
 
 Rules:
-- Group the provided changes into one or more conventional commit messages.
+- Group the provided changes into one or more semantic changes.
 - Each group must share a coherent purpose (a single logical change).
+- Give each group a concise, factual, plain-language summary.
 - Base every summary only on the provided changes.
 - Do not invent intent that is not visible in the diff.
-- If the type is unclear, prefer "chore".
-- Every changed file must appear in exactly one group.
+- Do not assign a conventional-commit type, scope, or prefix.
+- Every supplied change hash must appear in exactly one group.
 - Prefer fewer groups; only split when changes are clearly unrelated.
 - Always return valid JSON in this format:
 
-[{"summary":"<commit message>","files":["<path>", ...]}, ...]
+{"groups":[{"summary":"<plain-language description>","changes":["<hash>", ...]}, ...]}
 "#;
 
-#[allow(clippy::too_many_arguments)]
+/// Run the whole-diff model call for `changes`, persist the resulting group /
+/// single summaries plus a cached snapshot, and return the snapshot id.
 pub async fn analyze<R: Runtime>(
     changes: Vec<Change>,
     app: &AppHandle<R>,
-    commit_id: Option<i64>,
-    base_commit_id: Option<i64>,
     base_ref: Option<&str>,
-    commit_message: Option<&str>,
     evolution_id: Option<i64>,
 ) -> Result<Option<i64>> {
     dbg::new_log_changes(&changes);
@@ -43,78 +49,165 @@ pub async fn analyze<R: Runtime>(
         return Ok(None);
     }
 
-    let config_dir = crate::storage::store::get_config_dir(app)?;
     let pool = app.state::<DbPool>();
-    let Some(base_commit_id) =
-        crate::db::commits::store_head_commit(&pool, &config_dir, base_commit_id)?
-    else {
-        return Ok(None);
-    };
 
     let refs: Vec<&Change> = changes.iter().collect();
     let user_prompt = build_prompt::whole_diff(&refs);
     dbg::new_log_prompt(&user_prompt);
 
-    let (items, _usage) = crate::summarize::model_calls::generate_changeset_summaries(
+    let (mut items, _usage) = crate::summarize::model_calls::generate_changeset_summaries(
         WHOLE_DIFF_SYSTEM_PROMPT,
         &user_prompt,
         Some(app),
     )
     .await?;
 
-    let groups = partition_changes(changes, &items);
+    // Keep the full-diff call focused on semantic grouping. Conventional type
+    // selection happens only after it returns, using each short summary rather
+    // than the entire diff that prompted the model's analysis.
+    for item in &mut items {
+        item.summary = conventionalize_summary(&item.summary);
+    }
 
-    // The model may not reference every file. Build a single display string
-    // from all returned summaries so `generated_commit_message` (consumed by
-    // the commit-message pipeline) reflects the full changeset even when the
-    // model split it into several groups.
+    // The model may not reference every change. Build a single display string
+    // from all returned summaries so the snapshot's `generated_commit_message`
+    // (consumed by the commit-message pipeline) reflects the full changeset even
+    // when the model split it into several groups.
     let generated_message = items
         .iter()
         .map(|item| item.summary.as_str())
         .collect::<Vec<_>>()
         .join("\n\n");
 
-    let change_set_id = crate::db::store_whole_diff_changeset::store(
+    let assignments = assign_summaries(&changes, &items);
+    let now = crate::utils::unix_now();
+
+    // Persist each assignment: multi-member sets become first-class groups,
+    // single-member sets become per-change (patch) summaries.
+    for assignment in &assignments {
+        let description = assignment.summary.trim();
+        let title = description.lines().next().unwrap_or(description).trim();
+        if assignment.hashes.len() >= 2 {
+            crate::db::summaries::store_group(
+                &pool,
+                &assignment.hashes,
+                title,
+                description,
+                "DONE",
+                now,
+            )?;
+        } else if let Some(hash) = assignment.hashes.first() {
+            crate::db::summaries::store_patch(&pool, hash, title, description, "DONE", now)?;
+        }
+    }
+
+    // Cache the generated commit message for this exact set of change hashes.
+    let hashes: Vec<String> = changes.iter().map(|c| c.hash.clone()).collect();
+    let snapshot_id = crate::db::snapshots::upsert(
         &pool,
-        &groups,
-        &generated_message,
-        commit_id,
-        base_commit_id,
-        commit_message,
+        &crate::db::keys::snapshot_key(&hashes),
+        Some(&generated_message),
         evolution_id,
+        now,
     )?;
 
     emit_update(app, &pool, base_ref)?;
 
-    Ok(Some(change_set_id))
+    Ok(Some(snapshot_id))
 }
 
-/// A change assigned to a group summary.
-pub struct GroupedChange {
-    pub change: Change,
-    pub summary: String,
+const CONVENTIONAL_TYPES: [&str; 8] = [
+    "feat", "fix", "chore", "refactor", "docs", "style", "test", "perf",
+];
+
+/// Adds a conventional-commit type using only the model's already-generated
+/// summary. This deliberately does not inspect the diff: the model has already
+/// done the semantic work and this final pass should remain cheap and stable.
+fn conventionalize_summary(summary: &str) -> String {
+    let description = strip_conventional_prefix(summary);
+    let description = description.trim().trim_end_matches('.').trim();
+    let description = if description.is_empty() {
+        summary.trim()
+    } else {
+        description
+    };
+
+    format!(
+        "{}: {}",
+        conventional_type_for_summary(description),
+        description
+    )
 }
 
-/// Matches model-returned file paths to change rows and groups them.
+fn strip_conventional_prefix(summary: &str) -> &str {
+    let trimmed = summary.trim();
+    let Some((prefix, description)) = trimmed.split_once(':') else {
+        return trimmed;
+    };
+    let prefix = prefix.trim();
+    let is_conventional_type = CONVENTIONAL_TYPES.iter().any(|kind| {
+        prefix == *kind
+            || prefix
+                .strip_prefix(kind)
+                .is_some_and(|scope| scope.starts_with('(') && scope.ends_with(')'))
+    });
+
+    if is_conventional_type {
+        description.trim()
+    } else {
+        trimmed
+    }
+}
+
+fn conventional_type_for_summary(summary: &str) -> &'static str {
+    let summary = summary.to_ascii_lowercase();
+    let contains_any = |keywords: &[&str]| keywords.iter().any(|keyword| summary.contains(keyword));
+
+    if contains_any(&[
+        "fix", "repair", "resolve", "correct", "prevent", "restore", "compatib", "patch",
+    ]) {
+        "fix"
+    } else if contains_any(&["optimiz", "performance", "faster", "speed up"]) {
+        "perf"
+    } else if contains_any(&["test", "coverage", "fixture", "assertion"]) {
+        "test"
+    } else if contains_any(&["document", "documentation", "readme", "guide"]) {
+        "docs"
+    } else if contains_any(&["refactor", "restructur", "reorganiz", "simplif", "extract"]) {
+        "refactor"
+    } else if contains_any(&["format", "styling", "style "]) {
+        "style"
+    } else if contains_any(&[
+        "add",
+        "enable",
+        "support",
+        "introduce",
+        "implement",
+        "create",
+        "allow",
+    ]) {
+        "feat"
+    } else {
+        "chore"
+    }
+}
+
+/// Assigns each live change hash to the model summary that covers it, grouping
+/// hashes by summary text.
 ///
-/// Files are matched by repository-relative basename (the model frequently
-/// returns short paths or basenames). Any change the model did not assign to
-/// a group is collected into a fallback group using the first summary, so no
-/// file is left unsummarized (which would otherwise trigger re-summarization
-/// loops in `group_existing`).
-fn partition_changes(changes: Vec<Change>, items: &[ChangesetSummaryItem]) -> Vec<GroupedChange> {
-    // Index model file paths by basename for tolerant matching. The model
-    // often emits `"foo.nix"` even when the stored path is `"dir/foo.nix"`.
-    let mut path_to_item: HashMap<String, usize> = HashMap::new();
+/// Hashes identify individual hunks, so independent changes in one file can
+/// receive distinct summaries. Any change the model did not assign is folded
+/// into the first summary's bucket, so no change is left unsummarized (which
+/// would otherwise trigger re-summarization loops in `find_existing`). Buckets
+/// that share summary text are merged, matching the content-addressed group
+/// identity used when reading summaries back.
+fn assign_summaries(changes: &[Change], items: &[ChangesetSummaryItem]) -> Vec<SummaryAssignment> {
+    let mut hash_to_item: HashMap<&str, usize> = HashMap::new();
     for (i, item) in items.iter().enumerate() {
-        for file in &item.files {
-            path_to_item.insert(file.clone(), i);
-            if let Some(base) = std::path::Path::new(file)
-                .file_name()
-                .and_then(|n| n.to_str())
-            {
-                path_to_item.insert(base.to_string(), i);
-            }
+        for hash in &item.changes {
+            // Keep the first assignment if a model repeats a hash. One hunk
+            // must have only one semantic owner.
+            hash_to_item.entry(hash.as_str()).or_insert(i);
         }
     }
 
@@ -123,35 +216,29 @@ fn partition_changes(changes: Vec<Change>, items: &[ChangesetSummaryItem]) -> Ve
         .map(|i| i.summary.clone())
         .unwrap_or_else(|| "chore: summarize changes".to_string());
 
-    let mut assigned = vec![false; changes.len()];
-    let mut groups: Vec<GroupedChange> = Vec::new();
+    // Preserve first-seen order of summaries while merging by text.
+    let mut order: Vec<String> = Vec::new();
+    let mut by_summary: HashMap<String, Vec<String>> = HashMap::new();
 
-    for (idx, change) in changes.iter().enumerate() {
-        let matched = path_to_item.get(&change.filename).copied().or_else(|| {
-            std::path::Path::new(&change.filename)
-                .file_name()
-                .and_then(|n| n.to_str())
-                .and_then(|base| path_to_item.get(base).copied())
+    for change in changes {
+        let summary = match hash_to_item.get(change.hash.as_str()) {
+            Some(&i) => items[i].summary.clone(),
+            None => fallback_summary.clone(),
+        };
+        let bucket = by_summary.entry(summary.clone()).or_insert_with(|| {
+            order.push(summary.clone());
+            Vec::new()
         });
-        if let Some(i) = matched {
-            assigned[idx] = true;
-            groups.push(GroupedChange {
-                change: change.clone(),
-                summary: items[i].summary.clone(),
-            });
-        }
+        bucket.push(change.hash.clone());
     }
 
-    for (idx, change) in changes.into_iter().enumerate() {
-        if !assigned[idx] {
-            groups.push(GroupedChange {
-                change,
-                summary: fallback_summary.clone(),
-            });
-        }
-    }
-
-    groups
+    order
+        .into_iter()
+        .map(|summary| {
+            let hashes = by_summary.remove(&summary).unwrap_or_default();
+            SummaryAssignment { summary, hashes }
+        })
+        .collect()
 }
 
 fn emit_update<R: Runtime>(
@@ -163,8 +250,7 @@ fn emit_update<R: Runtime>(
         crate::summarize::change_map_since(app, base_ref)?
     } else {
         let config_dir = crate::storage::store::get_config_dir(app)?;
-        let change_sets = crate::summarize::find_existing::for_current_state(pool, &config_dir)?;
-        crate::summarize::group_existing::from_change_sets(change_sets)
+        crate::summarize::find_existing::for_current_state(pool, &config_dir)?
     };
     // The cell write emits `change_map_changed`.
     crate::state::change_map::update(app, semantic_map);
@@ -187,50 +273,103 @@ mod tests {
         }
     }
 
+    fn find<'a>(assignments: &'a [SummaryAssignment], summary: &str) -> &'a SummaryAssignment {
+        assignments
+            .iter()
+            .find(|a| a.summary == summary)
+            .expect("assignment for summary")
+    }
+
     #[test]
-    fn matched_files_are_grouped_by_summary() {
+    fn matched_changes_are_grouped_by_summary() {
         let changes = vec![change("a.nix"), change("b.nix"), change("c.nix")];
         let items = vec![
             ChangesetSummaryItem {
                 summary: "feat: a and b".into(),
-                files: vec!["a.nix".into(), "b.nix".into()],
+                changes: vec!["h-a.nix".into(), "h-b.nix".into()],
             },
             ChangesetSummaryItem {
                 summary: "fix: c".into(),
-                files: vec!["c.nix".into()],
+                changes: vec!["h-c.nix".into()],
             },
         ];
-        let groups = partition_changes(changes, &items);
-        assert_eq!(groups.len(), 3);
-        assert_eq!(groups[0].summary, "feat: a and b");
-        assert_eq!(groups[1].summary, "feat: a and b");
-        assert_eq!(groups[2].summary, "fix: c");
+        let assignments = assign_summaries(&changes, &items);
+        assert_eq!(assignments.len(), 2);
+        assert_eq!(find(&assignments, "feat: a and b").hashes.len(), 2);
+        assert_eq!(find(&assignments, "fix: c").hashes, vec!["h-c.nix"]);
     }
 
     #[test]
-    fn unmatched_files_fall_back_to_first_summary() {
+    fn same_file_changes_can_belong_to_distinct_semantic_groups() {
+        let mut first = change("configuration.nix");
+        first.hash = "first-change".into();
+        let mut second = change("configuration.nix");
+        second.hash = "second-change".into();
+        let items = vec![
+            ChangesetSummaryItem {
+                summary: "feat: add a service".into(),
+                changes: vec!["first-change".into()],
+            },
+            ChangesetSummaryItem {
+                summary: "fix: update a package".into(),
+                changes: vec!["second-change".into()],
+            },
+        ];
+
+        let assignments = assign_summaries(&[first, second], &items);
+
+        assert_eq!(assignments.len(), 2);
+        assert_eq!(find(&assignments, "feat: add a service").hashes, vec!["first-change"]);
+        assert_eq!(find(&assignments, "fix: update a package").hashes, vec!["second-change"]);
+    }
+
+    #[test]
+    fn unmatched_changes_fall_back_to_first_summary() {
         let changes = vec![change("a.nix"), change("orphan.nix")];
         let items = vec![ChangesetSummaryItem {
             summary: "feat: a".into(),
-            files: vec!["a.nix".into()],
+            changes: vec!["h-a.nix".into()],
         }];
-        let groups = partition_changes(changes, &items);
-        assert_eq!(groups.len(), 2);
-        assert_eq!(groups[0].summary, "feat: a");
-        // Orphan keeps the fallback so it isn't flagged unsummarized.
-        assert_eq!(groups[1].summary, "feat: a");
-        assert_eq!(groups[1].change.filename, "orphan.nix");
+        let assignments = assign_summaries(&changes, &items);
+        // Orphan is folded into the first summary's bucket so it isn't unsummarized.
+        assert_eq!(assignments.len(), 1);
+        let bucket = find(&assignments, "feat: a");
+        assert!(bucket.hashes.contains(&"h-a.nix".to_string()));
+        assert!(bucket.hashes.contains(&"h-orphan.nix".to_string()));
     }
 
     #[test]
-    fn basename_matching_resolves_nested_paths() {
+    fn complete_change_hashes_match_nested_paths() {
         let changes = vec![change("modules/darwin/dock.nix")];
         let items = vec![ChangesetSummaryItem {
             summary: "feat: dock".into(),
-            files: vec!["dock.nix".into()],
+            changes: vec!["h-modules/darwin/dock.nix".into()],
         }];
-        let groups = partition_changes(changes, &items);
-        assert_eq!(groups.len(), 1);
-        assert_eq!(groups[0].summary, "feat: dock");
+        let assignments = assign_summaries(&changes, &items);
+        assert_eq!(assignments.len(), 1);
+        assert_eq!(find(&assignments, "feat: dock").hashes.len(), 1);
+    }
+
+    #[test]
+    fn conventional_type_is_determined_from_the_completed_summary() {
+        assert_eq!(
+            conventionalize_summary("Apply daemon_pool compatibility patch."),
+            "fix: Apply daemon_pool compatibility patch"
+        );
+        assert_eq!(
+            conventionalize_summary("Enable Prelude theme support"),
+            "feat: Enable Prelude theme support"
+        );
+        assert_eq!(
+            conventionalize_summary("refactor(helix): reorganize config declarations"),
+            "refactor: reorganize config declarations"
+        );
+    }
+
+    #[test]
+    fn whole_diff_system_prompt_requests_only_free_form_descriptions() {
+        assert!(WHOLE_DIFF_SYSTEM_PROMPT.contains("plain-language summary"));
+        assert!(!WHOLE_DIFF_SYSTEM_PROMPT.contains("conventional commit messages"));
+        assert!(!WHOLE_DIFF_SYSTEM_PROMPT.contains("prefer \"chore\""));
     }
 }

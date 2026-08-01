@@ -6,47 +6,41 @@ pub fn join_sections(sections: &[String]) -> String {
 }
 
 pub fn list_changes(changes: &[&crate::sqlite_types::Change]) -> String {
-    // Use the short_hash format.
     changes
         .iter()
         .map(|c| {
             format!(
                 "hash: {}\nfile: {}\nlines: {}\ndiff:\n{}\n\n",
-                crate::utils::short_hash(&c.hash),
-                c.filename,
-                c.line_count,
-                c.diff
+                c.hash, c.filename, c.line_count, c.diff
             )
         })
         .collect()
 }
 
 /// Builds a prompt that summarizes all changes as one or more conventional
-/// commit messages, each covering a subset of the changed files.
+/// change descriptions, each covering a subset of the individual changes.
 pub fn whole_diff(changes: &[&crate::sqlite_types::Change]) -> String {
     join_sections(&[
-        "Group the following changes into one or more conventional commit messages. \
+        "Group the following changes into one or more semantic changes. \
          Each group must share a coherent purpose (a single logical change). \
-         Return one object per group.\n\n"
+         Return the groups in the required JSON response object.\n\n"
             .to_string(),
         list_changes(changes),
         "\nFor each group, return a JSON object with:\n".to_string(),
-        "  - \"summary\": a conventional commit message in the form \
-           <type>(<scope>): <description>\n".to_string(),
-        "  - \"files\": an array of the file paths included in that group\n".to_string(),
-        "Allowed types: feat, fix, chore, refactor, docs, style, test, perf\n".to_string(),
+        "  - \"summary\": a concise, factual plain-language summary of the change\n".to_string(),
+        "  - \"changes\": an array of the exact change hashes included in that group\n".to_string(),
         "Rules:\n".to_string(),
         "- Base every summary only on the visible changes.\n".to_string(),
         "- Do not invent intent that is not visible in the diff.\n".to_string(),
-        "- If the type is unclear, prefer \"chore\".\n".to_string(),
-        "- Every changed file must appear in exactly one group.\n".to_string(),
+        "- Do not assign a conventional-commit type, scope, or prefix.\n".to_string(),
+        "- Every supplied change hash must appear in exactly one group.\n".to_string(),
         "- Prefer fewer groups; only split when changes are clearly unrelated.\n".to_string(),
-        "Return ONLY a valid JSON array.\n".to_string(),
+        "Return ONLY a valid JSON object with a \"groups\" array.\n".to_string(),
         "Example:\n".to_string(),
-        "[\n".to_string(),
-        "  {\"summary\":\"feat(darwin): enable dock auto-hide\",\"files\":[\"darwin/dock.nix\"]},\n".to_string(),
-        "  {\"summary\":\"chore: bump flake inputs\",\"files\":[\"flake.lock\"]}\n".to_string(),
-        "]\n\n".to_string(),
+        "{\n  \"groups\": [\n".to_string(),
+        "    {\"summary\":\"Enable dock auto-hide\",\"changes\":[\"<hash>\"]},\n".to_string(),
+        "    {\"summary\":\"Update flake inputs\",\"changes\":[\"<hash>\"]}\n".to_string(),
+        "  ]\n}\n\n".to_string(),
     ])
 }
 
@@ -56,7 +50,7 @@ mod tests {
     use crate::sqlite_types::Change;
 
     #[test]
-    fn whole_diff_requests_multi_item_array() {
+    fn whole_diff_requests_free_form_semantic_summaries() {
         let change = Change {
             id: 1,
             hash: "deadbeef".into(),
@@ -67,13 +61,13 @@ mod tests {
             own_summary_id: None,
         };
         let out = whole_diff(&[&change]);
-        assert!(out.contains(&crate::utils::short_hash(&change.hash)));
-        assert!(out.contains("one or more conventional commit messages"));
+        assert!(out.contains(&change.hash));
+        assert!(out.contains("plain-language summary"));
         assert!(out.contains("\"summary\""));
-        assert!(out.contains("\"files\""));
-        assert!(out.contains("Return ONLY a valid JSON array"));
-        // Legacy single-message contract must be gone.
-        assert!(!out.contains("\"message\""));
-        assert!(!out.contains("single conventional commit message"));
+        assert!(out.contains("\"changes\""));
+        assert!(out.contains("Return ONLY a valid JSON object with a \"groups\" array"));
+        assert!(!out.contains("conventional commit"));
+        assert!(!out.contains("Allowed types:"));
+        assert!(!out.contains("feat, fix, chore"));
     }
 }
