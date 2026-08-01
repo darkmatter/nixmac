@@ -158,10 +158,7 @@ fn check_git_status<R: Runtime>(
         Default::default()
     } else {
         let pool = app_handle.state::<db::DbPool>();
-        summarize::find_existing::for_current_state(&pool, dir)
-            .ok()
-            .map(summarize::group_existing::from_change_sets)
-            .unwrap_or_default()
+        summarize::find_existing::for_current_state(&pool, dir).unwrap_or_default()
     };
     drift_notifications::maybe_notify(Some(&status), external_build_detected);
     app_handle

@@ -45,15 +45,6 @@ pub async fn get_history<R: Runtime>(
     let mut origin_hashes: Vec<Option<String>> = Vec::with_capacity(git_commits.len());
 
     for (i, git_commit) in git_commits.iter().enumerate() {
-        let db_commit =
-            crate::db::commits::get_commit_by_hash(&pool, &git_commit.hash).unwrap_or(None);
-
-        let parent_db = git_commits.get(i + 1).and_then(|parent| {
-            crate::db::commits::get_commit_by_hash(&pool, &parent.hash)
-                .ok()
-                .flatten()
-        });
-
         let raw_changes: Vec<crate::sqlite_types::Change> = git_commits
             .get(i + 1)
             .and_then(|parent| {
@@ -75,27 +66,23 @@ pub async fn get_history<R: Runtime>(
             unique.len()
         };
 
-        let (change_map, unsummarized_hashes) = if let Some(ref parent) = parent_db {
-            let diff_hashes: Vec<String> = raw_changes.iter().map(|c| c.hash.clone()).collect();
-            match crate::summarize::find_existing::by_base_with_hashes(
-                &pool,
-                parent.id,
-                &diff_hashes,
-            ) {
+        // Summaries are content-addressed by change hash, so a commit's change
+        // map is reconstructed purely from its diff — no commit rows needed.
+        let (change_map, unsummarized_hashes) = if raw_changes.is_empty() {
+            (None, vec![])
+        } else {
+            match crate::summarize::find_existing::for_changes(&pool, &raw_changes) {
                 Ok(found) => {
-                    let grouped = crate::summarize::group_existing::from_change_sets(vec![found]);
-                    let unsummarized = grouped.unsummarized_hashes.clone();
-                    let map = if grouped.groups.is_empty() && grouped.singles.is_empty() {
+                    let unsummarized = found.map.unsummarized_hashes.clone();
+                    let map = if found.map.groups.is_empty() && found.map.singles.is_empty() {
                         None
                     } else {
-                        Some(grouped)
+                        Some(found.map)
                     };
                     (map, unsummarized)
                 }
                 Err(_) => (None, vec![]),
             }
-        } else {
-            (None, vec![])
         };
 
         let origin_hash = if change_map.is_none() {
@@ -126,7 +113,7 @@ pub async fn get_history<R: Runtime>(
             is_base,
             is_external,
             file_count,
-            commit: db_commit,
+            commit: None,
             change_map,
             unsummarized_hashes,
             raw_changes,

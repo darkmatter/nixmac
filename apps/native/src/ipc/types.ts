@@ -131,12 +131,6 @@ output: string }
 
 export type Change = { id: number; hash: string; filename: string; diff: string; lineCount: number; createdAt: number; ownSummaryId: number }
 
-/**
- * Groups Changes for a commit→base_commit pair. `commit_id` is NULL for speculative
- * (uncommitted) changesets. Membership is stored in the `set_changes` join table.
- */
-export type ChangeSet = { id: number; commitId: number | null; baseCommitId: number; commitMessage: string | null; generatedCommitMessage: string | null; createdAt: number; evolutionId: number | null }
-
 export type ChangeSummary = { id: number; title: string; description: string; 
 /**
  * One of `"QUEUED"`, `"DONE"`, `"FAILED"`, `"CANCELLED"`.
@@ -2068,34 +2062,6 @@ dir: string;
  * True when the selected directory differs from the previous one.
  */
 changed: boolean }
-
-export type SummarizedChange = { 
-/**
- * Raw change row.
- */
-change: Change; 
-/**
- * Summary attached directly to this change.
- */
-ownSummary: ChangeSummary | null; 
-/**
- * Summary inherited from this change's group.
- */
-groupSummary: ChangeSummary | null }
-
-export type SummarizedChangeSet = { 
-/**
- * Change set represented by this response.
- */
-changeSet: ChangeSet; 
-/**
- * Changes in the set with their available summaries.
- */
-changes: SummarizedChange[]; 
-/**
- * Change hashes expected in the set but missing from the database.
- */
-missedHashes: string[] }
 
 /**
  * Remote sync state for the current account, returned by `sync_status`.

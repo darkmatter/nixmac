@@ -24,18 +24,6 @@ pub struct Commit {
 pub struct Evolution {
     pub id: i64,
     pub origin_branch: String,
-    pub merged: i64,
-    pub builds: i64,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct Prompt {
-    pub id: i64,
-    pub text: String,
-    pub commit_id: Option<i64>,
-    pub created_at: i64,
 }
 
 #[allow(dead_code)]
@@ -67,19 +55,4 @@ pub struct ChangeSummary {
     pub status: String,
     #[specta(type = f64)]
     pub created_at: i64,
-}
-
-/// Groups Changes for a commit→base_commit pair. `commit_id` is NULL for speculative
-/// (uncommitted) changesets. Membership is stored in the `set_changes` join table.
-#[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct ChangeSet {
-    pub id: i64,
-    pub commit_id: Option<i64>,
-    pub base_commit_id: i64,
-    pub commit_message: Option<String>,
-    pub generated_commit_message: Option<String>,
-    pub created_at: i64,
-    pub evolution_id: Option<i64>,
 }

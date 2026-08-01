@@ -26,23 +26,8 @@ pub async fn from_commit_times_number<R: Runtime>(
         return Ok(());
     }
 
-    let mut db_ids: Vec<i64> = Vec::with_capacity(commits.len());
-    for commit in &commits {
-        let id = crate::db::commits::upsert_commit(
-            &pool,
-            &commit.hash,
-            &commit.tree_hash,
-            commit.message.as_deref(),
-            commit.created_at,
-        )?;
-        db_ids.push(id);
-    }
-
     let limit = commits.len().saturating_sub(1).min(number);
     for i in 0..limit {
-        let commit_id = db_ids[i];
-        let base_commit_id = db_ids[i + 1];
-
         let file_diffs =
             crate::git::query::commit_diff(&config_dir, &commits[i + 1].hash, &commits[i].hash)?;
 
@@ -57,19 +42,16 @@ pub async fn from_commit_times_number<R: Runtime>(
             continue;
         }
 
-        let diff_hashes: Vec<String> = all_changes.iter().map(|c| c.hash.clone()).collect();
-        let found = crate::summarize::find_existing::by_base_with_hashes(
-            &pool,
-            base_commit_id,
-            &diff_hashes,
-        )?;
-        let semantic_map = crate::summarize::group_existing::from_change_sets(vec![found]);
+        // Summaries are content-addressed by change hash, so a commit's summary
+        // is reconstructed purely from its changes — no commit rows needed.
+        let found = crate::summarize::find_existing::for_changes(&pool, &all_changes)?;
 
-        if semantic_map.unsummarized_hashes.is_empty() {
+        if found.map.unsummarized_hashes.is_empty() {
             continue;
         }
 
-        let unsummarized_set: std::collections::HashSet<&str> = semantic_map
+        let unsummarized_set: std::collections::HashSet<&str> = found
+            .map
             .unsummarized_hashes
             .iter()
             .map(String::as_str)
@@ -83,17 +65,7 @@ pub async fn from_commit_times_number<R: Runtime>(
             continue;
         }
 
-        if let Err(e) = super::whole_diff::analyze(
-            changes_to_summarize,
-            app,
-            Some(commit_id),
-            Some(base_commit_id),
-            None,
-            commits[i].message.as_deref(),
-            None,
-        )
-        .await
-        {
+        if let Err(e) = super::whole_diff::analyze(changes_to_summarize, app, None, None).await {
             log::error!("[history] pipeline failed for {}: {}", commits[i].hash, e);
         }
     }

@@ -9,22 +9,35 @@ use tauri::{AppHandle, Runtime};
 use crate::ai::providers::{TokenUsage, create_provider};
 use crate::summarize::token_budgets::changeset_summaries_budget;
 
-/// One item in the model's multi-summary response: a conventional commit
-/// message plus the file paths it covers.
+/// One item in the model's multi-summary response: a free-form semantic
+/// description plus the hashes of the individual changes it covers.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ChangesetSummaryItem {
     pub summary: String,
-    pub files: Vec<String>,
+    pub changes: Vec<String>,
 }
 
-/// The prompt asks for an array, but providers request
-/// `response_format: json_object`, which steers models toward a top-level
-/// object — especially when there is only one group. Accept both shapes.
+/// The canonical response is a `{"groups": [...]}` object because providers
+/// request `response_format: json_object`. Continue accepting the bare array,
+/// a single item, and the `{"changes": [...]}` envelope already returned by
+/// some providers for backwards compatibility.
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 enum ChangesetSummariesResponse {
     Many(Vec<ChangesetSummaryItem>),
     One(ChangesetSummaryItem),
+    Envelope(ChangesetSummariesEnvelope),
+}
+
+#[derive(Debug, Deserialize)]
+struct ChangesetSummariesEnvelope {
+    #[serde(
+        rename = "groups",
+        alias = "changes",
+        alias = "summaries",
+        alias = "items"
+    )]
+    items: Vec<ChangesetSummaryItem>,
 }
 
 impl From<ChangesetSummariesResponse> for Vec<ChangesetSummaryItem> {
@@ -32,6 +45,7 @@ impl From<ChangesetSummariesResponse> for Vec<ChangesetSummaryItem> {
         match response {
             ChangesetSummariesResponse::Many(items) => items,
             ChangesetSummariesResponse::One(item) => vec![item],
+            ChangesetSummariesResponse::Envelope(envelope) => envelope.items,
         }
     }
 }
@@ -212,10 +226,10 @@ fn extract_json_object(raw: &str) -> &str {
     }
 }
 
-/// Calls the model and parses a `[{ summary, files }]` array response.
+/// Calls the model and parses its grouped changes response.
 ///
 /// Returns one or more summary items. The caller is responsible for matching
-/// `files` back to change rows; any change the model did not assign to a group
+/// `changes` back to change rows; any change the model did not assign to a group
 /// is left for the caller to handle (e.g. as singles).
 pub async fn generate_changeset_summaries<R: Runtime>(
     system_prompt: &str,
@@ -287,8 +301,8 @@ mod tests {
     #[test]
     fn extract_plain_array() {
         assert_eq!(
-            extract_json_object(r#"[{"summary":"a","files":["f.nix"]}]"#),
-            r#"[{"summary":"a","files":["f.nix"]}]"#
+            extract_json_object(r#"[{"summary":"a","changes":["hash-a"]}]"#),
+            r#"[{"summary":"a","changes":["hash-a"]}]"#
         );
     }
 
@@ -300,8 +314,11 @@ mod tests {
 
     #[test]
     fn extract_strips_array_fence() {
-        let raw = "```json\n[{\"summary\":\"a\",\"files\":[]}]\n```";
-        assert_eq!(extract_json_object(raw), r#"[{"summary":"a","files":[]}]"#);
+        let raw = "```json\n[{\"summary\":\"a\",\"changes\":[]}]\n```";
+        assert_eq!(
+            extract_json_object(raw),
+            r#"[{"summary":"a","changes":[]}]"#
+        );
     }
 
     #[test]
@@ -318,8 +335,11 @@ mod tests {
 
     #[test]
     fn extract_narrows_to_balanced_array() {
-        let raw = "Sure, here you go:\n[{\"summary\":\"a\",\"files\":[]}]\nLet me know.";
-        assert_eq!(extract_json_object(raw), r#"[{"summary":"a","files":[]}]"#);
+        let raw = "Sure, here you go:\n[{\"summary\":\"a\",\"changes\":[]}]\nLet me know.";
+        assert_eq!(
+            extract_json_object(raw),
+            r#"[{"summary":"a","changes":[]}]"#
+        );
     }
 
     #[test]
@@ -333,7 +353,7 @@ mod tests {
     #[test]
     fn summaries_response_parses_array() {
         let parsed: ChangesetSummariesResponse =
-            serde_json::from_str(r#"[{"summary":"a","files":["f.nix"]}]"#).unwrap();
+            serde_json::from_str(r#"[{"summary":"a","changes":["hash-a"]}]"#).unwrap();
         let items = Vec::from(parsed);
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].summary, "a");
@@ -342,12 +362,24 @@ mod tests {
     #[test]
     fn summaries_response_parses_single_object() {
         let parsed: ChangesetSummariesResponse = serde_json::from_str(
-            r#"{"summary":"chore(home): rename pi4 host","files":["alex-laptop/home.nix"]}"#,
+            r#"{"summary":"chore(home): rename pi4 host","changes":["hash-a"]}"#,
         )
         .unwrap();
         let items = Vec::from(parsed);
         assert_eq!(items.len(), 1);
-        assert_eq!(items[0].files, vec!["alex-laptop/home.nix"]);
+        assert_eq!(items[0].changes, vec!["hash-a"]);
+    }
+
+    #[test]
+    fn summaries_response_parses_object_wrapped_change_list() {
+        let parsed: ChangesetSummariesResponse = serde_json::from_str(
+            r#"{"changes":[{"summary":"fix(python): apply compatibility patch","changes":["hash-a","hash-b"]},{"summary":"feat(bb-hook): unload agents","changes":["hash-c"]}]}"#,
+        )
+        .unwrap();
+        let items = Vec::from(parsed);
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0].changes, vec!["hash-a", "hash-b"]);
+        assert_eq!(items[1].changes, vec!["hash-c"]);
     }
 
     #[test]

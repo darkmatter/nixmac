@@ -2,7 +2,7 @@ use super::helpers::capture_err;
 use crate::state::{build_state, evolve_state};
 use crate::storage::store;
 use crate::{db, git, shared_types};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, State};
 
 pub async fn fetch_file_diff_contents(
     app: AppHandle,
@@ -22,7 +22,6 @@ pub async fn create_commit(
     app: AppHandle,
     message: String,
 ) -> Result<shared_types::CommitResult, String> {
-    let db_pool = app.state::<db::DbPool>();
     let dir = store::ensure_git_repo_folder(&app).map_err(|e| capture_err("git_commit", e))?;
     let commit_info = git::commit_all(&dir, &message).map_err(|e| capture_err("git_commit", e))?;
 
@@ -33,22 +32,6 @@ pub async fn create_commit(
         false,
     ) {
         log::warn!("[git_commit] Failed to tag commit: {}", e);
-    }
-
-    let now = crate::utils::unix_now();
-    match db::commits::upsert_commit(
-        &db_pool,
-        &commit_info.hash,
-        &commit_info.tree_hash,
-        Some(&message),
-        now,
-    ) {
-        Ok(id) => log::info!(
-            "[git_commit] Saved commit to database (id={}, hash={})",
-            id,
-            &commit_info.hash[..8]
-        ),
-        Err(e) => log::error!("[git_commit] Failed to save commit: {}", e),
     }
 
     if let Ok(current_build_state) = build_state::get(&app) {
@@ -97,7 +80,6 @@ pub async fn commit_single_file(
     filename: String,
     message: String,
 ) -> Result<shared_types::CommitResult, String> {
-    let db_pool = app.state::<db::DbPool>();
     let dir = store::ensure_git_repo_folder(&app).map_err(|e| capture_err("git_commit_file", e))?;
     let commit_info = git::commit_file(&dir, &filename, &message)
         .map_err(|e| capture_err("git_commit_file", e))?;
@@ -109,17 +91,6 @@ pub async fn commit_single_file(
         false,
     ) {
         log::warn!("[git_commit_file] Failed to tag commit: {}", e);
-    }
-
-    let now = crate::utils::unix_now();
-    if let Err(e) = db::commits::upsert_commit(
-        &db_pool,
-        &commit_info.hash,
-        &commit_info.tree_hash,
-        Some(&message),
-        now,
-    ) {
-        log::error!("[git_commit_file] Failed to save commit: {}", e);
     }
 
     if let Ok(current_build_state) = build_state::get(&app) {
