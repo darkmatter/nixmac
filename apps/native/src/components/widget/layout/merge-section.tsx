@@ -22,6 +22,10 @@ export function MergeSection() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
+    // Apply starts this work while activation is in progress. Keep that result
+    // instead of clearing it and issuing the same request after Save opens.
+    if (commitMessageSuggestion) return;
+
     let cancelled = false;
     setIsGenerating(true);
     generateCommitMessage().finally(() => {
@@ -30,7 +34,7 @@ export function MergeSection() {
     return () => {
       cancelled = true;
     };
-  }, [generateCommitMessage, changeMap]);
+  }, [commitMessageSuggestion, generateCommitMessage, changeMap]);
 
   async function handleRegenerate() {
     setIsGenerating(true);
