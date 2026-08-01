@@ -5,7 +5,22 @@ import {
 } from "@/lib/providers/ai-defaults";
 import { providerRequiresModel } from "@/lib/providers/ai-provider-validation";
 
-const NIXMAC_PROVIDER = "nixmac";
+export const NIXMAC_PROVIDER = "nixmac";
+
+type HostedModelPreferences = {
+	evolveProvider?: string | null;
+	summaryProvider?: string | null;
+};
+
+/** Whether either configured model role uses nixmac's hosted inference. */
+export function hasNixmacHostedModelSelected(
+	preferences: HostedModelPreferences | null | undefined,
+): boolean {
+	return (
+		preferences?.evolveProvider === NIXMAC_PROVIDER ||
+		preferences?.summaryProvider === NIXMAC_PROVIDER
+	);
+}
 
 type AiModelProviderId = AiProviderId;
 
