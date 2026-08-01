@@ -23,10 +23,8 @@ fn main() {
     let types = collection
         .register::<sqlite_types::Commit>()
         .register::<sqlite_types::Evolution>()
-        .register::<sqlite_types::Prompt>()
         .register::<sqlite_types::Change>()
-        .register::<sqlite_types::ChangeSummary>()
-        .register::<sqlite_types::ChangeSet>();
+        .register::<sqlite_types::ChangeSummary>();
 
     let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let output_path = manifest_dir.join("../src/ipc/sqlite.ts");
@@ -68,8 +66,6 @@ fn main() {
         .register::<shared_types::HomebrewItemType>()
         .register::<shared_types::HomebrewItem>()
         .register::<shared_types::HomebrewState>()
-        .register::<shared_types::SummarizedChange>()
-        .register::<shared_types::SummarizedChangeSet>()
         .register::<shared_types::ChangeWithSummary>()
         .register::<shared_types::LaunchdItem>()
         .register::<shared_types::SemanticChangeGroup>()

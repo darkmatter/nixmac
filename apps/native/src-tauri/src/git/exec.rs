@@ -108,6 +108,7 @@ pub fn intent_add_untracked(dir: &str) -> Result<()> {
 /// Info about a created commit.
 pub struct CommitInfo {
     pub hash: String,
+    #[allow(dead_code)] // No longer mirrored to the DB, but cheap to keep populated.
     pub tree_hash: String,
 }
 
