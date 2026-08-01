@@ -3,6 +3,7 @@ import { expect, test } from "vitest";
 
 import { Badge } from "./badge";
 import { Button } from "./button";
+import { Alert, AlertDescription, AlertTitle } from "./alert";
 import {
   Card,
   CardAction,
@@ -15,6 +16,23 @@ import {
 import { Input } from "./input";
 import { Skeleton } from "./skeleton";
 import { Textarea } from "./textarea";
+
+test("destructive alerts only color the status and icon", () => {
+  const { container } = render(
+    <Alert variant="destructive">
+      <svg aria-hidden="true" />
+      <AlertTitle>Status</AlertTitle>
+      <AlertDescription>Description</AlertDescription>
+    </Alert>,
+  );
+
+  const alert = container.querySelector('[data-slot="alert"]');
+  expect(alert).not.toHaveClass("text-destructive");
+  expect(alert).toHaveClass("border-destructive");
+  expect(alert).toHaveClass("[&>svg]:text-destructive");
+  expect(alert).not.toHaveClass("[&>[data-slot=alert-title]]:text-destructive");
+  expect(alert).not.toHaveClass("*:data-[slot=alert-description]:text-destructive/90");
+});
 
 // Button
 test("Button default matches snapshot", () => {
