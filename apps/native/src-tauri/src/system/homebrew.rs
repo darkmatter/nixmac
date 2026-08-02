@@ -11,8 +11,8 @@ use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::UnixListener;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 
@@ -225,7 +225,7 @@ fn ensure_command_line_tools(app: &AppHandle) -> Result<(), (i32, String)> {
             return Ok(());
         }
         ticks += 1;
-        if ticks % CLT_HEARTBEAT_EVERY == 0 {
+        if ticks.is_multiple_of(CLT_HEARTBEAT_EVERY) {
             emit_line(
                 app,
                 &format!(
@@ -429,10 +429,7 @@ fn spawn_sudo_keepalive(stop: Arc<AtomicBool>) -> std::thread::JoinHandle<()> {
 
 /// Spawns the install script, streaming stdout+stderr line-by-line to the
 /// frontend. Returns the exit code and a message on failure.
-fn run_installer_streamed(
-    app: &AppHandle,
-    askpass: Option<&Path>,
-) -> Result<(), (i32, String)> {
+fn run_installer_streamed(app: &AppHandle, askpass: Option<&Path>) -> Result<(), (i32, String)> {
     let script = format!(r#"/bin/bash -c "$(curl -fsSL {})""#, HOMEBREW_INSTALL_URL);
 
     let mut command = Command::new("/bin/bash");
@@ -472,7 +469,10 @@ fn run_installer_streamed(
         Ok(())
     } else {
         let code = status.code().unwrap_or(-1);
-        Err((code, format!("Homebrew installer exited with code {}", code)))
+        Err((
+            code,
+            format!("Homebrew installer exited with code {}", code),
+        ))
     }
 }
 

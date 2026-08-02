@@ -28,13 +28,12 @@ pub async fn homebrew_get_state_diff(
 /// Reports whether Homebrew is installed so onboarding can offer a guided install.
 #[tauri::command]
 pub async fn homebrew_check() -> Result<shared_types::HomebrewCheckResult, String> {
-    let installed = if cfg!(debug_assertions)
-        && crate::e2e_runtime::enabled("NIXMAC_E2E_MOCK_SYSTEM")
-    {
-        crate::e2e_runtime::enabled("NIXMAC_E2E_HOMEBREW_INSTALLED")
-    } else {
-        crate::system::homebrew::is_installed()
-    };
+    let installed =
+        if cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_MOCK_SYSTEM") {
+            crate::e2e_runtime::enabled("NIXMAC_E2E_HOMEBREW_INSTALLED")
+        } else {
+            crate::system::homebrew::is_installed()
+        };
     Ok(shared_types::HomebrewCheckResult { installed })
 }
 
