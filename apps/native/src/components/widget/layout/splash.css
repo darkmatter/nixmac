@@ -1,0 +1,135 @@
+/*
+  Launch splash — the single source of truth for how it looks.
+
+  Two things render this markup, so the styling cannot live in either of them:
+
+    1. index.html, before any JavaScript runs (it links this file directly).
+    2. <SplashScreen>, once React is up (it imports this file).
+
+  Consequences to respect when editing:
+
+  - Plain CSS only. This loads before the bundle, so no Tailwind utilities, no
+    @apply, no build-time theme resolution.
+  - Design tokens are read with a literal fallback — `var(--foreground, #fafafa)`
+    — because index.css has not necessarily loaded yet. The fallbacks are the
+    dark-theme values; the tokens take over the moment that CSS lands.
+  - `position: absolute` (not fixed): with no positioned ancestor it fills the
+    window, and inside a positioned box it fills the box, which is what the
+    Storybook stories need.
+*/
+
+.nixmac-splash {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  user-select: none;
+  background: color-mix(in oklch, var(--background, oklch(0.1445 0 0)) 60%, transparent);
+
+  /* Boots that finish before this never flash a splash. React overrides the
+     variable with the time *remaining* since page load, so the fade happens
+     once at 400 ms whichever of the two is on screen at the time. */
+  --splash-delay: 400ms;
+  opacity: 0;
+  animation: nixmac-splash-in 500ms ease-out var(--splash-delay) forwards;
+}
+
+/* Sized so the static mark and the perspective-scaled 128px cube
+   (NixmacMascotCube in <SplashScreen>) land at the same visual size — the swap
+   from one to the other should not move anything. */
+.nixmac-splash__mark {
+  display: grid;
+  place-items: center;
+  width: 148px;
+  height: 148px;
+}
+.nixmac-splash__mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.nixmac-splash__text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Explicit line-heights: index.html's copy renders before index.css sets a base
+   one, so leaving them to inherit shifts the layout a few px at the handover. */
+.nixmac-splash__name {
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--foreground, #fafafa);
+}
+
+.nixmac-splash__track {
+  width: 160px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: var(--border, #27272a);
+}
+
+.nixmac-splash__bar {
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--muted-foreground, #a1a1aa);
+  transition: width 500ms ease-out;
+}
+
+/* Before React, there is no probe to report — the bar scans instead of filling. */
+.nixmac-splash__bar--indeterminate {
+  width: 40%;
+  animation: nixmac-splash-scan 1.4s ease-in-out infinite;
+}
+
+/* <SplashScreen> keys this element on the stage, so each new label remounts and
+   fades in; index.html's copy just plays it once. */
+.nixmac-splash__stage {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  color: var(--muted-foreground, #a1a1aa);
+  animation: nixmac-splash-in 300ms ease-out both;
+}
+
+@keyframes nixmac-splash-in {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes nixmac-splash-scan {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nixmac-splash {
+    animation-duration: 1ms;
+  }
+  .nixmac-splash__stage {
+    animation-duration: 1ms;
+  }
+  .nixmac-splash__bar {
+    transition: none;
+  }
+  .nixmac-splash__bar--indeterminate {
+    animation: none;
+    width: 100%;
+  }
+}
