@@ -6,6 +6,7 @@ import { tauriAPI } from "@/ipc/api";
 import { onboardingActions, viewModelActions } from "@nixmac/state";
 import type React from "react";
 import { useEffect, useRef } from "react";
+import { expect, waitFor } from "storybook/test";
 
 /**
  * Interactive, fully-mocked onboarding stories. Each story is a clickable
@@ -558,6 +559,16 @@ export const Permissions = meta.story({
 
 export const NixSetup = meta.story({
   render: () => <OnboardingHarness startAt="nix-setup" />,
+  // The installer cards used to sit in an auto-sized grid track, which grew to
+  // the max-content width of their nowrap subtitles and pushed them past the
+  // step column. Guard the step against horizontal overflow at 800px.
+  play: async ({ canvasElement }) => {
+    const step = canvasElement.querySelector("[data-testid='onboarding-flow']");
+    await waitFor(() => expect(step?.textContent).toContain("Determinate Systems installer"));
+    const scroller = step?.querySelector(".overflow-y-auto");
+    expect(scroller).toBeTruthy();
+    expect(scroller.scrollWidth).toBeLessThanOrEqual(scroller.clientWidth + 1);
+  },
 });
 
 export const ConfigDirectory = meta.story({
