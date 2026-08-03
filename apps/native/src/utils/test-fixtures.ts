@@ -43,6 +43,7 @@ export function makeGlobalPreferences(
 		featureFlagOverrides: null,
 		pendingImportDir: null,
 		autoFormatNixFiles: false,
+		helperPreference: "unset",
 		...overrides,
 	};
 }

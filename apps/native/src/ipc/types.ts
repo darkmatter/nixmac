@@ -1382,7 +1382,26 @@ pendingImportDir: string | null;
 /**
  * Whether or not to auto-format Nix files when making changes to the flakes.
  */
-autoFormatNixFiles: boolean }
+autoFormatNixFiles: boolean; 
+/**
+ * Standing decision about the privileged helper. Read by the helper
+ * reconciliation and by apply; decided only by the grant and disable
+ * actions, which is why it is not writable via `UiPrefsUpdate` and is held
+ * out of settings export/import. `state::preferences` documents which
+ * writers can reach it.
+ */
+helperPreference: HelperPreference }
+
+/**
+ * The user's standing decision about the privileged helper.
+ * 
+ * Tri-state on purpose. `Unset` means the user never decided — a fresh install,
+ * or one predating the helper's install/replace/remove contract — and is what
+ * lets an existing registration be adopted as an earlier opt-in without
+ * overriding an explicit `Disabled`. It selects a goal and authorizes nothing
+ * else: every trust or termination decision is taken from live observation.
+ */
+export type HelperPreference = "unset" | "granted" | "disabled"
 
 /**
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.

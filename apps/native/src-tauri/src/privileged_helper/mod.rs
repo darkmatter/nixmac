@@ -11,4 +11,5 @@ pub mod peer_auth;
 pub mod protocol;
 pub mod root_activation;
 pub mod service;
+pub mod socket_probe;
 pub mod sync_agent;
