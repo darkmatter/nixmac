@@ -16,7 +16,9 @@ describe("Storybook Tauri oRPC mocks", () => {
       | undefined;
 
     expect(vault?.entries.length).toBeGreaterThan(0);
-    expect(vault?.recipients.some((recipient) => recipient.id === vault.hostId)).toBe(true);
+    const primaryIdentityId = vault?.primaryDecryptionIdentityId;
+    expect(primaryIdentityId).not.toBeNull();
+    expect(vault?.recipients.some((recipient) => recipient.id === primaryIdentityId)).toBe(true);
   });
 
   it("handles editor.readFile for the nix editor", async () => {

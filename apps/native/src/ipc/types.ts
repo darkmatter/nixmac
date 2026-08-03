@@ -385,6 +385,11 @@ error: boolean | null;
  */
 error_type: RebuildErrorType | null }
 
+/**
+ * Whether decryption is available for this specific process or not via its private identity.
+ */
+export type DecryptionCapability = "available" | "unavailable" | "unknown"
+
 export type EnumVariant = { value: string; label: string }
 
 /**
@@ -2058,9 +2063,9 @@ export type SecretBackend = "sops" | "agenix"
 /**
  * One encrypted secret entry managed in the nix config repo.
  */
-export type SecretEntry = { id: string; name: string; backend: SecretBackend; file: string; recipientIds: string[]; sopsKey: string | null }
+export type SecretEntry = { id: string; name: string; backend: SecretBackend; file: string; publicRecipients: string[]; publicRecipientsResolved: boolean; recipientIds: string[]; decryptionCapability: DecryptionCapability; sopsKey: string | null }
 
-export type SecretRecipient = { id: string; label: string; kind: RecipientKind; device: string; fingerprint: string; publicKey: string; keyType: RecipientKeyType; source: RecipientSource; inUse: boolean; registrations: RecipientRegistration[]; isThisHost: boolean }
+export type SecretRecipient = { id: string; label: string; kind: RecipientKind; device: string; fingerprint: string; publicKey: string; keyType: RecipientKeyType; source: RecipientSource; inUse: boolean; registrations: RecipientRegistration[]; isLocalIdentity: boolean }
 
 export type SemanticChangeGroup = { 
 /**

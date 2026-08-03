@@ -36,7 +36,8 @@ export function RevealDialog({
         </div>
         <p className="mb-4 text-[13px] text-muted-foreground leading-relaxed">
           This decrypts <code className="font-mono text-foreground">{secretName}</code> locally with
-          this host's age key. The plaintext stays in memory and is never written to disk.
+          a locally available decryption identity. The plaintext stays in memory and is never
+          written to disk.
         </p>
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={onCancel}>

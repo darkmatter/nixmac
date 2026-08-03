@@ -49,6 +49,48 @@ pub enum RecipientSource {
     Unknown,
 }
 
+/// Whether decryption is available for this specific process or not via its private identity.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum DecryptionCapability {
+    Available,
+    Unavailable,
+    #[default]
+    Unknown,
+}
+
+/// Where a private decryption identity was discovered.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum DecryptionIdentityLocality {
+    /// Declared by the evaluated nix-darwin configuration.
+    Configuration,
+    /// Supplied to the running nixmac process through its environment.
+    Process,
+    /// Found at a conventional path on this machine.
+    Machine,
+}
+
+/// Private identity format. The identity material itself is never returned.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum DecryptionIdentityKind {
+    AgeKeyFile,
+    SshKeyPath,
+}
+
+/// A locally discoverable private identity source.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct DecryptionIdentity {
+    pub kind: DecryptionIdentityKind,
+    pub locality: DecryptionIdentityLocality,
+    pub path: String,
+    pub available: bool,
+    /// Public recipient derived without returning private key material.
+    pub public_keys: Vec<String>,
+}
+
 /// A repository configuration source that registers a recipient.
 /// Keeping the backend alongside the path matters because the same public key
 /// can be registered independently for SOPS and agenix.
@@ -67,7 +109,10 @@ pub struct SecretEntry {
     pub name: String,
     pub backend: SecretBackend,
     pub file: String,
+    pub public_recipients: Vec<String>,
+    pub public_recipients_resolved: bool,
     pub recipient_ids: Vec<String>,
+    pub decryption_capability: DecryptionCapability,
     pub sops_key: Option<String>,
 }
 
@@ -83,18 +128,19 @@ pub struct SecretRecipient {
     pub key_type: RecipientKeyType,
     pub source: RecipientSource,
 
-    // A recipient must be committed to the repo before it can decrypt secrets.
+    // Whether this recipient is registered by repository configuration.
     pub in_use: bool,
 
     pub registrations: Vec<RecipientRegistration>,
 
-    pub is_this_host: bool,
+    pub is_local_identity: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SecretsVault {
-    pub host_id: String,
+    pub primary_decryption_identity_id: Option<String>,
     pub entries: Vec<SecretEntry>,
     pub recipients: Vec<SecretRecipient>,
+    pub decryption_identities: Vec<DecryptionIdentity>,
 }

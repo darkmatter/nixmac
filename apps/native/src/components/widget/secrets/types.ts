@@ -53,7 +53,7 @@ export function recipientKeyLabel(recipient: SecretRecipient): string {
 
   switch (recipient.source) {
     case "sshHostKey":
-      return `SSH host key → ${keyType}`;
+      return `SSH host identity → ${keyType}`;
     case "sshIdentity":
       return `SSH identity → ${keyType}`;
     case "github":
@@ -75,17 +75,9 @@ export function secretPathDisplay(secret: SecretEntry): string {
     : secret.file;
 }
 
-export function canHostDecrypt(secret: SecretEntry, hostId: string): boolean {
-  return secret.recipientIds.includes(hostId);
-}
-
-export function hostRecipient(vault: SecretsVault): SecretRecipient {
-  const host = vault.recipients.find((r) => r.id === vault.hostId);
-  if (!host)
-    throw new Error(
-      `secrets vault has no recipient for host "${vault.hostId}"`,
-    );
-  return host;
+export function primaryDecryptionIdentity(vault: SecretsVault): SecretRecipient | null {
+  if (!vault.primaryDecryptionIdentityId) return null;
+  return vault.recipients.find((r) => r.id === vault.primaryDecryptionIdentityId) ?? null;
 }
 
 export function slugifySecretName(name: string): string {

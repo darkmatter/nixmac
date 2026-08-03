@@ -351,6 +351,42 @@ description?: string | null; fields: ConfigFieldSchema[] }
 
 export type DecryptSecretInput = { secretId: string }
 
+/**
+ * Whether decryption is available for this specific process or not via its private identity.
+ */
+export type DecryptionCapability = "available" | "unavailable" | "unknown"
+
+/**
+ * A locally discoverable private identity source.
+ */
+export type DecryptionIdentity = { kind: DecryptionIdentityKind; locality: DecryptionIdentityLocality; path: string; available: boolean; 
+/**
+ * Public recipient derived without returning private key material.
+ */
+publicKeys: string[] }
+
+/**
+ * Private identity format. The identity material itself is never returned.
+ */
+export type DecryptionIdentityKind = "ageKeyFile" | "sshKeyPath"
+
+/**
+ * Where a private decryption identity was discovered.
+ */
+export type DecryptionIdentityLocality = 
+/**
+ * Declared by the evaluated nix-darwin configuration.
+ */
+"configuration" | 
+/**
+ * Supplied to the running nixmac process through its environment.
+ */
+"process" | 
+/**
+ * Found at a conventional path on this machine.
+ */
+"machine"
+
 export type EnumVariant = { value: string; label: string }
 
 /**
@@ -1715,11 +1751,11 @@ export type SecretBackend = "sops" | "agenix"
 /**
  * One encrypted secret entry managed in the nix config repo.
  */
-export type SecretEntry = { id: string; name: string; backend: SecretBackend; file: string; recipientIds: string[]; sopsKey: string | null }
+export type SecretEntry = { id: string; name: string; backend: SecretBackend; file: string; publicRecipients: string[]; publicRecipientsResolved: boolean; recipientIds: string[]; decryptionCapability: DecryptionCapability; sopsKey: string | null }
 
-export type SecretRecipient = { id: string; label: string; kind: RecipientKind; device: string; fingerprint: string; publicKey: string; keyType: RecipientKeyType; source: RecipientSource; inUse: boolean; registrations: RecipientRegistration[]; isThisHost: boolean }
+export type SecretRecipient = { id: string; label: string; kind: RecipientKind; device: string; fingerprint: string; publicKey: string; keyType: RecipientKeyType; source: RecipientSource; inUse: boolean; registrations: RecipientRegistration[]; isLocalIdentity: boolean }
 
-export type SecretsVault = { hostId: string; entries: SecretEntry[]; recipients: SecretRecipient[] }
+export type SecretsVault = { primaryDecryptionIdentityId: string | null; entries: SecretEntry[]; recipients: SecretRecipient[]; decryptionIdentities: DecryptionIdentity[] }
 
 export type SemanticChangeGroup = { 
 /**

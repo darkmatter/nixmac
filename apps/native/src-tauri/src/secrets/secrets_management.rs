@@ -1,6 +1,7 @@
 use crate::{
     evolve::file_ops::resolve_existing_path_in_dir,
-    secrets::recipients::{apply_recipients_to_secrets, load_recipients},
+    secrets::identities::load_secret_identities,
+    secrets::recipients::{apply_recipients_to_secrets_with_identities, load_recipients},
     shared_types::{SecretBackend, SecretEntry, SecretsVault},
     system::nix::nix_command,
 };
@@ -24,9 +25,9 @@ pub fn decrypt_secret(
         .next()
         .ok_or_else(|| format!("Secret declaration '{secret_id}' does not exist"))?;
     if matches.next().is_some() {
-        // TODO(agenix-read): Make decrypt requests backend-qualified (or give
-        // entries opaque backend-qualified ids) so a SOPS and agenix secret
-        // with the same declaration name can both be revealed unambiguously.
+        // TODO(agenix-read): Make the reveal RPC backend-qualified (or give
+        // entries opaque backend-qualified ids) so SOPS and agenix declarations
+        // with the same name can both be addressed unambiguously.
         return Err(format!(
             "Secret declaration '{secret_id}' is ambiguous across backends"
         ));
@@ -36,8 +37,9 @@ pub fn decrypt_secret(
 
     if secret.backend != SecretBackend::Sops {
         // TODO(agenix-read): Resolve the repository's pinned agenix CLI and
-        // rules file, evaluate `cfg.age.identityPaths`, and decrypt this file
-        // to stdout with `agenix -d`/`--decrypt`. Keep plaintext in the
+        // classic rules file, evaluate `cfg.age.identityPaths`, and pass the
+        // available identities explicitly with `--identity` while decrypting
+        // this file to stdout with `agenix --decrypt`. Keep plaintext in the
         // existing explicit reveal response only: never command arguments,
         // logs, diffs, or temporary files. Define whether non-UTF-8 output is
         // supported before returning through this String-valued RPC.
@@ -48,19 +50,41 @@ pub fn decrypt_secret(
         .as_deref()
         .ok_or_else(|| format!("SOPS secret '{secret_id}' has no key"))?;
 
-    let output = sops_decrypt_command(config_dir, &secret_file_path, sops_key)
+    let identities = load_secret_identities(host_attr, config_dir)?;
+    let ssh_key_paths: Vec<&str> = identities
+        .host_keys
+        .iter()
+        .filter(|key| key.used_by_sops)
+        .map(|key| key.path.as_str())
+        .chain(identities.other_sops_identities.iter().map(String::as_str))
+        .collect();
+    let attempts: Vec<Option<&str>> = if ssh_key_paths.is_empty() {
+        vec![None]
+    } else {
+        ssh_key_paths.into_iter().map(Some).collect()
+    };
+    let mut last_error = None;
+    for ssh_key_path in attempts {
+        let output = sops_decrypt_command(
+            config_dir,
+            &secret_file_path,
+            sops_key,
+            identities.age_key_file.as_deref(),
+            ssh_key_path,
+        )
         .output()
         .map_err(|e| format!("Failed to execute sops command: {e}"))?;
-
-    if !output.status.success() {
-        return Err(format!(
+        if output.status.success() {
+            return String::from_utf8(output.stdout)
+                .map_err(|e| format!("sops returned invalid UTF-8: {e}"));
+        }
+        last_error = Some(format!(
             "sops command failed with status {}: {}",
             output.status,
             String::from_utf8_lossy(&output.stderr)
         ));
     }
-
-    String::from_utf8(output.stdout).map_err(|e| format!("sops returned invalid UTF-8: {e}"))
+    Err(last_error.unwrap_or_else(|| "sops decryption was not attempted".to_string()))
 }
 
 /// Resolve relative declarations from the same directory used as the SOPS
@@ -91,6 +115,8 @@ fn sops_decrypt_command(
     config_dir: &str,
     secret_file_path: &Path,
     sops_key: &str,
+    age_key_file: Option<&str>,
+    ssh_key_path: Option<&str>,
 ) -> std::process::Command {
     let extract_path = sops_extract_path(sops_key);
     let mut command = nix_command(config_dir);
@@ -107,6 +133,12 @@ fn sops_decrypt_command(
             "binary",
         ])
         .arg(secret_file_path);
+    if let Some(age_key_file) = age_key_file {
+        command.env("SOPS_AGE_KEY_FILE", age_key_file);
+    }
+    if let Some(ssh_key_path) = ssh_key_path {
+        command.env("SOPS_AGE_SSH_PRIVATE_KEY_FILE", ssh_key_path);
+    }
     command
 }
 
@@ -130,13 +162,18 @@ pub fn load_secrets_vault(host_attr: &str, config_dir: &str) -> Result<SecretsVa
     let mut entries = load_sops_secrets(host_attr, config_dir)?;
     entries.extend(load_agenix_secrets(host_attr, config_dir)?);
 
-    let recipients = load_recipients(host_attr, config_dir)?;
-    apply_recipients_to_secrets(&mut entries, &recipients)?;
+    let (recipients, decryption_identities) = load_recipients(host_attr, config_dir)?;
+    apply_recipients_to_secrets_with_identities(&mut entries, &recipients, &decryption_identities)?;
+    let primary_decryption_identity_id = recipients
+        .iter()
+        .find(|recipient| recipient.is_local_identity)
+        .map(|recipient| recipient.id.clone());
 
     Ok(SecretsVault {
-        host_id: host_attr.to_string(),
+        primary_decryption_identity_id,
         entries,
         recipients,
+        decryption_identities,
     })
 }
 
@@ -268,7 +305,10 @@ fn secret(
         name: name.into(),
         backend,
         file: file.into(),
+        public_recipients: Vec::new(),
+        public_recipients_resolved: false,
         recipient_ids: Vec::new(),
+        decryption_capability: Default::default(),
         sops_key: sops_key.map(Into::into),
     }
 }
@@ -285,6 +325,19 @@ mod tests {
             "/tmp/config",
             Path::new("/tmp/a secret.yaml"),
             "nested/value",
+            Some("/tmp/keys.txt"),
+            Some("/tmp/id_ed25519"),
+        );
+        let envs: std::collections::HashMap<_, _> = command.get_envs().collect();
+        assert_eq!(
+            envs.get(OsStr::new("SOPS_AGE_KEY_FILE")).copied().flatten(),
+            Some(OsStr::new("/tmp/keys.txt"))
+        );
+        assert_eq!(
+            envs.get(OsStr::new("SOPS_AGE_SSH_PRIVATE_KEY_FILE"))
+                .copied()
+                .flatten(),
+            Some(OsStr::new("/tmp/id_ed25519"))
         );
         let args: Vec<&OsStr> = command.get_args().collect();
 

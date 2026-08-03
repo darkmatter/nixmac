@@ -64,10 +64,9 @@ export function AddSecretView({
   const [value, setValue] = useState("");
   const [backend, setBackend] = useState<SecretBackend>("sops");
   const [hidden, setHidden] = useState(true);
-  // Every committed host key is a recipient by default — machines should be
-  // able to open their own config's secrets; user keys stay opt-in.
+  // Every committed local decryption identity is a recipient by default.
   const [recipientIds, setRecipientIds] = useState<string[]>(
-    committedRecipients.filter((r) => r.kind === "host").map((r) => r.id),
+    committedRecipients.filter((r) => r.isLocalIdentity).map((r) => r.id),
   );
 
   const slug = slugifySecretName(name);
@@ -76,7 +75,7 @@ export function AddSecretView({
   const invalid = !name.trim() || !value.trim();
 
   const toggleRecipient = (id: string) => {
-    if (id === vault.hostId) return;
+    if (id === vault.primaryDecryptionIdentityId) return;
     setRecipientIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
   };
 
@@ -174,7 +173,7 @@ export function AddSecretView({
         <div className="flex flex-col gap-1.5">
           {committedRecipients.map((recipient) => {
             const checked = recipientIds.includes(recipient.id);
-            const locked = recipient.id === vault.hostId;
+            const locked = recipient.id === vault.primaryDecryptionIdentityId;
             return (
               <div
                 key={recipient.id}
@@ -204,7 +203,9 @@ export function AddSecretView({
                 />
                 <RecipientKindIcon kind={recipient.kind} className="text-muted-foreground" />
                 <span className="font-medium font-mono text-[13px]">{recipient.label}</span>
-                {locked && <span className="text-[10.5px] text-brand">required — this host</span>}
+                {locked && (
+                  <span className="text-[10.5px] text-brand">required — primary identity</span>
+                )}
                 <span className="ml-auto text-[11px] text-muted-foreground">
                   {recipientKindLabel(recipient.kind)}
                 </span>

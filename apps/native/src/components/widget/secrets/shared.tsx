@@ -1,7 +1,17 @@
-import { ArrowLeft, Check, Copy, KeyRound, Lock, Monitor, TriangleAlert, User } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  CircleHelp,
+  Copy,
+  KeyRound,
+  Lock,
+  Monitor,
+  TriangleAlert,
+  User,
+} from "lucide-react";
 import type { ReactNode } from "react";
 
-import type { RecipientKind } from "@/ipc/orpc-bindings";
+import type { DecryptionCapability, RecipientKind } from "@/ipc/orpc-bindings";
 import { cn } from "@/lib/utils";
 
 export function RecipientKindIcon({
@@ -16,12 +26,12 @@ export function RecipientKindIcon({
 }
 
 export function recipientKindLabel(kind: RecipientKind): string {
-  if (kind === "host") return "Host key";
-  if (kind === "user") return "User key";
-  return "Unclassified key";
+  if (kind === "host") return "Host decryption identity";
+  if (kind === "user") return "User decryption identity";
+  return "Unclassified recipient";
 }
 
-export function ThisHostChip({ className }: { className?: string }) {
+export function LocalIdentityChip({ className }: { className?: string }) {
   return (
     <span
       className={cn(
@@ -29,22 +39,27 @@ export function ThisHostChip({ className }: { className?: string }) {
         className,
       )}
     >
-      This host
+      Local identity
     </span>
   );
 }
 
-/** Green "Can decrypt" / amber "No access" pill for a secret row. */
-export function AccessBadge({ canDecrypt }: { canDecrypt: boolean }) {
-  return canDecrypt ? (
+/** Capability is positive only when a matching local identity is known. */
+export function AccessBadge({ capability }: { capability: DecryptionCapability }) {
+  return capability === "available" ? (
     <span className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/15 px-1.5 py-px font-medium text-[11px] text-success">
       <Check className="size-3" aria-hidden="true" />
       Can decrypt
     </span>
-  ) : (
+  ) : capability === "unavailable" ? (
     <span className="inline-flex items-center gap-1 rounded-md border border-warning/30 bg-warning/15 px-1.5 py-px font-medium text-[11px] text-warning">
       <Lock className="size-3" aria-hidden="true" />
       No access
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 rounded-md border border-muted-foreground/30 bg-muted/35 px-1.5 py-px font-medium text-[11px] text-muted-foreground">
+      <CircleHelp className="size-3" aria-hidden="true" />
+      Unknown
     </span>
   );
 }

@@ -1,4 +1,14 @@
-import { Check, Eye, EyeOff, Loader2, Lock, Pencil, RefreshCw, Trash2 } from "lucide-react";
+import {
+  Check,
+  CircleHelp,
+  Eye,
+  EyeOff,
+  Loader2,
+  Lock,
+  Pencil,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -6,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { client } from "@/lib/orpc";
 import { RecipientKindIcon, ViewHeader } from "./shared";
-import { backendLabel, canHostDecrypt, } from "./types";
+import { backendLabel } from "./types";
 import type { SecretEntry, SecretsVault } from "@/ipc/orpc-bindings";
 
 /**
@@ -30,8 +40,7 @@ export function SecretDetailView({
 }) {
   const MASKED_SECRET_VALUE = "****************";
   const readOnly = true; // TODO: implement edit flow
-  const canDecrypt = canHostDecrypt(secret, vault.hostId);
-  const committedRecipients = vault.recipients.filter((r) => r.inUse);
+  const capability = secret.decryptionCapability;
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [decryptedValue, setDecryptedValue] = useState<string | null>(null);
   const [revealError, setRevealError] = useState<string | null>(null);
@@ -87,8 +96,15 @@ export function SecretDetailView({
 
       <div className="rounded-[11px] border border-border bg-muted/20 px-4 py-3.5">
         <div className="mb-2.5 font-medium text-xs">Decrypted value</div>
-        {canDecrypt ? (
+        {capability !== "unavailable" ? (
           <div className="flex flex-col gap-2">
+            {capability === "unknown" ? (
+              <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+                <CircleHelp className="size-3.5" aria-hidden="true" />
+                Capability is unknown; revealing will ask SOPS to try the identities available to
+                this process.
+              </div>
+            ) : null}
             <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
               <Lock className="size-3.5" aria-hidden="true" />
               <code className="font-mono text-xs whitespace-pre-wrap break-all text-foreground">
@@ -117,36 +133,44 @@ export function SecretDetailView({
         ) : (
           <div className="flex items-center gap-2 text-[13px] text-warning">
             <Lock className="size-3.5" aria-hidden="true" />
-            This host isn't a recipient — add it in Rotate &amp; re-key to decrypt here.
+            No usable local decryption identity is available.
           </div>
         )}
       </div>
 
       <div>
-        <div className="mb-2 font-medium text-xs">Recipients — can this host decrypt?</div>
+        <div className="mb-2 font-medium text-xs">Public recipients recorded for this secret</div>
         <div className="flex flex-col gap-1.5">
-          {committedRecipients.map((recipient) => {
-            const isRecipient = secret.recipientIds.includes(recipient.id);
+          {!secret.publicRecipientsResolved ? (
+            <div className="rounded-[9px] border border-border px-3 py-2 text-[11.5px] text-muted-foreground">
+              Recipient metadata could not be resolved; this does not establish that decryption is
+              unavailable.
+            </div>
+          ) : null}
+          {secret.publicRecipients.map((publicKey) => {
+            const recipient = vault.recipients.find(
+              (candidate) => candidate.publicKey === publicKey,
+            );
             return (
               <div
-                key={recipient.id}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-[9px] border border-border px-3 py-2",
-                  !isRecipient && "opacity-55",
-                )}
+                key={publicKey}
+                className="flex items-center gap-2.5 rounded-[9px] border border-border px-3 py-2"
               >
-                <RecipientKindIcon kind={recipient.kind} className="text-muted-foreground" />
-                <span className="font-mono text-[13px]">{recipient.label}</span>
-                {recipient.isThisHost && <span className="text-[10.5px] text-brand">this host</span>}
+                <RecipientKindIcon
+                  kind={recipient?.kind ?? "unknown"}
+                  className="text-muted-foreground"
+                />
+                <span className="min-w-0 truncate font-mono text-[13px]">
+                  {recipient?.label ?? publicKey}
+                </span>
+                {recipient?.isLocalIdentity && (
+                  <span className="text-[10.5px] text-brand">local identity</span>
+                )}
                 <span className="ml-auto">
-                  {isRecipient ? (
-                    <span className="inline-flex items-center gap-1 text-[11.5px] text-success">
-                      <Check className="size-3" aria-hidden="true" />
-                      can decrypt
-                    </span>
-                  ) : (
-                    <span className="text-[11.5px] text-muted-foreground/70">not a recipient</span>
-                  )}
+                  <span className="inline-flex items-center gap-1 text-[11.5px] text-success">
+                    <Check className="size-3" aria-hidden="true" />
+                    recorded recipient
+                  </span>
                 </span>
               </div>
             );
@@ -183,8 +207,8 @@ export function SecretDetailView({
                 {toolSupported && toolEnabled ? (
                   <>
                     nixmac's agent can call{" "}
-                    <code className="font-mono text-foreground">use_secret.{secret.id}</code> to read
-                    this value at its runtime path — without ever printing the plaintext.
+                    <code className="font-mono text-foreground">use_secret.{secret.id}</code> to
+                    read this value at its runtime path — without ever printing the plaintext.
                   </>
                 ) : (
                   "Off by default. Enable to generate a scoped tool the agent can call to use this value — without ever printing the plaintext."

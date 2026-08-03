@@ -8,7 +8,9 @@ cfg:
   let
     hostKeys = cfg.services.openssh.hostKeys or [];
     sopsPaths = cfg.sops.age.sshKeyPaths or [];
+    ageKeyFile = cfg.sops.age.keyFile or null;
   in {
+    ageKeyFile = if ageKeyFile == null then null else toString ageKeyFile;
     hostKeys = map (key: {
       path = key.path;
       publicKeyPath = key.path + ".pub";
@@ -25,9 +27,10 @@ cfg:
 "#;
 
 // TODO(agenix-read): Project `cfg.age.identityPaths` alongside the SOPS
-// identities above. Preserve both the raw SSH public key and its ssh-to-age
-// recipient as aliases of the same local identity so an agenix `publicKeys`
-// rule written in either format resolves to the correct recipient.
+// identities above and materialize them as local decryption identities.
+// Preserve both each raw SSH public key and its ssh-to-age recipient as aliases
+// of the same identity so an agenix `publicKeys` rule written in either format
+// resolves to the correct public recipient.
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -42,6 +45,7 @@ pub(crate) struct HostKey {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SecretIdentities {
+    pub age_key_file: Option<String>,
     #[serde(default)]
     pub host_keys: Vec<HostKey>,
     #[serde(default)]
@@ -160,7 +164,7 @@ mod tests {
             source: RecipientSource::Unknown,
             in_use: true,
             registrations: Vec::new(),
-            is_this_host: false,
+            is_local_identity: false,
         }
     }
 
@@ -168,6 +172,7 @@ mod tests {
     fn parses_secret_identity_projection() {
         let identities: SecretIdentities = serde_json::from_str(
             r#"{
+                "ageKeyFile": "/Users/test/.config/sops/age/keys.txt",
                 "hostKeys": [{
                     "path": "/etc/ssh/ssh_host_ed25519_key",
                     "publicKeyPath": "/etc/ssh/ssh_host_ed25519_key.pub",
@@ -180,6 +185,10 @@ mod tests {
         .expect("identity projection should deserialize");
 
         assert_eq!(identities.host_keys.len(), 1);
+        assert_eq!(
+            identities.age_key_file.as_deref(),
+            Some("/Users/test/.config/sops/age/keys.txt")
+        );
         assert!(identities.host_keys[0].used_by_sops);
         assert_eq!(
             identities.host_keys[0].public_key_path,
@@ -195,6 +204,7 @@ mod tests {
 
         assert!(identities.host_keys.is_empty());
         assert!(identities.other_sops_identities.is_empty());
+        assert!(identities.age_key_file.is_none());
     }
 
     #[test]

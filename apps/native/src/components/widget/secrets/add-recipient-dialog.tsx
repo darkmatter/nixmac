@@ -98,7 +98,9 @@ export function AddRecipientDialog({
   const [sshKey, setSshKey] = useState("");
   const [hardwareKind, setHardwareKind] = useState<"yubikey" | "se" | null>(null);
 
-  const host = vault.recipients.find((r) => r.id === vault.hostId);
+  const primaryIdentity = vault.recipients.find(
+    (r) => r.id === vault.primaryDecryptionIdentityId,
+  );
 
   // Each method resolves to a derived key (or an explanation why not).
   let derived: DerivedKey | null = null;
@@ -142,13 +144,13 @@ export function AddRecipientDialog({
     } else if (trimmed.length > 0) {
       problem = "Paste an OpenSSH public key line (ssh-ed25519 AAAA…).";
     }
-  } else if (method === "local" && host) {
+  } else if (method === "local" && primaryIdentity) {
     derived = {
-      publicKey: host.publicKey,
+      publicKey: primaryIdentity.publicKey,
       source: "Derived with age-keygen -y from the private key",
       recipientSource: "ageKeyFile",
-      defaultLabel: host.label,
-      device: "This Mac",
+      defaultLabel: primaryIdentity.label,
+      device: "Local decryption identity",
     };
   } else if (method === "hardware" && hardwareKind) {
     derived =
@@ -190,7 +192,7 @@ export function AddRecipientDialog({
         { backend: "sops", file: ".sops.yaml" },
         { backend: "agenix", file: "secrets/secrets.nix" },
       ],
-      isThisHost: false,
+      isLocalIdentity: false,
     });
   };
 

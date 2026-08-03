@@ -58,7 +58,7 @@ export function RotateView({
       <div className="flex flex-col gap-1.5">
         {vault.entries.map((secret) => {
           const checked = selectedIds.includes(secret.id);
-          const recipientCount = secret.recipientIds.length;
+          const recipientCount = secret.publicRecipients.length;
           return (
             <div
               key={secret.id}
@@ -89,7 +89,9 @@ export function RotateView({
                 {backendLabel(secret.backend)}
               </span>
               <span className="ml-auto text-[11.5px] text-muted-foreground">
-                {recipientCount} {recipientCount === 1 ? "recipient" : "recipients"}
+                {secret.publicRecipientsResolved
+                  ? `${recipientCount} ${recipientCount === 1 ? "recipient" : "recipients"}`
+                  : "Unknown recipients"}
               </span>
             </div>
           );
