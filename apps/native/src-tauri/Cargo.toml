@@ -22,6 +22,9 @@ required-features = ["codegen"]
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 serde_json = "1"
+# Writes the build-ID-stamped Info.plist the bundler merges; the crate reads the
+# same key back out of an installed bundle (`build_id.rs`).
+plist = "1.9.0"
 
 [dependencies]
 tauri = { version = "2", features = [
@@ -155,6 +158,32 @@ objc2-security = { version = "0.3.2", default-features = false, features = [
   "SecBase",
   "cssmerr",
 ] }
+# SMAppService bindings for the privileged-helper registration
+# (`privileged_helper/service.rs`). Generated from the SDK headers, so the
+# asynchronous `unregisterWithCompletionHandler:` and the typed status enum are
+# both reachable — the two things the published wrapper crates
+# (`smappservice-rs`, `servicemanagement-rs`) do not offer.
+objc2-service-management = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "SMAppService",
+  "SMErrors",
+  "block2",
+  "objc2",
+  "objc2-foundation",
+] }
+# Already in the tree through the objc2 framework crates; declared directly
+# because the SMAppService adapter constructs NSString/NSError values, retains
+# the unregister completion block, and hops onto the main queue itself.
+objc2 = "0.6"
+objc2-foundation = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "NSDictionary",
+  "NSError",
+  "NSString",
+  "NSThread",
+] }
+block2 = "0.6"
+dispatch2 = "0.3"
 
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.31", features = ["user"] }
