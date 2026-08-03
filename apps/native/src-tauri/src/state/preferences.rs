@@ -105,9 +105,6 @@ pub fn write<R: Runtime>(app: &AppHandle<R>, f: impl FnOnce(&mut GlobalPreferenc
 /// automatic path adopt or re-adopt a registration on the strength of a failed
 /// read. That only covers the observable being absent — the writers above have
 /// all already run by the time anything reads this.
-///
-/// Caller-less until the GUI's helper reconciliation and apply consult it.
-#[allow(dead_code)]
 pub fn read_helper_preference<R: Runtime>(app: &AppHandle<R>) -> Result<HelperPreference> {
     try_read(app)
         .map(|prefs| prefs.helper_preference)
@@ -123,9 +120,6 @@ pub fn read_helper_preference<R: Runtime>(app: &AppHandle<R>) -> Result<HelperPr
 /// logs its failures). A decision lost to a failed flush is recovered the way
 /// the user made it — by granting or disabling again — never by an automatic
 /// path inventing one.
-///
-/// Caller-less until the explicit grant and disable actions are wired up.
-#[allow(dead_code)]
 pub fn store_helper_decision<R: Runtime>(
     app: &AppHandle<R>,
     decision: HelperDecision,

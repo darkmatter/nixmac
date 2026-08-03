@@ -83,7 +83,7 @@ pub type ServiceCallOutcome = Result<(), ServiceCallError>;
 /// variant also states what is registered afterwards, because that is what the
 /// caller has to report and what its next observation has to agree with.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ReplaceFailure {
+pub enum ReplaceFailure<E> {
     /// Refused before anything was dispatched, so nothing changed. The main
     /// thread is the one that has to issue both calls; awaiting them there
     /// would starve the queue that makes them.
@@ -93,6 +93,10 @@ pub enum ReplaceFailure {
     /// The unregister never reported inside the window. The old process may
     /// still be alive, so no replacement was registered.
     UnregisterSilent,
+    /// The old process is gone and the caller declined the replacement, so no
+    /// helper is registered now. The reason is the caller's own: this module
+    /// supplies the point where such a decision is possible and takes none.
+    RegisterDeclined(E),
     /// The old process is gone and the replacement was refused: no helper is
     /// registered now.
     RegisterFailed(ServiceCallError),
@@ -101,7 +105,7 @@ pub enum ReplaceFailure {
     RegisterSilent,
 }
 
-impl std::fmt::Display for ReplaceFailure {
+impl<E: std::fmt::Display> std::fmt::Display for ReplaceFailure<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::CalledOnMainThread => {
@@ -109,8 +113,35 @@ impl std::fmt::Display for ReplaceFailure {
             }
             Self::UnregisterFailed(error) => write!(f, "unregister failed: {error}"),
             Self::UnregisterSilent => f.write_str("unregister never reported"),
+            Self::RegisterDeclined(reason) => write!(f, "the replacement was declined: {reason}"),
             Self::RegisterFailed(error) => write!(f, "register failed: {error}"),
             Self::RegisterSilent => f.write_str("register never reported"),
+        }
+    }
+}
+
+/// Why a standalone register stopped short. [`ReplaceFailure`]'s register
+/// variants say the same things about a register that followed a kill.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RegisterFailure {
+    /// Refused before anything was dispatched: the main thread is the one that
+    /// has to make the call, so awaiting it there would starve the queue.
+    CalledOnMainThread,
+    /// The platform refused the registration; nothing is registered.
+    Failed(ServiceCallError),
+    /// The call never reported inside the window. Whether it took is unknown —
+    /// only a fresh observation can say.
+    Silent,
+}
+
+impl std::fmt::Display for RegisterFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::CalledOnMainThread => {
+                f.write_str("a registration cannot be awaited on the main thread")
+            }
+            Self::Failed(error) => write!(f, "register failed: {error}"),
+            Self::Silent => f.write_str("register never reported"),
         }
     }
 }
@@ -148,9 +179,8 @@ fn fold_status_probe(
 
 /// The typed registration status of nixmac's helper service.
 ///
-/// Caller-less until the GUI's helper reconciliation decides from it; the
-/// permissions UI reads the folded [`status`] instead.
-#[allow(dead_code)]
+/// What the GUI's helper reconciliation decides from; the permissions UI reads
+/// the folded [`status`] instead.
 pub fn registration_status() -> Result<RegistrationStatus> {
     platform_registration_status()
 }
@@ -166,7 +196,7 @@ pub fn unregister() -> Result<HelperServiceStatus> {
 }
 
 /// Replaces the registered helper: unregisters, waits for the running process
-/// to be killed, then registers the replacement.
+/// to be killed, asks `commit_to_register`, then registers the replacement.
 ///
 /// The asynchronous unregister exists for one reason: its completion fires
 /// *after* the running helper process has been killed, which is the only signal
@@ -177,22 +207,37 @@ pub fn unregister() -> Result<HelperServiceStatus> {
 /// the second dispatch is unavoidably a later main-queue turn than the first,
 /// because this function does not reach it until the first has reported.
 ///
+/// `commit_to_register` runs at the one moment between the two calls where the
+/// old process is confirmed gone and nothing is registered yet — the only place
+/// a caller can re-check a decision that a replacement would otherwise
+/// invalidate. It runs on the *calling* thread, not on the main queue, and an
+/// `Err` leaves no helper registered and is reported verbatim as
+/// [`ReplaceFailure::RegisterDeclined`]. Nothing here inspects that reason:
+/// which conditions may decline a replacement is the caller's policy, and this
+/// module holds none.
+///
 /// Blocks for at most `within` across both calls. Both are issued *on* the main
 /// queue, so a main-thread caller would starve the queue that has to make them
 /// and see a callback that never arrives; that is refused up front rather than
 /// left to a misread timeout. A GUI calls this off the main thread.
-///
-/// Caller-less until the GUI's helper reconciliation replaces a helper.
-#[allow(dead_code)]
-pub fn replace_helper(within: Duration) -> Result<(), ReplaceFailure> {
-    replace_helper_via(&on_later_main_queue_turn, on_main_thread(), within)
+pub fn replace_helper<E>(
+    within: Duration,
+    commit_to_register: impl FnOnce() -> Result<(), E>,
+) -> Result<(), ReplaceFailure<E>> {
+    replace_helper_via(
+        &on_later_main_queue_turn,
+        on_main_thread(),
+        within,
+        commit_to_register,
+    )
 }
 
-fn replace_helper_via(
+fn replace_helper_via<E>(
     dispatch: LaterMainQueueTurn<'_>,
     on_main_thread: bool,
     within: Duration,
-) -> Result<(), ReplaceFailure> {
+    commit_to_register: impl FnOnce() -> Result<(), E>,
+) -> Result<(), ReplaceFailure<E>> {
     if on_main_thread {
         return Err(ReplaceFailure::CalledOnMainThread);
     }
@@ -203,36 +248,82 @@ fn replace_helper_via(
     // main queue itself. That no retained object can travel is enforced rather
     // than trusted — `Retained` is not `Send` and the dispatch demands `Send`.
     let killed = dispatched_call(dispatch, platform_unregister_awaiting_kill);
-    fold_replacement(awaited(killed, deadline), || {
+    fold_replacement(awaited(killed, deadline), commit_to_register, || {
         // Reached only once the unregister has reported, which is what makes
         // this dispatch a later main-queue turn than that one.
-        let registered = dispatched_call(dispatch, |sink| {
-            let _ = sink.send(platform_register_reporting_error());
-        });
-        awaited(registered, deadline)
+        dispatched_register(dispatch, deadline)
     })
 }
 
 /// Decides a replacement from what the two calls reported, `None` meaning
 /// nothing reported inside the window.
 ///
-/// `register` is called only when the unregister confirmed the kill: every other
-/// path leaves a process that may still be running, and registering on top of
-/// one is the thing this whole sequence exists to avoid.
-fn fold_replacement(
+/// `commit_to_register` and `register` are reached only when the unregister
+/// confirmed the kill: every other path leaves a process that may still be
+/// running, and registering on top of one is the thing this whole sequence
+/// exists to avoid. A caller that declines stops there too — with the old
+/// process already gone, since the decision is only possible after the kill it
+/// is being asked about.
+fn fold_replacement<E>(
     killed: Option<ServiceCallOutcome>,
+    commit_to_register: impl FnOnce() -> Result<(), E>,
     register: impl FnOnce() -> Option<ServiceCallOutcome>,
-) -> Result<(), ReplaceFailure> {
+) -> Result<(), ReplaceFailure<E>> {
     match killed {
         Some(Ok(())) => {}
         Some(Err(error)) => return Err(ReplaceFailure::UnregisterFailed(error)),
         None => return Err(ReplaceFailure::UnregisterSilent),
+    }
+    if let Err(reason) = commit_to_register() {
+        return Err(ReplaceFailure::RegisterDeclined(reason));
     }
     match register() {
         Some(Ok(())) => Ok(()),
         Some(Err(error)) => Err(ReplaceFailure::RegisterFailed(error)),
         None => Err(ReplaceFailure::RegisterSilent),
     }
+}
+
+/// Registers the bundled helper on a later main-queue run-loop turn, with
+/// nothing unregistered first.
+///
+/// This is the path from `notRegistered`, where there is no process to kill and
+/// so nothing to wait for. Replacing a *running* helper goes through
+/// [`replace_helper`], which calls the same dispatch as its second half — one
+/// register implementation, so the later-turn dispatch and the window cannot
+/// drift apart between the two paths.
+///
+/// Refused on the main thread for the same reason as [`replace_helper`]: the
+/// call is issued *on* the main queue and awaited here.
+pub fn register_on_later_turn(within: Duration) -> Result<(), RegisterFailure> {
+    register_on_later_turn_via(&on_later_main_queue_turn, on_main_thread(), within)
+}
+
+fn register_on_later_turn_via(
+    dispatch: LaterMainQueueTurn<'_>,
+    on_main_thread: bool,
+    within: Duration,
+) -> Result<(), RegisterFailure> {
+    if on_main_thread {
+        return Err(RegisterFailure::CalledOnMainThread);
+    }
+    match dispatched_register(dispatch, Instant::now() + within) {
+        Some(Ok(())) => Ok(()),
+        Some(Err(error)) => Err(RegisterFailure::Failed(error)),
+        None => Err(RegisterFailure::Silent),
+    }
+}
+
+/// Dispatches the register to a later main-queue turn and waits out `deadline`
+/// for it, like every other call here.
+fn dispatched_register(
+    dispatch: LaterMainQueueTurn<'_>,
+    deadline: Instant,
+) -> Option<ServiceCallOutcome> {
+    let registered = dispatched_call(dispatch, |sink| {
+        let _ = sink.send(platform_register_reporting_error());
+    });
+    awaited(registered, deadline)
 }
 
 /// Dispatches one ServiceManagement call to a later main-queue turn and hands
@@ -677,6 +768,15 @@ mod tests {
         }
     }
 
+    /// The gate every test below that is not about declining passes: it commits,
+    /// and records that it was consulted at all.
+    fn committing(consulted: &Cell<bool>) -> impl FnOnce() -> Result<(), &'static str> {
+        move || {
+            consulted.set(true);
+            Ok(())
+        }
+    }
+
     #[test]
     fn a_replacement_on_the_main_thread_is_refused_before_anything_is_dispatched() {
         // The whole reason this is one blocking call. The main thread is what
@@ -685,39 +785,82 @@ mod tests {
         // of a deadlock. Refusing up front makes it a fact instead, and leaves
         // the registration exactly as it was.
         let dispatched = Cell::new(0);
+        let consulted = Cell::new(false);
 
         let outcome = replace_helper_via(
             &counting_dispatch(&dispatched),
             true,
             Duration::from_secs(30),
+            committing(&consulted),
         );
 
         assert_eq!(outcome, Err(ReplaceFailure::CalledOnMainThread));
         assert_eq!(dispatched.get(), 0);
+        assert!(
+            !consulted.get(),
+            "asked to commit to a replacement it refused"
+        );
     }
 
     #[test]
     fn a_silent_unregister_expires_and_never_dispatches_a_register() {
         // A completion that never fires leaves the old process possibly alive,
         // so the replacement must not be registered on top of it — and the
-        // window is what stops a silent callback from holding the caller.
+        // window is what stops a silent callback from holding the caller. The
+        // gate is not consulted either: there is no point asking whether to
+        // replace a process that may still be running.
         let dispatched = Cell::new(0);
+        let consulted = Cell::new(false);
 
         let outcome = replace_helper_via(
             &counting_dispatch(&dispatched),
             false,
             Duration::from_secs(30),
+            committing(&consulted),
         );
 
         assert_eq!(outcome, Err(ReplaceFailure::UnregisterSilent));
         assert_eq!(dispatched.get(), 1, "the register was never dispatched");
+        assert!(!consulted.get());
+    }
+
+    #[test]
+    fn a_register_on_the_main_thread_is_refused_before_anything_is_dispatched() {
+        // Same starvation argument as the replacement: this call is issued on
+        // the main queue and awaited here.
+        let dispatched = Cell::new(0);
+
+        let outcome = register_on_later_turn_via(
+            &counting_dispatch(&dispatched),
+            true,
+            Duration::from_secs(30),
+        );
+
+        assert_eq!(outcome, Err(RegisterFailure::CalledOnMainThread));
+        assert_eq!(dispatched.get(), 0);
+    }
+
+    #[test]
+    fn a_register_that_never_reports_expires_as_silent() {
+        // The dropped sink is the callback that never arrives; the window is
+        // what keeps it from holding the caller.
+        let dispatched = Cell::new(0);
+
+        let outcome = register_on_later_turn_via(
+            &counting_dispatch(&dispatched),
+            false,
+            Duration::from_secs(30),
+        );
+
+        assert_eq!(outcome, Err(RegisterFailure::Silent));
+        assert_eq!(dispatched.get(), 1);
     }
 
     #[test]
     fn a_replacement_registers_only_after_the_kill_was_confirmed() {
         // The decision table, and the one rule inside it: every outcome but a
-        // confirmed kill leaves a process that may still be running, and the
-        // register must not be reached from any of them.
+        // confirmed kill leaves a process that may still be running, and
+        // neither the gate nor the register may be reached from any of them.
         for (killed, expected) in [
             (
                 Some(Err(refusal(3))),
@@ -725,26 +868,65 @@ mod tests {
             ),
             (None, Err(ReplaceFailure::UnregisterSilent)),
         ] {
+            let consulted = Cell::new(false);
             let registered = Cell::new(false);
 
-            let outcome = fold_replacement(killed, || {
+            let outcome = fold_replacement(killed, committing(&consulted), || {
                 registered.set(true);
                 Some(Ok(()))
             });
 
             assert_eq!(outcome, expected);
+            assert!(
+                !consulted.get(),
+                "asked to commit after an unconfirmed kill"
+            );
             assert!(!registered.get(), "registered after an unconfirmed kill");
         }
 
-        assert_eq!(fold_replacement(Some(Ok(())), || Some(Ok(()))), Ok(()));
+        let consulted = Cell::new(false);
         assert_eq!(
-            fold_replacement(Some(Ok(())), || Some(Err(refusal(4)))),
+            fold_replacement(Some(Ok(())), committing(&consulted), || Some(Ok(()))),
+            Ok(())
+        );
+        assert!(consulted.get(), "registered without asking");
+        assert_eq!(
+            fold_replacement(Some(Ok(())), committing(&consulted), || Some(Err(refusal(
+                4
+            )))),
             Err(ReplaceFailure::RegisterFailed(refusal(4)))
         );
         assert_eq!(
-            fold_replacement(Some(Ok(())), || None),
+            fold_replacement(Some(Ok(())), committing(&consulted), || None),
             Err(ReplaceFailure::RegisterSilent)
         );
+    }
+
+    #[test]
+    fn a_declined_replacement_kills_the_old_helper_and_registers_nothing() {
+        // The point of the gate: after the kill is confirmed, a caller whose
+        // decision changed meanwhile stops the sequence here rather than
+        // discovering afterwards that a helper it no longer wants is
+        // registered. Its reason travels back untouched — this module reads
+        // nothing into it.
+        let registered = Cell::new(false);
+
+        let outcome = fold_replacement(
+            Some(Ok(())),
+            || Err("the user disabled the helper while it was retiring"),
+            || {
+                registered.set(true);
+                Some(Ok(()))
+            },
+        );
+
+        assert_eq!(
+            outcome,
+            Err(ReplaceFailure::RegisterDeclined(
+                "the user disabled the helper while it was retiring"
+            ))
+        );
+        assert!(!registered.get(), "registered after being declined");
     }
 
     #[test]

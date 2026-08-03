@@ -30,9 +30,7 @@ pub const ABSENCE_ATTEMPT_INTERVAL: Duration = Duration::from_millis(2_500);
 /// The window an absence verdict spans: the whole point of the constant is that
 /// other bounded waits can be defined relative to it — in particular verifying
 /// a *fresh* registration has to wait longer than this, because launchd still
-/// has to spawn that helper and let it bind. Caller-less until that
-/// verification exists.
-#[allow(dead_code)]
+/// has to spawn that helper and let it bind.
 pub const POSITIVE_ABSENCE_WINDOW: Duration =
     ABSENCE_ATTEMPT_INTERVAL.saturating_mul(ABSENCE_ATTEMPTS - 1);
 
@@ -80,9 +78,7 @@ impl ProbeClock for SleepingClock {
 
 /// Observes the helper socket over the full absence window.
 ///
-/// Caller-less until the GUI's helper reconciliation and its Apply path consult
-/// it; it is pure observation, so nothing changes by calling it.
-#[allow(dead_code)]
+/// Pure observation: nothing changes by calling it, whatever it finds.
 pub fn observe_listener() -> ListenerObservation {
     observe_listener_at(std::path::Path::new(HELPER_SOCKET_PATH))
 }

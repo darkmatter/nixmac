@@ -9,6 +9,11 @@ pub mod client;
 pub mod helper_runtime;
 pub mod peer_auth;
 pub mod protocol;
+// Complete and unreachable from production: nothing calls the reconciliation
+// function yet. The change that wires it into startup, the grant and disable
+// actions, apply, and the updater removes this.
+#[allow(dead_code)]
+pub mod reconcile;
 pub mod root_activation;
 pub mod service;
 pub mod socket_probe;
