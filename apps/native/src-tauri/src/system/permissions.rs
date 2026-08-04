@@ -10,12 +10,15 @@
 //! - App Management - recommended so activation can update managed apps
 //! - Administrator privileges (sudo access)
 
+use crate::privileged_helper::reconcile::Reconciled;
 pub(crate) use crate::shared_types::{Permission, PermissionStatus, PermissionsState};
+use crate::system::helper_permission;
 use anyhow::Result;
 use log::{debug, info, warn};
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use tauri::{AppHandle, Runtime};
 
 impl Default for PermissionsState {
     fn default() -> Self {
@@ -82,6 +85,9 @@ fn get_default_permissions() -> Vec<Permission> {
         privileged_helper_permission(
             default_status,
             "Enable this once per device to allow nixmac to activate already-built system generations unattended.",
+            // No report yet, so nothing says macOS is waiting on the user. Every
+            // path that has one replaces this row whole (`helper_row`).
+            true,
         ),
     ]
 }
@@ -104,6 +110,11 @@ fn e2e_skip_permissions_enabled() -> bool {
 #[cfg(not(debug_assertions))]
 fn vite_skip_permissions_enabled() -> bool {
     false
+}
+
+/// Whether this build reports every permission granted without probing.
+pub(crate) fn skip_enabled() -> bool {
+    skip_permissions_enabled()
 }
 
 fn skip_permissions_enabled() -> bool {
@@ -140,7 +151,11 @@ fn granted_folder_permission(id: &str, name: &str, description: &str) -> Permiss
     }
 }
 
-fn privileged_helper_permission(status: PermissionStatus, instructions: &str) -> Permission {
+fn privileged_helper_permission(
+    status: PermissionStatus,
+    instructions: &str,
+    can_request_programmatically: bool,
+) -> Permission {
     Permission {
         id: "privileged-helper".to_string(),
         name: "Unattended Sync Helper".to_string(),
@@ -148,7 +163,7 @@ fn privileged_helper_permission(status: PermissionStatus, instructions: &str) ->
             "Required for unattended device sync to activate builds without a password prompt"
                 .to_string(),
         required: true,
-        can_request_programmatically: true,
+        can_request_programmatically,
         status,
         instructions: Some(instructions.to_string()),
     }
@@ -348,8 +363,12 @@ fn check_admin_privileges() -> PermissionStatus {
     }
 }
 
-/// Check all permissions and return the current state
-pub fn check_all_permissions() -> PermissionsState {
+/// Check all permissions and return the current state.
+///
+/// The helper row is one run of the reconciliation function, which is also how
+/// a routine refresh converges the installed helper on this build. It must not
+/// run on the main thread — see [`helper_permission::observe`].
+pub fn check_all_permissions<R: Runtime>(app: &AppHandle<R>) -> PermissionsState {
     // Debug/test environments may not have TCC permissions granted and cannot
     // obtain them programmatically, so the skip flags satisfy the whole gate.
     if skip_permissions_enabled() {
@@ -362,43 +381,43 @@ pub fn check_all_permissions() -> PermissionsState {
 
     // Fill in each permission status and update all_required_granted on the fly
     for perm in &mut permissions {
-        perm.status = match perm.id.as_str() {
-            "desktop" => check_desktop_access(),
-            "documents" => check_documents_access(),
-            "admin" => check_admin_privileges(),
-            "full-disk" => {
-                let (status, detail) = check_full_disk_access();
-                // Keep the default "how to grant it" text unless the probe has
-                // something more accurate to say.
-                if let Some(detail) = detail {
-                    perm.instructions = Some(detail);
+        // The helper row is the one row a report produces whole — its status, the
+        // sentence that tells the user what is true, and whether nixmac can still
+        // get anywhere on its own — so it is replaced rather than patched field by
+        // field, and `helper_row` stays the only place a report becomes a row.
+        if perm.id == "privileged-helper" {
+            *perm = helper_row(&check_privileged_helper(app));
+        } else {
+            perm.status = match perm.id.as_str() {
+                "desktop" => check_desktop_access(),
+                "documents" => check_documents_access(),
+                "admin" => check_admin_privileges(),
+                "full-disk" => {
+                    let (status, detail) = check_full_disk_access();
+                    // Keep the default "how to grant it" text unless the probe
+                    // has something more accurate to say.
+                    if let Some(detail) = detail {
+                        perm.instructions = Some(detail);
+                    }
+                    // A probe that could not decide must not keep the gate shut
+                    // — the same reasoning that makes app-management Recommended
+                    // rather than Required (see `app_management_permission`),
+                    // except discovered at runtime. Requiring access we cannot
+                    // verify shows a permissions banner to users who may well
+                    // have granted it. Only this row relaxes: every other
+                    // `Unknown` still blocks.
+                    if status == PermissionStatus::Unknown {
+                        perm.required = false;
+                    }
+                    status
                 }
-                // A probe that could not decide must not keep the gate shut —
-                // the same reasoning that makes app-management Recommended
-                // rather than Required (see `app_management_permission`), except
-                // discovered at runtime. Requiring access we cannot verify shows
-                // a permissions banner to users who may well have granted it.
-                // Only this row relaxes: every other `Unknown` still blocks.
-                if status == PermissionStatus::Unknown {
-                    perm.required = false;
+                "app-management" => check_app_management(),
+                other => {
+                    debug_assert!(false, "no probe for permission id {other:?}");
+                    PermissionStatus::Unknown
                 }
-                status
-            }
-            "app-management" => check_app_management(),
-            "privileged-helper" => {
-                let (status, detail) = check_privileged_helper();
-                // Keep the default instructions when healthy; surface what is
-                // actually wrong otherwise.
-                if let Some(detail) = detail {
-                    perm.instructions = Some(detail);
-                }
-                status
-            }
-            other => {
-                debug_assert!(false, "no probe for permission id {other:?}");
-                PermissionStatus::Unknown
-            }
-        };
+            };
+        }
 
         // If this permission is required and not granted, mark all_required_granted as false
         if perm.required && perm.status != PermissionStatus::Granted {
@@ -430,7 +449,10 @@ pub fn check_all_permissions() -> PermissionsState {
 /// Request a specific permission
 /// For programmatic permissions (desktop, documents), this triggers the OS prompt
 /// For manual permissions (FDA, admin), this returns instructions
-pub fn request_permission(permission_id: &str) -> Result<Permission> {
+pub fn request_permission<R: Runtime>(
+    app: &AppHandle<R>,
+    permission_id: &str,
+) -> Result<Permission> {
     info!("Requesting permission: {}", permission_id);
 
     match permission_id {
@@ -569,225 +591,44 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
 
             Ok(app_management_permission(check_app_management()))
         }
-        "privileged-helper" => {
-            // SMAppService registration requires the helper binary and its
-            // LaunchDaemon plist to be embedded inside the .app bundle
-            // (Contents/MacOS/nixmac-helper and
-            // Contents/Library/LaunchDaemons/com.darkmatter.nixmac.helper.plist).
-            // Those assets are only staged by `bun run desktop:build[:local]`
-            // (externalBin in package.json). Under `tauri dev` the app runs as
-            // a bare binary from target/debug with no bundle, so
-            // registerAndReturnError: fails with an opaque "Operation not
-            // permitted". Detect that up front and surface a clear Pending
-            // state instead of propagating the OS error to the UI.
-            let install = crate::system::install_location::check_install_location();
-
-            const APPROVE_INSTRUCTIONS: &str = "Approve nixmac in System Settings → General → Login Items & Extensions if macOS asks for background item approval.";
-
-            let (status, instructions) = if install.bundle_path.is_none() {
-                warn!(
-                    "privileged helper registration skipped: nixmac is not running from a .app bundle"
-                );
-                (
-                    PermissionStatus::Pending,
-                    "Build a signed .app with `bun run desktop:build:local`, drag it into /Applications, and launch it from there to install the unattended sync helper. It cannot be installed from a dev build."
-                        .to_string(),
-                )
-            } else if cfg!(debug_assertions) && !install.in_applications_dir {
-                // Debug builds run out of the build tree, never /Applications.
-                // Registering from there would pin the LaunchDaemon to that
-                // bundle path, so only connect to a helper that an
-                // /Applications install already registered. Release builds
-                // keep the normal register flow regardless of location.
-                warn!(
-                    "privileged helper registration skipped: nixmac is running outside /Applications"
-                );
-                let (status, detail) = probe_installed_helper();
-                (
-                    status,
-                    detail.unwrap_or_else(|| APPROVE_INSTRUCTIONS.to_string()),
-                )
-            } else {
-                match crate::privileged_helper::service::register() {
-                    // Registration alone is not a working helper: wait briefly
-                    // for the freshly launched daemon to answer a status
-                    // round-trip before reporting Granted.
-                    Ok(status) if status.authorized => match await_helper_ready() {
-                        Ok(()) => (PermissionStatus::Granted, APPROVE_INSTRUCTIONS.to_string()),
-                        Err(error) => (
-                            PermissionStatus::Pending,
-                            format!(
-                                "The helper is registered but did not answer a status probe: {error:#}."
-                            ),
-                        ),
-                    },
-                    Ok(_) => {
-                        crate::privileged_helper::service::open_login_items_settings();
-                        (PermissionStatus::Pending, APPROVE_INSTRUCTIONS.to_string())
-                    }
-                    Err(error) => {
-                        warn!("privileged helper registration failed: {error:#}");
-                        crate::privileged_helper::service::open_login_items_settings();
-                        (PermissionStatus::Pending, APPROVE_INSTRUCTIONS.to_string())
-                    }
-                }
-            };
-            Ok(privileged_helper_permission(status, &instructions))
-        }
+        // Grant: record the decision, then reconcile under it. First-time
+        // registration and repairing a half-finished one are the same step, and
+        // the write is idempotent. Grant is the only action that may open Login
+        // Items; `darwin.helperGrant` is this same action.
+        "privileged-helper" => Ok(helper_row(&helper_permission::grant(app))),
         _ => Err(anyhow::anyhow!("Unknown permission: {}", permission_id)),
     }
 }
 
-/// Wait for a freshly registered helper daemon to come up and answer a
-/// `Status` round-trip. launchd starts it asynchronously after approval, so
-/// the socket appears a moment after `register()` returns.
-fn await_helper_ready() -> Result<()> {
-    const ATTEMPTS: u32 = 10;
-    const RETRY_DELAY: std::time::Duration = std::time::Duration::from_millis(300);
-
-    let mut last_error = anyhow::anyhow!("helper socket never appeared");
-    for attempt in 0..ATTEMPTS {
-        if attempt > 0 {
-            std::thread::sleep(RETRY_DELAY);
-        }
-        if !crate::privileged_helper::client::socket_available() {
-            continue;
-        }
-        match probe_helper_status() {
-            Ok(()) => return Ok(()),
-            Err(error) => last_error = error,
-        }
-    }
-    Err(last_error)
-}
-
-/// One authenticated `Status` round-trip, reduced to ok-or-why-not. A reply
-/// naming a state is the helper working; a typed refusal, an unparseable
-/// reply, and every exchange failure are reported as-is.
-fn probe_helper_status() -> Result<()> {
-    match crate::privileged_helper::client::status() {
-        Ok(exchange) => match exchange.reply {
-            crate::privileged_helper::protocol::HelperReply::Status { .. } => Ok(()),
-            reply => Err(anyhow::anyhow!("{}", reply.summary())),
-        },
-        Err(error) => Err(anyhow::anyhow!("{error}")),
-    }
-}
-
-/// One authenticated status round-trip to an already-installed helper
-/// daemon, bypassing SMAppService entirely. Used when the app is not running
-/// from /Applications: it must never install the helper from there (the
-/// LaunchDaemon would point at the wrong bundle path), but if a signed
-/// /Applications copy already installed one, mutual code-signature
-/// validation is what decides whether this copy may use it.
-fn probe_installed_helper() -> (PermissionStatus, Option<String>) {
-    const INSTALL_FROM_APPLICATIONS: &str = "nixmac is not running from /Applications, so it cannot install the unattended sync helper itself. Install it by launching a signed nixmac from /Applications; a correctly signed copy running elsewhere can then connect to it.";
-
-    if !crate::privileged_helper::client::socket_available() {
-        return (
-            PermissionStatus::Pending,
-            Some(INSTALL_FROM_APPLICATIONS.to_string()),
-        );
-    }
-    match crate::privileged_helper::client::status() {
-        Ok(exchange) => match exchange.reply {
-            crate::privileged_helper::protocol::HelperReply::Status { .. } => {
-                (PermissionStatus::Granted, None)
-            }
-            reply => (
-                PermissionStatus::Pending,
-                Some(format!(
-                    "The helper is running but did not answer a status probe: {}. {INSTALL_FROM_APPLICATIONS}",
-                    reply.summary()
-                )),
-            ),
-        },
-        // A close before any reply is deliberately ambiguous: the helper sends
-        // it both for a client it will not serve and for a connection dropped
-        // at its concurrency cap, and a helper that died mid-exchange looks
-        // the same. Report all of that, not just the refusal.
-        Err(crate::privileged_helper::client::HelperClientError::ClosedBeforeReply) => (
-            PermissionStatus::Pending,
-            Some(format!(
-                "The helper closed the connection without answering: it declined this app, is busy with other connections, or stopped. {INSTALL_FROM_APPLICATIONS}"
-            )),
-        ),
-        Err(error) => (
-            PermissionStatus::Pending,
-            Some(format!(
-                "The helper did not answer a status probe: {error}. {INSTALL_FROM_APPLICATIONS}"
-            )),
-        ),
-    }
-}
-
-/// Status of the unattended sync helper, with a detail message when it is
-/// not fully working.
+/// Status of the unattended sync helper: one run of the reconciliation
+/// function, as a permission row.
 ///
-/// `SMAppService` registration alone is not proof of a working helper: the
-/// approval persists in the BackgroundTaskManagement database even after the
-/// helper binary is gone or replaced. Granted therefore additionally requires
-/// a live status round-trip through the socket, which also exercises both
-/// code-signature checks (client validates the daemon, daemon validates this
-/// client).
-fn check_privileged_helper() -> (PermissionStatus, Option<String>) {
-    // Debug builds run outside /Applications (bare dev binaries or a locally
-    // built .app), where SMAppService describes this bundle copy rather than
-    // the daemon that an /Applications install registered. Skip it there and
-    // rely on the authenticated socket round-trip alone: a correctly signed
-    // copy can talk to an installed helper from anywhere. Release builds
-    // always go through the full SMAppService check below.
-    if cfg!(debug_assertions)
-        && !crate::system::install_location::check_install_location().in_applications_dir
-    {
-        return probe_installed_helper();
-    }
+/// Only a helper of this build answering an authenticated `Status` is granted.
+/// An `SMAppService` registration alone proves nothing — the approval outlives
+/// the binary it was granted for — and neither does a socket. Everything else is
+/// a report, and the report is what tells the user what to do: approve in Login
+/// Items, move the app to /Applications, restart the app, or wait out a running
+/// activation.
+fn check_privileged_helper<R: Runtime>(app: &AppHandle<R>) -> Reconciled {
+    let report = helper_permission::observe(app);
+    // A refresh is how a user comes back to this — opening the panel, or
+    // pressing Check again — and one run is usually not enough: the platform
+    // refuses a register for about a second after any unregister, so the run
+    // that repairs a helper typically reports a failure and needs a successor.
+    // Starting the loop here means the visit converges instead of handing back a
+    // scary report. A loop already running ignores this.
+    helper_permission::start_converging(app);
+    report
+}
 
-    let status = crate::privileged_helper::service::status();
-    if !status.available {
-        return (PermissionStatus::Unknown, status.detail);
-    }
-    if !status.authorized {
-        return (PermissionStatus::Pending, None);
-    }
-    if !status.socket_available {
-        return (
-            PermissionStatus::Pending,
-            Some(
-                "The helper is approved in Login Items, but its daemon is not running (no socket). Use Grant to re-register it, or toggle nixmac off and on in System Settings → General → Login Items & Extensions."
-                    .to_string(),
-            ),
-        );
-    }
-    match crate::privileged_helper::client::status() {
-        Ok(exchange) => match exchange.reply {
-            crate::privileged_helper::protocol::HelperReply::Status { .. } => {
-                (PermissionStatus::Granted, None)
-            }
-            reply => (
-                PermissionStatus::Pending,
-                Some(format!(
-                    "The helper is registered but did not answer a status probe: {}. Unattended sync will fall back to password prompts until a matching signed build talks to it.",
-                    reply.summary()
-                )),
-            ),
-        },
-        // Ambiguous by design, as above: declined client, connection cap, or a
-        // helper that stopped all close the same way.
-        Err(crate::privileged_helper::client::HelperClientError::ClosedBeforeReply) => (
-            PermissionStatus::Pending,
-            Some(
-                "The helper closed the connection without answering: it declined this app, is busy with other connections, or stopped. Unattended sync will fall back to password prompts until a matching signed build talks to it."
-                    .to_string(),
-            ),
-        ),
-        Err(error) => (
-            PermissionStatus::Pending,
-            Some(format!(
-                "The helper is registered but did not answer a status probe: {error}."
-            )),
-        ),
-    }
+/// One report as the permission row it produces.
+pub(crate) fn helper_row(report: &Reconciled) -> Permission {
+    let (status, detail) = helper_permission::row(report);
+    privileged_helper_permission(
+        status,
+        &detail,
+        helper_permission::can_request_programmatically(report),
+    )
 }
 
 /// Best-effort App Management status.
@@ -804,6 +645,29 @@ fn check_app_management() -> PermissionStatus {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::privileged_helper::reconcile::Reconciled;
+
+    /// The row a report produces has to carry the report's own answer to "is
+    /// System Settings where the user finishes this", or the panel offers the
+    /// wrong action: an approval waiting in Login Items would get a button that
+    /// hands the helper back instead of one that opens the pane. Asserted through
+    /// `helper_row` rather than on the predicate alone, because the wiring between
+    /// them is what the UI actually reads and nothing else pins it.
+    #[test]
+    fn the_row_takes_its_deep_link_from_the_report() {
+        assert!(!helper_row(&Reconciled::PendingApproval).can_request_programmatically);
+        assert!(helper_row(&Reconciled::AtThisBuild).can_request_programmatically);
+        assert!(helper_row(&Reconciled::NoHelper).can_request_programmatically);
+    }
+
+    /// A bare app handle. The skip flags below short-circuit before anything
+    /// reads app state, which is what keeps these tests from probing the real
+    /// helper.
+    fn mock_app() -> tauri::App<tauri::test::MockRuntime> {
+        tauri::test::mock_builder()
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .expect("mock app builds")
+    }
 
     #[cfg(debug_assertions)]
     #[test]
@@ -946,7 +810,8 @@ mod tests {
         unsafe { std::env::remove_var("NIXMAC_SKIP_PERMISSIONS") };
         unsafe { std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true") };
 
-        let state = check_all_permissions();
+        let app = mock_app();
+        let state = check_all_permissions(app.handle());
 
         assert!(state.all_required_granted);
         assert!(
@@ -969,7 +834,8 @@ mod tests {
         unsafe { std::env::set_var("NIXMAC_SKIP_PERMISSIONS", "true") };
         unsafe { std::env::remove_var("VITE_NIXMAC_SKIP_PERMISSIONS") };
 
-        let state = check_all_permissions();
+        let app = mock_app();
+        let state = check_all_permissions(app.handle());
 
         assert!(state.all_required_granted);
         assert!(

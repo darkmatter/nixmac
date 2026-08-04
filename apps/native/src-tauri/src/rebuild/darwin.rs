@@ -4,9 +4,11 @@
 
 use crate::ai::log_summarizer;
 use crate::privileged_helper::{
-    client as helper_client, protocol as helper_protocol, root_activation,
-    service as helper_service,
+    client as helper_client, protocol as helper_protocol, reconcile, root_activation,
+    service as helper_service, socket_probe,
 };
+use crate::rebuild::activation_path;
+use crate::system::helper_permission;
 use crate::utils::nix_string_literal;
 use chrono::Local;
 use log::{error, info, warn};
@@ -353,7 +355,8 @@ fn app_management_error_payload(
 /// Runs the equivalent of `darwin-rebuild switch` with streaming output in two steps:
 /// 1. `nix build` of the system closure as the user (no sudo), with the
 ///    out-link in app-support so the config dir stays clean
-/// 2. `<store path>/activate` as root via native macOS authentication dialog (supports Touch ID)
+/// 2. `<store path>/activate` as root — through the privileged helper when one is
+///    installed and enabled, otherwise via the native macOS admin password prompt
 ///
 /// This pattern avoids Git ownership issues by keeping all file operations
 /// under the user's permissions during the build phase while still making system
@@ -474,11 +477,16 @@ struct BuildResult {
 }
 
 /// Result of the activation step.
-struct ActivateResult {
-    success: bool,
-    code: i32,
-    stdout: String,
-    stderr: String,
+///
+/// Also how a refused activation is reported: `success: false` with the reason
+/// in `stderr`, which is the shape every consumer already renders (see
+/// [`super::activation_path`]).
+#[derive(Debug)]
+pub(crate) struct ActivateResult {
+    pub(crate) success: bool,
+    pub(crate) code: i32,
+    pub(crate) stdout: String,
+    pub(crate) stderr: String,
 }
 
 /// Run the build step as the current user (no sudo).
@@ -607,39 +615,21 @@ fn run_build_step(
     })
 }
 
-/// Run the activation step as root using native macOS authentication dialog.
-/// Uses `osascript` to show Touch ID / password dialog on compatible hardware.
-///
-/// Root cause of the "updating apps over SSH" error:
-///   `osascript do shell script ... with administrator privileges` spawns the
-///   privileged process in the *system* bootstrap domain (root context), not
-///   the user's Aqua GUI session domain.  The nix-darwin activation script
-///   calls `launchctl managername` and aborts with the "over SSH" error
-///   whenever the result is not "Aqua" — even when called from a GUI app.
-///
-/// Fix: the elevated step uses `launchctl asuser <uid>` to re-enter the
-///   user's Aqua bootstrap domain before exec'ing the activation script.
-///   fork()/exec() inherits the bootstrap port, so the activation script
-///   sees `launchctl managername == "Aqua"` and the App Management check
-///   proceeds correctly.
-///
-///   The elevated command is this binary re-executed in root-activation
-///   mode (`privileged_helper::root_activation`): fixed Rust code with the
-///   same hardening rules as the helper daemon — no shell script, no
-///   sudoers rules, no EXIT traps, absolute programs, and a fixed root-owned
-///   environment.
+/// Run the activation step, by whichever of the two paths is allowed — the
+/// privileged helper, or one native authentication dialog (see
+/// [`password_activation`]).
 fn run_activate_step(
+    app: &AppHandle,
     system_store_path: &Path,
-    allow_helper: bool,
 ) -> Result<ActivateResult, anyhow::Error> {
     let activate_path = system_store_path.join("activate");
-    run_activate_with_path(&activate_path.to_string_lossy(), allow_helper)
+    run_activate_with_path(app, &activate_path.to_string_lossy())
 }
 
 /// Activate a specific nix store path directly
-fn activate_store_path(store_path: &str) -> Result<ActivateResult, anyhow::Error> {
+fn activate_store_path(app: &AppHandle, store_path: &str) -> Result<ActivateResult, anyhow::Error> {
     let activate_path = format!("{}/activate", store_path);
-    run_activate_with_path(&activate_path, true)
+    run_activate_with_path(app, &activate_path)
 }
 
 /// Classify an activation failure into (error_type, error_message).
@@ -706,7 +696,7 @@ pub fn activate_store_path_stream(
             serde_json::json!({"chunk": "Activating previous nix store...\n"}),
         );
 
-        match activate_store_path(&store_path) {
+        match activate_store_path(&app_handle, &store_path) {
             Ok(result) => {
                 for line in result.stdout.lines() {
                     if !line.is_empty() {
@@ -761,8 +751,8 @@ pub fn activate_store_path_stream(
 }
 
 fn run_activate_with_path(
+    app: &AppHandle,
     activate_path: &str,
-    allow_helper: bool,
 ) -> Result<ActivateResult, anyhow::Error> {
     // Resolve the symlink to the real nix store path: the privileged step
     // only ever accepts canonical /nix/store activation paths.
@@ -770,19 +760,106 @@ fn run_activate_with_path(
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|_| activate_path.to_owned());
 
-    if allow_helper {
-        if let Some(result) = try_activate_with_helper(&real_activate) {
-            return result;
-        }
-    } else {
-        info!("[darwin] Skipping privileged helper for App Management-sensitive activation");
+    // Which path this apply may use is decided there, before any bytes reach
+    // the helper. Nothing in this module chooses between them.
+    activation_path::activate(&AppActivation { app }, &real_activate)
+}
+
+/// The observations and effects [`activation_path`] decides over. Nothing here
+/// decides anything; the two gates come from the replacement function's own, so
+/// Apply and reconciliation cannot disagree about where this copy runs from.
+struct AppActivation<'a> {
+    app: &'a AppHandle,
+}
+
+impl activation_path::ApplyEnvironment for AppActivation<'_> {
+    fn preference(&self) -> Result<crate::shared_types::HelperPreference, String> {
+        crate::state::preferences::read_helper_preference(self.app)
+            .map_err(|error| format!("{error:#}"))
     }
 
-    // Interactive fallback: one native admin prompt (Touch ID capable), then
-    // re-execute this binary in root-activation mode. The privileged step is
-    // fixed Rust code mirroring the helper daemon — direct exec of absolute
-    // programs with a fixed root-owned environment. No sudoers rules, EXIT
-    // traps, or requester-controlled PATH/HOME reach root.
+    fn displacement(&self) -> Option<String> {
+        reconcile::gates(&reconcile::LiveEnvironment::new(self.app))
+            .err()
+            .map(|report| helper_permission::describe(&report))
+    }
+
+    fn registration_status(&self) -> Result<helper_service::RegistrationStatus, String> {
+        helper_service::registration_status().map_err(|error| format!("{error:#}"))
+    }
+
+    fn dispatch_activation(
+        &self,
+        activate_path: &str,
+    ) -> Result<helper_protocol::HelperReply, activation_path::DispatchFailure> {
+        let request =
+            helper_protocol::activation_request(Path::new(activate_path)).map_err(|error| {
+                activation_path::DispatchFailure::Unusable(
+                    error.context("failed to build helper activation request"),
+                )
+            })?;
+        // The result arrives on this connection when the activation completes,
+        // under the client's one generous bound rather than the short leashes
+        // the other exchanges use (`client::ACTIVATION_TIMEOUT`). An activation
+        // still running when that expires is reported as an unknown outcome and
+        // never compensated. The connection itself is dropped with the exchange:
+        // only the replacement function holds one open.
+        helper_client::activate_store_path(&request)
+            .map(|exchange| exchange.reply)
+            .map_err(activation_path::DispatchFailure::Exchange)
+    }
+
+    fn observe_listener(&self) -> socket_probe::ListenerObservation {
+        socket_probe::observe_listener()
+    }
+
+    fn password_activate(&self, activate_path: &str) -> activation_path::PasswordActivation {
+        // The record and the prompt are one step: while this guard lives, the
+        // replacement function's register step ends its run rather than putting
+        // an activation-capable helper underneath this activation. `Err` is the
+        // other order — a replacement already holds the slot.
+        match reconcile::shared().start_password_activation() {
+            Ok(_recorded) => {
+                activation_path::PasswordActivation::Ran(password_activation(activate_path))
+            }
+            Err(reconcile::ReplacementInFlight) => {
+                activation_path::PasswordActivation::HelperBeingReplaced
+            }
+        }
+    }
+}
+
+/// The administrator-password path: one native macOS authentication dialog, then
+/// this binary re-executed in root-activation mode.
+///
+/// `osascript ... with administrator privileges` shows the legacy Security Agent
+/// dialog, which is password-only — macOS does not offer Touch ID there. Avoiding
+/// that prompt is what the privileged helper exists for.
+///
+/// Root cause of the "updating apps over SSH" error:
+///   `osascript do shell script ... with administrator privileges` spawns the
+///   privileged process in the *system* bootstrap domain (root context), not
+///   the user's Aqua GUI session domain.  The nix-darwin activation script
+///   calls `launchctl managername` and aborts with the "over SSH" error
+///   whenever the result is not "Aqua" — even when called from a GUI app.
+///
+/// Fix: the elevated step uses `launchctl asuser <uid>` to re-enter the
+///   user's Aqua bootstrap domain before exec'ing the activation script.
+///   fork()/exec() inherits the bootstrap port, so the activation script
+///   sees `launchctl managername == "Aqua"` and the App Management check
+///   proceeds correctly.
+///
+///   The elevated command is this binary re-executed in root-activation
+///   mode (`privileged_helper::root_activation`): fixed Rust code with the
+///   same hardening rules as the helper daemon — no shell script, no
+///   sudoers rules, no EXIT traps, absolute programs, and a fixed root-owned
+///   environment.
+///
+/// Reached only through [`activation_path::ApplyEnvironment::password_activate`],
+/// which records that a password activation is running for as long as this
+/// takes.
+fn password_activation(real_activate: &str) -> Result<ActivateResult, anyhow::Error> {
+    let real_activate = real_activate.to_owned();
     let root_args = root_activation::RootActivationArgs {
         // SAFETY: `getuid` is thread-safe, has no preconditions, and cannot fail.
         uid: unsafe { libc::getuid() },
@@ -824,113 +901,6 @@ fn run_activate_with_path(
         stdout: stdout_str,
         stderr: stderr_str,
     })
-}
-
-fn try_activate_with_helper(activate_path: &str) -> Option<Result<ActivateResult, anyhow::Error>> {
-    let status = helper_service::status();
-    if !status.authorized || !status.socket_available {
-        return None;
-    }
-    // `responding` is the authenticated `Status` round-trip
-    // `helper_service::status` already performed. Requiring it here is what
-    // keeps a helper from a previous release from failing the apply: it cannot
-    // answer this build's probe with a reply this build parses, so the
-    // osascript path takes over instead of the activation request coming back
-    // refused. This is transitional: the contract forbids a `Status` preflight
-    // from gating activation dispatch, and the wiring change that replaces this
-    // whole function with the Apply decision tables removes it.
-    if !status.responding {
-        info!(
-            "[darwin] privileged helper did not answer an authenticated status probe; falling back to osascript: {}",
-            status.detail.unwrap_or_default()
-        );
-        return None;
-    }
-
-    let request = match helper_protocol::activation_request(Path::new(activate_path)) {
-        Ok(request) => request,
-        Err(error) => {
-            return Some(Err(
-                error.context("failed to build helper activation request")
-            ));
-        }
-    };
-
-    match helper_client::activate_store_path(&request) {
-        Ok(exchange) => match exchange.reply {
-            helper_protocol::HelperReply::ActivationResult(result) => Some(Ok(ActivateResult {
-                success: result.ok,
-                code: result.code,
-                stdout: result.stdout,
-                // The result has no stderr: the activation log arrives
-                // merged into stdout, so only a helper-level error belongs
-                // in the stderr slot consumers show for failures.
-                stderr: result.error.unwrap_or_default(),
-            })),
-            // Every other reply means the helper did not start this
-            // activation: report rather than silently substituting the
-            // password path. No typed refusal is permission to activate some
-            // other way — a build mismatch says the installed helper must be
-            // upgraded or disabled, and a request-not-understood (which an
-            // alien peer could answer with) says even less. Do not "fix" any
-            // of these into a password-path fallback.
-            reply => Some(Ok(ActivateResult {
-                success: false,
-                code: -1,
-                stdout: String::new(),
-                stderr: format!(
-                    "Privileged helper did not start the activation: {}. nixmac did not fall back to the password prompt.",
-                    reply.summary()
-                ),
-            })),
-        },
-        Err(error) if helper_error_allows_password_fallback(&error) => {
-            // These failures happen before the client writes any request
-            // bytes, so this flow knows it did not dispatch an activation.
-            match &error {
-                helper_client::HelperClientError::Unreachable(_) => info!(
-                    "[darwin] privileged helper socket was stale; falling back to osascript: {error}"
-                ),
-                helper_client::HelperClientError::AuthenticationFailed(_) => warn!(
-                    "[darwin] process at helper socket failed signature validation; falling back to osascript: {error}"
-                ),
-                // Whatever the gate admits is by definition pre-dispatch; log
-                // it rather than panicking inside a privileged apply if that
-                // list ever grows.
-                _ => info!("[darwin] falling back to osascript: {error}"),
-            }
-            None
-        }
-        // Once the activation exchange starts writing, a close, malformed
-        // reply, or other I/O failure cannot prove that the helper did not
-        // run the request. The outcome is unknown; this flow stops without
-        // compensating through the administrator-password path.
-        Err(error) => Some(Ok(ActivateResult {
-            success: false,
-            code: -1,
-            stdout: String::new(),
-            stderr: format!(
-                "Privileged helper activation did not return a trustworthy result: {error}. Activation may have completed or may still be running; nixmac did not fall back to the password prompt."
-            ),
-        })),
-    }
-}
-
-/// Only failures proven to precede all request bytes may select the
-/// administrator-password fallback. Every other exchange error follows the
-/// contract's unknown-outcome rule.
-///
-/// Transitional, like the status-probe gate above: the contract decides
-/// password eligibility before dispatch from reconciled service state and lets
-/// no helper-exchange error select it — including this authentication failure,
-/// which is where unsigned development builds land today. The wiring change
-/// that brings in the Apply decision tables removes this function.
-fn helper_error_allows_password_fallback(error: &helper_client::HelperClientError) -> bool {
-    matches!(
-        error,
-        helper_client::HelperClientError::Unreachable(_)
-            | helper_client::HelperClientError::AuthenticationFailed(_)
-    )
 }
 
 /// Handle activation failures and determine the appropriate error response.
@@ -1165,11 +1135,15 @@ fn run_darwin_rebuild(
     // =========================================================================
     // Step 1c: proactively detect App Management denial for Home Manager
     // copyApps. This mirrors Home Manager's own harmless `.DS_Store` update
-    // probe, but does it before the admin activation prompt. When existing app
-    // bundles are involved, avoid the unattended helper path so macOS attributes
-    // the TCC decision to the foreground app flow more consistently.
+    // probe, but does it before the admin activation prompt.
+    //
+    // A denial refuses the apply here. A pass says the bundle writes succeed,
+    // and the activation path is chosen the same way it is for every other
+    // apply: managed app bundles used to divert this flow to the password
+    // prompt, which was a silent substitution while an enabled registration
+    // could still admit a scheduled sync-agent activation of the same
+    // generation.
     // =========================================================================
-    let mut allow_activation_helper = true;
     match preflight_app_management(config_dir, host_attr) {
         Ok(result) if !result.ok => {
             log_and_emit!(
@@ -1180,7 +1154,6 @@ fn run_darwin_rebuild(
         }
         Ok(result) => {
             if result.checked > 0 {
-                allow_activation_helper = false;
                 log_and_emit!(format!(
                     "Preflight: App Management check passed for {} managed app bundle(s).",
                     result.checked
@@ -1213,17 +1186,16 @@ fn run_darwin_rebuild(
         }));
     };
 
-    let activate_result =
-        run_activate_step(system_store_path, allow_activation_helper).map_err(|e| {
-            serde_json::json!({
-                "ok": false,
-                "code": -1,
-                "log_file": log_path.to_string_lossy(),
-                "error_type": "generic_error",
-                "system_untouched": true,
-                "error": format!("Activation step failed to execute: {}", e),
-            })
-        })?;
+    let activate_result = run_activate_step(app, system_store_path).map_err(|e| {
+        serde_json::json!({
+            "ok": false,
+            "code": -1,
+            "log_file": log_path.to_string_lossy(),
+            "error_type": "generic_error",
+            "system_untouched": true,
+            "error": format!("Activation step failed to execute: {}", e),
+        })
+    })?;
 
     if !activate_result.success {
         summarizer.complete(false);
@@ -1373,7 +1345,6 @@ fn run_darwin_rebuild(
 mod activation_safety_tests {
     use super::{
         ActivateResult, activation_failure_left_system_untouched, classify_activate_error,
-        helper_error_allows_password_fallback,
     };
 
     fn failed_activation(stdout: &str, stderr: &str) -> ActivateResult {
@@ -1417,29 +1388,5 @@ mod activation_safety_tests {
             "authorization_denied"
         ));
         assert!(!activation_failure_left_system_untouched("generic_error"));
-    }
-
-    #[test]
-    fn only_proven_pre_dispatch_helper_errors_allow_password_fallback() {
-        use crate::privileged_helper::client::HelperClientError;
-
-        let unreachable = HelperClientError::Unreachable(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "no listener",
-        ));
-        let authentication = HelperClientError::AuthenticationFailed(anyhow::anyhow!("wrong peer"));
-        assert!(helper_error_allows_password_fallback(&unreachable));
-        assert!(helper_error_allows_password_fallback(&authentication));
-
-        let mid_exchange = HelperClientError::Io(std::io::Error::new(
-            std::io::ErrorKind::ConnectionReset,
-            "result lost",
-        ));
-        let malformed = HelperClientError::UnparseableReply("future shape".to_string());
-        assert!(!helper_error_allows_password_fallback(
-            &HelperClientError::ClosedBeforeReply
-        ));
-        assert!(!helper_error_allows_password_fallback(&mid_exchange));
-        assert!(!helper_error_allows_password_fallback(&malformed));
     }
 }

@@ -1873,7 +1873,14 @@ description: string;
  */
 required: boolean; 
 /**
- * Whether the app can trigger the system prompt directly.
+ * Whether the app can trigger the system prompt directly. False means the
+ * row's action can only deep-link into System Settings and wait for the
+ * user, which is what the UI renders it as.
+ * 
+ * Fixed per row for the TCC permissions, but not a capability in general:
+ * the unattended sync helper reports it per observation, and it is false
+ * only while macOS holds the registration pending approval in Login Items.
+ * Read it as "is System Settings where the user finishes this, right now".
  */
 canRequestProgrammatically: boolean; 
 /**

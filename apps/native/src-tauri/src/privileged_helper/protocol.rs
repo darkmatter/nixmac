@@ -20,36 +20,6 @@ pub const HELPER_SOCKET_DIR: &str = "/var/run/nixmac";
 pub const BUILD_ID: &str = env!("NIXMAC_BUILD_ID");
 const DEFAULT_SYNC_AGENT_INTERVAL_SECONDS: u32 = 900;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct HelperServiceStatus {
-    pub label: String,
-    pub available: bool,
-    pub registered: bool,
-    pub authorized: bool,
-    pub socket_available: bool,
-    /// The daemon answered an authenticated `Status` round-trip naming a
-    /// state: the client validated the daemon's signature and the daemon
-    /// accepted this client. A typed refusal or an unparseable reply never
-    /// sets this.
-    pub responding: bool,
-    pub detail: Option<String>,
-}
-
-impl HelperServiceStatus {
-    pub fn unavailable(detail: impl Into<String>) -> Self {
-        Self {
-            label: HELPER_LABEL.to_string(),
-            available: false,
-            registered: false,
-            authorized: false,
-            socket_available: false,
-            responding: false,
-            detail: Some(detail.into()),
-        }
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Requests.
 //

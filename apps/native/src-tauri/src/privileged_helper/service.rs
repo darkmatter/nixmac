@@ -1,7 +1,5 @@
-use crate::privileged_helper::client::{self, HelperClientError};
 #[cfg(target_os = "macos")]
-use crate::privileged_helper::protocol::{HELPER_LABEL, HELPER_PLIST_NAME};
-use crate::privileged_helper::protocol::{HelperReply, HelperServiceStatus};
+use crate::privileged_helper::protocol::HELPER_PLIST_NAME;
 use anyhow::Result;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant};
@@ -150,49 +148,22 @@ impl std::fmt::Display for RegisterFailure {
 /// run the work somewhere other than a main queue it has no run loop to drain.
 type LaterMainQueueTurn<'a> = &'a dyn Fn(Box<dyn FnOnce() + Send + 'static>);
 
-pub fn status() -> HelperServiceStatus {
-    let mut status = platform_status();
-    status.socket_available = client::socket_available();
-    // SMAppService state and a socket path prove nothing about the daemon:
-    // only an authenticated round-trip (mutual code-signature validation)
-    // shows the connection actually works.
-    if status.socket_available {
-        fold_status_probe(&mut status, client::status().map(|exchange| exchange.reply));
-    }
-    status
-}
-
-/// Folds one status round-trip into the service status. Only an
-/// authenticated `Status` reply naming a state marks the daemon responding;
-/// a typed refusal, an unparseable reply, or any exchange failure can only
-/// ever reach `detail`.
-fn fold_status_probe(
-    status: &mut HelperServiceStatus,
-    probe: Result<HelperReply, HelperClientError>,
-) {
-    match probe {
-        Ok(HelperReply::Status { .. }) => status.responding = true,
-        Ok(reply) => status.detail = Some(reply.summary()),
-        Err(error) => status.detail = Some(error.to_string()),
-    }
-}
-
-/// The typed registration status of nixmac's helper service.
+/// The typed registration status of nixmac's helper service — the only thing
+/// this module reports about it.
 ///
-/// What the GUI's helper reconciliation decides from; the permissions UI reads
-/// the folded [`status`] instead.
+/// There is deliberately no folded "is the helper working" readout here: what a
+/// helper is and whether it may be used are the reconciliation function's to
+/// decide, from an authenticated `Status` reply, and a status flag summarising a
+/// socket round-trip is exactly what an activation must never be admitted on.
 pub fn registration_status() -> Result<RegistrationStatus> {
     platform_registration_status()
 }
 
-pub fn register() -> Result<HelperServiceStatus> {
-    platform_register()?;
-    Ok(status())
-}
-
-pub fn unregister() -> Result<HelperServiceStatus> {
-    platform_unregister()?;
-    Ok(status())
+/// Removes the registration, synchronously. The running helper is killed, and
+/// this call does not wait for that: only [`replace_helper`] does, because only
+/// a replacement needs to know the old process is gone.
+pub fn unregister() -> Result<()> {
+    platform_unregister()
 }
 
 /// Replaces the registered helper: unregisters, waits for the running process
@@ -381,43 +352,12 @@ fn on_later_main_queue_turn(work: Box<dyn FnOnce() + Send + 'static>) {
 }
 
 #[cfg(target_os = "macos")]
-fn platform_status() -> HelperServiceStatus {
-    match macos::registration_status() {
-        Ok(status) => HelperServiceStatus {
-            label: HELPER_LABEL.to_string(),
-            available: true,
-            registered: status != RegistrationStatus::NotRegistered,
-            authorized: status == RegistrationStatus::Enabled,
-            socket_available: false,
-            responding: false,
-            detail: Some(status.to_string()),
-        },
-        Err(error) => HelperServiceStatus::unavailable(error.to_string()),
-    }
-}
-
-#[cfg(not(target_os = "macos"))]
-fn platform_status() -> HelperServiceStatus {
-    HelperServiceStatus::unavailable("SMAppService is only available on macOS")
-}
-
-#[cfg(target_os = "macos")]
 fn platform_registration_status() -> Result<RegistrationStatus> {
     macos::registration_status()
 }
 
 #[cfg(not(target_os = "macos"))]
 fn platform_registration_status() -> Result<RegistrationStatus> {
-    anyhow::bail!("SMAppService is only available on macOS")
-}
-
-#[cfg(target_os = "macos")]
-fn platform_register() -> Result<()> {
-    macos::register_service()
-}
-
-#[cfg(not(target_os = "macos"))]
-fn platform_register() -> Result<()> {
     anyhow::bail!("SMAppService is only available on macOS")
 }
 
@@ -495,18 +435,10 @@ mod macos {
         })
     }
 
-    pub fn register_service() -> Result<()> {
-        autoreleasepool(|_| {
-            let service = daemon_service()?;
-            unsafe { service.registerAndReturnError() }
-                .map_err(|error| anyhow!(describe(&error, "SMAppService register failed")))
-        })
-    }
-
-    /// [`register_service`] reporting the platform failure structurally. Runs
-    /// wherever it is dispatched — the caller guarantees a later main-queue turn
-    /// — and builds its own service from the compiled plist name, so no retained
-    /// object is ever moved between threads.
+    /// Registers, reporting the platform failure structurally. Runs wherever it
+    /// is dispatched — the caller guarantees a later main-queue turn — and builds
+    /// its own service from the compiled plist name, so no retained object is
+    /// ever moved between threads.
     pub fn register_service_reporting_error() -> ServiceCallOutcome {
         autoreleasepool(|_| {
             let service = daemon_service().map_err(|error| adapter_error(error.to_string()))?;
@@ -632,98 +564,7 @@ mod macos {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::privileged_helper::peer_auth::ClientKind;
-    use crate::privileged_helper::protocol::{ActivationInfo, HELPER_LABEL, HelperStateName};
     use std::cell::Cell;
-
-    fn probed_status() -> HelperServiceStatus {
-        HelperServiceStatus {
-            label: HELPER_LABEL.to_string(),
-            available: true,
-            registered: true,
-            authorized: true,
-            socket_available: true,
-            responding: false,
-            detail: None,
-        }
-    }
-
-    fn status_reply(state: HelperStateName) -> HelperReply {
-        let activation = matches!(
-            state,
-            HelperStateName::Activating | HelperStateName::Retiring
-        )
-        .then(|| ActivationInfo {
-            request_id: "req-1".to_string(),
-            script_path: "/nix/store/abc-darwin-system/activate".to_string(),
-            client_kind: ClientKind::Gui,
-        });
-        HelperReply::Status {
-            state,
-            helper_build_id: "build-a".to_string(),
-            activation,
-        }
-    }
-
-    #[test]
-    fn authenticated_status_reply_sets_responding_whatever_the_state() {
-        // `responding` means the daemon answered an authenticated Status
-        // round-trip naming a state — any of the four.
-        for state in [
-            HelperStateName::Idle,
-            HelperStateName::Activating,
-            HelperStateName::Retiring,
-            HelperStateName::Retired,
-        ] {
-            let mut status = probed_status();
-
-            fold_status_probe(&mut status, Ok(status_reply(state)));
-
-            assert!(status.responding);
-            assert_eq!(status.detail, None);
-        }
-    }
-
-    #[test]
-    fn typed_refusals_never_set_responding() {
-        for reply in [
-            HelperReply::BuildMismatch {
-                helper_build_id: "build-b".to_string(),
-            },
-            HelperReply::CallerNotPermitted,
-            HelperReply::RequestNotUnderstood,
-        ] {
-            let mut status = probed_status();
-
-            fold_status_probe(&mut status, Ok(reply));
-
-            assert!(!status.responding);
-            assert!(status.detail.is_some());
-        }
-    }
-
-    #[test]
-    fn exchange_failures_never_set_responding() {
-        // What reaches the fold when an installed daemon from a previous
-        // release answers with a reply this build cannot parse, or the
-        // exchange fails outright.
-        for error in [
-            HelperClientError::UnparseableReply("unknown reply shape".to_string()),
-            HelperClientError::ClosedBeforeReply,
-            HelperClientError::AuthenticationFailed(anyhow::anyhow!("not the signed helper")),
-            HelperClientError::Io(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "read timed out",
-            )),
-        ] {
-            let mut status = probed_status();
-
-            fold_status_probe(&mut status, Err(error));
-
-            assert!(!status.responding);
-            assert!(status.detail.is_some());
-        }
-    }
 
     #[test]
     fn the_four_smappservice_statuses_map_by_raw_value() {
