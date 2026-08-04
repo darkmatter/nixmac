@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { tauriAPI } from "@/ipc/api";
 import type { Permission } from "@/ipc/types";
-import { orpc } from "@/lib/orpc";
+import { client, orpc } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 import { useViewModel } from "@nixmac/state";
 import { useQuery } from "@tanstack/react-query";
@@ -19,7 +19,12 @@ import { useEffect, useState } from "react";
  */
 export function PermissionsPanel() {
   const permissionsState = useViewModel((s) => s.permissions);
-  const [requesting, setRequesting] = useState<string | null>(null);
+  // Which action is in flight, not just which row: the helper row offers Grant
+  // and Disable side by side, and one click must not label the other as running.
+  const [requesting, setRequesting] = useState<{
+    id: string;
+    action: "grant" | "disable";
+  } | null>(null);
   const [notice, setNotice] = useState<{ tone: "info" | "error"; message: string } | null>(null);
 
   // Refresh permissions when the panel mounts.
@@ -41,7 +46,7 @@ export function PermissionsPanel() {
     installLocation?.bundlePath != null && !installLocation.inApplicationsDir;
 
   async function handleGrant(permission: Permission) {
-    setRequesting(permission.id);
+    setRequesting({ id: permission.id, action: "grant" });
     setNotice(null);
     try {
       if (permission.id === "full-disk") {
@@ -62,17 +67,19 @@ export function PermissionsPanel() {
         });
         await new Promise((resolve) => setTimeout(resolve, 1000));
       } else if (permission.id === "privileged-helper") {
-        // Registers the bundled SMAppService LaunchDaemon. macOS may require
-        // one-time approval in Login Items & Extensions before status is granted.
+        // Grant: the backend records the decision and reconciles the installed
+        // helper with this build. It is the only action that may open Login
+        // Items, and it does so when macOS is waiting for approval there. The
+        // report says what happened, whatever the row's status ends up being.
         const result = await tauriAPI.permissions.request(permission.id);
         if (result.status !== "granted") {
           setNotice({
             tone: "info",
             message:
-              "nixmac opened Login Items & Extensions. Enable nixmac there, then return here and click Enable again if this row is still pending.",
+              result.instructions ??
+              "nixmac could not finish enabling the unattended sync helper.",
           });
         }
-        await new Promise((resolve) => setTimeout(resolve, 1500));
       } else {
         // deprecated(orpc): replace with client/orpc from @/lib/orpc
         await tauriAPI.permissions.request(permission.id);
@@ -84,6 +91,31 @@ export function PermissionsPanel() {
       setNotice({
         tone: "error",
         message: `Permission request failed: ${error instanceof Error ? error.message : String(error)}`,
+      });
+    } finally {
+      setRequesting(null);
+    }
+  }
+
+  /**
+   * Disable: the backend records the decision, retires a running helper,
+   * unregisters it, and registers nothing. Offered in every state (see the row
+   * below), because a registration waiting for approval is exactly the one a
+   * user wants removed and its row is not granted.
+   */
+  async function handleDisableHelper() {
+    setRequesting({ id: "privileged-helper", action: "disable" });
+    setNotice(null);
+    try {
+      const report = await client.darwin.helperDisable();
+      setNotice({ tone: "info", message: report.detail });
+      // deprecated(orpc): replace with client/orpc from @/lib/orpc
+      await tauriAPI.permissions.refresh();
+    } catch (error) {
+      console.error("Failed to disable the unattended sync helper:", error);
+      setNotice({
+        tone: "error",
+        message: `Disabling the unattended sync helper failed: ${error instanceof Error ? error.message : String(error)}`,
       });
     } finally {
       setRequesting(null);
@@ -124,7 +156,11 @@ export function PermissionsPanel() {
       <ul className="flex flex-col gap-3">
         {permissions.map((perm) => {
           const isGranted = perm.status === "granted";
-          const isRequesting = requesting === perm.id;
+          // Both of a row's actions are disabled while either runs; only the
+          // one that was clicked says it is running.
+          const isRequesting = requesting?.id === perm.id;
+          const isGranting = isRequesting && requesting?.action === "grant";
+          const isDisabling = isRequesting && requesting?.action === "disable";
           const canRequest = perm.canRequestProgrammatically;
           const icon = (() => {
             if (isGranted) {
@@ -191,7 +227,7 @@ export function PermissionsPanel() {
                 </div>
               </div>
 
-              <div className="shrink-0 self-start sm:self-center">
+              <div className="flex shrink-0 items-center gap-2 self-start sm:self-center">
                 {isGranted ? (
                   <span className="inline-flex items-center gap-1.5 font-medium text-success text-sm">
                     <Check className="size-4" aria-hidden="true" />
@@ -204,7 +240,7 @@ export function PermissionsPanel() {
                     onClick={() => handleGrant(perm)}
                     disabled={isRequesting}
                   >
-                    {isRequesting ? (
+                    {isGranting ? (
                       <>
                         <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                         {canRequest ? "Requesting…" : "Waiting…"}
@@ -221,6 +257,31 @@ export function PermissionsPanel() {
                     )}
                   </Button>
                 )}
+                {/* The helper is the one permission nixmac installs rather than
+                    asks macOS for, so it is the one the user can hand back — and
+                    Disable has to be reachable in every state, not only when the
+                    row is granted. A registration waiting for approval in Login
+                    Items, or one this build cannot use, is exactly what a user
+                    wants to remove, and its row is not granted. Recording the
+                    decision with nothing installed is a no-op that says "do not
+                    install one". */}
+                {perm.id === "privileged-helper" ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleDisableHelper}
+                    disabled={isRequesting}
+                  >
+                    {isDisabling ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                        Disabling…
+                      </>
+                    ) : (
+                      "Disable"
+                    )}
+                  </Button>
+                ) : null}
               </div>
             </li>
           );

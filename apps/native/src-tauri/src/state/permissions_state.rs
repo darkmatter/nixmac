@@ -28,7 +28,7 @@ pub fn get<R: Runtime>(app: &AppHandle<R>) -> Option<PermissionsState> {
 /// Probe all permissions and record the result; the cell write emits
 /// `permissions_changed`.
 pub fn refresh<R: Runtime>(app: &AppHandle<R>) -> PermissionsState {
-    let state = permissions::check_all_permissions();
+    let state = permissions::check_all_permissions(app);
     let observable = app.state::<Observable<Option<PermissionsState>>>();
     *observable.write_sync() = Some(state.clone());
     state

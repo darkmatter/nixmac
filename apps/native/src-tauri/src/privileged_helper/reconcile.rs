@@ -197,7 +197,8 @@ pub enum Stopped {
 // The sentences the permissions UI shows. Written here, next to the variants
 // they explain, because that is where this app already puts helper detail text
 // (`system::permissions` composes the same kind of string and the panel renders
-// it verbatim). No caller until the change that wires the report into the UI.
+// it verbatim). `system::helper_permission` is what turns one of these into the
+// row's detail.
 
 impl std::fmt::Display for Displacement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -542,7 +543,11 @@ mod evidence {
     }
 }
 
-use evidence::{Committed, RetiredHelper};
+// `Committed` is nameable outside this module because the environment methods
+// that demand one are; minting one is not — `Committed::checked` stays visible
+// only in here, so the register step remains the only place one comes from.
+pub use evidence::Committed;
+use evidence::RetiredHelper;
 
 /// Which of the three rules authorizes one unregister.
 ///
@@ -589,8 +594,12 @@ pub enum PeerReply<C> {
 /// Everything a run observes or does, injected so the decisions above can be
 /// driven through every case without a helper, a bundle, or a settings store.
 ///
-/// Only observations and effects live here. No method decides anything, and
-/// none of them can open System Settings.
+/// Only observations and effects live here, and no method decides anything about
+/// the goal or the helper. Nothing this function does asks for System Settings
+/// either: the GUI's `reported` opens Login Items only when a Grant click is
+/// waiting for an answer, so what opens it is that click and never a report this
+/// function produced. A run that no click is waiting on — startup, a status
+/// refresh — therefore opens nothing, whatever it observes.
 pub trait Environment {
     /// An answered connection, held open. Opaque: the only thing done with one
     /// is asking whether its peer is still there.
@@ -725,9 +734,7 @@ impl<R: Runtime> Environment for LiveEnvironment<'_, R> {
     }
 
     fn unregister(&self) -> Result<(), String> {
-        service::unregister()
-            .map(|_status| ())
-            .map_err(|error| format!("{error:#}"))
+        service::unregister().map_err(|error| format!("{error:#}"))
     }
 
     fn replace_helper(
@@ -1319,7 +1326,11 @@ impl<E: Environment> Run<'_, E> {
 /// Re-evaluated before each one rather than once per pass: both facts can
 /// change while a pass runs — an app can be moved, and a bundle can be
 /// replaced by an update — and what they guard is destructive.
-fn gates<E: Environment>(env: &E) -> Result<(), Reconciled> {
+///
+/// Public for one reason: Apply asks the same question before deciding whether
+/// it may touch a helper, and a second implementation of it could disagree with
+/// this one.
+pub fn gates<E: Environment>(env: &E) -> Result<(), Reconciled> {
     // Canonical install. A copy running from anywhere else observes and
     // reports only: it may not even ask a helper to retire.
     if let InstallLocation::Elsewhere(observed) = env.install_location() {
