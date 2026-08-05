@@ -1,27 +1,37 @@
 use crate::privileged_helper::client;
-use crate::privileged_helper::protocol::HelperServiceStatus;
 #[cfg(target_os = "macos")]
 use crate::privileged_helper::protocol::{HELPER_LABEL, HELPER_PLIST_NAME};
+use crate::privileged_helper::protocol::{HelperResponse, HelperServiceStatus};
 use anyhow::Result;
 
 pub fn status() -> HelperServiceStatus {
     let mut status = platform_status();
     status.socket_available = client::socket_available();
     // SMAppService state and a socket path prove nothing about the daemon:
-    // only an authenticated round-trip (mutual code-signature validation)
-    // shows the connection actually works.
+    // only an authenticated round-trip (mutual code-signature validation at
+    // this build's protocol version) shows the connection actually works.
     if status.socket_available {
-        match client::status() {
-            Ok(response) if response.ok => status.responding = true,
-            Ok(response) => {
-                status.detail = Some(response.error.unwrap_or_else(|| {
-                    "helper answered the status probe with an error".to_string()
-                }));
-            }
-            Err(error) => status.detail = Some(format!("{error:#}")),
-        }
+        fold_status_probe(&mut status, client::status());
     }
     status
+}
+
+/// Folds one authenticated status round-trip into the service status. Only a
+/// same-version `ok` response marks the daemon responding: a version-skewed
+/// response fails `client::status` before its fields are readable and lands
+/// in the `Err` arm, and a daemon-reported protocol error arrives with
+/// `ok: false` — either way a protocol error can only ever reach `detail`.
+fn fold_status_probe(status: &mut HelperServiceStatus, probe: anyhow::Result<HelperResponse>) {
+    match probe {
+        Ok(response) if response.ok => status.responding = true,
+        Ok(response) => {
+            status.detail =
+                Some(response.error.unwrap_or_else(|| {
+                    "helper answered the status probe with an error".to_string()
+                }));
+        }
+        Err(error) => status.detail = Some(format!("{error:#}")),
+    }
 }
 
 pub fn register() -> Result<HelperServiceStatus> {
@@ -195,5 +205,84 @@ mod macos {
         let _ = std::process::Command::new("open")
             .arg("x-apple.systempreferences:com.apple.LoginItems-Settings.extension")
             .spawn();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::privileged_helper::protocol::{HELPER_LABEL, UNSUPPORTED_PROTOCOL_ERROR};
+
+    fn probed_status() -> HelperServiceStatus {
+        HelperServiceStatus {
+            label: HELPER_LABEL.to_string(),
+            available: true,
+            registered: true,
+            authorized: true,
+            socket_available: true,
+            responding: false,
+            detail: None,
+        }
+    }
+
+    #[test]
+    fn same_version_ok_probe_sets_responding() {
+        let mut status = probed_status();
+
+        fold_status_probe(&mut status, Ok(HelperResponse::ok("nixmac helper ready")));
+
+        assert!(status.responding);
+        assert_eq!(status.detail, None);
+    }
+
+    #[test]
+    fn skew_rejected_probes_never_set_responding() {
+        // What reaches the fold when the daemon answered with the exact v1
+        // status response or a mismatched version: the client-side parse
+        // already classified it as skew, so the probe arrives as an error.
+        for wire in [
+            r#"{"ok":true,"code":0,"stdout":"nixmac helper ready","stderr":"","error":null}"#
+                .to_string(),
+            format!(
+                r#"{{"protocolVersion":{},"helperBuildVersion":"9.9.9","ok":true,"code":0,"stdout":"","stderr":"","error":null}}"#,
+                crate::privileged_helper::protocol::HELPER_PROTOCOL_VERSION + 1
+            ),
+        ] {
+            let mut status = probed_status();
+
+            fold_status_probe(&mut status, HelperResponse::parse(&wire));
+
+            assert!(!status.responding);
+            assert!(
+                status
+                    .detail
+                    .expect("skew detail")
+                    .contains(UNSUPPORTED_PROTOCOL_ERROR)
+            );
+        }
+    }
+
+    #[test]
+    fn parsed_protocol_error_response_never_sets_responding() {
+        // A same-version daemon reporting a protocol error (it rejected the
+        // request's version) parses fine — it must still never count as
+        // responding.
+        let mut status = probed_status();
+
+        fold_status_probe(
+            &mut status,
+            Ok(HelperResponse::error(
+                -1,
+                format!("{UNSUPPORTED_PROTOCOL_ERROR} 1 (this build speaks 2)"),
+            )),
+        );
+
+        assert!(!status.responding);
+        assert!(
+            status
+                .detail
+                .expect("protocol error detail")
+                .contains(UNSUPPORTED_PROTOCOL_ERROR)
+        );
     }
 }

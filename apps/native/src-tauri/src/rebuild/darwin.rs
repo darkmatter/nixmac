@@ -830,8 +830,20 @@ fn try_activate_with_helper(activate_path: &str) -> Option<Result<ActivateResult
     if !status.authorized || !status.socket_available {
         return None;
     }
+    // `responding` is the authenticated status round-trip `helper_service`
+    // already performed. Requiring it here is what keeps a version-skewed
+    // daemon from failing the apply: a daemon predating this app's protocol
+    // cannot answer the probe, so the osascript path takes over instead of
+    // the activation request coming back as an unparseable request.
+    if !status.responding {
+        info!(
+            "[darwin] privileged helper did not answer an authenticated status probe; falling back to osascript: {}",
+            status.detail.unwrap_or_default()
+        );
+        return None;
+    }
 
-    let request = match helper_protocol::current_user_activation_request(Path::new(activate_path)) {
+    let request = match helper_protocol::activation_request(Path::new(activate_path)) {
         Ok(request) => request,
         Err(error) => {
             return Some(Err(
@@ -840,17 +852,18 @@ fn try_activate_with_helper(activate_path: &str) -> Option<Result<ActivateResult
         }
     };
 
-    match helper_client::activate_store_path(request) {
+    match helper_client::activate_store_path(&request) {
         Ok(response) => {
             // A live daemon that refuses this peer means the running build is
             // not signed as an approved client (unsigned dev build, or a
-            // helper/app version skew). The osascript prompt is the intended
-            // path there, not a hard failure.
+            // helper/app version skew). A daemon that does not speak this
+            // app's protocol version is the same situation with a different
+            // cause: an older helper still resident from a previous install.
+            // Falling back to the interactive prompt keeps the apply working
+            // in both cases until the installed helper is replaced by a
+            // current one.
             if !response.ok
-                && response
-                    .error
-                    .as_deref()
-                    .is_some_and(|error| error.contains(helper_protocol::UNAUTHORIZED_CLIENT_ERROR))
+                && (response.reports_protocol_skew() || response.reports_unauthorized_client())
             {
                 info!(
                     "[darwin] privileged helper rejected this client; falling back to osascript: {}",
@@ -877,6 +890,18 @@ fn try_activate_with_helper(activate_path: &str) -> Option<Result<ActivateResult
             if error_text.contains(crate::privileged_helper::peer_auth::HELPER_VALIDATION_FAILED) {
                 warn!(
                     "[darwin] process at helper socket failed signature validation; falling back to osascript: {error:#}"
+                );
+                return None;
+            }
+            // The client rejects a response whose protocol version is
+            // missing or different before reading its fields, so version
+            // skew surfaces here as a classified error rather than a
+            // response. A skewed daemon cannot have run the activation — it
+            // could not have parsed the request — so falling back is safe
+            // until the installed helper is replaced by a current one.
+            if helper_protocol::is_protocol_skew(&error) {
+                info!(
+                    "[darwin] privileged helper speaks a different protocol version; falling back to osascript: {error:#}"
                 );
                 return None;
             }

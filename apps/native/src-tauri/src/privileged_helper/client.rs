@@ -1,6 +1,6 @@
 use crate::privileged_helper::peer_auth;
 use crate::privileged_helper::protocol::{
-    ActivateStorePathRequest, HELPER_SOCKET_PATH, HelperRequest, HelperResponse,
+    ActivationRequest, HELPER_SOCKET_PATH, HelperOp, HelperRequest, HelperResponse,
 };
 use anyhow::{Context, Result, bail};
 use std::io::{BufRead, BufReader, Write};
@@ -38,18 +38,19 @@ fn request_with_timeout(request: &HelperRequest, timeout: Duration) -> Result<He
         bail!("helper returned an empty response");
     }
 
-    Ok(serde_json::from_str(&line)?)
+    // The response's protocol version is checked before any of its fields
+    // are used; a missing or different version fails as a classified
+    // protocol skew for callers to act on.
+    HelperResponse::parse(&line)
 }
 
 pub fn status() -> Result<HelperResponse> {
-    request_with_timeout(&HelperRequest::Status, STATUS_PROBE_TIMEOUT)
+    request_with_timeout(&HelperRequest::new(HelperOp::Status), STATUS_PROBE_TIMEOUT)
 }
 
-pub fn activate_store_path(request_body: ActivateStorePathRequest) -> Result<HelperResponse> {
-    request_with_timeout(
-        &HelperRequest::ActivateStorePath {
-            request: request_body,
-        },
-        ACTIVATION_TIMEOUT,
-    )
+/// Sends an activation envelope. `ActivationRequest` is only constructible
+/// through `protocol::activation_request`, so this entry point cannot be
+/// handed a status operation or a hand-assembled version.
+pub fn activate_store_path(request: &ActivationRequest) -> Result<HelperResponse> {
+    request_with_timeout(&request.0, ACTIVATION_TIMEOUT)
 }
