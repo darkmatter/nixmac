@@ -1,3 +1,4 @@
+use crate::privileged_helper::peer_auth;
 use crate::privileged_helper::protocol::{
     ActivateStorePathRequest, HELPER_SOCKET_PATH, HelperRequest, HelperResponse,
 };
@@ -21,6 +22,10 @@ fn request_with_timeout(request: &HelperRequest, timeout: Duration) -> Result<He
         .with_context(|| format!("failed to connect to {HELPER_SOCKET_PATH}"))?;
     stream.set_read_timeout(Some(timeout))?;
     stream.set_write_timeout(Some(CLIENT_TIMEOUT))?;
+
+    // Reciprocal check: whatever answers on the socket must be the signed
+    // root helper before this process sends it anything.
+    peer_auth::validate_helper_peer(&stream)?;
 
     let body = serde_json::to_vec(request)?;
     stream.write_all(&body)?;

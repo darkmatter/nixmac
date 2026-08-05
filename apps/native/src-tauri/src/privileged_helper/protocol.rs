@@ -12,6 +12,11 @@ pub const SYNC_AGENT_PLIST_NAME: &str = "com.darkmatter.nixmac.sync-agent.plist"
 pub const HELPER_SOCKET_PATH: &str = "/var/run/nixmac/helper.sock";
 #[allow(dead_code)]
 pub const HELPER_SOCKET_DIR: &str = "/var/run/nixmac";
+/// Prefix of the daemon's response when the connecting peer fails
+/// authorization. The app matches on it to fall back to the interactive
+/// osascript path instead of surfacing a hard error (unsigned dev builds
+/// land here by design).
+pub const UNAUTHORIZED_CLIENT_ERROR: &str = "unauthorized helper client";
 const DEFAULT_SYNC_AGENT_INTERVAL_SECONDS: u32 = 900;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq, Eq)]
@@ -22,6 +27,9 @@ pub struct HelperServiceStatus {
     pub registered: bool,
     pub authorized: bool,
     pub socket_available: bool,
+    /// The daemon answered an authenticated status round-trip: the client
+    /// validated the daemon's signature and the daemon accepted this client.
+    pub responding: bool,
     pub detail: Option<String>,
 }
 
@@ -33,6 +41,7 @@ impl HelperServiceStatus {
             registered: false,
             authorized: false,
             socket_available: false,
+            responding: false,
             detail: Some(detail.into()),
         }
     }
@@ -45,7 +54,6 @@ pub struct ActivateStorePathRequest {
     pub user_name: String,
     pub user_id: u32,
     pub home: String,
-    pub ssh_auth_sock: Option<String>,
     pub nix_path: String,
 }
 
@@ -173,9 +181,6 @@ pub fn current_user_activation_request(activate_path: &Path) -> Result<ActivateS
     let user_name = whoami::username().unwrap_or_else(|_| "root".to_string());
     let user_id = current_user_id();
     let home = std::env::var("HOME").unwrap_or_default();
-    let ssh_auth_sock = std::env::var("SSH_AUTH_SOCK")
-        .ok()
-        .filter(|value| !value.is_empty());
     let nix_path = crate::system::nix::get_nix_path();
 
     Ok(ActivateStorePathRequest {
@@ -183,7 +188,6 @@ pub fn current_user_activation_request(activate_path: &Path) -> Result<ActivateS
         user_name,
         user_id,
         home,
-        ssh_auth_sock,
         nix_path,
     })
 }
@@ -350,10 +354,10 @@ mod tests {
     }
 
     #[test]
-    fn activation_request_json_ignores_removed_link_field() {
-        // Wire compat with apps that still send canonicalLinkTarget: unknown
-        // fields are ignored on deserialization.
-        let json = r#"{"activatePath":"/nix/store/abc-darwin-system/activate","userName":"alice","userId":501,"home":"/Users/alice","sshAuthSock":null,"nixPath":"/bin","canonicalLinkTarget":"/Users/alice/.darwin"}"#;
+    fn activation_request_json_ignores_removed_fields() {
+        // Wire compat with apps that still send canonicalLinkTarget or
+        // sshAuthSock: unknown fields are ignored on deserialization.
+        let json = r#"{"activatePath":"/nix/store/abc-darwin-system/activate","userName":"alice","userId":501,"home":"/Users/alice","sshAuthSock":"/tmp/ssh.sock","nixPath":"/bin","canonicalLinkTarget":"/Users/alice/.darwin"}"#;
         let request: ActivateStorePathRequest = serde_json::from_str(json).expect("deserializes");
         assert_eq!(request.user_id, 501);
     }

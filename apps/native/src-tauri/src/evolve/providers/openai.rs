@@ -74,7 +74,7 @@ impl OpenAIProvider {
         }
 
         if capabilities_for_model(&self.model).supports_custom_temperature {
-            request_builder.temperature(0.2);
+            request_builder.temperature(0.2_f32);
         }
 
         request_builder.max_completion_tokens(self.max_output_tokens.load(Ordering::Relaxed));

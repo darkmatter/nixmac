@@ -6,10 +6,11 @@
 //! NOPASSWD rule to `/etc/sudoers.d/nixmac-activate-temp` and cleaned it up
 //! with an EXIT trap. That mechanism is gone: the unprivileged app now
 //! re-executes its own binary with [`ROOT_ACTIVATE_ARG`], and this mode
-//! applies the same hardening rules as the helper daemon — direct exec with
-//! absolute programs, a fixed root-owned PATH and otherwise empty environment
-//! (`env -i`), and account values derived from the target uid (no sudoers,
-//! no shell logic as root).
+//! applies the same hardening rules as the helper daemon — the activation
+//! target canonicalized and proved unwritable by the requester on the
+//! privileged side, direct exec with absolute programs, a fixed root-owned
+//! PATH and otherwise empty environment (`env -i`), and account values
+//! derived from the target uid (no sudoers, no shell logic as root).
 
 use crate::privileged_helper::helper_runtime;
 use crate::privileged_helper::protocol::validate_canonical_activate_path;
@@ -36,7 +37,6 @@ const WARNING_PREFIX: &str = "nixmac: warning:";
 pub struct RootActivationArgs {
     pub uid: u32,
     pub activate_path: String,
-    pub ssh_auth_sock: Option<String>,
 }
 
 /// The exact command line handed to `osascript ... with administrator
@@ -45,7 +45,7 @@ pub struct RootActivationArgs {
 /// and the leading `exec` makes the elevated shell replace itself with this
 /// argv instead of staying alive as its parent.
 pub fn shell_command(exe: &str, args: &RootActivationArgs) -> String {
-    let mut argv = vec![
+    let argv = [
         exe.to_string(),
         ROOT_ACTIVATE_ARG.to_string(),
         "--uid".to_string(),
@@ -53,14 +53,6 @@ pub fn shell_command(exe: &str, args: &RootActivationArgs) -> String {
         "--activate".to_string(),
         args.activate_path.clone(),
     ];
-    if let Some(sock) = args
-        .ssh_auth_sock
-        .as_deref()
-        .filter(|sock| !sock.is_empty())
-    {
-        argv.push("--ssh-auth-sock".to_string());
-        argv.push(sock.to_string());
-    }
     let quoted = argv
         .iter()
         .map(|arg| shell_quote(arg))
@@ -82,7 +74,6 @@ fn shell_quote(value: &str) -> String {
 pub fn parse_args(args: impl IntoIterator<Item = String>) -> Result<RootActivationArgs> {
     let mut uid = None;
     let mut activate_path = None;
-    let mut ssh_auth_sock = None;
 
     let mut args = args.into_iter();
     while let Some(flag) = args.next() {
@@ -94,7 +85,6 @@ pub fn parse_args(args: impl IntoIterator<Item = String>) -> Result<RootActivati
                 uid = Some(value.parse::<u32>().context("--uid must be an integer")?);
             }
             "--activate" => activate_path = Some(value),
-            "--ssh-auth-sock" => ssh_auth_sock = Some(value),
             other => bail!("unknown root-activation argument: {other}"),
         }
     }
@@ -106,11 +96,7 @@ pub fn parse_args(args: impl IntoIterator<Item = String>) -> Result<RootActivati
     let activate_path = activate_path.context("--activate is required")?;
     validate_canonical_activate_path(&activate_path)?;
 
-    Ok(RootActivationArgs {
-        uid,
-        activate_path,
-        ssh_auth_sock,
-    })
+    Ok(RootActivationArgs { uid, activate_path })
 }
 
 /// Entry point for the root-activation dispatch in `main()`. Returns the
@@ -142,16 +128,15 @@ fn run_root_activation(args: impl IntoIterator<Item = String>) -> Result<i32> {
         eprintln!("{WARNING_PREFIX} {warning}");
     }
 
-    // Mirror the helper daemon: account values come from the uid lookup, and
-    // the activation is a direct exec of absolute programs with a fixed
-    // environment — the caller's environment never reaches root.
+    // Mirror the helper daemon: the target is resolved and proved immutable
+    // to the requester right here, immediately before root executes it;
+    // account values come from the uid lookup; and the activation is a
+    // direct exec of absolute programs with a fixed environment — the
+    // caller's environment (including any SSH agent socket) never reaches
+    // root.
+    let activate_path = helper_runtime::canonical_activation_target(&args.activate_path)?;
     let account = helper_runtime::user_account(args.uid)?;
-    let argv = helper_runtime::activation_argv(
-        args.uid,
-        &account,
-        &args.activate_path,
-        args.ssh_auth_sock.as_deref(),
-    );
+    let argv = helper_runtime::activation_argv(args.uid, &account, &activate_path);
     let (status, output) = helper_runtime::run_activation_command(&argv)?;
 
     if status.success() {
@@ -169,7 +154,7 @@ fn run_root_activation(args: impl IntoIterator<Item = String>) -> Result<i32> {
         }
         // Best-effort, same as the helper: the system switch already
         // happened, so maintenance failures are warnings, not errors.
-        for warning in helper_runtime::post_activation_maintenance(&args.activate_path) {
+        for warning in helper_runtime::post_activation_maintenance(&activate_path) {
             println!("{WARNING_PREFIX} {warning}");
         }
     } else {
@@ -207,19 +192,10 @@ mod tests {
 
     #[test]
     fn parse_accepts_full_argument_set() {
-        let parsed = args(&[
-            "--uid",
-            "501",
-            "--activate",
-            ACTIVATE,
-            "--ssh-auth-sock",
-            "/tmp/ssh.sock",
-        ])
-        .expect("valid args");
+        let parsed = args(&["--uid", "501", "--activate", ACTIVATE]).expect("valid args");
 
         assert_eq!(parsed.uid, 501);
         assert_eq!(parsed.activate_path, ACTIVATE);
-        assert_eq!(parsed.ssh_auth_sock.as_deref(), Some("/tmp/ssh.sock"));
     }
 
     #[test]
@@ -248,11 +224,26 @@ mod tests {
         assert!(error.to_string().contains("unknown root-activation"));
     }
 
+    #[test]
+    fn parse_rejects_removed_ssh_auth_sock_argument() {
+        // The agent socket was removed from privileged activation; the flag
+        // must not silently come back.
+        let flags = [
+            "--uid",
+            "501",
+            "--activate",
+            ACTIVATE,
+            "--ssh-auth-sock",
+            "/tmp/ssh.sock",
+        ];
+
+        assert!(args(&flags).is_err());
+    }
+
     fn full_args() -> RootActivationArgs {
         RootActivationArgs {
             uid: 501,
             activate_path: ACTIVATE.to_string(),
-            ssh_auth_sock: Some("/tmp/ssh.sock".to_string()),
         }
     }
 
@@ -282,16 +273,6 @@ mod tests {
                 "shell command must not contain {forbidden:?}: {command}"
             );
         }
-    }
-
-    #[test]
-    fn shell_command_omits_empty_ssh_sock() {
-        let mut args = full_args();
-        args.ssh_auth_sock = Some(String::new());
-
-        let command = shell_command("/Applications/nixmac.app/Contents/MacOS/nixmac", &args);
-
-        assert!(!command.contains("--ssh-auth-sock"));
     }
 
     #[test]
