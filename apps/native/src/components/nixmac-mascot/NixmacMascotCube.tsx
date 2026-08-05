@@ -17,13 +17,15 @@ interface NixmacMascotCubeProps {
   /** Rendered cube edge in px. Default 160. */
   size?: number;
   className?: string;
+  /** Extra wrapper styles — handy for overriding CSS vars like `--hop-period`. */
+  style?: CSSProperties;
 }
 
-export function NixmacMascotCube({ size = 160, className }: NixmacMascotCubeProps) {
+export function NixmacMascotCube({ size = 160, className, style }: NixmacMascotCubeProps) {
   return (
     <div
       className={className ? `nixmac-cube-scene ${className}` : "nixmac-cube-scene"}
-      style={{ "--cube-size": `${size}px` } as CSSProperties}
+      style={{ "--cube-size": `${size}px`, ...style } as CSSProperties}
     >
       <div className="nixmac-cube">
         <div className="nixmac-cube__face nixmac-cube__face--front">
