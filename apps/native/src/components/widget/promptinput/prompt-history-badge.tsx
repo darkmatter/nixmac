@@ -12,11 +12,11 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import { cn } from "@/lib/utils";
-import { uiActions, useUiState, useViewModel } from "@nixmac/state";
+import { useUiState, useViewModel } from "@nixmac/state";
 import { ClockIcon } from "lucide-react";
 import { useState } from "react";
 
-export function PromptHistoryBadge() {
+export function PromptHistoryBadge({ onSelect }: { onSelect: (prompt: string) => void }) {
   const history = useViewModel((s) => s.promptHistory);
   const evolvePrompt = useUiState((s) => s.evolvePrompt);
     const isProcessing = useUiState((s) => s.isProcessing);
@@ -36,7 +36,9 @@ export function PromptHistoryBadge() {
       name: "prompt_suggestion_used",
       props: { surface: "history" },
     });
-    uiActions.setEvolvePrompt(prompt);
+    // Route through the shared seeder so the input scrolls into view and focuses
+    // once the popover closes — history is the worst-affected surface here.
+    onSelect(prompt);
     setOpen(false);
     setSearchValue("");
   };

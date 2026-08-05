@@ -157,4 +157,33 @@ describe("<PromptInput>", () => {
 
     expect(screen.getByTestId("evolve-prompt-input")).toHaveValue(suggestion.prompt);
   });
+
+  it("scrolls the input into view and focuses it when seeding a chip", async () => {
+    // Regression guard for the "chip feels dead when the input is off-screen"
+    // papercut: seeding must give visible feedback, not just write state.
+    viewModelActions.patch({
+      preferences: makeGlobalPreferences({
+        featureFlagOverrides: { [EVOLVE_PROMPT_SUGGESTIONS_FLAG]: "chips" },
+      }),
+    });
+
+    const suggestion = STARTER_PROMPT_CHIPS.find(({ id }) => id === "dev-terminal");
+    if (!suggestion) throw new Error("Expected dev-terminal starter prompt");
+
+    // jsdom doesn't implement scrollIntoView; spy so we can assert it's called.
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+
+    render(<PromptInput />);
+    await settleProviderValidation();
+
+    fireEvent.click(screen.getByRole("button", { name: suggestion.label }));
+
+    const input = screen.getByTestId("evolve-prompt-input");
+    expect(scrollIntoView).toHaveBeenCalled();
+    expect(input).toHaveFocus();
+  });
 });
