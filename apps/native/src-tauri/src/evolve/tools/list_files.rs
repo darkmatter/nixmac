@@ -3,11 +3,11 @@
 use anyhow::{Result, anyhow};
 use log::{debug, info};
 use pi_walker::{CompiledWalkGlob, FollowLinks, WalkFilter, WalkRequest};
-use std::path::{Component, Path};
+use std::path::Path;
 
-use crate::evolve::IGNORED_DIRS;
 use crate::evolve::file_ops::{ensure_path_under_base, join_in_dir};
 use crate::evolve::messages::Tool;
+use crate::evolve::nixmac_ignore::NixmacIgnoreChecker;
 
 use super::{ToolCtx, ToolResult};
 
@@ -57,8 +57,8 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
         .gitignore_matcher
         .map(|checker| checker.visible_files())
         .transpose()?;
+    let nixmac_ignore = NixmacIgnoreChecker::new(repo_root)?;
 
-    let ignored_dirs = IGNORED_DIRS;
     let glob =
         CompiledWalkGlob::new([&pattern]).map_err(|e| anyhow!("Invalid glob pattern: {}", e))?;
     let filter = WalkFilter::files_only().glob(glob);
@@ -84,8 +84,9 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
         }
 
         let rel = Path::new(&entry.path);
-        if let Some(Component::Normal(name)) = rel.components().next()
-            && ignored_dirs.contains(&name.to_string_lossy().as_ref())
+        if nixmac_ignore
+            .as_ref()
+            .is_some_and(|checker| checker.is_ignored(rel, false))
         {
             continue;
         }
@@ -157,6 +158,7 @@ mod tests {
             host_attr: "dummy-host",
             args: &json!({ "pattern": "**" }),
             gitignore_matcher: gitignore.as_ref(),
+            nixmac_ignore_matcher: None,
             auto_format: false,
             on_build_output: None,
         };
