@@ -142,6 +142,6 @@
     "typescript": "5.9.3",
     "vite": "7.3.2",
     "vite-plugin-monaco-editor": "1.1.0",
-    "vitest": "3.2.4"
+    "vitest": "3.2.6"
   }
 }
