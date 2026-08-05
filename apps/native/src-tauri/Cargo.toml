@@ -108,6 +108,15 @@ walkdir = "2.5.0"
 plist = "1.9.0"
 whoami = "2.1.2"
 libc = "0.2"
+# Not used directly — declared so the `static` feature unifies across the graph
+# (git2 -> libgit2-sys/libssh2-sys -> libz-sys). Without it libz-sys probes with
+# pkg-config and, on a machine with MacPorts/Homebrew earlier on PATH, links
+# /opt/local/lib/libz.dylib. That also drags -L/opt/local/lib and
+# -I/opt/local/include into the link, which silently pulls in GNU libiconv and
+# produces a bundle that dies on any clean Mac with:
+#   dyld: Library not loaded: /opt/local/lib/libiconv.2.dylib
+# Verify with `bun run check:portability` after building.
+libz-sys = { version = "1", features = ["static"] }
 orpc = "1.1.0"
 orpc-specta = "1.1.0"
 tauri-plugin-orpc = "1.1.0"

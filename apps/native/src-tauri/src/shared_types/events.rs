@@ -150,6 +150,24 @@ pub struct DarwinApplyEndEvent {
     pub app_management: Option<AppManagementCheckResult>,
 }
 
+/// Payload for `homebrew:install:data`.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct HomebrewInstallDataEvent {
+    /// Raw output chunk from the Homebrew installer.
+    pub chunk: String,
+}
+
+/// Payload for `homebrew:install:end`.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct HomebrewInstallEndEvent {
+    /// Whether the install completed successfully.
+    pub ok: bool,
+    /// Exit/status code for the installer.
+    pub code: i32,
+    /// Human-readable failure message, when the install failed.
+    pub error: Option<String>,
+}
+
 /// Payload for `rust:panic`.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]

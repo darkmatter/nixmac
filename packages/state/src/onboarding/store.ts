@@ -30,6 +30,8 @@ export const initialOnboardingState: OnboardingStateValues = {
 	trackedCustomizationSources: {},
 	inferenceSetupDraft: initialInferenceSetupDraft,
 	inferenceDeferred: false,
+	homebrewInstalled: null,
+	homebrewSkipped: false,
 	celebrating: false,
 	viewingStep: null,
 };
@@ -48,6 +50,10 @@ export type OnboardingActions = {
 	setByokInferenceDraft: (draft: Partial<InferenceSetupDraft["byok"]>) => void;
 	/** Defer inference to the build step (inline setup runs alongside the build). */
 	deferInference: () => void;
+	/** Record the `brew` detection result (or `null` to mark it unknown again). */
+	setHomebrewInstalled: (homebrewInstalled: boolean | null) => void;
+	/** Skip the optional Homebrew step for this session. */
+	setHomebrewSkipped: (homebrewSkipped: boolean) => void;
 	/** Keep the success celebration mounted after the build gate is satisfied. */
 	setCelebrating: (celebrating: boolean) => void;
 	setViewingStep: (viewingStep: OnboardingStepId | null) => void;
@@ -91,6 +97,8 @@ export const onboardingStore = create<OnboardingStore>()((set) => ({
 			},
 		})),
 	deferInference: () => set({ inferenceDeferred: true, viewingStep: null }),
+	setHomebrewInstalled: (homebrewInstalled) => set({ homebrewInstalled }),
+	setHomebrewSkipped: (homebrewSkipped) => set({ homebrewSkipped, viewingStep: null }),
 	setCelebrating: (celebrating) => set({ celebrating }),
 	setViewingStep: (viewingStep) => set({ viewingStep }),
 }));
@@ -109,6 +117,8 @@ const {
 	setHostedInferenceDraft,
 	setByokInferenceDraft,
 	deferInference,
+	setHomebrewInstalled,
+	setHomebrewSkipped,
 	setCelebrating,
 	setViewingStep,
 } = onboardingStore.getInitialState();
@@ -127,6 +137,8 @@ export const onboardingActions: OnboardingActions & {
 	setHostedInferenceDraft,
 	setByokInferenceDraft,
 	deferInference,
+	setHomebrewInstalled,
+	setHomebrewSkipped,
 	setCelebrating,
 	setViewingStep,
 };
