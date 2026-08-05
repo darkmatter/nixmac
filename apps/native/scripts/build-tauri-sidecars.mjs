@@ -16,6 +16,9 @@ const tauriConf = JSON.parse(
   await readFile(path.join(root, "src-tauri", "tauri.conf.json"), "utf8"),
 );
 const minimumSystemVersion = tauriConf.bundle?.macOS?.minimumSystemVersion;
+// execa extends process.env by default, so NIXMAC_ENV and NIXMAC_BUILD_ID
+// reach build.rs unchanged: the helper and sync agent must compile in the same
+// build identity as the GUI built from this environment.
 const cargoEnv =
   process.platform === "darwin" && minimumSystemVersion
     ? { MACOSX_DEPLOYMENT_TARGET: minimumSystemVersion }

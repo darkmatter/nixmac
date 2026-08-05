@@ -1,36 +1,33 @@
-use crate::privileged_helper::client;
+use crate::privileged_helper::client::{self, HelperClientError};
 #[cfg(target_os = "macos")]
 use crate::privileged_helper::protocol::{HELPER_LABEL, HELPER_PLIST_NAME};
-use crate::privileged_helper::protocol::{HelperResponse, HelperServiceStatus};
+use crate::privileged_helper::protocol::{HelperReply, HelperServiceStatus};
 use anyhow::Result;
 
 pub fn status() -> HelperServiceStatus {
     let mut status = platform_status();
     status.socket_available = client::socket_available();
     // SMAppService state and a socket path prove nothing about the daemon:
-    // only an authenticated round-trip (mutual code-signature validation at
-    // this build's protocol version) shows the connection actually works.
+    // only an authenticated round-trip (mutual code-signature validation)
+    // shows the connection actually works.
     if status.socket_available {
-        fold_status_probe(&mut status, client::status());
+        fold_status_probe(&mut status, client::status().map(|exchange| exchange.reply));
     }
     status
 }
 
-/// Folds one authenticated status round-trip into the service status. Only a
-/// same-version `ok` response marks the daemon responding: a version-skewed
-/// response fails `client::status` before its fields are readable and lands
-/// in the `Err` arm, and a daemon-reported protocol error arrives with
-/// `ok: false` — either way a protocol error can only ever reach `detail`.
-fn fold_status_probe(status: &mut HelperServiceStatus, probe: anyhow::Result<HelperResponse>) {
+/// Folds one status round-trip into the service status. Only an
+/// authenticated `Status` reply naming a state marks the daemon responding;
+/// a typed refusal, an unparseable reply, or any exchange failure can only
+/// ever reach `detail`.
+fn fold_status_probe(
+    status: &mut HelperServiceStatus,
+    probe: Result<HelperReply, HelperClientError>,
+) {
     match probe {
-        Ok(response) if response.ok => status.responding = true,
-        Ok(response) => {
-            status.detail =
-                Some(response.error.unwrap_or_else(|| {
-                    "helper answered the status probe with an error".to_string()
-                }));
-        }
-        Err(error) => status.detail = Some(format!("{error:#}")),
+        Ok(HelperReply::Status { .. }) => status.responding = true,
+        Ok(reply) => status.detail = Some(reply.summary()),
+        Err(error) => status.detail = Some(error.to_string()),
     }
 }
 
@@ -211,7 +208,8 @@ mod macos {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::privileged_helper::protocol::{HELPER_LABEL, UNSUPPORTED_PROTOCOL_ERROR};
+    use crate::privileged_helper::peer_auth::ClientKind;
+    use crate::privileged_helper::protocol::{ActivationInfo, HELPER_LABEL, HelperStateName};
 
     fn probed_status() -> HelperServiceStatus {
         HelperServiceStatus {
@@ -225,64 +223,80 @@ mod tests {
         }
     }
 
-    #[test]
-    fn same_version_ok_probe_sets_responding() {
-        let mut status = probed_status();
-
-        fold_status_probe(&mut status, Ok(HelperResponse::ok("nixmac helper ready")));
-
-        assert!(status.responding);
-        assert_eq!(status.detail, None);
-    }
-
-    #[test]
-    fn skew_rejected_probes_never_set_responding() {
-        // What reaches the fold when the daemon answered with the exact v1
-        // status response or a mismatched version: the client-side parse
-        // already classified it as skew, so the probe arrives as an error.
-        for wire in [
-            r#"{"ok":true,"code":0,"stdout":"nixmac helper ready","stderr":"","error":null}"#
-                .to_string(),
-            format!(
-                r#"{{"protocolVersion":{},"helperBuildVersion":"9.9.9","ok":true,"code":0,"stdout":"","stderr":"","error":null}}"#,
-                crate::privileged_helper::protocol::HELPER_PROTOCOL_VERSION + 1
-            ),
-        ] {
-            let mut status = probed_status();
-
-            fold_status_probe(&mut status, HelperResponse::parse(&wire));
-
-            assert!(!status.responding);
-            assert!(
-                status
-                    .detail
-                    .expect("skew detail")
-                    .contains(UNSUPPORTED_PROTOCOL_ERROR)
-            );
+    fn status_reply(state: HelperStateName) -> HelperReply {
+        let activation = matches!(
+            state,
+            HelperStateName::Activating | HelperStateName::Retiring
+        )
+        .then(|| ActivationInfo {
+            request_id: "req-1".to_string(),
+            script_path: "/nix/store/abc-darwin-system/activate".to_string(),
+            client_kind: ClientKind::Gui,
+        });
+        HelperReply::Status {
+            state,
+            helper_build_id: "build-a".to_string(),
+            activation,
         }
     }
 
     #[test]
-    fn parsed_protocol_error_response_never_sets_responding() {
-        // A same-version daemon reporting a protocol error (it rejected the
-        // request's version) parses fine — it must still never count as
-        // responding.
-        let mut status = probed_status();
+    fn authenticated_status_reply_sets_responding_whatever_the_state() {
+        // `responding` means the daemon answered an authenticated Status
+        // round-trip naming a state — any of the four.
+        for state in [
+            HelperStateName::Idle,
+            HelperStateName::Activating,
+            HelperStateName::Retiring,
+            HelperStateName::Retired,
+        ] {
+            let mut status = probed_status();
 
-        fold_status_probe(
-            &mut status,
-            Ok(HelperResponse::error(
-                -1,
-                format!("{UNSUPPORTED_PROTOCOL_ERROR} 1 (this build speaks 2)"),
+            fold_status_probe(&mut status, Ok(status_reply(state)));
+
+            assert!(status.responding);
+            assert_eq!(status.detail, None);
+        }
+    }
+
+    #[test]
+    fn typed_refusals_never_set_responding() {
+        for reply in [
+            HelperReply::BuildMismatch {
+                helper_build_id: "build-b".to_string(),
+            },
+            HelperReply::CallerNotPermitted,
+            HelperReply::RequestNotUnderstood,
+        ] {
+            let mut status = probed_status();
+
+            fold_status_probe(&mut status, Ok(reply));
+
+            assert!(!status.responding);
+            assert!(status.detail.is_some());
+        }
+    }
+
+    #[test]
+    fn exchange_failures_never_set_responding() {
+        // What reaches the fold when an installed daemon from a previous
+        // release answers with a reply this build cannot parse, or the
+        // exchange fails outright.
+        for error in [
+            HelperClientError::UnparseableReply("unknown reply shape".to_string()),
+            HelperClientError::ClosedBeforeReply,
+            HelperClientError::AuthenticationFailed(anyhow::anyhow!("not the signed helper")),
+            HelperClientError::Io(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "read timed out",
             )),
-        );
+        ] {
+            let mut status = probed_status();
 
-        assert!(!status.responding);
-        assert!(
-            status
-                .detail
-                .expect("protocol error detail")
-                .contains(UNSUPPORTED_PROTOCOL_ERROR)
-        );
+            fold_status_probe(&mut status, Err(error));
+
+            assert!(!status.responding);
+            assert!(status.detail.is_some());
+        }
     }
 }

@@ -3,6 +3,11 @@ mod env_keys {
     include!("src/env_keys.rs");
 }
 
+mod build_id {
+    #![allow(dead_code)]
+    include!("src/build_id.rs");
+}
+
 use std::path::Path;
 use std::process::Command;
 
@@ -62,6 +67,27 @@ fn embed_signing_team_id() {
     }
 }
 
+/// Embed the build identity (`NIXMAC_BUILD_ID`, supplied by CI from the
+/// packaged source revision) into every target of this crate — the GUI, the
+/// helper, and the sync agent. Packaged builds (`NIXMAC_ENV` =
+/// prod/production) hard-fail on a missing or empty value; development builds
+/// fall back to a fixed literal. Git is deliberately never run here: the value
+/// must describe the packaged source, which only the build orchestrator knows.
+fn embed_build_id() {
+    println!("cargo:rerun-if-env-changed=NIXMAC_BUILD_ID");
+    println!("cargo:rerun-if-env-changed=NIXMAC_ENV");
+
+    let packaged = matches!(
+        std::env::var("NIXMAC_ENV").as_deref(),
+        Ok("prod") | Ok("production")
+    );
+    let raw = std::env::var("NIXMAC_BUILD_ID").ok();
+    match build_id::resolve_build_id(raw.as_deref(), packaged) {
+        Ok(build_id) => println!("cargo:rustc-env=NIXMAC_BUILD_ID={build_id}"),
+        Err(error) => panic!("{error}"),
+    }
+}
+
 fn add_debug_swift_runtime_rpaths() {
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("macos")
         || std::env::var("PROFILE").as_deref() != Ok("debug")
@@ -101,6 +127,7 @@ fn add_debug_swift_runtime_rpaths() {
 fn main() {
     embed_build_profile();
     embed_signing_team_id();
+    embed_build_id();
     add_debug_swift_runtime_rpaths();
 
     // Set up passthrough for relevant environment variables.
