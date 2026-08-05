@@ -40,7 +40,19 @@ const meta = preview.meta({
 export default meta;
 
 const SAMPLE_HOSTS = ["macbook-pro", "mac-studio"];
-const STEP_ORDER = ["permissions", "nix-setup", "config-dir", "setup", "customizations", "inference", "build"];
+// Must stay in step with `STEPS` in lib/onboarding: every story's start point
+// is an index into this list, so a gate missing here silently parks unrelated
+// stories on the gate the flow actually reaches first.
+const STEP_ORDER = [
+  "permissions",
+  "nix-setup",
+  "homebrew-setup",
+  "config-dir",
+  "setup",
+  "customizations",
+  "inference",
+  "build",
+];
 
 const PERMISSION_DEFS = [
   {
@@ -187,14 +199,17 @@ function installBackend(startAt: string) {
     ) as Record<string, string>,
     nix: startIdx >= 2 ? { installed: true, darwin: true } : { installed: null, darwin: null },
     nixProbes: 0,
-    configDir: startIdx >= 3 ? "/Users/demo/.darwin" : "",
-    hosts: startIdx >= 3 ? SAMPLE_HOSTS : [],
-    hostAttr: startIdx >= 4 ? SAMPLE_HOSTS[0] : "",
-    flakeExists: startIdx >= 3,
-    macScannedAt: (startIdx >= 5 ? 1_700_000_000 : null) as number | null,
-    evolveProvider: (startIdx >= 6 ? "openrouter" : null) as string | null,
-    evolveModel: (startIdx >= 6 ? "~anthropic/claude-sonnet-latest" : null) as string | null,
-    loginDecided: startIdx >= 6,
+    // `null` renders the step's "checking" spinner, so stories at or before the
+    // Homebrew gate report a definite "not installed" instead.
+    homebrewInstalled: (startIdx >= 3) as boolean | null,
+    configDir: startIdx >= 4 ? "/Users/demo/.darwin" : "",
+    hosts: startIdx >= 4 ? SAMPLE_HOSTS : [],
+    hostAttr: startIdx >= 5 ? SAMPLE_HOSTS[0] : "",
+    flakeExists: startIdx >= 4,
+    macScannedAt: (startIdx >= 6 ? 1_700_000_000 : null) as number | null,
+    evolveProvider: (startIdx >= 7 ? "openrouter" : null) as string | null,
+    evolveModel: (startIdx >= 7 ? "~anthropic/claude-sonnet-latest" : null) as string | null,
+    loginDecided: startIdx >= 7,
     lastBuildAt: null as number | null,
     githubConnected: false,
   };
@@ -218,6 +233,12 @@ function installBackend(startAt: string) {
         installed: state.nix.installed,
         darwinRebuildAvailable: state.nix.darwin,
         installing: false,
+      },
+      homebrewInstall: {
+        installed: state.homebrewInstalled,
+        installing: false,
+        installPhase: null,
+        lastError: null,
       },
       preferences: {
         configDir: state.configDir || null,
@@ -463,6 +484,16 @@ function installBackend(startAt: string) {
   patch(tauriAPI.scanner, "scanDefaults", async () => MOCK_DEFAULTS);
   ensure("homebrew");
   patch(tauriAPI.homebrew, "getStateDiff", async () => MOCK_HOMEBREW);
+  patch(tauriAPI.homebrew, "check", async () => {
+    syncVM();
+    return { installed: state.homebrewInstalled === true };
+  });
+  patch(tauriAPI.homebrew, "installState", async () => ({
+    installed: state.homebrewInstalled,
+    installing: false,
+    installPhase: null,
+    lastError: null,
+  }));
   ensure("launchd");
   patch(tauriAPI.launchd, "scanLaunchdItems", async () => MOCK_LAUNCHD);
 

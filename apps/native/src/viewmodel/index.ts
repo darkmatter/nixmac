@@ -14,6 +14,7 @@ import { startChangeMapSync } from "./change-map";
 import { startEvolutionSync } from "./evolution";
 import { startEvolveSync } from "./evolve";
 import { startGitSync } from "./git";
+import { startHomebrewSync } from "./homebrew";
 import { startNixInstallSync } from "./nix-install";
 import { startOnboardingStateSync } from "./onboarding-state";
 import { startPermissionsSync } from "./permissions";
@@ -44,6 +45,7 @@ export async function startViewModelSync(): Promise<() => void> {
     unlisteners.push(await startPermissionsSync());
     unlisteners.push(await startPromptHistorySync());
     unlisteners.push(await startNixInstallSync());
+    unlisteners.push(await startHomebrewSync());
     unlisteners.push(await startRebuildSync());
     unlisteners.push(await startEvolutionSync());
 

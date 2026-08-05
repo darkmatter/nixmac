@@ -25,16 +25,23 @@ pub async fn homebrew_get_state_diff(
         .map_err(|e| capture_err("homebrew_get_state_diff", e))
 }
 
-/// Reports whether Homebrew is installed so onboarding can offer a guided install.
+/// Reports whether Homebrew is installed so onboarding can offer a guided
+/// install, and mirrors the result into the `HomebrewInstallState` cell that
+/// the UI actually reads.
 #[tauri::command]
-pub async fn homebrew_check() -> Result<shared_types::HomebrewCheckResult, String> {
-    let installed =
-        if cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_MOCK_SYSTEM") {
-            crate::e2e_runtime::enabled("NIXMAC_E2E_HOMEBREW_INSTALLED")
-        } else {
-            crate::system::homebrew::is_installed()
-        };
+pub async fn homebrew_check(app: AppHandle) -> Result<shared_types::HomebrewCheckResult, String> {
+    let installed = crate::system::homebrew::is_installed();
+    crate::state::homebrew_state::update(&app, |state| state.installed = Some(installed));
     Ok(shared_types::HomebrewCheckResult { installed })
+}
+
+/// Returns the current Homebrew installation/progress cell for ViewModel
+/// hydration.
+#[tauri::command]
+pub async fn homebrew_install_state(
+    app: AppHandle,
+) -> Result<shared_types::HomebrewInstallState, String> {
+    Ok(crate::state::homebrew_state::get(&app))
 }
 
 /// Starts a streaming Homebrew install. Progress is emitted via

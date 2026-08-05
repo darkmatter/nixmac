@@ -5,6 +5,8 @@
 //! it. This module detects whether Homebrew is present and drives the official
 //! installer with streamed progress so onboarding can offer a one-click install.
 
+use crate::shared_types::{HomebrewInstallDataEvent, HomebrewInstallEndEvent};
+use crate::state::homebrew_state;
 use log::{error, info};
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::fs::PermissionsExt;
@@ -20,6 +22,12 @@ use tauri::{AppHandle, Emitter};
 const HOMEBREW_INSTALL_URL: &str =
     "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh";
 
+/// AppleScript's "user cancelled" status, reused as our exit code for a
+/// dismissed password dialog. A deliberate cancel is not a failure: it carries
+/// no error message, so the step returns to its offer-to-install state instead
+/// of the red failed state.
+const CANCELLED_EXIT_CODE: i32 = -128;
+
 fn e2e_mock_system_enabled() -> bool {
     cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_MOCK_SYSTEM")
 }
@@ -27,14 +35,34 @@ fn e2e_mock_system_enabled() -> bool {
 /// Checks whether Homebrew is installed by running `brew --version`.
 ///
 /// Uses the Nix-augmented PATH so a brew installed under `/opt/homebrew` or
-/// `/usr/local/bin` is found in the GUI app context.
+/// `/usr/local/bin` is found in the GUI app context. Under e2e mock mode the
+/// answer comes from `NIXMAC_E2E_HOMEBREW_INSTALLED` instead, so every caller
+/// shares one definition of "installed" rather than gating at each call site.
 pub fn is_installed() -> bool {
+    if e2e_mock_system_enabled() {
+        return crate::e2e_runtime::enabled("NIXMAC_E2E_HOMEBREW_INSTALLED");
+    }
     Command::new("brew")
         .arg("--version")
         .env("PATH", crate::system::nix::get_nix_path())
         .output()
         .map(|output| output.status.success())
         .unwrap_or(false)
+}
+
+/// Guards against a second concurrent install run: a double invoke would spawn
+/// two installers and two password dialogs. The UI disables the button while
+/// `installing` is set, but the command has to be safe on its own.
+static INSTALL_RUNNING: AtomicBool = AtomicBool::new(false);
+
+/// Clears `INSTALL_RUNNING` when the install thread returns *or* unwinds, so a
+/// panic can't wedge the command for the rest of the session.
+struct InstallGuard;
+
+impl Drop for InstallGuard {
+    fn drop(&mut self) {
+        INSTALL_RUNNING.store(false, Ordering::Release);
+    }
 }
 
 /// Runs the official Homebrew installer in a background thread with streaming
@@ -47,48 +75,91 @@ pub fn is_installed() -> bool {
 /// The installer is run with `NONINTERACTIVE=1` so it does not pause to prompt
 /// the user to press RETURN. It may still require `sudo`; password handling is
 /// surfaced through the streamed log for now.
+///
+/// Progress that outlives the step's mount — `installing` and the current phase
+/// — is recorded in the `HomebrewInstallState` cell rather than returned, so
+/// leaving the onboarding step mid-install and coming back finds a step that
+/// still knows a run is in flight.
 pub fn install_stream(app: &AppHandle) -> Result<(), anyhow::Error> {
+    if INSTALL_RUNNING
+        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+        .is_err()
+    {
+        anyhow::bail!("A Homebrew install is already running.");
+    }
+
     info!("[homebrew] install_stream: starting guided install");
 
     let app_handle = app.clone();
+    homebrew_state::record_install_start(&app_handle);
 
     if e2e_mock_system_enabled() {
         std::thread::spawn(move || {
-            let emit_line = |line: &str| {
-                let _ = app_handle.emit(
-                    "homebrew:install:data",
-                    serde_json::json!({ "chunk": format!("{}\n", line) }),
-                );
-            };
-            emit_line("NIXMAC_E2E_MOCK_SYSTEM: mocked Homebrew install started.");
-            emit_line("NIXMAC_E2E_MOCK_SYSTEM: mocked Homebrew install complete.");
+            let _guard = InstallGuard;
+            emit_line(
+                &app_handle,
+                "NIXMAC_E2E_MOCK_SYSTEM: mocked Homebrew install started.",
+            );
+            emit_line(
+                &app_handle,
+                "NIXMAC_E2E_MOCK_SYSTEM: mocked Homebrew install complete.",
+            );
+            homebrew_state::record_install_end(&app_handle, true, None);
             let _ = app_handle.emit(
                 "homebrew:install:end",
-                serde_json::json!({ "ok": true, "code": 0, "error": null, "e2e_mock_system": true }),
+                HomebrewInstallEndEvent {
+                    ok: true,
+                    code: 0,
+                    error: None,
+                },
             );
         });
         return Ok(());
     }
 
     std::thread::spawn(move || {
-        match run_install(&app_handle) {
-            Ok(()) => {
+        let _guard = InstallGuard;
+        let result = run_install(&app_handle);
+
+        // Probe rather than translate the exit code. The installer can exit 0
+        // without leaving a usable `brew` — a transient network failure during
+        // the fetch used to do exactly that — and "succeeded" must never mean
+        // anything less than "the prerequisite is actually present now".
+        let installed = is_installed();
+        let (ok, code, error) = match result {
+            Ok(()) if installed => {
                 info!("[homebrew] install completed successfully");
-                // fire-and-forget: emit only errors when no listeners are
-                // registered (window hidden/destroyed); a missing event is non-fatal.
-                let _ = app_handle.emit(
-                    "homebrew:install:end",
-                    serde_json::json!({ "ok": true, "code": 0, "error": null }),
-                );
+                (true, 0, None)
+            }
+            Ok(()) => {
+                error!("[homebrew] installer exited 0 but brew is still not detectable");
+                (
+                    false,
+                    -1,
+                    Some(
+                        "The installer finished, but Homebrew could not be found afterwards. \
+                         Check the log above and try again."
+                            .to_string(),
+                    ),
+                )
+            }
+            Err((CANCELLED_EXIT_CODE, _)) => {
+                info!("[homebrew] install cancelled at the password prompt");
+                (false, CANCELLED_EXIT_CODE, None)
             }
             Err((code, message)) => {
                 error!("[homebrew] install failed (code {}): {}", code, message);
-                let _ = app_handle.emit(
-                    "homebrew:install:end",
-                    serde_json::json!({ "ok": false, "code": code, "error": message }),
-                );
+                (false, code, Some(message))
             }
-        }
+        };
+
+        homebrew_state::record_install_end(&app_handle, installed, error.clone());
+        // fire-and-forget: emit only errors when no listeners are registered
+        // (window hidden/destroyed); a missing event is non-fatal.
+        let _ = app_handle.emit(
+            "homebrew:install:end",
+            HomebrewInstallEndEvent { ok, code, error },
+        );
     });
 
     Ok(())
@@ -157,7 +228,9 @@ const CLT_HEARTBEAT_EVERY: u32 = 6;
 fn emit_line(app: &AppHandle, line: &str) {
     let _ = app.emit(
         "homebrew:install:data",
-        serde_json::json!({ "chunk": format!("{}\n", line) }),
+        HomebrewInstallDataEvent {
+            chunk: format!("{}\n", line),
+        },
     );
 }
 
@@ -190,6 +263,7 @@ fn ensure_command_line_tools(app: &AppHandle) -> Result<(), (i32, String)> {
     }
 
     info!("[homebrew] Command Line Tools missing; requesting install");
+    homebrew_state::record_phase(app, homebrew_state::PHASE_COMMAND_LINE_TOOLS);
     emit_line(
         app,
         "==> Command Line Tools are required by Homebrew and were not found.",
@@ -368,7 +442,7 @@ fn prompt_password() -> Result<String, (i32, String)> {
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         if stderr.contains("-128") || stderr.to_lowercase().contains("user canceled") {
-            Err((-128, "Installation cancelled.".to_string()))
+            Err((CANCELLED_EXIT_CODE, "Installation cancelled.".to_string()))
         } else {
             Err((
                 output.status.code().unwrap_or(-1),
@@ -430,7 +504,18 @@ fn spawn_sudo_keepalive(stop: Arc<AtomicBool>) -> std::thread::JoinHandle<()> {
 /// Spawns the install script, streaming stdout+stderr line-by-line to the
 /// frontend. Returns the exit code and a message on failure.
 fn run_installer_streamed(app: &AppHandle, askpass: Option<&Path>) -> Result<(), (i32, String)> {
-    let script = format!(r#"/bin/bash -c "$(curl -fsSL {})""#, HOMEBREW_INSTALL_URL);
+    homebrew_state::record_phase(app, homebrew_state::PHASE_INSTALLING);
+
+    // Fetch first and fail loudly. Inlining the fetch as `bash -c "$(curl ...)"`
+    // silently succeeds when the download fails: the command substitution comes
+    // back empty, `bash -c ""` exits 0, and the run reads as a successful
+    // install that left no `brew` behind.
+    let script = format!(
+        r#"script="$(curl -fsSL '{}')" || exit 1
+[ -n "$script" ] || exit 1
+exec /bin/bash -c "$script""#,
+        HOMEBREW_INSTALL_URL
+    );
 
     let mut command = Command::new("/bin/bash");
     command
@@ -480,10 +565,7 @@ fn run_installer_streamed(app: &AppHandle, askpass: Option<&Path>) -> Result<(),
 fn stream_lines<R: std::io::Read>(app: &AppHandle, pipe: Option<R>) {
     if let Some(pipe) = pipe {
         for line in BufReader::new(pipe).lines().map_while(Result::ok) {
-            let _ = app.emit(
-                "homebrew:install:data",
-                serde_json::json!({ "chunk": format!("{}\n", line) }),
-            );
+            emit_line(app, &line);
         }
     }
 }

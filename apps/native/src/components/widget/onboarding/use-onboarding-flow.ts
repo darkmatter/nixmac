@@ -42,8 +42,9 @@ export function useOnboardingFlow(): {
   const lastBuildAt = useViewModel((s) => s.onboardingState?.lastBuildAt ?? null);
   const completedAt = useViewModel((s) => s.onboardingState?.completedAt ?? null);
 
+  const homebrewInstalled = useViewModel((s) => s.homebrewInstall?.installed ?? null);
+
   const inferenceDeferred = useOnboarding((s) => s.inferenceDeferred);
-  const homebrewInstalled = useOnboarding((s) => s.homebrewInstalled);
   const homebrewSkipped = useOnboarding((s) => s.homebrewSkipped);
   const celebrating = useOnboarding((s) => s.celebrating);
   const viewingStep = useOnboarding((s) => s.viewingStep);

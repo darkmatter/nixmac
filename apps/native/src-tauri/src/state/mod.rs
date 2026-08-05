@@ -20,6 +20,7 @@ pub mod completion_log;
 pub mod drift_notifications;
 pub mod evolve_state;
 pub mod git_state;
+pub mod homebrew_state;
 pub mod nix_install_state;
 pub mod onboarding;
 pub mod permissions_state;

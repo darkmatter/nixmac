@@ -3,6 +3,7 @@ import type {
   EvolveState,
   GitStatus,
   GlobalPreferences,
+  HomebrewInstallState,
   NixInstallState,
   OnboardingState,
   PermissionsState,
@@ -46,6 +47,14 @@ export type ViewModelState = {
   promptHistory: string[];
   /** Mirrored nix / darwin-rebuild installation status; null until hydrated. */
   nixInstall: NixInstallState | null;
+  /**
+   * Mirrored Homebrew installation status and guided-install progress; null
+   * until hydrated. Homebrew presence is prerequisite health, so it lives here
+   * rather than in the onboarding session store.
+   */
+  homebrewInstall: HomebrewInstallState | null;
+  /** Homebrew installer output fold; reset whenever a new install run starts. */
+  homebrewLog: string[];
   /** Mirrored darwin-rebuild lifecycle status; null until hydrated. */
   rebuildStatus: RebuildStatus | null;
   /** Rebuild output fold; reset whenever a new rebuild run starts. */

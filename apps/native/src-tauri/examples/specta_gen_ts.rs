@@ -103,6 +103,7 @@ fn main() {
         .register::<shared_types::OkResult>()
         .register::<shared_types::NixCheckResult>()
         .register::<shared_types::HomebrewCheckResult>()
+        .register::<shared_types::HomebrewInstallState>()
         .register::<shared_types::BuildCheckResult>()
         .register::<shared_types::ConfigEditApplyResult>()
         .register::<shared_types::CliToolsState>()

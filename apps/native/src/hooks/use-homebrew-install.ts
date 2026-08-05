@@ -1,56 +1,39 @@
-import { ipcRenderer, tauriAPI } from "@/ipc/api";
-import type {
-  HomebrewInstallDataEvent,
-  HomebrewInstallEndEvent,
-} from "@/ipc/types";
-import { onboardingActions } from "@nixmac/state";
+import { tauriAPI } from "@/ipc/api";
+import { uiActions } from "@nixmac/state";
 
-const checkHomebrew = async () => {
+/**
+ * Triggers for the guided Homebrew flow.
+ *
+ * Neither call returns an outcome: `homebrew_check` and the installer both
+ * write the backend `HomebrewInstallState` cell, which reaches the UI through
+ * the `homebrew` ViewModel sync module. Detection, progress and the final
+ * verdict therefore have exactly one source, so the UI cannot render a success
+ * the onboarding gate disagrees with.
+ */
+
+/** Probe for `brew`; the result lands in `viewModel.homebrewInstall`. */
+const checkHomebrew = async (): Promise<void> => {
   try {
-    const result = await tauriAPI.homebrew.check();
-    onboardingActions.setHomebrewInstalled(result.installed);
+    await tauriAPI.homebrew.check();
   } catch {
-    onboardingActions.setHomebrewInstalled(false);
+    // The command writes the cell on success; a transport failure leaves the
+    // last known value in place rather than inventing "not installed".
   }
 };
 
-interface InstallOptions {
-  onLine?: (line: string) => void;
-  onDone?: (ok: boolean, error?: string | null) => void;
-}
-
 /**
- * Runs the guided Homebrew install, streaming installer output line-by-line.
- * On completion it re-checks `brew` so the store reflects the real state.
+ * Start the guided install; progress streams into the ViewModel.
+ *
+ * Only a failure to *start* surfaces here (the command rejects an install that
+ * is already running); once started, the run reports through the cell. The
+ * backend leaves the cell untouched when it rejects, so the step stays on its
+ * offer-to-install state and the user can retry.
  */
-const installHomebrew = async (options: InstallOptions = {}) => {
-  const unlistenData = await ipcRenderer.on<HomebrewInstallDataEvent>(
-    "homebrew:install:data",
-    (event) => {
-      for (const line of event.payload.chunk.split("\n")) {
-        if (line.trim() !== "") options.onLine?.(line);
-      }
-    },
-  );
-
-  const unlistenEnd = await ipcRenderer.on<HomebrewInstallEndEvent>(
-    "homebrew:install:end",
-    async (event) => {
-      unlistenData();
-      unlistenEnd();
-      // Re-detect so a successful install flips the store to installed and the
-      // onboarding step advances; a failed install leaves it false.
-      await checkHomebrew();
-      options.onDone?.(event.payload.ok, event.payload.error);
-    },
-  );
-
+const installHomebrew = async (): Promise<void> => {
   try {
     await tauriAPI.homebrew.installStream();
   } catch (e) {
-    unlistenData();
-    unlistenEnd();
-    options.onDone?.(false, (e as Error)?.message ?? String(e));
+    uiActions.setError((e as Error)?.message ?? String(e));
   }
 };
 

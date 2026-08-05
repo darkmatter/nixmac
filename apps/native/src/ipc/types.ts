@@ -1505,6 +1505,33 @@ code: number;
  */
 error: string | null }
 
+/**
+ * Status of the guided Homebrew installation flow.
+ * 
+ * Homebrew presence is prerequisite health, so this cell — not the onboarding
+ * session store — is where the UI reads it from. `installed` is always the
+ * result of a real `brew --version` probe, including the one taken when an
+ * install run finishes: the installer's exit code alone never decides it.
+ */
+export type HomebrewInstallState = { 
+/**
+ * Whether Homebrew is installed; `None` until first checked.
+ */
+installed: boolean | null; 
+/**
+ * True while an install run is in flight.
+ */
+installing: boolean; 
+/**
+ * Current installer phase ("command-line-tools", "installing"); `None`
+ * when idle.
+ */
+installPhase: string | null; 
+/**
+ * Error from the last finished run, if it failed.
+ */
+lastError: string | null }
+
 export type HomebrewItem = { name: string; version: string | null; itemType: HomebrewItemType }
 
 export type HomebrewItemType = "tap" | "cask" | "brew"

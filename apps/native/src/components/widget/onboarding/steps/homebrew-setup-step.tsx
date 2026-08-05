@@ -5,35 +5,39 @@ import { stepEyebrow } from "@/components/widget/onboarding/lib/onboarding";
 import { StepShell } from "@/components/widget/onboarding/step-shell";
 import { useHomebrewInstall } from "@/hooks/use-homebrew-install";
 import { cn } from "@/lib/utils";
-import { onboardingActions, useOnboarding } from "@nixmac/state";
+import { onboardingActions, useViewModel } from "@nixmac/state";
 import { Beer, Check, CircleAlert, Loader2, SkipForward } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 type HomebrewSetupState = "checking" | "missing" | "installing" | "failed" | "success";
 
 export function HomebrewSetupStep() {
-  const homebrewInstalled = useOnboarding((s) => s.homebrewInstalled);
+  const homebrewInstall = useViewModel((s) => s.homebrewInstall);
+  const log = useViewModel((s) => s.homebrewLog);
   const { checkHomebrew, installHomebrew } = useHomebrewInstall();
 
-  const [phase, setPhase] = useState<HomebrewSetupState>(
-    homebrewInstalled === true ? "success" : homebrewInstalled === null ? "checking" : "missing",
-  );
-  const [log, setLog] = useState<string[]>([]);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const homebrewInstalled = homebrewInstall?.installed ?? null;
+  const errorMessage = homebrewInstall?.lastError ?? null;
   const logEndRef = useRef<HTMLDivElement>(null);
+
+  // Derived, never stored: the phase cannot drift from the value the
+  // onboarding gate reads, so "installed" and "not installed" can't be on
+  // screen at the same time. An in-flight run wins over a stale probe result;
+  // otherwise a recorded error means the last run failed.
+  const phase: HomebrewSetupState = homebrewInstall?.installing
+    ? "installing"
+    : homebrewInstalled === true
+      ? "success"
+      : homebrewInstalled === null
+        ? "checking"
+        : errorMessage
+          ? "failed"
+          : "missing";
 
   // Auto-detect on mount when we haven't checked yet.
   useEffect(() => {
     if (homebrewInstalled === null) void checkHomebrew();
   }, [homebrewInstalled, checkHomebrew]);
-
-  // Reflect store changes (e.g. a detection that found brew) into local phase,
-  // but don't clobber an in-progress install.
-  useEffect(() => {
-    if (phase === "installing") return;
-    if (homebrewInstalled === true) setPhase("success");
-    else if (homebrewInstalled === false && phase === "checking") setPhase("missing");
-  }, [homebrewInstalled, phase]);
 
   // Keep the streamed log scrolled to the latest line. Optional-chain the DOM
   // call so it is a no-op under jsdom (scrollIntoView is unimplemented there).
@@ -42,31 +46,27 @@ export function HomebrewSetupStep() {
   }, [log]);
 
   const handleInstall = () => {
-    setLog([]);
-    setErrorMessage(null);
-    setPhase("installing");
-    void installHomebrew({
-      onLine: (line) => setLog((prev) => [...prev, line]),
-      onDone: (ok, error) => {
-        if (ok) {
-          setPhase("success");
-        } else {
-          setErrorMessage(error ?? "Homebrew installation failed.");
-          setPhase("failed");
-        }
-      },
-    });
+    void installHomebrew();
   };
 
   const handleSkip = () => onboardingActions.setHomebrewSkipped(true);
 
+  const skipButton = (
+    <Button variant="ghost" onClick={handleSkip}>
+      <SkipForward className="size-4" aria-hidden="true" />
+      Skip for now
+    </Button>
+  );
+
+  // Skip stays available while installing: the Command Line Tools wait can sit
+  // on an Apple dialog for a long time, and force-quitting the app must not be
+  // the only way out of this step.
   const footer =
-    phase === "missing" || phase === "failed" ? (
+    phase === "installing" ? (
+      skipButton
+    ) : phase === "missing" || phase === "failed" ? (
       <>
-        <Button variant="ghost" onClick={handleSkip}>
-          <SkipForward className="size-4" aria-hidden="true" />
-          Skip for now
-        </Button>
+        {skipButton}
         <Button onClick={handleInstall}>
           <Beer className="size-4" aria-hidden="true" />
           {phase === "failed" ? "Try again" : "Install Homebrew"}
@@ -126,7 +126,9 @@ export function HomebrewSetupStep() {
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-muted-foreground text-sm">
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-              Installing Homebrew…
+              {homebrewInstall?.installPhase === "command-line-tools"
+                ? "Waiting for the macOS Command Line Tools…"
+                : "Installing Homebrew…"}
             </div>
             <div className="max-h-48 overflow-y-auto rounded-md bg-muted/50 p-3 font-mono text-muted-foreground text-xs leading-5">
               {log.length === 0 ? (
