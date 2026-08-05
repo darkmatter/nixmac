@@ -223,7 +223,7 @@ mod tests {
             &mut messages,
             2,
             false,
-            "unknown-model", // 8k context window
+            "qwen2.5-coder", // 16k context window
             4_000,
         )
         .expect("should compact enough room for a meaningful completion");

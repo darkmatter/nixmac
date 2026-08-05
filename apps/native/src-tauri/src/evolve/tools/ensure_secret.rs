@@ -11,7 +11,9 @@ pub(crate) fn definition() -> Tool {
     Tool {
         name: "ensure_secret".to_string(),
         description: "Create and wire a SOPS-managed secret end-to-end without exposing plaintext to the agent. \
-                     This tool ensures an age key exists, maintains SOPS config, creates/initializes an encrypted \
+                     This tool ensures an age key exists, generating one only at the standard per-user SOPS path; \
+                     an explicit SOPS_AGE_KEY_FILE must be an absolute path to an existing identity and is never created or overwritten. \
+                     It maintains SOPS config and creates/initializes an encrypted \
                      secret file under secrets/<name>.yaml, launches a blocking `sops <file>` editor session for \
                      user input, then optionally injects secret path wiring into Nix config. \
                      You can optionally provide a `scaffold` to prefill non-sensitive placeholder structure \

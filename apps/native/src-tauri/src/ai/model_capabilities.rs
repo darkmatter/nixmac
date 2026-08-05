@@ -1,4 +1,4 @@
-const DEFAULT_CONTEXT_WINDOW_TOKENS: u32 = 8192;
+const DEFAULT_CONTEXT_WINDOW_TOKENS: u32 = 131_072;
 const GPT_4O_MAX_COMPLETION_TOKENS: u32 = 16_384;
 
 /// Extra output-token headroom applied for reasoning models. Reasoning models
@@ -230,6 +230,14 @@ mod tests {
         assert_eq!(
             capabilities_for_model("unknown-model").context_window_tokens,
             DEFAULT_CONTEXT_WINDOW_TOKENS
+        );
+    }
+
+    #[test]
+    fn unknown_models_use_128k_context_window() {
+        assert_eq!(
+            capabilities_for_model("unrecognized-provider-model").context_window_tokens,
+            131_072
         );
     }
 
