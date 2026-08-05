@@ -63,7 +63,6 @@ pub fn vite_server_url() -> Option<String> {
     non_empty(settings(None).vite_server_url)
 }
 
-#[allow(dead_code)]
 pub fn submitted_feedback_dsn() -> Option<String> {
     non_empty(settings(None).submitted_feedback_dsn)
 }

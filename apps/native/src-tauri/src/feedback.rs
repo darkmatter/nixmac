@@ -521,7 +521,10 @@ struct FeedbackDestination {
 
 /// Error type for feedback submission failures
 enum FeedbackSendError {
-    Server(reqwest::StatusCode),
+    /// The server responded with a non-success status. Carries the response
+    /// body so the rejection reason (e.g. a missing/invalid `dsn`) is logged
+    /// instead of thrown away.
+    Server(reqwest::StatusCode, String),
     Network(reqwest_middleware::Error),
 }
 
@@ -552,9 +555,43 @@ async fn send_feedback_payload(
         .await
     {
         Ok(resp) if resp.status().is_success() => Ok(()),
-        Ok(resp) => Err(FeedbackSendError::Server(resp.status())),
+        Ok(resp) => {
+            let status = resp.status();
+            // Drain the body so the server's rejection reason is preserved for
+            // logging; without it every failure looks like an opaque status.
+            let body = resp.text().await.unwrap_or_default();
+            Err(FeedbackSendError::Server(status, body))
+        }
         Err(error) => Err(FeedbackSendError::Network(error)),
     }
+}
+
+/// Parse the frontend payload and attach the `dsn` the server requires.
+///
+/// The server rejects any submission without a `dsn`, but the frontend
+/// serializes feedback without one and users can hand-edit the preview into
+/// invalid JSON. Both cases must still reach the server carrying a `dsn`, so we
+/// parse (falling back to a minimal text payload when parsing fails) and inject
+/// the compile-time value into whichever object we end up with. An
+/// absent/empty `dsn` (an unconfigured build) is intentionally left off rather
+/// than sent as a blank value.
+fn prepare_payload(payload: &str, dsn: Option<&str>) -> Value {
+    let mut parsed: Value = serde_json::from_str(payload).unwrap_or_else(|error| {
+        warn!(
+            "[feedback] Payload preview is invalid JSON; falling back to general/text payload: {}",
+            error
+        );
+        serde_json::json!({
+            "type": "general",
+            "text": payload,
+        })
+    });
+
+    if let (Some(dsn), Some(obj)) = (dsn, parsed.as_object_mut()) {
+        obj.insert("dsn".to_string(), Value::String(dsn.to_string()));
+    }
+
+    parsed
 }
 
 /// Submit feedback: try to POST, save to disk on failure, also flush any pending reports.
@@ -568,32 +605,22 @@ pub async fn submit(app: &AppHandle, payload: String) -> Result<bool> {
         }
     };
 
-    let settings = crate::env::settings(None);
-    let dsn = settings.submitted_feedback_dsn;
+    // Route through the env helper so an empty compile-time
+    // `SUBMITTED_FEEDBACK_DSN` reads as unconfigured rather than a blank value.
+    let dsn = crate::env::submitted_feedback_dsn();
+    if dsn.is_none() {
+        log::warn!(
+            "[feedback] SUBMITTED_FEEDBACK_DSN is not configured; the server will reject this submission"
+        );
+    }
 
-    // We expect valid JSON, but users can manually edit the payload preview.
-    // If parsing fails, preserve the raw content inside a minimal general
-    // feedback object so the backend still receives valid JSON.
-    let parsed: Value = match serde_json::from_str(&payload) {
-        Ok(value) => value,
-        Err(error) => {
-            warn!(
-                "[feedback] Payload preview is invalid JSON; falling back to general/text payload: {}",
-                error
-            );
-            serde_json::json!({
-                "type": "general",
-                "text": payload,
-                "dsn": dsn,
-            })
-        }
-    };
+    let parsed = prepare_payload(&payload, dsn.as_deref());
     let client = crate::http_client::logged();
 
     let sent = match send_feedback_payload(&client, &destination, &parsed).await {
         Ok(()) => true,
-        Err(FeedbackSendError::Server(status)) => {
-            log::warn!("[feedback] Server rejected submission: {}", status);
+        Err(FeedbackSendError::Server(status, body)) => {
+            log::warn!("[feedback] Server rejected submission: {} {}", status, body);
             save_to_queue(app, &parsed, "server error")?;
             false
         }
@@ -676,8 +703,12 @@ pub async fn retry_pending(app: &AppHandle) -> Result<usize> {
                 log::info!("[feedback] Successfully sent pending report");
                 sent += 1;
             }
-            Err(FeedbackSendError::Server(status)) => {
-                log::warn!("[feedback] Server rejected pending report: {}", status);
+            Err(FeedbackSendError::Server(status, body)) => {
+                log::warn!(
+                    "[feedback] Server rejected pending report: {} {}",
+                    status,
+                    body
+                );
                 remaining.push(entry);
             }
             Err(FeedbackSendError::Network(error)) => {
@@ -780,7 +811,7 @@ pub fn gather_metadata(
 mod tests {
     use std::fs;
 
-    use super::{redact_metadata_with_scanner, types};
+    use super::{prepare_payload, redact_metadata_with_scanner, types};
     use crate::{
         feedback::get_nix_diff,
         git::{commit_all, init::init_repo},
@@ -789,6 +820,36 @@ mod tests {
     };
     use serde_json::json;
     use tempfile::TempDir;
+
+    #[test]
+    fn prepare_payload_injects_dsn_on_valid_json() {
+        let payload = json!({ "type": "bug", "text": "broken" }).to_string();
+        let prepared = prepare_payload(&payload, Some("dsn_abc"));
+
+        assert_eq!(prepared["dsn"], json!("dsn_abc"));
+        assert_eq!(prepared["type"], json!("bug"));
+        assert_eq!(prepared["text"], json!("broken"));
+    }
+
+    #[test]
+    fn prepare_payload_injects_dsn_on_invalid_json_fallback() {
+        let prepared = prepare_payload("not valid json", Some("dsn_abc"));
+
+        // Invalid JSON falls back to a general/text payload that still carries
+        // the dsn, so the fallback branch matches the normal branch.
+        assert_eq!(prepared["type"], json!("general"));
+        assert_eq!(prepared["text"], json!("not valid json"));
+        assert_eq!(prepared["dsn"], json!("dsn_abc"));
+    }
+
+    #[test]
+    fn prepare_payload_omits_dsn_when_unconfigured() {
+        let payload = json!({ "type": "bug", "text": "broken" }).to_string();
+        let prepared = prepare_payload(&payload, None);
+
+        // Unconfigured build: no dsn field at all rather than a blank value.
+        assert!(prepared.get("dsn").is_none());
+    }
 
     fn test_scanner() -> SecretScanner {
         let toml = r#"

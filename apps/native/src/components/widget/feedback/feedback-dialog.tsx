@@ -481,6 +481,9 @@ export function FeedbackDialog() {
       getTelemetry().captureEvent({ name: "feedback_submitted", props: { type: feedbackType } });
       toast.success("Thanks — feedback sent");
     } else {
+      // Capture the failure so a future regression on this path surfaces in
+      // telemetry instead of being silently swallowed by the retry queue.
+      getTelemetry().captureEvent({ name: "feedback_submit_failed", props: { type: feedbackType } });
       toast.info("Failed to send, we'll try again next time you open the app.");
     }
 
