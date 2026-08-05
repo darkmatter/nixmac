@@ -1,0 +1,19 @@
+# Build the vendored PCRE2 instead of probing pkg-config for a system copy.
+#
+# pcre2-sys prefers a pkg-config-discovered libpcre2-8 and emits that library's
+# prefix as a linker search path. On a Mac with MacPorts or Homebrew installed,
+# that puts /opt/local/lib (or /opt/homebrew/lib) ahead of /usr/lib for *every*
+# library in the link, not just pcre2. The casualty is -liconv: both package
+# managers ship GNU libiconv, which exports _libiconv_open, while libgit2-sys
+# needs Apple's _iconv_open. The build then fails on undefined _iconv symbols
+# that name neither pcre2 nor the package manager, so the real cause is not
+# visible from the error.
+#
+# This is the same failure that made bundles link /opt/local/lib/libiconv.2.dylib
+# and die on clean Macs, from a different crate; libz-sys is pinned static in
+# src-tauri/Cargo.toml for the same reason.
+#
+# CI has no system pcre2, so it already builds this statically. Pinning it here
+# makes every machine match CI rather than changing what CI does.
+[env]
+PCRE2_SYS_STATIC = "1"

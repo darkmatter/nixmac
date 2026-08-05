@@ -15,8 +15,11 @@ src-tauri/target/
 src-tauri/gen/
 apps/native/src-tauri/binaries/
 .doltcfg
-# Rust/Cargo files cache
-.cargo/
+# Rust/Cargo files cache. Ignore the contents rather than the directory, so
+# the checked-in workspace build config below stays visible — git cannot
+# re-include a path whose parent directory is itself excluded.
+.cargo/*
+!.cargo/config.toml
 
 # Test coverage
 coverage/
