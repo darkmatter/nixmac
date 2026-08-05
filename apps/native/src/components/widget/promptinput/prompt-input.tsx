@@ -30,7 +30,7 @@ import { getTelemetry } from "@/lib/telemetry/instance";
 import { nav } from "@/router";
 import { uiActions, useUiState, useViewModel } from "@nixmac/state";
 import { ArrowUpIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const MAX_CONTEXT_LENGTH = 1000;
 
@@ -41,6 +41,7 @@ export function PromptInput() {
   const evolveState = useViewModel((s) => s.evolve);
   const settingsOpen = useUiState((s) => s.settingsOpen);
   const { handleEvolve } = useEvolve();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [providerErrors, setProviderErrors] = useState<{
     evolve: string | null;
     summary: string | null;
@@ -141,7 +142,18 @@ export function PromptInput() {
 
   // PostHog-flag-driven suggestion surface under the input.
   const suggestionsVariant = usePromptSuggestionsVariant();
-  const seedPrompt = (prompt: string) => uiActions.setEvolvePrompt(prompt);
+  // Shared seeding path for every suggestion surface (chips, spotlight, trending,
+  // history, mac recommendation). Writing the prompt alone is invisible when the
+  // input is scrolled off-screen, so bring it into view and focus it — that's the
+  // "the click did something" feedback. No auto-submit, per the ticket.
+  const seedPrompt = (prompt: string) => {
+    uiActions.setEvolvePrompt(prompt);
+    const el = textareaRef.current;
+    if (el) {
+      el.scrollIntoView?.({ behavior: "smooth", block: "center" });
+      el.focus({ preventScroll: true });
+    }
+  };
 
   const words = evolvePrompt.split(" ").length;
   const percentage = words / MAX_CONTEXT_LENGTH;
@@ -152,6 +164,7 @@ export function PromptInput() {
     <div className="space-y-3 flex-col min-h-24">
       <InputGroup className="bg-background flex-col min-h-24">
         <InputGroupTextarea
+          ref={textareaRef}
           id="evolve-prompt-input"
           data-testid="evolve-prompt-input"
           disabled={isLoading}
@@ -240,12 +253,12 @@ export function PromptInput() {
                 {suggestion.label}
               </BadgeButton>
             ))}
-          <MacRecommendationChip />
+          <MacRecommendationChip onSelect={seedPrompt} />
           <SystemDefaultsCTA />
           <HomebrewBadge />
         </div>
         <div className="ml-auto shrink-0">
-          <PromptHistoryBadge />
+          <PromptHistoryBadge onSelect={seedPrompt} />
         </div>
       </div>
     </div>
