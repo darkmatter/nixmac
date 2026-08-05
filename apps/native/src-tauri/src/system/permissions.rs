@@ -145,7 +145,7 @@ fn privileged_helper_permission(status: PermissionStatus, instructions: &str) ->
         id: "privileged-helper".to_string(),
         name: "Unattended Sync Helper".to_string(),
         description:
-            "Required for unattended device sync to activate builds without a password prompt"
+            "Required to activate builds and install Homebrew without a password prompt"
                 .to_string(),
         required: true,
         can_request_programmatically: true,

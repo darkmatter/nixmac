@@ -154,8 +154,9 @@ describe("<HomebrewSetupStep>", () => {
     expect(screen.getByRole("button", { name: /Skip for now/i })).toBeInTheDocument();
   });
 
-  // A dismissed password dialog is a deliberate choice, not a failure.
-  it("returns to the offer state after a cancelled install", () => {
+  // "Not installed, nothing went wrong" is the ordinary state, and must read
+  // as an offer rather than a failure.
+  it("shows the offer, not an error, when no run has failed", () => {
     setCell({ installed: false, lastError: null });
 
     render(<HomebrewSetupStep />);
