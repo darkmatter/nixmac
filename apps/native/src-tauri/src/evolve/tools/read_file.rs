@@ -1,7 +1,7 @@
-//! `read_file` tool: read a file's contents (gitignore-aware).
+//! `read_file` tool: read a file's contents (gitignore- and nixmacignore-aware).
 //!
 //! Default reads return a tree-sitter structural outline via `pi-ast` when the
-//! language is recognized and bodies can be elided. Pass `full=true` or a
+//! language is recognized and large bodies can be elided. Pass `full=true` or a
 //! `line_start`/`line_end` range for verbatim content.
 
 use anyhow::{Result, anyhow};
@@ -12,6 +12,7 @@ use std::path::Path;
 use crate::evolve::file_ops::resolve_existing_path_in_dir;
 use crate::evolve::gitignore::is_path_ignored;
 use crate::evolve::messages::Tool;
+use crate::evolve::nixmac_ignore::NixmacIgnoreChecker;
 use crate::evolve::utils::normalize_relative_path;
 
 use super::{ToolCtx, ToolResult};
@@ -61,6 +62,12 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
             ctx.repo_root.display()
         ));
     }
+    if is_nixmac_ignored(ctx.nixmac_ignore_matcher, &normalized_rel) {
+        return Err(anyhow!(
+            "read_file: '{}' is protected by Nixmac ignore rules and cannot be read by the agent",
+            path
+        ));
+    }
 
     let full_path = resolve_existing_path_in_dir(ctx.repo_root, path)?;
     info!("Reading file: {}", full_path.display());
@@ -82,6 +89,13 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
             "read_file: line_start and line_end must both be provided for a line range"
         )),
     }
+}
+
+/// Returns true when `relative_path` is hidden by `.nixmacignore` rules.
+/// Mirrors the gating already applied to `list_files` and `search_code` so the
+/// agent cannot bypass the ignore policy by reading a file directly.
+fn is_nixmac_ignored(nixmac_ignore: Option<&NixmacIgnoreChecker>, relative_path: &Path) -> bool {
+    nixmac_ignore.is_some_and(|checker| checker.is_ignored(relative_path, false))
 }
 
 fn outline_or_full(content: &str, path: &str) -> String {
@@ -168,7 +182,12 @@ fn slice_lines(content: &str, line_start: u64, line_end: u64) -> Result<String> 
 #[cfg(test)]
 mod tests {
     use super::{format_outline, outline_or_full, render_summary_segments, slice_lines};
+    use crate::evolve::nixmac_ignore::NixmacIgnoreChecker;
+    use crate::evolve::tools::{ToolCtx, ToolResult};
     use pi_ast::summary::{SummaryOptions, summarize_code};
+    use serde_json::json;
+    use std::fs;
+    use tempfile::tempdir;
 
     #[test]
     fn slice_lines_is_one_based_inclusive() {
@@ -238,5 +257,50 @@ export function greet(name: string): string {\n\
         assert!(rendered.contains("... (lines"));
         let formatted = format_outline("fixture.ts", &result);
         assert!(formatted.contains("full=true"));
+    }
+
+    #[test]
+    fn read_file_rejects_nixmac_ignored_files() {
+        let tmp = tempdir().expect("tempdir");
+        git2::Repository::init(tmp.path()).expect("init git repo");
+        fs::write(tmp.path().join(".nixmacignore"), "secret.txt\n").expect("write .nixmacignore");
+        fs::write(tmp.path().join("secret.txt"), "NEEDLE").expect("write secret file");
+        fs::write(tmp.path().join("visible.txt"), "visible").expect("write visible file");
+        let nixmac_ignore_matcher = NixmacIgnoreChecker::new(tmp.path())
+            .expect("load matcher")
+            .expect("git repo has a checker");
+
+        let ctx = ToolCtx {
+            repo_root: tmp.path(),
+            config_dir: tmp.path().to_str().expect("utf-8 path"),
+            host_attr: "dummy-host",
+            args: &json!({ "path": "secret.txt", "full": true }),
+            gitignore_matcher: None,
+            nixmac_ignore_matcher: Some(&nixmac_ignore_matcher),
+            auto_format: false,
+            on_build_output: None,
+        };
+
+        let err = super::execute(&ctx).expect_err("nixmac-ignored file must be rejected");
+        assert!(
+            err.to_string().contains("Nixmac ignore rules"),
+            "error: {err:#}"
+        );
+
+        let ctx_visible = ToolCtx {
+            repo_root: tmp.path(),
+            config_dir: tmp.path().to_str().expect("utf-8 path"),
+            host_attr: "dummy-host",
+            args: &json!({ "path": "visible.txt", "full": true }),
+            gitignore_matcher: None,
+            nixmac_ignore_matcher: Some(&nixmac_ignore_matcher),
+            auto_format: false,
+            on_build_output: None,
+        };
+        let result = super::execute(&ctx_visible).expect("visible file is readable");
+        let ToolResult::Continue(output) = result else {
+            panic!("expected ToolResult::Continue");
+        };
+        assert!(output.contains("visible"), "output: {output}");
     }
 }
