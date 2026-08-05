@@ -60,6 +60,7 @@ export type TelemetryEvent =
     }
   | { name: "history_restored" }
   | { name: "feedback_submitted"; props: { type: string } }
+  | { name: "feedback_submit_failed"; props: { type: string } }
   | {
       name: "subscription_checkout_started";
       props: { product: string };
