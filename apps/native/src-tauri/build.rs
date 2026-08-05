@@ -69,10 +69,15 @@ fn embed_signing_team_id() {
 
 /// Embed the build identity (`NIXMAC_BUILD_ID`, supplied by CI from the
 /// packaged source revision) into every target of this crate — the GUI, the
-/// helper, and the sync agent. Packaged builds (`NIXMAC_ENV` =
-/// prod/production) hard-fail on a missing or empty value; development builds
-/// fall back to a fixed literal. Git is deliberately never run here: the value
-/// must describe the packaged source, which only the build orchestrator knows.
+/// helper, and the sync agent — and stamp the same string into the plist the
+/// macOS bundler merges into the app's `Info.plist`. Packaged builds
+/// (`NIXMAC_ENV` = prod/production) hard-fail on a missing or empty value;
+/// development builds fall back to a fixed literal. Git is deliberately never
+/// run here: the value must describe the packaged source, which only the build
+/// orchestrator knows.
+///
+/// One resolution feeds both the compiled constant and the on-disk stamp, so a
+/// GUI comparing itself against the bundle it was built from always matches.
 fn embed_build_id() {
     println!("cargo:rerun-if-env-changed=NIXMAC_BUILD_ID");
     println!("cargo:rerun-if-env-changed=NIXMAC_ENV");
@@ -82,9 +87,32 @@ fn embed_build_id() {
         Ok("prod") | Ok("production")
     );
     let raw = std::env::var("NIXMAC_BUILD_ID").ok();
-    match build_id::resolve_build_id(raw.as_deref(), packaged) {
-        Ok(build_id) => println!("cargo:rustc-env=NIXMAC_BUILD_ID={build_id}"),
+    let build_id = match build_id::resolve_build_id(raw.as_deref(), packaged) {
+        Ok(build_id) => build_id,
         Err(error) => panic!("{error}"),
+    };
+    println!("cargo:rustc-env=NIXMAC_BUILD_ID={build_id}");
+    stamp_bundle_build_id(&build_id);
+}
+
+/// Write the stamped copy of the tracked `Info.plist` that
+/// `bundle > macOS > infoPlist` points at.
+///
+/// The stamp has to live in the bundle rather than only in the executables: a
+/// running GUI reads it to notice that its own bundle was replaced on disk. The
+/// tracked template stays the source of every other key; this copy is generated
+/// output.
+fn stamp_bundle_build_id(build_id: &str) {
+    let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let template = crate_dir.join(build_id::INFO_PLIST_TEMPLATE_PATH);
+    let stamped = crate_dir.join(build_id::STAMPED_INFO_PLIST_PATH);
+    println!("cargo:rerun-if-changed={}", template.display());
+    // Regenerate when the output is missing (a cleaned checkout): a bundle
+    // without the stamp reads as somebody else's build to every GUI.
+    println!("cargo:rerun-if-changed={}", stamped.display());
+
+    if let Err(error) = build_id::write_stamped_info_plist(&template, &stamped, build_id) {
+        panic!("{error}");
     }
 }
 

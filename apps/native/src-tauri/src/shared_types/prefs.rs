@@ -11,6 +11,47 @@ pub enum UpdateChannel {
     Develop,
 }
 
+/// The user's standing decision about the privileged helper.
+///
+/// Tri-state on purpose. `Unset` means the user never decided — a fresh install,
+/// or one predating the helper's install/replace/remove contract — and is what
+/// lets an existing registration be adopted as an earlier opt-in without
+/// overriding an explicit `Disabled`. It selects a goal and authorizes nothing
+/// else: every trust or termination decision is taken from live observation.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum HelperPreference {
+    #[default]
+    Unset,
+    Granted,
+    Disabled,
+}
+
+/// A helper decision that may be stored.
+///
+/// Deliberately not three-valued: `unset` says the user has not decided, so no
+/// *decision* may put it back — an install that fell back to `unset` would let
+/// an automatic path re-adopt a registration the user disabled. Every deliberate
+/// write of [`HelperPreference`] goes through this type. Two paths do still reach
+/// the stored value without deciding anything — a slice-wide reset and a reload
+/// as defaults — and `state::preferences::read_helper_preference` enumerates
+/// them.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum HelperDecision {
+    Granted,
+    Disabled,
+}
+
+impl From<HelperDecision> for HelperPreference {
+    fn from(decision: HelperDecision) -> Self {
+        match decision {
+            HelperDecision::Granted => HelperPreference::Granted,
+            HelperDecision::Disabled => HelperPreference::Disabled,
+        }
+    }
+}
+
 /// How nixmac handles updates available from the configuration Git repository.
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, Type)]
 #[serde(rename_all = "camelCase")]
@@ -223,6 +264,12 @@ pub struct GlobalPreferences {
     pub pending_import_dir: Option<String>,
     /// Whether or not to auto-format Nix files when making changes to the flakes.
     pub auto_format_nix_files: bool,
+    /// Standing decision about the privileged helper. Read by the helper
+    /// reconciliation and by apply; decided only by the grant and disable
+    /// actions, which is why it is not writable via `UiPrefsUpdate` and is held
+    /// out of settings export/import. `state::preferences` documents which
+    /// writers can reach it.
+    pub helper_preference: HelperPreference,
 }
 
 impl Default for GlobalPreferences {
@@ -259,6 +306,7 @@ impl Default for GlobalPreferences {
             feature_flag_overrides: None,
             pending_import_dir: None,
             auto_format_nix_files: false,
+            helper_preference: HelperPreference::Unset,
         }
     }
 }
