@@ -7,6 +7,14 @@ use std::os::unix::net::UnixStream;
 use std::time::Duration;
 
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(30);
+/// The one generous bound in this client, and deliberately not one of the short
+/// leashes above: an activation legitimately runs for many minutes, so nothing
+/// shorter can be put here without turning ordinary long applies into lost
+/// results. Half an hour is the accepted ceiling. An activation still running
+/// when it expires is reported as an unknown outcome by an apply and as a
+/// deferral by the sync agent — neither compensates for it, and the activation
+/// itself keeps running. Do not reuse this on `Status` or `Retire`, and do not
+/// shorten it to match them.
 const ACTIVATION_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 /// Status probes back the permissions UI; a wedged helper must not stall a
 /// permissions refresh, so they get a short leash instead of CLIENT_TIMEOUT.
@@ -82,6 +90,11 @@ pub enum AssessedExchange {
     Unidentified(String),
 }
 
+/// Whether the socket path exists. Diagnostic only — it proves nothing about a
+/// helper, which is why nothing in the app reads it: the sync agent's no-config
+/// mode prints it, and every decision comes from an authenticated exchange or
+/// from the absence window in `socket_probe`.
+#[allow(dead_code)] // Used by the sync agent binary this module is shared into.
 pub fn socket_available() -> bool {
     std::path::Path::new(HELPER_SOCKET_PATH).exists()
 }
@@ -203,13 +216,6 @@ fn exchange_on(
         reply,
         connection: stream,
     })
-}
-
-/// Sends `Status`. GUI-only by protocol policy: the sync agent has no
-/// lifecycle role and the helper refuses every request from it but
-/// `TryActivate`.
-pub fn status() -> Result<HelperExchange, HelperClientError> {
-    exchange(&HelperRequest::Status, STATUS_PROBE_TIMEOUT)
 }
 
 /// Sends `Status`, keeping the peer assessment. Reconciliation's discovery
