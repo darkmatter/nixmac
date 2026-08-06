@@ -1094,16 +1094,6 @@ mod managed_state_tests {
             .expect("mock app builds");
         let handle = app.handle();
 
-        // Skip the one-shot legacy migration, which writes to the OS app-data
-        // dir that the mock runtime doesn't provide a writable path for. We're
-        // exercising registration, not migration.
-        crate::storage::store::get_store(handle)
-            .expect("store plugin available")
-            .set(
-                crate::state::preferences::LEGACY_MIGRATED_MARKER,
-                serde_json::Value::Bool(true),
-            );
-
         assert!(
             handle
                 .try_state::<Observable<GlobalPreferences>>()

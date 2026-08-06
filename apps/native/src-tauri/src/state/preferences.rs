@@ -17,11 +17,6 @@ pub use crate::shared_types::GlobalPreferences;
 
 pub(crate) const GLOBAL_PREFERENCES_PATH: &str = "global-preferences.json";
 
-/// Marker key set in the legacy `settings.json` once its preference values
-/// have been copied into `global-preferences.json`. The legacy values are
-/// left in place (reversible one-shot) but no longer read.
-pub(crate) const LEGACY_MIGRATED_MARKER: &str = "globalPreferencesMigratedV1";
-
 pub const GLOBAL_PREFERENCES_CHANGED_EVENT: &str = "global_preferences_changed";
 
 pub fn load_global_observable<R: Runtime>(
@@ -31,8 +26,7 @@ pub fn load_global_observable<R: Runtime>(
         Arc::new(AppDataJson::for_app(app, GLOBAL_PREFERENCES_PATH)?);
     let mut initial = load_or_default::<GlobalPreferences>(persistence.as_ref())?;
 
-    let mut dirty = migrate_from_legacy_store(app, &mut initial)?;
-    dirty |= migrate_diagnostics_default_on(&mut initial);
+    let mut dirty = migrate_diagnostics_default_on(&mut initial);
     dirty |= migrate_model_scalars_to_maps(&mut initial);
     if dirty {
         persistence.flush(&serde_json::to_value(&initial)?)?;
@@ -67,44 +61,6 @@ pub fn write<R: Runtime>(app: &AppHandle<R>, f: impl FnOnce(&mut GlobalPreferenc
     }
     *observable.write_sync() = next;
     Ok(())
-}
-
-/// One-shot copy of the legacy `settings.json` preference values into
-/// `prefs`. Returns whether `prefs` should be flushed (first run after the
-/// migration shipped). The legacy keys are left in place for reversibility;
-/// a marker key prevents re-running.
-fn migrate_from_legacy_store<R: Runtime>(
-    app: &AppHandle<R>,
-    prefs: &mut GlobalPreferences,
-) -> Result<bool> {
-    let Ok(store) = crate::storage::legacy_kv::get_store(app) else {
-        return Ok(false);
-    };
-    if store
-        .get(LEGACY_MIGRATED_MARKER)
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false)
-    {
-        return Ok(false);
-    }
-
-    let mut as_value = serde_json::to_value(&*prefs)?;
-    let Some(fields) = as_value.as_object_mut() else {
-        return Ok(false);
-    };
-    for key in fields.keys().cloned().collect::<Vec<_>>() {
-        if let Some(legacy) = store.get(&key) {
-            fields.insert(key, legacy.clone());
-        }
-    }
-    // Unknown/garbage legacy values fall back to the loaded ones.
-    if let Ok(migrated) = serde_json::from_value::<GlobalPreferences>(as_value) {
-        *prefs = migrated;
-    }
-
-    store.set(LEGACY_MIGRATED_MARKER, serde_json::Value::Bool(true));
-    store.save()?;
-    Ok(true)
 }
 
 /// One-shot flip to default-on diagnostics for installs that predate the
