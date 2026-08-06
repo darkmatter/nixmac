@@ -110,8 +110,8 @@ pub async fn onboarding_reset(app: AppHandle) -> Result<shared_types::OkResult, 
     })
     .map_err(|e| capture_err("onboarding_reset", e))?;
 
-    // The migration keeps legacy keys around for reversibility, and
-    // `get_config_dir_if_set` falls back to them — without this the old
+    // `configDir` is still persisted in the legacy `settings.json`, and
+    // `get_config_dir_if_set` falls back to it — without this the old
     // selection would silently resurrect for every backend caller.
     if let Err(e) = legacy_kv::delete_legacy_key(&app, "configDir") {
         log::warn!("Failed to clear legacy configDir during onboarding reset: {e:#}");
