@@ -2,7 +2,7 @@ use crate::privileged_helper::peer_auth;
 use crate::privileged_helper::protocol::{
     ActivationRequest, BUILD_ID, HELPER_SOCKET_PATH, HelperReply, HelperRequest,
 };
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::os::unix::net::UnixStream;
 use std::time::Duration;
 
@@ -13,7 +13,6 @@ const ACTIVATION_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 const STATUS_PROBE_TIMEOUT: Duration = Duration::from_secs(2);
 /// `Retire` is answered promptly in every state, so its leash only needs to
 /// absorb scheduling latency, never activation time.
-#[allow(dead_code)]
 const RETIRE_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Why one exchange with the helper produced no usable reply. Typed so every
@@ -52,23 +51,42 @@ pub enum HelperClientError {
 /// One completed request/reply exchange. The connection is handed back open:
 /// the helper never closes an authenticated connection, so a later peer-side
 /// close on it always means the helper process ended — the liveness signal
-/// the replacement flow's unregister step is built on. Dropping it closes
-/// the connection, which is what every current caller wants.
+/// the replacement flow's unregister step is built on ([`peer_still_open`]).
+/// Dropping it closes the connection, which is what every caller but that one
+/// wants.
 #[derive(Debug)]
 pub struct HelperExchange {
     pub reply: HelperReply,
-    #[allow(dead_code)]
     pub connection: UnixStream,
+}
+
+/// What answered the helper socket, judged before any protocol bytes crossed
+/// it.
+///
+/// [`status`] collapses these into one `AuthenticationFailed`, which is all a
+/// status readout needs.
+/// Reconciliation needs them apart: a **root** peer whose validation completed
+/// with a "no" is the pre-contract or tampered helper, which may be removed
+/// without being asked to retire first, while a validation that could not
+/// reach a judgment — or a peer that is not root — authorizes nothing at all.
+#[derive(Debug)]
+pub enum AssessedExchange {
+    /// Root, and the pinned helper requirement is satisfied. The reply came
+    /// from the signed helper, on a connection still open.
+    Answered(HelperExchange),
+    /// Root, and validation completed with a "no": unsigned, ad-hoc-signed, or
+    /// the wrong identity. Not one byte was written to it, and none ever is.
+    RootUnverifiable(String),
+    /// Nothing may be concluded — a peer that is not root, or a validation that
+    /// reached no judgment. No bytes were written.
+    Unidentified(String),
 }
 
 pub fn socket_available() -> bool {
     std::path::Path::new(HELPER_SOCKET_PATH).exists()
 }
 
-fn exchange(
-    request: &HelperRequest,
-    read_timeout: Duration,
-) -> Result<HelperExchange, HelperClientError> {
+fn connect(read_timeout: Duration) -> Result<UnixStream, HelperClientError> {
     let stream = UnixStream::connect(HELPER_SOCKET_PATH).map_err(HelperClientError::Unreachable)?;
     stream
         .set_read_timeout(Some(read_timeout))
@@ -76,12 +94,71 @@ fn exchange(
     stream
         .set_write_timeout(Some(CLIENT_TIMEOUT))
         .map_err(HelperClientError::Io)?;
+    Ok(stream)
+}
+
+fn exchange(
+    request: &HelperRequest,
+    read_timeout: Duration,
+) -> Result<HelperExchange, HelperClientError> {
+    let stream = connect(read_timeout)?;
 
     // Reciprocal check: whatever answers on the socket must be the signed
     // root helper before this process sends it anything.
     peer_auth::validate_helper_peer(&stream).map_err(HelperClientError::AuthenticationFailed)?;
 
     exchange_on(stream, request)
+}
+
+/// [`exchange`] keeping the peer assessment instead of flattening it, and
+/// writing a request only to an authenticated peer.
+///
+/// The three-way judgment is the whole difference: what may be done about a
+/// helper that cannot be talked to depends on whether validation said "no" or
+/// said nothing.
+fn assessed_exchange(
+    request: &HelperRequest,
+    read_timeout: Duration,
+) -> Result<AssessedExchange, HelperClientError> {
+    let stream = connect(read_timeout)?;
+    let (euid, validation) =
+        peer_auth::assess_helper_peer(&stream).map_err(HelperClientError::AuthenticationFailed)?;
+
+    match peer_verdict(euid, validation) {
+        PeerVerdict::Authenticated => exchange_on(stream, request).map(AssessedExchange::Answered),
+        PeerVerdict::NotAuthenticated(assessment) => Ok(assessment),
+    }
+}
+
+/// Whether a request may be written to this peer, or what the peer is instead.
+enum PeerVerdict {
+    Authenticated,
+    NotAuthenticated(AssessedExchange),
+}
+
+/// The three-way judgment, as an allowlist: one combination authenticates a
+/// peer and every other one ends the exchange before a byte is written.
+fn peer_verdict(euid: u32, validation: peer_auth::SignatureValidation) -> PeerVerdict {
+    // A peer that is not root is unidentified whatever its signature says. The
+    // helper binds its socket inside a root-owned directory, so anything else
+    // holding that path is broken permissions or an impostor, and no decision
+    // about terminating a helper may be taken from it.
+    if euid != 0 {
+        return PeerVerdict::NotAuthenticated(AssessedExchange::Unidentified(format!(
+            "the process answering {HELPER_SOCKET_PATH} runs as uid {euid}, not root"
+        )));
+    }
+    match validation {
+        peer_auth::SignatureValidation::Valid => PeerVerdict::Authenticated,
+        // A completed "no" — and the only thing that is one.
+        peer_auth::SignatureValidation::Invalid(detail) => {
+            PeerVerdict::NotAuthenticated(AssessedExchange::RootUnverifiable(detail))
+        }
+        // No judgment was reached, which is never the same as a "no".
+        peer_auth::SignatureValidation::Error(detail) => {
+            PeerVerdict::NotAuthenticated(AssessedExchange::Unidentified(detail))
+        }
+    }
 }
 
 /// The post-authentication half of one exchange: send exactly one request,
@@ -135,12 +212,58 @@ pub fn status() -> Result<HelperExchange, HelperClientError> {
     exchange(&HelperRequest::Status, STATUS_PROBE_TIMEOUT)
 }
 
-/// Sends `Retire`. GUI-only by protocol policy, like [`status`]. Dead code
-/// until the GUI's helper-replacement reconciliation is wired up in a later
-/// change; it lives here now because this file owns the wire vocabulary.
-#[allow(dead_code)]
-pub fn retire() -> Result<HelperExchange, HelperClientError> {
-    exchange(&HelperRequest::Retire, RETIRE_TIMEOUT)
+/// Sends `Status`, keeping the peer assessment. Reconciliation's discovery
+/// exchange: it works against a helper of any build, and what it may do about
+/// one it cannot talk to depends on which way the assessment went.
+pub fn assessed_status() -> Result<AssessedExchange, HelperClientError> {
+    assessed_exchange(&HelperRequest::Status, STATUS_PROBE_TIMEOUT)
+}
+
+/// Sends `Retire`, keeping the peer assessment. GUI-only by protocol policy,
+/// like [`status`].
+///
+/// A `Retired` reply arrives on a connection still open, and that connection is
+/// the caller's proof the helper has not died since — hold it and check
+/// [`peer_still_open`] immediately before unregistering.
+pub fn assessed_retire() -> Result<AssessedExchange, HelperClientError> {
+    assessed_exchange(&HelperRequest::Retire, RETIRE_TIMEOUT)
+}
+
+/// Whether the peer of an already-answered connection is still there.
+///
+/// A live helper never closes an authenticated connection and never sends a
+/// second reply, so an end-of-file here means that exact process ended — and
+/// may already have been relaunched, `Idle`, by launchd. This is the liveness
+/// check that stands between a `Retired` reply and unregistering the helper
+/// that gave it.
+///
+/// Fails closed: only positive evidence of a peer — nothing to read yet, or
+/// bytes that could only have come from a live one — answers yes. End of file,
+/// a reset, an error the caller cannot interpret, even a failure to set the
+/// mode this needs: all answer no, because the caller's next act is
+/// terminating a helper.
+pub fn peer_still_open(connection: &UnixStream) -> bool {
+    if connection.set_nonblocking(true).is_err() {
+        return false;
+    }
+    let mut unexpected = [0u8; 1];
+    // `Read` is implemented for `&UnixStream`, so the read borrows the binding
+    // rather than the connection.
+    let mut peer = connection;
+    let open = match peer.read(&mut unexpected) {
+        // End of file: the peer is gone.
+        Ok(0) => false,
+        // Bytes nothing should have sent. Whatever they are, sending them
+        // proves the peer was alive, which is the only question here.
+        Ok(_) => true,
+        Err(error) => error.kind() == std::io::ErrorKind::WouldBlock,
+    };
+    // Left as the caller handed it over, whichever way the answer went: a
+    // stream stuck in non-blocking mode would turn this connection's later
+    // reads into spurious failures. Only the blocking flag was touched — the
+    // read timeout the connection was opened with is a separate option.
+    let restored = connection.set_nonblocking(false).is_ok();
+    open && restored
 }
 
 /// Dispatches `TryActivate`, stamped with this build's ID — the helper admits
@@ -164,7 +287,6 @@ pub fn activate_store_path(
 mod tests {
     use super::*;
     use crate::privileged_helper::protocol::HelperStateName;
-    use std::io::Read;
 
     /// Runs `exchange_on` against a socketpair whose far end is driven by
     /// `respond`, which receives the request line the client wrote.
@@ -242,6 +364,87 @@ mod tests {
             .expect_err("a close before any reply must not succeed");
 
         assert!(matches!(error, HelperClientError::ClosedBeforeReply));
+    }
+
+    #[test]
+    fn only_a_root_peer_that_validates_may_be_written_to() {
+        // The allowlist. Everything that is not "root, and validation said
+        // yes" ends the exchange before a byte is written, and the two ways it
+        // ends are kept apart: a completed "no" is the pre-contract or tampered
+        // helper, which may be removed; a judgment that could not be reached
+        // authorizes nothing at all. Getting these two backwards would either
+        // make the legacy helper unremovable or make an unlucky validation
+        // failure a licence to terminate a running one.
+        assert!(matches!(
+            peer_verdict(0, peer_auth::SignatureValidation::Valid),
+            PeerVerdict::Authenticated
+        ));
+        assert!(matches!(
+            peer_verdict(
+                0,
+                peer_auth::SignatureValidation::Invalid("unsigned".into())
+            ),
+            PeerVerdict::NotAuthenticated(AssessedExchange::RootUnverifiable(_))
+        ));
+        assert!(matches!(
+            peer_verdict(0, peer_auth::SignatureValidation::Error("peer died".into())),
+            PeerVerdict::NotAuthenticated(AssessedExchange::Unidentified(_))
+        ));
+        // Not root: unidentified whatever the signature says, the valid case
+        // included.
+        for validation in [
+            peer_auth::SignatureValidation::Valid,
+            peer_auth::SignatureValidation::Invalid("unsigned".into()),
+            peer_auth::SignatureValidation::Error("peer died".into()),
+        ] {
+            assert!(matches!(
+                peer_verdict(501, validation),
+                PeerVerdict::NotAuthenticated(AssessedExchange::Unidentified(_))
+            ));
+        }
+    }
+
+    #[test]
+    fn a_held_connection_reports_its_peer_gone_only_once_it_really_is() {
+        // Rule 1's liveness check. A helper never closes an authenticated
+        // connection, so this answers "is that exact process still there" —
+        // and it is asked immediately before terminating it.
+        let (held, far_end) = UnixStream::pair().expect("socketpair");
+
+        assert!(peer_still_open(&held));
+
+        drop(far_end);
+
+        assert!(!peer_still_open(&held));
+    }
+
+    #[test]
+    fn bytes_no_helper_should_have_sent_still_prove_it_was_alive() {
+        // The helper ignores trailing bytes and never sends a second reply, so
+        // this is anomalous — but a process that wrote something was running,
+        // which is the only question being asked.
+        let (held, mut far_end) = UnixStream::pair().expect("socketpair");
+        far_end.write_all(b"?").expect("write");
+
+        assert!(peer_still_open(&held));
+    }
+
+    #[test]
+    fn the_liveness_check_hands_the_connection_back_blocking() {
+        // It flips the connection to non-blocking to ask; leaving it that way
+        // would turn every later read on it into a spurious failure.
+        let (held, _far_end) = UnixStream::pair().expect("socketpair");
+        let leash = std::time::Duration::from_millis(50);
+        held.set_read_timeout(Some(leash)).expect("set timeout");
+
+        assert!(peer_still_open(&held));
+
+        // A blocking read waits out its leash; a non-blocking one would refuse
+        // instantly.
+        let started = std::time::Instant::now();
+        let mut byte = [0u8; 1];
+        assert!((&held).read(&mut byte).is_err());
+        assert!(started.elapsed() >= leash / 2, "the read did not block");
     }
 
     #[test]

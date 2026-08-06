@@ -98,10 +98,10 @@ pub fn write_stamped_info_plist(
 
 /// Reads the build ID stamped into an installed bundle's `Info.plist`.
 ///
-/// Caller-less for now: the consumer is the GUI's helper reconciliation, which
-/// compares this against [`crate::privileged_helper::protocol::BUILD_ID`]
-/// before it mutates anything. It lives beside the writer so the two can never
-/// disagree about the key or the format.
+/// The GUI's helper reconciliation compares this against
+/// [`crate::privileged_helper::protocol::BUILD_ID`] before it mutates anything.
+/// It lives beside the writer so the two can never disagree about the key or the
+/// format.
 ///
 /// `bundle` is a `.app` directory. Every failure — no bundle, no plist, no
 /// stamp, a stamp that is not a string, or an empty stamp — is an error the
