@@ -109,6 +109,11 @@ fn vite_skip_permissions_enabled() -> bool {
     false
 }
 
+/// Whether this build reports every permission granted without probing.
+pub(crate) fn skip_enabled() -> bool {
+    skip_permissions_enabled()
+}
+
 fn skip_permissions_enabled() -> bool {
     vite_skip_permissions_enabled() || e2e_skip_permissions_enabled()
 }
@@ -554,11 +559,19 @@ pub fn request_permission<R: Runtime>(
 /// Items, move the app to /Applications, restart the app, or wait out a running
 /// activation.
 fn check_privileged_helper<R: Runtime>(app: &AppHandle<R>) -> (PermissionStatus, String) {
-    helper_permission::row(&helper_permission::observe(app))
+    let report = helper_permission::observe(app);
+    // A refresh is how a user comes back to this — opening the panel, or
+    // pressing Check again — and one run is usually not enough: the platform
+    // refuses a register for about a second after any unregister, so the run
+    // that repairs a helper typically reports a failure and needs a successor.
+    // Starting the loop here means the visit converges instead of handing back a
+    // scary report. A loop already running ignores this.
+    helper_permission::start_converging(app);
+    helper_permission::row(&report)
 }
 
 /// One report as the permission row it produces.
-fn helper_row(report: &Reconciled) -> Permission {
+pub(crate) fn helper_row(report: &Reconciled) -> Permission {
     let (status, report) = helper_permission::row(report);
     privileged_helper_permission(status, &report)
 }

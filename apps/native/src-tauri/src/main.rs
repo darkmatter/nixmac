@@ -736,10 +736,7 @@ fn run_gui_mode(
             // waits — legitimately, for as long as it takes — on an activation a
             // previous build's helper is still running. It reports through the
             // permission row; nothing here waits for it.
-            let helper_handle = handle.clone();
-            tauri::async_runtime::spawn_blocking(move || {
-                system::helper_permission::observe(&helper_handle);
-            });
+            system::helper_permission::start_converging(handle);
 
             // Background initialize the nix-darwin docs index once at startup for fast option-shape lookup.
             let docs_handle = handle.clone();
