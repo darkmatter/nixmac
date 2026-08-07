@@ -5,6 +5,11 @@ use anyhow::Result;
 use log::info;
 use std::process::Command;
 
+/// Most packages we will consider from a single channel search.
+/// This is useful if the agent decides to search on a super-generic term
+/// and we don't want to score thousands of results.
+const CHANNEL_LIMIT: u64 = 100;
+
 /// Indicates whether this package looks like something that we think should be
 /// installed via Homebrew vs. Nix. This is just a heuristic to help users avoid installing things like
 /// GUI apps via Nix when they might be better off with Homebrew Cask, etc.
@@ -74,24 +79,13 @@ fn channel_is_registered(registry_list: &str, channel: &str) -> bool {
 
 /// Splits the query terms into the appropriate argument(s) for the nix search command, handling regex vs. non-regex searches.
 fn build_search_queries(query: &str, use_regex: bool) -> Result<Vec<String>> {
-    // Nix search supports regex implicitly. So if the user wants non-"regex"
-    // search, we need to pin with ^$.
-    // It also returns search results for both name and description so there
-    // is no point to have separate "search types".
-    // It also treats multiple regex arguments as separate search terms.
-    // Anchor the overall search while allowing punctuation, such as "-",
-    // between terms:
-    //
-    // "google chrome" -> ["^google", "chrome$"]
     if use_regex {
         return Ok(vec![query.to_string()]);
     }
 
-    // Anchor the first and last terms to avoid partial matches, but allow punctuation between terms.
-    let anchored_query = format!("^{}$", query);
-    let terms = anchored_query
+    let terms = query
         .split_whitespace()
-        .map(|s| s.to_string())
+        .map(regex::escape)
         .collect::<Vec<_>>();
 
     if terms.is_empty() {
@@ -134,7 +128,7 @@ fn search_single_channel(
 
     let stdout = String::from_utf8_lossy(&output.stdout);
 
-    process_search_output(&stdout, channel, None)
+    process_search_output(&stdout, channel, None, CHANNEL_LIMIT)
 }
 
 /// Process the JSON output from a nix search command and return a list of SearchPackageResult.
@@ -142,6 +136,7 @@ fn process_search_output(
     search_cmd_output: &str,
     channel: &str,
     package_classifier: Option<&dyn Fn(&str) -> SearchResultInstallTarget>,
+    limit: u64,
 ) -> Result<Vec<SearchPackageResult>> {
     let parsed = serde_json::from_str::<serde_json::Value>(search_cmd_output)
         .map_err(|e| anyhow::anyhow!("Failed to parse JSON output from nix search: {}", e))?;
@@ -184,71 +179,104 @@ fn process_search_output(
                     .to_string(),
                 additional_info,
             });
+
+            // Respect the channel limit to avoid overwhelming the scoring system with too many results.
+            if results.len() as u64 >= limit {
+                break;
+            }
         }
     }
 
     Ok(results)
 }
 
-/// Adds the search results from a single channel to the structured results list, ensuring uniqueness by attr_path and respecting the limit.
-fn process_channel_results(
-    structured: &mut Vec<SearchPackageResult>,
-    channel_results: Vec<SearchPackageResult>,
-    limit: u64,
-) -> Result<bool> {
-    for result in channel_results {
-        if structured.len() >= limit as usize {
-            return Ok(true);
-        };
+/// Compute a relevance score for a given search result based on the query terms.
+fn relevance_score(result: &SearchPackageResult, query: &str) -> i32 {
+    let query = query.to_lowercase();
+    let terms = query.split_whitespace().collect::<Vec<_>>();
 
-        let _map_key = result
-            .attr_path
-            .split('.')
-            .next_back()
-            .unwrap_or(&result.attr_path);
-        if !structured
-            .iter()
-            .any(|item| item.attr_path == result.attr_path)
-        {
-            structured.push(result);
+    let name = result.name.to_lowercase();
+    let attr = result.attr_path.to_lowercase();
+    let description = result.description.to_lowercase();
+
+    let normalized_query = query.replace([' ', '_'], "-");
+
+    let mut score = 0;
+
+    // Exact-ish package identity should dominate.
+    if name == query || attr.ends_with(&format!(".{query}")) {
+        score += 1000;
+    }
+
+    if name == normalized_query || attr.ends_with(&format!(".{normalized_query}")) {
+        score += 900;
+    }
+
+    // Strong prefix matches.
+    if name.starts_with(&query) {
+        score += 500;
+    }
+
+    if name.starts_with(&normalized_query) {
+        score += 450;
+    }
+
+    // All terms in package name is much stronger than description-only.
+    if terms.iter().all(|term| name.contains(term)) {
+        score += 300;
+    }
+
+    if terms.iter().all(|term| attr.contains(term)) {
+        score += 200;
+    }
+
+    // Individual term weighting.
+    for term in &terms {
+        if name.contains(term) {
+            score += 50;
+        }
+
+        if attr.contains(term) {
+            score += 25;
+        }
+
+        if description.contains(term) {
+            score += 5;
         }
     }
-    Ok(structured.len() >= limit as usize)
+
+    score
 }
 
-/// Search channels in order for a given query/type and append unique results up to `limit`.
-fn collect_from_channels(
-    config_dir: &str,
-    channels: &[String],
-    query_term: &str,
-    use_regex: bool,
+/// Processes the given results by scoring them, then appending unique results to the structured list up to the limit.
+fn process_results(
+    results: Vec<SearchPackageResult>,
+    query: &str,
     limit: u64,
-    structured: &mut Vec<SearchPackageResult>,
-) -> Result<bool> {
-    let registry_list = nix_registry_list(config_dir)?;
+) -> Result<Vec<SearchPackageResult>> {
+    let mut unique_results = Vec::new();
+    let mut seen_attr_paths = std::collections::HashSet::new();
 
-    for channel in channels {
-        if structured.len() >= limit as usize {
-            return Ok(true);
-        }
-
-        if !channel_is_registered(&registry_list, channel) {
-            // CONSIDER: Whether we need to surface this to the agent somehow.
-            log::warn!(
-                "Channel '{}' is not registered, skipping search for this channel",
-                channel
-            );
-            continue;
-        }
-
-        let channel_results = search_single_channel(config_dir, query_term, use_regex, channel)?;
-        let complete = process_channel_results(structured, channel_results, limit)?;
-        if complete {
-            return Ok(true);
+    for result in results {
+        if !seen_attr_paths.contains(&result.attr_path) {
+            seen_attr_paths.insert(result.attr_path.clone());
+            unique_results.push(result);
         }
     }
 
-    Ok(structured.len() >= limit as usize)
+    // Sort by relevance score in descending order.
+    unique_results.sort_by(|a, b| {
+        let score_a = relevance_score(a, query);
+        let score_b = relevance_score(b, query);
+        score_b.cmp(&score_a)
+    });
+
+    // Limit the number of results.
+    if unique_results.len() > limit as usize {
+        unique_results.truncate(limit as usize);
+    }
+
+    Ok(unique_results)
 }
 
 /// Execute a search_packages tool call
@@ -263,21 +291,31 @@ pub fn execute_search_packages(
         "Searching for packages matching: '{}' (regex: {}, channels: {:?})",
         query, use_regex, channels
     );
+    let registry_list = nix_registry_list(config_dir)?;
 
-    let mut structured = Vec::new();
+    // 1. Collect results from each channel.
+    let mut results = Vec::new();
+    for channel in channels {
+        if !channel_is_registered(&registry_list, channel) {
+            // CONSIDER: Whether we need to surface this to the agent somehow.
+            log::warn!(
+                "Channel '{}' is not registered, skipping search for this channel",
+                channel
+            );
+            continue;
+        }
 
-    // Try primary search across channels, collecting up to limit.
-    let mut _complete = collect_from_channels(
-        config_dir,
-        channels,
+        let channel_results = search_single_channel(config_dir, query, use_regex, channel)?;
+        results.push((channel.clone(), channel_results));
+    }
+
+    // 2. Process the full results.
+    let processed = process_results(
+        results.into_iter().flat_map(|(_, r)| r).collect(),
         query,
-        use_regex,
         limit,
-        &mut structured,
     )?;
-
-    // Return JSON result
-    Ok(structured)
+    Ok(processed)
 }
 
 /// Heuristically classify a nix derivation to determine if it looks like a GUI app (Homebrew Cask-like)
@@ -445,9 +483,13 @@ mod tests {
 
         for (name, expected_count, first_result) in cases {
             let output = load_search_fixture(name);
-            let results =
-                process_search_output(output, "test-channel", Some(&fake_package_classifier))
-                    .unwrap();
+            let results = process_search_output(
+                output,
+                "test-channel",
+                Some(&fake_package_classifier),
+                CHANNEL_LIMIT,
+            )
+            .unwrap();
             assert_eq!(
                 results.len(),
                 expected_count,
@@ -467,7 +509,6 @@ mod tests {
 
     #[test]
     fn multiple_channels_are_deduped() {
-        let mut structured = Vec::new();
         let channel1_results = vec![
             SearchPackageResult {
                 name: "emacs".to_string(),
@@ -500,10 +541,14 @@ mod tests {
             additional_info: None,
         }];
 
-        process_channel_results(&mut structured, channel1_results, 10).unwrap();
-        process_channel_results(&mut structured, channel2_results, 10).unwrap();
+        let all_results = [channel1_results.clone(), channel2_results.clone()].concat();
+        let processed_results = process_results(all_results, "emacs", 10).unwrap();
 
-        assert_eq!(structured.len(), 2, "expected deduplication by attr_path");
+        assert_eq!(
+            processed_results.len(),
+            2,
+            "expected deduplication by attr_path"
+        );
     }
 
     #[test]
@@ -521,7 +566,7 @@ mod tests {
     fn build_search_queries_no_regex() {
         let query = "google chrome";
         let use_regex = false;
-        let expected = vec!["^google", "chrome$"];
+        let expected = vec!["google", "chrome"];
         let result = build_search_queries(query, use_regex).unwrap();
         assert_eq!(result, expected);
     }
@@ -533,5 +578,152 @@ mod tests {
         let expected = vec!["google chrome"];
         let result = build_search_queries(query, use_regex).unwrap();
         assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn relevance_score_basic() {
+        let result = SearchPackageResult {
+            name: "emacs".to_string(),
+            attr_path: "legacyPackages.aarch64-darwin.emacs".to_string(),
+            channel: "test-channel".to_string(),
+            version: "30.2".to_string(),
+            description: "Extensible, customizable GNU text editor".to_string(),
+            install_via: SearchResultInstallTarget::Either,
+            additional_info: None,
+        };
+
+        let score_exact = relevance_score(&result, "emacs");
+        let score_partial = relevance_score(&result, "em");
+        let score_unrelated = relevance_score(&result, "vim");
+
+        assert!(score_exact > score_partial);
+        assert!(score_partial > score_unrelated);
+    }
+
+    #[test]
+    fn relevance_score_with_normalization() {
+        let result = SearchPackageResult {
+            name: "google-chrome".to_string(),
+            attr_path: "legacyPackages.aarch64-darwin.google-chrome".to_string(),
+            channel: "test-channel".to_string(),
+            version: "90.0".to_string(),
+            description: "Web browser".to_string(),
+            install_via: SearchResultInstallTarget::Either,
+            additional_info: None,
+        };
+        let score_exact = relevance_score(&result, "google-chrome");
+        let score_partial = relevance_score(&result, "google");
+        let score_unrelated = relevance_score(&result, "firefox");
+
+        assert!(score_exact > score_partial);
+        assert!(score_partial > score_unrelated);
+    }
+
+    #[test]
+    fn relevance_score_with_description() {
+        let result = SearchPackageResult {
+            name: "vim".to_string(),
+            attr_path: "legacyPackages.aarch64-darwin.vim".to_string(),
+            channel: "test-channel".to_string(),
+            version: "8.2".to_string(),
+            description: "Vi IMproved, a highly configurable text editor".to_string(),
+            install_via: SearchResultInstallTarget::Either,
+            additional_info: None,
+        };
+
+        let score_exact = relevance_score(&result, "vim");
+        let score_description = relevance_score(&result, "text editor");
+        let score_unrelated = relevance_score(&result, "emacs");
+
+        assert!(score_exact > score_description);
+        assert!(score_description > score_unrelated);
+    }
+
+    #[test]
+    fn relevance_score_with_multiple_terms() {
+        let result = SearchPackageResult {
+            name: "python".to_string(),
+            attr_path: "legacyPackages.aarch64-darwin.python".to_string(),
+            channel: "test-channel".to_string(),
+            version: "3.9".to_string(),
+            description: "Python programming language".to_string(),
+            install_via: SearchResultInstallTarget::Either,
+            additional_info: None,
+        };
+
+        let score_exact = relevance_score(&result, "python");
+        let score_partial = relevance_score(&result, "programming language");
+        let score_unrelated = relevance_score(&result, "java");
+
+        assert!(score_exact > score_partial);
+        assert!(score_partial > score_unrelated);
+    }
+
+    #[test]
+    fn process_limit() {
+        let results = vec![
+            SearchPackageResult {
+                name: "pkg1".to_string(),
+                attr_path: "legacyPackages.aarch64-darwin.pkg1".to_string(),
+                channel: "test-channel".to_string(),
+                version: "1.0".to_string(),
+                description: "Package 1".to_string(),
+                install_via: SearchResultInstallTarget::Either,
+                additional_info: None,
+            },
+            SearchPackageResult {
+                name: "pkg2".to_string(),
+                attr_path: "legacyPackages.aarch64-darwin.pkg2".to_string(),
+                channel: "test-channel".to_string(),
+                version: "2.0".to_string(),
+                description: "Package 2".to_string(),
+                install_via: SearchResultInstallTarget::Either,
+                additional_info: None,
+            },
+            SearchPackageResult {
+                name: "pkg3".to_string(),
+                attr_path: "legacyPackages.aarch64-darwin.pkg3".to_string(),
+                channel: "test-channel".to_string(),
+                version: "3.0".to_string(),
+                description: "Package 3".to_string(),
+                install_via: SearchResultInstallTarget::Either,
+                additional_info: None,
+            },
+        ];
+
+        let limit = 2;
+        let processed = process_results(results, "pkg", limit).unwrap();
+        assert_eq!(processed.len(), limit as usize);
+    }
+
+    #[test]
+    fn process_results_ranks_by_user_query() {
+        let emacs = SearchPackageResult {
+            name: "emacs".to_string(),
+            attr_path: "legacyPackages.aarch64-darwin.emacs".to_string(),
+            channel: "test-channel".to_string(),
+            version: "30.2".to_string(),
+            description: "Extensible text editor".to_string(),
+            install_via: SearchResultInstallTarget::Either,
+            additional_info: None,
+        };
+        let vim = SearchPackageResult {
+            name: "vim".to_string(),
+            attr_path: "legacyPackages.aarch64-darwin.vim".to_string(),
+            channel: "test-channel".to_string(),
+            version: "9.1".to_string(),
+            description: "Vi IMproved text editor".to_string(),
+            install_via: SearchResultInstallTarget::Either,
+            additional_info: None,
+        };
+
+        // Keep the non-matching package first in the input so this fails if
+        // equal self-match scores merely preserve the original order.
+        let results = vec![emacs.clone(), vim.clone()];
+        let ranked_for_vim = process_results(results.clone(), "vim", 10).unwrap();
+        let ranked_for_emacs = process_results(results, "emacs", 10).unwrap();
+
+        assert_eq!(ranked_for_vim[0], vim);
+        assert_eq!(ranked_for_emacs[0], emacs);
     }
 }
