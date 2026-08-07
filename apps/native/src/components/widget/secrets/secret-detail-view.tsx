@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { client } from "@/lib/orpc";
 import { RecipientKindIcon, ViewHeader } from "./shared";
-import { backendLabel } from "./types";
+import { backendLabel, recipientHasLocalIdentity } from "./types";
 import type { SecretEntry, SecretsVault } from "@/ipc/orpc-bindings";
 
 /**
@@ -54,6 +54,8 @@ export function SecretDetailView({
   const onToggleReveal = async () => {
     if (isRevealed) {
       setIsRevealed(false);
+      // Also wipe the decrypted value from memory, so that it is not retained in the UI state.
+      setDecryptedValue(null);
       return;
     }
 
@@ -163,7 +165,7 @@ export function SecretDetailView({
                 <span className="min-w-0 truncate font-mono text-[13px]">
                   {recipient?.label ?? publicKey}
                 </span>
-                {recipient?.isLocalIdentity && (
+                {recipient && recipientHasLocalIdentity(vault, recipient) && (
                   <span className="text-[10.5px] text-brand">local identity</span>
                 )}
                 <span className="ml-auto">

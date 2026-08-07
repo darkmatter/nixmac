@@ -149,6 +149,7 @@ fn main() {
         .register::<shared_types::RecipientRegistration>()
         .register::<shared_types::SecretEntry>()
         .register::<shared_types::SecretRecipient>()
+        .register::<shared_types::SecretsVaultState>()
         .register::<shared_types::GithubBootstrapState>()
         .register::<shared_types::GithubBootstrapStatus>()
         .register::<shared_types::GithubConnectStart>()

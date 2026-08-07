@@ -10,6 +10,7 @@ import {
   LocalIdentityChip,
 } from "./shared";
 import type { SecretsVault } from "@/ipc/orpc-bindings";
+import { recipientHasLocalIdentity } from "./types";
 
 /**
  * The keys & recipients tab separates public recipient records from local
@@ -77,54 +78,55 @@ export function KeysView({
 
       <div className="flex flex-col gap-2">
         <h3 className="font-medium text-xs">Public recipients</h3>
-        {vault.recipients.map((recipient) => (
-          <div
-            key={recipient.id}
-            className={cn(
-              "rounded-[11px] border p-3",
-              recipient.isLocalIdentity
-                ? "border-brand/35 bg-brand/5"
-                : "border-border bg-muted/20",
-            )}
-          >
-            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-stretch sm:gap-3">
-              <div className="min-w-0 flex-1 rounded-[10px] border border-border bg-muted/25 px-3 py-2.5">
-                <div className="flex items-center gap-2.5">
-                  <span className="inline-flex size-8.5 shrink-0 items-center justify-center rounded-[9px] bg-muted text-foreground">
-                    <RecipientKindIcon kind={recipient.kind} className="size-4.5" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="min-w-0 truncate font-medium font-mono text-sm">
-                      {recipient.label}
-                    </div>
-                    <div className="mt-0.5 flex min-w-0 items-center gap-2">
-                      {recipient.isLocalIdentity && <LocalIdentityChip />}
-                      <span className="truncate text-[11px] text-muted-foreground">
-                        {recipientKindLabel(recipient.kind)}
-                      </span>
+        {vault.recipients.map((recipient) => {
+          const hasLocalIdentity = recipientHasLocalIdentity(vault, recipient);
+          return (
+            <div
+              key={recipient.id}
+              className={cn(
+                "rounded-[11px] border p-3",
+                hasLocalIdentity ? "border-brand/35 bg-brand/5" : "border-border bg-muted/20",
+              )}
+            >
+              <div className="flex flex-col gap-2.5 sm:flex-row sm:items-stretch sm:gap-3">
+                <div className="min-w-0 flex-1 rounded-[10px] border border-border bg-muted/25 px-3 py-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="inline-flex size-8.5 shrink-0 items-center justify-center rounded-[9px] bg-muted text-foreground">
+                      <RecipientKindIcon kind={recipient.kind} className="size-4.5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="min-w-0 truncate font-medium font-mono text-sm">
+                        {recipient.label}
+                      </div>
+                      <div className="mt-0.5 flex min-w-0 items-center gap-2">
+                        {hasLocalIdentity && <LocalIdentityChip />}
+                        <span className="truncate text-[11px] text-muted-foreground">
+                          {recipientKindLabel(recipient.kind)}
+                        </span>
+                      </div>
                     </div>
                   </div>
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    <code className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-muted-foreground">
+                      {recipient.publicKey}
+                    </code>
+                    <CopyIconButton
+                      label={`Copy ${recipient.label} public key`}
+                      onCopy={() => onCopy(recipient.publicKey)}
+                    />
+                  </div>
                 </div>
-                <div className="mt-1.5 flex items-center gap-1.5">
-                  <code className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-muted-foreground">
-                    {recipient.publicKey}
-                  </code>
-                  <CopyIconButton
-                    label={`Copy ${recipient.label} public key`}
-                    onCopy={() => onCopy(recipient.publicKey)}
-                  />
-                </div>
-              </div>
 
-              <div className="flex shrink-0 flex-col items-center justify-center gap-1.5 rounded-[10px] border border-border bg-muted/25 px-3 py-2.5 text-center sm:min-w-40">
-                <span className="text-[11.5px] text-muted-foreground">
-                  {opensLabel(recipient.id)}
-                </span>
-                <InRepoBadge inRepo={recipient.inUse} />
+                <div className="flex shrink-0 flex-col items-center justify-center gap-1.5 rounded-[10px] border border-border bg-muted/25 px-3 py-2.5 text-center sm:min-w-40">
+                  <span className="text-[11.5px] text-muted-foreground">
+                    {opensLabel(recipient.id)}
+                  </span>
+                  <InRepoBadge inRepo={recipient.inUse} />
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

@@ -132,8 +132,6 @@ pub struct SecretRecipient {
     pub in_use: bool,
 
     pub registrations: Vec<RecipientRegistration>,
-
-    pub is_local_identity: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -143,4 +141,21 @@ pub struct SecretsVault {
     pub entries: Vec<SecretEntry>,
     pub recipients: Vec<SecretRecipient>,
     pub decryption_identities: Vec<DecryptionIdentity>,
+}
+
+/// Backend-owned lifecycle for the derived secrets vault.
+/// The vault is potentially very expensive to derive (it evaluates the configured flake), so
+/// Rust refreshes it when its inputs change and the frontend only mirrors this
+/// snapshot. `vault` is cleared while loading to avoid showing data derived
+/// from a previous config directory or host.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SecretsVaultState {
+    pub vault: Option<SecretsVault>,
+    /// Whether a client has requested the vault at least once. Dependency
+    /// changes refresh only after activation, avoiding Nix evaluation at app
+    /// startup for users who never open secrets management.
+    pub activated: bool,
+    pub loading: bool,
+    pub error: Option<String>,
 }

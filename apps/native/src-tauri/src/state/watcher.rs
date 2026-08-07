@@ -174,6 +174,9 @@ fn check_git_status<R: Runtime>(
             state.external_build_detected = flag;
         });
     change_map_state::update(app_handle, change_map);
+    if status_changed {
+        crate::state::secrets_vault::refresh_if_active(app_handle);
+    }
 }
 
 fn check_upstream<R: Runtime + 'static>(app_handle: &AppHandle<R>, dir: &str, generation: u64) {

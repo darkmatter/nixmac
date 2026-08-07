@@ -1753,9 +1753,24 @@ export type SecretBackend = "sops" | "agenix"
  */
 export type SecretEntry = { id: string; name: string; backend: SecretBackend; file: string; publicRecipients: string[]; publicRecipientsResolved: boolean; recipientIds: string[]; decryptionCapability: DecryptionCapability; sopsKey: string | null }
 
-export type SecretRecipient = { id: string; label: string; kind: RecipientKind; device: string; fingerprint: string; publicKey: string; keyType: RecipientKeyType; source: RecipientSource; inUse: boolean; registrations: RecipientRegistration[]; isLocalIdentity: boolean }
+export type SecretRecipient = { id: string; label: string; kind: RecipientKind; device: string; fingerprint: string; publicKey: string; keyType: RecipientKeyType; source: RecipientSource; inUse: boolean; registrations: RecipientRegistration[] }
 
 export type SecretsVault = { primaryDecryptionIdentityId: string | null; entries: SecretEntry[]; recipients: SecretRecipient[]; decryptionIdentities: DecryptionIdentity[] }
+
+/**
+ * Backend-owned lifecycle for the derived secrets vault.
+ * The vault is potentially very expensive to derive (it evaluates the configured flake), so
+ * Rust refreshes it when its inputs change and the frontend only mirrors this
+ * snapshot. `vault` is cleared while loading to avoid showing data derived
+ * from a previous config directory or host.
+ */
+export type SecretsVaultState = { vault: SecretsVault | null; 
+/**
+ * Whether a client has requested the vault at least once. Dependency
+ * changes refresh only after activation, avoiding Nix evaluation at app
+ * startup for users who never open secrets management.
+ */
+activated: boolean; loading: boolean; error: string | null }
 
 export type SemanticChangeGroup = { 
 /**
@@ -2136,7 +2151,8 @@ export type Procedures = {
   }
   secrets: {
     decryptSecret: Client<Record<never, never>, DecryptSecretInput, string, Error>
-    getVault: Client<Record<never, never>, void, SecretsVault, Error>
+    getState: Client<Record<never, never>, void, SecretsVaultState, Error>
+    refresh: Client<Record<never, never>, void, void, Error>
   }
   settings: {
     export: Client<Record<never, never>, ExportInput, ExportResult | null, Error>

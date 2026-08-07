@@ -4,6 +4,7 @@ use crate::evolve::types::{FileEditAction, SemanticFileEdit};
 use crate::shared_types::{HomebrewItemType, HomebrewState};
 use crate::system::nix::nix_command;
 use crate::system::nix_ast_lists::parse_string_lists_by_attrpath;
+use crate::utils::nix_string_literal;
 use crate::{managed_edits::managed_edit, shared_types};
 use anyhow::{Context, Result};
 use serde_json::{Map, Value};
@@ -34,7 +35,7 @@ fn nix_eval_homebrew_attr(hostname: &str) -> Result<String> {
     // serde_json::to_string already wraps the hostname in quotes and escapes
     // internals — do not also embed quote chars in the format string or we
     // produce malformed attrs like .#darwinConfigurations.""host"".config…
-    let host_attr = serde_json::to_string(hostname)?;
+    let host_attr = nix_string_literal(hostname);
     Ok(format!(
         ".#darwinConfigurations.{}.config.homebrew",
         host_attr

@@ -37,7 +37,6 @@ export const MOCK_VAULT: SecretsVault = {
         { backend: "agenix", file: "secrets/secrets.nix" },
         { backend: "sops", file: ".sops.yaml" },
       ],
-      isLocalIdentity: true,
     },
     {
       id: "work-mini",
@@ -53,7 +52,6 @@ export const MOCK_VAULT: SecretsVault = {
         { backend: "agenix", file: "secrets/secrets.nix" },
         { backend: "sops", file: ".sops.yaml" },
       ],
-      isLocalIdentity: false,
     },
     {
       id: "yubikey",
@@ -66,7 +64,6 @@ export const MOCK_VAULT: SecretsVault = {
       fingerprint: "SHA256:a3c9 12ff … 1f88",
       inUse: true,
       registrations: [{ backend: "agenix", file: "secrets/secrets.nix" }],
-      isLocalIdentity: false,
     },
     {
       id: "framework",
@@ -79,7 +76,6 @@ export const MOCK_VAULT: SecretsVault = {
       fingerprint: "SHA256:b8e0 44ad … 9a15",
       inUse: false,
       registrations: [],
-      isLocalIdentity: false,
     },
   ],
   entries: [

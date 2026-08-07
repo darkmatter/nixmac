@@ -9,9 +9,12 @@ use serde::Deserialize;
 use serde_yaml::Value;
 
 use crate::{
-    secrets::identities::{
-        HostKey, RecipientIdentity, SecretIdentities, identities_for_recipient,
-        load_secret_identities, normalize_age_or_ssh_identity, normalize_pgp_fingerprint,
+    secrets::{
+        identities::{
+            HostKey, RecipientIdentity, SecretIdentities, identities_for_recipient,
+            load_secret_identities, normalize_age_or_ssh_identity, normalize_pgp_fingerprint,
+        },
+        resolve_secret_file_path,
     },
     shared_types::{
         DecryptionCapability, DecryptionIdentity, DecryptionIdentityKind,
@@ -57,14 +60,16 @@ struct ConfigRecipient {
 /// Populate each secret with public recipient metadata and local capability.
 #[cfg(test)]
 pub(crate) fn apply_recipients_to_secrets(
+    config_dir: &str,
     entries: &mut [SecretEntry],
     recipients: &[SecretRecipient],
 ) -> Result<(), String> {
-    apply_recipients_to_secrets_with_identities(entries, recipients, &[])
+    apply_recipients_to_secrets_with_identities(config_dir, entries, recipients, &[])
 }
 
 /// Populate each secret with public recipient metadata and local capability, including decryption identities.
 pub(crate) fn apply_recipients_to_secrets_with_identities(
+    config_dir: &str,
     entries: &mut [SecretEntry],
     recipients: &[SecretRecipient],
     decryption_identities: &[DecryptionIdentity],
@@ -78,6 +83,7 @@ pub(crate) fn apply_recipients_to_secrets_with_identities(
     // local capability intentionally remain unresolved.
     let agenix_inventory = RecipientInventory::new();
     apply_recipients_to_secrets_with_and_identities(
+        config_dir,
         entries,
         recipients,
         decryption_identities,
@@ -90,6 +96,7 @@ pub(crate) fn apply_recipients_to_secrets_with_identities(
 /// Only for testability.
 #[cfg(test)]
 fn apply_recipients_to_secrets_with<F>(
+    config_dir: &str,
     entries: &mut [SecretEntry],
     recipients: &[SecretRecipient],
     agenix_inventory: &RecipientInventory,
@@ -99,6 +106,7 @@ where
     F: FnMut(&Path) -> Result<HashSet<RecipientIdentity>, String>,
 {
     apply_recipients_to_secrets_with_and_identities(
+        config_dir,
         entries,
         recipients,
         &[],
@@ -109,6 +117,7 @@ where
 
 /// Helper function to apply recipients to secrets, allowing a custom loader for SOPS metadata and decryption identities.
 fn apply_recipients_to_secrets_with_and_identities<F>(
+    config_dir: &str,
     entries: &mut [SecretEntry],
     recipients: &[SecretRecipient],
     decryption_identities: &[DecryptionIdentity],
@@ -120,7 +129,12 @@ where
 {
     let known_recipients: Vec<(&str, HashSet<RecipientIdentity>)> = recipients
         .iter()
-        .map(|recipient| (recipient.id.as_str(), identities_for_recipient(recipient)))
+        .map(|recipient| {
+            (
+                recipient.id.as_str(),
+                identities_for_recipient_with_aliases(recipient, decryption_identities),
+            )
+        })
         .collect();
     let all_known_identities: HashSet<RecipientIdentity> = known_recipients
         .iter()
@@ -135,7 +149,7 @@ where
     let mut sops_cache: HashMap<PathBuf, Option<HashSet<RecipientIdentity>>> = HashMap::new();
 
     for entry in entries {
-        let source_file = PathBuf::from(&entry.file);
+        let source_file = resolve_secret_file_path(config_dir, &entry.file)?;
         let encrypted_for = match entry.backend {
             SecretBackend::Sops => {
                 if !sops_cache.contains_key(&source_file) {
@@ -193,6 +207,48 @@ where
     }
 
     Ok(())
+}
+
+/// Whether a public recipient corresponds to any configured or discovered
+/// local decryption identity. Availability is intentionally separate.
+pub(crate) fn recipient_has_local_identity(
+    recipient: &SecretRecipient,
+    decryption_identities: &[DecryptionIdentity],
+) -> bool {
+    let recipient_identities = identities_for_recipient(recipient);
+    decryption_identities
+        .iter()
+        .flat_map(|identity| identity.public_keys.iter().map(String::as_str))
+        .filter_map(normalize_age_or_ssh_identity)
+        .any(|identity| recipient_identities.contains(&identity))
+}
+
+/// Return every public identity known to represent a recipient. SSH private
+/// identities retain both their normalized SSH public key and the equivalent
+/// ssh-to-age recipient, even though only one value is displayed.
+fn identities_for_recipient_with_aliases(
+    recipient: &SecretRecipient,
+    decryption_identities: &[DecryptionIdentity],
+) -> HashSet<RecipientIdentity> {
+    let mut recipient_identities = identities_for_recipient(recipient);
+    loop {
+        let mut changed = false;
+        for identity in decryption_identities {
+            let aliases: HashSet<RecipientIdentity> = identity
+                .public_keys
+                .iter()
+                .filter_map(|public_key| normalize_age_or_ssh_identity(public_key))
+                .collect();
+            if !recipient_identities.is_disjoint(&aliases) {
+                let previous_len = recipient_identities.len();
+                recipient_identities.extend(aliases);
+                changed |= recipient_identities.len() != previous_len;
+            }
+        }
+        if !changed {
+            return recipient_identities;
+        }
+    }
 }
 
 /// Parse the public recipient identities stored in an encrypted SOPS file.
@@ -259,6 +315,7 @@ pub(crate) fn load_recipients(
         host_attr,
         &identities,
         |public_key_path| ssh_public_key_to_age(public_key_path, config_dir),
+        ssh_public_key_identity,
         |public_key_path| ssh_public_key_fingerprint(public_key_path, config_dir),
         |key_file| age_key_file_public_keys(key_file, config_dir),
     )?;
@@ -274,7 +331,7 @@ pub(crate) fn load_recipients(
     // deduplicating them against local-identity and SOPS recipients by all
     // known public identity aliases rather than only the displayed public key.
     Ok((
-        merge_config_recipients(local_recipients, config_recipients),
+        merge_config_recipients(local_recipients, config_recipients, &decryption_identities),
         decryption_identities,
     ))
 }
@@ -417,6 +474,7 @@ fn sops_anchor_names(source: &str) -> HashMap<String, String> {
 fn merge_config_recipients(
     mut local_recipients: Vec<SecretRecipient>,
     config_recipients: Vec<ConfigRecipient>,
+    decryption_identities: &[DecryptionIdentity],
 ) -> Vec<SecretRecipient> {
     for recipient in &mut local_recipients {
         recipient.in_use = false;
@@ -429,29 +487,19 @@ fn merge_config_recipients(
         .collect();
 
     for config_recipient in config_recipients {
-        if let Some(local) = local_recipients
-            .iter_mut()
-            .find(|local| local.public_key == config_recipient.public_key)
-        {
+        let config_identity = normalize_age_or_ssh_identity(&config_recipient.public_key);
+        if let Some(local) = local_recipients.iter_mut().find(|local| {
+            local.public_key == config_recipient.public_key
+                || config_identity.as_ref().is_some_and(|config_identity| {
+                    identities_for_recipient_with_aliases(local, decryption_identities)
+                        .contains(config_identity)
+                })
+        }) {
             local.in_use = true;
             local.registrations.push(RecipientRegistration {
                 backend: SecretBackend::Sops,
                 file: config_recipient.registration_file.clone(),
             });
-            if !local.is_local_identity {
-                used_ids.remove(&local.id);
-                let label = config_recipient
-                    .anchor
-                    .as_deref()
-                    .unwrap_or(&config_recipient.public_key);
-                local.id = unique_recipient_id(label, &mut used_ids);
-                local.label = label.to_string();
-                local.device = if config_recipient.anchor.is_some() {
-                    ".sops.yaml named recipient".to_string()
-                } else {
-                    ".sops.yaml recipient".to_string()
-                };
-            }
             continue;
         }
 
@@ -477,7 +525,6 @@ fn merge_config_recipients(
                 recipient_key_type(&config_recipient.public_key),
                 RecipientSource::Repository,
                 true,
-                false,
             )
             .with_registration(RecipientRegistration {
                 backend: SecretBackend::Sops,
@@ -492,15 +539,17 @@ fn merge_config_recipients(
 /// Turn the evaluated SOPS SSH identity paths into public recipients.
 /// IMPORTANT: `sops.age.sshKeyPaths` contains private-key paths. Only the corresponding
 /// `.pub` files are opened here; private key material never enters the vault.
-fn materialize_recipients<Convert, Fingerprint, DeriveAge>(
+fn materialize_recipients<Convert, ReadSshIdentity, Fingerprint, DeriveAge>(
     host_attr: &str,
     identities: &SecretIdentities,
     mut convert_to_age: Convert,
+    mut read_ssh_identity: ReadSshIdentity,
     mut fingerprint: Fingerprint,
     mut derive_age: DeriveAge,
 ) -> Result<(Vec<SecretRecipient>, Vec<DecryptionIdentity>), String>
 where
     Convert: FnMut(&str) -> Result<String, String>,
+    ReadSshIdentity: FnMut(&str) -> Result<String, String>,
     Fingerprint: FnMut(&str) -> Result<Option<String>, String>,
     DeriveAge: FnMut(&str) -> Result<Vec<String>, String>,
 {
@@ -522,13 +571,39 @@ where
             host_key.path,
             host_key.public_key_path
         );
-        let age_public_key = convert_to_age(&host_key.public_key_path)?;
+        let available = Path::new(&host_key.path).is_file();
+        let age_public_key = match convert_to_age(&host_key.public_key_path) {
+            Ok(public_key) => public_key,
+            Err(error) => {
+                log::warn!(
+                    "Could not derive a public recipient for configured SSH identity {} from {}: {error}",
+                    host_key.path,
+                    host_key.public_key_path
+                );
+                decryption_identities.push(DecryptionIdentity {
+                    kind: DecryptionIdentityKind::SshKeyPath,
+                    locality: DecryptionIdentityLocality::Configuration,
+                    path: host_key.path.clone(),
+                    available,
+                    public_keys: Vec::new(),
+                });
+                continue;
+            }
+        };
+        let mut identity_aliases = vec![age_public_key.clone()];
+        match read_ssh_identity(&host_key.public_key_path) {
+            Ok(ssh_public_key) => identity_aliases.push(ssh_public_key),
+            Err(error) => log::warn!(
+                "Could not retain SSH public identity alias from {}: {error}",
+                host_key.public_key_path
+            ),
+        }
         decryption_identities.push(DecryptionIdentity {
             kind: DecryptionIdentityKind::SshKeyPath,
             locality: DecryptionIdentityLocality::Configuration,
             path: host_key.path.clone(),
-            available: Path::new(&host_key.path).is_file(),
-            public_keys: vec![age_public_key.clone()],
+            available,
+            public_keys: identity_aliases,
         });
         if !public_keys.insert(age_public_key.clone()) {
             continue;
@@ -542,7 +617,15 @@ where
             format!("{host_attr}-{}", host_key.key_type)
         };
         let id = unique_recipient_id(&id_base, &mut recipient_ids);
-        let key_fingerprint = fingerprint(&host_key.public_key_path)?.unwrap_or_default();
+        let key_fingerprint = fingerprint(&host_key.public_key_path)
+            .unwrap_or_else(|error| {
+                log::warn!(
+                    "Could not fingerprint SSH public key {}: {error}",
+                    host_key.public_key_path
+                );
+                None
+            })
+            .unwrap_or_default();
         recipients.push(recipient(
             &id,
             host_attr,
@@ -553,7 +636,6 @@ where
             RecipientKeyType::Age,
             RecipientSource::SshHostKey,
             true,
-            true,
         ));
     }
 
@@ -562,13 +644,36 @@ where
         let public_key_path = format!("{identity_path}.pub");
         validate_public_key_path(identity_path, &public_key_path)?;
         log::debug!("Converting non-host sops SSH identity using public key {public_key_path}");
-        let age_public_key = convert_to_age(&public_key_path)?;
+        let available = Path::new(identity_path).is_file();
+        let age_public_key = match convert_to_age(&public_key_path) {
+            Ok(public_key) => public_key,
+            Err(error) => {
+                log::warn!(
+                    "Could not derive a public recipient for configured SSH identity {identity_path} from {public_key_path}: {error}"
+                );
+                decryption_identities.push(DecryptionIdentity {
+                    kind: DecryptionIdentityKind::SshKeyPath,
+                    locality: DecryptionIdentityLocality::Configuration,
+                    path: identity_path.clone(),
+                    available,
+                    public_keys: Vec::new(),
+                });
+                continue;
+            }
+        };
+        let mut identity_aliases = vec![age_public_key.clone()];
+        match read_ssh_identity(&public_key_path) {
+            Ok(ssh_public_key) => identity_aliases.push(ssh_public_key),
+            Err(error) => log::warn!(
+                "Could not retain SSH public identity alias from {public_key_path}: {error}"
+            ),
+        }
         decryption_identities.push(DecryptionIdentity {
             kind: DecryptionIdentityKind::SshKeyPath,
             locality: DecryptionIdentityLocality::Configuration,
             path: identity_path.clone(),
-            available: Path::new(identity_path).is_file(),
-            public_keys: vec![age_public_key.clone()],
+            available,
+            public_keys: identity_aliases,
         });
         if !public_keys.insert(age_public_key.clone()) {
             continue;
@@ -580,7 +685,12 @@ where
             .filter(|name| !name.is_empty())
             .unwrap_or("ssh-identity");
         let id = unique_recipient_id(label, &mut recipient_ids);
-        let key_fingerprint = fingerprint(&public_key_path)?.unwrap_or_default();
+        let key_fingerprint = fingerprint(&public_key_path)
+            .unwrap_or_else(|error| {
+                log::warn!("Could not fingerprint SSH public key {public_key_path}: {error}");
+                None
+            })
+            .unwrap_or_default();
         recipients.push(recipient(
             &id,
             label,
@@ -590,7 +700,6 @@ where
             &key_fingerprint,
             RecipientKeyType::Age,
             RecipientSource::SshIdentity,
-            true,
             true,
         ));
     }
@@ -629,7 +738,6 @@ where
                 "",
                 RecipientKeyType::Age,
                 RecipientSource::AgeKeyFile,
-                true,
                 true,
             ));
         }
@@ -793,6 +901,25 @@ fn ssh_public_key_to_age(public_key_path: &str, config_dir: &str) -> Result<Stri
     Ok(age_public_key)
 }
 
+/// Read and normalize an OpenSSH public key so it can be retained as an alias
+/// of the corresponding ssh-to-age recipient. This only accepts protected
+/// `.pub` paths; private identity material is never read.
+fn ssh_public_key_identity(public_key_path: &str) -> Result<String, String> {
+    ensure_public_key_path(public_key_path)?;
+    let source = fs::read_to_string(public_key_path)
+        .map_err(|error| format!("Failed to read SSH public key {public_key_path}: {error}"))?;
+    let public_key = source
+        .lines()
+        .find(|line| !line.trim().is_empty())
+        .ok_or_else(|| format!("SSH public key {public_key_path} is empty"))?;
+    match normalize_age_or_ssh_identity(public_key) {
+        Some(RecipientIdentity::Ssh(public_key)) => Ok(public_key),
+        _ => Err(format!(
+            "SSH public key {public_key_path} does not contain a supported SSH recipient"
+        )),
+    }
+}
+
 /// Calculate the fingerprint of an OpenSSH public key using ssh-keygen.
 /// This is used to display the fingerprint of the SSH host key used by sops in the secrets vault.
 fn ssh_public_key_fingerprint(
@@ -862,7 +989,6 @@ fn recipient(
     key_type: RecipientKeyType,
     source: RecipientSource,
     in_use: bool,
-    is_local_identity: bool,
 ) -> SecretRecipient {
     SecretRecipient {
         id: id.into(),
@@ -875,7 +1001,6 @@ fn recipient(
         source,
         in_use,
         registrations: Vec::new(),
-        is_local_identity,
     }
 }
 
@@ -910,8 +1035,9 @@ mod tests {
         ConfigRecipient, RecipientInventory, apply_recipients_to_secrets,
         apply_recipients_to_secrets_with, apply_recipients_to_secrets_with_and_identities,
         load_sops_config_recipients, materialize_recipients, merge_config_recipients,
-        parse_sops_config_recipients, parse_sops_recipient_metadata, recipient, recipient_key_type,
-        ssh_public_key_fingerprint, ssh_public_key_to_age, unique_recipient_id,
+        parse_sops_config_recipients, parse_sops_recipient_metadata, recipient,
+        recipient_has_local_identity, recipient_key_type, ssh_public_key_fingerprint,
+        ssh_public_key_identity, ssh_public_key_to_age, unique_recipient_id,
     };
     use crate::{
         secrets::identities::{HostKey, RecipientIdentity, SecretIdentities},
@@ -940,7 +1066,6 @@ mod tests {
             recipient_key_type(public_key),
             RecipientSource::Repository,
             true,
-            false,
         )
     }
 
@@ -1004,6 +1129,7 @@ mod tests {
                 converted_paths.push(path.to_string());
                 Ok(format!("age1-{path}"))
             },
+            |path| Ok(format!("ssh-ed25519 alias-{path}")),
             |path| Ok(Some(format!("fingerprint-{path}"))),
             |_path| -> Result<Vec<String>, String> { panic!("no age key file configured") },
         )
@@ -1023,17 +1149,91 @@ mod tests {
         assert_eq!(recipients[0].kind, RecipientKind::Host);
         assert_eq!(recipients[0].key_type, RecipientKeyType::Age);
         assert_eq!(recipients[0].source, RecipientSource::SshHostKey);
-        assert!(recipients[0].is_local_identity);
+        assert!(recipient_has_local_identity(
+            &recipients[0],
+            &decryption_identities
+        ));
         assert_eq!(recipients[1].id, "id_ed25519");
         assert_eq!(recipients[1].key_type, RecipientKeyType::Age);
         assert_eq!(recipients[1].source, RecipientSource::SshIdentity);
-        assert!(recipients[1].is_local_identity);
+        assert!(recipient_has_local_identity(
+            &recipients[1],
+            &decryption_identities
+        ));
         assert_eq!(recipients[2].id, "id_ed25519-2");
-        assert!(recipients[2].is_local_identity);
+        assert!(recipient_has_local_identity(
+            &recipients[2],
+            &decryption_identities
+        ));
         assert_eq!(
             recipients[1].fingerprint,
             "fingerprint-/Users/test/.ssh/id_ed25519.pub"
         );
+    }
+
+    #[test]
+    fn missing_ssh_public_key_preserves_identity_and_does_not_block_other_recipients() {
+        let dir = TempDir::new().expect("temp dir");
+        let missing_public_identity = dir.path().join("missing-public-key");
+        let valid_identity = dir.path().join("valid-key");
+        let valid_public_key = dir.path().join("valid-key.pub");
+        fs::write(&missing_public_identity, "private identity fixture")
+            .expect("write private identity fixture");
+        fs::write(&valid_identity, "private identity fixture")
+            .expect("write private identity fixture");
+        fs::write(&valid_public_key, "public key fixture").expect("write public key fixture");
+
+        let missing_public_path = format!("{}.pub", missing_public_identity.display());
+        let valid_public_path = valid_public_key.to_string_lossy().into_owned();
+        let identities = SecretIdentities {
+            age_key_file: None,
+            host_keys: Vec::new(),
+            other_sops_identities: vec![
+                missing_public_identity.to_string_lossy().into_owned(),
+                valid_identity.to_string_lossy().into_owned(),
+            ],
+        };
+        let mut fingerprinted_paths = Vec::new();
+
+        let (recipients, decryption_identities) = materialize_recipients(
+            "test-host",
+            &identities,
+            |path| {
+                if path == missing_public_path {
+                    Err("public key does not exist".into())
+                } else {
+                    assert_eq!(path, valid_public_path);
+                    Ok("age1valid".into())
+                }
+            },
+            |path| {
+                assert_eq!(path, valid_public_path);
+                Ok("ssh-ed25519 AAAAvalid".into())
+            },
+            |path| {
+                fingerprinted_paths.push(path.to_string());
+                Err("fingerprint unavailable".into())
+            },
+            |_path| -> Result<Vec<String>, String> { panic!("no age key file configured") },
+        )
+        .expect("public recipient enrichment is best-effort");
+
+        assert_eq!(decryption_identities.len(), 2);
+        assert!(
+            decryption_identities
+                .iter()
+                .all(|identity| identity.available)
+        );
+        assert!(decryption_identities[0].public_keys.is_empty());
+        assert_eq!(
+            decryption_identities[1].public_keys,
+            ["age1valid", "ssh-ed25519 AAAAvalid"]
+        );
+        assert_eq!(recipients.len(), 1);
+        assert_eq!(recipients[0].id, "valid-key");
+        assert_eq!(recipients[0].public_key, "age1valid");
+        assert!(recipients[0].fingerprint.is_empty());
+        assert_eq!(fingerprinted_paths, [valid_public_path]);
     }
 
     #[test]
@@ -1053,6 +1253,7 @@ mod tests {
             "test-host",
             &identities,
             |_path| Ok("age1same".into()),
+            |_path| Ok("ssh-ed25519 AAAAsame".into()),
             |_path| Ok(None),
             |_path| -> Result<Vec<String>, String> { panic!("no age key file configured") },
         )
@@ -1077,6 +1278,7 @@ mod tests {
             "test-host",
             &identities,
             |_path| -> Result<String, String> { panic!("no SSH identity configured") },
+            |_path| -> Result<String, String> { panic!("no SSH identity configured") },
             |_path| -> Result<Option<String>, String> { panic!("no SSH identity configured") },
             |_path| Ok(vec!["age1configured".into(), "age1second".into()]),
         )
@@ -1087,7 +1289,7 @@ mod tests {
         assert!(
             recipients
                 .iter()
-                .all(|recipient| recipient.is_local_identity)
+                .all(|recipient| recipient_has_local_identity(recipient, &local_identities))
         );
         assert_eq!(local_identities.len(), 1);
         assert_eq!(
@@ -1111,6 +1313,7 @@ mod tests {
                 other_sops_identities: Vec::new(),
             },
             |_path| -> Result<String, String> { panic!("conversion should not run") },
+            |_path| -> Result<String, String> { panic!("SSH identity read should not run") },
             |_path| -> Result<Option<String>, String> { panic!("fingerprinting should not run") },
             |_path| -> Result<Vec<String>, String> { panic!("age derivation should not run") },
         )
@@ -1140,6 +1343,7 @@ mod tests {
             "test-host",
             &identities,
             |_path| -> Result<String, String> { panic!("conversion must not run") },
+            |_path| -> Result<String, String> { panic!("SSH identity read must not run") },
             |_path| -> Result<Option<String>, String> { panic!("fingerprinting must not run") },
             |_path| -> Result<Vec<String>, String> { panic!("age derivation must not run") },
         )
@@ -1155,10 +1359,13 @@ mod tests {
 
         let conversion_error = ssh_public_key_to_age(private_path, "/tmp")
             .expect_err("conversion must reject a private key path");
+        let identity_error = ssh_public_key_identity(private_path)
+            .expect_err("identity read must reject a private key path");
         let fingerprint_error = ssh_public_key_fingerprint(private_path, "/tmp")
             .expect_err("fingerprinting must reject a private key path");
 
         assert!(conversion_error.contains("only .pub public key files"));
+        assert!(identity_error.contains("only .pub public key files"));
         assert!(fingerprint_error.contains("only .pub public key files"));
     }
 
@@ -1173,8 +1380,24 @@ mod tests {
         let error =
             ssh_public_key_to_age(&public_path.to_string_lossy(), dir.path().to_str().unwrap())
                 .expect_err("symlinked public path must be rejected");
+        let identity_error = ssh_public_key_identity(&public_path.to_string_lossy())
+            .expect_err("symlinked public path must not be read");
 
         assert!(error.contains("symlinks are not allowed"));
+        assert!(identity_error.contains("symlinks are not allowed"));
+    }
+
+    #[test]
+    fn ssh_public_identity_is_normalized_without_its_comment() {
+        let dir = TempDir::new().expect("temp dir");
+        let public_path = dir.path().join("id_ed25519.pub");
+        fs::write(&public_path, "ssh-ed25519 AAAAoperator optional-comment\n")
+            .expect("write public fixture");
+
+        assert_eq!(
+            ssh_public_key_identity(&public_path.to_string_lossy()).expect("read public identity"),
+            "ssh-ed25519 AAAAoperator"
+        );
     }
 
     #[test]
@@ -1256,7 +1479,7 @@ creation_rules:
     }
 
     #[test]
-    fn merge_names_config_keys_and_preserves_local_identity() {
+    fn merge_preserves_materialized_recipient_identity() {
         let local = vec![
             recipient(
                 "my-host",
@@ -1267,7 +1490,6 @@ creation_rules:
                 "SHA256:local",
                 RecipientKeyType::Age,
                 RecipientSource::SshHostKey,
-                true,
                 true,
             ),
             recipient(
@@ -1280,20 +1502,26 @@ creation_rules:
                 RecipientKeyType::Age,
                 RecipientSource::SshIdentity,
                 true,
-                false,
             ),
         ];
+        let ssh_identity = DecryptionIdentity {
+            kind: DecryptionIdentityKind::SshKeyPath,
+            locality: DecryptionIdentityLocality::Configuration,
+            path: "/Users/test/.ssh/id_ed25519".into(),
+            available: true,
+            public_keys: vec!["age1operator".into(), "ssh-ed25519 AAAAoperator".into()],
+        };
         let config = parse_sops_config_recipients(
-            "keys:\n  - &local_alias age1local\n  - &cooper age1operator\n  - age1unknown\n",
+            "keys:\n  - &local_alias age1local\n  - &cooper ssh-ed25519 AAAAoperator comment\n  - age1unknown\n",
         )
         .expect("parse config");
 
-        let recipients = merge_config_recipients(local, config);
+        let recipients =
+            merge_config_recipients(local, config, std::slice::from_ref(&ssh_identity));
 
         assert_eq!(recipients.len(), 3);
         assert_eq!(recipients[0].id, "my-host");
         assert_eq!(recipients[0].label, "my-host");
-        assert!(recipients[0].is_local_identity);
         assert!(recipients[0].in_use);
         assert_eq!(
             recipients[0].registrations,
@@ -1302,8 +1530,9 @@ creation_rules:
                 file: ".sops.yaml".into(),
             }]
         );
-        assert_eq!(recipients[1].id, "cooper");
-        assert_eq!(recipients[1].label, "cooper");
+        assert_eq!(recipients[1].id, "id_ed25519");
+        assert_eq!(recipients[1].label, "id_ed25519");
+        assert!(recipients[1].in_use);
         assert_eq!(recipients[2].kind, RecipientKind::Unknown);
         assert_eq!(recipients[2].label, "age1unknown");
     }
@@ -1311,7 +1540,7 @@ creation_rules:
     #[test]
     fn local_recipient_absent_from_config_is_not_in_use() {
         let local = vec![known_recipient("local-only", "age1local")];
-        let recipients = merge_config_recipients(local, Vec::new());
+        let recipients = merge_config_recipients(local, Vec::new(), &[]);
 
         assert!(!recipients[0].in_use);
     }
@@ -1337,6 +1566,7 @@ creation_rules:
         entries[1].id = "bob-secret".into();
 
         apply_recipients_to_secrets(
+            dir.path().to_str().expect("valid path"),
             &mut entries,
             &[
                 known_recipient("alice", "age1alice"),
@@ -1356,6 +1586,7 @@ creation_rules:
         let mut entries = vec![secret(SecretBackend::Sops, file.to_string_lossy())];
 
         apply_recipients_to_secrets(
+            dir.path().to_str().expect("valid path"),
             &mut entries,
             &[
                 known_recipient("alice", "age1alice"),
@@ -1370,40 +1601,63 @@ creation_rules:
 
     #[test]
     fn decryption_capability_is_positive_only_for_a_matching_available_identity() {
-        let mut entries = vec![secret(SecretBackend::Sops, "/tmp/secret.yaml")];
+        let dir = TempDir::new().expect("temp dir");
+        let file = dir.path().join("secret.yaml");
+        fs::write(&file, "").expect("write secret fixture");
+        let mut entries = vec![secret(SecretBackend::Sops, file.to_string_lossy())];
         let local_identity = DecryptionIdentity {
-            kind: DecryptionIdentityKind::AgeKeyFile,
-            locality: DecryptionIdentityLocality::Process,
-            path: "/tmp/keys.txt".into(),
+            kind: DecryptionIdentityKind::SshKeyPath,
+            locality: DecryptionIdentityLocality::Configuration,
+            path: "/tmp/id_ed25519".into(),
             available: true,
-            public_keys: vec!["age1alice".into()],
+            public_keys: vec!["age1alice".into(), "ssh-ed25519 AAAAalice".into()],
         };
+        assert!(recipient_has_local_identity(
+            &known_recipient("alice", "age1alice"),
+            std::slice::from_ref(&local_identity),
+        ));
+        assert!(!recipient_has_local_identity(
+            &known_recipient("bob", "age1bob"),
+            std::slice::from_ref(&local_identity),
+        ));
 
         apply_recipients_to_secrets_with_and_identities(
+            dir.path().to_str().expect("valid path"),
             &mut entries,
             &[known_recipient("alice", "age1alice")],
-            &[local_identity],
+            std::slice::from_ref(&local_identity),
             &RecipientInventory::new(),
-            |_path| Ok(HashSet::from([RecipientIdentity::Age("age1alice".into())])),
+            |_path| {
+                Ok(HashSet::from([RecipientIdentity::Ssh(
+                    "ssh-ed25519 AAAAalice".into(),
+                )]))
+            },
         )
         .expect("match local identity");
         assert_eq!(
             entries[0].decryption_capability,
             DecryptionCapability::Available
         );
-        assert_eq!(entries[0].public_recipients, ["age1alice"]);
+        assert_eq!(entries[0].recipient_ids, ["alice"]);
+        assert_eq!(entries[0].public_recipients, ["ssh-ed25519 AAAAalice"]);
 
         apply_recipients_to_secrets_with(
+            dir.path().to_str().expect("valid path"),
             &mut entries,
             &[known_recipient("alice", "age1alice")],
             &RecipientInventory::new(),
-            |_path| Ok(HashSet::from([RecipientIdentity::Age("age1alice".into())])),
+            |_path| {
+                Ok(HashSet::from([RecipientIdentity::Ssh(
+                    "ssh-ed25519 AAAAalice".into(),
+                )]))
+            },
         )
         .expect("match without local identity");
         assert_eq!(
             entries[0].decryption_capability,
             DecryptionCapability::Unknown
         );
+        assert!(entries[0].recipient_ids.is_empty());
     }
 
     #[test]
@@ -1416,8 +1670,12 @@ creation_rules:
         entry.sops_key = Some("nested/key".into());
         let mut entries = vec![entry];
 
-        apply_recipients_to_secrets(&mut entries, &[known_recipient("alice", "age1alice")])
-            .expect("match recipients");
+        apply_recipients_to_secrets(
+            dir.path().to_str().expect("valid path"),
+            &mut entries,
+            &[known_recipient("alice", "age1alice")],
+        )
+        .expect("match recipients");
 
         assert_eq!(entries[0].id, "secret-id");
         assert_eq!(entries[0].name, "secret-name");
@@ -1427,13 +1685,17 @@ creation_rules:
 
     #[test]
     fn shared_sops_file_is_loaded_only_once() {
+        let dir = TempDir::new().expect("temp dir");
+        let file = dir.path().join("shared.yaml");
+        fs::write(&file, "").expect("write secret fixture");
         let mut entries = vec![
-            secret(SecretBackend::Sops, "/tmp/shared.yaml"),
-            secret(SecretBackend::Sops, "/tmp/shared.yaml"),
+            secret(SecretBackend::Sops, file.to_string_lossy()),
+            secret(SecretBackend::Sops, file.to_string_lossy()),
         ];
         let mut calls = 0;
 
         apply_recipients_to_secrets_with(
+            dir.path().to_str().expect("valid path"),
             &mut entries,
             &[known_recipient("alice", "age1alice")],
             &RecipientInventory::new(),
@@ -1451,7 +1713,10 @@ creation_rules:
 
     #[test]
     fn agenix_uses_explicit_inventory_and_missing_inventory_is_empty() {
-        let path = PathBuf::from("/tmp/secret.age");
+        let dir = TempDir::new().expect("temp dir");
+        let path = dir.path().join("secret.age");
+        fs::write(&path, "").expect("write secret fixture");
+        let path = path.canonicalize().expect("canonicalize secret fixture");
         let mut inventory: RecipientInventory = HashMap::new();
         inventory.insert(
             path.clone(),
@@ -1460,6 +1725,7 @@ creation_rules:
         let mut entries = vec![secret(SecretBackend::Agenix, path.to_string_lossy())];
 
         apply_recipients_to_secrets_with(
+            dir.path().to_str().expect("valid path"),
             &mut entries,
             &[known_recipient("alice", "age1alice")],
             &inventory,
@@ -1469,6 +1735,7 @@ creation_rules:
         assert_eq!(entries[0].recipient_ids, ["alice"]);
 
         apply_recipients_to_secrets_with(
+            dir.path().to_str().expect("valid path"),
             &mut entries,
             &[known_recipient("alice", "age1alice")],
             &RecipientInventory::new(),
@@ -1529,8 +1796,12 @@ creation_rules:
 
     #[test]
     fn sops_metadata_loader_errors_leave_recipient_access_unresolved() {
-        let mut entries = vec![secret(SecretBackend::Sops, "/tmp/failing.yaml")];
+        let dir = TempDir::new().expect("temp dir");
+        let file = dir.path().join("failing.yaml");
+        fs::write(&file, "").expect("write secret fixture");
+        let mut entries = vec![secret(SecretBackend::Sops, file.to_string_lossy())];
         apply_recipients_to_secrets_with(
+            dir.path().to_str().expect("valid path"),
             &mut entries,
             &[known_recipient("alice", "age1alice")],
             &RecipientInventory::new(),

@@ -29,7 +29,6 @@ pub mod onboarding;
 pub mod peek;
 pub mod permissions;
 pub mod rollback;
-pub mod secrets_management;
 pub mod settings_io;
 pub mod summarize;
 pub mod system_defaults;

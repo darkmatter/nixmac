@@ -390,6 +390,37 @@ error_type: RebuildErrorType | null }
  */
 export type DecryptionCapability = "available" | "unavailable" | "unknown"
 
+/**
+ * A locally discoverable private identity source.
+ */
+export type DecryptionIdentity = { kind: DecryptionIdentityKind; locality: DecryptionIdentityLocality; path: string; available: boolean; 
+/**
+ * Public recipient derived without returning private key material.
+ */
+publicKeys: string[] }
+
+/**
+ * Private identity format. The identity material itself is never returned.
+ */
+export type DecryptionIdentityKind = "ageKeyFile" | "sshKeyPath"
+
+/**
+ * Where a private decryption identity was discovered.
+ */
+export type DecryptionIdentityLocality = 
+/**
+ * Declared by the evaluated nix-darwin configuration.
+ */
+"configuration" | 
+/**
+ * Supplied to the running nixmac process through its environment.
+ */
+"process" | 
+/**
+ * Found at a conventional path on this machine.
+ */
+"machine"
+
 export type EnumVariant = { value: string; label: string }
 
 /**
@@ -2065,7 +2096,24 @@ export type SecretBackend = "sops" | "agenix"
  */
 export type SecretEntry = { id: string; name: string; backend: SecretBackend; file: string; publicRecipients: string[]; publicRecipientsResolved: boolean; recipientIds: string[]; decryptionCapability: DecryptionCapability; sopsKey: string | null }
 
-export type SecretRecipient = { id: string; label: string; kind: RecipientKind; device: string; fingerprint: string; publicKey: string; keyType: RecipientKeyType; source: RecipientSource; inUse: boolean; registrations: RecipientRegistration[]; isLocalIdentity: boolean }
+export type SecretRecipient = { id: string; label: string; kind: RecipientKind; device: string; fingerprint: string; publicKey: string; keyType: RecipientKeyType; source: RecipientSource; inUse: boolean; registrations: RecipientRegistration[] }
+
+export type SecretsVault = { primaryDecryptionIdentityId: string | null; entries: SecretEntry[]; recipients: SecretRecipient[]; decryptionIdentities: DecryptionIdentity[] }
+
+/**
+ * Backend-owned lifecycle for the derived secrets vault.
+ * The vault is potentially very expensive to derive (it evaluates the configured flake), so
+ * Rust refreshes it when its inputs change and the frontend only mirrors this
+ * snapshot. `vault` is cleared while loading to avoid showing data derived
+ * from a previous config directory or host.
+ */
+export type SecretsVaultState = { vault: SecretsVault | null; 
+/**
+ * Whether a client has requested the vault at least once. Dependency
+ * changes refresh only after activation, avoiding Nix evaluation at app
+ * startup for users who never open secrets management.
+ */
+activated: boolean; loading: boolean; error: string | null }
 
 export type SemanticChangeGroup = { 
 /**

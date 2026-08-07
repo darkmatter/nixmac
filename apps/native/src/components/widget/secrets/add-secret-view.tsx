@@ -8,7 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import type { SecretBackend, SecretsVault } from "@/ipc/orpc-bindings";
 import { cn } from "@/lib/utils";
 import { recipientKindLabel, RecipientKindIcon, ViewHeader } from "./shared";
-import { type ApplyRequest, backendLabel, slugifySecretName } from "./types";
+import {
+  type ApplyRequest,
+  backendLabel,
+  recipientHasLocalIdentity,
+  slugifySecretName,
+} from "./types";
 
 function buildAddRequest(slug: string, backend: SecretBackend, recipientLabels: string[]): ApplyRequest {
   if (backend === "agenix") {
@@ -66,7 +71,7 @@ export function AddSecretView({
   const [hidden, setHidden] = useState(true);
   // Every committed local decryption identity is a recipient by default.
   const [recipientIds, setRecipientIds] = useState<string[]>(
-    committedRecipients.filter((r) => r.isLocalIdentity).map((r) => r.id),
+    committedRecipients.filter((r) => recipientHasLocalIdentity(vault, r)).map((r) => r.id),
   );
 
   const slug = slugifySecretName(name);

@@ -10,7 +10,6 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import type {
   SecretRecipient,
   SecretsVault,
@@ -18,7 +17,9 @@ import type {
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { orpc } from "@/lib/orpc";
+import { client } from "@/lib/orpc";
+import { selectSecretsVaultState, useViewModel } from "@nixmac/state";
+import { startSecretsVaultSync } from "@/viewmodel/secrets-vault";
 import { AddRecipientDialog } from "./add-recipient-dialog";
 import { AddSecretView } from "./add-secret-view";
 import { type ApplyPhase, ApplySheet } from "./apply-sheet";
@@ -93,11 +94,27 @@ export interface SecretsManagementProps {
   initialAddRecipientOpen?: boolean;
 }
 
-/** Loads the vault through the typed Rust oRPC route. */
+/** Mirrors the backend-owned vault state from the Zustand view model. */
 export function SecretsManagementRoute() {
-  const vault = useQuery(orpc.secrets.getVault.queryOptions());
+  const state = useViewModel(selectSecretsVaultState);
 
-  if (vault.isPending) {
+  useEffect(() => {
+    let disposed = false;
+    let stop: (() => void) | undefined;
+    void startSecretsVaultSync().then((unlisten) => {
+      if (disposed) {
+        unlisten();
+      } else {
+        stop = unlisten;
+      }
+    });
+    return () => {
+      disposed = true;
+      stop?.();
+    };
+  }, []);
+
+  if (!state || !state.activated || state.loading) {
     return (
       <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
         <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
@@ -106,15 +123,17 @@ export function SecretsManagementRoute() {
     );
   }
 
-  if (vault.isError) {
+  if (state.error || !state.vault) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
         <TriangleAlert className="size-5 text-destructive" aria-hidden="true" />
         <div>
           <p className="font-medium text-sm">Couldn’t load secrets</p>
-          <p className="mt-1 text-xs text-muted-foreground">{vault.error.message}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {state.error ?? "The secrets vault is unavailable."}
+          </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => vault.refetch()}>
+        <Button variant="outline" size="sm" onClick={() => void client.secrets.refresh()}>
           <RefreshCw aria-hidden="true" />
           Try again
         </Button>
@@ -122,7 +141,7 @@ export function SecretsManagementRoute() {
     );
   }
 
-  return <SecretsManagement vault={vault.data} />;
+  return <SecretsManagement vault={state.vault} />;
 }
 
 /**

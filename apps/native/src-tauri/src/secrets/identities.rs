@@ -1,4 +1,4 @@
-use crate::{shared_types::SecretRecipient, system::nix::nix_command};
+use crate::{shared_types::SecretRecipient, system::nix::nix_command, utils::nix_string_literal};
 use serde::Deserialize;
 use std::collections::HashSet;
 
@@ -112,7 +112,7 @@ pub(crate) fn load_secret_identities(
     host_attr: &str,
     config_dir: &str,
 ) -> Result<SecretIdentities, String> {
-    let safe_host_attr = crate::commands::helpers::get_safe_hostname(host_attr);
+    let safe_host_attr = nix_string_literal(host_attr);
     let flake_attr = format!(".#darwinConfigurations.{safe_host_attr}.config");
 
     let output = nix_command(config_dir)
@@ -164,7 +164,6 @@ mod tests {
             source: RecipientSource::Unknown,
             in_use: true,
             registrations: Vec::new(),
-            is_local_identity: false,
         }
     }
 

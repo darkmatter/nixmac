@@ -192,7 +192,6 @@ export function AddRecipientDialog({
         { backend: "sops", file: ".sops.yaml" },
         { backend: "agenix", file: "secrets/secrets.nix" },
       ],
-      isLocalIdentity: false,
     });
   };
 

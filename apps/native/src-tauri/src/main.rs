@@ -378,6 +378,7 @@ fn register_managed_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> anyho
     app.manage(state::permissions_state::load_observable(app));
     app.manage(state::nix_install_state::load_observable(app));
     app.manage(state::rebuild_status::load_observable(app));
+    app.manage(state::secrets_vault::load_observable(app));
     Ok(())
 }
 

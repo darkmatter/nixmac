@@ -1,11 +1,18 @@
 use crate::{
-    evolve::file_ops::resolve_existing_path_in_dir,
-    secrets::identities::load_secret_identities,
-    secrets::recipients::{apply_recipients_to_secrets_with_identities, load_recipients},
-    shared_types::{SecretBackend, SecretEntry, SecretsVault},
+    secrets::{
+        recipients::{
+            apply_recipients_to_secrets_with_identities, load_recipients,
+            recipient_has_local_identity,
+        },
+        resolve_secret_file_path,
+    },
+    shared_types::{
+        DecryptionIdentity, DecryptionIdentityKind, SecretBackend, SecretEntry, SecretsVault,
+    },
     system::nix::nix_command,
+    utils::nix_string_literal,
 };
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// Decrypts a single secret from the configured repo, returning its plaintext value.
 /// Use this carefully, as it exposes sensitive data. The decrypted value is not stored in the vault.
@@ -50,30 +57,21 @@ pub fn decrypt_secret(
         .as_deref()
         .ok_or_else(|| format!("SOPS secret '{secret_id}' has no key"))?;
 
-    let identities = load_secret_identities(host_attr, config_dir)?;
-    let ssh_key_paths: Vec<&str> = identities
-        .host_keys
+    // Use the same configured and ambient identities that determine the
+    // vault's decryption capability. Keep a bare SOPS attempt as a fallback
+    // for identity mechanisms we cannot currently inventory (for example
+    // PGP, KMS, agents, and plugins).
+    let (_, decryption_identities) = load_recipients(host_attr, config_dir)?;
+    let attempts = decryption_identities
         .iter()
-        .filter(|key| key.used_by_sops)
-        .map(|key| key.path.as_str())
-        .chain(identities.other_sops_identities.iter().map(String::as_str))
-        .collect();
-    let attempts: Vec<Option<&str>> = if ssh_key_paths.is_empty() {
-        vec![None]
-    } else {
-        ssh_key_paths.into_iter().map(Some).collect()
-    };
+        .filter(|identity| identity.available)
+        .map(Some)
+        .chain(std::iter::once(None));
     let mut last_error = None;
-    for ssh_key_path in attempts {
-        let output = sops_decrypt_command(
-            config_dir,
-            &secret_file_path,
-            sops_key,
-            identities.age_key_file.as_deref(),
-            ssh_key_path,
-        )
-        .output()
-        .map_err(|e| format!("Failed to execute sops command: {e}"))?;
+    for identity in attempts {
+        let output = sops_decrypt_command(config_dir, &secret_file_path, sops_key, identity)
+            .output()
+            .map_err(|e| format!("Failed to execute sops command: {e}"))?;
         if output.status.success() {
             return String::from_utf8(output.stdout)
                 .map_err(|e| format!("sops returned invalid UTF-8: {e}"));
@@ -87,36 +85,12 @@ pub fn decrypt_secret(
     Err(last_error.unwrap_or_else(|| "sops decryption was not attempted".to_string()))
 }
 
-/// Resolve relative declarations from the same directory used as the SOPS
-/// command's working directory. Nix path values commonly evaluate to absolute
-/// paths (including `/nix/store` paths), so those must remain supported.
-fn resolve_secret_file_path(config_dir: &str, file: &str) -> Result<PathBuf, String> {
-    let path = Path::new(file);
-    let resolved = if path.is_absolute() {
-        path.canonicalize()
-            .map_err(|error| format!("Failed to resolve secret file {}: {error}", path.display()))?
-    } else {
-        resolve_existing_path_in_dir(Path::new(config_dir), file)
-            .map_err(|error| format!("Failed to resolve secret file {file}: {error}"))?
-    };
-
-    if !resolved.is_file() {
-        return Err(format!(
-            "Secret file {} is not a regular file",
-            resolved.display()
-        ));
-    }
-
-    Ok(resolved)
-}
-
 /// Construct a nix shell command to decrypt a SOPS secret file using the given key.
 fn sops_decrypt_command(
     config_dir: &str,
     secret_file_path: &Path,
     sops_key: &str,
-    age_key_file: Option<&str>,
-    ssh_key_path: Option<&str>,
+    identity: Option<&DecryptionIdentity>,
 ) -> std::process::Command {
     let extract_path = sops_extract_path(sops_key);
     let mut command = nix_command(config_dir);
@@ -133,11 +107,15 @@ fn sops_decrypt_command(
             "binary",
         ])
         .arg(secret_file_path);
-    if let Some(age_key_file) = age_key_file {
-        command.env("SOPS_AGE_KEY_FILE", age_key_file);
-    }
-    if let Some(ssh_key_path) = ssh_key_path {
-        command.env("SOPS_AGE_SSH_PRIVATE_KEY_FILE", ssh_key_path);
+    if let Some(identity) = identity {
+        match identity.kind {
+            DecryptionIdentityKind::AgeKeyFile => {
+                command.env("SOPS_AGE_KEY_FILE", &identity.path);
+            }
+            DecryptionIdentityKind::SshKeyPath => {
+                command.env("SOPS_AGE_SSH_PRIVATE_KEY_FILE", &identity.path);
+            }
+        }
     }
     command
 }
@@ -163,10 +141,15 @@ pub fn load_secrets_vault(host_attr: &str, config_dir: &str) -> Result<SecretsVa
     entries.extend(load_agenix_secrets(host_attr, config_dir)?);
 
     let (recipients, decryption_identities) = load_recipients(host_attr, config_dir)?;
-    apply_recipients_to_secrets_with_identities(&mut entries, &recipients, &decryption_identities)?;
+    apply_recipients_to_secrets_with_identities(
+        config_dir,
+        &mut entries,
+        &recipients,
+        &decryption_identities,
+    )?;
     let primary_decryption_identity_id = recipients
         .iter()
-        .find(|recipient| recipient.is_local_identity)
+        .find(|recipient| recipient_has_local_identity(recipient, &decryption_identities))
         .map(|recipient| recipient.id.clone());
 
     Ok(SecretsVault {
@@ -179,7 +162,7 @@ pub fn load_secrets_vault(host_attr: &str, config_dir: &str) -> Result<SecretsVa
 
 /// Load the SOPS secrets from the nix config repo by executing a nix eval to evaluate the secrets in the repo.
 fn load_sops_secrets(host_attr: &str, config_dir: &str) -> Result<Vec<SecretEntry>, String> {
-    let safe_host_attr = crate::commands::helpers::get_safe_hostname(host_attr);
+    let safe_host_attr = nix_string_literal(host_attr);
     let secrets_map = eval_backend_secrets_map(
         host_attr,
         config_dir,
@@ -212,7 +195,7 @@ fn load_sops_secrets(host_attr: &str, config_dir: &str) -> Result<Vec<SecretEntr
 
 /// Load the agenix secrets from the nix config repo by executing a nix eval to evaluate the secrets in the repo.
 fn load_agenix_secrets(host_attr: &str, config_dir: &str) -> Result<Vec<SecretEntry>, String> {
-    let safe_host_attr = crate::commands::helpers::get_safe_hostname(host_attr);
+    let safe_host_attr = nix_string_literal(host_attr);
     let secrets_map = eval_backend_secrets_map(
         host_attr,
         config_dir,
@@ -316,29 +299,37 @@ fn secret(
 #[cfg(test)]
 mod tests {
     use super::{resolve_secret_file_path, sops_decrypt_command, sops_extract_path};
+    use crate::shared_types::{
+        DecryptionIdentity, DecryptionIdentityKind, DecryptionIdentityLocality,
+    };
     use std::{ffi::OsStr, fs, path::Path};
     use tempfile::TempDir;
 
+    fn decryption_identity(kind: DecryptionIdentityKind, path: &str) -> DecryptionIdentity {
+        DecryptionIdentity {
+            kind,
+            locality: DecryptionIdentityLocality::Configuration,
+            path: path.to_string(),
+            available: true,
+            public_keys: Vec::new(),
+        }
+    }
+
     #[test]
     fn decrypt_invokes_sops_for_only_the_requested_key() {
+        let identity = decryption_identity(DecryptionIdentityKind::AgeKeyFile, "/tmp/keys.txt");
         let command = sops_decrypt_command(
             "/tmp/config",
             Path::new("/tmp/a secret.yaml"),
             "nested/value",
-            Some("/tmp/keys.txt"),
-            Some("/tmp/id_ed25519"),
+            Some(&identity),
         );
         let envs: std::collections::HashMap<_, _> = command.get_envs().collect();
         assert_eq!(
             envs.get(OsStr::new("SOPS_AGE_KEY_FILE")).copied().flatten(),
             Some(OsStr::new("/tmp/keys.txt"))
         );
-        assert_eq!(
-            envs.get(OsStr::new("SOPS_AGE_SSH_PRIVATE_KEY_FILE"))
-                .copied()
-                .flatten(),
-            Some(OsStr::new("/tmp/id_ed25519"))
-        );
+        assert!(!envs.contains_key(OsStr::new("SOPS_AGE_SSH_PRIVATE_KEY_FILE")));
         let args: Vec<&OsStr> = command.get_args().collect();
 
         assert_eq!(
@@ -356,6 +347,36 @@ mod tests {
                 OsStr::new("/tmp/a secret.yaml"),
             ]
         );
+    }
+
+    #[test]
+    fn decrypt_sets_only_the_selected_ssh_identity() {
+        let identity = decryption_identity(DecryptionIdentityKind::SshKeyPath, "/tmp/id_ed25519");
+        let command = sops_decrypt_command(
+            "/tmp/config",
+            Path::new("/tmp/secret.yaml"),
+            "value",
+            Some(&identity),
+        );
+        let envs: std::collections::HashMap<_, _> = command.get_envs().collect();
+
+        assert_eq!(
+            envs.get(OsStr::new("SOPS_AGE_SSH_PRIVATE_KEY_FILE"))
+                .copied()
+                .flatten(),
+            Some(OsStr::new("/tmp/id_ed25519"))
+        );
+        assert!(!envs.contains_key(OsStr::new("SOPS_AGE_KEY_FILE")));
+    }
+
+    #[test]
+    fn decrypt_without_selected_identity_preserves_sops_lookup() {
+        let command =
+            sops_decrypt_command("/tmp/config", Path::new("/tmp/secret.yaml"), "value", None);
+        let envs: std::collections::HashMap<_, _> = command.get_envs().collect();
+
+        assert!(!envs.contains_key(OsStr::new("SOPS_AGE_KEY_FILE")));
+        assert!(!envs.contains_key(OsStr::new("SOPS_AGE_SSH_PRIVATE_KEY_FILE")));
     }
 
     #[test]

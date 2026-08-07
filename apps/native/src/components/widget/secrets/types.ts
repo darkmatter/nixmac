@@ -80,6 +80,25 @@ export function primaryDecryptionIdentity(vault: SecretsVault): SecretRecipient 
   return vault.recipients.find((r) => r.id === vault.primaryDecryptionIdentityId) ?? null;
 }
 
+function canonicalPublicIdentity(value: string): string {
+  const trimmed = value.trim();
+  const fields = trimmed.split(/\s+/);
+  return fields[0]?.startsWith("ssh-") && fields[1]
+    ? `${fields[0]} ${fields[1]}`
+    : trimmed;
+}
+
+/** Whether this public recipient has a corresponding local identity source. */
+export function recipientHasLocalIdentity(
+  vault: SecretsVault,
+  recipient: SecretRecipient,
+): boolean {
+  const publicIdentity = canonicalPublicIdentity(recipient.publicKey);
+  return vault.decryptionIdentities.some((identity) =>
+    identity.publicKeys.some((key) => canonicalPublicIdentity(key) === publicIdentity),
+  );
+}
+
 export function slugifySecretName(name: string): string {
   return (
     name
