@@ -19,6 +19,47 @@ pub fn set_evolve_cancelled(value: bool) {
     EVOLVE_CANCELLED.store(value, std::sync::atomic::Ordering::SeqCst);
 }
 
+/// Global flag: an evolution run is actively editing files right now.
+///
+/// The session's `evolution_id` is only written once generation finishes, so it
+/// does not mark the window during which the agent is mutating the working
+/// tree — precisely the window that produces a dirty-but-HEAD-unchanged repo
+/// and trips a spurious "config drift" notification. The git watcher reads this
+/// flag to suppress those notifications for the duration of the run.
+static EVOLVE_IN_PROGRESS: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+/// Whether an evolution run is currently editing files.
+pub fn is_evolve_in_progress() -> bool {
+    EVOLVE_IN_PROGRESS.load(std::sync::atomic::Ordering::SeqCst)
+}
+
+/// RAII guard that marks an evolution run as in progress for its lifetime.
+///
+/// The flag is set on construction and cleared on drop, so every exit path of
+/// the evolve pipeline — early returns, `?`, and panics — resets it without a
+/// scattered set of manual clears.
+pub struct EvolveInProgressGuard(());
+
+impl EvolveInProgressGuard {
+    pub fn new() -> Self {
+        EVOLVE_IN_PROGRESS.store(true, std::sync::atomic::Ordering::SeqCst);
+        Self(())
+    }
+}
+
+impl Default for EvolveInProgressGuard {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Drop for EvolveInProgressGuard {
+    fn drop(&mut self) {
+        EVOLVE_IN_PROGRESS.store(false, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
 /// Global holder for an in-flight question sender.
 /// We use a oneshot per-question so the evolve loop can await a response
 /// without holding a mutex across an await (which would cause a deadlock).

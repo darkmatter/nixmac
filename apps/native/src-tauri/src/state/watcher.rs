@@ -163,7 +163,12 @@ fn check_git_status<R: Runtime>(
             .map(summarize::group_existing::from_change_sets)
             .unwrap_or_default()
     };
-    drift_notifications::maybe_notify(Some(&status), external_build_detected);
+    // Suppress drift notifications while an evolution is editing files (run
+    // in progress) or its generated changes are still awaiting review
+    // (`evolution_id` set) — a dirty worktree is expected in both windows.
+    let evolution_active = crate::evolve::session_control::is_evolve_in_progress()
+        || evolve_state::get_session(app_handle).evolution_id.is_some();
+    drift_notifications::maybe_notify(Some(&status), external_build_detected, evolution_active);
     app_handle
         .state::<crate::observable::Observable<GitState>>()
         .update_if_changed(move |state| {
