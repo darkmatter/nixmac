@@ -13,30 +13,95 @@ struct DriftNotification {
     body: String,
 }
 
-pub fn maybe_notify(git_status: Option<&GitStatus>, external_build_detected: bool) {
+/// The outcome of reconciling a computed notification against the last one:
+/// what the dedupe key should become, and whether to actually send.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct NotificationDecision {
+    new_last_id: Option<String>,
+    send: bool,
+}
+
+/// Decide whether to send `notification` and what the dedupe key should become,
+/// given the currently stored key and whether an evolution run is active.
+///
+/// Pure so the dedupe/suppression logic is unit-testable without the global
+/// mutex or a live app handle.
+fn resolve_notification(
+    last_id: Option<&str>,
+    notification: Option<&DriftNotification>,
+    evolution_active: bool,
+) -> NotificationDecision {
+    let Some(notification) = notification else {
+        // No drift: clear the dedupe key so the next real drift notifies.
+        return NotificationDecision {
+            new_last_id: None,
+            send: false,
+        };
+    };
+
+    // The one-shot external-build notification never participates in dedupe, so
+    // it must not disturb the config-drift key on any path.
+    let is_external_build = notification.id == "external-build";
+    let key_after_config_drift = |last_id: Option<&str>| {
+        if is_external_build {
+            last_id.map(str::to_string)
+        } else {
+            Some(notification.id.clone())
+        }
+    };
+
+    if evolution_active {
+        // A dirty worktree with an unchanged HEAD is exactly what the agent
+        // produces while editing, so suppress the popup. Still advance the
+        // dedupe key to the drift we're hiding: if that same drift persists
+        // once the run ends it stays deduped (no popup fires the instant the
+        // evolution finishes), while a genuinely new drift afterwards notifies.
+        return NotificationDecision {
+            new_last_id: key_after_config_drift(last_id),
+            send: false,
+        };
+    }
+
+    // Already notified for this exact drift — stay quiet, key unchanged.
+    if last_id == Some(notification.id.as_str()) {
+        return NotificationDecision {
+            new_last_id: last_id.map(str::to_string),
+            send: false,
+        };
+    }
+
+    NotificationDecision {
+        new_last_id: key_after_config_drift(last_id),
+        send: true,
+    }
+}
+
+pub fn maybe_notify(
+    git_status: Option<&GitStatus>,
+    external_build_detected: bool,
+    evolution_active: bool,
+) {
     let notification = notification_for_event(git_status, external_build_detected);
     let mut last_notification_id = match LAST_DRIFT_NOTIFICATION_ID.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
 
-    let Some(notification) = notification else {
-        *last_notification_id = None;
-        return;
-    };
-
-    if last_notification_id.as_deref() == Some(notification.id.as_str()) {
-        return;
-    }
-
-    // Don't let the one-shot external-build notification disrupt config-drift deduping.
-    if notification.id != "external-build" {
-        *last_notification_id = Some(notification.id.clone());
-    }
+    let decision = resolve_notification(
+        last_notification_id.as_deref(),
+        notification.as_ref(),
+        evolution_active,
+    );
+    *last_notification_id = decision.new_last_id;
     drop(last_notification_id);
 
-    if let Err(error) = send_native_notification(notification.title, &notification.body) {
-        log::warn!("Failed to send drift notification: {error}");
+    if decision.send {
+        // `send` is only ever true when a notification was computed.
+        if let Some(notification) = notification
+            && let Err(error) = send_native_notification(notification.title, &notification.body)
+        {
+            log::warn!("Failed to send drift notification: {error}");
+        }
     }
 }
 
@@ -149,5 +214,91 @@ mod tests {
                     .to_string(),
             })
         );
+    }
+
+    fn config_drift(head: &str) -> DriftNotification {
+        DriftNotification {
+            id: format!("config-drift:{head}"),
+            title: "nixmac detected config drift",
+            body: "drift".to_string(),
+        }
+    }
+
+    fn external_build() -> DriftNotification {
+        DriftNotification {
+            id: "external-build".to_string(),
+            title: "nixmac detected drift",
+            body: "build".to_string(),
+        }
+    }
+
+    #[test]
+    fn sends_new_config_drift_and_dedupes_repeats() {
+        let drift = config_drift("abc123");
+
+        // First sighting fires and records the key.
+        let first = resolve_notification(None, Some(&drift), false);
+        assert!(first.send);
+        assert_eq!(first.new_last_id.as_deref(), Some("config-drift:abc123"));
+
+        // Same drift again is deduped.
+        let repeat = resolve_notification(Some("config-drift:abc123"), Some(&drift), false);
+        assert!(!repeat.send);
+        assert_eq!(repeat.new_last_id.as_deref(), Some("config-drift:abc123"));
+    }
+
+    #[test]
+    fn clears_key_when_drift_resolves() {
+        let decision = resolve_notification(Some("config-drift:abc123"), None, false);
+        assert!(!decision.send);
+        assert_eq!(decision.new_last_id, None);
+    }
+
+    #[test]
+    fn external_build_never_disturbs_the_config_drift_key() {
+        let build = external_build();
+
+        // Fires (external build is not deduped) but leaves the config-drift key.
+        let decision = resolve_notification(Some("config-drift:abc123"), Some(&build), false);
+        assert!(decision.send);
+        assert_eq!(decision.new_last_id.as_deref(), Some("config-drift:abc123"));
+    }
+
+    #[test]
+    fn evolution_active_suppresses_but_records_the_hidden_drift() {
+        let drift = config_drift("abc123");
+
+        // No popup, yet the key advances to the drift we're hiding so it stays
+        // deduped once the evolution ends.
+        let decision = resolve_notification(None, Some(&drift), true);
+        assert!(!decision.send);
+        assert_eq!(decision.new_last_id.as_deref(), Some("config-drift:abc123"));
+
+        // The instant the run ends with that same drift still present: deduped,
+        // so no popup fires.
+        let after = resolve_notification(decision.new_last_id.as_deref(), Some(&drift), false);
+        assert!(!after.send);
+    }
+
+    #[test]
+    fn evolution_active_suppresses_external_build_without_touching_the_key() {
+        let build = external_build();
+        let decision = resolve_notification(Some("config-drift:abc123"), Some(&build), true);
+        assert!(!decision.send);
+        assert_eq!(decision.new_last_id.as_deref(), Some("config-drift:abc123"));
+    }
+
+    #[test]
+    fn genuinely_new_drift_after_evolution_still_notifies() {
+        // Hidden drift at one HEAD is recorded during the run...
+        let hidden = resolve_notification(None, Some(&config_drift("abc123")), true);
+        // ...then HEAD moves and new drift appears: it is not swallowed.
+        let after = resolve_notification(
+            hidden.new_last_id.as_deref(),
+            Some(&config_drift("def456")),
+            false,
+        );
+        assert!(after.send);
+        assert_eq!(after.new_last_id.as_deref(), Some("config-drift:def456"));
     }
 }

@@ -117,6 +117,11 @@ pub async fn backup_evolve_and_record_changeset(
     let start_time_ms: i64 = chrono::Utc::now().timestamp_millis();
     let start_time_s: i64 = start_time_ms / 1000;
 
+    // Mark the run in progress so the git watcher suppresses config-drift
+    // notifications while the agent edits files. Cleared on drop, covering every
+    // exit path below.
+    let _in_progress = evolve::session_control::EvolveInProgressGuard::new();
+
     let config_dir: String = match store::ensure_config_dir_exists(app) {
         Ok(dir) => dir,
         Err(e) => {
