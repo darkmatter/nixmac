@@ -80,8 +80,7 @@ fn channel_is_registered(registry_list: &str, channel: &str) -> bool {
 /// Splits the query terms into the appropriate argument(s) for the nix search command, handling regex vs. non-regex searches.
 fn build_search_queries(query: &str, use_regex: bool) -> Result<Vec<String>> {
     if use_regex {
-        let escaped_regex = regex::escape(query);
-        return Ok(vec![escaped_regex]);
+        return Ok(vec![query.to_string()]);
     }
 
     let terms = query
@@ -252,6 +251,7 @@ fn relevance_score(result: &SearchPackageResult, query: &str) -> i32 {
 /// Processes the given results by scoring them, then appending unique results to the structured list up to the limit.
 fn process_results(
     results: Vec<SearchPackageResult>,
+    query: &str,
     limit: u64,
 ) -> Result<Vec<SearchPackageResult>> {
     let mut unique_results = Vec::new();
@@ -266,8 +266,8 @@ fn process_results(
 
     // Sort by relevance score in descending order.
     unique_results.sort_by(|a, b| {
-        let score_a = relevance_score(a, &a.name);
-        let score_b = relevance_score(b, &b.name);
+        let score_a = relevance_score(a, query);
+        let score_b = relevance_score(b, query);
         score_b.cmp(&score_a)
     });
 
@@ -310,7 +310,11 @@ pub fn execute_search_packages(
     }
 
     // 2. Process the full results.
-    let processed = process_results(results.into_iter().flat_map(|(_, r)| r).collect(), limit)?;
+    let processed = process_results(
+        results.into_iter().flat_map(|(_, r)| r).collect(),
+        query,
+        limit,
+    )?;
     Ok(processed)
 }
 
@@ -538,7 +542,7 @@ mod tests {
         }];
 
         let all_results = [channel1_results.clone(), channel2_results.clone()].concat();
-        let processed_results = process_results(all_results, 10).unwrap();
+        let processed_results = process_results(all_results, "emacs", 10).unwrap();
 
         assert_eq!(
             processed_results.len(),
@@ -572,15 +576,6 @@ mod tests {
         let query = "google chrome";
         let use_regex = true;
         let expected = vec!["google chrome"];
-        let result = build_search_queries(query, use_regex).unwrap();
-        assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn build_search_queries_regex_special_characters() {
-        let query = "foo.bar+baz";
-        let use_regex = true;
-        let expected = vec!["foo\\.bar\\+baz"];
         let result = build_search_queries(query, use_regex).unwrap();
         assert_eq!(result, expected);
     }
@@ -697,7 +692,38 @@ mod tests {
         ];
 
         let limit = 2;
-        let processed = process_results(results, limit).unwrap();
+        let processed = process_results(results, "pkg", limit).unwrap();
         assert_eq!(processed.len(), limit as usize);
+    }
+
+    #[test]
+    fn process_results_ranks_by_user_query() {
+        let emacs = SearchPackageResult {
+            name: "emacs".to_string(),
+            attr_path: "legacyPackages.aarch64-darwin.emacs".to_string(),
+            channel: "test-channel".to_string(),
+            version: "30.2".to_string(),
+            description: "Extensible text editor".to_string(),
+            install_via: SearchResultInstallTarget::Either,
+            additional_info: None,
+        };
+        let vim = SearchPackageResult {
+            name: "vim".to_string(),
+            attr_path: "legacyPackages.aarch64-darwin.vim".to_string(),
+            channel: "test-channel".to_string(),
+            version: "9.1".to_string(),
+            description: "Vi IMproved text editor".to_string(),
+            install_via: SearchResultInstallTarget::Either,
+            additional_info: None,
+        };
+
+        // Keep the non-matching package first in the input so this fails if
+        // equal self-match scores merely preserve the original order.
+        let results = vec![emacs.clone(), vim.clone()];
+        let ranked_for_vim = process_results(results.clone(), "vim", 10).unwrap();
+        let ranked_for_emacs = process_results(results, "emacs", 10).unwrap();
+
+        assert_eq!(ranked_for_vim[0], vim);
+        assert_eq!(ranked_for_emacs[0], emacs);
     }
 }
