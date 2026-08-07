@@ -13,6 +13,7 @@ export {
 	selectPromptHistory,
 	selectRebuildLog,
 	selectRebuildStatus,
+	selectSecretsVaultState,
 	useViewModel,
 	viewModelActions,
 	viewModelStore,

@@ -51,8 +51,8 @@ function framed(props: Partial<SecretsManagementProps> = {}) {
 }
 
 /**
- * The vault: host identity (which key is this host, is it registered, what
- * can it open) above the full secrets table. Rows open the detail view; "Add
+ * The vault: primary local identity and its repository registration above
+ * the full secrets table. Rows open the detail view; "Add
  * secret" and the prompt bar both end in the review → commit sheet.
  */
 export const Vault = meta.story({
@@ -71,7 +71,7 @@ export const KeysAndRecipients = meta.story({
 /**
  * The add-secret form: compact backend toggle (sops-nix default, agenix),
  * masked value entry, runtime-path preview, and the recipient checklist with
- * every committed host preselected (this host locked on).
+ * every committed local identity preselected (the primary identity locked on).
  */
 export const AddSecret = meta.story({
   render: () => framed({ initialView: { kind: "add" } }),
@@ -88,17 +88,17 @@ export const AddRecipient = meta.story({
 });
 
 /**
- * Secret detail for a secret this host can decrypt: metadata, the
- * reveal-gated value (confirmation dialog → plaintext), and per-recipient
- * decrypt status.
+ * Secret detail for a secret with known local capability: backend-provided encrypted
+ * metadata and per-recipient decrypt status. Plaintext is not part of the
+ * vault contract.
  */
 export const SecretDetail = meta.story({
   render: () => framed({ initialView: { kind: "detail", secretId: "github-token" } }),
 });
 
 /**
- * Secret detail when this host is not a recipient: no reveal affordance, an
- * amber explainer instead of the value, and Rotate & re-key as the way in.
+ * Secret detail when capability is unresolved: reveal can ask SOPS to try and
+ * the UI explains that local identity availability is not fully knowable.
  */
 export const SecretDetailNoAccess = meta.story({
   render: () => framed({ initialView: { kind: "detail", secretId: "cachix-signing-key" } }),

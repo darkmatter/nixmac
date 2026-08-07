@@ -7,6 +7,7 @@ use crate::privileged_helper::{
     client as helper_client, protocol as helper_protocol, root_activation,
     service as helper_service,
 };
+use crate::utils::nix_string_literal;
 use chrono::Local;
 use log::{error, info};
 use std::fs::{self, File, OpenOptions};
@@ -104,7 +105,7 @@ pub fn dry_run_build_check(
     crate::git::intent_add_untracked(config_dir)?;
 
     let mut command = Command::new("nix");
-    let safe_host_attr = serde_json::to_string(host_attr)?;
+    let safe_host_attr = nix_string_literal(host_attr);
     command
         .arg("build")
         .arg(format!(".#darwinConfigurations.{}.system", safe_host_attr))
@@ -163,7 +164,7 @@ pub fn dry_run_build_check_streaming(
     crate::git::intent_add_untracked(config_dir)?;
 
     let mut command = Command::new("nix");
-    let safe_host_attr = serde_json::to_string(host_attr)?;
+    let safe_host_attr = nix_string_literal(host_attr);
     command
         .arg("build")
         .arg(format!(".#darwinConfigurations.{}.system", safe_host_attr))
@@ -500,7 +501,7 @@ fn run_build_step(
     }
 
     let out_link = super::out_link::prepare_out_link(super::out_link::APPLY_OUT_LINK_NAME)?;
-    let safe_host_attr = serde_json::to_string(host_attr)?;
+    let safe_host_attr = nix_string_literal(host_attr);
 
     let mut build_cmd = Command::new("nix");
     build_cmd

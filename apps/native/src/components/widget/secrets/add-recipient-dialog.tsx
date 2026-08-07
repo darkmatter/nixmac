@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { SecretRecipient, SecretsVault } from "./types";
+import type { RecipientSource, SecretRecipient, SecretsVault } from "@/ipc/orpc-bindings";
 
 type Method = "paste" | "github" | "ssh" | "local" | "hardware";
 
@@ -56,6 +56,7 @@ function slugify(label: string): string {
 interface DerivedKey {
   publicKey: string;
   source: string;
+  recipientSource: RecipientSource;
   defaultLabel: string;
   device: string;
 }
@@ -97,7 +98,9 @@ export function AddRecipientDialog({
   const [sshKey, setSshKey] = useState("");
   const [hardwareKind, setHardwareKind] = useState<"yubikey" | "se" | null>(null);
 
-  const host = vault.recipients.find((r) => r.id === vault.hostId);
+  const primaryIdentity = vault.recipients.find(
+    (r) => r.id === vault.primaryDecryptionIdentityId,
+  );
 
   // Each method resolves to a derived key (or an explanation why not).
   let derived: DerivedKey | null = null;
@@ -109,6 +112,7 @@ export function AddRecipientDialog({
       derived = {
         publicKey: trimmed,
         source: "Used as-is",
+        recipientSource: "pasted",
         defaultLabel: "",
         device: "age public key",
       };
@@ -120,6 +124,7 @@ export function AddRecipientDialog({
       derived = {
         publicKey: mockDerivedKey(`gh:${githubUser.trim()}`, "age1"),
         source: `ssh-ed25519 key from github.com/${githubUser.trim()}.keys · converted with ssh-to-age`,
+        recipientSource: "github",
         defaultLabel: githubUser.trim(),
         device: `GitHub · ${githubUser.trim()}`,
       };
@@ -130,6 +135,7 @@ export function AddRecipientDialog({
       derived = {
         publicKey: mockDerivedKey(trimmed, "age1"),
         source: "Converted with ssh-to-age",
+        recipientSource: "sshIdentity",
         defaultLabel: "",
         device: "SSH key · ssh-to-age",
       };
@@ -138,12 +144,13 @@ export function AddRecipientDialog({
     } else if (trimmed.length > 0) {
       problem = "Paste an OpenSSH public key line (ssh-ed25519 AAAA…).";
     }
-  } else if (method === "local" && host) {
+  } else if (method === "local" && primaryIdentity) {
     derived = {
-      publicKey: host.publicKey,
+      publicKey: primaryIdentity.publicKey,
       source: "Derived with age-keygen -y from the private key",
-      defaultLabel: host.label,
-      device: "This Mac",
+      recipientSource: "ageKeyFile",
+      defaultLabel: primaryIdentity.label,
+      device: "Local decryption identity",
     };
   } else if (method === "hardware" && hardwareKind) {
     derived =
@@ -151,12 +158,14 @@ export function AddRecipientDialog({
         ? {
             publicKey: mockDerivedKey("yubikey-5c", "age1yubikey1"),
             source: "age-plugin-yubikey · PIV slot 9a on YubiKey 5C",
+            recipientSource: "yubikey",
             defaultLabel: "yubikey-5c",
             device: "FIDO2 · age-plugin-yubikey",
           }
         : {
             publicKey: mockDerivedKey("secure-enclave", "age1se1"),
             source: "age-plugin-se · key generated in this Mac's Secure Enclave",
+            recipientSource: "secureEnclave",
             defaultLabel: "secure-enclave",
             device: "Secure Enclave · age-plugin-se",
           };
@@ -175,8 +184,14 @@ export function AddRecipientDialog({
       kind: method === "local" ? "host" : "user",
       device: derived.device,
       publicKey: derived.publicKey,
+      keyType: "age",
+      source: derived.recipientSource,
       fingerprint: mockFingerprint(derived.publicKey),
-      inRepo: true,
+      inUse: true,
+      registrations: [
+        { backend: "sops", file: ".sops.yaml" },
+        { backend: "agenix", file: "secrets/secrets.nix" },
+      ],
     });
   };
 

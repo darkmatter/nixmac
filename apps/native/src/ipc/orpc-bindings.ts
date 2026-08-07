@@ -349,6 +349,44 @@ displayName: string;
  */
 description?: string | null; fields: ConfigFieldSchema[] }
 
+export type DecryptSecretInput = { secretId: string }
+
+/**
+ * Whether decryption is available for this specific process or not via its private identity.
+ */
+export type DecryptionCapability = "available" | "unavailable" | "unknown"
+
+/**
+ * A locally discoverable private identity source.
+ */
+export type DecryptionIdentity = { kind: DecryptionIdentityKind; locality: DecryptionIdentityLocality; path: string; available: boolean; 
+/**
+ * Public recipient derived without returning private key material.
+ */
+publicKeys: string[] }
+
+/**
+ * Private identity format. The identity material itself is never returned.
+ */
+export type DecryptionIdentityKind = "ageKeyFile" | "sshKeyPath"
+
+/**
+ * Where a private decryption identity was discovered.
+ */
+export type DecryptionIdentityLocality = 
+/**
+ * Declared by the evaluated nix-darwin configuration.
+ */
+"configuration" | 
+/**
+ * Supplied to the running nixmac process through its environment.
+ */
+"process" | 
+/**
+ * Found at a conventional path on this machine.
+ */
+"machine"
+
 export type EnumVariant = { value: string; label: string }
 
 /**
@@ -1653,6 +1691,28 @@ errorMessage: string | null;
 systemUntouched: boolean | null }
 
 /**
+ * Public-key format used by a secret recipient.
+ */
+export type RecipientKeyType = "age" | "ssh" | "pgp" | "unknown"
+
+/**
+ * Kind of recipient used for managing secrets.
+ */
+export type RecipientKind = "host" | "user" | "unknown"
+
+/**
+ * A repository configuration source that registers a recipient.
+ * Keeping the backend alongside the path matters because the same public key
+ * can be registered independently for SOPS and agenix.
+ */
+export type RecipientRegistration = { backend: SecretBackend; file: string }
+
+/**
+ * Where the recipient's key material originates.
+ */
+export type RecipientSource = "sshHostKey" | "sshIdentity" | "ageKeyFile" | "pasted" | "github" | "yubikey" | "secureEnclave" | "repository" | "unknown"
+
+/**
  * A recommended prompt based on the user's current macOS settings.
  */
 export type RecommendedPrompt = { 
@@ -1682,6 +1742,35 @@ rollbackStorePath: string | null;
  * Changeset id associated with the rollback target.
  */
 rollbackChangesetId: number | null }
+
+/**
+ * Secret backend used for managing secrets.
+ */
+export type SecretBackend = "sops" | "agenix"
+
+/**
+ * One encrypted secret entry managed in the nix config repo.
+ */
+export type SecretEntry = { id: string; name: string; backend: SecretBackend; file: string; publicRecipients: string[]; publicRecipientsResolved: boolean; recipientIds: string[]; decryptionCapability: DecryptionCapability; sopsKey: string | null }
+
+export type SecretRecipient = { id: string; label: string; kind: RecipientKind; device: string; fingerprint: string; publicKey: string; keyType: RecipientKeyType; source: RecipientSource; inUse: boolean; registrations: RecipientRegistration[] }
+
+export type SecretsVault = { primaryDecryptionIdentityId: string | null; entries: SecretEntry[]; recipients: SecretRecipient[]; decryptionIdentities: DecryptionIdentity[] }
+
+/**
+ * Backend-owned lifecycle for the derived secrets vault.
+ * The vault is potentially very expensive to derive (it evaluates the configured flake), so
+ * Rust refreshes it when its inputs change and the frontend only mirrors this
+ * snapshot. `vault` is cleared while loading to avoid showing data derived
+ * from a previous config directory or host.
+ */
+export type SecretsVaultState = { vault: SecretsVault | null; 
+/**
+ * Whether a client has requested the vault at least once. Dependency
+ * changes refresh only after activation, avoiding Nix evaluation at app
+ * startup for users who never open secrets management.
+ */
+activated: boolean; loading: boolean; error: string | null }
 
 export type SemanticChangeGroup = { 
 /**
@@ -2059,6 +2148,11 @@ export type Procedures = {
     applyDefaults: Client<Record<never, never>, ApplyDefaultsInput, ConfigEditApplyResult, Error>
     getRecommendedPrompt: Client<Record<never, never>, void, RecommendedPrompt | null, Error>
     scanDefaults: Client<Record<never, never>, void, SystemDefaultsScan, Error>
+  }
+  secrets: {
+    decryptSecret: Client<Record<never, never>, DecryptSecretInput, string, Error>
+    getState: Client<Record<never, never>, void, SecretsVaultState, Error>
+    refresh: Client<Record<never, never>, void, void, Error>
   }
   settings: {
     export: Client<Record<never, never>, ExportInput, ExportResult | null, Error>

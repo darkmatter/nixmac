@@ -105,9 +105,13 @@ fn set_known_rebuild_needed<R: Runtime>(app: &AppHandle<R>, needed: bool) {
 /// a build nixmac itself initiated — both make any previously detected
 /// external build stale.
 pub fn update_status<R: Runtime>(app: &AppHandle<R>, status: GitStatus) {
-    app.state::<Observable<GitState>>()
+    let changed = app
+        .state::<Observable<GitState>>()
         .update_if_changed(move |state| {
             state.git_status = Some(status);
             state.external_build_detected = false;
         });
+    if changed {
+        crate::state::secrets_vault::refresh_if_active(app);
+    }
 }

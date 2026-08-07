@@ -1,21 +1,42 @@
-import type { SecretsVault } from "./types";
+import type { SecretsVault } from "@/ipc/orpc-bindings";
 
 /**
  * Demo fixture for Storybook — mirrors the reference design's data. No value
  * here is a real credential.
  */
 export const MOCK_VAULT: SecretsVault = {
-  hostId: "demo-mbp",
+  primaryDecryptionIdentityId: "demo-mbp",
+  decryptionIdentities: [
+    {
+      kind: "sshKeyPath",
+      locality: "configuration",
+      path: "/etc/ssh/ssh_host_ed25519_key",
+      available: true,
+      publicKeys: ["age1qy8x0v4k2n7pq3wl9d0m5s8t1r6c4h2j"],
+    },
+    {
+      kind: "ageKeyFile",
+      locality: "process",
+      path: "/Users/demo/.config/sops/age/keys.txt",
+      available: true,
+      publicKeys: [],
+    },
+  ],
   recipients: [
     {
       id: "demo-mbp",
       label: "Demo-MacBook-Pro",
       kind: "host",
-      device: "This Mac · Apple Silicon",
+      device: "This Mac",
       publicKey: "age1qy8x0v4k2n7pq3wl9d0m5s8t1r6c4h2j",
+      keyType: "age",
+      source: "sshHostKey",
       fingerprint: "SHA256:0f2a b7e4 … 9c1d",
-      inRepo: true,
-      isThisHost: true,
+      inUse: true,
+      registrations: [
+        { backend: "agenix", file: "secrets/secrets.nix" },
+        { backend: "sops", file: ".sops.yaml" },
+      ],
     },
     {
       id: "work-mini",
@@ -23,8 +44,14 @@ export const MOCK_VAULT: SecretsVault = {
       kind: "host",
       device: "Mac mini · office",
       publicKey: "age1ld0k2r7m4s9pqx3v6n8t1w5c2h4j7q0",
+      keyType: "age",
+      source: "sshHostKey",
       fingerprint: "SHA256:77b1 3ac9 … 4e02",
-      inRepo: true,
+      inUse: true,
+      registrations: [
+        { backend: "agenix", file: "secrets/secrets.nix" },
+        { backend: "sops", file: ".sops.yaml" },
+      ],
     },
     {
       id: "yubikey",
@@ -32,8 +59,11 @@ export const MOCK_VAULT: SecretsVault = {
       kind: "user",
       device: "FIDO2 · age-plugin-yubikey",
       publicKey: "age1yubikey1qw8x3v0k2m7n4p9s6t1r5c2",
+      keyType: "age",
+      source: "yubikey",
       fingerprint: "SHA256:a3c9 12ff … 1f88",
-      inRepo: true,
+      inUse: true,
+      registrations: [{ backend: "agenix", file: "secrets/secrets.nix" }],
     },
     {
       id: "framework",
@@ -41,40 +71,52 @@ export const MOCK_VAULT: SecretsVault = {
       kind: "host",
       device: "NixOS · staged, not committed",
       publicKey: "age1f3w9d2z0k8rql5m7n4p6s1t3v2c9h0j",
+      keyType: "age",
+      source: "sshHostKey",
       fingerprint: "SHA256:b8e0 44ad … 9a15",
-      inRepo: false,
+      inUse: false,
+      registrations: [],
     },
   ],
-  secrets: [
+  entries: [
     {
       id: "github-token",
       name: "github-token",
       backend: "agenix",
       file: "secrets/github-token.age",
+      publicRecipients: [
+        "age1qy8x0v4k2n7pq3wl9d0m5s8t1r6c4h2j",
+        "age1ld0k2r7m4s9pqx3v6n8t1w5c2h4j7q0",
+      ],
+      publicRecipientsResolved: true,
       recipientIds: ["demo-mbp", "work-mini"],
-      value: "ghp_R2d2c3PO7hisIsaFakeT0ken0nly",
-      updated: "2 days ago",
-      encryptedSize: "1.1 KB",
+      decryptionCapability: "available",
+      sopsKey: null,
     },
     {
       id: "tailscale-authkey",
       name: "tailscale-authkey",
       backend: "agenix",
       file: "secrets/tailscale.age",
+      publicRecipients: ["age1qy8x0v4k2n7pq3wl9d0m5s8t1r6c4h2j"],
+      publicRecipientsResolved: true,
       recipientIds: ["demo-mbp"],
-      value: "tskey-auth-k8Xh2Qw-D3m0nstrati0nKey",
-      updated: "6 days ago",
-      encryptedSize: "0.9 KB",
+      decryptionCapability: "available",
+      sopsKey: null,
     },
     {
       id: "anthropic-api-key",
       name: "anthropic-api-key",
       backend: "agenix",
       file: "secrets/anthropic.age",
+      publicRecipients: [
+        "age1qy8x0v4k2n7pq3wl9d0m5s8t1r6c4h2j",
+        "age1yubikey1qw8x3v0k2m7n4p9s6t1r5c2",
+      ],
+      publicRecipientsResolved: true,
       recipientIds: ["demo-mbp", "yubikey"],
-      value: "sk-ant-api03-fake-demo-value-not-real",
-      updated: "yesterday",
-      encryptedSize: "1.2 KB",
+      decryptionCapability: "available",
+      sopsKey: null,
     },
     {
       id: "wifi-password",
@@ -82,10 +124,13 @@ export const MOCK_VAULT: SecretsVault = {
       backend: "sops",
       file: "secrets/network.yaml",
       sopsKey: "wifi_password",
+      publicRecipients: [
+        "age1qy8x0v4k2n7pq3wl9d0m5s8t1r6c4h2j",
+        "age1ld0k2r7m4s9pqx3v6n8t1w5c2h4j7q0",
+      ],
+      publicRecipientsResolved: true,
       recipientIds: ["demo-mbp", "work-mini"],
-      value: "correct-horse-battery-staple",
-      updated: "3 weeks ago",
-      encryptedSize: "2.4 KB",
+      decryptionCapability: "available",
     },
     {
       id: "cachix-signing-key",
@@ -93,10 +138,10 @@ export const MOCK_VAULT: SecretsVault = {
       backend: "sops",
       file: "secrets/cachix.yaml",
       sopsKey: "signing_key",
+      publicRecipients: ["age1ld0k2r7m4s9pqx3v6n8t1w5c2h4j7q0"],
+      publicRecipientsResolved: true,
       recipientIds: ["work-mini"],
-      value: "do-not-share-cachix-signing-material",
-      updated: "1 month ago",
-      encryptedSize: "1.8 KB",
+      decryptionCapability: "unknown",
     },
   ],
 };
