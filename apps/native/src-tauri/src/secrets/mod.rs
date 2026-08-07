@@ -27,3 +27,27 @@ fn resolve_secret_file_path(config_dir: &str, file: &str) -> Result<PathBuf, Str
 
     Ok(resolved)
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use crate::secrets::resolve_secret_file_path;
+
+    #[test]
+    fn test_resolve_secret_file_path() {
+        let config_dir = "/tmp";
+        let file = "test_secret.txt";
+
+        // Create a temporary file for testing
+        let temp_file_path = Path::new(config_dir).join(file);
+        std::fs::write(&temp_file_path, "secret content").unwrap();
+
+        // Test resolving the relative path
+        let resolved_path = resolve_secret_file_path(config_dir, file).unwrap();
+        assert_eq!(resolved_path, temp_file_path.canonicalize().unwrap());
+
+        // Clean up the temporary file
+        std::fs::remove_file(temp_file_path).unwrap();
+    }
+}
