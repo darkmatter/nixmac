@@ -35,7 +35,6 @@ export function makeGlobalPreferences(
 		scanHomebrewOnStartup: true,
 		defaultToDiffTab: false,
 		experimentalSpinningMascot: false,
-		experimentalStreamingEvolve: false,
 		developerMode: false,
 		pinnedVersion: null,
 		updateChannel: "stable",

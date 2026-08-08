@@ -941,13 +941,10 @@ pub async fn generate_evolution<R: Runtime>(
         store::get_max_output_tokens(app).unwrap_or(store::DEFAULT_MAX_OUTPUT_TOKENS);
     let max_output_tokens_for_request = normalize_max_output_tokens(max_output_tokens);
 
-    // Experimental developer flag: stream provider text deltas into the
-    // progress view while the model responds. Mutable: cleared for the rest
-    // of the run when the provider turns out not to support streaming.
-    let mut streaming_evolve = crate::state::ui_prefs::experimental_streaming_evolve(app);
-    if streaming_evolve {
-        info!("Experimental streaming evolve enabled");
-    }
+    // Stream provider text deltas into the progress view while the model
+    // responds, for every provider that supports it. Mutable: cleared for the
+    // rest of the run when the provider turns out not to support streaming.
+    let mut streaming_evolve = true;
 
     // Select provider implementation
     let provider: Arc<dyn AiProvider> = if provider_type == "ollama" {
