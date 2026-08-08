@@ -1370,7 +1370,7 @@ summaryModel: string | null;
  * Remembered summary model per provider; a missing entry means the
  * provider default is used. Never stores `""`.
  */
-summaryModels: Partial<{ [key in string]: string }>; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; experimentalStreamingEvolve: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; gitAutoUpdate: GitAutoUpdate; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
+summaryModels: Partial<{ [key in string]: string }>; ollamaApiBaseUrl: string | null; openaiCompatibleApiBaseUrl: string | null; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; defaultToDiffTab: boolean; experimentalSpinningMascot: boolean; developerMode: boolean; pinnedVersion: string | null; updateChannel: UpdateChannel; gitAutoUpdate: GitAutoUpdate; featureFlagOverrides: Partial<{ [key in string]: string }> | null; 
 /**
  * Root of an import clone parked on the "which flake dir?" choice
  * (`NeedsFlakeDirChoice`). Recorded so an abandoned choice can be
@@ -2319,11 +2319,6 @@ defaultToDiffTab: boolean;
  */
 experimentalSpinningMascot: boolean; 
 /**
- * Experimental: stream provider token deltas into the evolve progress
- * view while the model responds (developer flag until stable).
- */
-experimentalStreamingEvolve: boolean; 
-/**
  * Whether developer-only UI/actions are enabled.
  */
 developerMode: boolean; 
@@ -2442,10 +2437,6 @@ defaultToDiffTab: boolean | null;
  * Experimental spinning-mascot preference update.
  */
 experimentalSpinningMascot: boolean | null; 
-/**
- * Experimental streaming-evolve preference update.
- */
-experimentalStreamingEvolve: boolean | null; 
 /**
  * Developer mode preference update.
  */

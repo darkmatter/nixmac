@@ -6,5 +6,4 @@ export type BoolPrefKey =
   | "scanHomebrewOnStartup"
   | "defaultToDiffTab"
   | "experimentalSpinningMascot"
-  | "experimentalStreamingEvolve"
   | "autoFormatNixFiles";
