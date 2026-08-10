@@ -7,6 +7,7 @@ import type {
   OnboardingState,
   PermissionsState,
   RebuildStatus,
+  SecretsVaultState,
   SemanticChangeMap,
 } from "@nixmac/native/ipc/types";
 import type { RebuildLine, RebuildNotice } from "@nixmac/native/types/rebuild";
@@ -48,6 +49,8 @@ export type ViewModelState = {
   nixInstall: NixInstallState | null;
   /** Mirrored darwin-rebuild lifecycle status; null until hydrated. */
   rebuildStatus: RebuildStatus | null;
+  /** Mirrored backend-owned secrets vault lifecycle; null until hydrated. */
+  secretsVaultState: SecretsVaultState | null;
   /** Rebuild output fold; reset whenever a new rebuild run starts. */
   rebuildLog: RebuildLog;
   /** Evolve agent event stream; reset on each run's `start` event. */

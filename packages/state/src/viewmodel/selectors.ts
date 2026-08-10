@@ -15,6 +15,7 @@ export const selectPermissions = (state: ViewModelStore) => state.permissions;
 export const selectPermissionsHydrated = (state: ViewModelStore) => state.permissionsHydrated;
 export const selectNixInstall = (state: ViewModelStore) => state.nixInstall;
 export const selectRebuildStatus = (state: ViewModelStore) => state.rebuildStatus;
+export const selectSecretsVaultState = (state: ViewModelStore) => state.secretsVaultState;
 export const selectRebuildLog = (state: ViewModelStore) => state.rebuildLog;
 export const selectEvolveEvents = (state: ViewModelStore) => state.evolveEvents;
 export const selectPromptHistory = (state: ViewModelStore) => state.promptHistory;

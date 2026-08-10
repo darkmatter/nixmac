@@ -159,14 +159,14 @@ pub async fn settings_import(app: AppHandle) -> Result<Option<ImportResult>, Str
 
     let keys_imported = entries.len();
 
-    if let Some(global) = app.try_state::<Observable<GlobalPreferences>>() {
+    if app.try_state::<Observable<GlobalPreferences>>().is_some() {
         let mut prefs = serde_json::from_value::<GlobalPreferences>(imported_value.clone())
             .map_err(|e| capture_err("settings_import", e))?;
         // Exports from pre-map versions carry the deprecated single-model
         // fields; fold them into the per-provider maps like the load path does.
         crate::state::preferences::migrate_model_scalars_to_maps(&mut prefs);
-        let mut global = global.write_sync();
-        *global = prefs;
+        crate::state::preferences::write(&app, move |current| *current = prefs)
+            .map_err(|e| capture_err("settings_import", e))?;
     }
 
     if let Some(limits) = app.try_state::<Observable<UserPreferences>>() {

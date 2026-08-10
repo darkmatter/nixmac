@@ -1,7 +1,13 @@
 import type { EvolveState, EvolveStep, PermissionsState } from "@/ipc/types";
 import { filesystemViewEnabled } from "@/lib/flags";
 import type { WidgetStep } from "@/types/widget";
-import { FileCode, FilePen, FilePlus, FileX, type LucideIcon } from "lucide-react";
+import {
+  FileCode,
+  FilePen,
+  FilePlus,
+  FileX,
+  type LucideIcon,
+} from "lucide-react";
 
 type CurrentStepState = {
   configDir: string;
@@ -14,6 +20,7 @@ type CurrentStepState = {
   isBootstrapping: boolean;
   showHistory: boolean;
   showFilesystem: boolean;
+  showSecretsManagement: boolean;
   evolveState: EvolveState | null;
   activeStepOverride: EvolveStep | null;
   /** Whether the working tree currently has any tracked changes (a diff). */
@@ -62,6 +69,10 @@ export function computeCurrentStep(state: CurrentStepState): WidgetStep {
     return "setup";
   }
 
+  if (state.showSecretsManagement) {
+    return "secrets";
+  }
+
   if (state.showHistory) {
     return "history";
   }
@@ -87,7 +98,8 @@ export function computeCurrentStep(state: CurrentStepState): WidgetStep {
   // is no longer behind the live step is ignored.
   if (
     state.activeStepOverride &&
-    orderByStep[state.activeStepOverride] < orderByStep[state.evolveState?.step ?? "begin"]
+    orderByStep[state.activeStepOverride] <
+      orderByStep[state.evolveState?.step ?? "begin"]
   ) {
     return state.activeStepOverride;
   }
@@ -128,7 +140,8 @@ export function configRelativePath(
   const prefix = config.slice(root.length + 1).split("/");
   const parts = filename.split("/");
   let common = 0;
-  while (common < prefix.length && parts[common] === prefix[common]) common += 1;
+  while (common < prefix.length && parts[common] === prefix[common])
+    common += 1;
   return "../".repeat(prefix.length - common) + parts.slice(common).join("/");
 }
 
@@ -178,7 +191,15 @@ const CATEGORY_PALETTE: CategoryStyle[] = [EMERALD, BLUE, AMBER, VIOLET, GRAY];
 
 const KEYWORD_STYLES: Array<{ keywords: string[]; style: CategoryStyle }> = [
   {
-    keywords: ["config", "settings", "option", "nix", "darwin", "home", "profile"],
+    keywords: [
+      "config",
+      "settings",
+      "option",
+      "nix",
+      "darwin",
+      "home",
+      "profile",
+    ],
     style: EMERALD,
   },
   {
@@ -216,7 +237,9 @@ export function buildColorMap(changeMap: SemanticChangeMap): ColorMap {
   const assign = (key: string, title: string, forceColor: boolean) => {
     const lower = title.toLowerCase();
     const preferred =
-      KEYWORD_STYLES.find(({ keywords }) => keywords.some((k) => lower.includes(k)))?.style ?? null;
+      KEYWORD_STYLES.find(({ keywords }) =>
+        keywords.some((k) => lower.includes(k)),
+      )?.style ?? null;
 
     if (preferred && !used.has(preferred)) {
       map.set(key, preferred);
@@ -232,7 +255,8 @@ export function buildColorMap(changeMap: SemanticChangeMap): ColorMap {
     }
   };
 
-  for (const g of changeMap.groups) assign(String(g.summary.id), g.summary.title, true);
+  for (const g of changeMap.groups)
+    assign(String(g.summary.id), g.summary.title, true);
   for (const s of changeMap.singles) assign(s.hash, s.title, false);
 
   return map;
@@ -257,7 +281,11 @@ type ChangeTypeStyle = {
 };
 
 export const CHANGE_TYPE_STYLES: Record<ChangeType, ChangeTypeStyle> = {
-  new: { icon: FilePlus, bg: "bg-emerald-300/[0.07]", iconColor: "text-emerald-400" },
+  new: {
+    icon: FilePlus,
+    bg: "bg-emerald-300/[0.07]",
+    iconColor: "text-emerald-400",
+  },
   edited: { icon: FilePen, bg: "bg-white/6", iconColor: "text-neutral-400" },
   removed: { icon: FileX, bg: "bg-red-500/[0.07]", iconColor: "text-red-400" },
   renamed: { icon: FileCode, bg: "bg-white/6", iconColor: "text-neutral-400" },
@@ -290,7 +318,8 @@ function findRenamePairs(changes: ChangeWithRichType[]): RenamePair[] {
   const newFiles = changes.filter((c) => c.changeType === "new");
   for (const newFile of newFiles) {
     const removedFiles = changes.filter(
-      (c) => c.shortFilename === newFile.shortFilename && c.changeType === "removed",
+      (c) =>
+        c.shortFilename === newFile.shortFilename && c.changeType === "removed",
     );
     if (removedFiles.length === 1) {
       pairs.push({ oldChange: removedFiles[0], newChange: newFile });
@@ -299,7 +328,9 @@ function findRenamePairs(changes: ChangeWithRichType[]): RenamePair[] {
   return pairs;
 }
 
-export function categorizeRenamed(changes: ChangeWithRichType[]): ChangeWithRichType[] {
+export function categorizeRenamed(
+  changes: ChangeWithRichType[],
+): ChangeWithRichType[] {
   const pairs = findRenamePairs(changes);
   const consumedRemovals = new Set<string>();
   const renamedChanges: ChangeWithRichType[] = [];
@@ -327,7 +358,9 @@ function combineChangeTypes(a: ChangeType, b: ChangeType): ChangeType {
   return "edited";
 }
 
-export function summarizeChangesByFile(changes: ChangeWithRichType[]): ChangeFileSummary[] {
+export function summarizeChangesByFile(
+  changes: ChangeWithRichType[],
+): ChangeFileSummary[] {
   const byFile = new Map<string, ChangeFileSummary>();
 
   for (const change of changes) {
@@ -341,7 +374,10 @@ export function summarizeChangesByFile(changes: ChangeWithRichType[]): ChangeFil
 
     existing.hunkCount += 1;
     existing.lineCount += change.lineCount;
-    existing.changeType = combineChangeTypes(existing.changeType, change.changeType);
+    existing.changeType = combineChangeTypes(
+      existing.changeType,
+      change.changeType,
+    );
   }
 
   return Array.from(byFile.values());

@@ -1,20 +1,34 @@
-import { ArrowRight, Check, KeyRound, Lock, Plus, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  KeyRound,
+  LoaderCircle,
+  Lock,
+  Plus,
+  RefreshCw,
+  Sparkles,
+  TriangleAlert,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import type {
+  SecretRecipient,
+  SecretsVault,
+} from "@/ipc/orpc-bindings";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { client } from "@/lib/orpc";
+import { selectSecretsVaultState, useViewModel } from "@nixmac/state";
+import { startSecretsVaultSync } from "@/viewmodel/secrets-vault";
 import { AddRecipientDialog } from "./add-recipient-dialog";
 import { AddSecretView } from "./add-secret-view";
 import { type ApplyPhase, ApplySheet } from "./apply-sheet";
 import { KeysView } from "./keys-view";
-import { RevealDialog } from "./reveal-dialog";
 import { RotateView } from "./rotate-view";
 import { SecretDetailView } from "./secret-detail-view";
 import type {
   ApplyRequest,
-  SecretRecipient,
   SecretsTab,
-  SecretsVault,
   SecretsView,
 } from "./types";
 import { VaultView } from "./vault-view";
@@ -80,18 +94,69 @@ export interface SecretsManagementProps {
   initialAddRecipientOpen?: boolean;
 }
 
+/** Mirrors the backend-owned vault state from the Zustand view model. */
+export function SecretsManagementRoute() {
+  const state = useViewModel(selectSecretsVaultState);
+
+  useEffect(() => {
+    let disposed = false;
+    let stop: (() => void) | undefined;
+    void startSecretsVaultSync().then((unlisten) => {
+      if (disposed) {
+        unlisten();
+      } else {
+        stop = unlisten;
+      }
+    });
+    return () => {
+      disposed = true;
+      stop?.();
+    };
+  }, []);
+
+  if (!state || !state.activated || state.loading) {
+    return (
+      <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
+        <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+        Loading secrets…
+      </div>
+    );
+  }
+
+  if (state.error || !state.vault) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+        <TriangleAlert className="size-5 text-destructive" aria-hidden="true" />
+        <div>
+          <p className="font-medium text-sm">Couldn’t load secrets</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {state.error ?? "The secrets vault is unavailable."}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => void client.secrets.refresh()}>
+          <RefreshCw aria-hidden="true" />
+          Try again
+        </Button>
+      </div>
+    );
+  }
+
+  return <SecretsManagement vault={state.vault} />;
+}
+
 /**
  * The secrets management screen: a vault of agenix/sops-nix secrets, the age
  * recipient keys that can open them, and add/detail/rotate flows that all
  * funnel through the review → darwin-rebuild check → commit sheet.
  *
- * Mock-only for now: all state is local and "apply" is simulated — no IPC.
+ * The vault is loaded from Rust by {@link SecretsManagementRoute}. Mutating
+ * flows are still local simulations until their commands are implemented.
  */
 export function SecretsManagement({
   vault,
   defaultTab = "vault",
   initialView = { kind: "browse" },
-  showPromptBar = true,
+  showPromptBar = false,  // TODO: Implement this functionality
   initialAddRecipientOpen = false,
 }: SecretsManagementProps) {
   const [tab, setTab] = useState<SecretsTab>(defaultTab);
@@ -99,8 +164,6 @@ export function SecretsManagement({
   const [addRecipientOpen, setAddRecipientOpen] = useState(initialAddRecipientOpen);
   const [pendingRecipient, setPendingRecipient] = useState<SecretRecipient | null>(null);
   const [extraRecipients, setExtraRecipients] = useState<SecretRecipient[]>([]);
-  const [revealedIds, setRevealedIds] = useState<Record<string, boolean>>({});
-  const [revealTargetId, setRevealTargetId] = useState<string | null>(null);
   const [apply, setApply] = useState<ApplyRequest | null>(null);
   const [applyPhase, setApplyPhase] = useState<ApplyPhase>("review");
   const [prompt, setPrompt] = useState("");
@@ -159,8 +222,7 @@ export function SecretsManagement({
     recipients: [...vault.recipients, ...extraRecipients],
   };
   const selectedSecret =
-    view.kind === "detail" ? vault.secrets.find((s) => s.id === view.secretId) : undefined;
-  const revealTarget = vault.secrets.find((s) => s.id === revealTargetId);
+    view.kind === "detail" ? vault.entries.find((s) => s.id === view.secretId) : undefined;
 
   return (
     <div className="relative flex h-full min-h-0 flex-col bg-background font-sans text-foreground">
@@ -183,7 +245,8 @@ export function SecretsManagement({
             </TabsTrigger>
           </TabsList>
         </Tabs>
-        <Button size="sm" onClick={() => setView({ kind: "add" })}>
+        {/* TODO: the add-secret button is hidden until we implement the write flow */}
+        <Button size="sm" onClick={() => setView({ kind: "add" })} className="hidden">
           <Plus aria-hidden="true" />
           Add secret
         </Button>
@@ -211,10 +274,6 @@ export function SecretsManagement({
           <SecretDetailView
             vault={effectiveVault}
             secret={selectedSecret}
-            revealed={!!revealedIds[selectedSecret.id]}
-            onAskReveal={() => setRevealTargetId(selectedSecret.id)}
-            onHide={() => setRevealedIds((ids) => ({ ...ids, [selectedSecret.id]: false }))}
-            onCopyValue={() => copy(selectedSecret.value)}
             onRotate={() => setView({ kind: "rotate" })}
             onNotImplemented={notImplemented}
             onBack={browse}
@@ -264,17 +323,6 @@ export function SecretsManagement({
             openApply(buildRegisterRequest(recipient));
           }}
           onCancel={() => setAddRecipientOpen(false)}
-        />
-      )}
-
-      {revealTarget && (
-        <RevealDialog
-          secretName={revealTarget.name}
-          onConfirm={() => {
-            setRevealedIds((ids) => ({ ...ids, [revealTarget.id]: true }));
-            setRevealTargetId(null);
-          }}
-          onCancel={() => setRevealTargetId(null)}
         />
       )}
 

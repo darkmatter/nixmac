@@ -363,6 +363,23 @@ export const orpcHandlers: Record<string, OrpcHandler> = {
   },
   "summarizedChanges.summarizeCurrent": async () => baseSemanticChangeMap(),
   "summarizedChanges.generateCommitMessage": async () => "feat: update mac defaults",
+  "secrets.getState": async () => {
+    const { viewModelActions } = await import("@nixmac/state");
+    const { MOCK_VAULT } = await import("@/components/widget/secrets/mock-data");
+    return (
+      viewModelActions.getState().secretsVaultState ?? {
+        vault: MOCK_VAULT,
+        activated: true,
+        loading: false,
+        error: null,
+      }
+    );
+  },
+  "secrets.refresh": async () => undefined,
+  "secrets.decryptSecret": async (input) => {
+    const { secretId } = (input as { secretId?: string } | undefined) ?? {};
+    return secretId ? `mock-plaintext-for-${secretId}` : "mock-plaintext";
+  },
   "updater.checkUpdate": async () => null,
   "updater.installUpdate": async () => undefined,
   "updater.installVersion": async () => undefined,

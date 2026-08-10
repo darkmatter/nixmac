@@ -62,10 +62,16 @@ pub fn write<R: Runtime>(app: &AppHandle<R>, f: impl FnOnce(&mut GlobalPreferenc
         .ok_or_else(|| anyhow::anyhow!("GlobalPreferences observable is not managed"))?;
     let mut next = observable.read_sync().clone();
     f(&mut next);
-    if *observable.read_sync() == next {
+    let previous = observable.read_sync().clone();
+    if previous == next {
         return Ok(());
     }
+    let secrets_source_changed =
+        previous.config_dir != next.config_dir || previous.host_attr != next.host_attr;
     *observable.write_sync() = next;
+    if secrets_source_changed {
+        crate::state::secrets_vault::refresh_if_active(app);
+    }
     Ok(())
 }
 
