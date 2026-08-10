@@ -12,6 +12,19 @@ export function isCliProvider(provider: string): boolean {
   return CLI_PROVIDER_VALUES.includes(provider as (typeof CLI_PROVIDER_VALUES)[number]);
 }
 
+export function hasConfiguredInference(
+  provider: string | null | undefined,
+  model: string | null | undefined,
+): boolean {
+  if (!provider) {
+    return false;
+  }
+  if (isCliProvider(provider)) {
+    return true;
+  }
+  return hasValue(model);
+}
+
 export function resolveOpenAiCompatibleProvider(
   provider: string | null | undefined,
   prefs: Pick<DarwinPrefs, "openrouterApiKey" | "openaiApiKey">,

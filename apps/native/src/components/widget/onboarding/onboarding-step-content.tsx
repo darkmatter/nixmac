@@ -7,6 +7,7 @@ import { NixSetupStep } from "@/components/widget/onboarding/steps/nix-setup-ste
 import { PermissionsStep } from "@/components/widget/onboarding/steps/permissions-step";
 import { SetupStep } from "@/components/widget/onboarding/steps/setup-step";
 import { useOnboardingProgress } from "@/hooks/use-onboarding-progress";
+import { hasConfiguredInference } from "@/lib/providers/ai-provider-validation";
 import { onboardingActions, useOnboarding, useViewModel } from "@nixmac/state";
 
 interface OnboardingStepContentProps {
@@ -17,12 +18,11 @@ interface OnboardingStepContentProps {
 export function OnboardingStepContent({ currentStep, title }: OnboardingStepContentProps) {
   const trackedCustomizations = useOnboarding((s) => s.trackedCustomizations);
   const trackedCustomizationSources = useOnboarding((s) => s.trackedCustomizationSources);
-  // Inference readiness is a durable fact: provider + model are persisted to
-  // GlobalPreferences by InferenceSetup, and the login decision is recorded
-  // separately. The build step only needs to know inference is configured.
+  // Inference readiness is a durable fact: provider/model preferences are
+  // persisted by InferenceSetup, and the login decision is recorded separately.
   const evolveProvider = useViewModel((s) => s.preferences?.evolveProvider ?? null);
   const evolveModel = useViewModel((s) => s.preferences?.evolveModel ?? null);
-  const hasInference = Boolean(evolveProvider) && Boolean(evolveModel);
+  const hasInference = hasConfiguredInference(evolveProvider, evolveModel);
   const { markMacScanned, markLoginDecided } = useOnboardingProgress();
 
   return (
