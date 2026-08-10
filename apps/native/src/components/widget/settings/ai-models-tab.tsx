@@ -31,12 +31,6 @@ interface AiModelsTabProps {
   form: ReactFormExtendedApi<any, any, any, any, any, any, any, any, any, any, any, any>;
 }
 
-const CLI_PROVIDERS = [
-  { value: "claude", label: "Claude CLI" },
-  { value: "codex", label: "Codex CLI" },
-  { value: "opencode", label: "OpenCode CLI" },
-] as const;
-
 function isPlainInputCliProvider(provider: string): boolean {
   return provider === "claude" || provider === "codex";
 }
