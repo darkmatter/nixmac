@@ -6,6 +6,7 @@ import {
   type StepId,
 } from "@/components/widget/onboarding/lib/onboarding";
 import { settings } from "@/lib/env";
+import { hasConfiguredInference } from "@/lib/providers/ai-provider-validation";
 import { onboardingActions, useOnboarding, useViewModel } from "@nixmac/state";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
@@ -54,7 +55,7 @@ export function useOnboardingFlow(): {
         flakeReady,
         macScanned: macScannedAt !== null,
         loginDecided,
-        hasInference: Boolean(evolveProvider) && Boolean(evolveModel),
+        hasInference: hasConfiguredInference(evolveProvider, evolveModel),
         buildComplete: lastBuildAt !== null,
         inferenceDeferred,
       }),

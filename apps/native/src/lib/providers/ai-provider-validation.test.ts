@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getProviderConfigInvalidReason,
+  hasConfiguredInference,
   resolveOpenAiCompatibleProvider,
 } from "./ai-provider-validation";
 
@@ -122,5 +123,19 @@ describe("getProviderConfigInvalidReason", () => {
         "   ",
       ),
     ).toBe("No model set");
+  });
+});
+
+describe("hasConfiguredInference", () => {
+  it("accepts CLI providers without a model so onboarding can finish with CLI defaults", () => {
+    expect(hasConfiguredInference("claude", "")).toBe(true);
+    expect(hasConfiguredInference("codex", null)).toBe(true);
+    expect(hasConfiguredInference("opencode", "   ")).toBe(true);
+  });
+
+  it("still requires non-CLI providers to persist a model", () => {
+    expect(hasConfiguredInference("openrouter", "")).toBe(false);
+    expect(hasConfiguredInference("nixmac", "openai/gpt-4o-mini")).toBe(true);
+    expect(hasConfiguredInference(null, "openai/gpt-4o-mini")).toBe(false);
   });
 });

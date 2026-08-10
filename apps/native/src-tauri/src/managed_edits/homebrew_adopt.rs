@@ -31,7 +31,7 @@ const NIX_EVAL_HOMEBREW_APPLY: &str = r#"cfg: {
 }"#;
 
 const NIX_EVAL_HOMEBREW_ATTR_TEMPLATE: &str =
-    r#".#darwinConfigurations."{hostname}".config.homebrew"#;
+    r#".#darwinConfigurations.{hostname}.config.homebrew"#;
 
 /// Checks if Homebrew is installed by trying to run `brew --version`.
 fn is_homebrew_installed() -> bool {
@@ -843,6 +843,17 @@ mod tests {
             std::fs::create_dir_all(parent).expect("failed to create parent directories");
         }
         std::fs::write(path, content).expect("failed to write test file");
+    }
+
+    #[test]
+    fn nix_eval_homebrew_attr_quotes_hostname_once() {
+        let safe_host_attr = serde_json::to_string("Coopers-MacBook-Pro").unwrap();
+        let attr = NIX_EVAL_HOMEBREW_ATTR_TEMPLATE.replace("{hostname}", &safe_host_attr);
+
+        assert_eq!(
+            attr,
+            r#".#darwinConfigurations."Coopers-MacBook-Pro".config.homebrew"#
+        );
     }
 
     #[test]
