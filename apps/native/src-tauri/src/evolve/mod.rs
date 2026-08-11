@@ -8,6 +8,7 @@ mod context_budget;
 mod ensure_secret;
 pub(crate) mod file_ops;
 mod gitignore;
+pub(crate) use gitignore::GitignoreChecker;
 pub(crate) mod isolation;
 pub mod messages;
 pub(crate) mod nix_file_editor;

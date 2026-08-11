@@ -11,6 +11,16 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
@@ -39,12 +49,19 @@ export function SecretDetailView({
   onBack: () => void;
 }) {
   const MASKED_SECRET_VALUE = "****************";
-  const readOnly = true; // TODO: implement edit flow
   const capability = secret.decryptionCapability;
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [decryptedValue, setDecryptedValue] = useState<string | null>(null);
   const [revealError, setRevealError] = useState<string | null>(null);
   const [isRevealed, setIsRevealed] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // TODO: Implement these
+  const canEdit = false;
+  const canRotate = false;
+  const canUseAgentTool = false;
 
   // Secrets are always readable at their runtime path; an agent tool is a
   // deliberate, per-secret opt-in.
@@ -77,6 +94,26 @@ export function SecretDetailView({
       setRevealError(error instanceof Error ? error.message : "Failed to decrypt secret");
     } finally {
       setIsDecrypting(false);
+    }
+  };
+
+  const onDelete = async () => {
+    if (isDeleting) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await client.secrets.deleteSecret({
+        secretId: secret.id,
+        backend: secret.backend,
+      });
+      setDecryptedValue(null);
+      setIsRevealed(false);
+      setDeleteOpen(false);
+      onBack();
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "Failed to delete secret");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -189,67 +226,107 @@ export function SecretDetailView({
           })}
         </div>
       </div>
-
-      {!readOnly && (
-        <>
-          <div
-            className={cn(
-              "flex items-start gap-3 rounded-[9px] border border-border px-3 py-2.5",
-              !toolSupported && "opacity-55",
-              toolSupported && toolEnabled && "bg-primary/5",
-            )}
-          >
-            <Switch
-              checked={toolSupported && toolEnabled}
-              disabled={!toolSupported}
-              onCheckedChange={setToolEnabled}
-              aria-label="Agent tool"
-              className="mt-0.5"
-            />
-            <div className="flex-1">
-              <div className="flex items-center gap-2 font-medium text-[13px]">
-                Agent tool
-                {!toolSupported && (
-                  <span className="rounded border border-border px-1 text-[10px] text-muted-foreground">
-                    sops-nix only
-                  </span>
-                )}
-              </div>
-              <div className="mt-0.5 text-[11.5px] text-muted-foreground leading-relaxed">
-                {toolSupported && toolEnabled ? (
-                  <>
-                    nixmac's agent can call{" "}
-                    <code className="font-mono text-foreground">use_secret.{secret.id}</code> to
-                    read this value at its runtime path — without ever printing the plaintext.
-                  </>
-                ) : (
-                  "Off by default. Enable to generate a scoped tool the agent can call to use this value — without ever printing the plaintext."
-                )}
-              </div>
+      {canUseAgentTool && (
+        <div
+          className={cn(
+            "flex items-start gap-3 rounded-[9px] border border-border px-3 py-2.5",
+            !toolSupported && "opacity-55",
+            toolSupported && toolEnabled && "bg-primary/5",
+          )}
+        >
+          <Switch
+            checked={toolSupported && toolEnabled}
+            disabled={!toolSupported}
+            onCheckedChange={setToolEnabled}
+            aria-label="Agent tool"
+            className="mt-0.5"
+          />
+          <div className="flex-1">
+            <div className="flex items-center gap-2 font-medium text-[13px]">
+              Agent tool
+              {!toolSupported && (
+                <span className="rounded border border-border px-1 text-[10px] text-muted-foreground">
+                  sops-nix only
+                </span>
+              )}
+            </div>
+            <div className="mt-0.5 text-[11.5px] text-muted-foreground leading-relaxed">
+              {toolSupported && toolEnabled ? (
+                <>
+                  nixmac's agent can call{" "}
+                  <code className="font-mono text-foreground">use_secret.{secret.id}</code> to
+                  read this value at its runtime path — without ever printing the plaintext.
+                </>
+              ) : (
+                "Off by default. Enable to generate a scoped tool the agent can call to use this value — without ever printing the plaintext."
+              )}
             </div>
           </div>
-
-          <div className="flex gap-2 pt-0.5">
-            <Button variant="outline" size="sm" onClick={onNotImplemented}>
-              <Pencil aria-hidden="true" />
-              Edit value
-            </Button>
-            <Button variant="outline" size="sm" onClick={onRotate}>
-              <RefreshCw aria-hidden="true" />
-              Rotate &amp; re-key
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-destructive"
-              onClick={onNotImplemented}
-            >
-              <Trash2 aria-hidden="true" />
-              Delete
-            </Button>
-          </div>
-        </>
+        </div>
       )}
+
+      <div className="flex gap-2 pt-0.5">
+        { canEdit && (
+          <Button variant="outline" size="sm" onClick={onNotImplemented}>
+            <Pencil aria-hidden="true" />
+            Edit value
+          </Button>
+        )}
+        { canRotate && (
+          <Button variant="outline" size="sm" onClick={onRotate}>
+            <RefreshCw aria-hidden="true" />
+            Rotate &amp; re-key
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-destructive"
+          onClick={() => {
+            setDeleteError(null);
+            setDeleteOpen(true);
+          }}
+        >
+          <Trash2 aria-hidden="true" />
+          Delete
+        </Button>
+      </div>
+
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          if (!isDeleting) setDeleteOpen(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {secret.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the encrypted value and Nix declaration, verifies the configuration,
+              and commits the change. You can restore it later from Git history.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {deleteError && (
+            <p role="alert" className="text-destructive text-xs">
+              {deleteError}
+            </p>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              onClick={(event) => {
+                event.preventDefault();
+                void onDelete();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Trash2 />}
+              {isDeleting ? "Deleting…" : "Delete & commit"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type {
+  SecretBackend,
   SecretRecipient,
   SecretsVault,
 } from "@/ipc/orpc-bindings";
@@ -149,8 +150,9 @@ export function SecretsManagementRoute() {
  * recipient keys that can open them, and add/detail/rotate flows that all
  * funnel through the review → darwin-rebuild check → commit sheet.
  *
- * The vault is loaded from Rust by {@link SecretsManagementRoute}. Mutating
- * flows are still local simulations until their commands are implemented.
+ * The vault is loaded from Rust by {@link SecretsManagementRoute}. The secret
+ * add flow is backend-owned; the remaining mutating flows are still
+ * local simulations until their commands are implemented.
  */
 export function SecretsManagement({
   vault,
@@ -166,11 +168,14 @@ export function SecretsManagement({
   const [extraRecipients, setExtraRecipients] = useState<SecretRecipient[]>([]);
   const [apply, setApply] = useState<ApplyRequest | null>(null);
   const [applyPhase, setApplyPhase] = useState<ApplyPhase>("review");
+  const [applyError, setApplyError] = useState<string | null>(null);
+  const [pendingSecret, setPendingSecret] = useState<{ secretId: string; value: string; backend: SecretBackend } | null>(null);
   const [prompt, setPrompt] = useState("");
   const [toast, setToast] = useState<string | null>(null);
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const buildTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const applyInFlight = useRef(false);
   useEffect(
     () => () => {
       clearTimeout(toastTimer.current);
@@ -195,10 +200,30 @@ export function SecretsManagement({
   const openApply = (request: ApplyRequest) => {
     setApply(request);
     setApplyPhase("review");
+    setApplyError(null);
   };
 
-  const runApply = () => {
+  const runApply = async () => {
+    if (applyInFlight.current) return;
     setApplyPhase("building");
+    setApplyError(null);
+    if (apply?.origin === "add" && pendingSecret) {
+      applyInFlight.current = true;
+      try {
+        const result = await client.secrets.addSecret(pendingSecret);
+        setApply((request) =>
+          request ? { ...request, commit: result.commitHash.slice(0, 7) } : request,
+        );
+        setPendingSecret(null);
+        setApplyPhase("done");
+      } catch (error) {
+        setApplyError(error instanceof Error ? error.message : "Failed to add SOPS secret");
+        setApplyPhase("review");
+      } finally {
+        applyInFlight.current = false;
+      }
+      return;
+    }
     clearTimeout(buildTimer.current);
     buildTimer.current = setTimeout(() => setApplyPhase("done"), BUILD_SIMULATION_MS);
   };
@@ -214,6 +239,12 @@ export function SecretsManagement({
     setTab(registered ? "keys" : "vault");
     setPrompt("");
     flash("Committed to your config");
+  };
+
+  const cancelApply = () => {
+    if (apply?.origin === "add") setPendingSecret(null);
+    setApplyError(null);
+    setApply(null);
   };
 
   const browse = () => setView({ kind: "browse" });
@@ -247,8 +278,7 @@ export function SecretsManagement({
             </TabsTrigger>
           </TabsList>
         </Tabs>
-        {/* TODO: the add-secret button is hidden until we implement the write flow */}
-        <Button size="sm" onClick={() => setView({ kind: "add" })} className="hidden">
+        <Button size="sm" onClick={() => setView({ kind: "add" })}>
           <Plus aria-hidden="true" />
           Add secret
         </Button>
@@ -270,7 +300,14 @@ export function SecretsManagement({
           />
         )}
         {view.kind === "add" && (
-          <AddSecretView vault={effectiveVault} onSubmit={openApply} onBack={browse} />
+          <AddSecretView
+            vault={effectiveVault}
+            onSubmit={(request, secret) => {
+              setPendingSecret(secret);
+              openApply(request);
+            }}
+            onBack={browse}
+          />
         )}
         {view.kind === "detail" && selectedSecret && (
           <SecretDetailView
@@ -332,9 +369,10 @@ export function SecretsManagement({
         <ApplySheet
           request={apply}
           phase={applyPhase}
-          onCancel={() => setApply(null)}
+          onCancel={cancelApply}
           onApply={runApply}
           onDone={finishApply}
+          error={applyError}
         />
       )}
     </div>

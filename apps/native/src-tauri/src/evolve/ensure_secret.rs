@@ -1,5 +1,5 @@
 use crate::evolve::age::ensure_age_key;
-use crate::evolve::file_ops::join_in_dir;
+use crate::evolve::file_ops::{join_in_dir, relative_path_between, repo_relative_path};
 use crate::evolve::nix_file_editor::{
     apply_semantic_edit, nix_builtins_path_meta_value, nix_expr_meta_value,
 };
@@ -9,9 +9,9 @@ use crate::evolve::sops::{
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
 
 use super::gitignore::GitignoreChecker;
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
 use serde::{Deserialize, Serialize};
-use std::path::{Component, Path, PathBuf};
+use std::path::Path;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -319,55 +319,26 @@ fn secret_path_relative_to_target_file(
     })?;
     let secret_abs = join_in_dir(base, secret_path)?;
 
-    let from = target_dir.strip_prefix(base).map_err(|_| {
-        anyhow!(
+    let from = repo_relative_path(base, target_dir).with_context(|| {
+        format!(
             "ensure_secret: target file '{}' resolved outside config root",
             target_file
         )
     })?;
-    let to = secret_abs.strip_prefix(base).map_err(|_| {
-        anyhow!(
+    let to = repo_relative_path(base, &secret_abs).with_context(|| {
+        format!(
             "ensure_secret: secret path '{}' resolved outside config root",
             secret_path
         )
     })?;
 
-    let relative = relative_path(from, to);
+    let relative = relative_path_between(&from, &to)?;
     let rendered = relative.to_string_lossy().replace('\\', "/");
 
     if rendered.starts_with("../") || rendered.starts_with("./") {
         Ok(rendered)
     } else {
         Ok(format!("./{}", rendered))
-    }
-}
-
-fn relative_path(from: &Path, to: &Path) -> PathBuf {
-    let from_components: Vec<Component<'_>> = from.components().collect();
-    let to_components: Vec<Component<'_>> = to.components().collect();
-
-    let mut common_len = 0usize;
-    while common_len < from_components.len()
-        && common_len < to_components.len()
-        && from_components[common_len] == to_components[common_len]
-    {
-        common_len += 1;
-    }
-
-    let mut relative = PathBuf::new();
-
-    for _ in common_len..from_components.len() {
-        relative.push("..");
-    }
-
-    for component in &to_components[common_len..] {
-        relative.push(component.as_os_str());
-    }
-
-    if relative.as_os_str().is_empty() {
-        PathBuf::from(".")
-    } else {
-        relative
     }
 }
 

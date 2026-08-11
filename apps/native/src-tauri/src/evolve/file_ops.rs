@@ -24,6 +24,64 @@ pub(crate) fn join_in_dir(base: &Path, rel: &str) -> anyhow::Result<PathBuf> {
     Ok(base.join(normalized))
 }
 
+/// Return `path` relative to a repository root.
+pub(crate) fn repo_relative_path(repo_root: &Path, path: &Path) -> anyhow::Result<PathBuf> {
+    path.strip_prefix(repo_root)
+        .map(Path::to_path_buf)
+        .with_context(|| {
+            format!(
+                "{} is outside repository {}",
+                path.display(),
+                repo_root.display()
+            )
+        })
+}
+
+/// Return a repository-relative path using `/` separators for Git and Nix APIs.
+pub(crate) fn repo_relative_path_string(repo_root: &Path, path: &Path) -> anyhow::Result<String> {
+    Ok(repo_relative_path(repo_root, path)?
+        .to_string_lossy()
+        .replace('\\', "/"))
+}
+
+/// Compute a lexical path from directory `from` to `to`.
+///
+/// Both inputs must be either relative paths or absolute paths on the same
+/// root. Parent components are rejected because callers should normalize
+/// scoped paths before calculating a relative reference.
+pub(crate) fn relative_path_between(from: &Path, to: &Path) -> anyhow::Result<PathBuf> {
+    if from.is_absolute() != to.is_absolute() {
+        anyhow::bail!("cannot relativize an absolute path against a relative path");
+    }
+
+    let from_components = from.components().collect::<Vec<_>>();
+    let to_components = to.components().collect::<Vec<_>>();
+    let common = from_components
+        .iter()
+        .zip(&to_components)
+        .take_while(|(left, right)| left == right)
+        .count();
+    if from_components[common..]
+        .iter()
+        .chain(&to_components[common..])
+        .any(|component| !matches!(component, std::path::Component::Normal(_)))
+    {
+        anyhow::bail!("cannot relativize paths with different roots or parent components");
+    }
+
+    let mut relative = PathBuf::new();
+    for _ in common..from_components.len() {
+        relative.push("..");
+    }
+    for component in &to_components[common..] {
+        relative.push(component.as_os_str());
+    }
+    if relative.as_os_str().is_empty() {
+        relative.push(".");
+    }
+    Ok(relative)
+}
+
 /// Canonicalize and validate a path exists under `base`.
 pub(crate) fn resolve_existing_path_in_dir(base: &Path, rel: &str) -> anyhow::Result<PathBuf> {
     let full_path = join_in_dir(base, rel)?;
@@ -465,10 +523,46 @@ fn reject_gitignored_edit_path(
 
 #[cfg(test)]
 mod tests {
-    use super::{apply_file_edits, rewrite_existing_file_in_dir};
+    use super::{
+        apply_file_edits, relative_path_between, repo_relative_path, repo_relative_path_string,
+        rewrite_existing_file_in_dir,
+    };
     use crate::evolve::gitignore::GitignoreChecker;
     use crate::shared_types::FileEdit;
-    use std::fs;
+    use std::{fs, path::Path};
+
+    #[test]
+    fn repository_path_helpers_share_consistent_relative_semantics() {
+        let root = Path::new("/config");
+        let file = Path::new("/config/modules/darwin/sops-secrets.nix");
+        assert_eq!(
+            repo_relative_path(root, file).expect("make repository-relative"),
+            Path::new("modules/darwin/sops-secrets.nix")
+        );
+        assert_eq!(
+            repo_relative_path_string(root, file).expect("render repository-relative"),
+            "modules/darwin/sops-secrets.nix"
+        );
+        assert_eq!(
+            relative_path_between(
+                Path::new("modules/darwin"),
+                Path::new("secrets/secrets.yaml")
+            )
+            .expect("compute relative path"),
+            Path::new("../../secrets/secrets.yaml")
+        );
+        assert_eq!(
+            relative_path_between(Path::new("modules"), Path::new("modules"))
+                .expect("compute identity path"),
+            Path::new(".")
+        );
+    }
+
+    #[test]
+    fn repository_path_helpers_reject_incompatible_paths() {
+        assert!(repo_relative_path(Path::new("/config"), Path::new("/other/file.nix")).is_err());
+        assert!(relative_path_between(Path::new("relative"), Path::new("/absolute")).is_err());
+    }
 
     #[test]
     fn empty_search_overwrites_existing_file() {

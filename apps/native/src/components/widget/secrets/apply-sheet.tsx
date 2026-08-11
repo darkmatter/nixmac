@@ -36,12 +36,14 @@ export function ApplySheet({
   onCancel,
   onApply,
   onDone,
+  error,
 }: {
   request: ApplyRequest;
   phase: ApplyPhase;
   onCancel: () => void;
   onApply: () => void;
   onDone: () => void;
+  error?: string | null;
 }) {
   return (
     /* backdrop click-to-dismiss mirrors the app's overlay pattern */
@@ -115,7 +117,7 @@ export function ApplySheet({
             <div className="flex items-center justify-between gap-3 pt-0.5">
               <span className="inline-flex items-center gap-1.5 text-muted-foreground text-xs">
                 <Shield className="size-3.5" aria-hidden="true" />
-                Encrypted with age, then verified with darwin-rebuild before anything is applied.
+                Encrypted with SOPS, then verified with darwin-rebuild before anything is committed.
               </span>
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm" onClick={onCancel}>
@@ -127,6 +129,11 @@ export function ApplySheet({
                 </ButtonGlow>
               </div>
             </div>
+            {error && (
+              <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-destructive text-xs">
+                {error}
+              </p>
+            )}
           </div>
         )}
 
@@ -136,7 +143,7 @@ export function ApplySheet({
             <div className="text-center">
               <div className="font-semibold text-[15px]">Applying changes</div>
               <div className="mt-1 text-[13px] text-muted-foreground">
-                Encrypting with age · running{" "}
+                Encrypting with SOPS · running{" "}
                 <code className="font-mono text-foreground">darwin-rebuild check</code>
               </div>
             </div>
