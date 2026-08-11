@@ -47,10 +47,12 @@ fn decrypt_agenix_secret(
         .next()
         .ok_or_else(|| format!("Secret declaration '{secret_id}' does not exist"))?;
     let secret_file_path = resolve_secret_file_path(config_dir, &secret.file)?;
-    let identity_paths = load_secret_identities(host_attr, config_dir)?.agenix_identity_paths;
+    let identity_paths = readable_agenix_identity_paths(
+        load_secret_identities(host_attr, config_dir)?.agenix_identity_paths,
+    );
     if identity_paths.is_empty() {
         return Err(format!(
-            "Agenix secret '{secret_id}' has no configured age.identityPaths"
+            "Agenix secret '{secret_id}' has no readable age.identityPaths"
         ));
     }
     let output = age_decrypt_command(config_dir, &secret_file_path, &identity_paths)
@@ -66,6 +68,15 @@ fn decrypt_agenix_secret(
     }
 
     String::from_utf8(output.stdout).map_err(|e| format!("age returned invalid UTF-8: {e}"))
+}
+
+/// Keep only identity files that age can attempt to read. A single missing or
+/// unreadable `--identity` makes age fail without trying the remaining files.
+fn readable_agenix_identity_paths(identity_paths: Vec<String>) -> Vec<String> {
+    identity_paths
+        .into_iter()
+        .filter(|identity_path| std::fs::File::open(identity_path).is_ok())
+        .collect()
 }
 
 /// Decrypts a SOPS secret from the configured repo, returning its plaintext value.
@@ -348,7 +359,8 @@ fn secret(
 #[cfg(test)]
 mod tests {
     use super::{
-        age_decrypt_command, resolve_secret_file_path, sops_decrypt_command, sops_extract_path,
+        age_decrypt_command, readable_agenix_identity_paths, resolve_secret_file_path,
+        sops_decrypt_command, sops_extract_path,
     };
     use crate::shared_types::{
         DecryptionIdentity, DecryptionIdentityKind, DecryptionIdentityLocality,
@@ -431,14 +443,23 @@ mod tests {
     }
 
     #[test]
-    fn decrypt_invokes_age_with_all_configured_agenix_identities() {
+    fn decrypt_invokes_age_with_readable_agenix_identities_only() {
+        let identities = TempDir::new().expect("create identities dir");
+        let first_identity = identities.path().join("host key");
+        let missing_identity = identities.path().join("missing key");
+        let second_identity = identities.path().join("age keys.txt");
+        fs::write(&first_identity, "AGE-SECRET-KEY-1TEST").expect("write first identity");
+        fs::write(&second_identity, "AGE-SECRET-KEY-1TEST").expect("write second identity");
+
+        let identity_paths = readable_agenix_identity_paths(vec![
+            first_identity.to_string_lossy().into_owned(),
+            missing_identity.to_string_lossy().into_owned(),
+            second_identity.to_string_lossy().into_owned(),
+        ]);
         let command = age_decrypt_command(
             "/tmp/config",
             Path::new("/tmp/a secret.age"),
-            &[
-                "/etc/ssh/ssh_host_ed25519_key".to_string(),
-                "/Users/test/.config/age/keys.txt".to_string(),
-            ],
+            &identity_paths,
         );
         let args: Vec<&OsStr> = command.get_args().collect();
 
@@ -451,9 +472,9 @@ mod tests {
                 OsStr::new("age"),
                 OsStr::new("--decrypt"),
                 OsStr::new("--identity"),
-                OsStr::new("/etc/ssh/ssh_host_ed25519_key"),
+                first_identity.as_os_str(),
                 OsStr::new("--identity"),
-                OsStr::new("/Users/test/.config/age/keys.txt"),
+                second_identity.as_os_str(),
                 OsStr::new("/tmp/a secret.age"),
             ]
         );
