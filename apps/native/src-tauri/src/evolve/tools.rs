@@ -439,7 +439,7 @@ mod tests {
             .add_path(Path::new("secret.txt"))
             .expect("track secret file");
         index.write().expect("write git index");
-        let gitignore_matcher = GitignoreChecker::new(tmp.path()).expect("load matcher");
+        let nixmac_ignore_matcher = NixmacIgnoreChecker::new(tmp.path()).expect("load matcher");
 
         let result = execute_tool(
             tmp.path(),
@@ -448,8 +448,8 @@ mod tests {
             "list_files",
             &json!({ "pattern": "**/*.txt" }),
             false,
-            gitignore_matcher.as_ref(),
             None,
+            nixmac_ignore_matcher.as_ref(),
             None,
         )
         .expect("list_files should succeed");
@@ -460,6 +460,34 @@ mod tests {
 
         assert!(output.contains("visible.txt"), "output: {output}");
         assert!(!output.contains("secret.txt"), "output: {output}");
+    }
+
+    #[test]
+    fn read_file_rejects_nixmac_ignored_files() {
+        let tmp = tempdir().expect("tempdir");
+        git2::Repository::init(tmp.path()).expect("init git repo");
+        fs::write(tmp.path().join(".nixmacignore"), "secret.txt\n").expect("write .nixmacignore");
+        fs::write(tmp.path().join("visible.txt"), "visible").expect("write visible file");
+        fs::write(tmp.path().join("secret.txt"), "secret").expect("write secret file");
+        let nixmac_ignore_matcher = NixmacIgnoreChecker::new(tmp.path()).expect("load matcher");
+
+        let result = execute_tool(
+            tmp.path(),
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "read_file",
+            &json!({ "path": "secret.txt" }),
+            false,
+            None,
+            nixmac_ignore_matcher.as_ref(),
+            None,
+        );
+
+        let err = result.expect_err("ignored file should be rejected");
+        assert!(
+            err.to_string().contains("ignored by .nixmac"),
+            "unexpected error: {err:#}"
+        );
     }
 
     #[test]

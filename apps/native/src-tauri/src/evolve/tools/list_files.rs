@@ -7,7 +7,6 @@ use std::path::Path;
 
 use crate::evolve::file_ops::{ensure_path_under_base, join_in_dir};
 use crate::evolve::messages::Tool;
-use crate::evolve::nixmac_ignore::NixmacIgnoreChecker;
 
 use super::{ToolCtx, ToolResult};
 
@@ -57,7 +56,6 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
         .gitignore_matcher
         .map(|checker| checker.visible_files())
         .transpose()?;
-    let nixmac_ignore = NixmacIgnoreChecker::new(repo_root)?;
 
     let glob =
         CompiledWalkGlob::new([&pattern]).map_err(|e| anyhow!("Invalid glob pattern: {}", e))?;
@@ -84,9 +82,8 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
         }
 
         let rel = Path::new(&entry.path);
-        if nixmac_ignore
-            .as_ref()
-            .is_some_and(|checker| checker.is_ignored(rel, false))
+        if let Some(nixmac_ignore) = &ctx.nixmac_ignore_matcher
+            && nixmac_ignore.is_ignored(rel, false)
         {
             continue;
         }

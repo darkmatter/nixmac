@@ -62,6 +62,16 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
         ));
     }
 
+    if let Some(nixmac_ignore) = &ctx.nixmac_ignore_matcher
+        && nixmac_ignore.is_ignored(&normalized_rel, false)
+    {
+        return Err(anyhow!(
+            "read_file: '{}' is ignored by .nixmac in git repository at '{}'",
+            path,
+            ctx.repo_root.display()
+        ));
+    }
+
     let full_path = resolve_existing_path_in_dir(ctx.repo_root, path)?;
     info!("Reading file: {}", full_path.display());
     let content = std::fs::read_to_string(&full_path)
