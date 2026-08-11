@@ -528,7 +528,7 @@ fn find_sops_declaration_file(base: &Path) -> anyhow::Result<PathBuf> {
     }
 }
 
-/// Declares a SOPS secret in the nix-darwin module, creating the module if it does not exist.
+/// Declares a SOPS secret in the existing nix-darwin module identified by `declaration_file`.
 fn declare_sops_secret(
     base: &Path,
     declaration_file: &Path,

@@ -98,7 +98,7 @@ export function SecretDetailView({
   };
 
   const onDelete = async () => {
-    if (isDeleting) return;
+    if (capability === "unavailable" || isDeleting) return;
     setIsDeleting(true);
     setDeleteError(null);
     try {
@@ -282,6 +282,7 @@ export function SecretDetailView({
           variant="ghost"
           size="sm"
           className="text-destructive"
+          disabled={capability === "unavailable" || isDeleting}
           onClick={() => {
             setDeleteError(null);
             setDeleteOpen(true);
@@ -314,7 +315,7 @@ export function SecretDetailView({
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={isDeleting}
+              disabled={capability === "unavailable" || isDeleting}
               onClick={(event) => {
                 event.preventDefault();
                 void onDelete();
