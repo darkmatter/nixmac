@@ -1,5 +1,6 @@
 use crate::{
     secrets::{
+        identities::load_secret_identities,
         recipients::{
             apply_recipients_to_secrets_with_identities, load_recipients,
             recipient_has_local_identity,
@@ -21,37 +22,68 @@ pub fn decrypt_secret(
     host_attr: &str,
     config_dir: &str,
     secret_id: &str,
+    backend: SecretBackend,
 ) -> Result<String, String> {
-    log::info!("Decrypting secret declaration {secret_id} from config dir {config_dir}");
+    log::info!(
+        "Decrypting secret declaration {secret_id} of type {backend:?} from config dir {config_dir}"
+    );
+    match backend {
+        SecretBackend::Sops => decrypt_sops_secret(host_attr, config_dir, secret_id),
+        SecretBackend::Agenix => decrypt_agenix_secret(host_attr, config_dir, secret_id),
+    }
+}
 
-    let mut matches = load_sops_secrets(host_attr, config_dir)?
+/// Decrypts an agenix secret from the configured repo, returning its plaintext value.
+/// Use this carefully, as it exposes sensitive data.
+fn decrypt_agenix_secret(
+    host_attr: &str,
+    config_dir: &str,
+    secret_id: &str,
+) -> Result<String, String> {
+    let mut matches = load_agenix_secrets(host_attr, config_dir)?
         .into_iter()
-        .chain(load_agenix_secrets(host_attr, config_dir)?)
         .filter(|secret| secret.id == secret_id);
     let secret = matches
         .next()
         .ok_or_else(|| format!("Secret declaration '{secret_id}' does not exist"))?;
-    if matches.next().is_some() {
-        // TODO(agenix-read): Make the reveal RPC backend-qualified (or give
-        // entries opaque backend-qualified ids) so SOPS and agenix declarations
-        // with the same name can both be addressed unambiguously.
+    let secret_file_path = resolve_secret_file_path(config_dir, &secret.file)?;
+    let identity_paths = load_secret_identities(host_attr, config_dir)?.agenix_identity_paths;
+    if identity_paths.is_empty() {
         return Err(format!(
-            "Secret declaration '{secret_id}' is ambiguous across backends"
+            "Agenix secret '{secret_id}' has no configured age.identityPaths"
+        ));
+    }
+    let output = age_decrypt_command(config_dir, &secret_file_path, &identity_paths)
+        .output()
+        .map_err(|e| format!("Failed to execute age command: {e}"))?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "age command failed with status {}: {}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
         ));
     }
 
+    String::from_utf8(output.stdout).map_err(|e| format!("age returned invalid UTF-8: {e}"))
+}
+
+/// Decrypts a SOPS secret from the configured repo, returning its plaintext value.
+/// Use this carefully, as it exposes sensitive data.
+fn decrypt_sops_secret(
+    host_attr: &str,
+    config_dir: &str,
+    secret_id: &str,
+) -> Result<String, String> {
+    let mut matches = load_sops_secrets(host_attr, config_dir)?
+        .into_iter()
+        .filter(|secret| secret.id == secret_id);
+    let secret = matches
+        .next()
+        .ok_or_else(|| format!("Secret declaration '{secret_id}' does not exist"))?;
+
     let secret_file_path = resolve_secret_file_path(config_dir, &secret.file)?;
 
-    if secret.backend != SecretBackend::Sops {
-        // TODO(agenix-read): Resolve the repository's pinned agenix CLI and
-        // classic rules file, evaluate `cfg.age.identityPaths`, and pass the
-        // available identities explicitly with `--identity` while decrypting
-        // this file to stdout with `agenix --decrypt`. Keep plaintext in the
-        // existing explicit reveal response only: never command arguments,
-        // logs, diffs, or temporary files. Define whether non-UTF-8 output is
-        // supported before returning through this String-valued RPC.
-        return Err("Decrypting Agenix secrets is not supported yet".to_string());
-    }
     let sops_key = secret
         .sops_key
         .as_deref()
@@ -61,7 +93,7 @@ pub fn decrypt_secret(
     // vault's decryption capability. Keep a bare SOPS attempt as a fallback
     // for identity mechanisms we cannot currently inventory (for example
     // PGP, KMS, agents, and plugins).
-    let (_, decryption_identities) = load_recipients(host_attr, config_dir)?;
+    let (_, decryption_identities, _) = load_recipients(host_attr, config_dir, &[])?;
     let attempts = decryption_identities
         .iter()
         .filter(|identity| identity.available)
@@ -83,6 +115,21 @@ pub fn decrypt_secret(
         ));
     }
     Err(last_error.unwrap_or_else(|| "sops decryption was not attempted".to_string()))
+}
+
+/// Decrypts a secret from the configured repo using age executed via nix, returning its plaintext value.
+fn age_decrypt_command(
+    config_dir: &str,
+    secret_file_path: &Path,
+    identity_paths: &[String],
+) -> std::process::Command {
+    let mut command = nix_command(config_dir);
+    command.args(["shell", "nixpkgs#age", "-c", "age", "--decrypt"]);
+    for identity_path in identity_paths {
+        command.args(["--identity", identity_path]);
+    }
+    command.arg(secret_file_path);
+    command
 }
 
 /// Construct a nix shell command to decrypt a SOPS secret file using the given key.
@@ -140,12 +187,14 @@ pub fn load_secrets_vault(host_attr: &str, config_dir: &str) -> Result<SecretsVa
     let mut entries = load_sops_secrets(host_attr, config_dir)?;
     entries.extend(load_agenix_secrets(host_attr, config_dir)?);
 
-    let (recipients, decryption_identities) = load_recipients(host_attr, config_dir)?;
+    let (recipients, decryption_identities, agenix_inventory) =
+        load_recipients(host_attr, config_dir, &entries)?;
     apply_recipients_to_secrets_with_identities(
         config_dir,
         &mut entries,
         &recipients,
         &decryption_identities,
+        &agenix_inventory,
     )?;
     let primary_decryption_identity_id = recipients
         .iter()
@@ -298,7 +347,9 @@ fn secret(
 
 #[cfg(test)]
 mod tests {
-    use super::{resolve_secret_file_path, sops_decrypt_command, sops_extract_path};
+    use super::{
+        age_decrypt_command, resolve_secret_file_path, sops_decrypt_command, sops_extract_path,
+    };
     use crate::shared_types::{
         DecryptionIdentity, DecryptionIdentityKind, DecryptionIdentityLocality,
     };
@@ -377,6 +428,35 @@ mod tests {
 
         assert!(!envs.contains_key(OsStr::new("SOPS_AGE_KEY_FILE")));
         assert!(!envs.contains_key(OsStr::new("SOPS_AGE_SSH_PRIVATE_KEY_FILE")));
+    }
+
+    #[test]
+    fn decrypt_invokes_age_with_all_configured_agenix_identities() {
+        let command = age_decrypt_command(
+            "/tmp/config",
+            Path::new("/tmp/a secret.age"),
+            &[
+                "/etc/ssh/ssh_host_ed25519_key".to_string(),
+                "/Users/test/.config/age/keys.txt".to_string(),
+            ],
+        );
+        let args: Vec<&OsStr> = command.get_args().collect();
+
+        assert_eq!(
+            args,
+            [
+                OsStr::new("shell"),
+                OsStr::new("nixpkgs#age"),
+                OsStr::new("-c"),
+                OsStr::new("age"),
+                OsStr::new("--decrypt"),
+                OsStr::new("--identity"),
+                OsStr::new("/etc/ssh/ssh_host_ed25519_key"),
+                OsStr::new("--identity"),
+                OsStr::new("/Users/test/.config/age/keys.txt"),
+                OsStr::new("/tmp/a secret.age"),
+            ]
+        );
     }
 
     #[test]

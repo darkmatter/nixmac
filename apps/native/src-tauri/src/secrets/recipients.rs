@@ -48,13 +48,27 @@ struct SopsPgpRecipient {
 }
 
 /// A mapping from an encrypted file to the public recipients recorded for it.
-type RecipientInventory = HashMap<PathBuf, HashSet<RecipientIdentity>>;
+pub(crate) type RecipientInventory = HashMap<PathBuf, HashSet<RecipientIdentity>>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ConfigRecipient {
     public_key: String,
     anchor: Option<String>,
     registration_file: String,
+    backend: SecretBackend,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AgenixRule {
+    #[serde(default)]
+    public_keys: Vec<String>,
+}
+
+#[derive(Debug, Default)]
+struct AgenixRules {
+    inventory: RecipientInventory,
+    recipients: Vec<ConfigRecipient>,
 }
 
 /// Populate each secret with public recipient metadata and local capability.
@@ -64,7 +78,13 @@ pub(crate) fn apply_recipients_to_secrets(
     entries: &mut [SecretEntry],
     recipients: &[SecretRecipient],
 ) -> Result<(), String> {
-    apply_recipients_to_secrets_with_identities(config_dir, entries, recipients, &[])
+    apply_recipients_to_secrets_with_identities(
+        config_dir,
+        entries,
+        recipients,
+        &[],
+        &RecipientInventory::new(),
+    )
 }
 
 /// Populate each secret with public recipient metadata and local capability, including decryption identities.
@@ -73,21 +93,14 @@ pub(crate) fn apply_recipients_to_secrets_with_identities(
     entries: &mut [SecretEntry],
     recipients: &[SecretRecipient],
     decryption_identities: &[DecryptionIdentity],
+    agenix_inventory: &RecipientInventory,
 ) -> Result<(), String> {
-    // TODO(agenix-read): Locate the classic agenix rules file through an
-    // explicit future setting (the equivalent of agenix's `RULES`) or a
-    // conventional `secrets.nix` fallback. Evaluate it with Nix rather than
-    // parsing Nix source, then map each rule's `publicKeys` to the matching
-    // evaluated `cfg.age.secrets.<name>.file`. Feed that map into the existing
-    // `RecipientInventory` path below; until then agenix recipient metadata and
-    // local capability intentionally remain unresolved.
-    let agenix_inventory = RecipientInventory::new();
     apply_recipients_to_secrets_with_and_identities(
         config_dir,
         entries,
         recipients,
         decryption_identities,
-        &agenix_inventory,
+        agenix_inventory,
         parse_sops_recipient_metadata,
     )
 }
@@ -167,7 +180,21 @@ where
                 }
                 sops_cache.get(&source_file).cloned().flatten()
             }
-            SecretBackend::Agenix => agenix_inventory.get(&source_file).cloned(),
+            // A missing classic-rules entry is not proof that this process
+            // cannot decrypt the file. Preserve None so the UI reports
+            // unresolved recipients and Unknown capability while still
+            // allowing an explicit reveal attempt with age.identityPaths.
+            SecretBackend::Agenix => {
+                let encrypted_for = agenix_inventory.get(&source_file).cloned();
+                if encrypted_for.is_none() {
+                    log::debug!(
+                        "No classic agenix rules metadata matched secret '{}' at {}; recipients and capability remain unresolved",
+                        entry.id,
+                        source_file.display()
+                    );
+                }
+                encrypted_for
+            }
         };
         entry.public_recipients_resolved = encrypted_for.is_some();
         let encrypted_for = encrypted_for.unwrap_or_default();
@@ -196,6 +223,16 @@ where
         } else {
             DecryptionCapability::Available
         };
+        if entry.backend == SecretBackend::Agenix {
+            log::debug!(
+                "Agenix secret '{}': metadata_resolved={}, public_recipients={}, matched_recipient_ids={}, capability={:?}",
+                entry.id,
+                entry.public_recipients_resolved,
+                entry.public_recipients.len(),
+                entry.recipient_ids.len(),
+                entry.decryption_capability
+            );
+        }
 
         let unknown_count = encrypted_for.difference(&all_known_identities).count();
         if unknown_count > 0 {
@@ -305,12 +342,27 @@ fn parse_sops_recipient_metadata(source_file: &Path) -> Result<HashSet<Recipient
     Ok(identities)
 }
 
-/// Load the recipients from the nix config repo by executing a nix eval to evaluate the identities used by SOPS.
+/// Load configured SOPS and agenix recipients plus locally available identities.
 pub(crate) fn load_recipients(
     host_attr: &str,
     config_dir: &str,
-) -> Result<(Vec<SecretRecipient>, Vec<DecryptionIdentity>), String> {
+    secret_entries: &[SecretEntry],
+) -> Result<
+    (
+        Vec<SecretRecipient>,
+        Vec<DecryptionIdentity>,
+        RecipientInventory,
+    ),
+    String,
+> {
     let identities = load_secret_identities(host_attr, config_dir)?;
+    log::debug!(
+        "Evaluated secret identities for host {host_attr}: host_keys={}, sops_ssh_paths={}, agenix_identity_paths={}, sops_age_key_file={}",
+        identities.host_keys.len(),
+        identities.other_sops_identities.len(),
+        identities.agenix_identity_paths.len(),
+        identities.age_key_file.is_some()
+    );
     let (local_recipients, mut decryption_identities) = materialize_recipients(
         host_attr,
         &identities,
@@ -323,16 +375,21 @@ pub(crate) fn load_recipients(
         identities.age_key_file.as_deref(),
         |key_file| age_key_file_public_keys(key_file, config_dir),
     ));
-    let config_recipients = load_sops_config_recipients(Path::new(config_dir))?;
-
-    // TODO(agenix-read): Merge public recipients found in the evaluated agenix
-    // rules inventory here as well. Mark them in use and attach an
-    // `RecipientRegistration { backend: Agenix, file: <rules path> }`, while
-    // deduplicating them against local-identity and SOPS recipients by all
-    // known public identity aliases rather than only the displayed public key.
+    log::debug!(
+        "Materialized {} local decryption identity source(s), {} currently available",
+        decryption_identities.len(),
+        decryption_identities
+            .iter()
+            .filter(|identity| identity.available)
+            .count()
+    );
+    let mut config_recipients = load_sops_config_recipients(Path::new(config_dir))?;
+    let agenix_rules = load_agenix_rules(Path::new(config_dir), secret_entries)?;
+    config_recipients.extend(agenix_rules.recipients);
     Ok((
         merge_config_recipients(local_recipients, config_recipients, &decryption_identities),
         decryption_identities,
+        agenix_rules.inventory,
     ))
 }
 
@@ -395,6 +452,7 @@ fn parse_sops_config_recipients(source: &str) -> Result<Vec<ConfigRecipient>, St
                 public_key: canonical,
                 // The loader replaces this with the actual config filename.
                 registration_file: ".sops.yaml".to_string(),
+                backend: SecretBackend::Sops,
             })
         })
         .collect())
@@ -454,6 +512,240 @@ fn canonical_public_identity(value: &str) -> Option<String> {
     }
 }
 
+/// Evaluate the "classic" agenix rules file and build both the per-secret
+/// recipient inventory and repository-level recipient registrations.
+/// Not every valid agenix configuration has a classic rules file: secrets may
+/// be declared directly in modules or managed by tools such as agenix-rekey.
+/// When no rules file is discoverable, return an empty inventory. The secrets
+/// remain visible and decryptable through `age.identityPaths`, while their
+/// public recipients and local capability remain unresolved (`Unknown`).
+///
+/// Supported locations:
+/// 1. $RULES environment variable, if present and non-empty. Absolute paths are used as-is; relative paths are resolved against the config dir.
+/// 2. secrets.nix in the config dir, if present.
+/// 3. secrets/secrets.nix in the config dir, if present.
+///
+/// Any other location is ignored. If multiple locations are present, the first one in the above order is used.
+fn load_agenix_rules(
+    config_dir: &Path,
+    secret_entries: &[SecretEntry],
+) -> Result<AgenixRules, String> {
+    // Match classic agenix behavior by honoring RULES first, then try the two
+    // conventional repository locations supported by nixmac, namely "secrets.nix" and "secrets/secrets.nix".
+    // An explicitly configured RULES path is authoritative: if it is missing or invalid,
+    // report the configuration error rather than silently falling back.
+    let rules_override = std::env::var_os("RULES").filter(|value| !value.is_empty());
+    log::debug!(
+        "Discovering classic agenix rules in {}: RULES override present={}",
+        config_dir.display(),
+        rules_override.is_some()
+    );
+    let rules_path = rules_override
+        .map(PathBuf::from)
+        .map(|path| {
+            if path.is_absolute() {
+                path
+            } else {
+                config_dir.join(path)
+            }
+        })
+        .or_else(|| {
+            ["secrets.nix", "secrets/secrets.nix"]
+                .into_iter()
+                .map(|path| config_dir.join(path))
+                .find(|path| path.is_file())
+        });
+    let Some(rules_path) = rules_path else {
+        log::debug!(
+            "No classic agenix rules file found at secrets.nix or secrets/secrets.nix; recipient metadata will remain unresolved"
+        );
+        return Ok(AgenixRules::default());
+    };
+    let rules_path = rules_path.canonicalize().map_err(|error| {
+        format!(
+            "Failed to resolve agenix rules file {}: {error}",
+            rules_path.display()
+        )
+    })?;
+    if !rules_path.is_file() {
+        return Err(format!(
+            "Agenix rules path {} is not a regular file",
+            rules_path.display()
+        ));
+    }
+    log::debug!(
+        "Evaluating classic agenix rules from {} against {} agenix secret declaration(s)",
+        rules_path.display(),
+        secret_entries
+            .iter()
+            .filter(|entry| entry.backend == SecretBackend::Agenix)
+            .count()
+    );
+
+    let output = nix_command(config_dir.to_string_lossy().as_ref())
+        .args([
+            "eval",
+            "--json",
+            "--file",
+            rules_path.to_string_lossy().as_ref(),
+            "--apply",
+            r#"rules: builtins.mapAttrs (_: rule: {
+                publicKeys = map toString (rule.publicKeys or []);
+            }) rules"#,
+        ])
+        .output()
+        .map_err(|error| format!("Failed to evaluate agenix rules: {error}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "Agenix rules evaluation failed with status {}: {}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    let rules: HashMap<String, AgenixRule> = serde_json::from_slice(&output.stdout)
+        .map_err(|error| format!("Failed to parse evaluated agenix rules: {error}"))?;
+    log::debug!(
+        "Evaluated {} classic agenix rule entr{}",
+        rules.len(),
+        if rules.len() == 1 { "y" } else { "ies" }
+    );
+    Ok(build_agenix_rules(
+        config_dir,
+        &rules_path,
+        rules,
+        secret_entries,
+    ))
+}
+
+/// Build the per-secret recipient inventory and repository-level recipient registrations from the evaluated agenix rules.
+fn build_agenix_rules(
+    config_dir: &Path,
+    rules_path: &Path,
+    rules: HashMap<String, AgenixRule>,
+    secret_entries: &[SecretEntry],
+) -> AgenixRules {
+    let registration_file = rules_path
+        .strip_prefix(config_dir)
+        .unwrap_or(rules_path)
+        .to_string_lossy()
+        .into_owned();
+    let rules_dir = rules_path.parent().unwrap_or(config_dir);
+    let mut inventory = RecipientInventory::new();
+    let mut recipients = Vec::new();
+    let mut registered = HashSet::new();
+
+    for (secret_file, rule) in rules {
+        let declared_recipient_count = rule.public_keys.len();
+        let encrypted_for: HashSet<RecipientIdentity> = rule
+            .public_keys
+            .into_iter()
+            .filter_map(|public_key| normalize_age_or_ssh_identity(&public_key))
+            .collect();
+        log::debug!(
+            "Agenix rule '{secret_file}': declared_recipients={declared_recipient_count}, normalized_recipients={}",
+            encrypted_for.len()
+        );
+        for identity in &encrypted_for {
+            let canonical = match identity {
+                RecipientIdentity::Age(value) | RecipientIdentity::Ssh(value) => value.clone(),
+                RecipientIdentity::Pgp(_) => unreachable!(),
+            };
+            if registered.insert(canonical.clone()) {
+                recipients.push(ConfigRecipient {
+                    public_key: canonical,
+                    anchor: None,
+                    registration_file: registration_file.clone(),
+                    backend: SecretBackend::Agenix,
+                });
+            }
+        }
+
+        let secret_path = Path::new(&secret_file);
+        let candidates = if secret_path.is_absolute() {
+            vec![secret_path.to_path_buf()]
+        } else {
+            vec![rules_dir.join(secret_path), config_dir.join(secret_path)]
+        };
+        let mut matched = false;
+        let mut direct_match_count = 0;
+        for candidate in candidates {
+            if let Ok(path) = candidate.canonicalize()
+                && path.is_file()
+            {
+                inventory
+                    .entry(path)
+                    .or_default()
+                    .extend(encrypted_for.iter().cloned());
+                matched = true;
+                direct_match_count += 1;
+            }
+        }
+        let exact_matching_entries: Vec<&SecretEntry> = secret_entries
+            .iter()
+            .filter(|entry| {
+                entry.backend == SecretBackend::Agenix
+                    && Path::new(&entry.file).ends_with(&secret_file)
+            })
+            .collect();
+        // builtins.path commonly produces /nix/store/<hash>-<basename>, which
+        // cannot retain the rules file's directory suffix. Fall back to a
+        // unique string-basename match, but never guess when multiple agenix
+        // declarations share that basename.
+        let basename = Path::new(&secret_file)
+            .file_name()
+            .and_then(|name| name.to_str());
+        let basename_matching_entries: Vec<&SecretEntry> = if exact_matching_entries.is_empty() {
+            basename
+                .map(|basename| {
+                    secret_entries
+                        .iter()
+                        .filter(|entry| {
+                            entry.backend == SecretBackend::Agenix && entry.file.ends_with(basename)
+                        })
+                        .collect()
+                })
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+        let matching_entries = if exact_matching_entries.is_empty() {
+            &basename_matching_entries
+        } else {
+            &exact_matching_entries
+        };
+        log::debug!(
+            "Agenix rule '{secret_file}': repository_path_matches={direct_match_count}, evaluated_exact_matches={}, evaluated_basename_matches={}",
+            exact_matching_entries.len(),
+            basename_matching_entries.len()
+        );
+        if matching_entries.len() == 1
+            && let Ok(path) = resolve_secret_file_path(
+                config_dir.to_string_lossy().as_ref(),
+                &matching_entries[0].file,
+            )
+        {
+            inventory
+                .entry(path)
+                .or_default()
+                .extend(encrypted_for.iter().cloned());
+            matched = true;
+        } else if matching_entries.len() > 1 {
+            log::warn!(
+                "Agenix rule '{secret_file}' ambiguously matches {} evaluated secret declarations; recipient metadata remains unresolved for those declarations",
+                matching_entries.len()
+            );
+        }
+        if !matched {
+            log::warn!("Agenix rule references unresolved secret {secret_file}");
+        }
+    }
+
+    AgenixRules {
+        inventory,
+        recipients,
+    }
+}
+
 /// Parse the SOPS config YAML to extract the anchor names for friendly labels.
 fn sops_anchor_names(source: &str) -> HashMap<String, String> {
     let anchor = regex::Regex::new(r"(?m)^[ \t]*-[ \t]*&([^\s\[\]{},]+)[ \t]+([^\r\n#]+)")
@@ -497,7 +789,7 @@ fn merge_config_recipients(
         }) {
             local.in_use = true;
             local.registrations.push(RecipientRegistration {
-                backend: SecretBackend::Sops,
+                backend: config_recipient.backend,
                 file: config_recipient.registration_file.clone(),
             });
             continue;
@@ -508,6 +800,11 @@ fn merge_config_recipients(
             .as_deref()
             .unwrap_or(&config_recipient.public_key);
         let id = unique_recipient_id(label, &mut used_ids);
+        let device = match (config_recipient.backend, config_recipient.anchor.is_some()) {
+            (SecretBackend::Sops, true) => ".sops.yaml named recipient",
+            (SecretBackend::Sops, false) => ".sops.yaml recipient",
+            (SecretBackend::Agenix, _) => "agenix rules recipient",
+        };
         local_recipients.push(
             recipient(
                 &id,
@@ -515,11 +812,7 @@ fn merge_config_recipients(
                 // An age recipient alone does not reveal whether it belongs to a
                 // host, a person, a hardware token, or something else.
                 RecipientKind::Unknown,
-                if config_recipient.anchor.is_some() {
-                    ".sops.yaml named recipient"
-                } else {
-                    ".sops.yaml recipient"
-                },
+                device,
                 &config_recipient.public_key,
                 "",
                 recipient_key_type(&config_recipient.public_key),
@@ -527,7 +820,7 @@ fn merge_config_recipients(
                 true,
             )
             .with_registration(RecipientRegistration {
-                backend: SecretBackend::Sops,
+                backend: config_recipient.backend,
                 file: config_recipient.registration_file,
             }),
         );
@@ -536,9 +829,9 @@ fn merge_config_recipients(
     local_recipients
 }
 
-/// Turn the evaluated SOPS SSH identity paths into public recipients.
-/// IMPORTANT: `sops.age.sshKeyPaths` contains private-key paths. Only the corresponding
-/// `.pub` files are opened here; private key material never enters the vault.
+/// Turn the evaluated SOPS and agenix identity paths into public recipients.
+/// Private identity material is only passed to age tooling; it never enters the
+/// vault response or Rust memory.
 fn materialize_recipients<Convert, ReadSshIdentity, Fingerprint, DeriveAge>(
     host_attr: &str,
     identities: &SecretIdentities,
@@ -556,18 +849,18 @@ where
     let used_host_keys: Vec<&HostKey> = identities
         .host_keys
         .iter()
-        .filter(|key| key.used_by_sops)
+        .filter(|key| key.used_by_sops || key.used_by_agenix)
         .collect();
     let mut recipients = Vec::new();
     let mut decryption_identities = Vec::new();
     let mut public_keys = HashSet::new();
     let mut recipient_ids = HashSet::new();
 
-    // 1. Materialize the host's SOPS SSH identities into age recipients.
+    // 1. Materialize the host's configured SSH identities into age recipients.
     for (index, host_key) in used_host_keys.into_iter().enumerate() {
         validate_public_key_path(&host_key.path, &host_key.public_key_path)?;
         log::debug!(
-            "Converting sops SSH host identity {} using public key {}",
+            "Converting SSH host identity {} using public key {}",
             host_key.path,
             host_key.public_key_path
         );
@@ -734,6 +1027,132 @@ where
                 label,
                 RecipientKind::User,
                 "Configured age decryption identity",
+                &public_key,
+                "",
+                RecipientKeyType::Age,
+                RecipientSource::AgeKeyFile,
+                true,
+            ));
+        }
+    }
+
+    // 4. Materialize agenix identities not already represented by the SOPS
+    // configuration. A neighboring .pub file identifies an SSH key; otherwise
+    // age-keygen handles native age identity files.
+    let mut represented_paths: HashSet<String> = decryption_identities
+        .iter()
+        .map(|identity| identity.path.clone())
+        .collect();
+    for identity_path in &identities.agenix_identity_paths {
+        if !represented_paths.insert(identity_path.clone()) {
+            log::debug!(
+                "Agenix identity path {identity_path} is already represented by another configured identity"
+            );
+            continue;
+        }
+        let path = Path::new(identity_path);
+        let available = path.is_file();
+        let public_key_path = format!("{identity_path}.pub");
+        if Path::new(&public_key_path).is_file() {
+            log::debug!(
+                "Classified agenix identity {identity_path} as SSH: available={available}, public_key_path={public_key_path}"
+            );
+            validate_public_key_path(identity_path, &public_key_path)?;
+            let age_public_key = match convert_to_age(&public_key_path) {
+                Ok(public_key) => public_key,
+                Err(error) => {
+                    log::warn!(
+                        "Could not derive a public recipient for agenix SSH identity {identity_path}: {error}"
+                    );
+                    decryption_identities.push(DecryptionIdentity {
+                        kind: DecryptionIdentityKind::SshKeyPath,
+                        locality: DecryptionIdentityLocality::Configuration,
+                        path: identity_path.clone(),
+                        available,
+                        public_keys: Vec::new(),
+                    });
+                    continue;
+                }
+            };
+            let mut identity_aliases = vec![age_public_key.clone()];
+            if let Ok(ssh_public_key) = read_ssh_identity(&public_key_path) {
+                identity_aliases.push(ssh_public_key);
+            }
+            decryption_identities.push(DecryptionIdentity {
+                kind: DecryptionIdentityKind::SshKeyPath,
+                locality: DecryptionIdentityLocality::Configuration,
+                path: identity_path.clone(),
+                available,
+                public_keys: identity_aliases,
+            });
+            log::debug!(
+                "Derived {} public identity alias(es) for agenix SSH identity {identity_path}",
+                decryption_identities
+                    .last()
+                    .map_or(0, |identity| identity.public_keys.len())
+            );
+            if public_keys.insert(age_public_key.clone()) {
+                let label = path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .filter(|name| !name.is_empty())
+                    .unwrap_or("ssh-identity");
+                let id = unique_recipient_id(label, &mut recipient_ids);
+                let key_fingerprint = fingerprint(&public_key_path)
+                    .ok()
+                    .flatten()
+                    .unwrap_or_default();
+                recipients.push(recipient(
+                    &id,
+                    label,
+                    RecipientKind::User,
+                    "Agenix SSH identity · ssh-to-age",
+                    &age_public_key,
+                    &key_fingerprint,
+                    RecipientKeyType::Age,
+                    RecipientSource::SshIdentity,
+                    true,
+                ));
+            }
+            continue;
+        }
+
+        let derived_public_keys = available
+            .then(|| derive_age(identity_path))
+            .transpose()
+            .unwrap_or_else(|error| {
+                log::warn!(
+                    "Could not derive public recipients for agenix identity {identity_path}: {error}"
+                );
+                None
+            })
+            .unwrap_or_default();
+        log::debug!(
+            "Classified agenix identity {identity_path} as an age identity file: available={available}, derived_public_recipients={}",
+            derived_public_keys.len()
+        );
+        decryption_identities.push(DecryptionIdentity {
+            kind: DecryptionIdentityKind::AgeKeyFile,
+            locality: DecryptionIdentityLocality::Configuration,
+            path: identity_path.clone(),
+            available,
+            public_keys: derived_public_keys.clone(),
+        });
+        for public_key in derived_public_keys {
+            if !public_keys.insert(public_key.clone()) {
+                continue;
+            }
+            let label = path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .filter(|name| !name.is_empty())
+                .unwrap_or("age-key-file");
+            let id = unique_recipient_id(label, &mut recipient_ids);
+            recipients.push(recipient(
+                &id,
+                label,
+                RecipientKind::User,
+                "Configured agenix decryption identity",
                 &public_key,
                 "",
                 RecipientKeyType::Age,
@@ -1032,11 +1451,11 @@ impl WithRegistration for SecretRecipient {
 #[cfg(test)]
 mod tests {
     use super::{
-        ConfigRecipient, RecipientInventory, apply_recipients_to_secrets,
+        AgenixRule, ConfigRecipient, RecipientInventory, apply_recipients_to_secrets,
         apply_recipients_to_secrets_with, apply_recipients_to_secrets_with_and_identities,
-        load_sops_config_recipients, materialize_recipients, merge_config_recipients,
-        parse_sops_config_recipients, parse_sops_recipient_metadata, recipient,
-        recipient_has_local_identity, recipient_key_type, ssh_public_key_fingerprint,
+        build_agenix_rules, load_sops_config_recipients, materialize_recipients,
+        merge_config_recipients, parse_sops_config_recipients, parse_sops_recipient_metadata,
+        recipient, recipient_has_local_identity, recipient_key_type, ssh_public_key_fingerprint,
         ssh_public_key_identity, ssh_public_key_to_age, unique_recipient_id,
     };
     use crate::{
@@ -1107,18 +1526,21 @@ mod tests {
                     public_key_path: "/etc/ssh/ssh_host_ed25519_key.pub".into(),
                     key_type: "ed25519".into(),
                     used_by_sops: true,
+                    used_by_agenix: false,
                 },
                 HostKey {
                     path: "/etc/ssh/unused".into(),
                     public_key_path: "/etc/ssh/unused.pub".into(),
                     key_type: "rsa".into(),
                     used_by_sops: false,
+                    used_by_agenix: false,
                 },
             ],
             other_sops_identities: vec![
                 "/Users/test/.ssh/id_ed25519".into(),
                 "/Users/test/work/id_ed25519".into(),
             ],
+            agenix_identity_paths: Vec::new(),
         };
         let mut converted_paths = Vec::new();
 
@@ -1192,6 +1614,7 @@ mod tests {
                 missing_public_identity.to_string_lossy().into_owned(),
                 valid_identity.to_string_lossy().into_owned(),
             ],
+            agenix_identity_paths: Vec::new(),
         };
         let mut fingerprinted_paths = Vec::new();
 
@@ -1245,8 +1668,10 @@ mod tests {
                 public_key_path: "/etc/ssh/host.pub".into(),
                 key_type: "ed25519".into(),
                 used_by_sops: true,
+                used_by_agenix: false,
             }],
             other_sops_identities: vec!["/Users/test/.ssh/same-key".into()],
+            agenix_identity_paths: Vec::new(),
         };
 
         let (recipients, _) = materialize_recipients(
@@ -1272,6 +1697,7 @@ mod tests {
             age_key_file: Some(key_file.to_string_lossy().into_owned()),
             host_keys: Vec::new(),
             other_sops_identities: Vec::new(),
+            agenix_identity_paths: Vec::new(),
         };
 
         let (recipients, local_identities) = materialize_recipients(
@@ -1304,6 +1730,115 @@ mod tests {
     }
 
     #[test]
+    fn materializes_agenix_native_and_ssh_identities() {
+        let dir = TempDir::new().expect("temp dir");
+        let age_identity = dir.path().join("keys.txt");
+        let ssh_identity = dir.path().join("id_ed25519");
+        let ssh_public = dir.path().join("id_ed25519.pub");
+        fs::write(&age_identity, "AGE-SECRET-KEY fixture").expect("write age identity");
+        fs::write(&ssh_identity, "private SSH fixture").expect("write SSH identity");
+        fs::write(&ssh_public, "ssh-ed25519 AAAAfixture").expect("write SSH public key");
+        let identities = SecretIdentities {
+            age_key_file: None,
+            host_keys: Vec::new(),
+            other_sops_identities: Vec::new(),
+            agenix_identity_paths: vec![
+                age_identity.to_string_lossy().into_owned(),
+                ssh_identity.to_string_lossy().into_owned(),
+            ],
+        };
+
+        let (recipients, decryption_identities) = materialize_recipients(
+            "test-host",
+            &identities,
+            |path| {
+                assert_eq!(path, ssh_public.to_string_lossy());
+                Ok("age1ssh".into())
+            },
+            |_path| Ok("ssh-ed25519 AAAAfixture".into()),
+            |_path| Ok(None),
+            |path| {
+                assert_eq!(path, age_identity.to_string_lossy());
+                Ok(vec!["age1native".into()])
+            },
+        )
+        .expect("materialize agenix identities");
+
+        assert_eq!(recipients.len(), 2);
+        assert_eq!(decryption_identities.len(), 2);
+        assert!(
+            recipients.iter().all(|recipient| {
+                recipient_has_local_identity(recipient, &decryption_identities)
+            })
+        );
+        assert_eq!(
+            decryption_identities[0].kind,
+            DecryptionIdentityKind::AgeKeyFile
+        );
+        assert_eq!(
+            decryption_identities[1].kind,
+            DecryptionIdentityKind::SshKeyPath
+        );
+        assert_eq!(
+            decryption_identities[1].public_keys,
+            ["age1ssh", "ssh-ed25519 AAAAfixture"]
+        );
+    }
+
+    #[test]
+    fn agenix_rules_populate_inventory_and_repository_registrations() {
+        let config = TempDir::new().expect("config dir");
+        let evaluated = TempDir::new().expect("evaluated source dir");
+        let rules_path = config.path().join("secrets.nix");
+        fs::write(&rules_path, "{}").expect("write rules placeholder");
+        // builtins.path evaluates to a hash-prefixed store basename and drops
+        // the repository directory components from the classic rule key.
+        let evaluated_secret = evaluated.path().join("bims69cd-example.age");
+        fs::write(&evaluated_secret, "age-encrypted").expect("write evaluated secret");
+        let mut entry = secret(SecretBackend::Agenix, evaluated_secret.to_string_lossy());
+        entry.id = "example".into();
+        let rules = HashMap::from([(
+            "secrets/example.age".into(),
+            AgenixRule {
+                public_keys: vec!["age1alice".into(), "ssh-ed25519 AAAAalice comment".into()],
+            },
+        )]);
+
+        let loaded = build_agenix_rules(
+            config.path(),
+            &rules_path,
+            rules,
+            std::slice::from_ref(&entry),
+        );
+        let evaluated_secret = evaluated_secret.canonicalize().unwrap();
+
+        assert_eq!(
+            loaded.inventory.get(&evaluated_secret),
+            Some(&HashSet::from([
+                RecipientIdentity::Age("age1alice".into()),
+                RecipientIdentity::Ssh("ssh-ed25519 AAAAalice".into()),
+            ]))
+        );
+        assert_eq!(loaded.recipients.len(), 2);
+        assert!(loaded.recipients.iter().all(|recipient| {
+            recipient.backend == SecretBackend::Agenix
+                && recipient.registration_file == "secrets.nix"
+        }));
+        let merged = merge_config_recipients(
+            vec![known_recipient("alice", "age1alice")],
+            loaded.recipients,
+            &[],
+        );
+        assert_eq!(
+            merged[0].registrations,
+            [RecipientRegistration {
+                backend: SecretBackend::Agenix,
+                file: "secrets.nix".into(),
+            }]
+        );
+    }
+
+    #[test]
     fn empty_identity_projection_materializes_no_recipients() {
         let (recipients, decryption_identities) = materialize_recipients(
             "test-host",
@@ -1311,6 +1846,7 @@ mod tests {
                 age_key_file: None,
                 host_keys: Vec::new(),
                 other_sops_identities: Vec::new(),
+                agenix_identity_paths: Vec::new(),
             },
             |_path| -> Result<String, String> { panic!("conversion should not run") },
             |_path| -> Result<String, String> { panic!("SSH identity read should not run") },
@@ -1335,8 +1871,10 @@ mod tests {
                 public_key_path: private_path.into(),
                 key_type: "ed25519".into(),
                 used_by_sops: true,
+                used_by_agenix: false,
             }],
             other_sops_identities: Vec::new(),
+            agenix_identity_paths: Vec::new(),
         };
 
         let error = materialize_recipients(
@@ -1421,16 +1959,19 @@ creation_rules:
                     public_key: "age1server".into(),
                     anchor: Some("build_server".into()),
                     registration_file: ".sops.yaml".into(),
+                    backend: SecretBackend::Sops,
                 },
                 ConfigRecipient {
                     public_key: "ssh-ed25519 AAAAoperator".into(),
                     anchor: Some("operator".into()),
                     registration_file: ".sops.yaml".into(),
+                    backend: SecretBackend::Sops,
                 },
                 ConfigRecipient {
                     public_key: "age1raw".into(),
                     anchor: None,
                     registration_file: ".sops.yaml".into(),
+                    backend: SecretBackend::Sops,
                 },
             ]
         );
@@ -1449,6 +1990,7 @@ creation_rules:
                 public_key: "age1alice".into(),
                 anchor: Some("alice".into()),
                 registration_file: ".sops.yaml".into(),
+                backend: SecretBackend::Sops,
             }]
         );
     }
