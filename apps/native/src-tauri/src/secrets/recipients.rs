@@ -526,6 +526,9 @@ fn canonical_public_identity(value: &str) -> Option<String> {
 /// 3. secrets/secrets.nix in the config dir, if present.
 ///
 /// Any other location is ignored. If multiple locations are present, the first one in the above order is used.
+/// An invalid explicit `$RULES` file is an error. Invalid files found only by
+/// conventional-location discovery are ignored because they may be unrelated
+/// Nix modules that happen to use the same filename.
 fn load_agenix_rules(
     config_dir: &Path,
     secret_entries: &[SecretEntry],
@@ -535,6 +538,7 @@ fn load_agenix_rules(
     // An explicitly configured RULES path is authoritative: if it is missing or invalid,
     // report the configuration error rather than silently falling back.
     let rules_override = std::env::var_os("RULES").filter(|value| !value.is_empty());
+    let explicitly_configured = rules_override.is_some();
     log::debug!(
         "Discovering classic agenix rules in {}: RULES override present={}",
         config_dir.display(),
@@ -561,6 +565,18 @@ fn load_agenix_rules(
         );
         return Ok(AgenixRules::default());
     };
+    let result = evaluate_agenix_rules(config_dir, &rules_path, secret_entries);
+    handle_agenix_rules_result(&rules_path, explicitly_configured, result)
+}
+
+/// Evaluate the classic agenix rules file and build both the per-secret recipient inventory and repository-level recipient registrations.
+/// Not every valid agenix configuration has a classic rules file: secrets may be declared directly in modules or managed by tools such as agenix-rekey.
+/// If the rules file is missing or invalid, return an error. If the rules file is present but does not match any secrets, return an empty inventory.
+fn evaluate_agenix_rules(
+    config_dir: &Path,
+    rules_path: &Path,
+    secret_entries: &[SecretEntry],
+) -> Result<AgenixRules, String> {
     let rules_path = rules_path.canonicalize().map_err(|error| {
         format!(
             "Failed to resolve agenix rules file {}: {error}",
@@ -615,6 +631,25 @@ fn load_agenix_rules(
         rules,
         secret_entries,
     ))
+}
+
+/// Checks the result of evaluating agenix rules and returns an empty inventory
+/// if the rules file was not explicitly configured and could not be loaded.
+fn handle_agenix_rules_result(
+    rules_path: &Path,
+    explicitly_configured: bool,
+    result: Result<AgenixRules, String>,
+) -> Result<AgenixRules, String> {
+    match result {
+        Err(error) if !explicitly_configured => {
+            log::warn!(
+                "Ignoring auto-discovered agenix rules candidate {} because it could not be loaded: {error}",
+                rules_path.display()
+            );
+            Ok(AgenixRules::default())
+        }
+        result => result,
+    }
 }
 
 /// Build the per-secret recipient inventory and repository-level recipient registrations from the evaluated agenix rules.
@@ -1453,10 +1488,11 @@ mod tests {
     use super::{
         AgenixRule, ConfigRecipient, RecipientInventory, apply_recipients_to_secrets,
         apply_recipients_to_secrets_with, apply_recipients_to_secrets_with_and_identities,
-        build_agenix_rules, load_sops_config_recipients, materialize_recipients,
-        merge_config_recipients, parse_sops_config_recipients, parse_sops_recipient_metadata,
-        recipient, recipient_has_local_identity, recipient_key_type, ssh_public_key_fingerprint,
-        ssh_public_key_identity, ssh_public_key_to_age, unique_recipient_id,
+        build_agenix_rules, handle_agenix_rules_result, load_sops_config_recipients,
+        materialize_recipients, merge_config_recipients, parse_sops_config_recipients,
+        parse_sops_recipient_metadata, recipient, recipient_has_local_identity, recipient_key_type,
+        ssh_public_key_fingerprint, ssh_public_key_identity, ssh_public_key_to_age,
+        unique_recipient_id,
     };
     use crate::{
         secrets::identities::{HostKey, RecipientIdentity, SecretIdentities},
@@ -1836,6 +1872,31 @@ mod tests {
                 file: "secrets.nix".into(),
             }]
         );
+    }
+
+    #[test]
+    fn auto_discovered_invalid_agenix_rules_are_ignored() {
+        let loaded = handle_agenix_rules_result(
+            Path::new("secrets.nix"),
+            false,
+            Err("expected an attribute set but found a function".into()),
+        )
+        .expect("auto-discovered rules are optional");
+
+        assert!(loaded.inventory.is_empty());
+        assert!(loaded.recipients.is_empty());
+    }
+
+    #[test]
+    fn explicitly_configured_invalid_agenix_rules_fail() {
+        let error = handle_agenix_rules_result(
+            Path::new("custom-rules.nix"),
+            true,
+            Err("invalid rules".into()),
+        )
+        .expect_err("an explicit RULES path is authoritative");
+
+        assert_eq!(error, "invalid rules");
     }
 
     #[test]
