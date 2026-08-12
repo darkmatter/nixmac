@@ -6,6 +6,9 @@ import type { SecretsVault } from "@/ipc/orpc-bindings";
  */
 export const MOCK_VAULT: SecretsVault = {
   primaryDecryptionIdentityId: "demo-mbp",
+  agenixRulesFile: "secrets/secrets.nix",
+  agenixDeclarationFile: "modules/darwin/agenix-secrets.nix",
+  agenixEncryptedDirectoryFromDeclaration: "../../secrets",
   decryptionIdentities: [
     {
       kind: "sshKeyPath",

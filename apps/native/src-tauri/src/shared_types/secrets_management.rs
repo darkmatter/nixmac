@@ -138,6 +138,9 @@ pub struct SecretRecipient {
 #[serde(rename_all = "camelCase")]
 pub struct SecretsVault {
     pub primary_decryption_identity_id: Option<String>,
+    pub agenix_rules_file: Option<String>,
+    pub agenix_declaration_file: Option<String>,
+    pub agenix_encrypted_directory_from_declaration: Option<String>,
     pub entries: Vec<SecretEntry>,
     pub recipients: Vec<SecretRecipient>,
     pub decryption_identities: Vec<DecryptionIdentity>,

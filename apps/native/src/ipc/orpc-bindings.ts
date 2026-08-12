@@ -1800,7 +1800,7 @@ export type SecretEntry = { id: string; name: string; backend: SecretBackend; fi
 
 export type SecretRecipient = { id: string; label: string; kind: RecipientKind; device: string; fingerprint: string; publicKey: string; keyType: RecipientKeyType; source: RecipientSource; inUse: boolean; registrations: RecipientRegistration[] }
 
-export type SecretsVault = { primaryDecryptionIdentityId: string | null; entries: SecretEntry[]; recipients: SecretRecipient[]; decryptionIdentities: DecryptionIdentity[] }
+export type SecretsVault = { primaryDecryptionIdentityId: string | null; agenixRulesFile: string | null; agenixDeclarationFile: string | null; agenixEncryptedDirectoryFromDeclaration: string | null; entries: SecretEntry[]; recipients: SecretRecipient[]; decryptionIdentities: DecryptionIdentity[] }
 
 /**
  * Backend-owned lifecycle for the derived secrets vault.

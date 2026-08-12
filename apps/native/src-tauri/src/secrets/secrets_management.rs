@@ -2,8 +2,8 @@ use crate::{
     evolve::{
         GitignoreChecker, NixmacIgnoreChecker,
         file_ops::{
-            relative_path_between, repo_relative_path, repo_relative_path_string,
-            resolve_existing_path_in_dir,
+            relative_nix_path_between, relative_path_between, repo_relative_path,
+            repo_relative_path_string, resolve_existing_path_in_dir,
         },
     },
     secrets::{
@@ -681,13 +681,7 @@ fn declare_agenix_secret(
 ) -> anyhow::Result<()> {
     let declaration_rel = repo_relative_path_string(base, declaration_file)?;
     let from = repo_relative_path(base, declaration_file.parent().unwrap_or(base))?;
-    let secret_path = relative_path_between(&from, Path::new(encrypted_relative))?;
-    let rendered_path = secret_path.to_string_lossy().replace('\\', "/");
-    let rendered_path = if rendered_path.starts_with('.') {
-        rendered_path
-    } else {
-        format!("./{rendered_path}")
-    };
+    let rendered_path = relative_nix_path_between(&from, Path::new(encrypted_relative))?;
     let mut attrs = serde_json::Map::new();
     attrs.insert(
         "file".to_string(),
@@ -781,7 +775,6 @@ fn add_sops_secret(
         // and prevents accidentally discarding unrelated user work.
         let declaration_rel = repo_relative_path_string(base, &declaration_file)
             .ok()
-            .map(|path| path as String)
             .unwrap_or_default();
         restore_repo_files_on_failure(
             config_dir,
@@ -964,13 +957,7 @@ fn declare_sops_secret(
 ) -> anyhow::Result<()> {
     let declaration_rel = repo_relative_path_string(base, declaration_file)?;
     let from = repo_relative_path(base, declaration_file.parent().unwrap_or(base))?;
-    let secret_path = relative_path_between(&from, Path::new(encrypted_file))?;
-    let rendered_path = secret_path.to_string_lossy().replace('\\', "/");
-    let rendered_path = if rendered_path.starts_with('.') {
-        rendered_path
-    } else {
-        format!("./{rendered_path}")
-    };
+    let rendered_path = relative_nix_path_between(&from, Path::new(encrypted_file))?;
     let mut attrs = serde_json::Map::new();
     attrs.insert(
         "sopsFile".to_string(),
@@ -1246,9 +1233,23 @@ pub fn load_secrets_vault(host_attr: &str, config_dir: &str) -> Result<SecretsVa
         .iter()
         .find(|recipient| recipient_has_local_identity(recipient, &decryption_identities))
         .map(|recipient| recipient.id.clone());
+    let base = Path::new(config_dir);
+    let agenix_rules_file = find_agenix_rules_file(base)
+        .and_then(|path| repo_relative_path_string(base, &path))
+        .ok();
+    let agenix_declaration_path = find_agenix_declaration_file(base).ok();
+    let agenix_encrypted_directory_from_declaration = agenix_declaration_path
+        .as_ref()
+        .and_then(|path| repo_relative_path(base, path.parent().unwrap_or(base)).ok())
+        .and_then(|from| relative_nix_path_between(&from, Path::new("secrets")).ok());
+    let agenix_declaration_file =
+        agenix_declaration_path.and_then(|path| repo_relative_path_string(base, &path).ok());
 
     Ok(SecretsVault {
         primary_decryption_identity_id,
+        agenix_rules_file,
+        agenix_declaration_file,
+        agenix_encrypted_directory_from_declaration,
         entries,
         recipients,
         decryption_identities,
@@ -1397,9 +1398,9 @@ mod tests {
         AGENIX_DECRYPTION_FAILED, SOPS_DECRYPTION_FAILED, age_decrypt_command, age_encrypt_command,
         find_agenix_declaration_file, find_agenix_rules_file, find_sops_declaration_file,
         managed_sops_file, matching_agenix_rule_key, readable_agenix_identity_paths,
-        relative_path_between, resolve_secret_file_path, sanitized_subprocess_error, secret,
-        sops_decrypt_command, sops_extract_path, sops_plaintext, ssh_to_age_decrypt_command,
-        validate_new_secret,
+        relative_nix_path_between, relative_path_between, repo_relative_path_string,
+        resolve_secret_file_path, sanitized_subprocess_error, secret, sops_decrypt_command,
+        sops_extract_path, sops_plaintext, ssh_to_age_decrypt_command, validate_new_secret,
     };
     use crate::shared_types::{
         DecryptionIdentity, DecryptionIdentityKind, DecryptionIdentityLocality,
@@ -1748,6 +1749,31 @@ mod tests {
         assert_eq!(
             find_agenix_declaration_file(config_dir.path()).expect("find agenix module"),
             module
+        );
+    }
+
+    #[test]
+    fn agenix_discovery_preserves_a_nonstandard_declaration_location() {
+        let config_dir = TempDir::new().expect("create config dir");
+        let rules = config_dir.path().join("secrets.nix");
+        fs::write(&rules, "{ }").expect("write agenix rules");
+        let module = config_dir
+            .path()
+            .join("hosts/workstation/modules/security.nix");
+        fs::create_dir_all(module.parent().unwrap()).expect("create module dir");
+        fs::write(&module, "{ age.secrets = {}; }").expect("write agenix module");
+
+        let discovered =
+            find_agenix_declaration_file(config_dir.path()).expect("find agenix module");
+        assert_eq!(
+            repo_relative_path_string(config_dir.path(), &discovered)
+                .expect("render repository-relative module path"),
+            "hosts/workstation/modules/security.nix"
+        );
+        assert_eq!(
+            relative_nix_path_between(Path::new("hosts/workstation/modules"), Path::new("secrets"))
+                .expect("render encrypted directory from declaration"),
+            "../../../secrets"
         );
     }
 

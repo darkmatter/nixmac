@@ -806,7 +806,6 @@ fn build_agenix_rules(
                 .collect()
         };
         let mut matched = false;
-        let mut direct_match_count = 0;
         for path in candidates.into_iter().flatten() {
             if path.is_file() {
                 inventory
@@ -814,25 +813,9 @@ fn build_agenix_rules(
                     .or_default()
                     .extend(encrypted_for.iter().cloned());
                 matched = true;
-                direct_match_count += 1;
             }
         }
         let matching_entries = match_agenix_secret_entries(&secret_file, secret_entries);
-        let basename_for_debug = Path::new(&secret_file)
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or_default();
-        log::debug!(
-            "Agenix rule '{secret_file}': repository_path_matches={direct_match_count}, evaluated_exact_matches={}, evaluated_basename_matches={}",
-            matching_entries
-                .iter()
-                .filter(|entry| Path::new(&entry.file).ends_with(&secret_file))
-                .count(),
-            matching_entries
-                .iter()
-                .filter(|entry| agenix_filename_matches(&entry.file, basename_for_debug))
-                .count()
-        );
         if matching_entries.len() == 1
             && let Ok(path) = resolve_secret_file_path(
                 config_dir.to_string_lossy().as_ref(),

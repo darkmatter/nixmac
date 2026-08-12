@@ -9,22 +9,40 @@ import { cn } from "@/lib/utils";
 import { recipientKindLabel, RecipientKindIcon, ViewHeader } from "./shared";
 import { type ApplyRequest, slugifySecretName } from "./types";
 
-function buildAddRequest(slug: string, backend: SecretBackend): ApplyRequest {
+export function buildAddRequest(
+  slug: string,
+  backend: SecretBackend,
+  vault: SecretsVault,
+): ApplyRequest {
   if (backend === "agenix") {
+    if (
+      !vault.agenixRulesFile ||
+      !vault.agenixDeclarationFile ||
+      !vault.agenixEncryptedDirectoryFromDeclaration
+    ) {
+      throw new Error(
+        "The repository's agenix rules and declaration module must be discoverable before reviewing this change.",
+      );
+    }
+    const encryptedFile = `secrets/${slug}.age`;
+    const declarationPath = `${vault.agenixEncryptedDirectoryFromDeclaration}/${slug}.age`;
     return {
       origin: "add",
       backend,
       title: "Encrypt & commit",
       subtitle: `New secret · ${slug}`,
       files: [
-        { path: `secrets/${slug}.age`, note: "· encrypted", mark: "+" },
-        { path: "agenix rules", note: "· recipients added", mark: "~" },
-        { path: "agenix secrets module", note: "· declaration added", mark: "~" },
+        { path: encryptedFile, note: "· encrypted", mark: "+" },
+        { path: vault.agenixRulesFile, note: "· recipients added", mark: "~" },
+        { path: vault.agenixDeclarationFile, note: "· declaration added", mark: "~" },
       ],
-      diffFile: "agenix secrets module",
+      diffFile: vault.agenixDeclarationFile,
       diff: [
         { kind: "meta", text: "@@ agenix @@" },
-        { kind: "added", text: `+ age.secrets."${slug}".file = ../../secrets/${slug}.age;` },
+        {
+          kind: "added",
+          text: `+ age.secrets."${slug}".file = builtins.path { path = ${declarationPath}; };`,
+        },
       ],
       commit: "",
       commitMsg: `secrets: add ${slug} (agenix)`,
@@ -63,7 +81,10 @@ export function AddSecretView({
   onBack,
 }: {
   vault: SecretsVault;
-  onSubmit: (request: ApplyRequest, secret: { secretId: string; value: string; backend: SecretBackend }) => void;
+  onSubmit: (
+    request: ApplyRequest,
+    secret: { secretId: string; value: string; backend: SecretBackend },
+  ) => void;
   onBack: () => void;
 }) {
   const [name, setName] = useState("");
@@ -72,16 +93,23 @@ export function AddSecretView({
   const [backend, setBackend] = useState<SecretBackend>("sops");
 
   const slug = slugifySecretName(name);
-  const encryptTarget = backend === "agenix" ? `secrets/${slug}.age` : `secrets/secrets.yaml  ›  ${slug}`;
+  const encryptTarget =
+    backend === "agenix" ? `secrets/${slug}.age` : `secrets/secrets.yaml  ›  ${slug}`;
   const runtimePath = backend === "agenix" ? `/run/agenix/${slug}` : `/run/secrets/${slug}`;
-  const invalid = !name.trim() || !value.trim();
+  const agenixTargetsAvailable = Boolean(
+    vault.agenixRulesFile &&
+    vault.agenixDeclarationFile &&
+    vault.agenixEncryptedDirectoryFromDeclaration,
+  );
+  const invalid =
+    !name.trim() || !value.trim() || (backend === "agenix" && !agenixTargetsAvailable);
   const committedRecipients = vault.recipients.filter((recipient) =>
     recipient.registrations.some((registration) => registration.backend === backend),
   );
 
   const submit = () => {
     if (invalid) return;
-    onSubmit(buildAddRequest(slug, backend), { secretId: slug, value, backend });
+    onSubmit(buildAddRequest(slug, backend, vault), { secretId: slug, value, backend });
   };
 
   return (
@@ -112,7 +140,9 @@ export function AddSecretView({
                 onClick={() => setBackend(option)}
                 className={cn(
                   "cursor-pointer rounded px-2.5 py-1 font-medium font-mono text-[11px] transition-colors",
-                  backend === option ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+                  backend === option
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground",
                 )}
               >
                 {option === "sops" ? "sops-nix" : "agenix"}
@@ -125,10 +155,18 @@ export function AddSecretView({
             ? "One age-encrypted file, using the recipients in the repository's agenix rules."
             : "YAML encrypted with the repository's SOPS creation rules."}
         </p>
+        {backend === "agenix" && !agenixTargetsAvailable && (
+          <p role="alert" className="mt-1 text-destructive text-[11px]">
+            Could not find both the agenix rules file and the module containing age.secrets.
+          </p>
+        )}
       </div>
 
       <div>
-        <label htmlFor="secret-value" className="mb-1.5 flex items-center justify-between font-medium text-xs">
+        <label
+          htmlFor="secret-value"
+          className="mb-1.5 flex items-center justify-between font-medium text-xs"
+        >
           Value
           <button
             type="button"
@@ -167,12 +205,14 @@ export function AddSecretView({
       <div>
         <span className="mb-1 block font-medium text-xs">Recipients — who can decrypt</span>
         <p className="mb-2 text-[11px] text-muted-foreground">
-          Encryption uses the recipients registered in the repository&apos;s {backend === "agenix" ? "agenix rules" : <code className="font-mono">.sops.yaml</code>}.
+          Encryption uses the recipients registered in the repository&apos;s{" "}
+          {backend === "agenix" ? "agenix rules" : <code className="font-mono">.sops.yaml</code>}.
         </p>
         <div className="flex flex-col gap-1.5">
           {committedRecipients.length === 0 && (
             <p className="rounded-[9px] border border-border px-3 py-2 text-[11px] text-muted-foreground">
-              No recipients are registered for this backend. Adding the secret will fail until one is configured.
+              No recipients are registered for this backend. Adding the secret will fail until one
+              is configured.
             </p>
           )}
           {committedRecipients.map((recipient) => {
