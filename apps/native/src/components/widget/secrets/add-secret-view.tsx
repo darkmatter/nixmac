@@ -9,9 +9,32 @@ import { cn } from "@/lib/utils";
 import { recipientKindLabel, RecipientKindIcon, ViewHeader } from "./shared";
 import { type ApplyRequest, slugifySecretName } from "./types";
 
-function buildAddRequest(slug: string): ApplyRequest {
+function buildAddRequest(slug: string, backend: SecretBackend): ApplyRequest {
+  if (backend === "agenix") {
+    return {
+      origin: "add",
+      backend,
+      title: "Encrypt & commit",
+      subtitle: `New secret · ${slug}`,
+      files: [
+        { path: `secrets/${slug}.age`, note: "· encrypted", mark: "+" },
+        { path: "agenix rules", note: "· recipients added", mark: "~" },
+        { path: "agenix secrets module", note: "· declaration added", mark: "~" },
+      ],
+      diffFile: "agenix secrets module",
+      diff: [
+        { kind: "meta", text: "@@ agenix @@" },
+        { kind: "added", text: `+ age.secrets."${slug}".file = ../../secrets/${slug}.age;` },
+      ],
+      commit: "",
+      commitMsg: `secrets: add ${slug} (agenix)`,
+    };
+  }
+
+  // SOPS backend
   return {
     origin: "add",
+    backend,
     title: "Encrypt & commit",
     subtitle: `New secret · ${slug}`,
     files: [
@@ -30,7 +53,7 @@ function buildAddRequest(slug: string): ApplyRequest {
 }
 
 /**
- * The SOPS add-secret form: name, value, runtime path preview, and the
+ * The add-secret form: backend, name, value, runtime path preview, and the
  * recipients derived from repository configuration. Submitting hands a
  * ready-to-review {@link ApplyRequest} and plaintext payload to the caller.
  */
@@ -40,23 +63,25 @@ export function AddSecretView({
   onBack,
 }: {
   vault: SecretsVault;
-  onSubmit: (request: ApplyRequest, secret: { secretId: string; value: string, backend: SecretBackend }) => void;
+  onSubmit: (request: ApplyRequest, secret: { secretId: string; value: string; backend: SecretBackend }) => void;
   onBack: () => void;
 }) {
-  const committedRecipients = vault.recipients.filter((r) => r.inUse);
-
   const [name, setName] = useState("");
   const [value, setValue] = useState("");
   const [hidden, setHidden] = useState(true);
+  const [backend, setBackend] = useState<SecretBackend>("sops");
 
   const slug = slugifySecretName(name);
-  const encryptTarget = `secrets/secrets.yaml  ›  ${slug}`;
-  const runtimePath = `/run/secrets/${slug}`;
+  const encryptTarget = backend === "agenix" ? `secrets/${slug}.age` : `secrets/secrets.yaml  ›  ${slug}`;
+  const runtimePath = backend === "agenix" ? `/run/agenix/${slug}` : `/run/secrets/${slug}`;
   const invalid = !name.trim() || !value.trim();
+  const committedRecipients = vault.recipients.filter((recipient) =>
+    recipient.registrations.some((registration) => registration.backend === backend),
+  );
 
   const submit = () => {
     if (invalid) return;
-    onSubmit(buildAddRequest(slug), { secretId: slug, value, backend: "sops" });
+    onSubmit(buildAddRequest(slug, backend), { secretId: slug, value, backend });
   };
 
   return (
@@ -78,12 +103,27 @@ export function AddSecretView({
       <div>
         <div className="mb-1.5 flex items-center justify-between">
           <span className="font-medium text-xs">Backend</span>
-          <div className="inline-flex rounded-md border border-border bg-muted px-2.5 py-1 font-medium font-mono text-[11px]">
-            sops-nix
+          <div className="inline-flex rounded-md border border-border bg-muted p-0.5">
+            {(["sops", "agenix"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={backend === option}
+                onClick={() => setBackend(option)}
+                className={cn(
+                  "cursor-pointer rounded px-2.5 py-1 font-medium font-mono text-[11px] transition-colors",
+                  backend === option ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+                )}
+              >
+                {option === "sops" ? "sops-nix" : "agenix"}
+              </button>
+            ))}
           </div>
         </div>
         <p className="text-[11px] text-muted-foreground">
-          YAML encrypted with the repository&apos;s SOPS creation rules. Agenix support will be added later.
+          {backend === "agenix"
+            ? "One age-encrypted file, using the recipients in the repository's agenix rules."
+            : "YAML encrypted with the repository's SOPS creation rules."}
         </p>
       </div>
 
@@ -127,9 +167,14 @@ export function AddSecretView({
       <div>
         <span className="mb-1 block font-medium text-xs">Recipients — who can decrypt</span>
         <p className="mb-2 text-[11px] text-muted-foreground">
-          Encryption uses the recipients in the matching <code className="font-mono">.sops.yaml</code> creation rule.
+          Encryption uses the recipients registered in the repository&apos;s {backend === "agenix" ? "agenix rules" : <code className="font-mono">.sops.yaml</code>}.
         </p>
         <div className="flex flex-col gap-1.5">
+          {committedRecipients.length === 0 && (
+            <p className="rounded-[9px] border border-border px-3 py-2 text-[11px] text-muted-foreground">
+              No recipients are registered for this backend. Adding the secret will fail until one is configured.
+            </p>
+          )}
           {committedRecipients.map((recipient) => {
             return (
               <div

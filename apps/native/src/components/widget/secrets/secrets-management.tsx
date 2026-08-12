@@ -221,7 +221,7 @@ export function SecretsManagement({
         setPendingSecret(null);
         setApplyPhase("done");
       } catch (error) {
-        setApplyError(error instanceof Error ? error.message : "Failed to add SOPS secret");
+        setApplyError(error instanceof Error ? error.message : "Failed to add secret");
         setApplyPhase("review");
       } finally {
         applyInFlight.current = false;

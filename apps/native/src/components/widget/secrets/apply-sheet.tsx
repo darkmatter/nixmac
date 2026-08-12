@@ -45,6 +45,13 @@ export function ApplySheet({
   onDone: () => void;
   error?: string | null;
 }) {
+  const encryptionBackend =
+    request.backend === "agenix"
+      ? "age"
+      : request.backend === "sops"
+        ? "SOPS"
+        : "the configured backend";
+
   return (
     /* backdrop click-to-dismiss mirrors the app's overlay pattern */
     <div
@@ -117,7 +124,8 @@ export function ApplySheet({
             <div className="flex items-center justify-between gap-3 pt-0.5">
               <span className="inline-flex items-center gap-1.5 text-muted-foreground text-xs">
                 <Shield className="size-3.5" aria-hidden="true" />
-                Encrypted with SOPS, then verified with darwin-rebuild before anything is committed.
+                Encrypted with {encryptionBackend}, then verified with darwin-rebuild before anything
+                is committed.
               </span>
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm" onClick={onCancel}>
@@ -143,7 +151,7 @@ export function ApplySheet({
             <div className="text-center">
               <div className="font-semibold text-[15px]">Applying changes</div>
               <div className="mt-1 text-[13px] text-muted-foreground">
-                Encrypting with SOPS · running{" "}
+                Encrypting with {encryptionBackend} · running{" "}
                 <code className="font-mono text-foreground">darwin-rebuild check</code>
               </div>
             </div>

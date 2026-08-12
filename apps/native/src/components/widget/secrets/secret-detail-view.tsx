@@ -67,6 +67,9 @@ export function SecretDetailView({
   // deliberate, per-secret opt-in.
   const [toolEnabled, setToolEnabled] = useState(false);
   const toolSupported = secret.backend === "sops";
+  // SOPS deletion must decrypt and rewrite its shared YAML document. Agenix
+  // deletion removes an opaque per-secret file and does not need a local key.
+  const canDelete = secret.backend === "agenix" || capability !== "unavailable";
 
   const onToggleReveal = async () => {
     if (isRevealed) {
@@ -98,7 +101,7 @@ export function SecretDetailView({
   };
 
   const onDelete = async () => {
-    if (capability === "unavailable" || isDeleting) return;
+    if (!canDelete || isDeleting) return;
     setIsDeleting(true);
     setDeleteError(null);
     try {
@@ -282,7 +285,7 @@ export function SecretDetailView({
           variant="ghost"
           size="sm"
           className="text-destructive"
-          disabled={capability === "unavailable" || isDeleting}
+          disabled={!canDelete || isDeleting}
           onClick={() => {
             setDeleteError(null);
             setDeleteOpen(true);
@@ -303,8 +306,10 @@ export function SecretDetailView({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {secret.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes the encrypted value and Nix declaration, verifies the configuration,
-              and commits the change. You can restore it later from Git history.
+              {secret.backend === "agenix"
+                ? "This removes the encrypted .age file, recipient rule, and Nix declaration, verifies the configuration, and commits the change."
+                : "This removes the encrypted value and Nix declaration, verifies the configuration, and commits the change."}{" "}
+              You can restore it later from Git history.
             </AlertDialogDescription>
           </AlertDialogHeader>
           {deleteError && (
@@ -315,7 +320,7 @@ export function SecretDetailView({
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={capability === "unavailable" || isDeleting}
+              disabled={!canDelete || isDeleting}
               onClick={(event) => {
                 event.preventDefault();
                 void onDelete();
