@@ -1,0 +1,259 @@
+/* Starter layout. nixmac ships as a fixed-size native window (min 800x600),
+   so the system defines no web breakpoints. For responsive web surfaces we
+   lean on fluid CSS: clamp() sizing on the spacing scale and auto-fit grids,
+   with a single narrow-viewport fallback. */
+
+.page {
+  min-height: 100vh;
+  background: var(--background);
+}
+
+.container {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-inline: clamp(1rem, 4vw, 2.5rem);
+}
+
+/* ── Nav ─────────────────────────────────────────────────────────── */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklch, var(--background) 72%, transparent);
+  backdrop-filter: saturate(1.2) blur(10px);
+}
+.navInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  height: 56px;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+}
+.navLinks {
+  display: none;
+  align-items: center;
+  gap: var(--space-5);
+  font-size: var(--text-sm);
+  color: var(--muted-foreground);
+}
+.navLinks a:hover {
+  color: var(--foreground);
+}
+.navActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ── Hero ────────────────────────────────────────────────────────── */
+.hero {
+  display: grid;
+  gap: clamp(2rem, 5vw, 4rem);
+  padding-block: clamp(3rem, 8vw, 6rem);
+  grid-template-columns: 1fr;
+  align-items: center;
+}
+.heroTitle {
+  font-size: clamp(2.25rem, 6vw, 3.75rem);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.02em;
+  font-weight: 600;
+  margin: 0;
+}
+.heroLede {
+  margin-top: var(--space-5);
+  max-width: 46ch;
+  font-size: var(--text-lg);
+  line-height: var(--leading-relaxed);
+  color: var(--muted-foreground);
+}
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+.heroChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+}
+
+/* ── Sections ────────────────────────────────────────────────────── */
+.section {
+  padding-block: clamp(2.5rem, 6vw, 4.5rem);
+  border-top: 1px solid var(--border);
+}
+.sectionHead {
+  max-width: 60ch;
+  margin-bottom: var(--space-8);
+}
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+  color: var(--muted-foreground);
+  margin-bottom: var(--space-3);
+}
+.sectionTitle {
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+}
+.sectionLede {
+  margin-top: var(--space-3);
+  color: var(--muted-foreground);
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+}
+
+.gridAuto {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+}
+.grid2 {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: 1fr;
+}
+
+/* ── Foundations ─────────────────────────────────────────────────── */
+.swatch {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--card);
+}
+.swatchColor {
+  height: 72px;
+}
+.swatchMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3);
+}
+.swatchName {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.swatchToken {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+}
+.typeRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-block: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+.typeRow:last-child {
+  border-bottom: none;
+}
+.typeToken {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+/* ── Composed cards ──────────────────────────────────────────────── */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.rowBetween {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.diff {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.diffLine {
+  padding: 0 var(--space-3);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.settingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-block: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+.settingRow:last-child {
+  border-bottom: none;
+}
+.settingLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.settingHint {
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+}
+.badgeWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────── */
+.footer {
+  border-top: 1px solid var(--border);
+  padding-block: var(--space-8);
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+}
+.footerInner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+@media (min-width: 720px) {
+  .navLinks {
+    display: inline-flex;
+  }
+  .grid2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (min-width: 960px) {
+  .hero {
+    grid-template-columns: 1.15fr 0.85fr;
+  }
+}
