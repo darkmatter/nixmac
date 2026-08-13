@@ -115,14 +115,6 @@ export function AddSecretView({
   const [backend, setBackend] = useState<SecretBackend>(secret?.backend ?? "sops");
 
   const slug = secret?.id ?? slugifySecretName(name);
-  const encryptTarget =
-    secret
-      ? secret.backend === "sops" && secret.sopsKey
-        ? `${secret.file}  ›  ${secret.sopsKey}`
-        : secret.file
-      : backend === "agenix"
-        ? `secrets/${slug}.age`
-        : `secrets/secrets.yaml  ›  ${slug}`;
   const runtimePath = backend === "agenix" ? `/run/agenix/${slug}` : `/run/secrets/${slug}`;
   const agenixTargetsAvailable = Boolean(
     vault.agenixRulesFile &&
@@ -133,11 +125,17 @@ export function AddSecretView({
     !name.trim() ||
     !value.trim() ||
     (!editing && backend === "agenix" && !agenixTargetsAvailable);
-  const committedRecipients = vault.recipients.filter((recipient) =>
+  const encryptionRecipients =
     editing && backend === "agenix"
-      ? secret.publicRecipients.includes(recipient.publicKey)
-      : recipient.registrations.some((registration) => registration.backend === backend),
-  );
+      ? secret.publicRecipients.map((publicKey) => ({
+          publicKey,
+          recipient: vault.recipients.find((recipient) => recipient.publicKey === publicKey),
+        }))
+      : vault.recipients
+          .filter((recipient) =>
+            recipient.registrations.some((registration) => registration.backend === backend),
+          )
+          .map((recipient) => ({ publicKey: recipient.publicKey, recipient }));
 
   const submit = () => {
     if (invalid) return;
@@ -226,7 +224,10 @@ export function AddSecretView({
         />
         {!editing && (
           <p className="mt-1.5 text-[11.5px] text-muted-foreground">
-            Encrypts to <code className="font-mono text-foreground">{encryptTarget}</code>
+            Encrypts to{" "}
+            <code className="font-mono text-foreground">
+              {backend === "agenix" ? `secrets/${slug}.age` : `secrets/secrets.yaml  ›  ${slug}`}
+            </code>
           </p>
         )}
       </div>
@@ -246,43 +247,53 @@ export function AddSecretView({
         </div>
       )}
 
-      {!editing && (
-        <div>
-          <span className="mb-1 block font-medium text-xs">Recipients — who can decrypt</span>
-          <p className="mb-2 text-[11px] text-muted-foreground">
-            Encryption uses the recipients registered in the repository&apos;s{" "}
-            {backend === "agenix" ? (
-              "agenix rules"
-            ) : (
-              <code className="font-mono">.sops.yaml</code>
-            )}
-            .
-          </p>
-          <div className="flex flex-col gap-1.5">
-            {committedRecipients.length === 0 && (
-              <p className="rounded-[9px] border border-border px-3 py-2 text-[11px] text-muted-foreground">
-                No recipients are registered for this backend. Encrypting the secret will fail
-                until one is configured.
-              </p>
-            )}
-            {committedRecipients.map((recipient) => {
-              return (
-                <div
-                  key={recipient.id}
-                  aria-label={`Recipient ${recipient.label}`}
-                  className="flex items-center gap-2.5 rounded-[9px] border border-border px-3 py-2 text-left"
-                >
-                  <RecipientKindIcon kind={recipient.kind} className="text-muted-foreground" />
-                  <span className="font-medium font-mono text-[13px]">{recipient.label}</span>
-                  <span className="ml-auto text-[11px] text-muted-foreground">
-                    {recipientKindLabel(recipient.kind)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+      <div>
+        <span className="mb-1 block font-medium text-xs">Recipients — who can decrypt</span>
+        <p className="mb-2 text-[11px] text-muted-foreground">
+          {editing && backend === "agenix" ? (
+            "The updated value keeps the recipients recorded for this secret."
+          ) : (
+            <>
+              {editing ? "The updated value uses" : "Encryption uses"} the recipients registered in
+              the repository&apos;s{" "}
+              {backend === "agenix" ? (
+                "agenix rules"
+              ) : (
+                <code className="font-mono">.sops.yaml</code>
+              )}
+              .
+            </>
+          )}
+        </p>
+        <div className="flex flex-col gap-1.5">
+          {encryptionRecipients.length === 0 && (
+            <p className="rounded-[9px] border border-border px-3 py-2 text-[11px] text-muted-foreground">
+              {editing && backend === "agenix"
+                ? "No recipients are recorded for this secret. Encrypting the update will fail until its recipients can be resolved."
+                : "No recipients are registered for this backend. Encrypting the secret will fail until one is configured."}
+            </p>
+          )}
+          {encryptionRecipients.map(({ publicKey, recipient }) => {
+            const label = recipient?.label ?? publicKey;
+            return (
+              <div
+                key={publicKey}
+                aria-label={`Recipient ${label}`}
+                className="flex items-center gap-2.5 rounded-[9px] border border-border px-3 py-2 text-left"
+              >
+                <RecipientKindIcon
+                  kind={recipient?.kind ?? "unknown"}
+                  className="text-muted-foreground"
+                />
+                <span className="truncate font-medium font-mono text-[13px]">{label}</span>
+                <span className="ml-auto text-[11px] text-muted-foreground">
+                  {recipientKindLabel(recipient?.kind ?? "unknown")}
+                </span>
+              </div>
+            );
+          })}
         </div>
-      )}
+      </div>
 
       <div className="flex gap-2.5 pt-1">
         <Button disabled={invalid} onClick={submit}>

@@ -66,6 +66,9 @@ export function SecretDetailView({
   // deliberate, per-secret opt-in.
   const [toolEnabled, setToolEnabled] = useState(false);
   const toolSupported = secret.backend === "sops";
+  const agenixEditUnavailable =
+    secret.backend === "agenix" &&
+    (!secret.publicRecipientsResolved || secret.publicRecipients.length === 0);
   // SOPS deletion must decrypt and rewrite its shared YAML document. Agenix
   // deletion removes an opaque per-secret file and does not need a local key.
   const canDelete = secret.backend === "agenix" || capability !== "unavailable";
@@ -194,8 +197,14 @@ export function SecretDetailView({
         <div className="flex flex-col gap-1.5">
           {!secret.publicRecipientsResolved ? (
             <div className="rounded-[9px] border border-border px-3 py-2 text-[11.5px] text-muted-foreground">
-              Recipient metadata could not be resolved; this does not establish that decryption is
-              unavailable.
+              {secret.backend === "agenix"
+                ? "Recipient metadata could not be resolved. Editing is unavailable because age cannot preserve unknown recipients; this does not establish that decryption is unavailable."
+                : "Recipient metadata could not be resolved; this does not establish that decryption is unavailable."}
+            </div>
+          ) : agenixEditUnavailable ? (
+            <div className="rounded-[9px] border border-border px-3 py-2 text-[11.5px] text-muted-foreground">
+              No recipients are recorded for this secret. Editing is unavailable until its
+              recipients can be resolved.
             </div>
           ) : null}
           {secret.publicRecipients.map((publicKey) => {
@@ -268,14 +277,16 @@ export function SecretDetailView({
       )}
 
       <div className="flex gap-2 pt-0.5">
-        <Button
+        {!agenixEditUnavailable && (
+          <Button
           variant="outline"
           size="sm"
           onClick={() => onEdit(secret.id, secret.backend)}
         >
-          <Pencil aria-hidden="true" />
-          Edit value
-        </Button>
+            <Pencil aria-hidden="true" />
+            Edit value
+          </Button>
+        )}
         {canRotate && (
           <Button variant="outline" size="sm" onClick={onRotate}>
             <RefreshCw aria-hidden="true" />
