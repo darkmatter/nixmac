@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import type { SecretsVault } from "@/ipc/orpc-bindings";
-import { buildAddRequest } from "./add-secret-view";
+import type { SecretEntry, SecretsVault } from "@/ipc/orpc-bindings";
+import { buildAddRequest, buildEditRequest } from "./add-secret-view";
 
 const vault = (declarationFile: string, encryptedDirectory: string): SecretsVault =>
   ({
@@ -45,5 +45,41 @@ describe("agenix add preview", () => {
       kind: "added",
       text: '+ age.secrets."api-token".file = builtins.path { path = ./secrets/api-token.age; };',
     });
+  });
+});
+
+describe("secret edit preview", () => {
+  it("touches only the existing encrypted file", () => {
+    const request = buildEditRequest({
+      id: "github-token",
+      name: "github-token",
+      backend: "sops",
+      file: "secrets/team.yaml",
+      sopsKey: "github/token",
+    } as SecretEntry);
+
+    expect(request.origin).toBe("edit");
+    expect(request.files).toEqual([
+      { path: "secrets/team.yaml", note: "· encrypted update", mark: "~" },
+    ]);
+    expect(request.commitMsg).toBe("secrets: edit github-token (sops)");
+  });
+
+  it("reviews an agenix edit as an update to only its existing encrypted file", () => {
+    const request = buildEditRequest({
+      id: "api-token",
+      name: "api-token",
+      backend: "agenix",
+      file: "secrets/api-token.age",
+    } as SecretEntry);
+
+    expect(request).toMatchObject({
+      origin: "edit",
+      backend: "agenix",
+      diffFile: "secrets/api-token.age",
+      files: [{ path: "secrets/api-token.age", note: "· encrypted update", mark: "~" }],
+      commitMsg: "secrets: edit api-token (agenix)",
+    });
+    expect(request.diff.some((line) => line.text.includes("agenix"))).toBe(true);
   });
 });

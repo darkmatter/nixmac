@@ -155,7 +155,7 @@ export function SecretsManagementRoute() {
  * funnel through the review → darwin-rebuild check → commit sheet.
  *
  * The vault is loaded from Rust by {@link SecretsManagementRoute}. The secret
- * add flow is backend-owned; the remaining mutating flows are still
+ * add/edit flow is backend-owned; the remaining mutating flows are still
  * local simulations until their commands are implemented.
  */
 export function SecretsManagement({
@@ -199,8 +199,6 @@ export function SecretsManagement({
     flash("Copied to clipboard");
   };
 
-  const notImplemented = () => flash("Demo — not wired up");
-
   const openApply = (request: ApplyRequest) => {
     setApply(request);
     setApplyPhase("review");
@@ -211,17 +209,24 @@ export function SecretsManagement({
     if (applyInFlight.current) return;
     setApplyPhase("building");
     setApplyError(null);
-    if (apply?.origin === "add" && pendingSecret) {
+    if ((apply?.origin === "add" || apply?.origin === "edit") && pendingSecret) {
       applyInFlight.current = true;
       try {
-        const result = await client.secrets.addSecret(pendingSecret);
+        const result =
+          apply.origin === "edit"
+            ? await client.secrets.editSecret(pendingSecret)
+            : await client.secrets.addSecret(pendingSecret);
         setApply((request) =>
           request ? { ...request, commit: result.commitHash.slice(0, 7) } : request,
         );
         setPendingSecret(null);
         setApplyPhase("done");
       } catch (error) {
-        setApplyError(error instanceof Error ? error.message : "Failed to add secret");
+        setApplyError(
+          error instanceof Error
+            ? error.message
+            : `Failed to ${apply.origin === "edit" ? "edit" : "add"} secret`,
+        );
         setApplyPhase("review");
       } finally {
         applyInFlight.current = false;
@@ -246,7 +251,7 @@ export function SecretsManagement({
   };
 
   const cancelApply = () => {
-    if (apply?.origin === "add") setPendingSecret(null);
+    if (apply?.origin === "add" || apply?.origin === "edit") setPendingSecret(null);
     setApplyError(null);
     setApply(null);
   };
@@ -257,7 +262,7 @@ export function SecretsManagement({
     recipients: [...vault.recipients, ...extraRecipients],
   };
   const selectedSecret =
-    view.kind === "detail"
+    view.kind === "detail" || view.kind === "edit"
       ? vault.entries.find((s) => s.id === view.secretId && s.backend === view.backend)
       : undefined;
 
@@ -313,12 +318,29 @@ export function SecretsManagement({
             onBack={browse}
           />
         )}
+        {view.kind === "edit" && selectedSecret && (
+          <AddSecretView
+            vault={effectiveVault}
+            secret={selectedSecret}
+            onSubmit={(request, secret) => {
+              setPendingSecret(secret);
+              openApply(request);
+            }}
+            onBack={() =>
+              setView({
+                kind: "detail",
+                secretId: selectedSecret.id,
+                backend: selectedSecret.backend,
+              })
+            }
+          />
+        )}
         {view.kind === "detail" && selectedSecret && (
           <SecretDetailView
             vault={effectiveVault}
             secret={selectedSecret}
             onRotate={() => setView({ kind: "rotate" })}
-            onNotImplemented={notImplemented}
+            onEdit={(secretId, backend) => setView({ kind: "edit", secretId, backend })}
             onBack={browse}
           />
         )}

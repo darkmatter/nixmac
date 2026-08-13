@@ -51,6 +51,7 @@ mod tray_icon;
 mod types;
 mod updater_pin;
 mod utils;
+mod yaml_utils;
 
 use state::watcher;
 use storage::store;

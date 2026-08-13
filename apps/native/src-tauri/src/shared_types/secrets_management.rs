@@ -157,6 +157,15 @@ pub struct AddSecretResult {
     pub commit_hash: String,
 }
 
+/// Result of replacing and re-encrypting a secret value.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct EditSecretResult {
+    pub secret_id: String,
+    pub encrypted_file: String,
+    pub commit_hash: String,
+}
+
 /// Result of removing a secret from the repo and committing the change.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]

@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 import { client } from "@/lib/orpc";
 import { RecipientKindIcon, ViewHeader } from "./shared";
 import { backendLabel, recipientHasLocalIdentity } from "./types";
-import type { SecretEntry, SecretsVault } from "@/ipc/orpc-bindings";
+import type { SecretBackend, SecretEntry, SecretsVault } from "@/ipc/orpc-bindings";
 
 /**
  * One secret's encrypted metadata and recipient access.
@@ -39,13 +39,13 @@ export function SecretDetailView({
   vault,
   secret,
   onRotate,
-  onNotImplemented,
+  onEdit,
   onBack,
 }: {
   vault: SecretsVault;
   secret: SecretEntry;
   onRotate: () => void;
-  onNotImplemented: () => void;
+  onEdit: (secretId: string, backend: SecretBackend) => void;
   onBack: () => void;
 }) {
   const MASKED_SECRET_VALUE = "****************";
@@ -59,7 +59,6 @@ export function SecretDetailView({
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // TODO: Implement these
-  const canEdit = false;
   const canRotate = false;
   const canUseAgentTool = false;
 
@@ -269,13 +268,15 @@ export function SecretDetailView({
       )}
 
       <div className="flex gap-2 pt-0.5">
-        { canEdit && (
-          <Button variant="outline" size="sm" onClick={onNotImplemented}>
-            <Pencil aria-hidden="true" />
-            Edit value
-          </Button>
-        )}
-        { canRotate && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onEdit(secret.id, secret.backend)}
+        >
+          <Pencil aria-hidden="true" />
+          Edit value
+        </Button>
+        {canRotate && (
           <Button variant="outline" size="sm" onClick={onRotate}>
             <RefreshCw aria-hidden="true" />
             Rotate &amp; re-key
