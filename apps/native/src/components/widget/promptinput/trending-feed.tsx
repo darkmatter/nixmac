@@ -8,7 +8,6 @@ import {
 import { getTelemetry } from "@/lib/telemetry/instance";
 import { cn } from "@/lib/utils";
 import {
-  ArrowUpRight,
   Beer,
   Bookmark,
   BookmarkCheck,
@@ -283,15 +282,6 @@ export function TrendingFeed({
           })}
         </ul>
       )}
-
-      <button
-        type="button"
-        onClick={() => {}}
-        className="mt-3 inline-flex items-center gap-1 text-muted-foreground text-xs transition-colors hover:text-foreground"
-      >
-        Browse everything trending
-        <ArrowUpRight className="size-3.5" aria-hidden />
-      </button>
     </section>
   );
 }
