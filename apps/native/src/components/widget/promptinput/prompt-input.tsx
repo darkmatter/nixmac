@@ -30,11 +30,12 @@ import { getTelemetry } from "@/lib/telemetry/instance";
 import { nav } from "@/router";
 import { uiActions, useUiState, useViewModel } from "@nixmac/state";
 import { ArrowUpIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const MAX_CONTEXT_LENGTH = 1000;
 
 export function PromptInput() {
+  const promptInputRef = useRef<HTMLTextAreaElement>(null);
   const evolvePrompt = useUiState((s) => s.evolvePrompt);
   const isProcessing = useUiState((s) => s.isProcessing);
   const processingAction = useUiState((s) => s.processingAction);
@@ -141,7 +142,23 @@ export function PromptInput() {
 
   // PostHog-flag-driven suggestion surface under the input.
   const suggestionsVariant = usePromptSuggestionsVariant();
-  const seedPrompt = (prompt: string) => uiActions.setEvolvePrompt(prompt);
+  const seedPrompt = (prompt: string) => {
+    uiActions.setEvolvePrompt(prompt);
+
+    requestAnimationFrame(() => {
+      const input = promptInputRef.current;
+      if (!input || input.disabled) return;
+
+      const prefersReducedMotion =
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+      input.scrollIntoView({
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+        block: "nearest",
+      });
+      input.focus({ preventScroll: true });
+      input.setSelectionRange(input.value.length, input.value.length);
+    });
+  };
 
   const words = evolvePrompt.split(" ").length;
   const percentage = words / MAX_CONTEXT_LENGTH;
@@ -152,6 +169,7 @@ export function PromptInput() {
     <div className="space-y-3 flex-col min-h-24">
       <InputGroup className="bg-background flex-col min-h-24">
         <InputGroupTextarea
+          ref={promptInputRef}
           id="evolve-prompt-input"
           data-testid="evolve-prompt-input"
           disabled={isLoading}
@@ -240,12 +258,12 @@ export function PromptInput() {
                 {suggestion.label}
               </BadgeButton>
             ))}
-          <MacRecommendationChip />
+          <MacRecommendationChip onSelect={seedPrompt} />
           <SystemDefaultsCTA />
           <HomebrewBadge />
         </div>
         <div className="ml-auto shrink-0">
-          <PromptHistoryBadge />
+          <PromptHistoryBadge onSelect={seedPrompt} />
         </div>
       </div>
     </div>
