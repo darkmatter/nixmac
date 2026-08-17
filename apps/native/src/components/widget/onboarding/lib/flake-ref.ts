@@ -1,7 +1,7 @@
 export interface ParsedFlakeRef {
 	valid: boolean;
 	/** The recognized import input shape understood by the backend parser. */
-	type: "repo" | "unknown";
+	type: "repo" | "path" | "unknown";
 	/** Human-friendly description of what this reference points to. */
 	label: string;
 	/** Hint shown under the input. */
@@ -27,6 +27,10 @@ function validateSubdir(path: string): string | null {
 	}
 
 	return null;
+}
+
+function isPathLikeRef(input: string): boolean {
+	return /^(path:|~|\/|\.\/|\.\.\/|\.$)/.test(input);
 }
 
 function parseQuery(input: string): { locator: string; error?: string } {
@@ -127,6 +131,27 @@ export function parseFlakeRef(raw: string): ParsedFlakeRef {
 			label: "",
 			hint: error,
 			importable: false,
+		};
+	}
+
+	if (isPathLikeRef(locator)) {
+		const path = locator.replace(/^path:/i, "");
+		if (/^\/+(www\.)?github\.com\//i.test(path)) {
+			return {
+				valid: false,
+				type: "unknown",
+				label: "",
+				hint: "Expected owner/repo, github.com/owner/repo, git@github.com:owner/repo.git, or an http(s)/ssh git URL.",
+				importable: false,
+			};
+		}
+
+		return {
+			valid: true,
+			type: "path",
+			label: "Local path",
+			hint: "Points to a directory on this machine that contains a flake.nix.",
+			importable: true,
 		};
 	}
 

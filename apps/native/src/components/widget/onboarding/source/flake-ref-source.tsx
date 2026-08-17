@@ -17,7 +17,7 @@ interface FlakeRefSourceProps {
  * `bootstrap::import::parse_repo_ref`, plus a `.zip` archive picker.
  */
 export function FlakeRefSource({ onImported }: FlakeRefSourceProps) {
-  const { importGithub, pickZip, importZip } = useDarwinConfig();
+  const { setDir: selectConfigDir, importGithub, pickZip, importZip } = useDarwinConfig();
   const [value, setValue] = useState("");
   const [dir, setDir] = useState("~/.darwin");
   const [loading, setLoading] = useState(false);
@@ -33,10 +33,17 @@ export function FlakeRefSource({ onImported }: FlakeRefSourceProps) {
     setError(null);
     setLoading(true);
     try {
-      const normalized = await client.path.normalize({
-        input: dir.trim() || "~/.darwin",
-      });
-      await importGithub(value.trim(), normalized);
+      if (parsed.type === "path") {
+        const normalized = await client.path.normalize({
+          input: value.trim().replace(/^path:/i, ""),
+        });
+        await selectConfigDir(normalized);
+      } else {
+        const normalized = await client.path.normalize({
+          input: dir.trim() || "~/.darwin",
+        });
+        await importGithub(value.trim(), normalized);
+      }
       onImported?.();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));

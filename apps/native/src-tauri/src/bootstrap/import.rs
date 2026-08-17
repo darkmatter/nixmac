@@ -57,6 +57,15 @@ fn is_valid_segment(segment: &str) -> bool {
             .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
 }
 
+fn is_path_like_locator(locator: &str) -> bool {
+    locator.starts_with("path:")
+        || locator.starts_with('~')
+        || locator.starts_with('/')
+        || locator.starts_with("./")
+        || locator.starts_with("../")
+        || locator == "."
+}
+
 /// Checks if the given clone URL is a GitHub URL, either in HTTPS or SSH form.
 fn is_github_clone_url(clone_url: &str) -> bool {
     if clone_url.starts_with("git@github.com:") {
@@ -138,6 +147,9 @@ pub fn parse_repo_ref(input: &str) -> Result<RepoRef> {
     }
 
     let (locator, git_ref, subdir) = parse_query_params(trimmed)?;
+    if is_path_like_locator(locator) {
+        bail!("Local paths must be selected as existing configuration directories");
+    }
     let (owner, repo) = owner_and_repo(locator)?;
 
     // Full URL forms.
@@ -803,7 +815,7 @@ mod tests {
         assert_eq!(r.clone_url, "https://github.com/czxtm/darwin.git");
 
         let r = parse_repo_ref("/www.github.com/czxtm/darwin/").unwrap_err();
-        assert!(r.to_string().contains("Expected a GitHub reference"));
+        assert!(r.to_string().contains("Local paths"));
 
         let r = parse_repo_ref("www.github.com/czxtm/darwin").unwrap();
         assert_eq!(r.clone_url, "https://github.com/czxtm/darwin.git");
@@ -832,8 +844,21 @@ mod tests {
     }
 
     #[test]
+    fn rejects_path_like_refs() {
+        for input in [
+            "/etc/nix-darwin",
+            "~/Documents/nix-darwin",
+            "path:/etc/nix-darwin",
+            "./nix-darwin",
+            "../nix-darwin",
+        ] {
+            assert!(parse_repo_ref(input).is_err(), "accepted {input}");
+        }
+    }
+
+    #[test]
     fn accepts_valid_github_segment_characters_and_outer_slashes() {
-        let r = parse_repo_ref("/some_owner/repo.name-1/").unwrap();
+        let r = parse_repo_ref("some_owner/repo.name-1").unwrap();
         assert_eq!(r.clone_url, "https://github.com/some_owner/repo.name-1.git");
     }
 
