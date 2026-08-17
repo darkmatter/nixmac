@@ -134,6 +134,7 @@ export function DiffReview() {
 ```
 
 Notes:
+
 - The container uses `repeat(auto-fit, minmax(320px, 1fr))` so the two cards sit side-by-side on desktop and stack on narrow screens — the token-driven responsiveness pattern from `foundations/spacing-layout.md`.
 - Diff line backgrounds are a 10% mix of the diff token over transparent; the glyph/text is the full-strength token. Never use plain green/red here.
 - `ButtonGlow` is the only glow on the screen — the build action.
