@@ -7,32 +7,87 @@ import { settings } from "@/lib/env";
 import { client } from "@/lib/orpc";
 import { nav } from "@/router";
 import { useViewModel } from "@nixmac/state";
-import { CircleAlert, FolderX, RotateCcw, X } from "lucide-react";
+import { CircleAlert, FolderX, Loader2, RotateCcw, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { computeRepairPlan, type RepairIssue, type RepairPlan } from "./lib";
+import {
+  computeRepairPlan,
+  HELPER_PERMISSION_ID,
+  type RepairInputs,
+  type RepairIssue,
+  type RepairPlan,
+} from "./lib";
+
+/** The inputs read once, when the (hydrated) widget mounts. */
+type LaunchSnapshot = Omit<
+  RepairInputs,
+  "helperRow" | "helperPreference" | "helperGraceElapsed"
+>;
 
 /**
- * Launch-time evaluation of post-completion prerequisite regressions.
+ * How long "the helper was asked for and is not answering" must hold before the
+ * banner says so.
  *
- * Runs once when the (hydrated) widget mounts and only again through the
- * returned `recheck` — mid-session backend events never add or swap a repair
- * surface, mirroring how the onboarding takeover is entered only at
- * well-defined moments.
+ * Not a cosmetic debounce: at the moment the widget mounts the condition is true
+ * on any launch that has to re-register the helper, and the backend is already
+ * working on it. Waiting lets those launches finish in silence, and leaves only
+ * the ones that are still stuck once the user has had time to look at the window
+ * — which is when there is something for them to do.
  */
-export function useLaunchRepair(): {
+export const HELPER_GRACE_MS = 10_000;
+
+/**
+ * Post-completion prerequisite regressions: what to block on, what to banner.
+ *
+ * The plan is decided from a launch snapshot, re-taken only by the returned
+ * `recheck`, with one exception: the unattended sync helper's banner follows the
+ * live row and the live standing decision. `computeRepairPlan` documents why that
+ * one row is different and why a banner may change mid-session where the blocking
+ * card may not.
+ */
+export function useRepair(): {
   plan: RepairPlan;
   recheck: () => Promise<void>;
   dismissBanner: (kind: RepairIssue["kind"]) => void;
 } {
-  const [plan, setPlan] = useState<RepairPlan>({ blocking: null, banners: [] });
+  const [snapshot, setSnapshot] = useState<LaunchSnapshot | null>(null);
   const [dismissed, setDismissed] = useState<RepairIssue["kind"][]>([]);
   // The widget renders a neutral shell until hydration; the launch evaluation
   // must read post-hydration values (probes have run, latch is mirrored).
   const hydrated = useViewModel((s) => s.hydrated);
 
+  // The two live inputs. `find` hands back the row object the store holds rather
+  // than building a new one, so a re-render can never come from the selector
+  // itself. Every publish is one, though: each `permissions_changed` mirrors a
+  // freshly deserialized state, so even a report identical to the last one is a
+  // new object — which is why the grace clock below keys on the condition rather
+  // than on the row.
+  const helperRow = useViewModel(
+    (s) => s.permissions?.permissions.find((p) => p.id === HELPER_PERMISSION_ID) ?? null,
+  );
+  const helperPreference = useViewModel((s) => s.preferences?.helperPreference ?? null);
+
+  // The grace clock keys on the condition, not on the report that reveals it: a
+  // helper whose registration keeps failing publishes a new row every pass, and
+  // restarting the clock on each one would keep the banner off the screen for
+  // exactly as long as the failure lasts. So the effect depends on this boolean
+  // and nothing else — a report that changes while still not granted does not
+  // touch the timer, and the row reaching granted clears the banner and the clock
+  // together.
+  const helperWanted =
+    helperPreference === "granted" && helperRow !== null && helperRow.status !== "granted";
+  const [helperGraceElapsed, setHelperGraceElapsed] = useState(false);
+  useEffect(() => {
+    if (!helperWanted) {
+      setHelperGraceElapsed(false);
+      return;
+    }
+    const timer = setTimeout(() => setHelperGraceElapsed(true), HELPER_GRACE_MS);
+    return () => clearTimeout(timer);
+  }, [helperWanted]);
+
   const evaluate = useCallback(async () => {
-    // Snapshot the store rather than subscribing: repair is launch-scoped
-    // by design, not reactive.
+    // Snapshot the store rather than subscribing: everything here is
+    // launch-scoped by design (the helper's live inputs are read above).
     const vm = useViewModel.getState();
     const configDir = vm.preferences?.configDir ?? null;
 
@@ -46,17 +101,15 @@ export function useLaunchRepair(): {
       }
     }
 
-    setPlan(
-      computeRepairPlan({
-        completedAt: vm.onboardingState?.completedAt ?? null,
-        configDir,
-        flakeExists,
-        nixInstalled: vm.nixInstall?.installed ?? null,
-        permissions: vm.permissions,
-        skipPermissions: settings.skipPermissions === true,
-        nixInstalledOverride: settings.nixInstalledOverride === true,
-      }),
-    );
+    setSnapshot({
+      completedAt: vm.onboardingState?.completedAt ?? null,
+      configDir,
+      flakeExists,
+      nixInstalled: vm.nixInstall?.installed ?? null,
+      permissions: vm.permissions,
+      skipPermissions: settings.skipPermissions === true,
+      nixInstalledOverride: settings.nixInstalledOverride === true,
+    });
   }, []);
 
   useEffect(() => {
@@ -72,6 +125,10 @@ export function useLaunchRepair(): {
     await evaluate();
   }, [evaluate]);
 
+  const plan = snapshot
+    ? computeRepairPlan({ ...snapshot, helperRow, helperPreference, helperGraceElapsed })
+    : { blocking: null, banners: [] };
+
   return {
     plan: {
       blocking: plan.blocking,
@@ -80,6 +137,55 @@ export function useLaunchRepair(): {
     recheck,
     dismissBanner: (kind) => setDismissed((prev) => [...prev, kind]),
   };
+}
+
+/**
+ * The helper banner's one action: the same Grant the helper's row in Settings →
+ * Permissions offers. It records the decision and reconciles towards it, and it
+ * is the only action that opens Login Items — which it does when macOS is waiting
+ * for the approval there.
+ *
+ * No re-probe afterwards, unlike the "Check again" button on the snapshot-based
+ * banner: this banner reads the row live, and the backend publishes it on every
+ * reconciliation pass. A failed call leaves the banner and the row's sentence
+ * standing, which is already the truth, so it is logged rather than surfaced.
+ *
+ * The label keeps its box under `invisible` with the spinner laid over it, as the
+ * helper's row does, because the Button base carries `transition-all`: a label
+ * swapped for a shorter one would animate the width and shift the dismiss button
+ * next to it. The spinner is nested rather than a direct child because `size="sm"`
+ * carries `has-[>svg]:px-2.5`, which a top-level icon would trigger.
+ */
+function HelperGrantButton() {
+  const [granting, setGranting] = useState(false);
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      disabled={granting}
+      aria-label={granting ? "Enabling…" : undefined}
+      aria-busy={granting}
+      className="relative disabled:opacity-100"
+      onClick={async () => {
+        setGranting(true);
+        try {
+          // deprecated(orpc): replace with client/orpc from @/lib/orpc
+          await tauriAPI.permissions.request(HELPER_PERMISSION_ID);
+        } catch (error) {
+          console.error("Failed to enable the unattended sync helper:", error);
+        } finally {
+          setGranting(false);
+        }
+      }}
+    >
+      <span className={granting ? "invisible" : undefined}>Enable</span>
+      {granting ? (
+        <span className="absolute inset-0 flex items-center justify-center">
+          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+        </span>
+      ) : null}
+    </Button>
+  );
 }
 
 /** Non-blocking repair notices, rendered above the main content. */
@@ -121,6 +227,20 @@ export function RepairBanners({
                   permissions in Settings → Permissions.
                 </p>
               </>
+            ) : issue.kind === "helper-inactive" ? (
+              <>
+                {/* States the condition and nothing more: which of the states
+                    behind it this is cannot be known here, and the sentence
+                    below is the row's own report of it. */}
+                <p className="font-medium">Unattended sync helper is not active</p>
+                {/* `wrap-anywhere` because these sentences quote paths — a
+                    `/Volumes/…` bundle is one unbreakable token wider than the
+                    banner. Not `break-all`, which would also break the ordinary
+                    words at the end of every line. */}
+                {issue.instructions ? (
+                  <p className="mt-0.5 wrap-anywhere text-xs opacity-70">{issue.instructions}</p>
+                ) : null}
+              </>
             ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -140,6 +260,7 @@ export function RepairBanners({
                 </Button>
               </>
             )}
+            {issue.kind === "helper-inactive" && <HelperGrantButton />}
             <button
               type="button"
               onClick={() => onDismiss(issue.kind)}
