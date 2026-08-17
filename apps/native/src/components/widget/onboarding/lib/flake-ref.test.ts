@@ -29,6 +29,22 @@ describe("STARTER_TEMPLATES", () => {
 });
 
 describe("parseFlakeRef", () => {
+	it("treats local path-like references as local paths, not repository refs", () => {
+		for (const ref of [
+			"/etc/nix-darwin",
+			"~/Documents/nix-darwin",
+			"path:/etc/nix-darwin",
+			"./nix-darwin",
+			"../nix-darwin",
+		]) {
+			expect(parseFlakeRef(ref)).toMatchObject({
+				valid: true,
+				importable: true,
+				type: "path",
+			});
+		}
+	});
+
 	it("accepts owner/repo shorthand and query options", () => {
 		expect(parseFlakeRef("czxtm/darwin")).toMatchObject({
 			valid: true,
