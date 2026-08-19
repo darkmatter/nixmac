@@ -16,7 +16,6 @@ pub fn build_embed(name: &str) -> Option<String> {
         "SENTRY_DSN" => option_env!("SENTRY_DSN").map(str::to_string),
         "VITE_SERVER_URL" => option_env!("VITE_SERVER_URL").map(str::to_string),
         "SUBMITTED_FEEDBACK_DSN" => option_env!("SUBMITTED_FEEDBACK_DSN").map(str::to_string),
-        "NIXMAC_ENV" => option_env!("NIXMAC_ENV").map(str::to_string),
         "NIXMAC_VERSION" => option_env!("NIXMAC_VERSION").map(str::to_string),
         _ => None,
     };
@@ -25,8 +24,16 @@ pub fn build_embed(name: &str) -> Option<String> {
 }
 
 /// JSON profile from `apps/native/env.{development,release,e2e}.json`, embedded at compile time.
+///
+/// `None` only when nothing was embedded. A malformed embed panics rather than
+/// resolving to `None`, which would silently drop every profile value back to
+/// its field default.
 pub fn build_profile() -> Option<serde_json::Value> {
-    option_env!("NIXMAC_ENV_PROFILE_JSON").and_then(|raw| serde_json::from_str(raw).ok())
+    let raw = option_env!("NIXMAC_ENV_PROFILE_JSON")?;
+    Some(
+        serde_json::from_str(raw)
+            .expect("NIXMAC_ENV_PROFILE_JSON is minified by build.rs and must parse"),
+    )
 }
 
 #[cfg(test)]

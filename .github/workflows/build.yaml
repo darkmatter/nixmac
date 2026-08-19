@@ -169,7 +169,7 @@ jobs:
       - name: Cargo clippy
         run: cargo clippy --workspace --all-targets --features nixmac/codegen -- -D warnings
         env:
-          NIXMAC_ENV: prod
+          NIXMAC_ENV: production
 
       # Decide what kind of build this is:
       #   - tag:     push of refs/tags/v* → ship that exact version on stable
@@ -251,7 +251,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Pass DSNs and build metadata into the tauri action step so build.rs can read them
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          NIXMAC_ENV: prod
+          NIXMAC_ENV: production
           NIXMAC_VERSION: ${{ steps.sync-version.outputs.build_version }}
           VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
           SUBMITTED_FEEDBACK_DSN: ${{ secrets.SUBMITTED_FEEDBACK_DSN }}

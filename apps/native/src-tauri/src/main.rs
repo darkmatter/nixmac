@@ -502,17 +502,11 @@ fn run_gui_mode(
         std::sync::Mutex<Option<tracing_appender::non_blocking::WorkerGuard>>,
     >,
 ) {
-    // Prefer compile-time embedded vars (set by build.rs via `cargo:rustc-env`),
-    // fall back to runtime environment variables.
-    let nixmac_env = option_env!("NIXMAC_ENV")
-        .map(|s| s.to_string())
-        .or_else(|| std::env::var("NIXMAC_ENV").ok())
-        .unwrap_or_else(|| "prod".to_string());
-
-    let nixmac_version = option_env!("NIXMAC_VERSION")
-        .map(|s| s.to_string())
-        .or_else(|| std::env::var("NIXMAC_VERSION").ok())
-        .unwrap_or_else(|| "unknown".to_string());
+    // Both read through `crate::env`, which owns the precedence, so the log line
+    // below reports the same values telemetry does. Resolving either one here
+    // instead is how the log came to disagree with `service.version`.
+    let nixmac_env = crate::env::nixmac_env();
+    let nixmac_version = crate::env::nixmac_version();
 
     let mut builder = tauri::Builder::default().plugin(tauri_plugin_http::init());
     let orpc_router = orpc::build_router();

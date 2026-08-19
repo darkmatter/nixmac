@@ -52,9 +52,12 @@ pub struct NixmacEnvSettings {
     )]
     pub sentry_dsn: String,
 
+    /// No `build_embed`: `NIXMAC_ENV` selects which profile to embed, so
+    /// embedding it as a value too let the selector overwrite the value it
+    /// selected. It resolves from the profile JSON instead. A process-env
+    /// override still wins here, as it does for every field in this struct.
     #[config(
-        default = "prod",
-        build_embed = true,
+        default = "production",
         env_var = "NIXMAC_ENV",
         label = "Deployment environment"
     )]

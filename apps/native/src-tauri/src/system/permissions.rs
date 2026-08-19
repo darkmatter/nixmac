@@ -238,28 +238,46 @@ fn check_folder_access(path: &PathBuf) -> PermissionStatus {
     }
 }
 
-/// Check if we have Full Disk Access.
+/// Shown on the Full Disk Access row when every probe path was missing.
+///
+/// The probe reads files a granted process can read and a denied one cannot.
+/// If none of them exist there is nothing to read, so it proves neither state —
+/// say so, rather than implying we checked and found the access missing. The
+/// other inconclusive path, a Mac with no home directory, has its own message.
+const FULL_DISK_ACCESS_INCONCLUSIVE: &str = "Could not determine Full Disk Access: none of the files this check probes exist on this Mac. If a rebuild fails with a permissions error, add nixmac under System Settings → Privacy & Security → Full Disk Access.";
+
+/// Check if we have Full Disk Access, with an explanation when inconclusive.
 ///
 /// Probes several TCC-gated paths. A successful read on any one is proof of
 /// FDA. A PermissionDenied on any one is proof of the opposite — even if the
 /// user has nixmac listed and toggled on in System Settings, a stale TCC
 /// entry (e.g. codesign requirement mismatch after an update-in-place) can
 /// leave the grant silently inactive, and reads will fail with
-/// PermissionDenied. Only if every probe path is missing (NotFound) do we
-/// fall back to Pending.
-fn check_full_disk_access() -> PermissionStatus {
+/// PermissionDenied. If every probe path is missing (NotFound) the probe has
+/// established nothing, which is `Unknown` rather than `Pending` — the latter
+/// reads as "not granted yet", which is a claim this probe cannot make.
+///
+/// `Unknown` still fails the onboarding gate on its own; what keeps an
+/// unverifiable result from holding the gate shut is the caller dropping the
+/// row's `required` flag (see the `full-disk` arm of `check_all_permissions`).
+fn check_full_disk_access() -> (PermissionStatus, Option<String>) {
     if vite_skip_permissions_enabled() {
         debug!("VITE_NIXMAC_SKIP_PERMISSIONS is set, assuming Full Disk Access granted");
-        return PermissionStatus::Granted;
+        return (PermissionStatus::Granted, None);
     }
     if e2e_skip_permissions_enabled() {
         debug!("E2E permission skip enabled, assuming Full Disk Access granted");
-        return PermissionStatus::Granted;
+        return (PermissionStatus::Granted, None);
     }
 
     let home = match dirs::home_dir() {
         Some(h) => h,
-        None => return PermissionStatus::Unknown,
+        None => {
+            return (
+                PermissionStatus::Unknown,
+                Some("Could not determine Full Disk Access: this Mac reported no home directory, so the check could not run. If a rebuild fails with a permissions error, add nixmac under System Settings → Privacy & Security → Full Disk Access.".to_string()),
+            );
+        }
     };
 
     // (path, is_dir). Ordered by how reliably the path exists on a typical
@@ -286,7 +304,7 @@ fn check_full_disk_access() -> PermissionStatus {
         match result {
             Ok(_) => {
                 debug!("Full Disk Access granted (probe succeeded: {:?})", path);
-                return PermissionStatus::Granted;
+                return (PermissionStatus::Granted, None);
             }
             Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
                 debug!("Full Disk Access denied (probe blocked: {:?})", path);
@@ -297,10 +315,13 @@ fn check_full_disk_access() -> PermissionStatus {
     }
 
     if saw_denied {
-        PermissionStatus::Denied
+        (PermissionStatus::Denied, None)
     } else {
         debug!("Full Disk Access check inconclusive — no probe path existed");
-        PermissionStatus::Pending
+        (
+            PermissionStatus::Unknown,
+            Some(FULL_DISK_ACCESS_INCONCLUSIVE.to_string()),
+        )
     }
 }
 
@@ -345,7 +366,24 @@ pub fn check_all_permissions() -> PermissionsState {
             "desktop" => check_desktop_access(),
             "documents" => check_documents_access(),
             "admin" => check_admin_privileges(),
-            "full-disk" => check_full_disk_access(),
+            "full-disk" => {
+                let (status, detail) = check_full_disk_access();
+                // Keep the default "how to grant it" text unless the probe has
+                // something more accurate to say.
+                if let Some(detail) = detail {
+                    perm.instructions = Some(detail);
+                }
+                // A probe that could not decide must not keep the gate shut —
+                // the same reasoning that makes app-management Recommended
+                // rather than Required (see `app_management_permission`), except
+                // discovered at runtime. Requiring access we cannot verify shows
+                // a permissions banner to users who may well have granted it.
+                // Only this row relaxes: every other `Unknown` still blocks.
+                if status == PermissionStatus::Unknown {
+                    perm.required = false;
+                }
+                status
+            }
             "app-management" => check_app_management(),
             "privileged-helper" => {
                 let (status, detail) = check_privileged_helper();
@@ -356,7 +394,10 @@ pub fn check_all_permissions() -> PermissionsState {
                 }
                 status
             }
-            _ => PermissionStatus::Unknown,
+            other => {
+                debug_assert!(false, "no probe for permission id {other:?}");
+                PermissionStatus::Unknown
+            }
         };
 
         // If this permission is required and not granted, mark all_required_granted as false
@@ -501,17 +542,18 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
                 .spawn();
 
             // Re-check the status
+            let (status, detail) = check_full_disk_access();
             Ok(Permission {
                 id: "full-disk".to_string(),
                 name: "Full Disk Access".to_string(),
                 description: "Required for darwin-rebuild to apply system changes".to_string(),
                 required: true,
                 can_request_programmatically: false,
-                status: check_full_disk_access(),
-                instructions: Some(
+                status,
+                instructions: Some(detail.unwrap_or_else(|| {
                     "First make sure nixmac is in your Applications folder (not running from the install disk image). Then go to System Settings → Privacy & Security → Full Disk Access and add nixmac to the list."
-                        .to_string(),
-                ),
+                        .to_string()
+                })),
             })
         }
         "app-management" => {
@@ -803,6 +845,24 @@ mod tests {
                 .filter(|p| p.required)
                 .any(|p| p.id == "app-management")
         );
+    }
+
+    #[test]
+    fn inconclusive_full_disk_access_is_unknown_and_explains_itself() {
+        // Only meaningful when the probe is actually inconclusive; on a Mac
+        // with Safari or Mail the probe reaches a verdict and this is skipped.
+        // Either inconclusive path must explain itself — which one ran depends
+        // on the machine, so assert the property rather than the wording.
+        let (status, detail) = check_full_disk_access();
+        if status == PermissionStatus::Unknown {
+            let detail = detail.expect("an inconclusive probe must explain itself");
+            assert!(detail.starts_with("Could not determine Full Disk Access:"));
+        } else {
+            assert!(matches!(
+                status,
+                PermissionStatus::Granted | PermissionStatus::Denied
+            ));
+        }
     }
 
     #[test]

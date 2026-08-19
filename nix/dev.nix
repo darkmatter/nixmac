@@ -109,11 +109,11 @@ lib.mkIf (!config.container.isBuilding) {
     export LC_ALL=en_US.UTF-8
     export LC_COLLATE=C
 
-    # Indicate local development environment (for logging, etc.)
-    export NIXMAC_ENV=local
-    export VITE_NIXMAC_ENV=local
+    # Indicate local development environment (for logging, etc.).
+    # NIXMAC_ENV selects the committed profile, so it must be one of the names
+    # apps/native/nixmac-profile.ts and src-tauri/build.rs accept.
+    export NIXMAC_ENV=development
     export NIXMAC_VERSION=local-$(whoami)
-    export VITE_NIXMAC_VERSION=local-$(whoami)
 
     # eval "$(starship init $SHELL)"
   ''
