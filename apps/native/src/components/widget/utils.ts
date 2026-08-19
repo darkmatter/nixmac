@@ -27,6 +27,16 @@ type CurrentStepState = {
   hasChanges: boolean;
   /** Whether saved configuration is newer than the currently running system. */
   rebuildNeeded: boolean;
+  /**
+   * When onboarding finished, or null while it is still running.
+   *
+   * Prerequisite steps belong to the wizard, which the backend completion latch
+   * decides to show (`onboarding/use-onboarding-flow.ts`). Once onboarding is
+   * done, a missing prerequisite is a banner rather than a step: `widget.tsx`
+   * has no case for "permissions" outside onboarding and treats reaching it as
+   * a programming error.
+   */
+  onboardingCompletedAt: number | null;
 };
 
 const orderByStep: { [key in EvolveStep]: number } = {
@@ -40,6 +50,7 @@ const orderByStep: { [key in EvolveStep]: number } = {
 export function computeCurrentStep(state: CurrentStepState): WidgetStep {
   const hasConfigDir = !!state.configDir;
   const hasHost = !!state.host && state.hosts.includes(state.host);
+  const inOnboarding = state.onboardingCompletedAt === null;
   // Must mirror useOnboardingFlow's permissionsReady gate (including the
   // skipPermissions bypass): if the two disagree, OnboardingFlow considers
   // setup complete while this returns "permissions" — a step the widget has
@@ -50,11 +61,12 @@ export function computeCurrentStep(state: CurrentStepState): WidgetStep {
     state.permissionsState &&
     !state.permissionsState.allRequiredGranted;
 
-  if (permissionsCheckedAndIncomplete) {
+  if (inOnboarding && permissionsCheckedAndIncomplete) {
     return "permissions";
   }
 
   if (
+    inOnboarding &&
     state.nixInstalled !== true &&
     settings.nixInstalledOverride !== true // bypass used for testing
   ) {

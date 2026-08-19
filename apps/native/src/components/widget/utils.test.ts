@@ -215,6 +215,7 @@ describe("computeCurrentStep — diff gating", () => {
       activeStepOverride: null as EvolveStep | null,
       hasChanges: false,
       rebuildNeeded: false,
+      onboardingCompletedAt: 1_700_000_000,
       ...overrides,
     };
   }
@@ -276,7 +277,18 @@ describe("computeCurrentStep — diff gating", () => {
     const incomplete = { allRequiredGranted: false } as never;
 
     it("routes to permissions while a required permission is missing", () => {
-      expect(computeCurrentStep(readyState({ permissionsState: incomplete }))).toBe("permissions");
+      expect(
+        computeCurrentStep(
+          readyState({ permissionsState: incomplete, onboardingCompletedAt: null }),
+        ),
+      ).toBe("permissions");
+    });
+
+    it("stops routing to permissions once onboarding has completed", () => {
+      // After the wizard, a missing prerequisite is the repair banner's job.
+      // Returning "permissions" here reaches an assertion in widget.tsx that
+      // shows the user an internal-error banner instead.
+      expect(computeCurrentStep(readyState({ permissionsState: incomplete }))).toBe("begin");
     });
 
     it("honors settings.skipPermissions exactly like the onboarding gate", () => {
@@ -290,9 +302,22 @@ describe("computeCurrentStep — diff gating", () => {
             permissionsState: incomplete,
             hasChanges: true,
             evolveState: evolveAt("manualEvolve"),
+            onboardingCompletedAt: null,
           }),
         ),
       ).toBe("manualEvolve");
+    });
+  });
+
+  describe("nix-setup gate", () => {
+    it("routes to nix-setup while onboarding and nix is missing", () => {
+      expect(
+        computeCurrentStep(readyState({ nixInstalled: false, onboardingCompletedAt: null })),
+      ).toBe("nix-setup");
+    });
+
+    it("stops routing to nix-setup once onboarding has completed", () => {
+      expect(computeCurrentStep(readyState({ nixInstalled: false }))).toBe("begin");
     });
   });
 });

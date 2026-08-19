@@ -169,7 +169,7 @@ jobs:
       - name: Cargo clippy
         run: cargo clippy --workspace --all-targets --features nixmac/codegen -- -D warnings
         env:
-          NIXMAC_ENV: prod
+          NIXMAC_ENV: production
 
       # Decide what kind of build this is:
       #   - tag:     push of refs/tags/v* → ship that exact version on stable
@@ -251,10 +251,48 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Pass DSNs and build metadata into the tauri action step so build.rs can read them
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          NIXMAC_ENV: prod
+          NIXMAC_ENV: production
           NIXMAC_VERSION: ${{ steps.sync-version.outputs.build_version }}
           VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
           SUBMITTED_FEEDBACK_DSN: ${{ secrets.SUBMITTED_FEEDBACK_DSN }}
+
+      # An unset NIXMAC_ENV selects the development profile, which turns the
+      # permissions gate off. Check the artifacts themselves name production,
+      # rather than trusting that the env above reached both bakers: the
+      # frontend bundle carries its profile as a Vite define, the binary as a
+      # build.rs embed, and they are baked by separate code paths.
+      #
+      # esbuild may drop the quotes on the object key, so both greps accept the
+      # key quoted or bare. The second one is the important half: a release
+      # bundle that carries a non-production profile at all has a path back to
+      # one, whether or not it also carries the right one.
+      - name: Verify artifacts carry the production profile
+        run: |
+          set -euo pipefail
+
+          if [ ! -d apps/native/dist ]; then
+            echo "ERROR: apps/native/dist is missing; the frontend was not built"
+            exit 1
+          fi
+          if ! grep -rqE '"?NIXMAC_ENV"?:"production"' apps/native/dist; then
+            echo "ERROR: frontend bundle in apps/native/dist does not carry the production profile"
+            exit 1
+          fi
+          if grep -rqE '"?NIXMAC_ENV"?:"(development|e2e)"' apps/native/dist; then
+            echo "ERROR: frontend bundle in apps/native/dist also carries a non-production profile"
+            grep -rhoE '"?NIXMAC_ENV"?:"(development|e2e)"' apps/native/dist | sort -u
+            exit 1
+          fi
+
+          APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d 2>/dev/null | sed -n '1p' || true)
+          if [ -z "$APP_PATH" ]; then
+            echo "ERROR: no .app bundle found under target/release/bundle/macos"
+            exit 1
+          fi
+          if ! grep -qa '"NIXMAC_ENV":"production"' "$APP_PATH/Contents/MacOS/nixmac"; then
+            echo "ERROR: $APP_PATH does not embed the production profile"
+            exit 1
+          fi
 
       - name: Unit Test frontend
         working-directory: apps/native

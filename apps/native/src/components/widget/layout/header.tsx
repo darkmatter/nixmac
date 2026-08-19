@@ -36,6 +36,7 @@ export function Header() {
         activeStepOverride: state.activeStepOverride,
         hasChanges: (viewModel.git?.changes.length ?? 0) > 0,
         rebuildNeeded: viewModel.build.rebuildNeeded,
+        onboardingCompletedAt: viewModel.onboardingState?.completedAt ?? null,
       });
       if (step !== "setup" && state.error && state.error !== prevState.error) {
         setIsPulsing(true);

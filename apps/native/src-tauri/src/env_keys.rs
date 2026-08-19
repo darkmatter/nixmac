@@ -4,12 +4,10 @@
 
 #[allow(dead_code)]
 /// Environment variables embedded at build time via `build.rs` (`cargo:rustc-env`).
-pub const BUILD_EMBED_KEYS: &[&str] = &[
-    "SENTRY_DSN",
-    "VITE_SERVER_URL",
-    "SUBMITTED_FEEDBACK_DSN",
-    "NIXMAC_ENV",
-];
+/// `NIXMAC_ENV` is deliberately absent: it selects which profile to embed, so
+/// embedding it as a value too let the selector overwrite the selected file's
+/// own `NIXMAC_ENV`. The value comes from the embedded profile JSON instead.
+pub const BUILD_EMBED_KEYS: &[&str] = &["SENTRY_DSN", "VITE_SERVER_URL", "SUBMITTED_FEEDBACK_DSN"];
 
 /// Application environment variable names.
 #[allow(dead_code)]
