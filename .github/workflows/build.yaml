@@ -256,6 +256,32 @@ jobs:
           VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
           SUBMITTED_FEEDBACK_DSN: ${{ secrets.SUBMITTED_FEEDBACK_DSN }}
 
+      # TEMPORARY diagnostic — delete before merging. Reads the exact frontend
+      # bundle the step above embeds into the app and reports how the
+      # `__NIXMAC_PROFILE_JSON__` Vite define was substituted:
+      #   string literal  -> JSON.parse succeeds, the release profile is used
+      #   object literal  -> JSON.parse throws, src/lib/env.ts silently falls
+      #                      back to env.development.json (VITE_NIXMAC_SKIP_PERMISSIONS)
+      # Never fails the job; the verdict is in the log.
+      - name: TEMP prove profile define shape
+        working-directory: apps/native
+        shell: bash
+        run: |
+          set -uo pipefail
+          ls -la dist/assets/main-*.js
+          bundle=$(cat dist/assets/main-*.js)
+          # unquoted key => object literal (bug); quoted key => string literal (fixed)
+          object_literal=$(printf '%s' "$bundle" | grep -c -F ',NIXMAC_ENV:"' || true)
+          string_literal=$(printf '%s' "$bundle" | grep -c -F '"NIXMAC_ENV":"' || true)
+          echo "object-literal define occurrences: $object_literal"
+          echo "string-literal define occurrences: $string_literal"
+          printf '%s' "$bundle" | grep -o -E '.{0,40},NIXMAC_ENV:"[a-z]*".{0,40}' | head -2 || true
+          if [ "$object_literal" -gt 0 ]; then
+            echo "VERDICT: bug PRESENT — this production bundle runs on env.development.json"
+          else
+            echo "VERDICT: bug ABSENT — define is a string literal"
+          fi
+
       - name: Unit Test frontend
         working-directory: apps/native
         run: bun run test:unit
