@@ -3,12 +3,76 @@
 import { Button } from "@/components/ui/button";
 import { tauriAPI } from "@/ipc/api";
 import type { Permission } from "@/ipc/types";
-import { orpc } from "@/lib/orpc";
+import { client, orpc } from "@/lib/orpc";
+import { HELPER_PERMISSION_ID } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { useViewModel } from "@nixmac/state";
 import { useQuery } from "@tanstack/react-query";
 import { AppWindow, Check, ExternalLink, Folder, HardDrive, KeyRound, Loader2, ShieldCheck, Terminal } from "lucide-react";
-import { useEffect, useState } from "react";
+import { type ComponentProps, type ReactNode, useEffect, useState } from "react";
+
+type ActionButtonProps = {
+  idle: ReactNode;
+  busy: string;
+  isBusy: boolean;
+  variant?: ComponentProps<typeof Button>["variant"];
+  onClick: () => void;
+};
+
+/**
+ * One row's action button. `isBusy` drives both the running label and
+ * `disabled`, so the two cannot disagree.
+ *
+ * The idle label keeps its box and the spinner is laid over it: swapping
+ * content would resize the button, and the design-system Button animates every
+ * resize. The spinner stays solid because here `disabled` means "running", and
+ * the base's pointer-events rule is what refuses the click. `aria-label`
+ * carries the running word while the label is hidden.
+ */
+function ActionButton({ idle, busy, isBusy, variant, onClick }: ActionButtonProps) {
+  return (
+    <Button
+      size="sm"
+      variant={variant}
+      onClick={onClick}
+      disabled={isBusy}
+      aria-label={isBusy ? busy : undefined}
+      aria-busy={isBusy}
+      className="relative disabled:opacity-100"
+    >
+      <span className={cn("inline-flex items-center gap-1.5", isBusy && "invisible")}>{idle}</span>
+      {isBusy ? (
+        <span className="absolute inset-0 flex items-center justify-center">
+          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+        </span>
+      ) : null}
+    </Button>
+  );
+}
+
+/**
+ * What one row's grant button says. A row nixmac cannot advance on its own
+ * can only deep-link into System Settings; the helper is installed by nixmac
+ * rather than requested from macOS, hence "Enable".
+ */
+function grantLabel(perm: Permission): Pick<ActionButtonProps, "idle" | "busy" | "variant"> {
+  if (!perm.canRequestProgrammatically) {
+    return {
+      idle: (
+        <>
+          Open Settings
+          <ExternalLink className="size-3.5" aria-hidden="true" />
+        </>
+      ),
+      busy: "Waiting…",
+      variant: "secondary",
+    };
+  }
+  if (perm.id === HELPER_PERMISSION_ID) {
+    return { idle: "Enable", busy: "Enabling…" };
+  }
+  return { idle: "Request", busy: "Requesting…" };
+}
 
 /**
  * The macOS permission list: status rows plus grant/request actions. Real
@@ -19,8 +83,30 @@ import { useEffect, useState } from "react";
  */
 export function PermissionsPanel() {
   const permissionsState = useViewModel((s) => s.permissions);
-  const [requesting, setRequesting] = useState<string | null>(null);
+  // The standing helper decision picks the helper row's action. Both actions
+  // record the decision before their run finishes, so an action in flight pins
+  // its button rather than re-deriving it from here.
+  const helperPreference = useViewModel((s) => s.preferences?.helperPreference ?? null);
+  // The action in flight, per row. Per row because only the row that owns an
+  // action is disabled; a single panel-wide slot would let a click on one row
+  // evict another's entry while its action still runs.
+  const [requesting, setRequesting] = useState<ReadonlyMap<string, "grant" | "disable">>(
+    () => new Map(),
+  );
   const [notice, setNotice] = useState<{ tone: "info" | "error"; message: string } | null>(null);
+
+  // Updater form: two rows can start or settle in the same tick.
+  function startAction(id: string, action: "grant" | "disable") {
+    setRequesting((inFlight) => new Map(inFlight).set(id, action));
+  }
+
+  function finishAction(id: string) {
+    setRequesting((inFlight) => {
+      const next = new Map(inFlight);
+      next.delete(id);
+      return next;
+    });
+  }
 
   // Refresh permissions when the panel mounts.
   useEffect(() => {
@@ -30,18 +116,16 @@ export function PermissionsPanel() {
     });
   }, []);
 
-  // Detect whether nixmac is running from /Applications. macOS TCC services
-  // (Full Disk Access especially) key off the bundle's location, so an app
-  // launched from the mounted DMG or a download folder will not match the TCC
-  // entry and grants silently fail. Only warn when we are actually inside a
-  // bundle but misplaced — `bundlePath` is null under `tauri dev` / tests, and
-  // we must not surface a false warning there.
+  // macOS TCC grants key off the bundle's location, so an app launched from
+  // the DMG or a download folder silently fails to match its grants. Warn only
+  // when actually inside a bundle but misplaced — `bundlePath` is null under
+  // `tauri dev` and tests.
   const { data: installLocation } = useQuery(orpc.system.installLocation.queryOptions());
   const showMisplacedWarning =
     installLocation?.bundlePath != null && !installLocation.inApplicationsDir;
 
   async function handleGrant(permission: Permission) {
-    setRequesting(permission.id);
+    startAction(permission.id, "grant");
     setNotice(null);
     try {
       if (permission.id === "full-disk") {
@@ -49,11 +133,9 @@ export function PermissionsPanel() {
         // Give the user a beat to grant access in System Settings, then re-probe.
         await new Promise((resolve) => setTimeout(resolve, 1000));
       } else if (permission.id === "app-management") {
-        // Opens System Settings → Privacy & Security → App Management. macOS
-        // can't grant this programmatically and exposes no probe, so we can
-        // only deep-link and let the user toggle it. Give them a beat, then
-        // re-probe; the backend will keep this row pending rather than report
-        // a false grant.
+        // macOS cannot grant this programmatically and exposes no probe, so
+        // deep-link, give the user a beat, then re-probe; the backend keeps
+        // the row pending rather than report a false grant.
         await tauriAPI.permissions.request(permission.id);
         setNotice({
           tone: "info",
@@ -61,18 +143,20 @@ export function PermissionsPanel() {
             "nixmac opened System Settings → Privacy & Security → App Management. Enable nixmac there, then return here. macOS does not let nixmac verify this permission, so this recommended row may remain pending.",
         });
         await new Promise((resolve) => setTimeout(resolve, 1000));
-      } else if (permission.id === "privileged-helper") {
-        // Registers the bundled SMAppService LaunchDaemon. macOS may require
-        // one-time approval in Login Items & Extensions before status is granted.
+      } else if (permission.id === HELPER_PERMISSION_ID) {
+        // The backend records the decision and reconciles; it may open Login
+        // Items when approval is pending. Show this run's report only when it
+        // differs from the row's sentence — otherwise every click while
+        // approval is pending prints the same sentence twice.
         const result = await tauriAPI.permissions.request(permission.id);
-        if (result.status !== "granted") {
+        if (result.status !== "granted" && result.instructions !== permission.instructions) {
           setNotice({
             tone: "info",
             message:
-              "nixmac opened Login Items & Extensions. Enable nixmac there, then return here and click Enable again if this row is still pending.",
+              result.instructions ??
+              "nixmac could not finish enabling the unattended sync helper.",
           });
         }
-        await new Promise((resolve) => setTimeout(resolve, 1500));
       } else {
         // deprecated(orpc): replace with client/orpc from @/lib/orpc
         await tauriAPI.permissions.request(permission.id);
@@ -86,7 +170,30 @@ export function PermissionsPanel() {
         message: `Permission request failed: ${error instanceof Error ? error.message : String(error)}`,
       });
     } finally {
-      setRequesting(null);
+      finishAction(permission.id);
+    }
+  }
+
+  /**
+   * The backend records the decision, waits out a running activation, and
+   * unregisters. Not offered while macOS holds the registration pending
+   * approval — that row deep-links to Login Items instead.
+   */
+  async function handleDisableHelper() {
+    startAction(HELPER_PERMISSION_ID, "disable");
+    setNotice(null);
+    try {
+      const report = await client.darwin.helperDisable();
+      setNotice({ tone: "info", message: report.detail });
+      await client.permissions.refresh();
+    } catch (error) {
+      console.error("Failed to disable the unattended sync helper:", error);
+      setNotice({
+        tone: "error",
+        message: `Disabling the unattended sync helper failed: ${error instanceof Error ? error.message : String(error)}`,
+      });
+    } finally {
+      finishAction(HELPER_PERMISSION_ID);
     }
   }
 
@@ -124,8 +231,31 @@ export function PermissionsPanel() {
       <ul className="flex flex-col gap-3">
         {permissions.map((perm) => {
           const isGranted = perm.status === "granted";
-          const isRequesting = requesting === perm.id;
-          const canRequest = perm.canRequestProgrammatically;
+          const pendingAction = requesting.get(perm.id) ?? null;
+          const isGranting = pendingAction === "grant";
+          const isDisabling = pendingAction === "disable";
+          // The one action this row offers. The helper is the one permission
+          // nixmac installs rather than asks macOS for, so its row can hand it
+          // back — a toggle of the standing decision, not of the row's status.
+          // While macOS holds the registration pending approval the backend
+          // clears `canRequestProgrammatically` and the row deep-links to Login
+          // Items instead. An action in flight keeps its own button: it has
+          // already recorded the opposite decision.
+          const offersDisable =
+            perm.id === HELPER_PERMISSION_ID &&
+            perm.canRequestProgrammatically &&
+            (helperPreference === "granted" || isGranted);
+          const action: "grant" | "disable" | null =
+            pendingAction ?? (offersDisable ? "disable" : isGranted ? null : "grant");
+          // A fresh DOM node whenever the button changes shape: the
+          // design-system Button animates a reused one, cross-fading fill and
+          // width between shapes.
+          const buttonKey =
+            action === "disable"
+              ? "disable"
+              : perm.canRequestProgrammatically
+                ? "grant"
+                : "open-settings";
           const icon = (() => {
             if (isGranted) {
               return <ShieldCheck className="size-5" />;
@@ -141,7 +271,7 @@ export function PermissionsPanel() {
                 return <HardDrive className="size-5" />;
               case "app-management":
                 return <AppWindow className="size-5" />;
-              case "privileged-helper":
+              case HELPER_PERMISSION_ID:
                 return <KeyRound className="size-5" />;
               default:
                 return <Loader2 className="size-5 animate-spin" aria-hidden="true" />;
@@ -156,7 +286,7 @@ export function PermissionsPanel() {
                 isGranted ? "border-success/30" : "border-border",
               )}
             >
-              <div className="flex items-start gap-3">
+              <div className="flex min-w-0 flex-1 items-start gap-3">
                 <span
                   className={cn(
                     "mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg",
@@ -183,44 +313,41 @@ export function PermissionsPanel() {
                   <p className="mt-1 text-muted-foreground text-sm leading-relaxed">
                     {perm.description}
                   </p>
+                  {/* These sentences quote unbreakable `/nix/store/…` paths
+                      wider than the row, so they must be allowed to break
+                      anywhere. */}
                   {perm.instructions ? (
-                    <p className="mt-2 rounded-md border border-border bg-secondary/50 p-2 font-mono text-muted-foreground text-xs">
+                    <p className="mt-2 wrap-anywhere rounded-md border border-border bg-secondary/50 p-2 font-mono text-muted-foreground text-xs">
                       {perm.instructions}
                     </p>
                   ) : null}
                 </div>
               </div>
 
-              <div className="shrink-0 self-start sm:self-center">
+              <div className="flex shrink-0 flex-col items-end gap-1.5 self-end sm:self-center">
                 {isGranted ? (
                   <span className="inline-flex items-center gap-1.5 font-medium text-success text-sm">
                     <Check className="size-4" aria-hidden="true" />
                     Granted
                   </span>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant={canRequest ? "default" : "secondary"}
+                ) : null}
+                {action === "disable" ? (
+                  <ActionButton
+                    key={buttonKey}
+                    idle="Disable"
+                    busy="Disabling…"
+                    isBusy={isDisabling}
+                    variant="ghost"
+                    onClick={handleDisableHelper}
+                  />
+                ) : action === "grant" ? (
+                  <ActionButton
+                    key={buttonKey}
+                    {...grantLabel(perm)}
+                    isBusy={isGranting}
                     onClick={() => handleGrant(perm)}
-                    disabled={isRequesting}
-                  >
-                    {isRequesting ? (
-                      <>
-                        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                        {canRequest ? "Requesting…" : "Waiting…"}
-                      </>
-                    ) : perm.id === "privileged-helper" ? (
-                      "Enable"
-                    ) : canRequest ? (
-                      "Request"
-                    ) : (
-                      <>
-                        Open Settings
-                        <ExternalLink className="size-3.5" aria-hidden="true" />
-                      </>
-                    )}
-                  </Button>
-                )}
+                  />
+                ) : null}
               </div>
             </li>
           );

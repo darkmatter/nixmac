@@ -2,9 +2,11 @@ import type {
 	GlobalPreferences,
 	NixInstallState,
 	OnboardingState,
+	Permission,
 	PermissionsState,
 	RebuildStatus,
 } from "@/ipc/types";
+import { HELPER_PERMISSION_ID } from "@/lib/permissions";
 import { viewModelActions } from "@nixmac/state";
 
 /**
@@ -43,6 +45,7 @@ export function makeGlobalPreferences(
 		featureFlagOverrides: null,
 		pendingImportDir: null,
 		autoFormatNixFiles: false,
+		helperPreference: "unset",
 		...overrides,
 	};
 }
@@ -114,6 +117,31 @@ export function makeRebuildStatus(
 		errorType: null,
 		errorMessage: null,
 		systemUntouched: null,
+		...overrides,
+	};
+}
+
+/**
+ * What the backend reports while macOS holds the helper registration for
+ * approval in Login Items. Declared once so a copy change edits one fixture,
+ * not every test that mentions the sentence.
+ */
+export const APPROVE_IN_LOGIN_ITEMS =
+	"Approve nixmac in System Settings → General → Login Items & Extensions to finish enabling the unattended sync helper.";
+
+/**
+ * The helper permission row while macOS holds the registration for approval.
+ * Override the fields a scenario cares about.
+ */
+export function makeHelperRow(overrides: Partial<Permission> = {}): Permission {
+	return {
+		id: HELPER_PERMISSION_ID,
+		name: "Unattended Sync Helper",
+		description: "",
+		required: true,
+		canRequestProgrammatically: false,
+		status: "pending",
+		instructions: APPROVE_IN_LOGIN_ITEMS,
 		...overrides,
 	};
 }
