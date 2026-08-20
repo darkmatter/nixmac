@@ -19,7 +19,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const DEFAULT_APP = resolve(
@@ -45,7 +45,14 @@ function bundleBinaries(appPath) {
   const walk = (dir) => {
     for (const entry of readdirSync(dir)) {
       const full = join(dir, entry);
-      const stat = statSync(full);
+      // lstat, not stat: Frameworks/ layouts are full of symlinks, and stat on a
+      // broken one throws — which would abort the whole check rather than report
+      // it. Symlinks are skipped outright; whatever they point at inside the
+      // bundle gets walked on its own.
+      const stat = lstatSync(full);
+      if (stat.isSymbolicLink()) {
+        continue;
+      }
       if (stat.isDirectory()) {
         walk(full);
       } else if (stat.isFile() && (stat.mode & 0o111 || entry.endsWith(".dylib"))) {
