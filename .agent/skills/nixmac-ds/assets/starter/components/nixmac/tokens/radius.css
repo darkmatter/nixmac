@@ -1,0 +1,9 @@
+/* nixmac corner radii — base 0.5rem, matching the app's @theme scale. */
+:root {
+  --radius: 0.5rem;
+  --radius-sm: calc(var(--radius) - 4px); /* 4px  — inputs, small chips */
+  --radius-md: calc(var(--radius) - 2px); /* 6px  — buttons, badges */
+  --radius-lg: var(--radius);             /* 8px  — cards, popovers */
+  --radius-xl: calc(var(--radius) + 4px); /* 12px — large cards, panels */
+  --radius-full: 9999px;                  /* pills — glow buttons, tags */
+}

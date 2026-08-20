@@ -79,9 +79,36 @@ pub fn truncate_with_ellipsis(s: &str, max: usize) -> String {
     truncated
 }
 
+/// Escape a string for safe insertion into a Nix string literal.
+pub(crate) fn escape_nix_string(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    let mut chars = value.chars().peekable();
+    while let Some(ch) = chars.next() {
+        match ch {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            '\t' => out.push_str("\\t"),
+            '$' if chars.peek() == Some(&'{') => {
+                out.push_str("\\${");
+                chars.next(); // consume '{'
+            }
+            _ => out.push(ch),
+        }
+    }
+    out
+}
+
+/// Convert a value into a complete double-quoted Nix string literal.
+pub(crate) fn nix_string_literal(value: &str) -> String {
+    format!("\"{}\"", escape_nix_string(value))
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{non_empty_trimmed_string, normalize_path_input};
+    use super::{
+        escape_nix_string, nix_string_literal, non_empty_trimmed_string, normalize_path_input,
+    };
 
     #[test]
     fn test_empty_input_returns_err() {
@@ -246,5 +273,55 @@ mod tests {
         {
             eprintln!("restore cwd failed: {}", e);
         }
+    }
+
+    #[test]
+    fn test_escape_nix_string() {
+        let input = "This is a \"test\" string with \\ backslashes and ${dollar} signs.";
+        let escaped = escape_nix_string(input);
+        assert_eq!(
+            escaped,
+            "This is a \\\"test\\\" string with \\\\ backslashes and \\${dollar} signs."
+        );
+    }
+
+    #[test]
+    fn escape_nix_string_only_escapes_interpolation_start() {
+        let cases = [
+            ("$HOME", "$HOME"),
+            ("${name}", "\\${name}"),
+            (
+                "prefix ${one}${two} suffix",
+                "prefix \\${one}\\${two} suffix",
+            ),
+            ("unterminated ${", "unterminated \\${"),
+            ("just $ and { braces }", "just $ and { braces }"),
+            ("$x{not-interpolation}", "$x{not-interpolation}"),
+        ];
+
+        for (input, expected) in cases {
+            assert_eq!(escape_nix_string(input), expected, "input: {input}");
+        }
+    }
+
+    #[test]
+    fn escape_nix_string_handles_backslash_before_interpolation() {
+        let escaped = escape_nix_string(r"\${already-looking-escaped}");
+
+        assert_eq!(escaped, r"\\\${already-looking-escaped}");
+    }
+
+    #[test]
+    fn test_nix_string_literal() {
+        let input = r#"This is a "test" string with special characters: \ $ { }"#;
+        let expected = r#""This is a \"test\" string with special characters: \\ $ { }""#;
+        assert_eq!(nix_string_literal(input), expected);
+    }
+
+    #[test]
+    fn test_nix_string_literal_escapes_interpolation() {
+        let input = r#"hostname-${foo}"#;
+        let expected = r#""hostname-\${foo}""#;
+        assert_eq!(nix_string_literal(input), expected);
     }
 }

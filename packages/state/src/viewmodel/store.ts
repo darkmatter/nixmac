@@ -35,6 +35,7 @@ export const initialViewModelState: ViewModelState = {
   homebrewInstall: null,
   homebrewLog: [],
   rebuildStatus: null,
+  secretsVaultState: null,
   rebuildLog: { lines: [], rawLines: [], notices: [] },
   evolveEvents: [],
 };

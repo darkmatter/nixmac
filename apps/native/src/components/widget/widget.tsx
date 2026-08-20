@@ -12,6 +12,7 @@ import { Header } from "@/components/widget/layout/header";
 import { ReportIssueButton } from "@/components/widget/feedback/report-issue-button";
 import { StepContentWrapper } from "@/components/widget/layout/step-content-wrapper";
 import { Stepper } from "@/components/widget/layout/stepper";
+import { SecretsManagementRoute } from "@/components/widget/secrets/secrets-management";
 import { OnboardingFlow } from "@/components/widget/onboarding/onboarding-flow";
 import { useOnboardingFlow } from "@/components/widget/onboarding/use-onboarding-flow";
 import {
@@ -93,8 +94,18 @@ export function DarwinWidget() {
         nav.goHome();
         return true;
       }
-      const { showHistory, showFilesystem, isProcessing, isGenerating } =
+      const {
+        showHistory,
+        showFilesystem,
+        showSecretsManagement,
+        isProcessing,
+        isGenerating,
+      } =
         useUiState.getState();
+      if (showSecretsManagement && !(isProcessing || isGenerating)) {
+        uiActions.setShowSecretsManagement(false);
+        return true;
+      }
       if (showHistory && !(isProcessing || isGenerating)) {
         uiActions.setShowHistory(false);
         return true;
@@ -236,6 +247,9 @@ export function DarwinWidget() {
       case "filesystem":
         return <FilesystemStep />;
 
+      case "secrets":
+        return <SecretsManagementRoute />;
+
       // Defensive fallback: permissions/nix-setup/setup are owned by
       // OnboardingFlow, which takes over the window via showOnboarding when
       // those gates are unsatisfied. If a gate mismatch ever routes here
@@ -247,7 +261,7 @@ export function DarwinWidget() {
 
   // Filesystem renders edge-to-edge with its own internal scrollers, so it skips
   // the StepContentWrapper's padding & overflow handling.
-  const isEdgeToEdgeStep = step === "filesystem";
+  const isEdgeToEdgeStep = step === "filesystem" || step === "secrets";
 
   if (showOnboarding) {
     return (

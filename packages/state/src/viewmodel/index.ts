@@ -12,6 +12,7 @@ export {
   selectPromptHistory,
   selectRebuildLog,
   selectRebuildStatus,
+  selectSecretsVaultState,
   useViewModel,
   type ViewModelSelector
 } from "./selectors";

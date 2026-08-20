@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "starter": {
+    "source": "skill-directory",
+    "path": "assets/starter"
+  }
+}

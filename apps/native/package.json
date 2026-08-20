@@ -48,6 +48,7 @@
     "generate": "bun run gen:schemas",
     "gen:schemas": "cargo run --manifest-path src-tauri/Cargo.toml --bin nixmac --features codegen -- gen-schemas",
     "gen:orpc": "cargo run --manifest-path src-tauri/Cargo.toml --bin nixmac --features codegen -- gen-orpc",
+    "gen:specta": "cargo run --example specta_gen_ts --features codegen",
     "gen:docs-index": "cargo run --manifest-path src-tauri/Cargo.toml --bin nixmac --features codegen -- gen-docs-index"
   },
   "dependencies": {

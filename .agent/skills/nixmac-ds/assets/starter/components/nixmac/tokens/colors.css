@@ -1,0 +1,99 @@
+/* nixmac color system — ported verbatim from apps/native/src/index.css.
+   Monochrome neutral base (oklch hue 0) with a lime "brand" accent, teal
+   glow, and semantic success / warning / destructive. Dark is the primary,
+   ship-default theme; light is supported. */
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.1445 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.1445 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.1445 0 0);
+  --primary: oklch(0.2044 0 0);
+  --primary-foreground: oklch(0.9848 0 0);
+  --secondary: oklch(0.9703 0 0);
+  --secondary-foreground: oklch(0.2044 0 0);
+  --muted: oklch(0.9703 0 0);
+  --muted-foreground: oklch(0.5555 0 0);
+  --accent: oklch(0.9703 0 0);
+  --accent-foreground: oklch(0.2044 0 0);
+  --destructive: oklch(0.6368 0.2078 25.33);
+  --destructive-foreground: oklch(0.9848 0 0);
+  --border: oklch(0.9219 0 0);
+  --input: oklch(0.9219 0 0);
+  --ring: oklch(0.1445 0 0);
+  --chart-1: oklch(0.6772 0.1571 35.19);
+  --chart-2: oklch(0.6309 0.1013 183.49);
+  --chart-3: oklch(0.3787 0.044 225.54);
+  --chart-4: oklch(0.8336 0.1186 88.15);
+  --chart-5: oklch(0.7834 0.1261 58.75);
+  --highlight: oklch(0.8359 0.0119 277.06);
+  --success: oklch(0.55 0.14 152);
+  --success-foreground: oklch(0.985 0 0);
+  --warning: oklch(0.62 0.13 65);
+  --warning-foreground: oklch(0.985 0 0);
+  --brand: oklch(0.9415 0.1774 123.64);
+  --brand-foreground: oklch(0.1553 0.0042 285.9);
+  --sidebar: oklch(0.9848 0 0);
+  --sidebar-foreground: oklch(0.1445 0 0);
+  --sidebar-primary: oklch(0.2044 0 0);
+  --sidebar-primary-foreground: oklch(0.9848 0 0);
+  --sidebar-accent: oklch(0.9703 0 0);
+  --sidebar-accent-foreground: oklch(0.2044 0 0);
+  --sidebar-border: oklch(0.9219 0 0);
+  --sidebar-ring: oklch(0.7081 0 0);
+
+  /* Diff / editor accents (Monaco Minted theme) */
+  --diff-added: oklch(0.9 0.08 178);   /* #9ff0e3 teal */
+  --diff-removed: oklch(0.78 0.09 12); /* #f09fad rose */
+
+  /* Signature teal glow (Build & Test pill, glow frames) */
+  --glow-teal: oklch(0.8 0.13 178);    /* ~rgb(45,212,191) */
+}
+
+.dark {
+  --background: oklch(0.1445 0 0);
+  --foreground: oklch(0.9848 0 0);
+  --card: oklch(0.169 0.002 270);
+  --card-foreground: oklch(0.9848 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.9848 0 0);
+  --primary: oklch(0.9848 0 0);
+  --primary-foreground: oklch(0.2044 0 0);
+  --secondary: oklch(0.2686 0 0);
+  --secondary-foreground: oklch(0.9848 0 0);
+  --muted: oklch(0.2686 0 0);
+  --muted-foreground: oklch(0.7153 0 0);
+  --accent: oklch(0.2686 0 0);
+  --accent-foreground: oklch(0.9848 0 0);
+  --destructive: oklch(0.69 0.26 16.55);
+  --destructive-foreground: oklch(0.9848 0 0);
+  --border: oklch(0.2686 0 0);
+  --input: oklch(0.2686 0 0);
+  --ring: oklch(0.8697 0 0);
+  --chart-1: oklch(0.5292 0.1931 262.13);
+  --chart-2: oklch(0.6983 0.1337 165.46);
+  --chart-3: oklch(0.7232 0.15 60.63);
+  --chart-4: oklch(0.6192 0.2037 312.73);
+  --chart-5: oklch(0.6123 0.2093 6.39);
+  --highlight: oklch(0.9019 0.0255 281.73);
+  --success: oklch(0.74 0.15 152);
+  --success-foreground: oklch(0.2 0.03 152);
+  --warning: oklch(0.81 0.14 65);
+  --warning-foreground: oklch(0.24 0.04 65);
+  --brand: oklch(0.9415 0.1774 123.64);
+  --brand-foreground: oklch(0.1553 0.0042 285.9);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.9848 0 0);
+  --sidebar-primary: oklch(0.9848 0 0);
+  --sidebar-primary-foreground: oklch(0.2044 0 0);
+  --sidebar-accent: oklch(0.2686 0 0);
+  --sidebar-accent-foreground: oklch(0.9848 0 0);
+  --sidebar-border: oklch(0.2686 0 0);
+  --sidebar-ring: oklch(0.8697 0 0);
+
+  --diff-added: oklch(0.9 0.08 178);
+  --diff-removed: oklch(0.78 0.09 12);
+  --glow-teal: oklch(0.8 0.13 178);
+}

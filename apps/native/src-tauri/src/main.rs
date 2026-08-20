@@ -33,6 +33,7 @@ mod privileged_helper;
 mod rebuild;
 #[cfg(any(test, feature = "codegen"))]
 mod schema_gen;
+mod secrets;
 mod shared_types;
 mod sqlite_types;
 mod state;
@@ -378,6 +379,7 @@ fn register_managed_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> anyho
     app.manage(state::nix_install_state::load_observable(app));
     app.manage(state::homebrew_state::load_observable(app));
     app.manage(state::rebuild_status::load_observable(app));
+    app.manage(state::secrets_vault::load_observable(app));
     Ok(())
 }
 

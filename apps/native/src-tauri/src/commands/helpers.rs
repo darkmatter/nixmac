@@ -50,7 +50,7 @@ pub(super) fn clear_config_dir_provisional(app: &AppHandle) {
 }
 
 // Helper function to extract the hostname and config_dir from the app handle, returning an error if either is missing.
-pub(super) fn get_hostname_and_config_dir(
+pub(crate) fn get_hostname_and_config_dir(
     app: &AppHandle,
     cmd: &str,
 ) -> Result<(String, String), String> {

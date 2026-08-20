@@ -16,6 +16,7 @@ describe("useUiState", () => {
     expect(state.settingsActiveTab).toBeNull();
     expect(state.showHistory).toBe(false);
     expect(state.showFilesystem).toBe(false);
+    expect(state.showSecretsManagement).toBe(false);
     expect(state.feedbackOpen).toBe(false);
     expect(state.error).toBeNull();
     expect(state.evolvePrompt).toBe("");
@@ -68,6 +69,14 @@ describe("useUiState", () => {
     uiActions.setSettingsOpen(false);
     expect(useUiState.getState().settingsOpen).toBe(false);
     expect(useUiState.getState().settingsActiveTab).toBeNull();
+  });
+
+  it("toggles the secrets management view", () => {
+    uiActions.setShowSecretsManagement(true);
+    expect(useUiState.getState().showSecretsManagement).toBe(true);
+
+    uiActions.setShowSecretsManagement(false);
+    expect(useUiState.getState().showSecretsManagement).toBe(false);
   });
 
   it("clearLogs resets the console buffer", () => {
