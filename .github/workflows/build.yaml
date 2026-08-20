@@ -256,6 +256,26 @@ jobs:
           VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
           SUBMITTED_FEEDBACK_DSN: ${{ secrets.SUBMITTED_FEEDBACK_DSN }}
 
+      # Fast portability gate on the freshly built bundle, before the ~20 minutes
+      # of certificate import, signing and notarization below. The release check
+      # (ops/scripts/release/check-portable-macos-app.sh) is stricter — it also
+      # covers rpaths, symlinks, the DMG and the updater archive — but it cannot
+      # run until those artifacts exist. This catches the build-host dylib leak
+      # class (a package-manager prefix winning pkg-config, e.g. /opt/local
+      # libiconv) seconds after the build instead of at the end of the job.
+      - name: Check bundle portability
+        working-directory: apps/native
+        run: |
+          set -euo pipefail
+
+          APP_PATH=$(find "$GITHUB_WORKSPACE/target/release/bundle/macos" -name "*.app" -type d 2>/dev/null | sed -n '1p' || true)
+          if [ -z "$APP_PATH" ]; then
+            echo "ERROR: no built .app found for the portability check"
+            exit 1
+          fi
+
+          bun run check:portability "$APP_PATH"
+
       - name: Unit Test frontend
         working-directory: apps/native
         run: bun run test:unit
