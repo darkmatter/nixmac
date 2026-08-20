@@ -953,6 +953,13 @@ pub(crate) fn run_activation_command(
     Ok((status, String::from_utf8_lossy(&output).to_string()))
 }
 
+/// What [`acquire_activation_lock`] bails with when the slot is held. On the
+/// admin-password path this reaches the app only as process text (osascript
+/// wraps the exit), so `rebuild::darwin::classify_activate_error` matches this
+/// sentence to report a refusal instead of a generic failure.
+pub(crate) const ACTIVATION_ALREADY_RUNNING_MESSAGE: &str =
+    "an activation is already running; try again once it finishes";
+
 /// Takes the shared activation slot for the admin-password path's executor.
 /// `Ok(fd)` holds the exclusive lock until the fd drops — the caller keeps it
 /// alive across the whole activation. `Ok(None)`-shaped refusal is an error
@@ -962,7 +969,7 @@ pub(crate) fn acquire_activation_lock() -> Result<OwnedFd> {
     fs::create_dir_all(HELPER_SOCKET_DIR).context("failed to create the helper directory")?;
     let lock = open_lock_file(Path::new(ACTIVATION_LOCK_PATH))?;
     if !try_flock(&lock, libc::LOCK_EX)? {
-        bail!("an activation is already running; try again once it finishes");
+        bail!("{ACTIVATION_ALREADY_RUNNING_MESSAGE}");
     }
     Ok(lock)
 }

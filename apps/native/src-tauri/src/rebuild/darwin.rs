@@ -4,9 +4,11 @@
 
 use crate::ai::log_summarizer;
 use crate::privileged_helper::{
-    client as helper_client, protocol as helper_protocol, root_activation,
-    service as helper_service,
+    client as helper_client, helper_runtime, protocol as helper_protocol, reconcile,
+    root_activation, service as helper_service,
 };
+use crate::rebuild::activation_path;
+use crate::system::helper_permission;
 use crate::utils::nix_string_literal;
 use chrono::Local;
 use log::{error, info, warn};
@@ -353,7 +355,8 @@ fn app_management_error_payload(
 /// Runs the equivalent of `darwin-rebuild switch` with streaming output in two steps:
 /// 1. `nix build` of the system closure as the user (no sudo), with the
 ///    out-link in app-support so the config dir stays clean
-/// 2. `<store path>/activate` as root via native macOS authentication dialog (supports Touch ID)
+/// 2. `<store path>/activate` as root — through the privileged helper when one is
+///    installed and enabled, otherwise via the native macOS admin password prompt
 ///
 /// This pattern avoids Git ownership issues by keeping all file operations
 /// under the user's permissions during the build phase while still making system
@@ -474,11 +477,22 @@ struct BuildResult {
 }
 
 /// Result of the activation step.
-struct ActivateResult {
-    success: bool,
-    code: i32,
-    stdout: String,
-    stderr: String,
+///
+/// Also how a refused activation is reported: `success: false` with the reason
+/// in `stderr`, which is the shape every consumer already renders (see
+/// [`super::activation_path`]).
+#[derive(Debug)]
+pub(crate) struct ActivateResult {
+    pub(crate) success: bool,
+    pub(crate) code: i32,
+    pub(crate) stdout: String,
+    pub(crate) stderr: String,
+    /// The apply refused to start an activation and mutated nothing; `stderr`
+    /// carries the finished sentence saying why. `code` is fabricated on these
+    /// results, so classification keys on this flag, never on the code or the
+    /// text. False for an activation that ran — and for a dispatched one whose
+    /// outcome is unknown, which cannot claim the system is untouched.
+    pub(crate) refused: bool,
 }
 
 /// Run the build step as the current user (no sudo).
@@ -607,46 +621,47 @@ fn run_build_step(
     })
 }
 
-/// Run the activation step as root using native macOS authentication dialog.
-/// Uses `osascript` to show Touch ID / password dialog on compatible hardware.
-///
-/// Root cause of the "updating apps over SSH" error:
-///   `osascript do shell script ... with administrator privileges` spawns the
-///   privileged process in the *system* bootstrap domain (root context), not
-///   the user's Aqua GUI session domain.  The nix-darwin activation script
-///   calls `launchctl managername` and aborts with the "over SSH" error
-///   whenever the result is not "Aqua" — even when called from a GUI app.
-///
-/// Fix: the elevated step uses `launchctl asuser <uid>` to re-enter the
-///   user's Aqua bootstrap domain before exec'ing the activation script.
-///   fork()/exec() inherits the bootstrap port, so the activation script
-///   sees `launchctl managername == "Aqua"` and the App Management check
-///   proceeds correctly.
-///
-///   The elevated command is this binary re-executed in root-activation
-///   mode (`privileged_helper::root_activation`): fixed Rust code with the
-///   same hardening rules as the helper daemon — no shell script, no
-///   sudoers rules, no EXIT traps, absolute programs, and a fixed root-owned
-///   environment.
+/// Run the activation step, by whichever of the two paths is allowed — the
+/// privileged helper, or one native authentication dialog (see
+/// [`password_activation`]).
 fn run_activate_step(
+    app: &AppHandle,
     system_store_path: &Path,
-    allow_helper: bool,
 ) -> Result<ActivateResult, anyhow::Error> {
     let activate_path = system_store_path.join("activate");
-    run_activate_with_path(&activate_path.to_string_lossy(), allow_helper)
+    run_activate_with_path(app, &activate_path.to_string_lossy())
 }
 
 /// Activate a specific nix store path directly
-fn activate_store_path(store_path: &str) -> Result<ActivateResult, anyhow::Error> {
+fn activate_store_path(app: &AppHandle, store_path: &str) -> Result<ActivateResult, anyhow::Error> {
     let activate_path = format!("{}/activate", store_path);
-    run_activate_with_path(&activate_path, true)
+    run_activate_with_path(app, &activate_path)
 }
 
 /// Classify an activation failure into (error_type, error_message).
 fn classify_activate_error(result: &ActivateResult) -> (&'static str, String) {
+    // A refusal is not a failed process: the sentence in stderr is the whole
+    // report, and there is no real exit code to headline.
+    if result.refused {
+        return ("activation_refused", result.stderr.clone());
+    }
     let output_lower = format!("{}\n{}", result.stderr, result.stdout).to_lowercase();
     if output_lower.contains("user canceled") {
         return ("user_cancelled", "Activation cancelled by user".to_string());
+    }
+    // The admin-password path's root executor refuses at the shared activation
+    // lock before mutating anything (`helper_runtime::acquire_activation_lock`),
+    // but that arrives here as a real process exit wrapped by osascript, so
+    // text is the only channel to recognize it by.
+    if output_lower.contains(
+        helper_runtime::ACTIVATION_ALREADY_RUNNING_MESSAGE
+            .to_lowercase()
+            .as_str(),
+    ) {
+        return (
+            "activation_refused",
+            activation_path::ACTIVATION_RUNNING_REPORT.to_string(),
+        );
     }
     const APP_MANAGEMENT_PHRASES: &[&str] = &[
         "permission denied when trying to update apps",
@@ -706,7 +721,7 @@ pub fn activate_store_path_stream(
             serde_json::json!({"chunk": "Activating previous nix store...\n"}),
         );
 
-        match activate_store_path(&store_path) {
+        match activate_store_path(&app_handle, &store_path) {
             Ok(result) => {
                 for line in result.stdout.lines() {
                     if !line.is_empty() {
@@ -761,8 +776,8 @@ pub fn activate_store_path_stream(
 }
 
 fn run_activate_with_path(
+    app: &AppHandle,
     activate_path: &str,
-    allow_helper: bool,
 ) -> Result<ActivateResult, anyhow::Error> {
     // Resolve the symlink to the real nix store path: the privileged step
     // only ever accepts canonical /nix/store activation paths.
@@ -770,19 +785,97 @@ fn run_activate_with_path(
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|_| activate_path.to_owned());
 
-    if allow_helper {
-        if let Some(result) = try_activate_with_helper(&real_activate) {
-            return result;
-        }
-    } else {
-        info!("[darwin] Skipping privileged helper for App Management-sensitive activation");
+    // Which path this apply may use is decided there, before any bytes reach
+    // the helper. Nothing in this module chooses between them.
+    activation_path::activate(&AppActivation { app }, &real_activate)
+}
+
+/// The observations and effects [`activation_path`] decides over. Nothing here
+/// decides anything; the two gates come from the replacement function's own, so
+/// Apply and reconciliation cannot disagree about where this copy runs from.
+struct AppActivation<'a> {
+    app: &'a AppHandle,
+}
+
+impl activation_path::ApplyEnvironment for AppActivation<'_> {
+    fn preference(&self) -> Result<crate::shared_types::HelperPreference, String> {
+        crate::state::preferences::read_helper_preference(self.app)
+            .map_err(|error| format!("{error:#}"))
     }
 
-    // Interactive fallback: one native admin prompt (Touch ID capable), then
-    // re-execute this binary in root-activation mode. The privileged step is
-    // fixed Rust code mirroring the helper daemon — direct exec of absolute
-    // programs with a fixed root-owned environment. No sudoers rules, EXIT
-    // traps, or requester-controlled PATH/HOME reach root.
+    fn displacement(&self) -> Option<String> {
+        reconcile::gates_live()
+            .err()
+            .map(|report| helper_permission::describe(&report))
+    }
+
+    fn registration_status(&self) -> Result<helper_service::RegistrationStatus, String> {
+        helper_service::registration_status().map_err(|error| format!("{error:#}"))
+    }
+
+    fn dispatch_activation(
+        &self,
+        activate_path: &str,
+    ) -> Result<helper_protocol::HelperReply, activation_path::DispatchFailure> {
+        let request =
+            helper_protocol::activation_request(Path::new(activate_path)).map_err(|error| {
+                activation_path::DispatchFailure::Unusable(
+                    error.context("failed to build helper activation request"),
+                )
+            })?;
+        // The result arrives on this connection when the activation completes,
+        // under the client's one generous bound rather than the short leashes
+        // the other exchanges use (`client::ACTIVATION_TIMEOUT`). An activation
+        // still running when that expires is reported as an unknown outcome and
+        // never compensated.
+        helper_client::activate_store_path(&request)
+            .map_err(activation_path::DispatchFailure::Exchange)
+    }
+
+    fn observe_listener(&self) -> helper_client::ListenerObservation {
+        helper_client::observe_listener()
+    }
+
+    fn password_activate(&self, activate_path: &str) -> Result<ActivateResult, anyhow::Error> {
+        // No record and no slot to consult here: the root executor this
+        // launches takes the shared activation lock itself, so a concurrent
+        // activation — helper-run or password-run — refuses it there, with
+        // the admin prompt's own error surface reporting why.
+        password_activation(activate_path)
+    }
+}
+
+/// The administrator-password path: one native macOS authentication dialog, then
+/// this binary re-executed in root-activation mode.
+///
+/// `osascript ... with administrator privileges` shows the legacy Security Agent
+/// dialog, which is password-only — macOS does not offer Touch ID there. Avoiding
+/// that prompt is what the privileged helper exists for.
+///
+/// Root cause of the "updating apps over SSH" error:
+///   `osascript do shell script ... with administrator privileges` spawns the
+///   privileged process in the *system* bootstrap domain (root context), not
+///   the user's Aqua GUI session domain.  The nix-darwin activation script
+///   calls `launchctl managername` and aborts with the "over SSH" error
+///   whenever the result is not "Aqua" — even when called from a GUI app.
+///
+/// Fix: the elevated step uses `launchctl asuser <uid>` to re-enter the
+///   user's Aqua bootstrap domain before exec'ing the activation script.
+///   fork()/exec() inherits the bootstrap port, so the activation script
+///   sees `launchctl managername == "Aqua"` and the App Management check
+///   proceeds correctly.
+///
+///   The elevated command is this binary re-executed in root-activation
+///   mode (`privileged_helper::root_activation`): fixed Rust code with the
+///   same hardening rules as the helper daemon — no shell script, no
+///   sudoers rules, no EXIT traps, absolute programs, and a fixed root-owned
+///   environment.
+///
+/// Reached only through [`activation_path::ApplyEnvironment::password_activate`],
+/// which records that a password activation is running for as long as this
+/// takes.
+fn password_activation(real_activate: &str) -> Result<ActivateResult, anyhow::Error> {
+    let real_activate = real_activate.to_owned();
     let root_args = root_activation::RootActivationArgs {
         // SAFETY: `getuid` is thread-safe, has no preconditions, and cannot fail.
         uid: unsafe { libc::getuid() },
@@ -823,108 +916,26 @@ fn run_activate_with_path(
         code,
         stdout: stdout_str,
         stderr: stderr_str,
+        refused: false,
     })
-}
-
-fn try_activate_with_helper(activate_path: &str) -> Option<Result<ActivateResult, anyhow::Error>> {
-    let status = helper_service::status();
-    if !status.authorized || !status.socket_available {
-        return None;
-    }
-    // `responding` is the authenticated status round-trip `helper_service`
-    // already performed. Requiring it here is what keeps a version-skewed
-    // daemon from failing the apply: a daemon predating this app's protocol
-    // cannot answer the probe, so the osascript path takes over instead of
-    // the activation request coming back as an unparseable request.
-    if !status.responding {
-        info!(
-            "[darwin] privileged helper did not answer an authenticated status probe; falling back to osascript: {}",
-            status.detail.unwrap_or_default()
-        );
-        return None;
-    }
-
-    let request = match helper_protocol::activation_request(Path::new(activate_path)) {
-        Ok(request) => request,
-        Err(error) => {
-            return Some(Err(
-                error.context("failed to build helper activation request")
-            ));
-        }
-    };
-
-    match helper_client::activate_store_path(&request) {
-        Ok(response) => {
-            // A live daemon that refuses this peer means the running build is
-            // not signed as an approved client (unsigned dev build, or a
-            // helper/app version skew). A daemon that does not speak this
-            // app's protocol version is the same situation with a different
-            // cause: an older helper still resident from a previous install.
-            // Falling back to the interactive prompt keeps the apply working
-            // in both cases until the installed helper is replaced by a
-            // current one.
-            if !response.ok
-                && (response.reports_protocol_skew() || response.reports_unauthorized_client())
-            {
-                info!(
-                    "[darwin] privileged helper rejected this client; falling back to osascript: {}",
-                    response.error.unwrap_or_default()
-                );
-                return None;
-            }
-
-            Some(Ok(ActivateResult {
-                success: response.ok,
-                code: response.code,
-                stdout: response.stdout,
-                // The response has no stderr: the activation log arrives
-                // merged into stdout, so only a helper-level error belongs
-                // in the stderr slot consumers show for failures.
-                stderr: response.error.unwrap_or_default(),
-            }))
-        }
-        Err(error) => {
-            let error_text = format!("{error:#}");
-            if error_text.contains("failed to connect to /var/run/nixmac/helper.sock") {
-                info!(
-                    "[darwin] privileged helper socket was stale; falling back to osascript: {error:#}"
-                );
-                return None;
-            }
-            if error_text.contains(crate::privileged_helper::peer_auth::HELPER_VALIDATION_FAILED) {
-                warn!(
-                    "[darwin] process at helper socket failed signature validation; falling back to osascript: {error:#}"
-                );
-                return None;
-            }
-            // The client rejects a response whose protocol version is
-            // missing or different before reading its fields, so version
-            // skew surfaces here as a classified error rather than a
-            // response. A skewed daemon cannot have run the activation — it
-            // could not have parsed the request — so falling back is safe
-            // until the installed helper is replaced by a current one.
-            if helper_protocol::is_protocol_skew(&error) {
-                info!(
-                    "[darwin] privileged helper speaks a different protocol version; falling back to osascript: {error:#}"
-                );
-                return None;
-            }
-
-            Some(Ok(ActivateResult {
-                success: false,
-                code: -1,
-                stdout: String::new(),
-                stderr: format!(
-                    "Privileged helper activation did not return a response: {error:#}. Activation may still be running; nixmac did not fall back to the password prompt."
-                ),
-            }))
-        }
-    }
 }
 
 /// Handle activation failures and determine the appropriate error response.
 fn handle_activation_error(result: &ActivateResult, log_path: &Path) -> serde_json::Value {
     let (error_type, friendly_error) = classify_activate_error(result);
+
+    // A refusal: no activation process ran and nothing was mutated. The
+    // sentence is the whole report — no exit-code headline and no log tail.
+    if error_type == "activation_refused" {
+        error!("[darwin] activation refused: {friendly_error}");
+        return serde_json::json!({
+            "ok": false,
+            "code": result.code,
+            "error_type": error_type,
+            "system_untouched": true,
+            "error": friendly_error,
+        });
+    }
 
     // AppleScript cancellation (-128)
     if error_type == "user_cancelled" {
@@ -1014,7 +1025,7 @@ fn handle_activation_error(result: &ActivateResult, log_path: &Path) -> serde_js
 }
 
 fn activation_failure_left_system_untouched(error_type: &str) -> bool {
-    matches!(error_type, "user_cancelled")
+    matches!(error_type, "user_cancelled" | "activation_refused")
 }
 
 /// Internal function to run darwin-rebuild with proper streaming.
@@ -1154,11 +1165,15 @@ fn run_darwin_rebuild(
     // =========================================================================
     // Step 1c: proactively detect App Management denial for Home Manager
     // copyApps. This mirrors Home Manager's own harmless `.DS_Store` update
-    // probe, but does it before the admin activation prompt. When existing app
-    // bundles are involved, avoid the unattended helper path so macOS attributes
-    // the TCC decision to the foreground app flow more consistently.
+    // probe, but does it before the admin activation prompt.
+    //
+    // A denial refuses the apply here. A pass says the bundle writes succeed,
+    // and the activation path is chosen the same way it is for every other
+    // apply: managed app bundles used to divert this flow to the password
+    // prompt, which was a silent substitution while an enabled registration
+    // could still admit a scheduled sync-agent activation of the same
+    // generation.
     // =========================================================================
-    let mut allow_activation_helper = true;
     match preflight_app_management(config_dir, host_attr) {
         Ok(result) if !result.ok => {
             log_and_emit!(
@@ -1169,7 +1184,6 @@ fn run_darwin_rebuild(
         }
         Ok(result) => {
             if result.checked > 0 {
-                allow_activation_helper = false;
                 log_and_emit!(format!(
                     "Preflight: App Management check passed for {} managed app bundle(s).",
                     result.checked
@@ -1202,17 +1216,16 @@ fn run_darwin_rebuild(
         }));
     };
 
-    let activate_result =
-        run_activate_step(system_store_path, allow_activation_helper).map_err(|e| {
-            serde_json::json!({
-                "ok": false,
-                "code": -1,
-                "log_file": log_path.to_string_lossy(),
-                "error_type": "generic_error",
-                "system_untouched": true,
-                "error": format!("Activation step failed to execute: {}", e),
-            })
-        })?;
+    let activate_result = run_activate_step(app, system_store_path).map_err(|e| {
+        serde_json::json!({
+            "ok": false,
+            "code": -1,
+            "log_file": log_path.to_string_lossy(),
+            "error_type": "generic_error",
+            "system_untouched": true,
+            "error": format!("Activation step failed to execute: {}", e),
+        })
+    })?;
 
     if !activate_result.success {
         summarizer.complete(false);
@@ -1370,7 +1383,21 @@ mod activation_safety_tests {
             code: 1,
             stdout: stdout.to_string(),
             stderr: stderr.to_string(),
+            refused: false,
         }
+    }
+
+    #[test]
+    fn a_refused_result_is_classified_from_its_flag_with_the_sentence_verbatim() {
+        let mut result = failed_activation("", "An activation is already running.");
+        result.refused = true;
+        result.code = -1;
+
+        let (error_type, message) = classify_activate_error(&result);
+
+        assert_eq!(error_type, "activation_refused");
+        // The sentence is the whole report: no exit-code headline around it.
+        assert_eq!(message, "An activation is already running.");
     }
 
     #[test]
@@ -1399,8 +1426,30 @@ mod activation_safety_tests {
     }
 
     #[test]
-    fn only_explicit_cancellation_is_known_untouched() {
+    fn a_password_path_lock_refusal_is_classified_as_refused() {
+        // The real shape: osascript wraps the root executor's pre-mutation
+        // bail into a process exit, so `refused` is false and only the text
+        // identifies it.
+        let result = failed_activation(
+            "",
+            "0:233: execution error: nixmac root activation failed: an activation is already running; try again once it finishes (1)",
+        );
+
+        let (error_type, message) = classify_activate_error(&result);
+
+        assert_eq!(error_type, "activation_refused");
+        assert_eq!(
+            message,
+            "An activation is already running, so nixmac did not start another."
+        );
+    }
+
+    #[test]
+    fn only_cancellations_and_refusals_are_known_untouched() {
         assert!(activation_failure_left_system_untouched("user_cancelled"));
+        assert!(activation_failure_left_system_untouched(
+            "activation_refused"
+        ));
         assert!(!activation_failure_left_system_untouched(
             "authorization_denied"
         ));

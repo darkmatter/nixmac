@@ -11,6 +11,10 @@
 // are declared by their parent `mod.rs` files so rust-analyzer resolves them via Cargo.
 mod ai;
 mod bootstrap;
+// Consumed by `build.rs` via include!; declared here so its resolution table
+// stays under `cargo test`.
+#[allow(dead_code)]
+mod build_id;
 mod cli;
 mod commands;
 mod db;
@@ -716,6 +720,18 @@ fn run_gui_mode(
                     _ => {}
                 }
             });
+
+            // Reconcile the installed privileged helper with this build. This is
+            // the only actor in an upgrade: a Finder replacement and the
+            // updater's relaunch both converge here, on the new GUI's ordinary
+            // startup, and the old one prepares nothing.
+            //
+            // Off the main thread, and off the startup path: the run makes
+            // ServiceManagement calls *on* the main queue and awaits them, and it
+            // waits — legitimately, for as long as it takes — on an activation a
+            // previous build's helper is still running. It reports through the
+            // permission row; nothing here waits for it.
+            system::helper_permission::start_converging(handle);
 
             // Background initialize the nix-darwin docs index once at startup for fast option-shape lookup.
             let docs_handle = handle.clone();

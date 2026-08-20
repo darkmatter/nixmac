@@ -6,6 +6,7 @@
 
 pub mod app_management_preflight;
 pub mod etc_preflight;
+pub mod helper_permission;
 pub mod install_location;
 pub mod launchd_scanner;
 pub mod nix;

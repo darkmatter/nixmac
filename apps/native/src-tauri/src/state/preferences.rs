@@ -14,6 +14,7 @@ use tauri::{AppHandle, Manager, Runtime};
 
 use crate::observable::{AppDataJson, Observable, Persistence};
 pub use crate::shared_types::GlobalPreferences;
+use crate::shared_types::{HelperDecision, HelperPreference};
 
 pub(crate) const GLOBAL_PREFERENCES_PATH: &str = "global-preferences.json";
 
@@ -75,6 +76,73 @@ pub fn write<R: Runtime>(app: &AppHandle<R>, f: impl FnOnce(&mut GlobalPreferenc
     Ok(())
 }
 
+/// Reads the standing helper decision.
+///
+/// Three writers reach the stored value, and only the first one decides:
+///
+/// - this module's [`store_helper_decision`], which cannot express `unset`;
+/// - `commands::debug::developer_clear_tauri_state`, which resets the whole
+///   slice to defaults, so `unset`. Deliberate: that command exists to put a
+///   developer's install back to a fresh state, and a stale helper decision is
+///   part of what "fresh" means. Developer-mode gated, and the developer gets
+///   the decision back by clicking Grant or Disable;
+/// - [`load_or_default`], which flattens a **well-formed** JSON file whose values
+///   do not deserialize into the whole slice's defaults, so `unset` again. A file
+///   that is not well-formed JSON does not reach this: the parse error
+///   propagates and startup fails instead. This one is pre-existing behavior of
+///   the shared loader — it discards every field of every slice it loads, not
+///   just this one — and is fixed on its own terms rather than here.
+///
+/// The two paths that transfer a whole slice from somewhere else — a settings
+/// import (`commands::settings_io`) and the legacy-store migration
+/// ([`adopt_legacy_fields`]) — both leave it alone, because it is one of the
+/// [`DEVICE_LOCAL_KEYS`]. So a stored `disabled` survives an import, the legacy
+/// store, and the ordinary settings UI, and does not survive a schema-mismatched
+/// preferences file or the developer reset.
+///
+/// An unmanaged observable is an error rather than `unset`: "the user never
+/// decided" is a statement about the user, and inventing it would let an
+/// automatic path adopt or re-adopt a registration on the strength of a failed
+/// read. That only covers the observable being absent — the writers above have
+/// all already run by the time anything reads this.
+pub fn read_helper_preference<R: Runtime>(app: &AppHandle<R>) -> Result<HelperPreference> {
+    try_read(app)
+        .map(|prefs| prefs.helper_preference)
+        .ok_or_else(|| anyhow::anyhow!("GlobalPreferences observable is not managed"))
+}
+
+/// Stores a helper decision. Idempotent, and there is no counterpart that
+/// stores `unset` — see [`HelperDecision`].
+///
+/// `Ok` means the value is the one every later read in this process returns and
+/// that a flush was dispatched; like every other preference in this store, the
+/// flush itself is best-effort ([`crate::observable::Observable::persist_to`]
+/// logs its failures). A decision lost to a failed flush is recovered the way
+/// the user made it — by granting or disabling again — never by an automatic
+/// path inventing one.
+pub fn store_helper_decision<R: Runtime>(
+    app: &AppHandle<R>,
+    decision: HelperDecision,
+) -> Result<()> {
+    write(app, |prefs| prefs.helper_preference = decision.into())
+}
+
+/// Serialized field names of [`GlobalPreferences`] that describe *this device's*
+/// installation rather than a portable preference.
+///
+/// They are excluded from every wholesale transfer of the slice: settings export
+/// omits them and the legacy-store migration below does not adopt them, both by
+/// consulting this list, while settings import keeps the stored value field by
+/// field (`imported_over_device_local`) rather than by key — so a second entry
+/// added here needs that function extended to match. What they have in common is
+/// that their value is a decision about this machine which only an explicit
+/// action here may make — for the helper preference, Grant or Disable.
+pub(crate) const DEVICE_LOCAL_KEYS: &[&str] = &["helperPreference"];
+
+pub(crate) fn is_device_local_key(key: &str) -> bool {
+    DEVICE_LOCAL_KEYS.contains(&key)
+}
+
 /// One-shot copy of the legacy `settings.json` preference values into
 /// `prefs`. Returns whether `prefs` should be flushed (first run after the
 /// migration shipped). The legacy keys are left in place for reversibility;
@@ -94,23 +162,42 @@ fn migrate_from_legacy_store<R: Runtime>(
         return Ok(false);
     }
 
+    adopt_legacy_fields(prefs, |key| store.get(key))?;
+
+    store.set(LEGACY_MIGRATED_MARKER, serde_json::Value::Bool(true));
+    store.save()?;
+    Ok(true)
+}
+
+/// The copy itself, over a `legacy` lookup rather than the store, so the rules it
+/// applies are testable without one.
+///
+/// Every field of the slice takes the same-named legacy value if there is one —
+/// except [`DEVICE_LOCAL_KEYS`], which are left as loaded. Adopting those would
+/// let a key in the old store decide something about this installation that no
+/// action here decided; for the helper preference that means an automatic path
+/// granting or disabling a helper the user never ruled on.
+fn adopt_legacy_fields(
+    prefs: &mut GlobalPreferences,
+    legacy: impl Fn(&str) -> Option<serde_json::Value>,
+) -> Result<()> {
     let mut as_value = serde_json::to_value(&*prefs)?;
     let Some(fields) = as_value.as_object_mut() else {
-        return Ok(false);
+        return Ok(());
     };
     for key in fields.keys().cloned().collect::<Vec<_>>() {
-        if let Some(legacy) = store.get(&key) {
-            fields.insert(key, legacy.clone());
+        if is_device_local_key(&key) {
+            continue;
+        }
+        if let Some(legacy) = legacy(&key) {
+            fields.insert(key, legacy);
         }
     }
     // Unknown/garbage legacy values fall back to the loaded ones.
     if let Ok(migrated) = serde_json::from_value::<GlobalPreferences>(as_value) {
         *prefs = migrated;
     }
-
-    store.set(LEGACY_MIGRATED_MARKER, serde_json::Value::Bool(true));
-    store.save()?;
-    Ok(true)
+    Ok(())
 }
 
 /// One-shot flip to default-on diagnostics for installs that predate the
@@ -401,6 +488,149 @@ mod tests {
         });
         assert!(!prefs.evolve_models.contains_key("openai"));
         assert_eq!(prefs.current_evolve_model(), None);
+    }
+
+    fn mock_app_with_preferences(
+        initial: GlobalPreferences,
+    ) -> tauri::App<tauri::test::MockRuntime> {
+        let app = tauri::test::mock_builder()
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .expect("mock app builds");
+        app.manage(Observable::new(initial));
+        app
+    }
+
+    #[test]
+    fn a_helper_decision_round_trips_through_the_stored_preference() {
+        // Both decisions, in both orders, and idempotent: granting twice is one
+        // stored value, and a later disable replaces it.
+        let app = mock_app_with_preferences(GlobalPreferences::default());
+        let handle = app.handle();
+
+        assert_eq!(
+            read_helper_preference(handle).unwrap(),
+            HelperPreference::Unset,
+            "a fresh install has no decision"
+        );
+
+        for decision in [
+            HelperDecision::Granted,
+            HelperDecision::Granted,
+            HelperDecision::Disabled,
+            HelperDecision::Granted,
+        ] {
+            store_helper_decision(handle, decision).expect("store");
+
+            assert_eq!(
+                read_helper_preference(handle).unwrap(),
+                HelperPreference::from(decision)
+            );
+        }
+    }
+
+    #[test]
+    fn the_legacy_store_can_set_every_field_except_the_device_local_ones() {
+        // The migration matches on serialized field names, so the helper
+        // decision came into its reach the moment it joined this slice. A
+        // `helperPreference` key in the old store — a hand edit, or a frontend
+        // write, since that store is reachable from JavaScript — would otherwise
+        // grant or disable a helper the user never ruled on.
+        let legacy = serde_json::json!({
+            "hostAttr": "from-the-old-store",
+            "developerMode": true,
+            "helperPreference": "granted",
+        });
+        let mut prefs = GlobalPreferences {
+            helper_preference: HelperPreference::Disabled,
+            ..GlobalPreferences::default()
+        };
+
+        adopt_legacy_fields(&mut prefs, |key| legacy.get(key).cloned()).expect("adopt");
+
+        assert_eq!(prefs.helper_preference, HelperPreference::Disabled);
+        assert_eq!(prefs.host_attr.as_deref(), Some("from-the-old-store"));
+        assert!(prefs.developer_mode);
+    }
+
+    #[test]
+    fn the_legacy_store_cannot_reset_the_decision_by_omitting_it() {
+        // The same guarantee in the other direction: the copy leaves the field
+        // as loaded rather than defaulting it, so an old store that predates the
+        // key cannot turn a decision back into "never decided".
+        let legacy = serde_json::json!({ "hostAttr": "macbook" });
+        let mut prefs = GlobalPreferences {
+            helper_preference: HelperPreference::Disabled,
+            ..GlobalPreferences::default()
+        };
+
+        adopt_legacy_fields(&mut prefs, |key| legacy.get(key).cloned()).expect("adopt");
+
+        assert_eq!(prefs.helper_preference, HelperPreference::Disabled);
+    }
+
+    #[test]
+    fn a_stored_decision_is_never_unset() {
+        // The write API is two-valued, so this holds by construction; the test
+        // pins it because a third variant sneaking into `HelperDecision` would
+        // let an automatic path undo an explicit disable.
+        for decision in [HelperDecision::Granted, HelperDecision::Disabled] {
+            assert_ne!(HelperPreference::from(decision), HelperPreference::Unset);
+        }
+    }
+
+    #[test]
+    fn an_unreadable_store_is_an_error_rather_than_a_decision() {
+        // Without the observable there is no answer to give; reporting "unset"
+        // would be a claim about the user that nothing observed.
+        let app = tauri::test::mock_builder()
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .expect("mock app builds");
+
+        assert!(read_helper_preference(app.handle()).is_err());
+        assert!(store_helper_decision(app.handle(), HelperDecision::Granted).is_err());
+    }
+
+    #[test]
+    fn the_helper_preference_persists_and_defaults_to_unset() {
+        let stored = MemoryPersistence::with_value(json!({ "helperPreference": "disabled" }));
+        assert_eq!(
+            load_or_default::<GlobalPreferences>(&stored)
+                .unwrap()
+                .helper_preference,
+            HelperPreference::Disabled
+        );
+
+        let absent = MemoryPersistence::with_value(json!({}));
+        assert_eq!(
+            load_or_default::<GlobalPreferences>(&absent)
+                .unwrap()
+                .helper_preference,
+            HelperPreference::Unset
+        );
+
+        let serialized = serde_json::to_value(GlobalPreferences {
+            helper_preference: HelperPreference::Granted,
+            ..GlobalPreferences::default()
+        })
+        .unwrap();
+        assert_eq!(serialized.get("helperPreference").unwrap(), "granted");
+    }
+
+    #[test]
+    fn a_ui_preference_update_cannot_touch_the_helper_decision() {
+        // Grant and disable are their own actions; the settings surface must not
+        // be able to flip the stored value without them.
+        let mut prefs = GlobalPreferences {
+            helper_preference: HelperPreference::Granted,
+            ..GlobalPreferences::default()
+        };
+
+        prefs.apply_ui_update(&crate::shared_types::UiPrefsUpdate {
+            developer_mode: Some(true),
+            ..Default::default()
+        });
+
+        assert_eq!(prefs.helper_preference, HelperPreference::Granted);
     }
 
     #[test]

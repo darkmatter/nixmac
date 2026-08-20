@@ -14,7 +14,7 @@ use super::helpers::capture_err;
 use crate::evolve::config::UserPreferences;
 use crate::observable::Observable;
 use crate::shared_types::{ExportResult, ImportResult};
-use crate::state::preferences::GlobalPreferences;
+use crate::state::preferences::{GlobalPreferences, is_device_local_key};
 use serde_json::{Map, Value};
 use std::borrow::Borrow;
 use tauri::{AppHandle, Manager};
@@ -25,6 +25,25 @@ const SENSITIVE_KEYS: &[&str] = &["openrouterApiKey", "openaiApiKey", "openaiCom
 
 fn is_sensitive_key(key: &str) -> bool {
     SENSITIVE_KEYS.contains(&key) || key.ends_with("ApiKey")
+}
+
+/// The imported slice, with every device-local value
+/// ([`crate::state::preferences::DEVICE_LOCAL_KEYS`], which the legacy-store
+/// migration skips for the same reason) taken from `current` instead.
+///
+/// The helper decision is the case this exists for. A settings file from another
+/// Mac must not decide whether this one runs a privileged helper, and — because
+/// import replaces a slice wholesale — a file that simply lacks the key must not
+/// reset the decision to "never decided", which is exactly what makes an explicit
+/// disable stick.
+fn imported_over_device_local(
+    current: &GlobalPreferences,
+    imported: GlobalPreferences,
+) -> GlobalPreferences {
+    GlobalPreferences {
+        helper_preference: current.helper_preference,
+        ..imported
+    }
 }
 
 fn collect_export_entries<K, V>(
@@ -39,6 +58,12 @@ where
     let mut skipped: Vec<String> = Vec::new();
     for (key, value) in entries {
         let key = key.as_ref();
+        // Not reported as skipped: `keys_skipped` is presented to the user as
+        // withheld secrets, and this is neither withheld nor a secret — it
+        // simply is not a portable setting.
+        if is_device_local_key(key) {
+            continue;
+        }
         if !include_secrets && is_sensitive_key(key) {
             skipped.push(key.to_string());
             continue;
@@ -165,8 +190,11 @@ pub async fn settings_import(app: AppHandle) -> Result<Option<ImportResult>, Str
         // Exports from pre-map versions carry the deprecated single-model
         // fields; fold them into the per-provider maps like the load path does.
         crate::state::preferences::migrate_model_scalars_to_maps(&mut prefs);
-        crate::state::preferences::write(&app, move |current| *current = prefs)
-            .map_err(|e| capture_err("settings_import", e))?;
+        crate::state::preferences::write(&app, move |current| {
+            let merged = imported_over_device_local(current, prefs);
+            *current = merged;
+        })
+        .map_err(|e| capture_err("settings_import", e))?;
     }
 
     if let Some(limits) = app.try_state::<Observable<UserPreferences>>() {
@@ -207,6 +235,61 @@ mod tests {
             skipped,
             vec!["customApiKey".to_string(), "openrouterApiKey".to_string()]
         );
+    }
+
+    #[test]
+    fn export_never_carries_a_device_local_key_even_with_secrets() {
+        // The helper decision describes this Mac's own installation; a settings
+        // file handed to another machine must not carry it, with or without
+        // secrets, and it is not reported as a withheld secret either.
+        let entries = BTreeMap::from([
+            ("helperPreference".to_string(), json!("disabled")),
+            ("developerMode".to_string(), json!(true)),
+        ]);
+
+        for include_secrets in [false, true] {
+            let (output, skipped) = collect_export_entries(entries.iter(), include_secrets);
+
+            assert!(!output.contains_key("helperPreference"));
+            assert_eq!(output.get("developerMode"), Some(&json!(true)));
+            assert!(skipped.is_empty());
+        }
+    }
+
+    #[test]
+    fn an_import_never_changes_the_stored_helper_decision() {
+        // Both directions of the risk: a file that carries somebody else's
+        // decision, and a file (any older export) that carries none at all and
+        // would otherwise reset this Mac's to "never decided".
+        use crate::shared_types::HelperPreference;
+
+        for stored in [
+            HelperPreference::Unset,
+            HelperPreference::Granted,
+            HelperPreference::Disabled,
+        ] {
+            let current = GlobalPreferences {
+                helper_preference: stored,
+                ..GlobalPreferences::default()
+            };
+            for carried in [
+                HelperPreference::Unset,
+                HelperPreference::Granted,
+                HelperPreference::Disabled,
+            ] {
+                let imported = GlobalPreferences {
+                    helper_preference: carried,
+                    host_attr: Some("from-the-file".to_string()),
+                    ..GlobalPreferences::default()
+                };
+
+                let merged = imported_over_device_local(&current, imported);
+
+                assert_eq!(merged.helper_preference, stored);
+                // Everything else is still wholesale-replaced.
+                assert_eq!(merged.host_attr.as_deref(), Some("from-the-file"));
+            }
+        }
     }
 
     #[test]

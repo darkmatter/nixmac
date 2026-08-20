@@ -24,6 +24,7 @@ export const REBUILD_ERROR_CODES = {
   USER_CANCELLED: "user_cancelled",
   AUTHORIZATION_DENIED: "authorization_denied",
   ETC_CLOBBER: "etc_clobber",
+  ACTIVATION_REFUSED: "activation_refused",
   GENERIC_ERROR: "generic_error",
 } as const;
 
@@ -50,6 +51,7 @@ const AI_UNFIXABLE_REBUILD_ERRORS = new Set<string>([
   REBUILD_ERROR_CODES.USER_CANCELLED,
   REBUILD_ERROR_CODES.AUTHORIZATION_DENIED,
   REBUILD_ERROR_CODES.ETC_CLOBBER,
+  REBUILD_ERROR_CODES.ACTIVATION_REFUSED,
 ]);
 
 /**
@@ -112,6 +114,10 @@ const REBUILD_ERROR_DETAILS = {
   [REBUILD_ERROR_CODES.ETC_CLOBBER]: {
     why: "Existing /etc files would be overwritten",
     fix: "nix-darwin found files in /etc it doesn't manage and won't overwrite. Back up anything important, then rename each listed file by adding .before-nix-darwin to the end and retry. No changes were made to your system.",
+  },
+  [REBUILD_ERROR_CODES.ACTIVATION_REFUSED]: {
+    why: "Activation did not start",
+    fix: "nixmac refused to start the activation. The message says why and what to do next.",
   },
   [REBUILD_ERROR_CODES.GENERIC_ERROR]: DEFAULT_REBUILD_ERROR_DETAILS,
 } satisfies Record<RebuildErrorCode, RebuildErrorDetails>;

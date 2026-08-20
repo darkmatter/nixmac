@@ -1983,6 +1983,10 @@ export type RebuildErrorType =
  */
 "etc_clobber" | 
 /**
+ * The apply refused to start the activation and made no changes.
+ */
+"activation_refused" | 
+/**
  * Fallback for uncategorized failures.
  */
 "generic_error"
