@@ -119,6 +119,12 @@ fn run_root_activation(args: impl IntoIterator<Item = String>) -> Result<i32> {
             "root-activation mode must run as root (it is only ever invoked via the admin prompt)"
         );
     }
+    // The same single slot the helper's runner uses: one exclusive lock for
+    // "an activation is running", across both paths and across helper
+    // generations. Held (by this process's fd) until this process exits;
+    // a holder elsewhere — a helper-spawned runner, an orphan, another
+    // password activation — refuses this one before it mutates anything.
+    let _activation_slot = helper_runtime::acquire_activation_lock()?;
     let legacy_sudoers_warning = remove_legacy_sudoers();
     // stderr is what `do shell script` surfaces on any failure — a nonzero
     // activation or any early `?` return below — so emit the warning there
@@ -154,7 +160,7 @@ fn run_root_activation(args: impl IntoIterator<Item = String>) -> Result<i32> {
         }
         // Best-effort, same as the helper: the system switch already
         // happened, so maintenance failures are warnings, not errors.
-        for warning in helper_runtime::post_activation_maintenance(&activate_path) {
+        if let Some(warning) = helper_runtime::post_activation_maintenance(&activate_path) {
             println!("{WARNING_PREFIX} {warning}");
         }
     } else {

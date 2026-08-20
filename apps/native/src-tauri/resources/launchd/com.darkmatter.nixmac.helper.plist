@@ -10,6 +10,8 @@
   <true/>
   <key>KeepAlive</key>
   <true/>
+  <key>AbandonProcessGroup</key>
+  <true/>
   <key>AssociatedBundleIdentifiers</key>
   <array>
     <string>com.darkmatter.nixmac</string>

@@ -22,6 +22,9 @@ required-features = ["codegen"]
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 serde_json = "1"
+# Writes the build-ID-stamped Info.plist the bundler merges; the crate reads the
+# same key back out of an installed bundle (`build_id.rs`).
+plist = "1.9.0"
 
 [dependencies]
 tauri = { version = "2", features = [
@@ -102,6 +105,7 @@ opentelemetry-otlp = { version = "0.29", features = [
 opentelemetry-appender-tracing = "0.29"
 tracing-opentelemetry = "0.30"
 configurable = { path = "configurable" }
+activation-runner = { path = "activation-runner" }
 hmac = "0.12"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 walkdir = "2.5.0"
@@ -139,6 +143,48 @@ window-vibrancy = "0.6"
 core-foundation = "0.10"
 security-framework = "3"
 nix = { version = "0.31", features = ["socket", "user"] }
+# Named `errSecCS*` / `errSecCertificate*` / `CSSMERR_TP_*` status values,
+# generated from the Security.framework headers, for the privileged-helper peer
+# auth status table. A name that does not exist fails the build, where a
+# hand-transcribed number was silently wrong — and a wrong number there can
+# classify a peer nobody could judge as invalid, which authorizes removal.
+#
+# macOS-gated because it cannot build off Apple: 0.3.2 declares `mod generated`
+# with no cfg and an unconditional `#[link(name = "Security", kind =
+# "framework")]`, which rustc rejects with E0455 on other targets. The status
+# table it feeds is therefore macOS-only too, and so are that table's tests —
+# they run on the macOS runner, which executes `cargo test` alongside clippy.
+objc2-security = { version = "0.3.2", default-features = false, features = [
+  "CSCommon",
+  "SecBase",
+  "cssmerr",
+] }
+# SMAppService bindings for the privileged-helper registration
+# (`privileged_helper/service.rs`). Generated from the SDK headers, so the
+# asynchronous `unregisterWithCompletionHandler:` and the typed status enum are
+# both reachable — the two things the published wrapper crates
+# (`smappservice-rs`, `servicemanagement-rs`) do not offer.
+objc2-service-management = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "SMAppService",
+  "SMErrors",
+  "block2",
+  "objc2",
+  "objc2-foundation",
+] }
+# Already in the tree through the objc2 framework crates; declared directly
+# because the SMAppService adapter constructs NSString/NSError values, retains
+# the unregister completion block, and hops onto the main queue itself.
+objc2 = "0.6"
+objc2-foundation = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "NSDictionary",
+  "NSError",
+  "NSString",
+  "NSThread",
+] }
+block2 = "0.6"
+dispatch2 = "0.3"
 
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.31", features = ["user"] }
