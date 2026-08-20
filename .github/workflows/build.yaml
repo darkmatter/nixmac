@@ -88,6 +88,9 @@ jobs:
         run: cargo test --manifest-path src-tauri/Cargo.toml
         env:
           NIXMAC_ENV: production
+          # Packaged builds hard-fail without the packaged source revision
+          # (build.rs embeds it as the build identity).
+          NIXMAC_BUILD_ID: ${{ github.sha }}
   build:
     needs: rust-tests
     runs-on: [self-hosted, macOS]
@@ -170,6 +173,26 @@ jobs:
         run: cargo clippy --workspace --all-targets --features nixmac/codegen -- -D warnings
         env:
           NIXMAC_ENV: production
+          # Packaged builds hard-fail without the packaged source revision.
+          NIXMAC_BUILD_ID: ${{ github.sha }}
+
+      # Same test set as the Linux `rust-tests` job, run again here because a
+      # large share of this crate's behavioral coverage is
+      # `cfg(target_os = "macos")` and compiles away to nothing on Linux — the
+      # privileged helper's socket serving, peer authentication, and launchd
+      # paths among it. Without this step CI can be green while none of it has
+      # ever executed.
+      #
+      # Placed with clippy: after the toolchain and passkey patch are in place,
+      # before the sccache setup and the expensive release build, so a failure
+      # is fast and cheap. `NIXMAC_ENV`/`NIXMAC_BUILD_ID` match the clippy and
+      # build steps — build.rs reruns on those, so a different value here would
+      # force a rebuild of everything that follows.
+      - name: Rust unit tests (macOS)
+        run: cargo test -p nixmac
+        env:
+          NIXMAC_ENV: production
+          NIXMAC_BUILD_ID: ${{ github.sha }}
 
       # Decide what kind of build this is:
       #   - tag:     push of refs/tags/v* → ship that exact version on stable
@@ -252,6 +275,9 @@ jobs:
           # Pass DSNs and build metadata into the tauri action step so build.rs can read them
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           NIXMAC_ENV: production
+          # Build identity compiled into the GUI, helper, and sync agent; the
+          # sidecar build inherits it through the environment.
+          NIXMAC_BUILD_ID: ${{ github.sha }}
           NIXMAC_VERSION: ${{ steps.sync-version.outputs.build_version }}
           VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
           SUBMITTED_FEEDBACK_DSN: ${{ secrets.SUBMITTED_FEEDBACK_DSN }}
