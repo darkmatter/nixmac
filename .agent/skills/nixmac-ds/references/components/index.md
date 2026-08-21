@@ -12,6 +12,7 @@
 | Brand | `NixmacMark` | `brand.md` |
 
 Conventions shared by all:
+
 - Styling is inline `style={{}}` over CSS-variable tokens; there are no `className` variants. To restyle, pass `style` (it wins) — but stick to tokens.
 - Controlled/uncontrolled: `Switch`, `Checkbox`, and `Tabs` support both (`checked`/`defaultChecked` + `onCheckedChange`; `value`/`defaultValue` + `onValueChange`).
 - Icons: pass lucide-react nodes to `icon` props (`BadgeButton`, `Alert`, `FileBadge`). Size them to the slot (12–16px).

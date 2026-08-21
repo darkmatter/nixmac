@@ -1,9 +1,6 @@
----
-name: nixmac-ds
-description: "The nixmac design system — a dark-first, monochrome-neutral UI language with a lime brand accent and a signature teal build glow, built for nixmac (an AI-powered nix-darwin config manager). Copy-in React components styled with inline styles over CSS-variable tokens (no Tailwind, no runtime deps beyond React). Use this whenever building any nixmac app or UI such as landing pages, dashboards, agent/diff review screens, settings, forms, onboarding, or any screen that should look and feel like nixmac. This is the canonical source for nixmac components, tokens, theming (dark + light), fonts, and layout — prefer it over generic shadcn/ui."
-metadata:
-  v0.kind: design-system
----
+______________________________________________________________________
+
+## name: nixmac-ds description: "The nixmac design system — a dark-first, monochrome-neutral UI language with a lime brand accent and a signature teal build glow, built for nixmac (an AI-powered nix-darwin config manager). Copy-in React components styled with inline styles over CSS-variable tokens (no Tailwind, no runtime deps beyond React). Use this whenever building any nixmac app or UI such as landing pages, dashboards, agent/diff review screens, settings, forms, onboarding, or any screen that should look and feel like nixmac. This is the canonical source for nixmac components, tokens, theming (dark + light), fonts, and layout — prefer it over generic shadcn/ui." metadata: v0.kind: design-system
 
 # nixmac design system
 
@@ -76,8 +73,8 @@ import {
 Before finishing any nixmac screen:
 
 1. Renders correctly in **dark** (the default); if a light toggle exists, verify light too.
-2. All colors/spacing/radii/type come from **tokens**, not literals.
-3. Components imported from `@/components/nixmac` (the barrel), and the rendering page/subtree is a **client component**.
-4. Machine text is **Geist Mono**; UI text is **Inter**.
-5. The teal glow appears only on the primary build/run action; the lime brand is used sparingly.
-6. Layout uses the system's spacing scale and stays responsive (see `foundations/spacing-layout.md`).
+1. All colors/spacing/radii/type come from **tokens**, not literals.
+1. Components imported from `@/components/nixmac` (the barrel), and the rendering page/subtree is a **client component**.
+1. Machine text is **Geist Mono**; UI text is **Inter**.
+1. The teal glow appears only on the primary build/run action; the lime brand is used sparingly.
+1. Layout uses the system's spacing scale and stays responsive (see `foundations/spacing-layout.md`).
