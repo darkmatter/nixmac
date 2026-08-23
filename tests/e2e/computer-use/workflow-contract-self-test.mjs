@@ -243,6 +243,11 @@ assert.match(
 );
 assert.match(
   remote,
+  /CODEX_APP=\/Applications\/Codex\.app[\s\S]*open -g "\$CODEX_APP"[\s\S]*pgrep -f '\[S\]kyComputerUseService'[\s\S]*computer_use_ready=true/,
+  "remote startup must launch Codex and verify its desktop-owned Computer Use service",
+);
+assert.match(
+  remote,
   /\n    if: needs\.prepare\.outputs\.remote_ready == 'true' && needs\.prepare\.outputs\.storybook_ui_only != 'true'\n/,
   "remote job must only acquire the DXU lane after prepare marks it ready and Storybook has not satisfied a UI-only PR",
 );

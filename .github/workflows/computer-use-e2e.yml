@@ -949,6 +949,24 @@ jobs:
             gui_launchctl setenv OPENROUTER_API_KEY "$(cat "$REMOTE_KEY_FILE")"
             rm -f "$REMOTE_KEY_FILE"
           fi
+          CODEX_APP=/Applications/Codex.app
+          if [[ ! -d "$CODEX_APP" ]]; then
+            echo "error: Codex desktop app is required for the Computer Use service" >&2
+            exit 1
+          fi
+          open -g "$CODEX_APP"
+          computer_use_ready=false
+          for _ in $(seq 1 30); do
+            if pgrep -f '[S]kyComputerUseService' >/dev/null; then
+              computer_use_ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [[ "$computer_use_ready" != "true" ]]; then
+            echo "error: Codex desktop app did not start SkyComputerUseService" >&2
+            exit 1
+          fi
           nohup /Applications/Codex.app/Contents/Resources/codex app-server -c 'service_tier="fast"' --listen ws://127.0.0.1:18790 >/tmp/nixmac-codex-app-server.log 2>&1 &
           sleep 2
           if ! open -n "$REMOTE_APP_PATH"; then
