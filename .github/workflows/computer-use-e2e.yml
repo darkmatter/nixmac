@@ -137,6 +137,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
+          # setup-devenv exports Nix shared libraries for Playwright. Ubuntu's
+          # ffmpeg/ffprobe must use the runner's matching system libraries.
+          echo "LD_LIBRARY_PATH=" >> "$GITHUB_ENV"
           node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id hosted-runner-setup \
             --status success \
@@ -710,6 +713,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
+          # setup-devenv exports Nix shared libraries for Playwright. Ubuntu's
+          # ffmpeg/ffprobe must use the runner's matching system libraries.
+          echo "LD_LIBRARY_PATH=" >> "$GITHUB_ENV"
 
       - name: Download prepared app artifact
         if: steps.stale-run.outputs.stale != 'true'

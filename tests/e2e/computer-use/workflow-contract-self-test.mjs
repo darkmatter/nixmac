@@ -63,6 +63,17 @@ const remote = section(/^  remote-computer-use:$/m, /^  publish-report:$/m);
 const publish = section(/^  publish-report:$/m, /^  e2e-result:$/m);
 const result = section(/^  e2e-result:$/m);
 
+for (const [jobName, job] of [
+  ["prepare", prepare],
+  ["remote-computer-use", remote],
+]) {
+  assert.match(
+    job,
+    /name: Install media dependencies[\s\S]*apt-get install -y ffmpeg[\s\S]*LD_LIBRARY_PATH=/,
+    `${jobName} must clear the Nix LD_LIBRARY_PATH before invoking Ubuntu media tools`,
+  );
+}
+
 assert.equal(
   /^concurrency:/m.test(workflow),
   false,
