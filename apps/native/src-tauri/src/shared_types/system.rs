@@ -110,6 +110,26 @@ pub struct NixInstallState {
     pub last_error: Option<String>,
 }
 
+/// Status of the guided Homebrew installation flow.
+///
+/// Homebrew presence is prerequisite health, so this cell — not the onboarding
+/// session store — is where the UI reads it from. `installed` is always the
+/// result of a real `brew --version` probe, including the one taken when an
+/// install run finishes: the installer's exit code alone never decides it.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Type, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct HomebrewInstallState {
+    /// Whether Homebrew is installed; `None` until first checked.
+    pub installed: Option<bool>,
+    /// True while an install run is in flight.
+    pub installing: bool,
+    /// Current installer phase ("command-line-tools", "installing"); `None`
+    /// when idle.
+    pub install_phase: Option<String>,
+    /// Error from the last finished run, if it failed.
+    pub last_error: Option<String>,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub enum LaunchdItemType {
     LaunchAgent,

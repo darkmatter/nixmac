@@ -8,6 +8,7 @@ use std::time::Duration;
 
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(30);
 const ACTIVATION_TIMEOUT: Duration = Duration::from_secs(30 * 60);
+const HOMEBREW_INSTALL_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 /// Status probes back the permissions UI; a wedged helper must not stall a
 /// permissions refresh, so they get a short leash instead of CLIENT_TIMEOUT.
 const STATUS_PROBE_TIMEOUT: Duration = Duration::from_secs(2);
@@ -38,6 +39,14 @@ fn request_with_timeout(request: &HelperRequest, timeout: Duration) -> Result<He
 
 pub fn status() -> Result<HelperResponse> {
     request_with_timeout(&HelperRequest::Status, STATUS_PROBE_TIMEOUT)
+}
+
+/// Asks the helper to install Homebrew from its official signed package.
+///
+/// The leash is long because this covers a ~140 MB download on whatever
+/// connection the user has, plus the install itself.
+pub fn install_homebrew() -> Result<HelperResponse> {
+    request_with_timeout(&HelperRequest::InstallHomebrew, HOMEBREW_INSTALL_TIMEOUT)
 }
 
 pub fn activate_store_path(request_body: ActivateStorePathRequest) -> Result<HelperResponse> {

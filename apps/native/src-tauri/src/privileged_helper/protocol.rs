@@ -10,6 +10,22 @@ pub const HELPER_PLIST_NAME: &str = "com.darkmatter.nixmac.helper.plist";
 #[allow(dead_code)]
 pub const SYNC_AGENT_PLIST_NAME: &str = "com.darkmatter.nixmac.sync-agent.plist";
 pub const HELPER_SOCKET_PATH: &str = "/var/run/nixmac/helper.sock";
+
+/// Homebrew's official signed installer package. This "latest" redirect is the
+/// URL brew.sh documents; the release asset itself is what gets verified.
+pub const HOMEBREW_PKG_URL: &str =
+    "https://github.com/Homebrew/brew/releases/latest/download/Homebrew.pkg";
+/// Apple Developer Team ID the Homebrew package must be signed by. Root runs
+/// whatever this package says, so the signer is pinned rather than merely
+/// required to be *some* valid Developer ID. A legitimate change of Homebrew's
+/// signing identity should require a deliberate code change here.
+pub const HOMEBREW_PKG_TEAM_ID: &str = "927JGANW46";
+/// Path the Homebrew package scripts read to decide which account owns the
+/// install. Honoured only when root-owned and mode 0600.
+pub const HOMEBREW_PKG_USER_PLIST: &str = "/var/tmp/.homebrew_pkg_user.plist";
+/// Homebrew's package refuses to install without the Command Line Tools, and
+/// checks for exactly this path — a full Xcode alone does not satisfy it.
+pub const COMMAND_LINE_TOOLS_GIT: &str = "/Library/Developer/CommandLineTools/usr/bin/git";
 #[allow(dead_code)]
 pub const HELPER_SOCKET_DIR: &str = "/var/run/nixmac";
 const DEFAULT_SYNC_AGENT_INTERVAL_SECONDS: u32 = 900;
@@ -63,7 +79,15 @@ pub struct SyncAgentLaunchConfig {
 #[serde(tag = "op", rename_all = "camelCase")]
 pub enum HelperRequest {
     Status,
-    ActivateStorePath { request: ActivateStorePathRequest },
+    ActivateStorePath {
+        request: ActivateStorePathRequest,
+    },
+    /// Install Homebrew from its official signed `.pkg`.
+    ///
+    /// Deliberately argument-free: the helper picks the URL, verifies the
+    /// signature, and derives the owning account from the socket peer's
+    /// credentials. Nothing the caller says can redirect what root installs.
+    InstallHomebrew,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -298,7 +322,7 @@ fn sync_agent_environment_xml(config: Option<&SyncAgentLaunchConfig>) -> String 
     xml
 }
 
-fn escape_xml(value: &str) -> String {
+pub(crate) fn escape_xml(value: &str) -> String {
     value
         .replace('&', "&amp;")
         .replace('<', "&lt;")

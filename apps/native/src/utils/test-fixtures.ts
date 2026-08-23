@@ -1,5 +1,6 @@
 import type {
 	GlobalPreferences,
+	HomebrewInstallState,
 	NixInstallState,
 	OnboardingState,
 	PermissionsState,
@@ -98,6 +99,19 @@ export function makeNixInstallState(
 		installing: false,
 		installPhase: null,
 		prefetching: false,
+		lastError: null,
+		...overrides,
+	};
+}
+
+/** Installed-Homebrew snapshot for tests and stories. */
+export function makeHomebrewInstallState(
+	overrides: Partial<HomebrewInstallState> = {},
+): HomebrewInstallState {
+	return {
+		installed: true,
+		installing: false,
+		installPhase: null,
 		lastError: null,
 		...overrides,
 	};

@@ -377,6 +377,7 @@ fn register_managed_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> anyho
     app.manage(state::change_map::load_observable(app));
     app.manage(state::permissions_state::load_observable(app));
     app.manage(state::nix_install_state::load_observable(app));
+    app.manage(state::homebrew_state::load_observable(app));
     app.manage(state::rebuild_status::load_observable(app));
     app.manage(state::secrets_vault::load_observable(app));
     Ok(())
@@ -591,7 +592,10 @@ fn run_gui_mode(
             // Homebrew
             commands::homebrew::homebrew_add_items,
             commands::homebrew::homebrew_apply_diff,
+            commands::homebrew::homebrew_check,
             commands::homebrew::homebrew_get_state_diff,
+            commands::homebrew::homebrew_install_state,
+            commands::homebrew::homebrew_install_stream,
             // Git
             commands::git::get_git_state,
             commands::git::git_status,

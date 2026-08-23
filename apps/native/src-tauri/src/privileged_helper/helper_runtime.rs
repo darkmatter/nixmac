@@ -1,6 +1,7 @@
 use crate::privileged_helper::protocol::{
-    ActivateStorePathRequest, HELPER_SOCKET_DIR, HELPER_SOCKET_PATH, HELPER_WARNING_PREFIX,
-    HelperRequest, HelperResponse, validate_canonical_activate_path,
+    ActivateStorePathRequest, COMMAND_LINE_TOOLS_GIT, HELPER_SOCKET_DIR, HELPER_SOCKET_PATH,
+    HELPER_WARNING_PREFIX, HOMEBREW_PKG_TEAM_ID, HOMEBREW_PKG_URL, HOMEBREW_PKG_USER_PLIST,
+    HelperRequest, HelperResponse, escape_xml, validate_canonical_activate_path,
 };
 use anyhow::{Context, Result, bail};
 use std::fs;
@@ -101,6 +102,211 @@ pub fn handle_request(peer: &PeerIdentity, request: HelperRequest) -> HelperResp
             Ok(response) => response,
             Err(error) => HelperResponse::error(-1, error.to_string()),
         },
+        HelperRequest::InstallHomebrew => match install_homebrew(peer) {
+            Ok(response) => response,
+            Err(error) => HelperResponse::error(-1, error.to_string()),
+        },
+    }
+}
+
+/// Installs Homebrew from its official signed package.
+///
+/// Replaces driving `install.sh` as the user with a relayed password. That
+/// script demands provable `sudo` access on macOS before it inspects anything
+/// (it aborts in `have_sudo_access`, reached unconditionally near the top) and
+/// refuses to run as root, so there was no arrangement of a pre-created prefix
+/// that let it run unprivileged. The package needs neither: it is authenticated
+/// as root, which this daemon already is, and carries its whole payload, so a
+/// failed download can no longer masquerade as a completed install.
+///
+/// Order matters: the package is fetched into a root-only directory *first*,
+/// then verified there, then installed from there. Nothing the requesting user
+/// can write to is ever handed to `installer`.
+fn install_homebrew(peer: &PeerIdentity) -> Result<HelperResponse> {
+    let account = user_account(peer.uid)?;
+
+    if !Path::new(COMMAND_LINE_TOOLS_GIT).exists() {
+        bail!(
+            "the Command Line Tools are required by Homebrew and are not installed \
+             (expected {COMMAND_LINE_TOOLS_GIT})"
+        );
+    }
+
+    // Root's own temp directory: not world-writable, and not reachable by the
+    // requesting user, so the verified bytes cannot be swapped for others
+    // between the signature check and the install.
+    let work_dir = std::env::temp_dir().join(format!("nixmac-brew-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&work_dir);
+    fs::create_dir_all(&work_dir).context("failed to create Homebrew download directory")?;
+    fs::set_permissions(&work_dir, fs::Permissions::from_mode(0o700))
+        .context("failed to lock down Homebrew download directory")?;
+    let guard = WorkDir(work_dir.clone());
+    let pkg_path = work_dir.join("Homebrew.pkg");
+
+    download_homebrew_pkg(&pkg_path)?;
+    verify_homebrew_pkg(&pkg_path)?;
+
+    // The package scripts otherwise hand the install to whoever owns
+    // /dev/console. Point them at the account that actually asked, which the
+    // socket told us and the caller could not forge.
+    let user_plist = HomebrewPkgUser::pin(&account.name)?;
+
+    let output = Command::new("/usr/sbin/installer")
+        .args(["-pkg"])
+        .arg(&pkg_path)
+        .args(["-target", "/"])
+        .env_clear()
+        .env("PATH", ACTIVATION_PATH_ENV)
+        .output()
+        .context("failed to execute installer")?;
+
+    drop(user_plist);
+    drop(guard);
+
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    Ok(HelperResponse {
+        ok: output.status.success(),
+        code: output.status.code().unwrap_or(-1),
+        stdout,
+        stderr,
+        error: None,
+    })
+}
+
+fn download_homebrew_pkg(pkg_path: &Path) -> Result<()> {
+    let output = Command::new("/usr/bin/curl")
+        .args([
+            "-fL",
+            "--proto",
+            "=https",
+            "--tlsv1.2",
+            "--max-time",
+            "1800",
+        ])
+        .arg("-o")
+        .arg(pkg_path)
+        .arg(HOMEBREW_PKG_URL)
+        .env_clear()
+        .env("PATH", ACTIVATION_PATH_ENV)
+        .output()
+        .context("failed to execute curl")?;
+    if !output.status.success() {
+        bail!(
+            "failed to download the Homebrew installer: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+    }
+    // An empty or truncated file would fail verification below anyway, but a
+    // zero-byte download deserves its own message.
+    let size = fs::metadata(pkg_path)
+        .context("downloaded Homebrew installer is missing")?
+        .len();
+    if size == 0 {
+        bail!("the downloaded Homebrew installer is empty");
+    }
+    Ok(())
+}
+
+/// Requires a Developer ID signature from Homebrew's team that Apple's notary
+/// service trusts. Runs before `installer` ever sees the file.
+fn verify_homebrew_pkg(pkg_path: &Path) -> Result<()> {
+    let output = Command::new("/usr/sbin/pkgutil")
+        .arg("--check-signature")
+        .arg(pkg_path)
+        .env_clear()
+        .env("PATH", ACTIVATION_PATH_ENV)
+        .output()
+        .context("failed to execute pkgutil")?;
+    if !output.status.success() {
+        bail!(
+            "the downloaded Homebrew installer is not signed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+    }
+    check_signature_report(&String::from_utf8_lossy(&output.stdout))
+}
+
+/// Decides whether a `pkgutil --check-signature` report describes a package
+/// this daemon is willing to run as root.
+///
+/// Split out from the command so the accept/reject rules are directly
+/// testable: this is the only thing standing between a network download and
+/// root-authenticated execution.
+///
+/// The team ID is matched on the *leaf* certificate line rather than anywhere
+/// in the report, so a team ID appearing elsewhere — deeper in the chain, or
+/// in some other field — cannot stand in for the real signer. Apple, not the
+/// developer, sets the common name on a Developer ID certificate, so a signer
+/// cannot mint one that merely reads like Homebrew's.
+pub(crate) fn check_signature_report(report: &str) -> Result<()> {
+    let leaf_signed_by_homebrew = report.lines().any(|line| {
+        let line = line.trim();
+        line.starts_with("1. Developer ID Installer:")
+            && line.ends_with(&format!("({HOMEBREW_PKG_TEAM_ID})"))
+    });
+    if !leaf_signed_by_homebrew {
+        bail!(
+            "the downloaded Homebrew installer is not signed by Homebrew \
+             (expected a Developer ID Installer certificate for team \
+             {HOMEBREW_PKG_TEAM_ID})"
+        );
+    }
+    if !report.contains("trusted by the Apple notary service") {
+        bail!("the downloaded Homebrew installer is not notarized by Apple");
+    }
+    Ok(())
+}
+
+/// Removes a directory tree when dropped.
+struct WorkDir(std::path::PathBuf);
+
+impl Drop for WorkDir {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
+
+/// Root-owned `0600` plist naming the account that should own the install.
+///
+/// An existing file is left completely alone: the same path is how MDM pins an
+/// install user, and clobbering an administrator's choice would be worse than
+/// falling back to the console user.
+struct HomebrewPkgUser {
+    created: bool,
+}
+
+impl HomebrewPkgUser {
+    fn pin(user_name: &str) -> Result<Self> {
+        let path = Path::new(HOMEBREW_PKG_USER_PLIST);
+        if path.exists() {
+            return Ok(Self { created: false });
+        }
+        let plist = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>HOMEBREW_PKG_USER</key>
+  <string>{}</string>
+</dict>
+</plist>
+"#,
+            escape_xml(user_name)
+        );
+        fs::write(path, plist).context("failed to write the Homebrew install-user plist")?;
+        // The scripts ignore this file unless it is exactly root-owned 0600.
+        fs::set_permissions(path, fs::Permissions::from_mode(0o600))
+            .context("failed to lock down the Homebrew install-user plist")?;
+        Ok(Self { created: true })
+    }
+}
+
+impl Drop for HomebrewPkgUser {
+    fn drop(&mut self) {
+        if self.created {
+            let _ = fs::remove_file(HOMEBREW_PKG_USER_PLIST);
+        }
     }
 }
 
@@ -477,5 +683,79 @@ mod tests {
         assert!(!peer_executable_allowed(Some("/tmp/nixmac-sync-agent")));
         assert!(!peer_executable_allowed(Some("/bin/sh")));
         assert!(!peer_executable_allowed(None));
+    }
+
+    /// Verbatim `pkgutil --check-signature` output for Homebrew 6.0.15,
+    /// leading indentation included — the chain lines really are indented, and
+    /// the check has to cope with that.
+    const HOMEBREW_REPORT: &str = concat!(
+        "Package \"Homebrew.pkg\":\n",
+        "   Status: signed by a developer certificate issued by Apple for distribution\n",
+        "   Notarization: trusted by the Apple notary service\n",
+        "   Signed with a trusted timestamp on: 2026-08-03 07:51:53 +0000\n",
+        "   Certificate Chain:\n",
+        "    1. Developer ID Installer: Patrick Linnane (927JGANW46)\n",
+        "       Expires: 2027-02-01 22:12:15 +0000\n",
+        "    2. Developer ID Certification Authority\n",
+        "    3. Apple Root CA\n",
+    );
+
+    #[test]
+    fn signature_report_accepts_homebrews_notarized_package() {
+        assert!(check_signature_report(HOMEBREW_REPORT).is_ok());
+    }
+
+    #[test]
+    fn signature_report_rejects_another_developers_package() {
+        // Valid Developer ID, wrong team: being signed by *someone* is not
+        // enough when the result runs as root.
+        let report = HOMEBREW_REPORT.replace("927JGANW46", "ABCDE12345");
+
+        assert!(check_signature_report(&report).is_err());
+    }
+
+    #[test]
+    fn signature_report_rejects_an_unnotarized_package() {
+        let report =
+            HOMEBREW_REPORT.replace("Notarization: trusted by the Apple notary service\n", "");
+
+        assert!(check_signature_report(&report).is_err());
+    }
+
+    #[test]
+    fn signature_report_rejects_an_unsigned_package() {
+        assert!(
+            check_signature_report("Package \"Homebrew.pkg\":\n   Status: no signature\n").is_err()
+        );
+    }
+
+    // The team ID counts only on the leaf certificate. A report that mentions
+    // it anywhere else describes a package signed by somebody else.
+    #[test]
+    fn signature_report_rejects_the_team_id_away_from_the_leaf_certificate() {
+        let report = HOMEBREW_REPORT
+            .replace("(927JGANW46)", "(ABCDE12345)")
+            .replace(
+                "Certificate Chain:",
+                "Certificate Chain: (see also 927JGANW46)",
+            );
+
+        assert!(check_signature_report(&report).is_err());
+    }
+
+    // ...including when it is the intermediate rather than the signer.
+    #[test]
+    fn signature_report_rejects_a_matching_team_id_on_a_deeper_certificate() {
+        let report = HOMEBREW_REPORT
+            .replace(
+                "    1. Developer ID Installer: Patrick Linnane (927JGANW46)\n",
+                "    1. Developer ID Installer: Someone Else (ABCDE12345)\n",
+            )
+            .replace(
+                "    2. Developer ID Certification Authority\n",
+                "    2. Developer ID Certification Authority (927JGANW46)\n",
+            );
+
+        assert!(check_signature_report(&report).is_err());
     }
 }

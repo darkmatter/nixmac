@@ -42,7 +42,10 @@ export function useOnboardingFlow(): {
   const lastBuildAt = useViewModel((s) => s.onboardingState?.lastBuildAt ?? null);
   const completedAt = useViewModel((s) => s.onboardingState?.completedAt ?? null);
 
+  const homebrewInstalled = useViewModel((s) => s.homebrewInstall?.installed ?? null);
+
   const inferenceDeferred = useOnboarding((s) => s.inferenceDeferred);
+  const homebrewSkipped = useOnboarding((s) => s.homebrewSkipped);
   const celebrating = useOnboarding((s) => s.celebrating);
   const viewingStep = useOnboarding((s) => s.viewingStep);
 
@@ -54,6 +57,7 @@ export function useOnboardingFlow(): {
   // only gate on the Nix package manager itself. `darwinRebuildAvailable` is
   // still surfaced in the step as an optional check.
   const nixReady = nixInstalled === true || settings.nixInstalledOverride === true;
+  const homebrewReady = homebrewInstalled === true;
   const configDirReady = Boolean(configDir);
   const flakeReady = configDirReady && Boolean(host) && hosts.includes(host);
 
@@ -62,6 +66,8 @@ export function useOnboardingFlow(): {
       computeOnboardingStep({
         permissionsReady,
         nixReady,
+        homebrewReady,
+        homebrewSkipped,
         configDirReady,
         flakeReady,
         macScanned: macScannedAt !== null,
@@ -73,6 +79,8 @@ export function useOnboardingFlow(): {
     [
       permissionsReady,
       nixReady,
+      homebrewReady,
+      homebrewSkipped,
       configDirReady,
       flakeReady,
       macScannedAt,

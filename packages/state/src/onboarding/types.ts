@@ -3,6 +3,7 @@ import type { HomebrewItem, LaunchdItem, SystemDefault } from "@nixmac/native/ip
 export type OnboardingStepId =
   | "permissions"
   | "nix-setup"
+  | "homebrew-setup"
   | "config-dir"
   | "setup"
   | "customizations"
@@ -45,6 +46,15 @@ export type OnboardingStateValues = {
   inferenceSetupDraft: InferenceSetupDraft;
   /** User chose to defer inference setup until the first build runs. */
   inferenceDeferred: boolean;
+  /**
+   * User chose to skip the optional Homebrew step this session.
+   *
+   * Only the *intent* lives here. Whether Homebrew is actually present is
+   * prerequisite health, probed by the backend and read from
+   * `viewModel.homebrewInstall` — see the state taxonomy in
+   * `docs/2026-07-08-onboarding-state-ownership.md`.
+   */
+  homebrewSkipped: boolean;
   /** Keep the success celebration mounted after the build gate is satisfied. */
   celebrating: boolean;
   /** When set, the user is reviewing an earlier step instead of the furthest gate. */

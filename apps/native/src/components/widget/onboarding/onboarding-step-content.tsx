@@ -2,6 +2,7 @@ import type { StepId } from "@/components/widget/onboarding/lib/onboarding";
 import { BuildStep } from "@/components/widget/onboarding/steps/build-step";
 import { ConfigDirStep } from "@/components/widget/onboarding/steps/config-dir-step";
 import { CustomizationsStep } from "@/components/widget/onboarding/steps/customizations-step";
+import { HomebrewSetupStep } from "@/components/widget/onboarding/steps/homebrew-setup-step";
 import { InferenceStep } from "@/components/widget/onboarding/steps/inference-step";
 import { NixSetupStep } from "@/components/widget/onboarding/steps/nix-setup-step";
 import { PermissionsStep } from "@/components/widget/onboarding/steps/permissions-step";
@@ -35,6 +36,7 @@ export function OnboardingStepContent({ currentStep, title }: OnboardingStepCont
       <div key={currentStep} className="fade-in slide-in-from-bottom-2 animate-in duration-300">
         {currentStep === "permissions" && <PermissionsStep />}
         {currentStep === "nix-setup" && <NixSetupStep />}
+        {currentStep === "homebrew-setup" && <HomebrewSetupStep />}
         {currentStep === "config-dir" && <ConfigDirStep />}
         {currentStep === "setup" && <SetupStep />}
         {currentStep === "customizations" && (

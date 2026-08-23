@@ -30,6 +30,7 @@ import {
 } from "@/components/widget/steps";
 import { surfaceRecoveryReport } from "@/hooks/use-feedback-on-recovery";
 import { useGitOperations } from "@/hooks/use-git-operations";
+import { useHomebrewInstall } from "@/hooks/use-homebrew-install";
 import { useNixInstall } from "@/hooks/use-nix-install";
 import { usePanicHandler } from "@/hooks/use-panic-handler";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -55,6 +56,7 @@ export function DarwinWidget() {
   const step = useCurrentStep();
   const { getInitialStatus } = useGitOperations();
   const { checkNix } = useNixInstall();
+  const { checkHomebrew } = useHomebrewInstall();
   const { checkPermissions } = usePermissions();
 
   // Experimental: spin the mascot in a corner indicator while evolving/building
@@ -158,16 +160,20 @@ export function DarwinWidget() {
         // the cached git status snapshot.
         await checkPermissions();
         await checkNix();
+        // Probed here rather than when the Homebrew onboarding step mounts, so
+        // users who already have brew never render that step at all.
+        await checkHomebrew();
         await getInitialStatus();
       } catch (e: unknown) {
         uiActions.setError((e as Error)?.message || String(e));
       }
 
       // Mark hydration complete only after the explicit probes (nix check,
-      // permissions, git status) have written their real values. The nix
-      // install cell is NOT persisted — it defaults to null on every launch —
-      // so flipping `hydrated` before checkNix runs would let the onboarding
-      // gate see a stale null and flash OnboardingFlow for a frame.
+      // permissions, Homebrew, git status) have written their real values. The
+      // nix and Homebrew install cells are NOT persisted — both default to null
+      // on every launch — so flipping `hydrated` before those probes run would
+      // let the onboarding gate see a stale null and flash OnboardingFlow for a
+      // frame.
       markViewModelHydrated();
 
       if (cancelled) return;
