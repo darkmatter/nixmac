@@ -238,6 +238,11 @@ assert.match(
 assert.match(remote, /\n    needs: prepare\n/, "remote job must depend on prepare");
 assert.match(
   remote,
+  /NIXMAC_COMPUTER_USE_APP: \$\{\{ steps\.remote-start\.outputs\.remote_app_path \}\}/,
+  "remote Computer Use must bind state and actions to the exact staged app path",
+);
+assert.match(
+  remote,
   /\n    if: needs\.prepare\.outputs\.remote_ready == 'true' && needs\.prepare\.outputs\.storybook_ui_only != 'true'\n/,
   "remote job must only acquire the DXU lane after prepare marks it ready and Storybook has not satisfied a UI-only PR",
 );
