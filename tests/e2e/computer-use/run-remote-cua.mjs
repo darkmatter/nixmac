@@ -1407,6 +1407,16 @@ async function synchronizeDisposableBaseline(client, state, text) {
     /New configuration updates are available/i.test(text) && /button Build & Test/i.test(text);
   if (!pendingBaseline) return text;
 
+  if (state.remoteConfig?.baselineSyncConfirmed === true) {
+    await addEvent(state, "remote.baseline-sync.repeat-blocked", {
+      note: "A baseline build was already confirmed in this run; refusing to confirm it twice.",
+    });
+    state.failures.push(
+      "The disposable baseline still appeared after an already-confirmed build; a duplicate build was not attempted.",
+    );
+    return text;
+  }
+
   await addEvent(state, "remote.baseline-sync.detected", {
     note: "The disposable config differs from the active DXU system; synchronizing it through nixmac before the prompt flow.",
   });
@@ -1455,6 +1465,7 @@ async function synchronizeDisposableBaseline(client, state, text) {
     state.failures.push("Computer Use could not confirm the disposable baseline build.");
     return text;
   }
+  state.remoteConfig.baselineSyncConfirmed = true;
   state.confirmationBoundaries.push(
     "Disposable baseline Build & Test boundary observed and confirmed before the feature flow.",
   );
@@ -1496,6 +1507,7 @@ async function synchronizeDisposableBaseline(client, state, text) {
   await addEvent(state, "remote.baseline-sync.completed", {
     note: "Computer Use synchronized the disposable baseline and reached the prompt flow.",
   });
+  state.remoteConfig.baselineSyncCompleted = true;
   return captureState(
     client,
     state,
@@ -4467,6 +4479,35 @@ async function runSelfTest() {
     ambiguousFailureCalls.map((call) => call.tool),
     ["click"],
     "clickByPattern should only refresh and retry explicit stale element failures",
+  );
+  stateHelperState.remoteConfig = { baselinePrepared: true, baselineSyncConfirmed: true };
+  stateHelperState.failures = [];
+  let repeatedBaselineToolCalls = 0;
+  const repeatedBaselineText =
+    "13 heading New configuration updates are available\n16 button Build & Test";
+  assert.equal(
+    await synchronizeDisposableBaseline(
+      {
+        async tool() {
+          repeatedBaselineToolCalls += 1;
+          throw new Error("duplicate baseline action should be blocked");
+        },
+      },
+      stateHelperState,
+      repeatedBaselineText,
+    ),
+    repeatedBaselineText,
+    "baseline synchronization should preserve state when a duplicate attempt is blocked",
+  );
+  assert.equal(
+    repeatedBaselineToolCalls,
+    0,
+    "baseline synchronization should never repeat an already-confirmed build",
+  );
+  assert.match(
+    stateHelperState.failures.at(-1),
+    /duplicate build was not attempted/,
+    "baseline synchronization should record why a repeated confirmation was blocked",
   );
   await saveState(stateHelperState);
   assert.equal(
