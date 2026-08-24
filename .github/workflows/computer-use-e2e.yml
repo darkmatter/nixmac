@@ -947,6 +947,7 @@ jobs:
           settings["summaryProvider"] = os.environ["NIXMAC_E2E_SUMMARY_PROVIDER"]
           settings["summaryModel"] = os.environ["NIXMAC_E2E_SUMMARY_MODEL"]
           settings["sendDiagnostics"] = False
+          settings["scanHomebrewOnStartup"] = False
           with open(settings_path, "w", encoding="utf-8") as handle:
               json.dump(settings, handle, indent=2, sort_keys=True)
               handle.write("\n")
@@ -977,6 +978,7 @@ jobs:
           preferences["summaryModels"] = summary_models
           preferences["sendDiagnostics"] = False
           preferences["diagnosticsNoticeAcknowledged"] = True
+          preferences["scanHomebrewOnStartup"] = False
           with open(preferences_path, "w", encoding="utf-8") as handle:
               json.dump(preferences, handle, indent=2, sort_keys=True)
               handle.write("\n")

@@ -1187,7 +1187,7 @@ async function captureState(client, state, label, note = "") {
 }
 
 async function clickByPattern(client, state, text, label, patterns, note = "") {
-  const elementIndex = findElement(text, patterns);
+  let elementIndex = findElement(text, patterns);
   if (!elementIndex) {
     await addEvent(state, "computer-use.click.skipped", {
       label,
@@ -1195,10 +1195,41 @@ async function clickByPattern(client, state, text, label, patterns, note = "") {
     });
     return false;
   }
-  return clickElementIndex(client, state, elementIndex, label, note);
+  const initial = await clickElementIndex(client, state, elementIndex, label, note, {
+    detailed: true,
+  });
+  if (initial.ok) return true;
+  if (!initial.staleElement) return false;
+
+  let refreshedText = "";
+  try {
+    const refreshed = await client.tool("get_app_state", { app: state.app }, 120000);
+    refreshedText = contentText(refreshed);
+  } catch (error) {
+    await addEvent(state, "computer-use.click.retry-failed", {
+      label,
+      error: redact(error instanceof Error ? error.message : String(error)).slice(0, 800),
+    });
+    return false;
+  }
+  elementIndex = findElement(refreshedText, patterns);
+  if (!elementIndex) {
+    await addEvent(state, "computer-use.click.retry-skipped", {
+      label,
+      note: `No element found for ${label} after refreshing app state`,
+    });
+    return false;
+  }
+  await addEvent(state, "computer-use.click.retry", {
+    label,
+    elementIndex,
+    note: "Retrying once with a fresh Computer Use element ID.",
+  });
+  return clickElementIndex(client, state, elementIndex, label, `${note} Retried with fresh state.`);
 }
 
-async function clickElementIndex(client, state, elementIndex, label, note = "") {
+async function clickElementIndex(client, state, elementIndex, label, note = "", options = {}) {
+  const result = (ok, staleElement = false) => (options.detailed ? { ok, staleElement } : ok);
   let response;
   try {
     response = await client.tool("click", { app: state.app, element_index: elementIndex }, 60000);
@@ -1209,7 +1240,7 @@ async function clickElementIndex(client, state, elementIndex, label, note = "") 
       error: redact(error instanceof Error ? error.message : String(error)).slice(0, 800),
       note,
     });
-    return false;
+    return result(false);
   }
   const rawResponseText = contentText(response);
   const responseText = redact(rawResponseText);
@@ -1221,7 +1252,7 @@ async function clickElementIndex(client, state, elementIndex, label, note = "") 
       isError: response?.result?.isError === true,
       note,
     });
-    return false;
+    return result(false, /-10005|element ID is no longer valid/i.test(rawResponseText));
   }
   await addEvent(state, "computer-use.click", {
     label,
@@ -1229,11 +1260,11 @@ async function clickElementIndex(client, state, elementIndex, label, note = "") 
     response: responseText.slice(0, 800),
     note,
   });
-  return true;
+  return result(true);
 }
 
 async function setValueByPattern(client, state, text, label, patterns, value) {
-  const elementIndex = findElement(text, patterns);
+  let elementIndex = findElement(text, patterns);
   if (!elementIndex) {
     await addEvent(state, "computer-use.set_value.skipped", {
       label,
@@ -1241,10 +1272,41 @@ async function setValueByPattern(client, state, text, label, patterns, value) {
     });
     return false;
   }
+  const initial = await setValueElementIndex(client, state, elementIndex, label, value, {
+    detailed: true,
+  });
+  if (initial.ok) return true;
+  if (!initial.staleElement) return false;
+
+  let refreshedText = "";
+  try {
+    const refreshed = await client.tool("get_app_state", { app: state.app }, 120000);
+    refreshedText = contentText(refreshed);
+  } catch (error) {
+    await addEvent(state, "computer-use.set_value.retry-failed", {
+      label,
+      error: redact(error instanceof Error ? error.message : String(error)).slice(0, 800),
+    });
+    return false;
+  }
+  elementIndex = findElement(refreshedText, patterns);
+  if (!elementIndex) {
+    await addEvent(state, "computer-use.set_value.retry-skipped", {
+      label,
+      note: `No element found for ${label} after refreshing app state`,
+    });
+    return false;
+  }
+  await addEvent(state, "computer-use.set_value.retry", {
+    label,
+    elementIndex,
+    note: "Retrying once with a fresh Computer Use element ID.",
+  });
   return setValueElementIndex(client, state, elementIndex, label, value);
 }
 
-async function setValueElementIndex(client, state, elementIndex, label, value) {
+async function setValueElementIndex(client, state, elementIndex, label, value, options = {}) {
+  const result = (ok, staleElement = false) => (options.detailed ? { ok, staleElement } : ok);
   let response;
   try {
     response = await client.tool(
@@ -1258,7 +1320,7 @@ async function setValueElementIndex(client, state, elementIndex, label, value) {
       elementIndex,
       error: redact(error instanceof Error ? error.message : String(error)).slice(0, 800),
     });
-    return false;
+    return result(false);
   }
   const rawResponseText = contentText(response);
   const responseText = redact(rawResponseText);
@@ -1269,14 +1331,14 @@ async function setValueElementIndex(client, state, elementIndex, label, value) {
       response: responseText.slice(0, 800),
       isError: response?.result?.isError === true,
     });
-    return false;
+    return result(false, /-10005|element ID is no longer valid/i.test(rawResponseText));
   }
   await addEvent(state, "computer-use.set_value", {
     label,
     elementIndex,
     response: responseText.slice(0, 800),
   });
-  return true;
+  return result(true);
 }
 
 async function waitFor(client, state, label, predicate, { attempts = 10, delayMs = 1500 } = {}) {
@@ -4331,6 +4393,79 @@ async function runSelfTest() {
     ),
     ["state.self-test"],
     "addEvent should persist events.json",
+  );
+  stateHelperState.app = "com.darkmatter.nixmac";
+  const retryCalls = [];
+  const retryClient = {
+    async tool(tool, args) {
+      retryCalls.push({ tool, args });
+      if (tool === "get_app_state") {
+        return { result: { content: [{ type: "text", text: "18 button Send" }] } };
+      }
+      if (retryCalls.filter((call) => call.tool === "click").length === 1) {
+        return {
+          result: {
+            isError: true,
+            content: [
+              {
+                type: "text",
+                text: "Computer Use server error -10005: The element ID is no longer valid.",
+              },
+            ],
+          },
+        };
+      }
+      return {
+        result: {
+          isError: false,
+          content: [{ type: "text", text: "Computer Use click completed." }],
+        },
+      };
+    },
+  };
+  assert.equal(
+    await clickByPattern(retryClient, stateHelperState, "17 button Send", "Retry stale Send", [
+      /button Send/i,
+    ]),
+    true,
+    "clickByPattern should retry once with a fresh element ID after a stale click",
+  );
+  assert.deepEqual(
+    retryCalls.map((call) => [call.tool, call.args.element_index ?? null]),
+    [
+      ["click", "17"],
+      ["get_app_state", null],
+      ["click", "18"],
+    ],
+    "clickByPattern should refresh state before retrying the replacement element ID",
+  );
+  const ambiguousFailureCalls = [];
+  const ambiguousFailureClient = {
+    async tool(tool, args) {
+      ambiguousFailureCalls.push({ tool, args });
+      return {
+        result: {
+          isError: true,
+          content: [{ type: "text", text: "Computer Use returned an ambiguous tool error." }],
+        },
+      };
+    },
+  };
+  assert.equal(
+    await clickByPattern(
+      ambiguousFailureClient,
+      stateHelperState,
+      "19 button Confirm",
+      "Do not retry ambiguous Confirm",
+      [/button Confirm/i],
+    ),
+    false,
+    "clickByPattern should not retry an ambiguous action failure",
+  );
+  assert.deepEqual(
+    ambiguousFailureCalls.map((call) => call.tool),
+    ["click"],
+    "clickByPattern should only refresh and retry explicit stale element failures",
   );
   await saveState(stateHelperState);
   assert.equal(
