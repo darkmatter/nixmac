@@ -1186,8 +1186,17 @@ async function captureState(client, state, label, note = "") {
   return text;
 }
 
-async function clickByPattern(client, state, text, label, patterns, note = "") {
-  let elementIndex = findElement(text, patterns);
+function findActionElement(text, patterns, { preferLast = false } = {}) {
+  if (!preferLast) return findElement(text, patterns);
+  return (
+    elementEntries(text)
+      .filter((entry) => patterns.some((pattern) => pattern.test(entry.label)))
+      .at(-1)?.index ?? null
+  );
+}
+
+async function clickByPattern(client, state, text, label, patterns, note = "", options = {}) {
+  let elementIndex = findActionElement(text, patterns, options);
   if (!elementIndex) {
     await addEvent(state, "computer-use.click.skipped", {
       label,
@@ -1212,7 +1221,7 @@ async function clickByPattern(client, state, text, label, patterns, note = "") {
     });
     return false;
   }
-  elementIndex = findElement(refreshedText, patterns);
+  elementIndex = findActionElement(refreshedText, patterns, options);
   if (!elementIndex) {
     await addEvent(state, "computer-use.click.retry-skipped", {
       label,
@@ -1743,6 +1752,7 @@ async function cleanupReviewOnlyCase(client, state, text, caseDef) {
         `Confirm discard ${caseDef.id}`,
         [/button Confirm/i, /^button Discard$/i],
         `Confirm Discard for ${caseDef.label}.`,
+        { preferLast: true },
       );
       const cleaned = await waitForRemoteGit(
         state,
@@ -3299,7 +3309,11 @@ async function runSuite(args) {
         state,
         "provider-progress",
         (candidate) => {
-          if (/heading Review|button Build & Test|button Discard|Summary|Diff/i.test(candidate))
+          if (
+            /Progress: step 2 of 3, Review/i.test(candidate) &&
+            /button Build & Test/i.test(candidate) &&
+            !/button Stop/i.test(candidate)
+          )
             return "review";
           if (/Payment Required|Insufficient credits|out of credits|billing limit/i.test(candidate))
             return "billing-error";
@@ -3382,8 +3396,8 @@ async function runSuite(args) {
         state,
         text,
         "Summary tab",
-        [/Summary/i],
-        "Open Summary tab.",
+        [/Summary/i, /Semantic/i],
+        "Open Summary/Semantic tab.",
       );
       if (summaryClicked) {
         text = await captureState(
@@ -3450,7 +3464,7 @@ async function runSuite(args) {
         state,
         text,
         "Build & Test",
-        [/Build & Test/i, /Build/i],
+        [/button Build & Test/i],
         "Click Build & Test boundary.",
       );
       if (buildClicked) {
@@ -3914,6 +3928,7 @@ async function runSuite(args) {
             "Confirm discard",
             [/button Confirm/i, /^button Discard$/i],
             "Confirm discard in proven disposable state.",
+            { preferLast: true },
           );
         } else {
           await addEvent(state, "safety.discard-confirm.skipped", {
@@ -5088,6 +5103,13 @@ async function runSelfTest() {
     findElement(simpleElementText, [/button Missing/i]),
     null,
     "findElement should return null when no AX element matches",
+  );
+  assert.equal(
+    findActionElement("36 button Discard\n42 button Discard", [/^button Discard$/i], {
+      preferLast: true,
+    }),
+    "42",
+    "findActionElement should select the confirmation action when duplicate labels exist",
   );
   assert.deepEqual(
     elementEntries(simpleElementText),

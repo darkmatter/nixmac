@@ -12,6 +12,7 @@ export const DEFAULT_PROMPT =
 export const supportedHomebrewSourcePaths = freezeDeep([
   "modules/darwin/homebrew.nix",
   "flake-modules/darwin.nix",
+  ".nixmac/homebrew/data.json",
 ]);
 
 export const screenshotAnnotations = freezeDeep({
