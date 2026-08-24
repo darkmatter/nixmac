@@ -2619,10 +2619,10 @@ async function runSuite(args) {
   });
   try {
     await client.connect();
-    await requireComputerUsePreflight(client, state);
     await prepareDisposableRemoteBaseline(state);
     await maybeRelaunchRemote(state);
     captureRemoteMetadata(state);
+    await requireComputerUsePreflight(client, state);
 
     let text = await captureState(
       client,
