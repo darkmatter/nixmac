@@ -3135,7 +3135,7 @@ async function runSuite(args) {
         state,
         text,
         "Cancel feedback",
-        [/Cancel/i, /Close/i, /^button ×/i, /^button X/i],
+        [/button OK/i, /Cancel/i, /Close/i, /^button ×/i, /^button X/i],
         "Cancel Give Feedback.",
       );
       text = await captureState(
@@ -3211,6 +3211,7 @@ async function runSuite(args) {
         "Computer Use relaunched to recover the main prompt before the core feature flow.",
       );
     }
+    text = await synchronizeDisposableBaseline(client, state, text);
 
     const suggestionVisible = hasAny(text, [/Install vim/i, /Add Rectangle/i, /Finder path bar/i]);
     const suggestionClicked = suggestionVisible
