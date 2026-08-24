@@ -62,21 +62,29 @@ pub enum HelperClientError {
     UnparseableReply(String),
 }
 
-/// What answered the helper socket, judged before any protocol bytes crossed
-/// it.
+/// What answered the helper socket.
 ///
-/// Reconciliation needs the three-way split: a **root** peer whose validation
-/// completed with a "no" is the pre-contract or tampered helper, which may be
-/// removed without being asked anything, while a validation that could not
-/// reach a judgment — or a peer that is not root — authorizes nothing at all.
+/// Reconciliation needs the split: a **root** peer whose validation completed
+/// with a "no" is the pre-contract or tampered helper. It may be removed, and
+/// its own `Status` answer can buy exactly one thing — postponing that removal
+/// while it reports a running activation — and can authorize nothing. A
+/// validation that could not reach a judgment, or a peer that is not root,
+/// authorizes nothing at all and is never written to.
 #[derive(Debug)]
 pub enum AssessedExchange {
     /// Root, and the pinned helper requirement is satisfied. The reply came
     /// from the signed helper.
     Answered(HelperReply),
     /// Root, and validation completed with a "no": unsigned, ad-hoc-signed, or
-    /// the wrong identity. Not one byte was written to it, and none ever is.
+    /// the wrong identity — and the `Status` probe got no usable answer out of
+    /// it. `Status` is the only request ever written to such a peer
+    /// ([`assessed_status`] hardcodes it); a mutating request never is.
     RootUnverifiable(String),
+    /// Root, validation completed with a "no", and it answered the `Status`
+    /// probe anyway. The reply came from unverified code: display-only, good
+    /// for exactly one decision — postponing this peer's own replacement while
+    /// it reports a running activation — and never an authorization.
+    UnverifiableAnswered { detail: String, reply: HelperReply },
     /// Nothing may be concluded — a peer that is not root, or a validation that
     /// reached no judgment. No bytes were written.
     Unidentified(String),
@@ -162,54 +170,35 @@ fn exchange(
     exchange_on(stream, request)
 }
 
-/// [`exchange`] keeping the peer assessment instead of flattening it, and
-/// writing a request only to an authenticated peer.
-///
-/// The three-way judgment is the whole difference: what may be done about a
-/// helper that cannot be talked to depends on whether validation said "no" or
-/// said nothing.
-fn assessed_exchange(
-    request: &HelperRequest,
-    read_timeout: Duration,
-) -> Result<AssessedExchange, HelperClientError> {
-    let stream = connect(read_timeout)?;
-    let (euid, validation) =
-        peer_auth::assess_helper_peer(&stream).map_err(HelperClientError::AuthenticationFailed)?;
-
-    match peer_verdict(euid, validation) {
-        PeerVerdict::Authenticated => exchange_on(stream, request).map(AssessedExchange::Answered),
-        PeerVerdict::NotAuthenticated(assessment) => Ok(assessment),
-    }
-}
-
-/// Whether a request may be written to this peer, or what the peer is instead.
+/// Whether a request may be written to this peer, and with what trust.
 enum PeerVerdict {
     Authenticated,
-    NotAuthenticated(AssessedExchange),
+    /// Root with a completed validation "no": only `Status` may be written,
+    /// and only by [`assessed_status`].
+    RootUnverifiable(String),
+    /// Nothing established; nothing is written.
+    Unidentified(String),
 }
 
 /// The three-way judgment, as an allowlist: one combination authenticates a
-/// peer and every other one ends the exchange before a byte is written.
+/// peer, one permits the read-only `Status` probe, and every other one ends
+/// the exchange before a byte is written.
 fn peer_verdict(euid: u32, validation: peer_auth::SignatureValidation) -> PeerVerdict {
     // A peer that is not root is unidentified whatever its signature says. The
     // helper binds its socket inside a root-owned directory, so anything else
     // holding that path is broken permissions or an impostor, and no decision
     // about terminating a helper may be taken from it.
     if euid != 0 {
-        return PeerVerdict::NotAuthenticated(AssessedExchange::Unidentified(format!(
+        return PeerVerdict::Unidentified(format!(
             "the process answering {HELPER_SOCKET_PATH} runs as uid {euid}, not root"
-        )));
+        ));
     }
     match validation {
         peer_auth::SignatureValidation::Valid => PeerVerdict::Authenticated,
         // A completed "no" — and the only thing that is one.
-        peer_auth::SignatureValidation::Invalid(detail) => {
-            PeerVerdict::NotAuthenticated(AssessedExchange::RootUnverifiable(detail))
-        }
+        peer_auth::SignatureValidation::Invalid(detail) => PeerVerdict::RootUnverifiable(detail),
         // No judgment was reached, which is never the same as a "no".
-        peer_auth::SignatureValidation::Error(detail) => {
-            PeerVerdict::NotAuthenticated(AssessedExchange::Unidentified(detail))
-        }
+        peer_auth::SignatureValidation::Error(detail) => PeerVerdict::Unidentified(detail),
     }
 }
 
@@ -257,8 +246,33 @@ fn exchange_on(
 /// Sends `Status`, keeping the peer assessment. Reconciliation's discovery
 /// exchange: it works against a helper of any build, and what it may do about
 /// one it cannot talk to depends on which way the assessment went.
+///
+/// This is the one relaxed entry point: an unverifiable **root** peer is still
+/// sent the request, because its answer may carry the one fact worth
+/// postponing a replacement for — a running activation. The request is
+/// hardcoded here so no mutating request can ever take the relaxed path;
+/// [`exchange`] stays strict for everything else.
 pub fn assessed_status() -> Result<AssessedExchange, HelperClientError> {
-    assessed_exchange(&HelperRequest::Status, STATUS_PROBE_TIMEOUT)
+    let stream = connect(STATUS_PROBE_TIMEOUT)?;
+    let (euid, validation) =
+        peer_auth::assess_helper_peer(&stream).map_err(HelperClientError::AuthenticationFailed)?;
+
+    match peer_verdict(euid, validation) {
+        PeerVerdict::Authenticated => {
+            exchange_on(stream, &HelperRequest::Status).map(AssessedExchange::Answered)
+        }
+        // The relaxed read. Any failure of it — closed, timed out,
+        // unparseable — collapses to the bare verdict, exactly as if the
+        // probe were never sent: the read can only ever add a postponement,
+        // never block a removal.
+        PeerVerdict::RootUnverifiable(detail) => {
+            Ok(match exchange_on(stream, &HelperRequest::Status) {
+                Ok(reply) => AssessedExchange::UnverifiableAnswered { detail, reply },
+                Err(_) => AssessedExchange::RootUnverifiable(detail),
+            })
+        }
+        PeerVerdict::Unidentified(detail) => Ok(AssessedExchange::Unidentified(detail)),
+    }
 }
 
 /// Dispatches `TryActivate`, stamped with this build's ID — the helper admits

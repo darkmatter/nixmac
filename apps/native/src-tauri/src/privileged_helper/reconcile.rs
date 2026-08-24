@@ -223,8 +223,13 @@ pub use evidence::Committed;
 pub enum PeerReply {
     /// Root, validated, and it answered.
     Answered(HelperReply),
-    /// Root, and validation completed with a "no".
+    /// Root, and validation completed with a "no"; the `Status` probe got no
+    /// usable answer out of it.
     RootUnverifiable(String),
+    /// Root, validation completed with a "no", and it answered the `Status`
+    /// probe anyway. The reply is unverified: it may postpone this peer's own
+    /// replacement, and authorizes nothing.
+    UnverifiableAnswered { detail: String, reply: HelperReply },
     /// A peer that is not root, or a validation that reached no judgment.
     Unidentified(String),
     /// The exchange did not happen.
@@ -324,6 +329,9 @@ impl<R: Runtime> Environment for LiveEnvironment<'_, R> {
         match client::assessed_status() {
             Ok(AssessedExchange::Answered(reply)) => PeerReply::Answered(reply),
             Ok(AssessedExchange::RootUnverifiable(detail)) => PeerReply::RootUnverifiable(detail),
+            Ok(AssessedExchange::UnverifiableAnswered { detail, reply }) => {
+                PeerReply::UnverifiableAnswered { detail, reply }
+            }
             Ok(AssessedExchange::Unidentified(detail)) => PeerReply::Unidentified(detail),
             Err(error) => PeerReply::Failed(error),
         }
@@ -545,14 +553,15 @@ fn goal<E: Environment>(env: &E, status: RegistrationStatus) -> Result<Goal, Rec
     }
 }
 
-/// What is answering the socket of an `enabled` registration. Exactly one of
-/// four things, and only an authenticated peer is ever spoken to.
+/// What is answering the socket of an `enabled` registration. Only an
+/// authenticated peer's answer is acted on; an unverifiable root peer is asked
+/// `Status` too, and its answer buys at most a postponement.
 fn classify<E: Environment>(env: &E, goal: Goal) -> Step {
     match env.status_exchange() {
         PeerReply::Answered(reply) => decide_from_status(env, goal, reply),
-        // The pre-contract helper, or a tampered one: removed without
-        // being asked anything, because no reply from it could be
-        // trusted. Only a *completed* "no" reaches this arm — a
+        // The pre-contract helper, or a tampered one, whose `Status` probe
+        // got no usable answer: removed, because no reply from it could be
+        // trusted anyway. Only a *completed* "no" reaches this arm — a
         // validation that got no answer is `Unidentified` below and
         // authorizes nothing. This is also the one removal that can
         // interrupt an in-process activation (the legacy helper is its
@@ -563,6 +572,28 @@ fn classify<E: Environment>(env: &E, goal: Goal) -> Step {
             // why the peer was rejected cannot be reconstructed.
             log::info!("helper peer unverifiable: {detail}");
             remove_or_replace(env, goal)
+        }
+        // The same peer, but it answered `Status`. Its words are unverified,
+        // so they may buy exactly one thing — postponing its own replacement
+        // while it reports a running activation, the same deferral the
+        // verified path takes — and may authorize nothing: not a kill, not an
+        // `AtThisBuild` resting state (its build ID claim is ignored). Every
+        // other answer takes the arm above's path unchanged. The activation
+        // details are withheld from the report because they came from
+        // unverified code; the log line carries what is known.
+        PeerReply::UnverifiableAnswered { detail, reply } => {
+            log::info!("helper peer unverifiable: {detail}");
+            if matches!(
+                reply,
+                HelperReply::Status {
+                    state: HelperStateName::Activating,
+                    ..
+                }
+            ) {
+                Ok(Reconciled::WaitingOnActivation(None))
+            } else {
+                remove_or_replace(env, goal)
+            }
         }
         PeerReply::Unidentified(detail) => Err(peer_unidentified(detail)),
         // Nothing answered. Whether that is a real absence — as opposed
@@ -757,7 +788,12 @@ fn verify_listening<E: Environment>(env: &E) -> Step {
             // launchd still has to spawn the helper and let it bind. The
             // one outcome this window exists for.
             PeerReply::Failed(HelperClientError::Unreachable(_)) => continue,
-            PeerReply::RootUnverifiable(detail) | PeerReply::Unidentified(detail) => {
+            // During verification the peer should be the helper this pass
+            // just registered; an unverifiable one is a failure, and its
+            // answer buys nothing here — not even a postponement.
+            PeerReply::RootUnverifiable(detail)
+            | PeerReply::UnverifiableAnswered { detail, .. }
+            | PeerReply::Unidentified(detail) => {
                 return Err(peer_unidentified(detail));
             }
             PeerReply::Failed(error) => return Err(exchange_failed(error)),
@@ -850,6 +886,7 @@ mod tests {
     enum Peer {
         Answered(HelperReply),
         RootUnverifiable,
+        UnverifiableAnswered(HelperReply),
         Unidentified,
         Unreachable,
         ClosedBeforeReply,
@@ -863,6 +900,10 @@ mod tests {
                 Peer::RootUnverifiable => {
                     PeerReply::RootUnverifiable("ad-hoc signature".to_string())
                 }
+                Peer::UnverifiableAnswered(reply) => PeerReply::UnverifiableAnswered {
+                    detail: "ad-hoc signature".to_string(),
+                    reply: reply.clone(),
+                },
                 Peer::Unidentified => PeerReply::Unidentified("no judgment".to_string()),
                 Peer::Unreachable => PeerReply::Failed(HelperClientError::Unreachable(
                     std::io::Error::from(std::io::ErrorKind::ConnectionRefused),
@@ -1252,6 +1293,33 @@ mod tests {
 
         assert_eq!(fresh_run(&world), Reconciled::Removed);
         assert_eq!(world.acts(), vec![Act::Unregistered]);
+    }
+
+    #[test]
+    fn an_unverifiable_peer_reporting_an_activation_postpones_its_replacement() {
+        // Claims this build and attaches activation details; neither is
+        // believed — no `AtThisBuild`, and the report carries `None`. The
+        // answer buys the deferral and nothing else.
+        let world =
+            World::default().with_exchanges(vec![Peer::UnverifiableAnswered(status_reply(
+                THIS_BUILD,
+                HelperStateName::Activating,
+                Some(activation(ClientKind::SyncAgent)),
+            ))]);
+
+        assert_eq!(fresh_run(&world), Reconciled::WaitingOnActivation(None));
+        assert!(world.acts().is_empty(), "a deferral mutates nothing");
+    }
+
+    #[test]
+    fn an_unverifiable_peer_answering_idle_is_replaced_as_without_the_answer() {
+        let world = World::default().with_exchanges(vec![
+            Peer::UnverifiableAnswered(status_reply(OTHER_BUILD, HelperStateName::Idle, None)),
+            Peer::Answered(this_build_idle()),
+        ]);
+
+        assert_eq!(fresh_run(&world), Reconciled::AtThisBuild);
+        assert_eq!(world.acts(), vec![Act::Replaced]);
     }
 
     #[test]
