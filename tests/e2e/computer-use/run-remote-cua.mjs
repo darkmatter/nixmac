@@ -910,6 +910,14 @@ function activationAuthRequired(text) {
   );
 }
 
+function commitFormReady(text) {
+  return (
+    /button Commit/i.test(text) &&
+    !/button \(disabled\) Commit/i.test(text) &&
+    /(?:text entry area|text field).*Value:\s*[^,\n]+/i.test(text)
+  );
+}
+
 function proofQualityIssues(state) {
   const issues = [];
   for (const violation of state.secretMaskingViolations || []) {
@@ -3182,8 +3190,8 @@ async function runSuite(args) {
       updateScenario(
         state,
         "reportIssue",
-        /Report|Issue|Error|Cancel|Submit/i.test(text) ? "pass" : "fail",
-        /Report|Issue|Error|Cancel|Submit/i.test(text)
+        /Report|Issue|Error|Cancel|Submit|Sign in to send feedback/i.test(text) ? "pass" : "fail",
+        /Report|Issue|Error|Cancel|Submit|Sign in to send feedback/i.test(text)
           ? "Report Issue dialog rendered and no submission was made."
           : "Report Issue did not visibly render.",
       );
@@ -3192,7 +3200,7 @@ async function runSuite(args) {
         state,
         text,
         "Cancel report issue",
-        [/Cancel/i, /Close/i, /^button ×/i, /^button X/i],
+        [/button OK/i, /Cancel/i, /Close/i, /^button ×/i, /^button X/i],
         "Cancel Report Issue.",
       );
       text = await captureState(
@@ -3542,16 +3550,30 @@ async function runSuite(args) {
                 "step-3-ready",
                 "Computer Use reached Step 3 after Build & Test.",
               );
-              if (/button \(disabled\) Commit/i.test(text)) {
+              if (/button Keep Changes/i.test(text)) {
+                const keepChangesClicked = await clickByPattern(
+                  client,
+                  state,
+                  text,
+                  "Keep changes",
+                  [/button Keep Changes/i],
+                  "Open the Step 3 version-history note before committing.",
+                );
+                if (keepChangesClicked) {
+                  text = await captureState(
+                    client,
+                    state,
+                    "step-3-keep-changes",
+                    "Computer Use chose Keep Changes and opened the version-history note.",
+                  );
+                }
+              }
+              if (!commitFormReady(text)) {
                 const commitReady = await waitFor(
                   client,
                   state,
                   "commit-ready",
-                  (candidate) =>
-                    /button Commit/i.test(candidate) &&
-                    !/button \(disabled\) Commit/i.test(candidate)
-                      ? "ready"
-                      : null,
+                  (candidate) => (commitFormReady(candidate) ? "ready" : null),
                   {
                     attempts: Number(process.env.NIXMAC_E2E_COMMIT_READY_ATTEMPTS || 20),
                     delayMs: Number(process.env.NIXMAC_E2E_COMMIT_READY_DELAY_MS || 1000),
@@ -3559,15 +3581,34 @@ async function runSuite(args) {
                 );
                 text = commitReady.text;
               }
+              if (!commitFormReady(text) && /Commit message/i.test(text)) {
+                const messageSet = await setValueByPattern(
+                  client,
+                  state,
+                  text,
+                  "Commit message",
+                  [/Commit message/i],
+                  "chore(homebrew): add bat",
+                );
+                if (messageSet) {
+                  text = await captureState(
+                    client,
+                    state,
+                    "commit-message-ready",
+                    "Computer Use set a deterministic version-history note.",
+                  );
+                }
+              }
               if (
-                await clickByPattern(
+                commitFormReady(text) &&
+                (await clickByPattern(
                   client,
                   state,
                   text,
                   "Commit changes",
                   [/button Commit/i],
                   "Commit Step 3 changes.",
-                )
+                ))
               ) {
                 const committed = await waitForRemoteGit(
                   state,
@@ -3614,9 +3655,15 @@ async function runSuite(args) {
                   state,
                   "saveFlow",
                   "fail",
-                  "Step 3 appeared, but Computer Use could not click Commit.",
+                  commitFormReady(text)
+                    ? "Step 3 appeared, but Computer Use could not click Commit."
+                    : "Step 3 appeared, but a non-empty version-history note was not ready, so Commit was not clicked.",
                 );
-                state.failures.push("Step 3 Commit button was not reachable.");
+                state.failures.push(
+                  commitFormReady(text)
+                    ? "Step 3 Commit button was not reachable."
+                    : "Step 3 version-history note was not ready; refusing to submit an empty commit.",
+                );
               }
             } else if (step3.result === "build-error") {
               updateScenario(
@@ -5110,6 +5157,18 @@ async function runSelfTest() {
     }),
     "42",
     "findActionElement should select the confirmation action when duplicate labels exist",
+  );
+  assert.equal(
+    commitFormReady(
+      "23 text entry area (settable) Value: chore(homebrew): add bat, Placeholder: Commit message…\n24 button Commit",
+    ),
+    true,
+    "commitFormReady should require a populated version-history note and enabled Commit button",
+  );
+  assert.equal(
+    commitFormReady("23 text entry area (settable) Placeholder: Commit message…\n24 button Commit"),
+    false,
+    "commitFormReady should reject an empty version-history note",
   );
   assert.deepEqual(
     elementEntries(simpleElementText),
