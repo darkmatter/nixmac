@@ -240,8 +240,13 @@ assert.match(
 );
 assert.match(
   remote,
-  /for candidate in \/Applications\/ChatGPT\.app \/Applications\/Codex\.app[\s\S]*CODEX_APP="\$candidate"[\s\S]*tell application id "com\.openai\.codex" to quit[\s\S]*pkill -f '\[S\]kyComputerUseService'[\s\S]*open -g "\$CODEX_APP"[\s\S]*pgrep -f '\[S\]kyComputerUseService'[\s\S]*computer_use_ready=true/,
+  /for candidate in \/Applications\/ChatGPT\.app \/Applications\/Codex\.app[\s\S]*CODEX_APP="\$candidate"[\s\S]*CFBundleExecutable[\s\S]*tell application id "com\.openai\.codex" to quit[\s\S]*! pgrep -x "\$CODEX_PROCESS"[\s\S]*! pgrep -x SkyComputerUseService[\s\S]*open -g "\$CODEX_APP"[\s\S]*pgrep -x "\$CODEX_PROCESS"[\s\S]*pgrep -x SkyComputerUseService[\s\S]*computer_use_ready=true/,
   "remote startup must launch Codex and verify its desktop-owned Computer Use service",
+);
+assert.match(
+  remote,
+  /global-preferences\.json[\s\S]*preferences\["configDir"\] = config_dir[\s\S]*onboarding-state\.json[\s\S]*"completedAt": completed_at/,
+  "remote setup must seed the current preferences and completed-onboarding slices",
 );
 assert.match(
   remote,

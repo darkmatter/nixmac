@@ -1340,6 +1340,108 @@ async function maybeRelaunchRemote(state) {
   });
 }
 
+async function synchronizeDisposableBaseline(client, state, text) {
+  const pendingBaseline =
+    /New configuration updates are available/i.test(text) && /button Build & Test/i.test(text);
+  if (!pendingBaseline) return text;
+
+  await addEvent(state, "remote.baseline-sync.detected", {
+    note: "The disposable config differs from the active DXU system; synchronizing it through nixmac before the prompt flow.",
+  });
+  const canConfirmBuild =
+    state.safety?.disposableConfig === true &&
+    state.safety?.buildConfirmEnabled === true &&
+    state.remoteConfig?.baselinePrepared === true;
+  if (!canConfirmBuild) {
+    state.failures.push(
+      "The disposable baseline requires Build & Test, but safe build confirmation was not proven.",
+    );
+    return text;
+  }
+
+  const buildClicked = await clickByPattern(
+    client,
+    state,
+    text,
+    "Synchronize disposable baseline",
+    [/button Build & Test/i],
+    "Open Build & Test confirmation for the disposable baseline.",
+  );
+  if (!buildClicked) {
+    state.failures.push("Computer Use could not start the disposable baseline build.");
+    return text;
+  }
+  text = await captureState(
+    client,
+    state,
+    "baseline-build-boundary",
+    "Computer Use opened the disposable baseline Build & Test confirmation.",
+  );
+  if (!/Confirm|Are you sure|Cancel/i.test(text)) {
+    state.failures.push("The disposable baseline build did not present a confirmation boundary.");
+    return text;
+  }
+  const confirmed = await clickByPattern(
+    client,
+    state,
+    text,
+    "Confirm disposable baseline build",
+    [/button Confirm/i],
+    "Confirm the baseline build in proven disposable state.",
+  );
+  if (!confirmed) {
+    state.failures.push("Computer Use could not confirm the disposable baseline build.");
+    return text;
+  }
+  state.confirmationBoundaries.push(
+    "Disposable baseline Build & Test boundary observed and confirmed before the feature flow.",
+  );
+
+  const synchronized = await waitFor(
+    client,
+    state,
+    "baseline-build",
+    (candidate) => {
+      if (/text entry area/i.test(candidate) && !buildAppearsActive(candidate)) return "ready";
+      if (activationAuthRequired(candidate)) return "activation-auth-required";
+      if (
+        /Build Failed|Nix Evaluation Error|Package build failed|Permission denied|failed with|❌/i.test(
+          candidate,
+        )
+      )
+        return "build-error";
+      return null;
+    },
+    {
+      attempts: Number(process.env.NIXMAC_E2E_BUILD_ATTEMPTS || DEFAULT_BUILD_ATTEMPTS),
+      delayMs: Number(process.env.NIXMAC_E2E_BUILD_DELAY_MS || 5000),
+    },
+  );
+  text = synchronized.text;
+  if (synchronized.result !== "ready") {
+    state.failures.push(
+      synchronized.result === "activation-auth-required"
+        ? "The disposable baseline build required interactive macOS authentication."
+        : synchronized.result === "build-error"
+          ? "The disposable baseline build failed before the prompt flow."
+          : buildAppearsActive(text)
+            ? "The disposable baseline build was still active when polling ended."
+            : "The disposable baseline build did not return to the prompt flow.",
+    );
+    return text;
+  }
+
+  await addEvent(state, "remote.baseline-sync.completed", {
+    note: "Computer Use synchronized the disposable baseline and reached the prompt flow.",
+  });
+  return captureState(
+    client,
+    state,
+    "baseline-active",
+    "Computer Use reached the prompt after synchronizing the disposable baseline.",
+  );
+}
+
 async function inspectReportWithComputerUse(client, state) {
   const dest = process.env.NIXMAC_E2E_REMOTE_SSH_DEST;
   const remoteParent =
@@ -2636,6 +2738,7 @@ async function runSuite(args) {
       "launch",
       "Computer Use observed the nixmac window at launch.",
     );
+    text = await synchronizeDisposableBaseline(client, state, text);
     if (
       /nixmac/i.test(text) &&
       hasAny(text, [
@@ -2913,7 +3016,7 @@ async function runSuite(args) {
           ? "Console rendered visible content."
           : "Console did not visibly render expected content.",
       );
-      await clickByPattern(
+      const closedConsole = await clickByPattern(
         client,
         state,
         text,
@@ -2921,6 +3024,16 @@ async function runSuite(args) {
         [/button Close/i, /^button ×/i, /^button X/i],
         "Close Console.",
       );
+      if (!closedConsole && /button Console/i.test(text)) {
+        await clickByPattern(
+          client,
+          state,
+          text,
+          "Toggle console closed",
+          [/button Console/i],
+          "Toggle Console closed to return to the prompt surface.",
+        );
+      }
       text = await captureState(
         client,
         state,
@@ -3026,6 +3139,16 @@ async function runSuite(args) {
       badgePatterns: [/untracked settings?/i],
       absentNoun: "macOS customizations",
     });
+
+    if (!findElement(text, [/text entry area/i])) {
+      await maybeRelaunchRemote(state);
+      text = await captureState(
+        client,
+        state,
+        "home-before-intent",
+        "Computer Use relaunched to recover the main prompt before the core feature flow.",
+      );
+    }
 
     const suggestionVisible = hasAny(text, [/Install vim/i, /Add Rectangle/i, /Finder path bar/i]);
     const suggestionClicked = suggestionVisible

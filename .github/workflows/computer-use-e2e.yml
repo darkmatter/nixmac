@@ -920,20 +920,28 @@ jobs:
           python3 - <<'PY'
           import json
           import os
+          import time
 
           support = os.path.expanduser("~/Library/Application Support/com.darkmatter.nixmac")
           os.makedirs(support, exist_ok=True)
+          config_dir = os.path.join(os.environ["REMOTE_CONFIG"], "config")
+
+          def load_json(path):
+              try:
+                  with open(path, "r", encoding="utf-8") as handle:
+                      return json.load(handle)
+              except (FileNotFoundError, json.JSONDecodeError):
+                  return {}
+
           settings_path = os.path.join(support, "settings.json")
-          try:
-              with open(settings_path, "r", encoding="utf-8") as handle:
-                  settings = json.load(handle)
-          except FileNotFoundError:
+          settings = load_json(settings_path)
+          if not isinstance(settings, dict):
               settings = {}
           settings["confirmBuild"] = True
           settings["confirmClear"] = True
           settings["confirmRollback"] = True
           settings["hostAttr"] = os.environ["REMOTE_HOSTNAME"]
-          settings["configDir"] = os.path.join(os.environ["REMOTE_CONFIG"], "config")
+          settings["configDir"] = config_dir
           settings["evolveProvider"] = os.environ["NIXMAC_E2E_EVOLVE_PROVIDER"]
           settings["evolveModel"] = os.environ["NIXMAC_E2E_EVOLVE_MODEL"]
           settings["summaryProvider"] = os.environ["NIXMAC_E2E_SUMMARY_PROVIDER"]
@@ -941,6 +949,49 @@ jobs:
           settings["sendDiagnostics"] = False
           with open(settings_path, "w", encoding="utf-8") as handle:
               json.dump(settings, handle, indent=2, sort_keys=True)
+              handle.write("\n")
+
+          preferences_path = os.path.join(support, "global-preferences.json")
+          preferences = load_json(preferences_path)
+          if not isinstance(preferences, dict):
+              preferences = {}
+          preferences["confirmBuild"] = True
+          preferences["confirmClear"] = True
+          preferences["confirmRollback"] = True
+          preferences["hostAttr"] = os.environ["REMOTE_HOSTNAME"]
+          preferences["configDir"] = config_dir
+          preferences["repoRoot"] = config_dir
+          preferences["evolveProvider"] = os.environ["NIXMAC_E2E_EVOLVE_PROVIDER"]
+          preferences["evolveModel"] = None
+          evolve_models = preferences.get("evolveModels")
+          if not isinstance(evolve_models, dict):
+              evolve_models = {}
+          evolve_models[os.environ["NIXMAC_E2E_EVOLVE_PROVIDER"]] = os.environ["NIXMAC_E2E_EVOLVE_MODEL"]
+          preferences["evolveModels"] = evolve_models
+          preferences["summaryProvider"] = os.environ["NIXMAC_E2E_SUMMARY_PROVIDER"]
+          preferences["summaryModel"] = None
+          summary_models = preferences.get("summaryModels")
+          if not isinstance(summary_models, dict):
+              summary_models = {}
+          summary_models[os.environ["NIXMAC_E2E_SUMMARY_PROVIDER"]] = os.environ["NIXMAC_E2E_SUMMARY_MODEL"]
+          preferences["summaryModels"] = summary_models
+          preferences["sendDiagnostics"] = False
+          preferences["diagnosticsNoticeAcknowledged"] = True
+          with open(preferences_path, "w", encoding="utf-8") as handle:
+              json.dump(preferences, handle, indent=2, sort_keys=True)
+              handle.write("\n")
+
+          completed_at = int(time.time())
+          onboarding_state_path = os.path.join(support, "onboarding-state.json")
+          onboarding_state = {
+              "completedAt": completed_at,
+              "macScannedAt": completed_at,
+              "loginDecided": True,
+              "lastBuildAt": completed_at,
+              "provisionalConfigDir": None,
+          }
+          with open(onboarding_state_path, "w", encoding="utf-8") as handle:
+              json.dump(onboarding_state, handle, indent=2, sort_keys=True)
               handle.write("\n")
           PY
           gui_launchctl unsetenv OPENROUTER_API_KEY
@@ -960,26 +1011,32 @@ jobs:
             echo "error: Codex desktop app is required for the Computer Use service" >&2
             exit 1
           fi
+          CODEX_PROCESS="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$CODEX_APP/Contents/Info.plist" 2>/dev/null || true)"
+          if [[ -z "$CODEX_PROCESS" ]]; then
+            echo "error: Codex desktop executable name could not be resolved" >&2
+            exit 1
+          fi
           osascript -e 'tell application id "com.openai.codex" to quit' >/dev/null 2>&1 || true
-          pkill -f '[S]kyComputerUseService' >/dev/null 2>&1 || true
-          for _ in $(seq 1 10); do
-            if ! pgrep -f '[S]kyComputerUseService' >/dev/null; then
+          codex_stopped=false
+          for _ in $(seq 1 120); do
+            if ! pgrep -x "$CODEX_PROCESS" >/dev/null && ! pgrep -x SkyComputerUseService >/dev/null; then
+              codex_stopped=true
               break
             fi
-            sleep 1
+            sleep 0.25
           done
-          if pgrep -f '[S]kyComputerUseService' >/dev/null; then
-            echo "error: stale SkyComputerUseService did not stop" >&2
+          if [[ "$codex_stopped" != "true" ]]; then
+            echo "error: Codex desktop and Computer Use service did not fully stop" >&2
             exit 1
           fi
           open -g "$CODEX_APP"
           computer_use_ready=false
-          for _ in $(seq 1 30); do
-            if pgrep -f '[S]kyComputerUseService' >/dev/null; then
+          for _ in $(seq 1 120); do
+            if pgrep -x "$CODEX_PROCESS" >/dev/null && pgrep -x SkyComputerUseService >/dev/null; then
               computer_use_ready=true
               break
             fi
-            sleep 1
+            sleep 0.25
           done
           if [[ "$computer_use_ready" != "true" ]]; then
             echo "error: Codex desktop app did not start SkyComputerUseService" >&2
