@@ -26,10 +26,7 @@ const trustedVideoAuditScript = readFileSync(
   path.join(repoRoot, "ops/scripts/e2e/trusted-video-audit.mjs"),
   "utf8",
 );
-const canonicalAppDigestPath = path.join(
-  repoRoot,
-  "ops/scripts/e2e/canonical-app-digest.py",
-);
+const canonicalAppDigestPath = path.join(repoRoot, "ops/scripts/e2e/canonical-app-digest.py");
 const canonicalAppDigestScript = readFileSync(canonicalAppDigestPath, "utf8");
 execFileSync("python3", [canonicalAppDigestPath, "--self-test"], { stdio: "pipe" });
 execFileSync(
@@ -243,7 +240,7 @@ assert.match(
 );
 assert.match(
   remote,
-  /CODEX_APP=\/Applications\/Codex\.app[\s\S]*open -g "\$CODEX_APP"[\s\S]*pgrep -f '\[S\]kyComputerUseService'[\s\S]*computer_use_ready=true/,
+  /for candidate in \/Applications\/ChatGPT\.app \/Applications\/Codex\.app[\s\S]*CODEX_APP="\$candidate"[\s\S]*tell application id "com\.openai\.codex" to quit[\s\S]*pkill -f '\[S\]kyComputerUseService'[\s\S]*open -g "\$CODEX_APP"[\s\S]*pgrep -f '\[S\]kyComputerUseService'[\s\S]*computer_use_ready=true/,
   "remote startup must launch Codex and verify its desktop-owned Computer Use service",
 );
 assert.match(

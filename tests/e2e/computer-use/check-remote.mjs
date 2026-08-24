@@ -271,8 +271,11 @@ async function main() {
 
     if (options.user && failures.length === 0 && options.checkCodexBinary) {
       try {
-        runSsh(options, "test -x /Applications/Codex.app/Contents/Resources/codex");
-        pass("codex-binary", "Codex app-server binary exists");
+        const codexApp = runSsh(
+          options,
+          'for app in /Applications/ChatGPT.app /Applications/Codex.app; do test -x "$app/Contents/Resources/codex" && { printf \'%s\' "$app"; exit 0; }; done; exit 1',
+        );
+        pass("codex-binary", `Codex app-server binary exists in ${codexApp}`);
       } catch (error) {
         fail("codex-binary", `Codex app-server binary check failed: ${error.message}`);
       }

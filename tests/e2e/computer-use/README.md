@@ -4,9 +4,10 @@ Local and remote Product Proof harnesses for validating whether Codex Computer
 Use can drive the real nixmac macOS app like a human QA tester.
 
 The first-class lane now uses Codex app-server on a Mac that has GUI access to
-nixmac. It drives the app through the `computer-use` MCP, records evidence
-metadata, captures Computer Use screenshots and redacted text snapshots, records
-remote Mac/app/process metadata, and renders a standalone HTML report.
+nixmac. App-server executes the current `node_repl` transport and bundled
+`@oai/sky` Computer Use API, records evidence metadata, captures screenshots and
+redacted text snapshots, records remote Mac/app/process metadata, and renders a
+standalone HTML report.
 
 Computer Use is required for the actual app interaction and final report
 inspection. Shell is used for setup, launch, backup/restore, artifact movement,

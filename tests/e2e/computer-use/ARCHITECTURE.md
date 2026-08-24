@@ -5,9 +5,10 @@ lane. It is intentionally scoped to nixmac. Do not extract this toolchain to a
 separate repository until there is a second real desktop-app consumer and a
 stable generic runner API.
 
-The current production path is the Codex app-server Computer Use lane driven by
-`run-remote-cua.mjs`. Future drivers are planned work, not current production
-behavior.
+The current production path is the Codex app-server lane driven by
+`run-remote-cua.mjs`, with Computer Use calls translated through `node_repl` and
+the bundled `@oai/sky` API. Future drivers are planned work, not current
+production behavior.
 
 ## Current Boundary
 

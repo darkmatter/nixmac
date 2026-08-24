@@ -44,6 +44,7 @@ import {
   AppServerClient,
   clickResponseIndicatesFailure,
   codexAppServerDriverDescriptor,
+  computerUseImageAsPng,
   contentImage,
   contentText,
   elementEntries,
@@ -1161,7 +1162,7 @@ async function captureState(client, state, label, note = "") {
   const sensitiveImage = /console/i.test(label) || apiKeysHasUnmaskedSecret;
   if (image && !sensitiveImage) {
     const pngPath = path.join(state.runDir, "screenshots", `${ordinal}-${safeLabel}.png`);
-    await writeFile(pngPath, Buffer.from(image, "base64"));
+    await writeFile(pngPath, computerUseImageAsPng(response));
     const dimensions = pngDimensions(pngPath);
     state.screenshots.push({
       label,
@@ -1294,6 +1295,25 @@ async function waitFor(client, state, label, predicate, { attempts = 10, delayMs
   return { ok: false, text: lastText };
 }
 
+async function requireComputerUsePreflight(client, state) {
+  const response = await client.tool("get_app_state", { app: state.app }, 120000);
+  const text = contentText(response);
+  const image = contentImage(response);
+  if (response?.result?.isError === true) {
+    throw new Error(`Computer Use preflight failed: ${text || "node_repl returned an error"}`);
+  }
+  if (!text.trim()) throw new Error("Computer Use preflight returned no accessibility text");
+  if (!image) throw new Error("Computer Use preflight returned no screenshot");
+  const png = computerUseImageAsPng(response);
+  if (!png.length) throw new Error("Computer Use preflight screenshot could not be normalized");
+  await addEvent(state, "computer-use.preflight", {
+    app: state.app,
+    textLength: text.length,
+    screenshotBytes: png.length,
+    transport: "codex-app-server/node_repl/@oai/sky",
+  });
+}
+
 async function maybeRelaunchRemote(state) {
   if (process.env.NIXMAC_E2E_SKIP_RELAUNCH === "true") {
     await addEvent(state, "remote.relaunch.skipped", {
@@ -1383,7 +1403,7 @@ async function inspectReportWithComputerUse(client, state) {
             "screenshots",
             `${screenshotOrdinal}-${label}.png`,
           );
-          await writeFile(pngPath, Buffer.from(image, "base64"));
+          await writeFile(pngPath, computerUseImageAsPng(response));
           state.screenshots.push({
             label: "HTML report inspection",
             path: path.relative(state.runDir, pngPath),
@@ -2594,9 +2614,12 @@ async function runSuite(args) {
   await saveState(state);
   const computerUseStartedAt = nowIso();
 
-  const client = new AppServerClient(options.ws);
+  const client = new AppServerClient(options.ws, {
+    allowedComputerUseApps: [options.app, DEFAULT_APP],
+  });
   try {
     await client.connect();
+    await requireComputerUsePreflight(client, state);
     await prepareDisposableRemoteBaseline(state);
     await maybeRelaunchRemote(state);
     captureRemoteMetadata(state);
@@ -4798,6 +4821,50 @@ async function runSelfTest() {
     "png",
     "contentImage should extract the first image response payload",
   );
+  const onePixelPng = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+    "base64",
+  );
+  const pngResponse = {
+    result: {
+      content: [{ type: "image", data: onePixelPng.toString("base64"), mimeType: "image/png" }],
+    },
+  };
+  assert.deepEqual(
+    computerUseImageAsPng(pngResponse),
+    onePixelPng,
+    "Computer Use PNG evidence should pass through unchanged",
+  );
+  const jpegFixture = spawnSync(
+    "ffmpeg",
+    [
+      "-v",
+      "error",
+      "-f",
+      "image2pipe",
+      "-i",
+      "pipe:0",
+      "-f",
+      "image2pipe",
+      "-vcodec",
+      "mjpeg",
+      "pipe:1",
+    ],
+    { input: onePixelPng },
+  );
+  assert.equal(jpegFixture.status, 0, "self-test should create a JPEG fixture");
+  const normalizedJpeg = computerUseImageAsPng({
+    result: {
+      content: [
+        { type: "image", data: jpegFixture.stdout.toString("base64"), mimeType: "image/jpeg" },
+      ],
+    },
+  });
+  assert.deepEqual(
+    [...normalizedJpeg.subarray(0, 4)],
+    [0x89, 0x50, 0x4e, 0x47],
+    "Computer Use JPEG evidence should be normalized to PNG",
+  );
   const sentMessages = [];
   class MockWebSocket {
     constructor(url) {
@@ -4824,33 +4891,144 @@ async function runSelfTest() {
     "AppServerClient should store the started thread id",
   );
   await appServerClient.tool("click", { app: "com.darkmatter.nixmac", element_index: "7" }, 1000);
+  await appServerClient.tool("get_app_state", { app: '/tmp/nixmac "quoted".app' }, 1000);
   assert.deepEqual(
     sentMessages.map((message) => message.method),
-    ["initialize", "thread/start", "mcpServer/tool/call"],
-    "AppServerClient should preserve initialize, thread start, and tool-call request order",
+    ["initialize", "initialized", "thread/start", "mcpServer/tool/call", "mcpServer/tool/call"],
+    "AppServerClient should complete initialization before thread start and tool calls",
   );
   assert.deepEqual(
-    sentMessages[1].params,
+    sentMessages[0].params.capabilities,
+    {
+      experimentalApi: true,
+      mcpServerOpenaiFormElicitation: true,
+    },
+    "AppServerClient should advertise form elicitation support",
+  );
+  assert.deepEqual(
+    sentMessages[2].params,
     {
       cwd: "/tmp",
       model: "gpt-5.4-mini",
-      approvalPolicy: "never",
+      approvalPolicy: "on-request",
       sandbox: "danger-full-access",
       ephemeral: true,
     },
     "AppServerClient should preserve Codex app-server thread policy",
   );
-  assert.deepEqual(
-    sentMessages[2].params,
-    {
-      server: "computer-use",
-      threadId: "thread-123",
-      tool: "click",
-      arguments: { app: "com.darkmatter.nixmac", element_index: "7" },
-    },
-    "AppServerClient should preserve Computer Use tool-call shape",
+  assert.equal(
+    sentMessages[3].params.server,
+    "node_repl",
+    "AppServerClient should route Computer Use through the current node_repl server",
+  );
+  assert.equal(
+    sentMessages[3].params.tool,
+    "js",
+    "AppServerClient should execute Computer Use through node_repl JavaScript",
+  );
+  assert.equal(sentMessages[3].params.threadId, "thread-123");
+  assert.match(sentMessages[3].params.arguments.code, /import\("@oai\/sky"\)/);
+  assert.match(sentMessages[3].params.arguments.code, /sky\.click/);
+  assert.match(sentMessages[3].params.arguments.code, /"element_index":7/);
+  assert.equal(sentMessages[4].params.server, "node_repl");
+  assert.equal(sentMessages[4].params.tool, "js");
+  assert.match(sentMessages[4].params.arguments.code, /sky\.get_app_state/);
+  assert.ok(sentMessages[4].params.arguments.timeout_ms >= 120000);
+  assert.ok(
+    sentMessages[4].params.arguments.code.includes(JSON.stringify('/tmp/nixmac "quoted".app')),
+    "AppServerClient should JSON-encode app identifiers inside node_repl code",
   );
   appServerClient.close();
+  const elicitationMessages = [];
+  class MockElicitationWebSocket {
+    constructor() {
+      this.toolRequestId = null;
+      setTimeout(() => this.onopen?.(), 0);
+    }
+
+    send(payload) {
+      const message = JSON.parse(payload);
+      elicitationMessages.push(message);
+      if (message.method === "initialized") return;
+      if (message.method === "thread/start") {
+        setTimeout(
+          () =>
+            this.onmessage?.({
+              data: JSON.stringify({
+                id: message.id,
+                result: { thread: { id: "thread-approved" } },
+              }),
+            }),
+          0,
+        );
+        return;
+      }
+      if (message.method === "mcpServer/tool/call") {
+        this.toolRequestId = message.id;
+        setTimeout(
+          () =>
+            this.onmessage?.({
+              data: JSON.stringify({
+                jsonrpc: "2.0",
+                id: 0,
+                method: "mcpServer/elicitation/request",
+                params: {
+                  serverName: "node_repl",
+                  mode: "form",
+                  _meta: {
+                    connector_id: "computer-use",
+                    riskLevel: "low",
+                    tool_name: "get_app_state",
+                    tool_params: { app: "com.darkmatter.nixmac" },
+                  },
+                },
+              }),
+            }),
+          0,
+        );
+        return;
+      }
+      if (message.id === 0 && message.result) {
+        setTimeout(
+          () =>
+            this.onmessage?.({
+              data: JSON.stringify({
+                id: this.toolRequestId,
+                result: { content: [{ type: "text", text: "approved" }], isError: false },
+              }),
+            }),
+          0,
+        );
+        return;
+      }
+      setTimeout(
+        () => this.onmessage?.({ data: JSON.stringify({ id: message.id, result: {} }) }),
+        0,
+      );
+    }
+
+    close() {}
+  }
+  const elicitationClient = new AppServerClient("ws://mock-elicitation", {
+    WebSocketImpl: MockElicitationWebSocket,
+    allowedComputerUseApps: ["com.darkmatter.nixmac"],
+  });
+  await elicitationClient.connect();
+  await elicitationClient.tool("get_app_state", { app: "com.darkmatter.nixmac" }, 1000);
+  const approvalResponse = elicitationMessages.find(
+    (message) => message.id === 0 && message.result?.action,
+  );
+  assert.deepEqual(
+    approvalResponse?.result,
+    { action: "accept", content: {}, _meta: { persist: "session" } },
+    "AppServerClient should accept only the scoped Computer Use app approval for this session",
+  );
+  elicitationClient.close();
+  assert.throws(
+    () => appServerClient.tool("drag", { app: "com.darkmatter.nixmac" }, 1000),
+    /Unsupported Computer Use tool: drag/,
+    "AppServerClient should refuse Computer Use primitives the runner does not support",
+  );
   class MockToolErrorWebSocket {
     constructor() {
       setTimeout(() => this.onopen?.(), 0);
