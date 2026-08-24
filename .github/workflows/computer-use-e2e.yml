@@ -990,6 +990,11 @@ jobs:
           if ! open -n "$REMOTE_APP_PATH"; then
             echo "warning: open returned non-zero while launching $REMOTE_APP_PATH; continuing so Computer Use can inspect app state" >&2
           fi
+          sleep 2
+          if ! osascript -e 'tell application id "com.darkmatter.nixmac" to reopen'; then
+            echo "error: nixmac main window could not be reopened for Computer Use" >&2
+            exit 1
+          fi
           sleep 4
           REMOTE
           node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \

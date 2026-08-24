@@ -245,6 +245,11 @@ assert.match(
 );
 assert.match(
   remote,
+  /open -n "\$REMOTE_APP_PATH"[\s\S]*tell application id "com\.darkmatter\.nixmac" to reopen[\s\S]*nixmac main window could not be reopened/,
+  "remote startup must bring the nixmac main window forward after auxiliary windows are created",
+);
+assert.match(
+  remote,
   /\n    if: needs\.prepare\.outputs\.remote_ready == 'true' && needs\.prepare\.outputs\.storybook_ui_only != 'true'\n/,
   "remote job must only acquire the DXU lane after prepare marks it ready and Storybook has not satisfied a UI-only PR",
 );

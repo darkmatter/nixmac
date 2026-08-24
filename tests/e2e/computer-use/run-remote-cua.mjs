@@ -1303,6 +1303,11 @@ async function requireComputerUsePreflight(client, state) {
     throw new Error(`Computer Use preflight failed: ${text || "node_repl returned an error"}`);
   }
   if (!text.trim()) throw new Error("Computer Use preflight returned no accessibility text");
+  if (!/^Window: "nixmac", App: nixmac\./m.test(text)) {
+    throw new Error(
+      `Computer Use preflight targeted the wrong nixmac window: ${text.split("\n", 1)[0] || "unknown window"}`,
+    );
+  }
   if (!image) throw new Error("Computer Use preflight returned no screenshot");
   const png = computerUseImageAsPng(response);
   if (!png.length) throw new Error("Computer Use preflight screenshot could not be normalized");
@@ -1311,6 +1316,7 @@ async function requireComputerUsePreflight(client, state) {
     textLength: text.length,
     screenshotBytes: png.length,
     transport: "codex-app-server/node_repl/@oai/sky",
+    window: "nixmac",
   });
 }
 
@@ -1325,7 +1331,7 @@ async function maybeRelaunchRemote(state) {
   if (!dest) return;
   const remoteAppPath = remoteAppPathFromEnv();
   const result = ssh(
-    `osascript -e 'tell application id "com.darkmatter.nixmac" to quit' >/dev/null 2>&1 || true; sleep 1; open -n ${shellQuote(remoteAppPath)} || true; sleep 5`,
+    `osascript -e 'tell application id "com.darkmatter.nixmac" to quit' >/dev/null 2>&1 || true; sleep 1; open -n ${shellQuote(remoteAppPath)}; sleep 2; osascript -e 'tell application id "com.darkmatter.nixmac" to reopen'; sleep 5`,
   );
   await addEvent(state, "remote.relaunch", {
     ok: result.ok,
