@@ -179,6 +179,7 @@ mod tests {
     fn model_context_window_uses_reasonable_defaults() {
         assert_eq!(model_context_window("openai/gpt-4o-mini"), 16384);
         assert_eq!(model_context_window("gpt-oss-120b"), 32768);
-        assert_eq!(model_context_window("unknown-model"), 131_072);
+        assert_eq!(model_context_window("flash"), 131_072);
+        assert_eq!(model_context_window("unknown-model"), 8192);
     }
 }
