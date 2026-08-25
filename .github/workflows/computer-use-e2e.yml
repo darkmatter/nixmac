@@ -163,6 +163,7 @@ jobs:
           node --check tests/e2e/computer-use/workflow-contract-self-test.mjs
           node tests/e2e/computer-use/run-remote-cua.mjs self-test
           node tests/e2e/computer-use/drivers/cua-compat-self-test.mjs
+          node tests/e2e/computer-use/cua-default-recovery-self-test.mjs
           node tests/e2e/computer-use/coverage-freshness-self-test.mjs
           node tests/e2e/computer-use/remote-stage-self-test.mjs
           node tests/e2e/computer-use/prepare-system-marker-self-test.mjs
@@ -170,7 +171,9 @@ jobs:
           node tests/e2e/computer-use/system-lifecycle-self-test.mjs
           node tests/e2e/computer-use/finalize-cleanup-self-test.mjs
           bash -n ops/scripts/e2e/remote-restore.sh
+          bash -n tests/e2e/computer-use/cua-default-recovery.sh
           shellcheck ops/scripts/e2e/remote-restore.sh
+          shellcheck tests/e2e/computer-use/cua-default-recovery.sh
           bash ops/scripts/e2e/remote-restore-self-test.sh
           node tests/e2e/computer-use/check-stale-run.mjs self-test
           node tests/e2e/computer-use/workflow-contract-self-test.mjs
@@ -635,7 +638,6 @@ jobs:
       NIXMAC_E2E_CUA_APP: /Applications/CuaDriver.app
       NIXMAC_E2E_CUA_SOCKET_DIRECTORY: /tmp
       NIXMAC_E2E_CUA_RUN_ID_SAFE: ${{ github.run_id }}-${{ github.run_attempt }}
-      NIXMAC_E2E_CUA_DEFAULT_RESTORE_MARKER: /tmp/nixmac-cua-default-restore-${{ github.run_id }}-${{ github.run_attempt }}.json
     outputs:
       has_report: ${{ steps.report-meta.outputs.has_report }}
       report_dir: ${{ steps.report-meta.outputs.report_dir }}
@@ -826,19 +828,17 @@ jobs:
               --note "Remote readiness did not recover after $preflight_attempts attempts."
             exit 1
           fi
+          ssh_common=(-i ~/.ssh/nixmac-e2e -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts)
+          cua_recovery_evidence="$(ssh "${ssh_common[@]}" "${REMOTE_USER}@${REMOTE_HOST}" \
+            "CUA_RECOVERY_ACTION=reconcile bash -s" \
+            < tests/e2e/computer-use/cua-default-recovery.sh)"
           if [[ "$NIXMAC_E2E_COMPUTER_USE_DRIVER" == "cuadriver" ]]; then
             cua_readiness_json="${readiness_json%.json}-cuadriver.json"
-            ssh_common=(-i ~/.ssh/nixmac-e2e -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts)
-            # Run-scoped values are quoted locally before remote bash evaluates them.
-            # shellcheck disable=SC2029
-            cua_evidence="$(ssh "${ssh_common[@]}" "${REMOTE_USER}@${REMOTE_HOST}" \
-              "RUN_ID_SAFE=$(printf '%q' "$NIXMAC_E2E_CUA_RUN_ID_SAFE") CUA_RESTORE_MARKER=$(printf '%q' "$NIXMAC_E2E_CUA_DEFAULT_RESTORE_MARKER") bash -s" <<'REMOTE_CUA'
+            cua_permission_evidence="$(ssh "${ssh_common[@]}" "${REMOTE_USER}@${REMOTE_HOST}" bash -s <<'REMOTE_CUA'
           set -euo pipefail
           CUA_APP=/Applications/CuaDriver.app
           CUA_CLI="$CUA_APP/Contents/MacOS/cua-driver"
           CUA_PID_FILE="$HOME/Library/Caches/cua-driver/cua-driver.pid"
-          [[ "$CUA_RESTORE_MARKER" == "/tmp/nixmac-cua-default-restore-${RUN_ID_SAFE}.json" ]]
-          [[ ! -e "$CUA_RESTORE_MARKER" && ! -L "$CUA_RESTORE_MARKER" ]]
           test -x "$CUA_CLI"
           /usr/bin/codesign --verify --deep --strict --verbose=2 "$CUA_APP" >/dev/null
           [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$CUA_APP/Contents/Info.plist")" == "com.trycua.driver" ]]
@@ -878,27 +878,19 @@ jobs:
           if source.get("bundle_id") != "com.trycua.driver":
               raise SystemExit("CuaDriver TCC proof is not attributed to com.trycua.driver")
           '
-          "$CUA_CLI" stop >/dev/null
-          for _ in $(seq 1 40); do
-            if ! /bin/kill -0 "$daemon_pid" 2>/dev/null && [[ ! -e "$CUA_PID_FILE" ]]; then
-              umask 077
-              marker_pending="${CUA_RESTORE_MARKER}.pending-$$"
-              trap 'rm -f "$marker_pending"' EXIT
-              printf '{"schemaVersion":1,"runId":"%s","bundleId":"com.trycua.driver","version":"0.22.0","defaultDaemonPid":%s,"defaultDaemonStopped":true,"defaultCommand":"/Applications/CuaDriver.app/Contents/MacOS/cua-driver serve --no-permissions-gate --no-overlay"}\n' \
-                "$RUN_ID_SAFE" "$daemon_pid" > "$marker_pending"
-              chmod 600 "$marker_pending"
-              mv "$marker_pending" "$CUA_RESTORE_MARKER"
-              trap - EXIT
-              printf '{"bundleId":"com.trycua.driver","defaultDaemonPid":%s,"defaultDaemonStopped":true,"tccReady":true,"version":"0.22.0"}\n' "$daemon_pid"
-              exit 0
-            fi
-            sleep 0.25
-          done
-          echo "error: verified default CuaDriver daemon did not stop" >&2
-          exit 1
+          printf '{"bundleId":"com.trycua.driver","defaultDaemonPid":%s,"tccReady":true,"version":"0.22.0"}\n' "$daemon_pid"
           REMOTE_CUA
             )"
-            printf '%s\n' "$cua_evidence" > "$cua_readiness_json"
+            # The recovery script fsyncs and reads back its stable marker before stopping the daemon.
+            # shellcheck disable=SC2029
+            cua_handoff_evidence="$(ssh "${ssh_common[@]}" "${REMOTE_USER}@${REMOTE_HOST}" \
+              "CUA_RECOVERY_ACTION=arm-stop CUA_RUN_ID_SAFE=$(printf '%q' "$NIXMAC_E2E_CUA_RUN_ID_SAFE") bash -s" \
+              < tests/e2e/computer-use/cua-default-recovery.sh)"
+            /usr/bin/python3 - "$cua_recovery_evidence" "$cua_permission_evidence" "$cua_handoff_evidence" > "$cua_readiness_json" <<'PY'
+          import json, sys
+          recovery, permissions, handoff = (json.loads(value) for value in sys.argv[1:])
+          print(json.dumps({"recovery": recovery, "permissions": permissions, "handoff": handoff}, sort_keys=True))
+          PY
           fi
           node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id remote-preflight \
@@ -1347,7 +1339,6 @@ jobs:
           REMOTE_RUN_ID_SAFE: ${{ steps.remote-start.outputs.run_id_safe }}
           COMPUTER_USE_DRIVER: ${{ env.NIXMAC_E2E_COMPUTER_USE_DRIVER }}
           CUA_RUN_ID_SAFE: ${{ env.NIXMAC_E2E_CUA_RUN_ID_SAFE }}
-          CUA_DEFAULT_RESTORE_MARKER: ${{ env.NIXMAC_E2E_CUA_DEFAULT_RESTORE_MARKER }}
           CLEANUP_EVIDENCE_PATH: /tmp/nixmac-e2e-cleanup-${{ github.run_id }}-${{ github.run_attempt }}.json
         run: |
           set +e
@@ -1364,17 +1355,13 @@ jobs:
             ssh_common=(-i ~/.ssh/nixmac-e2e -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts)
             # shellcheck disable=SC2029
             if ! ssh "${ssh_common[@]}" "$SSH_DEST" \
-              "RUN_ID_SAFE=$(printf '%q' "$CUA_RUN_ID_SAFE") CUA_RESTORE_MARKER=$(printf '%q' "$CUA_DEFAULT_RESTORE_MARKER") bash -s" <<'REMOTE_CUA_CLEANUP'
+              "RUN_ID_SAFE=$(printf '%q' "$CUA_RUN_ID_SAFE") bash -s" <<'REMOTE_CUA_CLEANUP'
           set -euo pipefail
           CUA_APP=/Applications/CuaDriver.app
           CUA_CLI="$CUA_APP/Contents/MacOS/cua-driver"
           CUA_SOCKET="/tmp/nixmac-cua-${RUN_ID_SAFE}.sock"
           CUA_PID_FILE="$HOME/Library/Caches/cua-driver/cua-driver.pid"
           if [[ ! -e "$CUA_SOCKET" ]]; then
-            if [[ -e "$CUA_RESTORE_MARKER" || -L "$CUA_RESTORE_MARKER" ]]; then
-              [[ -f "$CUA_RESTORE_MARKER" && ! -L "$CUA_RESTORE_MARKER" ]]
-              [[ -z "$(/usr/bin/pgrep -x cua-driver || true)" && ! -e "$CUA_PID_FILE" ]]
-            fi
             exit
           fi
           [[ -S "$CUA_SOCKET" && ! -L "$CUA_SOCKET" ]]
@@ -1406,93 +1393,11 @@ jobs:
             fi
           fi
           default_daemon_restore_status=0
-          restore_cua_default() {
-            if [[ "$COMPUTER_USE_DRIVER" != "cuadriver" ]]; then
-              return 0
-            fi
+          reconcile_cua_default() {
             ssh_common=(-i ~/.ssh/nixmac-e2e -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts)
-            # shellcheck disable=SC2029
-            if ! ssh "${ssh_common[@]}" "$SSH_DEST" \
-              "RUN_ID_SAFE=$(printf '%q' "$CUA_RUN_ID_SAFE") CUA_RESTORE_MARKER=$(printf '%q' "$CUA_DEFAULT_RESTORE_MARKER") bash -s" <<'REMOTE_CUA_DEFAULT'
-          set -euo pipefail
-          CUA_APP=/Applications/CuaDriver.app
-          CUA_CLI="$CUA_APP/Contents/MacOS/cua-driver"
-          CUA_SOCKET="/tmp/nixmac-cua-${RUN_ID_SAFE}.sock"
-          CUA_PID_FILE="$HOME/Library/Caches/cua-driver/cua-driver.pid"
-          [[ "$CUA_RESTORE_MARKER" == "/tmp/nixmac-cua-default-restore-${RUN_ID_SAFE}.json" ]]
-          if [[ ! -e "$CUA_RESTORE_MARKER" && ! -L "$CUA_RESTORE_MARKER" ]]; then
-            exit 0
-          fi
-          [[ -f "$CUA_RESTORE_MARKER" && ! -L "$CUA_RESTORE_MARKER" ]]
-          [[ "$(/usr/bin/stat -f '%Su' "$CUA_RESTORE_MARKER")" == "$(/usr/bin/id -un)" ]]
-          [[ "$(/usr/bin/stat -f '%Lp' "$CUA_RESTORE_MARKER")" == "600" ]]
-          /usr/bin/python3 - "$CUA_RESTORE_MARKER" "$RUN_ID_SAFE" <<'PY'
-          import json, sys
-          marker_path, expected_run_id = sys.argv[1:]
-          with open(marker_path, encoding="utf-8") as handle:
-              marker = json.load(handle)
-          expected_keys = {
-              "schemaVersion", "runId", "bundleId", "version", "defaultDaemonPid",
-              "defaultDaemonStopped", "defaultCommand",
-          }
-          if set(marker) != expected_keys:
-              raise SystemExit("unexpected CuaDriver restore marker fields")
-          if (
-              marker["schemaVersion"] != 1
-              or marker["runId"] != expected_run_id
-              or marker["bundleId"] != "com.trycua.driver"
-              or marker["version"] != "0.22.0"
-              or not isinstance(marker["defaultDaemonPid"], int)
-              or marker["defaultDaemonPid"] <= 0
-              or marker["defaultDaemonStopped"] is not True
-              or marker["defaultCommand"] != "/Applications/CuaDriver.app/Contents/MacOS/cua-driver serve --no-permissions-gate --no-overlay"
-          ):
-              raise SystemExit("invalid CuaDriver restore marker")
-          PY
-          [[ ! -e "$CUA_SOCKET" ]]
-          /usr/bin/codesign --verify --deep --strict --verbose=2 "$CUA_APP" >/dev/null
-          [[ "$($CUA_CLI --version)" == "cua-driver 0.22.0" ]]
-          existing_pids="$(/usr/bin/pgrep -x cua-driver || true)"
-          existing_count="$(printf '%s\n' "$existing_pids" | /usr/bin/awk 'NF { count++ } END { print count + 0 }')"
-          if [[ "$existing_count" -eq 1 ]]; then
-            existing_pid="$(printf '%s\n' "$existing_pids" | /usr/bin/awk 'NF { print; exit }')"
-            test -f "$CUA_PID_FILE"
-            pid_file_pid="$(/usr/bin/tr -d '[:space:]' < "$CUA_PID_FILE")"
-            [[ "$pid_file_pid" =~ ^[0-9]+$ && "$pid_file_pid" == "$existing_pid" ]]
-            existing_command="$(/bin/ps -p "$existing_pid" -o command=)"
-            [[ "$existing_command" == "$CUA_CLI serve --no-permissions-gate --no-overlay" ]]
-            "$CUA_CLI" status >/dev/null
-            rm "$CUA_RESTORE_MARKER"
-            [[ ! -e "$CUA_RESTORE_MARKER" && ! -L "$CUA_RESTORE_MARKER" ]]
-            exit 0
-          fi
-          [[ "$existing_count" -eq 0 && ! -e "$CUA_PID_FILE" ]]
-          /usr/bin/open -n -g "$CUA_APP" --args serve --no-permissions-gate --no-overlay
-          for _ in $(seq 1 40); do
-            daemon_pids="$(/usr/bin/pgrep -x cua-driver || true)"
-            daemon_count="$(printf '%s\n' "$daemon_pids" | /usr/bin/awk 'NF { count++ } END { print count + 0 }')"
-            if [[ "$daemon_count" -eq 1 ]]; then
-              daemon_pid="$(printf '%s\n' "$daemon_pids" | /usr/bin/awk 'NF { print; exit }')"
-              test -f "$CUA_PID_FILE"
-              pid_file_pid="$(/usr/bin/tr -d '[:space:]' < "$CUA_PID_FILE")"
-              [[ "$pid_file_pid" =~ ^[0-9]+$ && "$pid_file_pid" == "$daemon_pid" ]]
-              daemon_command="$(/bin/ps -p "$daemon_pid" -o command=)"
-              [[ "$daemon_command" == "$CUA_CLI serve --no-permissions-gate --no-overlay" ]]
-              "$CUA_CLI" status >/dev/null
-              rm "$CUA_RESTORE_MARKER"
-              [[ ! -e "$CUA_RESTORE_MARKER" && ! -L "$CUA_RESTORE_MARKER" ]]
-              exit 0
-            fi
-            sleep 0.25
-          done
-          echo "error: verified default CuaDriver daemon was not restored" >&2
-          exit 1
-          REMOTE_CUA_DEFAULT
-            then
-              echo "error: failed to restore the verified default CuaDriver daemon" >&2
-              return 1
-            fi
-            return 0
+            ssh "${ssh_common[@]}" "$SSH_DEST" \
+              "CUA_RECOVERY_ACTION=reconcile bash -s" \
+              < tests/e2e/computer-use/cua-default-recovery.sh
           }
           if [[ -z "${REMOTE_BACKUP:-}" ]]; then
             echo "remote-start outputs are unset; skipping remote cleanup."
@@ -1500,7 +1405,7 @@ jobs:
               --id cleanup \
               --status skipped \
               --note "remote-start outputs were unset; no remote cleanup was possible."
-            restore_cua_default || default_daemon_restore_status=1
+            reconcile_cua_default || default_daemon_restore_status=1
             if [[ "$driver_cleanup_status" -ne 0 || "$default_daemon_restore_status" -ne 0 ]]; then
               exit 1
             fi
@@ -1560,7 +1465,7 @@ jobs:
             "REMOTE_BACKUP=$remote_backup_q REMOTE_CONFIG=$remote_config_q REMOTE_KEY_FILE=$remote_key_file_q REMOTE_AUTH_BACKUP=$remote_auth_backup_q REMOTE_APP_STAGE=$remote_app_stage_q REMOTE_SYSTEM_MARKER=$remote_system_marker_q REMOTE_RESTORE_RESULT=$remote_restore_result_q bash -s" \
             < ops/scripts/e2e/remote-restore.sh
           cleanup_status=$?
-          restore_cua_default || default_daemon_restore_status=1
+          reconcile_cua_default || default_daemon_restore_status=1
           if [[ "$driver_cleanup_status" -ne 0 ]]; then
             cleanup_status=1
           fi

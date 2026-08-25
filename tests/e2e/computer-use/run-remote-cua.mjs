@@ -102,6 +102,7 @@ const BUILD_AND_TEST_BUTTON_PATTERNS = [/^button Build & Test(?:,|$)/i];
 const SUMMARY_TAB_PATTERNS = [/^tab(?: \([^)]*\))* (?:Summary|Semantic)(?:,|$)/i];
 const DIFF_TAB_PATTERNS = [/^tab(?: \([^)]*\))* Diff(?:,|$)/i];
 const COMPUTER_USE_DRIVER_ENV = "NIXMAC_E2E_COMPUTER_USE_DRIVER";
+const CODEX_APP_SERVER_PREFLIGHT_TRANSPORT = "codex-app-server/node_repl/@oai/sky";
 
 let activeRunDir = "";
 
@@ -172,6 +173,18 @@ function createComputerUseClient(options, env = process.env) {
     }),
     descriptor: codexAppServerDriverDescriptor,
   };
+}
+
+function computerUsePreflightTransport(computerUseDriver) {
+  if (computerUseDriver?.id === codexAppServerDriverDescriptor.id) {
+    return CODEX_APP_SERVER_PREFLIGHT_TRANSPORT;
+  }
+  if (computerUseDriver?.id === cuaCompatDriverDescriptor.id) {
+    return `${computerUseDriver.id}/remote-ssh/unix-socket`;
+  }
+  throw new Error(
+    `Unsupported Computer Use preflight driver: ${computerUseDriver?.id || "unknown"}`,
+  );
 }
 
 function argValue(args, flag, fallback = "") {
@@ -1487,6 +1500,7 @@ async function requireComputerUsePreflight(
     delayMs = 1000,
     allowPendingBaseline = false,
     phase = "preflight",
+    computerUseDriver = codexAppServerDriverDescriptor,
     relaunch = maybeRelaunchRemote,
     screenshotInspector = inspectComputerUseScreenshot,
     wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
@@ -1560,7 +1574,7 @@ async function requireComputerUsePreflight(
         screenshotBytes: png.length,
         attempts: totalAttempts,
         relaunches,
-        transport: "codex-app-server/node_repl/@oai/sky",
+        transport: computerUsePreflightTransport(computerUseDriver),
         window: "nixmac",
       });
       return { response, attempts: totalAttempts, relaunches };
@@ -3022,6 +3036,7 @@ async function runSuite(args) {
     captureRemoteMetadata(state);
     const operationalReadiness = await requireComputerUsePreflight(client, state, {
       allowPendingBaseline: true,
+      computerUseDriver,
       phase: "operational-preflight",
     });
     let text = redact(contentText(operationalReadiness.response));
@@ -3030,6 +3045,7 @@ async function runSuite(args) {
       attemptsBeforeRelaunch: 8,
       attemptsAfterRelaunch: 0,
       allowPendingBaseline: false,
+      computerUseDriver,
       phase: "launch-readiness",
     });
     state.computerUsePreflight = {
@@ -4943,6 +4959,7 @@ async function runSelfTest() {
     {
       attemptsBeforeRelaunch: 2,
       attemptsAfterRelaunch: 2,
+      computerUseDriver: codexAppServerDriverDescriptor,
       delayMs: 0,
       relaunch: async () => {
         preflightRelaunches += 1;
@@ -4965,6 +4982,28 @@ async function runSelfTest() {
     { attempts: preparedLaunch.attempts, relaunches: preparedLaunch.relaunches },
     { attempts: 3, relaunches: 1 },
     "preflight should return auditable readiness metadata",
+  );
+  await requireComputerUsePreflight(
+    {
+      async tool() {
+        return readyPreflight;
+      },
+    },
+    stateHelperState,
+    {
+      attemptsBeforeRelaunch: 1,
+      attemptsAfterRelaunch: 0,
+      computerUseDriver: cuaCompatDriverDescriptor,
+      delayMs: 0,
+      screenshotInspector: () => ({ ok: true, reason: "" }),
+    },
+  );
+  assert.deepEqual(
+    JSON.parse(await readFile(path.join(stateHelperRunDir, "events.json"), "utf8"))
+      .filter((event) => event.type === "computer-use.preflight")
+      .map((event) => event.transport),
+    [CODEX_APP_SERVER_PREFLIGHT_TRANSPORT, "cuadriver-compat/remote-ssh/unix-socket"],
+    "preflight events should attribute the selected Codex and CuaDriver transports",
   );
   await captureState(
     polledPreflightClient,

@@ -28,7 +28,17 @@ const trustedVideoAuditScript = readFileSync(
 );
 const canonicalAppDigestPath = path.join(repoRoot, "ops/scripts/e2e/canonical-app-digest.py");
 const canonicalAppDigestScript = readFileSync(canonicalAppDigestPath, "utf8");
+const cuaRecoveryPath = path.join(
+  repoRoot,
+  "tests/e2e/computer-use/cua-default-recovery.sh",
+);
 execFileSync("python3", [canonicalAppDigestPath, "--self-test"], { stdio: "pipe" });
+execFileSync("bash", ["-n", cuaRecoveryPath], { stdio: "pipe" });
+execFileSync(
+  "node",
+  [path.join(repoRoot, "tests/e2e/computer-use/cua-default-recovery-self-test.mjs")],
+  { stdio: "pipe" },
+);
 execFileSync(
   "python3",
   [path.join(repoRoot, "ops/scripts/e2e/bounded-stream-copy.py"), "--self-test"],
@@ -81,8 +91,8 @@ assert.match(
 );
 assert.match(
   remote,
-  /codesign --verify --deep --strict[\s\S]*cua-driver 0\.22\.0[\s\S]*CUA_PID_FILE[\s\S]*pid_file_pid[\s\S]*call check_permissions[\s\S]*accessibility[\s\S]*screen_recording[\s\S]*com\.trycua\.driver[\s\S]*"\$CUA_CLI" stop[\s\S]*marker_pending[\s\S]*mv "\$marker_pending" "\$CUA_RESTORE_MARKER"/,
-  "Cua preflight must verify signature/version/TCC attribution before stopping only its verified default daemon",
+  /CUA_RECOVERY_ACTION=reconcile bash -s[\s\S]*< tests\/e2e\/computer-use\/cua-default-recovery\.sh[\s\S]*codesign --verify --deep --strict[\s\S]*cua-driver 0\.22\.0[\s\S]*call check_permissions[\s\S]*accessibility[\s\S]*screen_recording[\s\S]*com\.trycua\.driver[\s\S]*CUA_RECOVERY_ACTION=arm-stop[\s\S]*< tests\/e2e\/computer-use\/cua-default-recovery\.sh/,
+  "every preflight must reconcile stable recovery before Cua TCC proof and pre-stop arming",
 );
 assert.doesNotMatch(
   remote,
@@ -116,8 +126,8 @@ assert.match(
 );
 assert.match(
   cleanupStep,
-  /restore_cua_default\(\)[\s\S]*if \[\[ ! -e "\$CUA_RESTORE_MARKER" && ! -L "\$CUA_RESTORE_MARKER" \]\]; then[\s\S]*exit 0[\s\S]*invalid CuaDriver restore marker[\s\S]*\[\[ ! -e "\$CUA_SOCKET" \]\][\s\S]*serve --no-permissions-gate --no-overlay[\s\S]*rm "\$CUA_RESTORE_MARKER"/,
-  "cleanup must restore the verified default daemon only from a valid durable run marker",
+  /reconcile_cua_default\(\)[\s\S]*CUA_RECOVERY_ACTION=reconcile bash -s[\s\S]*< tests\/e2e\/computer-use\/cua-default-recovery\.sh[\s\S]*reconcile_cua_default \|\| default_daemon_restore_status=1/,
+  "always-run cleanup must use the same idempotent stable-marker reconciliation",
 );
 
 assert.match(
@@ -169,6 +179,7 @@ for (const [jobName, job] of [
 
 for (const requiredSelfTest of [
   "cua-compat-self-test.mjs",
+  "cua-default-recovery-self-test.mjs",
   "coverage-freshness-self-test.mjs",
   "remote-stage-self-test.mjs",
   "prepare-system-marker-self-test.mjs",
