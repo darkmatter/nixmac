@@ -101,8 +101,8 @@ export class AppServerClient {
     const approved =
       params.serverName === "node_repl" &&
       meta.connector_id === "computer-use" &&
-      meta.riskLevel === "low" &&
-      (approvedApp || approvedReportRead);
+      ((approvedApp && meta.riskLevel === "low") ||
+        (approvedReportRead && ["low", "high"].includes(meta.riskLevel)));
     this.ws.send(
       JSON.stringify({
         jsonrpc: "2.0",

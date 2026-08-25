@@ -88,6 +88,9 @@ const DEFAULT_WS = "ws://127.0.0.1:18790";
 const DEFAULT_BUILD_ATTEMPTS = 180;
 const ARTIFACT_ROOT = path.join(REPO_ROOT, "artifacts", "computer-use-remote");
 const COVERAGE_MANIFEST_PATH = path.join(TOOL_DIR, "coverage-manifest.json");
+const BUILD_AND_TEST_BUTTON_PATTERNS = [/^button Build & Test(?:,|$)/i];
+const SUMMARY_TAB_PATTERNS = [/^tab(?: \([^)]*\))* (?:Summary|Semantic)(?:,|$)/i];
+const DIFF_TAB_PATTERNS = [/^tab(?: \([^)]*\))* Diff(?:,|$)/i];
 
 let activeRunDir = "";
 
@@ -1453,7 +1456,7 @@ async function synchronizeDisposableBaseline(client, state, text) {
     state,
     text,
     "Synchronize disposable baseline",
-    [/button Build & Test/i],
+    BUILD_AND_TEST_BUTTON_PATTERNS,
     "Open Build & Test confirmation for the disposable baseline.",
   );
   if (!buildClicked) {
@@ -1580,7 +1583,7 @@ async function inspectReportWithComputerUse(client, state) {
     stderr: redact(openResult.stderr),
     remoteIndex,
   });
-  const browserApps = ["com.google.Chrome", "Safari", "com.apple.Safari"];
+  const browserApps = ["com.google.Chrome", "com.apple.Safari"];
   for (const app of browserApps) {
     try {
       const response = await client.tool("get_app_state", { app }, 60000);
@@ -1885,7 +1888,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
     state,
     text,
     `${labels.name} Build & Test`,
-    [/Build & Test/i, /Build/i],
+    BUILD_AND_TEST_BUTTON_PATTERNS,
     `Click Build & Test for ${labels.name}.`,
   );
   if (!buildClicked) {
@@ -2149,12 +2152,7 @@ async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey,
     state,
     `${config.prefix}-apply`,
     (candidate) => {
-      if (
-        /Ready to test-drive|heading Review|button Build & Test|button Discard|Summary|Diff/i.test(
-          candidate,
-        )
-      )
-        return "review";
+      if (findElement(candidate, BUILD_AND_TEST_BUTTON_PATTERNS)) return "review";
       if (/failed|error|could not|Could not|Failed/i.test(candidate)) return "error";
       return null;
     },
@@ -2300,7 +2298,7 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
       state,
       text,
       `Summary ${caseDef.id}`,
-      [/Summary/i],
+      SUMMARY_TAB_PATTERNS,
       `Open Summary for ${caseDef.label}.`,
     )
   ) {
@@ -2318,7 +2316,7 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
       state,
       text,
       `Diff ${caseDef.id}`,
-      [/Diff/i],
+      DIFF_TAB_PATTERNS,
       `Open Diff for ${caseDef.label}.`,
     )
   ) {
@@ -2646,7 +2644,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
       state,
       text,
       `Summary ${caseDef.id}`,
-      [/Summary/i],
+      SUMMARY_TAB_PATTERNS,
       `Open Summary for ${caseDef.label}.`,
     )
   ) {
@@ -2664,7 +2662,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
       state,
       text,
       `Diff ${caseDef.id}`,
-      [/Diff/i],
+      DIFF_TAB_PATTERNS,
       `Open Diff for ${caseDef.label}.`,
     )
   ) {
@@ -3404,7 +3402,7 @@ async function runSuite(args) {
         state,
         text,
         "Summary tab",
-        [/Summary/i, /Semantic/i],
+        SUMMARY_TAB_PATTERNS,
         "Open Summary/Semantic tab.",
       );
       if (summaryClicked) {
@@ -3437,7 +3435,7 @@ async function runSuite(args) {
         state,
         text,
         "Diff tab",
-        [/Diff/i],
+        DIFF_TAB_PATTERNS,
         "Open Diff tab.",
       );
       if (diffClicked) {
@@ -3472,7 +3470,7 @@ async function runSuite(args) {
         state,
         text,
         "Build & Test",
-        [/button Build & Test/i],
+        BUILD_AND_TEST_BUTTON_PATTERNS,
         "Click Build & Test boundary.",
       );
       if (buildClicked) {
@@ -5151,6 +5149,35 @@ async function runSelfTest() {
     null,
     "findElement should return null when no AX element matches",
   );
+  const reviewActionText = [
+    "16 text Press Build & Test to activate the changes. Reviewing the diffs below is optional.",
+    "21 tab (selected) Semantic",
+    "22 tab (selectable) Diff",
+    "29 button Build & Test",
+  ].join("\n");
+  assert.equal(
+    findElement(reviewActionText, SUMMARY_TAB_PATTERNS),
+    "21",
+    "summary tab lookup should target the tab instead of matching review copy",
+  );
+  assert.equal(
+    findElement(reviewActionText, DIFF_TAB_PATTERNS),
+    "22",
+    "diff tab lookup should target the tab instead of matching review copy",
+  );
+  assert.equal(
+    findElement(reviewActionText, BUILD_AND_TEST_BUTTON_PATTERNS),
+    "29",
+    "build lookup should target the enabled button instead of matching review copy",
+  );
+  assert.equal(
+    findElement(
+      "16 text Press Build & Test now\n38 button (disabled) Build & Test",
+      BUILD_AND_TEST_BUTTON_PATTERNS,
+    ),
+    null,
+    "build lookup should not target instructional copy or a disabled button",
+  );
   assert.equal(
     findActionElement("36 button Discard\n42 button Discard", [/^button Discard$/i], {
       preferLast: true,
@@ -5411,6 +5438,43 @@ async function runSelfTest() {
     "AppServerClient should accept only the scoped Computer Use app approval for this session",
   );
   elicitationClient.close();
+  const reportApprovalMessages = [];
+  const reportApprovalClient = new AppServerClient("ws://unused", {
+    reportViewerApps: ["com.apple.Safari"],
+  });
+  reportApprovalClient.ws = {
+    send(payload) {
+      reportApprovalMessages.push(JSON.parse(payload));
+    },
+  };
+  const reportElicitation = (toolName, app, riskLevel = "high") => ({
+    id: reportApprovalMessages.length + 100,
+    params: {
+      serverName: "node_repl",
+      _meta: {
+        connector_id: "computer-use",
+        riskLevel,
+        tool_name: toolName,
+        tool_params: { app },
+      },
+    },
+  });
+  reportApprovalClient.respondToElicitation(reportElicitation("get_app_state", "com.apple.Safari"));
+  reportApprovalClient.respondToElicitation(reportElicitation("click", "com.apple.Safari"));
+  reportApprovalClient.respondToElicitation(
+    reportElicitation("get_app_state", "com.example.unapproved-browser"),
+  );
+  const missingRiskReportElicitation = reportElicitation("get_app_state", "com.apple.Safari");
+  delete missingRiskReportElicitation.params._meta.riskLevel;
+  reportApprovalClient.respondToElicitation(missingRiskReportElicitation);
+  reportApprovalClient.respondToElicitation(
+    reportElicitation("get_app_state", "com.apple.Safari", "unknown"),
+  );
+  assert.deepEqual(
+    reportApprovalMessages.map((message) => message.result.action),
+    ["accept", "decline", "decline", "decline", "decline"],
+    "AppServerClient should allow only known-risk read-only state inspection for an allowlisted report browser",
+  );
   assert.throws(
     () => appServerClient.tool("drag", { app: "com.darkmatter.nixmac" }, 1000),
     /Unsupported Computer Use tool: drag/,
