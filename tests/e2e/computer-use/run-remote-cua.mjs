@@ -21,6 +21,7 @@ import {
   validateDriverDescriptor,
   validateElementAddress,
 } from "./drivers/contract.mjs";
+import { CuaCompatClient, cuaCompatDriverDescriptor } from "./drivers/cua-compat.mjs";
 import { tryRun } from "./process-utils.mjs";
 import {
   DEFAULT_PROMPT,
@@ -100,11 +101,78 @@ const COVERAGE_MANIFEST_PATH = path.join(TOOL_DIR, "coverage-manifest.json");
 const BUILD_AND_TEST_BUTTON_PATTERNS = [/^button Build & Test(?:,|$)/i];
 const SUMMARY_TAB_PATTERNS = [/^tab(?: \([^)]*\))* (?:Summary|Semantic)(?:,|$)/i];
 const DIFF_TAB_PATTERNS = [/^tab(?: \([^)]*\))* Diff(?:,|$)/i];
+const COMPUTER_USE_DRIVER_ENV = "NIXMAC_E2E_COMPUTER_USE_DRIVER";
 
 let activeRunDir = "";
 
 function usage() {
   console.log(remoteCuaUsage({ defaultWs: DEFAULT_WS, defaultApp: DEFAULT_APP }));
+}
+
+function selectedComputerUseDriver(env = process.env) {
+  const selected = env[COMPUTER_USE_DRIVER_ENV] || "codex-app-server";
+  if (!["codex-app-server", "cuadriver"].includes(selected)) {
+    throw new Error(
+      `${COMPUTER_USE_DRIVER_ENV} must be codex-app-server or cuadriver; received ${selected}`,
+    );
+  }
+  return selected;
+}
+
+function runRemoteComputerUseCommand(command, options = {}) {
+  const args = sshArgs(command);
+  if (!args) {
+    return {
+      ok: false,
+      stdout: "",
+      stderr: "NIXMAC_E2E_REMOTE_SSH_DEST is not set for remote CuaDriver execution",
+    };
+  }
+  args.unshift(
+    "-o",
+    "ConnectTimeout=10",
+    "-o",
+    "ServerAliveInterval=15",
+    "-o",
+    "ServerAliveCountMax=3",
+  );
+  return tryRun("ssh", args, {
+    maxBuffer: options.maxBuffer ?? 32 * 1024 * 1024,
+    timeout: options.timeoutMs ?? 60_000,
+    killSignal: "SIGKILL",
+  });
+}
+
+function createComputerUseClient(options, env = process.env) {
+  const selected = selectedComputerUseDriver(env);
+  if (selected === "cuadriver") {
+    if (!options.app.startsWith("/") || !options.app.endsWith(".app")) {
+      throw new Error(
+        "CuaDriver parity requires NIXMAC_COMPUTER_USE_APP to be the exact staged remote .app path",
+      );
+    }
+    return {
+      client: new CuaCompatClient({
+        runRemote: runRemoteComputerUseCommand,
+        appPath: options.app,
+        appBundleId: DEFAULT_APP,
+        runId: env.NIXMAC_E2E_RUN_ID || `local-${process.pid}-${Date.now()}`,
+        cliPath:
+          env.NIXMAC_E2E_CUA_CLI || "/Applications/CuaDriver.app/Contents/MacOS/cua-driver",
+        driverAppPath: env.NIXMAC_E2E_CUA_APP || "/Applications/CuaDriver.app",
+        expectedVersion: env.NIXMAC_E2E_CUA_VERSION || "0.22.0",
+        toolInvocation: env.NIXMAC_E2E_CUA_TOOL_INVOCATION || "call",
+        socketDirectory: env.NIXMAC_E2E_CUA_SOCKET_DIRECTORY || "/tmp",
+      }),
+      descriptor: cuaCompatDriverDescriptor,
+    };
+  }
+  return {
+    client: new AppServerClient(options.ws, {
+      allowedComputerUseApps: [options.app, DEFAULT_APP],
+    }),
+    descriptor: codexAppServerDriverDescriptor,
+  };
 }
 
 function argValue(args, flag, fallback = "") {
@@ -2910,12 +2978,18 @@ async function runSuite(args) {
   await mkdir(path.join(runDir, "screenshots"), { recursive: true });
   await mkdir(path.join(runDir, "texts"), { recursive: true });
   const state = await baseState(runDir, options);
+  const { client, descriptor: computerUseDriver } = createComputerUseClient(options);
+  if (computerUseDriver.id === "cuadriver-compat") {
+    state.computerUseDriver = {
+      id: computerUseDriver.id,
+      displayName: computerUseDriver.displayName,
+      contractVersion: computerUseDriver.contractVersion,
+      mode: "remote-ssh",
+      socketPath: client.socketPath,
+    };
+  }
   await saveState(state);
   const computerUseStartedAt = nowIso();
-
-  const client = new AppServerClient(options.ws, {
-    allowedComputerUseApps: [options.app, DEFAULT_APP],
-  });
   try {
     await client.connect();
     const hostOriginal = await captureSystemCheckpoint(state, "hostOriginal", {
@@ -4316,7 +4390,10 @@ async function runSuite(args) {
       status: "success",
       startedAt: computerUseStartedAt,
       endedAt: nowIso(),
-      note: "Connected to Codex app-server, exercised the calibrated nixmac Computer Use suite, and reached report generation.",
+      note:
+        computerUseDriver.id === "codex-app-server-computer-use"
+          ? "Connected to Codex app-server, exercised the calibrated nixmac Computer Use suite, and reached report generation."
+          : `Connected through ${computerUseDriver.displayName}, exercised the calibrated nixmac Computer Use suite, and reached report generation.`,
     });
     await render(state);
     await inspectReportWithComputerUse(client, state);
@@ -4333,7 +4410,7 @@ async function runSuite(args) {
       process.exitCode = 1;
     }
   } finally {
-    client.close();
+    await client.close();
   }
 }
 
@@ -6299,6 +6376,35 @@ async function runSelfTest() {
     [],
     "Codex app-server descriptor should satisfy the driver contract at load time",
   );
+  assert.deepEqual(
+    validateDriverDescriptor(cuaCompatDriverDescriptor).issues,
+    [],
+    "CuaDriver compatibility descriptor should satisfy the same driver contract",
+  );
+  assert.equal(
+    selectedComputerUseDriver({}),
+    "codex-app-server",
+    "Codex app-server should remain the default Computer Use driver",
+  );
+  assert.equal(
+    selectedComputerUseDriver({ [COMPUTER_USE_DRIVER_ENV]: "cuadriver" }),
+    "cuadriver",
+    "CuaDriver should be selected only through the explicit environment switch",
+  );
+  assert.throws(
+    () => selectedComputerUseDriver({ [COMPUTER_USE_DRIVER_ENV]: "unknown" }),
+    /must be codex-app-server or cuadriver/,
+    "unknown Computer Use drivers must fail closed",
+  );
+  const cuaSelection = createComputerUseClient(
+    { ws: DEFAULT_WS, app: "/tmp/run/nixmac.app" },
+    {
+      [COMPUTER_USE_DRIVER_ENV]: "cuadriver",
+      NIXMAC_E2E_RUN_ID: "self-test",
+    },
+  );
+  assert.equal(cuaSelection.client instanceof CuaCompatClient, true);
+  assert.equal(cuaSelection.descriptor.id, "cuadriver-compat");
   assert.deepEqual(
     currentRunnerDriverCapabilityUse.filter(
       (capability) => codexAppServerDriverDescriptor.capabilities[capability] !== true,

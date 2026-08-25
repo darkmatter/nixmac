@@ -154,6 +154,7 @@ jobs:
           node tests/e2e/computer-use/storybook-preview.mjs self-test
           node --check tests/e2e/computer-use/workflow-contract-self-test.mjs
           node tests/e2e/computer-use/run-remote-cua.mjs self-test
+          node tests/e2e/computer-use/drivers/cua-compat-self-test.mjs
           node tests/e2e/computer-use/coverage-freshness-self-test.mjs
           node tests/e2e/computer-use/remote-stage-self-test.mjs
           node tests/e2e/computer-use/prepare-system-marker-self-test.mjs

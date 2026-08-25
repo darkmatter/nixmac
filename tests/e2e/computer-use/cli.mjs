@@ -10,6 +10,12 @@ export function remoteCuaUsage({ defaultWs, defaultApp }) {
 Environment:
   NIXMAC_COMPUTER_USE_WS       WebSocket for Codex app-server (default ${defaultWs})
   NIXMAC_COMPUTER_USE_APP      Bundle id/app name (default ${defaultApp})
+  NIXMAC_E2E_COMPUTER_USE_DRIVER codex-app-server (default) or cuadriver
+  NIXMAC_E2E_CUA_VERSION       Required remote CuaDriver version (default 0.22.0)
+  NIXMAC_E2E_CUA_TOOL_INVOCATION call (0.22 default) or direct (future compatibility)
+  NIXMAC_E2E_CUA_CLI           Remote CuaDriver CLI path
+  NIXMAC_E2E_CUA_APP           Remote CuaDriver.app path
+  NIXMAC_E2E_CUA_SOCKET_DIRECTORY Remote directory for the run-unique Unix socket
   NIXMAC_E2E_REMOTE_SSH_DEST   Optional ssh destination, e.g. admin@38.79.97.120
   NIXMAC_E2E_SSH_KEY           Optional ssh private key path
   NIXMAC_E2E_SSH_KNOWN_HOSTS   Optional known_hosts path for strict SSH verification

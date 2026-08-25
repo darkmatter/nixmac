@@ -112,6 +112,7 @@ for (const [jobName, job] of [
 }
 
 for (const requiredSelfTest of [
+  "cua-compat-self-test.mjs",
   "coverage-freshness-self-test.mjs",
   "remote-stage-self-test.mjs",
   "prepare-system-marker-self-test.mjs",

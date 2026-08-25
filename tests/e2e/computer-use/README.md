@@ -38,10 +38,31 @@ NIXMAC_E2E_SSH_KNOWN_HOSTS=/path/to/known_hosts \
 node tests/e2e/computer-use/run-remote-cua.mjs run
 ```
 
+The optional CuaDriver parity pilot keeps this same runner and scenario oracle.
+The GitHub runner remains Linux: every CuaDriver command crosses the bounded
+SSH executor, starts a run-unique Unix socket on the remote Mac, and binds the
+exact staged app path, PID, and current on-screen window before acting:
+
+```bash
+NIXMAC_E2E_COMPUTER_USE_DRIVER=cuadriver \
+NIXMAC_COMPUTER_USE_APP=/tmp/<run-id>/nixmac.app \
+NIXMAC_E2E_CUA_VERSION=0.22.0 \
+NIXMAC_E2E_RUN_ID=<run-id> \
+NIXMAC_E2E_REMOTE_SSH_DEST=admin@REMOTE-MAC \
+NIXMAC_E2E_SSH_KEY=/path/to/key \
+NIXMAC_E2E_SSH_KNOWN_HOSTS=/path/to/known_hosts \
+node tests/e2e/computer-use/run-remote-cua.mjs run
+```
+
+The parity adapter never connects to a local macOS daemon. WebKit text entry is
+implemented as pixel focus, Cmd+A, `type_text`, and exact AX value readback.
+Codex app-server remains the default and production driver.
+
 Predicate and click-result guards can be checked without a remote Mac:
 
 ```bash
 node tests/e2e/computer-use/run-remote-cua.mjs self-test
+node tests/e2e/computer-use/drivers/cua-compat-self-test.mjs
 ```
 
 The runner:
