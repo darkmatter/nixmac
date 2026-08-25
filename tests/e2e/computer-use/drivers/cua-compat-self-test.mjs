@@ -149,6 +149,7 @@ let socketStopped = false;
 let daemonRunning = false;
 let staleClick = false;
 let nextClickEffect = "";
+let corruptScreenshot = true;
 
 function fakeRemote(command) {
   commands.push(command);
@@ -203,9 +204,10 @@ function fakeRemote(command) {
       ok: true,
       stdout: envelope({
         accessibility: true,
-        direct_capture_status: "ready",
+        direct_capture_status: "not_checked",
         screen_recording: true,
-        screen_recording_capturable: true,
+        screen_recording_capturable: null,
+        source: { bundle_id: "com.trycua.driver" },
       }),
       stderr: "",
     };
@@ -233,6 +235,7 @@ function fakeRemote(command) {
   if (tool === "get_window_state") {
     const state = windowState(typedValue);
     if (!typedVisual && typedValue) state.screenshot_png_b64 = typedPng;
+    if (corruptScreenshot) state.screenshot_png_b64 = "not-a-png";
     return { ok: true, stdout: envelope(state), stderr: "" };
   }
   if (tool === "click" && staleClick && Object.hasOwn(input, "element_token")) {
@@ -280,6 +283,10 @@ assert(
   "startup must bind the shared Cua PID file to the exact run-socket listener",
 );
 
+const invalidCapture = await client.tool("get_app_state", { app: stagedApp });
+assert.equal(invalidCapture.result.isError, true);
+assert.match(invalidCapture.result.content[0].text, /canonical base64 PNG/);
+corruptScreenshot = false;
 const observed = await client.tool("get_app_state", { app: stagedApp });
 assert.equal(observed.result.isError, false);
 assert.match(observed.result.content[0].text, /Window: "nixmac", App: nixmac/);

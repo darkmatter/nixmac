@@ -81,13 +81,23 @@ assert.match(
 );
 assert.match(
   remote,
-  /codesign --verify --deep --strict[\s\S]*cua-driver 0\.22\.0[\s\S]*CUA_PID_FILE[\s\S]*pid_file_pid[\s\S]*call check_permissions[\s\S]*direct_capture_status[\s\S]*com\.trycua\.driver[\s\S]*"\$CUA_CLI" stop/,
+  /codesign --verify --deep --strict[\s\S]*cua-driver 0\.22\.0[\s\S]*CUA_PID_FILE[\s\S]*pid_file_pid[\s\S]*call check_permissions[\s\S]*accessibility[\s\S]*screen_recording[\s\S]*com\.trycua\.driver[\s\S]*"\$CUA_CLI" stop[\s\S]*marker_pending[\s\S]*mv "\$marker_pending" "\$CUA_RESTORE_MARKER"/,
   "Cua preflight must verify signature/version/TCC attribution before stopping only its verified default daemon",
 );
 assert.doesNotMatch(
   remote,
-  /NIXMAC_E2E_CUA_TOOL_INVOCATION/,
-  "the official 0.22 call envelope must not expose an invalid per-tool invocation mode",
+  /direct_capture_status|screen_recording_capturable/,
+  "nullable prompt:false capture metadata must not block Cua preflight",
+);
+assert.match(
+  remote,
+  /driver_readiness_args=\(\)[\s\S]*NIXMAC_E2E_COMPUTER_USE_DRIVER" == "codex-app-server"[\s\S]*driver_readiness_args\+=\(--check-codex-binary\)[\s\S]*"\$\{driver_readiness_args\[@\]\}"/,
+  "remote readiness must check the Codex binary only for the Codex lane",
+);
+assert.doesNotMatch(
+  remote,
+  /NIXMAC_E2E_CUA_TOOL_INVOCATION|NIXMAC_E2E_CUA_RESTORE_DEFAULT/,
+  "the workflow must expose neither an invalid invocation mode nor a pre-armed default restore flag",
 );
 assert.match(
   remote,
@@ -106,8 +116,8 @@ assert.match(
 );
 assert.match(
   cleanupStep,
-  /restore_cua_default\(\)[\s\S]*\[\[ ! -e "\$CUA_SOCKET" \]\][\s\S]*existing_count[\s\S]*"\$CUA_CLI" status[\s\S]*existing_count" -eq 0 && ! -e "\$CUA_PID_FILE"[\s\S]*serve --no-permissions-gate --no-overlay[\s\S]*pid_file_pid[\s\S]*"\$CUA_CLI" status/,
-  "cleanup must restore the exact verified default daemon only after the run-owned socket and PID file are absent",
+  /restore_cua_default\(\)[\s\S]*if \[\[ ! -e "\$CUA_RESTORE_MARKER" && ! -L "\$CUA_RESTORE_MARKER" \]\]; then[\s\S]*exit 0[\s\S]*invalid CuaDriver restore marker[\s\S]*\[\[ ! -e "\$CUA_SOCKET" \]\][\s\S]*serve --no-permissions-gate --no-overlay[\s\S]*rm "\$CUA_RESTORE_MARKER"/,
+  "cleanup must restore the verified default daemon only from a valid durable run marker",
 );
 
 assert.match(

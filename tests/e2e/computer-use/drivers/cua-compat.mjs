@@ -461,11 +461,10 @@ export class CuaCompatClient {
       if (
         permissions.accessibility !== true ||
         permissions.screen_recording !== true ||
-        permissions.screen_recording_capturable !== true ||
-        permissions.direct_capture_status !== "ready"
+        permissions.source?.bundle_id !== "com.trycua.driver"
       ) {
         throw new Error(
-          "CuaDriver requires Accessibility, Screen Recording, and ready direct capture",
+          "CuaDriver requires attributed Accessibility and Screen Recording grants",
         );
       }
       this.connected = true;

@@ -61,10 +61,12 @@ Codex app-server remains the default and production driver.
 
 For the one-off GitHub lane, dispatch `Computer Use E2E` manually with
 `computer_use_driver=cuadriver`. The workflow verifies the installed 0.22.0
-bundle/signature and existing TCC grants, stops only the verified default
-CuaDriver daemon, skips Codex app-server/tunneling, always stops the run-owned
-socket, and restores the verified default daemon. Manual runs upload private
-artifacts but never publish or comment on the public report branch.
+bundle/signature and attributed TCC grants, then treats the first valid PNG from
+the exact staged PID/window as capture proof. It stops only the verified default
+CuaDriver daemon, atomically records that restoration obligation, skips Codex
+app-server/tunneling, always stops the run-owned socket, and restores the default
+daemon only when that marker exists. Manual runs upload private artifacts but
+never publish or comment on the public report branch.
 
 Predicate and click-result guards can be checked without a remote Mac:
 
