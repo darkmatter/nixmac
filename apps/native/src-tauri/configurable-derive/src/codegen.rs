@@ -191,7 +191,7 @@ fn build_scope_methods(
             }
 
             fn __resolve_string(
-                profile: Option<&serde_json::Value>,
+                profile: &serde_json::Value,
                 key: &str,
                 env_var: &str,
                 build_embed: bool,
@@ -205,19 +205,17 @@ fn build_scope_methods(
                         return value;
                     }
                 }
-                if let Some(profile) = profile {
-                    if let Some(value) = profile.get(key).and_then(|value| value.as_str()) {
-                        let value = value.trim();
-                        if !value.is_empty() {
-                            return value.to_string();
-                        }
+                if let Some(value) = profile.get(key).and_then(|value| value.as_str()) {
+                    let value = value.trim();
+                    if !value.is_empty() {
+                        return value.to_string();
                     }
                 }
                 default.to_string()
             }
 
             fn __resolve_bool(
-                profile: Option<&serde_json::Value>,
+                profile: &serde_json::Value,
                 key: &str,
                 env_var: &str,
                 default: bool,
@@ -225,10 +223,8 @@ fn build_scope_methods(
                 if let Some(value) = crate::env::sources::trimmed_env(env_var) {
                     return crate::env::sources::env_is_truthy(&value);
                 }
-                if let Some(profile) = profile {
-                    if let Some(value) = profile.get(key).and_then(|value| value.as_bool()) {
-                        return value;
-                    }
+                if let Some(value) = profile.get(key).and_then(|value| value.as_bool()) {
+                    return value;
                 }
                 default
             }

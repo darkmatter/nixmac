@@ -52,9 +52,11 @@ pub struct NixmacEnvSettings {
     )]
     pub sentry_dsn: String,
 
+    /// No `build_embed`: this is the selector for which profile gets embedded, so
+    /// it resolves from the process environment, then from that profile's own
+    /// `NIXMAC_ENV` key — never from a separate embedded copy of the selector.
     #[config(
-        default = "prod",
-        build_embed = true,
+        default = "production",
         env_var = "NIXMAC_ENV",
         label = "Deployment environment"
     )]

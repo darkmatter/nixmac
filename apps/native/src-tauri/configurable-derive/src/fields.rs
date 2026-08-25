@@ -127,7 +127,7 @@ fn generate_field(field: &syn::Field, scope: StoreScope) -> syn::Result<FieldCod
         Some(match type_name.as_str() {
             "bool" => quote! {
                 #ident: Self::__resolve_bool(
-                    __build_profile.as_ref(),
+                    &__build_profile,
                     #profile_key_lit,
                     #env_var_lit,
                     #default,
@@ -135,7 +135,7 @@ fn generate_field(field: &syn::Field, scope: StoreScope) -> syn::Result<FieldCod
             },
             "String" => quote! {
                 #ident: Self::__resolve_string(
-                    __build_profile.as_ref(),
+                    &__build_profile,
                     #profile_key_lit,
                     #env_var_lit,
                     #build_embed,

@@ -33,6 +33,9 @@ export function useCurrentStep(): WidgetStep {
     (state) => (state.git?.changes.length ?? 0) > 0,
   );
   const rebuildNeeded = useViewModel((state) => state.build.rebuildNeeded);
+  const onboardingCompletedAt = useViewModel(
+    (state) => state.onboardingState?.completedAt ?? null,
+  );
   return computeCurrentStep({
     nixInstalled,
     darwinRebuildAvailable,
@@ -49,5 +52,6 @@ export function useCurrentStep(): WidgetStep {
     activeStepOverride,
     hasChanges,
     rebuildNeeded,
+    onboardingCompletedAt,
   });
 }
