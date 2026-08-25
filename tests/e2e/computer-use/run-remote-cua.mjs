@@ -3230,6 +3230,7 @@ async function runSuite(args) {
       absentNoun: "macOS customizations",
     });
 
+    text = await synchronizeDisposableBaseline(client, state, text);
     if (!findElement(text, [/text entry area/i])) {
       await maybeRelaunchRemote(state);
       text = await captureState(
