@@ -3,7 +3,7 @@
   "runDir": "__RUN_DIR__",
   "ws": "ws://127.0.0.1:18790",
   "app": "com.darkmatter.nixmac",
-  "prompt": "Add the bat command line tool to my Homebrew packages as the plain string \"bat\" only, with no inline comments.",
+  "prompt": "Add the hello formula to my Homebrew packages as the plain string \"hello\" only, with no inline comments.",
   "branch": "fixture/preservation",
   "sha": "0000000000000000000000000000000000000000",
   "macosVersion": "unknown",
@@ -14,12 +14,12 @@
   },
   "evolvedCaseStrategy": {
     "selectedAt": "2026-05-02T05:46:27.904Z",
-    "defaultCaseIds": ["homebrew-bat"],
+    "defaultCaseIds": ["homebrew-hello"],
     "extraCaseIds": [],
     "catalog": [
       {
-        "id": "homebrew-bat",
-        "label": "Homebrew bat package add",
+        "id": "homebrew-hello",
+        "label": "Homebrew hello formula add",
         "mode": "full-lifecycle",
         "defaultPrLane": true,
         "source": "Current Computer Use E2E default; maps to eval package/homebrew install coverage.",
@@ -42,7 +42,7 @@
         "note": "Keep out of the default PR lane until nixmac has hard protected-file enforcement and a reliable refusal signal."
       }
     ],
-    "reviewDecision": "Claude review kept homebrew-bat as the only default full-lifecycle PR case, moved screenshots-defaults to optional calibration, and moved protected-flake-input to an adversarial advisory lane until hard backend enforcement exists."
+    "reviewDecision": "Claude review kept homebrew-hello as the only default full-lifecycle PR case, moved screenshots-defaults to optional calibration, and moved protected-flake-input to an adversarial advisory lane until hard backend enforcement exists."
   },
   "evolvedCaseRuns": [],
   "safety": {
@@ -63,9 +63,9 @@
     "configured": true
   },
   "cleanup": {
-    "attempted": false,
-    "restored": false,
-    "note": "Remote app state was not restored by this runner. CI wrapper is responsible for remote app-support backup/restore; local artifacts are retained."
+    "attempted": true,
+    "restored": true,
+    "note": "The preservation fixture models verified restoration of the captured host fingerprint after the UI lifecycle and CI-wrapper cleanup."
   },
   "screenshots": [
     {
@@ -541,6 +541,16 @@
       "note": "Computer Use completed History restore cleanup."
     },
     {
+      "label": "system-lifecycle",
+      "path": "texts/system-lifecycle.txt",
+      "note": "Fixture system lifecycle evidence."
+    },
+    {
+      "label": "host-restoration",
+      "path": "texts/host-restoration.txt",
+      "note": "Fixture trusted host restoration evidence."
+    },
+    {
       "label": "HTML report inspection",
       "path": "texts/61-report-inspection-Safari.txt",
       "note": "Computer Use inspected the generated report in Safari."
@@ -626,12 +636,12 @@
     {
       "claim": "Summary tab renders after intent review",
       "status": "pass",
-      "evidence": "Summary described the requested bat/Homebrew package intent."
+      "evidence": "Summary described the requested hello/Homebrew formula intent."
     },
     {
       "claim": "Diff tab renders after intent review",
       "status": "pass",
-      "evidence": "Diff rendered a candidate Homebrew configuration file for the bat change."
+      "evidence": "Diff rendered a candidate Homebrew configuration file for the hello change."
     },
     {
       "claim": "Build & Test destructive boundary appears before activation",
@@ -641,7 +651,7 @@
     {
       "claim": "Step 3 Save / Keep changes persists a change",
       "status": "pass",
-      "evidence": "Step 3 Commit persisted the generated bat/Homebrew change in the disposable config repo and left the worktree clean."
+      "evidence": "Step 3 Commit persisted the generated hello/Homebrew change in the disposable config repo and left the worktree clean."
     },
     {
       "claim": "Rollback cleanup returns disposable config to clean state",
@@ -1167,7 +1177,7 @@
     "summary": {
       "label": "Summary tab renders after intent review",
       "status": "pass",
-      "notes": ["Summary described the requested bat/Homebrew package intent."],
+      "notes": ["Summary described the requested hello/Homebrew formula intent."],
       "evidenceStrength": "visual-supported",
       "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
       "assertionTypes": [
@@ -1184,7 +1194,7 @@
     "diff": {
       "label": "Diff tab renders after intent review",
       "status": "pass",
-      "notes": ["Diff rendered a candidate Homebrew configuration file for the bat change."],
+      "notes": ["Diff rendered a candidate Homebrew configuration file for the hello change."],
       "evidenceStrength": "visual-supported",
       "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
       "assertionTypes": [
@@ -1220,7 +1230,7 @@
       "label": "Step 3 Save / Keep changes persists a change",
       "status": "pass",
       "notes": [
-        "Step 3 Commit persisted the generated bat/Homebrew change in the disposable config repo and left the worktree clean."
+        "Step 3 Commit persisted the generated hello/Homebrew change in the disposable config repo and left the worktree clean."
       ],
       "evidenceStrength": "strong",
       "evidenceStrengthReason": "Computer Use path is backed by independent disposable git state proof.",
@@ -1255,6 +1265,20 @@
       "failureClassReason": "",
       "accessibilityRisk": "low",
       "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence."
+    },
+    "systemLifecycle": {
+      "label": "Target Homebrew formula follows the activation and restore lifecycle",
+      "status": "pass",
+      "notes": [
+        "Independent remote probes proved hello was absent before Build & Test, available after activation, and the active system/config returned to the scenario baseline after History restore; physical formula removal was verified by trusted host teardown."
+      ]
+    },
+    "hostRestoration": {
+      "label": "Remote host returns to its captured pre-run state",
+      "status": "pass",
+      "notes": [
+        "The post-cleanup host fingerprint matched the captured pre-run system, formula, config, app-support, GUI-environment, and authorization baseline."
+      ]
     },
     "discard": {
       "label": "Discard confirmation is guarded and only confirmed in disposable state",

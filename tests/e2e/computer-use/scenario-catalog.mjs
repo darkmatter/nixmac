@@ -1,14 +1,20 @@
 // Scenario catalog data for the remote Computer Use Product Proof runner.
 // Keep this file side-effect free: no filesystem, network, or Computer Use calls.
 
+import { e2eHomebrewFormula } from "./system-fixture.mjs";
+
 function freezeDeep(value) {
   if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
   for (const child of Object.values(value)) freezeDeep(child);
   return Object.freeze(value);
 }
 
-export const DEFAULT_PROMPT =
-  'Add the bat command line tool to my Homebrew packages as the plain string "bat" only, with no inline comments.';
+export const TARGET_HOMEBREW_FORMULA = e2eHomebrewFormula.name;
+export const TARGET_HOMEBREW_EXECUTABLE = "/opt/homebrew/bin/hello";
+export const TARGET_HOMEBREW_VERSION_TOKEN = e2eHomebrewFormula.versionPrefix.trim();
+export const TARGET_HOMEBREW_PROMPT = e2eHomebrewFormula.prompt;
+export const TARGET_HOMEBREW_CASE_ID = e2eHomebrewFormula.caseId;
+export const DEFAULT_PROMPT = TARGET_HOMEBREW_PROMPT;
 export const supportedHomebrewSourcePaths = freezeDeep([
   "modules/darwin/homebrew.nix",
   "flake-modules/darwin.nix",
@@ -192,9 +198,9 @@ export const scenarioVisualContracts = freezeDeep({
 });
 
 export const EVOLVED_CASE_CATALOG = freezeDeep({
-  "homebrew-bat": {
-    id: "homebrew-bat",
-    label: "Homebrew bat package add",
+  [TARGET_HOMEBREW_CASE_ID]: {
+    id: TARGET_HOMEBREW_CASE_ID,
+    label: `Homebrew ${TARGET_HOMEBREW_FORMULA} formula add`,
     mode: "full-lifecycle",
     prompt: DEFAULT_PROMPT,
     source: "Current Computer Use E2E default; maps to eval package/homebrew install coverage.",
@@ -270,6 +276,8 @@ export const scenarioLabels = freezeDeep({
   buildBoundary: "Build & Test destructive boundary appears before activation",
   saveFlow: "Step 3 Save / Keep changes persists a change",
   rollbackCleanup: "Rollback cleanup returns disposable config to clean state",
+  systemLifecycle: "Target Homebrew formula follows the activation and restore lifecycle",
+  hostRestoration: "Remote host returns to its captured pre-run state",
   discard: "Discard confirmation is guarded and only confirmed in disposable state",
   visualCoverage: "Core UX/UI surfaces are captured and inspectable",
   visualProofQuality: "Scenario results include inspectable visual/text evidence",
@@ -310,6 +318,10 @@ export const scenarioGroups = freezeDeep([
     ],
   },
   {
+    name: "System Lifecycle",
+    keys: ["systemLifecycle", "hostRestoration"],
+  },
+  {
     name: "PR-Specific Focus",
     keys: ["mainCoverageFreshness", "prSpecificCoverage", "storybookPreview"],
   },
@@ -329,6 +341,8 @@ export const curatedProofKeys = freezeDeep([
   "inlineQuestionAnswer",
   "saveFlow",
   "rollbackCleanup",
+  "systemLifecycle",
+  "hostRestoration",
   "settingsAPIKeys",
   "settingsGeneral",
   "settingsAIModels",
@@ -528,6 +542,22 @@ export const scenarioProofCatalog = freezeDeep({
       "After Save, Computer Use opens History, restores the pre-test baseline commit, and the runner verifies HEAD returned to that baseline with a clean worktree.",
     untested: "Only runs when Save succeeded and a restorable disposable baseline exists.",
   },
+  systemLifecycle: {
+    grade: "state-confirmed",
+    screenshots: ["step-3-ready", "after-history-restore"],
+    texts: ["system-lifecycle", "step-3-ready", "after-history-restore"],
+    proof: `Independent remote probes require ${TARGET_HOMEBREW_EXECUTABLE} to be absent before Build & Test, declared by the activated Homebrew plan, present after activation, and reporting ${TARGET_HOMEBREW_VERSION_TOKEN}; History restore must activate a non-feature system whose Homebrew plan omits ${TARGET_HOMEBREW_FORMULA}, while the disposable config and active Brewfile fingerprint match the captured scenario baseline.`,
+    untested: `Homebrew's default cleanup policy retains removed formulae. Physical removal of ${TARGET_HOMEBREW_FORMULA} is proved separately by host restoration, not attributed to History restore.`,
+  },
+  hostRestoration: {
+    grade: "state-confirmed",
+    screenshots: [],
+    texts: ["host-restoration"],
+    proof:
+      "Trusted always-run teardown evidence requires the system profile and active system to match the pre-run generation, the known-absent target formula to be removed, authorization policy and app support to be restored, and recovery metadata to be cleared.",
+    untested:
+      "Does not claim restoration of machine state outside the explicitly captured host fingerprint.",
+  },
   discard: {
     grade: "guardrail-confirmed",
     screenshots: ["discard-boundary", "history-restore-preview", "after-history-restore"],
@@ -673,6 +703,8 @@ export const scenarioAssertionTypeHints = freezeDeep({
   buildBoundary: ["accessibility_text", "action_result", "confirmation_boundary"],
   saveFlow: ["accessibility_text", "action_result", "remote_state"],
   rollbackCleanup: ["accessibility_text", "action_result", "remote_state"],
+  systemLifecycle: ["remote_state", "system_state", "command_probe", "version_probe"],
+  hostRestoration: ["remote_state", "host_state", "cleanup_attestation"],
   discard: ["accessibility_text", "action_result", "confirmation_boundary"],
   evolvedScreenshotsDefaults: ["accessibility_text", "provider_state", "calibration"],
   inlineQuestionAnswer: ["accessibility_text", "provider_state", "question_answer", "calibration"],

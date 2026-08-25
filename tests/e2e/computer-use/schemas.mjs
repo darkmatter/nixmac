@@ -14,6 +14,7 @@ export const v1GradeToEvidenceStrength = freezeDeep({
   "text-confirmed": "visual-supported",
   "guardrail-confirmed": "operational",
   "manifest-confirmed": "operational",
+  "state-confirmed": "strong",
   calibration: "weak",
   "not-run": "not-proved",
   insufficient: "not-proved",

@@ -154,6 +154,15 @@ jobs:
           node tests/e2e/computer-use/storybook-preview.mjs self-test
           node --check tests/e2e/computer-use/workflow-contract-self-test.mjs
           node tests/e2e/computer-use/run-remote-cua.mjs self-test
+          node tests/e2e/computer-use/coverage-freshness-self-test.mjs
+          node tests/e2e/computer-use/remote-stage-self-test.mjs
+          node tests/e2e/computer-use/prepare-system-marker-self-test.mjs
+          node tests/e2e/computer-use/cleanup-evidence-self-test.mjs
+          node tests/e2e/computer-use/system-lifecycle-self-test.mjs
+          node tests/e2e/computer-use/finalize-cleanup-self-test.mjs
+          bash -n ops/scripts/e2e/remote-restore.sh
+          shellcheck ops/scripts/e2e/remote-restore.sh
+          bash ops/scripts/e2e/remote-restore-self-test.sh
           node tests/e2e/computer-use/check-stale-run.mjs self-test
           node tests/e2e/computer-use/workflow-contract-self-test.mjs
           if node tests/e2e/computer-use/check-remote.mjs --host example.com --require-app-server nope >/tmp/check-remote-invalid.out 2>&1; then
@@ -759,21 +768,44 @@ jobs:
         if: steps.stale-run.outputs.stale != 'true'
         shell: bash
         run: |
+          set -euo pipefail
           mkdir -p artifacts/computer-use-remote/readiness
           node tests/e2e/computer-use/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id remote-preflight \
             --label "Remote preflight" \
             --category remote \
-            --note "Checking SSH, expected host identity, and remote Codex binary readiness."
+            --note "Checking SSH, expected host identity, and remote Codex binary readiness with bounded retries."
           readiness_json="artifacts/computer-use-remote/readiness/remote-readiness-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
-          node tests/e2e/computer-use/check-remote.mjs \
-            --host "$REMOTE_HOST" \
-            --user "$REMOTE_USER" \
-            --key ~/.ssh/nixmac-e2e \
-            --known-hosts ~/.ssh/known_hosts \
-            --expected-local-hostname "${REMOTE_EXPECTED_LOCAL_HOSTNAME:-DXU97120}" \
-            --check-codex-binary \
-            --json "$readiness_json"
+          preflight_attempts="${NIXMAC_E2E_REMOTE_PREFLIGHT_ATTEMPTS:-12}"
+          if ! [[ "$preflight_attempts" =~ ^[0-9]+$ ]] || (( preflight_attempts < 1 || preflight_attempts > 30 )); then
+            echo "Invalid NIXMAC_E2E_REMOTE_PREFLIGHT_ATTEMPTS: $preflight_attempts" >&2
+            exit 1
+          fi
+          preflight_ready=false
+          for ((attempt = 1; attempt <= preflight_attempts; attempt += 1)); do
+            if node tests/e2e/computer-use/check-remote.mjs \
+              --host "$REMOTE_HOST" \
+              --user "$REMOTE_USER" \
+              --key ~/.ssh/nixmac-e2e \
+              --known-hosts ~/.ssh/known_hosts \
+              --expected-local-hostname "${REMOTE_EXPECTED_LOCAL_HOSTNAME:-DXU97120}" \
+              --check-codex-binary \
+              --json "$readiness_json"; then
+              preflight_ready=true
+              break
+            fi
+            if (( attempt < preflight_attempts )); then
+              echo "Remote preflight attempt $attempt/$preflight_attempts failed; retrying in 10 seconds."
+              sleep 10
+            fi
+          done
+          if [[ "$preflight_ready" != "true" ]]; then
+            node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+              --id remote-preflight \
+              --status failure \
+              --note "Remote readiness did not recover after $preflight_attempts attempts."
+            exit 1
+          fi
           node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id remote-preflight \
             --status success
@@ -799,6 +831,11 @@ jobs:
           REMOTE_APP_STAGE="/tmp/nixmac-computer-use-e2e-app-${RUN_ID_SAFE}"
           REMOTE_APP_PATH="${REMOTE_APP_STAGE}/nixmac.app"
           REMOTE_APP_TAR="/tmp/nixmac-computer-use-e2e-app-${RUN_ID_SAFE}.tar.gz"
+          ssh_common=(-i ~/.ssh/nixmac-e2e -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts)
+          REMOTE_HOME="$(ssh "${ssh_common[@]}" "$SSH_DEST" 'printf %s "$HOME"')"
+          REMOTE_SYSTEM_MARKER="${REMOTE_HOME}/.nixmac-e2e/system-restore-marker.json"
+          REMOTE_SYSTEM_MARKER_PENDING="${REMOTE_SYSTEM_MARKER}.pending-${RUN_ID_SAFE}"
+          REMOTE_RESTORE_RESULT="${REMOTE_HOME}/.nixmac-e2e/system-restore-result.json"
           {
             echo "remote_backup=$REMOTE_BACKUP"
             echo "remote_config=$REMOTE_CONFIG"
@@ -807,6 +844,10 @@ jobs:
             echo "remote_app_stage=$REMOTE_APP_STAGE"
             echo "remote_app_path=$REMOTE_APP_PATH"
             echo "remote_app_tar=$REMOTE_APP_TAR"
+            echo "remote_home=$REMOTE_HOME"
+            echo "remote_system_marker=$REMOTE_SYSTEM_MARKER"
+            echo "remote_restore_result=$REMOTE_RESTORE_RESULT"
+            echo "run_id_safe=$RUN_ID_SAFE"
           } >> "$GITHUB_OUTPUT"
           remote_backup_q=$(printf '%q' "$REMOTE_BACKUP")
           remote_config_q=$(printf '%q' "$REMOTE_CONFIG")
@@ -815,11 +856,18 @@ jobs:
           remote_app_stage_q=$(printf '%q' "$REMOTE_APP_STAGE")
           remote_app_tar_q=$(printf '%q' "$REMOTE_APP_TAR")
           app_path_q=$(printf '%q' "$REMOTE_APP_PATH")
+          remote_system_marker_q=$(printf '%q' "$REMOTE_SYSTEM_MARKER")
+          remote_system_marker_pending_q=$(printf '%q' "$REMOTE_SYSTEM_MARKER_PENDING")
+          remote_restore_result_q=$(printf '%q' "$REMOTE_RESTORE_RESULT")
           remote_evolve_provider_q=$(printf '%q' "$NIXMAC_E2E_EVOLVE_PROVIDER")
           remote_evolve_model_q=$(printf '%q' "$NIXMAC_E2E_EVOLVE_MODEL")
           remote_summary_provider_q=$(printf '%q' "$NIXMAC_E2E_SUMMARY_PROVIDER")
           remote_summary_model_q=$(printf '%q' "$NIXMAC_E2E_SUMMARY_MODEL")
-          ssh_common=(-i ~/.ssh/nixmac-e2e -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts)
+
+          marker_parent_q=$(printf '%q' "$(dirname "$REMOTE_SYSTEM_MARKER")")
+          # shellcheck disable=SC2029
+          ssh "${ssh_common[@]}" "$SSH_DEST" \
+            "mkdir -p $marker_parent_q; test ! -e $remote_system_marker_q; test ! -e $remote_system_marker_pending_q; rm -f $remote_restore_result_q"
 
           REMOTE_HOSTNAME="$(ssh "${ssh_common[@]}" "$SSH_DEST" 'scutil --get LocalHostName 2>/dev/null || hostname')"
           REMOTE_ARCH="$(ssh "${ssh_common[@]}" "$SSH_DEST" 'uname -m')"
@@ -856,8 +904,24 @@ jobs:
           scp "${ssh_common[@]}" artifacts/computer-use-app/nixmac-pr-app.tar.gz "$SSH_DEST:$REMOTE_APP_TAR"
           rm -f artifacts/computer-use-app/nixmac-pr-app.tar.gz
 
+          marker_tmp="$(mktemp)"
+          marker_meta="$(
+            NIXMAC_E2E_REMOTE_SSH_DEST="$SSH_DEST" \
+            NIXMAC_E2E_SSH_KEY="$HOME/.ssh/nixmac-e2e" \
+            NIXMAC_E2E_SSH_KNOWN_HOSTS="$HOME/.ssh/known_hosts" \
+              node tests/e2e/computer-use/prepare-system-marker.mjs \
+                --run-id "$RUN_ID_SAFE" \
+                --remote-home "$REMOTE_HOME" \
+                --output "$marker_tmp"
+          )"
+          [[ "$(jq -r '.markerPath' <<<"$marker_meta")" == "$REMOTE_SYSTEM_MARKER" ]]
+          [[ "$(jq -r '.resultPath' <<<"$marker_meta")" == "$REMOTE_RESTORE_RESULT" ]]
+          echo "original_system=$(jq -r '.originalSystem' <<<"$marker_meta")" >> "$GITHUB_OUTPUT"
+          scp "${ssh_common[@]}" "$marker_tmp" "$SSH_DEST:$REMOTE_SYSTEM_MARKER_PENDING"
+          rm -f "$marker_tmp"
+
           # shellcheck disable=SC2029
-          ssh "${ssh_common[@]}" "$SSH_DEST" "REMOTE_BACKUP=$remote_backup_q REMOTE_CONFIG=$remote_config_q REMOTE_KEY_FILE=$remote_key_file_q REMOTE_AUTH_BACKUP=$remote_auth_backup_q REMOTE_APP_STAGE=$remote_app_stage_q REMOTE_APP_TAR=$remote_app_tar_q REMOTE_APP_PATH=$app_path_q REMOTE_HOSTNAME=$(printf '%q' "$REMOTE_HOSTNAME") NIXMAC_E2E_EVOLVE_PROVIDER=$remote_evolve_provider_q NIXMAC_E2E_EVOLVE_MODEL=$remote_evolve_model_q NIXMAC_E2E_SUMMARY_PROVIDER=$remote_summary_provider_q NIXMAC_E2E_SUMMARY_MODEL=$remote_summary_model_q bash -s" <<'REMOTE'
+          ssh "${ssh_common[@]}" "$SSH_DEST" "REMOTE_BACKUP=$remote_backup_q REMOTE_CONFIG=$remote_config_q REMOTE_KEY_FILE=$remote_key_file_q REMOTE_AUTH_BACKUP=$remote_auth_backup_q REMOTE_APP_STAGE=$remote_app_stage_q REMOTE_APP_TAR=$remote_app_tar_q REMOTE_APP_PATH=$app_path_q REMOTE_SYSTEM_MARKER=$remote_system_marker_q REMOTE_SYSTEM_MARKER_PENDING=$remote_system_marker_pending_q REMOTE_HOSTNAME=$(printf '%q' "$REMOTE_HOSTNAME") NIXMAC_E2E_EVOLVE_PROVIDER=$remote_evolve_provider_q NIXMAC_E2E_EVOLVE_MODEL=$remote_evolve_model_q NIXMAC_E2E_SUMMARY_PROVIDER=$remote_summary_provider_q NIXMAC_E2E_SUMMARY_MODEL=$remote_summary_model_q bash -s" <<'REMOTE'
           set -euo pipefail
           cleanup_key_file() {
             if [[ -n "${REMOTE_KEY_FILE:-}" ]]; then
@@ -908,6 +972,10 @@ jobs:
             echo "error: refusing to start E2E because system.privilege.admin is not at the expected authenticated baseline" >&2
             exit 1
           fi
+          [[ -f "$REMOTE_SYSTEM_MARKER_PENDING" && ! -L "$REMOTE_SYSTEM_MARKER_PENDING" ]]
+          [[ ! -e "$REMOTE_SYSTEM_MARKER" ]]
+          chmod 600 "$REMOTE_SYSTEM_MARKER_PENDING"
+          mv "$REMOTE_SYSTEM_MARKER_PENDING" "$REMOTE_SYSTEM_MARKER"
           sudo -n security authorizationdb write system.privilege.admin allow >/tmp/nixmac-e2e-auth-write.out 2>/tmp/nixmac-e2e-auth-write.err
           GUI_UID="$(stat -f %u /dev/console 2>/dev/null || id -u)"
           gui_launchctl() {
@@ -1121,6 +1189,9 @@ jobs:
           NIXMAC_E2E_APP_COMMAND: open -n ${{ steps.remote-start.outputs.remote_app_path }}
           NIXMAC_E2E_REMOTE_APP_PATH: ${{ steps.remote-start.outputs.remote_app_path }}
           NIXMAC_E2E_REMOTE_CONFIG_DIR: ${{ steps.remote-start.outputs.remote_config }}/config
+          NIXMAC_E2E_RUN_ID: ${{ steps.remote-start.outputs.run_id_safe }}
+          NIXMAC_E2E_REMOTE_SYSTEM_MARKER: ${{ steps.remote-start.outputs.remote_system_marker }}
+          NIXMAC_E2E_ORIGINAL_SYSTEM: ${{ steps.remote-start.outputs.original_system }}
           NIXMAC_E2E_DISPOSABLE_CONFIG: "true"
           NIXMAC_E2E_ALLOW_BUILD_CONFIRM: "true"
           NIXMAC_E2E_ALLOW_DISCARD_CONFIRM: "true"
@@ -1161,7 +1232,7 @@ jobs:
             --workflow-timings "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --note "$note"
 
-      - name: Restore remote app support
+      - name: Restore remote host
         if: always() && steps.stale-run.outputs.stale != 'true'
         shell: bash
         env:
@@ -1171,13 +1242,14 @@ jobs:
           REMOTE_KEY_FILE: ${{ steps.remote-start.outputs.remote_key_file }}
           REMOTE_AUTH_BACKUP: ${{ steps.remote-start.outputs.remote_auth_backup }}
           REMOTE_APP_STAGE: ${{ steps.remote-start.outputs.remote_app_stage }}
+          CLEANUP_EVIDENCE_PATH: /tmp/nixmac-e2e-cleanup-${{ github.run_id }}-${{ github.run_attempt }}.json
         run: |
           set +e
           node tests/e2e/computer-use/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id cleanup \
             --label "Cleanup" \
             --category cleanup \
-            --note "Restoring remote app-support state, authorization policy, launchd secrets, and staged app bundle."
+            --note "Restoring the original system generation, target-formula baseline, app support, authorization policy, launchd secrets, and staged app bundle."
           if [[ -f /tmp/nixmac-e2e-tunnel.pid ]]; then
             kill "$(cat /tmp/nixmac-e2e-tunnel.pid)" >/dev/null 2>&1 || true
           fi
@@ -1189,87 +1261,72 @@ jobs:
               --note "remote-start outputs were unset; no remote cleanup was possible."
             exit 0
           fi
+          remote_system_marker="${{ steps.remote-start.outputs.remote_system_marker }}"
+          remote_restore_result="${{ steps.remote-start.outputs.remote_restore_result }}"
+          remote_system_marker_pending="${remote_system_marker}.pending-${{ steps.remote-start.outputs.run_id_safe }}"
+          ssh_common=(-i ~/.ssh/nixmac-e2e -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts)
+          marker_probe=""
+          marker_probe_rc=1
+          for marker_probe_attempt in 1 2 3; do
+            # shellcheck disable=SC2029
+            marker_probe="$(ssh "${ssh_common[@]}" "$SSH_DEST" "if test -f $(printf '%q' "$remote_system_marker"); then echo present; else echo absent; fi")"
+            marker_probe_rc=$?
+            [[ "$marker_probe_rc" -eq 0 ]] && break
+            sleep "$marker_probe_attempt"
+          done
+          if [[ "$marker_probe_rc" -ne 0 ]]; then
+            node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+              --id cleanup \
+              --status failure \
+              --note "Could not determine durable recovery-marker state after three SSH attempts; no cleanup downgrade was attempted."
+            exit 1
+          fi
+          case "$marker_probe" in
+            present)
+              marker_for_restore="$remote_system_marker"
+              evidence_remote_path="$remote_restore_result"
+              ;;
+            absent)
+              marker_for_restore=""
+              evidence_remote_path="/tmp/nixmac-e2e-remote-restore-result.json"
+              # shellcheck disable=SC2029
+              ssh "${ssh_common[@]}" "$SSH_DEST" "rm -f $(printf '%q' "$remote_system_marker_pending")" >/dev/null 2>&1 || true
+              ;;
+            *)
+              node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+                --id cleanup \
+                --status failure \
+                --note "Recovery-marker probe returned an invalid response; no cleanup downgrade was attempted."
+              exit 1
+              ;;
+          esac
+
           remote_backup_q=$(printf '%q' "${REMOTE_BACKUP:-}")
           remote_config_q=$(printf '%q' "${REMOTE_CONFIG:-}")
           remote_key_file_q=$(printf '%q' "${REMOTE_KEY_FILE:-}")
           remote_auth_backup_q=$(printf '%q' "${REMOTE_AUTH_BACKUP:-}")
           remote_app_stage_q=$(printf '%q' "${REMOTE_APP_STAGE:-}")
-          ssh -i ~/.ssh/nixmac-e2e \
-            -o BatchMode=yes \
-            -o StrictHostKeyChecking=yes \
-            -o UserKnownHostsFile=~/.ssh/known_hosts \
-            "$SSH_DEST" \
-            "REMOTE_BACKUP=$remote_backup_q REMOTE_CONFIG=$remote_config_q REMOTE_KEY_FILE=$remote_key_file_q REMOTE_AUTH_BACKUP=$remote_auth_backup_q REMOTE_APP_STAGE=$remote_app_stage_q bash -s" <<'REMOTE'
-          set +e
-          cleanup_status=0
-          auth_requires_user() {
-            local plist_path="$1"
-            /usr/bin/plutil -extract authenticate-user raw -o - "$plist_path" 2>/dev/null || true
-          }
-          pkill -f 'nixmac-activate-temp|with administrator privileges|/nix/store/.*/activate|ln -s /etc/static/pam.d/sudo_local /etc/pam.d/sudo_local' >/dev/null 2>&1 || true
-          osascript -e 'tell application id "com.darkmatter.nixmac" to quit' >/dev/null 2>&1 || true
-          pkill -x nixmac >/dev/null 2>&1 || true
-          rm -f "$REMOTE_KEY_FILE"
-          rm -rf "$REMOTE_APP_STAGE" || cleanup_status=1
-          SUPPORT="$HOME/Library/Application Support/com.darkmatter.nixmac"
-          STATE=""
-          if [[ -n "$REMOTE_BACKUP" && -f "${REMOTE_BACKUP}.state" ]]; then
-            STATE="$(cat "${REMOTE_BACKUP}.state")"
-          fi
-          GUI_UID="$(stat -f %u /dev/console 2>/dev/null || id -u)"
-          if ! sudo -n launchctl asuser "$GUI_UID" launchctl unsetenv OPENROUTER_API_KEY >/dev/null 2>&1; then
-            launchctl unsetenv OPENROUTER_API_KEY >/dev/null 2>&1 || true
-          fi
-          if [[ -n "$REMOTE_AUTH_BACKUP" && -f "$REMOTE_AUTH_BACKUP" ]]; then
-            if [[ "$(auth_requires_user "$REMOTE_AUTH_BACKUP")" != "true" ]]; then
-              echo "error: refusing to restore system.privilege.admin from an unexpected backup" >&2
-              cleanup_status=1
-            elif ! sudo -n security authorizationdb write system.privilege.admin < "$REMOTE_AUTH_BACKUP" >/tmp/nixmac-e2e-auth-restore.out 2>/tmp/nixmac-e2e-auth-restore.err; then
-              echo "error: failed to restore system.privilege.admin authorization policy" >&2
-              cleanup_status=1
+          remote_system_marker_q=$(printf '%q' "$marker_for_restore")
+          remote_restore_result_q=$(printf '%q' "$evidence_remote_path")
+          rm -f "$CLEANUP_EVIDENCE_PATH"
+
+          # shellcheck disable=SC2029
+          ssh "${ssh_common[@]}" "$SSH_DEST" \
+            "REMOTE_BACKUP=$remote_backup_q REMOTE_CONFIG=$remote_config_q REMOTE_KEY_FILE=$remote_key_file_q REMOTE_AUTH_BACKUP=$remote_auth_backup_q REMOTE_APP_STAGE=$remote_app_stage_q REMOTE_SYSTEM_MARKER=$remote_system_marker_q REMOTE_RESTORE_RESULT=$remote_restore_result_q bash -s" \
+            < ops/scripts/e2e/remote-restore.sh
+          cleanup_status=$?
+          evidence_copied=false
+          for evidence_attempt in 1 2 3; do
+            if scp "${ssh_common[@]}" "$SSH_DEST:$evidence_remote_path" "$CLEANUP_EVIDENCE_PATH" >/dev/null 2>&1; then
+              evidence_copied=true
+              break
             fi
-          fi
-          current_auth="$(mktemp /tmp/nixmac-e2e-auth-current.XXXXXX)"
-          if sudo -n security authorizationdb read system.privilege.admin > "$current_auth" 2>/tmp/nixmac-e2e-auth-current.err; then
-            if [[ "$(auth_requires_user "$current_auth")" != "true" ]]; then
-              echo "error: system.privilege.admin did not return to authenticated baseline" >&2
-              cleanup_status=1
-            fi
-          else
-            echo "error: could not read system.privilege.admin after cleanup" >&2
+            sleep "$evidence_attempt"
+          done
+          if [[ "$evidence_copied" != "true" ]]; then
+            echo "error: could not fetch trusted cleanup evidence after three attempts" >&2
             cleanup_status=1
           fi
-          rm -f "$current_auth"
-          if sudo -n launchctl asuser "$GUI_UID" launchctl getenv OPENROUTER_API_KEY >/tmp/nixmac-e2e-openrouter-env.out 2>/dev/null; then
-            if [[ -s /tmp/nixmac-e2e-openrouter-env.out ]]; then
-              echo "error: OPENROUTER_API_KEY still exists in GUI launchd environment after cleanup" >&2
-              cleanup_status=1
-            fi
-          elif launchctl getenv OPENROUTER_API_KEY >/tmp/nixmac-e2e-openrouter-env.out 2>/dev/null; then
-            if [[ -s /tmp/nixmac-e2e-openrouter-env.out ]]; then
-              echo "error: OPENROUTER_API_KEY still exists in launchd environment after cleanup" >&2
-              cleanup_status=1
-            fi
-          fi
-          rm -f /tmp/nixmac-e2e-openrouter-env.out
-          if [[ "$STATE" == "existed" && -d "$REMOTE_BACKUP" ]]; then
-            if ! rm -rf "$SUPPORT" || ! mkdir -p "$(dirname "$SUPPORT")" || ! cp -pR "$REMOTE_BACKUP" "$SUPPORT"; then
-              echo "error: failed to restore nixmac app-support backup" >&2
-              cleanup_status=1
-            fi
-          elif [[ "$STATE" == "absent" ]]; then
-            if ! rm -rf "$SUPPORT"; then
-              echo "error: failed to remove disposable nixmac app-support directory" >&2
-              cleanup_status=1
-            fi
-          fi
-          rm -rf "$REMOTE_BACKUP" "${REMOTE_BACKUP}.state" || cleanup_status=1
-          rm -rf "$REMOTE_CONFIG" || cleanup_status=1
-          rm -f "$REMOTE_AUTH_BACKUP" || cleanup_status=1
-          pkill -f '[c]odex app-server .*--listen ws://127.0.0.1:18790' >/dev/null 2>&1 || true
-          exit "$cleanup_status"
-          REMOTE
-          cleanup_status=$?
           node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id cleanup \
             --status "$([[ "$cleanup_status" -eq 0 ]] && echo success || echo failure)" \
@@ -1279,6 +1336,8 @@ jobs:
       - name: Refresh report timing metadata
         if: always()
         shell: bash
+        env:
+          CLEANUP_EVIDENCE_PATH: /tmp/nixmac-e2e-cleanup-${{ github.run_id }}-${{ github.run_attempt }}.json
         run: |
           latest_report="$(find artifacts/computer-use-remote -mindepth 2 -maxdepth 2 -name state.json -type f -exec dirname {} \; 2>/dev/null | sort | tail -1 || true)"
           if [[ -z "$latest_report" || ! -f "$latest_report/state.json" ]]; then
@@ -1292,9 +1351,16 @@ jobs:
           node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id timing-report-refresh \
             --status success
-          node tests/e2e/computer-use/run-remote-cua.mjs render-existing \
-            --run-dir "$latest_report" \
-            --workflow-timings "$NIXMAC_E2E_WORKFLOW_TIMINGS"
+          if [[ -n "${{ steps.remote-start.outputs.remote_backup }}" ]]; then
+            node tests/e2e/computer-use/run-remote-cua.mjs finalize-cleanup \
+              --run-dir "$latest_report" \
+              --evidence "$CLEANUP_EVIDENCE_PATH" \
+              --workflow-timings "$NIXMAC_E2E_WORKFLOW_TIMINGS"
+          else
+            node tests/e2e/computer-use/run-remote-cua.mjs render-existing \
+              --run-dir "$latest_report" \
+              --workflow-timings "$NIXMAC_E2E_WORKFLOW_TIMINGS"
+          fi
 
       - name: Collect evidence report metadata
         id: report-meta

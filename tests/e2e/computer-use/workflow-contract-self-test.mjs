@@ -59,6 +59,46 @@ const prepare = section(/^  prepare:$/m, /^  remote-computer-use:$/m);
 const remote = section(/^  remote-computer-use:$/m, /^  publish-report:$/m);
 const publish = section(/^  publish-report:$/m, /^  e2e-result:$/m);
 const result = section(/^  e2e-result:$/m);
+const cleanupStep = section(
+  /^      - name: Restore remote host$/m,
+  /^      - name: Refresh report timing metadata$/m,
+);
+
+assert.match(
+  remote,
+  /system-restore-marker\.json[\s\S]*prepare-system-marker\.mjs[\s\S]*REMOTE_SYSTEM_MARKER_PENDING[\s\S]*mv "\$REMOTE_SYSTEM_MARKER_PENDING" "\$REMOTE_SYSTEM_MARKER"/,
+  "remote setup must prove formula/system preconditions and atomically arm durable recovery before mutation",
+);
+assert.match(
+  cleanupStep,
+  /< ops\/scripts\/e2e\/remote-restore\.sh/,
+  "always-run cleanup must execute the checked-in remote restore script",
+);
+assert.match(
+  cleanupStep,
+  /for marker_probe_attempt in 1 2 3[\s\S]*marker_probe_rc[\s\S]*Could not determine durable recovery-marker state after three SSH attempts[\s\S]*case "\$marker_probe" in[\s\S]*present\)[\s\S]*absent\)[\s\S]*Recovery-marker probe returned an invalid response/,
+  "cleanup must distinguish marker absence from SSH transport failure and invalid probe output",
+);
+assert.match(
+  cleanupStep,
+  /evidence_remote_path="\/tmp\/nixmac-e2e-remote-restore-result\.json"[\s\S]*SSH_DEST:\$evidence_remote_path/,
+  "marker-absent legacy cleanup must fetch its own diagnostic evidence path",
+);
+assert.doesNotMatch(
+  cleanupStep,
+  /auth_requires_user\(\)|authorizationdb write system\.privilege\.admin < "\$REMOTE_AUTH_BACKUP"/,
+  "workflow cleanup must not duplicate the checked-in restore implementation",
+);
+assert.match(
+  remote,
+  /finalize-cleanup[\s\S]*--evidence "\$CLEANUP_EVIDENCE_PATH"/,
+  "final report verdict must be finalized from trusted host-restoration evidence",
+);
+assert.match(
+  remote,
+  /if \[\[ -n "\$\{\{ steps\.remote-start\.outputs\.remote_backup \}\}" \]\]; then[\s\S]*finalize-cleanup[\s\S]*else[\s\S]*render-existing/,
+  "stale and pre-remote reports must not be converted into cleanup failures without remote-start outputs",
+);
 
 for (const [jobName, job] of [
   ["prepare", prepare],
@@ -68,6 +108,22 @@ for (const [jobName, job] of [
     job,
     /name: Install media dependencies[\s\S]*apt-get install -y ffmpeg[\s\S]*LD_LIBRARY_PATH=/,
     `${jobName} must clear the Nix LD_LIBRARY_PATH before invoking Ubuntu media tools`,
+  );
+}
+
+for (const requiredSelfTest of [
+  "coverage-freshness-self-test.mjs",
+  "remote-stage-self-test.mjs",
+  "prepare-system-marker-self-test.mjs",
+  "cleanup-evidence-self-test.mjs",
+  "system-lifecycle-self-test.mjs",
+  "finalize-cleanup-self-test.mjs",
+  "remote-restore-self-test.sh",
+]) {
+  assert.match(
+    prepare,
+    new RegExp(requiredSelfTest.replaceAll(".", "\\.")),
+    `prepare validation must execute ${requiredSelfTest}`,
   );
 }
 
@@ -341,6 +397,16 @@ assert.ok(
 assert.ok(
   staleRecheckIndex < prepareSshIndex,
   "stale recheck must happen before SSH or remote work",
+);
+assert.match(
+  remote,
+  /preflight_attempts="\$\{NIXMAC_E2E_REMOTE_PREFLIGHT_ATTEMPTS:-12\}"[\s\S]*for \(\(attempt = 1; attempt <= preflight_attempts; attempt \+= 1\)\); do[\s\S]*if node tests\/e2e\/computer-use\/check-remote\.mjs[\s\S]*sleep 10/,
+  "remote preflight must retry transient SSH readiness failures inside one no-touch workflow run",
+);
+assert.match(
+  remote,
+  /--status failure[\s\S]*Remote readiness did not recover after \$preflight_attempts attempts/,
+  "exhausted remote readiness retries must record a failed timing phase and stop before staging",
 );
 assert.match(
   remote,

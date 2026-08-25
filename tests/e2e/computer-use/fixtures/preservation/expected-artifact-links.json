@@ -231,6 +231,10 @@
       "path": "texts/22-homebrew-step-3-ready.txt"
     },
     {
+      "label": "host-restoration",
+      "path": "texts/host-restoration.txt"
+    },
+    {
       "label": "HTML report inspection",
       "path": "texts/61-report-inspection-Safari.txt"
     },
@@ -309,6 +313,10 @@
     {
       "label": "suggestion-card",
       "path": "texts/41-suggestion-card.txt"
+    },
+    {
+      "label": "system-lifecycle",
+      "path": "texts/system-lifecycle.txt"
     },
     {
       "label": "typed-intent",

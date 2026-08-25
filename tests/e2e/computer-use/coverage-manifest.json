@@ -1,16 +1,17 @@
 {
-  "version": 1,
-  "description": "Baseline user-visible nixmac surfaces that must stay mapped to Computer Use E2E scenarios or explicit waivers.",
+  "version": 2,
+  "description": "Direct user-visible nixmac surfaces must be mapped to scenarios, covered by reviewed waivers, or explicitly classified as non-claiming harness code. Rust implementation inventory is diagnostic and never inflates UI coverage.",
   "candidateRoots": [
     "apps/native/src/components",
-    "apps/native/src/components/widget",
     "apps/native/src/hooks",
     "apps/native/src-tauri/src"
   ],
   "candidateIncludes": [
     "apps/native/src/components/preview-indicator/.*\\.tsx$",
     "apps/native/src/components/widget/.+\\.tsx$",
-    "apps/native/src/hooks/use-(apply|rollback|evolve|git-operations|history|history-restore|rebuild-stream|updater|permissions|darwin-config)\\.ts$",
+    "apps/native/src/hooks/use-(apply|rollback|evolve|git-operations|history|history-restore|rebuild-stream|updater|permissions|darwin-config)\\.ts$"
+  ],
+  "diagnosticInventoryIncludes": [
     "apps/native/src-tauri/src/(commands|rebuild|history|storage|ai|state|system|managed_edits|summarize)/.*\\.rs$",
     "apps/native/src-tauri/src/evolve/(mod|tools)\\.rs$"
   ],
@@ -26,24 +27,26 @@
   "surfaces": [
     {
       "id": "e2e-harness-rust",
-      "label": "Debug-only E2E harness hooks",
-      "scenarioKeys": [],
+      "label": "Debug-only E2E runtime input",
       "coverageDisposition": "non-claiming",
-      "coverageNote": "Changed file is tracked for PR visibility, but this surface does not claim user-facing scenario coverage for NIXMAC_E2E_* debug harness branches.",
+      "scenarioKeys": [],
+      "coverageNote": "The runtime reader is exercised by the harness but is not a user-facing product surface. Mixed production files are mapped to their real Launch or Build scenarios instead of being hidden here.",
       "sourcePrefixes": [
-        "apps/native/src-tauri/src/main.rs",
-        "apps/native/src-tauri/src/rebuild/darwin.rs"
+        "apps/native/src-tauri/src/e2e_runtime.rs"
       ]
     },
     {
       "id": "app-shell",
       "label": "App shell, header controls, stepper, prompt start state",
+      "coverageDisposition": "mapped",
       "scenarioKeys": ["launch", "typedIntent"],
       "sourcePrefixes": [
+        "apps/native/src-tauri/src/main.rs",
         "apps/native/src/components/widget/widget.tsx",
         "apps/native/src/components/widget/layout/header.tsx",
         "apps/native/src/components/widget/layout/stepper.tsx",
         "apps/native/src/components/widget/layout/step-actions-header.tsx",
+        "apps/native/src/components/widget/layout/step-content-wrapper.tsx",
         "apps/native/src/components/widget/layout/get-started-message.tsx",
         "apps/native/src/components/widget/badges/config-dir-badge.tsx",
         "apps/native/src/components/widget/layout/error-message.tsx",
@@ -54,7 +57,8 @@
     },
     {
       "id": "update-banner",
-      "label": "Update banner non-blocking behavior",
+      "label": "Update banner non-blocking behavior when no update is active",
+      "coverageDisposition": "mapped",
       "scenarioKeys": ["updateBanner"],
       "sourcePrefixes": [
         "apps/native/src/components/widget/layout/update-banner.tsx",
@@ -62,30 +66,85 @@
       ]
     },
     {
-      "id": "settings",
-      "label": "Settings dialog and all settings tabs",
+      "id": "active-update-notification",
+      "label": "Active update notification state",
+      "coverageDisposition": "waived",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src/components/widget/notifications/upstream-update-available.tsx",
+        "apps/native/src-tauri/src/commands/updater.rs"
+      ],
+      "waiver": {
+        "reason": "The configured remote lane proves that no update UI blocks the flow, but it does not create and dismiss a real active-update notification.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-08-24",
+        "reviewedAt": "2026-08-24",
+        "reviewBy": "2026-09-30",
+        "risk": "medium",
+        "exitCriteria": "Add a deterministic update-available fixture, prove the notification content and actions through Computer Use, and return to a usable home screen."
+      }
+    },
+    {
+      "id": "settings-covered-tabs",
+      "label": "Settings General, AI Models, API Keys, and Preferences tabs",
+      "coverageDisposition": "mapped",
       "scenarioKeys": [
         "settingsGeneral",
         "settingsAIModels",
         "settingsAPIKeys",
         "settingsPreferences"
       ],
-      "coverageNote": "Storage files are mapped here because settings persistence, API-key settings, and debug-only E2E settings bypasses are exercised through the settings/product-proof scenarios. The OS keychain path is intentionally bypassed in E2E mode and still needs release/manual verification.",
+      "coverageNote": "Only the four tabs named by the scenarios are claimed here. Other current tabs have a separate reviewed waiver.",
       "sourcePrefixes": [
         "apps/native/src/components/widget/settings/settings-dialog.tsx",
-        "apps/native/src/components/widget/settings/",
+        "apps/native/src/components/widget/settings/general-tab.tsx",
+        "apps/native/src/components/widget/settings/ai-models-tab.tsx",
+        "apps/native/src/components/widget/settings/api-keys-tab.tsx",
+        "apps/native/src/components/widget/settings/preferences-tab.tsx",
         "apps/native/src/components/widget/controls/directory-picker.tsx",
-        "apps/native/src/components/widget/badges/gitignore-badge.tsx",
         "apps/native/src/components/widget/controls/model-combobox.tsx",
+        "apps/native/src/components/widget/controls/provider-icons/provider-icon.tsx",
+        "apps/native/src/components/widget/badges/gitignore-badge.tsx",
         "apps/native/src/hooks/use-darwin-config.ts",
         "apps/native/src-tauri/src/storage/store.rs",
         "apps/native/src-tauri/src/storage/credential_store.rs",
-        "apps/native/src-tauri/src/storage/mod.rs"
+        "apps/native/src-tauri/src/storage/mod.rs",
+        "apps/native/src-tauri/src/state/preferences.rs",
+        "apps/native/src-tauri/src/state/ui_prefs.rs"
       ]
+    },
+    {
+      "id": "settings-uncovered-tabs",
+      "label": "Settings Account, Permissions, Tuning, and Developer tabs",
+      "coverageDisposition": "waived",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src/components/widget/settings/account-tab.tsx",
+        "apps/native/src/components/widget/settings/permissions-tab.tsx",
+        "apps/native/src/components/widget/settings/tuning-tab.tsx",
+        "apps/native/src/components/widget/settings/auto-config-field.tsx",
+        "apps/native/src/components/widget/settings/auto-tuning-section.tsx",
+        "apps/native/src/components/widget/settings/backup-restore-section.tsx",
+        "apps/native/src/components/widget/settings/developer-tab.tsx",
+        "apps/native/src/components/widget/settings/overridable-flags.ts",
+        "apps/native/src-tauri/src/commands/account.rs",
+        "apps/native/src-tauri/src/commands/settings_io.rs",
+        "apps/native/src-tauri/src/commands/ui_prefs.rs"
+      ],
+      "waiver": {
+        "reason": "The remote lane currently selects four settings tabs only; Account, Permissions, Tuning, and developer-only controls are visible in current source but unexercised.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-08-24",
+        "reviewedAt": "2026-08-24",
+        "reviewBy": "2026-09-30",
+        "risk": "high",
+        "exitCriteria": "Open each remaining tab through Computer Use, assert distinctive controls, exercise safe read-only interactions, and seed developer mode for the Developer tab."
+      }
     },
     {
       "id": "support-dialogs",
       "label": "Feedback and Report Issue dialogs",
+      "coverageDisposition": "mapped",
       "scenarioKeys": ["feedback", "reportIssue"],
       "sourcePrefixes": [
         "apps/native/src/components/widget/feedback/feedback-dialog.tsx",
@@ -97,40 +156,60 @@
     {
       "id": "history",
       "label": "History list, restore preview, and restore confirmation",
+      "coverageDisposition": "mapped",
       "scenarioKeys": ["history", "rollbackCleanup"],
       "sourcePrefixes": [
-        "apps/native/src/components/widget/history/analyze-history-button.tsx",
-        "apps/native/src/components/widget/history/analyze-history-item-button.tsx",
         "apps/native/src/components/widget/history/",
         "apps/native/src/components/widget/steps/history-step.tsx",
         "apps/native/src/hooks/use-history.ts",
         "apps/native/src/hooks/use-history-restore.ts",
-        "apps/native/src-tauri/src/history/get_history.rs",
+        "apps/native/src-tauri/src/history/",
         "apps/native/src-tauri/src/rebuild/finalize_restore.rs"
+      ]
+    },
+    {
+      "id": "change-metadata-badges",
+      "label": "Change and history metadata badges",
+      "coverageDisposition": "mapped",
+      "scenarioKeys": ["history", "review", "summary", "diff"],
+      "sourcePrefixes": [
+        "apps/native/src/components/widget/badges/base-commit-badge.tsx",
+        "apps/native/src/components/widget/badges/change-badge.tsx",
+        "apps/native/src/components/widget/badges/commit-hash-badge.tsx",
+        "apps/native/src/components/widget/badges/current-item-badge.tsx",
+        "apps/native/src/components/widget/badges/external-badge.tsx",
+        "apps/native/src/components/widget/badges/file-count-badge.tsx",
+        "apps/native/src/components/widget/badges/filename-badge.tsx",
+        "apps/native/src/components/widget/badges/time-badge.tsx"
       ]
     },
     {
       "id": "console",
       "label": "Console surface",
+      "coverageDisposition": "mapped",
       "scenarioKeys": ["console"],
       "sourcePrefixes": ["apps/native/src/components/widget/layout/console.tsx"]
     },
     {
       "id": "provider-review",
-      "label": "Prompt submission, provider progress, Review, Summary, and Diff",
+      "label": "Prompt submission, provider progress, Review, Semantic summary, and Diff",
+      "coverageDisposition": "mapped",
       "scenarioKeys": ["suggestionCards", "typedIntent", "review", "summary", "diff"],
       "sourcePrefixes": [
         "apps/native/src/components/widget/badges/badge-list.tsx",
-        "apps/native/src/components/widget/promptinput/begin-evolve-warning.tsx",
         "apps/native/src/components/widget/promptinput/conversational-response.tsx",
         "apps/native/src/components/widget/promptinput/mac-recommendation-chip.tsx",
         "apps/native/src/components/widget/promptinput/prompt-history-badge.tsx",
         "apps/native/src/components/widget/promptinput/prompt-input.tsx",
         "apps/native/src/components/widget/promptinput/prompt-input-section.tsx",
+        "apps/native/src/components/widget/promptinput/spotlight-ticker.tsx",
+        "apps/native/src/components/widget/promptinput/trending-feed.tsx",
         "apps/native/src/components/widget/steps/begin-step.tsx",
-        "apps/native/src/components/widget/steps/evolve-step.tsx",
-        "apps/native/src/components/widget/steps/manual-evolve-step.tsx",
+        "apps/native/src/components/widget/steps/review-step.tsx",
+        "apps/native/src/components/widget/drift/",
         "apps/native/src/components/widget/summaries/",
+        "apps/native/src/components/widget/overlays/evolve-overlay-panel.tsx",
+        "apps/native/src/components/widget/overlays/evolve-progress.tsx",
         "apps/native/src/hooks/use-evolve.ts",
         "apps/native/src/hooks/use-prompt-history.ts",
         "apps/native/src/hooks/use-recommended-prompt.ts",
@@ -138,25 +217,59 @@
         "apps/native/src-tauri/src/commands/evolve.rs",
         "apps/native/src-tauri/src/commands/evolve_state.rs",
         "apps/native/src-tauri/src/commands/summarize.rs",
+        "apps/native/src-tauri/src/ai/defaults.rs",
+        "apps/native/src-tauri/src/ai/log_summarizer.rs",
         "apps/native/src-tauri/src/ai/provider_errors.rs",
+        "apps/native/src-tauri/src/ai/providers/openai.rs",
         "apps/native/src-tauri/src/state/evolve_state.rs",
         "apps/native/src-tauri/src/summarize/"
       ]
     },
     {
+      "id": "provider-variants",
+      "label": "CLI and Ollama provider execution variants",
+      "coverageDisposition": "waived",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src-tauri/src/ai/model_capabilities.rs",
+        "apps/native/src-tauri/src/ai/providers/cli.rs",
+        "apps/native/src-tauri/src/ai/providers/ollama.rs"
+      ],
+      "waiver": {
+        "reason": "The default lane uses the real OpenAI-compatible/OpenRouter path and renders provider settings, but it does not execute CLI or Ollama provider sessions.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-08-24",
+        "reviewedAt": "2026-08-24",
+        "reviewBy": "2026-09-30",
+        "risk": "medium",
+        "exitCriteria": "Add calibrated provider-variant lanes that submit a real intent, reach Review, and capture provider-specific failure handling for CLI and Ollama."
+      }
+    },
+    {
       "id": "inline-question-answer",
       "label": "Inline provider question and answer progression",
-      "scenarioKeys": ["inlineQuestionAnswer"],
+      "coverageDisposition": "waived",
+      "scenarioKeys": [],
       "sourcePrefixes": [
         "apps/native/src/components/widget/overlays/evolve-progress.tsx",
         "apps/native/src-tauri/src/commands/evolve.rs",
         "apps/native/src-tauri/src/evolve/mod.rs",
         "apps/native/src-tauri/src/evolve/tools.rs"
-      ]
+      ],
+      "waiver": {
+        "reason": "A calibrated optional scenario exists, but it is not executed by the default main-coverage lane and therefore cannot satisfy baseline coverage.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-08-24",
+        "reviewedAt": "2026-08-24",
+        "reviewBy": "2026-09-30",
+        "risk": "medium",
+        "exitCriteria": "Promote the inline-question case to the default lane or run it in a required dedicated job that records question, answer, and continued provider progression."
+      }
     },
     {
       "id": "homebrew-badge",
       "label": "Homebrew untracked package badge and add-to-config popover",
+      "coverageDisposition": "mapped",
       "scenarioKeys": ["homebrewSaveRollback"],
       "sourcePrefixes": [
         "apps/native/src/components/widget/promptinput/homebrew-badge.tsx",
@@ -168,6 +281,7 @@
     {
       "id": "system-defaults-cta",
       "label": "macOS system defaults untracked customization badge and add-to-config popover",
+      "coverageDisposition": "mapped",
       "scenarioKeys": ["customizationSaveRollback"],
       "sourcePrefixes": [
         "apps/native/src/components/widget/promptinput/system-defaults-cta.tsx",
@@ -179,6 +293,7 @@
     {
       "id": "build-boundaries",
       "label": "Build & Test, discard, rollback, and confirmation boundaries",
+      "coverageDisposition": "mapped",
       "scenarioKeys": ["buildBoundary", "discard", "rollbackCleanup"],
       "sourcePrefixes": [
         "apps/native/src/components/widget/controls/build-head-button.tsx",
@@ -186,25 +301,26 @@
         "apps/native/src/components/widget/controls/confirm-button.tsx",
         "apps/native/src/components/widget/controls/confirmation-dialog.tsx",
         "apps/native/src/components/widget/notifications/external-build-detected.tsx",
-        "apps/native/src/components/widget/steps/evolve-step.tsx",
+        "apps/native/src/components/widget/drift/drift-review.tsx",
         "apps/native/src/components/widget/steps/commit-step.tsx",
         "apps/native/src/components/widget/history/discard-uncommitted-dialog.tsx",
+        "apps/native/src/components/widget/overlays/rebuild-overlay-panel.tsx",
         "apps/native/src/hooks/use-apply.ts",
         "apps/native/src/hooks/use-rebuild-stream.ts",
         "apps/native/src/hooks/use-rollback.ts",
-        "apps/native/src-tauri/src/rebuild/finalize_apply.rs",
-        "apps/native/src-tauri/src/rebuild/rollback.rs",
+        "apps/native/src-tauri/src/rebuild/",
         "apps/native/src-tauri/src/commands/rollback.rs"
       ]
     },
     {
       "id": "step-3-save",
-      "label": "Step 3 Save / Commit",
+      "label": "Step 3 Keep Changes and Commit",
+      "coverageDisposition": "mapped",
       "scenarioKeys": ["saveFlow"],
       "sourcePrefixes": [
         "apps/native/src/components/widget/controls/commit-message.tsx",
         "apps/native/src/components/widget/layout/merge-section.tsx",
-        "apps/native/src/components/widget/steps/manual-commit-step.tsx",
+        "apps/native/src/components/widget/steps/commit-step.tsx",
         "apps/native/src/hooks/use-git-operations.ts",
         "apps/native/src-tauri/src/commands/git.rs",
         "apps/native/src-tauri/src/commands/summarize.rs",
@@ -213,47 +329,139 @@
     },
     {
       "id": "onboarding-permissions",
-      "label": "First-run permissions and nix setup/onboarding",
+      "label": "First-run permissions, Nix setup, source import, inference, and initial build",
+      "coverageDisposition": "waived",
       "scenarioKeys": [],
       "sourcePrefixes": [
+        "apps/native/src/components/widget/onboarding/",
+        "apps/native/src/components/widget/permissions/",
         "apps/native/src/components/widget/controls/bootstrap-config.tsx",
-        "apps/native/src/components/widget/layout/step-content-wrapper.tsx",
-        "apps/native/src/components/widget/steps/nix-setup-step.tsx",
-        "apps/native/src/components/widget/steps/permissions-step.tsx",
-        "apps/native/src/components/widget/steps/setup-step.tsx",
+        "apps/native/src/components/widget/controls/flake-dir-chooser.tsx",
+        "apps/native/src/components/widget/controls/repo-import.tsx",
+        "apps/native/src/components/widget/controls/repo-ref-input.tsx",
         "apps/native/src/hooks/use-permissions.ts",
         "apps/native/src/hooks/use-nix-install.ts",
         "apps/native/src-tauri/src/system/permissions.rs",
-        "apps/native/src-tauri/src/commands/permissions.rs"
+        "apps/native/src-tauri/src/commands/permissions.rs",
+        "apps/native/src-tauri/src/commands/onboarding.rs",
+        "apps/native/src-tauri/src/state/nix_install_state.rs",
+        "apps/native/src-tauri/src/state/onboarding.rs",
+        "apps/native/src-tauri/src/state/permissions_state.rs"
       ],
       "waiver": {
-        "reason": "Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage.",
+        "reason": "The remote lane deliberately starts from a configured profile, so the rewritten first-run wizard and its durable setup facts are not exercised.",
         "owner": "nixmac-product-proof",
         "created": "2026-05-02",
-        "reviewBy": "2026-06-15",
+        "reviewedAt": "2026-08-24",
+        "reviewBy": "2026-09-30",
         "risk": "high",
-        "exitCriteria": "Add a clean-profile Computer Use scenario that starts from first launch, proves permissions/onboarding/nix setup surfaces, and records a passing report on the remote Mac."
+        "exitCriteria": "Add a clean-profile Computer Use scenario covering permissions, Nix detection/setup, source import, customizations, inference, first build, and arrival at the configured home screen."
+      }
+    },
+    {
+      "id": "filesystem-route",
+      "label": "Filesystem browser and seed-display route",
+      "coverageDisposition": "waived",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src/components/widget/filesystem/",
+        "apps/native/src-tauri/src/commands/peek.rs"
+      ],
+      "waiver": {
+        "reason": "The default lane observes the home prompt and untracked-state entry points but does not navigate the full filesystem route.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-08-24",
+        "reviewedAt": "2026-08-24",
+        "reviewBy": "2026-09-30",
+        "risk": "medium",
+        "exitCriteria": "Open the filesystem route, inspect section tabs and representative file rows, exercise seed-display navigation, and return to the main flow."
+      }
+    },
+    {
+      "id": "secrets-management",
+      "label": "Secrets vault management route",
+      "coverageDisposition": "waived",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src/components/widget/secrets/",
+        "apps/native/src-tauri/src/state/secrets_vault.rs",
+        "apps/native/src-tauri/src/storage/secrets.rs"
+      ],
+      "waiver": {
+        "reason": "The current disposable fixture does not open the Secrets route or provide a disposable vault for safe add, reveal, rotate, and apply actions.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-08-24",
+        "reviewedAt": "2026-08-24",
+        "reviewBy": "2026-09-30",
+        "risk": "high",
+        "exitCriteria": "Create a disposable secrets fixture and prove vault listing, add, reveal confirmation, rotate, apply, and cleanup without exposing secret values in artifacts."
+      }
+    },
+    {
+      "id": "repair-error-recovery",
+      "label": "Launch repair, error boundary, and fatal fallback surfaces",
+      "coverageDisposition": "waived",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src/components/widget/repair/",
+        "apps/native/src/components/widget/layout/AppErrorBoundary.tsx",
+        "apps/native/src/components/widget/layout/AppFatalFallback.tsx",
+        "apps/native/src-tauri/src/system/app_management_preflight.rs",
+        "apps/native/src-tauri/src/system/install_location.rs"
+      ],
+      "waiver": {
+        "reason": "The happy-path configured fixture does not force missing-config, prerequisite-regression, render-crash, or app-management repair states.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-08-24",
+        "reviewedAt": "2026-08-24",
+        "reviewBy": "2026-09-30",
+        "risk": "high",
+        "exitCriteria": "Add deterministic repair fixtures for blocking and banner states plus a render-error fixture, prove recovery actions, and verify the main UI becomes usable again."
+      }
+    },
+    {
+      "id": "advanced-edit-conflict-overlays",
+      "label": "Config editor and /etc conflict overlays",
+      "coverageDisposition": "waived",
+      "scenarioKeys": [],
+      "sourcePrefixes": [
+        "apps/native/src/components/widget/overlays/config-edit-overlay-panel.tsx",
+        "apps/native/src/components/widget/overlays/editor-panel.tsx",
+        "apps/native/src/components/widget/overlays/etc-clobber-conflict-list.tsx",
+        "apps/native/src/components/widget/overlays/etc-clobber-warning-dialog.tsx",
+        "apps/native/src-tauri/src/commands/editor.rs",
+        "apps/native/src-tauri/src/system/etc_preflight.rs"
+      ],
+      "waiver": {
+        "reason": "The fixed Homebrew prompt does not open the config editor or produce deterministic /etc clobber conflicts.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-08-24",
+        "reviewedAt": "2026-08-24",
+        "reviewBy": "2026-09-30",
+        "risk": "high",
+        "exitCriteria": "Add disposable editor and /etc-conflict fixtures, inspect each overlay, exercise cancellation and safe resolution boundaries, and prove no host files are changed outside the fixture."
       }
     },
     {
       "id": "sudo-local-activation-fixture",
       "label": "nix-darwin sudo_local activation path",
+      "coverageDisposition": "waived",
       "scenarioKeys": [],
-      "sourcePrefixes": [
-        "apps/native/templates/nix-darwin-determinate/modules/darwin/security.nix"
-      ],
+      "sourcePrefixes": ["apps/native/templates/nix-darwin-determinate/modules/darwin/security.nix"],
       "waiver": {
-        "reason": "The DXU remote lane disables sudo_local in the disposable fixture because unattended MacinCloud AppleScript activation can hang while creating /etc/pam.d/sudo_local. This is an explicit CI fixture waiver, not proof that the production sudo_local path works.",
+        "reason": "The remote disposable fixture disables sudo_local because unattended MacinCloud activation can hang while creating /etc/pam.d/sudo_local; this is not production-path proof.",
         "owner": "nixmac-product-proof",
         "created": "2026-05-02",
-        "reviewBy": "2026-06-15",
+        "reviewedAt": "2026-08-24",
+        "reviewBy": "2026-09-30",
         "risk": "medium",
-        "exitCriteria": "Add a dedicated sudo_local activation lane or an accepted manual release proof that exercises the production sudo_local path outside the DXU unattended fixture."
+        "exitCriteria": "Add a dedicated sudo_local activation lane or accepted manual release proof that exercises the production path outside the unattended fixture."
       }
     },
     {
       "id": "preview-indicator",
       "label": "Preview indicator floating commit/revert UI",
+      "coverageDisposition": "waived",
       "scenarioKeys": [],
       "sourcePrefixes": [
         "apps/native/src/components/preview-indicator/preview-indicator.tsx",
@@ -261,12 +469,13 @@
         "apps/native/src-tauri/src/commands/apply.rs"
       ],
       "waiver": {
-        "reason": "Not yet in the remote major-feature lane; needs either a deterministic preview-state setup or a real workflow that activates it.",
+        "reason": "The remote major-feature lane does not create the deterministic preview state required to show the floating commit/revert UI.",
         "owner": "nixmac-product-proof",
         "created": "2026-05-02",
-        "reviewBy": "2026-06-15",
+        "reviewedAt": "2026-08-24",
+        "reviewBy": "2026-09-30",
         "risk": "medium",
-        "exitCriteria": "Add a deterministic preview-state setup or real workflow that activates the preview indicator and proves commit/revert behavior through Computer Use."
+        "exitCriteria": "Add a deterministic preview-state setup or real workflow that activates the indicator and proves commit/revert behavior through Computer Use."
       }
     }
   ]

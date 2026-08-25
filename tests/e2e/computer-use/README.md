@@ -70,10 +70,11 @@ The runner:
 - conditionally saves visible untracked macOS customization and Homebrew item
   chips, commits them through Step 3, then restores the disposable baseline;
 - requires Homebrew chip commits to touch a supported Homebrew source file
-  (`modules/darwin/homebrew.nix` or `flake-modules/darwin.nix`) rather than only
-  proving that some committed change occurred;
+  (`modules/darwin/homebrew.nix`, `flake-modules/darwin.nix`, or
+  `.nixmac/homebrew/data.json`) rather than only proving that some committed
+  change occurred;
 - keeps the default PR lane to one calibrated full-lifecycle evolved prompt
-  (`homebrew-bat`) and exposes additional eval-derived evolved cases through
+  (`homebrew-hello`) and exposes additional eval-derived evolved cases through
   `NIXMAC_E2E_EXTRA_EVOLVED_CASES` after calibration;
 - confirms Build & Test only when `NIXMAC_E2E_DISPOSABLE_CONFIG=true`,
   `NIXMAC_E2E_ALLOW_BUILD_CONFIRM=true`, and a disposable baseline git commit
@@ -81,6 +82,12 @@ The runner:
 - when Build & Test is confirmed, reaches Step 3, commits the generated change,
   verifies the disposable repo HEAD changed with a clean worktree, then uses
   History restore to return the disposable config to baseline content;
+- requires the fixed zero-dependency `hello` formula to be absent before the
+  run and independently proves it installed/executable after Build & Test;
+- distinguishes product rollback from host teardown: History restore must
+  activate a new nix-darwin closure whose Homebrew plan fingerprint and config
+  match the scenario baseline, while the always-run teardown removes `hello`
+  and reactivates the exact pre-run host generation;
 - does not confirm Discard unless `NIXMAC_E2E_DISPOSABLE_CONFIG=true` and
   `NIXMAC_E2E_ALLOW_DISCARD_CONFIRM=true` are both set by a setup step that has
   proven the app is using a per-run disposable config;
@@ -165,14 +172,13 @@ tests/e2e/computer-use/coverage-manifest.json
 The manifest is evaluated during report rendering and appears near the top of
 the HTML report as Main Coverage Freshness.
 
-## PR Workflow
+## Workflow
 
-`.github/workflows/computer-use-e2e.yml` triggers on every pull request and
-`workflow_dispatch`. On same-repository pull requests, it publishes the generated
-report to the `gh-pages` report branch and upserts one sticky PR comment with
-the verdict, counts, public hosted `index.html`, Actions run, and artifact
-backup. The workflow does not send Slack or other team
-notifications.
+`.github/workflows/computer-use-e2e.yml` is manual-only (`workflow_dispatch`).
+Each run uploads the generated report as a private Actions artifact and sends no
+PR comment, Slack message, or other team notification. PR-specific planning and
+publishing paths remain available if a pull-request trigger is deliberately
+restored later.
 
 Centaur/Buzz terminal runs use the smaller
 `.github/workflows/publish-computer-use-e2e-report.yml` delivery lane after
@@ -507,7 +513,7 @@ NIXMAC_E2E_EXTRA_EVOLVED_CASES=screenshots-defaults,inline-question-font \
   node tests/e2e/computer-use/run-remote-cua.mjs run
 ```
 
-The default PR lane intentionally runs only the calibrated `homebrew-bat` case
+The default PR lane intentionally runs only the calibrated `homebrew-hello` case
 through Step 3 and rollback. The `screenshots-defaults` case comes from the WDIO
 fixture suite and eval corpus case 33, but stays opt-in until its Review/Diff
 accessibility-text evidence is calibrated on the real remote app. The
@@ -566,6 +572,30 @@ activation path run unattended during the disposable E2E run. The SSH user must
 therefore support `sudo -n security authorizationdb ...`. The workflow refuses
 to start if the pre-run policy is not at the expected authenticated baseline,
 and cleanup fails the check if the policy cannot be restored and read back.
+
+Before any privileged mutation, setup writes a strict recovery marker under
+the remote user's `~/.nixmac-e2e` directory. It records the exact pre-run
+system generation, the proven-absent `hello` fixture, and run-scoped recovery
+paths—never credentials. A stale marker blocks the next run. Cleanup is driven
+from `ops/scripts/e2e/remote-restore.sh`, restores and verifies the original
+system/profile, removes only the formula proven absent before the run, restores
+authorization and app support, and feeds trusted evidence back into the final
+HTML verdict. Failed restoration retains the marker and recovery inputs.
+
+To retry a retained-marker recovery explicitly after inspecting the host:
+
+```bash
+ssh -i ~/.ssh/nixmac-e2e \
+  -o BatchMode=yes \
+  -o StrictHostKeyChecking=yes \
+  -o UserKnownHostsFile=~/.ssh/known_hosts \
+  admin@HOST \
+  'REMOTE_SYSTEM_MARKER="$HOME/.nixmac-e2e/system-restore-marker.json" REMOTE_RESTORE_RESULT="$HOME/.nixmac-e2e/system-restore-result.json" bash -s' \
+  < ops/scripts/e2e/remote-restore.sh
+```
+
+Do not delete the marker to unblock a run; recovery must finish and verify the
+original system/formula state so the script removes it itself.
 
 The disposable remote config also disables
 `security.pam.services.sudo_local.enable`. On DXU MacinCloud, the real

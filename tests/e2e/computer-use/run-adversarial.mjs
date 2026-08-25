@@ -13,6 +13,7 @@ import {
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { TARGET_HOMEBREW_FORMULA } from "./scenario-catalog.mjs";
 
 const THIS_FILE = fileURLToPath(import.meta.url);
 const TOOL_DIR = path.dirname(THIS_FILE);
@@ -296,7 +297,7 @@ const caseDefinitions = [
         state,
         "saveFlow",
         "fail",
-        "Step 3 Commit was clicked, but the disposable repo did not show a clean committed bat/Homebrew change.",
+        `Step 3 Commit was clicked, but the disposable repo did not show a clean committed ${TARGET_HOMEBREW_FORMULA}/Homebrew change.`,
       );
     },
     evaluate(state) {

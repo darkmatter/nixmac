@@ -24,7 +24,10 @@
   "console": {
     "accessibilityRisk": "high",
     "accessibilityRiskReason": "The claim depends on accessibility text without a screenshot, usually due sensitive-surface redaction.",
-    "assertionTypes": ["accessibility_text", "sensitive_redaction"],
+    "assertionTypes": [
+      "accessibility_text",
+      "sensitive_redaction"
+    ],
     "evidenceStrength": "weak",
     "evidenceStrengthReason": "Pass relies on redacted accessibility text only, usually because screenshots are intentionally suppressed for a sensitive surface.",
     "failureClass": "",
@@ -40,7 +43,12 @@
   "customizationSaveRollback": {
     "accessibilityRisk": "low",
     "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence.",
-    "assertionTypes": ["accessibility_text", "action_result", "remote_state", "visual_heuristic"],
+    "assertionTypes": [
+      "accessibility_text",
+      "action_result",
+      "remote_state",
+      "visual_heuristic"
+    ],
     "evidenceStrength": "strong",
     "evidenceStrengthReason": "Computer Use path is backed by independent disposable git state proof.",
     "failureClass": "",
@@ -140,7 +148,12 @@
   "homebrewSaveRollback": {
     "accessibilityRisk": "low",
     "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence.",
-    "assertionTypes": ["accessibility_text", "action_result", "remote_state", "visual_heuristic"],
+    "assertionTypes": [
+      "accessibility_text",
+      "action_result",
+      "remote_state",
+      "visual_heuristic"
+    ],
     "evidenceStrength": "strong",
     "evidenceStrengthReason": "Computer Use path is backed by independent disposable git state proof.",
     "failureClass": "",
@@ -153,10 +166,35 @@
     "status": "pass",
     "visualAssertionStatus": "not-applicable"
   },
+  "hostRestoration": {
+    "accessibilityRisk": "low",
+    "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence.",
+    "assertionTypes": [
+      "remote_state",
+      "host_state",
+      "cleanup_attestation",
+      "accessibility_text"
+    ],
+    "evidenceStrength": "strong",
+    "evidenceStrengthReason": "User-visible interaction is backed by independent state proof.",
+    "failureClass": "",
+    "failureClassReason": "",
+    "id": "hostRestoration",
+    "label": "Remote host returns to its captured pre-run state",
+    "legacyEvidenceGrade": "state-confirmed",
+    "limitation": "Does not claim restoration of machine state outside the explicitly captured host fingerprint.",
+    "proof": "Trusted always-run teardown evidence requires the system profile and active system to match the pre-run generation, the known-absent target formula to be removed, authorization policy and app support to be restored, and recovery metadata to be cleared.",
+    "status": "pass",
+    "visualAssertionStatus": "not-applicable"
+  },
   "launch": {
     "accessibilityRisk": "low",
     "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
-    "assertionTypes": ["accessibility_text", "visual_heuristic", "visual_signalstats"],
+    "assertionTypes": [
+      "accessibility_text",
+      "visual_heuristic",
+      "visual_signalstats"
+    ],
     "evidenceStrength": "operational",
     "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
     "failureClass": "",
@@ -193,10 +231,10 @@
     "failureClass": "",
     "failureClassReason": "",
     "id": "reportInspection",
-    "label": "Generated HTML report is inspected with Computer Use",
+    "label": "Generated HTML report is inspected or integrity-verified",
     "legacyEvidenceGrade": "action-confirmed",
     "limitation": "Does not prove a human reviewed every screenshot.",
-    "proof": "Computer Use opens the generated report on the remote Mac and sees report sections.",
+    "proof": "Computer Use opens the generated report or the Peekaboo CI lane verifies required report sections before publishing.",
     "status": "pass",
     "visualAssertionStatus": "pass"
   },
@@ -311,7 +349,11 @@
   "settingsAPIKeys": {
     "accessibilityRisk": "high",
     "accessibilityRiskReason": "The claim depends on accessibility text without a screenshot, usually due sensitive-surface redaction.",
-    "assertionTypes": ["accessibility_text", "sensitive_redaction", "visual_heuristic"],
+    "assertionTypes": [
+      "accessibility_text",
+      "sensitive_redaction",
+      "visual_heuristic"
+    ],
     "evidenceStrength": "weak",
     "evidenceStrengthReason": "Pass relies on redacted accessibility text only, usually because screenshots are intentionally suppressed for a sensitive surface.",
     "failureClass": "",
@@ -369,7 +411,10 @@
   "storybookPreview": {
     "accessibilityRisk": "low",
     "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence.",
-    "assertionTypes": ["pr_metadata", "coverage_manifest"],
+    "assertionTypes": [
+      "pr_metadata",
+      "coverage_manifest"
+    ],
     "evidenceStrength": "operational",
     "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
     "failureClass": "",
@@ -424,6 +469,29 @@
     "status": "pass",
     "visualAssertionStatus": "pass"
   },
+  "systemLifecycle": {
+    "accessibilityRisk": "low",
+    "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence.",
+    "assertionTypes": [
+      "remote_state",
+      "system_state",
+      "command_probe",
+      "version_probe",
+      "accessibility_text",
+      "visual_heuristic"
+    ],
+    "evidenceStrength": "strong",
+    "evidenceStrengthReason": "User-visible interaction is backed by independent state proof.",
+    "failureClass": "",
+    "failureClassReason": "",
+    "id": "systemLifecycle",
+    "label": "Target Homebrew formula follows the activation and restore lifecycle",
+    "legacyEvidenceGrade": "state-confirmed",
+    "limitation": "Homebrew's default cleanup policy retains removed formulae. Physical removal of hello is proved separately by host restoration, not attributed to History restore.",
+    "proof": "Independent remote probes require /opt/homebrew/bin/hello to be absent before Build & Test, declared by the activated Homebrew plan, present after activation, and reporting hello (GNU Hello); History restore must activate a non-feature system whose Homebrew plan omits hello, while the disposable config and active Brewfile fingerprint match the captured scenario baseline.",
+    "status": "pass",
+    "visualAssertionStatus": "not-applicable"
+  },
   "typedIntent": {
     "accessibilityRisk": "low",
     "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
@@ -448,7 +516,11 @@
   "updateBanner": {
     "accessibilityRisk": "medium",
     "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks.",
-    "assertionTypes": ["accessibility_text", "action_result", "visual_heuristic"],
+    "assertionTypes": [
+      "accessibility_text",
+      "action_result",
+      "visual_heuristic"
+    ],
     "evidenceStrength": "visual-supported",
     "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
     "failureClass": "",
@@ -464,7 +536,11 @@
   "visualCoverage": {
     "accessibilityRisk": "medium",
     "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks.",
-    "assertionTypes": ["artifact_quality", "accessibility_text", "visual_heuristic"],
+    "assertionTypes": [
+      "artifact_quality",
+      "accessibility_text",
+      "visual_heuristic"
+    ],
     "evidenceStrength": "visual-supported",
     "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
     "failureClass": "",
@@ -480,7 +556,10 @@
   "visualProofQuality": {
     "accessibilityRisk": "low",
     "accessibilityRiskReason": "The scenario is not primarily an accessibility-text assertion.",
-    "assertionTypes": ["artifact_quality", "visual_heuristic"],
+    "assertionTypes": [
+      "artifact_quality",
+      "visual_heuristic"
+    ],
     "evidenceStrength": "weak",
     "evidenceStrengthReason": "Pass relies on redacted accessibility text only, usually because screenshots are intentionally suppressed for a sensitive surface.",
     "failureClass": "",

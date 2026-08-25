@@ -4,6 +4,7 @@ export function remoteCuaUsage({ defaultWs, defaultApp }) {
   node tests/e2e/computer-use/run-remote-cua.mjs render-unavailable --note "..."
   node tests/e2e/computer-use/run-remote-cua.mjs render-storybook-only --note "..."
   node tests/e2e/computer-use/run-remote-cua.mjs render-existing --run-dir artifacts/computer-use-remote/<timestamp>
+  node tests/e2e/computer-use/run-remote-cua.mjs finalize-cleanup --run-dir artifacts/computer-use-remote/<timestamp> --evidence cleanup-evidence.json
   node tests/e2e/computer-use/run-remote-cua.mjs self-test
 
 Environment:
@@ -39,6 +40,7 @@ export async function dispatchRemoteCuaCommand(argv, handlers, options = {}) {
     "render-unavailable": handlers.renderUnavailable,
     "render-storybook-only": handlers.renderStorybookOnly,
     "render-existing": handlers.renderExisting,
+    "finalize-cleanup": handlers.finalizeCleanup,
     "self-test": handlers.selfTest,
   };
 

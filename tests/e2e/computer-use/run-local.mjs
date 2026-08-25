@@ -3371,6 +3371,7 @@ async function runSelfTest() {
     NIXMAC_E2E_PR_BASE_REF: "fkb/e2e-required-gate-policy",
     NIXMAC_E2E_PR_CHANGED_FILES: [
       "apps/native/src/components/widget/settings/settings-dialog.tsx",
+      "apps/native/src-tauri/src/e2e_runtime.rs",
       "apps/native/src-tauri/src/main.rs",
       "apps/native/src-tauri/src/rebuild/darwin.rs",
       "apps/native/src-tauri/src/storage/store.rs",
@@ -3403,7 +3404,9 @@ async function runSelfTest() {
   assert(
     prFocus.matchedSurfaces.some(
       (surface) =>
-        surface.id === "e2e-harness-rust" && surface.coverageDisposition === "non-claiming",
+        surface.file === "apps/native/src-tauri/src/e2e_runtime.rs" &&
+        surface.id === "e2e-harness-rust" &&
+        surface.coverageDisposition === "non-claiming",
     ),
     "Peekaboo PR focus should identify E2E-gated harness files without claiming user-facing scenario coverage",
   );

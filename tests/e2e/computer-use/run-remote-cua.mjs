@@ -8,6 +8,8 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { artifactFileIssue, artifactForLabel, pngDimensions } from "./artifact-utils.mjs";
+import { cleanupScenarioResult } from "./cleanup-evidence.mjs";
+import { buildCoverageFreshness as classifyCoverageFreshness } from "./coverage-freshness.mjs";
 import { dispatchRemoteCuaCommand, remoteCuaUsage } from "./cli.mjs";
 import {
   builtInElementAddressKinds,
@@ -23,6 +25,8 @@ import { tryRun } from "./process-utils.mjs";
 import {
   DEFAULT_PROMPT,
   EVOLVED_CASE_CATALOG,
+  TARGET_HOMEBREW_CASE_ID,
+  TARGET_HOMEBREW_FORMULA,
   curatedProofKeys,
   scenarioVisualContracts,
   scenarioAssertionTypeHints,
@@ -67,6 +71,8 @@ import {
 import { mergeTimingMetadata, nowIso } from "./timing.mjs";
 import {
   captureRemoteMetadata as readRemoteMetadata,
+  captureRemoteSystemSnapshot,
+  e2eHomebrewFormula,
   meaningfulBaselineDiff,
   remoteActivationPamSymlinkHang,
   remoteAppPathFromEnv,
@@ -78,6 +84,7 @@ import {
   ssh,
   sshArgs,
 } from "./remote-stage.mjs";
+import { evaluateSystemLifecycle } from "./system-lifecycle.mjs";
 
 const THIS_FILE = fileURLToPath(import.meta.url);
 const TOOL_DIR = path.dirname(THIS_FILE);
@@ -86,6 +93,8 @@ const REPO_ROOT = path.resolve(TOOL_DIR, "../../..");
 const DEFAULT_APP = "com.darkmatter.nixmac";
 const DEFAULT_WS = "ws://127.0.0.1:18790";
 const DEFAULT_BUILD_ATTEMPTS = 180;
+const PROVIDER_CREDENTIAL_ERROR_PATTERN =
+  /No API key|missing API key|API key is required|invalid API key|Unauthorized|\b(?:HTTP\s*)?401\b/i;
 const ARTIFACT_ROOT = path.join(REPO_ROOT, "artifacts", "computer-use-remote");
 const COVERAGE_MANIFEST_PATH = path.join(TOOL_DIR, "coverage-manifest.json");
 const BUILD_AND_TEST_BUTTON_PATTERNS = [/^button Build & Test(?:,|$)/i];
@@ -298,7 +307,7 @@ function enabledExtraEvolvedCases() {
 function evolvedCaseStrategy(extraCases = enabledExtraEvolvedCases()) {
   return {
     selectedAt: new Date().toISOString(),
-    defaultCaseIds: ["homebrew-bat"],
+    defaultCaseIds: [TARGET_HOMEBREW_CASE_ID],
     extraCaseIds: extraCases.map((item) => item.id),
     catalog: Object.values(EVOLVED_CASE_CATALOG).map((item) => ({
       id: item.id,
@@ -308,8 +317,7 @@ function evolvedCaseStrategy(extraCases = enabledExtraEvolvedCases()) {
       source: item.source,
       note: item.note,
     })),
-    reviewDecision:
-      "Claude review kept homebrew-bat as the only default full-lifecycle PR case, moved screenshots-defaults to optional calibration, and moved protected-flake-input to an adversarial advisory lane until hard backend enforcement exists.",
+    reviewDecision: `Claude review kept ${TARGET_HOMEBREW_CASE_ID} as the only default full-lifecycle PR case, moved screenshots-defaults to optional calibration, and moved protected-flake-input to an adversarial advisory lane until hard backend enforcement exists.`,
   };
 }
 
@@ -396,10 +404,6 @@ function walkFiles(root) {
   return files;
 }
 
-function matchesAny(value, patterns = []) {
-  return patterns.some((pattern) => new RegExp(pattern).test(value));
-}
-
 function sourcePrefixExists(sourcePath) {
   const fullPath = path.join(REPO_ROOT, sourcePath);
   if (!existsSync(fullPath)) return false;
@@ -409,78 +413,6 @@ function sourcePrefixExists(sourcePath) {
   } catch {
     return false;
   }
-}
-
-function isIsoDateOnly(value) {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const date = new Date(`${value}T00:00:00.000Z`);
-  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
-}
-
-function managedWaiverFor(surface) {
-  const raw = surface.waiver;
-  if (!raw) return null;
-  if (typeof raw === "string") {
-    return {
-      id: surface.id,
-      label: surface.label,
-      reason: raw,
-      owner: null,
-      created: null,
-      reviewBy: null,
-      risk: null,
-      exitCriteria: null,
-      deprecatedShape: true,
-      validationErrors: [
-        "waiver uses deprecated string shape; use a managed waiver object with owner, created, reviewBy, risk, and exitCriteria",
-      ],
-    };
-  }
-  if (typeof raw !== "object" || Array.isArray(raw)) {
-    return {
-      id: surface.id,
-      label: surface.label,
-      reason: "",
-      owner: null,
-      created: null,
-      reviewBy: null,
-      risk: null,
-      exitCriteria: null,
-      validationErrors: ["waiver must be either a string or a managed waiver object"],
-    };
-  }
-  const waiver = {
-    id: surface.id,
-    label: surface.label,
-    reason: raw.reason || "",
-    owner: raw.owner || "",
-    created: raw.created || "",
-    reviewBy: raw.reviewBy || "",
-    risk: raw.risk || "",
-    exitCriteria: raw.exitCriteria || "",
-    deprecatedShape: false,
-    validationErrors: [],
-  };
-  for (const field of ["reason", "owner", "created", "reviewBy", "risk", "exitCriteria"]) {
-    if (!waiver[field]) waiver.validationErrors.push(`waiver is missing required field ${field}`);
-  }
-  if (waiver.created && !isIsoDateOnly(waiver.created)) {
-    waiver.validationErrors.push(
-      `waiver created date ${waiver.created} must be a valid YYYY-MM-DD date`,
-    );
-  }
-  if (waiver.reviewBy && !isIsoDateOnly(waiver.reviewBy)) {
-    waiver.validationErrors.push(
-      `waiver review date ${waiver.reviewBy} must be a valid YYYY-MM-DD date`,
-    );
-  }
-  if (waiver.reviewBy && waiver.reviewBy < new Date().toISOString().slice(0, 10)) {
-    waiver.validationErrors.push(`waiver review date ${waiver.reviewBy} is expired`);
-  }
-  if (waiver.risk && !["low", "medium", "high"].includes(waiver.risk)) {
-    waiver.validationErrors.push(`waiver risk ${waiver.risk} must be low, medium, or high`);
-  }
-  return waiver;
 }
 
 function knownScenarioKey(key) {
@@ -493,57 +425,30 @@ function knownScenarioKey(key) {
 
 function buildCoverageFreshness(state) {
   const manifest = loadCoverageManifest();
-  const surfaces = manifest.surfaces || [];
-  const coveredPrefixes = surfaces.flatMap((surface) => surface.sourcePrefixes || []);
-  const drift = [];
-  const waivers = [];
-  let mapped = 0;
-
-  for (const surface of surfaces) {
-    const scenarioKeys = surface.scenarioKeys || [];
-    const unknown = scenarioKeys.filter((key) => !knownScenarioKey(key));
-    const missingSources = (surface.sourcePrefixes || []).filter(
-      (sourcePath) => !sourcePrefixExists(sourcePath),
-    );
-    const waiver = managedWaiverFor(surface);
-    if (waiver) {
-      waivers.push(waiver);
-      for (const error of waiver.validationErrors) drift.push(`${surface.id} ${error}`);
-    }
-    if (unknown.length)
-      drift.push(`${surface.id} maps to unknown scenarios: ${unknown.join(", ")}`);
-    if (missingSources.length)
-      drift.push(`${surface.id} references missing source paths: ${missingSources.join(", ")}`);
-    if (!scenarioKeys.length && !surface.waiver)
-      drift.push(`${surface.id} has no scenario mapping and no waiver.`);
-    if (scenarioKeys.length) mapped += 1;
-  }
-
-  const candidates = [
+  const repositoryFiles = [
     ...new Set((manifest.candidateRoots || []).flatMap((root) => walkFiles(root))),
-  ].filter(
-    (file) =>
-      matchesAny(file, manifest.candidateIncludes) && !matchesAny(file, manifest.candidateExcludes),
-  );
-  const unmappedCandidateFiles = candidates.filter(
-    (file) =>
-      !coveredPrefixes.some((prefix) =>
-        prefix.endsWith("/") ? file.startsWith(prefix) : file === prefix,
-      ),
-  );
-  if (unmappedCandidateFiles.length)
-    drift.push(`Unmapped user-visible candidate files: ${unmappedCandidateFiles.join(", ")}`);
-
+  ];
+  const knownScenarioKeys = [
+    ...new Set([
+      ...Object.keys(scenarioLabels),
+      ...Object.keys(scenarioProofCatalog),
+      ...Object.values(EVOLVED_CASE_CATALOG)
+        .map((caseDef) => caseDef.scenarioKey)
+        .filter(Boolean),
+    ]),
+  ];
+  const result = classifyCoverageFreshness({
+    manifest,
+    repositoryFiles,
+    scenarios: state.scenarios,
+    knownScenarioKeys,
+    sourceExists: sourcePrefixExists,
+    today: process.env.NIXMAC_E2E_COVERAGE_DATE || new Date().toISOString().slice(0, 10),
+  });
   return {
-    manifestVersion: manifest.version,
+    ...result,
     checkedAt: new Date().toISOString(),
-    totalSurfaces: surfaces.length,
-    mappedSurfaces: mapped,
-    waivedSurfaces: waivers.length,
-    candidateFiles: candidates.length,
-    unmappedCandidateFiles,
-    waivers,
-    drift,
+    candidateFiles: result.blockingCandidateFiles.length,
   };
 }
 
@@ -551,7 +456,7 @@ function updateMainCoverageFreshness(state) {
   state.coverageFreshness = buildCoverageFreshness(state);
   const drift = state.coverageFreshness.drift || [];
   const waiverNote = state.coverageFreshness.waivers?.length
-    ? ` Explicit waivers: ${state.coverageFreshness.waivers.map((item) => `${item.id} (${item.owner || "unowned"}, review by ${item.reviewBy || "unset"}): ${item.reason}`).join(" | ")}`
+    ? ` Explicit waivers: ${state.coverageFreshness.waivers.map((item) => `${item.id} (${item.owner || "unowned"}, reviewed ${item.reviewedAt || "unset"}, review by ${item.reviewBy || "unset"}): ${item.reason}`).join(" | ")}`
     : "";
   if (state.scenarios.mainCoverageFreshness?.notes) {
     state.scenarios.mainCoverageFreshness.notes = [];
@@ -562,8 +467,16 @@ function updateMainCoverageFreshness(state) {
     drift.length ? "fail" : "pass",
     drift.length
       ? `Coverage drift detected against main: ${drift.join("; ")}${waiverNote}`
-      : `Coverage manifest v${state.coverageFreshness.manifestVersion} maps ${state.coverageFreshness.totalSurfaces} user-visible surfaces to scenarios or explicit waivers.${waiverNote}`,
+      : `Coverage manifest v${state.coverageFreshness.manifestVersion} classifies ${state.coverageFreshness.mappedSurfaces} mapped, ${state.coverageFreshness.waivedSurfaces} waived, and ${state.coverageFreshness.nonClaimingSurfaces} non-claiming surfaces; ${state.coverageFreshness.diagnosticInventoryFiles.length} Rust implementation files remain visible as diagnostic inventory.${waiverNote}`,
   );
+}
+
+function verdictBeforeHostRestoration(state) {
+  return verdictFor({
+    scenarios: Object.fromEntries(
+      Object.entries(state.scenarios || {}).filter(([key]) => key !== "hostRestoration"),
+    ),
+  });
 }
 
 function updatePrSpecificCoverage(state) {
@@ -767,7 +680,7 @@ function evidenceStrengthForScenario(state, key) {
 function classifyScenarioResult(key, scenario) {
   if (!scenario || scenario.status === "pass") return { class: "", reason: "" };
   const note = scenario.notes?.join(" ") || "";
-  if (/api key|credential|unauthorized|401|missing key|invalid key/i.test(note)) {
+  if (/api key|credential|unauthorized|\b(?:HTTP\s*)?401\b|missing key|invalid key/i.test(note)) {
     return {
       class: "credential",
       reason: "Provider credential wording was detected in the scenario notes.",
@@ -1139,13 +1052,17 @@ async function baseState(runDir, options) {
   });
 }
 
-async function captureState(client, state, label, note = "") {
-  let response = await client.tool("get_app_state", { app: state.app }, 90000);
+async function captureState(client, state, label, note = "", preparedResponse = null) {
+  const prepared = preparedResponse !== null;
+  let response =
+    preparedResponse ?? (await client.tool("get_app_state", { app: state.app }, 90000));
   let rawText = contentText(response);
   let text = redact(rawText);
   for (
     let attempt = 0;
-    attempt < 8 && /procNotFound|no eligible process|not running|timed out/i.test(text);
+    !prepared &&
+    attempt < 8 &&
+    /procNotFound|no eligible process|not running|timed out/i.test(text);
     attempt += 1
   ) {
     await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -1195,6 +1112,54 @@ async function captureState(client, state, label, note = "") {
   await addEvent(state, "computer-use.capture", { label, note: redact(note) });
   await saveState(state);
   return text;
+}
+
+async function writeTextEvidenceArtifact(state, label, payload, note) {
+  const safeLabel = label.replace(/[^a-zA-Z0-9._-]+/g, "-");
+  const textPath = path.join(state.runDir, "texts", `${safeLabel}.txt`);
+  await writeFile(textPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  const artifact = {
+    label,
+    path: path.relative(state.runDir, textPath),
+    capturedAt: new Date().toISOString(),
+    note: redact(note),
+  };
+  const existing = state.textSnapshots.find((item) => item.label === label);
+  if (existing) Object.assign(existing, artifact);
+  else state.textSnapshots.push(artifact);
+  return artifact;
+}
+
+async function captureSystemCheckpoint(state, checkpoint, { requireFormulaAbsent = false } = {}) {
+  const { snapshot, error } = captureRemoteSystemSnapshot({ requireFormulaAbsent });
+  state.remoteSystemLifecycle ||= {
+    targetFormula: e2eHomebrewFormula.name,
+    targetExecutable: e2eHomebrewFormula.executable,
+    checkpoints: {},
+  };
+  if (!snapshot) {
+    await addEvent(state, `remote.system.${checkpoint}`, {
+      ok: false,
+      error: redact(error || "Remote system snapshot failed."),
+    });
+    return null;
+  }
+  state.remoteSystemLifecycle.checkpoints[checkpoint] = snapshot;
+  await addEvent(state, `remote.system.${checkpoint}`, {
+    ok: true,
+    activeSystem: snapshot.activeSystem,
+    profileStore: snapshot.profileStore,
+    formula: snapshot.formula,
+    formulaInstalled: snapshot.formulaInstalled,
+    formulaExecutablePresent: snapshot.formulaExecutablePresent,
+    formulaVersion: snapshot.formulaVersion,
+    formulaExecutableVersion: snapshot.formulaExecutableVersion,
+    activeBrewfile: snapshot.activeBrewfile,
+    activeBrewfileSha256: snapshot.activeBrewfileSha256,
+    activeBrewfileDeclaresFormula: snapshot.activeBrewfileDeclaresFormula,
+  });
+  await saveState(state);
+  return snapshot;
 }
 
 function findActionElement(text, patterns, { preferLast = false } = {}) {
@@ -1377,29 +1342,178 @@ async function waitFor(client, state, label, predicate, { attempts = 10, delayMs
   return { ok: false, text: lastText };
 }
 
-async function requireComputerUsePreflight(client, state) {
-  const response = await client.tool("get_app_state", { app: state.app }, 120000);
-  const text = contentText(response);
-  const image = contentImage(response);
-  if (response?.result?.isError === true) {
-    throw new Error(`Computer Use preflight failed: ${text || "node_repl returned an error"}`);
+function inspectComputerUseScreenshot(png, { strictLaunch = false } = {}) {
+  if (!Buffer.isBuffer(png) || png.length < 24 || png.toString("ascii", 1, 4) !== "PNG") {
+    return { ok: false, reason: "screenshot is not a complete PNG" };
   }
-  if (!text.trim()) throw new Error("Computer Use preflight returned no accessibility text");
-  if (!/^Window: "nixmac", App: nixmac\./m.test(text)) {
-    throw new Error(
-      `Computer Use preflight targeted the wrong nixmac window: ${text.split("\n", 1)[0] || "unknown window"}`,
+  const imageSize = { width: png.readUInt32BE(16), height: png.readUInt32BE(20) };
+  if (imageSize.width < 500 || imageSize.height < 500) {
+    return {
+      ok: false,
+      reason: `screenshot dimensions ${imageSize.width}x${imageSize.height} are below 500x500`,
+    };
+  }
+  const probes = strictLaunch
+    ? scenarioVisualContracts.launch.screenshots[0].probes
+    : [{ label: "product content area", x: 5, y: 7, w: 90, h: 60 }];
+  for (const probe of probes) {
+    const crop = probeCropForImage(imageSize, probe);
+    if (!crop) return { ok: false, reason: `${probe.label} crop is invalid` };
+    const result = spawnSync(
+      "ffmpeg",
+      [
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-i",
+        "pipe:0",
+        "-vf",
+        `crop=${crop.w}:${crop.h}:${crop.x}:${crop.y},signalstats,metadata=print:file=-`,
+        "-frames:v",
+        "1",
+        "-f",
+        "null",
+        "-",
+      ],
+      { input: png, encoding: "utf8", maxBuffer: 4 * 1024 * 1024 },
+    );
+    if (result.status !== 0) {
+      return { ok: false, reason: `${probe.label} screenshot signal probe failed` };
+    }
+    const stats = parseSignalStats(`${result.stdout}\n${result.stderr}`);
+    const yMax = stats.YMAX;
+    const yRange = Number.isFinite(stats.YMIN) && Number.isFinite(yMax) ? yMax - stats.YMIN : NaN;
+    if (!Number.isFinite(yMax) || yMax < (probe.minYMax ?? 38)) {
+      return { ok: false, reason: `${probe.label} is visually blank` };
+    }
+    if (!Number.isFinite(yRange) || yRange < (probe.minYRange ?? 4)) {
+      return { ok: false, reason: `${probe.label} has too little visual contrast` };
+    }
+  }
+  return { ok: true, reason: "" };
+}
+
+function hasPendingBaselineSurface(text) {
+  return /New configuration updates are available/i.test(text) && /button Build & Test/i.test(text);
+}
+
+function hasUsableComputerUseAppState(text, { allowPendingBaseline = false } = {}) {
+  if (!/^Window: "nixmac", App: nixmac\./m.test(text)) return false;
+  if (!/button Settings/i.test(text)) return false;
+  const homeSurface = hasAny(text, [/text entry area/i, /Get started/i, /Progress: step 1 of 3/i]);
+  if (hasPendingBaselineSurface(text)) return allowPendingBaseline;
+  return homeSurface;
+}
+
+async function requireComputerUsePreflight(
+  client,
+  state,
+  {
+    attemptsBeforeRelaunch = 4,
+    attemptsAfterRelaunch = 8,
+    delayMs = 1000,
+    allowPendingBaseline = false,
+    phase = "preflight",
+    relaunch = maybeRelaunchRemote,
+    screenshotInspector = inspectComputerUseScreenshot,
+    wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
+  } = {},
+) {
+  let lastReason = "nixmac never returned a usable product surface";
+  let lastEvidenceResponse = null;
+  let lastEvidenceAttempt = 0;
+  let totalAttempts = 0;
+  let relaunches = 0;
+  let relaunchAttempted = false;
+  for (const attempts of [attemptsBeforeRelaunch, attemptsAfterRelaunch]) {
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      if (totalAttempts > 0 && delayMs > 0) await wait(delayMs);
+      totalAttempts += 1;
+      let response;
+      try {
+        response = await client.tool("get_app_state", { app: state.app }, 120000);
+      } catch (error) {
+        lastReason = error instanceof Error ? error.message : String(error);
+        continue;
+      }
+      const text = contentText(response);
+      if (response?.result?.isError === true) {
+        lastReason = text || "node_repl returned an error";
+        continue;
+      }
+      if (!text.trim()) {
+        lastReason = "Computer Use returned no accessibility text";
+        continue;
+      }
+      if (!/^Window: "nixmac", App: nixmac\./m.test(text)) {
+        lastReason = `Computer Use targeted ${text.split("\n", 1)[0] || "an unknown window"}`;
+        continue;
+      }
+      const image = contentImage(response);
+      if (!image) {
+        lastReason = "Computer Use returned no screenshot";
+        continue;
+      }
+      let png;
+      try {
+        png = computerUseImageAsPng(response);
+      } catch (error) {
+        lastReason = error instanceof Error ? error.message : String(error);
+        continue;
+      }
+      if (!png.length) {
+        lastReason = "Computer Use screenshot could not be normalized";
+        continue;
+      }
+      lastEvidenceResponse = response;
+      lastEvidenceAttempt = totalAttempts;
+      const screenshotSignal = screenshotInspector(png, {
+        strictLaunch: !allowPendingBaseline,
+      });
+      if (!screenshotSignal.ok) {
+        lastReason = screenshotSignal.reason;
+        continue;
+      }
+      if (!hasUsableComputerUseAppState(text, { allowPendingBaseline })) {
+        lastReason = hasPendingBaselineSurface(text)
+          ? "the disposable baseline was still pending"
+          : "the native nixmac window existed but its product WebView was still empty";
+        continue;
+      }
+      await addEvent(state, "computer-use.preflight", {
+        phase,
+        app: state.app,
+        textLength: text.length,
+        screenshotBytes: png.length,
+        attempts: totalAttempts,
+        relaunches,
+        transport: "codex-app-server/node_repl/@oai/sky",
+        window: "nixmac",
+      });
+      return { response, attempts: totalAttempts, relaunches };
+    }
+    if (attemptsAfterRelaunch > 0 && !relaunchAttempted) {
+      relaunchAttempted = true;
+      await addEvent(state, "computer-use.preflight.relaunch", {
+        phase,
+        attempts: totalAttempts,
+        note: `Readiness remained unavailable (${redact(lastReason)}); relaunching once before scenario evidence begins.`,
+      });
+      if ((await relaunch(state)) !== false) relaunches += 1;
+    }
+  }
+  if (lastEvidenceResponse) {
+    await captureState(
+      client,
+      state,
+      `${phase}-failure`,
+      `Readiness exhausted after ${totalAttempts} attempts. This is the last valid target-window response from attempt ${lastEvidenceAttempt}; the final failure reason was: ${redact(lastReason)}.`,
+      lastEvidenceResponse,
     );
   }
-  if (!image) throw new Error("Computer Use preflight returned no screenshot");
-  const png = computerUseImageAsPng(response);
-  if (!png.length) throw new Error("Computer Use preflight screenshot could not be normalized");
-  await addEvent(state, "computer-use.preflight", {
-    app: state.app,
-    textLength: text.length,
-    screenshotBytes: png.length,
-    transport: "codex-app-server/node_repl/@oai/sky",
-    window: "nixmac",
-  });
+  throw new Error(
+    `Computer Use ${phase} did not reach a usable nixmac surface after ${totalAttempts} attempts and ${relaunches} relaunch: ${redact(lastReason)}`,
+  );
 }
 
 async function maybeRelaunchRemote(state) {
@@ -1407,10 +1521,10 @@ async function maybeRelaunchRemote(state) {
     await addEvent(state, "remote.relaunch.skipped", {
       reason: "NIXMAC_E2E_SKIP_RELAUNCH=true; caller is responsible for launching nixmac.",
     });
-    return;
+    return false;
   }
   const dest = process.env.NIXMAC_E2E_REMOTE_SSH_DEST;
-  if (!dest) return;
+  if (!dest) return false;
   const remoteAppPath = remoteAppPathFromEnv();
   const result = ssh(
     `osascript -e 'tell application id "com.darkmatter.nixmac" to quit' >/dev/null 2>&1 || true; sleep 1; open -n ${shellQuote(remoteAppPath)}; sleep 2; osascript -e 'tell application id "com.darkmatter.nixmac" to reopen'; sleep 5`,
@@ -1420,12 +1534,13 @@ async function maybeRelaunchRemote(state) {
     stdout: redact(result.stdout),
     stderr: redact(result.stderr),
   });
+  return true;
 }
 
 async function synchronizeDisposableBaseline(client, state, text) {
-  const pendingBaseline =
-    /New configuration updates are available/i.test(text) && /button Build & Test/i.test(text);
+  const pendingBaseline = hasPendingBaselineSurface(text);
   if (!pendingBaseline) return text;
+  state.remoteConfig.baselineSyncRequired = true;
 
   if (state.remoteConfig?.baselineSyncConfirmed === true) {
     await addEvent(state, "remote.baseline-sync.repeat-blocked", {
@@ -1679,7 +1794,8 @@ async function addRemoteGitEvent(state, type, snapshot) {
     statusShort: redact(snapshot?.statusShort || ""),
     diffNameOnly: redact(snapshot?.diffNameOnly || ""),
     baselineDiffNameOnly: redact(snapshot?.baselineDiffNameOnly || ""),
-    containsBat: Boolean(snapshot?.containsBat),
+    targetFormula: snapshot?.targetFormula || TARGET_HOMEBREW_FORMULA,
+    containsTargetFormula: Boolean(snapshot?.containsTargetFormula),
     error: redact(snapshot?.error || ""),
   });
 }
@@ -2261,12 +2377,7 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
         return "review";
       if (/Payment Required|Insufficient credits|out of credits|billing limit/i.test(candidate))
         return "billing-error";
-      if (
-        /No API key|missing API key|API key is required|invalid API key|Unauthorized|401/i.test(
-          candidate,
-        )
-      )
-        return "credential-error";
+      if (PROVIDER_CREDENTIAL_ERROR_PATTERN.test(candidate)) return "credential-error";
       if (
         /Provider request failed|provider error|OpenRouter error|fatal error|uncaught/i.test(
           candidate,
@@ -2458,12 +2569,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
         return "review-without-question";
       if (/Payment Required|Insufficient credits|out of credits|billing limit/i.test(candidate))
         return "billing-error";
-      if (
-        /No API key|missing API key|API key is required|invalid API key|Unauthorized|401/i.test(
-          candidate,
-        )
-      )
-        return "credential-error";
+      if (PROVIDER_CREDENTIAL_ERROR_PATTERN.test(candidate)) return "credential-error";
       if (
         /Provider request failed|provider error|OpenRouter error|fatal error|uncaught/i.test(
           candidate,
@@ -2600,12 +2706,7 @@ async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
       if (/Waiting for next event/i.test(candidate) && !answerWait.ok) return null;
       if (/Payment Required|Insufficient credits|out of credits|billing limit/i.test(candidate))
         return "billing-error";
-      if (
-        /No API key|missing API key|API key is required|invalid API key|Unauthorized|401/i.test(
-          candidate,
-        )
-      )
-        return "credential-error";
+      if (PROVIDER_CREDENTIAL_ERROR_PATTERN.test(candidate)) return "credential-error";
       if (
         /Provider request failed|provider error|OpenRouter error|fatal error|uncaught/i.test(
           candidate,
@@ -2796,7 +2897,7 @@ async function render(state, { stateFileName = "state.json", recordEvent = true 
 async function runSuite(args) {
   if (args.includes("--prompt") || process.env.NIXMAC_E2E_PROMPT) {
     throw new Error(
-      "Custom prompts are not supported by this E2E runner; assertions are calibrated to the fixed bat/Homebrew prompt.",
+      `Custom prompts are not supported by this E2E runner; assertions are calibrated to the fixed ${TARGET_HOMEBREW_FORMULA}/Homebrew prompt.`,
     );
   }
   const options = {
@@ -2817,18 +2918,60 @@ async function runSuite(args) {
   });
   try {
     await client.connect();
+    const hostOriginal = await captureSystemCheckpoint(state, "hostOriginal", {
+      requireFormulaAbsent: true,
+    });
+    if (!hostOriginal) {
+      throw new Error(
+        `Remote host precondition failed: ${e2eHomebrewFormula.name} must be absent and the active system/profile must be inspectable before mutation.`,
+      );
+    }
+    if (
+      process.env.NIXMAC_E2E_ORIGINAL_SYSTEM &&
+      hostOriginal.activeSystem !== process.env.NIXMAC_E2E_ORIGINAL_SYSTEM
+    ) {
+      throw new Error("Runner system precondition does not match the armed recovery marker.");
+    }
+    state.remoteRecovery = {
+      runId: process.env.NIXMAC_E2E_RUN_ID || "",
+      markerPath: process.env.NIXMAC_E2E_REMOTE_SYSTEM_MARKER || "",
+      originalSystem: hostOriginal.activeSystem,
+    };
+    await saveState(state);
     await prepareDisposableRemoteBaseline(state);
     await maybeRelaunchRemote(state);
     captureRemoteMetadata(state);
-    await requireComputerUsePreflight(client, state);
+    const operationalReadiness = await requireComputerUsePreflight(client, state, {
+      allowPendingBaseline: true,
+      phase: "operational-preflight",
+    });
+    let text = redact(contentText(operationalReadiness.response));
+    text = await synchronizeDisposableBaseline(client, state, text);
+    const launchReadiness = await requireComputerUsePreflight(client, state, {
+      attemptsBeforeRelaunch: 8,
+      attemptsAfterRelaunch: 0,
+      allowPendingBaseline: false,
+      phase: "launch-readiness",
+    });
+    state.computerUsePreflight = {
+      operational: {
+        attempts: operationalReadiness.attempts,
+        relaunches: operationalReadiness.relaunches,
+      },
+      launch: {
+        attempts: launchReadiness.attempts,
+        relaunches: launchReadiness.relaunches,
+      },
+    };
+    const readinessSummary = `Operational readiness took ${operationalReadiness.attempts} attempt(s) and ${operationalReadiness.relaunches} relaunch(es); canonical launch readiness took ${launchReadiness.attempts} attempt(s) with no relaunch allowed.`;
 
-    let text = await captureState(
+    text = await captureState(
       client,
       state,
       "launch",
-      "Computer Use observed the nixmac window at launch.",
+      `Computer Use observed the hydrated nixmac home after disposable-baseline synchronization. ${readinessSummary}`,
+      launchReadiness.response,
     );
-    text = await synchronizeDisposableBaseline(client, state, text);
     if (
       /nixmac/i.test(text) &&
       hasAny(text, [
@@ -2842,14 +2985,14 @@ async function runSuite(args) {
         state,
         "launch",
         "pass",
-        "Computer Use saw the nixmac app window, prompt surface, progress stepper, and top-level controls.",
+        `Computer Use saw the nixmac app window, prompt surface, progress stepper, and top-level controls. ${readinessSummary}`,
       );
     } else {
       updateScenario(
         state,
         "launch",
         "fail",
-        "Computer Use did not see a usable nixmac app window.",
+        `Computer Use did not see a usable nixmac app window after readiness gating. ${readinessSummary}`,
       );
     }
 
@@ -3241,6 +3384,23 @@ async function runSuite(args) {
       );
     }
     text = await synchronizeDisposableBaseline(client, state, text);
+    if (
+      (state.remoteConfig?.baselineSyncRequired === true &&
+        state.remoteConfig?.baselineSyncCompleted !== true) ||
+      hasPendingBaselineSurface(text)
+    ) {
+      throw new Error(
+        "Disposable scenario baseline remained pending or its required synchronization did not complete.",
+      );
+    }
+    const scenarioBaseline = await captureSystemCheckpoint(state, "scenarioBaseline", {
+      requireFormulaAbsent: true,
+    });
+    if (!scenarioBaseline) {
+      throw new Error(
+        "Disposable scenario baseline could not be proven with the target Homebrew formula absent.",
+      );
+    }
 
     const suggestionVisible = hasAny(text, [/Install vim/i, /Add Rectangle/i, /Finder path bar/i]);
     const suggestionClicked = suggestionVisible
@@ -3324,12 +3484,7 @@ async function runSuite(args) {
             return "review";
           if (/Payment Required|Insufficient credits|out of credits|billing limit/i.test(candidate))
             return "billing-error";
-          if (
-            /No API key|missing API key|API key is required|invalid API key|Unauthorized|401/i.test(
-              candidate,
-            )
-          )
-            return "credential-error";
+          if (PROVIDER_CREDENTIAL_ERROR_PATTERN.test(candidate)) return "credential-error";
           if (
             /Provider request failed|provider error|OpenRouter error|fatal error|uncaught/i.test(
               candidate,
@@ -3339,7 +3494,7 @@ async function runSuite(args) {
           return null;
         },
         {
-          attempts: Number(process.env.NIXMAC_E2E_PROVIDER_ATTEMPTS || 72),
+          attempts: Number(process.env.NIXMAC_E2E_PROVIDER_ATTEMPTS || DEFAULT_BUILD_ATTEMPTS),
           delayMs: Number(process.env.NIXMAC_E2E_PROVIDER_DELAY_MS || 5000),
         },
       );
@@ -3364,9 +3519,7 @@ async function runSuite(args) {
         state.failures.push("Provider billing/credits prevented prompt-to-review coverage.");
       } else if (
         wait.result === "credential-error" ||
-        /No API key|missing API key|API key is required|invalid API key|Unauthorized|401/i.test(
-          text,
-        )
+        PROVIDER_CREDENTIAL_ERROR_PATTERN.test(text)
       ) {
         updateScenario(
           state,
@@ -3414,14 +3567,15 @@ async function runSuite(args) {
           "Computer Use opened Summary after Review.",
         );
         const summaryMatchesIntent =
-          /bat/i.test(text) && /Homebrew|brew|package|command line/i.test(text);
+          text.toLowerCase().includes(TARGET_HOMEBREW_FORMULA.toLowerCase()) &&
+          /Homebrew|brew|package|formula/i.test(text);
         updateScenario(
           state,
           "summary",
           summaryMatchesIntent ? "pass" : "fail",
           summaryMatchesIntent
-            ? "Summary described the requested bat/Homebrew package intent."
-            : "Summary did not visibly describe the typed bat/Homebrew intent.",
+            ? `Summary described the requested ${TARGET_HOMEBREW_FORMULA}/Homebrew formula intent.`
+            : `Summary did not visibly describe the typed ${TARGET_HOMEBREW_FORMULA}/Homebrew intent.`,
         );
       } else {
         updateScenario(
@@ -3447,7 +3601,8 @@ async function runSuite(args) {
           "Computer Use opened Diff after Review.",
         );
         const expectedPackage =
-          /"bat"|bat command line|Homebrew formulae|brews = \[|homebrew\.nix|modules\/darwin\s*\/\s*homebrew\.nix/i.test(
+          text.toLowerCase().includes(TARGET_HOMEBREW_FORMULA.toLowerCase()) &&
+          /Homebrew formulae|brews = \[|"brews"|homebrew\.nix|modules\/darwin\s*\/\s*homebrew\.nix|\.nixmac\/homebrew\/data\.json/i.test(
             text,
           );
         updateScenario(
@@ -3455,8 +3610,8 @@ async function runSuite(args) {
           "diff",
           expectedPackage ? "pass" : "fail",
           expectedPackage
-            ? "Diff rendered a candidate Homebrew configuration file for the bat change."
-            : "Diff did not visibly show the expected bat/Homebrew change.",
+            ? `Diff rendered a candidate Homebrew configuration file for the ${TARGET_HOMEBREW_FORMULA} change.`
+            : `Diff did not visibly show the expected ${TARGET_HOMEBREW_FORMULA}/Homebrew change.`,
         );
       } else {
         updateScenario(
@@ -3549,6 +3704,22 @@ async function runSuite(args) {
                 "step-3-ready",
                 "Computer Use reached Step 3 after Build & Test.",
               );
+              const featureApplied = await captureSystemCheckpoint(state, "featureApplied");
+              if (
+                !featureApplied ||
+                !featureApplied.formulaInstalled ||
+                !featureApplied.formulaExecutablePresent
+              ) {
+                updateScenario(
+                  state,
+                  "systemLifecycle",
+                  "fail",
+                  `Build & Test reached Step 3, but independent system probes did not prove ${e2eHomebrewFormula.name} installed and executable.`,
+                );
+                state.failures.push(
+                  `Build & Test did not produce the expected ${e2eHomebrewFormula.name} system postcondition.`,
+                );
+              }
               if (/button Keep Changes/i.test(text)) {
                 const keepChangesClicked = await clickByPattern(
                   client,
@@ -3587,7 +3758,7 @@ async function runSuite(args) {
                   text,
                   "Commit message",
                   [/Commit message/i],
-                  "chore(homebrew): add bat",
+                  `chore(homebrew): add ${TARGET_HOMEBREW_FORMULA}`,
                 );
                 if (messageSet) {
                   text = await captureState(
@@ -3618,7 +3789,7 @@ async function runSuite(args) {
                     snapshot.head !== state.remoteConfig?.baselineHead &&
                     !snapshot.statusShort &&
                     Boolean(snapshot.baselineDiffNameOnly) &&
-                    snapshot.containsBat === true,
+                    snapshot.containsTargetFormula === true,
                   {
                     attempts: Number(process.env.NIXMAC_E2E_COMMIT_ATTEMPTS || 30),
                     delayMs: Number(process.env.NIXMAC_E2E_COMMIT_DELAY_MS || 1000),
@@ -3636,14 +3807,14 @@ async function runSuite(args) {
                     state,
                     "saveFlow",
                     "pass",
-                    "Step 3 Commit persisted the generated bat/Homebrew change in the disposable config repo and left the worktree clean.",
+                    `Step 3 Commit persisted the generated ${TARGET_HOMEBREW_FORMULA}/Homebrew change in the disposable config repo and left the worktree clean.`,
                   );
                 } else {
                   updateScenario(
                     state,
                     "saveFlow",
                     "fail",
-                    "Step 3 Commit was clicked, but the disposable repo did not show a clean committed bat/Homebrew change.",
+                    `Step 3 Commit was clicked, but the disposable repo did not show a clean committed ${TARGET_HOMEBREW_FORMULA}/Homebrew change.`,
                   );
                   state.failures.push(
                     "Step 3 Commit did not produce the expected clean disposable git state.",
@@ -3857,7 +4028,7 @@ async function runSuite(args) {
                   snapshot?.ok &&
                   !snapshot.statusShort &&
                   !meaningfulBaselineDiff(snapshot) &&
-                  snapshot.containsBat === false,
+                  snapshot.containsTargetFormula === false,
                 {
                   attempts: Number(process.env.NIXMAC_E2E_RESTORE_ATTEMPTS || 80),
                   delayMs: Number(process.env.NIXMAC_E2E_RESTORE_DELAY_MS || 5000),
@@ -3869,6 +4040,23 @@ async function runSuite(args) {
                 "after-history-restore",
                 "Computer Use completed History restore cleanup.",
               );
+              const historyRestored = await captureSystemCheckpoint(state, "historyRestored");
+              const lifecycle = evaluateSystemLifecycle({
+                hostOriginal: state.remoteSystemLifecycle?.checkpoints?.hostOriginal,
+                scenarioBaseline: state.remoteSystemLifecycle?.checkpoints?.scenarioBaseline,
+                featureApplied: state.remoteSystemLifecycle?.checkpoints?.featureApplied,
+                historyRestored,
+                configRestored: restored.ok,
+              });
+              state.remoteSystemLifecycle.result = lifecycle;
+              updateScenario(state, "systemLifecycle", lifecycle.status, lifecycle.note);
+              await writeTextEvidenceArtifact(
+                state,
+                "system-lifecycle",
+                lifecycle,
+                "Independent remote system checkpoints for activation and History restore.",
+              );
+              if (lifecycle.status !== "pass") state.failures.push(lifecycle.note);
               updateScenario(
                 state,
                 "rollbackCleanup",
@@ -4119,7 +4307,7 @@ async function runSuite(args) {
     updateMainCoverageFreshness(state);
 
     state.cleanup.note =
-      "Remote app state was not restored by this runner. CI wrapper is responsible for remote app-support backup/restore; local artifacts are retained.";
+      "Trusted host restoration is pending the workflow-owned always-run teardown and final evidence merge.";
     addTimingPhase(state, {
       id: "computer-use-run",
       label: "Computer Use run",
@@ -4137,9 +4325,10 @@ async function runSuite(args) {
     await render(state);
     await saveState(state);
     console.log(path.join(state.runDir, "index.html"));
-    if (shouldFailProcessForVerdict(state)) {
+    const executionState = { ...state, verdict: verdictBeforeHostRestoration(state) };
+    if (shouldFailProcessForVerdict(executionState)) {
       console.error(
-        `Computer Use E2E verdict was ${state.verdict}; failing the check while preserving the evidence report.`,
+        `Computer Use E2E execution verdict was ${executionState.verdict}; failing the check while preserving the evidence report.`,
       );
       process.exitCode = 1;
     }
@@ -4239,6 +4428,65 @@ async function renderExisting(args) {
   console.log(path.join(runDir, "index.html"));
 }
 
+async function finalizeCleanup(args) {
+  const runDir = argValue(args, "--run-dir", "");
+  const evidencePath = argValue(args, "--evidence", "");
+  if (!runDir) throw new Error("finalize-cleanup requires --run-dir <path>");
+  if (!evidencePath)
+    throw new Error("finalize-cleanup requires --evidence <cleanup-evidence.json>");
+
+  const statePath = path.join(runDir, "state.json");
+  const state = ensureCurrentSchema({
+    ...JSON.parse(await readFile(statePath, "utf8")),
+    runDir,
+  });
+  let rawEvidence = null;
+  try {
+    rawEvidence = JSON.parse(await readFile(evidencePath, "utf8"));
+  } catch {
+    rawEvidence = null;
+  }
+  const result = cleanupScenarioResult(rawEvidence, {
+    expectedRunId: state.remoteRecovery?.runId || "",
+  });
+  state.cleanup = {
+    attempted: true,
+    restored: result.status === "pass",
+    note: result.note,
+    evidence: result.evidence,
+  };
+  state.failures = state.failures.filter((note) => !/^Host restoration evidence/i.test(note));
+  state.scenarios.hostRestoration.notes = [];
+  updateScenario(state, "hostRestoration", result.status, result.note);
+  if (result.status !== "pass" && !state.failures.includes(result.note)) {
+    state.failures.push(result.note);
+  }
+
+  const textPath = path.join(runDir, "texts", "host-restoration.txt");
+  await writeFile(
+    textPath,
+    `${JSON.stringify({ status: result.status, note: result.note, evidence: result.evidence }, null, 2)}\n`,
+    "utf8",
+  );
+  const existingText = state.textSnapshots.find((item) => item.label === "host-restoration");
+  const textArtifact = {
+    label: "host-restoration",
+    path: path.relative(runDir, textPath),
+    capturedAt: new Date().toISOString(),
+    note: "Trusted workflow teardown evidence finalized the host-restoration verdict.",
+  };
+  if (existingText) Object.assign(existingText, textArtifact);
+  else state.textSnapshots.push(textArtifact);
+
+  await mergeWorkflowTimingsFromArgs(state, args);
+  refreshVisualProofQuality(state);
+  updateMainCoverageFreshness(state);
+  updatePrSpecificCoverage(state);
+  await render(state);
+  console.log(path.join(runDir, "index.html"));
+  if (shouldFailProcessForVerdict(state)) process.exitCode = 1;
+}
+
 async function renderErrorReport(error, args) {
   const note = `Computer Use remote runner failed before completing the suite: ${redact(error instanceof Error ? error.message : String(error))}`;
   const runDir = argValue(args, "--run-dir", activeRunDir || "");
@@ -4279,6 +4527,100 @@ async function runSelfTest() {
     15 heading Get started, Value: 3
     26 button Report Issue
   `;
+  const nixmacWindow = 'Window: "nixmac", App: nixmac.';
+  assert.equal(
+    hasUsableComputerUseAppState(`${nixmacWindow}\n1 scroll area\n2 HTML content`),
+    false,
+    "an empty native window shell must not satisfy Computer Use readiness",
+  );
+  assert.equal(
+    hasUsableComputerUseAppState(`${nixmacWindow}\n${launchText}`),
+    true,
+    "the hydrated home prompt should satisfy Computer Use readiness",
+  );
+  assert.equal(
+    hasUsableComputerUseAppState(
+      `${nixmacWindow}\n7 button Settings\n13 heading New configuration updates are available\n16 button Build & Test`,
+      { allowPendingBaseline: true },
+    ),
+    true,
+    "the pending disposable-baseline surface should satisfy operational readiness",
+  );
+  const pendingHomeText = `${nixmacWindow}\n${launchText}\n30 heading New configuration updates are available\n31 button Build & Test`;
+  assert.equal(
+    hasUsableComputerUseAppState(pendingHomeText),
+    false,
+    "canonical readiness must reject a pending baseline even when home controls coexist",
+  );
+  assert.equal(
+    hasUsableComputerUseAppState(pendingHomeText, { allowPendingBaseline: true }),
+    true,
+    "operational readiness should admit a hydrated pending-baseline surface",
+  );
+  assert.equal(
+    PROVIDER_CREDENTIAL_ERROR_PATTERN.test(
+      "evaluating /tmp/nixmac-computer-use-e2e-config-32819640179-1/config",
+    ),
+    false,
+    "numeric run IDs containing 401 must not be classified as provider credential errors",
+  );
+  assert.equal(
+    PROVIDER_CREDENTIAL_ERROR_PATTERN.test("HTTP 401 Unauthorized"),
+    true,
+    "a token-bounded HTTP 401 must remain a provider credential error",
+  );
+  const blankLaunchFixture = spawnSync(
+    "ffmpeg",
+    [
+      "-v",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      "color=c=0x111111:s=768x768",
+      "-frames:v",
+      "1",
+      "-f",
+      "image2pipe",
+      "-vcodec",
+      "png",
+      "pipe:1",
+    ],
+    { encoding: null },
+  );
+  assert.equal(blankLaunchFixture.status, 0, "self-test should create a blank launch PNG");
+  assert.equal(
+    inspectComputerUseScreenshot(blankLaunchFixture.stdout, { strictLaunch: true }).ok,
+    false,
+    "launch readiness must reject a visually blank product surface",
+  );
+  const hydratedLaunchFixture = spawnSync(
+    "ffmpeg",
+    [
+      "-v",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      "color=c=0x111111:s=768x768",
+      "-vf",
+      "drawbox=x=50:y=70:w=300:h=80:color=white:t=fill,drawbox=x=60:y=300:w=500:h=80:color=white:t=fill",
+      "-frames:v",
+      "1",
+      "-f",
+      "image2pipe",
+      "-vcodec",
+      "png",
+      "pipe:1",
+    ],
+    { encoding: null },
+  );
+  assert.equal(hydratedLaunchFixture.status, 0, "self-test should create a hydrated launch PNG");
+  assert.equal(
+    inspectComputerUseScreenshot(hydratedLaunchFixture.stdout, { strictLaunch: true }).ok,
+    true,
+    "launch readiness should accept signal in both required product bands",
+  );
   const settingsFrame = `
     27 button Close settings
     28 text Settings
@@ -4397,6 +4739,26 @@ async function runSelfTest() {
     "verdictFor should ignore explicitly not-required scenarios",
   );
   assert.equal(
+    verdictBeforeHostRestoration({
+      scenarios: {
+        launch: { status: "pass" },
+        hostRestoration: { status: "inconclusive" },
+      },
+    }),
+    "pass",
+    "runner execution should defer only the workflow-owned host-restoration verdict",
+  );
+  assert.equal(
+    verdictBeforeHostRestoration({
+      scenarios: {
+        launch: { status: "fail" },
+        hostRestoration: { status: "inconclusive" },
+      },
+    }),
+    "fail",
+    "runner execution should preserve every product-flow failure",
+  );
+  assert.equal(
     shouldFailProcessForVerdict({ verdict: "fail" }, {}),
     true,
     "strict verdict mode should fail the process for fail verdicts",
@@ -4417,12 +4779,16 @@ async function runSelfTest() {
     "strict verdict env override should suppress process failure",
   );
   const stateHelperRunDir = path.join(os.tmpdir(), `nixmac-state-helper-${Date.now()}`);
-  await mkdir(stateHelperRunDir, { recursive: true });
+  await mkdir(path.join(stateHelperRunDir, "texts"), { recursive: true });
+  await mkdir(path.join(stateHelperRunDir, "screenshots"), { recursive: true });
   const stateHelperState = {
     runDir: stateHelperRunDir,
     events: [],
     claims: [],
     narrative: [],
+    screenshots: [],
+    textSnapshots: [],
+    secretMaskingViolations: [],
     scenarios: {
       sample: { label: "Sample scenario", status: "inconclusive", notes: [] },
     },
@@ -4469,6 +4835,95 @@ async function runSelfTest() {
     "addEvent should persist events.json",
   );
   stateHelperState.app = "com.darkmatter.nixmac";
+  const preflightPng =
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+  const preflightResponse = (text) => ({
+    result: {
+      content: [
+        { type: "text", text },
+        { type: "image", data: preflightPng, mimeType: "image/png" },
+      ],
+    },
+  });
+  const blankPreflight = preflightResponse(`${nixmacWindow}\n1 scroll area\n2 HTML content`);
+  const readyPreflight = preflightResponse(`${nixmacWindow}\n${launchText}`);
+  let preflightCalls = 0;
+  let preflightRelaunches = 0;
+  const polledPreflightClient = {
+    async tool() {
+      preflightCalls += 1;
+      return preflightCalls < 3 ? blankPreflight : readyPreflight;
+    },
+  };
+  const preparedLaunch = await requireComputerUsePreflight(
+    polledPreflightClient,
+    stateHelperState,
+    {
+      attemptsBeforeRelaunch: 2,
+      attemptsAfterRelaunch: 2,
+      delayMs: 0,
+      relaunch: async () => {
+        preflightRelaunches += 1;
+      },
+      screenshotInspector: () => ({ ok: true, reason: "" }),
+    },
+  );
+  assert.equal(preflightCalls, 3, "preflight should poll until the product WebView is ready");
+  assert.equal(
+    preflightRelaunches,
+    1,
+    "preflight should relaunch once after repeated empty WebView states",
+  );
+  assert.equal(
+    preparedLaunch.response,
+    readyPreflight,
+    "preflight should return the exact ready response for launch evidence",
+  );
+  assert.deepEqual(
+    { attempts: preparedLaunch.attempts, relaunches: preparedLaunch.relaunches },
+    { attempts: 3, relaunches: 1 },
+    "preflight should return auditable readiness metadata",
+  );
+  await captureState(
+    polledPreflightClient,
+    stateHelperState,
+    "preflight-ready",
+    "Reuse prepared launch state.",
+    preparedLaunch.response,
+  );
+  assert.equal(
+    preflightCalls,
+    3,
+    "capturing launch evidence from the prepared response must not race a second state read",
+  );
+  let exhaustedRelaunches = 0;
+  await assert.rejects(
+    requireComputerUsePreflight(
+      {
+        async tool() {
+          return blankPreflight;
+        },
+      },
+      stateHelperState,
+      {
+        attemptsBeforeRelaunch: 1,
+        attemptsAfterRelaunch: 1,
+        delayMs: 0,
+        relaunch: async () => {
+          exhaustedRelaunches += 1;
+        },
+        screenshotInspector: () => ({ ok: true, reason: "" }),
+      },
+    ),
+    /did not reach a usable nixmac surface after 2 attempts and 1 relaunch/,
+    "preflight should fail before scenarios begin when the WebView never becomes usable",
+  );
+  assert.equal(exhaustedRelaunches, 1, "exhausted preflight should relaunch at most once");
+  assert.equal(
+    stateHelperState.textSnapshots.at(-1)?.label,
+    "preflight-failure",
+    "exhausted preflight should preserve its last valid target-window response",
+  );
   const retryCalls = [];
   const retryClient = {
     async tool(tool, args) {
@@ -4588,7 +5043,7 @@ async function runSelfTest() {
     },
     {
       scenarioLabels: { sample: "Sample scenario", added: "Added scenario" },
-      evolvedCaseStrategy: () => ({ defaultCaseId: "homebrew-bat", extraCaseIds: [] }),
+      evolvedCaseStrategy: () => ({ defaultCaseId: "homebrew-hello", extraCaseIds: [] }),
       buildPrFocus: () => ({ changedFiles: ["apps/native/src/app.tsx"], scenarioKeys: ["sample"] }),
       pngDimensions: (filePath) =>
         filePath.endsWith("screenshots/sample.png") ? { width: 100, height: 80 } : null,
@@ -4712,7 +5167,7 @@ async function runSelfTest() {
       repoRoot: "/repo",
       remoteAppPathFromEnv: () => "/tmp/nixmac.app",
       scenarioLabels: { launch: "App launches", review: "Review renders" },
-      evolvedCaseStrategy: () => ({ defaultCaseId: "homebrew-bat", selectedAt: "stubbed" }),
+      evolvedCaseStrategy: () => ({ defaultCaseId: "homebrew-hello", selectedAt: "stubbed" }),
       buildPrFocus: () => ({ changedFiles: ["apps/native/src/app.tsx"], scenarioKeys: ["launch"] }),
       env: {
         NIXMAC_E2E_MACOS_VERSION: "test-macos",
@@ -4818,7 +5273,7 @@ async function runSelfTest() {
   );
   assert.deepEqual(
     baseLifecycleState.evolvedCaseStrategy,
-    { defaultCaseId: "homebrew-bat", selectedAt: "stubbed" },
+    { defaultCaseId: "homebrew-hello", selectedAt: "stubbed" },
     "createBaseState should derive evolved strategy from injected builder",
   );
   const historicalState = {
@@ -5188,7 +5643,7 @@ async function runSelfTest() {
   );
   assert.equal(
     commitFormReady(
-      "23 text entry area (settable) Value: chore(homebrew): add bat, Placeholder: Commit message…\n24 button Commit",
+      "23 text entry area (settable) Value: chore(homebrew): add hello, Placeholder: Commit message…\n24 button Commit",
     ),
     true,
     "commitFormReady should require a populated version-history note and enabled Commit button",
@@ -5563,6 +6018,25 @@ async function runSelfTest() {
     "CLI dispatcher should dispatch render-existing args",
   );
   await dispatchRemoteCuaCommand(
+    ["finalize-cleanup", "--run-dir", "/tmp/run", "--evidence", "/tmp/evidence.json"],
+    {
+      finalizeCleanup: async (args) => dispatched.push(["finalizeCleanup", args]),
+    },
+    {
+      usage: () => {
+        dispatchUsageCalls += 1;
+      },
+      exit: (code) => {
+        dispatchExits.push(code);
+      },
+    },
+  );
+  assert.deepEqual(
+    dispatched.pop(),
+    ["finalizeCleanup", ["--run-dir", "/tmp/run", "--evidence", "/tmp/evidence.json"]],
+    "CLI dispatcher should dispatch finalize-cleanup args",
+  );
+  await dispatchRemoteCuaCommand(
     ["render-unavailable", "--note", "not ready"],
     {
       run: async (args) => dispatched.push(["run", args]),
@@ -5722,7 +6196,7 @@ async function runSelfTest() {
     setValueResponseIndicatesFailure({
       result: {
         content: [
-          { type: "text", text: "App state includes Value: Add the bat command line tool." },
+          { type: "text", text: "App state includes Value: Add the hello Homebrew formula." },
         ],
       },
     }),
@@ -6277,6 +6751,7 @@ async function main() {
       renderUnavailable,
       renderStorybookOnly,
       renderExisting,
+      finalizeCleanup,
       selfTest: runSelfTest,
     },
     {

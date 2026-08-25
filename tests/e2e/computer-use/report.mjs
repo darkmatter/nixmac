@@ -298,7 +298,7 @@ function renderCoverageGaps(state) {
     ...coverageWaivers(state).map((waiver) => ({
       label: waiver.label || waiver.id,
       status: waiver.risk === "high" ? "fail" : "inconclusive",
-      detail: `Explicit waiver ${waiver.id || "unknown"} (${waiver.risk || "risk unset"}, owner ${waiver.owner || "unowned"}, review by ${waiver.reviewBy || "unset"}): ${waiver.reason || "No reason recorded."} Exit criteria: ${waiver.exitCriteria || "No exit criteria recorded."}`,
+      detail: `Explicit waiver ${waiver.id || "unknown"} (${waiver.risk || "risk unset"}, owner ${waiver.owner || "unowned"}, reviewed ${waiver.reviewedAt || "unset"}, review by ${waiver.reviewBy || "unset"}): ${waiver.reason || "No reason recorded."} Exit criteria: ${waiver.exitCriteria || "No exit criteria recorded."}`,
     })),
     ...knownCoverageGaps(state),
   ];
@@ -517,17 +517,23 @@ function renderCoverageFreshness(state) {
     ? coverage.waivers
         .map(
           (item) =>
-            `<tr><td>${escapeHtml(item.id)}</td><td>${escapeHtml(item.label)}</td><td>${escapeHtml(item.owner || "unowned")}</td><td>${escapeHtml(item.risk || "unset")}</td><td>${escapeHtml(item.reviewBy || "unset")}</td><td>${escapeHtml(item.reason)}</td><td>${escapeHtml(item.exitCriteria || "No exit criteria recorded.")}${item.validationErrors?.length ? `<br><strong>Validation:</strong> ${escapeHtml(item.validationErrors.join("; "))}` : ""}</td></tr>`,
+            `<tr><td>${escapeHtml(item.id)}</td><td>${escapeHtml(item.label)}</td><td>${escapeHtml(item.owner || "unowned")}</td><td>${escapeHtml(item.risk || "unset")}</td><td>${escapeHtml(item.reviewedAt || "unset")}</td><td>${escapeHtml(item.reviewBy || "unset")}</td><td>${escapeHtml(item.reason)}</td><td>${escapeHtml(item.exitCriteria || "No exit criteria recorded.")}${item.validationErrors?.length ? `<br><strong>Validation:</strong> ${escapeHtml(item.validationErrors.join("; "))}` : ""}</td></tr>`,
         )
         .join("\n")
-    : '<tr><td colspan="7">No waivers recorded.</td></tr>';
+    : '<tr><td colspan="8">No waivers recorded.</td></tr>';
+  const unclassifiedImplementationRows = coverage.unclassifiedDiagnosticFiles?.length
+    ? coverage.unclassifiedDiagnosticFiles
+        .map((file) => `<li><code>${escapeHtml(file)}</code></li>`)
+        .join("\n")
+    : "<li>All inventoried Rust implementation files are associated with a manifest surface.</li>";
   return `<h2 id="main-coverage">Main Coverage Freshness</h2>
   <section class="panel">
-    <p><strong>Manifest v${escapeHtml(String(coverage.manifestVersion))}</strong>: ${escapeHtml(String(coverage.mappedSurfaces))}/${escapeHtml(String(coverage.totalSurfaces))} surfaces have direct scenario mappings; ${escapeHtml(String(coverage.waivedSurfaces))} have explicit waivers; ${escapeHtml(String(coverage.candidateFiles))} user-visible candidate files scanned.</p>
+    <p><strong>Manifest v${escapeHtml(String(coverage.manifestVersion))}</strong>: ${escapeHtml(String(coverage.mappedSurfaces))} mapped, ${escapeHtml(String(coverage.waivedSurfaces))} waived, and ${escapeHtml(String(coverage.nonClaimingSurfaces || 0))} non-claiming surfaces; ${escapeHtml(String(coverage.blockingCandidateFiles?.length || coverage.candidateFiles || 0))} blocking UI candidates classified; ${escapeHtml(String(coverage.diagnosticInventoryFiles?.length || 0))} Rust implementation files inventoried diagnostically.</p>
     <h3>Coverage Drift</h3>
     <table><thead><tr><th>Status</th><th>Detail</th></tr></thead><tbody>${driftRows}</tbody></table>
     <h3>Explicit Waivers</h3>
-    <table><thead><tr><th>ID</th><th>Surface</th><th>Owner</th><th>Risk</th><th>Review By</th><th>Reason</th><th>Exit Criteria</th></tr></thead><tbody>${waiverRows}</tbody></table>
+    <table><thead><tr><th>ID</th><th>Surface</th><th>Owner</th><th>Risk</th><th>Reviewed</th><th>Review By</th><th>Reason</th><th>Exit Criteria</th></tr></thead><tbody>${waiverRows}</tbody></table>
+	  <details><summary>Non-blocking Rust implementation inventory (${escapeHtml(String(coverage.unclassifiedDiagnosticFiles?.length || 0))} unclassified)</summary><p>These files remain reviewer-visible but do not count as independent UI surfaces or make the coverage gate fail.</p><ul>${unclassifiedImplementationRows}</ul></details>
 	  </section>`;
 }
 
@@ -738,11 +744,7 @@ function renderExecutiveSummary(state, counts, evidenceSummary) {
   const coverageStatus = state.scenarios.mainCoverageFreshness?.status || "inconclusive";
   const saveStatus = state.scenarios.saveFlow?.status || "inconclusive";
   const rollbackStatus = state.scenarios.rollbackCleanup?.status || "inconclusive";
-  const remoteRestoreStatus = state.cleanup?.restored
-    ? "pass"
-    : state.cleanup?.attempted
-      ? "fail"
-      : "inconclusive";
+  const remoteRestoreStatus = state.scenarios.hostRestoration?.status || "inconclusive";
   const metadataStatus = state.remoteMachine && state.remoteApp ? "pass" : "inconclusive";
   const storybook = state.storybookPreview || {
     status: "not_applicable",
@@ -1197,11 +1199,10 @@ function renderRawEvidence(state, screenshotHtml) {
 function renderCleanupStatus(state) {
   const rollback = state.scenarios.rollbackCleanup || { status: "inconclusive", notes: [] };
   const discard = state.scenarios.discard || { status: "inconclusive", notes: [] };
-  const remoteRestoreStatus = state.cleanup?.restored
-    ? "pass"
-    : state.cleanup?.attempted
-      ? "fail"
-      : "inconclusive";
+  const hostRestoration = state.scenarios.hostRestoration || {
+    status: "inconclusive",
+    notes: [],
+  };
   return `<h2 id="cleanup">Cleanup / Restore Status</h2>
   <section class="panel cleanup-grid">
     <div class="cleanup-card">
@@ -1216,9 +1217,10 @@ function renderCleanupStatus(state) {
       <p>${escapeHtml(discard.notes.join(" ") || "No discard-boundary note recorded.")}</p>
     </div>
     <div class="cleanup-card">
-      <h3>Remote App-Support Restore</h3>
-      <p><span class="verdict ${escapeHtml(remoteRestoreStatus)}">${escapeHtml(remoteRestoreStatus)}</span></p>
-      <p>${escapeHtml(state.cleanup?.note || "No remote cleanup status recorded.")}</p>
+      <h3>Remote Host Restore</h3>
+      <p><span class="verdict ${escapeHtml(hostRestoration.status)}">${escapeHtml(hostRestoration.status)}</span></p>
+      <p>${escapeHtml(hostRestoration.notes.join(" ") || state.cleanup?.note || "No remote cleanup status recorded.")}</p>
+      ${state.cleanup?.evidence ? `<details><summary>Trusted teardown evidence</summary><pre>${escapeHtml(JSON.stringify(state.cleanup.evidence, null, 2))}</pre></details>` : ""}
     </div>
   </section>`;
 }

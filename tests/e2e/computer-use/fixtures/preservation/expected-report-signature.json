@@ -25,12 +25,12 @@
   "duplicateIds": [],
   "evidenceStrengthCounts": {
     "operational": 14,
-    "strong": 4,
+    "strong": 6,
     "visual-supported": 4,
     "weak": 3
   },
   "nonDynamicScenarioCounts": {
-    "pass": 25
+    "pass": 27
   },
   "order": {
     "failuresBeforeInconclusive": true,
