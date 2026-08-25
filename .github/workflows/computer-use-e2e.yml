@@ -7,6 +7,14 @@ on:
         description: "Same-head build artifact readiness attempts before remote setup"
         required: false
         default: "60"
+      computer_use_driver:
+        description: "Computer Use implementation for this manual run"
+        required: true
+        type: choice
+        default: codex-app-server
+        options:
+          - codex-app-server
+          - cuadriver
 
 permissions:
   contents: write
@@ -621,6 +629,12 @@ jobs:
       NIXMAC_E2E_SUMMARY_PROVIDER: openai
       NIXMAC_E2E_SUMMARY_MODEL: openai/gpt-4o-mini
       NIXMAC_E2E_STORYBOOK_PREVIEW_JSON_PATH: artifacts/computer-use-storybook-plan/storybook-preview.json
+      NIXMAC_E2E_COMPUTER_USE_DRIVER: ${{ inputs.computer_use_driver || 'codex-app-server' }}
+      NIXMAC_E2E_CUA_VERSION: "0.22.0"
+      NIXMAC_E2E_CUA_CLI: /Applications/CuaDriver.app/Contents/MacOS/cua-driver
+      NIXMAC_E2E_CUA_APP: /Applications/CuaDriver.app
+      NIXMAC_E2E_CUA_SOCKET_DIRECTORY: /tmp
+      NIXMAC_E2E_CUA_RESTORE_DEFAULT: ${{ (inputs.computer_use_driver || 'codex-app-server') == 'cuadriver' && 'true' || 'false' }}
     outputs:
       has_report: ${{ steps.report-meta.outputs.has_report }}
       report_dir: ${{ steps.report-meta.outputs.report_dir }}
@@ -807,11 +821,73 @@ jobs:
               --note "Remote readiness did not recover after $preflight_attempts attempts."
             exit 1
           fi
+          if [[ "$NIXMAC_E2E_COMPUTER_USE_DRIVER" == "cuadriver" ]]; then
+            cua_readiness_json="${readiness_json%.json}-cuadriver.json"
+            ssh_common=(-i ~/.ssh/nixmac-e2e -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts)
+            cua_evidence="$(ssh "${ssh_common[@]}" "${REMOTE_USER}@${REMOTE_HOST}" bash -s <<'REMOTE_CUA'
+          set -euo pipefail
+          CUA_APP=/Applications/CuaDriver.app
+          CUA_CLI="$CUA_APP/Contents/MacOS/cua-driver"
+          CUA_PID_FILE="$HOME/Library/Caches/cua-driver/cua-driver.pid"
+          test -x "$CUA_CLI"
+          /usr/bin/codesign --verify --deep --strict --verbose=2 "$CUA_APP" >/dev/null
+          [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$CUA_APP/Contents/Info.plist")" == "com.trycua.driver" ]]
+          [[ "$($CUA_CLI --version)" == "cua-driver 0.22.0" ]]
+          daemon_pids="$(/usr/bin/pgrep -x cua-driver || true)"
+          daemon_count="$(printf '%s\n' "$daemon_pids" | /usr/bin/awk 'NF { count++ } END { print count + 0 }')"
+          [[ "$daemon_count" -eq 1 ]] || {
+            echo "error: CuaDriver parity requires exactly one verified default daemon for TCC preflight; found $daemon_count" >&2
+            exit 1
+          }
+          daemon_pid="$(printf '%s\n' "$daemon_pids" | /usr/bin/awk 'NF { print; exit }')"
+          test -f "$CUA_PID_FILE"
+          pid_file_pid="$(/usr/bin/tr -d '[:space:]' < "$CUA_PID_FILE")"
+          [[ "$pid_file_pid" =~ ^[0-9]+$ && "$pid_file_pid" == "$daemon_pid" ]] || {
+            echo "error: default CuaDriver PID file does not identify the verified daemon" >&2
+            exit 1
+          }
+          daemon_command="$(/bin/ps -p "$daemon_pid" -o command=)"
+          [[ "${daemon_command%% *}" == "$CUA_CLI" ]] || {
+            echo "error: default CuaDriver daemon executable does not match the verified app" >&2
+            exit 1
+          }
+          permissions="$($CUA_CLI call check_permissions '{"prompt":false}')"
+          printf '%s' "$permissions" | /usr/bin/python3 -c '
+          import json, sys
+          payload = json.load(sys.stdin)
+          if payload.get("isError") is True:
+              raise SystemExit("CuaDriver permission probe returned isError:true")
+          state = payload.get("structuredContent", payload)
+          if (
+              state.get("accessibility") is not True
+              or state.get("screen_recording") is not True
+              or state.get("screen_recording_capturable") is not True
+              or state.get("direct_capture_status") != "ready"
+          ):
+              raise SystemExit("CuaDriver Accessibility, Screen Recording, and direct capture must already be ready")
+          source = state.get("source") or {}
+          if source.get("bundle_id") != "com.trycua.driver":
+              raise SystemExit("CuaDriver TCC proof is not attributed to com.trycua.driver")
+          '
+          "$CUA_CLI" stop >/dev/null
+          for _ in $(seq 1 40); do
+            if ! /bin/kill -0 "$daemon_pid" 2>/dev/null && [[ ! -e "$CUA_PID_FILE" ]]; then
+              printf '{"bundleId":"com.trycua.driver","defaultDaemonPid":%s,"defaultDaemonStopped":true,"tccReady":true,"version":"0.22.0"}\n' "$daemon_pid"
+              exit 0
+            fi
+            sleep 0.25
+          done
+          echo "error: verified default CuaDriver daemon did not stop" >&2
+          exit 1
+          REMOTE_CUA
+            )"
+            printf '%s\n' "$cua_evidence" > "$cua_readiness_json"
+          fi
           node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id remote-preflight \
             --status success
 
-      - name: Start remote Codex app-server and nixmac
+      - name: Start remote driver support and nixmac
         if: steps.stale-run.outputs.stale != 'true'
         id: remote-start
         shell: bash
@@ -823,7 +899,7 @@ jobs:
             --id remote-staging-app-launch \
             --label "Remote staging/app launch" \
             --category remote \
-            --note "Preparing disposable config, copying the PR app bundle, starting app-server, and launching nixmac."
+            --note "Preparing disposable config, copying the PR app bundle, preparing the selected Computer Use driver, and launching nixmac."
           RUN_ID_SAFE="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           REMOTE_BACKUP="/tmp/nixmac-computer-use-e2e-backup-${RUN_ID_SAFE}"
           REMOTE_CONFIG="/tmp/nixmac-computer-use-e2e-config-${RUN_ID_SAFE}"
@@ -864,6 +940,7 @@ jobs:
           remote_evolve_model_q=$(printf '%q' "$NIXMAC_E2E_EVOLVE_MODEL")
           remote_summary_provider_q=$(printf '%q' "$NIXMAC_E2E_SUMMARY_PROVIDER")
           remote_summary_model_q=$(printf '%q' "$NIXMAC_E2E_SUMMARY_MODEL")
+          remote_driver_q=$(printf '%q' "$NIXMAC_E2E_COMPUTER_USE_DRIVER")
 
           marker_parent_q=$(printf '%q' "$(dirname "$REMOTE_SYSTEM_MARKER")")
           # shellcheck disable=SC2029
@@ -922,7 +999,7 @@ jobs:
           rm -f "$marker_tmp"
 
           # shellcheck disable=SC2029
-          ssh "${ssh_common[@]}" "$SSH_DEST" "REMOTE_BACKUP=$remote_backup_q REMOTE_CONFIG=$remote_config_q REMOTE_KEY_FILE=$remote_key_file_q REMOTE_AUTH_BACKUP=$remote_auth_backup_q REMOTE_APP_STAGE=$remote_app_stage_q REMOTE_APP_TAR=$remote_app_tar_q REMOTE_APP_PATH=$app_path_q REMOTE_SYSTEM_MARKER=$remote_system_marker_q REMOTE_SYSTEM_MARKER_PENDING=$remote_system_marker_pending_q REMOTE_HOSTNAME=$(printf '%q' "$REMOTE_HOSTNAME") NIXMAC_E2E_EVOLVE_PROVIDER=$remote_evolve_provider_q NIXMAC_E2E_EVOLVE_MODEL=$remote_evolve_model_q NIXMAC_E2E_SUMMARY_PROVIDER=$remote_summary_provider_q NIXMAC_E2E_SUMMARY_MODEL=$remote_summary_model_q bash -s" <<'REMOTE'
+          ssh "${ssh_common[@]}" "$SSH_DEST" "REMOTE_BACKUP=$remote_backup_q REMOTE_CONFIG=$remote_config_q REMOTE_KEY_FILE=$remote_key_file_q REMOTE_AUTH_BACKUP=$remote_auth_backup_q REMOTE_APP_STAGE=$remote_app_stage_q REMOTE_APP_TAR=$remote_app_tar_q REMOTE_APP_PATH=$app_path_q REMOTE_SYSTEM_MARKER=$remote_system_marker_q REMOTE_SYSTEM_MARKER_PENDING=$remote_system_marker_pending_q REMOTE_HOSTNAME=$(printf '%q' "$REMOTE_HOSTNAME") NIXMAC_E2E_EVOLVE_PROVIDER=$remote_evolve_provider_q NIXMAC_E2E_EVOLVE_MODEL=$remote_evolve_model_q NIXMAC_E2E_SUMMARY_PROVIDER=$remote_summary_provider_q NIXMAC_E2E_SUMMARY_MODEL=$remote_summary_model_q NIXMAC_E2E_COMPUTER_USE_DRIVER=$remote_driver_q bash -s" <<'REMOTE'
           set -euo pipefail
           cleanup_key_file() {
             if [[ -n "${REMOTE_KEY_FILE:-}" ]]; then
@@ -1071,50 +1148,52 @@ jobs:
             gui_launchctl setenv OPENROUTER_API_KEY "$(cat "$REMOTE_KEY_FILE")"
             rm -f "$REMOTE_KEY_FILE"
           fi
-          CODEX_APP=""
-          for candidate in /Applications/ChatGPT.app /Applications/Codex.app; do
-            if [[ -x "$candidate/Contents/Resources/codex" ]]; then
-              CODEX_APP="$candidate"
-              break
+          if [[ "$NIXMAC_E2E_COMPUTER_USE_DRIVER" == "codex-app-server" ]]; then
+            CODEX_APP=""
+            for candidate in /Applications/ChatGPT.app /Applications/Codex.app; do
+              if [[ -x "$candidate/Contents/Resources/codex" ]]; then
+                CODEX_APP="$candidate"
+                break
+              fi
+            done
+            if [[ -z "$CODEX_APP" ]]; then
+              echo "error: Codex desktop app is required for the Computer Use service" >&2
+              exit 1
             fi
-          done
-          if [[ -z "$CODEX_APP" ]]; then
-            echo "error: Codex desktop app is required for the Computer Use service" >&2
-            exit 1
-          fi
-          CODEX_PROCESS="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$CODEX_APP/Contents/Info.plist" 2>/dev/null || true)"
-          if [[ -z "$CODEX_PROCESS" ]]; then
-            echo "error: Codex desktop executable name could not be resolved" >&2
-            exit 1
-          fi
-          osascript -e 'tell application id "com.openai.codex" to quit' >/dev/null 2>&1 || true
-          codex_stopped=false
-          for _ in $(seq 1 120); do
-            if ! pgrep -x "$CODEX_PROCESS" >/dev/null && ! pgrep -x SkyComputerUseService >/dev/null; then
-              codex_stopped=true
-              break
+            CODEX_PROCESS="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$CODEX_APP/Contents/Info.plist" 2>/dev/null || true)"
+            if [[ -z "$CODEX_PROCESS" ]]; then
+              echo "error: Codex desktop executable name could not be resolved" >&2
+              exit 1
             fi
-            sleep 0.25
-          done
-          if [[ "$codex_stopped" != "true" ]]; then
-            echo "error: Codex desktop and Computer Use service did not fully stop" >&2
-            exit 1
-          fi
-          open -g "$CODEX_APP"
-          computer_use_ready=false
-          for _ in $(seq 1 120); do
-            if pgrep -x "$CODEX_PROCESS" >/dev/null && pgrep -x SkyComputerUseService >/dev/null; then
-              computer_use_ready=true
-              break
+            osascript -e 'tell application id "com.openai.codex" to quit' >/dev/null 2>&1 || true
+            codex_stopped=false
+            for _ in $(seq 1 120); do
+              if ! pgrep -x "$CODEX_PROCESS" >/dev/null && ! pgrep -x SkyComputerUseService >/dev/null; then
+                codex_stopped=true
+                break
+              fi
+              sleep 0.25
+            done
+            if [[ "$codex_stopped" != "true" ]]; then
+              echo "error: Codex desktop and Computer Use service did not fully stop" >&2
+              exit 1
             fi
-            sleep 0.25
-          done
-          if [[ "$computer_use_ready" != "true" ]]; then
-            echo "error: Codex desktop app did not start SkyComputerUseService" >&2
-            exit 1
+            open -g "$CODEX_APP"
+            computer_use_ready=false
+            for _ in $(seq 1 120); do
+              if pgrep -x "$CODEX_PROCESS" >/dev/null && pgrep -x SkyComputerUseService >/dev/null; then
+                computer_use_ready=true
+                break
+              fi
+              sleep 0.25
+            done
+            if [[ "$computer_use_ready" != "true" ]]; then
+              echo "error: Codex desktop app did not start SkyComputerUseService" >&2
+              exit 1
+            fi
+            nohup "$CODEX_APP/Contents/Resources/codex" app-server -c 'service_tier="fast"' --listen ws://127.0.0.1:18790 >/tmp/nixmac-codex-app-server.log 2>&1 &
+            sleep 2
           fi
-          nohup "$CODEX_APP/Contents/Resources/codex" app-server -c 'service_tier="fast"' --listen ws://127.0.0.1:18790 >/tmp/nixmac-codex-app-server.log 2>&1 &
-          sleep 2
           if ! open -n "$REMOTE_APP_PATH"; then
             echo "warning: open returned non-zero while launching $REMOTE_APP_PATH; continuing so Computer Use can inspect app state" >&2
           fi
@@ -1130,7 +1209,7 @@ jobs:
             --status success
 
       - name: Tunnel remote app-server
-        if: steps.stale-run.outputs.stale != 'true'
+        if: steps.stale-run.outputs.stale != 'true' && env.NIXMAC_E2E_COMPUTER_USE_DRIVER == 'codex-app-server'
         shell: bash
         env:
           SSH_DEST: ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}
@@ -1177,6 +1256,11 @@ jobs:
         if: steps.stale-run.outputs.stale != 'true'
         env:
           NIXMAC_COMPUTER_USE_WS: ws://127.0.0.1:18790
+          NIXMAC_E2E_COMPUTER_USE_DRIVER: ${{ env.NIXMAC_E2E_COMPUTER_USE_DRIVER }}
+          NIXMAC_E2E_CUA_VERSION: ${{ env.NIXMAC_E2E_CUA_VERSION }}
+          NIXMAC_E2E_CUA_CLI: ${{ env.NIXMAC_E2E_CUA_CLI }}
+          NIXMAC_E2E_CUA_APP: ${{ env.NIXMAC_E2E_CUA_APP }}
+          NIXMAC_E2E_CUA_SOCKET_DIRECTORY: ${{ env.NIXMAC_E2E_CUA_SOCKET_DIRECTORY }}
           # Bind every state read and action to this run's staged artifact.
           # DXU intentionally retains diagnostic copies with the same bundle ID.
           NIXMAC_COMPUTER_USE_APP: ${{ steps.remote-start.outputs.remote_app_path }}
@@ -1243,6 +1327,9 @@ jobs:
           REMOTE_KEY_FILE: ${{ steps.remote-start.outputs.remote_key_file }}
           REMOTE_AUTH_BACKUP: ${{ steps.remote-start.outputs.remote_auth_backup }}
           REMOTE_APP_STAGE: ${{ steps.remote-start.outputs.remote_app_stage }}
+          REMOTE_RUN_ID_SAFE: ${{ steps.remote-start.outputs.run_id_safe }}
+          COMPUTER_USE_DRIVER: ${{ env.NIXMAC_E2E_COMPUTER_USE_DRIVER }}
+          RESTORE_CUA_DEFAULT: ${{ env.NIXMAC_E2E_CUA_RESTORE_DEFAULT }}
           CLEANUP_EVIDENCE_PATH: /tmp/nixmac-e2e-cleanup-${{ github.run_id }}-${{ github.run_attempt }}.json
         run: |
           set +e
@@ -1254,12 +1341,112 @@ jobs:
           if [[ -f /tmp/nixmac-e2e-tunnel.pid ]]; then
             kill "$(cat /tmp/nixmac-e2e-tunnel.pid)" >/dev/null 2>&1 || true
           fi
+          driver_cleanup_status=0
+          if [[ "$COMPUTER_USE_DRIVER" == "cuadriver" && -n "${REMOTE_RUN_ID_SAFE:-}" ]]; then
+            ssh_common=(-i ~/.ssh/nixmac-e2e -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts)
+            # shellcheck disable=SC2029
+            if ! ssh "${ssh_common[@]}" "$SSH_DEST" "RUN_ID_SAFE=$(printf '%q' "$REMOTE_RUN_ID_SAFE") bash -s" <<'REMOTE_CUA_CLEANUP'
+          set -euo pipefail
+          CUA_APP=/Applications/CuaDriver.app
+          CUA_CLI="$CUA_APP/Contents/MacOS/cua-driver"
+          CUA_SOCKET="/tmp/nixmac-cua-${RUN_ID_SAFE}.sock"
+          CUA_PID_FILE="$HOME/Library/Caches/cua-driver/cua-driver.pid"
+          if [[ ! -e "$CUA_SOCKET" ]]; then
+            [[ -z "$(/usr/bin/pgrep -x cua-driver || true)" && ! -e "$CUA_PID_FILE" ]]
+            exit
+          fi
+          [[ -S "$CUA_SOCKET" && ! -L "$CUA_SOCKET" ]]
+          test -x "$CUA_CLI"
+          /usr/bin/codesign --verify --deep --strict --verbose=2 "$CUA_APP" >/dev/null
+          [[ "$($CUA_CLI --version)" == "cua-driver 0.22.0" ]]
+          owner_pids="$(/usr/sbin/lsof -nP -t -a -U "$CUA_SOCKET" || true)"
+          owner_count="$(printf '%s\n' "$owner_pids" | /usr/bin/awk 'NF { count++ } END { print count + 0 }')"
+          [[ "$owner_count" -eq 1 ]]
+          owner_pid="$(printf '%s\n' "$owner_pids" | /usr/bin/awk 'NF { print; exit }')"
+          test -f "$CUA_PID_FILE"
+          pid_file_pid="$(/usr/bin/tr -d '[:space:]' < "$CUA_PID_FILE")"
+          [[ "$pid_file_pid" =~ ^[0-9]+$ && "$pid_file_pid" == "$owner_pid" ]]
+          owner_command="$(/bin/ps -p "$owner_pid" -o command=)"
+          [[ "${owner_command%% *}" == "$CUA_CLI" ]]
+          "$CUA_CLI" stop --socket "$CUA_SOCKET"
+          for _ in $(seq 1 40); do
+            if ! /bin/kill -0 "$owner_pid" 2>/dev/null && [[ ! -e "$CUA_SOCKET" && ! -e "$CUA_PID_FILE" ]]; then
+              exit 0
+            fi
+            sleep 0.25
+          done
+          echo "error: run-owned CuaDriver daemon or socket remained after stop" >&2
+          exit 1
+          REMOTE_CUA_CLEANUP
+            then
+              echo "error: failed to stop the exact run-owned CuaDriver daemon" >&2
+              driver_cleanup_status=1
+            fi
+          fi
+          default_daemon_restore_status=0
+          restore_cua_default() {
+            if [[ "$COMPUTER_USE_DRIVER" != "cuadriver" || "$RESTORE_CUA_DEFAULT" != "true" ]]; then
+              return 0
+            fi
+            ssh_common=(-i ~/.ssh/nixmac-e2e -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts)
+            # shellcheck disable=SC2029
+            if ! ssh "${ssh_common[@]}" "$SSH_DEST" "RUN_ID_SAFE=$(printf '%q' "${REMOTE_RUN_ID_SAFE:-unset}") bash -s" <<'REMOTE_CUA_DEFAULT'
+          set -euo pipefail
+          CUA_APP=/Applications/CuaDriver.app
+          CUA_CLI="$CUA_APP/Contents/MacOS/cua-driver"
+          CUA_SOCKET="/tmp/nixmac-cua-${RUN_ID_SAFE}.sock"
+          CUA_PID_FILE="$HOME/Library/Caches/cua-driver/cua-driver.pid"
+          [[ ! -e "$CUA_SOCKET" ]]
+          /usr/bin/codesign --verify --deep --strict --verbose=2 "$CUA_APP" >/dev/null
+          [[ "$($CUA_CLI --version)" == "cua-driver 0.22.0" ]]
+          existing_pids="$(/usr/bin/pgrep -x cua-driver || true)"
+          existing_count="$(printf '%s\n' "$existing_pids" | /usr/bin/awk 'NF { count++ } END { print count + 0 }')"
+          if [[ "$existing_count" -eq 1 ]]; then
+            existing_pid="$(printf '%s\n' "$existing_pids" | /usr/bin/awk 'NF { print; exit }')"
+            test -f "$CUA_PID_FILE"
+            pid_file_pid="$(/usr/bin/tr -d '[:space:]' < "$CUA_PID_FILE")"
+            [[ "$pid_file_pid" =~ ^[0-9]+$ && "$pid_file_pid" == "$existing_pid" ]]
+            existing_command="$(/bin/ps -p "$existing_pid" -o command=)"
+            [[ "$existing_command" == "$CUA_CLI serve --no-permissions-gate --no-overlay" ]]
+            "$CUA_CLI" status >/dev/null
+            exit 0
+          fi
+          [[ "$existing_count" -eq 0 && ! -e "$CUA_PID_FILE" ]]
+          /usr/bin/open -n -g "$CUA_APP" --args serve --no-permissions-gate --no-overlay
+          for _ in $(seq 1 40); do
+            daemon_pids="$(/usr/bin/pgrep -x cua-driver || true)"
+            daemon_count="$(printf '%s\n' "$daemon_pids" | /usr/bin/awk 'NF { count++ } END { print count + 0 }')"
+            if [[ "$daemon_count" -eq 1 ]]; then
+              daemon_pid="$(printf '%s\n' "$daemon_pids" | /usr/bin/awk 'NF { print; exit }')"
+              test -f "$CUA_PID_FILE"
+              pid_file_pid="$(/usr/bin/tr -d '[:space:]' < "$CUA_PID_FILE")"
+              [[ "$pid_file_pid" =~ ^[0-9]+$ && "$pid_file_pid" == "$daemon_pid" ]]
+              daemon_command="$(/bin/ps -p "$daemon_pid" -o command=)"
+              [[ "$daemon_command" == "$CUA_CLI serve --no-permissions-gate --no-overlay" ]]
+              "$CUA_CLI" status >/dev/null
+              exit 0
+            fi
+            sleep 0.25
+          done
+          echo "error: verified default CuaDriver daemon was not restored" >&2
+          exit 1
+          REMOTE_CUA_DEFAULT
+            then
+              echo "error: failed to restore the verified default CuaDriver daemon" >&2
+              return 1
+            fi
+            return 0
+          }
           if [[ -z "${REMOTE_BACKUP:-}" ]]; then
             echo "remote-start outputs are unset; skipping remote cleanup."
             node tests/e2e/computer-use/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
               --id cleanup \
               --status skipped \
               --note "remote-start outputs were unset; no remote cleanup was possible."
+            restore_cua_default || default_daemon_restore_status=1
+            if [[ "$driver_cleanup_status" -ne 0 || "$default_daemon_restore_status" -ne 0 ]]; then
+              exit 1
+            fi
             exit 0
           fi
           remote_system_marker="${{ steps.remote-start.outputs.remote_system_marker }}"
@@ -1316,6 +1503,13 @@ jobs:
             "REMOTE_BACKUP=$remote_backup_q REMOTE_CONFIG=$remote_config_q REMOTE_KEY_FILE=$remote_key_file_q REMOTE_AUTH_BACKUP=$remote_auth_backup_q REMOTE_APP_STAGE=$remote_app_stage_q REMOTE_SYSTEM_MARKER=$remote_system_marker_q REMOTE_RESTORE_RESULT=$remote_restore_result_q bash -s" \
             < ops/scripts/e2e/remote-restore.sh
           cleanup_status=$?
+          restore_cua_default || default_daemon_restore_status=1
+          if [[ "$driver_cleanup_status" -ne 0 ]]; then
+            cleanup_status=1
+          fi
+          if [[ "$default_daemon_restore_status" -ne 0 ]]; then
+            cleanup_status=1
+          fi
           evidence_copied=false
           for evidence_attempt in 1 2 3; do
             if scp "${ssh_common[@]}" "$SSH_DEST:$evidence_remote_path" "$CLEANUP_EVIDENCE_PATH" >/dev/null 2>&1; then

@@ -161,7 +161,6 @@ function createComputerUseClient(options, env = process.env) {
           env.NIXMAC_E2E_CUA_CLI || "/Applications/CuaDriver.app/Contents/MacOS/cua-driver",
         driverAppPath: env.NIXMAC_E2E_CUA_APP || "/Applications/CuaDriver.app",
         expectedVersion: env.NIXMAC_E2E_CUA_VERSION || "0.22.0",
-        toolInvocation: env.NIXMAC_E2E_CUA_TOOL_INVOCATION || "call",
         socketDirectory: env.NIXMAC_E2E_CUA_SOCKET_DIRECTORY || "/tmp",
       }),
       descriptor: cuaCompatDriverDescriptor,
@@ -1120,6 +1119,12 @@ async function baseState(runDir, options) {
   });
 }
 
+function computerUseScreenshotSource(state) {
+  return state.computerUseDriver?.id === "cuadriver-compat"
+    ? "CuaDriver get_window_state image"
+    : "Codex Computer Use get_app_state image";
+}
+
 async function captureState(client, state, label, note = "", preparedResponse = null) {
   const prepared = preparedResponse !== null;
   let response =
@@ -1165,7 +1170,7 @@ async function captureState(client, state, label, note = "", preparedResponse = 
       path: path.relative(state.runDir, pngPath),
       capturedAt: new Date().toISOString(),
       note: redact(note),
-      source: "Codex Computer Use get_app_state image",
+      source: computerUseScreenshotSource(state),
       ...(dimensions ? { imageSize: dimensions } : {}),
     });
   } else if (image && sensitiveImage) {
@@ -1794,7 +1799,7 @@ async function inspectReportWithComputerUse(client, state) {
             path: path.relative(state.runDir, pngPath),
             capturedAt: new Date().toISOString(),
             note: `Computer Use inspected the generated report in ${app}.`,
-            source: "Codex Computer Use get_app_state image",
+            source: computerUseScreenshotSource(state),
           });
         }
         state.textSnapshots.push({

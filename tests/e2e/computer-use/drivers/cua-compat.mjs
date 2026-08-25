@@ -6,6 +6,7 @@ const DEFAULT_CUA_CLI = "/Applications/CuaDriver.app/Contents/MacOS/cua-driver";
 const DEFAULT_CUA_APP = "/Applications/CuaDriver.app";
 const DEFAULT_CUA_VERSION = "0.22.0";
 const DEFAULT_SOCKET_DIRECTORY = "/tmp";
+const DEFAULT_PID_FILE = "$HOME/Library/Caches/cua-driver/cua-driver.pid";
 const DEFAULT_CALL_MAX_BUFFER = 32 * 1024 * 1024;
 const MAX_UNIX_SOCKET_BYTES = 103;
 const PNG_BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
@@ -305,7 +306,6 @@ export class CuaCompatClient {
     cliPath = DEFAULT_CUA_CLI,
     driverAppPath = DEFAULT_CUA_APP,
     expectedVersion = DEFAULT_CUA_VERSION,
-    toolInvocation = "call",
     sleep = (delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs)),
     statusAttempts = 24,
     statusDelayMs = 250,
@@ -320,14 +320,11 @@ export class CuaCompatClient {
       expectedVersion,
       "CuaCompatClient expectedVersion",
     );
-    if (!["direct", "call"].includes(toolInvocation)) {
-      throw new TypeError("CuaCompatClient toolInvocation must be direct or call");
-    }
-    this.toolInvocation = toolInvocation;
     this.runId = requireNonEmptyString(runId, "CuaCompatClient runId").replace(
       /[^a-zA-Z0-9._-]/g,
       "-",
     );
+    this.sessionId = `nixmac-${this.runId}`;
     this.socketPath = cuaSocketPath(this.runId, socketDirectory);
     this.sleep = sleep;
     this.statusAttempts = requirePositiveInteger(statusAttempts, "CuaDriver statusAttempts");
@@ -337,6 +334,7 @@ export class CuaCompatClient {
     }
     this.connected = false;
     this.startedDaemon = false;
+    this.daemonPid = null;
     this.canonicalAppPath = "";
     this.latest = new Map();
   }
@@ -357,12 +355,8 @@ export class CuaCompatClient {
   }
 
   _call(tool, input, options = {}) {
-    const toolArgs =
-      this.toolInvocation === "call"
-        ? ["call", tool, JSON.stringify(input)]
-        : [tool, JSON.stringify(input)];
     const stdout = this._cli(
-      [...toolArgs, "--socket", this.socketPath],
+      ["call", tool, JSON.stringify(input), "--socket", this.socketPath],
       {
         maxBuffer: options.maxBuffer ?? DEFAULT_CALL_MAX_BUFFER,
         timeoutMs: options.timeoutMs ?? (tool === "get_window_state" ? 150_000 : 60_000),
@@ -383,6 +377,36 @@ export class CuaCompatClient {
     ).stdout.trim();
   }
 
+  _attestOwnedDaemon() {
+    const script = [
+      "set -euo pipefail",
+      `CUA_PID_FILE=${JSON.stringify(DEFAULT_PID_FILE)}`,
+      'test -f "$CUA_PID_FILE"',
+      'daemon_pid="$(/usr/bin/tr -d "[:space:]" < "$CUA_PID_FILE")"',
+      '[[ "$daemon_pid" =~ ^[0-9]+$ ]]',
+      `owner_pids="$(/usr/sbin/lsof -nP -t -a -U ${cuaShellQuote(this.socketPath)} || true)"`,
+      'owner_count="$(printf "%s\\n" "$owner_pids" | /usr/bin/awk \'NF { count++ } END { print count + 0 }\')"',
+      '[[ "$owner_count" -eq 1 ]]',
+      'owner_pid="$(printf "%s\\n" "$owner_pids" | /usr/bin/awk \'NF { print; exit }\')"',
+      '[[ "$owner_pid" == "$daemon_pid" ]]',
+      'daemon_command="$(/bin/ps -p "$daemon_pid" -o command=)"',
+      `[[ "\${daemon_command%% *}" == ${cuaShellQuote(this.cliPath)} ]]`,
+      'printf "%s\\n" "$daemon_pid"',
+    ].join("; ");
+    const rawPid = this._run(`/bin/bash -c ${cuaShellQuote(script)}`, {
+      timeoutMs: 10_000,
+    }).stdout.trim();
+    const pid = Number(rawPid);
+    if (!Number.isSafeInteger(pid) || pid <= 0) {
+      throw new Error("CuaDriver run daemon ownership attestation returned an invalid PID");
+    }
+    if (this.daemonPid !== null && this.daemonPid !== pid) {
+      throw new Error("CuaDriver run daemon PID changed after startup attestation");
+    }
+    this.daemonPid = pid;
+    return pid;
+  }
+
   async connect() {
     if (this.connected) return;
     this.canonicalAppPath = this._canonicalRemotePath(this.appPath);
@@ -391,6 +415,7 @@ export class CuaCompatClient {
         this.driverAppPath,
       )} && test ! -e ${cuaShellQuote(this.socketPath)}`,
     );
+    this._run(`test ! -e "${DEFAULT_PID_FILE}"`);
     const competingDaemon = this.runRemote("/usr/bin/pgrep -x cua-driver", { timeoutMs: 10_000 });
     if (competingDaemon?.ok && competingDaemon.stdout?.trim()) {
       throw new Error(
@@ -411,7 +436,7 @@ export class CuaCompatClient {
       this._run(
         `/usr/bin/open -n -g ${cuaShellQuote(this.driverAppPath)} --args serve --socket ${cuaShellQuote(
           this.socketPath,
-        )} --no-permissions-gate`,
+        )} --no-permissions-gate --no-overlay`,
       );
       let ready = false;
       let lastError = null;
@@ -428,12 +453,20 @@ export class CuaCompatClient {
       if (!ready) {
         throw new Error(`CuaDriver daemon did not become ready: ${lastError?.message || "unknown"}`);
       }
+      this._attestOwnedDaemon();
       const permissions = this._requireSuccessful(
         this._call("check_permissions", { prompt: false }),
         "check_permissions",
       );
-      if (permissions.accessibility !== true || permissions.screen_recording !== true) {
-        throw new Error("CuaDriver requires Accessibility and Screen Recording permissions");
+      if (
+        permissions.accessibility !== true ||
+        permissions.screen_recording !== true ||
+        permissions.screen_recording_capturable !== true ||
+        permissions.direct_capture_status !== "ready"
+      ) {
+        throw new Error(
+          "CuaDriver requires Accessibility, Screen Recording, and ready direct capture",
+        );
       }
       this.connected = true;
     } catch (error) {
@@ -508,6 +541,7 @@ export class CuaCompatClient {
     const parsed = this._call("get_window_state", {
       pid: binding.pid,
       window_id: binding.windowId,
+      session: this.sessionId,
     });
     const state = validateWindowState(this._requireSuccessful(parsed, "get_window_state"), binding);
     const elements = new Map();
@@ -567,7 +601,7 @@ export class CuaCompatClient {
       parsed.isError ||
       structured?.ok === false ||
       structured?.is_error === true ||
-      structured?.effect === "suspected_noop"
+      ["suspected_noop", "partial", "refused"].includes(structured?.effect)
     );
   }
 
@@ -582,47 +616,105 @@ export class CuaCompatClient {
     return compatResponse({ text: parsed.text || `${label} completed.` });
   }
 
+  _readbackState(app, binding) {
+    const parsed = this._call("get_window_state", {
+      pid: binding.pid,
+      window_id: binding.windowId,
+      session: this.sessionId,
+    });
+    const state = validateWindowState(
+      this._requireSuccessful(parsed, "get_window_state"),
+      binding,
+    );
+    const elements = new Map(
+      state.elements
+        .filter((item) => Number.isSafeInteger(item?.element_index) && item.element_index >= 0)
+        .map((item) => [item.element_index, Object.freeze({ ...item })]),
+    );
+    this.latest.set(app, Object.freeze({ binding, elements, state }));
+    return { elements, state };
+  }
+
+  _visibleStateChanged(before, after) {
+    return before.screenshot_png_b64 !== after.screenshot_png_b64;
+  }
+
+  _verifiedClick(app, snapshot, parsed) {
+    if (this._actionFailure(parsed)) return this._actionResponse(parsed, "Computer Use click");
+    const { state } = this._readbackState(app, snapshot.binding);
+    if (!this._visibleStateChanged(snapshot.state, state, snapshot.binding)) {
+      return compatResponse({
+        text: "CuaDriver click had no independent visible postcondition.",
+        isError: true,
+      });
+    }
+    return compatResponse({ text: "Computer Use click completed with visible-state readback." });
+  }
+
+  _verifiedNativeSetValue(app, snapshot, element, value, parsed) {
+    if (this._actionFailure(parsed)) {
+      return this._actionResponse(parsed, "Computer Use set_value");
+    }
+    const { state } = this._readbackState(app, snapshot.binding);
+    const readback = closestReadbackElement(state.elements, element);
+    if (!readback || readback.value !== value) {
+      return compatResponse({
+        text: "CuaDriver set_value readback did not match the requested value.",
+        isError: true,
+      });
+    }
+    return compatResponse({ text: "Computer Use set_value completed with AX readback." });
+  }
+
   _webKitSetValue(app, snapshot, element, value) {
     const point = cuaElementPixelCenter(element, snapshot.binding, snapshot.state);
     const target = { pid: snapshot.binding.pid, window_id: snapshot.binding.windowId };
-    for (const [tool, input] of [
-      ["click", { ...target, ...point, delivery_mode: "foreground" }],
-      ["hotkey", { ...target, keys: ["cmd", "a"], delivery_mode: "background" }],
-      ["type_text", { ...target, text: value, delay_ms: 10, delivery_mode: "background" }],
-    ]) {
-      const result = this._call(tool, input);
+    const attemptType = (input) => {
+      const result = this._call("type_text", { ...input, session: this.sessionId });
       if (this._actionFailure(result)) {
         throw new Error(
-          result.text || `CuaDriver ${tool} failed: ${JSON.stringify(result.structured ?? {})}`,
+          result.text || `CuaDriver type_text failed: ${JSON.stringify(result.structured ?? {})}`,
         );
       }
-    }
-    const refreshed = this._resolveBinding(app);
+    };
+    attemptType({ ...target, ...point, text: value, delay_ms: 10 });
+    let refreshed = this._resolveBinding(app);
     if (
       refreshed.pid !== snapshot.binding.pid ||
       refreshed.windowId !== snapshot.binding.windowId
     ) {
       throw new Error("CuaDriver target changed before WebKit set_value readback");
     }
-    const parsed = this._call("get_window_state", {
-      pid: refreshed.pid,
-      window_id: refreshed.windowId,
-    });
-    const state = validateWindowState(
-      this._requireSuccessful(parsed, "get_window_state"),
-      refreshed,
-    );
-    const readback = closestReadbackElement(state.elements, element);
-    if (!readback || readback.value !== value) {
-      throw new Error("CuaDriver WebKit set_value readback did not match the requested value");
+    let readbackState = this._readbackState(app, refreshed).state;
+    let readback = closestReadbackElement(readbackState.elements, element);
+    if (
+      readback?.value !== value ||
+      !this._visibleStateChanged(snapshot.state, readbackState, refreshed)
+    ) {
+      const selectAll = this._call("hotkey", {
+        ...target,
+        ...point,
+        keys: ["cmd", "a"],
+        delivery_mode: "foreground",
+        session: this.sessionId,
+      });
+      if (this._actionFailure(selectAll)) {
+        throw new Error(selectAll.text || "CuaDriver WebKit select-all failed");
+      }
+      attemptType({ ...target, text: value, delay_ms: 10, delivery_mode: "background" });
+      refreshed = this._resolveBinding(app);
+      readbackState = this._readbackState(app, refreshed).state;
+      readback = closestReadbackElement(readbackState.elements, element);
     }
-    const elements = new Map(
-      state.elements
-        .filter((item) => Number.isSafeInteger(item?.element_index) && item.element_index >= 0)
-        .map((item) => [item.element_index, Object.freeze({ ...item })]),
-    );
-    this.latest.set(app, Object.freeze({ binding: refreshed, elements, state }));
-    return compatResponse({ text: "Computer Use set_value completed with WebKit readback." });
+    if (
+      readback?.value !== value ||
+      !this._visibleStateChanged(snapshot.state, readbackState, refreshed)
+    ) {
+      throw new Error(
+        "CuaDriver WebKit set_value lacked matching AX and independent visual readback",
+      );
+    }
+    return compatResponse({ text: "Computer Use set_value completed with AX and visual readback." });
   }
 
   async tool(tool, args = {}) {
@@ -635,9 +727,13 @@ export class CuaCompatClient {
       }
       const { element, snapshot } = this._latestAction(app, args.element_index);
       if (tool === "click") {
-        return this._actionResponse(
-          this._call("click", this._actionInput(snapshot, element)),
-          "Computer Use click",
+        return this._verifiedClick(
+          app,
+          snapshot,
+          this._call("click", {
+            ...this._actionInput(snapshot, element),
+            session: this.sessionId,
+          }),
         );
       }
       if (tool === "set_value") {
@@ -645,12 +741,16 @@ export class CuaCompatClient {
           throw new TypeError("CuaDriver set_value requires a string value");
         }
         if (webTextEntry(element)) return this._webKitSetValue(app, snapshot, element, args.value);
-        return this._actionResponse(
+        return this._verifiedNativeSetValue(
+          app,
+          snapshot,
+          element,
+          args.value,
           this._call("set_value", {
             ...this._actionInput(snapshot, element),
             value: args.value,
+            session: this.sessionId,
           }),
-          "Computer Use set_value",
         );
       }
       throw new Error(`Unsupported Computer Use tool: ${tool}`);
@@ -670,11 +770,27 @@ export class CuaCompatClient {
     this.latest.clear();
     this.connected = false;
     if (!this.startedDaemon) return;
+    const absent = this.runRemote(
+      `test ! -e ${cuaShellQuote(this.socketPath)} && test ! -e "${DEFAULT_PID_FILE}"`,
+      { timeoutMs: 10_000 },
+    );
+    if (this.daemonPid === null && absent?.ok) {
+      const daemonProbe = this.runRemote("/usr/bin/pgrep -x cua-driver", { timeoutMs: 10_000 });
+      if (!daemonProbe?.ok && daemonProbe?.status === 1) {
+        this.startedDaemon = false;
+        return;
+      }
+    }
+    const daemonPid = this._attestOwnedDaemon();
     this._cli(["stop", "--socket", this.socketPath]);
     for (let attempt = 1; attempt <= this.statusAttempts; attempt += 1) {
-      const probe = this.runRemote(`test ! -e ${cuaShellQuote(this.socketPath)}`);
+      const probe = this.runRemote(
+        `test ! -e ${cuaShellQuote(this.socketPath)} && test ! -e "${DEFAULT_PID_FILE}" && ! /bin/kill -0 ${daemonPid} 2>/dev/null`,
+        { timeoutMs: 10_000 },
+      );
       if (probe?.ok) {
         this.startedDaemon = false;
+        this.daemonPid = null;
         return;
       }
       if (attempt < this.statusAttempts) await this.sleep(this.statusDelayMs);

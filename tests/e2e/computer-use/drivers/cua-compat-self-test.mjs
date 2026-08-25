@@ -11,7 +11,9 @@ import {
 const stagedApp = "/private/tmp/nixmac-e2e/nixmac.app";
 const socketPath = "/tmp/nixmac-cua-run-123.sock";
 const png =
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+  "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAABAAAAAQBPJcTWAAAAEElEQVR4nGP8wwACLGCSAQANBAECv1AVswAAAABJRU5ErkJggg==";
+const typedPng =
+  "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAABAAAAAQBPJcTWAAAAEklEQVR4nGNkYPjLwMDAwgAGAAsXAQPfmWhAAAAAAElFTkSuQmCC";
 
 assert.equal(cuaSocketPath("run-123"), socketPath);
 assert.throws(
@@ -84,10 +86,10 @@ function windowState(value) {
       { ...promptElement, value },
     ],
     pid: 4242,
-    screenshot_height: 1,
+    screenshot_height: 2,
     screenshot_mime_type: "image/png",
-    screenshot_png_b64: png,
-    screenshot_width: 1,
+    screenshot_png_b64: value ? typedPng : png,
+    screenshot_width: 2,
     snapshot_id: `snapshot-${value || "empty"}`,
     tree_markdown: "",
     window_id: 7002,
@@ -126,9 +128,9 @@ assert.deepEqual(
   cuaElementPixelCenter(
     promptElement,
     { bounds: windowRecord.bounds },
-    { screenshot_width: 1, screenshot_height: 1 },
+    { screenshot_width: 2, screenshot_height: 2 },
   ),
-  { x: 0.5, y: 0.5 },
+  { x: 1, y: 1 },
 );
 
 function envelope(structuredContent, text = "ok", isError = false) {
@@ -142,8 +144,11 @@ function envelope(structuredContent, text = "ok", isError = false) {
 const commands = [];
 const toolCalls = [];
 let typedValue = "";
+let typedVisual = true;
 let socketStopped = false;
+let daemonRunning = false;
 let staleClick = false;
+let nextClickEffect = "";
 
 function fakeRemote(command) {
   commands.push(command);
@@ -154,19 +159,35 @@ function fakeRemote(command) {
     return { ok: true, stdout: stagedApp, stderr: "" };
   }
   if (command.startsWith("test -x ")) return { ok: true, stdout: "", stderr: "" };
+  if (command === 'test ! -e "$HOME/Library/Caches/cua-driver/cua-driver.pid"') {
+    return { ok: !daemonRunning, stdout: "", stderr: daemonRunning ? "pid file exists" : "" };
+  }
   if (command.includes("'--version'")) {
     return { ok: true, stdout: "cua-driver 0.22.0", stderr: "" };
   }
-  if (command.startsWith("/usr/bin/open ")) return { ok: true, stdout: "", stderr: "" };
+  if (command.startsWith("/usr/bin/open ")) {
+    daemonRunning = true;
+    return { ok: true, stdout: "", stderr: "" };
+  }
   if (command.includes("'status' '--socket'")) {
     return { ok: true, stdout: "running", stderr: "" };
   }
   if (command.includes("'stop' '--socket'")) {
     socketStopped = true;
+    daemonRunning = false;
     return { ok: true, stdout: "stopped", stderr: "" };
   }
+  if (command.startsWith("/bin/bash -c ") && command.includes("CUA_PID_FILE=")) {
+    return daemonRunning
+      ? { ok: true, stdout: "5151\n", stderr: "" }
+      : { ok: false, stdout: "", stderr: "daemon absent" };
+  }
   if (command.startsWith("test ! -e ")) {
-    return { ok: socketStopped, stdout: "", stderr: socketStopped ? "" : "socket exists" };
+    return {
+      ok: socketStopped && !daemonRunning,
+      stdout: "",
+      stderr: socketStopped && !daemonRunning ? "" : "socket exists",
+    };
   }
   const match =
     command.match(/'call' '([^']+)' '([^']*)' '--socket'/) ||
@@ -180,7 +201,12 @@ function fakeRemote(command) {
   if (tool === "check_permissions") {
     return {
       ok: true,
-      stdout: envelope({ accessibility: true, screen_recording: true }),
+      stdout: envelope({
+        accessibility: true,
+        direct_capture_status: "ready",
+        screen_recording: true,
+        screen_recording_capturable: true,
+      }),
       stderr: "",
     };
   }
@@ -205,7 +231,9 @@ function fakeRemote(command) {
     return { ok: true, stdout: envelope({ current_space_id: null, windows: [windowRecord] }), stderr: "" };
   }
   if (tool === "get_window_state") {
-    return { ok: true, stdout: envelope(windowState(typedValue)), stderr: "" };
+    const state = windowState(typedValue);
+    if (!typedVisual && typedValue) state.screenshot_png_b64 = typedPng;
+    return { ok: true, stdout: envelope(state), stderr: "" };
   }
   if (tool === "click" && staleClick && Object.hasOwn(input, "element_token")) {
     return {
@@ -213,6 +241,11 @@ function fakeRemote(command) {
       stdout: envelope({ ok: false, reason: "stale_element" }, "stale element", true),
       stderr: "",
     };
+  }
+  if (tool === "click" && nextClickEffect) {
+    const effect = nextClickEffect;
+    nextClickEffect = "";
+    return { ok: true, stdout: envelope({ effect }), stderr: "" };
   }
   if (tool === "type_text") typedValue = input.text;
   return {
@@ -240,6 +273,12 @@ assert(
   ),
   "the Linux controller must start a run-unique daemon remotely through its injected executor",
 );
+assert(
+  commands.some(
+    (command) => command.includes("CUA_PID_FILE=") && command.includes("lsof") && command.includes(socketPath),
+  ),
+  "startup must bind the shared Cua PID file to the exact run-socket listener",
+);
 
 const observed = await client.tool("get_app_state", { app: stagedApp });
 assert.equal(observed.result.isError, false);
@@ -264,34 +303,41 @@ assert.deepEqual(
     .map(({ tool, input }) => ({ tool, input })),
   [
     {
-      tool: "click",
-      input: { pid: 4242, window_id: 7002, x: 0.5, y: 0.5, delivery_mode: "foreground" },
-    },
-    {
-      tool: "hotkey",
-      input: {
-        pid: 4242,
-        window_id: 7002,
-        keys: ["cmd", "a"],
-        delivery_mode: "background",
-      },
-    },
-    {
       tool: "type_text",
       input: {
         pid: 4242,
         window_id: 7002,
+        x: 1,
+        y: 1,
         text: "typed through WebKit",
         delay_ms: 10,
-        delivery_mode: "background",
+        session: "nixmac-run-123",
       },
     },
   ],
-  "WebKit set_value must use pixel focus, Cmd+A, type_text, then fresh readback",
+  "WebKit set_value should prefer one pixel-addressed type_text call before readback",
 );
 assert.equal(typedValue, "typed through WebKit");
 assert.equal(toolCalls.at(-1).tool, "get_window_state");
 
+typedVisual = false;
+const axOnlyResult = await client.tool("set_value", {
+  app: stagedApp,
+  element_index: 7,
+  value: "AX echo only",
+});
+assert.equal(axOnlyResult.result.isError, true);
+assert.match(axOnlyResult.result.content[0].text, /independent visual readback/);
+typedVisual = true;
+
+await client.tool("get_app_state", { app: stagedApp });
+nextClickEffect = "partial";
+const partialClick = await client.tool("click", { app: stagedApp, element_index: 7 });
+assert.equal(partialClick.result.isError, true);
+await client.tool("get_app_state", { app: stagedApp });
+const noChangeClick = await client.tool("click", { app: stagedApp, element_index: 7 });
+assert.equal(noChangeClick.result.isError, true);
+assert.match(noChangeClick.result.content[0].text, /no independent visible postcondition/);
 await client.tool("get_app_state", { app: stagedApp });
 staleClick = true;
 const staleResult = await client.tool("click", { app: stagedApp, element_index: 7 });

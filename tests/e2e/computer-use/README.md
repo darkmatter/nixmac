@@ -54,9 +54,17 @@ NIXMAC_E2E_SSH_KNOWN_HOSTS=/path/to/known_hosts \
 node tests/e2e/computer-use/run-remote-cua.mjs run
 ```
 
-The parity adapter never connects to a local macOS daemon. WebKit text entry is
-implemented as pixel focus, Cmd+A, `type_text`, and exact AX value readback.
+The parity adapter never connects to a local macOS daemon. WebKit text entry
+prefers one pixel-addressed `type_text` call and requires both exact AX readback
+and an independently changed window screenshot.
 Codex app-server remains the default and production driver.
+
+For the one-off GitHub lane, dispatch `Computer Use E2E` manually with
+`computer_use_driver=cuadriver`. The workflow verifies the installed 0.22.0
+bundle/signature and existing TCC grants, stops only the verified default
+CuaDriver daemon, skips Codex app-server/tunneling, always stops the run-owned
+socket, and restores the verified default daemon. Manual runs upload private
+artifacts but never publish or comment on the public report branch.
 
 Predicate and click-result guards can be checked without a remote Mac:
 

@@ -12,7 +12,6 @@ Environment:
   NIXMAC_COMPUTER_USE_APP      Bundle id/app name (default ${defaultApp})
   NIXMAC_E2E_COMPUTER_USE_DRIVER codex-app-server (default) or cuadriver
   NIXMAC_E2E_CUA_VERSION       Required remote CuaDriver version (default 0.22.0)
-  NIXMAC_E2E_CUA_TOOL_INVOCATION call (0.22 default) or direct (future compatibility)
   NIXMAC_E2E_CUA_CLI           Remote CuaDriver CLI path
   NIXMAC_E2E_CUA_APP           Remote CuaDriver.app path
   NIXMAC_E2E_CUA_SOCKET_DIRECTORY Remote directory for the run-unique Unix socket

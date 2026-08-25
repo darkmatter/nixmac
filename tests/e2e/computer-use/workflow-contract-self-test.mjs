@@ -65,6 +65,52 @@ const cleanupStep = section(
 );
 
 assert.match(
+  workflow,
+  /computer_use_driver:[\s\S]*type: choice[\s\S]*default: codex-app-server[\s\S]*- codex-app-server[\s\S]*- cuadriver/,
+  "manual dispatch must default to Codex while exposing an explicit CuaDriver parity choice",
+);
+assert.equal(
+  /^\s{2}pull_request:/m.test(workflow),
+  false,
+  "CuaDriver parity wiring must not restore automatic PR execution",
+);
+assert.match(
+  remote,
+  /NIXMAC_E2E_COMPUTER_USE_DRIVER: \$\{\{ inputs\.computer_use_driver \|\| 'codex-app-server' \}\}/,
+  "the exact manual driver choice must propagate into the remote job",
+);
+assert.match(
+  remote,
+  /codesign --verify --deep --strict[\s\S]*cua-driver 0\.22\.0[\s\S]*CUA_PID_FILE[\s\S]*pid_file_pid[\s\S]*call check_permissions[\s\S]*direct_capture_status[\s\S]*com\.trycua\.driver[\s\S]*"\$CUA_CLI" stop/,
+  "Cua preflight must verify signature/version/TCC attribution before stopping only its verified default daemon",
+);
+assert.doesNotMatch(
+  remote,
+  /NIXMAC_E2E_CUA_TOOL_INVOCATION/,
+  "the official 0.22 call envelope must not expose an invalid per-tool invocation mode",
+);
+assert.match(
+  remote,
+  /name: Tunnel remote app-server[\s\S]*if: steps\.stale-run\.outputs\.stale != 'true' && env\.NIXMAC_E2E_COMPUTER_USE_DRIVER == 'codex-app-server'/,
+  "the app-server tunnel must remain Codex-only",
+);
+assert.match(
+  remote,
+  /if \[\[ "\$NIXMAC_E2E_COMPUTER_USE_DRIVER" == "codex-app-server" \]\]; then[\s\S]*app-server -c 'service_tier="fast"'/,
+  "Codex app-server startup must be skipped for CuaDriver parity",
+);
+assert.match(
+  cleanupStep,
+  /CUA_SOCKET="\/tmp\/nixmac-cua-\$\{RUN_ID_SAFE\}\.sock"[\s\S]*lsof -nP -t -a -U "\$CUA_SOCKET"[\s\S]*pid_file_pid[\s\S]*"\$CUA_CLI" stop --socket "\$CUA_SOCKET"[\s\S]*! -e "\$CUA_PID_FILE"/,
+  "always-run cleanup must stop only the exact run-owned CuaDriver socket and verified listener",
+);
+assert.match(
+  cleanupStep,
+  /restore_cua_default\(\)[\s\S]*\[\[ ! -e "\$CUA_SOCKET" \]\][\s\S]*existing_count[\s\S]*"\$CUA_CLI" status[\s\S]*existing_count" -eq 0 && ! -e "\$CUA_PID_FILE"[\s\S]*serve --no-permissions-gate --no-overlay[\s\S]*pid_file_pid[\s\S]*"\$CUA_CLI" status/,
+  "cleanup must restore the exact verified default daemon only after the run-owned socket and PID file are absent",
+);
+
+assert.match(
   remote,
   /system-restore-marker\.json[\s\S]*prepare-system-marker\.mjs[\s\S]*REMOTE_SYSTEM_MARKER_PENDING[\s\S]*mv "\$REMOTE_SYSTEM_MARKER_PENDING" "\$REMOTE_SYSTEM_MARKER"/,
   "remote setup must prove formula/system preconditions and atomically arm durable recovery before mutation",
