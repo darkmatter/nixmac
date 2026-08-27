@@ -5,6 +5,7 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
+use diesel::Connection;
 use tauri::{AppHandle, Manager, Runtime};
 
 use crate::db::DbPool;
@@ -82,34 +83,39 @@ pub async fn analyze<R: Runtime>(
     let assignments = assign_summaries(&changes, &items);
     let now = crate::utils::unix_now();
 
-    // Persist each assignment: multi-member sets become first-class groups,
-    // single-member sets become per-change (patch) summaries.
-    for assignment in &assignments {
-        let description = assignment.summary.trim();
-        let title = description.lines().next().unwrap_or(description).trim();
-        if assignment.hashes.len() >= 2 {
-            crate::db::summaries::store_group(
-                &pool,
-                &assignment.hashes,
-                title,
-                description,
-                "DONE",
-                now,
-            )?;
-        } else if let Some(hash) = assignment.hashes.first() {
-            crate::db::summaries::store_patch(&pool, hash, title, description, "DONE", now)?;
+    // Persist all assignments and the cached snapshot in one transaction so a
+    // mid-loop failure leaves no partial rows committed (all-or-nothing).
+    let mut conn = pool.get()?;
+    let snapshot_id = conn.transaction::<_, anyhow::Error, _>(|conn| {
+        // Persist each assignment: multi-member sets become first-class groups,
+        // single-member sets become per-change (patch) summaries.
+        for assignment in &assignments {
+            let description = assignment.summary.trim();
+            let title = description.lines().next().unwrap_or(description).trim();
+            if assignment.hashes.len() >= 2 {
+                crate::db::summaries::store_group_tx(
+                    conn,
+                    &assignment.hashes,
+                    title,
+                    description,
+                    "DONE",
+                    now,
+                )?;
+            } else if let Some(hash) = assignment.hashes.first() {
+                crate::db::summaries::store_patch_tx(conn, hash, title, description, "DONE", now)?;
+            }
         }
-    }
 
-    // Cache the generated commit message for this exact set of change hashes.
-    let hashes: Vec<String> = changes.iter().map(|c| c.hash.clone()).collect();
-    let snapshot_id = crate::db::snapshots::upsert(
-        &pool,
-        &crate::db::keys::snapshot_key(&hashes),
-        Some(&generated_message),
-        evolution_id,
-        now,
-    )?;
+        // Cache the generated commit message for this exact set of change hashes.
+        let hashes: Vec<String> = changes.iter().map(|c| c.hash.clone()).collect();
+        crate::db::snapshots::upsert_tx(
+            conn,
+            &crate::db::keys::snapshot_key(&hashes),
+            Some(&generated_message),
+            evolution_id,
+            now,
+        )
+    })?;
 
     emit_update(app, &pool, base_ref)?;
 

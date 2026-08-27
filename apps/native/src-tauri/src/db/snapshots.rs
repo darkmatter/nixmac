@@ -6,6 +6,7 @@
 
 use anyhow::Result;
 use diesel::prelude::*;
+use diesel::sqlite::SqliteConnection;
 
 use crate::db::DbPool;
 use crate::db::tables::snapshots;
@@ -14,6 +15,53 @@ use crate::db::tables::snapshots;
 pub struct Snapshot {
     pub id: i64,
     pub generated_commit_message: Option<String>,
+}
+
+/// Upsert a snapshot by `snapshot_key`, returning its id, on a borrowed
+/// connection inside the caller's transaction.
+///
+/// When the key already exists, the row is reused and its
+/// `generated_commit_message` is updated only when a non-empty message is
+/// supplied — a bare (build-check) upsert must not clobber a real message.
+pub fn upsert_tx(
+    conn: &mut SqliteConnection,
+    snapshot_key: &str,
+    generated_commit_message: Option<&str>,
+    evolution_id: Option<i64>,
+    created_at: i64,
+) -> Result<i64> {
+    let existing: Option<i64> = snapshots::table
+        .filter(snapshots::snapshot_key.eq(snapshot_key))
+        .select(snapshots::id)
+        .first::<i64>(conn)
+        .optional()?;
+
+    if let Some(id) = existing {
+        let has_message = generated_commit_message.is_some_and(|m| !m.trim().is_empty());
+        if has_message {
+            diesel::update(snapshots::table.filter(snapshots::id.eq(id)))
+                .set((
+                    snapshots::generated_commit_message.eq(generated_commit_message),
+                    snapshots::evolution_id.eq(evolution_id),
+                ))
+                .execute(conn)?;
+        }
+        return Ok(id);
+    }
+
+    diesel::insert_into(snapshots::table)
+        .values((
+            snapshots::snapshot_key.eq(snapshot_key),
+            snapshots::generated_commit_message.eq(generated_commit_message),
+            snapshots::evolution_id.eq(evolution_id),
+            snapshots::created_at.eq(created_at),
+        ))
+        .execute(conn)?;
+
+    Ok(snapshots::table
+        .filter(snapshots::snapshot_key.eq(snapshot_key))
+        .select(snapshots::id)
+        .first::<i64>(conn)?)
 }
 
 /// Upsert a snapshot by `snapshot_key`, returning its id.
@@ -29,39 +77,13 @@ pub fn upsert(
     created_at: i64,
 ) -> Result<i64> {
     let mut conn = pool.get()?;
-
-    let existing: Option<i64> = snapshots::table
-        .filter(snapshots::snapshot_key.eq(snapshot_key))
-        .select(snapshots::id)
-        .first::<i64>(&mut conn)
-        .optional()?;
-
-    if let Some(id) = existing {
-        let has_message = generated_commit_message.is_some_and(|m| !m.trim().is_empty());
-        if has_message {
-            diesel::update(snapshots::table.filter(snapshots::id.eq(id)))
-                .set((
-                    snapshots::generated_commit_message.eq(generated_commit_message),
-                    snapshots::evolution_id.eq(evolution_id),
-                ))
-                .execute(&mut conn)?;
-        }
-        return Ok(id);
-    }
-
-    diesel::insert_into(snapshots::table)
-        .values((
-            snapshots::snapshot_key.eq(snapshot_key),
-            snapshots::generated_commit_message.eq(generated_commit_message),
-            snapshots::evolution_id.eq(evolution_id),
-            snapshots::created_at.eq(created_at),
-        ))
-        .execute(&mut conn)?;
-
-    Ok(snapshots::table
-        .filter(snapshots::snapshot_key.eq(snapshot_key))
-        .select(snapshots::id)
-        .first::<i64>(&mut conn)?)
+    upsert_tx(
+        &mut conn,
+        snapshot_key,
+        generated_commit_message,
+        evolution_id,
+        created_at,
+    )
 }
 
 /// Fetch a snapshot by its content key.

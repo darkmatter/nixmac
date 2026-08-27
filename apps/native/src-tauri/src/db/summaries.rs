@@ -8,6 +8,7 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::Result;
 use diesel::prelude::*;
+use diesel::sqlite::SqliteConnection;
 
 use crate::db::DbPool;
 use crate::db::keys;
@@ -35,16 +36,18 @@ pub struct GroupRow {
     pub members: Vec<String>,
 }
 
-/// Upsert a per-change summary keyed by `change_hash`.
-pub fn store_patch(
-    pool: &DbPool,
+/// Upsert a per-change summary keyed by `change_hash`, on a borrowed connection.
+///
+/// Caller is responsible for committing (or rolling back) the enclosing
+/// transaction so a failure mid-pipeline leaves no partial rows committed.
+pub fn store_patch_tx(
+    conn: &mut SqliteConnection,
     change_hash: &str,
     title: &str,
     description: &str,
     status: &str,
     created_at: i64,
 ) -> Result<()> {
-    let mut conn = pool.get()?;
     diesel::insert_into(patch_summaries::table)
         .values((
             patch_summaries::change_hash.eq(change_hash),
@@ -61,8 +64,84 @@ pub fn store_patch(
             patch_summaries::status.eq(status),
             patch_summaries::created_at.eq(created_at),
         ))
-        .execute(&mut conn)?;
+        .execute(conn)?;
     Ok(())
+}
+
+/// Upsert a per-change summary keyed by `change_hash`.
+pub fn store_patch(
+    pool: &DbPool,
+    change_hash: &str,
+    title: &str,
+    description: &str,
+    status: &str,
+    created_at: i64,
+) -> Result<()> {
+    let mut conn = pool.get()?;
+    store_patch_tx(
+        &mut conn,
+        change_hash,
+        title,
+        description,
+        status,
+        created_at,
+    )
+}
+
+/// Upsert a group summary keyed by the content hash of its members, replacing
+/// membership so the group's identity always matches its exact member set, on a
+/// borrowed connection inside the caller's transaction.
+pub fn store_group_tx(
+    conn: &mut SqliteConnection,
+    member_hashes: &[String],
+    title: &str,
+    description: &str,
+    status: &str,
+    created_at: i64,
+) -> Result<String> {
+    let group_key = keys::group_key(member_hashes);
+
+    diesel::insert_into(summary_groups::table)
+        .values((
+            summary_groups::group_key.eq(&group_key),
+            summary_groups::title.eq(title),
+            summary_groups::description.eq(description),
+            summary_groups::status.eq(status),
+            summary_groups::created_at.eq(created_at),
+        ))
+        .on_conflict(summary_groups::group_key)
+        .do_update()
+        .set((
+            summary_groups::title.eq(title),
+            summary_groups::description.eq(description),
+            summary_groups::status.eq(status),
+            summary_groups::created_at.eq(created_at),
+        ))
+        .execute(conn)?;
+
+    diesel::delete(
+        summary_group_members::table.filter(summary_group_members::group_key.eq(&group_key)),
+    )
+    .execute(conn)?;
+
+    let mut unique: Vec<&String> = member_hashes.iter().collect();
+    unique.sort_unstable();
+    unique.dedup();
+    for hash in unique {
+        diesel::insert_into(summary_group_members::table)
+            .values((
+                summary_group_members::group_key.eq(&group_key),
+                summary_group_members::change_hash.eq(hash),
+            ))
+            .on_conflict((
+                summary_group_members::group_key,
+                summary_group_members::change_hash,
+            ))
+            .do_nothing()
+            .execute(conn)?;
+    }
+
+    Ok(group_key)
 }
 
 /// Upsert a group summary keyed by the content hash of its members, replacing
@@ -75,53 +154,10 @@ pub fn store_group(
     status: &str,
     created_at: i64,
 ) -> Result<String> {
-    let group_key = keys::group_key(member_hashes);
     let mut conn = pool.get()?;
-
-    conn.transaction::<_, anyhow::Error, _>(|conn| {
-        diesel::insert_into(summary_groups::table)
-            .values((
-                summary_groups::group_key.eq(&group_key),
-                summary_groups::title.eq(title),
-                summary_groups::description.eq(description),
-                summary_groups::status.eq(status),
-                summary_groups::created_at.eq(created_at),
-            ))
-            .on_conflict(summary_groups::group_key)
-            .do_update()
-            .set((
-                summary_groups::title.eq(title),
-                summary_groups::description.eq(description),
-                summary_groups::status.eq(status),
-                summary_groups::created_at.eq(created_at),
-            ))
-            .execute(conn)?;
-
-        diesel::delete(
-            summary_group_members::table.filter(summary_group_members::group_key.eq(&group_key)),
-        )
-        .execute(conn)?;
-
-        let mut unique: Vec<&String> = member_hashes.iter().collect();
-        unique.sort_unstable();
-        unique.dedup();
-        for hash in unique {
-            diesel::insert_into(summary_group_members::table)
-                .values((
-                    summary_group_members::group_key.eq(&group_key),
-                    summary_group_members::change_hash.eq(hash),
-                ))
-                .on_conflict((
-                    summary_group_members::group_key,
-                    summary_group_members::change_hash,
-                ))
-                .do_nothing()
-                .execute(conn)?;
-        }
-        Ok(())
-    })?;
-
-    Ok(group_key)
+    conn.transaction::<_, anyhow::Error, _>(|c| {
+        store_group_tx(c, member_hashes, title, description, status, created_at)
+    })
 }
 
 /// Load every group whose full membership is contained in `live_hashes`.
