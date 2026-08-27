@@ -5,7 +5,7 @@
 //! Rules:
 //! 1. Only a .nixmacignore at the repo root is read (TODO: at least for now)
 //! 2. .git and result are always ignored and this cannot be negated.
-//! 3. .nixmacignore applies to all files tracked and untracked by git.
+//! 3. .nixmacignore applies whether or not the root is a Git repository.
 //! 4. Paths are repo-root-relative (not config-dir relative).
 //! 5. If you don't have a .nixmacignore, no additional ignore rules are applied beyond those in item 2.
 //! 6. If we can't read .nixmacignore we should fail closed and the UI should do an error.
@@ -15,35 +15,21 @@
 
 use anyhow::Context;
 use anyhow::Result;
-use git2::Repository;
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use std::fs;
 use std::io::ErrorKind;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// Directories always ignored by file listing and search helpers.
-const IGNORED_DIRS: [&str; 2] = [".git", "result"];
+pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
 pub(crate) struct NixmacIgnoreChecker {
-    repo_root: PathBuf,
+    // This is a standalone pattern engine; it does not read or require a Git repository.
     matcher: Gitignore,
 }
 
 impl NixmacIgnoreChecker {
-    /// Returns `Ok(None)` when `repo_root` is not a git repository (no ignore
-    /// filtering applies), and an error when it looks like a repository but
-    /// cannot be opened, so ignore protections fail closed.
-    pub(crate) fn new(repo_root: &Path) -> Result<Option<NixmacIgnoreChecker>> {
-        if !repo_root.join(".git").exists() {
-            return Ok(None);
-        }
-        Repository::open(repo_root).with_context(|| {
-            format!(
-                "failed to open git repository at {} for nixmac ignore checks",
-                repo_root.display()
-            )
-        })?;
-
+    pub(crate) fn new(repo_root: &Path) -> Result<NixmacIgnoreChecker> {
         let ignore_path = repo_root.join(".nixmacignore");
         let mut builder = GitignoreBuilder::new(repo_root);
         match fs::symlink_metadata(&ignore_path) {
@@ -67,18 +53,20 @@ impl NixmacIgnoreChecker {
             )
         })?;
 
-        Ok(Some(NixmacIgnoreChecker {
-            repo_root: repo_root.to_path_buf(),
-            matcher,
-        }))
+        Ok(NixmacIgnoreChecker { matcher })
     }
 
     /// Returns whether a repo-root-relative path must be hidden from the
     /// evolution agent.
+    /// `relative_path` must be, well, relative, and if it's absolute than this function
+    /// will fail closed (e.g. return `true`)
+    /// `is_dir` allows the caller to indicate whether the path is a directory, in which case
+    /// we can proactively ignore it without having to check its contents.
     pub(crate) fn is_ignored(&self, relative_path: &Path, is_dir: bool) -> bool {
-        let relative_path = relative_path
-            .strip_prefix(&self.repo_root)
-            .unwrap_or(relative_path);
+        // Fail closed if the path is absolute.
+        if relative_path.is_absolute() {
+            return true;
+        }
 
         // These rules are checked separately so a user negation in
         // `.nixmacignore` can never make them visible.
@@ -121,13 +109,6 @@ impl NixmacIgnoreChecker {
     }
 }
 
-/// Returns the list of directories that are always ignored by the evolution agent.
-/// This is used to more proactively filter in ripgrep searches and other file listing operations,
-/// so that we don't waste time searching in directories that are always eventually ignored.
-pub(crate) fn get_always_ignored_dirs() -> &'static [&'static str] {
-    &IGNORED_DIRS
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -135,20 +116,27 @@ mod tests {
     use tempfile::tempdir;
 
     fn checker(base: &Path) -> NixmacIgnoreChecker {
-        Repository::init(base).expect("init git repo");
-        NixmacIgnoreChecker::new(base)
-            .expect("create checker")
-            .expect("base is a git repo")
+        NixmacIgnoreChecker::new(base).expect("create checker")
     }
 
     #[test]
-    fn non_git_directory_yields_no_checker() {
+    fn absolute_paths_fail_closed() {
         let temp = tempdir().expect("create temp dir");
-        assert!(
-            NixmacIgnoreChecker::new(temp.path())
-                .expect("plain directories are allowed")
-                .is_none()
-        );
+        let checker = checker(temp.path());
+
+        assert!(checker.is_ignored(&temp.path().join("visible.txt"), false));
+        assert!(checker.is_ignored(&temp.path().join("visible"), true));
+        assert!(checker.is_ignored(&temp.path().join(".nixmac/settings.json"), false));
+    }
+
+    #[test]
+    fn nixmacignore_applies_outside_git_repositories() {
+        let temp = tempdir().expect("create temp dir");
+        fs::write(temp.path().join(".nixmacignore"), "private/\n").expect("write ignore file");
+        let checker = checker(temp.path());
+
+        assert!(checker.is_ignored(Path::new("private/settings.json"), false));
+        assert!(!checker.is_ignored(Path::new("visible/settings.json"), false));
     }
 
     #[test]
@@ -212,7 +200,6 @@ mod tests {
     #[test]
     fn unreadable_nixmacignore_fails_closed() {
         let temp = tempdir().expect("create temp dir");
-        Repository::init(temp.path()).expect("init git repo");
         fs::create_dir(temp.path().join(".nixmacignore")).expect("create invalid ignore path");
 
         let error = NixmacIgnoreChecker::new(temp.path())

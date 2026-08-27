@@ -361,15 +361,9 @@ mod tests {
     #[test]
     fn list_files_skips_nixmac_ignored_files() {
         let tmp = tempdir().expect("tempdir");
-        let repo = git2::Repository::init(tmp.path()).expect("init git repo");
         fs::write(tmp.path().join(".nixmacignore"), "secret.txt\n").expect("write .nixmacignore");
         fs::write(tmp.path().join("visible.txt"), "visible").expect("write visible file");
         fs::write(tmp.path().join("secret.txt"), "secret").expect("write secret file");
-        let mut index = repo.index().expect("open git index");
-        index
-            .add_path(Path::new("secret.txt"))
-            .expect("track secret file");
-        index.write().expect("write git index");
         let nixmac_ignore_matcher = NixmacIgnoreChecker::new(tmp.path()).expect("load matcher");
 
         let result = execute_tool(
@@ -380,7 +374,7 @@ mod tests {
             &json!({ "pattern": "**/*.txt" }),
             false,
             None,
-            nixmac_ignore_matcher.as_ref(),
+            Some(&nixmac_ignore_matcher),
             None,
         )
         .expect("list_files should succeed");
@@ -449,7 +443,7 @@ mod tests {
             &json!({ "pattern": "**/*.txt" }),
             false,
             None,
-            nixmac_ignore_matcher.as_ref(),
+            Some(&nixmac_ignore_matcher),
             None,
         )
         .expect("list_files should succeed");
@@ -465,7 +459,6 @@ mod tests {
     #[test]
     fn read_file_rejects_nixmac_ignored_files() {
         let tmp = tempdir().expect("tempdir");
-        git2::Repository::init(tmp.path()).expect("init git repo");
         fs::write(tmp.path().join(".nixmacignore"), "secret.txt\n").expect("write .nixmacignore");
         fs::write(tmp.path().join("visible.txt"), "visible").expect("write visible file");
         fs::write(tmp.path().join("secret.txt"), "secret").expect("write secret file");
@@ -479,7 +472,7 @@ mod tests {
             &json!({ "path": "secret.txt" }),
             false,
             None,
-            nixmac_ignore_matcher.as_ref(),
+            Some(&nixmac_ignore_matcher),
             None,
         );
 
@@ -1268,11 +1261,8 @@ mod tests {
     #[test]
     fn nixmac_guard_rejects_nixmac_ignored_edit_paths() {
         let tmp = tempdir().expect("tempdir");
-        git2::Repository::init(tmp.path()).expect("init git repo");
         fs::write(tmp.path().join(".nixmacignore"), "private/\n").expect("write ignore file");
-        let checker = NixmacIgnoreChecker::new(tmp.path())
-            .expect("create checker")
-            .expect("git repository has a checker");
+        let checker = NixmacIgnoreChecker::new(tmp.path()).expect("create checker");
 
         let error =
             super::ensure_nixmac_edit_allowed("edit_file", "private/settings.json", Some(&checker))
@@ -1289,11 +1279,8 @@ mod tests {
     #[test]
     fn nixmac_guard_preserves_nested_module_data_exception_with_ignore_matcher() {
         let tmp = tempdir().expect("tempdir");
-        git2::Repository::init(tmp.path()).expect("init git repo");
         fs::write(tmp.path().join(".nixmacignore"), "*\n").expect("write ignore file");
-        let checker = NixmacIgnoreChecker::new(tmp.path())
-            .expect("create checker")
-            .expect("git repository has a checker");
+        let checker = NixmacIgnoreChecker::new(tmp.path()).expect("create checker");
 
         super::ensure_nixmac_edit_allowed(
             "edit_file",
@@ -1316,10 +1303,7 @@ mod tests {
     #[test]
     fn mandatory_ignores_precede_nested_nixmac_edit_exception() {
         let tmp = tempdir().expect("tempdir");
-        git2::Repository::init(tmp.path()).expect("init git repo");
-        let checker = NixmacIgnoreChecker::new(tmp.path())
-            .expect("create checker")
-            .expect("git repository has a checker");
+        let checker = NixmacIgnoreChecker::new(tmp.path()).expect("create checker");
 
         let error = super::ensure_nixmac_edit_allowed(
             "edit_file",

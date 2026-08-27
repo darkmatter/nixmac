@@ -1,4 +1,4 @@
-use crate::evolve::nixmac_ignore::{NixmacIgnoreChecker, get_always_ignored_dirs};
+use crate::evolve::nixmac_ignore::{IGNORED_DIRS, NixmacIgnoreChecker};
 
 use super::gitignore::{GitignoreChecker, VisibleFiles};
 use super::utils::truncate_error;
@@ -111,7 +111,7 @@ fn run_inprocess_rg(
         "--color=never".into(),
         "--text".into(),
     ];
-    let ignored_dirs = get_always_ignored_dirs();
+    let ignored_dirs = IGNORED_DIRS;
     for d in ignored_dirs {
         argv.push("--glob".into());
         argv.push(format!("!{d}/**/*").into());
@@ -280,7 +280,7 @@ mod tests {
             "NEEDLE",
             None,
             gitignore_matcher.as_ref(),
-            nixmac_ignore_matcher.as_ref(),
+            Some(&nixmac_ignore_matcher),
         )
         .expect("search should succeed");
 
