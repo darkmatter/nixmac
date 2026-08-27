@@ -6,18 +6,6 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct Commit {
-    #[specta(type = f64)]
-    pub id: i64,
-    pub hash: String,
-    pub tree_hash: String,
-    pub message: Option<String>,
-    #[specta(type = f64)]
-    pub created_at: i64,
-}
-
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]

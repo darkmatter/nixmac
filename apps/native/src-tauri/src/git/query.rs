@@ -23,6 +23,14 @@ struct FileHunk {
     line_count: i64,
 }
 
+/// A commit read from git history — the in-memory shape returned by `log`
+/// and `log_from_commit`. Not a persisted row; git is the source of truth.
+pub struct Commit {
+    pub hash: String,
+    pub message: Option<String>,
+    pub created_at: i64,
+}
+
 /// Interhunk lines controls whether nearby changes are grouped together in the same hunk.
 /// It's normally 0 by default in the git CLI but we'll use 1 to be more aggressive about grouping
 /// nearby changes together, which should help with summarization quality (our main use case).
@@ -249,15 +257,11 @@ pub fn read_tags(dir: &str, hash: &str) -> Vec<String> {
     tags
 }
 
-/// Returns commits as Row Type (id = 0), from `start_hash` for `limit` (None for all).
+/// Returns commits from `start_hash` for `limit` (None for all).
 ///
 /// Equivalent CLI:
-///   git log --format=%H%n%T%n%at%n%s [-n <limit>] <start_hash>
-pub fn log(
-    dir: &str,
-    start_hash: &str,
-    limit: Option<usize>,
-) -> Result<Vec<crate::sqlite_types::Commit>> {
+///   git log --format=%H%n%at%n%s [-n <limit>] <start_hash>
+pub fn log(dir: &str, start_hash: &str, limit: Option<usize>) -> Result<Vec<Commit>> {
     let repo = Repository::discover(dir)?;
     let commit = repo.revparse_single(start_hash)?.peel_to_commit()?;
 
@@ -270,10 +274,8 @@ pub fn log(
         let commit = repo.find_commit(oid?)?;
         let subject = commit.summary().unwrap_or_default().unwrap_or_default();
 
-        commits.push(crate::sqlite_types::Commit {
-            id: 0,
+        commits.push(Commit {
             hash: commit.id().to_string(),
-            tree_hash: commit.tree_id().to_string(),
             message: (!subject.is_empty()).then(|| subject.to_string()),
             created_at: commit.time().seconds(),
         });
@@ -303,11 +305,7 @@ pub fn commit_count(dir: &str, start_hash: &str) -> Result<usize> {
 /// is skipped by the summarize pipeline). This avoids walking the entire log
 /// when summarizing a single commit by hash — the previous implementation
 /// loaded every commit from HEAD and then searched for `commit_hash`.
-pub fn log_from_commit(
-    dir: &str,
-    commit_hash: &str,
-    limit: usize,
-) -> Result<Vec<crate::sqlite_types::Commit>> {
+pub fn log_from_commit(dir: &str, commit_hash: &str, limit: usize) -> Result<Vec<Commit>> {
     let repo = Repository::discover(dir)?;
     let commit = repo.revparse_single(commit_hash)?.peel_to_commit()?;
     let mut revwalk = repo.revwalk()?;
@@ -318,10 +316,8 @@ pub fn log_from_commit(
     for oid in revwalk.take(limit.saturating_add(1)) {
         let c = repo.find_commit(oid?)?;
         let subject = c.summary().unwrap_or_default().unwrap_or_default();
-        commits.push(crate::sqlite_types::Commit {
-            id: 0,
+        commits.push(Commit {
             hash: c.id().to_string(),
-            tree_hash: c.tree_id().to_string(),
             message: (!subject.is_empty()).then(|| subject.to_string()),
             created_at: c.time().seconds(),
         });
@@ -927,10 +923,6 @@ mod tests {
         assert_eq!(commits[0].hash, third_id.to_string());
         assert_eq!(commits[0].message, Some("third".to_string()));
         assert_eq!(commits[0].created_at, 300);
-        assert_eq!(
-            commits[0].tree_hash,
-            repo.find_commit(third_id).unwrap().tree_id().to_string()
-        );
 
         assert_eq!(commits[1].hash, second_id.to_string());
         assert_eq!(commits[1].message, Some("second".to_string()));
