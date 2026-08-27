@@ -98,7 +98,8 @@ email: string }
  */
 export type AuthStatus = { 
 /**
- * Whether a usable account credential is stored on this device.
+ * Whether any usable account credential is stored on this device. This may
+ * be either a legacy sync credential or the web device API key.
  */
 signedIn: boolean; 
 /**
@@ -114,12 +115,13 @@ keyId: string | null;
  */
 serverUrl: string; 
 /**
- * Whether this device can call server-brokered GitHub endpoints (has a
- * minted Better Auth api-key for the web origin).
+ * Whether this device can authenticate with the web origin using its
+ * stored Better Auth device API key. Hosted models and brokered GitHub
+ * requests share this credential.
  */
-githubReady: boolean; 
+webApiAuthReady: boolean;
 /**
- * The web-origin account used for GitHub, when `github_ready` is true.
+ * The web-origin account associated with the device API key, when known.
  */
 webAccount: AuthAccount | null }
 

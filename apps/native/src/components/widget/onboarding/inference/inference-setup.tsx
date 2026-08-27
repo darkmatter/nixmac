@@ -19,6 +19,7 @@ import {
 } from "@/components/widget/onboarding/lib/inference";
 import { tauriAPI } from "@/ipc/api";
 import type { UiPrefsUpdate } from "@/ipc/types";
+import { setCachedAccountStatus } from "@/lib/account-status";
 import {
   BYOK_MODEL_PROVIDERS,
   getAiModelProvider,
@@ -35,7 +36,7 @@ import { getTelemetry } from "@/lib/telemetry/instance";
 import { cn } from "@/lib/utils";
 import { onboardingActions, useOnboarding } from "@nixmac/state";
 import NixmacIcon from "@nixmac/ui/components/icon";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-shell";
 import {
   Check,
@@ -262,6 +263,7 @@ function activeBillingLabel(billing: AccountBilling | null | undefined): string 
 }
 
 function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) => void }) {
+  const queryClient = useQueryClient();
   const [stage, setStage] = useState<HostedStage>("account");
   const { email, otp, otpSent, selectedPlan } = useOnboarding(
     (s) => s.inferenceSetupDraft.hosted,
@@ -358,11 +360,12 @@ function HostedFlow({ onConfigured }: { onConfigured: (config: InferenceConfig) 
     setError(null);
     try {
       // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      await tauriAPI.account.verifyOtp(
+      const status = await tauriAPI.account.verifyOtp(
         normalizedEmail,
         otp.trim(),
         accountNameFromEmail(normalizedEmail),
       );
+      setCachedAccountStatus(queryClient, status);
       setHostedDraft({ email: normalizedEmail, otp: "" });
       posthog.identify(normalizedEmail, { email: normalizedEmail });
       getTelemetry().captureEvent({ name: "account_signed_in" });

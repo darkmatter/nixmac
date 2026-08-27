@@ -200,10 +200,6 @@ pub fn delete_web_account<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
     Ok(())
 }
 
-pub fn github_ready<R: Runtime>(app: &AppHandle<R>) -> Result<bool> {
-    Ok(get_device_api_key(app)?.is_some() && get_web_server_url().is_ok())
-}
-
 pub fn get_web_server_url() -> Result<String> {
     crate::env::web_server_url()
 }

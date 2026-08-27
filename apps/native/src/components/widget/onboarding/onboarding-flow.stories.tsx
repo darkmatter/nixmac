@@ -474,7 +474,7 @@ function installBackend(startAt: string) {
     account: { id: "demo-account", email },
     keyId: null,
     serverUrl: "https://sync.nixmac.app",
-    githubReady: true,
+    webApiAuthReady: true,
     webAccount: { id: "demo-account", email },
   }));
   ensure("ui");

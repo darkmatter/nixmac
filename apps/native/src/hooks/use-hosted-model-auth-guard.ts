@@ -1,21 +1,21 @@
 import type { AuthStatus, GlobalPreferences } from "@/ipc/types";
+import { accountStatusQueryOptions } from "@/lib/account-status";
 import { hasNixmacHostedModelSelected } from "@/lib/providers/ai-models";
-import { orpc } from "@/lib/orpc";
 import { nav } from "@/router";
 import { useViewModel } from "@nixmac/state";
-import { useEffect, useMemo } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 export function shouldPromptForHostedModelAuth(
   preferences: Pick<GlobalPreferences, "evolveProvider" | "summaryProvider"> | null,
-  status: Pick<AuthStatus, "signedIn">,
+  status: Pick<AuthStatus, "webApiAuthReady">,
 ): boolean {
-  return hasNixmacHostedModelSelected(preferences) && !status.signedIn;
+  return hasNixmacHostedModelSelected(preferences) && !status.webApiAuthReady;
 }
 
 /**
- * Surface the settings choice once per app launch when hosted inference is
- * still selected but the device no longer has a usable account credential.
+ * Surface the settings choice whenever the app enters a state where hosted
+ * inference is selected without a usable hosted-model credential.
  */
 export function useHostedModelAuthGuard(): void {
   const hydrated = useViewModel((state) => state.hydrated);
@@ -25,23 +25,18 @@ export function useHostedModelAuthGuard(): void {
       state.onboardingState?.completedAt !== null &&
       state.onboardingState?.completedAt !== undefined,
   );
-  const { data: status } = useQuery(orpc.account.status.queryOptions({}));
-  const isAuthenticated = !!status?.account;
-  const hasNixmacHostedModel = useMemo(
-    () => hasNixmacHostedModelSelected(preferences),
-    [preferences],
-  );
+  const hasHostedModelSelected = hasNixmacHostedModelSelected(preferences);
+  const guardEnabled =
+    hydrated && onboardingComplete && preferences !== null && hasHostedModelSelected;
+  const { data: status } = useQuery(accountStatusQueryOptions(guardEnabled));
+  const shouldPrompt =
+    guardEnabled && status !== undefined && shouldPromptForHostedModelAuth(preferences, status);
+  const wasPromptable = useRef(false);
 
   useEffect(() => {
-    if (
-      !hydrated ||
-      !onboardingComplete ||
-      !preferences ||
-      !hasNixmacHostedModel ||
-      isAuthenticated
-    )
-      return;
-
-    nav.openSettings("ai-models", "hosted-auth");
-  }, [hydrated, onboardingComplete, preferences, hasNixmacHostedModel, isAuthenticated]);
+    if (shouldPrompt && !wasPromptable.current) {
+      void nav.openSettings("ai-models", "hosted-auth");
+    }
+    wasPromptable.current = shouldPrompt;
+  }, [shouldPrompt]);
 }
