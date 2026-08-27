@@ -78,7 +78,8 @@ export function SettingsDialog() {
     }
   }, [developerMode, activeTab, navigate, settingsPrompt]);
 
-  const setActiveTab = (tab: SettingsTab, prompt?: string) => navigate({ search: { tab, prompt: prompt ?? settingsPrompt } });
+  const setActiveTab = (tab: SettingsTab, prompt?: string) =>
+    navigate({ search: { tab, prompt: prompt ?? settingsPrompt } });
   const [openrouterKeyStatus, setOpenrouterKeyStatus] = useState<ApiKeyStatus>("idle");
   const [openaiKeyStatus, setOpenaiKeyStatus] = useState<ApiKeyStatus>("idle");
   const openrouterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -295,14 +296,18 @@ export function SettingsDialog() {
                 <AlertTitle>Sign in to use your nixmac hosted model</AlertTitle>
                 <AlertDescription>
                   <p>
-                    Your account is signed out, but nixmac hosted inference is still selected.
-                    Log back in or select another model to continue.
+                    Your account is signed out, but nixmac hosted inference is still selected. Log
+                    back in or select another model to continue.
                   </p>
                   <div className="flex flex-wrap gap-2 pt-1">
-                    <Button onClick={() => setActiveTab("account", undefined)} size="sm">
+                    <Button onClick={() => setActiveTab("account", "")} size="sm">
                       Log back in
                     </Button>
-                    <Button onClick={() => setActiveTab("ai-models", undefined)} size="sm" variant="outline">
+                    <Button
+                      onClick={() => setActiveTab("ai-models", "")}
+                      size="sm"
+                      variant="outline"
+                    >
                       Select another model
                     </Button>
                   </div>
@@ -354,7 +359,9 @@ export function SettingsDialog() {
                                     openrouterTimeoutRef={openrouterTimeoutRef}
                                     verifyOpenaiKey={verifyOpenaiKey}
                                     verifyOpenrouterKey={verifyOpenrouterKey}
-                                    openaiCompatibleApiBaseUrlField={openaiCompatibleApiBaseUrlField}
+                                    openaiCompatibleApiBaseUrlField={
+                                      openaiCompatibleApiBaseUrlField
+                                    }
                                     openaiCompatibleApiKeyField={openaiCompatibleApiKeyField}
                                   />
                                 )}
