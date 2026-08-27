@@ -16,6 +16,7 @@ import { modelForProvider } from "@/lib/providers/ai-models";
  * `darwin:evolve:event` payload, handled by `viewmodel/evolution.ts`.
  */
 const evolveFromManual = async () => {
+  uiActions.setCommitMessageSuggestion(null);
   await client.darwin.evolveFromManual();
 };
 
@@ -45,6 +46,7 @@ const handleEvolve = async () => {
   uiActions.clearLogs();
   uiActions.setConversationalResponse(null);
   uiActions.setEvolutionTelemetry(null);
+  uiActions.setCommitMessageSuggestion(null);
   // A new evolution means "follow the live backend step" — drop any manual
   // step-override (e.g. the user clicked Back to refine) so the result lands
   // on the live Review step instead of staying behind on Describe.

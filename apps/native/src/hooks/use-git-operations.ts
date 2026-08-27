@@ -34,7 +34,9 @@ function compactFileDiffContents(
   contents: Partial<Record<string, FileDiffContents>>,
 ): Record<string, FileDiffContents> {
   return Object.fromEntries(
-    Object.entries(contents).filter((entry): entry is [string, FileDiffContents] => entry[1] != null),
+    Object.entries(contents).filter(
+      (entry): entry is [string, FileDiffContents] => entry[1] != null,
+    ),
   );
 }
 
@@ -61,6 +63,7 @@ const handleCommit = async ({ message }: { message: string }) => {
     // The backend clears the evolve state, refreshes the git-state cell, and
     // resets the change-map cell; the `*_changed` events mirror everything.
     await client.git.commit({ message });
+    uiActions.setCommitMessageSuggestion(null);
     uiActions.appendLog("✓ Committed successfully\n");
     uiActions.setError(null);
     toast.success("Committed successfully");
