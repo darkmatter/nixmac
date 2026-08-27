@@ -175,8 +175,9 @@ mod tests {
         let b = change("b.nix", "+b");
         let c = change("c.nix", "+c");
 
-        crate::db::summaries::store_group(
-            &pool,
+        let mut conn = pool.get().unwrap();
+        crate::db::summaries::store_group_tx(
+            &mut conn,
             &[a.hash.clone(), b.hash.clone()],
             "feat: a and b",
             "feat: a and b",
@@ -184,7 +185,8 @@ mod tests {
             0,
         )
         .unwrap();
-        crate::db::summaries::store_patch(&pool, &c.hash, "fix: c", "fix: c", "DONE", 0).unwrap();
+        crate::db::summaries::store_patch_tx(&mut conn, &c.hash, "fix: c", "fix: c", "DONE", 0)
+            .unwrap();
 
         let found = for_changes(&pool, &[a.clone(), b.clone(), c.clone()]).unwrap();
         assert_eq!(found.map.groups.len(), 1);
@@ -215,9 +217,9 @@ mod tests {
 
         let a = change("a.nix", "+a");
         let b = change("b.nix", "+b");
-
-        crate::db::summaries::store_group(
-            &pool,
+        let mut conn = pool.get().unwrap();
+        crate::db::summaries::store_group_tx(
+            &mut conn,
             &[a.hash.clone(), b.hash.clone()],
             "big",
             "big",
@@ -225,8 +227,8 @@ mod tests {
             0,
         )
         .unwrap();
-        crate::db::summaries::store_group(
-            &pool,
+        crate::db::summaries::store_group_tx(
+            &mut conn,
             std::slice::from_ref(&a.hash),
             "small",
             "small",

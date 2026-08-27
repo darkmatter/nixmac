@@ -68,26 +68,6 @@ pub fn store_patch_tx(
     Ok(())
 }
 
-/// Upsert a per-change summary keyed by `change_hash`.
-pub fn store_patch(
-    pool: &DbPool,
-    change_hash: &str,
-    title: &str,
-    description: &str,
-    status: &str,
-    created_at: i64,
-) -> Result<()> {
-    let mut conn = pool.get()?;
-    store_patch_tx(
-        &mut conn,
-        change_hash,
-        title,
-        description,
-        status,
-        created_at,
-    )
-}
-
 /// Upsert a group summary keyed by the content hash of its members, replacing
 /// membership so the group's identity always matches its exact member set, on a
 /// borrowed connection inside the caller's transaction.
@@ -144,22 +124,6 @@ pub fn store_group_tx(
     Ok(group_key)
 }
 
-/// Upsert a group summary keyed by the content hash of its members, replacing
-/// membership so the group's identity always matches its exact member set.
-pub fn store_group(
-    pool: &DbPool,
-    member_hashes: &[String],
-    title: &str,
-    description: &str,
-    status: &str,
-    created_at: i64,
-) -> Result<String> {
-    let mut conn = pool.get()?;
-    conn.transaction::<_, anyhow::Error, _>(|c| {
-        store_group_tx(c, member_hashes, title, description, status, created_at)
-    })
-}
-
 /// Load every group whose full membership is contained in `live_hashes`.
 ///
 /// A group only qualifies when *all* of its members are live, so partially
@@ -168,6 +132,7 @@ pub fn groups_within(pool: &DbPool, live_hashes: &[String]) -> Result<Vec<GroupR
     if live_hashes.is_empty() {
         return Ok(vec![]);
     }
+
     let live_set: HashSet<&str> = live_hashes.iter().map(String::as_str).collect();
     let mut conn = pool.get()?;
 
@@ -181,7 +146,6 @@ pub fn groups_within(pool: &DbPool, live_hashes: &[String]) -> Result<Vec<GroupR
     if candidate_keys.is_empty() {
         return Ok(vec![]);
     }
-
     // Full membership of every candidate group.
     let member_rows: Vec<(String, String)> = summary_group_members::table
         .filter(summary_group_members::group_key.eq_any(&candidate_keys))
@@ -279,7 +243,16 @@ mod tests {
         let db_path = temp_dir.path().join("nixmac.db");
         let pool = crate::db::init_pool_at_path(&db_path).await.unwrap();
 
-        store_group(&pool, &["a".into(), "b".into()], "title", "desc", "DONE", 0).unwrap();
+        let mut conn = pool.get().unwrap();
+        store_group_tx(
+            &mut conn,
+            &["a".into(), "b".into()],
+            "title",
+            "desc",
+            "DONE",
+            0,
+        )
+        .unwrap();
 
         // Both members live → group surfaces.
         let found = groups_within(&pool, &["a".into(), "b".into(), "c".into()]).unwrap();
@@ -297,8 +270,9 @@ mod tests {
         let db_path = temp_dir.path().join("nixmac.db");
         let pool = crate::db::init_pool_at_path(&db_path).await.unwrap();
 
-        store_patch(&pool, "h1", "t1", "d1", "DONE", 0).unwrap();
-        store_patch(&pool, "h1", "t2", "d2", "DONE", 5).unwrap();
+        let mut conn = pool.get().unwrap();
+        store_patch_tx(&mut conn, "h1", "t1", "d1", "DONE", 0).unwrap();
+        store_patch_tx(&mut conn, "h1", "t2", "d2", "DONE", 5).unwrap();
 
         let map = patches_for(&pool, &["h1".into()]).unwrap();
         let row = map.get("h1").unwrap();
