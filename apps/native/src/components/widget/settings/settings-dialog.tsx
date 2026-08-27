@@ -78,7 +78,7 @@ export function SettingsDialog() {
     }
   }, [developerMode, activeTab, navigate, settingsPrompt]);
 
-  const setActiveTab = (tab: SettingsTab) => navigate({ search: { tab, prompt: settingsPrompt } });
+  const setActiveTab = (tab: SettingsTab, prompt?: string) => navigate({ search: { tab, prompt: prompt ?? settingsPrompt } });
   const [openrouterKeyStatus, setOpenrouterKeyStatus] = useState<ApiKeyStatus>("idle");
   const [openaiKeyStatus, setOpenaiKeyStatus] = useState<ApiKeyStatus>("idle");
   const openrouterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -299,10 +299,10 @@ export function SettingsDialog() {
                     Log back in or select another model to continue.
                   </p>
                   <div className="flex flex-wrap gap-2 pt-1">
-                    <Button onClick={() => setActiveTab("account")} size="sm">
+                    <Button onClick={() => setActiveTab("account", undefined)} size="sm">
                       Log back in
                     </Button>
-                    <Button onClick={() => setActiveTab("ai-models")} size="sm" variant="outline">
+                    <Button onClick={() => setActiveTab("ai-models", undefined)} size="sm" variant="outline">
                       Select another model
                     </Button>
                   </div>
