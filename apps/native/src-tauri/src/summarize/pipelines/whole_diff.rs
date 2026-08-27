@@ -167,23 +167,52 @@ fn strip_conventional_prefix(summary: &str) -> &str {
 
 fn conventional_type_for_summary(summary: &str) -> &'static str {
     let summary = summary.to_ascii_lowercase();
-    let contains_any = |keywords: &[&str]| keywords.iter().any(|keyword| summary.contains(keyword));
+    // Match whole words only: substring matching mislabels ("fix" inside
+    // "fixture", "test" inside "latest"). A keyword matches its exact word
+    // or a common inflection of it; morphological stems anchor at word
+    // start so they cannot hit unrelated words.
+    let words: Vec<&str> = summary
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|w| !w.is_empty())
+        .collect();
+    let has_word = |keywords: &[&str]| {
+        words.iter().any(|word| {
+            keywords.iter().any(|keyword| {
+                *word == *keyword
+                    || *word == format!("{keyword}s")
+                    || *word == format!("{keyword}es")
+                    || *word == format!("{keyword}ed")
+                    || *word == format!("{keyword}ing")
+            })
+        })
+    };
+    let has_stem = |stems: &[&str]| {
+        words
+            .iter()
+            .any(|word| stems.iter().any(|stem| word.starts_with(stem)))
+    };
 
-    if contains_any(&[
-        "fix", "repair", "resolve", "correct", "prevent", "restore", "compatib", "patch",
-    ]) {
+    if has_word(&[
+        "fix", "repair", "resolve", "correct", "prevent", "restore", "patch",
+    ]) || has_stem(&["compatib"])
+    {
         "fix"
-    } else if contains_any(&["optimiz", "performance", "faster", "speed up"]) {
+    } else if has_word(&["performance", "faster"])
+        || has_stem(&["optimiz"])
+        || summary.contains("speed up")
+    {
         "perf"
-    } else if contains_any(&["test", "coverage", "fixture", "assertion"]) {
+    } else if has_word(&["test", "coverage", "fixture", "assertion"]) {
         "test"
-    } else if contains_any(&["document", "documentation", "readme", "guide"]) {
+    } else if has_word(&["document", "documentation", "readme", "guide"]) {
         "docs"
-    } else if contains_any(&["refactor", "restructur", "reorganiz", "simplif", "extract"]) {
+    } else if has_stem(&["refactor", "restructur", "reorganiz", "simplif"])
+        || has_word(&["extract"])
+    {
         "refactor"
-    } else if contains_any(&["format", "styling", "style "]) {
+    } else if has_word(&["format", "styling", "style"]) {
         "style"
-    } else if contains_any(&[
+    } else if has_word(&[
         "add",
         "enable",
         "support",
@@ -376,6 +405,38 @@ mod tests {
             conventionalize_summary("refactor(helix): reorganize config declarations"),
             "refactor: reorganize config declarations"
         );
+    }
+
+    #[test]
+    fn conventional_type_matches_words_not_substrings() {
+        // Substring matching mislabeled these: "fix" inside "fixture",
+        // "test" inside "latest".
+        assert_eq!(conventional_type_for_summary("Add test fixture"), "test");
+        assert_eq!(
+            conventional_type_for_summary("update to the latest revision"),
+            "chore"
+        );
+    }
+
+    #[test]
+    fn conventional_type_accepts_common_inflections_and_stems() {
+        assert_eq!(conventional_type_for_summary("fixes the loader"), "fix");
+        assert_eq!(
+            conventional_type_for_summary("testing the pipeline"),
+            "test"
+        );
+        assert_eq!(
+            conventional_type_for_summary("compatibility with sonoma"),
+            "fix"
+        );
+        assert_eq!(conventional_type_for_summary("optimizes rebuilds"), "perf");
+        assert_eq!(conventional_type_for_summary("speed up builds"), "perf");
+        assert_eq!(
+            conventional_type_for_summary("simplify the module"),
+            "refactor"
+        );
+        assert_eq!(conventional_type_for_summary("adds a service"), "feat");
+        assert_eq!(conventional_type_for_summary("tweak the prompt"), "chore");
     }
 
     #[test]
