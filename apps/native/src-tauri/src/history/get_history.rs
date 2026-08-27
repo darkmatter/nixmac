@@ -113,7 +113,6 @@ pub async fn get_history<R: Runtime>(
             is_base,
             is_external,
             file_count,
-            commit: None,
             change_map,
             unsummarized_hashes,
             raw_changes,

@@ -149,8 +149,6 @@ pub struct HistoryItem {
     /// Number of files changed in this commit.
     #[specta(type = f64)]
     pub file_count: usize,
-    /// Matching persisted commit row, if one exists.
-    pub commit: Option<crate::sqlite_types::Commit>,
     /// Semantic summaries for this commit's changes.
     pub change_map: Option<SemanticChangeMap>,
     /// Change hashes without summaries.

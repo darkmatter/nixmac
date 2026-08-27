@@ -10,7 +10,5 @@ export type ChangeSummary = { id: number; title: string; description: string;
  */
 status: string; createdAt: number }
 
-export type Commit = { id: number; hash: string; treeHash: string; message: string | null; createdAt: number }
-
 export type Evolution = { id: number; originBranch: string }
 

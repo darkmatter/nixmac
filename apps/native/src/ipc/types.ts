@@ -215,8 +215,6 @@ codex: boolean;
  */
 opencode: boolean }
 
-export type Commit = { id: number; hash: string; treeHash: string; message: string | null; createdAt: number }
-
 /**
  * Result of a successful `git_commit` command. State mirrors (git, evolve,
  * change map) flow through the `*_changed` events.
@@ -1467,10 +1465,6 @@ isExternal: boolean;
  * Number of files changed in this commit.
  */
 fileCount: number; 
-/**
- * Matching persisted commit row, if one exists.
- */
-commit: Commit | null; 
 /**
  * Semantic summaries for this commit's changes.
  */
