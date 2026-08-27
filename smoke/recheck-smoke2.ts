@@ -1,8 +1,7 @@
 /**
- * Throwaway smoke fixture — reviewer-recheck-smoke2 branch only.
- * Carries a real off-by-one so the first review lands request changes.
+ * Throwaway smoke fixture — reviewer-recheck-smoke2 branch only. The bug was
+ * real and is fixed: the minimum is now inclusive.
  */
 export function clampLower(value: number, min: number): number {
-  // Off by one: excludes the minimum itself.
-  return value < min ? min + 1 : value;
+  return value < min ? min : value;
 }
