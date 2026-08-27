@@ -32,9 +32,8 @@ const NIX_EVAL_HOMEBREW_APPLY: &str = r#"cfg: {
 }"#;
 
 fn nix_eval_homebrew_attr(hostname: &str) -> Result<String> {
-    // serde_json::to_string already wraps the hostname in quotes and escapes
-    // internals — do not also embed quote chars in the format string or we
-    // produce malformed attrs like .#darwinConfigurations.""host"".config…
+    // nix_string_literal returns a fully quoted Nix string literal, so the
+    // format string must not add another layer of quotes around the hostname.
     let host_attr = nix_string_literal(hostname);
     Ok(format!(
         ".#darwinConfigurations.{}.config.homebrew",
@@ -900,6 +899,12 @@ mod tests {
         assert_eq!(
             nix_eval_homebrew_attr(r#"office"mac"#).expect("attr should escape hostname"),
             r#".#darwinConfigurations."office\"mac".config.homebrew"#
+        );
+
+        // Make sure we don't double-escape the hostname if it already has quotes.
+        assert_eq!(
+            nix_eval_homebrew_attr(r#""quoted-host""#).expect("attr should escape hostname"),
+            r#".#darwinConfigurations."\"quoted-host\"".config.homebrew"#
         );
     }
 
