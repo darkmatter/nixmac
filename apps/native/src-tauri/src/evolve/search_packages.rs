@@ -5,11 +5,6 @@ use anyhow::Result;
 use log::info;
 use std::process::Command;
 
-/// Most packages we will consider from a single channel search.
-/// This is useful if the agent decides to search on a super-generic term
-/// and we don't want to score thousands of results.
-const CHANNEL_LIMIT: u64 = 100;
-
 /// Indicates whether this package looks like something that we think should be
 /// installed via Homebrew vs. Nix. This is just a heuristic to help users avoid installing things like
 /// GUI apps via Nix when they might be better off with Homebrew Cask, etc.
@@ -38,6 +33,52 @@ pub struct SearchPackageResult {
     pub description: String,
     pub install_via: SearchResultInstallTarget,
     pub additional_info: Option<String>,
+}
+
+/// Package metadata returned by `nix search`, before the comparatively expensive
+/// derivation classification step.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SearchPackageCandidate {
+    name: String,
+    attr_path: String,
+    channel: String,
+    version: String,
+    description: String,
+}
+
+/// Package metadata common to both `SearchPackageCandidate` (pre-classification) and `SearchPackageResult` (post).
+trait PackageMetadata {
+    fn name(&self) -> &str;
+    fn attr_path(&self) -> &str;
+    fn description(&self) -> &str;
+}
+
+impl PackageMetadata for SearchPackageCandidate {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn attr_path(&self) -> &str {
+        &self.attr_path
+    }
+
+    fn description(&self) -> &str {
+        &self.description
+    }
+}
+
+impl PackageMetadata for SearchPackageResult {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn attr_path(&self) -> &str {
+        &self.attr_path
+    }
+
+    fn description(&self) -> &str {
+        &self.description
+    }
 }
 
 /// Wrapper for `nix registry list` that returns the raw output as a string, or an error if the command fails.
@@ -77,16 +118,28 @@ fn channel_is_registered(registry_list: &str, channel: &str) -> bool {
     })
 }
 
+/// Escape a literal for the POSIX ERE syntax used by `nix search`.
+/// Do not use `regex::escape`: it targets Rust regex syntax and escapes
+/// additional characters whose backslash-escaped forms are not valid
+/// portable POSIX ERE.
+fn ere_escape(term: &str) -> String {
+    let mut out = String::with_capacity(term.len() + 2);
+    for c in term.chars() {
+        if r#"\.[(){}*+?^$|"#.contains(c) {
+            out.push('\\');
+        }
+        out.push(c);
+    }
+    out
+}
+
 /// Splits the query terms into the appropriate argument(s) for the nix search command, handling regex vs. non-regex searches.
 fn build_search_queries(query: &str, use_regex: bool) -> Result<Vec<String>> {
     if use_regex {
         return Ok(vec![query.to_string()]);
     }
 
-    let terms = query
-        .split_whitespace()
-        .map(regex::escape)
-        .collect::<Vec<_>>();
+    let terms = query.split_whitespace().map(ere_escape).collect::<Vec<_>>();
 
     if terms.is_empty() {
         anyhow::bail!("package search query cannot be empty");
@@ -95,14 +148,13 @@ fn build_search_queries(query: &str, use_regex: bool) -> Result<Vec<String>> {
     Ok(terms)
 }
 
-/// Search a single channel and return a list of SearchPackageResult
-/// results.
+/// Search a single channel and return its unclassified package candidates.
 fn search_single_channel(
     config_dir: &str,
     query_term: &str,
     use_regex: bool,
     channel: &str,
-) -> Result<Vec<SearchPackageResult>> {
+) -> Result<Vec<SearchPackageCandidate>> {
     let search_queries = build_search_queries(query_term, use_regex)?;
 
     let mut cmd = Command::new("nix");
@@ -128,16 +180,14 @@ fn search_single_channel(
 
     let stdout = String::from_utf8_lossy(&output.stdout);
 
-    process_search_output(&stdout, channel, None, CHANNEL_LIMIT)
+    process_search_output(&stdout, channel)
 }
 
-/// Process the JSON output from a nix search command and return a list of SearchPackageResult.
+/// Parse all candidates from the JSON output of a nix search command.
 fn process_search_output(
     search_cmd_output: &str,
     channel: &str,
-    package_classifier: Option<&dyn Fn(&str) -> SearchResultInstallTarget>,
-    limit: u64,
-) -> Result<Vec<SearchPackageResult>> {
+) -> Result<Vec<SearchPackageCandidate>> {
     let parsed = serde_json::from_str::<serde_json::Value>(search_cmd_output)
         .map_err(|e| anyhow::anyhow!("Failed to parse JSON output from nix search: {}", e))?;
 
@@ -150,22 +200,9 @@ fn process_search_output(
                 .next_back()
                 .unwrap_or(attr_path)
                 .to_string();
-            let (package_type, additional_info) = if let Some(classifier) = package_classifier {
-                (classifier(&name), None)
-            } else {
-                let (pkg_type, info) = classify_package(channel, attr_path);
-                (pkg_type, info)
-            };
-
-            // If the package is unavailable on the host platform, skip it.
-            if package_type == SearchResultInstallTarget::UnavailableOnHostPlatform {
-                continue;
-            }
-
-            results.push(SearchPackageResult {
+            results.push(SearchPackageCandidate {
                 name,
                 attr_path: attr_path.clone(),
-                install_via: package_type,
                 channel: channel.to_string(),
                 version: pkg
                     .get("version")
@@ -177,33 +214,44 @@ fn process_search_output(
                     .and_then(|v| v.as_str())
                     .unwrap_or("No description")
                     .to_string(),
-                additional_info,
             });
-
-            // Respect the channel limit to avoid overwhelming the scoring system with too many results.
-            if results.len() as u64 >= limit {
-                break;
-            }
         }
     }
 
     Ok(results)
 }
 
-/// Compute a relevance score for a given search result based on the query terms.
-fn relevance_score(result: &SearchPackageResult, query: &str) -> i32 {
+/// Computes a relevance bonus for package attribute names with fewer terms.
+/// A top-level package is a particularly strong signal that it is the package a
+/// user intended, while deeper package-set entries receive progressively less.
+fn fewer_terms_relevance_bonus(terms: &[&str]) -> i32 {
+    match terms.len() {
+        0 => 0,
+        1 => 200,
+        2 => 100,
+        num_terms => 100 / num_terms as i32,
+    }
+}
+
+/// Compute a relevance score for package metadata based on the query terms.
+fn relevance_score(result: &impl PackageMetadata, query: &str) -> i32 {
     let query = query.to_lowercase();
     let terms = query.split_whitespace().collect::<Vec<_>>();
 
-    let name = result.name.to_lowercase();
-    let attr = result.attr_path.to_lowercase();
-    let description = result.description.to_lowercase();
+    let name = result.name().to_lowercase();
+    let attr = result.attr_path().to_lowercase();
+    let description = result.description().to_lowercase();
+
+    // `nix search` prefixes attribute paths with `legacyPackages.<system>`.
+    // Score the remaining package attribute, so `spotify` gets a larger bonus
+    // than a nested package such as `haskellPackages.spotify`.
+    let package_attr_terms = attr.split('.').skip(2).collect::<Vec<_>>();
 
     let normalized_query = query.replace([' ', '_'], "-");
 
     let mut score = 0;
 
-    // Exact-ish package identity should dominate.
+    // Exact-ish package identity should dominate, but give a bonus to fewer terms in the name.
     if name == query || attr.ends_with(&format!(".{query}")) {
         score += 1000;
     }
@@ -245,15 +293,22 @@ fn relevance_score(result: &SearchPackageResult, query: &str) -> i32 {
         }
     }
 
+    score += fewer_terms_relevance_bonus(&package_attr_terms);
+
     score
 }
 
-/// Processes the given results by scoring them, then appending unique results to the structured list up to the limit.
-fn process_results(
-    results: Vec<SearchPackageResult>,
+/// Deduplicate and rank all lightweight candidates, truncate them to the requested
+/// limit, and only then run the expensive derivation classifier.
+fn process_results<F>(
+    results: Vec<SearchPackageCandidate>,
     query: &str,
     limit: u64,
-) -> Result<Vec<SearchPackageResult>> {
+    package_classifier: &F,
+) -> Result<Vec<SearchPackageResult>>
+where
+    F: Fn(&str, &str) -> (SearchResultInstallTarget, Option<String>),
+{
     let mut unique_results = Vec::new();
     let mut seen_attr_paths = std::collections::HashSet::new();
 
@@ -276,7 +331,27 @@ fn process_results(
         unique_results.truncate(limit as usize);
     }
 
-    Ok(unique_results)
+    Ok(unique_results
+        .into_iter()
+        .filter_map(|candidate| {
+            let (install_via, additional_info) =
+                package_classifier(&candidate.channel, &candidate.attr_path);
+
+            if install_via == SearchResultInstallTarget::UnavailableOnHostPlatform {
+                return None;
+            }
+
+            Some(SearchPackageResult {
+                name: candidate.name,
+                attr_path: candidate.attr_path,
+                channel: candidate.channel,
+                version: candidate.version,
+                description: candidate.description,
+                install_via,
+                additional_info,
+            })
+        })
+        .collect())
 }
 
 /// Execute a search_packages tool call
@@ -314,6 +389,7 @@ pub fn execute_search_packages(
         results.into_iter().flat_map(|(_, r)| r).collect(),
         query,
         limit,
+        &classify_package,
     )?;
     Ok(processed)
 }
@@ -425,6 +501,31 @@ fn classify_package(channel: &str, attr_path: &str) -> (SearchResultInstallTarge
 mod tests {
     use super::*;
 
+    fn candidate_from_result(result: SearchPackageResult) -> SearchPackageCandidate {
+        SearchPackageCandidate {
+            name: result.name,
+            attr_path: result.attr_path,
+            channel: result.channel,
+            version: result.version,
+            description: result.description,
+        }
+    }
+
+    fn process_test_results(
+        results: Vec<SearchPackageResult>,
+        query: &str,
+        limit: u64,
+    ) -> Vec<SearchPackageResult> {
+        let candidates = results
+            .into_iter()
+            .map(candidate_from_result)
+            .collect::<Vec<_>>();
+        process_results(candidates, query, limit, &|_, _| {
+            (SearchResultInstallTarget::Either, None)
+        })
+        .unwrap()
+    }
+
     fn load_classifier_fixture(name: &str) -> &'static str {
         match name {
             "firefox" => include_str!("../../tests/fixtures/derivations/firefox.json"),
@@ -479,17 +580,9 @@ mod tests {
             install_via: SearchResultInstallTarget::Either,
             additional_info: None,
         })), ("empty", 0, None )];
-        let fake_package_classifier = |_package_name: &str| SearchResultInstallTarget::Either;
-
         for (name, expected_count, first_result) in cases {
             let output = load_search_fixture(name);
-            let results = process_search_output(
-                output,
-                "test-channel",
-                Some(&fake_package_classifier),
-                CHANNEL_LIMIT,
-            )
-            .unwrap();
+            let results = process_search_output(output, "test-channel").unwrap();
             assert_eq!(
                 results.len(),
                 expected_count,
@@ -499,12 +592,48 @@ mod tests {
             if let Some(expected_first) = first_result {
                 assert_eq!(
                     results.first(),
-                    Some(&expected_first),
+                    Some(&candidate_from_result(expected_first)),
                     "unexpected first result for {}",
                     name
                 );
             }
         }
+    }
+
+    #[test]
+    fn ranks_all_candidates_before_limiting_and_classifying() {
+        let mut packages = serde_json::Map::new();
+        for index in 0..150 {
+            packages.insert(
+                format!("legacyPackages.aarch64-darwin.androidenv.pkg{index:03}.google"),
+                serde_json::json!({
+                    "version": "1.0",
+                    "description": "Android Google API image"
+                }),
+            );
+        }
+        packages.insert(
+            "legacyPackages.aarch64-darwin.go".to_string(),
+            serde_json::json!({
+                "version": "1.25",
+                "description": "The Go programming language"
+            }),
+        );
+
+        let output = serde_json::Value::Object(packages).to_string();
+        let candidates = process_search_output(&output, "nixpkgs").unwrap();
+        assert_eq!(candidates.len(), 151);
+
+        let classification_count = std::cell::Cell::new(0);
+        let results = process_results(candidates, "go", 2, &|_, _| {
+            classification_count.set(classification_count.get() + 1);
+            (SearchResultInstallTarget::System, None)
+        })
+        .unwrap();
+
+        assert_eq!(classification_count.get(), 2);
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].attr_path, "legacyPackages.aarch64-darwin.go");
     }
 
     #[test]
@@ -542,7 +671,7 @@ mod tests {
         }];
 
         let all_results = [channel1_results.clone(), channel2_results.clone()].concat();
-        let processed_results = process_results(all_results, "emacs", 10).unwrap();
+        let processed_results = process_test_results(all_results, "emacs", 10);
 
         assert_eq!(
             processed_results.len(),
@@ -560,6 +689,21 @@ mod tests {
             registry_list,
             "unregistered-channel"
         ));
+    }
+
+    #[test]
+    fn build_search_queries_ere_escape() {
+        let query = "google-chrome";
+        let use_regex = false;
+        let expected = vec!["google-chrome"];
+        let result = build_search_queries(query, use_regex).unwrap();
+        assert_eq!(result, expected);
+
+        let query = "c++";
+        let use_regex = false;
+        let expected = vec!["c\\+\\+"];
+        let result = build_search_queries(query, use_regex).unwrap();
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -660,6 +804,45 @@ mod tests {
     }
 
     #[test]
+    fn fewer_terms_bonus_favors_short_package_attributes() {
+        assert_eq!(fewer_terms_relevance_bonus(&[]), 0);
+        assert_eq!(fewer_terms_relevance_bonus(&["spotify"]), 200);
+        assert_eq!(
+            fewer_terms_relevance_bonus(&["haskellPackages", "spotify"]),
+            100
+        );
+        assert_eq!(
+            fewer_terms_relevance_bonus(&["packageSet", "nested", "spotify"]),
+            33
+        );
+    }
+
+    #[test]
+    fn relevance_score_prefers_top_level_package_attributes() {
+        let spotify = SearchPackageResult {
+            name: "spotify".to_string(),
+            attr_path: "legacyPackages.aarch64-darwin.spotify".to_string(),
+            channel: "test-channel".to_string(),
+            version: "1.0".to_string(),
+            description: "Spotify client".to_string(),
+            install_via: SearchResultInstallTarget::Either,
+            additional_info: None,
+        };
+        let haskell_spotify = SearchPackageResult {
+            attr_path: "legacyPackages.aarch64-darwin.haskellPackages.spotify".to_string(),
+            ..spotify.clone()
+        };
+
+        assert_eq!(
+            relevance_score(&spotify, "spotify") - relevance_score(&haskell_spotify, "spotify"),
+            100
+        );
+
+        let ranked = process_test_results(vec![haskell_spotify, spotify.clone()], "spotify", 10);
+        assert_eq!(ranked[0], spotify);
+    }
+
+    #[test]
     fn process_limit() {
         let results = vec![
             SearchPackageResult {
@@ -692,7 +875,7 @@ mod tests {
         ];
 
         let limit = 2;
-        let processed = process_results(results, "pkg", limit).unwrap();
+        let processed = process_test_results(results, "pkg", limit);
         assert_eq!(processed.len(), limit as usize);
     }
 
@@ -720,8 +903,8 @@ mod tests {
         // Keep the non-matching package first in the input so this fails if
         // equal self-match scores merely preserve the original order.
         let results = vec![emacs.clone(), vim.clone()];
-        let ranked_for_vim = process_results(results.clone(), "vim", 10).unwrap();
-        let ranked_for_emacs = process_results(results, "emacs", 10).unwrap();
+        let ranked_for_vim = process_test_results(results.clone(), "vim", 10);
+        let ranked_for_emacs = process_test_results(results, "emacs", 10);
 
         assert_eq!(ranked_for_vim[0], vim);
         assert_eq!(ranked_for_emacs[0], emacs);
