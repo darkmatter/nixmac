@@ -45,7 +45,7 @@ pub fn for_changes(pool: &DbPool, changes: &[Change]) -> Result<FoundSummaries> 
     // 1. Groups whose full membership is live, largest first, non-overlapping.
     let mut group_rows = crate::db::summaries::groups_within(pool, &hashes)?;
     group_rows.retain(|g| is_valid_status(&g.status));
-    group_rows.sort_by(|a, b| b.members.len().cmp(&a.members.len()));
+    group_rows.sort_by_key(|b| std::cmp::Reverse(b.members.len()));
 
     let mut covered: HashSet<String> = HashSet::new();
     let mut groups: Vec<SemanticChangeGroup> = vec![];
@@ -201,7 +201,7 @@ mod tests {
         let pool = crate::db::init_pool_at_path(&db_path).await.unwrap();
 
         let a = change("a.nix", "+a");
-        let found = for_changes(&pool, &[a.clone()]).unwrap();
+        let found = for_changes(&pool, std::slice::from_ref(&a)).unwrap();
         assert_eq!(found.map.unsummarized_hashes, vec![a.hash]);
         assert!(found.map.groups.is_empty());
         assert!(found.map.singles.is_empty());
@@ -225,8 +225,15 @@ mod tests {
             0,
         )
         .unwrap();
-        crate::db::summaries::store_group(&pool, &[a.hash.clone()], "small", "small", "DONE", 0)
-            .unwrap();
+        crate::db::summaries::store_group(
+            &pool,
+            std::slice::from_ref(&a.hash),
+            "small",
+            "small",
+            "DONE",
+            0,
+        )
+        .unwrap();
 
         let found = for_changes(&pool, &[a.clone(), b.clone()]).unwrap();
         assert_eq!(found.map.groups.len(), 1);

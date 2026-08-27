@@ -319,8 +319,14 @@ mod tests {
         let assignments = assign_summaries(&[first, second], &items);
 
         assert_eq!(assignments.len(), 2);
-        assert_eq!(find(&assignments, "feat: add a service").hashes, vec!["first-change"]);
-        assert_eq!(find(&assignments, "fix: update a package").hashes, vec!["second-change"]);
+        assert_eq!(
+            find(&assignments, "feat: add a service").hashes,
+            vec!["first-change"]
+        );
+        assert_eq!(
+            find(&assignments, "fix: update a package").hashes,
+            vec!["second-change"]
+        );
     }
 
     #[test]
