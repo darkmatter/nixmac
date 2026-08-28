@@ -22,7 +22,8 @@ pub struct AuthAccount {
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthStatus {
-    /// Whether a usable account credential is stored on this device.
+    /// Whether any usable account credential is stored on this device. This may
+    /// be either a legacy sync credential or the web device API key.
     pub signed_in: bool,
     /// The signed-in account, when `signed_in` is true.
     pub account: Option<AuthAccount>,
@@ -30,10 +31,11 @@ pub struct AuthStatus {
     pub key_id: Option<String>,
     /// Base URL of the sync server this device is configured to talk to.
     pub server_url: String,
-    /// Whether this device can call server-brokered GitHub endpoints (has a
-    /// minted Better Auth api-key for the web origin).
-    pub github_ready: bool,
-    /// The web-origin account used for GitHub, when `github_ready` is true.
+    /// Whether this device can authenticate with the web origin using its
+    /// stored Better Auth device API key. Hosted models and brokered GitHub
+    /// requests share this credential.
+    pub web_api_auth_ready: bool,
+    /// The web-origin account associated with the device API key, when known.
     pub web_account: Option<AuthAccount>,
 }
 

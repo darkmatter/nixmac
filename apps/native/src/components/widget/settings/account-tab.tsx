@@ -1,19 +1,17 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { tauriAPI } from "@/ipc/api";
-import type { AuthStatus } from "@/ipc/types";
-import {
-  CheckCircle2,
-  Loader2,
-  LogOut,
-  UserCircle2,
-} from "lucide-react";
+import { accountStatusQueryOptions, setCachedAccountStatus } from "@/lib/account-status";
+import { client } from "@/lib/orpc";
+import { CheckCircle2, Loader2, LogOut, UserCircle2 } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 type Busy = "idle" | "sending-code" | "verifying-code" | "signing-out";
 
 export function AccountTab() {
-  const [auth, setAuth] = useState<AuthStatus | null>(null);
+  const queryClient = useQueryClient();
+  const accountStatusQuery = useQuery(accountStatusQueryOptions());
+  const auth = accountStatusQuery.data ?? null;
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
@@ -22,17 +20,10 @@ export function AccountTab() {
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
-    // deprecated(orpc): replace with client/orpc from @/lib/orpc
-    tauriAPI.account
-      .status()
-      .then((status) => {
-        setAuth(status);
-        if (status.webAccount?.email) {
-          setEmail(status.webAccount.email);
-        }
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
-  }, []);
+    if (auth?.webAccount?.email) {
+      setEmail(auth.webAccount.email);
+    }
+  }, [auth?.webAccount?.email]);
 
   const run = async (kind: Busy, fn: () => Promise<void>) => {
     setError(null);
@@ -49,8 +40,7 @@ export function AccountTab() {
 
   const onSendCode = () =>
     run("sending-code", async () => {
-      // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      await tauriAPI.account.sendOtp(email.trim());
+      await client.account.sendOtp({ email: email.trim() });
       setOtp("");
       setOtpSent(true);
       setNotice("Check your email for a sign-in code");
@@ -59,13 +49,12 @@ export function AccountTab() {
   const onVerifyCode = () =>
     run("verifying-code", async () => {
       const trimmedEmail = email.trim();
-      // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      const status = await tauriAPI.account.verifyOtp(
-        trimmedEmail,
-        otp.trim(),
-        trimmedEmail.split("@")[0]?.trim() || "nixmac",
-      );
-      setAuth(status);
+      const status = await client.account.verifyOtp({
+        email: trimmedEmail,
+        otp: otp.trim(),
+        name: trimmedEmail.split("@")[0]?.trim() || "nixmac",
+      });
+      setCachedAccountStatus(queryClient, status);
       setOtp("");
       setOtpSent(false);
       setNotice("Signed in");
@@ -73,15 +62,15 @@ export function AccountTab() {
 
   const onSignOut = () =>
     run("signing-out", async () => {
-      // deprecated(orpc): replace with client/orpc from @/lib/orpc
-      const status = await tauriAPI.account.signOut();
-      setAuth(status);
+      const status = await client.account.signOut();
+      setCachedAccountStatus(queryClient, status);
       setOtp("");
       setOtpSent(false);
     });
 
   const isBusy = busy !== "idle";
-  const signedIn = auth?.signedIn ?? false;
+  const signedIn = auth?.webApiAuthReady ?? false;
+  const displayedError = error ?? accountStatusQuery.error?.message ?? null;
 
   return (
     <div className="space-y-5">
@@ -98,7 +87,9 @@ export function AccountTab() {
           <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 p-3">
             <UserCircle2 className="h-5 w-5 text-primary" />
             <div className="flex-1">
-              <p className="font-medium text-sm">{auth?.account?.email}</p>
+              <p className="font-medium text-sm">
+                {auth?.webAccount?.email ?? auth?.account?.email}
+              </p>
               <p className="text-muted-foreground text-xs">
                 Device API key stored locally for authenticated requests.
               </p>
@@ -114,7 +105,6 @@ export function AccountTab() {
               Sign out
             </Button>
           </div>
-
         </div>
       ) : (
         <div className="space-y-3">
@@ -193,7 +183,7 @@ export function AccountTab() {
           {notice}
         </p>
       )}
-      {error && <p className="text-rose-300 text-xs">{error}</p>}
+      {displayedError && <p className="text-rose-300 text-xs">{displayedError}</p>}
     </div>
   );
 }

@@ -170,6 +170,7 @@ pub fn status<R: Runtime>(app: &AppHandle<R>) -> Result<AuthStatus> {
         email: meta.email,
     });
     let has_device_api_key = store::get_device_api_key(app)?.is_some();
+    let web_api_auth_ready = has_device_api_key && store::get_web_server_url().is_ok();
 
     if let Some(account) = web_account.clone().filter(|_| has_device_api_key) {
         return Ok(AuthStatus {
@@ -177,7 +178,7 @@ pub fn status<R: Runtime>(app: &AppHandle<R>) -> Result<AuthStatus> {
             account: Some(account),
             key_id: None,
             server_url,
-            github_ready: store::get_web_server_url().is_ok(),
+            web_api_auth_ready,
             web_account,
         });
     }
@@ -196,14 +197,12 @@ pub fn status<R: Runtime>(app: &AppHandle<R>) -> Result<AuthStatus> {
         _ => (None, None),
     };
 
-    let github_ready = store::github_ready(app)?;
-
     Ok(AuthStatus {
         signed_in,
         account,
         key_id,
         server_url,
-        github_ready,
+        web_api_auth_ready,
         web_account,
     })
 }

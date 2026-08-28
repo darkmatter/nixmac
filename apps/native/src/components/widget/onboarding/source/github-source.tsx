@@ -12,6 +12,11 @@ import type { GithubRepo } from "@/ipc/types";
 import { FlakeDirChooser } from "@/components/widget/controls/flake-dir-chooser";
 import { applyImportResult } from "@/hooks/use-darwin-config";
 import { useImportConfig } from "@/hooks/use-import-config";
+import {
+  accountStatusQueryOptions,
+  invalidateCachedAccountStatus,
+  setCachedAccountStatus,
+} from "@/lib/account-status";
 import { auth as authClient } from "@/lib/auth";
 import {
   AUTH_DEEP_LINK_ERROR_EVENT,
@@ -200,14 +205,14 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
     };
   }, []);
 
-  // Probe account + GitHub linkage on mount.
+  // Probe account + GitHub linkage on mount through the shared auth cache.
   useEffect(() => {
-    client.account
-      .status()
+    queryClient
+      .fetchQuery(accountStatusQueryOptions())
       .then(async (accountStatus) => {
         if (cancelled.current) return;
-        setGithubReady(accountStatus.githubReady);
-        if (!accountStatus.githubReady) {
+        setGithubReady(accountStatus.webApiAuthReady);
+        if (!accountStatus.webApiAuthReady) {
           setAuth("disconnected");
           return;
         }
@@ -225,7 +230,7 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
         resetRejectedSession(e);
         setAuth("disconnected");
       });
-  }, [resetRejectedSession]);
+  }, [queryClient, resetRejectedSession]);
 
   const markBootstrapConnected = useCallback(
     (loginValue: string | null) => {
@@ -236,8 +241,9 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
       bootstrapResolved.current = true;
       setLogin(loginValue);
       setAuth("connected");
+      invalidateCachedAccountStatus(queryClient);
     },
-    [clearBootstrap],
+    [clearBootstrap, queryClient],
   );
 
   // Poll for linkage while the browser install is in progress.
@@ -386,7 +392,8 @@ export function GitHubSource({ onImported }: GitHubSourceProps) {
 
   const verifyOtpMutation = useMutation({
     mutationFn: async () => {
-      await client.account.verifyOtp({ email, otp, name: accountNameFromEmail(email) });
+      const status = await client.account.verifyOtp({ email, otp, name: accountNameFromEmail(email) });
+      setCachedAccountStatus(queryClient, status);
       setGithubReady(true);
       setShowEmailFallback(false);
       setOtpSent(false);
