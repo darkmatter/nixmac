@@ -7,7 +7,9 @@
 pub mod client;
 #[allow(dead_code)]
 pub mod helper_runtime;
+pub mod peer_auth;
 pub mod protocol;
+pub mod reconcile;
 pub mod root_activation;
 pub mod service;
 pub mod sync_agent;

@@ -1193,9 +1193,33 @@ pendingImportDir: string | null;
 /**
  * Whether or not to auto-format Nix files when making changes to the flakes.
  */
-autoFormatNixFiles: boolean }
+autoFormatNixFiles: boolean; 
+/**
+ * Standing decision about the privileged helper. Read by the helper
+ * reconciliation and by apply; decided only by the grant and disable
+ * actions, which is why it is not writable via `UiPrefsUpdate` and is held
+ * out of settings export/import. `state::preferences` documents which
+ * writers can reach it.
+ */
+helperPreference: HelperPreference }
 
-export type HelperServiceStatus = { label: string; available: boolean; registered: boolean; authorized: boolean; socketAvailable: boolean; detail: string | null }
+/**
+ * The user's standing decision about the privileged helper.
+ * 
+ * Tri-state on purpose. `Unset` means the user never decided — a fresh install,
+ * or one predating the helper's install/replace/remove contract — and is what
+ * lets an existing registration be adopted as an earlier opt-in without
+ * overriding an explicit `Disabled`. It selects a goal and authorizes nothing
+ * else: every trust or termination decision is taken from live observation.
+ */
+export type HelperPreference = "unset" | "granted" | "disabled"
+
+/**
+ * What one reconciliation run found, for a client that only has to display it:
+ * whether the helper is installed and answering at this build, and the sentence
+ * that says what else is true.
+ */
+export type HelperReport = { atThisBuild: boolean; detail: string }
 
 /**
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
@@ -1578,7 +1602,14 @@ description: string;
  */
 required: boolean; 
 /**
- * Whether the app can trigger the system prompt directly.
+ * Whether the app can trigger the system prompt directly. False means the
+ * row's action can only deep-link into System Settings and wait for the
+ * user, which is what the UI renders it as.
+ * 
+ * Fixed per row for the TCC permissions, but not a capability in general:
+ * the unattended sync helper reports it per observation, and it is false
+ * only while macOS holds the registration pending approval in Login Items.
+ * Read it as "is System Settings where the user finishes this, right now".
  */
 canRequestProgrammatically: boolean; 
 /**
@@ -2032,9 +2063,9 @@ export type Procedures = {
     finalizeRestore: Client<Record<never, never>, RestoreTargetInput, void, Error>
     finalizeRollback: Client<Record<never, never>, FinalizeRollbackInput, void, Error>
     fixWithAi: Client<Record<never, never>, FixWithAiInput, void, Error>
-    helperRegister: Client<Record<never, never>, void, HelperServiceStatus, Error>
-    helperStatus: Client<Record<never, never>, void, HelperServiceStatus, Error>
-    helperUnregister: Client<Record<never, never>, void, HelperServiceStatus, Error>
+    helperDisable: Client<Record<never, never>, void, HelperReport, Error>
+    helperGrant: Client<Record<never, never>, void, HelperReport, Error>
+    helperStatus: Client<Record<never, never>, void, HelperReport, Error>
     prepareRestore: Client<Record<never, never>, RestoreTargetInput, void, Error>
     rebuildStatus: Client<Record<never, never>, void, RebuildStatus, Error>
     rollbackErase: Client<Record<never, never>, void, RollbackResult, Error>

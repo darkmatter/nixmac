@@ -101,6 +101,8 @@ pub enum RebuildErrorType {
     AuthorizationDenied,
     /// nix-darwin would overwrite unmanaged files in /etc.
     EtcClobber,
+    /// The apply refused to start the activation and made no changes.
+    ActivationRefused,
     /// Fallback for uncategorized failures.
     GenericError,
 }

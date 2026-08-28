@@ -18,7 +18,7 @@ import { useOnboardingFlow } from "@/components/widget/onboarding/use-onboarding
 import {
   RepairBanners,
   RepairBlockingCard,
-  useLaunchRepair,
+  useRepair,
 } from "@/components/widget/repair/repair";
 import { uiActions } from "@nixmac/state";
 import {
@@ -187,9 +187,11 @@ export function DarwinWidget() {
   // explicit "Restart setup", never because a preference fact regressed
   // mid-session. In-flow step routing still derives from durable facts.
   const { showFlow: showOnboarding } = useOnboardingFlow();
-  // Post-completion prerequisite regressions surface as repair cards/banners
-  // (evaluated once at launch), never by re-entering the wizard.
-  const repair = useLaunchRepair();
+  // Post-completion prerequisite regressions surface as repair cards/banners,
+  // never by re-entering the wizard. Evaluated from a launch snapshot; the
+  // unattended sync helper's banner is the one part that follows live state,
+  // because that row is expected to settle after the launch probe.
+  const repair = useRepair();
   // Suppress the boot flash: before the ViewModel hydrates, every gate input
   // is a default (null preferences/nixInstall), so both OnboardingFlow and the
   // main widget would render against stale state for a frame. Hold a neutral
