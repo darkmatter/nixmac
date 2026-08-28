@@ -1,4 +1,5 @@
-const DEFAULT_CONTEXT_WINDOW_TOKENS: u32 = 131_072;
+const DEFAULT_CONTEXT_WINDOW_TOKENS: u32 = 8_192;
+const NIXMAC_CONTEXT_WINDOW_TOKENS: u32 = 131_072;
 const GPT_4O_MAX_COMPLETION_TOKENS: u32 = 16_384;
 
 /// Extra output-token headroom applied for reasoning models. Reasoning models
@@ -56,8 +57,11 @@ fn max_completion_tokens_for_normalized_model(model: &str) -> Option<u32> {
 fn context_window_tokens(model: &str) -> u32 {
     let model = model.to_ascii_lowercase();
 
-    if model == "flash"
-        || model.contains("gpt-oss")
+    if model == "flash" {
+        return NIXMAC_CONTEXT_WINDOW_TOKENS;
+    }
+
+    if model.contains("gpt-oss")
         || model.contains("gpt-5")
         || model.contains("o1")
         || model.contains("o3")
@@ -111,7 +115,8 @@ pub fn scale_output_tokens_for_model(model: &str, requested: u32) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::{
-        DEFAULT_CONTEXT_WINDOW_TOKENS, capabilities_for_model, scale_output_tokens_for_model,
+        DEFAULT_CONTEXT_WINDOW_TOKENS, NIXMAC_CONTEXT_WINDOW_TOKENS, capabilities_for_model,
+        scale_output_tokens_for_model,
     };
 
     #[test]
@@ -182,7 +187,6 @@ mod tests {
     #[test]
     fn context_window_budget_preserves_existing_model_groups() {
         for model in [
-            "flash",
             "gpt-oss-120b",
             "openai/gpt-oss-120b",
             "gpt-5.6-sol",
@@ -234,17 +238,24 @@ mod tests {
     }
 
     #[test]
-    fn unknown_models_use_128k_context_window() {
+    fn nixmac_flash_uses_128k_context_window() {
+        assert_eq!(
+            capabilities_for_model("flash").context_window_tokens,
+            NIXMAC_CONTEXT_WINDOW_TOKENS
+        );
+    }
+
+    #[test]
+    fn unknown_models_keep_conservative_context_window() {
         assert_eq!(
             capabilities_for_model("unrecognized-provider-model").context_window_tokens,
-            131_072
+            DEFAULT_CONTEXT_WINDOW_TOKENS
         );
     }
 
     #[test]
     fn reasoning_models_are_detected() {
         for model in [
-            "flash",
             "gpt-oss-120b",
             "o1",
             "o1-2024-12-17",

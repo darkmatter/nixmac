@@ -5,6 +5,7 @@ import { usePrefs } from "@/hooks/use-prefs";
 import { useSummary } from "@/hooks/use-summary";
 import { useUiState, useViewModel } from "@nixmac/state";
 import { Loader2 } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 /**
  * "Analyze automatically" toggle. Bound to the `autoSummarizeOnFocus`
@@ -16,11 +17,29 @@ export function AnalyzeCheckbox() {
   const isSummarizing = useUiState((s) => s.isSummarizing);
   const { setPref } = usePrefs();
   const { generateCurrentSummary } = useSummary();
+  const hasAutoAnalyzed = useRef(false);
+
+  useEffect(() => {
+    if (!autoAnalyze) {
+      hasAutoAnalyzed.current = false;
+      return;
+    }
+
+    if (hasAutoAnalyzed.current) return;
+
+    hasAutoAnalyzed.current = true;
+    void generateCurrentSummary();
+  }, [autoAnalyze, generateCurrentSummary]);
 
   const handleToggle = (checked: boolean) => {
     void setPref("autoSummarizeOnFocus", checked);
     // Enabling should analyze the current changes right away, not just future ones.
-    if (checked) void generateCurrentSummary();
+    if (checked) {
+      hasAutoAnalyzed.current = true;
+      void generateCurrentSummary();
+    } else {
+      hasAutoAnalyzed.current = false;
+    }
   };
 
   return (
