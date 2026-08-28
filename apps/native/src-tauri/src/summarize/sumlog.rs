@@ -1,6 +1,5 @@
 //! Centralized debug logging for summarize pipelines.
 
-pub const FIND_EXISTING: bool = false;
 pub const GROUP_EXISTING: bool = false;
 pub const WHOLE_DIFF: bool = false;
 
@@ -22,48 +21,6 @@ fn emit_text(pipeline: &str, step: &str, text: &str) {
     log::warn!("╔══ {} ══╗", label);
     log::info!("{}", text);
     log::warn!("╚══ {} ══╝", label);
-}
-
-pub struct FindPath<'a> {
-    pub head_hash: &'a str,
-    pub commit_id: i64,
-    pub hashes: &'a [String],
-}
-
-pub fn find_log_path(path: &FindPath) {
-    if !FIND_EXISTING {
-        return;
-    }
-    emit_json(
-        "FIND_EXISTING",
-        "path",
-        &serde_json::json!({
-            "head_hash": path.head_hash,
-            "commit_id": path.commit_id,
-            "hashes": path.hashes,
-        }),
-    );
-}
-
-pub fn find_log_result(entries: impl Iterator<Item = (bool, usize, usize)> + Clone) {
-    if !FIND_EXISTING {
-        return;
-    }
-    let rows: Vec<_> = entries
-        .clone()
-        .map(|(has_cs, changes, missed)| {
-            serde_json::json!({
-                "has_change_set": has_cs,
-                "changes": changes,
-                "missed_hashes": missed,
-            })
-        })
-        .collect();
-    emit_json(
-        "FIND_EXISTING",
-        "result",
-        &serde_json::json!({ "count": rows.len(), "entries": rows }),
-    );
 }
 
 pub fn group_log_result(map: &SemanticChangeMap) {

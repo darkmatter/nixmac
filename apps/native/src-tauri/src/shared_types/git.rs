@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-use crate::sqlite_types::{Change, ChangeSet, ChangeSummary};
+use crate::sqlite_types::{Change, ChangeSummary};
 
 /// HEAD content vs working-tree content for a file, used by the diff tab Monaco DiffEditor.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -129,28 +129,6 @@ pub struct SemanticChangeMap {
     pub unsummarized_hashes: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct SummarizedChange {
-    /// Raw change row.
-    pub change: Change,
-    /// Summary attached directly to this change.
-    pub own_summary: Option<ChangeSummary>,
-    /// Summary inherited from this change's group.
-    pub group_summary: Option<ChangeSummary>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct SummarizedChangeSet {
-    /// Change set represented by this response.
-    pub change_set: ChangeSet,
-    /// Changes in the set with their available summaries.
-    pub changes: Vec<SummarizedChange>,
-    /// Change hashes expected in the set but missing from the database.
-    pub missed_hashes: Vec<String>,
-}
-
 /// A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -171,8 +149,6 @@ pub struct HistoryItem {
     /// Number of files changed in this commit.
     #[specta(type = f64)]
     pub file_count: usize,
-    /// Matching persisted commit row, if one exists.
-    pub commit: Option<crate::sqlite_types::Commit>,
     /// Semantic summaries for this commit's changes.
     pub change_map: Option<SemanticChangeMap>,
     /// Change hashes without summaries.

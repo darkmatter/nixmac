@@ -12,10 +12,23 @@ use crate::{
 /// Used to track the state of a file as we build up its diff, since git2 processing
 /// uses the metadata and content in separate passes.
 struct FileState {
-    diff: String,
-    line_count: i64,
+    hunks: Vec<FileHunk>,
     is_binary: bool,
     last_hunk_key: Option<(usize, usize)>,
+}
+
+/// A single independently reviewable portion of a file diff.
+struct FileHunk {
+    diff: String,
+    line_count: i64,
+}
+
+/// A commit read from git history — the in-memory shape returned by `log`
+/// and `log_from_commit`. Not a persisted row; git is the source of truth.
+pub struct Commit {
+    pub hash: String,
+    pub message: Option<String>,
+    pub created_at: i64,
 }
 
 /// Interhunk lines controls whether nearby changes are grouped together in the same hunk.
@@ -244,15 +257,11 @@ pub fn read_tags(dir: &str, hash: &str) -> Vec<String> {
     tags
 }
 
-/// Returns commits as Row Type (id = 0), from `start_hash` for `limit` (None for all).
+/// Returns commits from `start_hash` for `limit` (None for all).
 ///
 /// Equivalent CLI:
-///   git log --format=%H%n%T%n%at%n%s [-n <limit>] <start_hash>
-pub fn log(
-    dir: &str,
-    start_hash: &str,
-    limit: Option<usize>,
-) -> Result<Vec<crate::sqlite_types::Commit>> {
+///   git log --format=%H%n%at%n%s [-n <limit>] <start_hash>
+pub fn log(dir: &str, start_hash: &str, limit: Option<usize>) -> Result<Vec<Commit>> {
     let repo = Repository::discover(dir)?;
     let commit = repo.revparse_single(start_hash)?.peel_to_commit()?;
 
@@ -265,10 +274,8 @@ pub fn log(
         let commit = repo.find_commit(oid?)?;
         let subject = commit.summary().unwrap_or_default().unwrap_or_default();
 
-        commits.push(crate::sqlite_types::Commit {
-            id: 0,
+        commits.push(Commit {
             hash: commit.id().to_string(),
-            tree_hash: commit.tree_id().to_string(),
             message: (!subject.is_empty()).then(|| subject.to_string()),
             created_at: commit.time().seconds(),
         });
@@ -298,11 +305,7 @@ pub fn commit_count(dir: &str, start_hash: &str) -> Result<usize> {
 /// is skipped by the summarize pipeline). This avoids walking the entire log
 /// when summarizing a single commit by hash — the previous implementation
 /// loaded every commit from HEAD and then searched for `commit_hash`.
-pub fn log_from_commit(
-    dir: &str,
-    commit_hash: &str,
-    limit: usize,
-) -> Result<Vec<crate::sqlite_types::Commit>> {
+pub fn log_from_commit(dir: &str, commit_hash: &str, limit: usize) -> Result<Vec<Commit>> {
     let repo = Repository::discover(dir)?;
     let commit = repo.revparse_single(commit_hash)?.peel_to_commit()?;
     let mut revwalk = repo.revwalk()?;
@@ -313,10 +316,8 @@ pub fn log_from_commit(
     for oid in revwalk.take(limit.saturating_add(1)) {
         let c = repo.find_commit(oid?)?;
         let subject = c.summary().unwrap_or_default().unwrap_or_default();
-        commits.push(crate::sqlite_types::Commit {
-            id: 0,
+        commits.push(Commit {
             hash: c.id().to_string(),
-            tree_hash: c.tree_id().to_string(),
             message: (!subject.is_empty()).then(|| subject.to_string()),
             created_at: c.time().seconds(),
         });
@@ -511,8 +512,7 @@ fn run_diff_engine(diff: git2::Diff) -> Result<Vec<FileDiff>> {
             .unwrap_or_default();
 
         let entry = state.entry(filename).or_insert(FileState {
-            diff: String::new(),
-            line_count: 0,
+            hunks: Vec::new(),
             last_hunk_key: None,
             is_binary: delta.flags().contains(git2::DiffFlags::BINARY),
         });
@@ -527,36 +527,40 @@ fn run_diff_engine(diff: git2::Diff) -> Result<Vec<FileDiff>> {
 
             if entry.last_hunk_key != Some(key) {
                 entry.last_hunk_key = Some(key);
-
-                entry.diff.push_str(&format!(
-                    "@@ -{},{} +{},{} @@\n",
-                    h.old_start(),
-                    h.old_lines(),
-                    h.new_start(),
-                    h.new_lines()
-                ));
+                entry.hunks.push(FileHunk {
+                    diff: format!(
+                        "@@ -{},{} +{},{} @@\n",
+                        h.old_start(),
+                        h.old_lines(),
+                        h.new_start(),
+                        h.new_lines()
+                    ),
+                    line_count: 0,
+                });
             }
         }
 
         // -----------------------------------
         // Actual line content (with origin prefix if necessary)
         // -----------------------------------
-        match line.origin() {
-            '+' => {
-                entry.diff.push('+');
-                entry.diff.push_str(content);
-                entry.line_count += 1;
+        if let Some(hunk) = entry.hunks.last_mut() {
+            match line.origin() {
+                '+' => {
+                    hunk.diff.push('+');
+                    hunk.diff.push_str(content);
+                    hunk.line_count += 1;
+                }
+                '-' => {
+                    hunk.diff.push('-');
+                    hunk.diff.push_str(content);
+                    hunk.line_count += 1;
+                }
+                ' ' => {
+                    hunk.diff.push(' ');
+                    hunk.diff.push_str(content);
+                }
+                _ => {}
             }
-            '-' => {
-                entry.diff.push('-');
-                entry.diff.push_str(content);
-                entry.line_count += 1;
-            }
-            ' ' => {
-                entry.diff.push(' ');
-                entry.diff.push_str(content);
-            }
-            _ => {}
         }
 
         true
@@ -564,7 +568,8 @@ fn run_diff_engine(diff: git2::Diff) -> Result<Vec<FileDiff>> {
 
     // -------------------------
     // 3. Merge and filter-sensitive files pass
-    // Now merge the structured delta info with the patch text and line counts to produce final FileDiffs.
+    // Now merge the structured delta info with each patch hunk. Keeping hunks
+    // separate preserves their semantic identity even when they share a path.
     // -------------------------
     let mut result = Vec::new();
 
@@ -576,16 +581,23 @@ fn run_diff_engine(diff: git2::Diff) -> Result<Vec<FileDiff>> {
             .unwrap_or("");
 
         if let Some(s) = state.remove(key) {
-            if is_sensitive_or_opaque(key, &s.diff, s.is_binary) {
+            let full_diff = s
+                .hunks
+                .iter()
+                .map(|hunk| hunk.diff.as_str())
+                .collect::<String>();
+            if is_sensitive_or_opaque(key, &full_diff, s.is_binary) {
                 continue;
             }
 
-            result.push(FileDiff {
-                old_path: f.old_path,
-                new_path: f.new_path,
-                diff: s.diff,
-                line_count: s.line_count,
-            });
+            for hunk in s.hunks {
+                result.push(FileDiff {
+                    old_path: f.old_path.clone(),
+                    new_path: f.new_path.clone(),
+                    diff: hunk.diff,
+                    line_count: hunk.line_count,
+                });
+            }
         }
     }
 
@@ -911,10 +923,6 @@ mod tests {
         assert_eq!(commits[0].hash, third_id.to_string());
         assert_eq!(commits[0].message, Some("third".to_string()));
         assert_eq!(commits[0].created_at, 300);
-        assert_eq!(
-            commits[0].tree_hash,
-            repo.find_commit(third_id).unwrap().tree_id().to_string()
-        );
 
         assert_eq!(commits[1].hash, second_id.to_string());
         assert_eq!(commits[1].message, Some("second".to_string()));
@@ -1156,6 +1164,50 @@ mod tests {
         assert_eq!(diffs.len(), 1);
         assert_eq!(diffs[0].new_path.as_deref(), Some("flake.nix"));
         assert!(diffs[0].diff.contains("+{ inputs = {}; }"));
+    }
+
+    #[test]
+    fn changes_since_ref_keeps_separate_hunks_in_the_same_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+
+        init_repo(&repo_dir_str).unwrap();
+        fs::write(
+            repo_dir.join("configuration.nix"),
+            "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\n",
+        )
+        .unwrap();
+        crate::git::commit_all(&repo_dir_str, "initial").unwrap();
+
+        let repo = git2::Repository::discover(&repo_dir_str).unwrap();
+        let head = repo.head().unwrap().peel_to_commit().unwrap();
+        repo.branch("evolution-start", &head, false).unwrap();
+
+        fs::write(
+            repo_dir.join("configuration.nix"),
+            "line 1\nupdated line 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nupdated line 19\nline 20\n",
+        )
+        .unwrap();
+
+        let diffs = changes_since_ref(&repo_dir_str, "evolution-start").unwrap();
+
+        assert_eq!(diffs.len(), 2);
+        assert!(
+            diffs
+                .iter()
+                .all(|diff| diff.new_path.as_deref() == Some("configuration.nix"))
+        );
+        assert!(
+            diffs
+                .iter()
+                .any(|diff| diff.diff.contains("+updated line 2"))
+        );
+        assert!(
+            diffs
+                .iter()
+                .any(|diff| diff.diff.contains("+updated line 19"))
+        );
     }
 
     #[test]
