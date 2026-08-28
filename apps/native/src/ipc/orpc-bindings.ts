@@ -119,7 +119,7 @@ serverUrl: string;
  * stored Better Auth device API key. Hosted models and brokered GitHub
  * requests share this credential.
  */
-webApiAuthReady: boolean;
+webApiAuthReady: boolean; 
 /**
  * The web-origin account associated with the device API key, when known.
  */
@@ -932,9 +932,13 @@ offset: number | null }
  */
 export type GitAutoUpdate = "off" | "confirm" | "automatic"
 
+export type GitCommitChangeInput = { filename: string; hash: string; message: string }
+
 export type GitCommitFileInput = { filename: string; message: string }
 
 export type GitCommitInput = { message: string }
+
+export type GitDiscardChangeInput = { filename: string; hash: string }
 
 export type GitDiscardFileInput = { filename: string }
 
@@ -2100,7 +2104,9 @@ export type Procedures = {
   }
   git: {
     commit: Client<Record<never, never>, GitCommitInput, CommitResult, Error>
+    commitChange: Client<Record<never, never>, GitCommitChangeInput, CommitResult, Error>
     commitFile: Client<Record<never, never>, GitCommitFileInput, CommitResult, Error>
+    discardChange: Client<Record<never, never>, GitDiscardChangeInput, OkResult, Error>
     discardFile: Client<Record<never, never>, GitDiscardFileInput, OkResult, Error>
     fileDiffContents: Client<Record<never, never>, GitFileDiffContentsInput, Partial<{ [key in string]: FileDiffContents }>, Error>
     pullFromUpstream: Client<Record<never, never>, void, OkResult, Error>

@@ -3,6 +3,7 @@
 pub mod auth;
 pub mod auto_update;
 pub mod exec;
+pub mod hunks;
 pub mod init;
 pub mod query;
 mod repo_files;
@@ -11,8 +12,9 @@ mod repo_files;
 // `crate::git::some_fn()` without change.
 #[allow(unused_imports)]
 pub use exec::{
-    CommitInfo, checkout_files_at_commit, commit_all, commit_file, create_evolution_backup,
-    intent_add_untracked, restore_all, restore_file, restore_from_branch_ref, tag_commit,
+    CommitInfo, checkout_files_at_commit, commit_all, commit_file, commit_hunk,
+    create_evolution_backup, intent_add_untracked, restore_all, restore_file,
+    restore_from_branch_ref, restore_hunk, tag_commit,
 };
 
 #[allow(unused_imports)]
@@ -126,7 +128,7 @@ pub fn file_diff_to_change(diff: FileDiff, created_at: i64, should_truncate: boo
     }
 }
 
-fn hunk_hash(filename: &str, hunk: &str) -> String {
+pub(crate) fn hunk_hash(filename: &str, hunk: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(filename.as_bytes());
     hasher.update(b"\0");

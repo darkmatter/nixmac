@@ -5,7 +5,7 @@ use git2::{DiffOptions, Oid, Repository};
 use tauri::AppHandle;
 
 use crate::{
-    git::{FileDiff, file_diff_to_change, init::require_repo, is_sensitive_or_opaque},
+    git::{FileDiff, file_diff_to_change, hunk_hash, init::require_repo, is_sensitive_or_opaque},
     shared_types::{ChangeType, GitFileStatus, GitStatus},
 };
 
@@ -323,6 +323,35 @@ pub fn log_from_commit(dir: &str, commit_hash: &str, limit: usize) -> Result<Vec
         });
     }
     Ok(commits)
+}
+
+/// Returns the current working-tree hunk for `filename` whose identity hash
+/// matches `hash` — the same `hunk_hash` carried by `Change` rows in the drift
+/// list. Per-change commit/discard re-derive the exact hunk text from a fresh
+/// diff instead of trusting a stale client snapshot, so this errors when the
+/// change is gone (file or content changed since the drift list rendered).
+pub fn find_hunk_by_hash(dir: &str, filename: &str, hash: &str) -> Result<String> {
+    require_repo(dir)?;
+    let repo = Repository::discover(dir)?;
+    let head_tree = repo.head().ok().and_then(|head| head.peel_to_tree().ok());
+
+    let mut diff_opts = default_diff_opts();
+    let diff = repo.diff_tree_to_workdir_with_index(head_tree.as_ref(), Some(&mut diff_opts))?;
+
+    for file in run_diff_engine(diff)? {
+        let name = file
+            .new_path
+            .clone()
+            .or_else(|| file.old_path.clone())
+            .unwrap_or_default();
+        if name == filename && hunk_hash(&name, &file.diff) == hash {
+            return Ok(file.diff);
+        }
+    }
+
+    anyhow::bail!(
+        "a change in `{filename}` no longer matches the working tree; refresh and try again"
+    )
 }
 
 /// Returns structured FileDiffs representing the changes between `base_ref` and the working tree.
@@ -1208,6 +1237,44 @@ mod tests {
                 .iter()
                 .any(|diff| diff.diff.contains("+updated line 19"))
         );
+    }
+
+    #[test]
+    fn find_hunk_by_hash_returns_the_hunk_with_that_identity_and_errors_when_stale() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+
+        init_repo(&repo_dir_str).unwrap();
+        let original = (1..=20).map(|n| format!("line {n}\n")).collect::<String>();
+        fs::write(repo_dir.join("configuration.nix"), &original).unwrap();
+        crate::git::commit_all(&repo_dir_str, "initial").unwrap();
+
+        let drifted = original
+            .replace("line 2\n", "updated line 2\n")
+            .replace("line 19\n", "updated line 19\n");
+        fs::write(repo_dir.join("configuration.nix"), &drifted).unwrap();
+
+        let diffs = changes_since_ref(&repo_dir_str, "HEAD").unwrap();
+        assert_eq!(diffs.len(), 2);
+
+        for diff in &diffs {
+            let hash = crate::git::hunk_hash("configuration.nix", &diff.diff);
+            let found = find_hunk_by_hash(&repo_dir_str, "configuration.nix", &hash)
+                .expect("the hunk is still in the working-tree diff");
+            assert_eq!(found, diff.diff);
+        }
+
+        // Once the change is gone from the working tree, the identity hash no
+        // longer matches anything and the lookup fails loudly.
+        fs::write(repo_dir.join("configuration.nix"), &original).unwrap();
+        for diff in &diffs {
+            let hash = crate::git::hunk_hash("configuration.nix", &diff.diff);
+            assert!(
+                find_hunk_by_hash(&repo_dir_str, "configuration.nix", &hash).is_err(),
+                "stale hunk must not resolve"
+            );
+        }
     }
 
     #[test]

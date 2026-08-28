@@ -244,6 +244,203 @@ pub fn commit_file(dir: &str, path: &str, message: &str) -> Result<CommitInfo> {
     })
 }
 
+/// Discard one detected hunk from a file's working-tree content. Unlike
+/// `restore_file` this touches only the hunk's lines, so sibling hunks in the
+/// same file survive. Discarding a new file's hunk removes the file; restoring
+/// a deleted file's hunk rewrites its content.
+///
+/// Note: staged changes are not consulted — like `restore_file`, this treats
+/// the working tree as the source of truth for the drift being reverted.
+pub fn restore_hunk(dir: &str, path: &str, hunk: &str) -> Result<()> {
+    let repo = git2::Repository::discover(dir)?;
+    let rel = super::repo_files::normalize_repo_relative_path_lexically(path)
+        .context("path escapes the repository")?;
+    let workdir = repo
+        .workdir()
+        .context("restore_hunk in a bare repository")?;
+    let full = workdir.join(&rel);
+    let parsed = super::hunks::parse_hunk(hunk)?;
+
+    let head_tree = repo.head().ok().and_then(|head| head.peel_to_tree().ok());
+    let head_entry = head_tree.as_ref().and_then(|tree| tree.get_path(&rel).ok());
+    let tracked_in_head = head_entry.is_some();
+    // Hunk text carries no newline-at-EOF marker (the drift pipeline drops
+    // it), so take the restored side's state from the HEAD blob.
+    let eof_trailing_newline = head_entry
+        .and_then(|entry| repo.find_blob(entry.id()).ok())
+        .map(|blob| blob.content().ends_with(b"\n"))
+        .unwrap_or(true);
+
+    if !full.exists() {
+        // Only a deleted-file hunk (empty new side) can be discarded here;
+        // the hash lookup upstream guarantees the hunk existed in the diff.
+        if !parsed.new_lines.is_empty() {
+            anyhow::bail!("`{path}` is missing from the working tree; refresh and try again");
+        }
+        let restored = super::hunks::apply_hunk(
+            "",
+            &parsed,
+            super::hunks::Direction::Reverse,
+            eof_trailing_newline,
+        )?;
+        let super::hunks::ApplyOutcome::Content(content) = restored else {
+            anyhow::bail!("discarding this change restored no content");
+        };
+        if let Some(parent) = full.parent() {
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("create parent dirs of `{}`", full.display()))?;
+        }
+        std::fs::write(&full, content)
+            .with_context(|| format!("restore deleted `{}`", full.display()))?;
+        return Ok(());
+    }
+
+    let content = std::fs::read_to_string(&full)
+        .with_context(|| format!("read `{path}` (binary files cannot discard single changes)"))?;
+
+    match super::hunks::apply_hunk(
+        &content,
+        &parsed,
+        super::hunks::Direction::Reverse,
+        eof_trailing_newline,
+    )? {
+        super::hunks::ApplyOutcome::Content(new_content) => {
+            std::fs::write(&full, new_content)
+                .with_context(|| format!("write `{}`", full.display()))?;
+        }
+        super::hunks::ApplyOutcome::Empty => {
+            // The hunk covered the file's entire content (a new-file hunk).
+            if tracked_in_head {
+                // HEAD's file was empty; discarding its additions empties it.
+                std::fs::write(&full, "").with_context(|| format!("empty `{}`", full.display()))?;
+            } else {
+                std::fs::remove_file(&full)
+                    .with_context(|| format!("remove `{}`", full.display()))?;
+                // Mirror restore_file: drop a staged (intent-to-add) entry too.
+                let mut index = repo.index().context("git2 open repository index")?;
+                if index.get_path(&rel, 0).is_some() {
+                    let _ = index.remove_path(&rel);
+                    let _ = index.write();
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Commit one detected hunk of a single file: the hunk is applied to the
+/// file's HEAD content, staged alone, and committed. Sibling hunks and the
+/// rest of the working tree stay uncommitted. Mirrors `commit_file` but with
+/// hunk granularity instead of file granularity.
+pub fn commit_hunk(dir: &str, path: &str, hunk: &str, message: &str) -> Result<CommitInfo> {
+    let repo = git2::Repository::discover(dir)?;
+    let rel = super::repo_files::normalize_repo_relative_path_lexically(path)
+        .context("path escapes the repository")?;
+
+    let parent = repo.head().ok().and_then(|head| head.peel_to_commit().ok());
+    let head_tree = parent.as_ref().and_then(|commit| commit.tree().ok());
+    let head_entry = head_tree.as_ref().and_then(|tree| tree.get_path(&rel).ok());
+
+    let head_content = match head_entry.as_ref() {
+        Some(entry) => {
+            let blob = repo.find_blob(entry.id()).context("git2 read HEAD blob")?;
+            anyhow::ensure!(
+                !blob.is_binary(),
+                "`{path}` is binary; single-change commit is unavailable"
+            );
+            String::from_utf8_lossy(blob.content()).into_owned()
+        }
+        None => String::new(),
+    };
+
+    let parsed = super::hunks::parse_hunk(hunk)?;
+    // The hunk's added side describes the working tree, so when the applied
+    // region ends the file, its newline state is the on-disk file's.
+    let eof_trailing_newline = std::fs::read_to_string(
+        repo.workdir()
+            .context("commit_hunk in a bare repository")?
+            .join(&rel),
+    )
+    .map(|content| content.ends_with('\n'))
+    .unwrap_or(true);
+    let new_content = match super::hunks::apply_hunk(
+        &head_content,
+        &parsed,
+        super::hunks::Direction::Forward,
+        eof_trailing_newline,
+    )? {
+        super::hunks::ApplyOutcome::Content(content) => content,
+        super::hunks::ApplyOutcome::Empty => String::new(),
+    };
+
+    let mut index = repo.index().context("git2 open repository index")?;
+    // Start from HEAD so only this hunk's path differs in the commit.
+    match head_tree.as_ref() {
+        Some(tree) => index.read_tree(tree).context("git2 reset index to HEAD")?,
+        None => index.clear().context("git2 clear index")?,
+    }
+
+    if new_content.is_empty() {
+        anyhow::ensure!(
+            head_entry.is_some(),
+            "nothing to commit: the change is already absent from HEAD"
+        );
+        index
+            .remove_path(&rel)
+            .with_context(|| format!("git2 stage deletion of `{path}`"))?;
+    } else {
+        let oid = repo
+            .blob(new_content.as_bytes())
+            .context("git2 write blob")?;
+        let entry = git2::IndexEntry {
+            ctime: git2::IndexTime::new(0, 0),
+            mtime: git2::IndexTime::new(0, 0),
+            dev: 0,
+            ino: 0,
+            mode: head_entry.map_or(0o100644, |entry| entry.filemode() as u32),
+            uid: 0,
+            gid: 0,
+            file_size: new_content.len() as u32,
+            id: oid,
+            flags: 0,
+            flags_extended: 0,
+            path: rel.as_os_str().as_encoded_bytes().to_vec(),
+        };
+        index
+            .add_frombuffer(&entry, new_content.as_bytes())
+            .with_context(|| format!("git2 stage `{path}`"))?;
+    }
+    index.write().context("git2 write staged index")?;
+
+    let tree_id = index.write_tree().context("git2 write commit tree")?;
+    if let Some(parent) = parent.as_ref()
+        && parent.tree_id() == tree_id
+    {
+        anyhow::bail!("nothing to commit");
+    }
+    let tree = repo.find_tree(tree_id).context("git2 find commit tree")?;
+
+    let signature =
+        git2::Signature::now("nixmac", "nixmac@local").context("create git signature")?;
+    let parents = parent.iter().collect::<Vec<_>>();
+    let commit_id = repo
+        .commit(
+            Some("HEAD"),
+            &signature,
+            &signature,
+            message,
+            &tree,
+            &parents,
+        )
+        .context("git2 create commit")?;
+
+    Ok(CommitInfo {
+        hash: commit_id.to_string(),
+        tree_hash: tree_id.to_string(),
+    })
+}
+
 /// Discard the working-tree changes for a single file: tracked files are
 /// restored to their HEAD content (covering modifications and deletions), and
 /// an untracked file is removed from the working tree.
@@ -1336,5 +1533,206 @@ mod tests {
             git2::IndexEntryExtendedFlag::from_bits_truncate(entry.flags_extended)
                 .contains(git2::IndexEntryExtendedFlag::INTENT_TO_ADD)
         );
+    }
+
+    /// Commits a 21-line `letters.txt` (lines `a`..`u`), then drifts two
+    /// distant lines (`c` → `C`, `s` → `S`) in the working tree. With five
+    /// context lines these land in two separate hunks.
+    fn repo_with_two_drifted_lines() -> (TempDir, std::path::PathBuf, String, String) {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        let original: String = (b'a'..=b'u')
+            .map(|letter| format!("{}\n", letter as char))
+            .collect();
+        fs::write(repo_dir.join("letters.txt"), &original).unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial"]);
+
+        let drifted = original.replace("c\n", "C\n").replace("s\n", "S\n");
+        fs::write(repo_dir.join("letters.txt"), &drifted).unwrap();
+
+        (temp_dir, repo_dir, repo_dir_str, original)
+    }
+
+    fn two_drift_hunks(repo_dir_str: &str) -> (String, String) {
+        let hunks = crate::git::query::changes_since_ref(repo_dir_str, "HEAD")
+            .expect("diff workdir against HEAD");
+        assert_eq!(hunks.len(), 2, "two distant edits should yield two hunks");
+        let c_hunk = hunks
+            .iter()
+            .find(|hunk| hunk.diff.contains("+C"))
+            .expect("hunk editing `c`")
+            .diff
+            .clone();
+        let s_hunk = hunks
+            .iter()
+            .find(|hunk| hunk.diff.contains("+S"))
+            .expect("hunk editing `s`")
+            .diff
+            .clone();
+        (c_hunk, s_hunk)
+    }
+
+    #[test]
+    fn test_restore_hunk_discards_one_hunk_and_keeps_sibling_hunks() {
+        let (_temp, repo_dir, repo_dir_str, original) = repo_with_two_drifted_lines();
+        let (c_hunk, s_hunk) = two_drift_hunks(&repo_dir_str);
+
+        restore_hunk(&repo_dir_str, "letters.txt", &c_hunk).unwrap();
+        let content = fs::read_to_string(repo_dir.join("letters.txt")).unwrap();
+        assert!(
+            content.contains("\nc\n"),
+            "this hunk's line reverts: {content}"
+        );
+        assert!(
+            !content.contains('C'),
+            "this hunk's change is gone: {content}"
+        );
+        assert!(
+            content.contains('S'),
+            "sibling hunk must survive: {content}"
+        );
+
+        restore_hunk(&repo_dir_str, "letters.txt", &s_hunk).unwrap();
+        let content = fs::read_to_string(repo_dir.join("letters.txt")).unwrap();
+        assert_eq!(content, original, "discarding every hunk restores HEAD");
+    }
+
+    #[test]
+    fn test_commit_hunk_commits_one_hunk_and_keeps_sibling_hunks() {
+        let (_temp, repo_dir, repo_dir_str, _original) = repo_with_two_drifted_lines();
+        let (c_hunk, _s_hunk) = two_drift_hunks(&repo_dir_str);
+
+        commit_hunk(&repo_dir_str, "letters.txt", &c_hunk, "change c only").unwrap();
+
+        let head_content = run_git_ok(&repo_dir, &["show", "HEAD:letters.txt"]);
+        assert!(head_content.contains("\nC\n"), "committed hunk is in HEAD");
+        assert!(
+            head_content.contains("\ns\n"),
+            "sibling hunk stays out of HEAD"
+        );
+
+        let workdir_content = fs::read_to_string(repo_dir.join("letters.txt")).unwrap();
+        assert!(
+            workdir_content.contains('C') && workdir_content.contains('S'),
+            "the working tree keeps both changes"
+        );
+
+        let remaining =
+            crate::git::query::changes_since_ref(&repo_dir_str, "HEAD").expect("remaining diff");
+        assert_eq!(remaining.len(), 1, "only the sibling hunk is left");
+        assert!(remaining[0].diff.contains("+S"));
+    }
+
+    #[test]
+    fn test_restore_hunk_removes_untracked_new_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial"]);
+
+        fs::write(repo_dir.join("new.nix"), "{ fresh = true; }\n").unwrap();
+        let hunks = crate::git::query::changes_since_ref(&repo_dir_str, "HEAD").expect("diff");
+        assert_eq!(hunks.len(), 1);
+
+        restore_hunk(&repo_dir_str, "new.nix", &hunks[0].diff).unwrap();
+
+        assert!(!repo_dir.join("new.nix").exists(), "new file is removed");
+        let repo = git2::Repository::open(&repo_dir).unwrap();
+        let status = repo.statuses(None).expect("status");
+        assert_eq!(status.len(), 0, "workdir is clean again");
+    }
+
+    #[test]
+    fn test_restore_hunk_restores_a_deleted_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("gone.nix"), "{ keep = me; }\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial"]);
+        fs::remove_file(repo_dir.join("gone.nix")).unwrap();
+
+        let hunks = crate::git::query::changes_since_ref(&repo_dir_str, "HEAD").expect("diff");
+        assert_eq!(hunks.len(), 1);
+
+        restore_hunk(&repo_dir_str, "gone.nix", &hunks[0].diff).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("gone.nix")).unwrap(),
+            "{ keep = me; }\n",
+            "deleted file's content is restored"
+        );
+    }
+
+    #[test]
+    fn test_commit_hunk_records_an_untracked_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial"]);
+
+        fs::write(repo_dir.join("new.nix"), "{ fresh = true; }\n").unwrap();
+        let hunks = crate::git::query::changes_since_ref(&repo_dir_str, "HEAD").expect("diff");
+
+        commit_hunk(&repo_dir_str, "new.nix", &hunks[0].diff, "add new.nix").unwrap();
+
+        assert_eq!(
+            run_git_ok(&repo_dir, &["show", "HEAD:new.nix"]),
+            "{ fresh = true; }\n"
+        );
+        assert_eq!(run_git_ok(&repo_dir, &["status", "--porcelain=v1"]), "");
+    }
+
+    #[test]
+    fn test_commit_hunk_records_a_deleted_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("gone.nix"), "{ keep = me; }\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial"]);
+        fs::remove_file(repo_dir.join("gone.nix")).unwrap();
+
+        let hunks = crate::git::query::changes_since_ref(&repo_dir_str, "HEAD").expect("diff");
+        assert_eq!(hunks.len(), 1);
+
+        commit_hunk(&repo_dir_str, "gone.nix", &hunks[0].diff, "remove gone.nix").unwrap();
+
+        assert!(
+            !run_git(&repo_dir, &["cat-file", "-e", "HEAD:gone.nix"])
+                .status
+                .success(),
+            "HEAD should record the deletion"
+        );
+        assert_eq!(run_git_ok(&repo_dir, &["status", "--porcelain=v1"]), "");
+    }
+
+    #[test]
+    fn test_restore_hunk_errors_when_the_hunk_no_longer_matches() {
+        let (_temp, repo_dir, repo_dir_str, _original) = repo_with_two_drifted_lines();
+        let (c_hunk, _s_hunk) = two_drift_hunks(&repo_dir_str);
+
+        // The sibling hunk's discard changes line positions; the stale hunk
+        // body no longer matches, which must fail loudly instead of corrupting.
+        restore_hunk(&repo_dir_str, "letters.txt", &c_hunk).unwrap();
+        fs::write(repo_dir.join("letters.txt"), "completely\nrewritten\n").unwrap();
+
+        assert!(restore_hunk(&repo_dir_str, "letters.txt", &c_hunk).is_err());
     }
 }

@@ -16,9 +16,24 @@ struct GitCommitInput {
 
 #[derive(Debug, Deserialize, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
+struct GitCommitChangeInput {
+    filename: String,
+    hash: String,
+    message: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
 struct GitCommitFileInput {
     filename: String,
     message: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+struct GitDiscardChangeInput {
+    filename: String,
+    hash: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Type)]
@@ -45,10 +60,25 @@ async fn commit_file(ctx: OrpcCtx, input: GitCommitFileInput) -> Result<CommitRe
         .map_err(|error| internal_err("git.commitFile", error))
 }
 
+async fn commit_change(
+    ctx: OrpcCtx,
+    input: GitCommitChangeInput,
+) -> Result<CommitResult, ORPCError> {
+    git::commit_change(ctx.app, input.filename, input.hash, input.message)
+        .await
+        .map_err(|error| internal_err("git.commitChange", error))
+}
+
 async fn discard_file(ctx: OrpcCtx, input: GitDiscardFileInput) -> Result<OkResult, ORPCError> {
     git::discard_single_file(ctx.app, input.filename)
         .await
         .map_err(|error| internal_err("git.discardFile", error))
+}
+
+async fn discard_change(ctx: OrpcCtx, input: GitDiscardChangeInput) -> Result<OkResult, ORPCError> {
+    git::discard_change(ctx.app, input.filename, input.hash)
+        .await
+        .map_err(|error| internal_err("git.discardChange", error))
 }
 
 async fn file_diff_contents(
@@ -90,10 +120,18 @@ pub fn routes() -> Router<OrpcCtx> {
             .input(orpc_specta::specta::<GitCommitInput>())
             .output(orpc_specta::specta::<CommitResult>())
             .handler(commit),
+        "commitChange" => os::<OrpcCtx>()
+            .input(orpc_specta::specta::<GitCommitChangeInput>())
+            .output(orpc_specta::specta::<CommitResult>())
+            .handler(commit_change),
         "commitFile" => os::<OrpcCtx>()
             .input(orpc_specta::specta::<GitCommitFileInput>())
             .output(orpc_specta::specta::<CommitResult>())
             .handler(commit_file),
+        "discardChange" => os::<OrpcCtx>()
+            .input(orpc_specta::specta::<GitDiscardChangeInput>())
+            .output(orpc_specta::specta::<OkResult>())
+            .handler(discard_change),
         "discardFile" => os::<OrpcCtx>()
             .input(orpc_specta::specta::<GitDiscardFileInput>())
             .output(orpc_specta::specta::<OkResult>())
