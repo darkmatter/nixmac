@@ -36,6 +36,7 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { useTrayEvents } from "@/hooks/use-tray-events";
 import { markBootRenderStage, markBootStage } from "@/lib/boot-diagnostics";
 import { useEvolveMascot } from "@/hooks/use-evolve-mascot";
+import { useHostedModelAuthGuard } from "@/hooks/use-hosted-model-auth-guard";
 import { useUiState, useViewModel } from "@nixmac/state";
 import { useCurrentStep } from "@/hooks/use-current-step";
 import { UpdateBanner } from "@/components/widget/layout/update-banner";
@@ -59,6 +60,11 @@ export function DarwinWidget() {
 
   // Experimental: spin the mascot in a corner indicator while evolving/building
   useEvolveMascot();
+
+  // Hosted inference cannot run without the device credential. Check this
+  // after startup hydration so a logged-out user is sent to the choice in
+  // Settings before they discover the problem by submitting a prompt.
+  useHostedModelAuthGuard();
 
   // Set up panic handler to catch Rust crashes and show feedback dialog
   usePanicHandler();
