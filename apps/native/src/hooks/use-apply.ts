@@ -1,4 +1,5 @@
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
+import { useSummary } from "@/hooks/use-summary";
 import type { AppManagementCheckResult } from "@/ipc/types";
 import { client } from "@/lib/orpc";
 import { uiActions } from "@nixmac/state";
@@ -63,6 +64,7 @@ async function hasAppManagementBlockers(): Promise<boolean> {
  */
 export function useApply() {
   const { triggerRebuild } = useRebuildStream();
+  const { generateCommitMessage } = useSummary();
 
   const handleApply = async () => {
     uiActions.setProcessing(true, "apply");
@@ -78,6 +80,13 @@ export function useApply() {
       uiActions.setProcessing(false);
       return;
     }
+
+    // The diff is final before activation starts. Generate its commit message
+    // now so it is available as soon as the successful build reaches Save.
+    // This is intentionally not awaited: an inference failure must not delay
+    // or prevent activation, and the save panel still supports regeneration.
+    // `force`: a previous run's in-flight generation may carry an older diff.
+    void generateCommitMessage({ force: true });
 
     await triggerRebuild({
       context: "apply",

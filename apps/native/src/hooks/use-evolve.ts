@@ -1,3 +1,5 @@
+import { clearCommitMessageSuggestion } from "@/hooks/use-summary";
+
 import { EVOLUTION_CANCELLED_MSG } from "@/lib/constants";
 import { uiActions, useUiState, viewModelActions } from "@nixmac/state";
 import { tauriAPI } from "@/ipc/api";
@@ -16,6 +18,9 @@ import { modelForProvider } from "@/lib/providers/ai-models";
  * `darwin:evolve:event` payload, handled by `viewmodel/evolution.ts`.
  */
 const evolveFromManual = async () => {
+  // Route through use-summary so an in-flight generation for the old diff
+  // cannot resolve and repopulate the suggestion after the clear.
+  clearCommitMessageSuggestion();
   await client.darwin.evolveFromManual();
 };
 
@@ -45,6 +50,7 @@ const handleEvolve = async () => {
   uiActions.clearLogs();
   uiActions.setConversationalResponse(null);
   uiActions.setEvolutionTelemetry(null);
+  clearCommitMessageSuggestion();
   // A new evolution means "follow the live backend step" — drop any manual
   // step-override (e.g. the user clicked Back to refine) so the result lands
   // on the live Review step instead of staying behind on Describe.

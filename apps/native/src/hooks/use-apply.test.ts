@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   checkAppManagement: vi.fn(),
   checkEtcClobber: vi.fn(),
   finalizeApply: vi.fn(),
+  generateCommitMessage: vi.fn<(options?: { clear?: boolean; force?: boolean }) => Promise<void>>(),
   triggerRebuild: vi.fn(),
 }));
 
@@ -24,6 +25,12 @@ vi.mock("@/lib/orpc", () => ({
 vi.mock("@/hooks/use-rebuild-stream", () => ({
   useRebuildStream: () => ({
     triggerRebuild: mocks.triggerRebuild,
+  }),
+}));
+
+vi.mock("@/hooks/use-summary", () => ({
+  useSummary: () => ({
+    generateCommitMessage: mocks.generateCommitMessage,
   }),
 }));
 
@@ -65,6 +72,7 @@ describe("useApply", () => {
     mocks.checkEtcClobber.mockResolvedValue(makeEtcClobberResult({ ok: true, conflicts: [] }));
     mocks.checkAppManagement.mockResolvedValue(makeAppManagementResult());
     mocks.finalizeApply.mockResolvedValue(undefined);
+    mocks.generateCommitMessage.mockResolvedValue(undefined);
     mocks.triggerRebuild.mockResolvedValue(undefined);
   });
 
@@ -153,5 +161,26 @@ describe("useApply", () => {
 
     expect(mocks.triggerRebuild).toHaveBeenCalledTimes(1);
     expect(mocks.triggerRebuild).toHaveBeenCalledWith(expect.objectContaining({ context: "apply" }));
+  });
+
+  it("prefetches the commit message without delaying activation", async () => {
+    let resolveCommitMessage: (() => void) | undefined;
+    mocks.generateCommitMessage.mockImplementation(
+      () => new Promise<void>((resolve) => {
+        resolveCommitMessage = resolve;
+      }),
+    );
+    const { result } = renderHook(() => useApply());
+
+    await act(async () => {
+      await result.current.handleApply();
+    });
+
+    expect(mocks.generateCommitMessage).toHaveBeenCalledTimes(1);
+    expect(mocks.triggerRebuild).toHaveBeenCalledTimes(1);
+    expect(mocks.generateCommitMessage.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.triggerRebuild.mock.invocationCallOrder[0],
+    );
+    resolveCommitMessage?.();
   });
 });
