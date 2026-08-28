@@ -123,6 +123,66 @@ pub async fn discard_single_file(
     Ok(shared_types::OkResult { ok: true })
 }
 
+/// Discard one detected change (a single hunk) identified by its `hash`, then
+/// refresh state. Sibling hunks in the same file stay untouched, so per-change
+/// rows in the drift list can never wipe each other out.
+pub async fn discard_change(
+    app: AppHandle,
+    filename: String,
+    hash: String,
+) -> Result<shared_types::OkResult, String> {
+    let dir =
+        store::ensure_git_repo_folder(&app).map_err(|e| capture_err("git_discard_change", e))?;
+    let hunk = git::query::find_hunk_by_hash(&dir, &filename, &hash)
+        .map_err(|e| capture_err("git_discard_change", e))?;
+    git::restore_hunk(&dir, &filename, &hunk).map_err(|e| capture_err("git_discard_change", e))?;
+    refresh_after_single_file_change(&app, &dir);
+    Ok(shared_types::OkResult { ok: true })
+}
+
+/// Commit one detected change (a single hunk) identified by its `hash`, then
+/// refresh state. Only that hunk enters the commit; sibling hunks and the rest
+/// of the working tree stay uncommitted.
+pub async fn commit_change(
+    app: AppHandle,
+    filename: String,
+    hash: String,
+    message: String,
+) -> Result<shared_types::CommitResult, String> {
+    let dir =
+        store::ensure_git_repo_folder(&app).map_err(|e| capture_err("git_commit_change", e))?;
+    let hunk = git::query::find_hunk_by_hash(&dir, &filename, &hash)
+        .map_err(|e| capture_err("git_commit_change", e))?;
+    let commit_info = git::commit_hunk(&dir, &filename, &hunk, &message)
+        .map_err(|e| capture_err("git_commit_change", e))?;
+
+    if let Err(e) = git::tag_commit(
+        &dir,
+        &format!("nixmac-commit-{}", &commit_info.hash[..8]),
+        &commit_info.hash,
+        false,
+    ) {
+        log::warn!("[git_commit_change] Failed to tag commit: {}", e);
+    }
+
+    if let Ok(current_build_state) = build_state::get(&app) {
+        let updated = build_state::BuildState {
+            head_commit_hash: Some(commit_info.hash.clone()),
+            changeset_id: None,
+            ..current_build_state
+        };
+        if let Err(e) = build_state::set(&app, updated) {
+            log::warn!("[git_commit_change] Failed to update build state: {}", e);
+        }
+    }
+
+    refresh_after_single_file_change(&app, &dir);
+
+    Ok(shared_types::CommitResult {
+        hash: commit_info.hash,
+    })
+}
+
 /// Pull from the upstream remote and update the local repo.
 /// Currently, the only pull we support must be a fast-forward.
 /// If a fast-forward is possible, this will succeed and return Ok.
