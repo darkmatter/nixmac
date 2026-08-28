@@ -284,6 +284,7 @@ export const orpcHandlers: Record<string, OrpcHandler> = {
     const { viewModelActions } = await import("@nixmac/state");
     return viewModelActions.getState().rebuildStatus ?? baseRebuildStatus();
   },
+  "darwin.buildCheck": async () => ({ passed: true, output: "Build check passed" }),
   "permissions.get": async () => {
     const { viewModelActions } = await import("@nixmac/state");
     return viewModelActions.getState().permissions ?? basePermissionsState();
