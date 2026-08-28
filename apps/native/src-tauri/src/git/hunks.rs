@@ -139,9 +139,15 @@ pub fn apply_hunk(
     }
 
     let expected = find_start.saturating_sub(1);
-    let pos = find_sequence(&raw_lines, find_lines, expected).ok_or_else(|| {
-        anyhow!("this change no longer matches the file's content; refresh and try again")
-    })?;
+    let pos = match find_sequence(&raw_lines, find_lines, expected) {
+        SequenceMatch::Unique(pos) => pos,
+        SequenceMatch::Ambiguous => {
+            bail!("this change matches more than one place in the file; refresh and try again")
+        }
+        SequenceMatch::Missing => {
+            bail!("this change no longer matches the file's content; refresh and try again")
+        }
+    };
 
     let reaches_eof = pos + find_lines.len() == raw_lines.len();
     let mut result = String::new();
@@ -198,23 +204,49 @@ fn matches_at(raw_lines: &[&str], lines: &[String], pos: usize) -> bool {
         .all(|(raw, want)| raw.strip_suffix('\n').unwrap_or(raw) == want)
 }
 
+/// How far (in lines) a hunk may drift from its recorded position and still
+/// match. Hunks are re-derived from a fresh diff right before they are
+/// applied, so real drift is limited to races with concurrent edits; beyond
+/// this window a similar-looking region counts as a stale match.
+const MAX_DRIFT_LINES: usize = 25;
+
+/// Where a hunk's find-side sequence occurs in the file near its recorded position.
+enum SequenceMatch {
+    /// Exactly one occurrence within the drift window.
+    Unique(usize),
+    /// More than one occurrence within the window — applying could hit the
+    /// wrong one (context-only find sides of pure-deletion hunks match easily
+    /// in repetitive configs).
+    Ambiguous,
+    /// No occurrence within the drift window.
+    Missing,
+}
+
 /// Find `lines` in `raw_lines`, preferring the position nearest to the 0-based
 /// `expected` offset (hunk line numbers drift when earlier content changed).
-fn find_sequence(raw_lines: &[&str], lines: &[String], expected: usize) -> Option<usize> {
-    let max_start = raw_lines.len().checked_sub(lines.len())?;
-    for offset in 0..=max_start {
-        if let Some(pos) = expected.checked_sub(offset)
-            && pos <= max_start
-            && matches_at(raw_lines, lines, pos)
-        {
-            return Some(pos);
-        }
-        let pos = expected + offset;
-        if pos <= max_start && matches_at(raw_lines, lines, pos) {
-            return Some(pos);
+/// A match is trusted only when it is the sole occurrence within
+/// [`MAX_DRIFT_LINES`] of `expected`.
+fn find_sequence(raw_lines: &[&str], lines: &[String], expected: usize) -> SequenceMatch {
+    let Some(max_start) = raw_lines.len().checked_sub(lines.len()) else {
+        return SequenceMatch::Missing;
+    };
+    let mut first: Option<usize> = None;
+    for offset in 0..=MAX_DRIFT_LINES {
+        for pos in [expected.checked_sub(offset), expected.checked_add(offset)] {
+            let Some(pos) = pos else { continue };
+            if pos > max_start || !matches_at(raw_lines, lines, pos) {
+                continue;
+            }
+            if first.is_some_and(|first| first != pos) {
+                return SequenceMatch::Ambiguous;
+            }
+            first = Some(pos);
         }
     }
-    None
+    match first {
+        Some(pos) => SequenceMatch::Unique(pos),
+        None => SequenceMatch::Missing,
+    }
 }
 
 #[cfg(test)]
@@ -328,6 +360,46 @@ mod tests {
 
         let result = apply_hunk("totally\nchanged\n", &parsed, Direction::Reverse, true);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn reverse_errors_when_the_match_is_ambiguous() {
+        // A pure-deletion hunk's find side is context-only (`b` twice here),
+        // which can occur in several places of a repetitive file.
+        let parsed = parse_hunk("@@ -2,4 +2,1 @@\n b\n-c\n-d\n b").expect("parse hunk");
+        let repetitive = "a\nb\nb\nx\nb\nb\nz\n";
+
+        let result = apply_hunk(repetitive, &parsed, Direction::Reverse, true);
+        assert!(
+            result.is_err(),
+            "an ambiguous match must not revert an arbitrary occurrence"
+        );
+    }
+
+    #[test]
+    fn reverse_errors_when_the_only_match_drifts_beyond_the_window() {
+        let parsed = parse_hunk("@@ -2,1 +2,1 @@\n-b\n+B").expect("parse hunk");
+        let far = format!("a\n{}B\n", "x\n".repeat(100));
+
+        let result = apply_hunk(&far, &parsed, Direction::Reverse, true);
+        assert!(
+            result.is_err(),
+            "a match far from the recorded position must not apply"
+        );
+    }
+
+    #[test]
+    fn reverse_applies_when_only_one_match_sits_within_the_drift_window() {
+        let parsed = parse_hunk("@@ -2,1 +2,1 @@\n-b\n+B").expect("parse hunk");
+        let distant_duplicate = format!("a\nB\n{}B\n", "x\n".repeat(100));
+
+        let outcome =
+            apply_hunk(&distant_duplicate, &parsed, Direction::Reverse, true).expect("apply");
+        assert_eq!(
+            outcome_to_string(outcome),
+            format!("a\nb\n{}B\n", "x\n".repeat(100)),
+            "a duplicate far outside the window does not poison the nearby match"
+        );
     }
 
     #[test]

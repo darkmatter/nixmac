@@ -244,13 +244,78 @@ pub fn commit_file(dir: &str, path: &str, message: &str) -> Result<CommitInfo> {
     })
 }
 
+/// Build an index entry pointing `rel` at `content` and stage it. Zeroed stat
+/// data makes git rehash the file on the next status scan, so content
+/// equality decides cleanliness.
+fn stage_content_in_index(
+    repo: &git2::Repository,
+    index: &mut git2::Index,
+    rel: &Path,
+    content: &str,
+    mode: u32,
+) -> Result<()> {
+    let oid = repo.blob(content.as_bytes()).context("git2 write blob")?;
+    let entry = git2::IndexEntry {
+        ctime: git2::IndexTime::new(0, 0),
+        mtime: git2::IndexTime::new(0, 0),
+        dev: 0,
+        ino: 0,
+        mode,
+        uid: 0,
+        gid: 0,
+        file_size: content.len() as u32,
+        id: oid,
+        flags: 0,
+        flags_extended: 0,
+        path: rel.as_os_str().as_encoded_bytes().to_vec(),
+    };
+    index
+        .add_frombuffer(&entry, content.as_bytes())
+        .with_context(|| format!("git2 stage `{}`", rel.display()))
+}
+
+/// Point a path's index entry at restored working-tree content, skipping the
+/// write when the entry already holds that blob.
+fn repair_index_entry(
+    repo: &git2::Repository,
+    index: &mut git2::Index,
+    rel: &Path,
+    content: &str,
+    mode: u32,
+) -> Result<()> {
+    let oid = repo.blob(content.as_bytes()).context("git2 write blob")?;
+    if index.get_path(rel, 0).is_some_and(|entry| entry.id == oid) {
+        return Ok(());
+    }
+    stage_content_in_index(repo, index, rel, content, mode)?;
+    index.write().context("git2 write repaired index")?;
+    Ok(())
+}
+
+/// Whether the index entry for `rel` differs from HEAD's. A missing entry on
+/// either side counts as different, so staged additions, modifications, and
+/// deletions all qualify — but a never-added untracked file does not.
+fn index_entry_differs_from_head(
+    head_tree: Option<&git2::Tree>,
+    index: &git2::Index,
+    rel: &Path,
+) -> bool {
+    let head_id = head_tree
+        .and_then(|tree| tree.get_path(rel).ok())
+        .map(|entry| entry.id());
+    let index_id = index.get_path(rel, 0).map(|entry| entry.id);
+    index_id != head_id
+}
+
 /// Discard one detected hunk from a file's working-tree content. Unlike
 /// `restore_file` this touches only the hunk's lines, so sibling hunks in the
 /// same file survive. Discarding a new file's hunk removes the file; restoring
 /// a deleted file's hunk rewrites its content.
 ///
-/// Note: staged changes are not consulted — like `restore_file`, this treats
-/// the working tree as the source of truth for the drift being reverted.
+/// Like `restore_file`, staged changes are repaired: when the path's index
+/// entry differs from HEAD (staged addition, modification, or deletion), it is
+/// pointed at the restored content so the discarded change does not keep the
+/// drift row alive. Purely unstaged drift leaves the index untouched.
 pub fn restore_hunk(dir: &str, path: &str, hunk: &str) -> Result<()> {
     let repo = git2::Repository::discover(dir)?;
     let rel = super::repo_files::normalize_repo_relative_path_lexically(path)
@@ -267,9 +332,20 @@ pub fn restore_hunk(dir: &str, path: &str, hunk: &str) -> Result<()> {
     // Hunk text carries no newline-at-EOF marker (the drift pipeline drops
     // it), so take the restored side's state from the HEAD blob.
     let eof_trailing_newline = head_entry
+        .as_ref()
         .and_then(|entry| repo.find_blob(entry.id()).ok())
         .map(|blob| blob.content().ends_with(b"\n"))
         .unwrap_or(true);
+
+    let mut index = repo.index().context("git2 open repository index")?;
+    let staged_change = index_entry_differs_from_head(head_tree.as_ref(), &index, &rel);
+    // Prefer the index entry's mode (it reflects the worktree for staged
+    // additions); fall back to HEAD's, then to a plain file.
+    let mode = index
+        .get_path(&rel, 0)
+        .map(|entry| entry.mode)
+        .or_else(|| head_entry.as_ref().map(|entry| entry.filemode() as u32))
+        .unwrap_or(0o100644);
 
     if !full.exists() {
         // Only a deleted-file hunk (empty new side) can be discarded here;
@@ -290,8 +366,13 @@ pub fn restore_hunk(dir: &str, path: &str, hunk: &str) -> Result<()> {
             std::fs::create_dir_all(parent)
                 .with_context(|| format!("create parent dirs of `{}`", full.display()))?;
         }
-        std::fs::write(&full, content)
+        std::fs::write(&full, &content)
             .with_context(|| format!("restore deleted `{}`", full.display()))?;
+        if staged_change {
+            // A staged deletion must not keep the row alive once the file is
+            // back on disk.
+            repair_index_entry(&repo, &mut index, &rel, &content, mode)?;
+        }
         return Ok(());
     }
 
@@ -305,19 +386,24 @@ pub fn restore_hunk(dir: &str, path: &str, hunk: &str) -> Result<()> {
         eof_trailing_newline,
     )? {
         super::hunks::ApplyOutcome::Content(new_content) => {
-            std::fs::write(&full, new_content)
+            std::fs::write(&full, &new_content)
                 .with_context(|| format!("write `{}`", full.display()))?;
+            if staged_change {
+                repair_index_entry(&repo, &mut index, &rel, &new_content, mode)?;
+            }
         }
         super::hunks::ApplyOutcome::Empty => {
             // The hunk covered the file's entire content (a new-file hunk).
             if tracked_in_head {
                 // HEAD's file was empty; discarding its additions empties it.
                 std::fs::write(&full, "").with_context(|| format!("empty `{}`", full.display()))?;
+                if staged_change {
+                    repair_index_entry(&repo, &mut index, &rel, "", mode)?;
+                }
             } else {
                 std::fs::remove_file(&full)
                     .with_context(|| format!("remove `{}`", full.display()))?;
                 // Mirror restore_file: drop a staged (intent-to-add) entry too.
-                let mut index = repo.index().context("git2 open repository index")?;
                 if index.get_path(&rel, 0).is_some() {
                     let _ = index.remove_path(&rel);
                     let _ = index.write();
@@ -333,6 +419,10 @@ pub fn restore_hunk(dir: &str, path: &str, hunk: &str) -> Result<()> {
 /// file's HEAD content, staged alone, and committed. Sibling hunks and the
 /// rest of the working tree stay uncommitted. Mirrors `commit_file` but with
 /// hunk granularity instead of file granularity.
+///
+/// An empty applied result records a deletion only when the file is also gone
+/// from the working tree; a tracked file truncated to zero bytes is committed
+/// as an empty blob instead.
 pub fn commit_hunk(dir: &str, path: &str, hunk: &str, message: &str) -> Result<CommitInfo> {
     let repo = git2::Repository::discover(dir)?;
     let rel = super::repo_files::normalize_repo_relative_path_lexically(path)
@@ -381,7 +471,16 @@ pub fn commit_hunk(dir: &str, path: &str, hunk: &str, message: &str) -> Result<C
         None => index.clear().context("git2 clear index")?,
     }
 
-    if new_content.is_empty() {
+    // An empty result records a deletion only when the file is gone from the
+    // working tree too; a tracked file truncated to zero bytes is committed
+    // as an empty blob instead.
+    let file_in_worktree = repo
+        .workdir()
+        .is_some_and(|workdir| workdir.join(&rel).exists());
+    let mode = head_entry
+        .as_ref()
+        .map_or(0o100644, |entry| entry.filemode() as u32);
+    if new_content.is_empty() && !file_in_worktree {
         anyhow::ensure!(
             head_entry.is_some(),
             "nothing to commit: the change is already absent from HEAD"
@@ -390,26 +489,7 @@ pub fn commit_hunk(dir: &str, path: &str, hunk: &str, message: &str) -> Result<C
             .remove_path(&rel)
             .with_context(|| format!("git2 stage deletion of `{path}`"))?;
     } else {
-        let oid = repo
-            .blob(new_content.as_bytes())
-            .context("git2 write blob")?;
-        let entry = git2::IndexEntry {
-            ctime: git2::IndexTime::new(0, 0),
-            mtime: git2::IndexTime::new(0, 0),
-            dev: 0,
-            ino: 0,
-            mode: head_entry.map_or(0o100644, |entry| entry.filemode() as u32),
-            uid: 0,
-            gid: 0,
-            file_size: new_content.len() as u32,
-            id: oid,
-            flags: 0,
-            flags_extended: 0,
-            path: rel.as_os_str().as_encoded_bytes().to_vec(),
-        };
-        index
-            .add_frombuffer(&entry, new_content.as_bytes())
-            .with_context(|| format!("git2 stage `{path}`"))?;
+        stage_content_in_index(&repo, &mut index, &rel, &new_content, mode)?;
     }
     index.write().context("git2 write staged index")?;
 
@@ -1721,6 +1801,111 @@ mod tests {
             "HEAD should record the deletion"
         );
         assert_eq!(run_git_ok(&repo_dir, &["status", "--porcelain=v1"]), "");
+    }
+
+    #[test]
+    fn test_commit_hunk_commits_a_truncated_file_as_empty_not_deleted() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("truncated.nix"), "{ keep = me; }\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial"]);
+
+        // Truncating a tracked file to zero bytes yields a whole-file removal
+        // hunk even though the file still exists on disk.
+        fs::write(repo_dir.join("truncated.nix"), "").unwrap();
+        let hunks = crate::git::query::changes_since_ref(&repo_dir_str, "HEAD").expect("diff");
+        assert_eq!(hunks.len(), 1);
+        assert!(hunks[0].diff.starts_with("@@ -1,1 +0,0 @@"));
+
+        commit_hunk(&repo_dir_str, "truncated.nix", &hunks[0].diff, "truncate").unwrap();
+
+        assert_eq!(
+            run_git_ok(&repo_dir, &["cat-file", "-p", "HEAD:truncated.nix"]),
+            "",
+            "HEAD keeps the file as an empty blob, not a deletion"
+        );
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("truncated.nix")).unwrap(),
+            "",
+            "the working tree file survives"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["status", "--porcelain=v1"]),
+            "",
+            "committed empty content matches the empty working tree"
+        );
+    }
+
+    #[test]
+    fn test_restore_hunk_repairs_the_index_for_staged_drift() {
+        let (_temp, repo_dir, repo_dir_str, original) = repo_with_two_drifted_lines();
+        // Stage both drifted lines so the drift rows come from the index.
+        run_git_ok(&repo_dir, &["add", "-A"]);
+        let (c_hunk, s_hunk) = two_drift_hunks(&repo_dir_str);
+
+        restore_hunk(&repo_dir_str, "letters.txt", &c_hunk).unwrap();
+        let content = fs::read_to_string(repo_dir.join("letters.txt")).unwrap();
+        assert!(
+            !content.contains('C'),
+            "this hunk's line reverts: {content}"
+        );
+        assert!(content.contains('S'), "sibling hunk survives: {content}");
+
+        let repo = git2::Repository::open(&repo_dir).unwrap();
+        let statuses = repo.statuses(None).unwrap();
+        assert_eq!(statuses.len(), 1, "only the sibling hunk remains");
+        let status = statuses.get(0).unwrap().status();
+        assert!(
+            status.is_index_modified() && !status.is_wt_modified(),
+            "the index is repaired to match the restored working tree"
+        );
+
+        restore_hunk(&repo_dir_str, "letters.txt", &s_hunk).unwrap();
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("letters.txt")).unwrap(),
+            original,
+            "discarding every staged hunk restores HEAD"
+        );
+        let statuses = repo.statuses(None).unwrap();
+        assert_eq!(
+            statuses.len(),
+            0,
+            "no staged residue keeps the drift row alive"
+        );
+    }
+
+    #[test]
+    fn test_restore_hunk_of_a_staged_deletion_restores_the_index_entry() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("gone.nix"), "{ keep = me; }\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial"]);
+        // `git rm` stages the deletion and removes the file from the worktree.
+        run_git_ok(&repo_dir, &["rm", "gone.nix"]);
+
+        let hunks = crate::git::query::changes_since_ref(&repo_dir_str, "HEAD").expect("diff");
+        assert_eq!(hunks.len(), 1);
+
+        restore_hunk(&repo_dir_str, "gone.nix", &hunks[0].diff).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("gone.nix")).unwrap(),
+            "{ keep = me; }\n",
+            "deleted file's content is restored"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["status", "--porcelain=v1"]),
+            "",
+            "the staged deletion is repaired along with the working tree"
+        );
     }
 
     #[test]
