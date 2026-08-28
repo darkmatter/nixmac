@@ -1,20 +1,26 @@
 import { PreviewIndicator } from "@/components/preview-indicator/preview-indicator";
-import { orpc, queryClient } from "@/lib/orpc";
+import { orpc, queryClient, type PreviewIndicatorState } from "@/lib/orpc";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import React, { useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
 
-function PreviewIndicatorWindow() {
+export function PreviewIndicatorWindow() {
   const {
     data: state,
   } = useQuery(orpc.previewIndicator.getState.queryOptions());
+
   useEffect(() => {
-    if (state) {
-      console.log("state", state);
-    }
-  }, [state]);
+    const unlisten = listen<PreviewIndicatorState>("preview-indicator:update", (event) => {
+      queryClient.setQueryData(orpc.previewIndicator.getState.key(), event.payload);
+    });
+
+    return () => {
+      void unlisten.then((removeListener) => removeListener());
+    };
+  }, []);
 
   const handleClick = async () => {
     // Show and focus the main window via Tauri command
@@ -26,22 +32,12 @@ function PreviewIndicatorWindow() {
     }
   };
 
-  // DEBUG: Show error or loading state
-  // if (error) {
-  //   return (
-  //     <div style={{ background: "red", color: "white", padding: 8, fontSize: 12 }}>
-  //       Error: {error.message}
-  //     </div>
-  //   );
-  // }
-
-  // if (!state) {
-  //   return (
-  //     <div style={{ background: "blue", color: "white", padding: 8, fontSize: 12 }}>
-  //       Loading...
-  //     </div>
-  //   );
-  // }
+  // Keep the webview empty until the native window has a matching visible
+  // state. The Rust side keeps that empty window hidden so it cannot intercept
+  // clicks behind it.
+  if (!state?.visible) {
+    return null;
+  }
 
   return (
     <PreviewIndicator
@@ -52,7 +48,7 @@ function PreviewIndicatorWindow() {
       isLoading={state?.isLoading}
       onClick={handleClick}
       summary={state?.summary ?? undefined}
-      visible={state?.visible ?? false}
+      visible
     />
   );
 }
