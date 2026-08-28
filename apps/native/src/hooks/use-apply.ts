@@ -85,7 +85,8 @@ export function useApply() {
     // now so it is available as soon as the successful build reaches Save.
     // This is intentionally not awaited: an inference failure must not delay
     // or prevent activation, and the save panel still supports regeneration.
-    void generateCommitMessage();
+    // `force`: a previous run's in-flight generation may carry an older diff.
+    void generateCommitMessage({ force: true });
 
     await triggerRebuild({
       context: "apply",

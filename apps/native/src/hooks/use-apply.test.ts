@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   checkAppManagement: vi.fn(),
   checkEtcClobber: vi.fn(),
   finalizeApply: vi.fn(),
-  generateCommitMessage: vi.fn<(options?: { clear?: boolean }) => Promise<void>>(),
+  generateCommitMessage: vi.fn<(options?: { clear?: boolean; force?: boolean }) => Promise<void>>(),
   triggerRebuild: vi.fn(),
 }));
 

@@ -1,3 +1,5 @@
+import { clearCommitMessageSuggestion } from "@/hooks/use-summary";
+
 import { uiActions } from "@nixmac/state";
 import type { FileDiffContents } from "@/ipc/types";
 import { client } from "@/lib/orpc";
@@ -63,7 +65,7 @@ const handleCommit = async ({ message }: { message: string }) => {
     // The backend clears the evolve state, refreshes the git-state cell, and
     // resets the change-map cell; the `*_changed` events mirror everything.
     await client.git.commit({ message });
-    uiActions.setCommitMessageSuggestion(null);
+    clearCommitMessageSuggestion();
     uiActions.appendLog("✓ Committed successfully\n");
     uiActions.setError(null);
     toast.success("Committed successfully");

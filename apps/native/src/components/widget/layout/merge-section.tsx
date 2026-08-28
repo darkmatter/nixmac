@@ -22,8 +22,17 @@ export function MergeSection() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
+    // Short-circuit when a suggestion is already set: the apply-time
+    // prefetch has covered this diff, and regenerating here would clear
+    // and clobber it. Read via getState for the latest value without
+    // re-running this effect on every suggestion change.
+    if (useUiState.getState().commitMessageSuggestion) {
+      return;
+    }
     let cancelled = false;
     setIsGenerating(true);
+    // Single-flight: when the prefetch is still in flight (fast build),
+    // this joins it instead of issuing a second IPC call.
     generateCommitMessage().finally(() => {
       if (!cancelled) setIsGenerating(false);
     });
@@ -74,7 +83,7 @@ export function MergeSection() {
               key={commitMessageSuggestion}
               className="border-border bg-background mb-2 flex-1"
               defaultValue={commitSubject || commitMessageSuggestion || ""}
-              disabled={isProcessing}
+              disabled={isProcessing || isGenerating}
               name="commitMsg"
               placeholder="Commit message…"
             />
@@ -95,7 +104,7 @@ export function MergeSection() {
 
         <Button
           className="bg-slate-200 hover:bg-slate-300 text-slate-800"
-          disabled={isProcessing}
+          disabled={isProcessing || isGenerating}
           type="submit"
         >
           {processingAction === "merge" ? (
