@@ -66,7 +66,7 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
         && nixmac_ignore.is_ignored(&normalized_rel, false)
     {
         return Err(anyhow!(
-            "read_file: '{}' is ignored by .nixmac in git repository at '{}'",
+            "read_file: '{}' is ignored by .nixmac at '{}'",
             path,
             ctx.repo_root.display()
         ));
