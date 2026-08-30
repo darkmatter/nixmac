@@ -1615,7 +1615,7 @@ pub async fn generate_evolution<R: Runtime>(
                         &args,
                         auto_format_nix_files,
                         gitignore_matcher.as_ref(),
-                        Some(&nixmac_ignore_matcher),
+                        &nixmac_ignore_matcher,
                         Some(&build_output_emitter),
                     );
 

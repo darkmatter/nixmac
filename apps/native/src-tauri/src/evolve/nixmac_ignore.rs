@@ -25,33 +25,33 @@ pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
 pub(crate) struct NixmacIgnoreChecker {
     // This is a standalone pattern engine; it does not read or require a Git repository.
-    matcher: Gitignore,
+    matcher: Option<Gitignore>,
 }
 
 impl NixmacIgnoreChecker {
     pub(crate) fn new(repo_root: &Path) -> Result<NixmacIgnoreChecker> {
         let ignore_path = repo_root.join(".nixmacignore");
-        let mut builder = GitignoreBuilder::new(repo_root);
-        match fs::symlink_metadata(&ignore_path) {
+        let matcher = match fs::symlink_metadata(&ignore_path) {
             Ok(_) => {
+                let mut builder = GitignoreBuilder::new(repo_root);
                 if let Some(error) = builder.add(&ignore_path) {
                     return Err(error).with_context(|| {
                         format!("failed to read or parse {}", ignore_path.display())
                     });
                 }
+                Some(builder.build().with_context(|| {
+                    format!(
+                        "failed to build ignore rules from {}",
+                        ignore_path.display()
+                    )
+                })?)
             }
-            Err(error) if error.kind() == ErrorKind::NotFound => {}
+            Err(error) if error.kind() == ErrorKind::NotFound => None,
             Err(error) => {
                 return Err(error)
                     .with_context(|| format!("failed to inspect {}", ignore_path.display()));
             }
-        }
-        let matcher = builder.build().with_context(|| {
-            format!(
-                "failed to build ignore rules from {}",
-                ignore_path.display()
-            )
-        })?;
+        };
 
         Ok(NixmacIgnoreChecker { matcher })
     }
@@ -80,6 +80,12 @@ impl NixmacIgnoreChecker {
             return true;
         }
 
+        // With no user ignore file, the mandatory rules above are the entire
+        // policy, so there is no pattern matching or immunity work left to do.
+        let Some(matcher) = &self.matcher else {
+            return false;
+        };
+
         // The repo-root `.nixmac` directory contains files owned by Nixmac itself.
         // User rules must never hide it or anything below it. A nested directory
         // named `.nixmac` is an ordinary user-owned path and remains matchable.
@@ -90,8 +96,7 @@ impl NixmacIgnoreChecker {
             return false;
         }
 
-        let ignored = self
-            .matcher
+        let ignored = matcher
             .matched_path_or_any_parents(relative_path, is_dir)
             .is_ignore();
 
@@ -125,6 +130,18 @@ mod tests {
         assert!(checker.is_ignored(&temp.path().join("visible.txt"), false));
         assert!(checker.is_ignored(&temp.path().join("visible"), true));
         assert!(checker.is_ignored(&temp.path().join(".nixmac/settings.json"), false));
+    }
+
+    #[test]
+    fn missing_nixmacignore_applies_only_mandatory_rules() {
+        let temp = tempdir().expect("create temp dir");
+        let checker = checker(temp.path());
+
+        assert!(checker.is_ignored(Path::new(".nixmacignore"), false));
+        assert!(checker.is_ignored(Path::new(".git/config"), false));
+        assert!(checker.is_ignored(Path::new("result/build.log"), false));
+        assert!(!checker.is_ignored(Path::new("visible.txt"), false));
+        assert!(!checker.is_ignored(Path::new(".nixmac/settings.json"), false));
     }
 
     #[test]
