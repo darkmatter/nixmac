@@ -18,7 +18,7 @@ pub(crate) fn definition() -> Tool {
                      user input, then optionally injects secret path wiring into Nix config. \
                      You can optionally provide a `scaffold` to prefill non-sensitive placeholder structure \
                      (for example env-file keys or YAML map keys) before the editor opens. \
-                     IMPORTANT: Injection targets under .nixmac are rejected; agents may only edit exact .nixmac/<module>/data.json files via edit_file.".to_string(),
+                     IMPORTANT: Injection targets under the repo-root .nixmac directory are rejected; agents may only edit exact .nixmac/<module>/data.json files via edit_file.".to_string(),
         parameters: serde_json::json!({
             "type": "object",
             "properties": {

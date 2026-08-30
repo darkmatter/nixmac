@@ -198,9 +198,9 @@ pub(crate) fn truncate_for_log(s: &str, max_len: usize) -> String {
     }
 }
 
-/// Makes sure that the given path is allowed to be edited under .nixmac.
+/// Makes sure that the given path is allowed to be edited under the repo-root .nixmac.
 /// Rules:
-/// 1. In the special .nixmac directory, only .nixmac/<module>/data.json files may be edited by the agent.
+/// 1. In the special repo-root .nixmac directory, only .nixmac/<module>/data.json files may be edited by the agent.
 /// 2. Files that are nixmac-ignored or .nixmacignore itself cannot be edited by the agent.
 pub(crate) fn ensure_nixmac_edit_allowed(
     tool: &str,
@@ -223,17 +223,15 @@ pub(crate) fn ensure_nixmac_edit_allowed(
         ));
     }
 
-    let Some(nixmac_index) = components
-        .iter()
-        .position(|component| matches!(component, Component::Normal(name) if *name == ".nixmac"))
-    else {
+    if !matches!(
+        components.first(),
+        Some(Component::Normal(name)) if *name == ".nixmac"
+    ) {
         return Ok(());
-    };
+    }
 
-    // A repository's special `.nixmac` directory may live below the root, so
-    // apply the reserved-file rules to the path suffix beginning there.
     let is_module_data_json = matches!(
-        &components[nixmac_index..],
+        components.as_slice(),
         [
             Component::Normal(root),
             Component::Normal(_module),
@@ -1239,22 +1237,14 @@ mod tests {
     }
 
     #[test]
-    fn nixmac_guard_applies_reserved_rules_to_nested_nixmac_directories() {
-        super::ensure_nixmac_edit_allowed(
-            "edit_file",
-            "hosts/macbook/.nixmac/homebrew/data.json",
-            None,
-        )
-        .expect("nested module data.json is allowed through edit_file");
-
+    fn nixmac_guard_does_not_reserve_nested_nixmac_directories() {
         for (tool, path) in [
             ("edit_nix_file", "hosts/macbook/.nixmac/homebrew/data.json"),
             ("edit_file", "hosts/macbook/.nixmac/homebrew/default.nix"),
             ("edit_file", "hosts/macbook/.nixmac/data.json"),
         ] {
-            let error = super::ensure_nixmac_edit_allowed(tool, path, None)
-                .expect_err("reserved nested .nixmac path must be rejected");
-            assert!(error.to_string().contains("reserved"), "error: {error:#}");
+            super::ensure_nixmac_edit_allowed(tool, path, None)
+                .expect("nested .nixmac path should be treated as an ordinary path");
         }
     }
 
@@ -1277,17 +1267,21 @@ mod tests {
     }
 
     #[test]
-    fn nixmac_guard_preserves_nested_module_data_exception_with_ignore_matcher() {
+    fn nixmac_guard_respects_ignore_rules_for_nested_nixmac_directory() {
         let tmp = tempdir().expect("tempdir");
         fs::write(tmp.path().join(".nixmacignore"), "*\n").expect("write ignore file");
         let checker = NixmacIgnoreChecker::new(tmp.path()).expect("create checker");
 
-        super::ensure_nixmac_edit_allowed(
+        let error = super::ensure_nixmac_edit_allowed(
             "edit_file",
             "hosts/macbook/.nixmac/homebrew/data.json",
             Some(&checker),
         )
-        .expect("the special .nixmac directory is immune to user ignore rules");
+        .expect_err("nested .nixmac directory should remain subject to user ignore rules");
+        assert!(
+            error.to_string().contains("Nixmac ignore rules"),
+            "error: {error:#}"
+        );
     }
 
     #[test]

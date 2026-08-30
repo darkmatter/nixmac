@@ -11,7 +11,7 @@
 //! 6. If we can't read .nixmacignore we should fail closed and the UI should do an error.
 //!    NOTE: This decision effectively means you have to fix/delete a broken .nixmacignore before using nixmac further.
 //! 7. The agent itself should not modify .nixmacignore.
-//! 8. The special .nixmac directory is immune to the nixmac_ignore rules because doing so might break internal system functionality, so we need to check it explicitly in the code.
+//! 8. The special .nixmac directory at the repo root is immune to the nixmac_ignore rules because doing so might break internal system functionality, so we need to check it explicitly in the code.
 
 use anyhow::Context;
 use anyhow::Result;
@@ -80,16 +80,14 @@ impl NixmacIgnoreChecker {
             return true;
         }
 
-        // `.nixmac` directories contain files owned by Nixmac itself. It can occur at any
-        // depth in the repository and user rules must never hide it or
-        // anything below it.
-        let mut components = relative_path.components().peekable();
-        while let Some(component) = components.next() {
-            if matches!(component, std::path::Component::Normal(name) if name == ".nixmac")
-                && (is_dir || components.peek().is_some())
-            {
-                return false;
-            }
+        // The repo-root `.nixmac` directory contains files owned by Nixmac itself.
+        // User rules must never hide it or anything below it. A nested directory
+        // named `.nixmac` is an ordinary user-owned path and remains matchable.
+        let mut components = relative_path.components();
+        if matches!(components.next(), Some(std::path::Component::Normal(name)) if name == ".nixmac")
+            && (is_dir || components.next().is_some())
+        {
+            return false;
         }
 
         let ignored = self
@@ -171,15 +169,15 @@ mod tests {
     }
 
     #[test]
-    fn nixmac_directories_are_immune_to_nixmacignore_at_any_depth() {
+    fn only_root_nixmac_directory_is_immune_to_nixmacignore() {
         let temp = tempdir().expect("create temp dir");
         fs::write(temp.path().join(".nixmacignore"), "*\n").expect("write ignore file");
         let checker = checker(temp.path());
 
         assert!(!checker.is_ignored(Path::new(".nixmac"), true));
         assert!(!checker.is_ignored(Path::new(".nixmac/settings.json"), false));
-        assert!(!checker.is_ignored(Path::new("hosts/macbook/.nixmac"), true));
-        assert!(!checker.is_ignored(Path::new("hosts/macbook/.nixmac/modules/data.json"), false));
+        assert!(checker.is_ignored(Path::new("hosts/macbook/.nixmac"), true));
+        assert!(checker.is_ignored(Path::new("hosts/macbook/.nixmac/modules/data.json"), false));
 
         assert!(checker.is_ignored(Path::new(".nixmac"), false));
         assert!(checker.is_ignored(Path::new("settings.json"), false));

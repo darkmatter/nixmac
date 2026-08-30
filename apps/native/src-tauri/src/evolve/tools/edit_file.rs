@@ -19,7 +19,7 @@ pub(crate) fn definition() -> Tool {
                       placeholders, TODOs, or abbreviated implementations. \
                       NOTE: For .nix, .yaml, and .yml files, the edit will be rejected if syntax is invalid \
                       (e.g., unmatched braces/brackets, unclosed strings). Ensure edits maintain valid syntax. \
-                      IMPORTANT: Under .nixmac, only exact .nixmac/<module>/data.json files may be edited; all other files are reserved.".to_string(),
+                      IMPORTANT: Under the repo-root .nixmac directory, only exact .nixmac/<module>/data.json files may be edited; all other files are reserved.".to_string(),
         parameters: serde_json::json!({
             "type": "object",
             "properties": {
