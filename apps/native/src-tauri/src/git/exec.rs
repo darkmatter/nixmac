@@ -784,8 +784,10 @@ mod tests {
         let outside = temp_dir.path().join("outside.txt");
         fs::write(&outside, "keep\n").unwrap();
 
-        let err = commit_file(&repo_dir_str, "../outside.txt", "bad")
-            .expect_err("escaping paths must be rejected");
+        let err = match commit_file(&repo_dir_str, "../outside.txt", "bad") {
+            Ok(_) => panic!("escaping paths must be rejected"),
+            Err(error) => error,
+        };
 
         assert!(err.to_string().contains("escapes the repository"));
         assert_eq!(fs::read_to_string(outside).unwrap(), "keep\n");
