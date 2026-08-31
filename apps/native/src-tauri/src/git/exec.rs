@@ -10,6 +10,48 @@ use crate::git::query::has_head_commit;
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
+fn repo_relative_single_file_path(path: &str) -> Result<PathBuf> {
+    let rel = super::repo_files::normalize_repo_relative_path_lexically(path)
+        .with_context(|| format!("path escapes the repository: `{path}`"))?;
+    if rel.as_os_str().is_empty() {
+        anyhow::bail!("path must name a file inside the repository");
+    }
+    Ok(rel)
+}
+
+fn existing_workdir_path_under_repo(
+    repo: &git2::Repository,
+    rel: &Path,
+    operation: &str,
+) -> Result<Option<PathBuf>> {
+    let workdir = repo.workdir().context("operation in a bare repository")?;
+    let full = workdir.join(rel);
+    match std::fs::symlink_metadata(&full) {
+        Ok(_) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(error)
+                .with_context(|| format!("inspect `{}` for {operation}", full.display()));
+        }
+    }
+
+    let workdir_canonical = workdir
+        .canonicalize()
+        .context("resolve repository workdir for path safety check")?;
+    let full_canonical = full
+        .canonicalize()
+        .with_context(|| format!("resolve `{}` for {operation}", full.display()))?;
+    if !full_canonical.starts_with(&workdir_canonical) {
+        anyhow::bail!(
+            "{} would escape repository: `{}` resolves to `{}`",
+            operation,
+            rel.display(),
+            full_canonical.display()
+        );
+    }
+    Ok(Some(full))
+}
+
 /// Helper to determine the Git index mode for an intent-to-add entry based on filesystem metadata.
 fn intent_to_add_mode(metadata: &std::fs::Metadata) -> u32 {
     if metadata.file_type().is_symlink() {
@@ -188,7 +230,7 @@ pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
 /// path is staged (or its deletion staged) and a commit is created.
 pub fn commit_file(dir: &str, path: &str, message: &str) -> Result<CommitInfo> {
     let repo = git2::Repository::discover(dir)?;
-    let rel = Path::new(path);
+    let rel = repo_relative_single_file_path(path)?;
 
     let parent = repo.head().ok().and_then(|head| head.peel_to_commit().ok());
 
@@ -203,14 +245,13 @@ pub fn commit_file(dir: &str, path: &str, message: &str) -> Result<CommitInfo> {
         index.clear().context("git2 clear index")?;
     }
 
-    let workdir = repo.workdir().context("commit_file in a bare repository")?;
-    if workdir.join(rel).exists() {
+    if existing_workdir_path_under_repo(&repo, &rel, "commit_file")?.is_some() {
         index
-            .add_path(rel)
+            .add_path(&rel)
             .with_context(|| format!("git2 stage `{path}`"))?;
     } else {
         index
-            .remove_path(rel)
+            .remove_path(&rel)
             .with_context(|| format!("git2 stage deletion of `{path}`"))?;
     }
     index.write().context("git2 write staged index")?;
@@ -248,34 +289,30 @@ pub fn commit_file(dir: &str, path: &str, message: &str) -> Result<CommitInfo> {
 /// an untracked file is removed from the working tree.
 pub fn restore_file(dir: &str, path: &str) -> Result<()> {
     let repo = git2::Repository::discover(dir)?;
-    let rel = Path::new(path);
+    let rel = repo_relative_single_file_path(path)?;
 
     let head_tree = repo.head().ok().and_then(|head| head.peel_to_tree().ok());
     let tracked_in_head = head_tree
         .as_ref()
-        .is_some_and(|tree| tree.get_path(rel).is_ok());
+        .is_some_and(|tree| tree.get_path(&rel).is_ok());
 
     if tracked_in_head {
         let head_obj = repo
             .revparse_single("HEAD")
             .context("git2 resolve HEAD for restore_file")?;
         let mut checkout = git2::build::CheckoutBuilder::new();
-        checkout.force().update_index(true).path(path);
+        checkout.force().update_index(true).path(&rel);
         repo.checkout_tree(&head_obj, Some(&mut checkout))
             .with_context(|| format!("git2 restore `{path}` from HEAD"))?;
     } else {
         // Untracked/new file → discarding means removing it from the worktree.
-        let workdir = repo
-            .workdir()
-            .context("restore_file in a bare repository")?;
-        let full = workdir.join(rel);
-        if full.exists() {
+        if let Some(full) = existing_workdir_path_under_repo(&repo, &rel, "restore_file")? {
             std::fs::remove_file(&full)
                 .with_context(|| format!("remove untracked `{}`", full.display()))?;
         }
         let mut index = repo.index().context("git2 open repository index")?;
-        if index.get_path(rel, 0).is_some() {
-            let _ = index.remove_path(rel);
+        if index.get_path(&rel, 0).is_some() {
+            let _ = index.remove_path(&rel);
             let _ = index.write();
         }
     }
@@ -718,6 +755,42 @@ mod tests {
             run_git_ok(&repo_dir, &["show", "-s", "--format=%s", "HEAD"]).trim(),
             "initial"
         );
+    }
+
+    #[test]
+    fn test_restore_file_rejects_escaping_path_without_deleting_outside_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+        let outside = temp_dir.path().join("outside.txt");
+        fs::write(&outside, "keep\n").unwrap();
+
+        let err = restore_file(&repo_dir_str, "../outside.txt")
+            .expect_err("escaping paths must be rejected");
+
+        assert!(err.to_string().contains("escapes the repository"));
+        assert_eq!(fs::read_to_string(outside).unwrap(), "keep\n");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_restore_file_rejects_symlink_escape_without_deleting_target() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+        let outside_dir = temp_dir.path().join("outside");
+        fs::create_dir(&outside_dir).unwrap();
+        let outside = outside_dir.join("victim.txt");
+        fs::write(&outside, "keep\n").unwrap();
+        std::os::unix::fs::symlink(&outside_dir, repo_dir.join("linked")).unwrap();
+
+        let err = restore_file(&repo_dir_str, "linked/victim.txt")
+            .expect_err("symlink escapes must be rejected");
+
+        assert!(err.to_string().contains("would escape repository"));
+        assert_eq!(fs::read_to_string(outside).unwrap(), "keep\n");
     }
 
     #[test]
