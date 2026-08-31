@@ -89,7 +89,7 @@ runs:
     - name: Restore devenv profile pointer
       if: ${{ inputs.install-devenv == 'true' }}
       id: devenv-cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v5
       with:
         path: .devenv-ci
         key: devenv-profile-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.nix', 'devenv.yaml', 'devenv.lock', 'flake.nix', 'flake.lock', 'treefmt.nix', 'nix/**') }}
@@ -222,7 +222,7 @@ runs:
 
     - name: Save devenv profile pointer
       if: ${{ inputs.install-devenv == 'true' && steps.devenv-push.outputs.ok == 'true' && steps.devenv-cache.outputs.cache-hit != 'true' }}
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v5
       with:
         path: .devenv-ci
         key: ${{ steps.devenv-cache.outputs.cache-primary-key }}
