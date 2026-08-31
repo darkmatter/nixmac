@@ -44,8 +44,20 @@ import { UpdateBanner } from "@/components/widget/layout/update-banner";
 import { markViewModelHydrated, startViewModelSync } from "@/viewmodel";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
 import { setupWidgetTestHelpers } from "@/utils/widget-test-helpers";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { nav, useIsOverlayActive } from "@/router";
+import { ipcRenderer } from "@/ipc/api";
+import {
+  acknowledgeMainWindowClose,
+  dismissMainWindowPopover,
+  isMainWindowPopover,
+} from "@/lib/main-window";
+import {
+  dispatchSyntheticDocumentEscape,
+  ESCAPE_OWNER_PRIORITY,
+  registerEscapeOwner,
+  routeEscapeToOwner,
+} from "@/lib/escape-owner";
 
 /**
  * Main nixmac window / widget component.
@@ -85,42 +97,96 @@ export function DarwinWidget() {
     }
   }, []);
 
-  // Esc and Cmd+W close the topmost overlay. Settings is now a route (handled
-  // via the router); history/filesystem are still store-driven pending
-  // migration. Respects defaultPrevented so nested Radix layers
-  // (Select/Popover/inner dialogs) handle Esc first. Skips during IME
-  // composition — Esc cancels the candidate, not the modal.
+  // Esc and Cmd+W share one topmost-overlay owner. In popover mode, native Esc
+  // events are bridged here when the webview is not first responder; DOM Esc
+  // handles the normal webview path. Nested Radix layers and IME composition
+  // keep first refusal through defaultPrevented/isComposing.
   const isOverlayActive = useIsOverlayActive();
+  const isOverlayActiveRef = useRef(isOverlayActive);
+  isOverlayActiveRef.current = isOverlayActive;
+
   useEffect(() => {
-    // Returns true if an overlay was closed (topmost first: the settings
-    // route overlays everything else).
-    const closeTopmostOverlay = (): boolean => {
-      if (isOverlayActive) {
-        nav.goHome();
-        return true;
+    let disposed = false;
+    let unlistenNativeEscape: (() => void) | undefined;
+    let unlistenNativeCloseRequested: (() => void) | undefined;
+    let isPopoverMode = false;
+    let nativePopoverModeIsAuthoritative = false;
+
+    void isMainWindowPopover()
+      .then((enabled) => {
+        if (!nativePopoverModeIsAuthoritative) {
+          isPopoverMode = enabled;
+        }
+      })
+      .catch((error) => {
+        if (import.meta.env.PROD) {
+          console.error("Failed to read main-window mode:", error);
+        }
+      });
+
+    type EscapeDisposition = "closed" | "unhandled";
+
+    // The file editor stays mounted across dismissal: its unsaved Monaco
+    // buffer is local to the component and closing it would discard that text.
+    const closeTopmostOverlay = (): EscapeDisposition => {
+      // Settings is route-backed and visually above every widget-owned layer.
+      if (isOverlayActiveRef.current) {
+        void nav.goHome();
+        return "closed";
       }
+
       const {
         showHistory,
         showFilesystem,
         showSecretsManagement,
         isProcessing,
         isGenerating,
-      } =
-        useUiState.getState();
-      if (showSecretsManagement && !(isProcessing || isGenerating)) {
+      } = useUiState.getState();
+
+      // Keep active work mounted; popover Escape/Cmd+W can hide the window
+      // without changing the operation's state. Rebuild was not part of the
+      // existing control-window gate, so only popover mode treats it as work
+      // that outranks widget overlays.
+      const rebuildRunning = useViewModel.getState().rebuildStatus?.isRunning ?? false;
+      if (isProcessing || isGenerating || (isPopoverMode && rebuildRunning)) {
+        return "unhandled";
+      }
+
+      if (showSecretsManagement) {
         uiActions.setShowSecretsManagement(false);
-        return true;
+        return "closed";
       }
-      if (showHistory && !(isProcessing || isGenerating)) {
+      if (showHistory) {
         uiActions.setShowHistory(false);
-        return true;
+        return "closed";
       }
-      if (showFilesystem && !(isProcessing || isGenerating)) {
+      if (showFilesystem) {
         uiActions.setShowFilesystem(false);
-        return true;
+        return "closed";
       }
-      return false;
+
+      return "unhandled";
     };
+
+    const unregisterWidgetOverlayOwner = registerEscapeOwner({
+      name: "widget-overlay",
+      priority: ESCAPE_OWNER_PRIORITY.widgetOverlay,
+      handle: () => closeTopmostOverlay() === "closed",
+    });
+    const unregisterPopoverOwner = registerEscapeOwner({
+      name: "main-window-popover",
+      priority: ESCAPE_OWNER_PRIORITY.popover,
+      handle: () => {
+        if (!isPopoverMode) return false;
+        void dismissMainWindowPopover().catch((error) => {
+          if (import.meta.env.PROD) {
+            console.error("Failed to dismiss menu-bar popover:", error);
+          }
+        });
+        return true;
+      },
+    });
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
       const cmdOnly = e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey;
@@ -130,18 +196,78 @@ export function DarwinWidget() {
         nav.openSettings();
         return;
       }
-      // Cmd+W closes the topmost overlay; with none open we don't
-      // preventDefault, so the menu's Close Window hides the widget.
+      // Popover Cmd+W becomes Escape so Radix layers receive first refusal.
+      // Control mode keeps its established native-window behavior.
       if (e.key === "w" && cmdOnly) {
-        if (closeTopmostOverlay()) e.preventDefault();
+        if (isPopoverMode) {
+          e.preventDefault();
+          dispatchSyntheticDocumentEscape();
+          return;
+        }
+        if (closeTopmostOverlay() !== "unhandled") e.preventDefault();
         return;
       }
       if (e.key !== "Escape") return;
-      if (closeTopmostOverlay()) e.preventDefault();
+      routeEscapeToOwner(e);
     };
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOverlayActive]);
+    void ipcRenderer
+      .on("window:escape", () => {
+        // Only the native popover monitor emits this event. Treat receipt as
+        // authoritative so a transient launch-mode probe failure cannot drop Escape.
+        nativePopoverModeIsAuthoritative = true;
+        isPopoverMode = true;
+        dispatchSyntheticDocumentEscape();
+      })
+      .then((unlisten) => {
+        if (disposed) {
+          unlisten();
+        } else {
+          unlistenNativeEscape = unlisten;
+        }
+      })
+      .catch((error) => {
+        if (import.meta.env.PROD) {
+          console.error("Failed to listen for native Escape events:", error);
+        }
+      });
+    void ipcRenderer
+      .on<{ token: number }>("window:close-requested", (event) => {
+        // Native close ownership is popover-only. Route the request through a
+        // bubbling DOM Escape so Radix Dialog/AlertDialog layers run before
+        // the widget owner, then acknowledge only after dispatch completes.
+        nativePopoverModeIsAuthoritative = true;
+        isPopoverMode = true;
+        dispatchSyntheticDocumentEscape();
+        void acknowledgeMainWindowClose(event.payload.token).catch((error) => {
+          if (import.meta.env.PROD) {
+            console.error("Failed to acknowledge native close request:", error);
+          }
+        });
+      })
+      .then((unlisten) => {
+        if (disposed) {
+          unlisten();
+        } else {
+          unlistenNativeCloseRequested = unlisten;
+        }
+      })
+      .catch((error) => {
+        if (import.meta.env.PROD) {
+          console.error("Failed to listen for native close requests:", error);
+        }
+      });
+
+    return () => {
+      disposed = true;
+      window.removeEventListener("keydown", handleKeyDown);
+      unregisterWidgetOverlayOwner();
+      unregisterPopoverOwner();
+      unlistenNativeEscape?.();
+      unlistenNativeCloseRequested?.();
+    };
+  }, []);
 
   // Which launch probe is running, so the splash can say so instead of showing
   // a blank pane. Only read while `hydrated` is false.

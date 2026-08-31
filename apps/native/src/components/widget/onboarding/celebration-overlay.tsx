@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import Lottie, { type LottieRefCurrentProps } from "lottie-react";
 import { ArrowRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { ESCAPE_OWNER_PRIORITY, registerEscapeOwner } from "@/lib/escape-owner";
 
 const CELEBRATION_ANIMATION_SPEED = 0.8;
 
@@ -52,13 +53,18 @@ export function CelebrationOverlay({ host, onDismiss }: CelebrationOverlayProps)
     };
   }, []);
 
-  // Allow Escape to dismiss.
+  // Radix dialogs get first refusal at document level. After that, the
+  // explicit owner priority keeps this full-window moment above widget-owned
+  // overlays and the popover itself without relying on listener order.
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onDismiss();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return registerEscapeOwner({
+      name: "onboarding-celebration",
+      priority: ESCAPE_OWNER_PRIORITY.celebration,
+      handle: () => {
+        onDismiss();
+        return true;
+      },
+    });
   }, [onDismiss]);
 
   return (

@@ -8,6 +8,8 @@ import type { Client } from "@orpc/client"
  */
 export type AccountBilling = { usage: BillingUsage; subscriptions: BillingSubscription[]; hasPaymentMethod: boolean; canUseHostedInference: boolean; canUseDeviceSync: boolean }
 
+export type AcknowledgeCloseInput = { token: number }
+
 export type ActivateStorePathInput = { storePath: string }
 
 export type AddInput = { prompt: string }
@@ -2155,6 +2157,11 @@ export type Procedures = {
     send: Client<Record<never, never>, SendInput, void, Error>
     start: Client<Record<never, never>, void, void, Error>
     stop: Client<Record<never, never>, void, void, Error>
+  }
+  mainWindow: {
+    acknowledgeClose: Client<Record<never, never>, AcknowledgeCloseInput, boolean, Error>
+    dismissPopover: Client<Record<never, never>, void, boolean, Error>
+    isPopover: Client<Record<never, never>, void, boolean, Error>
   }
   models: {
     clearCached: Client<Record<never, never>, ProviderInput, OkResult, Error>

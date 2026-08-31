@@ -65,7 +65,11 @@ pub async fn developer_send_test_notification(app: AppHandle) -> Result<(), Stri
         return Err("Developer mode is required to send test notifications".to_string());
     }
 
-    crate::state::drift_notifications::maybe_notify(None, true);
+    if crate::main_window::active(&app).is_popover() {
+        crate::attention::test(&app);
+    } else {
+        crate::state::drift_notifications::maybe_notify(None, true);
+    }
     Ok(())
 }
 

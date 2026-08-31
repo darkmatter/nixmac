@@ -589,15 +589,15 @@ pub(crate) fn emit_evolve_event<R: tauri::Runtime>(app: &tauri::AppHandle<R>, ev
     }
 
     if let Some(window) = app.get_webview_window("main") {
-        // A question blocks the run until the user answers; nudge them if
-        // they are looking elsewhere.
-        if matches!(event.event_type, EvolveEventType::Question)
-            && !window.is_focused().unwrap_or(false)
-        {
-            notify_question(app, &window, &event.summary);
-        }
+        let is_question = matches!(event.event_type, EvolveEventType::Question);
+        let is_answered = matches!(event.event_type, EvolveEventType::Answered);
         if let Err(e) = tauri::Emitter::emit(&window, EVOLVE_EVENT_CHANNEL, &event) {
             log::warn!("Failed to emit evolve event: {}", e);
+        }
+        if is_question {
+            notify_question(app, &window, &event.summary);
+        } else if is_answered && crate::main_window::active(app).is_popover() {
+            crate::attention::clear_work(app);
         }
     }
 }
@@ -609,6 +609,15 @@ fn notify_question<R: tauri::Runtime>(
     window: &tauri::WebviewWindow<R>,
     question: &str,
 ) {
+    if !crate::attention::plugin_notification_backend_allowed(app) {
+        crate::attention::input_required(app);
+        return;
+    }
+
+    if window.is_focused().unwrap_or(false) {
+        return;
+    }
+
     use tauri_plugin_notification::NotificationExt;
 
     if let Err(e) = window.request_user_attention(Some(tauri::UserAttentionType::Informational)) {
