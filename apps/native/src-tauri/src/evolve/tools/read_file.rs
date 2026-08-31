@@ -62,6 +62,14 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
         ));
     }
 
+    if ctx.nixmac_ignore_matcher.is_ignored(&normalized_rel, false) {
+        return Err(anyhow!(
+            "read_file: '{}' is ignored by .nixmac at '{}'",
+            path,
+            ctx.repo_root.display()
+        ));
+    }
+
     let full_path = resolve_existing_path_in_dir(ctx.repo_root, path)?;
     info!("Reading file: {}", full_path.display());
     let content = std::fs::read_to_string(&full_path)
@@ -167,8 +175,32 @@ fn slice_lines(content: &str, line_start: u64, line_end: u64) -> Result<String> 
 
 #[cfg(test)]
 mod tests {
-    use super::{format_outline, outline_or_full, render_summary_segments, slice_lines};
+    use super::{execute, format_outline, outline_or_full, render_summary_segments, slice_lines};
+    use crate::evolve::nixmac_ignore::NixmacIgnoreChecker;
+    use crate::evolve::tools::{ToolCtx, ToolResult};
     use pi_ast::summary::{SummaryOptions, summarize_code};
+    use serde_json::json;
+    use std::fs;
+    use std::path::Path;
+    use tempfile::tempdir;
+
+    fn execute_read_file(
+        repo_root: &Path,
+        nixmac_ignore: &NixmacIgnoreChecker,
+        path: &str,
+    ) -> anyhow::Result<ToolResult> {
+        let args = json!({ "path": path, "full": true });
+        execute(&ToolCtx {
+            repo_root,
+            config_dir: repo_root.to_str().expect("utf-8"),
+            host_attr: "dummy-host",
+            args: &args,
+            gitignore_matcher: None,
+            nixmac_ignore_matcher: nixmac_ignore,
+            auto_format: false,
+            on_build_output: None,
+        })
+    }
 
     #[test]
     fn slice_lines_is_one_based_inclusive() {
@@ -238,5 +270,59 @@ export function greet(name: string): string {\n\
         assert!(rendered.contains("... (lines"));
         let formatted = format_outline("fixture.ts", &result);
         assert!(formatted.contains("full=true"));
+    }
+
+    #[test]
+    fn read_file_rejects_paths_ignored_by_nixmacignore() {
+        let tmp = tempdir().expect("tempdir");
+        fs::create_dir(tmp.path().join("private")).expect("create private directory");
+        fs::write(tmp.path().join(".nixmacignore"), "private/\n").expect("write .nixmacignore");
+        fs::write(tmp.path().join("private/secret.txt"), "secret").expect("write ignored file");
+        let nixmac_ignore = NixmacIgnoreChecker::new(tmp.path()).expect("nixmac matcher");
+
+        let error = execute_read_file(tmp.path(), &nixmac_ignore, "private/secret.txt")
+            .expect_err("ignored file should be rejected");
+
+        assert!(
+            error.to_string().contains("ignored by .nixmac"),
+            "{error:#}"
+        );
+    }
+
+    #[test]
+    fn read_file_allows_nixmacignore_negations() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(
+            tmp.path().join(".nixmacignore"),
+            "*.secret\n!important.secret\n",
+        )
+        .expect("write .nixmacignore");
+        fs::write(tmp.path().join("important.secret"), "visible").expect("write negated file");
+        let nixmac_ignore = NixmacIgnoreChecker::new(tmp.path()).expect("nixmac matcher");
+
+        let ToolResult::Continue(output) =
+            execute_read_file(tmp.path(), &nixmac_ignore, "important.secret")
+                .expect("read negated file")
+        else {
+            panic!("expected Continue");
+        };
+
+        assert_eq!(output, "visible");
+    }
+
+    #[test]
+    fn read_file_never_exposes_nixmacignore_itself() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(tmp.path().join(".nixmacignore"), "!.nixmacignore\n")
+            .expect("write .nixmacignore");
+        let nixmac_ignore = NixmacIgnoreChecker::new(tmp.path()).expect("nixmac matcher");
+
+        let error = execute_read_file(tmp.path(), &nixmac_ignore, ".nixmacignore")
+            .expect_err(".nixmacignore should be protected");
+
+        assert!(
+            error.to_string().contains("ignored by .nixmac"),
+            "{error:#}"
+        );
     }
 }

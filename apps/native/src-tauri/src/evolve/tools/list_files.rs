@@ -3,9 +3,8 @@
 use anyhow::{Result, anyhow};
 use log::{debug, info};
 use pi_walker::{CompiledWalkGlob, FollowLinks, WalkFilter, WalkRequest};
-use std::path::{Component, Path};
+use std::path::Path;
 
-use crate::evolve::IGNORED_DIRS;
 use crate::evolve::file_ops::{ensure_path_under_base, join_in_dir};
 use crate::evolve::messages::Tool;
 
@@ -58,7 +57,6 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
         .map(|checker| checker.visible_files())
         .transpose()?;
 
-    let ignored_dirs = IGNORED_DIRS;
     let glob =
         CompiledWalkGlob::new([&pattern]).map_err(|e| anyhow!("Invalid glob pattern: {}", e))?;
     let filter = WalkFilter::files_only().glob(glob);
@@ -84,9 +82,7 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
         }
 
         let rel = Path::new(&entry.path);
-        if let Some(Component::Normal(name)) = rel.components().next()
-            && ignored_dirs.contains(&name.to_string_lossy().as_ref())
-        {
+        if ctx.nixmac_ignore_matcher.is_ignored(rel, false) {
             continue;
         }
 
@@ -116,6 +112,7 @@ mod tests {
     use super::normalize_trailing_recursive_glob;
     use super::{ToolResult, execute};
     use crate::evolve::gitignore::GitignoreChecker;
+    use crate::evolve::nixmac_ignore::NixmacIgnoreChecker;
     use crate::evolve::tools::ToolCtx;
     use serde_json::json;
     use std::fs;
@@ -150,6 +147,7 @@ mod tests {
         fs::write(tmp.path().join(".gitignore"), "secret.txt\n").expect("gitignore");
         fs::write(tmp.path().join("secret.txt"), "x").expect("secret");
         let gitignore = GitignoreChecker::new(tmp.path()).expect("matcher");
+        let nixmac_ignore = NixmacIgnoreChecker::new(tmp.path()).expect("nixmac matcher");
 
         let ctx = ToolCtx {
             repo_root: tmp.path(),
@@ -157,6 +155,7 @@ mod tests {
             host_attr: "dummy-host",
             args: &json!({ "pattern": "**" }),
             gitignore_matcher: gitignore.as_ref(),
+            nixmac_ignore_matcher: &nixmac_ignore,
             auto_format: false,
             on_build_output: None,
         };
@@ -166,5 +165,41 @@ mod tests {
         assert!(out.contains("flake.nix"), "output: {out}");
         assert!(out.contains("modules/home.nix"), "output: {out}");
         assert!(!out.contains("secret.txt"), "output: {out}");
+    }
+
+    #[test]
+    fn walker_applies_nixmacignore_rules() {
+        let tmp = tempdir().expect("tempdir");
+        fs::create_dir(tmp.path().join("private")).expect("create private directory");
+        fs::write(
+            tmp.path().join(".nixmacignore"),
+            "private/\n*.secret\n!important.secret\n",
+        )
+        .expect("write .nixmacignore");
+        fs::write(tmp.path().join("visible.txt"), "visible").expect("write visible file");
+        fs::write(tmp.path().join("private/hidden.txt"), "hidden").expect("write ignored file");
+        fs::write(tmp.path().join("hidden.secret"), "hidden").expect("write ignored secret");
+        fs::write(tmp.path().join("important.secret"), "visible").expect("write negated secret");
+        let nixmac_ignore = NixmacIgnoreChecker::new(tmp.path()).expect("nixmac matcher");
+
+        let ctx = ToolCtx {
+            repo_root: tmp.path(),
+            config_dir: tmp.path().to_str().expect("utf-8"),
+            host_attr: "dummy-host",
+            args: &json!({ "pattern": "**" }),
+            gitignore_matcher: None,
+            nixmac_ignore_matcher: &nixmac_ignore,
+            auto_format: false,
+            on_build_output: None,
+        };
+        let ToolResult::Continue(out) = execute(&ctx).expect("list_files") else {
+            panic!("expected Continue");
+        };
+
+        assert!(out.contains("visible.txt"), "output: {out}");
+        assert!(out.contains("important.secret"), "output: {out}");
+        assert!(!out.contains("private/hidden.txt"), "output: {out}");
+        assert!(!out.contains("hidden.secret"), "output: {out}");
+        assert!(!out.contains(".nixmacignore"), "output: {out}");
     }
 }

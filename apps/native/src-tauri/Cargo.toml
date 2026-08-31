@@ -119,6 +119,7 @@ tauri-plugin-opener = "2"
 tauri-plugin-deep-link = "2"
 tauri-plugin-os = "2"
 tauri-plugin-macos-passkey = "0.1.0"
+ignore = "0.4.31"
 
 # Vendored Oh My Pi extracts (not wired into evolve tools yet).
 # See crates/vendor/oh-my-pi/VENDOR.md

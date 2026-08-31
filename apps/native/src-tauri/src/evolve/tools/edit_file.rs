@@ -19,7 +19,7 @@ pub(crate) fn definition() -> Tool {
                       placeholders, TODOs, or abbreviated implementations. \
                       NOTE: For .nix, .yaml, and .yml files, the edit will be rejected if syntax is invalid \
                       (e.g., unmatched braces/brackets, unclosed strings). Ensure edits maintain valid syntax. \
-                      IMPORTANT: Under .nixmac, only exact .nixmac/<module>/data.json files may be edited; all other files are reserved.".to_string(),
+                      IMPORTANT: Under the repo-root .nixmac directory, only exact .nixmac/<module>/data.json files may be edited; all other files are reserved.".to_string(),
         parameters: serde_json::json!({
             "type": "object",
             "properties": {
@@ -46,7 +46,7 @@ pub(crate) fn execute(ctx: &ToolCtx) -> Result<ToolResult> {
     let path = args["path"]
         .as_str()
         .ok_or_else(|| anyhow!("edit_file: missing path"))?;
-    ensure_nixmac_edit_allowed("edit_file", path)?;
+    ensure_nixmac_edit_allowed("edit_file", path, ctx.nixmac_ignore_matcher)?;
     let search = args["search"]
         .as_str()
         .ok_or_else(|| anyhow!("edit_file: missing search"))?;
