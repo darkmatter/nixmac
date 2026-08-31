@@ -773,6 +773,28 @@ mod tests {
         assert_eq!(fs::read_to_string(outside).unwrap(), "keep\n");
     }
 
+    #[test]
+    fn test_commit_file_rejects_escaping_path_without_committing() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+        fs::write(repo_dir.join("tracked.txt"), "initial\n").unwrap();
+        let head = commit_all(&repo_dir_str, "initial").unwrap();
+        let outside = temp_dir.path().join("outside.txt");
+        fs::write(&outside, "keep\n").unwrap();
+
+        let err = commit_file(&repo_dir_str, "../outside.txt", "bad")
+            .expect_err("escaping paths must be rejected");
+
+        assert!(err.to_string().contains("escapes the repository"));
+        assert_eq!(fs::read_to_string(outside).unwrap(), "keep\n");
+        assert_eq!(
+            run_git_ok(&repo_dir, &["rev-parse", "HEAD"]).trim(),
+            head.hash
+        );
+    }
+
     #[cfg(unix)]
     #[test]
     fn test_restore_file_rejects_symlink_escape_without_deleting_target() {
