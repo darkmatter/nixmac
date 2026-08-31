@@ -472,6 +472,38 @@ pub fn get_preview_indicator_state() -> PreviewIndicatorState {
     }
 }
 
+/// Makes `window` an independent floating panel: above regular windows, present
+/// on every space without following the active one, and skipped by Cmd+`.
+///
+/// Main-thread only, because `NSWindow` is `MainThreadOnly` — call it from
+/// `setup()`, not from a command worker thread.
+#[cfg(target_os = "macos")]
+fn set_floating_panel_behavior<R: Runtime>(window: &tauri::WebviewWindow<R>) {
+    use objc2_app_kit::{NSFloatingWindowLevel, NSWindow, NSWindowCollectionBehavior};
+
+    debug_assert!(
+        objc2::MainThreadMarker::new().is_some(),
+        "set_floating_panel_behavior must run on the main thread"
+    );
+
+    let _ = window.set_shadow(false);
+
+    let Ok(ns_window) = window.ns_window() else {
+        return;
+    };
+    // SAFETY: `ns_window()` hands back a retained-then-autoreleased NSWindow,
+    // valid for this scope. `NSWindow` is main-thread-only, and both callers
+    // run in `setup()` on the main thread.
+    let ns_window: &NSWindow = unsafe { &*ns_window.cast() };
+
+    ns_window.setCollectionBehavior(
+        NSWindowCollectionBehavior::CanJoinAllSpaces
+            | NSWindowCollectionBehavior::Stationary
+            | NSWindowCollectionBehavior::IgnoresCycle,
+    );
+    ns_window.setLevel(NSFloatingWindowLevel);
+}
+
 /// Creates the preview indicator window (call once during setup).
 ///
 /// The window stays hidden until the preview-indicator React tree has a
@@ -530,38 +562,8 @@ pub fn create_preview_indicator_window<R: Runtime>(app: &AppHandle<R>) -> Result
     #[cfg(not(target_os = "macos"))]
     let _ = &window;
 
-    // Disable shadow and set as utility panel (prevents grouping with main window)
     #[cfg(target_os = "macos")]
-    {
-        use cocoa::appkit::{NSWindow, NSWindowCollectionBehavior};
-        use cocoa::base::id;
-        use objc::msg_send;
-        use objc::sel;
-        use objc::sel_impl;
-
-        let _ = window.set_shadow(false);
-
-        // Get the native NSWindow and configure it as an independent panel
-        if let Ok(ns_window) = window.ns_window() {
-            let ns_win = ns_window as id;
-            unsafe {
-                // Set collection behavior to be independent (not grouped with other windows)
-                // NSWindowCollectionBehaviorStationary keeps it from moving with spaces
-                // NSWindowCollectionBehaviorCanJoinAllSpaces makes it visible on all spaces
-                // NSWindowCollectionBehaviorIgnoresCycle prevents Cmd+` from cycling to it
-                ns_win.setCollectionBehavior_(
-                    NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces
-                        | NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary
-                        | NSWindowCollectionBehavior::NSWindowCollectionBehaviorIgnoresCycle,
-                );
-
-                // Set as a floating panel level (above regular windows but independent)
-                // kCGFloatingWindowLevel = 5 (or we can use NSFloatingWindowLevel = 3)
-                let floating_level: i64 = 3; // NSFloatingWindowLevel
-                let _: () = msg_send![ns_win, setLevel: floating_level];
-            }
-        }
-    }
+    set_floating_panel_behavior(&window);
 
     Ok(())
 }
@@ -669,11 +671,8 @@ const EVOLVE_MASCOT_MARGIN: f64 = 24.0;
 /// thread). Mirrors `create_preview_indicator_window`: a transparent,
 /// borderless, always-on-top floating panel, created hidden and shown on demand.
 ///
-/// IMPORTANT: the raw AppKit panel tweaks below are main-thread-only, which is
-/// why this runs in `setup()` rather than lazily from a command worker thread.
-/// (An earlier lazy variant wrapped in `run_on_main_thread` never delivered its
-/// closure, so the window was never created — this matches the proven preview
-/// indicator path instead.)
+/// IMPORTANT: `set_floating_panel_behavior` is main-thread-only, which is why
+/// this runs in `setup()` rather than lazily from a command worker thread.
 pub fn create_evolve_mascot_window<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
     if app.get_webview_window("evolve-mascot").is_some() {
         return Ok(());
@@ -714,31 +713,8 @@ pub fn create_evolve_mascot_window<R: Runtime>(app: &AppHandle<R>) -> Result<(),
     #[cfg(not(target_os = "macos"))]
     let _ = &window;
 
-    // Disable shadow and set as an independent floating panel (matches the
-    // preview indicator so it doesn't group/cycle with the main window).
     #[cfg(target_os = "macos")]
-    {
-        use cocoa::appkit::{NSWindow, NSWindowCollectionBehavior};
-        use cocoa::base::id;
-        use objc::msg_send;
-        use objc::sel;
-        use objc::sel_impl;
-
-        let _ = window.set_shadow(false);
-
-        if let Ok(ns_window) = window.ns_window() {
-            let ns_win = ns_window as id;
-            unsafe {
-                ns_win.setCollectionBehavior_(
-                    NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces
-                        | NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary
-                        | NSWindowCollectionBehavior::NSWindowCollectionBehaviorIgnoresCycle,
-                );
-                let floating_level: i64 = 3; // NSFloatingWindowLevel
-                let _: () = msg_send![ns_win, setLevel: floating_level];
-            }
-        }
-    }
+    set_floating_panel_behavior(&window);
 
     peek_log!(
         "🌀 Created evolve mascot indicator window at ({}, {})",
