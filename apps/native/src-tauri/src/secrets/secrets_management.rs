@@ -1,6 +1,7 @@
 use crate::{
     secrets::{
         identities::load_secret_identities,
+        is_readable_file,
         recipients::{
             apply_recipients_to_secrets_with_identities, load_recipients,
             recipient_has_local_identity,
@@ -55,19 +56,47 @@ fn decrypt_agenix_secret(
             "Agenix secret '{secret_id}' has no readable age.identityPaths"
         ));
     }
-    let output = age_decrypt_command(config_dir, &secret_file_path, &identity_paths)
+    // Preserve age's native SSH handling as the first attempt. In particular,
+    // age can prompt for a passphrase-protected SSH key when the encrypted
+    // file contains the matching SSH recipient stanza. This ssh-to-age
+    // fallback has no passphrase input, so an empty converted-identity pipe
+    // must not prevent the original raw identity from working.
+    let direct_output = age_decrypt_command(config_dir, &secret_file_path, &identity_paths)
         .output()
         .map_err(|e| format!("Failed to execute age command: {e}"))?;
+    if direct_output.status.success() {
+        return String::from_utf8(direct_output.stdout)
+            .map_err(|e| format!("age returned invalid UTF-8: {e}"));
+    }
+    let direct_error = format!(
+        "age command failed with status {}: {}",
+        direct_output.status,
+        String::from_utf8_lossy(&direct_output.stderr)
+    );
 
-    if !output.status.success() {
-        return Err(format!(
-            "age command failed with status {}: {}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr)
-        ));
+    // A raw OpenSSH identity cannot unwrap the X25519 stanza produced when an
+    // agenix rule uses its ssh-to-age age1 alias. Only after the native attempt
+    // fails, try streaming converted SSH identities to age. This fallback is
+    // deliberately separate so conversion failures cannot poison native SSH
+    // decryption, especially for passphrase-protected private keys.
+    let Some(mut fallback_command) =
+        ssh_to_age_decrypt_command(config_dir, &secret_file_path, &identity_paths)
+    else {
+        return Err(direct_error);
+    };
+    let fallback_output = fallback_command
+        .output()
+        .map_err(|e| format!("Failed to execute ssh-to-age fallback command: {e}"))?;
+    if fallback_output.status.success() {
+        return String::from_utf8(fallback_output.stdout)
+            .map_err(|e| format!("age returned invalid UTF-8: {e}"));
     }
 
-    String::from_utf8(output.stdout).map_err(|e| format!("age returned invalid UTF-8: {e}"))
+    Err(format!(
+        "{direct_error}\nssh-to-age fallback failed with status {}: {}",
+        fallback_output.status,
+        String::from_utf8_lossy(&fallback_output.stderr)
+    ))
 }
 
 /// Keep only identity files that age can attempt to read. A single missing or
@@ -75,7 +104,7 @@ fn decrypt_agenix_secret(
 fn readable_agenix_identity_paths(identity_paths: Vec<String>) -> Vec<String> {
     identity_paths
         .into_iter()
-        .filter(|identity_path| std::fs::File::open(identity_path).is_ok())
+        .filter(|identity_path| is_readable_file(identity_path))
         .collect()
 }
 
@@ -104,7 +133,7 @@ fn decrypt_sops_secret(
     // vault's decryption capability. Keep a bare SOPS attempt as a fallback
     // for identity mechanisms we cannot currently inventory (for example
     // PGP, KMS, agents, and plugins).
-    let (_, decryption_identities, _) = load_recipients(host_attr, config_dir, &[])?;
+    let (_, decryption_identities, _) = load_recipients(host_attr, config_dir, &[], false)?;
     let attempts = decryption_identities
         .iter()
         .filter(|identity| identity.available)
@@ -141,6 +170,50 @@ fn age_decrypt_command(
     }
     command.arg(secret_file_path);
     command
+}
+
+/// Construct the fallback that converts SSH private identities for agenix
+/// rules using their ssh-to-age `age1` aliases. Returns `None` when no
+/// configured identity has the neighboring `.pub` file used to classify SSH
+/// identities. Converted private material is streamed between subprocesses
+/// and never enters Rust memory or command arguments.
+fn ssh_to_age_decrypt_command(
+    config_dir: &str,
+    secret_file_path: &Path,
+    identity_paths: &[String],
+) -> Option<std::process::Command> {
+    let ssh_identity_paths: Vec<&String> = identity_paths
+        .iter()
+        .filter(|identity_path| Path::new(&format!("{identity_path}.pub")).is_file())
+        .collect();
+    if ssh_identity_paths.is_empty() {
+        return None;
+    }
+
+    // Positional parameters keep all paths out of the shell source.
+    let conversion_pipeline = ssh_identity_paths
+        .iter()
+        .enumerate()
+        .map(|(index, _)| format!("ssh-to-age -private-key -i \"${}\"", index + 1))
+        .collect::<Vec<_>>()
+        .join("; ");
+    let secret_file_arg = ssh_identity_paths.len() + 1;
+    let script =
+        format!("{{ {conversion_pipeline}; }} | age --decrypt --identity - \"${secret_file_arg}\"");
+    let mut command = nix_command(config_dir);
+    command.args([
+        "shell",
+        "nixpkgs#age",
+        "nixpkgs#ssh-to-age",
+        "-c",
+        "sh",
+        "-c",
+        &script,
+        "age-with-ssh-to-age",
+    ]);
+    command.args(ssh_identity_paths);
+    command.arg(secret_file_path);
+    Some(command)
 }
 
 /// Construct a nix shell command to decrypt a SOPS secret file using the given key.
@@ -199,7 +272,7 @@ pub fn load_secrets_vault(host_attr: &str, config_dir: &str) -> Result<SecretsVa
     entries.extend(load_agenix_secrets(host_attr, config_dir)?);
 
     let (recipients, decryption_identities, agenix_inventory) =
-        load_recipients(host_attr, config_dir, &entries)?;
+        load_recipients(host_attr, config_dir, &entries, true)?;
     apply_recipients_to_secrets_with_identities(
         config_dir,
         &mut entries,
@@ -360,7 +433,7 @@ fn secret(
 mod tests {
     use super::{
         age_decrypt_command, readable_agenix_identity_paths, resolve_secret_file_path,
-        sops_decrypt_command, sops_extract_path,
+        sops_decrypt_command, sops_extract_path, ssh_to_age_decrypt_command,
     };
     use crate::shared_types::{
         DecryptionIdentity, DecryptionIdentityKind, DecryptionIdentityLocality,
@@ -475,6 +548,72 @@ mod tests {
                 first_identity.as_os_str(),
                 OsStr::new("--identity"),
                 second_identity.as_os_str(),
+                OsStr::new("/tmp/a secret.age"),
+            ]
+        );
+    }
+
+    #[test]
+    fn ssh_to_age_conversion_is_separate_from_native_age_attempt() {
+        let identities = TempDir::new().expect("create identities dir");
+        let ssh_identity = identities.path().join("ssh host key");
+        let age_identity = identities.path().join("age keys.txt");
+        fs::write(&ssh_identity, "OPENSSH PRIVATE KEY").expect("write SSH identity");
+        fs::write(
+            format!("{}.pub", ssh_identity.to_string_lossy()),
+            "ssh-ed25519 AAAAtest",
+        )
+        .expect("write SSH public key");
+        fs::write(&age_identity, "AGE-SECRET-KEY-1TEST").expect("write age identity");
+
+        let identity_paths = vec![
+            ssh_identity.to_string_lossy().into_owned(),
+            age_identity.to_string_lossy().into_owned(),
+        ];
+        let direct_command = age_decrypt_command(
+            "/tmp/config",
+            Path::new("/tmp/a secret.age"),
+            &identity_paths,
+        );
+        let direct_args: Vec<&OsStr> = direct_command.get_args().collect();
+        assert_eq!(
+            direct_args,
+            [
+                OsStr::new("shell"),
+                OsStr::new("nixpkgs#age"),
+                OsStr::new("-c"),
+                OsStr::new("age"),
+                OsStr::new("--decrypt"),
+                OsStr::new("--identity"),
+                ssh_identity.as_os_str(),
+                OsStr::new("--identity"),
+                age_identity.as_os_str(),
+                OsStr::new("/tmp/a secret.age"),
+            ]
+        );
+
+        let fallback_command = ssh_to_age_decrypt_command(
+            "/tmp/config",
+            Path::new("/tmp/a secret.age"),
+            &identity_paths,
+        )
+        .expect("SSH identity should produce an ssh-to-age fallback");
+        let fallback_args: Vec<&OsStr> = fallback_command.get_args().collect();
+
+        assert_eq!(
+            fallback_args,
+            [
+                OsStr::new("shell"),
+                OsStr::new("nixpkgs#age"),
+                OsStr::new("nixpkgs#ssh-to-age"),
+                OsStr::new("-c"),
+                OsStr::new("sh"),
+                OsStr::new("-c"),
+                OsStr::new(
+                    "{ ssh-to-age -private-key -i \"$1\"; } | age --decrypt --identity - \"$2\""
+                ),
+                OsStr::new("age-with-ssh-to-age"),
+                ssh_identity.as_os_str(),
                 OsStr::new("/tmp/a secret.age"),
             ]
         );

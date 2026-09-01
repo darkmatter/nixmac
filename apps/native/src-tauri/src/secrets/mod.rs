@@ -5,6 +5,11 @@ pub mod secrets_management;
 use crate::evolve::file_ops::resolve_existing_path_in_dir;
 use std::path::{Path, PathBuf};
 
+/// Whether the current process can open a file for reading.
+fn is_readable_file(path: impl AsRef<Path>) -> bool {
+    std::fs::File::open(path).is_ok()
+}
+
 /// Resolve relative declarations from the same directory used as the SOPS
 /// command's working directory. Nix path values commonly evaluate to absolute
 /// paths (including `/nix/store` paths), so those must remain supported.

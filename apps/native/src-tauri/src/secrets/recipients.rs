@@ -9,12 +9,13 @@ use serde::Deserialize;
 use serde_yaml::Value;
 
 use crate::{
+    evolve::file_ops::{join_in_dir, resolve_existing_path_in_dir},
     secrets::{
         identities::{
             HostKey, RecipientIdentity, SecretIdentities, identities_for_recipient,
             load_secret_identities, normalize_age_or_ssh_identity, normalize_pgp_fingerprint,
         },
-        resolve_secret_file_path,
+        is_readable_file, resolve_secret_file_path,
     },
     shared_types::{
         DecryptionCapability, DecryptionIdentity, DecryptionIdentityKind,
@@ -343,10 +344,12 @@ fn parse_sops_recipient_metadata(source_file: &Path) -> Result<HashSet<Recipient
 }
 
 /// Load configured SOPS and agenix recipients plus locally available identities.
+/// Optionally load agenix rules based on the `should_load_agenix_rules` flag.
 pub(crate) fn load_recipients(
     host_attr: &str,
     config_dir: &str,
     secret_entries: &[SecretEntry],
+    should_load_agenix_rules: bool,
 ) -> Result<
     (
         Vec<SecretRecipient>,
@@ -384,12 +387,18 @@ pub(crate) fn load_recipients(
             .count()
     );
     let mut config_recipients = load_sops_config_recipients(Path::new(config_dir))?;
-    let agenix_rules = load_agenix_rules(Path::new(config_dir), secret_entries)?;
-    config_recipients.extend(agenix_rules.recipients);
+    let agenix_rules = if should_load_agenix_rules {
+        Some(load_agenix_rules(Path::new(config_dir), secret_entries)?)
+    } else {
+        None
+    };
+    if let Some(rules) = &agenix_rules {
+        config_recipients.extend(rules.recipients.clone());
+    }
     Ok((
         merge_config_recipients(local_recipients, config_recipients, &decryption_identities),
         decryption_identities,
-        agenix_rules.inventory,
+        agenix_rules.map_or_else(RecipientInventory::default, |rules| rules.inventory),
     ))
 }
 
@@ -521,22 +530,22 @@ fn canonical_public_identity(value: &str) -> Option<String> {
 /// public recipients and local capability remain unresolved (`Unknown`).
 ///
 /// Supported locations:
-/// 1. $RULES environment variable, if present and non-empty. Absolute paths are used as-is; relative paths are resolved against the config dir.
+/// 1. $RULES environment variable, if present and non-empty. Absolute paths are
+///    used as-is; relative paths must resolve within the config dir.
 /// 2. secrets.nix in the config dir, if present.
 /// 3. secrets/secrets.nix in the config dir, if present.
 ///
 /// Any other location is ignored. If multiple locations are present, the first one in the above order is used.
-/// An invalid explicit `$RULES` file is an error. Invalid files found only by
-/// conventional-location discovery are ignored because they may be unrelated
-/// Nix modules that happen to use the same filename.
+/// Invalid rules files are ignored with a warning so recipient discovery cannot
+/// prevent the read-only secrets vault from loading. This is especially
+/// important for `$RULES`, which may be inherited from the launching shell and
+/// apply to an unrelated repository.
 fn load_agenix_rules(
     config_dir: &Path,
     secret_entries: &[SecretEntry],
 ) -> Result<AgenixRules, String> {
     // Match classic agenix behavior by honoring RULES first, then try the two
     // conventional repository locations supported by nixmac, namely "secrets.nix" and "secrets/secrets.nix".
-    // An explicitly configured RULES path is authoritative: if it is missing or invalid,
-    // report the configuration error rather than silently falling back.
     let rules_override = std::env::var_os("RULES").filter(|value| !value.is_empty());
     let explicitly_configured = rules_override.is_some();
     log::debug!(
@@ -544,21 +553,20 @@ fn load_agenix_rules(
         config_dir.display(),
         rules_override.is_some()
     );
-    let rules_path = rules_override
-        .map(PathBuf::from)
-        .map(|path| {
-            if path.is_absolute() {
-                path
-            } else {
-                config_dir.join(path)
+    let rules_path = if let Some(rules_override) = rules_override {
+        let configured_path = PathBuf::from(rules_override);
+        match resolve_agenix_rules_path(config_dir, &configured_path) {
+            Ok(path) => Some(path),
+            Err(error) => {
+                return handle_agenix_rules_result(&configured_path, true, Err(error));
             }
-        })
-        .or_else(|| {
-            ["secrets.nix", "secrets/secrets.nix"]
-                .into_iter()
-                .map(|path| config_dir.join(path))
-                .find(|path| path.is_file())
-        });
+        }
+    } else {
+        ["secrets.nix", "secrets/secrets.nix"]
+            .into_iter()
+            .map(|path| config_dir.join(path))
+            .find(|path| path.is_file())
+    };
     let Some(rules_path) = rules_path else {
         log::debug!(
             "No classic agenix rules file found at secrets.nix or secrets/secrets.nix; recipient metadata will remain unresolved"
@@ -567,6 +575,29 @@ fn load_agenix_rules(
     };
     let result = evaluate_agenix_rules(config_dir, &rules_path, secret_entries);
     handle_agenix_rules_result(&rules_path, explicitly_configured, result)
+}
+
+/// Resolve an inherited rules override without allowing a relative path or
+/// symlink to escape the selected repository. Absolute paths remain supported
+/// because Nix configurations may intentionally keep their rules elsewhere.
+fn resolve_agenix_rules_path(config_dir: &Path, configured_path: &Path) -> Result<PathBuf, String> {
+    if configured_path.is_absolute() {
+        return Ok(configured_path.to_path_buf());
+    }
+
+    let relative_path = configured_path.to_str().ok_or_else(|| {
+        format!(
+            "Relative RULES path is not valid UTF-8: {}",
+            configured_path.display()
+        )
+    })?;
+    resolve_existing_path_in_dir(config_dir, relative_path).map_err(|error| {
+        format!(
+            "Failed to resolve relative RULES path {} within {}: {error}",
+            configured_path.display(),
+            config_dir.display()
+        )
+    })
 }
 
 /// Evaluate the classic agenix rules file and build both the per-secret recipient inventory and repository-level recipient registrations.
@@ -634,21 +665,26 @@ fn evaluate_agenix_rules(
 }
 
 /// Checks the result of evaluating agenix rules and returns an empty inventory
-/// if the rules file was not explicitly configured and could not be loaded.
+/// when the rules file could not be loaded.
 fn handle_agenix_rules_result(
     rules_path: &Path,
     explicitly_configured: bool,
     result: Result<AgenixRules, String>,
 ) -> Result<AgenixRules, String> {
     match result {
-        Err(error) if !explicitly_configured => {
+        Err(error) => {
+            let source = if explicitly_configured {
+                "RULES override"
+            } else {
+                "auto-discovered candidate"
+            };
             log::warn!(
-                "Ignoring auto-discovered agenix rules candidate {} because it could not be loaded: {error}",
+                "Ignoring agenix rules {source} {} because it could not be loaded: {error}",
                 rules_path.display()
             );
             Ok(AgenixRules::default())
         }
-        result => result,
+        Ok(rules) => Ok(rules),
     }
 }
 
@@ -670,6 +706,16 @@ fn build_agenix_rules(
     let mut registered = HashSet::new();
 
     for (secret_file, rule) in rules {
+        let secret_path = Path::new(&secret_file);
+        if !secret_path.is_absolute()
+            && let Err(error) = join_in_dir(config_dir, &secret_file)
+        {
+            log::warn!(
+                "Ignoring agenix rule with unsafe relative secret path '{secret_file}': {error}"
+            );
+            continue;
+        }
+
         let declared_recipient_count = rule.public_keys.len();
         let encrypted_for: HashSet<RecipientIdentity> = rule
             .public_keys
@@ -695,18 +741,33 @@ fn build_agenix_rules(
             }
         }
 
-        let secret_path = Path::new(&secret_file);
+        // Nix path values evaluate to absolute paths, commonly in /nix/store,
+        // and remain intentionally supported. String keys are relative to the
+        // rules file or config directory, but must not traverse or follow a
+        // symlink outside the corresponding base.
         let candidates = if secret_path.is_absolute() {
-            vec![secret_path.to_path_buf()]
+            vec![secret_path.canonicalize().ok()]
         } else {
-            vec![rules_dir.join(secret_path), config_dir.join(secret_path)]
+            [rules_dir, config_dir]
+                .into_iter()
+                .map(
+                    |base| match resolve_existing_path_in_dir(base, &secret_file) {
+                        Ok(path) => Some(path),
+                        Err(error) => {
+                            log::debug!(
+                                "Agenix rule path '{secret_file}' did not resolve safely within {}: {error}",
+                                base.display()
+                            );
+                            None
+                        }
+                    },
+                )
+                .collect()
         };
         let mut matched = false;
         let mut direct_match_count = 0;
-        for candidate in candidates {
-            if let Ok(path) = candidate.canonicalize()
-                && path.is_file()
-            {
+        for path in candidates.into_iter().flatten() {
+            if path.is_file() {
                 inventory
                     .entry(path)
                     .or_default()
@@ -724,8 +785,8 @@ fn build_agenix_rules(
             .collect();
         // builtins.path commonly produces /nix/store/<hash>-<basename>, which
         // cannot retain the rules file's directory suffix. Fall back to a
-        // unique string-basename match, but never guess when multiple agenix
-        // declarations share that basename.
+        // unique filename match, allowing that Nix store hash prefix, but
+        // never guess when multiple agenix declarations share the basename.
         let basename = Path::new(&secret_file)
             .file_name()
             .and_then(|name| name.to_str());
@@ -735,7 +796,8 @@ fn build_agenix_rules(
                     secret_entries
                         .iter()
                         .filter(|entry| {
-                            entry.backend == SecretBackend::Agenix && entry.file.ends_with(basename)
+                            entry.backend == SecretBackend::Agenix
+                                && agenix_filename_matches(&entry.file, basename)
                         })
                         .collect()
                 })
@@ -779,6 +841,31 @@ fn build_agenix_rules(
         inventory,
         recipients,
     }
+}
+
+/// Check if the given entry file name matches the expected basename according to the Agenix naming convention.
+/// This includes the convention where the filename may have a 32-character store hash prefix followed by a hyphen and the basename.
+fn agenix_filename_matches(entry_file: &str, basename: &str) -> bool {
+    let Some(filename) = Path::new(entry_file)
+        .file_name()
+        .and_then(|name| name.to_str())
+    else {
+        return false;
+    };
+    if filename == basename {
+        return true;
+    }
+
+    let Some(store_hash) = filename
+        .strip_suffix(basename)
+        .and_then(|prefix| prefix.strip_suffix('-'))
+    else {
+        return false;
+    };
+    store_hash.len() == 32
+        && store_hash
+            .bytes()
+            .all(|byte| b"0123456789abcdfghijklmnpqrsvwxyz".contains(&byte))
 }
 
 /// Parse the SOPS config YAML to extract the anchor names for friendly labels.
@@ -899,7 +986,7 @@ where
             host_key.path,
             host_key.public_key_path
         );
-        let available = Path::new(&host_key.path).is_file();
+        let available = is_readable_file(&host_key.path);
         let age_public_key = match convert_to_age(&host_key.public_key_path) {
             Ok(public_key) => public_key,
             Err(error) => {
@@ -972,7 +1059,7 @@ where
         let public_key_path = format!("{identity_path}.pub");
         validate_public_key_path(identity_path, &public_key_path)?;
         log::debug!("Converting non-host sops SSH identity using public key {public_key_path}");
-        let available = Path::new(identity_path).is_file();
+        let available = is_readable_file(identity_path);
         let age_public_key = match convert_to_age(&public_key_path) {
             Ok(public_key) => public_key,
             Err(error) => {
@@ -1035,7 +1122,7 @@ where
     // 3. Materialize the SOPS age key file into age recipients.
     if let Some(key_file) = identities.age_key_file.as_deref() {
         let path = Path::new(key_file);
-        let available = path.is_file();
+        let available = is_readable_file(path);
         let derived_public_keys = available
             .then(|| derive_age(key_file))
             .transpose()?
@@ -1086,7 +1173,7 @@ where
             continue;
         }
         let path = Path::new(identity_path);
-        let available = path.is_file();
+        let available = is_readable_file(path);
         let public_key_path = format!("{identity_path}.pub");
         if Path::new(&public_key_path).is_file() {
             log::debug!(
@@ -1234,7 +1321,7 @@ where
     candidates
         .into_iter()
         .filter(|(path, _)| seen.insert(path.clone()))
-        .filter(|(path, _)| path.is_file())
+        .filter(|(path, _)| is_readable_file(path))
         .map(|(path, locality)| {
             let path_string = path.to_string_lossy().into_owned();
             let public_keys = derive_age(&path_string).map_err(|error| {
@@ -1491,8 +1578,8 @@ mod tests {
         build_agenix_rules, handle_agenix_rules_result, load_sops_config_recipients,
         materialize_recipients, merge_config_recipients, parse_sops_config_recipients,
         parse_sops_recipient_metadata, recipient, recipient_has_local_identity, recipient_key_type,
-        ssh_public_key_fingerprint, ssh_public_key_identity, ssh_public_key_to_age,
-        unique_recipient_id,
+        resolve_agenix_rules_path, ssh_public_key_fingerprint, ssh_public_key_identity,
+        ssh_public_key_to_age, unique_recipient_id,
     };
     use crate::{
         secrets::identities::{HostKey, RecipientIdentity, SecretIdentities},
@@ -1505,7 +1592,7 @@ mod tests {
     use std::{
         collections::{HashMap, HashSet},
         fs,
-        os::unix::fs::symlink,
+        os::unix::fs::{PermissionsExt, symlink},
         path::{Path, PathBuf},
     };
     use tempfile::TempDir;
@@ -1627,6 +1714,50 @@ mod tests {
             recipients[1].fingerprint,
             "fingerprint-/Users/test/.ssh/id_ed25519.pub"
         );
+    }
+
+    #[test]
+    fn existing_but_unreadable_identity_is_not_available() {
+        let dir = TempDir::new().expect("temp dir");
+        let private_key = dir.path().join("host-key");
+        let public_key = dir.path().join("host-key.pub");
+        fs::write(&private_key, "private identity fixture").expect("write private key");
+        fs::write(&public_key, "ssh-ed25519 AAAAfixture").expect("write public key");
+        fs::set_permissions(&private_key, fs::Permissions::from_mode(0o000))
+            .expect("make private key unreadable");
+        assert!(private_key.is_file());
+
+        // A privileged test process can still open mode-000 files, so this
+        // permission distinction cannot be exercised in that environment.
+        if fs::File::open(&private_key).is_ok() {
+            return;
+        }
+
+        let identities = SecretIdentities {
+            age_key_file: None,
+            host_keys: vec![HostKey {
+                path: private_key.to_string_lossy().into_owned(),
+                public_key_path: public_key.to_string_lossy().into_owned(),
+                key_type: "ed25519".into(),
+                used_by_sops: false,
+                used_by_agenix: true,
+            }],
+            other_sops_identities: Vec::new(),
+            agenix_identity_paths: Vec::new(),
+        };
+
+        let (_, decryption_identities) = materialize_recipients(
+            "test-host",
+            &identities,
+            |_path| Ok("age1fixture".into()),
+            |_path| Ok("ssh-ed25519 AAAAfixture".into()),
+            |_path| Ok(None),
+            |_path| -> Result<Vec<String>, String> { panic!("no age key file configured") },
+        )
+        .expect("materialize recipient");
+
+        assert_eq!(decryption_identities.len(), 1);
+        assert!(!decryption_identities[0].available);
     }
 
     #[test]
@@ -1829,7 +1960,9 @@ mod tests {
         fs::write(&rules_path, "{}").expect("write rules placeholder");
         // builtins.path evaluates to a hash-prefixed store basename and drops
         // the repository directory components from the classic rule key.
-        let evaluated_secret = evaluated.path().join("bims69cd-example.age");
+        let evaluated_secret = evaluated
+            .path()
+            .join("00000000000000000000000000000000-example.age");
         fs::write(&evaluated_secret, "age-encrypted").expect("write evaluated secret");
         let mut entry = secret(SecretBackend::Agenix, evaluated_secret.to_string_lossy());
         entry.id = "example".into();
@@ -1875,6 +2008,117 @@ mod tests {
     }
 
     #[test]
+    fn relative_agenix_rules_override_cannot_escape_config_dir() {
+        let parent = TempDir::new().expect("parent dir");
+        let config = parent.path().join("config");
+        fs::create_dir(&config).expect("config dir");
+        fs::write(parent.path().join("outside.nix"), "{}").expect("outside rules file");
+
+        let error = resolve_agenix_rules_path(&config, Path::new("../outside.nix"))
+            .expect_err("relative RULES traversal must be rejected");
+
+        assert!(error.contains("outside"));
+    }
+
+    #[test]
+    fn absolute_agenix_rules_override_remains_supported() {
+        let config = TempDir::new().expect("config dir");
+        let external = TempDir::new().expect("external dir");
+        let rules_path = external.path().join("rules.nix");
+
+        assert_eq!(
+            resolve_agenix_rules_path(config.path(), &rules_path).expect("absolute RULES path"),
+            rules_path
+        );
+    }
+
+    #[test]
+    fn relative_agenix_rule_key_cannot_escape_its_base_dirs() {
+        let parent = TempDir::new().expect("parent dir");
+        let config = parent.path().join("config");
+        fs::create_dir(&config).expect("config dir");
+        let rules_path = config.join("secrets.nix");
+        fs::write(&rules_path, "{}").expect("rules placeholder");
+        let outside_secret = parent.path().join("outside.age");
+        fs::write(&outside_secret, "age-encrypted").expect("outside secret");
+        let rules = HashMap::from([(
+            "../outside.age".into(),
+            AgenixRule {
+                public_keys: vec!["age1alice".into()],
+            },
+        )]);
+
+        let loaded = build_agenix_rules(config.as_path(), &rules_path, rules, &[]);
+
+        assert!(
+            !loaded.inventory.contains_key(
+                &outside_secret
+                    .canonicalize()
+                    .expect("canonical outside secret")
+            )
+        );
+        assert!(loaded.recipients.is_empty());
+    }
+
+    #[test]
+    fn absolute_agenix_rule_key_remains_supported() {
+        let config = TempDir::new().expect("config dir");
+        let external = TempDir::new().expect("external dir");
+        let rules_path = config.path().join("secrets.nix");
+        fs::write(&rules_path, "{}").expect("rules placeholder");
+        let external_secret = external.path().join("external.age");
+        fs::write(&external_secret, "age-encrypted").expect("external secret");
+        let rules = HashMap::from([(
+            external_secret.to_string_lossy().into_owned(),
+            AgenixRule {
+                public_keys: vec!["age1alice".into()],
+            },
+        )]);
+
+        let loaded = build_agenix_rules(config.path(), &rules_path, rules, &[]);
+
+        assert!(
+            loaded.inventory.contains_key(
+                &external_secret
+                    .canonicalize()
+                    .expect("canonical external secret")
+            )
+        );
+    }
+
+    #[test]
+    fn agenix_rules_do_not_match_a_raw_filename_suffix() {
+        let config = TempDir::new().expect("config dir");
+        let evaluated = TempDir::new().expect("evaluated source dir");
+        let rules_path = config.path().join("secrets.nix");
+        fs::write(&rules_path, "{}").expect("write rules placeholder");
+        let unrelated_secret = evaluated.path().join("notexample.age");
+        fs::write(&unrelated_secret, "age-encrypted").expect("write evaluated secret");
+        let entry = secret(SecretBackend::Agenix, unrelated_secret.to_string_lossy());
+        let rules = HashMap::from([(
+            "secrets/example.age".into(),
+            AgenixRule {
+                public_keys: vec!["age1alice".into()],
+            },
+        )]);
+
+        let loaded = build_agenix_rules(
+            config.path(),
+            &rules_path,
+            rules,
+            std::slice::from_ref(&entry),
+        );
+
+        assert!(
+            !loaded.inventory.contains_key(
+                &unrelated_secret
+                    .canonicalize()
+                    .expect("canonical secret path")
+            )
+        );
+    }
+
+    #[test]
     fn auto_discovered_invalid_agenix_rules_are_ignored() {
         let loaded = handle_agenix_rules_result(
             Path::new("secrets.nix"),
@@ -1888,15 +2132,16 @@ mod tests {
     }
 
     #[test]
-    fn explicitly_configured_invalid_agenix_rules_fail() {
-        let error = handle_agenix_rules_result(
+    fn explicitly_configured_invalid_agenix_rules_are_ignored() {
+        let loaded = handle_agenix_rules_result(
             Path::new("custom-rules.nix"),
             true,
             Err("invalid rules".into()),
         )
-        .expect_err("an explicit RULES path is authoritative");
+        .expect("an inherited RULES override must not prevent vault loading");
 
-        assert_eq!(error, "invalid rules");
+        assert!(loaded.inventory.is_empty());
+        assert!(loaded.recipients.is_empty());
     }
 
     #[test]
