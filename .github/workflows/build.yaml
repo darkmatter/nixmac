@@ -227,7 +227,7 @@ jobs:
           fi
 
       - name: Restore sccache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: ${{ runner.temp }}/sccache
           key: sccache-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
@@ -326,7 +326,7 @@ jobs:
 
       - name: Save sccache
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: ${{ runner.temp }}/sccache
           key: sccache-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}

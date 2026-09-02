@@ -49,7 +49,7 @@ runs:
     - name: Restore devenv profile pointer
       if: ${{ inputs.install-devenv == 'true' && steps.devenv-existing.outputs.ok != 'true' }}
       id: devenv-cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v5
       with:
         path: .devenv-ci
         key: devenv-profile-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.nix', 'devenv.yaml', 'devenv.lock', 'flake.nix', 'flake.lock', 'treefmt.nix', 'nix/**') }}
@@ -194,7 +194,7 @@ runs:
     # The cachix push is only needed for ephemeral (GitHub-hosted) runners.
     - name: Save devenv profile pointer
       if: ${{ inputs.install-devenv == 'true' && steps.devenv-existing.outputs.ok != 'true' && steps.devenv-realise.outputs.ok != 'true' && steps.devenv-cache.outputs.cache-hit != 'true' }}
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v5
       with:
         path: .devenv-ci
         key: ${{ steps.devenv-cache.outputs.cache-primary-key }}
