@@ -98,6 +98,10 @@ export interface SecretsManagementProps {
 /** Mirrors the backend-owned vault state from the Zustand view model. */
 export function SecretsManagementRoute() {
   const state = useViewModel(selectSecretsVaultState);
+  const lastVault = useRef<SecretsVault | null>(null);
+
+  if (state?.vault) lastVault.current = state.vault;
+  const vault = state?.vault ?? (state?.loading ? lastVault.current : null);
 
   useEffect(() => {
     let disposed = false;
@@ -115,7 +119,7 @@ export function SecretsManagementRoute() {
     };
   }, []);
 
-  if (!state || !state.activated || state.loading) {
+  if (!state || !state.activated || (state.loading && !vault)) {
     return (
       <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
         <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
@@ -124,7 +128,7 @@ export function SecretsManagementRoute() {
     );
   }
 
-  if (state.error || !state.vault) {
+  if (state.error || !vault) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
         <TriangleAlert className="size-5 text-destructive" aria-hidden="true" />
@@ -142,7 +146,7 @@ export function SecretsManagementRoute() {
     );
   }
 
-  return <SecretsManagement vault={state.vault} />;
+  return <SecretsManagement vault={vault} />;
 }
 
 /**

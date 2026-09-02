@@ -65,6 +65,7 @@ async fn decrypt_secret(ctx: OrpcCtx, input: DecryptSecretInput) -> Result<Strin
 async fn add_secret(ctx: OrpcCtx, input: AddSecretInput) -> Result<AddSecretResult, ORPCError> {
     let (host_attr, config_dir) = get_hostname_and_config_dir(&ctx.app, "secrets.addSecret")
         .map_err(|error| internal_err("secrets.addSecret", error))?;
+    let _refresh_guard = secrets_vault::begin_mutation(&ctx.app);
     let result = crate::secrets::secrets_management::add_secret(
         &host_attr,
         &config_dir,
@@ -83,6 +84,7 @@ async fn delete_secret(
 ) -> Result<DeleteSecretResult, ORPCError> {
     let (host_attr, config_dir) = get_hostname_and_config_dir(&ctx.app, "secrets.deleteSecret")
         .map_err(|error| internal_err("secrets.deleteSecret", error))?;
+    let _refresh_guard = secrets_vault::begin_mutation(&ctx.app);
     let result = crate::secrets::secrets_management::delete_secret(
         &host_attr,
         &config_dir,

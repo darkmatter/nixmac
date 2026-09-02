@@ -13,6 +13,7 @@ pub(crate) mod isolation;
 pub mod messages;
 pub(crate) mod nix_file_editor;
 mod nixmac_ignore;
+pub(crate) use nixmac_ignore::NixmacIgnoreChecker;
 pub mod providers;
 mod search_code;
 pub mod search_docs;
