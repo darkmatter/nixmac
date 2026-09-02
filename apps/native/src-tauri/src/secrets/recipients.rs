@@ -562,19 +562,14 @@ fn load_agenix_rules(
         config_dir.display(),
         rules_override.is_some()
     );
-    let rules_path = if let Some(rules_override) = rules_override {
-        let configured_path = PathBuf::from(rules_override);
-        match resolve_agenix_rules_path(config_dir, &configured_path) {
-            Ok(path) => Some(path),
-            Err(error) => {
-                return handle_agenix_rules_result(&configured_path, true, Err(error));
-            }
+    let rules_path = match discover_agenix_rules_path(config_dir) {
+        Ok(path) => path,
+        Err(error) => {
+            let configured_path = rules_override
+                .map(PathBuf::from)
+                .unwrap_or_else(|| PathBuf::from("$RULES"));
+            return handle_agenix_rules_result(&configured_path, true, Err(error));
         }
-    } else {
-        ["secrets.nix", "secrets/secrets.nix"]
-            .into_iter()
-            .map(|path| config_dir.join(path))
-            .find(|path| path.is_file())
     };
     let Some(rules_path) = rules_path else {
         log::debug!(
@@ -584,6 +579,19 @@ fn load_agenix_rules(
     };
     let result = evaluate_agenix_rules(config_dir, &rules_path, secret_entries);
     handle_agenix_rules_result(&rules_path, explicitly_configured, result)
+}
+
+/// Discover the classic agenix rules path using the same precedence as agenix:
+/// `$RULES`, `secrets.nix`, then `secrets/secrets.nix`.
+pub(crate) fn discover_agenix_rules_path(config_dir: &Path) -> Result<Option<PathBuf>, String> {
+    if let Some(rules_override) = std::env::var_os("RULES").filter(|value| !value.is_empty()) {
+        return resolve_agenix_rules_path(config_dir, &PathBuf::from(rules_override)).map(Some);
+    }
+
+    Ok(["secrets.nix", "secrets/secrets.nix"]
+        .into_iter()
+        .map(|path| config_dir.join(path))
+        .find(|path| path.is_file()))
 }
 
 /// Resolve an inherited rules override without allowing a relative path or
@@ -846,7 +854,7 @@ fn build_agenix_rules(
 
 /// Check if the given entry file name matches the expected basename according to the Agenix naming convention.
 /// This includes the convention where the filename may have a 32-character store hash prefix followed by a hyphen and the basename.
-fn agenix_filename_matches(entry_file: &str, basename: &str) -> bool {
+pub(super) fn agenix_filename_matches(entry_file: &str, basename: &str) -> bool {
     let Some(filename) = Path::new(entry_file)
         .file_name()
         .and_then(|name| name.to_str())

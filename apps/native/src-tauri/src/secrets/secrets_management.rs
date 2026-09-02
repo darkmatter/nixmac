@@ -10,8 +10,8 @@ use crate::{
         identities::load_secret_identities,
         is_readable_file,
         recipients::{
-            apply_recipients_to_secrets_with_identities, load_recipients,
-            recipient_has_local_identity,
+            agenix_filename_matches, apply_recipients_to_secrets_with_identities,
+            discover_agenix_rules_path, load_recipients, recipient_has_local_identity,
         },
         resolve_secret_file_path, sanitized_subprocess_error,
     },
@@ -31,6 +31,7 @@ use std::{
 
 /// The path to the standard nix-darwin module that declares SOPS secrets.
 const STANDARD_SOPS_MODULE: &str = "modules/darwin/sops-secrets.nix";
+const STANDARD_AGENIX_MODULE: &str = "modules/darwin/agenix-secrets.nix";
 
 /// Returns the repository-relative path used for a SOPS secret.
 fn managed_sops_file(secret_id: &str) -> String {
@@ -263,7 +264,7 @@ fn matching_agenix_rule_key(rule_keys: &[String], secret: &SecretEntry) -> anyho
                 Path::new(key)
                     .file_name()
                     .and_then(|name| name.to_str())
-                    .is_some_and(|basename| secret.file.ends_with(basename))
+                    .is_some_and(|basename| agenix_filename_matches(&secret.file, basename))
             })
             .cloned()
             .collect::<Vec<_>>()
@@ -292,7 +293,7 @@ fn remove_agenix_rule(base: &Path, relative_file: &str, rule_key: &str) -> anyho
         .with_context(|| format!("remove agenix rule '{attrpath}'"))
 }
 
-/// Remove an agenix declaration for a specific secret from the rules file, returning an error if the declaration was not found.
+/// Remove an agenix declaration for a specific secret from the declaration module, returning an error if the declaration was not found.
 fn remove_agenix_declaration(
     base: &Path,
     relative_file: &str,
@@ -492,22 +493,8 @@ fn add_age_secret(
 
 /// Locate the classic agenix rules file that nixmac can safely edit and commit.
 fn find_agenix_rules_file(base: &Path) -> anyhow::Result<PathBuf> {
-    let configured = std::env::var_os("RULES").filter(|value| !value.is_empty());
-    let candidate = configured
-        .map(PathBuf::from)
-        .map(|path| {
-            if path.is_absolute() {
-                path
-            } else {
-                base.join(path)
-            }
-        })
-        .or_else(|| {
-            ["secrets.nix", "secrets/secrets.nix"]
-                .into_iter()
-                .map(|path| base.join(path))
-                .find(|path| path.is_file())
-        })
+    let candidate = discover_agenix_rules_path(base)
+        .map_err(|error| anyhow!(error))?
         .ok_or_else(|| {
             anyhow!("Could not find classic agenix rules at secrets.nix or secrets/secrets.nix")
         })?;
@@ -534,8 +521,12 @@ fn find_agenix_rules_file(base: &Path) -> anyhow::Result<PathBuf> {
 
 /// Find the Nix module that owns `age.secrets` declarations.
 fn find_agenix_declaration_file(base: &Path) -> anyhow::Result<PathBuf> {
-    const STANDARD_AGENIX_MODULE: &str = "modules/darwin/agenix-secrets.nix";
     find_secret_declaration_file(base, STANDARD_AGENIX_MODULE, "age.secrets", "agenix")
+}
+
+/// Find the Nix module that owns `sops.secrets` declarations.
+fn find_sops_declaration_file(base: &Path) -> anyhow::Result<PathBuf> {
+    find_secret_declaration_file(base, STANDARD_SOPS_MODULE, "sops.secrets", "SOPS")
 }
 
 /// Find a Nix module that contains a specific secret declaration, preferring the standard module path if it exists and is visible.
@@ -548,15 +539,29 @@ fn find_secret_declaration_file(
     let visible = GitignoreChecker::new(base)?
         .map(|checker| checker.visible_files())
         .transpose()?;
+    let nixmac_ignore = NixmacIgnoreChecker::new(base)?;
+    let standard_relative = Path::new(standard_relative);
     let standard = base.join(standard_relative);
     if standard.is_file()
         && visible
             .as_ref()
-            .is_none_or(|files| files.contains_file(Path::new(standard_relative)))
+            .is_none_or(|files| files.contains_file(standard_relative))
+        && !nixmac_ignore.is_ignored(standard_relative, false)
     {
-        resolve_existing_path_in_dir(base, standard_relative)
-            .with_context(|| format!("resolve {standard_relative}"))?;
-        return Ok(standard);
+        let resolved = resolve_existing_path_in_dir(
+            base,
+            standard_relative
+                .to_str()
+                .ok_or_else(|| anyhow!("standard declaration path is not valid UTF-8"))?,
+        )
+        .with_context(|| format!("resolve {}", standard_relative.display()))?;
+        if std::fs::read_to_string(&resolved).is_ok_and(|text| text.contains(declaration_marker)) {
+            let base_resolved = base
+                .canonicalize()
+                .with_context(|| format!("resolve repository {}", base.display()))?;
+            let relative = repo_relative_path(&base_resolved, &resolved)?;
+            return Ok(base.join(relative));
+        }
     }
     let candidates = walkdir::WalkDir::new(base)
         .into_iter()
@@ -567,13 +572,15 @@ fn find_secret_declaration_file(
             let Ok(relative) = entry.path().strip_prefix(base) else {
                 return false;
             };
-            visible.as_ref().is_none_or(|files| {
-                if entry.file_type().is_dir() {
-                    files.contains_dir(relative)
-                } else {
-                    files.contains_file(relative)
-                }
-            })
+            let is_dir = entry.file_type().is_dir();
+            !nixmac_ignore.is_ignored(relative, is_dir)
+                && visible.as_ref().is_none_or(|files| {
+                    if is_dir {
+                        files.contains_dir(relative)
+                    } else {
+                        files.contains_file(relative)
+                    }
+                })
         })
         .filter_map(Result::ok)
         .filter(|entry| {
@@ -590,7 +597,8 @@ fn find_secret_declaration_file(
         [path] => Ok(path.clone()),
         [] => anyhow::bail!("Could not find a Nix module containing {declaration_marker}"),
         _ => anyhow::bail!(
-            "Found multiple Nix modules containing {declaration_marker}; expected one {backend_name} declaration module"
+            "Found multiple Nix modules containing {declaration_marker}; expected {} for {backend_name}",
+            standard_relative.display()
         ),
     }
 }
@@ -886,65 +894,6 @@ fn apply_sops_identity(command: &mut std::process::Command, identity: Option<&De
                 command.env("SOPS_AGE_SSH_PRIVATE_KEY_FILE", &identity.path);
             }
         }
-    }
-}
-
-/// Finds the nix-darwin module that declares SOPS secrets.
-/// If the standard module exists, it is returned.
-/// Otherwise, the repository is searched for a module that contains `sops.secrets`.
-/// If multiple modules are found, an error is returned.
-fn find_sops_declaration_file(base: &Path) -> anyhow::Result<PathBuf> {
-    let visible = GitignoreChecker::new(base)?
-        .map(|checker| checker.visible_files())
-        .transpose()?;
-    let nixmac_ignore = NixmacIgnoreChecker::new(base)?;
-    let standard = base.join(STANDARD_SOPS_MODULE);
-    if standard.is_file()
-        && visible
-            .as_ref()
-            .is_none_or(|files| files.contains_file(Path::new(STANDARD_SOPS_MODULE)))
-        && !nixmac_ignore.is_ignored(Path::new(STANDARD_SOPS_MODULE), false)
-    {
-        resolve_existing_path_in_dir(base, STANDARD_SOPS_MODULE)
-            .with_context(|| format!("resolve {STANDARD_SOPS_MODULE}"))?;
-        return Ok(standard);
-    }
-    let candidates = walkdir::WalkDir::new(base)
-        .into_iter()
-        .filter_entry(|entry| {
-            if entry.depth() == 0 {
-                return true;
-            }
-            let Ok(relative) = entry.path().strip_prefix(base) else {
-                return false;
-            };
-            let is_dir = entry.file_type().is_dir();
-            !nixmac_ignore.is_ignored(relative, is_dir)
-                && visible.as_ref().is_none_or(|files| {
-                    if is_dir {
-                        files.contains_dir(relative)
-                    } else {
-                        files.contains_file(relative)
-                    }
-                })
-        })
-        .filter_map(Result::ok)
-        .filter(|entry| {
-            entry.file_type().is_file() && entry.path().extension().is_some_and(|ext| ext == "nix")
-        })
-        .filter_map(|entry| {
-            std::fs::read_to_string(entry.path())
-                .ok()
-                .filter(|text| text.contains("sops.secrets"))
-                .map(|_| entry.into_path())
-        })
-        .collect::<Vec<_>>();
-    match candidates.as_slice() {
-        [path] => Ok(path.clone()),
-        [] => anyhow::bail!("Could not find a Nix module containing sops.secrets"),
-        _ => anyhow::bail!(
-            "Found multiple Nix modules containing sops.secrets; expected {STANDARD_SOPS_MODULE}"
-        ),
     }
 }
 
@@ -1580,7 +1529,7 @@ mod tests {
             "api-token",
             "api-token",
             crate::shared_types::SecretBackend::Agenix,
-            "/nix/store/abc123-api-token.age",
+            "/nix/store/0123456789abcdfghijklmnpqrsvwxyz-api-token.age",
             None,
         );
 
@@ -1600,7 +1549,7 @@ mod tests {
             "api-token",
             "api-token",
             crate::shared_types::SecretBackend::Agenix,
-            "/nix/store/abc123-api-token.age",
+            "/nix/store/0123456789abcdfghijklmnpqrsvwxyz-api-token.age",
             None,
         );
 
@@ -1614,6 +1563,24 @@ mod tests {
             )
             .is_err()
         );
+    }
+
+    #[test]
+    fn agenix_rule_matching_ignores_partial_filename_suffixes() {
+        let entry = secret(
+            "api-token",
+            "api-token",
+            crate::shared_types::SecretBackend::Agenix,
+            "/nix/store/0123456789abcdfghijklmnpqrsvwxyz-api-token.age",
+            None,
+        );
+
+        assert_eq!(
+            matching_agenix_rule_key(&["n.age".to_string(), "api-token.age".to_string()], &entry,)
+                .expect("ignore partial filename suffix"),
+            "api-token.age"
+        );
+        assert!(matching_agenix_rule_key(&["n.age".to_string()], &entry).is_err());
     }
 
     #[test]
@@ -1733,6 +1700,40 @@ mod tests {
     }
 
     #[test]
+    fn declaration_discovery_skips_a_standard_module_without_the_marker() {
+        let config_dir = TempDir::new().expect("create config dir");
+        let standard = config_dir.path().join("modules/darwin/agenix-secrets.nix");
+        fs::create_dir_all(standard.parent().unwrap()).expect("create module dir");
+        fs::write(&standard, "{ services.example.enable = true; }")
+            .expect("write unrelated standard module");
+        let declaration = config_dir.path().join("hosts/agenix.nix");
+        fs::create_dir_all(declaration.parent().unwrap()).expect("create declaration dir");
+        fs::write(&declaration, "{ age.secrets = {}; }").expect("write declaration module");
+
+        assert_eq!(
+            find_agenix_declaration_file(config_dir.path()).expect("find declaration module"),
+            declaration
+        );
+    }
+
+    #[test]
+    fn declaration_discovery_returns_the_resolved_standard_module_target() {
+        let config_dir = TempDir::new().expect("create config dir");
+        let target = config_dir.path().join("modules/shared/sops-secrets.nix");
+        fs::create_dir_all(target.parent().unwrap()).expect("create target dir");
+        fs::write(&target, "{ sops.secrets = {}; }").expect("write target module");
+        let standard = config_dir.path().join("modules/darwin/sops-secrets.nix");
+        fs::create_dir_all(standard.parent().unwrap()).expect("create standard dir");
+        std::os::unix::fs::symlink("../shared/sops-secrets.nix", &standard)
+            .expect("link standard module");
+
+        assert_eq!(
+            find_sops_declaration_file(config_dir.path()).expect("find standard module"),
+            target
+        );
+    }
+
+    #[test]
     fn agenix_discovery_finds_conventional_rules_and_standard_module() {
         let config_dir = TempDir::new().expect("create config dir");
         let rules = config_dir.path().join("secrets/secrets.nix");
@@ -1774,6 +1775,23 @@ mod tests {
             relative_nix_path_between(Path::new("hosts/workstation/modules"), Path::new("secrets"))
                 .expect("render encrypted directory from declaration"),
             "../../../secrets"
+        );
+    }
+
+    #[test]
+    fn agenix_declaration_discovery_excludes_nixmac_ignored_modules() {
+        let config_dir = TempDir::new().expect("create config dir");
+        let ignored = config_dir.path().join("private/agenix.nix");
+        fs::create_dir_all(ignored.parent().unwrap()).expect("create ignored dir");
+        fs::write(&ignored, "{ age.secrets = {}; }").expect("write ignored module");
+        fs::write(config_dir.path().join(".nixmacignore"), "private/\n")
+            .expect("write nixmacignore");
+        let visible = config_dir.path().join("visible.nix");
+        fs::write(&visible, "{ age.secrets = {}; }").expect("write visible module");
+
+        assert_eq!(
+            find_agenix_declaration_file(config_dir.path()).expect("find visible module"),
+            visible
         );
     }
 
