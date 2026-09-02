@@ -16,6 +16,8 @@ use crate::{
 };
 use std::path::Path;
 
+const AGENIX_DECRYPTION_FAILED: &str = "Failed to decrypt agenix secret";
+
 /// Decrypts a single secret from the configured repo, returning its plaintext value.
 /// Use this carefully, as it exposes sensitive data. The decrypted value is not stored in the vault.
 /// Don't send it to the agent or log it. Only use it for immediate display in the UI, and clear it from memory as soon as possible.
@@ -56,11 +58,9 @@ fn decrypt_agenix_secret(
             "Agenix secret '{secret_id}' has no readable age.identityPaths"
         ));
     }
-    // Preserve age's native SSH handling as the first attempt. In particular,
-    // age can prompt for a passphrase-protected SSH key when the encrypted
-    // file contains the matching SSH recipient stanza. This ssh-to-age
-    // fallback has no passphrase input, so an empty converted-identity pipe
-    // must not prevent the original raw identity from working.
+    // Preserve age's native SSH handling as the first attempt for encrypted
+    // files that contain a matching raw SSH recipient stanza. The conversion
+    // fallback below is only needed for recipients stored as ssh-to-age aliases.
     let direct_output = age_decrypt_command(config_dir, &secret_file_path, &identity_paths)
         .output()
         .map_err(|e| format!("Failed to execute age command: {e}"))?;
@@ -68,12 +68,6 @@ fn decrypt_agenix_secret(
         return String::from_utf8(direct_output.stdout)
             .map_err(|e| format!("age returned invalid UTF-8: {e}"));
     }
-    let direct_error = format!(
-        "age command failed with status {}: {}",
-        direct_output.status,
-        String::from_utf8_lossy(&direct_output.stderr)
-    );
-
     // A raw OpenSSH identity cannot unwrap the X25519 stanza produced when an
     // agenix rule uses its ssh-to-age age1 alias. Only after the native attempt
     // fails, try streaming converted SSH identities to age. This fallback is
@@ -82,7 +76,7 @@ fn decrypt_agenix_secret(
     let Some(mut fallback_command) =
         ssh_to_age_decrypt_command(config_dir, &secret_file_path, &identity_paths)
     else {
-        return Err(direct_error);
+        return Err(sanitized_agenix_decryption_error(&direct_output));
     };
     let fallback_output = fallback_command
         .output()
@@ -92,11 +86,17 @@ fn decrypt_agenix_secret(
             .map_err(|e| format!("age returned invalid UTF-8: {e}"));
     }
 
-    Err(format!(
-        "{direct_error}\nssh-to-age fallback failed with status {}: {}",
-        fallback_output.status,
-        String::from_utf8_lossy(&fallback_output.stderr)
-    ))
+    // ssh-to-age may echo an entire private key to stderr when conversion
+    // fails, so never include subprocess stderr in an error returned to the UI
+    // or logger.
+    Err(sanitized_agenix_decryption_error(&fallback_output))
+}
+
+/// Convert a failed decryption result into a UI-safe error without inspecting
+/// its output. In particular, ssh-to-age can include private key material in
+/// stderr when conversion fails.
+fn sanitized_agenix_decryption_error(_output: &std::process::Output) -> String {
+    AGENIX_DECRYPTION_FAILED.to_string()
 }
 
 /// Keep only identity files that age can attempt to read. A single missing or
@@ -198,8 +198,9 @@ fn ssh_to_age_decrypt_command(
         .collect::<Vec<_>>()
         .join("; ");
     let secret_file_arg = ssh_identity_paths.len() + 1;
-    let script =
-        format!("{{ {conversion_pipeline}; }} | age --decrypt --identity - \"${secret_file_arg}\"");
+    let script = format!(
+        "{{ {conversion_pipeline}; }} 2>/dev/null | age --decrypt --identity - \"${secret_file_arg}\""
+    );
     let mut command = nix_command(config_dir);
     command.args([
         "shell",
@@ -432,13 +433,20 @@ fn secret(
 #[cfg(test)]
 mod tests {
     use super::{
-        age_decrypt_command, readable_agenix_identity_paths, resolve_secret_file_path,
-        sops_decrypt_command, sops_extract_path, ssh_to_age_decrypt_command,
+        AGENIX_DECRYPTION_FAILED, age_decrypt_command, readable_agenix_identity_paths,
+        resolve_secret_file_path, sanitized_agenix_decryption_error, sops_decrypt_command,
+        sops_extract_path, ssh_to_age_decrypt_command,
     };
     use crate::shared_types::{
         DecryptionIdentity, DecryptionIdentityKind, DecryptionIdentityLocality,
     };
-    use std::{ffi::OsStr, fs, path::Path};
+    use std::{
+        ffi::OsStr,
+        fs,
+        os::unix::process::ExitStatusExt,
+        path::Path,
+        process::{ExitStatus, Output},
+    };
     use tempfile::TempDir;
 
     fn decryption_identity(kind: DecryptionIdentityKind, path: &str) -> DecryptionIdentity {
@@ -449,6 +457,23 @@ mod tests {
             available: true,
             public_keys: Vec::new(),
         }
+    }
+
+    #[test]
+    fn agenix_decryption_error_does_not_expose_subprocess_output() {
+        let output = Output {
+            status: ExitStatus::from_raw(1),
+            stdout: b"decrypted secret".to_vec(),
+            stderr: b"ssh-to-age: failed to convert '-----BEGIN OPENSSH PRIVATE KEY-----\nprivate key material\n-----END OPENSSH PRIVATE KEY-----'"
+                .to_vec(),
+        };
+
+        let error = sanitized_agenix_decryption_error(&output);
+
+        assert_eq!(error, AGENIX_DECRYPTION_FAILED);
+        assert!(!error.contains("BEGIN OPENSSH PRIVATE KEY"));
+        assert!(!error.contains("private key material"));
+        assert!(!error.contains("decrypted secret"));
     }
 
     #[test]
@@ -610,7 +635,7 @@ mod tests {
                 OsStr::new("sh"),
                 OsStr::new("-c"),
                 OsStr::new(
-                    "{ ssh-to-age -private-key -i \"$1\"; } | age --decrypt --identity - \"$2\""
+                    "{ ssh-to-age -private-key -i \"$1\"; } 2>/dev/null | age --decrypt --identity - \"$2\""
                 ),
                 OsStr::new("age-with-ssh-to-age"),
                 ssh_identity.as_os_str(),
