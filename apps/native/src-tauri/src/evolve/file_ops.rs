@@ -6,6 +6,7 @@
 //! Uses OpenAI function calling to generate structured file edits.
 
 use crate::shared_types::FileEdit;
+use crate::yaml_utils::validate_yaml_syntax;
 
 use super::gitignore::GitignoreChecker;
 use super::gitignore::is_path_ignored;
@@ -406,16 +407,6 @@ fn validate_nix_syntax(content: &str, file_path: &str) -> anyhow::Result<()> {
             parens
         )));
     }
-
-    Ok(())
-}
-
-/// Validate basic syntax of a .yaml or .yml file using serde_yaml.
-fn validate_yaml_syntax(content: &str, file_path: &str) -> anyhow::Result<()> {
-    // Try to parse the YAML content. serde_yaml will catch syntax errors
-    // like unmatched quotes, braces, brackets, etc.
-    serde_yaml::from_str::<serde_yaml::Value>(content)
-        .map_err(|e| anyhow::anyhow!("Syntax error in {}: {}", file_path, e))?;
 
     Ok(())
 }
@@ -847,43 +838,6 @@ mod tests {
         let invalid = r#"{ x = "${ f ( }"; }"#;
         let err = super::validate_nix_syntax(invalid, "test.nix")
             .expect_err("unbalanced delimiters inside an interpolation should be rejected");
-        assert!(err.to_string().contains("Syntax error"));
-    }
-
-    #[test]
-    fn validate_yaml_syntax_accepts_valid_yaml() {
-        let valid_yaml = r#"
-name: test
-config:
-  enable: true
-  items:
-    - first
-    - second
-"#;
-
-        super::validate_yaml_syntax(valid_yaml, "test.yaml")
-            .expect("should parse valid yaml syntax");
-    }
-
-    #[test]
-    fn validate_yaml_syntax_rejects_unmatched_braces() {
-        let invalid_yaml = r#"
-config: { unclosed: value
-"#;
-
-        let err = super::validate_yaml_syntax(invalid_yaml, "test.yaml")
-            .expect_err("should reject unmatched braces");
-        assert!(err.to_string().contains("Syntax error"));
-    }
-
-    #[test]
-    fn validate_yaml_syntax_rejects_unclosed_string() {
-        let invalid_yaml = r#"
-key: "unclosed string value
-"#;
-
-        let err = super::validate_yaml_syntax(invalid_yaml, "test.yaml")
-            .expect_err("should reject unclosed string");
         assert!(err.to_string().contains("Syntax error"));
     }
 

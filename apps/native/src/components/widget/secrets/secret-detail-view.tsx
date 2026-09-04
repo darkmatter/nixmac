@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 import { client } from "@/lib/orpc";
 import { RecipientKindIcon, ViewHeader } from "./shared";
 import { backendLabel, recipientHasLocalIdentity } from "./types";
-import type { SecretEntry, SecretsVault } from "@/ipc/orpc-bindings";
+import type { SecretBackend, SecretEntry, SecretsVault } from "@/ipc/orpc-bindings";
 
 /**
  * One secret's encrypted metadata and recipient access.
@@ -39,13 +39,13 @@ export function SecretDetailView({
   vault,
   secret,
   onRotate,
-  onNotImplemented,
+  onEdit,
   onBack,
 }: {
   vault: SecretsVault;
   secret: SecretEntry;
   onRotate: () => void;
-  onNotImplemented: () => void;
+  onEdit: (secretId: string, backend: SecretBackend) => void;
   onBack: () => void;
 }) {
   const MASKED_SECRET_VALUE = "****************";
@@ -59,7 +59,6 @@ export function SecretDetailView({
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // TODO: Implement these
-  const canEdit = false;
   const canRotate = false;
   const canUseAgentTool = false;
 
@@ -67,6 +66,9 @@ export function SecretDetailView({
   // deliberate, per-secret opt-in.
   const [toolEnabled, setToolEnabled] = useState(false);
   const toolSupported = secret.backend === "sops";
+  const agenixEditUnavailable =
+    secret.backend === "agenix" &&
+    (!secret.publicRecipientsResolved || secret.publicRecipients.length === 0);
   // SOPS deletion must decrypt and rewrite its shared YAML document. Agenix
   // deletion removes an opaque per-secret file and does not need a local key.
   const canDelete = secret.backend === "agenix" || capability !== "unavailable";
@@ -195,8 +197,14 @@ export function SecretDetailView({
         <div className="flex flex-col gap-1.5">
           {!secret.publicRecipientsResolved ? (
             <div className="rounded-[9px] border border-border px-3 py-2 text-[11.5px] text-muted-foreground">
-              Recipient metadata could not be resolved; this does not establish that decryption is
-              unavailable.
+              {secret.backend === "agenix"
+                ? "Recipient metadata could not be resolved. Editing is unavailable because age cannot preserve unknown recipients; this does not establish that decryption is unavailable."
+                : "Recipient metadata could not be resolved; this does not establish that decryption is unavailable."}
+            </div>
+          ) : agenixEditUnavailable ? (
+            <div className="rounded-[9px] border border-border px-3 py-2 text-[11.5px] text-muted-foreground">
+              No recipients are recorded for this secret. Editing is unavailable until its
+              recipients can be resolved.
             </div>
           ) : null}
           {secret.publicRecipients.map((publicKey) => {
@@ -269,13 +277,17 @@ export function SecretDetailView({
       )}
 
       <div className="flex gap-2 pt-0.5">
-        { canEdit && (
-          <Button variant="outline" size="sm" onClick={onNotImplemented}>
+        {!agenixEditUnavailable && (
+          <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onEdit(secret.id, secret.backend)}
+        >
             <Pencil aria-hidden="true" />
             Edit value
           </Button>
         )}
-        { canRotate && (
+        {canRotate && (
           <Button variant="outline" size="sm" onClick={onRotate}>
             <RefreshCw aria-hidden="true" />
             Rotate &amp; re-key

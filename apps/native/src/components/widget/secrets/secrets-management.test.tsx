@@ -56,4 +56,39 @@ describe("SecretsManagement secret selection", () => {
       });
     });
   });
+
+  it("edits the selected backend when backends contain the same id", () => {
+    const sharedEntries: SecretsVault["entries"] = [
+      {
+        ...MOCK_VAULT.entries[3]!,
+        id: "shared-secret",
+        name: "shared-secret",
+        backend: "sops",
+        file: "secrets/shared.yaml",
+        sopsKey: "shared_secret",
+      },
+      {
+        ...MOCK_VAULT.entries[0]!,
+        id: "shared-secret",
+        name: "shared-secret",
+        backend: "agenix",
+        file: "secrets/shared.age",
+        sopsKey: null,
+      },
+    ];
+    const vault: SecretsVault = { ...MOCK_VAULT, entries: sharedEntries };
+
+    render(<SecretsManagement vault={vault} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open shared-secret (agenix)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit value" }));
+    fireEvent.change(screen.getByRole("textbox", { name: /Value/ }), {
+      target: { value: "replacement" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Encrypt update & review" }));
+
+    expect(screen.getByText("Encrypted with age", { exact: false })).toBeInTheDocument();
+    expect(screen.getAllByText("secrets/shared.age")).not.toHaveLength(0);
+    expect(screen.queryByText("secrets/shared.yaml")).not.toBeInTheDocument();
+  });
 });

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { SecretBackend, SecretsVault } from "@/ipc/orpc-bindings";
+import type { SecretBackend, SecretEntry, SecretsVault } from "@/ipc/orpc-bindings";
 import { cn } from "@/lib/utils";
 import { recipientKindLabel, RecipientKindIcon, ViewHeader } from "./shared";
 import { type ApplyRequest, slugifySecretName } from "./types";
@@ -70,6 +70,25 @@ export function buildAddRequest(
   };
 }
 
+export function buildEditRequest(secret: SecretEntry): ApplyRequest {
+  return {
+    origin: "edit",
+    backend: secret.backend,
+    title: "Encrypt & commit",
+    subtitle: `Edit secret · ${secret.id}`,
+    files: [{ path: secret.file, note: "· encrypted update", mark: "~" }],
+    diffFile: secret.file,
+    diff: [
+      { kind: "meta", text: `@@ ${secret.backend === "agenix" ? "agenix" : "sops-nix"} @@` },
+      { kind: "context", text: "  # plaintext replaced and re-encrypted locally" },
+      { kind: "removed", text: `- ${secret.id}: ENC[…previous value…]` },
+      { kind: "added", text: `+ ${secret.id}: ENC[…new value…]` },
+    ],
+    commit: "",
+    commitMsg: `secrets: edit ${secret.id} (${secret.backend})`,
+  };
+}
+
 /**
  * The add-secret form: backend, name, value, runtime path preview, and the
  * recipients derived from repository configuration. Submitting hands a
@@ -77,24 +96,25 @@ export function buildAddRequest(
  */
 export function AddSecretView({
   vault,
+  secret,
   onSubmit,
   onBack,
 }: {
   vault: SecretsVault;
+  secret?: SecretEntry;
   onSubmit: (
     request: ApplyRequest,
     secret: { secretId: string; value: string; backend: SecretBackend },
   ) => void;
   onBack: () => void;
 }) {
-  const [name, setName] = useState("");
+  const editing = secret !== undefined;
+  const [name, setName] = useState(secret?.name ?? "");
   const [value, setValue] = useState("");
   const [hidden, setHidden] = useState(true);
-  const [backend, setBackend] = useState<SecretBackend>("sops");
+  const [backend, setBackend] = useState<SecretBackend>(secret?.backend ?? "sops");
 
-  const slug = slugifySecretName(name);
-  const encryptTarget =
-    backend === "agenix" ? `secrets/${slug}.age` : `secrets/secrets.yaml  ›  ${slug}`;
+  const slug = secret?.id ?? slugifySecretName(name);
   const runtimePath = backend === "agenix" ? `/run/agenix/${slug}` : `/run/secrets/${slug}`;
   const agenixTargetsAvailable = Boolean(
     vault.agenixRulesFile &&
@@ -102,65 +122,83 @@ export function AddSecretView({
     vault.agenixEncryptedDirectoryFromDeclaration,
   );
   const invalid =
-    !name.trim() || !value.trim() || (backend === "agenix" && !agenixTargetsAvailable);
-  const committedRecipients = vault.recipients.filter((recipient) =>
-    recipient.registrations.some((registration) => registration.backend === backend),
-  );
+    !name.trim() ||
+    !value.trim() ||
+    (!editing && backend === "agenix" && !agenixTargetsAvailable);
+  const encryptionRecipients =
+    editing && backend === "agenix"
+      ? secret.publicRecipients.map((publicKey) => ({
+          publicKey,
+          recipient: vault.recipients.find((recipient) => recipient.publicKey === publicKey),
+        }))
+      : vault.recipients
+          .filter((recipient) =>
+            recipient.registrations.some((registration) => registration.backend === backend),
+          )
+          .map((recipient) => ({ publicKey: recipient.publicKey, recipient }));
 
   const submit = () => {
     if (invalid) return;
-    onSubmit(buildAddRequest(slug, backend, vault), { secretId: slug, value, backend });
+    onSubmit(secret ? buildEditRequest(secret) : buildAddRequest(slug, backend, vault), {
+      secretId: slug,
+      value,
+      backend,
+    });
   };
 
   return (
     <div className="mx-auto flex max-w-[640px] flex-col gap-4">
-      <ViewHeader title="Add a secret" onBack={onBack} />
+      <ViewHeader title={editing ? `Edit ${secret.name}` : "Add a secret"} onBack={onBack} />
 
-      <div>
-        <label htmlFor="secret-name" className="mb-1.5 block font-medium text-xs">
-          Name
-        </label>
-        <Input
-          id="secret-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. github-token"
-        />
-      </div>
-
-      <div>
-        <div className="mb-1.5 flex items-center justify-between">
-          <span className="font-medium text-xs">Backend</span>
-          <div className="inline-flex rounded-md border border-border bg-muted p-0.5">
-            {(["sops", "agenix"] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={backend === option}
-                onClick={() => setBackend(option)}
-                className={cn(
-                  "cursor-pointer rounded px-2.5 py-1 font-medium font-mono text-[11px] transition-colors",
-                  backend === option
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground",
-                )}
-              >
-                {option === "sops" ? "sops-nix" : "agenix"}
-              </button>
-            ))}
-          </div>
+      {!editing && (
+        <div>
+          <label htmlFor="secret-name" className="mb-1.5 block font-medium text-xs">
+            Name
+          </label>
+          <Input
+            id="secret-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. github-token"
+          />
         </div>
-        <p className="text-[11px] text-muted-foreground">
-          {backend === "agenix"
-            ? "One age-encrypted file, using the recipients in the repository's agenix rules."
-            : "YAML encrypted with the repository's SOPS creation rules."}
-        </p>
-        {backend === "agenix" && !agenixTargetsAvailable && (
-          <p role="alert" className="mt-1 text-destructive text-[11px]">
-            Could not find both the agenix rules file and the module containing age.secrets.
+      )}
+
+      {!editing && (
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="font-medium text-xs">Backend</span>
+            <div className="inline-flex rounded-md border border-border bg-muted p-0.5">
+              {(["sops", "agenix"] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={backend === option}
+                  onClick={() => setBackend(option)}
+                  className={cn(
+                    "cursor-pointer rounded px-2.5 py-1 font-medium font-mono text-[11px] transition-colors",
+                    backend === option
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {option === "sops" ? "sops-nix" : "agenix"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {backend === "agenix"
+              ? "One age-encrypted file, using the recipients in the repository's agenix rules."
+              : "YAML encrypted with the repository's SOPS creation rules."}
           </p>
-        )}
-      </div>
+          {backend === "agenix" && !agenixTargetsAvailable && (
+            <p role="alert" className="mt-1 text-destructive text-[11px]">
+              Could not find both the agenix rules file and the module containing age.secrets.
+            </p>
+          )}
+        </div>
+      )}
 
       <div>
         <label
@@ -184,48 +222,72 @@ export function AddSecretView({
           placeholder="Paste the plaintext value — it is encrypted before it ever touches disk"
           className={cn("font-mono", hidden && "[-webkit-text-security:disc]")}
         />
-        <p className="mt-1.5 text-[11.5px] text-muted-foreground">
-          Encrypts to <code className="font-mono text-foreground">{encryptTarget}</code>
-        </p>
+        {!editing && (
+          <p className="mt-1.5 text-[11.5px] text-muted-foreground">
+            Encrypts to{" "}
+            <code className="font-mono text-foreground">
+              {backend === "agenix" ? `secrets/${slug}.age` : `secrets/secrets.yaml  ›  ${slug}`}
+            </code>
+          </p>
+        )}
       </div>
 
-      <div className="rounded-[9px] border border-border bg-muted/15 px-3 py-2.5">
-        <div className="flex items-center gap-2 font-medium text-xs">
-          <CornerDownRight className="size-3.5" aria-hidden="true" />
-          Runtime path
+      {!editing && (
+        <div className="rounded-[9px] border border-border bg-muted/15 px-3 py-2.5">
+          <div className="flex items-center gap-2 font-medium text-xs">
+            <CornerDownRight className="size-3.5" aria-hidden="true" />
+            Runtime path
+          </div>
+          <code className="mt-1.5 block font-mono text-foreground text-xs">{runtimePath}</code>
+          <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+            Decrypted to this path at activation so programs can read the plaintext. Set{" "}
+            <code className="font-mono text-foreground">owner</code>/
+            <code className="font-mono text-foreground">mode</code> to scope who can read it.
+          </p>
         </div>
-        <code className="mt-1.5 block font-mono text-foreground text-xs">{runtimePath}</code>
-        <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
-          Decrypted to this path at activation so programs can read the plaintext. Set{" "}
-          <code className="font-mono text-foreground">owner</code>/
-          <code className="font-mono text-foreground">mode</code> to scope who can read it.
-        </p>
-      </div>
+      )}
 
       <div>
         <span className="mb-1 block font-medium text-xs">Recipients — who can decrypt</span>
         <p className="mb-2 text-[11px] text-muted-foreground">
-          Encryption uses the recipients registered in the repository&apos;s{" "}
-          {backend === "agenix" ? "agenix rules" : <code className="font-mono">.sops.yaml</code>}.
+          {editing && backend === "agenix" ? (
+            "The updated value keeps the recipients recorded for this secret."
+          ) : (
+            <>
+              {editing ? "The updated value uses" : "Encryption uses"} the recipients registered in
+              the repository&apos;s{" "}
+              {backend === "agenix" ? (
+                "agenix rules"
+              ) : (
+                <code className="font-mono">.sops.yaml</code>
+              )}
+              .
+            </>
+          )}
         </p>
         <div className="flex flex-col gap-1.5">
-          {committedRecipients.length === 0 && (
+          {encryptionRecipients.length === 0 && (
             <p className="rounded-[9px] border border-border px-3 py-2 text-[11px] text-muted-foreground">
-              No recipients are registered for this backend. Adding the secret will fail until one
-              is configured.
+              {editing && backend === "agenix"
+                ? "No recipients are recorded for this secret. Encrypting the update will fail until its recipients can be resolved."
+                : "No recipients are registered for this backend. Encrypting the secret will fail until one is configured."}
             </p>
           )}
-          {committedRecipients.map((recipient) => {
+          {encryptionRecipients.map(({ publicKey, recipient }) => {
+            const label = recipient?.label ?? publicKey;
             return (
               <div
-                key={recipient.id}
-                aria-label={`Recipient ${recipient.label}`}
+                key={publicKey}
+                aria-label={`Recipient ${label}`}
                 className="flex items-center gap-2.5 rounded-[9px] border border-border px-3 py-2 text-left"
               >
-                <RecipientKindIcon kind={recipient.kind} className="text-muted-foreground" />
-                <span className="font-medium font-mono text-[13px]">{recipient.label}</span>
+                <RecipientKindIcon
+                  kind={recipient?.kind ?? "unknown"}
+                  className="text-muted-foreground"
+                />
+                <span className="truncate font-medium font-mono text-[13px]">{label}</span>
                 <span className="ml-auto text-[11px] text-muted-foreground">
-                  {recipientKindLabel(recipient.kind)}
+                  {recipientKindLabel(recipient?.kind ?? "unknown")}
                 </span>
               </div>
             );
@@ -236,7 +298,7 @@ export function AddSecretView({
       <div className="flex gap-2.5 pt-1">
         <Button disabled={invalid} onClick={submit}>
           <Lock aria-hidden="true" />
-          Encrypt &amp; review
+          {editing ? "Encrypt update & review" : "Encrypt & review"}
         </Button>
         <Button variant="ghost" onClick={onBack}>
           Cancel

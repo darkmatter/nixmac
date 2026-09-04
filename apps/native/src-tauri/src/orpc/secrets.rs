@@ -1,7 +1,9 @@
 //! Secrets management procedures.
 
 use super::{OrpcCtx, helpers::internal_err};
-use crate::shared_types::{AddSecretResult, DeleteSecretResult, SecretsVaultState};
+use crate::shared_types::{
+    AddSecretResult, DeleteSecretResult, EditSecretResult, SecretsVaultState,
+};
 use crate::state::secrets_vault;
 use crate::{commands::helpers::get_hostname_and_config_dir, shared_types::SecretBackend};
 use orpc::*;
@@ -18,6 +20,14 @@ struct DecryptSecretInput {
 #[derive(Debug, Deserialize, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 struct AddSecretInput {
+    secret_id: String,
+    value: String,
+    backend: SecretBackend,
+}
+
+#[derive(Debug, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+struct EditSecretInput {
     secret_id: String,
     value: String,
     backend: SecretBackend,
@@ -78,6 +88,21 @@ async fn add_secret(ctx: OrpcCtx, input: AddSecretInput) -> Result<AddSecretResu
     Ok(result)
 }
 
+async fn edit_secret(ctx: OrpcCtx, input: EditSecretInput) -> Result<EditSecretResult, ORPCError> {
+    let (host_attr, config_dir) = get_hostname_and_config_dir(&ctx.app, "secrets.editSecret")
+        .map_err(|error| internal_err("secrets.editSecret", error))?;
+    let result = crate::secrets::secrets_management::edit_secret(
+        &host_attr,
+        &config_dir,
+        &input.secret_id,
+        &input.value,
+        input.backend,
+    )
+    .map_err(|error| internal_err("secrets.editSecret", error))?;
+    refresh_state_after_mutation(&ctx, &config_dir, "secrets.editSecret");
+    Ok(result)
+}
+
 async fn delete_secret(
     ctx: OrpcCtx,
     input: DeleteSecretInput,
@@ -126,6 +151,10 @@ pub fn routes() -> Router<OrpcCtx> {
             .input(orpc_specta::specta::<AddSecretInput>())
             .output(orpc_specta::specta::<AddSecretResult>())
             .handler(add_secret),
+        "editSecret" => os::<OrpcCtx>()
+            .input(orpc_specta::specta::<EditSecretInput>())
+            .output(orpc_specta::specta::<EditSecretResult>())
+            .handler(edit_secret),
         "deleteSecret" => os::<OrpcCtx>()
             .input(orpc_specta::specta::<DeleteSecretInput>())
             .output(orpc_specta::specta::<DeleteSecretResult>())

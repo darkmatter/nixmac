@@ -401,6 +401,13 @@ export type DeleteSecretInput = { secretId: string; backend: SecretBackend }
  */
 export type DeleteSecretResult = { secretId: string; commitHash: string }
 
+export type EditSecretInput = { secretId: string; value: string; backend: SecretBackend }
+
+/**
+ * Result of replacing and re-encrypting a secret value.
+ */
+export type EditSecretResult = { secretId: string; encryptedFile: string; commitHash: string }
+
 export type EnumVariant = { value: string; label: string }
 
 /**
@@ -2200,6 +2207,7 @@ export type Procedures = {
     addSecret: Client<Record<never, never>, AddSecretInput, AddSecretResult, Error>
     decryptSecret: Client<Record<never, never>, DecryptSecretInput, string, Error>
     deleteSecret: Client<Record<never, never>, DeleteSecretInput, DeleteSecretResult, Error>
+    editSecret: Client<Record<never, never>, EditSecretInput, EditSecretResult, Error>
     getState: Client<Record<never, never>, void, SecretsVaultState, Error>
     refresh: Client<Record<never, never>, void, void, Error>
   }

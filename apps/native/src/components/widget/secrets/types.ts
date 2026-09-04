@@ -10,6 +10,7 @@ export type SecretsTab = "vault" | "keys";
 export type SecretsView =
   | { kind: "browse" }
   | { kind: "add" }
+  | { kind: "edit"; secretId: string; backend: SecretBackend }
   | { kind: "detail"; secretId: string; backend: SecretBackend }
   | { kind: "rotate" };
 
@@ -26,7 +27,7 @@ export interface ApplyFileChip {
 
 /** Payload for the review → build → commit sheet. */
 export interface ApplyRequest {
-  origin: "add" | "rotate" | "prompt" | "register";
+  origin: "add" | "edit" | "rotate" | "prompt" | "register";
   /** Encryption backend for requests that operate on one backend. */
   backend?: SecretBackend;
   title: string;

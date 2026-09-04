@@ -16,11 +16,12 @@ use crate::{
         resolve_secret_file_path, sanitized_subprocess_error,
     },
     shared_types::{
-        AddSecretResult, DecryptionIdentity, DecryptionIdentityKind, FileEditAction, SecretBackend,
-        SecretEntry, SecretsVault, SemanticFileEdit,
+        AddSecretResult, DecryptionIdentity, DecryptionIdentityKind, EditSecretResult,
+        FileEditAction, SecretBackend, SecretEntry, SecretsVault, SemanticFileEdit,
     },
     system::nix::nix_command,
     utils::nix_string_literal,
+    yaml_utils::replace_yaml_path,
 };
 use anyhow::{Context, anyhow};
 use std::{
@@ -113,6 +114,219 @@ pub fn add_secret(
             .map_err(|error| error.to_string()),
         SecretBackend::Agenix => add_age_secret(host_attr, config_dir, secret_id, value)
             .map_err(|error| error.to_string()),
+    }
+}
+
+/// Replace an existing secret's value without changing its declaration,
+/// location, backend, or recipients.
+pub fn edit_secret(
+    host_attr: &str,
+    config_dir: &str,
+    secret_id: &str,
+    value: &str,
+    backend: SecretBackend,
+) -> Result<EditSecretResult, String> {
+    match backend {
+        SecretBackend::Sops => edit_sops_secret(host_attr, config_dir, secret_id, value),
+        SecretBackend::Agenix => edit_age_secret(host_attr, config_dir, secret_id, value),
+    }
+    .map_err(|error| error.to_string())
+}
+
+/// Edit an agenix secret in place, preserving its recipients and encrypted file location.
+fn edit_age_secret(
+    host_attr: &str,
+    config_dir: &str,
+    secret_id: &str,
+    value: &str,
+) -> anyhow::Result<EditSecretResult> {
+    validate_new_secret(secret_id, value)?;
+    ensure_clean_repo(config_dir)?;
+
+    let base = Path::new(config_dir);
+    let secret = load_secrets_vault(host_attr, config_dir)
+        .map_err(|error| anyhow!(error))?
+        .entries
+        .into_iter()
+        .find(|secret| secret.backend == SecretBackend::Agenix && secret.id == secret_id)
+        .ok_or_else(|| anyhow!("Secret declaration '{secret_id}' does not exist"))?;
+    let recipients = agenix_edit_recipients(&secret)?;
+
+    let rules_file = find_agenix_rules_file(base)?;
+    let (_, encrypted_path) = resolve_agenix_rule_file(config_dir, &rules_file, &secret)?;
+    let encrypted_rel = repo_relative_path_string(base, &encrypted_path)?;
+    let operation = (|| -> anyhow::Result<EditSecretResult> {
+        encrypt_age_secret(config_dir, &encrypted_rel, value.as_bytes(), recipients)?;
+        verify_dry_build_for_secret_edit(config_dir, host_attr, "editing the secret")?;
+        let commit = crate::git::commit_files(
+            config_dir,
+            &[&encrypted_rel],
+            &format!("secrets: edit {secret_id} (agenix)"),
+        )
+        .context("commit edited agenix secret")?;
+        Ok(EditSecretResult {
+            secret_id: secret_id.to_string(),
+            encrypted_file: encrypted_rel.clone(),
+            commit_hash: commit.hash,
+        })
+    })();
+    if operation.is_err() {
+        restore_repo_files_on_failure(config_dir, &[&encrypted_rel]);
+    }
+    operation
+}
+
+/// Editing an agenix value must preserve the recipients on that particular
+/// encrypted file. Falling back to every currently registered recipient would
+/// silently grant access to identities that could not previously decrypt it.
+fn agenix_edit_recipients(secret: &SecretEntry) -> anyhow::Result<&[String]> {
+    if !secret.public_recipients_resolved || secret.public_recipients.is_empty() {
+        anyhow::bail!(
+            "Agenix recipients for '{}' could not be resolved; refusing to change its encryption",
+            secret.id
+        );
+    }
+    Ok(&secret.public_recipients)
+}
+
+/// Edit a SOPS secret in place, preserving its key and encrypted file location.
+fn edit_sops_secret(
+    host_attr: &str,
+    config_dir: &str,
+    secret_id: &str,
+    value: &str,
+) -> anyhow::Result<EditSecretResult> {
+    validate_new_secret(secret_id, value)?;
+    ensure_clean_repo(config_dir)?;
+
+    let base = Path::new(config_dir);
+    let secret = load_sops_secrets(host_attr, config_dir)
+        .map_err(|error| anyhow!(error))?
+        .into_iter()
+        .find(|secret| secret.id == secret_id)
+        .ok_or_else(|| anyhow!("Secret declaration '{secret_id}' does not exist"))?;
+    let sops_key = secret
+        .sops_key
+        .as_deref()
+        .ok_or_else(|| anyhow!("SOPS secret '{secret_id}' has no key"))?;
+    let encrypted_path = resolve_sops_source_file(base, &secret.file)?;
+    let encrypted_rel = repo_relative_path_string(base, &encrypted_path)?;
+    let plaintext = decrypt_sops_file(host_attr, config_dir, &encrypted_path)?;
+    let updated = replace_sops_value(&plaintext, sops_key, value)?;
+
+    let operation = (|| -> anyhow::Result<EditSecretResult> {
+        encrypt_sops_yaml(config_dir, &encrypted_rel, updated.as_bytes())?;
+        verify_dry_build_for_secret_edit(config_dir, host_attr, "editing the secret")?;
+        let commit = crate::git::commit_files(
+            config_dir,
+            &[&encrypted_rel],
+            &format!("secrets: edit {secret_id} (sops)"),
+        )
+        .context("commit edited SOPS secret")?;
+        Ok(EditSecretResult {
+            secret_id: secret_id.to_string(),
+            encrypted_file: encrypted_rel.clone(),
+            commit_hash: commit.hash,
+        })
+    })();
+    if operation.is_err() {
+        restore_repo_files_on_failure(config_dir, &[&encrypted_rel]);
+    }
+    operation
+}
+
+/// Resolve an evaluated SOPS path back to the repository file that owns it.
+///
+/// This is a little tricky:
+///
+/// `load_sops_secrets` reads `toString secret.sopsFile` from the evaluated host
+/// configuration. When `sopsFile` was declared with a Nix path value (including
+/// `builtins.path`), that string is the immutable `/nix/store/<hash>-<name>`
+/// artifact, NOT the path in the user's checkout that produced it. Writing the
+/// store artifact won't work because the next evaluation would just recreate
+/// it from the old unchanged repository source.
+///
+/// Sadly, Nix does not retain the original checkout path in this value.
+/// So we need to recover it from the repository. This recovery is conservative.
+/// The store name supplies the original basename, and the encrypted bytes must match
+/// exactly one repo file with that basename.
+/// - Zero matches means the source cannot be established.
+/// - Multiple matches are ambiguous.
+///
+/// In either case we refuse the edit instead of weakening the repository-boundary edit guardrail
+/// or guessing which secret file to overwrite.
+fn resolve_sops_source_file(base: &Path, evaluated_file: &str) -> anyhow::Result<PathBuf> {
+    let evaluated_path = Path::new(evaluated_file);
+    if !evaluated_path.is_absolute() {
+        return resolve_existing_path_in_dir(base, evaluated_file)
+            .with_context(|| format!("resolve SOPS file {evaluated_file}"));
+    }
+
+    let base_resolved = base.canonicalize().context("resolve repository")?;
+    let evaluated_resolved = evaluated_path
+        .canonicalize()
+        .with_context(|| format!("resolve evaluated SOPS file {evaluated_file}"))?;
+    if let Ok(relative) = repo_relative_path(&base_resolved, &evaluated_resolved) {
+        return Ok(base.join(relative));
+    }
+
+    if !evaluated_resolved.starts_with("/nix/store") {
+        anyhow::bail!(
+            "SOPS file {} is outside the repository and is not a Nix store path",
+            evaluated_resolved.display()
+        );
+    }
+    let store_name = evaluated_resolved
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| anyhow!("Evaluated SOPS file has no valid filename"))?;
+    let source_name = nix_store_source_name(store_name)
+        .ok_or_else(|| anyhow!("Could not derive a source filename from Nix store path"))?;
+
+    match_repo_file_by_name_and_contents(base, &evaluated_resolved, source_name)
+}
+
+/// Derive the original source filename from a Nix store path. The store path is
+/// of the form `/nix/store/<hash>-<name>`.
+/// This function extracts `<name>` if the format is valid.
+fn nix_store_source_name(store_name: &str) -> Option<&str> {
+    store_name
+        .split_once('-')
+        .filter(|(hash, name)| hash.len() == 32 && !name.is_empty())
+        .map(|(_, name)| name)
+}
+
+/// Find a file in the repository that matches the given name and has the same contents as the evaluated file.
+fn match_repo_file_by_name_and_contents(
+    base: &Path,
+    evaluated_file: &Path,
+    source_name: &str,
+) -> anyhow::Result<PathBuf> {
+    let evaluated_contents = std::fs::read(evaluated_file)
+        .with_context(|| format!("read evaluated SOPS file {}", evaluated_file.display()))?;
+    let mut matches = walkdir::WalkDir::new(base)
+        .into_iter()
+        .filter_entry(|entry| entry.depth() == 0 || entry.file_name() != ".git")
+        .filter_map(Result::ok)
+        .filter(|entry| entry.file_type().is_file() && entry.file_name() == source_name)
+        .filter_map(|entry| {
+            std::fs::read(entry.path())
+                .ok()
+                .filter(|contents| contents == &evaluated_contents)
+                .map(|_| entry.into_path())
+        })
+        .collect::<Vec<_>>();
+    matches.sort();
+    match matches.as_slice() {
+        [source] => Ok(source.clone()),
+        [] => anyhow::bail!(
+            "Could not find repository source '{source_name}' matching evaluated SOPS file {}",
+            evaluated_file.display()
+        ),
+        _ => anyhow::bail!(
+            "Multiple repository files named '{source_name}' match evaluated SOPS file {}; refusing to guess",
+            evaluated_file.display()
+        ),
     }
 }
 
@@ -370,6 +584,15 @@ fn delete_sops_secret(
         operation
     })()
     .map_err(|error| error.to_string())
+}
+
+/// Replace an existing scalar at a slash-delimited SOPS key path.
+fn replace_sops_value(plaintext: &str, sops_key: &str, value: &str) -> anyhow::Result<String> {
+    let mut document: serde_yaml::Value =
+        serde_yaml::from_str(plaintext).context("parse decrypted secrets YAML")?;
+    let mut parts = sops_key.split('/').peekable();
+    replace_yaml_path(&mut document, &mut parts, value)?;
+    serde_yaml::to_string(&document).context("serialize secrets YAML")
 }
 
 /// Removes a SOPS secret declaration from the nix-darwin module, returning an error if the declaration was not found.
@@ -819,6 +1042,41 @@ fn sops_plaintext(secret_id: &str, value: &str) -> anyhow::Result<String> {
     );
     let document = serde_yaml::Value::Mapping(mapping);
     serde_yaml::to_string(&document).context("serialize secrets YAML")
+}
+
+/// Decrypts an entire SOPS file for an in-place value update.
+fn decrypt_sops_file(host_attr: &str, config_dir: &str, path: &Path) -> anyhow::Result<String> {
+    let (_, identities, _) =
+        load_recipients(host_attr, config_dir, &[], false).map_err(|error| anyhow!(error))?;
+    let attempts = identities
+        .iter()
+        .filter(|identity| identity.available)
+        .map(Some)
+        .chain(std::iter::once(None));
+    let mut last_error = None;
+    for identity in attempts {
+        let mut command = nix_command(config_dir);
+        command
+            .args([
+                "shell",
+                "nixpkgs#sops",
+                "-c",
+                "sops",
+                "--decrypt",
+                "--output-type",
+                "yaml",
+            ])
+            .arg(path);
+        apply_sops_identity(&mut command, identity);
+        let output = command.output().context("execute sops decrypt")?;
+        if output.status.success() {
+            return String::from_utf8(output.stdout).context("sops returned invalid UTF-8");
+        }
+        last_error = Some(String::from_utf8_lossy(&output.stderr).trim().to_string());
+    }
+    Err(anyhow!(
+        last_error.unwrap_or_else(|| "SOPS decryption failed".to_string())
+    ))
 }
 
 /// Encrypts a SOPS YAML file using the available identities, writing the encrypted file to the given relative path.
@@ -1345,11 +1603,13 @@ fn secret(
 mod tests {
     use super::{
         AGENIX_DECRYPTION_FAILED, SOPS_DECRYPTION_FAILED, age_decrypt_command, age_encrypt_command,
-        find_agenix_declaration_file, find_agenix_rules_file, find_sops_declaration_file,
-        managed_sops_file, matching_agenix_rule_key, readable_agenix_identity_paths,
-        relative_nix_path_between, relative_path_between, repo_relative_path_string,
-        resolve_secret_file_path, sanitized_subprocess_error, secret, sops_decrypt_command,
-        sops_extract_path, sops_plaintext, ssh_to_age_decrypt_command, validate_new_secret,
+        agenix_edit_recipients, find_agenix_declaration_file, find_agenix_rules_file,
+        find_sops_declaration_file, managed_sops_file, match_repo_file_by_name_and_contents,
+        matching_agenix_rule_key, nix_store_source_name, readable_agenix_identity_paths,
+        relative_nix_path_between, relative_path_between, replace_sops_value,
+        repo_relative_path_string, resolve_secret_file_path, resolve_sops_source_file,
+        sanitized_subprocess_error, secret, sops_decrypt_command, sops_extract_path,
+        sops_plaintext, ssh_to_age_decrypt_command, validate_new_secret,
     };
     use crate::shared_types::{
         DecryptionIdentity, DecryptionIdentityKind, DecryptionIdentityLocality,
@@ -1650,6 +1910,41 @@ mod tests {
     }
 
     #[test]
+    fn agenix_edit_preserves_only_the_secret_recorded_recipients() {
+        let mut entry = secret(
+            "api-token",
+            "api-token",
+            crate::shared_types::SecretBackend::Agenix,
+            "secrets/api-token.age",
+            None,
+        );
+        entry.public_recipients_resolved = true;
+        entry.public_recipients = vec!["age1existing".into(), "ssh-ed25519 AAAAexisting".into()];
+
+        assert_eq!(
+            agenix_edit_recipients(&entry).expect("resolved recipients"),
+            ["age1existing", "ssh-ed25519 AAAAexisting"]
+        );
+    }
+
+    #[test]
+    fn agenix_edit_refuses_missing_or_unresolved_recipients() {
+        let mut entry = secret(
+            "api-token",
+            "api-token",
+            crate::shared_types::SecretBackend::Agenix,
+            "secrets/api-token.age",
+            None,
+        );
+        entry.public_recipients = vec!["age1existing".into()];
+        assert!(agenix_edit_recipients(&entry).is_err());
+
+        entry.public_recipients_resolved = true;
+        entry.public_recipients.clear();
+        assert!(agenix_edit_recipients(&entry).is_err());
+    }
+
+    #[test]
     fn sops_extract_path_escapes_key_segments() {
         assert_eq!(
             sops_extract_path(r#"nested/a"key"#),
@@ -1671,6 +1966,142 @@ mod tests {
         assert_eq!(
             managed_sops_file("github-token"),
             "secrets/github-token.yaml"
+        );
+    }
+
+    #[test]
+    fn editing_sops_plaintext_replaces_only_the_requested_nested_value() {
+        let rendered = replace_sops_value(
+            "github:\n  token: old\n  user: octocat\nother: preserved\n",
+            "github/token",
+            "line one\nline two",
+        )
+        .expect("replace nested value");
+        let parsed: serde_yaml::Value = serde_yaml::from_str(&rendered).expect("parse YAML");
+
+        assert_eq!(parsed["github"]["token"], "line one\nline two");
+        assert_eq!(parsed["github"]["user"], "octocat");
+        assert_eq!(parsed["other"], "preserved");
+    }
+
+    #[test]
+    fn editing_sops_plaintext_requires_an_existing_key() {
+        let error = replace_sops_value("github:\n  token: old\n", "github/missing", "new")
+            .expect_err("missing key must fail");
+
+        assert!(error.to_string().contains("does not exist"));
+    }
+
+    #[test]
+    fn editing_sops_plaintext_replaces_a_top_level_non_string_value() {
+        let rendered = replace_sops_value("enabled: true\nother: 42\n", "enabled", "new value")
+            .expect("replace top-level value");
+        let parsed: serde_yaml::Value = serde_yaml::from_str(&rendered).expect("parse YAML");
+
+        assert_eq!(parsed["enabled"], "new value");
+        assert_eq!(parsed["other"], 42);
+    }
+
+    #[test]
+    fn editing_sops_plaintext_refuses_to_traverse_a_scalar() {
+        let error = replace_sops_value("github: scalar\n", "github/token", "new")
+            .expect_err("scalar traversal must fail");
+
+        assert!(
+            error
+                .to_string()
+                .contains("does not refer to a YAML mapping")
+        );
+    }
+
+    #[test]
+    fn sops_source_resolution_accepts_repository_paths() {
+        let config_dir = TempDir::new().expect("create config dir");
+        let source = config_dir.path().join("secrets/api-key.yaml");
+        fs::create_dir_all(source.parent().unwrap()).expect("create secrets dir");
+        fs::write(&source, "encrypted contents").expect("write source secret");
+
+        assert_eq!(
+            resolve_sops_source_file(config_dir.path(), "secrets/api-key.yaml")
+                .expect("resolve relative source"),
+            source.canonicalize().unwrap()
+        );
+        assert_eq!(
+            resolve_sops_source_file(config_dir.path(), source.to_str().unwrap())
+                .expect("resolve absolute source"),
+            source
+        );
+    }
+
+    #[test]
+    fn nix_store_source_name_preserves_hyphens_in_the_original_name() {
+        assert_eq!(
+            nix_store_source_name("qvig1r3ycb2y3jrhwj287fi5q9i1dasa-my-app-api-key.yaml"),
+            Some("my-app-api-key.yaml")
+        );
+        assert_eq!(nix_store_source_name("short-hash-secret.yaml"), None);
+        assert_eq!(
+            nix_store_source_name("qvig1r3ycb2y3jrhwj287fi5q9i1dasa-"),
+            None
+        );
+    }
+
+    #[test]
+    fn evaluated_sops_file_matches_its_unique_repository_source() {
+        let config_dir = TempDir::new().expect("create config dir");
+        let evaluated_dir = TempDir::new().expect("create evaluated dir");
+        let source = config_dir.path().join("secrets/my-app-api-key.yaml");
+        fs::create_dir_all(source.parent().unwrap()).expect("create secrets dir");
+        fs::write(&source, "encrypted contents").expect("write source secret");
+        let evaluated = evaluated_dir.path().join("store-copy.yaml");
+        fs::write(&evaluated, "encrypted contents").expect("write evaluated secret");
+
+        assert_eq!(
+            match_repo_file_by_name_and_contents(
+                config_dir.path(),
+                &evaluated,
+                "my-app-api-key.yaml",
+            )
+            .expect("match repository source"),
+            source
+        );
+    }
+
+    #[test]
+    fn evaluated_sops_file_refuses_ambiguous_repository_sources() {
+        let config_dir = TempDir::new().expect("create config dir");
+        let evaluated_dir = TempDir::new().expect("create evaluated dir");
+        for directory in ["secrets", "other"] {
+            let source = config_dir.path().join(directory).join("shared.yaml");
+            fs::create_dir_all(source.parent().unwrap()).expect("create source dir");
+            fs::write(source, "same encrypted contents").expect("write source secret");
+        }
+        let evaluated = evaluated_dir.path().join("store-copy.yaml");
+        fs::write(&evaluated, "same encrypted contents").expect("write evaluated secret");
+
+        let error =
+            match_repo_file_by_name_and_contents(config_dir.path(), &evaluated, "shared.yaml")
+                .expect_err("ambiguous sources must fail");
+        assert!(error.to_string().contains("Multiple repository files"));
+    }
+
+    #[test]
+    fn evaluated_sops_file_refuses_same_name_with_different_contents() {
+        let config_dir = TempDir::new().expect("create config dir");
+        let evaluated_dir = TempDir::new().expect("create evaluated dir");
+        let source = config_dir.path().join("secrets/shared.yaml");
+        fs::create_dir_all(source.parent().unwrap()).expect("create source dir");
+        fs::write(source, "old encrypted contents").expect("write source secret");
+        let evaluated = evaluated_dir.path().join("store-copy.yaml");
+        fs::write(&evaluated, "different encrypted contents").expect("write evaluated secret");
+
+        let error =
+            match_repo_file_by_name_and_contents(config_dir.path(), &evaluated, "shared.yaml")
+                .expect_err("different contents must not match");
+        assert!(
+            error
+                .to_string()
+                .contains("Could not find repository source")
         );
     }
 
