@@ -73,6 +73,46 @@ fn normalize_attrpath_for_match(input: &str) -> String {
         .collect()
 }
 
+/// Split a Nix attribute path without treating dots inside quoted attribute
+/// names as separators (for example `age.secrets."api.token"`).
+fn split_attrpath_for_match(attrpath: &str) -> Vec<String> {
+    let mut segments = Vec::new();
+    let mut current = String::new();
+    let mut quoted = false;
+    let mut escaped = false;
+    for ch in attrpath.chars() {
+        if escaped {
+            current.push(ch);
+            escaped = false;
+            continue;
+        }
+        if quoted && ch == '\\' {
+            current.push(ch);
+            escaped = true;
+            continue;
+        }
+        if ch == '"' {
+            quoted = !quoted;
+            current.push(ch);
+            continue;
+        }
+        if ch == '.' && !quoted {
+            let normalized = normalize_attrpath_for_match(&current);
+            if !normalized.is_empty() {
+                segments.push(normalized);
+            }
+            current.clear();
+        } else {
+            current.push(ch);
+        }
+    }
+    let normalized = normalize_attrpath_for_match(&current);
+    if !normalized.is_empty() {
+        segments.push(normalized);
+    }
+    segments
+}
+
 fn render_nix_string(value: &str) -> String {
     let mut rendered = String::from("\"");
     for ch in value.chars() {
@@ -631,17 +671,8 @@ pub(crate) fn infer_single_list_attrpath(content: &str) -> Result<Option<String>
 /// This is the structural counterpart to `find_assignment_value_range`, which
 /// matches only a flat dotted LHS and so cannot see a leaf nested inside an
 /// attrset literal — the case that let `add()` insert a duplicate assignment.
-///
-/// Known limitation: a quoted key containing dots (e.g.
-/// `NSGlobalDomain."com.apple.sound.beep.feedback"`) is one AST segment but
-/// splits into several here, so such paths won't resolve. That matches the
-/// existing dot-splitting behaviour elsewhere in this module.
 fn find_attrpath_value_node(root: &SyntaxNode, attrpath: &str) -> Option<SyntaxNode> {
-    let target: Vec<String> = attrpath
-        .split('.')
-        .map(normalize_attrpath_for_match)
-        .filter(|segment| !segment.is_empty())
-        .collect();
+    let target = split_attrpath_for_match(attrpath);
     if target.is_empty() {
         return None;
     }
@@ -912,11 +943,7 @@ fn remove(content: &str, attrpath: &str, values: &[String]) -> Result<String> {
 /// attrsets are intentionally preserved. An absent attrpath is reported as an error so
 /// callers performing destructive operations do not silently succeed.
 pub(crate) fn remove_attrpath(content: &str, attrpath: &str) -> Result<String> {
-    let target = attrpath
-        .split('.')
-        .map(normalize_attrpath_for_match)
-        .filter(|segment| !segment.is_empty())
-        .collect::<Vec<_>>();
+    let target = split_attrpath_for_match(attrpath);
     if target.is_empty() {
         return Err(anyhow::anyhow!("Nix attrpath must not be empty"));
     }
@@ -953,6 +980,37 @@ pub(crate) fn remove_attrpath(content: &str, attrpath: &str) -> Result<String> {
         updated.replace_range(start..end, "");
     }
     Ok(updated)
+}
+
+/// Remove an attribute path from an existing Nix file and optionally format it.
+///
+/// This is the filesystem counterpart to [`remove_attrpath`]. Keeping it here
+/// ensures callers share the same path-safety, read-modify-write, and formatting
+/// behavior instead of implementing their own Nix file mutation wrappers.
+pub(crate) fn remove_attrpath_in_file(
+    base: &Path,
+    relative_file: &str,
+    attrpath: &str,
+    auto_format: bool,
+) -> Result<()> {
+    rewrite_existing_file_in_dir(
+        base,
+        relative_file,
+        "remove Nix attribute path",
+        None,
+        |content| remove_attrpath(content, attrpath),
+    )?;
+
+    if auto_format {
+        let config_dir = base.to_string_lossy();
+        if let Err(error) = nix_format(&config_dir, relative_file) {
+            log::warn!(
+                "Removed Nix attrpath '{attrpath}', but formatting {relative_file} failed: {error}"
+            );
+        }
+    }
+
+    Ok(())
 }
 
 /// Helper to recursively collect the byte ranges of all assignments that match a given attrpath prefix, including nested attrsets.
@@ -1491,6 +1549,45 @@ environment.systemPackages = with pkgs; [
         let error = remove_attrpath("{ services.foo.enable = true; }", "sops.secrets.foo")
             .expect_err("missing attrpath must not silently succeed");
         assert!(error.to_string().contains("does not exist"));
+    }
+
+    #[test]
+    fn remove_attrpath_preserves_dots_inside_quoted_segments() {
+        let rules = r#"{
+  "api.token.age".publicKeys = [ "age1example" ];
+  "other.age".publicKeys = [ "age1example" ];
+}
+"#;
+        let updated =
+            remove_attrpath(rules, "\"api.token.age\"").expect("remove quoted agenix rule");
+
+        assert!(!updated.contains("api.token.age"));
+        assert!(updated.contains("other.age"));
+    }
+
+    #[test]
+    fn remove_attrpath_in_file_rewrites_only_the_target_assignment() {
+        let repo = tempfile::tempdir().expect("create temporary repository");
+        let relative_file = "secrets/secrets.nix";
+        let directory = repo.path().join("secrets");
+        std::fs::create_dir(&directory).expect("create secrets directory");
+        let file = directory.join("secrets.nix");
+        std::fs::write(
+            &file,
+            r#"{
+  "api.token.age".publicKeys = [ "age1example" ];
+  "other.age".publicKeys = [ "age1example" ];
+}
+"#,
+        )
+        .expect("write Nix fixture");
+
+        remove_attrpath_in_file(repo.path(), relative_file, "\"api.token.age\"", false)
+            .expect("remove attrpath from file");
+
+        let updated = std::fs::read_to_string(file).expect("read updated Nix file");
+        assert!(!updated.contains("api.token.age"));
+        assert!(updated.contains("other.age"));
     }
 
     #[test]

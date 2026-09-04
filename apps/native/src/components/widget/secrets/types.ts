@@ -27,6 +27,8 @@ export interface ApplyFileChip {
 /** Payload for the review → build → commit sheet. */
 export interface ApplyRequest {
   origin: "add" | "rotate" | "prompt" | "register";
+  /** Encryption backend for requests that operate on one backend. */
+  backend?: SecretBackend;
   title: string;
   subtitle: string;
   plan?: string[];

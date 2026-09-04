@@ -82,6 +82,21 @@ pub(crate) fn relative_path_between(from: &Path, to: &Path) -> anyhow::Result<Pa
     Ok(relative)
 }
 
+/// Compute a lexical relative path rendered as a portable Nix path literal.
+///
+/// Unlike a plain filesystem path, a same-directory or child Nix path must
+/// start with `./` so it is parsed as a path rather than an identifier.
+pub(crate) fn relative_nix_path_between(from: &Path, to: &Path) -> anyhow::Result<String> {
+    let rendered = relative_path_between(from, to)?
+        .to_string_lossy()
+        .replace('\\', "/");
+    Ok(if rendered.starts_with('.') {
+        rendered
+    } else {
+        format!("./{rendered}")
+    })
+}
+
 /// Canonicalize and validate a path exists under `base`.
 pub(crate) fn resolve_existing_path_in_dir(base: &Path, rel: &str) -> anyhow::Result<PathBuf> {
     let full_path = join_in_dir(base, rel)?;
@@ -524,8 +539,8 @@ fn reject_gitignored_edit_path(
 #[cfg(test)]
 mod tests {
     use super::{
-        apply_file_edits, relative_path_between, repo_relative_path, repo_relative_path_string,
-        rewrite_existing_file_in_dir,
+        apply_file_edits, relative_nix_path_between, relative_path_between, repo_relative_path,
+        repo_relative_path_string, rewrite_existing_file_in_dir,
     };
     use crate::evolve::gitignore::GitignoreChecker;
     use crate::shared_types::FileEdit;
@@ -555,6 +570,16 @@ mod tests {
             relative_path_between(Path::new("modules"), Path::new("modules"))
                 .expect("compute identity path"),
             Path::new(".")
+        );
+        assert_eq!(
+            relative_nix_path_between(Path::new("modules"), Path::new("secrets/token.age"))
+                .expect("render parent Nix path"),
+            "../secrets/token.age"
+        );
+        assert_eq!(
+            relative_nix_path_between(Path::new(""), Path::new("secrets/token.age"))
+                .expect("render child Nix path"),
+            "./secrets/token.age"
         );
     }
 

@@ -402,6 +402,19 @@ pub(crate) fn load_recipients(
     ))
 }
 
+/// Resolve the repository's active SOPS config file. The repo root is treated as
+/// the source of truth, so a single helper keeps discovery stable for both the
+/// `.sops.yaml` and `sops.yaml` conventions.
+fn sops_config_path(config_dir: &Path) -> Option<PathBuf> {
+    if config_dir.join(".sops.yaml").exists() {
+        Some(config_dir.join(".sops.yaml"))
+    } else if config_dir.join("sops.yaml").exists() {
+        Some(config_dir.join("sops.yaml"))
+    } else {
+        None
+    }
+}
+
 /// Load the public recipients declared by the repository's SOPS config.
 ///
 /// YAML aliases resolve to their scalar values during deserialization, but their
@@ -410,11 +423,7 @@ pub(crate) fn load_recipients(
 /// source scan recovers optional friendly names such as `&build-server`.
 /// If this doesn't make sense, see the unit tests.
 fn load_sops_config_recipients(config_dir: &Path) -> Result<Vec<ConfigRecipient>, String> {
-    let config_path = if config_dir.join(".sops.yaml").exists() {
-        config_dir.join(".sops.yaml")
-    } else if config_dir.join("sops.yaml").exists() {
-        config_dir.join("sops.yaml")
-    } else {
+    let Some(config_path) = sops_config_path(config_dir) else {
         return Ok(Vec::new());
     };
     let source = fs::read_to_string(&config_path)
@@ -553,19 +562,14 @@ fn load_agenix_rules(
         config_dir.display(),
         rules_override.is_some()
     );
-    let rules_path = if let Some(rules_override) = rules_override {
-        let configured_path = PathBuf::from(rules_override);
-        match resolve_agenix_rules_path(config_dir, &configured_path) {
-            Ok(path) => Some(path),
-            Err(error) => {
-                return handle_agenix_rules_result(&configured_path, true, Err(error));
-            }
+    let rules_path = match discover_agenix_rules_path(config_dir) {
+        Ok(path) => path,
+        Err(error) => {
+            let configured_path = rules_override
+                .map(PathBuf::from)
+                .unwrap_or_else(|| PathBuf::from("$RULES"));
+            return handle_agenix_rules_result(&configured_path, true, Err(error));
         }
-    } else {
-        ["secrets.nix", "secrets/secrets.nix"]
-            .into_iter()
-            .map(|path| config_dir.join(path))
-            .find(|path| path.is_file())
     };
     let Some(rules_path) = rules_path else {
         log::debug!(
@@ -575,6 +579,19 @@ fn load_agenix_rules(
     };
     let result = evaluate_agenix_rules(config_dir, &rules_path, secret_entries);
     handle_agenix_rules_result(&rules_path, explicitly_configured, result)
+}
+
+/// Discover the classic agenix rules path using the same precedence as agenix:
+/// `$RULES`, `secrets.nix`, then `secrets/secrets.nix`.
+pub(crate) fn discover_agenix_rules_path(config_dir: &Path) -> Result<Option<PathBuf>, String> {
+    if let Some(rules_override) = std::env::var_os("RULES").filter(|value| !value.is_empty()) {
+        return resolve_agenix_rules_path(config_dir, &PathBuf::from(rules_override)).map(Some);
+    }
+
+    Ok(["secrets.nix", "secrets/secrets.nix"]
+        .into_iter()
+        .map(|path| config_dir.join(path))
+        .find(|path| path.is_file()))
 }
 
 /// Resolve an inherited rules override without allowing a relative path or
@@ -688,6 +705,38 @@ fn handle_agenix_rules_result(
     }
 }
 
+/// Resolve which evaluated agenix secret declarations match a rule entry.
+/// We prefer an exact path match and fall back to a unique basename match only
+/// when the rules file cannot preserve the directory layout (for example when
+/// builtins.path expands to a store path).
+fn match_agenix_secret_entries<'a>(
+    secret_file: &str,
+    secret_entries: &'a [SecretEntry],
+) -> Vec<&'a SecretEntry> {
+    let exact_matching_entries: Vec<&SecretEntry> = secret_entries
+        .iter()
+        .filter(|entry| {
+            entry.backend == SecretBackend::Agenix && Path::new(&entry.file).ends_with(secret_file)
+        })
+        .collect();
+    if !exact_matching_entries.is_empty() {
+        return exact_matching_entries;
+    }
+
+    let Some(basename) = Path::new(secret_file)
+        .file_name()
+        .and_then(|name| name.to_str())
+    else {
+        return Vec::new();
+    };
+    secret_entries
+        .iter()
+        .filter(|entry| {
+            entry.backend == SecretBackend::Agenix && agenix_filename_matches(&entry.file, basename)
+        })
+        .collect()
+}
+
 /// Build the per-secret recipient inventory and repository-level recipient registrations from the evaluated agenix rules.
 fn build_agenix_rules(
     config_dir: &Path,
@@ -765,7 +814,6 @@ fn build_agenix_rules(
                 .collect()
         };
         let mut matched = false;
-        let mut direct_match_count = 0;
         for path in candidates.into_iter().flatten() {
             if path.is_file() {
                 inventory
@@ -773,48 +821,9 @@ fn build_agenix_rules(
                     .or_default()
                     .extend(encrypted_for.iter().cloned());
                 matched = true;
-                direct_match_count += 1;
             }
         }
-        let exact_matching_entries: Vec<&SecretEntry> = secret_entries
-            .iter()
-            .filter(|entry| {
-                entry.backend == SecretBackend::Agenix
-                    && Path::new(&entry.file).ends_with(&secret_file)
-            })
-            .collect();
-        // builtins.path commonly produces /nix/store/<hash>-<basename>, which
-        // cannot retain the rules file's directory suffix. Fall back to a
-        // unique filename match, allowing that Nix store hash prefix, but
-        // never guess when multiple agenix declarations share the basename.
-        let basename = Path::new(&secret_file)
-            .file_name()
-            .and_then(|name| name.to_str());
-        let basename_matching_entries: Vec<&SecretEntry> = if exact_matching_entries.is_empty() {
-            basename
-                .map(|basename| {
-                    secret_entries
-                        .iter()
-                        .filter(|entry| {
-                            entry.backend == SecretBackend::Agenix
-                                && agenix_filename_matches(&entry.file, basename)
-                        })
-                        .collect()
-                })
-                .unwrap_or_default()
-        } else {
-            Vec::new()
-        };
-        let matching_entries = if exact_matching_entries.is_empty() {
-            &basename_matching_entries
-        } else {
-            &exact_matching_entries
-        };
-        log::debug!(
-            "Agenix rule '{secret_file}': repository_path_matches={direct_match_count}, evaluated_exact_matches={}, evaluated_basename_matches={}",
-            exact_matching_entries.len(),
-            basename_matching_entries.len()
-        );
+        let matching_entries = match_agenix_secret_entries(&secret_file, secret_entries);
         if matching_entries.len() == 1
             && let Ok(path) = resolve_secret_file_path(
                 config_dir.to_string_lossy().as_ref(),
@@ -845,7 +854,7 @@ fn build_agenix_rules(
 
 /// Check if the given entry file name matches the expected basename according to the Agenix naming convention.
 /// This includes the convention where the filename may have a 32-character store hash prefix followed by a hyphen and the basename.
-fn agenix_filename_matches(entry_file: &str, basename: &str) -> bool {
+pub(super) fn agenix_filename_matches(entry_file: &str, basename: &str) -> bool {
     let Some(filename) = Path::new(entry_file)
         .file_name()
         .and_then(|name| name.to_str())

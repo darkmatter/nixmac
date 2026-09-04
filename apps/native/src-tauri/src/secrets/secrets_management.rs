@@ -2,16 +2,16 @@ use crate::{
     evolve::{
         GitignoreChecker, NixmacIgnoreChecker,
         file_ops::{
-            relative_path_between, repo_relative_path, repo_relative_path_string,
-            resolve_existing_path_in_dir,
+            relative_nix_path_between, relative_path_between, repo_relative_path,
+            repo_relative_path_string, resolve_existing_path_in_dir,
         },
     },
     secrets::{
         identities::load_secret_identities,
         is_readable_file,
         recipients::{
-            apply_recipients_to_secrets_with_identities, load_recipients,
-            recipient_has_local_identity,
+            agenix_filename_matches, apply_recipients_to_secrets_with_identities,
+            discover_agenix_rules_path, load_recipients, recipient_has_local_identity,
         },
         resolve_secret_file_path, sanitized_subprocess_error,
     },
@@ -31,10 +31,60 @@ use std::{
 
 /// The path to the standard nix-darwin module that declares SOPS secrets.
 const STANDARD_SOPS_MODULE: &str = "modules/darwin/sops-secrets.nix";
+const STANDARD_AGENIX_MODULE: &str = "modules/darwin/agenix-secrets.nix";
 
 /// Returns the repository-relative path used for a SOPS secret.
 fn managed_sops_file(secret_id: &str) -> String {
     format!("secrets/{secret_id}.yaml")
+}
+
+const UNCOMMITTED_REPO_ERROR: &str = "The repository has uncommitted changes. Commit or stash them before editing secrets so nixmac can roll back safely if verification fails.";
+
+/// Require a clean repository before mutating a secret. This is a safety check,
+/// not a formatting policy: the add/delete flows verify each edit with a dry
+/// build and then commit only the files they touched. If verification fails, we
+/// restore the exact paths we edited rather than guessing about unrelated work.
+fn ensure_clean_repo(config_dir: &str) -> anyhow::Result<()> {
+    let status = crate::git::status(config_dir).context("inspect repository status")?;
+    if status.clean_head {
+        Ok(())
+    } else {
+        anyhow::bail!(UNCOMMITTED_REPO_ERROR)
+    }
+}
+
+/// Best-effort rollback for the small set of repository files touched by a secret
+/// mutation. The clean-repo guard above ensures we only restore the exact files
+/// owned by this operation; restoring unrelated user changes would be unsafe.
+fn restore_repo_files_on_failure(config_dir: &str, paths: &[&str]) {
+    for path in paths {
+        if path.is_empty() {
+            continue;
+        }
+        let _ = crate::git::restore_file(config_dir, path);
+    }
+}
+
+/// Shared validation for the secret-edit flow: after a file mutation, we rerun
+/// the host dry build before committing. The build acts as the final safety
+/// gate, and if it fails we undo just the files touched in this operation.
+fn verify_dry_build_for_secret_edit(
+    config_dir: &str,
+    host_attr: &str,
+    action: &str,
+) -> anyhow::Result<()> {
+    let (passed, stdout, stderr) =
+        crate::rebuild::dry_run_build_check(config_dir, host_attr, false)
+            .context("run darwin build check")?;
+    if passed {
+        Ok(())
+    } else {
+        anyhow::bail!(
+            "darwin build check failed after {action}:\n{}{}",
+            stdout,
+            stderr
+        )
+    }
 }
 
 /// Deletes a secret from the configured repo, returning the result.
@@ -46,7 +96,7 @@ pub fn delete_secret(
 ) -> Result<crate::shared_types::DeleteSecretResult, String> {
     match backend {
         SecretBackend::Sops => delete_sops_secret(host_attr, config_dir, secret_id),
-        SecretBackend::Agenix => Err("Deleting agenix secrets is not yet implemented".to_string()),
+        SecretBackend::Agenix => delete_age_secret(host_attr, config_dir, secret_id),
     }
 }
 
@@ -61,8 +111,197 @@ pub fn add_secret(
     match backend {
         SecretBackend::Sops => add_sops_secret(host_attr, config_dir, secret_id, value)
             .map_err(|error| error.to_string()),
-        SecretBackend::Agenix => Err("Adding agenix secrets is not yet implemented".to_string()),
+        SecretBackend::Agenix => add_age_secret(host_attr, config_dir, secret_id, value)
+            .map_err(|error| error.to_string()),
     }
+}
+
+/// Deletes an agenix secret from the configured repo, returning the result.
+/// Requires that the repository is clean and that the secret exists.
+/// If the operation fails, it attempts to restore the repository to its original state.
+fn delete_age_secret(
+    host_attr: &str,
+    config_dir: &str,
+    secret_id: &str,
+) -> Result<crate::shared_types::DeleteSecretResult, String> {
+    (|| -> anyhow::Result<crate::shared_types::DeleteSecretResult> {
+        ensure_clean_repo(config_dir)?;
+
+        log::info!("Deleting agenix secret declaration {secret_id} from config dir {config_dir}");
+
+        let secret = load_agenix_secrets(host_attr, config_dir)
+            .map_err(|error| anyhow!(error))?
+            .into_iter()
+            .find(|secret| secret.id == secret_id)
+            .ok_or_else(|| anyhow!("Secret declaration '{secret_id}' does not exist"))?;
+
+        let base = Path::new(config_dir);
+        let rules_file = find_agenix_rules_file(base)?;
+        let declaration_file = find_agenix_declaration_file(base)?;
+        let rules_rel = repo_relative_path_string(base, &rules_file)?;
+        let declaration_rel = repo_relative_path_string(base, &declaration_file)?;
+        let (rule_key, encrypted_path) =
+            resolve_agenix_rule_file(config_dir, &rules_file, &secret)?;
+        let encrypted_rel = repo_relative_path_string(base, &encrypted_path)?;
+
+        let operation = (|| -> anyhow::Result<crate::shared_types::DeleteSecretResult> {
+            std::fs::remove_file(&encrypted_path).context("remove encrypted agenix secret")?;
+            remove_agenix_rule(base, &rules_rel, &rule_key)?;
+            remove_agenix_declaration(base, &declaration_rel, secret_id)?;
+
+            verify_dry_build_for_secret_edit(config_dir, host_attr, "deleting the secret")?;
+
+            if load_agenix_secrets(host_attr, config_dir)
+                .map_err(|error| anyhow!(error))?
+                .iter()
+                .any(|secret| secret.id == secret_id)
+            {
+                anyhow::bail!("The agenix declaration is still present after editing the module");
+            }
+            if load_agenix_rule_keys(config_dir, &rules_file)?.contains(&rule_key) {
+                anyhow::bail!("The agenix rule '{rule_key}' is still present after editing");
+            }
+
+            let commit = crate::git::commit_files(
+                config_dir,
+                &[&encrypted_rel, &rules_rel, &declaration_rel],
+                &format!("secrets: delete {secret_id} (agenix)"),
+            )
+            .context("commit deleted agenix secret")?;
+
+            Ok(crate::shared_types::DeleteSecretResult {
+                secret_id: secret_id.to_string(),
+                commit_hash: commit.hash,
+            })
+        })();
+
+        if operation.is_err() {
+            restore_repo_files_on_failure(
+                config_dir,
+                &[
+                    encrypted_rel.as_str(),
+                    rules_rel.as_str(),
+                    declaration_rel.as_str(),
+                ],
+            );
+        }
+        operation
+    })()
+    .map_err(|error| error.to_string())
+}
+
+/// Load the evaluated agenix rule names from the rules file, returning an error if evaluation fails or the output is not valid JSON for some reason.
+fn load_agenix_rule_keys(config_dir: &str, rules_file: &Path) -> anyhow::Result<Vec<String>> {
+    let output = nix_command(config_dir)
+        .args([
+            "eval",
+            "--json",
+            "--file",
+            rules_file.to_string_lossy().as_ref(),
+            "--apply",
+            "rules: builtins.attrNames rules",
+        ])
+        .output()
+        .context("evaluate agenix rules")?;
+    if !output.status.success() {
+        anyhow::bail!(
+            "Agenix rules evaluation failed with status {}: {}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+    }
+    serde_json::from_slice(&output.stdout).context("parse evaluated agenix rule names")
+}
+
+/// Resolve the agenix rule key and the path to the encrypted file for a given secret entry,
+/// returning an error if the rule cannot be resolved or the file does not exist.
+fn resolve_agenix_rule_file(
+    config_dir: &str,
+    rules_file: &Path,
+    secret: &SecretEntry,
+) -> anyhow::Result<(String, PathBuf)> {
+    let base = Path::new(config_dir);
+    let rules_dir = rules_file.parent().unwrap_or(base);
+    let rule_keys = load_agenix_rule_keys(config_dir, rules_file)?;
+    let rule_key = matching_agenix_rule_key(&rule_keys, secret)?;
+
+    let mut candidates = [rules_dir.join(&rule_key), base.join(&rule_key)]
+        .into_iter()
+        .filter_map(|path| path.canonicalize().ok())
+        .filter(|path| path.is_file())
+        .collect::<Vec<_>>();
+    candidates.sort();
+    candidates.dedup();
+    let resolved = match candidates.as_slice() {
+        [path] => path,
+        [] => anyhow::bail!("Encrypted file for agenix rule '{rule_key}' does not exist"),
+        _ => anyhow::bail!(
+            "Agenix rule '{rule_key}' resolves to multiple repository files; refusing to guess"
+        ),
+    };
+    let base_resolved = base.canonicalize().context("resolve repository")?;
+    let relative = repo_relative_path(&base_resolved, resolved).with_context(|| {
+        format!(
+            "Encrypted agenix file {} is outside the repository and cannot be deleted",
+            resolved.display()
+        )
+    })?;
+    Ok((rule_key, base.join(relative)))
+}
+
+/// Find the agenix rule key that matches a given secret entry, preferring an exact path match and falling back to a unique basename match if necessary.
+fn matching_agenix_rule_key(rule_keys: &[String], secret: &SecretEntry) -> anyhow::Result<String> {
+    let evaluated_path = Path::new(&secret.file);
+    let exact = rule_keys
+        .iter()
+        .filter(|key| evaluated_path.ends_with(Path::new(key)))
+        .cloned()
+        .collect::<Vec<_>>();
+    let matching = if exact.is_empty() {
+        rule_keys
+            .iter()
+            .filter(|key| {
+                Path::new(key)
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|basename| agenix_filename_matches(&secret.file, basename))
+            })
+            .cloned()
+            .collect::<Vec<_>>()
+    } else {
+        exact
+    };
+    match matching.as_slice() {
+        [key] => Ok(key.clone()),
+        [] => anyhow::bail!(
+            "Could not find an agenix rule matching secret '{}' at {}",
+            secret.id,
+            secret.file
+        ),
+        _ => anyhow::bail!(
+            "Found multiple agenix rules matching secret '{}' at {}; refusing to guess",
+            secret.id,
+            secret.file
+        ),
+    }
+}
+
+/// Remove an agenix rule from the rules file, returning an error if the rule was not found.
+fn remove_agenix_rule(base: &Path, relative_file: &str, rule_key: &str) -> anyhow::Result<()> {
+    let attrpath = serde_json::to_string(rule_key).expect("serialize agenix rule key");
+    crate::evolve::nix_file_editor::remove_attrpath_in_file(base, relative_file, &attrpath, true)
+        .with_context(|| format!("remove agenix rule '{attrpath}'"))
+}
+
+/// Remove an agenix declaration for a specific secret from the declaration module, returning an error if the declaration was not found.
+fn remove_agenix_declaration(
+    base: &Path,
+    relative_file: &str,
+    secret_id: &str,
+) -> anyhow::Result<()> {
+    let attrpath = format!("age.secrets.\"{secret_id}\"");
+    crate::evolve::nix_file_editor::remove_attrpath_in_file(base, relative_file, &attrpath, true)
+        .with_context(|| format!("remove agenix declaration '{attrpath}'"))
 }
 
 /// Deletes a SOPS secret from the configured repo, returning the result.
@@ -74,12 +313,7 @@ fn delete_sops_secret(
     secret_id: &str,
 ) -> Result<crate::shared_types::DeleteSecretResult, String> {
     (|| -> anyhow::Result<crate::shared_types::DeleteSecretResult> {
-        let status = crate::git::status(config_dir).context("inspect repository status")?;
-        if !status.clean_head {
-            anyhow::bail!(
-                "The repository has uncommitted changes. Commit or stash them before deleting a secret so nixmac can roll back safely if verification fails."
-            );
-        }
+        ensure_clean_repo(config_dir)?;
 
         log::info!("Deleting SOPS secret declaration {secret_id} from config dir {config_dir}");
 
@@ -104,16 +338,7 @@ fn delete_sops_secret(
             std::fs::remove_file(&encrypted_path).context("remove SOPS secret file")?;
             remove_sops_declaration(base, &declaration_rel, secret_id)?;
 
-            let (passed, stdout, stderr) =
-                crate::rebuild::dry_run_build_check(config_dir, host_attr, false)
-                    .context("run darwin build check")?;
-            if !passed {
-                anyhow::bail!(
-                    "darwin build check failed after deleting the secret:\n{}{}",
-                    stdout,
-                    stderr
-                );
-            }
+            verify_dry_build_for_secret_edit(config_dir, host_attr, "deleting the secret")?;
 
             if load_sops_secrets(host_attr, config_dir)
                 .map_err(|error| anyhow!(error))?
@@ -137,8 +362,10 @@ fn delete_sops_secret(
         })();
 
         if operation.is_err() {
-            let _ = crate::git::restore_file(config_dir, &encrypted_file);
-            let _ = crate::git::restore_file(config_dir, &declaration_rel);
+            restore_repo_files_on_failure(
+                config_dir,
+                &[encrypted_file.as_str(), declaration_rel.as_str()],
+            );
         }
         operation
     })()
@@ -151,17 +378,335 @@ fn remove_sops_declaration(
     relative_file: &str,
     secret_id: &str,
 ) -> anyhow::Result<()> {
-    let path = crate::evolve::file_ops::resolve_existing_path_in_dir(base, relative_file)?;
-    let content = std::fs::read_to_string(&path).context("read SOPS declaration module")?;
     let attrpath = format!("sops.secrets.\"{secret_id}\"");
-    let updated = crate::evolve::nix_file_editor::remove_attrpath(&content, &attrpath)
-        .with_context(|| format!("remove SOPS declaration '{secret_id}'"))?;
-    std::fs::write(&path, updated).context("write SOPS declaration module")?;
-    let config_dir = base.to_string_lossy();
-    if let Err(error) = crate::system::nix::nix_format(&config_dir, relative_file) {
-        log::warn!("Failed to format {relative_file} after deleting a secret: {error}");
+    crate::evolve::nix_file_editor::remove_attrpath_in_file(base, relative_file, &attrpath, true)
+        .with_context(|| format!("remove SOPS declaration '{attrpath}'"))
+}
+
+/// Add an agenix secret to the configured repo, returning the result.
+/// Requires that the repository is clean and that the secret does not already exist.
+/// If the operation fails, it attempts to restore the repository to its original state.
+fn add_age_secret(
+    host_attr: &str,
+    config_dir: &str,
+    secret_id: &str,
+    value: &str,
+) -> anyhow::Result<AddSecretResult> {
+    validate_new_secret(secret_id, value)?;
+    ensure_clean_repo(config_dir)?;
+
+    let base = Path::new(config_dir);
+    let vault = load_secrets_vault(host_attr, config_dir).map_err(|error| anyhow!(error))?;
+    if vault.entries.iter().any(|secret| secret.id == secret_id) {
+        anyhow::bail!("Secret declaration '{secret_id}' already exists");
     }
-    Ok(())
+
+    // Steps:
+    // 1. Encrypt the secret value with age and write it to a new file in the repository.
+    // 2. Add a new rule to the agenix rules file that points to the encrypted file and lists the recipients.
+    // 3. Add a new declaration to the agenix declaration module that points to the encrypted file.
+
+    let rules_file = find_agenix_rules_file(base)?;
+    let declaration_file = find_agenix_declaration_file(base)?;
+    let rules_rel = repo_relative_path_string(base, &rules_file)?;
+    let declaration_rel = repo_relative_path_string(base, &declaration_file)?;
+    let encrypted_rel = format!("secrets/{secret_id}.age");
+    let encrypted_path = base.join(&encrypted_rel);
+    if encrypted_path.exists() {
+        anyhow::bail!("Encrypted file '{encrypted_rel}' already exists");
+    }
+
+    let recipients = vault
+        .recipients
+        .iter()
+        .filter(|recipient| {
+            recipient
+                .registrations
+                .iter()
+                .any(|registration| registration.backend == SecretBackend::Agenix)
+        })
+        .map(|recipient| recipient.public_key.clone())
+        .collect::<Vec<_>>();
+    if recipients.is_empty() {
+        anyhow::bail!(
+            "No agenix recipients were found in {}. Register at least one public key before adding a secret.",
+            rules_rel
+        );
+    }
+
+    let operation = (|| -> anyhow::Result<AddSecretResult> {
+        encrypt_age_secret(config_dir, &encrypted_rel, value.as_bytes(), &recipients)?;
+        declare_agenix_rule(base, &rules_file, &encrypted_rel, &recipients)?;
+        declare_agenix_secret(base, &declaration_file, secret_id, &encrypted_rel)?;
+
+        verify_dry_build_for_secret_edit(config_dir, host_attr, "adding the secret")?;
+
+        let reloaded_vault =
+            load_secrets_vault(host_attr, config_dir).map_err(|error| anyhow!(error))?;
+        let declared = reloaded_vault
+            .entries
+            .iter()
+            .find(|secret| secret.backend == SecretBackend::Agenix && secret.id == secret_id);
+        let Some(declared) = declared else {
+            anyhow::bail!(
+                "The edited agenix declaration was not present in the evaluated host configuration"
+            );
+        };
+        if !declared.public_recipients_resolved
+            || !recipients
+                .iter()
+                .all(|recipient| declared.public_recipients.contains(recipient))
+        {
+            anyhow::bail!(
+                "The new agenix rule did not resolve to every recipient used for encryption"
+            );
+        }
+
+        let commit = crate::git::commit_files(
+            config_dir,
+            &[&encrypted_rel, &rules_rel, &declaration_rel],
+            &format!("secrets: add {secret_id} (agenix)"),
+        )
+        .context("commit agenix secret")?;
+
+        Ok(AddSecretResult {
+            secret_id: secret_id.to_string(),
+            encrypted_file: encrypted_rel.clone(),
+            declaration_file: declaration_rel.clone(),
+            runtime_path: format!("/run/agenix/{secret_id}"),
+            commit_hash: commit.hash,
+        })
+    })();
+
+    if operation.is_err() {
+        restore_repo_files_on_failure(
+            config_dir,
+            &[
+                encrypted_rel.as_str(),
+                rules_rel.as_str(),
+                declaration_rel.as_str(),
+            ],
+        );
+    }
+    operation
+}
+
+/// Locate the classic agenix rules file that nixmac can safely edit and commit.
+fn find_agenix_rules_file(base: &Path) -> anyhow::Result<PathBuf> {
+    let candidate = discover_agenix_rules_path(base)
+        .map_err(|error| anyhow!(error))?
+        .ok_or_else(|| {
+            anyhow!("Could not find classic agenix rules at secrets.nix or secrets/secrets.nix")
+        })?;
+    let resolved = candidate
+        .canonicalize()
+        .with_context(|| format!("resolve agenix rules file {}", candidate.display()))?;
+    if !resolved.is_file() {
+        anyhow::bail!(
+            "Agenix rules path {} is not a regular file",
+            resolved.display()
+        );
+    }
+    let base_resolved = base
+        .canonicalize()
+        .with_context(|| format!("resolve repository {}", base.display()))?;
+    let relative = repo_relative_path(&base_resolved, &resolved).with_context(|| {
+        format!(
+            "Agenix rules file {} is outside the repository and cannot be committed",
+            resolved.display()
+        )
+    })?;
+    Ok(base.join(relative))
+}
+
+/// Find the Nix module that owns `age.secrets` declarations.
+fn find_agenix_declaration_file(base: &Path) -> anyhow::Result<PathBuf> {
+    find_secret_declaration_file(base, STANDARD_AGENIX_MODULE, "age.secrets", "agenix")
+}
+
+/// Find the Nix module that owns `sops.secrets` declarations.
+fn find_sops_declaration_file(base: &Path) -> anyhow::Result<PathBuf> {
+    find_secret_declaration_file(base, STANDARD_SOPS_MODULE, "sops.secrets", "SOPS")
+}
+
+/// Find a Nix module that contains a specific secret declaration, preferring the standard module path if it exists and is visible.
+fn find_secret_declaration_file(
+    base: &Path,
+    standard_relative: &str,
+    declaration_marker: &str,
+    backend_name: &str,
+) -> anyhow::Result<PathBuf> {
+    let visible = GitignoreChecker::new(base)?
+        .map(|checker| checker.visible_files())
+        .transpose()?;
+    let nixmac_ignore = NixmacIgnoreChecker::new(base)?;
+    let standard_relative = Path::new(standard_relative);
+    let standard = base.join(standard_relative);
+    if standard.is_file()
+        && visible
+            .as_ref()
+            .is_none_or(|files| files.contains_file(standard_relative))
+        && !nixmac_ignore.is_ignored(standard_relative, false)
+    {
+        let resolved = resolve_existing_path_in_dir(
+            base,
+            standard_relative
+                .to_str()
+                .ok_or_else(|| anyhow!("standard declaration path is not valid UTF-8"))?,
+        )
+        .with_context(|| format!("resolve {}", standard_relative.display()))?;
+        if std::fs::read_to_string(&resolved).is_ok_and(|text| text.contains(declaration_marker)) {
+            let base_resolved = base
+                .canonicalize()
+                .with_context(|| format!("resolve repository {}", base.display()))?;
+            let relative = repo_relative_path(&base_resolved, &resolved)?;
+            return Ok(base.join(relative));
+        }
+    }
+    let candidates = walkdir::WalkDir::new(base)
+        .into_iter()
+        .filter_entry(|entry| {
+            if entry.depth() == 0 {
+                return true;
+            }
+            let Ok(relative) = entry.path().strip_prefix(base) else {
+                return false;
+            };
+            let is_dir = entry.file_type().is_dir();
+            !nixmac_ignore.is_ignored(relative, is_dir)
+                && visible.as_ref().is_none_or(|files| {
+                    if is_dir {
+                        files.contains_dir(relative)
+                    } else {
+                        files.contains_file(relative)
+                    }
+                })
+        })
+        .filter_map(Result::ok)
+        .filter(|entry| {
+            entry.file_type().is_file() && entry.path().extension().is_some_and(|ext| ext == "nix")
+        })
+        .filter_map(|entry| {
+            std::fs::read_to_string(entry.path())
+                .ok()
+                .filter(|text| text.contains(declaration_marker))
+                .map(|_| entry.into_path())
+        })
+        .collect::<Vec<_>>();
+    match candidates.as_slice() {
+        [path] => Ok(path.clone()),
+        [] => anyhow::bail!("Could not find a Nix module containing {declaration_marker}"),
+        _ => anyhow::bail!(
+            "Found multiple Nix modules containing {declaration_marker}; expected {} for {backend_name}",
+            standard_relative.display()
+        ),
+    }
+}
+
+/// Encrypt a plaintext secret with age and write it to the specified relative path in the repository.
+/// The plaintext is sent to age over stdin and is never written to disk.
+fn encrypt_age_secret(
+    config_dir: &str,
+    relative_path: &str,
+    plaintext: &[u8],
+    recipients: &[String],
+) -> anyhow::Result<()> {
+    let mut command = age_encrypt_command(config_dir, recipients);
+    command
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = command.spawn().context("execute age encrypt")?;
+    child
+        .stdin
+        .take()
+        .ok_or_else(|| anyhow!("open age stdin"))?
+        .write_all(plaintext)
+        .context("send plaintext to age")?;
+    let output = child.wait_with_output().context("wait for age encrypt")?;
+    if !output.status.success() {
+        anyhow::bail!(
+            "age encryption failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+    }
+    let target = crate::evolve::file_ops::resolve_path_in_dir_allow_create(
+        Path::new(config_dir),
+        relative_path,
+    )?;
+    if let Some(parent) = target.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(target, output.stdout).context("write encrypted age file")
+}
+
+/// Build a command to encrypt a secret with age, using the configured recipients.
+fn age_encrypt_command(config_dir: &str, recipients: &[String]) -> std::process::Command {
+    let mut command = nix_command(config_dir);
+    command.args(["shell", "nixpkgs#age", "-c", "age", "--encrypt"]);
+    for recipient in recipients {
+        command.args(["--recipient", recipient]);
+    }
+    command
+}
+
+/// Add a new agenix rule to the rules file, pointing to the specified encrypted file and listing the recipients.
+/// The rule is added as a top-level attribute with the path to the encrypted file as its value, and a `publicKeys` attribute listing the recipients.
+fn declare_agenix_rule(
+    base: &Path,
+    rules_file: &Path,
+    encrypted_relative: &str,
+    recipients: &[String],
+) -> anyhow::Result<()> {
+    let rules_rel = repo_relative_path_string(base, rules_file)?;
+    let rules_dir = repo_relative_path(base, rules_file.parent().unwrap_or(base))?;
+    let rule_path = relative_path_between(&rules_dir, Path::new(encrypted_relative))?
+        .to_string_lossy()
+        .replace('\\', "/");
+    let mut attrs = serde_json::Map::new();
+    attrs.insert("publicKeys".to_string(), serde_json::json!(recipients));
+    crate::evolve::nix_file_editor::apply_semantic_edit(
+        base,
+        &SemanticFileEdit {
+            path: rules_rel,
+            action: FileEditAction::SetAttrs {
+                path: serde_json::to_string(&rule_path).expect("serialize agenix rule key"),
+                attrs,
+            },
+        },
+        true,
+        None,
+    )
+}
+
+/// Add a new agenix secret declaration to the declaration module, pointing to the specified encrypted file.
+/// The declaration is added as a top-level attribute under `age.secrets` with the secret ID as its key and a `file` attribute pointing to the encrypted file.
+fn declare_agenix_secret(
+    base: &Path,
+    declaration_file: &Path,
+    secret_id: &str,
+    encrypted_relative: &str,
+) -> anyhow::Result<()> {
+    let declaration_rel = repo_relative_path_string(base, declaration_file)?;
+    let from = repo_relative_path(base, declaration_file.parent().unwrap_or(base))?;
+    let rendered_path = relative_nix_path_between(&from, Path::new(encrypted_relative))?;
+    let mut attrs = serde_json::Map::new();
+    attrs.insert(
+        "file".to_string(),
+        crate::evolve::nix_file_editor::nix_builtins_path_meta_value(&rendered_path),
+    );
+    crate::evolve::nix_file_editor::apply_semantic_edit(
+        base,
+        &SemanticFileEdit {
+            path: declaration_rel,
+            action: FileEditAction::SetAttrs {
+                path: format!("age.secrets.\"{secret_id}\""),
+                attrs,
+            },
+        },
+        true,
+        None,
+    )
 }
 
 /// Add one value to its own SOPS YAML file, declare it in the
@@ -175,12 +720,7 @@ fn add_sops_secret(
     value: &str,
 ) -> anyhow::Result<AddSecretResult> {
     validate_new_secret(secret_id, value)?;
-    let status = crate::git::status(config_dir).context("inspect repository status")?;
-    if !status.clean_head {
-        anyhow::bail!(
-            "The repository has uncommitted changes. Commit or stash them before adding a secret so nixmac can roll back safely if verification fails."
-        );
-    }
+    ensure_clean_repo(config_dir)?;
 
     let base = Path::new(config_dir);
     if !base.join(".sops.yaml").is_file() && !base.join("sops.yaml").is_file() {
@@ -207,16 +747,7 @@ fn add_sops_secret(
         encrypt_sops_yaml(config_dir, &encrypted_file, plaintext.as_bytes())?;
         declare_sops_secret(base, &declaration_file, secret_id, &encrypted_file)?;
 
-        let (passed, stdout, stderr) =
-            crate::rebuild::dry_run_build_check(config_dir, host_attr, false)
-                .context("run darwin build check")?;
-        if !passed {
-            anyhow::bail!(
-                "darwin build check failed after adding the secret:\n{}{}",
-                stdout,
-                stderr
-            );
-        }
+        verify_dry_build_for_secret_edit(config_dir, host_attr, "adding the secret")?;
 
         // Reload the secrets vault to verify that the new secret is present and has the expected SOPS key.
         let declared = load_sops_secrets(host_attr, config_dir)
@@ -247,12 +778,16 @@ fn add_sops_secret(
     })();
 
     if operation.is_err() {
-        // The repository was clean at entry, so restoring these exact paths is
-        // sufficient and cannot discard unrelated user work.
-        let _ = crate::git::restore_file(config_dir, &encrypted_file);
-        if let Ok(declaration_rel) = repo_relative_path_string(base, &declaration_file) {
-            let _ = crate::git::restore_file(config_dir, &declaration_rel);
-        }
+        // The repo was clean at entry, and this helper restores only the files
+        // this operation owns. That keeps the rollback bounded to the secret edit
+        // and prevents accidentally discarding unrelated user work.
+        let declaration_rel = repo_relative_path_string(base, &declaration_file)
+            .ok()
+            .unwrap_or_default();
+        restore_repo_files_on_failure(
+            config_dir,
+            &[encrypted_file.as_str(), declaration_rel.as_str()],
+        );
     }
     operation
 }
@@ -362,65 +897,6 @@ fn apply_sops_identity(command: &mut std::process::Command, identity: Option<&De
     }
 }
 
-/// Finds the nix-darwin module that declares SOPS secrets.
-/// If the standard module exists, it is returned.
-/// Otherwise, the repository is searched for a module that contains `sops.secrets`.
-/// If multiple modules are found, an error is returned.
-fn find_sops_declaration_file(base: &Path) -> anyhow::Result<PathBuf> {
-    let visible = GitignoreChecker::new(base)?
-        .map(|checker| checker.visible_files())
-        .transpose()?;
-    let nixmac_ignore = NixmacIgnoreChecker::new(base)?;
-    let standard = base.join(STANDARD_SOPS_MODULE);
-    if standard.is_file()
-        && visible
-            .as_ref()
-            .is_none_or(|files| files.contains_file(Path::new(STANDARD_SOPS_MODULE)))
-        && !nixmac_ignore.is_ignored(Path::new(STANDARD_SOPS_MODULE), false)
-    {
-        resolve_existing_path_in_dir(base, STANDARD_SOPS_MODULE)
-            .with_context(|| format!("resolve {STANDARD_SOPS_MODULE}"))?;
-        return Ok(standard);
-    }
-    let candidates = walkdir::WalkDir::new(base)
-        .into_iter()
-        .filter_entry(|entry| {
-            if entry.depth() == 0 {
-                return true;
-            }
-            let Ok(relative) = entry.path().strip_prefix(base) else {
-                return false;
-            };
-            let is_dir = entry.file_type().is_dir();
-            !nixmac_ignore.is_ignored(relative, is_dir)
-                && visible.as_ref().is_none_or(|files| {
-                    if is_dir {
-                        files.contains_dir(relative)
-                    } else {
-                        files.contains_file(relative)
-                    }
-                })
-        })
-        .filter_map(Result::ok)
-        .filter(|entry| {
-            entry.file_type().is_file() && entry.path().extension().is_some_and(|ext| ext == "nix")
-        })
-        .filter_map(|entry| {
-            std::fs::read_to_string(entry.path())
-                .ok()
-                .filter(|text| text.contains("sops.secrets"))
-                .map(|_| entry.into_path())
-        })
-        .collect::<Vec<_>>();
-    match candidates.as_slice() {
-        [path] => Ok(path.clone()),
-        [] => anyhow::bail!("Could not find a Nix module containing sops.secrets"),
-        _ => anyhow::bail!(
-            "Found multiple Nix modules containing sops.secrets; expected {STANDARD_SOPS_MODULE}"
-        ),
-    }
-}
-
 /// Declares a SOPS secret in the existing nix-darwin module identified by `declaration_file`.
 fn declare_sops_secret(
     base: &Path,
@@ -430,13 +906,7 @@ fn declare_sops_secret(
 ) -> anyhow::Result<()> {
     let declaration_rel = repo_relative_path_string(base, declaration_file)?;
     let from = repo_relative_path(base, declaration_file.parent().unwrap_or(base))?;
-    let secret_path = relative_path_between(&from, Path::new(encrypted_file))?;
-    let rendered_path = secret_path.to_string_lossy().replace('\\', "/");
-    let rendered_path = if rendered_path.starts_with('.') {
-        rendered_path
-    } else {
-        format!("./{rendered_path}")
-    };
+    let rendered_path = relative_nix_path_between(&from, Path::new(encrypted_file))?;
     let mut attrs = serde_json::Map::new();
     attrs.insert(
         "sopsFile".to_string(),
@@ -712,9 +1182,23 @@ pub fn load_secrets_vault(host_attr: &str, config_dir: &str) -> Result<SecretsVa
         .iter()
         .find(|recipient| recipient_has_local_identity(recipient, &decryption_identities))
         .map(|recipient| recipient.id.clone());
+    let base = Path::new(config_dir);
+    let agenix_rules_file = find_agenix_rules_file(base)
+        .and_then(|path| repo_relative_path_string(base, &path))
+        .ok();
+    let agenix_declaration_path = find_agenix_declaration_file(base).ok();
+    let agenix_encrypted_directory_from_declaration = agenix_declaration_path
+        .as_ref()
+        .and_then(|path| repo_relative_path(base, path.parent().unwrap_or(base)).ok())
+        .and_then(|from| relative_nix_path_between(&from, Path::new("secrets")).ok());
+    let agenix_declaration_file =
+        agenix_declaration_path.and_then(|path| repo_relative_path_string(base, &path).ok());
 
     Ok(SecretsVault {
         primary_decryption_identity_id,
+        agenix_rules_file,
+        agenix_declaration_file,
+        agenix_encrypted_directory_from_declaration,
         entries,
         recipients,
         decryption_identities,
@@ -860,11 +1344,12 @@ fn secret(
 #[cfg(test)]
 mod tests {
     use super::{
-        AGENIX_DECRYPTION_FAILED, SOPS_DECRYPTION_FAILED, age_decrypt_command,
-        find_sops_declaration_file, managed_sops_file, readable_agenix_identity_paths,
-        relative_path_between, resolve_secret_file_path, sanitized_subprocess_error,
-        sops_decrypt_command, sops_extract_path, sops_plaintext, ssh_to_age_decrypt_command,
-        validate_new_secret,
+        AGENIX_DECRYPTION_FAILED, SOPS_DECRYPTION_FAILED, age_decrypt_command, age_encrypt_command,
+        find_agenix_declaration_file, find_agenix_rules_file, find_sops_declaration_file,
+        managed_sops_file, matching_agenix_rule_key, readable_agenix_identity_paths,
+        relative_nix_path_between, relative_path_between, repo_relative_path_string,
+        resolve_secret_file_path, sanitized_subprocess_error, secret, sops_decrypt_command,
+        sops_extract_path, sops_plaintext, ssh_to_age_decrypt_command, validate_new_secret,
     };
     use crate::shared_types::{
         DecryptionIdentity, DecryptionIdentityKind, DecryptionIdentityLocality,
@@ -1012,6 +1497,93 @@ mod tests {
     }
 
     #[test]
+    fn encrypt_invokes_age_with_every_registered_recipient() {
+        let command = age_encrypt_command(
+            "/tmp/config",
+            &[
+                "age1example".to_string(),
+                "ssh-ed25519 AAAAexample".to_string(),
+            ],
+        );
+        let args: Vec<&OsStr> = command.get_args().collect();
+
+        assert_eq!(
+            args,
+            [
+                OsStr::new("shell"),
+                OsStr::new("nixpkgs#age"),
+                OsStr::new("-c"),
+                OsStr::new("age"),
+                OsStr::new("--encrypt"),
+                OsStr::new("--recipient"),
+                OsStr::new("age1example"),
+                OsStr::new("--recipient"),
+                OsStr::new("ssh-ed25519 AAAAexample"),
+            ]
+        );
+    }
+
+    #[test]
+    fn agenix_rule_matching_handles_nix_store_file_names() {
+        let entry = secret(
+            "api-token",
+            "api-token",
+            crate::shared_types::SecretBackend::Agenix,
+            "/nix/store/0123456789abcdfghijklmnpqrsvwxyz-api-token.age",
+            None,
+        );
+
+        assert_eq!(
+            matching_agenix_rule_key(
+                &["api-token.age".to_string(), "other.age".to_string()],
+                &entry,
+            )
+            .expect("match store-backed secret"),
+            "api-token.age"
+        );
+    }
+
+    #[test]
+    fn agenix_rule_matching_refuses_ambiguous_basenames() {
+        let entry = secret(
+            "api-token",
+            "api-token",
+            crate::shared_types::SecretBackend::Agenix,
+            "/nix/store/0123456789abcdfghijklmnpqrsvwxyz-api-token.age",
+            None,
+        );
+
+        assert!(
+            matching_agenix_rule_key(
+                &[
+                    "hosts/a/api-token.age".to_string(),
+                    "hosts/b/api-token.age".to_string(),
+                ],
+                &entry,
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn agenix_rule_matching_ignores_partial_filename_suffixes() {
+        let entry = secret(
+            "api-token",
+            "api-token",
+            crate::shared_types::SecretBackend::Agenix,
+            "/nix/store/0123456789abcdfghijklmnpqrsvwxyz-api-token.age",
+            None,
+        );
+
+        assert_eq!(
+            matching_agenix_rule_key(&["n.age".to_string(), "api-token.age".to_string()], &entry,)
+                .expect("ignore partial filename suffix"),
+            "api-token.age"
+        );
+        assert!(matching_agenix_rule_key(&["n.age".to_string()], &entry).is_err());
+    }
+
+    #[test]
     fn ssh_to_age_conversion_is_separate_from_native_age_attempt() {
         let identities = TempDir::new().expect("create identities dir");
         let ssh_identity = identities.path().join("ssh host key");
@@ -1124,6 +1696,102 @@ mod tests {
         assert_eq!(
             find_sops_declaration_file(config_dir.path()).expect("find module"),
             standard
+        );
+    }
+
+    #[test]
+    fn declaration_discovery_skips_a_standard_module_without_the_marker() {
+        let config_dir = TempDir::new().expect("create config dir");
+        let standard = config_dir.path().join("modules/darwin/agenix-secrets.nix");
+        fs::create_dir_all(standard.parent().unwrap()).expect("create module dir");
+        fs::write(&standard, "{ services.example.enable = true; }")
+            .expect("write unrelated standard module");
+        let declaration = config_dir.path().join("hosts/agenix.nix");
+        fs::create_dir_all(declaration.parent().unwrap()).expect("create declaration dir");
+        fs::write(&declaration, "{ age.secrets = {}; }").expect("write declaration module");
+
+        assert_eq!(
+            find_agenix_declaration_file(config_dir.path()).expect("find declaration module"),
+            declaration
+        );
+    }
+
+    #[test]
+    fn declaration_discovery_returns_the_resolved_standard_module_target() {
+        let config_dir = TempDir::new().expect("create config dir");
+        let target = config_dir.path().join("modules/shared/sops-secrets.nix");
+        fs::create_dir_all(target.parent().unwrap()).expect("create target dir");
+        fs::write(&target, "{ sops.secrets = {}; }").expect("write target module");
+        let standard = config_dir.path().join("modules/darwin/sops-secrets.nix");
+        fs::create_dir_all(standard.parent().unwrap()).expect("create standard dir");
+        std::os::unix::fs::symlink("../shared/sops-secrets.nix", &standard)
+            .expect("link standard module");
+
+        assert_eq!(
+            find_sops_declaration_file(config_dir.path()).expect("find standard module"),
+            target
+        );
+    }
+
+    #[test]
+    fn agenix_discovery_finds_conventional_rules_and_standard_module() {
+        let config_dir = TempDir::new().expect("create config dir");
+        let rules = config_dir.path().join("secrets/secrets.nix");
+        fs::create_dir_all(rules.parent().unwrap()).expect("create secrets dir");
+        fs::write(&rules, "{ }").expect("write agenix rules");
+        let module = config_dir.path().join("modules/darwin/agenix-secrets.nix");
+        fs::create_dir_all(module.parent().unwrap()).expect("create module dir");
+        fs::write(&module, "{ age.secrets = {}; }").expect("write agenix module");
+
+        assert_eq!(
+            find_agenix_rules_file(config_dir.path()).expect("find agenix rules"),
+            rules
+        );
+        assert_eq!(
+            find_agenix_declaration_file(config_dir.path()).expect("find agenix module"),
+            module
+        );
+    }
+
+    #[test]
+    fn agenix_discovery_preserves_a_nonstandard_declaration_location() {
+        let config_dir = TempDir::new().expect("create config dir");
+        let rules = config_dir.path().join("secrets.nix");
+        fs::write(&rules, "{ }").expect("write agenix rules");
+        let module = config_dir
+            .path()
+            .join("hosts/workstation/modules/security.nix");
+        fs::create_dir_all(module.parent().unwrap()).expect("create module dir");
+        fs::write(&module, "{ age.secrets = {}; }").expect("write agenix module");
+
+        let discovered =
+            find_agenix_declaration_file(config_dir.path()).expect("find agenix module");
+        assert_eq!(
+            repo_relative_path_string(config_dir.path(), &discovered)
+                .expect("render repository-relative module path"),
+            "hosts/workstation/modules/security.nix"
+        );
+        assert_eq!(
+            relative_nix_path_between(Path::new("hosts/workstation/modules"), Path::new("secrets"))
+                .expect("render encrypted directory from declaration"),
+            "../../../secrets"
+        );
+    }
+
+    #[test]
+    fn agenix_declaration_discovery_excludes_nixmac_ignored_modules() {
+        let config_dir = TempDir::new().expect("create config dir");
+        let ignored = config_dir.path().join("private/agenix.nix");
+        fs::create_dir_all(ignored.parent().unwrap()).expect("create ignored dir");
+        fs::write(&ignored, "{ age.secrets = {}; }").expect("write ignored module");
+        fs::write(config_dir.path().join(".nixmacignore"), "private/\n")
+            .expect("write nixmacignore");
+        let visible = config_dir.path().join("visible.nix");
+        fs::write(&visible, "{ age.secrets = {}; }").expect("write visible module");
+
+        assert_eq!(
+            find_agenix_declaration_file(config_dir.path()).expect("find visible module"),
+            visible
         );
     }
 
