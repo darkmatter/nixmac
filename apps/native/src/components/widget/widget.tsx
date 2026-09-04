@@ -35,6 +35,7 @@ import { usePanicHandler } from "@/hooks/use-panic-handler";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useTrayEvents } from "@/hooks/use-tray-events";
 import { markBootRenderStage, markBootStage } from "@/lib/boot-diagnostics";
+import { SplashScreen, type SplashStage } from "@/components/widget/layout/splash-screen";
 import { useEvolveMascot } from "@/hooks/use-evolve-mascot";
 import { useHostedModelAuthGuard } from "@/hooks/use-hosted-model-auth-guard";
 import { useUiState, useViewModel } from "@nixmac/state";
@@ -43,7 +44,7 @@ import { UpdateBanner } from "@/components/widget/layout/update-banner";
 import { markViewModelHydrated, startViewModelSync } from "@/viewmodel";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
 import { setupWidgetTestHelpers } from "@/utils/widget-test-helpers";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { nav, useIsOverlayActive } from "@/router";
 
 /**
@@ -142,16 +143,24 @@ export function DarwinWidget() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOverlayActive]);
 
+  // Which launch probe is running, so the splash can say so instead of showing
+  // a blank pane. Only read while `hydrated` is false.
+  const [splashStage, setSplashStage] = useState<SplashStage>("starting");
+
   // Load initial data once on mount, then start watching for changes
   useEffect(() => {
     let cancelled = false;
     let stopViewModelSync: (() => void) | null = null;
+    const enterStage = (stage: SplashStage) => {
+      if (!cancelled) setSplashStage(stage);
+    };
 
     (async () => {
       try {
         // Hydrate every mirrored slice (preferences/hosts, permissions,
         // prompt history, evolve, git, change map) before anything that
         // depends on config being available.
+        enterStage("state");
         const stop = await startViewModelSync();
         if (cancelled) {
           stop();
@@ -162,8 +171,11 @@ export function DarwinWidget() {
         // Explicit probes: permissions (writes the backend cell, which
         // round-trips through `permissions_changed`), Nix availability, and
         // the cached git status snapshot.
+        enterStage("permissions");
         await checkPermissions();
+        enterStage("nix");
         await checkNix();
+        enterStage("repository");
         await getInitialStatus();
       } catch (e: unknown) {
         uiActions.setError((e as Error)?.message || String(e));
@@ -200,8 +212,8 @@ export function DarwinWidget() {
   const repair = useRepair();
   // Suppress the boot flash: before the ViewModel hydrates, every gate input
   // is a default (null preferences/nixInstall), so both OnboardingFlow and the
-  // main widget would render against stale state for a frame. Hold a neutral
-  // container until hydration completes, then render the correct path directly.
+  // main widget would render against stale state for a frame. Hold the splash
+  // until hydration completes, then render the correct path directly.
   const hydrated = useViewModel((s) => s.hydrated);
 
   // permissions/nix-setup/setup are owned by OnboardingFlow. Reaching one of
@@ -223,7 +235,7 @@ export function DarwinWidget() {
   }, [step, hydrated, showOnboarding, isBootstrapping]);
 
   if (!hydrated) {
-    return <div className="flex h-full w-full flex-col bg-background/60" />;
+    return <SplashScreen stage={splashStage} />;
   }
 
   // Routing mechanism
