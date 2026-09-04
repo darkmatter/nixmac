@@ -15,7 +15,7 @@ use crate::{
             HostKey, RecipientIdentity, SecretIdentities, identities_for_recipient,
             load_secret_identities, normalize_age_or_ssh_identity, normalize_pgp_fingerprint,
         },
-        is_readable_file, resolve_secret_file_path,
+        is_readable_file, resolve_secret_file_path, sanitized_subprocess_error,
     },
     shared_types::{
         DecryptionCapability, DecryptionIdentity, DecryptionIdentityKind,
@@ -1242,9 +1242,9 @@ where
         let derived_public_keys = available
             .then(|| derive_age(identity_path))
             .transpose()
-            .unwrap_or_else(|error| {
+            .unwrap_or_else(|_error| {
                 log::warn!(
-                    "Could not derive public recipients for agenix identity {identity_path}: {error}"
+                    "Could not derive public recipients for agenix identity {identity_path}"
                 );
                 None
             })
@@ -1324,12 +1324,9 @@ where
         .filter(|(path, _)| is_readable_file(path))
         .map(|(path, locality)| {
             let path_string = path.to_string_lossy().into_owned();
-            let public_keys = derive_age(&path_string).map_err(|error| {
-                log::debug!(
-                    "Could not derive public recipient for {}: {error}",
-                    path.display()
-                );
-                error
+            let public_keys = derive_age(&path_string).map_err(|_error| {
+                log::debug!("Could not derive public recipient for {}", path.display());
+                "Failed to derive age public recipients".to_string()
             });
             DecryptionIdentity {
                 kind: DecryptionIdentityKind::AgeKeyFile,
@@ -1422,10 +1419,9 @@ fn ssh_public_key_to_age(public_key_path: &str, config_dir: &str) -> Result<Stri
         .map_err(|e| format!("Failed to execute ssh-to-age for {public_key_path}: {e}"))?;
 
     if !output.status.success() {
-        return Err(format!(
-            "ssh-to-age failed for {public_key_path} with status {}: {}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr)
+        return Err(sanitized_subprocess_error(
+            "Failed to derive age public recipient from SSH public key",
+            &output,
         ));
     }
 
@@ -1497,10 +1493,9 @@ fn age_key_file_public_keys(key_file: &str, config_dir: &str) -> Result<Vec<Stri
         .output()
         .map_err(|error| format!("Failed to derive age recipient for {key_file}: {error}"))?;
     if !output.status.success() {
-        return Err(format!(
-            "age-keygen failed for {key_file} with status {}: {}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr)
+        return Err(sanitized_subprocess_error(
+            "Failed to derive age public recipients",
+            &output,
         ));
     }
     let public_keys: Vec<String> = String::from_utf8(output.stdout)

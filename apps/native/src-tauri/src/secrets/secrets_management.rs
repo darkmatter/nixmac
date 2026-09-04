@@ -6,7 +6,7 @@ use crate::{
             apply_recipients_to_secrets_with_identities, load_recipients,
             recipient_has_local_identity,
         },
-        resolve_secret_file_path,
+        resolve_secret_file_path, sanitized_subprocess_error,
     },
     shared_types::{
         DecryptionIdentity, DecryptionIdentityKind, SecretBackend, SecretEntry, SecretsVault,
@@ -17,6 +17,7 @@ use crate::{
 use std::path::Path;
 
 const AGENIX_DECRYPTION_FAILED: &str = "Failed to decrypt agenix secret";
+const SOPS_DECRYPTION_FAILED: &str = "Failed to decrypt SOPS secret";
 
 /// Decrypts a single secret from the configured repo, returning its plaintext value.
 /// Use this carefully, as it exposes sensitive data. The decrypted value is not stored in the vault.
@@ -76,7 +77,10 @@ fn decrypt_agenix_secret(
     let Some(mut fallback_command) =
         ssh_to_age_decrypt_command(config_dir, &secret_file_path, &identity_paths)
     else {
-        return Err(sanitized_agenix_decryption_error(&direct_output));
+        return Err(sanitized_subprocess_error(
+            AGENIX_DECRYPTION_FAILED,
+            &direct_output,
+        ));
     };
     let fallback_output = fallback_command
         .output()
@@ -89,14 +93,10 @@ fn decrypt_agenix_secret(
     // ssh-to-age may echo an entire private key to stderr when conversion
     // fails, so never include subprocess stderr in an error returned to the UI
     // or logger.
-    Err(sanitized_agenix_decryption_error(&fallback_output))
-}
-
-/// Convert a failed decryption result into a UI-safe error without inspecting
-/// its output. In particular, ssh-to-age can include private key material in
-/// stderr when conversion fails.
-fn sanitized_agenix_decryption_error(_output: &std::process::Output) -> String {
-    AGENIX_DECRYPTION_FAILED.to_string()
+    Err(sanitized_subprocess_error(
+        AGENIX_DECRYPTION_FAILED,
+        &fallback_output,
+    ))
 }
 
 /// Keep only identity files that age can attempt to read. A single missing or
@@ -148,11 +148,7 @@ fn decrypt_sops_secret(
             return String::from_utf8(output.stdout)
                 .map_err(|e| format!("sops returned invalid UTF-8: {e}"));
         }
-        last_error = Some(format!(
-            "sops command failed with status {}: {}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr)
-        ));
+        last_error = Some(sanitized_subprocess_error(SOPS_DECRYPTION_FAILED, &output));
     }
     Err(last_error.unwrap_or_else(|| "sops decryption was not attempted".to_string()))
 }
@@ -433,9 +429,9 @@ fn secret(
 #[cfg(test)]
 mod tests {
     use super::{
-        AGENIX_DECRYPTION_FAILED, age_decrypt_command, readable_agenix_identity_paths,
-        resolve_secret_file_path, sanitized_agenix_decryption_error, sops_decrypt_command,
-        sops_extract_path, ssh_to_age_decrypt_command,
+        AGENIX_DECRYPTION_FAILED, SOPS_DECRYPTION_FAILED, age_decrypt_command,
+        readable_agenix_identity_paths, resolve_secret_file_path, sanitized_subprocess_error,
+        sops_decrypt_command, sops_extract_path, ssh_to_age_decrypt_command,
     };
     use crate::shared_types::{
         DecryptionIdentity, DecryptionIdentityKind, DecryptionIdentityLocality,
@@ -460,7 +456,7 @@ mod tests {
     }
 
     #[test]
-    fn agenix_decryption_error_does_not_expose_subprocess_output() {
+    fn decryption_errors_do_not_expose_subprocess_output() {
         let output = Output {
             status: ExitStatus::from_raw(1),
             stdout: b"decrypted secret".to_vec(),
@@ -468,12 +464,16 @@ mod tests {
                 .to_vec(),
         };
 
-        let error = sanitized_agenix_decryption_error(&output);
+        let agenix_error = sanitized_subprocess_error(AGENIX_DECRYPTION_FAILED, &output);
+        let sops_error = sanitized_subprocess_error(SOPS_DECRYPTION_FAILED, &output);
 
-        assert_eq!(error, AGENIX_DECRYPTION_FAILED);
-        assert!(!error.contains("BEGIN OPENSSH PRIVATE KEY"));
-        assert!(!error.contains("private key material"));
-        assert!(!error.contains("decrypted secret"));
+        assert_eq!(agenix_error, AGENIX_DECRYPTION_FAILED);
+        assert_eq!(sops_error, SOPS_DECRYPTION_FAILED);
+        for error in [agenix_error, sops_error] {
+            assert!(!error.contains("BEGIN OPENSSH PRIVATE KEY"));
+            assert!(!error.contains("private key material"));
+            assert!(!error.contains("decrypted secret"));
+        }
     }
 
     #[test]
