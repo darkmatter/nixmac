@@ -188,8 +188,13 @@ pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
 /// uncommitted. The index is reset to HEAD so only `path` is included, then the
 /// path is staged (or its deletion staged) and a commit is created.
 pub fn commit_file(dir: &str, path: &str, message: &str) -> Result<CommitInfo> {
+    commit_files(dir, &[path], message)
+}
+
+/// Commit only the requested repository-relative files, leaving unrelated
+/// worktree changes out of the commit.
+pub fn commit_files(dir: &str, paths: &[&str], message: &str) -> Result<CommitInfo> {
     let repo = git2::Repository::discover(dir)?;
-    let rel = Path::new(path);
 
     let parent = repo.head().ok().and_then(|head| head.peel_to_commit().ok());
 
@@ -204,15 +209,20 @@ pub fn commit_file(dir: &str, path: &str, message: &str) -> Result<CommitInfo> {
         index.clear().context("git2 clear index")?;
     }
 
-    let workdir = repo.workdir().context("commit_file in a bare repository")?;
-    if workdir.join(rel).exists() {
-        index
-            .add_path(rel)
-            .with_context(|| format!("git2 stage `{path}`"))?;
-    } else {
-        index
-            .remove_path(rel)
-            .with_context(|| format!("git2 stage deletion of `{path}`"))?;
+    let workdir = repo
+        .workdir()
+        .context("commit_files in a bare repository")?;
+    for path in paths {
+        let rel = Path::new(path);
+        if workdir.join(rel).exists() {
+            index
+                .add_path(rel)
+                .with_context(|| format!("git2 stage `{path}`"))?;
+        } else {
+            index
+                .remove_path(rel)
+                .with_context(|| format!("git2 stage deletion of `{path}`"))?;
+        }
     }
     index.write().context("git2 write staged index")?;
 
@@ -864,6 +874,41 @@ mod tests {
         assert_eq!(
             run_git_ok(&repo_dir, &["show", "-s", "--format=%s", "HEAD"]).trim(),
             "initial"
+        );
+    }
+
+    #[test]
+    fn test_commit_files_commits_only_requested_paths() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("one.txt"), "initial one\n").unwrap();
+        fs::write(repo_dir.join("two.txt"), "initial two\n").unwrap();
+        fs::write(repo_dir.join("unrelated.txt"), "initial unrelated\n").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+
+        fs::write(repo_dir.join("one.txt"), "changed one\n").unwrap();
+        fs::write(repo_dir.join("two.txt"), "changed two\n").unwrap();
+        fs::write(repo_dir.join("unrelated.txt"), "working change\n").unwrap();
+        commit_files(&repo_dir_str, &["one.txt", "two.txt"], "selected").unwrap();
+
+        assert_eq!(
+            run_git_ok(&repo_dir, &["show", "HEAD:one.txt"]),
+            "changed one\n"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["show", "HEAD:two.txt"]),
+            "changed two\n"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["show", "HEAD:unrelated.txt"]),
+            "initial unrelated\n"
+        );
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("unrelated.txt")).unwrap(),
+            "working change\n"
         );
     }
 

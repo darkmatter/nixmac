@@ -14,6 +14,13 @@ export type AddInput = { prompt: string }
 
 export type AddItemsInput = { items: HomebrewItem[] }
 
+export type AddSecretInput = { secretId: string; value: string; backend: SecretBackend }
+
+/**
+ * Result of encrypting, declaring, verifying, and committing a secret.
+ */
+export type AddSecretResult = { secretId: string; encryptedFile: string; declarationFile: string; runtimePath: string; commitHash: string }
+
 export type AdoptManualChangesResult = { evolutionId: number }
 
 /**
@@ -386,6 +393,13 @@ export type DecryptionIdentityLocality =
  * Found at a conventional path on this machine.
  */
 "machine"
+
+export type DeleteSecretInput = { secretId: string; backend: SecretBackend }
+
+/**
+ * Result of removing a secret from the repo and committing the change.
+ */
+export type DeleteSecretResult = { secretId: string; commitHash: string }
 
 export type EnumVariant = { value: string; label: string }
 
@@ -2183,7 +2197,9 @@ export type Procedures = {
     scanDefaults: Client<Record<never, never>, void, SystemDefaultsScan, Error>
   }
   secrets: {
+    addSecret: Client<Record<never, never>, AddSecretInput, AddSecretResult, Error>
     decryptSecret: Client<Record<never, never>, DecryptSecretInput, string, Error>
+    deleteSecret: Client<Record<never, never>, DeleteSecretInput, DeleteSecretResult, Error>
     getState: Client<Record<never, never>, void, SecretsVaultState, Error>
     refresh: Client<Record<never, never>, void, void, Error>
   }

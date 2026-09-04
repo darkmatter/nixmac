@@ -905,6 +905,83 @@ fn remove(content: &str, attrpath: &str, values: &[String]) -> Result<String> {
     Ok(content.to_string())
 }
 
+/// Remove an attribute assignment and any flat descendant assignments from Nix source.
+///
+/// The attrpath is resolved structurally, so this handles flat declarations such as
+/// `sops.secrets.foo = { ... };`, nested attrsets, and a mixture of both. Empty parent
+/// attrsets are intentionally preserved. An absent attrpath is reported as an error so
+/// callers performing destructive operations do not silently succeed.
+pub(crate) fn remove_attrpath(content: &str, attrpath: &str) -> Result<String> {
+    let target = attrpath
+        .split('.')
+        .map(normalize_attrpath_for_match)
+        .filter(|segment| !segment.is_empty())
+        .collect::<Vec<_>>();
+    if target.is_empty() {
+        return Err(anyhow::anyhow!("Nix attrpath must not be empty"));
+    }
+
+    let root = Root::parse(content)
+        .ok()
+        .context("Failed to parse Nix content when removing an attrpath")?;
+    let top = AttrSet::cast(root.syntax().clone())
+        .or_else(|| root.syntax().descendants().find_map(AttrSet::cast))
+        .context("Cannot find top-level attribute set when removing an attrpath")?;
+    let mut ranges = Vec::new();
+    collect_attrpath_assignment_ranges(&top, &target, &mut ranges);
+    if ranges.is_empty() {
+        return Err(anyhow::anyhow!(
+            "Nix attrpath '{}' does not exist",
+            attrpath
+        ));
+    }
+
+    ranges.sort_unstable_by_key(|range| range.start);
+    let mut updated = content.to_string();
+    for range in ranges.into_iter().rev() {
+        let mut start = range.start;
+        while start > 0 && matches!(updated.as_bytes()[start - 1], b' ' | b'\t') {
+            start -= 1;
+        }
+        let mut end = range.end;
+        while end < updated.len() && matches!(updated.as_bytes()[end], b' ' | b'\t') {
+            end += 1;
+        }
+        if end < updated.len() && updated.as_bytes()[end] == b'\n' {
+            end += 1;
+        }
+        updated.replace_range(start..end, "");
+    }
+    Ok(updated)
+}
+
+/// Helper to recursively collect the byte ranges of all assignments that match a given attrpath prefix, including nested attrsets.
+fn collect_attrpath_assignment_ranges(
+    attrset: &AttrSet,
+    target: &[String],
+    ranges: &mut Vec<std::ops::Range<usize>>,
+) {
+    for entry in attrset.attrpath_values() {
+        let Some(attrpath) = entry.attrpath() else {
+            continue;
+        };
+        let keys = attrpath
+            .attrs()
+            .map(|attr| normalize_attrpath_for_match(&attr.syntax().text().to_string()))
+            .collect::<Vec<_>>();
+
+        if target.len() <= keys.len() && keys[..target.len()] == target[..] {
+            ranges.push(text_range_to_usize_range(entry.syntax().text_range()));
+        } else if keys.len() < target.len()
+            && keys[..] == target[..keys.len()]
+            && let Some(value) = entry.value()
+            && let Some(nested) = AttrSet::cast(value.syntax().clone())
+        {
+            collect_attrpath_assignment_ranges(&nested, &target[keys.len()..], ranges);
+        }
+    }
+}
+
 /// Reject string values that are Nix source in disguise. A value like
 /// `"{ url = …; }"` would be spliced as a *quoted string literal* — observed
 /// with gpt-oss-120b setting `inputs.home-manager` to a stringified attrset,
@@ -1379,6 +1456,41 @@ environment.systemPackages = with pkgs; [
             1,
             "should not duplicate assignment during remove"
         );
+    }
+
+    #[test]
+    fn remove_attrpath_handles_flat_and_nested_assignments() {
+        let flat = r#"{
+  sops.secrets."github-token".sopsFile = ./secrets.yaml;
+  sops.secrets."github-token".key = "github-token";
+  sops.secrets.other = { key = "other"; };
+}
+"#;
+        let flat = remove_attrpath(flat, "sops.secrets.\"github-token\"")
+            .expect("remove flat descendant assignments");
+        assert!(!flat.contains("github-token"));
+        assert!(flat.contains("sops.secrets.other"));
+
+        let nested = r#"{
+  sops = {
+    secrets = {
+      "github-token" = { key = "github-token"; };
+      other = { key = "other"; };
+    };
+  };
+}
+"#;
+        let nested = remove_attrpath(nested, "sops.secrets.\"github-token\"")
+            .expect("remove nested assignment");
+        assert!(!nested.contains("github-token"));
+        assert!(nested.contains("other = { key = \"other\"; };"));
+    }
+
+    #[test]
+    fn remove_attrpath_errors_when_assignment_is_missing() {
+        let error = remove_attrpath("{ services.foo.enable = true; }", "sops.secrets.foo")
+            .expect_err("missing attrpath must not silently succeed");
+        assert!(error.to_string().contains("does not exist"));
     }
 
     #[test]

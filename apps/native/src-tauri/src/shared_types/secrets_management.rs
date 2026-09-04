@@ -143,6 +143,25 @@ pub struct SecretsVault {
     pub decryption_identities: Vec<DecryptionIdentity>,
 }
 
+/// Result of encrypting, declaring, verifying, and committing a secret.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AddSecretResult {
+    pub secret_id: String,
+    pub encrypted_file: String,
+    pub declaration_file: String,
+    pub runtime_path: String,
+    pub commit_hash: String,
+}
+
+/// Result of removing a secret from the repo and committing the change.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteSecretResult {
+    pub secret_id: String,
+    pub commit_hash: String,
+}
+
 /// Backend-owned lifecycle for the derived secrets vault.
 /// The vault is potentially very expensive to derive (it evaluates the configured flake), so
 /// Rust refreshes it when its inputs change and the frontend only mirrors this

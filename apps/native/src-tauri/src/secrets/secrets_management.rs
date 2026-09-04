@@ -1,4 +1,11 @@
 use crate::{
+    evolve::{
+        GitignoreChecker, NixmacIgnoreChecker,
+        file_ops::{
+            relative_path_between, repo_relative_path, repo_relative_path_string,
+            resolve_existing_path_in_dir,
+        },
+    },
     secrets::{
         identities::load_secret_identities,
         is_readable_file,
@@ -9,12 +16,445 @@ use crate::{
         resolve_secret_file_path, sanitized_subprocess_error,
     },
     shared_types::{
-        DecryptionIdentity, DecryptionIdentityKind, SecretBackend, SecretEntry, SecretsVault,
+        AddSecretResult, DecryptionIdentity, DecryptionIdentityKind, FileEditAction, SecretBackend,
+        SecretEntry, SecretsVault, SemanticFileEdit,
     },
     system::nix::nix_command,
     utils::nix_string_literal,
 };
-use std::path::Path;
+use anyhow::{Context, anyhow};
+use std::{
+    io::Write,
+    path::{Path, PathBuf},
+    process::Stdio,
+};
+
+/// The path to the standard nix-darwin module that declares SOPS secrets.
+const STANDARD_SOPS_MODULE: &str = "modules/darwin/sops-secrets.nix";
+
+/// Returns the repository-relative path used for a SOPS secret.
+fn managed_sops_file(secret_id: &str) -> String {
+    format!("secrets/{secret_id}.yaml")
+}
+
+/// Deletes a secret from the configured repo, returning the result.
+pub fn delete_secret(
+    host_attr: &str,
+    config_dir: &str,
+    secret_id: &str,
+    backend: SecretBackend,
+) -> Result<crate::shared_types::DeleteSecretResult, String> {
+    match backend {
+        SecretBackend::Sops => delete_sops_secret(host_attr, config_dir, secret_id),
+        SecretBackend::Agenix => Err("Deleting agenix secrets is not yet implemented".to_string()),
+    }
+}
+
+/// Add a secret to the configured repo, returning the result.
+pub fn add_secret(
+    host_attr: &str,
+    config_dir: &str,
+    secret_id: &str,
+    value: &str,
+    backend: SecretBackend,
+) -> Result<AddSecretResult, String> {
+    match backend {
+        SecretBackend::Sops => add_sops_secret(host_attr, config_dir, secret_id, value)
+            .map_err(|error| error.to_string()),
+        SecretBackend::Agenix => Err("Adding agenix secrets is not yet implemented".to_string()),
+    }
+}
+
+/// Deletes a SOPS secret from the configured repo, returning the result.
+/// Requires that the repository is clean and that the secret exists.
+/// If the operation fails, it attempts to restore the repository to its original state.
+fn delete_sops_secret(
+    host_attr: &str,
+    config_dir: &str,
+    secret_id: &str,
+) -> Result<crate::shared_types::DeleteSecretResult, String> {
+    (|| -> anyhow::Result<crate::shared_types::DeleteSecretResult> {
+        let status = crate::git::status(config_dir).context("inspect repository status")?;
+        if !status.clean_head {
+            anyhow::bail!(
+                "The repository has uncommitted changes. Commit or stash them before deleting a secret so nixmac can roll back safely if verification fails."
+            );
+        }
+
+        log::info!("Deleting SOPS secret declaration {secret_id} from config dir {config_dir}");
+
+        load_sops_secrets(host_attr, config_dir)
+            .map_err(|error| anyhow!(error))?
+            .into_iter()
+            .find(|secret| secret.id == secret_id)
+            .ok_or_else(|| anyhow!("Secret declaration '{secret_id}' does not exist"))?;
+
+        let base = Path::new(config_dir);
+        let encrypted_file = managed_sops_file(secret_id);
+        let encrypted_path = resolve_existing_path_in_dir(base, &encrypted_file)
+            .with_context(|| format!("resolve {encrypted_file}"))?;
+        let declaration_file = find_sops_declaration_file(base)?;
+        let declaration_rel = repo_relative_path_string(base, &declaration_file)?;
+
+        // Steps:
+        // 1. Remove the secret's SOPS YAML file.
+        // 2. Remove the secret declaration from the nix-darwin module.
+        // 3. Run a dry build to verify that the secret is no longer present.
+        let operation = (|| -> anyhow::Result<crate::shared_types::DeleteSecretResult> {
+            std::fs::remove_file(&encrypted_path).context("remove SOPS secret file")?;
+            remove_sops_declaration(base, &declaration_rel, secret_id)?;
+
+            let (passed, stdout, stderr) =
+                crate::rebuild::dry_run_build_check(config_dir, host_attr, false)
+                    .context("run darwin build check")?;
+            if !passed {
+                anyhow::bail!(
+                    "darwin build check failed after deleting the secret:\n{}{}",
+                    stdout,
+                    stderr
+                );
+            }
+
+            if load_sops_secrets(host_attr, config_dir)
+                .map_err(|error| anyhow!(error))?
+                .iter()
+                .any(|secret| secret.id == secret_id)
+            {
+                anyhow::bail!("The SOPS declaration is still present after editing the module");
+            }
+
+            let commit = crate::git::commit_files(
+                config_dir,
+                &[&encrypted_file, &declaration_rel],
+                &format!("secrets: delete {secret_id} (sops)"),
+            )
+            .context("commit deleted SOPS secret")?;
+
+            Ok(crate::shared_types::DeleteSecretResult {
+                secret_id: secret_id.to_string(),
+                commit_hash: commit.hash,
+            })
+        })();
+
+        if operation.is_err() {
+            let _ = crate::git::restore_file(config_dir, &encrypted_file);
+            let _ = crate::git::restore_file(config_dir, &declaration_rel);
+        }
+        operation
+    })()
+    .map_err(|error| error.to_string())
+}
+
+/// Removes a SOPS secret declaration from the nix-darwin module, returning an error if the declaration was not found.
+fn remove_sops_declaration(
+    base: &Path,
+    relative_file: &str,
+    secret_id: &str,
+) -> anyhow::Result<()> {
+    let path = crate::evolve::file_ops::resolve_existing_path_in_dir(base, relative_file)?;
+    let content = std::fs::read_to_string(&path).context("read SOPS declaration module")?;
+    let attrpath = format!("sops.secrets.\"{secret_id}\"");
+    let updated = crate::evolve::nix_file_editor::remove_attrpath(&content, &attrpath)
+        .with_context(|| format!("remove SOPS declaration '{secret_id}'"))?;
+    std::fs::write(&path, updated).context("write SOPS declaration module")?;
+    let config_dir = base.to_string_lossy();
+    if let Err(error) = crate::system::nix::nix_format(&config_dir, relative_file) {
+        log::warn!("Failed to format {relative_file} after deleting a secret: {error}");
+    }
+    Ok(())
+}
+
+/// Add one value to its own SOPS YAML file, declare it in the
+/// nix-darwin module, run a dry build, and commit only the two managed files.
+/// Plaintext is kept in memory and sent to SOPS over stdin; it is never written
+/// to the repository.
+fn add_sops_secret(
+    host_attr: &str,
+    config_dir: &str,
+    secret_id: &str,
+    value: &str,
+) -> anyhow::Result<AddSecretResult> {
+    validate_new_secret(secret_id, value)?;
+    let status = crate::git::status(config_dir).context("inspect repository status")?;
+    if !status.clean_head {
+        anyhow::bail!(
+            "The repository has uncommitted changes. Commit or stash them before adding a secret so nixmac can roll back safely if verification fails."
+        );
+    }
+
+    let base = Path::new(config_dir);
+    if !base.join(".sops.yaml").is_file() && !base.join("sops.yaml").is_file() {
+        anyhow::bail!("No .sops.yaml or sops.yaml was found in the repository root");
+    }
+
+    // Make sure the secret does not already exist in the vault.
+    if load_sops_secrets(host_attr, config_dir)
+        .map_err(|error| anyhow!(error))?
+        .iter()
+        .any(|secret| secret.id == secret_id)
+    {
+        anyhow::bail!("Secret declaration '{secret_id}' already exists");
+    }
+
+    let declaration_file = find_sops_declaration_file(base)?;
+    let encrypted_file = managed_sops_file(secret_id);
+    if base.join(&encrypted_file).exists() {
+        anyhow::bail!("SOPS file '{encrypted_file}' already exists");
+    }
+    let plaintext = sops_plaintext(secret_id, value)?;
+
+    let operation = (|| -> anyhow::Result<AddSecretResult> {
+        encrypt_sops_yaml(config_dir, &encrypted_file, plaintext.as_bytes())?;
+        declare_sops_secret(base, &declaration_file, secret_id, &encrypted_file)?;
+
+        let (passed, stdout, stderr) =
+            crate::rebuild::dry_run_build_check(config_dir, host_attr, false)
+                .context("run darwin build check")?;
+        if !passed {
+            anyhow::bail!(
+                "darwin build check failed after adding the secret:\n{}{}",
+                stdout,
+                stderr
+            );
+        }
+
+        // Reload the secrets vault to verify that the new secret is present and has the expected SOPS key.
+        let declared = load_sops_secrets(host_attr, config_dir)
+            .map_err(|error| anyhow!(error))?
+            .into_iter()
+            .any(|secret| secret.id == secret_id && secret.sops_key.as_deref() == Some(secret_id));
+        if !declared {
+            anyhow::bail!(
+                "The edited SOPS declaration was not present in the evaluated host configuration"
+            );
+        }
+
+        let declaration_rel = repo_relative_path_string(base, &declaration_file)?;
+        let commit = crate::git::commit_files(
+            config_dir,
+            &[&encrypted_file, &declaration_rel],
+            &format!("secrets: add {secret_id} (sops)"),
+        )
+        .context("commit SOPS secret")?;
+
+        Ok(AddSecretResult {
+            secret_id: secret_id.to_string(),
+            encrypted_file: encrypted_file.clone(),
+            declaration_file: declaration_rel,
+            runtime_path: format!("/run/secrets/{secret_id}"),
+            commit_hash: commit.hash,
+        })
+    })();
+
+    if operation.is_err() {
+        // The repository was clean at entry, so restoring these exact paths is
+        // sufficient and cannot discard unrelated user work.
+        let _ = crate::git::restore_file(config_dir, &encrypted_file);
+        if let Ok(declaration_rel) = repo_relative_path_string(base, &declaration_file) {
+            let _ = crate::git::restore_file(config_dir, &declaration_rel);
+        }
+    }
+    operation
+}
+
+/// Validates that a new secret ID and value are acceptable for adding to the repository.
+/// Rules:
+/// - Secret IDs must be lowercase slugs containing only a-z, 0-9, and '-'.
+/// - Secret values must not be empty.
+fn validate_new_secret(secret_id: &str, value: &str) -> anyhow::Result<()> {
+    if secret_id.is_empty()
+        || !secret_id
+            .chars()
+            .all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '-')
+    {
+        anyhow::bail!("Secret names must be lowercase slugs containing only a-z, 0-9, and '-'");
+    }
+    if value.is_empty() {
+        anyhow::bail!("Secret value must not be empty");
+    }
+    Ok(())
+}
+
+/// Renders the plaintext for a one-secret SOPS YAML file.
+fn sops_plaintext(secret_id: &str, value: &str) -> anyhow::Result<String> {
+    let mut mapping = serde_yaml::Mapping::new();
+    mapping.insert(
+        serde_yaml::Value::String(secret_id.to_string()),
+        serde_yaml::Value::String(value.to_string()),
+    );
+    let document = serde_yaml::Value::Mapping(mapping);
+    serde_yaml::to_string(&document).context("serialize secrets YAML")
+}
+
+/// Encrypts a SOPS YAML file using the available identities, writing the encrypted file to the given relative path.
+fn encrypt_sops_yaml(
+    config_dir: &str,
+    relative_path: &str,
+    plaintext: &[u8],
+) -> anyhow::Result<()> {
+    let mut command = nix_command(config_dir);
+    command.args([
+        "shell",
+        "nixpkgs#sops",
+        "-c",
+        "sops",
+        "--encrypt",
+        "--input-type",
+        "yaml",
+        "--output-type",
+        "yaml",
+        "--filename-override",
+        relative_path,
+        "/dev/stdin",
+    ]);
+    command
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = command.spawn().context("execute sops encrypt")?;
+    child
+        .stdin
+        .take()
+        .ok_or_else(|| anyhow!("open sops stdin"))?
+        .write_all(plaintext)
+        .context("send plaintext to sops")?;
+    let output = child.wait_with_output().context("wait for sops encrypt")?;
+    if !output.status.success() {
+        anyhow::bail!(
+            "sops encryption failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+    }
+    let target = crate::evolve::file_ops::resolve_path_in_dir_allow_create(
+        Path::new(config_dir),
+        relative_path,
+    )?;
+    if let Some(parent) = target.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(target, output.stdout).context("write encrypted SOPS file")
+}
+
+/// Make one explicit local age identity available to a SOPS decryption attempt.
+///
+/// These environment variables are optional: without them, SOPS still uses
+/// identities available through its inherited environment, default age key
+/// locations, agents, plugins, PGP, or cloud KMS providers. We set one here
+/// because nixmac also discovers identity paths from the evaluated host
+/// configuration, and SOPS cannot otherwise know about an arbitrary key file.
+/// `Command::env` affects only this child command; it does not modify nixmac's
+/// process environment.
+///
+/// Passing `None` deliberately sets nothing and lets SOPS perform its normal
+/// ambient discovery. Passing `Some` overrides only the matching environment
+/// variable for this attempt; other inherited identity mechanisms remain
+/// available.
+fn apply_sops_identity(command: &mut std::process::Command, identity: Option<&DecryptionIdentity>) {
+    if let Some(identity) = identity {
+        match identity.kind {
+            DecryptionIdentityKind::AgeKeyFile => {
+                command.env("SOPS_AGE_KEY_FILE", &identity.path);
+            }
+            DecryptionIdentityKind::SshKeyPath => {
+                command.env("SOPS_AGE_SSH_PRIVATE_KEY_FILE", &identity.path);
+            }
+        }
+    }
+}
+
+/// Finds the nix-darwin module that declares SOPS secrets.
+/// If the standard module exists, it is returned.
+/// Otherwise, the repository is searched for a module that contains `sops.secrets`.
+/// If multiple modules are found, an error is returned.
+fn find_sops_declaration_file(base: &Path) -> anyhow::Result<PathBuf> {
+    let visible = GitignoreChecker::new(base)?
+        .map(|checker| checker.visible_files())
+        .transpose()?;
+    let nixmac_ignore = NixmacIgnoreChecker::new(base)?;
+    let standard = base.join(STANDARD_SOPS_MODULE);
+    if standard.is_file()
+        && visible
+            .as_ref()
+            .is_none_or(|files| files.contains_file(Path::new(STANDARD_SOPS_MODULE)))
+        && !nixmac_ignore.is_ignored(Path::new(STANDARD_SOPS_MODULE), false)
+    {
+        resolve_existing_path_in_dir(base, STANDARD_SOPS_MODULE)
+            .with_context(|| format!("resolve {STANDARD_SOPS_MODULE}"))?;
+        return Ok(standard);
+    }
+    let candidates = walkdir::WalkDir::new(base)
+        .into_iter()
+        .filter_entry(|entry| {
+            if entry.depth() == 0 {
+                return true;
+            }
+            let Ok(relative) = entry.path().strip_prefix(base) else {
+                return false;
+            };
+            let is_dir = entry.file_type().is_dir();
+            !nixmac_ignore.is_ignored(relative, is_dir)
+                && visible.as_ref().is_none_or(|files| {
+                    if is_dir {
+                        files.contains_dir(relative)
+                    } else {
+                        files.contains_file(relative)
+                    }
+                })
+        })
+        .filter_map(Result::ok)
+        .filter(|entry| {
+            entry.file_type().is_file() && entry.path().extension().is_some_and(|ext| ext == "nix")
+        })
+        .filter_map(|entry| {
+            std::fs::read_to_string(entry.path())
+                .ok()
+                .filter(|text| text.contains("sops.secrets"))
+                .map(|_| entry.into_path())
+        })
+        .collect::<Vec<_>>();
+    match candidates.as_slice() {
+        [path] => Ok(path.clone()),
+        [] => anyhow::bail!("Could not find a Nix module containing sops.secrets"),
+        _ => anyhow::bail!(
+            "Found multiple Nix modules containing sops.secrets; expected {STANDARD_SOPS_MODULE}"
+        ),
+    }
+}
+
+/// Declares a SOPS secret in the existing nix-darwin module identified by `declaration_file`.
+fn declare_sops_secret(
+    base: &Path,
+    declaration_file: &Path,
+    secret_id: &str,
+    encrypted_file: &str,
+) -> anyhow::Result<()> {
+    let declaration_rel = repo_relative_path_string(base, declaration_file)?;
+    let from = repo_relative_path(base, declaration_file.parent().unwrap_or(base))?;
+    let secret_path = relative_path_between(&from, Path::new(encrypted_file))?;
+    let rendered_path = secret_path.to_string_lossy().replace('\\', "/");
+    let rendered_path = if rendered_path.starts_with('.') {
+        rendered_path
+    } else {
+        format!("./{rendered_path}")
+    };
+    let mut attrs = serde_json::Map::new();
+    attrs.insert(
+        "sopsFile".to_string(),
+        crate::evolve::nix_file_editor::nix_builtins_path_meta_value(&rendered_path),
+    );
+    crate::evolve::nix_file_editor::apply_semantic_edit(
+        base,
+        &SemanticFileEdit {
+            path: declaration_rel,
+            action: FileEditAction::SetAttrs {
+                path: format!("sops.secrets.\"{secret_id}\""),
+                attrs,
+            },
+        },
+        true,
+        None,
+    )
+}
 
 const AGENIX_DECRYPTION_FAILED: &str = "Failed to decrypt agenix secret";
 const SOPS_DECRYPTION_FAILED: &str = "Failed to decrypt SOPS secret";
@@ -235,16 +675,7 @@ fn sops_decrypt_command(
             "binary",
         ])
         .arg(secret_file_path);
-    if let Some(identity) = identity {
-        match identity.kind {
-            DecryptionIdentityKind::AgeKeyFile => {
-                command.env("SOPS_AGE_KEY_FILE", &identity.path);
-            }
-            DecryptionIdentityKind::SshKeyPath => {
-                command.env("SOPS_AGE_SSH_PRIVATE_KEY_FILE", &identity.path);
-            }
-        }
-    }
+    apply_sops_identity(&mut command, identity);
     command
 }
 
@@ -430,8 +861,10 @@ fn secret(
 mod tests {
     use super::{
         AGENIX_DECRYPTION_FAILED, SOPS_DECRYPTION_FAILED, age_decrypt_command,
-        readable_agenix_identity_paths, resolve_secret_file_path, sanitized_subprocess_error,
-        sops_decrypt_command, sops_extract_path, ssh_to_age_decrypt_command,
+        find_sops_declaration_file, managed_sops_file, readable_agenix_identity_paths,
+        relative_path_between, resolve_secret_file_path, sanitized_subprocess_error,
+        sops_decrypt_command, sops_extract_path, sops_plaintext, ssh_to_age_decrypt_command,
+        validate_new_secret,
     };
     use crate::shared_types::{
         DecryptionIdentity, DecryptionIdentityKind, DecryptionIdentityLocality,
@@ -649,6 +1082,104 @@ mod tests {
         assert_eq!(
             sops_extract_path(r#"nested/a"key"#),
             r#"["nested"]["a\"key"]"#
+        );
+    }
+
+    #[test]
+    fn new_sops_plaintext_is_a_yaml_mapping_and_preserves_multiline_values() {
+        let rendered =
+            sops_plaintext("github-token", "line one\nline two").expect("render plaintext");
+        let parsed: serde_yaml::Value = serde_yaml::from_str(&rendered).expect("parse YAML");
+
+        assert_eq!(parsed["github-token"], "line one\nline two");
+    }
+
+    #[test]
+    fn sops_secrets_use_one_file_per_secret() {
+        assert_eq!(
+            managed_sops_file("github-token"),
+            "secrets/github-token.yaml"
+        );
+    }
+
+    #[test]
+    fn add_secret_validation_accepts_only_lowercase_slugs() {
+        assert!(validate_new_secret("github-token-2", "value").is_ok());
+        assert!(validate_new_secret("GitHub token", "value").is_err());
+        assert!(validate_new_secret("github-token", "").is_err());
+    }
+
+    #[test]
+    fn declaration_discovery_prefers_the_standard_module() {
+        let config_dir = TempDir::new().expect("create config dir");
+        let standard = config_dir.path().join("modules/darwin/sops-secrets.nix");
+        fs::create_dir_all(standard.parent().unwrap()).expect("create module dir");
+        fs::write(&standard, "{ sops.secrets = {}; }").expect("write standard module");
+        fs::write(
+            config_dir.path().join("other.nix"),
+            "{ sops.secrets = {}; }",
+        )
+        .expect("write other module");
+
+        assert_eq!(
+            find_sops_declaration_file(config_dir.path()).expect("find module"),
+            standard
+        );
+    }
+
+    #[test]
+    fn declaration_discovery_excludes_gitignored_modules() {
+        let config_dir = TempDir::new().expect("create config dir");
+        git2::Repository::init(config_dir.path()).expect("initialize git repository");
+        let standard = config_dir.path().join("modules/darwin/sops-secrets.nix");
+        fs::create_dir_all(standard.parent().unwrap()).expect("create module dir");
+        fs::write(&standard, "{ sops.secrets = {}; }").expect("write ignored module");
+        fs::write(
+            config_dir.path().join(".gitignore"),
+            "modules/darwin/sops-secrets.nix\n",
+        )
+        .expect("write gitignore");
+        let visible = config_dir.path().join("visible.nix");
+        fs::write(&visible, "{ sops.secrets = {}; }").expect("write visible module");
+
+        assert_eq!(
+            find_sops_declaration_file(config_dir.path()).expect("find visible module"),
+            visible
+        );
+    }
+
+    #[test]
+    fn declaration_discovery_excludes_nixmac_ignored_modules() {
+        let config_dir = TempDir::new().expect("create config dir");
+        let standard = config_dir.path().join("modules/darwin/sops-secrets.nix");
+        fs::create_dir_all(standard.parent().unwrap()).expect("create standard module dir");
+        fs::write(&standard, "{ sops.secrets = {}; }").expect("write ignored standard module");
+        let ignored = config_dir.path().join("private/secrets.nix");
+        fs::create_dir_all(ignored.parent().unwrap()).expect("create ignored module dir");
+        fs::write(&ignored, "{ sops.secrets = {}; }").expect("write ignored module");
+        fs::write(
+            config_dir.path().join(".nixmacignore"),
+            "modules/darwin/sops-secrets.nix\nprivate/\n",
+        )
+        .expect("write nixmacignore");
+        let visible = config_dir.path().join("visible.nix");
+        fs::write(&visible, "{ sops.secrets = {}; }").expect("write visible module");
+
+        assert_eq!(
+            find_sops_declaration_file(config_dir.path()).expect("find visible module"),
+            visible
+        );
+    }
+
+    #[test]
+    fn relative_sops_path_is_computed_from_the_declaration_directory() {
+        assert_eq!(
+            relative_path_between(
+                Path::new("modules/darwin"),
+                Path::new("secrets/github-token.yaml")
+            )
+            .expect("compute relative path"),
+            Path::new("../../secrets/github-token.yaml")
         );
     }
 
