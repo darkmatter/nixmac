@@ -54,10 +54,16 @@ interface SplashScreenProps {
 
 export function SplashScreen({ stage, appearDelayMs = APPEAR_DELAY_MS }: SplashScreenProps) {
   // Measured from page load, not from mount: if index.html's copy already faded
-  // in, this one must appear at once rather than restart the countdown. Frozen
-  // on first render — re-resolving `animation-delay` restarts the fade, and this
-  // component re-renders on every stage change.
-  const [delayMs] = useState(() => Math.max(0, appearDelayMs - performance.now()));
+  // in, this one must appear at once rather than restart the countdown. The
+  // result is deliberately allowed to go negative — a negative `animation-delay`
+  // starts the fade at the progress it would already have reached, so a handoff
+  // mid-fade continues it and a handoff after it finished lands straight on
+  // opacity 1 (clamping to 0 would blank the splash and replay the fade). A
+  // delay of 0 (stories, tests) opts out of the measurement entirely, so the
+  // rendered value stays deterministic. Frozen on first render — re-resolving
+  // `animation-delay` restarts the fade, and this component re-renders on every
+  // stage change.
+  const [delayMs] = useState(() => (appearDelayMs > 0 ? appearDelayMs - performance.now() : 0));
 
   const stageIndex = Math.max(SPLASH_STAGES.indexOf(stage), 0);
   const progress = ((stageIndex + 1) / SPLASH_STAGES.length) * 100;

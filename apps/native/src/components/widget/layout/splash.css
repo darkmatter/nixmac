@@ -20,6 +20,15 @@
 
 .nixmac-splash {
   position: absolute;
+  /* Longhands as well as the shorthand: tauri.conf.json still declares macOS
+     10.13, whose WKWebView has neither `inset` nor `color-mix`. The rest of the
+     app (Tailwind v4, oklch tokens) gave that floor up long ago, but this one
+     stylesheet renders before the bundle, so it degrades instead of collapsing
+     to a content-sized, transparent box. */
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   inset: 0;
   display: flex;
   flex-direction: column;
@@ -28,11 +37,14 @@
   gap: 28px;
   font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   user-select: none;
+  background: #0b0b0b;
   background: color-mix(in oklch, var(--background, oklch(0.1445 0 0)) 60%, transparent);
 
   /* Boots that finish before this never flash a splash. React overrides the
-     variable with the time *remaining* since page load, so the fade happens
-     once at 400 ms whichever of the two is on screen at the time. */
+     variable with the time remaining since page load — negative once the delay
+     has already elapsed, which resumes the fade at its current progress rather
+     than replaying it — so the fade happens once at 400 ms whichever of the two
+     is on screen at the time. */
   --splash-delay: 400ms;
   opacity: 0;
   animation: nixmac-splash-in 500ms ease-out var(--splash-delay) forwards;
@@ -103,7 +115,12 @@
   animation: nixmac-splash-in 300ms ease-out both;
 }
 
+/* Explicit `from`: `.nixmac-splash__stage` has no opacity of its own, so without
+   it the keyframes would interpolate from the element's own 1 and fade nothing. */
 @keyframes nixmac-splash-in {
+  from {
+    opacity: 0;
+  }
   to {
     opacity: 1;
   }
