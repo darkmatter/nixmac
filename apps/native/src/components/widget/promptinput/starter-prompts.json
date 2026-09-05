@@ -56,21 +56,6 @@
     "description": "Recording, streaming, ingest tunnels, capture boxes, and stream-room utilities.",
     "prompts": [
       {
-        "id": "streaming-apps",
-        "label": "OBS setup",
-        "icon": "video",
-        "featured": true,
-        "prompt": "Install OBS Studio, Streamlink, yt-dlp, Twitch TUI, Discord, and a launchd login agent that prepares a recording folder and opens my stream checklist.",
-        "sourceRefs": [
-          "nix-darwin/homebrew.casks",
-          "nix-darwin/homebrew.brews",
-          "home-manager/programs.streamlink",
-          "home-manager/programs.yt-dlp",
-          "home-manager/programs.twitch-tui",
-          "nix-darwin/launchd.user.agents"
-        ]
-      },
-      {
         "id": "capture-box",
         "label": "Capture box",
         "icon": "cable",
