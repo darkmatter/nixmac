@@ -3,9 +3,8 @@
 import { BadgeButton } from "@/components/ui/badge-button";
 import { useRecommendedPrompt } from "@/hooks/use-recommended-prompt";
 import { getTelemetry } from "@/lib/telemetry/instance";
-import { uiActions } from "@nixmac/state";
 
-export function MacRecommendationChip() {
+export function MacRecommendationChip({ onSelect }: { onSelect: (prompt: string) => void }) {
   const { recommendation } = useRecommendedPrompt();
 
   if (!recommendation) return null;
@@ -18,7 +17,7 @@ export function MacRecommendationChip() {
           name: "prompt_suggestion_used",
           props: { surface: "mac_recommendation" },
         });
-        uiActions.setEvolvePrompt(recommendation.promptText);
+        onSelect(recommendation.promptText);
       }}
     >
       {recommendation.promptText}
