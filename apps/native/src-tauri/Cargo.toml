@@ -138,8 +138,6 @@ tauri-plugin-updater = "2.0.0"
 url = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-cocoa = "0.26"
-objc = "0.2"
 window-vibrancy = "0.6"
 core-foundation = "0.10"
 security-framework = "3"
@@ -186,6 +184,16 @@ objc2-foundation = { version = "0.3.2", default-features = false, features = [
 ] }
 block2 = "0.6"
 dispatch2 = "0.3"
+# Typed `NSWindow` bindings for the floating-panel setup in `peek.rs` and the
+# `NIXMAC_E2E_OPAQUE_WINDOW` diagnostic in `main.rs`. Already in the tree
+# through Tauri; declared directly with the exact features this code uses, so
+# the build does not depend on Tauri's own feature selection.
+objc2-app-kit = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "NSResponder",
+  "NSWindow",
+  "objc2-core-foundation",
+] }
 
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.31", features = ["user"] }

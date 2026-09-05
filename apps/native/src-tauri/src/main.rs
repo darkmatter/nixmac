@@ -938,26 +938,23 @@ use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectStat
 
             #[cfg(target_os = "macos")]
             if e2e_opaque_window {
-                use objc::msg_send;
-                use objc::runtime::Object;
-                use objc::sel;
-                use objc::sel_impl;
+                use objc2_app_kit::NSWindow;
 
                 match main_window.ns_window() {
-                    Ok(ns_window) => unsafe {
-                        let ns_window = ns_window as *mut Object;
-                        let is_opaque: bool = msg_send![ns_window, isOpaque];
-                        let alpha_value: f64 = msg_send![ns_window, alphaValue];
-                        let level: i64 = msg_send![ns_window, level];
-                        let has_shadow: bool = msg_send![ns_window, hasShadow];
+                    Ok(ns_window) => {
+                        // SAFETY: `ns_window()` hands back a
+                        // retained-then-autoreleased NSWindow, valid for this
+                        // scope, and `setup()` runs on the main thread, as
+                        // main-thread-only `NSWindow` requires.
+                        let ns_window: &NSWindow = unsafe { &*ns_window.cast() };
                         log::info!(
                             "NIXMAC_E2E_OPAQUE_WINDOW native window diagnostics: isOpaque={} alphaValue={:.3} level={} hasShadow={}",
-                            is_opaque,
-                            alpha_value,
-                            level,
-                            has_shadow
+                            ns_window.isOpaque(),
+                            ns_window.alphaValue(),
+                            ns_window.level(),
+                            ns_window.hasShadow()
                         );
-                    },
+                    }
                     Err(error) => {
                         log::warn!(
                             "NIXMAC_E2E_OPAQUE_WINDOW native window diagnostics unavailable: {}",
