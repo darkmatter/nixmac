@@ -8,7 +8,56 @@
 /// - May modify filesystem, index, HEAD, refs
 use crate::git::query::has_head_commit;
 use anyhow::{Context, Result};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
+
+/// Resolve a path relative to the directory supplied by the caller, then
+/// translate it to the repository-relative form required by git2.
+///
+/// Only the two directories are canonicalized: `path` itself may name a
+/// deleted or not-yet-created file. The remaining components are normalized
+/// lexically so `..` can move within the repository but never escape it.
+///
+/// This is important because we don't want to assume the config_dir is at the repository root
+/// in nixmac, and git2 requires repository-relative paths.
+fn repo_relative_path(repo: &git2::Repository, dir: &str, path: &str) -> Result<PathBuf> {
+    let dir = Path::new(dir)
+        .canonicalize()
+        .with_context(|| format!("canonicalize input directory `{dir}`"))?;
+    let workdir = repo
+        .workdir()
+        .context("cannot resolve a file path in a bare repository")?
+        .canonicalize()
+        .context("canonicalize repository workdir")?;
+    let joined = dir.join(path);
+    let relative = joined.strip_prefix(&workdir).with_context(|| {
+        format!(
+            "path `{}` is outside repository `{}`",
+            joined.display(),
+            workdir.display()
+        )
+    })?;
+
+    let mut normalized = PathBuf::new();
+    for component in relative.components() {
+        match component {
+            Component::Normal(segment) => normalized.push(segment),
+            Component::CurDir => {}
+            Component::ParentDir => anyhow::ensure!(
+                normalized.pop(),
+                "path `{}` is outside repository `{}`",
+                joined.display(),
+                workdir.display()
+            ),
+            Component::Prefix(_) | Component::RootDir => anyhow::bail!(
+                "path `{}` is outside repository `{}`",
+                joined.display(),
+                workdir.display()
+            ),
+        }
+    }
+
+    Ok(normalized)
+}
 
 /// Helper to determine the Git index mode for an intent-to-add entry based on filesystem metadata.
 fn intent_to_add_mode(metadata: &std::fs::Metadata) -> u32 {
@@ -188,13 +237,18 @@ pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
 /// uncommitted. The index is reset to HEAD so only `path` is included, then the
 /// path is staged (or its deletion staged) and a commit is created.
 pub fn commit_file(dir: &str, path: &str, message: &str) -> Result<CommitInfo> {
+    commit_files(dir, &[path], message)
+}
+
+/// Commit only the requested files, interpreting each path relative to `dir`
+/// and leaving unrelated worktree changes out of the commit.
+pub fn commit_files(dir: &str, paths: &[&str], message: &str) -> Result<CommitInfo> {
     let repo = git2::Repository::discover(dir)?;
-    let rel = Path::new(path);
 
     let parent = repo.head().ok().and_then(|head| head.peel_to_commit().ok());
 
     let mut index = repo.index().context("git2 open repository index")?;
-    // Start from HEAD so only `path` differs in this commit.
+    // Start from HEAD so only the requested paths differ in this commit.
     if let Some(parent) = parent.as_ref() {
         let head_tree = parent.tree().context("git2 read HEAD tree")?;
         index
@@ -204,24 +258,28 @@ pub fn commit_file(dir: &str, path: &str, message: &str) -> Result<CommitInfo> {
         index.clear().context("git2 clear index")?;
     }
 
-    let workdir = repo.workdir().context("commit_file in a bare repository")?;
-    if workdir.join(rel).exists() {
-        index
-            .add_path(rel)
-            .with_context(|| format!("git2 stage `{path}`"))?;
-    } else {
-        index
-            .remove_path(rel)
-            .with_context(|| format!("git2 stage deletion of `{path}`"))?;
+    let workdir = repo
+        .workdir()
+        .context("commit_files in a bare repository")?;
+    for path in paths {
+        let rel = repo_relative_path(&repo, dir, path)?;
+        if workdir.join(&rel).exists() {
+            index
+                .add_path(&rel)
+                .with_context(|| format!("git2 stage `{path}`"))?;
+        } else {
+            index
+                .remove_path(&rel)
+                .with_context(|| format!("git2 stage deletion of `{path}`"))?;
+        }
     }
-    index.write().context("git2 write staged index")?;
-
     let tree_id = index.write_tree().context("git2 write commit tree")?;
     if let Some(parent) = parent.as_ref()
         && parent.tree_id() == tree_id
     {
         anyhow::bail!("nothing to commit");
     }
+    index.write().context("git2 write staged index")?;
     let tree = repo.find_tree(tree_id).context("git2 find commit tree")?;
 
     let signature =
@@ -318,8 +376,7 @@ fn index_entry_differs_from_head(
 /// drift row alive. Purely unstaged drift leaves the index untouched.
 pub fn restore_hunk(dir: &str, path: &str, hunk: &str) -> Result<()> {
     let repo = git2::Repository::discover(dir)?;
-    let rel = super::repo_files::normalize_repo_relative_path_lexically(path)
-        .context("path escapes the repository")?;
+    let rel = repo_relative_path(&repo, dir, path)?;
     let workdir = repo
         .workdir()
         .context("restore_hunk in a bare repository")?;
@@ -425,8 +482,7 @@ pub fn restore_hunk(dir: &str, path: &str, hunk: &str) -> Result<()> {
 /// as an empty blob instead.
 pub fn commit_hunk(dir: &str, path: &str, hunk: &str, message: &str) -> Result<CommitInfo> {
     let repo = git2::Repository::discover(dir)?;
-    let rel = super::repo_files::normalize_repo_relative_path_lexically(path)
-        .context("path escapes the repository")?;
+    let rel = repo_relative_path(&repo, dir, path)?;
 
     let parent = repo.head().ok().and_then(|head| head.peel_to_commit().ok());
     let head_tree = parent.as_ref().and_then(|commit| commit.tree().ok());
@@ -526,19 +582,19 @@ pub fn commit_hunk(dir: &str, path: &str, hunk: &str, message: &str) -> Result<C
 /// an untracked file is removed from the working tree.
 pub fn restore_file(dir: &str, path: &str) -> Result<()> {
     let repo = git2::Repository::discover(dir)?;
-    let rel = Path::new(path);
+    let rel = repo_relative_path(&repo, dir, path)?;
 
     let head_tree = repo.head().ok().and_then(|head| head.peel_to_tree().ok());
     let tracked_in_head = head_tree
         .as_ref()
-        .is_some_and(|tree| tree.get_path(rel).is_ok());
+        .is_some_and(|tree| tree.get_path(&rel).is_ok());
 
     if tracked_in_head {
         let head_obj = repo
             .revparse_single("HEAD")
             .context("git2 resolve HEAD for restore_file")?;
         let mut checkout = git2::build::CheckoutBuilder::new();
-        checkout.force().update_index(true).path(path);
+        checkout.force().update_index(true).path(&rel);
         repo.checkout_tree(&head_obj, Some(&mut checkout))
             .with_context(|| format!("git2 restore `{path}` from HEAD"))?;
     } else {
@@ -546,14 +602,14 @@ pub fn restore_file(dir: &str, path: &str) -> Result<()> {
         let workdir = repo
             .workdir()
             .context("restore_file in a bare repository")?;
-        let full = workdir.join(rel);
+        let full = workdir.join(&rel);
         if full.exists() {
             std::fs::remove_file(&full)
                 .with_context(|| format!("remove untracked `{}`", full.display()))?;
         }
         let mut index = repo.index().context("git2 open repository index")?;
-        if index.get_path(rel, 0).is_some() {
-            let _ = index.remove_path(rel);
+        if index.get_path(&rel, 0).is_some() {
+            let _ = index.remove_path(&rel);
             let _ = index.write();
         }
     }
@@ -868,6 +924,87 @@ mod tests {
     }
 
     #[test]
+    fn test_commit_files_commits_only_requested_paths() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("one.txt"), "initial one\n").unwrap();
+        fs::write(repo_dir.join("two.txt"), "initial two\n").unwrap();
+        fs::write(repo_dir.join("unrelated.txt"), "initial unrelated\n").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+
+        fs::write(repo_dir.join("one.txt"), "changed one\n").unwrap();
+        fs::write(repo_dir.join("two.txt"), "changed two\n").unwrap();
+        fs::write(repo_dir.join("unrelated.txt"), "working change\n").unwrap();
+        commit_files(&repo_dir_str, &["one.txt", "two.txt"], "selected").unwrap();
+
+        assert_eq!(
+            run_git_ok(&repo_dir, &["show", "HEAD:one.txt"]),
+            "changed one\n"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["show", "HEAD:two.txt"]),
+            "changed two\n"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["show", "HEAD:unrelated.txt"]),
+            "initial unrelated\n"
+        );
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("unrelated.txt")).unwrap(),
+            "working change\n"
+        );
+    }
+
+    #[test]
+    fn test_commit_files_from_nested_config_dir() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let config_dir = repo_dir.join("nix/os");
+        fs::create_dir_all(&config_dir).unwrap();
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        let config_dir_str = config_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(config_dir.join("changed.nix"), "initial changed\n").unwrap();
+        fs::write(config_dir.join("deleted.nix"), "initial deleted\n").unwrap();
+        fs::write(repo_dir.join("unrelated.nix"), "initial unrelated\n").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+
+        fs::write(config_dir.join("changed.nix"), "nested changed\n").unwrap();
+        fs::remove_file(config_dir.join("deleted.nix")).unwrap();
+        fs::write(repo_dir.join("unrelated.nix"), "working change\n").unwrap();
+
+        commit_files(
+            &config_dir_str,
+            &["changed.nix", "deleted.nix"],
+            "nested selected files",
+        )
+        .unwrap();
+
+        assert_eq!(
+            run_git_ok(&repo_dir, &["show", "HEAD:nix/os/changed.nix"]),
+            "nested changed\n"
+        );
+        assert!(
+            !run_git(&repo_dir, &["cat-file", "-e", "HEAD:nix/os/deleted.nix"])
+                .status
+                .success(),
+            "a config-relative deletion should be included"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["show", "HEAD:unrelated.nix"]),
+            "initial unrelated\n"
+        );
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("unrelated.nix")).unwrap(),
+            "working change\n"
+        );
+    }
+
+    #[test]
     fn test_commit_all_matches_add_all_for_all_file_states() {
         let temp_dir = TempDir::new().unwrap();
         let repo_dir = temp_dir.path().join("repo");
@@ -996,6 +1133,143 @@ mod tests {
             run_git_ok(&repo_dir, &["show", "-s", "--format=%s", "HEAD"]).trim(),
             "initial"
         );
+    }
+
+    #[test]
+    fn test_commit_and_restore_file_from_repo_root() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("selected.nix"), "initial\n").unwrap();
+        fs::write(repo_dir.join("other.nix"), "other initial\n").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+
+        fs::write(repo_dir.join("selected.nix"), "selected changed\n").unwrap();
+        fs::write(repo_dir.join("other.nix"), "other changed\n").unwrap();
+        commit_file(&repo_dir_str, "selected.nix", "selected only").unwrap();
+
+        assert_eq!(
+            run_git_ok(&repo_dir, &["show", "HEAD:selected.nix"]),
+            "selected changed\n"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["show", "HEAD:other.nix"]),
+            "other initial\n",
+            "commit_file should leave other worktree changes uncommitted"
+        );
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("other.nix")).unwrap(),
+            "other changed\n"
+        );
+
+        fs::write(repo_dir.join("selected.nix"), "discard me\n").unwrap();
+        restore_file(&repo_dir_str, "selected.nix").unwrap();
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("selected.nix")).unwrap(),
+            "selected changed\n"
+        );
+
+        fs::write(repo_dir.join("untracked.nix"), "discard me\n").unwrap();
+        restore_file(&repo_dir_str, "untracked.nix").unwrap();
+        assert!(!repo_dir.join("untracked.nix").exists());
+    }
+
+    #[test]
+    fn test_commit_and_restore_file_from_nested_config_dir() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let config_dir = repo_dir.join("nix/os");
+        fs::create_dir_all(&config_dir).unwrap();
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        let config_dir_str = config_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(config_dir.join("configuration.nix"), "initial\n").unwrap();
+        fs::write(repo_dir.join("outside.nix"), "outside initial\n").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+
+        fs::write(config_dir.join("configuration.nix"), "nested changed\n").unwrap();
+        fs::write(repo_dir.join("outside.nix"), "outside changed\n").unwrap();
+        commit_file(&config_dir_str, "configuration.nix", "nested file only").unwrap();
+
+        assert_eq!(
+            run_git_ok(&repo_dir, &["show", "HEAD:nix/os/configuration.nix"]),
+            "nested changed\n"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["show", "HEAD:outside.nix"]),
+            "outside initial\n"
+        );
+
+        fs::write(config_dir.join("configuration.nix"), "discard me\n").unwrap();
+        restore_file(&config_dir_str, "configuration.nix").unwrap();
+        assert_eq!(
+            fs::read_to_string(config_dir.join("configuration.nix")).unwrap(),
+            "nested changed\n"
+        );
+
+        fs::write(config_dir.join("untracked.nix"), "discard me\n").unwrap();
+        restore_file(&config_dir_str, "untracked.nix").unwrap();
+        assert!(!config_dir.join("untracked.nix").exists());
+
+        fs::remove_file(config_dir.join("configuration.nix")).unwrap();
+        commit_file(&config_dir_str, "configuration.nix", "nested deletion").unwrap();
+        assert!(
+            !run_git(
+                &repo_dir,
+                &["cat-file", "-e", "HEAD:nix/os/configuration.nix"]
+            )
+            .status
+            .success(),
+            "a deleted config-relative file should be removed from the commit"
+        );
+    }
+
+    #[test]
+    fn test_commit_file_nothing_to_commit_preserves_intent_to_add_index_entry() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("tracked.nix"), "unchanged\n").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+        fs::write(repo_dir.join("new.nix"), "{ visible = true; }\n").unwrap();
+        intent_add_untracked(&repo_dir_str).unwrap();
+
+        let error = commit_file(&repo_dir_str, "tracked.nix", "no change")
+            .err()
+            .expect("an unchanged file should not produce a commit");
+        assert!(error.to_string().contains("nothing to commit"));
+
+        let repo = git2::Repository::open(&repo_dir).unwrap();
+        let index = repo.index().unwrap();
+        let entry = index
+            .get_path(Path::new("new.nix"), 0)
+            .expect("failed commit should preserve the intent-to-add entry");
+        assert!(
+            git2::IndexEntryExtendedFlag::from_bits_truncate(entry.flags_extended)
+                .contains(git2::IndexEntryExtendedFlag::INTENT_TO_ADD)
+        );
+    }
+
+    #[test]
+    fn test_single_file_operations_reject_paths_outside_repository() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+        fs::write(repo_dir.join("tracked.nix"), "initial\n").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+
+        let outside = temp_dir.path().join("outside.nix");
+        fs::write(&outside, "keep me\n").unwrap();
+
+        assert!(restore_file(&repo_dir_str, "../outside.nix").is_err());
+        assert_eq!(fs::read_to_string(outside).unwrap(), "keep me\n");
+        assert!(commit_file(&repo_dir_str, "../outside.nix", "outside").is_err());
     }
 
     #[test]
