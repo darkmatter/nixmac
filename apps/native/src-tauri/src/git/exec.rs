@@ -6,7 +6,7 @@
 ///
 /// Rules:
 /// - May modify filesystem, index, HEAD, refs
-use crate::git::query::has_head_commit;
+use crate::git::{query::has_head_commit, repo_files::normalize_repo_relative_path_lexically};
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
@@ -183,12 +183,33 @@ pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
     })
 }
 
+fn ensure_existing_path_parent_inside_workdir(
+    workdir: &Path,
+    full: &Path,
+    path: &str,
+) -> Result<()> {
+    let workdir = workdir
+        .canonicalize()
+        .with_context(|| format!("canonicalize workdir `{}`", workdir.display()))?;
+    let parent = full
+        .parent()
+        .context("target path has no parent")?
+        .canonicalize()
+        .with_context(|| format!("canonicalize parent of `{}`", full.display()))?;
+    if !parent.starts_with(&workdir) {
+        anyhow::bail!("refusing to operate on path outside repository: `{path}`");
+    }
+    Ok(())
+}
+
 /// Commit a single file's change, leaving the rest of the working tree
 /// uncommitted. The index is reset to HEAD so only `path` is included, then the
 /// path is staged (or its deletion staged) and a commit is created.
 pub fn commit_file(dir: &str, path: &str, message: &str) -> Result<CommitInfo> {
     let repo = git2::Repository::discover(dir)?;
-    let rel = Path::new(path);
+    let rel = normalize_repo_relative_path_lexically(path)
+        .filter(|path| !path.as_os_str().is_empty())
+        .ok_or_else(|| anyhow::anyhow!("invalid repository-relative path: `{path}`"))?;
 
     let parent = repo.head().ok().and_then(|head| head.peel_to_commit().ok());
 
@@ -204,13 +225,15 @@ pub fn commit_file(dir: &str, path: &str, message: &str) -> Result<CommitInfo> {
     }
 
     let workdir = repo.workdir().context("commit_file in a bare repository")?;
-    if workdir.join(rel).exists() {
+    let full = workdir.join(&rel);
+    if full.exists() {
+        ensure_existing_path_parent_inside_workdir(workdir, &full, path)?;
         index
-            .add_path(rel)
+            .add_path(&rel)
             .with_context(|| format!("git2 stage `{path}`"))?;
     } else {
         index
-            .remove_path(rel)
+            .remove_path(&rel)
             .with_context(|| format!("git2 stage deletion of `{path}`"))?;
     }
     index.write().context("git2 write staged index")?;
@@ -248,19 +271,25 @@ pub fn commit_file(dir: &str, path: &str, message: &str) -> Result<CommitInfo> {
 /// an untracked file is removed from the working tree.
 pub fn restore_file(dir: &str, path: &str) -> Result<()> {
     let repo = git2::Repository::discover(dir)?;
-    let rel = Path::new(path);
+    let rel = normalize_repo_relative_path_lexically(path)
+        .filter(|path| !path.as_os_str().is_empty())
+        .ok_or_else(|| anyhow::anyhow!("invalid repository-relative path: `{path}`"))?;
 
     let head_tree = repo.head().ok().and_then(|head| head.peel_to_tree().ok());
     let tracked_in_head = head_tree
         .as_ref()
-        .is_some_and(|tree| tree.get_path(rel).is_ok());
+        .is_some_and(|tree| tree.get_path(&rel).is_ok());
 
     if tracked_in_head {
         let head_obj = repo
             .revparse_single("HEAD")
             .context("git2 resolve HEAD for restore_file")?;
         let mut checkout = git2::build::CheckoutBuilder::new();
-        checkout.force().update_index(true).path(path);
+        checkout
+            .force()
+            .update_index(true)
+            .disable_pathspec_match(true)
+            .path(&rel);
         repo.checkout_tree(&head_obj, Some(&mut checkout))
             .with_context(|| format!("git2 restore `{path}` from HEAD"))?;
     } else {
@@ -268,14 +297,15 @@ pub fn restore_file(dir: &str, path: &str) -> Result<()> {
         let workdir = repo
             .workdir()
             .context("restore_file in a bare repository")?;
-        let full = workdir.join(rel);
+        let full = workdir.join(&rel);
         if full.exists() {
+            ensure_existing_path_parent_inside_workdir(workdir, &full, path)?;
             std::fs::remove_file(&full)
                 .with_context(|| format!("remove untracked `{}`", full.display()))?;
         }
         let mut index = repo.index().context("git2 open repository index")?;
-        if index.get_path(rel, 0).is_some() {
-            let _ = index.remove_path(rel);
+        if index.get_path(&rel, 0).is_some() {
+            let _ = index.remove_path(&rel);
             let _ = index.write();
         }
     }
@@ -686,6 +716,107 @@ mod tests {
         assert_eq!(
             run_git_ok(&repo_dir, &["rev-parse", "HEAD"]).trim(),
             first.hash
+        );
+    }
+
+    #[test]
+    fn test_restore_file_rejects_parent_traversal_without_deleting_outside_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let outside = temp_dir.path().join("outside.txt");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+        fs::write(&outside, "outside\n").unwrap();
+
+        assert!(restore_file(&repo_dir_str, "../outside.txt").is_err());
+
+        assert_eq!(fs::read_to_string(&outside).unwrap(), "outside\n");
+    }
+
+    #[test]
+    fn test_restore_file_rejects_absolute_path_without_deleting_outside_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let outside = temp_dir.path().join("outside.txt");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+        fs::write(&outside, "outside\n").unwrap();
+
+        assert!(restore_file(&repo_dir_str, &outside.to_string_lossy()).is_err());
+
+        assert_eq!(fs::read_to_string(&outside).unwrap(), "outside\n");
+    }
+
+    #[test]
+    fn test_restore_file_removes_repo_relative_untracked_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+        fs::write(repo_dir.join("new-file.nix"), "{ }\n").unwrap();
+
+        restore_file(&repo_dir_str, "new-file.nix").unwrap();
+
+        assert!(!repo_dir.join("new-file.nix").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_restore_file_rejects_symlink_directory_escape() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let outside_dir = temp_dir.path().join("outside");
+        let outside = outside_dir.join("victim.txt");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+        fs::create_dir_all(&outside_dir).unwrap();
+        fs::write(&outside, "outside\n").unwrap();
+        std::os::unix::fs::symlink(&outside_dir, repo_dir.join("linked-out")).unwrap();
+
+        assert!(restore_file(&repo_dir_str, "linked-out/victim.txt").is_err());
+
+        assert_eq!(fs::read_to_string(&outside).unwrap(), "outside\n");
+    }
+
+    #[test]
+    fn test_commit_file_rejects_parent_traversal() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let outside = temp_dir.path().join("outside.txt");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+        let head = commit_all(&repo_dir_str, "initial").unwrap();
+        fs::write(&outside, "outside\n").unwrap();
+
+        assert!(commit_file(&repo_dir_str, "../outside.txt", "bad").is_err());
+
+        assert_eq!(
+            run_git_ok(&repo_dir, &["rev-parse", "HEAD"]).trim(),
+            head.hash
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_commit_file_rejects_symlink_directory_escape() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let outside_dir = temp_dir.path().join("outside");
+        let outside = outside_dir.join("victim.txt");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+        let head = commit_all(&repo_dir_str, "initial").unwrap();
+        fs::create_dir_all(&outside_dir).unwrap();
+        fs::write(&outside, "outside\n").unwrap();
+        std::os::unix::fs::symlink(&outside_dir, repo_dir.join("linked-out")).unwrap();
+
+        assert!(commit_file(&repo_dir_str, "linked-out/victim.txt", "bad").is_err());
+
+        assert_eq!(
+            run_git_ok(&repo_dir, &["rev-parse", "HEAD"]).trim(),
+            head.hash
         );
     }
 
