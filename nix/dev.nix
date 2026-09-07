@@ -52,6 +52,8 @@ lib.mkIf (!config.container.isBuilding) {
     # came from another (E0514 on CI).
     pkgs.cargo-watch
     pkgs.cargo-nextest
+    # RustSec advisory scan over Cargo.lock: `cargo audit`.
+    pkgs.cargo-audit
     pkgs.flyctl
     pkgs.age
     pkgs.sops
