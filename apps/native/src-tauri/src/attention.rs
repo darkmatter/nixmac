@@ -14,7 +14,9 @@ use tauri::{AppHandle, Manager, Runtime};
 use crate::shared_types::EvolutionState;
 
 const NOTIFICATION_ID_PREFIX: &str = "com.darkmatter.nixmac.attention.";
+#[cfg(any(target_os = "macos", test))]
 const NOTIFICATION_GENERATION_SEPARATOR: &str = ".generation.";
+#[cfg(any(target_os = "macos", test))]
 static ATTENTION_PROCESS_ID: LazyLock<String> = LazyLock::new(|| uuid::Uuid::new_v4().to_string());
 static ATTENTION_STATE: LazyLock<Mutex<AttentionState>> =
     LazyLock::new(|| Mutex::new(AttentionState::default()));
@@ -227,6 +229,7 @@ impl AttentionKind {
     }
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn owned_notification_scope(identifier: Option<&str>) -> Option<AttentionScope> {
     let suffix = identifier?.strip_prefix(NOTIFICATION_ID_PREFIX)?;
     Some(if suffix.starts_with("drift.") {
@@ -236,6 +239,7 @@ fn owned_notification_scope(identifier: Option<&str>) -> Option<AttentionScope> 
     })
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn delivery_identifier(id: &str, generation: u64) -> String {
     format!(
         "{id}{NOTIFICATION_GENERATION_SEPARATOR}{}:{generation}",
@@ -243,6 +247,7 @@ fn delivery_identifier(id: &str, generation: u64) -> String {
     )
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn should_clear_delivered_notice(
     identifier: Option<&str>,
     scope: AttentionScope,

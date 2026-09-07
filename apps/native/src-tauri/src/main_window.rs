@@ -250,6 +250,7 @@ pub(crate) fn active<R: Runtime>(app: &AppHandle<R>) -> MainWindowMode {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg(any(target_os = "macos", test))]
 struct LogicalRect {
     x: f64,
     y: f64,
@@ -257,8 +258,8 @@ struct LogicalRect {
     height: f64,
 }
 
+#[cfg(target_os = "macos")]
 impl LogicalRect {
-    #[cfg(target_os = "macos")]
     fn from_ns_rect(rect: NSRect) -> Self {
         Self {
             x: rect.origin.x,
@@ -269,6 +270,7 @@ impl LogicalRect {
     }
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn popover_origin(
     status_item: LogicalRect,
     window_width: f64,
@@ -286,6 +288,7 @@ fn popover_origin(
     )
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn popover_visible_frame_fallback_origin(
     window_width: f64,
     window_height: f64,
@@ -297,6 +300,7 @@ fn popover_visible_frame_fallback_origin(
     )
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn status_item_frame_is_usable(status_item: LogicalRect, screen_frame: LogicalRect) -> bool {
     const EDGE_TOLERANCE: f64 = 1.0;
     const MAX_STATUS_ITEM_WIDTH: f64 = 256.0;
@@ -563,10 +567,12 @@ fn claim_initial_show_generation(generation: &AtomicU64) -> Option<u64> {
         .map(|_| 1)
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn should_reanchor_after_screen_change(mode: MainWindowMode, is_visible: bool) -> bool {
     mode.is_popover() && is_visible
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn should_reopen_after_activation(
     mode: MainWindowMode,
     is_visible: bool,
@@ -606,12 +612,14 @@ fn schedule_delayed_refocus<R: Runtime>(
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg(any(target_os = "macos", test))]
 enum EscapeAction {
     PassThrough,
     BridgeToWebview,
 }
 
 #[derive(Debug, Clone, Copy)]
+#[cfg(any(target_os = "macos", test))]
 struct EscapeContext {
     is_popover: bool,
     is_visible: bool,
@@ -621,6 +629,7 @@ struct EscapeContext {
     webview_owns_first_responder: bool,
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn escape_action(context: EscapeContext) -> EscapeAction {
     if context.is_popover
         && context.is_visible
