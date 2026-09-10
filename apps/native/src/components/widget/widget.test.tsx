@@ -3,6 +3,7 @@ import type { EtcClobberCheckResult } from "@/ipc/types";
 import { FeedbackType } from "@/types/feedback";
 import { makeGlobalPreferences as makePrefs, makeRebuildStatus } from "@/utils/test-fixtures";
 import { ESCAPE_OWNER_PRIORITY, registerEscapeOwner } from "@/lib/escape-owner";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   initialUiState,
   uiActions,
@@ -15,6 +16,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mainWindowMocks = vi.hoisted(() => ({
   dismissMainWindowPopover: vi.fn<() => Promise<boolean>>().mockResolvedValue(true),
+  dismissMainWindowClose: vi.fn<(token: number) => Promise<boolean>>().mockResolvedValue(true),
   isMainWindowPopover: vi.fn<() => Promise<boolean>>().mockResolvedValue(true),
   acknowledgeMainWindowClose: vi.fn<(token: number) => Promise<boolean>>().mockResolvedValue(true),
 }));
@@ -226,6 +228,9 @@ describe("DarwinWidget", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     ipcMocks.listeners.clear();
+    mainWindowMocks.dismissMainWindowPopover.mockResolvedValue(true);
+    mainWindowMocks.dismissMainWindowClose.mockResolvedValue(true);
+    mainWindowMocks.acknowledgeMainWindowClose.mockResolvedValue(true);
 
     // Reset store to initial state before each test
     viewModelActions.reset();
@@ -340,6 +345,7 @@ describe("DarwinWidget", () => {
     await waitFor(() => expect(useUiState.getState().feedbackOpen).toBe(false));
     expect(useUiState.getState().panicDetails).toBeNull();
     expect(mainWindowMocks.dismissMainWindowPopover).not.toHaveBeenCalled();
+    expect(mainWindowMocks.dismissMainWindowClose).not.toHaveBeenCalled();
     expect(mainWindowMocks.acknowledgeMainWindowClose).toHaveBeenCalledWith(19);
   });
 
@@ -371,7 +377,39 @@ describe("DarwinWidget", () => {
       expect(document.querySelector('[data-slot="alert-dialog-content"]')).toBeNull(),
     );
     expect(mainWindowMocks.dismissMainWindowPopover).not.toHaveBeenCalled();
+    expect(mainWindowMocks.dismissMainWindowClose).not.toHaveBeenCalled();
     expect(mainWindowMocks.acknowledgeMainWindowClose).toHaveBeenCalledWith(23);
+  });
+
+  it("acknowledges a native close consumed by a Dialog that refuses to close", async () => {
+    await renderWidget(true);
+    render(
+      <Dialog open>
+        <DialogContent onEscapeKeyDown={(event) => event.preventDefault()} aria-describedby={undefined}>
+          <DialogTitle>Unsaved changes</DialogTitle>
+        </DialogContent>
+      </Dialog>,
+    );
+    await waitFor(() => expect(document.querySelector('[data-slot="dialog-content"]')).not.toBeNull());
+
+    await emitNativeCloseRequested(29);
+
+    expect(document.querySelector('[data-slot="dialog-content"]')).not.toBeNull();
+    expect(mainWindowMocks.dismissMainWindowPopover).not.toHaveBeenCalled();
+    expect(mainWindowMocks.dismissMainWindowClose).not.toHaveBeenCalled();
+    expect(mainWindowMocks.acknowledgeMainWindowClose).toHaveBeenCalledWith(29);
+  });
+
+  it("acknowledges a native close after closing an eligible widget overlay", async () => {
+    uiActions.setShowHistory(true);
+    await renderWidget(true);
+
+    await emitNativeCloseRequested(31);
+
+    expect(uiActions.getState().showHistory).toBe(false);
+    expect(mainWindowMocks.dismissMainWindowPopover).not.toHaveBeenCalled();
+    expect(mainWindowMocks.dismissMainWindowClose).not.toHaveBeenCalled();
+    expect(mainWindowMocks.acknowledgeMainWindowClose).toHaveBeenCalledWith(31);
   });
 
   it("closes an eligible store-backed overlay without dismissing the window", async () => {
@@ -538,14 +576,15 @@ describe("DarwinWidget", () => {
     await waitFor(() => expect(mainWindowMocks.dismissMainWindowPopover).toHaveBeenCalledOnce());
   });
 
-  it("honors and acknowledges a native close request when the mode probe fails", async () => {
+  it("uses token-scoped dismissal when a native close arrives after the mode probe fails", async () => {
     mainWindowMocks.isMainWindowPopover.mockRejectedValueOnce(new Error("probe unavailable"));
     render(withRouter());
 
     await emitNativeCloseRequested(41);
 
-    expect(mainWindowMocks.dismissMainWindowPopover).toHaveBeenCalledOnce();
-    expect(mainWindowMocks.acknowledgeMainWindowClose).toHaveBeenCalledWith(41);
+    expect(mainWindowMocks.dismissMainWindowClose).toHaveBeenCalledWith(41);
+    expect(mainWindowMocks.dismissMainWindowPopover).not.toHaveBeenCalled();
+    expect(mainWindowMocks.acknowledgeMainWindowClose).not.toHaveBeenCalled();
   });
 
   it("routes native close through higher-priority Escape owners before acknowledging", async () => {
@@ -569,16 +608,17 @@ describe("DarwinWidget", () => {
     unregister();
     expect(order).toEqual(["higher-owner", "acknowledge"]);
     expect(mainWindowMocks.dismissMainWindowPopover).not.toHaveBeenCalled();
+    expect(mainWindowMocks.dismissMainWindowClose).not.toHaveBeenCalled();
   });
 
-  it("acknowledges a native close request after synchronous Escape dispatch", async () => {
+  it("dismisses a native close after Escape dispatch without sending an early ACK", async () => {
     const order: string[] = [];
     const observeEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") order.push("escape");
     };
     document.addEventListener("keydown", observeEscape);
-    mainWindowMocks.acknowledgeMainWindowClose.mockImplementation(async () => {
-      order.push("acknowledge");
+    mainWindowMocks.dismissMainWindowClose.mockImplementation(async () => {
+      order.push("dismiss");
       return true;
     });
     await renderWidget(true);
@@ -586,8 +626,63 @@ describe("DarwinWidget", () => {
     await emitNativeCloseRequested(73);
 
     document.removeEventListener("keydown", observeEscape);
-    expect(order).toEqual(["escape", "acknowledge"]);
-    expect(mainWindowMocks.acknowledgeMainWindowClose).toHaveBeenCalledWith(73);
+    expect(order).toEqual(["escape", "dismiss"]);
+    expect(mainWindowMocks.dismissMainWindowClose).toHaveBeenCalledWith(73);
+    expect(mainWindowMocks.dismissMainWindowPopover).not.toHaveBeenCalled();
+    expect(mainWindowMocks.acknowledgeMainWindowClose).not.toHaveBeenCalled();
+  });
+
+  it.each(["false", "rejection"])("keeps native fallback armed after dismissal returns %s", async (result) => {
+    if (result === "false") {
+      mainWindowMocks.dismissMainWindowClose.mockResolvedValueOnce(false);
+    } else {
+      mainWindowMocks.dismissMainWindowClose.mockRejectedValueOnce(new Error("native hide failed"));
+    }
+    await renderWidget(true);
+
+    await emitNativeCloseRequested(79);
+
+    expect(mainWindowMocks.dismissMainWindowClose).toHaveBeenCalledWith(79);
+    expect(mainWindowMocks.acknowledgeMainWindowClose).not.toHaveBeenCalled();
+    expect(mainWindowMocks.dismissMainWindowPopover).not.toHaveBeenCalled();
+  });
+
+  it("keeps native fallback armed while dismissal is unanswered", async () => {
+    let finishDismissal: (dismissed: boolean) => void = () => {};
+    mainWindowMocks.dismissMainWindowClose.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishDismissal = resolve;
+      }),
+    );
+    await renderWidget(true);
+
+    await emitNativeCloseRequested(83);
+
+    expect(mainWindowMocks.dismissMainWindowClose).toHaveBeenCalledWith(83);
+    expect(mainWindowMocks.acknowledgeMainWindowClose).not.toHaveBeenCalled();
+
+    // A newer request can be consumed by an overlay while the old call waits.
+    // Completing the old call must not acknowledge either request again.
+    act(() => uiActions.setShowHistory(true));
+    await emitNativeCloseRequested(84);
+    expect(mainWindowMocks.acknowledgeMainWindowClose).toHaveBeenCalledExactlyOnceWith(84);
+    await act(async () => {
+      finishDismissal(true);
+      await Promise.resolve();
+    });
+    expect(mainWindowMocks.acknowledgeMainWindowClose).toHaveBeenCalledExactlyOnceWith(84);
+  });
+
+  it("keeps ordinary Escape token-free after a native dismissal remains pending", async () => {
+    mainWindowMocks.dismissMainWindowClose.mockReturnValueOnce(new Promise(() => {}));
+    await renderWidget(true);
+
+    await emitNativeCloseRequested(87);
+    dispatchEscape();
+
+    expect(mainWindowMocks.dismissMainWindowClose).toHaveBeenCalledExactlyOnceWith(87);
+    expect(mainWindowMocks.dismissMainWindowPopover).toHaveBeenCalledOnce();
+    expect(mainWindowMocks.acknowledgeMainWindowClose).not.toHaveBeenCalled();
   });
 
   it("preserves editor state when native close dismisses the popover", async () => {
@@ -597,8 +692,9 @@ describe("DarwinWidget", () => {
     await emitNativeCloseRequested(91);
 
     expect(useUiState.getState().editingFile).toBe("/tmp/settings.nix");
-    expect(mainWindowMocks.dismissMainWindowPopover).toHaveBeenCalledOnce();
-    expect(mainWindowMocks.acknowledgeMainWindowClose).toHaveBeenCalledWith(91);
+    expect(mainWindowMocks.dismissMainWindowClose).toHaveBeenCalledWith(91);
+    expect(mainWindowMocks.dismissMainWindowPopover).not.toHaveBeenCalled();
+    expect(mainWindowMocks.acknowledgeMainWindowClose).not.toHaveBeenCalled();
   });
 
   it("respects a Radix-owned/default-prevented event", async () => {

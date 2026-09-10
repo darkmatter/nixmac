@@ -49,6 +49,7 @@ import { nav, useIsOverlayActive } from "@/router";
 import { ipcRenderer } from "@/ipc/api";
 import {
   acknowledgeMainWindowClose,
+  dismissMainWindowClose,
   dismissMainWindowPopover,
   isMainWindowPopover,
 } from "@/lib/main-window";
@@ -111,6 +112,7 @@ export function DarwinWidget() {
     let unlistenNativeCloseRequested: (() => void) | undefined;
     let isPopoverMode = false;
     let nativePopoverModeIsAuthoritative = false;
+    let nativeCloseRequest: { token: number; dismissRequested: boolean } | undefined;
 
     void isMainWindowPopover()
       .then((enabled) => {
@@ -178,7 +180,14 @@ export function DarwinWidget() {
       priority: ESCAPE_OWNER_PRIORITY.popover,
       handle: () => {
         if (!isPopoverMode) return false;
-        void dismissMainWindowPopover().catch((error) => {
+        // Native Close has a fallback that must stay armed until hide succeeds.
+        // Ordinary Escape/Cmd+W keep their existing token-free dismissal path.
+        const request = nativeCloseRequest;
+        if (request) request.dismissRequested = true;
+        const dismissal = request
+          ? dismissMainWindowClose(request.token)
+          : dismissMainWindowPopover();
+        void dismissal.catch((error) => {
           if (import.meta.env.PROD) {
             console.error("Failed to dismiss menu-bar popover:", error);
           }
@@ -236,15 +245,27 @@ export function DarwinWidget() {
       .on<{ token: number }>("window:close-requested", (event) => {
         // Native close ownership is popover-only. Route the request through a
         // bubbling DOM Escape so Radix Dialog/AlertDialog layers run before
-        // the widget owner, then acknowledge only after dispatch completes.
+        // the widget owner. Only a higher layer's consumption can ACK here;
+        // native window dismissal retires the token after hide succeeds.
         nativePopoverModeIsAuthoritative = true;
         isPopoverMode = true;
-        dispatchSyntheticDocumentEscape();
-        void acknowledgeMainWindowClose(event.payload.token).catch((error) => {
-          if (import.meta.env.PROD) {
-            console.error("Failed to acknowledge native close request:", error);
+        const request = { token: event.payload.token, dismissRequested: false };
+        const previousRequest = nativeCloseRequest;
+        nativeCloseRequest = request;
+        try {
+          const escape = dispatchSyntheticDocumentEscape();
+          // defaultPrevented alone is insufficient: the popover owner also
+          // consumes Escape before its asynchronous dismissal has completed.
+          if (escape.defaultPrevented && !request.dismissRequested) {
+            void acknowledgeMainWindowClose(request.token).catch((error) => {
+              if (import.meta.env.PROD) {
+                console.error("Failed to acknowledge native close request:", error);
+              }
+            });
           }
-        });
+        } finally {
+          nativeCloseRequest = previousRequest;
+        }
       })
       .then((unlisten) => {
         if (disposed) {

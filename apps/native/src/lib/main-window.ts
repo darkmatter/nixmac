@@ -12,6 +12,10 @@ export function dismissMainWindowPopover(): Promise<boolean> {
   return client.mainWindow.dismissPopover();
 }
 
+export function dismissMainWindowClose(token: number): Promise<boolean> {
+  return client.mainWindow.dismissClose({ token });
+}
+
 export function acknowledgeMainWindowClose(token: number): Promise<boolean> {
   return client.mainWindow.acknowledgeClose({ token });
 }

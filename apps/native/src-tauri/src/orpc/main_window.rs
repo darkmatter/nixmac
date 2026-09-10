@@ -8,7 +8,7 @@ use specta::Type;
 
 #[derive(Debug, Deserialize, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
-struct AcknowledgeCloseInput {
+struct CloseRequestInput {
     token: u32,
 }
 
@@ -21,7 +21,12 @@ async fn dismiss_popover(ctx: OrpcCtx, _input: ()) -> Result<bool, ORPCError> {
         .map_err(|error| internal_err("mainWindow.dismissPopover", error))
 }
 
-async fn acknowledge_close(_ctx: OrpcCtx, input: AcknowledgeCloseInput) -> Result<bool, ORPCError> {
+async fn dismiss_close(ctx: OrpcCtx, input: CloseRequestInput) -> Result<bool, ORPCError> {
+    main_window::dismiss_close(&ctx.app, input.token)
+        .map_err(|error| internal_err("mainWindow.dismissClose", error))
+}
+
+async fn acknowledge_close(_ctx: OrpcCtx, input: CloseRequestInput) -> Result<bool, ORPCError> {
     Ok(main_window::acknowledge_close(input.token))
 }
 
@@ -33,8 +38,12 @@ pub fn routes() -> Router<OrpcCtx> {
         "dismissPopover" => os::<OrpcCtx>()
             .output(orpc_specta::specta::<bool>())
             .handler(dismiss_popover),
+        "dismissClose" => os::<OrpcCtx>()
+            .input(orpc_specta::specta::<CloseRequestInput>())
+            .output(orpc_specta::specta::<bool>())
+            .handler(dismiss_close),
         "acknowledgeClose" => os::<OrpcCtx>()
-            .input(orpc_specta::specta::<AcknowledgeCloseInput>())
+            .input(orpc_specta::specta::<CloseRequestInput>())
             .output(orpc_specta::specta::<bool>())
             .handler(acknowledge_close),
     }

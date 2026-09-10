@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   isPopover: vi.fn<() => Promise<boolean>>(),
   dismissPopover: vi.fn<() => Promise<boolean>>(),
+  dismissClose: vi.fn<(input: { token: number }) => Promise<boolean>>(),
   acknowledgeClose: vi.fn<(input: { token: number }) => Promise<boolean>>(),
 }));
 
@@ -43,5 +44,15 @@ describe("main window", () => {
 
     await expect(acknowledgeMainWindowClose(17)).resolves.toBe(true);
     expect(mocks.acknowledgeClose).toHaveBeenCalledWith({ token: 17 });
+  });
+
+  it("dismisses only the specified native close request", async () => {
+    mocks.dismissClose.mockResolvedValue(false);
+    const { dismissMainWindowClose } = await import("./main-window");
+
+    await expect(dismissMainWindowClose(23)).resolves.toBe(false);
+    expect(mocks.dismissClose).toHaveBeenCalledWith({ token: 23 });
+    expect(mocks.dismissPopover).not.toHaveBeenCalled();
+    expect(mocks.acknowledgeClose).not.toHaveBeenCalled();
   });
 });

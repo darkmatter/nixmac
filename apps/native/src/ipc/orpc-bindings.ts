@@ -8,8 +8,6 @@ import type { Client } from "@orpc/client"
  */
 export type AccountBilling = { usage: BillingUsage; subscriptions: BillingSubscription[]; hasPaymentMethod: boolean; canUseHostedInference: boolean; canUseDeviceSync: boolean }
 
-export type AcknowledgeCloseInput = { token: number }
-
 export type ActivateStorePathInput = { storePath: string }
 
 export type AddInput = { prompt: string }
@@ -244,6 +242,8 @@ codex: boolean;
  * Whether the OpenCode CLI is installed.
  */
 opencode: boolean }
+
+export type CloseRequestInput = { token: number }
 
 /**
  * Result of a successful `git_commit` command. State mirrors (git, evolve,
@@ -2159,7 +2159,8 @@ export type Procedures = {
     stop: Client<Record<never, never>, void, void, Error>
   }
   mainWindow: {
-    acknowledgeClose: Client<Record<never, never>, AcknowledgeCloseInput, boolean, Error>
+    acknowledgeClose: Client<Record<never, never>, CloseRequestInput, boolean, Error>
+    dismissClose: Client<Record<never, never>, CloseRequestInput, boolean, Error>
     dismissPopover: Client<Record<never, never>, void, boolean, Error>
     isPopover: Client<Record<never, never>, void, boolean, Error>
   }

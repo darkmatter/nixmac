@@ -149,7 +149,7 @@ impl AttentionKind {
             ),
             Self::EvolutionFailed => (
                 "evolution-failed",
-                "nixmac needs attention",
+                "Your request stopped with an error",
                 "The request stopped with an error. Open nixmac to review and retry.",
                 true,
             ),
@@ -173,8 +173,8 @@ impl AttentionKind {
             ),
             Self::BuildFailed => (
                 "build-failed",
-                "System operation needs attention",
-                "Open nixmac to review the failure and available recovery options.",
+                "Build or restore failed",
+                "Open nixmac to see what failed and the available recovery steps.",
                 true,
             ),
             Self::BuildFinalizationFailed => (
@@ -851,6 +851,9 @@ mod tests {
         assert_eq!(input.title, "nixmac needs your input");
         assert_eq!(input.body, "Open nixmac to continue.");
         assert!(input.id.starts_with(NOTIFICATION_ID_PREFIX));
+
+        let failure = AttentionKind::EvolutionFailed.notice(None);
+        assert_eq!(failure.title, "Your request stopped with an error");
     }
 
     #[test]
@@ -863,7 +866,11 @@ mod tests {
 
         assert_eq!(success.title, "Build & Test finished");
         assert!(!success.request_attention);
-        assert_eq!(failure.title, "System operation needs attention");
+        assert_eq!(failure.title, "Build or restore failed");
+        assert_eq!(
+            failure.body,
+            "Open nixmac to see what failed and the available recovery steps."
+        );
         assert!(failure.request_attention);
         assert!(finalization.title.contains("changes are active"));
         assert_eq!(restore.title, "Restore finished");

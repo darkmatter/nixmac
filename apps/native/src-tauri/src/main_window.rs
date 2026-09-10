@@ -95,6 +95,28 @@ impl CloseRequestTracker {
                 .is_ok()
     }
 
+    fn pending(&self) -> u32 {
+        self.pending_token.load(Ordering::SeqCst)
+    }
+
+    /// The caller serializes the current-token check and native hide with
+    /// show/request_close on the main thread. Retire only the matching token,
+    /// after hiding succeeds; an error or missing window leaves the fallback.
+    fn dismiss_if_current(
+        &self,
+        token: u32,
+        hide: impl FnOnce() -> Result<bool, String>,
+    ) -> Result<bool, String> {
+        if token == 0 || self.pending() != token {
+            return Ok(false);
+        }
+        let hidden = hide()?;
+        if hidden {
+            self.retire(token);
+        }
+        Ok(hidden)
+    }
+
     fn clear(&self) {
         self.pending_token.store(0, Ordering::SeqCst);
     }
@@ -326,6 +348,9 @@ where
     T: Send + 'static,
     F: FnOnce() -> T + Send + 'static,
 {
+    if MainThreadMarker::new().is_some() {
+        return Ok(task());
+    }
     let (sender, receiver) = mpsc::sync_channel(1);
     app.run_on_main_thread(move || {
         let _ = sender.send(task());
@@ -839,12 +864,27 @@ pub(crate) fn acknowledge_close(token: u32) -> bool {
 
 /// Give the WebView first refusal on a popover close request.
 ///
-/// A listener can synchronously route the request through the overlay Escape
-/// stack and then acknowledge this token. If no listener receives the event,
-/// or the WebView is unresponsive, the current request dismisses after exactly
-/// one second. A newer request supersedes every older token and timeout.
+/// A listener acknowledges immediately only when an overlay consumes Escape.
+/// Otherwise dismiss_close retires the token after native hiding succeeds.
+/// An unhandled, failed or unanswered request gets a one-second fallback when
+/// the native event loop can run. Reopening or a newer close invalidates both
+/// the old fallback and any delayed dismissal RPC carrying the old token.
 pub(crate) fn request_close<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    if MainThreadMarker::new().is_none() {
+        let task_app = app.clone();
+        return run_on_main_thread_sync(app, move || request_close(&task_app))?;
+    }
     let token = CLOSE_REQUESTS.begin();
+    // Arm the fallback before notifying the WebView. An emit failure also gets
+    // a retry if the immediate native hide fails.
+    let fallback_app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(CLOSE_REQUEST_FALLBACK);
+        if let Err(error) = dismiss_close(&fallback_app, token) {
+            log::warn!("Failed to dismiss unacknowledged menu-bar popover close request: {error}");
+        }
+    });
     let emit_result = app
         .get_webview_window("main")
         .ok_or_else(|| "Main window not found".to_string())
@@ -855,10 +895,12 @@ pub(crate) fn request_close<R: Runtime>(app: &AppHandle<R>) -> Result<(), String
         });
 
     if let Err(emit_error) = emit_result {
-        CLOSE_REQUESTS.retire(token);
-        return match dismiss(app, MainWindowMode::Popover) {
-            Ok(_) => Err(format!(
+        return match dismiss_close(app, token) {
+            Ok(true) => Err(format!(
                 "Failed to emit popover close request; dismissed immediately: {emit_error}"
+            )),
+            Ok(false) => Err(format!(
+                "Failed to emit popover close request; no current window was dismissed: {emit_error}"
             )),
             Err(dismiss_error) => Err(format!(
                 "Failed to emit popover close request ({emit_error}) and immediate dismissal failed ({dismiss_error})"
@@ -866,36 +908,15 @@ pub(crate) fn request_close<R: Runtime>(app: &AppHandle<R>) -> Result<(), String
         };
     }
 
-    let app = app.clone();
-    std::thread::spawn(move || {
-        std::thread::sleep(CLOSE_REQUEST_FALLBACK);
-        let task_app = app.clone();
-        if let Err(schedule_error) = app.run_on_main_thread(move || {
-            if CLOSE_REQUESTS.retire(token)
-                && let Err(error) = dismiss(&task_app, MainWindowMode::Popover)
-            {
-                log::warn!(
-                    "Failed to dismiss unacknowledged menu-bar popover close request: {}",
-                    error
-                );
-            }
-        }) {
-            // Scheduling can fail during teardown. Retire the token and make a
-            // final best-effort dismissal so a live but unhealthy event loop
-            // cannot leave the popover stranded onscreen.
-            if CLOSE_REQUESTS.retire(token)
-                && let Err(error) = dismiss(&app, MainWindowMode::Popover)
-            {
-                log::warn!(
-                    "Could not schedule close fallback ({schedule_error}); direct dismissal also failed: {error}"
-                );
-            }
-        }
-    });
     Ok(())
 }
 
 pub(crate) fn show<R: Runtime>(app: &AppHandle<R>, mode: MainWindowMode) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    if mode.is_popover() && MainThreadMarker::new().is_none() {
+        let task_app = app.clone();
+        return run_on_main_thread_sync(app, move || show(&task_app, mode))?;
+    }
     // An explicit reopen supersedes any unacknowledged close fallback so an
     // older timer can never hide the newly shown popover.
     CLOSE_REQUESTS.clear();
@@ -1024,15 +1045,42 @@ pub(crate) fn dismiss<R: Runtime>(
     if !mode.is_popover() {
         return Ok(false);
     }
-    // Any successful explicit dismissal supersedes a pending close fallback.
-    CLOSE_REQUESTS.clear();
+    #[cfg(target_os = "macos")]
+    if MainThreadMarker::new().is_none() {
+        let task_app = app.clone();
+        return run_on_main_thread_sync(app, move || dismiss(&task_app, mode))?;
+    }
+    let pending = CLOSE_REQUESTS.pending();
+    let hidden = hide_popover(app)?;
+    if hidden {
+        // Do not clear a newer request created by a reentrant native callback.
+        CLOSE_REQUESTS.retire(pending);
+    }
+    Ok(hidden)
+}
+
+/// Dismiss only the native close request that is still current when the main
+/// thread can execute it. Used by both the WebView response and its fallback.
+pub(crate) fn dismiss_close<R: Runtime>(app: &AppHandle<R>, token: u32) -> Result<bool, String> {
+    if !active(app).is_popover() {
+        return Ok(false);
+    }
+    #[cfg(target_os = "macos")]
+    if MainThreadMarker::new().is_none() {
+        let task_app = app.clone();
+        return run_on_main_thread_sync(app, move || dismiss_close(&task_app, token))?;
+    }
+    CLOSE_REQUESTS.dismiss_if_current(token, || hide_popover(app))
+}
+
+fn hide_popover<R: Runtime>(app: &AppHandle<R>) -> Result<bool, String> {
     REFOCUS_GENERATION.fetch_add(1, Ordering::SeqCst);
     let Some(window) = app.get_webview_window("main") else {
         return Ok(false);
     };
     window.hide().map_err(|error| error.to_string())?;
     #[cfg(target_os = "macos")]
-    run_on_main_thread_sync(app, || {
+    {
         let mtm = MainThreadMarker::new()
             .ok_or_else(|| "Application dismissal must run on the main thread".to_string())?;
         let application = NSApplication::sharedApplication(mtm);
@@ -1041,8 +1089,7 @@ pub(crate) fn dismiss<R: Runtime>(
         if application.isActive() {
             application.hide(None);
         }
-        Ok::<(), String>(())
-    })??;
+    }
     crate::peek::record_main_window_hidden(app)?;
     Ok(true)
 }
@@ -1418,8 +1465,9 @@ mod tests {
         let token = requests.begin();
         assert!(requests.retire(token));
         assert!(
-            !requests.retire(token),
-            "acknowledged timeout must be stale"
+            !requests
+                .dismiss_if_current(token, || panic!("acknowledged fallback must not hide"))
+                .unwrap()
         );
     }
 
@@ -1427,8 +1475,93 @@ mod tests {
     fn missing_close_listener_allows_timeout_and_rejects_late_ack() {
         let requests = CloseRequestTracker::new();
         let token = requests.begin();
-        assert!(requests.retire(token), "current timeout owns dismissal");
+        assert!(requests.dismiss_if_current(token, || Ok(true)).unwrap());
         assert!(!requests.retire(token), "late ack must be a no-op");
+    }
+
+    #[test]
+    fn close_is_pending_during_hide_and_retires_only_after_success() {
+        let requests = CloseRequestTracker::new();
+        let token = requests.begin();
+        assert!(
+            requests
+                .dismiss_if_current(token, || {
+                    assert_eq!(requests.pending(), token);
+                    Ok(true)
+                })
+                .unwrap()
+        );
+        assert_eq!(requests.pending(), 0);
+        assert!(
+            !requests
+                .dismiss_if_current(token, || panic!("fallback must not hide twice"))
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn failed_hide_leaves_close_pending_for_native_fallback() {
+        let requests = CloseRequestTracker::new();
+        let token = requests.begin();
+        assert_eq!(
+            requests.dismiss_if_current(token, || Err("native hide failed".into())),
+            Err("native hide failed".into())
+        );
+        assert_eq!(requests.pending(), token);
+        assert!(requests.dismiss_if_current(token, || Ok(true)).unwrap());
+        assert_eq!(requests.pending(), 0);
+    }
+
+    #[test]
+    fn unsuccessful_hide_does_not_consume_the_close_fallback() {
+        let requests = CloseRequestTracker::new();
+        let token = requests.begin();
+        assert!(!requests.dismiss_if_current(token, || Ok(false)).unwrap());
+        assert_eq!(requests.pending(), token);
+        assert!(requests.dismiss_if_current(token, || Ok(true)).unwrap());
+    }
+
+    #[test]
+    fn reopen_invalidates_a_delayed_dismissal_before_native_hide() {
+        let requests = CloseRequestTracker::new();
+        let token = requests.begin();
+        requests.clear();
+        assert!(
+            !requests
+                .dismiss_if_current(token, || panic!("stale RPC must not hide reopened window"))
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn stale_dismissal_cannot_hide_or_retire_a_newer_close() {
+        let requests = CloseRequestTracker::new();
+        let old_token = requests.begin();
+        let current = requests.begin();
+        assert!(
+            !requests
+                .dismiss_if_current(old_token, || panic!("stale dismissal must not run"))
+                .unwrap()
+        );
+        assert_eq!(requests.pending(), current);
+        assert!(requests.dismiss_if_current(current, || Ok(true)).unwrap());
+    }
+
+    #[test]
+    fn successful_hide_does_not_clear_a_reentrant_newer_close() {
+        let requests = CloseRequestTracker::new();
+        let token = requests.begin();
+        let mut newer = 0;
+        assert!(
+            requests
+                .dismiss_if_current(token, || {
+                    newer = requests.begin();
+                    Ok(true)
+                })
+                .unwrap()
+        );
+        assert_ne!(token, newer);
+        assert_eq!(requests.pending(), newer);
     }
 
     #[test]
