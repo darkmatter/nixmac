@@ -231,6 +231,7 @@ describe("DarwinWidget", () => {
     mainWindowMocks.dismissMainWindowPopover.mockResolvedValue(true);
     mainWindowMocks.dismissMainWindowClose.mockResolvedValue(true);
     mainWindowMocks.acknowledgeMainWindowClose.mockResolvedValue(true);
+    mainWindowMocks.isMainWindowPopover.mockResolvedValue(true);
 
     // Reset store to initial state before each test
     viewModelActions.reset();
@@ -550,6 +551,77 @@ describe("DarwinWidget", () => {
 
     await emitNativeEscape();
 
+    expect(mainWindowMocks.dismissMainWindowPopover).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["Escape", dispatchEscape],
+    ["Cmd+W", dispatchCmdW],
+  ])("recovers ordinary %s after a transient launch-mode probe failure", async (_name, dismiss) => {
+    mainWindowMocks.isMainWindowPopover.mockRejectedValueOnce(new Error("IPC not ready"));
+    await renderWidget(true);
+    await waitFor(() => expect(mainWindowMocks.isMainWindowPopover).toHaveBeenCalledTimes(2));
+
+    const event = dismiss();
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(mainWindowMocks.dismissMainWindowPopover).toHaveBeenCalledOnce();
+    expect(mainWindowMocks.dismissMainWindowClose).not.toHaveBeenCalled();
+    expect(mainWindowMocks.acknowledgeMainWindowClose).not.toHaveBeenCalled();
+  });
+
+  it("bounds repeated launch-mode probe failures", async () => {
+    mainWindowMocks.isMainWindowPopover.mockRejectedValue(new Error("IPC unavailable"));
+    render(withRouter());
+    await waitFor(() => expect(mainWindowMocks.isMainWindowPopover).toHaveBeenCalledTimes(3));
+
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 300)));
+
+    expect(mainWindowMocks.isMainWindowPopover).toHaveBeenCalledTimes(3);
+    expect(dispatchEscape().defaultPrevented).toBe(false);
+    expect(mainWindowMocks.dismissMainWindowPopover).not.toHaveBeenCalled();
+  });
+
+  it("cancels a pending mode-probe retry when the widget unmounts", async () => {
+    mainWindowMocks.isMainWindowPopover.mockRejectedValueOnce(new Error("IPC not ready"));
+    const widget = await renderWidget(true);
+
+    widget.unmount();
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 300)));
+
+    expect(mainWindowMocks.isMainWindowPopover).toHaveBeenCalledOnce();
+  });
+
+  it("cancels a pending mode-probe retry after an authoritative native Escape", async () => {
+    mainWindowMocks.isMainWindowPopover.mockRejectedValueOnce(new Error("IPC not ready"));
+    await renderWidget(true);
+
+    await emitNativeEscape();
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 300)));
+
+    expect(mainWindowMocks.isMainWindowPopover).toHaveBeenCalledOnce();
+    expect(mainWindowMocks.dismissMainWindowPopover).toHaveBeenCalledOnce();
+  });
+
+  it("preserves native mode authority when an in-flight retry later reports control mode", async () => {
+    let resolveRetry: (enabled: boolean) => void = () => {};
+    mainWindowMocks.isMainWindowPopover
+      .mockRejectedValueOnce(new Error("IPC not ready"))
+      .mockReturnValueOnce(new Promise((resolve) => {
+        resolveRetry = resolve;
+      }));
+    await renderWidget(true);
+    await waitFor(() => expect(mainWindowMocks.isMainWindowPopover).toHaveBeenCalledTimes(2));
+    await emitNativeEscape();
+    mainWindowMocks.dismissMainWindowPopover.mockClear();
+
+    await act(async () => {
+      resolveRetry(false);
+      await Promise.resolve();
+    });
+    const event = dispatchCmdW();
+
+    expect(event.defaultPrevented).toBe(true);
     expect(mainWindowMocks.dismissMainWindowPopover).toHaveBeenCalledOnce();
   });
 

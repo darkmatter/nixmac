@@ -30,6 +30,24 @@ describe("main window", () => {
     expect(mocks.isPopover).toHaveBeenCalledOnce();
   });
 
+  it("retries a rejected probe and retains the first successful launch mode", async () => {
+    const error = new Error("IPC not ready");
+    mocks.isPopover.mockRejectedValueOnce(error).mockResolvedValue(false);
+    const { isMainWindowPopover } = await import("./main-window");
+
+    const initial = isMainWindowPopover();
+    expect(isMainWindowPopover()).toBe(initial);
+    await expect(initial).rejects.toBe(error);
+
+    await expect(Promise.all([isMainWindowPopover(), isMainWindowPopover()])).resolves.toEqual([
+      false,
+      false,
+    ]);
+    mocks.isPopover.mockResolvedValue(true);
+    await expect(isMainWindowPopover()).resolves.toBe(false);
+    expect(mocks.isPopover).toHaveBeenCalledTimes(2);
+  });
+
   it("dismisses through the main-window procedure", async () => {
     mocks.dismissPopover.mockResolvedValue(true);
     const { dismissMainWindowPopover } = await import("./main-window");

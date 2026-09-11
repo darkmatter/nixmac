@@ -113,18 +113,36 @@ export function DarwinWidget() {
     let isPopoverMode = false;
     let nativePopoverModeIsAuthoritative = false;
     let nativeCloseRequest: { token: number; dismissRequested: boolean } | undefined;
+    let modeProbeAttempts = 0;
+    let modeProbeRetry: ReturnType<typeof setTimeout> | undefined;
 
-    void isMainWindowPopover()
-      .then((enabled) => {
-        if (!nativePopoverModeIsAuthoritative) {
-          isPopoverMode = enabled;
-        }
-      })
-      .catch((error) => {
-        if (import.meta.env.PROD) {
-          console.error("Failed to read main-window mode:", error);
-        }
-      });
+    const probePopoverMode = () => {
+      if (disposed || nativePopoverModeIsAuthoritative) return;
+      modeProbeAttempts += 1;
+      void isMainWindowPopover()
+        .then((enabled) => {
+          if (!disposed && !nativePopoverModeIsAuthoritative) {
+            isPopoverMode = enabled;
+          }
+        })
+        .catch((error) => {
+          if (disposed || nativePopoverModeIsAuthoritative) return;
+          // IPC may not be ready during mount. Recover ordinary focused-window
+          // Escape/Cmd+W without relying on a later native event to reveal mode.
+          if (modeProbeAttempts < 3) {
+            modeProbeRetry = setTimeout(probePopoverMode, 250);
+          } else if (import.meta.env.PROD) {
+            console.error("Failed to read main-window mode:", error);
+          }
+        });
+    };
+    probePopoverMode();
+
+    const acceptNativePopoverMode = () => {
+      nativePopoverModeIsAuthoritative = true;
+      isPopoverMode = true;
+      clearTimeout(modeProbeRetry);
+    };
 
     type EscapeDisposition = "closed" | "unhandled";
 
@@ -225,8 +243,7 @@ export function DarwinWidget() {
       .on("window:escape", () => {
         // Only the native popover monitor emits this event. Treat receipt as
         // authoritative so a transient launch-mode probe failure cannot drop Escape.
-        nativePopoverModeIsAuthoritative = true;
-        isPopoverMode = true;
+        acceptNativePopoverMode();
         dispatchSyntheticDocumentEscape();
       })
       .then((unlisten) => {
@@ -247,8 +264,7 @@ export function DarwinWidget() {
         // bubbling DOM Escape so Radix Dialog/AlertDialog layers run before
         // the widget owner. Only a higher layer's consumption can ACK here;
         // native window dismissal retires the token after hide succeeds.
-        nativePopoverModeIsAuthoritative = true;
-        isPopoverMode = true;
+        acceptNativePopoverMode();
         const request = { token: event.payload.token, dismissRequested: false };
         const previousRequest = nativeCloseRequest;
         nativeCloseRequest = request;
@@ -282,6 +298,7 @@ export function DarwinWidget() {
 
     return () => {
       disposed = true;
+      clearTimeout(modeProbeRetry);
       window.removeEventListener("keydown", handleKeyDown);
       unregisterWidgetOverlayOwner();
       unregisterPopoverOwner();

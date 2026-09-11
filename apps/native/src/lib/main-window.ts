@@ -2,9 +2,12 @@ import { client } from "@/lib/orpc";
 
 let popoverModePromise: Promise<boolean> | undefined;
 
-/** The main-window mode is immutable for the lifetime of the process. */
+/** Cache the immutable launch mode, but let a failed transport request retry. */
 export function isMainWindowPopover(): Promise<boolean> {
-  popoverModePromise ??= client.mainWindow.isPopover();
+  popoverModePromise ??= client.mainWindow.isPopover().catch((error) => {
+    popoverModePromise = undefined;
+    throw error;
+  });
   return popoverModePromise;
 }
 
