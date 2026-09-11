@@ -117,12 +117,15 @@ fn check_for_external_build<R: Runtime>(
     app_handle: &AppHandle<R>,
     last_known_store_path: &mut Option<String>,
 ) -> bool {
-    let live_store_path = build_state::read_current_store_path();
     // Consume an owned activation even when it rebuilt the already-active
     // path, or finalization updated the cached path before a watcher restart.
     // Leaving that expectation behind could hide a later external restore.
-    let owned_by_nixmac = crate::main_window::active(app_handle).is_popover()
-        && crate::state::rebuild_status::take_owned_store_path_change(&live_store_path);
+    let (live_store_path, owned_by_nixmac) = if crate::main_window::active(app_handle).is_popover()
+    {
+        crate::state::rebuild_status::read_owned_store_path_change()
+    } else {
+        (build_state::read_current_store_path(), false)
+    };
     if live_store_path == *last_known_store_path {
         return false;
     }

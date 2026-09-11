@@ -13,7 +13,13 @@ use crate::observable::Observable;
 use crate::shared_types::RebuildStatus;
 
 pub const REBUILD_STATUS_CHANGED_EVENT: &str = "rebuild_status_changed";
-static OWNED_STORE_PATH_CHANGE: Mutex<Option<String>> = Mutex::new(None);
+static OWNED_STORE_PATH_CHANGE: Mutex<Option<OwnedStorePathChange>> = Mutex::new(None);
+
+#[derive(Debug, PartialEq, Eq)]
+struct OwnedStorePathChange {
+    path: String,
+    completed: bool,
+}
 
 pub fn load_observable<R: Runtime>(app: &AppHandle<R>) -> Observable<RebuildStatus> {
     Observable::new(RebuildStatus::default()).emit_to(app, REBUILD_STATUS_CHANGED_EVENT)
@@ -44,8 +50,11 @@ pub fn record_start<R: Runtime>(app: &AppHandle<R>) {
 
 /// Record the end of a rebuild stream from the `darwin:apply:end` payload.
 pub fn record_end<R: Runtime>(app: &AppHandle<R>, payload: &serde_json::Value) {
-    if should_clear_owned_store_path_on_end(payload) {
-        clear_owned_store_path_change();
+    {
+        let mut expected = OWNED_STORE_PATH_CHANGE
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        finish_owned_store_path_change(&mut expected, payload);
     }
     let observable = app.state::<Observable<RebuildStatus>>();
     *observable.write_sync() = RebuildStatus {
@@ -67,31 +76,69 @@ pub fn record_end<R: Runtime>(app: &AppHandle<R>, payload: &serde_json::Value) {
     };
 }
 
-fn should_clear_owned_store_path_on_end(payload: &serde_json::Value) -> bool {
-    payload.get("ok").and_then(|value| value.as_bool()) != Some(true)
-}
-
-pub fn expect_owned_store_path_change(store_path: String) {
-    match OWNED_STORE_PATH_CHANGE.lock() {
-        Ok(mut guard) => *guard = Some(store_path),
-        Err(poisoned) => *poisoned.into_inner() = Some(store_path),
+fn finish_owned_store_path_change(
+    expected: &mut Option<OwnedStorePathChange>,
+    payload: &serde_json::Value,
+) {
+    if payload.get("ok").and_then(|value| value.as_bool()) == Some(true) {
+        if let Some(expected) = expected
+            && payload.get("store_path").and_then(|value| value.as_str())
+                == Some(expected.path.as_str())
+        {
+            expected.completed = true;
+        }
+    } else {
+        *expected = None;
     }
 }
 
-fn consume_owned_store_path(expected: &mut Option<String>, live: &Option<String>) -> bool {
-    let matches = live.is_some() && expected.as_ref() == live.as_ref();
-    if matches {
+pub fn expect_owned_store_path_change(store_path: String) {
+    let expected = Some(OwnedStorePathChange {
+        path: store_path,
+        completed: false,
+    });
+    match OWNED_STORE_PATH_CHANGE.lock() {
+        Ok(mut guard) => *guard = expected,
+        Err(poisoned) => *poisoned.into_inner() = expected,
+    }
+}
+
+fn consume_owned_store_path(
+    expected: &mut Option<OwnedStorePathChange>,
+    live: &Option<String>,
+) -> bool {
+    let (Some(pending), Some(live)) = (expected.as_ref(), live.as_ref()) else {
+        return false;
+    };
+    let matches = pending.path == *live;
+    // Before completion the system can still report the previous path. After
+    // success, a different observed path means another build has superseded it.
+    if matches || pending.completed {
         *expected = None;
     }
     matches
 }
 
-pub fn take_owned_store_path_change(live: &Option<String>) -> bool {
-    let mut expected = match OWNED_STORE_PATH_CHANGE.lock() {
+fn sample_owned_store_path_change(
+    tracker: &Mutex<Option<OwnedStorePathChange>>,
+    read_live: impl FnOnce() -> Option<String>,
+) -> (Option<String>, bool) {
+    // Serialize sampling with completion. Reading before taking this lock
+    // could turn a pre-completion old-path sample into a completed mismatch.
+    let mut expected = match tracker.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    consume_owned_store_path(&mut expected, live)
+    let live = read_live();
+    let owned = consume_owned_store_path(&mut expected, &live);
+    (live, owned)
+}
+
+pub fn read_owned_store_path_change() -> (Option<String>, bool) {
+    sample_owned_store_path_change(
+        &OWNED_STORE_PATH_CHANGE,
+        super::build_state::read_current_store_path,
+    )
 }
 
 pub fn clear_owned_store_path_change() {
@@ -105,6 +152,17 @@ pub fn clear_owned_store_path_change() {
 mod tests {
     use super::*;
     use tauri::Manager;
+
+    fn pending(path: &str) -> Option<OwnedStorePathChange> {
+        Some(OwnedStorePathChange {
+            path: path.to_string(),
+            completed: false,
+        })
+    }
+
+    fn success(path: &str) -> serde_json::Value {
+        serde_json::json!({ "ok": true, "store_path": path })
+    }
 
     fn mock_app() -> tauri::App<tauri::test::MockRuntime> {
         let app = tauri::test::mock_builder()
@@ -138,14 +196,14 @@ mod tests {
 
     #[test]
     fn only_the_exact_owned_store_path_transition_is_suppressed() {
-        let mut expected = Some("/nix/store/owned".to_string());
+        let mut expected = pending("/nix/store/owned");
         assert!(!consume_owned_store_path(
             &mut expected,
             &Some("/nix/store/external".to_string())
         ));
-        assert_eq!(expected.as_deref(), Some("/nix/store/owned"));
+        assert_eq!(expected, pending("/nix/store/owned"));
 
-        expected = Some("/nix/store/owned".to_string());
+        expected = pending("/nix/store/owned");
         assert!(consume_owned_store_path(
             &mut expected,
             &Some("/nix/store/owned".to_string())
@@ -155,16 +213,18 @@ mod tests {
 
     #[test]
     fn owned_transition_survives_until_the_delayed_matching_watcher_poll() {
-        let mut expected = Some("/nix/store/new-system".to_string());
+        let mut expected = pending("/nix/store/new-system");
 
         // Polls before activation completes must not consume the expectation.
         assert!(!consume_owned_store_path(&mut expected, &None));
-        assert_eq!(expected.as_deref(), Some("/nix/store/new-system"));
+        assert_eq!(expected, pending("/nix/store/new-system"));
         assert!(!consume_owned_store_path(
             &mut expected,
             &Some("/nix/store/old-system".to_string())
         ));
-        assert_eq!(expected.as_deref(), Some("/nix/store/new-system"));
+        assert_eq!(expected, pending("/nix/store/new-system"));
+
+        finish_owned_store_path_change(&mut expected, &success("/nix/store/new-system"));
 
         // The first poll that observes the activated path consumes it once.
         assert!(consume_owned_store_path(
@@ -179,12 +239,97 @@ mod tests {
 
     #[test]
     fn successful_end_keeps_expectation_but_failure_releases_it() {
-        assert!(!should_clear_owned_store_path_on_end(
-            &serde_json::json!({ "ok": true })
+        let mut expected = pending("/nix/store/owned");
+        finish_owned_store_path_change(&mut expected, &success("/nix/store/owned"));
+        assert_eq!(
+            expected,
+            Some(OwnedStorePathChange {
+                path: "/nix/store/owned".to_string(),
+                completed: true,
+            })
+        );
+        for payload in [serde_json::json!({ "ok": false }), serde_json::json!({})] {
+            let mut expected = pending("/nix/store/owned");
+            finish_owned_store_path_change(&mut expected, &payload);
+            assert_eq!(expected, None);
+        }
+    }
+
+    #[test]
+    fn intervening_external_build_expires_the_completed_owned_path() {
+        let mut expected = pending("/nix/store/a");
+        finish_owned_store_path_change(&mut expected, &success("/nix/store/a"));
+
+        // A completed while unfocused, but the next watcher poll first sees B.
+        assert!(!consume_owned_store_path(
+            &mut expected,
+            &Some("/nix/store/b".to_string())
         ));
-        assert!(should_clear_owned_store_path_on_end(
-            &serde_json::json!({ "ok": false })
+        assert_eq!(expected, None);
+        // A later external rollback to A must not inherit the old ownership,
+        // including after the user acknowledges B as the active build.
+        assert!(!consume_owned_store_path(
+            &mut expected,
+            &Some("/nix/store/a".to_string())
         ));
-        assert!(should_clear_owned_store_path_on_end(&serde_json::json!({})));
+    }
+
+    #[test]
+    fn an_unavailable_post_completion_read_does_not_prove_an_intervening_build() {
+        let mut expected = pending("/nix/store/a");
+        finish_owned_store_path_change(&mut expected, &success("/nix/store/a"));
+        assert!(!consume_owned_store_path(&mut expected, &None));
+        assert!(consume_owned_store_path(
+            &mut expected,
+            &Some("/nix/store/a".to_string())
+        ));
+    }
+
+    #[test]
+    fn completion_does_not_rearm_an_owned_path_already_observed_during_activation() {
+        let mut expected = pending("/nix/store/a");
+        assert!(consume_owned_store_path(
+            &mut expected,
+            &Some("/nix/store/a".to_string())
+        ));
+        finish_owned_store_path_change(&mut expected, &success("/nix/store/a"));
+        assert_eq!(expected, None);
+        assert!(!consume_owned_store_path(
+            &mut expected,
+            &Some("/nix/store/a".to_string())
+        ));
+    }
+
+    #[test]
+    fn another_activations_success_cannot_complete_the_pending_owner() {
+        for payload in [success("/nix/store/a"), serde_json::json!({ "ok": true })] {
+            let mut expected = pending("/nix/store/b");
+            finish_owned_store_path_change(&mut expected, &payload);
+            assert!(!consume_owned_store_path(
+                &mut expected,
+                &Some("/nix/store/a".to_string())
+            ));
+            assert_eq!(expected, pending("/nix/store/b"));
+        }
+    }
+
+    #[test]
+    fn sampling_cannot_cross_activation_completion() {
+        let tracker = Mutex::new(pending("/nix/store/a"));
+        let (live, owned) = sample_owned_store_path_change(&tracker, || {
+            // record_end needs this same lock to mark completion. It cannot
+            // settle between an old-path read and classification of that read.
+            assert!(matches!(
+                tracker.try_lock(),
+                Err(std::sync::TryLockError::WouldBlock)
+            ));
+            Some("/nix/store/old".to_string())
+        });
+        assert_eq!(live.as_deref(), Some("/nix/store/old"));
+        assert!(!owned);
+        assert_eq!(*tracker.lock().unwrap(), pending("/nix/store/a"));
+
+        finish_owned_store_path_change(&mut tracker.lock().unwrap(), &success("/nix/store/a"));
+        assert!(sample_owned_store_path_change(&tracker, || Some("/nix/store/a".to_string())).1);
     }
 }
