@@ -551,7 +551,7 @@ export function RebuildOverlayPanel() {
                   disabled={!isRollback || !retryAvailable}
                 >
                   <RotateCcw className="mr-2 h-4 w-4" />
-                  {isRollback ? "Retry Rollback" : "Rollback"}
+                  {isRollback ? "Try again" : "Rollback"}
                 </Button>
               )}
               {success === false && !isRollback && isAiFixableRebuildError(errorType) && (

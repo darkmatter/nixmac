@@ -132,6 +132,13 @@ describe("<RebuildOverlayPanel>", () => {
     expect(screen.queryByText(safetyMessage)).not.toBeInTheDocument();
   });
 
+  it("uses a neutral retry label for rollback and history-restore failures", async () => {
+    await renderWithRebuildState({}, "rollback");
+
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry Rollback" })).not.toBeInTheDocument();
+  });
+
   it("shows App Management guidance for managed app update failures", async () => {
     await renderWithRebuildState({
       errorType: REBUILD_ERROR_CODES.APP_MANAGEMENT,
