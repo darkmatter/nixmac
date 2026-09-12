@@ -14,6 +14,25 @@ interface RebuildOptions {
   storePath?: string;
   onSuccess?: () => Promise<void>;
   onFailure?: () => Promise<void>;
+  /** Replays the complete operation, including any preparation and callbacks. */
+  retry?: () => Promise<void>;
+}
+
+let lastRebuildRetry: (() => Promise<void>) | null = null;
+
+/** Returns whether the failed rollback can be replayed by the error panel. */
+export function hasRebuildRetry(): boolean {
+  return lastRebuildRetry !== null;
+}
+
+/** Clears retry state when a new operation supersedes the failed rollback. */
+export function clearRebuildRetry(): void {
+  lastRebuildRetry = null;
+}
+
+/** Replays the last registered rollback operation, if one is available. */
+export async function retryLastRebuild(): Promise<void> {
+  await lastRebuildRetry?.();
 }
 
 /**
@@ -29,6 +48,13 @@ export function useRebuildStream() {
   const { refreshGitStatus } = useGitOperations();
 
   const triggerRebuild = async (options: RebuildOptions) => {
+    // Apply operations and rollback paths without a replay callback must not
+    // reuse a callback captured by an older failed rollback.
+    clearRebuildRetry();
+    if (options.retry) {
+      lastRebuildRetry = options.retry;
+    }
+
     uiActions.setRebuildContext(options.context);
     uiActions.setEtcClobber(null);
     // Store-path activation has no log summarizer; let the rebuild slice

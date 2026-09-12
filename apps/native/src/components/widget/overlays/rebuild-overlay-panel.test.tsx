@@ -30,9 +30,8 @@ vi.mock("motion/react", async () => {
 });
 
 vi.mock("@/hooks/use-rebuild-stream", () => ({
-  useRebuildStream: () => ({
-    triggerRebuild: vi.fn<() => void>(),
-  }),
+  hasRebuildRetry: vi.fn<() => boolean>(() => true),
+  retryLastRebuild: vi.fn<() => Promise<void>>(),
 }));
 
 vi.mock("@/hooks/use-rollback", () => ({
