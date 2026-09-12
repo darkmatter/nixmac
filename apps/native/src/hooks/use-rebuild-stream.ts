@@ -19,6 +19,15 @@ interface RebuildOptions {
 }
 
 let lastRebuildRetry: (() => Promise<void>) | null = null;
+const rebuildRetryListeners = new Set<() => void>();
+
+function setRebuildRetry(retry: (() => Promise<void>) | null): void {
+  if (lastRebuildRetry === retry) return;
+  lastRebuildRetry = retry;
+  for (const listener of rebuildRetryListeners) {
+    listener();
+  }
+}
 
 /** Returns whether the failed rollback can be replayed by the error panel. */
 export function hasRebuildRetry(): boolean {
@@ -27,12 +36,18 @@ export function hasRebuildRetry(): boolean {
 
 /** Clears retry state when a new operation supersedes the failed rollback. */
 export function clearRebuildRetry(): void {
-  lastRebuildRetry = null;
+  setRebuildRetry(null);
 }
 
 /** Replays the last registered rollback operation, if one is available. */
 export async function retryLastRebuild(): Promise<void> {
   await lastRebuildRetry?.();
+}
+
+/** Subscribes UI surfaces to changes in the available retry operation. */
+export function subscribeToRebuildRetry(listener: () => void): () => void {
+  rebuildRetryListeners.add(listener);
+  return () => rebuildRetryListeners.delete(listener);
 }
 
 /**
@@ -52,7 +67,7 @@ export function useRebuildStream() {
     // reuse a callback captured by an older failed rollback.
     clearRebuildRetry();
     if (options.retry) {
-      lastRebuildRetry = options.retry;
+      setRebuildRetry(options.retry);
     }
 
     uiActions.setRebuildContext(options.context);

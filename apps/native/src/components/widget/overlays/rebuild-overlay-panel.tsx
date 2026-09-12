@@ -1,7 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { EtcClobberConflictList } from "@/components/widget/overlays/etc-clobber-conflict-list";
 import { useFixWithAi } from "@/hooks/use-fix-with-ai";
-import { hasRebuildRetry, retryLastRebuild } from "@/hooks/use-rebuild-stream";
+import {
+  hasRebuildRetry,
+  retryLastRebuild,
+  subscribeToRebuildRetry,
+} from "@/hooks/use-rebuild-stream";
 import { useRollback } from "@/hooks/use-rollback";
 import { tauriAPI } from "@/ipc/api";
 import {
@@ -13,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { RebuildErrorType, RebuildLine, RebuildNotice } from "@/types/rebuild";
 import { uiActions, useUiState, useViewModel } from "@nixmac/state";
+import { useSyncExternalStore } from "react";
 import {
   AlertTriangle,
   AppWindow,
@@ -366,6 +371,11 @@ export function RebuildOverlayPanel() {
   const context = useUiState((state) => state.rebuildContext);
   const dismissed = useUiState((state) => state.rebuildPanelDismissed);
   const etcClobber = useUiState((state) => state.etcClobber);
+  const retryAvailable = useSyncExternalStore(
+    subscribeToRebuildRetry,
+    hasRebuildRetry,
+    hasRebuildRetry,
+  );
 
   const isRunning = status?.isRunning ?? false;
   const success = status?.success ?? undefined;
@@ -538,7 +548,7 @@ export function RebuildOverlayPanel() {
                   onClick={isRollback ? handleRetry : () => handleRollback()}
                   size="sm"
                   // only implemented for rollback
-                  disabled={!isRollback || !hasRebuildRetry()}
+                  disabled={!isRollback || !retryAvailable}
                 >
                   <RotateCcw className="mr-2 h-4 w-4" />
                   {isRollback ? "Retry Rollback" : "Rollback"}
