@@ -9,6 +9,8 @@ use tauri::AppHandle;
 /// point — the app may exit right after this returns) and the session path
 /// cleared exactly once, so no exit path can forget them.
 pub async fn run_evolve(app: AppHandle, description: String) -> Result<(), String> {
+    let _active_evolution = evolve::session_control::ActiveEvolutionGuard::begin();
+    crate::attention::clear_work(&app);
     let result = run_evolve_session(app, description).await;
     crate::state::session_log::flush_ordered().await;
     crate::state::session_log::set_session_path(None);
@@ -58,6 +60,7 @@ async fn run_evolve_session(app: AppHandle, description: String) -> Result<(), S
                     failure.telemetry.iterations,
                     failure.telemetry.build_attempts
                 );
+                crate::attention::evolution_failed(&app);
                 return Err(capture_err("darwin_evolve", failure.error));
             }
         };

@@ -50,6 +50,7 @@ pub async fn finalize_apply(app: &AppHandle) -> Result<()> {
         log::warn!("Failed to record onboarding build timestamp: {error:#}");
     }
     evolve_state::set_session(app, current_evolve, &final_status.changes)?;
+    crate::attention::build_succeeded(app);
     Ok(())
 }
 
@@ -71,5 +72,6 @@ pub async fn finalize_rollback(
     // The rollback restored an earlier tree: refresh the change-map cell so
     // the mirrored map matches it (emits `change_map_changed`).
     crate::summarize::refresh_change_map(app);
+    crate::attention::restore_finished(app);
     Ok(())
 }

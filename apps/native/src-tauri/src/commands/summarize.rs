@@ -74,10 +74,31 @@ pub async fn run_abort_restore(app: AppHandle) -> Result<(), String> {
 }
 
 pub async fn run_finalize_restore(app: AppHandle, target_hash: String) -> Result<(), String> {
-    rebuild::finalize_restore(&app, target_hash)
-        .await
-        .map(|_| ())
-        .map_err(|e| capture_err("finalize_restore", e))
+    finish_history_restore(
+        rebuild::finalize_restore(&app, target_hash),
+        || crate::attention::restore_finished(&app),
+        || crate::attention::restore_finalization_failed(&app),
+    )
+    .await
+}
+
+// The successful rebuild event stays silent until restore bookkeeping finishes.
+// Keep both outcomes here so a finalization failure never also announces success.
+async fn finish_history_restore<T>(
+    finalize: impl std::future::Future<Output = anyhow::Result<T>>,
+    on_success: impl FnOnce(),
+    on_failure: impl FnOnce(),
+) -> Result<(), String> {
+    match finalize.await {
+        Ok(_) => {
+            on_success();
+            Ok(())
+        }
+        Err(error) => {
+            on_failure();
+            Err(capture_err("finalize_restore", error))
+        }
+    }
 }
 
 pub async fn run_generate_commit_message(app: AppHandle) -> Result<String, String> {
@@ -139,4 +160,52 @@ pub async fn finalize_restore(app: AppHandle, target_hash: String) -> Result<(),
 #[tauri::command]
 pub async fn generate_commit_message(app: AppHandle) -> Result<String, String> {
     run_generate_commit_message(app).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::RefCell;
+    use std::future::Future;
+    use std::task::Poll;
+
+    #[tokio::test]
+    async fn history_restore_notifies_once_only_after_finalization_succeeds() {
+        let notices = RefCell::new(Vec::new());
+        let (complete, pending) = tokio::sync::oneshot::channel::<anyhow::Result<()>>();
+        let mut finalize = Box::pin(finish_history_restore(
+            async { pending.await.unwrap() },
+            || notices.borrow_mut().push("finished"),
+            || notices.borrow_mut().push("finalization_failed"),
+        ));
+
+        let first_poll = std::future::poll_fn(|cx| Poll::Ready(finalize.as_mut().poll(cx))).await;
+        assert!(first_poll.is_pending());
+        assert!(notices.borrow().is_empty());
+
+        complete.send(Ok(())).unwrap();
+        assert!(finalize.await.is_ok());
+        assert_eq!(*notices.borrow(), ["finished"]);
+    }
+
+    #[tokio::test]
+    async fn history_restore_finalization_failure_notifies_without_announcing_success() {
+        let notices = RefCell::new(Vec::new());
+        let result = finish_history_restore(
+            async {
+                Err::<(), _>(anyhow::anyhow!(
+                    "Failed to record build state after restore"
+                ))
+            },
+            || notices.borrow_mut().push("finished"),
+            || notices.borrow_mut().push("finalization_failed"),
+        )
+        .await;
+
+        assert_eq!(
+            result.unwrap_err(),
+            "Failed to record build state after restore"
+        );
+        assert_eq!(*notices.borrow(), ["finalization_failed"]);
+    }
 }

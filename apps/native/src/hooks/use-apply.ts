@@ -91,11 +91,7 @@ export function useApply() {
     await triggerRebuild({
       context: "apply",
       onSuccess: async () => {
-        try {
-          await client.darwin.finalizeApply();
-        } catch (e) {
-          console.error("Failed to finalize apply:", e);
-        }
+        await client.darwin.finalizeApply();
       },
     });
   };
@@ -126,6 +122,7 @@ export function useApply() {
       await client.darwin.finalizeApply();
     } catch (e) {
       console.error("Failed to finalize manual build:", e);
+      uiActions.setError(e instanceof Error ? e.message : String(e));
     }
   };
 

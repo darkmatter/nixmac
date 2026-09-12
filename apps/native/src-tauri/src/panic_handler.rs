@@ -15,7 +15,7 @@ use log::error;
 use std::panic;
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::shared_types::RustPanicEvent;
+use crate::{main_window, shared_types::RustPanicEvent};
 
 /// Sets up the custom panic hook for the application.
 pub fn setup_panic_hook(app_handle: AppHandle) {
@@ -71,6 +71,8 @@ pub fn setup_panic_hook(app_handle: AppHandle) {
             timestamp,
         };
 
+        let mode = main_window::active(&app_handle);
+
         // Try to emit event to frontend
         if let Some(window) = app_handle.get_webview_window("main") {
             if let Err(e) = window.emit("rust:panic", &panic_payload) {
@@ -80,6 +82,12 @@ pub fn setup_panic_hook(app_handle: AppHandle) {
             }
         } else {
             error!("❌ Could not get main window to emit panic event");
+        }
+
+        // Recoverable command panics leave the process alive, so a hidden popover can
+        // wait for the notification click. Fatal panics may terminate before delivery.
+        if mode.is_popover() {
+            crate::attention::crash(&app_handle);
         }
 
         // Call the default hook to let Rust proceed with its normal panic unwinding.

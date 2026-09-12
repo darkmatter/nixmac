@@ -368,11 +368,35 @@ fn app_management_error_payload(
 ///
 /// Emits the terminal `darwin:apply:end` event and records the outcome in
 /// the rebuild-status cell (which emits `rebuild_status_changed`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ApplyEndAttention {
+    Silent,
+    BuildBlocked,
+    BuildFailed,
+}
+
+fn apply_end_attention(payload: &serde_json::Value) -> ApplyEndAttention {
+    if payload.get("ok").and_then(|value| value.as_bool()) != Some(false) {
+        return ApplyEndAttention::Silent;
+    }
+    match payload.get("error_type").and_then(|value| value.as_str()) {
+        Some("user_cancelled") => ApplyEndAttention::Silent,
+        Some("activation_refused") => ApplyEndAttention::BuildBlocked,
+        _ => ApplyEndAttention::BuildFailed,
+    }
+}
+
 fn emit_apply_end(app: &AppHandle, payload: serde_json::Value) {
+    let attention = apply_end_attention(&payload);
     crate::state::rebuild_status::record_end(app, &payload);
     // fire-and-forget: emit returns Err only when no listeners are registered
     // (window may be hidden/destroyed). Missing this event is non-fatal.
     let _ = app.emit("darwin:apply:end", payload);
+    match attention {
+        ApplyEndAttention::Silent => {}
+        ApplyEndAttention::BuildBlocked => crate::attention::build_blocked(app),
+        ApplyEndAttention::BuildFailed => crate::attention::build_failed(app),
+    }
 }
 
 pub fn apply_stream(
@@ -721,6 +745,9 @@ pub fn activate_store_path_stream(
             serde_json::json!({"chunk": "Activating previous nix store...\n"}),
         );
 
+        if crate::main_window::active(&app_handle).is_popover() {
+            crate::state::rebuild_status::expect_owned_store_path_change(store_path.clone());
+        }
         match activate_store_path(&app_handle, &store_path) {
             Ok(result) => {
                 for line in result.stdout.lines() {
@@ -736,7 +763,11 @@ pub fn activate_store_path_stream(
                     info!("[darwin] store path activation succeeded");
                     emit_apply_end(
                         &app_handle,
-                        serde_json::json!({"ok": true, "code": result.code}),
+                        serde_json::json!({
+                            "ok": true,
+                            "code": result.code,
+                            "store_path": store_path,
+                        }),
                     );
                 } else {
                     let (error_type, error) = classify_activate_error(&result);
@@ -1216,6 +1247,11 @@ fn run_darwin_rebuild(
         }));
     };
 
+    if crate::main_window::active(app).is_popover() {
+        crate::state::rebuild_status::expect_owned_store_path_change(
+            system_store_path.to_string_lossy().to_string(),
+        );
+    }
     let activate_result = run_activate_step(app, system_store_path).map_err(|e| {
         serde_json::json!({
             "ok": false,
@@ -1359,6 +1395,7 @@ fn run_darwin_rebuild(
         "ok": true,
         "code": activate_result.code,
         "log_file": log_path.to_string_lossy(),
+        "store_path": system_store_path.to_string_lossy(),
     });
     if let Some(et) = error_type
         && let Some(obj) = success_payload.as_object_mut()
@@ -1374,7 +1411,8 @@ fn run_darwin_rebuild(
 #[cfg(test)]
 mod activation_safety_tests {
     use super::{
-        ActivateResult, activation_failure_left_system_untouched, classify_activate_error,
+        ActivateResult, ApplyEndAttention, activation_failure_left_system_untouched,
+        apply_end_attention, classify_activate_error,
     };
 
     fn failed_activation(stdout: &str, stderr: &str) -> ActivateResult {
@@ -1454,5 +1492,42 @@ mod activation_safety_tests {
             "authorization_denied"
         ));
         assert!(!activation_failure_left_system_untouched("generic_error"));
+    }
+
+    #[test]
+    fn apply_end_attention_is_silent_for_success_and_user_cancellation() {
+        assert_eq!(
+            apply_end_attention(&serde_json::json!({ "ok": true })),
+            ApplyEndAttention::Silent
+        );
+        assert_eq!(
+            apply_end_attention(&serde_json::json!({
+                "ok": false,
+                "error_type": "user_cancelled",
+            })),
+            ApplyEndAttention::Silent
+        );
+    }
+
+    #[test]
+    fn apply_end_attention_distinguishes_refusal_from_failure() {
+        assert_eq!(
+            apply_end_attention(&serde_json::json!({
+                "ok": false,
+                "error_type": "activation_refused",
+            })),
+            ApplyEndAttention::BuildBlocked
+        );
+        assert_eq!(
+            apply_end_attention(&serde_json::json!({
+                "ok": false,
+                "error_type": "generic_error",
+            })),
+            ApplyEndAttention::BuildFailed
+        );
+        assert_eq!(
+            apply_end_attention(&serde_json::json!({ "ok": false })),
+            ApplyEndAttention::BuildFailed
+        );
     }
 }
