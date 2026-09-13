@@ -60,7 +60,7 @@ base_version() {
 	echo "$base"
 }
 
-if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == refs/tags/v* ]]; then
 	MODE="tag"
 	VERSION="${GITHUB_REF_NAME#v}"
 	TAG="$GITHUB_REF_NAME"
