@@ -2,6 +2,9 @@ Complete Nix Mac onboarding and exactly one real evolution through Build & Test 
 
 The logged-in guest is admin. Create host desktop-test-mac in /Users/admin/nixmac-smoke-config. The trusted bootstrap mission.json contains this expanded configDir and the same exact prompt below; if the supplied mission differs, stop rather than guessing.
 
+Helper prerequisite:
+Before creating the configuration, open the observed Go to Permissions sidebar control (or inspect the current Permissions step). Find Unattended sync helper and require its actual status to say "The unattended sync helper is installed and answering." If it is not ready and that row offers Enable or Retry Enable, click that observed action at most once in total, then observe the result and wait for the installed-and-answering status. Do not click Disable. Administrator Privileges marked Granted, a saved helper preference, or passwordless sudo does not establish a ready helper. If the app reports a helper error, PendingApproval, asks for approval in Login Items, offers Open Settings, or a system authorization dialog appears, stop before Run build. Use complete_desktop_test with outcome failed and the genuine fresh observation or assertion receipt IDs, quoting the visible prerequisite blocker and listing uncovered paths. Do not keep advancing through disabled groups. Do not enter a password, change permission state files, or claim the helper is granted. The current exploration tools cannot complete macOS approval. After verifying the helper, return using the observed Go to Config Directory control and continue below.
+
 Onboarding:
 1. In Config Directory, choose Start from scratch (the card may read First time here / Start from scratch).
 2. Fill Name this Mac with desktop-test-mac and Where to save it with /Users/admin/nixmac-smoke-config. WKWebView fields may require foregroundKeyboard delivery; observe the values afterward. Choose Create my configuration.
