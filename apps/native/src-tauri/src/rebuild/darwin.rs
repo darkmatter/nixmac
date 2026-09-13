@@ -34,50 +34,13 @@ fn get_log_dir() -> anyhow::Result<PathBuf> {
 /// Create a new log file for this darwin-rebuild run.
 fn create_log_file() -> anyhow::Result<(File, PathBuf)> {
     let log_dir = get_log_dir()?;
-    let timestamp = Local::now().format("%Y-%m-%d_%H-%M-%S");
+    let timestamp = Local::now().format("%Y-%m-%d_%H-%M-%S%.9f");
     let log_path = log_dir.join(format!("darwin-rebuild_{}.log", timestamp));
     let file = OpenOptions::new()
-        .create(true)
+        .create_new(true)
         .write(true)
-        .truncate(true)
         .open(&log_path)?;
     Ok((file, log_path))
-}
-
-/// Read the tail (last `max_lines` lines) of the most-recently-modified
-/// `darwin-rebuild_*.log`, for feeding build-failure context to the "Fix with
-/// AI" evolve run.
-///
-/// The frontend never receives a durable log path (`log_file` lives only on the
-/// transient `darwin:apply:end` event and `RebuildStatus` has no such field), so
-/// the current run's transcript is rediscovered here by modification time.
-/// Returns `None` when the log dir is unreadable or holds no rebuild logs.
-pub fn read_latest_rebuild_log_tail(max_lines: usize) -> Option<String> {
-    let log_dir = get_log_dir().ok()?;
-
-    let mut newest: Option<(std::time::SystemTime, PathBuf)> = None;
-    for entry in fs::read_dir(&log_dir).ok()?.flatten() {
-        let path = entry.path();
-        let is_rebuild_log = path
-            .file_name()
-            .and_then(|name| name.to_str())
-            .is_some_and(|name| name.starts_with("darwin-rebuild_") && name.ends_with(".log"));
-        if !is_rebuild_log {
-            continue;
-        }
-        let Some(modified) = entry.metadata().ok().and_then(|meta| meta.modified().ok()) else {
-            continue;
-        };
-        if newest.as_ref().is_none_or(|(best, _)| modified > *best) {
-            newest = Some((modified, path));
-        }
-    }
-
-    let (_, path) = newest?;
-    let contents = fs::read_to_string(&path).ok()?;
-    let lines: Vec<&str> = contents.lines().collect();
-    let start = lines.len().saturating_sub(max_lines);
-    Some(lines[start..].join("\n"))
 }
 
 /// Run a dry-run nix build check against the current working tree.
@@ -931,6 +894,7 @@ fn handle_activation_error(result: &ActivateResult, log_path: &Path) -> serde_js
         return serde_json::json!({
             "ok": false,
             "code": result.code,
+            "log_file": log_path.to_string_lossy(),
             "error_type": error_type,
             "system_untouched": true,
             "error": friendly_error,
@@ -944,6 +908,7 @@ fn handle_activation_error(result: &ActivateResult, log_path: &Path) -> serde_js
         return serde_json::json!({
             "ok": false,
             "code": -128,
+            "log_file": log_path.to_string_lossy(),
             "error_type": "user_cancelled",
             "error": "Activation cancelled by user",
             "system_untouched": true,
@@ -1455,4 +1420,13 @@ mod activation_safety_tests {
         ));
         assert!(!activation_failure_left_system_untouched("generic_error"));
     }
+    #[test]
+    fn refused_activation_retains_its_transcript() {
+        let mut result = failed_activation("", "An activation is already running.");
+        result.refused = true;
+        let path = std::path::Path::new("/logs/refused.log");
+        let payload = super::handle_activation_error(&result, path);
+        assert_eq!(payload["log_file"], "/logs/refused.log");
+    }
+
 }

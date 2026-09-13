@@ -10,7 +10,6 @@ import {
   RotateCcw,
   Sparkles,
   Terminal,
-  Wrench,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StepShell } from "@/components/widget/onboarding/step-shell";
@@ -25,11 +24,17 @@ const CelebrationOverlay = lazy(() =>
     default: m.CelebrationOverlay,
   })),
 );
-import { onboardingActions, useOnboarding, useViewModel } from "@nixmac/state";
+import { onboardingActions, useOnboarding, useViewModel, useUiState } from "@nixmac/state";
+import { ReviewStep } from "@/components/widget/steps/review-step";
+import { CommitStep } from "@/components/widget/steps/commit-step";
+import { EtcClobberConflictList } from "@/components/widget/overlays/etc-clobber-conflict-list";
+import { useFixWithAi } from "@/hooks/use-fix-with-ai";
+import { RebuildNoticeList } from "@/components/widget/overlays/rebuild-notice-list";
 import { useApply } from "@/hooks/use-apply";
 import { tauriAPI } from "@/ipc/api";
 import { client } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
+import { getRebuildErrorTitle, getRebuildErrorSuggestion, getRebuildSystemSafetyMessage, isAiFixableRebuildError } from "@/lib/errors";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import type { InferenceConfig } from "@/components/widget/onboarding/lib/inference";
 
@@ -41,25 +46,13 @@ interface BuildStepProps {
 
 type BuildStatus = "idle" | "running" | "error" | "success";
 
-/** Common first-build failures surfaced as quick fixes. */
-const FIXES = [
-  {
-    title: "Typo in a package or option name",
-    detail:
-      "An unknown attribute (like a misspelled package) is the most common first-build failure. Nix points to the file and line — open it and fix the highlighted spot.",
-  },
-  {
-    title: "Stale flake inputs",
-    detail: "Run nix flake update to refresh pinned inputs, then rebuild.",
-  },
-  {
-    title: "Uncommitted changes",
-    detail: "Nix only sees committed files in a flake. Commit your changes, then retry.",
-  },
-];
-
 export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps) {
   const { handleApply } = useApply();
+  const { fixWithAi } = useFixWithAi();
+  const isGenerating = useUiState((s) => s.isGenerating);
+  const etcClobber = useUiState((s) => s.etcClobber);
+  const evolve = useViewModel((s) => s.evolve);
+  const notices = useViewModel((s) => s.rebuildLog.notices);
   const rebuildStatus = useViewModel((s) => s.rebuildStatus);
   const rawLines = useViewModel((s) => s.rebuildLog.rawLines);
   const configDir = useViewModel((s) => s.preferences?.configDir ?? "");
@@ -69,6 +62,32 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
   const [started, setStarted] = useState(false);
   const [dismissedCelebration, setDismissedCelebration] = useState(false);
   const [trackedOutcome, setTrackedOutcome] = useState<"success" | "error" | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState("");
+  const [copying, setCopying] = useState(false);
+  const currentRun = useRef(rebuildStatus);
+  currentRun.current = rebuildStatus;
+  useEffect(() => { setCopyFeedback(""); }, [rebuildStatus?.logFile, rebuildStatus?.isRunning]);
+
+  async function copyLog() {
+    const run = rebuildStatus;
+    setCopying(true);
+    setCopyFeedback("");
+    try {
+      if (!run?.logFile) throw new Error("The complete build log is unavailable.");
+      const contents = await client.darwin.readRebuildLog({ logFile: run.logFile });
+      if (!contents) throw new Error("The build log is empty.");
+      if (currentRun.current?.isRunning || currentRun.current?.logFile !== run.logFile) {
+        throw new Error("The build changed. Copy the log from the completed build again.");
+      }
+      await navigator.clipboard.writeText(contents);
+      setCopyFeedback("Complete build log copied.");
+    } catch (error) {
+      setCopyFeedback(error instanceof Error ? error.message : "Could not copy the build log.");
+    } finally {
+      setCopying(false);
+    }
+  }
+
   const logRef = useRef<HTMLDivElement>(null);
 
   const command = `nix build ${configDir || "."}#darwinConfigurations.${host}.system`;
@@ -200,6 +219,11 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
         <div className="flex items-center gap-2 border-border border-b px-4 py-2.5">
           <Terminal className="size-4 text-muted-foreground" aria-hidden="true" />
           <span className="font-medium text-muted-foreground text-xs">Build log</span>
+          {status === "error" ? (
+            <Button variant="ghost" size="sm" className="ml-auto" disabled={copying} onClick={copyLog}>
+              {copying ? "Copying…" : "Copy log"}
+            </Button>
+          ) : null}
           {status === "running" ? (
             <Loader2
               className="ml-auto size-3.5 animate-spin text-muted-foreground"
@@ -230,6 +254,16 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
         </div>
       </div>
 
+      {copyFeedback ? <p role="status" className="mt-2 text-sm">{copyFeedback}</p> : null}
+
+      <RebuildNoticeList notices={notices} />
+      {status === "error" && rebuildStatus?.errorType === "etc_clobber" && etcClobber ? (
+        <EtcClobberConflictList result={etcClobber} />
+      ) : null}
+      {evolve?.evolutionId != null && !isGenerating ? (
+        evolve.step === "evolve" ? <ReviewStep /> : evolve.step === "commit" ? <CommitStep /> : null
+      ) : null}
+
       {/* Help panel on failure */}
       {status === "error" ? (
         <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
@@ -238,31 +272,33 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
               <CircleAlert className="size-4" aria-hidden="true" />
             </span>
             <div>
-              <p className="font-semibold text-sm">Build failed — let&apos;s fix it</p>
+              <p className="font-semibold text-sm">
+                {rebuildStatus?.systemUntouched === false
+                  ? "Activation failed"
+                  : getRebuildErrorTitle(rebuildStatus?.errorType ?? undefined)}
+              </p>
               <p className="text-muted-foreground text-xs">
-                Your Mac was not changed. Try the most likely fixes, then retry.
+                {getRebuildSystemSafetyMessage(rebuildStatus?.systemUntouched ?? undefined, "apply")
+                  ?? (rebuildStatus?.systemUntouched === false
+                    ? "Some changes may already have been applied to your Mac."
+                    : "We could not confirm whether changes were made to your Mac.")}
               </p>
             </div>
           </div>
-          <ul className="flex flex-col gap-2">
-            {FIXES.map((fix) => (
-              <li
-                key={fix.title}
-                className="flex gap-3 rounded-lg border border-border bg-card p-3"
-              >
-                <Wrench
-                  className="mt-0.5 size-4 shrink-0 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <div>
-                  <p className="font-medium text-sm">{fix.title}</p>
-                  <p className="text-pretty text-muted-foreground text-xs leading-relaxed">
-                    {fix.detail}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
+          {rebuildStatus?.errorMessage ? (
+            <p className="mb-3 whitespace-pre-wrap wrap-break-word rounded-lg border border-border bg-card p-3 font-mono text-xs">
+              {rebuildStatus.errorMessage}
+            </p>
+          ) : null}
+          <p className="text-pretty text-muted-foreground text-sm">
+            {getRebuildErrorSuggestion(rebuildStatus?.errorType ?? undefined)}
+          </p>
+          {hasInference && isAiFixableRebuildError(rebuildStatus?.errorType) && rebuildStatus?.errorMessage ? (
+            <Button className="mt-3" disabled={isGenerating} onClick={() => void fixWithAi()}>
+              <Sparkles className="size-4" aria-hidden="true" />
+              Fix with AI
+            </Button>
+          ) : null}
         </div>
       ) : null}
 

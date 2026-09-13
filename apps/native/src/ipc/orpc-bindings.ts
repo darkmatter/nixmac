@@ -907,7 +907,11 @@ error: string;
 /**
  * Backend error classification (`RebuildErrorType`), when known.
  */
-errorType: string | null }
+errorType: string | null;
+/**
+ * Transcript belonging to the displayed failure.
+ */
+logFile: string | null }
 
 export type FlakeExistsAtInput = { dir: string }
 
@@ -1692,6 +1696,8 @@ export type ProviderInput = { provider: string }
 
 export type ReadFileInput = { relPath: string }
 
+export type RebuildLogInput = { logFile: string }
+
 /**
  * Lifecycle status of the darwin-rebuild apply/activate streams.
  */
@@ -1719,7 +1725,11 @@ errorMessage: string | null;
 /**
  * Whether the failure left the system untouched.
  */
-systemUntouched: boolean | null }
+systemUntouched: boolean | null;
+/**
+ * Exact transcript of the last finished run; cleared when another run starts.
+ */
+logFile: string | null }
 
 /**
  * Public-key format used by a secret recipient.
@@ -2067,6 +2077,7 @@ export type Procedures = {
     helperGrant: Client<Record<never, never>, void, HelperReport, Error>
     helperStatus: Client<Record<never, never>, void, HelperReport, Error>
     prepareRestore: Client<Record<never, never>, RestoreTargetInput, void, Error>
+    readRebuildLog: Client<Record<never, never>, RebuildLogInput, string, Error>
     rebuildStatus: Client<Record<never, never>, void, RebuildStatus, Error>
     rollbackErase: Client<Record<never, never>, void, RollbackResult, Error>
     syncAgentInstall: Client<Record<never, never>, InstallSyncAgentInput, SyncAgentStatus, Error>
