@@ -7,32 +7,40 @@ import {
   makeNixInstallState,
 } from "@/utils/test-fixtures";
 import { initialViewModelState, useViewModel } from "@nixmac/state";
-import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { HELPER_GRACE_MS, useRepair } from "./repair";
+import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { RepairBanners, useRepair } from "./repair";
 
 /**
  * The helper's banner is the one part of the repair plan that follows live state,
- * so what is worth testing is the timing: it must stay quiet while the backend is
- * still converging, speak once the condition has outlasted that, and go when the
- * helper answers — without a churning report ever holding it back.
+ * so it must follow the backend's typed phase and clear as soon as the helper
+ * answers. Retry/approval actions are distinct and tested at the render surface.
  */
+
+const { mockHelperRetry, mockPermissionRequest, mockRefresh } = vi.hoisted(() => ({
+  mockHelperRetry: vi.fn<() => Promise<unknown>>(async () => ({})),
+  mockPermissionRequest: vi.fn<
+    (input: { permissionId: string }) => Promise<unknown>
+  >(async () => ({})),
+  mockRefresh: vi.fn<() => Promise<void>>(async () => {}),
+}));
 
 vi.mock("@/ipc/api", () => ({
   tauriAPI: {
-    permissions: { refresh: vi.fn(async () => {}) },
+    permissions: { refresh: mockRefresh },
   },
 }));
 
 vi.mock("@/lib/orpc", () => ({
   client: {
-    flake: { exists: vi.fn(async () => true) },
-    permissions: { request: vi.fn(async () => {}) },
+    flake: { exists: vi.fn<() => Promise<boolean>>(async () => true) },
+    darwin: { helperRetry: mockHelperRetry },
+    permissions: { request: mockPermissionRequest },
   },
 }));
 
 vi.mock("@/lib/env", () => ({ settings: {} }));
-vi.mock("@/router", () => ({ nav: { openSettings: vi.fn() } }));
+vi.mock("@/router", () => ({ nav: { openSettings: vi.fn<(tab?: string) => void>() } }));
 vi.mock("@/components/widget/onboarding/restart-setup", () => ({
   RestartSetupConfirmation: () => null,
 }));
@@ -67,12 +75,8 @@ function publishHelperRow(helperRow: Permission) {
 }
 
 describe("useRepair", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
   afterEach(() => {
-    vi.useRealTimers();
+    vi.clearAllMocks();
     useViewModel.setState(initialViewModelState);
   });
 
@@ -83,88 +87,175 @@ describe("useRepair", () => {
     return view;
   }
 
-  it("stays quiet until the condition has outlasted the grace period", async () => {
+  it("shows approval immediately", async () => {
     seedStore(makeHelperRow(), "granted");
     const { result } = await mount();
 
-    expect(result.current.plan.banners).toEqual([]);
-
-    await act(async () => {
-      vi.advanceTimersByTime(HELPER_GRACE_MS);
-    });
-
-    expect(result.current.plan.banners).toEqual([
-      { kind: "helper-inactive", instructions: APPROVE_IN_LOGIN_ITEMS },
-    ]);
-  });
-
-  it("does not restart the clock when a still-failing report changes", async () => {
-    seedStore(makeHelperRow(), "granted");
-    const { result } = await mount();
-
-    await act(async () => {
-      vi.advanceTimersByTime(HELPER_GRACE_MS * 0.6);
-      publishHelperRow(
-        makeHelperRow({
-          canRequestProgrammatically: true,
-          instructions: "nixmac could not register the unattended sync helper.",
-        }),
-      );
-    });
-    expect(result.current.plan.banners).toEqual([]);
-
-    // Past the grace period counted from the first report, not the second.
-    await act(async () => {
-      vi.advanceTimersByTime(HELPER_GRACE_MS * 0.6);
-    });
     expect(result.current.plan.banners).toEqual([
       {
         kind: "helper-inactive",
-        instructions: "nixmac could not register the unattended sync helper.",
+        phase: "approvalRequired",
+        instructions: APPROVE_IN_LOGIN_ITEMS,
       },
     ]);
   });
 
-  it("clears the banner and the clock once the helper answers", async () => {
-    seedStore(makeHelperRow(), "granted");
+  it("follows reconciling and active-sync phases without parsing copy", async () => {
+    seedStore(
+      makeHelperRow({
+        helperPhase: "reconciling",
+        canRequestProgrammatically: true,
+        instructions: "nixmac is finishing unattended sync setup.",
+      }),
+      "granted",
+    );
     const { result } = await mount();
 
-    await act(async () => {
-      vi.advanceTimersByTime(HELPER_GRACE_MS);
+    expect(result.current.plan.banners[0]).toMatchObject({
+      kind: "helper-inactive",
+      phase: "reconciling",
     });
+
+    act(() => {
+      publishHelperRow(
+        makeHelperRow({
+          helperPhase: "waitingForActivation",
+          canRequestProgrammatically: true,
+          instructions: "Waiting for the current sync.",
+        }),
+      );
+    });
+    expect(result.current.plan.banners).toEqual([
+      {
+        kind: "helper-inactive",
+        phase: "waitingForActivation",
+        instructions: "Waiting for the current sync.",
+      },
+    ]);
+  });
+
+  it("clears the banner once the helper answers", async () => {
+    seedStore(makeHelperRow({ helperPhase: "failed" }), "granted");
+    const { result } = await mount();
     expect(result.current.plan.banners).toHaveLength(1);
 
-    await act(async () => {
+    act(() => {
       publishHelperRow(
         makeHelperRow({
           status: "granted",
+          helperPhase: "ready",
           canRequestProgrammatically: true,
           instructions: "The unattended sync helper is installed and answering.",
         }),
       );
     });
     expect(result.current.plan.banners).toEqual([]);
+  });
 
-    // The clock was cleared with the banner, so a later regression waits again.
-    await act(async () => {
-      publishHelperRow(makeHelperRow());
-    });
+  it("does not let dismissal of one phase hide a later failure", async () => {
+    seedStore(makeHelperRow(), "granted");
+    const { result } = await mount();
+
+    act(() => result.current.dismissBanner("helper-inactive"));
     expect(result.current.plan.banners).toEqual([]);
 
-    await act(async () => {
-      vi.advanceTimersByTime(HELPER_GRACE_MS);
+    act(() => {
+      publishHelperRow(
+        makeHelperRow({
+          helperPhase: "failed",
+          canRequestProgrammatically: true,
+          instructions: "Try again.",
+        }),
+      );
     });
-    expect(result.current.plan.banners).toHaveLength(1);
+    expect(result.current.plan.banners[0]).toMatchObject({
+      kind: "helper-inactive",
+      phase: "failed",
+    });
   });
 
   it("says nothing about a helper the user did not ask for", async () => {
     seedStore(makeHelperRow(), "unset");
     const { result } = await mount();
 
-    await act(async () => {
-      vi.advanceTimersByTime(HELPER_GRACE_MS);
-    });
-
     expect(result.current.plan.banners).toEqual([]);
+  });
+});
+
+describe("RepairBanners helper actions", () => {
+  afterEach(() => vi.clearAllMocks());
+
+  it("opens System Settings only for approval", async () => {
+    render(
+      <RepairBanners
+        banners={[
+          {
+            kind: "helper-inactive",
+            phase: "approvalRequired",
+            instructions: APPROVE_IN_LOGIN_ITEMS,
+          },
+        ]}
+        onDismiss={() => {}}
+        onRecheck={mockRefresh}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open System Settings" }));
+    await waitFor(() => expect(mockPermissionRequest).toHaveBeenCalled());
+    expect(mockHelperRetry).not.toHaveBeenCalled();
+  });
+
+  it("retries only a failed helper", async () => {
+    render(
+      <RepairBanners
+        banners={[
+          {
+            kind: "helper-inactive",
+            phase: "failed",
+            instructions: "Try again.",
+          },
+        ]}
+        onDismiss={() => {}}
+        onRecheck={mockRefresh}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(mockHelperRetry).toHaveBeenCalled());
+    expect(mockPermissionRequest).not.toHaveBeenCalled();
+  });
+
+  it("offers no repair action while waiting for an activation", () => {
+    render(
+      <RepairBanners
+        banners={[
+          {
+            kind: "helper-inactive",
+            phase: "waitingForActivation",
+            instructions: "Waiting for the current sync.",
+          },
+        ]}
+        onDismiss={() => {}}
+        onRecheck={mockRefresh}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Open System Settings" })).toBeNull();
+  });
+
+  it("keeps move or restart guidance instead of offering an ineffective retry", () => {
+    render(
+      <RepairBanners
+        banners={[
+          {
+            kind: "helper-inactive",
+            phase: "needsUserAction",
+            instructions: "Move nixmac to /Applications and restart it.",
+          },
+        ]}
+        onDismiss={() => {}}
+        onRecheck={mockRefresh}
+      />,
+    );
+    expect(screen.getByText("Move nixmac to /Applications and restart it.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
   });
 });

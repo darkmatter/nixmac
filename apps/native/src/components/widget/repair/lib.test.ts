@@ -15,7 +15,6 @@ function makeInputs(overrides: Partial<RepairInputs> = {}): RepairInputs {
     permissions: makeGrantedPermissions(),
     helperRow: null,
     helperPreference: "unset",
-    helperGraceElapsed: false,
     skipPermissions: false,
     nixInstalledOverride: false,
     ...overrides,
@@ -95,7 +94,6 @@ describe("computeRepairPlan", () => {
         makeInputs({
           helperPreference,
           helperRow: makeHelperRow(),
-          helperGraceElapsed: true,
         }),
       );
       expect(plan.banners).toEqual([]);
@@ -106,35 +104,59 @@ describe("computeRepairPlan", () => {
     const plan = computeRepairPlan(
       makeInputs({
         helperPreference: "granted",
-        helperRow: makeHelperRow({ status: "granted" }),
-        helperGraceElapsed: true,
+        helperRow: makeHelperRow({ status: "granted", helperPhase: "ready" }),
       }),
     );
     expect(plan.banners).toEqual([]);
   });
 
-  it("waits for the grace period before naming the helper", () => {
+  it("banners the wanted helper with the backend's typed phase and copy", () => {
     const plan = computeRepairPlan(
       makeInputs({
         helperPreference: "granted",
         helperRow: makeHelperRow(),
-        helperGraceElapsed: false,
-      }),
-    );
-    expect(plan.banners).toEqual([]);
-  });
-
-  it("banners the wanted-but-silent helper with the row's own sentence", () => {
-    const plan = computeRepairPlan(
-      makeInputs({
-        helperPreference: "granted",
-        helperRow: makeHelperRow(),
-        helperGraceElapsed: true,
       }),
     );
     expect(plan.banners).toEqual([
-      { kind: "helper-inactive", instructions: APPROVE_IN_LOGIN_ITEMS },
+      {
+        kind: "helper-inactive",
+        phase: "approvalRequired",
+        instructions: APPROVE_IN_LOGIN_ITEMS,
+      },
     ]);
+  });
+
+  it("preserves every actionable helper phase", () => {
+    for (const phase of [
+      "reconciling",
+      "waitingForActivation",
+      "needsUserAction",
+      "failed",
+    ] as const) {
+      const plan = computeRepairPlan(
+        makeInputs({
+          helperPreference: "granted",
+          helperRow: makeHelperRow({
+            helperPhase: phase,
+            canRequestProgrammatically: true,
+            instructions: `copy for ${phase}`,
+          }),
+        }),
+      );
+      expect(plan.banners).toEqual([
+        { kind: "helper-inactive", phase, instructions: `copy for ${phase}` },
+      ]);
+    }
+  });
+
+  it("does not treat a crossed disabled row as an intentional opt-out", () => {
+    const plan = computeRepairPlan(
+      makeInputs({
+        helperPreference: "granted",
+        helperRow: makeHelperRow({ helperPhase: "disabled" }),
+      }),
+    );
+    expect(plan.banners[0]).toMatchObject({ kind: "helper-inactive", phase: "failed" });
   });
 
   it("leaves the helper out of the revoked-permissions list", () => {
@@ -158,12 +180,15 @@ describe("computeRepairPlan", () => {
         },
         helperPreference: "granted",
         helperRow,
-        helperGraceElapsed: true,
       }),
     );
     expect(plan.banners).toEqual([
       { kind: "permissions-revoked", missing: [{ id: "full-disk", name: "Full Disk Access" }] },
-      { kind: "helper-inactive", instructions: APPROVE_IN_LOGIN_ITEMS },
+      {
+        kind: "helper-inactive",
+        phase: "approvalRequired",
+        instructions: APPROVE_IN_LOGIN_ITEMS,
+      },
     ]);
   });
 
@@ -178,11 +203,14 @@ describe("computeRepairPlan", () => {
         },
         helperPreference: "granted",
         helperRow,
-        helperGraceElapsed: true,
       }),
     );
     expect(plan.banners).toEqual([
-      { kind: "helper-inactive", instructions: APPROVE_IN_LOGIN_ITEMS },
+      {
+        kind: "helper-inactive",
+        phase: "approvalRequired",
+        instructions: APPROVE_IN_LOGIN_ITEMS,
+      },
     ]);
   });
 
@@ -199,7 +227,6 @@ describe("computeRepairPlan", () => {
         },
         helperPreference: "granted",
         helperRow: makeHelperRow(),
-        helperGraceElapsed: true,
       }),
     );
     expect(plan).toEqual({ blocking: null, banners: [] });

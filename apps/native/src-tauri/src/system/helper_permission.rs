@@ -2,10 +2,10 @@
 //!
 //! One reconciliation function decides everything about the installed helper
 //! (`privileged_helper::reconcile`). This module is the only place the GUI calls
-//! it from, and it holds nothing but the wiring:
+//! it from, and it owns the wiring plus the one shared presentation window:
 //!
-//!   * [`observe`] for startup and status refreshes, [`grant`] and [`disable`]
-//!     for the two explicit user actions;
+//!   * [`observe`] for startup and status refreshes, plus [`grant`], [`retry`],
+//!     and [`disable`] for explicit user actions;
 //!   * [`describe`] and [`row`], which turn one run's report into the sentence
 //!     and the permission state the UI shows.
 //!
@@ -15,17 +15,23 @@
 //! approval a report describes, a run no click is waiting on opens nothing.
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
+use std::sync::{Mutex, PoisonError};
+use std::time::{Duration, Instant};
 
 use tauri::{AppHandle, Runtime};
 
 use crate::privileged_helper::reconcile::{self, LiveEnvironment, Reconciled};
 use crate::privileged_helper::service::{self, RegistrationStatus};
-use crate::shared_types::PermissionStatus;
+use crate::shared_types::{HelperPermissionPhase, PermissionStatus};
 use crate::state::permissions_state;
 use crate::system::permissions;
 
-const APPROVE_IN_LOGIN_ITEMS: &str = "Approve nixmac in System Settings → General → Login Items & Extensions to finish enabling the unattended sync helper.";
+const APPROVE_IN_LOGIN_ITEMS: &str = "Allow nixmac in System Settings → General → Login Items & Extensions to finish enabling unattended sync.";
+const FINISHING_SETUP: &str = "nixmac is finishing unattended sync setup.";
+const HELPER_UPDATE_FAILED: &str = "nixmac couldn’t update the unattended sync helper. Try again. If this keeps happening, report the problem.";
+const ACTION_FAILED: &str = "nixmac couldn’t finish changing the unattended sync helper. Try again. If this keeps happening, report the problem.";
+const SERVICE_DEFINITION_BROKEN: &str =
+    "This copy of nixmac can’t install its unattended sync helper. Reinstall or update nixmac.";
 
 /// Reconciles the installed helper with this build, and reports.
 ///
@@ -41,7 +47,19 @@ const APPROVE_IN_LOGIN_ITEMS: &str = "Approve nixmac in System Settings → Gene
 /// so a main-thread run that only has to read a status or remove a helper is not
 /// caught by that refusal.
 pub fn observe<R: Runtime>(app: &AppHandle<R>) -> Reconciled {
-    reconcile::reconcile(&LiveEnvironment::new(app))
+    observe_with(&PRESENTATION, || {
+        reconcile::reconcile(&LiveEnvironment::new(app))
+    })
+}
+
+fn observe_with(
+    presentation: &FailurePresentation,
+    observe: impl FnOnce() -> Reconciled,
+) -> Reconciled {
+    let generation = presentation.generation();
+    let report = observe();
+    presentation.note_settled_report(&report, generation);
+    report
 }
 
 /// The explicit Grant action: record the decision, reconcile under it, and open
@@ -75,6 +93,7 @@ pub fn observe<R: Runtime>(app: &AppHandle<R>) -> Reconciled {
 /// pass may be awaiting a main-queue dispatch — a deadlock, where an
 /// observation merely misreports. Every current caller is an async handler.
 pub fn grant<R: Runtime>(app: &AppHandle<R>) -> Reconciled {
+    let generation = PRESENTATION.begin_user_attempt();
     // Read before the run, because the run is what changes it.
     let awaiting_approval_already = matches!(
         service::registration_status(),
@@ -84,8 +103,27 @@ pub fn grant<R: Runtime>(app: &AppHandle<R>) -> Reconciled {
         service::open_login_items_settings();
     }
     let report = reconcile::grant(&LiveEnvironment::new(app));
+    PRESENTATION.note_settled_report(&report, generation);
     if !awaiting_approval_already && matches!(report, Reconciled::PendingApproval) {
         service::open_login_items_settings();
+    }
+    start_converging(app);
+    report
+}
+
+/// Retry the stored decision without changing it or opening System Settings.
+///
+/// This is deliberately separate from [`grant`]: a failed, already-enabled
+/// helper needs another reconciliation attempt, not another opt-in action.
+pub fn retry<R: Runtime>(app: &AppHandle<R>) -> Reconciled {
+    let generation = PRESENTATION.begin_user_attempt();
+    let report = reconcile::retry(&LiveEnvironment::new(app));
+    PRESENTATION.note_settled_report(&report, generation);
+    if matches!(report, Reconciled::Stopped(_)) {
+        // This was an explicit, bounded retry whose progress the button showed.
+        // If that pass still stopped, keep recovery available rather than
+        // leaving a spinner up until the slow background cadence wakes again.
+        PRESENTATION.show_failure(generation);
     }
     start_converging(app);
     report
@@ -95,19 +133,77 @@ pub fn grant<R: Runtime>(app: &AppHandle<R>) -> Reconciled {
 /// unregister the helper, deferring while an activation runs, done. Never on
 /// the main thread, for [`grant`]'s reason.
 pub fn disable<R: Runtime>(app: &AppHandle<R>) -> Reconciled {
+    let generation = PRESENTATION.begin_user_attempt();
     let report = reconcile::disable(&LiveEnvironment::new(app));
+    PRESENTATION.note_settled_report(&report, generation);
     start_converging(app);
     report
 }
 
 /// The permission row for one report: only a helper of this build, ready, is
 /// granted, and every report says what it found.
-pub fn row(report: &Reconciled) -> (PermissionStatus, String) {
+pub fn row(report: &Reconciled) -> (PermissionStatus, String, HelperPermissionPhase) {
     let status = match report {
         Reconciled::AtThisBuild => PermissionStatus::Granted,
         _ => PermissionStatus::Pending,
     };
-    (status, describe(report))
+    let phase = phase(report);
+    let detail = match phase {
+        HelperPermissionPhase::Reconciling => FINISHING_SETUP.to_string(),
+        HelperPermissionPhase::Failed => HELPER_UPDATE_FAILED.to_string(),
+        HelperPermissionPhase::NeedsUserAction
+            if matches!(report, Reconciled::ServiceDefinitionBroken) =>
+        {
+            SERVICE_DEFINITION_BROKEN.to_string()
+        }
+        _ => describe(report),
+    };
+    (status, detail, phase)
+}
+
+/// Friendly detail for helper actions returned outside the permission row.
+/// Internal callers that need exact diagnostics continue to use [`describe`].
+pub fn action_detail(report: &Reconciled) -> String {
+    match report {
+        Reconciled::Stopped(_) => ACTION_FAILED.to_string(),
+        Reconciled::Busy => FINISHING_SETUP.to_string(),
+        Reconciled::ServiceDefinitionBroken => SERVICE_DEFINITION_BROKEN.to_string(),
+        _ => describe(report),
+    }
+}
+
+/// Typed product state for every reconciliation report.
+pub fn phase(report: &Reconciled) -> HelperPermissionPhase {
+    phase_with_failure_visibility(report, PRESENTATION.failure_visible())
+}
+
+fn phase_with_failure_visibility(
+    report: &Reconciled,
+    stopped_failure_visible: bool,
+) -> HelperPermissionPhase {
+    match report {
+        Reconciled::AtThisBuild => HelperPermissionPhase::Ready,
+        Reconciled::PendingApproval => HelperPermissionPhase::ApprovalRequired,
+        Reconciled::NoHelper | Reconciled::Removed => HelperPermissionPhase::Disabled,
+        Reconciled::Busy => {
+            if stopped_failure_visible {
+                HelperPermissionPhase::Failed
+            } else {
+                HelperPermissionPhase::Reconciling
+            }
+        }
+        Reconciled::WaitingOnActivation(_) => HelperPermissionPhase::WaitingForActivation,
+        Reconciled::Displaced(_) | Reconciled::ServiceDefinitionBroken => {
+            HelperPermissionPhase::NeedsUserAction
+        }
+        Reconciled::Stopped(_) => {
+            if stopped_failure_visible {
+                HelperPermissionPhase::Failed
+            } else {
+                HelperPermissionPhase::Reconciling
+            }
+        }
+    }
 }
 
 /// Whether a pane of System Settings is where the user finishes this report.
@@ -201,6 +297,11 @@ const FAST_ATTEMPTS: u32 = 30;
 /// glance.
 const WAITING_INTERVAL: Duration = Duration::from_secs(5);
 
+/// How long retryable reports stay a neutral setup state before the UI offers
+/// recovery. This is presentation timing only; the independent safety bound
+/// below still governs how many mutations the loop may attempt.
+const FAILURE_PRESENTATION_AFTER: Duration = Duration::from_secs(10);
+
 /// Working attempts one loop makes before giving up and leaving repair to the
 /// next launch or the next click.
 ///
@@ -208,6 +309,95 @@ const WAITING_INTERVAL: Duration = Duration::from_secs(5);
 /// is not failing at anything — see [`drive`] — so this bounds the repetition
 /// that could churn a registration, and nothing else.
 const MAX_ATTEMPTS: u32 = 100;
+
+/// Shared presentation state for explicit attempts and every row producer.
+/// A Retry starts a new display window without resetting the loop's mutation
+/// bound. Once its own pass fails, only another attempt or a settled observation
+/// clears that failure; the background loop must not reset it again.
+/// The generation and visibility change under one lock, so an older observation
+/// cannot clear a newer failure between a generation check and its update.
+/// No reconciliation, publication, or other external call runs under this lock.
+#[derive(Default)]
+struct FailurePresentation {
+    state: Mutex<FailurePresentationState>,
+}
+
+#[derive(Default)]
+struct FailurePresentationState {
+    generation: u64,
+    failure_visible: bool,
+    last_failure_detail: Option<String>,
+}
+
+static PRESENTATION: FailurePresentation = FailurePresentation {
+    state: Mutex::new(FailurePresentationState {
+        generation: 0,
+        failure_visible: false,
+        last_failure_detail: None,
+    }),
+};
+
+/// Last observed helper failure for the existing opt-in feedback snapshot.
+/// Reading it never probes permissions or changes helper registration.
+pub(crate) fn last_failure_detail() -> Option<String> {
+    PRESENTATION.last_failure_detail()
+}
+
+impl FailurePresentation {
+    fn generation(&self) -> u64 {
+        self.state
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .generation
+    }
+
+    fn failure_visible(&self) -> bool {
+        self.state
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .failure_visible
+    }
+
+    fn last_failure_detail(&self) -> Option<String> {
+        self.state
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .last_failure_detail
+            .clone()
+    }
+
+    fn begin_user_attempt(&self) -> u64 {
+        let mut state = self.state.lock().unwrap_or_else(PoisonError::into_inner);
+        state.generation = state.generation.wrapping_add(1);
+        state.failure_visible = false;
+        state.generation
+    }
+
+    fn show_failure(&self, generation: u64) {
+        let mut state = self.state.lock().unwrap_or_else(PoisonError::into_inner);
+        if state.generation == generation {
+            state.failure_visible = true;
+        }
+    }
+
+    fn note_settled_report(&self, report: &Reconciled, generation: u64) {
+        let mut state = self.state.lock().unwrap_or_else(PoisonError::into_inner);
+        if state.generation != generation || matches!(report, Reconciled::Busy) {
+            return;
+        }
+        state.last_failure_detail = match report {
+            Reconciled::Stopped(_) => Some(describe(report)),
+            _ => None,
+        };
+        if !matches!(report, Reconciled::Stopped(_)) {
+            state.failure_visible = false;
+        }
+    }
+}
+
+fn should_show_failure(elapsed: Duration, working: u32) -> bool {
+    elapsed >= FAILURE_PRESENTATION_AFTER || working >= MAX_ATTEMPTS
+}
 
 /// Whether re-running could still change anything.
 fn nothing_more_to_do(report: &Reconciled) -> bool {
@@ -279,23 +469,72 @@ pub fn start_converging<R: Runtime>(app: &AppHandle<R>) {
     std::thread::spawn(move || {
         let _guard = guard;
         drive(
-            || {
-                let report = observe(&app);
-                permissions_state::replace_row(&app, permissions::helper_row(&report));
-                report
+            &PRESENTATION,
+            || observe(&app),
+            |report| {
+                permissions_state::replace_row(&app, permissions::helper_row(report));
             },
             std::thread::sleep,
         );
     });
 }
 
-/// Run, publish, stop when there is nothing left to do, otherwise wait and go
-/// again.
-fn drive(mut attempt: impl FnMut() -> Reconciled, mut wait: impl FnMut(Duration)) {
+/// Run, publish one shared product state, and stop when there is nothing left
+/// to do. Retry timing lives here so full refreshes and both UI surfaces read
+/// the same phase rather than independently interpreting transient reports.
+fn drive(
+    presentation: &FailurePresentation,
+    attempt: impl FnMut() -> Reconciled,
+    publish: impl FnMut(&Reconciled),
+    wait: impl FnMut(Duration),
+) {
+    drive_with_clock(presentation, attempt, publish, wait, Instant::now);
+}
+
+fn drive_with_clock(
+    presentation: &FailurePresentation,
+    mut attempt: impl FnMut() -> Reconciled,
+    mut publish: impl FnMut(&Reconciled),
+    mut wait: impl FnMut(Duration),
+    mut now: impl FnMut() -> Instant,
+) {
+    // `working` remains solely the mutation-safety bound and cadence selector.
+    // Presentation timing is deliberately independent so a human approval or
+    // a long activation wait cannot reset the churn limit.
     let mut working = 0;
+    let mut user_generation = presentation.generation();
+    let mut presentation_started: Option<Instant> = None;
     loop {
+        let observed_generation = presentation.generation();
+        if observed_generation != user_generation {
+            user_generation = observed_generation;
+            presentation_started = Some(now());
+        } else if presentation_started.is_none() && !presentation.failure_visible() {
+            presentation_started = Some(now());
+        }
+
+        let attempt_generation = presentation.generation();
         let report = attempt();
+
+        // A user action can begin while this loop's pass owns RUNNING; that
+        // action waits for the pass. Do not let the older pass restore a stale
+        // failure after the new attempt has already reset its presentation.
+        let generation_after_attempt = presentation.generation();
+        if generation_after_attempt != user_generation {
+            user_generation = generation_after_attempt;
+            presentation_started = Some(now());
+        }
+
+        // Busy says only that this observation lost the single-flight race. It
+        // must not replace an approval, failure, or actionable instruction.
+        if matches!(report, Reconciled::Busy) {
+            wait(WAITING_INTERVAL);
+            continue;
+        }
+
         if nothing_more_to_do(&report) {
+            presentation.note_settled_report(&report, attempt_generation);
+            publish(&report);
             return;
         }
         // None of these attempted anything. `PendingApproval` is macOS
@@ -320,12 +559,28 @@ fn drive(mut attempt: impl FnMut() -> Reconciled, mut wait: impl FnMut(Duration)
         // Login Items. Every such cycle is therefore paced by a human.
         if matches!(
             report,
-            Reconciled::PendingApproval | Reconciled::Busy | Reconciled::WaitingOnActivation(_)
+            Reconciled::PendingApproval | Reconciled::WaitingOnActivation(_)
         ) {
+            // This is a genuine wait boundary, not another failed mutation.
+            // Give the work after it a fresh *display* window while leaving the
+            // lifetime `working` safety counter untouched.
+            presentation_started = None;
+            presentation.note_settled_report(&report, attempt_generation);
+            publish(&report);
             wait(WAITING_INTERVAL);
             continue;
         }
+
+        debug_assert!(matches!(report, Reconciled::Stopped(_)));
         working += 1;
+        let elapsed = presentation_started
+            .map(|started| now().saturating_duration_since(started))
+            .unwrap_or_default();
+        if should_show_failure(elapsed, working) {
+            presentation.show_failure(attempt_generation);
+        }
+        publish(&report);
+
         if working >= MAX_ATTEMPTS {
             log::warn!(
                 "helper convergence: giving up after {working} attempts, last report {report:?}; \
@@ -421,10 +676,209 @@ mod tests {
     }
 
     #[test]
+    fn every_report_has_a_typed_product_phase() {
+        for (report, expected) in [
+            (Reconciled::AtThisBuild, HelperPermissionPhase::Ready),
+            (
+                Reconciled::PendingApproval,
+                HelperPermissionPhase::ApprovalRequired,
+            ),
+            (Reconciled::NoHelper, HelperPermissionPhase::Disabled),
+            (Reconciled::Removed, HelperPermissionPhase::Disabled),
+            (
+                Reconciled::WaitingOnActivation(None),
+                HelperPermissionPhase::WaitingForActivation,
+            ),
+            (displaced(), HelperPermissionPhase::NeedsUserAction),
+            (
+                Reconciled::ServiceDefinitionBroken,
+                HelperPermissionPhase::NeedsUserAction,
+            ),
+        ] {
+            assert_eq!(phase_with_failure_visibility(&report, false), expected);
+        }
+
+        let stopped = stopped("SMAppServiceErrorDomain 1: operation not permitted");
+        assert_eq!(
+            phase_with_failure_visibility(&stopped, false),
+            HelperPermissionPhase::Reconciling
+        );
+        assert_eq!(
+            phase_with_failure_visibility(&stopped, true),
+            HelperPermissionPhase::Failed
+        );
+    }
+
+    #[test]
+    fn technical_stops_are_friendly_only_at_the_row_boundary() {
+        let report = stopped("SMAppServiceErrorDomain 1: operation not permitted");
+        assert!(describe(&report).contains("SMAppServiceErrorDomain 1"));
+        assert!(!action_detail(&report).contains("SMAppServiceErrorDomain"));
+    }
+
+    #[test]
+    fn presentation_uses_time_without_changing_the_mutation_bound() {
+        assert!(!should_show_failure(Duration::from_secs(9), 99));
+        assert!(should_show_failure(FAILURE_PRESENTATION_AFTER, 1));
+        assert!(should_show_failure(Duration::ZERO, MAX_ATTEMPTS));
+    }
+
+    #[test]
+    fn feedback_keeps_failure_details_without_changing_friendly_copy() {
+        let presentation = FailurePresentation::default();
+        let first = presentation.begin_user_attempt();
+        let failure = stopped("SMAppServiceErrorDomain 1: registration refused");
+        presentation.note_settled_report(&failure, first);
+        assert!(
+            presentation
+                .last_failure_detail()
+                .unwrap()
+                .contains("SMAppServiceErrorDomain 1")
+        );
+        assert!(!action_detail(&failure).contains("SMAppServiceErrorDomain"));
+        presentation.note_settled_report(&Reconciled::Busy, first);
+        assert!(presentation.last_failure_detail().is_some());
+
+        let next = presentation.begin_user_attempt();
+        presentation.note_settled_report(&Reconciled::AtThisBuild, first);
+        assert!(presentation.last_failure_detail().is_some());
+        presentation.note_settled_report(&Reconciled::AtThisBuild, next);
+        assert!(presentation.last_failure_detail().is_none());
+    }
+
+    #[test]
+    fn a_completed_retry_failure_survives_the_background_generation_check() {
+        let presentation = FailurePresentation::default();
+        let mut attempts = 0;
+        let mut phases = Vec::new();
+        drive(
+            &presentation,
+            || {
+                attempts += 1;
+                if attempts == 1 {
+                    // The background pass releases reconciliation's slot, then
+                    // Retry runs and fails before this loop publishes its report.
+                    let retry_generation = presentation.begin_user_attempt();
+                    presentation.show_failure(retry_generation);
+                    stopped("the helper could not be registered")
+                } else {
+                    Reconciled::AtThisBuild
+                }
+            },
+            |report| {
+                phases.push(phase_with_failure_visibility(
+                    report,
+                    presentation.failure_visible(),
+                ));
+            },
+            |_| {},
+        );
+        assert_eq!(
+            phases,
+            vec![HelperPermissionPhase::Failed, HelperPermissionPhase::Ready]
+        );
+    }
+
+    #[test]
+    fn a_stale_settled_observation_cannot_clear_a_newer_failed_retry() {
+        let presentation = FailurePresentation::default();
+        drive(
+            &presentation,
+            || {
+                observe_with(&presentation, || {
+                    // This observation already obtained Ready and released the
+                    // reconciliation slot. Retry acquires it and fails before
+                    // the older observation returns to its presentation code.
+                    let retry_generation = presentation.begin_user_attempt();
+                    presentation.show_failure(retry_generation);
+                    Reconciled::AtThisBuild
+                })
+            },
+            |_| {
+                // Both observe() and drive() handle the old settled result
+                // before this publisher runs. Neither may clear Retry's latch.
+                assert_eq!(
+                    phase_with_failure_visibility(
+                        &stopped("retry failed"),
+                        presentation.failure_visible(),
+                    ),
+                    HelperPermissionPhase::Failed,
+                );
+            },
+            |_| {},
+        );
+        assert!(presentation.failure_visible());
+    }
+
+    #[test]
+    fn the_loop_shows_recovery_after_the_display_window() {
+        let presentation = FailurePresentation::default();
+        let started = Instant::now();
+        let elapsed = std::cell::Cell::new(Duration::ZERO);
+        let mut attempts = 0;
+        let mut phases = Vec::new();
+        drive_with_clock(
+            &presentation,
+            || {
+                attempts += 1;
+                if attempts <= 3 {
+                    stopped("the helper could not be registered")
+                } else {
+                    Reconciled::AtThisBuild
+                }
+            },
+            |report| {
+                phases.push(phase_with_failure_visibility(
+                    report,
+                    presentation.failure_visible(),
+                ));
+            },
+            |_| {
+                elapsed.set(if elapsed.get().is_zero() {
+                    Duration::from_secs(9)
+                } else {
+                    elapsed.get() + Duration::from_secs(1)
+                });
+            },
+            || started + elapsed.get(),
+        );
+        assert_eq!(
+            phases,
+            vec![
+                HelperPermissionPhase::Reconciling,
+                HelperPermissionPhase::Reconciling,
+                HelperPermissionPhase::Failed,
+                HelperPermissionPhase::Ready,
+            ]
+        );
+    }
+
+    #[test]
+    fn busy_never_replaces_the_last_truthful_row() {
+        let mut attempts = 0;
+        let mut published = Vec::new();
+        drive(
+            &FailurePresentation::default(),
+            || {
+                attempts += 1;
+                if attempts == 1 {
+                    Reconciled::Busy
+                } else {
+                    Reconciled::AtThisBuild
+                }
+            },
+            |report| published.push(report.clone()),
+            |_| {},
+        );
+        assert_eq!(published, vec![Reconciled::AtThisBuild]);
+    }
+
+    #[test]
     fn it_stops_as_soon_as_the_decision_is_carried_out() {
         let mut attempts = 0;
         let mut waited = Vec::new();
         drive(
+            &FailurePresentation::default(),
             || {
                 attempts += 1;
                 if attempts < 3 {
@@ -433,6 +887,7 @@ mod tests {
                     Reconciled::AtThisBuild
                 }
             },
+            |_| {},
             |interval| waited.push(interval),
         );
         assert_eq!(attempts, 3);
@@ -448,6 +903,7 @@ mod tests {
         let mut attempts = 0;
         let mut waited = Vec::new();
         drive(
+            &FailurePresentation::default(),
             || {
                 attempts += 1;
                 if attempts <= MAX_ATTEMPTS * 10 {
@@ -456,6 +912,7 @@ mod tests {
                     Reconciled::AtThisBuild
                 }
             },
+            |_| {},
             |interval| waited.push(interval),
         );
         assert_eq!(attempts, MAX_ATTEMPTS * 10 + 1, "the loop stopped watching");
@@ -471,6 +928,7 @@ mod tests {
         let mut attempts = 0;
         let mut working = 0;
         drive(
+            &FailurePresentation::default(),
             || {
                 attempts += 1;
                 if attempts <= 500 {
@@ -481,6 +939,7 @@ mod tests {
                 }
             },
             |_| {},
+            |_| {},
         );
         assert_eq!(working, MAX_ATTEMPTS);
     }
@@ -490,10 +949,12 @@ mod tests {
         let mut attempts = 0;
         let mut waited = Vec::new();
         drive(
+            &FailurePresentation::default(),
             || {
                 attempts += 1;
                 stopped("the helper could not be registered: not permitted")
             },
+            |_| {},
             |interval| waited.push(interval),
         );
         assert_eq!(attempts, MAX_ATTEMPTS);

@@ -127,7 +127,7 @@ export function makeRebuildStatus(
  * not every test that mentions the sentence.
  */
 export const APPROVE_IN_LOGIN_ITEMS =
-	"Approve nixmac in System Settings → General → Login Items & Extensions to finish enabling the unattended sync helper.";
+	"Allow nixmac in System Settings → General → Login Items & Extensions to finish enabling unattended sync.";
 
 /**
  * The helper permission row while macOS holds the registration for approval.
@@ -142,6 +142,7 @@ export function makeHelperRow(overrides: Partial<Permission> = {}): Permission {
 		canRequestProgrammatically: false,
 		status: "pending",
 		instructions: APPROVE_IN_LOGIN_ITEMS,
+		helperPhase: "approvalRequired",
 		...overrides,
 	};
 }

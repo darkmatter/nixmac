@@ -11,7 +11,7 @@ use std::path::{Component, Path, PathBuf};
 #[cfg_attr(not(test), allow(dead_code))]
 pub const HELPER_LABEL: &str = "com.darkmatter.nixmac.helper";
 pub const SYNC_AGENT_LABEL: &str = "com.darkmatter.nixmac.sync-agent";
-#[cfg(target_os = "macos")]
+// Bundle definition validation runs on every target; only registration is macOS-only.
 pub const HELPER_PLIST_NAME: &str = "com.darkmatter.nixmac.helper.plist";
 #[allow(dead_code)]
 pub const SYNC_AGENT_PLIST_NAME: &str = "com.darkmatter.nixmac.sync-agent.plist";

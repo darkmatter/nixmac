@@ -22,7 +22,8 @@ pub enum RegistrationStatus {
     /// consent the user revoked there. An approval-pending service has no
     /// process.
     RequiresApproval,
-    /// The bundle's service definition could not be found.
+    /// ServiceManagement has no record for this service, or could not find its
+    /// definition. A valid, never-registered bundled daemon can report this too.
     NotFound,
 }
 
@@ -50,6 +51,75 @@ impl std::fmt::Display for RegistrationStatus {
             RegistrationStatus::RequiresApproval => "requiresApproval",
             RegistrationStatus::NotFound => "notFound",
         })
+    }
+}
+
+/// A bundle inspection is separate from the framework's registration status.
+/// In particular, `notFound` alone does not establish a broken installation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ServiceDefinitionError {
+    Invalid(String),
+    Unavailable(String),
+}
+
+/// Check the definition needed by our bundled daemon before treating a
+/// framework `notFound` as a first registration. ServiceManagement still owns
+/// registration/signature validation, and an authenticated reply owns readiness.
+pub fn check_service_definition(bundle: &std::path::Path) -> Result<(), ServiceDefinitionError> {
+    use crate::privileged_helper::protocol::{HELPER_LABEL, HELPER_PLIST_NAME};
+    use std::fs;
+
+    let plist_path = bundle
+        .join("Contents/Library/LaunchDaemons")
+        .join(HELPER_PLIST_NAME);
+    let bytes = fs::read(&plist_path).map_err(|error| definition_io_error(&plist_path, error))?;
+    let value = plist::Value::from_reader(std::io::Cursor::new(bytes)).map_err(|error| {
+        ServiceDefinitionError::Invalid(format!("invalid helper plist: {error}"))
+    })?;
+    let dictionary = value.as_dictionary().ok_or_else(|| {
+        ServiceDefinitionError::Invalid("helper plist is not a dictionary".to_string())
+    })?;
+    if dictionary.get("Label").and_then(plist::Value::as_string) != Some(HELPER_LABEL) {
+        return Err(ServiceDefinitionError::Invalid(
+            "helper plist label does not match".to_string(),
+        ));
+    }
+    const BUNDLE_PROGRAM: &str = "Contents/MacOS/nixmac-helper";
+    if dictionary
+        .get("BundleProgram")
+        .and_then(plist::Value::as_string)
+        != Some(BUNDLE_PROGRAM)
+        || dictionary.contains_key("Program")
+    {
+        return Err(ServiceDefinitionError::Invalid(
+            "helper plist program does not match".to_string(),
+        ));
+    }
+    let program = bundle.join(BUNDLE_PROGRAM);
+    let metadata = fs::metadata(&program).map_err(|error| definition_io_error(&program, error))?;
+    if !metadata.is_file() {
+        return Err(ServiceDefinitionError::Invalid(
+            "bundled helper is not a regular file".to_string(),
+        ));
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if metadata.permissions().mode() & 0o111 == 0 {
+            return Err(ServiceDefinitionError::Invalid(
+                "bundled helper is not executable".to_string(),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn definition_io_error(path: &std::path::Path, error: std::io::Error) -> ServiceDefinitionError {
+    let detail = format!("{}: {error}", path.display());
+    if error.kind() == std::io::ErrorKind::NotFound {
+        ServiceDefinitionError::Invalid(detail)
+    } else {
+        ServiceDefinitionError::Unavailable(detail)
     }
 }
 
@@ -95,8 +165,9 @@ pub enum ReplaceFailure<E> {
     /// helper is registered now. The reason is the caller's own: this module
     /// supplies the point where such a decision is possible and takes none.
     RegisterDeclined(E),
-    /// The old process is gone and the replacement was refused: no helper is
-    /// registered now.
+    /// The old process is gone and the replacement reported a refusal. macOS
+    /// can still move the service to approval-required or enabled, so callers
+    /// must re-read status before describing the resulting state.
     RegisterFailed(ServiceCallError),
     /// The old process is gone and the replacement never reported. Whether it
     /// took is unknown — only a fresh observation can say.
@@ -125,7 +196,8 @@ pub enum RegisterFailure {
     /// Refused before anything was dispatched: the main thread is the one that
     /// has to make the call, so awaiting it there would starve the queue.
     CalledOnMainThread,
-    /// The platform refused the registration; nothing is registered.
+    /// The platform reported a registration refusal. macOS can still move the
+    /// service to approval-required or enabled, so callers re-read status.
     Failed(ServiceCallError),
     /// The call never reported inside the window. Whether it took is unknown —
     /// only a fresh observation can say.
@@ -565,6 +637,101 @@ mod macos {
 mod tests {
     use super::*;
     use std::cell::Cell;
+
+    fn valid_bundle() -> tempfile::TempDir {
+        use std::fs;
+        let directory = tempfile::tempdir().expect("temporary app bundle");
+        let bundle = directory.path();
+        let plist =
+            bundle.join("Contents/Library/LaunchDaemons/com.darkmatter.nixmac.helper.plist");
+        fs::create_dir_all(plist.parent().unwrap()).unwrap();
+        fs::write(
+            &plist,
+            include_str!("../../resources/launchd/com.darkmatter.nixmac.helper.plist"),
+        )
+        .unwrap();
+        let program = bundle.join("Contents/MacOS/nixmac-helper");
+        fs::create_dir_all(program.parent().unwrap()).unwrap();
+        fs::write(&program, b"test executable").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(program, fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        directory
+    }
+
+    #[test]
+    fn a_bundled_definition_is_valid_without_a_framework_registration_record() {
+        let bundle = valid_bundle();
+        assert_eq!(check_service_definition(bundle.path()), Ok(()));
+    }
+
+    #[test]
+    fn a_missing_plist_or_helper_executable_is_a_broken_definition() {
+        for relative in [
+            "Contents/Library/LaunchDaemons/com.darkmatter.nixmac.helper.plist",
+            "Contents/MacOS/nixmac-helper",
+        ] {
+            let bundle = valid_bundle();
+            std::fs::remove_file(bundle.path().join(relative)).unwrap();
+            assert!(matches!(
+                check_service_definition(bundle.path()),
+                Err(ServiceDefinitionError::Invalid(_))
+            ));
+        }
+    }
+
+    #[test]
+    fn malformed_or_mismatched_launchd_definitions_are_rejected() {
+        let template = include_str!("../../resources/launchd/com.darkmatter.nixmac.helper.plist");
+        for contents in [
+            "not a plist".to_string(),
+            template.replace("com.darkmatter.nixmac.helper", "com.example.other-helper"),
+            template.replace("Contents/MacOS/nixmac-helper", "../outside-helper"),
+            template.replace("<key>BundleProgram</key>", "<key>Program</key>"),
+        ] {
+            let bundle = valid_bundle();
+            std::fs::write(
+                bundle
+                    .path()
+                    .join("Contents/Library/LaunchDaemons/com.darkmatter.nixmac.helper.plist"),
+                contents,
+            )
+            .unwrap();
+            assert!(matches!(
+                check_service_definition(bundle.path()),
+                Err(ServiceDefinitionError::Invalid(_))
+            ));
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_non_executable_helper_is_a_broken_definition() {
+        use std::os::unix::fs::PermissionsExt;
+        let bundle = valid_bundle();
+        std::fs::set_permissions(
+            bundle.path().join("Contents/MacOS/nixmac-helper"),
+            std::fs::Permissions::from_mode(0o644),
+        )
+        .unwrap();
+        assert!(matches!(
+            check_service_definition(bundle.path()),
+            Err(ServiceDefinitionError::Invalid(_))
+        ));
+    }
+
+    #[test]
+    fn a_definition_read_error_is_not_mislabeled_as_a_missing_file() {
+        assert!(matches!(
+            definition_io_error(
+                std::path::Path::new("helper.plist"),
+                std::io::ErrorKind::PermissionDenied.into()
+            ),
+            ServiceDefinitionError::Unavailable(_)
+        ));
+    }
 
     #[test]
     fn the_four_smappservice_statuses_map_by_raw_value() {

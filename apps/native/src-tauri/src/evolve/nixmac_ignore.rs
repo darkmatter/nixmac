@@ -96,19 +96,9 @@ impl NixmacIgnoreChecker {
             return false;
         }
 
-        let ignored = matcher
+        matcher
             .matched_path_or_any_parents(relative_path, is_dir)
-            .is_ignore();
-
-        // This diagnostic is very noisy so it's commented out by default, but it's useful
-        // for validating the ignore rules.
-        // log::debug!(
-        //     "nixmac ignore check: {} (dir={}) => {}",
-        //     relative_path.display(),
-        //     is_dir,
-        //     ignored
-        // );
-        ignored
+            .is_ignore()
     }
 }
 

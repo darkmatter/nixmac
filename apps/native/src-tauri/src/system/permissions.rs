@@ -11,7 +11,9 @@
 //! - Administrator privileges (sudo access)
 
 use crate::privileged_helper::reconcile::Reconciled;
+use crate::shared_types::HelperPermissionPhase;
 pub(crate) use crate::shared_types::{Permission, PermissionStatus, PermissionsState};
+use crate::state::permissions_state;
 use crate::system::helper_permission;
 use anyhow::Result;
 use log::{debug, info, warn};
@@ -48,6 +50,7 @@ fn get_default_permissions() -> Vec<Permission> {
             can_request_programmatically: true,
             status: default_status,
             instructions: None,
+            helper_phase: None,
         },
         Permission {
             id: "documents".to_string(),
@@ -58,6 +61,7 @@ fn get_default_permissions() -> Vec<Permission> {
             can_request_programmatically: true,
             status: default_status,
             instructions: None,
+            helper_phase: None,
         },
         Permission {
             id: "admin".to_string(),
@@ -68,6 +72,7 @@ fn get_default_permissions() -> Vec<Permission> {
             can_request_programmatically: false,
             status: default_status,
             instructions: Some("You will be prompted for your password when needed".to_string()),
+            helper_phase: None,
         },
         Permission {
             id: "full-disk".to_string(),
@@ -80,6 +85,7 @@ fn get_default_permissions() -> Vec<Permission> {
                 "First make sure nixmac is in your Applications folder (not running from the install disk image). Then go to System Settings → Privacy & Security → Full Disk Access and add nixmac to the list."
                     .to_string(),
             ),
+            helper_phase: None,
         },
         app_management_permission(PermissionStatus::Pending),
         privileged_helper_permission(
@@ -88,6 +94,7 @@ fn get_default_permissions() -> Vec<Permission> {
             // No report yet, so nothing says macOS is waiting on the user. Every
             // path that has one replaces this row whole (`helper_row`).
             true,
+            Some(HelperPermissionPhase::Disabled),
         ),
     ]
 }
@@ -125,6 +132,9 @@ fn granted_permissions_state() -> PermissionsState {
     let mut permissions = get_default_permissions();
     for perm in &mut permissions {
         perm.status = PermissionStatus::Granted;
+        if perm.id == "privileged-helper" {
+            perm.helper_phase = Some(HelperPermissionPhase::Ready);
+        }
         // Granted here is a debug-build fiction, not a probe result; say so
         // instead of letting the row imply the real thing was verified.
         perm.instructions = Some(
@@ -148,6 +158,7 @@ fn granted_folder_permission(id: &str, name: &str, description: &str) -> Permiss
         can_request_programmatically: true,
         status: PermissionStatus::Granted,
         instructions: None,
+        helper_phase: None,
     }
 }
 
@@ -155,6 +166,7 @@ fn privileged_helper_permission(
     status: PermissionStatus,
     instructions: &str,
     can_request_programmatically: bool,
+    helper_phase: Option<HelperPermissionPhase>,
 ) -> Permission {
     Permission {
         id: "privileged-helper".to_string(),
@@ -166,6 +178,7 @@ fn privileged_helper_permission(
         can_request_programmatically,
         status,
         instructions: Some(instructions.to_string()),
+        helper_phase,
     }
 }
 
@@ -202,6 +215,7 @@ fn app_management_permission(status: PermissionStatus) -> Permission {
             "Open System Settings → Privacy & Security → App Management and enable nixmac. macOS does not expose a reliable way for nixmac to verify this grant."
                 .to_string(),
         ),
+        helper_phase: None,
     }
 }
 
@@ -412,7 +426,7 @@ pub fn check_all_permissions<R: Runtime>(app: &AppHandle<R>) -> PermissionsState
         // get anywhere on its own — so it is replaced rather than patched field by
         // field, and `helper_row` stays the only place a report becomes a row.
         if perm.id == "privileged-helper" {
-            *perm = helper_row(&check_privileged_helper(app));
+            *perm = check_privileged_helper(app);
         } else {
             perm.status = match perm.id.as_str() {
                 "desktop" => check_desktop_access(),
@@ -509,6 +523,7 @@ pub fn request_permission<R: Runtime>(
                         can_request_programmatically: true,
                         status: PermissionStatus::Granted,
                         instructions: None,
+                        helper_phase: None,
                     })
                 }
                 Err(_) => Ok(Permission {
@@ -520,6 +535,7 @@ pub fn request_permission<R: Runtime>(
                     can_request_programmatically: true,
                     status: PermissionStatus::Denied,
                     instructions: None,
+                    helper_phase: None,
                 }),
             }
         }
@@ -551,6 +567,7 @@ pub fn request_permission<R: Runtime>(
                         can_request_programmatically: true,
                         status: PermissionStatus::Granted,
                         instructions: None,
+                        helper_phase: None,
                     })
                 }
                 Err(_) => Ok(Permission {
@@ -563,6 +580,7 @@ pub fn request_permission<R: Runtime>(
                     can_request_programmatically: true,
                     status: PermissionStatus::Denied,
                     instructions: None,
+                    helper_phase: None,
                 }),
             }
         }
@@ -579,6 +597,7 @@ pub fn request_permission<R: Runtime>(
                 instructions: Some(
                     "You will be prompted for your password when needed".to_string(),
                 ),
+                helper_phase: None,
             })
         }
         "full-disk" => {
@@ -602,6 +621,7 @@ pub fn request_permission<R: Runtime>(
                     "First make sure nixmac is in your Applications folder (not running from the install disk image). Then go to System Settings → Privacy & Security → Full Disk Access and add nixmac to the list."
                         .to_string()
                 })),
+                helper_phase: None,
             })
         }
         "app-management" => {
@@ -635,7 +655,7 @@ pub fn request_permission<R: Runtime>(
 /// a report, and the report is what tells the user what to do: approve in Login
 /// Items, move the app to /Applications, restart the app, or wait out a running
 /// activation.
-fn check_privileged_helper<R: Runtime>(app: &AppHandle<R>) -> Reconciled {
+fn check_privileged_helper<R: Runtime>(app: &AppHandle<R>) -> Permission {
     let report = helper_permission::observe(app);
     // A refresh is how a user comes back to this — opening the panel, or
     // pressing Check again — and one run is usually not enough: the platform
@@ -644,16 +664,35 @@ fn check_privileged_helper<R: Runtime>(app: &AppHandle<R>) -> Reconciled {
     // Starting the loop here means the visit converges instead of handing back a
     // scary report. A loop already running ignores this.
     helper_permission::start_converging(app);
-    report
+    let previous = permissions_state::get(app).and_then(|state| {
+        state
+            .permissions
+            .into_iter()
+            .find(|permission| permission.id == "privileged-helper")
+    });
+    helper_row_from_observation(&report, previous)
+}
+
+fn helper_row_from_observation(report: &Reconciled, previous: Option<Permission>) -> Permission {
+    // Busy means this observation learned nothing. Preserve the last truthful
+    // helper row rather than downgrading approval, failure, or an actionable
+    // instruction to a generic progress state.
+    if matches!(report, Reconciled::Busy)
+        && let Some(row) = previous
+    {
+        return row;
+    }
+    helper_row(report)
 }
 
 /// One report as the permission row it produces.
 pub(crate) fn helper_row(report: &Reconciled) -> Permission {
-    let (status, detail) = helper_permission::row(report);
+    let (status, detail, phase) = helper_permission::row(report);
     privileged_helper_permission(
         status,
         &detail,
         helper_permission::can_request_programmatically(report),
+        Some(phase),
     )
 }
 
@@ -681,9 +720,33 @@ mod tests {
     /// them is what the UI actually reads and nothing else pins it.
     #[test]
     fn the_row_takes_its_deep_link_from_the_report() {
-        assert!(!helper_row(&Reconciled::PendingApproval).can_request_programmatically);
-        assert!(helper_row(&Reconciled::AtThisBuild).can_request_programmatically);
-        assert!(helper_row(&Reconciled::NoHelper).can_request_programmatically);
+        let approval = helper_row(&Reconciled::PendingApproval);
+        assert!(!approval.can_request_programmatically);
+        assert_eq!(
+            approval.helper_phase,
+            Some(HelperPermissionPhase::ApprovalRequired)
+        );
+
+        let ready = helper_row(&Reconciled::AtThisBuild);
+        assert!(ready.can_request_programmatically);
+        assert_eq!(ready.helper_phase, Some(HelperPermissionPhase::Ready));
+
+        let disabled = helper_row(&Reconciled::NoHelper);
+        assert!(disabled.can_request_programmatically);
+        assert_eq!(disabled.helper_phase, Some(HelperPermissionPhase::Disabled));
+    }
+
+    #[test]
+    fn a_busy_full_refresh_preserves_the_previous_helper_row() {
+        let previous = helper_row(&Reconciled::PendingApproval);
+        assert_eq!(
+            helper_row_from_observation(&Reconciled::Busy, Some(previous.clone())).helper_phase,
+            previous.helper_phase
+        );
+        assert_eq!(
+            helper_row_from_observation(&Reconciled::Busy, Some(previous.clone())).instructions,
+            previous.instructions
+        );
     }
 
     /// A bare app handle. The skip flags below short-circuit before anything
