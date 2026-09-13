@@ -3,7 +3,12 @@ import { REBUILD_ERROR_CODES } from "@/lib/errors";
 import { initialUiState, uiActions, useUiState } from "@nixmac/state";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useRebuildStream } from "./use-rebuild-stream";
+import {
+  clearRebuildRetry,
+  hasRebuildRetry,
+  retryLastRebuild,
+  useRebuildStream,
+} from "./use-rebuild-stream";
 
 const mocks = vi.hoisted(() => ({
   applyStreamStart: vi.fn(),
@@ -58,6 +63,7 @@ function applyEndPayload(overrides: Partial<DarwinApplyEndEvent> = {}): DarwinAp
 describe("useRebuildStream", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearRebuildRetry();
     uiActions.setState({ ...initialUiState, rebuildPanelDismissed: false });
     mocks.on.mockResolvedValue(mocks.unlisten);
     mocks.applyStreamStart.mockResolvedValue(undefined);
@@ -104,5 +110,37 @@ describe("useRebuildStream", () => {
 
     expect(useUiState.getState().rebuildPanelDismissed).toBe(false);
     expect(mocks.refreshGitStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it("replays the complete registered rollback operation", async () => {
+    const retry = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useRebuildStream());
+
+    await act(async () => {
+      await result.current.triggerRebuild({
+        context: "rollback",
+        storePath: "/nix/store/old-system",
+        retry,
+      });
+    });
+
+    expect(hasRebuildRetry()).toBe(true);
+    await act(async () => {
+      await retryLastRebuild();
+    });
+
+    expect(retry).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears an older rollback retry when a new apply starts", async () => {
+    const retry = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useRebuildStream());
+
+    await act(async () => {
+      await result.current.triggerRebuild({ context: "rollback", retry });
+      await result.current.triggerRebuild({ context: "apply" });
+    });
+
+    expect(hasRebuildRetry()).toBe(false);
   });
 });

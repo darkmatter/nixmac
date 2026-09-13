@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { EtcClobberConflictList } from "@/components/widget/overlays/etc-clobber-conflict-list";
 import { useFixWithAi } from "@/hooks/use-fix-with-ai";
-import { useRebuildStream } from "@/hooks/use-rebuild-stream";
+import { retryLastRebuild } from "@/hooks/use-rebuild-stream";
 import { useRollback } from "@/hooks/use-rollback";
 import { tauriAPI } from "@/ipc/api";
 import {
@@ -358,7 +358,6 @@ function RawConsoleOutput({ lines, children }: { lines: string[]; children?: Rea
 
 export function RebuildOverlayPanel() {
   const { handleRollback } = useRollback();
-  const { triggerRebuild } = useRebuildStream();
   const { fixWithAi } = useFixWithAi();
   const status = useViewModel((state) => state.rebuildStatus);
   const lines = useViewModel((state) => state.rebuildLog.lines);
@@ -367,6 +366,8 @@ export function RebuildOverlayPanel() {
   const context = useUiState((state) => state.rebuildContext);
   const dismissed = useUiState((state) => state.rebuildPanelDismissed);
   const etcClobber = useUiState((state) => state.etcClobber);
+  const retryAvailable = useUiState((state) => state.rebuildRetry !== null);
+  const retryAttempts = useUiState((state) => state.rebuildRetryAttempts);
 
   const isRunning = status?.isRunning ?? false;
   const success = status?.success ?? undefined;
@@ -379,7 +380,7 @@ export function RebuildOverlayPanel() {
 
   const handleRetry = async () => {
     uiActions.setProcessing(true, "cancel");
-    await triggerRebuild({ context: "rollback" });
+    await retryLastRebuild();
   };
 
   const handleDismiss = () => {
@@ -539,11 +540,22 @@ export function RebuildOverlayPanel() {
                   onClick={isRollback ? handleRetry : () => handleRollback()}
                   size="sm"
                   // only implemented for rollback
-                  disabled={!isRollback}
+                  disabled={!isRollback || !retryAvailable}
+                  title={
+                    isRollback && !retryAvailable
+                      ? "Retry is no longer available — start a new rollback to try again"
+                      : undefined
+                  }
                 >
                   <RotateCcw className="mr-2 h-4 w-4" />
-                  {isRollback ? "Retry Rollback" : "Rollback"}
+                  {isRollback ? "Try again" : "Rollback"}
                 </Button>
+              )}
+              {success === false && isRollback && retryAttempts >= 2 && (
+                <p className="mt-2 text-xs text-zinc-400">
+                  This has failed {retryAttempts} times — the configuration may
+                  need changes before a retry can succeed.
+                </p>
               )}
               {success === false && !isRollback && isAiFixableRebuildError(errorType) && (
                 <Button

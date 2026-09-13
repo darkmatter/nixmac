@@ -30,9 +30,7 @@ vi.mock("motion/react", async () => {
 });
 
 vi.mock("@/hooks/use-rebuild-stream", () => ({
-  useRebuildStream: () => ({
-    triggerRebuild: vi.fn<() => void>(),
-  }),
+  retryLastRebuild: vi.fn<() => Promise<void>>(),
 }));
 
 vi.mock("@/hooks/use-rollback", () => ({
@@ -67,7 +65,11 @@ function resetStores() {
       rebuildStatus: null,
       rebuildLog: { lines: [], rawLines: [], notices: [] },
     });
-    uiActions.setState({ ...initialUiState });
+    uiActions.setState({
+      ...initialUiState,
+      rebuildRetry: () => Promise.resolve(),
+      rebuildRetryAttempts: 1,
+    });
   });
 }
 
@@ -101,7 +103,9 @@ async function renderWithRebuildState(
 describe("<RebuildOverlayPanel>", () => {
   beforeEach(resetStores);
 
-  afterEach(resetStores);
+  afterEach(() => {
+    resetStores();
+  });
 
   it("prominently reassures users when the backend says the failed apply left the system untouched", async () => {
     await renderWithRebuildState({ systemUntouched: true });
@@ -130,6 +134,30 @@ describe("<RebuildOverlayPanel>", () => {
     );
 
     expect(screen.queryByText(safetyMessage)).not.toBeInTheDocument();
+  });
+
+  it("uses a neutral retry label for rollback and history-restore failures", async () => {
+    await renderWithRebuildState({}, "rollback");
+
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry Rollback" })).not.toBeInTheDocument();
+  });
+
+  it("flags likely-permanent failures after repeated retries", async () => {
+    act(() => {
+      uiActions.setRebuildRetryAttempts(3);
+    });
+
+    await renderWithRebuildState({}, "rollback");
+
+    expect(screen.getByText(/failed 3 times/)).toBeInTheDocument();
+    expect(screen.getByText(/configuration may\s*need changes/)).toBeInTheDocument();
+  });
+
+  it("does not show the repeated-failure hint on the first failure", async () => {
+    await renderWithRebuildState({}, "rollback");
+
+    expect(screen.queryByText(/failed \d+ times/)).not.toBeInTheDocument();
   });
 
   it("shows App Management guidance for managed app update failures", async () => {
