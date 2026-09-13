@@ -1,6 +1,7 @@
-#[cfg(target_os = "macos")]
-use crate::privileged_helper::protocol::HELPER_PLIST_NAME;
+use crate::privileged_helper::protocol::{HELPER_LABEL, HELPER_PLIST_NAME};
 use anyhow::Result;
+use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant};
 
@@ -22,8 +23,63 @@ pub enum RegistrationStatus {
     /// consent the user revoked there. An approval-pending service has no
     /// process.
     RequiresApproval,
-    /// The bundle's service definition could not be found.
+    /// ServiceManagement cannot find registration information. This can also
+    /// describe a service the system has never seen; it does not prove the
+    /// bundled definition is missing or broken.
     NotFound,
+}
+
+/// Checks the actual bundle before an explicit first registration from
+/// `notFound` or `notRegistered`. This verifies packaging, not macOS approval or code identity:
+/// ServiceManagement still validates the registration, and the client still
+/// authenticates the running helper before accepting it.
+pub fn validate_bundled_definition(bundle: &Path) -> Result<()> {
+    const PROGRAM: &str = "Contents/MacOS/nixmac-helper";
+    let bundle = std::fs::canonicalize(bundle)?;
+    let plist_path = bundle
+        .join("Contents/Library/LaunchDaemons")
+        .join(HELPER_PLIST_NAME);
+    let plist_path = bundled_regular_file(&bundle, &plist_path)?;
+    let value = plist::Value::from_file(&plist_path)?;
+    let definition = value
+        .as_dictionary()
+        .ok_or_else(|| anyhow::anyhow!("helper plist is not a dictionary"))?;
+    anyhow::ensure!(
+        definition.get("Label").and_then(plist::Value::as_string) == Some(HELPER_LABEL),
+        "helper plist has an unexpected Label"
+    );
+    anyhow::ensure!(
+        definition
+            .get("BundleProgram")
+            .and_then(plist::Value::as_string)
+            == Some(PROGRAM),
+        "helper plist has an unexpected BundleProgram"
+    );
+    anyhow::ensure!(
+        !definition.contains_key("Program") && !definition.contains_key("ProgramArguments"),
+        "helper plist overrides its bundled executable"
+    );
+    let executable = bundled_regular_file(&bundle, &bundle.join(PROGRAM))?;
+    anyhow::ensure!(
+        std::fs::metadata(executable)?.permissions().mode() & 0o111 != 0,
+        "bundled helper is not executable"
+    );
+    Ok(())
+}
+
+fn bundled_regular_file(bundle: &Path, path: &Path) -> Result<std::path::PathBuf> {
+    anyhow::ensure!(
+        std::fs::symlink_metadata(path)?.file_type().is_file(),
+        "{} is not a regular file",
+        path.display()
+    );
+    let resolved = std::fs::canonicalize(path)?;
+    anyhow::ensure!(
+        resolved.starts_with(bundle),
+        "{} resolves outside the app bundle",
+        path.display()
+    );
+    Ok(resolved)
 }
 
 impl RegistrationStatus {
@@ -565,6 +621,98 @@ mod macos {
 mod tests {
     use super::*;
     use std::cell::Cell;
+
+    fn packaged_helper() -> tempfile::TempDir {
+        let bundle = tempfile::tempdir().expect("bundle");
+        let plist = bundle
+            .path()
+            .join("Contents/Library/LaunchDaemons")
+            .join(HELPER_PLIST_NAME);
+        let helper = bundle.path().join("Contents/MacOS/nixmac-helper");
+        std::fs::create_dir_all(plist.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(helper.parent().unwrap()).unwrap();
+        std::fs::write(
+            plist,
+            include_bytes!("../../resources/launchd/com.darkmatter.nixmac.helper.plist"),
+        )
+        .unwrap();
+        std::fs::write(&helper, b"test executable fixture").unwrap();
+        std::fs::set_permissions(helper, std::fs::Permissions::from_mode(0o755)).unwrap();
+        bundle
+    }
+
+    #[test]
+    fn validates_the_actual_plist_and_executable_before_registration() {
+        let bundle = packaged_helper();
+        validate_bundled_definition(bundle.path()).expect("valid bundled definition");
+        let helper = bundle.path().join("Contents/MacOS/nixmac-helper");
+        std::fs::set_permissions(&helper, std::fs::Permissions::from_mode(0o644)).unwrap();
+        assert!(
+            validate_bundled_definition(bundle.path())
+                .unwrap_err()
+                .to_string()
+                .contains("not executable")
+        );
+        std::fs::remove_file(helper).unwrap();
+        assert!(validate_bundled_definition(bundle.path()).is_err());
+    }
+
+    #[test]
+    fn rejects_missing_malformed_or_redirected_service_definitions() {
+        for replacement in [
+            "not a plist",
+            "<?xml version=\"1.0\"?><plist version=\"1.0\"><array/></plist>",
+        ] {
+            let bundle = packaged_helper();
+            let plist = bundle
+                .path()
+                .join("Contents/Library/LaunchDaemons")
+                .join(HELPER_PLIST_NAME);
+            std::fs::write(&plist, replacement).unwrap();
+            assert!(validate_bundled_definition(bundle.path()).is_err());
+            std::fs::remove_file(plist).unwrap();
+            assert!(validate_bundled_definition(bundle.path()).is_err());
+        }
+        for (key, value) in [
+            ("Label", "another.service"),
+            ("BundleProgram", "/tmp/helper"),
+            ("Program", "/tmp/helper"),
+            ("ProgramArguments", "/tmp/helper"),
+        ] {
+            let bundle = packaged_helper();
+            let plist = bundle
+                .path()
+                .join("Contents/Library/LaunchDaemons")
+                .join(HELPER_PLIST_NAME);
+            let mut value_on_disk = plist::Value::from_file(&plist).unwrap();
+            value_on_disk
+                .as_dictionary_mut()
+                .unwrap()
+                .insert(key.to_string(), plist::Value::String(value.to_string()));
+            value_on_disk.to_file_xml(plist).unwrap();
+            assert!(validate_bundled_definition(bundle.path()).is_err(), "{key}");
+        }
+    }
+
+    #[test]
+    fn rejects_a_helper_or_parent_resolving_outside_the_bundle() {
+        let bundle = packaged_helper();
+        let outside = tempfile::tempdir().unwrap();
+        let helper = bundle.path().join("Contents/MacOS/nixmac-helper");
+        let external = outside.path().join("nixmac-helper");
+        std::fs::rename(&helper, &external).unwrap();
+        std::os::unix::fs::symlink(&external, &helper).unwrap();
+        assert!(validate_bundled_definition(bundle.path()).is_err());
+        std::fs::remove_file(&helper).unwrap();
+        std::fs::remove_dir(helper.parent().unwrap()).unwrap();
+        std::os::unix::fs::symlink(outside.path(), helper.parent().unwrap()).unwrap();
+        assert!(
+            validate_bundled_definition(bundle.path())
+                .unwrap_err()
+                .to_string()
+                .contains("outside the app bundle")
+        );
+    }
 
     #[test]
     fn the_four_smappservice_statuses_map_by_raw_value() {

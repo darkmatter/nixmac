@@ -105,6 +105,7 @@ pub fn disable<R: Runtime>(app: &AppHandle<R>) -> Reconciled {
 pub fn row(report: &Reconciled) -> (PermissionStatus, String) {
     let status = match report {
         Reconciled::AtThisBuild => PermissionStatus::Granted,
+        Reconciled::RegistrationUnavailable => PermissionStatus::Unknown,
         _ => PermissionStatus::Pending,
     };
     (status, describe(report))
@@ -160,6 +161,9 @@ pub fn describe(report: &Reconciled) -> String {
         Reconciled::Displaced(displacement) => sentence(displacement),
         Reconciled::ServiceDefinitionBroken => {
             sentence(&"this app's helper service definition is broken")
+        }
+        Reconciled::RegistrationUnavailable => {
+            "macOS cannot find the helper registration. Retry enabling it; macOS may still require your approval.".to_string()
         }
         Reconciled::Stopped(stopped) => sentence(stopped),
     }
@@ -224,6 +228,7 @@ fn nothing_more_to_do(report: &Reconciled) -> bool {
         // time.
             | Reconciled::Displaced(_)
             | Reconciled::ServiceDefinitionBroken
+            | Reconciled::RegistrationUnavailable
     )
 }
 
@@ -249,8 +254,10 @@ impl Drop for Converging {
 
 /// Starts a loop unless one is already running.
 ///
-/// Startup calls this, and so does every explicit user action — a click has to
-/// keep trying if its first attempt stops short, not wait for the next launch.
+/// Startup calls this, and so does every explicit user action. It continues
+/// observing approval and registered-helper replacement. A missing registration
+/// ends the loop and needs another explicit Enable, including after a crash
+/// between unregister and register; an uncertain registration is never replayed.
 /// A loop already running needs no help: every pass re-reads the stored decision,
 /// so it picks up a Grant or a Disable by itself.
 pub fn start_converging<R: Runtime>(app: &AppHandle<R>) {
@@ -370,6 +377,22 @@ mod tests {
     }
 
     #[test]
+    fn unavailable_registration_offers_explicit_retry_without_claiming_permission() {
+        let (status, detail) = row(&Reconciled::RegistrationUnavailable);
+        assert_eq!(status, PermissionStatus::Unknown);
+        assert!(detail.contains("Retry enabling"));
+        let mut observations = 0;
+        drive(
+            || {
+                observations += 1;
+                Reconciled::RegistrationUnavailable
+            },
+            |_| panic!("an unavailable registration must not schedule another attempt"),
+        );
+        assert_eq!(observations, 1);
+    }
+
+    #[test]
     fn the_loop_stops_on_a_goal_and_on_nothing_else_it_can_fix() {
         for done in [
             Reconciled::AtThisBuild,
@@ -377,6 +400,7 @@ mod tests {
             Reconciled::NoHelper,
             displaced(),
             Reconciled::ServiceDefinitionBroken,
+            Reconciled::RegistrationUnavailable,
         ] {
             assert!(nothing_more_to_do(&done), "{done:?}");
         }
@@ -412,6 +436,7 @@ mod tests {
             Reconciled::WaitingOnActivation(None),
             displaced(),
             Reconciled::ServiceDefinitionBroken,
+            Reconciled::RegistrationUnavailable,
             stopped("the helper could not be registered: not permitted"),
             stopped("the helper could not be unregistered: refused"),
             stopped("the registered helper never answered on its socket"),

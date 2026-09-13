@@ -55,6 +55,18 @@ provider or user content. An uncertain launch must not be replayed in that VM.
 Read `mission.json` for the exact host, configuration destination, prompt, and
 nonsecret provider choice. Through the actual GUI:
 
+1. Open **Go to Permissions**, or inspect the current Permissions step. Require
+   **Unattended sync helper** to report **The unattended sync helper is installed
+   and answering.** If that row offers **Enable** or **Retry Enable**, try one of those
+   actions at most once in total and wait for the real status. A helper error,
+   pending approval, **Open Settings**, or system
+   authorization prompt is a prerequisite blocker: report it before **Run
+   build**. The exploration tools target Nix Mac and cannot complete macOS
+   approval. Use the host-observed `complete_desktop_test` tool with outcome
+   `failed`, fresh observation or assertion receipts and explicit uncovered
+   paths; a narrative alone does not finish the run. After verification, return
+   through **Go to Config Directory**.
+
 1. Choose **Start from scratch**, name the Mac `desktop-test-mac`, and use the
    mission's `configDir` (`~/nixmac-smoke-config`, expanded to an absolute path).
 
@@ -120,12 +132,23 @@ arbitrary app fields.
 ## Prerequisites and limits
 
 The build needs network access to the actual Nix inputs/caches and sufficient
-disk/time. The prepared VM must support genuine privileged activation. Release
-v0.33.1 uses its authorized helper when available and otherwise requests an
-administrator credential through macOS. Passwordless `sudo` does not replace
-that app authorization path. Expected privilege setup must be resolved through
-supported preparation or explicit authorized interaction; a blocked prompt is
-a failed smoke, not permission to mock activation.
+disk/time. The prepared seed needs real helper authorization, and the installed
+app must verify that the signed helper answers for its own build. A preserved
+`helperPreference` alone is insufficient. For the current helper-capable build,
+the app's installed-and-answering status follows its authenticated helper
+exchange and build check; verify that status before starting configuration or
+the first build.
+
+An unset preference does not automatically install a helper. The app's
+**Enable** action performs real registration, but first-time macOS approval may
+still be required. Resolve that approval through supported image preparation or
+authorized interaction outside the exploration agent, then verify the installed
+app again. The agent may attempt the app's **Enable** action once; it must stop
+on pending approval or system authorization. **Administrator Privileges** marked
+**Granted** reflects group membership, and `sudo -n` with `NOPASSWD` does not
+replace the app's authorization path. Do not fabricate grants, edit state to
+claim readiness, or mock privileged activation. A blocked prerequisite prevents
+the smoke from passing.
 
 The verifier establishes the defined outcome rather than claiming every UI
 frame or every unchanged Nix setting was inspected. Its package-only scope

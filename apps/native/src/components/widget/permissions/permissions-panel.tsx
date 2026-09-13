@@ -69,7 +69,7 @@ function grantLabel(perm: Permission): Pick<ActionButtonProps, "idle" | "busy" |
     };
   }
   if (perm.id === HELPER_PERMISSION_ID) {
-    return { idle: "Enable", busy: "Enabling…" };
+    return { idle: perm.status === "unknown" ? "Retry Enable" : "Enable", busy: "Enabling…" };
   }
   return { idle: "Request", busy: "Requesting…" };
 }
@@ -245,6 +245,10 @@ export function PermissionsPanel() {
             perm.id === HELPER_PERMISSION_ID &&
             perm.canRequestProgrammatically &&
             (helperPreference === "granted" || isGranted);
+          // The helper's unknown status means registration could not be
+          // found. Retain the standing decision and its Disable action, but
+          // allow one explicit retry; observing this row never registers it.
+          const offersRetry = offersDisable && perm.status === "unknown";
           const action: "grant" | "disable" | null =
             pendingAction ?? (offersDisable ? "disable" : isGranted ? null : "grant");
           // A fresh DOM node whenever the button changes shape: the
@@ -330,6 +334,13 @@ export function PermissionsPanel() {
                     <Check className="size-4" aria-hidden="true" />
                     Granted
                   </span>
+                ) : null}
+                {offersRetry && pendingAction === null ? (
+                  <ActionButton
+                    {...grantLabel(perm)}
+                    isBusy={false}
+                    onClick={() => handleGrant(perm)}
+                  />
                 ) : null}
                 {action === "disable" ? (
                   <ActionButton

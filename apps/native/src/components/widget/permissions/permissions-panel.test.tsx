@@ -1,4 +1,5 @@
-import type { Permission, PermissionStatus } from "@/ipc/types";
+import type { HelperReport } from "@/ipc/orpc-bindings.ts";
+import type { HelperPreference, Permission, PermissionsState, PermissionStatus } from "@/ipc/types";
 import { HELPER_PERMISSION_ID } from "@/lib/permissions";
 import { APPROVE_IN_LOGIN_ITEMS } from "@/utils/test-fixtures";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -12,16 +13,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * `instructions` is the sentence.
  */
 
-const mockRefresh = vi.fn();
-const mockRequest = vi.fn();
-const mockDisableHelper = vi.fn();
+const mockRefresh = vi.fn<() => Promise<void>>();
+const mockRequest = vi.fn<(permissionId: string) => Promise<Pick<Permission, "id" | "status" | "instructions">>>();
+const mockDisableHelper = vi.fn<() => Promise<HelperReport>>();
 
 vi.mock("@/ipc/api", () => ({
   tauriAPI: {
     permissions: {
-      refresh: (...args: unknown[]) => mockRefresh(...args),
-      request: (...args: unknown[]) => mockRequest(...args),
-      requestFullDiskAccess: vi.fn(),
+      refresh: () => mockRefresh(),
+      request: (permissionId: string) => mockRequest(permissionId),
+      requestFullDiskAccess: vi.fn<() => Promise<void>>(),
     },
   },
 }));
@@ -29,10 +30,10 @@ vi.mock("@/ipc/api", () => ({
 vi.mock("@/lib/orpc", () => ({
   client: {
     darwin: {
-      helperDisable: (...args: unknown[]) => mockDisableHelper(...args),
+      helperDisable: () => mockDisableHelper(),
     },
     permissions: {
-      refresh: (...args: unknown[]) => mockRefresh(...args),
+      refresh: () => mockRefresh(),
     },
   },
   orpc: {
@@ -47,8 +48,8 @@ vi.mock("@/lib/orpc", () => ({
   },
 }));
 
-const permissionsState = vi.fn();
-const helperPreference = vi.fn();
+const permissionsState = vi.fn<() => PermissionsState>();
+const helperPreference = vi.fn<() => HelperPreference>();
 vi.mock("@nixmac/state", () => ({
   useViewModel: (select: (state: { permissions: unknown; preferences: unknown }) => unknown) =>
     select({
@@ -61,7 +62,7 @@ vi.mock("@tanstack/react-query", () => ({
   useQuery: () => ({ data: { bundlePath: null, inApplicationsDir: false } }),
 }));
 
-function helperPermission(overrides: Partial<Permission>) {
+function helperPermission(overrides: Partial<Permission>): Permission {
   return {
     id: HELPER_PERMISSION_ID,
     name: "Unattended Sync Helper",
@@ -74,7 +75,7 @@ function helperPermission(overrides: Partial<Permission>) {
   };
 }
 
-function helperRow(status: PermissionStatus, instructions: string, ...others: unknown[]) {
+function helperRow(status: PermissionStatus, instructions: string, ...others: Permission[]): PermissionsState {
   return {
     permissions: [helperPermission({ status, instructions }), ...others],
     allRequiredGranted: status === "granted",
@@ -109,7 +110,7 @@ function awaitingApprovalRow() {
  * of their own, which would settle the row after the test body and take its
  * running label with it.
  */
-const adminRow = {
+const adminRow: Permission = {
   id: "admin",
   name: "Administrator Privileges",
   description: "Required to install system packages and modify system configurations",
@@ -136,7 +137,7 @@ describe("PermissionsPanel — the unattended sync helper row", () => {
   });
 
   it("offers Enable, and only Enable, while no helper is wanted", async () => {
-    for (const preference of ["unset", "disabled"]) {
+    for (const preference of ["unset", "disabled"] as const) {
       helperPreference.mockReturnValue(preference);
       permissionsState.mockReturnValue(
         helperRow("pending", "The unattended sync helper is not installed."),
@@ -169,6 +170,33 @@ describe("PermissionsPanel — the unattended sync helper row", () => {
     }
   });
 
+  it("allows one explicit retry when registration is unavailable, while preserving Disable", async () => {
+    helperPreference.mockReturnValue("granted");
+    permissionsState.mockReturnValue(helperRow("unknown", "macOS cannot find the helper registration."));
+    let finishGrant!: () => void;
+    mockRequest.mockReturnValue(new Promise((resolve) => {
+      finishGrant = () => resolve({ id: HELPER_PERMISSION_ID, status: "unknown" });
+    }));
+
+    await panel();
+    expect(mockRequest).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Disable" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Retry Enable" }));
+
+    const pending = await screen.findByRole("button", { name: "Enabling…" });
+    expect(pending).toBeDisabled();
+    fireEvent.click(pending);
+    expect(mockRequest).toHaveBeenCalledTimes(1);
+    expect(mockRequest).toHaveBeenCalledWith(HELPER_PERMISSION_ID);
+    expect(mockDisableHelper).not.toHaveBeenCalled();
+    finishGrant();
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Retry Enable" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Disable" })).toBeTruthy();
+    });
+    expect(mockRequest).toHaveBeenCalledTimes(1);
+  });
+
   it("offers the Login Items deep link, not Disable, while approval is pending", async () => {
     // macOS is holding the registration and nothing nixmac does next makes that
     // go, so the row offers the same "Open Settings" action as the other rows
@@ -176,7 +204,7 @@ describe("PermissionsPanel — the unattended sync helper row", () => {
     // which is where macOS asks for the approval. Disable would be answering a
     // question the user has not been asked yet, and Enable would run a
     // reconciliation that can only report the same thing again.
-    for (const preference of ["unset", "granted"]) {
+    for (const preference of ["unset", "granted"] as const) {
       helperPreference.mockReturnValue(preference);
       permissionsState.mockReturnValue(awaitingApprovalRow());
 
