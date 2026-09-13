@@ -57,19 +57,23 @@ nonsecret provider choice. Through the actual GUI:
 
 1. Choose **Start from scratch**, name the Mac `desktop-test-mac`, and use the
    mission's `configDir` (`~/nixmac-smoke-config`, expanded to an absolute path).
-2. Select **Create my configuration**, then **Skip** on Import Customizations.
+
+1. Select **Create my configuration**, then **Skip** on Import Customizations.
    Inference was provisioned before launch, so proceed to First Build.
-3. Select **Run build**, complete real activation, and select **Open nixmac**.
-4. Invoke the trusted checkpoint hook before submitting any evolution:
+
+1. Select **Run build**, complete real activation, and select **Open nixmac**.
+
+1. Invoke the trusted checkpoint hook before submitting any evolution:
 
    ```sh
    python3 /tmp/nixmac-smoke-tools/verify.py --checkpoint
    ```
 
-5. Submit `mission.prompt` exactly. It requests only `ripgrep` in
+1. Submit `mission.prompt` exactly. It requests only `ripgrep` in
    `environment.systemPackages`. Observe the real review, choose **Build &
    Test**, confirm when requested, then **Commit**.
-6. Invoke the final verifier:
+
+1. Invoke the final verifier:
 
    ```sh
    python3 /tmp/nixmac-smoke-tools/verify.py
