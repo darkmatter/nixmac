@@ -30,7 +30,7 @@ vi.mock("@nixmac/state", () => ({
   onboardingActions: { setCelebrating: vi.fn<() => void>() },
 }));
 vi.mock("@/components/widget/steps/review-step", () => ({
-  ReviewStep: () => <div>Review proposed fix</div>,
+  ReviewStep: ({ allowBackToPrompt = true }: { allowBackToPrompt?: boolean }) => <div>Review proposed fix{allowBackToPrompt ? <button>Back to Prompt</button> : null}</div>,
 }));
 vi.mock("@/components/widget/steps/commit-step", () => ({
   CommitStep: () => <div>Commit reviewed fix</div>,
@@ -163,5 +163,18 @@ it("makes the existing review gate available after an AI fix", () => {
   model.evolve = { evolutionId: 42, step: "evolve" } as EvolveState;
   render(<BuildStep hasInference onConfigureInference={vi.fn<() => void>()} />);
   expect(screen.getByText("Review proposed fix")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Retry build" })).toBeDisabled();
+  expect(screen.queryByRole("button", { name: "Fix with AI" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Back to Prompt" })).not.toBeInTheDocument();
+  model.evolve = null;
+});
+
+
+it("keeps retry disabled while a reviewed fix awaits saving", () => {
+  model.evolve = { evolutionId: 42, step: "commit" } as EvolveState;
+  render(<BuildStep hasInference onConfigureInference={vi.fn<() => void>()} />);
+  expect(screen.getByText("Commit reviewed fix")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Retry build" })).toBeDisabled();
+  expect(screen.queryByRole("button", { name: "Fix with AI" })).not.toBeInTheDocument();
   model.evolve = null;
 });

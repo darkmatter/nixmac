@@ -52,6 +52,7 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
   const isGenerating = useUiState((s) => s.isGenerating);
   const etcClobber = useUiState((s) => s.etcClobber);
   const evolve = useViewModel((s) => s.evolve);
+  const recoveryPending = isGenerating || (evolve?.evolutionId != null && (evolve.step === "evolve" || evolve.step === "commit"));
   const notices = useViewModel((s) => s.rebuildLog.notices);
   const rebuildStatus = useViewModel((s) => s.rebuildStatus);
   const rawLines = useViewModel((s) => s.rebuildLog.rawLines);
@@ -159,6 +160,7 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
   // Runs the "first" build as part of onboarding. Before it can do that, it needs
   // to apply any selected "tracking" customizations.
   async function runFirstBuild() {
+    if (recoveryPending) return;
     setStarted(true);
 
     // Keep this outside handleApply, which is also used for ordinary rebuilds
@@ -192,7 +194,7 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
           <code className="block truncate font-mono text-foreground text-sm">{command}</code>
         </div>
         {status === "idle" ? (
-          <Button onClick={runFirstBuild} className="shrink-0">
+          <Button onClick={runFirstBuild} disabled={recoveryPending} className="shrink-0">
             <Play className="size-4" aria-hidden="true" />
             Run build
           </Button>
@@ -202,7 +204,7 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
             Building…
           </Button>
         ) : status === "error" ? (
-          <Button onClick={runFirstBuild} className="shrink-0">
+          <Button onClick={runFirstBuild} disabled={recoveryPending} className="shrink-0">
             <RotateCcw className="size-4" aria-hidden="true" />
             Retry build
           </Button>
@@ -261,7 +263,12 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
         <EtcClobberConflictList result={etcClobber} />
       ) : null}
       {evolve?.evolutionId != null && !isGenerating ? (
-        evolve.step === "evolve" ? <ReviewStep /> : evolve.step === "commit" ? <CommitStep /> : null
+        <section className="mt-4 space-y-3" aria-label="Review your proposed fix">
+          <p className="text-sm text-muted-foreground">
+            Review the proposed configuration changes below. Build &amp; Test applies them to your Mac only when you choose it. Discard removes the proposed fix. After applying, saving records the configuration in its version history.
+          </p>
+          {evolve.step === "evolve" ? <ReviewStep allowBackToPrompt={false} /> : evolve.step === "commit" ? <CommitStep /> : null}
+        </section>
       ) : null}
 
       {/* Help panel on failure */}
@@ -293,7 +300,7 @@ export function BuildStep({ hasInference, onConfigureInference }: BuildStepProps
           <p className="text-pretty text-muted-foreground text-sm">
             {getRebuildErrorSuggestion(rebuildStatus?.errorType ?? undefined)}
           </p>
-          {hasInference && isAiFixableRebuildError(rebuildStatus?.errorType) && rebuildStatus?.errorMessage ? (
+          {!recoveryPending && hasInference && isAiFixableRebuildError(rebuildStatus?.errorType) && rebuildStatus?.errorMessage ? (
             <Button className="mt-3" disabled={isGenerating} onClick={() => void fixWithAi()}>
               <Sparkles className="size-4" aria-hidden="true" />
               Fix with AI
