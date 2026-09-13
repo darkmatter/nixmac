@@ -19,7 +19,7 @@ import textwrap
 from unittest.mock import patch
 
 workflow = Path(sys.argv[1]).read_text()
-admission_step = workflow.split("      - name: Validate exact build request\n", 1)[1].split("\n  # Run the repo's git-hooks", 1)[0]
+admission_step = workflow.split("      - name: Validate exact build request\n", 1)[1].split("\n      - name:", 1)[0]
 admission = textwrap.dedent(admission_step.split("        run: |\n", 1)[1])
 step = workflow.split("      - name: Write exact build provenance\n", 1)[1].split("      - name:", 1)[0]
 source = textwrap.dedent(step.split("        run: |\n", 1)[1])
@@ -40,7 +40,7 @@ environment = {
 with tempfile.TemporaryDirectory() as directory:
     admission_output = Path(directory) / "admission-output"
     admission_env = {**os.environ, "GITHUB_OUTPUT": str(admission_output), "GITHUB_SHA": workflow_sha,
-                     "GITHUB_EVENT_NAME": "workflow_dispatch", "GITHUB_REF": "refs/heads/main",
+                     "GITHUB_EVENT_NAME": "workflow_dispatch", "GITHUB_REF": "refs/heads/main", "GITHUB_RUN_ATTEMPT": "1",
                      "DEFAULT_BRANCH": "main", "SOURCE_REF": expected, "REQUEST_ID": "desktop-request-123"}
     for overrides, valid, selected in [
         ({}, True, expected),
@@ -49,6 +49,10 @@ with tempfile.TemporaryDirectory() as directory:
         ({"SOURCE_REF": "a" * 39}, False, None),
         ({"REQUEST_ID": "invalid request"}, False, None),
         ({"GITHUB_REF": "refs/tags/v1.2.3"}, False, None),
+        ({"GITHUB_REF": "refs/tags/v1.2.3", "SOURCE_REF": "", "REQUEST_ID": ""}, False, None),
+        ({"GITHUB_REF": "refs/heads/topic", "SOURCE_REF": "", "REQUEST_ID": ""}, False, None),
+        ({"GITHUB_RUN_ATTEMPT": "2"}, False, None),
+        ({"GITHUB_EVENT_NAME": "push", "GITHUB_RUN_ATTEMPT": "2"}, True, expected),
     ]:
         admission_output.unlink(missing_ok=True)
         result = subprocess.run(["bash", "-c", admission], env={**admission_env, **overrides}, capture_output=True, text=True)

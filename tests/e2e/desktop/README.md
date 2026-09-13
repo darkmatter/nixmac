@@ -6,6 +6,27 @@ The runtime verifies the supplied DMG SHA-256 before installing
 `/Applications/nixmac.app`, records continuous video, captures screenshots,
 and retains evidence outside the disposable VM.
 
+The agents repository also supplies `just desktop-smoke <branch|commit|PR>` and
+`just desktop-pr <PR>`. Execution requires an authenticated GitHub user with
+active `darkmatter` organization membership, including reuse of an existing
+build. GitHub's repository write-access requirement for dispatch still applies.
+Read-only `--resolve-only` can inspect source without execution authorization.
+
+Manual `build.yaml` requests use the default-branch workflow. Its hosted source
+job verifies both the actor and triggering actor using the installed GitHub
+App's organization **Members: read** permission before any ARC or Mac job can
+start. Missing membership or unavailable credentials stop the request. Manual
+reruns are disabled, including selective job reruns; submit a fresh dispatch.
+The workflow's `authorize_only=true` input exercises this check and skips every
+ARC/Mac job. Confirm the hosted admission job succeeds and all build jobs are
+skipped before qualifying a new permission setup. These probe runs cannot be
+selected as application builds by the desktop CLI.
+
+Membership authorizes the selected source to run with build/signing access;
+it does not isolate that source. This manual gate retains existing push, PR and
+merge-group behavior. External PR approvals and runner restrictions remain
+separate server controls. No test command posts GitHub comments or issues.
+
 Configure the platform's `DESKTOP_TEST_RECIPE_FILES` with this JSON file's
 absolute path. Submit `appId: "nixmac"`, profile `nixmac-prepared`, a candidate
 containing the exact release asset URL and SHA-256, and scenario IDs `launch`
