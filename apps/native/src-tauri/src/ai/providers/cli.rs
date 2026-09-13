@@ -78,8 +78,25 @@ pub async fn run_cli_process(
 ) -> Result<String> {
     let path = augmented_path();
 
+    // These CLIs are coding agents, not inference endpoints. They discover
+    // project configuration (CLAUDE.md/AGENTS.md, settings, hooks) and scope
+    // their own file tools relative to the working directory, so inheriting
+    // the app's cwd would point a nested agent at whatever directory nixmac
+    // happens to be running in. Give every invocation an empty scratch dir.
+    let scratch = tempfile::Builder::new()
+        .prefix("nixmac-cli-")
+        .tempdir()
+        .map_err(|e| {
+            anyhow!(
+                "failed to create a scratch directory for '{}': {}",
+                binary,
+                e
+            )
+        })?;
+
     let mut child = Command::new(binary)
         .args(args)
+        .current_dir(scratch.path())
         .env("PATH", &path)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -163,12 +180,57 @@ fn extract_response(tool: &CliTool, raw: &str) -> Result<String> {
     }
 }
 
-/// Build the CLI args for a given tool + optional model override.
-fn build_args(tool: &CliTool, model: Option<&str>) -> Vec<String> {
+/// Build the full argv for a CLI provider, including the flags that stop the
+/// child from behaving as an agent.
+///
+/// nixmac calls these binaries as if they were completion endpoints, but each
+/// one ships its own file-edit and shell tools. Left unrestricted, a nested
+/// agent can mutate the user's configuration without passing through any of
+/// the guards in `evolve::tools` — path resolution, the `.nixmac` reservation,
+/// gitignore rejection, or the build gate — and nixmac would record the run as
+/// having made no edits. A provider is spawned only when its own tools can be
+/// turned off by documented flags; otherwise it is refused.
+pub(crate) fn invocation_args(tool: &CliTool, model: Option<&str>) -> Result<Vec<String>> {
     let mut args: Vec<String> = match tool {
-        CliTool::Claude => vec!["-p".into(), "--output-format".into(), "json".into()],
-        CliTool::Codex => vec!["--quiet".into()],
-        CliTool::OpenCode => vec!["-p".into()],
+        // `--tools ""` disables all built-in tools. Per the CLI reference the
+        // flag "doesn't affect MCP tools", so those are denied separately, and
+        // `--bare` skips hook/plugin/MCP/CLAUDE.md discovery — hooks run
+        // commands and are not covered by either tool flag.
+        CliTool::Claude => vec![
+            "-p".into(),
+            "--output-format".into(),
+            "json".into(),
+            "--bare".into(),
+            "--tools".into(),
+            String::new(),
+            "--disallowedTools".into(),
+            "mcp__*".into(),
+        ],
+        // `codex exec --sandbox read-only` is not containment: openai/codex#4152
+        // reports MCP edit tools writing files despite read-only mode, and no
+        // documented flag disables MCP for a single invocation. An MCP write
+        // takes an absolute path, so the scratch cwd below does not bound it
+        // either. Refuse until a verified way to disable those tools exists.
+        CliTool::Codex => {
+            return Err(anyhow!(
+                "The Codex CLI provider is disabled: `--sandbox read-only` does not reliably \
+                 stop Codex from writing files (openai/codex#4152 reports MCP edit tools \
+                 bypassing it), and there is no documented per-invocation flag to disable \
+                 those tools. Pick an API-key provider (OpenRouter, OpenAI, Ollama) or the \
+                 Claude CLI in Settings → AI Models."
+            ));
+        }
+        // No documented flag disables OpenCode's own file and shell tools.
+        // Spawning it would hand an unrestricted agent write access to the
+        // user's machine while nixmac believes it called a completion API.
+        CliTool::OpenCode => {
+            return Err(anyhow!(
+                "The OpenCode CLI provider is disabled: OpenCode has no documented flag to \
+                 disable its built-in file and shell tools, so nixmac cannot call it as a \
+                 plain completion endpoint. Pick an API-key provider (OpenRouter, OpenAI, \
+                 Ollama) or the Claude CLI in Settings → AI Models."
+            ));
+        }
     };
 
     if let Some(flag) = tool.model_flag()
@@ -180,7 +242,7 @@ fn build_args(tool: &CliTool, model: Option<&str>) -> Vec<String> {
         args.push(m.into());
     }
 
-    args
+    Ok(args)
 }
 
 #[async_trait]
@@ -199,7 +261,7 @@ impl ChatCompletionProvider for CliCompletionClient {
         request_id: &str,
     ) -> Result<(String, TokenUsage)> {
         let combined = format!("{}\n\n{}", system_prompt, user_prompt);
-        let args = build_args(&self.tool, Some(&self.model));
+        let args = invocation_args(&self.tool, Some(&self.model))?;
         let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
 
         debug!(
@@ -241,5 +303,92 @@ impl ChatCompletionProvider for CliCompletionClient {
             request_id,
         )
         .await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CliTool, invocation_args, run_cli_process};
+
+    #[test]
+    fn claude_is_spawned_with_every_builtin_tool_disabled() {
+        let args = invocation_args(&CliTool::Claude, Some("claude-sonnet-5"))
+            .expect("claude is spawnable");
+
+        let tools = args
+            .iter()
+            .position(|a| a == "--tools")
+            .expect("claude must be restricted with --tools");
+        assert_eq!(
+            args[tools + 1],
+            "",
+            "--tools \"\" is what disables all built-in tools"
+        );
+
+        let denied = args
+            .iter()
+            .position(|a| a == "--disallowedTools")
+            .expect("--tools does not cover MCP tools, so they need denying too");
+        assert_eq!(args[denied + 1], "mcp__*");
+
+        assert!(
+            args.contains(&"--bare".to_string()),
+            "hooks execute commands and are not covered by the tool flags"
+        );
+        assert_eq!(args.last().map(String::as_str), Some("claude-sonnet-5"));
+    }
+
+    #[test]
+    fn agent_clis_we_cannot_restrict_are_refused() {
+        for tool in [CliTool::Codex, CliTool::OpenCode] {
+            let err = invocation_args(&tool, None)
+                .expect_err("an agent CLI whose own tools cannot be disabled must not be spawned");
+            let msg = err.to_string();
+            assert!(msg.contains("disabled"), "unexpected: {msg}");
+        }
+    }
+
+    #[test]
+    fn the_sentinel_model_does_not_become_a_model_flag() {
+        let args = invocation_args(&CliTool::Claude, Some("claude")).expect("claude is spawnable");
+        assert!(
+            !args.contains(&"--model".to_string()),
+            "the binary-name sentinel means 'use the CLI default'"
+        );
+    }
+
+    /// A spawned CLI must not be able to see the directory nixmac is running
+    /// in, because that is where the user's flake would be. An empty scratch
+    /// cwd is what makes every relative path the child could try unresolvable,
+    /// so proving the directory is empty and is not the app's cwd is the whole
+    /// property — no canary file, and nothing written to the worktree.
+    #[test]
+    fn a_spawned_cli_runs_in_an_empty_directory_that_is_not_the_apps_cwd() {
+        let app_cwd = std::env::current_dir().expect("cwd");
+
+        let out = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("runtime")
+            .block_on(run_cli_process("sh", &["-c", "pwd; ls -A | wc -l"], "", 30))
+            .expect("sh should run");
+
+        let mut lines = out.lines();
+        let child_cwd = std::path::PathBuf::from(lines.next().expect("pwd line"));
+        let entry_count = lines.next().expect("count line").trim().to_string();
+
+        assert_ne!(
+            child_cwd, app_cwd,
+            "the child must not inherit the app's working directory"
+        );
+        assert!(
+            !child_cwd.starts_with(&app_cwd),
+            "the child's cwd must not sit inside the app's working directory: {}",
+            child_cwd.display()
+        );
+        assert_eq!(
+            entry_count, "0",
+            "an empty scratch cwd is what makes relative paths unresolvable"
+        );
     }
 }
