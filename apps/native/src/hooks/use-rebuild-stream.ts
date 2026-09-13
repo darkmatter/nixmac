@@ -19,19 +19,39 @@ interface RebuildOptions {
 }
 
 let lastRebuildRetry: (() => Promise<void>) | null = null;
+let rebuildRetryAttempts = 0;
 const rebuildRetryListeners = new Set<() => void>();
 
-function setRebuildRetry(retry: (() => Promise<void>) | null): void {
-  if (lastRebuildRetry === retry) return;
-  lastRebuildRetry = retry;
+function notifyRebuildRetryListeners(): void {
   for (const listener of rebuildRetryListeners) {
     listener();
   }
 }
 
+function setRebuildRetryAttempts(attempts: number): void {
+  if (rebuildRetryAttempts === attempts) return;
+  rebuildRetryAttempts = attempts;
+  notifyRebuildRetryListeners();
+}
+
+function setRebuildRetry(retry: (() => Promise<void>) | null): void {
+  if (lastRebuildRetry === retry) return;
+  lastRebuildRetry = retry;
+  notifyRebuildRetryListeners();
+}
+
 /** Returns whether the failed rollback can be replayed by the error panel. */
 export function hasRebuildRetry(): boolean {
   return lastRebuildRetry !== null;
+}
+
+/**
+ * Returns how many times a retry has been registered since the last clear.
+ * A fresh retry is registered after every failed attempt, so values above
+ * one signal repeated consecutive failures rather than a transient hiccup.
+ */
+export function getRebuildRetryAttempts(): number {
+  return rebuildRetryAttempts;
 }
 
 /** Clears retry state when a new operation supersedes the failed rollback. */
@@ -96,6 +116,7 @@ export function useRebuildStream() {
         }
 
         if (event.payload.ok) {
+          setRebuildRetryAttempts(0);
           if (options.context === "apply") {
             getTelemetry().captureEvent({ name: "apply_completed" });
           }
@@ -110,6 +131,10 @@ export function useRebuildStream() {
           // Auto-dismiss rebuild panel after success (even if onSuccess failed)
           uiActions.setRebuildPanelDismissed(true);
         } else {
+          // Retryable operations (rollback/restore) count consecutive failures
+          // so the error panel can flag likely-permanent failures; any other
+          // failed run supersedes the chain and resets the count.
+          setRebuildRetryAttempts(options.retry ? rebuildRetryAttempts + 1 : 0);
           if (options.context === "apply") {
             getTelemetry().captureEvent({ name: "apply_failed" });
           }

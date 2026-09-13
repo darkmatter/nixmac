@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { EtcClobberConflictList } from "@/components/widget/overlays/etc-clobber-conflict-list";
 import { useFixWithAi } from "@/hooks/use-fix-with-ai";
 import {
+  getRebuildRetryAttempts,
   hasRebuildRetry,
   retryLastRebuild,
   subscribeToRebuildRetry,
@@ -376,6 +377,11 @@ export function RebuildOverlayPanel() {
     hasRebuildRetry,
     hasRebuildRetry,
   );
+  const retryAttempts = useSyncExternalStore(
+    subscribeToRebuildRetry,
+    getRebuildRetryAttempts,
+    getRebuildRetryAttempts,
+  );
 
   const isRunning = status?.isRunning ?? false;
   const success = status?.success ?? undefined;
@@ -549,10 +555,21 @@ export function RebuildOverlayPanel() {
                   size="sm"
                   // only implemented for rollback
                   disabled={!isRollback || !retryAvailable}
+                  title={
+                    isRollback && !retryAvailable
+                      ? "Retry is no longer available — start a new rollback to try again"
+                      : undefined
+                  }
                 >
                   <RotateCcw className="mr-2 h-4 w-4" />
                   {isRollback ? "Try again" : "Rollback"}
                 </Button>
+              )}
+              {success === false && isRollback && retryAttempts >= 2 && (
+                <p className="mt-2 text-xs text-zinc-400">
+                  This has failed {retryAttempts} times — the configuration may
+                  need changes before a retry can succeed.
+                </p>
               )}
               {success === false && !isRollback && isAiFixableRebuildError(errorType) && (
                 <Button

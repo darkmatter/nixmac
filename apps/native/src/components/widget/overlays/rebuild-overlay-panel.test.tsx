@@ -3,6 +3,7 @@ import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RebuildOverlayPanel } from "@/components/widget/overlays/rebuild-overlay-panel";
+import { getRebuildRetryAttempts } from "@/hooks/use-rebuild-stream";
 import type { EtcClobberCheckResult, RebuildStatus } from "@/ipc/types";
 import { REBUILD_ERROR_CODES } from "@/lib/errors";
 import type { RebuildContext } from "@/types/rebuild";
@@ -30,6 +31,7 @@ vi.mock("motion/react", async () => {
 });
 
 vi.mock("@/hooks/use-rebuild-stream", () => ({
+  getRebuildRetryAttempts: vi.fn<() => number>(() => 1),
   hasRebuildRetry: vi.fn<() => boolean>(() => true),
   retryLastRebuild: vi.fn<() => Promise<void>>(),
   subscribeToRebuildRetry: vi.fn<(listener: () => void) => () => void>(() => () => {}),
@@ -101,7 +103,10 @@ async function renderWithRebuildState(
 describe("<RebuildOverlayPanel>", () => {
   beforeEach(resetStores);
 
-  afterEach(resetStores);
+  afterEach(() => {
+    resetStores();
+    vi.mocked(getRebuildRetryAttempts).mockReturnValue(1);
+  });
 
   it("prominently reassures users when the backend says the failed apply left the system untouched", async () => {
     await renderWithRebuildState({ systemUntouched: true });
@@ -137,6 +142,21 @@ describe("<RebuildOverlayPanel>", () => {
 
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Retry Rollback" })).not.toBeInTheDocument();
+  });
+
+  it("flags likely-permanent failures after repeated retries", async () => {
+    vi.mocked(getRebuildRetryAttempts).mockReturnValue(3);
+
+    await renderWithRebuildState({}, "rollback");
+
+    expect(screen.getByText(/failed 3 times/)).toBeInTheDocument();
+    expect(screen.getByText(/configuration may\s*need changes/)).toBeInTheDocument();
+  });
+
+  it("does not show the repeated-failure hint on the first failure", async () => {
+    await renderWithRebuildState({}, "rollback");
+
+    expect(screen.queryByText(/failed \d+ times/)).not.toBeInTheDocument();
   });
 
   it("shows App Management guidance for managed app update failures", async () => {
