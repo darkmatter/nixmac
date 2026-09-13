@@ -8,7 +8,7 @@ import {
   secretPathDisplay,
 } from "./types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import type { SecretsVault } from "@/ipc/orpc-bindings";
+import type { SecretBackend, SecretsVault } from "@/ipc/orpc-bindings";
 
 /**
  * The vault tab summarizes the primary local decryption identity and then
@@ -20,7 +20,7 @@ export function VaultView({
   onCopy,
 }: {
   vault: SecretsVault;
-  onOpenSecret: (secretId: string) => void;
+  onOpenSecret: (secretId: string, backend: SecretBackend) => void;
   onCopy: (text: string) => void;
 }) {
   const primaryIdentity = primaryDecryptionIdentity(vault);
@@ -175,9 +175,10 @@ export function VaultView({
           const secretPath = secretPathDisplay(secret);
           return (
             <button
-              key={secret.id}
+              key={`${secret.backend}:${secret.id}`}
               type="button"
-              onClick={() => onOpenSecret(secret.id)}
+              aria-label={`Open ${secret.name} (${backendLabel(secret.backend)})`}
+              onClick={() => onOpenSecret(secret.id, secret.backend)}
               className="grid w-full cursor-pointer grid-cols-[1.6fr_0.7fr_1.5fr_1fr_1.3fr_24px] items-center gap-2.5 border-border border-b px-3.5 py-2.5 text-left transition-colors hover:bg-muted/30"
             >
               <span className="truncate font-medium font-mono text-[13px]">{secret.name}</span>

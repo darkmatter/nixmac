@@ -9,13 +9,16 @@ cfg:
     hostKeys = cfg.services.openssh.hostKeys or [];
     sopsPaths = cfg.sops.age.sshKeyPaths or [];
     ageKeyFile = cfg.sops.age.keyFile or null;
+    agenixPaths = cfg.age.identityPaths or [];
   in {
     ageKeyFile = if ageKeyFile == null then null else toString ageKeyFile;
+    agenixIdentityPaths = map toString agenixPaths;
     hostKeys = map (key: {
       path = key.path;
       publicKeyPath = key.path + ".pub";
       type = key.type;
       usedBySops = builtins.elem key.path sopsPaths;
+      usedByAgenix = builtins.elem (toString key.path) (map toString agenixPaths);
     }) hostKeys;
 
     otherSopsIdentities =
@@ -26,12 +29,6 @@ cfg:
 }
 "#;
 
-// TODO(agenix-read): Project `cfg.age.identityPaths` alongside the SOPS
-// identities above and materialize them as local decryption identities.
-// Preserve both each raw SSH public key and its ssh-to-age recipient as aliases
-// of the same identity so an agenix `publicKeys` rule written in either format
-// resolves to the correct public recipient.
-
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HostKey {
@@ -39,7 +36,10 @@ pub(crate) struct HostKey {
     pub public_key_path: String,
     #[serde(rename = "type")]
     pub key_type: String,
+    #[serde(default)]
     pub used_by_sops: bool,
+    #[serde(default)]
+    pub used_by_agenix: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -50,6 +50,8 @@ pub(crate) struct SecretIdentities {
     pub host_keys: Vec<HostKey>,
     #[serde(default)]
     pub other_sops_identities: Vec<String>,
+    #[serde(default)]
+    pub agenix_identity_paths: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -176,9 +178,11 @@ mod tests {
                     "path": "/etc/ssh/ssh_host_ed25519_key",
                     "publicKeyPath": "/etc/ssh/ssh_host_ed25519_key.pub",
                     "type": "ed25519",
-                    "usedBySops": true
+                    "usedBySops": true,
+                    "usedByAgenix": true
                 }],
-                "otherSopsIdentities": ["/Users/test/.config/sops/age/keys.txt"]
+                "otherSopsIdentities": ["/Users/test/.config/sops/age/keys.txt"],
+                "agenixIdentityPaths": ["/etc/ssh/ssh_host_ed25519_key"]
             }"#,
         )
         .expect("identity projection should deserialize");
@@ -189,11 +193,16 @@ mod tests {
             Some("/Users/test/.config/sops/age/keys.txt")
         );
         assert!(identities.host_keys[0].used_by_sops);
+        assert!(identities.host_keys[0].used_by_agenix);
         assert_eq!(
             identities.host_keys[0].public_key_path,
             "/etc/ssh/ssh_host_ed25519_key.pub"
         );
         assert_eq!(identities.other_sops_identities.len(), 1);
+        assert_eq!(
+            identities.agenix_identity_paths,
+            ["/etc/ssh/ssh_host_ed25519_key"]
+        );
     }
 
     #[test]
@@ -203,6 +212,7 @@ mod tests {
 
         assert!(identities.host_keys.is_empty());
         assert!(identities.other_sops_identities.is_empty());
+        assert!(identities.agenix_identity_paths.is_empty());
         assert!(identities.age_key_file.is_none());
     }
 
