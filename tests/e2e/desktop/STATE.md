@@ -81,17 +81,17 @@ Startup migrations matter when composing a seed:
    `globalPreferencesMigratedV1` is `true`. The fixtures set that marker and
    clear other legacy values, preventing stale image preferences from
    overriding the supplied `preferences` slice.
-2. Unacknowledged `sendDiagnostics: false` migrates to the default-on setting.
+1. Unacknowledged `sendDiagnostics: false` migrates to the default-on setting.
    Both fixtures set `diagnosticsNoticeAcknowledged: true` with the explicit
    false preference. Deprecated scalar `evolveModel`/`summaryModel` values
    migrate into per-provider maps, with existing map entries winning.
-3. Legacy `onboarding*` fields in the global preferences file are copied into
+1. Legacy `onboarding*` fields in the global preferences file are copied into
    unset onboarding fields and removed from the original file. This removal
    makes the migration single-shot.
-4. When `completedAt` is absent/null and `lastBuildAt` exists, startup sets
+1. When `completedAt` is absent/null and `lastBuildAt` exists, startup sets
    `completedAt = lastBuildAt` and persists the result. This recovers a process
    killed after the first successful apply and before the celebration finished.
-5. Evolve sessions with stale backup/rollback anchors are cleared against real
+1. Evolve sessions with stale backup/rollback anchors are cleared against real
    Git HEAD. Legacy `step`/`committable` JSON fields are ignored. A populated
    build record alone cannot prove the current worktree was built: the app
    checks the live Nix system profile and corresponding change hashes.
@@ -123,10 +123,10 @@ not assert that this test performed that build. The recipe verifies:
 
 1. The pre-launch JSON really has `completedAt: null`, the expected
    `lastBuildAt` and configuration path, and no `flake.nix` exists there.
-2. The real application exits initial hydration and renders
+1. The real application exits initial hydration and renders
    `Configuration not found`, including that exact seeded path.
-3. The app-written onboarding file contains `completedAt: 1751967600`.
-4. Screenshots, continuous video, loaded preferences and recovered onboarding
+1. The app-written onboarding file contains `completedAt: 1751967600`.
+1. Screenshots, continuous video, loaded preferences and recovered onboarding
    JSON are retained outside the VM.
 
 An empty window, a model's success claim, or merely echoing the supplied seed
