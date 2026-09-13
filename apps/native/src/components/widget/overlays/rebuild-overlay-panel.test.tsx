@@ -3,7 +3,6 @@ import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RebuildOverlayPanel } from "@/components/widget/overlays/rebuild-overlay-panel";
-import { getRebuildRetryAttempts } from "@/hooks/use-rebuild-stream";
 import type { EtcClobberCheckResult, RebuildStatus } from "@/ipc/types";
 import { REBUILD_ERROR_CODES } from "@/lib/errors";
 import type { RebuildContext } from "@/types/rebuild";
@@ -31,10 +30,7 @@ vi.mock("motion/react", async () => {
 });
 
 vi.mock("@/hooks/use-rebuild-stream", () => ({
-  getRebuildRetryAttempts: vi.fn<() => number>(() => 1),
-  hasRebuildRetry: vi.fn<() => boolean>(() => true),
   retryLastRebuild: vi.fn<() => Promise<void>>(),
-  subscribeToRebuildRetry: vi.fn<(listener: () => void) => () => void>(() => () => {}),
 }));
 
 vi.mock("@/hooks/use-rollback", () => ({
@@ -69,7 +65,11 @@ function resetStores() {
       rebuildStatus: null,
       rebuildLog: { lines: [], rawLines: [], notices: [] },
     });
-    uiActions.setState({ ...initialUiState });
+    uiActions.setState({
+      ...initialUiState,
+      rebuildRetry: () => Promise.resolve(),
+      rebuildRetryAttempts: 1,
+    });
   });
 }
 
@@ -105,7 +105,6 @@ describe("<RebuildOverlayPanel>", () => {
 
   afterEach(() => {
     resetStores();
-    vi.mocked(getRebuildRetryAttempts).mockReturnValue(1);
   });
 
   it("prominently reassures users when the backend says the failed apply left the system untouched", async () => {
@@ -145,7 +144,9 @@ describe("<RebuildOverlayPanel>", () => {
   });
 
   it("flags likely-permanent failures after repeated retries", async () => {
-    vi.mocked(getRebuildRetryAttempts).mockReturnValue(3);
+    act(() => {
+      uiActions.setRebuildRetryAttempts(3);
+    });
 
     await renderWithRebuildState({}, "rollback");
 

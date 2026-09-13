@@ -53,6 +53,10 @@ export type UiStateValues = {
   rebuildContext: RebuildContext;
   /** True once the user (or a successful run) dismissed the rebuild panel. */
   rebuildPanelDismissed: boolean;
+  /** Replays the last failed rollback/restore operation, if retryable. */
+  rebuildRetry: (() => Promise<void>) | null;
+  /** Consecutive failures of the retryable operation; reset on success. */
+  rebuildRetryAttempts: number;
   /** Latest structured managed-file clobber preflight result, if any. */
   etcClobber: EtcClobberCheckResult | null;
   /** Whether the proactive pre-apply managed-file warning dialog is open. */

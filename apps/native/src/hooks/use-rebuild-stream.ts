@@ -5,7 +5,7 @@ import { client } from "@/lib/orpc";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import type { RebuildContext } from "@/types/rebuild";
 import { setRebuildRawLineEcho } from "@/viewmodel/rebuild";
-import { uiActions } from "@nixmac/state";
+import { uiActions, uiStore } from "@nixmac/state";
 import { useGitOperations } from "./use-git-operations";
 
 interface RebuildOptions {
@@ -18,31 +18,9 @@ interface RebuildOptions {
   retry?: () => Promise<void>;
 }
 
-let lastRebuildRetry: (() => Promise<void>) | null = null;
-let rebuildRetryAttempts = 0;
-const rebuildRetryListeners = new Set<() => void>();
-
-function notifyRebuildRetryListeners(): void {
-  for (const listener of rebuildRetryListeners) {
-    listener();
-  }
-}
-
-function setRebuildRetryAttempts(attempts: number): void {
-  if (rebuildRetryAttempts === attempts) return;
-  rebuildRetryAttempts = attempts;
-  notifyRebuildRetryListeners();
-}
-
-function setRebuildRetry(retry: (() => Promise<void>) | null): void {
-  if (lastRebuildRetry === retry) return;
-  lastRebuildRetry = retry;
-  notifyRebuildRetryListeners();
-}
-
 /** Returns whether the failed rollback can be replayed by the error panel. */
 export function hasRebuildRetry(): boolean {
-  return lastRebuildRetry !== null;
+  return uiStore.getState().rebuildRetry !== null;
 }
 
 /**
@@ -51,23 +29,17 @@ export function hasRebuildRetry(): boolean {
  * one signal repeated consecutive failures rather than a transient hiccup.
  */
 export function getRebuildRetryAttempts(): number {
-  return rebuildRetryAttempts;
+  return uiStore.getState().rebuildRetryAttempts;
 }
 
 /** Clears retry state when a new operation supersedes the failed rollback. */
 export function clearRebuildRetry(): void {
-  setRebuildRetry(null);
+  uiActions.setRebuildRetry(null);
 }
 
 /** Replays the last registered rollback operation, if one is available. */
 export async function retryLastRebuild(): Promise<void> {
-  await lastRebuildRetry?.();
-}
-
-/** Subscribes UI surfaces to changes in the available retry operation. */
-export function subscribeToRebuildRetry(listener: () => void): () => void {
-  rebuildRetryListeners.add(listener);
-  return () => rebuildRetryListeners.delete(listener);
+  await uiStore.getState().rebuildRetry?.();
 }
 
 /**
@@ -87,7 +59,7 @@ export function useRebuildStream() {
     // reuse a callback captured by an older failed rollback.
     clearRebuildRetry();
     if (options.retry) {
-      setRebuildRetry(options.retry);
+      uiActions.setRebuildRetry(options.retry);
     }
 
     uiActions.setRebuildContext(options.context);
@@ -116,7 +88,7 @@ export function useRebuildStream() {
         }
 
         if (event.payload.ok) {
-          setRebuildRetryAttempts(0);
+          uiActions.setRebuildRetryAttempts(0);
           if (options.context === "apply") {
             getTelemetry().captureEvent({ name: "apply_completed" });
           }
@@ -134,7 +106,9 @@ export function useRebuildStream() {
           // Retryable operations (rollback/restore) count consecutive failures
           // so the error panel can flag likely-permanent failures; any other
           // failed run supersedes the chain and resets the count.
-          setRebuildRetryAttempts(options.retry ? rebuildRetryAttempts + 1 : 0);
+          uiActions.setRebuildRetryAttempts(
+            options.retry ? uiStore.getState().rebuildRetryAttempts + 1 : 0,
+          );
           if (options.context === "apply") {
             getTelemetry().captureEvent({ name: "apply_failed" });
           }
