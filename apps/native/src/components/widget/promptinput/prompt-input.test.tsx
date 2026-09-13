@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PromptInput } from "@/components/widget/promptinput/prompt-input";
@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   buildCheck: vi.fn<() => Promise<{ passed: boolean }>>(),
   getPrefs: vi.fn<() => Promise<Record<string, never>>>(),
   checkTools: vi.fn<() => Promise<{ claude: boolean; codex: boolean; opencode: boolean }>>(),
+  getRecommendedPrompt: vi.fn<() => Promise<null>>(),
 }));
 
 vi.mock("@/hooks/use-evolve", () => ({
@@ -25,16 +26,8 @@ vi.mock("@/hooks/use-evolve", () => ({
   }),
 }));
 
-vi.mock("@/components/widget/promptinput/mac-recommendation-chip", () => ({
-  MacRecommendationChip: () => null,
-}));
-
 vi.mock("@/components/widget/promptinput/homebrew-badge", () => ({
   HomebrewBadge: () => null,
-}));
-
-vi.mock("@/components/widget/promptinput/prompt-history-badge", () => ({
-  PromptHistoryBadge: () => null,
 }));
 
 vi.mock("@/components/widget/promptinput/system-defaults-cta", () => ({
@@ -45,9 +38,9 @@ vi.mock("@/components/widget/promptinput/system-defaults-cta", () => ({
 // (router.tsx → DarwinWidget → EditorPanel → monaco, which needs matchMedia).
 vi.mock("@/router", () => ({
   nav: {
-    openSettings: vi.fn(),
-    goHome: vi.fn(),
-    closeSettings: vi.fn(),
+    openSettings: vi.fn<() => void>(),
+    goHome: vi.fn<() => void>(),
+    closeSettings: vi.fn<() => void>(),
   },
 }));
 
@@ -69,6 +62,9 @@ vi.mock("@/ipc/api", () => ({
     cli: {
       checkTools: mocks.checkTools,
     },
+    scanner: {
+      getRecommendedPrompt: mocks.getRecommendedPrompt,
+    },
   },
 }));
 
@@ -83,19 +79,32 @@ const dirtyGitStatus: GitStatus = {
   changes: [],
 };
 
+const scrollIntoView = vi.fn<(options?: ScrollIntoViewOptions | boolean) => void>();
+const originalScrollIntoView = Element.prototype.scrollIntoView;
+
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
 function resetStore() {
-  uiActions.setEvolvePrompt("");
-  viewModelActions.setState({
-    git: null,
-    evolve: null,
-    build: {
-      externalBuildDetected: false,
-      upstreamUpdateAvailable: false,
-      rebuildNeeded: false,
-    },
-    preferences: makeGlobalPreferences(),
+  act(() => {
+    uiActions.setEvolvePrompt("");
+    uiActions.setRecommendedPrompt(null);
+    viewModelActions.setState({
+      git: null,
+      evolve: null,
+      build: {
+        externalBuildDetected: false,
+        upstreamUpdateAvailable: false,
+        rebuildNeeded: false,
+      },
+      preferences: makeGlobalPreferences(),
+      promptHistory: [],
+    });
+    uiActions.setProcessing(false);
   });
-  uiActions.setProcessing(false);
 }
 
 async function settleProviderValidation() {
@@ -107,16 +116,26 @@ async function settleProviderValidation() {
 
 describe("<PromptInput>", () => {
   beforeEach(() => {
+    Element.prototype.scrollIntoView = scrollIntoView;
+    vi.stubGlobal("ResizeObserver", ResizeObserverStub);
     resetStore();
     mocks.handleEvolve.mockResolvedValue();
     mocks.evolveFromManual.mockResolvedValue();
     mocks.buildCheck.mockResolvedValue({ passed: true });
     mocks.getPrefs.mockResolvedValue({});
     mocks.checkTools.mockResolvedValue({ claude: false, codex: false, opencode: false });
+    mocks.getRecommendedPrompt.mockResolvedValue(null);
   });
 
   afterEach(() => {
     resetStore();
+    scrollIntoView.mockReset();
+    if (originalScrollIntoView) {
+      Element.prototype.scrollIntoView = originalScrollIntoView;
+    } else {
+      Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+    }
+    vi.unstubAllGlobals();
     vi.clearAllMocks();
   });
 
@@ -135,7 +154,7 @@ describe("<PromptInput>", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("seeds a full starter prompt from the curated chips", async () => {
+  it("reveals and focuses a seeded starter prompt without submitting it", async () => {
     // The default suggestion variant is `spotlight`; force `chips` via the
     // developer override so the curated chips render for this scenario.
     viewModelActions.patch({
@@ -155,6 +174,100 @@ describe("<PromptInput>", () => {
 
     fireEvent.click(chip);
 
-    expect(screen.getByTestId("evolve-prompt-input")).toHaveValue(suggestion.prompt);
+    const input = screen.getByTestId("evolve-prompt-input") as HTMLTextAreaElement;
+
+    await waitFor(() => {
+      expect(input).toHaveValue(suggestion.prompt);
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "nearest" });
+      expect(input).toHaveFocus();
+    });
+    expect(input.selectionStart).toBe(suggestion.prompt.length);
+    expect(input.selectionEnd).toBe(suggestion.prompt.length);
+    expect(mocks.handleEvolve).not.toHaveBeenCalled();
+  });
+
+  it("keeps focus on a prompt selected from history after the popover closes", async () => {
+    const historyPrompt = "Show all file extensions in Finder";
+    viewModelActions.setState({ promptHistory: [historyPrompt] });
+
+    render(<PromptInput />);
+    await settleProviderValidation();
+
+    fireEvent.click(screen.getByRole("button", { name: "My History" }));
+    fireEvent.click(await screen.findByText(historyPrompt));
+
+    const input = screen.getByTestId("evolve-prompt-input") as HTMLTextAreaElement;
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText("Search history...")).not.toBeInTheDocument();
+      expect(input).toHaveValue(historyPrompt);
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "nearest" });
+      expect(input).toHaveFocus();
+    });
+    expect(input.selectionStart).toBe(historyPrompt.length);
+    expect(input.selectionEnd).toBe(historyPrompt.length);
+    expect(mocks.handleEvolve).not.toHaveBeenCalled();
+  });
+
+  it("restores focus to the history trigger when the popover closes without a selection", async () => {
+    viewModelActions.setState({ promptHistory: ["Show all file extensions in Finder"] });
+
+    render(<PromptInput />);
+    await settleProviderValidation();
+
+    const trigger = screen.getByRole("button", { name: "My History" });
+    fireEvent.click(trigger);
+
+    const search = await screen.findByPlaceholderText("Search history...");
+    await waitFor(() => expect(search).toHaveFocus());
+    fireEvent.keyDown(search, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText("Search history...")).not.toBeInTheDocument();
+      expect(trigger).toHaveFocus();
+    });
+  });
+
+  it("routes the Mac recommendation through the same seed behavior", async () => {
+    const recommendation = {
+      id: "finder-extensions",
+      promptText: "Show all file extensions in Finder",
+    };
+    uiActions.setRecommendedPrompt(recommendation);
+
+    render(<PromptInput />);
+    await settleProviderValidation();
+
+    fireEvent.click(screen.getByRole("button", { name: recommendation.promptText }));
+
+    const input = screen.getByTestId("evolve-prompt-input") as HTMLTextAreaElement;
+    await waitFor(() => {
+      expect(input).toHaveValue(recommendation.promptText);
+      expect(scrollIntoView).toHaveBeenCalled();
+      expect(input).toHaveFocus();
+    });
+    expect(input.selectionStart).toBe(recommendation.promptText.length);
+    expect(input.selectionEnd).toBe(recommendation.promptText.length);
+    expect(mocks.handleEvolve).not.toHaveBeenCalled();
+  });
+
+  it("avoids smooth scrolling when reduced motion is preferred", async () => {
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true }));
+    viewModelActions.patch({
+      preferences: makeGlobalPreferences({
+        featureFlagOverrides: { [EVOLVE_PROMPT_SUGGESTIONS_FLAG]: "chips" },
+      }),
+    });
+
+    const suggestion = STARTER_PROMPT_CHIPS.find(({ id }) => id === "dev-terminal");
+    if (!suggestion) throw new Error("Expected dev-terminal starter prompt");
+
+    render(<PromptInput />);
+    await settleProviderValidation();
+
+    fireEvent.click(screen.getByRole("button", { name: suggestion.label }));
+
+    await waitFor(() => {
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "auto", block: "nearest" });
+    });
   });
 });
