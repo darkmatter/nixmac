@@ -2,8 +2,10 @@
 //
 // One idempotent function. Every run observes the world, drives it one step
 // closer to the stored decision, and forgets everything: no phase, no
-// progress, no recovery mode. A run that dies anywhere is repaired by the
-// next one, which starts over from fresh observation. That is the whole
+// progress, no recovery mode. A run starts over from fresh observation;
+// an absent registration needs an explicit Enable, including after a crash
+// between unregister and register, so an uncertain call is never replayed.
+// That is the whole
 // design — there is deliberately nothing here that coordinates, queues, or
 // remembers.
 //
@@ -118,10 +120,12 @@ pub enum Reconciled {
     /// was unregistered, registered, or written, and no later run changes the
     /// answer: the user has to move the app or restart it.
     Displaced(String),
-    /// Final: `notFound` — the bundle's own service definition is broken, so
-    /// there is nothing to register and nothing to remove. A property of the
-    /// bundle, read identically every time.
+    /// The actual bundled plist or executable failed validation.
     ServiceDefinitionBroken,
+    /// The bundled definition is present, but ServiceManagement cannot find
+    /// the registration. An explicit Enable may attempt registration once;
+    /// observation must not turn this uncertainty into repeated mutations.
+    RegistrationUnavailable,
     /// Retryable: the run stopped short. Nothing further was mutated; a later
     /// run converges from what it observes then.
     Stopped(String),
@@ -256,6 +260,10 @@ pub trait Environment {
     /// What `SMAppService` reports about nixmac's helper registration.
     fn registration_status(&self) -> Result<RegistrationStatus, String>;
 
+    /// Validate the real bundled plist and helper executable. This does not
+    /// assert that macOS will accept registration or that approval exists.
+    fn validate_definition(&self) -> Result<(), String>;
+
     /// The stored decision about the helper.
     fn preference(&self) -> Result<HelperPreference, String>;
 
@@ -311,6 +319,17 @@ impl<R: Runtime> Environment for LiveEnvironment<'_, R> {
 
     fn registration_status(&self) -> Result<RegistrationStatus, String> {
         service::registration_status().map_err(|error| format!("{error:#}"))
+    }
+
+    fn validate_definition(&self) -> Result<(), String> {
+        match install_location::locate_app_bundle() {
+            InstallLocation::Canonical(bundle) => {
+                service::validate_bundled_definition(&bundle).map_err(|error| format!("{error:#}"))
+            }
+            InstallLocation::Elsewhere(_) => {
+                Err("nixmac is no longer installed in /Applications".to_string())
+            }
+        }
     }
 
     fn preference(&self) -> Result<HelperPreference, String> {
@@ -465,7 +484,11 @@ fn decide<E: Environment>(running: &Mutex<()>, env: &E, decision: HelperDecision
     // Nothing this slot guards is half-applied by a panic — it guards no
     // data — so a poisoned lock is taken rather than propagated.
     let _slot = running.lock().unwrap_or_else(PoisonError::into_inner);
-    reported(converge(env).unwrap_or_else(|report| report))
+    let invocation = match decision {
+        HelperDecision::Granted => Invocation::Enable,
+        HelperDecision::Disabled => Invocation::Observe,
+    };
+    reported(converge(env, invocation).unwrap_or_else(|report| report))
 }
 
 fn run<E: Environment>(running: &Mutex<()>, env: &E) -> Reconciled {
@@ -477,7 +500,7 @@ fn run<E: Environment>(running: &Mutex<()>, env: &E) -> Reconciled {
         // convergence loop repeats them on its own cadence.
         Err(TryLockError::WouldBlock) => return reported(Reconciled::Busy),
     };
-    reported(converge(env).unwrap_or_else(|report| report))
+    reported(converge(env, Invocation::Observe).unwrap_or_else(|report| report))
 }
 
 /// Logs one run's outcome and hands it back.
@@ -494,13 +517,29 @@ enum Goal {
     Remove,
 }
 
-fn converge<E: Environment>(env: &E) -> Step {
+#[derive(Clone, Copy)]
+enum Invocation {
+    Observe,
+    Enable,
+}
+
+fn converge<E: Environment>(env: &E, invocation: Invocation) -> Step {
     env.gate()?;
     let status = status(env)?;
+    if matches!(
+        status,
+        RegistrationStatus::NotFound | RegistrationStatus::NotRegistered
+    ) {
+        // Apple DTS documents that notFound can also mean a never-seen
+        // service (https://developer.apple.com/forums/thread/719862). Check
+        // actual packaging instead of deriving a broken bundle from status.
+        env.validate_definition().map_err(|detail| {
+            log::warn!("bundled helper definition failed validation: {detail}");
+            Reconciled::ServiceDefinitionBroken
+        })?;
+    }
     let goal = goal(env, status)?;
     match (status, goal) {
-        (RegistrationStatus::NotRegistered, Goal::Install) => register_fresh(env),
-        (RegistrationStatus::NotRegistered, Goal::Remove) => Ok(Reconciled::NoHelper),
         // Approval is a state, not an error: reported, never re-registered,
         // and never a reason to open System Settings. This arm registers
         // nothing, however often it is reached.
@@ -509,9 +548,19 @@ fn converge<E: Environment>(env: &E) -> Step {
         // to observe before removing it.
         (RegistrationStatus::RequiresApproval, Goal::Remove) => remove(env),
         (RegistrationStatus::Enabled, goal) => classify(env, goal),
-        // Nothing to register and nothing to remove: the definition this
-        // would act on is not there.
-        (RegistrationStatus::NotFound, _) => Err(Reconciled::ServiceDefinitionBroken),
+        (RegistrationStatus::NotFound | RegistrationStatus::NotRegistered, Goal::Remove) => {
+            Ok(Reconciled::NoHelper)
+        }
+        (RegistrationStatus::NotFound | RegistrationStatus::NotRegistered, Goal::Install) => {
+            match invocation {
+                // One explicit click, through the same fresh preference/build
+                // gates and authenticated verification as every registration.
+                Invocation::Enable => register_fresh(env),
+                // A previous call may have changed notFound to notRegistered
+                // without reporting. Neither status authorizes replay on refresh.
+                Invocation::Observe => Ok(Reconciled::RegistrationUnavailable),
+            }
+        }
     }
 }
 
@@ -546,9 +595,9 @@ fn goal<E: Environment>(env: &E, status: RegistrationStatus) -> Result<Goal, Rec
             }
             // Nothing to adopt. A first registration needs the explicit
             // Grant action, never an automatic path.
-            RegistrationStatus::NotRegistered => Err(Reconciled::NoHelper),
-            // Never resolves the decision; reported as the failure it is.
-            RegistrationStatus::NotFound => Err(Reconciled::ServiceDefinitionBroken),
+            RegistrationStatus::NotRegistered | RegistrationStatus::NotFound => {
+                Err(Reconciled::NoHelper)
+            }
         },
     }
 }
@@ -765,10 +814,9 @@ fn verify_from_status(status: RegistrationStatus) -> Step {
     match status {
         // Registered, and macOS wants the user's approval. Normal.
         RegistrationStatus::RequiresApproval => Ok(Reconciled::PendingApproval),
-        RegistrationStatus::NotRegistered => Err(Reconciled::Stopped(
-            "the helper registration disappeared while it was being verified".to_string(),
-        )),
-        RegistrationStatus::NotFound => Err(Reconciled::ServiceDefinitionBroken),
+        RegistrationStatus::NotRegistered | RegistrationStatus::NotFound => {
+            Err(Reconciled::RegistrationUnavailable)
+        }
         RegistrationStatus::Enabled => Err(Reconciled::Stopped(
             "the registered helper never answered on its socket".to_string(),
         )),
@@ -937,6 +985,8 @@ mod tests {
         /// *which* gate a refusal stopped.
         gates: RefCell<Vec<Result<(), Reconciled>>>,
         status: RefCell<Vec<Result<RegistrationStatus, String>>>,
+        definition: Result<(), String>,
+        disable_during_definition: bool,
         preference: RefCell<Result<HelperPreference, String>>,
         exchanges: RefCell<Vec<Peer>>,
         listener: ListenerObservation,
@@ -955,6 +1005,8 @@ mod tests {
                 compiled: THIS_BUILD,
                 gates: RefCell::new(vec![Ok(())]),
                 status: RefCell::new(vec![Ok(RegistrationStatus::Enabled)]),
+                definition: Ok(()),
+                disable_during_definition: false,
                 preference: RefCell::new(Ok(HelperPreference::Granted)),
                 exchanges: RefCell::new(Vec::new()),
                 listener: ListenerObservation::PositivelyAbsent,
@@ -1026,6 +1078,13 @@ mod tests {
 
         fn preference(&self) -> Result<HelperPreference, String> {
             self.preference.borrow().clone()
+        }
+
+        fn validate_definition(&self) -> Result<(), String> {
+            if self.disable_during_definition {
+                *self.preference.borrow_mut() = Ok(HelperPreference::Disabled);
+            }
+            self.definition.clone()
         }
 
         fn store_decision(&self, decision: HelperDecision) -> Result<(), String> {
@@ -1344,8 +1403,11 @@ mod tests {
             ])
             .with_exchanges(vec![Peer::Answered(this_build_idle())]);
 
-        assert_eq!(fresh_run(&world), Reconciled::AtThisBuild);
-        assert_eq!(world.acts(), vec![Act::Registered]);
+        assert_eq!(
+            decide(&Mutex::new(()), &world, HelperDecision::Granted),
+            Reconciled::AtThisBuild
+        );
+        assert_eq!(world.acts(), vec![Act::StoredGranted, Act::Registered]);
     }
 
     #[test]
@@ -1401,10 +1463,125 @@ mod tests {
     fn a_broken_service_definition_stops_the_pass() {
         let world = World {
             status: RefCell::new(vec![Ok(RegistrationStatus::NotFound)]),
+            definition: Err("the bundled helper executable is missing".to_string()),
             ..World::default()
         };
 
         assert_eq!(fresh_run(&world), Reconciled::ServiceDefinitionBroken);
+        assert!(world.acts().is_empty());
+        assert_eq!(
+            decide(&Mutex::new(()), &world, HelperDecision::Granted),
+            Reconciled::ServiceDefinitionBroken
+        );
+        assert_eq!(world.acts(), vec![Act::StoredGranted]);
+    }
+
+    #[test]
+    fn a_valid_unseen_service_requires_an_explicit_enable() {
+        for preference in [
+            HelperPreference::Unset,
+            HelperPreference::Disabled,
+            HelperPreference::Granted,
+        ] {
+            let world = World {
+                status: RefCell::new(vec![Ok(RegistrationStatus::NotFound)]),
+                preference: RefCell::new(Ok(preference)),
+                ..World::default()
+            };
+            let expected = if matches!(preference, HelperPreference::Granted) {
+                Reconciled::RegistrationUnavailable
+            } else {
+                Reconciled::NoHelper
+            };
+            for _ in 0..3 {
+                assert_eq!(fresh_run(&world), expected);
+            }
+            assert!(
+                world.acts().is_empty(),
+                "observation must not register or change consent"
+            );
+        }
+    }
+
+    #[test]
+    fn explicit_enable_registers_an_unseen_valid_helper_once_and_verifies_it() {
+        for final_status in [
+            RegistrationStatus::Enabled,
+            RegistrationStatus::RequiresApproval,
+            RegistrationStatus::NotFound,
+            RegistrationStatus::NotRegistered,
+        ] {
+            let world = World {
+                status: RefCell::new(vec![Ok(RegistrationStatus::NotFound), Ok(final_status)]),
+                preference: RefCell::new(Ok(HelperPreference::Unset)),
+                exchanges: RefCell::new(vec![Peer::Answered(this_build_idle())]),
+                ..World::default()
+            };
+            let expected = match final_status {
+                RegistrationStatus::Enabled => Reconciled::AtThisBuild,
+                RegistrationStatus::RequiresApproval => Reconciled::PendingApproval,
+                _ => Reconciled::RegistrationUnavailable,
+            };
+            assert_eq!(
+                decide(&Mutex::new(()), &world, HelperDecision::Granted),
+                expected
+            );
+            assert_eq!(world.acts(), vec![Act::StoredGranted, Act::Registered]);
+        }
+    }
+
+    #[test]
+    fn unseen_helper_enable_respects_changed_consent_and_bundle_displacement() {
+        let disabled = World {
+            status: RefCell::new(vec![Ok(RegistrationStatus::NotFound)]),
+            disable_during_definition: true,
+            ..World::default()
+        };
+        assert_eq!(
+            decide(&Mutex::new(()), &disabled, HelperDecision::Granted),
+            Reconciled::NoHelper
+        );
+        assert_eq!(disabled.acts(), vec![Act::StoredGranted]);
+
+        let displaced = Reconciled::Displaced("app replaced".to_string());
+        let world = World {
+            status: RefCell::new(vec![Ok(RegistrationStatus::NotFound)]),
+            gates: RefCell::new(vec![Ok(()), Ok(()), Err(displaced.clone())]),
+            ..World::default()
+        };
+        assert_eq!(
+            decide(&Mutex::new(()), &world, HelperDecision::Granted),
+            displaced
+        );
+        assert_eq!(world.acts(), vec![Act::StoredGranted]);
+    }
+
+    #[test]
+    fn unseen_helper_registration_failures_are_retained_without_replay() {
+        for failure in [
+            RegisterFailure::Silent,
+            RegisterFailure::Failed(service::ServiceCallError {
+                domain: "SMAppServiceErrorDomain".to_string(),
+                code: 1,
+                localized: "not permitted".to_string(),
+            }),
+        ] {
+            let world = World {
+                status: RefCell::new(vec![
+                    Ok(RegistrationStatus::NotFound),
+                    Ok(RegistrationStatus::NotRegistered),
+                ]),
+                register: RefCell::new(Some(failure.clone())),
+                ..World::default()
+            };
+            let report = decide(&Mutex::new(()), &world, HelperDecision::Granted);
+            assert!(stopped_text(&report).contains(match failure {
+                RegisterFailure::Silent => "never reported",
+                _ => "SMAppServiceErrorDomain 1",
+            }));
+            assert_eq!(fresh_run(&world), Reconciled::RegistrationUnavailable);
+            assert_eq!(world.acts(), vec![Act::StoredGranted, Act::Registered]);
+        }
     }
 
     // ── refusals and failures that end a pass ──────────────────────────────
