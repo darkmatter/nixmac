@@ -106,9 +106,18 @@ pub async fn run_fix(
     app: AppHandle,
     error: String,
     error_type: Option<String>,
+    log_file: Option<String>,
 ) -> Result<(), String> {
-    let log_tail =
-        crate::rebuild::read_latest_rebuild_log_tail(FIX_LOG_TAIL_LINES).unwrap_or_default();
+    let status = crate::state::rebuild_status::get(&app);
+    if status.is_running {
+        return Err("Wait for the build to finish before fixing it.".into());
+    }
+    let contents = match log_file {
+        Some(path) => crate::state::rebuild_status::read_completed_log(&status, &path)?,
+        None => String::new(),
+    };
+    let lines: Vec<&str> = contents.lines().collect();
+    let log_tail = lines[lines.len().saturating_sub(FIX_LOG_TAIL_LINES)..].join("\n");
     let description = build_fix_description(&error, error_type.as_deref(), &log_tail);
     run_evolve(app, description).await
 }

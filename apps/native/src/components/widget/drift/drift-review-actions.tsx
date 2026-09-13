@@ -30,7 +30,7 @@ interface DriftReviewActionsProps {
   isApplyBusy: boolean;
   isManualDrift: boolean;
   onApply: () => void;
-  onBackToPrompt: () => void;
+  onBackToPrompt?: () => void;
   onRefineWithAi: () => void;
   onRequestDiscard: () => void;
   rebuildRunning: boolean;
@@ -102,7 +102,7 @@ export function DriftReviewActions({
           </span>
         )}
 
-        {!isManualDrift && (
+        {!isManualDrift && onBackToPrompt && (
           <Button
             variant="ghost"
             size="sm"

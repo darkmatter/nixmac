@@ -117,6 +117,7 @@ export function makeRebuildStatus(
 		errorType: null,
 		errorMessage: null,
 		systemUntouched: null,
+		logFile: null,
 		...overrides,
 	};
 }

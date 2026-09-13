@@ -55,7 +55,21 @@ pub fn record_end<R: Runtime>(app: &AppHandle<R>, payload: &serde_json::Value) {
             .and_then(|v| v.as_str())
             .map(ToString::to_string),
         system_untouched: payload.get("system_untouched").and_then(|v| v.as_bool()),
+        log_file: payload.get("log_file").and_then(|v| v.as_str()).map(ToString::to_string),
     };
+}
+
+/// Read only the transcript identified by the completed status, never a newer log.
+pub fn read_completed_log(status: &RebuildStatus, log_file: &str) -> Result<String, String> {
+    if status.is_running || status.success.is_none() || status.log_file.as_deref() != Some(log_file) {
+        return Err("The build changed. Copy the log from the completed build again.".into());
+    }
+    let contents = std::fs::read_to_string(log_file)
+        .map_err(|_| "The complete build log could not be read.".to_string())?;
+    if contents.is_empty() {
+        return Err("The build log is empty.".into());
+    }
+    Ok(contents)
 }
 
 #[cfg(test)]
@@ -92,4 +106,29 @@ mod tests {
 
         assert_eq!(get(handle), RebuildStatus::default());
     }
+    #[test]
+    fn completed_log_is_preserved_and_cleared_on_retry() {
+        let app = mock_app();
+        record_end(app.handle(), &serde_json::json!({"ok": false, "log_file": "/logs/first.log"}));
+        assert_eq!(get(app.handle()).log_file.as_deref(), Some("/logs/first.log"));
+        record_start(app.handle());
+        assert_eq!(get(app.handle()).log_file, None);
+    }
+
+    #[test]
+    fn reads_complete_log_and_rejects_another_run() {
+        use std::io::Write;
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        let contents = (0..750).map(|i| format!("  line {i}\t\n")).collect::<String>();
+        file.write_all(contents.as_bytes()).unwrap();
+        let path = file.path().to_str().unwrap();
+        let mut status = RebuildStatus {
+            success: Some(false), log_file: Some(path.into()), ..RebuildStatus::default()
+        };
+        assert_eq!(read_completed_log(&status, path).unwrap(), contents);
+        assert!(read_completed_log(&status, "/another/run.log").is_err());
+        status.is_running = true;
+        assert!(read_completed_log(&status, path).is_err());
+    }
+
 }
