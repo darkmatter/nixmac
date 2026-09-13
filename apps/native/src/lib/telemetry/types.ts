@@ -65,6 +65,7 @@ export type TelemetryEvent =
       props: { product: string };
     }
   | { name: "git_committed" }
+  | { name: "update_check_failed"; props: { reason: "check_failed" } }
   | { name: "update_available"; props: { version: string } }
   | { name: "update_installed"; props: { version: string } }
   | { name: "update_install_failed"; props: { version: string } };
