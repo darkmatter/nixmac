@@ -1,0 +1,22 @@
+Complete Nix Mac onboarding and exactly one real evolution through Build & Test and Commit. The app was freshly installed and started with a provisioned real inference provider. Do not enter credentials, change provider settings, simulate a provider, fake activation, write app state, or run application backend commands directly. Use native GUI observation and interaction. Screenshots must show the real app, and unexpected system dialogs are blockers.
+
+The logged-in guest is admin. Create host desktop-test-mac in /Users/admin/nixmac-smoke-config. The trusted bootstrap mission.json contains this expanded configDir and the same exact prompt below; if the supplied mission differs, stop rather than guessing.
+
+Onboarding:
+1. In Config Directory, choose Start from scratch (the card may read First time here / Start from scratch).
+2. Fill Name this Mac with desktop-test-mac and Where to save it with /Users/admin/nixmac-smoke-config. WKWebView fields may require foregroundKeyboard delivery; observe the values afterward. Choose Create my configuration.
+3. At Import Customizations, choose the actual Skip button. Inference was provisioned by the trusted bootstrap; do not claim its credential-entry UI was tested.
+4. At First Build, choose Run build and wait for real Nix build and privileged activation. Accept the app's build confirmation if shown. Do not mark success from progress text alone. If the app requires authorization that the runtime cannot legitimately supply, report the exact visible blocker; never mock or bypass activation.
+5. After actual success, select Open nixmac. If the app presents initial configuration changes ready to save (for example a generated flake.lock), complete their real Build & Test/Commit flow before starting the evolution. No AI evolution should be submitted yet.
+6. Call the trusted checkpoint_onboarding tool. It must return onboarding-complete before proceeding. If it fails, investigate the visible app state and report the failure; do not repeatedly submit the checkpoint without a relevant observed state change. This verifies fresh onboarding, actual active initial build, committed configuration and no prior evolution.
+
+Evolution:
+7. Submit the following exact text once in the main prompt field (DOM id evolve-prompt-input; send control's accessible label is Send):
+
+Add ripgrep to environment.systemPackages in this Mac's Nix configuration. Keep all existing settings unchanged. Do not install via Homebrew. Make only this package change, run your build check, then stop for my review.
+
+8. Observe the actual evolution and review. Handle ordinary app questions consistently with that bounded package-only request. Do not accept a conversational response, provider error, or limit stop as success. Verify the review shows the requested package change.
+9. Choose Build & Test and confirm when requested. Wait for successful actual activation. Then use the commit message field (Commit message…) if needed and choose Commit. Return to the main prompt view with no pending changes. Do not initiate a second evolution.
+10. Capture final native UI evidence and finish with a concise factual summary of observed stages. The trusted final verifier will require the new committed package change, actual active package executable, fresh build metadata and real provider/edit/build-check evidence. Your narrative alone cannot satisfy it.
+
+Do not restore History, roll back the configuration, clear onboarding, remove Nix, uninstall packages, quit the app, or offboard. Leave the completed app open for report verification; disposable VM release is handled afterward by the runtime.
