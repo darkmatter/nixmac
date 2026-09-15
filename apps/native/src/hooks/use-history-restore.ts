@@ -233,9 +233,9 @@ export function useHistoryRestore(
     setRestoringHash(hash);
     uiActions.setProcessing(true);
     try {
-      await client.darwin.prepareRestore({ targetHash: hash });
+       
       await triggerRebuild({
-        context: "rollback",
+        context: "rollback", prepare: async () => { await client.darwin.prepareRestore({ targetHash: hash }); },
         onSuccess: async () => {
           // The backend writes the git-state cell; `git_state_changed` mirrors it.
           await client.darwin.finalizeRestore({ targetHash: hash });

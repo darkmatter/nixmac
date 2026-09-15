@@ -13,7 +13,7 @@ interface RebuildOptions {
   /** When set, activates this nix store path instead of triggering a full rebuild. */
   storePath?: string;
   onSuccess?: () => Promise<void>;
-  onFailure?: () => Promise<void>;
+  prepare?: () => Promise<void>; onFailure?: () => Promise<void>;
 }
 
 /**
@@ -25,10 +25,10 @@ interface RebuildOptions {
  * `viewmodel/rebuild.ts`, which also releases the processing flag and
  * re-probes permissions on permission failures when the run ends.
  */
-export function useRebuildStream() {
+let lastRebuildOptions: RebuildOptions | null = null; export function useRebuildStream() {
   const { refreshGitStatus } = useGitOperations();
 
-  const triggerRebuild = async (options: RebuildOptions) => {
+  const triggerRebuild = async (options: RebuildOptions) => { lastRebuildOptions = options;
     uiActions.setRebuildContext(options.context);
     uiActions.setEtcClobber(null);
     // Store-path activation has no log summarizer; let the rebuild slice
@@ -59,7 +59,7 @@ export function useRebuildStream() {
             getTelemetry().captureEvent({ name: "apply_completed" });
           }
           if (options.onSuccess) {
-            try {
+            try { if (options.prepare) await options.prepare();
               await options.onSuccess();
             } catch (e: unknown) {
               const msg = (e as Error)?.message || String(e);
@@ -80,7 +80,7 @@ export function useRebuildStream() {
       },
     );
 
-    try {
+    try { if (options.prepare) await options.prepare();
       if (options.storePath) {
         await client.darwin.activateStorePath({ storePath: options.storePath });
       } else {
@@ -94,5 +94,5 @@ export function useRebuildStream() {
     }
   };
 
-  return { triggerRebuild };
+  const retryLastRebuild = async () => { if (lastRebuildOptions) { uiActions.setProcessing(true, "cancel"); await triggerRebuild(lastRebuildOptions); } }; return { triggerRebuild, retryLastRebuild };
 }
