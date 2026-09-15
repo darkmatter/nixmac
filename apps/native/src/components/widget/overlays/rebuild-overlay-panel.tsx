@@ -358,7 +358,7 @@ function RawConsoleOutput({ lines, children }: { lines: string[]; children?: Rea
 
 export function RebuildOverlayPanel() {
   const { handleRollback } = useRollback();
-  const { triggerRebuild } = useRebuildStream();
+  const { triggerRebuild, retryLastRebuild } = useRebuildStream();
   const { fixWithAi } = useFixWithAi();
   const status = useViewModel((state) => state.rebuildStatus);
   const lines = useViewModel((state) => state.rebuildLog.lines);
@@ -379,7 +379,7 @@ export function RebuildOverlayPanel() {
 
   const handleRetry = async () => {
     uiActions.setProcessing(true, "cancel");
-    await triggerRebuild({ context: "rollback" });
+    await retryLastRebuild();
   };
 
   const handleDismiss = () => {
