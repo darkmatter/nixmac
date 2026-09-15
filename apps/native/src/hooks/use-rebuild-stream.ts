@@ -59,7 +59,7 @@ let lastRebuildOptions: RebuildOptions | null = null; export function useRebuild
             getTelemetry().captureEvent({ name: "apply_completed" });
           }
           if (options.onSuccess) {
-            try { if (options.prepare) await options.prepare();
+            try {
               await options.onSuccess();
             } catch (e: unknown) {
               const msg = (e as Error)?.message || String(e);
@@ -80,7 +80,7 @@ let lastRebuildOptions: RebuildOptions | null = null; export function useRebuild
       },
     );
 
-    try { if (options.prepare) await options.prepare();
+    try {
       if (options.storePath) {
         await client.darwin.activateStorePath({ storePath: options.storePath });
       } else {
