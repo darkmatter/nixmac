@@ -1,4 +1,4 @@
-import { useRebuildStream } from "@/hooks/use-rebuild-stream";
+import { clearRebuildRetry, useRebuildStream } from "@/hooks/use-rebuild-stream";
 import type { HistoryItem } from "@/ipc/types";
 import { client } from "@/lib/orpc";
 import { getTelemetry } from "@/lib/telemetry/instance";
@@ -230,17 +230,22 @@ export function useHistoryRestore(
   }
 
   const doRestore = async (hash: string) => {
+    // A retry must prepare the restore again because the first failed rebuild
+    // already ran abortRestore and restored the working tree to HEAD.
+    clearRebuildRetry();
     setRestoringHash(hash);
     uiActions.setProcessing(true);
     try {
       await client.darwin.prepareRestore({ targetHash: hash });
       await triggerRebuild({
         context: "rollback",
+        retry: () => doRestore(hash),
         onSuccess: async () => {
           // The backend writes the git-state cell; `git_state_changed` mirrors it.
           await client.darwin.finalizeRestore({ targetHash: hash });
           getTelemetry().captureEvent({ name: "history_restored" });
           invalidateHistory();
+          clearRebuildRetry();
         },
         onFailure: async () => {
           await client.darwin.abortRestore();

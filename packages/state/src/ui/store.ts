@@ -55,6 +55,8 @@ export const initialUiState: UiStateValues = {
   isBootstrapping: false,
   rebuildContext: "apply",
   rebuildPanelDismissed: false,
+  rebuildRetry: null,
+  rebuildRetryAttempts: 0,
   etcClobber: null,
   etcClobberDialogOpen: false,
   conversationalResponse: null,
@@ -93,6 +95,8 @@ export type UiStateActions = {
   setBootstrapping: (isBootstrapping: boolean) => void;
   setRebuildContext: (rebuildContext: RebuildContext) => void;
   setRebuildPanelDismissed: (rebuildPanelDismissed: boolean) => void;
+  setRebuildRetry: (rebuildRetry: UiStateValues["rebuildRetry"]) => void;
+  setRebuildRetryAttempts: (rebuildRetryAttempts: number) => void;
   setEtcClobber: (etcClobber: EtcClobberCheckResult | null) => void;
   setEtcClobberDialogOpen: (etcClobberDialogOpen: boolean) => void;
   setConversationalResponse: (conversationalResponse: string | null) => void;
@@ -160,6 +164,9 @@ export const uiStore = create<UiStateStore>()(
     setRebuildContext: (rebuildContext) => set({ rebuildContext }),
     setRebuildPanelDismissed: (rebuildPanelDismissed) =>
       set({ rebuildPanelDismissed }),
+    setRebuildRetry: (rebuildRetry) => set({ rebuildRetry }),
+    setRebuildRetryAttempts: (rebuildRetryAttempts) =>
+      set({ rebuildRetryAttempts }),
     setEtcClobber: (etcClobber) => set({ etcClobber }),
     setEtcClobberDialogOpen: (etcClobberDialogOpen) =>
       set({ etcClobberDialogOpen }),
@@ -204,6 +211,8 @@ const {
   setBootstrapping,
   setRebuildContext,
   setRebuildPanelDismissed,
+  setRebuildRetry,
+  setRebuildRetryAttempts,
   setEtcClobber,
   setEtcClobberDialogOpen,
   setConversationalResponse,
@@ -244,6 +253,8 @@ export const uiActions: UiStateActions & {
   setBootstrapping,
   setRebuildContext,
   setRebuildPanelDismissed,
+  setRebuildRetry,
+  setRebuildRetryAttempts,
   setEtcClobber,
   setEtcClobberDialogOpen,
   setConversationalResponse,
