@@ -42,6 +42,10 @@ export async function retryLastRebuild(): Promise<void> {
   await uiStore.getState().rebuildRetry?.();
 }
 
+// Monotonic sequence per triggerRebuild call so a run can tell whether a
+// newer operation superseded it while its failure cleanup was in flight.
+let rebuildRunSeq = 0;
+
 /**
  * Shared hook for triggering darwin-rebuild with streaming overlay.
  * Used by both useApply and useRollback to show rebuild progress.
@@ -55,6 +59,7 @@ export function useRebuildStream() {
   const { refreshGitStatus } = useGitOperations();
 
   const triggerRebuild = async (options: RebuildOptions) => {
+    const runSeq = ++rebuildRunSeq;
     // Apply operations and rollback paths without a replay callback must not
     // reuse a callback captured by an older failed rollback.
     clearRebuildRetry();
@@ -113,7 +118,25 @@ export function useRebuildStream() {
             getTelemetry().captureEvent({ name: "apply_failed" });
           }
           if (options.onFailure) {
-            await options.onFailure();
+            // The panel enables retry as soon as the backend reports the
+            // failure, so lift the callback while cleanup is in flight and
+            // only restore it after the cleanup of *this* run resolved —
+            // a superseding operation must not get clobbered, and a failed
+            // cleanup must not re-arm a retry against an uncleaned state.
+            if (options.retry) {
+              uiActions.setRebuildRetry(null);
+            }
+            let cleanupOk = true;
+            try {
+              await options.onFailure();
+            } catch (e: unknown) {
+              cleanupOk = false;
+              const msg = (e as Error)?.message || String(e);
+              uiActions.setError(msg);
+            }
+            if (cleanupOk && options.retry && runSeq === rebuildRunSeq) {
+              uiActions.setRebuildRetry(options.retry);
+            }
           }
           await refreshGitStatus();
         }

@@ -143,4 +143,94 @@ describe("useRebuildStream", () => {
 
     expect(hasRebuildRetry()).toBe(false);
   });
+
+  it("withholds retry while failed-run cleanup is pending", async () => {
+    let resolveCleanup!: () => void;
+    const onFailure = vi
+      .fn()
+      .mockReturnValue(new Promise<void>((resolve) => (resolveCleanup = resolve)));
+    const retry = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useRebuildStream());
+
+    await act(async () => {
+      await result.current.triggerRebuild({ context: "rollback", retry, onFailure });
+    });
+    expect(hasRebuildRetry()).toBe(true);
+
+    const listener = mocks.on.mock.calls[0]?.[1] as
+      | ((event: { payload: DarwinApplyEndEvent }) => Promise<void>)
+      | undefined;
+    let finished!: Promise<void>;
+    await act(async () => {
+      finished = listener!({ payload: applyEndPayload() });
+    });
+
+    // Cleanup still in flight: retry must stay disabled.
+    expect(onFailure).toHaveBeenCalledTimes(1);
+    expect(hasRebuildRetry()).toBe(false);
+
+    resolveCleanup();
+    await act(async () => {
+      await finished;
+    });
+
+    expect(hasRebuildRetry()).toBe(true);
+    expect(mocks.refreshGitStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps retry disabled and surfaces the error when cleanup rejects", async () => {
+    const onFailure = vi.fn().mockRejectedValue(new Error("abort failed"));
+    const retry = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useRebuildStream());
+
+    await act(async () => {
+      await result.current.triggerRebuild({ context: "rollback", retry, onFailure });
+    });
+
+    const listener = mocks.on.mock.calls[0]?.[1] as
+      | ((event: { payload: DarwinApplyEndEvent }) => Promise<void>)
+      | undefined;
+    await act(async () => {
+      await listener!({ payload: applyEndPayload() });
+    });
+
+    expect(hasRebuildRetry()).toBe(false);
+    expect(useUiState.getState().error).toBe("abort failed");
+    expect(mocks.refreshGitStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not let stale cleanup re-enable a superseded retry", async () => {
+    let resolveCleanup!: () => void;
+    const onFailure = vi
+      .fn()
+      .mockReturnValue(new Promise<void>((resolve) => (resolveCleanup = resolve)));
+    const retryOld = vi.fn().mockResolvedValue(undefined);
+    const retryNew = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useRebuildStream());
+
+    await act(async () => {
+      await result.current.triggerRebuild({ context: "rollback", retry: retryOld, onFailure });
+    });
+
+    const listener = mocks.on.mock.calls[0]?.[1] as
+      | ((event: { payload: DarwinApplyEndEvent }) => Promise<void>)
+      | undefined;
+    let finished!: Promise<void>;
+    await act(async () => {
+      finished = listener!({ payload: applyEndPayload() });
+    });
+
+    // A newer operation supersedes the failed run while its cleanup pends.
+    await act(async () => {
+      await result.current.triggerRebuild({ context: "rollback", retry: retryNew });
+    });
+    expect(useUiState.getState().rebuildRetry).toBe(retryNew);
+
+    resolveCleanup();
+    await act(async () => {
+      await finished;
+    });
+
+    expect(useUiState.getState().rebuildRetry).toBe(retryNew);
+  });
 });
