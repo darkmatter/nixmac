@@ -65,6 +65,7 @@ function ownerAndRepoFromLocator(
 	locator: string,
 ): { owner: string; repo: string } | null {
 	const fullUrl = locator.match(/^(https?:\/\/|ssh:\/\/)/i);
+	const scpUrl = locator.startsWith("git@");
 	let path = "";
 
 	if (fullUrl) {
@@ -74,7 +75,7 @@ function ownerAndRepoFromLocator(
 		} catch {
 			return null;
 		}
-	} else if (locator.startsWith("git@")) {
+	} else if (scpUrl) {
 		const idx = locator.indexOf(":");
 		if (idx < 0) return null;
 		path = locator.slice(idx + 1).replace(/^\/+|\/+$/g, "");
@@ -94,6 +95,7 @@ function ownerAndRepoFromLocator(
 
 	const parts = path.split("/").filter(Boolean);
 	if (parts.length < 2) return null;
+	if (!fullUrl && !scpUrl && parts.length !== 2) return null;
 
 	const owner = parts[parts.length - 2] ?? "";
 	const repo = (parts[parts.length - 1] ?? "").replace(/\.git$/i, "");

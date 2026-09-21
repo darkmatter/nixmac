@@ -1,5 +1,6 @@
 import {
   computeOnboardingStep,
+  hasOnboardingInferenceConfig,
   resolveOnboardingStep,
   stepIndex,
   STEPS,
@@ -54,7 +55,7 @@ export function useOnboardingFlow(): {
         flakeReady,
         macScanned: macScannedAt !== null,
         loginDecided,
-        hasInference: Boolean(evolveProvider) && Boolean(evolveModel),
+        hasInference: hasOnboardingInferenceConfig(evolveProvider, evolveModel),
         buildComplete: lastBuildAt !== null,
         inferenceDeferred,
       }),

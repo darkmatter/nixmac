@@ -1,4 +1,7 @@
-import type { StepId } from "@/components/widget/onboarding/lib/onboarding";
+import {
+	hasOnboardingInferenceConfig,
+	type StepId,
+} from "@/components/widget/onboarding/lib/onboarding";
 import { BuildStep } from "@/components/widget/onboarding/steps/build-step";
 import { ConfigDirStep } from "@/components/widget/onboarding/steps/config-dir-step";
 import { CustomizationsStep } from "@/components/widget/onboarding/steps/customizations-step";
@@ -22,7 +25,7 @@ export function OnboardingStepContent({ currentStep, title }: OnboardingStepCont
   // separately. The build step only needs to know inference is configured.
   const evolveProvider = useViewModel((s) => s.preferences?.evolveProvider ?? null);
   const evolveModel = useViewModel((s) => s.preferences?.evolveModel ?? null);
-  const hasInference = Boolean(evolveProvider) && Boolean(evolveModel);
+  const hasInference = hasOnboardingInferenceConfig(evolveProvider, evolveModel);
   const { markMacScanned, markLoginDecided } = useOnboardingProgress();
 
   return (
