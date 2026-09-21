@@ -1,3 +1,5 @@
+import { isCliProvider } from "@/lib/providers/ai-provider-validation";
+
 export type StepId =
   | "permissions"
   | "nix-setup"
@@ -42,6 +44,14 @@ export function resolveOnboardingStep(furthestStep: StepId, viewingStep: StepId 
   const viewingIndex = stepIndex(viewingStep);
   if (viewingIndex === -1 || viewingIndex > furthestIndex) return furthestStep;
   return viewingStep;
+}
+
+export function hasOnboardingInferenceConfig(
+  provider: string | null | undefined,
+  model: string | null | undefined,
+): boolean {
+  if (!provider) return false;
+  return isCliProvider(provider) || Boolean(model?.trim());
 }
 
 /**
