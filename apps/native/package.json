@@ -105,7 +105,7 @@
     "@storybook/addon-a11y": "10.4.2",
     "@storybook/addon-docs": "10.4.2",
     "@storybook/addon-onboarding": "10.4.2",
-    "@storybook/addon-vitest": "10.4.2",
+    "@storybook/addon-vitest": "10.6.2",
     "@storybook/react-vite": "10.4.2",
     "@tailwindcss/typography": "0.5.20",
     "@tailwindcss/vite": "4.3.1",
