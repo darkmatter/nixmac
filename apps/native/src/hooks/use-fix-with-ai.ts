@@ -31,7 +31,7 @@ export function useFixWithAi() {
 
     const status = viewModelActions.getState().rebuildStatus;
     const error = (errorLine ?? status?.errorMessage ?? "").trim();
-    if (!error) {
+    if (!error || status?.isRunning) {
       return;
     }
     const errorType = status?.errorType ?? null;
@@ -64,7 +64,7 @@ export function useFixWithAi() {
       // Fire-and-forget: the backend updates the git/evolve/change-map cells and
       // emits the terminal `complete` event before this resolves; the viewmodel
       // sync modules mirror everything into the evolve review UI.
-      await client.darwin.fixWithAi({ error, errorType });
+      await client.darwin.fixWithAi({ error, errorType, logFile: status?.logFile ?? null });
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
       const isCancelled = msg.includes(EVOLUTION_CANCELLED_MSG);
