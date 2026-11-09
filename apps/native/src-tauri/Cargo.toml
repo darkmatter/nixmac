@@ -24,7 +24,7 @@ tauri-build = { version = "2", features = [] }
 serde_json = "1"
 # Writes the build-ID-stamped Info.plist the bundler merges; the crate reads the
 # same key back out of an installed bundle (`build_id.rs`).
-plist = "1.9.0"
+plist = "1.10.0"
 
 [dependencies]
 tauri = { version = "2", features = [
@@ -70,9 +70,14 @@ http = "1"
 diesel = { version = "2", features = ["sqlite", "r2d2"] }
 diesel_migrations = "2"
 r2d2 = "0.8"
-# Pin libsqlite3-sys with bundled so Diesel uses a self-contained sqlite
-# rather than a system one — rusqlite previously carried this flag.
-libsqlite3-sys = { version = "0.28", features = ["bundled"] }
+# Pin libsqlite3-sys with bundled so diesel and sqlx use a self-contained
+# sqlite rather than a system one.
+#
+# 0.30 specifically: `links = "sqlite3"` allows one version in the graph.
+# `sqlx-sqlite` 0.8.1+ needs ^0.30.1 and diesel accepts >=0.17.2, <0.39, so
+# 0.30 is the only overlap. 0.28 leaves sqlx on 0.8.0 (RUSTSEC-2024-0363);
+# 0.31+ does not resolve at all.
+libsqlite3-sys = { version = "0.30", features = ["bundled"] }
 tauri-plugin-upload = "2.0.0"
 tauri-plugin-macos-permissions = "2.3.0"
 tracing = "0.1"
@@ -109,7 +114,7 @@ activation-runner = { path = "activation-runner" }
 hmac = "0.12"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 walkdir = "2.5.0"
-plist = "1.9.0"
+plist = "1.10.0"
 whoami = "2.1.2"
 libc = "0.2"
 orpc = "1.1.0"
