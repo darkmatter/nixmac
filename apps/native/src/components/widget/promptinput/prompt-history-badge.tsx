@@ -12,14 +12,15 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { getTelemetry } from "@/lib/telemetry/instance";
 import { cn } from "@/lib/utils";
-import { uiActions, useUiState, useViewModel } from "@nixmac/state";
+import { useUiState, useViewModel } from "@nixmac/state";
 import { ClockIcon } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
-export function PromptHistoryBadge() {
+export function PromptHistoryBadge({ onSelect }: { onSelect: (prompt: string) => void }) {
+  const focusPromptAfterCloseRef = useRef(false);
   const history = useViewModel((s) => s.promptHistory);
   const evolvePrompt = useUiState((s) => s.evolvePrompt);
-    const isProcessing = useUiState((s) => s.isProcessing);
+  const isProcessing = useUiState((s) => s.isProcessing);
   const processingAction = useUiState((s) => s.processingAction);
 
   const disabled = isProcessing && processingAction === "evolve";
@@ -36,7 +37,8 @@ export function PromptHistoryBadge() {
       name: "prompt_suggestion_used",
       props: { surface: "history" },
     });
-    uiActions.setEvolvePrompt(prompt);
+    focusPromptAfterCloseRef.current = true;
+    onSelect(prompt);
     setOpen(false);
     setSearchValue("");
   };
@@ -60,7 +62,16 @@ export function PromptHistoryBadge() {
           My History
         </BadgeButton>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="start">
+      <PopoverContent
+        className="w-[400px] p-0"
+        align="start"
+        onCloseAutoFocus={(event) => {
+          if (!focusPromptAfterCloseRef.current) return;
+
+          focusPromptAfterCloseRef.current = false;
+          event.preventDefault();
+        }}
+      >
         <Command shouldFilter={false}>
           <CommandInput
             placeholder="Search history..."
