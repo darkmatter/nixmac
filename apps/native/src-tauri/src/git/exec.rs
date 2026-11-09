@@ -243,6 +243,11 @@ pub fn commit_file(dir: &str, path: &str, message: &str) -> Result<CommitInfo> {
 /// Commit only the requested files, interpreting each path relative to `dir`
 /// and leaving unrelated worktree changes out of the commit.
 pub fn commit_files(dir: &str, paths: &[&str], message: &str) -> Result<CommitInfo> {
+    // With no paths there is nothing to stage. On an unborn HEAD the code below
+    // would otherwise clear the index and record an empty root commit.
+    if paths.is_empty() {
+        anyhow::bail!("nothing to commit");
+    }
     let repo = git2::Repository::discover(dir)?;
 
     let parent = repo.head().ok().and_then(|head| head.peel_to_commit().ok());
@@ -274,9 +279,11 @@ pub fn commit_files(dir: &str, paths: &[&str], message: &str) -> Result<CommitIn
         }
     }
     let tree_id = index.write_tree().context("git2 write commit tree")?;
-    if let Some(parent) = parent.as_ref()
-        && parent.tree_id() == tree_id
-    {
+    let unchanged = match parent.as_ref() {
+        Some(parent) => parent.tree_id() == tree_id,
+        None => index.is_empty(),
+    };
+    if unchanged {
         anyhow::bail!("nothing to commit");
     }
     index.write().context("git2 write staged index")?;
@@ -547,7 +554,6 @@ pub fn commit_hunk(dir: &str, path: &str, hunk: &str, message: &str) -> Result<C
     } else {
         stage_content_in_index(&repo, &mut index, &rel, &new_content, mode)?;
     }
-    index.write().context("git2 write staged index")?;
 
     let tree_id = index.write_tree().context("git2 write commit tree")?;
     if let Some(parent) = parent.as_ref()
@@ -555,6 +561,9 @@ pub fn commit_hunk(dir: &str, path: &str, hunk: &str, message: &str) -> Result<C
     {
         anyhow::bail!("nothing to commit");
     }
+    // Persist the index only once a commit will be created, so a hunk that
+    // changes nothing leaves the user's staged changes alone.
+    index.write().context("git2 write staged index")?;
     let tree = repo.find_tree(tree_id).context("git2 find commit tree")?;
 
     let signature =
@@ -1252,6 +1261,60 @@ mod tests {
         assert!(
             git2::IndexEntryExtendedFlag::from_bits_truncate(entry.flags_extended)
                 .contains(git2::IndexEntryExtendedFlag::INTENT_TO_ADD)
+        );
+    }
+
+    #[test]
+    fn test_commit_files_without_paths_leaves_unborn_repository_untouched() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "flake.nix"]);
+
+        let error = commit_files(&repo_dir_str, &[], "empty")
+            .err()
+            .expect("an empty path list should not produce a commit");
+        assert!(error.to_string().contains("nothing to commit"));
+        assert!(
+            !run_git(&repo_dir, &["rev-parse", "--verify", "--quiet", "HEAD"])
+                .status
+                .success(),
+            "no root commit should be created"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["ls-files"]),
+            "flake.nix\n",
+            "the staged index must survive"
+        );
+    }
+
+    #[test]
+    fn test_commit_files_of_only_missing_paths_leaves_unborn_repository_untouched() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "flake.nix"]);
+
+        let error = commit_files(&repo_dir_str, &["missing.nix"], "nothing staged")
+            .err()
+            .expect("staging only a missing path should not produce a commit");
+        assert!(error.to_string().contains("nothing to commit"));
+        assert!(
+            !run_git(&repo_dir, &["rev-parse", "--verify", "--quiet", "HEAD"])
+                .status
+                .success(),
+            "no root commit should be created"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["ls-files"]),
+            "flake.nix\n",
+            "the staged index must survive"
         );
     }
 
@@ -1979,6 +2042,36 @@ mod tests {
             crate::git::query::changes_since_ref(&repo_dir_str, "HEAD").expect("remaining diff");
         assert_eq!(remaining.len(), 1, "only the sibling hunk is left");
         assert!(remaining[0].diff.contains("+S"));
+    }
+
+    #[test]
+    fn test_commit_hunk_that_changes_nothing_leaves_index_untouched() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("letters.txt"), "a\nb\nc\nd\ne\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial"]);
+
+        fs::write(repo_dir.join("staged.nix"), "{ staged = true; }\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "staged.nix"]);
+
+        let error = commit_hunk(
+            &repo_dir_str,
+            "letters.txt",
+            "@@ -3,1 +3,1 @@\n-c\n+c",
+            "no-op",
+        )
+        .err()
+        .expect("a hunk that changes nothing should not produce a commit");
+        assert!(error.to_string().contains("nothing to commit"));
+        assert_eq!(
+            run_git_ok(&repo_dir, &["diff", "--cached", "--name-only"]),
+            "staged.nix\n",
+            "a failed hunk commit must not reset the staged index"
+        );
     }
 
     #[test]
