@@ -1,6 +1,14 @@
 import { act, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { tauriAPI } from "@/ipc/api";
 import { RouterProvider, nav, router } from "@/router";
+
+type ApiKeysTabSaveProps = {
+  onSaveOpenaiCompatibleUrl: (url: string) => Promise<void>;
+  onSaveOpenaiCompatibleKey: (key: string) => Promise<void>;
+};
+
+const apiKeysTab = vi.hoisted(() => ({ props: null as ApiKeysTabSaveProps | null }));
 
 // The root layout mounts DarwinWidget alongside the settings overlay; its
 // side-effect hooks are irrelevant to this test.
@@ -12,7 +20,12 @@ vi.mock("@/components/widget/widget", () => ({
 // module-level imports don't drag in the IPC layer.
 vi.mock("@/components/widget/settings/account-tab", () => ({ AccountTab: () => null }));
 vi.mock("@/components/widget/settings/ai-models-tab", () => ({ AiModelsTab: () => null }));
-vi.mock("@/components/widget/settings/api-keys-tab", () => ({ ApiKeysTab: () => null }));
+vi.mock("@/components/widget/settings/api-keys-tab", () => ({
+  ApiKeysTab: (props: ApiKeysTabSaveProps) => {
+    apiKeysTab.props = props;
+    return null;
+  },
+}));
 vi.mock("@/components/widget/settings/developer-tab", () => ({ DeveloperTab: () => null }));
 vi.mock("@/components/widget/settings/general-tab", () => ({ GeneralTab: () => null }));
 vi.mock("@/components/widget/settings/permissions-tab", () => ({ PermissionsTab: () => null }));
@@ -74,5 +87,31 @@ describe("SettingsDialog", () => {
     );
     expect(screen.getByRole("button", { name: "Log back in" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Select another model" })).toBeInTheDocument();
+  });
+
+  // Regression: the model picker caches OpenAI-compatible models under the
+  // provider id `openai_compatible`, but saving the endpoint or key cleared a
+  // `vllm` entry instead, so the picker kept showing the old server's models.
+  it("clears the OpenAI-compatible model cache when its endpoint or key is saved", async () => {
+    render(<RouterProvider router={router} />);
+    await act(async () => {
+      await nav.openSettings("api-keys");
+    });
+
+    const props = await vi.waitFor(() => {
+      if (!apiKeysTab.props) throw new Error("API keys tab not rendered yet");
+      return apiKeysTab.props;
+    });
+    vi.mocked(tauriAPI.models.clearCached).mockClear();
+
+    await act(async () => {
+      await props.onSaveOpenaiCompatibleUrl("http://localhost:8000/v1");
+      await props.onSaveOpenaiCompatibleKey("sk-test");
+    });
+
+    expect(vi.mocked(tauriAPI.models.clearCached).mock.calls).toEqual([
+      ["openai_compatible"],
+      ["openai_compatible"],
+    ]);
   });
 });
