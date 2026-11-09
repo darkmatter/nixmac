@@ -1,6 +1,5 @@
 import { act, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { tauriAPI } from "@/ipc/api";
 import { RouterProvider, nav, router } from "@/router";
 
 type ApiKeysTabSaveProps = {
@@ -9,6 +8,9 @@ type ApiKeysTabSaveProps = {
 };
 
 const apiKeysTab = vi.hoisted(() => ({ props: null as ApiKeysTabSaveProps | null }));
+const orpcClient = vi.hoisted(() => ({
+  clearCached: vi.fn<(input: { provider: string }) => Promise<void>>().mockResolvedValue(undefined),
+}));
 
 // The root layout mounts DarwinWidget alongside the settings overlay; its
 // side-effect hooks are irrelevant to this test.
@@ -50,6 +52,10 @@ vi.mock("@/ipc/api", () => ({
       clearCached: vi.fn().mockResolvedValue(undefined),
     },
   },
+}));
+
+vi.mock("@/lib/orpc", () => ({
+  client: { models: { clearCached: orpcClient.clearCached } },
 }));
 
 describe("SettingsDialog", () => {
@@ -102,16 +108,16 @@ describe("SettingsDialog", () => {
       if (!apiKeysTab.props) throw new Error("API keys tab not rendered yet");
       return apiKeysTab.props;
     });
-    vi.mocked(tauriAPI.models.clearCached).mockClear();
+    orpcClient.clearCached.mockClear();
 
     await act(async () => {
       await props.onSaveOpenaiCompatibleUrl("http://localhost:8000/v1");
       await props.onSaveOpenaiCompatibleKey("sk-test");
     });
 
-    expect(vi.mocked(tauriAPI.models.clearCached).mock.calls).toEqual([
-      ["openai_compatible"],
-      ["openai_compatible"],
+    expect(orpcClient.clearCached.mock.calls).toEqual([
+      [{ provider: "openai_compatible" }],
+      [{ provider: "openai_compatible" }],
     ]);
   });
 });
