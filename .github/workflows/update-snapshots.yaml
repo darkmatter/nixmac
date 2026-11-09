@@ -37,15 +37,43 @@ jobs:
       issues: read
     # issue_comment fires on every comment edit across issues + PRs; only
     # proceed when the sticky Storybook preview comment had its accept
-    # checkbox flipped from unchecked to checked.
+    # checkbox flipped from unchecked to checked. The comment must be the one
+    # darkmatter[bot] posted: on a public repo anyone can post a lookalike.
     if: |
       github.event_name != 'issue_comment' || (
         github.event.issue.pull_request != null &&
+        github.event.comment.user.login == 'darkmatter[bot]' &&
         contains(github.event.comment.body, '<!-- nixmac-storybook-preview -->') &&
         contains(github.event.changes.body.from, '- [ ] Click here to accept these changes') &&
         contains(github.event.comment.body, '- [x] Click here to accept these changes')
       )
     steps:
+      # This job runs PR code with secrets and a write token, so only a
+      # repository writer may trigger it, and only for a branch in this repo.
+      # Applies to comment acceptance and to dispatch with a PR number.
+      - name: Require a trusted editor and a same-repo PR
+        if: github.event_name == 'issue_comment' || github.event.inputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.issue.number || github.event.inputs.pr_number }}
+          EDITOR: ${{ github.event.sender.login }}
+        run: |
+          set -euo pipefail
+          permission=$(gh api "repos/${REPO}/collaborators/${EDITOR}/permission" --jq '.permission' 2>/dev/null || echo none)
+          case "$permission" in
+            admin|maintain|write) ;;
+            *)
+              echo "::error::${EDITOR} has '${permission}' access; snapshot acceptance needs write access."
+              exit 1
+              ;;
+          esac
+          head_repo=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" --jq '.head.repo.full_name // ""')
+          if [ "$head_repo" != "$REPO" ]; then
+            echo "::error::PR #${PR_NUMBER} comes from '${head_repo:-a deleted fork}'; snapshot acceptance only runs for branches in ${REPO}."
+            exit 1
+          fi
+
       - name: Mint darkmatter[bot] token
         id: bot-token
         uses: actions/create-github-app-token@v2
