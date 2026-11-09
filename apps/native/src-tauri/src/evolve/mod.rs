@@ -2618,7 +2618,7 @@ fn process_tool_result(
         }
 
         ToolResult::Done(summary) => {
-            if done_gate.build_verified {
+            if done_gate.build_verified && evolution.has_edits() {
                 info!("✅ EVOLUTION COMPLETE (build verified)");
                 info!("Summary: {}", summary);
                 evolution.summary = Some(summary.clone());
@@ -2665,7 +2665,7 @@ fn process_tool_result(
                 info!("✅ EVOLUTION COMPLETE (no edits)");
                 info!("Summary: {}", summary);
                 evolution.summary = Some(summary.clone());
-                evolution.state = EvolutionState::Generated;
+                evolution.state = EvolutionState::Conversational;
                 let msg = Message::Tool {
                     tool_call_id: tool_call_id.to_string(),
                     content: "Evolution complete.".to_string(),
@@ -2792,6 +2792,55 @@ mod tests {
             !matches!(evolution.state, EvolutionState::Generated),
             "done must not complete an evolution whose last build_check failed"
         );
+    }
+
+    #[test]
+    fn done_without_edits_is_conversational_regardless_of_build_result() {
+        for build_success in [None, Some(true), Some(false)] {
+            let mut evolution = Evolution::new("install tailscale");
+            let mut done_gate = DoneGate::default();
+            if let Some(success) = build_success {
+                run_tool_result(&build_result(success), &mut evolution, &mut done_gate);
+            }
+
+            let summary = "Tailscale is already configured.";
+            let mut build_attempts = 0;
+            let (_, should_break) = process_tool_result(
+                "done-call",
+                &ToolResult::Done(summary.to_string()),
+                &mut evolution,
+                &mut done_gate,
+                &mut build_attempts,
+                5,
+                0,
+                0,
+            )
+            .expect("done without edits should succeed");
+
+            assert_eq!(evolution.state, EvolutionState::Conversational);
+            assert_eq!(evolution.summary.as_deref(), Some(summary));
+            assert_eq!(should_break, Some(true));
+            assert_eq!(done_gate.rejected_dones, 0);
+        }
+    }
+
+    #[test]
+    fn done_with_verified_edits_is_generated() {
+        let mut evolution = Evolution::new("prompt");
+        evolution.edits.push(FileEdit {
+            path: "configuration.nix".to_string(),
+            search: "a".to_string(),
+            replace: "b".to_string(),
+        });
+        let mut done_gate = DoneGate::default();
+        run_tool_result(&build_result(true), &mut evolution, &mut done_gate);
+        run_tool_result(
+            &ToolResult::Done("Updated configuration.".to_string()),
+            &mut evolution,
+            &mut done_gate,
+        );
+        assert_eq!(evolution.state, EvolutionState::Generated);
+        assert_eq!(evolution.summary.as_deref(), Some("Updated configuration."));
     }
 
     // The rejection hint must only reference parameters build_check actually
