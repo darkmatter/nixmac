@@ -11,6 +11,7 @@ export interface ParsedFlakeRef {
 }
 
 const VALID_SEGMENT_RE = /^[A-Za-z0-9._-]+$/;
+const GITHUB_HOST_RE = /^(www\.)?github\.com$/i;
 
 function isValidSegment(segment: string): boolean {
 	return segment.length > 0 && VALID_SEGMENT_RE.test(segment);
@@ -63,28 +64,32 @@ function parseQuery(input: string): { locator: string; error?: string } {
 
 function ownerAndRepoFromLocator(
 	locator: string,
-): { owner: string; repo: string } | null {
+): { ok: true; owner: string; repo: string } | { ok: false; error?: string } {
 	const fullUrl = locator.match(/^(https?:\/\/|ssh:\/\/)/i);
 	let path = "";
+	// Shorthand and github.com/ paths always name a GitHub repository.
+	let githubLocator = true;
 
 	if (fullUrl) {
 		try {
 			const url = new URL(locator);
 			path = url.pathname.replace(/^\/+|\/+$/g, "");
+			githubLocator = GITHUB_HOST_RE.test(url.hostname);
 		} catch {
-			return null;
+			return { ok: false };
 		}
 	} else if (locator.startsWith("git@")) {
 		const idx = locator.indexOf(":");
-		if (idx < 0) return null;
+		if (idx < 0) return { ok: false };
 		path = locator.slice(idx + 1).replace(/^\/+|\/+$/g, "");
+		githubLocator = GITHUB_HOST_RE.test(locator.slice("git@".length, idx));
 	} else {
 		const withoutLeading = locator.replace(/^\/+/, "");
 		if (
 			locator.startsWith("/") &&
 			/^(www\.)?github\.com\//i.test(withoutLeading)
 		) {
-			return null;
+			return { ok: false };
 		}
 		path = withoutLeading
 			.replace(/^github\.com\//i, "")
@@ -93,13 +98,25 @@ function ownerAndRepoFromLocator(
 	}
 
 	const parts = path.split("/").filter(Boolean);
-	if (parts.length < 2) return null;
+	if (parts.length < 2) return { ok: false };
+
+	// GitHub repositories are exactly owner/repo, and `parse_repo_ref` rejects
+	// longer paths such as owner/repo/subdir or /tree/main browser URLs. Other
+	// hosts can nest repositories under groups, so they keep the last two
+	// segments.
+	if (githubLocator && parts.length > 2) {
+		return {
+			ok: false,
+			error:
+				"'owner/repo/<path>' is not supported — use ?ref=<branch-or-tag> or ?dir=<subdirectory> instead.",
+		};
+	}
 
 	const owner = parts[parts.length - 2] ?? "";
 	const repo = (parts[parts.length - 1] ?? "").replace(/\.git$/i, "");
 
-	if (!isValidSegment(owner) || !isValidSegment(repo)) return null;
-	return { owner, repo };
+	if (!isValidSegment(owner) || !isValidSegment(repo)) return { ok: false };
+	return { ok: true, owner, repo };
 }
 
 /**
@@ -148,7 +165,7 @@ export function parseFlakeRef(raw: string): ParsedFlakeRef {
 	}
 
 	const parsed = ownerAndRepoFromLocator(locator);
-	if (parsed) {
+	if (parsed.ok) {
 		const fullUrl = /^(https?:\/\/|ssh:\/\/)/i.test(locator);
 		const scpUrl = locator.startsWith("git@");
 		const githubHost = /^(www\.)?github\.com\//i.test(locator);
@@ -175,7 +192,9 @@ export function parseFlakeRef(raw: string): ParsedFlakeRef {
 		valid: false,
 		type: "unknown",
 		label: "",
-		hint: "Expected owner/repo, github.com/owner/repo, git@github.com:owner/repo.git, or an http(s)/ssh git URL.",
+		hint:
+			parsed.error ??
+			"Expected owner/repo, github.com/owner/repo, git@github.com:owner/repo.git, or an http(s)/ssh git URL.",
 		importable: false,
 	};
 }
